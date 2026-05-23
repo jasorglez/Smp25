@@ -13,6 +13,7 @@ import { CaracteristicasEntradaService } from '../../../../../services/caracteri
 import { IntandoutDocumentsService } from 'app/services/intandoutDocuments.service';
 import { alerts } from 'app/helpers/alerts';
 import { DetailEntradaDocumentsComponent } from './detail-entrada-documents/detail-entrada-documents.component';
+import { CustomOcTooltipComponent } from './custom-oc-tooltip.component';
 
 interface ReqOption {
   id: number;
@@ -24,7 +25,7 @@ interface ReqOption {
 @Component({
   selector: 'app-detalle-almmolienda',
   standalone: true,
-  imports: [CommonModule, AgGridAngular, DetailEntradaDocumentsComponent],
+  imports: [CommonModule, AgGridAngular, DetailEntradaDocumentsComponent, CustomOcTooltipComponent],
   template: `
     <div style="padding: 6px; height: 100%; display: flex; flex-direction: column; box-sizing: border-box; overflow: hidden;"
          [style.backgroundColor]="detailType === 'entradas' ? '#e8f5e9' : '#fce4ec'">
@@ -80,20 +81,20 @@ interface ReqOption {
               Entradas — {{ selectedOcRow.folio }}
             </div>
             <div style="display: flex; gap: 4px; flex-shrink: 0;">
-              <button class="btn btn-sm btn-success" (click)="addEntrada()" [disabled]="!nivel4GridApi" title="Agregar entrada" style="padding: 2px 8px; font-size: 0.7rem;">
+              <button class="btn btn-sm btn-success" (click)="addEntrada()" [disabled]="!nivel4GridApi || selectedOcRow?.close === true" title="Agregar entrada" style="padding: 2px 8px; font-size: 0.7rem;">
                 <i class="bi bi-plus-lg" style="margin-right: 2px; font-size: 0.7rem;"></i>Agregar
               </button>
-              <button class="btn btn-sm btn-primary position-relative" (click)="saveEntradas()" [disabled]="!hasUnsavedChangesEntradas" title="Guardar cambios" style="padding: 2px 8px; font-size: 0.7rem;">
+              <button class="btn btn-sm btn-primary position-relative" (click)="saveEntradas()" [disabled]="!hasUnsavedChangesEntradas || selectedOcRow?.close === true" title="Guardar cambios" style="padding: 2px 8px; font-size: 0.7rem;">
                 <i class="bi bi-floppy" style="margin-right: 2px; font-size: 0.7rem;"></i>Guardar
                 <span *ngIf="hasUnsavedChangesEntradas"
                       class="position-absolute top-0 start-100 translate-middle p-2 bg-danger border border-light rounded-circle"
                       style="width: 10px; height: 10px; padding: 0 !important;">
                 </span>
               </button>
-              <button class="btn btn-sm btn-warning" (click)="revertEntradas()" title="Deshacer cambios" style="padding: 2px 8px; font-size: 0.7rem;">
+              <button class="btn btn-sm btn-warning" (click)="revertEntradas()" [disabled]="selectedOcRow?.close === true" title="Deshacer cambios" style="padding: 2px 8px; font-size: 0.7rem;">
                 <i class="bi bi-arrow-clockwise" style="margin-right: 2px; font-size: 0.7rem;"></i>Deshacer
               </button>
-              <button class="btn btn-sm btn-danger" (click)="deleteEntrada()" [disabled]="!selectedEntradaRow" title="Eliminar entrada" style="padding: 2px 8px; font-size: 0.7rem;">
+              <button class="btn btn-sm btn-danger" (click)="deleteEntrada()" [disabled]="!selectedEntradaRow || selectedOcRow?.close === true" title="Eliminar entrada" style="padding: 2px 8px; font-size: 0.7rem;">
                 <i class="bi bi-trash" style="margin-right: 2px; font-size: 0.7rem;"></i>Eliminar
               </button>
             </div>
@@ -120,7 +121,7 @@ interface ReqOption {
                 Características — Entrada {{ selectedEntradaCaratRow.idEntrada }}
               </div>
               <div style="display: flex; gap: 4px; flex-shrink: 0;">
-                <button class="btn btn-sm btn-primary position-relative" (click)="saveCaracteristicas()" [disabled]="!hasUnsavedChangesCaracteristicas" title="Guardar cambios" style="padding: 2px 8px; font-size: 0.7rem;">
+                <button class="btn btn-sm btn-primary position-relative" (click)="saveCaracteristicas()" [disabled]="!hasUnsavedChangesCaracteristicas || selectedOcRow?.close === true" title="Guardar cambios" style="padding: 2px 8px; font-size: 0.7rem;">
                   <i class="bi bi-floppy" style="margin-right: 2px; font-size: 0.7rem;"></i>Guardar
                   <span *ngIf="hasUnsavedChangesCaracteristicas"
                         class="position-absolute top-0 start-100 translate-middle p-2 bg-danger border border-light rounded-circle"
@@ -203,26 +204,35 @@ export class DetalleMoliendaComponent {
       cellStyle: { fontWeight: 'bold' },
     },
     {
-      field: 'folio',
-      headerName: 'Folio / Req',
-      width: 160,
-      editable: false,
-      cellRenderer: (params: any) => {
-        const val = params.value ?? '';
-        const div = document.createElement('div');
-        div.style.cssText = val
-          ? 'cursor:pointer;color:#2e7d32;text-decoration:underline;'
-          : 'color:#999;';
-        div.textContent = val || '—';
-        return div;
-      },
-      cellStyle: { backgroundColor: '#e8f5e9' },
-      tooltipValueGetter: (p) => {
-        const req = this.reqOptions.find(r => r.id === p.data?.idRequisition);
-        if (!req) return null;
-        return `Requisición: ${req.folio}\nCant. Req: ${req.cantidadReq}\n# OC: ${req.numCantidadOc}`;
-      },
-    },
+  field: 'folio',
+  headerName: 'Folio / Req',
+  width: 160,
+  editable: false,
+
+  cellRenderer: (params: any) => {
+    const val = params.value ?? '';
+
+    const div = document.createElement('div');
+
+    div.style.cssText = val
+      ? `
+        cursor:pointer;
+        color:#2e7d32;
+        text-decoration:underline;
+        font-weight:600;
+      `
+      : 'color:#999;';
+
+    div.textContent = val || '—';
+
+    return div;
+  },
+  cellStyle: {
+    backgroundColor: '#e8f5e9'
+  },
+  tooltipValueGetter: (p: any) => p.data?.ocs || [],
+  tooltipComponent: 'customOcTooltip'
+},
     {
       field: 'cantidadReq',
       headerName: 'Cant Req',
@@ -250,6 +260,9 @@ export class DetalleMoliendaComponent {
   ];
 
   gridOptions: any = {
+    components: {
+      customOcTooltip: CustomOcTooltipComponent
+    },
     headerHeight: 25,
     rowHeight: 25,
     rowClassRules: {
@@ -268,21 +281,104 @@ export class DetalleMoliendaComponent {
       headerName: 'OC',
       width: 110,
       editable: false,
-      cellStyle: { color: '#2e7d32', backgroundColor: '#e8f5e9' },
+      cellStyle: (params: any) => {
+        const isClosed = params.data?.close === true;
+        return isClosed
+          ? { color: '#b71c1c', backgroundColor: '#ffebee' } // Rojo oscuro sobre fondo rosado
+          : { color: '#2e7d32', backgroundColor: '#e8f5e9' }; // Verde original
+      },
       cellRenderer: (params: any) => {
         const val = params.value ?? '';
+        const isClosed = params.data?.close === true;
+        const color = isClosed ? '#b71c1c' : '#2e7d32';
+
         const div = document.createElement('div');
-        div.style.cssText = val
-          ? 'cursor:pointer;color:#2e7d32;text-decoration:underline;'
-          : 'color:#999;';
-        div.textContent = val || '—';
+        div.style.cssText = `display:flex;align-items:center;gap:5px;${
+          val ? `cursor:pointer;color:${color};text-decoration:underline;` : 'color:#999;'
+        }`;
+
+        let content = val || '—';
+        if (isClosed) {
+          content += ` <i class="bi bi-lock-fill" style="color:#b71c1c; font-size:0.85rem; flex-shrink:0;" title="Orden de Compra cerrada"></i>`;
+        }
+
+        div.innerHTML = content;
         return div;
+      },
+      tooltipValueGetter: (p) => {
+        if (!p.data) return null;
+        // Generar dinámicamente el tooltip con todas las propiedades del objeto OC (cascadeOcData)
+        return Object.entries(p.data)
+          .filter(([key, val]) => 
+            val !== null && val !== undefined && val !== '' && 
+            !['id', 'idRoot', 'idReference', 'active', 'type', 'resta', '__modified', '__isNew'].includes(key)
+          )
+          .map(([key, val]) => {
+            const label = key.replace(/([A-Z])/g, ' $1').replace(/^./, str => str.toUpperCase());
+            return `${label}: ${val}`;
+          })
+          .join('\n');
       },
     },
     { field: 'proveedor', headerName: 'Proveedor', flex: 2, minWidth: 140 },
     { field: 'cantidad', headerName: 'Cantidad', width: 110, type: 'numericColumn' },
     { field: 'price', headerName: 'Precio unitario', width: 120, type: 'numericColumn' },
     { field: 'condEspecial', headerName: 'Cond. Especial', flex: 2, minWidth: 130 },
+    {
+      field: 'close',
+      headerName: 'Cerrado',
+      width: 100,
+      editable: (params: any) => !params.data.close,
+      cellRenderer: 'agCheckboxCellRenderer',
+      cellEditor: 'agCheckboxCellEditor',
+      onCellValueChanged: async (params: any) => {
+        const oldValue = params.oldValue === true;
+        const newValue = params.newValue === true;
+
+        // Si ya estaba cerrada, forzamos que se mantenga cerrada (seguridad extra)
+        if (oldValue) {
+          params.node.setDataValue('close', true);
+          return;
+        }
+
+        // Si el usuario intentó desmarcar un checkbox que estaba en false, no hacemos nada
+        if (!newValue) return;
+
+        const confirm = await alerts.confirmAlert(
+          'Cerrar Orden de Compra',
+          `¿Está seguro que desea cerrar la OC "${params.data.folio}"?`,
+          'question',
+          'Sí, cerrar'
+        );
+
+        if (confirm.isConfirmed) {
+          try {
+            const ocMaster: any = await lastValueFrom(this.ocAndReqsService.getDetailedReq(params.data.id));
+            if (ocMaster) {
+              ocMaster.close = true;
+              await lastValueFrom(this.ocAndReqsService.updateOcAndReq(params.data.id, ocMaster));
+              
+              // Si es la OC actualmente seleccionada, refrescamos niveles 4 y 5 para bloquear edición
+              if (this.selectedOcRow === params.data) {
+                if (this.nivel4GridApi) this.nivel4GridApi.refreshCells({ force: true });
+                if (this.nivel5GridApi) this.nivel5GridApi.refreshCells({ force: true });
+              }
+
+              // Refrescar la fila actual para que la columna Folio muestre el candado y el color de fondo inmediatamente
+              params.api.refreshCells({ rowNodes: [params.node], force: true });
+              
+              alerts.reqSuccessToast('Éxito', `La OC ${params.data.folio} ha sido cerrada.`);
+            }
+          } catch (error) {
+            console.error('Error al cerrar OC:', error);
+            alerts.reqErrorToast('Error', 'Ocurrió un error al intentar cerrar la OC.');
+            params.node.setDataValue('close', false);
+          }
+        } else {
+          params.node.setDataValue('close', false);
+        }
+      }
+    },
     {
       field: 'resta', headerName: 'Resta', width: 90, type: 'numericColumn',
       cellStyle: { backgroundColor: '#fff9c4' }
@@ -311,7 +407,7 @@ export class DetalleMoliendaComponent {
         defaultToNothingSelected: true,
       },
       width: 150,
-      editable: true,
+      editable: () => !this.selectedOcRow?.close,
       cellEditor: 'agDateCellEditor',
       valueGetter: (params) => {
         if (!params.data?.fechaRecepcion) {
@@ -360,7 +456,7 @@ export class DetalleMoliendaComponent {
       headerName: 'Cantidad Entrada',
       width: 130,
       type: 'numericColumn',
-      editable: true,
+      editable: () => !this.selectedOcRow?.close,
       valueFormatter: (p) => this.fmtEntero(p.value),
       onCellValueChanged: (event: any) => this.onEntradaCellValueChanged(event),
     },
@@ -369,7 +465,7 @@ export class DetalleMoliendaComponent {
       headerName: 'Bultos',
       width: 85,
       type: 'numericColumn',
-      editable: () => this.editBultos,
+      editable: () => this.editBultos && !this.selectedOcRow?.close,
       valueSetter: (params) => {
         const newVal = params.newValue;
         if (newVal === null || newVal === undefined || newVal === '') {
@@ -503,7 +599,7 @@ export class DetalleMoliendaComponent {
       headerName: 'Comentario',
       minWidth: 180,
       flex: 1,
-      editable: true,
+      editable: () => !this.selectedOcRow?.close,
       valueSetter: (params) => {
         params.data.comentario = params.newValue ?? '';
         this.onEntradaCellValueChanged(params);
@@ -547,7 +643,7 @@ export class DetalleMoliendaComponent {
       field: 'liberacion',
       headerName: 'Liberación',
       width: 100,
-      editable: true,
+      editable: () => !this.selectedOcRow?.close,
       cellRenderer: 'agCheckboxCellRenderer',
     },
   ];
@@ -778,7 +874,7 @@ export class DetalleMoliendaComponent {
             headerName: categoryName,
             flex: 1,
             minWidth: 150,
-            editable: true,
+            editable: () => !this.selectedOcRow?.close,
             cellEditor: 'agRichSelectCellEditor',
             cellEditorParams: (params: any) => {
               const savedValue = params.data?.[fieldName];
@@ -1031,7 +1127,7 @@ export class DetalleMoliendaComponent {
         : [];
 
       this.cascadeOcData = await this.enrichOcsWithResta(Array.isArray(matchedOcs) ? matchedOcs : [], idMaterial);
-      //console.log('OCs cargadas para la requisición seleccionada:', this.cascadeOcData);
+      console.log('OCs cargadas para la requisición seleccionada:', this.cascadeOcData);
     } catch (err) {
       console.error('Error cargando OCs:', err);
       this.cascadeOcData = [];
@@ -1095,7 +1191,7 @@ export class DetalleMoliendaComponent {
           );
 
           const resta = ocsWithResta.reduce((acc: number, oc: any) => acc + Number(oc?.resta ?? 0), 0);
-          return { ...row, resta };
+          return { ...row, resta, ocs: ocsWithResta };
         } catch (error) {
           console.error(`Error calculando resta para la requisición ${row?.idRequisition}:`, error);
           return { ...row, resta: 0 };

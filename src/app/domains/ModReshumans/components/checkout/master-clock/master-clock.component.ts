@@ -1,7 +1,7 @@
 import { Component, effect, HostListener, inject, OnInit } from '@angular/core';
 import { RouterModule, ActivatedRoute } from '@angular/router';
 import { DomainsModule } from 'app/domains/domainsmodule';
-import { CellDoubleClickedEvent, ColDef, GridApi, GridReadyEvent, ICellRendererParams } from 'ag-grid-enterprise';
+import { CellDoubleClickedEvent, ColDef, GridApi, GridReadyEvent } from 'ag-grid-enterprise';
 import { alerts } from '../../../../../helpers/alerts';
 import { AgGridModule } from 'ag-grid-angular';
 import { MultiLineEditorComponent } from 'app/shared/multi-line/multi-line-editor.component';
@@ -10,7 +10,7 @@ import { AutocompleteEditorComponent } from 'app/shared/autocomplete-editor/auto
 import { PayrollService } from 'app/services/payroll.service';
 import { FormBuilder, FormGroup, Validators } from '@angular/forms';
 import DetailClock2Component from "../detail-clock-2/detail-clock-2.component";
-import { SpecialExtraHoursComponent } from "./special-extra-hours/special-extra-hours.component";
+import SpecialExtraHoursMasterComponent from "../special-extra-hours-master/special-extra-hours-master.component";
 import { AdministrationService } from 'app/services/administration.service';
 import { HRService } from 'app/services/hr.service';
 import { firstValueFrom } from 'rxjs';
@@ -20,7 +20,7 @@ import { TrackingService } from 'app/services/tracking.service';
 @Component({
   selector: 'app-master-clock',
   standalone: true,
-  imports: [RouterModule, DomainsModule, AgGridModule, SpecialExtraHoursComponent, DetailClock2Component],
+  imports: [RouterModule, DomainsModule, AgGridModule, SpecialExtraHoursMasterComponent, DetailClock2Component],
   templateUrl: './master-clock.component.html',
   styleUrl: './master-clock.component.scss'
 })
@@ -92,7 +92,7 @@ export default class MasterClockComponent implements OnInit {
   private gridApi: GridApi;
   notSavedChanges: boolean = false;
   selectedRowData: any = null;
-  isOpen: boolean = false;
+  openPanel: 'details' | 'special' | null = null;
   branchs: any[] = [];
   Typecop: any[] = [];
   hrData: any = {};
@@ -307,22 +307,20 @@ export default class MasterClockComponent implements OnInit {
         headerName: 'Horas base',
         hide: !this.authService.hasSubDetailedPermission('hr', 'clock', 'MaeChe_Ajus'),
         cellStyle: (params) => {
-          // Solo aplicar estilo si hay un valor numérico válido
           if (params.value !== null && params.value !== undefined && params.value !== '') {
-            return { backgroundColor: '#d4edda' };
+            return { backgroundColor: '#d4edda', cursor: 'pointer' };
           }
-          return null;
+          return { cursor: 'pointer' };
         },
         editable: false,
         valueFormatter: (params) => {
-        const value = params.value;
-        if (typeof value !== 'number' || isNaN(value)) return '';
-      
-        const hours = Math.floor(value);
-        const minutes = Math.round((value - hours) * 60);
-      
-        return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}`;
-      },
+          const value = params.value;
+          if (typeof value !== 'number' || isNaN(value)) return '';
+          const hours = Math.floor(value);
+          const minutes = Math.round((value - hours) * 60);
+          return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}`;
+        },
+        onCellClicked: (params: any) => this.togglePanel(params, 'details'),
       },
       {
         field: 'hoursWithMinutes',
@@ -346,13 +344,13 @@ export default class MasterClockComponent implements OnInit {
         colId: 'specialExtraHours',
         hide: !this.authService.hasSubDetailedPermission('hr', 'clock', 'MaeChe_HorEsp'),
         cellStyle: (params) => {
-          // Solo aplicar estilo si hay un valor numérico válido
-          if (params.value !== null && params.value !== undefined && params.value !== '') {
-            return { backgroundColor: '#d4edda' };
+          if (params.data && params.data.specialExtraStatus === 1) {
+            return { backgroundColor: '#fff3cd', cursor: 'pointer' }; // Requires attention (Yellow)
           }
-          return null;
+          return { backgroundColor: '#d4edda', cursor: 'pointer' }; // No attention required (Green)
         },
-        editable: false
+        editable: false,
+        onCellClicked: (params: any) => this.togglePanel(params, 'special'),
       },
       {
         field: 'delays',
@@ -467,76 +465,50 @@ export default class MasterClockComponent implements OnInit {
   }
 
 
-  async onCellDoubleClicked(event: CellDoubleClickedEvent): Promise<void> {
-  this.signalsService.setProviderOrCustomer(this.type);
+  private togglePanel(params: any, panel: 'details' | 'special'): void {
+    if (!params.data) return;
 
-  const selectedRowData = event.data;
+    this.selectedRowData = params.data;
 
-  if (!selectedRowData) {
-    console.warn('No hay datos en la fila seleccionada');
-    return;
-  }
-
-  //const selectedId = selectedRowData.idEmployee;
-  //const selectedBlock = selectedRowData.idBlockPeriod;
-
-  // ✅ Filtro combinado: empleado + bloque
-  const filterModel = {
-  idEmployee: {
-    type: 'equals',
-    filter: selectedRowData.idEmployee
-  },
-  idBlockPeriod: {
-    type: 'equals',
-    filter: selectedRowData.idBlockPeriod
-  }
-};
-this.gridApi.setFilterModel(filterModel);
-
-  this.gridApi.onFilterChanged();
-
-  // 🧠 Lógica de pestañas
-  const colId = event.column.getColId();
-  if (colId === 'specialExtraHours'  ) {
-    if (!this.isOpen) {
-      await this.adjustGridSize();
-      this.showSpecialTimesTab = true;
-      this.isOpen = true;
+    if (this.openPanel === panel) {
+      this.closePanel();
     } else {
-      await this.resetGridSize();
-      this.showSpecialTimesTab = false;
-      this.isOpen = false;
-    }
-  } else {
-    await this.activateDetailsTab();
-  }
-
-  this.selectedRowData = selectedRowData;
-}
-
-
-  async activateDetailsTab() {
-    if (!this.isOpen) {
-      await this.adjustGridSize();
-      this.showDetailsTab = true;
-      this.isOpen = true;
-    }
-    else {
-      await this.resetGridSize();
-      this.isOpen = false;
+      if (this.openPanel === null) this.adjustGridSize();
+      this.showDetailsTab = panel === 'details';
+      this.showSpecialTimesTab = panel === 'special';
+      this.openPanel = panel;
     }
   }
 
-  resetGridSize() {
-    this.gridHeight = '80vh'; // Reset to default height
+  async onCellDoubleClicked(event: CellDoubleClickedEvent): Promise<void> {
+    this.signalsService.setProviderOrCustomer(this.type);
+    const selectedRowData = event.data;
+    if (!selectedRowData) return;
+
+    const filterModel = {
+      idEmployee: { type: 'equals', filter: selectedRowData.idEmployee },
+      idBlockPeriod: { type: 'equals', filter: selectedRowData.idBlockPeriod }
+    };
+    this.gridApi.setFilterModel(filterModel);
+    this.gridApi.onFilterChanged();
+    this.selectedRowData = selectedRowData;
+  }
+
+  private closePanel(): void {
+    this.gridHeight = '80vh';
     this.showDetailsTab = false;
     this.showSpecialTimesTab = false;
+    this.openPanel = null;
     this.gridApi.setFilterModel(null);
     this.gridApi.onFilterChanged();
   }
 
+  resetGridSize() {
+    this.closePanel();
+  }
+
   adjustGridSize() {
-    this.gridHeight = '25vh'; // Adjust as needed
+    this.gridHeight = '25vh';
   }
 
   async Consultar() {
