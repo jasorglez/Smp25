@@ -9,12 +9,32 @@
                 [attr.data-bs-target]="'#collapse' + master.id" aria-expanded="false"
                 [attr.aria-controls]="'collapse' + master.id">
                 {{ master.permissionName }}
+                <span class="badge ms-2"
+                  [ngClass]="getActiveCount(master) === master.detailedPermissions?.length
+                    ? 'bg-success'
+                    : getActiveCount(master) === 0
+                      ? 'bg-secondary'
+                      : 'bg-warning text-dark'">
+                  {{ getActiveCount(master) }}/{{ master.detailedPermissions?.length }}
+                </span>
               </button>
             </h2>
             <div id="collapse{{ master.id }}" class="accordion-collapse collapse"
               [attr.aria-labelledby]="'heading' + master.id"
               [attr.data-bs-parent]="'#permissionsAccordion' + master.id">
               <div class="accordion-body">
+                <!-- Botones masivos -->
+                <div class="d-flex gap-1 align-items-center mb-2 pb-2 border-bottom">
+                  <button class="btn btn-success btn-sm py-0 px-2" style="font-size:11px"
+                    (click)="enableAllInMaster(master)">
+                    ✅ Todos ON
+                  </button>
+                  <button class="btn btn-danger btn-sm py-0 px-2" style="font-size:11px"
+                    (click)="disableAllInMaster(master)">
+                    ❌ Todos OFF
+                  </button>
+                </div>
+                <!-- Switches individuales -->
                 <div class="form-check form-switch" *ngFor="let detail of master.detailedPermissions">
                   <input type="checkbox" class="form-check-input" role="switch" [id]="'detail' + detail.id"
                     [checked]="isPermissionChecked(detail.id)" (change)="togglePermission(detail.id)" />
