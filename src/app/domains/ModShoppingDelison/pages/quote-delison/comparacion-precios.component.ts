@@ -11,6 +11,8 @@ import { SignalsService } from 'app/services/signals.service';
 import { MaterialsService } from 'app/services/materials.service';
 import { UsersService } from 'app/services/users.service';
 import { AutorizacionMontoService } from 'app/services/autorizacion-monto.service';
+import { SetupService } from 'app/services/setup.service';
+import { PrefixSetupService } from 'app/services/prefix-setup.service';
 import { ItemCommentsCellRendererComponent } from 'app/shared/item-comments-cell-renderer/item-comments-cell-renderer.component';
 import { ItemCommentsService } from 'app/services/item-comments.service';
 import { NgbModal, NgbModalRef } from '@ng-bootstrap/ng-bootstrap';
@@ -326,6 +328,9 @@ export class ComparacionPreciosComponent implements OnInit, OnDestroy {
   private materialsService = inject(MaterialsService);
   private usersService = inject(UsersService);
   private autorizacionMontoService = inject(AutorizacionMontoService);
+  private setupService = inject(SetupService);
+  private prefixSetupService = inject(PrefixSetupService);
+  private ivaPercent: number = 0;
   private renderer: Renderer2;
   private gridApi!: GridApi;
   private codigosExternos: Map<number, Map<number, string>> = new Map();
@@ -596,6 +601,14 @@ export class ComparacionPreciosComponent implements OnInit, OnDestroy {
     this.loading = true;
     this.error = null;
 
+    const idBranch = this.idBranchFromReq || this.signalsService.getBranchSelectedBySidebar()();
+    if (idBranch) {
+      this.setupService.getWarehouseSetupByBranch(idBranch).subscribe({
+        next: (d: any) => { this.ivaPercent = d?.iva ?? 0; },
+        error: () => { this.ivaPercent = 0; }
+      });
+    }
+
     this.ocAndReqsService.getComparisonData(this.cotizacionId).subscribe({
       next: async (data: any) => {
         let proveedores = data.proveedores || [];
@@ -732,12 +745,28 @@ export class ComparacionPreciosComponent implements OnInit, OnDestroy {
   ): Promise<string> {
     const idRoot   = this.signalsService.getRootSelectedBySidebar()();
     const idBranch = this.idBranchFromReq || this.signalsService.getBranchSelectedBySidebar()();
-    // ✅ Nueva nomenclatura: OC-{branchPrefix}-P{ped}-PRO{idProvider}
+    // ✅ Nueva nomenclatura: OC-{branchPrefix}-{prefixCotiz}{ped}-PRO{idProvider}
     const reqFolio        = this.requisitionFolio || `REQ-${this.requisitionId}`;
     const branchPrefix    = this.extractBranchPrefix(reqFolio);
     const pedimentoMatch  = this.cotizacionFolio.match(/(\d+)/);
     const pedimentoNumber = pedimentoMatch ? parseInt(pedimentoMatch[1], 10) : slot.slotIndex;
-    const folio           = `OC-${branchPrefix}-P${pedimentoNumber}-PRO${provId}`;
+    // Cargar prefijos configurados para esta sucursal:
+    //  - prefix_cotiz sustituye la literal "P"
+    //  - prefix_oc sustituye la literal "OC"
+    //  - consecutive_oc_proveedor define la cantidad de iniciales del proveedor (1-5)
+    let pedimentoPrefix = 'P';
+    let ocPrefix = 'OC';
+    let providerInitials = 3;
+    try {
+      const ps = await lastValueFrom(this.prefixSetupService.getPrefixSetup('branch', Number(idBranch)));
+      if (ps?.prefixCotiz?.trim()) pedimentoPrefix = ps.prefixCotiz.trim();
+      if (ps?.prefixOc?.trim()) ocPrefix = ps.prefixOc.trim();
+      if (ps?.consecutiveOcProveedor && ps.consecutiveOcProveedor > 0) providerInitials = ps.consecutiveOcProveedor;
+    } catch {
+      // fallback a defaults si la carga falla
+    }
+    const providerCode    = (provName || '').trim().toUpperCase().slice(0, providerInitials) || 'PRO';
+    const folio           = `${ocPrefix}-${branchPrefix}-${pedimentoPrefix}${pedimentoNumber}-${providerCode}${provId}`;
 
     const dateCreate = new Date().toISOString().split('T')[0];
     const ocPayload = {
@@ -836,6 +865,7 @@ export class ComparacionPreciosComponent implements OnInit, OnDestroy {
       const cantidadesPorProv = articulo.cantidades || {};
       const slotItemIdsPorProv = articulo.slotItemIds || {};
       const tiposOcPorProv = articulo.tiposOc || {};
+      const masIvasPorProv = articulo.masIvas || {};
       const cantidadComprar = Number(articulo.cantidad ?? articulo.cantidadComprar ?? 0) || 0;
       const articuloItemId = Number(articulo.id ?? 0) || 0;
       const idSupplie = articulo.idSupplie || 0;
@@ -867,7 +897,9 @@ export class ComparacionPreciosComponent implements OnInit, OnDestroy {
           Number(slotItemIdsPorProv[provId] ?? slotItemIdsPorProv[provId.toString()] ?? 0) || 0;
         const tipoOc =
           tiposOcPorProv[provId] ?? tiposOcPorProv[provId.toString()] ?? 'SELECCIONE UNA OPCION';
-        const costoTotal = costoUnitario * cantidadConceptualizada;
+        const masIva = !!(masIvasPorProv[provId] ?? masIvasPorProv[provId.toString()] ?? false);
+        const costoUnitarioDisplay = masIva ? costoUnitario * (1 + this.ivaPercent / 100) : costoUnitario;
+        const costoTotal = costoUnitarioDisplay * cantidadConceptualizada;
         const costoXCompraMinima = costoUnitario * compraMinima;
 
         const providerCodigosMap = this.codigosExternos.get(provId) || new Map();
@@ -893,9 +925,10 @@ export class ComparacionPreciosComponent implements OnInit, OnDestroy {
           caducidadMinimaRequerida: articulo.caducidadMinimaRequerida ?? articulo.caducidad ?? articulo.expiration ?? '',
           tiempoEntrega: tiemposEntregaPorProv[provId] ?? tiemposEntregaPorProv[provId.toString()] ?? '',
           compraMinima,
-          costoUnitario,
+          costoUnitario: costoUnitarioDisplay,
           costoTotal,
           costoXCompraMinima,
+          masIva,
           comentario,
           tipoOc,
           cantidadConceptualizada,

@@ -4,20 +4,29 @@
         <ul class="nav nav-pills">
           <li *ngIf="typeCatalog === 'shoppingDelison'">
             <a class="nav-link green-tab"
-              [routerLink]="['cat-fam-sub']"
-              routerLinkActive="active"
+              [class.active]="cat"
               (click)="refres(true)"
+              style="cursor: pointer;"
               >
               <i class="bi bi-list-ul"></i>CAT-FAM-SUB
             </a>
           </li>
           <li *ngIf="typeCatalog === 'shoppingDelison'">
             <a class="nav-link green-tab"
-              [routerLink]="['autorizacion-montos']"
-              routerLinkActive="active"
+              [class.active]="montos"
               (click)="showMontos()"
+              style="cursor: pointer;"
               >
               <i class="bi bi-cash-stack"></i> AUTORIZACIÓN DE MONTOS
+            </a>
+          </li>
+          <li *ngIf="typeCatalog === 'shoppingDelison'">
+            <a class="nav-link green-tab"
+              [class.active]="condicionesPago"
+              (click)="showCondicionesPago()"
+              style="cursor: pointer;"
+              >
+              <i class="bi bi-credit-card"></i> CONDICIONES DE PAGOS
             </a>
           </li>
           <li class="nav-item" *ngFor="let item of listsections">
@@ -32,18 +41,18 @@
           </li>
           <li class="nav-item" *ngIf="typeCatalog === 'warehouses'">
             <a class="nav-link green-tab"
-              [routerLink]="['cat-fam-sub']"
-              routerLinkActive="active"
-              (click)="refres(true)">
+              [class.active]="cat"
+              (click)="refres(true)"
+              style="cursor: pointer;">
               <i class="bi bi-diagram-3"></i> CAT-FAM-SUB
             </a>
           </li>
           
           <li class="nav-item" *ngIf="typeCatalog === 'warehouses'">
             <a class="nav-link green-tab"
-              [routerLink]="['/almacenes/producto-terminado']"
-              routerLinkActive="active"
-              (click)="refres(true)">
+              [class.active]="prodTerminado"
+              (click)="showProdTerminado()"
+              style="cursor: pointer;">
               <i class="bi bi-box-seam"></i> PRODUCTO TERMINADO
             </a>
           </li>
@@ -67,7 +76,7 @@
             </a>
           </li>-->
         </ul>
-        <div class="container-fluid mt-4 mb-4 light-blue-background" *ngIf="cat === false && montos === false && typeCatalog !== 'shoppingDelison'">
+        <div class="container-fluid mt-4 mb-4 light-blue-background" *ngIf="cat === false && montos === false && prodTerminado === false && typeCatalog !== 'shoppingDelison'">
           <div class="row">
             <div class="col-md-2">
               <select 
@@ -148,6 +157,12 @@
         </div>
         <div *ngIf="montos === true">
           <app-autorizacion-montos></app-autorizacion-montos>
+        </div>
+        <div *ngIf="prodTerminado === true">
+          <app-productos-terminados></app-productos-terminados>
+        </div>
+        <div *ngIf="condicionesPago === true">
+          <app-condiciones-pago></app-condiciones-pago>
         </div>
       </div>
   </div>

@@ -1,10 +1,165 @@
 <ul class="nav nav-tabs">
     <li class="nav-item">
+      <a class="nav-link" data-bs-toggle="tab" href="#proveedores">Proveedores</a>
+    </li>
+    <li class="nav-item">
+      <a class="nav-link" data-bs-toggle="tab" href="#materiales-maestros">Materiales Maestros</a>
+    </li>
+    <li class="nav-item">
+      <a class="nav-link" data-bs-toggle="tab" href="#requisiciones">Requisiciones</a>
+    </li>
+    <li class="nav-item">
+      <a class="nav-link" data-bs-toggle="tab" href="#ordenes-compra">Órdenes de Compra</a>
+    </li>
+    <li class="nav-item">
+      <a class="nav-link" data-bs-toggle="tab" href="#catalogos">Catálogos</a>
+    </li>
+    <li class="nav-item">
       <a class="nav-link active" data-bs-toggle="tab" href="#fam-sub">Familia / Subfamilia</a>
     </li>
 </ul>
 
 <div class="tab-content">
+
+  <div id="proveedores" class="tab-pane fade">
+    <div class="d-flex flex-column align-items-center justify-content-center" style="min-height: 400px; background-color: #f5f5f5; padding: 40px;">
+      <i class="bi bi-tools" style="font-size: 48px; color: #999; margin-bottom: 20px;"></i>
+      <h3 style="color: #333; margin-bottom: 10px;">En construcción</h3>
+      <p style="color: #666; text-align: center; max-width: 400px;">Este módulo estará disponible próximamente.</p>
+    </div>
+  </div>
+
+  <div id="materiales-maestros" class="tab-pane fade">
+    <div class="d-flex flex-column align-items-center justify-content-center" style="min-height: 400px; background-color: #f5f5f5; padding: 40px;">
+      <i class="bi bi-tools" style="font-size: 48px; color: #999; margin-bottom: 20px;"></i>
+      <h3 style="color: #333; margin-bottom: 10px;">En construcción</h3>
+      <p style="color: #666; text-align: center; max-width: 400px;">Este módulo estará disponible próximamente.</p>
+    </div>
+  </div>
+
+  <div id="requisiciones" class="tab-pane fade">
+    <app-setupwarehouse />
+  </div>
+
+  <div id="ordenes-compra" class="tab-pane fade">
+    <div class="oc-config-wrap">
+
+      <div *ngIf="!branchIsValid" class="oc-branch-notice">
+        <i class="bi bi-geo-alt"></i>
+        <span>Por favor primero selecciona una sucursal en el menú lateral.</span>
+      </div>
+
+      <div class="oc-card" *ngIf="branchIsValid">
+        <div class="oc-card-header">
+          <div class="oc-icon-wrap">
+            <i class="bi bi-cart-check"></i>
+          </div>
+          <div>
+            <h2 class="oc-title">Órdenes de Compra</h2>
+            <p class="oc-subtitle">Configura la cantidad de entregas permitidas.</p>
+          </div>
+        </div>
+
+        <div class="oc-section">
+          <div class="oc-section-label">
+            <i class="bi bi-box-seam"></i>
+            Cantidad de entregas
+          </div>
+
+          <div class="oc-inputs-row">
+            <div class="oc-field">
+              <label class="oc-label">
+                <i class="bi bi-arrow-down-circle"></i> Mínimo
+              </label>
+              <div class="oc-input-wrap oc-input-static">
+                <span class="oc-static-value">1</span>
+              </div>
+            </div>
+
+            <div class="oc-divider-v"></div>
+
+            <div class="oc-field">
+              <label class="oc-label" for="limiteMax">
+                <i class="bi bi-arrow-up-circle"></i> Máximo
+              </label>
+              <div class="oc-input-wrap">
+                <input
+                  id="limiteMax"
+                  type="number"
+                  [(ngModel)]="limiteMax"
+                  name="limiteMax"
+                  class="oc-input oc-input-no-prefix"
+                  placeholder="2"
+                  min="2"
+                  step="1"
+                  (keydown)="$event.key === '-' || $event.key === '.' ? $event.preventDefault() : null"
+                >
+              </div>
+            </div>
+          </div>
+
+          <div class="oc-hint" *ngIf="limiteInvalido">
+            <i class="bi bi-exclamation-triangle-fill"></i>
+            El máximo debe ser mayor que el mínimo.
+          </div>
+        </div>
+
+        <div class="oc-actions">
+          <button type="button" class="oc-btn oc-btn-ghost" (click)="cancelOc()">
+            <i class="bi bi-x-lg"></i> Cancelar
+          </button>
+          <button type="button" class="oc-btn oc-btn-primary"
+            (click)="saveOc()" [disabled]="limiteInvalido || savingOc">
+            <i class="bi bi-check-lg"></i> {{ savingOc ? 'Guardando...' : 'Guardar' }}
+          </button>
+        </div>
+      </div>
+
+    </div>
+
+    <style>
+      .oc-config-wrap { padding: 32px 24px; background: #f8fafc; min-height: 400px; }
+      .oc-branch-notice { display: flex; align-items: center; gap: 10px; background: #eff6ff; border: 1px solid #bfdbfe; border-radius: 10px; padding: 14px 18px; color: #1d4ed8; font-size: 13px; font-weight: 500; margin-bottom: 20px; }
+      .oc-card { background: #fff; border-radius: 14px; box-shadow: 0 2px 16px rgba(0,0,0,0.07); padding: 28px 32px; width: 100%; }
+      .oc-card-header { display: flex; align-items: center; gap: 16px; margin-bottom: 28px; padding-bottom: 20px; border-bottom: 1px solid #f1f5f9; }
+      .oc-icon-wrap { width: 48px; height: 48px; border-radius: 12px; background: linear-gradient(135deg, #1e40af, #3b82f6); display: flex; align-items: center; justify-content: center; color: #fff; font-size: 22px; flex-shrink: 0; }
+      .oc-title { font-size: 17px; font-weight: 700; color: #1e293b; margin: 0 0 3px; }
+      .oc-subtitle { font-size: 12px; color: #64748b; margin: 0; }
+      .oc-section { margin-bottom: 24px; }
+      .oc-section-label { display: flex; align-items: center; gap: 7px; font-size: 12px; font-weight: 600; color: #475569; text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 16px; }
+      .oc-section-label i { color: #3b82f6; }
+      .oc-inputs-row { display: flex; align-items: flex-end; gap: 0; }
+      .oc-field { flex: 1; }
+      .oc-divider-v { width: 1px; background: #e2e8f0; margin: 0 20px; height: 42px; align-self: flex-end; }
+      .oc-label { display: flex; align-items: center; gap: 5px; font-size: 12px; font-weight: 600; color: #334155; margin-bottom: 6px; }
+      .oc-label i { font-size: 13px; color: #3b82f6; }
+      .oc-input-wrap { position: relative; display: flex; align-items: center; }
+      .oc-prefix { position: absolute; left: 11px; font-size: 13px; color: #94a3b8; font-weight: 500; pointer-events: none; }
+      .oc-input { width: 100%; border: 1.5px solid #e2e8f0; border-radius: 8px; padding: 9px 12px 9px 26px; font-size: 14px; color: #1e293b; background: #f8fafc; transition: border-color 0.2s, box-shadow 0.2s; outline: none; appearance: textfield; -moz-appearance: textfield; }
+      .oc-input-no-prefix { padding-left: 12px; }
+      .oc-input-static { background: #f1f5f9; border: 1.5px solid #e2e8f0; border-radius: 8px; padding: 9px 12px; }
+      .oc-static-value { font-size: 14px; font-weight: 600; color: #1e293b; }
+      .oc-input-wrap.oc-input-static { position: relative; display: flex; align-items: center; }
+      .oc-input::-webkit-inner-spin-button, .oc-input::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
+      .oc-input:focus { border-color: #3b82f6; box-shadow: 0 0 0 3px rgba(59,130,246,0.12); background: #fff; }
+      .oc-hint { display: flex; align-items: center; gap: 6px; margin-top: 10px; font-size: 12px; color: #dc2626; background: #fef2f2; border: 1px solid #fecaca; border-radius: 7px; padding: 7px 12px; }
+      .oc-actions { display: flex; justify-content: flex-end; gap: 10px; padding-top: 20px; border-top: 1px solid #f1f5f9; }
+      .oc-btn { display: inline-flex; align-items: center; gap: 6px; padding: 8px 20px; border-radius: 8px; font-size: 13px; font-weight: 600; cursor: pointer; border: none; transition: all 0.18s; }
+      .oc-btn-ghost { background: transparent; border: 1.5px solid #e2e8f0; color: #64748b; }
+      .oc-btn-ghost:hover { background: #f1f5f9; color: #334155; }
+      .oc-btn-primary { background: linear-gradient(135deg, #1e40af, #3b82f6); color: #fff; }
+      .oc-btn-primary:hover:not(:disabled) { opacity: 0.9; }
+      .oc-btn-primary:disabled { opacity: 0.45; cursor: not-allowed; }
+    </style>
+  </div>
+
+  <div id="catalogos" class="tab-pane fade">
+    <div class="d-flex flex-column align-items-center justify-content-center" style="min-height: 400px; background-color: #f5f5f5; padding: 40px;">
+      <i class="bi bi-tools" style="font-size: 48px; color: #999; margin-bottom: 20px;"></i>
+      <h3 style="color: #333; margin-bottom: 10px;">En construcción</h3>
+      <p style="color: #666; text-align: center; max-width: 400px;">Este módulo estará disponible próximamente.</p>
+    </div>
+  </div>
 
   <div id="fam-sub" class="tab-pane fade show active">
     <app-family-sub-family />

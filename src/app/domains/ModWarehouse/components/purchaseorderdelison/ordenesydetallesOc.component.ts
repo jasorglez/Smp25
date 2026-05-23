@@ -4,6 +4,9 @@ import { AgGridAngular } from 'ag-grid-angular';
 import { ColDef, GridApi, GridReadyEvent } from 'ag-grid-enterprise';
 import { OcAndReqsService } from 'app/services/ocandreqs.service';
 import { CustomersService } from 'app/services/customers.service';
+import { SetupOcService } from 'app/services/setup-oc.service';
+import { ConditionsPendingService } from 'app/services/conditions-pending.service';
+import { SignalsService } from 'app/services/signals.service';
 import { lastValueFrom } from 'rxjs';
 
 interface OcRow {
@@ -34,7 +37,7 @@ interface OcTooltipData {
   standalone: true,
   imports: [CommonModule, AgGridAngular],
   template: `
-    <div style="padding: 6px; height: 100%; display: flex; flex-direction: column; box-sizing: border-box; overflow: hidden; background: #fff3e0;">
+    <div style="padding: 6px; height: 100%; display: flex; flex-direction: column; box-sizing: border-box; overflow: hidden;">
       <div style="margin-bottom: 4px; flex-shrink: 0;">
         <strong style="font-size: 0.85rem;">Órdenes de Compra del pedimento</strong>
       </div>
@@ -55,10 +58,17 @@ interface OcTooltipData {
       </div>
 
       <div *ngIf="selectedOcRow && itemsData.length > 0"
-           style="flex: 1 1 auto; min-height: 0; border-top: 2px solid #e67e22; background: #fff9e6;
+           [style.flex]="selectedArticleRow ? '0 0 115px' : '1 1 auto'"
+           style="min-height: 0; border-top: 2px solid #e67e22;
                   padding: 4px; display: flex; flex-direction: column; overflow: hidden;">
-        <div style="font-size: 0.78rem; font-weight: bold; color: #e67e22; margin-bottom: 3px; flex-shrink: 0;">
-          Ítems de {{ selectedOcRow.folio }}
+        <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 3px; flex-shrink: 0;">
+          <span style="font-size: 0.78rem; font-weight: bold; color: #e67e22;">Ítems de {{ selectedOcRow.folio }}</span>
+          <button [disabled]="!hasLocalChanges"
+                  (click)="revertLocalChanges()"
+                  style="font-size: 0.7rem; padding: 1px 7px; border: 1px solid #e67e22; border-radius: 4px;
+                         background: #fff3e0; color: #e67e22; cursor: pointer; line-height: 1.6;">
+            <i class="bi bi-arrow-counterclockwise"></i> Deshacer
+          </button>
         </div>
         <div style="flex: 1 1 auto; min-height: 0; position: relative; overflow: hidden;">
           <ag-grid-angular
@@ -71,6 +81,24 @@ interface OcTooltipData {
           </ag-grid-angular>
         </div>
       </div>
+
+      <div *ngIf="selectedArticleRow"
+           style="flex: 0 0 90px; min-height: 0; border-top: 2px solid #2e7d32;
+                  padding: 4px; display: flex; flex-direction: column; overflow: hidden;">
+        <div style="font-size: 0.78rem; font-weight: bold; color: #2e7d32; margin-bottom: 3px; flex-shrink: 0;">
+          Detalle de {{ selectedArticleRow.namearticle }}
+        </div>
+        <div style="flex: 1 1 auto; min-height: 0; position: relative; overflow: hidden;">
+          <ag-grid-angular
+            class="ag-theme-quartz small-text-ag-grid"
+            [rowData]="nivel3Data"
+            [columnDefs]="nivel3ColDefs"
+            [gridOptions]="nivel3GridOptions"
+            (gridReady)="onNivel3GridReady($event)"
+            style="width: 100%; height: 100%; position: absolute; top: 0; left: 0; right: 0; bottom: 0;">
+          </ag-grid-angular>
+        </div>
+      </div>
     </div>
   `,
   styles: [`:host { display: block; height: 100%; overflow: hidden; }`]
@@ -78,6 +106,9 @@ interface OcTooltipData {
 export class OrdenesydetallesOcComponent implements OnDestroy {
   private ocAndReqsService = inject(OcAndReqsService);
   private customersService = inject(CustomersService);
+  private setupOcService = inject(SetupOcService);
+  private conditionsPendingService = inject(ConditionsPendingService);
+  private signalsService = inject(SignalsService);
 
   private internalParams: any;
   private gridApi!: GridApi;
@@ -89,6 +120,14 @@ export class OrdenesydetallesOcComponent implements OnDestroy {
   itemsData: any[] = [];
   selectedOcRow: OcRow | null = null;
   providers: any[] = [];
+  conditionsOptions: number[] = [];
+  hasLocalChanges = false;
+  selectedArticleRow: any = null;
+  nivel3Data: any[] = [];
+
+  private originalItemsData: any[] = [];
+  private changedItemIds = new Set<number>();
+  private nivel3GridApi!: GridApi;
 
   // Cache de datos para tooltip por OC id
   private ocTooltipDataMap: Map<number, OcTooltipData> = new Map();
@@ -153,9 +192,36 @@ export class OrdenesydetallesOcComponent implements OnDestroy {
   };
 
   itemsColDefs: ColDef[] = [
-    { field: 'conditions', headerName: 'Condic. Compra', width: 140, cellStyle: { backgroundColor: '#e0f2f1' } },
+    {
+      field: 'conditions',
+      headerName: 'Cantidad Entregas',
+      width: 140,
+      editable: true,
+      cellEditor: 'agRichSelectCellEditor',
+      cellEditorParams: () => ({ values: this.conditionsOptions }),
+      valueParser: (p) => { const n = Number(p.newValue); return isNaN(n) ? p.oldValue : n; },
+    },
     { field: 'numarticle', headerName: '# Item OC', width: 140, hide: true },
-    { field: 'namearticle', headerName: 'Artículo', flex: 2, minWidth: 140 },
+    {
+      field: 'namearticle',
+      headerName: 'Artículo',
+      flex: 2,
+      minWidth: 140,
+      cellStyle: (p: any) => {
+        const cond = Number(p.data?.conditions);
+        const min = this.conditionsOptions.length ? this.conditionsOptions[0] : 1;
+        return !isNaN(cond) && cond > min
+          ? { backgroundColor: '#c8e6c9', cursor: 'pointer' }
+          : null;
+      },
+      onCellClicked: (p: any) => {
+        const cond = Number(p.data?.conditions);
+        const min = this.conditionsOptions.length ? this.conditionsOptions[0] : 1;
+        if (!isNaN(cond) && cond > min) {
+          this.openNivel3(p.data);
+        }
+      },
+    },
     { field: 'observation', headerName: 'Producto Externo', flex: 2, minWidth: 150 },
     { field: 'typeoc', headerName: 'Tipo', width: 120 },
     { field: 'quantity', headerName: 'Cantidad Pedida', width: 130, type: 'numericColumn' },
@@ -190,12 +256,60 @@ export class OrdenesydetallesOcComponent implements OnDestroy {
     headerHeight: 45,
     rowHeight: 25,
     defaultColDef: { resizable: true, sortable: true, wrapHeaderText: true, autoHeaderHeight: true },
+    onCellValueChanged: (event: any) => {
+      if (event.colDef.field === 'conditions' && event.data?.id) {
+        const { conditions, ...cleanItem } = event.data;
+        this.conditionsPendingService.add(event.data.id, cleanItem, Number(event.newValue));
+        this.changedItemIds.add(event.data.id);
+        this.hasLocalChanges = true;
+        event.api.refreshCells({ rowNodes: [event.node], columns: ['namearticle'], force: true });
+
+        const min = this.conditionsOptions.length ? this.conditionsOptions[0] : 1;
+        const newCond = Number(event.newValue);
+        if (event.data === this.selectedArticleRow) {
+          if (newCond <= min) {
+            this.closeNivel3();
+          } else {
+            // Reconstruir Nivel 3 con la nueva cantidad de columnas
+            this.buildNivel3Grid(event.data);
+          }
+        }
+      }
+    },
+  };
+
+  // Las columnas se generan dinámicamente en buildNivel3Grid() según el valor
+  // de "Cantidad Entregas" (campo conditions) del artículo seleccionado.
+  nivel3ColDefs: ColDef[] = [];
+
+  nivel3GridOptions: any = {
+    headerHeight: 28,
+    rowHeight: 25,
+    defaultColDef: { resizable: true, sortable: true },
   };
 
   agInit(params: any): void {
     this.internalParams = params;
     this.providersLoaded = false;
     this.loadProviders();
+    this.loadConditionsRange();
+  }
+
+  private loadConditionsRange(): void {
+    // Preferimos idReference de la fila (la sucursal de la OC); fallback al sidebar
+    const idBranch = this.internalParams?.data?.idReference
+      || this.signalsService.getBranchSelectedBySidebar()();
+    if (!idBranch) return;
+    this.setupOcService.getByBranch(Number(idBranch)).subscribe({
+      next: (setup) => {
+        if (setup?.entregaMax != null) {
+          const min = setup.entregaMin ?? 1;
+          const max = setup.entregaMax;
+          this.conditionsOptions = Array.from({ length: max - min + 1 }, (_, i) => min + i);
+        }
+      },
+      error: () => {}
+    });
   }
 
   refresh(params: any): boolean {
@@ -237,6 +351,71 @@ export class OrdenesydetallesOcComponent implements OnDestroy {
     this.itemsGridApi = params.api;
     if (this.itemsData.length) {
       this.itemsGridApi.setGridOption('rowData', this.itemsData);
+    }
+  }
+
+  onNivel3GridReady(params: GridReadyEvent) {
+    this.nivel3GridApi = params.api;
+    if (this.nivel3Data.length) {
+      this.nivel3GridApi.setGridOption('rowData', this.nivel3Data);
+    }
+  }
+
+  private openNivel3(articleRow: any): void {
+    if (this.selectedArticleRow === articleRow) {
+      this.closeNivel3();
+      return;
+    }
+    this.selectedArticleRow = articleRow;
+    this.buildNivel3Grid(articleRow);
+    if (this.itemsGridApi) {
+      this.itemsGridApi.forEachNode((node: any) => {
+        node.setRowHeight(node.data === articleRow ? undefined : 0);
+      });
+      this.itemsGridApi.onRowHeightChanged();
+    }
+  }
+
+  /**
+   * Construye columnas y datos del grid Nivel 3 según el valor de "Cantidad Entregas"
+   * (campo conditions) del artículo. Se invoca al abrir Nivel 3 y al cambiar el valor
+   * mientras está abierto, para que el número de columnas se sincronice.
+   */
+  private buildNivel3Grid(articleRow: any): void {
+    const count = Math.max(1, Number(articleRow?.conditions) || 0);
+
+    this.nivel3ColDefs = [
+      {
+        headerName: '#',
+        width: 45,
+        valueGetter: (p) => (p.node?.rowIndex ?? 0) + 1,
+        cellStyle: { backgroundColor: '#f8f9fa', fontWeight: 'bold' },
+      },
+      ...Array.from({ length: count }, (_, i) => ({
+        field: `entrega${i + 1}`,
+        headerName: `Entrega ${i + 1}`,
+        flex: 1,
+        minWidth: 100,
+        editable: true,
+      } as ColDef)),
+    ];
+
+    const initialRow: any = {};
+    for (let i = 1; i <= count; i++) initialRow[`entrega${i}`] = '';
+    this.nivel3Data = [initialRow];
+
+    if (this.nivel3GridApi) {
+      this.nivel3GridApi.setGridOption('columnDefs', this.nivel3ColDefs);
+      this.nivel3GridApi.setGridOption('rowData', this.nivel3Data);
+    }
+  }
+
+  private closeNivel3(): void {
+    this.selectedArticleRow = null;
+    this.nivel3Data = [];
+    if (this.itemsGridApi) {
+      this.itemsGridApi.forEachNode((node: any) => node.setRowHeight(undefined));
+      this.itemsGridApi.onRowHeightChanged();
     }
   }
 
@@ -469,12 +648,24 @@ export class OrdenesydetallesOcComponent implements OnDestroy {
     return div.innerHTML;
   }
 
+  revertLocalChanges(): void {
+    this.changedItemIds.forEach((id) => this.conditionsPendingService.remove(id));
+    this.changedItemIds.clear();
+    this.hasLocalChanges = false;
+    this.itemsData = JSON.parse(JSON.stringify(this.originalItemsData));
+    this.closeNivel3();
+    if (this.itemsGridApi) {
+      this.itemsGridApi.setGridOption('rowData', this.itemsData);
+    }
+  }
+
   ngOnDestroy(): void {
     this.hideOcTooltip();
   }
 
   onRowClicked(event: any) {
     const row = event.data as OcRow;
+    this.closeNivel3();
     if (!row?.id) {
       this.selectedOcRow = null;
       this.itemsData = [];
@@ -510,12 +701,14 @@ export class OrdenesydetallesOcComponent implements OnDestroy {
 
     this.ocAndReqsService.getReqItems(row.id).subscribe({
       next: (items: any[]) => {
-        // Inyecta Condic. Compra y Tipo de la OC padre en cada ítem (el ítem no trae esos datos).
         this.itemsData = (Array.isArray(items) ? items : []).map((it: any) => ({
           ...it,
-          conditions: row.conditions || '',
+          conditions: it.diasCondicionCompra ?? null,
           typeoc: row.typeoc || '',
         }));
+        this.originalItemsData = JSON.parse(JSON.stringify(this.itemsData));
+        this.changedItemIds.clear();
+        this.hasLocalChanges = false;
         if (this.itemsGridApi) {
           this.itemsGridApi.setGridOption('rowData', this.itemsData);
         }
