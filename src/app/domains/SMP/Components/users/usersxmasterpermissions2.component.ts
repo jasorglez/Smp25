@@ -66,28 +66,47 @@ export class UsersxMasterPermissions2Component {
     return this.userPermissions.includes(permissionId);
   }
 
-  // Manejar la selección/deselección de un permiso
+  // Manejar la selección/deselección de un permiso individual
   togglePermission(permissionId: number) {
-    
     if (this.isPermissionChecked(permissionId)) {
-      // Si el permiso ya está seleccionado, lo quitamos
-      this.trackingService.addLog(this.trackingService.getnameComp(),'Remove Permiso de Usuario en Permisos Maestros', 'Menu Administracion Permisos Maestros',  this.trackingService.getEmail());
       this.userPermissions = this.userPermissions.filter((id) => id !== permissionId);
     } else {
-      // Si el permiso no está seleccionado, lo agregamos
-      this.trackingService.addLog(this.trackingService.getnameComp(),'Add Permiso de Usuario en Permisos Maestros', 'Menu Administracion Permisos Maestros',  this.trackingService.getEmail());
       this.userPermissions.push(permissionId);
     }
+    this.savePermissions('Toggle permiso ' + permissionId);
+  }
 
-    // Actualizar los permisos del usuario en el backend
+  // Cuántos permisos del grupo están activos (para el badge)
+  getActiveCount(master: any): number {
+    if (!master?.detailedPermissions) return 0;
+    return master.detailedPermissions.filter((d: any) => this.isPermissionChecked(d.id)).length;
+  }
+
+  // Activar todos los permisos de un grupo
+  enableAllInMaster(master: any) {
+    const ids: number[] = (master.detailedPermissions ?? []).map((d: any) => d.id);
+    ids.forEach(id => { if (!this.userPermissions.includes(id)) this.userPermissions.push(id); });
+    this.savePermissions('Activar todos en ' + master.permissionName);
+  }
+
+  // Desactivar todos los permisos de un grupo
+  disableAllInMaster(master: any) {
+    const ids: number[] = (master.detailedPermissions ?? []).map((d: any) => d.id);
+    this.userPermissions = this.userPermissions.filter(id => !ids.includes(id));
+    this.savePermissions('Desactivar todos en ' + master.permissionName);
+  }
+
+  // Guardar en backend y registrar tracking
+  private savePermissions(action: string) {
+    this.trackingService.addLog(
+      this.trackingService.getnameComp(),
+      action,
+      'Menu Administracion Permisos Maestros',
+      this.trackingService.getEmail()
+    );
     this.permissionService
       .updateUserPermissions(this.selectedUserId, this.userPermissions)
-      .pipe(
-        tap(() => {
-          console.log('Permisos actualizados correctamente');
-          alerts.basicAlert('Mensaje', 'Se ha cambiado correctamente el permiso.', 'success');
-        })
-      )
-      .subscribe(); // Solo suscribirse sin manejar el resultado aquí
+      .pipe(tap(() => alerts.basicAlert('Mensaje', 'Permisos actualizados correctamente.', 'success')))
+      .subscribe();
   }
 }
