@@ -1,4 +1,4 @@
-import { Component, effect, inject } from '@angular/core';
+import { Component, effect, inject, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { AgGridModule } from 'ag-grid-angular';
@@ -15,7 +15,7 @@ import Swal from 'sweetalert2';
   templateUrl: './restaurant-mesas.component.html',
   styleUrl: './restaurant-mesas.component.scss',
 })
-export class RestaurantMesasComponent {
+export class RestaurantMesasComponent implements OnInit {
   private signalsService    = inject(SignalsService);
   private restaurantService = inject(RestaurantMesasService);
 
@@ -126,7 +126,7 @@ export class RestaurantMesasComponent {
     },
   ];
 
-  // ── Constructor ────────────────────────────────────────────────────────────
+  // ── Constructor + ciclo de vida ───────────────────────────────────────────
   constructor() {
     effect(() => {
       const id = this.signalsService.getRootSelectedBySidebar()();
@@ -138,17 +138,39 @@ export class RestaurantMesasComponent {
     });
   }
 
+  ngOnInit() {
+    // Fallback: si el effect ya disparó antes de que el componente existiera
+    const id = this.signalsService.getRootSelectedBySidebar()();
+    if (id && id !== this.idCompany) {
+      this.idCompany = id;
+      this.loadMesas();
+      this.loadImpresoras();
+    }
+  }
+
   // ── Mesas ──────────────────────────────────────────────────────────────────
   onMesasGridReady(e: GridReadyEvent) { this.mesasGridApi = e.api; this.mesasGridApiReady = true; }
   onMesaRowClicked(e: any)            { this.selectedMesa = e.data; }
 
+  mesasError    = '';
+  impresorasError = '';
+
   loadMesas() {
     if (!this.idCompany) return;
+    this.mesasError = '';
     this.restaurantService.getMesas(this.idCompany).subscribe({
       next: data => {
         this.mesasRowData = (data ?? []).map(m => ({ ...m, __isNew: false, __modified: false }));
       },
-      error: err => console.error('Error cargando mesas', err),
+      error: err => {
+        console.error('Error cargando mesas', err);
+        const status = err?.status;
+        if (status === 403 || status === 401) {
+          this.mesasError = '⚠️ Sin permisos de BD — ejecuta: GRANT SELECT,INSERT,UPDATE,DELETE ON SCHEMA::restaurant TO Microservicio;';
+        } else {
+          this.mesasError = `Error ${status ?? ''}: ${err?.error?.message ?? 'No se pudieron cargar las mesas'}`;
+        }
+      },
     });
   }
 
@@ -252,11 +274,15 @@ export class RestaurantMesasComponent {
 
   loadImpresoras() {
     if (!this.idCompany) return;
+    this.impresorasError = '';
     this.restaurantService.getImpresoras(this.idCompany).subscribe({
       next: data => {
         this.impresorasRowData = (data ?? []).map(i => ({ ...i, __isNew: false, __modified: false }));
       },
-      error: err => console.error('Error cargando impresoras', err),
+      error: err => {
+        console.error('Error cargando impresoras', err);
+        this.impresorasError = `Error ${err?.status ?? ''}: ${err?.error?.message ?? 'No se pudieron cargar las impresoras'}`;
+      },
     });
   }
 
