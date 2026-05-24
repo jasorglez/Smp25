@@ -1802,17 +1802,6 @@ export const routes: Routes = [
             data: { permissions: { master: 'sales', detailed: 'reports' } },
           },
           {
-            path: 'cash-withdrawal',
-            loadComponent: () =>
-              import(
-                './domains/ModSales/components/cash-withdrawal/cash-withdrawal.component'
-              ).then((s) => s.CashWithdrawalComponent),
-            canActivate: [MasterPermissionsGuard],
-            data: {
-              permissions: { master: 'sales', detailed: 'cash-withdrawal' },
-            },
-          },
-          {
             path: 'out-pos',
             loadComponent: () =>
               import(
