@@ -85,5 +85,5 @@ export const environment = {
     // publicKey: 'TEST-4399133a-4676-42a2-ab85-d946370bf96a',
   },
 
-  version: '6.22 (24 Mayo 2026 14:30) feat(egresos): crear Nuevo Tipo de Gasto desde el dropdown',
+  version: '6.23 (24 Mayo 2026 15:00) fix(sales-routes): canActivate guard en rutas sin proteccion',
 };

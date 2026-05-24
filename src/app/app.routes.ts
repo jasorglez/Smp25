@@ -1753,6 +1753,8 @@ export const routes: Routes = [
               import(
                 './domains/ModSales/components/cash-closing/cash-closing.component'
               ).then((s) => s.CashClosingComponent),
+            canActivate: [MasterPermissionsGuard],
+            data: { permissions: { master: 'sales', detailed: 'closebox' } },
           },
           {
             path: 'returns',
@@ -1796,6 +1798,8 @@ export const routes: Routes = [
               import(
                 './domains/ModSales/components/sales-reports/sales-reports.component'
               ).then((s) => s.SalesReportsComponent),
+            canActivate: [MasterPermissionsGuard],
+            data: { permissions: { master: 'sales', detailed: 'reports' } },
           },
           {
             path: 'cash-withdrawal',
@@ -1841,6 +1845,8 @@ export const routes: Routes = [
               import(
                 './domains/ModSales/components/prospectos/prospectos.component'
               ).then((p) => p.ProspectosComponent),
+            canActivate: [MasterPermissionsGuard],
+            data: { permissions: { master: 'sales', detailed: 'prospectos' } },
           },
           {
             path: 'cotizaciones',
@@ -1848,6 +1854,8 @@ export const routes: Routes = [
               import(
                 './domains/ModSales/components/cotizaciones/cotizaciones.component'
               ).then((c) => c.CotizacionesComponent),
+            canActivate: [MasterPermissionsGuard],
+            data: { permissions: { master: 'sales', detailed: 'cotizaciones' } },
           },
           {
             path: 'cursos',
@@ -1855,6 +1863,8 @@ export const routes: Routes = [
               import(
                 './domains/ModSales/components/cursos/cursos.component'
               ).then((c) => c.CursosComponent),
+            canActivate: [MasterPermissionsGuard],
+            data: { permissions: { master: 'sales', detailed: 'cursos' } },
           },
           {
             path: 'demos',
@@ -1862,6 +1872,8 @@ export const routes: Routes = [
               import(
                 './domains/ModSales/components/demos/demos.component'
               ).then((d) => d.DemosComponent),
+            canActivate: [MasterPermissionsGuard],
+            data: { permissions: { master: 'sales', detailed: 'demos' } },
           },
           {
             path: 'loyalty',
@@ -1869,6 +1881,8 @@ export const routes: Routes = [
               import(
                 './domains/ModSales/components/loyalty/loyalty.component'
               ).then((l) => l.LoyaltyComponent),
+            canActivate: [MasterPermissionsGuard],
+            data: { permissions: { master: 'sales', detailed: 'loyalty' } },
           },
           {
             path: 'egresos',
@@ -1876,6 +1890,8 @@ export const routes: Routes = [
               import(
                 './domains/ModAdmon/components/expenditure/egreso-shell.component'
               ).then((e) => e.EgresoShellComponent),
+            canActivate: [MasterPermissionsGuard],
+            data: { permissions: { master: 'sales', detailed: 'egresos' } },
           },
           {
             path: 'restaurant-mesas',
