@@ -1721,8 +1721,8 @@ export const routes: Routes = [
             path: 'cash-register',
             loadComponent: () =>
               import(
-                './domains/ModSales/components/cash-register/cash-register.component'
-              ).then((s) => s.CashRegisterComponent),
+                './domains/SMP/Components/cashRegisters/cashRegisters.component'
+              ).then((s) => s.CashRegistersComponent),
             canActivate: [MasterPermissionsGuard],
             data: {
               permissions: { master: 'sales', detailed: 'cash-register' },
@@ -1785,10 +1785,10 @@ export const routes: Routes = [
             path: 'products',
             loadComponent: () =>
               import(
-                './domains/ModSales/components/products/products.component'
-              ).then((s) => s.ProductsComponent),
+                './domains/ModProjects/components/materials/materials.component'
+              ).then((m) => m.MaterialsComponent),
             canActivate: [MasterPermissionsGuard],
-            data: { permissions: { master: 'sales', detailed: 'products' } },
+            data: { permissions: { master: 'sales', detailed: 'products' }, type: 'PRODSALES' },
           },
           {
             path: 'reports',
@@ -1876,6 +1876,15 @@ export const routes: Routes = [
               import(
                 './domains/ModAdmon/components/expenditure/egreso-shell.component'
               ).then((e) => e.EgresoShellComponent),
+          },
+          {
+            path: 'restaurant-mesas',
+            loadComponent: () =>
+              import(
+                './domains/ModSales/components/restaurant-mesas/restaurant-mesas.component'
+              ).then((r) => r.RestaurantMesasComponent),
+            canActivate: [MasterPermissionsGuard],
+            data: { permissions: { master: 'sales', detailed: 'mesas' } },
           },
         ],
       },

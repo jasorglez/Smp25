@@ -1,0 +1,17 @@
+// Restaurant Mesas Component
+:host {
+  display: block;
+}
+
+.nav-tabs .nav-link {
+  color: #495057;
+  &.active {
+    font-weight: 600;
+    color: #198754;
+    border-bottom-color: #198754;
+  }
+  &:hover:not(.active) {
+    color: #198754;
+    background: #f8f9fa;
+  }
+}

@@ -1,0 +1,119 @@
+<div class="container-fluid p-3">
+
+  <!-- Tabs -->
+  <ul class="nav nav-tabs mb-3">
+    <li class="nav-item">
+      <a class="nav-link" [class.active]="activeTab === 'mesas'"
+         (click)="activeTab = 'mesas'" style="cursor:pointer">
+        <i class="bi bi-grid-3x3-gap me-1"></i> Mesas
+      </a>
+    </li>
+    <li class="nav-item">
+      <a class="nav-link" [class.active]="activeTab === 'impresoras'"
+         (click)="activeTab = 'impresoras'; loadImpresoras()" style="cursor:pointer">
+        <i class="bi bi-printer me-1"></i> Impresoras de Cocina
+      </a>
+    </li>
+  </ul>
+
+  <!-- ══ TAB MESAS ══════════════════════════════════════════════════════════ -->
+  <div *ngIf="activeTab === 'mesas'">
+
+    <!-- Barra de botones estándar -->
+    <div class="d-flex gap-2 mb-2">
+      <button class="btn btn-sm btn-success" (click)="addMesa()" [disabled]="!mesasGridApiReady">
+        <i class="bi bi-plus-lg"></i> Agregar
+      </button>
+
+      <button class="btn btn-sm btn-primary position-relative"
+              (click)="saveMesas()" [disabled]="!hasUnsavedMesas">
+        <i class="bi bi-floppy"></i> Guardar
+        <span class="position-absolute top-0 start-100 translate-middle p-2 bg-danger border border-light rounded-circle"
+              *ngIf="hasUnsavedMesas">
+          <span class="visually-hidden">Hay cambios sin guardar</span>
+        </span>
+      </button>
+
+      <button class="btn btn-sm btn-warning" (click)="revertMesas()">
+        <i class="bi bi-arrow-clockwise"></i> Deshacer
+      </button>
+
+      <button class="btn btn-sm btn-danger" (click)="deleteMesa()" [disabled]="!selectedMesa">
+        <i class="bi bi-trash"></i> Borrar
+      </button>
+    </div>
+
+    <div class="alert alert-danger py-2 small mb-2" *ngIf="mesasError">
+      <i class="bi bi-exclamation-triangle-fill me-1"></i>{{ mesasError }}
+    </div>
+
+    <p class="text-muted small mb-2" *ngIf="!mesasError">
+      <i class="bi bi-info-circle me-1"></i>
+      Doble clic en una celda para editar. Las mesas con cuenta abierta no pueden eliminarse.
+    </p>
+
+    <ag-grid-angular      
+      style="width: 100%; height: 450px;"
+       class="ag-theme-quartz small-text-ag-grid"
+      [rowData]="mesasRowData"
+      [columnDefs]="mesasColDefs"
+      [gridOptions]="gridOptions"
+      [localeText]="AG_GRID_LOCALE_ES"
+      (gridReady)="onMesasGridReady($event)"
+      (rowClicked)="onMesaRowClicked($event)"
+      (cellValueChanged)="onMesaCellValueChanged($event)"
+      (cellEditingStopped)="onMesaCellEditingStopped($event)">
+    </ag-grid-angular>
+  </div>
+
+  <!-- ══ TAB IMPRESORAS ═════════════════════════════════════════════════════ -->
+  <div *ngIf="activeTab === 'impresoras'">
+
+    <!-- Barra de botones estándar -->
+    <div class="d-flex gap-2 mb-2">
+      <button class="btn btn-sm btn-success" (click)="addImpresora()" [disabled]="!impresorasGridApiReady">
+        <i class="bi bi-plus-lg"></i> Agregar
+      </button>
+
+      <button class="btn btn-sm btn-primary position-relative"
+              (click)="saveImpresoras()" [disabled]="!hasUnsavedImpresoras">
+        <i class="bi bi-floppy"></i> Guardar
+        <span class="position-absolute top-0 start-100 translate-middle p-2 bg-danger border border-light rounded-circle"
+              *ngIf="hasUnsavedImpresoras">
+          <span class="visually-hidden">Hay cambios sin guardar</span>
+        </span>
+      </button>
+
+      <button class="btn btn-sm btn-warning" (click)="revertImpresoras()">
+        <i class="bi bi-arrow-clockwise"></i> Deshacer
+      </button>
+
+      <button class="btn btn-sm btn-danger" (click)="deleteImpresora()" [disabled]="!selectedImpresora">
+        <i class="bi bi-trash"></i> Borrar
+      </button>
+    </div>
+
+    <div class="alert alert-danger py-2 small mb-2" *ngIf="impresorasError">
+      <i class="bi bi-exclamation-triangle-fill me-1"></i>{{ impresorasError }}
+    </div>
+
+    <p class="text-muted small mb-2" *ngIf="!impresorasError">
+      <i class="bi bi-info-circle me-1"></i>
+      Impresoras térmicas de cocina vía TCP/IP. Puerto estándar ESC/POS: <strong>9100</strong>.
+    </p>
+
+    <ag-grid-angular
+      class="ag-theme-quartz"
+      style="width: 100%; height: 350px;"
+      [rowData]="impresorasRowData"
+      [columnDefs]="impresorasColDefs"
+      [gridOptions]="impresorasGridOptions"
+      [localeText]="AG_GRID_LOCALE_ES"
+      (gridReady)="onImpresorasGridReady($event)"
+      (rowClicked)="onImpresoraRowClicked($event)"
+      (cellValueChanged)="onImpresoraCellValueChanged($event)"
+      (cellEditingStopped)="onImpresoraCellEditingStopped($event)">
+    </ag-grid-angular>
+  </div>
+
+</div>

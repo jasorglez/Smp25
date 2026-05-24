@@ -19,7 +19,11 @@
                <a class="nav-link green-tab" routerLink="before-pos" routerLinkActive="active">
                   <i class="bi bi-cart"></i> {{'point_of_sale' | translate}}</a>
             </li>
-            <li class="nav-item">
+            <li class="nav-item" *ngIf="authService.hasDetailedPermission('sales', 'mesas')">
+               <a class="nav-link green-tab" routerLink="restaurant-mesas" routerLinkActive="active">
+                  <i class="bi bi-house-door"></i> Gestión de Mesas</a>
+            </li>
+            <li class="nav-item" *ngIf="authService.hasDetailedPermission('sales', 'cash-closing')">
                <a class="nav-link green-tab" routerLink="cash-closing" routerLinkActive="active">
                   <i class="bi bi-calculator"></i> Corte de Caja</a>
             </li>
@@ -37,10 +41,10 @@
                      class="bi bi-list-check"></i> {{'inventory' | translate}} </a>
             </li>
             <li class="nav-item" *ngIf="authService.hasDetailedPermission('sales', 'products')">
-               <a class="nav-link green-tab" routerLink="products" routerLinkActive="active"><i
-                     class="bi bi-pc-display-horizontal"></i> {{'products' | translate}} </a>
+               <a class="nav-link green-tab" routerLink="products" routerLinkActive="active">
+                 <i class="bi bi-box-seam-fill"></i> Productos/Servicios</a>
             </li>
-            <li class="nav-item">
+            <li class="nav-item" *ngIf="authService.hasDetailedPermission('sales', 'reports')">
                <a class="nav-link green-tab" routerLink="reports" routerLinkActive="active"><i
                      class="bi bi-graph-up"></i> {{'sales_reports' | translate}} </a>
             </li>
@@ -52,37 +56,32 @@
                <a class="nav-link green-tab" routerLink="out-pos" routerLinkActive="active"><i
                      class="bi bi-journal-check"></i> {{'out_pos' | translate}} </a>
             </li>
-            <li class="nav-item">
-               <a class="nav-link green-tab" routerLink="ProductFinished" routerLinkActive="active">
-                 <i class="bi bi-box-seam-fill"></i> Productos/Servicios
-               </a>
-             </li>
-            <li class="nav-item">
+            <li class="nav-item" *ngIf="authService.hasDetailedPermission('sales', 'prospectos')">
                <a class="nav-link green-tab" routerLink="prospectos" routerLinkActive="active">
                  <i class="bi bi-people-fill"></i> Prospectos
                </a>
             </li>
-            <li class="nav-item">
+            <li class="nav-item" *ngIf="authService.hasDetailedPermission('sales', 'cotizaciones')">
                <a class="nav-link green-tab" routerLink="cotizaciones" routerLinkActive="active">
                  <i class="bi bi-file-earmark-text-fill"></i> Cotizaciones
                </a>
             </li>
-            <li class="nav-item">
+            <li class="nav-item" *ngIf="authService.hasDetailedPermission('sales', 'cursos')">
                <a class="nav-link green-tab" routerLink="cursos" routerLinkActive="active">
                  <i class="bi bi-mortarboard-fill"></i> Cursos
                </a>
             </li>
-            <li class="nav-item">
+            <li class="nav-item" *ngIf="authService.hasDetailedPermission('sales', 'demos')">
                <a class="nav-link green-tab" routerLink="demos" routerLinkActive="active">
                  <i class="bi bi-laptop"></i> Demos
                </a>
             </li>
-            <li class="nav-item">
+            <li class="nav-item" *ngIf="authService.hasDetailedPermission('sales', 'loyalty')">
                <a class="nav-link green-tab" routerLink="loyalty" routerLinkActive="active">
                  <i class="bi bi-award-fill"></i> Lealtad
                </a>
             </li>
-            <li class="nav-item">
+            <li class="nav-item" *ngIf="authService.hasDetailedPermission('sales', 'egresos')">
                <a class="nav-link green-tab" routerLink="egresos" routerLinkActive="active">
                  <i class="bi bi-arrow-up-right-circle"></i> Egresos
                </a>
