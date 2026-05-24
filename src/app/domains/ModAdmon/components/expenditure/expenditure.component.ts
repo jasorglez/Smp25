@@ -1,4 +1,4 @@
-import { Component, effect, inject, OnDestroy } from '@angular/core';
+import { Component, effect, inject, Input, OnChanges, OnDestroy, SimpleChanges } from '@angular/core';
 import { Subscription } from 'rxjs';
 import { SignalrService } from 'app/services/signalr.service';
 import { CellDoubleClickedEvent, ColDef, GridApi, GridReadyEvent, ICellRendererParams } from 'ag-grid-enterprise';
@@ -42,7 +42,7 @@ import { SelectWithTooltipEditorV2Component } from 'app/shared/select-with-toolt
   templateUrl: './expenditure.component.html',
   styleUrl: './expenditure.component.scss'
 })
-export class ExpenditureComponent implements OnDestroy {
+export class ExpenditureComponent implements OnDestroy, OnChanges {
 
   private incomesAndExpensesService = inject(IncomesAndExpensesService);
   public modalServiceTable = inject(ModalService);
@@ -161,6 +161,16 @@ export class ExpenditureComponent implements OnDestroy {
     console.log('✅ ExpenditureComponent: Constructor completado');
   }
 
+  ngOnChanges(changes: SimpleChanges): void {
+    if ('hideProjects' in changes) {
+      // Forzar regeneración del cache de columnas cuando cambie el input
+      this._colMaster = [];
+      if (this.gridApi) {
+        this.gridApi.setGridOption('columnDefs', this.colMaster);
+      }
+    }
+  }
+
   ngOnDestroy(): void {
     this.signalRSub?.unsubscribe();
     if (this.reloadTimeout) clearTimeout(this.reloadTimeout);
@@ -169,6 +179,9 @@ export class ExpenditureComponent implements OnDestroy {
   // Propiedades para datos pendientes y control
   private pendingMasterUpdate: any = null;
   private isGeneratingReport: boolean = false;
+
+  /** Si true, oculta la columna Proyecto (usado desde POS/Ventas) */
+  @Input() hideProjects: boolean = false;
 
   // Propiedades para el modal de reporte de egresos
   showEgresoReportModal: boolean = false;
@@ -758,6 +771,7 @@ export class ExpenditureComponent implements OnDestroy {
       {
         field: 'idProject',
         headerName: 'Proyecto',
+        hide: this.hideProjects,
         editable: true,
         width: 180,
         filter: true,

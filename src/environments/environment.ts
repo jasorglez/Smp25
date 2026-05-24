@@ -85,5 +85,5 @@ export const environment = {
     // publicKey: 'TEST-4399133a-4676-42a2-ab85-d946370bf96a',
   },
 
-  version: '6.23 (24 Mayo 2026 15:00) fix(sales-routes): canActivate guard en rutas sin proteccion',
+  version: '6.24 (24 Mayo 2026 15:20) feat(egresos): ocultar columna Proyecto en contexto POS',
 };
