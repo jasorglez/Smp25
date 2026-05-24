@@ -82,7 +82,7 @@ export class RestaurantMesasComponent implements OnInit {
   private editableColumnOrderMesas = ['nombre', 'capacidad', 'activo'];
 
   mesasColDefs: ColDef[] = [
-    { field: 'id',     headerName: 'ID',       width: 70,  editable: false },
+  //  { field: 'id',     headerName: 'ID',       width: 70,  editable: false },
     { field: 'nombre', headerName: 'Nombre',   flex: 1,    editable: true },
     { field: 'capacidad', headerName: 'Capacidad', width: 110, editable: true,
       valueFormatter: (p: any) => p.value != null ? `${p.value} pers.` : '',

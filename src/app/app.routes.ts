@@ -1721,8 +1721,8 @@ export const routes: Routes = [
             path: 'cash-register',
             loadComponent: () =>
               import(
-                './domains/ModSales/components/cash-register/cash-register.component'
-              ).then((s) => s.CashRegisterComponent),
+                './domains/SMP/Components/cashRegisters/cashRegisters.component'
+              ).then((s) => s.CashRegistersComponent),
             canActivate: [MasterPermissionsGuard],
             data: {
               permissions: { master: 'sales', detailed: 'cash-register' },
