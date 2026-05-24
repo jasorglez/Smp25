@@ -85,5 +85,5 @@ export const environment = {
     // publicKey: 'TEST-4399133a-4676-42a2-ab85-d946370bf96a',
   },
 
-  version: '6.25 (24 Mayo 2026 15:45) chore(sales): eliminar menu cash-withdrawal (placeholder)',
+  version: '6.26 (24 Mayo 2026 18:00) feat(returns): devoluciones totales/parciales/cambio + reimpresión de ticket',
 };

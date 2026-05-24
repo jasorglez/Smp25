@@ -89,9 +89,34 @@
             </div>
         </div>
 
+        <!-- Configuración de Devoluciones -->
+        <hr class="my-3">
+        <h6 class="fw-semibold mb-2"><i class="bi bi-arrow-return-left me-1"></i>Devoluciones</h6>
+        <div class="row mb-3" [class.opacity-50]="!idCustomer">
+            <div class="col-md-3">
+                <label class="form-label fw-semibold mb-1">Días límite para devolución</label>
+                <input type="number" class="form-control" name="returnDays" id="returnDays"
+                       [disabled]="!idCustomer" [(ngModel)]="options.returnDays"
+                       min="0" max="365" placeholder="30">
+                <div class="form-text text-muted">0 = sin límite de días</div>
+            </div>
+            <div class="col-md-9 d-flex align-items-center gap-4">
+                <div class="form-check form-switch mt-3">
+                    <input type="checkbox" class="form-check-input" name="requiresApproval" id="requiresApproval"
+                           [disabled]="!idCustomer" [(ngModel)]="options.requiresApproval">
+                    <label class="form-check-label ms-2" for="requiresApproval">Requiere aprobación</label>
+                </div>
+                <div class="form-check form-switch mt-3">
+                    <input type="checkbox" class="form-check-input" name="returnToInventory" id="returnToInventory"
+                           [disabled]="!idCustomer" [(ngModel)]="options.returnToInventory">
+                    <label class="form-check-label ms-2" for="returnToInventory">Regresa al inventario</label>
+                </div>
+            </div>
+        </div>
+
         <!-- Botones -->
         <div class="d-flex gap-2 mt-4">
-            <button class="btn btn-primary px-3" 
+            <button class="btn btn-primary px-3"
                     [disabled]="!idCustomer"
                     (click)="saveOptions()">
                 <i class="fas fa-save me-2"></i>Guardar opciones

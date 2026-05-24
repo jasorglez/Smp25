@@ -1,1 +1,353 @@
-<p>returns works!</p>
+<div class="container-fluid py-3" style="max-width: 900px;">
+
+  <!-- ─── Header ─────────────────────────────────────────────────────────── -->
+  <div class="d-flex align-items-center gap-2 mb-3">
+    <i class="bi bi-arrow-return-left text-danger fs-4"></i>
+    <h5 class="mb-0 fw-bold">Devoluciones y Reimpresión de Ticket</h5>
+  </div>
+
+  <!-- ─── Config badges ──────────────────────────────────────────────────── -->
+  <div class="d-flex gap-2 flex-wrap mb-3" *ngIf="configLoaded">
+    <span class="badge bg-secondary">
+      <i class="bi bi-clock me-1"></i>Días límite: {{ returnDays === 0 ? 'Sin límite' : returnDays + ' días' }}
+    </span>
+    <span class="badge" [class.bg-warning]="requiresApproval" [class.text-dark]="requiresApproval" [class.bg-light]="!requiresApproval" [class.text-dark]="!requiresApproval">
+      <i class="bi bi-person-check me-1"></i>{{ requiresApproval ? 'Requiere aprobación' : 'Sin aprobación' }}
+    </span>
+    <span class="badge" [class.bg-info]="returnToInventory" [class.bg-light]="!returnToInventory" [class.text-dark]="true">
+      <i class="bi bi-boxes me-1"></i>{{ returnToInventory ? 'Regresa al inventario' : 'No regresa al inventario' }}
+    </span>
+  </div>
+
+  <!-- ─── Search ─────────────────────────────────────────────────────────── -->
+  <div class="card border-0 shadow-sm mb-3">
+    <div class="card-body py-2">
+      <label class="form-label fw-semibold mb-1">
+        <i class="bi bi-search me-1"></i>Número de Ticket
+      </label>
+      <div class="input-group">
+        <input
+          type="text"
+          class="form-control"
+          placeholder="Ej. CAJA001-0001"
+          [(ngModel)]="searchTicket"
+          (keyup.enter)="searchTicketFn()"
+          style="text-transform:uppercase; max-width: 300px;"
+        />
+        <button class="btn btn-primary" (click)="searchTicketFn()" [disabled]="searching || !searchTicket?.trim()">
+          <span *ngIf="searching" class="spinner-border spinner-border-sm me-1" role="status"></span>
+          <i *ngIf="!searching" class="bi bi-search me-1"></i>
+          {{ searching ? 'Buscando...' : 'Buscar' }}
+        </button>
+      </div>
+      <div *ngIf="searchError" class="text-danger mt-1 small">
+        <i class="bi bi-exclamation-circle me-1"></i>{{ searchError }}
+      </div>
+    </div>
+  </div>
+
+  <!-- ─── Ticket found ────────────────────────────────────────────────────── -->
+  <ng-container *ngIf="sale">
+
+    <!-- Age warning -->
+    <div *ngIf="ageWarning" class="alert alert-warning d-flex gap-2 align-items-start py-2 mb-2">
+      <i class="bi bi-exclamation-triangle-fill mt-1"></i>
+      <span>{{ ageWarning }}</span>
+    </div>
+
+    <!-- Ticket info card -->
+    <div class="card border-0 shadow-sm mb-3">
+      <div class="card-header bg-light py-2 d-flex align-items-center gap-2">
+        <i class="bi bi-receipt text-success"></i>
+        <strong>Ticket encontrado: {{ sale.numberNote }}</strong>
+        <span class="ms-auto badge bg-success">{{ fmtMXN(sale.amount) }}</span>
+      </div>
+      <div class="card-body py-2">
+        <div class="row g-2 mb-2">
+          <div class="col-auto">
+            <small class="text-muted"><i class="bi bi-calendar me-1"></i>{{ fmtDate(sale.date) }}</small>
+          </div>
+          <div class="col-auto">
+            <small class="text-muted"><i class="bi bi-credit-card me-1"></i>{{ sale.paymentType || 'EFECTIVO' }}</small>
+          </div>
+        </div>
+
+        <!-- Concepts table -->
+        <table class="table table-sm table-bordered mb-0" style="font-size:0.82rem;">
+          <thead class="table-light">
+            <tr>
+              <th>Producto</th>
+              <th class="text-center" style="width:70px;">Cant.</th>
+              <th class="text-end" style="width:90px;">P.U.</th>
+              <th class="text-end" style="width:90px;">Total</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr *ngFor="let c of sale.concepts">
+              <td>{{ c.description }}</td>
+              <td class="text-center">{{ c.quantity }}</td>
+              <td class="text-end">{{ fmtMXN(c.pu) }}</td>
+              <td class="text-end">{{ fmtMXN(c.total) }}</td>
+            </tr>
+          </tbody>
+          <tfoot>
+            <tr class="fw-bold">
+              <td colspan="3" class="text-end">TOTAL</td>
+              <td class="text-end">{{ fmtMXN(sale.amount) }}</td>
+            </tr>
+          </tfoot>
+        </table>
+      </div>
+    </div>
+
+    <!-- Previous returns (if any) -->
+    <div *ngIf="previousReturns?.length" class="alert alert-info py-2 mb-3">
+      <strong><i class="bi bi-info-circle me-1"></i>Devoluciones previas de este ticket:</strong>
+      <ul class="mb-0 mt-1">
+        <li *ngFor="let r of previousReturns">
+          {{ fmtDate(r.date) }} — {{ typeLabel(r.returnType) }} — {{ fmtMXN(r.amount) }}
+          <span *ngIf="r.reason"> — {{ r.reason }}</span>
+        </li>
+      </ul>
+    </div>
+
+    <!-- ─── Mode tabs ─────────────────────────────────────────────────────── -->
+    <ul class="nav nav-pills mb-3">
+      <li class="nav-item">
+        <a class="nav-link py-1 px-3" [class.active]="activeMode==='reimpresion'"
+           (click)="setMode('reimpresion')" style="cursor:pointer; font-size:0.85rem;">
+          <i class="bi bi-printer me-1"></i>Reimpresión
+        </a>
+      </li>
+      <li class="nav-item">
+        <a class="nav-link py-1 px-3" [class.active]="activeMode==='total'"
+           (click)="setMode('total')" style="cursor:pointer; font-size:0.85rem;">
+          <i class="bi bi-x-circle me-1"></i>Dev. Total
+        </a>
+      </li>
+      <li class="nav-item">
+        <a class="nav-link py-1 px-3" [class.active]="activeMode==='parcial'"
+           (click)="setMode('parcial')" style="cursor:pointer; font-size:0.85rem;">
+          <i class="bi bi-scissors me-1"></i>Dev. Parcial
+        </a>
+      </li>
+      <li class="nav-item">
+        <a class="nav-link py-1 px-3" [class.active]="activeMode==='cambio'"
+           (click)="setMode('cambio')" style="cursor:pointer; font-size:0.85rem;">
+          <i class="bi bi-arrow-left-right me-1"></i>Cambio
+        </a>
+      </li>
+    </ul>
+
+    <!-- ─────────────────────── REIMPRESIÓN ─────────────────────────────── -->
+    <div *ngIf="activeMode==='reimpresion'" class="card border-0 shadow-sm">
+      <div class="card-body text-center py-4">
+        <i class="bi bi-printer text-secondary" style="font-size: 3rem;"></i>
+        <p class="mt-2 mb-3 text-muted">Se imprimirá una copia del ticket original <strong>{{ sale.numberNote }}</strong>.</p>
+        <button class="btn btn-success px-4" (click)="printOriginal()" [disabled]="processing">
+          <span *ngIf="processing" class="spinner-border spinner-border-sm me-1"></span>
+          <i *ngIf="!processing" class="bi bi-printer-fill me-1"></i>
+          {{ processing ? 'Generando...' : 'Imprimir Ticket' }}
+        </button>
+      </div>
+    </div>
+
+    <!-- ─────────────────────── DEV. TOTAL ───────────────────────────────── -->
+    <div *ngIf="activeMode==='total'" class="card border-0 shadow-sm">
+      <div class="card-body">
+        <div class="alert alert-danger d-flex gap-2 align-items-start py-2">
+          <i class="bi bi-exclamation-triangle-fill mt-1"></i>
+          <span>Se registrará la devolución <strong>total</strong> del ticket por
+            <strong>{{ fmtMXN(sale.amount) }}</strong>.
+            {{ returnToInventory ? 'Los productos regresarán al inventario.' : '' }}
+          </span>
+        </div>
+
+        <div class="mb-3">
+          <label class="form-label fw-semibold">Motivo <span class="text-danger">*</span></label>
+          <textarea class="form-control" [(ngModel)]="reason" rows="2"
+                    placeholder="Ej. Producto defectuoso, no corresponde a lo solicitado..."></textarea>
+        </div>
+
+        <div *ngIf="requiresApproval" class="mb-3">
+          <label class="form-label fw-semibold">Aprobado por <span class="text-danger">*</span></label>
+          <input type="text" class="form-control" [(ngModel)]="approvedBy"
+                 placeholder="Nombre del supervisor o gerente">
+        </div>
+
+        <div class="d-flex justify-content-between align-items-center">
+          <strong class="fs-5 text-danger">Total a devolver: {{ fmtMXN(sale.amount) }}</strong>
+          <button class="btn btn-danger px-4" (click)="processReturn()" [disabled]="!canProcess()">
+            <span *ngIf="processing" class="spinner-border spinner-border-sm me-1"></span>
+            <i *ngIf="!processing" class="bi bi-x-circle me-1"></i>
+            {{ processing ? 'Procesando...' : 'Procesar Devolución Total' }}
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ─────────────────────── DEV. PARCIAL ─────────────────────────────── -->
+    <div *ngIf="activeMode==='parcial'" class="card border-0 shadow-sm">
+      <div class="card-body">
+
+        <div *ngIf="returnItems.length === 0" class="alert alert-warning py-2">
+          <i class="bi bi-info-circle me-1"></i>
+          Todos los productos de este ticket ya han sido devueltos previamente.
+        </div>
+
+        <ng-container *ngIf="returnItems.length > 0">
+          <!-- Select all -->
+          <div class="form-check mb-2">
+            <input class="form-check-input" type="checkbox" id="selectAll"
+                   [checked]="allSelected" (change)="toggleAll($any($event.target).checked)">
+            <label class="form-check-label fw-semibold" for="selectAll">Seleccionar todos</label>
+          </div>
+
+          <!-- Items table -->
+          <table class="table table-sm table-bordered mb-3" style="font-size:0.82rem;">
+            <thead class="table-light">
+              <tr>
+                <th style="width:36px;"></th>
+                <th>Producto</th>
+                <th class="text-center" style="width:90px;">Cantidad a devolver</th>
+                <th class="text-end" style="width:80px;">P.U.</th>
+                <th class="text-end" style="width:90px;">Total</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr *ngFor="let item of returnItems" [class.table-active]="item.selected">
+                <td class="text-center">
+                  <input type="checkbox" [(ngModel)]="item.selected">
+                </td>
+                <td>{{ item.description }}
+                  <small class="text-muted"> (máx. {{ item.maxQty }})</small>
+                </td>
+                <td class="text-center">
+                  <input type="number" class="form-control form-control-sm text-center"
+                         [(ngModel)]="item.quantity" [disabled]="!item.selected"
+                         (ngModelChange)="onQtyChange(item)"
+                         [min]="0" [max]="item.maxQty" style="width:70px;">
+                </td>
+                <td class="text-end">{{ fmtMXN(item.pu) }}</td>
+                <td class="text-end">{{ fmtMXN(item.total) }}</td>
+              </tr>
+            </tbody>
+          </table>
+
+          <div class="mb-3">
+            <label class="form-label fw-semibold">Motivo <span class="text-danger">*</span></label>
+            <textarea class="form-control" [(ngModel)]="reason" rows="2"
+                      placeholder="Ej. Producto en mal estado..."></textarea>
+          </div>
+
+          <div *ngIf="requiresApproval" class="mb-3">
+            <label class="form-label fw-semibold">Aprobado por <span class="text-danger">*</span></label>
+            <input type="text" class="form-control" [(ngModel)]="approvedBy"
+                   placeholder="Nombre del supervisor">
+          </div>
+
+          <div class="d-flex justify-content-between align-items-center">
+            <strong class="fs-5 text-danger">
+              Total a devolver ({{ selectedCount }} art.): {{ fmtMXN(selectedTotal) }}
+            </strong>
+            <button class="btn btn-warning px-4" (click)="processReturn()" [disabled]="!canProcess()">
+              <span *ngIf="processing" class="spinner-border spinner-border-sm me-1"></span>
+              <i *ngIf="!processing" class="bi bi-scissors me-1"></i>
+              {{ processing ? 'Procesando...' : 'Procesar Dev. Parcial' }}
+            </button>
+          </div>
+        </ng-container>
+      </div>
+    </div>
+
+    <!-- ─────────────────────── CAMBIO ───────────────────────────────────── -->
+    <div *ngIf="activeMode==='cambio'" class="card border-0 shadow-sm">
+      <div class="card-body">
+
+        <div *ngIf="returnItems.length === 0" class="alert alert-warning py-2">
+          <i class="bi bi-info-circle me-1"></i>
+          Todos los productos de este ticket ya han sido procesados.
+        </div>
+
+        <ng-container *ngIf="returnItems.length > 0">
+          <p class="text-muted small mb-2">
+            <i class="bi bi-info-circle me-1"></i>
+            Selecciona los artículos que el cliente quiere cambiar.
+          </p>
+
+          <!-- Items table -->
+          <table class="table table-sm table-bordered mb-3" style="font-size:0.82rem;">
+            <thead class="table-light">
+              <tr>
+                <th style="width:36px;"></th>
+                <th>Producto</th>
+                <th class="text-center" style="width:90px;">Cantidad</th>
+                <th class="text-end" style="width:80px;">P.U.</th>
+                <th class="text-end" style="width:90px;">Total</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr *ngFor="let item of returnItems" [class.table-active]="item.selected">
+                <td class="text-center">
+                  <input type="checkbox" [(ngModel)]="item.selected">
+                </td>
+                <td>{{ item.description }}
+                  <small class="text-muted"> (máx. {{ item.maxQty }})</small>
+                </td>
+                <td class="text-center">
+                  <input type="number" class="form-control form-control-sm text-center"
+                         [(ngModel)]="item.quantity" [disabled]="!item.selected"
+                         (ngModelChange)="onQtyChange(item)"
+                         [min]="0" [max]="item.maxQty" style="width:70px;">
+                </td>
+                <td class="text-end">{{ fmtMXN(item.pu) }}</td>
+                <td class="text-end">{{ fmtMXN(item.total) }}</td>
+              </tr>
+            </tbody>
+          </table>
+
+          <div class="mb-3">
+            <label class="form-label fw-semibold">Cambiar por (descripción del nuevo producto)</label>
+            <input type="text" class="form-control" [(ngModel)]="exchangeNote"
+                   placeholder="Ej. Misma pieza talla diferente, modelo X...">
+          </div>
+
+          <div class="mb-3">
+            <label class="form-label fw-semibold">Motivo del cambio <span class="text-danger">*</span></label>
+            <textarea class="form-control" [(ngModel)]="reason" rows="2"
+                      placeholder="Ej. Talla incorrecta, color diferente..."></textarea>
+          </div>
+
+          <div *ngIf="requiresApproval" class="mb-3">
+            <label class="form-label fw-semibold">Aprobado por <span class="text-danger">*</span></label>
+            <input type="text" class="form-control" [(ngModel)]="approvedBy"
+                   placeholder="Nombre del supervisor">
+          </div>
+
+          <div class="d-flex justify-content-between align-items-center">
+            <div>
+              <strong class="fs-5 text-primary">
+                Valor de los artículos: {{ fmtMXN(selectedTotal) }}
+              </strong>
+              <div class="text-muted small">Se registrará el cambio y se imprimirá comprobante</div>
+            </div>
+            <button class="btn btn-primary px-4" (click)="processReturn()" [disabled]="!canProcess()">
+              <span *ngIf="processing" class="spinner-border spinner-border-sm me-1"></span>
+              <i *ngIf="!processing" class="bi bi-arrow-left-right me-1"></i>
+              {{ processing ? 'Procesando...' : 'Registrar Cambio' }}
+            </button>
+          </div>
+        </ng-container>
+      </div>
+    </div>
+
+  </ng-container>
+  <!-- end sale found -->
+
+  <!-- Empty state -->
+  <div *ngIf="!sale && !searching && !searchError" class="text-center text-muted mt-5">
+    <i class="bi bi-receipt" style="font-size: 3rem; opacity: 0.3;"></i>
+    <p class="mt-2">Ingresa el número de ticket para comenzar</p>
+  </div>
+
+</div>

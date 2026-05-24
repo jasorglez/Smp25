@@ -142,4 +142,90 @@ export class PosTicketService {
 
     pdfMake.createPdf(docDef).open();
   }
+
+  /** Imprime comprobante de devolución */
+  async printReturn(opts: {
+    originalTicket: string;
+    returnType: string;
+    reason: string;
+    amount: number;
+    date: Date;
+    storeName: string;
+    items: { description: string; quantity: number; pu: number; total: number }[];
+    approvedBy?: string;
+    idCompany?: number;
+  }): Promise<void> {
+    let logoBase64: string | null = null;
+    if (opts.idCompany) {
+      try {
+        const rootResponse: any = await lastValueFrom(this.rootService.getRootbyId(opts.idCompany));
+        if (rootResponse?.picture) {
+          logoBase64 = await this.base64EncodeService.convertImageToBase64(rootResponse.picture);
+        }
+      } catch { /* logo optional */ }
+    }
+
+    const fmtMXN = (n: number) =>
+      new Intl.NumberFormat('es-MX', { style: 'currency', currency: 'MXN' }).format(n || 0);
+
+    const fmtDate = (d: Date) =>
+      d.toLocaleString('es-MX', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+
+    const line = () => ({
+      canvas: [{ type: 'line', x1: 0, y1: 0, x2: TICKET_WIDTH - 20, y2: 0, lineWidth: 0.5 }],
+      margin: [0, 3, 0, 3],
+    });
+
+    const typeLabel: Record<string, string> = {
+      total: 'Devolución Total',
+      parcial: 'Devolución Parcial',
+      cambio: 'Cambio de Producto',
+      reimpresion: 'Reimpresión',
+    };
+
+    const rows = opts.items.map(i => [
+      { text: i.description, fontSize: 7 },
+      { text: String(i.quantity), alignment: 'center', fontSize: 7 },
+      { text: fmtMXN(i.pu), alignment: 'right', fontSize: 7 },
+      { text: fmtMXN(i.total), alignment: 'right', fontSize: 7 },
+    ]);
+
+    const docDef: any = {
+      pageSize: { width: TICKET_WIDTH, height: 'auto' },
+      pageMargins: [10, 10, 10, 15],
+      content: [
+        ...(logoBase64 ? [{ image: logoBase64, width: 60, alignment: 'center', margin: [0, 0, 0, 3] }] : []),
+        { text: opts.storeName, bold: true, fontSize: 10, alignment: 'center' },
+        { text: '*** COMPROBANTE DE DEVOLUCIÓN ***', bold: true, fontSize: 8, alignment: 'center', color: '#cc0000', margin: [0, 2, 0, 0] },
+        line(),
+        { text: `Tipo: ${typeLabel[opts.returnType] ?? opts.returnType}`, fontSize: 7 },
+        { text: `Ticket original: ${opts.originalTicket}`, fontSize: 7 },
+        { text: `Fecha: ${fmtDate(opts.date)}`, fontSize: 7 },
+        { text: `Motivo: ${opts.reason || 'No especificado'}`, fontSize: 7, margin: [0, 0, 0, 2] },
+        ...(opts.approvedBy ? [{ text: `Aprobado por: ${opts.approvedBy}`, fontSize: 7, margin: [0, 0, 0, 2] }] : []),
+        line(),
+        ...(rows.length > 0 ? [{
+          table: {
+            widths: ['*', 'auto', 'auto', 'auto'],
+            body: [
+              [
+                { text: 'Producto', bold: true, fontSize: 7 },
+                { text: 'Can.', bold: true, fontSize: 7, alignment: 'center' },
+                { text: 'P.U.', bold: true, fontSize: 7, alignment: 'right' },
+                { text: 'Total', bold: true, fontSize: 7, alignment: 'right' },
+              ],
+              ...rows,
+            ],
+          },
+          layout: 'noBorders',
+          margin: [0, 0, 0, 2],
+        }, line()] : []),
+        { text: `MONTO DEVUELTO: ${fmtMXN(opts.amount)}`, bold: true, fontSize: 11, alignment: 'right' },
+        { text: '', margin: [0, 4, 0, 0] },
+        { text: '¡Gracias por su preferencia!', alignment: 'center', italics: true, fontSize: 7 },
+      ],
+    };
+
+    pdfMake.createPdf(docDef).open();
+  }
 }
