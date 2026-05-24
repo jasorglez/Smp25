@@ -85,5 +85,5 @@ export const environment = {
     // publicKey: 'TEST-4399133a-4676-42a2-ab85-d946370bf96a',
   },
 
-  version: '6.17 (24 Mayo 2026 10:30) fix(ventas): todos los menus con guard de permisos + error visible en Gestión de Mesas',
+  version: '6.18 (24 Mayo 2026 11:00) fix(mesas): identifier correcto sales/mesas para Gestión de Mesas',
 };

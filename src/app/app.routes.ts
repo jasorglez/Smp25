@@ -1884,7 +1884,7 @@ export const routes: Routes = [
                 './domains/ModSales/components/restaurant-mesas/restaurant-mesas.component'
               ).then((r) => r.RestaurantMesasComponent),
             canActivate: [MasterPermissionsGuard],
-            data: { permissions: { master: 'sales', detailed: 'restaurant-mesas' } },
+            data: { permissions: { master: 'sales', detailed: 'mesas' } },
           },
         ],
       },
