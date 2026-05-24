@@ -1785,10 +1785,10 @@ export const routes: Routes = [
             path: 'products',
             loadComponent: () =>
               import(
-                './domains/ModSales/components/products/products.component'
-              ).then((s) => s.ProductsComponent),
+                './domains/ModProjects/components/materials/materials.component'
+              ).then((m) => m.MaterialsComponent),
             canActivate: [MasterPermissionsGuard],
-            data: { permissions: { master: 'sales', detailed: 'products' } },
+            data: { permissions: { master: 'sales', detailed: 'products' }, type: 'PRODSALES' },
           },
           {
             path: 'reports',

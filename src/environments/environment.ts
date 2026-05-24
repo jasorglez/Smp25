@@ -85,5 +85,5 @@ export const environment = {
     // publicKey: 'TEST-4399133a-4676-42a2-ab85-d946370bf96a',
   },
 
-  version: '6.19 (24 Mayo 2026 11:30) feat(cajas): ruta Cajas en Ventas apunta a CashRegistersComponent',
+  version: '6.20 (24 Mayo 2026 12:00) feat(productos): ruta products apunta a MaterialsComponent PRODSALES, quita ProductFinished duplicado',
 };

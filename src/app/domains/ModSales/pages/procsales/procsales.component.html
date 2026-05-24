@@ -41,8 +41,8 @@
                      class="bi bi-list-check"></i> {{'inventory' | translate}} </a>
             </li>
             <li class="nav-item" *ngIf="authService.hasDetailedPermission('sales', 'products')">
-               <a class="nav-link green-tab" routerLink="products" routerLinkActive="active"><i
-                     class="bi bi-pc-display-horizontal"></i> {{'products' | translate}} </a>
+               <a class="nav-link green-tab" routerLink="products" routerLinkActive="active">
+                 <i class="bi bi-box-seam-fill"></i> Productos/Servicios</a>
             </li>
             <li class="nav-item" *ngIf="authService.hasDetailedPermission('sales', 'reports')">
                <a class="nav-link green-tab" routerLink="reports" routerLinkActive="active"><i
@@ -55,11 +55,6 @@
             <li class="nav-item" *ngIf="authService.hasDetailedPermission('sales', 'out-pos')">
                <a class="nav-link green-tab" routerLink="out-pos" routerLinkActive="active"><i
                      class="bi bi-journal-check"></i> {{'out_pos' | translate}} </a>
-            </li>
-            <li class="nav-item" *ngIf="authService.hasDetailedPermission('sales', 'product-finished')">
-               <a class="nav-link green-tab" routerLink="ProductFinished" routerLinkActive="active">
-                 <i class="bi bi-box-seam-fill"></i> Productos/Servicios
-               </a>
             </li>
             <li class="nav-item" *ngIf="authService.hasDetailedPermission('sales', 'prospectos')">
                <a class="nav-link green-tab" routerLink="prospectos" routerLinkActive="active">
