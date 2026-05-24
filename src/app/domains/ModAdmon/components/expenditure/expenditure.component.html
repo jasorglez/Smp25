@@ -201,3 +201,78 @@
   </div>
 </div>
 <div class="modal-backdrop fade" [class.show]="showEgresoReportModal" [style.display]="showEgresoReportModal ? 'block' : 'none'"></div>
+
+<!-- Modal: Nuevo Tipo de Gasto -->
+<div class="modal fade" [class.show]="showNuevoTipoGastoModal" [style.display]="showNuevoTipoGastoModal ? 'block' : 'none'"
+     tabindex="-1" role="dialog" aria-labelledby="nuevoTipoGastoModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered" role="document">
+    <div class="modal-content">
+      <div class="modal-header bg-success text-white">
+        <h5 class="modal-title" id="nuevoTipoGastoModalLabel">
+          <i class="bi bi-plus-circle me-2"></i>Nuevo Tipo de Gasto
+        </h5>
+        <button type="button" class="btn-close btn-close-white" (click)="closeNuevoTipoGastoModal()" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        <form>
+          <div class="mb-3">
+            <label for="tipoGastoCodigo" class="form-label fw-bold">
+              Código <span class="text-danger">*</span>
+            </label>
+            <input
+              type="text"
+              class="form-control"
+              id="tipoGastoCodigo"
+              [(ngModel)]="nuevoTipoGasto.codigo"
+              name="tipoGastoCodigo"
+              placeholder="Ej. 6.1.01"
+              maxlength="20"
+              required>
+            <div class="form-text text-muted">Clave contable del tipo de gasto.</div>
+          </div>
+          <div class="mb-3">
+            <label for="tipoGastoNombre" class="form-label fw-bold">
+              Nombre <span class="text-danger">*</span>
+            </label>
+            <input
+              type="text"
+              class="form-control"
+              id="tipoGastoNombre"
+              [(ngModel)]="nuevoTipoGasto.nombre"
+              name="tipoGastoNombre"
+              placeholder="Ej. Gastos de Nómina"
+              maxlength="100"
+              required>
+          </div>
+          <div class="mb-3">
+            <label for="tipoGastoDescripcion" class="form-label">Descripción</label>
+            <input
+              type="text"
+              class="form-control"
+              id="tipoGastoDescripcion"
+              [(ngModel)]="nuevoTipoGasto.descripcion"
+              name="tipoGastoDescripcion"
+              placeholder="Opcional"
+              maxlength="200">
+          </div>
+        </form>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" (click)="closeNuevoTipoGastoModal()">
+          <i class="bi bi-x-circle me-1"></i>Cancelar
+        </button>
+        <button
+          type="button"
+          class="btn btn-success"
+          (click)="saveNuevoTipoGasto()"
+          [disabled]="!nuevoTipoGasto.codigo?.trim() || !nuevoTipoGasto.nombre?.trim() || savingNuevoTipoGasto">
+          <span *ngIf="savingNuevoTipoGasto" class="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true"></span>
+          <i *ngIf="!savingNuevoTipoGasto" class="bi bi-floppy me-1"></i>
+          {{ savingNuevoTipoGasto ? 'Guardando...' : 'Guardar' }}
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+<div class="modal-backdrop fade" [class.show]="showNuevoTipoGastoModal" [style.display]="showNuevoTipoGastoModal ? 'block' : 'none'"
+     (click)="closeNuevoTipoGastoModal()"></div>
