@@ -85,5 +85,5 @@ export const environment = {
     // publicKey: 'TEST-4399133a-4676-42a2-ab85-d946370bf96a',
   },
 
-  version: '6.15 (23 Mayo 2026 09:00) feat(permisos): activar/desactivar todos los permisos de un módulo de un clic',
+  version: '6.16 (24 Mayo 2026 10:00) feat(restaurant): gestión de mesas y impresoras de cocina en módulo Ventas',
 };

@@ -1877,6 +1877,15 @@ export const routes: Routes = [
                 './domains/ModAdmon/components/expenditure/egreso-shell.component'
               ).then((e) => e.EgresoShellComponent),
           },
+          {
+            path: 'restaurant-mesas',
+            loadComponent: () =>
+              import(
+                './domains/ModSales/components/restaurant-mesas/restaurant-mesas.component'
+              ).then((r) => r.RestaurantMesasComponent),
+            canActivate: [MasterPermissionsGuard],
+            data: { permissions: { master: 'sales', detailed: 'restaurant-mesas' } },
+          },
         ],
       },
       {

@@ -19,6 +19,10 @@
                <a class="nav-link green-tab" routerLink="before-pos" routerLinkActive="active">
                   <i class="bi bi-cart"></i> {{'point_of_sale' | translate}}</a>
             </li>
+            <li class="nav-item" *ngIf="authService.hasDetailedPermission('sales', 'restaurant-mesas')">
+               <a class="nav-link green-tab" routerLink="restaurant-mesas" routerLinkActive="active">
+                  <i class="bi bi-house-door"></i> Gestión de Mesas</a>
+            </li>
             <li class="nav-item">
                <a class="nav-link green-tab" routerLink="cash-closing" routerLinkActive="active">
                   <i class="bi bi-calculator"></i> Corte de Caja</a>
