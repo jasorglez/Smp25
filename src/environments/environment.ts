@@ -85,5 +85,5 @@ export const environment = {
     // publicKey: 'TEST-4399133a-4676-42a2-ab85-d946370bf96a',
   },
 
-  version: '6.21 (24 Mayo 2026 12:15) fix(corte-caja): identifier corregido a closebox',
+  version: '6.25 (24 Mayo 2026 15:45) chore(sales): eliminar menu cash-withdrawal (placeholder)',
 };

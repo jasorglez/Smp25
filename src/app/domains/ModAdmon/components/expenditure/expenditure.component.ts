@@ -1,4 +1,4 @@
-import { Component, effect, inject, OnDestroy } from '@angular/core';
+import { Component, effect, inject, Input, OnChanges, OnDestroy, SimpleChanges } from '@angular/core';
 import { Subscription } from 'rxjs';
 import { SignalrService } from 'app/services/signalr.service';
 import { CellDoubleClickedEvent, ColDef, GridApi, GridReadyEvent, ICellRendererParams } from 'ag-grid-enterprise';
@@ -26,21 +26,23 @@ import { CatalogsService } from 'app/services/catalogs.service';
 import { EmployeesService } from 'app/services/employees.service';
 import { CustomersService } from 'app/services/customers.service';
 import { CuentasContablesService } from 'app/services/cuentas-contables.service';
+import { ICuentaContableForm } from 'app/interface/icuentas-contables';
 import { ProjectsService } from 'app/services/projects.service';
 import { ButtonCellRendererExpenditure2Component } from './button-cell-renderer-expenditure2.component';
 import { PdfButtonCellRendererExpenditure2Component } from './pdf-button-cell-renderer-expenditure2.component';
 import { DetallesExpenditureComponent } from './detalles-expenditure.component';
+import { SelectWithTooltipEditorV2Component } from 'app/shared/select-with-tooltip-editor-v2.component';
 
 @Component({
   selector: 'app-expenditure',
   standalone: true,
   imports: [AgGridModule, MultiLineEditorComponent, CommonModule,
     FormsModule, ButtonCellRendererExpenditure2Component, PdfButtonCellRendererExpenditure2Component,
-    DetallesExpenditureComponent],
+    DetallesExpenditureComponent, SelectWithTooltipEditorV2Component],
   templateUrl: './expenditure.component.html',
   styleUrl: './expenditure.component.scss'
 })
-export class ExpenditureComponent implements OnDestroy {
+export class ExpenditureComponent implements OnDestroy, OnChanges {
 
   private incomesAndExpensesService = inject(IncomesAndExpensesService);
   public modalServiceTable = inject(ModalService);
@@ -159,6 +161,16 @@ export class ExpenditureComponent implements OnDestroy {
     console.log('✅ ExpenditureComponent: Constructor completado');
   }
 
+  ngOnChanges(changes: SimpleChanges): void {
+    if ('hideProjects' in changes) {
+      // Forzar regeneración del cache de columnas cuando cambie el input
+      this._colMaster = [];
+      if (this.gridApi) {
+        this.gridApi.setGridOption('columnDefs', this.colMaster);
+      }
+    }
+  }
+
   ngOnDestroy(): void {
     this.signalRSub?.unsubscribe();
     if (this.reloadTimeout) clearTimeout(this.reloadTimeout);
@@ -168,12 +180,21 @@ export class ExpenditureComponent implements OnDestroy {
   private pendingMasterUpdate: any = null;
   private isGeneratingReport: boolean = false;
 
+  /** Si true, oculta la columna Proyecto (usado desde POS/Ventas) */
+  @Input() hideProjects: boolean = false;
+
   // Propiedades para el modal de reporte de egresos
   showEgresoReportModal: boolean = false;
   reportEgresoStartDate: string = '';
   reportEgresoEndDate: string = '';
   isGeneratingEgresoReport: boolean = false;
   reportEgresoType: string = 'listado'; // 'listado' | 'saldos'
+
+  // Propiedades para el modal Nuevo Tipo de Gasto
+  showNuevoTipoGastoModal: boolean = false;
+  savingNuevoTipoGasto: boolean = false;
+  nuevoTipoGasto: any = { codigo: '', nombre: '', descripcion: '' };
+  private pendingTipoGastoRow: any = null;
   externalFilterActive: boolean = false;
   showform: string = '';
   branchs: any[] = [];
@@ -314,7 +335,8 @@ export class ExpenditureComponent implements OnDestroy {
   public paginationPageSizeSelector: number[] | boolean = [15, 50, 100];
   components = {
     multiLineEditor: MultiLineEditorComponent,
-    searchableSelect: SearchableSelectComponent
+    searchableSelect: SearchableSelectComponent,
+    selectWithTooltipEditorV2: SelectWithTooltipEditorV2Component
   };
 
   async getExpenditure() {
@@ -647,17 +669,34 @@ export class ExpenditureComponent implements OnDestroy {
       },
       {
         field: 'idExpend', headerName: 'Tipo Gasto', editable: true, width: 220,
-        cellEditor: 'agSelectCellEditor',
+        cellDataType: false,
+        cellEditor: 'selectWithTooltipEditorV2',
         cellEditorParams: () => {
-          return {
-            values: this.cuentasContablesNivel2
-              ? this.cuentasContablesNivel2.map((c) => c.id)
-              : []
-          };
+          const options = (this.cuentasContablesNivel2 || []).map((c: any) => ({
+            id: c.id,
+            description: `${c.codigo} - ${c.nombre}`,
+            valueAddition: String(c.id),
+            valueAddition2: `${c.codigo} - ${c.nombre}`
+          }));
+          options.push({
+            id: -999,
+            description: '➕ Nuevo Tipo de Gasto...',
+            valueAddition: '-999',
+            valueAddition2: '➕ Nuevo Tipo de Gasto...'
+          });
+          return { options };
+        },
+        valueSetter: (params) => {
+          if (params.newValue === -999) {
+            this.openNuevoTipoGastoModal(params.data);
+            return false;
+          }
+          params.data.idExpend = params.newValue;
+          return true;
         },
         valueFormatter: (params) => {
           if (!params.value) return '';
-          const cuenta = this.cuentasContablesNivel2?.find((c) => c.id === params.value);
+          const cuenta = this.cuentasContablesNivel2?.find((c: any) => c.id === params.value);
           return cuenta ? `${cuenta.codigo} - ${cuenta.nombre}` : params.value;
         },
       },
@@ -732,6 +771,7 @@ export class ExpenditureComponent implements OnDestroy {
       {
         field: 'idProject',
         headerName: 'Proyecto',
+        hide: this.hideProjects,
         editable: true,
         width: 180,
         filter: true,
@@ -1535,6 +1575,72 @@ export class ExpenditureComponent implements OnDestroy {
       currentData.total = updatedData.total;
       this.gridApi.applyTransaction({ update: [currentData] });
       console.log(`Fila maestra ${updatedData.id} actualizada con nuevos totales.`);
+    }
+  }
+
+  // ==================== MÉTODOS PARA NUEVO TIPO DE GASTO ====================
+
+  openNuevoTipoGastoModal(rowData?: any) {
+    this.nuevoTipoGasto = { codigo: '', nombre: '', descripcion: '' };
+    this.pendingTipoGastoRow = rowData || null;
+    this.showNuevoTipoGastoModal = true;
+    document.body.classList.add('modal-open');
+  }
+
+  closeNuevoTipoGastoModal() {
+    this.showNuevoTipoGastoModal = false;
+    document.body.classList.remove('modal-open');
+  }
+
+  async saveNuevoTipoGasto() {
+    if (!this.nuevoTipoGasto.codigo?.trim() || !this.nuevoTipoGasto.nombre?.trim()) {
+      alerts.basicAlert('Campos requeridos', 'El Código y el Nombre son obligatorios.', 'warning');
+      return;
+    }
+
+    this.savingNuevoTipoGasto = true;
+    try {
+      const nuevaCuenta: ICuentaContableForm = {
+        codigo:      this.nuevoTipoGasto.codigo.trim(),
+        nombre:      this.nuevoTipoGasto.nombre.trim(),
+        descripcion: this.nuevoTipoGasto.descripcion?.trim() || '',
+        nivel:       2,
+        idPadre:     undefined,
+        esHoja:      false,
+        activo:      true,
+        idCompany:   this.idRoot
+      };
+
+      const result: any = await lastValueFrom(this.cuentasContablesService.create(nuevaCuenta));
+
+      alerts.toastAlert('Tipo de Gasto creado correctamente', 'success');
+
+      // Recargar cuentas nivel 2
+      await this.loadCuentasContablesNivel2();
+
+      // Asignar el nuevo tipo al registro pendiente si existe
+      if (this.pendingTipoGastoRow && result?.id) {
+        this.pendingTipoGastoRow.idExpend = result.id;
+        this.pendingTipoGastoRow.__modified = true;
+        this.notSavedChanges = true;
+      }
+
+      // Refrescar columnas para que el combo incluya el nuevo tipo
+      this._colMaster = [];
+      if (this.gridApi) {
+        this.gridApi.setGridOption('columnDefs', this.colMaster);
+        this.gridApi.refreshCells({ force: true });
+      }
+
+      this.closeNuevoTipoGastoModal();
+    } catch (error: any) {
+      alerts.basicAlert(
+        'Error',
+        `No se pudo crear el Tipo de Gasto: ${error?.error?.message || error?.message || 'Error desconocido'}`,
+        'error'
+      );
+    } finally {
+      this.savingNuevoTipoGasto = false;
     }
   }
 

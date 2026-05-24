@@ -38,7 +38,7 @@ import { EgresosxfechasComponent } from './egresosxfechas.component';
       </ul>
 
       <!-- Contenido -->
-      <app-expenditure     *ngIf="activeTab === 'egresos'" />
+      <app-expenditure     *ngIf="activeTab === 'egresos'" [hideProjects]="true" />
       <app-egresosxfechas  *ngIf="activeTab === 'xfechas'" />
       <app-egresosxfechas  *ngIf="activeTab === 'todas'" [allAccounts]="true" />
     </div>
