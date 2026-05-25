@@ -19,6 +19,10 @@ interface OcRow {
   conditions: string;
   countitem: number;
   idReq?: number;
+  numCotizacion?: string;
+  condicionesPago?: string;
+  totalOc?: number;
+  anticipoOc?: number;
 }
 
 interface TooltipItem {
@@ -51,7 +55,6 @@ interface OcTooltipData {
           [columnDefs]="colDefs"
           [gridOptions]="gridOptions"
           (gridReady)="onGridReady($event)"
-          (rowClicked)="onRowClicked($event)"
           (firstDataRendered)="onFirstDataRendered($event)"
           style="width: 100%; height: 100%; position: absolute; top: 0; left: 0; right: 0; bottom: 0;">
         </ag-grid-angular>
@@ -83,7 +86,7 @@ interface OcTooltipData {
       </div>
 
       <div *ngIf="selectedArticleRow"
-           style="flex: 0 0 90px; min-height: 0; border-top: 2px solid #2e7d32;
+           style="flex: 0 0 220px; min-height: 0; border-top: 2px solid #2e7d32;
                   padding: 4px; display: flex; flex-direction: column; overflow: hidden;">
         <div style="font-size: 0.78rem; font-weight: bold; color: #2e7d32; margin-bottom: 3px; flex-shrink: 0;">
           Detalle de {{ selectedArticleRow.namearticle }}
@@ -146,9 +149,11 @@ export class OrdenesydetallesOcComponent implements OnDestroy {
       headerName: 'OC',
       width: 140,
       editable: false,
+      cellStyle: { backgroundColor: '#c8e6c9' },
+      onCellClicked: (params: any) => this.onRowClicked(params),
       cellRenderer: (params: any) => {
         const div = document.createElement('div');
-        div.style.cssText = 'cursor:pointer;color:#d97706;text-decoration:underline;';
+        div.style.cssText = 'cursor:pointer;';
         div.textContent = params.value || '—';
         const ocId = Number(params.data?.id);
         if (ocId) {
@@ -177,6 +182,40 @@ export class OrdenesydetallesOcComponent implements OnDestroy {
         const m = String(date.getMonth() + 1).padStart(2, '0');
         const y = date.getFullYear();
         return `${d}/${m}/${y}`;
+      },
+    },
+    {
+      field: 'numCotizacion',
+      headerName: '# Cotizacion',
+      width: 130,
+    },
+    {
+      field: 'condicionesPago',
+      headerName: 'Condiciones Pago',
+      width: 160,
+    },
+    {
+      field: 'totalOc',
+      headerName: 'Total x OC',
+      width: 130,
+      type: 'numericColumn',
+      valueFormatter: (p) => {
+        const n = Number(p.value);
+        return Number.isFinite(n)
+          ? n.toLocaleString('es-MX', { style: 'currency', currency: 'MXN', minimumFractionDigits: 2 })
+          : '';
+      },
+    },
+    {
+      field: 'anticipoOc',
+      headerName: 'Anticipo OC',
+      width: 130,
+      type: 'numericColumn',
+      valueFormatter: (p) => {
+        const n = Number(p.value);
+        return Number.isFinite(n) && n > 0
+          ? n.toLocaleString('es-MX', { style: 'currency', currency: 'MXN', minimumFractionDigits: 2 })
+          : '';
       },
     },
   ];
@@ -223,10 +262,18 @@ export class OrdenesydetallesOcComponent implements OnDestroy {
       },
     },
     { field: 'observation', headerName: 'Producto Externo', flex: 2, minWidth: 150 },
-    { field: 'typeoc', headerName: 'Tipo', width: 120 },
+    { field: 'typeoc', headerName: 'Tipo', width: 120, hide: true },
     { field: 'quantity', headerName: 'Cantidad Pedida', width: 130, type: 'numericColumn' },
     { field: 'price', headerName: 'Precio unitario', width: 140, type: 'numericColumn' },
     { field: 'total', headerName: 'Total', width: 120, type: 'numericColumn' },
+    {
+      field: 'notaFactura',
+      headerName: 'Nota / Factura',
+      width: 150,
+      editable: true,
+      cellEditor: 'agRichSelectCellEditor',
+      cellEditorParams: { values: ['Nota', 'Factura'] },
+    },
     { field: 'caducidadMinimaRequerida', headerName: 'Caducidad Minima Requerida', width: 180 },
     { field: 'datepostpone', headerName: 'Fecha Entrega', width: 130,
       valueFormatter: (p) => {
@@ -270,17 +317,63 @@ export class OrdenesydetallesOcComponent implements OnDestroy {
           if (newCond <= min) {
             this.closeNivel3();
           } else {
-            // Reconstruir Nivel 3 con la nueva cantidad de columnas
-            this.buildNivel3Grid(event.data);
+            this.buildNivel3Grid(event.data, true);
           }
         }
       }
     },
   };
 
-  // Las columnas se generan dinámicamente en buildNivel3Grid() según el valor
-  // de "Cantidad Entregas" (campo conditions) del artículo seleccionado.
-  nivel3ColDefs: ColDef[] = [];
+  nivel3ColDefs: ColDef[] = [
+    {
+      headerName: '#',
+      width: 45,
+      valueGetter: (p) => (p.node?.rowIndex ?? 0) + 1,
+      cellStyle: { backgroundColor: '#f8f9fa', fontWeight: 'bold' },
+    },
+    {
+      field: 'fechaEntrega',
+      headerName: 'Fecha Entrega',
+      width: 130,
+      editable: true,
+    },
+    {
+      field: 'cantidadRecibir',
+      headerName: 'Cantidad a Recibir',
+      width: 150,
+      editable: true,
+      type: 'numericColumn',
+      valueParser: (p) => { const n = Number(p.newValue); return isNaN(n) ? p.oldValue : n; },
+    },
+    {
+      field: 'notaFactura',
+      headerName: 'Nota / Factura',
+      flex: 1,
+      minWidth: 140,
+      editable: true,
+      cellEditor: 'agRichSelectCellEditor',
+      cellEditorParams: { values: ['Nota', 'Factura'] },
+    },
+    {
+      field: 'totalEntrega',
+      headerName: 'Total x Entrega',
+      width: 140,
+      editable: true,
+      type: 'numericColumn',
+      valueParser: (p) => { const n = Number(p.newValue); return isNaN(n) ? p.oldValue : n; },
+    },
+    {
+      headerName: 'PDF',
+      width: 60,
+      sortable: false,
+      cellRenderer: (_params: any) => {
+        const div = document.createElement('div');
+        div.style.cssText = 'text-align: center; cursor: pointer;';
+        div.innerHTML = '<i class="bi bi-file-pdf" style="color: #d32f2f; font-size: 1.2rem;" title="Descargar PDF"></i>';
+        return div;
+      },
+    },
+  ];
 
   nivel3GridOptions: any = {
     headerHeight: 28,
@@ -376,36 +469,23 @@ export class OrdenesydetallesOcComponent implements OnDestroy {
     }
   }
 
-  /**
-   * Construye columnas y datos del grid Nivel 3 según el valor de "Cantidad Entregas"
-   * (campo conditions) del artículo. Se invoca al abrir Nivel 3 y al cambiar el valor
-   * mientras está abierto, para que el número de columnas se sincronice.
-   */
-  private buildNivel3Grid(articleRow: any): void {
+  private buildNivel3Grid(articleRow: any, preserve: boolean = false): void {
     const count = Math.max(1, Number(articleRow?.conditions) || 0);
+    const existing = preserve ? (this.nivel3Data || []) : [];
 
-    this.nivel3ColDefs = [
-      {
-        headerName: '#',
-        width: 45,
-        valueGetter: (p) => (p.node?.rowIndex ?? 0) + 1,
-        cellStyle: { backgroundColor: '#f8f9fa', fontWeight: 'bold' },
-      },
-      ...Array.from({ length: count }, (_, i) => ({
-        field: `entrega${i + 1}`,
-        headerName: `Entrega ${i + 1}`,
-        flex: 1,
-        minWidth: 100,
-        editable: true,
-      } as ColDef)),
-    ];
-
-    const initialRow: any = {};
-    for (let i = 1; i <= count; i++) initialRow[`entrega${i}`] = '';
-    this.nivel3Data = [initialRow];
+    const newData: any[] = [];
+    for (let i = 1; i <= count; i++) {
+      const prior = existing[i - 1];
+      newData.push(prior ?? {
+        fechaEntrega: '',
+        cantidadRecibir: null,
+        notaFactura: '',
+        totalEntrega: null,
+      });
+    }
+    this.nivel3Data = newData;
 
     if (this.nivel3GridApi) {
-      this.nivel3GridApi.setGridOption('columnDefs', this.nivel3ColDefs);
       this.nivel3GridApi.setGridOption('rowData', this.nivel3Data);
     }
   }
@@ -449,6 +529,10 @@ export class OrdenesydetallesOcComponent implements OnDestroy {
             conditions: oc.conditions || '',
             countitem: oc.countitem || oc.countrow || 0,
             idReq: oc.idReq || oc.id_req || 0,
+            numCotizacion: oc.numCotizacion || oc.num_cotizacion || '',
+            condicionesPago: oc.condicionesPago || oc.condiciones_pago || '',
+            totalOc: Number(oc.total ?? oc.Total ?? 0) || 0,
+            anticipoOc: Number(oc.anticipoOc ?? oc.AnticipoOc ?? 0) || 0,
           };
         });
 
@@ -547,53 +631,49 @@ export class OrdenesydetallesOcComponent implements OnDestroy {
     const div = document.createElement('div');
     div.className = 'oc-floating-tooltip';
     div.style.cssText = `
-      position: fixed; z-index: 10100; background: #ffffff;
-      border: 1px solid #d97706; border-radius: 6px;
-      box-shadow: 0 4px 12px rgba(0,0,0,0.15);
-      padding: 8px 10px; min-width: 320px; max-width: 480px;
+      position: fixed; z-index: 10100;
+      background: linear-gradient(135deg, #1e40af 0%, #3b82f6 100%);
+      border-radius: 8px;
+      box-shadow: 0 8px 24px rgba(0,0,0,0.4);
+      padding: 12px 14px; min-width: 320px; max-width: 480px;
       font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-      font-size: 11px; color: #333; pointer-events: none;
+      font-size: 12px; color: #ffffff; pointer-events: none; line-height: 1.6;
     `;
 
-    // Header con TIPO OC
-    const header = document.createElement('div');
-    header.style.cssText = `
-      font-weight: 700; color: #d97706; font-size: 12px;
-      text-align: center; margin-bottom: 6px;
-      padding-bottom: 4px; border-bottom: 1px solid #fde7c4;
-      text-transform: uppercase; letter-spacing: 0.5px;
-    `;
-    header.textContent = data.typeoc || 'TIPO OC: —';
-    div.appendChild(header);
+    // Título bold
+    const title = document.createElement('div');
+    title.style.cssText = 'font-weight: 600; font-size: 13px; margin-bottom: 8px; color: #ffffff;';
+    title.textContent = data.typeoc || 'TIPO OC: —';
+    div.appendChild(title);
 
     // Tabla de items
     const table = document.createElement('table');
-    table.style.cssText = 'width: 100%; border-collapse: collapse; font-size: 10.5px;';
+    table.style.cssText = 'width: 100%; border-collapse: collapse; font-size: 11px;';
 
     const thead = document.createElement('thead');
     thead.innerHTML = `
-      <tr style="background: #fff8e1;">
-        <th style="text-align: left; padding: 4px 6px; border-bottom: 1px solid #fde7c4; color: #6b4f00;">Articulo</th>
-        <th style="text-align: right; padding: 4px 6px; border-bottom: 1px solid #fde7c4; color: #6b4f00; white-space: nowrap;">Cant. Req</th>
-        <th style="text-align: right; padding: 4px 6px; border-bottom: 1px solid #fde7c4; color: #6b4f00; white-space: nowrap;">Cant X Prov</th>
+      <tr style="background: rgba(255,255,255,0.15);">
+        <th style="text-align: left; padding: 4px 6px; border-bottom: 1px solid rgba(255,255,255,0.25); color: rgba(255,255,255,0.8); font-weight: 600;">Artículo</th>
+        <th style="text-align: right; padding: 4px 6px; border-bottom: 1px solid rgba(255,255,255,0.25); color: rgba(255,255,255,0.8); font-weight: 600; white-space: nowrap;">Cant. Req</th>
+        <th style="text-align: right; padding: 4px 6px; border-bottom: 1px solid rgba(255,255,255,0.25); color: rgba(255,255,255,0.8); font-weight: 600; white-space: nowrap;">Cant X Prov</th>
       </tr>`;
     table.appendChild(thead);
 
     const tbody = document.createElement('tbody');
     if (!data.items.length) {
       const emptyRow = document.createElement('tr');
-      emptyRow.innerHTML = `<td colspan="3" style="padding: 6px; text-align: center; color: #999;">Sin artículos</td>`;
+      emptyRow.innerHTML = `<td colspan="3" style="padding: 6px; text-align: center; color: rgba(255,255,255,0.7);">Sin artículos</td>`;
       tbody.appendChild(emptyRow);
     } else {
       data.items.forEach((it, idx) => {
         const tr = document.createElement('tr');
-        if (idx % 2 === 1) tr.style.background = '#fafafa';
+        if (idx % 2 === 1) tr.style.background = 'rgba(255,255,255,0.08)';
         const formatNum = (n: number) =>
           Number.isFinite(n) ? n.toLocaleString('es-MX', { maximumFractionDigits: 2 }) : '0';
         tr.innerHTML = `
-          <td style="padding: 4px 6px; border-bottom: 1px solid #f0f0f0;">${this.escapeHtml(it.articulo)}</td>
-          <td style="padding: 4px 6px; text-align: right; border-bottom: 1px solid #f0f0f0;">${formatNum(it.cantidadRequerida)}</td>
-          <td style="padding: 4px 6px; text-align: right; border-bottom: 1px solid #f0f0f0; color: #d97706; font-weight: 600;">${formatNum(it.cantidadXProv)}</td>`;
+          <td style="padding: 4px 6px; border-bottom: 1px solid rgba(255,255,255,0.1); color: #ffffff;">${this.escapeHtml(it.articulo)}</td>
+          <td style="padding: 4px 6px; text-align: right; border-bottom: 1px solid rgba(255,255,255,0.1); color: rgba(255,255,255,0.85);">${formatNum(it.cantidadRequerida)}</td>
+          <td style="padding: 4px 6px; text-align: right; border-bottom: 1px solid rgba(255,255,255,0.1); color: #ffffff; font-weight: 600;">${formatNum(it.cantidadXProv)}</td>`;
         tbody.appendChild(tr);
       });
     }
@@ -703,7 +783,7 @@ export class OrdenesydetallesOcComponent implements OnDestroy {
       next: (items: any[]) => {
         this.itemsData = (Array.isArray(items) ? items : []).map((it: any) => ({
           ...it,
-          conditions: it.diasCondicionCompra ?? null,
+          conditions: it.diasCondicionCompra ?? 1,
           typeoc: row.typeoc || '',
         }));
         this.originalItemsData = JSON.parse(JSON.stringify(this.itemsData));

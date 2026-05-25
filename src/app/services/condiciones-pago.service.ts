@@ -9,6 +9,7 @@ export interface CondicionPagoDto {
   descripcion: string;
   cantidad: number;
   active: boolean;
+  calculoAnticipo?: boolean;
   idCompany: number;
   dateModified?: string;
 }

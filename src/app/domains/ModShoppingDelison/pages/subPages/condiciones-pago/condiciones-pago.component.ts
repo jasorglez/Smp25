@@ -9,6 +9,7 @@ import { SignalsService } from 'app/services/signals.service';
 import { lastValueFrom } from 'rxjs';
 
 interface CondicionPagoRow extends CondicionPagoDto {
+  calculoAnticipo?: boolean;
   __modified?: boolean;
   __isNew?: boolean;
 }
@@ -116,6 +117,14 @@ export class CondicionesPagoComponent implements OnInit {
       cellEditor: 'agTextCellEditor'
     },
     {
+      field: 'calculoAnticipo',
+      headerName: 'Calculo Anticipo',
+      width: 160,
+      editable: true,
+      cellRenderer: 'agCheckboxCellRenderer',
+      cellEditor: 'agCheckboxCellEditor'
+    },
+    {
       field: 'cantidad',
       headerName: 'Cantidad (días)',
       width: 160,
@@ -161,6 +170,7 @@ export class CondicionesPagoComponent implements OnInit {
       descripcion: '',
       cantidad: 0,
       active: true,
+      calculoAnticipo: false,
       idCompany: this.idCompany,
       __isNew: true,
       __modified: true
@@ -181,11 +191,12 @@ export class CondicionesPagoComponent implements OnInit {
       const toProcess = this.rowData.filter(r => r.__modified || r.__isNew);
       for (const row of toProcess) {
         const payload: CondicionPagoDto = {
-          id:          row.id,
-          descripcion: row.descripcion,
-          cantidad:    row.cantidad,
-          active:      row.active,
-          idCompany:   this.idCompany
+          id:              row.id,
+          descripcion:     row.descripcion,
+          cantidad:        row.cantidad,
+          active:          row.active,
+          calculoAnticipo: row.calculoAnticipo ?? false,
+          idCompany:       this.idCompany
         };
         if (row.__isNew || !row.id) {
           await lastValueFrom(this.svc.create(payload));

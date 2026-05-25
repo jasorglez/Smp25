@@ -447,6 +447,7 @@ export class ProvidersComponent implements CanComponentDeactivate {
       {
         field: 'vigente',
         headerName: 'Activo',
+        maxWidth: 90,
         editable: true,
         cellRenderer: 'agCheckboxCellRenderer',
         cellEditor: 'agCheckboxCellEditor',
@@ -455,6 +456,7 @@ export class ProvidersComponent implements CanComponentDeactivate {
       {
         field: 'typeIntOrExt',
         headerName: 'Tipo',
+        maxWidth: 80,
         editable: true,
         cellEditor: 'agSelectCellEditor',
         cellEditorParams: {
@@ -464,11 +466,14 @@ export class ProvidersComponent implements CanComponentDeactivate {
 
       {
         field: 'autorizacion',
-        headerName: 'Por autorizar',
-        width: 130,
+        headerName: 'Por Autorizar',
+        maxWidth: 107,
+        wrapHeaderText: true,
+        autoHeaderHeight: true,
         editable: false,
         sortable: false,
         filter: false,
+        suppressSizeToFit: true,
         cellRenderer: this.createAutorizacionCheckboxRenderer(),
         cellStyle: { display: 'flex', alignItems: 'center', justifyContent: 'center' },
       },

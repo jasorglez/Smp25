@@ -25,7 +25,7 @@ import { ProveedorItemsOverlayData } from 'app/services/proveedor-items-overlay.
 import { ClasificacionCascadaComponent } from './clasificacion-cascada.component';
 import { CostoIvaTooltipService } from './costo-iva-tooltip.service';
 import { SetupService } from 'app/services/setup.service';
-import { CondicionesPagoService } from 'app/services/condiciones-pago.service';
+import { CondicionesPagoService, CondicionPagoDto } from 'app/services/condiciones-pago.service';
 
 pdfMake.vfs = pdfFonts.vfs;
 
@@ -106,10 +106,12 @@ pdfMake.vfs = pdfFonts.vfs;
 
           <label class="form-label small mb-0" style="white-space: nowrap;">Condiciones Pago:</label>
           <select class="form-select form-select-sm" style="width: 220px;"
-                  [(ngModel)]="condicionesPago" [disabled]="ocGenerated"
+                  [(ngModel)]="idCondicionPago" [disabled]="ocGenerated"
                   (ngModelChange)="onHeaderFieldChanged()">
-            <option value="">-- seleccione --</option>
-            <option *ngFor="let opt of condicionesPagoOpts" [value]="opt">{{ opt }}</option>
+            <option [ngValue]="null">-- seleccione --</option>
+            <option *ngFor="let opt of condicionesPagoOpts" [ngValue]="opt.id">
+              {{ opt.descripcion }} - {{ opt.cantidad }}
+            </option>
           </select>
 
           <label class="form-label small mb-0" style="white-space: nowrap;">Vigencia (días):</label>
@@ -181,7 +183,7 @@ export class DetalleItemsProveedorComponent {
   private condicionesPagoService = inject(CondicionesPagoService);
   private ivaPercent: number = 0;
   private ivaConfigurado: boolean = false;
-  condicionesPagoOpts: string[] = [];
+  condicionesPagoOpts: CondicionPagoDto[] = [];
 
   private params!: ICellRendererParams;
   private gridApi!: GridApi;
@@ -205,10 +207,12 @@ export class DetalleItemsProveedorComponent {
   fechaCotizacion: string = new Date().toISOString().split('T')[0];
   numCotizacion: string = '';
   condicionesPago: string = '';
+  idCondicionPago: number | null = null;
   vigenciaCotizacion: number | null = null;
   private originalFechaCotizacion: string = new Date().toISOString().split('T')[0];
   private originalNumCotizacion: string = '';
   private originalCondicionesPago: string = '';
+  private originalIdCondicionPago: number | null = null;
   private originalVigenciaCotizacion: number | null = null;
 
   /** Slot dinámico: contiene cotizId, slotIndex, idProvider, folio, name. */
@@ -347,7 +351,7 @@ export class DetalleItemsProveedorComponent {
     if (idCompany) {
       this.condicionesPagoService.getByCompany(idCompany).subscribe({
         next: (data) => {
-          this.condicionesPagoOpts = data.filter(c => c.active).map(c => `${c.descripcion} - ${c.cantidad}`);
+          this.condicionesPagoOpts = (data || []).filter(c => c.active);
         },
         error: () => { this.condicionesPagoOpts = []; }
       });
@@ -703,6 +707,7 @@ export class DetalleItemsProveedorComponent {
       this.originalFechaCotizacion = this.fechaCotizacion;
       this.originalNumCotizacion = this.numCotizacion;
       this.originalCondicionesPago = this.condicionesPago;
+      this.originalIdCondicionPago = this.idCondicionPago;
       this.originalVigenciaCotizacion = this.vigenciaCotizacion;
       const providerName = this.getSelectedProviderName();
 
@@ -755,13 +760,20 @@ export class DetalleItemsProveedorComponent {
     const folio = `${type}-${this.branchPrefix || 'NOPREF'}-P${this.pedimentoNum || 0}-PRO${this.selectedProviderId}`;
     const providerName = this.getSelectedProviderName();
     const dateCreate = new Date().toISOString().split('T')[0];
+    // Derivar el string de condiciones desde el DTO seleccionado (backward compat).
+    const selectedCond = this.condicionesPagoOpts.find(o => o.id === this.idCondicionPago);
+    const condicionesPagoStr = selectedCond
+      ? `${selectedCond.descripcion} - ${selectedCond.cantidad}`
+      : '';
+    this.condicionesPago = condicionesPagoStr;
     const ocPayload = {
       idRoot, folio, typeReference: type === 'OC' ? 'branch' : 'delison', idReference: type === 'OC' ? (idBranch || 0) : (this.params.data.cotizacionId || 0),
       idReq: this.params.data.requisitionId || 0, dateCreate, idProvider: this.selectedProviderId, solicit: providerName.substring(0, 50),
       idDepartament: 0, delivery: 'NO APLICA', deliveryTime: '1 DAY', typeOc: 'INSUMOS', idPayment: 0, idCurrency: 0, type, datesupply: this.fechaCotizacion, active: true,
       // Datos de la cotización del proveedor (cabecera)
       numCotizacion: this.numCotizacion || '',
-      condicionesPago: this.condicionesPago || '',
+      condicionesPago: condicionesPagoStr,
+      idCondicionPago: this.idCondicionPago,
       vigenciaCotizacion: this.vigenciaCotizacion ?? null
     };
     let newOcId: number;
@@ -777,7 +789,8 @@ export class DetalleItemsProveedorComponent {
         dateModified: new Date().toISOString(),
         // Datos de la cotización del proveedor (cabecera)
         numCotizacion: this.numCotizacion || '',
-        condicionesPago: this.condicionesPago || '',
+        condicionesPago: condicionesPagoStr,
+        idCondicionPago: this.idCondicionPago,
         vigenciaCotizacion: this.vigenciaCotizacion ?? null,
       };
       await lastValueFrom(this.ocandreqsService.updateOcAndReq(this.savedOcId, merged));
@@ -943,10 +956,12 @@ export class DetalleItemsProveedorComponent {
         // Cargar datos de la cotización del proveedor (cabecera de ocandreq)
         this.numCotizacion = existing.numCotizacion ?? '';
         this.condicionesPago = existing.condicionesPago ?? '';
+        this.idCondicionPago = existing.idCondicionPago ?? null;
         this.vigenciaCotizacion = existing.vigenciaCotizacion ?? null;
         this.originalFechaCotizacion = this.fechaCotizacion;
         this.originalNumCotizacion = this.numCotizacion;
         this.originalCondicionesPago = this.condicionesPago;
+        this.originalIdCondicionPago = this.idCondicionPago;
         this.originalVigenciaCotizacion = this.vigenciaCotizacion;
         await this.loadSavedItems(existing.id);
         if (existing.idProvider) await this.syncProveedorXTablaFields(existing.idProvider);
@@ -1005,6 +1020,7 @@ export class DetalleItemsProveedorComponent {
     this.fechaCotizacion = this.originalFechaCotizacion;
     this.numCotizacion = this.originalNumCotizacion;
     this.condicionesPago = this.originalCondicionesPago;
+    this.idCondicionPago = this.originalIdCondicionPago;
     this.vigenciaCotizacion = this.originalVigenciaCotizacion;
     this.refreshFilteredProviders();
     this.hasUnsavedChanges = false;
