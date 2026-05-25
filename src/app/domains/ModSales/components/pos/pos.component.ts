@@ -354,7 +354,7 @@ export class PosComponent implements OnInit {
     if (!this.session) return;
 
     // Capturar datos de loyalty antes de limpiar
-    const hadPhone = this.isPublicSale && this.phoneNumber.trim().length === 10;
+    const hadPhone = this.phoneNumber.trim().length === 10;
     const capturedAmount = this._total;
     const capturedPrevPoints = this.loyaltyAccount?.totalPoints ?? 0;
 
@@ -381,7 +381,7 @@ export class PosComponent implements OnInit {
       id_cashregister: this.session.idCashRegister,
       payment_type: this.paymentType,
       payment_detail: paymentDetail,
-      phone_number: this.isPublicSale && this.phoneNumber.trim() ? this.phoneNumber.trim() : null,
+      phone_number: this.phoneNumber.trim() || null,
       id_company: this.session.idCompany,
       active: true,
     };
