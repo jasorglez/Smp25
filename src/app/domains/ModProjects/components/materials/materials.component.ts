@@ -118,6 +118,7 @@ export class MaterialsComponent implements CanComponentDeactivate {
   idBranch: number;
   idUser: number = null;
   notSavedChanges: boolean = false;
+  saving: boolean = false;          // previene doble clic en guardar
   showLoansTab: boolean = false;
   selectedRowData: any = null;
   showSavingsTab: boolean = false;
@@ -314,6 +315,7 @@ export class MaterialsComponent implements CanComponentDeactivate {
 
  
   public gridOptions: any = {
+    rowSelection: 'single',
     stopEditingWhenCellsLoseFocus: false,
     headerHeight: 50,
     rowHeight: 20,
@@ -829,6 +831,8 @@ export class MaterialsComponent implements CanComponentDeactivate {
   }
 
   async saveMasterChanges() {
+    if (this.saving) return;
+    this.saving = true;
     /*const isValid = this.rowData.every(
       (item) => item.barCode && item.description && item.idMedida && item.date
     );
@@ -910,22 +914,25 @@ export class MaterialsComponent implements CanComponentDeactivate {
         'Ocurrió un error al actualizar los datos. Por favor, intente nuevamente.',
         'error'
       );
+    } finally {
+      this.saving = false;
     }
   }
 
   deleteMasterEntry() {
-    const selectedNodes = this.gridApi.getSelectedNodes();
+    const selectedNodes = this.gridApi.getSelectedNodes()
+      .filter(n => !n.group && n.data && typeof n.data.id === 'number');
     if (selectedNodes.length === 0) {
       alerts.basicAlert(
         'Eliminar entrada',
-        'Por favor, seleccione una entrada para eliminar.',
+        'Por favor, seleccione un producto para eliminar.',
         'error'
       );
       return;
     }
 
     const selectedData = selectedNodes[0].data;
-    console.log('Datos del empleado a eliminar:', selectedData);
+    console.log('Datos del material a eliminar:', selectedData);
 
     // Validar que el préstamo sea 0 o no exista
     /*if (selectedData.loan && selectedData.loan !== 0) {

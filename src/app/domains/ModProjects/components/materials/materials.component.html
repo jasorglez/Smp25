@@ -6,7 +6,7 @@
         <button type="button" class="btn btn-primary ms-1 me-1 mb-2" (click)="onAdd()">
           <i class="bi bi-plus"></i>
         </button>
-        <button type="button" class="btn btn-success ms-1 me-1 position-relative mb-2" (click)="onEdit()" >
+        <button type="button" class="btn btn-success ms-1 me-1 position-relative mb-2" (click)="onEdit()" [disabled]="saving">
           <i class="bi bi-floppy"></i>
           <span
             class="position-absolute top-0 start-100 translate-middle p-2 bg-danger border border-light rounded-circle"

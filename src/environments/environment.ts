@@ -85,5 +85,5 @@ export const environment = {
     // publicKey: 'TEST-4399133a-4676-42a2-ab85-d946370bf96a',
   },
 
-  version: '6.31 (25 Mayo 2026 09:00) feat(bot): reporte matutino, meta del dia, puntos cliente, alerta mesa inactiva',
+  version: '6.32 (25 Mayo 2026 14:00) fix(materiales): delete activa rowSelection, guard doble-clic guardar',
 };
