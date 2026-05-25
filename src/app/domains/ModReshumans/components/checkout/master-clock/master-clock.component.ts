@@ -404,14 +404,36 @@ export default class MasterClockComponent implements OnInit {
     ];
   }
 
+  private getExpandedGroupKeys(): Set<string> {
+    const keys = new Set<string>();
+    this.gridApi?.forEachNode(node => {
+      if (node.group && node.expanded && node.key != null) {
+        keys.add(node.key);
+      }
+    });
+    return keys;
+  }
+
+  private restoreGroupExpansion(keys: Set<string>) {
+    if (!keys.size) return;
+    this.gridApi?.forEachNode(node => {
+      if (node.group && node.key != null && keys.has(node.key)) {
+        node.setExpanded(true);
+      }
+    });
+  }
+
   async obtenerDatos(fechaInicio: string = '', fechaFin: string = '') {
     return new Promise((resolve) => {
-      //console.log(this.idBranch, fechaInicio, fechaFin)
+      const expandedKeys = this.getExpandedGroupKeys();
       this.payrollService.getMasterClock(this.idBranch, fechaInicio, fechaFin).subscribe(
         (data: any) => {
           this.rowData = data;
           this.trackingService.addLog(this.trackingService.getnameComp(), 'Get Registro en Maestro de Checador', 'Menu Maestro de Checador', this.trackingService.getEmail());
-          setTimeout(() => this.gridApi?.autoSizeAllColumns(), 50);
+          setTimeout(() => {
+            this.restoreGroupExpansion(expandedKeys);
+            this.gridApi?.autoSizeAllColumns();
+          }, 50);
           resolve(true);
         },
         (error) => {

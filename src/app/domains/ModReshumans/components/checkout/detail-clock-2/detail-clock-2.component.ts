@@ -543,11 +543,9 @@ export default class DetailClock2Component implements OnInit {
         field: 'valid',
         headerName: 'Válido',
         editable: (params) => {
-          if (params.data.valid === true) return false;
           if (params.data.__isNew) return true;
           return this.authService.getCrudPermissionDetail('hr', 'clock','MaeChe_Ajus', 'update');
         },
-        cellStyle: (params) => params.data?.valid === true ? { cursor: 'not-allowed' } : null,
       },
       {
         headerName: 'Faltas',
@@ -575,11 +573,9 @@ export default class DetailClock2Component implements OnInit {
         field: 'idReason',
         headerName: 'Razón de motivo de falta',
         editable: (params) => {
-          if (params.data.valid === true) return false;
           if (params.data.__isNew) return true;
           return this.authService.getCrudPermissionDetail('hr', 'clock','MaeChe_Ajus', 'update');
         },
-        cellStyle: (params) => params.data?.valid === true ? { cursor: 'not-allowed' } : null,
         cellEditor: 'agSelectCellEditor',
         cellEditorParams: {
           values: this.catalogoAusencias.map(item => item.id.toString()),
@@ -696,6 +692,42 @@ export default class DetailClock2Component implements OnInit {
     if (event.column.getColId() === 'minuteDiscount') {
       if (!event.data.minuteDiscountBackup && event.data.byTimeClock) {
         event.data.minuteDiscountBackup = event.oldValue;
+      }
+    }
+
+    if (event.column.getColId() === 'valid') {
+      const changedDate = event.data.date;
+      const newValidValue = event.data.valid;
+      if (newValidValue === true) {
+        event.data.idReason = null;
+      }
+      this.rowData.forEach((row: any) => {
+        if (row.date === changedDate && row.id !== event.data.id) {
+          row.valid = newValidValue;
+          if (newValidValue === true) row.idReason = null;
+          row.__modified = true;
+          row.edited = true;
+          row.editedBy = this.signalsService.getDisplayName()();
+        }
+      });
+      this.gridApi.setGridOption('rowData', this.rowData);
+    }
+
+    if (event.column.getColId() === 'idReason') {
+      const changedDate = event.data.date;
+      const newReason = event.data.idReason;
+      let siblingUpdated = false;
+      this.rowData.forEach((row: any) => {
+        if (row.date === changedDate && row.id !== event.data.id) {
+          row.idReason = newReason;
+          row.__modified = true;
+          row.edited = true;
+          row.editedBy = this.signalsService.getDisplayName()();
+          siblingUpdated = true;
+        }
+      });
+      if (siblingUpdated) {
+        this.gridApi.setGridOption('rowData', this.rowData);
       }
     }
 

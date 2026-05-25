@@ -73,5 +73,5 @@ export const environment = {
 
   urlRefreshToken: 'https://securetoken.googleapis.com/v1/token?key=AIzaSyDxCBGKk8nT09hdW85-PyOkhw5_JPZLF1A',
 
-  version: '2.52.219 (22 Mayo 2026 19:35) - Nivel 3 dinámico: columnas Entrega 1..N según Cantidad Entregas'
+  version: '2.52.220 (25 Mayo 2026 10:35) - C1 + C2'
 };
