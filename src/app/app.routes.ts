@@ -1709,6 +1709,15 @@ export const routes: Routes = [
           },
           ...SharedModule.getRoutes(),
           {
+            path: 'pos-dashboard',
+            loadComponent: () =>
+              import(
+                './domains/ModSales/components/pos-dashboard/pos-dashboard.component'
+              ).then((s) => s.PosDashboardComponent),
+            canActivate: [MasterPermissionsGuard],
+            data: { permissions: { master: 'sales', detailed: 'reports' } },
+          },
+          {
             path: 'setup-sales',
             loadComponent: () =>
               import(

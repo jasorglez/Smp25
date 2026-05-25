@@ -33,6 +33,7 @@ export class PosTicketService {
     paymentReference?: string,
     pagoConAmount?: number,
     idCompany?: number,
+    splitPayments?: { type: string; amount: number }[],
   ): Promise<void> {
     let logoBase64: string | null = null;
     if (idCompany) {
@@ -62,6 +63,7 @@ export class PosTicketService {
       TARJETA:  'Tarjeta',
       CHEQUE:   'Cheque',
       VALES:    'Vale',
+      MIXTO:    'Mixto',
     };
 
     const rows = concepts.map(c => {
@@ -78,24 +80,31 @@ export class PosTicketService {
     const pt = paymentType ?? sale.payment_type ?? 'EFECTIVO';
     const paymentLines: any[] = [];
 
-    if (paymentReference) {
-      const refLabel: Record<string, string> = {
-        TARJETA: 'Ref. tarjeta',
-        CHEQUE:  'No. cheque',
-        VALES:   'No. vale',
-      };
-      paymentLines.push({
-        text: `${refLabel[pt] ?? 'Referencia'}: ${paymentReference}`,
-        fontSize: 7,
-        alignment: 'right',
-        margin: [0, 1, 0, 0],
-      });
-    }
-
-    if (pt === 'EFECTIVO' && pagoConAmount != null) {
-      const cambio = Math.max(0, pagoConAmount - sale.amount);
-      paymentLines.push({ text: `Pago:   ${fmtMXN(pagoConAmount)}`, fontSize: 7, alignment: 'right', margin: [0, 1, 0, 0] });
-      paymentLines.push({ text: `Cambio: ${fmtMXN(cambio)}`, fontSize: 7, alignment: 'right', bold: true, margin: [0, 1, 0, 0] });
+    if (pt === 'MIXTO' && splitPayments?.length) {
+      // Líneas de pago mixto
+      for (const sp of splitPayments) {
+        paymentLines.push({
+          text: `  ${payLabel[sp.type] ?? sp.type}: ${fmtMXN(sp.amount)}`,
+          fontSize: 7, alignment: 'right', margin: [0, 1, 0, 0],
+        });
+      }
+    } else {
+      if (paymentReference) {
+        const refLabel: Record<string, string> = {
+          TARJETA: 'Ref. tarjeta',
+          CHEQUE:  'No. cheque',
+          VALES:   'No. vale',
+        };
+        paymentLines.push({
+          text: `${refLabel[pt] ?? 'Referencia'}: ${paymentReference}`,
+          fontSize: 7, alignment: 'right', margin: [0, 1, 0, 0],
+        });
+      }
+      if (pt === 'EFECTIVO' && pagoConAmount != null) {
+        const cambio = Math.max(0, pagoConAmount - sale.amount);
+        paymentLines.push({ text: `Pago:   ${fmtMXN(pagoConAmount)}`, fontSize: 7, alignment: 'right', margin: [0, 1, 0, 0] });
+        paymentLines.push({ text: `Cambio: ${fmtMXN(cambio)}`, fontSize: 7, alignment: 'right', bold: true, margin: [0, 1, 0, 0] });
+      }
     }
 
     const docDef: any = {

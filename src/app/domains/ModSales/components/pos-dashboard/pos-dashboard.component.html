@@ -1,0 +1,204 @@
+<div class="px-2 py-3">
+
+  <!-- ── Header ─────────────────────────────────────────────────────────── -->
+  <div class="d-flex align-items-center gap-3 mb-3 flex-wrap">
+    <h5 class="mb-0 fw-bold">
+      <i class="bi bi-speedometer2 me-2 text-primary"></i>Dashboard del día
+    </h5>
+    <div class="ms-auto d-flex align-items-center gap-2">
+      <input type="date" class="form-control form-control-sm"
+             [(ngModel)]="selectedDate" (change)="loadData()"
+             style="width:160px;">
+      <button class="btn btn-sm btn-outline-primary" (click)="loadData()" [disabled]="loading">
+        <span *ngIf="loading" class="spinner-border spinner-border-sm"></span>
+        <i *ngIf="!loading" class="bi bi-arrow-clockwise"></i>
+      </button>
+    </div>
+  </div>
+
+  <!-- ── Loading ────────────────────────────────────────────────────────── -->
+  <div *ngIf="loading" class="text-center py-5 text-muted">
+    <div class="spinner-border text-primary mb-2" role="status"></div>
+    <p class="mb-0">Cargando datos...</p>
+  </div>
+
+  <ng-container *ngIf="!loading">
+
+    <!-- ── Empty ──────────────────────────────────────────────────────── -->
+    <div *ngIf="sales.length === 0" class="text-center py-5 text-muted">
+      <i class="bi bi-receipt" style="font-size:3.5rem; opacity:0.2;"></i>
+      <p class="mt-2 mb-0">Sin ventas registradas para este día</p>
+    </div>
+
+    <!-- ── Content ────────────────────────────────────────────────────── -->
+    <ng-container *ngIf="sales.length > 0">
+
+      <!-- KPI cards -->
+      <div class="row g-3 mb-3">
+        <!-- Total -->
+        <div class="col-6 col-lg-3">
+          <div class="card border-0 shadow-sm h-100 border-start border-success border-4">
+            <div class="card-body py-3">
+              <div class="text-muted small mb-1">
+                <i class="bi bi-cash-stack me-1"></i>Total del día
+              </div>
+              <div class="fs-4 fw-black text-success lh-1">{{ fmtMXN(totalVentas) }}</div>
+            </div>
+          </div>
+        </div>
+        <!-- Tickets -->
+        <div class="col-6 col-lg-3">
+          <div class="card border-0 shadow-sm h-100 border-start border-primary border-4">
+            <div class="card-body py-3">
+              <div class="text-muted small mb-1">
+                <i class="bi bi-receipt me-1"></i>Tickets
+              </div>
+              <div class="fs-4 fw-black text-primary lh-1">{{ numTickets }}</div>
+            </div>
+          </div>
+        </div>
+        <!-- Promedio -->
+        <div class="col-6 col-lg-3">
+          <div class="card border-0 shadow-sm h-100 border-start border-info border-4">
+            <div class="card-body py-3">
+              <div class="text-muted small mb-1">
+                <i class="bi bi-calculator me-1"></i>Ticket promedio
+              </div>
+              <div class="fs-4 fw-black text-info lh-1">{{ fmtMXN(ticketPromedio) }}</div>
+            </div>
+          </div>
+        </div>
+        <!-- Venta más alta -->
+        <div class="col-6 col-lg-3">
+          <div class="card border-0 shadow-sm h-100 border-start border-warning border-4">
+            <div class="card-body py-3">
+              <div class="text-muted small mb-1">
+                <i class="bi bi-trophy me-1"></i>Venta más alta
+              </div>
+              <div class="fs-4 fw-black text-warning lh-1">{{ fmtMXN(ventaMasAlta) }}</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Charts -->
+      <div class="row g-3 mb-3" *ngIf="chartsReady">
+        <!-- Ventas por hora -->
+        <div class="col-md-8">
+          <div class="card border-0 shadow-sm">
+            <div class="card-header bg-light py-2 d-flex align-items-center gap-2">
+              <i class="bi bi-bar-chart-fill text-primary"></i>
+              <span class="small fw-bold">Ventas por hora</span>
+            </div>
+            <div class="card-body p-2 pb-0">
+              <apx-chart
+                [series]="horaChartOptions.series"
+                [chart]="horaChartOptions.chart"
+                [colors]="horaChartOptions.colors"
+                [plotOptions]="horaChartOptions.plotOptions"
+                [dataLabels]="horaChartOptions.dataLabels"
+                [grid]="horaChartOptions.grid"
+                [xaxis]="horaChartOptions.xaxis"
+                [yaxis]="horaChartOptions.yaxis"
+                [tooltip]="horaChartOptions.tooltip">
+              </apx-chart>
+            </div>
+          </div>
+        </div>
+        <!-- Forma de pago -->
+        <div class="col-md-4">
+          <div class="card border-0 shadow-sm">
+            <div class="card-header bg-light py-2 d-flex align-items-center gap-2">
+              <i class="bi bi-pie-chart-fill text-primary"></i>
+              <span class="small fw-bold">Forma de pago</span>
+            </div>
+            <div class="card-body p-2 pb-0">
+              <apx-chart
+                [series]="pagoChartOptions.series"
+                [chart]="pagoChartOptions.chart"
+                [labels]="pagoChartOptions.labels"
+                [colors]="pagoChartOptions.colors"
+                [legend]="pagoChartOptions.legend"
+                [dataLabels]="pagoChartOptions.dataLabels"
+                [plotOptions]="pagoChartOptions.plotOptions"
+                [tooltip]="pagoChartOptions.tooltip">
+              </apx-chart>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Bottom row: Top 5 + Últimos tickets -->
+      <div class="row g-3">
+
+        <!-- Top 5 productos -->
+        <div class="col-md-6">
+          <div class="card border-0 shadow-sm h-100">
+            <div class="card-header bg-light py-2 d-flex align-items-center gap-2">
+              <i class="bi bi-award-fill text-warning"></i>
+              <span class="small fw-bold">Top 5 productos</span>
+            </div>
+            <div class="table-responsive">
+              <table class="table table-sm table-hover mb-0" style="font-size:0.82rem;">
+                <thead class="table-light">
+                  <tr>
+                    <th class="ps-3">#</th>
+                    <th>Producto</th>
+                    <th class="text-center">Cant.</th>
+                    <th class="text-end pe-3">Total</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr *ngFor="let p of top5; let i = index">
+                    <td class="ps-3">
+                      <span class="badge rounded-pill"
+                        [class.bg-warning]="i===0" [class.text-dark]="i===0"
+                        [class.bg-secondary]="i>0">
+                        {{ i + 1 }}
+                      </span>
+                    </td>
+                    <td class="fw-semibold">{{ p.description }}</td>
+                    <td class="text-center text-muted">{{ p.qty }}</td>
+                    <td class="text-end pe-3 fw-bold text-success">{{ fmtMXN(p.amount) }}</td>
+                  </tr>
+                  <tr *ngIf="top5.length === 0">
+                    <td colspan="4" class="text-center text-muted py-3">Sin datos</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+        <!-- Últimos tickets -->
+        <div class="col-md-6">
+          <div class="card border-0 shadow-sm h-100">
+            <div class="card-header bg-light py-2 d-flex align-items-center gap-2">
+              <i class="bi bi-clock-history text-primary"></i>
+              <span class="small fw-bold">Últimos tickets</span>
+              <span class="badge bg-primary ms-auto">{{ numTickets }}</span>
+            </div>
+            <div style="max-height: 230px; overflow-y: auto;">
+              <table class="table table-sm table-hover mb-0" style="font-size:0.82rem;">
+                <tbody>
+                  <tr *ngFor="let t of recentTickets">
+                    <td class="ps-3">
+                      <span class="text-primary fw-semibold">{{ t.numberNote }}</span>
+                    </td>
+                    <td class="text-muted">{{ fmtTime(t.date) }}</td>
+                    <td>
+                      <i class="bi me-1" [ngClass]="paymentIcon(t.paymentType)"></i>
+                      <span class="small text-muted">{{ t.paymentType ?? 'EFECTIVO' }}</span>
+                    </td>
+                    <td class="text-end pe-3 fw-bold">{{ fmtMXN(t.amount) }}</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </ng-container>
+  </ng-container>
+</div>
