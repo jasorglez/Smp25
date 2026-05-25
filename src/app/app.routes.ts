@@ -1715,7 +1715,7 @@ export const routes: Routes = [
                 './domains/ModSales/components/pos-dashboard/pos-dashboard.component'
               ).then((s) => s.PosDashboardComponent),
             canActivate: [MasterPermissionsGuard],
-            data: { permissions: { master: 'sales', detailed: 'reports' } },
+            data: { permissions: { master: 'sales', detailed: 'dashboard' } },
           },
           {
             path: 'setup-sales',
