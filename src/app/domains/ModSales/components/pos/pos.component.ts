@@ -44,7 +44,24 @@ export class PosComponent implements OnInit {
   idCustomer: number | null = null;
   lector = false;
   credit = false;
-  paymentType: 'EFECTIVO' | 'CHEQUE' | 'VALES' | 'TARJETA' = 'EFECTIVO';
+  paymentType: 'EFECTIVO' | 'CHEQUE' | 'VALES' | 'TARJETA' | 'MIXTO' = 'EFECTIVO';
+
+  // ── Pago Mixto ────────────────────────────────────────────────────────────
+  showMixtoModal   = false;
+  mixto1Type       : 'EFECTIVO' | 'TARJETA' | 'CHEQUE' | 'VALES' = 'EFECTIVO';
+  mixto2Type       : 'EFECTIVO' | 'TARJETA' | 'CHEQUE' | 'VALES' = 'TARJETA';
+  mixto1Amount     : number | null = null;
+  mixto2Amount     : number | null = null;
+
+  get mixtoTotal()       { return (this.mixto1Amount ?? 0) + (this.mixto2Amount ?? 0); }
+  get mixtoOk()          { return Math.abs(this.mixtoTotal - this._total) < 0.01; }
+  get mixtoInsuficiente(){ return this.mixtoTotal > 0 && this.mixtoTotal < this._total; }
+  get mixtoExcede()      { return this.mixtoTotal > this._total + 0.01; }
+
+  // ── Historial del cliente ─────────────────────────────────────────────────
+  clientHistory    : any     = null;
+  loadingHistory   : boolean = false;
+  showHistoryModal : boolean = false;
 
   // Celular para ventas al público
   phoneNumber = '';
@@ -74,8 +91,10 @@ export class PosComponent implements OnInit {
     this.phoneNumber = input.value;
     if (this.phoneNumber.length === 10 && this.session) {
       this.loadLoyaltyAccount();
+      this.loadClientHistory();
     } else {
-      this.loyaltyAccount = null;
+      this.loyaltyAccount  = null;
+      this.clientHistory   = null;
     }
   }
 
@@ -86,6 +105,20 @@ export class PosComponent implements OnInit {
       this.loyaltyAccount = result;
     } catch {
       this.loyaltyAccount = null;
+    }
+  }
+
+  private async loadClientHistory() {
+    if (!this.session) return;
+    this.loadingHistory = true;
+    try {
+      this.clientHistory = await firstValueFrom(
+        this.posService.getClientHistory(this.phoneNumber, this.session.idCompany)
+      );
+    } catch {
+      this.clientHistory = null;
+    } finally {
+      this.loadingHistory = false;
     }
   }
 
@@ -283,6 +316,12 @@ export class PosComponent implements OnInit {
       alerts.basicAlert('Celular inválido', 'El número de celular debe tener exactamente 10 dígitos.', 'warning');
       return;
     }
+    if (this.paymentType === 'MIXTO') {
+      this.mixto1Amount = null;
+      this.mixto2Amount = null;
+      this.showMixtoModal = true;
+      return;
+    }
     if (this.paymentType === 'EFECTIVO') {
       this.pagoConAmount = null;
       this.showChangeModal = true;
@@ -291,6 +330,12 @@ export class PosComponent implements OnInit {
     this.paymentReference = '';
     this.paymentAmount    = this._total;
     this.showPaymentModal = true;
+  }
+
+  async confirmMixto() {
+    if (!this.mixtoOk) return;
+    this.showMixtoModal = false;
+    await this.executeReceipt();
   }
 
   async confirmChange() {
@@ -318,6 +363,13 @@ export class PosComponent implements OnInit {
     const localId = `${this.session.prefix}-${Date.now()}`;
     const date = new Date().toISOString();
 
+    const paymentDetail = this.paymentType === 'MIXTO'
+      ? JSON.stringify([
+          { type: this.mixto1Type, amount: this.mixto1Amount ?? 0 },
+          { type: this.mixto2Type, amount: this.mixto2Amount ?? 0 },
+        ])
+      : null;
+
     const sale = {
       localId,
       idCustomer: this.idCustomer,
@@ -328,6 +380,7 @@ export class PosComponent implements OnInit {
       amount: this._total,
       id_cashregister: this.session.idCashRegister,
       payment_type: this.paymentType,
+      payment_detail: paymentDetail,
       phone_number: this.isPublicSale && this.phoneNumber.trim() ? this.phoneNumber.trim() : null,
       id_company: this.session.idCompany,
       active: true,
@@ -355,6 +408,13 @@ export class PosComponent implements OnInit {
     const client = this.selectedClient;
     const clientName = client?.company ?? `Cliente ${this.idCustomer}`;
 
+    const splitPayments = this.paymentType === 'MIXTO'
+      ? [
+          { type: this.mixto1Type, amount: this.mixto1Amount ?? 0 },
+          { type: this.mixto2Type, amount: this.mixto2Amount ?? 0 },
+        ]
+      : undefined;
+
     await this.posTicket.print(
       sale,
       concepts.map(c => ({ idProduct: c.id_product, description: c.description, quantity: c.quantity, pu: c.pu })),
@@ -366,6 +426,7 @@ export class PosComponent implements OnInit {
       this.paymentReference || undefined,
       this.paymentType === 'EFECTIVO' ? (this.pagoConAmount ?? undefined) : undefined,
       this.session.idCompany,
+      splitPayments,
     );
 
     this.pendingCount = await this.posDb.countPendingSales();
@@ -378,11 +439,14 @@ export class PosComponent implements OnInit {
     // Limpiar
     this.rowData = [];
     this.gridApi?.setGridOption('rowData', []);
-    this._total = 0;
-    this.idCustomer = null;
-    this.phoneNumber = '';
+    this._total         = 0;
+    this.idCustomer     = null;
+    this.phoneNumber    = '';
     this.loyaltyAccount = null;
-    this.paymentType = 'EFECTIVO';
+    this.clientHistory  = null;
+    this.paymentType    = 'EFECTIVO';
+    this.mixto1Amount   = null;
+    this.mixto2Amount   = null;
 
     // Mostrar toast de puntos ganados
     if (hadPhone) {

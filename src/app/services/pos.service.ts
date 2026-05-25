@@ -48,6 +48,17 @@ export class PosService {
     return this.http.put(`${environment.urlAdministration}/PosSetup/${idBranch}/${idCustomer}`, data, { headers: this.trackingService.getHeaders() });
   }
 
+  // --- Dashboard del día ---
+  getSalesReport(idCompany: number, dateFrom: string, dateTo: string): Observable<any[]> {
+    const params = `dateFrom=${encodeURIComponent(dateFrom)}&dateTo=${encodeURIComponent(dateTo)}&idCompany=${idCompany}&paymentType=TODAS`;
+    return this.http.get<any[]>(`${environment.urlAdministration}/Salesxcustomer/report?${params}`, { headers: this.trackingService.getHeaders() });
+  }
+
+  // --- Historial del cliente por teléfono ---
+  getClientHistory(phone: string, idCompany: number): Observable<any> {
+    return this.http.get(`${environment.urlAdministration}/Salesxcustomer/byPhone/${encodeURIComponent(phone)}?idCompany=${idCompany}`, { headers: this.trackingService.getHeaders() });
+  }
+
   // --- Loyalty / Fidelidad ---
   getLoyaltyAccount(phone: string, idCompany: number): Observable<any> {
     return this.http.get(`${environment.urlAdministration}/Loyalty/account/${phone}/${idCompany}`, { headers: this.trackingService.getHeaders() });
