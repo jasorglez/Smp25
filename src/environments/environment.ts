@@ -85,5 +85,5 @@ export const environment = {
     // publicKey: 'TEST-4399133a-4676-42a2-ab85-d946370bf96a',
   },
 
-  version: '6.28 (24 Mayo 2026 19:30) feat(pos): dashboard del d%C3%ADa + pago mixto + historial cliente',
+  version: '6.29 (24 Mayo 2026 21:00) feat(pos): turno de cajero con fondo inicial y conteo de efectivo',
 };
