@@ -157,6 +157,13 @@ export class PedimentosXRequisicionComponent {
             )
           )
         ).subscribe((counts: number[]) => {
+          // idReference (sucursal) heredado de la requisición padre — necesario para
+          // que el componente de detalle de OCs pueda cargar el rango de Condic. Compra
+          // desde setup_oc sin depender del branch del sidebar.
+          const idReference = this.internalParams?.data?.idReference
+                           ?? this.internalParams?.data?.id_reference
+                           ?? this.internalParams?.data?.idBranch
+                           ?? null;
           this.rowData = peds.map((p: any, i: number) => ({
             id:        p.id,
             folio:     p.folio || '',
@@ -164,6 +171,7 @@ export class PedimentosXRequisicionComponent {
             ocNumber:  counts[i] ?? 0,
             totalPedimento: p.totalPedimento ?? p.TotalPedimento ?? 0,
             idCompany: idCompany,
+            idReference: idReference,
           }));
 
           if (this.gridApi && !this.gridApi.isDestroyed()) {

@@ -23,6 +23,9 @@ import { ItemCommentsCellRendererComponent } from 'app/shared/item-comments-cell
 import { ItemCommentsService } from 'app/services/item-comments.service';
 import { ProveedorItemsOverlayData } from 'app/services/proveedor-items-overlay.service';
 import { ClasificacionCascadaComponent } from './clasificacion-cascada.component';
+import { CostoIvaTooltipService } from './costo-iva-tooltip.service';
+import { SetupService } from 'app/services/setup.service';
+import { CondicionesPagoService } from 'app/services/condiciones-pago.service';
 
 pdfMake.vfs = pdfFonts.vfs;
 
@@ -41,50 +44,79 @@ pdfMake.vfs = pdfFonts.vfs;
       </div>
 
       <!-- Header con controles -->
-      <div style="margin-bottom: 5px; padding: 6px 10px; flex-shrink: 0; display: flex; align-items: center;">
-        <label class="form-label small mb-0 me-1" style="white-space: nowrap;">Proveedor:</label>
-        <ng-select
-          [items]="filteredProviders"
-          bindValue="id"
-          bindLabel="description"
-          [(ngModel)]="selectedProviderId"
-          [clearable]="true"
-          [disabled]="ocGenerated"
-          placeholder="Seleccione proveedor"
-          (ngModelChange)="onProviderChange()"
-          style="width: 50%; min-width: 150px;">
-          <ng-template ng-option-tmp let-item="item">
-            <span *ngIf="item.__isHeader" style="font-size: 13px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.5px; width: 100%; text-align: center; display: inline-block; color: #6c757d; background-color: #f5f5f5;">
-              {{ item.description }}
+      <div style="margin-bottom: 5px; padding: 6px 10px; flex-shrink: 0;">
+        <!-- Fila 1: Proveedor + botones -->
+        <div style="display: flex; align-items: center;">
+          <label class="form-label small mb-0 me-1" style="white-space: nowrap;">Proveedor:</label>
+          <ng-select
+            [items]="filteredProviders"
+            bindValue="id"
+            bindLabel="description"
+            [(ngModel)]="selectedProviderId"
+            [clearable]="true"
+            [disabled]="ocGenerated"
+            placeholder="Seleccione proveedor"
+            (ngModelChange)="onProviderChange()"
+            style="width: 50%; min-width: 150px;">
+            <ng-template ng-option-tmp let-item="item">
+              <span *ngIf="item.__isHeader" style="font-size: 13px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.5px; width: 100%; text-align: center; display: inline-block; color: #6c757d; background-color: #f5f5f5;">
+                {{ item.description }}
+              </span>
+              <ng-container *ngIf="!item.__isHeader">
+                <span *ngIf="item.isPrincipal" title="Proveedor principal de los artículos">⭐ </span>{{ item.description }}
+              </ng-container>
+            </ng-template>
+            <ng-template ng-label-tmp let-item="item">
+              <span *ngIf="item.isPrincipal">⭐ </span>{{ item.description }}
+            </ng-template>
+          </ng-select>
+          <input type="file" #fileInput accept=".pdf" style="display: none;" (change)="onFileSelected($event)">
+          <button class="btn btn-sm btn-outline-secondary" type="button" (click)="fileInput.click()" [disabled]="ocGenerated" title="Cargar PDF">
+            <i class="bi bi-upload"></i>
+          </button>
+          <button class="btn btn-sm btn-outline-secondary" type="button" (click)="generatePlaceholderPdf()" [disabled]="ocGenerated" title="Ver PDF">
+            <i class="bi bi-file-earmark-pdf text-danger"></i>
+          </button>
+          <button type="button" class="btn btn-sm btn-success position-relative" (click)="saveChanges()" [disabled]="savingChanges || ocGenerated || !allCostosValid" title="Guardar cotización">
+            <span *ngIf="savingChanges" class="spinner-border spinner-border-sm"></span>
+            <i *ngIf="!savingChanges" class="bi bi-floppy"></i>
+            <span class="position-absolute top-0 start-100 translate-middle p-2 bg-danger border border-light rounded-circle" *ngIf="hasUnsavedChanges && !savingChanges && !ocGenerated">
+              <span class="visually-hidden">Cambios sin guardar</span>
             </span>
-            <ng-container *ngIf="!item.__isHeader">
-              <span *ngIf="item.isPrincipal" title="Proveedor principal de los artículos">⭐ </span>{{ item.description }}
-            </ng-container>
-          </ng-template>
-          <ng-template ng-label-tmp let-item="item">
-            <span *ngIf="item.isPrincipal">⭐ </span>{{ item.description }}
-          </ng-template>
-        </ng-select>
-        <input type="file" #fileInput accept=".pdf" style="display: none;" (change)="onFileSelected($event)">
-        <button class="btn btn-sm btn-outline-secondary" type="button" (click)="fileInput.click()" [disabled]="ocGenerated" title="Cargar PDF">
-          <i class="bi bi-upload"></i>
-        </button>
-        <button class="btn btn-sm btn-outline-secondary" type="button" (click)="generatePlaceholderPdf()" [disabled]="ocGenerated" title="Ver PDF">
-          <i class="bi bi-file-earmark-pdf text-danger"></i>
-        </button>
-        <button type="button" class="btn btn-sm btn-success position-relative" (click)="saveChanges()" [disabled]="savingChanges || ocGenerated || !allCostosValid" title="Guardar cotización">
-          <span *ngIf="savingChanges" class="spinner-border spinner-border-sm"></span>
-          <i *ngIf="!savingChanges" class="bi bi-floppy"></i>
-          <span class="position-absolute top-0 start-100 translate-middle p-2 bg-danger border border-light rounded-circle" *ngIf="hasUnsavedChanges && !savingChanges && !ocGenerated">
-            <span class="visually-hidden">Cambios sin guardar</span>
-          </span>
-        </button>
-        <button type="button" class="btn btn-sm btn-warning" (click)="revertChanges()" [disabled]="ocGenerated" title="Deshacer">
-          <i class="bi bi-arrow-clockwise"></i>
-        </button>
-        <button type="button" class="btn btn-sm btn-danger" (click)="deleteItem()" [disabled]="ocGenerated" title="Eliminar">
-          <i class="bi bi-trash"></i>
-        </button>
+          </button>
+          <button type="button" class="btn btn-sm btn-warning" (click)="revertChanges()" [disabled]="ocGenerated" title="Deshacer">
+            <i class="bi bi-arrow-clockwise"></i>
+          </button>
+          <button type="button" class="btn btn-sm btn-danger" (click)="deleteItem()" [disabled]="ocGenerated" title="Eliminar">
+            <i class="bi bi-trash"></i>
+          </button>
+        </div>
+
+        <!-- Fila 2: Datos de la cotización del proveedor -->
+        <div style="display: flex; align-items: center; gap: 10px; margin-top: 6px;">
+          <label class="form-label small mb-0" style="white-space: nowrap;">Fecha de Cotización:</label>
+          <input type="date" class="form-control form-control-sm" style="width: 150px;"
+                 [(ngModel)]="fechaCotizacion" [disabled]="ocGenerated"
+                 (ngModelChange)="onHeaderFieldChanged()">
+
+          <label class="form-label small mb-0" style="white-space: nowrap;"># Cotización:</label>
+          <input type="text" class="form-control form-control-sm" style="width: 150px;"
+                 [(ngModel)]="numCotizacion" [disabled]="ocGenerated"
+                 (ngModelChange)="onHeaderFieldChanged()" placeholder="Ej: 12345">
+
+          <label class="form-label small mb-0" style="white-space: nowrap;">Condiciones Pago:</label>
+          <select class="form-select form-select-sm" style="width: 220px;"
+                  [(ngModel)]="condicionesPago" [disabled]="ocGenerated"
+                  (ngModelChange)="onHeaderFieldChanged()">
+            <option value="">-- seleccione --</option>
+            <option *ngFor="let opt of condicionesPagoOpts" [value]="opt">{{ opt }}</option>
+          </select>
+
+          <label class="form-label small mb-0" style="white-space: nowrap;">Vigencia (días):</label>
+          <input type="number" class="form-control form-control-sm" style="width: 90px;" min="0"
+                 [(ngModel)]="vigenciaCotizacion" [disabled]="ocGenerated"
+                 (ngModelChange)="onHeaderFieldChanged()">
+        </div>
       </div>
 
       <!-- Grid con tamaño completo -->
@@ -144,6 +176,12 @@ export class DetalleItemsProveedorComponent {
   private materialsService = inject(MaterialsService);
   private catalogsService = inject(CatalogsService);
   private unsavedTracker = inject(UnsavedChangesTrackerService);
+  private costoIvaTooltip = inject(CostoIvaTooltipService);
+  private setupService    = inject(SetupService);
+  private condicionesPagoService = inject(CondicionesPagoService);
+  private ivaPercent: number = 0;
+  private ivaConfigurado: boolean = false;
+  condicionesPagoOpts: string[] = [];
 
   private params!: ICellRendererParams;
   private gridApi!: GridApi;
@@ -163,7 +201,15 @@ export class DetalleItemsProveedorComponent {
   selectedProviderObj: any = null;
   /** Snapshot del último proveedor "persistido" (params.data o BD o tras save) — usado por revertChanges. */
   private originalProviderId: number | null = null;
-  fechaProveedor: string = new Date().toISOString().split('T')[0];
+  // Datos de la cotización del proveedor (cabecera, viven en ocandreq, no en cada item)
+  fechaCotizacion: string = new Date().toISOString().split('T')[0];
+  numCotizacion: string = '';
+  condicionesPago: string = '';
+  vigenciaCotizacion: number | null = null;
+  private originalFechaCotizacion: string = new Date().toISOString().split('T')[0];
+  private originalNumCotizacion: string = '';
+  private originalCondicionesPago: string = '';
+  private originalVigenciaCotizacion: number | null = null;
 
   /** Slot dinámico: contiene cotizId, slotIndex, idProvider, folio, name. */
   private slotInfo: any = null;
@@ -287,6 +333,25 @@ export class DetalleItemsProveedorComponent {
 
     this.buildRowData();
     this.cargarCatalogosClasificacion();
+    const idCompany = this.signalsService.getRootSelectedBySidebar()();
+    // IVA viene del setup de la sucursal de la REQ que se está cotizando
+    if (this.idBranch) {
+      this.setupService.getWarehouseSetupByBranch(this.idBranch).subscribe({
+        next: (data: any) => {
+          this.ivaConfigurado = data?.iva !== null && data?.iva !== undefined;
+          this.ivaPercent = data?.iva ?? 0;
+        },
+        error: () => { this.ivaConfigurado = false; this.ivaPercent = 0; }
+      });
+    }
+    if (idCompany) {
+      this.condicionesPagoService.getByCompany(idCompany).subscribe({
+        next: (data) => {
+          this.condicionesPagoOpts = data.filter(c => c.active).map(c => `${c.descripcion} - ${c.cantidad}`);
+        },
+        error: () => { this.condicionesPagoOpts = []; }
+      });
+    }
     this.loadProviders().then(() => {
       if (this.selectedProviderId) {
         this.selectedProviderObj = this.providers.find(p => p.id === this.selectedProviderId) || null;
@@ -367,7 +432,8 @@ export class DetalleItemsProveedorComponent {
       oc: '',
       typeOC: '',
       comment: '',
-      datePostpone: ''
+      datePostpone: '',
+      masIva: false
     }));
     console.log('✅ buildRowData: rowData inicial:', this.rowData);
     this.updateTotal();
@@ -494,7 +560,7 @@ export class DetalleItemsProveedorComponent {
           row.codigoExterno = match.campo11 || '';
           row.compraMinima = match.minCompra || 0;
           row.costoUnitario = match.campo9 || 0;
-          row.costoTotal = (row.costoUnitario || 0) * (row.cantidadConfirmada || 0);
+          row.costoTotal = (row.costoUnitario || 0) * (row.masIva ? (1 + this.ivaPercent / 100) : 1) * (row.cantidadConfirmada || 0);
           row.proveedorXTablaId = match.id || 0;
           row.proveedorXTablaObj = match;
         } else {
@@ -633,6 +699,11 @@ export class DetalleItemsProveedorComponent {
       this.cotizacionSaved = true;
       this.hasUnsavedChanges = false;
       this.originalProviderId = this.selectedProviderId;
+      // Snapshot de los datos de cotización del proveedor (cabecera)
+      this.originalFechaCotizacion = this.fechaCotizacion;
+      this.originalNumCotizacion = this.numCotizacion;
+      this.originalCondicionesPago = this.condicionesPago;
+      this.originalVigenciaCotizacion = this.vigenciaCotizacion;
       const providerName = this.getSelectedProviderName();
 
       // ✅ Notificar al padre que el slot quedó guardado (actualiza providerSlots y UI)
@@ -677,10 +748,6 @@ export class DetalleItemsProveedorComponent {
   }
 
   private async saveCotizOrOC(type: 'COTIZ' | 'OC'): Promise<string> {
-    if (type === 'COTIZ' && this.savedOcId > 0) {
-      await lastValueFrom(this.ocandreqsService.deleteOcAndReq(this.savedOcId)).catch(() => {});
-      this.savedOcId = 0;
-    }
     const idRoot = this.signalsService.getRootSelectedBySidebar()();
     const idBranch = this.signalsService.getBranchSelectedBySidebar()();
     // ✅ Nueva nomenclatura de folio: ${type}-{branchPrefix}-P{pedimentoNum}-PRO{idProvider}
@@ -691,12 +758,37 @@ export class DetalleItemsProveedorComponent {
     const ocPayload = {
       idRoot, folio, typeReference: type === 'OC' ? 'branch' : 'delison', idReference: type === 'OC' ? (idBranch || 0) : (this.params.data.cotizacionId || 0),
       idReq: this.params.data.requisitionId || 0, dateCreate, idProvider: this.selectedProviderId, solicit: providerName.substring(0, 50),
-      idDepartament: 0, delivery: 'NO APLICA', deliveryTime: '1 DAY', typeOc: 'INSUMOS', idPayment: 0, idCurrency: 0, type, datesupply: this.fechaProveedor, active: true
+      idDepartament: 0, delivery: 'NO APLICA', deliveryTime: '1 DAY', typeOc: 'INSUMOS', idPayment: 0, idCurrency: 0, type, datesupply: this.fechaCotizacion, active: true,
+      // Datos de la cotización del proveedor (cabecera)
+      numCotizacion: this.numCotizacion || '',
+      condicionesPago: this.condicionesPago || '',
+      vigenciaCotizacion: this.vigenciaCotizacion ?? null
     };
-    const created: any = await lastValueFrom(this.ocandreqsService.addOcAndReq(ocPayload));
-    console.log('🔑 Respuesta addOcAndReq:', JSON.stringify(created));
-    const newOcId = Number(created?.id ?? created?.data?.id ?? created?.project?.id);
-    console.log('🔑 newOcId calculado:', newOcId);
+    let newOcId: number;
+    if (type === 'COTIZ' && this.savedOcId > 0) {
+      // UPDATE: GET del registro completo, fusionar cambios y PUT
+      const existing: any = await lastValueFrom(this.ocandreqsService.getDetailedReq(this.savedOcId));
+      const merged = {
+        ...existing,
+        folio,
+        idProvider: this.selectedProviderId,
+        solicit: providerName.substring(0, 50),
+        datesupply: this.fechaCotizacion,
+        dateModified: new Date().toISOString(),
+        // Datos de la cotización del proveedor (cabecera)
+        numCotizacion: this.numCotizacion || '',
+        condicionesPago: this.condicionesPago || '',
+        vigenciaCotizacion: this.vigenciaCotizacion ?? null,
+      };
+      await lastValueFrom(this.ocandreqsService.updateOcAndReq(this.savedOcId, merged));
+      newOcId = this.savedOcId;
+    } else {
+      // INSERT: primera vez, crea registro nuevo
+      const created: any = await lastValueFrom(this.ocandreqsService.addOcAndReq(ocPayload));
+      console.log('🔑 Respuesta addOcAndReq:', JSON.stringify(created));
+      newOcId = Number(created?.id ?? created?.data?.id ?? created?.project?.id);
+      console.log('🔑 newOcId calculado:', newOcId);
+    }
     const gridRows: any[] = [];
     this.gridApi.forEachNode((node: any) => gridRows.push(node.data));
     const rowsForDetails = type === 'OC' ? gridRows.filter((row: any) => this.AUTHORIZED_TYPES.includes(row.typeOC)) : gridRows;
@@ -707,19 +799,37 @@ export class DetalleItemsProveedorComponent {
       const datePostpone = weeks > 0 ? d.toISOString().split('T')[0] : '';
       return {
         idMovement: newOcId, idSupplie: row.idSupplie || 0, idProvider: this.selectedProviderId, nameProvider: providerName, quantity: parseFloat(row.cantidadConfirmada) || 0,
-        price: parseFloat(row.costoUnitario) || 0, type, recurrent: row.recurrent || 'Recurrente', nameArticle: row.articulo || '', numArticle: String(row.numArticulo || ''), observation: String(row.codigoExterno ?? '').trim(), typeOc: row.typeOC || '', comment: row.comment || '', tiempoEntrega: row.tiempoEntrega > 0 ? String(row.tiempoEntrega) : '0', compraMinima: isNaN(parseInt(String(row.compraMinima))) ? 0 : parseInt(String(row.compraMinima)), caducidadMinimaRequerida: row.caducidadMinimaRequerida || '', datePostpone
+        price: parseFloat(row.costoUnitario) || 0, type, recurrent: row.recurrent || 'Recurrente', nameArticle: row.articulo || '', numArticle: String(row.numArticulo || ''), observation: String(row.codigoExterno ?? '').trim(), typeOc: row.typeOC || '', comment: row.comment || '', tiempoEntrega: row.tiempoEntrega > 0 ? String(row.tiempoEntrega) : '0', compraMinima: isNaN(parseInt(String(row.compraMinima))) ? 0 : parseInt(String(row.compraMinima)), caducidadMinimaRequerida: row.caducidadMinimaRequerida || '', datePostpone,
+        masIva: row.masIva ?? false
       };
     });
-    console.log('📝 saveCotizOrOC: Guardando', details.length, 'items con estos datos:');
-    console.log(JSON.stringify(details, null, 2));
+    // Fetch current DB items to update in place (prevents delete+reinsert duplication)
+    const dbItemsBySupplieId = new Map<number, any>();
+    if (type === 'COTIZ' && this.savedOcId > 0) {
+      const currentDbItems: any[] = await lastValueFrom(this.ocandreqsService.getReqItems(this.savedOcId));
+      currentDbItems.forEach(item => dbItemsBySupplieId.set(item.idSupplie, item));
+    }
+    console.log('📝 saveCotizOrOC: Guardando', details.length, 'items, existentes en BD:', dbItemsBySupplieId.size);
     for (const d of details) {
-      console.log('💾 saveCotizOrOC: Guardando item:', d);
       try {
-        await lastValueFrom(this.ocandreqsService.addReqItem(d));
-        console.log('✅ saveCotizOrOC: Item guardado exitosamente');
+        const existingDbItem = dbItemsBySupplieId.get(d.idSupplie);
+        if (existingDbItem) {
+          await lastValueFrom(this.ocandreqsService.updateReqItem(String(existingDbItem.id), d));
+          dbItemsBySupplieId.delete(d.idSupplie);
+          console.log('✅ saveCotizOrOC: Item actualizado id:', existingDbItem.id);
+        } else {
+          await lastValueFrom(this.ocandreqsService.addReqItem(d));
+          console.log('✅ saveCotizOrOC: Item nuevo insertado');
+        }
       } catch (err) {
         console.error('❌ saveCotizOrOC: Error guardando item:', err);
       }
+    }
+    // Soft-delete DB items that were removed from the grid
+    if (dbItemsBySupplieId.size > 0) {
+      await Promise.all([...dbItemsBySupplieId.values()].map(item =>
+        lastValueFrom(this.ocandreqsService.deleteReqItem(item.id)).catch(() => {})
+      ));
     }
 
     // Refrescar proveedorXTablaObj desde BD antes del PUT para preservar active/campo7 ya modificados
@@ -829,7 +939,15 @@ export class DetalleItemsProveedorComponent {
           this.selectedProviderObj = this.providers.find(p => p.id === existing.idProvider) || null;
           this.originalProviderId = existing.idProvider;
         }
-        if (existing.datesupply) this.fechaProveedor = String(existing.datesupply).substring(0, 10);
+        if (existing.datesupply) this.fechaCotizacion = String(existing.datesupply).substring(0, 10);
+        // Cargar datos de la cotización del proveedor (cabecera de ocandreq)
+        this.numCotizacion = existing.numCotizacion ?? '';
+        this.condicionesPago = existing.condicionesPago ?? '';
+        this.vigenciaCotizacion = existing.vigenciaCotizacion ?? null;
+        this.originalFechaCotizacion = this.fechaCotizacion;
+        this.originalNumCotizacion = this.numCotizacion;
+        this.originalCondicionesPago = this.condicionesPago;
+        this.originalVigenciaCotizacion = this.vigenciaCotizacion;
         await this.loadSavedItems(existing.id);
         if (existing.idProvider) await this.syncProveedorXTablaFields(existing.idProvider);
         this.setArticulosPedimentoLocked(true);
@@ -853,7 +971,10 @@ export class DetalleItemsProveedorComponent {
       const mappedData = items.map((item: any) => ({
         id: item.id || 0, idSupplie: item.id_supplie || item.idSupplie || 0, recurrent: item.recurrent || 'Recurrente', active: item.active !== false, numArticulo: item.numarticle || item.numArticle || '', articulo: item.namearticle || item.description || item.nameArticle || '',
         codigoExterno: item.observation ?? '', proveedorXTablaId: 0, costoUnitario: item.price || 0, compraMinima: item.compraMinima ?? item.compraminima ?? 0, tiempoEntrega: parseInt(item.tiempoentrega ?? item.tiempoEntrega ?? '0') || 0,
-        cantidadConfirmada: item.quantity || 0, costoTotal: item.total || 0, autorizado: item.autorizado || false, oc: '', typeOC: item.typeoc || item.typeOc || '', comment: item.comment || ''
+        cantidadConfirmada: item.quantity || 0,
+        costoTotal: (item.masIva ?? false) ? (item.price || 0) * (1 + this.ivaPercent / 100) * (item.quantity || 0) : (item.total || 0),
+        autorizado: item.autorizado || false, oc: '', typeOC: item.typeoc || item.typeOc || '', comment: item.comment || '',
+        masIva: item.masIva ?? false
       }));
 
       console.log('✅ loadSavedItems: Datos mapeados:', mappedData);
@@ -880,10 +1001,20 @@ export class DetalleItemsProveedorComponent {
     this.selectedProviderObj = this.originalProviderId
       ? (this.providers.find(p => p.id === this.originalProviderId) || null)
       : null;
+    // Restaurar datos de la cotización del proveedor (cabecera)
+    this.fechaCotizacion = this.originalFechaCotizacion;
+    this.numCotizacion = this.originalNumCotizacion;
+    this.condicionesPago = this.originalCondicionesPago;
+    this.vigenciaCotizacion = this.originalVigenciaCotizacion;
     this.refreshFilteredProviders();
     this.hasUnsavedChanges = false;
     this.gridApi?.setGridOption('rowData', this.rowData);
   }
+
+  onHeaderFieldChanged(): void {
+    this.hasUnsavedChanges = true;
+  }
+
   deleteItem() { alert('Eliminación no implementada.'); }
 
   get colDefs(): ColDef[] {
@@ -892,7 +1023,7 @@ export class DetalleItemsProveedorComponent {
     this._colDefs = [
       { field: 'active', headerName: 'Activo', width: 120, cellRenderer: 'agCheckboxCellRenderer', cellEditor: 'agCheckboxCellEditor', editable: !this.ocGenerated },
       {
-        field: 'numArticulo', headerName: '# interno de articulo', width: 169,
+        field: 'numArticulo', headerName: '# interno de articulo', width: 169, hide: true,
         cellStyle: (p: any) => String(p.value || '').toUpperCase().startsWith('NUPNPN')
           ? { cursor: 'pointer', backgroundColor: '#fff9e6', textDecoration: 'underline', color: '#b8860b' }
           : null,
@@ -973,9 +1104,10 @@ export class DetalleItemsProveedorComponent {
           const val = parseFloat(params.newValue);
           if (isNaN(val) || val <= 0) { alerts.reqErrorToast('Costo inválido', 'El costo unitario debe ser mayor que cero'); return false; }
           params.data.costoUnitario = val;
-          params.data.costoTotal = val * (params.data.cantidadConfirmada || 0);
+          params.data.costoTotal = val * (params.data.masIva ? (1 + this.ivaPercent / 100) : 1) * (params.data.cantidadConfirmada || 0);
           return true;
         } },
+      { field: 'masIva', headerName: '+ IVA', width: 100, cellRenderer: 'agCheckboxCellRenderer', cellEditor: 'agCheckboxCellEditor', editable: !this.ocGenerated },
       { field: 'costoTotal', headerName: 'Costo Total', width: 170,
         valueFormatter: (params: any) => {
           if (!this.selectedProviderId) return '-';
@@ -1020,6 +1152,19 @@ export class DetalleItemsProveedorComponent {
     },
     defaultColDef: { resizable: true, sortable: true, filter: true },
     onCellEditingStarted: () => { if (this.ocGenerated) this.gridApi?.stopEditing(true); },
+    onCellMouseOver: (event: any) => {
+      if (event.colDef?.field === 'costoUnitario' && event.data?.masIva) {
+        const cellEl = event.event?.target as HTMLElement;
+        if (cellEl) {
+          const costo = event.data?.costoUnitario ?? 0;
+          const conIva = costo * (1 + this.ivaPercent / 100);
+          this.costoIvaTooltip.show(cellEl.getBoundingClientRect(), conIva);
+        }
+      }
+    },
+    onCellMouseOut: (event: any) => {
+      if (event.colDef?.field === 'costoUnitario') this.costoIvaTooltip.hide();
+    },
     // Master-detail: solo los artículos nuevos (NUPNPN) se expanden con la cascada de clasificación
     masterDetail: true,
     isRowMaster: (dataItem: any) =>
@@ -1106,9 +1251,20 @@ export class DetalleItemsProveedorComponent {
     this.filteredProviders = result;
   }
   onCellValueChanged(event: any) {
+    // Validación: si marca +IVA pero la sucursal no tiene IVA configurado, revertir y alertar
+    if (event.column.getColId() === 'masIva' && event.newValue === true && !this.ivaConfigurado) {
+      alerts.basicAlert(
+        'IVA no configurado',
+        `Para aplicar IVA necesitas definirlo en configuración para la sucursal "${this.branchName}".`,
+        'warning'
+      );
+      event.data.masIva = false;
+      this.gridApi.refreshCells({ rowNodes: [event.node], force: true });
+      return;
+    }
     this.hasUnsavedChanges = true;
-    if (event.column.getColId() === 'costoUnitario' || event.column.getColId() === 'cantidadConfirmada') {
-      const row = event.data; row.costoTotal = (row.costoUnitario || 0) * (row.cantidadConfirmada || 0);
+    if (event.column.getColId() === 'costoUnitario' || event.column.getColId() === 'cantidadConfirmada' || event.column.getColId() === 'masIva') {
+      const row = event.data; row.costoTotal = (row.costoUnitario || 0) * (row.masIva ? (1 + this.ivaPercent / 100) : 1) * (row.cantidadConfirmada || 0);
       // Usar force: false para actualizar datos sin destruir el editor (evita perder el focus)
       this.gridApi.refreshCells({ rowNodes: [event.node], force: false });
     }

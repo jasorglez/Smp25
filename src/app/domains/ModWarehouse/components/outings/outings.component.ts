@@ -166,9 +166,11 @@ export class OutingsComponent implements OnInit, CanComponentDeactivate {
   }
 
   getSetupData() {
-    this.setupService.getWarehouseSetup(this.idRoot).subscribe({
+    const idBranch = this.signalsService.getBranchSelectedBySidebar()();
+    if (!idBranch) return;
+    this.setupService.getWarehouseSetupByBranch(idBranch).subscribe({
       next: (data: any) => {
-        this.projectOrBranch = data[0].projectOrBranch;
+        this.projectOrBranch = data?.projectOrBranch;
         this.typeReference = this.projectOrBranch ? 'project' : 'branch';
       },
       error: (err) => {

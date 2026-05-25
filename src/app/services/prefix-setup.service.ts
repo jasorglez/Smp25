@@ -16,6 +16,12 @@ export interface PrefixSetup {
   consecutiveCotiz?: number;
   prefixOc?: string;
   consecutiveOc?: number;
+  prefixOcProveedor?: string;
+  consecutiveOcProveedor?: number;
+  prefixCompraInmediata?: string;
+  consecutiveCompraInmediata?: number;
+  prefixTraspaso?: string;
+  consecutiveTraspaso?: number;
   active?: boolean;
 }
 

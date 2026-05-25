@@ -2,8 +2,24 @@
   <div class="row">
     <!-- Botones CRUD izquierda -->
     <nav class="col-auto d-flex flex-column align-items-start">
-      <button type="button" class="btn btn-warning mb-2" (click)="refreshData()" title="Actualizar">
-        <i class="bi bi-arrow-clockwise" style="font-size: 1rem;"></i>
+      <button type="button"
+              class="btn btn-primary mb-2 position-relative"
+              [disabled]="!hasUnsavedChanges"
+              (click)="saveConditions()"
+              title="Guardar cambios">
+        <i class="bi bi-floppy"></i>
+        <span *ngIf="hasUnsavedChanges"
+              class="position-absolute top-0 start-100 translate-middle p-2 bg-danger border border-light rounded-circle">
+          <span class="visually-hidden">Hay cambios sin guardar</span>
+        </span>
+      </button>
+
+      <button type="button"
+              class="btn btn-warning mb-2"
+              [disabled]="!hasUnsavedChanges"
+              (click)="revertConditions()"
+              title="Deshacer cambios">
+        <i class="bi bi-arrow-counterclockwise"></i>
       </button>
     </nav>
 
@@ -21,8 +37,7 @@
         [localeText]="AG_GRID_LOCALE_ES"
         [rowSelection]="rowSelection"
         (gridReady)="onGridReady($event)"
-        (selectionChanged)="onSelectionChanged($event)"
-        (cellValueChanged)="onCellValueChanged($event)">
+        (selectionChanged)="onSelectionChanged($event)">
       </ag-grid-angular>
     </div>
   </div>
