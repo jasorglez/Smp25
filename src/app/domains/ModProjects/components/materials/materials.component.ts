@@ -957,27 +957,21 @@ export class MaterialsComponent implements CanComponentDeactivate {
         if (result.isConfirmed) {
           this.materialsService
             .deleteMaterial(id)
-            .pipe(
-              catchError((error) => {
-                alerts.basicAlert(
-                  'Eliminar material',
-                  'Error al eliminar el material.',
-                  'error'
-                );
-                console.error(error);
-                return EMPTY;
-              })
-            )
-            .subscribe(() => {
-              alerts.basicAlert(
-                'Material eliminado',
-                'El material se eliminó correctamente',
-                'success'
-              );
-              this.trackingService.addLog(this.trackingService.getnameComp(),'Delete Registro en Materiales', 'Menu Administracion Materiales',  this.trackingService.getEmail());
-              this.obtenerDatos();
-              this.notSavedChanges = false;
-              this.selectedRowData = null;
+            .subscribe({
+              next: () => {
+                alerts.basicAlert('Material eliminado', 'El material se eliminó correctamente', 'success');
+                this.trackingService.addLog(this.trackingService.getnameComp(),'Delete Registro en Materiales', 'Menu Administracion Materiales', this.trackingService.getEmail());
+                this.obtenerDatos();
+                this.notSavedChanges = false;
+                this.selectedRowData = null;
+              },
+              error: (err) => {
+                if (err?.status === 409) {
+                  alerts.basicAlert('No se puede eliminar', 'Este producto ya tiene ventas registradas en el POS. No es posible borrarlo.', 'warning');
+                } else {
+                  alerts.basicAlert('Error', 'Error al eliminar el material.', 'error');
+                }
+              }
             });
         }
       });
