@@ -85,5 +85,5 @@ export const environment = {
     // publicKey: 'TEST-4399133a-4676-42a2-ab85-d946370bf96a',
   },
 
-  version: '6.32 (25 Mayo 2026 14:00) fix(materiales): delete activa rowSelection, guard doble-clic guardar',
+  version: '6.33 (25 Mayo 2026 15:00) fix(materiales): delete filtra active, valida ventas antes de borrar',
 };
