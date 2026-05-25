@@ -1,4 +1,4 @@
-<div class="col-12 py-4" style="max-width: 560px; margin: 0 auto;">
+<div class="col-12 py-4" style="max-width: 580px; margin: 0 auto;">
 
   <!-- Sesión activa -->
   <div *ngIf="existingSession" class="card shadow-sm p-4 text-center">
@@ -8,8 +8,15 @@
     <h5 class="mb-1 fw-bold">Turno activo</h5>
     <p class="text-muted mb-0">{{ existingSession.storeName }}</p>
     <p class="text-muted mb-1 small">{{ existingSession.cashRegisterDesc }}</p>
-    <p class="text-muted small mb-3">
+    <p class="text-muted small mb-0" *ngIf="existingSession.cajero">
+      <i class="bi bi-person"></i> {{ existingSession.cajero }}
+    </p>
+    <p class="text-muted small mb-1">
       <i class="bi bi-clock"></i> Iniciado: {{ existingSession.startedAt | date:'dd/MM/yyyy HH:mm' }}
+    </p>
+    <p class="text-muted small mb-3" *ngIf="existingSession.fondoInicial">
+      <i class="bi bi-cash-coin"></i> Fondo inicial:
+      <strong>{{ existingSession.fondoInicial | currency:'MXN':'symbol-narrow':'1.2-2' }}</strong>
     </p>
 
     <div class="alert alert-warning py-2 small mb-3" *ngIf="pendingCount > 0">
@@ -22,8 +29,11 @@
       <button class="btn btn-success" (click)="continueSession()">
         <i class="bi bi-play-fill"></i> Continuar turno
       </button>
-      <button class="btn btn-outline-danger" (click)="endSession()">
-        <i class="bi bi-stop-fill"></i> Cerrar sesión
+      <button class="btn btn-outline-secondary" (click)="refreshCatalog()" [disabled]="loading">
+        <i class="bi bi-arrow-repeat"></i> Actualizar catálogo
+      </button>
+      <button class="btn btn-outline-danger" (click)="openCierreModal()" [disabled]="loading">
+        <i class="bi bi-door-closed"></i> Cerrar turno
       </button>
     </div>
   </div>
@@ -50,7 +60,7 @@
           [(ngModel)]="selectedStoreId">
         </ng-select>
       </div>
-      <div class="col-12">
+      <div class="col-12 mb-2">
         <label class="form-label fw-semibold">Caja</label>
         <ng-select
           [items]="cashRegisters"
@@ -61,6 +71,20 @@
           [disabled]="cashRegisters.length === 0">
         </ng-select>
       </div>
+      <div class="col-12 mb-2">
+        <label class="form-label fw-semibold">Cajero / Nombre <small class="text-muted fw-normal">(opcional)</small></label>
+        <input type="text" class="form-control" [(ngModel)]="cajeroNombre"
+          placeholder="Nombre de quien abre caja..." />
+      </div>
+      <div class="col-12">
+        <label class="form-label fw-semibold">Fondo inicial (efectivo en caja)</label>
+        <div class="input-group">
+          <span class="input-group-text">$</span>
+          <input type="number" class="form-control" [(ngModel)]="fondoInicial"
+            placeholder="0.00" min="0" step="0.01" />
+        </div>
+        <div class="form-text">Cantidad de efectivo que hay en la caja al iniciar el turno.</div>
+      </div>
     </div>
 
     <button
@@ -69,7 +93,7 @@
       [disabled]="!selectedStoreId || !selectedCashRegisterId || loading">
       <span *ngIf="loading" class="spinner-border spinner-border-sm me-1"></span>
       <i *ngIf="!loading" class="bi bi-play-fill me-1"></i>
-      {{ loading ? 'Descargando datos...' : 'Iniciar turno' }}
+      {{ loading ? 'Iniciando turno...' : 'Iniciar turno' }}
     </button>
 
     <p class="text-muted small mt-2 mb-0 text-center">
@@ -78,4 +102,144 @@
     </p>
   </div>
 
+</div>
+
+<!-- ══ Modal Cierre de Turno ══════════════════════════════════════════════ -->
+<div class="modal-backdrop fade show" *ngIf="showCierreModal" style="z-index:1040;"></div>
+
+<div class="modal fade show d-block" *ngIf="showCierreModal" tabindex="-1" style="z-index:1050;">
+  <div class="modal-dialog modal-dialog-centered" style="max-width:520px;">
+    <div class="modal-content">
+
+      <div class="modal-header bg-danger text-white">
+        <h5 class="modal-title">
+          <i class="bi bi-door-closed me-2"></i> Cierre de Turno
+        </h5>
+        <button type="button" class="btn-close btn-close-white" (click)="closeCierreModal()"></button>
+      </div>
+
+      <div class="modal-body">
+
+        <!-- Spinner mientras carga -->
+        <div *ngIf="loadingCierre" class="text-center py-4">
+          <span class="spinner-border text-danger"></span>
+          <p class="mt-2 text-muted small">Calculando totales...</p>
+        </div>
+
+        <!-- Resumen del turno -->
+        <ng-container *ngIf="!loadingCierre">
+
+          <!-- Info del turno -->
+          <div class="d-flex justify-content-between small text-muted mb-3">
+            <span><i class="bi bi-shop"></i> {{ existingSession?.storeName }}</span>
+            <span><i class="bi bi-pc-display-horizontal"></i> {{ existingSession?.cashRegisterDesc }}</span>
+          </div>
+          <div class="small text-muted mb-3" *ngIf="existingSession?.cajero">
+            <i class="bi bi-person"></i> {{ existingSession?.cajero }}
+          </div>
+
+          <!-- Fondo inicial -->
+          <div class="d-flex justify-content-between align-items-center border-bottom pb-2 mb-2">
+            <span class="text-muted">Fondo inicial</span>
+            <span class="fw-semibold">{{ (existingSession?.fondoInicial || 0) | currency:'MXN':'symbol-narrow':'1.2-2' }}</span>
+          </div>
+
+          <!-- Ventas por tipo (si ya tenemos resumen del servidor) -->
+          <ng-container *ngIf="turnoResumen?.ventasTotal !== null && turnoResumen?.ventasTotal !== undefined">
+            <div class="d-flex justify-content-between small border-bottom pb-1 mb-1">
+              <span><i class="bi bi-cash text-success"></i> Ventas efectivo</span>
+              <span>{{ (turnoResumen.ventasEfectivo || 0) | currency:'MXN':'symbol-narrow':'1.2-2' }}</span>
+            </div>
+            <div class="d-flex justify-content-between small border-bottom pb-1 mb-1" *ngIf="turnoResumen.ventasTarjeta">
+              <span><i class="bi bi-credit-card text-primary"></i> Ventas tarjeta</span>
+              <span>{{ turnoResumen.ventasTarjeta | currency:'MXN':'symbol-narrow':'1.2-2' }}</span>
+            </div>
+            <div class="d-flex justify-content-between small border-bottom pb-1 mb-1" *ngIf="turnoResumen.ventasCheque">
+              <span><i class="bi bi-bank text-secondary"></i> Ventas cheque</span>
+              <span>{{ turnoResumen.ventasCheque | currency:'MXN':'symbol-narrow':'1.2-2' }}</span>
+            </div>
+            <div class="d-flex justify-content-between small border-bottom pb-1 mb-1" *ngIf="turnoResumen.ventasVales">
+              <span><i class="bi bi-ticket-perforated text-warning"></i> Ventas vales</span>
+              <span>{{ turnoResumen.ventasVales | currency:'MXN':'symbol-narrow':'1.2-2' }}</span>
+            </div>
+            <div class="d-flex justify-content-between small border-bottom pb-1 mb-1" *ngIf="turnoResumen.ventasMixto">
+              <span><i class="bi bi-shuffle text-info"></i> Ventas mixto</span>
+              <span>{{ turnoResumen.ventasMixto | currency:'MXN':'symbol-narrow':'1.2-2' }}</span>
+            </div>
+            <div class="d-flex justify-content-between fw-bold border-bottom pb-2 mb-3">
+              <span>Total ventas del turno</span>
+              <span class="text-success">{{ (turnoResumen.ventasTotal || 0) | currency:'MXN':'symbol-narrow':'1.2-2' }}</span>
+            </div>
+          </ng-container>
+
+          <!-- Efectivo esperado en caja -->
+          <div class="alert alert-light border mb-3 py-2">
+            <div class="d-flex justify-content-between small">
+              <span>Fondo inicial</span>
+              <span>{{ (existingSession?.fondoInicial || 0) | currency:'MXN':'symbol-narrow':'1.2-2' }}</span>
+            </div>
+            <div class="d-flex justify-content-between small">
+              <span>+ Ventas efectivo</span>
+              <span>{{ (turnoResumen?.ventasEfectivo || 0) | currency:'MXN':'symbol-narrow':'1.2-2' }}</span>
+            </div>
+            <div class="d-flex justify-content-between fw-bold border-top mt-1 pt-1">
+              <span>Efectivo esperado</span>
+              <span>{{ ((existingSession?.fondoInicial || 0) + (turnoResumen?.ventasEfectivo || 0)) | currency:'MXN':'symbol-narrow':'1.2-2' }}</span>
+            </div>
+          </div>
+
+          <!-- Conteo real -->
+          <div class="mb-3">
+            <label class="form-label fw-semibold">
+              <i class="bi bi-calculator"></i> Efectivo contado en caja
+            </label>
+            <div class="input-group">
+              <span class="input-group-text">$</span>
+              <input type="number" class="form-control form-control-lg"
+                [(ngModel)]="efectivoContado"
+                placeholder="0.00" min="0" step="0.01" autofocus />
+            </div>
+          </div>
+
+          <!-- Diferencia -->
+          <div *ngIf="efectivoContado !== null" class="mb-3">
+            <div class="d-flex justify-content-between align-items-center p-2 rounded"
+              [class.bg-success]="diferencia >= 0"
+              [class.bg-danger]="diferencia < 0"
+              style="color:white;">
+              <span class="fw-bold">
+                {{ diferencia >= 0 ? 'Sobrante' : 'Faltante' }}
+              </span>
+              <span class="fs-5 fw-bold">
+                {{ (diferencia < 0 ? -diferencia : diferencia) | currency:'MXN':'symbol-narrow':'1.2-2' }}
+              </span>
+            </div>
+          </div>
+
+          <!-- Notas -->
+          <div class="mb-2">
+            <label class="form-label small">Notas de cierre <span class="text-muted">(opcional)</span></label>
+            <textarea class="form-control form-control-sm" rows="2"
+              [(ngModel)]="notasCierre"
+              placeholder="Observaciones del cajero..."></textarea>
+          </div>
+
+        </ng-container>
+      </div>
+
+      <div class="modal-footer">
+        <button class="btn btn-outline-secondary" (click)="closeCierreModal()" [disabled]="loadingCierre">
+          Cancelar
+        </button>
+        <button class="btn btn-danger"
+          (click)="confirmarCierre()"
+          [disabled]="efectivoContado === null || loadingCierre">
+          <span *ngIf="loadingCierre" class="spinner-border spinner-border-sm me-1"></span>
+          <i *ngIf="!loadingCierre" class="bi bi-door-closed me-1"></i>
+          Cerrar turno
+        </button>
+      </div>
+
+    </div>
+  </div>
 </div>

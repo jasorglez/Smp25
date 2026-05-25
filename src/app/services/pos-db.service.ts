@@ -1,7 +1,7 @@
 import { Injectable } from '@angular/core';
 
 const DB_NAME = 'pos-offline-db';
-const DB_VERSION = 1;
+const DB_VERSION = 2;
 
 export interface PosSession {
   id: 'current';
@@ -14,6 +14,9 @@ export interface PosSession {
   idCompany: number;
   idBranch: number;
   startedAt: string;
+  fondoInicial: number;
+  idTurno: number;
+  cajero?: string;
 }
 
 @Injectable({ providedIn: 'root' })
