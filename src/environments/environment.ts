@@ -85,5 +85,5 @@ export const environment = {
     // publicKey: 'TEST-4399133a-4676-42a2-ab85-d946370bf96a',
   },
 
-  version: '6.36 (26 Mayo 2026 02:30) feat(ventas): tab Familias y Subfamilias con permiso detallado',
+  version: '6.37 (26 Mayo 2026 11:45) fix(products): quitar alert de exito al guardar, solo en add/delete',
 };

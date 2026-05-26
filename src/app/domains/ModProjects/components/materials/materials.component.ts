@@ -886,11 +886,6 @@ export class MaterialsComponent implements CanComponentDeactivate {
         this.lastEditedRowId = 'SELECT_MAX_ID';
       }
 
-      alerts.basicAlert(
-        'Datos actualizados',
-        'Se han actualizado los datos correctamente.',
-        'success'
-      );
       this.notSavedChanges = false;
       this.newlyAddedRows = [];
 
