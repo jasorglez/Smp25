@@ -85,5 +85,5 @@ export const environment = {
     // publicKey: 'TEST-4399133a-4676-42a2-ab85-d946370bf96a',
   },
 
-  version: '6.42 (26 Mayo 2026 18:00) feat(cotizaciones): columna familia en maestro filtra materiales del detalle',
+  version: '6.43 (26 Mayo 2026 18:15) fix(cotizaciones): confirmar antes de eliminar item en detalle',
 };

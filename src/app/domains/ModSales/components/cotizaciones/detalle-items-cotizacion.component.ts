@@ -364,8 +364,18 @@ export class DetalleItemsCotizacionComponent implements ICellRendererAngularComp
     this.gridApi.setGridOption('rowData', this.rowData);
   }
 
-  deleteRow() {
+  async deleteRow() {
     if (!this.selectedRow) return;
+    const res = await Swal.fire({
+      title: '¿Eliminar ítem?',
+      text: `"${this.selectedRow.nombreMaterial || 'Sin nombre'}"`,
+      icon: 'warning',
+      showCancelButton: true,
+      confirmButtonColor: '#dc3545',
+      confirmButtonText: 'Sí, eliminar',
+      cancelButtonText: 'Cancelar',
+    });
+    if (!res.isConfirmed) return;
     this.rowData = this.rowData.filter(r => r !== this.selectedRow);
     this.selectedRow = null;
     this.hasChanges  = true;
