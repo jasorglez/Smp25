@@ -1,7 +1,7 @@
 import { Component, OnInit, OnDestroy, inject, effect } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { Subscription } from 'rxjs';
+import { Subscription, combineLatest } from 'rxjs';
 import { AgGridModule } from 'ag-grid-angular';
 import { ColDef, GridApi, GridReadyEvent } from 'ag-grid-enterprise';
 import { AG_GRID_LOCALE_ES } from 'assets/i18n/ag-grid.locale.es';
@@ -18,6 +18,7 @@ import { CustomersService } from 'app/services/customers.service';
 import { MaterialsService } from 'app/services/materials.service';
 import { AuthService } from 'app/services/auth.service';
 import { ConditionsPendingService } from 'app/services/conditions-pending.service';
+import { EntregasPendingService } from 'app/services/entregas-pending.service';
 import { alerts } from 'app/helpers/alerts';
 import { lastValueFrom } from 'rxjs';
 
@@ -50,6 +51,7 @@ export class PurchaseOrderDelisonComponent implements OnInit, OnDestroy {
   private materialsService        = inject(MaterialsService);
   public  authService             = inject(AuthService);
   private conditionsPendingService = inject(ConditionsPendingService);
+  private entregasPendingService   = inject(EntregasPendingService);
 
   private pendingSub: Subscription;
 
@@ -90,9 +92,10 @@ export class PurchaseOrderDelisonComponent implements OnInit, OnDestroy {
   };
 
   constructor() {
-    this.pendingSub = this.conditionsPendingService.hasPending$.subscribe(
-      (has) => (this.hasUnsavedChanges = has)
-    );
+    this.pendingSub = combineLatest([
+      this.conditionsPendingService.hasPending$,
+      this.entregasPendingService.hasPending$,
+    ]).subscribe(([condiciones, entregas]) => (this.hasUnsavedChanges = condiciones || entregas));
 
     effect(() => {
       const newIdBranch = this.signalsService.getBranchSelectedBySidebar()();
@@ -469,35 +472,40 @@ export class PurchaseOrderDelisonComponent implements OnInit, OnDestroy {
 
   async saveConditions(): Promise<void> {
     const pending = this.conditionsPendingService.getPending();
-    if (!pending.length) return;
 
     try {
-      await Promise.all(
-        pending.map(({ item, condicionesPago }) => {
-          // Eliminar campos sintéticos del frontend antes de enviar al backend
-          const { conditions, ...cleanItem } = item;
-          return lastValueFrom(
-            this.ocAndReqsService.updateReqItem(
-              String(item.id),
-              { ...cleanItem, diasCondicionCompra: condicionesPago }
-            )
-          );
-        })
-      );
-      this.conditionsPendingService.clear();
-      alerts.reqSuccessToast('Guardado', 'Condiciones de compra actualizadas.');
+      if (pending.length) {
+        await Promise.all(
+          pending.map(({ item, condicionesPago }) => {
+            // Eliminar campos sintéticos del frontend antes de enviar al backend
+            const { conditions, ...cleanItem } = item;
+            return lastValueFrom(
+              this.ocAndReqsService.updateReqItem(
+                String(item.id),
+                { ...cleanItem, diasCondicionCompra: condicionesPago }
+              )
+            );
+          })
+        );
+        this.conditionsPendingService.clear();
+      }
+      // Persistir también las entregas del nivel 5 registradas como pendientes
+      await this.entregasPendingService.flush();
+      alerts.reqSuccessToast('Guardado', 'Cambios actualizados.');
     } catch {
-      alerts.reqErrorToast('Error', 'No se pudieron guardar las condiciones.');
+      alerts.reqErrorToast('Error', 'No se pudieron guardar los cambios.');
     }
   }
 
   revertConditions(): void {
     this.conditionsPendingService.clear();
+    this.entregasPendingService.clear();
     this.loadPurchaseOrders();
   }
 
   ngOnDestroy(): void {
     this.pendingSub.unsubscribe();
     this.conditionsPendingService.clear();
+    this.entregasPendingService.clear();
   }
 }

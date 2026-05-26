@@ -7,7 +7,9 @@ import { CustomersService } from 'app/services/customers.service';
 import { SetupOcService } from 'app/services/setup-oc.service';
 import { ConditionsPendingService } from 'app/services/conditions-pending.service';
 import { SignalsService } from 'app/services/signals.service';
-import { lastValueFrom } from 'rxjs';
+import { EntregaOcService } from 'app/services/entrega-oc.service';
+import { EntregasPendingService } from 'app/services/entregas-pending.service';
+import { lastValueFrom, Subscription } from 'rxjs';
 
 interface OcRow {
   id: number;
@@ -88,8 +90,14 @@ interface OcTooltipData {
       <div *ngIf="selectedArticleRow"
            style="flex: 0 0 220px; min-height: 0; border-top: 2px solid #2e7d32;
                   padding: 4px; display: flex; flex-direction: column; overflow: hidden;">
-        <div style="font-size: 0.78rem; font-weight: bold; color: #2e7d32; margin-bottom: 3px; flex-shrink: 0;">
-          Detalle de {{ selectedArticleRow.namearticle }}
+        <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 3px; flex-shrink: 0;">
+          <span style="font-size: 0.78rem; font-weight: bold; color: #2e7d32;">Detalle de {{ selectedArticleRow.namearticle }}</span>
+          <button [disabled]="!hasNivel3Changes"
+                  (click)="revertNivel3Changes()"
+                  style="font-size: 0.7rem; padding: 1px 7px; border: 1px solid #e67e22; border-radius: 4px;
+                         background: #fff3e0; color: #e67e22; cursor: pointer; line-height: 1.6;">
+            <i class="bi bi-arrow-counterclockwise"></i> Deshacer
+          </button>
         </div>
         <div style="flex: 1 1 auto; min-height: 0; position: relative; overflow: hidden;">
           <ag-grid-angular
@@ -112,6 +120,23 @@ export class OrdenesydetallesOcComponent implements OnDestroy {
   private setupOcService = inject(SetupOcService);
   private conditionsPendingService = inject(ConditionsPendingService);
   private signalsService = inject(SignalsService);
+  private entregaOcService = inject(EntregaOcService);
+  private entregasPendingService = inject(EntregasPendingService);
+
+  private entregasPendingSub: Subscription;
+
+  constructor() {
+    // Cuando se vacían las entregas pendientes (guardado global desde el nivel 1),
+    // se sincroniza el estado local del nivel 5.
+    this.entregasPendingSub = this.entregasPendingService.hasPending$.subscribe((has) => {
+      if (!has) {
+        this.hasNivel3Changes = false;
+        if (this.selectedArticleRow) {
+          this.originalNivel3Data = JSON.parse(JSON.stringify(this.nivel3Data));
+        }
+      }
+    });
+  }
 
   private internalParams: any;
   private gridApi!: GridApi;
@@ -131,6 +156,8 @@ export class OrdenesydetallesOcComponent implements OnDestroy {
   private originalItemsData: any[] = [];
   private changedItemIds = new Set<number>();
   private nivel3GridApi!: GridApi;
+  private originalNivel3Data: any[] = [];
+  hasNivel3Changes = false;
 
   // Cache de datos para tooltip por OC id
   private ocTooltipDataMap: Map<number, OcTooltipData> = new Map();
@@ -235,10 +262,14 @@ export class OrdenesydetallesOcComponent implements OnDestroy {
       field: 'conditions',
       headerName: 'Cantidad Entregas',
       width: 140,
-      editable: true,
+      // Bloqueada si el ítem ya tiene entregas guardadas (cambiar N desalinearía lo persistido)
+      editable: (p: any) => !((p.data?.entregasCount ?? 0) > 0),
       cellEditor: 'agRichSelectCellEditor',
       cellEditorParams: () => ({ values: this.conditionsOptions }),
       valueParser: (p) => { const n = Number(p.newValue); return isNaN(n) ? p.oldValue : n; },
+      cellStyle: (p: any) => ((p.data?.entregasCount ?? 0) > 0)
+        ? { backgroundColor: '#eeeeee', color: '#9e9e9e', cursor: 'not-allowed' }
+        : null,
     },
     { field: 'numarticle', headerName: '# Item OC', width: 140, hide: true },
     {
@@ -285,7 +316,6 @@ export class OrdenesydetallesOcComponent implements OnDestroy {
         return `${d}/${m}/${y}`;
       }
     },
-    { field: 'dateuse', headerName: 'Fecha Entrada Almacén', width: 150 },
     {
       headerName: 'PDF',
       width: 60,
@@ -336,6 +366,9 @@ export class OrdenesydetallesOcComponent implements OnDestroy {
       headerName: 'Fecha Entrega',
       width: 130,
       editable: true,
+      cellDataType: 'dateString',
+      cellEditor: 'agDateStringCellEditor',
+      valueFormatter: (p) => this.formatFechaDmy(p.value),
     },
     {
       field: 'cantidadRecibir',
@@ -373,12 +406,30 @@ export class OrdenesydetallesOcComponent implements OnDestroy {
         return div;
       },
     },
+    {
+      field: 'fechaEntradaAlmacen',
+      headerName: 'Fecha Entrada Almacén',
+      width: 160,
+      editable: true,
+      cellDataType: 'dateString',
+      cellEditor: 'agDateStringCellEditor',
+      valueFormatter: (p) => this.formatFechaDmy(p.value),
+    },
   ];
 
   nivel3GridOptions: any = {
     headerHeight: 28,
     rowHeight: 25,
     defaultColDef: { resizable: true, sortable: true },
+    onFirstDataRendered: (params: any) => params.api.autoSizeAllColumns(),
+    onCellValueChanged: (event: any) => {
+      if (event?.data) event.data.__touched = true;
+      this.hasNivel3Changes = true;
+      const idDetail = Number(this.selectedArticleRow?.id);
+      if (idDetail) {
+        this.entregasPendingService.set(idDetail, this.nivel3Data);
+      }
+    },
   };
 
   agInit(params: any): void {
@@ -451,6 +502,7 @@ export class OrdenesydetallesOcComponent implements OnDestroy {
     this.nivel3GridApi = params.api;
     if (this.nivel3Data.length) {
       this.nivel3GridApi.setGridOption('rowData', this.nivel3Data);
+      this.autosizeNivel3();
     }
   }
 
@@ -460,13 +512,74 @@ export class OrdenesydetallesOcComponent implements OnDestroy {
       return;
     }
     this.selectedArticleRow = articleRow;
-    this.buildNivel3Grid(articleRow);
+    this.loadNivel3Data(articleRow);
     if (this.itemsGridApi) {
       this.itemsGridApi.forEachNode((node: any) => {
         node.setRowHeight(node.data === articleRow ? undefined : 0);
       });
       this.itemsGridApi.onRowHeightChanged();
     }
+  }
+
+  private todayIso(): string {
+    const d = new Date();
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+  }
+
+  private emptyNivel3Row(): any {
+    const today = this.todayIso();
+    return { id: null, fechaEntrega: today, cantidadRecibir: null, notaFactura: '', totalEntrega: null, fechaEntradaAlmacen: today };
+  }
+
+  private autosizeNivel3(): void {
+    setTimeout(() => {
+      if (this.nivel3GridApi && !this.nivel3GridApi.isDestroyed()) {
+        this.nivel3GridApi.autoSizeAllColumns();
+      }
+    });
+  }
+
+  /** Carga las entregas guardadas del ítem y las mezcla con el scaffold de N filas (N = conditions). */
+  private loadNivel3Data(articleRow: any): void {
+    const count = Math.max(1, Number(articleRow?.conditions) || 0);
+    const idDetail = Number(articleRow?.id);
+
+    if (!idDetail) {
+      this.buildNivel3Grid(articleRow);
+      this.originalNivel3Data = JSON.parse(JSON.stringify(this.nivel3Data));
+      this.hasNivel3Changes = false;
+      return;
+    }
+
+    this.entregaOcService.getByDetail(idDetail).subscribe({
+      next: (saved) => {
+        const list = Array.isArray(saved) ? saved : [];
+        const rows: any[] = [];
+        for (let i = 0; i < count; i++) {
+          const s = list[i];
+          rows.push(s ? {
+            id: s.id ?? null,
+            fechaEntrega: s.fechaEntrega ?? '',
+            cantidadRecibir: s.cantidadRecibir ?? null,
+            notaFactura: s.notaFactura ?? '',
+            totalEntrega: s.totalEntrega ?? null,
+            fechaEntradaAlmacen: s.fechaEntradaAlmacen ?? '',
+          } : this.emptyNivel3Row());
+        }
+        this.nivel3Data = rows;
+        this.originalNivel3Data = JSON.parse(JSON.stringify(rows));
+        this.hasNivel3Changes = false;
+        if (this.nivel3GridApi) {
+          this.nivel3GridApi.setGridOption('rowData', this.nivel3Data);
+          this.autosizeNivel3();
+        }
+      },
+      error: () => {
+        this.buildNivel3Grid(articleRow);
+        this.originalNivel3Data = JSON.parse(JSON.stringify(this.nivel3Data));
+        this.hasNivel3Changes = false;
+      },
+    });
   }
 
   private buildNivel3Grid(articleRow: any, preserve: boolean = false): void {
@@ -476,23 +589,43 @@ export class OrdenesydetallesOcComponent implements OnDestroy {
     const newData: any[] = [];
     for (let i = 1; i <= count; i++) {
       const prior = existing[i - 1];
-      newData.push(prior ?? {
-        fechaEntrega: '',
-        cantidadRecibir: null,
-        notaFactura: '',
-        totalEntrega: null,
-      });
+      newData.push(prior ?? this.emptyNivel3Row());
     }
     this.nivel3Data = newData;
 
     if (this.nivel3GridApi) {
       this.nivel3GridApi.setGridOption('rowData', this.nivel3Data);
+      this.autosizeNivel3();
     }
+  }
+
+  /** Revierte las entregas del nivel 5 al último estado cargado/guardado y descarta los pendientes. */
+  revertNivel3Changes(): void {
+    this.nivel3Data = JSON.parse(JSON.stringify(this.originalNivel3Data));
+    this.hasNivel3Changes = false;
+    const idDetail = Number(this.selectedArticleRow?.id);
+    if (idDetail) {
+      this.entregasPendingService.remove(idDetail);
+    }
+    if (this.nivel3GridApi) {
+      this.nivel3GridApi.setGridOption('rowData', this.nivel3Data);
+    }
+  }
+
+  /** Muestra una fecha almacenada (yyyy-MM-dd) como DD/MM/YYYY. */
+  private formatFechaDmy(value: any): string {
+    if (!value) return '';
+    const str = String(value).trim();
+    const iso = str.match(/^(\d{4})-(\d{2})-(\d{2})/);
+    if (iso) return `${iso[3]}/${iso[2]}/${iso[1]}`;
+    return str;
   }
 
   private closeNivel3(): void {
     this.selectedArticleRow = null;
     this.nivel3Data = [];
+    this.originalNivel3Data = [];
+    this.hasNivel3Changes = false;
     if (this.itemsGridApi) {
       this.itemsGridApi.forEachNode((node: any) => node.setRowHeight(undefined));
       this.itemsGridApi.onRowHeightChanged();
@@ -741,6 +874,7 @@ export class OrdenesydetallesOcComponent implements OnDestroy {
 
   ngOnDestroy(): void {
     this.hideOcTooltip();
+    this.entregasPendingSub?.unsubscribe();
   }
 
   onRowClicked(event: any) {
