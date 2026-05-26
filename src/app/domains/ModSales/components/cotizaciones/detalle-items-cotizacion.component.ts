@@ -288,10 +288,10 @@ export class DetalleItemsCotizacionComponent implements ICellRendererAngularComp
     if (!idCompany) return;
     this.matSvc.getMaterialsForApu(idCompany).subscribe({
       next: (data: any[]) => {
-        // Filtrar por familias configuradas (vacío = todas)
-        const familiasFiltro: string[] = this.context?.config?.familias ?? [];
-        const filtered = familiasFiltro.length > 0
-          ? data.filter(i => familiasFiltro.includes(i.familia ?? ''))
+        // Filtrar por la familia definida en esta cotización (vacío = todas)
+        const familiaFiltro: string = this.cotizacion?.familia ?? '';
+        const filtered = familiaFiltro
+          ? data.filter(i => (i.familia ?? '') === familiaFiltro)
           : data;
         this.materiales = filtered.map(i => ({
           id:          i.id,

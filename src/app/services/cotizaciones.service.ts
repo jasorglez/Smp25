@@ -13,6 +13,8 @@ export interface Cotizacion {
   nombreProspecto: string;
   empresaProspecto: string;
   lugar: string;
+  /** Familia de materiales que se muestran en el detalle (vacío = todas) */
+  familia?: string;
   idVendedor: number;
   nombreVendedor: string;
   idCompany: number;
@@ -96,6 +98,7 @@ export class CotizacionesService {
       nombreProspecto: c.nombreProspecto ?? '',
       empresaProspecto: c.empresaProspecto ?? '',
       lugar:           c.lugar           ?? '',
+      familia:         c.familia         ?? '',
       idVendedor:      c.idVendedor      ?? 0,
       nombreVendedor:  c.nombreVendedor  ?? '',
       idCompany:       c.idCompany       ?? null,

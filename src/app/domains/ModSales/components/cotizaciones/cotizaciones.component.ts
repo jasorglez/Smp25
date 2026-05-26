@@ -7,6 +7,7 @@ import { AG_GRID_LOCALE_ES } from 'assets/i18n/ag-grid.locale.es';
 import { CotizacionesService, ESTADOS_COTIZACION, CotizacionConfig, CONFIG_DEFAULT } from 'app/services/cotizaciones.service';
 import { ProspectosService, Prospecto } from 'app/services/prospectos.service';
 import { SignalsService } from 'app/services/signals.service';
+import { MaterialsService } from 'app/services/materials.service';
 import { ButtonCellRendererIncomeComponent } from 'app/domains/ModAdmon/components/income/button-cell-renderer-income.component';
 import { DetalleItemsCotizacionComponent } from './detalle-items-cotizacion.component';
 import { ConfigCotizacionesComponent } from './config-cotizaciones.component';
@@ -24,6 +25,7 @@ export class CotizacionesComponent implements OnInit, OnDestroy {
   private svc           = inject(CotizacionesService);
   private prospectosSvc = inject(ProspectosService);
   private signalsSvc    = inject(SignalsService);
+  private matSvc        = inject(MaterialsService);
 
   gridApi!: GridApi;
   AG_GRID_LOCALE_ES = AG_GRID_LOCALE_ES;
@@ -36,6 +38,7 @@ export class CotizacionesComponent implements OnInit, OnDestroy {
   showConfig        = false;
 
   prospectos: Prospecto[] = [];
+  familias:   string[]    = [];   // familias disponibles para el selector
   estados = ESTADOS_COTIZACION;
   config: CotizacionConfig = { ...CONFIG_DEFAULT };
 
@@ -58,7 +61,7 @@ export class CotizacionesComponent implements OnInit, OnDestroy {
   }
 
   // ── Enter-key navigation ─────────────────────────────────────────────────
-  private editableColumnOrder = ['numCotizacion', 'nombreProspecto', 'lugar', 'notas'];
+  private editableColumnOrder = ['numCotizacion', 'nombreProspecto', 'lugar', 'familia', 'notas'];
   private enterPressed = false;
 
   defaultColDef: ColDef = {
@@ -151,6 +154,15 @@ export class CotizacionesComponent implements OnInit, OnDestroy {
     },
     { field: 'lugar', headerName: 'Lugar', width: 160, editable: true },
     {
+      field: 'familia', headerName: 'Familia', width: 150, editable: true,
+      cellEditor: 'agSelectCellEditor',
+      cellEditorParams: () => ({ values: ['', ...this.familias] }),
+      cellRenderer: (p: any) => p.value
+        ? `<span class="badge bg-info text-dark">${p.value}</span>`
+        : `<span class="text-muted" style="font-size:.8em">Todas</span>`,
+      tooltipValueGetter: () => 'Familia de materiales que se muestran en el detalle',
+    },
+    {
       field: 'estado', headerName: 'Estado', width: 130, editable: false,
       cellRenderer: (p: any) => {
         const e = ESTADOS_COTIZACION.find(x => x.value === p.value);
@@ -214,6 +226,15 @@ export class CotizacionesComponent implements OnInit, OnDestroy {
       this.config = cfg;
       this.actualizarContextoDetalle();
     });
+    // Cargar familias disponibles del catálogo de materiales
+    this.matSvc.getMaterialsForApu(this.root).subscribe({
+      next: (data: any[]) => {
+        const set = new Set<string>();
+        data.forEach(m => { if (m.familia) set.add(m.familia); });
+        this.familias = Array.from(set).sort();
+      },
+      error: () => { this.familias = []; },
+    });
     this.sub = combineLatest([
       this.prospectosSvc.getProspectos(this.idVendedor),
       this.svc.getCotizaciones(this.idVendedor),
@@ -252,6 +273,7 @@ export class CotizacionesComponent implements OnInit, OnDestroy {
       empresaProspecto: '',
       puestoProspecto:  '',
       lugar:           this.config.lugarDefault ?? '',
+      familia:         '',
       idVendedor:      this.idVendedor,
       nombreVendedor:  this.nombreVendedor,
       idCompany:       this.idCompany,
@@ -285,6 +307,7 @@ export class CotizacionesComponent implements OnInit, OnDestroy {
           await this.svc.actualizarCotizacion(c.id!, {
             numCotizacion: c.numCotizacion ?? '',
             lugar:         c.lugar         ?? '',
+            familia:       c.familia        ?? '',
             notas:         c.notas         ?? '',
           });
         }
