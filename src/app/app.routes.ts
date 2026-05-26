@@ -1900,6 +1900,15 @@ export const routes: Routes = [
             canActivate: [MasterPermissionsGuard],
             data: { permissions: { master: 'sales', detailed: 'mesas' } },
           },
+          {
+            path: 'fam-subfam',
+            loadComponent: () =>
+              import(
+                './domains/ModShoppingTD/components/fam-subfam/fam-subfam.component'
+              ).then((c) => c.FamSubfamComponent),
+            canActivate: [MasterPermissionsGuard],
+            data: { permissions: { master: 'sales', detailed: 'fam-subfam' } },
+          },
         ],
       },
       {
