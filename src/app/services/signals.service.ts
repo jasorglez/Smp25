@@ -253,6 +253,7 @@ getMasterUpdateTrigger() {
     nameUser: signal<string>(null),
     organizationUser: signal<string>(null),
     positionUser: signal<string>(null),
+    signatureUser: signal<string>(''),
   };
 
   isidUserEmpty(): boolean {
