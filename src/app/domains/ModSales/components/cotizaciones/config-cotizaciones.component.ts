@@ -2,6 +2,7 @@ import { Component, Input, OnInit, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { CotizacionesService, CotizacionConfig, CONFIG_DEFAULT } from 'app/services/cotizaciones.service';
+import { MaterialsService } from 'app/services/materials.service';
 import Swal from 'sweetalert2';
 
 @Component({
@@ -44,6 +45,65 @@ import Swal from 'sweetalert2';
             <div class="alert alert-info py-1 px-2 mb-0 small w-100">
               <i class="bi bi-info-circle me-1"></i>
               Al agregar una nueva cotización el folio se genera automáticamente e incrementa el consecutivo.
+            </div>
+          </div>
+
+          <hr class="col-12 my-1">
+
+          <!-- ══ Filtro de familias ══════════════════════════════════════════ -->
+          <div class="col-12">
+            <label class="form-label small fw-semibold">
+              <i class="bi bi-tags me-1 text-primary"></i>
+              Familias de materiales disponibles en cotizaciones
+              <span class="text-muted fw-normal ms-1">(sin selección = todas)</span>
+            </label>
+
+            <div *ngIf="loadingFamilias" class="text-muted small mb-2">
+              <span class="spinner-border spinner-border-sm me-1"></span> Cargando familias...
+            </div>
+
+            <div *ngIf="!loadingFamilias && !familiasDisponibles.length" class="text-muted small mb-2">
+              <i class="bi bi-exclamation-circle me-1"></i>No se encontraron familias en el catálogo de materiales.
+            </div>
+
+            <!-- Chips de familias disponibles -->
+            <div *ngIf="!loadingFamilias && familiasDisponibles.length" class="d-flex flex-wrap gap-2 mb-2">
+              <span *ngFor="let f of familiasDisponibles"
+                    class="badge rounded-pill border"
+                    [class.bg-primary]="esFamiliaSeleccionada(f)"
+                    [class.text-white]="esFamiliaSeleccionada(f)"
+                    [class.bg-light]="!esFamiliaSeleccionada(f)"
+                    [class.text-secondary]="!esFamiliaSeleccionada(f)"
+                    style="cursor:pointer; font-size:.8rem; padding:.4rem .8rem;"
+                    (click)="toggleFamilia(f)">
+                <i class="bi me-1" [class.bi-check-circle-fill]="esFamiliaSeleccionada(f)"
+                   [class.bi-circle]="!esFamiliaSeleccionada(f)"></i>
+                {{ f }}
+              </span>
+            </div>
+
+            <!-- Agregar familia manual (por si el nombre no aparece en el catálogo) -->
+            <div class="input-group input-group-sm" style="max-width:380px">
+              <input class="form-control form-control-sm" [(ngModel)]="nuevaFamilia"
+                     placeholder="Agregar familia manualmente..."
+                     (keyup.enter)="agregarFamiliaManual()">
+              <button class="btn btn-outline-primary btn-sm" (click)="agregarFamiliaManual()"
+                      [disabled]="!nuevaFamilia.trim()">
+                <i class="bi bi-plus-lg"></i> Agregar
+              </button>
+            </div>
+
+            <!-- Estado actual del filtro -->
+            <div class="form-text mt-1">
+              <span *ngIf="!config.familias?.length" class="text-muted">
+                <i class="bi bi-infinity me-1"></i>Sin filtro — se mostrarán materiales de <strong>todas</strong> las familias al cotizar.
+              </span>
+              <span *ngIf="config.familias?.length" class="text-success fw-semibold">
+                <i class="bi bi-funnel-fill me-1"></i>Filtro activo:
+                <span *ngFor="let f of config.familias; let last=last">
+                  <span class="badge bg-success rounded-pill">{{ f }}</span>{{ !last ? ' ' : '' }}
+                </span>
+              </span>
             </div>
           </div>
 
@@ -111,20 +171,68 @@ import Swal from 'sweetalert2';
   `,
 })
 export class ConfigCotizacionesComponent implements OnInit {
-  private svc = inject(CotizacionesService);
+  private svc    = inject(CotizacionesService);
+  private matSvc = inject(MaterialsService);
 
   @Input() idCompany!: number;
 
   config: CotizacionConfig = { ...CONFIG_DEFAULT };
-  loading = false;
-  saving  = false;
+  loading         = false;
+  saving          = false;
+  loadingFamilias = false;
+  familiasDisponibles: string[] = [];
+  nuevaFamilia    = '';
 
   ngOnInit() { this.cargar(); }
 
   async cargar() {
     this.loading = true;
     this.config  = await this.svc.getConfig(this.idCompany);
+    if (!this.config.familias) this.config.familias = [];
     this.loading = false;
+    this.cargarFamilias();
+  }
+
+  cargarFamilias() {
+    if (!this.idCompany) return;
+    this.loadingFamilias = true;
+    this.matSvc.getMaterialsForApu(this.idCompany).subscribe({
+      next: (data: any[]) => {
+        const set = new Set<string>();
+        data.forEach(m => { if (m.familia) set.add(m.familia); });
+        this.familiasDisponibles = Array.from(set).sort();
+        this.loadingFamilias = false;
+      },
+      error: () => { this.loadingFamilias = false; },
+    });
+  }
+
+  esFamiliaSeleccionada(familia: string): boolean {
+    return (this.config.familias ?? []).includes(familia);
+  }
+
+  toggleFamilia(familia: string) {
+    if (!this.config.familias) this.config.familias = [];
+    const idx = this.config.familias.indexOf(familia);
+    if (idx >= 0) {
+      this.config.familias = this.config.familias.filter(f => f !== familia);
+    } else {
+      this.config.familias = [...this.config.familias, familia];
+    }
+  }
+
+  agregarFamiliaManual() {
+    const nombre = this.nuevaFamilia.trim();
+    if (!nombre) return;
+    if (!this.config.familias) this.config.familias = [];
+    if (!this.config.familias.includes(nombre)) {
+      this.config.familias = [...this.config.familias, nombre];
+      // También añadir a las disponibles si no está
+      if (!this.familiasDisponibles.includes(nombre)) {
+        this.familiasDisponibles = [...this.familiasDisponibles, nombre].sort();
+      }
+    }
+    this.nuevaFamilia = '';
   }
 
   formatFolio(): string {
