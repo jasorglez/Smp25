@@ -85,5 +85,5 @@ export const environment = {
     // publicKey: 'TEST-4399133a-4676-42a2-ab85-d946370bf96a',
   },
 
-  version: '6.35 (25 Mayo 2026 22:15) feat(compras): numero de fila en grid de subfamilias',
+  version: '6.36 (26 Mayo 2026 02:30) feat(ventas): tab Familias y Subfamilias con permiso detallado',
 };
