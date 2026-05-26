@@ -40,6 +40,15 @@ export class RestaurantMesasService {
     );
   }
 
+  // ── Reporte del día ───────────────────────────────────────────────────────
+  getReporte(idCompany: number, fecha?: string): Observable<any[]> {
+    const params = fecha ? `?fecha=${fecha}` : '';
+    return this.http.get<any[]>(
+      `${environment.urlAdministration}/Restaurant/reporte/${idCompany}${params}`,
+      { headers: this.trackingService.getHeaders() }
+    );
+  }
+
   // ── Impresoras de Cocina ───────────────────────────────────────────────────
   getImpresoras(idCompany: number): Observable<any[]> {
     return this.http.get<any[]>(
