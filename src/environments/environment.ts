@@ -85,5 +85,5 @@ export const environment = {
     // publicKey: 'TEST-4399133a-4676-42a2-ab85-d946370bf96a',
   },
 
-  version: '6.39 (26 Mayo 2026 15:30) feat(restaurant): reporte mesas con dos grids y tarjetas resumen',
+  version: '6.40 (26 Mayo 2026 16:45) feat(cotizaciones): filtro de familias de materiales en configuración',
 };

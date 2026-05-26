@@ -50,6 +50,8 @@ export interface CotizacionConfig {
   textoAclaracion: string;
   textoDespedida: string;
   textoIva: string;
+  /** Familias permitidas en el detalle. Vacío = todas las familias */
+  familias?: string[];
 }
 
 export const CONFIG_DEFAULT: CotizacionConfig = {
@@ -64,6 +66,7 @@ export const CONFIG_DEFAULT: CotizacionConfig = {
   textoAclaracion:  'PARA CUALQUIER ACLARACIÓN O DUDA CON LOS PUNTOS AQUÍ MENCIONADOS ESTOY A SUS ÓRDENES PARA ACLARARLOS Y/O REALIZAR LOS CAMBIOS QUE SEAN PERTINENTES EN BENEFICIO DE AMBAS PARTES.',
   textoDespedida:   'SIN MÁS POR EL MOMENTO ME DESPIDO DE UD. AGRADECIENDO DE ANTEMANO LA ATENCIÓN PRESTADA AL PRESENTE, ESPERANDO VERNOS FAVORECIDOS PARA LA EJECUCIÓN DE LOS TRABAJOS.',
   textoIva:         '*LA PRESENTE COTIZACIÓN NO INCLUYE EL IVA',
+  familias:         [],
 };
 
 export const ESTADOS_COTIZACION = [
