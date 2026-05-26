@@ -7,7 +7,7 @@ import { AG_GRID_LOCALE_ES } from 'assets/i18n/ag-grid.locale.es';
 import { CotizacionesService, ESTADOS_COTIZACION, CotizacionConfig, CONFIG_DEFAULT } from 'app/services/cotizaciones.service';
 import { ProspectosService, Prospecto } from 'app/services/prospectos.service';
 import { SignalsService } from 'app/services/signals.service';
-import { MaterialsService } from 'app/services/materials.service';
+import { CatalogsService } from 'app/services/catalogs.service';
 import { ButtonCellRendererIncomeComponent } from 'app/domains/ModAdmon/components/income/button-cell-renderer-income.component';
 import { DetalleItemsCotizacionComponent } from './detalle-items-cotizacion.component';
 import { ConfigCotizacionesComponent } from './config-cotizaciones.component';
@@ -25,7 +25,7 @@ export class CotizacionesComponent implements OnInit, OnDestroy {
   private svc           = inject(CotizacionesService);
   private prospectosSvc = inject(ProspectosService);
   private signalsSvc    = inject(SignalsService);
-  private matSvc        = inject(MaterialsService);
+  private catalogsSvc   = inject(CatalogsService);
 
   gridApi!: GridApi;
   AG_GRID_LOCALE_ES = AG_GRID_LOCALE_ES;
@@ -226,12 +226,10 @@ export class CotizacionesComponent implements OnInit, OnDestroy {
       this.config = cfg;
       this.actualizarContextoDetalle();
     });
-    // Cargar familias disponibles del catálogo de materiales
-    this.matSvc.getMaterialsForApu(this.root).subscribe({
+    // Cargar familias del catálogo (type=FAMILY)
+    this.catalogsSvc.getFamilyById(this.root).subscribe({
       next: (data: any[]) => {
-        const set = new Set<string>();
-        data.forEach(m => { if (m.familia) set.add(m.familia); });
-        this.familias = Array.from(set).sort();
+        this.familias = data.map(f => f.description).sort();
       },
       error: () => { this.familias = []; },
     });
