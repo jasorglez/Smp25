@@ -85,5 +85,5 @@ export const environment = {
     // publicKey: 'TEST-4399133a-4676-42a2-ab85-d946370bf96a',
   },
 
-  version: '6.38 (26 Mayo 2026 14:00) feat(restaurant): pestaña Reporte de Mesas con PDF exportable',
+  version: '6.39 (26 Mayo 2026 15:30) feat(restaurant): reporte mesas con dos grids y tarjetas resumen',
 };
