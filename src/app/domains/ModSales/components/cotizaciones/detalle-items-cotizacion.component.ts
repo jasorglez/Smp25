@@ -521,8 +521,10 @@ export class DetalleItemsCotizacionComponent implements ICellRendererAngularComp
               const tryB64 = async (url: string) => {
                 try { return await this.b64Svc.convertImageToBase64(url); } catch { return null; }
               };
-              const logoB64  = rootData?.picture  ? await tryB64(rootData.picture)  : null;
-              const logo2B64 = rootData?.picture2 ? await tryB64(rootData.picture2) : logoB64;
+              const logoB64      = rootData?.picture  ? await tryB64(rootData.picture)  : null;
+              const logo2B64     = rootData?.picture2 ? await tryB64(rootData.picture2) : logoB64;
+              const signatureUrl = this.signalsSvc.profile.signatureUser();
+              const signatureB64 = signatureUrl ? await tryB64(signatureUrl) : null;
               const items    = await this.svc.getItems(this.cotizacion.id);
 
               const cot      = this.cotizacion;
@@ -606,17 +608,17 @@ export class DetalleItemsCotizacionComponent implements ICellRendererAngularComp
                   { text: cfg.textoIva,        fontSize: 6.5, bold: true, color: NAVY, margin: [0,0,0,70] },
                 ],
               };
+              const firmaStack1: any[] = [];
+              if (signatureB64) {
+                firmaStack1.push({ image: signatureB64, width: 120, alignment: 'center', margin: [0,0,0,4] });
+              }
+              firmaStack1.push({ canvas: [{ type: 'line', x1: 0, y1: 0, x2: 160, y2: 0, lineWidth: 1, lineColor: NAVY }] });
+              firmaStack1.push({ text: cot.nombreVendedor ?? '', fontSize: 7, bold: true, alignment: 'center', margin: [0,4,0,0] });
+              firmaStack1.push({ text: 'VENDEDOR', fontSize: 6, color: GRAY, alignment: 'center', margin: [0,0,0, signatureB64 ? 15 : 55] });
               const firma: any = {
                 columns: [
                   { text: '', width: '*' },
-                  {
-                    stack: [
-                      { canvas: [{ type: 'line', x1: 0, y1: 0, x2: 160, y2: 0, lineWidth: 1, lineColor: NAVY }] },
-                      { text: cot.nombreVendedor ?? '', fontSize: 7, bold: true, alignment: 'center', margin: [0,4,0,0] },
-                      { text: 'VENDEDOR', fontSize: 6, color: GRAY, alignment: 'center', margin: [0,0,0,55] },
-                    ],
-                    width: 160,
-                  },
+                  { stack: firmaStack1, width: 160 },
                   { text: '', width: '*' },
                 ],
               };
@@ -693,8 +695,10 @@ export class DetalleItemsCotizacionComponent implements ICellRendererAngularComp
       const tryB64 = async (url: string) => {
         try { return await this.b64Svc.convertImageToBase64(url); } catch { return null; }
       };
-      const logoB64  = rootData?.picture  ? await tryB64(rootData.picture)  : null;
-      const logo2B64 = rootData?.picture2 ? await tryB64(rootData.picture2) : logoB64;
+      const logoB64     = rootData?.picture  ? await tryB64(rootData.picture)  : null;
+      const logo2B64    = rootData?.picture2 ? await tryB64(rootData.picture2) : logoB64;
+      const signatureUrl = this.signalsSvc.profile.signatureUser();
+      const signatureB64 = signatureUrl ? await tryB64(signatureUrl) : null;
 
       const cot = this.cotizacion;
       const fecha = cot.fecha?.toDate ? cot.fecha.toDate() : new Date();
@@ -798,17 +802,17 @@ export class DetalleItemsCotizacionComponent implements ICellRendererAngularComp
         ],
       };
 
+      const firmaStack2: any[] = [];
+      if (signatureB64) {
+        firmaStack2.push({ image: signatureB64, width: 120, alignment: 'center', margin: [0, 0, 0, 4] });
+      }
+      firmaStack2.push({ canvas: [{ type: 'line', x1: 0, y1: 0, x2: 160, y2: 0, lineWidth: 1, lineColor: NAVY }] });
+      firmaStack2.push({ text: cot.nombreVendedor ?? '', fontSize: 7, bold: true, alignment: 'center', margin: [0, 4, 0, 0] });
+      firmaStack2.push({ text: 'VENDEDOR', fontSize: 6, color: GRAY, alignment: 'center', margin: [0, 0, 0, signatureB64 ? 15 : 55] });
       const firma: any = {
         columns: [
           { text: '', width: '*' },
-          {
-            stack: [
-              { canvas: [{ type: 'line', x1: 0, y1: 0, x2: 160, y2: 0, lineWidth: 1, lineColor: NAVY }] },
-              { text: cot.nombreVendedor ?? '', fontSize: 7, bold: true, alignment: 'center', margin: [0,4,0,0] },
-              { text: 'VENDEDOR', fontSize: 6, color: GRAY, alignment: 'center', margin: [0, 0, 0, 55] },
-            ],
-            width: 160,
-          },
+          { stack: firmaStack2, width: 160 },
           { text: '', width: '*' },
         ],
       };
