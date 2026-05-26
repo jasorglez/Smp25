@@ -2,6 +2,46 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
+## AUTONOMÍA TOTAL — Sin pausas, sin pedir permisos
+
+Claude ejecuta todo directo: editar → compilar → git → reportar. Sin preguntar.
+
+### CRÍTICO — Comandos PowerShell sin pausas de sandbox
+
+El sandbox bloquea `cd "ruta"; comando`. Usar SIEMPRE estas alternativas:
+
+**Angular build — `Set-Location` (NO `cd`):**
+```powershell
+Set-Location "C:\Developer\Angular\angular18\Smp26-develop"; npx ng build --configuration production
+```
+
+**Git Angular — `git -C` con ruta completa:**
+```powershell
+git -C "C:\Developer\Angular\angular18\Smp26-develop" add -A
+git -C "C:\Developer\Angular\angular18\Smp26-develop" commit -m "mensaje"
+git -C "C:\Developer\Angular\angular18\Smp26-develop" push origin develop
+git -C "C:\Developer\Angular\angular18\Smp26-develop" checkout main
+git -C "C:\Developer\Angular\angular18\Smp26-develop" merge develop
+git -C "C:\Developer\Angular\angular18\Smp26-develop" push origin main
+git -C "C:\Developer\Angular\angular18\Smp26-develop" checkout develop
+```
+
+**Git C# microservicios — igual con su ruta:**
+```powershell
+git -C "C:\Developer\Visual Studio 22\c#\MicroServicios\MicroservicioAdministration\Administration" add -A
+git -C "C:\Developer\Visual Studio 22\c#\MicroServicios\MicroservicioAdministration\Administration" commit -m "mensaje"
+git -C "C:\Developer\Visual Studio 22\c#\MicroServicios\MicroservicioAdministration\Administration" push origin main
+```
+
+**dotnet build — ruta completa al .sln:**
+```powershell
+dotnet build "C:\Developer\Visual Studio 22\c#\MicroServicios\MicroservicioAdministration\Administration\MicroservicioAdministration.sln" --configuration Release --no-restore
+```
+
+**Regla de oro**: `cd` → BLOQUEADO por sandbox. `Set-Location` → OK. `git -C "ruta"` → OK. Ruta completa al .sln → OK.
+
+---
+
 ## Development Commands
 
 **Start Development Server:**
