@@ -208,16 +208,9 @@ export class DetalleItemsCotizacionComponent implements ICellRendererAngularComp
   colDefs: ColDef[] = [
     {
       field: 'nombreMaterial', headerName: 'Material', flex: 1, editable: true,
-      cellEditor: 'agRichSelectCellEditor',
-      cellEditorPopup: true,
-      cellEditorParams: () => ({
-        values:              this.materiales.map(m => m.description),
-        filterList:          true,
-        searchDebounceDelay: 100,
-        highlightMatch:      true,
-        valueListMaxHeight:  320,
-        cellHeight:          28,
-      }),
+      cellEditor: 'agSelectCellEditor',
+      cellEditorParams: () => ({ values: this.materiales.map(m => m.description) }),
+      tooltipValueGetter: (p) => p.value ?? '',
       valueSetter: (params) => {
         const mat = this.materiales.find(m => m.description === params.newValue);
         if (mat) {
@@ -247,6 +240,8 @@ export class DetalleItemsCotizacionComponent implements ICellRendererAngularComp
     headerHeight: 28,
     rowHeight: 30,
     rowSelection: 'single',
+    tooltipShowDelay: 300,
+    tooltipHideDelay: 8000,
     rowClassRules: { 'new-row-highlight': (p: any) => !!p.data?.__isNew },
     onRowClicked: (e: any) => { this.selectedRow = e.data; },
   };

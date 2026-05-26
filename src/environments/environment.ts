@@ -85,5 +85,5 @@ export const environment = {
     // publicKey: 'TEST-4399133a-4676-42a2-ab85-d946370bf96a',
   },
 
-  version: '6.44 (26 Mayo 2026 18:30) fix(cotizaciones): agRichSelectCellEditor con busqueda en material',
+  version: '6.44 (26 Mayo 2026 18:45) fix(cotizaciones): tooltip descripcion completa en columna material',
 };
