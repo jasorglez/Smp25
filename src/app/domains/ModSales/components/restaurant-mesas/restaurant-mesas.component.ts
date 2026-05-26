@@ -396,11 +396,38 @@ export class RestaurantMesasComponent implements OnInit {
     rowHeight: 28,
     suppressDragLeaveHidesColumns: true,
     rowSelection: 'single',
+    masterDetail: true,
+    isRowMaster: (data: any) => data?.items?.length > 0,
+    detailRowHeight: 160,
     defaultColDef: { sortable: true, resizable: true, minWidth: 70 },
+    detailCellRendererParams: {
+      detailGridOptions: {
+        headerHeight: 28,
+        rowHeight: 24,
+        defaultColDef: { resizable: true, sortable: false },
+        columnDefs: [
+          { field: 'descripcion',    headerName: 'Producto',  flex: 2 },
+          { field: 'cantidad',       headerName: 'Cant.',     width: 65,
+            cellStyle: { textAlign: 'center' },
+            valueFormatter: (p: any) => Number(p.value) % 1 === 0 ? String(Number(p.value)) : Number(p.value).toFixed(1) },
+          { field: 'precioUnitario', headerName: 'P. Unit.',  width: 90,
+            cellStyle: { textAlign: 'right' },
+            valueFormatter: (p: any) => `$${Number(p.value).toFixed(2)}` },
+          { field: 'subtotal',       headerName: 'Subtotal',  width: 95,
+            cellStyle: { textAlign: 'right', fontWeight: 'bold', color: '#1a6b2b' },
+            valueFormatter: (p: any) => `$${Number(p.value).toFixed(2)}` },
+          { field: 'createdAt',      headerName: 'Hora',      width: 70,
+            valueFormatter: (p: any) => p.value
+              ? new Date(p.value).toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit' }) : '' },
+        ],
+      },
+      getDetailRowData: (params: any) => params.successCallback(params.data.items ?? []),
+    },
   };
 
   reporteColDefs: ColDef[] = [
     { field: 'orden',          headerName: '#',          width: 55,  editable: false,
+      cellRenderer: 'agGroupCellRenderer',
       cellStyle: { textAlign: 'center', fontWeight: 'bold' } },
     { field: 'nombreMesa',     headerName: 'Mesa',       flex: 1,    editable: false },
     { field: 'numItems',       headerName: 'Ítems',      width: 75,  editable: false,
@@ -530,5 +557,120 @@ export class RestaurantMesasComponent implements OnInit {
 
     const fechaFile = this.reporteFecha.replace(/-/g, '');
     pdfMake.createPdf(docDef).download(`reporte-mesas-${fechaFile}.pdf`);
+  }
+
+  exportPdfDetalle() {
+    if (!this.reporteRowData.length) return;
+
+    const fechaLabel = new Date(this.reporteFecha + 'T12:00:00').toLocaleDateString('es-MX', {
+      weekday: 'long', year: 'numeric', month: 'long', day: 'numeric'
+    });
+
+    const content: any[] = [
+      { text: 'DETALLE DE CONSUMO POR MESA', style: 'titulo' },
+      { text: fechaLabel, style: 'subtitulo' },
+    ];
+
+    for (const mesa of this.reporteRowData) {
+      const abierta = mesa.abiertaAt
+        ? new Date(mesa.abiertaAt).toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit' }) : '';
+      const cobrada = mesa.cerradaAt
+        ? new Date(mesa.cerradaAt).toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit' }) : '';
+      const minutos = mesa.minutosAtencion ?? 0;
+      const tiempoStr = minutos >= 60
+        ? `${Math.floor(minutos/60)}h ${minutos%60}min` : `${minutos} min`;
+
+      // Encabezado de mesa
+      content.push({
+        margin: [0, 10, 0, 2],
+        columns: [
+          { text: `${mesa.orden}. ${mesa.nombreMesa}`, style: 'mesaTitulo', width: '*' },
+          { text: `${abierta} → ${cobrada}  (${tiempoStr})`, style: 'mesaHora', alignment: 'right', width: 'auto' },
+        ],
+      });
+
+      if (mesa.notas) {
+        content.push({ text: `📝 ${mesa.notas}`, style: 'notas', margin: [0, 0, 0, 3] });
+      }
+
+      // Tabla de ítems
+      const itemRows = (mesa.items ?? []).map((it: any) => {
+        const hora = it.createdAt
+          ? new Date(it.createdAt).toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit' }) : '';
+        const cant = Number(it.cantidad) % 1 === 0
+          ? String(Number(it.cantidad)) : Number(it.cantidad).toFixed(1);
+        return [
+          { text: hora,                                              color: '#888' },
+          { text: it.descripcion ?? '' },
+          { text: cant,                       alignment: 'center' },
+          { text: `$${Number(it.precioUnitario).toFixed(2)}`,       alignment: 'right' },
+          { text: `$${Number(it.subtotal).toFixed(2)}`, bold: true, alignment: 'right', color: '#1a6b2b' },
+        ];
+      });
+
+      content.push({
+        table: {
+          headerRows: 1,
+          widths: [38, '*', 30, 60, 65],
+          body: [
+            [
+              { text: 'Hora',     style: 'thDetalle' },
+              { text: 'Producto', style: 'thDetalle' },
+              { text: 'Cant.',    style: 'thDetalle', alignment: 'center' },
+              { text: 'P.Unit.',  style: 'thDetalle', alignment: 'right' },
+              { text: 'Subtotal', style: 'thDetalle', alignment: 'right' },
+            ],
+            ...(itemRows.length ? itemRows : [[{ text: '(sin ítems)', colSpan: 5, italics: true, color: '#aaa' }, '', '', '', '']]),
+          ],
+        },
+        layout: {
+          hLineWidth: (i: number, node: any) => i === 0 || i === 1 || i === node.table.body.length ? 0.8 : 0.2,
+          vLineWidth: () => 0,
+          hLineColor: () => '#ccc',
+          fillColor: (i: number) => i === 0 ? '#34495e' : (i % 2 === 0 ? '#f8f9fa' : null),
+        },
+      });
+
+      // Subtotal de mesa
+      content.push({
+        margin: [0, 2, 0, 0],
+        columns: [
+          { text: `${mesa.numItems} producto(s)`, color: '#888', fontSize: 7, width: '*' },
+          { text: `TOTAL: $${Number(mesa.total).toFixed(2)}`,
+            bold: true, color: '#1a6b2b', fontSize: 9, alignment: 'right', width: 'auto' },
+        ],
+      });
+    }
+
+    // Resumen final
+    const promedio = this.reporteCuentas > 0
+      ? (this.reporteTotal / this.reporteCuentas).toFixed(2) : '0.00';
+    content.push({ canvas: [{ type: 'line', x1: 0, y1: 5, x2: 515, y2: 5, lineWidth: 1 }], margin: [0, 12, 0, 6] });
+    content.push({
+      columns: [
+        { text: `Cuentas cobradas: ${this.reporteCuentas}`, style: 'resumen' },
+        { text: `Ticket promedio: $${promedio}`,            style: 'resumen', alignment: 'center' },
+        { text: `TOTAL DEL DÍA: $${this.reporteTotal.toFixed(2)}`, style: 'resumenTotal', alignment: 'right' },
+      ],
+    });
+
+    const docDef: any = {
+      pageMargins: [35, 50, 35, 50],
+      content,
+      styles: {
+        titulo:      { fontSize: 15, bold: true, color: '#2c3e50', margin: [0, 0, 0, 2] },
+        subtitulo:   { fontSize: 9, color: '#666', margin: [0, 0, 0, 6] },
+        mesaTitulo:  { fontSize: 10, bold: true, color: '#2c3e50' },
+        mesaHora:    { fontSize: 8, color: '#666' },
+        notas:       { fontSize: 7.5, color: '#666', italics: true },
+        thDetalle:   { bold: true, fontSize: 7.5, color: '#ffffff', fillColor: '#34495e', margin: [2, 2, 2, 2] },
+        resumen:     { fontSize: 8, color: '#555', margin: [0, 2, 0, 0] },
+        resumenTotal:{ fontSize: 10, bold: true, color: '#1a6b2b', margin: [0, 2, 0, 0] },
+      },
+      defaultStyle: { fontSize: 8 },
+    };
+
+    const fechaFile = this.reporteFecha.replace(/-/g, '');
+    pdfMake.createPdf(docDef).download(`detalle-mesas-${fechaFile}.pdf`);
   }
 }
