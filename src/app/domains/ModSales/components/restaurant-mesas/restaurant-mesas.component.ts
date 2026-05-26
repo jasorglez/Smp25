@@ -383,87 +383,127 @@ export class RestaurantMesasComponent implements OnInit {
 
   // ── Reporte de Mesas ───────────────────────────────────────────────────────
 
-  reporteFecha: string = new Date().toISOString().substring(0, 10);  // hoy YYYY-MM-DD
-  reporteRowData: any[] = [];
+  reporteFecha: string = new Date().toISOString().substring(0, 10);
+  reporteRowData:   any[] = [];
+  reporteItemsData: any[] = [];        // todos los ítems del día (o filtrados por mesa)
+  reporteItemsAll:  any[] = [];        // todos los ítems sin filtrar
+  reporteFiltraMesa: string | null = null;
+  reporteMesaMayor: any = null;
   reporteError   = '';
   reporteLoading = false;
   reporteTotal   = 0;
   reporteCuentas = 0;
   private reporteGridApi!: GridApi;
+  private reporteItemsGridApi!: GridApi;
 
+  // Grid MESAS — sin master-detail, simple
   reporteGridOptions: any = {
     headerHeight: 35,
     rowHeight: 28,
     suppressDragLeaveHidesColumns: true,
     rowSelection: 'single',
-    masterDetail: true,
-    isRowMaster: (data: any) => data?.items?.length > 0,
-    detailRowHeight: 160,
-    defaultColDef: { sortable: true, resizable: true, minWidth: 70 },
-    detailCellRendererParams: {
-      detailGridOptions: {
-        headerHeight: 28,
-        rowHeight: 24,
-        defaultColDef: { resizable: true, sortable: false },
-        columnDefs: [
-          { field: 'descripcion',    headerName: 'Producto',  flex: 2 },
-          { field: 'cantidad',       headerName: 'Cant.',     width: 65,
-            cellStyle: { textAlign: 'center' },
-            valueFormatter: (p: any) => Number(p.value) % 1 === 0 ? String(Number(p.value)) : Number(p.value).toFixed(1) },
-          { field: 'precioUnitario', headerName: 'P. Unit.',  width: 90,
-            cellStyle: { textAlign: 'right' },
-            valueFormatter: (p: any) => `$${Number(p.value).toFixed(2)}` },
-          { field: 'subtotal',       headerName: 'Subtotal',  width: 95,
-            cellStyle: { textAlign: 'right', fontWeight: 'bold', color: '#1a6b2b' },
-            valueFormatter: (p: any) => `$${Number(p.value).toFixed(2)}` },
-          { field: 'createdAt',      headerName: 'Hora',      width: 70,
-            valueFormatter: (p: any) => p.value
-              ? new Date(p.value).toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit' }) : '' },
-        ],
-      },
-      getDetailRowData: (params: any) => params.successCallback(params.data.items ?? []),
-    },
+    defaultColDef: { sortable: true, resizable: true, minWidth: 60 },
   };
 
   reporteColDefs: ColDef[] = [
-    { field: 'orden',          headerName: '#',          width: 55,  editable: false,
-      cellRenderer: 'agGroupCellRenderer',
+    { field: 'orden',          headerName: '#',       width: 45, editable: false,
       cellStyle: { textAlign: 'center', fontWeight: 'bold' } },
-    { field: 'nombreMesa',     headerName: 'Mesa',       flex: 1,    editable: false },
-    { field: 'numItems',       headerName: 'Ítems',      width: 75,  editable: false,
-      cellStyle: { textAlign: 'center' } },
-    { field: 'abiertaAt',      headerName: 'Apertura',   width: 90,  editable: false,
+    { field: 'nombreMesa',     headerName: 'Mesa',    flex: 1,   editable: false },
+    { field: 'abiertaAt',      headerName: 'Apertura',width: 75, editable: false,
       valueFormatter: (p: any) => p.value ? new Date(p.value).toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit' }) : '' },
-    { field: 'cerradaAt',      headerName: 'Cobrada',    width: 90,  editable: false,
+    { field: 'cerradaAt',      headerName: 'Cobrada', width: 75, editable: false,
       valueFormatter: (p: any) => p.value ? new Date(p.value).toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit' }) : '' },
-    { field: 'minutosAtencion',headerName: 'Tiempo',     width: 90,  editable: false,
-      valueFormatter: (p: any) => {
-        const m = p.value ?? 0;
-        return m >= 60 ? `${Math.floor(m/60)}h ${m%60}min` : `${m} min`;
-      },
+    { field: 'minutosAtencion',headerName: 'Tiempo',  width: 80, editable: false,
+      valueFormatter: (p: any) => { const m = p.value ?? 0; return m >= 60 ? `${Math.floor(m/60)}h ${m%60}min` : `${m}min`; },
       cellStyle: (p: any) => p.value > 90 ? { color: '#c0392b', fontWeight: 'bold' } : {} },
-    { field: 'notas',          headerName: 'Notas',      flex: 1,    editable: false,
-      cellStyle: { color: '#555', fontStyle: 'italic' } },
-    { field: 'total',          headerName: 'Total',      width: 110, editable: false,
+    { field: 'notas', headerName: 'Notas', flex: 1, editable: false,
+      cellStyle: { color: '#777', fontStyle: 'italic' } },
+    { field: 'total', headerName: 'Total', width: 100, editable: false,
       valueFormatter: (p: any) => p.value != null ? `$${Number(p.value).toFixed(2)}` : '',
       cellStyle: { textAlign: 'right', fontWeight: 'bold', color: '#1a6b2b' } },
   ];
 
-  onReporteGridReady(e: GridReadyEvent) { this.reporteGridApi = e.api; }
+  // Grid PRODUCTOS — siempre visible
+  reporteItemsGridOptions: any = {
+    headerHeight: 35,
+    rowHeight: 28,
+    suppressDragLeaveHidesColumns: true,
+    defaultColDef: { sortable: true, resizable: true, minWidth: 60 },
+  };
+
+  reporteItemsColDefs: ColDef[] = [
+    { field: 'nombreMesa',     headerName: 'Mesa',     width: 90,  editable: false,
+      cellStyle: { fontWeight: '600', color: '#2c3e50' } },
+    { field: 'descripcion',    headerName: 'Producto', flex: 2,    editable: false },
+    { field: 'cantidad',       headerName: 'Cant.',    width: 65,  editable: false,
+      cellStyle: { textAlign: 'center', fontWeight: 'bold' },
+      valueFormatter: (p: any) => Number(p.value) % 1 === 0 ? String(Number(p.value)) : Number(p.value).toFixed(1) },
+    { field: 'precioUnitario', headerName: 'P.Unit.',  width: 85,  editable: false,
+      cellStyle: { textAlign: 'right' },
+      valueFormatter: (p: any) => `$${Number(p.value).toFixed(2)}` },
+    { field: 'subtotal',       headerName: 'Subtotal', width: 95,  editable: false,
+      cellStyle: { textAlign: 'right', fontWeight: 'bold', color: '#1a6b2b' },
+      valueFormatter: (p: any) => `$${Number(p.value).toFixed(2)}` },
+    { field: 'hora',           headerName: 'Hora',     width: 65,  editable: false,
+      cellStyle: { color: '#888' } },
+  ];
+
+  onReporteGridReady(e: GridReadyEvent)      { this.reporteGridApi = e.api; }
+  onReporteItemsGridReady(e: GridReadyEvent) { this.reporteItemsGridApi = e.api; }
+
+  onReporteRowClicked(e: any) {
+    const mesa = e.data?.nombreMesa;
+    if (!mesa) return;
+    if (this.reporteFiltraMesa === mesa) {
+      // doble clic en la misma → limpiar filtro
+      this.limpiarFiltroMesa();
+    } else {
+      this.reporteFiltraMesa = mesa;
+      this.reporteItemsData  = this.reporteItemsAll.filter(i => i.nombreMesa === mesa);
+    }
+  }
+
+  limpiarFiltroMesa() {
+    this.reporteFiltraMesa = null;
+    this.reporteItemsData  = [...this.reporteItemsAll];
+  }
 
   loadReporte() {
     if (!this.idCompany) return;
-    this.reporteError   = '';
-    this.reporteLoading = true;
-    this.reporteRowData = [];
-    this.reporteTotal   = 0;
-    this.reporteCuentas = 0;
+    this.reporteError      = '';
+    this.reporteLoading    = true;
+    this.reporteRowData    = [];
+    this.reporteItemsData  = [];
+    this.reporteItemsAll   = [];
+    this.reporteFiltraMesa = null;
+    this.reporteMesaMayor  = null;
+    this.reporteTotal      = 0;
+    this.reporteCuentas    = 0;
     this.restaurantService.getReporte(this.idCompany, this.reporteFecha).subscribe({
       next: data => {
         this.reporteLoading = false;
         this.reporteRowData = data ?? [];
         this.reporteTotal   = this.reporteRowData.reduce((s, r) => s + (r.total ?? 0), 0);
         this.reporteCuentas = this.reporteRowData.length;
+
+        // Mesa con mayor venta
+        this.reporteMesaMayor = this.reporteRowData.reduce(
+          (max: any, r: any) => (!max || r.total > max.total) ? r : max, null);
+
+        // Aplanar ítems de todas las mesas para el grid de productos
+        this.reporteItemsAll = this.reporteRowData.flatMap((mesa: any) =>
+          (mesa.items ?? []).map((it: any) => ({
+            nombreMesa:     mesa.nombreMesa,
+            descripcion:    it.descripcion,
+            cantidad:       it.cantidad,
+            precioUnitario: it.precioUnitario,
+            subtotal:       it.subtotal,
+            hora:           it.createdAt
+              ? new Date(it.createdAt).toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit' })
+              : '',
+          }))
+        );
+        this.reporteItemsData = [...this.reporteItemsAll];
       },
       error: err => {
         this.reporteLoading = false;
