@@ -85,5 +85,5 @@ export const environment = {
     // publicKey: 'TEST-4399133a-4676-42a2-ab85-d946370bf96a',
   },
 
-  version: '6.40 (26 Mayo 2026 16:45) feat(cotizaciones): filtro de familias de materiales en configuración',
+  version: '6.41 (26 Mayo 2026 17:10) feat(cotizaciones): columna familia en maestro filtra materiales del detalle',
 };
