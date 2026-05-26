@@ -93,6 +93,16 @@ export class SubfamilyDetailComponent {
 
   subfamilyColDefs: ColDef[] = [
     {
+      headerName: '#',
+      width: 48,
+      minWidth: 48,
+      maxWidth: 48,
+      editable: false,
+      sortable: false,
+      filter: false,
+      valueGetter: (params: any) => (params.node?.rowIndex ?? 0) + 1,
+    },
+    {
       field: 'description',
       headerName: 'Descripción',
       flex: 1,
