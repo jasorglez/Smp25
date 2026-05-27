@@ -626,7 +626,7 @@ export class DetalleItemsCotizacionComponent implements ICellRendererAngularComp
                   { ul: clausulas.map(c => ({ text: c, fontSize: 6.5, color: GRAY, margin: [0,0,0,3] })), margin: [0,0,0,6] },
                   { text: cfg.textoAclaracion, fontSize: 6.5, color: GRAY, alignment: 'justify', margin: [0,0,0,4] },
                   { text: cfg.textoDespedida,  fontSize: 6.5, color: GRAY, alignment: 'justify', margin: [0,0,0,4] },
-                  { text: cfg.textoIva,        fontSize: 6.5, bold: true, color: NAVY, margin: [0,0,0,70] },
+                  { text: cfg.textoIva,        fontSize: 6.5, bold: true, color: NAVY, margin: [0,0,0,30] },
                 ],
               };
               const firmaStack1: any[] = [];
