@@ -85,5 +85,5 @@ export const environment = {
     // publicKey: 'TEST-4399133a-4676-42a2-ab85-d946370bf96a',
   },
 
-  version: '6.52 (27 Mayo 2026 10:00) fix(cotizaciones): subir firma vendedor en PDF',
+  version: '6.53 (27 Mayo 2026 10:15) fix(cotizaciones): firma vendedor sube a primera hoja — margin IVA a 8',
 };
