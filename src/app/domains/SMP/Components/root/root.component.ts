@@ -851,7 +851,7 @@ public gridOptions: any = {
       const proj: any = await lastValueFrom(this.projectsService.addProject({
         name: `${rootName} - Proyecto Principal`, number: 'PROYECTO-001',
         description: `Proyecto principal de ${rootName}`, idContrato: contractId,
-        year: new Date().getFullYear(), active: 1
+        year: new Date().getFullYear().toString(), active: 1
       }));
       projectId = getId(proj);
       this.logPeriferico('4-Proyecto creado', rootName);
@@ -882,7 +882,7 @@ public gridOptions: any = {
     // ── 6b. TIPO-CLIENTE en Tracking ──────────────────────────────────────────
     try {
       await lastValueFrom(this.catalogadmonService.addCatalogAdmon({
-        description: 'General', active: true, idCompany: rootId, type: 'TIPO-CLIENTE', parentId: null
+        description: 'General', active: 1, idCompany: rootId, type: 'TIPO-CLIENTE', parentId: null
       }));
       this.logPeriferico('6b-TIPO-CLIENTE Tracking creado', rootName);
     } catch (e) { console.error('paso 6b (tipo-cliente tracking):', e); }
@@ -890,7 +890,7 @@ public gridOptions: any = {
     // ── 6c. BILL en Tracking ──────────────────────────────────────────────────
     try {
       await lastValueFrom(this.catalogadmonService.addCatalogAdmon({
-        description: 'GENERAL', active: true, idCompany: rootId, type: 'BILL', parentId: null
+        description: 'GENERAL', active: 1, idCompany: rootId, type: 'BILL', parentId: null
       }));
       this.logPeriferico('6c-BILL Tracking creado', rootName);
     } catch (e) { console.error('paso 6c (bill tracking):', e); }
@@ -917,8 +917,8 @@ public gridOptions: any = {
     try {
       await lastValueFrom(this.administrationService.addBillingManagementInfo({
         idRoot: rootId, emisorRfc: '', emisorNombre: rootName, emisorCp: '',
-        prefix: 'REC', consecutive: 0, fiscalYear: new Date().getFullYear(),
-        fiscalRegime: null, iIva: 0.16, iIeps: 0, iI3: 0, rIva: 0, rIeps: 0,
+        prefix: 'REC', consecutive: 0, consecutivexp: 0, fiscalYear: new Date().getFullYear(),
+        fiscalRegime: 0, iIva: 0.16, iIeps: 0, iI3: 0, rIva: 0, rIeps: 0,
         efirmaPass: '', dateStart: today, dateEnd: endDate, active: true
       }));
       this.logPeriferico('9-BillingManagement creado', rootName);
@@ -928,8 +928,8 @@ public gridOptions: any = {
     try {
       await lastValueFrom(this.administrationService.addAccountBanks({
         idBussines: rootId, numberAccount: '0000000000', nameAccount: 'Cuenta Principal',
-        signAccount: 'sin firma', interbancaria: '', folioCheque: '', folioSinCheque: '',
-        idBanco: null, maskin: 'REC', consecin: 0, maskex: 'EGR', consecex: 0, eAplicaFiscal: 'Si'
+        signAccount: 'sin firma', interbancaria: 'N/A', folioCheque: '', folioSinCheque: '',
+        idBanco: 0, maskin: 'REC', consecin: 0, maskex: 'EGR', consecex: 0, eAplicaFiscal: 'Si'
       }));
       this.logPeriferico('10-CuentaBancaria creada', rootName);
     } catch (e) { console.error('paso 10 (cuenta bancaria):', e); }
@@ -1115,7 +1115,7 @@ public gridOptions: any = {
           const proj: any = await lastValueFrom(this.projectsService.addProject({
             name: `${rootName} - Proyecto Principal`, number: 'PROYECTO-001',
             description: `Proyecto principal de ${rootName}`, idContrato: contractId,
-            year: new Date().getFullYear(), active: 1
+            year: new Date().getFullYear().toString(), active: 1
           }));
           projectId = proj?.id || 0;
           this.logPeriferico('4-Proyecto creado', rootName);
@@ -1162,7 +1162,7 @@ public gridOptions: any = {
       const tiposTracking: any[] = await lastValueFrom(this.catalogsService.getCatalogsFromAdmon(rootId, 'TIPO-CLIENTE')).catch(() => []);
       if (!tiposTracking?.length) {
         await lastValueFrom(this.catalogadmonService.addCatalogAdmon({
-          description: 'General', active: true, idCompany: rootId, type: 'TIPO-CLIENTE', parentId: null
+          description: 'General', active: 1, idCompany: rootId, type: 'TIPO-CLIENTE', parentId: null
         }));
         this.logPeriferico('6b-TIPO-CLIENTE en Tracking creado', rootName);
       }
@@ -1173,7 +1173,7 @@ public gridOptions: any = {
       const billCats: any[] = await lastValueFrom(this.catalogsService.getCatalogsFromAdmon(rootId, 'BILL')).catch(() => []);
       if (!billCats?.length) {
         await lastValueFrom(this.catalogadmonService.addCatalogAdmon({
-          description: 'GENERAL', active: true, idCompany: rootId, type: 'BILL', parentId: null
+          description: 'GENERAL', active: 1, idCompany: rootId, type: 'BILL', parentId: null
         }));
         this.logPeriferico('6c-BILL en Tracking creado', rootName);
       }
@@ -1210,8 +1210,8 @@ public gridOptions: any = {
       if (billingEmpty) {
         await lastValueFrom(this.administrationService.addBillingManagementInfo({
           idRoot: rootId, emisorRfc: '', emisorNombre: rootName, emisorCp: '',
-          prefix: 'REC', consecutive: 0, fiscalYear: new Date().getFullYear(),
-          fiscalRegime: null, iIva: 0.16, iIeps: 0, iI3: 0, rIva: 0, rIeps: 0,
+          prefix: 'REC', consecutive: 0, consecutivexp: 0, fiscalYear: new Date().getFullYear(),
+          fiscalRegime: 0, iIva: 0.16, iIeps: 0, iI3: 0, rIva: 0, rIeps: 0,
           efirmaPass: '', dateStart: today, dateEnd: endDate, active: true
         }));
         this.logPeriferico('9-BillingManagement creado', rootName);
@@ -1224,8 +1224,8 @@ public gridOptions: any = {
       if (!accounts?.length) {
         await lastValueFrom(this.administrationService.addAccountBanks({
           idBussines: rootId, numberAccount: '0000000000', nameAccount: 'Cuenta Principal',
-          signAccount: 'sin firma', interbancaria: '', folioCheque: '', folioSinCheque: '',
-          idBanco: null, maskin: 'REC', consecin: 0, maskex: 'EGR', consecex: 0, eAplicaFiscal: 'Si'
+          signAccount: 'sin firma', interbancaria: 'N/A', folioCheque: '', folioSinCheque: '',
+          idBanco: 0, maskin: 'REC', consecin: 0, maskex: 'EGR', consecex: 0, eAplicaFiscal: 'Si'
         }));
         this.logPeriferico('9-CuentaBancaria creada', rootName);
       }
