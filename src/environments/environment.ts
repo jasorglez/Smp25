@@ -36,8 +36,8 @@ export const environment = {
 
   urlBpi: 'https://ms-pruebas-api.bi2.mx/bpi/api', // 5005
 
-  //urlWarehouse: 'https://ms-pruebas-api.bi2.mx/warehouse/api', // 5007
-  urlWarehouse: 'http://localhost:5199/api',
+  urlWarehouse: 'https://ms-pruebas-api.bi2.mx/warehouse/api', // 5007
+  //urlWarehouse: 'http://localhost:5199/api',
 
   urlAdministration: 'https://ms-pruebas-api.bi2.mx/tracking/api', // 5006 -- Tambien conocido como Tracking
   //urlAdministration : 'http://localhost:5047/api', // 5006 -- Tambien conocido como Tracking
@@ -73,5 +73,5 @@ export const environment = {
 
   urlRefreshToken: 'https://securetoken.googleapis.com/v1/token?key=AIzaSyDxCBGKk8nT09hdW85-PyOkhw5_JPZLF1A',
 
-  version: '2.52.276 (27 Mayo 2026) - Nivel 5 (multi-entregas): click en Cantidad a Recibir abre el grid de Entradas existente (reutiliza bloque selectedOcRow) con CRUD completo'
+  version: '2.52.220 (25 Mayo 2026 10:35) - C1 + C2'
 };
