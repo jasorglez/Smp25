@@ -10,6 +10,7 @@ import { SignalsService } from 'app/services/signals.service';
 import { EntregaOcService } from 'app/services/entrega-oc.service';
 import { EntregasPendingService } from 'app/services/entregas-pending.service';
 import { lastValueFrom, Subscription } from 'rxjs';
+import Swal from 'sweetalert2';
 
 interface OcRow {
   id: number;
@@ -43,7 +44,14 @@ interface OcTooltipData {
   standalone: true,
   imports: [CommonModule, AgGridAngular],
   template: `
-    <div style="padding: 6px; height: 100%; display: flex; flex-direction: column; box-sizing: border-box; overflow: hidden;">
+    <div style="padding: 6px; height: 100%; display: flex; flex-direction: column; box-sizing: border-box; overflow: hidden; position: relative;">
+      <div *ngIf="alertMessage"
+           style="position: absolute; top: 8px; left: 50%; transform: translateX(-50%); z-index: 999;
+                  background: #b71c1c; color: #fff; padding: 4px 16px; border-radius: 20px;
+                  font-size: 0.78rem; font-weight: 600; white-space: nowrap;
+                  box-shadow: 0 2px 8px rgba(0,0,0,0.25); pointer-events: none;">
+        {{ alertMessage }}
+      </div>
       <div style="margin-bottom: 4px; flex-shrink: 0;">
         <strong style="font-size: 0.85rem;">Órdenes de Compra del pedimento</strong>
       </div>
@@ -63,7 +71,7 @@ interface OcTooltipData {
       </div>
 
       <div *ngIf="selectedOcRow && itemsData.length > 0"
-           [style.flex]="selectedArticleRow ? '0 0 115px' : '1 1 auto'"
+           [style.flex]="selectedArticleRow ? '0 0 130px' : '1 1 auto'"
            style="min-height: 0; border-top: 2px solid #e67e22;
                   padding: 4px; display: flex; flex-direction: column; overflow: hidden;">
         <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 3px; flex-shrink: 0;">
@@ -92,12 +100,24 @@ interface OcTooltipData {
                   padding: 4px; display: flex; flex-direction: column; overflow: hidden;">
         <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 3px; flex-shrink: 0;">
           <span style="font-size: 0.78rem; font-weight: bold; color: #2e7d32;">Detalle de {{ selectedArticleRow.namearticle }}</span>
-          <button [disabled]="!hasNivel3Changes"
-                  (click)="revertNivel3Changes()"
-                  style="font-size: 0.7rem; padding: 1px 7px; border: 1px solid #e67e22; border-radius: 4px;
-                         background: #fff3e0; color: #e67e22; cursor: pointer; line-height: 1.6;">
-            <i class="bi bi-arrow-counterclockwise"></i> Deshacer
-          </button>
+          <div style="display: flex; gap: 4px;">
+            <button (click)="addNivel3Row()"
+                    style="font-size: 0.7rem; padding: 1px 7px; border: 1px solid #2e7d32; border-radius: 4px;
+                           background: #e8f5e9; color: #2e7d32; cursor: pointer; line-height: 1.6;">
+              <i class="bi bi-plus-lg"></i> Agregar
+            </button>
+            <button (click)="deleteNivel3Row()" [disabled]="nivel3Data.length <= 1"
+                    style="font-size: 0.7rem; padding: 1px 7px; border: 1px solid #b71c1c; border-radius: 4px;
+                           background: #ffebee; color: #b71c1c; cursor: pointer; line-height: 1.6;">
+              <i class="bi bi-trash"></i> Eliminar
+            </button>
+            <button [disabled]="!hasNivel3Changes"
+                    (click)="revertNivel3Changes()"
+                    style="font-size: 0.7rem; padding: 1px 7px; border: 1px solid #e67e22; border-radius: 4px;
+                           background: #fff3e0; color: #e67e22; cursor: pointer; line-height: 1.6;">
+              <i class="bi bi-arrow-counterclockwise"></i> Deshacer
+            </button>
+          </div>
         </div>
         <div style="flex: 1 1 auto; min-height: 0; position: relative; overflow: hidden;">
           <ag-grid-angular
@@ -124,8 +144,29 @@ export class OrdenesydetallesOcComponent implements OnDestroy {
   private entregasPendingService = inject(EntregasPendingService);
 
   private entregasPendingSub: Subscription;
+  private conditionsPendingSub: Subscription;
 
   constructor() {
+    // Cuando se vacían las conditions pendientes (guardado global), quitar color rosa
+    // de filas COMPRA AUTORIZADA EN OTRA FECHA cuya fecha fue efectivamente editada.
+    this.conditionsPendingSub = this.conditionsPendingService.hasPending$.subscribe((has) => {
+      if (!has && this.itemsData.length > 0) {
+        let needsRefresh = false;
+        this.itemsData.forEach((row: any) => {
+          // Al guardarse, la fecha pendiente queda confirmada de forma persistente.
+          if (row.__pendingDateSave) {
+            row.__pendingDateSave = false;
+            row.datepostponeConfirmada = true;
+            needsRefresh = true;
+          }
+        });
+        if (needsRefresh && this.itemsGridApi && !this.itemsGridApi.isDestroyed()) {
+          // Forzar re-evaluación de cellStyle en toda la grilla (más robusto que por nodo/columna)
+          this.itemsGridApi.refreshCells({ force: true });
+        }
+      }
+    });
+
     // Cuando se vacían las entregas pendientes (guardado global desde el nivel 1),
     // se sincroniza el estado local del nivel 5.
     this.entregasPendingSub = this.entregasPendingService.hasPending$.subscribe((has) => {
@@ -133,6 +174,18 @@ export class OrdenesydetallesOcComponent implements OnDestroy {
         this.hasNivel3Changes = false;
         if (this.selectedArticleRow) {
           this.originalNivel3Data = JSON.parse(JSON.stringify(this.nivel3Data));
+          // Tras guardar: el conteo real ya es nivel3Data.length. Actualizamos
+          // entregasCount (que el formatter usa para el delta) y la baseline de
+          // entregasCount para que un Deshacer posterior no regrese al estado pre-Guardar.
+          this.selectedArticleRow.entregasCount = this.nivel3Data.length;
+          this.selectedArticleRow.__originalEntregasCount = this.nivel3Data.length;
+          if (this.itemsGridApi) {
+            this.itemsGridApi.forEachNode((node: any) => {
+              if (node.data === this.selectedArticleRow) {
+                this.itemsGridApi.refreshCells({ rowNodes: [node], force: true });
+              }
+            });
+          }
         }
       }
     });
@@ -158,6 +211,9 @@ export class OrdenesydetallesOcComponent implements OnDestroy {
   private nivel3GridApi!: GridApi;
   private originalNivel3Data: any[] = [];
   hasNivel3Changes = false;
+  selectedNivel3Row: any = null;
+  alertMessage = '';
+  private alertTimeout: any;
 
   // Cache de datos para tooltip por OC id
   private ocTooltipDataMap: Map<number, OcTooltipData> = new Map();
@@ -267,10 +323,23 @@ export class OrdenesydetallesOcComponent implements OnDestroy {
       cellEditor: 'agRichSelectCellEditor',
       cellEditorParams: () => ({ values: this.conditionsOptions }),
       valueParser: (p) => { const n = Number(p.newValue); return isNaN(n) ? p.oldValue : n; },
+      valueFormatter: (p: any) => {
+        // `conditions` (p.value) = plan original elegido en el dropdown.
+        // `entregasCount` = conteo real de entregas (vivas en BD o pending in-session).
+        // Mostramos delta cuando hay entregas (locked); si no hay, valor plano.
+        const planned = Number(p.value ?? 0);
+        const real = Number(p.data?.entregasCount ?? 0);
+        if (real === 0) return String(planned);
+        const delta = real - planned;
+        if (delta > 0) return `${planned} + ${delta}`;
+        if (delta < 0) return `${planned} - ${Math.abs(delta)}`;
+        return String(planned);
+      },
       cellStyle: (p: any) => ((p.data?.entregasCount ?? 0) > 0)
         ? { backgroundColor: '#eeeeee', color: '#9e9e9e', cursor: 'not-allowed' }
         : null,
     },
+    { field: 'typeoc', headerName: 'Tipo OC', width: 160, editable: false },
     { field: 'numarticle', headerName: '# Item OC', width: 140, hide: true },
     {
       field: 'namearticle',
@@ -293,10 +362,31 @@ export class OrdenesydetallesOcComponent implements OnDestroy {
       },
     },
     { field: 'observation', headerName: 'Producto Externo', flex: 2, minWidth: 150 },
-    { field: 'typeoc', headerName: 'Tipo', width: 120, hide: true },
     { field: 'quantity', headerName: 'Cantidad Pedida', width: 130, type: 'numericColumn' },
-    { field: 'price', headerName: 'Precio unitario', width: 140, type: 'numericColumn' },
-    { field: 'total', headerName: 'Total', width: 120, type: 'numericColumn' },
+    {
+      field: 'price',
+      headerName: 'Precio unitario',
+      width: 140,
+      type: 'numericColumn',
+      valueFormatter: (p) => {
+        const n = Number(p.value);
+        return Number.isFinite(n) && n > 0
+          ? n.toLocaleString('es-MX', { style: 'currency', currency: 'MXN', minimumFractionDigits: 2 })
+          : '';
+      },
+    },
+    {
+      field: 'total',
+      headerName: 'Total',
+      width: 120,
+      type: 'numericColumn',
+      valueFormatter: (p) => {
+        const n = Number(p.value);
+        return Number.isFinite(n) && n > 0
+          ? n.toLocaleString('es-MX', { style: 'currency', currency: 'MXN', minimumFractionDigits: 2 })
+          : '';
+      },
+    },
     {
       field: 'notaFactura',
       headerName: 'Nota / Factura',
@@ -306,15 +396,30 @@ export class OrdenesydetallesOcComponent implements OnDestroy {
       cellEditorParams: { values: ['Nota', 'Factura'] },
     },
     { field: 'caducidadMinimaRequerida', headerName: 'Caducidad Minima Requerida', width: 180 },
-    { field: 'datepostpone', headerName: 'Fecha Entrega', width: 130,
+    {
+      field: 'datepostpone',
+      headerName: 'Fecha Entrega',
+      width: 130,
+      editable: (p: any) => p.data?.typeoc === 'COMPRA AUTORIZADA EN OTRA FECHA',
+      cellDataType: 'dateString',
+      cellEditor: 'agDateStringCellEditor',
+      cellStyle: (p: any) => {
+        // Retornar siempre backgroundColor explícito: si se devuelve null, AG Grid
+        // no limpia de forma fiable el rosa aplicado previamente.
+        // Rosa mientras: es el tipo y NO está confirmada de forma persistente (BD),
+        // o hay una edición de fecha sin guardar todavía en esta sesión.
+        const isTipo = p.data?.typeoc === 'COMPRA AUTORIZADA EN OTRA FECHA';
+        const pink = isTipo && (!p.data?.datepostponeConfirmada || p.data?.__pendingDateSave);
+        return { backgroundColor: pink ? '#fce4ec' : '' };
+      },
       valueFormatter: (p) => {
         if (!p.value) return '';
+        // Parsea directamente del string ISO para evitar conversión de timezone
+        const iso = String(p.value).match(/^(\d{4})-(\d{2})-(\d{2})/);
+        if (iso) return `${iso[3]}/${iso[2]}/${iso[1]}`;
         const date = new Date(p.value);
-        const d = String(date.getDate()).padStart(2, '0');
-        const m = String(date.getMonth() + 1).padStart(2, '0');
-        const y = date.getFullYear();
-        return `${d}/${m}/${y}`;
-      }
+        return `${String(date.getDate()).padStart(2,'0')}/${String(date.getMonth()+1).padStart(2,'0')}/${date.getFullYear()}`;
+      },
     },
     {
       headerName: 'PDF',
@@ -332,10 +437,60 @@ export class OrdenesydetallesOcComponent implements OnDestroy {
   itemsGridOptions: any = {
     headerHeight: 45,
     rowHeight: 25,
-    defaultColDef: { resizable: true, sortable: true, wrapHeaderText: true, autoHeaderHeight: true },
+    defaultColDef: { resizable: true, sortable: true, wrapHeaderText: true },
     onCellValueChanged: (event: any) => {
+      if (event.colDef.field === 'datepostpone') {
+        // Normaliza cualquier formato de fecha a YYYY-MM-DD para comparación segura
+        const toIso = (s: any): string => {
+          if (!s) return '';
+          const str = String(s).trim();
+          const dmy = str.match(/^(\d{2})\/(\d{2})\/(\d{4})$/);
+          if (dmy) return `${dmy[3]}-${dmy[2]}-${dmy[1]}`;
+          return str.substring(0, 10);
+        };
+        const original = toIso(event.data?.__originalDatepostpone);
+        const newDate = toIso(event.newValue);
+        if (original && (!newDate || newDate <= original)) {
+          event.data.datepostpone = event.oldValue ?? original;
+          event.api.refreshCells({ rowNodes: [event.node], columns: ['datepostpone'], force: true });
+          this.showInlineAlert('La fecha debe ser mayor a la fecha original');
+          return;
+        }
+        // Guardar siempre en formato YYYY-MM-DD
+        if (newDate) event.data.datepostpone = newDate;
+        // Flag temporal: mantiene el rosa hasta que se guarde.
+        event.data.__pendingDateSave = true;
+
+        // Si el nivel 5 está abierto para este mismo ítem (COMPRA AUTORIZADA EN OTRA FECHA),
+        // reflejar la nueva fecha en las filas que aún tenían la fecha base anterior (sin editar).
+        if (this.selectedArticleRow === event.data
+            && event.data.typeoc === 'COMPRA AUTORIZADA EN OTRA FECHA') {
+          const oldBase = toIso(event.oldValue);
+          let changed = false;
+          this.nivel3Data.forEach((r: any) => {
+            if (toIso(r.fechaEntrega) === oldBase) {
+              r.fechaEntrega = newDate;
+              changed = true;
+            }
+          });
+          if (changed && this.nivel3GridApi && !this.nivel3GridApi.isDestroyed()) {
+            this.nivel3GridApi.setGridOption('rowData', this.nivel3Data);
+          }
+        }
+
+        const { conditions, ...rest } = event.data;
+        // La confirmación SÍ se persiste en backend; la fila visible queda rosa hasta guardar.
+        const cleanItem = { ...rest, datepostponeConfirmada: true };
+        this.conditionsPendingService.add(event.data.id, cleanItem, Number(conditions));
+        this.changedItemIds.add(event.data.id);
+        this.hasLocalChanges = true;
+        return;
+      }
       if (event.colDef.field === 'conditions' && event.data?.id) {
-        const { conditions, ...cleanItem } = event.data;
+        const { conditions, ...rest } = event.data;
+        const cleanItem: any = { ...rest };
+        // Si hay una edición de fecha pendiente, preservar la confirmación al guardar condiciones.
+        if (event.data.__pendingDateSave) cleanItem.datepostponeConfirmada = true;
         this.conditionsPendingService.add(event.data.id, cleanItem, Number(event.newValue));
         this.changedItemIds.add(event.data.id);
         this.hasLocalChanges = true;
@@ -379,6 +534,20 @@ export class OrdenesydetallesOcComponent implements OnDestroy {
       valueParser: (p) => { const n = Number(p.newValue); return isNaN(n) ? p.oldValue : n; },
     },
     {
+      field: 'totalEntrega',
+      headerName: 'Total x Entrega',
+      width: 140,
+      editable: false,
+      type: 'numericColumn',
+      cellStyle: { backgroundColor: '#eeeeee', color: '#424242' },
+      valueFormatter: (p) => {
+        const n = Number(p.value);
+        return Number.isFinite(n) && n > 0
+          ? n.toLocaleString('es-MX', { style: 'currency', currency: 'MXN', minimumFractionDigits: 2 })
+          : '';
+      },
+    },
+    {
       field: 'notaFactura',
       headerName: 'Nota / Factura',
       flex: 1,
@@ -386,14 +555,6 @@ export class OrdenesydetallesOcComponent implements OnDestroy {
       editable: true,
       cellEditor: 'agRichSelectCellEditor',
       cellEditorParams: { values: ['Nota', 'Factura'] },
-    },
-    {
-      field: 'totalEntrega',
-      headerName: 'Total x Entrega',
-      width: 140,
-      editable: true,
-      type: 'numericColumn',
-      valueParser: (p) => { const n = Number(p.newValue); return isNaN(n) ? p.oldValue : n; },
     },
     {
       headerName: 'PDF',
@@ -420,9 +581,41 @@ export class OrdenesydetallesOcComponent implements OnDestroy {
   nivel3GridOptions: any = {
     headerHeight: 28,
     rowHeight: 25,
+    rowSelection: 'single',
     defaultColDef: { resizable: true, sortable: true },
     onFirstDataRendered: (params: any) => params.api.autoSizeAllColumns(),
+    onSelectionChanged: (event: any) => {
+      const rows = event.api.getSelectedRows();
+      this.selectedNivel3Row = rows.length ? rows[0] : null;
+    },
     onCellValueChanged: (event: any) => {
+      if (event.colDef.field === 'fechaEntrega') {
+        const rowIndex = event.node.rowIndex ?? 0;
+        if (rowIndex > 0) {
+          const prevFecha = this.nivel3Data[rowIndex - 1]?.fechaEntrega ?? '';
+          const newFecha = event.newValue ?? '';
+          if (prevFecha && newFecha <= prevFecha) {
+            event.data.fechaEntrega = event.oldValue ?? '';
+            event.api.refreshCells({ rowNodes: [event.node], columns: ['fechaEntrega'], force: true });
+            this.showInlineAlert('La fecha debe ser mayor a la fila anterior');
+            return;
+          }
+        }
+      }
+      if (event.colDef.field === 'cantidadRecibir') {
+        const maxQty = Number(this.selectedArticleRow?.quantity ?? 0);
+        const newSum = this.nivel3Data.reduce((acc, row) => acc + Number(row.cantidadRecibir ?? 0), 0);
+        if (newSum > maxQty) {
+          event.data.cantidadRecibir = event.oldValue ?? null;
+          event.api.refreshCells({ rowNodes: [event.node], columns: ['cantidadRecibir'], force: true });
+          this.showInlineAlert(`La cantidad excede la cotización (máx. ${maxQty})`);
+          return;
+        }
+        const price = Number(this.selectedArticleRow?.price ?? 0);
+        const qty = Number(event.newValue ?? 0);
+        event.data.totalEntrega = Number.isFinite(price * qty) ? price * qty : 0;
+        event.api.refreshCells({ rowNodes: [event.node], columns: ['totalEntrega'], force: true });
+      }
       if (event?.data) event.data.__touched = true;
       this.hasNivel3Changes = true;
       const idDetail = Number(this.selectedArticleRow?.id);
@@ -511,7 +704,14 @@ export class OrdenesydetallesOcComponent implements OnDestroy {
       this.closeNivel3();
       return;
     }
+    if (articleRow.__originalConditions == null) {
+      articleRow.__originalConditions = Number(articleRow.conditions ?? 0);
+    }
+    if (articleRow.__originalEntregasCount == null) {
+      articleRow.__originalEntregasCount = Number(articleRow.entregasCount ?? 0);
+    }
     this.selectedArticleRow = articleRow;
+    this.selectedNivel3Row = null;
     this.loadNivel3Data(articleRow);
     if (this.itemsGridApi) {
       this.itemsGridApi.forEachNode((node: any) => {
@@ -526,9 +726,26 @@ export class OrdenesydetallesOcComponent implements OnDestroy {
     return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
   }
 
-  private emptyNivel3Row(): any {
+  private dateToIso(value: any): string {
+    if (!value) return this.todayIso();
+    try {
+      const d = new Date(value);
+      if (isNaN(d.getTime())) return this.todayIso();
+      return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+    } catch { return this.todayIso(); }
+  }
+
+  private emptyNivel3Row(fechaBase?: string): any {
     const today = this.todayIso();
-    return { id: null, fechaEntrega: today, cantidadRecibir: null, notaFactura: '', totalEntrega: null, fechaEntradaAlmacen: today };
+    return { id: null, fechaEntrega: fechaBase ?? today, cantidadRecibir: null, notaFactura: '', totalEntrega: null, fechaEntradaAlmacen: '' };
+  }
+
+  /**
+   * Fecha base para las filas del nivel 5. Solo los ítems "COMPRA AUTORIZADA EN OTRA FECHA"
+   * heredan la fecha de entrega (datepostpone) del nivel 4; el resto usa la fecha de hoy.
+   */
+  private nivel3FechaBase(articleRow: any): string {
+    return this.dateToIso(articleRow?.datepostpone);
   }
 
   private autosizeNivel3(): void {
@@ -539,10 +756,14 @@ export class OrdenesydetallesOcComponent implements OnDestroy {
     });
   }
 
-  /** Carga las entregas guardadas del ítem y las mezcla con el scaffold de N filas (N = conditions). */
+  /** Carga las entregas guardadas del ítem. Si ya hay entregas reales, mostramos
+   *  exactamente esas (sin scaffold) — el delta vs `conditions` se ve en la
+   *  columna Cantidad Entregas. Si no hay ninguna, scaffold `conditions` filas
+   *  vacías para que el usuario las llene. */
   private loadNivel3Data(articleRow: any): void {
-    const count = Math.max(1, Number(articleRow?.conditions) || 0);
+    const planned = Math.max(1, Number(articleRow?.conditions) || 0);
     const idDetail = Number(articleRow?.id);
+    const fechaBase = this.nivel3FechaBase(articleRow);
 
     if (!idDetail) {
       this.buildNivel3Grid(articleRow);
@@ -554,21 +775,29 @@ export class OrdenesydetallesOcComponent implements OnDestroy {
     this.entregaOcService.getByDetail(idDetail).subscribe({
       next: (saved) => {
         const list = Array.isArray(saved) ? saved : [];
-        const rows: any[] = [];
-        for (let i = 0; i < count; i++) {
-          const s = list[i];
-          rows.push(s ? {
-            id: s.id ?? null,
-            fechaEntrega: s.fechaEntrega ?? '',
-            cantidadRecibir: s.cantidadRecibir ?? null,
-            notaFactura: s.notaFactura ?? '',
-            totalEntrega: s.totalEntrega ?? null,
-            fechaEntradaAlmacen: s.fechaEntradaAlmacen ?? '',
-          } : this.emptyNivel3Row());
+        // Baseline desde BD: lo que se usará para Deshacer.
+        const baseline: any[] = list.length > 0
+          ? list.map(s => ({
+              id: s.id ?? null,
+              fechaEntrega: s.fechaEntrega ?? '',
+              cantidadRecibir: s.cantidadRecibir ?? null,
+              notaFactura: s.notaFactura ?? '',
+              totalEntrega: s.totalEntrega ?? null,
+              fechaEntradaAlmacen: s.fechaEntradaAlmacen ?? '',
+            }))
+          : Array.from({ length: planned }, () => this.emptyNivel3Row(fechaBase));
+        this.originalNivel3Data = baseline;
+
+        // Si en esta sesión hay cambios pendientes (add/delete/edit aún no guardados),
+        // mostrarlos en vez del estado de BD. Así un close+reopen no los pierde.
+        const pendingRows = this.entregasPendingService.getPendingRows(idDetail);
+        if (pendingRows !== undefined) {
+          this.nivel3Data = JSON.parse(JSON.stringify(pendingRows));
+          this.hasNivel3Changes = true;
+        } else {
+          this.nivel3Data = JSON.parse(JSON.stringify(baseline));
+          this.hasNivel3Changes = false;
         }
-        this.nivel3Data = rows;
-        this.originalNivel3Data = JSON.parse(JSON.stringify(rows));
-        this.hasNivel3Changes = false;
         if (this.nivel3GridApi) {
           this.nivel3GridApi.setGridOption('rowData', this.nivel3Data);
           this.autosizeNivel3();
@@ -585,11 +814,12 @@ export class OrdenesydetallesOcComponent implements OnDestroy {
   private buildNivel3Grid(articleRow: any, preserve: boolean = false): void {
     const count = Math.max(1, Number(articleRow?.conditions) || 0);
     const existing = preserve ? (this.nivel3Data || []) : [];
+    const fechaBase = this.nivel3FechaBase(articleRow);
 
     const newData: any[] = [];
     for (let i = 1; i <= count; i++) {
       const prior = existing[i - 1];
-      newData.push(prior ?? this.emptyNivel3Row());
+      newData.push(prior ?? this.emptyNivel3Row(fechaBase));
     }
     this.nivel3Data = newData;
 
@@ -603,6 +833,14 @@ export class OrdenesydetallesOcComponent implements OnDestroy {
   revertNivel3Changes(): void {
     this.nivel3Data = JSON.parse(JSON.stringify(this.originalNivel3Data));
     this.hasNivel3Changes = false;
+    if (this.selectedArticleRow?.__originalConditions != null) {
+      this.selectedArticleRow.conditions = this.selectedArticleRow.__originalConditions;
+      this.refreshConditionsCell();
+    }
+    // Restaurar entregasCount al valor que tenía antes de Agregar/Eliminar.
+    if (this.selectedArticleRow?.__originalEntregasCount != null) {
+      this.selectedArticleRow.entregasCount = this.selectedArticleRow.__originalEntregasCount;
+    }
     const idDetail = Number(this.selectedArticleRow?.id);
     if (idDetail) {
       this.entregasPendingService.remove(idDetail);
@@ -872,9 +1110,100 @@ export class OrdenesydetallesOcComponent implements OnDestroy {
     }
   }
 
+  private refreshConditionsCell(): void {
+    if (!this.itemsGridApi) return;
+    this.itemsGridApi.forEachNode((node: any) => {
+      if (node.data === this.selectedArticleRow) {
+        this.itemsGridApi.refreshCells({ rowNodes: [node], columns: ['conditions'], force: true });
+      }
+    });
+  }
+
+  addNivel3Row(): void {
+    if (!this.selectedArticleRow) return;
+    const fechaBase = this.dateToIso(this.selectedArticleRow.datepostpone);
+    // __touched: true → la fila vacía sí se persiste vía EntregasPendingService.flush
+    // (Agregar es acto explícito, no scaffold default).
+    this.nivel3Data = [...this.nivel3Data, { ...this.emptyNivel3Row(fechaBase), __touched: true }];
+    // `conditions` NO se toca: representa el plan original. El delta visual se
+    // calcula contra `entregasCount` (real). Subimos entregasCount localmente
+    // para que el formatter refleje el cambio antes del Guardar.
+    this.selectedArticleRow.entregasCount = Number(this.selectedArticleRow.entregasCount ?? 0) + 1;
+    if (this.nivel3GridApi) this.nivel3GridApi.setGridOption('rowData', this.nivel3Data);
+    this.refreshConditionsCell();
+    this.hasNivel3Changes = true;
+    const idDetail = Number(this.selectedArticleRow?.id);
+    if (idDetail) this.entregasPendingService.set(idDetail, this.nivel3Data);
+  }
+
+  async deleteNivel3Row(): Promise<void> {
+    if (!this.selectedArticleRow) return;
+    if (this.nivel3Data.length <= 1) {
+      this.showInlineAlert('Debe quedar al menos una fila');
+      return;
+    }
+    const result = await Swal.fire({
+      title: '¿Está seguro que quiere borrar una entrega?',
+      icon: 'warning',
+      showCancelButton: true,
+      confirmButtonText: 'Confirmar',
+      cancelButtonText: 'Cancelar',
+      confirmButtonColor: '#b71c1c',
+      cancelButtonColor: '#6c757d',
+      reverseButtons: true,
+      focusCancel: true,
+    });
+    if (!result.isConfirmed) return;
+
+    const idDetail = Number(this.selectedArticleRow?.id);
+    const removed = this.nivel3Data[this.nivel3Data.length - 1];
+
+    // Si la última fila tenía id (era una entrega guardada), borrarla YA del backend.
+    // El Eliminar es acción destructiva ya confirmada por el usuario — no se difiere a Guardar.
+    if (removed?.id) {
+      try {
+        await lastValueFrom(this.entregaOcService.delete(Number(removed.id)));
+      } catch {
+        this.showInlineAlert('No se pudo borrar la entrega');
+        return;
+      }
+      // Bajar también el baseline (lo que la BD ya tiene) y el originalEntregasCount.
+      this.originalNivel3Data = this.originalNivel3Data.slice(0, -1);
+      this.selectedArticleRow.__originalEntregasCount = Math.max(
+        0, Number(this.selectedArticleRow.__originalEntregasCount ?? 0) - 1
+      );
+    }
+
+    // Quitar la fila de la lista local.
+    this.nivel3Data = this.nivel3Data.slice(0, -1);
+    this.selectedArticleRow.entregasCount = Math.max(
+      0, Number(this.selectedArticleRow.entregasCount ?? 0) - 1
+    );
+    this.selectedNivel3Row = null;
+    if (this.nivel3GridApi) this.nivel3GridApi.setGridOption('rowData', this.nivel3Data);
+    this.refreshConditionsCell();
+
+    // Sincronizar pending si quedaban otras filas pendientes (no destruir pending de Agregar/edits).
+    if (idDetail && this.entregasPendingService.getPendingRows(idDetail) !== undefined) {
+      this.entregasPendingService.set(idDetail, this.nivel3Data);
+    }
+    // hasNivel3Changes ya solo refleja Agregar/edits pendientes; si pending está vacío, no hay nada que guardar.
+    this.hasNivel3Changes = idDetail
+      ? this.entregasPendingService.getPendingRows(idDetail) !== undefined
+      : this.hasNivel3Changes;
+  }
+
+  private showInlineAlert(msg: string): void {
+    clearTimeout(this.alertTimeout);
+    this.alertMessage = msg;
+    this.alertTimeout = setTimeout(() => { this.alertMessage = ''; }, 2500);
+  }
+
   ngOnDestroy(): void {
+    clearTimeout(this.alertTimeout);
     this.hideOcTooltip();
     this.entregasPendingSub?.unsubscribe();
+    this.conditionsPendingSub?.unsubscribe();
   }
 
   onRowClicked(event: any) {
@@ -918,7 +1247,10 @@ export class OrdenesydetallesOcComponent implements OnDestroy {
         this.itemsData = (Array.isArray(items) ? items : []).map((it: any) => ({
           ...it,
           conditions: it.diasCondicionCompra ?? 1,
-          typeoc: row.typeoc || '',
+          typeoc: it.typeoc || it.typeOc || '',
+          datepostponeConfirmada: it.datepostponeConfirmada ?? false,
+          __originalDatepostpone: (it.datepostpone || '').substring(0, 10),
+          __pendingDateSave: false,
         }));
         this.originalItemsData = JSON.parse(JSON.stringify(this.itemsData));
         this.changedItemIds.clear();

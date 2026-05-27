@@ -9,6 +9,7 @@ import { CustomersService } from '../../../../../services/customers.service';
 import { SignalsService } from '../../../../../services/signals.service';
 import { TrackingService } from '../../../../../services/tracking.service';
 import { EntradaMoliendaService, EntradaMolienda } from '../../../../../services/entrada-molienda.service';
+import { EntregaOcService } from '../../../../../services/entrega-oc.service';
 import { CaracteristicasEntradaService } from '../../../../../services/caracteristicas-entrada.service';
 import { IntandoutDocumentsService } from 'app/services/intandoutDocuments.service';
 import { alerts } from 'app/helpers/alerts';
@@ -58,7 +59,7 @@ interface ReqOption {
           OC de {{ selectedReqRow.folio }}
         </div>
 
-        <div [style.flex]="selectedOcRow ? '0 0 58px' : '1 1 auto'"
+        <div [style.flex]="(selectedOcRow || selectedOcMultiRow) ? '0 0 74px' : '1 1 auto'"
              style="min-height: 58px; position: relative; overflow: hidden;">
           <ag-grid-angular
             class="ag-theme-quartz small-text-ag-grid"
@@ -70,6 +71,30 @@ interface ReqOption {
             (cellClicked)="onCascadeOcCellClicked($event)"
             style="width: 100%; height: 100%; position: absolute; top: 0; left: 0; right: 0; bottom: 0;">
           </ag-grid-angular>
+        </div>
+
+        <!-- Acordeón nivel 4 (múltiples entregas, diasCondicionCompra ≠ 1): Detalle de entregas -->
+        <div *ngIf="selectedOcMultiRow"
+             [style.flex]="selectedMultiEntregaCaratRow ? '0 0 112px' : '1 1 auto'"
+             style="min-height: 0; border-top: 2px solid #2e7d32; background: #f1f8e9;
+                    padding: 4px; display: flex; flex-direction: column; overflow: hidden;">
+          <div style="display: flex; align-items: center; margin-bottom: 3px; flex-shrink: 0;">
+            <span style="font-size: 0.78rem; font-weight: bold; color: #2e7d32;">
+              Detalle de {{ materialNombre || selectedOcMultiRow.folio }}
+            </span>
+          </div>
+          <div [style.flex]="selectedMultiEntregaCaratRow ? '0 0 74px' : '1 1 auto'"
+               style="min-height: 58px; position: relative; overflow: hidden;">
+            <ag-grid-angular
+              class="ag-theme-quartz small-text-ag-grid"
+              [rowData]="multiEntregasData"
+              [columnDefs]="multiEntregasColDefs"
+              [gridOptions]="multiEntregasGridOptions"
+              (gridReady)="onMultiEntregasGridReady($event)"
+              (cellClicked)="onMultiEntregaCellClicked($event)"
+              style="width: 100%; height: 100%; position: absolute; top: 0; left: 0; right: 0; bottom: 0;">
+            </ag-grid-angular>
+          </div>
         </div>
 
         <div *ngIf="selectedOcRow"
@@ -158,6 +183,7 @@ export class DetalleMoliendaComponent {
   private signalsService = inject(SignalsService);
   private trackingService = inject(TrackingService);
   private entradaService = inject(EntradaMoliendaService);
+  private entregaOcService = inject(EntregaOcService);
   private caracteristicasService = inject(CaracteristicasEntradaService);
   private intandoutDocumentsService = inject(IntandoutDocumentsService);
 
@@ -177,6 +203,10 @@ export class DetalleMoliendaComponent {
   selectedReqRow: any = null;
   cascadeOcData: any[] = [];
   selectedOcRow: any = null;
+  selectedOcMultiRow: any = null;
+  multiEntregasData: any[] = [];
+  private multiEntregasGridApi!: GridApi;
+  selectedMultiEntregaCaratRow: any = null;
   cascadeEntradaData: any[] = [];
   private originalCascadeEntradaData: any[] = [];
   hasUnsavedChangesEntradas = false;
@@ -277,6 +307,24 @@ export class DetalleMoliendaComponent {
   // ── Nivel 3: OCs ──────────────────────────────────────────────────
   cascadeOcColDefs: ColDef[] = [
     {
+      field: 'entregasCount',
+      headerName: 'Cantidad Entregas',
+      width: 140,
+      editable: false,
+      cellStyle: { backgroundColor: '#f8f9fa', fontWeight: '600' },
+      // Espejo del mismo cálculo de la tabla "Ítems de OC-…" en purchaseorderdelison:
+      // planned = diasCondicionCompra; real = entregasCount; muestra delta cuando hay entregas.
+      valueFormatter: (p: any) => {
+        const planned = Number(p.data?.diasCondicionCompra ?? 0);
+        const real = Number(p.data?.entregasCount ?? 0);
+        if (real === 0) return String(planned);
+        const delta = real - planned;
+        if (delta > 0) return `${planned} + ${delta}`;
+        if (delta < 0) return `${planned} - ${Math.abs(delta)}`;
+        return String(planned);
+      },
+    },
+    {
       field: 'folio',
       headerName: 'OC',
       width: 110,
@@ -323,7 +371,30 @@ export class DetalleMoliendaComponent {
     { field: 'proveedor', headerName: 'Proveedor', flex: 2, minWidth: 140 },
     { field: 'cantidad', headerName: 'Cantidad', width: 110, type: 'numericColumn' },
     { field: 'price', headerName: 'Precio unitario', width: 120, type: 'numericColumn' },
-    { field: 'condEspecial', headerName: 'Cond. Especial', flex: 2, minWidth: 130 },
+    { field: 'condEspecial', headerName: 'Cond. Especial', flex: 2, minWidth: 130, hide: true },
+    {
+      field: 'cantidadMinimaRequerida',
+      headerName: 'Cad. Mín. Requerida',
+      flex: 2,
+      minWidth: 150,
+      valueFormatter: (p: any) => p.value ?? '—',
+    },
+    {
+      field: 'fechaXEntrega',
+      headerName: 'Fecha x Entrega',
+      width: 130,
+      valueFormatter: (p: any) => {
+        if (!p.value) return '—';
+        const iso = String(p.value).match(/^(\d{4})-(\d{2})-(\d{2})/);
+        if (iso) return `${iso[3]}/${iso[2]}/${iso[1]}`;
+        const d = new Date(p.value);
+        return isNaN(d.getTime()) ? '—' : `${String(d.getDate()).padStart(2,'0')}/${String(d.getMonth()+1).padStart(2,'0')}/${d.getFullYear()}`;
+      },
+    },
+    {
+      field: 'resta', headerName: 'Resta', width: 90, type: 'numericColumn',
+      cellStyle: { backgroundColor: '#fff9c4' }
+    },
     {
       field: 'close',
       headerName: 'Cerrado',
@@ -357,7 +428,7 @@ export class DetalleMoliendaComponent {
             if (ocMaster) {
               ocMaster.close = true;
               await lastValueFrom(this.ocAndReqsService.updateOcAndReq(params.data.id, ocMaster));
-              
+
               // Si es la OC actualmente seleccionada, refrescamos niveles 4 y 5 para bloquear edición
               if (this.selectedOcRow === params.data) {
                 if (this.nivel4GridApi) this.nivel4GridApi.refreshCells({ force: true });
@@ -366,7 +437,7 @@ export class DetalleMoliendaComponent {
 
               // Refrescar la fila actual para que la columna Folio muestre el candado y el color de fondo inmediatamente
               params.api.refreshCells({ rowNodes: [params.node], force: true });
-              
+
               alerts.reqSuccessToast('Éxito', `La OC ${params.data.folio} ha sido cerrada.`);
             }
           } catch (error) {
@@ -379,20 +450,82 @@ export class DetalleMoliendaComponent {
         }
       }
     },
-    {
-      field: 'resta', headerName: 'Resta', width: 90, type: 'numericColumn',
-      cellStyle: { backgroundColor: '#fff9c4' }
-    },
   ];
 
   cascadeOcGridOptions: any = {
     headerHeight: 25,
     rowHeight: 25,
     rowClassRules: {
-      'selected-oc-highlight': (p: any) => p.data === this.selectedOcRow,
+      'selected-oc-highlight': (p: any) => p.data === this.selectedOcRow || p.data === this.selectedOcMultiRow,
     },
     defaultColDef: { resizable: true, sortable: true, textAlign: 'center' },
     tooltipShowDelay: 300,
+    onFirstDataRendered: (params: any) => params.api.autoSizeAllColumns(),
+  };
+
+  // ── Nivel 4 (múltiples entregas): Detalle de entregas (solo lectura) ──
+  multiEntregasColDefs: ColDef[] = [
+    {
+      headerName: '#',
+      width: 45,
+      valueGetter: (p) => (p.node?.rowIndex ?? 0) + 1,
+      cellStyle: { backgroundColor: '#f8f9fa', fontWeight: 'bold' },
+    },
+    {
+      field: 'fechaEntrega',
+      headerName: 'Fecha Entrega',
+      width: 130,
+      valueFormatter: (p) => this.formatFechaDmy(p.value),
+    },
+    {
+      field: 'cantidadRecibir',
+      headerName: 'Cantidad a Recibir',
+      width: 150,
+      type: 'numericColumn',
+      cellStyle: { backgroundColor: '#c8e6c9', color: '#1b5e20', fontWeight: '600', cursor: 'pointer' },
+    },
+    {
+      field: 'totalEntrega',
+      headerName: 'Total x Entrega',
+      width: 140,
+      type: 'numericColumn',
+      cellStyle: { backgroundColor: '#eeeeee', color: '#424242' },
+      valueFormatter: (p) => {
+        const n = Number(p.value);
+        return Number.isFinite(n) && n > 0
+          ? n.toLocaleString('es-MX', { style: 'currency', currency: 'MXN', minimumFractionDigits: 2 })
+          : '';
+      },
+    },
+    {
+      field: 'notaFactura',
+      headerName: 'Nota / Factura',
+      flex: 1,
+      minWidth: 140,
+    },
+    {
+      headerName: 'PDF',
+      width: 60,
+      sortable: false,
+      cellRenderer: (_params: any) => {
+        const div = document.createElement('div');
+        div.style.cssText = 'text-align: center; cursor: pointer;';
+        div.innerHTML = '<i class="bi bi-file-pdf" style="color: #d32f2f; font-size: 1.2rem;" title="Descargar PDF"></i>';
+        return div;
+      },
+    },
+    {
+      field: 'fechaEntradaAlmacen',
+      headerName: 'Fecha Entrada Almacén',
+      width: 160,
+      valueFormatter: (p) => this.formatFechaDmy(p.value),
+    },
+  ];
+
+  multiEntregasGridOptions: any = {
+    headerHeight: 28,
+    rowHeight: 25,
+    defaultColDef: { resizable: true, sortable: true, editable: false },
     onFirstDataRendered: (params: any) => params.api.autoSizeAllColumns(),
   };
 
@@ -893,7 +1026,7 @@ export class DetalleMoliendaComponent {
     this.nivel5ColDefs = colDefs;
   }
 
-  /** Click en columna OC: comprime otras filas y muestra nivel 4 (entradas). */
+  /** Click en columna OC: comprime otras filas y muestra nivel 4 (entradas) o acordeón multi. */
   async onCascadeOcCellClicked(event: any): Promise<void> {
     if (event.column?.getColId() !== 'folio') return;
 
@@ -903,12 +1036,11 @@ export class DetalleMoliendaComponent {
       return;
     }
 
-    if (this.selectedOcRow === row) {
+    if (this.selectedOcRow === row || this.selectedOcMultiRow === row) {
       this.clearOcSelection();
       return;
     }
 
-    this.selectedOcRow = row;
     this.cascadeEntradaData = [];
     this.originalCascadeEntradaData = [];
     this.hasUnsavedChangesEntradas = false;
@@ -923,8 +1055,32 @@ export class DetalleMoliendaComponent {
       this.cascadeOcGridApi.refreshCells({ force: true });
     }
 
+    // Cuando diasCondicionCompra ≠ 1, múltiples entregas → grid Detalle de entregas
+    const isMulti = Number(row.diasCondicionCompra ?? 1) !== 1;
+    if (isMulti) {
+      this.selectedOcRow = null;
+      this.selectedOcMultiRow = row;
+      if (this.nivel4GridApi && !this.nivel4GridApi.isDestroyed())
+        this.nivel4GridApi.setGridOption('rowData', []);
+      this.loadMultiEntregas(row);
+      return;
+    }
+
+    this.selectedOcMultiRow = null;
+    this.selectedOcRow = row;
+
     if (this.nivel4GridApi && !this.nivel4GridApi.isDestroyed())
       this.nivel4GridApi.setGridOption('rowData', []);
+
+    await this.loadEntradasForOc(row);
+  }
+
+  /** Carga las entradas (recepciones) de una OC + material en el grid nivel 4. */
+  private async loadEntradasForOc(row: any): Promise<void> {
+    this.cascadeEntradaData = [];
+    this.originalCascadeEntradaData = [];
+    this.hasUnsavedChangesEntradas = false;
+    this.selectedEntradaRow = null;
 
     try {
       const idMaterial = this.internalParams?.data?.idMaterial;
@@ -984,12 +1140,97 @@ export class DetalleMoliendaComponent {
 
   private clearOcSelection(): void {
     this.selectedOcRow = null;
+    this.selectedOcMultiRow = null;
     this.cascadeEntradaData = [];
+    this.multiEntregasData = [];
+    this.selectedMultiEntregaCaratRow = null;
     if (this.cascadeOcGridApi && !this.cascadeOcGridApi.isDestroyed()) {
       this.cascadeOcGridApi.forEachNode((node: any) => node.setRowHeight(undefined));
       this.cascadeOcGridApi.onRowHeightChanged();
       this.cascadeOcGridApi.refreshCells({ force: true });
     }
+  }
+
+  // ── Nivel 4 múltiples entregas: carga + CRUD ──────────────────────
+  get materialNombre(): string {
+    return this.internalParams?.data?.id_articulo ?? '';
+  }
+
+  onMultiEntregasGridReady(params: GridReadyEvent) {
+    this.multiEntregasGridApi = params.api;
+    if (this.multiEntregasData.length)
+      this.multiEntregasGridApi.setGridOption('rowData', this.multiEntregasData);
+  }
+
+  async onMultiEntregaCellClicked(event: any): Promise<void> {
+    if (event.column?.getColId() !== 'cantidadRecibir') return;
+    const row = event.data;
+    const closing = this.selectedMultiEntregaCaratRow === row;
+    this.selectedMultiEntregaCaratRow = closing ? null : row;
+
+    if (this.multiEntregasGridApi && !this.multiEntregasGridApi.isDestroyed()) {
+      this.multiEntregasGridApi.forEachNode((node: any) => {
+        node.setRowHeight(closing || node.data === row ? undefined : 0);
+      });
+      this.multiEntregasGridApi.onRowHeightChanged();
+      this.multiEntregasGridApi.refreshCells({ force: true });
+    }
+
+    // Abre/cierra el grid de Entradas (nivel 5) apuntando a la OC multi seleccionada.
+    if (closing) {
+      this.selectedOcRow = null;
+      this.selectedEntradaCaratRow = null;
+      this.cascadeEntradaData = [];
+      this.hasUnsavedChangesEntradas = false;
+      this.selectedEntradaRow = null;
+      return;
+    }
+
+    this.selectedEntradaCaratRow = null;
+    this.selectedOcRow = this.selectedOcMultiRow;
+    await this.loadEntradasForOc(this.selectedOcMultiRow);
+  }
+
+  private loadMultiEntregas(ocRow: any): void {
+    this.multiEntregasData = [];
+    this.selectedMultiEntregaCaratRow = null;
+    const idDetail = Number(ocRow?.idDetail);
+    if (!idDetail) {
+      if (this.multiEntregasGridApi && !this.multiEntregasGridApi.isDestroyed())
+        this.multiEntregasGridApi.setGridOption('rowData', []);
+      return;
+    }
+
+    this.entregaOcService.getByDetail(idDetail).subscribe({
+      next: (saved) => {
+        const list = Array.isArray(saved) ? saved : [];
+        this.multiEntregasData = list.map(s => ({
+          id: s.id ?? null,
+          fechaEntrega: s.fechaEntrega ?? '',
+          cantidadRecibir: s.cantidadRecibir ?? null,
+          notaFactura: s.notaFactura ?? '',
+          totalEntrega: s.totalEntrega ?? null,
+          fechaEntradaAlmacen: s.fechaEntradaAlmacen ?? '',
+        }));
+        if (this.multiEntregasGridApi && !this.multiEntregasGridApi.isDestroyed()) {
+          this.multiEntregasGridApi.setGridOption('rowData', this.multiEntregasData);
+          setTimeout(() => { if (!this.multiEntregasGridApi.isDestroyed()) this.multiEntregasGridApi.autoSizeAllColumns(); });
+        }
+      },
+      error: () => {
+        this.multiEntregasData = [];
+        if (this.multiEntregasGridApi && !this.multiEntregasGridApi.isDestroyed())
+          this.multiEntregasGridApi.setGridOption('rowData', []);
+      },
+    });
+  }
+
+  private formatFechaDmy(value: any): string {
+    if (!value) return '';
+    const str = String(value).trim();
+    const iso = str.match(/^(\d{4})-(\d{2})-(\d{2})/);
+    if (iso) return `${iso[3]}/${iso[2]}/${iso[1]}`;
+    return str;
   }
 
   /** Datos demo nivel 4 — reemplazar por GET entradas por OC cuando exista backend. */

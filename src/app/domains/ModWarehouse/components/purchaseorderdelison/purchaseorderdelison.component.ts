@@ -59,7 +59,7 @@ export class PurchaseOrderDelisonComponent implements OnInit, OnDestroy {
   private isInitialized = false;
   private expandedRowId: string | null = null;
 
-  rowData: any[]     = [];
+  rowData: any[] | null = null;
   fullRowData: any[] = [];
   gridHeight         = '80vh';
   hasUnsavedChanges  = false;
@@ -221,6 +221,8 @@ export class PurchaseOrderDelisonComponent implements OnInit, OnDestroy {
       this.rowData = [];
       return;
     }
+    this.rowData = null;
+
     if (this.idBranch < 0) {
       this.loadFromAllBranches();
     } else {
@@ -476,15 +478,22 @@ export class PurchaseOrderDelisonComponent implements OnInit, OnDestroy {
     try {
       if (pending.length) {
         await Promise.all(
-          pending.map(({ item, condicionesPago }) => {
+          pending.map(async ({ item, condicionesPago }) => {
             // Eliminar campos sintéticos del frontend antes de enviar al backend
             const { conditions, ...cleanItem } = item;
-            return lastValueFrom(
+            await lastValueFrom(
               this.ocAndReqsService.updateReqItem(
                 String(item.id),
                 { ...cleanItem, diasCondicionCompra: condicionesPago }
               )
             );
+            // PATCH dedicado para datepostpone_confirmada: el PUT completo no
+            // estaba persistiendo este flag, así que se fuerza por endpoint propio.
+            if (item.datepostponeConfirmada === true) {
+              await lastValueFrom(
+                this.ocAndReqsService.patchDatePostponeConfirmada(Number(item.id), true)
+              );
+            }
           })
         );
         this.conditionsPendingService.clear();

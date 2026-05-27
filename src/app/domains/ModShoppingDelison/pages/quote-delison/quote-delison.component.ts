@@ -33,7 +33,7 @@ export class QuoteDelisonComponent implements OnInit, OnDestroy, CanComponentDea
   private pedimentoModificationService = inject(PedimentoModificationService);
   private unsavedTracker = inject(UnsavedChangesTrackerService);
 
-  rowData: any[] = [];
+  rowData: any[] | null = null;
   fullRowData: any[] = []; // Store original unfiltered data
   gridHeightPx = 600;
   detailRowHeightPx = 520;
@@ -302,7 +302,7 @@ export class QuoteDelisonComponent implements OnInit, OnDestroy, CanComponentDea
   private extractBranchPrefix(folio: string | null | undefined): string {
     if (!folio) return 'NOPREF';
     let prefix = String(folio).replace(/^(REQ-|COTIZ-|OC-|CO-)/i, '');
-    prefix = prefix.replace(/-\d+$/, '');
+    prefix = prefix.replace(/-(\d+)$/, '$1');
     return prefix || 'NOPREF';
   }
 
@@ -345,6 +345,8 @@ export class QuoteDelisonComponent implements OnInit, OnDestroy, CanComponentDea
       this.rowData = [];
       return;
     }
+
+    this.rowData = null;
 
     // 🔍 Detectar si se seleccionó "Todas las sucursales" (ID negativo)
     const isAllBranches = this.idBranch < 0;

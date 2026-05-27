@@ -683,7 +683,7 @@ export class ComparacionPreciosComponent implements OnInit, OnDestroy {
   private extractBranchPrefix(folio: string | null | undefined): string {
     if (!folio) return 'NOPREF';
     let prefix = String(folio).replace(/^(REQ-|COTIZ-|OC-|CO-)/i, '');
-    prefix = prefix.replace(/-\d+$/, '');
+    prefix = prefix.replace(/-(\d+)$/, '$1');
     return prefix || 'NOPREF';
   }
 

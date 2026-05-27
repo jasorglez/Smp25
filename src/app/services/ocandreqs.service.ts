@@ -142,6 +142,14 @@ export class OcAndReqsService {
     );
   }
 
+  patchDatePostponeConfirmada(id: number, value: boolean): Observable<any> {
+    return this.http.patch(
+      `${environment.urlWarehouse}/Detailsreqoc/${id}/datepostpone-confirmada`,
+      JSON.stringify(value),
+      { headers: this.trackingService.getHeaders() }
+    );
+  }
+
   patchTotalPedimento(id: number, totalPedimento: number): Observable<any> {
     return this.http.patch(
       `${environment.urlWarehouse}/Ocandreq/${id}/total-pedimento`,

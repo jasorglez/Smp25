@@ -2,6 +2,7 @@ import { Component, inject, signal, effect, Input, Renderer2, RendererFactory2 }
 import { CommonModule } from '@angular/common';
 import { AgGridAngular } from 'ag-grid-angular';
 import { ColDef, GridApi, GridReadyEvent } from 'ag-grid-enterprise';
+import { AG_GRID_LOCALE_ES } from 'assets/i18n/ag-grid.locale.es';
 import { DetalleMoliendaComponent } from './detalle-almmolienda.component';
 import { lastValueFrom } from 'rxjs';
 import { SignalsService } from '../../../../../services/signals.service';
@@ -72,6 +73,7 @@ import { CatalogProductionService } from '../../../../../services/catalog-produc
             class="ag-theme-quartz small-text-ag-grid"
             [columnDefs]="columnDefs"
             [gridOptions]="gridOptions"
+            [localeText]="AG_GRID_LOCALE_ES"
             (gridReady)="onGridReady($event)"
             (firstDataRendered)="onFirstDataRendered($event)"
             (cellValueChanged)="onCellValueChanged($event)"
@@ -104,7 +106,8 @@ export class AlmmoliendaComponent {
   hasUnsavedChanges = false;
   selectedRow: any  = null;
   toastMsg          = signal('');
-  rowData           = signal<any[]>([]);
+  readonly AG_GRID_LOCALE_ES = AG_GRID_LOCALE_ES;
+  rowData           = signal<any[] | null>(null);
   private originalRowData: any[] = [];
   gridApi!: GridApi;
   private idRoot = 0;
@@ -691,6 +694,8 @@ export class AlmmoliendaComponent {
   }
 
   async loadData(idCompany: number) {
+    this.rowData.set(null);
+    if (this.gridApi) this.gridApi.setGridOption('rowData', null);
     try {
       const items = await lastValueFrom(this.moliendaService.getAll(idCompany, this.tipo));
       console.log('Raw data from API:', items);
