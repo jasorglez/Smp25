@@ -622,11 +622,11 @@ export class DetalleItemsCotizacionComponent implements ICellRendererAngularComp
               const clausulas = [cfg.clausula1, cfg.clausula2, cfg.clausula3].filter(Boolean);
               const textoInferior: any = {
                 stack: [
-                  { text: 'CON LAS SIGUIENTES CLÁUSULAS', fontSize: 7, bold: true, color: NAVY, margin: [0,0,0,5] },
-                  { ul: clausulas.map(c => ({ text: c, fontSize: 6.5, color: GRAY, margin: [0,0,0,3] })), margin: [0,0,0,6] },
-                  { text: cfg.textoAclaracion, fontSize: 6.5, color: GRAY, alignment: 'justify', margin: [0,0,0,4] },
-                  { text: cfg.textoDespedida,  fontSize: 6.5, color: GRAY, alignment: 'justify', margin: [0,0,0,4] },
-                  { text: cfg.textoIva,        fontSize: 6.5, bold: true, color: NAVY, margin: [0,0,0,8] },
+                  { text: 'CON LAS SIGUIENTES CLÁUSULAS', fontSize: 6.5, bold: true, color: NAVY, margin: [0,0,0,3] },
+                  { ul: clausulas.map(c => ({ text: c, fontSize: 6, color: GRAY, margin: [0,0,0,2] })), margin: [0,0,0,3] },
+                  { text: cfg.textoAclaracion, fontSize: 6, color: GRAY, alignment: 'justify', margin: [0,0,0,2] },
+                  { text: cfg.textoDespedida,  fontSize: 6, color: GRAY, alignment: 'justify', margin: [0,0,0,2] },
+                  { text: cfg.textoIva,        fontSize: 6.5, bold: true, color: NAVY, margin: [0,0,0,4], keepWithNext: true },
                 ],
               };
               const firmaStack1: any[] = [];
@@ -812,14 +812,14 @@ export class DetalleItemsCotizacionComponent implements ICellRendererAngularComp
 
       const textoInferior: any = {
         stack: [
-          { text: 'CON LAS SIGUIENTES CLÁUSULAS', fontSize: 7, bold: true, color: NAVY, margin: [0,0,0,5] },
+          { text: 'CON LAS SIGUIENTES CLÁUSULAS', fontSize: 6.5, bold: true, color: NAVY, margin: [0,0,0,3] },
           {
-            ul: clausulas.map(c => ({ text: c, fontSize: 6.5, color: GRAY, margin: [0,0,0,3] })),
-            margin: [0,0,0,6],
+            ul: clausulas.map(c => ({ text: c, fontSize: 6, color: GRAY, margin: [0,0,0,2] })),
+            margin: [0,0,0,3],
           },
-          { text: cfg.textoAclaracion, fontSize: 6.5, color: GRAY, alignment: 'justify', margin: [0,0,0,4] },
-          { text: cfg.textoDespedida,  fontSize: 6.5, color: GRAY, alignment: 'justify', margin: [0,0,0,4] },
-          { text: cfg.textoIva,        fontSize: 6.5, bold: true, color: NAVY, margin: [0,0,0,70] },
+          { text: cfg.textoAclaracion, fontSize: 6, color: GRAY, alignment: 'justify', margin: [0,0,0,2] },
+          { text: cfg.textoDespedida,  fontSize: 6, color: GRAY, alignment: 'justify', margin: [0,0,0,2] },
+          { text: cfg.textoIva,        fontSize: 6.5, bold: true, color: NAVY, margin: [0,0,0,4], keepWithNext: true },
         ],
       };
 
