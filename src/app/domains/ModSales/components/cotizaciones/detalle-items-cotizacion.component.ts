@@ -144,7 +144,7 @@ const GRAY  = '#555555';
       border-top: 2px solid #0d6efd;
     }
     .pdf-frame-wrap {
-      height: 2300px;
+      height: 1850px;
       border: 1px solid #dee2e6;
       border-radius: 4px;
       overflow: auto;
@@ -866,7 +866,8 @@ export class DetalleItemsCotizacionComponent implements ICellRendererAngularComp
       pdfMake.createPdf(docDef).getBlob((blob: Blob) => {
         if (this.originalPdfUrl) URL.revokeObjectURL(this.originalPdfUrl);
         this.originalPdfUrl = URL.createObjectURL(blob);
-        this.pdfUrl = this.sanitizer.bypassSecurityTrustResourceUrl(this.originalPdfUrl);
+        // #zoom=80 abre el PDF al 80% en el visor del navegador (Chrome/Edge)
+        this.pdfUrl = this.sanitizer.bypassSecurityTrustResourceUrl(this.originalPdfUrl + '#zoom=80');
         this.isLoadingPdf = false;
       });
 
