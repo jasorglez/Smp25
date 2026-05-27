@@ -13,7 +13,7 @@ import { map, catchError } from 'rxjs/operators';
   imports: [CommonModule, AgGridAngular, OrdenesydetallesOcComponent],
   template: `
     <div style="padding: 6px; height: 100%; display: flex; flex-direction: column;
-                box-sizing: border-box; overflow: hidden; background: #e8f5e9;">
+                box-sizing: border-box; overflow: hidden;">
 
       <div style="margin-bottom: 4px; flex-shrink: 0;">
         <strong style="font-size: 0.85rem;">Pedimentos de {{ requisiconFolio }}</strong>

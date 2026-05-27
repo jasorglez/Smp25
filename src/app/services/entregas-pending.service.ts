@@ -18,6 +18,11 @@ export class EntregasPendingService {
     this._hasPending.next(this.pending.size > 0);
   }
 
+  /** Devuelve las filas pending para un ítem, o undefined si no hay cambios en sesión. */
+  getPendingRows(idDetailsreqoc: number): any[] | undefined {
+    return this.pending.get(idDetailsreqoc);
+  }
+
   remove(idDetailsreqoc: number): void {
     this.pending.delete(idDetailsreqoc);
     this._hasPending.next(this.pending.size > 0);
@@ -28,9 +33,13 @@ export class EntregasPendingService {
     this._hasPending.next(false);
   }
 
-  /** Persiste todas las entregas pendientes: POST las nuevas con datos, PUT las existentes. */
+  /** Persiste todas las entregas pendientes. PUT en paralelo, POST en SERIE
+   *  para que SQL asigne IDs autoincrementales en el orden visual del grid
+   *  (evita el reordenamiento al recargar, ya que GetByDetail ordena por Id ASC).
+   *  Los DELETEs se ejecutan inmediatamente al confirmar Eliminar — no pasan por aquí. */
   async flush(): Promise<void> {
-    const ops: Promise<any>[] = [];
+    const updateOps: Promise<any>[] = [];
+    const createSequence: Array<{ row: any; payload: EntregaOc }> = [];
 
     for (const [idDetail, rows] of this.pending.entries()) {
       for (const row of rows) {
@@ -48,18 +57,19 @@ export class EntregasPendingService {
         };
 
         if (row.id) {
-          ops.push(lastValueFrom(this.entregaOcService.update(row.id, { ...payload, id: row.id })));
+          updateOps.push(lastValueFrom(this.entregaOcService.update(row.id, { ...payload, id: row.id })));
         } else if (hasData) {
-          ops.push(
-            lastValueFrom(this.entregaOcService.create(payload)).then((created: any) => {
-              row.id = created?.id ?? null;
-            })
-          );
+          createSequence.push({ row, payload });
         }
       }
     }
 
-    await Promise.all(ops);
+    await Promise.all(updateOps);
+    for (const { row, payload } of createSequence) {
+      const created: any = await lastValueFrom(this.entregaOcService.create(payload));
+      row.id = created?.id ?? null;
+    }
+
     this.clear();
   }
 }

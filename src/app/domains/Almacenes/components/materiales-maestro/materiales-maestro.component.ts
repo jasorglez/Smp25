@@ -85,7 +85,7 @@ export class MaterialesMaestroComponent implements OnInit, OnDestroy {
   // 'MATERIAL' (Materia Prima), 'BIENESYSERVICIOS', 'ARTICULOSNUEVOS'.
   private sectionBitFilter: string = 'MATERIAL';
 
-  rowData: any[] = [];
+  rowData: any[] | null = null;
   allMaterialsData: MaterialsResponse[] = []; // Guarda todos los datos
   gridHeight: string = '80vh';
   selectedMaterial: MaterialsResponse | null = null;
@@ -222,6 +222,8 @@ export class MaterialesMaestroComponent implements OnInit, OnDestroy {
       console.warn('No idRoot available');
       return;
     }
+
+    this.rowData = null;
 
     // Cargar los catálogos (filtrados por el bit de la sección) antes de
     // filtrar la tabla: un material solo se muestra si su categoría, familia

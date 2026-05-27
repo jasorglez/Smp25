@@ -1,44 +1,54 @@
-<div class="container-fluid mt-3">
-  <div class="row">
-    <!-- Botones CRUD izquierda -->
-    <nav class="col-auto d-flex flex-column align-items-start">
-      <button type="button"
-              class="btn btn-primary mb-2 position-relative"
-              [disabled]="!hasUnsavedChanges"
-              (click)="saveConditions()"
-              title="Guardar cambios">
-        <i class="bi bi-floppy"></i>
-        <span *ngIf="hasUnsavedChanges"
-              class="position-absolute top-0 start-100 translate-middle p-2 bg-danger border border-light rounded-circle">
-          <span class="visually-hidden">Hay cambios sin guardar</span>
-        </span>
-      </button>
+<div class="col-12 mt-2 purchaseorder-tab-root">
+  <ul class="nav nav-tabs mb-0" role="tablist">
+    <li class="nav-item" role="presentation">
+      <span id="tab-purchaseorder-listado" class="nav-link active" role="tab" aria-selected="true">
+        Selección de OC
+      </span>
+    </li>
+  </ul>
+  <div class="tab-content border border-top-0 rounded-bottom p-2 pt-3 bg-body" role="tabpanel"
+    aria-labelledby="tab-purchaseorder-listado">
+    <div class="row">
+      <!-- Botones CRUD izquierda -->
+      <nav class="col-auto d-flex flex-column align-items-start">
+        <button type="button"
+                class="btn btn-primary mb-2 position-relative"
+                [disabled]="!hasUnsavedChanges"
+                (click)="saveConditions()"
+                title="Guardar cambios">
+          <i class="bi bi-floppy"></i>
+          <span *ngIf="hasUnsavedChanges"
+                class="position-absolute top-0 start-100 translate-middle p-2 bg-danger border border-light rounded-circle">
+            <span class="visually-hidden">Hay cambios sin guardar</span>
+          </span>
+        </button>
 
-      <button type="button"
-              class="btn btn-warning mb-2"
-              [disabled]="!hasUnsavedChanges"
-              (click)="revertConditions()"
-              title="Deshacer cambios">
-        <i class="bi bi-arrow-counterclockwise"></i>
-      </button>
-    </nav>
+        <button type="button"
+                class="btn btn-warning mb-2"
+                [disabled]="!hasUnsavedChanges"
+                (click)="revertConditions()"
+                title="Deshacer cambios">
+          <i class="bi bi-arrow-counterclockwise"></i>
+        </button>
+      </nav>
 
-    <!-- Grid principal -->
-    <div class="col">
-      <ag-grid-angular
-        style="width: 100%;"
-        [ngStyle]="{'height': gridHeight}"
-        class="ag-theme-quartz small-text-ag-grid"
-        [context]="gridContext"
-        [columnDefs]="colMaster"
-        [rowData]="rowData"
-        [gridOptions]="gridOptions"
-        [defaultColDef]="defaultColDef"
-        [localeText]="AG_GRID_LOCALE_ES"
-        [rowSelection]="rowSelection"
-        (gridReady)="onGridReady($event)"
-        (selectionChanged)="onSelectionChanged($event)">
-      </ag-grid-angular>
+      <!-- Grid principal -->
+      <div class="col">
+        <ag-grid-angular
+          style="width: 100%;"
+          [ngStyle]="{'height': gridHeight}"
+          class="ag-theme-quartz small-text-ag-grid"
+          [context]="gridContext"
+          [columnDefs]="colMaster"
+          [rowData]="rowData"
+          [gridOptions]="gridOptions"
+          [defaultColDef]="defaultColDef"
+          [localeText]="AG_GRID_LOCALE_ES"
+          [rowSelection]="rowSelection"
+          (gridReady)="onGridReady($event)"
+          (selectionChanged)="onSelectionChanged($event)">
+        </ag-grid-angular>
+      </div>
     </div>
   </div>
 </div>

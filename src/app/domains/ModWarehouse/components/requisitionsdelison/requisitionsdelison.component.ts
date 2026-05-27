@@ -121,7 +121,7 @@ export class RequisitionsDelisonComponent implements OnInit {
     });
   }
 
-  rowData: any[] = [];
+  rowData: any[] | null = null;
   fullRowData: any[] = []; // Store original unfiltered data
   gridHeight: string = '80vh';
   hasUnsavedChanges: boolean = false;
@@ -329,6 +329,8 @@ export class RequisitionsDelisonComponent implements OnInit {
       this.rowData = [];
       return;
     }
+
+    this.rowData = null;
 
     // 🔍 Detectar si se seleccionó "Todas las sucursales" (ID negativo)
     const isAllBranches = this.idBranch < 0;
