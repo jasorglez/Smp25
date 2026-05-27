@@ -573,6 +573,7 @@ export default class DetailClock2Component implements OnInit {
         field: 'idReason',
         headerName: 'Razón de motivo de falta',
         editable: (params) => {
+          if (params.data.valid) return false;
           if (params.data.__isNew) return true;
           return this.authService.getCrudPermissionDetail('hr', 'clock','MaeChe_Ajus', 'update');
         },
