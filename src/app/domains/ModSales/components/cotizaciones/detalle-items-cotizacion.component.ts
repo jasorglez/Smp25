@@ -94,14 +94,34 @@ const GRAY  = '#555555';
             — {{ cotizacion?.nombreProspecto }}
           </span>
           <div *ngIf="isLoadingPdf" class="spinner-border spinner-border-sm text-danger ms-2"></div>
-          <button class="btn btn-sm btn-outline-primary ms-auto"
-                  (click)="abrirModalCorreo()"
-                  [disabled]="isLoadingPdf || isSendingEmail">
-            <span *ngIf="isSendingEmail" class="spinner-border spinner-border-sm me-1"></span>
-            <i *ngIf="!isSendingEmail" class="bi bi-envelope me-1"></i>
-            {{ isSendingEmail ? 'Enviando...' : 'Enviar por correo' }}
-          </button>
+
+          <div class="ms-auto d-flex gap-2 align-items-center">
+            <!-- Descargar (funciona en tablets donde el iframe no carga) -->
+            <button class="btn btn-sm btn-success"
+                    (click)="descargarPdf()"
+                    [disabled]="isLoadingPdf || !_lastDocDef"
+                    title="Descargar PDF — recomendado en tablets">
+              <i class="bi bi-download me-1"></i> Descargar
+            </button>
+
+            <!-- Enviar por correo -->
+            <button class="btn btn-sm btn-outline-primary"
+                    (click)="abrirModalCorreo()"
+                    [disabled]="isLoadingPdf || isSendingEmail">
+              <span *ngIf="isSendingEmail" class="spinner-border spinner-border-sm me-1"></span>
+              <i *ngIf="!isSendingEmail" class="bi bi-envelope me-1"></i>
+              {{ isSendingEmail ? 'Enviando...' : 'Enviar por correo' }}
+            </button>
+          </div>
         </div>
+
+        <!-- Aviso para tablet / móvil cuando el iframe no se muestra -->
+        <div *ngIf="pdfUrl && !isLoadingPdf"
+             class="alert alert-warning py-1 px-2 mb-1 small d-flex align-items-center gap-2">
+          <i class="bi bi-tablet"></i>
+          <span>Si no ves el PDF usa el botón <strong>Descargar</strong> — funciona en todos los dispositivos.</span>
+        </div>
+
         <div class="pdf-frame-wrap">
           <iframe *ngIf="pdfUrl && !isLoadingPdf"
                   [src]="pdfUrl"
@@ -176,6 +196,7 @@ export class DetalleItemsCotizacionComponent implements ICellRendererAngularComp
   isLoadingPdf   = false;
   isSendingEmail = false;
   private originalPdfUrl: string | null = null;
+  _lastDocDef: any = null;   // ← guarda el docDef para download en tablet
 
   // ── Modal correo ──────────────────────────────────────────────────────────
   showEmailModal  = false;
@@ -840,6 +861,8 @@ export class DetalleItemsCotizacionComponent implements ICellRendererAngularComp
         defaultStyle: { font: 'Roboto' },
       };
 
+      this._lastDocDef = docDef;     // ← guardar para download en tablet
+
       pdfMake.createPdf(docDef).getBlob((blob: Blob) => {
         if (this.originalPdfUrl) URL.revokeObjectURL(this.originalPdfUrl);
         this.originalPdfUrl = URL.createObjectURL(blob);
@@ -851,6 +874,12 @@ export class DetalleItemsCotizacionComponent implements ICellRendererAngularComp
       console.error('Error generando PDF', e);
       this.isLoadingPdf = false;
     }
+  }
+
+  descargarPdf() {
+    if (!this._lastDocDef) return;
+    const nombre = `${this.cotizacion?.numCotizacion ?? 'Cotizacion'}.pdf`;
+    pdfMake.createPdf(this._lastDocDef).download(nombre);
   }
 
   // ── Helpers ───────────────────────────────────────────────────────────────
