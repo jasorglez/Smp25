@@ -866,8 +866,8 @@ export class DetalleItemsCotizacionComponent implements ICellRendererAngularComp
       pdfMake.createPdf(docDef).getBlob((blob: Blob) => {
         if (this.originalPdfUrl) URL.revokeObjectURL(this.originalPdfUrl);
         this.originalPdfUrl = URL.createObjectURL(blob);
-        // #zoom=80 abre el PDF al 80% en el visor del navegador (Chrome/Edge)
-        this.pdfUrl = this.sanitizer.bypassSecurityTrustResourceUrl(this.originalPdfUrl + '#zoom=80');
+        // #zoom=90 abre el PDF al 90% en el visor del navegador (Chrome/Edge)
+        this.pdfUrl = this.sanitizer.bypassSecurityTrustResourceUrl(this.originalPdfUrl + '#zoom=90');
         this.isLoadingPdf = false;
       });
 

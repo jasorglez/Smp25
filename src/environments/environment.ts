@@ -85,5 +85,5 @@ export const environment = {
     // publicKey: 'TEST-4399133a-4676-42a2-ab85-d946370bf96a',
   },
 
-  version: '6.50 (27 Mayo 2026 09:45) fix(cotizaciones): PDF iframe usa vh y overflow:hidden — scroll tablet funciona',
+  version: '6.51 (27 Mayo 2026 09:50) fix(cotizaciones): PDF preview al 90% zoom',
 };
