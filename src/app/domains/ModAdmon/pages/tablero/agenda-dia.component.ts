@@ -1,6 +1,7 @@
 import { Component, inject, OnInit, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
+import { ActivatedRoute } from '@angular/router';
 import { AgendaService, AgendaCliente, NotificationConfig, TIPOS_AGENDA } from 'app/services/agenda.service';
 import { SignalsService } from 'app/services/signals.service';
 import { CustomersService } from 'app/services/customers.service';
@@ -17,7 +18,7 @@ interface EventoConCliente extends AgendaCliente {
   template: `
     <div class="container-fluid p-3">
 
-      <!-- ── Cabecera ─────────────────────────────────────────────────────── -->
+      <!-- ── Cabecera ────────────────────────────────────────────────────── -->
       <div class="d-flex align-items-center gap-3 mb-3 flex-wrap">
         <div>
           <h5 class="mb-0 fw-bold text-success">
@@ -42,11 +43,42 @@ interface EventoConCliente extends AgendaCliente {
           </button>
         </div>
 
-        <!-- Config Telegram -->
-        <button class="btn btn-sm btn-outline-info" (click)="openConfigTelegram()"
-                title="Configurar notificaciones Telegram">
-          <i class="bi bi-telegram me-1"></i> Telegram
-        </button>
+        <!-- Config notificaciones -->
+        <div class="d-flex gap-2">
+          <!-- Google Calendar -->
+          <button *ngIf="!notifConfig?.googleConnected"
+                  class="btn btn-sm btn-outline-danger"
+                  (click)="connectGoogle()"
+                  title="Conectar con Google Calendar">
+            <img src="https://www.gstatic.com/images/branding/product/1x/calendar_16dp.png"
+                 width="14" height="14" class="me-1" alt="Google">
+            Conectar Google
+          </button>
+
+          <div *ngIf="notifConfig?.googleConnected"
+               class="d-flex align-items-center gap-1">
+            <span class="badge bg-success">
+              <img src="https://www.gstatic.com/images/branding/product/1x/calendar_16dp.png"
+                   width="12" height="12" class="me-1" alt="Google">
+              {{ notifConfig?.googleEmail || 'Google Calendar' }}
+            </span>
+            <button class="btn btn-xs btn-outline-danger" (click)="disconnectGoogle()"
+                    title="Desconectar Google Calendar">
+              <i class="bi bi-x"></i>
+            </button>
+          </div>
+
+          <!-- Telegram -->
+          <button class="btn btn-sm btn-outline-info"
+                  (click)="openConfigTelegram()"
+                  title="Configurar Telegram">
+            <i class="bi bi-telegram me-1"></i>
+            <span *ngIf="!notifConfig?.telegramChatId">Telegram</span>
+            <span *ngIf="notifConfig?.telegramChatId" class="text-success">
+              <i class="bi bi-check-circle me-1"></i>Telegram
+            </span>
+          </button>
+        </div>
       </div>
 
       <!-- ── Loading ──────────────────────────────────────────────────────── -->
@@ -59,26 +91,26 @@ interface EventoConCliente extends AgendaCliente {
            class="text-center text-muted py-5">
         <i class="bi bi-calendar3 fs-1 d-block mb-3"></i>
         <div class="fw-semibold">Sin eventos esta semana</div>
-        <div class="small">Los eventos se crean desde el módulo de Clientes</div>
+        <div class="small">Los eventos se crean desde el módulo de Clientes (columna 📅)</div>
       </div>
 
-      <!-- ── Grupos por día ──────────────────────────────────────────────── -->
+      <!-- ── Grupos por día ────────────────────────────────────────────────── -->
       <div *ngFor="let grupo of gruposPorDia">
-        <!-- Encabezado de día -->
         <div class="d-flex align-items-center gap-2 mb-2 mt-3">
           <div class="agenda-day-badge"
                [class.agenda-day-today]="esHoy(grupo.fecha)"
                [class.agenda-day-tomorrow]="esManana(grupo.fecha)">
             <div class="fw-bold">{{ grupo.fecha | date:'d' }}</div>
-            <div class="small text-uppercase">{{ grupo.fecha | date:'MMM' : '' : 'es-MX' }}</div>
+            <div class="small text-uppercase">{{ grupo.fecha | date:'MMM' }}</div>
           </div>
           <div>
             <div class="fw-semibold">{{ nombreDia(grupo.fecha) }}</div>
-            <div class="text-muted small">{{ grupo.eventos.length }} evento{{ grupo.eventos.length !== 1 ? 's' : '' }}</div>
+            <div class="text-muted small">
+              {{ grupo.eventos.length }} evento{{ grupo.eventos.length !== 1 ? 's' : '' }}
+            </div>
           </div>
         </div>
 
-        <!-- Eventos del día -->
         <div class="row g-2 mb-2">
           <div class="col-md-6 col-lg-4" *ngFor="let ev of grupo.eventos">
             <div class="card h-100 shadow-sm border-start border-4"
@@ -93,6 +125,11 @@ interface EventoConCliente extends AgendaCliente {
                   <span class="ms-auto text-muted small">
                     <i class="bi bi-clock me-1"></i>{{ formatHora(ev.fechaHora) }}
                   </span>
+                  <!-- Indicador Google Calendar -->
+                  <i *ngIf="ev.googleEventId"
+                     class="bi bi-calendar-check text-danger"
+                     title="Sincronizado con Google Calendar"></i>
+                  <!-- Toggle completada -->
                   <button class="btn btn-xs p-0 px-1"
                           [class.btn-outline-success]="!ev.completada"
                           [class.btn-success]="ev.completada"
@@ -124,13 +161,11 @@ interface EventoConCliente extends AgendaCliente {
   `,
   styles: [`
     .agenda-day-badge {
-      width: 48px; height: 48px;
-      border-radius: 10px;
+      width: 48px; height: 48px; border-radius: 10px;
       background: #e9ecef;
       display: flex; flex-direction: column;
       align-items: center; justify-content: center;
-      font-size: 0.85rem; line-height: 1.2;
-      flex-shrink: 0;
+      font-size: 0.85rem; line-height: 1.2; flex-shrink: 0;
     }
     .agenda-day-today    { background: #198754; color: #fff; }
     .agenda-day-tomorrow { background: #0d6efd; color: #fff; }
@@ -142,6 +177,7 @@ export class AgendaDiaComponent implements OnInit {
   private agendaSvc  = inject(AgendaService);
   private signalsSvc = inject(SignalsService);
   private custSvc    = inject(CustomersService);
+  private route      = inject(ActivatedRoute);
 
   TIPOS_AGENDA = TIPOS_AGENDA;
   cargando     = signal(false);
@@ -152,13 +188,38 @@ export class AgendaDiaComponent implements OnInit {
 
   get idCompany() { return this.signalsSvc.getRootSelectedBySidebar()(); }
 
-  ngOnInit() { this.cargar(); }
+  ngOnInit() {
+    this.cargar();
+    this.detectarCallbackGoogle();
+  }
+
+  /** Detecta ?googleAuth=success|error al regresar del callback de Google */
+  private detectarCallbackGoogle() {
+    this.route.queryParams.subscribe(params => {
+      if (params['googleAuth'] === 'success') {
+        const email = params['email'] ?? '';
+        Swal.fire({
+          icon:  'success',
+          title: '¡Google Calendar conectado!',
+          html:  email ? `Cuenta: <strong>${email}</strong><br>Los eventos se crearán automáticamente.`
+                       : 'Los eventos se crearán automáticamente en tu Google Calendar.',
+          timer: 3000, showConfirmButton: false,
+        });
+        this.cargar(); // recargar config
+      } else if (params['googleAuth'] === 'error') {
+        Swal.fire({
+          icon: 'error',
+          title: 'Error al conectar Google Calendar',
+          text: 'Intenta de nuevo o verifica las credenciales en Google Cloud Console.',
+        });
+      }
+    });
+  }
 
   cargar() {
     if (!this.idCompany) return;
     this.cargando.set(true);
 
-    // Cargar clientes para mostrar nombres
     this.custSvc.getCustomersByCompany(this.idCompany, 'CUSTOMERS').subscribe({
       next: (data: any) => { this.clientes = data?.data ?? data ?? []; },
     });
@@ -175,12 +236,91 @@ export class AgendaDiaComponent implements OnInit {
       error: () => this.cargando.set(false),
     });
 
-    // Config Telegram
     this.agendaSvc.getNotificationConfig(this.idCompany).subscribe({
       next: (cfg) => { this.notifConfig = cfg; },
-      error: () => {},
     });
   }
+
+  // ── Google Calendar ─────────────────────────────────────────────────────
+
+  connectGoogle() {
+    this.agendaSvc.connectGoogle(this.idCompany).subscribe({
+      next: ({ url }) => window.open(url, '_blank', 'width=600,height=700'),
+      error: () => Swal.fire('Error', 'No se pudo obtener la URL de autorización.', 'error'),
+    });
+  }
+
+  async disconnectGoogle() {
+    const res = await Swal.fire({
+      title: '¿Desconectar Google Calendar?',
+      text:  'Los eventos ya creados quedan en tu Google Calendar, pero ya no se sincronizarán nuevos.',
+      icon:  'question', showCancelButton: true,
+      confirmButtonText: 'Sí, desconectar', cancelButtonText: 'Cancelar',
+    });
+    if (!res.isConfirmed) return;
+
+    this.agendaSvc.disconnectGoogle(this.idCompany).subscribe({
+      next: () => {
+        if (this.notifConfig) {
+          this.notifConfig.googleConnected    = false;
+          this.notifConfig.googleEmail        = undefined;
+          this.notifConfig.googleRefreshToken = undefined;
+        }
+        Swal.fire({ icon: 'success', title: 'Desconectado', timer: 1500, showConfirmButton: false });
+      },
+      error: () => Swal.fire('Error', 'No se pudo desconectar.', 'error'),
+    });
+  }
+
+  // ── Telegram ────────────────────────────────────────────────────────────
+
+  async openConfigTelegram() {
+    const { value } = await Swal.fire({
+      title: 'Configurar Telegram',
+      html: `
+        <div class="text-start">
+          <p class="small text-muted mb-2">
+            Envía un mensaje a <strong>@userinfobot</strong> en Telegram para obtener tu Chat ID.
+          </p>
+          <label class="form-label small fw-semibold">Chat ID</label>
+          <input id="swal-chatid" class="swal2-input"
+                 value="${this.notifConfig?.telegramChatId ?? ''}"
+                 placeholder="Ej. -100123456789">
+          <div class="form-check mt-2">
+            <input type="checkbox" class="form-check-input" id="swal-enabled"
+                   ${this.notifConfig?.notificationsEnabled !== false ? 'checked' : ''}>
+            <label class="form-check-label small" for="swal-enabled">
+              Activar notificaciones Telegram
+            </label>
+          </div>
+        </div>
+      `,
+      showCancelButton: true, confirmButtonText: 'Guardar', cancelButtonText: 'Cancelar',
+      preConfirm: () => ({
+        chatId:  (document.getElementById('swal-chatid') as HTMLInputElement).value.trim(),
+        enabled: (document.getElementById('swal-enabled') as HTMLInputElement).checked,
+      }),
+    });
+    if (!value) return;
+
+    const config: NotificationConfig = {
+      idCompany:            this.idCompany,
+      telegramChatId:       value.chatId,
+      notificationsEnabled: value.enabled,
+      googleRefreshToken:   this.notifConfig?.googleRefreshToken,
+      googleEmail:          this.notifConfig?.googleEmail,
+      googleConnected:      this.notifConfig?.googleConnected,
+    };
+    this.agendaSvc.saveNotificationConfig(config).subscribe({
+      next: () => {
+        this.notifConfig = config;
+        Swal.fire({ icon: 'success', title: 'Guardado', timer: 1500, showConfirmButton: false });
+      },
+      error: () => Swal.fire('Error', 'No se pudo guardar.', 'error'),
+    });
+  }
+
+  // ── Eventos ─────────────────────────────────────────────────────────────
 
   get eventosFiltrados(): EventoConCliente[] {
     return this.filtroTipo
@@ -191,27 +331,38 @@ export class AgendaDiaComponent implements OnInit {
   get gruposPorDia(): { fecha: Date; eventos: EventoConCliente[] }[] {
     const map = new Map<string, { fecha: Date; eventos: EventoConCliente[] }>();
     for (const ev of this.eventosFiltrados) {
-      const d    = new Date(ev.fechaHora);
-      const key  = d.toDateString();
+      const d   = new Date(ev.fechaHora);
+      const key = d.toDateString();
       if (!map.has(key)) map.set(key, { fecha: d, eventos: [] });
       map.get(key)!.eventos.push(ev);
     }
-    return Array.from(map.values())
-      .sort((a, b) => a.fecha.getTime() - b.fecha.getTime());
+    return Array.from(map.values()).sort((a, b) => a.fecha.getTime() - b.fecha.getTime());
   }
 
+  toggleCompletada(ev: EventoConCliente) {
+    this.agendaSvc.update(ev.id!, { ...ev, completada: !ev.completada }).subscribe({
+      next: (res) => {
+        const idx = this.eventos.findIndex(e => e.id === ev.id);
+        if (idx !== -1) this.eventos[idx] = { ...res, nombreCliente: ev.nombreCliente };
+        this.eventos = [...this.eventos];
+      },
+    });
+  }
+
+  // ── Helpers ─────────────────────────────────────────────────────────────
+
   esHoy(d: Date): boolean {
-    const hoy = new Date();
-    return d.getDate() === hoy.getDate() && d.getMonth() === hoy.getMonth();
+    const h = new Date();
+    return d.getDate() === h.getDate() && d.getMonth() === h.getMonth();
   }
 
   esManana(d: Date): boolean {
-    const man = new Date(); man.setDate(man.getDate() + 1);
-    return d.getDate() === man.getDate() && d.getMonth() === man.getMonth();
+    const m = new Date(); m.setDate(m.getDate() + 1);
+    return d.getDate() === m.getDate() && d.getMonth() === m.getMonth();
   }
 
   nombreDia(d: Date): string {
-    if (this.esHoy(d))    return 'Hoy';
+    if (this.esHoy(d))   return 'Hoy';
     if (this.esManana(d)) return 'Mañana';
     return d.toLocaleDateString('es-MX', { weekday: 'long' })
              .replace(/^\w/, c => c.toUpperCase());
@@ -227,73 +378,6 @@ export class AgendaDiaComponent implements OnInit {
   getTipoBadge(tipo: string) { return TIPOS_AGENDA.find(t => t.value === tipo)?.color ?? 'secondary'; }
 
   getBorderClass(tipo: string): string {
-    const c = TIPOS_AGENDA.find(t => t.value === tipo)?.color ?? 'secondary';
-    return `border-${c}`;
-  }
-
-  toggleCompletada(ev: EventoConCliente) {
-    const updated = { ...ev, completada: !ev.completada };
-    this.agendaSvc.update(ev.id!, updated).subscribe({
-      next: (res) => {
-        const idx = this.eventos.findIndex(e => e.id === ev.id);
-        if (idx !== -1) this.eventos[idx] = { ...res, nombreCliente: ev.nombreCliente };
-        this.eventos = [...this.eventos];
-      },
-    });
-  }
-
-  async openConfigTelegram() {
-    const { value: chatId } = await Swal.fire({
-      title: 'Configurar notificaciones Telegram',
-      html: `
-        <div class="text-start">
-          <p class="small text-muted mb-2">
-            Ingresa tu <strong>Chat ID de Telegram</strong> para recibir alertas 1 hora antes de cada evento.
-          </p>
-          <p class="small text-muted mb-3">
-            Para obtener tu Chat ID, envía un mensaje a <strong>@userinfobot</strong> en Telegram.
-          </p>
-          <label class="form-label small fw-semibold">Chat ID</label>
-          <input id="swal-chatid" class="swal2-input"
-                 value="${this.notifConfig?.telegramChatId ?? ''}"
-                 placeholder="Ej. -100123456789">
-          <div class="form-check mt-2">
-            <input type="checkbox" class="form-check-input" id="swal-enabled"
-                   ${this.notifConfig?.notificationsEnabled !== false ? 'checked' : ''}>
-            <label class="form-check-label small" for="swal-enabled">
-              Notificaciones activadas
-            </label>
-          </div>
-        </div>
-      `,
-      showCancelButton: true,
-      confirmButtonText: 'Guardar',
-      cancelButtonText:  'Cancelar',
-      preConfirm: () => {
-        const chatIdInput  = (document.getElementById('swal-chatid') as HTMLInputElement).value.trim();
-        const enabledInput = (document.getElementById('swal-enabled') as HTMLInputElement).checked;
-        return { chatId: chatIdInput, enabled: enabledInput };
-      },
-    });
-
-    if (!chatId) return;
-
-    const config: NotificationConfig = {
-      idCompany:             this.idCompany,
-      telegramChatId:        chatId.chatId,
-      notificationsEnabled:  chatId.enabled,
-    };
-
-    this.agendaSvc.saveNotificationConfig(config).subscribe({
-      next: () => {
-        this.notifConfig = config;
-        Swal.fire({
-          icon: 'success', title: 'Configuración guardada',
-          text: chatId.chatId ? 'Recibirás alertas 1 hora antes de cada evento.' : 'Sin Chat ID — notificaciones desactivadas.',
-          timer: 2000, showConfirmButton: false,
-        });
-      },
-      error: () => Swal.fire('Error', 'No se pudo guardar la configuración.', 'error'),
-    });
+    return `border-${TIPOS_AGENDA.find(t => t.value === tipo)?.color ?? 'secondary'}`;
   }
 }

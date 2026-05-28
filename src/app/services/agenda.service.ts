@@ -8,21 +8,26 @@ export interface AgendaCliente {
   id?:                   number;
   idCliente:             number;
   idCompany:             number;
-  tipo:                  string;   // 'visita' | 'llamada' | 'demo' | 'cobro' | 'seguimiento'
+  tipo:                  string;
   titulo:                string;
   descripcion?:          string;
-  fechaHora:             string;   // ISO "YYYY-MM-DDTHH:mm:ss"
+  fechaHora:             string;
   notificacionEnviada?:  boolean;
   completada?:           boolean;
   idVendedor?:           number;
   nombreVendedor?:       string;
   createdAt?:            string;
+  googleEventId?:        string;   // ID del evento en Google Calendar
 }
 
 export interface NotificationConfig {
   idCompany:             number;
   telegramChatId?:       string;
   notificationsEnabled?: boolean;
+  // Google Calendar
+  googleRefreshToken?:   string;
+  googleEmail?:          string;
+  googleConnected?:      boolean;
 }
 
 export const TIPOS_AGENDA = [
@@ -35,9 +40,10 @@ export const TIPOS_AGENDA = [
 
 @Injectable({ providedIn: 'root' })
 export class AgendaService {
-  private http    = inject(HttpClient);
+  private http     = inject(HttpClient);
   private tracking = inject(TrackingService);
-  private base    = `${environment.urlAdministration}/AgendaClientes`;
+  private base     = `${environment.urlAdministration}/AgendaClientes`;
+  private oauthBase = `${environment.urlAdministration}/GoogleOAuth`;
 
   getByCliente(idCliente: number, idCompany: number): Observable<AgendaCliente[]> {
     return this.http.get<AgendaCliente[]>(
@@ -76,6 +82,25 @@ export class AgendaService {
     return this.http.post<void>(
       `${this.base}/notification-config`,
       config,
+      { headers: this.tracking.getHeaders() }
+    );
+  }
+
+  // ── Google Calendar OAuth2 ─────────────────────────────────────────────
+
+  /** Obtiene la URL de autorización de Google y la abre en nueva pestaña */
+  connectGoogle(idCompany: number): Observable<{ url: string }> {
+    return this.http.get<{ url: string }>(
+      `${this.oauthBase}/auth-url?idCompany=${idCompany}`,
+      { headers: this.tracking.getHeaders() }
+    );
+  }
+
+  /** Desconectar Google Calendar */
+  disconnectGoogle(idCompany: number): Observable<void> {
+    return this.http.post<void>(
+      `${this.oauthBase}/disconnect?idCompany=${idCompany}`,
+      {},
       { headers: this.tracking.getHeaders() }
     );
   }

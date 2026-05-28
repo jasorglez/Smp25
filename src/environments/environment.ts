@@ -85,5 +85,5 @@ export const environment = {
     // publicKey: 'TEST-4399133a-4676-42a2-ab85-d946370bf96a',
   },
 
-  version: '6.62 (27 Mayo 2026 22:30) feat(agenda-clientes): agenda por cliente + notificaciones Telegram + página Agenda del Día',
+  version: '6.63 (27 Mayo 2026 23:15) feat(google-calendar): integración OAuth2 Google Calendar — eventos sync automático al crear/editar/eliminar',
 };
