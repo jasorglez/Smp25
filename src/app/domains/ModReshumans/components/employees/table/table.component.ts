@@ -944,8 +944,7 @@ export class EmployeesTableComponent implements CanComponentDeactivate {
         headerName: 'Telegram ID',
         editable: false,
         filter: false,
-        width: 130,
-        hide: true,
+        width: 150,
       },
     ];
     } else {
@@ -1737,8 +1736,7 @@ export class EmployeesTableComponent implements CanComponentDeactivate {
         headerName: 'Telegram ID',
         editable: false,
         filter: false,
-        width: 130,
-        hide: true,
+        width: 150,
       },
     ];
     }
