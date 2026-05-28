@@ -85,5 +85,5 @@ export const environment = {
     // publicKey: 'TEST-4399133a-4676-42a2-ab85-d946370bf96a',
   },
 
-  version: '6.56 (27 Mayo 2026 12:00) fix(empresas): corregir 4 campos inválidos — year string, active short, fiscalRegime int, idBanco int',
+  version: '6.57 (27 Mayo 2026 14:00) feat(clientes): cotizaciones en módulo Administración-Clientes con PDF y envío por correo',
 };

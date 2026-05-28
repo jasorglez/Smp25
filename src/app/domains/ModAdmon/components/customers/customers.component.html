@@ -23,7 +23,16 @@
         <button type="button" class="btn btn-danger ms-1 me-1" (click)="deleteEntry()" >
           <i class="bi bi-trash"></i>
         </button>
-                     
+
+        <button type="button"
+                class="btn btn-info ms-1 me-1"
+                (click)="activateCotizacionesTab()"
+                [disabled]="!selectedRowData"
+                [class.active]="showCotizacionesTab"
+                title="Cotizaciones del cliente">
+          <i class="bi bi-file-earmark-text"></i>
+        </button>
+
       </div>
     </div>
 
@@ -64,6 +73,10 @@
 
       <div class="tab-pane fade show active" id="billing" role="tabpanel" aria-labelledby="billing-tab" *ngIf="showBillingTab">
         <app-customers-billing></app-customers-billing>
+      </div>
+
+      <div class="tab-pane fade show active" id="cotizaciones" role="tabpanel" *ngIf="showCotizacionesTab">
+        <app-customers-cotizaciones [customer]="selectedRowData"></app-customers-cotizaciones>
       </div>
 
     </div>

@@ -12,11 +12,14 @@ export interface Cotizacion {
   idProspecto: string;
   nombreProspecto: string;
   empresaProspecto: string;
+  puestoProspecto?: string;
   lugar: string;
   /** Familia de materiales que se muestran en el detalle (vacío = todas) */
   familia?: string;
   idVendedor: number;
   nombreVendedor: string;
+  /** ID del cliente (módulo Administración → Clientes) — null en cotizaciones de prospectos */
+  idCliente?: number | null;
   idCompany: number;
   fecha: Timestamp;
   estado: string;
@@ -90,23 +93,32 @@ export class CotizacionesService {
   async crearCotizacion(c: Partial<Cotizacion>): Promise<string> {
     const ref = collection(this.firestore, this.COL);
     const docRef = await addDoc(ref, {
-      numCotizacion:   c.numCotizacion   ?? '',
-      idProspecto:     c.idProspecto     ?? '',
-      nombreProspecto: c.nombreProspecto ?? '',
+      numCotizacion:    c.numCotizacion    ?? '',
+      idProspecto:      c.idProspecto      ?? '',
+      nombreProspecto:  c.nombreProspecto  ?? '',
       empresaProspecto: c.empresaProspecto ?? '',
-      lugar:           c.lugar           ?? '',
-      familia:         c.familia         ?? '',
-      idVendedor:      c.idVendedor      ?? 0,
-      nombreVendedor:  c.nombreVendedor  ?? '',
-      idCompany:       c.idCompany       ?? null,
-      fecha:           Timestamp.now(),
-      estado:          'borrador',
-      notas:           c.notas           ?? '',
-      total:           0,
-      countItems:      0,
-      activo:          true,
+      puestoProspecto:  c.puestoProspecto  ?? '',
+      lugar:            c.lugar            ?? '',
+      familia:          c.familia          ?? '',
+      idVendedor:       c.idVendedor       ?? 0,
+      nombreVendedor:   c.nombreVendedor   ?? '',
+      idCliente:        c.idCliente        ?? null,
+      idCompany:        c.idCompany        ?? null,
+      fecha:            Timestamp.now(),
+      estado:           'borrador',
+      notas:            c.notas            ?? '',
+      total:            0,
+      countItems:       0,
+      activo:           true,
     });
     return docRef.id;
+  }
+
+  /** Cotizaciones del módulo Administración → Clientes */
+  getCotizacionesByCliente(idCliente: number, idCompany: number): Observable<Cotizacion[]> {
+    const ref = collection(this.firestore, this.COL);
+    const q = query(ref, where('idCliente', '==', idCliente), where('idCompany', '==', idCompany));
+    return collectionData(q, { idField: 'id' }) as Observable<Cotizacion[]>;
   }
 
   async actualizarCotizacion(id: string, campos: Partial<Cotizacion>): Promise<void> {
