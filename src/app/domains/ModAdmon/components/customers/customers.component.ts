@@ -121,6 +121,7 @@ export class CustomersComponent implements CanComponentDeactivate {
       this.obtenerDatos();
       this.obtenerBranchs();
       this.getTypecop();
+      this.actualizarContextoCotizaciones(); // refrescar contexto del cascade
       console.log(this.contactoCatalog)
     });
   }
@@ -214,6 +215,12 @@ export class CustomersComponent implements CanComponentDeactivate {
     rowHeight: 20,
     rowBuffer: 20,
     singleClickEdit: true,
+    // ── Master-Detail: cascada de cotizaciones por cliente ─────────────────
+    masterDetail: true,
+    detailCellRenderer: CustomersCotizacionesComponent,
+    detailRowHeight: 900,
+    isRowMaster: () => this.type === 'CUSTOMERS',
+    // ──────────────────────────────────────────────────────────────────────
     getRowId: (params: any) => params?.data?.id,
     getRowClass: (params) => {
       if (params.node.isSelected()) {
@@ -249,6 +256,34 @@ export class CustomersComponent implements CanComponentDeactivate {
     }
 
     this._colMaster = [
+      // ── Cotizaciones — abre cascada inline ────────────────────────────────
+      {
+        field: 'cotizaciones',
+        headerName: '📄',
+        width: 60,
+        editable: false,
+        hide: this.type !== 'CUSTOMERS',
+        sortable: false,
+        cellRenderer: (params: any) => {
+          const btn = document.createElement('button');
+          btn.className = 'btn btn-info btn-sm';
+          btn.style.cssText = 'font-size:10px;padding:1px 6px;line-height:1.4;';
+          btn.innerHTML = '<i class="bi bi-file-earmark-text"></i>';
+          btn.title = 'Cotizaciones del cliente';
+          btn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            this.toggleCotizacionesCascade(params.node);
+          });
+          return btn;
+        },
+        cellStyle: {
+          backgroundColor: '#e8f4ff',
+          cursor: 'pointer',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+        },
+      },
       {
         field: 'vigente',
         headerName: 'Activo',
@@ -941,6 +976,41 @@ export class CustomersComponent implements CanComponentDeactivate {
 
   onGridReady(params: GridReadyEvent) {
     this.gridApi = params.api;
+    this.actualizarContextoCotizaciones();
+  }
+
+  /** Actualiza el contexto que recibe CustomersCotizacionesComponent via params.context */
+  private actualizarContextoCotizaciones() {
+    if (!this.gridApi) return;
+    this.gridApi.setGridOption('detailCellRendererParams', {
+      context: { idCompany: this.idRoot },
+    });
+  }
+
+  /** Abre / cierra la cascada de cotizaciones de una fila de cliente */
+  toggleCotizacionesCascade(node: any) {
+    const api        = this.gridApi;
+    const isExpanded = node.expanded;
+
+    if (isExpanded) {
+      node.setExpanded(false);
+      return;
+    }
+
+    // Colapsar cualquier otra fila abierta
+    api.forEachNode((n: any) => {
+      if (n.expanded && n.id !== node.id) n.setExpanded(false);
+    });
+
+    this.actualizarContextoCotizaciones();
+    setTimeout(() => node.setExpanded(true), 0);
+  }
+
+  /** Abre la cascada para el cliente actualmente seleccionado (botón lateral) */
+  openCotizacionesForSelected() {
+    if (!this.selectedRowData || !this.gridApi) return;
+    const node = this.gridApi.getRowNode(String(this.selectedRowData.id));
+    if (node) this.toggleCotizacionesCascade(node);
   }
 
   addRow() {
@@ -1512,15 +1582,25 @@ export class CustomersComponent implements CanComponentDeactivate {
   }
 
   async activateCreditsTab() {
+    this.collapseAllCascades();
     if (!this.isOpen) {
       setTimeout(async () => await this.adjustGridSize(), 0);
       this.showCreditsTab = true;
       this.showBillingTab = false;
+      this.showCotizacionesTab = false;
       this.isOpen = true;
     } else {
       this.resetGridSize();
       this.isOpen = false;
     }
+  }
+
+  /** Colapsa todas las filas expandidas (cascada) en el grid de clientes */
+  private collapseAllCascades() {
+    if (!this.gridApi) return;
+    this.gridApi.forEachNode((n: any) => {
+      if (n.expanded) n.setExpanded(false);
+    });
   }
 
   async activateBillingTab() {
