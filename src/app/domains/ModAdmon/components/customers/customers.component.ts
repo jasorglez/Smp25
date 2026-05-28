@@ -27,6 +27,7 @@ import { SignalsService } from 'app/services/signals.service';
 import { CustomersPaymentsComponent } from './customers-payments.component';
 import { CustomersBillingComponent } from './customers-billing.component';
 import { CustomersCotizacionesComponent } from './customers-cotizaciones.component';
+import { CustomersDetailWrapperComponent } from './customers-detail-wrapper.component';
 import { NgbModal } from '@ng-bootstrap/ng-bootstrap';
 import { RadiusinfluenceComponent } from '../radiusinfluence/radiusinfluence.component';
 import { CustomersService } from 'app/services/customers.service';
@@ -56,6 +57,7 @@ import { IncomesAndExpensesService } from 'app/services/incomes-and-expenses.ser
     CustomersPaymentsComponent,
     CustomersBillingComponent,
     CustomersCotizacionesComponent,
+    CustomersDetailWrapperComponent,
   ],
   templateUrl: './customers.component.html',
   styleUrls: ['./customers.component.scss'],
@@ -215,9 +217,9 @@ export class CustomersComponent implements CanComponentDeactivate {
     rowHeight: 20,
     rowBuffer: 20,
     singleClickEdit: true,
-    // ── Master-Detail: cascada de cotizaciones por cliente ─────────────────
+    // ── Master-Detail: wrapper que puede mostrar cotizaciones o agenda ─────
     masterDetail: true,
-    detailCellRenderer: CustomersCotizacionesComponent,
+    detailCellRenderer: CustomersDetailWrapperComponent,
     detailRowHeight: 1600,    // toolbar(50) + lista auto + PDF(1400) con margen
     isRowMaster: () => this.type === 'CUSTOMERS',
     // ──────────────────────────────────────────────────────────────────────
@@ -272,12 +274,40 @@ export class CustomersComponent implements CanComponentDeactivate {
           btn.title = 'Cotizaciones del cliente';
           btn.addEventListener('click', (e) => {
             e.stopPropagation();
-            this.toggleCotizacionesCascade(params.node);
+            this.toggleCascadeWithMode(params.node, 'cotizaciones');
           });
           return btn;
         },
         cellStyle: {
           backgroundColor: '#e8f4ff',
+          cursor: 'pointer',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+        },
+      },
+      // ── Agenda — abre cascada inline ──────────────────────────────────────
+      {
+        field: 'agenda',
+        headerName: '📅',
+        width: 60,
+        editable: false,
+        hide: this.type !== 'CUSTOMERS',
+        sortable: false,
+        cellRenderer: (params: any) => {
+          const btn = document.createElement('button');
+          btn.className = 'btn btn-success btn-sm';
+          btn.style.cssText = 'font-size:10px;padding:1px 6px;line-height:1.4;';
+          btn.innerHTML = '<i class="bi bi-calendar-check"></i>';
+          btn.title = 'Agenda de este cliente';
+          btn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            this.toggleCascadeWithMode(params.node, 'agenda');
+          });
+          return btn;
+        },
+        cellStyle: {
+          backgroundColor: '#f0fff4',
           cursor: 'pointer',
           display: 'flex',
           alignItems: 'center',
@@ -979,7 +1009,7 @@ export class CustomersComponent implements CanComponentDeactivate {
     this.actualizarContextoCotizaciones();
   }
 
-  /** Actualiza el contexto que recibe CustomersCotizacionesComponent via params.context */
+  /** Actualiza el contexto del wrapper de detalle */
   private actualizarContextoCotizaciones() {
     if (!this.gridApi) return;
     this.gridApi.setGridOption('detailCellRendererParams', {
@@ -987,38 +1017,53 @@ export class CustomersComponent implements CanComponentDeactivate {
     });
   }
 
-  /** Abre / cierra la cascada de cotizaciones de una fila de cliente */
-  toggleCotizacionesCascade(node: any) {
-    const api        = this.gridApi;
-    const isExpanded = node.expanded;
+  /**
+   * Abre / cierra la cascada según el modo (cotizaciones | agenda).
+   * Si el nodo ya está expandido con el mismo modo → cierra.
+   * Si está expandido con distinto modo → cambia modo y reabre.
+   */
+  toggleCascadeWithMode(node: any, mode: 'cotizaciones' | 'agenda') {
+    const api       = this.gridApi;
+    const sameMode  = node.expanded && node.data?.__detailMode === mode;
 
-    if (isExpanded) {
-      // Cerrar: restaurar alturas de todas las filas
+    if (sameMode) {
       node.setExpanded(false);
       api.forEachNode((n: any) => n.setRowHeight(undefined));
       api.onRowHeightChanged();
       return;
     }
 
-    // Colapsar cualquier otra fila expandida
+    // Colapsar otras filas expandidas
     api.forEachNode((n: any) => {
       if (n.expanded && n.id !== node.id) n.setExpanded(false);
     });
-    // Ocultar todas las demás filas (patrón estándar de todas las cascadas)
+    // Ocultar todas las demás filas
     api.forEachNode((n: any) => {
       if (n.id !== node.id) n.setRowHeight(0);
     });
     api.onRowHeightChanged();
 
+    // Marcar el modo en el dato antes de expandir
+    node.data.__detailMode = mode;
     this.actualizarContextoCotizaciones();
-    setTimeout(() => node.setExpanded(true), 0);
+    if (node.expanded) {
+      node.setExpanded(false);
+      setTimeout(() => node.setExpanded(true), 50);
+    } else {
+      setTimeout(() => node.setExpanded(true), 0);
+    }
+  }
+
+  /** Compat con código anterior */
+  toggleCotizacionesCascade(node: any) {
+    this.toggleCascadeWithMode(node, 'cotizaciones');
   }
 
   /** Abre la cascada para el cliente actualmente seleccionado (botón lateral) */
   openCotizacionesForSelected() {
     if (!this.selectedRowData || !this.gridApi) return;
     const node = this.gridApi.getRowNode(String(this.selectedRowData.id));
-    if (node) this.toggleCotizacionesCascade(node);
+    if (node) this.toggleCascadeWithMode(node, 'cotizaciones');
   }
 
   addRow() {
