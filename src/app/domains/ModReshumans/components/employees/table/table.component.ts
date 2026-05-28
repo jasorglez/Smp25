@@ -926,6 +926,27 @@ export class EmployeesTableComponent implements CanComponentDeactivate {
         },
         width: 150,
       },
+      // ── Telegram ──────────────────────────────────────────────────────
+      {
+        field: 'usaTelegram',
+        headerName: '🤖 Telegram',
+        editable: false,
+        filter: false,
+        width: 110,
+        cellRenderer: (params: ICellRendererParams) => {
+          return params.value
+            ? `<span class="badge bg-success" style="font-size:0.7rem">✅ Vinculado</span>`
+            : `<span class="text-muted small">Sin vincular</span>`;
+        },
+      },
+      {
+        field: 'telegramUserId',
+        headerName: 'Telegram ID',
+        editable: false,
+        filter: false,
+        width: 130,
+        hide: true,
+      },
     ];
     } else {
       this._colMaster = [
@@ -1697,6 +1718,27 @@ export class EmployeesTableComponent implements CanComponentDeactivate {
           //excelMode: 'mac',
         },
         width: 150,
+      },
+      // ── Telegram ──────────────────────────────────────────────────────
+      {
+        field: 'usaTelegram',
+        headerName: '🤖 Telegram',
+        editable: false,
+        filter: false,
+        width: 110,
+        cellRenderer: (params: ICellRendererParams) => {
+          return params.value
+            ? `<span class="badge bg-success" style="font-size:0.7rem">✅ Vinculado</span>`
+            : `<span class="text-muted small">Sin vincular</span>`;
+        },
+      },
+      {
+        field: 'telegramUserId',
+        headerName: 'Telegram ID',
+        editable: false,
+        filter: false,
+        width: 130,
+        hide: true,
       },
     ];
     }
