@@ -65,7 +65,7 @@ import Swal from 'sweetalert2';
         (gridReady)="onGridReady($event)"
         (cellEditingStopped)="onCellEditingStopped($event)"
         (cellValueChanged)="onCellValueChanged($event)"
-        style="height:380px; width:100%">
+        style="width:100%">
       </ag-grid-angular>
 
     </div>
@@ -185,8 +185,9 @@ export class CustomersCotizacionesComponent implements ICellRendererAngularComp 
     headerHeight: 28,
     rowHeight: 30,
     rowSelection: 'single',
+    domLayout: 'autoHeight',   // el grid crece para mostrar el PDF completo
     masterDetail: true,
-    detailRowHeight: 700,
+    detailRowHeight: 1400,     // espacio generoso para PDF (82vh) + items
     isRowMaster: () => true,
     detailCellRenderer: DetalleItemsCotizacionComponent,
     rowClassRules: { 'new-row-highlight': (p: any) => !!p.data?.__isNew },
