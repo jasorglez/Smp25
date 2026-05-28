@@ -993,14 +993,22 @@ export class CustomersComponent implements CanComponentDeactivate {
     const isExpanded = node.expanded;
 
     if (isExpanded) {
+      // Cerrar: restaurar alturas de todas las filas
       node.setExpanded(false);
+      api.forEachNode((n: any) => n.setRowHeight(undefined));
+      api.onRowHeightChanged();
       return;
     }
 
-    // Colapsar cualquier otra fila abierta
+    // Colapsar cualquier otra fila expandida
     api.forEachNode((n: any) => {
       if (n.expanded && n.id !== node.id) n.setExpanded(false);
     });
+    // Ocultar todas las demás filas (patrón estándar de todas las cascadas)
+    api.forEachNode((n: any) => {
+      if (n.id !== node.id) n.setRowHeight(0);
+    });
+    api.onRowHeightChanged();
 
     this.actualizarContextoCotizaciones();
     setTimeout(() => node.setExpanded(true), 0);
