@@ -11,12 +11,14 @@ import { ComparacionOverlayService, ComparacionOverlayData } from './services/co
 import { DetalleItemsProveedorComponent } from './domains/ModShoppingDelison/pages/quote-delison/detalle-items-proveedor.component';
 import { ProveedorItemsOverlayService, ProveedorItemsOverlayData } from './services/proveedor-items-overlay.service';
 import { UnsavedChangesTrackerService } from './services/unsaved-changes-tracker.service';
+import { EntradaDocumentsOverlayService, EntradaDocumentsOverlayData } from './services/entrada-documents-overlay.service';
+import { DetailEntradaDocumentsComponent } from './domains/ModProduction/Components/molienda/almmolienda/detail-entrada-documents/detail-entrada-documents.component';
 
 
 @Component({
   selector: 'app-root',
   standalone: true,
-  imports: [RouterOutlet, ItemChatOverlayComponent, CommonModule, ComparacionPreciosComponent, DetalleItemsProveedorComponent],
+  imports: [RouterOutlet, ItemChatOverlayComponent, CommonModule, ComparacionPreciosComponent, DetalleItemsProveedorComponent, DetailEntradaDocumentsComponent],
   template: `
     <router-outlet></router-outlet>
     <app-item-chat-overlay></app-item-chat-overlay>
@@ -39,6 +41,28 @@ import { UnsavedChangesTrackerService } from './services/unsaved-changes-tracker
           (closed)="closeComparacion()"
           style="display:flex; flex-direction:column; height:100%;">
         </app-comparacion-precios>
+      </div>
+    </div>
+
+    <!-- Modal Documentos de Entrada — nivel raíz para evitar el transform de AG Grid -->
+    <div *ngIf="entradaDocumentsData"
+         style="position:fixed; inset:0; background:rgba(0,0,0,0.55); z-index:10000; display:flex; align-items:center; justify-content:center; padding:16px;"
+         (click)="closeEntradaDocuments()">
+      <div style="background:#fff; border-radius:10px; width:90vw; max-width:100%; height:92vh; display:flex; flex-direction:column; box-shadow:0 8px 40px rgba(0,0,0,0.3); overflow:hidden;"
+           (click)="$event.stopPropagation()">
+        <div style="display:flex; justify-content:space-between; align-items:center; padding:10px 16px; background:#1e3a5f; flex-shrink:0; border-radius:10px 10px 0 0;">
+          <span style="font-weight:600; color:#fff; font-size:0.95rem;">
+            <i class="bi bi-file-earmark-text" style="margin-right:8px;"></i>
+            Documentos — Entrada #{{ entradaDocumentsData.idEntrada }}
+          </span>
+          <button type="button" class="btn-close btn-close-white" (click)="closeEntradaDocuments()"></button>
+        </div>
+        <app-detail-entrada-documents
+          [docType]="entradaDocumentsData.docType || 'entrega'"
+          [idEntradaInput]="entradaDocumentsData.idEntrada"
+          [readOnly]="entradaDocumentsData.readOnly ?? false"
+          style="display:flex; flex-direction:column; flex:1 1 auto; min-height:0;">
+        </app-detail-entrada-documents>
       </div>
     </div>
 
@@ -66,15 +90,18 @@ export class AppComponent implements OnInit, OnDestroy {
   private permissionsLoadSub: Subscription | null = null;
   private comparacionSub?: Subscription;
   private proveedorSub?: Subscription;
+  private entradaDocumentsSub?: Subscription;
 
   comparacionData: ComparacionOverlayData | null = null;
   proveedorData: ProveedorItemsOverlayData | null = null;
+  entradaDocumentsData: EntradaDocumentsOverlayData | null = null;
 
   private authService = inject(AuthService);
   private signalsService = inject(SignalsService);
   private router = inject(Router);
   private comparacionOverlayService = inject(ComparacionOverlayService);
   private proveedorItemsOverlayService = inject(ProveedorItemsOverlayService);
+  private entradaDocumentsOverlayService = inject(EntradaDocumentsOverlayService);
   private unsavedTracker = inject(UnsavedChangesTrackerService);
 
   constructor() {
@@ -104,10 +131,18 @@ export class AppComponent implements OnInit, OnDestroy {
       this.proveedorData = null;
       setTimeout(() => { this.proveedorData = data; }, 0);
     });
+    this.entradaDocumentsSub = this.entradaDocumentsOverlayService.open$.subscribe(data => {
+      this.entradaDocumentsData = null;
+      setTimeout(() => { this.entradaDocumentsData = data; }, 0);
+    });
   }
 
   closeComparacion() {
     this.comparacionData = null;
+  }
+
+  closeEntradaDocuments() {
+    this.entradaDocumentsData = null;
   }
 
   async closeProveedor() {
@@ -126,6 +161,7 @@ export class AppComponent implements OnInit, OnDestroy {
     this.permissionsLoadSub = null;
     this.comparacionSub?.unsubscribe();
     this.proveedorSub?.unsubscribe();
+    this.entradaDocumentsSub?.unsubscribe();
   }
 
   private loadPermissions(email: string, isAdvanced: boolean, idBranch: number | null) {

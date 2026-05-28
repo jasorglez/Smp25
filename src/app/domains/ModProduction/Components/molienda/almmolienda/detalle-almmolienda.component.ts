@@ -2,16 +2,17 @@ import { Component, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { AgGridAngular } from 'ag-grid-angular';
 import { ColDef, GridApi, GridReadyEvent } from 'ag-grid-enterprise';
-import { lastValueFrom } from 'rxjs';
+import { lastValueFrom, Subscription } from 'rxjs';
 import { MoliendaService } from '../../../../../services/molienda.service';
 import { OcAndReqsService } from '../../../../../services/ocandreqs.service';
 import { CustomersService } from '../../../../../services/customers.service';
 import { SignalsService } from '../../../../../services/signals.service';
 import { TrackingService } from '../../../../../services/tracking.service';
 import { EntradaMoliendaService, EntradaMolienda } from '../../../../../services/entrada-molienda.service';
-import { EntregaOcService } from '../../../../../services/entrega-oc.service';
+import { EntregaOc, EntregaOcService } from '../../../../../services/entrega-oc.service';
 import { CaracteristicasEntradaService } from '../../../../../services/caracteristicas-entrada.service';
 import { IntandoutDocumentsService } from 'app/services/intandoutDocuments.service';
+import { EntradaDocumentsOverlayService } from 'app/services/entrada-documents-overlay.service';
 import { alerts } from 'app/helpers/alerts';
 import { DetailEntradaDocumentsComponent } from './detail-entrada-documents/detail-entrada-documents.component';
 import { CustomOcTooltipComponent } from './custom-oc-tooltip.component';
@@ -106,25 +107,25 @@ interface ReqOption {
               Entradas — {{ selectedOcRow.folio }}
             </div>
             <div style="display: flex; gap: 4px; flex-shrink: 0;">
-              <button class="btn btn-sm btn-success" (click)="addEntrada()" [disabled]="!nivel4GridApi || selectedOcRow?.close === true" title="Agregar entrada" style="padding: 2px 8px; font-size: 0.7rem;">
+              <button class="btn btn-sm btn-success" (click)="addEntrada()" [disabled]="!nivel4GridApi || selectedOcRow?.close === true || selectedMultiEntregaIsClosed" title="Agregar entrada" style="padding: 2px 8px; font-size: 0.7rem;">
                 <i class="bi bi-plus-lg" style="margin-right: 2px; font-size: 0.7rem;"></i>Agregar
               </button>
-              <button class="btn btn-sm btn-primary position-relative" (click)="saveEntradas()" [disabled]="!hasUnsavedChangesEntradas || selectedOcRow?.close === true" title="Guardar cambios" style="padding: 2px 8px; font-size: 0.7rem;">
+              <button class="btn btn-sm btn-primary position-relative" (click)="saveEntradas()" [disabled]="!(hasUnsavedChangesEntradas || hasUnsavedChangesCaracteristicas) || selectedOcRow?.close === true || selectedMultiEntregaIsClosed" title="Guardar cambios" style="padding: 2px 8px; font-size: 0.7rem;">
                 <i class="bi bi-floppy" style="margin-right: 2px; font-size: 0.7rem;"></i>Guardar
-                <span *ngIf="hasUnsavedChangesEntradas"
+                <span *ngIf="hasUnsavedChangesEntradas || hasUnsavedChangesCaracteristicas"
                       class="position-absolute top-0 start-100 translate-middle p-2 bg-danger border border-light rounded-circle"
                       style="width: 10px; height: 10px; padding: 0 !important;">
                 </span>
               </button>
-              <button class="btn btn-sm btn-warning" (click)="revertEntradas()" [disabled]="selectedOcRow?.close === true" title="Deshacer cambios" style="padding: 2px 8px; font-size: 0.7rem;">
+              <button class="btn btn-sm btn-warning" (click)="revertEntradas()" [disabled]="selectedOcRow?.close === true || selectedMultiEntregaIsClosed" title="Deshacer cambios" style="padding: 2px 8px; font-size: 0.7rem;">
                 <i class="bi bi-arrow-clockwise" style="margin-right: 2px; font-size: 0.7rem;"></i>Deshacer
               </button>
-              <button class="btn btn-sm btn-danger" (click)="deleteEntrada()" [disabled]="!selectedEntradaRow || selectedOcRow?.close === true" title="Eliminar entrada" style="padding: 2px 8px; font-size: 0.7rem;">
+              <button class="btn btn-sm btn-danger" (click)="deleteEntrada()" [disabled]="!selectedEntradaRow || selectedOcRow?.close === true || selectedMultiEntregaIsClosed" title="Eliminar entrada" style="padding: 2px 8px; font-size: 0.7rem;">
                 <i class="bi bi-trash" style="margin-right: 2px; font-size: 0.7rem;"></i>Eliminar
               </button>
             </div>
           </div>
-          <div [style.flex]="selectedEntradaCaratRow ? '0 0 58px' : '1 1 auto'"
+          <div [style.flex]="selectedEntradaCaratRow ? '0 0 85px' : '1 1 auto'"
                style="min-height: 58px; position: relative; overflow: hidden;">
             <ag-grid-angular
               class="ag-theme-quartz small-text-ag-grid"
@@ -139,21 +140,12 @@ interface ReqOption {
 
           <!-- Level 5: Características (cascada) -->
           <div *ngIf="selectedEntradaCaratRow"
-               style="flex: 1 1 auto; min-height: 0; border-top: 2px solid #558b2f; background: #f1f8e9;
+               style="flex: 0 0 105px; min-height: 0; border-top: 2px solid #558b2f; background: #f1f8e9;
                       padding: 4px; display: flex; flex-direction: column; overflow: hidden;">
-            <div style="display: flex; align-items: center; justify-content: space-between; gap: 6px; margin-bottom: 3px; flex-shrink: 0;">
-              <div style="font-size: 0.76rem; font-weight: bold; color: #558b2f;">
+            <div style="margin-bottom: 3px; flex-shrink: 0;">
+              <span style="font-size: 0.76rem; font-weight: bold; color: #558b2f;">
                 Características — Entrada {{ selectedEntradaCaratRow.idEntrada }}
-              </div>
-              <div style="display: flex; gap: 4px; flex-shrink: 0;">
-                <button class="btn btn-sm btn-primary position-relative" (click)="saveCaracteristicas()" [disabled]="!hasUnsavedChangesCaracteristicas || selectedOcRow?.close === true" title="Guardar cambios" style="padding: 2px 8px; font-size: 0.7rem;">
-                  <i class="bi bi-floppy" style="margin-right: 2px; font-size: 0.7rem;"></i>Guardar
-                  <span *ngIf="hasUnsavedChangesCaracteristicas"
-                        class="position-absolute top-0 start-100 translate-middle p-2 bg-danger border border-light rounded-circle"
-                        style="width: 10px; height: 10px; padding: 0 !important;">
-                  </span>
-                </button>
-              </div>
+              </span>
             </div>
             <div style="flex: 1 1 auto; min-height: 0; position: relative; overflow: hidden;">
               <ag-grid-angular
@@ -170,10 +162,14 @@ interface ReqOption {
       </div>
 
     </div>
+
   `,
   styles: [`
     :host { display: block; height: 100%; overflow: hidden; }
     :host ::ng-deep .selected-oc-highlight { background-color: #bbdefb !important; }
+    :host ::ng-deep .multi-entrega-locked { opacity: 0.4; pointer-events: none; }
+    :host ::ng-deep .multi-entrega-closed { background-color: #eceff1 !important; color: #607d8b !important; }
+    :host ::ng-deep .multi-entrega-closed .ag-cell { color: #607d8b !important; }
   `]
 })
 export class DetalleMoliendaComponent {
@@ -186,12 +182,14 @@ export class DetalleMoliendaComponent {
   private entregaOcService = inject(EntregaOcService);
   private caracteristicasService = inject(CaracteristicasEntradaService);
   private intandoutDocumentsService = inject(IntandoutDocumentsService);
+  private entradaDocumentsOverlayService = inject(EntradaDocumentsOverlayService);
 
   private internalParams: any;
   private gridApi!: GridApi;
   private cascadeOcGridApi!: GridApi;
   nivel4GridApi!: GridApi;
   private nivel5GridApi!: GridApi;
+  private countSub?: Subscription;
   private deptsCsv: string = '';
   private initCompleted = false;
   private providersMap: Map<number, string> | null = null;
@@ -207,6 +205,7 @@ export class DetalleMoliendaComponent {
   multiEntregasData: any[] = [];
   private multiEntregasGridApi!: GridApi;
   selectedMultiEntregaCaratRow: any = null;
+  selectedMultiEntregaIsClosed = false;
   cascadeEntradaData: any[] = [];
   private originalCascadeEntradaData: any[] = [];
   hasUnsavedChangesEntradas = false;
@@ -266,9 +265,15 @@ export class DetalleMoliendaComponent {
     {
       field: 'cantidadReq',
       headerName: 'Cant Req',
-      width: 120,
+      width: 150,
       editable: false,
       type: 'numericColumn',
+      valueFormatter: (p: any) => {
+        const req = Number(p.value ?? 0);
+        const suma = Number(p.data?.__sumaCantidadRecibir ?? 0);
+        if (suma > 0) return `${req} / ${suma}`;
+        return String(req);
+      },
       tooltipValueGetter: (p) => `Cantidad requisitada: ${p.value ?? 0}`,
     },
     {
@@ -281,8 +286,8 @@ export class DetalleMoliendaComponent {
     },
     {
       field: 'resta',
-      headerName: 'Resta',
-      width: 110,
+      headerName: 'Resta Requerimiento',
+      width: 160,
       editable: false,
       type: 'numericColumn',
       valueGetter: (p) => p.data?.resta ?? 0,
@@ -338,6 +343,8 @@ export class DetalleMoliendaComponent {
       cellRenderer: (params: any) => {
         const val = params.value ?? '';
         const isClosed = params.data?.close === true;
+        const isMulti = Number(params.data?.diasCondicionCompra ?? 0) > 1;
+        const allEntradasClosed = params.data?.__allEntradasClosed === true;
         const color = isClosed ? '#b71c1c' : '#2e7d32';
 
         const div = document.createElement('div');
@@ -348,6 +355,12 @@ export class DetalleMoliendaComponent {
         let content = val || '—';
         if (isClosed) {
           content += ` <i class="bi bi-lock-fill" style="color:#b71c1c; font-size:0.85rem; flex-shrink:0;" title="Orden de Compra cerrada"></i>`;
+        } else if (isMulti) {
+          if (allEntradasClosed) {
+            content += ` <i class="bi bi-lock-fill" style="color:#e65100; font-size:0.85rem; flex-shrink:0;" title="Todas las entregas cerradas"></i>`;
+          } else {
+            content += ` <i class="bi bi-unlock-fill" style="color:#f57c00; font-size:0.85rem; flex-shrink:0;" title="Entregas pendientes de cerrar"></i>`;
+          }
         }
 
         div.innerHTML = content;
@@ -392,16 +405,35 @@ export class DetalleMoliendaComponent {
       },
     },
     {
-      field: 'resta', headerName: 'Resta', width: 90, type: 'numericColumn',
+      field: 'resta', headerName: 'Resta OC', width: 90, type: 'numericColumn',
       cellStyle: { backgroundColor: '#fff9c4' }
     },
     {
       field: 'close',
       headerName: 'Cerrado',
       width: 100,
-      editable: (params: any) => !params.data.close,
-      cellRenderer: 'agCheckboxCellRenderer',
-      cellEditor: 'agCheckboxCellEditor',
+      editable: false,
+      cellRenderer: (params: any) => {
+        const planned = Number(params.data?.diasCondicionCompra ?? 0);
+        if (planned > 1) {
+          const span = document.createElement('span');
+          span.style.cssText = 'display:block; text-align:center; color:#bdbdbd;';
+          span.textContent = '—';
+          return span;
+        }
+        const wrapper = document.createElement('div');
+        wrapper.style.cssText = 'display:flex; justify-content:center; align-items:center; height:100%;';
+        const cb = document.createElement('input');
+        cb.type = 'checkbox';
+        cb.checked = params.value === true;
+        cb.disabled = params.value === true;
+        cb.style.cursor = params.value === true ? 'not-allowed' : 'pointer';
+        cb.addEventListener('change', () => {
+          if (!cb.disabled) params.setValue(cb.checked);
+        });
+        wrapper.appendChild(cb);
+        return wrapper;
+      },
       onCellValueChanged: async (params: any) => {
         const oldValue = params.oldValue === true;
         const newValue = params.newValue === true;
@@ -507,6 +539,7 @@ export class DetalleMoliendaComponent {
       headerName: 'PDF',
       width: 60,
       sortable: false,
+      hide: true,
       cellRenderer: (_params: any) => {
         const div = document.createElement('div');
         div.style.cssText = 'text-align: center; cursor: pointer;';
@@ -520,6 +553,45 @@ export class DetalleMoliendaComponent {
       width: 160,
       valueFormatter: (p) => this.formatFechaDmy(p.value),
     },
+    {
+      field: 'close',
+      headerName: 'Cerrado',
+      width: 90,
+      editable: false,
+      cellRenderer: (params: any) => {
+        const rowIndex = params.node?.rowIndex ?? 0;
+        const isLocked = !params.data?.close && !this.isEntregaRowUnlocked(rowIndex);
+        const wrapper = document.createElement('div');
+        wrapper.style.cssText = 'display:flex; justify-content:center; align-items:center; height:100%;';
+        const cb = document.createElement('input');
+        cb.type = 'checkbox';
+        cb.checked = params.value === true;
+        cb.disabled = params.value === true || isLocked;
+        cb.style.cursor = cb.disabled ? 'not-allowed' : 'pointer';
+        cb.addEventListener('change', () => {
+          if (!cb.disabled) this.closeEntrega(params);
+        });
+        wrapper.appendChild(cb);
+        return wrapper;
+      },
+    },
+    {
+      field: 'resta',
+      headerName: 'Resta Entrega',
+      width: 120,
+      type: 'numericColumn',
+      editable: false,
+      valueFormatter: (p) => {
+        const v = Number(p.value ?? 0);
+        return Number.isFinite(v) ? v.toLocaleString('es-MX') : '';
+      },
+      cellStyle: (params: any) => {
+        const v = Number(params.value ?? 0);
+        if (v > 0) return { backgroundColor: '#fff9c4', color: '#f57f17', fontWeight: '600' };
+        if (v === 0) return { backgroundColor: '#c8e6c9', color: '#1b5e20', fontWeight: '600' };
+        return { backgroundColor: '#ffcdd2', color: '#c62828', fontWeight: '600' };
+      },
+    },
   ];
 
   multiEntregasGridOptions: any = {
@@ -527,6 +599,11 @@ export class DetalleMoliendaComponent {
     rowHeight: 25,
     defaultColDef: { resizable: true, sortable: true, editable: false },
     onFirstDataRendered: (params: any) => params.api.autoSizeAllColumns(),
+    rowClassRules: {
+      'multi-entrega-locked': (params: any) =>
+        !params.data?.close && !this.isEntregaRowUnlocked(params.node?.rowIndex ?? 0),
+      'multi-entrega-closed': (params: any) => params.data?.close === true,
+    },
   };
 
   // ── Nivel 4: Entradas por OC (demo local; sustituir por API cuando exista) ──
@@ -540,7 +617,7 @@ export class DetalleMoliendaComponent {
         defaultToNothingSelected: true,
       },
       width: 150,
-      editable: () => !this.selectedOcRow?.close,
+      editable: () => !this.selectedOcRow?.close && !this.selectedMultiEntregaIsClosed,
       cellEditor: 'agDateCellEditor',
       valueGetter: (params) => {
         if (!params.data?.fechaRecepcion) {
@@ -578,7 +655,7 @@ export class DetalleMoliendaComponent {
           const date = params.value instanceof Date ? params.value : new Date(params.value);
           if (isNaN(date.getTime())) return '';
 
-          return `${('0' + date.getDate()).slice(-2)}-${('0' + (date.getMonth() + 1)).slice(-2)}-${date.getFullYear()}`;
+          return `${('0' + date.getDate()).slice(-2)}/${('0' + (date.getMonth() + 1)).slice(-2)}/${date.getFullYear()}`;
         } catch {
           return '';
         }
@@ -589,7 +666,7 @@ export class DetalleMoliendaComponent {
       headerName: 'Cantidad Entrada',
       width: 130,
       type: 'numericColumn',
-      editable: () => !this.selectedOcRow?.close,
+      editable: () => !this.selectedOcRow?.close && !this.selectedMultiEntregaIsClosed,
       valueFormatter: (p) => this.fmtEntero(p.value),
       onCellValueChanged: (event: any) => this.onEntradaCellValueChanged(event),
     },
@@ -598,7 +675,7 @@ export class DetalleMoliendaComponent {
       headerName: 'Bultos',
       width: 85,
       type: 'numericColumn',
-      editable: () => this.editBultos && !this.selectedOcRow?.close,
+      editable: () => this.editBultos && !this.selectedOcRow?.close && !this.selectedMultiEntregaIsClosed,
       valueSetter: (params) => {
         const newVal = params.newValue;
         if (newVal === null || newVal === undefined || newVal === '') {
@@ -676,6 +753,8 @@ export class DetalleMoliendaComponent {
             this.existingCaratIds.clear();
             this.hasUnsavedChangesCaracteristicas = false;
           } else {
+            // Cierra el modal PDF si está abierto
+            this.closeDocumentsModal();
             this.selectedEntradaCaratRow = params.data;
             this.hasUnsavedChangesCaracteristicas = false;
             this.existingCaratIds.clear();
@@ -732,7 +811,7 @@ export class DetalleMoliendaComponent {
       headerName: 'Comentario',
       minWidth: 180,
       flex: 1,
-      editable: () => !this.selectedOcRow?.close,
+      editable: () => !this.selectedOcRow?.close && !this.selectedMultiEntregaIsClosed,
       valueSetter: (params) => {
         params.data.comentario = params.newValue ?? '';
         this.onEntradaCellValueChanged(params);
@@ -776,7 +855,7 @@ export class DetalleMoliendaComponent {
       field: 'liberacion',
       headerName: 'Liberación',
       width: 100,
-      editable: () => !this.selectedOcRow?.close,
+      editable: () => !this.selectedOcRow?.close && !this.selectedMultiEntregaIsClosed,
       cellRenderer: 'agCheckboxCellRenderer',
     },
   ];
@@ -784,10 +863,6 @@ export class DetalleMoliendaComponent {
   nivel4GridOptions: any = {
     headerHeight: 25,
     rowHeight: 25,
-    masterDetail: true,
-    detailRowHeight: 500,
-    isRowMaster: (data: any) => !!data?.idEntrada,
-    detailCellRenderer: DetailEntradaDocumentsComponent,
     rowSelection: 'single',
     onSelectionChanged: (event: any) => {
       const selectedRows = event.api.getSelectedRows();
@@ -825,6 +900,7 @@ export class DetalleMoliendaComponent {
   nivel5GridOptions: any = {
     headerHeight: 25,
     rowHeight: 25,
+    popupParent: document.body,
     rowClassRules: {
       'new-row-highlight': (p: any) => !!p.data?.__isNew,
     },
@@ -858,6 +934,20 @@ export class DetalleMoliendaComponent {
   private async init(params: any) {
     this.initCompleted = false;
     this.internalParams = params;
+
+    // Actualizar pdfCount en tiempo real cuando otro componente guarda documentos
+    this.countSub?.unsubscribe();
+    this.countSub = this.entradaDocumentsOverlayService.countUpdated$.subscribe(({ idEntrada, count }) => {
+      const row = this.cascadeEntradaData.find(
+        (r: any) => (r.idEntrega ?? r.idEntrada) === idEntrada
+      );
+      if (row) {
+        row.pdfCount = count;
+        if (this.nivel4GridApi && !this.nivel4GridApi.isDestroyed()) {
+          this.nivel4GridApi.refreshCells({ columns: ['pdfCount'], force: true });
+        }
+      }
+    });
     this.detailType = params?.data?.detailType ?? 'entradas';
     this.bultosCantidad = params?.bultosCantidad ?? null;
     this.bultosCantidadARevisar = params?.bultosCantidadARevisar ?? null;
@@ -897,6 +987,7 @@ export class DetalleMoliendaComponent {
         this.gridApi.setGridOption('rowData', this.rowData);
         this.updateParentCount();
       }
+      this.loadReqEntregasSums();
       return;
     }
 
@@ -1007,7 +1098,7 @@ export class DetalleMoliendaComponent {
             headerName: categoryName,
             flex: 1,
             minWidth: 150,
-            editable: () => !this.selectedOcRow?.close,
+            editable: () => !this.selectedOcRow?.close && !this.selectedMultiEntregaIsClosed,
             cellEditor: 'agRichSelectCellEditor',
             cellEditorParams: (params: any) => {
               const savedValue = params.data?.[fieldName];
@@ -1017,7 +1108,7 @@ export class DetalleMoliendaComponent {
                 : activeFamilies;
               return { values, allowTyping: false };
             },
-            cellEditorPopup: false,
+            cellEditorPopup: true,
             cellStyle: { backgroundColor: '#fff9c4' },
           });
         });
@@ -1091,7 +1182,8 @@ export class DetalleMoliendaComponent {
       this.cascadeEntradaData = (Array.isArray(entradas) ? entradas : []).map((e: EntradaMolienda) => ({
         id: e.id,
         idEntrada: e.id,
-        fechaRecepcion: e.fechaRecepcion ? new Date(e.fechaRecepcion) : null,
+        idEntrega: e.idEntrega ?? null,
+        fechaRecepcion: e.fechaRecepcion ? this.isoToLocalDate(String(e.fechaRecepcion)) : null,
         cantidadEntrada: e.cantidadEntrada ?? 0,
         bultos: e.bultos ?? 0,
         revisionConfigu: e.revisionConfigu ?? 0,
@@ -1099,6 +1191,7 @@ export class DetalleMoliendaComponent {
         pdfCount: 0,
         usuario: e.usuario ?? '',
         liberacion: e.liberacion ?? false,
+        close: e.close ?? false,
         carat: '',
         comentario: e.comentario ?? '',
       }));
@@ -1111,8 +1204,9 @@ export class DetalleMoliendaComponent {
       );
 
       await Promise.all(this.cascadeEntradaData.map(async (entradaRow: any) => {
+        const docParent = entradaRow.idEntrega ?? entradaRow.idEntrada;
         const documents = await lastValueFrom(
-          this.intandoutDocumentsService.getIntandoutDocumentsById(entradaRow.idEntrada, 'entrada')
+          this.intandoutDocumentsService.getIntandoutDocumentsById(docParent, 'entrega')
         ).catch(() => []);
         entradaRow.pdfCount = Array.isArray(documents) ? documents.length : 0;
         try {
@@ -1135,6 +1229,72 @@ export class DetalleMoliendaComponent {
         this.nivel4GridApi.setGridOption('rowData', this.cascadeEntradaData);
     } catch (err) {
       console.error('Error cargando entradas:', err);
+    }
+  }
+
+  /** Carga las entradas de una ENTREGA específica (multi-entrega) filtradas por material. */
+  private async loadEntradasForEntrega(entregaRow: any, ocRow: any): Promise<void> {
+    this.cascadeEntradaData = [];
+    this.originalCascadeEntradaData = [];
+    this.hasUnsavedChangesEntradas = false;
+    this.selectedEntradaRow = null;
+
+    try {
+      const idMaterial = this.internalParams?.data?.idMaterial;
+      const idEntrega  = entregaRow?.id;
+
+      const entradas = idEntrega && idMaterial
+        ? await lastValueFrom(this.entradaService.getByEntregaAndMaterial(idEntrega, idMaterial))
+        : await lastValueFrom(this.entradaService.getByOc(ocRow.id));
+
+      this.cascadeEntradaData = (Array.isArray(entradas) ? entradas : []).map((e: EntradaMolienda) => ({
+        id: e.id,
+        idEntrada: e.id,
+        idEntrega: e.idEntrega ?? null,
+        fechaRecepcion: e.fechaRecepcion ? this.isoToLocalDate(String(e.fechaRecepcion)) : null,
+        cantidadEntrada: e.cantidadEntrada ?? 0,
+        bultos: e.bultos ?? 0,
+        revisionConfigu: e.revisionConfigu ?? 0,
+        pago: e.pago ?? 0,
+        pdfCount: 0,
+        usuario: e.usuario ?? '',
+        liberacion: e.liberacion ?? false,
+        close: e.close ?? false,
+        carat: '',
+        comentario: e.comentario ?? '',
+      }));
+
+      const familyAbrevMap = new Map<string, string>();
+      this.caracteristicasFamilies.forEach((f: any) =>
+        familyAbrevMap.set(f.description, f.valueAddition2 ?? f.description)
+      );
+
+      await Promise.all(this.cascadeEntradaData.map(async (entradaRow: any) => {
+        const docParent = entradaRow.idEntrega ?? entradaRow.idEntrada;
+        const documents = await lastValueFrom(
+          this.intandoutDocumentsService.getIntandoutDocumentsById(docParent, 'entrega')
+        ).catch(() => []);
+        entradaRow.pdfCount = Array.isArray(documents) ? documents.length : 0;
+        try {
+          const carats = await lastValueFrom(this.caracteristicasService.getByEntrada(entradaRow.idEntrada));
+          if (carats && carats.length > 0) {
+            const parts = carats.map((c: any) => {
+              const cat = this.caracteristicasCategories.find((x: any) => (x.id || x.originalId) === c.idCategory);
+              const catAbrev = cat?.valueAddition2 || c.categoryName || '';
+              const famAbrev = familyAbrevMap.get(c.familySelected) ?? c.familySelected ?? '';
+              return `${catAbrev}-${famAbrev}`;
+            });
+            entradaRow.carat = parts.join(' / ');
+          }
+        } catch { /* sin características */ }
+      }));
+
+      this.originalCascadeEntradaData = JSON.parse(JSON.stringify(this.cascadeEntradaData));
+      this.syncSelectedOcRestaFromEntradas();
+      if (this.nivel4GridApi && !this.nivel4GridApi.isDestroyed())
+        this.nivel4GridApi.setGridOption('rowData', this.cascadeEntradaData);
+    } catch (err) {
+      console.error('Error cargando entradas por entrega:', err);
     }
   }
 
@@ -1167,6 +1327,7 @@ export class DetalleMoliendaComponent {
     const row = event.data;
     const closing = this.selectedMultiEntregaCaratRow === row;
     this.selectedMultiEntregaCaratRow = closing ? null : row;
+    this.selectedMultiEntregaIsClosed = !closing && (row.close === true);
 
     if (this.multiEntregasGridApi && !this.multiEntregasGridApi.isDestroyed()) {
       this.multiEntregasGridApi.forEachNode((node: any) => {
@@ -1176,7 +1337,7 @@ export class DetalleMoliendaComponent {
       this.multiEntregasGridApi.refreshCells({ force: true });
     }
 
-    // Abre/cierra el grid de Entradas (nivel 5) apuntando a la OC multi seleccionada.
+    // Abre/cierra el grid de Entradas (nivel 5) apuntando a la entrega seleccionada.
     if (closing) {
       this.selectedOcRow = null;
       this.selectedEntradaCaratRow = null;
@@ -1188,7 +1349,7 @@ export class DetalleMoliendaComponent {
 
     this.selectedEntradaCaratRow = null;
     this.selectedOcRow = this.selectedOcMultiRow;
-    await this.loadEntradasForOc(this.selectedOcMultiRow);
+    await this.loadEntradasForEntrega(row, this.selectedOcMultiRow);
   }
 
   private loadMultiEntregas(ocRow: any): void {
@@ -1206,16 +1367,58 @@ export class DetalleMoliendaComponent {
         const list = Array.isArray(saved) ? saved : [];
         this.multiEntregasData = list.map(s => ({
           id: s.id ?? null,
+          idDetailsreqoc: s.idDetailsreqoc,
           fechaEntrega: s.fechaEntrega ?? '',
           cantidadRecibir: s.cantidadRecibir ?? null,
           notaFactura: s.notaFactura ?? '',
           totalEntrega: s.totalEntrega ?? null,
           fechaEntradaAlmacen: s.fechaEntradaAlmacen ?? '',
+          close: s.close ?? false,
         }));
+
+        // Poblar fechaEntradaAlmacen y Resta agrupando entradas por id_entrega
+        const idMaterial = this.internalParams?.data?.idMaterial;
+        if (ocRow?.id && idMaterial) {
+          this.entradaService.getByOcAndMaterial(ocRow.id, idMaterial).subscribe({
+            next: (entradas) => {
+              const list2 = Array.isArray(entradas) ? entradas : [];
+
+              // Agrupar entradas por idEntrega
+              const byEntrega = new Map<number, any[]>();
+              list2.forEach((e: any) => {
+                const key = e.idEntrega ?? null;
+                if (key !== null) {
+                  if (!byEntrega.has(key)) byEntrega.set(key, []);
+                  byEntrega.get(key)!.push(e);
+                }
+              });
+
+              this.multiEntregasData.forEach((entregaRow: any) => {
+                const group = byEntrega.get(entregaRow.id) ?? [];
+                // fechaEntradaAlmacen: primera entrada con fecha
+                const conFecha = group.find((e: any) => e.fechaRecepcion);
+                if (conFecha) {
+                  const iso = String(conFecha.fechaRecepcion).match(/^(\d{4})-(\d{2})-(\d{2})/);
+                  if (iso) entregaRow.fechaEntradaAlmacen = `${iso[1]}-${iso[2]}-${iso[3]}`;
+                }
+                // Resta: cantidadRecibir - suma de cantidadEntrada
+                const sumRecibido = group.reduce((acc: number, e: any) => acc + Number(e.cantidadEntrada ?? 0), 0);
+                entregaRow.resta = Number(entregaRow.cantidadRecibir ?? 0) - sumRecibido;
+              });
+
+              if (this.multiEntregasGridApi && !this.multiEntregasGridApi.isDestroyed()) {
+                this.multiEntregasGridApi.setGridOption('rowData', this.multiEntregasData);
+              }
+            },
+            error: () => {}
+          });
+        }
+
         if (this.multiEntregasGridApi && !this.multiEntregasGridApi.isDestroyed()) {
           this.multiEntregasGridApi.setGridOption('rowData', this.multiEntregasData);
           setTimeout(() => { if (!this.multiEntregasGridApi.isDestroyed()) this.multiEntregasGridApi.autoSizeAllColumns(); });
         }
+        this.refreshOcLockIcon();
       },
       error: () => {
         this.multiEntregasData = [];
@@ -1223,6 +1426,11 @@ export class DetalleMoliendaComponent {
           this.multiEntregasGridApi.setGridOption('rowData', []);
       },
     });
+  }
+
+  private isoToLocalDate(isoStr: string): Date {
+    const m = isoStr.match(/^(\d{4})-(\d{2})-(\d{2})/);
+    return m ? new Date(+m[1], +m[2] - 1, +m[3]) : new Date(isoStr);
   }
 
   private formatFechaDmy(value: any): string {
@@ -1310,6 +1518,7 @@ export class DetalleMoliendaComponent {
       if (this.gridApi && !this.gridApi.isDestroyed())
         this.gridApi.setGridOption('rowData', this.rowData);
       this.updateParentCount();
+      this.loadReqEntregasSums();
     } catch (error) {
       console.error('Error loading details molienda:', error);
     }
@@ -1407,6 +1616,34 @@ export class DetalleMoliendaComponent {
     );
   }
 
+  private async loadReqEntregasSums(): Promise<void> {
+    const idMaterial = Number(this.internalParams?.data?.idMaterial ?? 0);
+    await Promise.all(this.rowData.map(async (row: any) => {
+      if (!Array.isArray(row.ocs) || row.ocs.length === 0) { row.__sumaCantidadRecibir = null; return; }
+      try {
+        let suma = 0;
+        for (const oc of row.ocs) {
+          // oc.id = ocandreq.id; necesitamos el detailsreqoc.id del material
+          const items: any[] = await lastValueFrom(
+            this.ocAndReqsService.getReqItems(oc.id)
+          ).catch(() => []);
+          const materialItem = items.find((it: any) =>
+            Number(it.idSupplie ?? it.idsupplie ?? 0) === idMaterial
+          );
+          if (materialItem?.id) {
+            const entregas: any[] = await lastValueFrom(
+              this.entregaOcService.getByDetail(materialItem.id)
+            ).catch(() => []);
+            suma += entregas.reduce((acc: number, e: any) => acc + Number(e.cantidadRecibir ?? 0), 0);
+          }
+        }
+        row.__sumaCantidadRecibir = suma > 0 ? suma : null;
+      } catch { row.__sumaCantidadRecibir = null; }
+    }));
+    if (this.gridApi && !this.gridApi.isDestroyed())
+      this.gridApi.refreshCells({ columns: ['cantidadReq'], force: true });
+  }
+
   private async enrichReqRowsWithResta(rows: any[]): Promise<any[]> {
     if (!Array.isArray(rows) || rows.length === 0) return [];
 
@@ -1463,9 +1700,16 @@ export class DetalleMoliendaComponent {
 
     const usuarioLogueado = this.signalsService.getDisplayName()() || 'Usuario';
 
+    // Usar la fecha de entrega de la entrega seleccionada como default, o la de la OC, o la fecha actual
+    const fechaDefault = this.selectedMultiEntregaCaratRow?.fechaEntrega
+      ? this.isoToLocalDate(String(this.selectedMultiEntregaCaratRow.fechaEntrega))
+      : this.selectedOcRow?.fechaXEntrega
+      ? this.isoToLocalDate(String(this.selectedOcRow.fechaXEntrega))
+      : new Date();
+
     const newRow = {
       idEntrada: null,
-      fechaRecepcion: new Date(),
+      fechaRecepcion: fechaDefault,
       cantidadEntrada: 0,
       bultos: 0,
       revisionConfigu: 0,
@@ -1489,19 +1733,19 @@ export class DetalleMoliendaComponent {
   }
 
   async saveEntradas() {
-    if (!this.hasUnsavedChangesEntradas || !this.selectedOcRow) return;
+    if ((!this.hasUnsavedChangesEntradas && !this.hasUnsavedChangesCaracteristicas) || !this.selectedOcRow) return;
 
     const toSave = this.cascadeEntradaData.filter(r => r.__isNew || r.__modified);
-    if (!toSave.length) { this.hasUnsavedChangesEntradas = false; return; }
 
     try {
       const idMaterial = this.internalParams?.data?.idMaterial;
       for (const row of toSave) {
         const payload: EntradaMolienda = {
           idOc: this.selectedOcRow.id,
+          idEntrega: this.selectedMultiEntregaCaratRow?.id ?? null,
           idMaterial: idMaterial ?? null,
           fechaRecepcion: row.fechaRecepcion instanceof Date
-            ? row.fechaRecepcion.toISOString().split('T')[0]
+            ? `${row.fechaRecepcion.getFullYear()}-${String(row.fechaRecepcion.getMonth()+1).padStart(2,'0')}-${String(row.fechaRecepcion.getDate()).padStart(2,'0')}`
             : (row.fechaRecepcion ?? null),
           cantidadEntrada: row.cantidadEntrada ?? 0,
           bultos: row.bultos ?? 0,
@@ -1526,6 +1770,28 @@ export class DetalleMoliendaComponent {
       this.hasUnsavedChangesEntradas = false;
       this.originalCascadeEntradaData = JSON.parse(JSON.stringify(this.cascadeEntradaData));
       if (this.nivel4GridApi) this.nivel4GridApi.setGridOption('rowData', this.cascadeEntradaData);
+
+      // Sincronizar fechaEntradaAlmacen y Resta de la entrega activa
+      if (this.selectedOcMultiRow && this.selectedMultiEntregaCaratRow && this.multiEntregasData.length > 0) {
+        const entregaRow = this.multiEntregasData.find((r: any) => r.id === this.selectedMultiEntregaCaratRow.id);
+        if (entregaRow) {
+          // fechaEntradaAlmacen: primera entrada con fecha
+          const conFecha = this.cascadeEntradaData.find((e: any) => e.fechaRecepcion instanceof Date);
+          if (conFecha) {
+            const d = conFecha.fechaRecepcion as Date;
+            entregaRow.fechaEntradaAlmacen =
+              `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+          }
+          // Resta actualizada
+          const sumRecibido = this.cascadeEntradaData.reduce((acc: number, e: any) => acc + Number(e.cantidadEntrada ?? 0), 0);
+          entregaRow.resta = Number(entregaRow.cantidadRecibir ?? 0) - sumRecibido;
+        }
+        if (this.multiEntregasGridApi && !this.multiEntregasGridApi.isDestroyed()) {
+          this.multiEntregasGridApi.refreshCells({ columns: ['fechaEntradaAlmacen', 'resta'], force: true });
+        }
+      }
+
+      if (this.hasUnsavedChangesCaracteristicas) await this.saveCaracteristicas(true);
       await alerts.basicAlert('Éxito', 'Cambios guardados.', 'success');
     } catch (err) {
       console.error('Error guardando entradas:', err);
@@ -1690,10 +1956,67 @@ export class DetalleMoliendaComponent {
     }, 0);
   }
 
-  async saveCaracteristicas() {
+  private isEntregaRowUnlocked(rowIndex: number): boolean {
+    if (rowIndex === 0) return true;
+    return this.multiEntregasData[rowIndex - 1]?.close === true;
+  }
+
+  async closeEntrega(params: any): Promise<void> {
+    const confirm = await alerts.confirmAlert(
+      'Cerrar Entrega',
+      `¿Está seguro que desea cerrar esta entrega? Esta acción no se puede deshacer.`,
+      'question',
+      'Sí, cerrar'
+    );
+    if (!confirm.isConfirmed) {
+      params.api.refreshCells({ rowNodes: [params.node], columns: ['close'], force: true });
+      return;
+    }
+    try {
+      const payload: EntregaOc = {
+        idDetailsreqoc: params.data.idDetailsreqoc,
+        fechaEntrega: params.data.fechaEntrega ?? null,
+        cantidadRecibir: params.data.cantidadRecibir ?? null,
+        notaFactura: params.data.notaFactura ?? null,
+        totalEntrega: params.data.totalEntrega ?? null,
+        fechaEntradaAlmacen: params.data.fechaEntradaAlmacen ?? null,
+        close: true,
+      };
+      await lastValueFrom(this.entregaOcService.update(params.data.id, payload));
+      params.data.close = true;
+      params.api.redrawRows();
+      this.refreshOcLockIcon();
+      alerts.reqSuccessToast('Éxito', 'Entrega cerrada correctamente.');
+    } catch (err) {
+      console.error('Error cerrando entrega:', err);
+      params.api.refreshCells({ rowNodes: [params.node], columns: ['close'], force: true });
+      alerts.reqErrorToast('Error', 'No se pudo cerrar la entrega.');
+    }
+  }
+
+  private refreshOcLockIcon(): void {
+    if (!this.selectedOcMultiRow || !this.cascadeOcGridApi || this.cascadeOcGridApi.isDestroyed()) return;
+    const allClosed = this.multiEntregasData.length > 0 &&
+                      this.multiEntregasData.every((r: any) => r.close === true);
+    this.selectedOcMultiRow.__allEntradasClosed = allClosed;
+    this.cascadeOcGridApi.refreshCells({ columns: ['folio'], force: true });
+  }
+
+  async saveCaracteristicas(silent = false) {
     if (!this.hasUnsavedChangesCaracteristicas || this.cascadeCaratData.length === 0) {
       return;
     }
+
+    // selectedEntradaCaratRow es la misma referencia que el objeto en cascadeEntradaData,
+    // por lo que su idEntrada ya fue actualizado por saveEntradas si era fila nueva.
+    const idEntrada = this.selectedEntradaCaratRow?.idEntrada ?? this.cascadeCaratData[0]?.idEntrada;
+    if (!idEntrada) {
+      if (!silent) await alerts.basicAlert('Error', 'No se pudo determinar la entrada para guardar características.', 'error');
+      return;
+    }
+
+    // Sincronizar idEntrada en el objeto de cascadeCaratData por si acaso
+    this.cascadeCaratData[0].idEntrada = idEntrada;
 
     try {
       const row = this.cascadeCaratData[0];
@@ -1719,7 +2042,7 @@ export class DetalleMoliendaComponent {
           abrevParts.push(`${categoryAbrev}-${familyAbrev}`);
 
           const payload = {
-            idEntrada: row.idEntrada,
+            idEntrada: idEntrada,
             idCategory: categoryId,
             categoryName: categoryName,
             familySelected: familySelected,
@@ -1755,27 +2078,27 @@ export class DetalleMoliendaComponent {
 
       this.hasUnsavedChangesCaracteristicas = false;
       this.originalCaracteristicasData = JSON.parse(JSON.stringify(this.cascadeCaratData));
-      await alerts.basicAlert('Éxito', 'Características guardadas.', 'success');
+      if (!silent) await alerts.basicAlert('Éxito', 'Características guardadas.', 'success');
     } catch (err) {
       console.error('Error guardando características:', err);
-      await alerts.basicAlert('Error', 'No se pudieron guardar las características.', 'error');
+      if (!silent) await alerts.basicAlert('Error', 'No se pudieron guardar las características.', 'error');
+      throw err;
     }
   }
 
-  private toggleDetailColumn(params: any, detailType: string): void {
-    const node = params.node;
-    const api = params.api;
-    const isCurrentlyExpanded = node.expanded && params.data.rowDetailType === detailType;
+  private toggleDetailColumn(params: any, _detailType: string): void {
+    // Usar idEntrega (entrega_oc.id) como clave compartida de documentos
+    const idEntrada: number | null = params.data?.idEntrega ?? params.data?.idEntrada ?? null;
+    if (!idEntrada) return;
+    // Cierra el panel de Características si está abierto
+    this.selectedEntradaCaratRow = null;
+    this.cascadeCaratData = [];
+    this.existingCaratIds.clear();
+    this.hasUnsavedChangesCaracteristicas = false;
+    this.entradaDocumentsOverlayService.open({ idEntrada });
+  }
 
-    api.forEachNode((n: any) => { if (n.expanded) n.setExpanded(false); });
-
-    if (isCurrentlyExpanded) {
-      api.setFilterModel(null);
-    } else {
-      api.setFilterModel(null);
-      params.data.rowDetailType = detailType;
-      api.setFilterModel({ idEntrada: { filterType: 'number', type: 'equals', filter: params.data.idEntrada } });
-      node.setExpanded(true);
-    }
+  closeDocumentsModal(): void {
+    this.entradaDocumentsOverlayService.close();
   }
 }

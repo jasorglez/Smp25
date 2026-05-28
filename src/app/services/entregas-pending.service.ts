@@ -8,6 +8,8 @@ export class EntregasPendingService {
 
   // key = idDetailsreqoc (ítem de la OC), value = filas de entregas a persistir
   private pending = new Map<number, any[]>();
+  // Estado visible actual del nivel3 (incluso sin ediciones), para validar duplicados al guardar.
+  private visible = new Map<number, any[]>();
 
   private _hasPending = new BehaviorSubject<boolean>(false);
   hasPending$ = this._hasPending.asObservable();
@@ -23,6 +25,35 @@ export class EntregasPendingService {
     return this.pending.get(idDetailsreqoc);
   }
 
+  /** Registra el estado visible del nivel3 (incluso sin ediciones) para validación al guardar. */
+  setVisible(idDetailsreqoc: number, rows: any[]): void {
+    this.visible.set(idDetailsreqoc, rows);
+  }
+
+  /** Quita un ítem del tracking visible (cuando se cierra el nivel3). */
+  clearVisible(idDetailsreqoc: number): void {
+    this.visible.delete(idDetailsreqoc);
+  }
+
+  /** Devuelve el primer idDetailsreqoc con fechas de entrega duplicadas, o null si todo válido.
+   *  Revisa tanto el estado visible (lo que el usuario ve) como el pending (lo que ha editado). */
+  findItemWithDuplicateDates(): number | null {
+    // Combina visible + pending — pending sobreescribe visible para un mismo idDetail.
+    const merged = new Map<number, any[]>();
+    for (const [k, v] of this.visible.entries()) merged.set(k, v);
+    for (const [k, v] of this.pending.entries()) merged.set(k, v);
+
+    for (const [idDetail, rows] of merged.entries()) {
+      const fechas = rows
+        .map((r: any) => (r.fechaEntrega ? String(r.fechaEntrega).substring(0, 10) : ''))
+        .filter(Boolean);
+      if (fechas.length > 1 && new Set(fechas).size < fechas.length) {
+        return idDetail;
+      }
+    }
+    return null;
+  }
+
   remove(idDetailsreqoc: number): void {
     this.pending.delete(idDetailsreqoc);
     this._hasPending.next(this.pending.size > 0);
@@ -30,6 +61,7 @@ export class EntregasPendingService {
 
   clear(): void {
     this.pending.clear();
+    this.visible.clear();
     this._hasPending.next(false);
   }
 
@@ -53,6 +85,7 @@ export class EntregasPendingService {
           notaFactura: row.notaFactura || null,
           totalEntrega: row.totalEntrega ?? null,
           fechaEntradaAlmacen: row.fechaEntradaAlmacen || null,
+          close: row.close ?? false,
           active: true,
         };
 

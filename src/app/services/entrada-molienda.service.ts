@@ -7,6 +7,7 @@ import { TrackingService } from './tracking.service';
 export interface EntradaMolienda {
   id?: number;
   idOc: number;
+  idEntrega?: number | null;
   idMaterial?: number | null;
   fechaRecepcion?: string | null;
   cantidadEntrada?: number | null;
@@ -16,6 +17,7 @@ export interface EntradaMolienda {
   usuario?: string | null;
   comentario?: string | null;
   liberacion?: boolean;
+  close?: boolean;
   active?: boolean;
   dateModified?: string;
 }
@@ -35,6 +37,13 @@ export class EntradaMoliendaService {
   getByOcAndMaterial(idOc: number, idMaterial: number): Observable<EntradaMolienda[]> {
     return this.http.get<EntradaMolienda[]>(
       `${environment.urlWarehouse}/EntradaMolienda/byOcAndMaterial/${idOc}/${idMaterial}`,
+      { headers: this.trackingService.getHeaders() }
+    );
+  }
+
+  getByEntregaAndMaterial(idEntrega: number, idMaterial: number): Observable<EntradaMolienda[]> {
+    return this.http.get<EntradaMolienda[]>(
+      `${environment.urlWarehouse}/EntradaMolienda/byEntregaAndMaterial/${idEntrega}/${idMaterial}`,
       { headers: this.trackingService.getHeaders() }
     );
   }

@@ -429,6 +429,12 @@ export class PurchaseOrderDelisonComponent implements OnInit, OnDestroy {
 
   // ==================== GRID EVENTS ====================
 
+  onFirstDataRendered(params: any) {
+    if (this.gridApi && !this.gridApi.isDestroyed()) {
+      this.gridApi.autoSizeAllColumns();
+    }
+  }
+
   onGridReady(params: GridReadyEvent) {
     this.gridApi = params.api;
     this.buildInitialGridContext();
@@ -473,6 +479,14 @@ export class PurchaseOrderDelisonComponent implements OnInit, OnDestroy {
   }
 
   async saveConditions(): Promise<void> {
+    // Validar antes de guardar: las fechas de entrega de cada ítem deben ser únicas.
+    if (this.entregasPendingService.findItemWithDuplicateDates() != null) {
+      alerts.reqErrorToast(
+        'Fechas duplicadas',
+        'Hay entregas con fechas iguales. Todas las fechas deben ser diferentes para guardar.'
+      );
+      return;
+    }
     const pending = this.conditionsPendingService.getPending();
 
     try {

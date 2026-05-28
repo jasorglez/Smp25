@@ -1,4 +1,4 @@
-import { Component, inject } from '@angular/core';
+import { Component, inject, Input, OnInit } from '@angular/core';
 import { ColDef, GridApi, GridReadyEvent } from 'ag-grid-enterprise';
 import { AgGridModule } from 'ag-grid-angular';
 import { CommonModule } from '@angular/common';
@@ -8,6 +8,7 @@ import { alerts } from 'app/helpers/alerts';
 import { IntandoutDocumentsService } from 'app/services/intandoutDocuments.service';
 import { AttachHandlerService } from 'app/services/attach-handler.service';
 import { catchError, concat, EMPTY, lastValueFrom, toArray } from 'rxjs';
+import { EntradaDocumentsOverlayService } from 'app/services/entrada-documents-overlay.service';
 
 type DocKind = 'pdf' | 'image' | 'office' | null;
 
@@ -39,8 +40,9 @@ function officeIcon(name: string): string {
   selector: 'app-document-preview-detail',
   standalone: true,
   imports: [CommonModule],
+  host: { style: 'display:block; height:100%;' },
   template: `
-    <div style="height:700px; padding:8px; background:#f8f9fa; display:flex; align-items:center; justify-content:center;">
+    <div style="height:100%; padding:8px; background:#f8f9fa; display:flex; align-items:center; justify-content:center;">
       <!-- PDF -->
       <iframe *ngIf="kind === 'pdf'" [src]="safeUrl"
         style="width:100%;height:100%;border:none;border-radius:4px;box-shadow:0 2px 8px rgba(0,0,0,.15);">
@@ -92,11 +94,16 @@ export class DocumentPreviewDetailComponent {
   standalone: true,
   imports: [CommonModule, AgGridModule, FormsModule],
   templateUrl: './detail-entrada-documents.component.html',
+  host: { style: 'display:flex; flex-direction:column; height:100%;' },
 })
 export class DetailEntradaDocumentsComponent {
   private attachHandlerService = inject(AttachHandlerService);
   private intandoutDocumentsService = inject(IntandoutDocumentsService);
+  private overlayService = inject(EntradaDocumentsOverlayService);
   private parentParams: any = null;
+
+  @Input() docType: string = 'entrega';
+  @Input() readOnly = false;
 
   idParent: number | null = null;
   rowData: any[] = [];
@@ -109,6 +116,15 @@ export class DetailEntradaDocumentsComponent {
   // Register the nested preview renderer
   components = { documentPreview: DocumentPreviewDetailComponent };
 
+  @Input() set idEntradaInput(val: number | null) {
+    if (val != null && val !== this.idParent) {
+      this.idParent = val;
+      this.rowData = [];
+      this.hasUnsavedChanges = false;
+      this.loadData();
+    }
+  }
+
   agInit(params: any) {
     this.parentParams = params;
     this.idParent = params.data?.idEntrada ?? params.data?.id ?? null;
@@ -120,7 +136,7 @@ export class DetailEntradaDocumentsComponent {
       headerName: 'Nombre Documento',
       field: 'documentName',
       flex: 1,
-      editable: (params) => !!params.data?.__isNew,
+      editable: (params) => !this.readOnly && !!params.data?.__isNew,
     },
     {
       headerName: 'Vista previa',
@@ -184,6 +200,7 @@ export class DetailEntradaDocumentsComponent {
         return `<span style="font-size:0.72rem;color:#888;">Doble clic p/ subir (PDF/JPG/PNG/Office)</span>`;
       },
       onCellDoubleClicked: async (params) => {
+        if (this.readOnly) return;
         try {
           const { file, localUrl } = await this.attachHandlerService.selectEmployeeDoc();
           // Liberar blob URL anterior si existía
@@ -195,7 +212,10 @@ export class DetailEntradaDocumentsComponent {
           params.node.setDataValue('urlDocument', localUrl);
           params.data.__modified = true;
           this.hasUnsavedChanges = true;
-          params.api.refreshCells({ rowNodes: [params.node], force: true });
+          // AG Grid evalúa isRowMaster solo al crear el RowNode (urlDocument era null).
+          // Forzamos el flag directamente y redibujamos para que setExpanded funcione.
+          (params.node as any).master = true;
+          params.api.redrawRows({ rowNodes: [params.node] });
         } catch {
           // usuario canceló
         }
@@ -212,7 +232,7 @@ export class DetailEntradaDocumentsComponent {
     masterDetail: true,
     isRowMaster: (data: any) => !!data?.urlDocument,
     detailCellRenderer: 'documentPreview',
-    detailRowHeight: 516,
+    detailRowHeight: 600,
     isExternalFilterPresent: () => this.expandedRowId !== null,
     doesExternalFilterPass: (node: any) => node.data?.id === this.expandedRowId,
     onGridPreDestroyed: () => {
@@ -225,7 +245,15 @@ export class DetailEntradaDocumentsComponent {
 
   loadData() {
     if (!this.idParent) return;
-    this.intandoutDocumentsService.getIntandoutDocumentsById(this.idParent, 'entrada').subscribe({
+    // Colapsar cualquier fila expandida y limpiar el filtro antes de recargar,
+    // para evitar que un expandedRowId stale (ej. "temp_1") oculte todas las filas
+    // cuando la BD asigna un ID real al guardar.
+    this.expandedRowId = null;
+    if (this.gridApi && !this.gridApi.isDestroyed()) {
+      this.gridApi.forEachNode((n: any) => { if (n.expanded) n.setExpanded(false); });
+      this.gridApi.onFilterChanged();
+    }
+    this.intandoutDocumentsService.getIntandoutDocumentsById(this.idParent, this.docType).subscribe({
       next: (data) => {
         this.rowData = data ?? [];
         this.syncParentDocumentCount(this.rowData.length);
@@ -258,7 +286,7 @@ export class DetailEntradaDocumentsComponent {
       idDoc: this.idParent,
       documentName: null,
       urlDocument: null,
-      type: 'entrada',
+      type: this.docType,
       __isNew: true,
     };
     this.rowData = [newRow, ...this.rowData];
@@ -356,24 +384,23 @@ export class DetailEntradaDocumentsComponent {
   }
 
   private syncParentDocumentCount(count: number): void {
+    // Notifica a cualquier suscriptor (almmolienda, ordenesydetallesOc) del nuevo conteo
+    if (this.idParent) {
+      this.overlayService.notifyCount(this.idParent, count);
+    }
+
+    // Compatibilidad con uso como AG Grid detail renderer
     const rowNode = this.parentParams?.node;
     const api = this.parentParams?.api;
     const rowData = rowNode?.data;
-
     if (!rowNode || !api || !rowData) return;
     const currentCount = Number(rowData.pdfCount ?? 0);
     if (currentCount === count) return;
-
     if (typeof rowNode.setDataValue === 'function') {
       rowNode.setDataValue('pdfCount', count);
       return;
     }
-
     rowData.pdfCount = count;
-
-    api.refreshCells({
-      rowNodes: [rowNode],
-      columns: ['pdfCount'],
-    });
+    api.refreshCells({ rowNodes: [rowNode], columns: ['pdfCount'] });
   }
 }

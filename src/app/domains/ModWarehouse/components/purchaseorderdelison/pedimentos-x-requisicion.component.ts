@@ -176,6 +176,7 @@ export class PedimentosXRequisicionComponent {
 
           if (this.gridApi && !this.gridApi.isDestroyed()) {
             this.gridApi.setGridOption('rowData', this.rowData);
+            this.gridApi.autoSizeAllColumns();
           }
         });
       },
