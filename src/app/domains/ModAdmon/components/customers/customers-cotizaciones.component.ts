@@ -1,7 +1,8 @@
-import { Component, Input, OnChanges, OnDestroy, SimpleChanges, inject } from '@angular/core';
+import { Component, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { AgGridModule } from 'ag-grid-angular';
-import { ColDef, GridApi, GridReadyEvent } from 'ag-grid-enterprise';
+import { ICellRendererAngularComp } from 'ag-grid-angular';
+import { ColDef, GridApi, GridReadyEvent, ICellRendererParams } from 'ag-grid-enterprise';
 import { AG_GRID_LOCALE_ES } from 'assets/i18n/ag-grid.locale.es';
 import {
   CotizacionesService,
@@ -10,6 +11,7 @@ import {
   CONFIG_DEFAULT,
 } from 'app/services/cotizaciones.service';
 import { SignalsService } from 'app/services/signals.service';
+import { CatalogsService } from 'app/services/catalogs.service';
 import { DetalleItemsCotizacionComponent } from 'app/domains/ModSales/components/cotizaciones/detalle-items-cotizacion.component';
 import { ButtonCellRendererIncomeComponent } from 'app/domains/ModAdmon/components/income/button-cell-renderer-income.component';
 import { Subscription } from 'rxjs';
@@ -25,14 +27,17 @@ import Swal from 'sweetalert2';
     DetalleItemsCotizacionComponent,
   ],
   template: `
-    <div class="customers-cot-wrapper">
-      <!-- Barra de herramientas -->
-      <div class="d-flex align-items-center gap-2 px-3 py-2 border-bottom flex-wrap">
-        <i class="bi bi-file-earmark-text text-primary fs-5"></i>
+    <div class="cot-detail-wrapper">
+
+      <!-- ── Barra de herramientas ── -->
+      <div class="d-flex align-items-center gap-2 px-3 py-2 border-bottom flex-wrap"
+           style="background:#e8f4ff;">
+        <i class="bi bi-file-earmark-text text-primary"></i>
         <span class="fw-semibold small">
           Cotizaciones —
           <strong>{{ customer?.nameContact || customer?.company }}</strong>
         </span>
+
         <div class="ms-auto d-flex gap-1">
           <button class="btn btn-sm btn-success"
                   (click)="add()"
@@ -49,7 +54,7 @@ import Swal from 'sweetalert2';
         </div>
       </div>
 
-      <!-- Grid -->
+      <!-- ── Grid de cotizaciones ── -->
       <ag-grid-angular
         class="ag-theme-quartz"
         [rowData]="rowData"
@@ -58,44 +63,62 @@ import Swal from 'sweetalert2';
         [gridOptions]="gridOptions"
         [localeText]="AG_GRID_LOCALE_ES"
         (gridReady)="onGridReady($event)"
-        style="height:340px; width:100%">
+        (cellEditingStopped)="onCellEditingStopped($event)"
+        (cellValueChanged)="onCellValueChanged($event)"
+        style="height:380px; width:100%">
       </ag-grid-angular>
+
     </div>
   `,
   styles: [`
-    .customers-cot-wrapper {
+    .cot-detail-wrapper {
       background: #f0f8ff;
       border-top: 2px solid #0d6efd;
+      height: 100%;
     }
   `],
 })
-export class CustomersCotizacionesComponent implements OnChanges, OnDestroy {
-  @Input() customer: any = null;
-
-  private svc        = inject(CotizacionesService);
-  private signalsSvc = inject(SignalsService);
+export class CustomersCotizacionesComponent implements ICellRendererAngularComp {
+  private svc         = inject(CotizacionesService);
+  private signalsSvc  = inject(SignalsService);
+  private catalogsSvc = inject(CatalogsService);
 
   AG_GRID_LOCALE_ES = AG_GRID_LOCALE_ES;
+
   gridApi!: GridApi;
   rowData: any[]    = [];
   selectedItem: any = null;
+  customer: any     = null;
+  idCompany: number = 0;
   config: CotizacionConfig = { ...CONFIG_DEFAULT };
+  familias: string[] = [];
+
   private sub?: Subscription;
 
-  get idCompany()      { return this.signalsSvc.getRootSelectedBySidebar()(); }
   get idVendedor()     { return this.signalsSvc.idUser(); }
   get nombreVendedor() { return this.signalsSvc.getDisplayName()(); }
 
-  // ── ColDefs ───────────────────────────────────────────────────────────────
+  // ── Enter-key navigation ──────────────────────────────────────────────────
+  private editableColumnOrder = ['familia', 'notas'];
+  private enterPressed        = false;
 
-  defaultColDef: ColDef = { sortable: true, resizable: true, minWidth: 80 };
+  defaultColDef: ColDef = {
+    sortable: true, resizable: true, minWidth: 80,
+    suppressKeyboardEvent: (params) => {
+      if (params.event.key === 'Enter' && params.editing) {
+        this.enterPressed = true;
+        setTimeout(() => { if (this.gridApi) this.gridApi.stopEditing(); }, 0);
+        return true;
+      }
+      return false;
+    },
+  };
+
+  // ── ColDefs ───────────────────────────────────────────────────────────────
 
   colDefs: ColDef[] = [
     {
-      field: 'pdf',
-      headerName: 'PDF',
-      width: 70,
-      editable: false,
+      field: 'pdf', headerName: 'PDF', width: 70, editable: false,
       cellRenderer: ButtonCellRendererIncomeComponent,
       cellRendererParams: {
         onClick: (node: any) => this.toggleCascadeWithMode(node, 'pdf'),
@@ -105,10 +128,7 @@ export class CustomersCotizacionesComponent implements OnChanges, OnDestroy {
       cellStyle: { backgroundColor: '#fff3e0', cursor: 'pointer' },
     },
     {
-      field: 'items',
-      headerName: 'Items',
-      width: 90,
-      editable: false,
+      field: 'items', headerName: 'Items', width: 90, editable: false,
       cellRenderer: ButtonCellRendererIncomeComponent,
       cellRendererParams: {
         onClick: (node: any) => this.toggleCascadeWithMode(node, 'items'),
@@ -119,45 +139,43 @@ export class CustomersCotizacionesComponent implements OnChanges, OnDestroy {
       cellStyle: { backgroundColor: '#e8f0fb', cursor: 'pointer' },
     },
     {
-      field: 'numCotizacion',
-      headerName: 'No. Docto',
-      width: 140,
-      editable: false,
+      field: 'numCotizacion', headerName: 'No. Docto', width: 140, editable: false,
     },
     {
-      field: 'nombreProspecto',
-      headerName: 'Cliente',
-      flex: 1,
-      editable: false,
+      field: 'nombreProspecto', headerName: 'Cliente', width: 180, editable: false,
     },
+
+    // ── FAMILIA — filtra materiales en los items ──────────────────────────
     {
-      field: 'estado',
-      headerName: 'Estado',
-      width: 130,
-      editable: false,
+      field: 'familia', headerName: 'Familia', width: 150, editable: true,
+      cellEditor: 'agSelectCellEditor',
+      cellEditorParams: () => ({ values: ['', ...this.familias] }),
+      cellRenderer: (p: any) => p.value
+        ? `<span class="badge bg-info text-dark">${p.value}</span>`
+        : `<span class="text-muted" style="font-size:.8em;">Todas</span>`,
+      tooltipValueGetter: () =>
+        'Familia de materiales que aparecen en los items de esta cotización',
+    },
+
+    {
+      field: 'estado', headerName: 'Estado', width: 120, editable: false,
       cellRenderer: (p: any) => {
         const e = ESTADOS_COTIZACION.find(x => x.value === p.value);
-        return e
-          ? `<span class="badge bg-${e.color}">${e.label}</span>`
-          : (p.value ?? '');
+        return e ? `<span class="badge bg-${e.color}">${e.label}</span>` : (p.value ?? '');
       },
     },
     {
-      field: 'total',
-      headerName: 'Total',
-      width: 130,
-      editable: false,
-      type: 'numericColumn',
+      field: 'total', headerName: 'Total', width: 120, editable: false, type: 'numericColumn',
       valueFormatter: (p: any) =>
         p.value != null ? `$${Number(p.value).toFixed(2)}` : '$0.00',
       cellStyle: { fontWeight: 'bold' },
     },
     {
-      field: 'fecha',
-      headerName: 'Fecha',
-      width: 130,
-      editable: false,
+      field: 'fecha', headerName: 'Fecha', width: 120, editable: false,
       cellRenderer: (p: any) => this.formatFecha(p.value),
+    },
+    {
+      field: 'notas', headerName: 'Notas', flex: 1, editable: true,
     },
   ];
 
@@ -180,27 +198,26 @@ export class CustomersCotizacionesComponent implements OnChanges, OnDestroy {
     },
   };
 
-  // ── Lifecycle ─────────────────────────────────────────────────────────────
+  // ── ICellRendererAngularComp ──────────────────────────────────────────────
 
-  ngOnChanges(changes: SimpleChanges) {
-    if (changes['customer'] && this.customer?.id) {
-      this.cargarDatos();
-    }
+  agInit(params: ICellRendererParams): void {
+    this.customer  = params.data;
+    this.idCompany = (params as any).context?.idCompany
+      ?? this.signalsSvc.getRootSelectedBySidebar()();
+    this.cargarDatos();
   }
+
+  /** Retornar true: AG Grid no destruye/recrea el componente en cada refresh del padre */
+  refresh(params: ICellRendererParams): boolean {
+    return true;
+  }
+
+  // ── Grid Ready ────────────────────────────────────────────────────────────
 
   onGridReady(e: GridReadyEvent) {
     this.gridApi = e.api;
     this.actualizarContextoDetalle();
-    if (this.customer?.id) {
-      this.cargarDatos();
-    }
   }
-
-  ngOnDestroy() {
-    this.sub?.unsubscribe();
-  }
-
-  // ── Contexto del detalle ─────────────────────────────────────────────────
 
   private actualizarContextoDetalle() {
     if (!this.gridApi) return;
@@ -213,15 +230,23 @@ export class CustomersCotizacionesComponent implements OnChanges, OnDestroy {
 
   cargarDatos() {
     this.sub?.unsubscribe();
-    if (!this.customer?.id) { this.rowData = []; return; }
+    if (!this.customer?.id || !this.idCompany) return;
 
-    // Cargar config de cotizaciones de la empresa
+    // Config de cotizaciones de la empresa
     this.svc.getConfig(this.idCompany).then(cfg => {
       this.config = cfg;
       this.actualizarContextoDetalle();
     });
 
-    // Suscripción en tiempo real filtrada por cliente + empresa
+    // Familias del catálogo (filtra materiales en los items)
+    this.catalogsSvc.getFamilyById(this.idCompany).subscribe({
+      next: (data: any[]) => {
+        this.familias = data.map((f: any) => f.description ?? '').filter(Boolean).sort();
+      },
+      error: () => { this.familias = []; },
+    });
+
+    // Suscripción en tiempo real — cotizaciones de este cliente en esta empresa
     this.sub = this.svc
       .getCotizacionesByCliente(this.customer.id, this.idCompany)
       .subscribe({
@@ -247,12 +272,47 @@ export class CustomersCotizacionesComponent implements OnChanges, OnDestroy {
       });
   }
 
-  // ── Cascada PDF / Items ───────────────────────────────────────────────────
+  // ── Edición inline: auto-guardar familia y notas ──────────────────────────
+
+  onCellValueChanged(event: any) {
+    const field = event.colDef?.field;
+    if (!event.data?.id || !field) return;
+
+    if (field === 'familia' || field === 'notas') {
+      this.svc
+        .actualizarCotizacion(event.data.id, { [field]: event.newValue ?? '' })
+        .then(() => {
+          if (field === 'familia') {
+            // Actualizar contexto para que el detalle ya abierto use la nueva familia
+            this.actualizarContextoDetalle();
+          }
+        })
+        .catch(err =>
+          console.error(`[CustomersCotizaciones] Error guardando ${field}:`, err)
+        );
+    }
+  }
+
+  onCellEditingStopped(event: any) {
+    if (!this.enterPressed) return;
+    this.enterPressed = false;
+    const idx = this.editableColumnOrder.indexOf(event.column.getColId());
+    if (idx !== -1 && idx < this.editableColumnOrder.length - 1) {
+      setTimeout(() => {
+        this.gridApi.startEditingCell({
+          rowIndex: event.rowIndex,
+          colKey: this.editableColumnOrder[idx + 1],
+        });
+      }, 100);
+    }
+  }
+
+  // ── Cascada PDF / Items (nivel 3: DetalleItemsCotizacionComponent) ─────────
 
   toggleCascadeWithMode(node: any, mode: 'items' | 'pdf') {
-    const api = this.gridApi;
+    const api       = this.gridApi;
     const isExpanded = node.expanded;
-    const sameMode = isExpanded && node.data?.__mode === mode;
+    const sameMode   = isExpanded && node.data?.__mode === mode;
 
     if (sameMode) {
       node.setExpanded(false);
@@ -276,10 +336,9 @@ export class CustomersCotizacionesComponent implements OnChanges, OnDestroy {
   // ── CRUD ──────────────────────────────────────────────────────────────────
 
   async add() {
-    const idCompany = this.idCompany;
-    if (!idCompany || !this.customer?.id) return;
+    if (!this.idCompany || !this.customer?.id) return;
 
-    const numCotizacion = await this.svc.getNextNumero(idCompany);
+    const numCotizacion = await this.svc.getNextNumero(this.idCompany);
     const clientName    = this.customer.nameContact || this.customer.company || '';
     const clientCompany = this.customer.company || '';
 
@@ -294,9 +353,9 @@ export class CustomersCotizacionesComponent implements OnChanges, OnDestroy {
       familia:          '',
       idVendedor:       this.idVendedor,
       nombreVendedor:   this.nombreVendedor,
-      idCompany,
+      idCompany:        this.idCompany,
     });
-    // Firebase subscription actualiza rowData automáticamente
+    // La suscripción Firebase actualiza rowData automáticamente
   }
 
   async deleteSelected() {
@@ -305,7 +364,7 @@ export class CustomersCotizacionesComponent implements OnChanges, OnDestroy {
       title: '¿Eliminar cotización?',
       text:  `${this.selectedItem.numCotizacion} — ${this.selectedItem.nombreProspecto}`,
       icon:  'warning',
-      showCancelButton: true,
+      showCancelButton:   true,
       confirmButtonColor: '#dc3545',
       confirmButtonText:  'Sí, eliminar',
       cancelButtonText:   'Cancelar',
@@ -335,5 +394,9 @@ export class CustomersCotizacionesComponent implements OnChanges, OnDestroy {
     return d.toLocaleDateString('es-MX', {
       day: '2-digit', month: 'short', year: 'numeric',
     });
+  }
+
+  ngOnDestroy() {
+    this.sub?.unsubscribe();
   }
 }
