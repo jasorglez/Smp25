@@ -218,7 +218,7 @@ export class CustomersComponent implements CanComponentDeactivate {
     // ── Master-Detail: cascada de cotizaciones por cliente ─────────────────
     masterDetail: true,
     detailCellRenderer: CustomersCotizacionesComponent,
-    detailRowHeight: 900,
+    detailRowHeight: 1600,    // toolbar(50) + lista auto + PDF(1400) con margen
     isRowMaster: () => this.type === 'CUSTOMERS',
     // ──────────────────────────────────────────────────────────────────────
     getRowId: (params: any) => params?.data?.id,
