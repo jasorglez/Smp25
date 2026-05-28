@@ -36,11 +36,7 @@ export default class MasterClockComponent implements OnInit {
   authService = inject(AuthService);
 
   ngOnInit() {
-    this.idBranch = this.signalsService.getBranchSelectedBySidebar()();
-    this.buildColMaster();
-    this.obtenerConfig();
-    this.Consultar();
-    this.obtenerDatos();
+    // Initialization handled by the constructor effect
   }
 
   constructor() {
@@ -69,8 +65,12 @@ export default class MasterClockComponent implements OnInit {
     });
 
     effect(async () => {
-      this.idBranch = this.signalsService.getBranchSelectedBySidebar()();
-      this.buildColMaster();
+      const newBranch = this.signalsService.getBranchSelectedBySidebar()();
+      this.idBranch = newBranch;
+      if (newBranch !== this.lastBuiltBranch) {
+        this.lastBuiltBranch = newBranch;
+        this.buildColMaster();
+      }
       await this.obtenerConfig();
       await this.Consultar();
     });
@@ -120,6 +120,7 @@ export default class MasterClockComponent implements OnInit {
 
   id: string;
   idBranch: number;
+  private lastBuiltBranch: number | null = null;
   selectedTab: string = 'customers-payments';
   colMaster: ColDef[] = [];
   idEmployee: number;
