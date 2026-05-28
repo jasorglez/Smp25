@@ -24,15 +24,6 @@
           <i class="bi bi-trash"></i>
         </button>
 
-        <!-- Botón alternativo: abre cascada de cotizaciones para el cliente seleccionado -->
-        <button type="button"
-                class="btn btn-info ms-1 me-1"
-                (click)="openCotizacionesForSelected()"
-                [disabled]="!selectedRowData || type !== 'CUSTOMERS'"
-                title="Cotizaciones del cliente (abre cascada en la fila)">
-          <i class="bi bi-file-earmark-text"></i>
-        </button>
-
       </div>
     </div>
 

@@ -85,5 +85,5 @@ export const environment = {
     // publicKey: 'TEST-4399133a-4676-42a2-ab85-d946370bf96a',
   },
 
-  version: '6.58 (27 Mayo 2026 15:30) feat(clientes): cotizaciones como cascada inline en grid de clientes + columna Familia',
+  version: '6.59 (27 Mayo 2026 16:00) fix(clientes): cascada cotizaciones oculta filas restantes al expandir + quitar botón lateral',
 };
