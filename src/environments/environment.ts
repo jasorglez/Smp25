@@ -85,5 +85,5 @@ export const environment = {
     // publicKey: 'TEST-4399133a-4676-42a2-ab85-d946370bf96a',
   },
 
-  version: '6.64 (28 Mayo 2026 02:30) fix(empleados): mostrar columna Telegram ID visible en grid RH',
+  version: '6.64 (28 Mayo 2026 03:00) feat(empleados-telegram): Telegram ID editable + badge vinculado + botón desvincular en grid RH',
 };
