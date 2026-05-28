@@ -85,5 +85,5 @@ export const environment = {
     // publicKey: 'TEST-4399133a-4676-42a2-ab85-d946370bf96a',
   },
 
-  version: '6.60 (27 Mayo 2026 16:30) fix(clientes): PDF cotizaciones ocupa espacio completo — domLayout autoHeight + detailRowHeight 1400/1600',
+  version: '6.62 (27 Mayo 2026 22:30) feat(agenda-clientes): agenda por cliente + notificaciones Telegram + página Agenda del Día',
 };

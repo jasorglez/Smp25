@@ -169,7 +169,8 @@
       "PowerShell(dotnet build *)",
       "PowerShell(dotnet clean \"C:\\\\Developer\\\\Visual Studio 22\\\\c#\\\\MicroServicios\\\\MicroservicioAdministration\\\\Administration\\\\MicroservicioAdministration.sln\" 2>&1 | Select-Object -Last 3; dotnet build \"C:\\\\Developer\\\\Visual Studio 22\\\\c#\\\\MicroServicios\\\\MicroservicioAdministration\\\\Administration\\\\MicroservicioAdministration.sln\" --configuration Release 2>&1 | Where-Object { $_ -match \" error \" } | Select-Object -First 20)",
       "PowerShell(dotnet clean *)",
-      "PowerShell(dotnet restore \"C:\\\\Developer\\\\Visual Studio 22\\\\c#\\\\MicroServicios\\\\MicroservicioAdministration\\\\Administration\\\\MicroservicioAdministration.sln\" 2>&1 | Select-Object -Last 5; dotnet build \"C:\\\\Developer\\\\Visual Studio 22\\\\c#\\\\MicroServicios\\\\MicroservicioAdministration\\\\Administration\\\\MicroservicioAdministration.sln\" --configuration Release --no-incremental 2>&1 | Where-Object { $_ -match \"\\(?i\\)\\(error|Error\\)\" } | Select-Object -First 40)"
+      "PowerShell(dotnet restore \"C:\\\\Developer\\\\Visual Studio 22\\\\c#\\\\MicroServicios\\\\MicroservicioAdministration\\\\Administration\\\\MicroservicioAdministration.sln\" 2>&1 | Select-Object -Last 5; dotnet build \"C:\\\\Developer\\\\Visual Studio 22\\\\c#\\\\MicroServicios\\\\MicroservicioAdministration\\\\Administration\\\\MicroservicioAdministration.sln\" --configuration Release --no-incremental 2>&1 | Where-Object { $_ -match \"\\(?i\\)\\(error|Error\\)\" } | Select-Object -First 40)",
+      "PowerShell(Get-ChildItem -Path \"C:\\\\Developer\\\\Visual Studio 22\\\\c#\\\\NotificationsTelegram\\\\NotificationsTelegram\" -Recurse | Where-Object {$_.Extension -eq '.cs'} | Select-Object -ExpandProperty Name | Sort-Object | Get-Unique)"
     ],
     "deny": [],
     "ask": [],

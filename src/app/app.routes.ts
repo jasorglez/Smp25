@@ -1019,6 +1019,18 @@ export const routes: Routes = [
                     category: 'Administration'
                   }
                 }
+              },
+              {
+                path: 'agenda-dia',
+                loadComponent: () =>
+                  import('./domains/ModAdmon/pages/tablero/agenda-dia.component'
+                  ).then((a) => a.AgendaDiaComponent),
+                data: {
+                  tracking: {
+                    logMessage: 'Click en Agenda del Día',
+                    category: 'Administration'
+                  }
+                }
               }
             ]
           },

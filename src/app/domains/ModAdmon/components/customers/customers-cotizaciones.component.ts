@@ -1,4 +1,4 @@
-import { Component, inject } from '@angular/core';
+import { Component, inject, Input, OnChanges } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { AgGridModule } from 'ag-grid-angular';
 import { ICellRendererAngularComp } from 'ag-grid-angular';
@@ -78,7 +78,10 @@ import Swal from 'sweetalert2';
     }
   `],
 })
-export class CustomersCotizacionesComponent implements ICellRendererAngularComp {
+export class CustomersCotizacionesComponent implements ICellRendererAngularComp, OnChanges {
+  /** Permite usar el componente desde un template con @Input en lugar de como detail cell renderer */
+  @Input() inputCustomer:  any;
+  @Input() inputIdCompany: number = 0;
   private svc         = inject(CotizacionesService);
   private signalsSvc  = inject(SignalsService);
   private catalogsSvc = inject(CatalogsService);
@@ -200,6 +203,15 @@ export class CustomersCotizacionesComponent implements ICellRendererAngularComp 
   };
 
   // ── ICellRendererAngularComp ──────────────────────────────────────────────
+
+  ngOnChanges(): void {
+    // Permite usar el componente via @Input() desde el wrapper
+    if (this.inputCustomer) {
+      this.customer  = this.inputCustomer;
+      this.idCompany = this.inputIdCompany || this.signalsSvc.getRootSelectedBySidebar()();
+      this.cargarDatos();
+    }
+  }
 
   agInit(params: ICellRendererParams): void {
     this.customer  = params.data;
