@@ -85,5 +85,5 @@ export const environment = {
     // publicKey: 'TEST-4399133a-4676-42a2-ab85-d946370bf96a',
   },
 
-  version: '6.64 (28 Mayo 2026 02:00) feat(telegram-meseros): registro /registrar bot Telegram + columnas Telegram en RH empleados',
+  version: '6.64 (28 Mayo 2026 02:30) fix(empleados): mostrar columna Telegram ID visible en grid RH',
 };
