@@ -928,11 +928,27 @@ export class EmployeesTableComponent implements CanComponentDeactivate {
       },
       // ── Telegram ──────────────────────────────────────────────────────
       {
+        field: 'telegramUserId',
+        headerName: 'Telegram ID',
+        editable: (params) => {
+          if (params.data.__isNew) return true;
+          return this.authService.getCrudPermissionDetail('hr', 'employees', 'Emp_prin', 'update');
+        },
+        filter: false,
+        width: 160,
+        onCellValueChanged: (params) => {
+          params.data.usaTelegram = !!(params.newValue?.toString().trim());
+          params.data.__modified = true;
+          this.notSavedChanges = true;
+          this.gridApi.refreshCells({ rowNodes: [params.node], columns: ['usaTelegram'], force: true });
+        },
+      },
+      {
         field: 'usaTelegram',
-        headerName: '🤖 Telegram',
+        headerName: '🤖',
         editable: false,
         filter: false,
-        width: 110,
+        width: 90,
         cellRenderer: (params: ICellRendererParams) => {
           return params.value
             ? `<span class="badge bg-success" style="font-size:0.7rem">✅ Vinculado</span>`
@@ -940,11 +956,21 @@ export class EmployeesTableComponent implements CanComponentDeactivate {
         },
       },
       {
-        field: 'telegramUserId',
-        headerName: 'Telegram ID',
+        colId: 'telegramAccion',
+        headerName: '',
         editable: false,
         filter: false,
-        width: 150,
+        width: 105,
+        valueGetter: (params) => params.data?.telegramUserId || '',
+        cellRenderer: (params: ICellRendererParams) => {
+          if (!params.data?.telegramUserId) return '';
+          const btn = document.createElement('button');
+          btn.className = 'btn btn-outline-danger py-0 px-1';
+          btn.style.cssText = 'font-size:0.7rem;line-height:1.4';
+          btn.textContent = '🗑 Desvincular';
+          btn.addEventListener('click', () => this.desvincularTelegramRow(params));
+          return btn;
+        },
       },
     ];
     } else {
@@ -1720,11 +1746,27 @@ export class EmployeesTableComponent implements CanComponentDeactivate {
       },
       // ── Telegram ──────────────────────────────────────────────────────
       {
+        field: 'telegramUserId',
+        headerName: 'Telegram ID',
+        editable: (params) => {
+          if (params.data.__isNew) return true;
+          return this.authService.getCrudPermissionDetail('hr', 'employees', 'Emp_prin', 'update');
+        },
+        filter: false,
+        width: 160,
+        onCellValueChanged: (params) => {
+          params.data.usaTelegram = !!(params.newValue?.toString().trim());
+          params.data.__modified = true;
+          this.notSavedChanges = true;
+          this.gridApi.refreshCells({ rowNodes: [params.node], columns: ['usaTelegram'], force: true });
+        },
+      },
+      {
         field: 'usaTelegram',
-        headerName: '🤖 Telegram',
+        headerName: '🤖',
         editable: false,
         filter: false,
-        width: 110,
+        width: 90,
         cellRenderer: (params: ICellRendererParams) => {
           return params.value
             ? `<span class="badge bg-success" style="font-size:0.7rem">✅ Vinculado</span>`
@@ -1732,11 +1774,21 @@ export class EmployeesTableComponent implements CanComponentDeactivate {
         },
       },
       {
-        field: 'telegramUserId',
-        headerName: 'Telegram ID',
+        colId: 'telegramAccion',
+        headerName: '',
         editable: false,
         filter: false,
-        width: 150,
+        width: 105,
+        valueGetter: (params) => params.data?.telegramUserId || '',
+        cellRenderer: (params: ICellRendererParams) => {
+          if (!params.data?.telegramUserId) return '';
+          const btn = document.createElement('button');
+          btn.className = 'btn btn-outline-danger py-0 px-1';
+          btn.style.cssText = 'font-size:0.7rem;line-height:1.4';
+          btn.textContent = '🗑 Desvincular';
+          btn.addEventListener('click', () => this.desvincularTelegramRow(params));
+          return btn;
+        },
       },
     ];
     }
@@ -2099,6 +2151,15 @@ export class EmployeesTableComponent implements CanComponentDeactivate {
         }
       });
     }, 100);
+  }
+
+  /** Limpia telegramUserId y usaTelegram de la fila y la marca como modificada */
+  desvincularTelegramRow(params: any) {
+    params.data.telegramUserId = null;
+    params.data.usaTelegram    = false;
+    params.data.__modified     = true;
+    this.notSavedChanges       = true;
+    this.gridApi.refreshCells({ rowNodes: [params.node], force: true });
   }
 
   deleteMasterEntry() {
