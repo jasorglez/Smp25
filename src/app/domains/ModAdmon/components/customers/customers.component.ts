@@ -26,6 +26,7 @@ import { MultiLineEditorComponent } from 'app/shared/multi-line/multi-line-edito
 import { SignalsService } from 'app/services/signals.service';
 import { CustomersPaymentsComponent } from './customers-payments.component';
 import { CustomersBillingComponent } from './customers-billing.component';
+import { CustomersCotizacionesComponent } from './customers-cotizaciones.component';
 import { NgbModal } from '@ng-bootstrap/ng-bootstrap';
 import { RadiusinfluenceComponent } from '../radiusinfluence/radiusinfluence.component';
 import { CustomersService } from 'app/services/customers.service';
@@ -54,6 +55,7 @@ import { IncomesAndExpensesService } from 'app/services/incomes-and-expenses.ser
     MultiLineEditorComponent,
     CustomersPaymentsComponent,
     CustomersBillingComponent,
+    CustomersCotizacionesComponent,
   ],
   templateUrl: './customers.component.html',
   styleUrls: ['./customers.component.scss'],
@@ -136,6 +138,7 @@ export class CustomersComponent implements CanComponentDeactivate {
   gridHeight: string = '75vh';
   showCreditsTab: boolean = false;
   showBillingTab: boolean = false;
+  showCotizacionesTab: boolean = false;
   private gridApi: GridApi;
   notSavedChanges: boolean = false;
   selectedRowData: any = null;
@@ -1525,6 +1528,7 @@ export class CustomersComponent implements CanComponentDeactivate {
       setTimeout(async () => await this.adjustGridSize(), 0);
       this.showBillingTab = true;
       this.showCreditsTab = false;
+      this.showCotizacionesTab = false;
       this.isOpen = true;
     } else {
       this.resetGridSize();
@@ -1532,10 +1536,31 @@ export class CustomersComponent implements CanComponentDeactivate {
     }
   }
 
+  async activateCotizacionesTab() {
+    if (!this.selectedRowData) return;
+    if (!this.isOpen) {
+      setTimeout(async () => await this.adjustGridSize(), 0);
+      this.showCotizacionesTab = true;
+      this.showCreditsTab = false;
+      this.showBillingTab = false;
+      this.isOpen = true;
+    } else if (this.showCotizacionesTab) {
+      // Ya está abierto — cerrar
+      this.resetGridSize();
+      this.isOpen = false;
+    } else {
+      // Otra pestaña abierta — cambiar a cotizaciones
+      this.showCotizacionesTab = true;
+      this.showCreditsTab = false;
+      this.showBillingTab = false;
+    }
+  }
+
   resetGridSize() {
     this.gridHeight = '80vh'; // Reset to default height
     this.showCreditsTab = false;
     this.showBillingTab = false;
+    this.showCotizacionesTab = false;
     this.gridApi.setFilterModel(null);
     this.gridApi.onFilterChanged();
   }

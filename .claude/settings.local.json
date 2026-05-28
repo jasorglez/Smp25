@@ -166,7 +166,10 @@
       "mcp__mssql-administration__get_server_info",
       "mcp__mssql-security__describe_table",
       "PowerShell(git *)",
-      "PowerShell(dotnet build *)"
+      "PowerShell(dotnet build *)",
+      "PowerShell(dotnet clean \"C:\\\\Developer\\\\Visual Studio 22\\\\c#\\\\MicroServicios\\\\MicroservicioAdministration\\\\Administration\\\\MicroservicioAdministration.sln\" 2>&1 | Select-Object -Last 3; dotnet build \"C:\\\\Developer\\\\Visual Studio 22\\\\c#\\\\MicroServicios\\\\MicroservicioAdministration\\\\Administration\\\\MicroservicioAdministration.sln\" --configuration Release 2>&1 | Where-Object { $_ -match \" error \" } | Select-Object -First 20)",
+      "PowerShell(dotnet clean *)",
+      "PowerShell(dotnet restore \"C:\\\\Developer\\\\Visual Studio 22\\\\c#\\\\MicroServicios\\\\MicroservicioAdministration\\\\Administration\\\\MicroservicioAdministration.sln\" 2>&1 | Select-Object -Last 5; dotnet build \"C:\\\\Developer\\\\Visual Studio 22\\\\c#\\\\MicroServicios\\\\MicroservicioAdministration\\\\Administration\\\\MicroservicioAdministration.sln\" --configuration Release --no-incremental 2>&1 | Where-Object { $_ -match \"\\(?i\\)\\(error|Error\\)\" } | Select-Object -First 40)"
     ],
     "deny": [],
     "ask": [],
