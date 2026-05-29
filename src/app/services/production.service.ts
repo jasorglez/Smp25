@@ -159,4 +159,50 @@ export class ProductionService {
   deleteMoliendaDetalle(id: number): Observable<void> {
     return this.http.delete<void>(`${environment.urlProduction}/Molienda/detalle/${id}`, { headers: this.trackingService.getHeaders() });
   }
+
+  // ── Molienda Mat Detalle ───────────────────────────────────────────────────
+
+  getMoliendaMatDetalleByMolienda(idMolienda: number): Observable<any[]> {
+    return this.http.get<any[]>(`${environment.urlProduction}/MoliendaMatDetalle/molienda/${idMolienda}`, { headers: this.trackingService.getHeaders() });
+  }
+
+  getMoliendaMatDetalleCountsByCompany(idCompany: number): Observable<Record<number, number>> {
+    return this.http.get<Record<number, number>>(`${environment.urlProduction}/MoliendaMatDetalle/counts/company/${idCompany}`, { headers: this.trackingService.getHeaders() });
+  }
+
+  createMoliendaMatDetalle(data: any): Observable<any> {
+    return this.http.post<any>(`${environment.urlProduction}/MoliendaMatDetalle`, data, { headers: this.trackingService.getHeaders() });
+  }
+
+  updateMoliendaMatDetalle(id: number, data: any): Observable<any> {
+    return this.http.put<any>(`${environment.urlProduction}/MoliendaMatDetalle/${id}`, data, { headers: this.trackingService.getHeaders() });
+  }
+
+  deleteMoliendaMatDetalle(id: number): Observable<void> {
+    return this.http.delete<void>(`${environment.urlProduction}/MoliendaMatDetalle/${id}`, { headers: this.trackingService.getHeaders() });
+  }
+
+  getMoliendaMatArticuloSumsByMolienda(idMolienda: number): Observable<Record<number, number>> {
+    return this.http.get<Record<number, number>>(`${environment.urlProduction}/MoliendaMatArticulo/sums/molienda/${idMolienda}`, { headers: this.trackingService.getHeaders() });
+  }
+
+  getMoliendaMatArticuloCountsByMolienda(idMolienda: number): Observable<Record<number, number>> {
+    return this.http.get<Record<number, number>>(`${environment.urlProduction}/MoliendaMatArticulo/counts/molienda/${idMolienda}`, { headers: this.trackingService.getHeaders() });
+  }
+
+  getMoliendaMatArticuloByDetalle(idMatDetalle: number): Observable<any[]> {
+    return this.http.get<any[]>(`${environment.urlProduction}/MoliendaMatArticulo/matdetalle/${idMatDetalle}`, { headers: this.trackingService.getHeaders() });
+  }
+
+  createMoliendaMatArticulo(data: any): Observable<any> {
+    return this.http.post<any>(`${environment.urlProduction}/MoliendaMatArticulo`, data, { headers: this.trackingService.getHeaders() });
+  }
+
+  updateMoliendaMatArticulo(id: number, data: any): Observable<any> {
+    return this.http.put<any>(`${environment.urlProduction}/MoliendaMatArticulo/${id}`, data, { headers: this.trackingService.getHeaders() });
+  }
+
+  deleteMoliendaMatArticulo(id: number): Observable<void> {
+    return this.http.delete<void>(`${environment.urlProduction}/MoliendaMatArticulo/${id}`, { headers: this.trackingService.getHeaders() });
+  }
 }

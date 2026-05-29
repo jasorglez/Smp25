@@ -22,6 +22,15 @@ body {
   --ag-font-size: 11px;
 }
 
+.ag-theme-quartz .no-right-separator .ag-header-cell-resize {
+  display: none !important;
+}
+
+.ag-theme-quartz .ag-row.inactive-row {
+  opacity: 0.5;
+  background-color: #f5f5f5 !important;
+}
+
 .ag-theme-quartz .ag-row.new-row-highlight {
   background-color: #fff8c5 !important;
   border-left: 3px solid #f0ad4e !important;
