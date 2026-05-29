@@ -8,6 +8,9 @@
 		},
 		{
 			"path": "../../../Visual Studio 22/c#/MicroServicios/chatBotTelegram"
+		},
+		{
+			"path": "../../../Visual Studio 22/c#/MicroServicios"
 		}
 	],
 	"settings": {
