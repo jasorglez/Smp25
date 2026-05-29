@@ -926,21 +926,7 @@ export class EmployeesTableComponent implements CanComponentDeactivate {
         },
         width: 150,
       },
-      // ── Username / Telegram ───────────────────────────────────────────
-      {
-        field: 'username',
-        headerName: 'Username',
-        editable: (params) => {
-          if (params.data.__isNew) return true;
-          return this.authService.getCrudPermissionDetail('hr', 'employees', 'Emp_prin', 'update');
-        },
-        filter: true,
-        width: 130,
-        valueSetter: (params) => {
-          params.data.username = params.newValue?.toString().trim().toLowerCase() || null;
-          return true;
-        },
-      },
+      // ── Telegram ─────────────────────────────────────────────────────
       {
         field: 'telegramUserId',
         headerName: 'Telegram ID',
@@ -1758,21 +1744,7 @@ export class EmployeesTableComponent implements CanComponentDeactivate {
         },
         width: 150,
       },
-      // ── Username / Telegram ───────────────────────────────────────────
-      {
-        field: 'username',
-        headerName: 'Username',
-        editable: (params) => {
-          if (params.data.__isNew) return true;
-          return this.authService.getCrudPermissionDetail('hr', 'employees', 'Emp_prin', 'update');
-        },
-        filter: true,
-        width: 130,
-        valueSetter: (params) => {
-          params.data.username = params.newValue?.toString().trim().toLowerCase() || null;
-          return true;
-        },
-      },
+      // ── Telegram ─────────────────────────────────────────────────────
       {
         field: 'telegramUserId',
         headerName: 'Telegram ID',
