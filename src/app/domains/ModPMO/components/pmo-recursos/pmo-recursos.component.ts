@@ -7,6 +7,9 @@ import { lastValueFrom }        from 'rxjs';
 import { ProjectsService }      from 'app/services/projects.service';
 import { WorkprogramsService }  from 'app/services/workprograms.service';
 import { ConventionsService }   from 'app/services/conventions.service';
+import { EmployeesService }     from 'app/services/employees.service';
+import { EquipmentService }     from 'app/services/equipment.service';
+import { MaterialsService }     from 'app/services/materials.service';
 import { SignalsService }       from 'app/services/signals.service';
 
 interface RecursoRow {
@@ -37,7 +40,18 @@ export class PmoRecursosComponent implements OnInit {
   private _projectsService     = inject(ProjectsService);
   private _workprogramsService = inject(WorkprogramsService);
   private _convService         = inject(ConventionsService);
+  private _empService          = inject(EmployeesService);
+  private _eqService           = inject(EquipmentService);
+  private _matService          = inject(MaterialsService);
   private _signalsService      = inject(SignalsService);
+
+  // ── Modal catálogo ────────────────────────────────────────────────────────
+  catalogVisible   = false;
+  catalogTitle     = '';
+  catalogItems:    any[] = [];
+  catalogFiltered: any[] = [];
+  catalogSearch    = '';
+  catalogEditRow:  RecursoRow | null = null;
 
   idCompany         = 0;
   projects: any[]   = [];
@@ -67,6 +81,29 @@ export class PmoRecursosComponent implements OnInit {
   totalVar   = 0;
 
   colDefs: ColDef[] = [
+    {
+      headerName: '',
+      field: '__catalogBtn',
+      width: 38,
+      editable: false,
+      sortable: false,
+      filter: false,
+      resizable: false,
+      cellRenderer: (p: any) => {
+        const tipo = (p.data?.tipo ?? '').toLowerCase();
+        const hasCatalog = ['personal','equipo','material'].includes(tipo);
+        if (!hasCatalog) return '';
+        return `<button class="btn btn-xs p-0 px-1 btn-outline-secondary border-0"
+                        title="Buscar en catálogo de ${p.data?.tipo}"
+                        style="font-size:12px;line-height:1.2;margin-top:4px;">
+                  <i class="bi bi-search"></i>
+                </button>`;
+      },
+      onCellClicked: (p) => {
+        const tipo = (p.data?.tipo ?? '').toLowerCase();
+        if (['personal','equipo','material'].includes(tipo)) this.openCatalog(p.data);
+      },
+    },
     {
       field: 'tipo', headerName: 'Tipo de Cargo', width: 130, editable: true,
       cellEditor: 'agSelectCellEditor',
@@ -308,7 +345,7 @@ export class PmoRecursosComponent implements OnInit {
     const newRow: RecursoRow = {
       id: 0,
       idActivity:   this.selectedActivity.id,
-      tipo: 'Personal', descripcion: '', unidad: 'día', periodo: '',
+      tipo: 'Personal', descripcion: 'SIN DESCRIPCION', unidad: 'día', periodo: '',
       cantPlan: 0, cantReal: 0, costoUnitPlan: 0, costoUnitReal: 0,
       costoPlan: 0, costoReal: 0, variacion: 0,
       __isNew: true,
@@ -423,6 +460,80 @@ export class PmoRecursosComponent implements OnInit {
       costoUnitReal:  r.costoUnitReal,
       active:         1,
     };
+  }
+
+  // ── Catálogo modal ────────────────────────────────────────────────────────
+
+  async openCatalog(row: RecursoRow): Promise<void> {
+    this.catalogEditRow = row;
+    this.catalogSearch  = '';
+    const tipo = (row.tipo ?? '').toLowerCase();
+
+    try {
+      if (tipo === 'personal') {
+        this.catalogTitle = '👤 Personal';
+        const res: any = await lastValueFrom(this._empService.getEmployees(-this.idCompany));
+        const raw = Array.isArray(res) ? res : (res?.data ?? []);
+        this.catalogItems = raw.map((e: any) => ({
+          label: e.name ?? `${e.nombre ?? ''} ${e.apellido ?? ''}`.trim(),
+          sub:   e.position ?? e.puesto ?? '',
+          value: e.name ?? `${e.nombre ?? ''} ${e.apellido ?? ''}`.trim(),
+        }));
+      } else if (tipo === 'equipo') {
+        this.catalogTitle = '🚧 Equipos';
+        const res: any = await lastValueFrom(this._eqService.getEquipment(this.idCompany));
+        const raw = Array.isArray(res) ? res : (res?.data ?? []);
+        this.catalogItems = raw.map((e: any) => ({
+          label: e.description ?? e.name ?? '',
+          sub:   e.type ?? e.typeEquipment ?? '',
+          value: e.description ?? e.name ?? '',
+        }));
+      } else if (tipo === 'material') {
+        this.catalogTitle = '📦 Materiales';
+        const res: any = await lastValueFrom(this._matService.getMaterials(this.idCompany, 'MATERIAL'));
+        const raw = Array.isArray(res) ? res : (res?.data ?? []);
+        this.catalogItems = raw.map((e: any) => ({
+          label: e.insumo ?? e.articulo ?? e.description ?? '',
+          sub:   `${e.familia ?? ''} / ${e.subfamilia ?? ''}`.replace('/ ','').trim(),
+          value: e.insumo ?? e.articulo ?? e.description ?? '',
+        }));
+      } else {
+        return;
+      }
+    } catch (err) {
+      console.error('Error cargando catálogo', err);
+      this.catalogItems = [];
+    }
+
+    this.filterCatalog();
+    this.catalogVisible = true;
+  }
+
+  filterCatalog(): void {
+    const q = this.catalogSearch.toLowerCase().trim();
+    this.catalogFiltered = q
+      ? this.catalogItems.filter(i => i.label.toLowerCase().includes(q) || i.sub.toLowerCase().includes(q))
+      : [...this.catalogItems];
+  }
+
+  selectFromCatalog(item: any): void {
+    if (!this.catalogEditRow) return;
+    this.catalogEditRow.descripcion = item.value || 'SIN DESCRIPCION';
+    if (!this.catalogEditRow.__isNew) this.catalogEditRow.__modified = true;
+    this.hasUnsavedChanges = true;
+    // Refrescar la celda en el grid
+    if (this.gridApi && !this.gridApi.isDestroyed()) {
+      this.gridApi.refreshCells({ force: true });
+    }
+    this.closeCatalog();
+  }
+
+  closeCatalog(): void {
+    this.catalogVisible  = false;
+    this.catalogEditRow  = null;
+    this.catalogItems    = [];
+    this.catalogFiltered = [];
+    this.catalogSearch   = '';
   }
 
   private showMsg(msg: string, type: 'success' | 'error'): void {
