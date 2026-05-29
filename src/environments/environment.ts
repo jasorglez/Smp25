@@ -85,5 +85,5 @@ export const environment = {
     // publicKey: 'TEST-4399133a-4676-42a2-ab85-d946370bf96a',
   },
 
-  version: '6.66 (28 Mayo 2026 18:45) fix(meseros-registrar): /registrar busca por employeeCode (UserName del grid)',
+  version: '6.69 (29 Mayo 2026 06:08) feat(pmo): riesgos PMO backend + importador PMO',
 };

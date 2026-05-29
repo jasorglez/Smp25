@@ -39,6 +39,13 @@
                 </a>               
              </li> 
 
+             <li class="nav-item" *ngIf="authService.hasDetailedPermission('projects', 'workprograms')">
+                <a class="nav-link modern-tab" routerLink="risks" routerLinkActive="active">
+                  <i class="bi bi-shield-exclamation"></i>
+                  <span>Riesgos PMO</span>
+                </a>
+             </li>
+
              <li class="nav-item" *ngIf="authService.hasDetailedPermission('projects', 'materials')">
                 <a class="nav-link modern-tab" routerLink="materials" routerLinkActive="active">
                   <i class="bi bi-box-seam"></i>

@@ -4,6 +4,7 @@ import { WorkprogramsService } from 'app/services/workprograms.service';
 import { WorkprogramApuService } from 'app/services/workprogram-apu.service';
 import { gantt } from 'dhtmlx-gantt';
 import { Observable, catchError, finalize, forkJoin, lastValueFrom, map, of } from 'rxjs';
+import * as XLSX from 'xlsx';
 
 /*import { PdfWorkprogramDistributionComponent } from './distribution/pdf-workprogram-distribution.component';
 import { WorkprogramDistributionFullComponent } from './distribution/workprogram-distribution-full.component';
@@ -15,6 +16,74 @@ import { CatalogsService } from 'app/services/catalogs.service';
 import { SignalsService } from 'app/services/signals.service';
 import { TrackingService } from 'app/services/tracking.service';
 
+type ImportFieldKey =
+  | 'wbs'
+  | 'level'
+  | 'description'
+  | 'quantity'
+  | 'cost'
+  | 'salePrice'
+  | 'startDate'
+  | 'endDate'
+  | 'predecessors'
+  | 'successors'
+  | 'resources';
+
+interface ImportColumnMatch {
+  field: ImportFieldKey;
+  column: string;
+  inferred: boolean;
+}
+
+type ImportColumnMapping = Partial<Record<ImportFieldKey, ImportColumnMatch>>;
+
+interface ImportedRawRow {
+  fileName: string;
+  rowNumber: number;
+  data: Record<string, any>;
+  mapping: ImportColumnMapping;
+}
+
+interface ImportedTaskDraft {
+  sourceFile: string;
+  sourceRow: number;
+  wbs: string;
+  level: number;
+  description: string;
+  quantity: number | null;
+  cost: number | null;
+  salePrice: number | null;
+  startDate: string;
+  endDate: string;
+  predecessors: string;
+  successors: string;
+  resources: string;
+  warnings: string[];
+  errors: string[];
+}
+
+interface ImportedPreviewRow {
+  fileName: string;
+  rowNumber: number;
+  wbs: string;
+  level: number;
+  description: string;
+  startDate: string;
+  endDate: string;
+  quantity: number | null;
+  cost: number | null;
+  salePrice: number | null;
+  status: 'ok' | 'warning' | 'error';
+}
+
+interface ImportAnalysisResult {
+  detectedColumns: ImportColumnMatch[];
+  warnings: string[];
+  previewRows: ImportedPreviewRow[];
+  tasks: ImportedTaskDraft[];
+  structureMode: boolean;
+}
+
 @Component({
   selector: 'app-workprograms',
   standalone: true,
@@ -24,6 +93,19 @@ import { TrackingService } from 'app/services/tracking.service';
   
 })
 export class WorkprogramsComponent {
+  showImportPmoModal = false;
+  importFiles: File[] = [];
+  isAnalyzingImport = false;
+  isApplyingImport = false;
+  importApplyProgress = 0;
+  importApplyStatus = '';
+  importMode: 'replace' | 'append' = 'replace';
+  importSummary = '';
+  importWarnings: string[] = [];
+  importDetectedColumns: ImportColumnMatch[] = [];
+  importPreviewRows: ImportedPreviewRow[] = [];
+  importedTasksDraft: ImportedTaskDraft[] = [];
+
   phases: { key: any; label: any; }[];
 
   // Para mostrar el indicador de cambios no guardados
@@ -152,6 +234,603 @@ export class WorkprogramsComponent {
       console.error('Error initializing workprograms component:', error);
       // Handle the error appropriately, e.g., show an error message to the user
     }
+  }
+
+  openImportPmoModal(): void {
+    this.showImportPmoModal = true;
+    this.importMode = 'replace';
+    this.importSummary = '';
+    this.importWarnings = [];
+    this.importDetectedColumns = [];
+    this.importPreviewRows = [];
+    this.importedTasksDraft = [];
+    this.importApplyProgress = 0;
+    this.importApplyStatus = '';
+    this.importFiles = [];
+  }
+
+  closeImportPmoModal(): void {
+    if (this.isAnalyzingImport || this.isApplyingImport) {
+      return;
+    }
+    this.showImportPmoModal = false;
+  }
+
+  onImportFilesSelected(event: Event): void {
+    const input = event.target as HTMLInputElement;
+    this.importFiles = Array.from(input.files || []);
+    this.importSummary = '';
+    this.importWarnings = [];
+    this.importDetectedColumns = [];
+    this.importPreviewRows = [];
+    this.importedTasksDraft = [];
+    this.importApplyProgress = 0;
+    this.importApplyStatus = '';
+  }
+
+  async analyzeImportFiles(): Promise<void> {
+    if (!this.importFiles.length) {
+      alerts.basicAlert('Aviso', 'Selecciona al menos un archivo Excel o CSV para analizar', 'warning');
+      return;
+    }
+
+    this.isAnalyzingImport = true;
+    this.importWarnings = [];
+    this.importDetectedColumns = [];
+    this.importPreviewRows = [];
+    this.importedTasksDraft = [];
+    this.importApplyProgress = 0;
+    this.importApplyStatus = '';
+    this.importSummary = '';
+
+    try {
+      const analysis = await this.buildImportAnalysis(this.importFiles);
+      this.importDetectedColumns = analysis.detectedColumns;
+      this.importWarnings = analysis.warnings;
+      this.importPreviewRows = analysis.previewRows;
+      this.importedTasksDraft = analysis.tasks;
+      this.importSummary =
+        `${analysis.tasks.length} tarea(s) detectada(s) en ${this.importFiles.length} archivo(s). ` +
+        `${analysis.structureMode ? 'Modo cronograma' : 'Modo completo PMO'}.`;
+
+      if (!analysis.tasks.length) {
+        alerts.basicAlert('Aviso', 'No se detectaron tareas válidas para importar', 'warning');
+      }
+    } catch (error: any) {
+      console.error('Error analyzing PMO import files:', error);
+      alerts.basicAlert('Error', error?.message || 'No fue posible analizar los archivos seleccionados', 'error');
+    } finally {
+      this.isAnalyzingImport = false;
+    }
+  }
+
+  async applyImportToGantt(): Promise<void> {
+    if (!this.importedTasksDraft.length) {
+      alerts.basicAlert('Aviso', 'Analiza primero los archivos para generar una vista previa', 'warning');
+      return;
+    }
+
+    const confirm = await alerts.confirmAlert(
+      '¿Importar planeación PMO?',
+      this.importMode === 'replace'
+        ? 'Se reemplazará el programa actual en pantalla por la versión importada. Los cambios se guardarán hasta que presiones Guardar.'
+        : 'Las tareas importadas se agregarán al programa actual en pantalla. Los cambios se guardarán hasta que presiones Guardar.',
+      'question',
+      'Importar'
+    );
+
+    if (!confirm.isConfirmed) {
+      return;
+    }
+
+    this.isApplyingImport = true;
+    this.importApplyProgress = 5;
+    this.importApplyStatus = 'Preparando importación...';
+    try {
+      this.importApplyProgress = 20;
+      this.importApplyStatus = 'Construyendo tareas para el Gantt...';
+      const ganttData = this.buildGanttDataFromImport(this.importedTasksDraft);
+      this.importApplyProgress = 60;
+      this.importApplyStatus = this.importMode === 'replace'
+        ? 'Reemplazando programa actual...'
+        : 'Agregando tareas al programa actual...';
+      if (this.importMode === 'replace') {
+        this.deletedTasks.clear();
+        gantt.getTaskByTime().forEach(task => {
+          if (task['idEntry']) {
+            this.deletedTasks.add(task['idEntry']);
+          }
+        });
+        gantt.clearAll();
+        gantt.parse(ganttData);
+      } else {
+        gantt.parse(ganttData);
+      }
+
+      this.importApplyProgress = 85;
+      this.importApplyStatus = 'Renderizando programa importado...';
+      this.recalcSortorder();
+      gantt.render();
+      this.taskCount = gantt.getTaskByTime().length;
+      this.notSavedChanges = true;
+      this.showImportPmoModal = false;
+      this.importApplyProgress = 100;
+      this.importApplyStatus = 'Importación completada.';
+
+      alerts.basicAlert(
+        'Éxito',
+        `Importación PMO cargada en pantalla con ${this.importedTasksDraft.length} tarea(s). Presiona Guardar para persistirla.`,
+        'success'
+      );
+    } catch (error: any) {
+      console.error('Error applying PMO import:', error);
+      alerts.basicAlert('Error', error?.message || 'No fue posible cargar la importación PMO al Gantt', 'error');
+    } finally {
+      this.isApplyingImport = false;
+    }
+  }
+
+  private async buildImportAnalysis(files: File[]): Promise<ImportAnalysisResult> {
+    const warnings: string[] = [];
+    const detectedColumnsMap = new Map<string, ImportColumnMatch>();
+    const rawRows: ImportedRawRow[] = [];
+
+    for (const file of files) {
+      const workbook = await this.readWorkbook(file);
+      const sheetName = workbook.SheetNames[0];
+      const sheet = workbook.Sheets[sheetName];
+      if (!sheet) {
+        warnings.push(`El archivo ${file.name} no contiene una hoja válida.`);
+        continue;
+      }
+
+      const rows = XLSX.utils.sheet_to_json<Record<string, any>>(sheet, {
+        defval: '',
+        raw: false
+      });
+
+      if (!rows.length) {
+        warnings.push(`El archivo ${file.name} no contiene filas utilizables.`);
+        continue;
+      }
+
+      const mapping = this.detectImportMapping(rows[0]);
+      Object.values(mapping).forEach(match => {
+        if (match && !detectedColumnsMap.has(match.field)) {
+          detectedColumnsMap.set(match.field, match);
+        }
+      });
+
+      rows.forEach((row, index) => {
+        rawRows.push({
+          fileName: file.name,
+          rowNumber: index + 2,
+          data: row,
+          mapping
+        });
+      });
+    }
+
+    if (!rawRows.length) {
+      return {
+        detectedColumns: [],
+        warnings: warnings.length ? warnings : ['No se encontraron filas válidas para importar.'],
+        previewRows: [],
+        tasks: [],
+        structureMode: true
+      };
+    }
+
+    const tasks: ImportedTaskDraft[] = [];
+    const previewRows: ImportedPreviewRow[] = [];
+    let missingEconomicRows = 0;
+
+    rawRows.forEach(raw => {
+      const normalized = this.normalizeImportRow(raw);
+      if (normalized.errors.length) {
+        warnings.push(`${raw.fileName} fila ${raw.rowNumber}: ${normalized.errors.join(', ')}`);
+        previewRows.push({
+          fileName: raw.fileName,
+          rowNumber: raw.rowNumber,
+          wbs: normalized.wbs || '(sin WBS)',
+          level: normalized.level ?? 0,
+          description: normalized.description || '(sin descripción)',
+          startDate: normalized.startDate || '',
+          endDate: normalized.endDate || '',
+          quantity: normalized.quantity,
+          cost: normalized.cost,
+          salePrice: normalized.salePrice,
+          status: 'error'
+        });
+        return;
+      }
+
+      if (normalized.quantity == null || normalized.cost == null || normalized.salePrice == null) {
+        missingEconomicRows++;
+      }
+
+      tasks.push(normalized);
+      previewRows.push({
+        fileName: raw.fileName,
+        rowNumber: raw.rowNumber,
+        wbs: normalized.wbs,
+        level: normalized.level,
+        description: normalized.description,
+        startDate: normalized.startDate,
+        endDate: normalized.endDate,
+        quantity: normalized.quantity,
+        cost: normalized.cost,
+        salePrice: normalized.salePrice,
+        status: normalized.warnings.length ? 'warning' : 'ok'
+      });
+
+      normalized.warnings.forEach(warning => {
+        warnings.push(`${raw.fileName} fila ${raw.rowNumber}: ${warning}`);
+      });
+    });
+
+    const structureMode = missingEconomicRows > 0;
+    if (structureMode) {
+      warnings.unshift(
+        'Se detectaron filas sin cantidad, costo o precio de venta. La importación operará en modo cronograma para esas tareas.'
+      );
+    }
+
+    return {
+      detectedColumns: Array.from(detectedColumnsMap.values()),
+      warnings: Array.from(new Set(warnings)),
+      previewRows: previewRows.slice(0, 50),
+      tasks,
+      structureMode
+    };
+  }
+
+  private readWorkbook(file: File): Promise<XLSX.WorkBook> {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => {
+        try {
+          const data = new Uint8Array(reader.result as ArrayBuffer);
+          resolve(XLSX.read(data, { type: 'array' }));
+        } catch (error) {
+          reject(error);
+        }
+      };
+      reader.onerror = () => reject(reader.error);
+      reader.readAsArrayBuffer(file);
+    });
+  }
+
+  private detectImportMapping(sampleRow: Record<string, any>): ImportColumnMapping {
+    const columns = Object.keys(sampleRow || {});
+    const normalizedColumns = columns.map(column => ({
+      original: column,
+      normalized: this.normalizeHeader(column)
+    }));
+
+    const fieldSynonyms: Record<ImportFieldKey, string[]> = {
+      wbs: ['wbs', 'edt', 'estructura', 'codigo wbs', 'codigo edt', 'partida', 'id partida', 'codigo', 'task id'],
+      level: ['nivel', 'level', 'jerarquia', 'nivel wbs', 'nivel edt'],
+      description: ['descripcion', 'descripción', 'task name', 'nombre', 'actividad', 'concepto', 'descripcion tarea'],
+      quantity: ['cantidad', 'qty', 'volumen', 'quantity'],
+      cost: ['costo', 'cost', 'costo mxn', 'costomx', 'costo base', 'costo unitario', 'unit cost'],
+      salePrice: ['precio venta', 'precio de venta', 'venta', 'price', 'pu', 'precio unitario', 'unit price'],
+      startDate: ['fecha inicio', 'inicio', 'start', 'start date', 'fechainicio'],
+      endDate: ['fecha termino', 'fecha término', 'termino', 'término', 'finish', 'end', 'end date', 'fechatermino'],
+      predecessors: ['predecesoras', 'predecesor', 'predecessor', 'predecessors'],
+      successors: ['sucesoras', 'sucesor', 'successor', 'successors'],
+      resources: ['recursos', 'resources', 'resource names', 'resource']
+    };
+
+    const mapping = {} as ImportColumnMapping;
+
+    (Object.keys(fieldSynonyms) as ImportFieldKey[]).forEach(field => {
+      const match = normalizedColumns.find(column =>
+        fieldSynonyms[field].some(alias => column.normalized.includes(this.normalizeHeader(alias)))
+      );
+      if (match) {
+        mapping[field] = {
+          field,
+          column: match.original,
+          inferred: match.normalized !== this.normalizeHeader(field)
+        };
+      }
+    });
+
+    return mapping;
+  }
+
+  private normalizeImportRow(raw: ImportedRawRow): ImportedTaskDraft {
+    const row = raw.data;
+    const warnings: string[] = [];
+    const errors: string[] = [];
+
+    const wbs = this.readMappedValue(row, raw.mapping.wbs)?.trim();
+    const levelValue = this.readMappedValue(row, raw.mapping.level);
+    const description = this.readMappedValue(row, raw.mapping.description)?.trim();
+    const quantity = this.parseNullableNumber(this.readMappedValue(row, raw.mapping.quantity));
+    const cost = this.parseNullableNumber(this.readMappedValue(row, raw.mapping.cost));
+    const salePrice = this.parseNullableNumber(this.readMappedValue(row, raw.mapping.salePrice));
+    const startDate = this.normalizeDateString(this.readMappedValue(row, raw.mapping.startDate));
+    const endDate = this.normalizeDateString(this.readMappedValue(row, raw.mapping.endDate));
+    const predecessors = this.readMappedValue(row, raw.mapping.predecessors)?.trim() || '';
+    const successors = this.readMappedValue(row, raw.mapping.successors)?.trim() || '';
+    const resources = this.readMappedValue(row, raw.mapping.resources)?.trim() || '';
+
+    const level = this.resolveLevel(wbs, levelValue);
+
+    if (!wbs) errors.push('Falta WBS/código');
+    if (!description) errors.push('Falta descripción');
+    if (!startDate) errors.push('Falta fecha de inicio válida');
+    if (!endDate) errors.push('Falta fecha de término válida');
+    if (level == null) errors.push('No se pudo inferir nivel');
+
+    if (quantity == null) warnings.push('Sin cantidad');
+    if (cost == null) warnings.push('Sin costo');
+    if (salePrice == null) warnings.push('Sin precio de venta');
+
+    return {
+      sourceFile: raw.fileName,
+      sourceRow: raw.rowNumber,
+      wbs: wbs || '',
+      level: level ?? 1,
+      description: description || '',
+      quantity,
+      cost,
+      salePrice,
+      startDate: startDate || '',
+      endDate: endDate || '',
+      predecessors,
+      successors,
+      resources,
+      warnings,
+      errors
+    };
+  }
+
+  private buildGanttDataFromImport(tasks: ImportedTaskDraft[]): { data: any[]; links: any[] } {
+    const sorted = [...tasks].sort((a, b) => {
+      const wbsCompare = this.compareWbs(a.wbs, b.wbs);
+      if (wbsCompare !== 0) return wbsCompare;
+      return a.sourceRow - b.sourceRow;
+    });
+
+    const taskIdByWbs = new Map<string, number>();
+    const stackByLevel = new Map<number, number>();
+    const data: any[] = [];
+    const links: any[] = [];
+
+    sorted.forEach((task, index) => {
+      this.importApplyProgress = Math.min(55, 20 + Math.round(((index + 1) / sorted.length) * 35));
+      this.importApplyStatus = `Procesando ${task.sourceFile} fila ${task.sourceRow}...`;
+
+      const id = Date.now() + index;
+      const parentFromWbs = this.findParentWbs(task.wbs);
+      const parentIdFromWbs = parentFromWbs ? taskIdByWbs.get(parentFromWbs) : undefined;
+      const parentIdFromLevel = task.level > 1 ? stackByLevel.get(task.level - 1) : undefined;
+      const parent = parentIdFromWbs ?? parentIdFromLevel ?? 0;
+
+      const startDate = this.parseImportedTaskDate(task.startDate, task, 'inicio');
+      const endDate = this.parseImportedTaskDate(task.endDate, task, 'término');
+      const total = (task.quantity ?? 0) * (task.cost ?? 0);
+
+      if (endDate < startDate) {
+        throw new Error(
+          `${task.sourceFile} fila ${task.sourceRow}: la fecha de término ${task.endDate} es menor que la fecha de inicio ${task.startDate}.`
+        );
+      }
+
+      data.push({
+        id,
+        text: task.description,
+        start_date: startDate,
+        end_date: endDate,
+        progress: 0,
+        parent,
+        activity: task.wbs,
+        criticRoute: 'No',
+        type: this.typeWorkProgram,
+        typeActivity: 'Activity',
+        costMX: task.cost ?? 0,
+        costDLL: 0,
+        quantity: task.quantity ?? 0,
+        ponderado: null,
+        predecesor: this.extractFirstPredecessor(task.predecessors),
+        phase: null,
+        measure: null,
+        total,
+        active: 1,
+        sortorder: index,
+        resourcesRaw: task.resources,
+        salePrice: task.salePrice ?? 0,
+        successorsRaw: task.successors
+      });
+
+      taskIdByWbs.set(task.wbs, id);
+      stackByLevel.set(task.level, id);
+      Array.from(stackByLevel.keys())
+        .filter(level => level > task.level)
+        .forEach(level => stackByLevel.delete(level));
+    });
+
+    sorted.forEach(task => {
+      if (!task.predecessors) return;
+      const currentId = taskIdByWbs.get(task.wbs);
+      if (!currentId) return;
+      const predecessors = task.predecessors
+        .split(/[;,]/)
+        .map(value => value.trim())
+        .filter(Boolean);
+
+      predecessors.forEach((pred, idx) => {
+        const sourceId = taskIdByWbs.get(pred);
+        if (sourceId) {
+          links.push({
+            id: `${currentId}-${idx}`,
+            source: sourceId,
+            target: currentId,
+            type: '0'
+          });
+        }
+      });
+    });
+
+    return { data, links };
+  }
+
+  private readMappedValue(row: Record<string, any>, mapping?: ImportColumnMatch): string {
+    if (!mapping?.column) return '';
+    const value = row[mapping.column];
+    return value == null ? '' : String(value).trim();
+  }
+
+  private normalizeHeader(value: string): string {
+    return (value || '')
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, ' ')
+      .trim();
+  }
+
+  private parseNullableNumber(value: string): number | null {
+    if (!value) return null;
+    const normalized = value
+      .replace(/\$/g, '')
+      .replace(/,/g, '')
+      .replace(/\s+/g, '');
+    const parsed = Number(normalized);
+    return Number.isFinite(parsed) ? parsed : null;
+  }
+
+  private normalizeDateString(value: string): string {
+    if (!value) return '';
+    const rawValue = String(value).trim();
+    if (!rawValue) return '';
+
+    const isoMatch = rawValue.match(/^(\d{4})[-/](\d{1,2})[-/](\d{1,2})$/);
+    if (isoMatch) {
+      const year = Number(isoMatch[1]);
+      const month = Number(isoMatch[2]);
+      const day = Number(isoMatch[3]);
+      if (this.isValidDateParts(year, month, day)) {
+        return `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+      }
+      return '';
+    }
+
+    const excelSerial = Number(value);
+    if (Number.isFinite(excelSerial) && excelSerial > 59) {
+      const parsed = XLSX.SSF.parse_date_code(excelSerial);
+      if (parsed?.y && parsed?.m && parsed?.d) {
+        return `${parsed.y}-${String(parsed.m).padStart(2, '0')}-${String(parsed.d).padStart(2, '0')}`;
+      }
+    }
+
+    const normalized = rawValue.replace(/\./g, '/').replace(/-/g, '/').trim();
+    const parts = normalized.split('/');
+    if (parts.length === 3) {
+      let first = Number(parts[0]);
+      let second = Number(parts[1]);
+      let year = Number(parts[2]);
+      if (year < 100) year += 2000;
+
+      // Heurística para fechas con "/" provenientes de Excel/CSV:
+      // - si el primer bloque > 12, asumimos dd/mm
+      // - si el segundo bloque > 12, asumimos mm/dd
+      // - si ambos son <= 12, preferimos mm/dd para evitar falsos negativos con archivos exportados
+      let day = first;
+      let month = second;
+
+      if (first > 12 && second <= 12) {
+        day = first;
+        month = second;
+      } else if (second > 12 && first <= 12) {
+        day = second;
+        month = first;
+      } else if (first <= 12 && second <= 12) {
+        month = first;
+        day = second;
+      }
+
+      if (this.isValidDateParts(year, month, day)) {
+        return `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+      }
+    }
+
+    const fallback = new Date(rawValue);
+    if (!Number.isNaN(fallback.getTime())) {
+      return `${fallback.getFullYear()}-${String(fallback.getMonth() + 1).padStart(2, '0')}-${String(fallback.getDate()).padStart(2, '0')}`;
+    }
+    return '';
+  }
+
+  private parseImportedTaskDate(value: string, task: ImportedTaskDraft, fieldName: 'inicio' | 'término'): Date {
+    if (!value) {
+      throw new Error(`${task.sourceFile} fila ${task.sourceRow}: falta fecha de ${fieldName}.`);
+    }
+
+    const parsedDate = new Date(`${value}T00:00:00`);
+    if (Number.isNaN(parsedDate.getTime())) {
+      throw new Error(`${task.sourceFile} fila ${task.sourceRow}: fecha de ${fieldName} inválida (${value}).`);
+    }
+
+    return parsedDate;
+  }
+
+  private isValidDateParts(year: number, month: number, day: number): boolean {
+    if (!Number.isFinite(year) || !Number.isFinite(month) || !Number.isFinite(day)) {
+      return false;
+    }
+
+    if (year < 1900 || month < 1 || month > 12 || day < 1 || day > 31) {
+      return false;
+    }
+
+    const candidate = new Date(year, month - 1, day);
+    return candidate.getFullYear() === year
+      && candidate.getMonth() === month - 1
+      && candidate.getDate() === day;
+  }
+
+  private resolveLevel(wbs: string, levelValue: string): number | null {
+    const parsedLevel = Number(levelValue);
+    if (Number.isFinite(parsedLevel) && parsedLevel > 0) {
+      return parsedLevel;
+    }
+    if (!wbs) return null;
+    const segments = wbs.split(/[.\-_/\\]/).filter(Boolean);
+    return segments.length || 1;
+  }
+
+  private findParentWbs(wbs: string): string | null {
+    const segments = wbs.split(/[.\-_/\\]/).filter(Boolean);
+    if (segments.length <= 1) return null;
+    return segments.slice(0, -1).join('.');
+  }
+
+  private compareWbs(a: string, b: string): number {
+    const aParts = a.split(/[.\-_/\\]/).filter(Boolean);
+    const bParts = b.split(/[.\-_/\\]/).filter(Boolean);
+    const maxLength = Math.max(aParts.length, bParts.length);
+    for (let i = 0; i < maxLength; i++) {
+      const aPart = aParts[i] ?? '';
+      const bPart = bParts[i] ?? '';
+      const aNum = Number(aPart);
+      const bNum = Number(bPart);
+      if (Number.isFinite(aNum) && Number.isFinite(bNum)) {
+        if (aNum !== bNum) return aNum - bNum;
+      } else if (aPart !== bPart) {
+        return aPart.localeCompare(bPart);
+      }
+    }
+    return 0;
+  }
+
+  private extractFirstPredecessor(value: string): number {
+    if (!value) return 0;
+    const match = value.match(/\d+/);
+    return match ? Number(match[0]) : 0;
   }
 
   configGantt() {

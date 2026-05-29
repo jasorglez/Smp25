@@ -613,6 +613,13 @@ export const routes: Routes = [
               ).then((w) => w.WorkprogramsComponent),
           },
           {
+            path: 'risks',
+            loadComponent: () =>
+              import(
+                './domains/ModProjects/components/risks/risks.component'
+              ).then((r) => r.RisksComponent),
+          },
+          {
             path: 'ot',
             loadComponent: () =>
               import(
