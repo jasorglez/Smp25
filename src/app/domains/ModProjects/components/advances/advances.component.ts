@@ -1,30 +1,19 @@
-import { Component, inject, OnInit, effect, OnChanges, SimpleChanges, ViewChild } from '@angular/core';
+import { Component, effect, inject, OnChanges, OnInit, SimpleChanges, ViewChild } from '@angular/core';
 import { AgGridModule } from 'ag-grid-angular';
-import { ColDef, Grid, GridApi, GridReadyEvent } from 'ag-grid-community';
+import { ColDef, GridApi, GridReadyEvent } from 'ag-grid-community';
 import { AdvanceService } from 'app/services/advance.service';
-import { ContractsService } from 'app/services/contracts.service';
 import { SignalsService } from 'app/services/signals.service';
-import {
-  ApexAxisChartSeries,
-  ApexChart,
-  ApexXAxis,
-  ApexTitleSubtitle,
-  NgApexchartsModule,
-  ApexDataLabels,
-  ApexFill,
-  ApexLegend,
-  ApexPlotOptions,
-  ApexStroke,
-  ApexTooltip,
-  ApexYAxis,
-  ApexGrid,
-  ApexMarkers
-} from "ng-apexcharts";
-import { concat, lastValueFrom, toArray } from 'rxjs';
-import { ChartComponent } from 'ng-apexcharts';
-import { CommonModule } from '@angular/common';
+import { WorkprogramsService } from 'app/services/workprograms.service';
 import { alerts } from 'app/helpers/alerts';
-import { OilfieldService } from 'app/services/oilfield.service';
+import { concat, lastValueFrom, toArray } from 'rxjs';
+import { CommonModule } from '@angular/common';
+import { FormsModule } from '@angular/forms';
+import {
+  ApexAxisChartSeries, ApexChart, ApexXAxis, ApexTitleSubtitle,
+  NgApexchartsModule, ApexDataLabels, ApexFill, ApexLegend,
+  ApexPlotOptions, ApexStroke, ApexTooltip, ApexYAxis, ApexGrid, ApexMarkers
+} from 'ng-apexcharts';
+import { ChartComponent } from 'ng-apexcharts';
 import * as XLSX from 'xlsx';
 
 export type ChartOptions = {
@@ -45,7 +34,7 @@ export type ChartOptions = {
 };
 
 interface ContractAdvance {
-  id?: string;
+  id?: string | number;
   __isNew?: boolean;
   __modified?: boolean;
   accumulateProgram?: number;
@@ -53,624 +42,594 @@ interface ContractAdvance {
   date: string;
   physicalAdvanced: number;
   programAdvanced: number;
-  idContract: number;
+  idContract?: number;
+}
+
+interface ActiveTask {
+  idEntry: number;
+  activity: string;
+  description: string;
+  ponderado: number;
+  progressActual: number;  // 0-100
+  avanceHoy: number;       // editable — avance INCREMENTAL hoy (0-100)
+  progressNuevo: number;   // read-only = progressActual + avanceHoy (cap 100)
+  startDate: string;
+  endDate: string;
+  __modified?: boolean;
 }
 
 @Component({
   selector: 'app-advances',
   standalone: true,
-  imports: [
-    CommonModule,
-    AgGridModule,
-    NgApexchartsModule
-  ],
+  imports: [CommonModule, AgGridModule, NgApexchartsModule, FormsModule],
   templateUrl: './advances.component.html',
   styleUrl: './advances.component.scss'
 })
 export class AdvancesComponent implements OnInit, OnChanges {
 
-  deleteEntry() {
-    throw new Error('Method not implemented.');
-  }
+  // Exponer Math al template
+  readonly Math = Math;
 
-  private _signalsService = inject(SignalsService);
-  private _advancesService = inject(AdvanceService);
+  // ─── Servicios ──────────────────────────────────────────────────────────────
+  private _signalsService      = inject(SignalsService);
+  private _advancesService     = inject(AdvanceService);
+  private _workprogramsService = inject(WorkprogramsService);
 
-
-  public contracts: any[] = [];
-  public curretnContractSelected: number;
-  public contractSelectedBySidebar = this._signalsService.getContractSelectedBySidebar();
+  // ─── Grid Curva S ───────────────────────────────────────────────────────────
   private gridApi: GridApi;
-  // Datos comunes para la tabla y la gráfica
-  datosMensuales: ContractAdvance[] = [];
+  datosMensuales: ContractAdvance[]  = [];
+  monthlyTableData: any[]             = [];
+  rowData: ContractAdvance[]          = [];
+  selectedRowData: ContractAdvance | null = null;
+  notSavedChanges  = false;
+  newlyAddedRows: string[] = [];
+  private tempIdCounter = 0;
 
-  // Column Definitions: Defines the columns to be displayed.
-  public monthlyTableData: any[] = [];
-  private readonly ALL_MONTHS = ['ENERO','FEBRERO','MARZO','ABRIL','MAYO','JUNIO','JULIO','AGOSTO','SEPTIEMBRE','OCTUBRE','NOVIEMBRE','DICIEMBRE'];
+  curretnContractSelected: number | null = null;
+  idProject: number | null = null;
+  idConvention: number | null = null;
 
-  public gridOptions: any = {
-    headerHeight: 30,
-    rowHeight: 30,
-    getRowClass: (params) => {
-      // Verificar si la fila está seleccionada
-      if (params.node.isSelected()) {
-        return 'selected-row';
-      }
-      return '';
-    },
-    onRowClicked: (event) => {
-      // Seleccionar la fila al hacer clic en cualquier celda
-      event.node.setSelected(true);
-    },
-
-    onRowSelected: (event) => {
-      // Deseleccionar otras filas cuando se selecciona una nueva
-      if (event.node.isSelected()) {
-        this.gridApi.forEachNode((node) => {
-          if (node.id !== event.node.id) {
-            node.setSelected(false);
-          }
-        });
-      }
-    },
-  };
-
-  onGridReady(params: GridReadyEvent) {
-    this.gridApi = params.api;
-  }
-
-  columnDefs: ColDef[] = [
-    { field: 'date', headerName: 'Fecha', width: 85, editable: true, valueFormatter: (params) => { if (!params.value) return ''; const [y, m, d] = String(params.value).substring(0, 10).split('-'); return `${d}/${m}/${y.substring(2)}`; } },
-    { field: 'programAdvanced', headerName: 'Progr.', width: 90, editable: true },
-    { field: 'physicalAdvanced', headerName: 'Fisico', width: 85, editable: true },
-    {
-      field: 'accumulateProgram', headerName: 'Acumul. Program', width: 100, editable: true, cellDataType: 'number',
-      wrapHeaderText: true, autoHeaderHeight: true,
-      valueFormatter: (params) => {
-        if (params.value) { return params.value.toFixed(2); }
-        return '';
-      }
-    },
-    {
-      field: 'accumulatePhysical', headerName: 'Acumul. Fisico', width: 100, editable: true, cellDataType: 'number',
-      wrapHeaderText: true, autoHeaderHeight: true,
-      valueFormatter: (params) => {
-        if (params.value) { return params.value.toFixed(2); }
-        return '';
-      }
-    }
+  private readonly ALL_MONTHS = [
+    'ENERO','FEBRERO','MARZO','ABRIL','MAYO','JUNIO',
+    'JULIO','AGOSTO','SEPTIEMBRE','OCTUBRE','NOVIEMBRE','DICIEMBRE'
   ];
 
-  rowData: ContractAdvance[] = [];
-
-  // Configuración de ApexCharts
+  // ─── Gráfica Curva S ────────────────────────────────────────────────────────
   @ViewChild('chart') chart: ChartComponent;
-  public chartOptions: Partial<ChartOptions>;
-  private tempIdCounter: number = 0;
-  newlyAddedRows: string[] = [];
-  notSavedChanges: boolean;
+  public chartOptions: Partial<ChartOptions> = { series: [], chart: { type: 'line', height: 350 } };
 
-  constructor() {
-    this.chartOptions = {
-      series: [
-        {
-          name: 'Avance Programado',
-          data: []
-        },
-        {
-          name: 'Avance Físico',
-          data: []
-        }
-      ],
-      chart: {
-        height: 580,
-        width: '100%',
-        type: "line",
-        stacked: false,
-        fontFamily: "'Segoe UI', Tahoma, Geneva, Verdana, sans-serif",
-        animations: {
-          enabled: true,
-          speed: 800
-        },
-        toolbar: {
-          show: true
-        }
-      },
-      colors: ["#1e88e5", "#d32f2f", "#ffd700"],
-      dataLabels: {
-        enabled: false
-      },
-      fill: {
-        type: 'gradient',
-        gradient: {
-          opacityFrom: 0.45,
-          opacityTo: 0.05,
-          stops: [20, 100, 100, 100]
-        }
-      },
-      stroke: {
-        curve: "smooth",
-        width: [3, 3],
-        lineCap: 'round'
-      },
-      title: {
-        text: "📊 Seguimiento de Obra",
-        align: "left",
-        style: {
-          fontSize: '18px',
-          fontWeight: '700',
-          color: '#1a237e'
-        }
-      },
-      grid: {
-        show: true,
-        borderColor: '#e8eaf6',
-        strokeDashArray: 3
-      },
-      markers: {
-        size: 4,
-        strokeWidth: 2
-      },
-      xaxis: {
-        categories: [],
-        labels: {
-          style: {
-            colors: ['#666'],
-            fontSize: '12px'
-          }
-        }
-      },
-      yaxis: {
-        title: {
-          text: "Avance Acumulado (%)"
-        },
-        labels: {
-          formatter: (value) => value.toFixed(0) + '%'
-        }
-      },
-      legend: {
-        position: "top",
-        horizontalAlign: "center",
-        floating: false
+  // ─── Punto 6 — Captura Diaria por Tarea ────────────────────────────────────
+  showDailyCapture    = false;
+  dailyCaptureDate    = new Date().toISOString().split('T')[0];
+  activeTasksData: ActiveTask[]  = [];
+  delayedTasksData: ActiveTask[] = [];
+  isSavingDailyAdvance = false;
+  isLoadingTasks       = false;
+  totalPhysicalAdvanceHoy = 0;
+  programAdvanceHoy   = 0;   // el usuario puede indicar el programado del día
+
+  // ─── Column defs: grid de avances (Curva S) ─────────────────────────────────
+  public columnDefs: ColDef[] = [
+    {
+      field: 'date', headerName: 'Fecha', width: 100, editable: true,
+      cellEditor: 'agDateCellEditor',
+      valueGetter: p => p.data?.date ? String(p.data.date).substring(0, 10) : '',
+      valueSetter: p => { p.data.date = p.newValue; return true; },
+      valueFormatter: p => {
+        if (!p.value) return '';
+        const [y, m, d] = String(p.value).split('-');
+        return (d && m && y) ? `${d}/${m}/${y.substring(2)}` : p.value;
       }
-    };
+    },
+    {
+      field: 'programAdvanced', headerName: 'Prog.(%)', width: 85, editable: true,
+      valueFormatter: p => p.value != null ? Number(p.value).toFixed(2) : ''
+    },
+    {
+      field: 'physicalAdvanced', headerName: 'Físico(%)', width: 85, editable: true,
+      valueFormatter: p => p.value != null ? Number(p.value).toFixed(2) : ''
+    },
+    {
+      field: 'accumulateProgram', headerName: 'Acum.Prog.', width: 95, editable: false,
+      cellStyle: { background: '#f8f9fa', color: '#495057' },
+      valueFormatter: p => p.value != null ? Number(p.value).toFixed(2) + '%' : ''
+    },
+    {
+      field: 'accumulatePhysical', headerName: 'Acum.Fís.', width: 95, editable: false,
+      cellStyle: { background: '#f8f9fa', color: '#495057' },
+      valueFormatter: p => p.value != null ? Number(p.value).toFixed(2) + '%' : ''
+    },
+  ];
+
+  // ─── Column defs: grid de tareas activas / retrasadas ───────────────────────
+  public activeTasksColDefs: ColDef[] = [
+    { field: 'activity',       headerName: 'Actividad',      width: 90  },
+    { field: 'description',    headerName: 'Descripción',     flex: 1,  minWidth: 180 },
+    { field: 'ponderado',      headerName: 'Pond.(%)',        width: 80, valueFormatter: p => p.value != null ? Number(p.value).toFixed(3) : '—' },
+    { field: 'progressActual', headerName: 'Prog.Act.(%)',    width: 100, valueFormatter: p => p.value != null ? Number(p.value).toFixed(1) + '%' : '0%' },
+    {
+      field: 'avanceHoy',
+      headerName: 'Avance Hoy (%)',
+      width: 120, editable: true,
+      cellStyle: { background: '#fff9e6', border: '1px solid #e67e22' },
+      valueFormatter: p => p.value != null ? Number(p.value).toFixed(1) : '0.0',
+      valueSetter: p => {
+        const val = Math.min(100, Math.max(0, Number(p.newValue) || 0));
+        p.data.avanceHoy     = val;
+        p.data.progressNuevo = Math.min(100, (p.data.progressActual ?? 0) + val);
+        p.data.__modified    = true;
+        this.recalcTotalAdvanceHoy();
+        return true;
+      }
+    },
+    {
+      field: 'progressNuevo', headerName: 'Prog.Nuevo(%)', width: 110,
+      editable: false,
+      cellStyle: { background: '#f1f7ff', color: '#0e4491', fontWeight: '600' },
+      valueFormatter: p => p.value != null ? Number(p.value).toFixed(1) + '%' : '—'
+    },
+    { field: 'startDate', headerName: 'Inicio', width: 90 },
+    { field: 'endDate',   headerName: 'Fin',    width: 90 },
+  ];
+
+  // ─── Grid options ────────────────────────────────────────────────────────────
+  public gridOptions: any = {
+    headerHeight: 28,
+    rowHeight: 26,
+    rowSelection: 'single',
+    stopEditingWhenCellsLoseFocus: true,
+    getRowClass: (params: any) => params.node.isSelected() ? 'selected-row' : '',
+    rowClassRules: { 'new-row-highlight': (params: any) => !!params.data?.__isNew },
+    onRowClicked: (event: any) => {
+      event.node.setSelected(true);
+      this.selectedRowData = event.data;
+    },
+    onRowSelected: (event: any) => {
+      if (!event.node.isSelected()) return;
+      this.gridApi?.forEachNode(n => { if (n.id !== event.node.id) n.setSelected(false); });
+    },
+    onFirstDataRendered: (p: any) => p.api.sizeColumnsToFit(),
+  };
+
+  public activeTasksGridOptions: any = {
+    headerHeight: 26, rowHeight: 24,
+    stopEditingWhenCellsLoseFocus: true,
+    getRowClass: (p: any) => p.data?.endDate && new Date(p.data.endDate) < new Date() ? 'ag-row-warning' : '',
+    onFirstDataRendered: (p: any) => p.api.sizeColumnsToFit(),
+  };
+
+  // ─── Constructor ─────────────────────────────────────────────────────────────
+  constructor() {
     effect(() => {
-      const nuevoValor = this._signalsService.getContractSelectedBySidebar();
-      this.curretnContractSelected = nuevoValor();
+      this.curretnContractSelected  = this._signalsService.getContractSelectedBySidebar()();
+      this.idProject                = this._signalsService.getProjectSelectedBySidebar()();
+      const vigente                 = this._signalsService.getConventionVigente()();
+      this.idConvention             = vigente?.id ?? null;
       this.obtenerDatos();
     });
   }
 
-  ngOnInit(): void {
-    if (this.curretnContractSelected) {
-      this.obtenerDatos()
-    }
-  }
+  ngOnInit(): void {}
+  ngOnChanges(_: SimpleChanges): void {}
 
-  onCellValueChanged(event: any) {
-    event.data.__modified = true;
+  onGridReady(params: GridReadyEvent): void { this.gridApi = params.api; }
+
+  // ─── Cambio de celda → recalcular acumulados en pantalla ────────────────────
+  onCellValueChanged(_event: any): void {
     this.notSavedChanges = true;
+    _event.data.__modified = true;
+    this.recalcAccumulationInGrid();
   }
 
-  ngOnChanges(changes: SimpleChanges) {
-    if (changes['advances']) {
-      this.actualizarDatos();
-    }
+  /** Recalcula accumulateProgram / accumulatePhysical en el grid (sort por fecha) */
+  private recalcAccumulationInGrid(): void {
+    const rows: ContractAdvance[] = [];
+    this.gridApi?.forEachNode(n => rows.push(n.data));
+    rows.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+    let prog = 0, fis = 0;
+    rows.forEach(r => {
+      prog += Number(r.programAdvanced  ?? 0);
+      fis  += Number(r.physicalAdvanced ?? 0);
+      r.accumulateProgram  = Math.round(prog * 1000) / 1000;
+      r.accumulatePhysical = Math.round(fis  * 1000) / 1000;
+    });
+    this.gridApi?.refreshCells({ force: true });
   }
 
-  addRow() {
+  // ─── Agregar fila ────────────────────────────────────────────────────────────
+  addRow(): void {
     const tempId = `temp_${this.tempIdCounter++}`;
-    const newItem = {
-      id: tempId,
-      type: 'Contract',
-      date: new Date().toISOString().split('T')[0],
-      idContract: this.curretnContractSelected,
+    const newItem: ContractAdvance = {
+      id:               tempId,
+      date:             new Date().toISOString().split('T')[0],
+      idContract:       this.curretnContractSelected ?? 0,
       physicalAdvanced: 0,
-      programAdvanced: 0,
-      accumalateProgram: 0,
+      programAdvanced:  0,
+      accumulateProgram: 0,
       accumulatePhysical: 0,
-      active: 1,
       __isNew: true,
     };
-
     this.rowData = [newItem, ...this.rowData];
     this.newlyAddedRows.push(tempId);
     this.notSavedChanges = true;
-
-    // Encontrar el índice de la nueva fila
-    const newRowIndex = this.rowData.findIndex((row) => row.id === tempId);
-
-    // Encontrar la primera columna editable
-    const firstEditableCol = this.columnDefs.find(col => col.editable);
-    const firstEditableColKey = firstEditableCol ? firstEditableCol.field : null;
-
-    // Usar setTimeout para asegurar que el grid haya renderizado la nueva fila
-    setTimeout(() => {
-      if (firstEditableColKey) {
-        this.gridApi.startEditingCell({
-          rowIndex: newRowIndex,
-          colKey: firstEditableColKey, // Editar la primera columna editable
-        });
-      }
-    }, 50); // Un pequeño retraso de 50ms
+    setTimeout(() => this.gridApi?.startEditingCell({ rowIndex: 0, colKey: 'date' }), 50);
   }
 
-  async saveChanges() {
-    const isValid = this.rowData.every((item) =>
-      item.date &&
-      typeof item.programAdvanced === 'number' &&
-      typeof item.physicalAdvanced === 'number' &&
-      !isNaN(item.programAdvanced) &&
-      !isNaN(item.physicalAdvanced)
-    );
-
-    if (!isValid) {
-      alerts.basicAlert(
-        'Añadir entrada',
-        'Debe llenar todos los campos con valores válidos antes de guardar. Asegúrese de que la fecha esté presente y que los avances programados y físicos sean números.',
-        'error'
-      );
+  // ─── Eliminar registro ───────────────────────────────────────────────────────
+  async deleteEntry(): Promise<void> {
+    if (!this.selectedRowData) {
+      alerts.basicAlert('Sin selección', 'Haz clic en una fila para seleccionarla.', 'warning');
       return;
     }
-
-    const newRows = this.rowData.filter((row) => row.__isNew);
-    const modifiedRows = this.rowData.filter(
-      (row) => row.__modified && !row.__isNew
+    const id = this.selectedRowData.id;
+    // Fila nueva aún no guardada
+    if (id && String(id).startsWith('temp_')) {
+      this.rowData = this.rowData.filter(r => r.id !== id);
+      this.selectedRowData = null;
+      this.notSavedChanges = this.rowData.some(r => r.__isNew || r.__modified);
+      return;
+    }
+    const result = await alerts.confirmAlert(
+      '¿Eliminar registro?',
+      '¿Deseas eliminar este registro de avance de la Curva S?',
+      'warning', 'Sí, eliminar'
     );
-    const addObservables = newRows.map((row) => {
-      const cleanedData = this.cleanDataForServer(row);
-      return this._advancesService.addAdvance(cleanedData);
-    });
-
-    const updateObservables = modifiedRows.map((row) => {
-      const cleanedData = this.cleanDataForServer(row);
-      return this._advancesService.updateAdvance(Number(row.id), cleanedData);
-    });
-
-    // Using concat to combine observables and lastValueFrom for async/await
+    if (!result.isConfirmed) return;
     try {
-      const responses = await lastValueFrom(
-        concat(...addObservables, ...updateObservables).pipe(toArray())
-      );
-      alerts.basicAlert(
-        'Datos actualizados',
-        'Se han actualizado los datos correctamente.',
-        'success'
-      );
+      await lastValueFrom(this._advancesService.deleteAdvance(Number(id)));
+      alerts.basicAlert('Eliminado', 'Registro eliminado.', 'success');
+      this.selectedRowData = null;
+      this.obtenerDatos();
+    } catch {
+      alerts.basicAlert('Error', 'No se pudo eliminar el registro.', 'error');
+    }
+  }
+
+  // ─── Guardar cambios ─────────────────────────────────────────────────────────
+  async saveChanges(): Promise<void> {
+    const valid = this.rowData.every(r => r.date && !isNaN(Number(r.programAdvanced)) && !isNaN(Number(r.physicalAdvanced)));
+    if (!valid) {
+      alerts.basicAlert('Campos incompletos', 'Verifica fecha y valores numéricos.', 'error');
+      return;
+    }
+    const newRows = this.rowData.filter(r => r.__isNew);
+    const modRows = this.rowData.filter(r => r.__modified && !r.__isNew);
+    const addObs  = newRows.map(r => this._advancesService.addAdvance(this.cleanDataForServer(r)));
+    const updObs  = modRows.map(r => this._advancesService.updateAdvance(Number(r.id), this.cleanDataForServer(r)));
+    try {
+      await lastValueFrom(concat(...addObs, ...updObs).pipe(toArray()));
+      alerts.basicAlert('Guardado', 'Registros guardados correctamente.', 'success');
       this.notSavedChanges = false;
-      this.newlyAddedRows = [];
-      this.obtenerDatos(); // Refrescar los datos
-    } catch (error) {
-      console.error(error);
-      alerts.basicAlert(
-        'Error',
-        'Ocurrió un error al actualizar los datos. Por favor, intente nuevamente.',
-        'error'
-      );
+      this.newlyAddedRows  = [];
+      this.obtenerDatos();
+    } catch {
+      alerts.basicAlert('Error', 'Ocurrió un error al guardar.', 'error');
     }
   }
-  obtenerDatos() {
-    this._advancesService.getAdvancesByContract(this.curretnContractSelected, 'Contract').subscribe((advances: ContractAdvance) => {
-      let acumuladoProgramado = 0;
-      let acumuladoFisico = 0;
-      this.datosMensuales = (advances as unknown as ContractAdvance[]).map(advance => {
-        acumuladoProgramado += advance.programAdvanced;
-        acumuladoFisico += advance.physicalAdvanced;
-        return {
-          date: advance.date.split('T')[0],
-          programAdvanced: advance.programAdvanced,
-          physicalAdvanced: advance.physicalAdvanced,
-          accumulateProgram: acumuladoProgramado,
-          accumulatePhysical: acumuladoFisico,
-          idContract: advance.idContract,
-          id: advance.id
-        };
-      });
-      this.rowData = this.datosMensuales;
-      this.actualizarDatos();
+
+  revert(): void { this.obtenerDatos(); this.notSavedChanges = false; }
+
+  // ─── Cargar y recalcular datos (FIX: sort por fecha antes de acumulados) ────
+  obtenerDatos(): void {
+    if (!this.curretnContractSelected) return;
+    this._advancesService.getAdvancesByContract(this.curretnContractSelected, 'Contract').subscribe({
+      next: (advances: any) => {
+        // SORT ASC por fecha antes de recalcular acumulados
+        const sorted = (advances as ContractAdvance[]).sort(
+          (a, b) => new Date(a.date).getTime() - new Date(b.date).getTime()
+        );
+        let acumProg = 0, acumFis = 0;
+        this.datosMensuales = sorted.map(adv => {
+          acumProg += Number(adv.programAdvanced  ?? 0);
+          acumFis  += Number(adv.physicalAdvanced ?? 0);
+          return {
+            id:                Number(adv.id),
+            date:              String(adv.date).split('T')[0],
+            programAdvanced:   Number(adv.programAdvanced),
+            physicalAdvanced:  Number(adv.physicalAdvanced),
+            accumulateProgram: Math.round(acumProg * 1000) / 1000,
+            accumulatePhysical: Math.round(acumFis * 1000) / 1000,
+            idContract:        adv.idContract,
+          };
+        });
+        this.rowData = [...this.datosMensuales];
+        this.actualizarDatos();
+      },
+      error: () => alerts.basicAlert('Error', 'Error al cargar los avances.', 'error')
     });
   }
 
-  revert() {
-    this.obtenerDatos()
-    this.notSavedChanges = false;
-  }
+  // ─── Actualizar Curva S y tabla mensual ─────────────────────────────────────
+  private actualizarDatos(): void {
+    // ── Eje X con FECHAS REALES (FIX: ya no usa 12 meses fijos) ──────────────
+    const sorted = [...this.datosMensuales].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
 
-  private cleanDataForServer(data: any): any {
-    const cleanedData = { ...data };
-    delete cleanedData.__isNew;
-    delete cleanedData.__modified;
-    if (cleanedData.id && cleanedData.id.toString().startsWith('temp_')) {
-      delete cleanedData.id;
-    }
-    return cleanedData;
-  }
-
-  private actualizarDatos() {
-    // Actualizar datos del grid
-    this.rowData = this.datosMensuales.map(advance => ({
-      date: advance.date.split('T')[0],
-      programAdvanced: advance.programAdvanced,
-      physicalAdvanced: advance.physicalAdvanced,
-      accumulateProgram: advance.accumulateProgram,
-      accumulatePhysical: advance.accumulatePhysical,
-      idContract: advance.idContract,
-      id: advance.id
-    }));
-
-    // Agrupar por mes real usando la fecha
-    const programSeries: any[] = new Array(12).fill(null);
-    const physicalSeries: any[] = new Array(12).fill(null);
-    const hitosSeries: any[]    = new Array(12).fill(null);
-
-    this.monthlyTableData = this.ALL_MONTHS.map(m => ({ month: m, program: null, physical: null, hito: null }));
-
-    // Agrupar registros por mes (0=enero … 8=septiembre)
-    const byMonth: { [key: number]: ContractAdvance[] } = {};
-    this.datosMensuales.forEach(d => {
-      const monthIdx = new Date(d.date).getMonth(); // 0-based
-      if (!byMonth[monthIdx]) byMonth[monthIdx] = [];
-      byMonth[monthIdx].push(d);
+    const xCategories   = sorted.map(d => {
+      const dt = new Date(d.date + 'T00:00:00');
+      return `${dt.getDate().toString().padStart(2,'0')}/${(dt.getMonth()+1).toString().padStart(2,'0')}/${dt.getFullYear().toString().substring(2)}`;
     });
+    const programSeries  = sorted.map(d => Math.round((d.accumulateProgram  ?? 0) * 100) / 100);
+    const physicalSeries = sorted.map(d => Math.round((d.accumulatePhysical ?? 0) * 100) / 100);
 
-    Object.keys(byMonth).forEach(key => {
-      const idx = parseInt(key);
-      const records = byMonth[idx];
-      // último registro del mes = acumulado del mes
-      const last = records[records.length - 1];
-      const program = parseFloat(last.accumulateProgram.toFixed(2));
-      const physical = parseFloat(last.accumulatePhysical.toFixed(2));
-      // hito = suma incremental del mes
-      const hitoVal = parseFloat(records.reduce((s, r) => s + r.programAdvanced, 0).toFixed(2));
+    const maxAcum = Math.max(...programSeries, ...physicalSeries, 10);
+    const yMax    = Math.min(110, Math.ceil(maxAcum / 10) * 10 + 10);
 
-      programSeries[idx] = program;
-      physicalSeries[idx] = physical;
-      hitosSeries[idx]    = hitoVal;
-      this.monthlyTableData[idx].program  = program;
-      this.monthlyTableData[idx].physical = physical;
-      this.monthlyTableData[idx].hito     = hitoVal;
-    });
-
-    // Actualizar datos de la gráfica: 12 puntos mensuales
     this.chartOptions = {
       series: [
-        { name: 'Avance Programado Acumulado', data: programSeries,  type: 'line'   },
-        { name: 'Avance Real Acumulado',        data: physicalSeries, type: 'line'   },
-        { name: 'Programado (barra)',            data: programSeries,  type: 'column' },
-        { name: 'Real (barra)',                  data: physicalSeries, type: 'column' }
+        { name: 'Programado Acumulado', data: programSeries,  type: 'line'   },
+        { name: 'Real Acumulado',        data: physicalSeries, type: 'line'   },
+        { name: 'Programado (barra)',     data: programSeries,  type: 'column' },
+        { name: 'Real (barra)',           data: physicalSeries, type: 'column' },
       ],
       chart: {
-        height: 580,
-        width: '100%',
-        type: "line",
+        height: 340,
+        type: 'line' as any,
         stacked: false,
-        fontFamily: "'Segoe UI', Tahoma, Geneva, Verdana, sans-serif",
-        animations: {
-          enabled: true,
-          speed: 800,
-          animateGradually: {
-            enabled: true,
-            delay: 150
-          },
-          dynamicAnimation: {
-            enabled: true,
-            speed: 150
-          }
-        },
-        toolbar: {
-          show: true,
-          tools: {
-            download: true,
-            selection: true,
-            zoom: true,
-            zoomin: true,
-            zoomout: true,
-            pan: true,
-            reset: true
-          },
-          autoSelected: 'zoom'
-        },
-        background: '#fff'
+        fontFamily: "'Segoe UI', sans-serif",
+        toolbar: { show: true },
+        background: '#fff',
+        animations: { enabled: true, speed: 600 }
       },
-      colors: ["#e67e22", "#2980b9", "#f1c40f", "#2980b9"],
+      colors: ['#e67e22', '#2980b9', '#f39c12', '#3498db'],
       dataLabels: { enabled: false },
       fill: {
-        type: ['gradient', 'gradient', 'solid', 'solid'],
-        gradient: {
-          shade: 'light',
-          type: 'vertical',
-          opacityFrom: 0.3,
-          opacityTo: 0.05,
-          stops: [0, 100]
-        }
+        type: ['gradient', 'gradient', 'solid', 'solid'] as any,
+        gradient: { shade: 'light', type: 'vertical', opacityFrom: 0.3, opacityTo: 0.05 }
       },
-      stroke: {
-        curve: "smooth",
-        width: [5, 5, 0, 0],
-        dashArray: [0, 0, 0, 0],
-        lineCap: 'round'
-      },
-      plotOptions: {
-        bar: {
-          columnWidth: '35%',
-          borderRadius: 2
-        }
-      },
+      stroke: { curve: 'smooth', width: [4, 4, 0, 0], lineCap: 'round' },
+      plotOptions: { bar: { columnWidth: '40%', borderRadius: 2 } },
       title: {
-        text: "Curva S — Avance Programado vs Avance Real",
-        align: "left",
-        margin: 15,
-        style: {
-          fontSize: '15px',
-          fontWeight: '700',
-          color: '#1a237e',
-          fontFamily: 'Arial, sans-serif'
-        }
+        text: 'Curva S — Avance Programado vs Real',
+        align: 'left',
+        style: { fontSize: '14px', fontWeight: '700', color: '#1a237e' }
       },
-      grid: {
-        show: true,
-        borderColor: '#e8eaf6',
-        strokeDashArray: 3,
-        xaxis: {
-          lines: {
-            show: false
-          }
-        },
-        yaxis: {
-          lines: {
-            show: true
-          }
-        },
-        padding: {
-          left: 0,
-          right: 0,
-          bottom: 0
-        }
-      },
-      markers: {
-        size: 6,
-        strokeWidth: 2,
-        hover: {
-          size: 9
-        }
-      },
+      grid: { show: true, borderColor: '#e8eaf6', strokeDashArray: 3 },
+      markers: { size: 4, strokeWidth: 2, hover: { size: 7 } },
       xaxis: {
-        categories: this.ALL_MONTHS,
+        categories: xCategories,
+        tickAmount: Math.min(xCategories.length, 20),
         labels: {
-          style: {
-            colors: ['#555'],
-            fontSize: '11px',
-            fontWeight: '600'
-          }
-        },
-        axisBorder: { show: true, color: '#ccc' },
-        axisTicks:  { show: true, color: '#ccc' }
+          rotate: xCategories.length > 10 ? -45 : 0,
+          style: { colors: '#555', fontSize: '10px' }
+        }
       },
       yaxis: {
-        min: 0,
-        max: 110,
-        tickAmount: 10,
-        title: {
-          text: "Avance Acumulado (%)",
-          style: {
-            color: '#1a237e',
-            fontSize: '13px',
-            fontWeight: '700'
-          }
-        },
-        labels: {
-          formatter: (value) => {
-            return value.toFixed(0) + '%'
-          },
-          style: {
-            colors: ['#666'],
-            fontSize: '11px'
-          }
-        },
-        axisBorder: {
-          show: true,
-          color: '#e8eaf6'
-        },
-        axisTicks: {
-          show: true,
-          color: '#e8eaf6'
-        }
+        min: 0, max: yMax, tickAmount: 10,
+        title: { text: 'Avance Acumulado (%)' },
+        labels: { formatter: (v: number) => v.toFixed(0) + '%' }
       },
-      legend: {
-        position: "top",
-        horizontalAlign: "center",
-        floating: false,
-        fontSize: '13px',
-        fontWeight: '600'
-      },
+      legend: { position: 'top', horizontalAlign: 'center', fontSize: '12px' },
       tooltip: {
-        theme: 'light',
-        shared: true,
-        intersect: false,
-        x: {
-          show: true,
-          format: 'dd/MM/yyyy'
-        },
-        y: {
-          formatter: (value) => {
-            return value.toFixed(1) + '%'
-          }
-        }
+        shared: true, intersect: false,
+        y: { formatter: (v: number) => v != null ? v.toFixed(2) + '%' : '' }
       }
     };
 
-    if (this.chart && this.chart.updateOptions) {
+    // ── Tabla mensual por AÑO-MES (FIX: soporta contratos multi-año) ─────────
+    const byYearMonth: { [key: string]: ContractAdvance[] } = {};
+    this.datosMensuales.forEach(d => {
+      const dt  = new Date(d.date + 'T00:00:00');
+      const key = `${dt.getFullYear()}-${String(dt.getMonth()).padStart(2, '0')}`;
+      if (!byYearMonth[key]) byYearMonth[key] = [];
+      byYearMonth[key].push(d);
+    });
+    this.monthlyTableData = Object.keys(byYearMonth).sort().map(key => {
+      const [yearStr, monthIdxStr] = key.split('-');
+      const records = byYearMonth[key];
+      const last    = records[records.length - 1];
+      return {
+        month:    `${this.ALL_MONTHS[Number(monthIdxStr)]} '${yearStr.substring(2)}`,
+        program:  Math.round((last.accumulateProgram  ?? 0) * 10) / 10,
+        physical: Math.round((last.accumulatePhysical ?? 0) * 10) / 10,
+        hito:     Math.round(records.reduce((s, r) => s + Number(r.programAdvanced), 0) * 10) / 10,
+      };
+    });
+
+    if (this.chart?.updateOptions) {
       this.chart.updateOptions(this.chartOptions);
-    } else {
-      console.warn('La instancia de la gráfica no está disponible para actualizar');
     }
   }
 
-  importExcel(event: any) {
+  private cleanDataForServer(data: ContractAdvance): any {
+    const clean = { ...data };
+    delete clean.__isNew;
+    delete clean.__modified;
+    if (clean.id && String(clean.id).startsWith('temp_')) delete clean.id;
+    return clean;
+  }
+
+  // ─── Importar Excel ──────────────────────────────────────────────────────────
+  importExcel(event: any): void {
     const file = event.target.files[0];
+    if (!file) return;
     const allowedTypes = [
       'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
       'application/vnd.ms-excel'
     ];
-
     if (!allowedTypes.includes(file.type)) {
-      alerts.basicAlert(
-        'Error de archivo',
-        'Por favor, seleccione un archivo Excel válido (.xlsx o .xls).',
-        'error'
+      alerts.basicAlert('Error', 'Selecciona un archivo Excel (.xlsx o .xls).', 'error');
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = (e: any) => {
+      const wb        = XLSX.read(new Uint8Array(e.target.result), { type: 'array' });
+      const sheet     = wb.Sheets[wb.SheetNames[0]];
+      const data: any[] = XLSX.utils.sheet_to_json(sheet, { raw: true });
+      const processed = data.map((row: any) => ({
+        date:             this.excelDateToISO(Number(row['Fecha'])),
+        programAdvanced:  Number(row['Programado'] ?? 0),
+        physicalAdvanced: Number(row['Fisico']     ?? 0),
+        idContract:       this.curretnContractSelected,
+        active:           1,
+      }));
+      processed.forEach(item => this._advancesService.addAdvance(item).subscribe());
+      setTimeout(() => this.obtenerDatos(), 1200);
+      alerts.basicAlert('Importado', `${processed.length} registros importados.`, 'success');
+    };
+    reader.readAsArrayBuffer(file);
+  }
+
+  private excelDateToISO(serial: number): string {
+    const date  = new Date((serial - 1) * 86400000);
+    const y     = date.getFullYear();
+    const m     = String(date.getMonth() + 1).padStart(2, '0');
+    const d     = String(date.getDate()).padStart(2, '0');
+    return `${y}-${m}-${d}`;
+  }
+
+  // ════════════════════════════════════════════════════════════════════════════
+  //  PUNTO 6 — Captura de Avance Diario por Tarea
+  // ════════════════════════════════════════════════════════════════════════════
+
+  /** Abre / cierra la sección de captura diaria */
+  async openDailyCapture(): Promise<void> {
+    this.showDailyCapture = !this.showDailyCapture;
+    if (this.showDailyCapture) {
+      await this.loadActiveTasks();
+    }
+  }
+
+  /** Recargar tareas al cambiar la fecha */
+  async onCaptureDateChange(): Promise<void> {
+    await this.loadActiveTasks();
+  }
+
+  /** Calcula el total de avance físico del día en tiempo real */
+  recalcTotalAdvanceHoy(): void {
+    const all = [...this.activeTasksData, ...this.delayedTasksData];
+    this.totalPhysicalAdvanceHoy = Math.round(
+      all.reduce((sum, t) => sum + (Number(t.ponderado ?? 0) * Number(t.avanceHoy ?? 0) / 100), 0)
+      * 1000
+    ) / 1000;
+  }
+
+  /** Carga tareas activas y retrasadas del workprogram para la fecha seleccionada */
+  async loadActiveTasks(): Promise<void> {
+    this.isLoadingTasks = true;
+    this.activeTasksData  = [];
+    this.delayedTasksData = [];
+    this.totalPhysicalAdvanceHoy = 0;
+    this.programAdvanceHoy       = 0;
+
+    try {
+      // Cargar tareas del programa de trabajo
+      const allTasks: any[] = await lastValueFrom(
+        (this.idProject && this.idProject > 0)
+          ? this._workprogramsService.getWorkPrograms(this.idProject, 'Project')
+          : this._workprogramsService.getWorkPrograms(this.curretnContractSelected!, 'Contract')
       );
+
+      if (!allTasks?.length) {
+        alerts.basicAlert('Sin tareas', 'No hay tareas en el programa de trabajo para este contrato/proyecto.', 'warning');
+        return;
+      }
+
+      // Tareas hoja: no aparecen como parent de otra tarea Y tienen ponderado > 0
+      const parentSet = new Set(allTasks.map(t => String(t.parent)));
+      const leafTasks = allTasks.filter(t =>
+        !parentSet.has(String(t.idTask)) &&
+        Number(t.ponderado ?? 0) > 0
+      );
+
+      if (!leafTasks.length) {
+        alerts.basicAlert(
+          'Sin ponderado',
+          'Las tareas hoja no tienen ponderado. Ve al Programa de Trabajo, presiona ⚙️ para elegir modalidad y luego % para calcular.',
+          'warning'
+        );
+        return;
+      }
+
+      const captureMs = new Date(this.dailyCaptureDate + 'T00:00:00').getTime();
+
+      leafTasks.forEach(t => {
+        const startMs = t.startDate ? new Date(t.startDate).getTime() : 0;
+        const endMs   = t.endDate   ? new Date(t.endDate).getTime()   : Infinity;
+        const prog100 = Math.round(Number(t.progress ?? 0) * 100 * 10) / 10; // 0-1 → 0-100
+
+        const task: ActiveTask = {
+          idEntry:        Number(t.id),
+          activity:       t.activity   || '',
+          description:    t.text       || t.description || '',
+          ponderado:      Number(t.ponderado ?? 0),
+          progressActual: prog100,
+          avanceHoy:      0,
+          progressNuevo:  prog100,
+          startDate:      t.startDate ? String(t.startDate).split('T')[0] : '',
+          endDate:        t.endDate   ? String(t.endDate).split('T')[0]   : '',
+        };
+
+        if (startMs <= captureMs && captureMs <= endMs) {
+          this.activeTasksData.push(task);          // ← En ejecución hoy
+        } else if (endMs < captureMs && prog100 < 100) {
+          this.delayedTasksData.push(task);         // ← Retrasadas
+        }
+      });
+
+      this.activeTasksData  = [...this.activeTasksData.sort( (a,b) => a.activity.localeCompare(b.activity))];
+      this.delayedTasksData = [...this.delayedTasksData.sort((a,b) => a.activity.localeCompare(b.activity))];
+
+    } catch {
+      alerts.basicAlert('Error', 'No se pudieron cargar las tareas del programa de trabajo.', 'error');
+    } finally {
+      this.isLoadingTasks = false;
+    }
+  }
+
+  /** Guarda: actualiza workprogram.progress + inserta registro en advanced */
+  async saveDailyAdvance(): Promise<void> {
+    const modified = [...this.activeTasksData, ...this.delayedTasksData].filter(
+      t => t.__modified && t.avanceHoy > 0
+    );
+
+    if (!modified.length && this.totalPhysicalAdvanceHoy === 0) {
+      alerts.basicAlert('Sin cambios', 'No se registraron avances para guardar.', 'warning');
       return;
     }
 
-    const fileReader = new FileReader();
+    this.isSavingDailyAdvance = true;
+    try {
+      // 1. Actualizar workprogram.progress para cada tarea modificada
+      for (const task of modified) {
+        const newFraction = Math.min(1, task.progressNuevo / 100);
+        await lastValueFrom(
+          this._workprogramsService.updateWorkProgram(task.idEntry, { progress: newFraction })
+        );
+      }
 
-    fileReader.onload = (e: any) => {
-      const arrayBuffer = e.target.result;
-      const workbook = XLSX.read(arrayBuffer, { type: 'array' });
-      const firstSheetName = workbook.SheetNames[0];
-      const worksheet = workbook.Sheets[firstSheetName];
-      const data = XLSX.utils.sheet_to_json(worksheet, { raw: true });
+      // 2. Calcular acumulados para el nuevo registro de Curva S
+      const lastRec      = this.datosMensuales.length > 0 ? this.datosMensuales[this.datosMensuales.length - 1] : null;
+      const prevAccumPrg = lastRec?.accumulateProgram  ?? 0;
+      const prevAccumFis = lastRec?.accumulatePhysical ?? 0;
+      const newAccumPrg  = Math.round((prevAccumPrg + this.programAdvanceHoy)       * 1000) / 1000;
+      const newAccumFis  = Math.round((prevAccumFis + this.totalPhysicalAdvanceHoy) * 1000) / 1000;
 
-
-      // Procesar los datos
-      const processedData = data.map((row: any) => ({
-        date: this.excelDateToJSDate(Number(row['Fecha'])),
-        programAdvanced: Number(row['Programado']),
-        physicalAdvanced: Number(row['Fisico']),
-        idContract: this.curretnContractSelected,
-        active: 1,
+      // 3. Insertar en tabla advanced
+      await lastValueFrom(this._advancesService.addAdvance({
+        date:               this.dailyCaptureDate,
+        programAdvanced:    this.programAdvanceHoy,
+        physicalAdvanced:   this.totalPhysicalAdvanceHoy,
+        accumulateProgram:  newAccumPrg,
+        accumulatePhysical: newAccumFis,
+        idContract:         this.curretnContractSelected,
+        type:               'Contract',
+        active:             1,
       }));
 
-
-      processedData.map(item => {
-        this._advancesService.addAdvance(item).subscribe((response) => {
-        });
-
-      });
-
-      setTimeout(() => {
-        this.obtenerDatos();
-      }, 1000);
-
       alerts.basicAlert(
-        'Importación exitosa',
-        'Los datos del Excel se han importado correctamente.',
+        '✅ Avance registrado',
+        `Avance físico del día: ${this.totalPhysicalAdvanceHoy.toFixed(3)}%\nAcumulado físico: ${newAccumFis.toFixed(2)}%`,
         'success'
       );
 
-    };
+      // Recargar Curva S y tareas
+      this.obtenerDatos();
+      await this.loadActiveTasks();
 
-    fileReader.readAsArrayBuffer(file);
-
-
-  }
-
-  private excelDateToJSDate(excelDate: number): string {
-    // Excel usa el 1 de enero de 1900 como día 1
-    const date = new Date((excelDate - 1) * 24 * 60 * 60 * 1000);
-    const year = date.getFullYear();
-    const month = (date.getMonth() + 1).toString().padStart(2, '0');
-    const day = date.getDate().toString().padStart(2, '0');
-    return `${year}-${month}-${day}`;
+    } catch {
+      alerts.basicAlert('Error', 'Ocurrió un error al registrar el avance diario.', 'error');
+    } finally {
+      this.isSavingDailyAdvance = false;
+    }
   }
 }
