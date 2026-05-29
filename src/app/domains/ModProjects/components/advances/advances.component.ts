@@ -589,11 +589,11 @@ export class AdvancesComponent implements OnInit, OnChanges {
 
     this.isSavingDailyAdvance = true;
     try {
-      // 1. Actualizar workprogram.progress para cada tarea modificada
+      // 1. Actualizar workprogram.progress para cada tarea modificada (PATCH — solo el campo progress)
       for (const task of modified) {
         const newFraction = Math.min(1, task.progressNuevo / 100);
         await lastValueFrom(
-          this._workprogramsService.updateWorkProgram(task.idEntry, { progress: newFraction })
+          this._workprogramsService.patchWorkProgramProgress(task.idEntry, newFraction)
         );
       }
 
