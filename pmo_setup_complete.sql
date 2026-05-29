@@ -15,7 +15,7 @@ GO
 IF NOT EXISTS (SELECT 1 FROM dbo.masterpermissions WHERE id = 22)
 BEGIN
     SET IDENTITY_INSERT dbo.masterpermissions ON;
-    INSERT INTO dbo.masterpermissions (id, name, identifier, comment, active)
+    INSERT INTO dbo.masterpermissions (id, permission_name, identifier, comment, active)
     VALUES (22, 'PMO', 'pmo', 'Módulo de Gestión de Proyectos PMO', 1);
     SET IDENTITY_INSERT dbo.masterpermissions OFF;
     PRINT 'masterpermissions id=22 (PMO) insertado.';
@@ -107,7 +107,7 @@ GO
 
 -- ── Verificar resultado ───────────────────────────────────────────
 USE security;
-SELECT id, name, identifier FROM dbo.masterpermissions WHERE id = 22;
+SELECT id, permission_name, identifier FROM dbo.masterpermissions WHERE id = 22;
 SELECT id, permission_name, identifier, active FROM dbo.detailedpermissions WHERE master_id = 22 ORDER BY id;
 SELECT COUNT(*) AS empresas_con_pmo FROM dbo.MenuXCompany WHERE idMenu = 22;
 GO
