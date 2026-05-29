@@ -51,6 +51,13 @@ export class PmoActividadesComponent implements OnInit {
   selectedConvention: any   = null;
   isLoadingConv             = false;
 
+  /** Sentinel para mostrar actividades sin convenio asignado */
+  readonly SIN_CONVENIO = { id: -1, name: '⚪ Sin convenio', type: '' };
+
+  /** Convenio destino para reasignación masiva */
+  targetConvention: any  = null;
+  isReassigning          = false;
+
   isLoading        = false;
   isSaving         = false;
   hasUnsavedChanges = false;
@@ -216,6 +223,11 @@ export class PmoActividadesComponent implements OnInit {
     await this.loadActividades();
   }
 
+  /** ¿Está activo el modo "sin convenio"? */
+  get isSinConvenio(): boolean {
+    return this.selectedConvention === this.SIN_CONVENIO;
+  }
+
   async loadActividades(): Promise<void> {
     if (!this.selectedProject) return;
     this.isLoading = true;
@@ -223,11 +235,19 @@ export class PmoActividadesComponent implements OnInit {
     try {
       const idProject = this.selectedProject.id ?? this.selectedProject.idProject;
       let raw: any[];
-      if (this.selectedConvention) {
+
+      if (this.isSinConvenio) {
+        // ── Modo "sin convenio": traer todas y filtrar las que tienen id_convention=null ──
+        raw = await lastValueFrom(this._wpService.getWorkPrograms(idProject, 'Project'));
+        raw = (raw ?? []).filter(r => (r.id_convention ?? r.idConvention ?? null) === null);
+      } else if (this.selectedConvention) {
+        // ── Convenio específico: endpoint dedicado ──
         raw = await lastValueFrom(this._wpService.getByConvention(this.selectedConvention.id, idProject));
       } else {
+        // ── Sin filtro: todas las actividades ──
         raw = await lastValueFrom(this._wpService.getWorkPrograms(idProject, 'Project'));
       }
+
       this.rowData = (raw ?? []).map(r => this.mapFromApi(r));
       this.originalRowData = JSON.parse(JSON.stringify(this.rowData));
       this.hasUnsavedChanges = false;
@@ -239,6 +259,35 @@ export class PmoActividadesComponent implements OnInit {
       this.rowData = [];
       this.setRowData([]);
     } finally { this.isLoading = false; }
+  }
+
+  /** Reasigna TODAS las actividades visibles al convenio destino seleccionado */
+  async reassignToConvention(): Promise<void> {
+    if (!this.targetConvention || !this.rowData.length) return;
+    if (!confirm(`¿Asignar las ${this.rowData.length} actividades visibles al convenio "${this.targetConvention.name || this.targetConvention.folio}"?`)) return;
+
+    this.isReassigning = true;
+    let updated = 0;
+    try {
+      for (const row of this.rowData) {
+        row.idConvention = this.targetConvention.id;
+        const payload = this.mapToApi(row);
+        if (row.id === 0) {
+          await lastValueFrom(this._wpService.addWorkProgram(payload));
+        } else {
+          await lastValueFrom(this._wpService.updateWorkProgram(row.id, payload));
+        }
+        updated++;
+      }
+      this.showMsg(`✓ ${updated} actividad(es) asignadas a "${this.targetConvention.name || this.targetConvention.folio}"`, 'success');
+      // Recargar con el convenio destino
+      this.selectedConvention = this.targetConvention;
+      this.targetConvention   = null;
+      await this.loadActividades();
+    } catch (err) {
+      this.showMsg('Error al reasignar — revisa la consola', 'error');
+      console.error(err);
+    } finally { this.isReassigning = false; }
   }
 
   onGridReady(e: GridReadyEvent): void { this.gridApi = e.api; }
@@ -263,7 +312,7 @@ export class PmoActividadesComponent implements OnInit {
     const newRow: ActividadRow = {
       id: 0,
       idProject:    this.selectedProject.id,
-      idConvention: this.selectedConvention?.id ?? null,
+      idConvention: this.isSinConvenio ? null : (this.selectedConvention?.id ?? null),
       activity:     '',
       description:  '',
       unit:         '',
