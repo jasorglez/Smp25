@@ -85,5 +85,5 @@ export const environment = {
     // publicKey: 'TEST-4399133a-4676-42a2-ab85-d946370bf96a',
   },
 
-  version: '6.84 (29 Mayo 2026 19:30) feat(pmo-ruta-critica): diagrama Gantt SVG con flechas de dependencias y ruta crítica en rojo',
+  version: '6.85 (29 Mayo 2026 20:00) fix(permisos): usersxmasterpermissions2 — guard contra undefined en signals antes de loadPermissions',
 };
