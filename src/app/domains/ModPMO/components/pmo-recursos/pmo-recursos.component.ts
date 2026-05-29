@@ -5,10 +5,12 @@ import { AgGridModule }         from 'ag-grid-angular';
 import { ColDef, GridApi, GridReadyEvent } from 'ag-grid-enterprise';
 import { lastValueFrom }        from 'rxjs';
 import { ProjectsService }      from 'app/services/projects.service';
+import { WorkprogramsService }  from 'app/services/workprograms.service';
 import { SignalsService }       from 'app/services/signals.service';
 
 interface RecursoRow {
   id:           number;   // 0 = nuevo, >0 = existe en BD
+  idActivity:   number;   // ID de la actividad/tarea del workprogram
   tipo:         string;
   descripcion:  string;
   unidad:       string;
@@ -17,12 +19,11 @@ interface RecursoRow {
   cantReal:     number;
   costoUnitPlan: number;
   costoUnitReal: number;
-  costoPlan:    number;   // calculado: cantPlan * costoUnitPlan
-  costoReal:    number;   // calculado: cantReal * costoUnitReal
-  variacion:    number;   // costoReal - costoPlan
+  costoPlan:    number;   // calculado
+  costoReal:    number;   // calculado
+  variacion:    number;
   __isNew?:     boolean;
   __modified?:  boolean;
-  __deleted?:   boolean;
 }
 
 @Component({
@@ -32,20 +33,24 @@ interface RecursoRow {
   templateUrl: './pmo-recursos.component.html',
 })
 export class PmoRecursosComponent implements OnInit {
-  private _projectsService = inject(ProjectsService);
-  private _signalsService  = inject(SignalsService);
+  private _projectsService     = inject(ProjectsService);
+  private _workprogramsService = inject(WorkprogramsService);
+  private _signalsService      = inject(SignalsService);
 
-  idCompany        = 0;
-  projects: any[]  = [];
-  selectedProject: any = null;
+  idCompany         = 0;
+  projects: any[]   = [];
+  activities: any[] = [];           // tareas del workprogram del proyecto seleccionado
+  selectedProject:  any = null;
+  selectedActivity: any = null;     // actividad seleccionada
+
   isLoading        = false;
   isSaving         = false;
   hasUnsavedChanges = false;
   saveMsg          = '';
-  saveMsgType      = '';   // 'success' | 'error'
+  saveMsgType      = '';
 
   gridApi!: GridApi;
-  rowData: RecursoRow[] = [];
+  rowData: RecursoRow[]        = [];
   private originalRowData: RecursoRow[] = [];
 
   totalPlan  = 0;
@@ -56,11 +61,11 @@ export class PmoRecursosComponent implements OnInit {
     {
       field: 'tipo', headerName: 'Tipo de Cargo', width: 130, editable: true,
       cellEditor: 'agSelectCellEditor',
-      cellEditorParams: { values: ['Personal', 'Material', 'Equipo', 'Subcontrato', 'Indirecto'] },
+      cellEditorParams: { values: ['Personal','Material','Equipo','Subcontrato','Indirecto'] },
       cellStyle: (p) => p.data?.__isNew ? { background: '#fffacd' } : {},
     },
     {
-      field: 'descripcion', headerName: 'Descripción', width: 200, editable: true,
+      field: 'descripcion', headerName: 'Descripción / Recurso', width: 200, editable: true,
       cellStyle: (p) => p.data?.__isNew ? { background: '#fffacd' } : {},
     },
     {
@@ -125,9 +130,7 @@ export class PmoRecursosComponent implements OnInit {
     },
   ];
 
-  rowClassRules = {
-    'new-row-highlight': (p: any) => !!p.data?.__isNew,
-  };
+  rowClassRules = { 'new-row-highlight': (p: any) => !!p.data?.__isNew };
 
   constructor() {
     effect(() => {
@@ -152,26 +155,67 @@ export class PmoRecursosComponent implements OnInit {
   }
 
   async onProjectChange(): Promise<void> {
-    if (!this.selectedProject) { this.rowData = []; this.recalcTotals(); return; }
+    this.selectedActivity = null;
+    this.rowData          = [];
+    this.activities       = [];
+    this.recalcTotals();
+    if (!this.selectedProject) return;
+    await this.loadActivities();
+  }
+
+  /** Carga las actividades del workprogram del proyecto seleccionado */
+  async loadActivities(): Promise<void> {
+    if (!this.selectedProject) return;
+    try {
+      const id = this.selectedProject.id ?? this.selectedProject.idProject;
+      const raw: any[] = await lastValueFrom(
+        this._workprogramsService.getWorkPrograms(id, 'Project')
+      );
+      // Solo actividades hoja (sin hijos) o todas — mostramos todas para que el usuario elija
+      this.activities = (raw ?? []).map(a => ({
+        id:    a.id ?? a.idEntry,
+        label: `${a.activity ?? a.wbs ?? ''} — ${(a.text ?? a.description ?? '').substring(0, 55)}`,
+        raw:   a,
+      })).sort((a, b) => String(a.raw.activity ?? '').localeCompare(String(b.raw.activity ?? '')));
+    } catch {
+      this.activities = [];
+    }
+  }
+
+  async onActivityChange(): Promise<void> {
+    if (!this.selectedActivity) {
+      this.rowData = [];
+      this.recalcTotals();
+      return;
+    }
     await this.loadRecursos();
   }
 
   async loadRecursos(): Promise<void> {
-    if (!this.selectedProject) return;
+    if (!this.selectedActivity) return;
     this.isLoading = true;
+    if (this.gridApi && !this.gridApi.isDestroyed()) this.gridApi.showLoadingOverlay();
     try {
       const res: any = await lastValueFrom(
         this._projectsService.getPmoRecursosByProject(this.selectedProject.id)
       );
       const raw = Array.isArray(res) ? res : (Array.isArray(res?.data) ? res.data : []);
-      this.rowData = raw.map((r: any) => this.mapFromApi(r));
+      // Filtrar por idActivity del proyecto
+      const actId = this.selectedActivity.id;
+      this.rowData = raw
+        .filter((r: any) => (r.idActivity ?? r.id_activity) === actId)
+        .map((r: any) => this.mapFromApi(r));
       this.originalRowData = JSON.parse(JSON.stringify(this.rowData));
       this.hasUnsavedChanges = false;
       this.recalcTotals();
       this.setRowData(this.rowData);
+      if (this.gridApi && !this.gridApi.isDestroyed()) {
+        this.rowData.length ? this.gridApi.hideOverlay() : this.gridApi.showNoRowsOverlay();
+      }
     } catch (err) {
       console.error('Error cargando recursos PMO', err);
       this.rowData = [];
+      this.setRowData([]);
     } finally {
       this.isLoading = false;
     }
@@ -180,8 +224,10 @@ export class PmoRecursosComponent implements OnInit {
   onGridReady(e: GridReadyEvent): void { this.gridApi = e.api; }
 
   addRow(): void {
+    if (!this.selectedActivity) return;
     const newRow: RecursoRow = {
       id: 0,
+      idActivity:   this.selectedActivity.id,
       tipo: 'Personal', descripcion: '', unidad: 'día', periodo: '',
       cantPlan: 0, cantReal: 0, costoUnitPlan: 0, costoUnitReal: 0,
       costoPlan: 0, costoReal: 0, variacion: 0,
@@ -191,14 +237,13 @@ export class PmoRecursosComponent implements OnInit {
     this.hasUnsavedChanges = true;
     this.setRowData(this.rowData);
     setTimeout(() => {
-      if (this.gridApi && !this.gridApi.isDestroyed()) {
+      if (this.gridApi && !this.gridApi.isDestroyed())
         this.gridApi.startEditingCell({ rowIndex: 0, colKey: 'tipo' });
-      }
     }, 50);
   }
 
   async saveChanges(): Promise<void> {
-    if (!this.selectedProject) return;
+    if (!this.selectedActivity) return;
     const dirty = this.rowData.filter(r => r.__isNew || r.__modified);
     if (!dirty.length) { this.showMsg('No hay cambios que guardar', 'error'); return; }
 
@@ -209,7 +254,6 @@ export class PmoRecursosComponent implements OnInit {
       await this.loadRecursos();
       this.showMsg(`✓ ${res?.count ?? dirty.length} registros guardados`, 'success');
     } catch (err: any) {
-      console.error('Error guardando recursos PMO', err);
       this.showMsg('Error al guardar — revisa la consola', 'error');
     } finally {
       this.isSaving = false;
@@ -221,7 +265,6 @@ export class PmoRecursosComponent implements OnInit {
     if (!selected.length) return;
     const row: RecursoRow = selected[0];
     if (row.__isNew) {
-      // Fila nueva no guardada: solo quitar del grid
       this.rowData = this.rowData.filter(r => r !== row);
       this.setRowData(this.rowData);
       this.recalcTotals();
@@ -232,9 +275,7 @@ export class PmoRecursosComponent implements OnInit {
       await lastValueFrom(this._projectsService.deletePmoRecurso(row.id));
       await this.loadRecursos();
       this.showMsg('Registro eliminado', 'success');
-    } catch (err) {
-      this.showMsg('Error al eliminar', 'error');
-    }
+    } catch { this.showMsg('Error al eliminar', 'error'); }
   }
 
   revertChanges(): void {
@@ -248,13 +289,11 @@ export class PmoRecursosComponent implements OnInit {
     this.gridApi?.exportDataAsExcel({ fileName: 'PMO_Recursos.xlsx' });
   }
 
-  // ── helpers ───────────────────────────────────────────────────────────────
+  // ── helpers ──────────────────────────────────────────────────────────────────
 
-  /** Llama setGridOption solo si el grid sigue vivo (evita "grid has been destroyed") */
   private setRowData(data: RecursoRow[]): void {
-    if (this.gridApi && !this.gridApi.isDestroyed()) {
+    if (this.gridApi && !this.gridApi.isDestroyed())
       this.gridApi.setGridOption('rowData', data);
-    }
   }
 
   private markModified(row: RecursoRow): void {
@@ -276,14 +315,15 @@ export class PmoRecursosComponent implements OnInit {
     const costoPlan     = cantPlan * costoUnitPlan;
     const costoReal     = cantReal * costoUnitReal;
     return {
-      id:            r.id ?? 0,
-      tipo:          r.tipo ?? 'Personal',
-      descripcion:   r.descripcion ?? '',
-      unidad:        r.unidad ?? 'día',
-      periodo:       r.periodo ?? '',
+      id:           r.id ?? 0,
+      idActivity:   r.idActivity ?? r.id_activity ?? 0,
+      tipo:         r.tipo ?? 'Personal',
+      descripcion:  r.descripcion ?? '',
+      unidad:       r.unidad ?? 'día',
+      periodo:      r.periodo ?? '',
       cantPlan, cantReal, costoUnitPlan, costoUnitReal,
       costoPlan, costoReal,
-      variacion:     costoReal - costoPlan,
+      variacion:    costoReal - costoPlan,
     };
   }
 
@@ -292,6 +332,7 @@ export class PmoRecursosComponent implements OnInit {
       id:             r.id,
       idProject:      this.selectedProject?.id ?? 0,
       idCompany:      this.idCompany,
+      idActivity:     r.idActivity || this.selectedActivity?.id || null,
       tipo:           r.tipo,
       descripcion:    r.descripcion,
       unidad:         r.unidad,
