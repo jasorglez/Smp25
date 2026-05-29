@@ -178,6 +178,10 @@ export class ProductionService {
     return this.http.put<any>(`${environment.urlProduction}/MoliendaMatDetalle/${id}`, data, { headers: this.trackingService.getHeaders() });
   }
 
+  patchMoliendaMatDetalleBote(id: number, bote: number | null): Observable<any> {
+    return this.http.patch<any>(`${environment.urlProduction}/MoliendaMatDetalle/${id}/bote`, bote, { headers: this.trackingService.getHeaders() });
+  }
+
   deleteMoliendaMatDetalle(id: number): Observable<void> {
     return this.http.delete<void>(`${environment.urlProduction}/MoliendaMatDetalle/${id}`, { headers: this.trackingService.getHeaders() });
   }
