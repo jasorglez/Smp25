@@ -198,17 +198,28 @@ export class PmoImportComponent implements OnInit, OnChanges {
   // ── Analizar Excel / CSV ──────────────────────────────────────────────────
   private async analyzeExcel(file: File): Promise<void> {
     const wb = await this.readWorkbook(file);
-    const ws = wb.Sheets[wb.SheetNames[0]];
+    // Buscar la hoja PMO_Template primero, si no la primera
+    const sheetName = wb.SheetNames.find(n => n.toLowerCase().includes('pmo') || n.toLowerCase().includes('template'))
+                   ?? wb.SheetNames[0];
+    const ws = wb.Sheets[sheetName];
     if (!ws) throw new Error('El archivo no contiene una hoja válida');
     const rows = XLSX.utils.sheet_to_json<Record<string, any>>(ws, { defval: '', raw: false });
-    if (!rows.length) throw new Error('El archivo no contiene filas');
+    if (!rows.length) throw new Error('El archivo no contiene filas de datos');
 
     this.detectedHeaders = Object.keys(rows[0]);
+    this._rawExcelRows   = rows;
     this.autoMap();
-    this.step = 'map';
 
-    // Store raw rows for preview after mapping confirmed
-    this._rawExcelRows = rows;
+    // Si todos los campos requeridos quedaron mapeados → saltar mapeo, ir directo a preview
+    const missingRequired = PMO_FIELDS.filter(f => f.required && !this.mapping[f.key]);
+    if (missingRequired.length === 0) {
+      // Auto-mapeo completo: ir directo a vista previa
+      this.buildDraftsFromExcel();
+      this.step = 'preview';
+    } else {
+      // Faltan campos: mostrar pantalla de mapeo manual
+      this.step = 'map';
+    }
   }
 
   private _rawExcelRows: Record<string, any>[] = [];
@@ -656,5 +667,24 @@ export class PmoImportComponent implements OnInit, OnChanges {
 
   rowStatus(d: TaskDraft): 'ok'|'warn'|'error' {
     return d.errors.length ? 'error' : d.warnings.length ? 'warn' : 'ok';
+  }
+
+  /** Descripción en lenguaje simple de cada campo PMO */
+  fieldHint(key: string): string {
+    const hints: Record<string, string> = {
+      wbs:          'Número o código de la actividad. Ej: 1, 1.1, 1.2.3',
+      description:  'Nombre o título de la actividad. Ej: "Cimentación"',
+      unit:         'Unidad de medida. Ej: m², kg, día, pieza',
+      quantity:     'Cuántas unidades. Ej: 150',
+      costMX:       'Precio por unidad en pesos. Ej: 850.00',
+      startDate:    'Fecha en que inicia la actividad. Ej: 2026-03-01',
+      endDate:      'Fecha en que termina la actividad. Ej: 2026-06-30',
+      duration:     'Días de duración. 0 = Hito (fecha puntual)',
+      predecessors: 'Código(s) de actividades que deben terminar antes. Ej: 1.1',
+      successors:   'Código(s) de actividades que siguen después',
+      resources:    'Personas o equipos asignados. Ej: "Cuadrilla A"',
+      criticalRoute:'¿Retraso en esta actividad retrasa el proyecto? Pon Si o No',
+    };
+    return hints[key] ?? '';
   }
 }
