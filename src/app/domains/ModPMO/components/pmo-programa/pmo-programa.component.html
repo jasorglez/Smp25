@@ -3,6 +3,7 @@
   *ngIf="showImport"
   [idProject]="selectedProject?.id ?? 0"
   [idCompany]="idCompany"
+  [idContrato]="selectedProject?.idContrato ?? selectedProject?.id_contrato ?? 0"
   [projectName]="selectedProject?.name || selectedProject?.projectName || ''"
   (closed)="closeImport()"
   (imported)="onImported($event)">

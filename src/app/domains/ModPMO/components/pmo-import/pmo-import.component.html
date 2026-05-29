@@ -86,13 +86,77 @@
             </ng-container>
           </div>
 
+          <!-- ── Selector de Convenio ──────────────────────────────────────── -->
+          <div class="card border-primary mb-3">
+            <div class="card-header bg-primary text-white py-2 d-flex align-items-center gap-2">
+              <i class="bi bi-file-earmark-text"></i>
+              <span class="fw-semibold small">Convenio que autoriza esta importación</span>
+              <span *ngIf="isLoadingConv" class="spinner-border spinner-border-sm ms-2"></span>
+            </div>
+            <div class="card-body py-3 px-3">
+
+              <!-- Sin contrato configurado -->
+              <div *ngIf="!idContrato" class="text-muted small">
+                <i class="bi bi-info-circle me-1"></i>
+                Este proyecto no tiene contrato asignado. La importación no quedará ligada a ningún convenio.
+              </div>
+
+              <!-- Sin convenios cargados -->
+              <div *ngIf="idContrato && !isLoadingConv && !conventions.length" class="text-warning small">
+                <i class="bi bi-exclamation-triangle me-1"></i>
+                No se encontraron convenios para el contrato de este proyecto.
+                Crea el convenio en <strong>Proyectos → Convenios</strong> antes de importar.
+              </div>
+
+              <!-- Lista de convenios -->
+              <div *ngIf="conventions.length" class="row g-2">
+                <div *ngFor="let c of conventions" class="col-auto">
+                  <div class="card h-100 border-2 p-2 conv-card"
+                       style="min-width:180px; cursor:pointer;"
+                       [class.border-primary]="selectedConvention?.id === c.id"
+                       [class.bg-primary]="selectedConvention?.id === c.id"
+                       [class.text-white]="selectedConvention?.id === c.id"
+                       [class.border-secondary]="selectedConvention?.id !== c.id"
+                       (click)="selectedConvention = c">
+                    <div class="d-flex align-items-start gap-2">
+                      <i class="bi bi-check-circle-fill mt-1"
+                         [class.d-none]="selectedConvention?.id !== c.id"
+                         [class.text-white]="selectedConvention?.id === c.id"></i>
+                      <div>
+                        <div class="fw-bold small">{{ c.name }}</div>
+                        <span class="badge small mt-1"
+                              [ngClass]="convTypeBadge(c.type).css">
+                          {{ convTypeBadge(c.type).label }}
+                        </span>
+                        <div class="small mt-1 opacity-75">
+                          {{ c.start | date:'dd/MM/yyyy' }} → {{ c.end | date:'dd/MM/yyyy' }}
+                        </div>
+                        <span *ngIf="c.vigente" class="badge bg-success mt-1 small">Vigente</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Advertencia sin selección -->
+              <div *ngIf="conventions.length && !selectedConvention" class="alert alert-warning py-1 small mt-2 mb-0">
+                <i class="bi bi-exclamation-triangle me-1"></i>
+                Selecciona un convenio para continuar.
+              </div>
+            </div>
+          </div>
+
           <!-- Modo importación -->
           <div class="d-flex gap-4 mb-3 small">
             <div class="form-check">
               <input class="form-check-input" type="radio" id="modeReplace"
                      value="replace" [(ngModel)]="importMode">
               <label class="form-check-label" for="modeReplace">
-                <strong>Reemplazar</strong> — elimina el programa actual e importa desde cero
+                <strong>Reemplazar</strong> —
+                <span *ngIf="selectedConvention">
+                  borra tareas previas de <em>{{ selectedConvention.name }}</em> e importa desde cero
+                </span>
+                <span *ngIf="!selectedConvention">borra el programa actual e importa desde cero</span>
               </label>
             </div>
             <div class="form-check">
@@ -276,7 +340,9 @@
         <!-- Upload -->
         <ng-container *ngIf="step==='upload'">
           <button class="btn btn-secondary" (click)="close()">Cancelar</button>
-          <button class="btn btn-primary" [disabled]="!selectedFile || isAnalyzing"
+          <!-- Bloquear si hay convenios disponibles pero ninguno seleccionado -->
+          <button class="btn btn-primary"
+                  [disabled]="!selectedFile || isAnalyzing || (conventions.length > 0 && !selectedConvention)"
                   (click)="analyzeFile()">
             <span *ngIf="isAnalyzing" class="spinner-border spinner-border-sm me-1"></span>
             <i *ngIf="!isAnalyzing" class="bi bi-arrow-right me-1"></i>
@@ -299,8 +365,14 @@
           <button class="btn btn-secondary" (click)="step = fileType==='excel' ? 'map' : 'upload'">
             <i class="bi bi-arrow-left me-1"></i> Atrás
           </button>
-          <div class="me-auto small text-muted">
-            Modo: <strong>{{ importMode === 'replace' ? 'Reemplazar' : 'Fusionar' }}</strong>
+          <div class="me-auto small text-muted d-flex flex-column">
+            <span>Modo: <strong>{{ importMode === 'replace' ? 'Reemplazar' : 'Fusionar' }}</strong></span>
+            <span *ngIf="selectedConvention">
+              Convenio: <strong class="text-primary">{{ selectedConvention.name }}</strong>
+              <span class="badge ms-1" [ngClass]="convTypeBadge(selectedConvention.type).css">
+                {{ convTypeBadge(selectedConvention.type).label }}
+              </span>
+            </span>
           </div>
           <button class="btn btn-success" [disabled]="okCount===0" (click)="saveToDatabase()">
             <i class="bi bi-cloud-upload me-1"></i>
@@ -335,6 +407,14 @@
 .drop-zone--file {
   border-color: #198754;
   background: #f0fff4;
+}
+.conv-card {
+  transition: all .15s;
+  border-radius: 8px;
+}
+.conv-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0,0,0,.12);
 }
 .modal-xl { max-width: 1100px; }
 </style>

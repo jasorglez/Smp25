@@ -85,5 +85,5 @@ export const environment = {
     // publicKey: 'TEST-4399133a-4676-42a2-ab85-d946370bf96a',
   },
 
-  version: '6.87 (29 Mayo 2026 22:00) fix(pmo-recursos): recursos por actividad — selector proyecto-actividad + grid height fix',
+  version: '6.88 (29 Mayo 2026 23:00) feat(pmo-import): ligar importacion a convenio de reprogramacion',
 };
