@@ -85,5 +85,5 @@ export const environment = {
     // publicKey: 'TEST-4399133a-4676-42a2-ab85-d946370bf96a',
   },
 
-  version: '6.93 (29 Mayo 2026) feat(pmo-actividades): filtro sin-convenio + reasignacion masiva',
+  version: '6.94 (29 Mayo 2026) feat(pmo-recursos): selector catalogo Personal/Equipo/Material',
 };
