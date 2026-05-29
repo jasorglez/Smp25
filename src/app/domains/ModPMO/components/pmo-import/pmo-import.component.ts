@@ -1,12 +1,13 @@
 import {
-  Component, Input, Output, EventEmitter, inject, OnInit
+  Component, Input, Output, EventEmitter, inject, OnInit, OnChanges, SimpleChanges
 } from '@angular/core';
-import { CommonModule }       from '@angular/common';
-import { FormsModule }        from '@angular/forms';
-import * as XLSX              from 'xlsx';
-import { lastValueFrom }      from 'rxjs';
+import { CommonModule }        from '@angular/common';
+import { FormsModule }         from '@angular/forms';
+import * as XLSX               from 'xlsx';
+import { lastValueFrom }       from 'rxjs';
 import { WorkprogramsService } from 'app/services/workprograms.service';
-import { CatalogsService }    from 'app/services/catalogs.service';
+import { CatalogsService }     from 'app/services/catalogs.service';
+import { ConventionsService }  from 'app/services/conventions.service';
 
 // ── Tipos locales ─────────────────────────────────────────────────────────────
 interface TaskDraft {
@@ -52,16 +53,23 @@ const PMO_FIELDS: { key: keyof TaskDraft; label: string; required: boolean; syno
   imports: [CommonModule, FormsModule],
   templateUrl: './pmo-import.component.html',
 })
-export class PmoImportComponent implements OnInit {
+export class PmoImportComponent implements OnInit, OnChanges {
   @Input()  idProject!:   number;
   @Input()  idCompany!:   number;
+  @Input()  idContrato!:  number;    // ID del contrato del proyecto (para cargar convenios)
   @Input()  projectName = '';
-  @Input()  typeWP       = 'PROYECTO';   // tipo de workprogram que usa el proyecto
+  @Input()  typeWP       = 'PROYECTO';
   @Output() closed       = new EventEmitter<void>();
-  @Output() imported     = new EventEmitter<number>();   // emite nº de tareas guardadas
+  @Output() imported     = new EventEmitter<number>();
 
-  private _wpService  = inject(WorkprogramsService);
-  private _catService = inject(CatalogsService);
+  private _wpService   = inject(WorkprogramsService);
+  private _catService  = inject(CatalogsService);
+  private _convService = inject(ConventionsService);
+
+  // ── Convenios ────────────────────────────────────────────────────────────
+  conventions:       any[]  = [];
+  selectedConvention: any   = null;
+  isLoadingConv      = false;
 
   // ── Estado general ───────────────────────────────────────────────────────
   step: 'upload' | 'map' | 'preview' | 'saving' | 'done' = 'upload';
@@ -95,7 +103,49 @@ export class PmoImportComponent implements OnInit {
 
   readonly fields = PMO_FIELDS;
 
-  ngOnInit(): void {}
+  ngOnInit(): void {
+    if (this.idContrato) this.loadConventions();
+  }
+
+  ngOnChanges(changes: SimpleChanges): void {
+    if (changes['idContrato'] && !changes['idContrato'].firstChange) {
+      this.loadConventions();
+    }
+  }
+
+  // ── Cargar convenios del contrato ─────────────────────────────────────────
+  async loadConventions(): Promise<void> {
+    if (!this.idContrato) return;
+    this.isLoadingConv = true;
+    try {
+      const res: any = await lastValueFrom(
+        this._convService.getConventionsByContractOrProject('contract', this.idContrato)
+      );
+      const raw = Array.isArray(res) ? res : (Array.isArray(res?.data) ? res.data : []);
+      this.conventions = raw
+        .filter((c: any) => c.active !== false)
+        .sort((a: any, b: any) => a.id - b.id);
+
+      // Auto-seleccionar el vigente si hay uno
+      const vigente = this.conventions.find((c: any) => c.vigente);
+      if (vigente) this.selectedConvention = vigente;
+      else if (this.conventions.length === 1) this.selectedConvention = this.conventions[0];
+    } catch (err) {
+      console.error('Error cargando convenios', err);
+      this.conventions = [];
+    } finally {
+      this.isLoadingConv = false;
+    }
+  }
+
+  /** Etiqueta visible del tipo de convenio */
+  convTypeBadge(type: string): { label: string; css: string } {
+    const t = (type ?? '').toLowerCase();
+    if (t.includes('reprog'))  return { label: 'Reprogramación', css: 'bg-warning text-dark' };
+    if (t.includes('adend') || t.includes('addend')) return { label: 'Adenda',         css: 'bg-info text-dark' };
+    if (t.includes('amend'))   return { label: 'Enmienda',       css: 'bg-secondary'   };
+    return                            { label: 'Programación Original', css: 'bg-primary' };
+  }
 
   // ── Cerrar ────────────────────────────────────────────────────────────────
   close(): void { this.closed.emit(); }
@@ -280,14 +330,20 @@ export class PmoImportComponent implements OnInit {
     this.saveErrors  = [];
 
     try {
-      // Si replace: borrar tareas existentes
+      // Si replace: borrar SOLO las tareas del mismo convenio (o todas si no hay convenio)
       if (this.importMode === 'replace') {
-        this.saveStatus = 'Limpiando programa anterior...';
+        const convId = this.selectedConvention?.id ?? null;
+        this.saveStatus = convId
+          ? `Limpiando versión ${this.selectedConvention?.name ?? ''}...`
+          : 'Limpiando programa anterior...';
         try {
           const existing: any[] = await lastValueFrom(
             this._wpService.getWorkPrograms(this.idProject, 'Project')
           );
-          for (const t of (existing ?? [])) {
+          const toDelete = convId
+            ? (existing ?? []).filter(t => (t.id_convention ?? t.idConvention) === convId)
+            : (existing ?? []);
+          for (const t of toDelete) {
             await lastValueFrom(this._wpService.deleteWorkProgram(t.id ?? t.idEntry));
           }
         } catch { /* si falla el borrado, continuar igual */ }
@@ -315,28 +371,29 @@ export class PmoImportComponent implements OnInit {
           : 0;
 
         const payload: any = {
-          idProject:   this.idProject,
-          activity:    task.wbs,
-          text:        task.description,
-          description: task.description,
-          startdate:   task.startDate,
-          endate:      task.endDate,
-          progress:    0,
-          ponderado:   null,
-          quantity:    task.quantity  ?? 0,
-          costMX:      task.costMX   ?? 0,
-          costDLL:     0,
-          salePrice:   0,
-          criticroute: task.criticalRoute === 'Si' ? 'Si' : 'No',
-          parent:      parentId,
-          sortorder:   i,
-          predecesor:  predId,
-          active:      1,
-          type:        this.typeWP,
+          idProject:    this.idProject,
+          id_convention: this.selectedConvention?.id ?? null,   // ← convenio de esta importación
+          activity:     task.wbs,
+          text:         task.description,
+          description:  task.description,
+          startdate:    task.startDate,
+          endate:       task.endDate,
+          progress:     0,
+          ponderado:    null,
+          quantity:     task.quantity  ?? 0,
+          costMX:       task.costMX   ?? 0,
+          costDLL:      0,
+          salePrice:    0,
+          criticroute:  task.criticalRoute === 'Si' ? 'Si' : 'No',
+          parent:       parentId,
+          sortorder:    i,
+          predecesor:   predId,
+          active:       1,
+          type:         this.typeWP,
           typeActivity: task.isMilestone ? 'Milestone' : 'Activity',
-          measure:     task.unit || null,
-          resources:   task.resources || null,
-          phase:       null,
+          measure:      task.unit || null,
+          resources:    task.resources || null,
+          phase:        null,
         };
 
         try {
