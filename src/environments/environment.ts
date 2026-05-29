@@ -85,5 +85,5 @@ export const environment = {
     // publicKey: 'TEST-4399133a-4676-42a2-ab85-d946370bf96a',
   },
 
-  version: '6.90 (29 Mayo 2026) feat(pmo-recursos): selector convenio antes de actividades',
+  version: '6.91 (29 Mayo 2026) fix(pmo-recursos): usar endpoint byconvention para filtrar actividades',
 };
