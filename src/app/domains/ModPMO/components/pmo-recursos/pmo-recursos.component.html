@@ -1,0 +1,83 @@
+<div class="container-fluid py-3">
+
+  <!-- ── Controles ─────────────────────────────────────────────────────── -->
+  <div class="row mb-3 g-2 align-items-end">
+    <div class="col-md-4">
+      <label class="form-label form-label-sm mb-1 fw-semibold">Proyecto</label>
+      <select class="form-select form-select-sm" [(ngModel)]="selectedProject">
+        <option [ngValue]="null">— Seleccionar —</option>
+        <option *ngFor="let p of projects" [ngValue]="p">{{ p.name || p.projectName || p.id }}</option>
+      </select>
+    </div>
+    <div class="col-md-2">
+      <label class="form-label form-label-sm mb-1 fw-semibold">Período</label>
+      <select class="form-select form-select-sm" [(ngModel)]="selectedPeriod">
+        <option value="semanal">Semanal</option>
+        <option value="quincenal">Quincenal</option>
+        <option value="mensual">Mensual</option>
+      </select>
+    </div>
+    <div class="col-md-6">
+      <div class="d-flex gap-2 justify-content-end flex-wrap">
+        <button class="btn btn-sm btn-success" (click)="addRow()">
+          <i class="bi bi-plus-lg me-1"></i> Agregar
+        </button>
+        <button class="btn btn-sm btn-primary position-relative" (click)="saveChanges()" [disabled]="!hasUnsavedChanges">
+          <i class="bi bi-floppy me-1"></i> Guardar
+          <span *ngIf="hasUnsavedChanges"
+                class="position-absolute top-0 start-100 translate-middle p-2 bg-danger border border-light rounded-circle"></span>
+        </button>
+        <button class="btn btn-sm btn-warning" (click)="revertChanges()">
+          <i class="bi bi-arrow-clockwise me-1"></i> Deshacer
+        </button>
+        <button class="btn btn-sm btn-outline-success" (click)="exportXLS()" title="Exportar Excel">
+          <i class="bi bi-file-earmark-excel me-1"></i> Excel
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Grid ──────────────────────────────────────────────────────────── -->
+  <div class="ag-theme-quartz" style="height: calc(100vh - 320px); min-height: 400px;">
+    <ag-grid-angular
+      [rowData]="rowData"
+      [columnDefs]="colDefs"
+      [rowClassRules]="rowClassRules"
+      (gridReady)="onGridReady($event)"
+      rowSelection="single"
+      [animateRows]="true"
+      [suppressCsvExport]="false">
+    </ag-grid-angular>
+  </div>
+
+  <!-- ── Totales ───────────────────────────────────────────────────────── -->
+  <div class="row mt-2 g-2">
+    <div class="col-md-4 ms-auto">
+      <div class="card card-body p-2 bg-light">
+        <div class="d-flex justify-content-between small mb-1">
+          <span class="fw-semibold text-primary">Total Planeado:</span>
+          <span class="text-primary fw-bold">{{ totalPlan | number:'1.2-2' }}</span>
+        </div>
+        <div class="d-flex justify-content-between small mb-1">
+          <span class="fw-semibold text-warning">Total Real:</span>
+          <span class="text-warning fw-bold">{{ totalReal | number:'1.2-2' }}</span>
+        </div>
+        <div class="d-flex justify-content-between small">
+          <span class="fw-semibold" [class.text-danger]="totalVar > 0" [class.text-success]="totalVar <= 0">Variación:</span>
+          <span class="fw-bold" [class.text-danger]="totalVar > 0" [class.text-success]="totalVar <= 0">
+            {{ totalVar | number:'1.2-2' }}
+          </span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Info ──────────────────────────────────────────────────────────── -->
+  <div class="alert alert-info mt-3 py-2 small" role="alert">
+    <i class="bi bi-info-circle-fill me-1"></i>
+    <strong>Punto 9 — Recursos PMO:</strong> Captura aquí los costos planeados vs reales por tipo de cargo
+    (Personal, Material, Equipo, Subcontrato, Indirecto). El módulo se conectará al backend de costos
+    en la siguiente entrega. Por ahora el registro es local (se pierde al recargar).
+  </div>
+
+</div>

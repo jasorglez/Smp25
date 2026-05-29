@@ -698,6 +698,51 @@ export const routes: Routes = [
           }
         ],
       },
+      // ── PMO ─────────────────────────────────────────────────────────────
+      {
+        path: 'pmo',
+        loadComponent: () =>
+          import('./domains/ModPMO/pages/procpmo/procmenupmo.component')
+            .then((m) => m.ProcmenupmoComponent),
+        canActivate: [MasterPermissionsGuard],
+        data: { permissions: { master: 'pmo' } },
+        children: [
+          { path: '', redirectTo: 'reporte', pathMatch: 'full' },
+          {
+            path: 'reporte',
+            loadComponent: () =>
+              import('./domains/ModPMO/components/pmo-dashboard/pmo-dashboard.component')
+                .then((c) => c.PmoDashboardComponent),
+            canActivate: [MasterPermissionsGuard],
+            data: { permissions: { master: 'pmo', detailed: 'reporte' } },
+          },
+          {
+            path: 'recursos',
+            loadComponent: () =>
+              import('./domains/ModPMO/components/pmo-recursos/pmo-recursos.component')
+                .then((c) => c.PmoRecursosComponent),
+            canActivate: [MasterPermissionsGuard],
+            data: { permissions: { master: 'pmo', detailed: 'recursos' } },
+          },
+          {
+            path: 'ruta-critica',
+            loadComponent: () =>
+              import('./domains/ModPMO/components/pmo-ruta-critica/pmo-ruta-critica.component')
+                .then((c) => c.PmoRutaCriticaComponent),
+            canActivate: [MasterPermissionsGuard],
+            data: { permissions: { master: 'pmo', detailed: 'ruta-critica' } },
+          },
+          {
+            path: 'lineas-base',
+            loadComponent: () =>
+              import('./domains/ModPMO/components/pmo-lineas-base/pmo-lineas-base.component')
+                .then((c) => c.PmoLineasBaseComponent),
+            canActivate: [MasterPermissionsGuard],
+            data: { permissions: { master: 'pmo', detailed: 'lineas-base' } },
+          },
+        ],
+      },
+      // ────────────────────────────────────────────────────────────────────
       {
         path: 'smp',
         loadComponent: () =>

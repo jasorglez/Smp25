@@ -315,6 +315,18 @@
        </a>
       </li>
 
+      <li class="nav-item" *ngIf="authService.hasMasterPermission('pmo')">
+        <a
+          class="nav-link d-flex align-items-center"
+          [routerLink]="['/pmo']"
+          routerLinkActive="active-link"
+          [matTooltip]="isSidebarCollapsed ? 'PMO' : ''"
+          matTooltipPosition="right"
+        >
+          <mat-icon>analytics</mat-icon> <span>PMO</span>
+        </a>
+      </li>
+
       <li class="nav-item" *ngIf="authService.hasMasterPermission('presupuestos')">
         <a
           class="nav-link d-flex align-items-center"

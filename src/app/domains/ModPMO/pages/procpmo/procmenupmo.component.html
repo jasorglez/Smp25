@@ -1,0 +1,41 @@
+<div class="col-md-12">
+  <div class="card modern-card">
+    <div class="card-header modern-header">
+      <div class="nav-wrapper">
+        <ul class="nav nav-pills modern-nav">
+
+          <li class="nav-item" *ngIf="authService.hasDetailedPermission('pmo', 'reporte')">
+            <a class="nav-link modern-tab" routerLink="reporte" routerLinkActive="active">
+              <i class="bi bi-graph-up-arrow"></i>
+              <span>Reporte PMO</span>
+            </a>
+          </li>
+
+          <li class="nav-item" *ngIf="authService.hasDetailedPermission('pmo', 'recursos')">
+            <a class="nav-link modern-tab" routerLink="recursos" routerLinkActive="active">
+              <i class="bi bi-people-fill"></i>
+              <span>Recursos</span>
+            </a>
+          </li>
+
+          <li class="nav-item" *ngIf="authService.hasDetailedPermission('pmo', 'ruta-critica')">
+            <a class="nav-link modern-tab" routerLink="ruta-critica" routerLinkActive="active">
+              <i class="bi bi-diagram-3-fill"></i>
+              <span>Ruta Crítica</span>
+            </a>
+          </li>
+
+          <li class="nav-item" *ngIf="authService.hasDetailedPermission('pmo', 'lineas-base')">
+            <a class="nav-link modern-tab" routerLink="lineas-base" routerLinkActive="active">
+              <i class="bi bi-archive-fill"></i>
+              <span>Líneas Base</span>
+            </a>
+          </li>
+
+        </ul>
+      </div>
+
+      <router-outlet></router-outlet>
+    </div>
+  </div>
+</div>

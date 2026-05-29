@@ -1,0 +1,146 @@
+<div class="container-fluid py-3">
+
+  <!-- ── Selector ─────────────────────────────────────────────────────── -->
+  <div class="row mb-3 g-2 align-items-end">
+    <div class="col-md-5">
+      <label class="form-label form-label-sm mb-1 fw-semibold">Proyecto</label>
+      <select class="form-select form-select-sm" [(ngModel)]="selectedProject"
+              (ngModelChange)="onProjectChange()">
+        <option [ngValue]="null">— Seleccionar —</option>
+        <option *ngFor="let p of projects" [ngValue]="p">{{ p.name || p.projectName || p.id }}</option>
+      </select>
+    </div>
+  </div>
+
+  <ng-container *ngIf="selectedProject">
+
+    <!-- ── Capturar nueva línea base ─────────────────────────────────── -->
+    <div class="card mb-3">
+      <div class="card-header py-2 d-flex align-items-center gap-2">
+        <i class="bi bi-archive-fill text-primary fs-5"></i>
+        <strong>Capturar Nueva Línea Base</strong>
+        <span class="badge bg-warning text-dark ms-auto" *ngIf="baselines.length">
+          {{ baselines.length }} versión(es) guardadas
+        </span>
+      </div>
+      <div class="card-body py-2">
+        <div class="row g-2 align-items-end">
+          <div class="col-md-7">
+            <label class="form-label form-label-sm mb-1 fw-semibold">
+              Motivo de reprogramación / descripción
+            </label>
+            <input type="text" class="form-control form-control-sm"
+                   [(ngModel)]="newReason"
+                   placeholder="Ej: Cambio de alcance por lluvias, semana 12...">
+          </div>
+          <div class="col-md-5">
+            <button class="btn btn-sm btn-primary w-100" (click)="captureBaseline()"
+                    [disabled]="isSaving || !newReason.trim()">
+              <span *ngIf="isSaving" class="spinner-border spinner-border-sm me-1"></span>
+              <i *ngIf="!isSaving" class="bi bi-camera me-1"></i>
+              Capturar Snapshot del Programa
+            </button>
+          </div>
+        </div>
+        <p class="small text-muted mt-1 mb-0">
+          <i class="bi bi-info-circle me-1"></i>
+          Al capturar se guarda un snapshot del programa de trabajo actual.
+          La línea base anterior queda como historial — nunca se elimina automáticamente.
+        </p>
+      </div>
+    </div>
+
+    <!-- ── Historial ─────────────────────────────────────────────────── -->
+    <div class="card mb-3" *ngIf="baselines.length">
+      <div class="card-header py-2">
+        <i class="bi bi-clock-history me-1"></i>
+        <strong>Historial de Líneas Base</strong>
+      </div>
+      <div class="card-body p-0">
+        <table class="table table-sm table-hover mb-0">
+          <thead class="table-dark">
+            <tr>
+              <th style="width:60px;">Versión</th>
+              <th>Motivo</th>
+              <th style="width:140px;">Fecha Captura</th>
+              <th class="text-center" style="width:80px;">Tareas</th>
+              <th class="text-center" style="width:90px;">Av. Medio</th>
+              <th class="text-center" style="width:100px;">Estado</th>
+              <th style="width:130px;"></th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr *ngFor="let bl of baselines"
+                [class.table-primary]="selectedBaseline?.id === bl.id">
+              <td class="fw-bold text-primary">{{ bl.version }}</td>
+              <td class="small">{{ bl.reason }}</td>
+              <td class="small">{{ bl.capturedAt | date:'dd/MM/yyyy HH:mm' }}</td>
+              <td class="text-center small">{{ bl.totalTasks }}</td>
+              <td class="text-center small">{{ bl.avgProgress }}%</td>
+              <td class="text-center">
+                <span *ngIf="bl.active" class="badge bg-success">Activa</span>
+                <span *ngIf="!bl.active" class="badge bg-secondary">Histórica</span>
+              </td>
+              <td class="text-center">
+                <button class="btn btn-xs btn-outline-primary btn-sm me-1"
+                        (click)="compareBaseline(bl)" title="Comparar vs actual">
+                  <i class="bi bi-arrow-left-right"></i>
+                </button>
+                <button class="btn btn-xs btn-outline-danger btn-sm"
+                        (click)="deleteBaseline(bl)" title="Eliminar">
+                  <i class="bi bi-trash"></i>
+                </button>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- ── Comparación ────────────────────────────────────────────────── -->
+    <div class="card" *ngIf="selectedBaseline">
+      <div class="card-header py-2 d-flex align-items-center gap-2">
+        <i class="bi bi-arrow-left-right text-info fs-5"></i>
+        <strong>Comparación: {{ selectedBaseline.version }} ({{ selectedBaseline.capturedAt | date:'dd/MM/yyyy' }}) vs Actual</strong>
+        <button class="btn btn-sm btn-outline-success ms-auto" (click)="exportXLS()">
+          <i class="bi bi-file-earmark-excel me-1"></i> Excel
+        </button>
+      </div>
+      <div class="card-body p-1">
+
+        <div *ngIf="isLoading" class="text-center py-3">
+          <div class="spinner-border spinner-border-sm text-info me-2"></div>
+          <small class="text-muted">Comparando...</small>
+        </div>
+
+        <div *ngIf="!isLoading && compareData.length"
+             class="ag-theme-quartz" style="height: calc(100vh - 480px); min-height: 300px;">
+          <ag-grid-angular
+            [rowData]="compareData"
+            [columnDefs]="compareColDefs"
+            (gridReady)="onCompareGridReady($event)"
+            [animateRows]="true">
+          </ag-grid-angular>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- ── Info ──────────────────────────────────────────────────────── -->
+    <div class="alert alert-info mt-3 py-2 small" role="alert">
+      <i class="bi bi-info-circle-fill me-1"></i>
+      <strong>Punto 12 — Líneas Base:</strong> Las líneas base se guardan en sesión.
+      Para persistirlas en el servidor, se creará el endpoint <code>PMO/Baselines</code> en la siguiente entrega.
+      Siempre se conserva el historial — nunca se sobreescribe una línea base existente.
+    </div>
+
+  </ng-container>
+
+  <!-- ── Sin proyecto ────────────────────────────────────────────────── -->
+  <div *ngIf="!selectedProject" class="text-center text-muted py-5">
+    <i class="bi bi-archive-fill fs-1 text-primary opacity-50 d-block mb-2"></i>
+    <h5>Selecciona un proyecto para gestionar las Líneas Base</h5>
+    <p class="small">Captura snapshots del programa de trabajo y compara versiones.</p>
+  </div>
+
+</div>

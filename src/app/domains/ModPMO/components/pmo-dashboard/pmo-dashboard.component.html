@@ -1,0 +1,200 @@
+<div class="container-fluid py-3">
+
+  <!-- ── Selector de proyecto ──────────────────────────────────────────── -->
+  <div class="row mb-3">
+    <div class="col-md-5">
+      <div class="input-group input-group-sm">
+        <span class="input-group-text bg-dark text-white">
+          <i class="bi bi-building me-1"></i> Proyecto
+        </span>
+        <select class="form-select" [(ngModel)]="selectedProject" (ngModelChange)="onProjectChange()">
+          <option [ngValue]="null">— Seleccionar proyecto —</option>
+          <option *ngFor="let p of projects" [ngValue]="p">{{ p.name || p.projectName || p.id }}</option>
+        </select>
+      </div>
+    </div>
+
+    <!-- AC y BAC manuales (mientras no hay tabla de recursos) -->
+    <div class="col-md-3" *ngIf="selectedProject">
+      <div class="input-group input-group-sm">
+        <span class="input-group-text" title="Costo Real Acumulado (ingresa manualmente hasta conectar Recursos)">
+          <i class="bi bi-cash me-1"></i> AC (Costo Real)
+        </span>
+        <input type="number" class="form-control" [(ngModel)]="acManual"
+               (ngModelChange)="onAcChange()" min="0" placeholder="0">
+      </div>
+    </div>
+    <div class="col-md-2" *ngIf="selectedProject">
+      <div class="input-group input-group-sm">
+        <span class="input-group-text" title="Presupuesto total BAC">BAC</span>
+        <input type="number" class="form-control" [(ngModel)]="budgetTotal"
+               (change)="buildEVM([], []); loadDashboard()" min="1">
+      </div>
+    </div>
+    <div class="col-md-2" *ngIf="selectedProject">
+      <button class="btn btn-sm btn-outline-secondary w-100" (click)="loadDashboard()">
+        <i class="bi bi-arrow-clockwise me-1"></i> Actualizar
+      </button>
+    </div>
+  </div>
+
+  <!-- ── Spinner ───────────────────────────────────────────────────────── -->
+  <div *ngIf="isLoading" class="text-center py-4">
+    <div class="spinner-border text-primary me-2"></div>
+    <span class="text-muted">Calculando indicadores PMO...</span>
+  </div>
+
+  <ng-container *ngIf="!isLoading && selectedProject">
+
+    <!-- ── KPI Cards ─────────────────────────────────────────────────────── -->
+    <div class="row g-2 mb-3">
+      <div class="col-6 col-md-4 col-lg-2" *ngFor="let kpi of kpiCards">
+        <div class="card border-{{ kpi.color }} h-100">
+          <div class="card-body p-2 text-center">
+            <i class="bi {{ kpi.icon }} fs-3 text-{{ kpi.color }}"></i>
+            <div class="fw-bold fs-5 mt-1">{{ kpi.value }}</div>
+            <div class="small text-muted" style="font-size:10px; line-height:1.2;">{{ kpi.label }}</div>
+            <span class="badge bg-{{ kpi.color }} mt-1" style="font-size:9px;">{{ kpi.help }}</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── EVM Resumen numérico ─────────────────────────────────────────── -->
+    <div class="row mb-3">
+      <div class="col-md-4">
+        <div class="card card-body p-2 bg-light">
+          <div class="d-flex justify-content-between small mb-1">
+            <span class="fw-semibold">BAC (Presupuesto Total):</span>
+            <span>{{ evm.bac | number:'1.2-2' }}</span>
+          </div>
+          <div class="d-flex justify-content-between small mb-1">
+            <span class="text-primary fw-semibold">PV (Valor Planeado):</span>
+            <span class="text-primary">{{ evm.pv | number:'1.2-2' }}%</span>
+          </div>
+          <div class="d-flex justify-content-between small mb-1">
+            <span class="text-success fw-semibold">EV (Valor Ganado):</span>
+            <span class="text-success">{{ evm.ev | number:'1.2-2' }}%</span>
+          </div>
+          <div class="d-flex justify-content-between small">
+            <span class="text-warning fw-semibold">AC (Costo Real):</span>
+            <span class="text-warning">{{ evm.ac | number:'1.2-2' }}</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- ── Estado textual ─────────────────────────────────────────── -->
+      <div class="col-md-8">
+        <div class="card card-body p-2 bg-light h-100">
+          <h6 class="fw-bold mb-2"><i class="bi bi-clipboard2-data me-1"></i> Diagnóstico PMO</h6>
+          <div class="small">
+            <div [ngClass]="evm.spi >= 1 ? 'text-success' : 'text-danger'" class="mb-1">
+              <i class="bi" [ngClass]="evm.spi >= 1 ? 'bi-check-circle-fill' : 'bi-x-circle-fill'"></i>
+              <strong> Cronograma:</strong>
+              {{ evm.spi >= 1 ? 'El proyecto está adelantado o en tiempo (SPI ≥ 1).' :
+                 evm.spi >= 0.8 ? 'Leve retraso detectado (SPI ' + evm.spi.toFixed(2) + ').' :
+                 'Retraso crítico — requiere acción inmediata (SPI ' + evm.spi.toFixed(2) + ').' }}
+            </div>
+            <div [ngClass]="evm.ac > 0 ? (evm.cpi >= 1 ? 'text-success' : 'text-danger') : 'text-muted'" class="mb-1">
+              <i class="bi" [ngClass]="evm.ac > 0 ? (evm.cpi >= 1 ? 'bi-check-circle-fill' : 'bi-x-circle-fill') : 'bi-dash-circle'"></i>
+              <strong> Costo:</strong>
+              {{ evm.ac > 0 ?
+                 (evm.cpi >= 1 ? 'El proyecto está bajo presupuesto (CPI ' + evm.cpi.toFixed(2) + ').' :
+                  'Sobre presupuesto — CPI ' + evm.cpi.toFixed(2) + '. Se proyecta EAC = ' + evm.eac.toFixed(2) + '.') :
+                 'Ingresa el Costo Real (AC) para calcular indicadores de costo.' }}
+            </div>
+            <div class="text-muted" *ngIf="evm.ac <= 0">
+              <i class="bi bi-info-circle me-1"></i>
+              Los indicadores CPI, EAC y ETC se activarán cuando conectes el módulo de Recursos (Punto 9).
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── Curva S ─────────────────────────────────────────────────────── -->
+    <div class="row mb-3">
+      <div class="col-12">
+        <div class="card">
+          <div class="card-body p-2">
+            <apx-chart *ngIf="sCurveSeries.length"
+              [series]="sCurveSeries"
+              [chart]="sCurveOptions.chart"
+              [stroke]="sCurveOptions.stroke"
+              [xaxis]="sCurveOptions.xaxis"
+              [yaxis]="sCurveOptions.yaxis"
+              [colors]="sCurveOptions.colors"
+              [legend]="sCurveOptions.legend"
+              [tooltip]="sCurveOptions.tooltip"
+              [title]="sCurveOptions.title">
+            </apx-chart>
+            <div *ngIf="!sCurveSeries.length" class="text-center text-muted py-3">
+              <i class="bi bi-graph-up fs-2 me-2"></i>
+              Sin registros de avance diario — captura datos en <strong>Proyectos → Sistema → Avance</strong>.
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── Tabla entregables ────────────────────────────────────────────── -->
+    <div class="row">
+      <div class="col-12">
+        <div class="card">
+          <div class="card-header py-2 d-flex align-items-center gap-2">
+            <i class="bi bi-list-check fs-5 text-primary"></i>
+            <strong>Entregables / Paquetes de Trabajo</strong>
+          </div>
+          <div class="card-body p-0" *ngIf="deliverables.length">
+            <table class="table table-sm table-hover mb-0">
+              <thead class="table-dark">
+                <tr>
+                  <th>Entregable</th>
+                  <th class="text-center">Tareas</th>
+                  <th class="text-center">Terminadas</th>
+                  <th style="width:180px;">Avance</th>
+                  <th class="text-center">Estado</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr *ngFor="let d of deliverables">
+                  <td class="small fw-semibold">{{ d.name }}</td>
+                  <td class="text-center small">{{ d.total }}</td>
+                  <td class="text-center small">{{ d.done }}</td>
+                  <td>
+                    <div class="d-flex align-items-center gap-1">
+                      <div class="progress flex-grow-1" style="height:10px;">
+                        <div class="progress-bar {{ progressClass(d.progress) }}"
+                             [style.width]="d.progress + '%'"></div>
+                      </div>
+                      <small class="text-muted" style="width:36px; text-align:right;">{{ d.progress }}%</small>
+                    </div>
+                  </td>
+                  <td class="text-center">
+                    <span class="badge {{ statusBadge(d.status) }}" style="font-size:10px;">{{ d.status }}</span>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+          <div class="card-body" *ngIf="!deliverables.length">
+            <p class="text-muted mb-0">
+              <i class="bi bi-info-circle me-1"></i>
+              Sin datos de programa de trabajo para este proyecto.
+            </p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </ng-container>
+
+  <!-- ── Sin proyecto seleccionado ─────────────────────────────────────── -->
+  <div *ngIf="!selectedProject && !isLoading"
+       class="text-center text-muted py-5">
+    <i class="bi bi-bar-chart-line-fill fs-1 d-block mb-2 text-primary opacity-50"></i>
+    <h5>Selecciona un proyecto para ver el Dashboard PMO</h5>
+    <p class="small">Indicadores EVM: SPI, CPI, EAC, ETC, Curva S y entregables.</p>
+  </div>
+
+</div>
