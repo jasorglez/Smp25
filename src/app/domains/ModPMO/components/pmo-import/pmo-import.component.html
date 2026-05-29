@@ -175,34 +175,74 @@
         </div><!-- /upload -->
 
 
-        <!-- ══ PASO 2: MAPEO DE COLUMNAS (solo Excel/CSV) ════════════════════ -->
+        <!-- ══ PASO 2: MAPEO DE COLUMNAS (solo Excel con encabezados no reconocidos) ════════ -->
         <div *ngIf="step==='map'" class="p-4">
 
-          <div class="d-flex align-items-center gap-2 mb-3">
-            <i class="bi bi-table text-primary fs-5"></i>
-            <span class="fw-semibold">Mapeo de columnas del archivo</span>
-            <span class="badge bg-secondary">{{ detectedHeaders.length }} columnas detectadas</span>
-          </div>
-          <p class="text-muted small mb-4">
-            El sistema intentó detectar automáticamente la correspondencia entre las columnas de tu
-            archivo y los campos PMO. Verifica y corrige si es necesario.
-            Los campos marcados con <span class="text-danger">*</span> son obligatorios.
-          </p>
-
-          <div class="row g-3">
-            <div *ngFor="let f of fields" class="col-md-6 col-lg-4">
-              <label class="form-label small fw-semibold mb-1">
-                {{ f.label }}
-                <span *ngIf="f.required" class="text-danger">*</span>
-                <span *ngIf="mapping[f.key]" class="ms-1 text-success"><i class="bi bi-check-circle-fill"></i></span>
-              </label>
-              <select class="form-select form-select-sm"
-                      [ngModel]="mapping[f.key]"
-                      (ngModelChange)="mapping[f.key]=$event">
-                <option value="">— Sin mapear —</option>
-                <option *ngFor="let h of detectedHeaders" [value]="h">{{ h }}</option>
-              </select>
+          <!-- Explicación en lenguaje simple -->
+          <div class="alert alert-info d-flex gap-3 py-3 mb-4">
+            <i class="bi bi-info-circle-fill fs-4 flex-shrink-0 mt-1"></i>
+            <div>
+              <strong>Tu archivo tiene columnas con nombres diferentes a los que esperaba el PMO.</strong><br>
+              <span class="small">
+                Por ejemplo: tu Excel dice <code>"Nombre de Tarea"</code> pero el PMO busca
+                <code>"Descripción"</code>.
+                Usa los selectores de abajo para indicar <em>qué columna de tu archivo corresponde a qué dato.</em><br>
+                Los campos con <span class="text-danger fw-bold">*</span> son <strong>indispensables</strong> — sin ellos no se puede importar.
+                Los demás son opcionales.
+              </span>
             </div>
+          </div>
+
+          <!-- Columnas detectadas en el archivo -->
+          <div class="mb-3 p-2 bg-light rounded small">
+            <strong><i class="bi bi-file-earmark-spreadsheet me-1"></i>Columnas que encontré en tu archivo:</strong>
+            <div class="d-flex flex-wrap gap-1 mt-1">
+              <span *ngFor="let h of detectedHeaders"
+                    class="badge text-bg-secondary">{{ h }}</span>
+            </div>
+          </div>
+
+          <!-- Tabla de correspondencias: izquierda = dato PMO, derecha = columna del archivo -->
+          <div class="table-responsive">
+            <table class="table table-sm table-bordered align-middle" style="font-size:13px;">
+              <thead class="table-dark">
+                <tr>
+                  <th style="width:30%">Dato que necesita el PMO</th>
+                  <th style="width:28%">¿Qué es?</th>
+                  <th style="width:7%" class="text-center">¿Oblig.?</th>
+                  <th>Columna en TU archivo</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr *ngFor="let f of fields"
+                    [class.table-danger]="f.required && !mapping[f.key]"
+                    [class.table-success]="mapping[f.key]">
+                  <td class="fw-semibold">
+                    <i class="bi me-1"
+                       [class.bi-check-circle-fill]="mapping[f.key]"
+                       [class.text-success]="mapping[f.key]"
+                       [class.bi-circle]="!mapping[f.key]"
+                       [class.text-secondary]="!mapping[f.key]"></i>
+                    {{ f.label }}
+                  </td>
+                  <td class="text-muted small">{{ fieldHint(f.key) }}</td>
+                  <td class="text-center">
+                    <span *ngIf="f.required" class="badge bg-danger">Sí</span>
+                    <span *ngIf="!f.required" class="badge bg-light text-secondary border">No</span>
+                  </td>
+                  <td>
+                    <select class="form-select form-select-sm"
+                            [ngModel]="mapping[f.key]"
+                            (ngModelChange)="mapping[f.key]=$event"
+                            [class.border-success]="mapping[f.key]"
+                            [class.border-danger]="f.required && !mapping[f.key]">
+                      <option value="">— No encontrado / No usar —</option>
+                      <option *ngFor="let h of detectedHeaders" [value]="h">{{ h }}</option>
+                    </select>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
           </div>
 
           <div *ngIf="errorMsg" class="alert alert-danger py-2 small mt-3">
