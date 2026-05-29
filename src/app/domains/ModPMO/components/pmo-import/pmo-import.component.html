@@ -1,0 +1,340 @@
+<!-- ══════════════════════════════════════════════════════════════════════════
+     PMO Import — Modal multi-paso
+     Pasos: upload → map → preview → saving → done
+     ══════════════════════════════════════════════════════════════════════════ -->
+<div class="modal d-block" tabindex="-1" style="background:rgba(0,0,0,.55);">
+  <div class="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable">
+    <div class="modal-content border-0 shadow-lg">
+
+      <!-- ── HEADER ─────────────────────────────────────────────────────────── -->
+      <div class="modal-header bg-primary text-white py-2">
+        <div class="d-flex align-items-center gap-2">
+          <i class="bi bi-cloud-upload fs-5"></i>
+          <span class="fw-bold">Importar Programa de Trabajo PMO</span>
+          <span *ngIf="projectName" class="badge bg-white text-primary ms-1">{{ projectName }}</span>
+        </div>
+
+        <!-- Indicador de pasos -->
+        <div class="d-flex align-items-center gap-1 ms-auto me-3 small">
+          <span [class.fw-bold]="step==='upload'" [class.opacity-50]="step!=='upload'">① Archivo</span>
+          <i class="bi bi-chevron-right opacity-50"></i>
+          <span [class.fw-bold]="step==='map'"    [class.opacity-50]="step!=='map'">② Mapeo</span>
+          <i class="bi bi-chevron-right opacity-50"></i>
+          <span [class.fw-bold]="step==='preview'"[class.opacity-50]="step!=='preview'">③ Vista previa</span>
+          <i class="bi bi-chevron-right opacity-50"></i>
+          <span [class.fw-bold]="step==='saving'||step==='done'"
+                [class.opacity-50]="step!=='saving'&&step!=='done'">④ Guardar</span>
+        </div>
+
+        <button class="btn-close btn-close-white" (click)="close()"></button>
+      </div>
+
+      <!-- ── BODY ───────────────────────────────────────────────────────────── -->
+      <div class="modal-body p-0">
+
+        <!-- ══ PASO 1: SUBIR ARCHIVO ═════════════════════════════════════════ -->
+        <div *ngIf="step==='upload'" class="p-4">
+
+          <!-- Banner descarga plantilla -->
+          <div class="alert alert-primary d-flex align-items-center gap-3 py-2 mb-4">
+            <i class="bi bi-file-earmark-excel fs-4 text-success"></i>
+            <div class="flex-grow-1">
+              <strong>¿Primera vez?</strong>&nbsp;Descarga la plantilla Excel con ejemplos y guía de campos.
+              Formatos compatibles: <code>.xlsx</code> <code>.xls</code> <code>.csv</code>
+              <code>.xml</code>&nbsp;(MS Project)&nbsp;<code>.xer</code>&nbsp;(Primavera P6).
+            </div>
+            <button class="btn btn-sm btn-success text-nowrap" (click)="downloadTemplate()">
+              <i class="bi bi-download me-1"></i> Descargar Plantilla
+            </button>
+          </div>
+
+          <!-- Zona drag & drop -->
+          <div class="drop-zone border-2 border-dashed rounded-3 text-center p-5 mb-3"
+               [class.drop-zone--active]="isDragging"
+               [class.drop-zone--file]="!!selectedFile"
+               (dragover)="onDragOver($event)"
+               (dragleave)="onDragLeave()"
+               (drop)="onDrop($event)">
+
+            <ng-container *ngIf="!selectedFile">
+              <i class="bi bi-cloud-upload display-4 text-secondary mb-2 d-block"></i>
+              <p class="mb-1 fw-semibold text-secondary">Arrastra tu archivo aquí</p>
+              <p class="text-muted small mb-3">o selecciona desde tu equipo</p>
+              <label class="btn btn-outline-primary">
+                <i class="bi bi-folder2-open me-1"></i> Seleccionar archivo
+                <input type="file" hidden
+                       accept=".xlsx,.xls,.csv,.xml,.xer"
+                       (change)="onFileSelected($event)">
+              </label>
+            </ng-container>
+
+            <ng-container *ngIf="selectedFile">
+              <i class="bi bi-file-earmark-check display-4 text-success mb-2 d-block"></i>
+              <p class="mb-1 fw-semibold">{{ selectedFile.name }}</p>
+              <p class="text-muted small mb-3">
+                {{ (selectedFile.size / 1024).toFixed(1) }} KB &nbsp;·&nbsp;
+                <span class="badge bg-secondary text-uppercase">{{ fileType }}</span>
+              </p>
+              <div class="d-flex gap-2 justify-content-center">
+                <label class="btn btn-sm btn-outline-secondary">
+                  <i class="bi bi-arrow-repeat me-1"></i> Cambiar archivo
+                  <input type="file" hidden
+                         accept=".xlsx,.xls,.csv,.xml,.xer"
+                         (change)="onFileSelected($event)">
+                </label>
+              </div>
+            </ng-container>
+          </div>
+
+          <!-- Modo importación -->
+          <div class="d-flex gap-4 mb-3 small">
+            <div class="form-check">
+              <input class="form-check-input" type="radio" id="modeReplace"
+                     value="replace" [(ngModel)]="importMode">
+              <label class="form-check-label" for="modeReplace">
+                <strong>Reemplazar</strong> — elimina el programa actual e importa desde cero
+              </label>
+            </div>
+            <div class="form-check">
+              <input class="form-check-input" type="radio" id="modeMerge"
+                     value="merge" [(ngModel)]="importMode">
+              <label class="form-check-label" for="modeMerge">
+                <strong>Fusionar</strong> — agrega las tareas sin borrar las existentes
+              </label>
+            </div>
+          </div>
+
+          <!-- Error -->
+          <div *ngIf="errorMsg" class="alert alert-danger py-2 small">
+            <i class="bi bi-exclamation-triangle-fill me-1"></i> {{ errorMsg }}
+          </div>
+        </div><!-- /upload -->
+
+
+        <!-- ══ PASO 2: MAPEO DE COLUMNAS (solo Excel/CSV) ════════════════════ -->
+        <div *ngIf="step==='map'" class="p-4">
+
+          <div class="d-flex align-items-center gap-2 mb-3">
+            <i class="bi bi-table text-primary fs-5"></i>
+            <span class="fw-semibold">Mapeo de columnas del archivo</span>
+            <span class="badge bg-secondary">{{ detectedHeaders.length }} columnas detectadas</span>
+          </div>
+          <p class="text-muted small mb-4">
+            El sistema intentó detectar automáticamente la correspondencia entre las columnas de tu
+            archivo y los campos PMO. Verifica y corrige si es necesario.
+            Los campos marcados con <span class="text-danger">*</span> son obligatorios.
+          </p>
+
+          <div class="row g-3">
+            <div *ngFor="let f of fields" class="col-md-6 col-lg-4">
+              <label class="form-label small fw-semibold mb-1">
+                {{ f.label }}
+                <span *ngIf="f.required" class="text-danger">*</span>
+                <span *ngIf="mapping[f.key]" class="ms-1 text-success"><i class="bi bi-check-circle-fill"></i></span>
+              </label>
+              <select class="form-select form-select-sm"
+                      [ngModel]="mapping[f.key]"
+                      (ngModelChange)="mapping[f.key]=$event">
+                <option value="">— Sin mapear —</option>
+                <option *ngFor="let h of detectedHeaders" [value]="h">{{ h }}</option>
+              </select>
+            </div>
+          </div>
+
+          <div *ngIf="errorMsg" class="alert alert-danger py-2 small mt-3">
+            <i class="bi bi-exclamation-triangle-fill me-1"></i> {{ errorMsg }}
+          </div>
+        </div><!-- /map -->
+
+
+        <!-- ══ PASO 3: VISTA PREVIA ═══════════════════════════════════════════ -->
+        <div *ngIf="step==='preview'" class="p-4">
+
+          <!-- KPIs -->
+          <div class="row g-2 mb-3">
+            <div class="col-auto">
+              <div class="badge bg-success fs-6 px-3 py-2">
+                <i class="bi bi-check-circle me-1"></i> {{ okCount }} válidas
+              </div>
+            </div>
+            <div class="col-auto" *ngIf="warnCount">
+              <div class="badge bg-warning text-dark fs-6 px-3 py-2">
+                <i class="bi bi-exclamation-circle me-1"></i> {{ warnCount }} con advertencias
+              </div>
+            </div>
+            <div class="col-auto" *ngIf="errCount">
+              <div class="badge bg-danger fs-6 px-3 py-2">
+                <i class="bi bi-x-circle me-1"></i> {{ errCount }} con errores (no se guardarán)
+              </div>
+            </div>
+            <div class="col-auto ms-auto">
+              <span class="text-muted small">Mostrando {{ previewRows.length }} de {{ drafts.length }} filas</span>
+            </div>
+          </div>
+
+          <!-- Advertencias resumen -->
+          <div *ngIf="warnings.length" class="alert alert-warning py-2 small mb-3" style="max-height:80px;overflow-y:auto;">
+            <strong><i class="bi bi-exclamation-triangle me-1"></i>Advertencias:</strong>
+            <div *ngFor="let w of warnings">{{ w }}</div>
+          </div>
+
+          <!-- Tabla preview -->
+          <div class="table-responsive" style="max-height:380px;overflow-y:auto;">
+            <table class="table table-sm table-bordered table-hover align-middle" style="font-size:12px;">
+              <thead class="table-dark sticky-top">
+                <tr>
+                  <th>Estado</th>
+                  <th>WBS</th>
+                  <th>Descripción</th>
+                  <th>Inicio</th>
+                  <th>Término</th>
+                  <th>Dur.</th>
+                  <th>Und.</th>
+                  <th class="text-end">Cant.</th>
+                  <th class="text-end">P.Unit</th>
+                  <th>Pred.</th>
+                  <th>RC</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr *ngFor="let d of previewRows"
+                    [class.table-danger]="rowStatus(d)==='error'"
+                    [class.table-warning]="rowStatus(d)==='warn'">
+                  <td class="text-center">
+                    <span *ngIf="rowStatus(d)==='ok'"    class="badge bg-success">OK</span>
+                    <span *ngIf="rowStatus(d)==='warn'"  class="badge bg-warning text-dark"
+                          [title]="d.warnings.join('\n')">⚠</span>
+                    <span *ngIf="rowStatus(d)==='error'" class="badge bg-danger"
+                          [title]="d.errors.join('\n')">✗</span>
+                  </td>
+                  <td class="text-nowrap">
+                    <span class="ms-{{ (d.level-1)*2 }}">{{ d.wbs }}</span>
+                    <span *ngIf="d.isMilestone" class="ms-1" title="Hito">◆</span>
+                  </td>
+                  <td style="max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;"
+                      [title]="d.description">{{ d.description }}</td>
+                  <td>{{ d.startDate }}</td>
+                  <td>{{ d.endDate }}</td>
+                  <td class="text-center">{{ d.duration ?? '—' }}</td>
+                  <td>{{ d.unit || '—' }}</td>
+                  <td class="text-end">{{ d.quantity != null ? d.quantity : '—' }}</td>
+                  <td class="text-end">{{ d.costMX    != null ? (d.costMX | number:'1.2-2') : '—' }}</td>
+                  <td>{{ d.predecessors || '—' }}</td>
+                  <td class="text-center">
+                    <span *ngIf="d.criticalRoute==='Si'" class="badge bg-danger">RC</span>
+                    <span *ngIf="d.criticalRoute!=='Si'" class="text-muted">—</span>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+
+          <p *ngIf="drafts.length > 20" class="text-muted small mt-1 text-end">
+            (vista previa limitada a 20 filas de {{ drafts.length }} totales)
+          </p>
+
+          <div *ngIf="errorMsg" class="alert alert-danger py-2 small mt-2">
+            <i class="bi bi-exclamation-triangle-fill me-1"></i> {{ errorMsg }}
+          </div>
+        </div><!-- /preview -->
+
+
+        <!-- ══ PASO 4: GUARDANDO ════════════════════════════════════════════ -->
+        <div *ngIf="step==='saving'" class="p-5 text-center">
+          <div class="spinner-border text-primary mb-3" style="width:3rem;height:3rem;"></div>
+          <h5>Guardando programa de trabajo…</h5>
+          <p class="text-muted small mb-3">{{ saveStatus }}</p>
+          <div class="progress mb-2" style="height:12px;">
+            <div class="progress-bar progress-bar-striped progress-bar-animated bg-primary"
+                 [style.width.%]="saveProgress"></div>
+          </div>
+          <small class="text-muted">{{ saveProgress }}%</small>
+        </div><!-- /saving -->
+
+
+        <!-- ══ PASO 5: LISTO ════════════════════════════════════════════════ -->
+        <div *ngIf="step==='done'" class="p-5 text-center">
+          <i class="bi bi-check-circle-fill display-1 text-success mb-3 d-block"></i>
+          <h4 class="mb-1">¡Importación completada!</h4>
+          <p class="text-muted mb-3">
+            Se guardaron <strong>{{ savedCount }}</strong> tareas en el programa de trabajo.
+          </p>
+
+          <div *ngIf="saveErrors.length" class="alert alert-warning small text-start mx-auto" style="max-width:500px;">
+            <strong>{{ saveErrors.length }} tarea(s) con error:</strong>
+            <ul class="mb-0 mt-1">
+              <li *ngFor="let e of saveErrors">{{ e }}</li>
+            </ul>
+          </div>
+        </div><!-- /done -->
+
+      </div><!-- /modal-body -->
+
+      <!-- ── FOOTER ─────────────────────────────────────────────────────────── -->
+      <div class="modal-footer py-2">
+
+        <!-- Upload -->
+        <ng-container *ngIf="step==='upload'">
+          <button class="btn btn-secondary" (click)="close()">Cancelar</button>
+          <button class="btn btn-primary" [disabled]="!selectedFile || isAnalyzing"
+                  (click)="analyzeFile()">
+            <span *ngIf="isAnalyzing" class="spinner-border spinner-border-sm me-1"></span>
+            <i *ngIf="!isAnalyzing" class="bi bi-arrow-right me-1"></i>
+            {{ isAnalyzing ? 'Analizando…' : 'Siguiente' }}
+          </button>
+        </ng-container>
+
+        <!-- Map -->
+        <ng-container *ngIf="step==='map'">
+          <button class="btn btn-secondary" (click)="step='upload'">
+            <i class="bi bi-arrow-left me-1"></i> Atrás
+          </button>
+          <button class="btn btn-primary" (click)="confirmMapping()">
+            <i class="bi bi-arrow-right me-1"></i> Vista previa
+          </button>
+        </ng-container>
+
+        <!-- Preview -->
+        <ng-container *ngIf="step==='preview'">
+          <button class="btn btn-secondary" (click)="step = fileType==='excel' ? 'map' : 'upload'">
+            <i class="bi bi-arrow-left me-1"></i> Atrás
+          </button>
+          <div class="me-auto small text-muted">
+            Modo: <strong>{{ importMode === 'replace' ? 'Reemplazar' : 'Fusionar' }}</strong>
+          </div>
+          <button class="btn btn-success" [disabled]="okCount===0" (click)="saveToDatabase()">
+            <i class="bi bi-cloud-upload me-1"></i>
+            Importar {{ okCount }} tarea{{ okCount !== 1 ? 's' : '' }}
+          </button>
+        </ng-container>
+
+        <!-- Done -->
+        <ng-container *ngIf="step==='done'">
+          <button class="btn btn-primary" (click)="close()">
+            <i class="bi bi-check2 me-1"></i> Cerrar y actualizar
+          </button>
+        </ng-container>
+
+      </div><!-- /footer -->
+    </div><!-- /modal-content -->
+  </div>
+</div>
+
+<!-- ── Estilos locales ──────────────────────────────────────────────────────── -->
+<style>
+.drop-zone {
+  border: 2px dashed #6c757d;
+  background: #f8f9fa;
+  transition: all .2s;
+  cursor: pointer;
+}
+.drop-zone--active {
+  border-color: #0d6efd;
+  background: #e8f0fe;
+}
+.drop-zone--file {
+  border-color: #198754;
+  background: #f0fff4;
+}
+.modal-xl { max-width: 1100px; }
+</style>

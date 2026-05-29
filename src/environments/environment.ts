@@ -85,5 +85,5 @@ export const environment = {
     // publicKey: 'TEST-4399133a-4676-42a2-ab85-d946370bf96a',
   },
 
-  version: '6.85 (29 Mayo 2026 20:00) fix(permisos): usersxmasterpermissions2 — guard contra undefined en signals antes de loadPermissions',
+  version: '6.86 (29 Mayo 2026 21:00) feat(pmo): importación de programa desde Excel/MS Project/Primavera P6 + fix recursos grid destroyed',
 };
