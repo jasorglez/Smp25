@@ -85,5 +85,5 @@ export const environment = {
     // publicKey: 'TEST-4399133a-4676-42a2-ab85-d946370bf96a',
   },
 
-  version: '6.77 (29 Mayo 2026 11:00) fix(pmo): Punto6 PATCH progress — evita borrar datos de workprogram al guardar avance',
+  version: '6.78 (29 Mayo 2026 11:30) feat(pmo): Punto7 — export MS Project XML + Primavera P6 XER + import XML/XER',
 };

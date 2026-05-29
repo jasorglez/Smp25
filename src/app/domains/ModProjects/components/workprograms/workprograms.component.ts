@@ -382,7 +382,43 @@ export class WorkprogramsComponent {
     const detectedColumnsMap = new Map<string, ImportColumnMatch>();
     const rawRows: ImportedRawRow[] = [];
 
+    // Listas separadas para tareas que vienen de XML/XER (no necesitan rawRows)
+    const nativeTaskDrafts: ImportedTaskDraft[] = [];
+
     for (const file of files) {
+      const ext = file.name.split('.').pop()?.toLowerCase() || '';
+
+      // ── MS Project XML ──────────────────────────────────────────────────────
+      if (ext === 'xml') {
+        try {
+          const xmlTasks = await this.parseMSProjectXML(file);
+          if (!xmlTasks.length) {
+            warnings.push(`${file.name}: no se detectaron tareas válidas en el XML.`);
+          } else {
+            nativeTaskDrafts.push(...xmlTasks);
+          }
+        } catch {
+          warnings.push(`${file.name}: error al parsear el XML de MS Project.`);
+        }
+        continue;
+      }
+
+      // ── Primavera P6 XER ────────────────────────────────────────────────────
+      if (ext === 'xer') {
+        try {
+          const xerTasks = await this.parsePrimaveraXER(file);
+          if (!xerTasks.length) {
+            warnings.push(`${file.name}: no se detectaron tareas válidas en el XER.`);
+          } else {
+            nativeTaskDrafts.push(...xerTasks);
+          }
+        } catch {
+          warnings.push(`${file.name}: error al parsear el XER de Primavera P6.`);
+        }
+        continue;
+      }
+
+      // ── Excel / CSV ─────────────────────────────────────────────────────────
       const workbook = await this.readWorkbook(file);
       const sheetName = workbook.SheetNames[0];
       const sheet = workbook.Sheets[sheetName];
@@ -418,7 +454,31 @@ export class WorkprogramsComponent {
       });
     }
 
-    if (!rawRows.length) {
+    // Si solo hay archivos XML/XER (sin Excel), devolvemos directamente sus tareas
+    if (!rawRows.length && nativeTaskDrafts.length) {
+      const previewRowsNative: ImportedPreviewRow[] = nativeTaskDrafts.slice(0, 50).map((t, i) => ({
+        fileName: t.sourceFile,
+        rowNumber: t.sourceRow,
+        wbs: t.wbs,
+        level: t.level,
+        description: t.description,
+        startDate: t.startDate,
+        endDate: t.endDate,
+        quantity: t.quantity,
+        cost: t.cost,
+        salePrice: t.salePrice,
+        status: t.errors.length ? 'error' : (t.warnings.length ? 'warning' : 'ok'),
+      }));
+      return {
+        detectedColumns: [],
+        warnings,
+        previewRows: previewRowsNative,
+        tasks: nativeTaskDrafts,
+        structureMode: true,
+      };
+    }
+
+    if (!rawRows.length && !nativeTaskDrafts.length) {
       return {
         detectedColumns: [],
         warnings: warnings.length ? warnings : ['No se encontraron filas válidas para importar.'],
@@ -483,11 +543,24 @@ export class WorkprogramsComponent {
       );
     }
 
+    // Combinar tareas Excel con tareas de archivos XML/XER si hay mixto
+    const allTasks = [...nativeTaskDrafts, ...tasks];
+    const allPreview = [
+      ...nativeTaskDrafts.slice(0, 25).map((t, i): ImportedPreviewRow => ({
+        fileName: t.sourceFile, rowNumber: t.sourceRow,
+        wbs: t.wbs, level: t.level, description: t.description,
+        startDate: t.startDate, endDate: t.endDate,
+        quantity: t.quantity, cost: t.cost, salePrice: t.salePrice,
+        status: t.errors.length ? 'error' : (t.warnings.length ? 'warning' : 'ok'),
+      })),
+      ...previewRows,
+    ].slice(0, 50);
+
     return {
       detectedColumns: Array.from(detectedColumnsMap.values()),
       warnings: Array.from(new Set(warnings)),
-      previewRows: previewRows.slice(0, 50),
-      tasks,
+      previewRows: allPreview,
+      tasks: allTasks,
       structureMode
     };
   }
@@ -1635,6 +1708,242 @@ export class WorkprogramsComponent {
       name: "workprogram.xlsx",
       locale: "es"
     });
+  }
+
+  // ══════════════════════════════════════════════════════════════════════════
+  //  PUNTO 7 — Integración con MS Project y Primavera P6
+  // ══════════════════════════════════════════════════════════════════════════
+
+  // ── EXPORT MS Project XML ─────────────────────────────────────────────────
+  exportToMSProject(): void {
+    const tasks = gantt.getTaskByTime();
+    if (!tasks.length) {
+      alerts.basicAlert('Sin tareas', 'No hay tareas en el programa de trabajo.', 'warning');
+      return;
+    }
+
+    const toISO = (d: Date | string) => {
+      const dt = d instanceof Date ? d : new Date(d);
+      return isNaN(dt.getTime()) ? '' : dt.toISOString().replace(/\.\d{3}Z$/, '');
+    };
+
+    const taskXML = tasks.map((t, i) => {
+      const uid    = i + 1;
+      const start  = toISO(t.start_date);
+      const finish = toISO(t.end_date);
+      const isSum  = gantt.hasChild(t.id) ? 1 : 0;
+      const pct    = Math.round(Number(t.progress ?? 0) * 100);
+      const wbs    = this.escapeXml(t['activity'] || String(uid));
+      const level  = t['$level'] ?? 1;
+      const cost   = Number(t['costMX'] ?? 0);
+      return `    <Task>
+      <UID>${uid}</UID><ID>${uid}</ID>
+      <Name>${this.escapeXml(t.text || '')}</Name>
+      <WBS>${wbs}</WBS>
+      <OutlineLevel>${level}</OutlineLevel>
+      <Start>${start}</Start>
+      <Finish>${finish}</Finish>
+      <PercentComplete>${pct}</PercentComplete>
+      <Summary>${isSum}</Summary>
+      <Milestone>0</Milestone>
+      <Type>0</Type>
+      <Priority>500</Priority>
+      <FixedCost>${cost}</FixedCost>
+    </Task>`;
+    }).join('\n');
+
+    const name    = this.projectName() || 'Programa de Trabajo';
+    const starts  = tasks.map(t => new Date(t.start_date).getTime()).filter(n => !isNaN(n));
+    const ends    = tasks.map(t => new Date(t.end_date).getTime()).filter(n => !isNaN(n));
+    const minS    = starts.length ? toISO(new Date(Math.min(...starts))) : '';
+    const maxE    = ends.length   ? toISO(new Date(Math.max(...ends)))   : '';
+
+    const xml = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Project xmlns="http://schemas.microsoft.com/project">
+  <Name>${this.escapeXml(name)}</Name>
+  <StartDate>${minS}</StartDate>
+  <FinishDate>${maxE}</FinishDate>
+  <WeekStartDay>0</WeekStartDay>
+  <MinutesPerDay>480</MinutesPerDay>
+  <MinutesPerWeek>2400</MinutesPerWeek>
+  <DaysPerMonth>20</DaysPerMonth>
+  <DefaultTaskType>0</DefaultTaskType>
+  <Tasks>
+${taskXML}
+  </Tasks>
+  <Resources/>
+  <Assignments/>
+</Project>`;
+
+    this.downloadFile(xml, `${name}.xml`, 'application/xml');
+    alerts.basicAlert('Exportado', `${tasks.length} tarea(s) exportadas a MS Project XML.`, 'success');
+  }
+
+  // ── EXPORT Primavera P6 XER ───────────────────────────────────────────────
+  exportToPrimaveraXER(): void {
+    const tasks = gantt.getTaskByTime();
+    if (!tasks.length) {
+      alerts.basicAlert('Sin tareas', 'No hay tareas en el programa de trabajo.', 'warning');
+      return;
+    }
+
+    const today = new Date().toISOString().split('T')[0];
+    const name  = (this.projectName() || 'PROYECTO').substring(0, 20).replace(/\s+/g, '_');
+    const projId = 100;
+
+    const toXer = (d: Date | string) => {
+      const dt = d instanceof Date ? d : new Date(d);
+      if (isNaN(dt.getTime())) return '';
+      const y  = dt.getFullYear();
+      const m  = String(dt.getMonth() + 1).padStart(2, '0');
+      const dy = String(dt.getDate()).padStart(2, '0');
+      return `${y}-${m}-${dy} 00:00`;
+    };
+
+    const starts = tasks.map(t => new Date(t.start_date).getTime()).filter(n => !isNaN(n));
+    const ends   = tasks.map(t => new Date(t.end_date).getTime()).filter(n => !isNaN(n));
+    const pStart = starts.length ? toXer(new Date(Math.min(...starts))) : `${today} 00:00`;
+    const pEnd   = ends.length   ? toXer(new Date(Math.max(...ends)))   : `${today} 00:00`;
+
+    let xer = `ERMHDR\t19.12\t${today}\tProject\tbi2admin\tbi2admin\t\n\n`;
+
+    xer += `%T\tPROJECT\n`;
+    xer += `%F\tproj_id\tproj_short_name\tplan_start_date\tplan_end_date\tstatus_code\n`;
+    xer += `%R\t${projId}\t${name}\t${pStart}\t${pEnd}\tTK_Active\n\n`;
+
+    xer += `%T\tTASK\n`;
+    xer += `%F\ttask_id\tproj_id\ttask_code\ttask_name\ttarget_start_date\ttarget_end_date\tphys_complete_pct\ttask_type\tstatus_code\tcost_qty_link_flag\tact_work_qty\tremain_work_qty\n`;
+
+    tasks.forEach((t, i) => {
+      const tid    = 1000 + i;
+      const code   = (t['activity'] || `A${String(i + 1).padStart(4, '0')}`).replace(/\t/g, '');
+      const tname  = (t.text || '').replace(/\t/g, ' ').substring(0, 120);
+      const start  = toXer(t.start_date);
+      const end    = toXer(t.end_date);
+      const pct    = Math.round(Number(t.progress ?? 0) * 100);
+      const type   = gantt.hasChild(t.id) ? 'TT_WBS' : 'TT_Task';
+      const status = pct >= 100 ? 'TK_Complete' : pct > 0 ? 'TK_Active' : 'TK_NotStart';
+      const cost   = Number(t['costMX'] ?? 0);
+      xer += `%R\t${tid}\t${projId}\t${code}\t${tname}\t${start}\t${end}\t${pct}\t${type}\t${status}\tY\t${cost}\t${cost}\n`;
+    });
+
+    xer += `\n%E\n`;
+    this.downloadFile(xer, `${name}.xer`, 'text/plain');
+    alerts.basicAlert('Exportado', `${tasks.length} tarea(s) exportadas a Primavera P6 XER.`, 'success');
+  }
+
+  // ── IMPORT MS Project XML ─────────────────────────────────────────────────
+  private async parseMSProjectXML(file: File): Promise<ImportedTaskDraft[]> {
+    const text = await file.text();
+    const doc  = new DOMParser().parseFromString(text, 'application/xml');
+    const taskNodes = Array.from(doc.querySelectorAll('Tasks > Task'));
+    const tasks: ImportedTaskDraft[] = [];
+
+    taskNodes.forEach((node, i) => {
+      const get = (tag: string) => node.querySelector(tag)?.textContent?.trim() || '';
+      const uid = get('UID');
+      if (uid === '0') return;                         // fila resumen del proyecto
+      const name  = get('Name');
+      if (!name) return;
+      const wbs   = get('WBS') || get('OutlineNumber') || String(i + 1);
+      const level = Number(get('OutlineLevel')) || 1;
+      const start = this.normalizeDateString(get('Start').split('T')[0]);
+      const end   = this.normalizeDateString(get('Finish').split('T')[0]);
+      const errors: string[] = [];
+      if (!start) errors.push('Fecha de inicio inválida');
+      if (!end)   errors.push('Fecha de término inválida');
+
+      tasks.push({
+        sourceFile:   file.name,
+        sourceRow:    i + 1,
+        wbs,
+        level,
+        description:  name,
+        quantity:     null,
+        cost:         null,
+        salePrice:    null,
+        startDate:    start,
+        endDate:      end,
+        predecessors: '',
+        successors:   '',
+        resources:    '',
+        warnings:     [],
+        errors,
+      });
+    });
+
+    return tasks;
+  }
+
+  // ── IMPORT Primavera P6 XER ───────────────────────────────────────────────
+  private async parsePrimaveraXER(file: File): Promise<ImportedTaskDraft[]> {
+    const text    = await file.text();
+    const lines   = text.split('\n').map(l => l.trimEnd());
+    const tasks:  ImportedTaskDraft[] = [];
+    let inTask    = false;
+    let headers:  string[] = [];
+
+    for (const line of lines) {
+      if (line.startsWith('%T\t')) {
+        inTask  = line.substring(3).trim() === 'TASK';
+        headers = [];
+        continue;
+      }
+      if (line.startsWith('%F\t') && inTask) {
+        headers = line.substring(3).split('\t');
+        continue;
+      }
+      if (line.startsWith('%R\t') && inTask && headers.length) {
+        const vals = line.substring(3).split('\t');
+        const row: Record<string, string> = {};
+        headers.forEach((h, i) => { row[h] = vals[i] || ''; });
+
+        const type = row['task_type'] || '';
+        if (type === 'TT_WBS' || type === 'TT_Mile') continue;  // saltar WBS summary y milestones
+
+        const code  = row['task_code'] || '';
+        const name  = row['task_name'] || '';
+        const start = this.normalizeDateString((row['target_start_date'] || row['act_start_date'] || '').split(' ')[0]);
+        const end   = this.normalizeDateString((row['target_end_date']   || row['reend_date']     || row['act_end_date'] || '').split(' ')[0]);
+        if (!name || !start || !end) continue;
+
+        const level = (code.match(/\./g) || []).length + 1;
+
+        tasks.push({
+          sourceFile:   file.name,
+          sourceRow:    tasks.length + 1,
+          wbs:          code,
+          level,
+          description:  name,
+          quantity:     null,
+          cost:         null,
+          salePrice:    null,
+          startDate:    start,
+          endDate:      end,
+          predecessors: '',
+          successors:   '',
+          resources:    '',
+          warnings:     [],
+          errors:       [],
+        });
+      }
+      if (line.startsWith('%E')) inTask = false;
+    }
+    return tasks;
+  }
+
+  // ── Helpers ───────────────────────────────────────────────────────────────
+  private escapeXml(s: string): string {
+    return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;').replace(/'/g, '&apos;');
+  }
+
+  private downloadFile(content: string, filename: string, mimeType: string): void {
+    const blob = new Blob([content], { type: `${mimeType};charset=utf-8` });
+    const url  = URL.createObjectURL(blob);
+    const a    = document.createElement('a');
+    a.href = url; a.download = filename; a.click();
+    URL.revokeObjectURL(url);
   }
 
   // Timer para agrupar todos los renders en uno solo tras onAfterTaskUpdate

@@ -83,11 +83,12 @@
             <label class="form-label fw-semibold">Archivos de planeación</label>
             <input type="file"
                    class="form-control"
-                   accept=".xlsx,.xls,.csv"
+                   accept=".xlsx,.xls,.csv,.xml,.xer"
                    multiple
                    (change)="onImportFilesSelected($event)">
             <small class="text-muted">
-              Acepta Excel y CSV. Puedes cargar un archivo maestro o varias capas del mismo proyecto.
+              Acepta <strong>Excel, CSV</strong> y también <strong>MS Project XML (.xml)</strong>
+              o <strong>Primavera P6 XER (.xer)</strong>.
             </small>
           </div>
           <div class="col-lg-6">
@@ -425,8 +426,18 @@
             <button type="button" class="btn btn-info ms-1 me-1" (click)="exportToPDF()" title="Exportar a PDF">
                 <i class="bi bi-file-earmark-pdf"></i>
             </button>
+            <!-- Punto 7: Export MS Project XML -->
+            <button type="button" class="btn btn-outline-primary ms-1 me-1" (click)="exportToMSProject()"
+                    title="Exportar a MS Project (.xml)">
+                <i class="bi bi-filetype-xml"></i>
+            </button>
+            <!-- Punto 7: Export Primavera P6 XER -->
+            <button type="button" class="btn btn-outline-success ms-1 me-1" (click)="exportToPrimaveraXER()"
+                    title="Exportar a Primavera P6 (.xer)">
+                <span style="font-size:9px; font-weight:700; letter-spacing:-0.5px;">P6</span>
+            </button>
             <button type="button" class="btn btn-dark ms-1 me-1" (click)="openImportPmoModal()"
-                    title="Importar PMO desde Excel/CSV">
+                    title="Importar PMO desde Excel, CSV, MS Project XML o Primavera XER">
                 <i class="bi bi-upload"></i>
             </button>
             <!-- Configuración del programa de trabajo (incluye modalidad de ponderado) -->
