@@ -46,6 +46,7 @@
           [localeText]="AG_GRID_LOCALE_ES"
           [rowSelection]="rowSelection"
           (gridReady)="onGridReady($event)"
+          (firstDataRendered)="onFirstDataRendered($event)"
           (selectionChanged)="onSelectionChanged($event)">
         </ag-grid-angular>
       </div>

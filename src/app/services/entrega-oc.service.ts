@@ -12,6 +12,7 @@ export interface EntregaOc {
   notaFactura?: string | null;
   totalEntrega?: number | null;
   fechaEntradaAlmacen?: string | null;
+  close?: boolean;
   active?: boolean;
   dateModified?: string;
 }

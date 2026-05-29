@@ -11,6 +11,9 @@ import { EntregaOcService } from 'app/services/entrega-oc.service';
 import { EntregasPendingService } from 'app/services/entregas-pending.service';
 import { lastValueFrom, Subscription } from 'rxjs';
 import Swal from 'sweetalert2';
+import { EntradaDocumentsOverlayService } from 'app/services/entrada-documents-overlay.service';
+import { IntandoutDocumentsService } from 'app/services/intandoutDocuments.service';
+import { EntradaMoliendaService } from 'app/services/entrada-molienda.service';
 
 interface OcRow {
   id: number;
@@ -32,6 +35,7 @@ interface TooltipItem {
   articulo: string;
   cantidadRequerida: number;
   cantidadXProv: number;
+  cantidadEntregas: number;
 }
 
 interface OcTooltipData {
@@ -71,7 +75,7 @@ interface OcTooltipData {
       </div>
 
       <div *ngIf="selectedOcRow && itemsData.length > 0"
-           [style.flex]="selectedArticleRow ? '0 0 130px' : '1 1 auto'"
+           [style.flex]="itemsFlexSize"
            style="min-height: 0; border-top: 2px solid #e67e22;
                   padding: 4px; display: flex; flex-direction: column; overflow: hidden;">
         <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 3px; flex-shrink: 0;">
@@ -142,9 +146,13 @@ export class OrdenesydetallesOcComponent implements OnDestroy {
   private signalsService = inject(SignalsService);
   private entregaOcService = inject(EntregaOcService);
   private entregasPendingService = inject(EntregasPendingService);
+  private entradaDocumentsOverlayService = inject(EntradaDocumentsOverlayService);
+  private intandoutDocumentsService = inject(IntandoutDocumentsService);
+  private entradaMoliendaService = inject(EntradaMoliendaService);
 
   private entregasPendingSub: Subscription;
   private conditionsPendingSub: Subscription;
+  private countSub?: Subscription;
 
   constructor() {
     // Cuando se vacían las conditions pendientes (guardado global), quitar color rosa
@@ -189,6 +197,28 @@ export class OrdenesydetallesOcComponent implements OnDestroy {
         }
       }
     });
+
+    // Sincroniza el conteo de PDFs cuando el modal de documentos notifica un cambio.
+    this.countSub = this.entradaDocumentsOverlayService.countUpdated$.subscribe(({ idEntrada, count }) => {
+      // Nivel 3 (entregas)
+      const nivel3Row = this.nivel3Data.find((r: any) => r.id === idEntrada);
+      if (nivel3Row) {
+        nivel3Row.pdfCount = count;
+        if (this.nivel3GridApi && !this.nivel3GridApi.isDestroyed()) {
+          this.nivel3GridApi.refreshCells({ columns: ['pdf'], force: true });
+        }
+      }
+      // Items (busca por __entregaId o por id directo)
+      const itemRow = this.itemsData.find((r: any) =>
+        (r.__entregaId != null && r.__entregaId === idEntrada) || r.id === idEntrada
+      );
+      if (itemRow) {
+        itemRow.pdfCount = count;
+        if (this.itemsGridApi && !this.itemsGridApi.isDestroyed()) {
+          this.itemsGridApi.refreshCells({ columns: ['itemspdf'], force: true });
+        }
+      }
+    });
   }
 
   private internalParams: any;
@@ -200,6 +230,13 @@ export class OrdenesydetallesOcComponent implements OnDestroy {
   rowData: OcRow[] = [];
   itemsData: any[] = [];
   selectedOcRow: OcRow | null = null;
+
+  get itemsFlexSize(): string {
+    if (this.selectedArticleRow) return '0 0 130px';
+    // title bar ≈ 28px + ag-header ≈ 32px + per row 42px + padding 16px, cap at 500px
+    const h = Math.min(200 + this.itemsData.length * 42, 500);
+    return `0 0 ${h}px`;
+  }
   providers: any[] = [];
   conditionsOptions: number[] = [];
   hasLocalChanges = false;
@@ -362,7 +399,18 @@ export class OrdenesydetallesOcComponent implements OnDestroy {
       },
     },
     { field: 'observation', headerName: 'Producto Externo', flex: 2, minWidth: 150 },
-    { field: 'quantity', headerName: 'Cantidad Pedida', width: 130, type: 'numericColumn' },
+    {
+      field: 'quantity',
+      headerName: 'Cantidad Pedida',
+      width: 150,
+      type: 'numericColumn',
+      valueFormatter: (p: any) => {
+        const qty = Number(p.value ?? 0);
+        const suma = Number(p.data?.__sumaCantidadRecibir ?? 0);
+        if (suma > 0) return `${qty} / ${suma}`;
+        return String(qty);
+      },
+    },
     {
       field: 'price',
       headerName: 'Precio unitario',
@@ -391,9 +439,12 @@ export class OrdenesydetallesOcComponent implements OnDestroy {
       field: 'notaFactura',
       headerName: 'Nota / Factura',
       width: 150,
-      editable: true,
+      editable: (p: any) => Number(p.data?.conditions ?? 1) <= 1,
       cellEditor: 'agRichSelectCellEditor',
       cellEditorParams: { values: ['Nota', 'Factura'] },
+      cellStyle: (p: any) => Number(p.data?.conditions ?? 1) > 1
+        ? { backgroundColor: '#eeeeee', color: '#9e9e9e', cursor: 'not-allowed' }
+        : null,
     },
     { field: 'caducidadMinimaRequerida', headerName: 'Caducidad Minima Requerida', width: 180 },
     {
@@ -423,12 +474,37 @@ export class OrdenesydetallesOcComponent implements OnDestroy {
     },
     {
       headerName: 'PDF',
-      width: 60,
+      colId: 'itemspdf',
+      width: 70,
       sortable: false,
+      cellStyle: (p: any) => p.data?.__entregaId == null
+        ? { backgroundColor: '#eeeeee', cursor: 'not-allowed' }
+        : null,
+      onCellClicked: (params: any) => {
+        if (params.data?.__entregaId == null) return;
+        this.entradaDocumentsOverlayService.open({ idEntrada: params.data.__entregaId, docType: 'entrega' });
+      },
       cellRenderer: (params: any) => {
+        const locked = params.data?.__entregaId == null;
+        const count = Number(params.data?.pdfCount ?? 0);
         const div = document.createElement('div');
-        div.style.cssText = 'text-align: center; cursor: pointer;';
-        div.innerHTML = '<i class="bi bi-file-pdf" style="color: #d32f2f; font-size: 1.2rem;" title="Descargar PDF"></i>';
+        div.style.cssText = `text-align: center; cursor: ${locked ? 'not-allowed' : 'pointer'}; pointer-events: ${locked ? 'none' : 'auto'};`;
+        if (locked) {
+          div.innerHTML = `<i class="bi bi-file-pdf" style="color:#bdbdbd; font-size:1.2rem;" title="Disponible al generar entrada en almacén"></i>`;
+        } else if (count > 0) {
+          div.innerHTML = `
+            <span style="display:inline-flex; align-items:center; justify-content:center; gap:2px;">
+              <i class="bi bi-file-pdf" style="color:#d32f2f; font-size:1.1rem;"></i>
+              <span style="background:#d32f2f; color:#fff; border-radius:10px;
+                           font-size:0.65rem; font-weight:700; padding:0 4px;
+                           min-width:16px; height:15px; line-height:15px;
+                           display:inline-block; text-align:center;">
+                ${count > 9 ? '9+' : count}
+              </span>
+            </span>`;
+        } else {
+          div.innerHTML = `<i class="bi bi-file-pdf" style="color:#d32f2f; font-size:1.2rem;" title="Ver documentos"></i>`;
+        }
         return div;
       },
     },
@@ -438,6 +514,7 @@ export class OrdenesydetallesOcComponent implements OnDestroy {
     headerHeight: 45,
     rowHeight: 25,
     defaultColDef: { resizable: true, sortable: true, wrapHeaderText: true },
+    onFirstDataRendered: (params: any) => params.api.autoSizeAllColumns(),
     onCellValueChanged: (event: any) => {
       if (event.colDef.field === 'datepostpone') {
         // Normaliza cualquier formato de fecha a YYYY-MM-DD para comparación segura
@@ -486,6 +563,15 @@ export class OrdenesydetallesOcComponent implements OnDestroy {
         this.hasLocalChanges = true;
         return;
       }
+      if (event.colDef.field === 'notaFactura' && event.data?.id) {
+        const { conditions, ...rest } = event.data;
+        const cleanItem: any = { ...rest };
+        if (event.data.__pendingDateSave) cleanItem.datepostponeConfirmada = true;
+        this.conditionsPendingService.add(event.data.id, cleanItem, Number(conditions ?? 1));
+        this.changedItemIds.add(event.data.id);
+        this.hasLocalChanges = true;
+        return;
+      }
       if (event.colDef.field === 'conditions' && event.data?.id) {
         const { conditions, ...rest } = event.data;
         const cleanItem: any = { ...rest };
@@ -520,17 +606,21 @@ export class OrdenesydetallesOcComponent implements OnDestroy {
       field: 'fechaEntrega',
       headerName: 'Fecha Entrega',
       width: 130,
-      editable: true,
+      editable: (p) => !p.data?.close && !p.data?.fechaEntradaAlmacen,
       cellDataType: 'dateString',
       cellEditor: 'agDateStringCellEditor',
+      cellStyle: (p) => (p.data?.close || p.data?.fechaEntradaAlmacen)
+        ? { backgroundColor: '#f5f5f5', color: '#9e9e9e' }
+        : null,
       valueFormatter: (p) => this.formatFechaDmy(p.value),
     },
     {
       field: 'cantidadRecibir',
       headerName: 'Cantidad a Recibir',
       width: 150,
-      editable: true,
+      editable: (p) => !p.data?.close,
       type: 'numericColumn',
+      cellStyle: (p) => p.data?.close ? { backgroundColor: '#f5f5f5', color: '#9e9e9e' } : null,
       valueParser: (p) => { const n = Number(p.newValue); return isNaN(n) ? p.oldValue : n; },
     },
     {
@@ -552,18 +642,44 @@ export class OrdenesydetallesOcComponent implements OnDestroy {
       headerName: 'Nota / Factura',
       flex: 1,
       minWidth: 140,
-      editable: true,
+      editable: (p) => !p.data?.close,
       cellEditor: 'agRichSelectCellEditor',
       cellEditorParams: { values: ['Nota', 'Factura'] },
+      cellStyle: (p) => p.data?.close ? { backgroundColor: '#f5f5f5', color: '#9e9e9e' } : null,
     },
     {
       headerName: 'PDF',
-      width: 60,
+      colId: 'pdf',
+      width: 70,
       sortable: false,
-      cellRenderer: (_params: any) => {
+      onCellClicked: (params: any) => {
+        const idEntrada = params.data?.id;
+        if (!idEntrada) return;
+        this.entradaDocumentsOverlayService.open({ idEntrada, readOnly: params.data?.close === true });
+      },
+      cellRenderer: (params: any) => {
+        const idEntrada = params.data?.id;
+        const count = Number(params.data?.pdfCount ?? 0);
         const div = document.createElement('div');
-        div.style.cssText = 'text-align: center; cursor: pointer;';
-        div.innerHTML = '<i class="bi bi-file-pdf" style="color: #d32f2f; font-size: 1.2rem;" title="Descargar PDF"></i>';
+        div.style.cssText = `text-align: center; cursor: ${idEntrada ? 'pointer' : 'default'};`;
+        if (!idEntrada) {
+          div.innerHTML = `<i class="bi bi-file-pdf" style="color: #bdbdbd; font-size: 1.1rem;"></i>`;
+          return div;
+        }
+        if (count > 0) {
+          div.innerHTML = `
+            <span style="display:inline-flex; align-items:center; justify-content:center; gap:2px;">
+              <i class="bi bi-file-pdf" style="color:#d32f2f; font-size:1.1rem;"></i>
+              <span style="background:#d32f2f; color:#fff; border-radius:10px;
+                           font-size:0.65rem; font-weight:700; padding:0 4px;
+                           min-width:16px; height:15px; line-height:15px;
+                           display:inline-block; text-align:center;">
+                ${count > 9 ? '9+' : count}
+              </span>
+            </span>`;
+        } else {
+          div.innerHTML = `<i class="bi bi-file-pdf" style="color:#d32f2f; font-size:1.1rem;" title="Ver documentos"></i>`;
+        }
         return div;
       },
     },
@@ -571,10 +687,21 @@ export class OrdenesydetallesOcComponent implements OnDestroy {
       field: 'fechaEntradaAlmacen',
       headerName: 'Fecha Entrada Almacén',
       width: 160,
-      editable: true,
-      cellDataType: 'dateString',
-      cellEditor: 'agDateStringCellEditor',
+      editable: false,
+      cellStyle: { backgroundColor: '#f5f5f5', color: '#757575' },
       valueFormatter: (p) => this.formatFechaDmy(p.value),
+    },
+    {
+      field: 'cantidadEntradaAlmacen',
+      headerName: 'Cantidad Entrada Almacén',
+      width: 180,
+      type: 'numericColumn',
+      editable: false,
+      valueFormatter: (p) => {
+        const v = Number(p.value ?? 0);
+        return Number.isFinite(v) && v > 0 ? v.toLocaleString('es-MX') : '';
+      },
+      cellStyle: { backgroundColor: '#e3f2fd', color: '#0d47a1', fontWeight: '600' },
     },
   ];
 
@@ -601,8 +728,27 @@ export class OrdenesydetallesOcComponent implements OnDestroy {
             return;
           }
         }
+        // Todas las fechas de entrega deben ser únicas
+        const newFecha = event.newValue ?? '';
+        const hasDuplicate = this.nivel3Data.some((r: any, i: number) =>
+          i !== (event.node.rowIndex ?? -1) && r.fechaEntrega === newFecha
+        );
+        if (hasDuplicate) {
+          event.data.fechaEntrega = event.oldValue ?? '';
+          event.api.refreshCells({ rowNodes: [event.node], columns: ['fechaEntrega'], force: true });
+          this.showInlineAlert('La fecha ya existe en otra fila, todas deben ser diferentes');
+          return;
+        }
       }
       if (event.colDef.field === 'cantidadRecibir') {
+        const cantEntrada = Number(event.data?.cantidadEntradaAlmacen ?? 0);
+        const newVal = Number(event.newValue ?? 0);
+        if (cantEntrada > 0 && newVal < cantEntrada) {
+          event.data.cantidadRecibir = event.oldValue ?? null;
+          event.api.refreshCells({ rowNodes: [event.node], columns: ['cantidadRecibir'], force: true });
+          this.showInlineAlert(`La cantidad a recibir no puede ser menor a la ya entrada al almacén (${cantEntrada.toLocaleString('es-MX')})`);
+          return;
+        }
         const maxQty = Number(this.selectedArticleRow?.quantity ?? 0);
         const newSum = this.nivel3Data.reduce((acc, row) => acc + Number(row.cantidadRecibir ?? 0), 0);
         if (newSum > maxQty) {
@@ -622,6 +768,7 @@ export class OrdenesydetallesOcComponent implements OnDestroy {
       if (idDetail) {
         this.entregasPendingService.set(idDetail, this.nivel3Data);
       }
+      this.syncSelectedItemQuantityDelta();
     },
   };
 
@@ -740,6 +887,14 @@ export class OrdenesydetallesOcComponent implements OnDestroy {
     return { id: null, fechaEntrega: fechaBase ?? today, cantidadRecibir: null, notaFactura: '', totalEntrega: null, fechaEntradaAlmacen: '' };
   }
 
+  private addDaysToIso(isoDate: string, days: number): string {
+    if (!isoDate || days === 0) return isoDate;
+    const m = isoDate.match(/^(\d{4})-(\d{2})-(\d{2})/);
+    if (!m) return isoDate;
+    const d = new Date(+m[1], +m[2] - 1, +m[3] + days);
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+  }
+
   /**
    * Fecha base para las filas del nivel 5. Solo los ítems "COMPRA AUTORIZADA EN OTRA FECHA"
    * heredan la fecha de entrega (datepostpone) del nivel 4; el resto usa la fecha de hoy.
@@ -785,7 +940,15 @@ export class OrdenesydetallesOcComponent implements OnDestroy {
               totalEntrega: s.totalEntrega ?? null,
               fechaEntradaAlmacen: s.fechaEntradaAlmacen ?? '',
             }))
-          : Array.from({ length: planned }, () => this.emptyNivel3Row(fechaBase));
+          : Array.from({ length: planned }, (_, i) => this.emptyNivel3Row(this.addDaysToIso(fechaBase, i)));
+
+        // Mapear close desde BD para que las columnas se bloqueen correctamente
+        if (list.length > 0) {
+          baseline.forEach((row: any, i: number) => {
+            row.close = list[i]?.close ?? false;
+          });
+        }
+
         this.originalNivel3Data = baseline;
 
         // Si en esta sesión hay cambios pendientes (add/delete/edit aún no guardados),
@@ -798,10 +961,15 @@ export class OrdenesydetallesOcComponent implements OnDestroy {
           this.nivel3Data = JSON.parse(JSON.stringify(baseline));
           this.hasNivel3Changes = false;
         }
+        // Registrar el estado visible para que la validación de fechas duplicadas
+        // funcione aún cuando el usuario no edite nada (entregas pre-existentes en BD).
+        this.entregasPendingService.setVisible(idDetail, this.nivel3Data);
         if (this.nivel3GridApi) {
           this.nivel3GridApi.setGridOption('rowData', this.nivel3Data);
           this.autosizeNivel3();
         }
+        this.loadNivel3PdfCounts();
+        this.loadNivel3EntradaCantidades();
       },
       error: () => {
         this.buildNivel3Grid(articleRow);
@@ -819,7 +987,7 @@ export class OrdenesydetallesOcComponent implements OnDestroy {
     const newData: any[] = [];
     for (let i = 1; i <= count; i++) {
       const prior = existing[i - 1];
-      newData.push(prior ?? this.emptyNivel3Row(fechaBase));
+      newData.push(prior ?? this.emptyNivel3Row(this.addDaysToIso(fechaBase, i - 1)));
     }
     this.nivel3Data = newData;
 
@@ -844,10 +1012,15 @@ export class OrdenesydetallesOcComponent implements OnDestroy {
     const idDetail = Number(this.selectedArticleRow?.id);
     if (idDetail) {
       this.entregasPendingService.remove(idDetail);
+      // Resincronizar visible con la baseline ahora restaurada.
+      this.entregasPendingService.setVisible(idDetail, this.nivel3Data);
     }
     if (this.nivel3GridApi) {
       this.nivel3GridApi.setGridOption('rowData', this.nivel3Data);
     }
+    this.loadNivel3PdfCounts();
+    this.loadNivel3EntradaCantidades();
+    this.syncSelectedItemQuantityDelta();
   }
 
   /** Muestra una fecha almacenada (yyyy-MM-dd) como DD/MM/YYYY. */
@@ -860,10 +1033,12 @@ export class OrdenesydetallesOcComponent implements OnDestroy {
   }
 
   private closeNivel3(): void {
+    const prevIdDetail = Number(this.selectedArticleRow?.id);
     this.selectedArticleRow = null;
     this.nivel3Data = [];
     this.originalNivel3Data = [];
     this.hasNivel3Changes = false;
+    if (prevIdDetail) this.entregasPendingService.clearVisible(prevIdDetail);
     if (this.itemsGridApi) {
       this.itemsGridApi.forEachNode((node: any) => node.setRowHeight(undefined));
       this.itemsGridApi.onRowHeightChanged();
@@ -963,6 +1138,7 @@ export class OrdenesydetallesOcComponent implements OnDestroy {
             articulo: String(it.namearticle ?? it.nameArticle ?? '—'),
             cantidadRequerida: cantidadReq,
             cantidadXProv: Number(it.quantity ?? 0),
+            cantidadEntregas: Number(it.diasCondicionCompra ?? it.conditions ?? 1),
           };
         });
 
@@ -1027,13 +1203,14 @@ export class OrdenesydetallesOcComponent implements OnDestroy {
         <th style="text-align: left; padding: 4px 6px; border-bottom: 1px solid rgba(255,255,255,0.25); color: rgba(255,255,255,0.8); font-weight: 600;">Artículo</th>
         <th style="text-align: right; padding: 4px 6px; border-bottom: 1px solid rgba(255,255,255,0.25); color: rgba(255,255,255,0.8); font-weight: 600; white-space: nowrap;">Cant. Req</th>
         <th style="text-align: right; padding: 4px 6px; border-bottom: 1px solid rgba(255,255,255,0.25); color: rgba(255,255,255,0.8); font-weight: 600; white-space: nowrap;">Cant X Prov</th>
+        <th style="text-align: right; padding: 4px 6px; border-bottom: 1px solid rgba(255,255,255,0.25); color: rgba(255,255,255,0.8); font-weight: 600; white-space: nowrap;">Cant. Entregas</th>
       </tr>`;
     table.appendChild(thead);
 
     const tbody = document.createElement('tbody');
     if (!data.items.length) {
       const emptyRow = document.createElement('tr');
-      emptyRow.innerHTML = `<td colspan="3" style="padding: 6px; text-align: center; color: rgba(255,255,255,0.7);">Sin artículos</td>`;
+      emptyRow.innerHTML = `<td colspan="4" style="padding: 6px; text-align: center; color: rgba(255,255,255,0.7);">Sin artículos</td>`;
       tbody.appendChild(emptyRow);
     } else {
       data.items.forEach((it, idx) => {
@@ -1044,7 +1221,8 @@ export class OrdenesydetallesOcComponent implements OnDestroy {
         tr.innerHTML = `
           <td style="padding: 4px 6px; border-bottom: 1px solid rgba(255,255,255,0.1); color: #ffffff;">${this.escapeHtml(it.articulo)}</td>
           <td style="padding: 4px 6px; text-align: right; border-bottom: 1px solid rgba(255,255,255,0.1); color: rgba(255,255,255,0.85);">${formatNum(it.cantidadRequerida)}</td>
-          <td style="padding: 4px 6px; text-align: right; border-bottom: 1px solid rgba(255,255,255,0.1); color: #ffffff; font-weight: 600;">${formatNum(it.cantidadXProv)}</td>`;
+          <td style="padding: 4px 6px; text-align: right; border-bottom: 1px solid rgba(255,255,255,0.1); color: #ffffff; font-weight: 600;">${formatNum(it.cantidadXProv)}</td>
+          <td style="padding: 4px 6px; text-align: right; border-bottom: 1px solid rgba(255,255,255,0.1); color: rgba(255,255,255,0.85);">${it.cantidadEntregas > 0 ? it.cantidadEntregas : '—'}</td>`;
         tbody.appendChild(tr);
       });
     }
@@ -1133,11 +1311,20 @@ export class OrdenesydetallesOcComponent implements OnDestroy {
     this.refreshConditionsCell();
     this.hasNivel3Changes = true;
     const idDetail = Number(this.selectedArticleRow?.id);
-    if (idDetail) this.entregasPendingService.set(idDetail, this.nivel3Data);
+    if (idDetail) {
+      this.entregasPendingService.set(idDetail, this.nivel3Data);
+      this.entregasPendingService.setVisible(idDetail, this.nivel3Data);
+    }
+    this.syncSelectedItemQuantityDelta();
   }
 
   async deleteNivel3Row(): Promise<void> {
     if (!this.selectedArticleRow) return;
+    const lastRow = this.nivel3Data[this.nivel3Data.length - 1];
+    if (lastRow?.close === true) {
+      this.showInlineAlert('No puedes eliminar porque esta entrega ya está cerrada');
+      return;
+    }
     if (this.nivel3Data.length <= 1) {
       this.showInlineAlert('Debe quedar al menos una fila');
       return;
@@ -1162,6 +1349,17 @@ export class OrdenesydetallesOcComponent implements OnDestroy {
     // El Eliminar es acción destructiva ya confirmada por el usuario — no se difiere a Guardar.
     if (removed?.id) {
       try {
+        // Eliminar documentos asociados primero para evitar registros huérfanos
+        const docs = await lastValueFrom(
+          this.intandoutDocumentsService.getIntandoutDocumentsById(Number(removed.id), 'entrega')
+        ).catch(() => []);
+        if (Array.isArray(docs) && docs.length > 0) {
+          await Promise.all(
+            docs.map((doc: any) =>
+              lastValueFrom(this.intandoutDocumentsService.deleteIntandoutDocuments(doc.id)).catch(() => {})
+            )
+          );
+        }
         await lastValueFrom(this.entregaOcService.delete(Number(removed.id)));
       } catch {
         this.showInlineAlert('No se pudo borrar la entrega');
@@ -1187,10 +1385,13 @@ export class OrdenesydetallesOcComponent implements OnDestroy {
     if (idDetail && this.entregasPendingService.getPendingRows(idDetail) !== undefined) {
       this.entregasPendingService.set(idDetail, this.nivel3Data);
     }
+    // Mantener visible en sincronía para validación de fechas duplicadas al guardar.
+    if (idDetail) this.entregasPendingService.setVisible(idDetail, this.nivel3Data);
     // hasNivel3Changes ya solo refleja Agregar/edits pendientes; si pending está vacío, no hay nada que guardar.
     this.hasNivel3Changes = idDetail
       ? this.entregasPendingService.getPendingRows(idDetail) !== undefined
       : this.hasNivel3Changes;
+    this.syncSelectedItemQuantityDelta();
   }
 
   private showInlineAlert(msg: string): void {
@@ -1199,11 +1400,143 @@ export class OrdenesydetallesOcComponent implements OnDestroy {
     this.alertTimeout = setTimeout(() => { this.alertMessage = ''; }, 2500);
   }
 
+  private async loadItemsPdfCounts(): Promise<void> {
+    const rowsWithId = this.itemsData.filter((r: any) => r.id && Number(r.conditions ?? 1) <= 1);
+    if (!rowsWithId.length) return;
+    const idOc = this.selectedOcRow?.id ?? null;
+    await Promise.all(rowsWithId.map(async (row: any) => {
+      try {
+        // Step 1: resolve via entregas_oc (multi-entrega flow — id_entrega is set in entradas_molienda)
+        const entregas = await lastValueFrom(this.entregaOcService.getByDetail(row.id)).catch(() => []);
+        const entregaId = Array.isArray(entregas) && entregas.length > 0 ? entregas[0].id : null;
+
+        if (entregaId != null) {
+          row.__entregaId = entregaId;
+          const docs = await lastValueFrom(
+            this.intandoutDocumentsService.getIntandoutDocumentsById(entregaId, 'entrega')
+          ).catch(() => []);
+          row.pdfCount = Array.isArray(docs) ? docs.length : 0;
+          return;
+        }
+
+        // Step 2: no entregas_oc — look up entradas_molienda by OC + material (single-entrega flow)
+        // detailsreqoc.idSupplie === entradas_molienda.idMaterial
+        const idSupplie = Number(row.idSupplie ?? 0);
+        if (idOc && idSupplie) {
+          const entradas = await lastValueFrom(
+            this.entradaMoliendaService.getByOcAndMaterial(idOc, idSupplie)
+          ).catch(() => []);
+          const entrada = Array.isArray(entradas) && entradas.length > 0 ? entradas[0] : null;
+          const docKey = entrada ? (entrada.idEntrega ?? entrada.id ?? null) : null;
+          if (docKey) {
+            row.__entregaId = docKey;
+            const docs = await lastValueFrom(
+              this.intandoutDocumentsService.getIntandoutDocumentsById(docKey, 'entrega')
+            ).catch(() => []);
+            row.pdfCount = Array.isArray(docs) ? docs.length : 0;
+            return;
+          }
+        }
+
+        row.__entregaId = null;
+        row.pdfCount = 0;
+      } catch {
+        row.__entregaId = null;
+        row.pdfCount = 0;
+      }
+    }));
+    if (this.itemsGridApi && !this.itemsGridApi.isDestroyed()) {
+      this.itemsGridApi.refreshCells({ columns: ['itemspdf'], force: true });
+    }
+  }
+
+  private syncSelectedItemQuantityDelta(): void {
+    if (!this.selectedArticleRow || !this.itemsGridApi || this.itemsGridApi.isDestroyed()) return;
+    const suma = this.nivel3Data.reduce((acc: number, r: any) => acc + Number(r.cantidadRecibir ?? 0), 0);
+    this.selectedArticleRow.__sumaCantidadRecibir = suma > 0 ? suma : null;
+    this.itemsGridApi.forEachNode((node: any) => {
+      if (node.data === this.selectedArticleRow) {
+        this.itemsGridApi.refreshCells({ rowNodes: [node], columns: ['quantity'], force: true });
+      }
+    });
+  }
+
+  private async loadItemsEntregasSums(): Promise<void> {
+    const rowsWithId = this.itemsData.filter((r: any) => r.id);
+    if (!rowsWithId.length) return;
+    await Promise.all(rowsWithId.map(async (row: any) => {
+      try {
+        const entregas = await lastValueFrom(
+          this.entregaOcService.getByDetail(row.id)
+        ).catch(() => []);
+        const list = Array.isArray(entregas) ? entregas : [];
+        const suma = list.reduce((acc: number, e: any) => acc + Number(e.cantidadRecibir ?? 0), 0);
+        row.__sumaCantidadRecibir = suma > 0 ? suma : null;
+      } catch {
+        row.__sumaCantidadRecibir = null;
+      }
+    }));
+    if (this.itemsGridApi && !this.itemsGridApi.isDestroyed()) {
+      this.itemsGridApi.refreshCells({ columns: ['quantity'], force: true });
+    }
+  }
+
+  private async loadNivel3EntradaCantidades(): Promise<void> {
+    const rowsWithId = this.nivel3Data.filter((r: any) => r.id);
+    if (!rowsWithId.length) return;
+    const idMaterial = Number(this.selectedArticleRow?.idSupplie ?? 0);
+    await Promise.all(rowsWithId.map(async (row: any) => {
+      try {
+        const entradas = await lastValueFrom(
+          this.entradaMoliendaService.getByEntregaAndMaterial(row.id, idMaterial)
+        ).catch(() => []);
+        const list = Array.isArray(entradas) ? entradas : [];
+
+        const suma = list.reduce((acc: number, e: any) => acc + Number(e.cantidadEntrada ?? 0), 0);
+        row.cantidadEntradaAlmacen = suma > 0 ? suma : null;
+
+        // Si la BD no tiene fechaEntradaAlmacen guardada aún, la calculamos
+        // dinámicamente desde la primera entrada con fechaRecepcion.
+        if (!row.fechaEntradaAlmacen) {
+          const conFecha = list.find((e: any) => e.fechaRecepcion);
+          if (conFecha) {
+            const iso = String(conFecha.fechaRecepcion).match(/^(\d{4})-(\d{2})-(\d{2})/);
+            if (iso) row.fechaEntradaAlmacen = `${iso[1]}-${iso[2]}-${iso[3]}`;
+          }
+        }
+      } catch {
+        row.cantidadEntradaAlmacen = null;
+      }
+    }));
+    if (this.nivel3GridApi && !this.nivel3GridApi.isDestroyed()) {
+      this.nivel3GridApi.refreshCells({ columns: ['cantidadEntradaAlmacen', 'fechaEntradaAlmacen'], force: true });
+    }
+  }
+
+  private async loadNivel3PdfCounts(): Promise<void> {
+    const rowsWithId = this.nivel3Data.filter((r: any) => r.id);
+    if (!rowsWithId.length) return;
+    await Promise.all(rowsWithId.map(async (row: any) => {
+      try {
+        const docs = await lastValueFrom(
+          this.intandoutDocumentsService.getIntandoutDocumentsById(row.id, 'entrega')
+        );
+        row.pdfCount = Array.isArray(docs) ? docs.length : 0;
+      } catch {
+        row.pdfCount = 0;
+      }
+    }));
+    if (this.nivel3GridApi && !this.nivel3GridApi.isDestroyed()) {
+      this.nivel3GridApi.refreshCells({ columns: ['pdf'], force: true });
+    }
+  }
+
   ngOnDestroy(): void {
     clearTimeout(this.alertTimeout);
     this.hideOcTooltip();
     this.entregasPendingSub?.unsubscribe();
     this.conditionsPendingSub?.unsubscribe();
+    this.countSub?.unsubscribe();
   }
 
   onRowClicked(event: any) {
@@ -1258,6 +1591,8 @@ export class OrdenesydetallesOcComponent implements OnDestroy {
         if (this.itemsGridApi) {
           this.itemsGridApi.setGridOption('rowData', this.itemsData);
         }
+        this.loadItemsPdfCounts();
+        this.loadItemsEntregasSums();
       },
       error: () => {
         this.itemsData = [];
