@@ -707,7 +707,15 @@ export const routes: Routes = [
         canActivate: [MasterPermissionsGuard],
         data: { permissions: { master: 'pmo' } },
         children: [
-          { path: '', redirectTo: 'reporte', pathMatch: 'full' },
+          { path: '', redirectTo: 'programa', pathMatch: 'full' },
+          {
+            path: 'programa',
+            loadComponent: () =>
+              import('./domains/ModPMO/components/pmo-programa/pmo-programa.component')
+                .then((c) => c.PmoProgramaComponent),
+            canActivate: [MasterPermissionsGuard],
+            data: { permissions: { master: 'pmo', detailed: 'programa' } },
+          },
           {
             path: 'reporte',
             loadComponent: () =>

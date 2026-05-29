@@ -4,6 +4,13 @@
       <div class="nav-wrapper">
         <ul class="nav nav-pills modern-nav">
 
+          <li class="nav-item" *ngIf="authService.hasDetailedPermission('pmo', 'programa')">
+            <a class="nav-link modern-tab" routerLink="programa" routerLinkActive="active">
+              <i class="bi bi-kanban-fill"></i>
+              <span>Programa de Trabajo</span>
+            </a>
+          </li>
+
           <li class="nav-item" *ngIf="authService.hasDetailedPermission('pmo', 'reporte')">
             <a class="nav-link modern-tab" routerLink="reporte" routerLinkActive="active">
               <i class="bi bi-graph-up-arrow"></i>

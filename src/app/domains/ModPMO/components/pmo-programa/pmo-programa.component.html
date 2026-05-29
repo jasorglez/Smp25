@@ -1,0 +1,172 @@
+<div class="container-fluid py-3">
+
+  <!-- ══ Selector + controles ════════════════════════════════════════════ -->
+  <div class="row mb-3 g-2 align-items-end">
+    <div class="col-md-5">
+      <label class="form-label form-label-sm mb-1 fw-semibold">
+        <i class="bi bi-building me-1"></i> Proyecto
+      </label>
+      <select class="form-select form-select-sm" [(ngModel)]="selectedProject"
+              (ngModelChange)="onProjectChange()">
+        <option [ngValue]="null">— Seleccionar proyecto —</option>
+        <option *ngFor="let p of projects" [ngValue]="p">
+          {{ p.name || p.projectName || ('ID: ' + p.id) }}
+        </option>
+      </select>
+    </div>
+
+    <div class="col-md-4" *ngIf="allRows.length">
+      <label class="form-label form-label-sm mb-1 fw-semibold">
+        <i class="bi bi-funnel me-1"></i> Filtrar por estado
+      </label>
+      <select class="form-select form-select-sm" [(ngModel)]="filterStatus"
+              (ngModelChange)="applyFilter()">
+        <option value="todos">Todos</option>
+        <option value="atrasadas">🔴 Atrasadas</option>
+        <option value="progreso">🔵 En Progreso</option>
+        <option value="terminadas">🟢 Terminadas</option>
+        <option value="pendientes">⚪ Pendientes / Sin Avance</option>
+      </select>
+    </div>
+
+    <div class="col-md-3 d-flex gap-2 justify-content-end" *ngIf="allRows.length">
+      <button class="btn btn-sm btn-outline-secondary" (click)="expandAll()" title="Expandir todo">
+        <i class="bi bi-arrows-expand"></i>
+      </button>
+      <button class="btn btn-sm btn-outline-secondary" (click)="collapseAll()" title="Colapsar todo">
+        <i class="bi bi-arrows-collapse"></i>
+      </button>
+      <button class="btn btn-sm btn-outline-primary" (click)="loadProgram()" title="Actualizar">
+        <i class="bi bi-arrow-clockwise"></i>
+      </button>
+      <button class="btn btn-sm btn-outline-success" (click)="exportXLS()" title="Excel">
+        <i class="bi bi-file-earmark-excel"></i>
+      </button>
+    </div>
+  </div>
+
+  <!-- ══ Spinner ══════════════════════════════════════════════════════════ -->
+  <div *ngIf="isLoading" class="text-center py-5">
+    <div class="spinner-border text-primary"></div>
+    <p class="text-muted mt-2 small">Cargando programa de trabajo...</p>
+  </div>
+
+  <ng-container *ngIf="!isLoading && allRows.length">
+
+    <!-- ══ KPI chips ════════════════════════════════════════════════════ -->
+    <div class="row g-2 mb-3">
+
+      <!-- Avance general — círculo grande -->
+      <div class="col-6 col-md-2">
+        <div class="card h-100 border-0 shadow-sm text-center p-2">
+          <div class="position-relative d-inline-block mx-auto"
+               style="width:72px; height:72px;">
+            <svg viewBox="0 0 36 36" style="width:72px;height:72px;transform:rotate(-90deg)">
+              <circle cx="18" cy="18" r="15.9" fill="none" stroke="#e9ecef" stroke-width="3"/>
+              <circle cx="18" cy="18" r="15.9" fill="none"
+                      [attr.stroke]="progressColor" stroke-width="3"
+                      stroke-dasharray="100" stroke-linecap="round"
+                      [attr.stroke-dashoffset]="100 - pctGeneral"
+                      style="transition: stroke-dashoffset 0.8s ease;"/>
+            </svg>
+            <span class="position-absolute top-50 start-50 translate-middle fw-bold"
+                  style="font-size:13px;" [style.color]="progressColor">
+              {{ pctGeneral | number:'1.1-1' }}%
+            </span>
+          </div>
+          <div class="small text-muted mt-1 fw-semibold">Avance General</div>
+        </div>
+      </div>
+
+      <!-- Chips de estado -->
+      <div class="col-6 col-md-2">
+        <div class="card h-100 border-success border-opacity-50 text-center p-2 d-flex flex-column justify-content-center"
+             style="cursor:pointer;" (click)="filterStatus='terminadas'; applyFilter()">
+          <div class="fw-bold fs-3 text-success">{{ cntTerminado }}</div>
+          <div class="small text-muted">✅ Terminadas</div>
+          <div class="small text-success">{{ cntTotal ? (cntTerminado/cntTotal*100 | number:'1.0-0') : 0 }}%</div>
+        </div>
+      </div>
+
+      <div class="col-6 col-md-2">
+        <div class="card h-100 border-primary border-opacity-50 text-center p-2 d-flex flex-column justify-content-center"
+             style="cursor:pointer;" (click)="filterStatus='progreso'; applyFilter()">
+          <div class="fw-bold fs-3 text-primary">{{ cntProgreso }}</div>
+          <div class="small text-muted">🔵 En Progreso</div>
+          <div class="small text-primary">{{ cntTotal ? (cntProgreso/cntTotal*100 | number:'1.0-0') : 0 }}%</div>
+        </div>
+      </div>
+
+      <div class="col-6 col-md-2">
+        <div class="card h-100 border-danger border-opacity-50 text-center p-2 d-flex flex-column justify-content-center"
+             style="cursor:pointer;" (click)="filterStatus='atrasadas'; applyFilter()">
+          <div class="fw-bold fs-3 text-danger">{{ cntAtrasada }}</div>
+          <div class="small text-muted">🔴 Atrasadas</div>
+          <div class="small text-danger" *ngIf="cntAtrasada > 0">¡Acción requerida!</div>
+          <div class="small text-muted" *ngIf="cntAtrasada === 0">Sin retrasos 🎉</div>
+        </div>
+      </div>
+
+      <div class="col-6 col-md-2">
+        <div class="card h-100 border-secondary border-opacity-25 text-center p-2 d-flex flex-column justify-content-center"
+             style="cursor:pointer;" (click)="filterStatus='pendientes'; applyFilter()">
+          <div class="fw-bold fs-3 text-secondary">{{ cntPendiente }}</div>
+          <div class="small text-muted">⚪ Pendientes</div>
+          <div class="small text-muted">{{ cntTotal ? (cntPendiente/cntTotal*100 | number:'1.0-0') : 0 }}%</div>
+        </div>
+      </div>
+
+      <div class="col-6 col-md-2">
+        <div class="card h-100 bg-dark text-center p-2 d-flex flex-column justify-content-center"
+             style="cursor:pointer;" (click)="filterStatus='todos'; applyFilter()">
+          <div class="fw-bold fs-3 text-white">{{ cntTotal }}</div>
+          <div class="small text-light">📋 Total tareas</div>
+          <div class="small text-white-50">Ver todas</div>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- ══ Grid árbol ═══════════════════════════════════════════════════ -->
+    <div class="ag-theme-quartz"
+         style="height: calc(100vh - 340px); min-height: 420px;">
+      <ag-grid-angular
+        [rowData]="rowData"
+        [columnDefs]="colDefs"
+        [gridOptions]="gridOptions"
+        [autoGroupColumnDef]="autoGroupColDef"
+        (gridReady)="onGridReady($event)">
+      </ag-grid-angular>
+    </div>
+
+    <!-- ══ Leyenda ═══════════════════════════════════════════════════════ -->
+    <div class="d-flex gap-3 mt-2 flex-wrap small text-muted">
+      <span><span style="display:inline-block;width:10px;height:10px;background:#27ae60;border-radius:2px;"></span> Terminada</span>
+      <span><span style="display:inline-block;width:10px;height:10px;background:#2980b9;border-radius:2px;"></span> En Progreso</span>
+      <span><span style="display:inline-block;width:10px;height:10px;background:#e67e22;border-radius:2px;"></span> Sin Avance (activa)</span>
+      <span><span style="display:inline-block;width:10px;height:10px;background:#c0392b;border-radius:2px;"></span> Atrasada</span>
+      <span><span style="display:inline-block;width:10px;height:10px;background:#bdc3c7;border-radius:2px;"></span> Pendiente</span>
+      <span class="ms-auto">
+        <i class="bi bi-info-circle me-1"></i>
+        Haz clic en los chips de estado para filtrar · Avance capturado en <strong>Proyectos → Sistema → Avance</strong>
+      </span>
+    </div>
+
+  </ng-container>
+
+  <!-- ══ Sin datos ════════════════════════════════════════════════════════ -->
+  <div *ngIf="!isLoading && !allRows.length && selectedProject"
+       class="text-center text-muted py-5">
+    <i class="bi bi-diagram-3 fs-1 text-warning opacity-50 d-block mb-2"></i>
+    <h5>Sin programa de trabajo para este proyecto</h5>
+    <p class="small">Crea las actividades en <strong>Proyectos → Programa de Trabajo</strong>.</p>
+  </div>
+
+  <div *ngIf="!selectedProject && !isLoading"
+       class="text-center text-muted py-5">
+    <i class="bi bi-kanban-fill fs-1 text-primary opacity-50 d-block mb-2"></i>
+    <h5>Selecciona un proyecto para ver su avance</h5>
+    <p class="small">Vista árbol del programa de trabajo con semáforos, barras de progreso y filtros de estado.</p>
+  </div>
+
+</div>
