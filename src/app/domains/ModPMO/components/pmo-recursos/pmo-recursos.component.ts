@@ -168,7 +168,7 @@ export class PmoRecursosComponent implements OnInit {
       this.originalRowData = JSON.parse(JSON.stringify(this.rowData));
       this.hasUnsavedChanges = false;
       this.recalcTotals();
-      this.gridApi?.setGridOption('rowData', this.rowData);
+      this.setRowData(this.rowData);
     } catch (err) {
       console.error('Error cargando recursos PMO', err);
       this.rowData = [];
@@ -189,8 +189,12 @@ export class PmoRecursosComponent implements OnInit {
     };
     this.rowData = [newRow, ...this.rowData];
     this.hasUnsavedChanges = true;
-    this.gridApi?.setGridOption('rowData', this.rowData);
-    setTimeout(() => { this.gridApi?.startEditingCell({ rowIndex: 0, colKey: 'tipo' }); }, 50);
+    this.setRowData(this.rowData);
+    setTimeout(() => {
+      if (this.gridApi && !this.gridApi.isDestroyed()) {
+        this.gridApi.startEditingCell({ rowIndex: 0, colKey: 'tipo' });
+      }
+    }, 50);
   }
 
   async saveChanges(): Promise<void> {
@@ -219,7 +223,7 @@ export class PmoRecursosComponent implements OnInit {
     if (row.__isNew) {
       // Fila nueva no guardada: solo quitar del grid
       this.rowData = this.rowData.filter(r => r !== row);
-      this.gridApi?.setGridOption('rowData', this.rowData);
+      this.setRowData(this.rowData);
       this.recalcTotals();
       return;
     }
@@ -236,7 +240,7 @@ export class PmoRecursosComponent implements OnInit {
   revertChanges(): void {
     this.rowData = JSON.parse(JSON.stringify(this.originalRowData));
     this.hasUnsavedChanges = false;
-    this.gridApi?.setGridOption('rowData', this.rowData);
+    this.setRowData(this.rowData);
     this.recalcTotals();
   }
 
@@ -245,6 +249,13 @@ export class PmoRecursosComponent implements OnInit {
   }
 
   // ── helpers ───────────────────────────────────────────────────────────────
+
+  /** Llama setGridOption solo si el grid sigue vivo (evita "grid has been destroyed") */
+  private setRowData(data: RecursoRow[]): void {
+    if (this.gridApi && !this.gridApi.isDestroyed()) {
+      this.gridApi.setGridOption('rowData', data);
+    }
+  }
 
   private markModified(row: RecursoRow): void {
     if (!row.__isNew) row.__modified = true;

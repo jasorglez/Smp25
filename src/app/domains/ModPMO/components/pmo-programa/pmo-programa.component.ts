@@ -10,6 +10,7 @@ import { lastValueFrom }        from 'rxjs';
 import { ProjectsService }      from 'app/services/projects.service';
 import { WorkprogramsService }  from 'app/services/workprograms.service';
 import { SignalsService }       from 'app/services/signals.service';
+import { PmoImportComponent }   from '../pmo-import/pmo-import.component';
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 function buildPaths(tasks: any[]): any[] {
@@ -67,7 +68,7 @@ function statusRenderer(params: any): string {
 @Component({
   selector: 'app-pmo-programa',
   standalone: true,
-  imports: [CommonModule, FormsModule, AgGridModule],
+  imports: [CommonModule, FormsModule, AgGridModule, PmoImportComponent],
   templateUrl: './pmo-programa.component.html',
 })
 export class PmoProgramaComponent implements OnInit {
@@ -81,6 +82,7 @@ export class PmoProgramaComponent implements OnInit {
   selectedProject: any = null;
   isLoading        = false;
   filterStatus     = 'todos';   // todos | atrasadas | progreso | terminadas | pendientes
+  showImport       = false;
 
   // ── Contadores ───────────────────────────────────────────────────────────
   cntTotal     = 0;
@@ -291,6 +293,15 @@ export class PmoProgramaComponent implements OnInit {
 
   exportXLS(): void {
     this.gridApi?.exportDataAsExcel({ fileName: 'PMO_ProgramaTrabajoAvance.xlsx' });
+  }
+
+  // ── Importación ──────────────────────────────────────────────────────────
+  openImport(): void  { this.showImport = true; }
+  closeImport(): void { this.showImport = false; }
+
+  async onImported(count: number): Promise<void> {
+    this.showImport = false;
+    if (count > 0) await this.loadProgram();
   }
 
   get progressColor(): string {
