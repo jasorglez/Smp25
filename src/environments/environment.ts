@@ -85,5 +85,5 @@ export const environment = {
     // publicKey: 'TEST-4399133a-4676-42a2-ab85-d946370bf96a',
   },
 
-  version: '6.82 (29 Mayo 2026 17:30) feat(pmo): Reporte EVM real — BAC/EV en MXN, Ruta Crítica + Hitos integrados en tablero',
+  version: '6.83 (29 Mayo 2026 18:45) feat(pmo-recursos): Recursos PMO conectado a BD — GET/POST batch/DELETE en PmoRecurso endpoint',
 };

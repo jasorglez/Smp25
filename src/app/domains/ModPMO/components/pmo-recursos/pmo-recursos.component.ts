@@ -8,19 +8,21 @@ import { ProjectsService }      from 'app/services/projects.service';
 import { SignalsService }       from 'app/services/signals.service';
 
 interface RecursoRow {
-  tipo:         string;   // Personal | Material | Equipo | Subcontrato | Indirecto
+  id:           number;   // 0 = nuevo, >0 = existe en BD
+  tipo:         string;
   descripcion:  string;
   unidad:       string;
+  periodo:      string;
   cantPlan:     number;
   cantReal:     number;
-  costUnitPlan: number;
-  costUnitReal: number;
-  costoPlan:    number;
-  costoReal:    number;
+  costoUnitPlan: number;
+  costoUnitReal: number;
+  costoPlan:    number;   // calculado: cantPlan * costoUnitPlan
+  costoReal:    number;   // calculado: cantReal * costoUnitReal
   variacion:    number;   // costoReal - costoPlan
-  semana:       string;   // ISO week label
   __isNew?:     boolean;
   __modified?:  boolean;
+  __deleted?:   boolean;
 }
 
 @Component({
@@ -33,19 +35,19 @@ export class PmoRecursosComponent implements OnInit {
   private _projectsService = inject(ProjectsService);
   private _signalsService  = inject(SignalsService);
 
-  idCompany       = 0;
-  projects: any[] = [];
+  idCompany        = 0;
+  projects: any[]  = [];
   selectedProject: any = null;
-  selectedPeriod  = 'semanal';    // semanal | quincenal | mensual
-  isLoading       = false;
+  isLoading        = false;
+  isSaving         = false;
   hasUnsavedChanges = false;
+  saveMsg          = '';
+  saveMsgType      = '';   // 'success' | 'error'
 
   gridApi!: GridApi;
   rowData: RecursoRow[] = [];
+  private originalRowData: RecursoRow[] = [];
 
-  TIPOS = ['Personal', 'Material', 'Equipo', 'Subcontrato', 'Indirecto'];
-
-  // ── Totales ───────────────────────────────────────────────────────────────
   totalPlan  = 0;
   totalReal  = 0;
   totalVar   = 0;
@@ -57,44 +59,64 @@ export class PmoRecursosComponent implements OnInit {
       cellEditorParams: { values: ['Personal', 'Material', 'Equipo', 'Subcontrato', 'Indirecto'] },
       cellStyle: (p) => p.data?.__isNew ? { background: '#fffacd' } : {},
     },
-    { field: 'descripcion', headerName: 'Descripción',  width: 200, editable: true,
-      cellStyle: (p) => p.data?.__isNew ? { background: '#fffacd' } : {} },
-    { field: 'unidad',      headerName: 'Unidad',       width: 80,  editable: true,
-      cellStyle: (p) => p.data?.__isNew ? { background: '#fffacd' } : {} },
-    { field: 'semana',      headerName: 'Período',      width: 110, editable: true,
-      cellStyle: (p) => p.data?.__isNew ? { background: '#fffacd' } : {} },
+    {
+      field: 'descripcion', headerName: 'Descripción', width: 200, editable: true,
+      cellStyle: (p) => p.data?.__isNew ? { background: '#fffacd' } : {},
+    },
+    {
+      field: 'unidad', headerName: 'Unidad', width: 90, editable: true,
+      cellStyle: (p) => p.data?.__isNew ? { background: '#fffacd' } : {},
+    },
+    {
+      field: 'periodo', headerName: 'Período', width: 110, editable: true,
+      cellStyle: (p) => p.data?.__isNew ? { background: '#fffacd' } : {},
+    },
     {
       field: 'cantPlan', headerName: 'Cant. Plan', width: 100, editable: true, type: 'numericColumn',
       valueFormatter: (p) => (p.value ?? 0).toFixed(2),
-      onCellValueChanged: (p) => { p.data.costoPlan = p.data.cantPlan * p.data.costUnitPlan; this.recalcTotals(); p.data.__modified = true; this.hasUnsavedChanges = true; },
+      onCellValueChanged: (p) => {
+        p.data.costoPlan = Number(p.data.cantPlan) * Number(p.data.costoUnitPlan);
+        this.recalcTotals(); this.markModified(p.data);
+      },
     },
     {
       field: 'cantReal', headerName: 'Cant. Real', width: 100, editable: true, type: 'numericColumn',
       valueFormatter: (p) => (p.value ?? 0).toFixed(2),
-      onCellValueChanged: (p) => { p.data.costoReal = p.data.cantReal * p.data.costUnitReal; p.data.variacion = p.data.costoReal - p.data.costoPlan; this.recalcTotals(); p.data.__modified = true; this.hasUnsavedChanges = true; },
+      onCellValueChanged: (p) => {
+        p.data.costoReal = Number(p.data.cantReal) * Number(p.data.costoUnitReal);
+        p.data.variacion  = p.data.costoReal - p.data.costoPlan;
+        this.recalcTotals(); this.markModified(p.data);
+      },
     },
     {
-      field: 'costUnitPlan', headerName: 'C.Unit Plan', width: 110, editable: true, type: 'numericColumn',
+      field: 'costoUnitPlan', headerName: 'C.Unit Plan', width: 110, editable: true, type: 'numericColumn',
       valueFormatter: (p) => (p.value ?? 0).toFixed(2),
-      onCellValueChanged: (p) => { p.data.costoPlan = p.data.cantPlan * p.data.costUnitPlan; p.data.__modified = true; this.recalcTotals(); this.hasUnsavedChanges = true; },
+      onCellValueChanged: (p) => {
+        p.data.costoPlan = Number(p.data.cantPlan) * Number(p.data.costoUnitPlan);
+        this.recalcTotals(); this.markModified(p.data);
+      },
     },
     {
-      field: 'costUnitReal', headerName: 'C.Unit Real', width: 110, editable: true, type: 'numericColumn',
+      field: 'costoUnitReal', headerName: 'C.Unit Real', width: 110, editable: true, type: 'numericColumn',
       valueFormatter: (p) => (p.value ?? 0).toFixed(2),
-      onCellValueChanged: (p) => { p.data.costoReal = p.data.cantReal * p.data.costUnitReal; p.data.variacion = p.data.costoReal - p.data.costoPlan; p.data.__modified = true; this.recalcTotals(); this.hasUnsavedChanges = true; },
+      onCellValueChanged: (p) => {
+        p.data.costoReal = Number(p.data.cantReal) * Number(p.data.costoUnitReal);
+        p.data.variacion  = p.data.costoReal - p.data.costoPlan;
+        this.recalcTotals(); this.markModified(p.data);
+      },
     },
     {
-      field: 'costoPlan', headerName: 'Costo Plan', width: 110, editable: false, type: 'numericColumn',
+      field: 'costoPlan', headerName: 'Costo Plan', width: 120, editable: false, type: 'numericColumn',
       valueFormatter: (p) => (p.value ?? 0).toLocaleString('es-MX', { minimumFractionDigits: 2 }),
       cellStyle: { background: '#e8f4fd' },
     },
     {
-      field: 'costoReal', headerName: 'Costo Real', width: 110, editable: false, type: 'numericColumn',
+      field: 'costoReal', headerName: 'Costo Real', width: 120, editable: false, type: 'numericColumn',
       valueFormatter: (p) => (p.value ?? 0).toLocaleString('es-MX', { minimumFractionDigits: 2 }),
       cellStyle: { background: '#e8f4fd' },
     },
     {
-      field: 'variacion', headerName: 'Variación', width: 110, editable: false, type: 'numericColumn',
+      field: 'variacion', headerName: 'Variación', width: 120, editable: false, type: 'numericColumn',
       valueFormatter: (p) => (p.value ?? 0).toLocaleString('es-MX', { minimumFractionDigits: 2 }),
       cellStyle: (p) => ({
         background: Number(p.value ?? 0) > 0 ? '#fce4e4' : Number(p.value ?? 0) < 0 ? '#e4fce4' : '#f8f8f8',
@@ -110,7 +132,10 @@ export class PmoRecursosComponent implements OnInit {
   constructor() {
     effect(() => {
       const id = this._signalsService.getRootSelectedBySidebar()();
-      if (id && id !== this.idCompany) { this.idCompany = id; this.loadProjects(); }
+      if (id && id !== this.idCompany) {
+        this.idCompany = id;
+        this.loadProjects();
+      }
     });
   }
 
@@ -126,19 +151,104 @@ export class PmoRecursosComponent implements OnInit {
     } catch { this.projects = []; }
   }
 
+  async onProjectChange(): Promise<void> {
+    if (!this.selectedProject) { this.rowData = []; this.recalcTotals(); return; }
+    await this.loadRecursos();
+  }
+
+  async loadRecursos(): Promise<void> {
+    if (!this.selectedProject) return;
+    this.isLoading = true;
+    try {
+      const res: any = await lastValueFrom(
+        this._projectsService.getPmoRecursosByProject(this.selectedProject.id)
+      );
+      const raw = Array.isArray(res) ? res : (Array.isArray(res?.data) ? res.data : []);
+      this.rowData = raw.map((r: any) => this.mapFromApi(r));
+      this.originalRowData = JSON.parse(JSON.stringify(this.rowData));
+      this.hasUnsavedChanges = false;
+      this.recalcTotals();
+      this.gridApi?.setGridOption('rowData', this.rowData);
+    } catch (err) {
+      console.error('Error cargando recursos PMO', err);
+      this.rowData = [];
+    } finally {
+      this.isLoading = false;
+    }
+  }
+
   onGridReady(e: GridReadyEvent): void { this.gridApi = e.api; }
 
   addRow(): void {
-    const today = new Date().toISOString().substring(0, 10);
     const newRow: RecursoRow = {
-      tipo: 'Personal', descripcion: '', unidad: 'día',
-      cantPlan: 0, cantReal: 0, costUnitPlan: 0, costUnitReal: 0,
+      id: 0,
+      tipo: 'Personal', descripcion: '', unidad: 'día', periodo: '',
+      cantPlan: 0, cantReal: 0, costoUnitPlan: 0, costoUnitReal: 0,
       costoPlan: 0, costoReal: 0, variacion: 0,
-      semana: today, __isNew: true,
+      __isNew: true,
     };
     this.rowData = [newRow, ...this.rowData];
     this.hasUnsavedChanges = true;
+    this.gridApi?.setGridOption('rowData', this.rowData);
     setTimeout(() => { this.gridApi?.startEditingCell({ rowIndex: 0, colKey: 'tipo' }); }, 50);
+  }
+
+  async saveChanges(): Promise<void> {
+    if (!this.selectedProject) return;
+    const dirty = this.rowData.filter(r => r.__isNew || r.__modified);
+    if (!dirty.length) { this.showMsg('No hay cambios que guardar', 'error'); return; }
+
+    this.isSaving = true;
+    try {
+      const payload = dirty.map(r => this.mapToApi(r));
+      const res: any = await lastValueFrom(this._projectsService.savePmoRecursosBatch(payload));
+      await this.loadRecursos();
+      this.showMsg(`✓ ${res?.count ?? dirty.length} registros guardados`, 'success');
+    } catch (err: any) {
+      console.error('Error guardando recursos PMO', err);
+      this.showMsg('Error al guardar — revisa la consola', 'error');
+    } finally {
+      this.isSaving = false;
+    }
+  }
+
+  async deleteSelected(): Promise<void> {
+    const selected = this.gridApi?.getSelectedRows() ?? [];
+    if (!selected.length) return;
+    const row: RecursoRow = selected[0];
+    if (row.__isNew) {
+      // Fila nueva no guardada: solo quitar del grid
+      this.rowData = this.rowData.filter(r => r !== row);
+      this.gridApi?.setGridOption('rowData', this.rowData);
+      this.recalcTotals();
+      return;
+    }
+    if (!confirm(`¿Eliminar "${row.descripcion || row.tipo}"?`)) return;
+    try {
+      await lastValueFrom(this._projectsService.deletePmoRecurso(row.id));
+      await this.loadRecursos();
+      this.showMsg('Registro eliminado', 'success');
+    } catch (err) {
+      this.showMsg('Error al eliminar', 'error');
+    }
+  }
+
+  revertChanges(): void {
+    this.rowData = JSON.parse(JSON.stringify(this.originalRowData));
+    this.hasUnsavedChanges = false;
+    this.gridApi?.setGridOption('rowData', this.rowData);
+    this.recalcTotals();
+  }
+
+  exportXLS(): void {
+    this.gridApi?.exportDataAsExcel({ fileName: 'PMO_Recursos.xlsx' });
+  }
+
+  // ── helpers ───────────────────────────────────────────────────────────────
+
+  private markModified(row: RecursoRow): void {
+    if (!row.__isNew) row.__modified = true;
+    this.hasUnsavedChanges = true;
   }
 
   recalcTotals(): void {
@@ -147,22 +257,45 @@ export class PmoRecursosComponent implements OnInit {
     this.totalVar  = this.totalReal - this.totalPlan;
   }
 
-  saveChanges(): void {
-    // TODO: conectar a endpoint cuando se cree tabla pmo_recursos en BD
-    // Por ahora solo marca como guardado
-    this.rowData = this.rowData.map(r => ({ ...r, __isNew: false, __modified: false }));
-    this.hasUnsavedChanges = false;
-    this.gridApi?.setGridOption('rowData', this.rowData);
-    alert('Cambios registrados localmente.\n\nPara persistir: conecta al endpoint PMO/Recursos (Punto 9 — próxima entrega).');
+  private mapFromApi(r: any): RecursoRow {
+    const cantPlan      = Number(r.cantPlan ?? r.cant_plan ?? 0);
+    const cantReal      = Number(r.cantReal ?? r.cant_real ?? 0);
+    const costoUnitPlan = Number(r.costoUnitPlan ?? r.costo_unit_plan ?? 0);
+    const costoUnitReal = Number(r.costoUnitReal ?? r.costo_unit_real ?? 0);
+    const costoPlan     = cantPlan * costoUnitPlan;
+    const costoReal     = cantReal * costoUnitReal;
+    return {
+      id:            r.id ?? 0,
+      tipo:          r.tipo ?? 'Personal',
+      descripcion:   r.descripcion ?? '',
+      unidad:        r.unidad ?? 'día',
+      periodo:       r.periodo ?? '',
+      cantPlan, cantReal, costoUnitPlan, costoUnitReal,
+      costoPlan, costoReal,
+      variacion:     costoReal - costoPlan,
+    };
   }
 
-  revertChanges(): void {
-    this.rowData = this.rowData.filter(r => !r.__isNew).map(r => ({ ...r, __modified: false }));
-    this.hasUnsavedChanges = false;
-    this.gridApi?.setGridOption('rowData', this.rowData);
+  private mapToApi(r: RecursoRow): any {
+    return {
+      id:             r.id,
+      idProject:      this.selectedProject?.id ?? 0,
+      idCompany:      this.idCompany,
+      tipo:           r.tipo,
+      descripcion:    r.descripcion,
+      unidad:         r.unidad,
+      periodo:        r.periodo,
+      cantPlan:       r.cantPlan,
+      cantReal:       r.cantReal,
+      costoUnitPlan:  r.costoUnitPlan,
+      costoUnitReal:  r.costoUnitReal,
+      active:         1,
+    };
   }
 
-  exportXLS(): void {
-    this.gridApi?.exportDataAsExcel({ fileName: 'PMO_Recursos.xlsx' });
+  private showMsg(msg: string, type: 'success' | 'error'): void {
+    this.saveMsg     = msg;
+    this.saveMsgType = type;
+    setTimeout(() => { this.saveMsg = ''; }, 4000);
   }
 }
