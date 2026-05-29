@@ -85,5 +85,5 @@ export const environment = {
     // publicKey: 'TEST-4399133a-4676-42a2-ab85-d946370bf96a',
   },
 
-  version: '6.76 (29 Mayo 2026 10:30) feat(pmo): avances - fix bugs + Curva S fechas reales + Punto6 captura diaria',
+  version: '6.77 (29 Mayo 2026 11:00) fix(pmo): Punto6 PATCH progress — evita borrar datos de workprogram al guardar avance',
 };

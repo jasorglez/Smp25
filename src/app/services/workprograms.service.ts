@@ -32,6 +32,11 @@ export class WorkprogramsService {
     return this.http.put(`${environment.urlSmp}/Workprogram/${id}`, data, { headers: this.trackingService.getHeaders() });
   }
 
+  /** PATCH — actualiza SOLO el campo progress (0-1). Usado por Captura Diaria (Punto 6). */
+  patchWorkProgramProgress(id: number, progress: number): Observable<any> {
+    return this.http.patch(`${environment.urlSmp}/Workprogram/${id}/progress`, { progress }, { headers: this.trackingService.getHeaders() });
+  }
+
   deleteWorkProgram(id: number): Observable<any> {
     return this.http.delete(`${environment.urlSmp}/Workprogram/${id}`, { headers: this.trackingService.getHeaders() });
   }
