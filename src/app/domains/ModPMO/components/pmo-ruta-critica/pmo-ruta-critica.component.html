@@ -1,0 +1,96 @@
+<div class="container-fluid py-3">
+
+  <!-- ── Controles ─────────────────────────────────────────────────────── -->
+  <div class="row mb-3 g-2 align-items-end">
+    <div class="col-md-4">
+      <label class="form-label form-label-sm mb-1 fw-semibold">Proyecto</label>
+      <select class="form-select form-select-sm" [(ngModel)]="selectedProject"
+              (ngModelChange)="loadCriticalPath()">
+        <option [ngValue]="null">— Seleccionar —</option>
+        <option *ngFor="let p of projects" [ngValue]="p">{{ p.name || p.projectName || p.id }}</option>
+      </select>
+    </div>
+    <div class="col-md-3 d-flex align-items-end gap-2">
+      <div class="form-check form-switch mt-2">
+        <input class="form-check-input" type="checkbox" id="chkCritical"
+               [(ngModel)]="showOnlyCritical"
+               (ngModelChange)="gridApi?.setGridOption('rowData', filteredData)">
+        <label class="form-check-label small fw-semibold" for="chkCritical">
+          Solo Ruta Crítica
+        </label>
+      </div>
+    </div>
+    <div class="col-md-5 d-flex justify-content-end gap-2">
+      <button class="btn btn-sm btn-outline-primary" (click)="loadCriticalPath()">
+        <i class="bi bi-arrow-clockwise me-1"></i> Recalcular
+      </button>
+      <button class="btn btn-sm btn-outline-success" (click)="exportXLS()">
+        <i class="bi bi-file-earmark-excel me-1"></i> Excel
+      </button>
+    </div>
+  </div>
+
+  <!-- ── KPI Chips ─────────────────────────────────────────────────────── -->
+  <div class="d-flex gap-2 mb-3 flex-wrap" *ngIf="rowData.length">
+    <span class="badge bg-danger fs-6 px-3 py-2">
+      <i class="bi bi-exclamation-triangle-fill me-1"></i>
+      {{ totalCritical }} Tareas Críticas
+    </span>
+    <span class="badge bg-warning text-dark fs-6 px-3 py-2">
+      <i class="bi bi-flag-fill me-1"></i>
+      {{ totalMilestones }} Hitos
+    </span>
+    <span class="badge bg-danger fs-6 px-3 py-2" *ngIf="totalDelayed > 0">
+      <i class="bi bi-clock-history me-1"></i>
+      {{ totalDelayed }} Atrasadas
+    </span>
+    <span class="badge bg-secondary fs-6 px-3 py-2">
+      {{ rowData.length }} Tareas Totales
+    </span>
+  </div>
+
+  <!-- ── Spinner ───────────────────────────────────────────────────────── -->
+  <div *ngIf="isLoading" class="text-center py-4">
+    <div class="spinner-border text-primary me-2"></div>
+    <span class="text-muted">Calculando ruta crítica...</span>
+  </div>
+
+  <!-- ── Grid ──────────────────────────────────────────────────────────── -->
+  <div *ngIf="!isLoading && rowData.length"
+       class="ag-theme-quartz" style="height: calc(100vh - 350px); min-height: 380px;">
+    <ag-grid-angular
+      [rowData]="filteredData"
+      [columnDefs]="colDefs"
+      [rowClassRules]="rowClassRules"
+      (gridReady)="onGridReady($event)"
+      rowSelection="single"
+      [animateRows]="true">
+    </ag-grid-angular>
+  </div>
+
+  <!-- ── Sin datos ─────────────────────────────────────────────────────── -->
+  <div *ngIf="!isLoading && !rowData.length && selectedProject"
+       class="text-center text-muted py-5">
+    <i class="bi bi-diagram-3 fs-1 text-warning opacity-50 d-block mb-2"></i>
+    <p>Sin tareas en el programa de trabajo para este proyecto.</p>
+  </div>
+  <div *ngIf="!selectedProject && !isLoading"
+       class="text-center text-muted py-5">
+    <i class="bi bi-diagram-3-fill fs-1 text-primary opacity-50 d-block mb-2"></i>
+    <h5>Selecciona un proyecto para ver la Ruta Crítica</h5>
+    <p class="small">Identifica las tareas con holgura 0 o menor que 2 días.</p>
+  </div>
+
+  <!-- ── Leyenda ────────────────────────────────────────────────────────── -->
+  <div class="alert alert-light border mt-3 py-2 small" *ngIf="rowData.length">
+    <strong>Leyenda:</strong>
+    <span class="badge bg-danger ms-2">CR</span> Tarea crítica (holgura ≤ 2 días) &nbsp;|&nbsp;
+    <span>🏁</span> Hito (duración = 0) &nbsp;|&nbsp;
+    <span class="fw-bold text-danger">Desviación negativa</span> = retraso respecto al plan.
+    <br>
+    <i class="bi bi-info-circle me-1 text-info"></i>
+    La ruta crítica se recalcula usando las fechas del programa de trabajo. Para predecesores/sucesores
+    define los campos en <strong>Programa de Trabajo</strong>.
+  </div>
+
+</div>
