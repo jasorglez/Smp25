@@ -10,6 +10,7 @@ export interface ExtractionFermentationCatalogItem {
   idBranch?: number | null;
   description: string;
   active: boolean;
+  molienda: boolean;
 }
 
 @Injectable({

@@ -11,12 +11,13 @@ import { MaterialXModuloService } from 'app/services/materialxmodulo.service';
 import { MaterialsService } from 'app/services/materials.service';
 import { MoliendaService } from 'app/services/molienda.service';
 import { DetallesEntradasMoliendaComponent } from './detalles-entradasmolienda.component';
-import { DetallesInventarioMoliendaComponent } from './detalles-inventario-molienda.component';
+import { SelectWithTooltipEditorV2Component } from 'app/shared/select-with-tooltip-editor-v2.component';
+import { DetailRouterFiltradoComponent } from './detail-router-filtrado.component';
 
 @Component({
   selector: 'app-molienda-filtrado',
   standalone: true,
-  imports: [CommonModule, AgGridAngular, DetallesEntradasMoliendaComponent],
+  imports: [CommonModule, AgGridAngular, DetallesEntradasMoliendaComponent, SelectWithTooltipEditorV2Component, DetailRouterFiltradoComponent],
   template: `
     <div class="col-12">
       <div class="row g-2">
@@ -60,116 +61,140 @@ import { DetallesInventarioMoliendaComponent } from './detalles-inventario-molie
   `,
 })
 export class MoliendaComponent {
-  private signalService     = inject(SignalsService);
-  private branchsService    = inject(BranchsService);
+  private signalService = inject(SignalsService);
+  private branchsService = inject(BranchsService);
   private productionService = inject(ProductionService);
-  private mxmService        = inject(MaterialXModuloService);
-  private materialsService  = inject(MaterialsService);
-  private moliendaService   = inject(MoliendaService);
+  private mxmService = inject(MaterialXModuloService);
+  private materialsService = inject(MaterialsService);
+  private moliendaService = inject(MoliendaService);
 
   gridApi!: GridApi;
   rowData: any[] = [];
   private originalRowData: any[] = [];
-  hasChanges  = false;
+  hasChanges = false;
   selectedRow: any = null;
-  gridHeight  = '80vh';
+  gridHeight = '80vh';
 
-  userBranches:   { id: number; name: string }[] = [];
+  userBranches: { id: number; name: string }[] = [];
   matPrimaOptions: { id: number; name: string }[] = [];
 
   private idCompany = 0;
-  private idBranch  = 0;
+  private idBranch = 0;
   private activeMatPrimaFilter: number | null = null;
+  private activeExpandedNodeId: string | null = null;
+  private activeDetailType: 'inventario' | 'matprima' | null = null;
 
-  get colDefs(): ColDef[] {
-    return [
-      {
-        field: 'sucursal',
-        headerName: 'Sucursal',
-        width: 180,
-        editable: true,
-        cellEditor: 'agRichSelectCellEditor',
-        cellEditorPopup: true,
-        cellEditorParams: () => ({
-          values: this.userBranches.map(b => b.id),
-          valueListMaxHeight: 220,
-          formatValue: (val: any) => this.userBranches.find(b => b.id === val)?.name ?? String(val ?? ''),
-        }),
-        valueFormatter: p => this.userBranches.find(b => b.id === p.value)?.name ?? '',
-        valueSetter: p => { p.data.sucursal = Number(p.newValue); p.data.__modified = true; this.hasChanges = true; return true; },
+  colDefs: ColDef[] = [
+    {
+      field: 'sucursal',
+      headerName: 'Sucursal',
+      editable: true,
+      cellEditor: 'agRichSelectCellEditor',
+      cellEditorPopup: true,
+      cellEditorParams: () => ({
+        values: this.userBranches.map(b => b.id),
+        valueListMaxHeight: 220,
+        formatValue: (val: any) => this.userBranches.find(b => b.id === val)?.name ?? String(val ?? ''),
+      }),
+      valueFormatter: (p: any) => this.userBranches.find(b => b.id === p.value)?.name ?? '',
+      valueSetter: (p: any) => { p.data.sucursal = Number(p.newValue); p.data.__modified = true; this.hasChanges = true; return true; },
+    },
+    {
+      field: 'matPrima',
+      headerName: 'Mat Prima',
+      editable: (params: any) => params.data.__isNew || !params.data.hasMatDetail,
+      cellEditor: 'selectV2',
+      cellEditorParams: (params: any) => {
+        const currentSucursal = params.data?.sucursal;
+        const usedMatPrimas = new Set(
+          this.rowData
+            .filter(row => row !== params.data && row.sucursal === currentSucursal && row.matPrima != null)
+            .map(row => row.matPrima)
+        );
+        return {
+          options: this.matPrimaOptions
+            .filter(m => !usedMatPrimas.has(m.id))
+            .map(m => ({ id: m.id, description: m.name })),
+        };
       },
-      {
-        field: 'matPrima',
-        headerName: 'Mat Prima',
-        flex: 2,
-        editable: true,
-        cellEditor: 'agRichSelectCellEditor',
-        cellEditorPopup: true,
-        cellEditorParams: (params: any) => {
-          const currentSucursal = params.data?.sucursal;
-          const usedMatPrimas = this.rowData
-            .filter(row => row.sucursal === currentSucursal && row.matPrima != null)
-            .map(row => row.matPrima);
-          const availableMatPrimas = this.matPrimaOptions
-            .filter(m => !usedMatPrimas.includes(m.id))
-            .map(m => m.id);
-          return {
-            values: availableMatPrimas,
-            valueListMaxHeight: 220,
-            formatValue: (val: any) => this.matPrimaOptions.find(m => m.id === val)?.name ?? String(val ?? ''),
-          };
-        },
-        valueFormatter: p => this.matPrimaOptions.find(m => m.id === p.value)?.name ?? '',
-        valueSetter: p => { p.data.matPrima = p.newValue; p.data.__modified = true; this.hasChanges = true; return true; },
+      cellStyle: (params: any) => (!params.data.__isNew && params.data.hasMatDetail)
+        ? { backgroundColor: '#f0f0f0', color: '#6c757d' }
+        : {},
+      valueFormatter: (p: any) => this.matPrimaOptions.find(m => m.id === p.value)?.name ?? '',
+      valueSetter: (p: any) => { p.data.matPrima = p.newValue; p.data.__modified = true; this.hasChanges = true; return true; },
+      headerClass: 'no-right-separator',
+    },
+    {
+      field: 'itemsIcon',
+      headerName: '',
+      width: 40,
+      editable: false,
+      sortable: false,
+      suppressHeaderMenuButton: true,
+      cellStyle: { textAlign: 'center', padding: '0', cursor: 'pointer' },
+      cellRenderer: () => `<i class="bi bi-list" style="font-size:1rem;color:#5c6bc0;"></i>`,
+      onCellClicked: (event: any) => {
+        if (!event.data?.__isNew && event.data?.id != null) this.toggleMatPrimaDetail(event.node);
       },
-      {
-        field: 'fecha', headerName: 'Fecha', width: 120, editable: false,
-        cellStyle: { backgroundColor: '#f8f9fa' },
-        valueFormatter: p => {
-          if (!p.value) return '';
-          const [y, m, d] = String(p.value).split('-');
-          return d && m && y ? `${d}/${m}/${y}` : p.value;
-        },
+    },
+    {
+      field: 'fecha', hide: true, headerName: 'Fecha', editable: false,
+      cellStyle: { backgroundColor: '#f8f9fa' },
+      valueFormatter: (p: any) => {
+        if (!p.value) return '';
+        const [y, m, d] = String(p.value).split('-');
+        return d && m && y ? `${d}/${m}/${y}` : p.value;
       },
-      { field: 'nombre',      headerName: 'Nombre',       flex: 2, editable: false, cellStyle: { backgroundColor: '#f8f9fa' } },
-      {
-        field: 'cantidadUso',
-        headerName: 'Inventario',
-        width: 138,
-        editable: false,
-        cellStyle: (params: any) => {
-          const hasAlm = params.data?.idAlm != null;
-          return {
-            backgroundColor: '#e8f5e9',
-            cursor: hasAlm ? 'pointer' : 'default',
-            color: hasAlm ? '#2e7d32' : '#999',
-            textDecoration: hasAlm ? 'underline' : 'none',
-          };
-        },
-        valueFormatter: (params: any) => params.value != null ? String(Math.trunc(Number(params.value))) : '—',
-        onCellClicked: (event: any) => {
-          if (event.data?.idAlm != null) {
-            this.toggleCascade(event.node);
-          }
-        },
+    },
+    { field: 'nombre', hide: true, headerName: 'Nombre', editable: false, cellStyle: { backgroundColor: '#f8f9fa' } },
+    {
+      field: 'cantidadUso',
+      headerName: 'Inventario',
+      hide: true,
+      editable: false,
+      cellStyle: (params: any) => {
+        const hasAlm = params.data?.idAlm != null;
+        return {
+          backgroundColor: '#e8f5e9',
+          cursor: hasAlm ? 'pointer' : 'default',
+          color: hasAlm ? '#2e7d32' : '#999',
+          textDecoration: hasAlm ? 'underline' : 'none',
+        };
       },
-      { field: 'cuantoQueda',    headerName: 'Cuanto queda',    width: 120, editable: true, cellEditor: 'agNumberCellEditor' },
-      { field: 'jugo',           headerName: 'Jugo',            width: 90,  editable: true, cellEditor: 'agNumberCellEditor' },
-      { field: 'liberPorCompra', headerName: 'Liber. x Compra', width: 130, editable: true, cellRenderer: 'agCheckboxCellRenderer', cellEditor: 'agCheckboxCellEditor' },
-      { field: 'adicional',      headerName: 'Adicional',       flex: 1,    editable: true },
-    ];
-  }
+      valueFormatter: (params: any) => params.value != null ? String(Math.trunc(Number(params.value))) : '—',
+      onCellClicked: (event: any) => {
+        if (event.data?.idAlm != null) {
+          this.toggleCascade(event.node);
+        }
+      },
+    },
+    { field: 'cuantoQueda', hide: true, headerName: 'Cuanto queda', editable: true, cellEditor: 'agNumberCellEditor' },
+    { field: 'jugo', hide: true, headerName: 'Jugo', editable: true, cellEditor: 'agNumberCellEditor' },
+    { field: 'liberPorCompra', hide: true, headerName: 'Liber. x Compra', editable: true, cellRenderer: 'agCheckboxCellRenderer', cellEditor: 'agCheckboxCellEditor' },
+    { field: 'adicional', hide: true, headerName: 'Adicional', editable: true },
+    { field: 'ohJugos', headerName: 'OH Jugos', editable: true, cellEditor: 'agNumberCellEditor', valueSetter: (p: any) => { p.data.ohJugos = p.newValue; p.data.__modified = true; this.hasChanges = true; return true; } },
+    { field: 'bote', headerName: 'Asignar bote', editable: true, valueSetter: (p: any) => { p.data.bote = p.newValue; p.data.__modified = true; this.hasChanges = true; return true; } },
+    { field: 'parametros', headerName: 'Asignar parámetros', editable: true, valueSetter: (p: any) => { p.data.parametros = p.newValue; p.data.__modified = true; this.hasChanges = true; return true; } },
+  ];
 
   gridOptions: any = {
+    components: { selectV2: SelectWithTooltipEditorV2Component },
     getRowId: (params: any) => String(params.data.id ?? params.data.__tempId),
     headerHeight: 25,
     rowHeight: 20,
     suppressRowClickSelection: true,
     rowClassRules: { 'new-row-highlight': (p: any) => !!p.data?.__isNew },
+    autoSizeStrategy: { type: 'fitCellContents' },
     masterDetail: true,
-    detailRowHeight: 260,
-    isRowMaster: (data: any) => !!data?.idAlm,
-    detailCellRenderer: DetallesInventarioMoliendaComponent,
+    detailRowHeight: 280,
+    isRowMaster: (data: any) => data?.id != null,
+    detailCellRenderer: DetailRouterFiltradoComponent,
+    detailCellRendererParams: () => ({
+      context: {
+        onMatDetailChanged: (idMolienda: number, hasDetail: boolean) =>
+          this.onMatDetailChanged(idMolienda, hasDetail),
+      },
+    }),
     isExternalFilterPresent: () => this.activeMatPrimaFilter != null,
     doesExternalFilterPass: (node: any) => node.data?.matPrima === this.activeMatPrimaFilter,
     onRowSelected: (e: any) => {
@@ -179,7 +204,7 @@ export class MoliendaComponent {
 
   constructor() {
     effect(() => {
-      const idUser    = this.signalService.idUser();
+      const idUser = this.signalService.idUser();
       const idCompany = this.signalService.getRootSelectedBySidebar()();
       if (idUser && idCompany) {
         this.idCompany = idCompany;
@@ -223,7 +248,7 @@ export class MoliendaComponent {
       const list: any[] = (branchData as any)?.project ?? (Array.isArray(branchData) ? branchData : []);
       this.userBranches = list
         .map((b: any) => ({
-          id:   b?.idPermission || b?.idBranch || b?.id,
+          id: b?.idPermission || b?.idBranch || b?.id,
           name: (b?.name || b?.description || b?.Name || '') as string,
         }))
         .filter(b => b.id && b.name.trim());
@@ -231,11 +256,10 @@ export class MoliendaComponent {
       const matsMap = new Map<number, string>();
       (Array.isArray(matsData) ? matsData : []).forEach((m: any) => matsMap.set(m.id, m.articulo));
       this.matPrimaOptions = (Array.isArray(mxmData) ? mxmData : [])
-        .filter((m: any) => m.active !== false)
+        .filter((m: any) => m.active !== false && m.molienda === true)
         .map((m: any) => ({ id: m.idArticulo, name: matsMap.get(m.idArticulo) ?? String(m.idArticulo) }))
         .filter(m => m.name);
 
-      if (this.gridApi) this.gridApi.setGridOption('columnDefs', this.colDefs);
       await this.loadData();
     } catch (e) {
       console.error('Error cargando datos iniciales:', e);
@@ -250,19 +274,20 @@ export class MoliendaComponent {
         ? this.productionService.getMoliendaByCompany(this.idCompany)
         : this.productionService.getMoliendaByCompanyAndSucursal(this.idCompany, this.idBranch);
 
-      const [items, almItems] = await Promise.all([
+      const [items, almItems, matDetailCounts] = await Promise.all([
         lastValueFrom(prodObs),
         lastValueFrom(this.moliendaService.getAll(this.idCompany)),
+        lastValueFrom(this.productionService.getMoliendaMatDetalleCountsByCompany(this.idCompany)),
       ]);
 
-      const almExact    = new Map<string, any>();
-      const almByMat    = new Map<number, any>();
+      const almExact = new Map<string, any>();
+      const almByMat = new Map<number, any>();
       (Array.isArray(almItems) ? almItems : []).forEach((a: any) => {
         almExact.set(`${a.idSucursal}_${a.idMaterial}`, a);
         if (!almByMat.has(a.idMaterial)) almByMat.set(a.idMaterial, a);
       });
 
-      const mapped = (Array.isArray(items) ? items : []).map(i => this.mapRow(i, almExact, almByMat));
+      const mapped = (Array.isArray(items) ? items : []).map(i => this.mapRow(i, almExact, almByMat, matDetailCounts));
       this.originalRowData = JSON.parse(JSON.stringify(mapped));
       this.rowData = mapped;
       if (this.gridApi) this.gridApi.setGridOption('rowData', mapped);
@@ -271,53 +296,119 @@ export class MoliendaComponent {
     }
   }
 
-  private mapRow(i: any, almExact?: Map<string, any>, almByMat?: Map<number, any>): any {
+  private mapRow(i: any, almExact?: Map<string, any>, almByMat?: Map<number, any>, matDetailCounts?: Record<number, number>): any {
     const almRecord = almExact?.get(`${i.idSucursal}_${i.idMatPrima}`) ?? almByMat?.get(i.idMatPrima);
     return {
-      id:            i.id,
-      sucursal:      i.idSucursal    ?? null,
-      matPrima:      i.idMatPrima    ?? null,
-      fecha:         i.fecha ? String(i.fecha).substring(0, 10) : null,
-      nombre:        i.nombre        ?? '',
-      cantidadUso:   almRecord?.totalInventarios ?? null,
-      idAlm:         almRecord?.id    ?? null,
-      cuantoQueda:   i.cuantoQueda   ?? null,
-      jugo:          i.jugo          ?? null,
+      id: i.id,
+      sucursal: i.idSucursal ?? null,
+      matPrima: i.idMatPrima ?? null,
+      fecha: i.fecha ? String(i.fecha).substring(0, 10) : null,
+      nombre: i.nombre ?? '',
+      cantidadUso: almRecord?.totalInventarios ?? null,
+      idAlm: almRecord?.id ?? null,
+      cuantoQueda: i.cuantoQueda ?? null,
+      jugo: i.jugo ?? null,
       liberPorCompra: !!i.liberCompra,
-      adicional:     i.columna1      ?? '',
-      __isNew:       false,
-      __modified:    false,
+      adicional: i.columna1 ?? '',
+      ohJugos: i.ohJugos ?? null,
+      bote: i.bote ?? null,
+      parametros: i.parametros ?? '',
+      hasMatDetail: (matDetailCounts?.[i.id] ?? 0) > 0,
+      __isNew: false,
+      __modified: false,
     };
   }
 
   private toPayload(row: any) {
     return {
-      idCompany:   this.idCompany,
-      idSucursal:  row.sucursal      ?? null,
-      idMatPrima:  row.matPrima      ?? null,
-      fecha:       row.fecha         || null,
-      nombre:      row.nombre        || null,
-      cuantoQueda: row.cuantoQueda   ?? null,
-      jugo:        row.jugo          ?? null,
+      idCompany: this.idCompany,
+      idSucursal: row.sucursal ?? null,
+      idMatPrima: row.matPrima ?? null,
+      fecha: row.fecha || null,
+      nombre: row.nombre || null,
+      cuantoQueda: row.cuantoQueda ?? null,
+      jugo: row.jugo ?? null,
       liberCompra: row.liberPorCompra ?? false,
-      columna1:    row.adicional      || null,
-      active:      true,
+      columna1: row.adicional || null,
+      ohJugos: row.ohJugos ?? null,
+      bote: row.bote || null,
+      parametros: row.parametros || null,
+      active: true,
     };
   }
 
   toggleCascade(node: any) {
     if (!node.data?.idAlm) return;
 
-    if (this.activeMatPrimaFilter === node.data.matPrima) {
-      this.activeMatPrimaFilter = null;
+    if (this.activeExpandedNodeId === node.id && this.activeDetailType === 'inventario') {
       node.setExpanded(false);
-    } else {
-      this.activeMatPrimaFilter = node.data.matPrima;
-      node.setExpanded(true);
+      node.data.__detailType = null;
+      this.activeExpandedNodeId = null;
+      this.activeDetailType = null;
+      this.activeMatPrimaFilter = null;
+      this.gridApi.forEachNode((n: any) => n.setRowHeight(undefined));
+      this.gridApi.onRowHeightChanged();
+      this.gridApi.onFilterChanged();
+      return;
     }
 
-    if (this.gridApi) {
-      this.gridApi.onFilterChanged();
+    this.collapseActive();
+    this.gridApi.forEachNode((n: any) => {
+      if (n.id !== node.id) n.setRowHeight(0);
+    });
+    this.activeMatPrimaFilter = node.data.matPrima;
+    node.data.__detailType = 'inventario';
+    this.activeExpandedNodeId = node.id;
+    this.activeDetailType = 'inventario';
+    this.gridApi.onRowHeightChanged();
+    this.gridApi.onFilterChanged();
+    setTimeout(() => node.setExpanded(true), 0);
+  }
+
+  toggleMatPrimaDetail(node: any) {
+    if (this.activeExpandedNodeId === node.id && this.activeDetailType === 'matprima') {
+      node.setExpanded(false);
+      node.data.__detailType = null;
+      this.activeExpandedNodeId = null;
+      this.activeDetailType = null;
+      this.gridApi.forEachNode((n: any) => n.setRowHeight(undefined));
+      this.gridApi.onRowHeightChanged();
+      return;
+    }
+
+    this.collapseActive();
+    this.gridApi.forEachNode((n: any) => {
+      if (n.id !== node.id) n.setRowHeight(0);
+    });
+    node.data.__detailType = 'matprima';
+    this.activeExpandedNodeId = node.id;
+    this.activeDetailType = 'matprima';
+    this.gridApi.onRowHeightChanged();
+    setTimeout(() => node.setExpanded(true), 0);
+  }
+
+  private collapseActive() {
+    if (!this.activeExpandedNodeId) return;
+    const prevId = this.activeExpandedNodeId;
+    this.gridApi?.forEachNode((n: any) => {
+      if (n.id === prevId) {
+        n.data.__detailType = null;
+        n.setExpanded(false);
+      }
+      n.setRowHeight(undefined);
+    });
+    this.activeMatPrimaFilter = null;
+    this.activeExpandedNodeId = null;
+    this.activeDetailType = null;
+    this.gridApi?.onRowHeightChanged();
+    this.gridApi?.onFilterChanged();
+  }
+
+  onMatDetailChanged(idMolienda: number, hasDetail: boolean) {
+    const node = this.gridApi?.getRowNode(String(idMolienda));
+    if (node) {
+      node.data.hasMatDetail = hasDetail;
+      this.gridApi.refreshCells({ rowNodes: [node], columns: ['matPrima'], force: true });
     }
   }
 
@@ -331,6 +422,7 @@ export class MoliendaComponent {
       cantidadUso: null, idAlm: null,
       cuantoQueda: 0, jugo: 0,
       liberPorCompra: false, adicional: '',
+      ohJugos: null, bote: null, parametros: '',
     };
     this.rowData = [newRow, ...this.rowData];
     if (this.gridApi) this.gridApi.setGridOption('rowData', this.rowData);
@@ -345,7 +437,7 @@ export class MoliendaComponent {
     try {
       for (const row of newRows) {
         const created = await lastValueFrom(this.productionService.createMolienda(this.toPayload(row)));
-        row.id      = created.id;
+        row.id = created.id;
         row.__isNew = false;
       }
       for (const row of modRows) {

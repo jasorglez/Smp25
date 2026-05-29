@@ -385,7 +385,10 @@ import { alerts } from 'app/helpers/alerts';
                   (click)="onSelectCatalogSidebar(item)"
                   (dblclick)="onDoubleclickCatalogItem(item, $event)"
                   style="cursor: pointer;">
-                  <div *ngIf="editingCatalogId !== item.id">{{ item.description }}</div>
+                  <div *ngIf="editingCatalogId !== item.id"
+                       style="display:flex; align-items:center; justify-content:space-between; gap:6px;">
+                    <span style="flex:1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">{{ item.description }}</span>
+                  </div>
                   <div *ngIf="editingCatalogId === item.id" style="display: flex; gap: 4px; align-items: center;">
                     <input
                       type="text"
@@ -863,6 +866,13 @@ export class CatalogosProduccionComponent {
       editable: true,
       cellRenderer: 'agCheckboxCellRenderer',
     },
+    {
+      headerName: 'Molienda',
+      field: 'molienda',
+      width: 100,
+      editable: true,
+      cellRenderer: 'agCheckboxCellRenderer',
+    },
   ];
 
   gridOptions = {
@@ -1018,6 +1028,7 @@ export class CatalogosProduccionComponent {
       idArticulo: null,
       editBultos: false,
       valor: false,
+      molienda: false,
       idCatalog: this.selectedCatalogSidebarId,
       __isNew: true
     }, ...this.rowData()]);
@@ -1039,6 +1050,7 @@ export class CatalogosProduccionComponent {
         idCatalog: r.idCatalog || this.selectedCatalogSidebarId,
         active: r.valor,
         editBultos: r.editBultos || false,
+        molienda: r.molienda || false,
       };
       return r.__isNew ? this.mxmService.create(payload) : this.mxmService.update(r.id, payload);
     });
@@ -1870,6 +1882,7 @@ export class CatalogosProduccionComponent {
         valor: m.active,
         idCatalog: m.idCatalog,
         editBultos: m.editBultos,
+        molienda: m.molienda ?? false,
       }));
       this.originalRowData = JSON.parse(JSON.stringify(rows));
       console.log(rows);
