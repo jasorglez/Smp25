@@ -1,4 +1,4 @@
-<div class="container-fluid py-3">
+<div class="container-fluid py-3 px-3">
 
   <!-- ── Controles ─────────────────────────────────────────────────────── -->
   <div class="row mb-3 g-2 align-items-end">
@@ -7,90 +7,225 @@
       <select class="form-select form-select-sm" [(ngModel)]="selectedProject"
               (ngModelChange)="loadCriticalPath()">
         <option [ngValue]="null">— Seleccionar —</option>
-        <option *ngFor="let p of projects" [ngValue]="p">{{ p.name || p.projectName || p.id }}</option>
+        <option *ngFor="let p of projects" [ngValue]="p">
+          {{ p.name || p.projectName || p.id }}
+        </option>
       </select>
     </div>
-    <div class="col-md-3 d-flex align-items-end gap-2">
-      <div class="form-check form-switch mt-2">
-        <input class="form-check-input" type="checkbox" id="chkCritical"
-               [(ngModel)]="showOnlyCritical"
-               (ngModelChange)="gridApi?.setGridOption('rowData', filteredData)">
-        <label class="form-check-label small fw-semibold" for="chkCritical">
-          Solo Ruta Crítica
-        </label>
+    <div class="col-auto">
+      <label class="form-label form-label-sm mb-1 fw-semibold">Escala</label>
+      <div class="btn-group btn-group-sm d-block">
+        <button class="btn"
+                [class.btn-primary]="zoomLevel==='month'"
+                [class.btn-outline-primary]="zoomLevel!=='month'"
+                (click)="setZoom('month')">Mes</button>
+        <button class="btn"
+                [class.btn-primary]="zoomLevel==='week'"
+                [class.btn-outline-primary]="zoomLevel!=='week'"
+                (click)="setZoom('week')">Semana</button>
       </div>
     </div>
-    <div class="col-md-5 d-flex justify-content-end gap-2">
-      <button class="btn btn-sm btn-outline-primary" (click)="loadCriticalPath()">
+    <div class="col-auto d-flex align-items-end">
+      <div class="form-check form-switch mt-2 mb-0">
+        <input class="form-check-input" type="checkbox" id="chkCrit"
+               [(ngModel)]="showOnlyCritical" (ngModelChange)="toggleCritical()">
+        <label class="form-check-label small fw-semibold" for="chkCrit">Solo Ruta Crítica</label>
+      </div>
+    </div>
+    <div class="col d-flex justify-content-end align-items-end gap-2">
+      <button class="btn btn-sm btn-outline-primary" (click)="loadCriticalPath()"
+              [disabled]="isLoading || !selectedProject">
         <i class="bi bi-arrow-clockwise me-1"></i> Recalcular
-      </button>
-      <button class="btn btn-sm btn-outline-success" (click)="exportXLS()">
-        <i class="bi bi-file-earmark-excel me-1"></i> Excel
       </button>
     </div>
   </div>
 
   <!-- ── KPI Chips ─────────────────────────────────────────────────────── -->
-  <div class="d-flex gap-2 mb-3 flex-wrap" *ngIf="rowData.length">
-    <span class="badge bg-danger fs-6 px-3 py-2">
-      <i class="bi bi-exclamation-triangle-fill me-1"></i>
-      {{ totalCritical }} Tareas Críticas
+  <div class="d-flex gap-2 mb-3 flex-wrap" *ngIf="tasks.length">
+    <span class="badge bg-danger px-3 py-2" style="font-size:13px;">
+      <i class="bi bi-exclamation-triangle-fill me-1"></i> {{ totalCritical }} Tareas Críticas
     </span>
-    <span class="badge bg-warning text-dark fs-6 px-3 py-2">
-      <i class="bi bi-flag-fill me-1"></i>
-      {{ totalMilestones }} Hitos
+    <span class="badge bg-warning text-dark px-3 py-2" style="font-size:13px;">
+      🏁 {{ totalMilestones }} Hitos
     </span>
-    <span class="badge bg-danger fs-6 px-3 py-2" *ngIf="totalDelayed > 0">
-      <i class="bi bi-clock-history me-1"></i>
-      {{ totalDelayed }} Atrasadas
+    <span class="badge bg-danger px-3 py-2" style="font-size:13px;" *ngIf="totalDelayed > 0">
+      <i class="bi bi-clock-history me-1"></i> {{ totalDelayed }} Atrasadas
     </span>
-    <span class="badge bg-secondary fs-6 px-3 py-2">
-      {{ rowData.length }} Tareas Totales
+    <span class="badge bg-secondary px-3 py-2" style="font-size:13px;">
+      {{ tasks.length }} Tareas Totales
     </span>
   </div>
 
   <!-- ── Spinner ───────────────────────────────────────────────────────── -->
-  <div *ngIf="isLoading" class="text-center py-4">
-    <div class="spinner-border text-primary me-2"></div>
-    <span class="text-muted">Calculando ruta crítica...</span>
+  <div *ngIf="isLoading" class="text-center py-5">
+    <div class="spinner-border text-primary"></div>
+    <p class="mt-2 text-muted">Calculando ruta crítica...</p>
   </div>
 
-  <!-- ── Grid ──────────────────────────────────────────────────────────── -->
-  <div *ngIf="!isLoading && rowData.length"
-       class="ag-theme-quartz" style="height: calc(100vh - 350px); min-height: 380px;">
-    <ag-grid-angular
-      [rowData]="filteredData"
-      [columnDefs]="colDefs"
-      [rowClassRules]="rowClassRules"
-      (gridReady)="onGridReady($event)"
-      rowSelection="single"
-      [animateRows]="true">
-    </ag-grid-angular>
+  <!-- ── Sin proyecto ──────────────────────────────────────────────────── -->
+  <div *ngIf="!selectedProject && !isLoading" class="text-center py-5 text-muted">
+    <i class="bi bi-diagram-3-fill fs-1 text-primary opacity-25 d-block mb-2"></i>
+    <h5>Selecciona un proyecto para ver el diagrama</h5>
+    <p class="small">Barras de tareas en línea de tiempo con flechas de dependencias. Ruta crítica en rojo.</p>
   </div>
 
-  <!-- ── Sin datos ─────────────────────────────────────────────────────── -->
-  <div *ngIf="!isLoading && !rowData.length && selectedProject"
+  <!-- ── Diagrama Gantt SVG ─────────────────────────────────────────────── -->
+  <div #wrapper class="gantt-wrapper" *ngIf="!isLoading && tasks.length">
+    <svg class="gantt-svg"
+         [attr.width]="svgW"
+         [attr.height]="svgH">
+
+      <!-- Defs: marcadores de flechas -->
+      <defs>
+        <marker id="arrowCrit" markerWidth="7" markerHeight="7" refX="6" refY="3.5" orient="auto">
+          <polygon points="0 0, 7 3.5, 0 7" fill="#e74c3c"/>
+        </marker>
+        <marker id="arrowNorm" markerWidth="7" markerHeight="7" refX="6" refY="3.5" orient="auto">
+          <polygon points="0 0, 7 3.5, 0 7" fill="#95a5a6"/>
+        </marker>
+      </defs>
+
+      <!-- Encabezado ────────────────────────────────────────────────────── -->
+      <rect x="0" y="0" [attr.width]="svgW" height="52" fill="#f8f9fa"/>
+
+      <ng-container *ngFor="let m of months">
+        <line [attr.x1]="m.x" y1="0" [attr.x2]="m.x" [attr.y2]="svgH" stroke="#c0c8d0" stroke-width="1"/>
+        <text [attr.x]="m.x + m.width/2" y="30"
+              text-anchor="middle" style="font-size:11px;fill:#555;font-weight:600;">{{ m.label }}</text>
+      </ng-container>
+      <line x1="0" y1="52" [attr.x2]="svgW" y2="52" stroke="#c0c8d0" stroke-width="1"/>
+
+      <!-- Panel izquierdo ─────────────────────────────────────────────── -->
+      <rect x="0" y="0" width="230" [attr.height]="svgH" fill="#f0f2f5"/>
+      <line x1="230" y1="0" x2="230" [attr.y2]="svgH" stroke="#c0c8d0" stroke-width="1.5"/>
+      <text x="8" y="32" style="font-size:12px;font-weight:700;fill:#555;">Tarea</text>
+
+      <!-- Filas alternas + líneas horizontales -->
+      <ng-container *ngFor="let t of tasks; trackBy: trackById; let i = index">
+        <!-- fondo alternado -->
+        <rect *ngIf="i % 2 === 0"
+              x="0"
+              [attr.y]="52 + i * 44"
+              [attr.width]="svgW"
+              height="44"
+              fill="#fafbfc"/>
+        <!-- línea inferior de cada fila -->
+        <line x1="0"
+              [attr.y1]="52 + (i + 1) * 44"
+              [attr.x2]="svgW"
+              [attr.y2]="52 + (i + 1) * 44"
+              stroke="#e8eaed" stroke-width="1"/>
+      </ng-container>
+
+      <!-- Flechas de dependencias ──────────────────────────────────────── -->
+      <ng-container *ngFor="let l of links; trackBy: trackByLink">
+        <path [attr.d]="l.path"
+              fill="none"
+              [attr.stroke]="l.isCritical ? '#e74c3c' : '#95a5a6'"
+              [attr.stroke-width]="l.isCritical ? 2 : 1.5"
+              [attr.stroke-dasharray]="l.isCritical ? '' : '4 2'"
+              [attr.marker-end]="l.isCritical ? 'url(#arrowCrit)' : 'url(#arrowNorm)'"/>
+      </ng-container>
+
+      <!-- Barras e Hitos ───────────────────────────────────────────────── -->
+      <ng-container *ngFor="let t of tasks; trackBy: trackById">
+
+        <!-- Etiqueta izquierda -->
+        <text x="6"
+              [attr.y]="52 + t.row * 44 + 27"
+              style="font-size:11px;fill:#333;"
+              [attr.font-weight]="t.isCritical ? '700' : '400'"
+              [attr.fill]="t.isCritical ? '#c0392b' : '#333'">
+          {{ t.label.length > 31 ? (t.label | slice:0:31) + '…' : t.label }}
+        </text>
+
+        <!-- ── HITO — diamante ── -->
+        <ng-container *ngIf="t.isMilestone">
+          <polygon [attr.points]="milestonePoints(t)"
+                   [attr.fill]="t.fill"
+                   opacity="0.9"/>
+          <text [attr.x]="t.x + 16"
+                [attr.y]="52 + t.row * 44 + 28"
+                style="font-size:10px;fill:#555;">{{ t.status }}</text>
+        </ng-container>
+
+        <!-- ── BARRA ── -->
+        <ng-container *ngIf="!t.isMilestone">
+          <!-- Fondo translúcido (ancho total) -->
+          <rect [attr.x]="t.x"
+                [attr.y]="52 + t.row * 44 + 11"
+                [attr.width]="t.barW"
+                height="22"
+                [attr.fill]="t.fill"
+                rx="4" ry="4"
+                opacity="0.2"/>
+          <!-- Progreso relleno -->
+          <rect *ngIf="t.progressW > 0"
+                [attr.x]="t.x"
+                [attr.y]="52 + t.row * 44 + 11"
+                [attr.width]="t.progressW"
+                height="22"
+                [attr.fill]="t.fillProgress"
+                rx="4" ry="4"
+                opacity="0.75"/>
+          <!-- Borde -->
+          <rect [attr.x]="t.x"
+                [attr.y]="52 + t.row * 44 + 11"
+                [attr.width]="t.barW"
+                height="22"
+                [attr.stroke]="t.fill"
+                stroke-width="1.5"
+                fill="none"
+                rx="4" ry="4"/>
+          <!-- % dentro -->
+          <text *ngIf="t.barW > 32"
+                [attr.x]="t.x + t.barW / 2"
+                [attr.y]="52 + t.row * 44 + 26"
+                text-anchor="middle"
+                style="font-size:10px;font-weight:700;"
+                [attr.fill]="t.progress > 0.3 ? '#fff' : t.fill">
+            {{ (t.progress * 100).toFixed(0) }}%
+          </text>
+          <!-- Badge estado -->
+          <ng-container *ngIf="t.barW > 20">
+            <rect [attr.x]="t.x + t.barW + 4"
+                  [attr.y]="52 + t.row * 44 + 14"
+                  width="66" height="16"
+                  [attr.fill]="statusBadgeColor(t.status)"
+                  rx="3" ry="3" opacity="0.88"/>
+            <text [attr.x]="t.x + t.barW + 37"
+                  [attr.y]="52 + t.row * 44 + 25"
+                  text-anchor="middle"
+                  style="font-size:10px;font-weight:600;fill:#fff;">{{ t.status }}</text>
+          </ng-container>
+        </ng-container>
+
+      </ng-container>
+
+      <!-- Línea HOY ────────────────────────────────────────────────────── -->
+      <line [attr.x1]="todayX" y1="0" [attr.x2]="todayX" [attr.y2]="svgH"
+            stroke="#e74c3c" stroke-width="1.5" stroke-dasharray="4 3"/>
+      <text [attr.x]="todayX + 3" y="48"
+            style="font-size:10px;fill:#e74c3c;font-weight:700;">HOY</text>
+
+    </svg>
+  </div>
+
+  <!-- ── Sin tareas ────────────────────────────────────────────────────── -->
+  <div *ngIf="!isLoading && !tasks.length && selectedProject"
        class="text-center text-muted py-5">
     <i class="bi bi-diagram-3 fs-1 text-warning opacity-50 d-block mb-2"></i>
     <p>Sin tareas en el programa de trabajo para este proyecto.</p>
   </div>
-  <div *ngIf="!selectedProject && !isLoading"
-       class="text-center text-muted py-5">
-    <i class="bi bi-diagram-3-fill fs-1 text-primary opacity-50 d-block mb-2"></i>
-    <h5>Selecciona un proyecto para ver la Ruta Crítica</h5>
-    <p class="small">Identifica las tareas con holgura 0 o menor que 2 días.</p>
-  </div>
 
   <!-- ── Leyenda ────────────────────────────────────────────────────────── -->
-  <div class="alert alert-light border mt-3 py-2 small" *ngIf="rowData.length">
-    <strong>Leyenda:</strong>
-    <span class="badge bg-danger ms-2">CR</span> Tarea crítica (holgura ≤ 2 días) &nbsp;|&nbsp;
-    <span>🏁</span> Hito (duración = 0) &nbsp;|&nbsp;
-    <span class="fw-bold text-danger">Desviación negativa</span> = retraso respecto al plan.
-    <br>
-    <i class="bi bi-info-circle me-1 text-info"></i>
-    La ruta crítica se recalcula usando las fechas del programa de trabajo. Para predecesores/sucesores
-    define los campos en <strong>Programa de Trabajo</strong>.
+  <div class="d-flex flex-wrap gap-3 mt-3 px-1" *ngIf="tasks.length" style="font-size:12px;">
+    <span><span style="display:inline-block;width:20px;height:10px;background:#e74c3c;border-radius:2px;vertical-align:middle;margin-right:4px;"></span>Ruta Crítica</span>
+    <span><span style="display:inline-block;width:20px;height:10px;background:#2980b9;border-radius:2px;vertical-align:middle;margin-right:4px;"></span>Tarea Normal</span>
+    <span><span style="display:inline-block;width:11px;height:11px;background:#8e44ad;transform:rotate(45deg);vertical-align:middle;margin-right:6px;"></span>Hito</span>
+    <span><span style="display:inline-block;width:20px;border-top:2px solid #e74c3c;vertical-align:middle;margin-right:4px;"></span>Dependencia crítica</span>
+    <span><span style="display:inline-block;width:20px;border-top:2px dashed #95a5a6;vertical-align:middle;margin-right:4px;"></span>Dependencia normal</span>
+    <span><span style="display:inline-block;width:2px;height:14px;background:#e74c3c;vertical-align:middle;margin-right:6px;"></span>Hoy</span>
   </div>
 
 </div>

@@ -85,5 +85,5 @@ export const environment = {
     // publicKey: 'TEST-4399133a-4676-42a2-ab85-d946370bf96a',
   },
 
-  version: '6.83 (29 Mayo 2026 18:45) feat(pmo-recursos): Recursos PMO conectado a BD — GET/POST batch/DELETE en PmoRecurso endpoint',
+  version: '6.84 (29 Mayo 2026 19:30) feat(pmo-ruta-critica): diagrama Gantt SVG con flechas de dependencias y ruta crítica en rojo',
 };
