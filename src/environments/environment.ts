@@ -1,4 +1,4 @@
-// This file can be replaced during build by using the `fileReplacements` array.
+﻿// This file can be replaced during build by using the `fileReplacements` array.
 // `ng build --prod` replaces `environment.ts` with `environment.prod.ts`.
 // The list of file replacements can be found in `angular.json`.
 
@@ -85,5 +85,5 @@ export const environment = {
     // publicKey: 'TEST-4399133a-4676-42a2-ab85-d946370bf96a',
   },
 
-  version: '6.86 (29 Mayo 2026 21:00) feat(pmo): importación de programa desde Excel/MS Project/Primavera P6 + fix recursos grid destroyed',
+  version: '6.87 (29 Mayo 2026 22:00) fix(pmo-recursos): recursos por actividad — selector proyecto-actividad + grid height fix',
 };

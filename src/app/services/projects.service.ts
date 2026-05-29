@@ -83,6 +83,10 @@ export class ProjectsService {
     return this.http.get(`${environment.urlSmp}/PmoRecurso/project/${idProject}`, { headers: this.trackingService.getHeaders() });
   }
 
+  getPmoRecursosByActivity(idActivity: number) {
+    return this.http.get(`${environment.urlSmp}/PmoRecurso/activity/${idActivity}`, { headers: this.trackingService.getHeaders() });
+  }
+
   savePmoRecursosBatch(recursos: any[]) {
     return this.http.post(`${environment.urlSmp}/PmoRecurso/batch`, recursos, { headers: this.trackingService.getHeaders() });
   }

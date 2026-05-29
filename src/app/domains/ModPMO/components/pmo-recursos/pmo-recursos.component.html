@@ -1,87 +1,120 @@
 <div class="container-fluid py-3">
 
-  <!-- ── Controles ─────────────────────────────────────────────────────── -->
-  <div class="row mb-3 g-2 align-items-end">
-    <div class="col-md-5">
-      <label class="form-label form-label-sm mb-1 fw-semibold">Proyecto</label>
-      <select class="form-select form-select-sm" [(ngModel)]="selectedProject" (ngModelChange)="onProjectChange()">
+  <!-- ══ Fila 1: Selectores ════════════════════════════════════════════════ -->
+  <div class="row mb-2 g-2 align-items-end">
+
+    <!-- Proyecto -->
+    <div class="col-md-4">
+      <label class="form-label form-label-sm mb-1 fw-semibold">
+        <i class="bi bi-building me-1"></i> Proyecto
+      </label>
+      <select class="form-select form-select-sm" [(ngModel)]="selectedProject"
+              (ngModelChange)="onProjectChange()">
         <option [ngValue]="null">— Seleccionar —</option>
-        <option *ngFor="let p of projects" [ngValue]="p">{{ p.name || p.projectName || p.id }}</option>
+        <option *ngFor="let p of projects" [ngValue]="p">
+          {{ p.name || p.projectName || p.id }}
+        </option>
       </select>
     </div>
-    <div class="col-md-7">
-      <div class="d-flex gap-2 justify-content-end flex-wrap">
 
-        <!-- Agregar -->
-        <button class="btn btn-sm btn-success" (click)="addRow()" [disabled]="!selectedProject">
+    <!-- Actividad -->
+    <div class="col-md-5">
+      <label class="form-label form-label-sm mb-1 fw-semibold">
+        <i class="bi bi-list-task me-1"></i> Actividad / Concepto
+        <span *ngIf="activities.length" class="ms-1 text-muted">({{ activities.length }})</span>
+      </label>
+      <select class="form-select form-select-sm" [(ngModel)]="selectedActivity"
+              (ngModelChange)="onActivityChange()"
+              [disabled]="!selectedProject || !activities.length">
+        <option [ngValue]="null">— Seleccionar actividad —</option>
+        <option *ngFor="let a of activities" [ngValue]="a">
+          {{ a.label }}
+        </option>
+      </select>
+      <div *ngIf="selectedProject && !activities.length" class="text-warning small mt-1">
+        <i class="bi bi-exclamation-triangle me-1"></i>
+        Este proyecto no tiene programa de trabajo. Impórtalo o créalo en "Programa de Trabajo".
+      </div>
+    </div>
+
+    <!-- Botones -->
+    <div class="col-md-3">
+      <div class="d-flex gap-2 justify-content-end flex-wrap">
+        <button class="btn btn-sm btn-success" (click)="addRow()" [disabled]="!selectedActivity">
           <i class="bi bi-plus-lg me-1"></i> Agregar
         </button>
-
-        <!-- Guardar -->
         <button class="btn btn-sm btn-primary position-relative"
-                (click)="saveChanges()"
-                [disabled]="!hasUnsavedChanges || isSaving">
-          <span *ngIf="isSaving" class="spinner-border spinner-border-sm me-1" role="status"></span>
+                (click)="saveChanges()" [disabled]="!hasUnsavedChanges || isSaving">
+          <span *ngIf="isSaving" class="spinner-border spinner-border-sm me-1"></span>
           <i *ngIf="!isSaving" class="bi bi-floppy me-1"></i>
           {{ isSaving ? 'Guardando…' : 'Guardar' }}
           <span *ngIf="hasUnsavedChanges && !isSaving"
                 class="position-absolute top-0 start-100 translate-middle p-2 bg-danger border border-light rounded-circle"></span>
         </button>
-
-        <!-- Deshacer -->
         <button class="btn btn-sm btn-warning" (click)="revertChanges()" [disabled]="!hasUnsavedChanges">
-          <i class="bi bi-arrow-clockwise me-1"></i> Deshacer
+          <i class="bi bi-arrow-clockwise"></i>
         </button>
-
-        <!-- Eliminar seleccionado -->
         <button class="btn btn-sm btn-danger" (click)="deleteSelected()">
-          <i class="bi bi-trash me-1"></i> Borrar
+          <i class="bi bi-trash"></i>
         </button>
-
-        <!-- Excel -->
-        <button class="btn btn-sm btn-outline-success" (click)="exportXLS()" title="Exportar Excel">
-          <i class="bi bi-file-earmark-excel me-1"></i> Excel
+        <button class="btn btn-sm btn-outline-success" (click)="exportXLS()" [disabled]="!rowData.length">
+          <i class="bi bi-file-earmark-excel"></i>
         </button>
       </div>
     </div>
   </div>
 
-  <!-- ── Mensaje de feedback ────────────────────────────────────────────── -->
-  <div *ngIf="saveMsg"
-       class="alert py-2 small mb-2"
-       [class.alert-success]="saveMsgType === 'success'"
-       [class.alert-danger]="saveMsgType === 'error'"
-       role="alert">
+  <!-- ══ Breadcrumb de actividad seleccionada ════════════════════════════ -->
+  <div *ngIf="selectedActivity" class="alert alert-primary py-2 mb-2 d-flex align-items-center gap-2">
+    <i class="bi bi-list-task fs-5"></i>
+    <div>
+      <strong>Recursos de:</strong> {{ selectedActivity.label }}
+    </div>
+    <div class="ms-auto small text-muted">
+      {{ rowData.length }} recurso(s) registrado(s)
+    </div>
+  </div>
+
+  <!-- ══ Mensaje feedback ════════════════════════════════════════════════ -->
+  <div *ngIf="saveMsg" class="alert py-2 small mb-2"
+       [class.alert-success]="saveMsgType==='success'"
+       [class.alert-danger]="saveMsgType==='error'">
     {{ saveMsg }}
   </div>
 
-  <!-- ── Loading ────────────────────────────────────────────────────────── -->
-  <div *ngIf="isLoading" class="text-center py-4">
-    <div class="spinner-border text-primary" role="status"></div>
-    <p class="mt-2 text-muted small">Cargando recursos…</p>
+  <!-- ══ Placeholder sin proyecto ════════════════════════════════════════ -->
+  <div *ngIf="!selectedProject" class="text-center py-5 text-muted">
+    <i class="bi bi-people-fill fs-1 opacity-25 d-block mb-2"></i>
+    <h5>Selecciona un proyecto</h5>
+    <p class="small">Los recursos se registran por actividad del programa de trabajo.</p>
   </div>
 
-  <!-- ── Sin proyecto seleccionado ─────────────────────────────────────── -->
-  <div *ngIf="!selectedProject && !isLoading" class="text-center py-5 text-muted">
-    <i class="bi bi-people-fill fs-1 opacity-25"></i>
-    <p class="mt-2">Selecciona un proyecto para ver sus recursos</p>
+  <!-- ══ Placeholder sin actividad ══════════════════════════════════════ -->
+  <div *ngIf="selectedProject && !selectedActivity && activities.length" class="text-center py-5 text-muted">
+    <i class="bi bi-list-task fs-1 opacity-25 d-block mb-2"></i>
+    <h5>Selecciona una actividad</h5>
+    <p class="small">Los recursos (personal, material, equipo) se asocian a cada actividad del programa de trabajo.</p>
   </div>
 
-  <!-- ── Grid ──────────────────────────────────────────────────────────── -->
-  <div *ngIf="selectedProject && !isLoading"
-       class="ag-theme-quartz" style="height: calc(100vh - 320px); min-height: 400px;">
+  <!-- ══ Grid (siempre montado, mostrado solo si hay actividad) ══════════ -->
+  <div class="ag-theme-quartz"
+       [style.display]="selectedActivity ? 'block' : 'none'"
+       style="height: calc(100vh - 380px); min-height: 320px;">
     <ag-grid-angular
+      style="height:100%;width:100%;"
       [rowData]="rowData"
       [columnDefs]="colDefs"
       [rowClassRules]="rowClassRules"
       (gridReady)="onGridReady($event)"
       rowSelection="single"
-      [animateRows]="true">
+      [animateRows]="true"
+      overlayLoadingTemplate="<span class='ag-overlay-loading-center'>Cargando recursos…</span>"
+      overlayNoRowsTemplate="<span class='text-muted small'>Sin recursos para esta actividad. Usa <b>+ Agregar</b> para crear el primero.</span>">
     </ag-grid-angular>
   </div>
 
-  <!-- ── Totales ───────────────────────────────────────────────────────── -->
-  <div *ngIf="selectedProject" class="row mt-2 g-2">
+  <!-- ══ Totales de la actividad ════════════════════════════════════════ -->
+  <div *ngIf="selectedActivity" class="row mt-2 g-2">
     <div class="col-md-4 ms-auto">
       <div class="card card-body p-2 bg-light">
         <div class="d-flex justify-content-between small mb-1">
@@ -98,9 +131,7 @@
                 [class.text-success]="totalVar <= 0">Variación:</span>
           <span class="fw-bold"
                 [class.text-danger]="totalVar > 0"
-                [class.text-success]="totalVar <= 0">
-            {{ totalVar | number:'1.2-2' }}
-          </span>
+                [class.text-success]="totalVar <= 0">{{ totalVar | number:'1.2-2' }}</span>
         </div>
       </div>
     </div>
