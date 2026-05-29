@@ -6,6 +6,7 @@ import { ColDef, GridApi, GridReadyEvent } from 'ag-grid-enterprise';
 import { lastValueFrom }        from 'rxjs';
 import { ProjectsService }      from 'app/services/projects.service';
 import { WorkprogramsService }  from 'app/services/workprograms.service';
+import { ConventionsService }   from 'app/services/conventions.service';
 import { SignalsService }       from 'app/services/signals.service';
 
 interface RecursoRow {
@@ -35,11 +36,19 @@ interface RecursoRow {
 export class PmoRecursosComponent implements OnInit {
   private _projectsService     = inject(ProjectsService);
   private _workprogramsService = inject(WorkprogramsService);
+  private _convService         = inject(ConventionsService);
   private _signalsService      = inject(SignalsService);
 
   idCompany         = 0;
   projects: any[]   = [];
-  activities: any[] = [];           // tareas del workprogram del proyecto seleccionado
+
+  // ── Convenios ──────────────────────────────────────────────────────────────
+  conventions:        any[]  = [];
+  selectedConvention: any    = null;
+  isLoadingConv               = false;
+
+  // ── Actividades / Recursos ─────────────────────────────────────────────────
+  activities: any[] = [];           // tareas del workprogram filtradas por convenio
   selectedProject:  any = null;
   selectedActivity: any = null;     // actividad seleccionada
 
@@ -155,15 +164,73 @@ export class PmoRecursosComponent implements OnInit {
   }
 
   async onProjectChange(): Promise<void> {
+    this.selectedActivity   = null;
+    this.selectedConvention = null;
+    this.conventions        = [];
+    this.rowData            = [];
+    this.activities         = [];
+    this.recalcTotals();
+    if (!this.selectedProject) return;
+    await this.loadConventions();
+  }
+
+  /** Carga los convenios del contrato del proyecto */
+  async loadConventions(): Promise<void> {
+    const idContrato = this.selectedProject?.idContrato
+                    ?? this.selectedProject?.id_contrato
+                    ?? 0;
+    if (!idContrato) {
+      // Sin contrato: cargar actividades sin filtro de convenio
+      await this.loadActivities();
+      return;
+    }
+    this.isLoadingConv = true;
+    try {
+      const res: any = await lastValueFrom(
+        this._convService.getConventionsByContractOrProject('contract', idContrato)
+      );
+      const raw = Array.isArray(res) ? res : (Array.isArray(res?.data) ? res.data : []);
+      this.conventions = raw
+        .filter((c: any) => c.active !== false)
+        .sort((a: any, b: any) => a.id - b.id);
+
+      // Auto-seleccionar vigente
+      const vigente = this.conventions.find((c: any) => c.vigente);
+      if (vigente) {
+        this.selectedConvention = vigente;
+        await this.loadActivities();
+      } else if (this.conventions.length === 1) {
+        this.selectedConvention = this.conventions[0];
+        await this.loadActivities();
+      }
+      // Si hay varios y ninguno es vigente → el usuario elige manualmente
+    } catch {
+      this.conventions = [];
+      await this.loadActivities();   // fallback: sin filtro
+    } finally {
+      this.isLoadingConv = false;
+    }
+  }
+
+  /** Cambia convenio → recarga actividades filtradas */
+  async onConventionChange(): Promise<void> {
     this.selectedActivity = null;
     this.rowData          = [];
     this.activities       = [];
     this.recalcTotals();
-    if (!this.selectedProject) return;
     await this.loadActivities();
   }
 
-  /** Carga las actividades del workprogram del proyecto seleccionado */
+  /** Etiqueta visible del tipo de convenio */
+  convTypeBadge(type: string): { label: string; css: string } {
+    const t = (type ?? '').toLowerCase();
+    if (t.includes('reprog'))              return { label: 'Reprogramación',       css: 'bg-warning text-dark' };
+    if (t.includes('adend') || t.includes('addend')) return { label: 'Adenda',    css: 'bg-info text-dark'    };
+    if (t.includes('amend'))               return { label: 'Enmienda',             css: 'bg-secondary'         };
+    return                                        { label: 'Programación Original', css: 'bg-primary'          };
+  }
+
+  /** Carga las actividades del workprogram filtradas por convenio seleccionado */
   async loadActivities(): Promise<void> {
     if (!this.selectedProject) return;
     try {
@@ -171,8 +238,17 @@ export class PmoRecursosComponent implements OnInit {
       const raw: any[] = await lastValueFrom(
         this._workprogramsService.getWorkPrograms(id, 'Project')
       );
-      // Solo actividades hoja (sin hijos) o todas — mostramos todas para que el usuario elija
-      this.activities = (raw ?? []).map(a => ({
+      let filtered = raw ?? [];
+
+      // Filtrar por convenio si está seleccionado
+      if (this.selectedConvention) {
+        const convId = this.selectedConvention.id;
+        filtered = filtered.filter(a =>
+          (a.id_convention ?? a.idConvention ?? null) === convId
+        );
+      }
+
+      this.activities = filtered.map(a => ({
         id:    a.id ?? a.idEntry,
         label: `${a.activity ?? a.wbs ?? ''} — ${(a.text ?? a.description ?? '').substring(0, 55)}`,
         raw:   a,

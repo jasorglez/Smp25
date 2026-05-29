@@ -1,10 +1,10 @@
 <div class="container-fluid py-3">
 
-  <!-- ══ Fila 1: Selectores ════════════════════════════════════════════════ -->
+  <!-- ══ Fila 1: Proyecto + Convenio ═══════════════════════════════════════ -->
   <div class="row mb-2 g-2 align-items-end">
 
     <!-- Proyecto -->
-    <div class="col-md-4">
+    <div [class]="selectedProject && conventions.length ? 'col-md-4' : 'col-md-5'">
       <label class="form-label form-label-sm mb-1 fw-semibold">
         <i class="bi bi-building me-1"></i> Proyecto
       </label>
@@ -17,28 +17,69 @@
       </select>
     </div>
 
+    <!-- Convenio (solo cuando el proyecto tiene convenios) -->
+    <div class="col-md-5" *ngIf="selectedProject && (conventions.length || isLoadingConv)">
+      <label class="form-label form-label-sm mb-1 fw-semibold">
+        <i class="bi bi-file-earmark-text me-1"></i> Convenio / Versión
+        <span *ngIf="isLoadingConv" class="ms-1">
+          <span class="spinner-border spinner-border-sm"></span>
+        </span>
+      </label>
+      <select class="form-select form-select-sm"
+              [(ngModel)]="selectedConvention"
+              (ngModelChange)="onConventionChange()"
+              [disabled]="isLoadingConv">
+        <option [ngValue]="null">— Seleccionar convenio —</option>
+        <option *ngFor="let c of conventions" [ngValue]="c">
+          {{ c.vigente ? '★ ' : '' }}{{ c.name || c.folio || ('Conv. #' + c.id) }}
+          — {{ convTypeBadge(c.type).label }}
+        </option>
+      </select>
+    </div>
+
+    <!-- Info: sin convenios -->
+    <div class="col-md-4" *ngIf="selectedProject && !conventions.length && !isLoadingConv">
+      <div class="alert alert-info py-1 mb-0 small">
+        <i class="bi bi-info-circle me-1"></i>
+        Sin convenios — actividades sin filtro de versión.
+      </div>
+    </div>
+
+    <!-- Espacio flexible -->
+    <div class="col"></div>
+  </div>
+
+  <!-- ══ Fila 2: Actividad + Botones ════════════════════════════════════════ -->
+  <div class="row mb-2 g-2 align-items-end"
+       *ngIf="selectedProject && (!conventions.length || selectedConvention)">
+
     <!-- Actividad -->
-    <div class="col-md-5">
+    <div class="col-md-6">
       <label class="form-label form-label-sm mb-1 fw-semibold">
         <i class="bi bi-list-task me-1"></i> Actividad / Concepto
-        <span *ngIf="activities.length" class="ms-1 text-muted">({{ activities.length }})</span>
+        <span *ngIf="activities.length" class="ms-1 badge bg-secondary rounded-pill">
+          {{ activities.length }}
+        </span>
       </label>
-      <select class="form-select form-select-sm" [(ngModel)]="selectedActivity"
+      <select class="form-select form-select-sm"
+              [(ngModel)]="selectedActivity"
               (ngModelChange)="onActivityChange()"
-              [disabled]="!selectedProject || !activities.length">
+              [disabled]="!activities.length">
         <option [ngValue]="null">— Seleccionar actividad —</option>
         <option *ngFor="let a of activities" [ngValue]="a">
           {{ a.label }}
         </option>
       </select>
-      <div *ngIf="selectedProject && !activities.length" class="text-warning small mt-1">
+      <div *ngIf="!activities.length" class="text-warning small mt-1">
         <i class="bi bi-exclamation-triangle me-1"></i>
-        Este proyecto no tiene programa de trabajo. Impórtalo o créalo en "Programa de Trabajo".
+        {{ selectedConvention
+            ? 'Este convenio no tiene actividades. Importa el programa en "Programa de Trabajo".'
+            : 'Sin programa de trabajo. Impórtalo o créalo en "Programa de Trabajo".' }}
       </div>
     </div>
 
     <!-- Botones -->
-    <div class="col-md-3">
+    <div class="col-md-6">
       <div class="d-flex gap-2 justify-content-end flex-wrap">
         <button class="btn btn-sm btn-success" (click)="addRow()" [disabled]="!selectedActivity">
           <i class="bi bi-plus-lg me-1"></i> Agregar
@@ -64,14 +105,20 @@
     </div>
   </div>
 
-  <!-- ══ Breadcrumb de actividad seleccionada ════════════════════════════ -->
+  <!-- ══ Breadcrumb actividad + convenio ════════════════════════════════════ -->
   <div *ngIf="selectedActivity" class="alert alert-primary py-2 mb-2 d-flex align-items-center gap-2">
     <i class="bi bi-list-task fs-5"></i>
     <div>
       <strong>Recursos de:</strong> {{ selectedActivity.label }}
     </div>
+    <span *ngIf="selectedConvention"
+          class="badge ms-2"
+          [ngClass]="convTypeBadge(selectedConvention.type).css">
+      {{ convTypeBadge(selectedConvention.type).label }}
+      — {{ selectedConvention.name || selectedConvention.folio }}
+    </span>
     <div class="ms-auto small text-muted">
-      {{ rowData.length }} recurso(s) registrado(s)
+      {{ rowData.length }} recurso(s)
     </div>
   </div>
 
@@ -82,15 +129,24 @@
     {{ saveMsg }}
   </div>
 
-  <!-- ══ Placeholder sin proyecto ════════════════════════════════════════ -->
+  <!-- ══ Placeholder: sin proyecto ══════════════════════════════════════ -->
   <div *ngIf="!selectedProject" class="text-center py-5 text-muted">
     <i class="bi bi-people-fill fs-1 opacity-25 d-block mb-2"></i>
     <h5>Selecciona un proyecto</h5>
     <p class="small">Los recursos se registran por actividad del programa de trabajo.</p>
   </div>
 
-  <!-- ══ Placeholder sin actividad ══════════════════════════════════════ -->
-  <div *ngIf="selectedProject && !selectedActivity && activities.length" class="text-center py-5 text-muted">
+  <!-- ══ Placeholder: convenio pendiente ═══════════════════════════════════ -->
+  <div *ngIf="selectedProject && conventions.length && !selectedConvention && !isLoadingConv"
+       class="text-center py-5 text-muted">
+    <i class="bi bi-file-earmark-text fs-1 opacity-25 d-block mb-2"></i>
+    <h5>Selecciona el convenio</h5>
+    <p class="small">Elige la versión del programa de trabajo (original o reprogramación) para ver sus actividades.</p>
+  </div>
+
+  <!-- ══ Placeholder: sin actividad ════════════════════════════════════ -->
+  <div *ngIf="selectedProject && (!conventions.length || selectedConvention) && !selectedActivity && activities.length"
+       class="text-center py-5 text-muted">
     <i class="bi bi-list-task fs-1 opacity-25 d-block mb-2"></i>
     <h5>Selecciona una actividad</h5>
     <p class="small">Los recursos (personal, material, equipo) se asocian a cada actividad del programa de trabajo.</p>
@@ -99,7 +155,7 @@
   <!-- ══ Grid (siempre montado, mostrado solo si hay actividad) ══════════ -->
   <div class="ag-theme-quartz"
        [style.display]="selectedActivity ? 'block' : 'none'"
-       style="height: calc(100vh - 380px); min-height: 320px;">
+       style="height: calc(100vh - 400px); min-height: 300px;">
     <ag-grid-angular
       style="height:100%;width:100%;"
       [rowData]="rowData"
@@ -113,7 +169,7 @@
     </ag-grid-angular>
   </div>
 
-  <!-- ══ Totales de la actividad ════════════════════════════════════════ -->
+  <!-- ══ Totales ════════════════════════════════════════════════════════ -->
   <div *ngIf="selectedActivity" class="row mt-2 g-2">
     <div class="col-md-4 ms-auto">
       <div class="card card-body p-2 bg-light">

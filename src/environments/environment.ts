@@ -85,5 +85,5 @@ export const environment = {
     // publicKey: 'TEST-4399133a-4676-42a2-ab85-d946370bf96a',
   },
 
-  version: '6.89 (29 Mayo 2026 23:30) fix(pmo-import): saltar mapeo si auto-deteccion completa + mapeo en tabla simple',
+  version: '6.90 (29 Mayo 2026) feat(pmo-recursos): selector convenio antes de actividades',
 };
