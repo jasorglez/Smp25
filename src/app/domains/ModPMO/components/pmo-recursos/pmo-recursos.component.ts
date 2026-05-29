@@ -230,25 +230,29 @@ export class PmoRecursosComponent implements OnInit {
     return                                        { label: 'Programación Original', css: 'bg-primary'          };
   }
 
-  /** Carga las actividades del workprogram filtradas por convenio seleccionado */
+  /** Carga las actividades del workprogram.
+   *  - Si hay convenio seleccionado → usa endpoint /byconvention (servidor filtra)
+   *  - Sin convenio → todas las actividades del proyecto
+   */
   async loadActivities(): Promise<void> {
     if (!this.selectedProject) return;
     try {
-      const id = this.selectedProject.id ?? this.selectedProject.idProject;
-      const raw: any[] = await lastValueFrom(
-        this._workprogramsService.getWorkPrograms(id, 'Project')
-      );
-      let filtered = raw ?? [];
+      const idProject = this.selectedProject.id ?? this.selectedProject.idProject;
+      let raw: any[];
 
-      // Filtrar por convenio si está seleccionado
       if (this.selectedConvention) {
-        const convId = this.selectedConvention.id;
-        filtered = filtered.filter(a =>
-          (a.id_convention ?? a.idConvention ?? null) === convId
+        // ── Endpoint dedicado: solo devuelve las tareas de ese convenio ──
+        raw = await lastValueFrom(
+          this._workprogramsService.getByConvention(this.selectedConvention.id, idProject)
+        );
+      } else {
+        // ── Sin convenio: todas las tareas del proyecto ──
+        raw = await lastValueFrom(
+          this._workprogramsService.getWorkPrograms(idProject, 'Project')
         );
       }
 
-      this.activities = filtered.map(a => ({
+      this.activities = (raw ?? []).map(a => ({
         id:    a.id ?? a.idEntry,
         label: `${a.activity ?? a.wbs ?? ''} — ${(a.text ?? a.description ?? '').substring(0, 55)}`,
         raw:   a,
