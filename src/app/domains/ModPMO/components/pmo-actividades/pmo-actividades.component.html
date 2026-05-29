@@ -1,0 +1,128 @@
+<div class="container-fluid py-3">
+
+  <!-- ══ Fila 1: Proyecto + Convenio ═══════════════════════════════════════ -->
+  <div class="row mb-2 g-2 align-items-end">
+
+    <div [class]="selectedProject && conventions.length ? 'col-md-4' : 'col-md-5'">
+      <label class="form-label form-label-sm mb-1 fw-semibold">
+        <i class="bi bi-building me-1"></i> Proyecto
+      </label>
+      <select class="form-select form-select-sm" [(ngModel)]="selectedProject"
+              (ngModelChange)="onProjectChange()">
+        <option [ngValue]="null">— Seleccionar —</option>
+        <option *ngFor="let p of projects" [ngValue]="p">
+          {{ p.name || p.projectName || p.id }}
+        </option>
+      </select>
+    </div>
+
+    <!-- Convenio -->
+    <div class="col-md-4" *ngIf="selectedProject && (conventions.length || isLoadingConv)">
+      <label class="form-label form-label-sm mb-1 fw-semibold">
+        <i class="bi bi-file-earmark-text me-1"></i> Convenio / Versión
+        <span *ngIf="isLoadingConv" class="ms-1"><span class="spinner-border spinner-border-sm"></span></span>
+      </label>
+      <select class="form-select form-select-sm" [(ngModel)]="selectedConvention"
+              (ngModelChange)="onConventionChange()" [disabled]="isLoadingConv">
+        <option [ngValue]="null">— Sin convenio (todas) —</option>
+        <option *ngFor="let c of conventions" [ngValue]="c">
+          {{ c.vigente ? '★ ' : '' }}{{ c.name || c.folio || ('Conv. #' + c.id) }}
+          — {{ convTypeBadge(c.type).label }}
+        </option>
+      </select>
+    </div>
+
+    <!-- Botones -->
+    <div class="col">
+      <div class="d-flex gap-2 justify-content-end flex-wrap" *ngIf="selectedProject">
+        <button class="btn btn-sm btn-success" (click)="addRow()">
+          <i class="bi bi-plus-lg me-1"></i> Agregar
+        </button>
+        <button class="btn btn-sm btn-primary position-relative"
+                (click)="saveChanges()" [disabled]="!hasUnsavedChanges || isSaving">
+          <span *ngIf="isSaving" class="spinner-border spinner-border-sm me-1"></span>
+          <i *ngIf="!isSaving" class="bi bi-floppy me-1"></i>
+          {{ isSaving ? 'Guardando…' : 'Guardar' }}
+          <span *ngIf="hasUnsavedChanges && !isSaving"
+                class="position-absolute top-0 start-100 translate-middle p-2 bg-danger border border-light rounded-circle"></span>
+        </button>
+        <button class="btn btn-sm btn-warning" (click)="revertChanges()" [disabled]="!hasUnsavedChanges"
+                title="Deshacer cambios">
+          <i class="bi bi-arrow-counterclockwise"></i>
+        </button>
+        <button class="btn btn-sm btn-danger" (click)="deleteSelected()" title="Eliminar seleccionada">
+          <i class="bi bi-trash"></i>
+        </button>
+        <button class="btn btn-sm btn-outline-secondary" (click)="loadActividades()" title="Actualizar">
+          <i class="bi bi-arrow-clockwise"></i>
+        </button>
+        <button class="btn btn-sm btn-outline-success" (click)="exportXLS()" [disabled]="!rowData.length"
+                title="Exportar Excel">
+          <i class="bi bi-file-earmark-excel"></i>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══ Info: sin convenio ═════════════════════════════════════════════════ -->
+  <div *ngIf="selectedProject && !conventions.length && !isLoadingConv"
+       class="alert alert-info py-1 mb-2 small">
+    <i class="bi bi-info-circle me-1"></i>
+    Este proyecto no tiene convenios configurados — se muestran y guardan actividades sin versión.
+    Para trabajar con versiones ve a <strong>Proyectos → Convenios</strong>.
+  </div>
+
+  <!-- ══ Badge convenio activo ══════════════════════════════════════════════ -->
+  <div *ngIf="selectedConvention" class="mb-2 d-flex align-items-center gap-2">
+    <span class="badge" [ngClass]="convTypeBadge(selectedConvention.type).css">
+      {{ convTypeBadge(selectedConvention.type).label }}
+    </span>
+    <span class="small fw-semibold">
+      {{ selectedConvention.name || selectedConvention.folio }}
+    </span>
+    <span class="badge bg-secondary rounded-pill ms-1">{{ rowData.length }} actividad(es)</span>
+    <span *ngIf="selectedConvention.vigente" class="badge bg-success ms-1">★ Vigente</span>
+  </div>
+
+  <!-- ══ Mensaje feedback ════════════════════════════════════════════════════ -->
+  <div *ngIf="saveMsg" class="alert py-2 small mb-2"
+       [class.alert-success]="saveMsgType==='success'"
+       [class.alert-danger]="saveMsgType==='error'">
+    {{ saveMsg }}
+  </div>
+
+  <!-- ══ Placeholder sin proyecto ═══════════════════════════════════════════ -->
+  <div *ngIf="!selectedProject" class="text-center py-5 text-muted">
+    <i class="bi bi-kanban-fill fs-1 opacity-25 d-block mb-2"></i>
+    <h5>Selecciona un proyecto</h5>
+    <p class="small">Gestiona las actividades del programa de trabajo directamente en la tabla.</p>
+  </div>
+
+  <!-- ══ Grid (siempre montado) ══════════════════════════════════════════════ -->
+  <div class="ag-theme-quartz"
+       [style.display]="selectedProject ? 'block' : 'none'"
+       style="height: calc(100vh - 320px); min-height: 380px;">
+    <ag-grid-angular
+      style="height:100%;width:100%;"
+      [rowData]="rowData"
+      [columnDefs]="colDefs"
+      [gridOptions]="gridOptions"
+      (gridReady)="onGridReady($event)"
+      (cellEditingStopped)="onCellEditingStopped($event)">
+    </ag-grid-angular>
+  </div>
+
+  <!-- ══ Leyenda ════════════════════════════════════════════════════════════ -->
+  <div *ngIf="selectedProject" class="d-flex gap-3 mt-2 flex-wrap small text-muted">
+    <span>
+      <i class="bi bi-info-circle me-1"></i>
+      Doble clic en celda para editar · Enter avanza al siguiente campo · El WBS define la jerarquía
+    </span>
+    <span class="ms-auto">
+      <span style="color:#8e44ad;font-weight:bold;">◆</span> Milestone &nbsp;
+      <span style="color:#2980b9;font-weight:bold;">◆</span> Summary &nbsp;
+      <span class="badge bg-warning text-dark">Nueva fila</span>
+    </span>
+  </div>
+
+</div>
