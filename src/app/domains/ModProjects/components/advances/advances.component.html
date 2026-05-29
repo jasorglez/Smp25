@@ -1,86 +1,229 @@
-<div class="row p-3">
-  <div class="col-12">
+<div class="p-3">
 
-    <!-- Botones -->
-    <div class="row mb-2">
-      <div class="col text-right">
-        <button type="button" class="btn btn-sm btn-primary me-1 compact-btn" (click)="addRow()">
-          <i class="bi bi-plus-lg"></i>
-        </button>
-        <button type="button" class="btn btn-sm btn-success ms-1 me-1 compact-btn position-relative" (click)="saveChanges()">
-          <i class="bi bi-floppy"></i>
-          <span class="position-absolute top-0 start-100 translate-middle p-1 bg-danger border border-light rounded-circle"
-            *ngIf="notSavedChanges"><span class="visually-hidden">Cambios sin guardar</span></span>
-        </button>
-        <label class="btn btn-sm btn-primary ms-1 me-1 mb-0 compact-btn">
-          <i class="bi bi-file-excel"></i>
-          <input type="file" (change)="importExcel($event)" style="display: none;">
-        </label>
-        <button type="button" class="btn btn-sm btn-warning ms-1 me-1 compact-btn" (click)="revert()">
-          <i class="bi bi-arrow-clockwise"></i>
-        </button>
-        <button type="button" class="btn btn-sm btn-danger ms-1 compact-btn" (click)="deleteEntry()">
-          <i class="bi bi-trash"></i>
-        </button>
-      </div>
-    </div>
+  <!-- ╔══════════════════════════════════════════════════════════════════════╗
+       ║  BARRA DE BOTONES                                                    ║
+       ╚══════════════════════════════════════════════════════════════════════╝ -->
+  <div class="d-flex align-items-center gap-1 mb-2 flex-wrap">
 
-    <!-- Grid + Gráfica + Tabla -->
-    <div class="row">
-      <!-- Grid izquierda -->
-      <div class="col-md-3">
-        <ag-grid-angular [gridOptions]="gridOptions" style="width: 100%; height: 780px;"
-          class="ag-theme-quartz small-text-ag-grid" [rowData]="rowData"
-          [columnDefs]="columnDefs" (cellValueChanged)="onCellValueChanged($event)" (gridReady)="onGridReady($event)">
-        </ag-grid-angular>
-      </div>
-      <!-- Gráfica + Tabla derecha -->
-      <div class="col-md-9 d-flex flex-column">
-        <div class="chart-container">
-          <apx-chart #chart
-            [series]="chartOptions.series" [chart]="chartOptions.chart"
-            [xaxis]="chartOptions.xaxis"   [yaxis]="chartOptions.yaxis"
-            [stroke]="chartOptions.stroke" [colors]="chartOptions.colors"
-            [fill]="chartOptions.fill"     [dataLabels]="chartOptions.dataLabels"
-            [plotOptions]="chartOptions.plotOptions"
-            [legend]="chartOptions.legend" [markers]="chartOptions.markers"
-            [grid]="chartOptions.grid"     [title]="chartOptions.title"
-            [tooltip]="chartOptions.tooltip">
-          </apx-chart>
-        </div>
-        <!-- Tabla resumen mensual debajo de la gráfica -->
-        <div class="table-resumen mt-1">
-          <table class="table table-bordered table-sm mb-0">
-            <thead>
-              <tr>
-                <th class="th-label">MES</th>
-                <th *ngFor="let m of monthlyTableData" class="th-month">{{ m.month }}</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr class="tr-program">
-                <td class="td-label">AVANCE PROGRAMADO ACUMULADO</td>
-                <td *ngFor="let m of monthlyTableData" class="td-value">
-                  {{ m.program !== null ? (m.program | number:'1.0-0') + '%' : '' }}
-                </td>
-              </tr>
-              <tr class="tr-hitos">
-                <td class="td-label">HITOS DE AVANCE</td>
-                <td *ngFor="let m of monthlyTableData" class="td-value">
-                  {{ m.hito !== null ? (m.hito | number:'1.0-0') + '%' : '' }}
-                </td>
-              </tr>
-              <tr class="tr-physical">
-                <td class="td-label">AVANCE REAL ACUMULADO</td>
-                <td *ngFor="let m of monthlyTableData" class="td-value">
-                  {{ m.physical !== null ? (m.physical | number:'1.0-0') + '%' : '' }}
-                </td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
-      </div>
-    </div>
+    <!-- CRUD avances -->
+    <button class="btn btn-sm btn-primary"   (click)="addRow()"      title="Agregar registro">
+      <i class="bi bi-plus-lg"></i>
+    </button>
+    <button class="btn btn-sm btn-success position-relative" (click)="saveChanges()" title="Guardar cambios">
+      <i class="bi bi-floppy"></i>
+      <span *ngIf="notSavedChanges"
+            class="position-absolute top-0 start-100 translate-middle p-1 bg-danger border border-light rounded-circle">
+        <span class="visually-hidden">Cambios sin guardar</span>
+      </span>
+    </button>
+    <label class="btn btn-sm btn-primary mb-0" title="Importar desde Excel">
+      <i class="bi bi-file-excel"></i>
+      <input type="file" (change)="importExcel($event)" style="display:none;">
+    </label>
+    <button class="btn btn-sm btn-warning"   (click)="revert()"  title="Deshacer">
+      <i class="bi bi-arrow-clockwise"></i>
+    </button>
+    <button class="btn btn-sm btn-danger"    (click)="deleteEntry()" title="Eliminar registro seleccionado"
+            [disabled]="!selectedRowData">
+      <i class="bi bi-trash"></i>
+    </button>
+
+    <!-- Separador -->
+    <div class="vr mx-1"></div>
+
+    <!-- Punto 6: Captura Diaria -->
+    <button class="btn btn-sm btn-outline-dark" (click)="openDailyCapture()"
+            [ngClass]="showDailyCapture ? 'btn-dark text-white' : 'btn-outline-dark'"
+            title="Captura de Avance Diario por Tarea (Punto 6)">
+      <i class="bi bi-calendar-check-fill me-1"></i>
+      {{ showDailyCapture ? 'Cerrar Captura' : 'Captura Diaria' }}
+    </button>
 
   </div>
+
+  <!-- ╔══════════════════════════════════════════════════════════════════════╗
+       ║  GRID + CURVA S                                                       ║
+       ╚══════════════════════════════════════════════════════════════════════╝ -->
+  <div class="row">
+
+    <!-- Grid de registros -->
+    <div class="col-md-3">
+      <ag-grid-angular
+        class="ag-theme-quartz small-text-ag-grid"
+        style="width:100%; height:760px;"
+        [columnDefs]="columnDefs"
+        [rowData]="rowData"
+        [gridOptions]="gridOptions"
+        (gridReady)="onGridReady($event)"
+        (cellValueChanged)="onCellValueChanged($event)"
+        [stopEditingWhenCellsLoseFocus]="true">
+      </ag-grid-angular>
+    </div>
+
+    <!-- Gráfica + Tabla mensual -->
+    <div class="col-md-9 d-flex flex-column">
+
+      <!-- Curva S -->
+      <div>
+        <apx-chart #chart
+          [series]="chartOptions.series"         [chart]="chartOptions.chart"
+          [xaxis]="chartOptions.xaxis"           [yaxis]="chartOptions.yaxis"
+          [stroke]="chartOptions.stroke"         [colors]="chartOptions.colors"
+          [fill]="chartOptions.fill"             [dataLabels]="chartOptions.dataLabels"
+          [plotOptions]="chartOptions.plotOptions"
+          [legend]="chartOptions.legend"         [markers]="chartOptions.markers"
+          [grid]="chartOptions.grid"             [title]="chartOptions.title"
+          [tooltip]="chartOptions.tooltip">
+        </apx-chart>
+      </div>
+
+      <!-- Tabla resumen mensual -->
+      <div class="table-responsive mt-1">
+        <table class="table table-bordered table-sm mb-0" style="font-size:11px;">
+          <thead class="table-dark">
+            <tr>
+              <th style="min-width:120px;">MES</th>
+              <th *ngFor="let m of monthlyTableData" class="text-center text-nowrap">{{ m.month }}</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr style="background:#fff3cd;">
+              <td class="fw-semibold text-nowrap">AVANCE PROG. ACUM.</td>
+              <td *ngFor="let m of monthlyTableData" class="text-center text-nowrap">
+                {{ m.program  !== null ? (m.program  | number:'1.1-1') + '%' : '' }}
+              </td>
+            </tr>
+            <tr style="background:#d1ecf1;">
+              <td class="fw-semibold text-nowrap">HITOS DE AVANCE</td>
+              <td *ngFor="let m of monthlyTableData" class="text-center text-nowrap">
+                {{ m.hito     !== null ? (m.hito     | number:'1.1-1') + '%' : '' }}
+              </td>
+            </tr>
+            <tr style="background:#d4edda;">
+              <td class="fw-semibold text-nowrap">AVANCE REAL ACUM.</td>
+              <td *ngFor="let m of monthlyTableData" class="text-center text-nowrap">
+                {{ m.physical !== null ? (m.physical | number:'1.1-1') + '%' : '' }}
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ╔══════════════════════════════════════════════════════════════════════╗
+       ║  PUNTO 6 — CAPTURA DE AVANCE DIARIO POR TAREA                        ║
+       ╚══════════════════════════════════════════════════════════════════════╝ -->
+  <div *ngIf="showDailyCapture" class="mt-3">
+    <div class="card border-warning shadow-sm">
+
+      <!-- Header -->
+      <div class="card-header d-flex align-items-center gap-3 flex-wrap"
+           style="background:#fff3cd; border-bottom:2px solid #ffc107;">
+        <h6 class="mb-0 fw-bold">
+          <i class="bi bi-calendar-check-fill me-2 text-warning"></i>
+          Captura de Avance Diario por Tarea
+        </h6>
+
+        <!-- Selector de fecha -->
+        <div class="d-flex align-items-center gap-2 ms-2">
+          <label class="form-label mb-0 small fw-semibold">Fecha:</label>
+          <input type="date" class="form-control form-control-sm"
+                 [(ngModel)]="dailyCaptureDate"
+                 (change)="onCaptureDateChange()"
+                 style="width:150px;">
+        </div>
+
+        <!-- Avance programado del día (manual) -->
+        <div class="d-flex align-items-center gap-2">
+          <label class="form-label mb-0 small fw-semibold">Av. Prog. día (%):</label>
+          <input type="number" class="form-control form-control-sm"
+                 [(ngModel)]="programAdvanceHoy"
+                 min="0" max="100" step="0.01"
+                 style="width:100px;"
+                 title="Avance programado del día según el plan">
+        </div>
+
+        <!-- Badge total avance físico calculado -->
+        <div class="ms-auto d-flex align-items-center gap-2">
+          <span class="badge fs-6 px-3 py-2"
+                [ngClass]="totalPhysicalAdvanceHoy > 0 ? 'bg-success' : 'bg-secondary'">
+            <i class="bi bi-calculator me-1"></i>
+            Avance físico calculado: {{ totalPhysicalAdvanceHoy | number:'1.3-3' }}%
+          </span>
+          <button class="btn btn-warning btn-sm fw-semibold"
+                  (click)="saveDailyAdvance()"
+                  [disabled]="isSavingDailyAdvance">
+            <span *ngIf="isSavingDailyAdvance" class="spinner-border spinner-border-sm me-1" role="status"></span>
+            <i *ngIf="!isSavingDailyAdvance" class="bi bi-save me-1"></i>
+            Registrar Avance
+          </button>
+        </div>
+      </div>
+
+      <div class="card-body p-2">
+
+        <!-- Spinner de carga -->
+        <div *ngIf="isLoadingTasks" class="text-center py-4">
+          <div class="spinner-border text-warning" role="status"></div>
+          <p class="mt-2 text-muted small">Cargando tareas del programa de trabajo...</p>
+        </div>
+
+        <!-- Sin tareas (no hay ponderado o programa vacío) -->
+        <div *ngIf="!isLoadingTasks && !activeTasksData.length && !delayedTasksData.length"
+             class="alert alert-info mb-0 py-2 small">
+          <i class="bi bi-info-circle me-2"></i>
+          No hay tareas activas ni retrasadas para la fecha seleccionada, o las tareas no tienen ponderado calculado.
+          Ve al <strong>Programa de Trabajo → ⚙️ Configurar → % Calcular Ponderado</strong>.
+        </div>
+
+        <!-- ── Tareas EN EJECUCIÓN ──────────────────────────────────────────── -->
+        <div *ngIf="!isLoadingTasks && activeTasksData.length > 0">
+          <div class="d-flex align-items-center gap-2 mb-1">
+            <span class="badge bg-success">▶ En ejecución: {{ activeTasksData.length }}</span>
+            <small class="text-muted">Tareas cuya ventana de tiempo incluye la fecha seleccionada</small>
+          </div>
+          <ag-grid-angular
+            class="ag-theme-quartz small-text-ag-grid"
+            [style.height.px]="Math.min(400, 32 + activeTasksData.length * 26)"
+            style="width:100%;"
+            [columnDefs]="activeTasksColDefs"
+            [rowData]="activeTasksData"
+            [gridOptions]="activeTasksGridOptions"
+            [stopEditingWhenCellsLoseFocus]="true">
+          </ag-grid-angular>
+        </div>
+
+        <!-- ── Tareas RETRASADAS ───────────────────────────────────────────── -->
+        <div *ngIf="!isLoadingTasks && delayedTasksData.length > 0" class="mt-3">
+          <div class="d-flex align-items-center gap-2 mb-1">
+            <span class="badge bg-danger">⚠ Retrasadas: {{ delayedTasksData.length }}</span>
+            <small class="text-muted">Fecha de término vencida y progreso < 100%</small>
+          </div>
+          <ag-grid-angular
+            class="ag-theme-quartz small-text-ag-grid"
+            [style.height.px]="Math.min(300, 32 + delayedTasksData.length * 26)"
+            style="width:100%;"
+            [columnDefs]="activeTasksColDefs"
+            [rowData]="delayedTasksData"
+            [gridOptions]="activeTasksGridOptions"
+            [stopEditingWhenCellsLoseFocus]="true">
+          </ag-grid-angular>
+        </div>
+
+        <!-- ── Fórmula explicada ──────────────────────────────────────────── -->
+        <div *ngIf="!isLoadingTasks && (activeTasksData.length || delayedTasksData.length)"
+             class="alert alert-light border mt-2 py-2 small mb-0">
+          <i class="bi bi-info-circle me-1 text-muted"></i>
+          <strong>Cálculo:</strong>
+          Avance físico día = Σ (Ponderado<sub>i</sub> × Avance Hoy<sub>i</sub>) ÷ 100
+          — La columna <em>Avance Hoy</em> (fondo naranja) es editable. Ingresa el porcentaje de avance
+          <strong>incremental</strong> de cada tarea para la fecha seleccionada.
+        </div>
+
+      </div>
+    </div>
+  </div>
+
 </div>
