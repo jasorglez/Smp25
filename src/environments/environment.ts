@@ -85,5 +85,5 @@ export const environment = {
     // publicKey: 'TEST-4399133a-4676-42a2-ab85-d946370bf96a',
   },
 
-  version: '6.92 (29 Mayo 2026) feat(pmo): nuevo tab Actividades — CRUD directo de programa de trabajo',
+  version: '6.93 (29 Mayo 2026) feat(pmo-actividades): filtro sin-convenio + reasignacion masiva',
 };

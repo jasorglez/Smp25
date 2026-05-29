@@ -24,7 +24,8 @@
       </label>
       <select class="form-select form-select-sm" [(ngModel)]="selectedConvention"
               (ngModelChange)="onConventionChange()" [disabled]="isLoadingConv">
-        <option [ngValue]="null">— Sin convenio (todas) —</option>
+        <option [ngValue]="null">— Todas las actividades —</option>
+        <option [ngValue]="SIN_CONVENIO">⚪ Sin convenio asignado</option>
         <option *ngFor="let c of conventions" [ngValue]="c">
           {{ c.vigente ? '★ ' : '' }}{{ c.name || c.folio || ('Conv. #' + c.id) }}
           — {{ convTypeBadge(c.type).label }}
@@ -72,8 +73,8 @@
     Para trabajar con versiones ve a <strong>Proyectos → Convenios</strong>.
   </div>
 
-  <!-- ══ Badge convenio activo ══════════════════════════════════════════════ -->
-  <div *ngIf="selectedConvention" class="mb-2 d-flex align-items-center gap-2">
+  <!-- ══ Badge convenio activo ════════════════════════════════════════════ -->
+  <div *ngIf="selectedConvention && !isSinConvenio" class="mb-2 d-flex align-items-center gap-2">
     <span class="badge" [ngClass]="convTypeBadge(selectedConvention.type).css">
       {{ convTypeBadge(selectedConvention.type).label }}
     </span>
@@ -82,6 +83,38 @@
     </span>
     <span class="badge bg-secondary rounded-pill ms-1">{{ rowData.length }} actividad(es)</span>
     <span *ngIf="selectedConvention.vigente" class="badge bg-success ms-1">★ Vigente</span>
+  </div>
+
+  <!-- ══ Panel reasignación (solo en modo "sin convenio") ══════════════════ -->
+  <div *ngIf="isSinConvenio && rowData.length" class="alert alert-warning py-2 mb-2">
+    <div class="d-flex align-items-center gap-2 flex-wrap">
+      <i class="bi bi-exclamation-triangle-fill text-warning fs-5"></i>
+      <span class="fw-semibold small">
+        {{ rowData.length }} actividad(es) sin convenio asignado.
+      </span>
+      <span class="small text-muted">Asígnalas a un convenio:</span>
+      <select class="form-select form-select-sm" style="max-width:280px;"
+              [(ngModel)]="targetConvention">
+        <option [ngValue]="null">— Seleccionar convenio destino —</option>
+        <option *ngFor="let c of conventions" [ngValue]="c">
+          {{ c.vigente ? '★ ' : '' }}{{ c.name || c.folio || ('Conv. #' + c.id) }}
+          — {{ convTypeBadge(c.type).label }}
+        </option>
+      </select>
+      <button class="btn btn-sm btn-warning"
+              (click)="reassignToConvention()"
+              [disabled]="!targetConvention || isReassigning">
+        <span *ngIf="isReassigning" class="spinner-border spinner-border-sm me-1"></span>
+        <i *ngIf="!isReassigning" class="bi bi-arrow-right-circle me-1"></i>
+        {{ isReassigning ? 'Asignando…' : 'Asignar a este convenio' }}
+      </button>
+    </div>
+  </div>
+
+  <!-- ══ Sin actividades sin convenio ══════════════════════════════════════ -->
+  <div *ngIf="isSinConvenio && !rowData.length && !isLoading" class="alert alert-success py-2 mb-2">
+    <i class="bi bi-check-circle-fill me-1"></i>
+    Todas las actividades tienen convenio asignado. ✅
   </div>
 
   <!-- ══ Mensaje feedback ════════════════════════════════════════════════════ -->
