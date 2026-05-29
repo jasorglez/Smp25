@@ -85,5 +85,5 @@ export const environment = {
     // publicKey: 'TEST-4399133a-4676-42a2-ab85-d946370bf96a',
   },
 
-  version: '6.65 (28 Mayo 2026 04:00) feat(meseros-username): campo username editable en empleados + /registrar usa username en bot',
+  version: '6.66 (28 Mayo 2026 18:45) fix(meseros-registrar): /registrar busca por employeeCode (UserName del grid)',
 };
