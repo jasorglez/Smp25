@@ -37,6 +37,14 @@ export class RiskmatrixService {
     return this.http.post(`${environment.urlSmp}/PmoRisk/${id}/followup`, data, { headers: this.trackingService.getHeaders() });
   }
 
+  updatePmoRiskFollowUp(id: number, followUpId: number, data: any): Observable<any> {
+    return this.http.put(`${environment.urlSmp}/PmoRisk/${id}/followup/${followUpId}`, data, { headers: this.trackingService.getHeaders() });
+  }
+
+  deletePmoRiskFollowUp(id: number, followUpId: number): Observable<any> {
+    return this.http.delete(`${environment.urlSmp}/PmoRisk/${id}/followup/${followUpId}`, { headers: this.trackingService.getHeaders() });
+  }
+
   // Riesgos de identificación
   getIdentificationRisks(id: number, fecha: string): Observable<any[]> {
     return this.http.get<any[]>(`${environment.urlSmp}/Identificationrisk/${id}?date=${fecha}`, { headers: this.trackingService.getHeaders() });
