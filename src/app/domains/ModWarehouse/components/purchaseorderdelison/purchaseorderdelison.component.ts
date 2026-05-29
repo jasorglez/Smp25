@@ -10,6 +10,7 @@ import { PdfButtonCellRendererPurchaseOrderComponent } from '../purchaseorder/pd
 import { DetailCellRendererPurchaseOrderItemsComponent } from '../purchaseorder/detail-cell-renderer-purchase-order-items.component';
 import { DetailCellRendererPurchaseOrderReportComponent } from '../purchaseorder/detail-cell-renderer-purchaseorder-report.component';
 import { PedimentosXRequisicionComponent } from './pedimentos-x-requisicion.component';
+import { CompraRapidaDetalleComponent } from './compra-rapida-detalle.component';
 import { SignalsService } from 'app/services/signals.service';
 import { OcAndReqsService } from 'app/services/ocandreqs.service';
 import { BranchsService } from 'app/services/branchs.service';
@@ -31,7 +32,8 @@ import { lastValueFrom } from 'rxjs';
     PdfButtonCellRendererPurchaseOrderComponent,
     DetailCellRendererPurchaseOrderItemsComponent,
     DetailCellRendererPurchaseOrderReportComponent,
-    PedimentosXRequisicionComponent
+    PedimentosXRequisicionComponent,
+    CompraRapidaDetalleComponent
   ],
   templateUrl: './purchaseorderdelison.component.html',
   styleUrl: './purchaseorderdelison.component.scss',
@@ -59,6 +61,7 @@ export class PurchaseOrderDelisonComponent implements OnInit, OnDestroy {
   private isInitialized = false;
   private expandedRowId: string | null = null;
 
+  activeTab: 'oc' | 'compraRapida' = 'oc';
   rowData: any[] | null = null;
   fullRowData: any[] = [];
   gridHeight         = '80vh';
@@ -104,6 +107,7 @@ export class PurchaseOrderDelisonComponent implements OnInit, OnDestroy {
         this.idBranch = newIdBranch;
         if (this.branchesLoaded) {
           this.loadPurchaseOrders();
+          if (this.activeTab === 'compraRapida') this.loadCompraRapida();
         }
       } else if (!newIdBranch && newIdBranch !== 0 && this.isInitialized) {
         this.idBranch = null;
@@ -426,6 +430,155 @@ export class PurchaseOrderDelisonComponent implements OnInit, OnDestroy {
       cellStyle: { fontWeight: '500', textAlign: 'center' }
     }
   ];
+
+  // ==================== COMPRA RAPIDA ====================
+
+  compraRapidaRowData: any[] = [];
+  private compraRapidaGridApi!: GridApi;
+
+  // Nivel 1 (maestro): agrupado por # Requisición.
+  compraRapidaColDefs: ColDef[] = [
+    {
+      headerName: '#',
+      width: 45,
+      valueGetter: (p) => (p.node?.rowIndex ?? 0) + 1,
+      cellStyle: { backgroundColor: '#f8f9fa', fontWeight: 'bold' },
+    },
+    { field: 'sucursal', headerName: 'Sucursal', width: 160, filter: true },
+    { field: 'reqFolio', headerName: '# Requisición', width: 150, filter: true },
+    {
+      headerName: '# Compras Rapidas',
+      width: 160,
+      valueGetter: (p) => p.data?.items?.length ?? 0,
+      cellStyle: { backgroundColor: '#c8e6c9', textAlign: 'center', fontWeight: '600', cursor: 'pointer' },
+      onCellClicked: (params: any) => {
+        const isExpanding = !params.node.expanded;
+        // Acordeón: al expandir una fila, ocultar las demás (altura 0); al cerrar, restaurarlas.
+        if (isExpanding) {
+          params.api.forEachNode((node: any) => {
+            if (node.id !== params.node.id) {
+              node.setExpanded(false);
+              node.setRowHeight(0);
+            }
+          });
+          params.api.onRowHeightChanged();
+        } else {
+          params.api.forEachNode((node: any) => {
+            node.setRowHeight(undefined);
+          });
+          params.api.onRowHeightChanged();
+        }
+        params.node.setExpanded(isExpanding);
+      },
+    },
+  ];
+
+  compraRapidaGridOptions: any = {
+    headerHeight: 56,
+    rowHeight: 35,
+    animateRows: true,
+    masterDetail: true,
+    isRowMaster: (data: any) => Array.isArray(data?.items) && data.items.length > 0,
+    onFirstDataRendered: (params: any) => params.api.autoSizeAllColumns(),
+    detailCellRendererSelector: () => ({ component: CompraRapidaDetalleComponent }),
+    // Altura del detalle ajustada al número de compras rápidas (título + header + filas + padding).
+    getRowHeight: (params: any) => {
+      if (params.node?.detail) {
+        const count = params.data?.items?.length ?? 0;
+        return 30 + 25 + count * 28 + 20;
+      }
+      return undefined;
+    },
+  };
+
+  onCompraRapidaGridReady(params: GridReadyEvent) {
+    this.compraRapidaGridApi = params.api;
+    if (this.compraRapidaRowData.length) {
+      this.compraRapidaGridApi.setGridOption('rowData', this.compraRapidaRowData);
+    }
+  }
+
+  onTabChange(tab: 'oc' | 'compraRapida') {
+    this.activeTab = tab;
+    if (tab === 'compraRapida') {
+      this.loadCompraRapida();
+    }
+  }
+
+  async loadCompraRapida() {
+    if (this.idBranch === null || this.idBranch === undefined) {
+      this.setCompraRapidaRows([]);
+      return;
+    }
+
+    let rawItems: any[] = [];
+    if (this.idBranch < 0) {
+      // "Todas las sucursales" → agregamos los items de cada sucursal del usuario en paralelo.
+      if (!this.branches || this.branches.length === 0) { this.setCompraRapidaRows([]); return; }
+      const results = await Promise.all(
+        this.branches.map(branch =>
+          new Promise<any[]>((resolve) => {
+            this.ocAndReqsService.getCompraRapidaItems(branch.id).subscribe({
+              next: (d: any) => resolve(Array.isArray(d) ? d : []),
+              error: () => resolve([])
+            });
+          })
+        )
+      );
+      rawItems = results.flat();
+    } else {
+      rawItems = await new Promise<any[]>((resolve) => {
+        this.ocAndReqsService.getCompraRapidaItems(this.idBranch).subscribe({
+          next: (d: any) => resolve(Array.isArray(d) ? d : []),
+          error: () => resolve([])
+        });
+      });
+    }
+
+    this.setCompraRapidaRows(rawItems);
+  }
+
+  private setCompraRapidaRows(list: any[]) {
+    // Agrupar por requisición (# Requisición). Cada maestro lleva sus items en `items`.
+    const byReq = new Map<number, any>();
+    for (const it of (list || [])) {
+      const key = it.reqId;
+      if (!byReq.has(key)) {
+        byReq.set(key, {
+          reqId: it.reqId,
+          reqFolio: it.reqFolio || '',
+          sucursal: this.branchesMap.get(it.idReference) || `Sucursal ${it.idReference}`,
+          items: [],
+        });
+      }
+      byReq.get(key).items.push({
+        department: it.departmentName || 'Sin Departamento',
+        solicitedBy: it.solicitedBy || '',
+        recurrent: it.recurrent || '',
+        article: it.article || '',
+        numArticle: it.numArticle || '',
+        quantity: it.quantity || 0,
+        caducidadMinimaRequerida: it.caducidadMinimaRequerida || '',
+        comment: it.comment || '',
+        // Para el tooltip de la columna Artículo
+        price: it.price ?? 0,
+        total: it.total ?? 0,
+        notaFactura: it.notaFactura || '',
+        fechaEntradaAlmacen: it.fechaEntradaAlmacen || '',
+        cantidadEntradaAlmacen: it.cantidadEntradaAlmacen ?? '',
+        crId: it.crId ?? null,            // documento CR (para PDF compartido con almacén molienda)
+      });
+    }
+    this.compraRapidaRowData = Array.from(byReq.values());
+    if (this.compraRapidaGridApi && !this.compraRapidaGridApi.isDestroyed()) {
+      this.compraRapidaGridApi.setGridOption('rowData', this.compraRapidaRowData);
+      setTimeout(() => {
+        if (this.compraRapidaGridApi && !this.compraRapidaGridApi.isDestroyed()) {
+          this.compraRapidaGridApi.autoSizeAllColumns();
+        }
+      });
+    }
+  }
 
   // ==================== GRID EVENTS ====================
 

@@ -241,4 +241,26 @@ export class OcAndReqsService {
     );
   }
 
+  getCompraRapidaItems(idBranch: number, idMaterial: number = 0): Observable<any[]> {
+    return this.http.get<any[]>(
+      `${environment.urlWarehouse}/Ocandreq/compra-rapida-items?idBranch=${idBranch}&idMaterial=${idMaterial}`,
+      { headers: this.trackingService.getHeaders() }
+    );
+  }
+
+  syncCompraRapida(idReq: number): Observable<any> {
+    return this.http.post<any>(
+      `${environment.urlWarehouse}/Ocandreq/sync-compra-rapida?idReq=${idReq}`,
+      {},
+      { headers: this.trackingService.getHeaders() }
+    );
+  }
+
+  compraRapidaHasEntradas(idItem: number): Observable<boolean> {
+    return this.http.get<boolean>(
+      `${environment.urlWarehouse}/Ocandreq/compra-rapida-has-entradas?idItem=${idItem}`,
+      { headers: this.trackingService.getHeaders() }
+    );
+  }
+
 }

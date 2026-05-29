@@ -331,7 +331,7 @@ export class DetalleMoliendaComponent {
     },
     {
       field: 'folio',
-      headerName: 'OC',
+      headerName: 'Tipo Req.',
       width: 110,
       editable: false,
       cellStyle: (params: any) => {
@@ -382,7 +382,18 @@ export class DetalleMoliendaComponent {
       },
     },
     { field: 'proveedor', headerName: 'Proveedor', flex: 2, minWidth: 140 },
-    { field: 'cantidad', headerName: 'Cantidad', width: 110, type: 'numericColumn' },
+    {
+      field: 'cantidad',
+      headerName: 'Cantidad',
+      width: 150,
+      type: 'numericColumn',
+      valueFormatter: (p: any) => {
+        const qty = Number(p.value ?? 0);
+        const suma = Number(p.data?.__sumaCantidadRecibir ?? 0);
+        if (suma > 0) return `${qty} / ${suma}`;
+        return String(qty);
+      },
+    },
     { field: 'price', headerName: 'Precio unitario', width: 120, type: 'numericColumn' },
     { field: 'condEspecial', headerName: 'Cond. Especial', flex: 2, minWidth: 130, hide: true },
     {
@@ -438,14 +449,29 @@ export class DetalleMoliendaComponent {
         const oldValue = params.oldValue === true;
         const newValue = params.newValue === true;
 
-        // Si ya estaba cerrada, forzamos que se mantenga cerrada (seguridad extra)
+        // Si ya estaba cerrada, forzamos que se mantenga cerrada (seguridad extra).
+        // Mutación directa (no setDataValue) para no re-disparar onCellValueChanged.
         if (oldValue) {
-          params.node.setDataValue('close', true);
+          params.data.close = true;
+          params.api.refreshCells({ rowNodes: [params.node], columns: ['close'], force: true });
           return;
         }
 
         // Si el usuario intentó desmarcar un checkbox que estaba en false, no hacemos nada
         if (!newValue) return;
+
+        // Validar que existan entradas registradas antes de cerrar la OC.
+        // Mutación directa al revertir (no setDataValue) para no re-disparar el handler.
+        const idMaterial = this.internalParams?.data?.idMaterial;
+        const entradas = idMaterial
+          ? await lastValueFrom(this.entradaService.getByOcAndMaterial(params.data.id, idMaterial)).catch(() => [])
+          : await lastValueFrom(this.entradaService.getByOc(params.data.id)).catch(() => []);
+        if (!Array.isArray(entradas) || entradas.length === 0) {
+          params.data.close = false;
+          params.api.refreshCells({ rowNodes: [params.node], columns: ['close'], force: true });
+          await alerts.basicAlert('Cerrar Orden de Compra', 'No se puede cerrar esta orden de compra porque aún no hay datos registrados.', 'warning');
+          return;
+        }
 
         const confirm = await alerts.confirmAlert(
           'Cerrar Orden de Compra',
@@ -475,10 +501,13 @@ export class DetalleMoliendaComponent {
           } catch (error) {
             console.error('Error al cerrar OC:', error);
             alerts.reqErrorToast('Error', 'Ocurrió un error al intentar cerrar la OC.');
-            params.node.setDataValue('close', false);
+            params.data.close = false;
+            params.api.refreshCells({ rowNodes: [params.node], columns: ['close'], force: true });
           }
         } else {
-          params.node.setDataValue('close', false);
+          // Cancelar: revertir el checkbox sin re-disparar onCellValueChanged (evita loop del confirm).
+          params.data.close = false;
+          params.api.refreshCells({ rowNodes: [params.node], columns: ['close'], force: true });
         }
       }
     },
@@ -675,7 +704,8 @@ export class DetalleMoliendaComponent {
       headerName: 'Bultos',
       width: 85,
       type: 'numericColumn',
-      editable: () => this.editBultos && !this.selectedOcRow?.close && !this.selectedMultiEntregaIsClosed,
+      // Compra Rápida: Bultos siempre deshabilitado.
+      editable: () => this.editBultos && this.selectedOcRow?.type !== 'CR' && !this.selectedOcRow?.close && !this.selectedMultiEntregaIsClosed,
       valueSetter: (params) => {
         const newVal = params.newValue;
         if (newVal === null || newVal === undefined || newVal === '') {
@@ -692,7 +722,7 @@ export class DetalleMoliendaComponent {
         return true;
       },
       onCellValueChanged: (event: any) => this.onEntradaCellValueChanged(event),
-      cellStyle: () => this.editBultos
+      cellStyle: () => (this.editBultos && this.selectedOcRow?.type !== 'CR')
         ? {}
         : { backgroundColor: '#f0f0f0', color: '#6c757d' },
     },
@@ -729,8 +759,18 @@ export class DetalleMoliendaComponent {
       headerName: 'Características',
       width: 100,
       sortable: false,
-      cellStyle: { backgroundColor: '#c8e6c9', textAlign: 'center' },
+      cellStyle: () => this.selectedOcRow?.type === 'CR'
+        ? { backgroundColor: '#f0f0f0', textAlign: 'center' }
+        : { backgroundColor: '#c8e6c9', textAlign: 'center' },
       cellRenderer: (params: any) => {
+        // Compra Rápida: Características deshabilitada (sin click).
+        if (this.selectedOcRow?.type === 'CR') {
+          const disabled = document.createElement('div');
+          disabled.style.cssText = 'display:flex;align-items:center;justify-content:center;height:100%;color:#bdbdbd;cursor:not-allowed;';
+          disabled.textContent = '—';
+          return disabled;
+        }
+
         const carat = params.data?.carat;
         const hasData = carat && typeof carat === 'string' && carat.trim().length > 0;
 
@@ -938,6 +978,14 @@ export class DetalleMoliendaComponent {
     // Actualizar pdfCount en tiempo real cuando otro componente guarda documentos
     this.countSub?.unsubscribe();
     this.countSub = this.entradaDocumentsOverlayService.countUpdated$.subscribe(({ idEntrada, count }) => {
+      // Compra Rápida: los documentos son a nivel del CR → todas las entradas comparten el conteo.
+      if (this.selectedOcRow?.type === 'CR' && this.selectedOcRow?.id === idEntrada) {
+        this.cascadeEntradaData.forEach((r: any) => { r.pdfCount = count; });
+        if (this.nivel4GridApi && !this.nivel4GridApi.isDestroyed()) {
+          this.nivel4GridApi.refreshCells({ columns: ['pdfCount'], force: true });
+        }
+        return;
+      }
       const row = this.cascadeEntradaData.find(
         (r: any) => (r.idEntrega ?? r.idEntrada) === idEntrada
       );
@@ -988,6 +1036,7 @@ export class DetalleMoliendaComponent {
         this.updateParentCount();
       }
       this.loadReqEntregasSums();
+      this.loadCompraRapidaRows();
       return;
     }
 
@@ -1204,9 +1253,12 @@ export class DetalleMoliendaComponent {
       );
 
       await Promise.all(this.cascadeEntradaData.map(async (entradaRow: any) => {
-        const docParent = entradaRow.idEntrega ?? entradaRow.idEntrada;
+        // Compra Rápida: documentos a nivel del documento CR (compartidos con la sección Compra Rápida).
+        const isCR = this.selectedOcRow?.type === 'CR';
+        const docParent = isCR ? this.selectedOcRow?.id : (entradaRow.idEntrega ?? entradaRow.idEntrada);
+        const docType = isCR ? 'compra_rapida' : (entradaRow.idEntrega != null ? 'entrega' : 'entrada_molienda');
         const documents = await lastValueFrom(
-          this.intandoutDocumentsService.getIntandoutDocumentsById(docParent, 'entrega')
+          this.intandoutDocumentsService.getIntandoutDocumentsById(docParent, docType)
         ).catch(() => []);
         entradaRow.pdfCount = Array.isArray(documents) ? documents.length : 0;
         try {
@@ -1270,9 +1322,12 @@ export class DetalleMoliendaComponent {
       );
 
       await Promise.all(this.cascadeEntradaData.map(async (entradaRow: any) => {
-        const docParent = entradaRow.idEntrega ?? entradaRow.idEntrada;
+        // Compra Rápida: documentos a nivel del documento CR (compartidos con la sección Compra Rápida).
+        const isCR = this.selectedOcRow?.type === 'CR';
+        const docParent = isCR ? this.selectedOcRow?.id : (entradaRow.idEntrega ?? entradaRow.idEntrada);
+        const docType = isCR ? 'compra_rapida' : (entradaRow.idEntrega != null ? 'entrega' : 'entrada_molienda');
         const documents = await lastValueFrom(
-          this.intandoutDocumentsService.getIntandoutDocumentsById(docParent, 'entrega')
+          this.intandoutDocumentsService.getIntandoutDocumentsById(docParent, docType)
         ).catch(() => []);
         entradaRow.pdfCount = Array.isArray(documents) ? documents.length : 0;
         try {
@@ -1519,8 +1574,58 @@ export class DetalleMoliendaComponent {
         this.gridApi.setGridOption('rowData', this.rowData);
       this.updateParentCount();
       this.loadReqEntregasSums();
+      this.loadCompraRapidaRows();
     } catch (error) {
       console.error('Error loading details molienda:', error);
+    }
+  }
+
+  /** Fase 1: agrega filas de Compra Rápida (del material+sucursal) al nivel 2, junto a las OCs.
+   *  Cada fila CR agrupa los items de compra rápida de una requisición para ese material. */
+  private async loadCompraRapidaRows(): Promise<void> {
+    const idBranch = this.internalParams?.data?.sucursal;
+    const idMaterial = this.internalParams?.data?.idMaterial;
+    // Las compras rápidas son entradas; no aplican en el detalle de salidas.
+    if (this.detailType !== 'entradas' || !idBranch || !idMaterial) return;
+    try {
+      const items = await lastValueFrom(
+        this.ocAndReqsService.getCompraRapidaItems(idBranch, idMaterial)
+      ).catch(() => []);
+      const list = Array.isArray(items) ? items : [];
+      if (!list.length) return;
+
+      const byReq = new Map<number, any>();
+      for (const it of list) {
+        const key = it.reqId;
+        if (!byReq.has(key)) {
+          byReq.set(key, {
+            __isCompraRapida: true,
+            id: null,
+            idRequisition: it.reqId,
+            folio: it.reqFolio || '',
+            cantidadReq: 0,
+            numCantidadOc: 0,
+            requestDate: it.requestDate || null,
+            crItems: [],
+          });
+        }
+        const r = byReq.get(key);
+        r.cantidadReq += Number(it.quantity ?? 0);
+        r.numCantidadOc += 1;
+        r.crItems.push(it);
+      }
+
+      const crRows = Array.from(byReq.values());
+      crRows.forEach((r: any) => { r.resta = r.cantidadReq; }); // Fase 1: sin entradas aún
+
+      this.rowData = [...this.rowData, ...crRows];
+      if (this.gridApi && !this.gridApi.isDestroyed()) {
+        this.gridApi.setGridOption('rowData', this.rowData);
+      }
+      // Recontar "Entradas" del nivel 1 incluyendo ahora las filas de compra rápida.
+      this.updateParentCount();
+    } catch (err) {
+      console.error('Error cargando compras rápidas:', err);
     }
   }
 
@@ -1566,9 +1671,7 @@ export class DetalleMoliendaComponent {
     }
 
     try {
-      const { lastValueFrom } = await import('rxjs');
-
-      // Obtenemos las OCs filtradas por requisición + material + departamentos autorizados
+      // OCs + Compras Rápidas (getOcsByReqMaterial ya incluye type='CR') filtradas por requisición + material.
       const idMaterial = this.internalParams?.data?.idMaterial;
       const matchedOcs: any = idMaterial
         ? await lastValueFrom(
@@ -1577,7 +1680,7 @@ export class DetalleMoliendaComponent {
         : [];
 
       this.cascadeOcData = await this.enrichOcsWithResta(Array.isArray(matchedOcs) ? matchedOcs : [], idMaterial);
-      console.log('OCs cargadas para la requisición seleccionada:', this.cascadeOcData);
+      this.loadOcEntregasSums(idMaterial);
     } catch (err) {
       console.error('Error cargando OCs:', err);
       this.cascadeOcData = [];
@@ -1616,14 +1719,39 @@ export class DetalleMoliendaComponent {
     );
   }
 
+  private async loadOcEntregasSums(idMaterial: number | null | undefined): Promise<void> {
+    if (!idMaterial || !this.cascadeOcData.length) return;
+    await Promise.all(this.cascadeOcData.map(async (oc: any) => {
+      try {
+        const items: any[] = await lastValueFrom(
+          this.ocAndReqsService.getReqItems(oc.id)
+        ).catch(() => []);
+        const materialItem = items.find((it: any) =>
+          Number(it.idSupplie ?? it.idsupplie ?? 0) === Number(idMaterial)
+        );
+        if (materialItem?.id) {
+          const entregas: any[] = await lastValueFrom(
+            this.entregaOcService.getByDetail(materialItem.id)
+          ).catch(() => []);
+          const suma = entregas.reduce((acc: number, e: any) => acc + Number(e.cantidadRecibir ?? 0), 0);
+          oc.__sumaCantidadRecibir = suma > 0 ? suma : null;
+        } else {
+          oc.__sumaCantidadRecibir = null;
+        }
+      } catch { oc.__sumaCantidadRecibir = null; }
+    }));
+    if (this.cascadeOcGridApi && !this.cascadeOcGridApi.isDestroyed())
+      this.cascadeOcGridApi.refreshCells({ columns: ['cantidad'], force: true });
+  }
+
   private async loadReqEntregasSums(): Promise<void> {
     const idMaterial = Number(this.internalParams?.data?.idMaterial ?? 0);
     await Promise.all(this.rowData.map(async (row: any) => {
       if (!Array.isArray(row.ocs) || row.ocs.length === 0) { row.__sumaCantidadRecibir = null; return; }
       try {
         let suma = 0;
+        let hayDelta = false;
         for (const oc of row.ocs) {
-          // oc.id = ocandreq.id; necesitamos el detailsreqoc.id del material
           const items: any[] = await lastValueFrom(
             this.ocAndReqsService.getReqItems(oc.id)
           ).catch(() => []);
@@ -1634,10 +1762,14 @@ export class DetalleMoliendaComponent {
             const entregas: any[] = await lastValueFrom(
               this.entregaOcService.getByDetail(materialItem.id)
             ).catch(() => []);
-            suma += entregas.reduce((acc: number, e: any) => acc + Number(e.cantidadRecibir ?? 0), 0);
+            const sumEntregas = entregas.reduce((acc: number, e: any) => acc + Number(e.cantidadRecibir ?? 0), 0);
+            if (sumEntregas > 0) hayDelta = true;
+            // Si tiene entregas usa el delta (suma cantidadRecibir), si no usa la cantidad del ítem
+            suma += sumEntregas > 0 ? sumEntregas : Number(materialItem.quantity ?? materialItem.cantidad ?? 0);
           }
         }
-        row.__sumaCantidadRecibir = suma > 0 ? suma : null;
+        // Solo mostrar denominador si al menos un proveedor tiene delta
+        row.__sumaCantidadRecibir = hayDelta ? suma : null;
       } catch { row.__sumaCantidadRecibir = null; }
     }));
     if (this.gridApi && !this.gridApi.isDestroyed())
@@ -1700,8 +1832,11 @@ export class DetalleMoliendaComponent {
 
     const usuarioLogueado = this.signalsService.getDisplayName()() || 'Usuario';
 
-    // Usar la fecha de entrega de la entrega seleccionada como default, o la de la OC, o la fecha actual
-    const fechaDefault = this.selectedMultiEntregaCaratRow?.fechaEntrega
+    // Compra Rápida: la fecha de recepción por default es HOY (día de captura).
+    // OC: fecha de la entrega seleccionada, o la de la OC, o la fecha actual.
+    const fechaDefault = this.selectedOcRow?.type === 'CR'
+      ? new Date()
+      : this.selectedMultiEntregaCaratRow?.fechaEntrega
       ? this.isoToLocalDate(String(this.selectedMultiEntregaCaratRow.fechaEntrega))
       : this.selectedOcRow?.fechaXEntrega
       ? this.isoToLocalDate(String(this.selectedOcRow.fechaXEntrega))
@@ -1734,6 +1869,24 @@ export class DetalleMoliendaComponent {
 
   async saveEntradas() {
     if ((!this.hasUnsavedChangesEntradas && !this.hasUnsavedChangesCaracteristicas) || !this.selectedOcRow) return;
+
+    // Validar que no haya dos entradas con la misma fecha de recepción.
+    const toKeyFecha = (f: any): string => {
+      if (!f) return '';
+      if (f instanceof Date) return `${f.getFullYear()}-${String(f.getMonth()+1).padStart(2,'0')}-${String(f.getDate()).padStart(2,'0')}`;
+      const m = String(f).match(/^(\d{4})-(\d{2})-(\d{2})/);
+      return m ? `${m[1]}-${m[2]}-${m[3]}` : String(f).substring(0, 10);
+    };
+    const fechasVistas = new Set<string>();
+    for (const r of this.cascadeEntradaData) {
+      const key = toKeyFecha(r.fechaRecepcion);
+      if (!key) continue;
+      if (fechasVistas.has(key)) {
+        await alerts.basicAlert('Fecha duplicada', 'No puede haber dos entradas con la misma fecha de recepción.', 'warning');
+        return;
+      }
+      fechasVistas.add(key);
+    }
 
     const toSave = this.cascadeEntradaData.filter(r => r.__isNew || r.__modified);
 
@@ -1850,12 +2003,14 @@ export class DetalleMoliendaComponent {
       const cantidadCapturada = Number(row.cantidadEntrada ?? 0);
       const cantidadActual = Number.isFinite(cantidadCapturada) ? cantidadCapturada : 0;
       const maxPermitido = this.getCantidadRestanteParaEntrada(row);
+      // OC sin límite → cantidad de la OC es 0 (ilimitada); no aplica el tope ni el aviso.
+      const ocSinLimite = Number(this.selectedOcRow?.cantidad ?? 0) === 0;
 
-      if (cantidadActual > maxPermitido) {
+      if (cantidadActual < 0) {
+        row.cantidadEntrada = 0;
+      } else if (!ocSinLimite && cantidadActual > maxPermitido) {
         row.cantidadEntrada = cantidadActual;
         void alerts.basicAlert('Aviso', 'La suma de las entrada es mayor a la requerida en la oc está seguro de guardar.', 'warning');
-      } else if (cantidadActual < 0) {
-        row.cantidadEntrada = 0;
       } else {
         row.cantidadEntrada = cantidadActual;
       }
@@ -1962,6 +2117,20 @@ export class DetalleMoliendaComponent {
   }
 
   async closeEntrega(params: any): Promise<void> {
+    // Validar que existan entradas registradas para esta entrega antes de cerrarla
+    const idMaterial = this.internalParams?.data?.idMaterial;
+    const idEntrega = params.data?.id;
+    if (idEntrega && idMaterial) {
+      const entradas = await lastValueFrom(
+        this.entradaService.getByEntregaAndMaterial(idEntrega, idMaterial)
+      ).catch(() => []);
+      if (!Array.isArray(entradas) || entradas.length === 0) {
+        params.api.refreshCells({ rowNodes: [params.node], columns: ['close'], force: true });
+        await alerts.basicAlert('Cerrar Entrega', 'No se puede cerrar esta entrega porque aún no hay datos registrados.', 'warning');
+        return;
+      }
+    }
+
     const confirm = await alerts.confirmAlert(
       'Cerrar Entrega',
       `¿Está seguro que desea cerrar esta entrega? Esta acción no se puede deshacer.`,
@@ -1975,11 +2144,11 @@ export class DetalleMoliendaComponent {
     try {
       const payload: EntregaOc = {
         idDetailsreqoc: params.data.idDetailsreqoc,
-        fechaEntrega: params.data.fechaEntrega ?? null,
+        fechaEntrega: params.data.fechaEntrega || null,
         cantidadRecibir: params.data.cantidadRecibir ?? null,
-        notaFactura: params.data.notaFactura ?? null,
+        notaFactura: params.data.notaFactura || null,
         totalEntrega: params.data.totalEntrega ?? null,
-        fechaEntradaAlmacen: params.data.fechaEntradaAlmacen ?? null,
+        fechaEntradaAlmacen: params.data.fechaEntradaAlmacen || null,
         close: true,
       };
       await lastValueFrom(this.entregaOcService.update(params.data.id, payload));
@@ -2087,15 +2256,29 @@ export class DetalleMoliendaComponent {
   }
 
   private toggleDetailColumn(params: any, _detailType: string): void {
-    // Usar idEntrega (entrega_oc.id) como clave compartida de documentos
-    const idEntrada: number | null = params.data?.idEntrega ?? params.data?.idEntrada ?? null;
-    if (!idEntrada) return;
     // Cierra el panel de Características si está abierto
     this.selectedEntradaCaratRow = null;
     this.cascadeCaratData = [];
     this.existingCaratIds.clear();
     this.hasUnsavedChangesCaracteristicas = false;
-    this.entradaDocumentsOverlayService.open({ idEntrada });
+    const readOnly = this.selectedOcRow?.close === true || this.selectedMultiEntregaIsClosed;
+
+    // Compra Rápida: documentos a nivel del documento CR (compartidos con la columna PDF
+    // del nivel 2 de la sección Compra Rápida). Misma llave: CR.id + 'compra_rapida'.
+    if (this.selectedOcRow?.type === 'CR') {
+      const crId = this.selectedOcRow?.id;
+      if (!crId) return;
+      this.entradaDocumentsOverlayService.open({ idEntrada: crId, docType: 'compra_rapida', readOnly });
+      return;
+    }
+
+    // Con entrega → docs por entrega_oc.id (type 'entrega', compartido con purchaseorderdelison).
+    // Sin entrega → docs por entradas_molienda.id (type 'entrada_molienda', namespace propio).
+    const hasEntrega = params.data?.idEntrega != null;
+    const idEntrada: number | null = hasEntrega ? params.data.idEntrega : (params.data?.idEntrada ?? null);
+    if (!idEntrada) return;
+    const docType = hasEntrega ? 'entrega' : 'entrada_molienda';
+    this.entradaDocumentsOverlayService.open({ idEntrada, docType, readOnly });
   }
 
   closeDocumentsModal(): void {

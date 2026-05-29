@@ -29,6 +29,8 @@ interface OcRow {
   condicionesPago?: string;
   totalOc?: number;
   anticipoOc?: number;
+  close?: boolean;
+  __allItemsBlocked?: boolean;
 }
 
 interface TooltipItem {
@@ -136,7 +138,10 @@ interface OcTooltipData {
       </div>
     </div>
   `,
-  styles: [`:host { display: block; height: 100%; overflow: hidden; }`]
+  styles: [`
+    :host { display: block; height: 100%; overflow: hidden; }
+    :host ::ng-deep .item-blocked-row .ag-cell:not([col-id="itemspdf"]) { background-color: #ffebee !important; color: #b71c1c !important; }
+  `]
 })
 export class OrdenesydetallesOcComponent implements OnDestroy {
   private ocAndReqsService = inject(OcAndReqsService);
@@ -269,12 +274,24 @@ export class OrdenesydetallesOcComponent implements OnDestroy {
       headerName: 'OC',
       width: 140,
       editable: false,
-      cellStyle: { backgroundColor: '#c8e6c9' },
+      cellStyle: (params: any) => params.data?.__allItemsBlocked === true
+        ? { backgroundColor: '#ffebee' }   // OC con todos los ítems cerrados → fondo rojizo
+        : { backgroundColor: '#c8e6c9' },
       onCellClicked: (params: any) => this.onRowClicked(params),
       cellRenderer: (params: any) => {
+        const isClosed = params.data?.__allItemsBlocked === true;
         const div = document.createElement('div');
-        div.style.cssText = 'cursor:pointer;';
-        div.textContent = params.value || '—';
+        div.style.cssText = `cursor:pointer; display:flex; align-items:center; gap:5px; ${isClosed ? 'color:#b71c1c;' : ''}`;
+        const text = document.createElement('span');
+        text.textContent = params.value || '—';
+        div.appendChild(text);
+        if (isClosed) {
+          const lock = document.createElement('i');
+          lock.className = 'bi bi-lock-fill';
+          lock.style.cssText = 'color:#b71c1c; font-size:0.85rem; flex-shrink:0;';
+          lock.title = 'Orden de Compra cerrada';
+          div.appendChild(lock);
+        }
         const ocId = Number(params.data?.id);
         if (ocId) {
           div.addEventListener('mouseenter', (ev: MouseEvent) => this.showOcTooltip(ev, ocId));
@@ -355,8 +372,11 @@ export class OrdenesydetallesOcComponent implements OnDestroy {
       field: 'conditions',
       headerName: 'Cantidad Entregas',
       width: 140,
-      // Bloqueada si el ítem ya tiene entregas guardadas (cambiar N desalinearía lo persistido)
-      editable: (p: any) => !((p.data?.entregasCount ?? 0) > 0),
+      // Bloqueada si: el ítem está cerrado, ya tiene entregas guardadas (cambiar N
+      // desalinearía lo persistido) o el tipo OC es "COMPRA AUTORIZADA SIN LIMITE".
+      editable: (p: any) => !p.data?.__blocked
+        && !((p.data?.entregasCount ?? 0) > 0)
+        && p.data?.typeoc !== 'COMPRA AUTORIZADA SIN LIMITE',
       cellEditor: 'agRichSelectCellEditor',
       cellEditorParams: () => ({ values: this.conditionsOptions }),
       valueParser: (p) => { const n = Number(p.newValue); return isNaN(n) ? p.oldValue : n; },
@@ -372,7 +392,7 @@ export class OrdenesydetallesOcComponent implements OnDestroy {
         if (delta < 0) return `${planned} - ${Math.abs(delta)}`;
         return String(planned);
       },
-      cellStyle: (p: any) => ((p.data?.entregasCount ?? 0) > 0)
+      cellStyle: (p: any) => ((p.data?.entregasCount ?? 0) > 0 || p.data?.typeoc === 'COMPRA AUTORIZADA SIN LIMITE')
         ? { backgroundColor: '#eeeeee', color: '#9e9e9e', cursor: 'not-allowed' }
         : null,
     },
@@ -389,6 +409,21 @@ export class OrdenesydetallesOcComponent implements OnDestroy {
         return !isNaN(cond) && cond > min
           ? { backgroundColor: '#c8e6c9', cursor: 'pointer' }
           : null;
+      },
+      cellRenderer: (p: any) => {
+        const div = document.createElement('div');
+        div.style.cssText = 'display:flex; align-items:center; gap:5px;';
+        const span = document.createElement('span');
+        span.textContent = p.value || '';
+        div.appendChild(span);
+        if (p.data?.__blocked) {
+          const lock = document.createElement('i');
+          lock.className = 'bi bi-lock-fill';
+          lock.style.cssText = 'color:#b71c1c; font-size:0.85rem; flex-shrink:0;';
+          lock.title = 'Artículo cerrado';
+          div.appendChild(lock);
+        }
+        return div;
       },
       onCellClicked: (p: any) => {
         const cond = Number(p.data?.conditions);
@@ -439,19 +474,21 @@ export class OrdenesydetallesOcComponent implements OnDestroy {
       field: 'notaFactura',
       headerName: 'Nota / Factura',
       width: 150,
-      editable: (p: any) => Number(p.data?.conditions ?? 1) <= 1,
+      editable: (p: any) => !p.data?.__blocked && Number(p.data?.conditions ?? 1) <= 1,
       cellEditor: 'agRichSelectCellEditor',
       cellEditorParams: { values: ['Nota', 'Factura'] },
+      // Devolver siempre estilo explícito: si se retorna null, AG Grid no limpia
+      // de forma fiable el gris aplicado cuando conditions vuelve a <= 1.
       cellStyle: (p: any) => Number(p.data?.conditions ?? 1) > 1
         ? { backgroundColor: '#eeeeee', color: '#9e9e9e', cursor: 'not-allowed' }
-        : null,
+        : { backgroundColor: '', color: '', cursor: '' },
     },
     { field: 'caducidadMinimaRequerida', headerName: 'Caducidad Minima Requerida', width: 180 },
     {
       field: 'datepostpone',
       headerName: 'Fecha Entrega',
       width: 130,
-      editable: (p: any) => p.data?.typeoc === 'COMPRA AUTORIZADA EN OTRA FECHA',
+      editable: (p: any) => !p.data?.__blocked && p.data?.typeoc === 'COMPRA AUTORIZADA EN OTRA FECHA',
       cellDataType: 'dateString',
       cellEditor: 'agDateStringCellEditor',
       cellStyle: (p: any) => {
@@ -482,7 +519,7 @@ export class OrdenesydetallesOcComponent implements OnDestroy {
         : null,
       onCellClicked: (params: any) => {
         if (params.data?.__entregaId == null) return;
-        this.entradaDocumentsOverlayService.open({ idEntrada: params.data.__entregaId, docType: 'entrega' });
+        this.entradaDocumentsOverlayService.open({ idEntrada: params.data.__entregaId, docType: params.data.__docType ?? 'entrega', readOnly: params.data?.__blocked === true });
       },
       cellRenderer: (params: any) => {
         const locked = params.data?.__entregaId == null;
@@ -508,12 +545,37 @@ export class OrdenesydetallesOcComponent implements OnDestroy {
         return div;
       },
     },
+    {
+      field: 'fechaEntradaAlmacen',
+      headerName: 'Fecha Entrada Almacén',
+      width: 160,
+      editable: false,
+      cellStyle: { backgroundColor: '#f5f5f5', color: '#757575' },
+      // Con más de una entrega los datos de almacén se manejan por entrega (nivel 5) → '—'
+      valueFormatter: (p) => Number(p.data?.conditions ?? 1) > 1 ? '—' : this.formatFechaDmy(p.value),
+    },
+    {
+      field: 'cantidadEntradaAlmacen',
+      headerName: 'Cantidad Entrada Almacén',
+      width: 180,
+      type: 'numericColumn',
+      editable: false,
+      valueFormatter: (p) => {
+        if (Number(p.data?.conditions ?? 1) > 1) return '—';
+        const v = Number(p.value ?? 0);
+        return Number.isFinite(v) && v > 0 ? v.toLocaleString('es-MX') : '';
+      },
+      cellStyle: { backgroundColor: '#e3f2fd', color: '#0d47a1', fontWeight: '600' },
+    },
   ];
 
   itemsGridOptions: any = {
     headerHeight: 45,
     rowHeight: 25,
     defaultColDef: { resizable: true, sortable: true, wrapHeaderText: true },
+    rowClassRules: {
+      'item-blocked-row': (p: any) => p.data?.__blocked === true,
+    },
     onFirstDataRendered: (params: any) => params.api.autoSizeAllColumns(),
     onCellValueChanged: (event: any) => {
       if (event.colDef.field === 'datepostpone') {
@@ -573,6 +635,13 @@ export class OrdenesydetallesOcComponent implements OnDestroy {
         return;
       }
       if (event.colDef.field === 'conditions' && event.data?.id) {
+        const newCond = Number(event.newValue);
+        // Con más de una entrega la Nota/Factura se maneja por entrega (nivel 5),
+        // así que se limpia el valor a nivel ítem.
+        if (newCond > 1 && event.data.notaFactura) {
+          event.data.notaFactura = '';
+          event.api.refreshCells({ rowNodes: [event.node], columns: ['notaFactura'], force: true });
+        }
         const { conditions, ...rest } = event.data;
         const cleanItem: any = { ...rest };
         // Si hay una edición de fecha pendiente, preservar la confirmación al guardar condiciones.
@@ -580,10 +649,9 @@ export class OrdenesydetallesOcComponent implements OnDestroy {
         this.conditionsPendingService.add(event.data.id, cleanItem, Number(event.newValue));
         this.changedItemIds.add(event.data.id);
         this.hasLocalChanges = true;
-        event.api.refreshCells({ rowNodes: [event.node], columns: ['namearticle'], force: true });
+        event.api.refreshCells({ rowNodes: [event.node], columns: ['namearticle', 'notaFactura', 'fechaEntradaAlmacen', 'cantidadEntradaAlmacen'], force: true });
 
         const min = this.conditionsOptions.length ? this.conditionsOptions[0] : 1;
-        const newCond = Number(event.newValue);
         if (event.data === this.selectedArticleRow) {
           if (newCond <= min) {
             this.closeNivel3();
@@ -654,18 +722,23 @@ export class OrdenesydetallesOcComponent implements OnDestroy {
       sortable: false,
       onCellClicked: (params: any) => {
         const idEntrada = params.data?.id;
-        if (!idEntrada) return;
+        // Bloqueado hasta que haya entrada en almacén (fecha + cantidad)
+        const hasAlmacen = !!params.data?.fechaEntradaAlmacen && Number(params.data?.cantidadEntradaAlmacen) > 0;
+        if (!idEntrada || !hasAlmacen) return;
         this.entradaDocumentsOverlayService.open({ idEntrada, readOnly: params.data?.close === true });
       },
       cellRenderer: (params: any) => {
         const idEntrada = params.data?.id;
+        const hasAlmacen = !!params.data?.fechaEntradaAlmacen && Number(params.data?.cantidadEntradaAlmacen) > 0;
         const count = Number(params.data?.pdfCount ?? 0);
         const div = document.createElement('div');
-        div.style.cssText = `text-align: center; cursor: ${idEntrada ? 'pointer' : 'default'};`;
-        if (!idEntrada) {
-          div.innerHTML = `<i class="bi bi-file-pdf" style="color: #bdbdbd; font-size: 1.1rem;"></i>`;
+        // Sin entrada en almacén → ícono gris bloqueado (no clickeable)
+        if (!idEntrada || !hasAlmacen) {
+          div.style.cssText = 'text-align: center; cursor: not-allowed; pointer-events: none;';
+          div.innerHTML = `<i class="bi bi-file-pdf" style="color: #bdbdbd; font-size: 1.1rem;" title="Disponible al registrar la entrada en almacén"></i>`;
           return div;
         }
+        div.style.cssText = 'text-align: center; cursor: pointer;';
         if (count > 0) {
           div.innerHTML = `
             <span style="display:inline-flex; align-items:center; justify-content:center; gap:2px;">
@@ -1079,6 +1152,7 @@ export class OrdenesydetallesOcComponent implements OnDestroy {
             condicionesPago: oc.condicionesPago || oc.condiciones_pago || '',
             totalOc: Number(oc.total ?? oc.Total ?? 0) || 0,
             anticipoOc: Number(oc.anticipoOc ?? oc.AnticipoOc ?? 0) || 0,
+            close: oc.close ?? oc.Close ?? false,
           };
         });
 
@@ -1088,6 +1162,8 @@ export class OrdenesydetallesOcComponent implements OnDestroy {
 
         // Pre-cargar datos para tooltip de cada OC (no bloquea el render)
         this.preloadTooltipData();
+        // Calcular en segundo plano si cada OC tiene todos sus ítems bloqueados (candado OC)
+        this.loadOcsBlockedState();
       },
       error: (error) => {
         console.error('Error loading OCs:', error);
@@ -1412,6 +1488,7 @@ export class OrdenesydetallesOcComponent implements OnDestroy {
 
         if (entregaId != null) {
           row.__entregaId = entregaId;
+          row.__docType = 'entrega';
           const docs = await lastValueFrom(
             this.intandoutDocumentsService.getIntandoutDocumentsById(entregaId, 'entrega')
           ).catch(() => []);
@@ -1427,11 +1504,16 @@ export class OrdenesydetallesOcComponent implements OnDestroy {
             this.entradaMoliendaService.getByOcAndMaterial(idOc, idSupplie)
           ).catch(() => []);
           const entrada = Array.isArray(entradas) && entradas.length > 0 ? entradas[0] : null;
+          // Con entrega → key=idEntrega, type='entrega'. Sin entrega → key=entradas_molienda.id,
+          // type='entrada_molienda' (namespace propio para evitar colisión de IDs).
+          const hasEntrega = entrada?.idEntrega != null;
           const docKey = entrada ? (entrada.idEntrega ?? entrada.id ?? null) : null;
+          const docType = hasEntrega ? 'entrega' : 'entrada_molienda';
           if (docKey) {
             row.__entregaId = docKey;
+            row.__docType = docType;
             const docs = await lastValueFrom(
-              this.intandoutDocumentsService.getIntandoutDocumentsById(docKey, 'entrega')
+              this.intandoutDocumentsService.getIntandoutDocumentsById(docKey, docType)
             ).catch(() => []);
             row.pdfCount = Array.isArray(docs) ? docs.length : 0;
             return;
@@ -1439,14 +1521,46 @@ export class OrdenesydetallesOcComponent implements OnDestroy {
         }
 
         row.__entregaId = null;
+        row.__docType = 'entrega';
         row.pdfCount = 0;
       } catch {
         row.__entregaId = null;
+        row.__docType = 'entrega';
         row.pdfCount = 0;
       }
     }));
     if (this.itemsGridApi && !this.itemsGridApi.isDestroyed()) {
       this.itemsGridApi.refreshCells({ columns: ['itemspdf'], force: true });
+    }
+  }
+
+  private async loadItemsAlmacenData(): Promise<void> {
+    const idOc = this.selectedOcRow?.id ?? null;
+    if (!idOc || !this.itemsData.length) return;
+    await Promise.all(this.itemsData.map(async (row: any) => {
+      const idSupplie = Number(row.idSupplie ?? 0);
+      if (!idSupplie) { row.cantidadEntradaAlmacen = null; row.fechaEntradaAlmacen = null; return; }
+      try {
+        const entradas = await lastValueFrom(
+          this.entradaMoliendaService.getByOcAndMaterial(idOc, idSupplie)
+        ).catch(() => []);
+        const list = Array.isArray(entradas) ? entradas : [];
+        const suma = list.reduce((acc: number, e: any) => acc + Number(e.cantidadEntrada ?? 0), 0);
+        row.cantidadEntradaAlmacen = suma > 0 ? suma : null;
+        // Fecha: la entrada más antigua con fechaRecepcion
+        const fechas = list
+          .filter((e: any) => e.fechaRecepcion)
+          .map((e: any) => String(e.fechaRecepcion))
+          .sort();
+        const iso = fechas.length > 0 ? fechas[0].match(/^(\d{4})-(\d{2})-(\d{2})/) : null;
+        row.fechaEntradaAlmacen = iso ? `${iso[1]}-${iso[2]}-${iso[3]}` : null;
+      } catch {
+        row.cantidadEntradaAlmacen = null;
+        row.fechaEntradaAlmacen = null;
+      }
+    }));
+    if (this.itemsGridApi && !this.itemsGridApi.isDestroyed()) {
+      this.itemsGridApi.refreshCells({ columns: ['cantidadEntradaAlmacen', 'fechaEntradaAlmacen'], force: true });
     }
   }
 
@@ -1472,12 +1586,47 @@ export class OrdenesydetallesOcComponent implements OnDestroy {
         const list = Array.isArray(entregas) ? entregas : [];
         const suma = list.reduce((acc: number, e: any) => acc + Number(e.cantidadRecibir ?? 0), 0);
         row.__sumaCantidadRecibir = suma > 0 ? suma : null;
+        // Estado bloqueado del ítem:
+        //  - multi-entrega (conditions > 1): todas las entregas cerradas
+        //  - single-entrega (conditions <= 1): la OC está cerrada (ocandreq.close)
+        const conditions = Number(row.conditions ?? 1);
+        row.__blocked = conditions > 1
+          ? (list.length > 0 && list.every((e: any) => e.close === true))
+          : this.selectedOcRow?.close === true;
       } catch {
         row.__sumaCantidadRecibir = null;
+        row.__blocked = false;
       }
     }));
     if (this.itemsGridApi && !this.itemsGridApi.isDestroyed()) {
-      this.itemsGridApi.refreshCells({ columns: ['quantity'], force: true });
+      // redrawRows re-evalúa rowClassRules (fila rosa) y re-renderiza candado/delta.
+      this.itemsGridApi.redrawRows();
+    }
+  }
+
+  private async loadOcsBlockedState(): Promise<void> {
+    if (!this.rowData.length) return;
+    await Promise.all(this.rowData.map(async (oc: any) => {
+      try {
+        const items: any[] = await lastValueFrom(this.ocAndReqsService.getReqItems(oc.id)).catch(() => []);
+        const list = Array.isArray(items) ? items : [];
+        if (list.length === 0) { oc.__allItemsBlocked = false; return; }
+        const flags = await Promise.all(list.map(async (it: any) => {
+          const conditions = Number(it.diasCondicionCompra ?? it.conditions ?? 1);
+          if (conditions > 1) {
+            const entregas: any[] = await lastValueFrom(this.entregaOcService.getByDetail(it.id)).catch(() => []);
+            const elist = Array.isArray(entregas) ? entregas : [];
+            return elist.length > 0 && elist.every((e: any) => e.close === true);
+          }
+          return oc.close === true;
+        }));
+        oc.__allItemsBlocked = flags.length > 0 && flags.every((b) => b === true);
+      } catch {
+        oc.__allItemsBlocked = false;
+      }
+    }));
+    if (this.gridApi && !this.gridApi.isDestroyed()) {
+      this.gridApi.refreshCells({ columns: ['folio'], force: true });
     }
   }
 
@@ -1509,7 +1658,7 @@ export class OrdenesydetallesOcComponent implements OnDestroy {
       }
     }));
     if (this.nivel3GridApi && !this.nivel3GridApi.isDestroyed()) {
-      this.nivel3GridApi.refreshCells({ columns: ['cantidadEntradaAlmacen', 'fechaEntradaAlmacen'], force: true });
+      this.nivel3GridApi.refreshCells({ columns: ['cantidadEntradaAlmacen', 'fechaEntradaAlmacen', 'pdf'], force: true });
     }
   }
 
@@ -1593,6 +1742,7 @@ export class OrdenesydetallesOcComponent implements OnDestroy {
         }
         this.loadItemsPdfCounts();
         this.loadItemsEntregasSums();
+        this.loadItemsAlmacenData();
       },
       error: () => {
         this.itemsData = [];

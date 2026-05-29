@@ -1269,6 +1269,35 @@ export class ComparacionPreciosComponent implements OnInit, OnDestroy {
       return;
     }
 
+    // Validar por artículo: la suma de cantidades solicitadas a todos los proveedores
+    // no debe ser menor a la cantidad requerida. Si lo es, pedir confirmación.
+    // Se excluye "COMPRA AUTORIZADA SIN LIMITE" (cantidad ilimitada, no aplica el tope).
+    const porArticulo = new Map<number, { nombre: string; requerida: number; solicitada: number; sinLimite: boolean }>();
+    for (const row of this.rowData) {
+      if (!AUTHORIZED.includes(row.tipoOc)) continue;
+      const key = Number(row.articuloItemId) || 0;
+      const entry = porArticulo.get(key) || {
+        nombre: row.articulo || 'artículo',
+        requerida: Number(row.cantidadComprar) || 0,
+        solicitada: 0,
+        sinLimite: false,
+      };
+      entry.solicitada += Number(row.cantidadConceptualizada) || 0;
+      if (row.tipoOc === 'COMPRA AUTORIZADA SIN LIMITE') entry.sinLimite = true;
+      porArticulo.set(key, entry);
+    }
+    const faltantes = Array.from(porArticulo.values()).filter(
+      (a) => !a.sinLimite && a.requerida > 0 && a.solicitada > 0 && a.solicitada < a.requerida
+    );
+    if (faltantes.length > 0) {
+      const nombres = faltantes.map((a) => `"${a.nombre}"`).join(', ');
+      const msg = faltantes.length === 1
+        ? `La cantidad que estás solicitando para el artículo ${nombres} es menor a la cantidad requerida. ¿Estás seguro que deseas continuar?`
+        : `La cantidad que estás solicitando para los artículos ${nombres} es menor a la cantidad requerida. ¿Estás seguro que deseas continuar?`;
+      const confirmFaltante = await alerts.confirmAlert('Cantidad menor a la requerida', msg, 'warning', 'Sí, continuar');
+      if (!confirmFaltante.isConfirmed) return;
+    }
+
     const count = rowsByProvider.size;
     const confirmMsg = allTotalizado
       ? `Se generará${count > 1 ? 'n' : ''} ${count} orden${count > 1 ? 'es' : ''} de compra. Todos los artículos tienen tipo OC — la requisición quedará CERRADA y bloqueada. ¿Continuar?`

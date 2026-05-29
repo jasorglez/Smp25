@@ -712,13 +712,16 @@ export class AlmmoliendaComponent {
       const countsPromises = mapped
         .filter(row => row.id && row.sucursal && row.idMaterial)
         .map(async row => {
-          const [reqs, salidas] = await Promise.all([
+          const [reqs, salidas, crItems] = await Promise.all([
             lastValueFrom(this.ocAndReqsService.getReqsByBranchMaterial(row.sucursal, row.idMaterial, deptsCsv)),
             lastValueFrom(this.moliendaService.getDetails(row.id, 'SALIDA')),
+            lastValueFrom(this.ocAndReqsService.getCompraRapidaItems(row.sucursal, row.idMaterial)).catch(() => []),
           ]);
+          // Entradas = requisiciones OC + requisiciones distintas con compra rápida (mismo material).
+          const crReqCount = new Set((crItems as any[]).map((it: any) => it.reqId)).size;
           return {
             id: row.id,
-            entradas: (reqs as any[]).length,
+            entradas: (reqs as any[]).length + crReqCount,
             salidas: salidas.length,
           };
         });
@@ -790,11 +793,13 @@ export class AlmmoliendaComponent {
         .join(',');
 
       // Cuenta requisiciones reales (no DetailsMolienda — esos solo existen tras abrir cascada)
-      const reqs = await lastValueFrom(
-        this.ocAndReqsService.getReqsByBranchMaterial(affectedRow.sucursal, affectedRow.idMaterial, deptsCsv)
-      );
+      const [reqs, crItems] = await Promise.all([
+        lastValueFrom(this.ocAndReqsService.getReqsByBranchMaterial(affectedRow.sucursal, affectedRow.idMaterial, deptsCsv)),
+        lastValueFrom(this.ocAndReqsService.getCompraRapidaItems(affectedRow.sucursal, affectedRow.idMaterial)).catch(() => []),
+      ]);
 
-      affectedRow.entradas = (reqs as any[]).length;
+      const crReqCount = new Set((crItems as any[]).map((it: any) => it.reqId)).size;
+      affectedRow.entradas = (reqs as any[]).length + crReqCount;
 
       if (this.gridApi) {
         const node = this.gridApi.getRowNode(affectedRow.id.toString());

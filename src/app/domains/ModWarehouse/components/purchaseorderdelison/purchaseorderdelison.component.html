@@ -1,14 +1,38 @@
 <div class="col-12 mt-2 purchaseorder-tab-root">
   <ul class="nav nav-tabs mb-0" role="tablist">
     <li class="nav-item" role="presentation">
-      <span id="tab-purchaseorder-listado" class="nav-link active" role="tab" aria-selected="true">
+      <span id="tab-purchaseorder-listado" class="nav-link" [class.active]="activeTab === 'oc'"
+        role="tab" [attr.aria-selected]="activeTab === 'oc'" style="cursor:pointer;"
+        (click)="onTabChange('oc')">
         Selección de OC
       </span>
     </li>
+    <li class="nav-item" role="presentation">
+      <span id="tab-purchaseorder-comprarapida" class="nav-link" [class.active]="activeTab === 'compraRapida'"
+        role="tab" [attr.aria-selected]="activeTab === 'compraRapida'" style="cursor:pointer;"
+        (click)="onTabChange('compraRapida')">
+        Sección Compra Rapida
+      </span>
+    </li>
   </ul>
-  <div class="tab-content border border-top-0 rounded-bottom p-2 pt-3 bg-body" role="tabpanel"
-    aria-labelledby="tab-purchaseorder-listado">
-    <div class="row">
+  <div class="tab-content border border-top-0 rounded-bottom p-2 pt-3 bg-body" role="tabpanel">
+    <!-- Sección Compra Rapida -->
+    <div *ngIf="activeTab === 'compraRapida'" class="row">
+      <div class="col">
+        <ag-grid-angular
+          style="width: 100%;"
+          [ngStyle]="{'height': gridHeight}"
+          class="ag-theme-quartz small-text-ag-grid"
+          [columnDefs]="compraRapidaColDefs"
+          [rowData]="compraRapidaRowData"
+          [gridOptions]="compraRapidaGridOptions"
+          [defaultColDef]="defaultColDef"
+          [localeText]="AG_GRID_LOCALE_ES"
+          (gridReady)="onCompraRapidaGridReady($event)">
+        </ag-grid-angular>
+      </div>
+    </div>
+    <div class="row" [hidden]="activeTab !== 'oc'">
       <!-- Botones CRUD izquierda -->
       <nav class="col-auto d-flex flex-column align-items-start">
         <button type="button"

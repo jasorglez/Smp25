@@ -1,5 +1,5 @@
 import { ApplicationRef, effect, inject, Injectable, NgZone } from '@angular/core';
-import { HttpClient } from '@angular/common/http';
+import { HttpClient, HttpHeaders } from '@angular/common/http';
 import { Router } from '@angular/router';
 import {
   Auth,
@@ -11,7 +11,7 @@ import {
   authState,
 } from '@angular/fire/auth';
 import { TrackingService } from './tracking.service';
-import { BehaviorSubject, catchError, firstValueFrom, map, Observable, of, switchMap, tap, throwError } from 'rxjs';
+import { BehaviorSubject, catchError, finalize, firstValueFrom, map, Observable, of, shareReplay, switchMap, tap, throwError } from 'rxjs';
 import { environment } from '../../environments/environment';
 import { Ilogin } from 'app/interface/ilogin';
 import { SignalsService } from './signals.service';
@@ -211,6 +211,45 @@ export class AuthService {
       console.error('Error registrando el usuario:', error);
       throw error;
     }
+  }
+
+  /** Refresh single-flight del idToken usando el refreshToken de Firebase.
+   *  Si ya hay un refresh en curso, todas las peticiones comparten el mismo observable. */
+  private refreshInFlight$: Observable<string> | null = null;
+
+  refreshIdToken(): Observable<string> {
+    if (this.refreshInFlight$) return this.refreshInFlight$;
+
+    const refreshToken = localStorage.getItem('refreshToken');
+    if (!refreshToken) {
+      return throwError(() => new Error('No refresh token disponible'));
+    }
+
+    const body = `grant_type=refresh_token&refresh_token=${encodeURIComponent(refreshToken)}`;
+    this.refreshInFlight$ = this.http.post<any>(environment.urlRefreshToken, body, {
+      headers: new HttpHeaders({ 'Content-Type': 'application/x-www-form-urlencoded' }),
+    }).pipe(
+      map((resp: any) => {
+        if (!resp?.id_token) throw new Error('Refresh sin id_token');
+        localStorage.setItem('token', resp.id_token);
+        if (resp.refresh_token) localStorage.setItem('refreshToken', resp.refresh_token);
+        return resp.id_token as string;
+      }),
+      shareReplay(1),
+      finalize(() => { this.refreshInFlight$ = null; })
+    );
+    return this.refreshInFlight$;
+  }
+
+  /** Cierre por sesión expirada (token caducado y refresh fallido): logout limpio + aviso en login. */
+  handleSessionExpired(): void {
+    Swal.close();
+    try {
+      sessionStorage.setItem('sessionExpiredNotice', '1');
+    } catch {
+      /* ignorar quota / modo privado */
+    }
+    void this.logout();
   }
 
   async logout() {

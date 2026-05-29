@@ -1321,7 +1321,21 @@ export class DetallesRequisicionDelisonComponent implements OnInit, OnDestroy {
           input.style.cursor = isDisabled ? 'not-allowed' : 'pointer';
           input.style.opacity = isDisabled ? '0.4' : '1';
           input.title = isInterno ? 'No disponible para Proveedor Interno' : hasPedimentoNumber ? 'No disponible cuando hay número de pedimento asignado' : '';
-          input.addEventListener('change', () => {
+          input.addEventListener('change', async () => {
+            // Bloqueo: no permitir DESMARCAR si la compra rápida ya tiene entradas en almacén.
+            if (!input.checked && params.data.id) {
+              const hasEntradas = await firstValueFrom(
+                this.ocAndReqsService.compraRapidaHasEntradas(params.data.id)
+              ).catch(() => false);
+              if (hasEntradas) {
+                input.checked = true; // revertir
+                alerts.reqWarningToast(
+                  'No permitido',
+                  'Este artículo ya tiene entradas en almacén, elimine estas si requiere borrar o desmarcar el artículo'
+                );
+                return;
+              }
+            }
             params.data.compraRapida = input.checked;
             if (input.checked) {
               params.data.pedimiento = false;
@@ -1517,6 +1531,20 @@ export class DetallesRequisicionDelisonComponent implements OnInit, OnDestroy {
       return;
     }
 
+    // Bloqueo: no permitir borrar si la compra rápida del item ya tiene entradas en almacén.
+    if (selectedItem.id) {
+      const hasEntradas = await firstValueFrom(
+        this.ocAndReqsService.compraRapidaHasEntradas(selectedItem.id)
+      ).catch(() => false);
+      if (hasEntradas) {
+        alerts.reqWarningToast(
+          'No permitido',
+          'Este artículo ya tiene entradas en almacén, elimine estas si requiere borrar o desmarcar el artículo'
+        );
+        return;
+      }
+    }
+
     // Si es un item existente, confirmar y eliminar de la BD
     const result = await alerts.confirmAlert(
       '¿Eliminar item?',
@@ -1529,6 +1557,11 @@ export class DetallesRequisicionDelisonComponent implements OnInit, OnDestroy {
 
     try {
       await firstValueFrom(this.ocAndReqsService.deleteReqItem(selectedItem.id));
+
+      // Limpiar el documento CR de compra rápida si correspondía a este item (sin entradas).
+      try {
+        await firstValueFrom(this.ocAndReqsService.syncCompraRapida(this.requisitionId));
+      } catch { /* no bloquear el borrado */ }
 
       // Eliminar del grid
       this.rowData = this.rowData.filter(item => item.id !== selectedItem.id);
@@ -1780,6 +1813,12 @@ export class DetallesRequisicionDelisonComponent implements OnInit, OnDestroy {
 
         // Propagar cambios a todos los pedimentos existentes
         await this.propagateChangesToPedimentos(newItemsData, modifiedItemsData);
+
+        // Generar/sincronizar documentos de Compra Rápida (ocandreq type='CR') de esta requisición.
+        // Idempotente: crea los que falten, sincroniza los existentes y borra los desmarcados sin entradas.
+        try {
+          await firstValueFrom(this.ocAndReqsService.syncCompraRapida(this.requisitionId));
+        } catch { /* no bloquear el guardado */ }
 
         // Actualizar dateModified del maestro para que se reordene en el padre
         try {
