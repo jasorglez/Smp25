@@ -145,6 +145,9 @@ export class WorkprogramsComponent {
   calcProgress: number = 0;
   private isDragging: boolean = false;
 
+  // Modalidad de cálculo de ponderado (sólo en pantalla, no persiste en BD)
+  pondModalidad: 'precio' | 'tiempo' | 'volumen' = 'precio';
+
   showNewFaseModal: boolean = false;
   newFaseDescription: string = '';
 
@@ -1718,7 +1721,8 @@ export class WorkprogramsComponent {
     this.updateParentTotal(parentTask.parent);
   }
 
-  // Calcula ponderado de cada hoja usando regla de 3: (total_hoja / total_grand) * 100
+  // ─── Calcula ponderado de cada hoja con las 3 modalidades ─────────────────
+  // Modalidad se selecciona en pantalla con this.pondModalidad
   // Procesa en lotes para no trabar el hilo principal y mostrar barra de progreso
   async calcularPonderado() {
     if (this.isCalculating) return;
@@ -1736,37 +1740,71 @@ export class WorkprogramsComponent {
       return;
     }
 
-    // Gran total = suma de totales de todas las hojas
-    const grandTotal = leafTasks.reduce((sum, t) => {
-      const tot = t['total'] != null ? Number(t['total']) : (Number(t['quantity'] ?? 0) * Number(t['costMX'] ?? 0));
-      return sum + tot;
-    }, 0);
+    // ── Función métrica según modalidad ─────────────────────────────────────
+    let getMetric: (t: any) => number;
+    let modalidadLabel: string;
+    let denominadorLabel: string;
+
+    if (this.pondModalidad === 'tiempo') {
+      // Por Tiempo: duración en días calendario (endDate - startDate)
+      getMetric = (t) => {
+        const d1 = t.start_date instanceof Date ? t.start_date : new Date(t.start_date);
+        const d2 = t.end_date   instanceof Date ? t.end_date   : new Date(t.end_date);
+        return Math.max(1, Math.abs(d2.getTime() - d1.getTime()) / (1000 * 60 * 60 * 24));
+      };
+      modalidadLabel   = 'Tiempo';
+      denominadorLabel = 'días totales';
+
+    } else if (this.pondModalidad === 'volumen') {
+      // Por Volumen: cantidad (quantity) de cada hoja
+      getMetric = (t) => Math.abs(Number(t['quantity'] ?? 0));
+      modalidadLabel   = 'Volumen';
+      denominadorLabel = 'unidades totales';
+
+    } else {
+      // Por Precio (default): total = quantity × costMX
+      getMetric = (t) => {
+        const tot = t['total'] != null
+          ? Number(t['total'])
+          : (Number(t['quantity'] ?? 0) * Number(t['costMX'] ?? 0));
+        return Math.max(0, tot);
+      };
+      modalidadLabel   = 'Precio';
+      denominadorLabel = 'total MXN';
+    }
+
+    // ── Gran total = suma de métricas de todas las hojas ────────────────────
+    const grandTotal = leafTasks.reduce((sum, t) => sum + getMetric(t), 0);
 
     if (grandTotal === 0) {
-      alerts.basicAlert('Aviso', 'El monto total es 0, no se puede calcular el ponderado', 'warning');
+      alerts.basicAlert(
+        'Aviso',
+        `La suma de ${denominadorLabel} es 0. Verifica que las tareas tengan datos de ${modalidadLabel.toLowerCase()} cargados.`,
+        'warning'
+      );
       return;
     }
 
-    // Confirmación antes de proceder
+    // ── Confirmación ────────────────────────────────────────────────────────
+    const unidad = this.pondModalidad === 'precio' ? `$${grandTotal.toLocaleString('es-MX', { minimumFractionDigits: 2 })}` : grandTotal.toFixed(2);
     const confirm = await alerts.confirmAlert(
-      '¿Calcular ponderado?',
-      `Se recalculará el ponderado de ${leafTasks.length} concepto(s) con base en el total del contrato ($${grandTotal.toFixed(2)}). ¿Está seguro?`,
+      `¿Calcular ponderado por ${modalidadLabel}?`,
+      `Se recalculará el ponderado de ${leafTasks.length} concepto(s) usando la modalidad "${modalidadLabel}" (${denominadorLabel}: ${unidad}). ¿Está seguro?`,
       'question',
       'Sí, calcular'
     );
     if (!confirm.isConfirmed) return;
 
-    // Inicio de progreso
+    // ── Inicio de progreso ──────────────────────────────────────────────────
     this.isCalculating = true;
     this.calcProgress = 0;
     const total = leafTasks.length;
     const CHUNK = 10; // tareas por lote
 
-    // Pre-calcula los ponderados con 3 decimales y ajusta el último para cerrar en 100.000
-    const ponderados: number[] = leafTasks.map(t => {
-      const tot = t['total'] != null ? Number(t['total']) : (Number(t['quantity'] ?? 0) * Number(t['costMX'] ?? 0));
-      return Math.round((tot / grandTotal) * 100 * 1000) / 1000;
-    });
+    // Pre-calcula los ponderados con 3 decimales
+    const ponderados: number[] = leafTasks.map(t =>
+      Math.round((getMetric(t) / grandTotal) * 100 * 1000) / 1000
+    );
     // El último absorbe el residuo para que la suma sea exactamente 100.000
     const sumaParcialesRaw = ponderados.slice(0, -1).reduce((a, b) => a + b, 0);
     ponderados[ponderados.length - 1] = Math.round((100 - sumaParcialesRaw) * 1000) / 1000;
@@ -1786,7 +1824,11 @@ export class WorkprogramsComponent {
     this.isCalculating = false;
     this.calcProgress = 0;
     this.notSavedChanges = true;
-    alerts.basicAlert('Ponderado calculado', `Total del contrato: $${grandTotal.toFixed(2)} — ${total} conceptos actualizados`, 'success');
+    alerts.basicAlert(
+      `✅ Ponderado por ${modalidadLabel} calculado`,
+      `${denominadorLabel.charAt(0).toUpperCase() + denominadorLabel.slice(1)}: ${unidad} — ${total} concepto(s) actualizados. Presiona Guardar para persistir.`,
+      'success'
+    );
   }
 
   async getMeasures() {

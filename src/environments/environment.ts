@@ -85,5 +85,5 @@ export const environment = {
     // publicKey: 'TEST-4399133a-4676-42a2-ab85-d946370bf96a',
   },
 
-  version: '6.73 (29 Mayo 2026 06:55) fix(pmo): enlazar riesgos a conceptos y endurecer api',
+  version: '6.74 (29 Mayo 2026 09:30) feat(pmo): ponderado en 3 modalidades Precio/Tiempo/Volumen',
 };
