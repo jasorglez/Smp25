@@ -1,200 +1,310 @@
 <div class="container-fluid py-3">
 
-  <!-- ── Selector de proyecto ──────────────────────────────────────────── -->
-  <div class="row mb-3">
-    <div class="col-md-5">
+  <!-- ══ Selector de proyecto ══════════════════════════════════════════════ -->
+  <div class="row mb-3 g-2 align-items-end">
+    <div class="col-md-4">
       <div class="input-group input-group-sm">
         <span class="input-group-text bg-dark text-white">
           <i class="bi bi-building me-1"></i> Proyecto
         </span>
         <select class="form-select" [(ngModel)]="selectedProject" (ngModelChange)="onProjectChange()">
           <option [ngValue]="null">— Seleccionar proyecto —</option>
-          <option *ngFor="let p of projects" [ngValue]="p">{{ p.name || p.projectName || p.id }}</option>
+          <option *ngFor="let p of projects" [ngValue]="p">{{ p.name || p.projectName || ('ID: ' + p.id) }}</option>
         </select>
       </div>
     </div>
 
-    <!-- AC y BAC manuales (mientras no hay tabla de recursos) -->
     <div class="col-md-3" *ngIf="selectedProject">
       <div class="input-group input-group-sm">
-        <span class="input-group-text" title="Costo Real Acumulado (ingresa manualmente hasta conectar Recursos)">
-          <i class="bi bi-cash me-1"></i> AC (Costo Real)
+        <span class="input-group-text" title="Costo Real Acumulado (AC). Cuando tengas el módulo Recursos se llenará automático.">
+          <i class="bi bi-cash me-1"></i> AC — Costo Real (MXN)
         </span>
         <input type="number" class="form-control" [(ngModel)]="acManual"
-               (ngModelChange)="onAcChange()" min="0" placeholder="0">
+               (ngModelChange)="onAcChange()" min="0" placeholder="0.00">
       </div>
     </div>
-    <div class="col-md-2" *ngIf="selectedProject">
-      <div class="input-group input-group-sm">
-        <span class="input-group-text" title="Presupuesto total BAC">BAC</span>
-        <input type="number" class="form-control" [(ngModel)]="budgetTotal"
-               (change)="buildEVM([], []); loadDashboard()" min="1">
-      </div>
-    </div>
-    <div class="col-md-2" *ngIf="selectedProject">
-      <button class="btn btn-sm btn-outline-secondary w-100" (click)="loadDashboard()">
-        <i class="bi bi-arrow-clockwise me-1"></i> Actualizar
+
+    <div class="col-auto d-flex gap-2 ms-auto" *ngIf="selectedProject">
+      <span *ngIf="!hasPredecessors"
+            class="badge bg-warning text-dark px-2 py-1 d-flex align-items-center"
+            title="Define predecesoras en el Programa de Trabajo para CPM exacto">
+        <i class="bi bi-exclamation-triangle me-1"></i> CPM por fechas (sin predecesoras)
+      </span>
+      <span *ngIf="hasPredecessors"
+            class="badge bg-success px-2 py-1 d-flex align-items-center">
+        <i class="bi bi-check-circle me-1"></i> CPM con predecesoras
+      </span>
+      <button class="btn btn-sm btn-outline-secondary" (click)="loadDashboard()">
+        <i class="bi bi-arrow-clockwise"></i>
       </button>
     </div>
   </div>
 
-  <!-- ── Spinner ───────────────────────────────────────────────────────── -->
-  <div *ngIf="isLoading" class="text-center py-4">
+  <!-- ══ Spinner ═══════════════════════════════════════════════════════════ -->
+  <div *ngIf="isLoading" class="text-center py-5">
     <div class="spinner-border text-primary me-2"></div>
-    <span class="text-muted">Calculando indicadores PMO...</span>
+    <span class="text-muted">Calculando EVM y Ruta Crítica...</span>
   </div>
 
   <ng-container *ngIf="!isLoading && selectedProject">
 
-    <!-- ── KPI Cards ─────────────────────────────────────────────────────── -->
+    <!-- ══ KPI Cards ═════════════════════════════════════════════════════ -->
     <div class="row g-2 mb-3">
-      <div class="col-6 col-md-4 col-lg-2" *ngFor="let kpi of kpiCards">
-        <div class="card border-{{ kpi.color }} h-100">
+      <div class="col-6 col-md-4 col-xl-2" *ngFor="let kpi of kpiCards">
+        <div class="card border-{{ kpi.color }} h-100 shadow-sm">
           <div class="card-body p-2 text-center">
             <i class="bi {{ kpi.icon }} fs-3 text-{{ kpi.color }}"></i>
-            <div class="fw-bold fs-5 mt-1">{{ kpi.value }}</div>
-            <div class="small text-muted" style="font-size:10px; line-height:1.2;">{{ kpi.label }}</div>
+            <div class="fw-bold mt-1" style="font-size:15px;">{{ kpi.value }}</div>
+            <div class="text-muted" style="font-size:10px; line-height:1.2; margin-top:2px;">{{ kpi.label }}</div>
             <span class="badge bg-{{ kpi.color }} mt-1" style="font-size:9px;">{{ kpi.help }}</span>
           </div>
         </div>
       </div>
     </div>
 
-    <!-- ── EVM Resumen numérico ─────────────────────────────────────────── -->
-    <div class="row mb-3">
+    <!-- ══ EVM Desglose + Diagnóstico ════════════════════════════════════ -->
+    <div class="row mb-3 g-2">
+
+      <!-- Valores EVM numéricos -->
+      <div class="col-md-3">
+        <div class="card card-body p-2 h-100 bg-light">
+          <div class="fw-bold mb-2 small text-uppercase text-muted">
+            <i class="bi bi-table me-1"></i> Valores EVM
+          </div>
+          <div class="d-flex justify-content-between small mb-1">
+            <span class="fw-semibold">BAC:</span>
+            <span class="fw-bold">${{ fmt(evm.bac) }}</span>
+          </div>
+          <div class="d-flex justify-content-between small mb-1">
+            <span class="text-primary fw-semibold">PV:</span>
+            <span class="text-primary">${{ fmt(evm.pv) }} ({{ evm.pvPct }}%)</span>
+          </div>
+          <div class="d-flex justify-content-between small mb-1">
+            <span class="text-warning fw-semibold">EV:</span>
+            <span class="text-warning">${{ fmt(evm.ev) }} ({{ evm.evPct }}%)</span>
+          </div>
+          <div class="d-flex justify-content-between small mb-1">
+            <span class="text-secondary fw-semibold">AC:</span>
+            <span class="text-secondary">{{ evm.ac > 0 ? '$' + fmt(evm.ac) : '—' }}</span>
+          </div>
+          <hr class="my-1">
+          <div class="d-flex justify-content-between small mb-1">
+            <span class="fw-semibold">SV (Var. Crono):</span>
+            <span [class.text-success]="evm.sv >= 0" [class.text-danger]="evm.sv < 0">
+              {{ evm.sv >= 0 ? '+' : '' }}${{ fmt(evm.sv) }}
+            </span>
+          </div>
+          <div class="d-flex justify-content-between small" *ngIf="evm.ac > 0">
+            <span class="fw-semibold">CV (Var. Costo):</span>
+            <span [class.text-success]="evm.cv >= 0" [class.text-danger]="evm.cv < 0">
+              {{ evm.cv >= 0 ? '+' : '' }}${{ fmt(evm.cv) }}
+            </span>
+          </div>
+          <div class="d-flex justify-content-between small" *ngIf="evm.ac > 0">
+            <span class="fw-semibold">ETC:</span>
+            <span class="text-info">${{ fmt(evm.etc) }}</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Diagnóstico textual -->
       <div class="col-md-4">
-        <div class="card card-body p-2 bg-light">
-          <div class="d-flex justify-content-between small mb-1">
-            <span class="fw-semibold">BAC (Presupuesto Total):</span>
-            <span>{{ evm.bac | number:'1.2-2' }}</span>
+        <div class="card card-body p-2 h-100">
+          <div class="fw-bold mb-2 small text-uppercase text-muted">
+            <i class="bi bi-clipboard2-data me-1"></i> Diagnóstico PMO
           </div>
-          <div class="d-flex justify-content-between small mb-1">
-            <span class="text-primary fw-semibold">PV (Valor Planeado):</span>
-            <span class="text-primary">{{ evm.pv | number:'1.2-2' }}%</span>
+          <div class="small mb-2"
+               [class.text-success]="evm.spi >= 1" [class.text-danger]="evm.spi < 0.8"
+               [class.text-warning]="evm.spi >= 0.8 && evm.spi < 1">
+            <i class="bi me-1"
+               [class.bi-check-circle-fill]="evm.spi >= 1"
+               [class.bi-exclamation-triangle-fill]="evm.spi < 1"></i>
+            <strong>Cronograma:</strong>
+            {{ evm.spi >= 1   ? 'Proyecto adelantado o en tiempo (' + evm.spi.toFixed(2) + ')' :
+               evm.spi >= 0.8 ? 'Leve retraso detectado — SPI ' + evm.spi.toFixed(2) :
+               evm.spi > 0    ? 'Retraso crítico — requiere acción — SPI ' + evm.spi.toFixed(2) :
+                                'Sin datos de Curva S programada' }}
           </div>
-          <div class="d-flex justify-content-between small mb-1">
-            <span class="text-success fw-semibold">EV (Valor Ganado):</span>
-            <span class="text-success">{{ evm.ev | number:'1.2-2' }}%</span>
+          <div class="small mb-2"
+               [class.text-success]="evm.ac > 0 && evm.cpi >= 1"
+               [class.text-danger]="evm.ac > 0 && evm.cpi < 0.8"
+               [class.text-muted]="evm.ac <= 0">
+            <i class="bi me-1"
+               [class.bi-check-circle-fill]="evm.ac > 0 && evm.cpi >= 1"
+               [class.bi-x-circle-fill]="evm.ac > 0 && evm.cpi < 1"
+               [class.bi-dash-circle]="evm.ac <= 0"></i>
+            <strong>Costo:</strong>
+            {{ evm.ac > 0 ?
+               (evm.cpi >= 1 ? 'Bajo presupuesto — CPI ' + evm.cpi.toFixed(2) :
+                               'Sobre presupuesto — CPI ' + evm.cpi.toFixed(2) + ' · EAC $' + fmt(evm.eac)) :
+               'Ingresa el Costo Real (AC) para activar CPI, EAC y ETC.' }}
           </div>
-          <div class="d-flex justify-content-between small">
-            <span class="text-warning fw-semibold">AC (Costo Real):</span>
-            <span class="text-warning">{{ evm.ac | number:'1.2-2' }}</span>
+          <div class="small text-muted" *ngIf="!hasPredecessors">
+            <i class="bi bi-info-circle me-1 text-warning"></i>
+            Ruta Crítica calculada por fechas. Para CPM exacto define predecesoras
+            en <strong>Proyectos → Programa de Trabajo</strong>.
           </div>
         </div>
       </div>
 
-      <!-- ── Estado textual ─────────────────────────────────────────── -->
-      <div class="col-md-8">
-        <div class="card card-body p-2 bg-light h-100">
-          <h6 class="fw-bold mb-2"><i class="bi bi-clipboard2-data me-1"></i> Diagnóstico PMO</h6>
-          <div class="small">
-            <div [ngClass]="evm.spi >= 1 ? 'text-success' : 'text-danger'" class="mb-1">
-              <i class="bi" [ngClass]="evm.spi >= 1 ? 'bi-check-circle-fill' : 'bi-x-circle-fill'"></i>
-              <strong> Cronograma:</strong>
-              {{ evm.spi >= 1 ? 'El proyecto está adelantado o en tiempo (SPI ≥ 1).' :
-                 evm.spi >= 0.8 ? 'Leve retraso detectado (SPI ' + evm.spi.toFixed(2) + ').' :
-                 'Retraso crítico — requiere acción inmediata (SPI ' + evm.spi.toFixed(2) + ').' }}
-            </div>
-            <div [ngClass]="evm.ac > 0 ? (evm.cpi >= 1 ? 'text-success' : 'text-danger') : 'text-muted'" class="mb-1">
-              <i class="bi" [ngClass]="evm.ac > 0 ? (evm.cpi >= 1 ? 'bi-check-circle-fill' : 'bi-x-circle-fill') : 'bi-dash-circle'"></i>
-              <strong> Costo:</strong>
-              {{ evm.ac > 0 ?
-                 (evm.cpi >= 1 ? 'El proyecto está bajo presupuesto (CPI ' + evm.cpi.toFixed(2) + ').' :
-                  'Sobre presupuesto — CPI ' + evm.cpi.toFixed(2) + '. Se proyecta EAC = ' + evm.eac.toFixed(2) + '.') :
-                 'Ingresa el Costo Real (AC) para calcular indicadores de costo.' }}
-            </div>
-            <div class="text-muted" *ngIf="evm.ac <= 0">
-              <i class="bi bi-info-circle me-1"></i>
-              Los indicadores CPI, EAC y ETC se activarán cuando conectes el módulo de Recursos (Punto 9).
-            </div>
+      <!-- Curva S -->
+      <div class="col-md-5">
+        <div class="card card-body p-1 h-100">
+          <apx-chart *ngIf="sCurveSeries.length"
+            [series]="sCurveSeries"
+            [chart]="sCurveOptions.chart"
+            [stroke]="sCurveOptions.stroke"
+            [xaxis]="sCurveOptions.xaxis"
+            [yaxis]="sCurveOptions.yaxis"
+            [colors]="sCurveOptions.colors"
+            [fill]="sCurveOptions.fill"
+            [legend]="sCurveOptions.legend"
+            [tooltip]="sCurveOptions.tooltip"
+            [annotations]="sCurveOptions.annotations">
+          </apx-chart>
+          <div *ngIf="!sCurveSeries.length" class="text-center text-muted py-3">
+            <i class="bi bi-graph-up fs-2 text-muted d-block mb-1"></i>
+            <small>Sin registros de Curva S.<br>Captura avance en <strong>Proyectos → Sistema → Avance</strong>.</small>
           </div>
         </div>
+      </div>
+
+    </div>
+
+    <!-- ══ RUTA CRÍTICA — Hitos (Punto 10 integrado) ═════════════════════ -->
+    <div class="card mb-3" *ngIf="criticalMilestones.length">
+      <div class="card-header py-2 d-flex align-items-center gap-2"
+           style="background: linear-gradient(90deg,#c0392b,#e74c3c); color:#fff;">
+        <i class="bi bi-diagram-3-fill fs-5"></i>
+        <strong>Ruta Crítica — Hitos y Tareas en Riesgo</strong>
+        <span class="badge bg-light text-danger ms-1">
+          {{ criticalMilestones.filter(m => m.status === 'Atrasado').length }} atrasados
+        </span>
+        <span class="badge bg-warning text-dark ms-1">
+          {{ criticalMilestones.filter(m => m.status === 'En Riesgo').length }} en riesgo
+        </span>
+        <button class="btn btn-sm btn-outline-light ms-auto" (click)="showAllMilestones = !showAllMilestones">
+          {{ showAllMilestones ? 'Ver menos' : 'Ver todos (' + criticalMilestones.length + ')' }}
+        </button>
+      </div>
+      <div class="card-body p-0">
+        <table class="table table-sm table-hover mb-0">
+          <thead class="table-dark">
+            <tr>
+              <th style="width:40px;">🏁</th>
+              <th>Actividad</th>
+              <th style="width:110px;">Fin Plan</th>
+              <th style="width:140px;">Avance</th>
+              <th style="width:90px;">Estado</th>
+              <th style="width:90px;">Holgura</th>
+              <th style="width:80px;">Pred.</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr *ngFor="let m of visibleMilestones"
+                [style.border-left]="m.status === 'Atrasado' ? '3px solid #c0392b'
+                                   : m.status === 'En Riesgo' ? '3px solid #e67e22'
+                                   : m.status === 'Terminado' ? '3px solid #27ae60'
+                                   : '3px solid transparent'">
+              <td class="text-center">
+                <span *ngIf="m.isMilestone" title="Hito">🏁</span>
+                <i *ngIf="!m.isMilestone" class="bi bi-arrow-right-circle text-muted"></i>
+              </td>
+              <td class="small fw-semibold">
+                {{ m.activity }}
+                <div class="text-muted fw-normal" style="font-size:10px;">{{ m.description }}</div>
+              </td>
+              <td class="small">{{ m.endDate }}</td>
+              <td>
+                <div class="d-flex align-items-center gap-1">
+                  <div class="progress flex-grow-1" style="height:8px;">
+                    <div class="progress-bar"
+                         [class.bg-success]="m.progress >= 90"
+                         [class.bg-primary]="m.progress >= 50 && m.progress < 90"
+                         [class.bg-warning]="m.progress >= 10 && m.progress < 50"
+                         [class.bg-danger]="m.progress < 10"
+                         [style.width]="m.progress + '%'"></div>
+                  </div>
+                  <small class="text-muted" style="width:30px;">{{ m.progress }}%</small>
+                </div>
+              </td>
+              <td>
+                <span class="badge {{ statusBadge(m.status) }}" style="font-size:10px;">
+                  {{ m.status }}
+                </span>
+                <div *ngIf="m.delayDays > 0" class="text-danger" style="font-size:9px;">
+                  +{{ m.delayDays }}d retraso
+                </div>
+              </td>
+              <td class="small text-center">
+                <span *ngIf="m.slackDays < 0" class="text-muted">—</span>
+                <span *ngIf="m.slackDays >= 0 && m.slackDays <= 5"
+                      class="fw-bold text-danger">{{ m.slackDays }}d</span>
+                <span *ngIf="m.slackDays > 5"
+                      class="text-success">{{ m.slackDays }}d</span>
+              </td>
+              <td class="small text-center text-muted">
+                {{ m.predecessorId > 0 ? '#' + m.predecessorId : '—' }}
+              </td>
+            </tr>
+          </tbody>
+        </table>
       </div>
     </div>
 
-    <!-- ── Curva S ─────────────────────────────────────────────────────── -->
-    <div class="row mb-3">
-      <div class="col-12">
-        <div class="card">
-          <div class="card-body p-2">
-            <apx-chart *ngIf="sCurveSeries.length"
-              [series]="sCurveSeries"
-              [chart]="sCurveOptions.chart"
-              [stroke]="sCurveOptions.stroke"
-              [xaxis]="sCurveOptions.xaxis"
-              [yaxis]="sCurveOptions.yaxis"
-              [colors]="sCurveOptions.colors"
-              [legend]="sCurveOptions.legend"
-              [tooltip]="sCurveOptions.tooltip"
-              [title]="sCurveOptions.title">
-            </apx-chart>
-            <div *ngIf="!sCurveSeries.length" class="text-center text-muted py-3">
-              <i class="bi bi-graph-up fs-2 me-2"></i>
-              Sin registros de avance diario — captura datos en <strong>Proyectos → Sistema → Avance</strong>.
-            </div>
-          </div>
-        </div>
-      </div>
+    <!-- ══ Sin tareas críticas ════════════════════════════════════════════ -->
+    <div *ngIf="!criticalMilestones.length" class="alert alert-success py-2 small mb-3">
+      <i class="bi bi-check-circle-fill me-1"></i>
+      <strong>Sin hitos críticos detectados</strong> — Todas las tareas tienen holgura suficiente.
     </div>
 
-    <!-- ── Tabla entregables ────────────────────────────────────────────── -->
-    <div class="row">
-      <div class="col-12">
-        <div class="card">
-          <div class="card-header py-2 d-flex align-items-center gap-2">
-            <i class="bi bi-list-check fs-5 text-primary"></i>
-            <strong>Entregables / Paquetes de Trabajo</strong>
-          </div>
-          <div class="card-body p-0" *ngIf="deliverables.length">
-            <table class="table table-sm table-hover mb-0">
-              <thead class="table-dark">
-                <tr>
-                  <th>Entregable</th>
-                  <th class="text-center">Tareas</th>
-                  <th class="text-center">Terminadas</th>
-                  <th style="width:180px;">Avance</th>
-                  <th class="text-center">Estado</th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr *ngFor="let d of deliverables">
-                  <td class="small fw-semibold">{{ d.name }}</td>
-                  <td class="text-center small">{{ d.total }}</td>
-                  <td class="text-center small">{{ d.done }}</td>
-                  <td>
-                    <div class="d-flex align-items-center gap-1">
-                      <div class="progress flex-grow-1" style="height:10px;">
-                        <div class="progress-bar {{ progressClass(d.progress) }}"
-                             [style.width]="d.progress + '%'"></div>
-                      </div>
-                      <small class="text-muted" style="width:36px; text-align:right;">{{ d.progress }}%</small>
-                    </div>
-                  </td>
-                  <td class="text-center">
-                    <span class="badge {{ statusBadge(d.status) }}" style="font-size:10px;">{{ d.status }}</span>
-                  </td>
-                </tr>
-              </tbody>
-            </table>
-          </div>
-          <div class="card-body" *ngIf="!deliverables.length">
-            <p class="text-muted mb-0">
-              <i class="bi bi-info-circle me-1"></i>
-              Sin datos de programa de trabajo para este proyecto.
-            </p>
-          </div>
-        </div>
+    <!-- ══ Entregables ════════════════════════════════════════════════════ -->
+    <div class="card" *ngIf="deliverables.length">
+      <div class="card-header py-2 d-flex align-items-center gap-2">
+        <i class="bi bi-list-check fs-5 text-primary"></i>
+        <strong>Entregables / Paquetes de Trabajo</strong>
+      </div>
+      <div class="card-body p-0">
+        <table class="table table-sm table-hover mb-0">
+          <thead class="table-dark">
+            <tr>
+              <th>Entregable</th>
+              <th style="width:180px;">Avance</th>
+              <th class="text-end" style="width:110px;">Presupuesto</th>
+              <th class="text-end" style="width:110px;">EV Ganado</th>
+              <th class="text-center" style="width:100px;">Estado</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr *ngFor="let d of deliverables">
+              <td class="small fw-semibold">{{ d.name }}</td>
+              <td>
+                <div class="d-flex align-items-center gap-1">
+                  <div class="progress flex-grow-1" style="height:10px;">
+                    <div class="progress-bar {{ progressBarColor(d.progress) }}"
+                         [style.width]="d.progress + '%'"></div>
+                  </div>
+                  <small class="text-muted" style="width:34px;">{{ d.progress }}%</small>
+                </div>
+              </td>
+              <td class="text-end small">${{ fmt(d.budget) }}</td>
+              <td class="text-end small text-warning">${{ fmt(d.ev) }}</td>
+              <td class="text-center">
+                <span class="badge {{ deliverablesBadge(d.status) }}" style="font-size:9px;">{{ d.status }}</span>
+              </td>
+            </tr>
+          </tbody>
+        </table>
       </div>
     </div>
 
   </ng-container>
 
-  <!-- ── Sin proyecto seleccionado ─────────────────────────────────────── -->
-  <div *ngIf="!selectedProject && !isLoading"
-       class="text-center text-muted py-5">
+  <!-- ══ Pantalla inicial ════════════════════════════════════════════════ -->
+  <div *ngIf="!selectedProject && !isLoading" class="text-center text-muted py-5">
     <i class="bi bi-bar-chart-line-fill fs-1 d-block mb-2 text-primary opacity-50"></i>
-    <h5>Selecciona un proyecto para ver el Dashboard PMO</h5>
-    <p class="small">Indicadores EVM: SPI, CPI, EAC, ETC, Curva S y entregables.</p>
+    <h5>Selecciona un proyecto para ver el Reporte PMO</h5>
+    <p class="small">EVM real (BAC/PV/EV en MXN) · Ruta Crítica con Hitos · Curva S · Entregables</p>
   </div>
 
 </div>
