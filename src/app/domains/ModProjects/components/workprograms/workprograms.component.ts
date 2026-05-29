@@ -148,6 +148,10 @@ export class WorkprogramsComponent {
   // Modalidad de cálculo de ponderado (sólo en pantalla, no persiste en BD)
   pondModalidad: 'precio' | 'tiempo' | 'volumen' = 'precio';
 
+  // Modal de Configuración del Programa de Trabajo
+  showConfigModal: boolean = false;
+  configModalidad: 'precio' | 'tiempo' | 'volumen' = 'precio'; // copia temporal mientras está abierto el modal
+
   showNewFaseModal: boolean = false;
   newFaseDescription: string = '';
 
@@ -2003,6 +2007,22 @@ export class WorkprogramsComponent {
     // Persiste en BD
     this.workprogramsService.updateWorkProgram(this.apuIdWorkprogram, { costMX: newCost }).subscribe();
     this.showApuModal = false;
+  }
+
+  // ── Modal Configuración ─────────────────────────────────────────────────────
+
+  openConfigModal(): void {
+    this.configModalidad = this.pondModalidad; // pre-carga con el valor actual
+    this.showConfigModal = true;
+  }
+
+  saveConfig(): void {
+    this.pondModalidad = this.configModalidad;
+    this.showConfigModal = false;
+  }
+
+  closeConfigModal(): void {
+    this.showConfigModal = false;
   }
 
   async saveNewFase() {

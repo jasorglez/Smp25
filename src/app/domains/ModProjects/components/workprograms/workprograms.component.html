@@ -246,6 +246,119 @@
 
 
 
+<!-- ╔══════════════════════════════════════════════════════════════════════════╗
+     ║  Modal: Configuración del Programa de Trabajo                          ║
+     ╚══════════════════════════════════════════════════════════════════════════╝ -->
+<div class="modal fade" [class.show]="showConfigModal"
+     [style.display]="showConfigModal ? 'block' : 'none'"
+     tabindex="-1" role="dialog" aria-modal="true" style="z-index: 20000;">
+  <div class="modal-dialog modal-md" role="document">
+    <div class="modal-content">
+
+      <div class="modal-header py-2" style="background:#343a40; color:#fff;">
+        <h6 class="modal-title mb-0">
+          <i class="bi bi-gear-fill me-2"></i>Configuración del Programa de Trabajo
+        </h6>
+        <button type="button" class="btn-close btn-close-white btn-sm" (click)="closeConfigModal()"></button>
+      </div>
+
+      <div class="modal-body">
+
+        <!-- ── Modalidad de Ponderado ── -->
+        <div class="mb-3">
+          <label class="form-label fw-semibold">
+            <i class="bi bi-percent me-1 text-warning"></i>
+            Modalidad de cálculo de Ponderado
+          </label>
+          <p class="text-muted small mb-2">
+            Define cómo se distribuye el 100% de peso entre los conceptos hoja al presionar
+            "Calcular Ponderado". Los padres siempre reciben la suma de sus hijos.
+          </p>
+
+          <!-- Precio -->
+          <div class="form-check border rounded p-2 mb-2"
+               [ngClass]="configModalidad === 'precio' ? 'border-warning bg-warning bg-opacity-10' : ''">
+            <input class="form-check-input" type="radio" name="pondModalidad"
+                   id="config_precio" value="precio" [(ngModel)]="configModalidad">
+            <label class="form-check-label w-100" for="config_precio" style="cursor:pointer;">
+              <div class="d-flex align-items-start gap-2">
+                <span class="badge bg-warning text-dark fs-6 mt-1">$</span>
+                <div>
+                  <strong>Por Precio</strong>
+                  <div class="text-muted small">
+                    Ponderado = (Total tarea ÷ Total proyecto) × 100<br>
+                    Donde <em>Total = Cantidad × Precio unitario MXN</em>.<br>
+                    Úsalo cuando el peso de cada actividad debe reflejar su valor económico.
+                  </div>
+                </div>
+              </div>
+            </label>
+          </div>
+
+          <!-- Tiempo -->
+          <div class="form-check border rounded p-2 mb-2"
+               [ngClass]="configModalidad === 'tiempo' ? 'border-warning bg-warning bg-opacity-10' : ''">
+            <input class="form-check-input" type="radio" name="pondModalidad"
+                   id="config_tiempo" value="tiempo" [(ngModel)]="configModalidad">
+            <label class="form-check-label w-100" for="config_tiempo" style="cursor:pointer;">
+              <div class="d-flex align-items-start gap-2">
+                <span class="badge bg-warning text-dark fs-6 mt-1">T</span>
+                <div>
+                  <strong>Por Tiempo</strong>
+                  <div class="text-muted small">
+                    Ponderado = (Duración tarea ÷ Duración total) × 100<br>
+                    Duración en <em>días calendario</em> (Fecha Fin − Fecha Inicio).<br>
+                    Úsalo cuando el cronograma define el avance y no hay precios cargados.
+                  </div>
+                </div>
+              </div>
+            </label>
+          </div>
+
+          <!-- Volumen -->
+          <div class="form-check border rounded p-2 mb-2"
+               [ngClass]="configModalidad === 'volumen' ? 'border-warning bg-warning bg-opacity-10' : ''">
+            <input class="form-check-input" type="radio" name="pondModalidad"
+                   id="config_volumen" value="volumen" [(ngModel)]="configModalidad">
+            <label class="form-check-label w-100" for="config_volumen" style="cursor:pointer;">
+              <div class="d-flex align-items-start gap-2">
+                <span class="badge bg-warning text-dark fs-6 mt-1">V</span>
+                <div>
+                  <strong>Por Volumen</strong>
+                  <div class="text-muted small">
+                    Ponderado = (Cantidad tarea ÷ Cantidad total) × 100<br>
+                    Usa directamente el campo <em>Cantidad</em> de cada concepto hoja.<br>
+                    Úsalo cuando el avance se mide en unidades de obra (m³, m², ton, etc.).
+                  </div>
+                </div>
+              </div>
+            </label>
+          </div>
+        </div>
+
+        <!-- ── Nota informativa ── -->
+        <div class="alert alert-info py-2 mb-0 small">
+          <i class="bi bi-info-circle me-1"></i>
+          Esta configuración aplica sólo a la sesión actual. El ponderado calculado
+          <strong>sí se guarda</strong> en la base de datos al presionar Guardar.
+        </div>
+
+      </div><!-- /modal-body -->
+
+      <div class="modal-footer py-2">
+        <button type="button" class="btn btn-secondary btn-sm" (click)="closeConfigModal()">
+          Cancelar
+        </button>
+        <button type="button" class="btn btn-warning btn-sm" (click)="saveConfig()">
+          <i class="bi bi-check-lg me-1"></i>Aceptar
+        </button>
+      </div>
+
+    </div>
+  </div>
+</div>
+<div class="modal-backdrop fade show" *ngIf="showConfigModal" style="z-index: 19999;"></div>
+
 <!-- Controles de Zoom -->
 <div class="row mb-3">
     <div class="col text-right d-flex align-items-center justify-content-end gap-3">
@@ -316,24 +429,12 @@
                     title="Importar PMO desde Excel/CSV">
                 <i class="bi bi-upload"></i>
             </button>
-            <!-- Selector de modalidad de ponderado -->
-            <div class="btn-group btn-group-sm ms-1 me-1" role="group" title="Modalidad de cálculo de ponderado">
-              <button type="button" class="btn btn-sm"
-                      [ngClass]="pondModalidad === 'precio'   ? 'btn-warning' : 'btn-outline-warning'"
-                      (click)="pondModalidad = 'precio'"
-                      title="Por Precio (total MXN)"
-                      style="font-size:9px; padding:1px 5px; line-height:1.4;">$</button>
-              <button type="button" class="btn btn-sm"
-                      [ngClass]="pondModalidad === 'tiempo'   ? 'btn-warning' : 'btn-outline-warning'"
-                      (click)="pondModalidad = 'tiempo'"
-                      title="Por Tiempo (días calendario)"
-                      style="font-size:9px; padding:1px 5px; line-height:1.4;">T</button>
-              <button type="button" class="btn btn-sm"
-                      [ngClass]="pondModalidad === 'volumen'  ? 'btn-warning' : 'btn-outline-warning'"
-                      (click)="pondModalidad = 'volumen'"
-                      title="Por Volumen (cantidad)"
-                      style="font-size:9px; padding:1px 5px; line-height:1.4;">Vol</button>
-            </div>
+            <!-- Configuración del programa de trabajo (incluye modalidad de ponderado) -->
+            <button type="button" class="btn btn-secondary ms-1 me-1" (click)="openConfigModal()"
+                    title="Configuración del programa de trabajo">
+                <i class="bi bi-gear-fill"></i>
+            </button>
+            <!-- Calcular Ponderado — modalidad activa se muestra en el tooltip -->
             <button type="button" class="btn btn-warning ms-1 me-1" (click)="calcularPonderado()"
                     [disabled]="isCalculating"
                     [title]="'Calcular Ponderado por ' + (pondModalidad === 'precio' ? 'Precio' : pondModalidad === 'tiempo' ? 'Tiempo' : 'Volumen')">
