@@ -78,6 +78,19 @@ export class ProjectsService {
     return this.http.delete(`${environment.urlSmp}/Project/${id}`, { headers: this.trackingService.getHeaders() });
   }
 
+  // ── PMO Recursos ──────────────────────────────────────────────────────────
+  getPmoRecursosByProject(idProject: number) {
+    return this.http.get(`${environment.urlSmp}/PmoRecurso/project/${idProject}`, { headers: this.trackingService.getHeaders() });
+  }
+
+  savePmoRecursosBatch(recursos: any[]) {
+    return this.http.post(`${environment.urlSmp}/PmoRecurso/batch`, recursos, { headers: this.trackingService.getHeaders() });
+  }
+
+  deletePmoRecurso(id: number) {
+    return this.http.delete(`${environment.urlSmp}/PmoRecurso/${id}`, { headers: this.trackingService.getHeaders() });
+  }
+
 }
 
 

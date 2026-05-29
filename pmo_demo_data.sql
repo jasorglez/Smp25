@@ -59,7 +59,7 @@ UPDATE dbo.workprogram SET
   predecesor  = 983,            -- depende de Tarea 2
   ponderado   = 0,
   costMX      = 0,
-  total       = 0,
+  -- total es columna COMPUTADA — no se puede modificar directamente
   criticroute = 'Si'
 WHERE id = 986;
 
