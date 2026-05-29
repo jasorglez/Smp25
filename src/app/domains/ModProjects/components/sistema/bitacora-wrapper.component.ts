@@ -11,6 +11,7 @@ import { BitacoraFotosComponent }     from './bitacora-fotos.component';
 import { BitacoraVideosComponent }    from './bitacora-videos.component';
 import { BitacoraConceptosComponent } from './bitacora-conceptos.component';
 import { BitacoraNotasComponent }     from './bitacora-notas.component';
+import { BitacoraAvanceComponent }    from './bitacora-avance.component';
 
 @Component({
   selector: 'app-bitacora-wrapper',
@@ -22,6 +23,7 @@ import { BitacoraNotasComponent }     from './bitacora-notas.component';
     BitacoraPersonalComponent, BitacoraMaterialComponent, BitacoraEquiposComponent,
     BitacoraFotosComponent, BitacoraVideosComponent,
     BitacoraConceptosComponent, BitacoraNotasComponent,
+    BitacoraAvanceComponent,
   ],
   template: `
 <ng-container [ngSwitch]="detailType">
@@ -34,6 +36,7 @@ import { BitacoraNotasComponent }     from './bitacora-notas.component';
   <app-bitacora-videos     *ngSwitchCase="'videos'"    [data]="data" [context]="ctx"></app-bitacora-videos>
   <app-bitacora-conceptos  *ngSwitchCase="'conceptos'" [data]="data" [context]="ctx"></app-bitacora-conceptos>
   <app-bitacora-notas      *ngSwitchCase="'notas'"     [data]="data" [context]="ctx"></app-bitacora-notas>
+  <app-bitacora-avance     *ngSwitchCase="'avance'"    [data]="data" [context]="ctx"></app-bitacora-avance>
   <!-- default -->
   <app-bitacora-personal   *ngSwitchDefault             [data]="data" [context]="ctx"></app-bitacora-personal>
 </ng-container>

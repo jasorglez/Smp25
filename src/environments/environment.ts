@@ -85,5 +85,5 @@ export const environment = {
     // publicKey: 'TEST-4399133a-4676-42a2-ab85-d946370bf96a',
   },
 
-  version: '6.78 (29 Mayo 2026 11:30) feat(pmo): Punto7 — export MS Project XML + Primavera P6 XER + import XML/XER',
+  version: '6.79 (29 Mayo 2026 12:00) feat(pmo): Punto6 integrado en Sistema — columna Avance en reportes diarios',
 };

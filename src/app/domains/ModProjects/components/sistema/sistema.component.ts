@@ -24,6 +24,7 @@ import { BitacoraVideosComponent }    from './bitacora-videos.component';
 import { BitacoraConceptosComponent } from './bitacora-conceptos.component';
 import { BitacoraNotasComponent }     from './bitacora-notas.component';
 import { BitacoraWrapperComponent }   from './bitacora-wrapper.component';
+import { BitacoraAvanceComponent }    from './bitacora-avance.component';
 
 @Component({
   selector: 'app-sistema',
@@ -33,7 +34,7 @@ import { BitacoraWrapperComponent }   from './bitacora-wrapper.component';
     ButtonCellRendererExpenditureComponent,
     PdfButtonCellRendererComponent, PdfDetailComponent,
     BitacoraPersonalComponent, BitacoraMaterialComponent, BitacoraEquiposComponent,
-    BitacoraWrapperComponent,
+    BitacoraWrapperComponent, BitacoraAvanceComponent,
   ],
   templateUrl: './sistema.component.html',
   styleUrl: './sistema.component.scss'
@@ -216,6 +217,21 @@ export class SistemaComponent implements OnInit, OnDestroy {
       valueGetter: params => params.data.conceptos || 0,
       editable: false,
       cellStyle: { backgroundColor: '#e0f2f1', cursor: 'pointer', textDecoration: 'underline' }
+   },
+
+   // ── Punto 6 — Avance diario por tarea ──────────────────────────────────
+   {
+      headerName: 'Avance',
+      width: 100,
+      cellRenderer: ButtonCellRendererExpenditureComponent,
+      cellRendererParams: {
+        onClick: (node: any) => this.toggleBitacoraDetail(node, 'avance'),
+        label: '📊 Avance',
+      },
+      valueGetter: () => '📊',
+      editable: false,
+      cellStyle: { backgroundColor: '#fff3cd', cursor: 'pointer', textDecoration: 'underline',
+                   fontWeight: '600', color: '#856404' }
    },
 
     {
