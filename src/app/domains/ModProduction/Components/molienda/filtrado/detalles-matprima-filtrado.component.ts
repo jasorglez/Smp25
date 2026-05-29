@@ -5,6 +5,7 @@ import { ColDef, GridApi, GridReadyEvent } from 'ag-grid-enterprise';
 import { lastValueFrom } from 'rxjs';
 import { ProductionService } from 'app/services/production.service';
 import { SignalsService } from 'app/services/signals.service';
+import { DetallesArticuloFiltradoComponent } from './detalles-articulo-filtrado.component';
 import { alerts } from 'app/helpers/alerts';
 
 @Component({
@@ -55,7 +56,10 @@ export class DetallesMatprimaFiltradoComponent {
 
   private internalParams: any;
   private idMolienda: number | null = null;
+  private idMatPrimaMolienda: number | null = null;
+  private articuloOptions: { id: number; name: string }[] = [];
   private originalRowData: any[] = [];
+  private activeExpandedNodeId: string | null = null;
 
   gridApi!: GridApi;
   rowData: any[] = [];
@@ -73,7 +77,18 @@ export class DetallesMatprimaFiltradoComponent {
         const [y, m, d] = String(p.value).split('-');
         return d && m && y ? `${d}/${m}/${y}` : p.value;
       },
-      valueSetter: (p: any) => { p.data.fechaMolienda = p.newValue; p.data.__modified = true; this.hasChanges = true; return true; },
+      valueSetter: (p: any) => {
+        let val = p.newValue;
+        if (val instanceof Date) {
+          val = `${val.getFullYear()}-${String(val.getMonth() + 1).padStart(2, '0')}-${String(val.getDate()).padStart(2, '0')}`;
+        } else if (typeof val === 'string' && val.includes('T')) {
+          val = val.substring(0, 10);
+        }
+        p.data.fechaMolienda = val;
+        p.data.__modified = true;
+        this.hasChanges = true;
+        return true;
+      },
     },
     {
       field: 'usuario',
@@ -84,9 +99,18 @@ export class DetallesMatprimaFiltradoComponent {
     {
       field: 'idMatPrima',
       headerName: 'Materia Prima',
-      editable: true,
-      cellEditor: 'agNumberCellEditor',
-      valueSetter: (p: any) => { p.data.idMatPrima = p.newValue; p.data.__modified = true; this.hasChanges = true; return true; },
+      editable: false,
+      cellStyle: { cursor: 'pointer' },
+      cellRenderer: (params: any) => {
+        const name = this.articuloOptions.find(a => a.id === params.value)?.name
+          ?? (params.value != null ? String(params.value) : '—');
+        const count = params.data?.articuloCount ?? 0;
+        const link = `color:#4a148c; text-decoration:underline; cursor:pointer;`;
+        return `<span style="${link}">${count}</span>`;
+      },
+      onCellClicked: (event: any) => {
+        if (!event.data?.__isNew && event.data?.id != null) this.toggleArticuloDetail(event.node);
+      },
     },
     {
       field: 'jugo',
@@ -94,15 +118,24 @@ export class DetallesMatprimaFiltradoComponent {
       editable: true,
       cellEditor: 'agNumberCellEditor',
       valueFormatter: (p: any) => p.value != null ? String(p.value) : '',
-      valueSetter: (p: any) => { p.data.jugo = p.newValue; p.data.__modified = true; this.hasChanges = true; return true; },
+      valueSetter: (p: any) => {
+        p.data.jugo = p.newValue;
+        p.data.rendimiento = this.calcRendimiento(p.newValue, p.data.cantidadSum ?? 0);
+        p.data.__modified = true;
+        this.hasChanges = true;
+        return true;
+      },
     },
     {
       field: 'rendimiento',
       headerName: '% Rendimiento',
-      editable: true,
-      cellEditor: 'agNumberCellEditor',
-      valueFormatter: (p: any) => p.value != null ? `${Number(p.value).toFixed(2)}%` : '',
-      valueSetter: (p: any) => { p.data.rendimiento = p.newValue; p.data.__modified = true; this.hasChanges = true; return true; },
+      editable: false,
+      cellStyle: { backgroundColor: '#f8f9fa', color: '#495057' },
+      valueFormatter: (p: any) => {
+        if (p.value == null) return '—';
+        if (p.value === 'N/A') return 'N/A';
+        return `${Number(p.value).toFixed(2)}%`;
+      },
     },
   ];
 
@@ -111,15 +144,28 @@ export class DetallesMatprimaFiltradoComponent {
     headerHeight: 25,
     rowHeight: 22,
     rowSelection: 'single',
-    suppressRowClickSelection: true,
     autoSizeStrategy: { type: 'fitCellContents' },
     rowClassRules: { 'new-row-highlight': (p: any) => !!p.data?.__isNew },
     defaultColDef: { resizable: true, sortable: true },
+    masterDetail: true,
+    detailRowHeight: 200,
+    isRowMaster: (data: any) => !data?.__isNew && data?.id != null,
+    detailCellRenderer: DetallesArticuloFiltradoComponent,
+    detailCellRendererParams: () => ({
+      context: {
+        articuloOptions: this.articuloOptions,
+        idMatPrimaParent: this.idMatPrimaMolienda,
+        onArticuloCountChanged: (idMatDetalle: number, count: number, cantidadSum: number) =>
+          this.onArticuloCountChanged(idMatDetalle, count, cantidadSum),
+      },
+    }),
   };
 
   agInit(params: any) {
     this.internalParams = params;
     this.idMolienda = params?.data?.id ?? null;
+    this.idMatPrimaMolienda = params?.data?.matPrima ?? null;
+    this.articuloOptions = params?.context?.articuloOptions ?? [];
     if (this.gridApi && !this.gridApi.isDestroyed()) this.loadData();
   }
 
@@ -143,11 +189,42 @@ export class DetallesMatprimaFiltradoComponent {
     this.hasChanges = true;
   }
 
+  toggleArticuloDetail(node: any) {
+    if (this.activeExpandedNodeId === node.id) {
+      node.setExpanded(false);
+      this.activeExpandedNodeId = null;
+      this.gridApi.forEachNode((n: any) => n.setRowHeight(undefined));
+      this.gridApi.onRowHeightChanged();
+      return;
+    }
+
+    if (this.activeExpandedNodeId) {
+      this.gridApi.forEachNode((n: any) => {
+        if (n.id === this.activeExpandedNodeId) n.setExpanded(false);
+        n.setRowHeight(undefined);
+      });
+    }
+
+    this.gridApi.forEachNode((n: any) => { if (n.id !== node.id) n.setRowHeight(0); });
+    this.activeExpandedNodeId = node.id;
+    this.gridApi.onRowHeightChanged();
+    setTimeout(() => node.setExpanded(true), 0);
+  }
+
   async loadData() {
     if (!this.idMolienda) { this.rowData = []; return; }
     try {
-      const items = await lastValueFrom(this.productionService.getMoliendaMatDetalleByMolienda(this.idMolienda));
-      const mapped = (Array.isArray(items) ? items : []).map(i => this.mapRow(i));
+      const [items, counts, sums] = await Promise.all([
+        lastValueFrom(this.productionService.getMoliendaMatDetalleByMolienda(this.idMolienda)),
+        lastValueFrom(this.productionService.getMoliendaMatArticuloCountsByMolienda(this.idMolienda)),
+        lastValueFrom(this.productionService.getMoliendaMatArticuloSumsByMolienda(this.idMolienda)),
+      ]);
+      const mapped = (Array.isArray(items) ? items : []).map(i => {
+        const cantidadSum = (sums as Record<number, number>)[i.id] ?? 0;
+        const row = { ...this.mapRow(i), articuloCount: (counts as Record<number, number>)[i.id] ?? 0, cantidadSum };
+        row.rendimiento = this.calcRendimiento(row.jugo, cantidadSum);
+        return row;
+      });
       this.originalRowData = JSON.parse(JSON.stringify(mapped));
       this.rowData = mapped;
       if (this.gridApi && !this.gridApi.isDestroyed())
@@ -162,7 +239,7 @@ export class DetallesMatprimaFiltradoComponent {
     return {
       id: i.id,
       idMolienda: i.idMolienda,
-      fechaMolienda: i.fechaMolienda ? String(i.fechaMolienda).substring(0, 10) : null,
+      fechaMolienda: i.fechaMolienda ? String(i.fechaMolienda).split('T')[0] : null,
       usuario: i.usuario ?? '',
       idMatPrima: i.idMatPrima ?? null,
       jugo: i.jugo ?? null,
@@ -220,6 +297,7 @@ export class DetallesMatprimaFiltradoComponent {
       this.originalRowData = JSON.parse(JSON.stringify(this.rowData));
       this.hasChanges = false;
       this.notifyParentHasDetail(this.rowData.length > 0);
+      alerts.reqSuccessToast('Guardado');
     } catch (e) {
       console.error('Error guardando detalle matprima:', e);
       alerts.reqErrorToast('Error al guardar');
@@ -230,8 +308,12 @@ export class DetallesMatprimaFiltradoComponent {
     this.rowData = JSON.parse(JSON.stringify(this.originalRowData));
     this.hasChanges = false;
     this.selectedRow = null;
-    if (this.gridApi && !this.gridApi.isDestroyed())
+    this.activeExpandedNodeId = null;
+    if (this.gridApi && !this.gridApi.isDestroyed()) {
+      this.gridApi.forEachNode((n: any) => { n.setExpanded(false); n.setRowHeight(undefined); });
+      this.gridApi.onRowHeightChanged();
       this.gridApi.setGridOption('rowData', this.rowData);
+    }
   }
 
   async deleteRow() {
@@ -245,6 +327,13 @@ export class DetallesMatprimaFiltradoComponent {
       return;
     }
     try {
+      const node = this.gridApi?.getRowNode(String(this.selectedRow.id));
+      if (node && this.activeExpandedNodeId === node.id) {
+        node.setExpanded(false);
+        this.gridApi.forEachNode((n: any) => n.setRowHeight(undefined));
+        this.gridApi.onRowHeightChanged();
+        this.activeExpandedNodeId = null;
+      }
       await lastValueFrom(this.productionService.deleteMoliendaMatDetalle(this.selectedRow.id));
       this.rowData = this.rowData.filter(r => r !== this.selectedRow);
       this.originalRowData = this.originalRowData.filter(r => r.id !== this.selectedRow.id);
@@ -258,7 +347,22 @@ export class DetallesMatprimaFiltradoComponent {
     }
   }
 
-  // Notifica al padre (vía params.context) que el estado hasDetail cambió
+  private calcRendimiento(jugo: number | null, cantidadSum: number): number | string | null {
+    if (jugo == null) return null;
+    if (cantidadSum <= 0) return 'N/A';
+    return (jugo / cantidadSum) * 100;
+  }
+
+  onArticuloCountChanged(idMatDetalle: number, count: number, cantidadSum: number = 0) {
+    const node = this.gridApi?.getRowNode(String(idMatDetalle));
+    if (node) {
+      node.data.articuloCount = count;
+      node.data.cantidadSum = cantidadSum;
+      node.data.rendimiento = this.calcRendimiento(node.data.jugo, cantidadSum);
+      this.gridApi.refreshCells({ rowNodes: [node], columns: ['idMatPrima', 'rendimiento'], force: true });
+    }
+  }
+
   private notifyParentHasDetail(hasDetail: boolean) {
     this.internalParams?.context?.onMatDetailChanged?.(this.idMolienda, hasDetail);
   }

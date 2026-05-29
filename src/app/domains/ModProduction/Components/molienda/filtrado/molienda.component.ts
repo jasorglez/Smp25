@@ -77,6 +77,7 @@ export class MoliendaComponent {
 
   userBranches: { id: number; name: string }[] = [];
   matPrimaOptions: { id: number; name: string }[] = [];
+  allActiveArticuloOptions: { id: number; name: string }[] = [];
 
   private idCompany = 0;
   private idBranch = 0;
@@ -85,10 +86,11 @@ export class MoliendaComponent {
   private activeDetailType: 'inventario' | 'matprima' | null = null;
 
   colDefs: ColDef[] = [
-    {
+    { field: 'active', headerName: 'Activo', width: 80, editable: true, cellRenderer: 'agCheckboxCellRenderer', valueSetter: (p: any) => { p.data.active = p.newValue; p.data.__modified = true; this.hasChanges = true; return true; } }, {
       field: 'sucursal',
       headerName: 'Sucursal',
-      editable: true,
+      editable: (params: any) => !!params.data.__isNew || !params.data.hasMatDetail,
+      cellStyle: (params: any) => (!params.data.__isNew && params.data.hasMatDetail) ? { backgroundColor: '#f0f0f0', color: '#6c757d' } : {},
       cellEditor: 'agRichSelectCellEditor',
       cellEditorPopup: true,
       cellEditorParams: () => ({
@@ -182,17 +184,21 @@ export class MoliendaComponent {
     getRowId: (params: any) => String(params.data.id ?? params.data.__tempId),
     headerHeight: 25,
     rowHeight: 20,
-    suppressRowClickSelection: true,
-    rowClassRules: { 'new-row-highlight': (p: any) => !!p.data?.__isNew },
+    suppressRowClickSelection: false,
+    rowClassRules: {
+      'new-row-highlight': (p: any) => !!p.data?.__isNew,
+      'inactive-row': (p: any) => p.data?.active === false && !p.data?.__isNew,
+    },
     autoSizeStrategy: { type: 'fitCellContents' },
     masterDetail: true,
-    detailRowHeight: 280,
+    getDetailRowHeight: (params: any) => params.data?.__detailType === 'matprima' ? 500 : 280,
     isRowMaster: (data: any) => data?.id != null,
     detailCellRenderer: DetailRouterFiltradoComponent,
     detailCellRendererParams: () => ({
       context: {
         onMatDetailChanged: (idMolienda: number, hasDetail: boolean) =>
           this.onMatDetailChanged(idMolienda, hasDetail),
+        articuloOptions: this.allActiveArticuloOptions,
       },
     }),
     isExternalFilterPresent: () => this.activeMatPrimaFilter != null,
@@ -255,10 +261,18 @@ export class MoliendaComponent {
 
       const matsMap = new Map<number, string>();
       (Array.isArray(matsData) ? matsData : []).forEach((m: any) => matsMap.set(m.id, m.articulo));
-      this.matPrimaOptions = (Array.isArray(mxmData) ? mxmData : [])
+      const mxmList = Array.isArray(mxmData) ? mxmData : [];
+      const sortByName = (a: any, b: any) => a.name.localeCompare(b.name, 'es', { sensitivity: 'base' });
+      this.matPrimaOptions = mxmList
         .filter((m: any) => m.active !== false && m.molienda === true)
         .map((m: any) => ({ id: m.idArticulo, name: matsMap.get(m.idArticulo) ?? String(m.idArticulo) }))
-        .filter(m => m.name);
+        .filter(m => m.name)
+        .sort(sortByName);
+      this.allActiveArticuloOptions = mxmList
+        .filter((m: any) => m.active !== false)
+        .map((m: any) => ({ id: m.idArticulo, name: matsMap.get(m.idArticulo) ?? String(m.idArticulo) }))
+        .filter(m => m.name)
+        .sort(sortByName);
 
       await this.loadData();
     } catch (e) {
@@ -288,6 +302,7 @@ export class MoliendaComponent {
       });
 
       const mapped = (Array.isArray(items) ? items : []).map(i => this.mapRow(i, almExact, almByMat, matDetailCounts));
+      this.sortRowData(mapped);
       this.originalRowData = JSON.parse(JSON.stringify(mapped));
       this.rowData = mapped;
       if (this.gridApi) this.gridApi.setGridOption('rowData', mapped);
@@ -313,10 +328,28 @@ export class MoliendaComponent {
       ohJugos: i.ohJugos ?? null,
       bote: i.bote ?? null,
       parametros: i.parametros ?? '',
+      active: i.active ?? true,
       hasMatDetail: (matDetailCounts?.[i.id] ?? 0) > 0,
       __isNew: false,
       __modified: false,
     };
+  }
+
+  private sortRowData(data: any[]) {
+    data.sort((a, b) => {
+      const aActive = a.active !== false ? 1 : 0;
+      const bActive = b.active !== false ? 1 : 0;
+      if (bActive !== aActive) return bActive - aActive;
+
+      const aSuc = this.userBranches.find(br => br.id === a.sucursal)?.name ?? '';
+      const bSuc = this.userBranches.find(br => br.id === b.sucursal)?.name ?? '';
+      const sucCmp = aSuc.localeCompare(bSuc, 'es', { sensitivity: 'base' });
+      if (sucCmp !== 0) return sucCmp;
+
+      const aMat = this.matPrimaOptions.find(m => m.id === a.matPrima)?.name ?? '';
+      const bMat = this.matPrimaOptions.find(m => m.id === b.matPrima)?.name ?? '';
+      return aMat.localeCompare(bMat, 'es', { sensitivity: 'base' });
+    });
   }
 
   private toPayload(row: any) {
@@ -333,7 +366,7 @@ export class MoliendaComponent {
       ohJugos: row.ohJugos ?? null,
       bote: row.bote || null,
       parametros: row.parametros || null,
-      active: true,
+      active: row.active ?? true,
     };
   }
 
@@ -422,7 +455,7 @@ export class MoliendaComponent {
       cantidadUso: null, idAlm: null,
       cuantoQueda: 0, jugo: 0,
       liberPorCompra: false, adicional: '',
-      ohJugos: null, bote: null, parametros: '',
+      ohJugos: null, bote: null, parametros: '', active: true,
     };
     this.rowData = [newRow, ...this.rowData];
     if (this.gridApi) this.gridApi.setGridOption('rowData', this.rowData);
@@ -444,8 +477,10 @@ export class MoliendaComponent {
         await lastValueFrom(this.productionService.updateMolienda(row.id, this.toPayload(row)));
         row.__modified = false;
       }
+      this.sortRowData(this.rowData);
       this.originalRowData = JSON.parse(JSON.stringify(this.rowData));
       this.hasChanges = false;
+      if (this.gridApi) this.gridApi.setGridOption('rowData', this.rowData);
     } catch (e) {
       console.error('Error guardando molienda:', e);
       alerts.reqErrorToast('Error al guardar');
@@ -454,6 +489,7 @@ export class MoliendaComponent {
 
   revert() {
     this.rowData = JSON.parse(JSON.stringify(this.originalRowData));
+    this.sortRowData(this.rowData);
     this.hasChanges = false;
     this.selectedRow = null;
     if (this.gridApi) this.gridApi.setGridOption('rowData', this.rowData);
@@ -461,17 +497,56 @@ export class MoliendaComponent {
 
   async deleteEntry() {
     if (!this.selectedRow) { alerts.basicAlert('Atención', 'Seleccione un registro', 'warning'); return; }
+
     if (this.selectedRow.__isNew) {
+      const node = this.gridApi?.getRowNode(String(this.selectedRow.__tempId));
+      if (node && this.activeExpandedNodeId === node.id) this.collapseActive();
       this.rowData = this.rowData.filter(r => r !== this.selectedRow);
       this.selectedRow = null;
       if (this.gridApi) this.gridApi.setGridOption('rowData', this.rowData);
       this.hasChanges = this.rowData.some(r => r.__isNew || r.__modified);
       return;
     }
+
+    if (this.selectedRow.hasMatDetail) {
+      const deactivate = await alerts.userConfirmDelete(
+        '¿Desactivar registro?',
+        'Este registro tiene datos en el detalle. Se pasará a inactivo en lugar de eliminarse.',
+        'Sí, desactivar'
+      );
+      if (!deactivate.isConfirmed) return;
+      try {
+        const row = this.selectedRow;
+        await lastValueFrom(this.productionService.updateMolienda(row.id, { ...this.toPayload(row), active: false }));
+        row.active = false;
+        row.__modified = false;
+        const orig = this.originalRowData.find(r => r.id === row.id);
+        if (orig) orig.active = false;
+        this.sortRowData(this.rowData);
+        this.selectedRow = null;
+        if (this.gridApi) {
+          this.gridApi.setGridOption('rowData', this.rowData);
+          this.gridApi.redrawRows();
+        }
+        alerts.reqSuccessToast('Registro desactivado');
+      } catch (e) {
+        console.error('Error desactivando:', e);
+        alerts.reqErrorToast('Error al desactivar');
+      }
+      return;
+    }
+
+    const confirmed = await alerts.userConfirmDelete('¿Eliminar registro?', 'Esta acción no se puede deshacer.');
+    if (!confirmed.isConfirmed) return;
+
     try {
-      await lastValueFrom(this.productionService.deleteMolienda(this.selectedRow.id));
-      this.rowData = this.rowData.filter(r => r !== this.selectedRow);
-      this.originalRowData = this.originalRowData.filter(r => r.id !== this.selectedRow.id);
+      const rowToDelete = this.selectedRow;
+      const nodeId = String(rowToDelete.id);
+      if (this.activeExpandedNodeId === this.gridApi?.getRowNode(nodeId)?.id) this.collapseActive();
+
+      await lastValueFrom(this.productionService.deleteMolienda(rowToDelete.id));
+      this.rowData = this.rowData.filter(r => r !== rowToDelete);
+      this.originalRowData = this.originalRowData.filter(r => r.id !== rowToDelete.id);
       this.selectedRow = null;
       if (this.gridApi) this.gridApi.setGridOption('rowData', this.rowData);
       alerts.reqSuccessToast('Registro eliminado');

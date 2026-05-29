@@ -1884,8 +1884,10 @@ export class CatalogosProduccionComponent {
         editBultos: m.editBultos,
         molienda: m.molienda ?? false,
       }));
+      rows.sort((a: any, b: any) =>
+        (this.materialesIdToDesc.get(a.idArticulo) ?? '').localeCompare(
+          this.materialesIdToDesc.get(b.idArticulo) ?? '', 'es', { sensitivity: 'base' }));
       this.originalRowData = JSON.parse(JSON.stringify(rows));
-      console.log(rows);
       this.rowData.set(rows);
       this.hasUnsavedChanges = false;
       this.selectedRow = null;
