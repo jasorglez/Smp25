@@ -33,20 +33,20 @@ export class UsersxMasterPermissions2Component {
   
   profile = computed(() => this.signalsService.profile);
 
-  ngOnInit(): void {
-    this.loadPermissions();
-  }
-
   constructor() {
     effect(() => {
-      this.selectedUserId = Number(this.signalsService.profile.idUser());
-      this.idEmpresa = this.signalsService.getRootSelectedBySidebar()();
+      const userId   = Number(this.signalsService.profile.idUser());
+      const empresa  = this.signalsService.getRootSelectedBySidebar()();
+      if (!userId || !empresa) return;          // esperar a que los signals tengan valor
+      this.selectedUserId = userId;
+      this.idEmpresa      = empresa;
       this.loadPermissions();
     });
   }
 
   // Cargar los permisos maestros y los permisos del usuario
   loadPermissions() {
+    if (!this.idEmpresa || !this.selectedUserId) return;   // guard por si se llama antes de tiempo
     // Obtener permisos maestros
     this.permissionService.getMasterPermissions(this.idEmpresa).subscribe((data: any) => {
       this.masterPermissions = data;
