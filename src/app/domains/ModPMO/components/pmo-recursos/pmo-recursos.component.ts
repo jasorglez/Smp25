@@ -7,7 +7,7 @@ import { lastValueFrom }        from 'rxjs';
 import { ProjectsService }      from 'app/services/projects.service';
 import { WorkprogramsService }  from 'app/services/workprograms.service';
 import { ConventionsService }   from 'app/services/conventions.service';
-import { EmployeesService }     from 'app/services/employees.service';
+import { PosicionesService }    from 'app/services/posiciones.service';
 import { EquipmentService }     from 'app/services/equipment.service';
 import { MaterialsService }     from 'app/services/materials.service';
 import { SignalsService }       from 'app/services/signals.service';
@@ -40,18 +40,15 @@ export class PmoRecursosComponent implements OnInit {
   private _projectsService     = inject(ProjectsService);
   private _workprogramsService = inject(WorkprogramsService);
   private _convService         = inject(ConventionsService);
-  private _empService          = inject(EmployeesService);
+  private _posService          = inject(PosicionesService);
   private _eqService           = inject(EquipmentService);
   private _matService          = inject(MaterialsService);
   private _signalsService      = inject(SignalsService);
 
-  // ── Modal catálogo ────────────────────────────────────────────────────────
-  catalogVisible   = false;
-  catalogTitle     = '';
-  catalogItems:    any[] = [];
-  catalogFiltered: any[] = [];
-  catalogSearch    = '';
-  catalogEditRow:  RecursoRow | null = null;
+  // ── Catálogos para descripcion ────────────────────────────────────────────
+  personalCatalog: string[] = [];   // Puestos: Tubero, Soldador...
+  equipoCatalog:   string[] = [];   // Equipos del catálogo
+  materialCatalog: string[] = [];   // Materiales del catálogo
 
   idCompany         = 0;
   projects: any[]   = [];
@@ -82,37 +79,36 @@ export class PmoRecursosComponent implements OnInit {
 
   colDefs: ColDef[] = [
     {
-      headerName: '',
-      field: '__catalogBtn',
-      width: 38,
-      editable: false,
-      sortable: false,
-      filter: false,
-      resizable: false,
-      cellRenderer: (p: any) => {
-        const tipo = (p.data?.tipo ?? '').toLowerCase();
-        const hasCatalog = ['personal','equipo','material'].includes(tipo);
-        if (!hasCatalog) return '';
-        return `<button class="btn btn-xs p-0 px-1 btn-outline-secondary border-0"
-                        title="Buscar en catálogo de ${p.data?.tipo}"
-                        style="font-size:12px;line-height:1.2;margin-top:4px;">
-                  <i class="bi bi-search"></i>
-                </button>`;
-      },
-      onCellClicked: (p) => {
-        const tipo = (p.data?.tipo ?? '').toLowerCase();
-        if (['personal','equipo','material'].includes(tipo)) this.openCatalog(p.data);
-      },
-    },
-    {
       field: 'tipo', headerName: 'Tipo de Cargo', width: 130, editable: true,
       cellEditor: 'agSelectCellEditor',
       cellEditorParams: { values: ['Personal','Material','Equipo','Subcontrato','Indirecto'] },
       cellStyle: (p) => p.data?.__isNew ? { background: '#fffacd' } : {},
     },
     {
-      field: 'descripcion', headerName: 'Descripción / Recurso', width: 200, editable: true,
+      field: 'descripcion',
+      headerName: 'Categoría / Recurso',
+      width: 220,
+      editable: true,
       cellStyle: (p) => p.data?.__isNew ? { background: '#fffacd' } : {},
+      // ── Editor dinámico según tipo ──────────────────────────────────────
+      cellEditorSelector: (p: any) => {
+        const tipo = (p.data?.tipo ?? '').toLowerCase();
+        if (tipo === 'personal' && this.personalCatalog.length)
+          return { component: 'agSelectCellEditor', params: { values: ['SIN DESCRIPCION', ...this.personalCatalog] } };
+        if (tipo === 'equipo' && this.equipoCatalog.length)
+          return { component: 'agSelectCellEditor', params: { values: ['SIN DESCRIPCION', ...this.equipoCatalog] } };
+        if (tipo === 'material' && this.materialCatalog.length)
+          return { component: 'agSelectCellEditor', params: { values: ['SIN DESCRIPCION', ...this.materialCatalog] } };
+        return { component: 'agTextCellEditor' };
+      },
+      // ── Ícono de catálogo en la celda ───────────────────────────────────
+      cellRenderer: (p: any) => {
+        const tipo = (p.data?.tipo ?? '').toLowerCase();
+        const hasCat = ['personal','equipo','material'].includes(tipo);
+        const val = p.value || 'SIN DESCRIPCION';
+        if (!hasCat) return `<span>${val}</span>`;
+        return `<span>${val} <i class="bi bi-chevron-down text-muted" style="font-size:10px;"></i></span>`;
+      },
     },
     {
       field: 'unidad', headerName: 'Unidad', width: 90, editable: true,
@@ -184,13 +180,55 @@ export class PmoRecursosComponent implements OnInit {
       if (id && id !== this.idCompany) {
         this.idCompany = id;
         this.loadProjects();
+        this.loadCatalogs();
       }
     });
   }
 
   ngOnInit(): void {
     this.idCompany = this._signalsService.getRootSelectedBySidebar()() ?? 0;
-    if (this.idCompany) this.loadProjects();
+    if (this.idCompany) {
+      this.loadProjects();
+      this.loadCatalogs();
+    }
+  }
+
+  /** Carga catálogos de Personal (puestos), Equipos y Materiales */
+  async loadCatalogs(): Promise<void> {
+    if (!this.idCompany) return;
+    try {
+      // ── Personal: puestos (Tubero, Soldador, ...) ──
+      const pos: any[] = await lastValueFrom(
+        this._posService.getPositionsByCompany(this.idCompany)
+      );
+      this.personalCatalog = (pos ?? [])
+        .filter((p: any) => p.active !== false)
+        .map((p: any) => p.description ?? p.name ?? '')
+        .filter(Boolean)
+        .sort();
+    } catch { this.personalCatalog = []; }
+
+    try {
+      // ── Equipos ──
+      const eq: any[] = await lastValueFrom(
+        this._eqService.getEquipment(this.idCompany)
+      );
+      this.equipoCatalog = (eq ?? [])
+        .map((e: any) => e.description ?? e.name ?? '')
+        .filter(Boolean)
+        .sort();
+    } catch { this.equipoCatalog = []; }
+
+    try {
+      // ── Materiales ──
+      const mat: any[] = await lastValueFrom(
+        this._matService.getMaterials(this.idCompany, 'MATERIAL')
+      );
+      this.materialCatalog = (mat ?? [])
+        .map((m: any) => m.insumo ?? m.articulo ?? m.description ?? '')
+        .filter(Boolean)
+        .sort();
+    } catch { this.materialCatalog = []; }
   }
 
   async loadProjects(): Promise<void> {
@@ -460,80 +498,6 @@ export class PmoRecursosComponent implements OnInit {
       costoUnitReal:  r.costoUnitReal,
       active:         1,
     };
-  }
-
-  // ── Catálogo modal ────────────────────────────────────────────────────────
-
-  async openCatalog(row: RecursoRow): Promise<void> {
-    this.catalogEditRow = row;
-    this.catalogSearch  = '';
-    const tipo = (row.tipo ?? '').toLowerCase();
-
-    try {
-      if (tipo === 'personal') {
-        this.catalogTitle = '👤 Personal';
-        const res: any = await lastValueFrom(this._empService.getEmployees(-this.idCompany));
-        const raw = Array.isArray(res) ? res : (res?.data ?? []);
-        this.catalogItems = raw.map((e: any) => ({
-          label: e.name ?? `${e.nombre ?? ''} ${e.apellido ?? ''}`.trim(),
-          sub:   e.position ?? e.puesto ?? '',
-          value: e.name ?? `${e.nombre ?? ''} ${e.apellido ?? ''}`.trim(),
-        }));
-      } else if (tipo === 'equipo') {
-        this.catalogTitle = '🚧 Equipos';
-        const res: any = await lastValueFrom(this._eqService.getEquipment(this.idCompany));
-        const raw = Array.isArray(res) ? res : (res?.data ?? []);
-        this.catalogItems = raw.map((e: any) => ({
-          label: e.description ?? e.name ?? '',
-          sub:   e.type ?? e.typeEquipment ?? '',
-          value: e.description ?? e.name ?? '',
-        }));
-      } else if (tipo === 'material') {
-        this.catalogTitle = '📦 Materiales';
-        const res: any = await lastValueFrom(this._matService.getMaterials(this.idCompany, 'MATERIAL'));
-        const raw = Array.isArray(res) ? res : (res?.data ?? []);
-        this.catalogItems = raw.map((e: any) => ({
-          label: e.insumo ?? e.articulo ?? e.description ?? '',
-          sub:   `${e.familia ?? ''} / ${e.subfamilia ?? ''}`.replace('/ ','').trim(),
-          value: e.insumo ?? e.articulo ?? e.description ?? '',
-        }));
-      } else {
-        return;
-      }
-    } catch (err) {
-      console.error('Error cargando catálogo', err);
-      this.catalogItems = [];
-    }
-
-    this.filterCatalog();
-    this.catalogVisible = true;
-  }
-
-  filterCatalog(): void {
-    const q = this.catalogSearch.toLowerCase().trim();
-    this.catalogFiltered = q
-      ? this.catalogItems.filter(i => i.label.toLowerCase().includes(q) || i.sub.toLowerCase().includes(q))
-      : [...this.catalogItems];
-  }
-
-  selectFromCatalog(item: any): void {
-    if (!this.catalogEditRow) return;
-    this.catalogEditRow.descripcion = item.value || 'SIN DESCRIPCION';
-    if (!this.catalogEditRow.__isNew) this.catalogEditRow.__modified = true;
-    this.hasUnsavedChanges = true;
-    // Refrescar la celda en el grid
-    if (this.gridApi && !this.gridApi.isDestroyed()) {
-      this.gridApi.refreshCells({ force: true });
-    }
-    this.closeCatalog();
-  }
-
-  closeCatalog(): void {
-    this.catalogVisible  = false;
-    this.catalogEditRow  = null;
-    this.catalogItems    = [];
-    this.catalogFiltered = [];
-    this.catalogSearch   = '';
   }
 
   private showMsg(msg: string, type: 'success' | 'error'): void {
