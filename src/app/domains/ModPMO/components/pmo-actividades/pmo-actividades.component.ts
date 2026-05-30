@@ -627,6 +627,7 @@ export class PmoActividadesComponent implements OnInit {
       this.rowData         = (raw ?? []).map(r => this.mapFromApi(r));
       this.originalRowData = JSON.parse(JSON.stringify(this.rowData));
       this.hasUnsavedChanges = false;
+      this.recalcParentPonderados(); // acumula sumas en memoria (no toca BD)
       this.setRowData(this.rowData);
       if (this.gridApi && !this.gridApi.isDestroyed())
         this.rowData.length ? this.gridApi.hideOverlay() : this.gridApi.showNoRowsOverlay();
@@ -1088,8 +1089,10 @@ export class PmoActividadesComponent implements OnInit {
     this.calcProgress   = 0;
 
     try {
-      // ── Fase 1: Calcular y guardar hojas (0→50%) — PUT con payload completo ──
-      const pondMap = new Map<number, number>();
+      // ── Solo guardar HOJAS en BD (agrupadores NO se guardan — solo memoria) ──
+      // Razón: todos los registros PMO tienen parent=0 (sin jerarquía en BD).
+      // La distribución diaria usa ponderado > 0 como filtro de hoja.
+      // Si guardáramos agrupadores con ponderado > 0, entrarían a la distribución.
       for (let i = 0; i < hojas.length; i++) {
         const hoja = hojas[i];
         const pond = Math.round((getMetric(hoja) / total) * 1000) / 1000;
@@ -1097,49 +1100,64 @@ export class PmoActividadesComponent implements OnInit {
           this._wpService.updateWorkProgram(hoja.id, { ...this.mapToApi(hoja), ponderado: pond })
         );
         hoja.ponderado = pond;
-        pondMap.set(hoja.id, pond);
-        this.calcProgress = Math.round(((i + 1) / hojas.length) * 50);
+        this.calcProgress = Math.round(((i + 1) / hojas.length) * 100);
       }
 
-      // ── Fase 2: Acumular agrupadores bottom-up y guardar (50→100%) ────────
-      // childrenMap: parentId → [childIds]
-      const childrenMap = new Map<number, number[]>();
-      filas.forEach(r => {
-        if (r.parent > 0) {
-          const arr = childrenMap.get(r.parent) ?? [];
-          arr.push(r.id);
-          childrenMap.set(r.parent, arr);
-        }
-      });
-
-      // Ordenar agrupadores de mayor profundidad a menor (nietos antes que abuelos)
-      const depthOf = (id: number): number => {
-        const row = filas.find(f => f.id === id);
-        return row && row.parent > 0 ? 1 + depthOf(row.parent) : 0;
-      };
-      agrupadores.sort((a, b) => depthOf(b.id) - depthOf(a.id));
-
-      for (let i = 0; i < agrupadores.length; i++) {
-        const par      = agrupadores[i];
-        const children = childrenMap.get(par.id) ?? [];
-        const sum      = children.reduce((s, cid) => s + (pondMap.get(cid) ?? 0), 0);
-        const pond     = Math.round(sum * 1000) / 1000;
-        pondMap.set(par.id, pond);
-        par.ponderado  = pond;
-        await lastValueFrom(
-          this._wpService.updateWorkProgram(par.id, { ...this.mapToApi(par), ponderado: pond })
-        );
-        this.calcProgress = 50 + Math.round(((i + 1) / agrupadores.length) * 50);
-      }
-
-      await this.loadActividades();
-      alert(`✅ Ponderado calculado (${this.pondModalidad}) — ${hojas.length} hoja(s) + ${agrupadores.length} agrupador(es) actualizados.`);
+      await this.loadActividades(); // recalcParentPonderados se llama dentro
+      alert(`✅ Ponderado calculado (${this.pondModalidad}) — ${hojas.length} concepto(s) actualizados. Agrupadores muestran suma acumulada (solo display).`);
     } catch {
       alert('Error al guardar ponderados. Revisa la consola.');
     } finally {
       this.isCalculating = false;
       this.calcProgress  = 0;
     }
+  }
+
+  // ── Recalcula ponderados de agrupadores EN MEMORIA (no se guarda en BD) ────
+  // Se llama después de cada loadActividades para mostrar la suma acumulada.
+  // Los agrupadores PMO tienen parent=0 en BD → no hay jerarquía real;
+  // solo funciona si el proyecto tiene relación padre-hijo correctamente configurada.
+  private recalcParentPonderados(): void {
+    const filas = this.rowData;
+    if (!filas.length) return;
+
+    // Identificar qué IDs son padres de alguien
+    const parentSet = new Set(filas.map(r => r.parent).filter(p => p > 0));
+    if (parentSet.size === 0) return; // estructura plana — no hay nada que acumular
+
+    // childrenMap: parentId → [childIds]
+    const childrenMap = new Map<number, number[]>();
+    filas.forEach(r => {
+      if (r.parent > 0) {
+        const arr = childrenMap.get(r.parent) ?? [];
+        arr.push(r.id);
+        childrenMap.set(r.parent, arr);
+      }
+    });
+
+    // pondMap inicializado con ponderados de hojas (los que vienen de BD)
+    const pondMap = new Map<number, number>(
+      filas.filter(r => !parentSet.has(r.id)).map(r => [r.id, r.ponderado ?? 0])
+    );
+
+    // Ordenar agrupadores más profundos primero
+    const agrupadores = filas.filter(r => parentSet.has(r.id) && r.id > 0);
+    const depthOf = (id: number): number => {
+      const row = filas.find(f => f.id === id);
+      return row && row.parent > 0 ? 1 + depthOf(row.parent) : 0;
+    };
+    agrupadores.sort((a, b) => depthOf(b.id) - depthOf(a.id));
+
+    for (const par of agrupadores) {
+      const children = childrenMap.get(par.id) ?? [];
+      const sum = children.reduce((s, cid) => s + (pondMap.get(cid) ?? 0), 0);
+      const pond = Math.round(sum * 1000) / 1000;
+      pondMap.set(par.id, pond);
+      par.ponderado = pond; // solo en memoria, no en BD
+    }
+
+    // Refrescar grid con los nuevos valores de agrupadores
+    this.setRowData(this.rowData);
   }
 
   private showMsg(msg: string, type: 'success' | 'error'): void {

@@ -85,5 +85,5 @@ export const environment = {
     // publicKey: 'TEST-4399133a-4676-42a2-ab85-d946370bf96a',
   },
 
-  version: '7.12 (30 Mayo 2026) fix(pmo-actividades): mapToApi usa idConvention camelCase, no borra convenio al calcular',
+  version: '7.13 (30 Mayo 2026) fix(pmo): agrupadores acumulan ponderado solo en memoria, no en BD (evita contaminacion distribucion diaria)',
 };
