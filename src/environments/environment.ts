@@ -85,5 +85,5 @@ export const environment = {
     // publicKey: 'TEST-4399133a-4676-42a2-ab85-d946370bf96a',
   },
 
-  version: '7.04 (30 Mayo 2026) fix(workprograms): fechas como strings gantt + idTask number + id fallback DB PK',
+  version: '7.05 (30 Mayo 2026) fix(pmo-import): endDate e idConvention null por nombres JSON incorrectos',
 };

@@ -382,13 +382,13 @@ export class PmoImportComponent implements OnInit, OnChanges {
           : 0;
 
         const payload: any = {
-          idProject:    this.idProject,
-          id_convention: this.selectedConvention?.id ?? null,   // ← convenio de esta importación
-          activity:     task.wbs,
-          text:         task.description,
-          description:  task.description,
-          startdate:    task.startDate,
-          endate:       task.endDate,
+          idProject:     this.idProject,
+          idConvention:  this.selectedConvention?.id ?? null,   // ← convenio de esta importación
+          activity:      task.wbs,
+          text:          task.description,
+          description:   task.description,
+          startDate:     task.startDate,
+          endDate:       task.endDate,
           progress:     0,
           ponderado:    null,
           quantity:     task.quantity  ?? 0,
