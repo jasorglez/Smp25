@@ -5,40 +5,162 @@
        ╚══════════════════════════════════════════════════════════════════════╝ -->
   <div class="d-flex align-items-center gap-1 mb-2 flex-wrap">
 
-    <!-- CRUD avances -->
-    <button class="btn btn-sm btn-primary"   (click)="addRow()"      title="Agregar registro">
+    <!-- CRUD Curva S -->
+    <button class="btn btn-sm btn-primary" (click)="addRow()" title="Agregar registro">
       <i class="bi bi-plus-lg"></i>
     </button>
     <button class="btn btn-sm btn-success position-relative" (click)="saveChanges()" title="Guardar cambios">
       <i class="bi bi-floppy"></i>
       <span *ngIf="notSavedChanges"
-            class="position-absolute top-0 start-100 translate-middle p-1 bg-danger border border-light rounded-circle">
-        <span class="visually-hidden">Cambios sin guardar</span>
-      </span>
+            class="position-absolute top-0 start-100 translate-middle p-1 bg-danger border border-light rounded-circle"></span>
     </button>
-    <label class="btn btn-sm btn-primary mb-0" title="Importar desde Excel">
+    <label class="btn btn-sm btn-primary mb-0" title="Importar Excel">
       <i class="bi bi-file-excel"></i>
       <input type="file" (change)="importExcel($event)" style="display:none;">
     </label>
-    <button class="btn btn-sm btn-warning"   (click)="revert()"  title="Deshacer">
+    <button class="btn btn-sm btn-warning" (click)="revert()" title="Deshacer">
       <i class="bi bi-arrow-clockwise"></i>
     </button>
-    <button class="btn btn-sm btn-danger"    (click)="deleteEntry()" title="Eliminar registro seleccionado"
-            [disabled]="!selectedRowData">
+    <button class="btn btn-sm btn-danger" (click)="deleteEntry()" [disabled]="!selectedRowData" title="Eliminar">
       <i class="bi bi-trash"></i>
     </button>
 
-    <!-- Separador -->
     <div class="vr mx-1"></div>
 
-    <!-- Punto 6: Captura Diaria -->
-    <button class="btn btn-sm btn-outline-dark" (click)="openDailyCapture()"
-            [ngClass]="showDailyCapture ? 'btn-dark text-white' : 'btn-outline-dark'"
-            title="Captura de Avance Diario por Tarea (Punto 6)">
-      <i class="bi bi-calendar-check-fill me-1"></i>
-      {{ showDailyCapture ? 'Cerrar Captura' : 'Captura Diaria' }}
+    <!-- ⚙️ Engranaje Calendario -->
+    <button class="btn btn-sm" title="Configurar días laborables"
+            [class.btn-secondary]="!showCalendarPanel"
+            [class.btn-dark]="showCalendarPanel"
+            (click)="openCalendarPanel()">
+      <i class="bi bi-gear-fill me-1"></i>
+      <span class="d-none d-md-inline">Calendario</span>
     </button>
 
+    <!-- 📊 Calcular Distribución -->
+    <button class="btn btn-sm btn-outline-info" title="Calcular distribución diaria de ponderados"
+            (click)="generateDistribution()" [disabled]="isGenerating || !idProject">
+      <span *ngIf="isGenerating" class="spinner-border spinner-border-sm me-1"></span>
+      <i *ngIf="!isGenerating" class="bi bi-calculator-fill me-1"></i>
+      <span class="d-none d-md-inline">{{ isGenerating ? 'Calculando…' : 'Calcular Distribución' }}</span>
+    </button>
+
+    <!-- 📅 Vista Diaria -->
+    <button class="btn btn-sm" title="Vista diaria con barras de avance"
+            [class.btn-outline-dark]="!showDailyView"
+            [class.btn-dark]="showDailyView"
+            (click)="toggleDailyView()">
+      <i class="bi bi-bar-chart-steps me-1"></i>
+      <span class="d-none d-md-inline">Vista Diaria</span>
+    </button>
+
+    <div class="vr mx-1"></div>
+
+    <!-- Captura Diaria (Punto 6) -->
+    <button class="btn btn-sm"
+            [class.btn-outline-warning]="!showDailyCapture"
+            [class.btn-warning]="showDailyCapture"
+            (click)="openDailyCapture()" title="Captura de avance diario por tarea">
+      <i class="bi bi-calendar-check-fill me-1"></i>
+      <span class="d-none d-md-inline">{{ showDailyCapture ? 'Cerrar Captura' : 'Captura Diaria' }}</span>
+    </button>
+
+    <!-- Badge resultado del generate -->
+    <span *ngIf="generateResult" class="badge ms-auto"
+          [class.bg-success]="generateResult.success"
+          [class.bg-warning]="!generateResult.success">
+      <i class="bi bi-check-circle me-1" *ngIf="generateResult.success"></i>
+      {{ generateResult.filasGeneradas }} días calculados
+      · {{ generateResult.conceptosProcesados }} conceptos
+    </span>
+  </div>
+
+  <!-- ╔══════════════════════════════════════════════════════════════════════╗
+       ║  ⚙️ PANEL ENGRANAJE — Configuración días laborables                  ║
+       ╚══════════════════════════════════════════════════════════════════════╝ -->
+  <div *ngIf="showCalendarPanel" class="card border-secondary shadow-sm mb-3">
+    <div class="card-header d-flex align-items-center gap-2 py-2"
+         style="background:#495057; color:#fff;">
+      <i class="bi bi-gear-fill fs-5"></i>
+      <strong>Engranaje — Días laborables del proyecto</strong>
+      <small class="ms-auto opacity-75">{{ workingDaysCount }} días activos por semana</small>
+      <button class="btn btn-sm btn-outline-light ms-2" (click)="showCalendarPanel=false">
+        <i class="bi bi-x-lg"></i>
+      </button>
+    </div>
+    <div class="card-body py-3 px-4">
+      <div class="d-flex gap-3 flex-wrap align-items-center mb-3">
+
+        <!-- Lunes -->
+        <div class="form-check form-switch">
+          <input class="form-check-input" type="checkbox" id="chkLun"
+                 [(ngModel)]="calendarConfig.lunes">
+          <label class="form-check-label fw-semibold" for="chkLun">
+            <span class="badge bg-primary">Lun</span>
+          </label>
+        </div>
+        <!-- Martes -->
+        <div class="form-check form-switch">
+          <input class="form-check-input" type="checkbox" id="chkMar"
+                 [(ngModel)]="calendarConfig.martes">
+          <label class="form-check-label fw-semibold" for="chkMar">
+            <span class="badge bg-primary">Mar</span>
+          </label>
+        </div>
+        <!-- Miércoles -->
+        <div class="form-check form-switch">
+          <input class="form-check-input" type="checkbox" id="chkMie"
+                 [(ngModel)]="calendarConfig.miercoles">
+          <label class="form-check-label fw-semibold" for="chkMie">
+            <span class="badge bg-primary">Mié</span>
+          </label>
+        </div>
+        <!-- Jueves -->
+        <div class="form-check form-switch">
+          <input class="form-check-input" type="checkbox" id="chkJue"
+                 [(ngModel)]="calendarConfig.jueves">
+          <label class="form-check-label fw-semibold" for="chkJue">
+            <span class="badge bg-primary">Jue</span>
+          </label>
+        </div>
+        <!-- Viernes -->
+        <div class="form-check form-switch">
+          <input class="form-check-input" type="checkbox" id="chkVie"
+                 [(ngModel)]="calendarConfig.viernes">
+          <label class="form-check-label fw-semibold" for="chkVie">
+            <span class="badge bg-primary">Vie</span>
+          </label>
+        </div>
+        <!-- Sábado -->
+        <div class="form-check form-switch">
+          <input class="form-check-input" type="checkbox" id="chkSab"
+                 [(ngModel)]="calendarConfig.sabado">
+          <label class="form-check-label fw-semibold" for="chkSab">
+            <span class="badge bg-warning text-dark">Sáb</span>
+          </label>
+        </div>
+        <!-- Domingo -->
+        <div class="form-check form-switch">
+          <input class="form-check-input" type="checkbox" id="chkDom"
+                 [(ngModel)]="calendarConfig.domingo">
+          <label class="form-check-label fw-semibold" for="chkDom">
+            <span class="badge bg-danger">Dom</span>
+          </label>
+        </div>
+
+        <div class="ms-auto">
+          <button class="btn btn-sm btn-success" (click)="saveCalendar()" [disabled]="isSavingCalendar">
+            <span *ngIf="isSavingCalendar" class="spinner-border spinner-border-sm me-1"></span>
+            <i *ngIf="!isSavingCalendar" class="bi bi-floppy me-1"></i>
+            Guardar configuración
+          </button>
+        </div>
+      </div>
+      <div class="alert alert-info py-1 small mb-0">
+        <i class="bi bi-info-circle me-1"></i>
+        Después de guardar, presiona <strong>Calcular Distribución</strong> para distribuir
+        el ponderado de cada concepto en sus días laborables.
+      </div>
+    </div>
   </div>
 
   <!-- ╔══════════════════════════════════════════════════════════════════════╗
@@ -46,7 +168,7 @@
        ╚══════════════════════════════════════════════════════════════════════╝ -->
   <div class="row">
 
-    <!-- Grid de registros -->
+    <!-- Grid registros Curva S -->
     <div class="col-md-3">
       <ag-grid-angular
         class="ag-theme-quartz small-text-ag-grid"
@@ -62,22 +184,18 @@
 
     <!-- Gráfica + Tabla mensual -->
     <div class="col-md-9 d-flex flex-column">
-
-      <!-- Curva S -->
       <div>
         <apx-chart #chart
-          [series]="chartOptions.series"         [chart]="chartOptions.chart"
-          [xaxis]="chartOptions.xaxis"           [yaxis]="chartOptions.yaxis"
-          [stroke]="chartOptions.stroke"         [colors]="chartOptions.colors"
-          [fill]="chartOptions.fill"             [dataLabels]="chartOptions.dataLabels"
+          [series]="chartOptions.series"       [chart]="chartOptions.chart"
+          [xaxis]="chartOptions.xaxis"         [yaxis]="chartOptions.yaxis"
+          [stroke]="chartOptions.stroke"       [colors]="chartOptions.colors"
+          [fill]="chartOptions.fill"           [dataLabels]="chartOptions.dataLabels"
           [plotOptions]="chartOptions.plotOptions"
-          [legend]="chartOptions.legend"         [markers]="chartOptions.markers"
-          [grid]="chartOptions.grid"             [title]="chartOptions.title"
+          [legend]="chartOptions.legend"       [markers]="chartOptions.markers"
+          [grid]="chartOptions.grid"           [title]="chartOptions.title"
           [tooltip]="chartOptions.tooltip">
         </apx-chart>
       </div>
-
-      <!-- Tabla resumen mensual -->
       <div class="table-responsive mt-1">
         <table class="table table-bordered table-sm mb-0" style="font-size:11px;">
           <thead class="table-dark">
@@ -96,7 +214,7 @@
             <tr style="background:#d1ecf1;">
               <td class="fw-semibold text-nowrap">HITOS DE AVANCE</td>
               <td *ngFor="let m of monthlyTableData" class="text-center text-nowrap">
-                {{ m.hito     !== null ? (m.hito     | number:'1.1-1') + '%' : '' }}
+                {{ m.hito !== null ? (m.hito | number:'1.1-1') + '%' : '' }}
               </td>
             </tr>
             <tr style="background:#d4edda;">
@@ -108,54 +226,192 @@
           </tbody>
         </table>
       </div>
-
     </div>
   </div>
 
   <!-- ╔══════════════════════════════════════════════════════════════════════╗
-       ║  PUNTO 6 — CAPTURA DE AVANCE DIARIO POR TAREA                        ║
+       ║  📅 VISTA DIARIA — Barras programado vs real                          ║
+       ╚══════════════════════════════════════════════════════════════════════╝ -->
+  <div *ngIf="showDailyView" class="mt-3">
+    <div class="card border-dark shadow-sm">
+
+      <!-- Header -->
+      <div class="card-header d-flex align-items-center gap-2 flex-wrap py-2"
+           style="background:#212529; color:#fff;">
+        <i class="bi bi-bar-chart-steps fs-5 text-info"></i>
+        <strong>Vista Diaria — Avance Programado vs Real</strong>
+
+        <!-- Rango de fechas -->
+        <div class="d-flex align-items-center gap-2 ms-3">
+          <label class="form-label mb-0 small">Desde:</label>
+          <input type="date" class="form-control form-control-sm" style="width:140px;"
+                 [(ngModel)]="dailyViewFrom" (change)="loadDailyView()">
+          <label class="form-label mb-0 small">Hasta:</label>
+          <input type="date" class="form-control form-control-sm" style="width:140px;"
+                 [(ngModel)]="dailyViewTo" (change)="loadDailyView()">
+          <button class="btn btn-sm btn-outline-light" (click)="loadDailyView()" title="Actualizar">
+            <i class="bi bi-arrow-clockwise"></i>
+          </button>
+        </div>
+
+        <!-- Leyenda semáforo -->
+        <div class="d-flex gap-2 ms-auto align-items-center" style="font-size:11px;">
+          <span class="badge" style="background:#198754">≥95% cumplido</span>
+          <span class="badge" style="background:#fd7e14">70–94% parcial</span>
+          <span class="badge" style="background:#dc3545">&lt;70% bajo</span>
+          <span class="badge" style="background:#adb5bd">Sin real</span>
+        </div>
+
+        <button class="btn btn-sm btn-outline-light" (click)="showDailyView=false">
+          <i class="bi bi-x-lg"></i>
+        </button>
+      </div>
+
+      <div class="card-body p-2">
+
+        <!-- Spinner -->
+        <div *ngIf="isLoadingDaily" class="text-center py-4">
+          <div class="spinner-border text-info"></div>
+          <p class="mt-2 text-muted small">Cargando distribución diaria…</p>
+        </div>
+
+        <!-- Sin datos -->
+        <div *ngIf="!isLoadingDaily && !dailyRows.length" class="alert alert-warning py-2 small mb-0">
+          <i class="bi bi-exclamation-triangle me-2"></i>
+          No hay distribución calculada para el rango seleccionado.
+          Presiona <strong>⚙️ Calendario</strong> → configura días →
+          <strong>Calcular Distribución</strong>.
+        </div>
+
+        <!-- TABLA DE BARRAS -->
+        <div *ngIf="!isLoadingDaily && dailyRows.length" class="table-responsive">
+          <table class="table table-sm table-hover mb-0" style="font-size:12px;">
+            <thead style="background:#343a40; color:#fff; position:sticky; top:0; z-index:1;">
+              <tr>
+                <th style="width:80px;">Día</th>
+                <th style="width:90px;">Fecha</th>
+                <th style="width:55px;" class="text-center">Conc.</th>
+                <th style="width:90px;" class="text-end">Programado</th>
+                <th class="px-3">Barra Programado</th>
+                <th style="width:90px;" class="text-end">Real</th>
+                <th class="px-3">Barra Real</th>
+                <th style="width:65px;" class="text-center">%Cump.</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr *ngFor="let row of dailyRows"
+                  [style.background]="row.real > 0 ? 'rgba(25,135,84,0.04)' : ''">
+
+                <!-- Día de semana -->
+                <td class="fw-semibold" [style.color]="row.dayName==='Sáb'||row.dayName==='Dom' ? '#dc3545' : '#212529'">
+                  {{ row.dayName }}
+                </td>
+
+                <!-- Fecha -->
+                <td class="text-muted">{{ row.date | date:'dd/MM/yy' }}</td>
+
+                <!-- Núm. conceptos -->
+                <td class="text-center">
+                  <span class="badge bg-secondary" style="font-size:10px;">{{ row.numConceptos }}</span>
+                </td>
+
+                <!-- Programado % -->
+                <td class="text-end fw-semibold text-primary">
+                  {{ row.programado | number:'1.4-4' }}%
+                </td>
+
+                <!-- Barra programado (azul, ancho fijo = 100%) -->
+                <td class="px-2" style="min-width:120px;">
+                  <div style="background:#e9ecef; border-radius:4px; height:14px; position:relative; overflow:hidden;">
+                    <div style="height:100%; background:#0d6efd; border-radius:4px; width:100%;
+                                opacity:0.35;"></div>
+                  </div>
+                </td>
+
+                <!-- Real % -->
+                <td class="text-end fw-semibold"
+                    [style.color]="barColor(row.pctBar)">
+                  {{ row.real > 0 ? (row.real | number:'1.4-4') + '%' : '—' }}
+                </td>
+
+                <!-- Barra real (semáforo, ancho proporcional al programado) -->
+                <td class="px-2" style="min-width:120px;">
+                  <div style="background:#e9ecef; border-radius:4px; height:14px; position:relative; overflow:hidden;">
+                    <div [style.width.%]="realBarWidth(row)"
+                         [style.background]="barColor(row.pctBar)"
+                         style="height:100%; border-radius:4px; transition:width .4s ease;">
+                    </div>
+                  </div>
+                </td>
+
+                <!-- % Cumplimiento -->
+                <td class="text-center">
+                  <span class="badge" [style.background]="barColor(row.pctBar)"
+                        style="font-size:10px; min-width:38px;">
+                    {{ row.real > 0 ? row.pctBar + '%' : '—' }}
+                  </span>
+                </td>
+
+              </tr>
+            </tbody>
+
+            <!-- TOTAL -->
+            <tfoot style="background:#f8f9fa; font-weight:700; font-size:12px;">
+              <tr>
+                <td colspan="3" class="text-end">TOTAL PERÍODO:</td>
+                <td class="text-end text-primary">
+                  {{ totalProgramadoPeriodo | number:'1.3-3' }}%
+                </td>
+                <td></td>
+                <td class="text-end" [style.color]="barColor(totalCumplimientoPct)">
+                  {{ totalRealPeriodo | number:'1.3-3' }}%
+                </td>
+                <td></td>
+                <td class="text-center">
+                  <span class="badge" [style.background]="barColor(totalCumplimientoPct)">
+                    {{ totalCumplimientoPct }}%
+                  </span>
+                </td>
+              </tr>
+            </tfoot>
+          </table>
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+  <!-- ╔══════════════════════════════════════════════════════════════════════╗
+       ║  CAPTURA DE AVANCE DIARIO POR TAREA (Punto 6)                        ║
        ╚══════════════════════════════════════════════════════════════════════╝ -->
   <div *ngIf="showDailyCapture" class="mt-3">
     <div class="card border-warning shadow-sm">
 
-      <!-- Header -->
       <div class="card-header d-flex align-items-center gap-3 flex-wrap"
            style="background:#fff3cd; border-bottom:2px solid #ffc107;">
         <h6 class="mb-0 fw-bold">
           <i class="bi bi-calendar-check-fill me-2 text-warning"></i>
           Captura de Avance Diario por Tarea
         </h6>
-
-        <!-- Selector de fecha -->
         <div class="d-flex align-items-center gap-2 ms-2">
           <label class="form-label mb-0 small fw-semibold">Fecha:</label>
-          <input type="date" class="form-control form-control-sm"
-                 [(ngModel)]="dailyCaptureDate"
-                 (change)="onCaptureDateChange()"
-                 style="width:150px;">
+          <input type="date" class="form-control form-control-sm" style="width:150px;"
+                 [(ngModel)]="dailyCaptureDate" (change)="onCaptureDateChange()">
         </div>
-
-        <!-- Avance programado del día (manual) -->
         <div class="d-flex align-items-center gap-2">
           <label class="form-label mb-0 small fw-semibold">Av. Prog. día (%):</label>
-          <input type="number" class="form-control form-control-sm"
-                 [(ngModel)]="programAdvanceHoy"
-                 min="0" max="100" step="0.01"
-                 style="width:100px;"
-                 title="Avance programado del día según el plan">
+          <input type="number" class="form-control form-control-sm" style="width:100px;"
+                 [(ngModel)]="programAdvanceHoy" min="0" max="100" step="0.01">
         </div>
-
-        <!-- Badge total avance físico calculado -->
         <div class="ms-auto d-flex align-items-center gap-2">
           <span class="badge fs-6 px-3 py-2"
                 [ngClass]="totalPhysicalAdvanceHoy > 0 ? 'bg-success' : 'bg-secondary'">
             <i class="bi bi-calculator me-1"></i>
-            Avance físico calculado: {{ totalPhysicalAdvanceHoy | number:'1.3-3' }}%
+            Avance físico: {{ totalPhysicalAdvanceHoy | number:'1.3-3' }}%
           </span>
-          <button class="btn btn-warning btn-sm fw-semibold"
-                  (click)="saveDailyAdvance()"
+          <button class="btn btn-warning btn-sm fw-semibold" (click)="saveDailyAdvance()"
                   [disabled]="isSavingDailyAdvance">
-            <span *ngIf="isSavingDailyAdvance" class="spinner-border spinner-border-sm me-1" role="status"></span>
+            <span *ngIf="isSavingDailyAdvance" class="spinner-border spinner-border-sm me-1"></span>
             <i *ngIf="!isSavingDailyAdvance" class="bi bi-save me-1"></i>
             Registrar Avance
           </button>
@@ -163,65 +419,43 @@
       </div>
 
       <div class="card-body p-2">
-
-        <!-- Spinner de carga -->
         <div *ngIf="isLoadingTasks" class="text-center py-4">
-          <div class="spinner-border text-warning" role="status"></div>
-          <p class="mt-2 text-muted small">Cargando tareas del programa de trabajo...</p>
+          <div class="spinner-border text-warning"></div>
+          <p class="mt-2 text-muted small">Cargando tareas…</p>
         </div>
-
-        <!-- Sin tareas (no hay ponderado o programa vacío) -->
         <div *ngIf="!isLoadingTasks && !activeTasksData.length && !delayedTasksData.length"
              class="alert alert-info mb-0 py-2 small">
           <i class="bi bi-info-circle me-2"></i>
-          No hay tareas activas ni retrasadas para la fecha seleccionada, o las tareas no tienen ponderado calculado.
-          Ve al <strong>Programa de Trabajo → ⚙️ Configurar → % Calcular Ponderado</strong>.
+          No hay tareas activas para la fecha seleccionada.
+          Ve al <strong>Programa de Trabajo → ⚙️ → % Calcular Ponderado</strong>.
         </div>
-
-        <!-- ── Tareas EN EJECUCIÓN ──────────────────────────────────────────── -->
         <div *ngIf="!isLoadingTasks && activeTasksData.length > 0">
           <div class="d-flex align-items-center gap-2 mb-1">
             <span class="badge bg-success">▶ En ejecución: {{ activeTasksData.length }}</span>
-            <small class="text-muted">Tareas cuya ventana de tiempo incluye la fecha seleccionada</small>
           </div>
-          <ag-grid-angular
-            class="ag-theme-quartz small-text-ag-grid"
+          <ag-grid-angular class="ag-theme-quartz small-text-ag-grid"
             [style.height.px]="Math.min(400, 32 + activeTasksData.length * 26)"
             style="width:100%;"
-            [columnDefs]="activeTasksColDefs"
-            [rowData]="activeTasksData"
-            [gridOptions]="activeTasksGridOptions"
-            [stopEditingWhenCellsLoseFocus]="true">
+            [columnDefs]="activeTasksColDefs" [rowData]="activeTasksData"
+            [gridOptions]="activeTasksGridOptions" [stopEditingWhenCellsLoseFocus]="true">
           </ag-grid-angular>
         </div>
-
-        <!-- ── Tareas RETRASADAS ───────────────────────────────────────────── -->
         <div *ngIf="!isLoadingTasks && delayedTasksData.length > 0" class="mt-3">
           <div class="d-flex align-items-center gap-2 mb-1">
             <span class="badge bg-danger">⚠ Retrasadas: {{ delayedTasksData.length }}</span>
-            <small class="text-muted">Fecha de término vencida y progreso < 100%</small>
           </div>
-          <ag-grid-angular
-            class="ag-theme-quartz small-text-ag-grid"
+          <ag-grid-angular class="ag-theme-quartz small-text-ag-grid"
             [style.height.px]="Math.min(300, 32 + delayedTasksData.length * 26)"
             style="width:100%;"
-            [columnDefs]="activeTasksColDefs"
-            [rowData]="delayedTasksData"
-            [gridOptions]="activeTasksGridOptions"
-            [stopEditingWhenCellsLoseFocus]="true">
+            [columnDefs]="activeTasksColDefs" [rowData]="delayedTasksData"
+            [gridOptions]="activeTasksGridOptions" [stopEditingWhenCellsLoseFocus]="true">
           </ag-grid-angular>
         </div>
-
-        <!-- ── Fórmula explicada ──────────────────────────────────────────── -->
         <div *ngIf="!isLoadingTasks && (activeTasksData.length || delayedTasksData.length)"
              class="alert alert-light border mt-2 py-2 small mb-0">
           <i class="bi bi-info-circle me-1 text-muted"></i>
-          <strong>Cálculo:</strong>
-          Avance físico día = Σ (Ponderado<sub>i</sub> × Avance Hoy<sub>i</sub>) ÷ 100
-          — La columna <em>Avance Hoy</em> (fondo naranja) es editable. Ingresa el porcentaje de avance
-          <strong>incremental</strong> de cada tarea para la fecha seleccionada.
+          <strong>Cálculo:</strong> Avance físico día = Σ (Ponderado<sub>i</sub> × Avance Hoy<sub>i</sub>) ÷ 100
         </div>
-
       </div>
     </div>
   </div>

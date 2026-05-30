@@ -85,5 +85,5 @@ export const environment = {
     // publicKey: 'TEST-4399133a-4676-42a2-ab85-d946370bf96a',
   },
 
-  version: '7.01 (30 Mayo 2026) feat(pmo-recursos): importar Excel masivo Opus/Primavera con preview y plantilla',
+  version: '7.02 (30 Mayo 2026) feat(avances-diarios): engranaje dias laborables + distribucion ponderados + vista diaria con barras',
 };
