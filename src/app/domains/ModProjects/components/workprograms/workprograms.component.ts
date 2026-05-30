@@ -2208,7 +2208,9 @@ ${taskXML}
       await new Promise(r => setTimeout(r, 0));
     }
 
-    // ── Guardar ponderados en BD automáticamente ───────────────────────────
+    // ── Guardar ponderados en BD: Fase 1 — Hojas ──────────────────────────
+    let savedLeaves = 0;
+    let savedParents = 0;
     try {
       for (let i = 0; i < leafTasks.length; i++) {
         const t = leafTasks[i];
@@ -2216,8 +2218,25 @@ ${taskXML}
           await lastValueFrom(
             this.workprogramsService.updateWorkProgram(t['idEntry'], { ponderado: ponderados[i] })
           );
+          savedLeaves++;
         }
-        this.calcProgress = Math.round(((i + 1) / leafTasks.length) * 100);
+        this.calcProgress = Math.round(((i + 1) / leafTasks.length) * 50); // 0-50%
+      }
+
+      // ── Fase 2 — Agrupadores (suma recursiva ya está en memoria de Gantt) ───
+      const allTasksAfter = gantt.getTaskByTime();
+      const parentTasks = allTasksAfter.filter(
+        t => gantt.getChildren(t.id).length > 0 && t['idEntry'] && t['ponderado'] != null
+      );
+      for (let i = 0; i < parentTasks.length; i++) {
+        const t = parentTasks[i];
+        await lastValueFrom(
+          this.workprogramsService.updateWorkProgram(t['idEntry'], {
+            ponderado: this.safePonderado(t['ponderado'])
+          })
+        );
+        savedParents++;
+        this.calcProgress = 50 + Math.round(((i + 1) / parentTasks.length) * 50); // 50-100%
       }
     } catch {
       alerts.basicAlert('Error', 'Error al guardar ponderados en la BD.', 'error');
@@ -2228,7 +2247,7 @@ ${taskXML}
     this.notSavedChanges = true;
     alerts.basicAlert(
       `✅ Ponderado por ${modalidadLabel} calculado y guardado`,
-      `${denominadorLabel.charAt(0).toUpperCase() + denominadorLabel.slice(1)}: ${unidad} — ${total} concepto(s) actualizados en la BD.`,
+      `${denominadorLabel.charAt(0).toUpperCase() + denominadorLabel.slice(1)}: ${unidad} — ${savedLeaves} hoja(s) + ${savedParents} agrupador(es) actualizados en la BD.`,
       'success'
     );
   }

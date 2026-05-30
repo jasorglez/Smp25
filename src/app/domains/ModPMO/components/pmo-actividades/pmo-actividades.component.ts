@@ -1054,7 +1054,8 @@ export class PmoActividadesComponent implements OnInit {
 
     // Identificar padres (ids que aparecen como parent de otro)
     const parentSet = new Set(filas.map(r => r.parent).filter(p => p > 0));
-    const hojas = filas.filter(r => !parentSet.has(r.id) && r.id > 0);
+    const hojas      = filas.filter(r => !parentSet.has(r.id) && r.id > 0);
+    const agrupadores = filas.filter(r =>  parentSet.has(r.id) && r.id > 0);
 
     if (!hojas.length) { alert('No se encontraron actividades hoja.'); return; }
 
@@ -1080,16 +1081,50 @@ export class PmoActividadesComponent implements OnInit {
     this.calcProgress   = 0;
 
     try {
+      // ── Fase 1: Calcular y guardar hojas (0→50%) ──────────────────────────
+      const pondMap = new Map<number, number>();
       for (let i = 0; i < hojas.length; i++) {
         const hoja = hojas[i];
         const pond = Math.round((getMetric(hoja) / total) * 1000) / 1000;
         const payload = { ...this.mapToApi(hoja), ponderado: pond };
         await lastValueFrom(this._wpService.updateWorkProgram(hoja.id, payload));
         hoja.ponderado = pond;
-        this.calcProgress = Math.round(((i + 1) / hojas.length) * 100);
+        pondMap.set(hoja.id, pond);
+        this.calcProgress = Math.round(((i + 1) / hojas.length) * 50);
       }
+
+      // ── Fase 2: Acumular agrupadores bottom-up y guardar (50→100%) ────────
+      // childrenMap: parentId → [childIds]
+      const childrenMap = new Map<number, number[]>();
+      filas.forEach(r => {
+        if (r.parent > 0) {
+          const arr = childrenMap.get(r.parent) ?? [];
+          arr.push(r.id);
+          childrenMap.set(r.parent, arr);
+        }
+      });
+
+      // Ordenar agrupadores de mayor profundidad a menor (nietos antes que abuelos)
+      const depthOf = (id: number): number => {
+        const row = filas.find(f => f.id === id);
+        return row && row.parent > 0 ? 1 + depthOf(row.parent) : 0;
+      };
+      agrupadores.sort((a, b) => depthOf(b.id) - depthOf(a.id));
+
+      for (let i = 0; i < agrupadores.length; i++) {
+        const par      = agrupadores[i];
+        const children = childrenMap.get(par.id) ?? [];
+        const sum      = children.reduce((s, cid) => s + (pondMap.get(cid) ?? 0), 0);
+        const pond     = Math.round(sum * 1000) / 1000;
+        pondMap.set(par.id, pond);
+        par.ponderado  = pond;
+        const payload  = { ...this.mapToApi(par), ponderado: pond };
+        await lastValueFrom(this._wpService.updateWorkProgram(par.id, payload));
+        this.calcProgress = 50 + Math.round(((i + 1) / agrupadores.length) * 50);
+      }
+
       await this.loadActividades();
-      alert(`✅ Ponderado calculado (${this.pondModalidad}) — ${hojas.length} actividades actualizadas.`);
+      alert(`✅ Ponderado calculado (${this.pondModalidad}) — ${hojas.length} hoja(s) + ${agrupadores.length} agrupador(es) actualizados.`);
     } catch {
       alert('Error al guardar ponderados. Revisa la consola.');
     } finally {
