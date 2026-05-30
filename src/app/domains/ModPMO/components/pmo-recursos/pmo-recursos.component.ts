@@ -1,4 +1,5 @@
-import { Component, inject, OnInit, effect } from '@angular/core';
+import { Component, inject, OnInit, effect, ElementRef, ViewChild } from '@angular/core';
+import * as XLSX from 'xlsx';
 import { CommonModule }         from '@angular/common';
 import { FormsModule }          from '@angular/forms';
 import { AgGridModule }         from 'ag-grid-angular';
@@ -30,6 +31,25 @@ interface RecursoRow {
   __modified?:  boolean;
 }
 
+interface ImportPreviewRow {
+  rowNum:         number;
+  wbs:            string;
+  actividadLabel: string;
+  idActivity:     number | null;
+  tipo:           string;
+  descripcion:    string;
+  unidad:         string;
+  periodo:        string;
+  cantPlan:       number;
+  costoUnitPlan:  number;
+  cantReal:       number;
+  costoUnitReal:  number;
+  costoPlan:      number;
+  costoReal:      number;
+  status:         'ok' | 'warn';
+  msg:            string;
+}
+
 @Component({
   selector: 'app-pmo-recursos',
   standalone: true,
@@ -37,6 +57,8 @@ interface RecursoRow {
   templateUrl: './pmo-recursos.component.html',
 })
 export class PmoRecursosComponent implements OnInit {
+
+  @ViewChild('fileInput') fileInputRef!: ElementRef<HTMLInputElement>;
   private _projectsService     = inject(ProjectsService);
   private _workprogramsService = inject(WorkprogramsService);
   private _convService         = inject(ConventionsService);
@@ -76,6 +98,27 @@ export class PmoRecursosComponent implements OnInit {
   totalPlan  = 0;
   totalReal  = 0;
   totalVar   = 0;
+
+  // ── Import Excel ───────────────────────────────────────────────────────────
+  showImportPanel  = false;
+  importPreview:   ImportPreviewRow[] = [];
+  isImporting      = false;
+  importDone       = false;
+
+  get importOk()   { return this.importPreview.filter(r => r.status === 'ok').length; }
+  get importWarn() { return this.importPreview.filter(r => r.status === 'warn').length; }
+
+  // Mapeo de tipos Opus → tipos del sistema
+  private readonly TIPO_MAP: Record<string, string> = {
+    'mo': 'Personal', 'm.o.': 'Personal', 'mano de obra': 'Personal',
+    'mano obra': 'Personal', 'personal': 'Personal', 'labor': 'Personal',
+    'eq': 'Equipo', 'equipo': 'Equipo', 'maquinaria': 'Equipo',
+    'herramienta': 'Equipo', 'tool': 'Equipo',
+    'ma': 'Material', 'mat': 'Material', 'material': 'Material',
+    'materiales': 'Material', 'insumo': 'Material',
+    'subcontrato': 'Subcontrato', 'sub': 'Subcontrato', 'sc': 'Subcontrato',
+    'indirecto': 'Indirecto', 'ind': 'Indirecto',
+  };
 
   colDefs: ColDef[] = [
     {
@@ -504,5 +547,222 @@ export class PmoRecursosComponent implements OnInit {
     this.saveMsg     = msg;
     this.saveMsgType = type;
     setTimeout(() => { this.saveMsg = ''; }, 4000);
+  }
+
+  // ── Import Excel ─────────────────────────────────────────────────────────────
+
+  openImportPanel(): void {
+    this.showImportPanel = true;
+    this.importPreview   = [];
+    this.importDone      = false;
+  }
+
+  closeImportPanel(): void {
+    this.showImportPanel = false;
+    this.importPreview   = [];
+    this.importDone      = false;
+  }
+
+  /** Genera y descarga la plantilla Excel con instrucciones + WBS disponibles */
+  downloadTemplate(): void {
+    const wb = XLSX.utils.book_new();
+
+    // ── Hoja 1: Plantilla de datos ──────────────────────────────────────────
+    const header = ['WBS', 'Tipo', 'Descripcion', 'Unidad', 'Periodo',
+                    'Cant.Plan', 'C.Unit.Plan', 'Cant.Real', 'C.Unit.Real'];
+    const examples = [
+      ['1.1', 'MO', 'Soldador',              'día', 'Sem 1',  5, 850,  0, 0],
+      ['1.1', 'EQ', 'Soldadora Lincoln 225', 'día', 'Sem 1',  5, 300,  0, 0],
+      ['1.1', 'MA', 'Electrodo 6011 3/32"',  'kg',  '',      20,  45,  0, 0],
+      ['1.2', 'MO', 'Tubero',                'día', '',       3, 900,  0, 0],
+      ['1.2', 'EQ', 'Dobladora manual 2"',   'día', '',       1, 150,  0, 0],
+      ['1.2', 'MA', 'Tubo negro 2" cal.18',  'pza', '',      10, 380,  0, 0],
+    ];
+    const ws1 = XLSX.utils.aoa_to_sheet([header, ...examples]);
+    ws1['!cols'] = [
+      { wch: 10 }, { wch: 14 }, { wch: 36 }, { wch: 10 }, { wch: 12 },
+      { wch: 12 }, { wch: 14 }, { wch: 12 }, { wch: 14 },
+    ];
+    XLSX.utils.book_append_sheet(wb, ws1, 'Recursos');
+
+    // ── Hoja 2: WBS disponibles (actividades cargadas) ──────────────────────
+    const wbsRows: any[][] = [['WBS', 'ID Actividad', 'Descripción']];
+    (this.activities ?? []).forEach(a => {
+      wbsRows.push([
+        a.raw?.activity ?? '',
+        a.id ?? '',
+        (a.raw?.text ?? a.raw?.description ?? a.label ?? '').substring(0, 80),
+      ]);
+    });
+    const ws2 = XLSX.utils.aoa_to_sheet(wbsRows);
+    ws2['!cols'] = [{ wch: 12 }, { wch: 12 }, { wch: 70 }];
+    XLSX.utils.book_append_sheet(wb, ws2, 'WBS Disponibles');
+
+    // ── Hoja 3: Instrucciones ───────────────────────────────────────────────
+    const instrRows = [
+      ['INSTRUCCIONES PARA IMPORTAR RECURSOS PMO'],
+      [''],
+      ['Columna', 'Descripción', 'Valores aceptados'],
+      ['WBS',         'Clave de la actividad — debe coincidir con la lista en "WBS Disponibles"', 'Ej: 1.1 · 2.3.1'],
+      ['Tipo',        'Tipo de recurso (acepta códigos Opus o nombre completo)',
+                      'MO / M.O. / Personal · EQ / Equipo · MA / MAT / Material · Subcontrato · Indirecto'],
+      ['Descripcion', 'Nombre del recurso o puesto',           'Texto libre. Ej: Soldador, Excavadora CAT 320'],
+      ['Unidad',      'Unidad de medida',                      'día · hr · kg · pza · m3 · ton…'],
+      ['Periodo',     'Período de trabajo (opcional)',         'Ej: Sem 1, Ene-2026'],
+      ['Cant.Plan',   'Cantidad planeada',                     'Número decimal'],
+      ['C.Unit.Plan', 'Costo unitario planeado',               'Número decimal'],
+      ['Cant.Real',   'Cantidad real ejecutada (puede ser 0)', 'Número decimal'],
+      ['C.Unit.Real', 'Costo unitario real (puede ser 0)',     'Número decimal'],
+      [''],
+      ['NOTAS:'],
+      ['• Las columnas Cant.Real y C.Unit.Real pueden omitirse o dejarse en 0.'],
+      ['• Puedes tener múltiples filas con el mismo WBS (un recurso por fila).'],
+      ['• Si el WBS no coincide con ninguna actividad, esa fila se ignora al importar.'],
+      ['• El archivo puede ser exportado directamente desde Opus o Primavera.'],
+    ];
+    const ws3 = XLSX.utils.aoa_to_sheet(instrRows);
+    ws3['!cols'] = [{ wch: 14 }, { wch: 65 }, { wch: 55 }];
+    XLSX.utils.book_append_sheet(wb, ws3, 'Instrucciones');
+
+    XLSX.writeFile(wb, 'PMO_Recursos_Plantilla.xlsx');
+  }
+
+  /** Dispara el input de archivo oculto */
+  triggerFileInput(): void {
+    this.fileInputRef?.nativeElement.click();
+  }
+
+  /** Evento al seleccionar archivo */
+  onFileSelected(event: Event): void {
+    const input = event.target as HTMLInputElement;
+    if (!input.files?.length) return;
+    const file = input.files[0];
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      this.parseExcel(e.target?.result as ArrayBuffer);
+    };
+    reader.readAsArrayBuffer(file);
+    input.value = '';  // reset para poder re-seleccionar el mismo archivo
+  }
+
+  /** Parsea el Excel y construye el preview */
+  parseExcel(data: ArrayBuffer): void {
+    try {
+      const wb   = XLSX.read(data, { type: 'array' });
+      const ws   = wb.Sheets[wb.SheetNames[0]];
+      const rows: any[][] = XLSX.utils.sheet_to_json(ws, { header: 1, defval: '' });
+
+      if (rows.length < 2) {
+        this.showMsg('El archivo está vacío o sin datos', 'error'); return;
+      }
+
+      // Índices de columnas (flexible, acepta distintos nombres)
+      const hdr = rows[0].map((h: any) => String(h).trim().toLowerCase());
+      const col = (...names: string[]) => {
+        for (const n of names) {
+          const i = hdr.findIndex((h: string) => h.replace(/[\s.]/g, '').includes(n.replace(/[\s.]/g, '')));
+          if (i >= 0) return i;
+        }
+        return -1;
+      };
+
+      const iWbs  = col('wbs', 'clave', 'partida', 'concepto');
+      const iTipo = col('tipo', 'type');
+      const iDesc = col('descripcion', 'descripción', 'recurso', 'nombre', 'concepto');
+      const iUni  = col('unidad', 'unit');
+      const iPer  = col('periodo', 'período', 'period');
+      const iCP   = col('cantplan', 'cant.plan', 'cantidadplan', 'cantidad plan');
+      const iUP   = col('cunitplan', 'c.unit.plan', 'costounit', 'precio unit', 'costo unit plan');
+      const iCR   = col('cantreal', 'cant.real', 'cantidadreal', 'cantidad real');
+      const iUR   = col('cunitreal', 'c.unit.real', 'costo unit real');
+
+      if (iWbs < 0 || iTipo < 0) {
+        this.showMsg('No se encontraron columnas WBS y Tipo. Usa la plantilla descargable.', 'error'); return;
+      }
+
+      // Mapa WBS → actividad
+      const wbsMap = new Map<string, { id: number; label: string }>();
+      (this.activities ?? []).forEach(a => {
+        const key = String(a.raw?.activity ?? '').trim().toLowerCase();
+        if (key) wbsMap.set(key, { id: a.id, label: a.label });
+      });
+
+      this.importPreview   = [];
+      this.importDone      = false;
+
+      for (let i = 1; i < rows.length; i++) {
+        const r      = rows[i];
+        const wbsRaw = String(r[iWbs] ?? '').trim();
+        if (!wbsRaw) continue;
+
+        const tipoRaw  = String(r[iTipo] ?? '').trim();
+        const tipo     = (this.TIPO_MAP[tipoRaw.toLowerCase()] ?? tipoRaw) || 'Personal';
+        const actFound = wbsMap.get(wbsRaw.toLowerCase());
+
+        const cantPlan      = Math.abs(Number(iCP >= 0 ? r[iCP] : 0) || 0);
+        const costoUnitPlan = Math.abs(Number(iUP >= 0 ? r[iUP] : 0) || 0);
+        const cantReal      = Math.abs(Number(iCR >= 0 ? r[iCR] : 0) || 0);
+        const costoUnitReal = Math.abs(Number(iUR >= 0 ? r[iUR] : 0) || 0);
+
+        this.importPreview.push({
+          rowNum:         i,
+          wbs:            wbsRaw,
+          actividadLabel: actFound?.label ?? '',
+          idActivity:     actFound?.id ?? null,
+          tipo,
+          descripcion:    iDesc >= 0 ? String(r[iDesc] ?? '').trim() : '',
+          unidad:         iUni  >= 0 ? String(r[iUni]  ?? '').trim() || 'día' : 'día',
+          periodo:        iPer  >= 0 ? String(r[iPer]  ?? '').trim() : '',
+          cantPlan, costoUnitPlan, cantReal, costoUnitReal,
+          costoPlan:      cantPlan * costoUnitPlan,
+          costoReal:      cantReal * costoUnitReal,
+          status:         actFound ? 'ok' : 'warn',
+          msg:            actFound ? '✓ Actividad encontrada' : '⚠ WBS no encontrado',
+        });
+      }
+
+      if (!this.importPreview.length)
+        this.showMsg('No se encontraron filas de datos en el archivo', 'error');
+
+    } catch (e) {
+      console.error('Error parseando Excel', e);
+      this.showMsg('Error al leer el archivo. Verifica que sea .xlsx válido', 'error');
+    }
+  }
+
+  /** Importa todas las filas válidas en batch */
+  async executeImport(): Promise<void> {
+    const valid = this.importPreview.filter(r => r.status === 'ok' && r.idActivity);
+    if (!valid.length) return;
+
+    this.isImporting = true;
+    try {
+      const payload = valid.map(r => ({
+        id:            0,
+        idProject:     this.selectedProject?.id ?? 0,
+        idCompany:     this.idCompany,
+        idActivity:    r.idActivity,
+        tipo:          r.tipo,
+        descripcion:   r.descripcion || 'SIN DESCRIPCION',
+        unidad:        r.unidad || 'día',
+        periodo:       r.periodo,
+        cantPlan:      r.cantPlan,
+        cantReal:      r.cantReal,
+        costoUnitPlan: r.costoUnitPlan,
+        costoUnitReal: r.costoUnitReal,
+        active:        1,
+      }));
+
+      await lastValueFrom(this._projectsService.savePmoRecursosBatch(payload));
+      this.importDone = true;
+      this.showMsg(`✓ ${valid.length} recursos importados correctamente`, 'success');
+      // Recargar grid si hay actividad seleccionada
+      if (this.selectedActivity) await this.loadRecursos();
+    } catch (e) {
+      this.showMsg('Error al importar — revisa la consola', 'error');
+      console.error(e);
+    } finally {
+      this.isImporting = false;
+    }
   }
 }
