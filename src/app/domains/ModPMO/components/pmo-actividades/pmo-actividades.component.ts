@@ -7,6 +7,7 @@ import { FormsModule }         from '@angular/forms';
 import { AgGridModule }        from 'ag-grid-angular';
 import { ColDef, GridApi, GridReadyEvent, GridOptions } from 'ag-grid-enterprise';
 import { lastValueFrom }       from 'rxjs';
+import * as XLSX               from 'xlsx';
 import { ProjectsService }     from 'app/services/projects.service';
 import { WorkprogramsService } from 'app/services/workprograms.service';
 import { ConventionsService }  from 'app/services/conventions.service';
@@ -173,7 +174,8 @@ interface MonthLabel {
 })
 export class PmoActividadesComponent implements OnInit {
 
-  @ViewChild('ganttWrapper') wrapperRef!: ElementRef<HTMLDivElement>;
+  @ViewChild('ganttWrapper')   wrapperRef!:   ElementRef<HTMLDivElement>;
+  @ViewChild('xlsImportInput') xlsImportRef!: ElementRef<HTMLInputElement>;
 
   private _projectsService = inject(ProjectsService);
   private _wpService       = inject(WorkprogramsService);
@@ -1063,10 +1065,27 @@ export class PmoActividadesComponent implements OnInit {
     const filas = this.rowData;
     if (!filas.length) { alert('No hay actividades cargadas.'); return; }
 
-    // Identificar padres (ids que aparecen como parent de otro)
+    // ── Detección robusta de hojas ─────────────────────────────────────────
+    // 1) Padre estructural: su id aparece como parent de otro
     const parentSet = new Set(filas.map(r => r.parent).filter(p => p > 0));
-    const hojas      = filas.filter(r => !parentSet.has(r.id) && r.id > 0);
-    const agrupadores = filas.filter(r =>  parentSet.has(r.id) && r.id > 0);
+
+    // 2) Padre por WBS (dot notation): "1" es padre si existe "1.1"
+    const wbsSet = new Set(filas.map(r => r.activity || '').filter(Boolean));
+    const wbsParents = new Set(
+      Array.from(wbsSet).filter(wbs =>
+        Array.from(wbsSet).some(other => other.startsWith(wbs + '.'))
+      )
+    );
+
+    // Hojas = ni padre estructural, ni padre WBS, ni Summary/Milestone
+    const hojas = filas.filter(r =>
+      r.id > 0 &&
+      !parentSet.has(r.id) &&
+      !wbsParents.has(r.activity || '') &&
+      r.typeActivity !== 'Summary' &&
+      r.typeActivity !== 'Milestone'
+    );
+    const agrupadores = filas.filter(r => r.id > 0 && !hojas.includes(r));
 
     if (!hojas.length) { alert('No se encontraron actividades hoja.'); return; }
 
@@ -1161,6 +1180,175 @@ export class PmoActividadesComponent implements OnInit {
 
     // Refrescar grid con los nuevos valores de agrupadores
     this.setRowData(this.rowData);
+  }
+
+  // ── Importar actividades desde Excel ────────────────────────────────────────
+  triggerImport(): void { this.xlsImportRef?.nativeElement.click(); }
+
+  async importXLS(event: Event): Promise<void> {
+    if (!this.selectedProject) { alert('Selecciona un proyecto primero.'); return; }
+    const input = event.target as HTMLInputElement;
+    const file  = input.files?.[0];
+    if (!file) return;
+    input.value = ''; // reset para permitir volver a seleccionar el mismo archivo
+
+    try {
+      const data = await file.arrayBuffer();
+      const wb   = XLSX.read(data, { type: 'array', cellDates: true });
+      const ws   = wb.Sheets[wb.SheetNames[0]];
+      const rawRows: any[][] = XLSX.utils.sheet_to_json(ws, { header: 1, defval: '' });
+      if (rawRows.length < 2) { alert('El archivo está vacío o no tiene datos.'); return; }
+
+      // ── Mapeo de encabezados (insensible a mayúsculas / acentos) ─────────
+      const hdr = (rawRows[0] as string[]).map(h => String(h ?? '').toLowerCase().trim()
+        .normalize('NFD').replace(/[̀-ͯ]/g, '')); // quita acentos
+
+      const col = (...kws: string[]): number =>
+        hdr.findIndex(h => kws.some(k => h.includes(k)));
+
+      const iActivity    = col('wbs','partida','activity','actividad','clave','codigo');
+      const iDescription = col('descripcion','description','concepto','nombre','especif','activid');
+      const iUnit        = col('unidad','unit','um','u.m.');
+      const iQuantity    = col('cantidad','quantity','volumen','vol');
+      const iCostMX      = col('precio','cost','costo','p.u.','pu ','unitario');
+      const iStart       = col('inicio','start','fecha_ini','fecha ini','fecha_inicio','fecha inicio');
+      const iEnd         = col('termino','end','fin','fecha_fin','fecha fin','fecha_term','fecha_termino');
+      const iPred        = col('pred','predecesor','predecessor','antecede');
+      const iType        = col('tipo','type','typeactivity');
+      const iCritical    = col('critica','critical','ruta');
+      const iProgress    = col('avance','progress','porcentaje');
+      const iSortorder   = col('orden','sortorder','sort','secuencia','seq');
+
+      if (iDescription < 0 && iActivity < 0) {
+        alert('No se encontró columna de Descripción o WBS.\nRevisa que la primera fila tenga encabezados.');
+        return;
+      }
+
+      // ── Parsear fecha ─────────────────────────────────────────────────────
+      const fmtDate = (v: any): string => {
+        if (!v) return '';
+        if (v instanceof Date) {
+          const y = v.getFullYear(), m = v.getMonth() + 1, d = v.getDate();
+          return `${y}-${String(m).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+        }
+        const s = String(v).trim();
+        if (!s || s === '0') return '';
+        // dd/mm/yyyy o dd-mm-yyyy
+        const dmy = s.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})$/);
+        if (dmy) return `${dmy[3]}-${dmy[2].padStart(2,'0')}-${dmy[1].padStart(2,'0')}`;
+        // yyyy-mm-dd
+        if (/^\d{4}-\d{2}-\d{2}/.test(s)) return s.substring(0, 10);
+        return '';
+      };
+
+      const str  = (i: number, r: any[]) => i >= 0 ? String(r[i] ?? '').trim() : '';
+      const num  = (i: number, r: any[]) => i >= 0 && r[i] !== '' ? Number(r[i]) : null;
+
+      // ── Construir filas parseadas ──────────────────────────────────────────
+      interface PRow {
+        activity: string; description: string; unit: string;
+        quantity: number | null; costMX: number | null;
+        startDate: string; endDate: string;
+        predecessor: string; typeActivity: string;
+        criticalRoute: string; progress: number; sortorder: number;
+      }
+
+      const parsed: PRow[] = rawRows.slice(1)
+        .map((r, idx) => {
+          const prog = num(iProgress, r);
+          return {
+            activity:      str(iActivity, r),
+            description:   str(iDescription, r),
+            unit:          str(iUnit, r),
+            quantity:      num(iQuantity, r),
+            costMX:        num(iCostMX, r),
+            startDate:     fmtDate(iStart >= 0 ? r[iStart] : ''),
+            endDate:       fmtDate(iEnd   >= 0 ? r[iEnd]   : ''),
+            predecessor:   str(iPred, r),
+            typeActivity:  str(iType, r) || 'Activity',
+            criticalRoute: str(iCritical, r) || 'No',
+            progress:      prog != null
+              ? Math.min(1, Math.max(0, prog > 1 ? prog / 100 : prog)) : 0,
+            sortorder:     iSortorder >= 0 && r[iSortorder] !== ''
+              ? Number(r[iSortorder]) : (idx + 1),
+          };
+        })
+        .filter(r => r.activity || r.description); // descartar filas vacías
+
+      if (!parsed.length) { alert('No se encontraron filas con datos.'); return; }
+
+      // ── Auto-detectar agrupadores por WBS dot-notation ────────────────────
+      // "1" es padre de "1.1", "1.1" es padre de "1.1.1", etc.
+      const wbsSet = new Set(parsed.map(r => r.activity).filter(Boolean));
+      const wbsParents = new Set(
+        Array.from(wbsSet).filter(wbs =>
+          Array.from(wbsSet).some(other => other !== wbs && other.startsWith(wbs + '.'))
+        )
+      );
+
+      // Promover Activity → Summary si se detecta como padre WBS
+      parsed.forEach(r => {
+        if (r.activity && wbsParents.has(r.activity) && r.typeActivity === 'Activity')
+          r.typeActivity = 'Summary';
+      });
+
+      const idProject    = this.selectedProject.id;
+      const idConvention = (this.selectedConvention && !this.isSinConvenio)
+        ? this.selectedConvention.id : null;
+
+      const total = parsed.length;
+      let saved = 0;
+      this.isSaving = true;
+      this.showMsg(`Importando ${saved} / ${total}…`, 'success');
+
+      for (let i = 0; i < parsed.length; i++) {
+        const p = parsed[i];
+        const payload: any = {
+          id:           0,
+          idProject,
+          idConvention,
+          idContract:   0,
+          idTask:       0,
+          activity:     p.activity,
+          text:         p.description,
+          description:  p.description,
+          measure:      p.unit || null,
+          quantity:     p.quantity  ?? 0,
+          costMX:       p.costMX   ?? 0,
+          costDLL:      0,
+          startdate:    p.startDate || null,
+          endate:       p.endDate   || null,
+          progress:     p.progress,
+          ponderado:    null,
+          criticroute:  p.criticalRoute,
+          typeActivity: p.typeActivity,
+          parent:       0,
+          sortorder:    p.sortorder,
+          predecesor:   Number(p.predecessor) || 0,
+          active:       1,
+          type:         'Project',
+          resources:    null,
+          phase:        null,
+        };
+        try {
+          await lastValueFrom(this._wpService.addWorkProgram(payload));
+          saved++;
+        } catch (e) { console.error(`Error fila ${i + 1}:`, e); }
+        this.showMsg(`Importando ${saved} / ${total}…`, 'success');
+      }
+
+      await this.loadActividades();
+      this.isSaving = false;
+      const summ = wbsParents.size > 0
+        ? `\n${wbsParents.size} agrupador(es) detectados automáticamente (Summary).` : '';
+      this.showMsg(`✓ ${saved} actividad(es) importadas`, 'success');
+      alert(`✅ Importación completa: ${saved}/${total} actividades.${summ}`);
+
+    } catch (e: any) {
+      console.error('Error importación XLS:', e);
+      this.isSaving = false;
+      alert('Error al importar el archivo: ' + (e?.message ?? String(e)));
+    }
   }
 
   private showMsg(msg: string, type: 'success' | 'error'): void {
