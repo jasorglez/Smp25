@@ -758,6 +758,7 @@ export class CatalogosProduccionComponent {
   private idRoot = 0;
   private materiales: any[] = [];
   private materialesIdToDesc = new Map<number, string>();
+  private matPrimaOptions: { id: number; description: string }[] = [];
   catalogSidebarItems: ExtractionFermentationCatalogItem[] = [];
   selectedCatalogSidebarId: number | null = null;
   editingCatalogId: number | null = null;
@@ -852,6 +853,19 @@ export class CatalogosProduccionComponent {
       valueParser: (p: any) => {
         const n = parseInt(p.newValue, 10);
         return isNaN(n) ? null : n;
+      },
+    },
+    {
+      headerName: 'Materia Prima',
+      field: 'idMatPrima',
+      flex: 1,
+      minWidth: 160,
+      editable: true,
+      cellEditor: SelectWithTooltipEditorV2Component,
+      cellEditorParams: () => ({ options: this.matPrimaOptions }),
+      valueFormatter: (p: any) => {
+        if (p.value == null) return '';
+        return this.matPrimaOptions.find(o => o.id === p.value)?.description ?? String(p.value);
       },
     },
     {
@@ -1036,10 +1050,22 @@ export class CatalogosProduccionComponent {
       }
 
       this.idRoot = idRoot;
-      this.materialsService.getMaterialsxview(idRoot).subscribe((res: any) => {
-        this.materiales = res ?? [];
+      forkJoin({
+        mats: this.materialsService.getMaterialsxview(idRoot),
+        mxm:  this.mxmService.getByType(idRoot, 'MOLIENDA'),
+      }).subscribe(({ mats, mxm }: any) => {
+        this.materiales = (mats as any[]) ?? [];
         this.materialesIdToDesc.clear();
         this.materiales.forEach(m => this.materialesIdToDesc.set(m.id, m.articulo));
+
+        this.matPrimaOptions = ((mxm as any[]) ?? [])
+          .filter((m: any) => m.active !== false && m.molienda === true && m.idArticulo != null)
+          .map((m: any) => ({
+            id: m.idArticulo,
+            description: this.materialesIdToDesc.get(m.idArticulo) ?? String(m.idArticulo),
+          }))
+          .sort((a, b) => a.description.localeCompare(b.description, 'es', { sensitivity: 'base' }));
+
         this.loadCatalogSidebar();
         this.rowData.set([]);
         this.selectedCatalogSidebarId = null;
@@ -1089,6 +1115,7 @@ export class CatalogosProduccionComponent {
         cantidad: null,
         valor: true,
         idCatalog: this.selectedCatalogSidebarId,
+        idMatPrima: null,
         boteNum: nextNum,
         __isNew: true,
       }, ...this.rowData()]);
@@ -1126,6 +1153,7 @@ export class CatalogosProduccionComponent {
             active: r.valor,
             editBultos: false,
             molienda: false,
+            idMatPrima: r.idMatPrima ?? null,
           }
         : {
             idCompany: this.idRoot,
@@ -1975,9 +2003,12 @@ export class CatalogosProduccionComponent {
           cantidad: m.cantidad,
           valor: m.active,
           idCatalog: m.idCatalog,
+          idMatPrima: m.idMatPrima ?? null,
         }));
+        // Ordenar por id y asignar boteNum global (no por posición filtrada)
         rows.sort((a: any, b: any) => (a.id ?? 0) - (b.id ?? 0));
         rows.forEach((r, i) => { r.boteNum = i + 1; });
+        // Nota: boteNum es global dentro del catálogo de botes, no por mat prima
       } else {
         rows = (data ?? []).map(m => ({
           id: m.id,

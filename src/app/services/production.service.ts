@@ -212,12 +212,20 @@ export class ProductionService {
 
   // ── Molienda Bote (asignación múltiple de botes) ──────────────────────────
 
-  getMoliendaBoteByMolienda(idMolienda: number): Observable<any[]> {
-    return this.http.get<any[]>(`${environment.urlProduction}/MoliendaBote/molienda/${idMolienda}`, { headers: this.trackingService.getHeaders() });
+  getMoliendaBoteByMatDetalle(idMatDetalle: number): Observable<any[]> {
+    return this.http.get<any[]>(`${environment.urlProduction}/MoliendaBote/matdetalle/${idMatDetalle}`, { headers: this.trackingService.getHeaders() });
   }
 
-  createMoliendaBote(data: { idMolienda: number; idBoteCatalog: number | null }): Observable<any> {
+  getMoliendaBoteUsage(): Observable<Record<number, number>> {
+    return this.http.get<Record<number, number>>(`${environment.urlProduction}/MoliendaBote/usage`, { headers: this.trackingService.getHeaders() });
+  }
+
+  createMoliendaBote(data: { idMatDetalle: number; idBoteCatalog: number | null; cantidad: number | null }): Observable<any> {
     return this.http.post<any>(`${environment.urlProduction}/MoliendaBote`, data, { headers: this.trackingService.getHeaders() });
+  }
+
+  patchMoliendaBoteCantidad(id: number, cantidad: number | null): Observable<any> {
+    return this.http.patch<any>(`${environment.urlProduction}/MoliendaBote/${id}/cantidad`, { cantidad }, { headers: this.trackingService.getHeaders() });
   }
 
   deleteMoliendaBote(id: number): Observable<void> {
