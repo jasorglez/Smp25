@@ -85,5 +85,5 @@ export const environment = {
     // publicKey: 'TEST-4399133a-4676-42a2-ab85-d946370bf96a',
   },
 
-  version: '6.98 (29 Mayo 2026) fix(pmo-actividades): panel WBS 330px, descripcion completa 44 chars en Gantt',
+  version: '6.99 (29 Mayo 2026) fix(pmo-actividades): mapFromApi lee r.text como descripcion (campo real del API)',
 };

@@ -413,7 +413,7 @@ export class PmoActividadesComponent implements OnInit {
       return {
         id: r.id || (-(i + 1)),
         rowRef: r,
-        label: r.description || r.activity,
+        label: r.description || r.activity,   // description ya viene con r.text mapeado
         wbs: r.activity,
         level: levelOf(r.activity),
         startDate: sd, endDate: ed,
@@ -720,7 +720,7 @@ export class PmoActividadesComponent implements OnInit {
       idProject:     r.id_project ?? r.idProject ?? 0,
       idConvention:  r.id_convention ?? r.idConvention ?? null,
       activity:      r.activity ?? '',
-      description:   r.description ?? r.especification ?? '',
+      description:   r.text ?? r.description ?? r.especification ?? '',
       unit:          r.measure ?? r.unit ?? '',
       quantity:      r.quantity   != null ? Number(r.quantity)  : null,
       costMX:        r.costMX     != null ? Number(r.costMX)    : null,
