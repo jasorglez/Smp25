@@ -477,7 +477,7 @@ export class PmoRiesgosComponent implements OnInit {
     if (!this.form.description.trim()) return 'Captura la descripción del riesgo.';
     if (!this.form.category)           return 'Selecciona la categoría del riesgo.';
     if (!this.form.scope)              return 'Selecciona el alcance del riesgo.';
-    if (this.form.scope === 'task' && !this.form.conceptId) return 'Selecciona la actividad asociada al riesgo.';
+    // conceptId es opcional — se puede ligar un riesgo a cualquier actividad independiente del alcance
     if (!this.form.responsible.trim()) return 'Captura el responsable del riesgo.';
     if (!this.form.responsePlan.trim()) return 'Captura el plan de respuesta.';
     if (!this.form.dueDate)            return 'Captura la fecha compromiso.';

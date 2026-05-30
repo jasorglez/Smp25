@@ -39,6 +39,13 @@
             </a>
           </li>
 
+          <li class="nav-item" *ngIf="authService.hasDetailedPermission('pmo', 'avances')">
+            <a class="nav-link modern-tab" routerLink="avances" routerLinkActive="active">
+              <i class="bi bi-graph-up"></i>
+              <span>Avances</span>
+            </a>
+          </li>
+
           <li class="nav-item" *ngIf="authService.hasDetailedPermission('pmo', 'ruta-critica')">
             <a class="nav-link modern-tab" routerLink="ruta-critica" routerLinkActive="active">
               <i class="bi bi-diagram-3-fill"></i>
