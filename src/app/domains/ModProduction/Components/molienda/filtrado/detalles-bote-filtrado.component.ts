@@ -29,6 +29,7 @@ interface MatDetalleRow {
   boteDisplay: string;
   resta: number | null;
   botes: BoteAsignacion[];
+  locked: boolean;
   __modified: boolean;
 }
 
@@ -72,6 +73,15 @@ interface ModalEntry {
           <div class="d-flex align-items-center justify-content-between px-3 py-2 border-bottom" style="background:#fff3e0; flex-shrink:0;">
             <span style="font-weight:600;color:#e65100;font-size:0.92rem;">Asignar botes</span>
             <button class="btn-close btn-sm" (click)="closeModal()"></button>
+          </div>
+
+          <!-- Lock -->
+          <div class="px-3 pt-2 pb-1 border-bottom d-flex align-items-center gap-2" style="flex-shrink:0; background:#fff8e1;">
+            <input type="checkbox" class="form-check-input mt-0" id="modalLock"
+                   [(ngModel)]="modalLocked" (ngModelChange)="onLockChange($event)">
+            <label for="modalLock" class="mb-0" style="font-size:0.82rem; cursor:pointer; user-select:none;">
+              <i class="bi bi-lock-fill me-1" style="color:#e65100;"></i> Bloquear cambios
+            </label>
           </div>
 
           <!-- Info de jugo -->
@@ -128,7 +138,7 @@ interface ModalEntry {
                       [(ngModel)]="entry.inputValue"
                       [min]="0"
                       [max]="maxInput(entry)"
-                      [disabled]="entry.lleno && entry.asignacion === null"
+                      [disabled]="(entry.lleno && entry.asignacion === null) || modalLocked"
                       placeholder="0"
                       (ngModelChange)="onInputChange()">
                   </td>
@@ -179,6 +189,7 @@ export class DetallesBoteFiltradoComponent {
 
   // Modal
   modalOpen    = false;
+  modalLocked  = false;
   saving       = false;
   modalRow:    MatDetalleRow | null = null;
   modalEntries: ModalEntry[] = [];
@@ -331,6 +342,7 @@ export class DetallesBoteFiltradoComponent {
           boteDisplay: this.buildBoteDisplay(botes),
           resta: i.jugo != null ? Number(i.jugo) - volAsignado : null,
           botes,
+          locked: !!i.locked,
           __modified: false,
         };
       });
@@ -369,13 +381,30 @@ export class DetallesBoteFiltradoComponent {
     }).filter((e): e is ModalEntry => e !== null);
 
     this.modalValidationMsg = '';
+    this.modalLocked = row.locked;
     this.modalOpen = true;
   }
 
+  async onLockChange(locked: boolean) {
+    if (!this.modalRow) return;
+    try {
+      await lastValueFrom(this.productionService.patchMoliendaMatDetalleLocked(this.modalRow.id, locked));
+      this.modalRow.locked = locked;
+      if (this.gridApi && !this.gridApi.isDestroyed()) {
+        const node = this.gridApi.getRowNode(String(this.modalRow.id));
+        if (node) node.setData({ ...this.modalRow });
+      }
+    } catch (e) {
+      console.error('Error guardando lock:', e);
+      this.modalLocked = !locked; // revertir si falla
+    }
+  }
+
   closeModal() {
-    this.modalOpen = false;
-    this.modalRow  = null;
-    this.saving    = false;
+    this.modalOpen   = false;
+    this.modalLocked = false;
+    this.modalRow    = null;
+    this.saving      = false;
     this.modalEntries = [];
   }
 
