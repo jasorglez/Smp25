@@ -37,6 +37,11 @@ export class WorkprogramsService {
     return this.http.patch(`${environment.urlSmp}/Workprogram/${id}/progress`, { progress }, { headers: this.trackingService.getHeaders() });
   }
 
+  /** PATCH — actualiza SOLO el campo ponderado. Usado por Calcular Ponderado PMO. */
+  patchWorkProgramPonderado(id: number, ponderado: number | null): Observable<any> {
+    return this.http.patch(`${environment.urlSmp}/Workprogram/${id}/ponderado`, { ponderado }, { headers: this.trackingService.getHeaders() });
+  }
+
   deleteWorkProgram(id: number): Observable<any> {
     return this.http.delete(`${environment.urlSmp}/Workprogram/${id}`, { headers: this.trackingService.getHeaders() });
   }

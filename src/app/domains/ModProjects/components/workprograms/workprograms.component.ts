@@ -2208,7 +2208,7 @@ ${taskXML}
       await new Promise(r => setTimeout(r, 0));
     }
 
-    // ── Guardar ponderados en BD: Fase 1 — Hojas ──────────────────────────
+    // ── Guardar ponderados en BD: Fase 1 — Hojas (PATCH solo ponderado) ──
     let savedLeaves = 0;
     let savedParents = 0;
     try {
@@ -2216,7 +2216,7 @@ ${taskXML}
         const t = leafTasks[i];
         if (t['idEntry']) {
           await lastValueFrom(
-            this.workprogramsService.updateWorkProgram(t['idEntry'], { ponderado: ponderados[i] })
+            this.workprogramsService.patchWorkProgramPonderado(t['idEntry'], ponderados[i])
           );
           savedLeaves++;
         }
@@ -2231,9 +2231,9 @@ ${taskXML}
       for (let i = 0; i < parentTasks.length; i++) {
         const t = parentTasks[i];
         await lastValueFrom(
-          this.workprogramsService.updateWorkProgram(t['idEntry'], {
-            ponderado: this.safePonderado(t['ponderado'])
-          })
+          this.workprogramsService.patchWorkProgramPonderado(
+            t['idEntry'], this.safePonderado(t['ponderado'])
+          )
         );
         savedParents++;
         this.calcProgress = 50 + Math.round(((i + 1) / parentTasks.length) * 50); // 50-100%

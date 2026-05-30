@@ -1081,13 +1081,12 @@ export class PmoActividadesComponent implements OnInit {
     this.calcProgress   = 0;
 
     try {
-      // ── Fase 1: Calcular y guardar hojas (0→50%) ──────────────────────────
+      // ── Fase 1: Calcular y guardar hojas (0→50%) — PATCH solo ponderado ──
       const pondMap = new Map<number, number>();
       for (let i = 0; i < hojas.length; i++) {
         const hoja = hojas[i];
         const pond = Math.round((getMetric(hoja) / total) * 1000) / 1000;
-        const payload = { ...this.mapToApi(hoja), ponderado: pond };
-        await lastValueFrom(this._wpService.updateWorkProgram(hoja.id, payload));
+        await lastValueFrom(this._wpService.patchWorkProgramPonderado(hoja.id, pond));
         hoja.ponderado = pond;
         pondMap.set(hoja.id, pond);
         this.calcProgress = Math.round(((i + 1) / hojas.length) * 50);
@@ -1118,8 +1117,7 @@ export class PmoActividadesComponent implements OnInit {
         const pond     = Math.round(sum * 1000) / 1000;
         pondMap.set(par.id, pond);
         par.ponderado  = pond;
-        const payload  = { ...this.mapToApi(par), ponderado: pond };
-        await lastValueFrom(this._wpService.updateWorkProgram(par.id, payload));
+        await lastValueFrom(this._wpService.patchWorkProgramPonderado(par.id, pond));
         this.calcProgress = 50 + Math.round(((i + 1) / agrupadores.length) * 50);
       }
 
