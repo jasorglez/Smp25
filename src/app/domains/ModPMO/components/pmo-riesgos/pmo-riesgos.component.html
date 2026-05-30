@@ -224,18 +224,19 @@
               </div>
 
               <!-- ── Catálogo de Actividades ── -->
-              <div class="col-12" *ngIf="form.scope === 'task'">
+              <div class="col-12">
                 <label class="form-label form-label-sm fw-semibold">
                   <i class="bi bi-list-task me-1"></i> Actividad del Programa de Trabajo
+                  <span class="text-muted fw-normal ms-1">(opcional)</span>
                   <span *ngIf="isLoadingActivities" class="ms-1 spinner-border spinner-border-sm"></span>
-                  <span *ngIf="activityOptions.length" class="ms-1 badge bg-secondary rounded-pill">
+                  <span *ngIf="!isLoadingActivities && activityOptions.length" class="ms-1 badge bg-secondary rounded-pill">
                     {{ activityOptions.length }}
                   </span>
                 </label>
                 <select class="form-select form-select-sm" [(ngModel)]="form.conceptId"
                         (ngModelChange)="onActivityChanged()"
                         [disabled]="isLoadingActivities || !activityOptions.length">
-                  <option [ngValue]="null">— Seleccionar actividad —</option>
+                  <option [ngValue]="null">— Sin actividad específica —</option>
                   <option *ngFor="let a of activityOptions" [ngValue]="a.id">{{ a.name }}</option>
                 </select>
                 <div *ngIf="!isLoadingActivities && !activityOptions.length" class="text-warning small mt-1">
@@ -244,7 +245,7 @@
                 </div>
               </div>
 
-              <div class="col-12" *ngIf="form.scope === 'task' && form.conceptName">
+              <div class="col-12" *ngIf="form.conceptName">
                 <div class="rounded-3 border bg-light px-3 py-2 small">
                   <span class="text-muted">Actividad:</span>
                   <span class="fw-semibold ms-2">{{ form.conceptName }}</span>

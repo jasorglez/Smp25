@@ -742,6 +742,14 @@ export const routes: Routes = [
             data: { permissions: { master: 'pmo', detailed: 'riesgos' } },
           },
           {
+            path: 'avances',
+            loadComponent: () =>
+              import('./domains/ModProjects/components/advances/advances.component')
+                .then((c) => c.AdvancesComponent),
+            canActivate: [MasterPermissionsGuard],
+            data: { permissions: { master: 'pmo', detailed: 'avances' } },
+          },
+          {
             path: 'ruta-critica',
             loadComponent: () =>
               import('./domains/ModPMO/components/pmo-ruta-critica/pmo-ruta-critica.component')
