@@ -803,13 +803,19 @@ export class ComparacionPreciosComponent implements OnInit, OnDestroy {
       const quantity = isSinLimite
         ? 0
         : (Number(row.cantidadConceptualizada) > 0 ? Number(row.cantidadConceptualizada) : Number(row.cantidadComprar) || 0);
+      // Opción B: guardar el precio BASE (sin IVA). row.costoUnitario viene inflado con IVA
+      // cuando masIva (display de la comparación); el IVA se aplica al mostrar/PDF, no se almacena.
+      const ivaFactor = 1 + (this.ivaPercent || 0) / 100;
+      const precioBase = row.masIva && ivaFactor > 0
+        ? (Number(row.costoUnitario) || 0) / ivaFactor
+        : (Number(row.costoUnitario) || 0);
       return {
         idMovement:   newOcId,
         idSupplie:    row.idSupplie || 0,
         idProvider:   provId,
         nameProvider: provName,
         quantity,
-        price:        Number(row.costoUnitario) || 0,
+        price:        precioBase,
         type:         'OC',
         tiempoEntrega: row.tiempoEntrega || '',
         compraMinima:  Number(row.compraMinima) || 1,
@@ -820,6 +826,7 @@ export class ComparacionPreciosComponent implements OnInit, OnDestroy {
         numArticle:    String(row.numArticuloInterno || ''),
         observation:   row.numArticuloExterno || '',
         typeOc:        row.tipoOc || '',
+        masIva:        !!row.masIva,   // propaga el "+ IVA" de la cotización a la OC (se ve en Captura de Gastos)
         comment:       '',
         datePostpone
       };

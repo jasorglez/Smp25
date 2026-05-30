@@ -14,6 +14,8 @@ export interface EntradaMolienda {
   bultos?: number | null;
   revisionConfigu?: number | null;
   pago?: number | null;
+  fechaPago?: string | null;
+  notaFactura?: string | null;
   usuario?: string | null;
   comentario?: string | null;
   liberacion?: boolean;
