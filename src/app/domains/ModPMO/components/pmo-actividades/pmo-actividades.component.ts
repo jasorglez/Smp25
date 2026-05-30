@@ -626,7 +626,11 @@ export class PmoActividadesComponent implements OnInit {
       } else {
         raw = await lastValueFrom(this._wpService.getWorkPrograms(idProject, 'Project'));
       }
-      this.rowData         = (raw ?? []).map(r => this.mapFromApi(r));
+      this.rowData         = (raw ?? []).map(r => this.mapFromApi(r))
+                               .sort((a, b) => {
+                                 const d = a.sortorder - b.sortorder;
+                                 return d !== 0 ? d : a.id - b.id; // desempate por id (orden de inserción)
+                               });
       this.originalRowData = JSON.parse(JSON.stringify(this.rowData));
       this.hasUnsavedChanges = false;
       this.recalcParentPonderados(); // acumula sumas en memoria (no toca BD)
@@ -1291,6 +1295,20 @@ export class PmoActividadesComponent implements OnInit {
         if (r.activity && wbsParents.has(r.activity) && r.typeActivity === 'Activity')
           r.typeActivity = 'Summary';
       });
+
+      // ── Reordenar por WBS si todas las actividades tienen código numérico ──
+      // Soluciona el caso donde agrupadores están al final del Excel.
+      // Ejemplo: "1" < "1.1" < "1.2" < "1.10" < "2" < "10"
+      const wbsNumericRe = /^[\d][\d.]*$/;
+      const allHaveWbs = parsed.length > 0 && parsed.every(r => wbsNumericRe.test(r.activity || ''));
+      if (allHaveWbs) {
+        // Clave de ordenación: cada segmento del WBS se padding a 6 dígitos para comparación numérica
+        const wbsSortKey = (wbs: string) =>
+          wbs.split('.').map(s => String(parseInt(s, 10) || 0).padStart(6, '0')).join('.');
+        parsed.sort((a, b) => wbsSortKey(a.activity).localeCompare(wbsSortKey(b.activity)));
+        // Reasignar sortorder según el nuevo orden jerárquico
+        parsed.forEach((p, i) => { p.sortorder = i + 1; });
+      }
 
       const idProject    = this.selectedProject.id;
       const idConvention = (this.selectedConvention && !this.isSinConvenio)
