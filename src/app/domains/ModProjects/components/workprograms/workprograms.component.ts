@@ -3,7 +3,7 @@ import { alerts } from 'app/helpers/alerts';
 import { WorkprogramsService } from 'app/services/workprograms.service';
 import { WorkprogramApuService } from 'app/services/workprogram-apu.service';
 import { gantt } from 'dhtmlx-gantt';
-import { Observable, catchError, finalize, forkJoin, lastValueFrom, map, of } from 'rxjs';
+import { Observable, catchError, finalize, forkJoin, lastValueFrom, map, of, switchMap } from 'rxjs';
 import * as XLSX from 'xlsx';
 
 /*import { PdfWorkprogramDistributionComponent } from './distribution/pdf-workprogram-distribution.component';
@@ -134,6 +134,10 @@ export class WorkprogramsComponent {
   idConvention: number = null;
   conventionName: string = '';
   typeWorkProgram: string = 'Project';
+
+  /** Valores derivados de los datos cargados (fallback cuando el signal está null) */
+  private idContractFallback: number | null = null;
+  private idConventionFallback: number | null = null;
   measures: any;
   notSavedChanges: boolean = false;
   isSaving: boolean = false;
@@ -1454,15 +1458,30 @@ export class WorkprogramsComponent {
   transformTaskForSave(task: any): any {
     // Leer siempre en el momento de guardar para evitar problemas de timing
     const vigente = this.signalsService.getConventionVigente()();
+
+    // idContract: señal del sidebar → tarea existente (DB) → fallback datos cargados → 0
+    const idContract = this.idContract || task['idContract'] || this.idContractFallback || 0;
+
+    // idConvention: vigente del sidebar → señal local → tarea existente (DB) → fallback datos cargados
+    const idConvention = vigente?.id ?? this.idConvention ?? task['idConvention'] ?? this.idConventionFallback ?? null;
+
+    // endDate: asegurar siempre una fecha válida
+    const endDate  = (task.end_date instanceof Date && !isNaN(task.end_date.getTime()))
+      ? task.end_date.toISOString()
+      : (task.start_date instanceof Date ? task.start_date.toISOString() : null);
+    const startDate = (task.start_date instanceof Date && !isNaN(task.start_date.getTime()))
+      ? task.start_date.toISOString()
+      : null;
+
     return {
       id: task.idEntry,
       idTask: task.id,
       text: task.text || '',                                   // NOT NULL en C#
-      idContract: this.idContract ?? 0,                        // int NOT NULL
+      idContract,                                              // int NOT NULL
       idProject: this.idProject ?? 0,                          // int NOT NULL
-      idConvention: vigente?.id ?? this.idConvention ?? null,  // convenio vigente
-      startDate: task.start_date.toISOString(),
-      endDate: task.end_date.toISOString(),
+      idConvention,                                            // convenio vigente
+      startDate,
+      endDate,
       progress: task.progress ?? 0,
       parent: task.parent ?? 0,
       color: this.trunc(task.color, 10),                       // nullable
@@ -1487,13 +1506,29 @@ export class WorkprogramsComponent {
   // Funcion para cargar los datos de la API
   loadDataFromAPI() {
     const id = this.typeWorkProgram === 'Project' ? this.idProject : this.idContract;
-    const source$ = this.idConvention
+
+    // Cuando hay convenio vigente, cargar por convenio; si está vacío, fallback por proyecto
+    const byConvention$ = this.idConvention
       ? this.workprogramsService.getByConvention(this.idConvention, this.idProject ?? undefined)
-      : this.workprogramsService.getWorkPrograms(id, this.typeWorkProgram);
+      : null;
+
+    const byProject$ = this.workprogramsService.getWorkPrograms(id, this.typeWorkProgram);
+
+    const source$ = byConvention$
+      ? byConvention$.pipe(
+          // Si la consulta por convenio devuelve vacío, intentar sin filtro de convenio
+          switchMap(data => data && data.length > 0 ? of(data) : byProject$)
+        )
+      : byProject$;
+
     source$.pipe(
       map(response => {
         if (response && response.length > 0) {
           this.taskCount = response.length;
+          // Capturar contract y convention de los datos cargados como fallback para el save
+          const first = response[0];
+          if (first.idContract) this.idContractFallback = first.idContract;
+          if (first.idConvention) this.idConventionFallback = first.idConvention;
           const transformedData = this.transformData(response);
           gantt.clearAll(); // Limpiar todos los datos existentes
           gantt.parse(transformedData);
@@ -1521,8 +1556,8 @@ export class WorkprogramsComponent {
       id: item.idTask,
       idEntry: item.id,
       text: item.text,
-      start_date: new Date(item.startDate),
-      end_date: new Date(item.endDate),
+      start_date: item.startDate ? new Date(item.startDate) : new Date(),
+      end_date:   item.endDate   ? new Date(item.endDate)   : new Date(),
       progress: item.progress,
       parent: item.parent,
       color: item.color,
@@ -1538,7 +1573,8 @@ export class WorkprogramsComponent {
       predecesor: item.predecesor,
       measure: item.measure,
       phase: item.phase,
-      // Campos nuevos
+      // Scope: contrato y convenio (necesarios para el save)
+      idContract: item.idContract,
       idConvention: item.idConvention,
       type: item.type,
       ponderado: item.ponderado,
