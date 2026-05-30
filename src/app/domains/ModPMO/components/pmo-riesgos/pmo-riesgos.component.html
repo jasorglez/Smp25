@@ -1,345 +1,403 @@
 <div class="container-fluid py-3">
-  <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
-    <div>
-      <h4 class="mb-0">Bi2 PMO - Riesgos</h4>
-      <small class="text-muted">
-        Proyecto: {{ projectName() || 'Sin proyecto seleccionado' }}
-        <span *ngIf="conventionName"> | Convenio: {{ conventionName }}</span>
-      </small>
+
+  <!-- ══ Fila 1: Proyecto + Convenio ════════════════════════════════════════ -->
+  <div class="row mb-3 g-2 align-items-end">
+
+    <div [class]="selectedProject && conventions.length ? 'col-md-4' : 'col-md-5'">
+      <label class="form-label form-label-sm mb-1 fw-semibold">
+        <i class="bi bi-building me-1"></i> Proyecto
+      </label>
+      <select class="form-select form-select-sm" [(ngModel)]="selectedProject"
+              (ngModelChange)="onProjectChange()">
+        <option [ngValue]="null">— Seleccionar proyecto —</option>
+        <option *ngFor="let p of projects" [ngValue]="p">
+          {{ p.name || p.projectName || p.id }}
+        </option>
+      </select>
     </div>
-    <div class="d-flex gap-2">
-      <button class="btn btn-sm btn-success" (click)="addRisk()">
+
+    <!-- Convenio -->
+    <div class="col-md-4" *ngIf="selectedProject && (conventions.length || isLoadingConv)">
+      <label class="form-label form-label-sm mb-1 fw-semibold">
+        <i class="bi bi-file-earmark-text me-1"></i> Convenio / Versión
+        <span *ngIf="isLoadingConv" class="ms-1 spinner-border spinner-border-sm"></span>
+      </label>
+      <select class="form-select form-select-sm" [(ngModel)]="selectedConvention"
+              (ngModelChange)="onConventionChange()" [disabled]="isLoadingConv">
+        <option [ngValue]="null">— Sin filtro de convenio —</option>
+        <option *ngFor="let c of conventions" [ngValue]="c">
+          {{ c.vigente ? '★ ' : '' }}{{ c.name || c.folio || ('Conv. #' + c.id) }}
+          — {{ convTypeBadge(c.type).label }}
+        </option>
+      </select>
+    </div>
+
+    <!-- Botones -->
+    <div class="col-auto ms-auto d-flex gap-2" *ngIf="selectedProject">
+      <button class="btn btn-sm btn-success"  (click)="addRisk()">
         <i class="bi bi-plus-lg"></i> Agregar
       </button>
-      <button class="btn btn-sm btn-primary" (click)="saveRisk()">
-        <i class="bi bi-floppy"></i> Guardar
+      <button class="btn btn-sm btn-primary"  (click)="saveRisk()" [disabled]="isSaving">
+        <span *ngIf="isSaving" class="spinner-border spinner-border-sm me-1"></span>
+        <i *ngIf="!isSaving" class="bi bi-floppy"></i> Guardar
       </button>
-      <button class="btn btn-sm btn-warning" (click)="duplicateRisk()">
+      <button class="btn btn-sm btn-warning"  (click)="duplicateRisk()">
         <i class="bi bi-copy"></i> Duplicar
       </button>
-      <button class="btn btn-sm btn-danger" (click)="deleteRisk()">
+      <button class="btn btn-sm btn-danger"   (click)="deleteRisk()">
         <i class="bi bi-trash"></i> Borrar
       </button>
     </div>
   </div>
 
-  <div class="row g-3 mb-3">
-    <div class="col-md-3">
-      <div class="card border-0 shadow-sm bg-light">
-        <div class="card-body py-3">
-          <small class="text-muted d-block">Riesgos Totales</small>
-          <div class="fs-3 fw-bold">{{ totalRisks }}</div>
-        </div>
-      </div>
-    </div>
-    <div class="col-md-3">
-      <div class="card border-0 shadow-sm bg-danger-subtle">
-        <div class="card-body py-3">
-          <small class="text-muted d-block">Críticos</small>
-          <div class="fs-3 fw-bold text-danger">{{ criticalRisks }}</div>
-        </div>
-      </div>
-    </div>
-    <div class="col-md-3">
-      <div class="card border-0 shadow-sm bg-warning-subtle">
-        <div class="card-body py-3">
-          <small class="text-muted d-block">Abiertos</small>
-          <div class="fs-3 fw-bold text-warning-emphasis">{{ openRisks }}</div>
-        </div>
-      </div>
-    </div>
-    <div class="col-md-3">
-      <div class="card border-0 shadow-sm bg-secondary-subtle">
-        <div class="card-body py-3">
-          <small class="text-muted d-block">Vencidos</small>
-          <div class="fs-3 fw-bold">{{ overdueRisks }}</div>
-        </div>
-      </div>
-    </div>
+  <!-- ══ Placeholder sin proyecto ══════════════════════════════════════════ -->
+  <div *ngIf="!selectedProject" class="text-center py-5 text-muted">
+    <i class="bi bi-shield-exclamation fs-1 opacity-25 d-block mb-2"></i>
+    <h5>Selecciona un proyecto para gestionar riesgos</h5>
   </div>
 
-  <div class="row g-3">
-    <div class="col-xl-5">
-      <div class="card border-0 shadow-sm h-100">
-        <div class="card-header bg-white">
-          <div class="d-flex justify-content-between align-items-center gap-2 flex-wrap">
-            <span class="fw-semibold">Bandeja de Riesgos</span>
-            <button class="btn btn-sm btn-outline-secondary" *ngIf="hasActiveFilters" (click)="clearFilters()">
-              <i class="bi bi-x-circle me-1"></i> Limpiar filtros
-            </button>
-          </div>
-          <div class="row g-2 mt-2">
-            <div class="col-12">
-              <input type="text"
-                     class="form-control form-control-sm"
-                     [(ngModel)]="searchTerm"
-                     placeholder="Buscar por folio, título, categoría, responsable o concepto...">
-            </div>
-            <div class="col-sm-6">
-              <select class="form-select form-select-sm" [(ngModel)]="selectedStatusFilter">
-                <option value="">Todos los estados</option>
-                <option *ngFor="let status of statusOptions" [value]="status">{{ status }}</option>
-              </select>
-            </div>
-            <div class="col-sm-6">
-              <select class="form-select form-select-sm" [(ngModel)]="selectedTrafficLightFilter">
-                <option value="">Todos los semáforos</option>
-                <option *ngFor="let light of trafficLightOptions" [value]="light">{{ light }}</option>
-              </select>
-            </div>
-            <div class="col-12">
-              <div class="d-flex gap-2 flex-wrap">
-                <button class="btn btn-sm" [ngClass]="getSortButtonClass('updatedAt')" (click)="setSort('updatedAt')">
-                  Actualización
-                </button>
-                <button class="btn btn-sm" [ngClass]="getSortButtonClass('dueDate')" (click)="setSort('dueDate')">
-                  Vencimiento
-                </button>
-                <button class="btn btn-sm" [ngClass]="getSortButtonClass('criticality')" (click)="setSort('criticality')">
-                  Criticidad
-                </button>
-                <button class="btn btn-sm" [ngClass]="getSortButtonClass('title')" (click)="setSort('title')">
-                  Título
-                </button>
-              </div>
-            </div>
+  <ng-container *ngIf="selectedProject">
+
+    <!-- ══ KPIs ═══════════════════════════════════════════════════════════ -->
+    <div class="row g-3 mb-3">
+      <div class="col-md-3">
+        <div class="card border-0 shadow-sm bg-light">
+          <div class="card-body py-3">
+            <small class="text-muted d-block">Riesgos Totales</small>
+            <div class="fs-3 fw-bold">{{ totalRisks }}</div>
           </div>
         </div>
-        <div class="card-body p-0">
-          <div class="table-responsive" style="max-height: 70vh;">
-            <table class="table table-sm table-hover mb-0 align-middle">
-              <thead class="table-light sticky-top">
-                <tr>
-                  <th>Folio</th>
-                  <th>Título</th>
-                  <th>Concepto</th>
-                  <th>Semáforo</th>
-                  <th>Estado</th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr *ngIf="isLoading">
-                  <td colspan="5" class="text-center py-4 text-muted">
-                    <span class="spinner-border spinner-border-sm me-2"></span>Cargando riesgos...
-                  </td>
-                </tr>
-                <tr *ngIf="!isLoading && !filteredRisks.length">
-                  <td colspan="5" class="text-center py-4 text-muted">
-                    {{ hasActiveFilters ? 'No hay riesgos que coincidan con los filtros aplicados.' : 'No hay riesgos registrados para este proyecto.' }}
-                  </td>
-                </tr>
-                <tr *ngFor="let risk of filteredRisks"
-                    (click)="selectRisk(risk)"
-                    [class.table-active]="risk.id === selectedRiskId"
-                    style="cursor: pointer;">
-                  <td class="fw-semibold">{{ risk.folio }}</td>
-                  <td>{{ risk.title }}</td>
-                  <td>{{ risk.conceptName || 'Proyecto' }}</td>
-                  <td>
-                    <span class="badge" [ngClass]="getTrafficLightClass(risk.trafficLight)">
-                      {{ risk.trafficLight }}
-                    </span>
-                  </td>
-                  <td>{{ risk.status }}</td>
-                </tr>
-              </tbody>
-            </table>
+      </div>
+      <div class="col-md-3">
+        <div class="card border-0 shadow-sm bg-danger-subtle">
+          <div class="card-body py-3">
+            <small class="text-muted d-block">Críticos</small>
+            <div class="fs-3 fw-bold text-danger">{{ criticalRisks }}</div>
+          </div>
+        </div>
+      </div>
+      <div class="col-md-3">
+        <div class="card border-0 shadow-sm bg-warning-subtle">
+          <div class="card-body py-3">
+            <small class="text-muted d-block">Abiertos</small>
+            <div class="fs-3 fw-bold text-warning-emphasis">{{ openRisks }}</div>
+          </div>
+        </div>
+      </div>
+      <div class="col-md-3">
+        <div class="card border-0 shadow-sm bg-secondary-subtle">
+          <div class="card-body py-3">
+            <small class="text-muted d-block">Vencidos</small>
+            <div class="fs-3 fw-bold">{{ overdueRisks }}</div>
           </div>
         </div>
       </div>
     </div>
 
-    <div class="col-xl-7">
-      <div class="card border-0 shadow-sm">
-        <div class="card-header bg-white">
-          <span class="fw-semibold">Ficha del Riesgo</span>
+    <!-- ══ Cuerpo principal ════════════════════════════════════════════════ -->
+    <div class="row g-3">
+
+      <!-- ── Bandeja izquierda ── -->
+      <div class="col-xl-5">
+        <div class="card border-0 shadow-sm h-100">
+          <div class="card-header bg-white">
+            <div class="d-flex justify-content-between align-items-center gap-2 flex-wrap">
+              <span class="fw-semibold">Bandeja de Riesgos</span>
+              <button class="btn btn-sm btn-outline-secondary" *ngIf="hasActiveFilters" (click)="clearFilters()">
+                <i class="bi bi-x-circle me-1"></i> Limpiar filtros
+              </button>
+            </div>
+            <div class="row g-2 mt-2">
+              <div class="col-12">
+                <input type="text" class="form-control form-control-sm" [(ngModel)]="searchTerm"
+                       placeholder="Buscar por folio, título, categoría, responsable...">
+              </div>
+              <div class="col-sm-6">
+                <select class="form-select form-select-sm" [(ngModel)]="selectedStatusFilter">
+                  <option value="">Todos los estados</option>
+                  <option *ngFor="let s of statusOptions" [value]="s">{{ s }}</option>
+                </select>
+              </div>
+              <div class="col-sm-6">
+                <select class="form-select form-select-sm" [(ngModel)]="selectedTrafficLightFilter">
+                  <option value="">Todos los semáforos</option>
+                  <option *ngFor="let l of trafficLightOptions" [value]="l">{{ l }}</option>
+                </select>
+              </div>
+              <div class="col-12">
+                <div class="d-flex gap-2 flex-wrap">
+                  <button class="btn btn-sm" [ngClass]="getSortButtonClass('updatedAt')"   (click)="setSort('updatedAt')">Actualización</button>
+                  <button class="btn btn-sm" [ngClass]="getSortButtonClass('dueDate')"     (click)="setSort('dueDate')">Vencimiento</button>
+                  <button class="btn btn-sm" [ngClass]="getSortButtonClass('criticality')" (click)="setSort('criticality')">Criticidad</button>
+                  <button class="btn btn-sm" [ngClass]="getSortButtonClass('title')"       (click)="setSort('title')">Título</button>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="card-body p-0">
+            <div class="table-responsive" style="max-height:70vh;">
+              <table class="table table-sm table-hover mb-0 align-middle">
+                <thead class="table-light sticky-top">
+                  <tr>
+                    <th>Folio</th>
+                    <th>Título</th>
+                    <th>Actividad</th>
+                    <th>Semáforo</th>
+                    <th>Estado</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr *ngIf="isLoading">
+                    <td colspan="5" class="text-center py-4 text-muted">
+                      <span class="spinner-border spinner-border-sm me-2"></span>Cargando riesgos...
+                    </td>
+                  </tr>
+                  <tr *ngIf="!isLoading && !filteredRisks.length">
+                    <td colspan="5" class="text-center py-4 text-muted">
+                      {{ hasActiveFilters ? 'No hay riesgos con los filtros aplicados.' : 'No hay riesgos registrados para este proyecto.' }}
+                    </td>
+                  </tr>
+                  <tr *ngFor="let risk of filteredRisks"
+                      (click)="selectRisk(risk)"
+                      [class.table-active]="risk.id === selectedRiskId"
+                      style="cursor:pointer;">
+                    <td class="fw-semibold">{{ risk.folio }}</td>
+                    <td>{{ risk.title }}</td>
+                    <td class="text-truncate" style="max-width:120px" [title]="risk.conceptName">
+                      {{ risk.conceptName || 'Proyecto general' }}
+                    </td>
+                    <td>
+                      <span class="badge" [ngClass]="getTrafficLightClass(risk.trafficLight)">
+                        {{ risk.trafficLight }}
+                      </span>
+                    </td>
+                    <td>{{ risk.status }}</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
         </div>
-        <div class="card-body">
-          <div class="row g-3">
-            <div class="col-md-4">
-              <label class="form-label">Folio</label>
-              <input type="text" class="form-control" [value]="form.folio || 'Se genera al guardar'" readonly>
-            </div>
-            <div class="col-md-4">
-              <label class="form-label">Categoría</label>
-              <select class="form-select" [(ngModel)]="form.category">
-                <option value="">Seleccionar...</option>
-                <option *ngFor="let category of categoryOptions" [value]="category">{{ category }}</option>
-              </select>
-            </div>
-            <div class="col-md-4">
-              <label class="form-label">Estado</label>
-              <select class="form-select" [(ngModel)]="form.status">
-                <option *ngFor="let status of statusOptions" [value]="status">{{ status }}</option>
-              </select>
-            </div>
+      </div>
 
-            <div class="col-md-8">
-              <label class="form-label">Título del riesgo</label>
-              <input type="text" class="form-control" [(ngModel)]="form.title" placeholder="Ej: Retraso por liberación de ingeniería">
-            </div>
-            <div class="col-md-4">
-              <label class="form-label">Alcance</label>
-              <select class="form-select" [(ngModel)]="form.scope" (ngModelChange)="onScopeChanged()">
-                <option value="project">Proyecto</option>
-                <option value="wbs">Entregable / WBS</option>
-                <option value="task">Tarea</option>
-              </select>
-            </div>
+      <!-- ── Ficha derecha ── -->
+      <div class="col-xl-7">
+        <div class="card border-0 shadow-sm">
+          <div class="card-header bg-white d-flex align-items-center justify-content-between">
+            <span class="fw-semibold">Ficha del Riesgo</span>
+            <span *ngIf="form.folio" class="badge bg-secondary">{{ form.folio }}</span>
+          </div>
+          <div class="card-body">
+            <div class="row g-3">
 
-            <div class="col-12" *ngIf="form.scope === 'task'">
-              <label class="form-label">Concepto asociado</label>
-              <select class="form-select" [(ngModel)]="form.conceptId" (ngModelChange)="onConceptChanged()">
-                <option [ngValue]="null">Seleccionar concepto...</option>
-                <option *ngFor="let concept of conceptOptions" [ngValue]="concept.id">{{ concept.name }}</option>
-              </select>
-            </div>
-
-            <div class="col-12" *ngIf="form.scope === 'task' && form.conceptName">
-              <div class="rounded-3 border bg-light px-3 py-2 small">
-                <span class="text-muted">Concepto seleccionado:</span>
-                <span class="fw-semibold ms-2">{{ form.conceptName }}</span>
+              <div class="col-md-4">
+                <label class="form-label form-label-sm">Folio</label>
+                <input type="text" class="form-control form-control-sm"
+                       [value]="form.folio || 'Se genera al guardar'" readonly>
               </div>
-            </div>
-
-            <div class="col-12">
-              <label class="form-label">Descripción</label>
-              <textarea class="form-control" rows="2" [(ngModel)]="form.description"
-                        placeholder="Describe el riesgo de forma clara y breve"></textarea>
-            </div>
-
-            <div class="col-md-6">
-              <label class="form-label">Causa</label>
-              <textarea class="form-control" rows="2" [(ngModel)]="form.cause"
-                        placeholder="Origen o disparador del riesgo"></textarea>
-            </div>
-            <div class="col-md-6">
-              <label class="form-label">Consecuencia</label>
-              <textarea class="form-control" rows="2" [(ngModel)]="form.consequence"
-                        placeholder="Impacto esperado en el proyecto"></textarea>
-            </div>
-
-            <div class="col-md-4">
-              <label class="form-label">Probabilidad (1-5)</label>
-              <input type="number" class="form-control" min="1" max="5" [(ngModel)]="form.probability">
-            </div>
-            <div class="col-md-4">
-              <label class="form-label">Impacto tiempo (días)</label>
-              <input type="number" class="form-control" min="0" [(ngModel)]="form.impactTimeDays">
-            </div>
-            <div class="col-md-4">
-              <label class="form-label">Impacto costo (MXN)</label>
-              <input type="number" class="form-control" min="0" [(ngModel)]="form.impactCost">
-            </div>
-
-            <div class="col-md-4">
-              <label class="form-label">Criticidad</label>
-              <input type="text" class="form-control" [value]="currentCriticalityPreview" readonly>
-            </div>
-            <div class="col-md-4">
-              <label class="form-label">Semáforo</label>
-              <div class="pt-2">
-                <span class="badge fs-6" [ngClass]="getTrafficLightClass(currentTrafficLightPreview)">
-                  {{ currentTrafficLightPreview }}
-                </span>
+              <div class="col-md-4">
+                <label class="form-label form-label-sm">Categoría</label>
+                <select class="form-select form-select-sm" [(ngModel)]="form.category">
+                  <option value="">Seleccionar...</option>
+                  <option *ngFor="let c of categoryOptions" [value]="c">{{ c }}</option>
+                </select>
               </div>
-            </div>
-            <div class="col-md-4">
-              <label class="form-label">Fecha compromiso</label>
-              <input type="date" class="form-control" [(ngModel)]="form.dueDate">
-            </div>
-
-            <div class="col-md-6">
-              <label class="form-label">Responsable</label>
-              <input type="text" class="form-control" [(ngModel)]="form.responsible" placeholder="Nombre del responsable">
-            </div>
-            <div class="col-md-6">
-              <label class="form-label">Plan de respuesta</label>
-              <textarea class="form-control" rows="2" [(ngModel)]="form.responsePlan"
-                        placeholder="Acciones de mitigación o respuesta"></textarea>
-            </div>
-
-            <div class="col-12">
-              <label class="form-label">Seguimiento / observaciones</label>
-              <textarea class="form-control" rows="3" [(ngModel)]="form.notes"
-                        placeholder="Seguimiento, acuerdos, comentarios o bitácora corta"></textarea>
-            </div>
-
-            <div class="col-12">
-              <hr class="my-2">
-              <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-2">
-                <span class="fw-semibold">Seguimientos PMO</span>
-                <small class="text-muted" *ngIf="form.updatedAt">Última actualización: {{ form.updatedAt | date:'dd/MM/yyyy HH:mm' }}</small>
+              <div class="col-md-4">
+                <label class="form-label form-label-sm">Estado</label>
+                <select class="form-select form-select-sm" [(ngModel)]="form.status">
+                  <option *ngFor="let s of statusOptions" [value]="s">{{ s }}</option>
+                </select>
               </div>
-            </div>
 
-            <div class="col-md-7">
-              <label class="form-label">Comentario de seguimiento</label>
-              <textarea class="form-control" rows="3" [(ngModel)]="followUpForm.comment"
-                        placeholder="Describe el avance, bloqueo o acuerdo"></textarea>
-            </div>
-            <div class="col-md-3">
-              <label class="form-label">Nuevo estado</label>
-              <select class="form-select" [(ngModel)]="followUpForm.newStatus">
-                <option value="">Conservar actual</option>
-                <option *ngFor="let status of statusOptions" [value]="status">{{ status }}</option>
-              </select>
-            </div>
-            <div class="col-md-2">
-              <label class="form-label">Avance %</label>
-              <input type="number" class="form-control" min="0" max="100" [(ngModel)]="followUpForm.progressPercent">
-            </div>
+              <div class="col-md-8">
+                <label class="form-label form-label-sm">Título del riesgo</label>
+                <input type="text" class="form-control form-control-sm" [(ngModel)]="form.title"
+                       placeholder="Ej: Retraso por liberación de ingeniería">
+              </div>
+              <div class="col-md-4">
+                <label class="form-label form-label-sm">Alcance</label>
+                <select class="form-select form-select-sm" [(ngModel)]="form.scope" (ngModelChange)="onScopeChanged()">
+                  <option value="project">Proyecto</option>
+                  <option value="wbs">Entregable / WBS</option>
+                  <option value="task">Actividad</option>
+                </select>
+              </div>
 
-            <div class="col-12 d-flex justify-content-end">
-              <div class="d-flex gap-2">
+              <!-- ── Catálogo de Actividades ── -->
+              <div class="col-12" *ngIf="form.scope === 'task'">
+                <label class="form-label form-label-sm fw-semibold">
+                  <i class="bi bi-list-task me-1"></i> Actividad del Programa de Trabajo
+                  <span *ngIf="isLoadingActivities" class="ms-1 spinner-border spinner-border-sm"></span>
+                  <span *ngIf="activityOptions.length" class="ms-1 badge bg-secondary rounded-pill">
+                    {{ activityOptions.length }}
+                  </span>
+                </label>
+                <select class="form-select form-select-sm" [(ngModel)]="form.conceptId"
+                        (ngModelChange)="onActivityChanged()"
+                        [disabled]="isLoadingActivities || !activityOptions.length">
+                  <option [ngValue]="null">— Seleccionar actividad —</option>
+                  <option *ngFor="let a of activityOptions" [ngValue]="a.id">{{ a.name }}</option>
+                </select>
+                <div *ngIf="!isLoadingActivities && !activityOptions.length" class="text-warning small mt-1">
+                  <i class="bi bi-exclamation-triangle me-1"></i>
+                  Sin actividades. Importa el programa en "Programa de Trabajo".
+                </div>
+              </div>
+
+              <div class="col-12" *ngIf="form.scope === 'task' && form.conceptName">
+                <div class="rounded-3 border bg-light px-3 py-2 small">
+                  <span class="text-muted">Actividad:</span>
+                  <span class="fw-semibold ms-2">{{ form.conceptName }}</span>
+                </div>
+              </div>
+
+              <div class="col-12">
+                <label class="form-label form-label-sm">Descripción</label>
+                <textarea class="form-control form-control-sm" rows="2" [(ngModel)]="form.description"
+                          placeholder="Describe el riesgo de forma clara y breve"></textarea>
+              </div>
+
+              <div class="col-md-6">
+                <label class="form-label form-label-sm">Causa</label>
+                <textarea class="form-control form-control-sm" rows="2" [(ngModel)]="form.cause"
+                          placeholder="Origen o disparador del riesgo"></textarea>
+              </div>
+              <div class="col-md-6">
+                <label class="form-label form-label-sm">Consecuencia</label>
+                <textarea class="form-control form-control-sm" rows="2" [(ngModel)]="form.consequence"
+                          placeholder="Impacto esperado en el proyecto"></textarea>
+              </div>
+
+              <div class="col-md-4">
+                <label class="form-label form-label-sm">Probabilidad (1-5)</label>
+                <input type="number" class="form-control form-control-sm" min="1" max="5" [(ngModel)]="form.probability">
+              </div>
+              <div class="col-md-4">
+                <label class="form-label form-label-sm">Impacto tiempo (días)</label>
+                <input type="number" class="form-control form-control-sm" min="0" [(ngModel)]="form.impactTimeDays">
+              </div>
+              <div class="col-md-4">
+                <label class="form-label form-label-sm">Impacto costo (MXN)</label>
+                <input type="number" class="form-control form-control-sm" min="0" [(ngModel)]="form.impactCost">
+              </div>
+
+              <div class="col-md-4">
+                <label class="form-label form-label-sm">Criticidad</label>
+                <input type="text" class="form-control form-control-sm" [value]="currentCriticalityPreview" readonly>
+              </div>
+              <div class="col-md-4">
+                <label class="form-label form-label-sm">Semáforo</label>
+                <div class="pt-1">
+                  <span class="badge fs-6" [ngClass]="getTrafficLightClass(currentTrafficLightPreview)">
+                    {{ currentTrafficLightPreview }}
+                  </span>
+                </div>
+              </div>
+              <div class="col-md-4">
+                <label class="form-label form-label-sm">Fecha compromiso</label>
+                <input type="date" class="form-control form-control-sm" [(ngModel)]="form.dueDate">
+              </div>
+
+              <div class="col-md-5">
+                <label class="form-label form-label-sm">Responsable</label>
+                <input type="text" class="form-control form-control-sm" [(ngModel)]="form.responsible"
+                       placeholder="Nombre del responsable">
+              </div>
+              <div class="col-md-7">
+                <label class="form-label form-label-sm">Plan de respuesta</label>
+                <textarea class="form-control form-control-sm" rows="2" [(ngModel)]="form.responsePlan"
+                          placeholder="Acciones de mitigación o respuesta"></textarea>
+              </div>
+
+              <div class="col-12">
+                <label class="form-label form-label-sm">Notas / Seguimiento</label>
+                <textarea class="form-control form-control-sm" rows="2" [(ngModel)]="form.notes"
+                          placeholder="Observaciones, acuerdos, bitácora corta"></textarea>
+              </div>
+
+              <!-- Seguimientos -->
+              <div class="col-12">
+                <hr class="my-2">
+                <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-2">
+                  <span class="fw-semibold small">Seguimientos PMO</span>
+                  <small class="text-muted" *ngIf="form.updatedAt">
+                    Última actualización: {{ form.updatedAt | date:'dd/MM/yyyy HH:mm' }}
+                  </small>
+                </div>
+              </div>
+
+              <div class="col-md-7">
+                <label class="form-label form-label-sm">Comentario</label>
+                <textarea class="form-control form-control-sm" rows="2" [(ngModel)]="followUpForm.comment"
+                          placeholder="Avance, bloqueo o acuerdo"></textarea>
+              </div>
+              <div class="col-md-3">
+                <label class="form-label form-label-sm">Nuevo estado</label>
+                <select class="form-select form-select-sm" [(ngModel)]="followUpForm.newStatus">
+                  <option value="">Conservar actual</option>
+                  <option *ngFor="let s of statusOptions" [value]="s">{{ s }}</option>
+                </select>
+              </div>
+              <div class="col-md-2">
+                <label class="form-label form-label-sm">Avance %</label>
+                <input type="number" class="form-control form-control-sm" min="0" max="100"
+                       [(ngModel)]="followUpForm.progressPercent">
+              </div>
+
+              <div class="col-12 d-flex justify-content-end gap-2">
                 <button class="btn btn-sm btn-outline-secondary" *ngIf="followUpForm.id" (click)="cancelFollowUpEdit()">
-                  <i class="bi bi-x-circle me-1"></i> Cancelar edición
+                  <i class="bi bi-x-circle me-1"></i> Cancelar
                 </button>
-                <button class="btn btn-sm btn-outline-primary" (click)="saveFollowUp()" [disabled]="isSavingFollowUp || !form.id">
-                  <span *ngIf="isSavingFollowUp" class="spinner-border spinner-border-sm me-2"></span>
-                  <i *ngIf="!isSavingFollowUp" class="bi me-1" [ngClass]="followUpForm.id ? 'bi-pencil-square' : 'bi-journal-plus'"></i>
+                <button class="btn btn-sm btn-outline-primary" (click)="saveFollowUp()"
+                        [disabled]="isSavingFollowUp || !form.id">
+                  <span *ngIf="isSavingFollowUp" class="spinner-border spinner-border-sm me-1"></span>
+                  <i *ngIf="!isSavingFollowUp" class="bi me-1"
+                     [ngClass]="followUpForm.id ? 'bi-pencil-square' : 'bi-journal-plus'"></i>
                   {{ followUpForm.id ? 'Actualizar seguimiento' : 'Agregar seguimiento' }}
                 </button>
               </div>
-            </div>
 
-            <div class="col-12">
-              <div class="border rounded-3 p-3 bg-light-subtle" *ngIf="form.followUps?.length; else emptyFollowUps">
-                <div class="d-flex flex-column gap-3">
-                  <div class="border-bottom pb-3" *ngFor="let followUp of form.followUps; let last = last" [class.border-0]="last" [class.pb-0]="last">
-                    <div class="d-flex justify-content-between align-items-start gap-3 flex-wrap">
-                      <div>
-                        <div class="fw-semibold">{{ followUp.createdBy || 'Sistema PMO' }}</div>
-                        <small class="text-muted">{{ followUp.createdAt | date:'dd/MM/yyyy HH:mm' }}</small>
-                      </div>
-                      <div class="text-end">
-                        <span class="badge text-bg-secondary me-2" *ngIf="followUp.previousStatus">{{ followUp.previousStatus }}</span>
-                        <i class="bi bi-arrow-right text-muted me-2" *ngIf="followUp.previousStatus || followUp.newStatus"></i>
-                        <span class="badge text-bg-primary" *ngIf="followUp.newStatus">{{ followUp.newStatus }}</span>
-                        <div class="small text-muted mt-1" *ngIf="followUp.progressPercent != null">Avance: {{ followUp.progressPercent }}%</div>
-                        <div class="d-flex justify-content-end gap-2 mt-2">
-                          <button class="btn btn-sm btn-outline-secondary" (click)="startEditFollowUp(followUp)">
-                            <i class="bi bi-pencil"></i>
-                          </button>
-                          <button class="btn btn-sm btn-outline-danger" (click)="deleteFollowUp(followUp)">
-                            <i class="bi bi-trash"></i>
-                          </button>
+              <div class="col-12">
+                <div class="border rounded-3 p-3 bg-light-subtle" *ngIf="form.followUps?.length; else emptyFollowUps">
+                  <div class="d-flex flex-column gap-3">
+                    <div *ngFor="let fu of form.followUps; let last = last"
+                         class="border-bottom pb-3" [class.border-0]="last" [class.pb-0]="last">
+                      <div class="d-flex justify-content-between align-items-start gap-3 flex-wrap">
+                        <div>
+                          <div class="fw-semibold small">{{ fu.createdBy || 'PMO' }}</div>
+                          <small class="text-muted">{{ fu.createdAt | date:'dd/MM/yyyy HH:mm' }}</small>
+                        </div>
+                        <div class="text-end">
+                          <span class="badge text-bg-secondary me-1" *ngIf="fu.previousStatus">{{ fu.previousStatus }}</span>
+                          <i class="bi bi-arrow-right text-muted me-1" *ngIf="fu.previousStatus || fu.newStatus"></i>
+                          <span class="badge text-bg-primary" *ngIf="fu.newStatus">{{ fu.newStatus }}</span>
+                          <div class="small text-muted mt-1" *ngIf="fu.progressPercent != null">Avance: {{ fu.progressPercent }}%</div>
+                          <div class="d-flex justify-content-end gap-2 mt-1">
+                            <button class="btn btn-sm btn-outline-secondary" (click)="startEditFollowUp(fu)">
+                              <i class="bi bi-pencil"></i>
+                            </button>
+                            <button class="btn btn-sm btn-outline-danger" (click)="deleteFollowUp(fu)">
+                              <i class="bi bi-trash"></i>
+                            </button>
+                          </div>
                         </div>
                       </div>
+                      <div class="mt-1 small">{{ fu.comment }}</div>
                     </div>
-                    <div class="mt-2">{{ followUp.comment }}</div>
                   </div>
                 </div>
+                <ng-template #emptyFollowUps>
+                  <div class="border rounded-3 p-3 text-muted bg-light-subtle small">
+                    Sin seguimientos registrados para este riesgo.
+                  </div>
+                </ng-template>
               </div>
-              <ng-template #emptyFollowUps>
-                <div class="border rounded-3 p-3 text-muted bg-light-subtle">
-                  No hay seguimientos registrados para este riesgo.
-                </div>
-              </ng-template>
+
             </div>
           </div>
         </div>
       </div>
+
     </div>
-  </div>
+  </ng-container>
 </div>
