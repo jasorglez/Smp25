@@ -101,6 +101,14 @@
         <button class="btn btn-sm btn-outline-success" (click)="exportXLS()" [disabled]="!rowData.length">
           <i class="bi bi-file-earmark-excel"></i>
         </button>
+        <!-- Importar Excel masivo -->
+        <button class="btn btn-sm btn-outline-primary" (click)="openImportPanel()"
+                [disabled]="!selectedProject">
+          <i class="bi bi-upload me-1"></i> Importar
+        </button>
+        <!-- Input de archivo oculto -->
+        <input #fileInput type="file" accept=".xlsx,.xls" style="display:none"
+               (change)="onFileSelected($event)">
       </div>
     </div>
   </div>
@@ -193,4 +201,177 @@
     </div>
   </div>
 
+</div><!-- /container-fluid -->
+
+<!-- ══════════════════════════════════════════════════════════════════════════
+     PANEL IMPORTAR EXCEL (slide desde la derecha)
+     ══════════════════════════════════════════════════════════════════════════ -->
+
+<!-- Backdrop -->
+<div *ngIf="showImportPanel"
+     class="position-fixed top-0 start-0 w-100 h-100"
+     style="background:rgba(0,0,0,.45); z-index:1040;"
+     (click)="closeImportPanel()">
 </div>
+
+<!-- Panel lateral -->
+<div class="position-fixed top-0 end-0 h-100 bg-white shadow-lg d-flex flex-column"
+     [style.transform]="showImportPanel ? 'translateX(0)' : 'translateX(100%)'"
+     style="width:680px; z-index:1050; transition:transform .25s ease;">
+
+  <!-- ── Cabecera ── -->
+  <div class="d-flex align-items-center px-3 py-2 border-bottom bg-light">
+    <i class="bi bi-file-earmark-arrow-up-fill fs-5 text-primary me-2"></i>
+    <div>
+      <div class="fw-bold">Importar Recursos desde Excel</div>
+      <div class="text-muted small">Opus · Primavera · MS Project</div>
+    </div>
+    <div class="ms-auto d-flex gap-2 align-items-center">
+      <span *ngIf="activities.length" class="badge bg-secondary">
+        {{ activities.length }} actividades
+      </span>
+      <button class="btn btn-sm btn-outline-success" (click)="downloadTemplate()"
+              title="Descarga la plantilla con ejemplos y la lista de WBS disponibles">
+        <i class="bi bi-file-earmark-arrow-down me-1"></i> Plantilla
+      </button>
+      <button class="btn-close" (click)="closeImportPanel()"></button>
+    </div>
+  </div>
+
+  <!-- ── Cuerpo con scroll ── -->
+  <div class="flex-grow-1 overflow-auto p-3">
+
+    <!-- Paso 1: seleccionar archivo -->
+    <div *ngIf="!importPreview.length && !importDone" class="text-center py-4">
+      <i class="bi bi-cloud-upload fs-1 text-primary opacity-50 d-block mb-3"></i>
+      <p class="mb-3 text-muted small">
+        Selecciona un archivo <strong>.xlsx</strong> con los recursos.<br>
+        Usa la plantilla para el formato correcto, o exporta directamente desde
+        <strong>Opus</strong> o <strong>Primavera</strong>.
+      </p>
+      <button class="btn btn-primary" (click)="triggerFileInput()">
+        <i class="bi bi-folder2-open me-2"></i> Seleccionar archivo Excel…
+      </button>
+      <div class="mt-3 d-flex justify-content-center gap-2 flex-wrap small text-muted">
+        <span class="badge bg-primary bg-opacity-10 text-primary">MO · Personal</span>
+        <span class="badge bg-success bg-opacity-10 text-success">EQ · Equipo</span>
+        <span class="badge bg-warning bg-opacity-10 text-warning-emphasis">MA · Material</span>
+        <span class="badge bg-secondary bg-opacity-10 text-secondary">Subcontrato</span>
+        <span class="badge bg-info bg-opacity-10 text-info-emphasis">Indirecto</span>
+      </div>
+    </div>
+
+    <!-- Paso 2: preview del archivo cargado -->
+    <div *ngIf="importPreview.length && !importDone">
+
+      <!-- Stats rápidas -->
+      <div class="d-flex gap-3 mb-3 align-items-center flex-wrap">
+        <div class="d-flex align-items-center gap-2">
+          <span class="badge bg-success rounded-pill fs-6">{{ importOk }}</span>
+          <span class="small text-success fw-semibold">OK — listos para importar</span>
+        </div>
+        <div class="d-flex align-items-center gap-2" *ngIf="importWarn">
+          <span class="badge bg-warning text-dark rounded-pill fs-6">{{ importWarn }}</span>
+          <span class="small text-warning-emphasis fw-semibold">WBS no encontrado — se omiten</span>
+        </div>
+        <button class="ms-auto btn btn-sm btn-outline-secondary" (click)="triggerFileInput()">
+          <i class="bi bi-folder2-open me-1"></i> Cambiar archivo
+        </button>
+      </div>
+
+      <!-- Tabla de preview -->
+      <div class="table-responsive" style="max-height:calc(100vh - 320px); overflow-y:auto;">
+        <table class="table table-sm table-bordered table-hover mb-0 small">
+          <thead class="table-dark sticky-top">
+            <tr>
+              <th style="width:32px">#</th>
+              <th style="width:70px">WBS</th>
+              <th>Actividad</th>
+              <th style="width:90px">Tipo</th>
+              <th>Descripción</th>
+              <th style="width:50px">Und.</th>
+              <th style="width:70px">C.Plan</th>
+              <th style="width:70px">CU.Plan</th>
+              <th style="width:85px">Costo</th>
+              <th style="width:28px"></th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr *ngFor="let row of importPreview"
+                [class.table-success]="row.status === 'ok'"
+                [class.table-warning]="row.status === 'warn'">
+              <td class="text-center text-muted">{{ row.rowNum }}</td>
+              <td class="fw-semibold">{{ row.wbs }}</td>
+              <td class="text-truncate" style="max-width:150px" [title]="row.actividadLabel">
+                <span *ngIf="row.status === 'ok'" class="text-muted small">
+                  {{ row.actividadLabel }}
+                </span>
+                <span *ngIf="row.status === 'warn'" class="text-warning-emphasis small">
+                  <i class="bi bi-exclamation-triangle me-1"></i>No encontrado
+                </span>
+              </td>
+              <td>
+                <span class="badge"
+                      [class.bg-primary]="row.tipo === 'Personal'"
+                      [class.bg-success]="row.tipo === 'Material'"
+                      [class.bg-warning]="row.tipo === 'Equipo'"
+                      [class.text-dark]="row.tipo === 'Equipo'"
+                      [class.bg-info]="row.tipo === 'Subcontrato'"
+                      [class.bg-secondary]="row.tipo === 'Indirecto'">
+                  {{ row.tipo }}
+                </span>
+              </td>
+              <td class="text-truncate" style="max-width:130px" [title]="row.descripcion">
+                {{ row.descripcion || '—' }}
+              </td>
+              <td>{{ row.unidad }}</td>
+              <td class="text-end">{{ row.cantPlan | number:'1.0-2' }}</td>
+              <td class="text-end">{{ row.costoUnitPlan | number:'1.0-2' }}</td>
+              <td class="text-end fw-semibold">{{ row.costoPlan | number:'1.0-0' }}</td>
+              <td class="text-center">
+                <i class="bi"
+                   [class.bi-check-circle-fill]="row.status === 'ok'"
+                   [class.text-success]="row.status === 'ok'"
+                   [class.bi-exclamation-triangle-fill]="row.status === 'warn'"
+                   [class.text-warning]="row.status === 'warn'"></i>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div><!-- /preview -->
+
+    <!-- Paso 3: éxito -->
+    <div *ngIf="importDone" class="text-center py-5">
+      <i class="bi bi-check-circle-fill text-success fs-1 d-block mb-3"></i>
+      <h5 class="text-success">¡Importación completada!</h5>
+      <p class="text-muted small">
+        Se importaron <strong>{{ importOk }}</strong> recursos correctamente.
+      </p>
+      <div class="d-flex justify-content-center gap-2 mt-3">
+        <button class="btn btn-outline-primary" (click)="openImportPanel()">
+          <i class="bi bi-upload me-1"></i> Importar otro archivo
+        </button>
+        <button class="btn btn-success" (click)="closeImportPanel()">
+          <i class="bi bi-check me-1"></i> Cerrar
+        </button>
+      </div>
+    </div>
+
+  </div><!-- /overflow -->
+
+  <!-- ── Footer: botón importar ── -->
+  <div *ngIf="importPreview.length && !importDone"
+       class="border-top px-3 py-2 d-flex align-items-center gap-2 bg-light">
+    <span class="text-muted small">
+      {{ importOk }} de {{ importPreview.length }} filas se importarán
+    </span>
+    <button class="ms-auto btn btn-primary" (click)="executeImport()"
+            [disabled]="!importOk || isImporting">
+      <span *ngIf="isImporting" class="spinner-border spinner-border-sm me-1"></span>
+      <i *ngIf="!isImporting" class="bi bi-cloud-upload me-1"></i>
+      {{ isImporting ? 'Importando…' : ('Importar ' + importOk + ' recursos') }}
+    </button>
+  </div>
+
+</div><!-- /panel importar -->
