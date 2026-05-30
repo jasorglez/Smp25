@@ -26,6 +26,8 @@ interface ActividadRow {
   id:            number;
   idProject:     number;
   idConvention:  number | null;
+  idContract:    number;          // necesario para PUT completo
+  idTask:        number;          // necesario para PUT completo
   activity:      string;
   description:   string;
   unit:          string;
@@ -883,6 +885,8 @@ export class PmoActividadesComponent implements OnInit {
       id: 0,
       idProject:     this.selectedProject.id,
       idConvention:  this.isSinConvenio ? null : (this.selectedConvention?.id ?? null),
+      idContract:    0,
+      idTask:        0,
       activity: '', description: '', unit: '',
       quantity: null, costMX: null,
       startDate: '', endDate: '',
@@ -997,8 +1001,10 @@ export class PmoActividadesComponent implements OnInit {
   private mapFromApi(r: any): ActividadRow {
     return {
       id:            r.id ?? 0,
-      idProject:     r.id_project ?? r.idProject ?? 0,
+      idProject:     r.id_project    ?? r.idProject    ?? 0,
       idConvention:  r.id_convention ?? r.idConvention ?? null,
+      idContract:    Number(r.id_contract ?? r.idContract ?? 0),
+      idTask:        Number(r.idtask      ?? r.idTask      ?? 0),
       activity:      r.activity ?? '',
       description:   r.text ?? r.description ?? r.especification ?? '',
       unit:          r.measure ?? r.unit ?? '',
@@ -1021,7 +1027,9 @@ export class PmoActividadesComponent implements OnInit {
     return {
       id:           r.id,
       idProject:    r.idProject,
-      id_convention: r.idConvention,
+      idConvention: r.idConvention,   // camelCase — C# mapea idConvention → IdConvention ✓
+      idContract:   r.idContract ?? 0,
+      idTask:       r.idTask     ?? 0,
       activity:     r.activity,
       text:         r.description,
       description:  r.description,
@@ -1029,7 +1037,6 @@ export class PmoActividadesComponent implements OnInit {
       quantity:     r.quantity ?? 0,
       costMX:       r.costMX ?? 0,
       costDLL:      0,
-      salePrice:    0,
       startdate:    r.startDate || null,
       endate:       r.endDate   || null,
       progress:     r.progress ?? 0,
@@ -1081,12 +1088,14 @@ export class PmoActividadesComponent implements OnInit {
     this.calcProgress   = 0;
 
     try {
-      // ── Fase 1: Calcular y guardar hojas (0→50%) — PATCH solo ponderado ──
+      // ── Fase 1: Calcular y guardar hojas (0→50%) — PUT con payload completo ──
       const pondMap = new Map<number, number>();
       for (let i = 0; i < hojas.length; i++) {
         const hoja = hojas[i];
         const pond = Math.round((getMetric(hoja) / total) * 1000) / 1000;
-        await lastValueFrom(this._wpService.patchWorkProgramPonderado(hoja.id, pond));
+        await lastValueFrom(
+          this._wpService.updateWorkProgram(hoja.id, { ...this.mapToApi(hoja), ponderado: pond })
+        );
         hoja.ponderado = pond;
         pondMap.set(hoja.id, pond);
         this.calcProgress = Math.round(((i + 1) / hojas.length) * 50);
@@ -1117,7 +1126,9 @@ export class PmoActividadesComponent implements OnInit {
         const pond     = Math.round(sum * 1000) / 1000;
         pondMap.set(par.id, pond);
         par.ponderado  = pond;
-        await lastValueFrom(this._wpService.patchWorkProgramPonderado(par.id, pond));
+        await lastValueFrom(
+          this._wpService.updateWorkProgram(par.id, { ...this.mapToApi(par), ponderado: pond })
+        );
         this.calcProgress = 50 + Math.round(((i + 1) / agrupadores.length) * 50);
       }
 
