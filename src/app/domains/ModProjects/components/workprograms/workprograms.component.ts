@@ -1493,6 +1493,15 @@ export class WorkprogramsComponent {
     const startDate = this.toIsoString(task.start_date);
     const endDate   = this.toIsoString(task.end_date) ?? startDate;
 
+    console.log('WP-SAVE', {
+      text: task.text,
+      start_date_raw: task.start_date,
+      end_date_raw:   task.end_date,
+      startDate, endDate,
+      idConvention, vigente,
+      idTask: Number(task.id)
+    });
+
     return {
       id: task.idEntry,
       // Number() garantiza que idTask sea número en JSON (gantt puede retornar task.id como string)

@@ -11,6 +11,7 @@ import { SignalsService } from 'app/services/signals.service';
 import { MaterialsService } from 'app/services/materials.service';
 import { RootService } from 'app/services/root.service';
 import { Base64EncodeService } from 'app/services/base64encode.service';
+import { StoragesService } from 'app/services/storages.service';
 import { lastValueFrom } from 'rxjs';
 import Swal from 'sweetalert2';
 import pdfMake from 'pdfmake/build/pdfmake';
@@ -112,6 +113,14 @@ const GRAY  = '#555555';
               <i *ngIf="!isSendingEmail" class="bi bi-envelope me-1"></i>
               {{ isSendingEmail ? 'Enviando...' : 'Enviar por correo' }}
             </button>
+
+            <button class="btn btn-sm btn-outline-success"
+                    (click)="abrirModalWhatsapp()"
+                    [disabled]="isLoadingPdf || isSendingWhatsapp || !_lastDocDef">
+              <span *ngIf="isSendingWhatsapp" class="spinner-border spinner-border-sm me-1"></span>
+              <i *ngIf="!isSendingWhatsapp" class="bi bi-whatsapp me-1"></i>
+              {{ isSendingWhatsapp ? 'Preparando...' : 'Enviar por WhatsApp' }}
+            </button>
           </div>
         </div>
 
@@ -175,6 +184,7 @@ export class DetalleItemsCotizacionComponent implements ICellRendererAngularComp
   private matSvc     = inject(MaterialsService);
   private rootSvc    = inject(RootService);
   private b64Svc     = inject(Base64EncodeService);
+  private storageSvc = inject(StoragesService);
   private sanitizer  = inject(DomSanitizer);
   private signalsSvc = inject(SignalsService);
 
@@ -195,6 +205,7 @@ export class DetalleItemsCotizacionComponent implements ICellRendererAngularComp
   pdfUrl: SafeResourceUrl | null = null;
   isLoadingPdf   = false;
   isSendingEmail = false;
+  isSendingWhatsapp = false;
   private originalPdfUrl: string | null = null;
   _lastDocDef: any = null;   // ← guarda el docDef para download en tablet
 
@@ -703,6 +714,74 @@ export class DetalleItemsCotizacionComponent implements ICellRendererAngularComp
     }
   }
 
+  async abrirModalWhatsapp() {
+    const result = await Swal.fire({
+      title: 'Enviar por WhatsApp',
+      input: 'text',
+      inputLabel: 'Número destino',
+      inputPlaceholder: 'Ejemplo: 525512345678',
+      inputValue: '',
+      showCancelButton: true,
+      confirmButtonText: 'Preparar WhatsApp',
+      cancelButtonText: 'Cancelar',
+      inputAttributes: {
+        autocapitalize: 'off',
+        autocorrect: 'off',
+      },
+      inputValidator: (value) => {
+        const normalized = this.normalizeWhatsappNumber(value);
+        if (!normalized) {
+          return 'Escribe un número válido con lada, por ejemplo 525512345678.';
+        }
+        return null;
+      },
+      footer: 'Escribe el número con clave de país. Si capturas 10 dígitos, se asumirá México (+52).',
+    });
+
+    if (!result.isConfirmed) return;
+    await this.enviarPorWhatsapp(result.value ?? '');
+  }
+
+  async enviarPorWhatsapp(rawPhone: string) {
+    const phone = this.normalizeWhatsappNumber(rawPhone);
+    if (!phone) return;
+    if (!this._lastDocDef) {
+      Swal.fire('Error', 'Primero genera el PDF de la cotización.', 'error');
+      return;
+    }
+
+    this.isSendingWhatsapp = true;
+    try {
+      const pdfBlob = await this.getPdfBlob();
+      const fileName = `${this.cotizacion?.numCotizacion ?? 'Cotizacion'}.pdf`;
+      const pdfFile = new File([pdfBlob], fileName, { type: 'application/pdf' });
+      const pdfUrl = await this.storageSvc.uploadFile(
+        pdfFile,
+        `pdf/cotizaciones/${Date.now()}_${fileName}`
+      );
+
+      const prospecto = this.cotizacion?.empresaProspecto || this.cotizacion?.nombreProspecto || 'cliente';
+      const mensaje =
+        `Hola, te comparto la cotización ${this.cotizacion?.numCotizacion ?? ''} para ${prospecto}. ` +
+        `Puedes descargar el PDF aquí: ${pdfUrl}`;
+
+      window.open(`https://wa.me/${phone}?text=${encodeURIComponent(mensaje)}`, '_blank', 'noopener,noreferrer');
+
+      Swal.fire({
+        icon: 'success',
+        title: 'WhatsApp preparado',
+        text: `Se abrió WhatsApp para ${phone}.`,
+        timer: 2200,
+        showConfirmButton: false,
+      });
+    } catch (e) {
+      console.error('[Cotizaciones] Error preparando WhatsApp:', e);
+      Swal.fire('Error', 'No se pudo preparar el envío por WhatsApp.', 'error');
+    } finally {
+      this.isSendingWhatsapp = false;
+    }
+  }
+
   async generarPdf() {
     if (!this.cotizacion?.id) return;
     this.isLoadingPdf = true;
@@ -884,6 +963,24 @@ export class DetalleItemsCotizacionComponent implements ICellRendererAngularComp
   }
 
   // ── Helpers ───────────────────────────────────────────────────────────────
+
+  private getPdfBlob(): Promise<Blob> {
+    return new Promise((resolve, reject) => {
+      if (!this._lastDocDef) {
+        reject(new Error('No hay PDF generado'));
+        return;
+      }
+      pdfMake.createPdf(this._lastDocDef).getBlob((blob: Blob) => resolve(blob));
+    });
+  }
+
+  private normalizeWhatsappNumber(value: string): string | null {
+    const digits = String(value ?? '').replace(/\D/g, '');
+    if (!digits) return null;
+    if (digits.length === 10) return `52${digits}`;
+    if (digits.length < 11 || digits.length > 15) return null;
+    return digits;
+  }
 
   private updateCountInParent() {
     if (this.params?.node && this.params?.api && !this.params.api.isDestroyed()) {
