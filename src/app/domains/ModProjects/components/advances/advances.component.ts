@@ -4,6 +4,8 @@ import { ColDef, GridApi, GridReadyEvent } from 'ag-grid-community';
 import { AdvanceService } from 'app/services/advance.service';
 import { SignalsService } from 'app/services/signals.service';
 import { WorkprogramsService } from 'app/services/workprograms.service';
+import { WorkprogramCalendarService, WorkprogramCalendar } from 'app/services/workprogram-calendar.service';
+import { WorkprogramDailyService, DailySummary } from 'app/services/workprogram-daily.service';
 import { alerts } from 'app/helpers/alerts';
 import { concat, lastValueFrom, toArray } from 'rxjs';
 import { CommonModule } from '@angular/common';
@@ -17,45 +19,32 @@ import { ChartComponent } from 'ng-apexcharts';
 import * as XLSX from 'xlsx';
 
 export type ChartOptions = {
-  series: ApexAxisChartSeries;
-  chart: ApexChart;
-  xaxis: ApexXAxis;
-  title: ApexTitleSubtitle;
-  dataLabels: ApexDataLabels;
-  plotOptions: ApexPlotOptions;
-  yaxis: ApexYAxis;
-  colors: string[];
-  fill: ApexFill;
-  tooltip: ApexTooltip;
-  markers: ApexMarkers;
-  stroke: ApexStroke;
-  grid: ApexGrid;
-  legend: ApexLegend;
+  series: ApexAxisChartSeries; chart: ApexChart; xaxis: ApexXAxis;
+  title: ApexTitleSubtitle; dataLabels: ApexDataLabels; plotOptions: ApexPlotOptions;
+  yaxis: ApexYAxis; colors: string[]; fill: ApexFill; tooltip: ApexTooltip;
+  markers: ApexMarkers; stroke: ApexStroke; grid: ApexGrid; legend: ApexLegend;
 };
 
 interface ContractAdvance {
-  id?: string | number;
-  __isNew?: boolean;
-  __modified?: boolean;
-  accumulateProgram?: number;
-  accumulatePhysical?: number;
-  date: string;
-  physicalAdvanced: number;
-  programAdvanced: number;
-  idContract?: number;
+  id?: string | number; __isNew?: boolean; __modified?: boolean;
+  accumulateProgram?: number; accumulatePhysical?: number;
+  date: string; physicalAdvanced: number; programAdvanced: number; idContract?: number;
 }
 
 interface ActiveTask {
-  idEntry: number;
-  activity: string;
-  description: string;
-  ponderado: number;
-  progressActual: number;  // 0-100
-  avanceHoy: number;       // editable — avance INCREMENTAL hoy (0-100)
-  progressNuevo: number;   // read-only = progressActual + avanceHoy (cap 100)
-  startDate: string;
-  endDate: string;
-  __modified?: boolean;
+  idEntry: number; activity: string; description: string;
+  ponderado: number; progressActual: number; avanceHoy: number;
+  progressNuevo: number; startDate: string; endDate: string; __modified?: boolean;
+}
+
+/** Fila combinada para la Vista Diaria */
+interface DailyRow {
+  date:        string;
+  dayName:     string;   // Lun / Mar / Mié ...
+  programado:  number;   // de workprogram_daily (ponderadoDia acumulado)
+  real:        number;   // de advanced (physicalAdvanced del día)
+  numConceptos: number;
+  pctBar:      number;   // real / programado * 100 (para color semáforo)
 }
 
 @Component({
@@ -67,27 +56,29 @@ interface ActiveTask {
 })
 export class AdvancesComponent implements OnInit, OnChanges {
 
-  // Exponer Math al template
   readonly Math = Math;
 
   // ─── Servicios ──────────────────────────────────────────────────────────────
-  private _signalsService      = inject(SignalsService);
-  private _advancesService     = inject(AdvanceService);
+  private _signalsService    = inject(SignalsService);
+  private _advancesService   = inject(AdvanceService);
   private _workprogramsService = inject(WorkprogramsService);
+  private _calendarService   = inject(WorkprogramCalendarService);
+  private _dailyService      = inject(WorkprogramDailyService);
+
+  // ─── IDs del scope activo ────────────────────────────────────────────────────
+  curretnContractSelected: number | null = null;
+  idProject:    number | null = null;
+  idConvention: number | null = null;
 
   // ─── Grid Curva S ───────────────────────────────────────────────────────────
   private gridApi: GridApi;
-  datosMensuales: ContractAdvance[]  = [];
-  monthlyTableData: any[]             = [];
-  rowData: ContractAdvance[]          = [];
+  datosMensuales: ContractAdvance[] = [];
+  monthlyTableData: any[]           = [];
+  rowData: ContractAdvance[]        = [];
   selectedRowData: ContractAdvance | null = null;
   notSavedChanges  = false;
   newlyAddedRows: string[] = [];
   private tempIdCounter = 0;
-
-  curretnContractSelected: number | null = null;
-  idProject: number | null = null;
-  idConvention: number | null = null;
 
   private readonly ALL_MONTHS = [
     'ENERO','FEBRERO','MARZO','ABRIL','MAYO','JUNIO',
@@ -98,7 +89,7 @@ export class AdvancesComponent implements OnInit, OnChanges {
   @ViewChild('chart') chart: ChartComponent;
   public chartOptions: Partial<ChartOptions> = { series: [], chart: { type: 'line', height: 350 } };
 
-  // ─── Punto 6 — Captura Diaria por Tarea ────────────────────────────────────
+  // ─── Captura Diaria (Punto 6) ───────────────────────────────────────────────
   showDailyCapture    = false;
   dailyCaptureDate    = new Date().toISOString().split('T')[0];
   activeTasksData: ActiveTask[]  = [];
@@ -106,9 +97,31 @@ export class AdvancesComponent implements OnInit, OnChanges {
   isSavingDailyAdvance = false;
   isLoadingTasks       = false;
   totalPhysicalAdvanceHoy = 0;
-  programAdvanceHoy   = 0;   // el usuario puede indicar el programado del día
+  programAdvanceHoy       = 0;
 
-  // ─── Column defs: grid de avances (Curva S) ─────────────────────────────────
+  // ─── ⚙️ Panel Engranaje Calendario ─────────────────────────────────────────
+  showCalendarPanel  = false;
+  isSavingCalendar   = false;
+  calendarConfig: WorkprogramCalendar = {
+    idProject: 0, lunes: true, martes: true, miercoles: true,
+    jueves: true, viernes: true, sabado: false, domingo: false
+  };
+
+  // ─── 📊 Calcular Distribución ───────────────────────────────────────────────
+  isGenerating        = false;
+  generateResult: any = null;
+
+  // ─── 📅 Vista Diaria ────────────────────────────────────────────────────────
+  showDailyView    = false;
+  isLoadingDaily   = false;
+  dailyRows: DailyRow[] = [];
+  dailyViewFrom    = new Date(new Date().getFullYear(), new Date().getMonth(), 1)
+                       .toISOString().split('T')[0];
+  dailyViewTo      = new Date().toISOString().split('T')[0];
+
+  private readonly DAY_NAMES = ['Dom','Lun','Mar','Mié','Jue','Vie','Sáb'];
+
+  // ─── Column defs Curva S ────────────────────────────────────────────────────
   public columnDefs: ColDef[] = [
     {
       field: 'date', headerName: 'Fecha', width: 100, editable: true,
@@ -121,36 +134,28 @@ export class AdvancesComponent implements OnInit, OnChanges {
         return (d && m && y) ? `${d}/${m}/${y.substring(2)}` : p.value;
       }
     },
-    {
-      field: 'programAdvanced', headerName: 'Prog.(%)', width: 85, editable: true,
-      valueFormatter: p => p.value != null ? Number(p.value).toFixed(2) : ''
-    },
-    {
-      field: 'physicalAdvanced', headerName: 'Físico(%)', width: 85, editable: true,
-      valueFormatter: p => p.value != null ? Number(p.value).toFixed(2) : ''
-    },
-    {
-      field: 'accumulateProgram', headerName: 'Acum.Prog.', width: 95, editable: false,
+    { field: 'programAdvanced',  headerName: 'Prog.(%)',  width: 85, editable: true,
+      valueFormatter: p => p.value != null ? Number(p.value).toFixed(2) : '' },
+    { field: 'physicalAdvanced', headerName: 'Físico(%)', width: 85, editable: true,
+      valueFormatter: p => p.value != null ? Number(p.value).toFixed(2) : '' },
+    { field: 'accumulateProgram',  headerName: 'Acum.Prog.',  width: 95, editable: false,
       cellStyle: { background: '#f8f9fa', color: '#495057' },
-      valueFormatter: p => p.value != null ? Number(p.value).toFixed(2) + '%' : ''
-    },
-    {
-      field: 'accumulatePhysical', headerName: 'Acum.Fís.', width: 95, editable: false,
+      valueFormatter: p => p.value != null ? Number(p.value).toFixed(2) + '%' : '' },
+    { field: 'accumulatePhysical', headerName: 'Acum.Fís.', width: 95, editable: false,
       cellStyle: { background: '#f8f9fa', color: '#495057' },
-      valueFormatter: p => p.value != null ? Number(p.value).toFixed(2) + '%' : ''
-    },
+      valueFormatter: p => p.value != null ? Number(p.value).toFixed(2) + '%' : '' },
   ];
 
-  // ─── Column defs: grid de tareas activas / retrasadas ───────────────────────
+  // ─── Column defs tareas activas ─────────────────────────────────────────────
   public activeTasksColDefs: ColDef[] = [
-    { field: 'activity',       headerName: 'Actividad',      width: 90  },
-    { field: 'description',    headerName: 'Descripción',     flex: 1,  minWidth: 180 },
-    { field: 'ponderado',      headerName: 'Pond.(%)',        width: 80, valueFormatter: p => p.value != null ? Number(p.value).toFixed(3) : '—' },
-    { field: 'progressActual', headerName: 'Prog.Act.(%)',    width: 100, valueFormatter: p => p.value != null ? Number(p.value).toFixed(1) + '%' : '0%' },
+    { field: 'activity',       headerName: 'Actividad',   width: 90  },
+    { field: 'description',    headerName: 'Descripción', flex: 1, minWidth: 180 },
+    { field: 'ponderado',      headerName: 'Pond.(%)',    width: 80,
+      valueFormatter: p => p.value != null ? Number(p.value).toFixed(3) : '—' },
+    { field: 'progressActual', headerName: 'Prog.Act.(%)', width: 100,
+      valueFormatter: p => p.value != null ? Number(p.value).toFixed(1) + '%' : '0%' },
     {
-      field: 'avanceHoy',
-      headerName: 'Avance Hoy (%)',
-      width: 120, editable: true,
+      field: 'avanceHoy', headerName: 'Avance Hoy (%)', width: 120, editable: true,
       cellStyle: { background: '#fff9e6', border: '1px solid #e67e22' },
       valueFormatter: p => p.value != null ? Number(p.value).toFixed(1) : '0.0',
       valueSetter: p => {
@@ -162,21 +167,16 @@ export class AdvancesComponent implements OnInit, OnChanges {
         return true;
       }
     },
-    {
-      field: 'progressNuevo', headerName: 'Prog.Nuevo(%)', width: 110,
-      editable: false,
+    { field: 'progressNuevo', headerName: 'Prog.Nuevo(%)', width: 110, editable: false,
       cellStyle: { background: '#f1f7ff', color: '#0e4491', fontWeight: '600' },
-      valueFormatter: p => p.value != null ? Number(p.value).toFixed(1) + '%' : '—'
-    },
+      valueFormatter: p => p.value != null ? Number(p.value).toFixed(1) + '%' : '—' },
     { field: 'startDate', headerName: 'Inicio', width: 90 },
     { field: 'endDate',   headerName: 'Fin',    width: 90 },
   ];
 
   // ─── Grid options ────────────────────────────────────────────────────────────
   public gridOptions: any = {
-    headerHeight: 28,
-    rowHeight: 26,
-    rowSelection: 'single',
+    headerHeight: 28, rowHeight: 26, rowSelection: 'single',
     stopEditingWhenCellsLoseFocus: true,
     getRowClass: (params: any) => params.node.isSelected() ? 'selected-row' : '',
     rowClassRules: { 'new-row-highlight': (params: any) => !!params.data?.__isNew },
@@ -201,27 +201,30 @@ export class AdvancesComponent implements OnInit, OnChanges {
   // ─── Constructor ─────────────────────────────────────────────────────────────
   constructor() {
     effect(() => {
-      this.curretnContractSelected  = this._signalsService.getContractSelectedBySidebar()();
-      this.idProject                = this._signalsService.getProjectSelectedBySidebar()();
-      const vigente                 = this._signalsService.getConventionVigente()();
-      this.idConvention             = vigente?.id ?? null;
+      this.curretnContractSelected = this._signalsService.getContractSelectedBySidebar()();
+      this.idProject               = this._signalsService.getProjectSelectedBySidebar()();
+      const vigente                = this._signalsService.getConventionVigente()();
+      this.idConvention            = vigente?.id ?? null;
       this.obtenerDatos();
+      // Reset paneles al cambiar proyecto
+      this.showCalendarPanel = false;
+      this.showDailyView     = false;
+      this.generateResult    = null;
+      this.dailyRows         = [];
     });
   }
 
   ngOnInit(): void {}
   ngOnChanges(_: SimpleChanges): void {}
-
   onGridReady(params: GridReadyEvent): void { this.gridApi = params.api; }
 
-  // ─── Cambio de celda → recalcular acumulados en pantalla ────────────────────
+  // ─── Cambio de celda → recalcular acumulados ────────────────────────────────
   onCellValueChanged(_event: any): void {
     this.notSavedChanges = true;
     _event.data.__modified = true;
     this.recalcAccumulationInGrid();
   }
 
-  /** Recalcula accumulateProgram / accumulatePhysical en el grid (sort por fecha) */
   private recalcAccumulationInGrid(): void {
     const rows: ContractAdvance[] = [];
     this.gridApi?.forEachNode(n => rows.push(n.data));
@@ -236,18 +239,14 @@ export class AdvancesComponent implements OnInit, OnChanges {
     this.gridApi?.refreshCells({ force: true });
   }
 
-  // ─── Agregar fila ────────────────────────────────────────────────────────────
+  // ─── CRUD Curva S ────────────────────────────────────────────────────────────
   addRow(): void {
     const tempId = `temp_${this.tempIdCounter++}`;
     const newItem: ContractAdvance = {
-      id:               tempId,
-      date:             new Date().toISOString().split('T')[0],
-      idContract:       this.curretnContractSelected ?? 0,
-      physicalAdvanced: 0,
-      programAdvanced:  0,
-      accumulateProgram: 0,
-      accumulatePhysical: 0,
-      __isNew: true,
+      id: tempId, date: new Date().toISOString().split('T')[0],
+      idContract: this.curretnContractSelected ?? 0,
+      physicalAdvanced: 0, programAdvanced: 0,
+      accumulateProgram: 0, accumulatePhysical: 0, __isNew: true,
     };
     this.rowData = [newItem, ...this.rowData];
     this.newlyAddedRows.push(tempId);
@@ -255,25 +254,18 @@ export class AdvancesComponent implements OnInit, OnChanges {
     setTimeout(() => this.gridApi?.startEditingCell({ rowIndex: 0, colKey: 'date' }), 50);
   }
 
-  // ─── Eliminar registro ───────────────────────────────────────────────────────
   async deleteEntry(): Promise<void> {
     if (!this.selectedRowData) {
-      alerts.basicAlert('Sin selección', 'Haz clic en una fila para seleccionarla.', 'warning');
-      return;
+      alerts.basicAlert('Sin selección', 'Haz clic en una fila para seleccionarla.', 'warning'); return;
     }
     const id = this.selectedRowData.id;
-    // Fila nueva aún no guardada
     if (id && String(id).startsWith('temp_')) {
       this.rowData = this.rowData.filter(r => r.id !== id);
       this.selectedRowData = null;
       this.notSavedChanges = this.rowData.some(r => r.__isNew || r.__modified);
       return;
     }
-    const result = await alerts.confirmAlert(
-      '¿Eliminar registro?',
-      '¿Deseas eliminar este registro de avance de la Curva S?',
-      'warning', 'Sí, eliminar'
-    );
+    const result = await alerts.confirmAlert('¿Eliminar?', '¿Eliminar este registro de la Curva S?', 'warning', 'Sí, eliminar');
     if (!result.isConfirmed) return;
     try {
       await lastValueFrom(this._advancesService.deleteAdvance(Number(id)));
@@ -281,17 +273,13 @@ export class AdvancesComponent implements OnInit, OnChanges {
       this.selectedRowData = null;
       this.obtenerDatos();
     } catch {
-      alerts.basicAlert('Error', 'No se pudo eliminar el registro.', 'error');
+      alerts.basicAlert('Error', 'No se pudo eliminar.', 'error');
     }
   }
 
-  // ─── Guardar cambios ─────────────────────────────────────────────────────────
   async saveChanges(): Promise<void> {
     const valid = this.rowData.every(r => r.date && !isNaN(Number(r.programAdvanced)) && !isNaN(Number(r.physicalAdvanced)));
-    if (!valid) {
-      alerts.basicAlert('Campos incompletos', 'Verifica fecha y valores numéricos.', 'error');
-      return;
-    }
+    if (!valid) { alerts.basicAlert('Campos incompletos', 'Verifica fecha y valores.', 'error'); return; }
     const newRows = this.rowData.filter(r => r.__isNew);
     const modRows = this.rowData.filter(r => r.__modified && !r.__isNew);
     const addObs  = newRows.map(r => this._advancesService.addAdvance(this.cleanDataForServer(r)));
@@ -302,19 +290,16 @@ export class AdvancesComponent implements OnInit, OnChanges {
       this.notSavedChanges = false;
       this.newlyAddedRows  = [];
       this.obtenerDatos();
-    } catch {
-      alerts.basicAlert('Error', 'Ocurrió un error al guardar.', 'error');
-    }
+    } catch { alerts.basicAlert('Error', 'Ocurrió un error al guardar.', 'error'); }
   }
 
   revert(): void { this.obtenerDatos(); this.notSavedChanges = false; }
 
-  // ─── Cargar y recalcular datos (FIX: sort por fecha antes de acumulados) ────
+  // ─── Cargar Curva S ──────────────────────────────────────────────────────────
   obtenerDatos(): void {
     if (!this.curretnContractSelected) return;
     this._advancesService.getAdvancesByContract(this.curretnContractSelected, 'Contract').subscribe({
       next: (advances: any) => {
-        // SORT ASC por fecha antes de recalcular acumulados
         const sorted = (advances as ContractAdvance[]).sort(
           (a, b) => new Date(a.date).getTime() - new Date(b.date).getTime()
         );
@@ -323,34 +308,32 @@ export class AdvancesComponent implements OnInit, OnChanges {
           acumProg += Number(adv.programAdvanced  ?? 0);
           acumFis  += Number(adv.physicalAdvanced ?? 0);
           return {
-            id:                Number(adv.id),
-            date:              String(adv.date).split('T')[0],
-            programAdvanced:   Number(adv.programAdvanced),
-            physicalAdvanced:  Number(adv.physicalAdvanced),
-            accumulateProgram: Math.round(acumProg * 1000) / 1000,
-            accumulatePhysical: Math.round(acumFis * 1000) / 1000,
-            idContract:        adv.idContract,
+            id: Number(adv.id),
+            date: String(adv.date).split('T')[0],
+            programAdvanced:    Number(adv.programAdvanced),
+            physicalAdvanced:   Number(adv.physicalAdvanced),
+            accumulateProgram:  Math.round(acumProg * 1000) / 1000,
+            accumulatePhysical: Math.round(acumFis  * 1000) / 1000,
+            idContract: adv.idContract,
           };
         });
         this.rowData = [...this.datosMensuales];
         this.actualizarDatos();
+        // Si la vista diaria está abierta, refresca también
+        if (this.showDailyView) this.loadDailyView();
       },
       error: () => alerts.basicAlert('Error', 'Error al cargar los avances.', 'error')
     });
   }
 
-  // ─── Actualizar Curva S y tabla mensual ─────────────────────────────────────
   private actualizarDatos(): void {
-    // ── Eje X con FECHAS REALES (FIX: ya no usa 12 meses fijos) ──────────────
-    const sorted = [...this.datosMensuales].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
-
-    const xCategories   = sorted.map(d => {
+    const sorted       = [...this.datosMensuales].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+    const xCategories  = sorted.map(d => {
       const dt = new Date(d.date + 'T00:00:00');
       return `${dt.getDate().toString().padStart(2,'0')}/${(dt.getMonth()+1).toString().padStart(2,'0')}/${dt.getFullYear().toString().substring(2)}`;
     });
     const programSeries  = sorted.map(d => Math.round((d.accumulateProgram  ?? 0) * 100) / 100);
     const physicalSeries = sorted.map(d => Math.round((d.accumulatePhysical ?? 0) * 100) / 100);
-
     const maxAcum = Math.max(...programSeries, ...physicalSeries, 10);
     const yMax    = Math.min(110, Math.ceil(maxAcum / 10) * 10 + 10);
 
@@ -362,13 +345,9 @@ export class AdvancesComponent implements OnInit, OnChanges {
         { name: 'Real (barra)',           data: physicalSeries, type: 'column' },
       ],
       chart: {
-        height: 340,
-        type: 'line' as any,
-        stacked: false,
-        fontFamily: "'Segoe UI', sans-serif",
-        toolbar: { show: true },
-        background: '#fff',
-        animations: { enabled: true, speed: 600 }
+        height: 340, type: 'line' as any, stacked: false,
+        fontFamily: "'Segoe UI', sans-serif", toolbar: { show: true },
+        background: '#fff', animations: { enabled: true, speed: 600 }
       },
       colors: ['#e67e22', '#2980b9', '#f39c12', '#3498db'],
       dataLabels: { enabled: false },
@@ -379,8 +358,7 @@ export class AdvancesComponent implements OnInit, OnChanges {
       stroke: { curve: 'smooth', width: [4, 4, 0, 0], lineCap: 'round' },
       plotOptions: { bar: { columnWidth: '40%', borderRadius: 2 } },
       title: {
-        text: 'Curva S — Avance Programado vs Real',
-        align: 'left',
+        text: 'Curva S — Avance Programado vs Real', align: 'left',
         style: { fontSize: '14px', fontWeight: '700', color: '#1a237e' }
       },
       grid: { show: true, borderColor: '#e8eaf6', strokeDashArray: 3 },
@@ -388,10 +366,7 @@ export class AdvancesComponent implements OnInit, OnChanges {
       xaxis: {
         categories: xCategories,
         tickAmount: Math.min(xCategories.length, 20),
-        labels: {
-          rotate: xCategories.length > 10 ? -45 : 0,
-          style: { colors: '#555', fontSize: '10px' }
-        }
+        labels: { rotate: xCategories.length > 10 ? -45 : 0, style: { colors: '#555', fontSize: '10px' } }
       },
       yaxis: {
         min: 0, max: yMax, tickAmount: 10,
@@ -399,13 +374,9 @@ export class AdvancesComponent implements OnInit, OnChanges {
         labels: { formatter: (v: number) => v.toFixed(0) + '%' }
       },
       legend: { position: 'top', horizontalAlign: 'center', fontSize: '12px' },
-      tooltip: {
-        shared: true, intersect: false,
-        y: { formatter: (v: number) => v != null ? v.toFixed(2) + '%' : '' }
-      }
+      tooltip: { shared: true, intersect: false, y: { formatter: (v: number) => v != null ? v.toFixed(2) + '%' : '' } }
     };
 
-    // ── Tabla mensual por AÑO-MES (FIX: soporta contratos multi-año) ─────────
     const byYearMonth: { [key: string]: ContractAdvance[] } = {};
     this.datosMensuales.forEach(d => {
       const dt  = new Date(d.date + 'T00:00:00');
@@ -425,15 +396,12 @@ export class AdvancesComponent implements OnInit, OnChanges {
       };
     });
 
-    if (this.chart?.updateOptions) {
-      this.chart.updateOptions(this.chartOptions);
-    }
+    if (this.chart?.updateOptions) this.chart.updateOptions(this.chartOptions);
   }
 
   private cleanDataForServer(data: ContractAdvance): any {
     const clean = { ...data };
-    delete clean.__isNew;
-    delete clean.__modified;
+    delete clean.__isNew; delete clean.__modified;
     if (clean.id && String(clean.id).startsWith('temp_')) delete clean.id;
     return clean;
   }
@@ -442,25 +410,16 @@ export class AdvancesComponent implements OnInit, OnChanges {
   importExcel(event: any): void {
     const file = event.target.files[0];
     if (!file) return;
-    const allowedTypes = [
-      'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-      'application/vnd.ms-excel'
-    ];
-    if (!allowedTypes.includes(file.type)) {
-      alerts.basicAlert('Error', 'Selecciona un archivo Excel (.xlsx o .xls).', 'error');
-      return;
-    }
     const reader = new FileReader();
     reader.onload = (e: any) => {
-      const wb        = XLSX.read(new Uint8Array(e.target.result), { type: 'array' });
-      const sheet     = wb.Sheets[wb.SheetNames[0]];
+      const wb    = XLSX.read(new Uint8Array(e.target.result), { type: 'array' });
+      const sheet = wb.Sheets[wb.SheetNames[0]];
       const data: any[] = XLSX.utils.sheet_to_json(sheet, { raw: true });
       const processed = data.map((row: any) => ({
         date:             this.excelDateToISO(Number(row['Fecha'])),
         programAdvanced:  Number(row['Programado'] ?? 0),
         physicalAdvanced: Number(row['Fisico']     ?? 0),
-        idContract:       this.curretnContractSelected,
-        active:           1,
+        idContract: this.curretnContractSelected, active: 1,
       }));
       processed.forEach(item => this._advancesService.addAdvance(item).subscribe());
       setTimeout(() => this.obtenerDatos(), 1200);
@@ -470,166 +429,265 @@ export class AdvancesComponent implements OnInit, OnChanges {
   }
 
   private excelDateToISO(serial: number): string {
-    const date  = new Date((serial - 1) * 86400000);
-    const y     = date.getFullYear();
-    const m     = String(date.getMonth() + 1).padStart(2, '0');
-    const d     = String(date.getDate()).padStart(2, '0');
+    const date = new Date((serial - 1) * 86400000);
+    const y = date.getFullYear();
+    const m = String(date.getMonth() + 1).padStart(2, '0');
+    const d = String(date.getDate()).padStart(2, '0');
     return `${y}-${m}-${d}`;
   }
 
   // ════════════════════════════════════════════════════════════════════════════
-  //  PUNTO 6 — Captura de Avance Diario por Tarea
+  //  ⚙️ PANEL ENGRANAJE — Configuración días laborables
   // ════════════════════════════════════════════════════════════════════════════
 
-  /** Abre / cierra la sección de captura diaria */
-  async openDailyCapture(): Promise<void> {
-    this.showDailyCapture = !this.showDailyCapture;
-    if (this.showDailyCapture) {
-      await this.loadActiveTasks();
+  async openCalendarPanel(): Promise<void> {
+    this.showCalendarPanel = !this.showCalendarPanel;
+    if (!this.showCalendarPanel) return;
+
+    // Intentar cargar config existente
+    try {
+      const cfg = await lastValueFrom(
+        this._calendarService.get(this.idProject!, this.curretnContractSelected, this.idConvention)
+      );
+      this.calendarConfig = { ...cfg };
+    } catch {
+      // 404 = no existe todavía → defaults L-V
+      this.calendarConfig = {
+        idProject:    this.idProject    ?? 0,
+        idContract:   this.curretnContractSelected,
+        idConvention: this.idConvention,
+        lunes: true, martes: true, miercoles: true,
+        jueves: true, viernes: true, sabado: false, domingo: false
+      };
     }
   }
 
-  /** Recargar tareas al cambiar la fecha */
-  async onCaptureDateChange(): Promise<void> {
-    await this.loadActiveTasks();
+  async saveCalendar(): Promise<void> {
+    if (!this.idProject) { alerts.basicAlert('Sin proyecto', 'Selecciona un proyecto.', 'warning'); return; }
+    this.isSavingCalendar = true;
+    try {
+      this.calendarConfig.idProject    = this.idProject;
+      this.calendarConfig.idContract   = this.curretnContractSelected;
+      this.calendarConfig.idConvention = this.idConvention;
+      await lastValueFrom(this._calendarService.save(this.calendarConfig));
+      alerts.basicAlert('✅ Guardado', 'Configuración de días laborables guardada.', 'success');
+      this.showCalendarPanel = false;
+    } catch {
+      alerts.basicAlert('Error', 'No se pudo guardar la configuración.', 'error');
+    } finally {
+      this.isSavingCalendar = false;
+    }
   }
 
-  /** Calcula el total de avance físico del día en tiempo real */
+  get workingDaysCount(): number {
+    return [this.calendarConfig.lunes, this.calendarConfig.martes,
+            this.calendarConfig.miercoles, this.calendarConfig.jueves,
+            this.calendarConfig.viernes, this.calendarConfig.sabado,
+            this.calendarConfig.domingo].filter(Boolean).length;
+  }
+
+  // ════════════════════════════════════════════════════════════════════════════
+  //  📊 CALCULAR DISTRIBUCIÓN DIARIA
+  // ════════════════════════════════════════════════════════════════════════════
+
+  async generateDistribution(): Promise<void> {
+    if (!this.idProject) { alerts.basicAlert('Sin proyecto', 'Selecciona un proyecto.', 'warning'); return; }
+
+    const confirm = await alerts.confirmAlert(
+      '¿Calcular distribución?',
+      'Se borrará la distribución previa y se recalculará desde cero. ¿Continuar?',
+      'question', 'Sí, calcular'
+    );
+    if (!confirm.isConfirmed) return;
+
+    this.isGenerating  = true;
+    this.generateResult = null;
+    try {
+      const res = await lastValueFrom(
+        this._dailyService.generate(this.idProject, this.curretnContractSelected, this.idConvention)
+      );
+      this.generateResult = res;
+      if (res.success) {
+        alerts.basicAlert(
+          '✅ Distribución generada',
+          `${res.conceptosProcesados} conceptos → ${res.filasGeneradas} días laborables calculados.`,
+          'success'
+        );
+        // Auto-abrir vista diaria
+        this.showDailyView = true;
+        await this.loadDailyView();
+      } else {
+        alerts.basicAlert('Sin datos', res.mensaje, 'warning');
+      }
+    } catch {
+      alerts.basicAlert('Error', 'No se pudo calcular la distribución.', 'error');
+    } finally {
+      this.isGenerating = false;
+    }
+  }
+
+  // ════════════════════════════════════════════════════════════════════════════
+  //  📅 VISTA DIARIA — Barras programado vs real
+  // ════════════════════════════════════════════════════════════════════════════
+
+  async toggleDailyView(): Promise<void> {
+    this.showDailyView = !this.showDailyView;
+    if (this.showDailyView) await this.loadDailyView();
+  }
+
+  async loadDailyView(): Promise<void> {
+    if (!this.idProject) return;
+    this.isLoadingDaily = true;
+    this.dailyRows = [];
+    try {
+      // 1. Programado: de workprogram_daily
+      const summaries = await lastValueFrom(
+        this._dailyService.getSummary(
+          this.idProject, this.curretnContractSelected, this.idConvention,
+          this.dailyViewFrom, this.dailyViewTo
+        )
+      );
+
+      // 2. Real: del mapa de datosMensuales (physicalAdvanced por fecha)
+      const realMap = new Map<string, number>();
+      this.datosMensuales.forEach(d => {
+        const key = String(d.date).substring(0, 10);
+        realMap.set(key, (realMap.get(key) ?? 0) + Number(d.physicalAdvanced ?? 0));
+      });
+
+      // 3. Construir filas combinadas
+      this.dailyRows = summaries.map(s => {
+        const dateStr = String(s.date).substring(0, 10);
+        const real    = realMap.get(dateStr) ?? 0;
+        const prog    = Number(s.ponderadoDia ?? 0);
+        const pct     = prog > 0 ? Math.min(100, Math.round((real / prog) * 100)) : 0;
+        const dayIdx  = new Date(dateStr + 'T00:00:00').getDay();
+        return {
+          date:        dateStr,
+          dayName:     this.DAY_NAMES[dayIdx],
+          programado:  Math.round(prog  * 10000) / 10000,
+          real:        Math.round(real  * 10000) / 10000,
+          numConceptos: s.numConceptos,
+          pctBar:      pct
+        };
+      });
+
+    } catch {
+      alerts.basicAlert('Error', 'No se pudo cargar la vista diaria. ¿Ya calculaste la distribución?', 'warning');
+    } finally {
+      this.isLoadingDaily = false;
+    }
+  }
+
+  // ─── Getters totales para tfoot ──────────────────────────────────────────────
+  get totalProgramadoPeriodo(): number {
+    return Math.round(this.dailyRows.reduce((s, r) => s + r.programado, 0) * 10000) / 10000;
+  }
+  get totalRealPeriodo(): number {
+    return Math.round(this.dailyRows.reduce((s, r) => s + r.real, 0) * 10000) / 10000;
+  }
+  get totalCumplimientoPct(): number {
+    if (this.totalProgramadoPeriodo === 0) return 0;
+    return Math.round((this.totalRealPeriodo / this.totalProgramadoPeriodo) * 100);
+  }
+
+  /** Color semáforo según % cumplimiento real/programado */
+  barColor(pct: number): string {
+    if (pct === 0)    return '#adb5bd'; // gris — sin real
+    if (pct >= 95)    return '#198754'; // verde — cumplido
+    if (pct >= 70)    return '#fd7e14'; // naranja — parcial
+    return '#dc3545';                   // rojo — bajo
+  }
+
+  /** Ancho de la barra real relativo al programado (para visualización) */
+  realBarWidth(row: DailyRow): number {
+    if (row.programado === 0) return 0;
+    return Math.min(100, (row.real / row.programado) * 100);
+  }
+
+  // ════════════════════════════════════════════════════════════════════════════
+  //  CAPTURA DIARIA (Punto 6 — existente)
+  // ════════════════════════════════════════════════════════════════════════════
+
+  async openDailyCapture(): Promise<void> {
+    this.showDailyCapture = !this.showDailyCapture;
+    if (this.showDailyCapture) await this.loadActiveTasks();
+  }
+
+  async onCaptureDateChange(): Promise<void> { await this.loadActiveTasks(); }
+
   recalcTotalAdvanceHoy(): void {
     const all = [...this.activeTasksData, ...this.delayedTasksData];
     this.totalPhysicalAdvanceHoy = Math.round(
-      all.reduce((sum, t) => sum + (Number(t.ponderado ?? 0) * Number(t.avanceHoy ?? 0) / 100), 0)
-      * 1000
+      all.reduce((sum, t) => sum + (Number(t.ponderado ?? 0) * Number(t.avanceHoy ?? 0) / 100), 0) * 1000
     ) / 1000;
   }
 
-  /** Carga tareas activas y retrasadas del workprogram para la fecha seleccionada */
   async loadActiveTasks(): Promise<void> {
-    this.isLoadingTasks = true;
-    this.activeTasksData  = [];
-    this.delayedTasksData = [];
-    this.totalPhysicalAdvanceHoy = 0;
-    this.programAdvanceHoy       = 0;
-
+    this.isLoadingTasks  = true;
+    this.activeTasksData = []; this.delayedTasksData = [];
+    this.totalPhysicalAdvanceHoy = 0; this.programAdvanceHoy = 0;
     try {
-      // Cargar tareas del programa de trabajo
       const allTasks: any[] = await lastValueFrom(
         (this.idProject && this.idProject > 0)
           ? this._workprogramsService.getWorkPrograms(this.idProject, 'Project')
           : this._workprogramsService.getWorkPrograms(this.curretnContractSelected!, 'Contract')
       );
+      if (!allTasks?.length) { alerts.basicAlert('Sin tareas', 'No hay tareas en el programa de trabajo.', 'warning'); return; }
 
-      if (!allTasks?.length) {
-        alerts.basicAlert('Sin tareas', 'No hay tareas en el programa de trabajo para este contrato/proyecto.', 'warning');
-        return;
-      }
-
-      // Tareas hoja: no aparecen como parent de otra tarea Y tienen ponderado > 0
       const parentSet = new Set(allTasks.map(t => String(t.parent)));
-      const leafTasks = allTasks.filter(t =>
-        !parentSet.has(String(t.idTask)) &&
-        Number(t.ponderado ?? 0) > 0
-      );
-
+      const leafTasks = allTasks.filter(t => !parentSet.has(String(t.idTask)) && Number(t.ponderado ?? 0) > 0);
       if (!leafTasks.length) {
-        alerts.basicAlert(
-          'Sin ponderado',
-          'Las tareas hoja no tienen ponderado. Ve al Programa de Trabajo, presiona ⚙️ para elegir modalidad y luego % para calcular.',
-          'warning'
-        );
-        return;
+        alerts.basicAlert('Sin ponderado', 'Las tareas no tienen ponderado calculado.', 'warning'); return;
       }
-
       const captureMs = new Date(this.dailyCaptureDate + 'T00:00:00').getTime();
-
       leafTasks.forEach(t => {
         const startMs = t.startDate ? new Date(t.startDate).getTime() : 0;
         const endMs   = t.endDate   ? new Date(t.endDate).getTime()   : Infinity;
-        const prog100 = Math.round(Number(t.progress ?? 0) * 100 * 10) / 10; // 0-1 → 0-100
-
+        const prog100 = Math.round(Number(t.progress ?? 0) * 100 * 10) / 10;
         const task: ActiveTask = {
-          idEntry:        Number(t.id),
-          activity:       t.activity   || '',
-          description:    t.text       || t.description || '',
-          ponderado:      Number(t.ponderado ?? 0),
-          progressActual: prog100,
-          avanceHoy:      0,
-          progressNuevo:  prog100,
-          startDate:      t.startDate ? String(t.startDate).split('T')[0] : '',
-          endDate:        t.endDate   ? String(t.endDate).split('T')[0]   : '',
+          idEntry: Number(t.id), activity: t.activity || '',
+          description: t.text || t.description || '',
+          ponderado: Number(t.ponderado ?? 0), progressActual: prog100,
+          avanceHoy: 0, progressNuevo: prog100,
+          startDate: t.startDate ? String(t.startDate).split('T')[0] : '',
+          endDate:   t.endDate   ? String(t.endDate).split('T')[0]   : '',
         };
-
-        if (startMs <= captureMs && captureMs <= endMs) {
-          this.activeTasksData.push(task);          // ← En ejecución hoy
-        } else if (endMs < captureMs && prog100 < 100) {
-          this.delayedTasksData.push(task);         // ← Retrasadas
-        }
+        if (startMs <= captureMs && captureMs <= endMs) this.activeTasksData.push(task);
+        else if (endMs < captureMs && prog100 < 100)    this.delayedTasksData.push(task);
       });
-
       this.activeTasksData  = [...this.activeTasksData.sort( (a,b) => a.activity.localeCompare(b.activity))];
       this.delayedTasksData = [...this.delayedTasksData.sort((a,b) => a.activity.localeCompare(b.activity))];
-
-    } catch {
-      alerts.basicAlert('Error', 'No se pudieron cargar las tareas del programa de trabajo.', 'error');
-    } finally {
-      this.isLoadingTasks = false;
-    }
+    } catch { alerts.basicAlert('Error', 'No se pudieron cargar las tareas.', 'error'); }
+    finally { this.isLoadingTasks = false; }
   }
 
-  /** Guarda: actualiza workprogram.progress + inserta registro en advanced */
   async saveDailyAdvance(): Promise<void> {
-    const modified = [...this.activeTasksData, ...this.delayedTasksData].filter(
-      t => t.__modified && t.avanceHoy > 0
-    );
-
+    const modified = [...this.activeTasksData, ...this.delayedTasksData].filter(t => t.__modified && t.avanceHoy > 0);
     if (!modified.length && this.totalPhysicalAdvanceHoy === 0) {
-      alerts.basicAlert('Sin cambios', 'No se registraron avances para guardar.', 'warning');
-      return;
+      alerts.basicAlert('Sin cambios', 'No se registraron avances para guardar.', 'warning'); return;
     }
-
     this.isSavingDailyAdvance = true;
     try {
-      // 1. Actualizar workprogram.progress para cada tarea modificada (PATCH — solo el campo progress)
       for (const task of modified) {
-        const newFraction = Math.min(1, task.progressNuevo / 100);
-        await lastValueFrom(
-          this._workprogramsService.patchWorkProgramProgress(task.idEntry, newFraction)
-        );
+        await lastValueFrom(this._workprogramsService.patchWorkProgramProgress(task.idEntry, Math.min(1, task.progressNuevo / 100)));
       }
-
-      // 2. Calcular acumulados para el nuevo registro de Curva S
-      const lastRec      = this.datosMensuales.length > 0 ? this.datosMensuales[this.datosMensuales.length - 1] : null;
-      const prevAccumPrg = lastRec?.accumulateProgram  ?? 0;
-      const prevAccumFis = lastRec?.accumulatePhysical ?? 0;
-      const newAccumPrg  = Math.round((prevAccumPrg + this.programAdvanceHoy)       * 1000) / 1000;
-      const newAccumFis  = Math.round((prevAccumFis + this.totalPhysicalAdvanceHoy) * 1000) / 1000;
-
-      // 3. Insertar en tabla advanced
+      const lastRec     = this.datosMensuales.length > 0 ? this.datosMensuales[this.datosMensuales.length - 1] : null;
+      const newAccumPrg = Math.round(((lastRec?.accumulateProgram  ?? 0) + this.programAdvanceHoy)       * 1000) / 1000;
+      const newAccumFis = Math.round(((lastRec?.accumulatePhysical ?? 0) + this.totalPhysicalAdvanceHoy) * 1000) / 1000;
       await lastValueFrom(this._advancesService.addAdvance({
-        date:               this.dailyCaptureDate,
+        date: this.dailyCaptureDate,
         programAdvanced:    this.programAdvanceHoy,
         physicalAdvanced:   this.totalPhysicalAdvanceHoy,
         accumulateProgram:  newAccumPrg,
         accumulatePhysical: newAccumFis,
-        idContract:         this.curretnContractSelected,
-        type:               'Contract',
-        active:             1,
+        idContract: this.curretnContractSelected, type: 'Contract', active: 1,
       }));
-
-      alerts.basicAlert(
-        '✅ Avance registrado',
-        `Avance físico del día: ${this.totalPhysicalAdvanceHoy.toFixed(3)}%\nAcumulado físico: ${newAccumFis.toFixed(2)}%`,
-        'success'
-      );
-
-      // Recargar Curva S y tareas
+      alerts.basicAlert('✅ Avance registrado',
+        `Físico del día: ${this.totalPhysicalAdvanceHoy.toFixed(3)}%\nAcumulado: ${newAccumFis.toFixed(2)}%`, 'success');
       this.obtenerDatos();
       await this.loadActiveTasks();
-
-    } catch {
-      alerts.basicAlert('Error', 'Ocurrió un error al registrar el avance diario.', 'error');
-    } finally {
-      this.isSavingDailyAdvance = false;
-    }
+    } catch { alerts.basicAlert('Error', 'Error al registrar el avance diario.', 'error'); }
+    finally { this.isSavingDailyAdvance = false; }
   }
 }
