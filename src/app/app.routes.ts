@@ -613,13 +613,6 @@ export const routes: Routes = [
               ).then((w) => w.WorkprogramsComponent),
           },
           {
-            path: 'risks',
-            loadComponent: () =>
-              import(
-                './domains/ModProjects/components/risks/risks.component'
-              ).then((r) => r.RisksComponent),
-          },
-          {
             path: 'ot',
             loadComponent: () =>
               import(
@@ -739,6 +732,14 @@ export const routes: Routes = [
                 .then((c) => c.PmoRecursosComponent),
             canActivate: [MasterPermissionsGuard],
             data: { permissions: { master: 'pmo', detailed: 'recursos' } },
+          },
+          {
+            path: 'riesgos',
+            loadComponent: () =>
+              import('./domains/ModPMO/components/pmo-riesgos/pmo-riesgos.component')
+                .then((c) => c.PmoRiesgosComponent),
+            canActivate: [MasterPermissionsGuard],
+            data: { permissions: { master: 'pmo', detailed: 'riesgos' } },
           },
           {
             path: 'ruta-critica',
