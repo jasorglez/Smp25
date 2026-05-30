@@ -292,6 +292,7 @@ export class PmoActividadesComponent implements OnInit {
         const [y, m, d] = String(p.value).split('-');
         return d && m && y ? `${d}/${m}/${y}` : p.value;
       },
+      onCellValueChanged: (p) => this.markModified(p.data),
     },
     {
       field: 'endDate', headerName: 'Término', width: 115, editable: true,
@@ -303,6 +304,7 @@ export class PmoActividadesComponent implements OnInit {
         const [y, m, d] = String(p.value).split('-');
         return d && m && y ? `${d}/${m}/${y}` : p.value;
       },
+      onCellValueChanged: (p) => this.markModified(p.data),
     },
     {
       field: 'progress', headerName: '% Avance', width: 90, editable: true, type: 'numericColumn',
@@ -1066,6 +1068,11 @@ export class PmoActividadesComponent implements OnInit {
   // ── Calcular Ponderado ──────────────────────────────────────────────────────
   async calcularPonderado(): Promise<void> {
     if (this.isCalculating) return;
+
+    // Recargar desde BD para garantizar que endate esté fresco antes del PUT
+    // (previene que se envíe null si había ediciones no guardadas en memoria)
+    await this.loadActividades();
+
     const filas = this.rowData;
     if (!filas.length) { alert('No hay actividades cargadas.'); return; }
 
@@ -1092,6 +1099,20 @@ export class PmoActividadesComponent implements OnInit {
     const agrupadores = filas.filter(r => r.id > 0 && !hojas.includes(r));
 
     if (!hojas.length) { alert('No se encontraron actividades hoja.'); return; }
+
+    // ── Advertir si hay hojas sin fecha término ────────────────────────────
+    // Sin endate el algoritmo de distribución diaria las ignora → distribución incompleta
+    const sinFechaFin = hojas.filter(h => !h.endDate);
+    if (sinFechaFin.length > 0) {
+      const ok = confirm(
+        `⚠️ ${sinFechaFin.length} actividad(es) no tienen Fecha Término:\n` +
+        sinFechaFin.slice(0, 5).map(h => `  • ${h.activity} — ${h.description}`).join('\n') +
+        (sinFechaFin.length > 5 ? `\n  ...y ${sinFechaFin.length - 5} más` : '') +
+        '\n\nSin Fecha Término la distribución diaria no funcionará (0 conceptos).' +
+        '\n¿Continuar de todas formas?'
+      );
+      if (!ok) return;
+    }
 
     // Calcular métrica según modalidad
     let getMetric: (r: ActividadRow) => number;
@@ -1215,8 +1236,10 @@ export class PmoActividadesComponent implements OnInit {
       const iUnit        = col('unidad','unit','um','u.m.');
       const iQuantity    = col('cantidad','quantity','volumen','vol');
       const iCostMX      = col('precio','cost','costo','p.u.','pu ','unitario');
-      const iStart       = col('inicio','start','fecha_ini','fecha ini','fecha_inicio','fecha inicio');
-      const iEnd         = col('termino','end','fin','fecha_fin','fecha fin','fecha_term','fecha_termino');
+      const iStart       = col('inicio','fecha_ini','fecha ini','fecha_inicio','fecha inicio','startdate','start date');
+      // 'fin' y 'end' solos son muy genéricos (coinciden con "finiquito", "pendiente", etc.)
+      // Usar únicamente keywords compuestas o específicas
+      const iEnd         = col('termino','fecha_fin','fecha fin','fecha_term','fecha_termino','fecha final','endate','end date');
       const iPred        = col('pred','predecesor','predecessor','antecede');
       const iType        = col('tipo','type','typeactivity');
       const iCritical    = col('critica','critical','ruta');
