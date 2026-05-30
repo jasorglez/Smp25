@@ -10,6 +10,9 @@ import { lastValueFrom }       from 'rxjs';
 import { ProjectsService }     from 'app/services/projects.service';
 import { WorkprogramsService } from 'app/services/workprograms.service';
 import { ConventionsService }  from 'app/services/conventions.service';
+import { PosicionesService }   from 'app/services/posiciones.service';
+import { EquipmentService }    from 'app/services/equipment.service';
+import { MaterialsService }    from 'app/services/materials.service';
 import { SignalsService }      from 'app/services/signals.service';
 
 // ── Layout constants ──────────────────────────────────────────────────────────
@@ -39,6 +42,24 @@ interface ActividadRow {
   progress:      number;
   __isNew?:      boolean;
   __modified?:   boolean;
+}
+
+interface RecursoRow {
+  id:            number;
+  idActivity:    number;
+  tipo:          string;
+  descripcion:   string;
+  unidad:        string;
+  periodo:       string;
+  cantPlan:      number;
+  cantReal:      number;
+  costoUnitPlan: number;
+  costoUnitReal: number;
+  costoPlan:     number;
+  costoReal:     number;
+  variacion:     number;
+  __isNew?:      boolean;
+  __toDelete?:   boolean;
 }
 
 interface GanttTask {
@@ -87,7 +108,6 @@ interface MonthLabel {
   imports: [CommonModule, FormsModule, AgGridModule],
   templateUrl: './pmo-actividades.component.html',
   styles: [`
-    /* ── Gantt wrapper ── */
     .gantt-wrapper {
       overflow-x: auto; overflow-y: auto;
       max-height: calc(100vh - 340px); min-height: 260px;
@@ -98,11 +118,10 @@ interface MonthLabel {
 
     /* ── Edit slide panel ── */
     .edit-panel {
-      position: fixed; top: 0; right: -440px; width: 420px; height: 100vh;
+      position: fixed; top: 0; right: -460px; width: 440px; height: 100vh;
       background: #fff; box-shadow: -6px 0 30px rgba(0,0,0,.22);
       z-index: 1055; transition: right .28s cubic-bezier(.4,0,.2,1);
-      overflow-y: auto;
-      border-left: 5px solid #2980b9;
+      overflow-y: auto; border-left: 5px solid #2980b9;
     }
     .edit-panel.open { right: 0; }
     .edit-panel-backdrop {
@@ -110,6 +129,27 @@ interface MonthLabel {
       z-index: 1054; display: none;
     }
     .edit-panel-backdrop.open { display: block; }
+
+    /* ── Tabs in panel ── */
+    .panel-tabs { display:flex; border-bottom: 2px solid #e9ecef; margin-bottom:12px; }
+    .panel-tab  {
+      flex:1; padding: 8px 4px; text-align:center; cursor:pointer; font-size:12px;
+      font-weight:600; color:#6c757d; border-bottom: 3px solid transparent;
+      margin-bottom:-2px; transition: all .15s;
+    }
+    .panel-tab.active    { color:#2980b9; border-bottom-color:#2980b9; }
+    .panel-tab:hover:not(.active) { color:#495057; background:#f8f9fa; }
+
+    /* ── Recurso cards ── */
+    .recurso-card {
+      border: 1px solid #e9ecef; border-radius: 6px; padding: 8px 10px;
+      margin-bottom: 6px; background: #fff; font-size:12px;
+    }
+    .recurso-card.personal { border-left: 3px solid #2980b9; }
+    .recurso-card.material { border-left: 3px solid #27ae60; }
+    .recurso-card.equipo   { border-left: 3px solid #f39c12; }
+    .recurso-card.otro     { border-left: 3px solid #95a5a6; }
+    .recurso-card.to-delete { opacity:.4; text-decoration:line-through; }
 
     /* ── View toggle ── */
     .view-toggle .btn:first-child { border-radius: 6px 0 0 6px; }
@@ -135,6 +175,9 @@ export class PmoActividadesComponent implements OnInit {
   private _projectsService = inject(ProjectsService);
   private _wpService       = inject(WorkprogramsService);
   private _convService     = inject(ConventionsService);
+  private _posService      = inject(PosicionesService);
+  private _eqService       = inject(EquipmentService);
+  private _matService      = inject(MaterialsService);
   private _signalsService  = inject(SignalsService);
 
   idCompany = 0;
@@ -154,6 +197,11 @@ export class PmoActividadesComponent implements OnInit {
   hasUnsavedChanges = false;
   saveMsg           = '';
   saveMsgType       = '';
+
+  // ── Catálogos para recursos ────────────────────────────────────────────────
+  personalCatalog: string[] = [];
+  equipoCatalog:   string[] = [];
+  materialCatalog: string[] = [];
 
   // ── View mode ──────────────────────────────────────────────────────────────
   viewMode: 'gantt' | 'tabla' = 'gantt';
@@ -183,9 +231,23 @@ export class PmoActividadesComponent implements OnInit {
   }
 
   // ── Edit slide panel ───────────────────────────────────────────────────────
-  editPanelOpen = false;
-  editingRow:   ActividadRow | null = null;
-  editDraft:    Partial<ActividadRow> = {};
+  editPanelOpen  = false;
+  editingRow:    ActividadRow | null = null;
+  editDraft:     Partial<ActividadRow> = {};
+  activeTab:     'datos' | 'recursos' = 'datos';
+
+  // ── Recursos en el panel ───────────────────────────────────────────────────
+  recursos:          RecursoRow[] = [];
+  recursosLoading    = false;
+  recursosSaving     = false;
+  recursosHasChanges = false;
+  newRecurso:        Partial<RecursoRow> | null = null;
+  newRecursoDesc:    string = '';   // descripción del nuevo recurso
+
+  get totalRecursosPlan() { return this.recursos.filter(r => !r.__toDelete).reduce((s, r) => s + (r.costoPlan ?? 0), 0); }
+  get totalRecursosReal() { return this.recursos.filter(r => !r.__toDelete).reduce((s, r) => s + (r.costoReal ?? 0), 0); }
+  get totalRecursosVar()  { return this.totalRecursosReal - this.totalRecursosPlan; }
+  get recursosVisibles()  { return this.recursos.filter(r => !r.__toDelete); }
 
   // ── Table / AG Grid ────────────────────────────────────────────────────────
   gridApi!: GridApi;
@@ -275,18 +337,220 @@ export class PmoActividadesComponent implements OnInit {
   constructor() {
     effect(() => {
       const id = this._signalsService.getRootSelectedBySidebar()();
-      if (id && id !== this.idCompany) { this.idCompany = id; this.loadProjects(); }
+      if (id && id !== this.idCompany) {
+        this.idCompany = id;
+        this.loadProjects();
+        this.loadCatalogs();
+      }
     });
   }
 
   ngOnInit(): void {
     this.idCompany = this._signalsService.getRootSelectedBySidebar()() ?? 0;
-    if (this.idCompany) this.loadProjects();
+    if (this.idCompany) { this.loadProjects(); this.loadCatalogs(); }
   }
 
   @HostListener('window:resize')
   onResize(): void {
     if (this.viewMode === 'gantt' && this.rowData.length) this.buildGanttData(this.rowData);
+  }
+
+  // ── Catálogos ──────────────────────────────────────────────────────────────
+  async loadCatalogs(): Promise<void> {
+    if (!this.idCompany) return;
+    try {
+      const pos: any[] = await lastValueFrom(this._posService.getPositionsByCompany(this.idCompany));
+      this.personalCatalog = (pos ?? []).filter((p: any) => p.active !== false)
+        .map((p: any) => p.description ?? p.name ?? '').filter(Boolean).sort();
+    } catch { this.personalCatalog = []; }
+    try {
+      const eq: any[] = await lastValueFrom(this._eqService.getEquipment(this.idCompany));
+      this.equipoCatalog = (eq ?? []).map((e: any) => e.description ?? e.name ?? '').filter(Boolean).sort();
+    } catch { this.equipoCatalog = []; }
+    try {
+      const mat: any[] = await lastValueFrom(this._matService.getMaterials(this.idCompany, 'MATERIAL'));
+      this.materialCatalog = (mat ?? []).map((m: any) => m.insumo ?? m.articulo ?? m.description ?? '').filter(Boolean).sort();
+    } catch { this.materialCatalog = []; }
+  }
+
+  catalogForTipo(tipo: string): string[] {
+    const t = (tipo ?? '').toLowerCase();
+    if (t === 'personal') return ['SIN DESCRIPCION', ...this.personalCatalog];
+    if (t === 'equipo')   return ['SIN DESCRIPCION', ...this.equipoCatalog];
+    if (t === 'material') return ['SIN DESCRIPCION', ...this.materialCatalog];
+    return [];
+  }
+
+  tipoColor(tipo: string): string {
+    const t = (tipo ?? '').toLowerCase();
+    if (t === 'personal')    return '#2980b9';
+    if (t === 'material')    return '#27ae60';
+    if (t === 'equipo')      return '#f39c12';
+    if (t === 'subcontrato') return '#8e44ad';
+    return '#95a5a6';
+  }
+
+  tipoCardClass(tipo: string): string {
+    const t = (tipo ?? '').toLowerCase();
+    if (t === 'personal') return 'personal';
+    if (t === 'material') return 'material';
+    if (t === 'equipo')   return 'equipo';
+    return 'otro';
+  }
+
+  // ── Recursos: cargar / nuevo / guardar / borrar ───────────────────────────
+  async loadRecursosForActivity(idActivity: number): Promise<void> {
+    if (!idActivity || !this.selectedProject) return;
+    this.recursosLoading = true;
+    this.recursos        = [];
+    this.newRecurso      = null;
+    try {
+      const res: any = await lastValueFrom(
+        this._projectsService.getPmoRecursosByProject(this.selectedProject.id)
+      );
+      const raw = Array.isArray(res) ? res : (Array.isArray(res?.data) ? res.data : []);
+      this.recursos = raw
+        .filter((r: any) => (r.idActivity ?? r.id_activity) === idActivity)
+        .map((r: any) => this.mapRecursoFromApi(r));
+      this.recursosHasChanges = false;
+    } catch (e) {
+      console.error('Error cargando recursos', e);
+      this.recursos = [];
+    } finally { this.recursosLoading = false; }
+  }
+
+  startNewRecurso(): void {
+    if (!this.editingRow) return;
+    this.newRecurso = {
+      id: 0,
+      idActivity:    this.editingRow.id,
+      tipo:          'Personal',
+      descripcion:   '',
+      unidad:        'día',
+      periodo:       '',
+      cantPlan:      0,
+      cantReal:      0,
+      costoUnitPlan: 0,
+      costoUnitReal: 0,
+      costoPlan:     0,
+      costoReal:     0,
+      variacion:     0,
+      __isNew:       true,
+    };
+    this.newRecursoDesc = '';
+  }
+
+  onNewRecursoTipoChange(): void {
+    // Reset descripcion when tipo changes
+    this.newRecursoDesc = '';
+    if (this.newRecurso) this.newRecurso.descripcion = '';
+  }
+
+  onNewRecursoDescSelect(val: string): void {
+    if (this.newRecurso) this.newRecurso.descripcion = val;
+    this.newRecursoDesc = val;
+  }
+
+  calcNewRecursoCostos(): void {
+    if (!this.newRecurso) return;
+    this.newRecurso.costoPlan = (this.newRecurso.cantPlan ?? 0) * (this.newRecurso.costoUnitPlan ?? 0);
+    this.newRecurso.costoReal = (this.newRecurso.cantReal ?? 0) * (this.newRecurso.costoUnitReal ?? 0);
+    this.newRecurso.variacion = (this.newRecurso.costoReal ?? 0) - (this.newRecurso.costoPlan ?? 0);
+  }
+
+  confirmAddRecurso(): void {
+    if (!this.newRecurso || !this.editingRow) return;
+    if (!this.newRecurso.tipo) { return; }
+    const desc = this.newRecursoDesc || this.newRecurso.descripcion || 'SIN DESCRIPCION';
+    this.calcNewRecursoCostos();
+    this.recursos.push({
+      id:            0,
+      idActivity:    this.editingRow.id,
+      tipo:          this.newRecurso.tipo!,
+      descripcion:   desc,
+      unidad:        this.newRecurso.unidad || 'día',
+      periodo:       this.newRecurso.periodo || '',
+      cantPlan:      this.newRecurso.cantPlan ?? 0,
+      cantReal:      this.newRecurso.cantReal ?? 0,
+      costoUnitPlan: this.newRecurso.costoUnitPlan ?? 0,
+      costoUnitReal: this.newRecurso.costoUnitReal ?? 0,
+      costoPlan:     this.newRecurso.costoPlan ?? 0,
+      costoReal:     this.newRecurso.costoReal ?? 0,
+      variacion:     this.newRecurso.variacion ?? 0,
+      __isNew:       true,
+    });
+    this.newRecurso     = null;
+    this.newRecursoDesc = '';
+    this.recursosHasChanges = true;
+  }
+
+  cancelNewRecurso(): void { this.newRecurso = null; this.newRecursoDesc = ''; }
+
+  markRecursoToDelete(r: RecursoRow): void {
+    if (r.__isNew) {
+      this.recursos = this.recursos.filter(x => x !== r);
+    } else {
+      r.__toDelete = true;
+    }
+    this.recursosHasChanges = true;
+  }
+
+  async saveRecursos(): Promise<void> {
+    if (!this.selectedProject || !this.editingRow) return;
+    this.recursosSaving = true;
+    try {
+      // Eliminar los marcados
+      const toDelete = this.recursos.filter(r => r.__toDelete && r.id > 0);
+      for (const r of toDelete) {
+        await lastValueFrom(this._projectsService.deletePmoRecurso(r.id));
+      }
+      // Guardar nuevos / modificados
+      const toSave = this.recursos.filter(r => !r.__toDelete && r.__isNew);
+      if (toSave.length) {
+        const payload = toSave.map(r => ({
+          id:           r.id,
+          idProject:    this.selectedProject.id,
+          idCompany:    this.idCompany,
+          idActivity:   r.idActivity || this.editingRow!.id,
+          tipo:         r.tipo,
+          descripcion:  r.descripcion,
+          unidad:       r.unidad,
+          periodo:      r.periodo,
+          cantPlan:     r.cantPlan,
+          cantReal:     r.cantReal,
+          costoUnitPlan: r.costoUnitPlan,
+          costoUnitReal: r.costoUnitReal,
+          active:       1,
+        }));
+        await lastValueFrom(this._projectsService.savePmoRecursosBatch(payload));
+      }
+      // Recargar
+      await this.loadRecursosForActivity(this.editingRow.id);
+      this.recursosHasChanges = false;
+      this.showMsg('✓ Recursos guardados', 'success');
+    } catch (e) {
+      this.showMsg('Error al guardar recursos', 'error');
+      console.error(e);
+    } finally { this.recursosSaving = false; }
+  }
+
+  private mapRecursoFromApi(r: any): RecursoRow {
+    const cantPlan      = Number(r.cantPlan ?? r.cant_plan ?? 0);
+    const cantReal      = Number(r.cantReal ?? r.cant_real ?? 0);
+    const costoUnitPlan = Number(r.costoUnitPlan ?? r.costo_unit_plan ?? 0);
+    const costoUnitReal = Number(r.costoUnitReal ?? r.costo_unit_real ?? 0);
+    return {
+      id:           r.id ?? 0,
+      idActivity:   r.idActivity ?? r.id_activity ?? 0,
+      tipo:         r.tipo ?? 'Personal',
+      descripcion:  r.descripcion ?? '',
+      unidad:       r.unidad ?? 'día',
+      periodo:      r.periodo ?? '',
+      cantPlan, cantReal, costoUnitPlan, costoUnitReal,
+      costoPlan:  cantPlan * costoUnitPlan,
+      costoReal:  cantReal * costoUnitReal,
+      variacion:  (cantReal * costoUnitReal) - (cantPlan * costoUnitPlan),
+    };
   }
 
   // ── Project / Convention ───────────────────────────────────────────────────
@@ -402,10 +666,10 @@ export class PmoActividadesComponent implements OnInit {
       const predId = Number(r.predecessor) || 0;
 
       let status = 'Sin iniciar';
-      if (prog >= 1)                              status = 'Terminada';
-      else if (today > ed)                        status = 'Atrasada';
-      else if (today >= sd && slack <= 5)         status = 'En Riesgo';
-      else if (prog > 0)                          status = 'En Tiempo';
+      if (prog >= 1)                      status = 'Terminada';
+      else if (today > ed)                status = 'Atrasada';
+      else if (today >= sd && slack <= 5) status = 'En Riesgo';
+      else if (prog > 0)                  status = 'En Tiempo';
 
       const fill         = isCritical ? '#e74c3c' : isMilestone ? '#8e44ad' : isSummary ? '#2c3e50' : '#2980b9';
       const fillProgress = isCritical ? '#c0392b' : '#1a5276';
@@ -413,7 +677,7 @@ export class PmoActividadesComponent implements OnInit {
       return {
         id: r.id || (-(i + 1)),
         rowRef: r,
-        label: r.description || r.activity,   // description ya viene con r.text mapeado
+        label: r.description || r.activity,
         wbs: r.activity,
         level: levelOf(r.activity),
         startDate: sd, endDate: ed,
@@ -520,6 +784,7 @@ export class PmoActividadesComponent implements OnInit {
 
   trackById(_: number, t: GanttTask) { return t.id; }
   trackByLink(_: number, l: Link)    { return l.id; }
+  trackByIdx(i: number)              { return i; }
 
   // ── Edit panel ─────────────────────────────────────────────────────────────
   openEditPanel(t: GanttTask): void {
@@ -537,10 +802,19 @@ export class PmoActividadesComponent implements OnInit {
       criticalRoute: t.rowRef.criticalRoute,
       typeActivity:  t.rowRef.typeActivity,
     };
+    this.activeTab     = 'datos';
+    this.newRecurso    = null;
     this.editPanelOpen = true;
+    // Cargar recursos de esta actividad (solo si tiene id)
+    if (t.rowRef.id > 0) this.loadRecursosForActivity(t.rowRef.id);
+    else                 this.recursos = [];
   }
 
-  closeEditPanel(): void { this.editPanelOpen = false; this.editingRow = null; }
+  closeEditPanel(): void {
+    this.editPanelOpen = false;
+    this.editingRow    = null;
+    this.newRecurso    = null;
+  }
 
   applyEditDraft(): void {
     if (!this.editingRow) return;
@@ -595,7 +869,7 @@ export class PmoActividadesComponent implements OnInit {
     }
   }
 
-  // ── CRUD ───────────────────────────────────────────────────────────────────
+  // ── CRUD actividades ────────────────────────────────────────────────────────
   addRow(): void {
     if (!this.selectedProject) return;
     const newRow: ActividadRow = {
@@ -619,7 +893,6 @@ export class PmoActividadesComponent implements OnInit {
           this.gridApi.startEditingCell({ rowIndex: 0, colKey: 'activity' });
       }, 50);
     } else {
-      // In Gantt mode → open edit panel for the new row directly
       const fakeTask: GanttTask = {
         id: 0, rowRef: newRow, label: 'Nueva actividad', wbs: '', level: 0,
         startDate: new Date(), endDate: new Date(),

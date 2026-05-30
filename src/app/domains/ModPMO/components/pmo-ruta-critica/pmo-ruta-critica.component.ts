@@ -182,12 +182,19 @@ export class PmoRutaCriticaComponent implements OnInit, AfterViewInit, OnDestroy
     const today = new Date();
     today.setHours(0, 0, 0, 0);
 
-    // 1. Mapear tareas
+    // 1. Mapear tareas — filtrar fechas inválidas o epoch (1970)
+    const parseDate = (val: any): Date | null => {
+      if (!val) return null;
+      const d = new Date(val);
+      if (isNaN(d.getTime()) || d.getFullYear() < 1990) return null;
+      return d;
+    };
+
     const all: GanttTask[] = raw
-      .filter(t => t.startdate || t.startDate)
+      .filter(t => parseDate(t.startdate ?? t.startDate) && parseDate(t.endate ?? t.endDate))
       .map((t, i) => {
-        const sd = new Date(t.startdate ?? t.startDate);
-        const ed = new Date(t.endate   ?? t.endDate);
+        const sd = parseDate(t.startdate ?? t.startDate)!;
+        const ed = parseDate(t.endate   ?? t.endDate)!;
         sd.setHours(0,0,0,0); ed.setHours(0,0,0,0);
         const dur  = Math.max(0, Math.ceil((ed.getTime() - sd.getTime()) / 86400000));
         const prog = Math.min(1, Math.max(0, Number(t.progress ?? 0)));
