@@ -85,5 +85,5 @@ export const environment = {
     // publicKey: 'TEST-4399133a-4676-42a2-ab85-d946370bf96a',
   },
 
-  version: '7.02 (30 Mayo 2026) feat(avances-diarios): engranaje dias laborables + distribucion ponderados + vista diaria con barras',
+  version: '7.03 (30 Mayo 2026) fix(workprograms): id_contract + id_convention + endate al importar programa',
 };
