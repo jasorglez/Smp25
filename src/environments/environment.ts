@@ -85,5 +85,5 @@ export const environment = {
     // publicKey: 'TEST-4399133a-4676-42a2-ab85-d946370bf96a',
   },
 
-  version: '7.14 (30 Mayo 2026) fix(pmo-actividades): default vista Tabla, Gantt muestra registros sin fecha fin',
+  version: '7.15 (30 Mayo 2026) feat(pmo-actividades): importar Excel con auto-detección de agrupadores WBS',
 };
