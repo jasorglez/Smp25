@@ -213,7 +213,7 @@ export class PmoActividadesComponent implements OnInit {
   materialCatalog: string[] = [];
 
   // ── View mode ──────────────────────────────────────────────────────────────
-  viewMode: 'gantt' | 'tabla' = 'gantt';
+  viewMode: 'gantt' | 'tabla' = 'tabla'; // default tabla — Gantt requiere fechas completas
   zoomLevel: 'month' | 'week' = 'month';
   showOnlyCritical = false;
 
@@ -657,14 +657,17 @@ export class PmoActividadesComponent implements OnInit {
   // ── Gantt build ─────────────────────────────────────────────────────────────
   buildGanttData(rows: ActividadRow[]): void {
     const today = new Date(); today.setHours(0, 0, 0, 0);
-    const valid = rows.filter(r => r.startDate && r.endDate);
+    // Incluir registros con startDate aunque no tengan endDate (endDate = startDate + 1 día)
+    const valid = rows.filter(r => r.startDate);
     if (!valid.length) { this.tasks = []; this.links = []; return; }
 
     const levelOf = (wbs: string): number => Math.max(0, wbs.split('.').length - 1);
 
     const all: GanttTask[] = valid.map((r, i) => {
       const sd = new Date(r.startDate); sd.setHours(0, 0, 0, 0);
-      const ed = new Date(r.endDate);   ed.setHours(0, 0, 0, 0);
+      // Si no hay fecha fin, usar startDate + 1 día para mostrar barra mínima
+      const edRaw = r.endDate ? new Date(r.endDate) : new Date(sd.getTime() + 86400000);
+      const ed = edRaw; ed.setHours(0, 0, 0, 0);
       const dur  = Math.max(0, Math.ceil((ed.getTime() - sd.getTime()) / 86400000));
       const prog = Math.min(1, Math.max(0, r.progress ?? 0));
       const isMilestone = r.typeActivity === 'Milestone' || dur === 0;
