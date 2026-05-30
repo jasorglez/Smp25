@@ -73,5 +73,5 @@ export const environment = {
 
   urlRefreshToken: 'https://securetoken.googleapis.com/v1/token?key=AIzaSyDxCBGKk8nT09hdW85-PyOkhw5_JPZLF1A',
 
-  version: '2.52.221 (28 Mayo 2026 21:15) - Modificaciones molienda'
+  version: '2.52.251 (30 Mayo 2026 10:10) - Histórico de Pagos: columna Num. Articulo oculta (solo ahí)'
 };

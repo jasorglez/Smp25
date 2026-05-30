@@ -5,6 +5,7 @@ import { ColDef, GridApi, GridReadyEvent } from 'ag-grid-enterprise';
 import { OcAndReqsService } from 'app/services/ocandreqs.service';
 import { CustomersService } from 'app/services/customers.service';
 import { SetupOcService } from 'app/services/setup-oc.service';
+import { SetupService } from 'app/services/setup.service';
 import { ConditionsPendingService } from 'app/services/conditions-pending.service';
 import { SignalsService } from 'app/services/signals.service';
 import { EntregaOcService } from 'app/services/entrega-oc.service';
@@ -147,6 +148,8 @@ export class OrdenesydetallesOcComponent implements OnDestroy {
   private ocAndReqsService = inject(OcAndReqsService);
   private customersService = inject(CustomersService);
   private setupOcService = inject(SetupOcService);
+  private setupService = inject(SetupService);
+  private ivaPercent = 0;   // IVA% de la sucursal (setup almacén) para aplicar a precio/total cuando mas_iva
   private conditionsPendingService = inject(ConditionsPendingService);
   private signalsService = inject(SignalsService);
   private entregaOcService = inject(EntregaOcService);
@@ -451,6 +454,12 @@ export class OrdenesydetallesOcComponent implements OnDestroy {
       headerName: 'Precio unitario',
       width: 140,
       type: 'numericColumn',
+      // Precio guardado = BASE. Si la línea tiene IVA, se muestra con IVA REDONDEADO a 2 dec.
+      valueGetter: (p: any) => {
+        const base = Number(p.data?.price) || 0;
+        const v = p.data?.masIva ? base * (1 + this.ivaPercent / 100) : base;
+        return Math.round(v * 100) / 100;
+      },
       valueFormatter: (p) => {
         const n = Number(p.value);
         return Number.isFinite(n) && n > 0
@@ -463,6 +472,14 @@ export class OrdenesydetallesOcComponent implements OnDestroy {
       headerName: 'Total',
       width: 120,
       type: 'numericColumn',
+      // Total = precio unitario con IVA REDONDEADO a 2 dec × cantidad (para que cuadre con el precio mostrado).
+      valueGetter: (p: any) => {
+        const base = Number(p.data?.price) || 0;
+        const qty = Number(p.data?.quantity) || 0;
+        const factor = p.data?.masIva ? (1 + this.ivaPercent / 100) : 1;
+        const unit = Math.round(base * factor * 100) / 100;
+        return unit * qty;
+      },
       valueFormatter: (p) => {
         const n = Number(p.value);
         return Number.isFinite(n) && n > 0
@@ -866,6 +883,14 @@ export class OrdenesydetallesOcComponent implements OnDestroy {
         }
       },
       error: () => {}
+    });
+    // IVA% de la sucursal (setup almacén) — el precio guardado es BASE (Opción B); el IVA se aplica al mostrar.
+    this.setupService.getWarehouseSetupByBranch(Number(idBranch)).subscribe({
+      next: (d: any) => {
+        this.ivaPercent = Number(d?.iva) || 0;
+        if (this.itemsGridApi) this.itemsGridApi.refreshCells({ force: true });
+      },
+      error: () => { this.ivaPercent = 0; }
     });
   }
 

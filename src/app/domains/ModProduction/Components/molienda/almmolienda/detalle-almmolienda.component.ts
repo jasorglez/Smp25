@@ -9,6 +9,7 @@ import { CustomersService } from '../../../../../services/customers.service';
 import { SignalsService } from '../../../../../services/signals.service';
 import { TrackingService } from '../../../../../services/tracking.service';
 import { EntradaMoliendaService, EntradaMolienda } from '../../../../../services/entrada-molienda.service';
+import { SetupService } from 'app/services/setup.service';
 import { EntregaOc, EntregaOcService } from '../../../../../services/entrega-oc.service';
 import { CaracteristicasEntradaService } from '../../../../../services/caracteristicas-entrada.service';
 import { IntandoutDocumentsService } from 'app/services/intandoutDocuments.service';
@@ -107,7 +108,7 @@ interface ReqOption {
               Entradas — {{ selectedOcRow.folio }}
             </div>
             <div style="display: flex; gap: 4px; flex-shrink: 0;">
-              <button class="btn btn-sm btn-success" (click)="addEntrada()" [disabled]="!nivel4GridApi || selectedOcRow?.close === true || selectedMultiEntregaIsClosed" title="Agregar entrada" style="padding: 2px 8px; font-size: 0.7rem;">
+              <button *ngIf="selectedOcRow?.type !== 'CR'" class="btn btn-sm btn-success" (click)="addEntrada()" [disabled]="!nivel4GridApi || selectedOcRow?.close === true || selectedMultiEntregaIsClosed" title="Agregar entrada" style="padding: 2px 8px; font-size: 0.7rem;">
                 <i class="bi bi-plus-lg" style="margin-right: 2px; font-size: 0.7rem;"></i>Agregar
               </button>
               <button class="btn btn-sm btn-primary position-relative" (click)="saveEntradas()" [disabled]="!(hasUnsavedChangesEntradas || hasUnsavedChangesCaracteristicas) || selectedOcRow?.close === true || selectedMultiEntregaIsClosed" title="Guardar cambios" style="padding: 2px 8px; font-size: 0.7rem;">
@@ -179,6 +180,8 @@ export class DetalleMoliendaComponent {
   private signalsService = inject(SignalsService);
   private trackingService = inject(TrackingService);
   private entradaService = inject(EntradaMoliendaService);
+  private setupService = inject(SetupService);
+  private ivaPercent = 0;   // IVA% de la sucursal (setup almacén); precio guardado = BASE (Opción B)
   private entregaOcService = inject(EntregaOcService);
   private caracteristicasService = inject(CaracteristicasEntradaService);
   private intandoutDocumentsService = inject(IntandoutDocumentsService);
@@ -330,8 +333,17 @@ export class DetalleMoliendaComponent {
       },
     },
     {
+      field: 'tipoOc',
+      headerName: 'Tipo Req',
+      width: 200,
+      editable: false,
+      // Las compras rápidas (type='CR') se muestran como "Compra Rápida" en lugar del typeoc.
+      valueFormatter: (p: any) => (p.data?.type === 'CR' ? 'Compra Rápida' : (p.value || '—')),
+      tooltipValueGetter: (p: any) => (p.data?.type === 'CR' ? 'Compra Rápida' : (p.value || 'Sin tipo OC')),
+    },
+    {
       field: 'folio',
-      headerName: 'Tipo Req.',
+      headerName: 'Nomenclatura Req',
       width: 110,
       editable: false,
       cellStyle: (params: any) => {
@@ -394,7 +406,16 @@ export class DetalleMoliendaComponent {
         return String(qty);
       },
     },
-    { field: 'price', headerName: 'Precio unitario', width: 120, type: 'numericColumn' },
+    {
+      field: 'price', headerName: 'Precio unitario', width: 120, type: 'numericColumn',
+      // Precio guardado = BASE (Opción B). Si la línea tiene IVA, se muestra con IVA REDONDEADO a 2 dec.
+      valueGetter: (p: any) => {
+        const base = Number(p.data?.price) || 0;
+        const v = p.data?.masIva ? base * (1 + this.ivaPercent / 100) : base;
+        return Math.round(v * 100) / 100;
+      },
+      valueFormatter: (p: any) => this.fmtMoneda(p.value),
+    },
     { field: 'condEspecial', headerName: 'Cond. Especial', flex: 2, minWidth: 130, hide: true },
     {
       field: 'cantidadMinimaRequerida',
@@ -646,7 +667,7 @@ export class DetalleMoliendaComponent {
         defaultToNothingSelected: true,
       },
       width: 150,
-      editable: () => !this.selectedOcRow?.close && !this.selectedMultiEntregaIsClosed,
+      editable: (p: any) => !this.selectedOcRow?.close && !this.selectedMultiEntregaIsClosed && !p?.data?.close,
       cellEditor: 'agDateCellEditor',
       valueGetter: (params) => {
         if (!params.data?.fechaRecepcion) {
@@ -695,7 +716,7 @@ export class DetalleMoliendaComponent {
       headerName: 'Cantidad Entrada',
       width: 130,
       type: 'numericColumn',
-      editable: () => !this.selectedOcRow?.close && !this.selectedMultiEntregaIsClosed,
+      editable: (p: any) => !this.selectedOcRow?.close && !this.selectedMultiEntregaIsClosed && !p?.data?.close,
       valueFormatter: (p) => this.fmtEntero(p.value),
       onCellValueChanged: (event: any) => this.onEntradaCellValueChanged(event),
     },
@@ -705,7 +726,7 @@ export class DetalleMoliendaComponent {
       width: 85,
       type: 'numericColumn',
       // Compra Rápida: Bultos siempre deshabilitado.
-      editable: () => this.editBultos && this.selectedOcRow?.type !== 'CR' && !this.selectedOcRow?.close && !this.selectedMultiEntregaIsClosed,
+      editable: (p: any) => this.editBultos && this.selectedOcRow?.type !== 'CR' && !this.selectedOcRow?.close && !this.selectedMultiEntregaIsClosed && !p?.data?.close,
       valueSetter: (params) => {
         const newVal = params.newValue;
         if (newVal === null || newVal === undefined || newVal === '') {
@@ -840,18 +861,35 @@ export class DetalleMoliendaComponent {
       width: 110,
       type: 'numericColumn',
       valueGetter: (params) => {
-        const qty = params.data?.cantidadEntrada ?? 0;
-        const price = this.selectedOcRow?.price ?? 0;
-        return qty * price;
+        const qty = Number(params.data?.cantidadEntrada) || 0;
+        const price = Number(this.selectedOcRow?.price) || 0;
+        // Precio = BASE (Opción B). Aplica IVA si la OC tiene mas_iva, REDONDEANDO el precio
+        // unitario a 2 dec ANTES de multiplicar (para que cuadre con el precio mostrado).
+        const factor = this.selectedOcRow?.masIva ? (1 + this.ivaPercent / 100) : 1;
+        const unit = Math.round(price * factor * 100) / 100;
+        return unit * qty;
       },
       valueFormatter: (p) => this.fmtMoneda(p.value),
+    },
+    {
+      // Fecha en que se confirmó el pago desde la Hoja de Gastos (read-only aquí).
+      field: 'fechaPago',
+      headerName: 'Fecha Pago',
+      width: 120,
+      editable: false,
+      valueFormatter: (p: any) => {
+        if (!p.value) return '';
+        const d = p.value instanceof Date ? p.value : new Date(p.value);
+        if (isNaN(d.getTime())) return '';
+        return `${('0' + d.getDate()).slice(-2)}/${('0' + (d.getMonth() + 1)).slice(-2)}/${d.getFullYear()}`;
+      },
     },
     {
       field: 'comentario',
       headerName: 'Comentario',
       minWidth: 180,
       flex: 1,
-      editable: () => !this.selectedOcRow?.close && !this.selectedMultiEntregaIsClosed,
+      editable: (p: any) => !this.selectedOcRow?.close && !this.selectedMultiEntregaIsClosed && !p?.data?.close,
       valueSetter: (params) => {
         params.data.comentario = params.newValue ?? '';
         this.onEntradaCellValueChanged(params);
@@ -892,10 +930,29 @@ export class DetalleMoliendaComponent {
     },
     { field: 'usuario', headerName: 'Usuario', width: 100 },
     {
+      // Cierre por ENTRADA. Visible solo para OCs "COMPRA AUTORIZADA SIN LIMITE"
+      // (se controla con setColumnVisible en loadEntradasForOc). Al marcarse, bloquea la fila.
+      field: 'close',
+      headerName: 'Cerrar Entrega',
+      width: 130,
+      hide: true,
+      // El checkbox de cierre sí permanece editable (para poder reabrir), salvo cierre a nivel OC/entrega.
+      editable: () => !this.selectedOcRow?.close && !this.selectedMultiEntregaIsClosed,
+      cellRenderer: 'agCheckboxCellRenderer',
+      cellStyle: { textAlign: 'center', backgroundColor: '#fff3e0' },
+      onCellValueChanged: (event: any) => {
+        this.hasUnsavedChangesEntradas = true;
+        // Re-renderiza la fila para que el lock de las demás celdas tome efecto visual/funcional.
+        if (this.nivel4GridApi && event.node) {
+          this.nivel4GridApi.redrawRows({ rowNodes: [event.node] });
+        }
+      },
+    },
+    {
       field: 'liberacion',
       headerName: 'Liberación',
       width: 100,
-      editable: () => !this.selectedOcRow?.close && !this.selectedMultiEntregaIsClosed,
+      editable: (p: any) => !this.selectedOcRow?.close && !this.selectedMultiEntregaIsClosed && !p?.data?.close,
       cellRenderer: 'agCheckboxCellRenderer',
     },
   ];
@@ -974,6 +1031,20 @@ export class DetalleMoliendaComponent {
   private async init(params: any) {
     this.initCompleted = false;
     this.internalParams = params;
+
+    // IVA% de la sucursal (setup almacén) — el precio guardado es BASE (Opción B); se aplica al mostrar.
+    const idBranchIva = params?.data?.sucursal;
+    if (idBranchIva) {
+      this.setupService.getWarehouseSetupByBranch(Number(idBranchIva)).subscribe({
+        next: (d: any) => {
+          this.ivaPercent = Number(d?.iva) || 0;
+          if (this.cascadeOcGridApi && !this.cascadeOcGridApi.isDestroyed()) {
+            this.cascadeOcGridApi.refreshCells({ force: true });
+          }
+        },
+        error: () => { this.ivaPercent = 0; }
+      });
+    }
 
     // Actualizar pdfCount en tiempo real cuando otro componente guarda documentos
     this.countSub?.unsubscribe();
@@ -1147,7 +1218,7 @@ export class DetalleMoliendaComponent {
             headerName: categoryName,
             flex: 1,
             minWidth: 150,
-            editable: () => !this.selectedOcRow?.close && !this.selectedMultiEntregaIsClosed,
+            editable: (p: any) => !this.selectedOcRow?.close && !this.selectedMultiEntregaIsClosed && !p?.data?.close,
             cellEditor: 'agRichSelectCellEditor',
             cellEditorParams: (params: any) => {
               const savedValue = params.data?.[fieldName];
@@ -1237,6 +1308,8 @@ export class DetalleMoliendaComponent {
         bultos: e.bultos ?? 0,
         revisionConfigu: e.revisionConfigu ?? 0,
         pago: e.pago ?? 0,
+        fechaPago: e.fechaPago ? this.isoToLocalDate(String(e.fechaPago)) : null,
+        notaFactura: e.notaFactura ?? '',
         pdfCount: 0,
         usuario: e.usuario ?? '',
         liberacion: e.liberacion ?? false,
@@ -1276,12 +1349,44 @@ export class DetalleMoliendaComponent {
       }));
 
       this.originalCascadeEntradaData = JSON.parse(JSON.stringify(this.cascadeEntradaData));
+
+      // Compra Rápida: es de UNA sola entrada. Si no hay ninguna registrada, generar
+      // una fila por default lista para capturar (sin botón Agregar). Si ya existe, se muestra.
+      if (row?.type === 'CR' && this.cascadeEntradaData.length === 0) {
+        this.cascadeEntradaData = [this.makeBlankCrEntradaRow()];
+      }
+
       this.syncSelectedOcRestaFromEntradas();
-      if (this.nivel4GridApi && !this.nivel4GridApi.isDestroyed())
+      if (this.nivel4GridApi && !this.nivel4GridApi.isDestroyed()) {
         this.nivel4GridApi.setGridOption('rowData', this.cascadeEntradaData);
+        // Columna "Cerrar Entrega" solo para OCs "COMPRA AUTORIZADA SIN LIMITE".
+        const isSinLimite = String(row?.tipoOc ?? '').toUpperCase() === 'COMPRA AUTORIZADA SIN LIMITE';
+        this.nivel4GridApi.setColumnVisible('close', isSinLimite);
+      }
     } catch (err) {
       console.error('Error cargando entradas:', err);
     }
+  }
+
+  /** Fila vacía por default para una entrada de Compra Rápida (fecha = hoy). */
+  private makeBlankCrEntradaRow(): any {
+    return {
+      idEntrada: null,
+      fechaRecepcion: new Date(),
+      cantidadEntrada: 0,
+      bultos: 0,
+      revisionConfigu: 0,
+      carat: '',
+      pago: 0,
+      fechaPago: null,
+      notaFactura: '',
+      pdfCount: 0,
+      usuario: this.signalsService.getDisplayName()() || 'Usuario',
+      comentario: '',
+      liberacion: false,
+      close: false,
+      __isNew: true,
+    };
   }
 
   /** Carga las entradas de una ENTREGA específica (multi-entrega) filtradas por material. */
@@ -1308,6 +1413,8 @@ export class DetalleMoliendaComponent {
         bultos: e.bultos ?? 0,
         revisionConfigu: e.revisionConfigu ?? 0,
         pago: e.pago ?? 0,
+        fechaPago: e.fechaPago ? this.isoToLocalDate(String(e.fechaPago)) : null,
+        notaFactura: e.notaFactura ?? '',
         pdfCount: 0,
         usuario: e.usuario ?? '',
         liberacion: e.liberacion ?? false,
@@ -1346,8 +1453,11 @@ export class DetalleMoliendaComponent {
 
       this.originalCascadeEntradaData = JSON.parse(JSON.stringify(this.cascadeEntradaData));
       this.syncSelectedOcRestaFromEntradas();
-      if (this.nivel4GridApi && !this.nivel4GridApi.isDestroyed())
+      if (this.nivel4GridApi && !this.nivel4GridApi.isDestroyed()) {
         this.nivel4GridApi.setGridOption('rowData', this.cascadeEntradaData);
+        // En multi-entregas no aplica el cierre por entrada → ocultar la columna.
+        this.nivel4GridApi.setColumnVisible('close', false);
+      }
     } catch (err) {
       console.error('Error cargando entradas por entrega:', err);
     }
@@ -1850,10 +1960,13 @@ export class DetalleMoliendaComponent {
       revisionConfigu: 0,
       carat: false,
       pago: 0,
+      fechaPago: null,
+      notaFactura: '',
       pdfCount: 0,
       usuario: usuarioLogueado,
       comentario: '',
       liberacion: false,
+      close: false,
       __isNew: true,
     };
 
@@ -1904,9 +2017,14 @@ export class DetalleMoliendaComponent {
           bultos: row.bultos ?? 0,
           revisionConfigu: row.revisionConfigu ?? 0,
           pago: row.pago ?? 0,
+          fechaPago: row.fechaPago instanceof Date
+            ? `${row.fechaPago.getFullYear()}-${String(row.fechaPago.getMonth()+1).padStart(2,'0')}-${String(row.fechaPago.getDate()).padStart(2,'0')}`
+            : (row.fechaPago ?? null),
+          notaFactura: row.notaFactura ?? null,
           usuario: row.usuario ?? '',
           comentario: row.comentario ?? '',
           liberacion: row.liberacion ?? false,
+          close: row.close ?? false,
         };
 
         if (row.__isNew) {
@@ -1953,6 +2071,31 @@ export class DetalleMoliendaComponent {
   }
 
   revertEntradas() {
+    // Compra Rápida: "Deshacer" NO revierte ni elimina la fila; solo LIMPIA sus casillas
+    // (vuelve la única fila a su estado inicial en blanco). Conserva id/idEntrada si ya existía.
+    if (this.selectedOcRow?.type === 'CR') {
+      const usuario = this.signalsService.getDisplayName()() || 'Usuario';
+      this.cascadeEntradaData = this.cascadeEntradaData.map((r: any) => ({
+        ...r,
+        fechaRecepcion: new Date(),
+        cantidadEntrada: 0,
+        bultos: 0,
+        revisionConfigu: 0,
+        pago: 0,
+        comentario: '',
+        liberacion: false,
+        carat: '',
+        usuario,
+      }));
+      this.syncSelectedOcRestaFromEntradas();
+      this.hasUnsavedChangesEntradas = true;
+      this.selectedEntradaRow = null;
+      if (this.nivel4GridApi) {
+        this.nivel4GridApi.setGridOption('rowData', this.cascadeEntradaData);
+      }
+      return;
+    }
+
     this.cascadeEntradaData = JSON.parse(JSON.stringify(this.originalCascadeEntradaData));
     this.syncSelectedOcRestaFromEntradas();
     this.hasUnsavedChangesEntradas = false;

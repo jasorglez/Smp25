@@ -2182,6 +2182,13 @@ export const routes: Routes = [
               ).then((c) => c.PurchaseOrderDelisonComponent),
             canDeactivate: [UnsavedChangesGuard],
           },
+          {
+            path: 'gastos',
+            loadComponent: () =>
+              import(
+                './domains/ModShoppingDelison/pages/gastos/gastos.component'
+              ).then((c) => c.GastosComponent),
+          },
 
           {
             path: 'catalogs',

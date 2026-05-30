@@ -16,7 +16,7 @@ export class ProcmenucomprasComponent implements OnInit {
   private signalsService = inject(SignalsService);
   private menuService = inject(MenuService);
 
-  tabMenus: { masterIdentifier: string; identifier: string; permissionName: string; route: string; icon: string; principalSubIdentifier: string; tabOrder: number }[] = [];
+  tabMenus: { masterIdentifier: string; identifier: string; permissionName: string; route: string; icon: string; principalSubIdentifier: string; tabOrder: number; skipPermission?: boolean }[] = [];
 
   ngOnInit() {
     this.signalsService.setCatalogSelected('SHOPPINGDELISON');
@@ -30,6 +30,20 @@ export class ProcmenucomprasComponent implements OnInit {
         if (materiaPrimaTab) {
           materiaPrimaTab.permissionName = 'Materiales Maestros';
         }
+
+        const gastosTab = {
+          masterIdentifier: 'shoppingDelison',
+          identifier: 'gastos',
+          permissionName: 'Gastos',
+          route: 'gastos',
+          icon: 'bi bi-receipt',
+          principalSubIdentifier: '',
+          tabOrder: 4.5,
+          skipPermission: true,
+        };
+        const ocIdx = tabs.findIndex(t => t.identifier === 'purchas_eorder');
+        tabs.splice(ocIdx + 1, 0, gastosTab);
+
         this.tabMenus = tabs;
       },
       error: (err) => console.error('Error loading tab menus:', err)

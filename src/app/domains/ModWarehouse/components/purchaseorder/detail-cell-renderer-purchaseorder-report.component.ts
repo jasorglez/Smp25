@@ -6,6 +6,7 @@ import { SignalsService } from 'app/services/signals.service';
 import { RootService } from 'app/services/root.service';
 import { ProvidersService } from 'app/services/providers.service';
 import { OcAndReqsService } from 'app/services/ocandreqs.service';
+import { SetupService } from 'app/services/setup.service';
 import { MaterialsService } from 'app/services/materials.service';
 import { Base64EncodeService } from 'app/services/base64encode.service';
 import { lastValueFrom } from 'rxjs';
@@ -71,6 +72,8 @@ export class DetailCellRendererPurchaseOrderReportComponent {
   private requisitionsService = inject(OcAndReqsService);
   private materialsService = inject(MaterialsService);
   private base64EncodeService = inject(Base64EncodeService);
+  private setupService = inject(SetupService);
+  private ivaPct = 0;   // IVA% de la sucursal (setup almacén); precio guardado = BASE (Opción B)
 
   private params!: ICellRendererParams;
   purchaseOrderData: any;
@@ -146,6 +149,15 @@ export class DetailCellRendererPurchaseOrderReportComponent {
         }
       }
 
+      // IVA% de la sucursal (setup almacén). El precio guardado es BASE; el IVA se aplica por línea (mas_iva).
+      try {
+        const idBranch = this.purchaseOrderData.idReference || this.signalsService.getBranchSelectedBySidebar()();
+        if (idBranch) {
+          const setup: any = await lastValueFrom(this.setupService.getWarehouseSetupByBranch(Number(idBranch)));
+          this.ivaPct = Number(setup?.iva) || 0;
+        }
+      } catch { this.ivaPct = 0; }
+
       // Generar el PDF
       const docDefinition = this.buildDocDefinition(companyData, logoBase64, logo2Base64, watermarkBase64, providerData, articulos);
 
@@ -201,11 +213,19 @@ export class DetailCellRendererPurchaseOrderReportComponent {
     const solicitante = this.purchaseOrderData.solicit || 'N/A';
     const comentarios = this.purchaseOrderData.comments || '';
 
-    // Calcular totales
+    // Calcular totales. El precio/total guardado es BASE (Opción B); el IVA se aplica
+    // SOLO a las líneas con mas_iva, usando el iva% de la sucursal (no 16% fijo).
     const subtotal = articulos.reduce((sum, item) => sum + (item.total || 0), 0);
     const descuento = this.purchaseOrderData.discount || 0;
     const subtotalConDescuento = subtotal - descuento;
-    const iva = subtotalConDescuento * 0.16;
+    // IVA por línea con precio unitario REDONDEADO a 2 dec (Opción A): iva = (round2(price×(1+iva%)) − price) × qty.
+    const iva = articulos.reduce((sum, item) => {
+      if (!item.masIva) return sum;
+      const price = Number(item.price) || 0;
+      const qty = Number(item.quantity) || 0;
+      const unitConIva = Math.round(price * (1 + this.ivaPct / 100) * 100) / 100;
+      return sum + (unitConIva - price) * qty;
+    }, 0);
     const ivaRetencion = this.purchaseOrderData.ivaRetention || 0;
     const total = subtotalConDescuento + iva - ivaRetencion;
 
