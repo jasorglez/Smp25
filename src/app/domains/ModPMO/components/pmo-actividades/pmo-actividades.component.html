@@ -1,9 +1,12 @@
-<div class="container-fluid py-3">
+<div class="container-fluid py-2 px-3">
 
-  <!-- ══ Fila 1: Proyecto + Convenio ═══════════════════════════════════════ -->
+  <!-- ══════════════════════════════════════════════════════════════════════════
+       FILA 1 — Selector de proyecto + convenio + toggle de vista
+  ══════════════════════════════════════════════════════════════════════════ -->
   <div class="row mb-2 g-2 align-items-end">
 
-    <div [class]="selectedProject && conventions.length ? 'col-md-4' : 'col-md-5'">
+    <!-- Proyecto -->
+    <div [class]="selectedProject && conventions.length ? 'col-md-3' : 'col-md-4'">
       <label class="form-label form-label-sm mb-1 fw-semibold">
         <i class="bi bi-building me-1"></i> Proyecto
       </label>
@@ -16,11 +19,13 @@
       </select>
     </div>
 
-    <!-- Convenio -->
+    <!-- Convenio (si el proyecto tiene) -->
     <div class="col-md-4" *ngIf="selectedProject && (conventions.length || isLoadingConv)">
       <label class="form-label form-label-sm mb-1 fw-semibold">
         <i class="bi bi-file-earmark-text me-1"></i> Convenio / Versión
-        <span *ngIf="isLoadingConv" class="ms-1"><span class="spinner-border spinner-border-sm"></span></span>
+        <span *ngIf="isLoadingConv" class="ms-1">
+          <span class="spinner-border spinner-border-sm"></span>
+        </span>
       </label>
       <select class="form-select form-select-sm" [(ngModel)]="selectedConvention"
               (ngModelChange)="onConventionChange()" [disabled]="isLoadingConv">
@@ -33,108 +38,419 @@
       </select>
     </div>
 
-    <!-- Botones -->
-    <div class="col">
-      <div class="d-flex gap-2 justify-content-end flex-wrap" *ngIf="selectedProject">
-        <button class="btn btn-sm btn-success" (click)="addRow()">
-          <i class="bi bi-plus-lg me-1"></i> Agregar
+    <!-- Toggle de vista -->
+    <div class="col-auto ms-auto">
+      <label class="form-label form-label-sm mb-1 fw-semibold d-block">Vista</label>
+      <div class="btn-group btn-group-sm view-toggle">
+        <button class="btn"
+                [class.btn-dark]="viewMode==='gantt'"
+                [class.btn-outline-secondary]="viewMode!=='gantt'"
+                (click)="setViewMode('gantt')">
+          <i class="bi bi-bar-chart-steps me-1"></i> Gantt
         </button>
-        <button class="btn btn-sm btn-primary position-relative"
-                (click)="saveChanges()" [disabled]="!hasUnsavedChanges || isSaving">
-          <span *ngIf="isSaving" class="spinner-border spinner-border-sm me-1"></span>
-          <i *ngIf="!isSaving" class="bi bi-floppy me-1"></i>
-          {{ isSaving ? 'Guardando…' : 'Guardar' }}
-          <span *ngIf="hasUnsavedChanges && !isSaving"
-                class="position-absolute top-0 start-100 translate-middle p-2 bg-danger border border-light rounded-circle"></span>
-        </button>
-        <button class="btn btn-sm btn-warning" (click)="revertChanges()" [disabled]="!hasUnsavedChanges"
-                title="Deshacer cambios">
-          <i class="bi bi-arrow-counterclockwise"></i>
-        </button>
-        <button class="btn btn-sm btn-danger" (click)="deleteSelected()" title="Eliminar seleccionada">
-          <i class="bi bi-trash"></i>
-        </button>
-        <button class="btn btn-sm btn-outline-secondary" (click)="loadActividades()" title="Actualizar">
-          <i class="bi bi-arrow-clockwise"></i>
-        </button>
-        <button class="btn btn-sm btn-outline-success" (click)="exportXLS()" [disabled]="!rowData.length"
-                title="Exportar Excel">
-          <i class="bi bi-file-earmark-excel"></i>
+        <button class="btn"
+                [class.btn-dark]="viewMode==='tabla'"
+                [class.btn-outline-secondary]="viewMode!=='tabla'"
+                (click)="setViewMode('tabla')">
+          <i class="bi bi-table me-1"></i> Tabla
         </button>
       </div>
     </div>
   </div>
 
-  <!-- ══ Info: sin convenio ═════════════════════════════════════════════════ -->
+  <!-- ══════════════════════════════════════════════════════════════════════════
+       FILA 2 — Controles de Gantt + botones CRUD
+  ══════════════════════════════════════════════════════════════════════════ -->
+  <div class="d-flex gap-2 mb-2 flex-wrap align-items-center" *ngIf="selectedProject">
+
+    <!-- Zoom — solo Gantt -->
+    <ng-container *ngIf="viewMode==='gantt'">
+      <div class="btn-group btn-group-sm">
+        <button class="btn"
+                [class.btn-secondary]="zoomLevel==='month'"
+                [class.btn-outline-secondary]="zoomLevel!=='month'"
+                (click)="setZoom('month')">
+          <i class="bi bi-calendar3 me-1"></i> Mes
+        </button>
+        <button class="btn"
+                [class.btn-secondary]="zoomLevel==='week'"
+                [class.btn-outline-secondary]="zoomLevel!=='week'"
+                (click)="setZoom('week')">
+          <i class="bi bi-calendar-week me-1"></i> Semana
+        </button>
+      </div>
+      <div class="form-check form-switch mb-0 ms-1">
+        <input class="form-check-input" type="checkbox" id="chkCritAct"
+               [(ngModel)]="showOnlyCritical" (ngModelChange)="toggleCritical()">
+        <label class="form-check-label small fw-semibold" for="chkCritAct">Solo Crítica</label>
+      </div>
+      <button class="btn btn-sm btn-outline-primary" (click)="loadActividades()"
+              [disabled]="isLoading" title="Recalcular">
+        <i class="bi bi-arrow-clockwise"></i>
+      </button>
+    </ng-container>
+
+    <!-- Spacer -->
+    <div class="flex-grow-1"></div>
+
+    <!-- CRUD buttons -->
+    <button class="btn btn-sm btn-success" (click)="addRow()">
+      <i class="bi bi-plus-lg me-1"></i> Agregar
+    </button>
+
+    <button class="btn btn-sm btn-primary position-relative"
+            (click)="saveChanges()" [disabled]="!hasUnsavedChanges || isSaving">
+      <span *ngIf="isSaving" class="spinner-border spinner-border-sm me-1"></span>
+      <i *ngIf="!isSaving" class="bi bi-floppy me-1"></i>
+      {{ isSaving ? 'Guardando…' : 'Guardar' }}
+      <span *ngIf="hasUnsavedChanges && !isSaving"
+            class="position-absolute top-0 start-100 translate-middle p-2 bg-danger border border-light rounded-circle"></span>
+    </button>
+
+    <button class="btn btn-sm btn-warning" (click)="revertChanges()"
+            [disabled]="!hasUnsavedChanges" title="Deshacer cambios">
+      <i class="bi bi-arrow-counterclockwise"></i>
+    </button>
+
+    <button class="btn btn-sm btn-danger" (click)="deleteSelected()"
+            title="Eliminar seleccionada (vista Tabla)">
+      <i class="bi bi-trash"></i>
+    </button>
+
+    <button class="btn btn-sm btn-outline-success" (click)="exportXLS()"
+            [disabled]="!rowData.length" title="Exportar Excel">
+      <i class="bi bi-file-earmark-excel"></i>
+    </button>
+  </div>
+
+  <!-- ══════════════════════════════════════════════════════════════════════════
+       KPI chips — solo en Gantt
+  ══════════════════════════════════════════════════════════════════════════ -->
+  <div class="d-flex gap-2 mb-2 flex-wrap" *ngIf="viewMode==='gantt' && tasks.length">
+    <span class="kpi-chip text-white" style="background:#2c3e50;">
+      <i class="bi bi-kanban-fill"></i> {{ tasks.length }} Actividades
+    </span>
+    <span class="kpi-chip text-white" style="background:#e74c3c;" *ngIf="totalCritical > 0">
+      <i class="bi bi-exclamation-triangle-fill"></i> {{ totalCritical }} Críticas
+    </span>
+    <span class="kpi-chip" style="background:#8e44ad; color:#fff;" *ngIf="totalMilestones > 0">
+      ◆ {{ totalMilestones }} Hitos
+    </span>
+    <span class="kpi-chip text-white" style="background:#e74c3c;" *ngIf="totalDelayed > 0">
+      <i class="bi bi-clock-history"></i> {{ totalDelayed }} Atrasadas
+    </span>
+    <span class="kpi-chip text-white" style="background:#8e44ad;" *ngIf="totalDone > 0">
+      <i class="bi bi-check2-circle"></i> {{ totalDone }} Terminadas
+    </span>
+    <span class="kpi-chip text-white ms-auto"
+          [style.background]="avgProgress >= 80 ? '#27ae60' : avgProgress >= 40 ? '#f39c12' : '#95a5a6'">
+      <i class="bi bi-graph-up"></i> {{ avgProgress }}% Avance prom.
+    </span>
+  </div>
+
+  <!-- ══════════════════════════════════════════════════════════════════════════
+       Alerts
+  ══════════════════════════════════════════════════════════════════════════ -->
+  <!-- Sin convenio info -->
   <div *ngIf="selectedProject && !conventions.length && !isLoadingConv"
        class="alert alert-info py-1 mb-2 small">
     <i class="bi bi-info-circle me-1"></i>
-    Este proyecto no tiene convenios configurados — se muestran y guardan actividades sin versión.
-    Para trabajar con versiones ve a <strong>Proyectos → Convenios</strong>.
+    Sin convenios configurados — se muestran todas las actividades del proyecto.
   </div>
 
-  <!-- ══ Badge convenio activo ════════════════════════════════════════════ -->
+  <!-- Badge convenio activo -->
   <div *ngIf="selectedConvention && !isSinConvenio" class="mb-2 d-flex align-items-center gap-2">
     <span class="badge" [ngClass]="convTypeBadge(selectedConvention.type).css">
       {{ convTypeBadge(selectedConvention.type).label }}
     </span>
-    <span class="small fw-semibold">
-      {{ selectedConvention.name || selectedConvention.folio }}
-    </span>
+    <span class="small fw-semibold">{{ selectedConvention.name || selectedConvention.folio }}</span>
     <span class="badge bg-secondary rounded-pill ms-1">{{ rowData.length }} actividad(es)</span>
     <span *ngIf="selectedConvention.vigente" class="badge bg-success ms-1">★ Vigente</span>
   </div>
 
-  <!-- ══ Panel reasignación (solo en modo "sin convenio") ══════════════════ -->
+  <!-- Panel reasignación (modo sin convenio) -->
   <div *ngIf="isSinConvenio && rowData.length" class="alert alert-warning py-2 mb-2">
     <div class="d-flex align-items-center gap-2 flex-wrap">
       <i class="bi bi-exclamation-triangle-fill text-warning fs-5"></i>
-      <span class="fw-semibold small">
-        {{ rowData.length }} actividad(es) sin convenio asignado.
-      </span>
+      <span class="fw-semibold small">{{ rowData.length }} actividad(es) sin convenio.</span>
       <span class="small text-muted">Asígnalas a un convenio:</span>
-      <select class="form-select form-select-sm" style="max-width:280px;"
-              [(ngModel)]="targetConvention">
-        <option [ngValue]="null">— Seleccionar convenio destino —</option>
+      <select class="form-select form-select-sm" style="max-width:280px;" [(ngModel)]="targetConvention">
+        <option [ngValue]="null">— Convenio destino —</option>
         <option *ngFor="let c of conventions" [ngValue]="c">
           {{ c.vigente ? '★ ' : '' }}{{ c.name || c.folio || ('Conv. #' + c.id) }}
           — {{ convTypeBadge(c.type).label }}
         </option>
       </select>
-      <button class="btn btn-sm btn-warning"
-              (click)="reassignToConvention()"
+      <button class="btn btn-sm btn-warning" (click)="reassignToConvention()"
               [disabled]="!targetConvention || isReassigning">
         <span *ngIf="isReassigning" class="spinner-border spinner-border-sm me-1"></span>
         <i *ngIf="!isReassigning" class="bi bi-arrow-right-circle me-1"></i>
-        {{ isReassigning ? 'Asignando…' : 'Asignar a este convenio' }}
+        {{ isReassigning ? 'Asignando…' : 'Asignar a convenio' }}
       </button>
     </div>
   </div>
 
-  <!-- ══ Sin actividades sin convenio ══════════════════════════════════════ -->
+  <!-- Sin actividades sin convenio -->
   <div *ngIf="isSinConvenio && !rowData.length && !isLoading" class="alert alert-success py-2 mb-2">
-    <i class="bi bi-check-circle-fill me-1"></i>
-    Todas las actividades tienen convenio asignado. ✅
+    <i class="bi bi-check-circle-fill me-1"></i> Todas las actividades tienen convenio. ✅
   </div>
 
-  <!-- ══ Mensaje feedback ════════════════════════════════════════════════════ -->
+  <!-- Feedback guardar/error -->
   <div *ngIf="saveMsg" class="alert py-2 small mb-2"
        [class.alert-success]="saveMsgType==='success'"
        [class.alert-danger]="saveMsgType==='error'">
     {{ saveMsg }}
   </div>
 
-  <!-- ══ Placeholder sin proyecto ═══════════════════════════════════════════ -->
+  <!-- ══════════════════════════════════════════════════════════════════════════
+       Placeholder — sin proyecto seleccionado
+  ══════════════════════════════════════════════════════════════════════════ -->
   <div *ngIf="!selectedProject" class="text-center py-5 text-muted">
-    <i class="bi bi-kanban-fill fs-1 opacity-25 d-block mb-2"></i>
+    <i class="bi bi-bar-chart-steps fs-1 text-primary opacity-25 d-block mb-2"></i>
     <h5>Selecciona un proyecto</h5>
-    <p class="small">Gestiona las actividades del programa de trabajo directamente en la tabla.</p>
+    <p class="small">Visualiza el programa de trabajo como diagrama Gantt con barras, hitos y flechas de dependencias.</p>
   </div>
 
-  <!-- ══ Grid (siempre montado) ══════════════════════════════════════════════ -->
+  <!-- ══════════════════════════════════════════════════════════════════════════
+       Spinner de carga
+  ══════════════════════════════════════════════════════════════════════════ -->
+  <div *ngIf="isLoading && selectedProject" class="text-center py-5">
+    <div class="spinner-border text-primary" style="width:2.5rem;height:2.5rem;"></div>
+    <p class="mt-2 text-muted small">Cargando programa de trabajo…</p>
+  </div>
+
+  <!-- ══════════════════════════════════════════════════════════════════════════
+       ██████ GANTT SVG ██████
+  ══════════════════════════════════════════════════════════════════════════ -->
+  <ng-container *ngIf="viewMode==='gantt' && !isLoading && selectedProject">
+
+    <!-- Sin datos Gantt -->
+    <div *ngIf="!tasks.length" class="text-center text-muted py-5">
+      <i class="bi bi-bar-chart-steps fs-1 text-warning opacity-50 d-block mb-2"></i>
+      <p>Sin actividades con fechas para mostrar en el diagrama.</p>
+      <p class="small">Agrega actividades con fecha de inicio y término usando el botón <strong>+ Agregar</strong>.</p>
+    </div>
+
+    <!-- Diagrama Gantt -->
+    <div #ganttWrapper class="gantt-wrapper" *ngIf="tasks.length">
+      <svg class="gantt-svg"
+           [attr.width]="svgW"
+           [attr.height]="svgH">
+
+        <!-- ── Defs: marcadores de flecha ── -->
+        <defs>
+          <marker id="arrowActCrit" markerWidth="7" markerHeight="7" refX="6" refY="3.5" orient="auto">
+            <polygon points="0 0, 7 3.5, 0 7" fill="#e74c3c"/>
+          </marker>
+          <marker id="arrowActNorm" markerWidth="7" markerHeight="7" refX="6" refY="3.5" orient="auto">
+            <polygon points="0 0, 7 3.5, 0 7" fill="#95a5a6"/>
+          </marker>
+          <!-- Gradiente para barras Summary -->
+          <linearGradient id="gradSummary" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%"   stop-color="#34495e"/>
+            <stop offset="100%" stop-color="#2c3e50"/>
+          </linearGradient>
+        </defs>
+
+        <!-- ── Encabezado de meses ── -->
+        <rect x="0" y="0" [attr.width]="svgW" height="52" fill="#f0f4f8"/>
+        <ng-container *ngFor="let m of months">
+          <line [attr.x1]="m.x" y1="0" [attr.x2]="m.x" [attr.y2]="svgH"
+                stroke="#c8d0da" stroke-width="1"/>
+          <text [attr.x]="m.x + m.width / 2" y="31"
+                text-anchor="middle"
+                style="font-size:12px; fill:#3a4a5c; font-weight:700; letter-spacing:.4px;">
+            {{ m.label }}
+          </text>
+        </ng-container>
+        <line x1="0" y1="52" [attr.x2]="svgW" y2="52" stroke="#b0bbc8" stroke-width="1.5"/>
+
+        <!-- ── Panel izquierdo de etiquetas ── -->
+        <rect x="0" y="0" width="290" [attr.height]="svgH" fill="#f7f9fc"/>
+        <line x1="290" y1="0" x2="290" [attr.y2]="svgH" stroke="#b0bbc8" stroke-width="1.5"/>
+        <text x="8" y="33" style="font-size:11px; font-weight:700; fill:#666; text-transform:uppercase; letter-spacing:.5px;">
+          WBS — Actividad
+        </text>
+
+        <!-- ── Filas alternadas ── -->
+        <ng-container *ngFor="let t of tasks; trackBy:trackById; let i = index">
+          <rect *ngIf="i % 2 === 0" x="0" [attr.y]="52 + i * 44" [attr.width]="svgW" height="44"
+                fill="#f9fafc" opacity="0.7"/>
+          <line x1="0" [attr.y1]="52 + (i+1) * 44" [attr.x2]="svgW" [attr.y2]="52 + (i+1) * 44"
+                stroke="#e4e8ef" stroke-width="1"/>
+        </ng-container>
+
+        <!-- ── Flechas de dependencias (detrás de las barras) ── -->
+        <ng-container *ngFor="let l of links; trackBy:trackByLink">
+          <path [attr.d]="l.path"
+                fill="none"
+                [attr.stroke]="l.isCritical ? '#e74c3c' : '#95a5a6'"
+                [attr.stroke-width]="l.isCritical ? 2 : 1.6"
+                [attr.stroke-dasharray]="l.isCritical ? '' : '5 2.5'"
+                [attr.marker-end]="l.isCritical ? 'url(#arrowActCrit)' : 'url(#arrowActNorm)'"
+                opacity="0.9"/>
+        </ng-container>
+
+        <!-- ── Barras e Hitos ── -->
+        <ng-container *ngFor="let t of tasks; trackBy:trackById">
+
+          <!-- Etiqueta izquierda (panel sticky) -->
+          <text [attr.x]="6 + t.level * 12"
+                [attr.y]="52 + t.row * 44 + 17"
+                style="font-size:10px; fill:#888;"
+                *ngIf="t.wbs">
+            {{ t.wbs }}
+          </text>
+          <text [attr.x]="6 + t.level * 12"
+                [attr.y]="52 + t.row * 44 + 30"
+                [attr.font-weight]="t.isCritical ? '700' : t.isSummary ? '700' : '400'"
+                [attr.fill]="t.isCritical ? '#c0392b' : t.isSummary ? '#2c3e50' : '#333'"
+                style="font-size:11px;">
+            {{ t.label.length > 34 ? (t.label | slice:0:34) + '…' : t.label }}
+          </text>
+
+          <!-- ── HITO — diamante ── -->
+          <ng-container *ngIf="t.isMilestone">
+            <g class="bar-group" (click)="openEditPanel(t)">
+              <polygon [attr.points]="milestonePoints(t)"
+                       [attr.fill]="t.fill"
+                       opacity="0.92"/>
+              <!-- glow ring -->
+              <polygon [attr.points]="milestonePoints(t)"
+                       fill="none"
+                       [attr.stroke]="t.fill"
+                       stroke-width="2" opacity="0.35"/>
+              <!-- status label -->
+              <text [attr.x]="t.x + 15"
+                    [attr.y]="52 + t.row * 44 + 29"
+                    style="font-size:9px; fill:#666;">
+                {{ t.status }}
+              </text>
+            </g>
+          </ng-container>
+
+          <!-- ── BARRA (Activity / Summary) ── -->
+          <ng-container *ngIf="!t.isMilestone">
+            <g class="bar-group" (click)="openEditPanel(t)">
+
+              <!-- Fondo (transparente) -->
+              <rect [attr.x]="t.x"
+                    [attr.y]="52 + t.row * 44 + 11"
+                    [attr.width]="t.barW"
+                    height="22"
+                    [attr.fill]="t.fill"
+                    rx="4" ry="4"
+                    opacity="0.18"/>
+
+              <!-- Progreso relleno -->
+              <rect *ngIf="t.progressW > 0"
+                    [attr.x]="t.x"
+                    [attr.y]="52 + t.row * 44 + 11"
+                    [attr.width]="t.progressW"
+                    height="22"
+                    [attr.fill]="t.fillProgress"
+                    rx="4" ry="4"
+                    opacity="0.78"/>
+
+              <!-- Borde de la barra -->
+              <rect class="bar-border"
+                    [attr.x]="t.x"
+                    [attr.y]="52 + t.row * 44 + 11"
+                    [attr.width]="t.barW"
+                    height="22"
+                    [attr.stroke]="t.fill"
+                    [attr.stroke-width]="t.isCritical ? 2 : 1.5"
+                    fill="none"
+                    rx="4" ry="4"/>
+
+              <!-- % dentro de la barra -->
+              <text *ngIf="t.barW > 32"
+                    [attr.x]="t.x + t.barW / 2"
+                    [attr.y]="52 + t.row * 44 + 26"
+                    text-anchor="middle"
+                    style="font-size:10px; font-weight:700;"
+                    [attr.fill]="t.progress > 0.35 ? '#fff' : t.fill">
+                {{ (t.progress * 100).toFixed(0) }}%
+              </text>
+
+              <!-- Badge de estado -->
+              <ng-container *ngIf="t.barW > 16">
+                <rect [attr.x]="t.x + t.barW + 5"
+                      [attr.y]="52 + t.row * 44 + 15"
+                      width="70" height="15"
+                      [attr.fill]="statusBadgeColor(t.status)"
+                      rx="7" ry="7"
+                      opacity="0.9"/>
+                <text [attr.x]="t.x + t.barW + 40"
+                      [attr.y]="52 + t.row * 44 + 25"
+                      text-anchor="middle"
+                      style="font-size:9px; font-weight:700; fill:#fff;">
+                  {{ t.status }}
+                </text>
+              </ng-container>
+
+              <!-- Ícono lápiz — hint edición -->
+              <text [attr.x]="t.x - 16"
+                    [attr.y]="52 + t.row * 44 + 27"
+                    style="font-size:11px; fill:#aaa;">✎</text>
+
+            </g>
+          </ng-container>
+
+        </ng-container>
+
+        <!-- ── Línea de Hoy ── -->
+        <line [attr.x1]="todayX" y1="0" [attr.x2]="todayX" [attr.y2]="svgH"
+              stroke="#e74c3c" stroke-width="1.5" stroke-dasharray="5 3" opacity="0.85"/>
+        <rect [attr.x]="todayX - 14" y="37" width="28" height="14"
+              fill="#e74c3c" rx="3" ry="3" opacity="0.9"/>
+        <text [attr.x]="todayX" y="48"
+              text-anchor="middle"
+              style="font-size:9px; fill:#fff; font-weight:800;">HOY</text>
+
+      </svg>
+    </div>
+
+    <!-- ── Leyenda Gantt ── -->
+    <div class="d-flex flex-wrap gap-3 mt-2 px-1 small text-muted" *ngIf="tasks.length">
+      <span>
+        <span style="display:inline-block;width:22px;height:10px;background:#e74c3c;border-radius:3px;vertical-align:middle;margin-right:4px;"></span>
+        Ruta Crítica
+      </span>
+      <span>
+        <span style="display:inline-block;width:22px;height:10px;background:#2980b9;border-radius:3px;vertical-align:middle;margin-right:4px;"></span>
+        Tarea Normal
+      </span>
+      <span>
+        <span style="display:inline-block;width:22px;height:10px;background:#2c3e50;border-radius:3px;vertical-align:middle;margin-right:4px;"></span>
+        Resumen
+      </span>
+      <span>
+        <span style="display:inline-block;width:11px;height:11px;background:#8e44ad;transform:rotate(45deg);vertical-align:middle;margin-right:6px;"></span>
+        Hito
+      </span>
+      <span>
+        <span style="display:inline-block;width:22px;border-top:2px solid #e74c3c;vertical-align:middle;margin-right:4px;"></span>
+        Dep. crítica
+      </span>
+      <span>
+        <span style="display:inline-block;width:22px;border-top:2px dashed #95a5a6;vertical-align:middle;margin-right:4px;"></span>
+        Dep. normal
+      </span>
+      <span class="ms-auto">
+        <i class="bi bi-pencil-fill me-1"></i> Clic en barra para editar
+      </span>
+    </div>
+
+  </ng-container>
+
+  <!-- ══════════════════════════════════════════════════════════════════════════
+       ██████ TABLA (AG Grid) ██████
+       Siempre montado (para que gridApi esté disponible), visible solo en modo tabla
+  ══════════════════════════════════════════════════════════════════════════ -->
   <div class="ag-theme-quartz"
-       [style.display]="selectedProject ? 'block' : 'none'"
-       style="height: calc(100vh - 320px); min-height: 380px;">
+       [style.display]="viewMode==='tabla' && selectedProject ? 'block' : 'none'"
+       style="height: calc(100vh - 320px); min-height: 360px;">
     <ag-grid-angular
       style="height:100%;width:100%;"
       [rowData]="rowData"
@@ -145,12 +461,9 @@
     </ag-grid-angular>
   </div>
 
-  <!-- ══ Leyenda ════════════════════════════════════════════════════════════ -->
-  <div *ngIf="selectedProject" class="d-flex gap-3 mt-2 flex-wrap small text-muted">
-    <span>
-      <i class="bi bi-info-circle me-1"></i>
-      Doble clic en celda para editar · Enter avanza al siguiente campo · El WBS define la jerarquía
-    </span>
+  <!-- ── Leyenda tabla ── -->
+  <div *ngIf="viewMode==='tabla' && selectedProject" class="d-flex gap-3 mt-2 flex-wrap small text-muted">
+    <span><i class="bi bi-info-circle me-1"></i> Doble clic en celda para editar · Enter avanza al siguiente campo</span>
     <span class="ms-auto">
       <span style="color:#8e44ad;font-weight:bold;">◆</span> Milestone &nbsp;
       <span style="color:#2980b9;font-weight:bold;">◆</span> Summary &nbsp;
@@ -158,4 +471,151 @@
     </span>
   </div>
 
+</div>
+
+<!-- ══════════════════════════════════════════════════════════════════════════
+     PANEL DE EDICIÓN — slide desde la derecha
+══════════════════════════════════════════════════════════════════════════ -->
+
+<!-- Backdrop -->
+<div class="edit-panel-backdrop" [class.open]="editPanelOpen" (click)="closeEditPanel()"></div>
+
+<!-- Panel -->
+<div class="edit-panel" [class.open]="editPanelOpen">
+
+  <!-- Header -->
+  <div class="d-flex align-items-center justify-content-between mb-3">
+    <div>
+      <h6 class="mb-0 fw-bold">
+        <i class="bi bi-pencil-square me-2 text-primary"></i>
+        {{ editingRow?.__isNew ? 'Nueva Actividad' : 'Editar Actividad' }}
+      </h6>
+      <small class="text-muted" *ngIf="editDraft.activity">WBS: {{ editDraft.activity }}</small>
+    </div>
+    <button class="btn btn-sm btn-outline-secondary" (click)="closeEditPanel()">
+      <i class="bi bi-x-lg"></i>
+    </button>
+  </div>
+
+  <hr class="mt-0 mb-3">
+
+  <form *ngIf="editDraft">
+
+    <!-- WBS / Partida -->
+    <div class="mb-2">
+      <label class="form-label form-label-sm fw-semibold mb-1">WBS / Partida</label>
+      <input type="text" class="form-control form-control-sm" [(ngModel)]="editDraft.activity" name="activity"
+             placeholder="Ej. 1.2.3">
+    </div>
+
+    <!-- Descripción -->
+    <div class="mb-2">
+      <label class="form-label form-label-sm fw-semibold mb-1">Descripción</label>
+      <textarea class="form-control form-control-sm" [(ngModel)]="editDraft.description" name="description"
+                rows="2" placeholder="Nombre de la actividad"></textarea>
+    </div>
+
+    <!-- Tipo -->
+    <div class="mb-2">
+      <label class="form-label form-label-sm fw-semibold mb-1">Tipo</label>
+      <select class="form-select form-select-sm" [(ngModel)]="editDraft.typeActivity" name="typeActivity">
+        <option value="Activity">Activity</option>
+        <option value="Summary">Summary (Resumen)</option>
+        <option value="Milestone">Milestone (Hito)</option>
+      </select>
+    </div>
+
+    <!-- Unidad + Cantidad -->
+    <div class="row g-2 mb-2">
+      <div class="col-5">
+        <label class="form-label form-label-sm fw-semibold mb-1">Unidad</label>
+        <input type="text" class="form-control form-control-sm" [(ngModel)]="editDraft.unit" name="unit"
+               placeholder="m², pza, kg…">
+      </div>
+      <div class="col-7">
+        <label class="form-label form-label-sm fw-semibold mb-1">Cantidad</label>
+        <input type="number" class="form-control form-control-sm" [(ngModel)]="editDraft.quantity" name="quantity">
+      </div>
+    </div>
+
+    <!-- P.U. -->
+    <div class="mb-2">
+      <label class="form-label form-label-sm fw-semibold mb-1">Precio Unitario (MXN)</label>
+      <input type="number" class="form-control form-control-sm" [(ngModel)]="editDraft.costMX" name="costMX"
+             placeholder="0.00">
+    </div>
+
+    <!-- Fechas -->
+    <div class="row g-2 mb-2">
+      <div class="col-6">
+        <label class="form-label form-label-sm fw-semibold mb-1">
+          <i class="bi bi-calendar-event me-1 text-success"></i> Inicio
+        </label>
+        <input type="date" class="form-control form-control-sm" [(ngModel)]="editDraft.startDate" name="startDate">
+      </div>
+      <div class="col-6">
+        <label class="form-label form-label-sm fw-semibold mb-1">
+          <i class="bi bi-calendar-check me-1 text-danger"></i> Término
+        </label>
+        <input type="date" class="form-control form-control-sm" [(ngModel)]="editDraft.endDate" name="endDate">
+      </div>
+    </div>
+
+    <!-- Avance -->
+    <div class="mb-3">
+      <label class="form-label form-label-sm fw-semibold mb-1">
+        Avance: <span class="badge bg-primary">{{ editProgressPct }}%</span>
+      </label>
+      <input type="range" class="form-range" min="0" max="100" step="1"
+             [ngModel]="editProgressPct" (ngModelChange)="editProgressPct = $event" name="progress">
+      <div class="progress" style="height:6px;">
+        <div class="progress-bar bg-primary" [style.width.%]="editProgressPct"></div>
+      </div>
+    </div>
+
+    <!-- Predecesor -->
+    <div class="mb-2">
+      <label class="form-label form-label-sm fw-semibold mb-1">
+        <i class="bi bi-arrow-left-circle me-1"></i> Predecesor (ID)
+      </label>
+      <input type="text" class="form-control form-control-sm" [(ngModel)]="editDraft.predecessor" name="predecessor"
+             placeholder="ID de actividad predecesora">
+    </div>
+
+    <!-- Ruta crítica -->
+    <div class="mb-3">
+      <label class="form-label form-label-sm fw-semibold mb-1">Ruta Crítica</label>
+      <div class="btn-group btn-group-sm d-block">
+        <button type="button" class="btn"
+                [class.btn-danger]="editDraft.criticalRoute === 'Si'"
+                [class.btn-outline-danger]="editDraft.criticalRoute !== 'Si'"
+                (click)="editDraft.criticalRoute = 'Si'">
+          <i class="bi bi-exclamation-triangle me-1"></i> Sí
+        </button>
+        <button type="button" class="btn"
+                [class.btn-success]="editDraft.criticalRoute !== 'Si'"
+                [class.btn-outline-success]="editDraft.criticalRoute === 'Si'"
+                (click)="editDraft.criticalRoute = 'No'">
+          No
+        </button>
+      </div>
+    </div>
+
+    <!-- Botones -->
+    <div class="d-flex gap-2">
+      <button type="button" class="btn btn-primary flex-grow-1" (click)="applyEditDraft()">
+        <i class="bi bi-check-lg me-1"></i>
+        {{ editingRow?.__isNew ? 'Crear' : 'Aplicar cambios' }}
+      </button>
+      <button type="button" class="btn btn-outline-secondary" (click)="closeEditPanel()">
+        Cancelar
+      </button>
+    </div>
+
+    <p class="text-muted small mt-2 mb-0">
+      <i class="bi bi-info-circle me-1"></i>
+      Los cambios se aplican localmente. Pulsa <strong>Guardar</strong> en la barra para persistir.
+    </p>
+
+  </form>
 </div>
