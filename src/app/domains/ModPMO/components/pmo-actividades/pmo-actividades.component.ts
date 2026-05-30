@@ -15,7 +15,7 @@ import { SignalsService }      from 'app/services/signals.service';
 // ── Layout constants ──────────────────────────────────────────────────────────
 const ROW_H      = 44;
 const HEADER_H   = 52;
-const LABEL_W    = 290;
+const LABEL_W    = 330;
 const MIN_DAY_PX = 4;
 
 // ── Interfaces ────────────────────────────────────────────────────────────────
