@@ -2208,12 +2208,27 @@ ${taskXML}
       await new Promise(r => setTimeout(r, 0));
     }
 
+    // ── Guardar ponderados en BD automáticamente ───────────────────────────
+    try {
+      for (let i = 0; i < leafTasks.length; i++) {
+        const t = leafTasks[i];
+        if (t['idEntry']) {
+          await lastValueFrom(
+            this.workprogramsService.updateWorkProgram(t['idEntry'], { ponderado: ponderados[i] })
+          );
+        }
+        this.calcProgress = Math.round(((i + 1) / leafTasks.length) * 100);
+      }
+    } catch {
+      alerts.basicAlert('Error', 'Error al guardar ponderados en la BD.', 'error');
+    }
+
     this.isCalculating = false;
     this.calcProgress = 0;
     this.notSavedChanges = true;
     alerts.basicAlert(
-      `✅ Ponderado por ${modalidadLabel} calculado`,
-      `${denominadorLabel.charAt(0).toUpperCase() + denominadorLabel.slice(1)}: ${unidad} — ${total} concepto(s) actualizados. Presiona Guardar para persistir.`,
+      `✅ Ponderado por ${modalidadLabel} calculado y guardado`,
+      `${denominadorLabel.charAt(0).toUpperCase() + denominadorLabel.slice(1)}: ${unidad} — ${total} concepto(s) actualizados en la BD.`,
       'success'
     );
   }
