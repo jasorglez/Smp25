@@ -707,14 +707,14 @@ export const routes: Routes = [
         canActivate: [MasterPermissionsGuard],
         data: { permissions: { master: 'pmo' } },
         children: [
-          { path: '', redirectTo: 'actividades', pathMatch: 'full' },
+          { path: '', redirectTo: 'programa', pathMatch: 'full' },
           {
             path: 'actividades',
             loadComponent: () =>
               import('./domains/ModPMO/components/pmo-actividades/pmo-actividades.component')
                 .then((c) => c.PmoActividadesComponent),
             canActivate: [MasterPermissionsGuard],
-            data: { permissions: { master: 'pmo', detailed: 'actividades' } },
+            data: { permissions: { master: 'pmo', detailed: 'programa' } },
           },
           {
             path: 'programa',
