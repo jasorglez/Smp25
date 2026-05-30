@@ -483,8 +483,8 @@ import { alerts } from 'app/helpers/alerts';
               <ag-grid-angular
                 class="ag-theme-quartz catalog-grid"
                 [rowData]="rowData()"
-                [columnDefs]="columnDefs"
-                [gridOptions]="gridOptions"
+                [columnDefs]="isBotesMode ? boteColumnDefs : columnDefs"
+                [gridOptions]="isBotesMode ? boteGridOptions : gridOptions"
                 (gridReady)="onGridReady($event)"
                 (cellValueChanged)="onCellValueChanged($event)"
                 (rowClicked)="onRowClicked($event)"
@@ -772,6 +772,7 @@ export class CatalogosProduccionComponent {
   gridApi!: GridApi;
   private enterPressed = false;
   private editableColumnOrder = ['idArticulo'];
+  isBotesMode = false;
 
   // ── Tabla Jerárquica (solo «Características de manzana», datos mock en frontend) ──
   showHierarchicalTable = false;
@@ -832,6 +833,64 @@ export class CatalogosProduccionComponent {
     { key: 'cerveza',      label: 'Cerveza' },
     { key: 'envasado',     label: 'Envasado' },
   ];
+
+  // ── Columnas Botes ──
+  boteColumnDefs: ColDef[] = [
+    {
+      headerName: 'Bote',
+      field: 'boteNum',
+      width: 80,
+      editable: false,
+      valueFormatter: (p: any) => p.value != null ? String(p.value) : '—',
+    },
+    {
+      headerName: 'Volumen',
+      field: 'cantidad',
+      width: 120,
+      editable: true,
+      type: 'numericColumn',
+      valueParser: (p: any) => {
+        const n = parseInt(p.newValue, 10);
+        return isNaN(n) ? null : n;
+      },
+    },
+    {
+      headerName: 'Código',
+      field: 'codigo',
+      flex: 1,
+      minWidth: 160,
+      editable: false,
+      valueGetter: (p: any) => {
+        const bote = p.data?.boteNum != null ? p.data.boteNum : '';
+        const vol  = p.data?.cantidad != null ? p.data.cantidad : '';
+        if (bote === '' && vol === '') return '';
+        return `/ ${vol} - ${bote}`;
+      },
+    },
+    {
+      headerName: 'Activo',
+      field: 'valor',
+      width: 90,
+      editable: true,
+      cellRenderer: 'agCheckboxCellRenderer',
+    },
+  ];
+
+  boteGridOptions = {
+    headerHeight: 25,
+    rowHeight: 20,
+    rowClassRules: { 'new-row-highlight': (p: any) => !!p.data?.__isNew },
+    defaultColDef: {
+      suppressKeyboardEvent: (params: any) => {
+        if (params.event.key === 'Enter' && params.editing) {
+          this.enterPressed = true;
+          setTimeout(() => { if (this.gridApi) this.gridApi.stopEditing(); }, 0);
+          return true;
+        }
+        return false;
+      },
+    },
+  };
 
   // ── Columnas Molienda ──
   columnDefs: ColDef[] = [
@@ -1022,6 +1081,21 @@ export class CatalogosProduccionComponent {
       this.showToast('Selecciona una categoría primero');
       return;
     }
+    if (this.isBotesMode) {
+      const nextNum = this.rowData().reduce((max, r) => Math.max(max, r.boteNum ?? 0), 0) + 1;
+      this.rowData.set([{
+        id: null,
+        type: 'MOLIENDA',
+        cantidad: null,
+        valor: true,
+        idCatalog: this.selectedCatalogSidebarId,
+        boteNum: nextNum,
+        __isNew: true,
+      }, ...this.rowData()]);
+      this.hasUnsavedChanges = true;
+      setTimeout(() => this.gridApi.startEditingCell({ rowIndex: 0, colKey: 'cantidad' }), 0);
+      return;
+    }
     this.rowData.set([{
       id: null,
       type: 'MOLIENDA',
@@ -1042,16 +1116,27 @@ export class CatalogosProduccionComponent {
       return;
     }
     const saves = this.rowData().filter(r => r.__isNew || r.__modified).map(r => {
-      const payload = {
-        idCompany: this.idRoot,
-        idArticulo: r.idArticulo,
-        cantidad: 1,
-        type: r.type,
-        idCatalog: r.idCatalog || this.selectedCatalogSidebarId,
-        active: r.valor,
-        editBultos: r.editBultos || false,
-        molienda: r.molienda || false,
-      };
+      const payload = this.isBotesMode
+        ? {
+            idCompany: this.idRoot,
+            idArticulo: null,
+            cantidad: r.cantidad ?? 0,
+            type: r.type,
+            idCatalog: r.idCatalog || this.selectedCatalogSidebarId,
+            active: r.valor,
+            editBultos: false,
+            molienda: false,
+          }
+        : {
+            idCompany: this.idRoot,
+            idArticulo: r.idArticulo,
+            cantidad: 1,
+            type: r.type,
+            idCatalog: r.idCatalog || this.selectedCatalogSidebarId,
+            active: r.valor,
+            editBultos: r.editBultos || false,
+            molienda: r.molienda || false,
+          };
       return r.__isNew ? this.mxmService.create(payload) : this.mxmService.update(r.id, payload);
     });
     if (!saves.length) return;
@@ -1834,9 +1919,11 @@ export class CatalogosProduccionComponent {
     this.selectedCatalogSidebarId = item.id;
     if (this.isCaracteristicasManzana(item)) {
       this.showHierarchicalTable = true;
+      this.isBotesMode = false;
       this.loadHierarchicalData();
     } else {
       this.showHierarchicalTable = false;
+      this.isBotesMode = this.isBotesCatalog(item);
       this.loadCatalogData(item.id);
     }
   }
@@ -1845,6 +1932,12 @@ export class CatalogosProduccionComponent {
     const raw = (item.description || '').trim().toLowerCase();
     const d = raw.normalize('NFD').replace(/[\u0300-\u036f]/g, '');
     return d.startsWith('caracteristicas de');
+  }
+
+  private isBotesCatalog(item: ExtractionFermentationCatalogItem): boolean {
+    const raw = (item.description || '').trim().toLowerCase();
+    const d = raw.normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+    return d.startsWith('botes');
   }
 
   onDoubleclickCatalogItem(item: ExtractionFermentationCatalogItem, event: Event) {
@@ -1874,19 +1967,31 @@ export class CatalogosProduccionComponent {
   private loadCatalogData(idCatalog: number) {
     if (!this.idRoot) return;
     this.mxmService.getByCatalog(this.idRoot, idCatalog).subscribe((data: any[]) => {
-      console.log('Data loaded for catalog', idCatalog, data);
-      const rows = (data ?? []).map(m => ({
-        id: m.id,
-        type: m.type,
-        idArticulo: m.idArticulo,
-        valor: m.active,
-        idCatalog: m.idCatalog,
-        editBultos: m.editBultos,
-        molienda: m.molienda ?? false,
-      }));
-      rows.sort((a: any, b: any) =>
-        (this.materialesIdToDesc.get(a.idArticulo) ?? '').localeCompare(
-          this.materialesIdToDesc.get(b.idArticulo) ?? '', 'es', { sensitivity: 'base' }));
+      let rows: any[];
+      if (this.isBotesMode) {
+        rows = (data ?? []).map(m => ({
+          id: m.id,
+          type: m.type,
+          cantidad: m.cantidad,
+          valor: m.active,
+          idCatalog: m.idCatalog,
+        }));
+        rows.sort((a: any, b: any) => (a.id ?? 0) - (b.id ?? 0));
+        rows.forEach((r, i) => { r.boteNum = i + 1; });
+      } else {
+        rows = (data ?? []).map(m => ({
+          id: m.id,
+          type: m.type,
+          idArticulo: m.idArticulo,
+          valor: m.active,
+          idCatalog: m.idCatalog,
+          editBultos: m.editBultos,
+          molienda: m.molienda ?? false,
+        }));
+        rows.sort((a: any, b: any) =>
+          (this.materialesIdToDesc.get(a.idArticulo) ?? '').localeCompare(
+            this.materialesIdToDesc.get(b.idArticulo) ?? '', 'es', { sensitivity: 'base' }));
+      }
       this.originalRowData = JSON.parse(JSON.stringify(rows));
       this.rowData.set(rows);
       this.hasUnsavedChanges = false;

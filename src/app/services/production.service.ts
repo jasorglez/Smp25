@@ -209,4 +209,18 @@ export class ProductionService {
   deleteMoliendaMatArticulo(id: number): Observable<void> {
     return this.http.delete<void>(`${environment.urlProduction}/MoliendaMatArticulo/${id}`, { headers: this.trackingService.getHeaders() });
   }
+
+  // ── Molienda Bote (asignación múltiple de botes) ──────────────────────────
+
+  getMoliendaBoteByMolienda(idMolienda: number): Observable<any[]> {
+    return this.http.get<any[]>(`${environment.urlProduction}/MoliendaBote/molienda/${idMolienda}`, { headers: this.trackingService.getHeaders() });
+  }
+
+  createMoliendaBote(data: { idMolienda: number; idBoteCatalog: number | null }): Observable<any> {
+    return this.http.post<any>(`${environment.urlProduction}/MoliendaBote`, data, { headers: this.trackingService.getHeaders() });
+  }
+
+  deleteMoliendaBote(id: number): Observable<void> {
+    return this.http.delete<void>(`${environment.urlProduction}/MoliendaBote/${id}`, { headers: this.trackingService.getHeaders() });
+  }
 }
