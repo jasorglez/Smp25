@@ -132,8 +132,7 @@ export class DetallesMatprimaFiltradoComponent {
       editable: false,
       cellStyle: { backgroundColor: '#f8f9fa', color: '#495057' },
       valueFormatter: (p: any) => {
-        if (p.value == null) return '—';
-        if (p.value === 'N/A') return 'N/A';
+        if (p.value == null) return 'N/A';
         return `${Number(p.value).toFixed(2)}%`;
       },
     },
@@ -297,6 +296,10 @@ export class DetallesMatprimaFiltradoComponent {
       this.originalRowData = JSON.parse(JSON.stringify(this.rowData));
       this.hasChanges = false;
       this.notifyParentHasDetail(this.rowData.length > 0);
+      // Forzar re-render para que isRowMaster se re-evalúe en las filas recién guardadas
+      if (this.gridApi && !this.gridApi.isDestroyed()) {
+        this.gridApi.setGridOption('rowData', [...this.rowData]);
+      }
       alerts.reqSuccessToast('Guardado');
     } catch (e) {
       console.error('Error guardando detalle matprima:', e);
@@ -347,9 +350,8 @@ export class DetallesMatprimaFiltradoComponent {
     }
   }
 
-  private calcRendimiento(jugo: number | null, cantidadSum: number): number | string | null {
-    if (jugo == null) return null;
-    if (cantidadSum <= 0) return 'N/A';
+  private calcRendimiento(jugo: number | null, cantidadSum: number): number | null {
+    if (jugo == null || cantidadSum <= 0) return null;
     return (jugo / cantidadSum) * 100;
   }
 

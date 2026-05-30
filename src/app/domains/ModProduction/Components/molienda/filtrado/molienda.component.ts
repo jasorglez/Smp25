@@ -83,7 +83,7 @@ export class MoliendaComponent {
   private idBranch = 0;
   private activeMatPrimaFilter: number | null = null;
   private activeExpandedNodeId: string | null = null;
-  private activeDetailType: 'inventario' | 'matprima' | null = null;
+  private activeDetailType: 'inventario' | 'matprima' | 'bote' | null = null;
 
   colDefs: ColDef[] = [
     { field: 'active', headerName: 'Activo', width: 80, editable: true, cellRenderer: 'agCheckboxCellRenderer', valueSetter: (p: any) => { p.data.active = p.newValue; p.data.__modified = true; this.hasChanges = true; return true; } }, {
@@ -175,7 +175,16 @@ export class MoliendaComponent {
     { field: 'liberPorCompra', hide: true, headerName: 'Liber. x Compra', editable: true, cellRenderer: 'agCheckboxCellRenderer', cellEditor: 'agCheckboxCellEditor' },
     { field: 'adicional', hide: true, headerName: 'Adicional', editable: true },
     { field: 'ohJugos', headerName: 'OH Jugos', editable: true, cellEditor: 'agNumberCellEditor', valueSetter: (p: any) => { p.data.ohJugos = p.newValue; p.data.__modified = true; this.hasChanges = true; return true; } },
-    { field: 'bote', headerName: 'Asignar bote', editable: true, valueSetter: (p: any) => { p.data.bote = p.newValue; p.data.__modified = true; this.hasChanges = true; return true; } },
+    {
+      field: 'bote',
+      headerName: 'Asignar bote',
+      editable: false,
+      cellStyle: { cursor: 'pointer', color: '#e65100', textDecoration: 'underline' },
+      cellRenderer: (p: any) => p.data?.__isNew ? '' : 'Botes',
+      onCellClicked: (event: any) => {
+        if (!event.data?.__isNew && event.data?.id != null) this.toggleBoteDetail(event.node);
+      },
+    },
     { field: 'parametros', headerName: 'Asignar parámetros', editable: true, valueSetter: (p: any) => { p.data.parametros = p.newValue; p.data.__modified = true; this.hasChanges = true; return true; } },
   ];
 
@@ -191,7 +200,9 @@ export class MoliendaComponent {
     },
     autoSizeStrategy: { type: 'fitCellContents' },
     masterDetail: true,
-    getDetailRowHeight: (params: any) => params.data?.__detailType === 'matprima' ? 500 : 280,
+    getDetailRowHeight: (params: any) =>
+      params.data?.__detailType === 'matprima' ? 500 :
+      params.data?.__detailType === 'bote'     ? 300 : 280,
     isRowMaster: (data: any) => data?.id != null,
     detailCellRenderer: DetailRouterFiltradoComponent,
     detailCellRendererParams: () => ({
@@ -395,6 +406,25 @@ export class MoliendaComponent {
     this.activeDetailType = 'inventario';
     this.gridApi.onRowHeightChanged();
     this.gridApi.onFilterChanged();
+    setTimeout(() => node.setExpanded(true), 0);
+  }
+
+  toggleBoteDetail(node: any) {
+    if (this.activeExpandedNodeId === node.id && this.activeDetailType === 'bote') {
+      node.setExpanded(false);
+      node.data.__detailType = null;
+      this.activeExpandedNodeId = null;
+      this.activeDetailType = null;
+      this.gridApi.forEachNode((n: any) => n.setRowHeight(undefined));
+      this.gridApi.onRowHeightChanged();
+      return;
+    }
+    this.collapseActive();
+    this.gridApi.forEachNode((n: any) => { if (n.id !== node.id) n.setRowHeight(0); });
+    node.data.__detailType = 'bote';
+    this.activeExpandedNodeId = node.id;
+    this.activeDetailType = 'bote';
+    this.gridApi.onRowHeightChanged();
     setTimeout(() => node.setExpanded(true), 0);
   }
 
