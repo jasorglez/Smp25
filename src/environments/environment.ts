@@ -85,5 +85,5 @@ export const environment = {
     // publicKey: 'TEST-4399133a-4676-42a2-ab85-d946370bf96a',
   },
 
-  version: '6.99 (29 Mayo 2026) fix(pmo-actividades): mapFromApi lee r.text como descripcion (campo real del API)',
+  version: '7.00 (29 Mayo 2026) feat(pmo-actividades): tab Recursos en panel lateral + fix(ruta-critica): filtro fechas 1970',
 };
