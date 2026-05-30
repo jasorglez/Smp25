@@ -98,6 +98,14 @@
             [disabled]="!rowData.length" title="Exportar Excel">
       <i class="bi bi-file-earmark-excel"></i>
     </button>
+
+    <!-- % Calcular Ponderado -->
+    <button class="btn btn-sm btn-warning" (click)="showPondModal=true"
+            [disabled]="isCalculating || !rowData.length" title="Calcular Ponderado">
+      <span *ngIf="isCalculating" class="spinner-border spinner-border-sm me-1"></span>
+      <i *ngIf="!isCalculating" class="bi bi-percent me-1"></i>
+      {{ isCalculating ? calcProgress + '%' : 'Ponderado' }}
+    </button>
   </div>
 
   <!-- ══ KPI chips ═════════════════════════════════════════════════════════ -->
@@ -652,4 +660,66 @@
     </ng-container>
   </div>
 
+</div>
+
+<!-- ══ Modal: Modalidad de Ponderado ═══════════════════════════════════════ -->
+<div *ngIf="showPondModal" class="modal d-block" tabindex="-1" style="background:rgba(0,0,0,.45);">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header bg-warning">
+        <h5 class="modal-title fw-bold">
+          <i class="bi bi-percent me-2"></i> Calcular Ponderado
+        </h5>
+        <button type="button" class="btn-close" (click)="showPondModal=false"></button>
+      </div>
+      <div class="modal-body">
+        <p class="text-muted small mb-3">
+          Define cómo se distribuye el 100% entre las actividades <strong>hoja</strong>.
+          Los padres recibirán la suma de sus hijos.
+        </p>
+
+        <!-- Por Tiempo -->
+        <div class="form-check border rounded p-2 mb-2"
+             [class.border-warning]="pondModalidad==='tiempo'"
+             [class.bg-warning-subtle]="pondModalidad==='tiempo'">
+          <input class="form-check-input" type="radio" id="pond_tiempo" value="tiempo"
+                 [(ngModel)]="pondModalidad">
+          <label class="form-check-label w-100" for="pond_tiempo" style="cursor:pointer;">
+            <strong>Por Tiempo</strong>
+            <div class="text-muted small">Duración (Fecha Fin − Fecha Inicio) en días. Ideal cuando no hay precios.</div>
+          </label>
+        </div>
+
+        <!-- Por Precio -->
+        <div class="form-check border rounded p-2 mb-2"
+             [class.border-warning]="pondModalidad==='precio'"
+             [class.bg-warning-subtle]="pondModalidad==='precio'">
+          <input class="form-check-input" type="radio" id="pond_precio" value="precio"
+                 [(ngModel)]="pondModalidad">
+          <label class="form-check-label w-100" for="pond_precio" style="cursor:pointer;">
+            <strong>Por Precio</strong>
+            <div class="text-muted small">Cantidad × P.U. MXN. Ideal cuando el peso debe reflejar valor económico.</div>
+          </label>
+        </div>
+
+        <!-- Por Volumen -->
+        <div class="form-check border rounded p-2"
+             [class.border-warning]="pondModalidad==='volumen'"
+             [class.bg-warning-subtle]="pondModalidad==='volumen'">
+          <input class="form-check-input" type="radio" id="pond_volumen" value="volumen"
+                 [(ngModel)]="pondModalidad">
+          <label class="form-check-label w-100" for="pond_volumen" style="cursor:pointer;">
+            <strong>Por Volumen</strong>
+            <div class="text-muted small">Usa el campo Cantidad directamente (m³, m², ton, etc.).</div>
+          </label>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" (click)="showPondModal=false">Cancelar</button>
+        <button class="btn btn-warning fw-bold" (click)="calcularPonderado()">
+          <i class="bi bi-percent me-1"></i> Calcular Ponderado
+        </button>
+      </div>
+    </div>
+  </div>
 </div>

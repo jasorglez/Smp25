@@ -40,6 +40,7 @@ interface ActividadRow {
   sortorder:     number;
   active:        number;
   progress:      number;
+  ponderado?:    number | null;
   __isNew?:      boolean;
   __modified?:   boolean;
 }
@@ -196,6 +197,12 @@ export class PmoActividadesComponent implements OnInit {
   isSaving          = false;
   hasUnsavedChanges = false;
   saveMsg           = '';
+
+  // ── Calcular Ponderado ─────────────────────────────────────────────────────
+  showPondModal  = false;
+  pondModalidad: 'precio' | 'tiempo' | 'volumen' = 'tiempo';
+  isCalculating  = false;
+  calcProgress   = 0;
   saveMsgType       = '';
 
   // ── Catálogos para recursos ────────────────────────────────────────────────
@@ -1006,6 +1013,7 @@ export class PmoActividadesComponent implements OnInit {
       sortorder:     Number(r.sortorder ?? 0),
       active:        Number(r.active    ?? 1),
       progress:      Math.min(1, Math.max(0, Number(r.progress ?? 0))),
+      ponderado:     r.ponderado != null ? Number(r.ponderado) : null,
     };
   }
 
@@ -1025,7 +1033,7 @@ export class PmoActividadesComponent implements OnInit {
       startdate:    r.startDate || null,
       endate:       r.endDate   || null,
       progress:     r.progress ?? 0,
-      ponderado:    null,
+      ponderado:    r.ponderado ?? null,
       criticroute:  r.criticalRoute,
       typeActivity: r.typeActivity,
       parent:       r.parent,
@@ -1036,6 +1044,58 @@ export class PmoActividadesComponent implements OnInit {
       resources:    null,
       phase:        null,
     };
+  }
+
+  // ── Calcular Ponderado ──────────────────────────────────────────────────────
+  async calcularPonderado(): Promise<void> {
+    if (this.isCalculating) return;
+    const filas = this.rowData;
+    if (!filas.length) { alert('No hay actividades cargadas.'); return; }
+
+    // Identificar padres (ids que aparecen como parent de otro)
+    const parentSet = new Set(filas.map(r => r.parent).filter(p => p > 0));
+    const hojas = filas.filter(r => !parentSet.has(r.id) && r.id > 0);
+
+    if (!hojas.length) { alert('No se encontraron actividades hoja.'); return; }
+
+    // Calcular métrica según modalidad
+    let getMetric: (r: ActividadRow) => number;
+    if (this.pondModalidad === 'tiempo') {
+      getMetric = (r) => {
+        if (!r.startDate || !r.endDate) return 0;
+        const ms = new Date(r.endDate).getTime() - new Date(r.startDate).getTime();
+        return Math.max(0, Math.ceil(ms / 86400000));
+      };
+    } else if (this.pondModalidad === 'volumen') {
+      getMetric = (r) => Math.abs(Number(r.quantity ?? 0));
+    } else { // precio
+      getMetric = (r) => Math.abs(Number(r.quantity ?? 0) * Number(r.costMX ?? 0));
+    }
+
+    const total = hojas.reduce((s, r) => s + getMetric(r), 0);
+    if (total === 0) { alert(`No hay datos de ${this.pondModalidad} en las actividades hoja.`); return; }
+
+    this.showPondModal  = false;
+    this.isCalculating  = true;
+    this.calcProgress   = 0;
+
+    try {
+      for (let i = 0; i < hojas.length; i++) {
+        const hoja = hojas[i];
+        const pond = Math.round((getMetric(hoja) / total) * 1000) / 1000;
+        const payload = { ...this.mapToApi(hoja), ponderado: pond };
+        await lastValueFrom(this._wpService.updateWorkProgram(hoja.id, payload));
+        hoja.ponderado = pond;
+        this.calcProgress = Math.round(((i + 1) / hojas.length) * 100);
+      }
+      await this.loadActividades();
+      alert(`✅ Ponderado calculado (${this.pondModalidad}) — ${hojas.length} actividades actualizadas.`);
+    } catch {
+      alert('Error al guardar ponderados. Revisa la consola.');
+    } finally {
+      this.isCalculating = false;
+      this.calcProgress  = 0;
+    }
   }
 
   private showMsg(msg: string, type: 'success' | 'error'): void {
