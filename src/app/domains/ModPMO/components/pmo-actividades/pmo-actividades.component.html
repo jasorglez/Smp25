@@ -266,10 +266,10 @@
         <line x1="0" y1="52" [attr.x2]="svgW" y2="52" stroke="#b0bbc8" stroke-width="1.5"/>
 
         <!-- ── Panel izquierdo de etiquetas ── -->
-        <rect x="0" y="0" width="290" [attr.height]="svgH" fill="#f7f9fc"/>
-        <line x1="290" y1="0" x2="290" [attr.y2]="svgH" stroke="#b0bbc8" stroke-width="1.5"/>
+        <rect x="0" y="0" width="330" [attr.height]="svgH" fill="#f7f9fc"/>
+        <line x1="330" y1="0" x2="330" [attr.y2]="svgH" stroke="#b0bbc8" stroke-width="1.5"/>
         <text x="8" y="33" style="font-size:11px; font-weight:700; fill:#666; text-transform:uppercase; letter-spacing:.5px;">
-          WBS — Actividad
+          WBS — Actividad / Descripción
         </text>
 
         <!-- ── Filas alternadas ── -->
@@ -294,19 +294,22 @@
         <!-- ── Barras e Hitos ── -->
         <ng-container *ngFor="let t of tasks; trackBy:trackById">
 
-          <!-- Etiqueta izquierda (panel sticky) -->
+          <!-- Etiqueta izquierda — línea 1: WBS en negrita pequeña -->
           <text [attr.x]="6 + t.level * 12"
-                [attr.y]="52 + t.row * 44 + 17"
-                style="font-size:10px; fill:#888;"
+                [attr.y]="52 + t.row * 44 + 16"
+                style="font-size:10px; font-weight:700; fill:#7a8fa8; letter-spacing:.2px;"
                 *ngIf="t.wbs">
             {{ t.wbs }}
           </text>
+          <!-- Línea 2: descripción completa (44 chars max) -->
           <text [attr.x]="6 + t.level * 12"
-                [attr.y]="52 + t.row * 44 + 30"
+                [attr.y]="52 + t.row * 44 + 31"
                 [attr.font-weight]="t.isCritical ? '700' : t.isSummary ? '700' : '400'"
-                [attr.fill]="t.isCritical ? '#c0392b' : t.isSummary ? '#2c3e50' : '#333'"
-                style="font-size:11px;">
-            {{ t.label.length > 34 ? (t.label | slice:0:34) + '…' : t.label }}
+                [attr.fill]="t.isCritical ? '#c0392b' : t.isSummary ? '#2c3e50' : '#2d3748'"
+                style="font-size:11.5px;">
+            {{ (t.rowRef.description || t.wbs).length > 44
+                ? ((t.rowRef.description || t.wbs) | slice:0:44) + '…'
+                : (t.rowRef.description || t.wbs) }}
           </text>
 
           <!-- ── HITO — diamante ── -->
