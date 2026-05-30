@@ -235,4 +235,16 @@ export class ProductionService {
   deleteMoliendaBote(id: number): Observable<void> {
     return this.http.delete<void>(`${environment.urlProduction}/MoliendaBote/${id}`, { headers: this.trackingService.getHeaders() });
   }
+
+  createMoliendaBoteHistorial(data: { idMoliendaBote: number; cantidad: number; usuario?: string; comentario?: string }): Observable<any> {
+    return this.http.post<any>(`${environment.urlProduction}/MoliendaBote/historial`, data, { headers: this.trackingService.getHeaders() });
+  }
+
+  getMoliendaBoteHistorialByBote(idMoliendaBote: number): Observable<any[]> {
+    return this.http.get<any[]>(`${environment.urlProduction}/MoliendaBote/historial/bote/${idMoliendaBote}`, { headers: this.trackingService.getHeaders() });
+  }
+
+  getMoliendaBoteHistorialByMatDetalle(idMatDetalle: number): Observable<any[]> {
+    return this.http.get<any[]>(`${environment.urlProduction}/MoliendaBote/historial/matdetalle/${idMatDetalle}`, { headers: this.trackingService.getHeaders() });
+  }
 }

@@ -45,8 +45,8 @@ export const environment = {
   urlNotifications: 'https://ms-pruebas-api.bi2.mx/notifications/api', // 5011 -- NotificationsTelegram
   //urlNotifications: 'http://localhost:5011/api',
 
-  //urlProduction: 'https://ms-pruebas-api.bi2.mx/production/api', // 5051 -- Production
-  urlProduction: 'http://localhost:5051/api',
+  urlProduction: 'https://ms-pruebas-api.bi2.mx/production/api', // 5051 -- Production
+  //urlProduction: 'http://localhost:5051/api',
 
   urlMantenimiento: 'https://ms-pruebas-api.bi2.mx/maintenance/api',
 
@@ -73,5 +73,5 @@ export const environment = {
 
   urlRefreshToken: 'https://securetoken.googleapis.com/v1/token?key=AIzaSyDxCBGKk8nT09hdW85-PyOkhw5_JPZLF1A',
 
-  version: '2.52.221 (29 Mayo 2026 21:09) - Modificacion de botes de molienda'
+  version: '2.52.222 (30 Mayo 2026 14:17) - Asignación de rellenado de botes'
 };
