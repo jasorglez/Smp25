@@ -707,8 +707,9 @@ export class WorkprogramsComponent {
       data.push({
         id,
         text: task.description,
-        start_date: startDate,
-        end_date: endDate,
+        // Pasar como strings en date_format para garantizar parsing correcto en gantt
+        start_date: this.formatGanttDate(startDate),
+        end_date: this.formatGanttDate(endDate),
         progress: 0,
         parent,
         activity: task.wbs,
@@ -1443,6 +1444,29 @@ export class WorkprogramsComponent {
   // Límites según modelo C#: criticRoute varchar(2), activity varchar(20),
   // especification varchar(20), measure varchar(10), phase varchar(30), color varchar(10)
 
+  // Formatea una fecha como string para gantt.parse() usando date_format "%Y-%m-%d %H:%i"
+  // dhtmlx-gantt también acepta Date objects, pero strings son más robustos
+  private formatGanttDate(d: Date): string {
+    const pad = (n: number) => String(n).padStart(2, '0');
+    return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} 00:00`;
+  }
+
+  // Convierte cualquier valor de fecha (Date, string, number) a ISO string o null
+  private toIsoString(val: any): string | null {
+    if (!val) return null;
+    if (val instanceof Date) return isNaN(val.getTime()) ? null : val.toISOString();
+    if (typeof val === 'string') {
+      // Intenta parsear string de gantt ("%Y-%m-%d %H:%i") y también ISO
+      const d = new Date(val.replace(' ', 'T'));
+      return isNaN(d.getTime()) ? null : d.toISOString();
+    }
+    if (typeof val === 'number' && !isNaN(val)) {
+      const d = new Date(val);
+      return isNaN(d.getTime()) ? null : d.toISOString();
+    }
+    return null;
+  }
+
   // Para campos nullable en el backend (string?)
   private trunc(val: any, max: number): string | null {
     if (val == null || val === '') return null;
@@ -1465,17 +1489,14 @@ export class WorkprogramsComponent {
     // idConvention: vigente del sidebar → señal local → tarea existente (DB) → fallback datos cargados
     const idConvention = vigente?.id ?? this.idConvention ?? task['idConvention'] ?? this.idConventionFallback ?? null;
 
-    // endDate: asegurar siempre una fecha válida
-    const endDate  = (task.end_date instanceof Date && !isNaN(task.end_date.getTime()))
-      ? task.end_date.toISOString()
-      : (task.start_date instanceof Date ? task.start_date.toISOString() : null);
-    const startDate = (task.start_date instanceof Date && !isNaN(task.start_date.getTime()))
-      ? task.start_date.toISOString()
-      : null;
+    // Fechas: manejar tanto Date objects como strings de gantt ("%Y-%m-%d %H:%i")
+    const startDate = this.toIsoString(task.start_date);
+    const endDate   = this.toIsoString(task.end_date) ?? startDate;
 
     return {
       id: task.idEntry,
-      idTask: task.id,
+      // Number() garantiza que idTask sea número en JSON (gantt puede retornar task.id como string)
+      idTask: Number(task.id) || 0,
       text: task.text || '',                                   // NOT NULL en C#
       idContract,                                              // int NOT NULL
       idProject: this.idProject ?? 0,                          // int NOT NULL
@@ -1551,37 +1572,45 @@ export class WorkprogramsComponent {
 
   // Funcion para transformar los datos de la API a los que entiende el gantt
   transformData(apiData: any[]): { data: any[] } {
-    const transformedData = apiData.map(item => ({
-      // Campos primordiales
-      id: item.idTask,
-      idEntry: item.id,
-      text: item.text,
-      start_date: item.startDate ? new Date(item.startDate) : new Date(),
-      end_date:   item.endDate   ? new Date(item.endDate)   : new Date(),
-      progress: item.progress,
-      parent: item.parent,
-      color: item.color,
-      // Campos personalizados
-      criticRoute: item.criticRoute,
-      activity: item.activity,
-      typeActivity: item.typeActivity,
-      especification: item.especification,
-      distribution: item.distribution,
-      costMX: item.costMX,
-      costDLL: item.costDLL,
-      quantity: item.quantity,
-      predecesor: item.predecesor,
-      measure: item.measure,
-      phase: item.phase,
-      // Scope: contrato y convenio (necesarios para el save)
-      idContract: item.idContract,
-      idConvention: item.idConvention,
-      type: item.type,
-      ponderado: item.ponderado,
-      total: item.total,
-      active: item.active,
-      sortorder: item.sortorder ?? 0
-    }));
+    const transformedData = apiData.map(item => {
+      // Convertir fechas de la API a strings de gantt (date_format "%Y-%m-%d %H:%i")
+      // para garantizar parsing correcto en dhtmlx-gantt
+      const sdObj = item.startDate ? new Date(item.startDate) : new Date();
+      const edObj = item.endDate   ? new Date(item.endDate)   : new Date(sdObj.getTime() + 86400000); // +1 día mínimo si no hay fecha fin
+      return {
+        // Campos primordiales
+        // Usar DB PK (item.id) como fallback cuando idTask=0 (filas importadas sin idtask correcto)
+        id: item.idTask || item.id,
+        idEntry: item.id,
+        text: item.text,
+        // Strings en date_format para parsing correcto en dhtmlx-gantt
+        start_date: this.formatGanttDate(sdObj),
+        end_date:   this.formatGanttDate(edObj),
+        progress: item.progress,
+        parent: item.parent,
+        color: item.color,
+        // Campos personalizados
+        criticRoute: item.criticRoute,
+        activity: item.activity,
+        typeActivity: item.typeActivity,
+        especification: item.especification,
+        distribution: item.distribution,
+        costMX: item.costMX,
+        costDLL: item.costDLL,
+        quantity: item.quantity,
+        predecesor: item.predecesor,
+        measure: item.measure,
+        phase: item.phase,
+        // Scope: contrato y convenio (necesarios para el save)
+        idContract: item.idContract,
+        idConvention: item.idConvention,
+        type: item.type,
+        ponderado: item.ponderado,
+        total: item.total,
+        active: item.active,
+        sortorder: item.sortorder ?? 0
+      };
+    });
 
     return { data: transformedData };
   }
