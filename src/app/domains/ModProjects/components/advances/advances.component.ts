@@ -142,9 +142,10 @@ export class AdvancesComponent implements OnInit, OnChanges {
   // ─── 📊 Calcular Distribución ───────────────────────────────────────────────
   isGenerating        = false;
   generateStep        = 0;   // 1 = distribuyendo días  |  2 = actualizando Curva S
-  genTotal2           = 0;   // total semanas a insertar/actualizar (paso 2)
-  genDone2            = 0;   // semanas procesadas (paso 2)
+  genTotal2           = 0;   // total períodos a insertar/actualizar (paso 2)
+  genDone2            = 0;   // períodos procesados (paso 2)
   generateResult: any = null;
+  genPeriodo: 'dia' | 'semana' | 'quincena' | 'mes' = 'dia'; // período de agrupación Curva S
 
   // ─── 📅 Vista Diaria ────────────────────────────────────────────────────────
   showDailyView    = false;
@@ -760,7 +761,7 @@ export class AdvancesComponent implements OnInit, OnChanges {
         return;
       }
 
-      // ── PASO 2: Insertar/Actualizar en tabla advanced (Curva S semanal) ──────
+      // ── PASO 2: Insertar/Actualizar en tabla advanced (Curva S por período) ───
       this.generateStep = 2;
       await this.autoPopulateProgramAdvances();
 
@@ -796,20 +797,39 @@ export class AdvancesComponent implements OnInit, OnChanges {
 
     if (!allSummaries?.length) return;
 
-    // 2. Agrupar por semana: VIERNES de cada semana como fecha representativa
-    const weekMap = new Map<string, number>();
-    for (const s of allSummaries) {
-      const d   = new Date(String(s.date).substring(0, 10) + 'T12:00:00');
-      const day = d.getDay(); // 0=Dom,1=Lun…5=Vie,6=Sáb
-      const toFri = day === 0 ? -2 : day === 6 ? -1 : (5 - day); // mover al Vie de esa semana
-      d.setDate(d.getDate() + toFri);
-      const key = d.toISOString().substring(0, 10);
-      weekMap.set(key, (weekMap.get(key) ?? 0) + Number(s.ponderadoDia ?? 0));
-    }
-    if (!weekMap.size) return;
+    // 2. Agrupar por período configurable (día / semana / quincena / mes)
+    const getPeriodKey = (rawDate: string): string => {
+      const d = new Date(rawDate + 'T12:00:00');
+      switch (this.genPeriodo) {
+        case 'dia':
+          return rawDate;                                   // cada día es su propio período
+        case 'semana': {                                    // viernes de la semana
+          const dw = d.getDay();
+          d.setDate(d.getDate() + (dw === 0 ? -2 : dw === 6 ? -1 : 5 - dw));
+          return d.toISOString().substring(0, 10);
+        }
+        case 'quincena': {                                  // 15 ó último día del mes
+          if (d.getDate() <= 15) {
+            return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-15`;
+          } else {
+            return new Date(d.getFullYear(), d.getMonth() + 1, 0).toISOString().substring(0, 10);
+          }
+        }
+        case 'mes':                                         // último día del mes
+        default:
+          return new Date(d.getFullYear(), d.getMonth() + 1, 0).toISOString().substring(0, 10);
+      }
+    };
 
-    // 3. Ordenar semanas y normalizar: el ÚLTIMO viernes cierra exactamente a 100.000
-    const weekEntries = Array.from(weekMap.entries()).sort(([a], [b]) => a.localeCompare(b));
+    const periodMap = new Map<string, number>();
+    for (const s of allSummaries) {
+      const key = getPeriodKey(String(s.date).substring(0, 10));
+      periodMap.set(key, (periodMap.get(key) ?? 0) + Number(s.ponderadoDia ?? 0));
+    }
+    if (!periodMap.size) return;
+
+    // 3. Ordenar períodos y normalizar: el ÚLTIMO cierra exactamente a 100.000
+    const weekEntries = Array.from(periodMap.entries()).sort(([a], [b]) => a.localeCompare(b));
     let accumulated = 0;
     const normalizedWeeks: [string, number][] = weekEntries.map(([date, value], i) => {
       if (i < weekEntries.length - 1) {

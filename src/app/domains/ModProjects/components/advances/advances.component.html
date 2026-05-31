@@ -88,7 +88,17 @@
       <span class="d-none d-md-inline">Calendario</span>
     </button>
 
-    <!-- 📊 Calcular Distribución (2 pasos) -->
+    <!-- 📊 Período + Calcular Distribución -->
+    <select class="form-select form-select-sm"
+            style="width:auto; min-width:100px;"
+            [(ngModel)]="genPeriodo"
+            [disabled]="isGenerating"
+            title="Período de agrupación para la Curva S">
+      <option value="dia">Día</option>
+      <option value="semana">Semana</option>
+      <option value="quincena">Quincena</option>
+      <option value="mes">Mes</option>
+    </select>
     <button class="btn btn-sm btn-outline-info" title="Calcular distribución diaria y actualizar Curva S"
             (click)="generateDistribution()" [disabled]="isGenerating || !idProject">
       <span *ngIf="isGenerating" class="spinner-border spinner-border-sm me-1"></span>
@@ -150,7 +160,8 @@
     <div class="d-flex align-items-center gap-2">
       <span class="small text-nowrap" style="width:230px; color:#198754; font-weight:600;">
         <i class="bi bi-table me-1"></i>
-        Paso 2/2 — Guardando en Curva S (contrato/proyecto/convenio)
+        Paso 2/2 — Curva S por
+        {{ genPeriodo === 'dia' ? 'día' : genPeriodo === 'semana' ? 'semana' : genPeriodo === 'quincena' ? 'quincena' : 'mes' }}
       </span>
       <div class="progress flex-fill" style="height:20px; border-radius:6px;">
         <div class="progress-bar bg-success fw-semibold"
@@ -158,7 +169,7 @@
              [class.progress-bar-animated]="generateStep === 2 && genTotal2 === 0"
              [style.width]="generateStep < 2 ? '0%' : genTotal2 > 0 ? (genDone2 / genTotal2 * 100) + '%' : '100%'"
              style="font-size:11px; transition: width 0.2s ease;">
-          {{ generateStep < 2 ? '' : genTotal2 > 0 ? genDone2 + ' / ' + genTotal2 + ' semanas' : 'Preparando…' }}
+          {{ generateStep < 2 ? '' : genTotal2 > 0 ? genDone2 + ' / ' + genTotal2 + ' registros' : 'Preparando…' }}
         </div>
       </div>
     </div>
