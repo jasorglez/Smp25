@@ -134,9 +134,9 @@ export class SideBarComponent {
         }
     });
 
-    // Reacciona a cambios de preferencias (otro dispositivo o footer cambia algo)
+    // Sincroniza currentTheme y fuerza re-render cuando cambian las prefs (Firebase, otro dispositivo)
     effect(() => {
-      this.prefsSvc.prefs();
+      this.currentTheme = this.prefsSvc.prefs().sidebarTheme;
       this.cdr.markForCheck();
     });
 

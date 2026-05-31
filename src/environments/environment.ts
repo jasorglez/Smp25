@@ -85,5 +85,5 @@ export const environment = {
     // publicKey: 'TEST-4399133a-4676-42a2-ab85-d946370bf96a',
   },
 
-  version: '7.42 (31 Mayo 2026) fix(prefs): caché de preferencias separado por usuario — no se comparte entre usuarios',
+  version: '7.43 (31 Mayo 2026) fix(sidebar): tema de Firebase ahora aplica correctamente en navegador nuevo',
 };
