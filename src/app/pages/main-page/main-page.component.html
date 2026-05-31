@@ -5,8 +5,8 @@
   <!-- Contenedor principal -->
   <div class="main-content-container d-flex flex-column min-vh-100">
 
-    <!-- Banner: licencia próxima a vencer (< 5 días y no expirada) -->
-    <div *ngIf="licenseDays() <= 5 && licenseStatus() !== 'expired'"
+    <!-- Banner: licencia próxima a vencer (< 5 días y no expirada) — no se muestra a root -->
+    <div *ngIf="licenseDays() <= 5 && licenseStatus() !== 'expired' && !isRootUser()"
          class="alert alert-warning alert-dismissible mb-0 py-1 px-3 d-flex align-items-center gap-2"
          style="border-radius:0; font-size:0.85rem;">
       <i class="bi bi-exclamation-triangle-fill"></i>
@@ -16,8 +16,8 @@
       </span>
     </div>
 
-    <!-- Bloqueo total: licencia expirada -->
-    <div *ngIf="licenseStatus() === 'expired'"
+    <!-- Bloqueo total: licencia expirada — root siempre puede entrar -->
+    <div *ngIf="licenseStatus() === 'expired' && !isRootUser()"
          class="license-expired-overlay d-flex flex-column align-items-center justify-content-center">
       <div class="card shadow-lg p-4 text-center" style="max-width:420px;">
         <i class="bi bi-lock-fill text-danger" style="font-size:3rem;"></i>
@@ -30,7 +30,7 @@
       </div>
     </div>
 
-    <div class="flex-grow-1 pt-2 ps-0 pe-2" [class.d-none]="licenseStatus() === 'expired'">
+    <div class="flex-grow-1 pt-2 ps-0 pe-2" [class.d-none]="licenseStatus() === 'expired' && !isRootUser()">
       <router-outlet></router-outlet>
     </div>
     <app-footer></app-footer>

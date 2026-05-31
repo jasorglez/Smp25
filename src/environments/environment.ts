@@ -85,5 +85,5 @@ export const environment = {
     // publicKey: 'TEST-4399133a-4676-42a2-ab85-d946370bf96a',
   },
 
-  version: '7.43 (31 Mayo 2026) fix(sidebar): tema de Firebase ahora aplica correctamente en navegador nuevo',
+  version: '7.44 (31 Mayo 2026) fix(licencia): usuario root omite bloqueo y banner de licencia expirada',
 };

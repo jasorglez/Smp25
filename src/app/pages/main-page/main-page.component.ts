@@ -1,10 +1,11 @@
-import { Component, OnDestroy, OnInit, effect, inject } from '@angular/core';
+import { Component, OnInit, effect, inject, computed } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { Router, RouterOutlet } from '@angular/router';
 import { SideBarComponent } from 'app/shared/side-bar/side-bar.component';
 import { FooterComponent } from 'app/shared/footer/footer.component';
 import { SignalsService } from '../../services/signals.service';
 import { AuthService } from '../../services/auth.service';
+import { environment } from '@env/environment';
 
 @Component({
   selector: 'app-main-page',
@@ -21,8 +22,14 @@ export class MainPageComponent implements OnInit {
   private initialBranchId: number;
   isSidebarCollapsed: boolean = false;
 
-  licenseStatus   = this.signalsService.getLicenseStatus();
-  licenseDays     = this.signalsService.getLicenseDaysRemaining();
+  licenseStatus = this.signalsService.getLicenseStatus();
+  licenseDays   = this.signalsService.getLicenseDaysRemaining();
+
+  // Root nunca ve bloqueos de licencia
+  isRootUser = computed(() =>
+    !!this.signalsService.getUserRoot()() ||
+    this.signalsService.getemailChoose() === environment.root
+  );
 
   constructor() {
     effect(() => {
