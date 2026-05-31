@@ -16,6 +16,7 @@ import { environment } from '@env/environment';
 import { ConventionsService } from 'app/services/conventions.service';
 import { PresupuestoService } from 'app/services/presupuesto.service';
 import { alerts } from 'app/helpers/alerts';
+import { Database, ref, get, set } from '@angular/fire/database';
 
 @Component({
   selector: 'app-side-bar',
@@ -78,7 +79,8 @@ export class SideBarComponent {
     private signalsService: SignalsService,
     private conventionsService: ConventionsService,
     private presupuestoService: PresupuestoService,
-    private cdr: ChangeDetectorRef
+    private cdr: ChangeDetectorRef,
+    private db: Database
   ) {
     effect(async () => {
       const shouldUpdate = this.signalsService.getUpdateBranchList()();
@@ -113,9 +115,9 @@ export class SideBarComponent {
     if (savedCollapsedState !== null) {
       this.isSidebarCollapsed = savedCollapsedState === 'true';
     }
-    // Cargar tema del sidebar
-    const savedTheme = localStorage.getItem('sidebarTheme');
-    if (savedTheme) this.currentTheme = savedTheme;
+    // Cargar tema: localStorage primero (render instantáneo), Firebase sincroniza después
+    const cachedTheme = localStorage.getItem('sidebarTheme');
+    if (cachedTheme) this.currentTheme = cachedTheme;
 
 this.userRoot = this.signalsService.getUserRoot()();
     if (this.signalsService.isidUserEmpty()) {
@@ -124,16 +126,16 @@ this.userRoot = this.signalsService.getUserRoot()();
           if (datauser) {
             this.trackingService.setId(datauser.id);
             this.signalsService.setidUser(datauser.id);
-              
-
+            this.syncThemeFromFirebase(datauser.id);
             this.getpermissionxRoots();
           }
         },
-error: (error) => {
+        error: (error) => {
           console.error('Error al obtener los datos del usuario:', error);
         },
       });
     } else {
+      this.syncThemeFromFirebase(this.signalsService.idUser());
       await this.getpermissionxRoots();
     }
 
@@ -694,6 +696,22 @@ toggleSidebar() {
     localStorage.setItem('sidebarTheme', themeId);
     this.showThemePicker = false;
     this.cdr.markForCheck();
+    const userId = this.signalsService.idUser();
+    if (userId) {
+      set(ref(this.db, `userPrefs/${userId}/sidebarTheme`), themeId).catch(() => {});
+    }
+  }
+
+  private syncThemeFromFirebase(userId: number) {
+    if (!userId) return;
+    get(ref(this.db, `userPrefs/${userId}/sidebarTheme`)).then(snap => {
+      const theme = snap.val();
+      if (theme && this.sidebarThemes.some(t => t.id === theme)) {
+        this.currentTheme = theme;
+        localStorage.setItem('sidebarTheme', theme);
+        this.cdr.markForCheck();
+      }
+    }).catch(() => {});
   }
 
   toggleThemePicker() {
