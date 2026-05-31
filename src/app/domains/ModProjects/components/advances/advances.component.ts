@@ -560,6 +560,7 @@ export class AdvancesComponent implements OnInit, OnChanges {
   }
 
   private actualizarDatos(): void {
+    if (!this.datosMensuales?.length) return;   // evita crash de ApexCharts con series vacías
     const sorted       = [...this.datosMensuales].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
     const xCategories  = sorted.map(d => {
       const dt = new Date(d.date + 'T00:00:00');
@@ -1108,16 +1109,26 @@ export class AdvancesComponent implements OnInit, OnChanges {
       );
       if (!allTasks?.length) { alerts.basicAlert('Sin tareas', 'No hay tareas en el programa de trabajo.', 'warning'); return; }
 
-      const parentSet = new Set(allTasks.map(t => String(t.parent)));
-      const leafTasks = allTasks.filter(t => !parentSet.has(String(t.idTask)) && Number(t.ponderado ?? 0) > 0);
+      // Tareas PMO importadas tienen idtask="0" → usar id de BD como identificador efectivo
+      const getEffId = (t: any): string => {
+        const v = String(t.idTask ?? t.idtask ?? '0');
+        return v === '0' ? String(t.id) : v;
+      };
+      // parentSet = IDs referenciados como padre por otras tareas (excluye "0" = raíz)
+      const parentSet = new Set(
+        allTasks.map(t => String(t.parent)).filter(p => p !== '0' && p !== '')
+      );
+      const leafTasks = allTasks.filter(t => !parentSet.has(getEffId(t)) && Number(t.ponderado ?? 0) > 0);
       if (!leafTasks.length) {
         alerts.basicAlert('Sin ponderado', 'Las tareas no tienen ponderado calculado.', 'warning'); return;
       }
       this.programAdvanceHoy = await this.getProgramAdvanceForDate(this.dailyCaptureDate);
       const captureDate = this.dailyCaptureDate;                          // YYYY-MM-DD local
       leafTasks.forEach(t => {
-        const startDate = t.startDate ? String(t.startDate).split('T')[0] : '';
-        const endDate   = t.endDate   ? String(t.endDate).split('T')[0]   : '9999-12-31';
+        const rawStart  = t.startDate ?? t.startdate ?? '';
+        const rawEnd    = t.endDate   ?? t.enDate   ?? t.endate ?? '';
+        const startDate = rawStart ? String(rawStart).split('T')[0] : '';
+        const endDate   = rawEnd   ? String(rawEnd).split('T')[0]   : '9999-12-31';
         const prog100 = Math.round(Number(t.progress ?? 0) * 100 * 10) / 10;
         const task: ActiveTask = {
           idEntry: Number(t.id), activity: t.activity || '',

@@ -85,5 +85,5 @@ export const environment = {
     // publicKey: 'TEST-4399133a-4676-42a2-ab85-d946370bf96a',
   },
 
-  version: '7.33 (31 Mayo 2026) fix(avances): fecha captura diaria en hora local + clasificacion tareas sin timezone',
+  version: '7.34 (31 Mayo 2026) fix(avances): leafTask PMO idtask=0 + apexcharts crash con datos vacios',
 };
