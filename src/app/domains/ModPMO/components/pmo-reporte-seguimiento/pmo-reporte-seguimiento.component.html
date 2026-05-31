@@ -1,0 +1,302 @@
+<!-- ══════════════════════════════════════════════════════════════════════════ -->
+<!--  PMO — Reporte de Seguimiento (Tablero)                                  -->
+<!-- ══════════════════════════════════════════════════════════════════════════ -->
+
+<!-- ── BARRA DE FILTROS (no imprime) ─────────────────────────────────────── -->
+<div class="filter-bar no-print">
+  <div class="d-flex flex-wrap align-items-center gap-2 p-2">
+    <label class="mb-0 small fw-semibold">Proyecto:</label>
+    <select class="form-select form-select-sm" style="max-width:320px;"
+            [(ngModel)]="selectedProjectId" (change)="onProjectChange()">
+      <option [ngValue]="null">-- Seleccionar --</option>
+      <option *ngFor="let p of projects" [ngValue]="p.id ?? p.idProject">
+        {{ p.name ?? p.nombre ?? p.projectName }}
+      </option>
+    </select>
+
+    <label class="mb-0 small fw-semibold ms-2">Fecha de Corte:</label>
+    <input type="date" class="form-control form-control-sm" style="width:150px;"
+           [(ngModel)]="fechaCorte">
+
+    <button class="btn btn-sm btn-primary" (click)="buildReport()" [disabled]="!selectedProjectId || isLoading">
+      <span *ngIf="isLoading" class="spinner-border spinner-border-sm me-1"></span>
+      <i *ngIf="!isLoading" class="bi bi-arrow-clockwise me-1"></i>
+      Generar
+    </button>
+
+    <button class="btn btn-sm btn-outline-secondary ms-auto" (click)="printReport()" [disabled]="!report">
+      <i class="bi bi-printer me-1"></i> Imprimir
+    </button>
+  </div>
+</div>
+
+<!-- ── SPINNER ────────────────────────────────────────────────────────────── -->
+<div *ngIf="isLoading" class="text-center py-5">
+  <div class="spinner-border text-primary"></div>
+  <p class="mt-2 text-muted">Calculando reporte…</p>
+</div>
+
+<!-- ── PLACEHOLDER ───────────────────────────────────────────────────────── -->
+<div *ngIf="!isLoading && !report" class="text-center py-5 text-muted">
+  <i class="bi bi-file-earmark-bar-graph fs-1 d-block mb-2 text-primary opacity-50"></i>
+  Selecciona un proyecto y haz clic en <strong>Generar</strong>
+</div>
+
+<!-- ══════════════════════════════════════════════════════════════════════════ -->
+<!--  PÁGINA DEL REPORTE                                                       -->
+<!-- ══════════════════════════════════════════════════════════════════════════ -->
+<div class="rep-page" *ngIf="report && !isLoading">
+
+  <!-- ── ENCABEZADO ─────────────────────────────────────────────────────────── -->
+  <div class="rep-header">
+    <div class="rep-header-logo">
+      <img *ngIf="report.logo1" [src]="report.logo1" class="rep-logo" alt="logo">
+    </div>
+    <div class="rep-header-title">
+      <div class="rep-project-name">{{ report.projectName }}</div>
+      <div class="rep-company-name text-muted small">{{ report.companyName }}</div>
+      <div class="rep-tablero-badge">Tablero de Seguimiento</div>
+    </div>
+    <div class="rep-header-logo text-end">
+      <img *ngIf="report.logo2" [src]="report.logo2" class="rep-logo" alt="logo2">
+    </div>
+  </div>
+
+  <!-- ── FILA DE MÉTRICAS ────────────────────────────────────────────────────── -->
+  <div class="rep-metrics">
+
+    <!-- Fechas -->
+    <div class="metric-box metric-dates">
+      <div class="metric-section-title">Fechas</div>
+      <div class="dates-grid">
+        <div class="date-item">
+          <div class="date-label">Fecha de Corte</div>
+          <div class="date-value text-danger">{{ fmtDate(report.fechaCorte) }}</div>
+        </div>
+        <div class="date-item">
+          <div class="date-label">Inicio</div>
+          <div class="date-value text-primary">{{ fmtDate(report.fechaInicio) }}</div>
+        </div>
+        <div class="date-item">
+          <div class="date-label">Término</div>
+          <div class="date-value text-primary">{{ fmtDate(report.fechaFin) }}</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Avance del Proyecto -->
+    <div class="metric-box metric-avance">
+      <div class="metric-section-title text-center">
+        <i class="bi bi-graph-up-arrow me-1 text-primary"></i>
+        AVANCE DEL PROYECTO
+      </div>
+      <table class="avance-table">
+        <thead>
+          <tr><th>TIPO</th><th>ANTERIOR</th><th>ACTUAL</th><th>ACUMULADO</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td class="tipo-label">PROG.</td>
+            <td>{{ report.progAnterior | number:'1.2-2' }}%</td>
+            <td>{{ report.progActual   | number:'1.2-2' }}%</td>
+            <td class="acum-prog">{{ report.progAcumulado | number:'1.2-2' }}%</td>
+          </tr>
+          <tr>
+            <td class="tipo-label">REAL</td>
+            <td>{{ report.realAnterior | number:'1.2-2' }}%</td>
+            <td>{{ report.realActual   | number:'1.2-2' }}%</td>
+            <td class="acum-real">{{ report.realAcumulado | number:'1.2-2' }}%</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- SPI / EAC -->
+    <div class="metric-box metric-spi">
+      <div class="spi-label-text">SPI</div>
+      <div class="spi-circle" [style.border-color]="spiColor(report.spi)">
+        <span class="spi-value" [style.color]="spiColor(report.spi)">
+          {{ report.spi | number:'1.2-2' }}
+        </span>
+      </div>
+      <div class="eac-section">
+        <div class="eac-label">EAC</div>
+        <div class="eac-value">{{ fmtDate(report.eacDate) }}</div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- ── CURVA S ─────────────────────────────────────────────────────────────── -->
+  <div class="rep-section">
+    <apx-chart *ngIf="sCurveOpts?.series?.length"
+               [series]="sCurveOpts.series"
+               [chart]="sCurveOpts.chart"
+               [colors]="sCurveOpts.colors"
+               [stroke]="sCurveOpts.stroke"
+               [markers]="sCurveOpts.markers"
+               [fill]="sCurveOpts.fill"
+               [dataLabels]="sCurveOpts.dataLabels"
+               [xaxis]="sCurveOpts.xaxis"
+               [yaxis]="sCurveOpts.yaxis"
+               [grid]="sCurveOpts.grid"
+               [legend]="sCurveOpts.legend"
+               [tooltip]="sCurveOpts.tooltip">
+    </apx-chart>
+    <div *ngIf="!sCurveOpts?.series?.length" class="text-center text-muted py-4 small">
+      Sin datos de avance para graficar. Genera la Curva S en Avances primero.
+    </div>
+  </div>
+
+  <!-- ── ESTATUS DE ACTIVIDADES ──────────────────────────────────────────────── -->
+  <div class="rep-section-title">Estatus de Actividades con Programa al Corte</div>
+  <div class="rep-activity-row">
+
+    <!-- Leyenda -->
+    <div class="activity-legend">
+      <div class="legend-item">
+        <span class="legend-dot" style="background:#95a5a6;"></span>
+        Sin Programa al Corte
+        <strong class="ms-auto">{{ report.sinPrograma }}</strong>
+      </div>
+      <div class="legend-item">
+        <span class="legend-dot" style="background:#3498db;"></span>
+        Programadas al Corte
+        <strong class="ms-auto">{{ report.conAvance - report.programadas }}</strong>
+      </div>
+      <div class="legend-item">
+        <span class="legend-dot" style="background:#27ae60;"></span>
+        Activ. C/Avance Real al Corte
+        <strong class="ms-auto">{{ report.programadas }}</strong>
+      </div>
+      <div class="legend-item legend-total">
+        <span class="legend-dot" style="background:#2c3e50;"></span>
+        Totales
+        <strong class="ms-auto">{{ report.total }}</strong>
+      </div>
+    </div>
+
+    <!-- Bar chart -->
+    <div class="activity-chart" *ngIf="barOpts?.series">
+      <apx-chart [series]="barOpts.series"
+                 [chart]="barOpts.chart"
+                 [plotOptions]="barOpts.plotOptions"
+                 [colors]="barOpts.colors"
+                 [dataLabels]="barOpts.dataLabels"
+                 [xaxis]="barOpts.xaxis"
+                 [legend]="barOpts.legend"
+                 [grid]="barOpts.grid">
+      </apx-chart>
+    </div>
+
+  </div>
+
+  <!-- ── GAUGES: EN TIEMPO / TERMINADA / RETRASADA ──────────────────────────── -->
+  <div class="rep-gauges-row">
+
+    <div class="gauge-wrap">
+      <div class="gauge-title" style="color:#2980b9;">En tiempo</div>
+      <apx-chart *ngIf="gauge1Opts?.series"
+                 [series]="gauge1Opts.series" [chart]="gauge1Opts.chart"
+                 [colors]="gauge1Opts.colors" [plotOptions]="gauge1Opts.plotOptions">
+      </apx-chart>
+      <div class="gauge-count" style="color:#2980b9;">{{ report.enTiempo }}</div>
+      <div class="gauge-pct">{{ (report.enTiempo / (report.conAvance || 1) * 100) | number:'1.2-2' }}%</div>
+    </div>
+
+    <div class="gauge-wrap">
+      <div class="gauge-title" style="color:#27ae60;">Terminada</div>
+      <apx-chart *ngIf="gauge2Opts?.series"
+                 [series]="gauge2Opts.series" [chart]="gauge2Opts.chart"
+                 [colors]="gauge2Opts.colors" [plotOptions]="gauge2Opts.plotOptions">
+      </apx-chart>
+      <div class="gauge-count" style="color:#27ae60;">{{ report.terminadas }}</div>
+      <div class="gauge-pct">{{ (report.terminadas / (report.conAvance || 1) * 100) | number:'1.2-2' }}%</div>
+    </div>
+
+    <div class="gauge-wrap">
+      <div class="gauge-title" style="color:#e74c3c;">Retrasada</div>
+      <apx-chart *ngIf="gauge3Opts?.series"
+                 [series]="gauge3Opts.series" [chart]="gauge3Opts.chart"
+                 [colors]="gauge3Opts.colors" [plotOptions]="gauge3Opts.plotOptions">
+      </apx-chart>
+      <div class="gauge-count" style="color:#e74c3c;">{{ report.retrasadas }}</div>
+      <div class="gauge-pct">{{ (report.retrasadas / (report.conAvance || 1) * 100) | number:'1.2-2' }}%</div>
+    </div>
+
+    <!-- Tabla resumen -->
+    <div class="gauge-table">
+      <div class="gauge-table-title">Actividades con Programa al corte</div>
+      <table class="gauge-summary-table">
+        <tbody>
+          <tr><td>En tiempo</td>      <td class="fw-bold text-primary">{{ report.enTiempo }}</td></tr>
+          <tr><td>Terminada</td>      <td class="fw-bold text-success">{{ report.terminadas }}</td></tr>
+          <tr><td>Retrasada</td>      <td class="fw-bold text-danger">{{ report.retrasadas }}</td></tr>
+          <tr><td>Retrasada y sin iniciar</td><td class="fw-bold text-warning">{{ report.retrasadasSinIniciar }}</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+  </div>
+
+  <!-- ── PROGRAMA DE ACTIVIDADES ────────────────────────────────────────────── -->
+  <div class="rep-section-title mt-3">Programa de Actividades</div>
+  <div class="rep-task-table-wrap">
+    <table class="rep-task-table">
+      <thead>
+        <tr>
+          <th style="width:60px;">EDT</th>
+          <th>Nombre</th>
+          <th style="width:70px;">Duración</th>
+          <th style="width:90px;">Comienzo</th>
+          <th style="width:90px;">Fin</th>
+          <th style="width:85px;">% Completado</th>
+          <th style="width:85px;">% Programado</th>
+          <th style="width:60px;">SPI</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr *ngFor="let t of report.tasks"
+            [class.task-parent]="t.isParent"
+            [class.task-level2]="!t.isParent && t.level === 2"
+            [class.task-level3]="!t.isParent && t.level >= 3">
+          <td class="wbs-cell">{{ t.wbs }}</td>
+          <td class="name-cell" [style.padding-left.px]="(t.level - 1) * 12">
+            <i *ngIf="t.isParent" class="bi bi-folder2 me-1 text-warning"></i>
+            {{ t.name }}
+          </td>
+          <td class="num-cell">{{ t.duracion }}d</td>
+          <td class="num-cell small">{{ fmtDate(t.inicio) }}</td>
+          <td class="num-cell small">{{ fmtDate(t.fin) }}</td>
+          <td class="num-cell">
+            <div *ngIf="!t.isParent" class="progress-cell">
+              <div class="mini-bar">
+                <div class="mini-fill"
+                     [style.width.%]="t.pctReal"
+                     [style.background]="t.pctReal >= 100 ? '#27ae60' : '#3498db'">
+                </div>
+              </div>
+              {{ t.pctReal | number:'1.1-1' }}%
+            </div>
+          </td>
+          <td class="num-cell">
+            <span *ngIf="!t.isParent">{{ t.pctProg | number:'1.1-1' }}%</span>
+          </td>
+          <td class="num-cell" *ngIf="!t.isParent">
+            <span class="spi-badge" [class]="spiCell(t.spi)">
+              {{ t.spi > 0 ? (t.spi | number:'1.2-2') : '-' }}
+            </span>
+          </td>
+          <td *ngIf="t.isParent"></td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- ── PIE / TEXTO ANALÍTICO ─────────────────────────────────────────────── -->
+  <div class="rep-footer-text">
+    <p>{{ report.footerText }}</p>
+    <p class="rep-footer-label"><strong>REPORTE ELABORADO POR {{ report.companyName | uppercase }}</strong></p>
+  </div>
+
+</div><!-- /rep-page -->

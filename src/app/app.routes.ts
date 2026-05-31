@@ -773,6 +773,14 @@ export const routes: Routes = [
             canActivate: [MasterPermissionsGuard],
             data: { permissions: { master: 'pmo', detailed: 'versiones' } },
           },
+          {
+            path: 'reportes',
+            loadComponent: () =>
+              import('./domains/ModPMO/components/pmo-reporte-seguimiento/pmo-reporte-seguimiento.component')
+                .then((c) => c.PmoReporteSeguimientoComponent),
+            canActivate: [MasterPermissionsGuard],
+            data: { permissions: { master: 'pmo', detailed: 'reportes' } },
+          },
         ],
       },
       // ────────────────────────────────────────────────────────────────────

@@ -1,0 +1,230 @@
+// ── Variables ──────────────────────────────────────────────────────────────
+$border: #dee2e6;
+$bg-header: #1a237e;
+$font-sm: 11px;
+
+// ── Filtros ────────────────────────────────────────────────────────────────
+.filter-bar {
+  background: #f8f9fa;
+  border-bottom: 1px solid $border;
+  select, input { font-size: $font-sm; }
+}
+
+// ── Página del reporte ─────────────────────────────────────────────────────
+.rep-page {
+  padding: 12px 16px;
+  background: #fff;
+  font-size: $font-sm;
+  max-width: 1100px;
+  margin: 0 auto;
+}
+
+// ── Encabezado ─────────────────────────────────────────────────────────────
+.rep-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 0 10px;
+  border-bottom: 3px solid $bg-header;
+  margin-bottom: 10px;
+
+  .rep-header-logo {
+    width: 120px; min-width: 80px; flex-shrink: 0;
+    img.rep-logo { max-width: 110px; max-height: 55px; object-fit: contain; }
+  }
+
+  .rep-header-title {
+    flex: 1; text-align: center;
+    .rep-project-name {
+      font-size: 15px; font-weight: 700; color: $bg-header;
+      text-transform: uppercase; letter-spacing: .3px;
+    }
+    .rep-company-name { font-size: 11px; margin-top: 2px; }
+    .rep-tablero-badge {
+      display: inline-block; margin-top: 4px;
+      background: $bg-header; color: #fff;
+      padding: 2px 10px; border-radius: 3px; font-size: 10px; font-weight: 600;
+    }
+  }
+}
+
+// ── Fila de métricas ────────────────────────────────────────────────────────
+.rep-metrics {
+  display: flex; gap: 8px; margin-bottom: 10px;
+  align-items: stretch;
+}
+
+.metric-box {
+  border: 1px solid $border; border-radius: 4px;
+  padding: 8px 10px; background: #fafafa;
+}
+.metric-section-title {
+  font-size: 10px; font-weight: 700; text-transform: uppercase;
+  color: #555; margin-bottom: 6px; letter-spacing: .4px;
+}
+
+// Fechas
+.metric-dates {
+  min-width: 180px;
+  .dates-grid { display: flex; flex-direction: column; gap: 4px; }
+  .date-item {
+    display: flex; justify-content: space-between; align-items: center;
+    gap: 8px;
+    .date-label { font-size: 10px; color: #777; }
+    .date-value { font-size: 12px; font-weight: 700; }
+  }
+}
+
+// Avance
+.metric-avance {
+  flex: 1;
+  .avance-table {
+    width: 100%; border-collapse: collapse; font-size: 11px;
+    th {
+      background: $bg-header; color: #fff;
+      padding: 3px 6px; text-align: center; font-size: 10px;
+    }
+    td { padding: 3px 8px; text-align: center; border: 1px solid $border; }
+    .tipo-label { font-weight: 600; text-align: left; background: #f0f0f0; }
+    .acum-prog {
+      font-size: 18px; font-weight: 800; color: #1565c0;
+      background: #e3f2fd; vertical-align: middle;
+    }
+    .acum-real {
+      font-size: 18px; font-weight: 800; color: #c0392b;
+      background: #fdecea; vertical-align: middle;
+    }
+  }
+}
+
+// SPI
+.metric-spi {
+  min-width: 110px; text-align: center;
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px;
+
+  .spi-label-text { font-size: 10px; font-weight: 700; color: #555; text-transform: uppercase; }
+  .spi-circle {
+    width: 64px; height: 64px; border-radius: 50%;
+    border: 5px solid #e74c3c;
+    display: flex; align-items: center; justify-content: center;
+    .spi-value { font-size: 18px; font-weight: 800; }
+  }
+  .eac-section {
+    .eac-label { font-size: 9px; font-weight: 700; color: #555; text-transform: uppercase; }
+    .eac-value  { font-size: 12px; font-weight: 700; color: #1565c0; }
+  }
+}
+
+// ── Sección genérica ────────────────────────────────────────────────────────
+.rep-section {
+  border: 1px solid $border; border-radius: 4px;
+  padding: 6px; margin-bottom: 10px; background: #fff;
+}
+.rep-section-title {
+  font-size: 11px; font-weight: 700; text-transform: uppercase;
+  color: $bg-header; margin-bottom: 6px;
+  border-bottom: 2px solid $bg-header; padding-bottom: 3px;
+}
+
+// ── Estatus de Actividades ──────────────────────────────────────────────────
+.rep-activity-row {
+  display: flex; gap: 10px; margin-bottom: 10px; align-items: flex-start;
+}
+.activity-legend {
+  min-width: 200px; border: 1px solid $border; border-radius: 4px;
+  padding: 8px; background: #fafafa;
+  .legend-item {
+    display: flex; align-items: center; gap: 6px;
+    padding: 3px 0; font-size: 11px; border-bottom: 1px solid #f0f0f0;
+    &:last-child { border-bottom: none; }
+    &.legend-total { font-weight: 700; margin-top: 2px; }
+  }
+  .legend-dot { width: 12px; height: 12px; border-radius: 2px; flex-shrink: 0; }
+}
+.activity-chart { flex: 1; }
+
+// ── Gauges ──────────────────────────────────────────────────────────────────
+.rep-gauges-row {
+  display: flex; gap: 8px; margin-bottom: 12px; align-items: flex-start;
+  flex-wrap: wrap;
+}
+.gauge-wrap {
+  flex: 1; min-width: 140px; max-width: 200px;
+  text-align: center; border: 1px solid $border; border-radius: 4px;
+  padding: 8px 4px 6px; background: #fafafa;
+  .gauge-title { font-size: 12px; font-weight: 700; margin-bottom: 2px; }
+  .gauge-count { font-size: 24px; font-weight: 800; line-height: 1.1; }
+  .gauge-pct   { font-size: 11px; color: #666; }
+}
+.gauge-table {
+  flex: 1.2; min-width: 200px;
+  border: 1px solid $border; border-radius: 4px;
+  padding: 8px; background: #fafafa; align-self: stretch;
+  .gauge-table-title {
+    font-size: 11px; font-weight: 700; color: $bg-header;
+    border-bottom: 1px solid $border; padding-bottom: 4px; margin-bottom: 6px;
+  }
+  .gauge-summary-table {
+    width: 100%; font-size: 11px; border-collapse: collapse;
+    td { padding: 4px 6px; border-bottom: 1px solid #f0f0f0; }
+    td:last-child { text-align: right; min-width: 40px; }
+  }
+}
+
+// ── Tabla de Actividades ────────────────────────────────────────────────────
+.rep-task-table-wrap {
+  overflow-x: auto; margin-bottom: 10px;
+  border: 1px solid $border; border-radius: 4px;
+}
+.rep-task-table {
+  width: 100%; border-collapse: collapse; font-size: 10px;
+  th {
+    background: $bg-header; color: #fff;
+    padding: 4px 6px; text-align: center; font-size: 10px; white-space: nowrap;
+    position: sticky; top: 0;
+  }
+  td { padding: 2px 5px; border-bottom: 1px solid #f0f0f0; vertical-align: middle; }
+
+  .task-parent {
+    background: #e8eaf6; font-weight: 700; font-size: 10px;
+    td { border-bottom: 1px solid #c5cae9; }
+  }
+  .task-level2 { background: #fafafa; }
+  .task-level3 { background: #fff; }
+
+  .wbs-cell  { font-weight: 600; text-align: center; color: $bg-header; white-space: nowrap; }
+  .name-cell { max-width: 300px; }
+  .num-cell  { text-align: center; white-space: nowrap; }
+
+  .progress-cell {
+    display: flex; align-items: center; gap: 4px;
+    .mini-bar {
+      width: 36px; height: 6px; background: #dee2e6; border-radius: 3px; overflow: hidden;
+      .mini-fill { height: 100%; border-radius: 3px; transition: width .3s; }
+    }
+  }
+
+  .spi-badge {
+    display: inline-block; padding: 1px 5px; border-radius: 3px;
+    font-size: 10px; font-weight: 700;
+    &.spi-ok   { background: #d4edda; color: #155724; }
+    &.spi-warn { background: #fff3cd; color: #856404; }
+    &.spi-bad  { background: #f8d7da; color: #721c24; }
+  }
+}
+
+// ── Pie del reporte ─────────────────────────────────────────────────────────
+.rep-footer-text {
+  border-top: 1px solid $border; padding-top: 8px; margin-top: 8px;
+  p { font-size: 10px; color: #333; line-height: 1.5; margin-bottom: 4px; }
+  .rep-footer-label { font-size: 9px; color: #777; text-align: right; }
+}
+
+// ── Print ───────────────────────────────────────────────────────────────────
+@media print {
+  .no-print { display: none !important; }
+  .rep-page { padding: 6px; max-width: 100%; }
+  .rep-header { border-bottom-width: 2px; }
+  .rep-task-table-wrap { max-height: none; overflow: visible; }
+  body { background: #fff; }
+}
