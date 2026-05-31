@@ -123,7 +123,7 @@ export class AdvancesComponent implements OnInit, OnChanges {
 
   // ─── Captura Diaria (Punto 6) ───────────────────────────────────────────────
   showDailyCapture    = false;
-  dailyCaptureDate    = new Date().toISOString().split('T')[0];
+  dailyCaptureDate    = (() => { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`; })();
   activeTasksData: ActiveTask[]  = [];
   delayedTasksData: ActiveTask[] = [];
   isSavingDailyAdvance = false;
@@ -1114,21 +1114,21 @@ export class AdvancesComponent implements OnInit, OnChanges {
         alerts.basicAlert('Sin ponderado', 'Las tareas no tienen ponderado calculado.', 'warning'); return;
       }
       this.programAdvanceHoy = await this.getProgramAdvanceForDate(this.dailyCaptureDate);
-      const captureMs = new Date(this.dailyCaptureDate + 'T00:00:00').getTime();
+      const captureDate = this.dailyCaptureDate;                          // YYYY-MM-DD local
       leafTasks.forEach(t => {
-        const startMs = t.startDate ? new Date(t.startDate).getTime() : 0;
-        const endMs   = t.endDate   ? new Date(t.endDate).getTime()   : Infinity;
+        const startDate = t.startDate ? String(t.startDate).split('T')[0] : '';
+        const endDate   = t.endDate   ? String(t.endDate).split('T')[0]   : '9999-12-31';
         const prog100 = Math.round(Number(t.progress ?? 0) * 100 * 10) / 10;
         const task: ActiveTask = {
           idEntry: Number(t.id), activity: t.activity || '',
           description: t.text || t.description || '',
           ponderado: Number(t.ponderado ?? 0), progressActual: prog100,
           avanceHoy: 0, progressNuevo: prog100,
-          startDate: t.startDate ? String(t.startDate).split('T')[0] : '',
-          endDate:   t.endDate   ? String(t.endDate).split('T')[0]   : '',
+          startDate, endDate,
         };
-        if (startMs <= captureMs && captureMs <= endMs) this.activeTasksData.push(task);
-        else if (endMs < captureMs && prog100 < 100)    this.delayedTasksData.push(task);
+        // Comparar strings ISO (evita problemas de timezone UTC vs local)
+        if (startDate <= captureDate && captureDate <= endDate) this.activeTasksData.push(task);
+        else if (endDate < captureDate && prog100 < 100)        this.delayedTasksData.push(task);
       });
       this.activeTasksData  = [...this.activeTasksData.sort( (a,b) => a.activity.localeCompare(b.activity))];
       this.delayedTasksData = [...this.delayedTasksData.sort((a,b) => a.activity.localeCompare(b.activity))];

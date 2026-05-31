@@ -154,7 +154,7 @@ export class PmoRecursosComponent implements OnInit {
       },
     },
     {
-      field: 'unidad', headerName: 'Unidad', width: 90, editable: true,
+      field: 'unidad', headerName: 'Unidad', width: 120, editable: true,
       cellStyle: (p) => p.data?.__isNew ? { background: '#fffacd' } : {},
     },
     {
@@ -162,7 +162,7 @@ export class PmoRecursosComponent implements OnInit {
       cellStyle: (p) => p.data?.__isNew ? { background: '#fffacd' } : {},
     },
     {
-      field: 'cantPlan', headerName: 'Cant. Plan', width: 100, editable: true, type: 'numericColumn',
+      field: 'cantPlan', headerName: 'Cant. Plan', width: 140, editable: true, type: 'numericColumn',
       valueFormatter: (p) => (p.value ?? 0).toFixed(2),
       onCellValueChanged: (p) => {
         p.data.costoPlan = Number(p.data.cantPlan) * Number(p.data.costoUnitPlan);
@@ -170,7 +170,7 @@ export class PmoRecursosComponent implements OnInit {
       },
     },
     {
-      field: 'cantReal', headerName: 'Cant. Real', width: 100, editable: true, type: 'numericColumn',
+      field: 'cantReal', headerName: 'Cant. Real', width: 140, editable: true, type: 'numericColumn',
       valueFormatter: (p) => (p.value ?? 0).toFixed(2),
       onCellValueChanged: (p) => {
         p.data.costoReal = Number(p.data.cantReal) * Number(p.data.costoUnitReal);
@@ -179,7 +179,7 @@ export class PmoRecursosComponent implements OnInit {
       },
     },
     {
-      field: 'costoUnitPlan', headerName: 'C.Unit Plan', width: 110, editable: true, type: 'numericColumn',
+      field: 'costoUnitPlan', headerName: 'C.Unit Plan', width: 140, editable: true, type: 'numericColumn',
       valueFormatter: (p) => (p.value ?? 0).toFixed(2),
       onCellValueChanged: (p) => {
         p.data.costoPlan = Number(p.data.cantPlan) * Number(p.data.costoUnitPlan);
@@ -187,7 +187,7 @@ export class PmoRecursosComponent implements OnInit {
       },
     },
     {
-      field: 'costoUnitReal', headerName: 'C.Unit Real', width: 110, editable: true, type: 'numericColumn',
+      field: 'costoUnitReal', headerName: 'C.Unit Real', width: 140, editable: true, type: 'numericColumn',
       valueFormatter: (p) => (p.value ?? 0).toFixed(2),
       onCellValueChanged: (p) => {
         p.data.costoReal = Number(p.data.cantReal) * Number(p.data.costoUnitReal);
@@ -196,12 +196,12 @@ export class PmoRecursosComponent implements OnInit {
       },
     },
     {
-      field: 'costoPlan', headerName: 'Costo Plan', width: 120, editable: false, type: 'numericColumn',
+      field: 'costoPlan', headerName: 'Costo Plan', width: 160, editable: false, type: 'numericColumn',
       valueFormatter: (p) => (p.value ?? 0).toLocaleString('es-MX', { minimumFractionDigits: 2 }),
       cellStyle: { background: '#e8f4fd' },
     },
     {
-      field: 'costoReal', headerName: 'Costo Real', width: 120, editable: false, type: 'numericColumn',
+      field: 'costoReal', headerName: 'Costo Real', width: 160, editable: false, type: 'numericColumn',
       valueFormatter: (p) => (p.value ?? 0).toLocaleString('es-MX', { minimumFractionDigits: 2 }),
       cellStyle: { background: '#e8f4fd' },
     },

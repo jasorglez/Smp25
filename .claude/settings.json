@@ -1,0 +1,15 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(*)",
+      "PowerShell(*)",
+      "mcp__mssql-smp__*",
+      "mcp__mssql-administration__*",
+      "mcp__mssql-production__*",
+      "mcp__mssql-security__*",
+      "mcp__mssql-nominas__*",
+      "mcp__mssql-tracking__*",
+      "mcp__mssql-warehouses__*"
+    ]
+  }
+}
