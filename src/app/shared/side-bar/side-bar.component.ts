@@ -28,6 +28,19 @@ import { alerts } from 'app/helpers/alerts';
 export class SideBarComponent {
   isSidebarCollapsed = false;
   isTemporarilyExpanded = false;
+  currentTheme = 'blue';
+  showThemePicker = false;
+
+  readonly sidebarThemes = [
+    { id: 'blue',     label: 'Azul Noche',    preview: 'linear-gradient(135deg,#003366,#001f4d)' },
+    { id: 'carbon',   label: 'Carbón',         preview: 'linear-gradient(135deg,#16213e,#e94560)' },
+    { id: 'emerald',  label: 'Esmeralda',      preview: 'linear-gradient(135deg,#0d3b2e,#56e39f)' },
+    { id: 'graphite', label: 'Grafito',         preview: 'linear-gradient(135deg,#1c1c1c,#f5a623)' },
+    { id: 'burgundy', label: 'Borgoña',         preview: 'linear-gradient(135deg,#4a0e1e,#9b1730)' },
+    { id: 'purple',   label: 'Violeta',         preview: 'linear-gradient(135deg,#2d1b69,#7c3aed)' },
+    { id: 'teal',     label: 'Teal',            preview: 'linear-gradient(135deg,#0d4f4f,#2dd4bf)' },
+    { id: 'military', label: 'Verde Militar',   preview: 'linear-gradient(135deg,#2d3a1f,#a3be8c)' },
+  ];
 
   selectedRoot = signal<string>('');
 
@@ -100,6 +113,9 @@ export class SideBarComponent {
     if (savedCollapsedState !== null) {
       this.isSidebarCollapsed = savedCollapsedState === 'true';
     }
+    // Cargar tema del sidebar
+    const savedTheme = localStorage.getItem('sidebarTheme');
+    if (savedTheme) this.currentTheme = savedTheme;
 
 this.userRoot = this.signalsService.getUserRoot()();
     if (this.signalsService.isidUserEmpty()) {
@@ -669,9 +685,22 @@ error: (error) => {
 toggleSidebar() {
     this.isSidebarCollapsed = !this.isSidebarCollapsed;
     this.isTemporarilyExpanded = false;
-    // Guardar preferencia en localStorage
+    this.showThemePicker = false;
     localStorage.setItem('sidebarCollapsed', this.isSidebarCollapsed.toString());
-    // El main-page component detectará el cambio y aplicará la clase
+  }
+
+  setTheme(themeId: string) {
+    this.currentTheme = themeId;
+    localStorage.setItem('sidebarTheme', themeId);
+    this.showThemePicker = false;
+    this.cdr.markForCheck();
+  }
+
+  toggleThemePicker() {
+    if (this.isSidebarCollapsed && !this.isTemporarilyExpanded) {
+      this.expandTemporarily();
+    }
+    this.showThemePicker = !this.showThemePicker;
   }
 
   // Método para expandir temporalmente la barra

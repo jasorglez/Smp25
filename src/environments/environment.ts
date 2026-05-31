@@ -85,5 +85,5 @@ export const environment = {
     // publicKey: 'TEST-4399133a-4676-42a2-ab85-d946370bf96a',
   },
 
-  version: '7.36 (31 Mayo 2026) fix(pmo): renombrar menu Reportes a Tablero Seguimiento',
+  version: '7.37 (31 Mayo 2026) feat(sidebar): 8 temas de color con persistencia en localStorage',
 };

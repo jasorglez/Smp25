@@ -1,138 +1,169 @@
-/* Fondo azul para la barra lateral */
+// ── CSS Variables por Tema ─────────────────────────────────────────────────────
+// Cada tema define estas 8 propiedades. El resto del SCSS usa solo var(--sb-*)
+
 .sidebarback {
-      background-color: #003366;  /* Fondo azul oscuro */
-      padding: 0;
-      color: #FFFFFF;             /* Texto en blanco para contraste */
-      width: 225px; /* Reducido 10% (de 250px a 225px) */
-      transition: width 0.3s ease;
-      font-size: 0.85rem; /* Letras más pequeñas */
-  }
-
-  /* Logo y textos */
-  .sidebarback,
-  .sidebarback .brand-text {
-      color: #FFFFFF;
-      font-size: 0.85rem; /* Letras más pequeñas */
-  }
-
-  /* Estilos para los íconos y enlaces de navegación */
-  .sidebarback .nav-link {
-      color: #FFFFFF;             /* Color de texto blanco */
-      padding: 8px 12px; /* Reducido de 10px 15px */
-      border-radius: 5px;
-      transition: background-color 0.3s ease, color 0.3s ease;
-      font-size: 0.75rem; /* Letras más pequeñas para los menús */
-  }
-
-  .sidebarback .nav-link i {
-      font-size: 1rem; /* Reducido de 1.2rem a 1rem */
-      color: #87CEFA;             /* Azul claro para íconos */
-      margin-right: 6px; /* Reducido de 8px a 6px */
-      transition: color 0.3s ease;
-  }
-
-  /* Hover para los enlaces */
-  .sidebarback .nav-link:hover {
-      background-color: #005599;  /* Fondo azul más claro */
-      color: #FFFFFF;
-  }
-
-  .sidebarback .nav-link:hover i {
-      color: #FFFFFF;             /* Cambia el ícono a blanco en hover */
-  }
-
-  /* Estilo para el select */
-  .select-side {
-      font-size: 0.85rem;
-      color: #333;
-      background-color: #FFFFFF;
-      border: 1px solid #CCCCCC;
-      border-radius: 4px;
-      padding: 4px;
-      margin-bottom: 5px;        /* Espacio entre selects */
-      transition: border-color 0.3s ease;
-      width: 100%; /* Asegurar que ocupe todo el ancho disponible */
-  }
-
-  .select-side:focus {
-      border-color: #87CEFA;      /* Borde azul claro en foco */
-  }
-
-  /* Estilo para los form-select del sidebar */
-  .sidebarback .form-select {
-      font-size: 0.85rem;
-      padding: 4px 8px;
-      height: auto;
-      min-height: 30px;
-      margin-bottom: 5px !important;
-  }
-
-  .sidebarback .form-select option {
-      font-size: 0.85rem;
-      padding: 3px;
-  }
-
-  /* Reducir padding del contenedor de selects */
-  .sidebarback .overflow-auto {
-      padding: 8px;
-  }
-
-  /* Reducir tamaño de texto general en sidebar */
-  .sidebarback span:not(.visually-hidden) {
-      font-size: 0.85rem;
-  }
-
-  .nav-link i {
-    color: #4CAF50; /* Cambia el color */
-    font-size: 16px; /* Reducido de 20px a 16px */
-    transition: transform 0.2s ease, color 0.2s ease;
-  }
-
-  .nav-link i:hover {
-    color: #3E8E41; /* Color al pasar el mouse */
-    transform: scale(1.2); /* Efecto de zoom */
-  }
-
-  .nav-link i {
-    color: #007BFF; /* Azul principal */
-  }
-  .nav-link i:hover {
-    color: #0056b3; /* Azul oscuro al pasar el mouse */
-  }
-
-  .active-link {
-    background-color: #007bff; /* Color de fondo */
-    color: white !important; /* Color de texto */
-    border-radius: 4px; /* Bordes redondeados */
-
-    mat-icon {
-        color: white !important; /* Color del icono */
-    }
+  // Tema por defecto: Azul Noche
+  --sb-bg:         #003366;
+  --sb-bg2:        #001f4d;
+  --sb-accent:     #005599;
+  --sb-icon:       #87cefa;
+  --sb-active:     #1565c0;
+  --sb-text:       #ffffff;
+  --sb-text-dim:   rgba(255,255,255,0.6);
+  --sb-border:     rgba(255,255,255,0.13);
+  --sb-dock:       rgba(0,0,0,0.14);
 }
 
+.sidebarback[data-theme="carbon"] {
+  --sb-bg: #16213e; --sb-bg2: #0f0f1a; --sb-accent: #1a1a40;
+  --sb-icon: #e94560; --sb-active: #c0392b;
+  --sb-text: #eaeaea; --sb-text-dim: rgba(234,234,234,.5);
+  --sb-border: rgba(233,69,96,.22); --sb-dock: rgba(0,0,0,.3);
+}
+
+.sidebarback[data-theme="emerald"] {
+  --sb-bg: #0d3b2e; --sb-bg2: #081f18; --sb-accent: #1a5c45;
+  --sb-icon: #56e39f; --sb-active: #1a8a60;
+  --sb-text: #f0fff8; --sb-text-dim: rgba(240,255,248,.6);
+  --sb-border: rgba(86,227,159,.15); --sb-dock: rgba(0,0,0,.2);
+}
+
+.sidebarback[data-theme="graphite"] {
+  --sb-bg: #1c1c1c; --sb-bg2: #0f0f0f; --sb-accent: #2e2e2e;
+  --sb-icon: #f5a623; --sb-active: #b8780e;
+  --sb-text: #f0f0f0; --sb-text-dim: rgba(240,240,240,.55);
+  --sb-border: rgba(245,166,35,.2); --sb-dock: rgba(0,0,0,.32);
+}
+
+.sidebarback[data-theme="burgundy"] {
+  --sb-bg: #4a0e1e; --sb-bg2: #2d0812; --sb-accent: #6d1530;
+  --sb-icon: #ff8fa3; --sb-active: #9b1730;
+  --sb-text: #ffe4e8; --sb-text-dim: rgba(255,228,232,.6);
+  --sb-border: rgba(155,23,48,.3); --sb-dock: rgba(0,0,0,.22);
+}
+
+.sidebarback[data-theme="purple"] {
+  --sb-bg: #2d1b69; --sb-bg2: #1a0e40; --sb-accent: #42288d;
+  --sb-icon: #c084fc; --sb-active: #7c3aed;
+  --sb-text: #f3e8ff; --sb-text-dim: rgba(243,232,255,.6);
+  --sb-border: rgba(124,58,237,.25); --sb-dock: rgba(0,0,0,.28);
+}
+
+.sidebarback[data-theme="teal"] {
+  --sb-bg: #0d4f4f; --sb-bg2: #072e2e; --sb-accent: #146464;
+  --sb-icon: #2dd4bf; --sb-active: #0f766e;
+  --sb-text: #f0fdfa; --sb-text-dim: rgba(240,253,250,.6);
+  --sb-border: rgba(45,212,191,.18); --sb-dock: rgba(0,0,0,.22);
+}
+
+.sidebarback[data-theme="military"] {
+  --sb-bg: #2d3a1f; --sb-bg2: #1a2210; --sb-accent: #3d4d2a;
+  --sb-icon: #a3be8c; --sb-active: #4a6031;
+  --sb-text: #ecead3; --sb-text-dim: rgba(236,234,211,.6);
+  --sb-border: rgba(163,190,140,.2); --sb-dock: rgba(0,0,0,.2);
+}
+
+// ── Base del sidebar ───────────────────────────────────────────────────────────
+.sidebarback {
+  background: linear-gradient(160deg, var(--sb-bg) 0%, var(--sb-bg2) 100%);
+  padding: 0;
+  color: var(--sb-text);
+  width: 225px;
+  transition: width 0.3s ease, background 0.4s ease;
+  font-size: 0.85rem;
+}
+
+.sidebarback,
+.sidebarback .brand-text {
+  color: var(--sb-text);
+  font-size: 0.85rem;
+}
+
+// ── Links de navegación ────────────────────────────────────────────────────────
+.sidebarback .nav-link {
+  color: var(--sb-text);
+  padding: 8px 12px;
+  border-radius: 5px;
+  transition: background-color 0.25s ease, color 0.25s ease;
+  font-size: 0.75rem;
+}
+
+.sidebarback .nav-link mat-icon {
+  color: var(--sb-icon);
+  font-size: 1rem;
+  margin-right: 6px;
+  transition: color 0.25s ease;
+}
+
+.sidebarback .nav-link:hover {
+  background-color: var(--sb-accent);
+  color: var(--sb-text);
+}
+
+.sidebarback .nav-link:hover mat-icon {
+  color: var(--sb-text);
+}
+
+// ── Link activo ────────────────────────────────────────────────────────────────
+.active-link {
+  background-color: var(--sb-active) !important;
+  color: #fff !important;
+  border-radius: 4px;
+
+  mat-icon { color: #fff !important; }
+}
+
+// ── Separadores internos ───────────────────────────────────────────────────────
+.sidebarback .border-top,
+.sidebarback .border-bottom {
+  border-color: var(--sb-border) !important;
+}
+
+// ── Selects ────────────────────────────────────────────────────────────────────
+.sidebarback .form-select {
+  font-size: 0.85rem;
+  padding: 4px 8px;
+  height: auto;
+  min-height: 30px;
+  margin-bottom: 5px !important;
+}
+
+.sidebarback .form-select option {
+  font-size: 0.85rem;
+  padding: 3px;
+}
+
+.sidebarback .overflow-auto {
+  padding: 8px;
+}
+
+.sidebarback span:not(.visually-hidden) {
+  font-size: 0.85rem;
+}
+
+// ── Sidebar (posición fija) ────────────────────────────────────────────────────
 .sidebar {
   position: fixed;
   top: 0;
   bottom: 0;
   left: 0;
-  width: 225px; /* Reducido 10% (de 250px a 225px) */
+  width: 225px;
   z-index: 1030;
   transition: width 0.3s ease;
   overflow-y: auto;
   overflow-x: hidden;
-  font-size: 0.85rem; /* Letras más pequeñas */
+  font-size: 0.85rem;
 }
 
 .collapsed.sidebar {
   width: 70px;
 }
 
-/* Expansión temporal - mantener mismo ancho que sidebar normal */
 .collapsed.temp-expanded.sidebar {
   width: 225px;
 }
 
-/* Modificar selects cuando está colapsado */
+// ── Colapsado: selects ─────────────────────────────────────────────────────────
 .collapsed:not(.temp-expanded) .form-select {
   width: 50px !important;
   height: 35px !important;
@@ -141,15 +172,11 @@
   margin: 2px auto !important;
   appearance: none;
   background: transparent;
-  border: 1px solid rgba(255, 255, 255, 0.3);
+  border: 1px solid var(--sb-border);
   color: transparent;
   cursor: pointer;
   border-radius: 4px;
   display: block !important;
-}
-
-/* Mostrar ícono de dropdown cuando está colapsado */
-.collapsed:not(.temp-expanded) .form-select {
   background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='white' viewBox='0 0 16 16'%3e%3cpath d='m7.247 11.14 2.096-2.096a.5.5 0 0 1 .708.708L7.653 12.146a.5.5 0 0 1-.708 0L4.646 9.757a.5.5 0 0 1 .708-.708l2.096 2.096z'/%3e%3c/svg%3e");
   background-repeat: no-repeat;
   background-position: right 2px center;
@@ -157,12 +184,8 @@
   padding-right: 20px !important;
 }
 
-/* Ocultar texto de opciones cuando está colapsado */
-.collapsed:not(.temp-expanded) .form-select option {
-  display: none;
-}
+.collapsed:not(.temp-expanded) .form-select option { display: none; }
 
-/* Mostrar selects normalmente cuando está temporalmente expandido */
 .temp-expanded .form-select {
   width: 100% !important;
   height: auto !important;
@@ -171,31 +194,17 @@
   margin: 0 0 5px 0 !important;
   background: white;
   color: #333;
-  border: 1px solid #CCCCCC;
+  border: 1px solid #ccc;
   appearance: menulist;
 }
 
-/* Ocultar etiquetas de selects cuando está colapsado */
-.collapsed:not(.temp-expanded) .overflow-auto > span > span {
-  display: none !important;
-}
+// ── Colapsado: textos / etiquetas ──────────────────────────────────────────────
+.collapsed:not(.temp-expanded) .overflow-auto > span > span { display: none !important; }
+.temp-expanded .overflow-auto > span > span { display: inline !important; }
 
-/* Mostrar etiquetas cuando está temporalmente expandido */
-.temp-expanded .overflow-auto > span > span {
-  display: inline !important;
-}
+.collapsed:not(.temp-expanded) .nav-link span { display: none !important; }
+.temp-expanded .nav-link span { display: inline !important; }
 
-/* Ocultar completamente los textos cuando está colapsado */
-.collapsed:not(.temp-expanded) .nav-link span {
-  display: none !important;
-}
-
-/* Mostrar textos cuando está temporalmente expandido */
-.temp-expanded .nav-link span {
-  display: inline !important;
-}
-
-/* Centrar contenido cuando está colapsado */
 .collapsed:not(.temp-expanded) .nav-link {
   display: flex;
   flex-direction: column;
@@ -204,104 +213,163 @@
   padding: 8px 2px;
   text-align: center;
 }
-
 .collapsed:not(.temp-expanded) .nav-link mat-icon {
   margin-right: 0;
   margin-bottom: 2px;
 }
 
-/* Restaurar diseño normal cuando está temporalmente expandido */
 .temp-expanded .nav-link {
-  display: flex;
-  flex-direction: row;
-  align-items: center;
-  justify-content: flex-start;
-  padding: 8px 12px;
-  text-align: left;
+  display: flex; flex-direction: row;
+  align-items: center; justify-content: flex-start;
+  padding: 8px 12px; text-align: left;
 }
-
 .temp-expanded .nav-link mat-icon {
-  margin-right: 6px;
-  margin-bottom: 0;
+  margin-right: 6px; margin-bottom: 0;
 }
 
-/* Estilo del botón de colapsar */
+// ── Botón colapsar ─────────────────────────────────────────────────────────────
 .btn-collapse {
-  background-color: rgba(255, 255, 255, 0.1);
-  color: #FFFFFF;
-  border: 1px solid rgba(255, 255, 255, 0.2);
+  background-color: var(--sb-border);
+  color: var(--sb-text);
+  border: 1px solid var(--sb-border);
   padding: 8px;
   font-size: 0.9rem;
-  transition: all 0.3s ease;
+  transition: all 0.25s ease;
   display: flex;
   align-items: center;
   justify-content: center;
 }
-
 .btn-collapse:hover {
-  background-color: rgba(255, 255, 255, 0.2);
-  border-color: rgba(255, 255, 255, 0.4);
-  color: #FFFFFF;
+  background-color: var(--sb-accent);
+  border-color: var(--sb-border);
+  color: var(--sb-text);
+}
+.btn-collapse mat-icon { color: var(--sb-text); font-size: 16px; }
+
+.collapsed:not(.temp-expanded) .btn-collapse span { display: none !important; }
+.temp-expanded .btn-collapse span { display: inline !important; }
+
+// ── Botón paleta ───────────────────────────────────────────────────────────────
+.bottom-btn-row {
+  display: flex;
+  gap: 4px;
+  align-items: center;
 }
 
-.btn-collapse mat-icon {
-  color: #FFFFFF;
-  font-size: 16px; /* Reducido de 20px a 16px */
+.btn-palette {
+  background-color: var(--sb-border);
+  color: var(--sb-text);
+  border: 1px solid var(--sb-border);
+  padding: 7px 8px;
+  border-radius: 5px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  transition: all 0.25s ease;
+  cursor: pointer;
+
+  mat-icon { color: var(--sb-icon); font-size: 18px; width: 18px; height: 18px; }
+
+  &:hover, &.picker-active {
+    background-color: var(--sb-accent);
+    mat-icon { color: var(--sb-text); }
+  }
 }
 
-/* Logo cuando está colapsado */
-.collapsed .sidebar-logo {
-  display: none;
+// ── Panel de temas ─────────────────────────────────────────────────────────────
+.theme-picker-panel {
+  background: var(--sb-bg2);
+  border: 1px solid var(--sb-border);
+  border-radius: 6px;
+  padding: 8px;
+  margin-bottom: 6px;
+  animation: fadeSlideUp 0.18s ease;
 }
 
-/* Logo pequeño en la parte inferior cuando está colapsado */
+@keyframes fadeSlideUp {
+  from { opacity: 0; transform: translateY(6px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+.theme-picker-label {
+  font-size: 9px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: .5px;
+  color: var(--sb-text-dim);
+  margin-bottom: 6px;
+}
+
+.theme-picker-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 5px;
+}
+
+.theme-swatch {
+  width: 100%;
+  aspect-ratio: 1;
+  border-radius: 5px;
+  border: 2px solid transparent;
+  cursor: pointer;
+  position: relative;
+  transition: transform 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+
+  mat-icon {
+    font-size: 13px;
+    width: 13px;
+    height: 13px;
+    color: #fff;
+    filter: drop-shadow(0 0 2px rgba(0,0,0,0.8));
+  }
+
+  &:hover {
+    transform: scale(1.15);
+    box-shadow: 0 2px 8px rgba(0,0,0,0.4);
+  }
+
+  &.swatch-active {
+    border-color: #fff;
+    box-shadow: 0 0 0 1px rgba(255,255,255,0.5), 0 2px 8px rgba(0,0,0,0.4);
+    transform: scale(1.1);
+  }
+}
+
+// ── Logo ───────────────────────────────────────────────────────────────────────
+.sidebar-logo {
+  max-width: 110px;
+  max-height: 55px;
+  object-fit: contain;
+}
+.collapsed .sidebar-logo { display: none; }
+
 .collapsed-logo-container {
   display: flex;
   justify-content: center;
   align-items: center;
   padding: 4px;
 }
-
 .collapsed-logo {
-  width: 55px;
-  height: 55px;
+  width: 55px; height: 55px;
   object-fit: contain;
   border-radius: 4px;
-  background-color: rgba(255, 255, 255, 0.1);
+  background-color: rgba(255,255,255,0.08);
   padding: 4px;
 }
 
-/* Hacer texto más pequeño cuando está colapsado */
-.collapsed .nav-link mat-icon {
-  font-size: 14px; /* Reducido de 18px a 14px */
-}
+.collapsed .nav-link mat-icon { font-size: 14px; }
+.collapsed .brand-text, .collapsed .fw-bold { font-size: 0.8rem; }
 
-.collapsed .brand-text,
-.collapsed .fw-bold {
-  font-size: 0.8rem;
-}
-
-/* Ocultar texto del botón de colapsar cuando está colapsado */
-.collapsed:not(.temp-expanded) .btn-collapse span {
-  display: none !important;
-}
-
-/* Mostrar texto del botón cuando está temporalmente expandido */
-.temp-expanded .btn-collapse span {
-  display: inline !important;
-}
-
-/* Publicidad pegada al pie del sidebar, justo encima de Contraer */
+// ── Publicidad ─────────────────────────────────────────────────────────────────
 .sidebar-publicidad-dock {
   padding: 6px 8px 4px;
-  background: rgba(0, 0, 0, 0.12);
+  background: var(--sb-dock);
+  border-color: var(--sb-border) !important;
 }
-
-.sidebar-publicidad-link {
-  margin: 0;
-  border-radius: 5px;
-}
-
-.sidebar-publicidad-link span {
-  margin-left: 6px;
-}
+.sidebar-publicidad-link { margin: 0; border-radius: 5px; }
+.sidebar-publicidad-link span { margin-left: 6px; }

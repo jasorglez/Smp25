@@ -1,8 +1,9 @@
 <aside
   class="d-flex flex-column border-end vh-100 sidebar sidebarback"
-  [ngClass]="{ 
+  [attr.data-theme]="currentTheme"
+  [ngClass]="{
     collapsed: isSidebarCollapsed && !isTemporarilyExpanded,
-    'temp-expanded': isTemporarilyExpanded 
+    'temp-expanded': isTemporarilyExpanded
   }"
 >
   <div class="d-flex flex-column align-items-center p-2 border-bottom" *ngIf="!isSidebarCollapsed || isTemporarilyExpanded">
@@ -386,20 +387,39 @@
   <div class="p-2 border-top">
     <!-- Logo pequeño cuando está colapsado -->
     <div *ngIf="isSidebarCollapsed && !isTemporarilyExpanded" class="collapsed-logo-container mb-2">
-      <img
-        [src]="trackingService.getpictureComp()"
-        alt="BI Company"
-        class="collapsed-logo"
-      />
+      <img [src]="trackingService.getpictureComp()" alt="BI Company" class="collapsed-logo"/>
     </div>
-    <button
-      class="btn btn-collapse w-100"
-      (click)="toggleSidebar()"
-      [matTooltip]="isSidebarCollapsed ? 'Expandir menú' : 'Contraer menú'"
-      matTooltipPosition="right"
-    >
-      <mat-icon>{{ isSidebarCollapsed ? "chevron_right" : "chevron_left" }}</mat-icon>
-      <span *ngIf="!isSidebarCollapsed" class="ms-2">Contraer</span>
-    </button>
+
+    <!-- Panel selector de temas -->
+    <div class="theme-picker-panel" *ngIf="showThemePicker">
+      <div class="theme-picker-label">Tema del menú</div>
+      <div class="theme-picker-grid">
+        <button *ngFor="let t of sidebarThemes"
+                class="theme-swatch"
+                [class.swatch-active]="currentTheme === t.id"
+                [style.background]="t.preview"
+                [title]="t.label"
+                (click)="setTheme(t.id)">
+          <mat-icon *ngIf="currentTheme === t.id">check</mat-icon>
+        </button>
+      </div>
+    </div>
+
+    <!-- Fila inferior: paleta + contraer -->
+    <div class="bottom-btn-row">
+      <button class="btn btn-palette"
+              [class.picker-active]="showThemePicker"
+              (click)="toggleThemePicker()"
+              matTooltip="Tema del menú" matTooltipPosition="right">
+        <mat-icon>palette</mat-icon>
+      </button>
+      <button class="btn btn-collapse flex-grow-1"
+              (click)="toggleSidebar()"
+              [matTooltip]="isSidebarCollapsed ? 'Expandir menú' : 'Contraer menú'"
+              matTooltipPosition="right">
+        <mat-icon>{{ isSidebarCollapsed ? "chevron_right" : "chevron_left" }}</mat-icon>
+        <span *ngIf="!isSidebarCollapsed" class="ms-2">Contraer</span>
+      </button>
+    </div>
   </div>
 </aside>
