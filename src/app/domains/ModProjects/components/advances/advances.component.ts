@@ -828,17 +828,23 @@ export class AdvancesComponent implements OnInit, OnChanges {
     }
     if (!periodMap.size) return;
 
-    // 3. Ordenar períodos y normalizar: el ÚLTIMO cierra exactamente a 100.000
+    // 3. Ordenar períodos y normalizar a exactamente 100.00
+    //    La BD usa decimal(18,2) → solo 2 decimales útiles.
+    //    Si los ponderados del workprogram no suman 100 (ej. 101.02), escalamos primero.
+    //    Luego usamos aritmética entera de "centésimas" para evitar deriva de punto flotante:
+    //    suma = accumulatedCents + (10000 − accumulatedCents) = 10000 = 100.00 exacto.
     const weekEntries = Array.from(periodMap.entries()).sort(([a], [b]) => a.localeCompare(b));
-    let accumulated = 0;
+    const rawTotal    = weekEntries.reduce((s, [, v]) => s + v, 0);
+    const scale       = rawTotal > 0 ? 100 / rawTotal : 1;   // normalizar al 100% real
+    let accumulatedCents = 0;                                  // entero: suma × 100
     const normalizedWeeks: [string, number][] = weekEntries.map(([date, value], i) => {
       if (i < weekEntries.length - 1) {
-        const prog = Math.round(value * 1000) / 1000;
-        accumulated += prog;
-        return [date, prog];
+        const cents = Math.round(value * scale * 100);        // 2dp como entero
+        accumulatedCents += cents;
+        return [date, cents / 100];
       } else {
-        // Último período = resto exacto → cierra a 100.000 sin deriva de redondeo
-        return [date, Math.round((100 - accumulated) * 1000) / 1000];
+        // Último período = resto exacto en centésimas → cierra SIEMPRE a 100.00
+        return [date, (10000 - accumulatedCents) / 100];
       }
     });
 
@@ -1034,8 +1040,8 @@ export class AdvancesComponent implements OnInit, OnChanges {
 
   private normalizeClosingPercent(value: number | null | undefined): number {
     const numeric = Number(value ?? 0);
-    // Snap a 100 cualquier valor dentro de ±0.05 — cubre deriva de redondeo semanal
-    if (Math.abs(100 - numeric) <= 0.05) {
+    // Snap a 100 cualquier valor dentro de ±0.1 — cubre deriva de punto flotante al leer 2dp de BD
+    if (Math.abs(100 - numeric) <= 0.1) {
       return 100;
     }
     return numeric;
