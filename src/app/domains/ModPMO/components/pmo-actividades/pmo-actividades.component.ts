@@ -1139,9 +1139,21 @@ export class PmoActividadesComponent implements OnInit {
       // ── Calcular ponderados en memoria ────────────────────────────────────
       // Solo HOJAS se guardan en BD (agrupadores PMO tienen parent=0 → no se guardan).
       // La distribución diaria usa ponderado > 0 como filtro de hoja.
+      const hojasConMetrica = hojas.filter(h => getMetric(h) > 0);
       const batchItems: { id: number; ponderado: number | null }[] = [];
+      let sumAssigned = 0;
+
       hojas.forEach(hoja => {
-        const pond = Math.round((getMetric(hoja) / total) * 1000) / 1000;
+        let pond: number;
+        if (getMetric(hoja) <= 0) {
+          pond = 0; // agrupador o actividad sin datos → ponderado=0
+        } else if (hoja === hojasConMetrica[hojasConMetrica.length - 1]) {
+          // Último ítem con métrica recibe el resto para que la suma sea exactamente 1.000
+          pond = Math.round((1 - sumAssigned) * 1000) / 1000;
+        } else {
+          pond = Math.round((getMetric(hoja) / total) * 1000) / 1000;
+        }
+        sumAssigned += pond;
         hoja.ponderado = pond;
         batchItems.push({ id: hoja.id, ponderado: pond });
       });
