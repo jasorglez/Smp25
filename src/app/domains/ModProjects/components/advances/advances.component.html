@@ -3,7 +3,7 @@
   <!-- ╔══════════════════════════════════════════════════════════════════════╗
        ║  PMO: SELECTOR PROYECTO + CONVENIO (solo cuando no hay contrato)     ║
        ╚══════════════════════════════════════════════════════════════════════╝ -->
-  <div *ngIf="!curretnContractSelected"
+  <div *ngIf="showPmoSelectors"
        class="d-flex align-items-center gap-3 flex-wrap alert alert-info py-2 px-3 mb-2">
     <i class="bi bi-folder-fill text-primary fs-5"></i>
 
@@ -33,7 +33,7 @@
         <option [ngValue]="null" disabled>— Selecciona convenio —</option>
         <option [ngValue]="SIN_CONVENIO.id">{{ SIN_CONVENIO.name }}</option>
         <option *ngFor="let c of pmoConventions" [ngValue]="c.id">
-          {{ c.name || c.nombre || ('Convenio #' + c.id) }}
+          {{ c.description || c.name || c.nombre || ('Convenio #' + c.id) }}
         </option>
       </select>
     </div>
@@ -42,7 +42,13 @@
     <span *ngIf="selectedPmoProjectId && selectedPmoConventionId != null"
           class="badge bg-success ms-auto">
       <i class="bi bi-check-circle me-1"></i>
-      {{ idConvention ? 'Conv. ' + idConvention : 'Sin convenio' }}
+      {{
+        idConvention
+          ? (pmoConventions.find(c => c.id === selectedPmoConventionId)?.description
+             || pmoConventions.find(c => c.id === selectedPmoConventionId)?.name
+             || ('Conv. ' + idConvention))
+          : 'Sin convenio'
+      }}
     </span>
   </div>
 

@@ -283,6 +283,10 @@ export class PmoActividadesComponent implements OnInit {
       onCellValueChanged: (p) => this.markModified(p.data),
     },
     {
+      field: 'ponderado', headerName: 'Ponderado', width: 95, editable: false, type: 'numericColumn',
+      valueFormatter: (p) => p.value != null ? Number(p.value).toFixed(3) : '',
+    },
+    {
       field: 'startDate', headerName: 'Inicio', width: 115, editable: true,
       cellEditor: 'agDateCellEditor',
       valueGetter: (p) => p.data?.startDate ? String(p.data.startDate).substring(0, 10) : '',
@@ -1149,9 +1153,9 @@ export class PmoActividadesComponent implements OnInit {
           pond = 0; // agrupador o actividad sin datos → ponderado=0
         } else if (hoja === hojasConMetrica[hojasConMetrica.length - 1]) {
           // Último ítem con métrica recibe el resto para que la suma sea exactamente 1.000
-          pond = Math.round((1 - sumAssigned) * 1000) / 1000;
+          pond = Math.round((100 - sumAssigned) * 1000) / 1000;
         } else {
-          pond = Math.round((getMetric(hoja) / total) * 1000) / 1000;
+          pond = Math.round((getMetric(hoja) / total) * 100 * 1000) / 1000;
         }
         sumAssigned += pond;
         hoja.ponderado = pond;
