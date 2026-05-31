@@ -253,12 +253,6 @@ export class AdvancesComponent implements OnInit, OnChanges {
         this.pmoConventions = [];
         this.loadPmoProjects();
       }
-
-        this.idCompany      = rootId;
-        this.pmoProjects    = [];
-        this.pmoConventions = [];
-        this.loadPmoProjects();
-      }
       // En PMO (sin contrato) el convenio vigente puede ser de otro módulo → ignorarlo
       if (projectChangedFromSidebar || contractChangedFromSidebar) {
         this.selectedPmoProjectId = sidebarProject;
@@ -277,11 +271,6 @@ export class AdvancesComponent implements OnInit, OnChanges {
 
       this.syncProjectDateRange();
 
-      this.idConvention = this.selectedPmoConventionId === this.SIN_CONVENIO.id
-        ? null
-        : (this.selectedPmoConventionId ?? null);
-
-      this.syncProjectDateRange();
       this.idConvention = this.selectedPmoConventionId === this.SIN_CONVENIO.id
         ? null
         : (this.selectedPmoConventionId ?? null);
@@ -413,28 +402,6 @@ export class AdvancesComponent implements OnInit, OnChanges {
     this.loadPmoConventions(id);
   }
 
-  private resolveProjectContractId(projectId: number | null): number | null {
-    if (!projectId) return null;
-    const project = this.pmoProjects.find((item: any) => Number(item.id) === Number(projectId));
-    const candidates = [
-      project?.idContrato,
-      project?.id_contrato,
-      project?.idContract,
-      project?.id_contract,
-      project?.contractId,
-      project?.contract_id,
-      project?.selectedContract,
-      project?.idc
-    ];
-    for (const candidate of candidates) {
-      const parsed = Number(candidate);
-      if (!Number.isNaN(parsed) && parsed > 0) {
-        return parsed;
-      }
-    }
-    return null;
-  }
-
   // ─── PMO: cargar convenios del proyecto ──────────────────────────────────────
   private resolveProjectContractId(projectId: number | null): number | null {
     if (!projectId) return null;
@@ -505,40 +472,6 @@ export class AdvancesComponent implements OnInit, OnChanges {
             this.onPmoConventionSelected(preferredConvention.id);
           }
         });
-        return;
-          // Sin convenios — cargar avances sin filtro de convenio
-          this.selectedPmoConventionId = this.SIN_CONVENIO.id;
-          this.idConvention = null;
-          this.obtenerDatos();
-          return;
-        }
-
-        const currentSignalConventionId = this._signalsService.getConventionVigente()()?.id ?? null;
-        const normalizedVigente = (value: any) =>
-          value === true || value === 1 || value === '1' || value === 'true';
-        this._convService.getVigenteByType(scopeType, scopeId).subscribe({
-          next: (vigente) => {
-            const preferredConvention =
-              this.pmoConventions.find((item: any) => Number(item.id) === Number(this.selectedPmoConventionId)) ??
-              this.pmoConventions.find((item: any) => Number(item.id) === Number(signalConvention?.id)) ??
-              this.pmoConventions.find((item: any) => Number(item.id) === Number(vigente?.id)) ??
-              this.pmoConventions.find((item: any) => Number(item.id) === Number(currentSignalConventionId)) ??
-              this.pmoConventions.find((item: any) => normalizedVigente(item.vigente)) ??
-              this.pmoConventions[0];
-
-            this.onPmoConventionSelected(preferredConvention.id);
-          },
-          error: () => {
-            const preferredConvention =
-              this.pmoConventions.find((item: any) => Number(item.id) === Number(this.selectedPmoConventionId)) ??
-              this.pmoConventions.find((item: any) => Number(item.id) === Number(signalConvention?.id)) ??
-              this.pmoConventions.find((item: any) => Number(item.id) === Number(currentSignalConventionId)) ??
-              this.pmoConventions.find((item: any) => normalizedVigente(item.vigente)) ??
-              this.pmoConventions[0];
-
-            this.onPmoConventionSelected(preferredConvention.id);
-          }
-        });
       },
       error: () => {
         this.isLoadingConv  = false;
@@ -565,15 +498,6 @@ export class AdvancesComponent implements OnInit, OnChanges {
     this.idConvention            = id === this.SIN_CONVENIO.id ? null : id;
     this.clearPmoData();
     this.obtenerDatos();
-  }
-
-  private syncProjectDateRange(): void {
-    if (!this.selectedPmoProjectId || !this.pmoProjects.length) return;
-    const project = this.pmoProjects.find((item: any) => Number(item.id) === Number(this.selectedPmoProjectId));
-    const start = project?.programStart || project?.startDate || project?.start;
-    const end = project?.programEnd || project?.endDate || project?.end;
-    if (start) this.dailyViewFrom = String(start).split('T')[0];
-    if (end) this.dailyViewTo = String(end).split('T')[0];
   }
 
   private clearPmoData(): void {
