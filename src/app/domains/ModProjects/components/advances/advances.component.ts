@@ -83,7 +83,24 @@ export class AdvancesComponent implements OnInit, OnChanges {
   pmoConventions:          any[]    = [];
   selectedPmoProjectId:    number | null = null;
   selectedPmoConventionId: number | null = null;
+  pmoContractId:           number | null = null;
   isLoadingConv            = false;
+  private didUserSelectConvention = false;
+
+  get showPmoSelectors(): boolean {
+    return !!this.idCompany;
+  }
+
+  private get isPmoScope(): boolean {
+    return !!this.idProject && (!!this.selectedPmoProjectId || !this.curretnContractSelected);
+  }
+
+  private get effectiveContractId(): number | null {
+    if (this.isPmoScope) {
+      return this.resolveProjectContractId(this.selectedPmoProjectId ?? this.idProject) ?? this.pmoContractId ?? this.curretnContractSelected;
+    }
+    return this.curretnContractSelected ?? this.pmoContractId;
+  }
 
   // ─── Grid Curva S ───────────────────────────────────────────────────────────
   private gridApi: GridApi;
@@ -216,25 +233,51 @@ export class AdvancesComponent implements OnInit, OnChanges {
   // ─── Constructor ─────────────────────────────────────────────────────────────
   constructor() {
     effect(() => {
-      this.curretnContractSelected = this._signalsService.getContractSelectedBySidebar()();
-      this.idProject               = this._signalsService.getProjectSelectedBySidebar()();
+      const sidebarContract        = this._signalsService.getContractSelectedBySidebar()();
+      const sidebarProject         = this._signalsService.getProjectSelectedBySidebar()();
       const vigente                = this._signalsService.getConventionVigente()();
-      this.idConvention            = vigente?.id ?? null;
+      const contractChangedFromSidebar =
+        Number(this.curretnContractSelected) !== Number(sidebarContract);
+      const projectChangedFromSidebar =
+        !!sidebarProject && Number(this.selectedPmoProjectId) !== Number(sidebarProject);
+      this.curretnContractSelected = sidebarContract;
+      if (!this.didUserSelectConvention || projectChangedFromSidebar || contractChangedFromSidebar) {
+        this.selectedPmoConventionId = vigente?.id ?? null;
+        this.idConvention            = vigente?.id ?? null;
+      }
 
-      // ── Contexto PMO: empresa seleccionada sin contrato ──────────────────
       const rootId = this._signalsService.getRootSelectedBySidebar()();
-      if (!this.curretnContractSelected && rootId && rootId !== this.idCompany) {
-        this.idCompany               = rootId;
-        this.selectedPmoProjectId    = null;
-        this.selectedPmoConventionId = null;
-        this.idProject               = null;
-        this.idConvention            = null;
-        this.pmoProjects             = [];
-        this.pmoConventions          = [];
+      if (rootId && rootId !== this.idCompany) {
+        this.idCompany = rootId;
+        this.pmoProjects = [];
+        this.pmoConventions = [];
         this.loadPmoProjects();
       }
-      // En PMO (sin contrato) el convenio vigente puede ser de otro módulo → ignorarlo
-      if (!this.curretnContractSelected) this.idConvention = null;
+
+      if (projectChangedFromSidebar || contractChangedFromSidebar) {
+        this.selectedPmoProjectId = sidebarProject;
+        this.didUserSelectConvention = false;
+        this.pmoConventions = [];
+      }
+
+      if (this.selectedPmoProjectId) {
+        this.idProject = this.selectedPmoProjectId;
+        this.pmoContractId = this.resolveProjectContractId(this.selectedPmoProjectId);
+      } else {
+        this.idProject = sidebarProject;
+        if (this.idProject) this.selectedPmoProjectId = this.idProject;
+        this.pmoContractId = this.resolveProjectContractId(this.idProject);
+      }
+
+      this.syncProjectDateRange();
+
+      this.idConvention = this.selectedPmoConventionId === this.SIN_CONVENIO.id
+        ? null
+        : (this.selectedPmoConventionId ?? null);
+
+      if (this.selectedPmoProjectId && (!this.pmoConventions.length || contractChangedFromSidebar || projectChangedFromSidebar)) {
+        this.loadPmoConventions(this.selectedPmoProjectId);
+      }
 
       this.obtenerDatos();
       // Reset paneles al cambiar proyecto
@@ -264,8 +307,8 @@ export class AdvancesComponent implements OnInit, OnChanges {
     rows.forEach(r => {
       prog += Number(r.programAdvanced  ?? 0);
       fis  += Number(r.physicalAdvanced ?? 0);
-      r.accumulateProgram  = Math.round(prog * 1000) / 1000;
-      r.accumulatePhysical = Math.round(fis  * 1000) / 1000;
+      r.accumulateProgram  = this.normalizeClosingPercent(Math.round(prog * 1000) / 1000);
+      r.accumulatePhysical = this.normalizeClosingPercent(Math.round(fis  * 1000) / 1000);
     });
     this.gridApi?.refreshCells({ force: true });
   }
@@ -273,10 +316,10 @@ export class AdvancesComponent implements OnInit, OnChanges {
   // ─── CRUD Curva S ────────────────────────────────────────────────────────────
   addRow(): void {
     const tempId  = `temp_${this.tempIdCounter++}`;
-    const isPmo   = !this.curretnContractSelected && !!this.idProject;
+    const isPmo   = this.isPmoScope;
     const newItem: ContractAdvance = {
       id: tempId, date: new Date().toISOString().split('T')[0],
-      idContract:       isPmo ? null : (this.curretnContractSelected ?? 0),
+      idContract:       isPmo ? null : (this.effectiveContractId ?? 0),
       idProject:        isPmo ? this.idProject : null,
       physicalAdvanced: 0, programAdvanced: 0,
       accumulateProgram: 0, accumulatePhysical: 0, __isNew: true,
@@ -334,6 +377,14 @@ export class AdvancesComponent implements OnInit, OnChanges {
     this._projectsService.getProjectListByCompany(this.idCompany).subscribe({
       next: (res: any) => {
         this.pmoProjects = Array.isArray(res) ? res : (res?.data ?? []);
+        this.pmoContractId = this.resolveProjectContractId(this.selectedPmoProjectId);
+        this.syncProjectDateRange();
+        if (this.selectedPmoProjectId) {
+          const exists = this.pmoProjects.some((project: any) => Number(project.id) === Number(this.selectedPmoProjectId));
+          if (exists) {
+            this.loadPmoConventions(this.selectedPmoProjectId);
+          }
+        }
       },
       error: () => { this.pmoProjects = []; }
     });
@@ -342,39 +393,113 @@ export class AdvancesComponent implements OnInit, OnChanges {
   onPmoProjectSelected(id: number): void {
     this.selectedPmoProjectId    = id;
     this.idProject               = id;
+    this.pmoContractId           = this.resolveProjectContractId(id);
+    this.didUserSelectConvention = false;
     this.selectedPmoConventionId = null;
     this.idConvention            = null;
     this.pmoConventions          = [];
+    this.syncProjectDateRange();
     this.clearPmoData();
     this.loadPmoConventions(id);
+  }
+
+  private resolveProjectContractId(projectId: number | null): number | null {
+    if (!projectId) return null;
+    const project = this.pmoProjects.find((item: any) => Number(item.id) === Number(projectId));
+    const candidates = [
+      project?.idContrato,
+      project?.id_contrato,
+      project?.idContract,
+      project?.id_contract,
+      project?.contractId,
+      project?.contract_id,
+      project?.selectedContract,
+      project?.idc
+    ];
+    for (const candidate of candidates) {
+      const parsed = Number(candidate);
+      if (!Number.isNaN(parsed) && parsed > 0) {
+        return parsed;
+      }
+    }
+    return null;
   }
 
   // ─── PMO: cargar convenios del proyecto ──────────────────────────────────────
   loadPmoConventions(idProject: number): void {
     this.isLoadingConv = true;
-    this._convService.getConventionsByContractOrProject('Project', idProject).subscribe({
+    const contractId = this.resolveProjectContractId(idProject);
+    this.pmoContractId = contractId;
+    const scopeType = contractId ? 'Contract' : 'Project';
+    const scopeId = contractId ?? idProject;
+
+    this._convService.getConventionsByContractOrProject(scopeType, scopeId).subscribe({
       next: (res: any) => {
         this.isLoadingConv  = false;
         this.pmoConventions = Array.isArray(res) ? res : (res?.data ?? []);
-        // Auto-seleccionar si solo hay uno
-        if (this.pmoConventions.length === 1) {
-          this.onPmoConventionSelected(this.pmoConventions[0].id);
-        } else if (!this.pmoConventions.length) {
+        const signalConvention = this._signalsService.getConventionVigente()();
+        if (signalConvention?.id && !this.pmoConventions.some((item: any) => Number(item.id) === Number(signalConvention.id))) {
+          this.pmoConventions = [
+            ...this.pmoConventions,
+            { id: signalConvention.id, name: signalConvention.name, description: signalConvention.name, vigente: true, active: 1 }
+          ];
+        }
+        if (!this.pmoConventions.length) {
           // Sin convenios — cargar avances sin filtro de convenio
+          this.selectedPmoConventionId = this.SIN_CONVENIO.id;
           this.idConvention = null;
           this.obtenerDatos();
+          return;
         }
+
+        const currentSignalConventionId = this._signalsService.getConventionVigente()()?.id ?? null;
+        const normalizedVigente = (value: any) =>
+          value === true || value === 1 || value === '1' || value === 'true';
+        this._convService.getVigenteByType(scopeType, scopeId).subscribe({
+          next: (vigente) => {
+            const preferredConvention =
+              this.pmoConventions.find((item: any) => Number(item.id) === Number(this.selectedPmoConventionId)) ??
+              this.pmoConventions.find((item: any) => Number(item.id) === Number(signalConvention?.id)) ??
+              this.pmoConventions.find((item: any) => Number(item.id) === Number(vigente?.id)) ??
+              this.pmoConventions.find((item: any) => Number(item.id) === Number(currentSignalConventionId)) ??
+              this.pmoConventions.find((item: any) => normalizedVigente(item.vigente)) ??
+              this.pmoConventions[0];
+
+            this.onPmoConventionSelected(preferredConvention.id);
+          },
+          error: () => {
+            const preferredConvention =
+              this.pmoConventions.find((item: any) => Number(item.id) === Number(this.selectedPmoConventionId)) ??
+              this.pmoConventions.find((item: any) => Number(item.id) === Number(signalConvention?.id)) ??
+              this.pmoConventions.find((item: any) => Number(item.id) === Number(currentSignalConventionId)) ??
+              this.pmoConventions.find((item: any) => normalizedVigente(item.vigente)) ??
+              this.pmoConventions[0];
+
+            this.onPmoConventionSelected(preferredConvention.id);
+          }
+        });
       },
       error: () => {
         this.isLoadingConv  = false;
         this.pmoConventions = [];
+        this.selectedPmoConventionId = this.SIN_CONVENIO.id;
         this.idConvention   = null;
         this.obtenerDatos();
       }
     });
   }
 
+  private syncProjectDateRange(): void {
+    if (!this.selectedPmoProjectId || !this.pmoProjects.length) return;
+    const project = this.pmoProjects.find((item: any) => Number(item.id) === Number(this.selectedPmoProjectId));
+    const start = project?.programStart || project?.startDate || project?.start;
+    const end = project?.programEnd || project?.endDate || project?.end;
+    if (start) this.dailyViewFrom = String(start).split('T')[0];
+    if (end) this.dailyViewTo = String(end).split('T')[0];
+  }
+
   onPmoConventionSelected(id: number): void {
+    this.didUserSelectConvention = true;
     this.selectedPmoConventionId = id;
     this.idConvention            = id === this.SIN_CONVENIO.id ? null : id;
     this.clearPmoData();
@@ -392,17 +517,16 @@ export class AdvancesComponent implements OnInit, OnChanges {
 
   // ─── Cargar Curva S ──────────────────────────────────────────────────────────
   obtenerDatos(): void {
-    // Contexto Proyectos: tiene contrato
-    if (this.curretnContractSelected) {
-      this._advancesService.getAdvancesByContract(this.curretnContractSelected, 'Contract').subscribe({
+    if (this.isPmoScope) {
+      this._advancesService.getAdvancesByProject(this.idProject, 'Project').subscribe({
         next: (advances: any) => this.processAdvances(advances as ContractAdvance[]),
         error: () => alerts.basicAlert('Error', 'Error al cargar los avances.', 'error')
       });
       return;
     }
-    // Contexto PMO: proyecto seleccionado (sin contrato)
-    if (this.idProject) {
-      this._advancesService.getAdvancesByProject(this.idProject, 'Project').subscribe({
+    // Contexto Proyectos: tiene contrato
+    if (this.curretnContractSelected) {
+      this._advancesService.getAdvancesByContract(this.curretnContractSelected, 'Contract').subscribe({
         next: (advances: any) => this.processAdvances(advances as ContractAdvance[]),
         error: () => alerts.basicAlert('Error', 'Error al cargar los avances.', 'error')
       });
@@ -427,8 +551,8 @@ export class AdvancesComponent implements OnInit, OnChanges {
         date: String(adv.date).split('T')[0],
         programAdvanced:    Number(adv.programAdvanced),
         physicalAdvanced:   Number(adv.physicalAdvanced),
-        accumulateProgram:  Math.round(acumProg * 1000) / 1000,
-        accumulatePhysical: Math.round(acumFis  * 1000) / 1000,
+        accumulateProgram:  this.normalizeClosingPercent(Math.round(acumProg * 1000) / 1000),
+        accumulatePhysical: this.normalizeClosingPercent(Math.round(acumFis  * 1000) / 1000),
         idContract: adv.idContract,
       };
     });
@@ -515,7 +639,7 @@ export class AdvancesComponent implements OnInit, OnChanges {
     delete clean.__isNew; delete clean.__modified;
     if (clean.id && String(clean.id).startsWith('temp_')) delete clean.id;
     // Contexto PMO: asegurar type=Project
-    const isPmo = !this.curretnContractSelected && !!this.idProject;
+    const isPmo = this.isPmoScope;
     clean.type   = isPmo ? 'Project' : 'Contract';
     clean.active = 1;
     if (isPmo) clean.idProject = this.idProject;
@@ -531,11 +655,15 @@ export class AdvancesComponent implements OnInit, OnChanges {
       const wb    = XLSX.read(new Uint8Array(e.target.result), { type: 'array' });
       const sheet = wb.Sheets[wb.SheetNames[0]];
       const data: any[] = XLSX.utils.sheet_to_json(sheet, { raw: true });
+      const isPmo = this.isPmoScope;
       const processed = data.map((row: any) => ({
         date:             this.excelDateToISO(Number(row['Fecha'])),
         programAdvanced:  Number(row['Programado'] ?? 0),
         physicalAdvanced: Number(row['Fisico']     ?? 0),
-        idContract: this.curretnContractSelected, active: 1,
+        ...(isPmo
+          ? { idProject: this.idProject, type: 'Project' }
+          : { idContract: this.curretnContractSelected, type: 'Contract' }),
+        active: 1,
       }));
       processed.forEach(item => this._advancesService.addAdvance(item).subscribe());
       setTimeout(() => this.obtenerDatos(), 1200);
@@ -563,14 +691,14 @@ export class AdvancesComponent implements OnInit, OnChanges {
     // Intentar cargar config existente
     try {
       const cfg = await lastValueFrom(
-        this._calendarService.get(this.idProject!, this.curretnContractSelected, this.idConvention)
+        this._calendarService.get(this.idProject!, this.effectiveContractId, this.idConvention)
       );
       this.calendarConfig = { ...cfg };
     } catch {
       // 404 = no existe todavía → defaults L-V
       this.calendarConfig = {
         idProject:    this.idProject    ?? 0,
-        idContract:   this.curretnContractSelected,
+        idContract:   this.effectiveContractId,
         idConvention: this.idConvention,
         lunes: true, martes: true, miercoles: true,
         jueves: true, viernes: true, sabado: false, domingo: false
@@ -583,7 +711,7 @@ export class AdvancesComponent implements OnInit, OnChanges {
     this.isSavingCalendar = true;
     try {
       this.calendarConfig.idProject    = this.idProject;
-      this.calendarConfig.idContract   = this.curretnContractSelected;
+      this.calendarConfig.idContract   = this.effectiveContractId;
       this.calendarConfig.idConvention = this.idConvention;
       await lastValueFrom(this._calendarService.save(this.calendarConfig));
       alerts.basicAlert('✅ Guardado', 'Configuración de días laborables guardada.', 'success');
@@ -619,8 +747,9 @@ export class AdvancesComponent implements OnInit, OnChanges {
     this.isGenerating  = true;
     this.generateResult = null;
     try {
+      await this.syncDailyViewRangeFromWorkprogram();
       const res = await lastValueFrom(
-        this._dailyService.generate(this.idProject, this.curretnContractSelected, this.idConvention)
+        this._dailyService.generate(this.idProject, this.effectiveContractId, this.idConvention)
       );
       this.generateResult = res;
       if (res.success) {
@@ -656,13 +785,9 @@ export class AdvancesComponent implements OnInit, OnChanges {
     this.isLoadingDaily = true;
     this.dailyRows = [];
     try {
+      await this.syncDailyViewRangeFromWorkprogram();
       // 1. Programado: de workprogram_daily
-      const summaries = await lastValueFrom(
-        this._dailyService.getSummary(
-          this.idProject, this.curretnContractSelected, this.idConvention,
-          this.dailyViewFrom, this.dailyViewTo
-        )
-      );
+      const summaries = await this.getDailySummariesWithFallback();
 
       // 2. Real: del mapa de datosMensuales (physicalAdvanced por fecha)
       const realMap = new Map<string, number>();
@@ -696,11 +821,118 @@ export class AdvancesComponent implements OnInit, OnChanges {
   }
 
   // ─── Getters totales para tfoot ──────────────────────────────────────────────
+  private async syncDailyViewRangeFromWorkprogram(): Promise<void> {
+    if (!this.idProject) return;
+
+    try {
+      const tasks: any[] = await lastValueFrom(
+        this.idConvention
+          ? this._workprogramsService.getByConvention(this.idConvention, this.idProject ?? undefined)
+          : this.effectiveContractId
+          ? this._workprogramsService.getWorkPrograms(this.effectiveContractId, 'Contract')
+          : this._workprogramsService.getWorkPrograms(this.idProject, 'Project')
+      );
+
+      if (!tasks?.length) return;
+
+      const startDates = tasks
+        .map(task => task?.startDate ? String(task.startDate).split('T')[0] : null)
+        .filter(Boolean)
+        .sort();
+
+      const endDates = tasks
+        .map(task => task?.endDate ? String(task.endDate).split('T')[0] : null)
+        .filter(Boolean)
+        .sort();
+
+      const minStart = startDates[0];
+      const maxEnd = endDates[endDates.length - 1];
+
+      if (minStart && (!this.dailyViewFrom || minStart < this.dailyViewFrom)) {
+        this.dailyViewFrom = minStart;
+      }
+
+      if (maxEnd && (!this.dailyViewTo || maxEnd > this.dailyViewTo)) {
+        this.dailyViewTo = maxEnd;
+      }
+    } catch {
+      // Si no se puede resolver el rango, conservar el rango actual de la vista.
+    }
+  }
+
+  private async getDailySummariesWithFallback(): Promise<DailySummary[]> {
+    const scopes = [
+      { idContract: this.effectiveContractId, idConvention: this.idConvention },
+      { idContract: this.effectiveContractId, idConvention: null },
+      { idContract: null, idConvention: this.idConvention },
+      { idContract: null, idConvention: null }
+    ];
+
+    for (const scope of scopes) {
+      const summaries = await lastValueFrom(
+        this._dailyService.getSummary(
+          this.idProject!,
+          scope.idContract,
+          scope.idConvention,
+          this.dailyViewFrom,
+          this.dailyViewTo
+        )
+      );
+
+      if (summaries?.length) {
+        return summaries;
+      }
+    }
+
+    return [];
+  }
+
+  private async getProgramAdvanceForDate(date: string): Promise<number> {
+    const scopes = [
+      { idContract: this.effectiveContractId, idConvention: this.idConvention },
+      { idContract: this.effectiveContractId, idConvention: null },
+      { idContract: null, idConvention: this.idConvention },
+      { idContract: null, idConvention: null }
+    ];
+
+    for (const scope of scopes) {
+      const summaries = await lastValueFrom(
+        this._dailyService.getSummary(
+          this.idProject!,
+          scope.idContract,
+          scope.idConvention,
+          date,
+          date
+        )
+      );
+
+      if (summaries?.length) {
+        return Math.round(
+          summaries.reduce((sum, item) => sum + Number(item.ponderadoDia ?? 0), 0) * 1000
+        ) / 1000;
+      }
+    }
+
+    return 0;
+  }
+
+  private normalizeClosingPercent(value: number | null | undefined): number {
+    const numeric = Number(value ?? 0);
+    if (Math.abs(100 - numeric) <= 0.01) {
+      return 100;
+    }
+    return numeric;
+  }
+
   get totalProgramadoPeriodo(): number {
-    return Math.round(this.dailyRows.reduce((s, r) => s + r.programado, 0) * 10000) / 10000;
+    return this.normalizeClosingPercent(
+      Math.round(this.dailyRows.reduce((s, r) => s + r.programado, 0) * 10000) / 10000
+    );
   }
   get totalRealPeriodo(): number {
-    return Math.round(this.dailyRows.reduce((s, r) => s + r.real, 0) * 10000) / 10000;
+    return this.normalizeClosingPercent(
+      Math.round(this.dailyRows.reduce((s, r) => s + r.real, 0) * 10000) / 10000
+    );
   }
   get totalCumplimientoPct(): number {
     if (this.totalProgramadoPeriodo === 0) return 0;
@@ -745,9 +977,11 @@ export class AdvancesComponent implements OnInit, OnChanges {
     this.totalPhysicalAdvanceHoy = 0; this.programAdvanceHoy = 0;
     try {
       const allTasks: any[] = await lastValueFrom(
-        (this.idProject && this.idProject > 0)
-          ? this._workprogramsService.getWorkPrograms(this.idProject, 'Project')
-          : this._workprogramsService.getWorkPrograms(this.curretnContractSelected!, 'Contract')
+        this.idConvention
+          ? this._workprogramsService.getByConvention(this.idConvention, this.idProject ?? undefined)
+          : this.effectiveContractId
+          ? this._workprogramsService.getWorkPrograms(this.effectiveContractId!, 'Contract')
+          : this._workprogramsService.getWorkPrograms(this.idProject, 'Project')
       );
       if (!allTasks?.length) { alerts.basicAlert('Sin tareas', 'No hay tareas en el programa de trabajo.', 'warning'); return; }
 
@@ -756,6 +990,7 @@ export class AdvancesComponent implements OnInit, OnChanges {
       if (!leafTasks.length) {
         alerts.basicAlert('Sin ponderado', 'Las tareas no tienen ponderado calculado.', 'warning'); return;
       }
+      this.programAdvanceHoy = await this.getProgramAdvanceForDate(this.dailyCaptureDate);
       const captureMs = new Date(this.dailyCaptureDate + 'T00:00:00').getTime();
       leafTasks.forEach(t => {
         const startMs = t.startDate ? new Date(t.startDate).getTime() : 0;
@@ -789,9 +1024,13 @@ export class AdvancesComponent implements OnInit, OnChanges {
         await lastValueFrom(this._workprogramsService.patchWorkProgramProgress(task.idEntry, Math.min(1, task.progressNuevo / 100)));
       }
       const lastRec     = this.datosMensuales.length > 0 ? this.datosMensuales[this.datosMensuales.length - 1] : null;
-      const newAccumPrg = Math.round(((lastRec?.accumulateProgram  ?? 0) + this.programAdvanceHoy)       * 1000) / 1000;
-      const newAccumFis = Math.round(((lastRec?.accumulatePhysical ?? 0) + this.totalPhysicalAdvanceHoy) * 1000) / 1000;
-      const isPmo       = !this.curretnContractSelected && !!this.idProject;
+      const newAccumPrg = this.normalizeClosingPercent(
+        Math.round(((lastRec?.accumulateProgram  ?? 0) + this.programAdvanceHoy) * 1000) / 1000
+      );
+      const newAccumFis = this.normalizeClosingPercent(
+        Math.round(((lastRec?.accumulatePhysical ?? 0) + this.totalPhysicalAdvanceHoy) * 1000) / 1000
+      );
+      const isPmo       = this.isPmoScope;
       await lastValueFrom(this._advancesService.addAdvance({
         date: this.dailyCaptureDate,
         programAdvanced:    this.programAdvanceHoy,
