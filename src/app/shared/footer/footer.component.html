@@ -1,17 +1,91 @@
+<footer class="main-footer" [ngStyle]="footerStyle">
 
-  <footer class="main-footer">
-    <div class="footer-content">
-      <div class="footer-section">
-        <strong>User:</strong> {{displayName()()}}
-      </div>
-      <div class="footer-section">
-        <strong>Compañia:</strong> {{companyName()()}}
-      </div>
-      <div class="footer-section">
-        <strong>Copyright &copy; 2024-2025 <a href="https://www.hco-consultores.com/">SMP</a></strong>
-      </div>
-      <div class="footer-section">
-        <strong>SMP Version {{environment.version}}</strong>
+  <!-- Contenido del footer -->
+  <div class="footer-content">
+    <div class="footer-section">
+      <strong>User:</strong> {{ displayName() }}
+    </div>
+    <div class="footer-section">
+      <strong>Compañia:</strong> {{ companyName() }}
+    </div>
+    <div class="footer-section">
+      <strong>Copyright &copy; 2024-2025
+        <a href="https://www.hco-consultores.com/" [style.color]="'inherit'">SMP</a>
+      </strong>
+    </div>
+    <div class="footer-section">
+      <strong>SMP Version {{ environment.version }}</strong>
+    </div>
+
+    <!-- Botón de configuración -->
+    <button class="footer-settings-btn" (click)="togglePanel()"
+            [class.panel-open]="showPanel"
+            matTooltip="Personalizar footer" matTooltipPosition="above">
+      <mat-icon>tune</mat-icon>
+    </button>
+  </div>
+
+  <!-- Panel de preferencias -->
+  <div class="footer-prefs-panel" *ngIf="showPanel">
+
+    <!-- Fondo -->
+    <div class="pref-row">
+      <span class="pref-label">Fondo</span>
+      <div class="pref-swatches">
+        <button *ngFor="let b of bgOptions"
+                class="pref-swatch"
+                [class.active]="prefsSvc.prefs().footerBg === b.id"
+                [style.background]="b.color"
+                [title]="b.label"
+                (click)="setBg(b.id)">
+          <mat-icon *ngIf="prefsSvc.prefs().footerBg === b.id">check</mat-icon>
+        </button>
       </div>
     </div>
-  </footer>
+
+    <!-- Color de letra -->
+    <div class="pref-row">
+      <span class="pref-label">Letra</span>
+      <div class="pref-swatches">
+        <button *ngFor="let t of textOptions"
+                class="pref-swatch text-swatch"
+                [class.active]="prefsSvc.prefs().footerText === t.id"
+                [style.background]="t.color"
+                [title]="t.label"
+                (click)="setText(t.id)">
+          <mat-icon *ngIf="prefsSvc.prefs().footerText === t.id">check</mat-icon>
+        </button>
+      </div>
+    </div>
+
+    <!-- Tamaño -->
+    <div class="pref-row">
+      <span class="pref-label">Tamaño</span>
+      <div class="pref-buttons">
+        <button *ngFor="let s of sizeOptions"
+                class="pref-size-btn"
+                [class.active]="prefsSvc.prefs().footerSize === s.id"
+                [style.font-size]="s.id"
+                (click)="setSize(s.id)">
+          {{ s.label }}
+        </button>
+      </div>
+    </div>
+
+    <!-- Fuente -->
+    <div class="pref-row">
+      <span class="pref-label">Fuente</span>
+      <div class="pref-buttons">
+        <button *ngFor="let f of fontOptions"
+                class="pref-font-btn"
+                [class.active]="prefsSvc.prefs().footerFont === f.id"
+                [style.font-family]="f.id"
+                (click)="setFont(f.id)">
+          {{ f.label }}
+        </button>
+      </div>
+    </div>
+
+  </div>
+
+</footer>
