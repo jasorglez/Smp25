@@ -43,6 +43,48 @@ export class SideBarComponent {
     { id: 'military', label: 'Verde Militar',   preview: 'linear-gradient(135deg,#2d3a1f,#a3be8c)' },
   ];
 
+  readonly sidebarSizes = [
+    { id: '0.72rem', label: 'S' },
+    { id: '0.85rem', label: 'M' },
+    { id: '0.96rem', label: 'L' },
+  ];
+
+  readonly sidebarFonts = [
+    { id: 'Roboto',                   label: 'Roboto'  },
+    { id: 'system-ui',                label: 'Sistema' },
+    { id: "'Courier New', monospace", label: 'Mono'    },
+    { id: "'Segoe UI', sans-serif",   label: 'Segoe'   },
+  ];
+
+  readonly sidebarTextColors = [
+    { id: 'auto',    label: 'Auto (tema)', color: 'linear-gradient(135deg,#fff,#aaa)' },
+    { id: 'white',   label: 'Blanco',      color: '#ffffff' },
+    { id: 'pearl',   label: 'Perla',       color: '#dfe6e9' },
+    { id: 'cream',   label: 'Crema',       color: '#ffeaa7' },
+    { id: 'cyan',    label: 'Cyan',        color: '#81ecec' },
+    { id: 'green',   label: 'Menta',       color: '#55efc4' },
+  ];
+
+  private readonly sbTextMap: Record<string, string> = {
+    white:  '#ffffff',
+    pearl:  '#dfe6e9',
+    cream:  '#ffeaa7',
+    cyan:   '#81ecec',
+    green:  '#55efc4',
+  };
+
+  get sidebarStyle(): Record<string, string> {
+    const p = this.prefsSvc.prefs();
+    const style: Record<string, string> = {
+      'font-size':   p.sidebarSize,
+      'font-family': p.sidebarFont,
+    };
+    if (p.sidebarText !== 'auto') {
+      style['--sb-text'] = this.sbTextMap[p.sidebarText] ?? p.sidebarText;
+    }
+    return style;
+  }
+
   selectedRoot = signal<string>('');
 
   rootData: any;
@@ -85,9 +127,15 @@ export class SideBarComponent {
     effect(async () => {
       const shouldUpdate = this.signalsService.getUpdateBranchList()();
       if (shouldUpdate) {
-          await this.getpermissionxBranchs(parseInt(this.selectedRoot())); // Refrescar la lista de branches
+          await this.getpermissionxBranchs(parseInt(this.selectedRoot()));
           setTimeout(() => this.signalsService.resetSignalIncAndExp());
         }
+    });
+
+    // Reacciona a cambios de preferencias (otro dispositivo o footer cambia algo)
+    effect(() => {
+      this.prefsSvc.prefs();
+      this.cdr.markForCheck();
     });
 
     // 🔄 Effect para sincronización bidireccional Grid → Sidebar
@@ -703,6 +751,10 @@ toggleSidebar() {
     this.prefsSvc.save({ sidebarTheme: themeId });
     this.cdr.markForCheck();
   }
+
+  setSidebarSize(id: string)  { this.prefsSvc.save({ sidebarSize: id });  this.cdr.markForCheck(); }
+  setSidebarFont(id: string)  { this.prefsSvc.save({ sidebarFont: id });  this.cdr.markForCheck(); }
+  setSidebarText(id: string)  { this.prefsSvc.save({ sidebarText: id });  this.cdr.markForCheck(); }
 
   toggleThemePicker() {
     if (this.isSidebarCollapsed && !this.isTemporarilyExpanded) {

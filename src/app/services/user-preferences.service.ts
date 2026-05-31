@@ -3,15 +3,21 @@ import { Database, ref, get, set } from '@angular/fire/database';
 import { SignalsService } from './signals.service';
 
 export interface UserPrefs {
-  sidebarTheme:  string;
-  footerBg:      string;
-  footerText:    string;
-  footerSize:    string;
-  footerFont:    string;
+  sidebarTheme: string;
+  sidebarSize:  string;
+  sidebarFont:  string;
+  sidebarText:  string;
+  footerBg:     string;
+  footerText:   string;
+  footerSize:   string;
+  footerFont:   string;
 }
 
 const DEFAULTS: UserPrefs = {
   sidebarTheme: 'blue',
+  sidebarSize:  '0.85rem',
+  sidebarFont:  'Roboto',
+  sidebarText:  'auto',
   footerBg:     'dark',
   footerText:   'white',
   footerSize:   '12px',
@@ -20,7 +26,7 @@ const DEFAULTS: UserPrefs = {
 
 @Injectable({ providedIn: 'root' })
 export class UserPreferencesService {
-  private db            = inject(Database);
+  private db             = inject(Database);
   private signalsService = inject(SignalsService);
 
   readonly prefs = signal<UserPrefs>({ ...DEFAULTS });
@@ -44,7 +50,6 @@ export class UserPreferencesService {
     if (uid) {
       try { await set(ref(this.db, `userPrefs/${uid}/prefs`), updated); } catch { /* silencio */ }
     }
-    // cache local para render instantáneo en próxima carga
     localStorage.setItem('userPrefs', JSON.stringify(updated));
   }
 

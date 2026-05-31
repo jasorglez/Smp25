@@ -340,6 +340,63 @@
   }
 }
 
+// ── Swatches de color letra ────────────────────────────────────────────────────
+.pref-swatches {
+  display: flex;
+  gap: 4px;
+  flex-wrap: wrap;
+}
+
+.pref-swatch {
+  width: 22px;
+  height: 22px;
+  border-radius: 4px;
+  border: 2px solid rgba(255,255,255,0.25);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  transition: transform 0.15s ease, border-color 0.15s ease;
+
+  mat-icon {
+    font-size: 12px; width: 12px; height: 12px;
+    color: #000;
+    filter: drop-shadow(0 0 1px rgba(255,255,255,0.8));
+  }
+
+  &:hover    { transform: scale(1.2); }
+  &.swatch-active { border-color: #fff; transform: scale(1.15); }
+}
+
+// ── Botones tamaño / fuente ────────────────────────────────────────────────────
+.pref-buttons {
+  display: flex;
+  gap: 4px;
+  flex-wrap: wrap;
+}
+
+.pref-size-btn,
+.pref-font-btn {
+  background: rgba(255,255,255,0.08);
+  border: 1px solid rgba(255,255,255,0.18);
+  border-radius: 4px;
+  color: var(--sb-text-dim, rgba(255,255,255,.6));
+  padding: 3px 8px;
+  cursor: pointer;
+  font-size: 11px;
+  transition: all 0.15s ease;
+  white-space: nowrap;
+
+  &:hover { background: rgba(255,255,255,0.16); color: var(--sb-text, #fff); }
+  &.active {
+    background: rgba(255,255,255,0.22);
+    border-color: rgba(255,255,255,0.5);
+    color: var(--sb-text, #fff);
+    font-weight: 600;
+  }
+}
+
 // ── Logo ───────────────────────────────────────────────────────────────────────
 .sidebar-logo {
   max-width: 110px;

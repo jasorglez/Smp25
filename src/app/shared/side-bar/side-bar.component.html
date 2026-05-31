@@ -1,6 +1,7 @@
 <aside
   class="d-flex flex-column border-end vh-100 sidebar sidebarback"
   [attr.data-theme]="currentTheme"
+  [ngStyle]="sidebarStyle"
   [ngClass]="{
     collapsed: isSidebarCollapsed && !isTemporarilyExpanded,
     'temp-expanded': isTemporarilyExpanded
@@ -390,10 +391,12 @@
       <img [src]="trackingService.getpictureComp()" alt="BI Company" class="collapsed-logo"/>
     </div>
 
-    <!-- Panel selector de temas -->
+    <!-- Panel selector de preferencias del sidebar -->
     <div class="theme-picker-panel" *ngIf="showThemePicker">
-      <div class="theme-picker-label">Tema del menú</div>
-      <div class="theme-picker-grid">
+
+      <!-- Color / tema -->
+      <div class="theme-picker-label">Color</div>
+      <div class="theme-picker-grid mb-2">
         <button *ngFor="let t of sidebarThemes"
                 class="theme-swatch"
                 [class.swatch-active]="currentTheme === t.id"
@@ -403,6 +406,44 @@
           <mat-icon *ngIf="currentTheme === t.id">check</mat-icon>
         </button>
       </div>
+
+      <!-- Color de letra -->
+      <div class="theme-picker-label">Letra</div>
+      <div class="pref-swatches mb-2">
+        <button *ngFor="let c of sidebarTextColors"
+                class="pref-swatch"
+                [class.swatch-active]="prefsSvc.prefs().sidebarText === c.id"
+                [style.background]="c.color"
+                [title]="c.label"
+                (click)="setSidebarText(c.id)">
+          <mat-icon *ngIf="prefsSvc.prefs().sidebarText === c.id">check</mat-icon>
+        </button>
+      </div>
+
+      <!-- Tamaño de letra -->
+      <div class="theme-picker-label">Tamaño</div>
+      <div class="pref-buttons mb-2">
+        <button *ngFor="let s of sidebarSizes"
+                class="pref-size-btn"
+                [class.active]="prefsSvc.prefs().sidebarSize === s.id"
+                [style.font-size]="s.id"
+                (click)="setSidebarSize(s.id)">
+          {{ s.label }}
+        </button>
+      </div>
+
+      <!-- Fuente -->
+      <div class="theme-picker-label">Fuente</div>
+      <div class="pref-buttons">
+        <button *ngFor="let f of sidebarFonts"
+                class="pref-font-btn"
+                [class.active]="prefsSvc.prefs().sidebarFont === f.id"
+                [style.font-family]="f.id"
+                (click)="setSidebarFont(f.id)">
+          {{ f.label }}
+        </button>
+      </div>
+
     </div>
 
     <!-- Fila inferior: paleta + contraer -->
