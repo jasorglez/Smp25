@@ -96,9 +96,7 @@ export class FooterComponent implements OnInit {
     accent: '#74b9ff',
   };
 
-  ngOnInit() {
-    this.prefsSvc.loadFromCache();
-  }
+  ngOnInit() { /* prefs las carga el sidebar con el userId correcto */ }
 
   get footerStyle() {
     const p = this.prefsSvc.prefs();

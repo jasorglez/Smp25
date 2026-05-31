@@ -165,17 +165,18 @@ export class SideBarComponent {
     if (savedCollapsedState !== null) {
       this.isSidebarCollapsed = savedCollapsedState === 'true';
     }
-    // Cargar prefs: cache local primero (render instantáneo), Firebase sincroniza después
-    this.prefsSvc.loadFromCache();
-    this.currentTheme = this.prefsSvc.prefs().sidebarTheme;
-
-this.userRoot = this.signalsService.getUserRoot()();
+    this.userRoot = this.signalsService.getUserRoot()();
     if (this.signalsService.isidUserEmpty()) {
       this.userService.findEmail(localStorage.getItem('mail')).subscribe({
         next: (datauser: any) => {
           if (datauser) {
             this.trackingService.setId(datauser.id);
             this.signalsService.setidUser(datauser.id);
+            // Caché del usuario específico → render instantáneo
+            this.prefsSvc.loadFromCache(datauser.id);
+            this.currentTheme = this.prefsSvc.prefs().sidebarTheme;
+            this.cdr.markForCheck();
+            // Firebase sobreescribe con los valores reales del usuario
             this.prefsSvc.load(datauser.id).then(() => {
               this.currentTheme = this.prefsSvc.prefs().sidebarTheme;
               this.cdr.markForCheck();
@@ -188,7 +189,12 @@ this.userRoot = this.signalsService.getUserRoot()();
         },
       });
     } else {
-      this.prefsSvc.load(this.signalsService.idUser()).then(() => {
+      const uid = this.signalsService.idUser();
+      // Caché del usuario específico → render instantáneo
+      this.prefsSvc.loadFromCache(uid);
+      this.currentTheme = this.prefsSvc.prefs().sidebarTheme;
+      // Firebase sobreescribe con los valores reales del usuario
+      this.prefsSvc.load(uid).then(() => {
         this.currentTheme = this.prefsSvc.prefs().sidebarTheme;
         this.cdr.markForCheck();
       });
