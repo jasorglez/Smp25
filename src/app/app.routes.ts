@@ -765,6 +765,14 @@ export const routes: Routes = [
             canActivate: [MasterPermissionsGuard],
             data: { permissions: { master: 'pmo', detailed: 'lineas-base' } },
           },
+          {
+            path: 'versiones',
+            loadComponent: () =>
+              import('./domains/ModProjects/components/projects/conventions/conventions.component')
+                .then((c) => c.ConventionsComponent),
+            canActivate: [MasterPermissionsGuard],
+            data: { permissions: { master: 'pmo', detailed: 'versiones' } },
+          },
         ],
       },
       // ────────────────────────────────────────────────────────────────────

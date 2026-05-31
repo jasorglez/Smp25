@@ -60,6 +60,13 @@
             </a>
           </li>
 
+          <li class="nav-item" *ngIf="authService.hasDetailedPermission('pmo', 'versiones')">
+            <a class="nav-link modern-tab" routerLink="versiones" routerLinkActive="active">
+              <i class="bi bi-file-earmark-text-fill"></i>
+              <span>Versiones</span>
+            </a>
+          </li>
+
         </ul>
       </div>
 
