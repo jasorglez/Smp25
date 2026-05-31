@@ -93,11 +93,7 @@
             (click)="generateDistribution()" [disabled]="isGenerating || !idProject">
       <span *ngIf="isGenerating" class="spinner-border spinner-border-sm me-1"></span>
       <i *ngIf="!isGenerating" class="bi bi-calculator-fill me-1"></i>
-      <span class="d-none d-md-inline">
-        {{ !isGenerating ? 'Calcular Distribución'
-          : generateStep === 1 ? 'Paso 1/2: Distribuyendo días…'
-          : 'Paso 2/2: Actualizando Curva S…' }}
-      </span>
+      <span class="d-none d-md-inline">Calcular Distribución</span>
     </button>
 
     <!-- 📅 Vista Diaria -->
@@ -121,13 +117,52 @@
     </button>
 
     <!-- Badge resultado del generate -->
-    <span *ngIf="generateResult" class="badge ms-auto"
+    <span *ngIf="generateResult && !isGenerating" class="badge ms-auto"
           [class.bg-success]="generateResult.success"
           [class.bg-warning]="!generateResult.success">
       <i class="bi bi-check-circle me-1" *ngIf="generateResult.success"></i>
-      {{ generateResult.filasGeneradas }} días calculados
-      · {{ generateResult.conceptosProcesados }} conceptos
+      {{ generateResult.filasGeneradas }} días · {{ generateResult.conceptosProcesados }} conceptos
     </span>
+  </div>
+
+  <!-- ╔══════════════════════════════════════════════════════════════════════╗
+       ║  📊 BARRAS DE PROGRESO — Calcular Distribución (2 pasos)             ║
+       ╚══════════════════════════════════════════════════════════════════════╝ -->
+  <div *ngIf="isGenerating" class="mb-2 px-1">
+
+    <!-- Paso 1: Calculando días por concepto -->
+    <div class="d-flex align-items-center gap-2 mb-1">
+      <span class="small text-nowrap" style="width:230px; color:#0d6efd; font-weight:600;">
+        <i class="bi bi-calendar-range me-1"></i>
+        Paso 1/2 — Distribución de días por concepto
+      </span>
+      <div class="progress flex-fill" style="height:20px; border-radius:6px;">
+        <div class="progress-bar progress-bar-striped bg-info text-dark fw-semibold"
+             [class.progress-bar-animated]="generateStep === 1"
+             [style.width]="generateStep === 1 ? '100%' : generateStep > 1 ? '100%' : '0%'"
+             style="font-size:11px; transition: width 0.4s ease;">
+          {{ generateStep === 1 ? 'Calculando…' : generateStep > 1 ? '✓ ' + (generateResult?.filasGeneradas || 0) + ' días / ' + (generateResult?.conceptosProcesados || 0) + ' conceptos' : '' }}
+        </div>
+      </div>
+    </div>
+
+    <!-- Paso 2: Insertando/actualizando en tabla advanced -->
+    <div class="d-flex align-items-center gap-2">
+      <span class="small text-nowrap" style="width:230px; color:#198754; font-weight:600;">
+        <i class="bi bi-table me-1"></i>
+        Paso 2/2 — Guardando en Curva S (contrato/proyecto/convenio)
+      </span>
+      <div class="progress flex-fill" style="height:20px; border-radius:6px;">
+        <div class="progress-bar bg-success fw-semibold"
+             [class.progress-bar-striped]="generateStep === 2 && genTotal2 === 0"
+             [class.progress-bar-animated]="generateStep === 2 && genTotal2 === 0"
+             [style.width]="generateStep < 2 ? '0%' : genTotal2 > 0 ? (genDone2 / genTotal2 * 100) + '%' : '100%'"
+             style="font-size:11px; transition: width 0.2s ease;">
+          {{ generateStep < 2 ? '' : genTotal2 > 0 ? genDone2 + ' / ' + genTotal2 + ' semanas' : 'Preparando…' }}
+        </div>
+      </div>
+    </div>
+
   </div>
 
   <!-- ╔══════════════════════════════════════════════════════════════════════╗

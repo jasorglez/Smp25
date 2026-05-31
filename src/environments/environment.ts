@@ -85,5 +85,5 @@ export const environment = {
     // publicKey: 'TEST-4399133a-4676-42a2-ab85-d946370bf96a',
   },
 
-  version: '7.26 (31 Mayo 2026) fix(workprogram-daily): include id_contract=0 en generate; feat(avances): paso 2 auto-poblar Curva S desde distribución diaria',
+  version: '7.27 (31 Mayo 2026) feat(avances): barras de progreso 2 pasos; fix: acumulado cierra exactamente al 100%',
 };

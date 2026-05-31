@@ -142,6 +142,8 @@ export class AdvancesComponent implements OnInit, OnChanges {
   // ─── 📊 Calcular Distribución ───────────────────────────────────────────────
   isGenerating        = false;
   generateStep        = 0;   // 1 = distribuyendo días  |  2 = actualizando Curva S
+  genTotal2           = 0;   // total semanas a insertar/actualizar (paso 2)
+  genDone2            = 0;   // semanas procesadas (paso 2)
   generateResult: any = null;
 
   // ─── 📅 Vista Diaria ────────────────────────────────────────────────────────
@@ -741,11 +743,13 @@ export class AdvancesComponent implements OnInit, OnChanges {
 
     this.isGenerating   = true;
     this.generateStep   = 1;
+    this.genTotal2      = 0;
+    this.genDone2       = 0;
     this.generateResult = null;
     try {
       await this.syncDailyViewRangeFromWorkprogram();
 
-      // ── PASO 1: Distribución diaria ──────────────────────────────────────────
+      // ── PASO 1: Distribución de días por concepto ────────────────────────────
       const res = await lastValueFrom(
         this._dailyService.generate(this.idProject, this.effectiveContractId, this.idConvention)
       );
@@ -756,13 +760,13 @@ export class AdvancesComponent implements OnInit, OnChanges {
         return;
       }
 
-      // ── PASO 2: Poblar Curva S (programAdvanced semanal) ─────────────────────
+      // ── PASO 2: Insertar/Actualizar en tabla advanced (Curva S semanal) ──────
       this.generateStep = 2;
       await this.autoPopulateProgramAdvances();
 
       alerts.basicAlert(
         '✅ Distribución generada',
-        `${res.conceptosProcesados} conceptos → ${res.filasGeneradas} días laborables calculados.\nCurva S (programados) actualizada.`,
+        `${res.conceptosProcesados} conceptos → ${res.filasGeneradas} días calculados.\n${this.genDone2} semanas grabadas en Curva S.`,
         'success'
       );
       this.showDailyView = true;
@@ -777,9 +781,9 @@ export class AdvancesComponent implements OnInit, OnChanges {
     }
   }
 
-  // ─── Agrega los avances programados semanales a la Curva S ──────────────────
+  // ─── Inserta/actualiza avances programados semanales en tabla advanced ───────
   private async autoPopulateProgramAdvances(): Promise<void> {
-    // Obtener resumen diario completo para el rango del proyecto
+    // 1. Obtener resumen diario completo para el rango del proyecto
     const allSummaries = await lastValueFrom(
       this._dailyService.getSummary(
         this.idProject!,
@@ -792,21 +796,33 @@ export class AdvancesComponent implements OnInit, OnChanges {
 
     if (!allSummaries?.length) return;
 
-    // Agrupar por semana: usar el VIERNES de cada semana como fecha representativa
+    // 2. Agrupar por semana: VIERNES de cada semana como fecha representativa
     const weekMap = new Map<string, number>();
     for (const s of allSummaries) {
       const d   = new Date(String(s.date).substring(0, 10) + 'T12:00:00');
       const day = d.getDay(); // 0=Dom,1=Lun…5=Vie,6=Sáb
-      // Para días laborables (Lun-Vie): mover al viernes de esa semana
-      const toFri = day === 0 ? -2 : day === 6 ? -1 : (5 - day);
+      const toFri = day === 0 ? -2 : day === 6 ? -1 : (5 - day); // mover al Vie de esa semana
       d.setDate(d.getDate() + toFri);
       const key = d.toISOString().substring(0, 10);
       weekMap.set(key, (weekMap.get(key) ?? 0) + Number(s.ponderadoDia ?? 0));
     }
-
     if (!weekMap.size) return;
 
-    // Cargar avances existentes para este proyecto (para saber cuáles actualizar vs crear)
+    // 3. Ordenar semanas y normalizar: el ÚLTIMO viernes cierra exactamente a 100.000
+    const weekEntries = Array.from(weekMap.entries()).sort(([a], [b]) => a.localeCompare(b));
+    let accumulated = 0;
+    const normalizedWeeks: [string, number][] = weekEntries.map(([date, value], i) => {
+      if (i < weekEntries.length - 1) {
+        const prog = Math.round(value * 1000) / 1000;
+        accumulated += prog;
+        return [date, prog];
+      } else {
+        // Último período = resto exacto → cierra a 100.000 sin deriva de redondeo
+        return [date, Math.round((100 - accumulated) * 1000) / 1000];
+      }
+    });
+
+    // 4. Cargar avances existentes para saber cuáles actualizar vs crear
     const existingRaw: any = await lastValueFrom(
       this._advancesService.getAdvancesByProject(this.idProject!, 'Project')
     ).catch(() => []);
@@ -816,39 +832,38 @@ export class AdvancesComponent implements OnInit, OnChanges {
       existing.map((a: any) => [String(a.date ?? '').substring(0, 10), a])
     );
 
-    // Ordenar semanas ascendente
-    const weekEntries = Array.from(weekMap.entries())
-      .sort(([a], [b]) => a.localeCompare(b));
+    // 5. Insertar/actualizar uno a uno — permite mostrar progreso real (X/N)
+    this.genTotal2 = normalizedWeeks.length;
+    this.genDone2  = 0;
 
-    // Para cada semana: crear o actualizar registro en advanced
-    const ops = weekEntries.map(([weekDate, weekSum]) => {
-      const programAdvanced = Math.round(weekSum * 100) / 100;
+    for (const [weekDate, programAdvanced] of normalizedWeeks) {
       const found = existingByDate.get(weekDate);
-      if (found?.id && !String(found.id).startsWith('temp_')) {
-        // Actualizar solo el programAdvanced — conservar physicalAdvanced del usuario
-        return this._advancesService.updateAdvance(Number(found.id), {
-          ...found,
-          programAdvanced,
-          type:   'Project',
-          active: 1,
-        });
-      } else {
-        return this._advancesService.addAdvance({
-          date:               weekDate,
-          programAdvanced,
-          physicalAdvanced:   0,
-          accumulateprogram:  0,
-          accumulatephysical: 0,
-          type:               'Project',
-          idProject:          this.idProject,
-          idConvenio:         this.idConvention,
-          active:             1,
-        });
-      }
-    });
-
-    if (ops.length) {
-      await lastValueFrom(concat(...ops).pipe(toArray())).catch(() => null);
+      try {
+        if (found?.id && !String(found.id).startsWith('temp_')) {
+          // Actualizar programAdvanced — conservar physicalAdvanced del usuario
+          await lastValueFrom(this._advancesService.updateAdvance(Number(found.id), {
+            ...found,
+            programAdvanced,
+            type:      'Project',
+            idProject: this.idProject,
+            idConvenio: this.idConvention ?? 0,
+            active:    1,
+          }));
+        } else {
+          await lastValueFrom(this._advancesService.addAdvance({
+            date:               weekDate,
+            programAdvanced,
+            physicalAdvanced:   0,
+            accumulateprogram:  0,
+            accumulatephysical: 0,
+            type:               'Project',
+            idProject:          this.idProject,
+            idConvenio:         this.idConvention ?? 0,
+            active:             1,
+          }));
+        }
+      } catch { /* ignorar errores individuales — continuar con el resto */ }
+      this.genDone2++;
     }
   }
 
@@ -999,7 +1014,8 @@ export class AdvancesComponent implements OnInit, OnChanges {
 
   private normalizeClosingPercent(value: number | null | undefined): number {
     const numeric = Number(value ?? 0);
-    if (Math.abs(100 - numeric) <= 0.01) {
+    // Snap a 100 cualquier valor dentro de ±0.05 — cubre deriva de redondeo semanal
+    if (Math.abs(100 - numeric) <= 0.05) {
       return 100;
     }
     return numeric;
