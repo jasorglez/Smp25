@@ -1101,13 +1101,20 @@ export class PmoActividadesComponent implements OnInit {
       )
     );
 
-    // Hojas = ni padre estructural, ni padre WBS, ni Summary/Milestone
+    // WBS mixto: excluir agrupadores alfanuméricos (A, I, II…) de hojas.
+    // En modo 'tiempo', su duración grande infla el total → hojas solo suman ~38.7% no 100%.
+    const numWbsRe   = /^[\d][\d.]*$/;
+    const hasMixedWbs = filas.some(r => r.activity && !numWbsRe.test(r.activity))
+                     && filas.some(r => r.activity &&  numWbsRe.test(r.activity));
+
+    // Hojas = ni padre estructural, ni padre WBS, ni Summary/Milestone, ni agrupador alfanumérico
     const hojas = filas.filter(r =>
       r.id > 0 &&
       !parentSet.has(r.id) &&
       !wbsParents.has(r.activity || '') &&
       r.typeActivity !== 'Summary' &&
-      r.typeActivity !== 'Milestone'
+      r.typeActivity !== 'Milestone' &&
+      (!hasMixedWbs || numWbsRe.test(r.activity || ''))  // excluir alfanuméricos en WBS mixto
     );
     const agrupadores = filas.filter(r => r.id > 0 && !hojas.includes(r));
 
@@ -1170,6 +1177,14 @@ export class PmoActividadesComponent implements OnInit {
         hoja.ponderado = pond;
         batchItems.push({ id: hoja.id, ponderado: pond });
       });
+      // Reset agrupadores a 0 (cabeceras, no hojas reales) — limpia residuales como IV=0.001
+      agrupadores.forEach(a => {
+        if ((a.ponderado ?? 0) !== 0) {
+          a.ponderado = 0;
+          batchItems.push({ id: a.id, ponderado: 0 });
+        }
+      });
+
       this.calcProgress = 50; // cálculo terminado, guardando…
 
       // ── 1 PATCH batch en lugar de N PUTs ─────────────────────────────────
