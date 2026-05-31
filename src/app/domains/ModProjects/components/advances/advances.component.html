@@ -88,12 +88,16 @@
       <span class="d-none d-md-inline">Calendario</span>
     </button>
 
-    <!-- 📊 Calcular Distribución -->
-    <button class="btn btn-sm btn-outline-info" title="Calcular distribución diaria de ponderados"
+    <!-- 📊 Calcular Distribución (2 pasos) -->
+    <button class="btn btn-sm btn-outline-info" title="Calcular distribución diaria y actualizar Curva S"
             (click)="generateDistribution()" [disabled]="isGenerating || !idProject">
       <span *ngIf="isGenerating" class="spinner-border spinner-border-sm me-1"></span>
       <i *ngIf="!isGenerating" class="bi bi-calculator-fill me-1"></i>
-      <span class="d-none d-md-inline">{{ isGenerating ? 'Calculando…' : 'Calcular Distribución' }}</span>
+      <span class="d-none d-md-inline">
+        {{ !isGenerating ? 'Calcular Distribución'
+          : generateStep === 1 ? 'Paso 1/2: Distribuyendo días…'
+          : 'Paso 2/2: Actualizando Curva S…' }}
+      </span>
     </button>
 
     <!-- 📅 Vista Diaria -->

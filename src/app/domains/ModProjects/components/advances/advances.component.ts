@@ -141,6 +141,7 @@ export class AdvancesComponent implements OnInit, OnChanges {
 
   // ─── 📊 Calcular Distribución ───────────────────────────────────────────────
   isGenerating        = false;
+  generateStep        = 0;   // 1 = distribuyendo días  |  2 = actualizando Curva S
   generateResult: any = null;
 
   // ─── 📅 Vista Diaria ────────────────────────────────────────────────────────
@@ -733,35 +734,121 @@ export class AdvancesComponent implements OnInit, OnChanges {
 
     const confirm = await alerts.confirmAlert(
       '¿Calcular distribución?',
-      'Se borrará la distribución previa y se recalculará desde cero. ¿Continuar?',
+      'Se borrará la distribución previa y se recalculará desde cero.\nTambién se actualizará la Curva S (programados semanales).\n¿Continuar?',
       'question', 'Sí, calcular'
     );
     if (!confirm.isConfirmed) return;
 
-    this.isGenerating  = true;
+    this.isGenerating   = true;
+    this.generateStep   = 1;
     this.generateResult = null;
     try {
       await this.syncDailyViewRangeFromWorkprogram();
+
+      // ── PASO 1: Distribución diaria ──────────────────────────────────────────
       const res = await lastValueFrom(
         this._dailyService.generate(this.idProject, this.effectiveContractId, this.idConvention)
       );
       this.generateResult = res;
-      if (res.success) {
-        alerts.basicAlert(
-          '✅ Distribución generada',
-          `${res.conceptosProcesados} conceptos → ${res.filasGeneradas} días laborables calculados.`,
-          'success'
-        );
-        // Auto-abrir vista diaria
-        this.showDailyView = true;
-        await this.loadDailyView();
-      } else {
+
+      if (!res.success) {
         alerts.basicAlert('Sin datos', res.mensaje, 'warning');
+        return;
       }
+
+      // ── PASO 2: Poblar Curva S (programAdvanced semanal) ─────────────────────
+      this.generateStep = 2;
+      await this.autoPopulateProgramAdvances();
+
+      alerts.basicAlert(
+        '✅ Distribución generada',
+        `${res.conceptosProcesados} conceptos → ${res.filasGeneradas} días laborables calculados.\nCurva S (programados) actualizada.`,
+        'success'
+      );
+      this.showDailyView = true;
+      await this.loadDailyView();
+      this.obtenerDatos();
+
     } catch {
       alerts.basicAlert('Error', 'No se pudo calcular la distribución.', 'error');
     } finally {
       this.isGenerating = false;
+      this.generateStep = 0;
+    }
+  }
+
+  // ─── Agrega los avances programados semanales a la Curva S ──────────────────
+  private async autoPopulateProgramAdvances(): Promise<void> {
+    // Obtener resumen diario completo para el rango del proyecto
+    const allSummaries = await lastValueFrom(
+      this._dailyService.getSummary(
+        this.idProject!,
+        this.effectiveContractId,
+        this.idConvention,
+        this.dailyViewFrom,
+        this.dailyViewTo
+      )
+    ).catch(() => [] as DailySummary[]);
+
+    if (!allSummaries?.length) return;
+
+    // Agrupar por semana: usar el VIERNES de cada semana como fecha representativa
+    const weekMap = new Map<string, number>();
+    for (const s of allSummaries) {
+      const d   = new Date(String(s.date).substring(0, 10) + 'T12:00:00');
+      const day = d.getDay(); // 0=Dom,1=Lun…5=Vie,6=Sáb
+      // Para días laborables (Lun-Vie): mover al viernes de esa semana
+      const toFri = day === 0 ? -2 : day === 6 ? -1 : (5 - day);
+      d.setDate(d.getDate() + toFri);
+      const key = d.toISOString().substring(0, 10);
+      weekMap.set(key, (weekMap.get(key) ?? 0) + Number(s.ponderadoDia ?? 0));
+    }
+
+    if (!weekMap.size) return;
+
+    // Cargar avances existentes para este proyecto (para saber cuáles actualizar vs crear)
+    const existingRaw: any = await lastValueFrom(
+      this._advancesService.getAdvancesByProject(this.idProject!, 'Project')
+    ).catch(() => []);
+    const existing: any[] = Array.isArray(existingRaw) ? existingRaw
+                          : ((existingRaw as any)?.data ?? []);
+    const existingByDate = new Map<string, any>(
+      existing.map((a: any) => [String(a.date ?? '').substring(0, 10), a])
+    );
+
+    // Ordenar semanas ascendente
+    const weekEntries = Array.from(weekMap.entries())
+      .sort(([a], [b]) => a.localeCompare(b));
+
+    // Para cada semana: crear o actualizar registro en advanced
+    const ops = weekEntries.map(([weekDate, weekSum]) => {
+      const programAdvanced = Math.round(weekSum * 100) / 100;
+      const found = existingByDate.get(weekDate);
+      if (found?.id && !String(found.id).startsWith('temp_')) {
+        // Actualizar solo el programAdvanced — conservar physicalAdvanced del usuario
+        return this._advancesService.updateAdvance(Number(found.id), {
+          ...found,
+          programAdvanced,
+          type:   'Project',
+          active: 1,
+        });
+      } else {
+        return this._advancesService.addAdvance({
+          date:               weekDate,
+          programAdvanced,
+          physicalAdvanced:   0,
+          accumulateprogram:  0,
+          accumulatephysical: 0,
+          type:               'Project',
+          idProject:          this.idProject,
+          idConvenio:         this.idConvention,
+          active:             1,
+        });
+      }
+    });
+
+    if (ops.length) {
+      await lastValueFrom(concat(...ops).pipe(toArray())).catch(() => null);
     }
   }
 
