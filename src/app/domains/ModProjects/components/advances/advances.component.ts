@@ -6,6 +6,7 @@ import { SignalsService } from 'app/services/signals.service';
 import { WorkprogramsService } from 'app/services/workprograms.service';
 import { WorkprogramCalendarService, WorkprogramCalendar } from 'app/services/workprogram-calendar.service';
 import { WorkprogramDailyService, DailySummary } from 'app/services/workprogram-daily.service';
+import { ProjectsService } from 'app/services/projects.service';
 import { alerts } from 'app/helpers/alerts';
 import { concat, lastValueFrom, toArray } from 'rxjs';
 import { CommonModule } from '@angular/common';
@@ -28,7 +29,9 @@ export type ChartOptions = {
 interface ContractAdvance {
   id?: string | number; __isNew?: boolean; __modified?: boolean;
   accumulateProgram?: number; accumulatePhysical?: number;
-  date: string; physicalAdvanced: number; programAdvanced: number; idContract?: number;
+  date: string; physicalAdvanced: number; programAdvanced: number;
+  idContract?: number | null;
+  idProject?: number | null;   // contexto PMO (sin contrato)
 }
 
 interface ActiveTask {
@@ -64,11 +67,17 @@ export class AdvancesComponent implements OnInit, OnChanges {
   private _workprogramsService = inject(WorkprogramsService);
   private _calendarService   = inject(WorkprogramCalendarService);
   private _dailyService      = inject(WorkprogramDailyService);
+  private _projectsService   = inject(ProjectsService);
 
   // ─── IDs del scope activo ────────────────────────────────────────────────────
   curretnContractSelected: number | null = null;
   idProject:    number | null = null;
   idConvention: number | null = null;
+
+  // ─── Selector de proyecto (contexto PMO — sin contrato) ──────────────────────
+  idCompany:            number   = 0;
+  pmoProjects:          any[]    = [];
+  selectedPmoProjectId: number | null = null;
 
   // ─── Grid Curva S ───────────────────────────────────────────────────────────
   private gridApi: GridApi;
@@ -205,6 +214,17 @@ export class AdvancesComponent implements OnInit, OnChanges {
       this.idProject               = this._signalsService.getProjectSelectedBySidebar()();
       const vigente                = this._signalsService.getConventionVigente()();
       this.idConvention            = vigente?.id ?? null;
+
+      // ── Contexto PMO: empresa seleccionada sin contrato ──────────────────
+      const rootId = this._signalsService.getRootSelectedBySidebar()();
+      if (!this.curretnContractSelected && rootId && rootId !== this.idCompany) {
+        this.idCompany            = rootId;
+        this.selectedPmoProjectId = null;
+        this.idProject            = null;
+        this.pmoProjects          = [];
+        this.loadPmoProjects();
+      }
+
       this.obtenerDatos();
       // Reset paneles al cambiar proyecto
       this.showCalendarPanel = false;
@@ -241,10 +261,12 @@ export class AdvancesComponent implements OnInit, OnChanges {
 
   // ─── CRUD Curva S ────────────────────────────────────────────────────────────
   addRow(): void {
-    const tempId = `temp_${this.tempIdCounter++}`;
+    const tempId  = `temp_${this.tempIdCounter++}`;
+    const isPmo   = !this.curretnContractSelected && !!this.idProject;
     const newItem: ContractAdvance = {
       id: tempId, date: new Date().toISOString().split('T')[0],
-      idContract: this.curretnContractSelected ?? 0,
+      idContract:       isPmo ? null : (this.curretnContractSelected ?? 0),
+      idProject:        isPmo ? this.idProject : null,
       physicalAdvanced: 0, programAdvanced: 0,
       accumulateProgram: 0, accumulatePhysical: 0, __isNew: true,
     };
@@ -295,35 +317,75 @@ export class AdvancesComponent implements OnInit, OnChanges {
 
   revert(): void { this.obtenerDatos(); this.notSavedChanges = false; }
 
+  // ─── PMO: cargar proyectos por empresa ──────────────────────────────────────
+  loadPmoProjects(): void {
+    if (!this.idCompany) return;
+    this._projectsService.getProjectListByCompany(this.idCompany).subscribe({
+      next: (res: any) => {
+        this.pmoProjects = Array.isArray(res) ? res : (res?.data ?? []);
+      },
+      error: () => { this.pmoProjects = []; }
+    });
+  }
+
+  onPmoProjectSelected(id: number): void {
+    this.selectedPmoProjectId = id;
+    this.idProject            = id;
+    // Limpiar estado antes de cargar
+    this.rowData          = [];
+    this.datosMensuales   = [];
+    this.monthlyTableData = [];
+    this.showDailyView    = false;
+    this.generateResult   = null;
+    this.dailyRows        = [];
+    this.obtenerDatos();
+  }
+
   // ─── Cargar Curva S ──────────────────────────────────────────────────────────
   obtenerDatos(): void {
-    if (!this.curretnContractSelected) return;
-    this._advancesService.getAdvancesByContract(this.curretnContractSelected, 'Contract').subscribe({
-      next: (advances: any) => {
-        const sorted = (advances as ContractAdvance[]).sort(
-          (a, b) => new Date(a.date).getTime() - new Date(b.date).getTime()
-        );
-        let acumProg = 0, acumFis = 0;
-        this.datosMensuales = sorted.map(adv => {
-          acumProg += Number(adv.programAdvanced  ?? 0);
-          acumFis  += Number(adv.physicalAdvanced ?? 0);
-          return {
-            id: Number(adv.id),
-            date: String(adv.date).split('T')[0],
-            programAdvanced:    Number(adv.programAdvanced),
-            physicalAdvanced:   Number(adv.physicalAdvanced),
-            accumulateProgram:  Math.round(acumProg * 1000) / 1000,
-            accumulatePhysical: Math.round(acumFis  * 1000) / 1000,
-            idContract: adv.idContract,
-          };
-        });
-        this.rowData = [...this.datosMensuales];
-        this.actualizarDatos();
-        // Si la vista diaria está abierta, refresca también
-        if (this.showDailyView) this.loadDailyView();
-      },
-      error: () => alerts.basicAlert('Error', 'Error al cargar los avances.', 'error')
+    // Contexto Proyectos: tiene contrato
+    if (this.curretnContractSelected) {
+      this._advancesService.getAdvancesByContract(this.curretnContractSelected, 'Contract').subscribe({
+        next: (advances: any) => this.processAdvances(advances as ContractAdvance[]),
+        error: () => alerts.basicAlert('Error', 'Error al cargar los avances.', 'error')
+      });
+      return;
+    }
+    // Contexto PMO: proyecto seleccionado (sin contrato)
+    if (this.idProject) {
+      this._advancesService.getAdvancesByProject(this.idProject, 'Project').subscribe({
+        next: (advances: any) => this.processAdvances(advances as ContractAdvance[]),
+        error: () => alerts.basicAlert('Error', 'Error al cargar los avances.', 'error')
+      });
+      return;
+    }
+    // Sin contexto: limpiar grid
+    this.rowData          = [];
+    this.datosMensuales   = [];
+    this.monthlyTableData = [];
+  }
+
+  private processAdvances(advances: ContractAdvance[]): void {
+    const sorted = [...advances].sort(
+      (a, b) => new Date(a.date).getTime() - new Date(b.date).getTime()
+    );
+    let acumProg = 0, acumFis = 0;
+    this.datosMensuales = sorted.map(adv => {
+      acumProg += Number(adv.programAdvanced  ?? 0);
+      acumFis  += Number(adv.physicalAdvanced ?? 0);
+      return {
+        id: Number(adv.id),
+        date: String(adv.date).split('T')[0],
+        programAdvanced:    Number(adv.programAdvanced),
+        physicalAdvanced:   Number(adv.physicalAdvanced),
+        accumulateProgram:  Math.round(acumProg * 1000) / 1000,
+        accumulatePhysical: Math.round(acumFis  * 1000) / 1000,
+        idContract: adv.idContract,
+      };
     });
+    this.rowData = [...this.datosMensuales];
+    this.actualizarDatos();
+    if (this.showDailyView) this.loadDailyView();
   }
 
   private actualizarDatos(): void {
@@ -400,9 +462,14 @@ export class AdvancesComponent implements OnInit, OnChanges {
   }
 
   private cleanDataForServer(data: ContractAdvance): any {
-    const clean = { ...data };
+    const clean: any = { ...data };
     delete clean.__isNew; delete clean.__modified;
     if (clean.id && String(clean.id).startsWith('temp_')) delete clean.id;
+    // Contexto PMO: asegurar type=Project
+    const isPmo = !this.curretnContractSelected && !!this.idProject;
+    clean.type   = isPmo ? 'Project' : 'Contract';
+    clean.active = 1;
+    if (isPmo) clean.idProject = this.idProject;
     return clean;
   }
 
@@ -675,13 +742,17 @@ export class AdvancesComponent implements OnInit, OnChanges {
       const lastRec     = this.datosMensuales.length > 0 ? this.datosMensuales[this.datosMensuales.length - 1] : null;
       const newAccumPrg = Math.round(((lastRec?.accumulateProgram  ?? 0) + this.programAdvanceHoy)       * 1000) / 1000;
       const newAccumFis = Math.round(((lastRec?.accumulatePhysical ?? 0) + this.totalPhysicalAdvanceHoy) * 1000) / 1000;
+      const isPmo       = !this.curretnContractSelected && !!this.idProject;
       await lastValueFrom(this._advancesService.addAdvance({
         date: this.dailyCaptureDate,
         programAdvanced:    this.programAdvanceHoy,
         physicalAdvanced:   this.totalPhysicalAdvanceHoy,
         accumulateProgram:  newAccumPrg,
         accumulatePhysical: newAccumFis,
-        idContract: this.curretnContractSelected, type: 'Contract', active: 1,
+        ...(isPmo
+          ? { idProject: this.idProject, type: 'Project' }
+          : { idContract: this.curretnContractSelected, type: 'Contract' }),
+        active: 1,
       }));
       alerts.basicAlert('✅ Avance registrado',
         `Físico del día: ${this.totalPhysicalAdvanceHoy.toFixed(3)}%\nAcumulado: ${newAccumFis.toFixed(2)}%`, 'success');
