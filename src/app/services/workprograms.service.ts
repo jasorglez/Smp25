@@ -42,6 +42,18 @@ export class WorkprogramsService {
     return this.http.patch(`${environment.urlSmp}/Workprogram/${id}/ponderado`, { ponderado }, { headers: this.trackingService.getHeaders() });
   }
 
+  /** POST /Workprogram/batch — inserta N workprograms en 1 transacción (max 2000). */
+  addWorkProgramBatch(items: any[]): Observable<{ inserted: number; message: string }> {
+    return this.http.post<{ inserted: number; message: string }>(
+      `${environment.urlSmp}/Workprogram/batch`, items, { headers: this.trackingService.getHeaders() });
+  }
+
+  /** PATCH /Workprogram/batch-ponderado — actualiza ponderado de N tareas en 1 transacción (max 2000). */
+  patchWorkProgramPonderadoBatch(items: { id: number; ponderado: number | null }[]): Observable<{ updated: number; message: string }> {
+    return this.http.patch<{ updated: number; message: string }>(
+      `${environment.urlSmp}/Workprogram/batch-ponderado`, items, { headers: this.trackingService.getHeaders() });
+  }
+
   deleteWorkProgram(id: number): Observable<any> {
     return this.http.delete(`${environment.urlSmp}/Workprogram/${id}`, { headers: this.trackingService.getHeaders() });
   }

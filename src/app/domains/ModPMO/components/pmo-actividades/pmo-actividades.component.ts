@@ -1136,19 +1136,20 @@ export class PmoActividadesComponent implements OnInit {
     this.calcProgress   = 0;
 
     try {
-      // ── Solo guardar HOJAS en BD (agrupadores NO se guardan — solo memoria) ──
-      // Razón: todos los registros PMO tienen parent=0 (sin jerarquía en BD).
+      // ── Calcular ponderados en memoria ────────────────────────────────────
+      // Solo HOJAS se guardan en BD (agrupadores PMO tienen parent=0 → no se guardan).
       // La distribución diaria usa ponderado > 0 como filtro de hoja.
-      // Si guardáramos agrupadores con ponderado > 0, entrarían a la distribución.
-      for (let i = 0; i < hojas.length; i++) {
-        const hoja = hojas[i];
+      const batchItems: { id: number; ponderado: number | null }[] = [];
+      hojas.forEach(hoja => {
         const pond = Math.round((getMetric(hoja) / total) * 1000) / 1000;
-        await lastValueFrom(
-          this._wpService.updateWorkProgram(hoja.id, { ...this.mapToApi(hoja), ponderado: pond })
-        );
         hoja.ponderado = pond;
-        this.calcProgress = Math.round(((i + 1) / hojas.length) * 100);
-      }
+        batchItems.push({ id: hoja.id, ponderado: pond });
+      });
+      this.calcProgress = 50; // cálculo terminado, guardando…
+
+      // ── 1 PATCH batch en lugar de N PUTs ─────────────────────────────────
+      await lastValueFrom(this._wpService.patchWorkProgramPonderadoBatch(batchItems));
+      this.calcProgress = 100;
 
       await this.loadActividades(); // recalcParentPonderados se llama dentro
       alert(`✅ Ponderado calculado (${this.pondModalidad}) — ${hojas.length} concepto(s) actualizados. Agrupadores muestran suma acumulada (solo display).`);
@@ -1338,45 +1339,41 @@ export class PmoActividadesComponent implements OnInit {
         ? this.selectedConvention.id : null;
 
       const total = parsed.length;
-      let saved = 0;
       this.isSaving = true;
-      this.showMsg(`Importando ${saved} / ${total}…`, 'success');
+      this.showMsg(`Preparando ${total} actividades…`, 'success');
 
-      for (let i = 0; i < parsed.length; i++) {
-        const p = parsed[i];
-        const payload: any = {
-          id:           0,
-          idProject,
-          idConvention,
-          idContract:   0,
-          idTask:       0,
-          activity:     p.activity,
-          text:         p.description,
-          description:  p.description,
-          measure:      p.unit || null,
-          quantity:     p.quantity  ?? 0,
-          costMX:       p.costMX   ?? 0,
-          costDLL:      0,
-          startdate:    p.startDate || null,
-          endate:       p.endDate   || null,
-          progress:     p.progress,
-          ponderado:    null,
-          criticroute:  p.criticalRoute,
-          typeActivity: p.typeActivity,
-          parent:       0,
-          sortorder:    p.sortorder,
-          predecesor:   Number(p.predecessor) || 0,
-          active:       1,
-          type:         'Project',
-          resources:    null,
-          phase:        null,
-        };
-        try {
-          await lastValueFrom(this._wpService.addWorkProgram(payload));
-          saved++;
-        } catch (e) { console.error(`Error fila ${i + 1}:`, e); }
-        this.showMsg(`Importando ${saved} / ${total}…`, 'success');
-      }
+      // ── Batch POST — 1 request en lugar de N ──────────────────────────────
+      const payloads: any[] = parsed.map(p => ({
+        id:           0,
+        idProject,
+        idConvention,
+        idContract:   0,
+        idTask:       0,
+        activity:     p.activity,
+        text:         p.description,
+        description:  p.description,
+        measure:      p.unit || null,
+        quantity:     p.quantity  ?? 0,
+        costMX:       p.costMX   ?? 0,
+        costDLL:      0,
+        startdate:    p.startDate || null,
+        endate:       p.endDate   || null,
+        progress:     p.progress,
+        ponderado:    null,
+        criticroute:  p.criticalRoute,
+        typeActivity: p.typeActivity,
+        parent:       0,
+        sortorder:    p.sortorder,
+        predecesor:   Number(p.predecessor) || 0,
+        active:       1,
+        type:         'Project',
+        resources:    null,
+        phase:        null,
+      }));
+
+      this.showMsg(`Importando ${total} actividades…`, 'success');
+      const result = await lastValueFrom(this._wpService.addWorkProgramBatch(payloads));
+      const saved = result?.inserted ?? total;
 
       await this.loadActividades();
       this.isSaving = false;

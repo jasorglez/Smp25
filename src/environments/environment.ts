@@ -85,5 +85,5 @@ export const environment = {
     // publicKey: 'TEST-4399133a-4676-42a2-ab85-d946370bf96a',
   },
 
-  version: '7.17 (30 Mayo 2026) fix(pmo-actividades): ponderado recarga BD antes de PUT, advertencia sin fecha-fin, fechas activan guardar',
+  version: '7.18 (30 Mayo 2026) perf(pmo-actividades): batch import y batch ponderado — N requests → 1 transaccion SQL',
 };
