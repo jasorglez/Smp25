@@ -19,14 +19,14 @@
     <!-- Convenio -->
     <div class="col-md-4" *ngIf="selectedProject && (conventions.length || isLoadingConv)">
       <label class="form-label form-label-sm mb-1 fw-semibold">
-        <i class="bi bi-file-earmark-text me-1"></i> Convenio / Versión
+        <i class="bi bi-file-earmark-text me-1"></i> Versión
         <span *ngIf="isLoadingConv" class="ms-1 spinner-border spinner-border-sm"></span>
       </label>
       <select class="form-select form-select-sm" [(ngModel)]="selectedConvention"
               (ngModelChange)="onConventionChange()" [disabled]="isLoadingConv">
-        <option [ngValue]="null">— Sin filtro de convenio —</option>
+        <option [ngValue]="null">— Sin filtro de versión —</option>
         <option *ngFor="let c of conventions" [ngValue]="c">
-          {{ c.vigente ? '★ ' : '' }}{{ c.name || c.folio || ('Conv. #' + c.id) }}
+          {{ c.vigente ? '★ ' : '' }}{{ c.name || c.folio || ('Ver. #' + c.id) }}
           — {{ convTypeBadge(c.type).label }}
         </option>
       </select>

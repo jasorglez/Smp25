@@ -85,5 +85,5 @@ export const environment = {
     // publicKey: 'TEST-4399133a-4676-42a2-ab85-d946370bf96a',
   },
 
-  version: '7.28 (31 Mayo 2026) feat(avances): período configurable Día/Semana/Quincena/Mes en Curva S',
+  version: '7.29 (31 Mayo 2026) feat(pmo): renombrar Convenio → Versión en todos los menús PMO',
 };

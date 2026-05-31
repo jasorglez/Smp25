@@ -90,7 +90,7 @@
           <div class="card border-primary mb-3">
             <div class="card-header bg-primary text-white py-2 d-flex align-items-center gap-2">
               <i class="bi bi-file-earmark-text"></i>
-              <span class="fw-semibold small">Convenio que autoriza esta importación</span>
+              <span class="fw-semibold small">Versión que autoriza esta importación</span>
               <span *ngIf="isLoadingConv" class="spinner-border spinner-border-sm ms-2"></span>
             </div>
             <div class="card-body py-3 px-3">
@@ -98,14 +98,14 @@
               <!-- Sin contrato configurado -->
               <div *ngIf="!idContrato" class="text-muted small">
                 <i class="bi bi-info-circle me-1"></i>
-                Este proyecto no tiene contrato asignado. La importación no quedará ligada a ningún convenio.
+                Este proyecto no tiene contrato asignado. La importación no quedará ligada a ninguna versión.
               </div>
 
               <!-- Sin convenios cargados -->
               <div *ngIf="idContrato && !isLoadingConv && !conventions.length" class="text-warning small">
                 <i class="bi bi-exclamation-triangle me-1"></i>
-                No se encontraron convenios para el contrato de este proyecto.
-                Crea el convenio en <strong>Proyectos → Convenios</strong> antes de importar.
+                No se encontraron versiones para el contrato de este proyecto.
+                Crea la versión en <strong>Proyectos → Versiones</strong> antes de importar.
               </div>
 
               <!-- Lista de convenios -->
@@ -141,7 +141,7 @@
               <!-- Advertencia sin selección -->
               <div *ngIf="conventions.length && !selectedConvention" class="alert alert-warning py-1 small mt-2 mb-0">
                 <i class="bi bi-exclamation-triangle me-1"></i>
-                Selecciona un convenio para continuar.
+                Selecciona una versión para continuar.
               </div>
             </div>
           </div>
@@ -408,7 +408,7 @@
           <div class="me-auto small text-muted d-flex flex-column">
             <span>Modo: <strong>{{ importMode === 'replace' ? 'Reemplazar' : 'Fusionar' }}</strong></span>
             <span *ngIf="selectedConvention">
-              Convenio: <strong class="text-primary">{{ selectedConvention.name }}</strong>
+              Versión: <strong class="text-primary">{{ selectedConvention.name }}</strong>
               <span class="badge ms-1" [ngClass]="convTypeBadge(selectedConvention.type).css">
                 {{ convTypeBadge(selectedConvention.type).label }}
               </span>

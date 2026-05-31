@@ -25,15 +25,15 @@
 
     <!-- Convenio (visible cuando ya hay proyecto) -->
     <div *ngIf="selectedPmoProjectId" class="d-flex align-items-center gap-2">
-      <span class="fw-semibold text-nowrap small">Convenio:</span>
+      <span class="fw-semibold text-nowrap small">Versión:</span>
       <span *ngIf="isLoadingConv" class="spinner-border spinner-border-sm text-primary"></span>
       <select *ngIf="!isLoadingConv" class="form-select form-select-sm" style="min-width:220px; max-width:320px;"
               [(ngModel)]="selectedPmoConventionId"
               (ngModelChange)="onPmoConventionSelected($event)">
-        <option [ngValue]="null" disabled>— Selecciona convenio —</option>
+        <option [ngValue]="null" disabled>— Selecciona versión —</option>
         <option [ngValue]="SIN_CONVENIO.id">{{ SIN_CONVENIO.name }}</option>
         <option *ngFor="let c of pmoConventions" [ngValue]="c.id">
-          {{ c.description || c.name || c.nombre || ('Convenio #' + c.id) }}
+          {{ c.description || c.name || c.nombre || ('Versión #' + c.id) }}
         </option>
       </select>
     </div>
@@ -46,8 +46,8 @@
         idConvention
           ? (pmoConventions.find(c => c.id === selectedPmoConventionId)?.description
              || pmoConventions.find(c => c.id === selectedPmoConventionId)?.name
-             || ('Conv. ' + idConvention))
-          : 'Sin convenio'
+             || ('Ver. ' + idConvention))
+          : 'Sin versión'
       }}
     </span>
   </div>
