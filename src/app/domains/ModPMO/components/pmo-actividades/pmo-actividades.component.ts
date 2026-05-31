@@ -632,11 +632,20 @@ export class PmoActividadesComponent implements OnInit {
       } else {
         raw = await lastValueFrom(this._wpService.getWorkPrograms(idProject, 'Project'));
       }
-      this.rowData         = (raw ?? []).map(r => this.mapFromApi(r))
-                               .sort((a, b) => {
-                                 const d = a.sortorder - b.sortorder;
-                                 return d !== 0 ? d : a.id - b.id; // desempate por id (orden de inserción)
-                               });
+      // WBS mixto: agrupadores alfanuméricos (A, I, II…) deben aparecer ANTES de las actividades numéricas
+      const numWbsRe   = /^[\d][\d.]*$/;
+      const mappedRows = (raw ?? []).map(r => this.mapFromApi(r));
+      const isMixedWbs = mappedRows.some(r => r.activity && !numWbsRe.test(r.activity))
+                      && mappedRows.some(r => r.activity &&  numWbsRe.test(r.activity));
+      this.rowData = mappedRows.sort((a, b) => {
+        if (isMixedWbs) {
+          const ga = numWbsRe.test(a.activity || '') ? 1 : 0; // 0=agrupador (primero), 1=numérico
+          const gb = numWbsRe.test(b.activity || '') ? 1 : 0;
+          if (ga !== gb) return ga - gb;
+        }
+        const d = a.sortorder - b.sortorder;
+        return d !== 0 ? d : a.id - b.id; // desempate por id (orden de inserción)
+      });
       this.originalRowData = JSON.parse(JSON.stringify(this.rowData));
       this.hasUnsavedChanges = false;
       this.recalcParentPonderados(); // acumula sumas en memoria (no toca BD)
@@ -1336,17 +1345,23 @@ export class PmoActividadesComponent implements OnInit {
           r.typeActivity = 'Summary';
       });
 
-      // ── Reordenar por WBS si todas las actividades tienen código numérico ──
-      // Soluciona el caso donde agrupadores están al final del Excel.
-      // Ejemplo: "1" < "1.1" < "1.2" < "1.10" < "2" < "10"
-      const wbsNumericRe = /^[\d][\d.]*$/;
-      const allHaveWbs = parsed.length > 0 && parsed.every(r => wbsNumericRe.test(r.activity || ''));
-      if (allHaveWbs) {
-        // Clave de ordenación: cada segmento del WBS se padding a 6 dígitos para comparación numérica
-        const wbsSortKey = (wbs: string) =>
-          wbs.split('.').map(s => String(parseInt(s, 10) || 0).padStart(6, '0')).join('.');
-        parsed.sort((a, b) => wbsSortKey(a.activity).localeCompare(wbsSortKey(b.activity)));
-        // Reasignar sortorder según el nuevo orden jerárquico
+      // ── Reordenar por WBS: numérico puro O mixto (agrupadores alfanuméricos + numéricos) ─
+      // Numérico: "1" < "1.1" < "1.2" < "1.10" < "2" < "10"
+      // Mixto:    A, I, II, III, IV → primero (grupo 0);  1, 2, 3… → después (grupo 5)
+      const wbsNumericRe  = /^[\d][\d.]*$/;
+      const allHaveNumWbs = parsed.length > 0 && parsed.every(r => wbsNumericRe.test(r.activity || ''));
+      const hasMixedWbs   = !allHaveNumWbs
+                          && parsed.some(r => r.activity && !wbsNumericRe.test(r.activity))
+                          && parsed.some(r => r.activity &&  wbsNumericRe.test(r.activity));
+      if (allHaveNumWbs || hasMixedWbs) {
+        const smartKey = (wbs: string): string => {
+          const s = (wbs || '').trim();
+          if (!s) return '9~';
+          if (wbsNumericRe.test(s))
+            return '5~' + s.split('.').map(seg => String(parseInt(seg, 10) || 0).padStart(6, '0')).join('.');
+          return '0~' + s.toLowerCase().padEnd(30, '~'); // agrupadores → primero
+        };
+        parsed.sort((a, b) => smartKey(a.activity).localeCompare(smartKey(b.activity)));
         parsed.forEach((p, i) => { p.sortorder = i + 1; });
       }
 

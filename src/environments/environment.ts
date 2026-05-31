@@ -85,5 +85,5 @@ export const environment = {
     // publicKey: 'TEST-4399133a-4676-42a2-ab85-d946370bf96a',
   },
 
-  version: '7.23 (30 Mayo 2026) fix(avances-pmo): convenio local del dropdown manda sobre sidebar',
+  version: '7.24 (31 Mayo 2026) fix(pmo-gantt): agrupadores alfanuméricos (A,I,II…) aparecen antes que actividades numéricas',
 };
