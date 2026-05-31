@@ -172,7 +172,8 @@
       "PowerShell(dotnet restore \"C:\\\\Developer\\\\Visual Studio 22\\\\c#\\\\MicroServicios\\\\MicroservicioAdministration\\\\Administration\\\\MicroservicioAdministration.sln\" 2>&1 | Select-Object -Last 5; dotnet build \"C:\\\\Developer\\\\Visual Studio 22\\\\c#\\\\MicroServicios\\\\MicroservicioAdministration\\\\Administration\\\\MicroservicioAdministration.sln\" --configuration Release --no-incremental 2>&1 | Where-Object { $_ -match \"\\(?i\\)\\(error|Error\\)\" } | Select-Object -First 40)",
       "PowerShell(Get-ChildItem -Path \"C:\\\\Developer\\\\Visual Studio 22\\\\c#\\\\NotificationsTelegram\\\\NotificationsTelegram\" -Recurse | Where-Object {$_.Extension -eq '.cs'} | Select-Object -ExpandProperty Name | Sort-Object | Get-Unique)",
       "PowerShell(Set-Location \"C:\\\\Developer\\\\Angular\\\\angular18\\\\Smp26-develop\"; $result = npx ng build --configuration production 2>&1; $errors = $result | Where-Object { $_ -match '\\\\[ERROR\\\\]|error TS[0-9]|NG[0-9]+:' -and $_ -notmatch 'WARNING' }; if \\($errors\\) { $errors | Select-Object -First 20 } else { Write-Host \"BUILD OK - sin errores\" }e)",
-      "PowerShell(Start-Process \"C:\\\\Developer\\\\Visual Studio 22\\\\c#\\\\MicroServicios\\\\PMO_ProgramaTrabajo_ERPClinica.xlsx\")"
+      "PowerShell(Start-Process \"C:\\\\Developer\\\\Visual Studio 22\\\\c#\\\\MicroServicios\\\\PMO_ProgramaTrabajo_ERPClinica.xlsx\")",
+      "PowerShell(cmd /c \"dir /s /b \"\"C:\\\\SorianO\\\\CONTROL OBRA\"\"\")"
     ],
     "deny": [],
     "ask": [],
