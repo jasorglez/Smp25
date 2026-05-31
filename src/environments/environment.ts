@@ -85,5 +85,5 @@ export const environment = {
     // publicKey: 'TEST-4399133a-4676-42a2-ab85-d946370bf96a',
   },
 
-  version: '7.21 (30 Mayo 2026) fix(avances-pmo): idConvention=null en PMO — generate ya no filtra por convenio de otro módulo',
+  version: '7.22 (30 Mayo 2026) feat(avances-pmo): selector Proyecto+Convenio igual que pmo-actividades',
 };

@@ -1,25 +1,48 @@
 <div class="p-3">
 
   <!-- ╔══════════════════════════════════════════════════════════════════════╗
-       ║  PMO: SELECTOR DE PROYECTO (visible solo cuando no hay contrato)     ║
+       ║  PMO: SELECTOR PROYECTO + CONVENIO (solo cuando no hay contrato)     ║
        ╚══════════════════════════════════════════════════════════════════════╝ -->
   <div *ngIf="!curretnContractSelected"
-       class="d-flex align-items-center gap-3 alert alert-info py-2 px-3 mb-2">
+       class="d-flex align-items-center gap-3 flex-wrap alert alert-info py-2 px-3 mb-2">
     <i class="bi bi-folder-fill text-primary fs-5"></i>
-    <span class="fw-semibold text-nowrap">Proyecto PMO:</span>
-    <select class="form-select form-select-sm" style="max-width:380px;"
-            [(ngModel)]="selectedPmoProjectId"
-            (ngModelChange)="onPmoProjectSelected($event)">
-      <option [ngValue]="null" disabled>— Selecciona un proyecto —</option>
-      <option *ngFor="let p of pmoProjects" [ngValue]="p.id">
-        {{ p.name || p.nombre || ('Proyecto #' + p.id) }}
-      </option>
-    </select>
-    <span *ngIf="!pmoProjects.length" class="text-muted small">
-      <span class="spinner-border spinner-border-sm me-1"></span> Cargando proyectos…
-    </span>
-    <span *ngIf="pmoProjects.length && !selectedPmoProjectId" class="text-muted small">
-      {{ pmoProjects.length }} proyectos disponibles
+
+    <!-- Proyecto -->
+    <div class="d-flex align-items-center gap-2">
+      <span class="fw-semibold text-nowrap small">Proyecto:</span>
+      <select class="form-select form-select-sm" style="min-width:280px; max-width:380px;"
+              [(ngModel)]="selectedPmoProjectId"
+              (ngModelChange)="onPmoProjectSelected($event)">
+        <option [ngValue]="null" disabled>— Selecciona un proyecto —</option>
+        <option *ngFor="let p of pmoProjects" [ngValue]="p.id">
+          {{ p.name || p.nombre || ('Proyecto #' + p.id) }}
+        </option>
+      </select>
+      <span *ngIf="!pmoProjects.length" class="text-muted small">
+        <span class="spinner-border spinner-border-sm me-1"></span>
+      </span>
+    </div>
+
+    <!-- Convenio (visible cuando ya hay proyecto) -->
+    <div *ngIf="selectedPmoProjectId" class="d-flex align-items-center gap-2">
+      <span class="fw-semibold text-nowrap small">Convenio:</span>
+      <span *ngIf="isLoadingConv" class="spinner-border spinner-border-sm text-primary"></span>
+      <select *ngIf="!isLoadingConv" class="form-select form-select-sm" style="min-width:220px; max-width:320px;"
+              [(ngModel)]="selectedPmoConventionId"
+              (ngModelChange)="onPmoConventionSelected($event)">
+        <option [ngValue]="null" disabled>— Selecciona convenio —</option>
+        <option [ngValue]="SIN_CONVENIO.id">{{ SIN_CONVENIO.name }}</option>
+        <option *ngFor="let c of pmoConventions" [ngValue]="c.id">
+          {{ c.name || c.nombre || ('Convenio #' + c.id) }}
+        </option>
+      </select>
+    </div>
+
+    <!-- Chip indicador -->
+    <span *ngIf="selectedPmoProjectId && selectedPmoConventionId != null"
+          class="badge bg-success ms-auto">
+      <i class="bi bi-check-circle me-1"></i>
+      {{ idConvention ? 'Conv. ' + idConvention : 'Sin convenio' }}
     </span>
   </div>
 
