@@ -44,9 +44,11 @@ export class SideBarComponent {
   ];
 
   readonly sidebarSizes = [
-    { id: '0.72rem', label: 'S' },
-    { id: '0.85rem', label: 'M' },
-    { id: '0.96rem', label: 'L' },
+    { id: '8px',  label: '8'  },
+    { id: '9px',  label: '9'  },
+    { id: '10px', label: '10' },
+    { id: '12px', label: '12' },
+    { id: '14px', label: '14' },
   ];
 
   readonly sidebarFonts = [

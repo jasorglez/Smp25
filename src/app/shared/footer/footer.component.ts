@@ -50,9 +50,11 @@ export class FooterComponent implements OnInit {
   ];
 
   readonly sizeOptions = [
-    { id: '10px', label: 'S' },
-    { id: '12px', label: 'M' },
-    { id: '14px', label: 'L' },
+    { id: '8px',  label: '8'  },
+    { id: '9px',  label: '9'  },
+    { id: '10px', label: '10' },
+    { id: '12px', label: '12' },
+    { id: '14px', label: '14' },
   ];
 
   readonly fontOptions = [

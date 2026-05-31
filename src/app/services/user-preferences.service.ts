@@ -15,7 +15,7 @@ export interface UserPrefs {
 
 const DEFAULTS: UserPrefs = {
   sidebarTheme: 'blue',
-  sidebarSize:  '0.85rem',
+  sidebarSize:  '12px',
   sidebarFont:  'Roboto',
   sidebarText:  'auto',
   footerBg:     'dark',

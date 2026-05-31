@@ -85,5 +85,5 @@ export const environment = {
     // publicKey: 'TEST-4399133a-4676-42a2-ab85-d946370bf96a',
   },
 
-  version: '7.40 (31 Mayo 2026) feat(sidebar): personalizar letra, tamaño y fuente igual que footer',
+  version: '7.41 (31 Mayo 2026) feat(prefs): tamaños de letra 8/9/10/12/14px en sidebar y footer',
 };
