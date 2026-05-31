@@ -224,6 +224,8 @@ export class AdvancesComponent implements OnInit, OnChanges {
         this.pmoProjects          = [];
         this.loadPmoProjects();
       }
+      // En PMO (sin contrato) el convenio vigente puede ser de otro módulo → ignorarlo
+      if (!this.curretnContractSelected) this.idConvention = null;
 
       this.obtenerDatos();
       // Reset paneles al cambiar proyecto
