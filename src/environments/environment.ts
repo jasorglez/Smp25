@@ -85,5 +85,5 @@ export const environment = {
     // publicKey: 'TEST-4399133a-4676-42a2-ab85-d946370bf96a',
   },
 
-  version: '7.31 (31 Mayo 2026) feat(pmo): agregar menú Versiones en PMO apuntando a ConventionsComponent',
+  version: '7.32 (31 Mayo 2026) feat(pmo-import): actualizar fechas y montos MX/USD de la versión al importar',
 };

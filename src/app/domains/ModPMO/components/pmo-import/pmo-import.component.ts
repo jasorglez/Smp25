@@ -421,6 +421,29 @@ export class PmoImportComponent implements OnInit, OnChanges {
       }
 
       this.saveProgress = 100;
+
+      // ── Actualizar fechas y montos de la versión/convenio ──────────────────
+      if (this.selectedConvention?.id && sorted.length > 0) {
+        try {
+          this.saveStatus = 'Actualizando fechas y montos de la versión...';
+          const minStart = sorted.reduce((m, t) => (!m || t.startDate < m) ? t.startDate : m, '');
+          const maxEnd   = sorted.reduce((m, t) => (!m || t.endDate   > m) ? t.endDate   : m, '');
+          const totalMX  = sorted.reduce((s, t) => s + ((t.quantity ?? 0) * (t.costMX ?? 0)), 0);
+
+          const convUpdate = {
+            ...this.selectedConvention,
+            start:     minStart || this.selectedConvention.start,
+            end:       maxEnd   || this.selectedConvention.end,
+            amountMX:  totalMX,
+            amountDLL: 0,
+          };
+          await lastValueFrom(this._convService.updateConvention(this.selectedConvention.id, convUpdate));
+        } catch (e) {
+          console.warn('No se pudo actualizar la versión:', e);
+        }
+      }
+      // ──────────────────────────────────────────────────────────────────────
+
       this.saveStatus   = `Completado: ${this.savedCount} tarea(s) guardadas.`;
       this.step         = 'done';
       this.imported.emit(this.savedCount);

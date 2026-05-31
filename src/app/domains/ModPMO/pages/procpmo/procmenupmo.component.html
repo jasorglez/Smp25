@@ -4,6 +4,13 @@
       <div class="nav-wrapper">
         <ul class="nav nav-pills modern-nav">
 
+         <li class="nav-item" *ngIf="authService.hasDetailedPermission('pmo', 'versiones')">
+            <a class="nav-link modern-tab" routerLink="versiones" routerLinkActive="active">
+              <i class="bi bi-file-earmark-text-fill"></i>
+              <span>Versiones</span>
+            </a>
+          </li>
+
           <li class="nav-item" *ngIf="authService.hasDetailedPermission('pmo', 'programa')">
             <a class="nav-link modern-tab" routerLink="actividades" routerLinkActive="active">
               <i class="bi bi-table"></i>
@@ -59,14 +66,7 @@
               <span>Líneas Base</span>
             </a>
           </li>
-
-          <li class="nav-item" *ngIf="authService.hasDetailedPermission('pmo', 'versiones')">
-            <a class="nav-link modern-tab" routerLink="versiones" routerLinkActive="active">
-              <i class="bi bi-file-earmark-text-fill"></i>
-              <span>Versiones</span>
-            </a>
-          </li>
-
+      
         </ul>
       </div>
 
