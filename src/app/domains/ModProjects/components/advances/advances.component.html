@@ -1,6 +1,29 @@
 <div class="p-3">
 
   <!-- ╔══════════════════════════════════════════════════════════════════════╗
+       ║  PMO: SELECTOR DE PROYECTO (visible solo cuando no hay contrato)     ║
+       ╚══════════════════════════════════════════════════════════════════════╝ -->
+  <div *ngIf="!curretnContractSelected"
+       class="d-flex align-items-center gap-3 alert alert-info py-2 px-3 mb-2">
+    <i class="bi bi-folder-fill text-primary fs-5"></i>
+    <span class="fw-semibold text-nowrap">Proyecto PMO:</span>
+    <select class="form-select form-select-sm" style="max-width:380px;"
+            [(ngModel)]="selectedPmoProjectId"
+            (ngModelChange)="onPmoProjectSelected($event)">
+      <option [ngValue]="null" disabled>— Selecciona un proyecto —</option>
+      <option *ngFor="let p of pmoProjects" [ngValue]="p.id">
+        {{ p.name || p.nombre || ('Proyecto #' + p.id) }}
+      </option>
+    </select>
+    <span *ngIf="!pmoProjects.length" class="text-muted small">
+      <span class="spinner-border spinner-border-sm me-1"></span> Cargando proyectos…
+    </span>
+    <span *ngIf="pmoProjects.length && !selectedPmoProjectId" class="text-muted small">
+      {{ pmoProjects.length }} proyectos disponibles
+    </span>
+  </div>
+
+  <!-- ╔══════════════════════════════════════════════════════════════════════╗
        ║  BARRA DE BOTONES                                                    ║
        ╚══════════════════════════════════════════════════════════════════════╝ -->
   <div class="d-flex align-items-center gap-1 mb-2 flex-wrap">

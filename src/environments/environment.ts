@@ -85,5 +85,5 @@ export const environment = {
     // publicKey: 'TEST-4399133a-4676-42a2-ab85-d946370bf96a',
   },
 
-  version: '7.19 (30 Mayo 2026) fix(pmo-actividades): ponderado 3 decimales — act 9 y 10 ya no quedan en 0, suma exacta 1.000',
+  version: '7.20 (30 Mayo 2026) feat(avances-pmo): selector de proyecto en contexto PMO sin contrato',
 };
