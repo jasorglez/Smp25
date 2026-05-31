@@ -6,7 +6,8 @@ import { SignalsService } from 'app/services/signals.service';
 import { WorkprogramsService } from 'app/services/workprograms.service';
 import { WorkprogramCalendarService, WorkprogramCalendar } from 'app/services/workprogram-calendar.service';
 import { WorkprogramDailyService, DailySummary } from 'app/services/workprogram-daily.service';
-import { ProjectsService } from 'app/services/projects.service';
+import { ProjectsService }    from 'app/services/projects.service';
+import { ConventionsService } from 'app/services/conventions.service';
 import { alerts } from 'app/helpers/alerts';
 import { concat, lastValueFrom, toArray } from 'rxjs';
 import { CommonModule } from '@angular/common';
@@ -67,17 +68,22 @@ export class AdvancesComponent implements OnInit, OnChanges {
   private _workprogramsService = inject(WorkprogramsService);
   private _calendarService   = inject(WorkprogramCalendarService);
   private _dailyService      = inject(WorkprogramDailyService);
-  private _projectsService   = inject(ProjectsService);
+  private _projectsService    = inject(ProjectsService);
+  private _convService        = inject(ConventionsService);
 
   // ─── IDs del scope activo ────────────────────────────────────────────────────
   curretnContractSelected: number | null = null;
   idProject:    number | null = null;
   idConvention: number | null = null;
 
-  // ─── Selector de proyecto (contexto PMO — sin contrato) ──────────────────────
-  idCompany:            number   = 0;
-  pmoProjects:          any[]    = [];
-  selectedPmoProjectId: number | null = null;
+  // ─── Selector Proyecto + Convenio (contexto PMO — sin contrato) ──────────────
+  readonly SIN_CONVENIO = { id: -1, name: '⚪ Sin convenio' };
+  idCompany:               number   = 0;
+  pmoProjects:             any[]    = [];
+  pmoConventions:          any[]    = [];
+  selectedPmoProjectId:    number | null = null;
+  selectedPmoConventionId: number | null = null;
+  isLoadingConv            = false;
 
   // ─── Grid Curva S ───────────────────────────────────────────────────────────
   private gridApi: GridApi;
@@ -218,10 +224,13 @@ export class AdvancesComponent implements OnInit, OnChanges {
       // ── Contexto PMO: empresa seleccionada sin contrato ──────────────────
       const rootId = this._signalsService.getRootSelectedBySidebar()();
       if (!this.curretnContractSelected && rootId && rootId !== this.idCompany) {
-        this.idCompany            = rootId;
-        this.selectedPmoProjectId = null;
-        this.idProject            = null;
-        this.pmoProjects          = [];
+        this.idCompany               = rootId;
+        this.selectedPmoProjectId    = null;
+        this.selectedPmoConventionId = null;
+        this.idProject               = null;
+        this.idConvention            = null;
+        this.pmoProjects             = [];
+        this.pmoConventions          = [];
         this.loadPmoProjects();
       }
       // En PMO (sin contrato) el convenio vigente puede ser de otro módulo → ignorarlo
@@ -331,16 +340,54 @@ export class AdvancesComponent implements OnInit, OnChanges {
   }
 
   onPmoProjectSelected(id: number): void {
-    this.selectedPmoProjectId = id;
-    this.idProject            = id;
-    // Limpiar estado antes de cargar
+    this.selectedPmoProjectId    = id;
+    this.idProject               = id;
+    this.selectedPmoConventionId = null;
+    this.idConvention            = null;
+    this.pmoConventions          = [];
+    this.clearPmoData();
+    this.loadPmoConventions(id);
+  }
+
+  // ─── PMO: cargar convenios del proyecto ──────────────────────────────────────
+  loadPmoConventions(idProject: number): void {
+    this.isLoadingConv = true;
+    this._convService.getConventionsByContractOrProject('Project', idProject).subscribe({
+      next: (res: any) => {
+        this.isLoadingConv  = false;
+        this.pmoConventions = Array.isArray(res) ? res : (res?.data ?? []);
+        // Auto-seleccionar si solo hay uno
+        if (this.pmoConventions.length === 1) {
+          this.onPmoConventionSelected(this.pmoConventions[0].id);
+        } else if (!this.pmoConventions.length) {
+          // Sin convenios — cargar avances sin filtro de convenio
+          this.idConvention = null;
+          this.obtenerDatos();
+        }
+      },
+      error: () => {
+        this.isLoadingConv  = false;
+        this.pmoConventions = [];
+        this.idConvention   = null;
+        this.obtenerDatos();
+      }
+    });
+  }
+
+  onPmoConventionSelected(id: number): void {
+    this.selectedPmoConventionId = id;
+    this.idConvention            = id === this.SIN_CONVENIO.id ? null : id;
+    this.clearPmoData();
+    this.obtenerDatos();
+  }
+
+  private clearPmoData(): void {
     this.rowData          = [];
     this.datosMensuales   = [];
     this.monthlyTableData = [];
     this.showDailyView    = false;
     this.generateResult   = null;
     this.dailyRows        = [];
-    this.obtenerDatos();
   }
 
   // ─── Cargar Curva S ──────────────────────────────────────────────────────────
