@@ -200,9 +200,7 @@ export class MoliendaComponent {
     },
     autoSizeStrategy: { type: 'fitCellContents' },
     masterDetail: true,
-    getDetailRowHeight: (params: any) =>
-      params.data?.__detailType === 'matprima' ? 500 :
-      params.data?.__detailType === 'bote'     ? 300 : 280,
+    detailRowHeight: Math.max(200, window.innerHeight * 0.8 - 25 - 20),
     isRowMaster: (data: any) => data?.id != null,
     detailCellRenderer: DetailRouterFiltradoComponent,
     detailCellRendererParams: () => ({

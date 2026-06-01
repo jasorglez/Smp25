@@ -178,6 +178,10 @@ export class ProductionService {
     return this.http.put<any>(`${environment.urlProduction}/MoliendaMatDetalle/${id}`, data, { headers: this.trackingService.getHeaders() });
   }
 
+  patchMoliendaMatDetalleLocked(id: number, locked: boolean): Observable<any> {
+    return this.http.patch<any>(`${environment.urlProduction}/MoliendaMatDetalle/${id}/locked`, locked, { headers: this.trackingService.getHeaders() });
+  }
+
   patchMoliendaMatDetalleBote(id: number, bote: number | null): Observable<any> {
     return this.http.patch<any>(`${environment.urlProduction}/MoliendaMatDetalle/${id}/bote`, bote, { headers: this.trackingService.getHeaders() });
   }
@@ -230,5 +234,17 @@ export class ProductionService {
 
   deleteMoliendaBote(id: number): Observable<void> {
     return this.http.delete<void>(`${environment.urlProduction}/MoliendaBote/${id}`, { headers: this.trackingService.getHeaders() });
+  }
+
+  createMoliendaBoteHistorial(data: { idMoliendaBote: number; cantidad: number; usuario?: string; comentario?: string }): Observable<any> {
+    return this.http.post<any>(`${environment.urlProduction}/MoliendaBote/historial`, data, { headers: this.trackingService.getHeaders() });
+  }
+
+  getMoliendaBoteHistorialByBote(idMoliendaBote: number): Observable<any[]> {
+    return this.http.get<any[]>(`${environment.urlProduction}/MoliendaBote/historial/bote/${idMoliendaBote}`, { headers: this.trackingService.getHeaders() });
+  }
+
+  getMoliendaBoteHistorialByMatDetalle(idMatDetalle: number): Observable<any[]> {
+    return this.http.get<any[]>(`${environment.urlProduction}/MoliendaBote/historial/matdetalle/${idMatDetalle}`, { headers: this.trackingService.getHeaders() });
   }
 }

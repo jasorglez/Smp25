@@ -29,6 +29,7 @@ interface MatDetalleRow {
   boteDisplay: string;
   resta: number | null;
   botes: BoteAsignacion[];
+  locked: boolean;
   __modified: boolean;
 }
 
@@ -65,17 +66,34 @@ interface ModalEntry {
 
       <!-- Modal de asignación -->
       <div *ngIf="modalOpen"
-           style="position:fixed;inset:0;background:rgba(0,0,0,0.45);z-index:9000;display:flex;align-items:center;justify-content:center;">
-        <div class="bg-white rounded shadow-lg" style="width:520px;max-height:90vh;display:flex;flex-direction:column;overflow:hidden;">
+           style="position:absolute;inset:0;z-index:100;display:flex;flex-direction:column;background:#fff;border-radius:8px;overflow:hidden;">
+        <div style="display:flex;flex-direction:column;height:100%;overflow:hidden;">
 
           <!-- Header -->
-          <div class="d-flex align-items-center justify-content-between px-3 py-2 border-bottom" style="background:#fff3e0; flex-shrink:0;">
-            <span style="font-weight:600;color:#e65100;font-size:0.92rem;">Asignar botes</span>
+          <div class="d-flex align-items-center justify-content-between px-3 py-2 border-bottom"
+               [style.background]="lockedViewMode ? '#f8f9fa' : '#fff3e0'" style="flex-shrink:0;">
+            <span style="font-weight:600;font-size:0.92rem;" [style.color]="lockedViewMode ? '#495057' : '#e65100'">
+              <i *ngIf="lockedViewMode" class="bi bi-lock-fill me-1"></i>
+              {{ lockedViewMode ? 'Botes asignados' : 'Asignar botes' }}
+              <span *ngIf="matPrimaName" style="font-weight:400;">— {{ matPrimaName }}</span>
+              <span *ngIf="modalRow?.fecha" style="font-weight:400; font-size:0.82rem; margin-left:6px; opacity:0.75;">
+                {{ modalRow!.fecha | date:'dd/MM/yyyy' }}
+              </span>
+            </span>
             <button class="btn-close btn-sm" (click)="closeModal()"></button>
           </div>
 
-          <!-- Info de jugo -->
-          <div class="px-3 pt-2 pb-1 border-bottom" style="font-size:0.8rem;color:#5d4037;flex-shrink:0;">
+          <!-- Lock (solo en modo edición) -->
+          <div *ngIf="!lockedViewMode" class="px-3 pt-2 pb-1 border-bottom d-flex align-items-center gap-2" style="flex-shrink:0; background:#fff8e1;">
+            <input type="checkbox" id="modalLock" style="width:1rem;height:1rem;margin:0;cursor:pointer;"
+                   [(ngModel)]="modalLocked" (ngModelChange)="onLockChange($event)">
+            <label for="modalLock" class="mb-0" style="font-size:0.82rem; cursor:pointer; user-select:none;">
+              <i class="bi bi-lock-fill me-1" style="color:#e65100;"></i> Bloquear cambios
+            </label>
+          </div>
+
+          <!-- Info de jugo (solo en modo edición) -->
+          <div *ngIf="!lockedViewMode" class="px-3 pt-2 pb-1 border-bottom" style="font-size:0.8rem;color:#5d4037;flex-shrink:0;">
             <span>Jugo disponible en fila: <strong>{{ modalRow?.jugo ?? 0 | number:'1.0-2' }}</strong> L</span>
             &nbsp;|&nbsp;
             <span>Asignado en este registro:
@@ -91,57 +109,149 @@ interface ModalEntry {
             </span>
           </div>
 
-          <!-- Tabla de botes -->
-          <div style="overflow-y:auto;flex:1;">
-            <table class="table table-sm table-hover mb-0" style="font-size:0.82rem;">
-              <thead style="position:sticky;top:0;background:#fff8e1;z-index:1;">
-                <tr>
-                  <th>Código bote</th>
-                  <th class="text-center">Capacidad</th>
-                  <th class="text-center">Espacio utilizado</th>
-                  <th class="text-center">Disponible</th>
-                  <th class="text-center" style="min-width:110px;">Cantidad a añadir</th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr *ngFor="let entry of modalEntries"
-                    [class.table-warning]="entry.asignacion !== null"
-                    [class.table-secondary]="entry.lleno && entry.asignacion === null">
-                  <td>{{ entry.opt.description }}</td>
-                  <td class="text-center">{{ entry.opt.volumen }}</td>
-                  <td class="text-center">
-                    <span [style.color]="entry.espacioUtilizadoExterno >= entry.opt.volumen ? '#c62828' : 'inherit'">
-                      {{ entry.espacioUtilizadoExterno | number:'1.0-2' }}
+          <!-- Grid de tarjetas de botes -->
+          <div style="overflow-y:auto;flex:1;padding:16px;">
+            <!-- Botón regresar (solo modo bloqueado con bote abierto) -->
+            <div *ngIf="lockedViewMode && selectedEntry" class="mb-3">
+              <button class="btn btn-sm btn-outline-secondary" (click)="selectLockedEntry(selectedEntry!)">
+                <i class="bi bi-arrow-left me-1"></i> Regresar
+              </button>
+            </div>
+            <div *ngIf="!modalEntries.length" class="text-center text-muted py-4" style="font-size:0.85rem;">
+              Sin botes asignados
+            </div>
+            <div style="display:flex;flex-wrap:wrap;gap:12px;justify-content:flex-start;">
+              <ng-container *ngFor="let entry of modalEntries">
+                <div class="bote-card"
+                     [class.bote-card--hidden]="selectedEntry && selectedEntry !== entry"
+                     [class.bote-card--full]="fillPct(entry.espacioUtilizadoExterno + baseMine(entry), entry.opt.volumen) >= 100"
+                     [class.bote-card--empty]="baseMine(entry) === 0 && entry.espacioUtilizadoExterno === 0"
+                     [class.bote-card--partial]="baseMine(entry) > 0 || entry.espacioUtilizadoExterno > 0"
+                     [class.bote-card--selected]="!lockedViewMode && selectedEntry === entry"
+                     (click)="lockedViewMode ? selectLockedEntry(entry) : (selectedEntry ? null : selectEntry(entry))">
+
+                  <!-- Barril con nivel de llenado -->
+                  <div class="bote-barrel"
+                       [class.bote-barrel--full]="fillPct(entry.espacioUtilizadoExterno + baseMine(entry), entry.opt.volumen) >= 100"
+                       [class.bote-barrel--empty]="baseMine(entry) === 0 && entry.espacioUtilizadoExterno === 0"
+                       [class.bote-barrel--partial]="baseMine(entry) > 0 || entry.espacioUtilizadoExterno > 0">
+                    <!-- Nivel: externo -->
+                    <div class="bote-fill bote-fill--external"
+                         [style.height.%]="fillPct(entry.espacioUtilizadoExterno, entry.opt.volumen)"
+                         [class.bote-fill--red]="fillPct(entry.espacioUtilizadoExterno + baseMine(entry), entry.opt.volumen) >= 100">
+                    </div>
+                    <!-- Nivel: ya asignado de esta fila (total guardado) -->
+                    <div class="bote-fill bote-fill--mine"
+                         [style.height.%]="fillPct(baseMine(entry), entry.opt.volumen)"
+                         [style.bottom.%]="fillPct(entry.espacioUtilizadoExterno, entry.opt.volumen)"
+                         [class.bote-fill--red]="fillPct(entry.espacioUtilizadoExterno + baseMine(entry), entry.opt.volumen) >= 100">
+                    </div>
+                    <!-- Nivel: nueva adición que se está escribiendo (solo en modo edición) -->
+                    <div *ngIf="selectedEntry === entry"
+                         class="bote-fill bote-fill--new"
+                         [style.height.%]="fillPct(+(entry.inputValue ?? 0), entry.opt.volumen)"
+                         [style.bottom.%]="fillPct(entry.espacioUtilizadoExterno + baseMine(entry), entry.opt.volumen)">
+                    </div>
+                    <!-- Icono centrado -->
+                    <i class="bi bi-bucket-fill bote-icon"
+                       [style.color]="baseMine(entry) === 0 && entry.espacioUtilizadoExterno === 0 ? '#0a6640' : '#843f00'"></i>
+                    <!-- Disponible -->
+                    <span class="bote-pct"
+                          [style.color]="baseMine(entry) === 0 && entry.espacioUtilizadoExterno === 0 ? '#0a6640' : '#843f00'">
+                      {{ disponible(entry) | number:'1.0-0' }} L
                     </span>
-                  </td>
-                  <td class="text-center">
-                    <span [style.color]="entry.opt.volumen - entry.espacioUtilizadoExterno <= 0 ? '#c62828' : '#2e7d32'">
-                      {{ entry.opt.volumen - entry.espacioUtilizadoExterno | number:'1.0-2' }}
-                    </span>
-                  </td>
-                  <td class="text-center">
+                  </div>
+
+                  <!-- Etiqueta -->
+                  <div class="bote-label" [title]="entry.opt.description">
+                    {{ entry.opt.description }}
+                  </div>
+
+
+                  <!-- Modo edición: input + botones -->
+                  <ng-container *ngIf="!lockedViewMode && selectedEntry === entry">
                     <input
                       type="number"
-                      class="form-control form-control-sm text-end"
-                      style="width:100px;display:inline-block;"
+                      class="form-control form-control-sm text-center bote-input"
                       [class.is-invalid]="isInputInvalid(entry)"
+                      [class.bote-input--active]="(entry.inputValue ?? 0) > 0"
                       [(ngModel)]="entry.inputValue"
                       [min]="0"
                       [max]="maxInput(entry)"
-                      [disabled]="entry.lleno && entry.asignacion === null"
-                      placeholder="0"
-                      (ngModelChange)="onInputChange()">
-                  </td>
-                </tr>
-                <tr *ngIf="!modalEntries.length">
-                  <td colspan="5" class="text-center text-muted">Sin botes en catálogo</td>
-                </tr>
-              </tbody>
-            </table>
+                      [disabled]="(entry.lleno && entry.asignacion === null) || modalLocked"
+                      placeholder="0 L"
+                      (ngModelChange)="onInputChange()"
+                      (click)="$event.stopPropagation()">
+                    <!-- Comentario opcional -->
+                    <input type="text" class="form-control form-control-sm bote-input mt-1"
+                           [(ngModel)]="entryComentario"
+                           placeholder="Comentario (opcional)"
+                           (click)="$event.stopPropagation()" maxlength="500">
+                    <div class="d-flex gap-1 mt-1">
+                      <button class="btn btn-sm btn-success flex-fill" (click)="confirmEntry(); $event.stopPropagation()">
+                        <i class="bi bi-check-lg"></i>
+                      </button>
+                      <button class="btn btn-sm btn-outline-secondary flex-fill" (click)="cancelEntry(); $event.stopPropagation()">
+                        <i class="bi bi-x-lg"></i>
+                      </button>
+                    </div>
+                    <!-- Historial en modo edición -->
+                    <div *ngIf="selectedEntryHistorial.length" class="bote-historial" (click)="$event.stopPropagation()">
+                      <div class="bote-historial__title"><i class="bi bi-clock-history me-1"></i>Historial</div>
+                      <div *ngFor="let h of selectedEntryHistorial" class="bote-historial__row">
+                        <span class="bote-historial__fecha">{{ h.fecha | date:'dd/MM/yy HH:mm' }}</span>
+                        <span class="bote-historial__user" [title]="h.usuario ?? ''">{{ (h.usuario ?? '') | slice:0:10 }}</span>
+                        <span class="bote-historial__cant">+{{ h.cantidad | number:'1.0-0' }} L</span>
+                        <span *ngIf="h.comentario" class="bote-historial__comment"
+                              [title]="h.comentario">
+                          <i class="bi bi-chat-fill"></i>
+                        </span>
+                      </div>
+                    </div>
+                  </ng-container>
+
+                  <!-- Modo bloqueado: solo historial al seleccionar -->
+                  <ng-container *ngIf="lockedViewMode && selectedEntry === entry">
+                    <div *ngIf="selectedEntryHistorial.length; else noHistorial" class="bote-historial" (click)="$event.stopPropagation()">
+                      <div class="bote-historial__title"><i class="bi bi-clock-history me-1"></i>Historial</div>
+                      <div *ngFor="let h of selectedEntryHistorial" class="bote-historial__row">
+                        <span class="bote-historial__fecha">{{ h.fecha | date:'dd/MM/yy HH:mm' }}</span>
+                        <span class="bote-historial__user" [title]="h.usuario ?? ''">{{ (h.usuario ?? '') | slice:0:10 }}</span>
+                        <span class="bote-historial__cant">+{{ h.cantidad | number:'1.0-0' }} L</span>
+                        <span *ngIf="h.comentario" class="bote-historial__comment"
+                              [title]="h.comentario">
+                          <i class="bi bi-chat-fill"></i>
+                        </span>
+                      </div>
+                    </div>
+                    <ng-template #noHistorial>
+                      <span style="font-size:0.72rem; color:#adb5bd;">Sin registros</span>
+                    </ng-template>
+                  </ng-container>
+
+                </div>
+              </ng-container>
+            </div>
           </div>
 
-          <!-- Footer -->
-          <div class="d-flex align-items-center justify-content-between px-3 py-2 border-top" style="flex-shrink:0;">
+          <!-- Prompt de bloqueo (solo modo edición) -->
+          <div *ngIf="showLockPrompt && !lockedViewMode"
+               class="d-flex align-items-center justify-content-between px-3 py-2 border-top"
+               style="flex-shrink:0; background:#fff3e0;">
+            <span style="font-size:0.82rem; color:#e65100;">
+              <i class="bi bi-lock-fill me-1"></i>
+              Todos los litros asignados. ¿Bloquear este registro?
+            </span>
+            <div class="d-flex gap-2">
+              <button class="btn btn-sm btn-outline-secondary" (click)="dismissLock()">No</button>
+              <button class="btn btn-sm btn-warning" (click)="confirmLock()">
+                <i class="bi bi-lock-fill me-1"></i> Bloquear
+              </button>
+            </div>
+          </div>
+
+          <!-- Footer (solo modo edición) -->
+          <div *ngIf="!lockedViewMode" class="d-flex align-items-center justify-content-between px-3 py-2 border-top" style="flex-shrink:0;">
             <span *ngIf="modalValidationMsg" style="font-size:0.78rem;color:#c62828;">
               {{ modalValidationMsg }}
             </span>
@@ -160,7 +270,149 @@ interface ModalEntry {
       </div>
     </div>
   `,
-  styles: [`:host { display: block; height: 100%; overflow: hidden; }`]
+  styles: [`
+    :host { display: block; height: 100%; overflow: hidden; }
+    :host ::ng-deep .locked-row { background: #e9ecef !important; color: #6c757d !important; }
+    :host ::ng-deep .locked-row .ag-cell { color: #6c757d !important; }
+
+    .bote-card {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      width: 169px;
+      background: #fff;
+      border: 1.5px solid #dee2e6;
+      border-radius: 10px;
+      padding: 10px 8px 8px;
+      gap: 5px;
+      transition: opacity 0.28s ease, transform 0.28s ease, box-shadow 0.15s, border-color 0.15s,
+                  max-width 0.28s ease, padding 0.28s ease, margin 0.28s ease;
+      overflow: hidden;
+      max-width: 210px;
+    }
+    .bote-card--hidden {
+      opacity: 0;
+      transform: scale(0.82);
+      max-width: 0;
+      padding-left: 0;
+      padding-right: 0;
+      margin: 0;
+      pointer-events: none;
+    }
+    .bote-card:not(.bote-card--selected):not(.bote-card--hidden) { cursor: pointer; }
+    .bote-card:not(.bote-card--selected):not(.bote-card--hidden):hover { box-shadow: 0 2px 8px rgba(0,0,0,0.12); }
+    .bote-card--selected { width: 208px; box-shadow: 0 0 0 3px rgba(13,110,253,0.35), 0 3px 10px rgba(0,0,0,0.15); }
+    .bote-card--full    { border-color: #dc3545; background: #fff5f5; }
+    .bote-card--empty   {
+      border-color: #198754;
+      border-width: 2.5px;
+      background: #c8f7dc;
+      box-shadow: 0 0 0 3px rgba(25,135,84,0.2), 0 2px 8px rgba(25,135,84,0.18);
+    }
+    .bote-card--partial { border-color: #fd7e14; background: #fff3e0; }
+
+    .bote-barrel {
+      position: relative;
+      width: 83px;
+      height: 94px;
+      border: 2px solid #adb5bd;
+      border-radius: 10px;
+      overflow: hidden;
+      background: #f1f3f5;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: border-color 0.2s;
+    }
+    .bote-barrel--full    { border-color: #dc3545; }
+    .bote-barrel--empty   { border-color: #198754; background: #e6faf0; }
+    .bote-barrel--partial { border-color: #fd7e14; }
+    .bote-fill {
+      position: absolute;
+      left: 0; right: 0; bottom: 0;
+      transition: height 0.35s ease;
+    }
+    .bote-fill--external { background: rgba(108,117,125,0.28); }
+    .bote-fill--mine     { background: rgba(253,126,20,0.55); }
+    .bote-fill--new      { background: rgba(13,110,253,0.40); }
+    .bote-fill--red      { background: rgba(220,53,69,0.45) !important; }
+    .bote-fill--green    { background: rgba(25,135,84,0.35) !important; }
+
+    .bote-icon {
+      position: relative;
+      z-index: 2;
+      font-size: 2.1rem;
+      filter: drop-shadow(0 1px 1px rgba(255,255,255,0.7));
+    }
+    .bote-pct {
+      position: absolute;
+      bottom: 2px;
+      right: 4px;
+      font-size: 0.62rem;
+      font-weight: 700;
+      color: #343a40;
+      z-index: 3;
+      line-height: 1;
+    }
+
+    .bote-label {
+      font-size: 0.75rem;
+      font-weight: 600;
+      color: #343a40;
+      text-align: center;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      max-width: 114px;
+    }
+    .bote-capacity {
+      font-size: 0.7rem;
+      color: #6c757d;
+      text-align: center;
+    }
+
+    .bote-input {
+      width: 100%;
+      font-size: 0.78rem;
+      border-radius: 6px;
+      border-color: #ced4da;
+    }
+    .bote-input--active {
+      border-color: #fd7e14;
+      background: #fff3e0;
+    }
+
+    .bote-historial {
+      width: 100%;
+      background: #f8f9fa;
+      border: 1px solid #dee2e6;
+      border-radius: 6px;
+      padding: 5px 7px;
+      max-height: 120px;
+      overflow-y: auto;
+    }
+    .bote-historial__title {
+      font-size: 0.68rem;
+      font-weight: 700;
+      color: #6c757d;
+      text-transform: uppercase;
+      letter-spacing: 0.03em;
+      margin-bottom: 3px;
+    }
+    .bote-historial__row {
+      display: flex;
+      justify-content: space-between;
+      font-size: 0.72rem;
+      color: #495057;
+      padding: 1px 0;
+      border-bottom: 1px solid #e9ecef;
+    }
+    .bote-historial__row:last-child { border-bottom: none; }
+    .bote-historial__user { color: #6c757d; font-style: italic; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 70px; }
+    .bote-historial__cant { font-weight: 600; color: #198754; }
+    .bote-historial__comment { color: #0d6efd; cursor: help; margin-left: 2px; }
+    .bote-historial__comment:hover { color: #0a58ca; }
+  `]
 })
 export class DetallesBoteFiltradoComponent {
   private productionService = inject(ProductionService);
@@ -170,6 +422,7 @@ export class DetallesBoteFiltradoComponent {
 
   private idMolienda: number | null = null;
   private matPrimaId: number | null = null;
+  matPrimaName: string = '';
   boteOptions: BoteOption[] = [];
   // usageMap: idBoteCatalog → suma total de cantidad en todos los matdetalles
   private usageMap: Record<number, number> = {};
@@ -179,16 +432,28 @@ export class DetallesBoteFiltradoComponent {
 
   // Modal
   modalOpen    = false;
+  modalLocked  = false;
   saving       = false;
   modalRow:    MatDetalleRow | null = null;
   modalEntries: ModalEntry[] = [];
   modalValidationMsg = '';
+  selectedEntry: ModalEntry | null = null;
+  private selectedEntryOriginalValue: number | null = null;
+  selectedEntryHistorial: any[] = [];
+  entryComentario: string = '';
+  showLockPrompt = false;
+  lockedViewMode = false;
 
   get totalInputModal(): number {
-    return this.modalEntries.reduce((s, e) => s + (Number(e.inputValue) || 0), 0);
+    return this.modalEntries.reduce((s, e) => {
+      const base = this.selectedEntry === e
+        ? (Number(this.selectedEntryOriginalValue) || 0) + (Number(e.inputValue) || 0)
+        : (Number(e.inputValue) || 0);
+      return s + base;
+    }, 0);
   }
 
-  // ── Grid ──────────────────────────────────────────────────────────────────
+// ── Grid ──────────────────────────────────────────────────────────────────
 
   colDefs: ColDef[] = [
     {
@@ -236,13 +501,18 @@ export class DetallesBoteFiltradoComponent {
     rowHeight: 22,
     autoSizeStrategy: { type: 'fitCellContents' },
     defaultColDef: { resizable: true },
+    rowClassRules: {
+      'locked-row': (p: any) => !!p.data?.locked,
+    },
   };
 
   // ── Init ──────────────────────────────────────────────────────────────────
 
   agInit(params: any) {
-    this.idMolienda = params?.data?.id ?? null;
-    this.matPrimaId = params?.data?.matPrima ?? null;
+    this.idMolienda  = params?.data?.id ?? null;
+    this.matPrimaId  = params?.data?.matPrima ?? null;
+    const opts: { id: number; name: string }[] = params?.context?.articuloOptions ?? [];
+    this.matPrimaName = opts.find(o => o.id === this.matPrimaId)?.name ?? '';
     this.init();
   }
 
@@ -331,6 +601,7 @@ export class DetallesBoteFiltradoComponent {
           boteDisplay: this.buildBoteDisplay(botes),
           resta: i.jugo != null ? Number(i.jugo) - volAsignado : null,
           botes,
+          locked: !!i.locked,
           __modified: false,
         };
       });
@@ -369,14 +640,156 @@ export class DetallesBoteFiltradoComponent {
     }).filter((e): e is ModalEntry => e !== null);
 
     this.modalValidationMsg = '';
+    this.modalLocked    = row.locked;
+    this.lockedViewMode = row.locked;
+    // En modo bloqueado solo mostramos botes con asignación
+    if (row.locked) {
+      this.modalEntries = this.modalEntries.filter(e => e.asignacion !== null);
+    }
     this.modalOpen = true;
   }
 
+  async onLockChange(locked: boolean) {
+    if (!this.modalRow) return;
+    try {
+      await lastValueFrom(this.productionService.patchMoliendaMatDetalleLocked(this.modalRow.id, locked));
+      this.modalRow.locked = locked;
+      if (this.gridApi && !this.gridApi.isDestroyed()) {
+        const node = this.gridApi.getRowNode(String(this.modalRow.id));
+        if (node) node.setData({ ...this.modalRow });
+      }
+    } catch (e) {
+      console.error('Error guardando lock:', e);
+      this.modalLocked = !locked; // revertir si falla
+    }
+  }
+
+  selectEntry(entry: ModalEntry) {
+    if ((entry.lleno && entry.asignacion === null) || this.modalLocked) return;
+    // Guardamos el total actual como base; el input arranca vacío (nueva adición)
+    this.selectedEntryOriginalValue = entry.inputValue ?? 0;
+    entry.inputValue = null;
+    this.selectedEntry = entry;
+    this.selectedEntryHistorial = [];
+    this.entryComentario = '';
+    if (entry.asignacion?.id) {
+      lastValueFrom(this.productionService.getMoliendaBoteHistorialByBote(entry.asignacion.id))
+        .then(h => this.selectedEntryHistorial = h ?? [])
+        .catch(() => {});
+    }
+  }
+
+  async confirmEntry() {
+    if (!this.selectedEntry || !this.modalRow) return;
+    const entry   = this.selectedEntry;
+    const newVal  = Number(entry.inputValue) || 0;
+    const usuario = this.signalsService.getDisplayName()() ?? '';
+
+    // newVal = adición nueva; newTotal = lo que quedará en DB
+    const existingTotal = Number(this.selectedEntryOriginalValue) || 0;
+    const newTotal = existingTotal + newVal;
+
+    // Guardar bote (crear/patch)
+    try {
+      if (newVal > 0) {
+        if (entry.asignacion === null) {
+          const created = await lastValueFrom(
+            this.productionService.createMoliendaBote({
+              idMatDetalle: this.modalRow.id,
+              idBoteCatalog: entry.opt.id,
+              cantidad: newTotal,
+            })
+          );
+          entry.asignacion = { id: created.id, idBoteCatalog: entry.opt.id, cantidad: newTotal };
+          this.modalRow.botes.push(entry.asignacion);
+        } else {
+          await lastValueFrom(this.productionService.patchMoliendaBoteCantidad(entry.asignacion.id, newTotal));
+          entry.asignacion.cantidad = newTotal;
+          const b = this.modalRow.botes.find(b => b.id === entry.asignacion!.id);
+          if (b) b.cantidad = newTotal;
+        }
+
+        // Historial: registrar solo la adición nueva
+        await lastValueFrom(this.productionService.createMoliendaBoteHistorial({
+          idMoliendaBote: entry.asignacion!.id,
+          cantidad: newVal,
+          usuario,
+          comentario: this.entryComentario.trim() || undefined,
+        }));
+      }
+    } catch (e) {
+      console.error('Error guardando bote:', e);
+    }
+
+    // Restaurar inputValue al nuevo total para visualización
+    entry.inputValue = newTotal > 0 ? newTotal : null;
+
+    // Recalcular resta en la fila
+    const volAsignado = this.modalRow.botes.reduce((s, b) => s + b.cantidad, 0);
+    this.modalRow.resta = this.modalRow.jugo != null ? this.modalRow.jugo - volAsignado : null;
+    this.modalRow.boteDisplay = this.buildBoteDisplay(this.modalRow.botes);
+    if (this.gridApi && !this.gridApi.isDestroyed()) {
+      const node = this.gridApi.getRowNode(String(this.modalRow.id));
+      if (node) { node.setData({ ...this.modalRow }); this.gridApi.refreshCells({ rowNodes: [node], force: true }); }
+    }
+
+    this.selectedEntry = null;
+    this.selectedEntryOriginalValue = null;
+    this.selectedEntryHistorial = [];
+    this.entryComentario = '';
+    this.onInputChange();
+
+    // Si resta = 0, preguntar por bloqueo
+    if (this.modalRow.resta === 0 && !this.modalRow.locked) {
+      this.showLockPrompt = true;
+    }
+  }
+
+  cancelEntry() {
+    if (this.selectedEntry) {
+      this.selectedEntry.inputValue = this.selectedEntryOriginalValue;
+    }
+    this.selectedEntry = null;
+    this.selectedEntryOriginalValue = null;
+    this.selectedEntryHistorial = [];
+    this.entryComentario = '';
+    this.onInputChange();
+  }
+
+  async confirmLock() {
+    await this.onLockChange(true);
+    this.showLockPrompt = false;
+  }
+
+  dismissLock() {
+    this.showLockPrompt = false;
+  }
+
   closeModal() {
-    this.modalOpen = false;
-    this.modalRow  = null;
-    this.saving    = false;
-    this.modalEntries = [];
+    this.modalOpen              = false;
+    this.modalLocked            = false;
+    this.lockedViewMode         = false;
+    this.modalRow               = null;
+    this.saving                 = false;
+    this.modalEntries           = [];
+    this.selectedEntry          = null;
+    this.selectedEntryHistorial = [];
+    this.showLockPrompt         = false;
+  }
+
+  selectLockedEntry(entry: ModalEntry) {
+    if (this.selectedEntry === entry) {
+      this.selectedEntry          = null;
+      this.selectedEntryHistorial = [];
+      return;
+    }
+    this.selectedEntry          = entry;
+    this.selectedEntryHistorial = [];
+    if (entry.asignacion?.id) {
+      lastValueFrom(this.productionService.getMoliendaBoteHistorialByBote(entry.asignacion.id))
+        .then(h => this.selectedEntryHistorial = h ?? [])
+        .catch(() => {});
+    }
   }
 
   maxInput(entry: ModalEntry): number {
@@ -468,6 +881,29 @@ export class DetallesBoteFiltradoComponent {
   }
 
   // ── Helpers ───────────────────────────────────────────────────────────────
+
+  // Retorna el total "base" para visualización: si está en modo edición usa el valor previo guardado
+  baseMine(entry: ModalEntry): number {
+    if (!this.lockedViewMode && this.selectedEntry === entry) {
+      return Number(this.selectedEntryOriginalValue) || 0;
+    }
+    return Number(entry.inputValue) || 0;
+  }
+
+  disponible(entry: ModalEntry): number {
+    const mine = this.baseMine(entry) + (this.selectedEntry === entry ? Number(entry.inputValue) || 0 : 0);
+    return Math.max(0, entry.opt.volumen - entry.espacioUtilizadoExterno - mine);
+  }
+
+  fillPct(used: number, total: number): number {
+    if (!total) return 0;
+    return Math.min(100, Math.max(0, (used / total) * 100));
+  }
+
+  totalFillPct(entry: ModalEntry): number {
+    const used = entry.espacioUtilizadoExterno + (Number(entry.inputValue) || 0);
+    return this.fillPct(used, entry.opt.volumen);
+  }
 
   private sortRows() {
     this.rowData.sort((a, b) => {
