@@ -230,15 +230,15 @@ export class PmoActividadesComponent implements OnInit {
 
   // GridOptions definidas como propiedades fijas (no inline en HTML)
   readonly compLeftGridOpts: GridOptions = {
-    rowHeight: 32, headerHeight: 36, animateRows: false,
+    rowHeight: 28, headerHeight: 30, animateRows: false,
     rowSelection: 'single' as any,
     suppressCellFocus: false,
-    defaultColDef: { sortable: true, resizable: true, filter: true },
+    defaultColDef: { sortable: true, resizable: true, filter: true, cellStyle: { fontSize: '11px' } },
   };
 
   readonly compRightGridOpts: GridOptions = {
-    rowHeight: 36, headerHeight: 36, animateRows: false,
-    defaultColDef: { resizable: true },
+    rowHeight: 28, headerHeight: 30, animateRows: false,
+    defaultColDef: { resizable: true, cellStyle: { fontSize: '11px' } },
   };
 
   // ColDefs izquierda — fijas, se crean una sola vez
@@ -252,9 +252,9 @@ export class PmoActividadesComponent implements OnInit {
       valueFormatter: (p: any) => p.value != null ? Number(p.value).toLocaleString('es-MX', { minimumFractionDigits: 2 }) : '' },
     { field: 'costDLL',     headerName: 'Costo USD',  width: 110, type: 'numericColumn',
       valueFormatter: (p: any) => p.value != null ? Number(p.value).toLocaleString('en-US', { minimumFractionDigits: 2 }) : '' },
-    { field: 'startDate',   headerName: 'Inicio',     width: 100,
+    { field: 'startDate',   headerName: 'Inicio',     width: 120,
       valueFormatter: (p: any) => p.value ? String(p.value).split('T')[0] : '' },
-    { field: 'endDate',     headerName: 'Fin',        width: 100,
+    { field: 'endDate',     headerName: 'Fin',        width: 120,
       valueFormatter: (p: any) => p.value ? String(p.value).split('T')[0] : '' },
     { field: 'ponderado',   headerName: 'Pond. %',    width: 90,  type: 'numericColumn',
       valueFormatter: (p: any) => p.value != null ? Number(p.value).toFixed(2) + '%' : '' },
@@ -282,14 +282,14 @@ export class PmoActividadesComponent implements OnInit {
       valueFormatter: (p: any) => !p.data?.exists ? '—' : (p.value != null ? Number(p.value).toLocaleString('en-US', { minimumFractionDigits: 2 }) : '—'),
       cellStyle: (p: any) => !p.data?.exists ? { background: '#f8d7da' } :
         this.compDiffStyle(p.value, this.compSelectedRow?.costDLL, 'number') },
-    { field: 'startDate',   headerName: 'Inicio', width: 100,
+    { field: 'startDate',   headerName: 'Inicio', width: 120,
       valueFormatter: (p: any) => !p.data?.exists ? '—' : (p.value ? String(p.value).split('T')[0] : '—'),
-      cellStyle: (p: any) => !p.data?.exists ? { background: '#f8d7da' } :
-        this.compDiffStyle(p.value, this.compSelectedRow?.startDate ? String(this.compSelectedRow.startDate).split('T')[0] : null, 'date') },
-    { field: 'endDate',     headerName: 'Fin', width: 100,
+      cellStyle: (p: any) => !p.data?.exists ? { background: '#f8d7da', fontSize: '11px' } :
+        { ...this.compDiffStyle(p.value, this.compSelectedRow?.startDate ? String(this.compSelectedRow.startDate).split('T')[0] : null, 'date'), fontSize: '11px' } },
+    { field: 'endDate',     headerName: 'Fin', width: 120,
       valueFormatter: (p: any) => !p.data?.exists ? '—' : (p.value ? String(p.value).split('T')[0] : '—'),
-      cellStyle: (p: any) => !p.data?.exists ? { background: '#f8d7da' } :
-        this.compDiffStyle(p.value, this.compSelectedRow?.endDate ? String(this.compSelectedRow.endDate).split('T')[0] : null, 'date') },
+      cellStyle: (p: any) => !p.data?.exists ? { background: '#f8d7da', fontSize: '11px' } :
+        { ...this.compDiffStyle(p.value, this.compSelectedRow?.endDate ? String(this.compSelectedRow.endDate).split('T')[0] : null, 'date'), fontSize: '11px' } },
     { field: 'ponderado',   headerName: 'Pond. %', width: 90, type: 'numericColumn',
       valueFormatter: (p: any) => !p.data?.exists ? '—' : (p.value != null ? Number(p.value).toFixed(2) + '%' : '—'),
       cellStyle: (p: any) => !p.data?.exists ? { background: '#f8d7da' } :

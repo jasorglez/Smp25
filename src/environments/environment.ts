@@ -85,5 +85,5 @@ export const environment = {
     // publicKey: 'TEST-4399133a-4676-42a2-ab85-d946370bf96a',
   },
 
-  version: '7.58 (01 Junio 2026) fix(reporte): acumulado y programado por convenio correcto',
+  version: '7.59 (01 Junio 2026) fix(comparacion): font small y fechas mas anchas',
 };
