@@ -1175,6 +1175,7 @@ export class AdvancesComponent implements OnInit, OnChanges {
         physicalAdvanced:   this.totalPhysicalAdvanceHoy,
         accumulateProgram:  newAccumPrg,
         accumulatePhysical: newAccumFis,
+        idConvenio:         this.idConvention ?? 0,
         ...(isPmo
           ? { idProject: this.idProject, type: 'Project' }
           : { idContract: this.curretnContractSelected, type: 'Contract' }),
