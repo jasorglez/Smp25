@@ -140,8 +140,13 @@ export class PmoReporteSeguimientoComponent {
   async loadVersions(): Promise<void> {
     this.loadingVersions = true;
     try {
+      // Igual que Avances: buscar contractId del proyecto, si existe usar 'Contract', si no 'Project'
+      const contractId = this.resolveContractId(this.selectedProjectId);
+      const scopeType  = contractId ? 'Contract' : 'Project';
+      const scopeId    = contractId ?? this.selectedProjectId;
+
       const res: any = await lastValueFrom(
-        this._conventions.getConventionsByContractOrProject('Project', this.selectedProjectId)
+        this._conventions.getConventionsByContractOrProject(scopeType, scopeId)
       ).catch(() => []);
       this.versions = Array.isArray(res?.data) ? res.data : (Array.isArray(res) ? res : []);
       // Auto-seleccionar si solo hay una versión
@@ -151,6 +156,22 @@ export class PmoReporteSeguimientoComponent {
     } finally {
       this.loadingVersions = false;
     }
+  }
+
+  private resolveContractId(projectId: number | null): number | null {
+    if (!projectId) return null;
+    const project = this.projects.find((p: any) => Number(p.id ?? p.idProject) === Number(projectId));
+    const candidates = [
+      project?.idContrato, project?.id_contrato,
+      project?.idContract, project?.id_contract,
+      project?.contractId, project?.contract_id,
+      project?.selectedContract, project?.idc,
+    ];
+    for (const c of candidates) {
+      const n = Number(c);
+      if (!isNaN(n) && n > 0) return n;
+    }
+    return null;
   }
 
   onVersionChange(): void {
@@ -331,7 +352,7 @@ export class PmoReporteSeguimientoComponent {
 
       this.report = this.buildReportObj({
         logo1: root.picture ?? '', logo2: root.picture2 ?? '',
-        companyName: root.name ?? '', projectName: this.getProjectName(),
+        companyName: root.name ?? '', projectName: this.getProjectName(), versionName: this.getVersionName(),
         fechaCorte: cut, fechaInicio: projStart, fechaFin: projEnd,
         progAnterior: progPrev, progActual, progAcumulado: progAcum,
         realAnterior: realPrev, realActual, realAcumulado: realAcum,
