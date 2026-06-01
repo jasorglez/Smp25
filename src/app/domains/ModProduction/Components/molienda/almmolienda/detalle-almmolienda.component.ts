@@ -15,6 +15,8 @@ import { CaracteristicasEntradaService } from '../../../../../services/caracteri
 import { IntandoutDocumentsService } from 'app/services/intandoutDocuments.service';
 import { EntradaDocumentsOverlayService } from 'app/services/entrada-documents-overlay.service';
 import { alerts } from 'app/helpers/alerts';
+import { PrefixSetupService } from 'app/services/prefix-setup.service';
+import { Router } from '@angular/router';
 import { DetailEntradaDocumentsComponent } from './detail-entrada-documents/detail-entrada-documents.component';
 import { CustomOcTooltipComponent } from './custom-oc-tooltip.component';
 
@@ -108,7 +110,7 @@ interface ReqOption {
               Entradas — {{ selectedOcRow.folio }}
             </div>
             <div style="display: flex; gap: 4px; flex-shrink: 0;">
-              <button *ngIf="selectedOcRow?.type !== 'CR'" class="btn btn-sm btn-success" (click)="addEntrada()" [disabled]="!nivel4GridApi || selectedOcRow?.close === true || selectedMultiEntregaIsClosed" title="Agregar entrada" style="padding: 2px 8px; font-size: 0.7rem;">
+              <button *ngIf="selectedOcRow?.type !== 'CR' && !selectedOcMultiRow" class="btn btn-sm btn-success" (click)="addEntrada()" [disabled]="!nivel4GridApi || selectedOcRow?.close === true || selectedMultiEntregaIsClosed" title="Agregar entrada" style="padding: 2px 8px; font-size: 0.7rem;">
                 <i class="bi bi-plus-lg" style="margin-right: 2px; font-size: 0.7rem;"></i>Agregar
               </button>
               <button class="btn btn-sm btn-primary position-relative" (click)="saveEntradas()" [disabled]="!(hasUnsavedChangesEntradas || hasUnsavedChangesCaracteristicas) || selectedOcRow?.close === true || selectedMultiEntregaIsClosed" title="Guardar cambios" style="padding: 2px 8px; font-size: 0.7rem;">
@@ -186,6 +188,11 @@ export class DetalleMoliendaComponent {
   private caracteristicasService = inject(CaracteristicasEntradaService);
   private intandoutDocumentsService = inject(IntandoutDocumentsService);
   private entradaDocumentsOverlayService = inject(EntradaDocumentsOverlayService);
+  private prefixSetupService = inject(PrefixSetupService);
+  private router = inject(Router);
+  // Prefijo "Identificador Entregas" de la sucursal (config Órdenes de Compra). Se usa
+  // para armar el Folio de entrega: {folioOC}-{prefixEntrega}{N}. Vacío = sin sufijo.
+  private prefixEntrega = '';
 
   private internalParams: any;
   private gridApi!: GridApi;
@@ -323,6 +330,10 @@ export class DetalleMoliendaComponent {
       // Espejo del mismo cálculo de la tabla "Ítems de OC-…" en purchaseorderdelison:
       // planned = diasCondicionCompra; real = entregasCount; muestra delta cuando hay entregas.
       valueFormatter: (p: any) => {
+        // SIN LÍMITE: no hay "planeado"; muestra el conteo real de entradas (filas del Nivel 4).
+        if (String(p.data?.tipoOc ?? '').toUpperCase() === 'COMPRA AUTORIZADA SIN LIMITE') {
+          return String(Number(p.data?.entradasCount ?? 0));
+        }
         const planned = Number(p.data?.diasCondicionCompra ?? 0);
         const real = Number(p.data?.entregasCount ?? 0);
         if (real === 0) return String(planned);
@@ -503,25 +514,43 @@ export class DetalleMoliendaComponent {
 
         if (confirm.isConfirmed) {
           try {
-            const ocMaster: any = await lastValueFrom(this.ocAndReqsService.getDetailedReq(params.data.id));
-            if (ocMaster) {
-              ocMaster.close = true;
-              await lastValueFrom(this.ocAndReqsService.updateOcAndReq(params.data.id, ocMaster));
-
-              // Si es la OC actualmente seleccionada, refrescamos niveles 4 y 5 para bloquear edición
-              if (this.selectedOcRow === params.data) {
-                if (this.nivel4GridApi) this.nivel4GridApi.refreshCells({ force: true });
-                if (this.nivel5GridApi) this.nivel5GridApi.refreshCells({ force: true });
-              }
-
-              // Refrescar la fila actual para que la columna Folio muestre el candado y el color de fondo inmediatamente
-              params.api.refreshCells({ rowNodes: [params.node], force: true });
-
-              alerts.reqSuccessToast('Éxito', `La OC ${params.data.folio} ha sido cerrada.`);
+            // CIERRE POR ARTÍCULO (no por OC): el artículo de 1 entrega se cierra creando/cerrando
+            // SU entrega en entregas_oc (igual que multi-entrega), para NO bloquear los demás
+            // artículos de la misma OC. ocandreq.close ya NO se toca aquí.
+            const idDetail = Number(params.data.idDetail);
+            const existing: any = await lastValueFrom(this.entregaOcService.getByDetail(idDetail)).catch(() => []);
+            const ent = Array.isArray(existing) && existing.length > 0 ? existing[0] : null;
+            if (ent && ent.id) {
+              await lastValueFrom(this.entregaOcService.update(ent.id, { ...ent, close: true }));
+            } else {
+              // FechaEntrega en backend es DateOnly → enviar 'yyyy-MM-dd' (no datetime) para evitar 400.
+              const fechaEntregaIso = params.data.fechaXEntrega
+                ? String(params.data.fechaXEntrega).substring(0, 10)
+                : null;
+              await lastValueFrom(this.entregaOcService.create({
+                idDetailsreqoc: idDetail,
+                fechaEntrega: fechaEntregaIso,
+                cantidadRecibir: params.data.cantidad ?? null,
+                notaFactura: null,
+                totalEntrega: null,
+                fechaEntradaAlmacen: null,
+                close: true,
+              } as any));
             }
+
+            params.data.close = true;
+
+            // Si es la OC/artículo actualmente seleccionado, refrescar niveles 4 y 5 para bloquear edición
+            if (this.selectedOcRow === params.data) {
+              if (this.nivel4GridApi) this.nivel4GridApi.refreshCells({ force: true });
+              if (this.nivel5GridApi) this.nivel5GridApi.refreshCells({ force: true });
+            }
+            params.api.refreshCells({ rowNodes: [params.node], force: true });
+
+            alerts.reqSuccessToast('Éxito', `El artículo de la OC ${params.data.folio} ha sido cerrado.`);
           } catch (error) {
-            console.error('Error al cerrar OC:', error);
-            alerts.reqErrorToast('Error', 'Ocurrió un error al intentar cerrar la OC.');
+            console.error('Error al cerrar el artículo:', error);
+            alerts.reqErrorToast('Error', 'Ocurrió un error al intentar cerrar el artículo.');
             params.data.close = false;
             params.api.refreshCells({ rowNodes: [params.node], columns: ['close'], force: true });
           }
@@ -548,8 +577,8 @@ export class DetalleMoliendaComponent {
   // ── Nivel 4 (múltiples entregas): Detalle de entregas (solo lectura) ──
   multiEntregasColDefs: ColDef[] = [
     {
-      headerName: '#',
-      width: 45,
+      headerName: '# Entrega',
+      width: 80,
       valueGetter: (p) => (p.node?.rowIndex ?? 0) + 1,
       cellStyle: { backgroundColor: '#f8f9fa', fontWeight: 'bold' },
     },
@@ -559,25 +588,13 @@ export class DetalleMoliendaComponent {
       width: 130,
       valueFormatter: (p) => this.formatFechaDmy(p.value),
     },
+    { field: 'folioEntrega', headerName: 'Folio entrega', width: 180, editable: false, cellStyle: { color: '#0d47a1', fontWeight: '600' } },
     {
       field: 'cantidadRecibir',
       headerName: 'Cantidad a Recibir',
       width: 150,
       type: 'numericColumn',
       cellStyle: { backgroundColor: '#c8e6c9', color: '#1b5e20', fontWeight: '600', cursor: 'pointer' },
-    },
-    {
-      field: 'totalEntrega',
-      headerName: 'Total x Entrega',
-      width: 140,
-      type: 'numericColumn',
-      cellStyle: { backgroundColor: '#eeeeee', color: '#424242' },
-      valueFormatter: (p) => {
-        const n = Number(p.value);
-        return Number.isFinite(n) && n > 0
-          ? n.toLocaleString('es-MX', { style: 'currency', currency: 'MXN', minimumFractionDigits: 2 })
-          : '';
-      },
     },
     {
       field: 'notaFactura',
@@ -605,8 +622,8 @@ export class DetalleMoliendaComponent {
     },
     {
       field: 'close',
-      headerName: 'Cerrado',
-      width: 90,
+      headerName: 'Cerrado Entrega',
+      width: 130,
       editable: false,
       cellRenderer: (params: any) => {
         const rowIndex = params.node?.rowIndex ?? 0;
@@ -857,8 +874,8 @@ export class DetalleMoliendaComponent {
     },
     {
       field: 'pago',
-      headerName: 'Pago',
-      width: 110,
+      headerName: 'Total x entrega',
+      width: 130,
       type: 'numericColumn',
       valueGetter: (params) => {
         const qty = Number(params.data?.cantidadEntrada) || 0;
@@ -965,8 +982,11 @@ export class DetalleMoliendaComponent {
       const selectedRows = event.api.getSelectedRows();
       this.selectedEntradaRow = selectedRows.length > 0 ? selectedRows[0] : null;
     },
-    onCellValueChanged: () => {
+    onCellValueChanged: (event: any) => {
       this.hasUnsavedChangesEntradas = true;
+      // Marca la fila como modificada para que saveEntradas la incluya en el payload.
+      // Cubre columnas con handler propio que no pasan por onEntradaCellValueChanged (close, liberacion).
+      if (event?.data && !event.data.__isNew) event.data.__modified = true;
     },
     rowClassRules: {
       'new-row-highlight': (p: any) => !!p.data?.__isNew,
@@ -1043,6 +1063,12 @@ export class DetalleMoliendaComponent {
           }
         },
         error: () => { this.ivaPercent = 0; }
+      });
+
+      // Prefijo "Identificador Entregas" de la sucursal (para el Folio de entrega).
+      this.prefixSetupService.getPrefixSetup('branch', Number(idBranchIva)).subscribe({
+        next: (ps: any) => { this.prefixEntrega = ps?.prefixEntrega || ''; },
+        error: () => { this.prefixEntrega = ''; }
       });
     }
 
@@ -1310,6 +1336,8 @@ export class DetalleMoliendaComponent {
         pago: e.pago ?? 0,
         fechaPago: e.fechaPago ? this.isoToLocalDate(String(e.fechaPago)) : null,
         notaFactura: e.notaFactura ?? '',
+        // Folio de entrega: stored si existe; si no, se calcula para mostrar (single-entrega → N=1).
+        folioEntrega: (e.folioEntrega && String(e.folioEntrega).trim()) ? e.folioEntrega : this.buildFolioEntrega(1),
         pdfCount: 0,
         usuario: e.usuario ?? '',
         liberacion: e.liberacion ?? false,
@@ -1363,12 +1391,36 @@ export class DetalleMoliendaComponent {
         const isSinLimite = String(row?.tipoOc ?? '').toUpperCase() === 'COMPRA AUTORIZADA SIN LIMITE';
         this.nivel4GridApi.setColumnVisible('close', isSinLimite);
       }
+      // Compra Rápida: posicionar el cursor en "Fecha recepción" de la fila auto-generada.
+      if (row?.type === 'CR') this.focusNuevaEntradaFecha();
     } catch (err) {
       console.error('Error cargando entradas:', err);
     }
   }
 
+  /**
+   * Posiciona el cursor y deja en edición la celda "Fecha recepción" de la fila auto-generada.
+   * Con cuidado: solo actúa si la primera fila es la fila NUEVA (__isNew) y nada está cerrado.
+   */
+  private focusNuevaEntradaFecha(): void {
+    setTimeout(() => {
+      if (!this.nivel4GridApi || this.nivel4GridApi.isDestroyed()) return;
+      if (this.selectedOcRow?.close === true || this.selectedMultiEntregaIsClosed) return;
+      const firstNode = this.nivel4GridApi.getDisplayedRowAtIndex(0);
+      if (!firstNode?.data?.__isNew) return;
+      this.nivel4GridApi.startEditingCell({ rowIndex: 0, colKey: 'fechaRecepcion' });
+    }, 60);
+  }
+
   /** Fila vacía por default para una entrada de Compra Rápida (fecha = hoy). */
+  /** Arma el Folio de entrega: {folioOC}-{prefixEntrega}{N}. Vacío si es Compra Rápida,
+   *  no hay prefijo configurado o no hay folio de OC. N = número de entrega (single = 1). */
+  private buildFolioEntrega(n: number): string {
+    const folioOc = this.selectedOcRow?.folio ?? '';
+    if (this.selectedOcRow?.type === 'CR' || !this.prefixEntrega || !folioOc) return '';
+    return `${folioOc}-${this.prefixEntrega}${n}`;
+  }
+
   private makeBlankCrEntradaRow(): any {
     return {
       idEntrada: null,
@@ -1399,6 +1451,8 @@ export class DetalleMoliendaComponent {
     try {
       const idMaterial = this.internalParams?.data?.idMaterial;
       const idEntrega  = entregaRow?.id;
+      // N de entrega = posición de esta entrega (1-based) en multiEntregasData. Fallback = 1.
+      const nEntrega = Math.max(1, this.multiEntregasData.indexOf(entregaRow) + 1);
 
       const entradas = idEntrega && idMaterial
         ? await lastValueFrom(this.entradaService.getByEntregaAndMaterial(idEntrega, idMaterial))
@@ -1415,6 +1469,8 @@ export class DetalleMoliendaComponent {
         pago: e.pago ?? 0,
         fechaPago: e.fechaPago ? this.isoToLocalDate(String(e.fechaPago)) : null,
         notaFactura: e.notaFactura ?? '',
+        // Folio de entrega: stored si existe; si no, se calcula con el N de esta entrega.
+        folioEntrega: (e.folioEntrega && String(e.folioEntrega).trim()) ? e.folioEntrega : this.buildFolioEntrega(nEntrega),
         pdfCount: 0,
         usuario: e.usuario ?? '',
         liberacion: e.liberacion ?? false,
@@ -1452,12 +1508,24 @@ export class DetalleMoliendaComponent {
       }));
 
       this.originalCascadeEntradaData = JSON.parse(JSON.stringify(this.cascadeEntradaData));
+
+      // Multi-entrega: cada entrega = 1 recepción. Si no hay entrada registrada, generar
+      // 1 fila por default (fecha = la de la entrega). Si ya existe, se muestra esa.
+      if (this.cascadeEntradaData.length === 0) {
+        const blank = this.makeBlankCrEntradaRow();
+        if (entregaRow?.fechaEntrega) blank.fechaRecepcion = this.isoToLocalDate(String(entregaRow.fechaEntrega));
+        blank.folioEntrega = this.buildFolioEntrega(nEntrega);
+        this.cascadeEntradaData = [blank];
+      }
+
       this.syncSelectedOcRestaFromEntradas();
       if (this.nivel4GridApi && !this.nivel4GridApi.isDestroyed()) {
         this.nivel4GridApi.setGridOption('rowData', this.cascadeEntradaData);
         // En multi-entregas no aplica el cierre por entrada → ocultar la columna.
         this.nivel4GridApi.setColumnVisible('close', false);
       }
+      // Nivel 5 multi-entrega: posicionar el cursor en "Fecha recepción" de la fila auto-generada.
+      this.focusNuevaEntradaFecha();
     } catch (err) {
       console.error('Error cargando entradas por entrega:', err);
     }
@@ -1530,13 +1598,18 @@ export class DetalleMoliendaComponent {
     this.entregaOcService.getByDetail(idDetail).subscribe({
       next: (saved) => {
         const list = Array.isArray(saved) ? saved : [];
-        this.multiEntregasData = list.map(s => ({
+        // Para armar el Folio de entrega cuando la entrega aún no tiene entrada vinculada:
+        // {folioOC}-{prefijo}{N}. Se sobreescribe más abajo con el folio real de la entrada si existe.
+        const folioOc = ocRow?.folio ?? '';
+        const canBuildFolio = ocRow?.type !== 'CR' && !!this.prefixEntrega && !!folioOc;
+        this.multiEntregasData = list.map((s, idx) => ({
           id: s.id ?? null,
           idDetailsreqoc: s.idDetailsreqoc,
           fechaEntrega: s.fechaEntrega ?? '',
           cantidadRecibir: s.cantidadRecibir ?? null,
           notaFactura: s.notaFactura ?? '',
           totalEntrega: s.totalEntrega ?? null,
+          folioEntrega: canBuildFolio ? `${folioOc}-${this.prefixEntrega}${idx + 1}` : '',
           fechaEntradaAlmacen: s.fechaEntradaAlmacen ?? '',
           close: s.close ?? false,
         }));
@@ -1566,6 +1639,9 @@ export class DetalleMoliendaComponent {
                   const iso = String(conFecha.fechaRecepcion).match(/^(\d{4})-(\d{2})-(\d{2})/);
                   if (iso) entregaRow.fechaEntradaAlmacen = `${iso[1]}-${iso[2]}-${iso[3]}`;
                 }
+                // Folio de entrega real: el de la entrada vinculada (entradas_molienda.folio_entrega).
+                const conFolio = group.find((e: any) => e.folioEntrega && String(e.folioEntrega).trim());
+                if (conFolio) entregaRow.folioEntrega = conFolio.folioEntrega;
                 // Resta: cantidadRecibir - suma de cantidadEntrada
                 const sumRecibido = group.reduce((acc: number, e: any) => acc + Number(e.cantidadEntrada ?? 0), 0);
                 entregaRow.resta = Number(entregaRow.cantidadRecibir ?? 0) - sumRecibido;
@@ -1811,18 +1887,22 @@ export class DetalleMoliendaComponent {
             ? await lastValueFrom(this.entradaService.getByOcAndMaterial(oc.id, idMaterial))
             : await lastValueFrom(this.entradaService.getByOc(oc.id));
 
-          const sumaEntradas = (Array.isArray(entradas) ? entradas : [])
+          const arr = Array.isArray(entradas) ? entradas : [];
+          const sumaEntradas = arr
             .reduce((acc: number, entrada: any) => acc + Number(entrada?.cantidadEntrada ?? 0), 0);
 
           return {
             ...oc,
             resta: Number(oc?.cantidad ?? 0) - sumaEntradas,
+            // Conteo real de entradas (usado por "Cantidad Entregas" en OCs SIN LÍMITE).
+            entradasCount: arr.length,
           };
         } catch (error) {
           console.error(`Error cargando entradas para la OC ${oc?.id}:`, error);
           return {
             ...oc,
             resta: Number(oc?.cantidad ?? 0),
+            entradasCount: 0,
           };
         }
       })
@@ -1952,6 +2032,11 @@ export class DetalleMoliendaComponent {
       ? this.isoToLocalDate(String(this.selectedOcRow.fechaXEntrega))
       : new Date();
 
+    // N de entrega: índice de la entrega seleccionada (multi) o 1 (single-entrega).
+    const nEntrega = this.selectedMultiEntregaCaratRow
+      ? (this.multiEntregasData.indexOf(this.selectedMultiEntregaCaratRow) + 1)
+      : 1;
+
     const newRow = {
       idEntrada: null,
       fechaRecepcion: fechaDefault,
@@ -1962,6 +2047,7 @@ export class DetalleMoliendaComponent {
       pago: 0,
       fechaPago: null,
       notaFactura: '',
+      folioEntrega: this.buildFolioEntrega(nEntrega),
       pdfCount: 0,
       usuario: usuarioLogueado,
       comentario: '',
@@ -2003,6 +2089,27 @@ export class DetalleMoliendaComponent {
 
     const toSave = this.cascadeEntradaData.filter(r => r.__isNew || r.__modified);
 
+    // N de entrega para el Folio (misma entrega/single para todas las filas de esta vista).
+    const nEntregaSave = this.selectedMultiEntregaCaratRow
+      ? Math.max(1, this.multiEntregasData.indexOf(this.selectedMultiEntregaCaratRow) + 1)
+      : 1;
+
+    // Bloqueo: hay entrada(s) nueva(s) de OC pero la sucursal no tiene prefijo de entrega
+    // configurado → no se puede generar el Folio de entrega. Alertar + redirigir a configuración.
+    const requiereFolio = this.selectedOcRow?.type !== 'CR' && toSave.some(r => r.__isNew);
+    if (requiereFolio && !this.prefixEntrega) {
+      const res = await alerts.confirmAlert(
+        'Falta el identificador de entregas',
+        'No se puede generar el Folio de entrega porque esta sucursal no tiene configurado el "Identificador Entregas". ¿Quieres ir a configurarlo ahora?',
+        'warning',
+        'Ir a configuración'
+      );
+      if (res.isConfirmed) {
+        this.router.navigate(['/shoppingDelison/configuracion'], { queryParams: { tab: 'ordenes-compra' } });
+      }
+      return;
+    }
+
     try {
       const idMaterial = this.internalParams?.data?.idMaterial;
       for (const row of toSave) {
@@ -2021,11 +2128,17 @@ export class DetalleMoliendaComponent {
             ? `${row.fechaPago.getFullYear()}-${String(row.fechaPago.getMonth()+1).padStart(2,'0')}-${String(row.fechaPago.getDate()).padStart(2,'0')}`
             : (row.fechaPago ?? null),
           notaFactura: row.notaFactura ?? null,
+          // Folio de entrega: usa el ya generado; si falta (y hay prefijo), se regenera.
+          folioEntrega: (row.folioEntrega && String(row.folioEntrega).trim())
+            ? row.folioEntrega
+            : (this.buildFolioEntrega(nEntregaSave) || null),
           usuario: row.usuario ?? '',
           comentario: row.comentario ?? '',
           liberacion: row.liberacion ?? false,
           close: row.close ?? false,
         };
+        // Reflejar en la fila el folio efectivamente guardado (para el grid).
+        row.folioEntrega = payload.folioEntrega ?? '';
 
         if (row.__isNew) {
           const created = await lastValueFrom(this.entradaService.create(payload));
@@ -2071,9 +2184,9 @@ export class DetalleMoliendaComponent {
   }
 
   revertEntradas() {
-    // Compra Rápida: "Deshacer" NO revierte ni elimina la fila; solo LIMPIA sus casillas
-    // (vuelve la única fila a su estado inicial en blanco). Conserva id/idEntrada si ya existía.
-    if (this.selectedOcRow?.type === 'CR') {
+    // Compra Rápida y multi-entrega (Nivel 5, 1 recepción por entrega): "Deshacer" NO revierte ni
+    // elimina la fila; solo LIMPIA sus casillas (vuelve la única fila a blanco). Conserva id/idEntrada.
+    if (this.selectedOcRow?.type === 'CR' || this.selectedOcMultiRow) {
       const usuario = this.signalsService.getDisplayName()() || 'Usuario';
       this.cascadeEntradaData = this.cascadeEntradaData.map((r: any) => ({
         ...r,
@@ -2198,10 +2311,17 @@ export class DetalleMoliendaComponent {
     this.selectedOcRow.resta = cantidadOc - this.getSumaEntradasActual();
     this.syncSelectedReqRestaFromOcs();
 
+    // SIN LÍMITE: "Cantidad Entregas" = número de filas del grid de Entradas (Nivel 4), en vivo.
+    const cols = ['resta'];
+    if (String(this.selectedOcRow.tipoOc ?? '').toUpperCase() === 'COMPRA AUTORIZADA SIN LIMITE') {
+      this.selectedOcRow.entradasCount = this.cascadeEntradaData.length;
+      cols.push('entregasCount');
+    }
+
     if (this.cascadeOcGridApi && !this.cascadeOcGridApi.isDestroyed()) {
       this.cascadeOcGridApi.refreshCells({
         force: true,
-        columns: ['resta'],
+        columns: cols,
       });
     }
   }
@@ -2276,7 +2396,7 @@ export class DetalleMoliendaComponent {
 
     const confirm = await alerts.confirmAlert(
       'Cerrar Entrega',
-      `¿Está seguro que desea cerrar esta entrega? Esta acción no se puede deshacer.`,
+      `¿Está seguro de que quiere cerrar la entrega? Ya no se podrán hacer modificaciones posteriores.`,
       'question',
       'Sí, cerrar'
     );

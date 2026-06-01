@@ -46,6 +46,17 @@ export interface PendingPayment {
   notaFactura: string | null;
   fechaRecepcion: string | null;
   fechaPago: string | null;
+
+  // Condición de pago (catálogo) + estado de crédito/anticipo
+  calculoAnticipo: boolean;       // true = bloque ANTICIPO; false = bloque CRÉDITO
+  condicionCantidad: number;      // crédito → N días; anticipo → % del total
+  credito: boolean;               // entrada ya ingresada a crédito (pendiente de pago)
+  anticipoPagado: boolean;        // el dinero del anticipo de la OC ya se entregó
+  anticipoMonto: number;          // monto total del anticipo registrado
+  anticipoSaldo: number;          // anticipo_monto − Σ aplicado
+  metodoAnticipo: string | null;  // 'FIFO' | 'PRORRATEO' (null hasta la 1ª aplicación)
+  numProrrateo: number | null;    // entregas para prorrateo (si ya se eligió)
+  numEntregasPlan: number;        // entregas creadas (default de prorrateo)
 }
 
 export interface ConfirmPaymentPayload {
@@ -61,6 +72,10 @@ export interface ConfirmPaymentPayload {
   masIva: boolean;
   notaFactura?: string | null;
   cantidad: number;
+  // Aplicación de anticipo (bloque ANTICIPO)
+  anticipoAplicado?: number | null;
+  metodoAnticipo?: string | null;   // 'FIFO' | 'PRORRATEO'
+  numProrrateo?: number | null;
 }
 
 @Injectable({
@@ -116,6 +131,20 @@ export class GastosService {
   /** Guarda los campos editables de una entrada SIN concluir el pago (no libera). */
   savePending(payload: ConfirmPaymentPayload): Observable<any> {
     return this.http.post(`${environment.urlWarehouse}/Gastos/save`, payload, {
+      headers: this.trackingService.getHeaders()
+    });
+  }
+
+  /** Ingresa una entrada "a crédito": material disponible + pago pendiente a N días. */
+  activarCredito(idEntrada: number): Observable<any> {
+    return this.http.post(`${environment.urlWarehouse}/Gastos/activar-credito`, { idEntrada }, {
+      headers: this.trackingService.getHeaders()
+    });
+  }
+
+  /** Marca el anticipo de una OC como pagado (desde el grid de Órdenes de Compra). */
+  marcarAnticipo(idOc: number, monto: number, fecha?: string | null): Observable<any> {
+    return this.http.post(`${environment.urlWarehouse}/Gastos/marcar-anticipo`, { idOc, monto, fecha }, {
       headers: this.trackingService.getHeaders()
     });
   }

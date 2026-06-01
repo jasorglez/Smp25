@@ -348,3 +348,56 @@
     .kpi-row { grid-template-columns: repeat(2, 1fr); }
   }
 }
+
+/* ── Modal de aplicación de anticipo (FIFO vs Prorrateo) ───────────────────── */
+.ant-modal-backdrop {
+  position: fixed; inset: 0; background: rgba(0,0,0,.45);
+  display: flex; align-items: center; justify-content: center; z-index: 1080;
+}
+.ant-modal {
+  background: #fff; border-radius: 12px; width: min(760px, 94vw);
+  max-height: 90vh; overflow: auto; box-shadow: 0 12px 40px rgba(0,0,0,.3);
+}
+.ant-modal-header {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 14px 18px; font-size: 1.05rem; font-weight: 700; color: #fff;
+  background: linear-gradient(135deg, #1565c0, #1e88e5); border-radius: 12px 12px 0 0;
+}
+.ant-close { background: transparent; border: none; color: #fff; font-size: 1.1rem; cursor: pointer; }
+.ant-modal-sub { padding: 14px 18px 4px; }
+.ant-chips { display: flex; flex-wrap: wrap; gap: 8px; margin: 8px 0; }
+.ant-chip { background: #eef2f6; border-radius: 6px; padding: 4px 10px; font-size: .82rem; color: #37474f; }
+.ant-chip-saldo { background: #fff3e0; color: #e65100; }
+.ant-hint { font-size: .8rem; color: #607d8b; margin: 6px 0 0; }
+.ant-options { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; padding: 14px 18px; }
+@media (max-width: 640px) { .ant-options { grid-template-columns: 1fr; } }
+.ant-option {
+  border: 2px solid #e0e0e0; border-radius: 10px; padding: 12px; cursor: pointer;
+  transition: border-color .15s, background .15s; display: block;
+}
+.ant-option.ant-selected { border-color: #2e7d32; background: #f1f8e9; }
+.ant-option-head { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
+.ant-option-title { font-weight: 700; color: #263238; }
+.ant-option-body p { font-size: .8rem; color: #607d8b; margin: 0 0 8px; }
+.ant-row { display: flex; justify-content: space-between; align-items: center; font-size: .85rem; padding: 3px 0; }
+.ant-row.ant-muted { color: #78909c; font-size: .8rem; }
+.ant-row .ant-aplica { color: #2e7d32; font-weight: 700; }
+.ant-row .ant-neto { color: #1565c0; font-weight: 700; }
+.ant-nrow .ant-ninput { width: 70px; text-align: center; border: 1px solid #bdbdbd; border-radius: 5px; padding: 2px 6px; }
+.ant-modal-footer { display: flex; justify-content: flex-end; gap: 10px; padding: 12px 18px 18px; }
+
+/* ── Modal selector de proveedor para filas CR ─────────────────────────────── */
+.cr-prov-modal {
+  background: #fff; border-radius: 10px; width: min(380px, 94vw);
+  box-shadow: 0 8px 32px rgba(0,0,0,.28);
+}
+.cr-prov-header {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 12px 16px; font-size: 1rem; font-weight: 700; color: #fff;
+  background: linear-gradient(135deg, #1565c0, #1e88e5);
+  border-radius: 10px 10px 0 0;
+}
+
+/* ── Botones minimalistas de la columna Acción (Captura) ───────────────────── */
+.gx-pagar:hover   { background: rgba(46,125,50,.10) !important; }
+.gx-credito:hover { background: rgba(239,108,0,.10) !important; }

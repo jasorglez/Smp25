@@ -104,6 +104,39 @@
           </div>
         </div>
 
+        <!-- Prefijos OC (movidos desde Requisiciones; enlazados a la instancia de setupwarehouse) -->
+        <div class="oc-section" *ngIf="setupwarehouseRef">
+          <div class="oc-section-label">
+            <i class="bi bi-upc"></i>
+            Configuración de prefijos
+          </div>
+
+          <div class="oc-prefix-grid">
+            <div class="oc-prefix-card">
+              <div class="oc-prefix-head"><i class="bi bi-cart-check"></i><span>Órdenes de Compra</span></div>
+              <div class="oc-prefix-inputs">
+                <input type="text" [(ngModel)]="setupwarehouseRef.prefixOc" name="prefixOc" class="oc-prefix-input" placeholder="Prefijo" maxlength="7">
+              </div>
+              <small class="oc-prefix-hint">Ingresa el prefijo de la OC al registrarla</small>
+            </div>
+            <div class="oc-prefix-card">
+              <div class="oc-prefix-head"><i class="bi bi-truck"></i><span>OC - proveedor</span></div>
+              <div class="oc-prefix-inputs">
+                <input type="number" [(ngModel)]="setupwarehouseRef.consecutiveOcProveedor" name="consecutiveOcProveedor" class="oc-prefix-input" placeholder="Iniciales proveedor" min="1" max="5"
+                  (keydown)="$event.key === '-' || $event.key === '.' ? $event.preventDefault() : null">
+              </div>
+              <small class="oc-prefix-hint">Ingresa la cantidad de iniciales del proveedor al registrar una OC</small>
+            </div>
+            <div class="oc-prefix-card">
+              <div class="oc-prefix-head"><i class="bi bi-box-seam"></i><span>Identificador Entregas</span></div>
+              <div class="oc-prefix-inputs">
+                <input type="text" [(ngModel)]="setupwarehouseRef.prefixEntrega" name="prefixEntrega" class="oc-prefix-input" placeholder="Prefijo" maxlength="20">
+              </div>
+              <small class="oc-prefix-hint">Ingresa el prefijo para identificar las entregas</small>
+            </div>
+          </div>
+        </div>
+
         <div class="oc-actions">
           <button type="button" class="oc-btn oc-btn-ghost" (click)="cancelOc()">
             <i class="bi bi-x-lg"></i> Cancelar
@@ -143,6 +176,17 @@
       .oc-input::-webkit-inner-spin-button, .oc-input::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
       .oc-input:focus { border-color: #3b82f6; box-shadow: 0 0 0 3px rgba(59,130,246,0.12); background: #fff; }
       .oc-hint { display: flex; align-items: center; gap: 6px; margin-top: 10px; font-size: 12px; color: #dc2626; background: #fef2f2; border: 1px solid #fecaca; border-radius: 7px; padding: 7px 12px; }
+      .oc-prefix-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 14px; }
+      .oc-prefix-card { background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px; padding: 14px; transition: transform 0.18s ease, box-shadow 0.2s ease, border-color 0.2s ease; }
+      .oc-prefix-card:hover { transform: translateY(-2px); border-color: #c7d2fe; box-shadow: 0 6px 18px rgba(15,23,42,0.07); }
+      .oc-prefix-head { display: flex; align-items: center; gap: 8px; margin-bottom: 10px; font-size: 0.85rem; font-weight: 600; color: #1e293b; }
+      .oc-prefix-head i { color: #3b82f6; font-size: 1rem; }
+      .oc-prefix-inputs { display: flex; flex-direction: column; gap: 8px; }
+      .oc-prefix-input { width: 100%; padding: 9px 12px; font-size: 0.88rem; color: #1e293b; background: #fff; border: 1.5px solid #e2e8f0; border-radius: 10px; outline: none; transition: border-color 0.2s ease, box-shadow 0.2s ease; appearance: textfield; -moz-appearance: textfield; }
+      .oc-prefix-input:hover { border-color: #c7d2fe; }
+      .oc-prefix-input:focus { border-color: #3b82f6; box-shadow: 0 0 0 3px rgba(37,99,235,0.12); }
+      .oc-prefix-input::-webkit-inner-spin-button, .oc-prefix-input::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
+      .oc-prefix-hint { display: block; margin: 8px 0 0; font-size: 0.75rem; line-height: 1.3; color: #64748b; }
       .oc-actions { display: flex; justify-content: flex-end; gap: 10px; padding-top: 20px; border-top: 1px solid #f1f5f9; }
       .oc-btn { display: inline-flex; align-items: center; gap: 6px; padding: 8px 20px; border-radius: 8px; font-size: 13px; font-weight: 600; cursor: pointer; border: none; transition: all 0.18s; }
       .oc-btn-ghost { background: transparent; border: 1.5px solid #e2e8f0; color: #64748b; }

@@ -268,6 +268,7 @@ export class DetalleItemsProveedorComponent {
   private readonly NEW_PROVIDER_SENTINEL = -1;
   private rowsMissingProvider: any[] = [];
   private principalProviderIds = new Set<number>();
+  private inactiveProviders: { id: number; name: string; raw: any }[] = [];  // externos inactivos para validar duplicados / reactivar
 
   public AG_GRID_LOCALE_ES = AG_GRID_LOCALE_ES;
 
@@ -376,11 +377,15 @@ export class DetalleItemsProveedorComponent {
     try {
       const idRoot = this.signalsService.getRootSelectedBySidebar()();
       const allProviders: any = await this.customersService.getProvidersForGrid(idRoot).toPromise();
-      const filtered = (allProviders || []).filter((p: any) => {
-        const isExterno = p.typeIntOrExt === 'Externo';
-        const isActive = p.vigente === true || p.active === true || p.Vigente === true;
-        return isExterno && isActive;
-      });
+      const isActive = (p: any) => p.vigente === true || p.active === true || p.Vigente === true;
+      const externos = (allProviders || []).filter((p: any) => p.typeIntOrExt === 'Externo');
+      const filtered = externos.filter(isActive);
+      // Externos INACTIVOS → para detectar duplicados y ofrecer reactivar.
+      this.inactiveProviders = externos.filter((p: any) => !isActive(p)).map((p: any) => ({
+        id: p.id,
+        name: ((p.company ?? p.name ?? '').trim()) || ((p.nameContact ?? p.namecontact ?? p.Description ?? p.description ?? '').trim()) || `Proveedor ${p.id}`,
+        raw: p,
+      }));
       const active = filtered.map((p: any) => {
         const company = (p.company ?? p.name ?? '').trim();
         const contact = (p.nameContact ?? p.namecontact ?? p.Description ?? p.description ?? '').trim();
@@ -564,7 +569,7 @@ export class DetalleItemsProveedorComponent {
           row.codigoExterno = match.campo11 || '';
           row.compraMinima = match.minCompra || 0;
           row.costoUnitario = match.campo9 || 0;
-          row.costoTotal = (row.costoUnitario || 0) * (row.masIva ? (1 + this.ivaPercent / 100) : 1) * (row.cantidadConfirmada || 0);
+          row.costoTotal = (Math.round((row.costoUnitario || 0) * (row.masIva ? (1 + this.ivaPercent / 100) : 1) * 100) / 100) * (row.cantidadConfirmada || 0);
           row.proveedorXTablaId = match.id || 0;
           row.proveedorXTablaObj = match;
         } else {
@@ -693,6 +698,19 @@ export class DetalleItemsProveedorComponent {
       alerts.reqErrorToast('Compra Mín. requerida', `Los siguientes artículos no tienen compra mínima:\n${nombres}`);
       return;
     }
+    // Bloqueo duro: no se puede guardar con artículos de clase nueva sin clasificar (# interno NUPNPN).
+    const rowsSinClasificar = this.rowData.filter(
+      r => String(r?.numArticulo || '').toUpperCase().startsWith('NUPNPN')
+    );
+    if (rowsSinClasificar.length > 0) {
+      const nombres = rowsSinClasificar.map((r: any) => `• ${r.articulo}`).join('\n');
+      await alerts.basicAlert(
+        'Artículos sin clasificar',
+        `No puedes guardar: los siguientes artículos tienen clase nueva sin clasificar (# interno NUPNPN). Asigna su categoría antes de guardar:\n${nombres}`,
+        'warning'
+      );
+      return;
+    }
     this.savingChanges = true;
     try {
       await this.guardarClasificaciones();
@@ -735,17 +753,7 @@ export class DetalleItemsProveedorComponent {
       }
       await alerts.ocCotizSaved(this.savedCotizFolio);
 
-      // Aviso si quedaron artículos sin clasificar (# interno de articulo aún NUPNPN)
-      const hayClaseNueva = this.rowData.some(
-        r => String(r?.numArticulo || '').toUpperCase().startsWith('NUPNPN')
-      );
-      if (hayClaseNueva) {
-        await alerts.basicAlert(
-          'Artículos con clase nueva',
-          'Estás guardando artículos con clase nueva, por favor asigna la categoría adecuada lo más pronto posible.',
-          'warning'
-        );
-      }
+      // (El bloqueo de artículos sin clasificar NUPNPN ahora ocurre ANTES de guardar, en saveChanges.)
 
       const hasAuthorized = this.rowData.some(row => this.AUTHORIZED_TYPES.includes(row.typeOC));
       if (hasAuthorized) { this.savingChanges = false; await this.generateOC(); }
@@ -987,7 +995,7 @@ export class DetalleItemsProveedorComponent {
         id: item.id || 0, idSupplie: item.id_supplie || item.idSupplie || 0, recurrent: item.recurrent || 'Recurrente', active: item.active !== false, numArticulo: item.numarticle || item.numArticle || '', articulo: item.namearticle || item.description || item.nameArticle || '',
         codigoExterno: item.observation ?? '', proveedorXTablaId: 0, costoUnitario: item.price || 0, compraMinima: item.compraMinima ?? item.compraminima ?? 0, tiempoEntrega: parseInt(item.tiempoentrega ?? item.tiempoEntrega ?? '0') || 0,
         cantidadConfirmada: item.quantity || 0,
-        costoTotal: (item.masIva ?? false) ? (item.price || 0) * (1 + this.ivaPercent / 100) * (item.quantity || 0) : (item.total || 0),
+        costoTotal: (item.masIva ?? false) ? (Math.round((item.price || 0) * (1 + this.ivaPercent / 100) * 100) / 100) * (item.quantity || 0) : (item.total || 0),
         autorizado: item.autorizado || false, oc: '', typeOC: item.typeoc || item.typeOc || '', comment: item.comment || '',
         masIva: item.masIva ?? false
       }));
@@ -1039,7 +1047,7 @@ export class DetalleItemsProveedorComponent {
     this._colDefs = [
       { field: 'active', headerName: 'Activo', width: 120, cellRenderer: 'agCheckboxCellRenderer', cellEditor: 'agCheckboxCellEditor', editable: !this.ocGenerated },
       {
-        field: 'numArticulo', headerName: '# interno de articulo', width: 169, hide: true,
+        field: 'numArticulo', headerName: '# interno de articulo', width: 169,
         cellStyle: (p: any) => String(p.value || '').toUpperCase().startsWith('NUPNPN')
           ? { cursor: 'pointer', backgroundColor: '#fff9e6', textDecoration: 'underline', color: '#b8860b' }
           : null,
@@ -1114,13 +1122,17 @@ export class DetalleItemsProveedorComponent {
       { field: 'costoUnitario', headerName: 'Costo Unit.', width: 140, editable: !this.ocGenerated,
         valueFormatter: (params: any) => {
           if (!this.selectedProviderId) return '-';
-          return params.value ? `$${Number(params.value).toFixed(2)}` : '$0.00';
+          // Se muestra el costo CON IVA (round2) cuando la fila tiene + IVA; el original va en el tooltip.
+          const base = Number(params.value) || 0;
+          const shown = params.data?.masIva ? Math.round(base * (1 + this.ivaPercent / 100) * 100) / 100 : base;
+          return shown ? `$${shown.toFixed(2)}` : '$0.00';
         },
         valueSetter: (params: any) => {
           const val = parseFloat(params.newValue);
           if (isNaN(val) || val <= 0) { alerts.reqErrorToast('Costo inválido', 'El costo unitario debe ser mayor que cero'); return false; }
           params.data.costoUnitario = val;
-          params.data.costoTotal = val * (params.data.masIva ? (1 + this.ivaPercent / 100) : 1) * (params.data.cantidadConfirmada || 0);
+          const unit = params.data.masIva ? Math.round(val * (1 + this.ivaPercent / 100) * 100) / 100 : val;
+          params.data.costoTotal = unit * (params.data.cantidadConfirmada || 0);
           return true;
         } },
       { field: 'masIva', headerName: '+ IVA', width: 100, cellRenderer: 'agCheckboxCellRenderer', cellEditor: 'agCheckboxCellEditor', editable: !this.ocGenerated },
@@ -1172,9 +1184,8 @@ export class DetalleItemsProveedorComponent {
       if (event.colDef?.field === 'costoUnitario' && event.data?.masIva) {
         const cellEl = event.event?.target as HTMLElement;
         if (cellEl) {
-          const costo = event.data?.costoUnitario ?? 0;
-          const conIva = costo * (1 + this.ivaPercent / 100);
-          this.costoIvaTooltip.show(cellEl.getBoundingClientRect(), conIva);
+          // La columna muestra el costo CON IVA; el tooltip muestra el ORIGINAL sin IVA.
+          this.costoIvaTooltip.show(cellEl.getBoundingClientRect(), event.data?.costoUnitario ?? 0);
         }
       }
     },
@@ -1280,7 +1291,7 @@ export class DetalleItemsProveedorComponent {
     }
     this.hasUnsavedChanges = true;
     if (event.column.getColId() === 'costoUnitario' || event.column.getColId() === 'cantidadConfirmada' || event.column.getColId() === 'masIva') {
-      const row = event.data; row.costoTotal = (row.costoUnitario || 0) * (row.masIva ? (1 + this.ivaPercent / 100) : 1) * (row.cantidadConfirmada || 0);
+      const row = event.data; row.costoTotal = (Math.round((row.costoUnitario || 0) * (row.masIva ? (1 + this.ivaPercent / 100) : 1) * 100) / 100) * (row.cantidadConfirmada || 0);
       // Usar force: false para actualizar datos sin destruir el editor (evita perder el focus)
       this.gridApi.refreshCells({ rowNodes: [event.node], force: false });
     }
@@ -1330,6 +1341,54 @@ export class DetalleItemsProveedorComponent {
   async confirmNewProvider() {
     if (!this.newProvider.company.trim() && !this.newProvider.nameContact.trim()) {
       alerts.reqErrorToast('Requerido', 'Ingresa la compañía y/o el contacto principal');
+      return;
+    }
+
+    // Validación de duplicados: bloquear si ya existe un proveedor con el mismo nombre.
+    const norm = (s: string) => String(s || '').trim().toUpperCase().replace(/\s+/g, ' ');
+    const existentes = new Set(
+      this.providers
+        .filter(p => !p.__isHeader && p.id !== this.NEW_PROVIDER_SENTINEL)
+        .map(p => norm(p.description))
+    );
+    const companyN = norm(this.newProvider.company);
+    const contactN = norm(this.newProvider.nameContact);
+    if ((companyN && existentes.has(companyN)) || (contactN && existentes.has(contactN))) {
+      const dup = (companyN && existentes.has(companyN)) ? this.newProvider.company.trim() : this.newProvider.nameContact.trim();
+      alerts.basicAlert(
+        'Proveedor duplicado',
+        `Ya existe un proveedor registrado como "${dup}". No se puede registrar de nuevo; selecciónalo de la lista.`,
+        'warning'
+      );
+      return;   // mantiene el formulario abierto, no crea nada
+    }
+
+    // Duplicado entre INACTIVOS → ofrecer reactivar en vez de crear otro.
+    const inactivo = this.inactiveProviders.find(p => {
+      const n = norm(p.name);
+      return (companyN && n === companyN) || (contactN && n === contactN);
+    });
+    if (inactivo) {
+      const res = await alerts.confirmAlert(
+        'Proveedor inactivo',
+        `El proveedor "${inactivo.name}" ya está registrado pero está inactivo. ¿Te gustaría activarlo?`,
+        'question', 'Sí, activar'
+      );
+      if (!res.isConfirmed) return;   // no crea ni activa
+      this.savingProvider = true;
+      try {
+        // Reactivar PUT con el objeto que ya tenemos (no usar getCustomerById: GET /Customer/{id} da 404).
+        await lastValueFrom(this.customersService.updateCustomer(inactivo.id, { ...(inactivo.raw || {}), active: true, vigente: true }));
+        await this.loadProviders();
+        this.selectedProviderId = inactivo.id;
+        this.closeNewProviderOverlay();
+        alerts.reqSuccessToast('Reactivado', `Proveedor "${inactivo.name}" activado`);
+        await this.onProviderChange();
+      } catch {
+        alerts.reqErrorToast('Error', 'No se pudo activar el proveedor');
+      } finally {
+        this.savingProvider = false;
+      }
       return;
     }
 

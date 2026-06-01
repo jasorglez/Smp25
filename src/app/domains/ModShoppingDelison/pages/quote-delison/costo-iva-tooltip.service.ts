@@ -57,7 +57,7 @@ export class CostoIvaTooltipService {
     this.renderer.setStyle(label, 'color', 'rgba(255,255,255,0.8)');
     this.renderer.setStyle(label, 'font-weight', '600');
     this.renderer.setStyle(label, 'min-width', '100px');
-    this.renderer.appendChild(label, this.renderer.createText('Costo + IVA:'));
+    this.renderer.appendChild(label, this.renderer.createText('Original (sin IVA):'));
     this.renderer.appendChild(row, label);
 
     const value = this.renderer.createElement('span');

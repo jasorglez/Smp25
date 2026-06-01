@@ -7,8 +7,14 @@ import { lastValueFrom } from 'rxjs';
 import { GastosService, ExpenseReport, ExpenseReportCell, PendingPayment, ConfirmPaymentPayload } from 'app/services/gastos.service';
 import { SignalsService } from 'app/services/signals.service';
 import { SetupService } from 'app/services/setup.service';
+import { GridStatePersistenceService } from 'app/services/grid-state-persistence.service';
 import { StyledTooltipComponent } from 'app/shared/styled-tooltip/styled-tooltip.component';
+import { CustomersService } from 'app/services/customers.service';
+import { ProvidersService } from 'app/services/providers.service';
+import { SucursalByMaterialProveedorService } from 'app/services/sucursalByMaterialProveedor.service';
 import { alerts } from 'app/helpers/alerts';
+import { NgSelectModule } from '@ng-select/ng-select';
+import { CrProveedorEditorComponent } from './cr-proveedor-editor.component';
 import * as XLSX from 'xlsx';
 
 type Lens = 'PAGADO' | 'COMPROMETIDO';
@@ -20,7 +26,7 @@ interface PivotAxis { id: number; name: string; total: number; }
 @Component({
   selector: 'app-gastos',
   standalone: true,
-  imports: [CommonModule, FormsModule, AgGridModule],
+  imports: [CommonModule, FormsModule, AgGridModule, NgSelectModule, CrProveedorEditorComponent],
   templateUrl: './gastos.component.html',
   styleUrls: ['./gastos.component.scss'],
 })
@@ -28,6 +34,29 @@ export class GastosComponent {
   private gastosService = inject(GastosService);
   private signalsService = inject(SignalsService);
   private setupService = inject(SetupService);
+  private gridState = inject(GridStatePersistenceService);
+  private customersService = inject(CustomersService);
+  private providersService = inject(ProvidersService);
+  private sucursalByMaterialService = inject(SucursalByMaterialProveedorService);
+
+  // ── Dropdown de proveedor para filas CR ─────────────────────────────────────
+  private readonly NEW_PROVIDER_SENTINEL = -1;
+  principalProviderIds = new Set<number>();
+  crProviders: any[] = [];          // lista completa con headers (para el ng-select modal si se usa en otro lado)
+  crInactiveProviders: { id: number; name: string; raw: any }[] = [];  // externos inactivos (active=0) para validar duplicados / reactivar
+  // Lista plana de nombres para agRichSelectCellEditor (sin headers ni "+ Nuevo Proveedor").
+  get crProviderNames(): string[] {
+    return this.crProviders
+      .filter(p => !p.__isHeader && p.id !== this.NEW_PROVIDER_SENTINEL)
+      .map(p => p.description);
+  }
+  crProviderRow: any = null;        // fila CR actualmente editando proveedor
+  crProviderSelectedId: number | null = null;
+
+  // Persistencia de columnas (por usuario, en BD) — clave única de este grid.
+  private readonly CAPTURA_GRID_KEY = 'gastos-captura';
+  private capturaHasSavedState = false; // hay estado guardado → no autoSize
+  private capturaStateLoaded = false;   // ya cargó/aplicó → habilita guardar
 
   // IVA % por sucursal (mismo origen que la cotización: setup de almacén por branch)
   private ivaByBranch = new Map<number, number>();
@@ -73,7 +102,7 @@ export class GastosComponent {
       cellStyle: { backgroundColor: '#fffde7' },
       valueFormatter: (p: any) => this.fmtDate(p.value),
     },
-    { field: 'folio', headerName: 'Folio', width: 150 },
+    { field: 'folio', headerName: 'Folio entrega', width: 170 },
     {
       headerName: 'Tipo Req', width: 160,
       valueGetter: (p: any) => p.data?.docType === 'CR' ? 'Compra Rápida' : (p.data?.tipoOc || '—'),
@@ -81,9 +110,42 @@ export class GastosComponent {
     { field: 'articulo', headerName: 'Artículo', width: 150 },
     { field: 'numArticulo', headerName: 'Num. Articulo', width: 130 },
     {
-      field: 'proveedor', headerName: 'Proveedor', width: 150,
+      field: 'proveedor', headerName: 'Proveedor', width: 170,
       editable: (p: any) => p.data?.docType === 'CR',
-      cellStyle: (p: any) => p.data?.docType === 'CR' ? { backgroundColor: '#fffde7' } : null,
+      singleClickEdit: true,
+      cellEditor: 'crProveedorEditor',
+      cellEditorPopup: true,
+      cellEditorParams: (params: any) => ({
+        providers: this.crProviders,
+        inactiveProviders: this.crInactiveProviders,
+        // Validación al seleccionar proveedor existente (Sin Código Externo + Sucursal).
+        // Retorna el nombre si pasa, null si el usuario cancela → el editor no cierra.
+        onProviderSelected: (id: number, name: string) =>
+          this.validateCrProvider(id, name, params?.data),
+        // Al crear un nuevo proveedor, recargar lista y marcar fila modificada.
+        onNewProviderCreated: (name: string) => {
+          if (params?.data) {
+            params.data.proveedor = name;
+            (params.data as any).__modified = true;
+            this.hasUnsavedCaptura = true;
+            this.capturaGridApi?.refreshCells({ force: true });
+          }
+          if (this.idCompany) this.loadCrProviders(this.idCompany);
+        },
+      }),
+      valueSetter: (params: any) => {
+        if (params.newValue == null) return false;
+        params.data.proveedor = params.newValue;
+        (params.data as any).__modified = true;
+        this.hasUnsavedCaptura = true;
+        return true;
+      },
+      cellStyle: (p: any) => p.data?.docType === 'CR' && !p.data?.proveedor
+        ? { backgroundColor: '#ffe0b2', fontStyle: 'italic', color: '#e65100' }
+        : (p.data?.docType === 'CR' ? { backgroundColor: '#fffde7' } : null),
+      cellRenderer: (p: any) => p.data?.docType === 'CR' && !p.data?.proveedor
+        ? '<span style="color:#e65100;font-style:italic;">Seleccionar proveedor ▾</span>'
+        : (p.value || ''),
     },
     {
       field: 'notaFactura', headerName: 'Nota / Factura', width: 140,
@@ -121,10 +183,26 @@ export class GastosComponent {
       valueFormatter: (p: any) => this.fmtDate(p.value),
     },
     {
-      headerName: 'Acción', width: 110, pinned: 'right', sortable: false, filter: false,
-      cellRenderer: () =>
-        `<button style="background:#2e7d32;color:#fff;border:none;border-radius:5px;padding:3px 12px;font-size:0.78rem;font-weight:600;cursor:pointer;">✓ Pagar</button>`,
-      onCellClicked: (p: any) => this.onPagar(p.data),
+      headerName: 'Acción', width: 150, pinned: 'right', sortable: false, filter: false,
+      cellRenderer: (p: any) => {
+        // Crédito: condición de crédito (calculoAnticipo=false) con N días > 0 y aún no ingresada a crédito.
+        const esCredito = p.data?.calculoAnticipo === false && Number(p.data?.condicionCantidad) > 0;
+        const yaCredito = p.data?.credito === true;
+        const ghost = 'background:none;border:none;padding:2px 6px;font-size:0.74rem;font-weight:500;cursor:pointer;border-radius:4px;';
+        const btnPagar = `<button class="gx-pagar" title="Pagar" style="${ghost}color:#2e7d32;">Pagar</button>`;
+        const btnCredito = (esCredito && !yaCredito)
+          ? `<button class="gx-credito" title="Ingresar a crédito" style="${ghost}color:#ef6c00;">Crédito</button>`
+          : '';
+        const venceLbl = yaCredito
+          ? `<span title="A crédito, pendiente de pago" style="font-size:0.68rem;color:#ef6c00;">vence ${this.fmtDate(this.computeVencimiento(p.data))}</span>`
+          : '';
+        return `<div style="display:flex;gap:2px;justify-content:center;align-items:center;height:100%;">${btnCredito}${btnPagar}${venceLbl}</div>`;
+      },
+      onCellClicked: (p: any) => {
+        const target = p.event?.target as HTMLElement;
+        if (target?.closest?.('.gx-credito')) { this.onCredito(p.data); return; }
+        if (target?.closest?.('.gx-pagar')) { this.onPagar(p.data); return; }
+      },
       cellStyle: { textAlign: 'center', cursor: 'pointer' },
     },
   ];
@@ -134,6 +212,7 @@ export class GastosComponent {
     rowHeight: 30,
     tooltipShowDelay: 300,
     defaultColDef: { resizable: true, sortable: true, filter: true },
+    components: { crProveedorEditor: CrProveedorEditorComponent },
     onCellValueChanged: (event: any) => {
       const field = event?.colDef?.field;
       const row = event?.data;
@@ -154,8 +233,21 @@ export class GastosComponent {
       }
       this.hasUnsavedCaptura = true;
     },
-    onFirstDataRendered: (params: any) => params.api.autoSizeAllColumns(),
+    // Respeta el ancho guardado: solo autoajusta si NO hay estado persistido.
+    onFirstDataRendered: (params: any) => { if (!this.capturaHasSavedState) params.api.autoSizeAllColumns(); },
+    // Persistencia de columnas (visibilidad + orden + ancho) por usuario en BD.
+    onColumnVisible: (e: any) => this.persistCapturaState(e),
+    onColumnMoved: (e: any) => this.persistCapturaState(e),
+    onColumnResized: (e: any) => this.persistCapturaState(e),
   };
+
+  // Guarda el columnState actual (con debounce en el servicio). Ignora eventos
+  // previos a la carga inicial y los pasos intermedios del redimensionado.
+  private persistCapturaState(e: any): void {
+    if (!this.capturaStateLoaded || !this.capturaGridApi) return;
+    if (e?.type === 'columnResized' && e.finished === false) return;
+    this.gridState.saveState(this.CAPTURA_GRID_KEY, this.capturaGridApi.getColumnState());
+  }
 
   constructor() {
     effect(() => {
@@ -164,6 +256,7 @@ export class GastosComponent {
         this.idCompany = idCompany;
         this.loadReport();
         this.loadPending();
+        this.loadCrProviders(idCompany);
       }
     });
   }
@@ -198,7 +291,7 @@ export class GastosComponent {
   historicoColDefs: ColDef[] = [
     { field: 'fechaPago', headerName: 'Fecha Pago', width: 120, filter: 'agDateColumnFilter', valueFormatter: (p: any) => this.fmtDate(p.value) },
     { field: 'branchName', headerName: 'Sucursal', width: 110 },
-    { field: 'folio', headerName: 'Folio', width: 150 },
+    { field: 'folio', headerName: 'Folio entrega', width: 170 },
     { headerName: 'Tipo Req', width: 160, valueGetter: (p: any) => p.data?.docType === 'CR' ? 'Compra Rápida' : (p.data?.tipoOc || '—') },
     { field: 'articulo', headerName: 'Artículo', width: 150 },
     { field: 'numArticulo', headerName: 'Num. Articulo', width: 130, hide: true },   // oculta solo en el histórico
@@ -336,6 +429,15 @@ export class GastosComponent {
   // ─── Captura: carga y acciones ─────────────────────────────
   onCapturaGridReady(e: GridReadyEvent): void {
     this.capturaGridApi = e.api;
+    // Restaura el estado de columnas guardado por el usuario (visibilidad/orden/ancho).
+    this.gridState.loadState(this.CAPTURA_GRID_KEY).subscribe(state => {
+      if (state && state.length) {
+        this.capturaHasSavedState = true;
+        e.api.applyColumnState({ state, applyOrder: true });
+      }
+      // Habilita el guardado DESPUÉS de aplicar (los eventos del apply no se persisten).
+      this.capturaStateLoaded = true;
+    });
   }
 
   loadPending(): void {
@@ -357,7 +459,8 @@ export class GastosComponent {
         this.capturaRows = list;
         this.capturaLoading = false;
         // Re-autoajustar columnas tras recargar (onFirstDataRendered solo dispara la 1ª vez).
-        setTimeout(() => this.capturaGridApi?.autoSizeAllColumns(), 0);
+        // Si el usuario tiene estado guardado, NO se reajusta (respeta sus anchos).
+        setTimeout(() => { if (!this.capturaHasSavedState) this.capturaGridApi?.autoSizeAllColumns(); }, 0);
       },
       error: (err) => {
         console.error('Error cargando pendientes de pago:', err);
@@ -375,27 +478,143 @@ export class GastosComponent {
       return;
     }
 
+    // Bloque ANTICIPO: si la OC tiene anticipo pagado con saldo disponible, aplicarlo a esta entrada.
+    const tieneAnticipo = row.calculoAnticipo === true && row.anticipoPagado === true && Number(row.anticipoSaldo) > 0;
+    if (tieneAnticipo) {
+      if (row.metodoAnticipo) {
+        // Método ya fijado en una entrada previa → aplicar automático (sin modal).
+        const n = Number(row.numProrrateo) || Number(row.numEntregasPlan) || 1;
+        const aplicado = this.calcAnticipoAplicado(row, row.metodoAnticipo as 'FIFO' | 'PRORRATEO', n);
+        await this.doPagar(row, aplicado, row.metodoAnticipo, row.numProrrateo ?? null);
+      } else {
+        // Primera entrada → abrir modal para elegir FIFO/Prorrateo.
+        this.openAnticipoModal(row);
+      }
+      return;
+    }
+
+    // Flujo normal (contado / crédito ya recibido).
     const confirm = await alerts.confirmAlert(
       'Confirmar pago',
       `¿Confirmar el pago de ${this.money(row.valorPago)} para "${row.articulo}" (${row.folio})? Se liberará la entrada.`,
       'question', 'Sí, pagar'
     );
     if (!confirm.isConfirmed) return;
-
-    this.gastosService.confirmPayment(this.buildPayload(row)).subscribe({
-      next: () => {
-        // La entrada quedó liberada → sale de la lista de pendientes.
-        this.capturaRows = this.capturaRows.filter(r => r.idEntrada !== row.idEntrada);
-        alerts.reqSuccessToast('Pago confirmado', `${row.folio} liberado.`);
-        // Refrescar el reporte gerencial (cambió lo "Pagado/liberado").
-        this.loadReport();
-      },
-      error: (err) => {
-        console.error('Error confirmando pago:', err);
-        alerts.reqErrorToast('Error', 'No se pudo confirmar el pago.');
-      }
-    });
+    await this.doPagar(row, 0, null, null);
   }
+
+  /** Ejecuta el pago (confirmPayment), con o sin anticipo aplicado. */
+  private async doPagar(row: PendingPayment, anticipoAplicado: number, metodo: string | null, numProrrateo: number | null): Promise<void> {
+    const payload = this.buildPayload(row);
+    if (anticipoAplicado > 0) {
+      payload.anticipoAplicado = anticipoAplicado;
+      payload.metodoAnticipo = metodo;
+      payload.numProrrateo = numProrrateo;
+    }
+    try {
+      await lastValueFrom(this.gastosService.confirmPayment(payload));
+      this.capturaRows = this.capturaRows.filter(r => r.idEntrada !== row.idEntrada);
+      // Placeholder almacén global: aún no persiste inventario, solo confirma que el flujo corre.
+      alerts.reqSuccessToast('Insertado en almacén', `${row.folio} — material ingresado (placeholder almacén global).`);
+      if (anticipoAplicado > 0) {
+        const neto = Math.max(0, (Number(row.valorPago) || 0) - anticipoAplicado);
+        alerts.reqSuccessToast('Anticipo aplicado', `Se aplicó ${this.money(anticipoAplicado)} de anticipo. Pago neto: ${this.money(neto)}.`);
+      } else {
+        alerts.reqSuccessToast('Pago confirmado', `${row.folio} liberado.`);
+      }
+      this.loadReport();
+    } catch (err) {
+      console.error('Error confirmando pago:', err);
+      alerts.reqErrorToast('Error', 'No se pudo confirmar el pago.');
+    }
+  }
+
+  /** Ingresa la entrada "a crédito": material disponible + pago pendiente a N días. */
+  async onCredito(row: PendingPayment): Promise<void> {
+    if (!row) return;
+    const dias = Number(row.condicionCantidad) || 0;
+    const vence = this.fmtDate(this.computeVencimiento(row));
+    const confirm = await alerts.confirmAlert(
+      'Ingresar a crédito',
+      `El material de "${row.articulo}" (${row.folio}) entrará al almacén y quedará pendiente de pago a ${dias} días${vence ? ` (vence ${vence})` : ''}. ¿Continuar?`,
+      'question', 'Sí, a crédito'
+    );
+    if (!confirm.isConfirmed) return;
+    try {
+      await lastValueFrom(this.gastosService.activarCredito(row.idEntrada));
+      row.credito = true;
+      // Placeholder almacén global.
+      alerts.reqSuccessToast('Insertado en almacén', `${row.folio} ingresado a crédito (placeholder almacén global).`);
+      this.capturaGridApi?.refreshCells({ force: true });
+    } catch (err) {
+      console.error('Error activando crédito:', err);
+      alerts.reqErrorToast('Error', 'No se pudo ingresar a crédito.');
+    }
+  }
+
+  /** Fecha de vencimiento del crédito = fecha de recepción + N días. */
+  private computeVencimiento(row: any): string {
+    const dias = Number(row?.condicionCantidad) || 0;
+    const base = row?.fechaRecepcion ? new Date(row.fechaRecepcion) : new Date();
+    if (isNaN(base.getTime())) return '';
+    base.setDate(base.getDate() + dias);
+    return this.toIso(base);
+  }
+
+  /** Monto de anticipo a aplicar a una entrada según el método elegido. */
+  private calcAnticipoAplicado(row: PendingPayment, metodo: 'FIFO' | 'PRORRATEO', n: number): number {
+    const saldo = Number(row.anticipoSaldo) || 0;
+    const gross = Number(row.valorPago) || 0;
+    if (metodo === 'PRORRATEO') {
+      const porEntrega = this.round2((Number(row.anticipoMonto) || 0) / Math.max(1, n));
+      return Math.min(saldo, porEntrega, gross);
+    }
+    // FIFO: consume el saldo hasta cubrir esta entrada.
+    return Math.min(saldo, gross);
+  }
+
+  private round2(n: number): number { return Math.round((Number(n) || 0) * 100) / 100; }
+
+  // ── Modal de aplicación de anticipo (FIFO vs Prorrateo, lado a lado) ──
+  showAnticipoModal = false;
+  anticipoRow: PendingPayment | null = null;
+  anticipoMetodo: 'FIFO' | 'PRORRATEO' = 'FIFO';
+  anticipoN = 1;
+
+  openAnticipoModal(row: PendingPayment): void {
+    this.anticipoRow = row;
+    this.anticipoMetodo = 'FIFO';
+    this.anticipoN = Math.max(1, Number(row.numProrrateo) || Number(row.numEntregasPlan) || 1);
+    this.showAnticipoModal = true;
+  }
+
+  cancelAnticipoModal(): void {
+    this.showAnticipoModal = false;
+    this.anticipoRow = null;
+  }
+
+  async confirmAnticipoModal(): Promise<void> {
+    const row = this.anticipoRow;
+    if (!row) return;
+    const metodo = this.anticipoMetodo;
+    const n = metodo === 'PRORRATEO' ? Math.max(1, Number(this.anticipoN) || 1) : null;
+    const aplicado = this.calcAnticipoAplicado(row, metodo, n ?? 1);
+    this.showAnticipoModal = false;
+    this.anticipoRow = null;
+    await this.doPagar(row, aplicado, metodo, n);
+  }
+
+  // Previews del modal (getters)
+  get anticipoGross(): number { return Number(this.anticipoRow?.valorPago) || 0; }
+  get anticipoSaldoActual(): number { return Number(this.anticipoRow?.anticipoSaldo) || 0; }
+  get anticipoMontoTotal(): number { return Number(this.anticipoRow?.anticipoMonto) || 0; }
+  get anticipoFifoAplicado(): number { return this.anticipoRow ? this.calcAnticipoAplicado(this.anticipoRow, 'FIFO', 1) : 0; }
+  get anticipoFifoNeto(): number { return Math.max(0, this.anticipoGross - this.anticipoFifoAplicado); }
+  get anticipoFifoSaldoRestante(): number { return Math.max(0, this.anticipoSaldoActual - this.anticipoFifoAplicado); }
+  get anticipoProrrateoPorEntrega(): number { return this.round2(this.anticipoMontoTotal / Math.max(1, this.anticipoN)); }
+  get anticipoProrrateoAplicado(): number { return this.anticipoRow ? this.calcAnticipoAplicado(this.anticipoRow, 'PRORRATEO', this.anticipoN) : 0; }
+  get anticipoProrrateoNeto(): number { return Math.max(0, this.anticipoGross - this.anticipoProrrateoAplicado); }
+  get anticipoProrrateoSaldoRestante(): number { return Math.max(0, this.anticipoSaldoActual - this.anticipoProrrateoAplicado); }
 
   /** Guarda los campos editables modificados SIN concluir el pago (no libera). */
   async saveCaptura(): Promise<void> {
@@ -433,6 +652,141 @@ export class GastosComponent {
       notaFactura: row.notaFactura,
       cantidad: Number(row.cantidad) || 0,
     };
+  }
+
+  // ── Validación de proveedor CR (igual que cotización) ─────────────────────────
+  // Retorna el nombre del proveedor si la validación pasa, null si el usuario rechaza.
+  async validateCrProvider(providerId: number, providerName: string, row: any): Promise<string | null> {
+    const idMaterial = row?.idMaterial;
+    const idBranch   = row?.idReference;
+    const branchName = row?.branchName || 'esta sucursal';
+    const articulo   = row?.articulo   || 'el artículo';
+
+    // PASO 1: Vínculo artículo-proveedor (Sin Código Externo)
+    let provXTablaId = 0;
+    try {
+      const assignments: any = await lastValueFrom(this.providersService.getProvidersXTable(providerId, 'MATERIAL'));
+      const list: any[] = Array.isArray(assignments) ? assignments : [];
+      const match = idMaterial ? list.find((a: any) => Number(a.campo1) === Number(idMaterial)) : null;
+      if (match) {
+        provXTablaId = match.id || 0;
+      } else if (idMaterial) {
+        const res = await alerts.confirmAlert(
+          'Sin Código Externo',
+          `El proveedor "${providerName}" no tiene Código Externo para:\n• ${articulo}\n\n¿Desea crear la vinculación artículo-proveedor ahora?`,
+          'warning', 'Sí, vincular'
+        );
+        if (!res.isConfirmed) return null;  // usuario canceló → no seleccionar
+        const branchId = this.signalsService.getBranchSelectedBySidebar()() || idBranch || 0;
+        try {
+          const created: any = await lastValueFrom(this.providersService.addProviderXTable({
+            idTabla: providerId, campo1: idMaterial, campo2: 'NA', campo3: 'NA',
+            campo4: 'NA', campo5: 'NA', campo6: 'NA',
+            campo7: true, campo11: '', campo9: 0, campo10: branchId,
+            type: 'MATERIAL', vigente: true, principal: false, active: true,
+          }));
+          provXTablaId = created?.id || 0;
+        } catch { alerts.reqErrorToast('Error', 'No se pudo crear la vinculación'); return null; }
+      }
+    } catch { /* Si falla la consulta, continuamos sin bloquear */ }
+
+    // PASO 2: Sucursal autorizada para el proveedor
+    if (provXTablaId > 0 && idBranch) {
+      try {
+        const sucursales: any = await lastValueFrom(this.sucursalByMaterialService.getSucursalByMaterial(provXTablaId));
+        const list: any[] = Array.isArray(sucursales) ? sucursales : [];
+        const tiene = list.some((s: any) => Number(s.idSucursal) === Number(idBranch));
+        if (!tiene) {
+          const res = await alerts.confirmAlert(
+            'Proveedor no autorizado para zona',
+            `El proveedor "${providerName}" no tiene registrada la sucursal "${branchName}" para:\n\n• ${articulo}\n\n¿Deseas registrar esta sucursal ahora?`,
+            'info', 'Sí, registrar'
+          );
+          if (res.isConfirmed) {
+            try {
+              await lastValueFrom(this.sucursalByMaterialService.addSucursalByMaterial({
+                idMaterialByProveedor: provXTablaId, idSucursal: idBranch,
+                fechaAlta: new Date().toISOString(),
+                stockMinimo: 0, resurtido: 0, capacidadMaxAlmacen: 0,
+                tiempoDeEntrega: 2, vigente: true, active: true,
+              }));
+              alerts.reqSuccessToast('Éxito', `Proveedor vinculado a "${branchName}" correctamente`);
+            } catch { alerts.reqErrorToast('Error', 'No se pudo registrar la sucursal'); }
+          }
+        }
+      } catch { /* Si falla la consulta de sucursales, continuamos */ }
+    }
+
+    return providerName;   // validación pasó → usar este proveedor
+  }
+
+  // ── Dropdown de proveedor para filas CR ───────────────────────────────────────
+  // Carga la lista con el mismo formato que la cotización:
+  // ⭐ principales → Header Compañía → compañías → Header Contacto → contactos.
+  private async loadCrProviders(idCompany: number): Promise<void> {
+    try {
+      const allProviders: any = await lastValueFrom(this.customersService.getProvidersForGrid(idCompany));
+      const externos = (allProviders || []).filter((p: any) => p.typeIntOrExt === 'Externo');
+      const isActivo = (p: any) => p.vigente === true || p.active === true || p.Vigente === true;
+      const filtered = externos.filter(isActivo);
+      // Externos INACTIVOS → para detectar duplicados y ofrecer reactivar.
+      this.crInactiveProviders = externos.filter((p: any) => !isActivo(p)).map((p: any) => ({
+        id: p.id,
+        name: ((p.company ?? p.name ?? '').trim()) || ((p.nameContact ?? p.namecontact ?? p.Description ?? p.description ?? '').trim()) || `Proveedor ${p.id}`,
+        raw: p,
+      }));
+      const active = filtered.map((p: any) => {
+        const company = (p.company ?? p.name ?? '').trim();
+        const contact = (p.nameContact ?? p.namecontact ?? p.Description ?? p.description ?? '').trim();
+        const isCompany = !!company;
+        return {
+          id: p.id,
+          description: isCompany ? company : (contact || `Proveedor ${p.id}`),
+          group: isCompany ? 'Compañía' : 'Contacto',
+          sortKey: isCompany ? company : contact
+        };
+      }).sort((a: any, b: any) => {
+        if (a.group !== b.group) return a.group === 'Compañía' ? -1 : 1;
+        return a.sortKey.localeCompare(b.sortKey, 'es', { sensitivity: 'base' });
+      });
+
+      const companies = active.filter((p: any) => p.group === 'Compañía');
+      const contacts  = active.filter((p: any) => p.group === 'Contacto');
+      const result: any[] = [{ id: this.NEW_PROVIDER_SENTINEL, description: '+ Nuevo Proveedor' }];
+      if (companies.length > 0) {
+        result.push({ id: '__header_company__', description: 'Compañía', disabled: true, __isHeader: true });
+        result.push(...companies);
+      }
+      if (contacts.length > 0) {
+        result.push({ id: '__header_contact__', description: 'Contacto', disabled: true, __isHeader: true });
+        result.push(...contacts);
+      }
+      this.crProviders = result;
+    } catch {
+      this.crProviders = [{ id: this.NEW_PROVIDER_SENTINEL, description: '+ Nuevo Proveedor' }];
+    }
+  }
+
+  openCrProviderDropdown(row: any): void {
+    this.crProviderRow = row;
+    this.crProviderSelectedId = null;   // sin preselección → igual que la cotización
+  }
+
+  onCrProviderChange(): void {
+    if (!this.crProviderRow || this.crProviderSelectedId == null) return;
+    if (this.crProviderSelectedId === this.NEW_PROVIDER_SENTINEL) {
+      this.crProviderSelectedId = null;
+      return;
+    }
+    const found = this.crProviders.find(p => p.id === this.crProviderSelectedId);
+    if (found) {
+      this.crProviderRow.proveedor = found.description;
+      (this.crProviderRow as any).__modified = true;
+      this.hasUnsavedCaptura = true;
+      this.capturaGridApi?.refreshCells({ force: true });
+    }
+    this.crProviderRow = null;
+    this.crProviderSelectedId = null;
   }
 
   fmtDate(value: any): string {

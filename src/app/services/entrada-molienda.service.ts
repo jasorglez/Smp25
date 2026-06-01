@@ -20,6 +20,7 @@ export interface EntradaMolienda {
   comentario?: string | null;
   liberacion?: boolean;
   close?: boolean;
+  folioEntrega?: string | null;
   active?: boolean;
   dateModified?: string;
 }

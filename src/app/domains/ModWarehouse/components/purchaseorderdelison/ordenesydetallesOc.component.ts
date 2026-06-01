@@ -15,6 +15,8 @@ import Swal from 'sweetalert2';
 import { EntradaDocumentsOverlayService } from 'app/services/entrada-documents-overlay.service';
 import { IntandoutDocumentsService } from 'app/services/intandoutDocuments.service';
 import { EntradaMoliendaService } from 'app/services/entrada-molienda.service';
+import { GastosService } from 'app/services/gastos.service';
+import { alerts } from 'app/helpers/alerts';
 
 interface OcRow {
   id: number;
@@ -30,6 +32,8 @@ interface OcRow {
   condicionesPago?: string;
   totalOc?: number;
   anticipoOc?: number;
+  anticipoPagado?: boolean;
+  fechaAnticipo?: string | null;
   close?: boolean;
   __allItemsBlocked?: boolean;
 }
@@ -157,6 +161,7 @@ export class OrdenesydetallesOcComponent implements OnDestroy {
   private entradaDocumentsOverlayService = inject(EntradaDocumentsOverlayService);
   private intandoutDocumentsService = inject(IntandoutDocumentsService);
   private entradaMoliendaService = inject(EntradaMoliendaService);
+  private gastosService = inject(GastosService);
 
   private entregasPendingSub: Subscription;
   private conditionsPendingSub: Subscription;
@@ -349,14 +354,28 @@ export class OrdenesydetallesOcComponent implements OnDestroy {
     {
       field: 'anticipoOc',
       headerName: 'Anticipo OC',
-      width: 130,
-      type: 'numericColumn',
-      valueFormatter: (p) => {
-        const n = Number(p.value);
-        return Number.isFinite(n) && n > 0
-          ? n.toLocaleString('es-MX', { style: 'currency', currency: 'MXN', minimumFractionDigits: 2 })
-          : '';
+      width: 200,
+      cellRenderer: (p: any) => {
+        const monto = Number(p.data?.anticipoOc) || 0;
+        if (monto <= 0) return '';
+        const fmt = monto.toLocaleString('es-MX', { style: 'currency', currency: 'MXN', minimumFractionDigits: 2 });
+        if (p.data?.anticipoPagado) {
+          const f = p.data?.fechaAnticipo ? this.formatFechaDmy(p.data.fechaAnticipo) : '';
+          return `<div style="display:flex;align-items:center;gap:6px;height:100%;">
+                    <span style="font-weight:600;">${fmt}</span>
+                    <span style="color:#2e7d32;font-weight:700;font-size:.78rem;" title="Anticipo pagado ${f}">✓ Pagado${f ? ' ' + f : ''}</span>
+                  </div>`;
+        }
+        return `<div style="display:flex;align-items:center;gap:8px;height:100%;">
+                  <span style="font-weight:600;">${fmt}</span>
+                  <button class="oc-marcar-anticipo" style="background:#ef6c00;color:#fff;border:none;border-radius:5px;padding:2px 8px;font-size:.72rem;font-weight:600;cursor:pointer;">Registrar pago</button>
+                </div>`;
       },
+      onCellClicked: (p: any) => {
+        const target = p.event?.target as HTMLElement;
+        if (target?.closest?.('.oc-marcar-anticipo')) this.onMarcarAnticipo(p.data);
+      },
+      cellStyle: { textAlign: 'left' },
     },
   ];
 
@@ -466,6 +485,39 @@ export class OrdenesydetallesOcComponent implements OnDestroy {
           ? n.toLocaleString('es-MX', { style: 'currency', currency: 'MXN', minimumFractionDigits: 2 })
           : '';
       },
+      cellRenderer: (p: any) => {
+        const masIva = p.data?.masIva === true;
+        const formatted = Number.isFinite(Number(p.value)) && Number(p.value) > 0
+          ? Number(p.value).toLocaleString('es-MX', { style: 'currency', currency: 'MXN', minimumFractionDigits: 2 })
+          : '';
+
+        if (!masIva) {
+          const span = document.createElement('span');
+          span.textContent = formatted;
+          span.style.cssText = 'display:block; text-align:right; width:100%;';
+          return span;
+        }
+
+        const base = Number(p.data?.price) || 0;
+        const priceWithIva = Number(p.value);
+
+        const div = document.createElement('div');
+        div.style.cssText = 'display:flex; align-items:center; justify-content:flex-end; gap:4px; width:100%; cursor:help;';
+
+        const span = document.createElement('span');
+        span.textContent = formatted;
+        div.appendChild(span);
+
+        const badge = document.createElement('span');
+        badge.textContent = '+IVA';
+        badge.style.cssText = 'font-size:0.6rem; background:#e3f2fd; color:#1565c0; border-radius:3px; padding:0 3px; font-weight:700; line-height:1.5; flex-shrink:0;';
+        div.appendChild(badge);
+
+        div.addEventListener('mouseenter', (ev: MouseEvent) => this.showPriceIvaTooltip(ev, base, priceWithIva));
+        div.addEventListener('mousemove', (ev: MouseEvent) => this.moveOcTooltip(ev));
+        div.addEventListener('mouseleave', () => this.hideOcTooltip());
+        return div;
+      },
     },
     {
       field: 'total',
@@ -491,12 +543,14 @@ export class OrdenesydetallesOcComponent implements OnDestroy {
       field: 'notaFactura',
       headerName: 'Nota / Factura',
       width: 150,
-      editable: (p: any) => !p.data?.__blocked && Number(p.data?.conditions ?? 1) <= 1,
+      // No editable si: ítem cerrado, multi-entrega (se maneja por entrega) o la nota ya
+      // vino del gasto (entradas_molienda) → es el dato oficial, solo-lectura.
+      editable: (p: any) => !p.data?.__blocked && Number(p.data?.conditions ?? 1) <= 1 && !p.data?.__notaFromGasto,
       cellEditor: 'agRichSelectCellEditor',
       cellEditorParams: { values: ['Nota', 'Factura'] },
       // Devolver siempre estilo explícito: si se retorna null, AG Grid no limpia
       // de forma fiable el gris aplicado cuando conditions vuelve a <= 1.
-      cellStyle: (p: any) => Number(p.data?.conditions ?? 1) > 1
+      cellStyle: (p: any) => (Number(p.data?.conditions ?? 1) > 1 || p.data?.__notaFromGasto)
         ? { backgroundColor: '#eeeeee', color: '#9e9e9e', cursor: 'not-allowed' }
         : { backgroundColor: '', color: '', cursor: '' },
     },
@@ -682,8 +736,8 @@ export class OrdenesydetallesOcComponent implements OnDestroy {
 
   nivel3ColDefs: ColDef[] = [
     {
-      headerName: '#',
-      width: 45,
+      headerName: '# Entrega',
+      width: 80,
       valueGetter: (p) => (p.node?.rowIndex ?? 0) + 1,
       cellStyle: { backgroundColor: '#f8f9fa', fontWeight: 'bold' },
     },
@@ -715,6 +769,17 @@ export class OrdenesydetallesOcComponent implements OnDestroy {
       editable: false,
       type: 'numericColumn',
       cellStyle: { backgroundColor: '#eeeeee', color: '#424242' },
+      // En vivo (Opción A): round2(precio unit con IVA) × cantidad a recibir, leyendo price/masIva
+      // del artículo seleccionado. Así refleja el IVA aunque se haya marcado luego en Gastos y
+      // corrige entregas ya guardadas con total base, sin depender del valor almacenado.
+      valueGetter: (p: any) => {
+        const qty = Number(p.data?.cantidadRecibir) || 0;
+        if (!qty) return p.data?.totalEntrega ?? null;
+        const base = Number(this.selectedArticleRow?.price) || 0;
+        const factor = this.selectedArticleRow?.masIva ? (1 + this.ivaPercent / 100) : 1;
+        const unit = Math.round(base * factor * 100) / 100;
+        return unit * qty;
+      },
       valueFormatter: (p) => {
         const n = Number(p.value);
         return Number.isFinite(n) && n > 0
@@ -847,9 +912,13 @@ export class OrdenesydetallesOcComponent implements OnDestroy {
           this.showInlineAlert(`La cantidad excede la cotización (máx. ${maxQty})`);
           return;
         }
-        const price = Number(this.selectedArticleRow?.price ?? 0);
+        // Total x Entrega = precio unitario CON IVA REDONDEADO a 2 dec (Opción A) × cantidad,
+        // igual que la columna "Total" del ítem; así cuadra aunque el IVA se haya marcado en Gastos.
+        const base = Number(this.selectedArticleRow?.price ?? 0);
+        const factor = this.selectedArticleRow?.masIva ? (1 + this.ivaPercent / 100) : 1;
+        const unit = Math.round(base * factor * 100) / 100;
         const qty = Number(event.newValue ?? 0);
-        event.data.totalEntrega = Number.isFinite(price * qty) ? price * qty : 0;
+        event.data.totalEntrega = Number.isFinite(unit * qty) ? unit * qty : 0;
         event.api.refreshCells({ rowNodes: [event.node], columns: ['totalEntrega'], force: true });
       }
       if (event?.data) event.data.__touched = true;
@@ -1177,6 +1246,8 @@ export class OrdenesydetallesOcComponent implements OnDestroy {
             condicionesPago: oc.condicionesPago || oc.condiciones_pago || '',
             totalOc: Number(oc.total ?? oc.Total ?? 0) || 0,
             anticipoOc: Number(oc.anticipoOc ?? oc.AnticipoOc ?? 0) || 0,
+            anticipoPagado: (oc.anticipoPagado ?? oc.AnticipoPagado) === true,
+            fechaAnticipo: oc.fechaAnticipo ?? oc.FechaAnticipo ?? null,
             close: oc.close ?? oc.Close ?? false,
           };
         });
@@ -1195,6 +1266,33 @@ export class OrdenesydetallesOcComponent implements OnDestroy {
         this.rowData = [];
       },
     });
+  }
+
+  /** Registra el pago del anticipo de una OC (monto = Anticipo OC calculado). */
+  async onMarcarAnticipo(row: any): Promise<void> {
+    if (!row?.id) return;
+    const monto = Number(row.anticipoOc) || 0;
+    if (monto <= 0) return;
+    const fmt = monto.toLocaleString('es-MX', { style: 'currency', currency: 'MXN', minimumFractionDigits: 2 });
+    const confirm = await alerts.confirmAlert(
+      'Registrar pago de anticipo',
+      `¿Confirmas que ya se entregó el anticipo de ${fmt} para la OC ${row.folio}? Este saldo se aplicará a las entregas en la Hoja de Gastos.`,
+      'question', 'Sí, registrar'
+    );
+    if (!confirm.isConfirmed) return;
+    try {
+      await lastValueFrom(this.gastosService.marcarAnticipo(row.id, monto));
+      row.anticipoPagado = true;
+      row.fechaAnticipo = new Date().toISOString().split('T')[0];
+      if (this.gridApi && !this.gridApi.isDestroyed()) {
+        this.gridApi.refreshCells({ rowNodes: [], force: true });
+        this.gridApi.setGridOption('rowData', this.rowData);
+      }
+      alerts.reqSuccessToast('Anticipo registrado', `${row.folio}: anticipo de ${fmt} marcado como pagado.`);
+    } catch (err) {
+      console.error('Error marcando anticipo:', err);
+      alerts.reqErrorToast('Error', 'No se pudo registrar el anticipo.');
+    }
   }
 
   /**
@@ -1370,6 +1468,45 @@ export class OrdenesydetallesOcComponent implements OnDestroy {
       this.tooltipEl.parentNode.removeChild(this.tooltipEl);
     }
     this.tooltipEl = null;
+  }
+
+  private showPriceIvaTooltip(ev: MouseEvent, base: number, priceWithIva: number): void {
+    this.hideOcTooltip();
+    const ivaAmount = Math.round((priceWithIva - base) * 100) / 100;
+    const fmt = (n: number) => n.toLocaleString('es-MX', { style: 'currency', currency: 'MXN', minimumFractionDigits: 2 });
+
+    const div = document.createElement('div');
+    div.style.cssText = `
+      position: fixed; z-index: 10100;
+      background: linear-gradient(135deg, #1e40af 0%, #3b82f6 100%);
+      border-radius: 8px;
+      box-shadow: 0 8px 24px rgba(0,0,0,0.4);
+      padding: 12px 14px; min-width: 220px;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      font-size: 12px; color: #ffffff; pointer-events: none; line-height: 1.6;
+    `;
+
+    div.innerHTML = `
+      <div style="font-weight:600; font-size:13px; margin-bottom:8px; color:#ffffff;">Precio con IVA incluido</div>
+      <table style="width:100%; border-collapse:collapse; font-size:11px;">
+        <tr>
+          <td style="padding:3px 6px; color:rgba(255,255,255,0.8);">Precio base:</td>
+          <td style="padding:3px 6px; text-align:right; color:#ffffff; font-weight:600;">${fmt(base)}</td>
+        </tr>
+        <tr style="background:rgba(255,255,255,0.1);">
+          <td style="padding:3px 6px; color:rgba(255,255,255,0.8);">IVA (${this.ivaPercent}%):</td>
+          <td style="padding:3px 6px; text-align:right; color:#ffffff; font-weight:600;">${fmt(ivaAmount)}</td>
+        </tr>
+        <tr style="border-top:1px solid rgba(255,255,255,0.3);">
+          <td style="padding:4px 6px; color:rgba(255,255,255,0.9); font-weight:600;">Total:</td>
+          <td style="padding:4px 6px; text-align:right; color:#ffffff; font-weight:700; font-size:13px;">${fmt(priceWithIva)}</td>
+        </tr>
+      </table>
+    `;
+
+    document.body.appendChild(div);
+    this.tooltipEl = div;
+    this.positionTooltip(ev);
   }
 
   private escapeHtml(text: string): string {
@@ -1579,13 +1716,27 @@ export class OrdenesydetallesOcComponent implements OnDestroy {
           .sort();
         const iso = fechas.length > 0 ? fechas[0].match(/^(\d{4})-(\d{2})-(\d{2})/) : null;
         row.fechaEntradaAlmacen = iso ? `${iso[1]}-${iso[2]}-${iso[3]}` : null;
+        // Nota/Factura desde el gasto: en single-entrega la nota se captura en Gastos y el
+        // backend la persiste en entradas_molienda.nota_factura (no en detailsreqoc). La traemos
+        // aquí para mostrarla en el ítem. __notaFromGasto la deja en solo-lectura (es el dato oficial).
+        if (Number(row.conditions ?? 1) <= 1) {
+          const notaEntrada = list
+            .map((e: any) => String(e.notaFactura ?? '').trim())
+            .find((s: string) => s !== '');
+          if (notaEntrada) {
+            row.notaFactura = notaEntrada;
+            row.__notaFromGasto = true;
+          } else {
+            row.__notaFromGasto = false;
+          }
+        }
       } catch {
         row.cantidadEntradaAlmacen = null;
         row.fechaEntradaAlmacen = null;
       }
     }));
     if (this.itemsGridApi && !this.itemsGridApi.isDestroyed()) {
-      this.itemsGridApi.refreshCells({ columns: ['cantidadEntradaAlmacen', 'fechaEntradaAlmacen'], force: true });
+      this.itemsGridApi.refreshCells({ columns: ['cantidadEntradaAlmacen', 'fechaEntradaAlmacen', 'notaFactura'], force: true });
     }
   }
 
@@ -1611,13 +1762,17 @@ export class OrdenesydetallesOcComponent implements OnDestroy {
         const list = Array.isArray(entregas) ? entregas : [];
         const suma = list.reduce((acc: number, e: any) => acc + Number(e.cantidadRecibir ?? 0), 0);
         row.__sumaCantidadRecibir = suma > 0 ? suma : null;
-        // Estado bloqueado del ítem:
-        //  - multi-entrega (conditions > 1): todas las entregas cerradas
-        //  - single-entrega (conditions <= 1): la OC está cerrada (ocandreq.close)
+        // Estado bloqueado del ítem (sólo visualización, no editable):
+        //  - multi-entrega (conditions > 1): todas las entregas cerradas.
+        //  - single-entrega (conditions <= 1): el artículo se cierra desde almmolienda
+        //    creando/cerrando SU entrega en entregas_oc (ocandreq.close ya NO se toca,
+        //    para no bloquear los otros artículos de la OC). Por eso también evaluamos
+        //    allEntregasClosed; se conserva selectedOcRow.close como respaldo legacy.
         const conditions = Number(row.conditions ?? 1);
+        const allEntregasClosed = list.length > 0 && list.every((e: any) => e.close === true);
         row.__blocked = conditions > 1
-          ? (list.length > 0 && list.every((e: any) => e.close === true))
-          : this.selectedOcRow?.close === true;
+          ? allEntregasClosed
+          : (allEntregasClosed || this.selectedOcRow?.close === true);
       } catch {
         row.__sumaCantidadRecibir = null;
         row.__blocked = false;

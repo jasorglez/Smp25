@@ -49,6 +49,8 @@ export class SetupwarehouseComponent {
   consecutiveCompraInmediata: number = 0;
   prefixTraspaso: string = '';
   consecutiveTraspaso: number = 0;
+  // Identificador Entregas: solo prefijo de texto (tarjeta en la pestaña Órdenes de Compra)
+  prefixEntrega: string = '';
 
   // iva se enlaza directamente en warehouseSetup.iva (cargado y guardado con getData/saveData)
 
@@ -131,18 +133,10 @@ export class SetupwarehouseComponent {
       return;
     }
 
-    // El prefijo de Órdenes de Compra es obligatorio: reemplaza la literal "OC" en el folio
-    if (!this.prefixOc?.trim()) {
-      alerts.basicAlert("Atención", "El prefijo de Órdenes de Compra es obligatorio", "warning");
-      return;
-    }
-
-    // Iniciales del proveedor en OC: entero entre 1 y 5
-    const iniciales = Number(this.consecutiveOcProveedor);
-    if (!iniciales || iniciales < 1 || iniciales > 5) {
-      alerts.basicAlert("Atención", "Iniciales del proveedor debe ser un número entre 1 y 5", "warning");
-      return;
-    }
+    // NOTA: las validaciones de "prefijo de Órdenes de Compra" e "iniciales del proveedor"
+    // se trasladaron a la pestaña Órdenes de Compra (configSubPage.saveOc), ya que esas
+    // tarjetas ahora se editan y guardan desde ahí. La lógica de PrefixSetup (savePrefixData)
+    // se mantiene igual y sigue siendo dueña del registro.
 
     const saveGeneralConfig = () => {
       if (this.newData) {
@@ -198,6 +192,7 @@ export class SetupwarehouseComponent {
       consecutiveCompraInmediata: this.consecutiveCompraInmediata || 0,
       prefixTraspaso: this.prefixTraspaso || null,
       consecutiveTraspaso: this.consecutiveTraspaso || 0,
+      prefixEntrega: this.prefixEntrega || null,
       active: true
     };
 
@@ -273,6 +268,7 @@ export class SetupwarehouseComponent {
         this.consecutiveCompraInmediata = data.consecutiveCompraInmediata || 0;
         this.prefixTraspaso = data.prefixTraspaso || '';
         this.consecutiveTraspaso = data.consecutiveTraspaso || 0;
+        this.prefixEntrega = data.prefixEntrega || '';
         this.hasPrefixData = true;
       },
       error: (err) => {
@@ -297,6 +293,7 @@ export class SetupwarehouseComponent {
     this.consecutiveCompraInmediata = 0;
     this.prefixTraspaso = '';
     this.consecutiveTraspaso = 0;
+    this.prefixEntrega = '';
     this.hasPrefixData = false;
   }
 

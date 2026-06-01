@@ -1,6 +1,7 @@
-import { Component, inject, effect } from '@angular/core';
+import { Component, inject, effect, ViewChild, ChangeDetectorRef, AfterViewInit, ElementRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
+import { ActivatedRoute } from '@angular/router';
 import { SignalsService } from 'app/services/signals.service';
 import { FamilySubFamilyComponent } from 'app/domains/Almacenes/components/FamilySubFamily/FamilySubFamily.component';
 import { SetupwarehouseComponent } from 'app/domains/ModWarehouse/components/setupwarehouse/setupwarehouse.component';
@@ -13,7 +14,12 @@ import { alerts } from 'app/helpers/alerts';
   imports: [CommonModule, FormsModule, FamilySubFamilyComponent, SetupwarehouseComponent],
   templateUrl: './configSubPage.component.html',
 })
-export class configShoppingDelisonComponent {
+export class configShoppingDelisonComponent implements AfterViewInit {
+
+  // Instancia hija de setupwarehouse (pestaña Requisiciones). Sigue siendo dueña del
+  // registro PrefixSetup; aquí solo referenciamos sus props prefixOc/consecutiveOcProveedor
+  // para editarlas desde la pestaña Órdenes de Compra y guardarlas con su lógica existente.
+  @ViewChild(SetupwarehouseComponent) setupwarehouseRef?: SetupwarehouseComponent;
 
   idRoot: number = 0;
   selectedBranch: number | null = null;
@@ -24,6 +30,25 @@ export class configShoppingDelisonComponent {
 
   private signalsService = inject(SignalsService);
   private setupOcService = inject(SetupOcService);
+  private cdr = inject(ChangeDetectorRef);
+  private route = inject(ActivatedRoute);
+  private el = inject(ElementRef);
+
+  ngAfterViewInit(): void {
+    // Resuelve el @ViewChild dentro del mismo ciclo de CD para que la pestaña OC
+    // pueda enlazar a setupwarehouseRef sin ExpressionChangedAfterItHasBeenCheckedError.
+    this.cdr.detectChanges();
+
+    // Redirección desde almacén molienda (?tab=ordenes-compra): activar esa pestaña.
+    if (this.route.snapshot.queryParamMap.get('tab') === 'ordenes-compra') {
+      setTimeout(() => {
+        try {
+          const link = this.el.nativeElement.querySelector('a[href="#ordenes-compra"]') as HTMLElement | null;
+          link?.click();
+        } catch { /* si falla, queda en la pestaña por defecto */ }
+      }, 0);
+    }
+  }
 
   constructor() {
     effect(() => {
@@ -67,6 +92,21 @@ export class configShoppingDelisonComponent {
 
   saveOc(): void {
     if (this.limiteInvalido || this.savingOc || !this.selectedBranch) return;
+
+    // Validaciones de los prefijos OC (trasladadas desde la pestaña Requisiciones).
+    const ref = this.setupwarehouseRef;
+    if (ref) {
+      if (!ref.prefixOc?.trim()) {
+        alerts.basicAlert('Atención', 'El prefijo de Órdenes de Compra es obligatorio', 'warning');
+        return;
+      }
+      const iniciales = Number(ref.consecutiveOcProveedor);
+      if (!iniciales || iniciales < 1 || iniciales > 5) {
+        alerts.basicAlert('Atención', 'Iniciales del proveedor debe ser un número entre 1 y 5', 'warning');
+        return;
+      }
+    }
+
     this.savingOc = true;
     this.setupOcService.saveByBranch(this.selectedBranch, {
       idCompany:  this.idRoot,
@@ -77,7 +117,13 @@ export class configShoppingDelisonComponent {
       next: (data) => {
         this.setupOcId = data.id ?? null;
         this.savingOc  = false;
-        alerts.reqSuccessToast('Guardado', 'Configuración de OC actualizada.');
+        // Persistir los prefijos OC con la lógica existente de setupwarehouse (mismo registro
+        // PrefixSetup). savePrefixData muestra su propio aviso de éxito.
+        if (ref) {
+          ref.savePrefixData();
+        } else {
+          alerts.reqSuccessToast('Guardado', 'Configuración de OC actualizada.');
+        }
       },
       error: () => {
         this.savingOc = false;

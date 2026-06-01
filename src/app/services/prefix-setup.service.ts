@@ -22,6 +22,7 @@ export interface PrefixSetup {
   consecutiveCompraInmediata?: number;
   prefixTraspaso?: string;
   consecutiveTraspaso?: number;
+  prefixEntrega?: string;
   active?: boolean;
 }
 

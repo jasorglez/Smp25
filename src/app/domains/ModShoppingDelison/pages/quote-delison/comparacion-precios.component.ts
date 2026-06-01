@@ -335,7 +335,7 @@ export class ComparacionPreciosComponent implements OnInit, OnDestroy {
   private gridApi!: GridApi;
   private codigosExternos: Map<number, Map<number, string>> = new Map();
   // ✅ Slots dinámicos N proveedores (no más A/B/C). Map<idProvider, {slotIndex, cotizId, folio}>
-  private providerSlotMap = new Map<number, { slotIndex: number; cotizId: number; folio: string }>();
+  private providerSlotMap = new Map<number, { slotIndex: number; cotizId: number; folio: string; idCondicionPago: number | null }>();
   // Map<slotIndex, folio_COTIZ> — slotIndex secuencial 1..N por orden de creación ASC
   private slotFolioMap   = new Map<number, string>();
   private commentSub?: Subscription;
@@ -704,7 +704,11 @@ export class ComparacionPreciosComponent implements OnInit, OnDestroy {
         const folio = cotiz.folio || `Pedimento-${slotIndex}`;
         const idProvider = Number(cotiz.idProvider);
         if (!this.providerSlotMap.has(idProvider)) {
-          this.providerSlotMap.set(idProvider, { slotIndex, cotizId: cotiz.id, folio });
+          this.providerSlotMap.set(idProvider, {
+            slotIndex, cotizId: cotiz.id, folio,
+            // Condición de pago del slot COTIZ → se copia a la OC al generarla.
+            idCondicionPago: cotiz.idCondicionPago ?? cotiz.id_condicion_pago ?? null,
+          });
         }
         if (!this.slotFolioMap.has(slotIndex)) {
           this.slotFolioMap.set(slotIndex, folio);
@@ -740,7 +744,7 @@ export class ComparacionPreciosComponent implements OnInit, OnDestroy {
   private async generateOCForSlot(
     provId: number,
     provName: string,
-    slot: { slotIndex: number; cotizId: number; folio: string },
+    slot: { slotIndex: number; cotizId: number; folio: string; idCondicionPago?: number | null },
     rows: any[]
   ): Promise<string> {
     const idRoot   = this.signalsService.getRootSelectedBySidebar()();
@@ -784,6 +788,9 @@ export class ComparacionPreciosComponent implements OnInit, OnDestroy {
       typeOc:        'INSUMOS',
       idPayment:     0,
       idCurrency:    0,
+      // Copiar la condición de pago de la COTIZ (crédito/anticipo) a la OC, para que
+      // la Hoja de Gastos la lea directo de la OC (botón Crédito / flujo de anticipo).
+      idCondicionPago: slot.idCondicionPago ?? null,
       type:          'OC',
       datesupply:    new Date().toISOString().split('T')[0],
       active:        true
@@ -906,7 +913,7 @@ export class ComparacionPreciosComponent implements OnInit, OnDestroy {
           tiposOcPorProv[provId] ?? tiposOcPorProv[provId.toString()] ?? 'SELECCIONE UNA OPCION';
         const masIva = !!(masIvasPorProv[provId] ?? masIvasPorProv[provId.toString()] ?? false);
         const costoUnitarioDisplay = masIva ? costoUnitario * (1 + this.ivaPercent / 100) : costoUnitario;
-        const costoTotal = costoUnitarioDisplay * cantidadConceptualizada;
+        const costoTotal = this.lineTotal(costoUnitarioDisplay, cantidadConceptualizada);
         const costoXCompraMinima = costoUnitario * compraMinima;
 
         const providerCodigosMap = this.codigosExternos.get(provId) || new Map();
@@ -986,6 +993,15 @@ export class ComparacionPreciosComponent implements OnInit, OnDestroy {
     this.pinnedTotal = this.rowData.reduce((acc, r) => acc + (Number(r.costoTotal) || 0), 0);
   }
 
+  /** Opción A: redondea el costo unitario (ya con IVA si aplica) a 2 decimales ANTES de
+   *  multiplicar por la cantidad. Así COSTO TOTAL coincide con la cotización (unit mostrado × cant).
+   *  NO se redondea costoUnitario en sí mismo: la generación de OC deriva el precio base
+   *  dividiendo costoUnitario / (1+IVA) y necesita el valor sin redondear. */
+  private round2(n: any): number { return Math.round((Number(n) || 0) * 100) / 100; }
+  private lineTotal(costoUnitario: any, cantidad: any): number {
+    return this.round2(costoUnitario) * (Number(cantidad) || 0);
+  }
+
   private updateFooterWidths() {
     if (!this.gridApi) return;
     const cols = this.gridApi.getColumns?.();
@@ -1033,7 +1049,7 @@ export class ComparacionPreciosComponent implements OnInit, OnDestroy {
           continue;
         }
         row.cantidadComprar = qty;
-        row.costoTotal = (Number(row.costoUnitario) || 0) * (Number(row.cantidadConceptualizada) || 0);
+        row.costoTotal = this.lineTotal(row.costoUnitario, row.cantidadConceptualizada);
       }
       if (this.gridApi) {
         this.gridApi.refreshCells({ force: true });
@@ -1109,7 +1125,7 @@ export class ComparacionPreciosComponent implements OnInit, OnDestroy {
           const maxAllowed = Math.max(0, cantidadComprar - sumOtros);
           if (maxAllowed < compraMin) {
             event.data.cantidadConceptualizada = 0;
-            event.data.costoTotal = (Number(event.data.costoUnitario) || 0) * (Number(event.data.cantidadConceptualizada) || 0);
+            event.data.costoTotal = this.lineTotal(event.data.costoUnitario, event.data.cantidadConceptualizada);
             this.gridApi?.refreshCells({ rowNodes: [event.node], force: true });
             alerts.basicAlert(
               'Cantidad insuficiente',
@@ -1118,7 +1134,7 @@ export class ComparacionPreciosComponent implements OnInit, OnDestroy {
             );
           } else {
             event.data.cantidadConceptualizada = compraMin;
-            event.data.costoTotal = (Number(event.data.costoUnitario) || 0) * (Number(event.data.cantidadConceptualizada) || 0);
+            event.data.costoTotal = this.lineTotal(event.data.costoUnitario, event.data.cantidadConceptualizada);
             this.gridApi?.refreshCells({ rowNodes: [event.node], force: true });
             alerts.basicAlert(
               'Cantidad ajustada',
@@ -1169,7 +1185,7 @@ export class ComparacionPreciosComponent implements OnInit, OnDestroy {
         );
       }
 
-      event.data.costoTotal = (Number(event.data.costoUnitario) || 0) * (Number(event.data.cantidadConceptualizada) || 0);
+      event.data.costoTotal = this.lineTotal(event.data.costoUnitario, event.data.cantidadConceptualizada);
       if (this.gridApi) {
         this.gridApi.refreshCells({ force: true });
       }
@@ -1179,7 +1195,7 @@ export class ComparacionPreciosComponent implements OnInit, OnDestroy {
       const cu = Number(row.costoUnitario) || 0;
       const q = Number(row.cantidadConceptualizada) || 0;
       const cm = Number(row.compraMinima) || 0;
-      row.costoTotal = cu * q;
+      row.costoTotal = this.round2(cu) * q;
       row.costoXCompraMinima = cu * cm;
       if (this.gridApi) {
         this.gridApi.refreshCells({ rowNodes: [event.node], force: true });
@@ -2108,9 +2124,8 @@ export class ComparacionPreciosComponent implements OnInit, OnDestroy {
         // así no depende de que row.costoTotal esté sincronizado manualmente.
         valueGetter: (params: any) => {
           if (!params.data) return 0;
-          const cu = Number(params.data.costoUnitario) || 0;
-          const q  = Number(params.data.cantidadConceptualizada) || 0;
-          return cu * q;
+          // Opción A: round2(unit con IVA) × cantidad → coincide con la cotización.
+          return this.lineTotal(params.data.costoUnitario, params.data.cantidadConceptualizada);
         },
         cellStyle: { backgroundColor: '#c8e6c9', fontWeight: '600', padding: '4px', textAlign: 'center' },
         valueFormatter: (params: any) =>
