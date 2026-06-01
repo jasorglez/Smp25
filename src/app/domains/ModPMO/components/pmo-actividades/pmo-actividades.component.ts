@@ -1075,6 +1075,7 @@ export class PmoActividadesComponent implements OnInit {
       costMX:       r.costMX ?? 0,
       costDLL:      0,
       startdate:    r.startDate || null,
+      endDate:      r.endDate   || null,
       endate:       r.endDate   || null,
       progress:     r.progress ?? 0,
       ponderado:    r.ponderado ?? null,
