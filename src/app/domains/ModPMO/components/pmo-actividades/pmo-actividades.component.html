@@ -44,6 +44,14 @@
                 (click)="setViewMode('tabla')">
           <i class="bi bi-table me-1"></i> Tabla
         </button>
+        <button class="btn"
+                [class.btn-dark]="viewMode==='comparacion'"
+                [class.btn-outline-secondary]="viewMode!=='comparacion'"
+                (click)="setViewMode('comparacion')"
+                [disabled]="!selectedProject || conventions.length < 2"
+                title="Comparar versiones del programa">
+          <i class="bi bi-layout-split me-1"></i> Comparación
+        </button>
       </div>
     </div>
   </div>
@@ -666,6 +674,82 @@
         </div>
       </div>
     </ng-container>
+
+    <!-- ══ VISTA: COMPARACIÓN ════════════════════════════════════════════════ -->
+    <ng-container *ngIf="viewMode==='comparacion'">
+
+      <!-- Sin versiones suficientes -->
+      <div *ngIf="conventions.length < 2" class="alert alert-info mt-2">
+        <i class="bi bi-info-circle me-2"></i>
+        Este proyecto necesita al menos <strong>2 versiones</strong> para comparar.
+      </div>
+
+      <ng-container *ngIf="conventions.length >= 2">
+
+        <!-- Leyenda de colores -->
+        <div class="d-flex gap-3 mb-2 align-items-center flex-wrap" style="font-size:11px;">
+          <span class="fw-bold">Leyenda:</span>
+          <span class="px-2 py-1 rounded" style="background:#d4edda;color:#155724;">▲ Aumentó / Adelantó</span>
+          <span class="px-2 py-1 rounded" style="background:#f8d7da;color:#721c24;">▼ Bajó / Se atrasó / No existe</span>
+          <span class="px-2 py-1 rounded" style="background:#fff3cd;color:#856404;">~ Cambió (texto)</span>
+          <span class="text-muted ms-2">Original: <strong>{{ originalConvention?.name || 'Ver. #' + originalConvention?.id }}</strong></span>
+          <span *ngIf="isLoadingComp" class="spinner-border spinner-border-sm text-primary ms-2"></span>
+        </div>
+
+        <!-- Split: izquierda original | derecha detalle reprogramaciones -->
+        <div class="d-flex gap-2" style="height: calc(100vh - 340px); min-height: 300px;">
+
+          <!-- IZQUIERDA: Original -->
+          <div style="width:45%; display:flex; flex-direction:column;">
+            <div class="fw-bold small mb-1 text-primary">
+              <i class="bi bi-bookmark-star-fill me-1"></i>
+              Programa Original — {{ originalConvention?.name || 'Ver. #' + originalConvention?.id }}
+            </div>
+            <div class="text-muted small mb-1">Clic en un concepto para ver sus cambios →</div>
+            <ag-grid-angular
+              class="ag-theme-quartz flex-grow-1"
+              [rowData]="compLeftData"
+              [columnDefs]="compLeftColDefs"
+              [gridOptions]="{ rowHeight: 32, headerHeight: 36, rowSelection: 'single',
+                               animateRows: false, suppressCellFocus: false,
+                               defaultColDef: { sortable: true, resizable: true, filter: true } }"
+              (gridReady)="compLeftGridApi = $event.api"
+              (rowClicked)="onCompRowSelected($event.data)">
+            </ag-grid-angular>
+          </div>
+
+          <!-- Divisor -->
+          <div style="width:1px; background:#dee2e6; flex-shrink:0;"></div>
+
+          <!-- DERECHA: Reprogramaciones -->
+          <div style="flex:1; display:flex; flex-direction:column;">
+            <div class="fw-bold small mb-1 text-secondary">
+              <i class="bi bi-arrow-left-right me-1"></i>
+              Reprogramaciones para:
+              <span class="text-dark">{{ compSelectedRow?.description || '(selecciona un concepto)' }}</span>
+              <span *ngIf="isLoadingRight" class="spinner-border spinner-border-sm ms-2 text-primary"></span>
+            </div>
+            <div *ngIf="!compSelectedRow" class="text-muted small mb-1">
+              Haz clic en un concepto de la izquierda para ver sus versiones.
+            </div>
+            <div *ngIf="compSelectedRow && !compRightData.length && !isLoadingRight"
+                 class="alert alert-secondary py-1 small">
+              No hay reprogramaciones registradas para este concepto.
+            </div>
+            <ag-grid-angular *ngIf="compSelectedRow && compRightData.length"
+              class="ag-theme-quartz flex-grow-1"
+              [rowData]="compRightData"
+              [columnDefs]="compRightColDefs"
+              [gridOptions]="{ rowHeight: 36, headerHeight: 36, animateRows: false,
+                               defaultColDef: { resizable: true } }"
+              (gridReady)="compRightGridApi = $event.api">
+            </ag-grid-angular>
+          </div>
+
+        </div>
+      </ng-container>
+    </ng-container>
+
   </div>
 
 </div>

@@ -215,7 +215,18 @@ export class PmoActividadesComponent implements OnInit {
   materialCatalog: string[] = [];
 
   // ── View mode ──────────────────────────────────────────────────────────────
-  viewMode: 'gantt' | 'tabla' = 'tabla'; // default tabla — Gantt requiere fechas completas
+  viewMode: 'gantt' | 'tabla' | 'comparacion' = 'tabla';
+
+  // ── Comparación ────────────────────────────────────────────────────────────
+  originalConvention: any  = null;
+  otherConventions:   any[] = [];
+  compLeftData:       any[] = [];
+  compRightData:      any[] = [];
+  compSelectedRow:    any   = null;
+  compLeftGridApi!:   GridApi;
+  compRightGridApi!:  GridApi;
+  isLoadingComp       = false;
+  isLoadingRight      = false;
   zoomLevel: 'month' | 'week' = 'month';
   showOnlyCritical = false;
 
@@ -660,8 +671,9 @@ export class PmoActividadesComponent implements OnInit {
   }
 
   // ── View / Zoom ─────────────────────────────────────────────────────────────
-  setViewMode(mode: 'gantt' | 'tabla'): void {
+  setViewMode(mode: 'gantt' | 'tabla' | 'comparacion'): void {
     this.viewMode = mode;
+    if (mode === 'comparacion') this.loadComparacion();
     if (mode === 'gantt' && this.rowData.length)
       setTimeout(() => this.buildGanttData(this.rowData), 60);
   }
@@ -1438,5 +1450,154 @@ export class PmoActividadesComponent implements OnInit {
   private showMsg(msg: string, type: 'success' | 'error'): void {
     this.saveMsg = msg; this.saveMsgType = type;
     setTimeout(() => { this.saveMsg = ''; }, 4000);
+  }
+
+  // ── Vista Comparación ────────────────────────────────────────────────────────
+
+  async loadComparacion(): Promise<void> {
+    if (!this.selectedProject || this.conventions.length < 1) return;
+    this.isLoadingComp  = true;
+    this.compLeftData   = [];
+    this.compSelectedRow = null;
+    this.compRightData  = [];
+
+    const sorted = [...this.conventions].sort((a, b) => a.id - b.id);
+    this.originalConvention = sorted[0];
+    this.otherConventions   = sorted.slice(1);
+
+    const idPrj = this.selectedProject.id ?? this.selectedProject.idProject;
+    try {
+      const res: any = await lastValueFrom(
+        this._wpService.getByConvention(this.originalConvention.id, idPrj)
+      ).catch(() => []);
+      const raw: any[] = Array.isArray(res?.data) ? res.data : (Array.isArray(res) ? res : []);
+      this.compLeftData = raw.map(r => ({
+        ...r,
+        startDate: r.startDate ?? r.startdate ?? '',
+        endDate:   r.endDate   ?? r.enDate ?? r.endate ?? '',
+      }));
+    } finally { this.isLoadingComp = false; }
+  }
+
+  async onCompRowSelected(row: any): Promise<void> {
+    this.compSelectedRow = row;
+    this.compRightData   = [];
+    if (!row || !this.otherConventions.length) return;
+    this.isLoadingRight = true;
+
+    const idPrj  = this.selectedProject.id ?? this.selectedProject.idProject;
+    const wbs    = String(row.activity ?? '');
+    const desc   = String(row.description ?? '');
+
+    const results = await Promise.all(
+      this.otherConventions.map(async (conv) => {
+        const res: any = await lastValueFrom(
+          this._wpService.getByConvention(conv.id, idPrj)
+        ).catch(() => []);
+        const items: any[] = Array.isArray(res?.data) ? res.data : (Array.isArray(res) ? res : []);
+        const found = items.find(i =>
+          (wbs && String(i.activity ?? '') === wbs) ||
+          String(i.description ?? '') === desc
+        );
+        return {
+          convName:    conv.name || conv.folio || `Ver. #${conv.id}`,
+          convId:      conv.id,
+          exists:      !!found,
+          description: found?.description  ?? null,
+          unit:        found?.unit         ?? null,
+          quantity:    found?.quantity != null ? Number(found.quantity)   : null,
+          costMX:      found?.costMX   != null ? Number(found.costMX)     : null,
+          costDLL:     found?.costDLL  != null ? Number(found.costDLL)    : null,
+          startDate:   found ? String(found.startDate ?? found.startdate ?? '').split('T')[0] : null,
+          endDate:     found ? String(found.endDate   ?? found.enDate ?? found.endate ?? '').split('T')[0] : null,
+          ponderado:   found?.ponderado != null ? Number(found.ponderado) : null,
+        };
+      })
+    );
+    this.compRightData  = results;
+    this.isLoadingRight = false;
+    if (this.compRightGridApi && !this.compRightGridApi.isDestroyed())
+      this.compRightGridApi.setGridOption('rowData', results);
+  }
+
+  // Estilo de celda: compara valor de versión vs original
+  compDiffStyle(val: any, origVal: any, kind: 'number' | 'date' | 'text'): any {
+    if (val === null || val === undefined) return { background: '#fff3cd', color: '#856404' };
+    if (origVal === null || origVal === undefined) return {};
+    if (kind === 'number') {
+      const v = Number(val), o = Number(origVal);
+      if (v > o) return { background: '#d4edda', color: '#155724', fontWeight: '600' };
+      if (v < o) return { background: '#f8d7da', color: '#721c24', fontWeight: '600' };
+    }
+    if (kind === 'date') {
+      if (String(val) > String(origVal)) return { background: '#f8d7da', color: '#721c24', fontWeight: '600' };
+      if (String(val) < String(origVal)) return { background: '#d4edda', color: '#155724', fontWeight: '600' };
+    }
+    if (kind === 'text') {
+      if (String(val) !== String(origVal)) return { background: '#fff3cd', color: '#856404' };
+    }
+    return {};
+  }
+
+  get compLeftColDefs(): ColDef[] {
+    return [
+      { field: 'activity',    headerName: 'EDT',        width: 80,  pinned: 'left' },
+      { field: 'description', headerName: 'Descripción', flex: 2,   tooltipField: 'description' },
+      { field: 'unit',        headerName: 'Unidad',     width: 80  },
+      { field: 'quantity',    headerName: 'Cantidad',   width: 90,  type: 'numericColumn',
+        valueFormatter: p => p.value != null ? Number(p.value).toLocaleString('es-MX') : '' },
+      { field: 'costMX',      headerName: 'Costo MX',   width: 110, type: 'numericColumn',
+        valueFormatter: p => p.value != null ? Number(p.value).toLocaleString('es-MX', { minimumFractionDigits: 2 }) : '' },
+      { field: 'costDLL',     headerName: 'Costo USD',  width: 110, type: 'numericColumn',
+        valueFormatter: p => p.value != null ? Number(p.value).toLocaleString('en-US', { minimumFractionDigits: 2 }) : '' },
+      { field: 'startDate',   headerName: 'Inicio',     width: 100,
+        valueFormatter: p => p.value ? String(p.value).split('T')[0] : '' },
+      { field: 'endDate',     headerName: 'Fin',        width: 100,
+        valueFormatter: p => p.value ? String(p.value).split('T')[0] : '' },
+      { field: 'ponderado',   headerName: 'Pond. %',    width: 90,  type: 'numericColumn',
+        valueFormatter: p => p.value != null ? Number(p.value).toFixed(2) + '%' : '' },
+    ];
+  }
+
+  get compRightColDefs(): ColDef[] {
+    const orig = this.compSelectedRow;
+    const fmt  = (v: any) => v != null ? Number(v).toLocaleString('es-MX', { minimumFractionDigits: 2 }) : '—';
+    const fmtD = (v: any) => v ? String(v).split('T')[0] : '—';
+
+    return [
+      { field: 'convName',    headerName: 'Versión', width: 130, pinned: 'left',
+        cellStyle: p => p.data?.exists === false ? { background: '#f8d7da', fontWeight: '600' } : { fontWeight: '600' }
+      },
+      { field: 'description', headerName: 'Descripción', flex: 2,
+        cellStyle: p => !p.data?.exists ? { background: '#f8d7da' } :
+          this.compDiffStyle(p.value, orig?.description, 'text') },
+      { field: 'unit',        headerName: 'Unidad', width: 80,
+        cellStyle: p => !p.data?.exists ? { background: '#f8d7da' } :
+          this.compDiffStyle(p.value, orig?.unit, 'text') },
+      { field: 'quantity',    headerName: 'Cantidad', width: 90, type: 'numericColumn',
+        valueFormatter: p => !p.data?.exists ? 'No existe' : (p.value != null ? Number(p.value).toLocaleString('es-MX') : '—'),
+        cellStyle: p => !p.data?.exists ? { background: '#f8d7da', color: '#721c24' } :
+          this.compDiffStyle(p.value, orig?.quantity, 'number') },
+      { field: 'costMX',      headerName: 'Costo MX', width: 110, type: 'numericColumn',
+        valueFormatter: p => !p.data?.exists ? '—' : fmt(p.value),
+        cellStyle: p => !p.data?.exists ? { background: '#f8d7da' } :
+          this.compDiffStyle(p.value, orig?.costMX, 'number') },
+      { field: 'costDLL',     headerName: 'Costo USD', width: 110, type: 'numericColumn',
+        valueFormatter: p => !p.data?.exists ? '—' : fmt(p.value),
+        cellStyle: p => !p.data?.exists ? { background: '#f8d7da' } :
+          this.compDiffStyle(p.value, orig?.costDLL, 'number') },
+      { field: 'startDate',   headerName: 'Inicio', width: 100,
+        valueFormatter: p => !p.data?.exists ? '—' : fmtD(p.value),
+        cellStyle: p => !p.data?.exists ? { background: '#f8d7da' } :
+          this.compDiffStyle(p.value, orig?.startDate ? String(orig.startDate).split('T')[0] : null, 'date') },
+      { field: 'endDate',     headerName: 'Fin', width: 100,
+        valueFormatter: p => !p.data?.exists ? '—' : fmtD(p.value),
+        cellStyle: p => !p.data?.exists ? { background: '#f8d7da' } :
+          this.compDiffStyle(p.value, orig?.endDate ? String(orig.endDate).split('T')[0] : null, 'date') },
+      { field: 'ponderado',   headerName: 'Pond. %', width: 90, type: 'numericColumn',
+        valueFormatter: p => !p.data?.exists ? '—' : (p.value != null ? Number(p.value).toFixed(2) + '%' : '—'),
+        cellStyle: p => !p.data?.exists ? { background: '#f8d7da' } :
+          this.compDiffStyle(p.value, orig?.ponderado, 'number') },
+    ];
   }
 }
