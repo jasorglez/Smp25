@@ -85,5 +85,5 @@ export const environment = {
     // publicKey: 'TEST-4399133a-4676-42a2-ab85-d946370bf96a',
   },
 
-  version: '7.52 (01 Junio 2026) fix(actividades): endDate no guardaba — endate != endDate en JSON',
+  version: '7.53 (01 Junio 2026) fix(comparacion): colDefs y gridOptions como propiedades fijas no getters',
 };

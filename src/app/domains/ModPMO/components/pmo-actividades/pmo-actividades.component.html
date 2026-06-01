@@ -709,10 +709,8 @@
             <ag-grid-angular
               class="ag-theme-quartz flex-grow-1"
               [rowData]="compLeftData"
-              [columnDefs]="compLeftColDefs"
-              [gridOptions]="{ rowHeight: 32, headerHeight: 36, rowSelection: 'single',
-                               animateRows: false, suppressCellFocus: false,
-                               defaultColDef: { sortable: true, resizable: true, filter: true } }"
+              [columnDefs]="compLeftCols"
+              [gridOptions]="compLeftGridOpts"
               (gridReady)="compLeftGridApi = $event.api"
               (rowClicked)="onCompRowSelected($event.data)">
             </ag-grid-angular>
@@ -739,9 +737,8 @@
             <ag-grid-angular *ngIf="compSelectedRow && compRightData.length"
               class="ag-theme-quartz flex-grow-1"
               [rowData]="compRightData"
-              [columnDefs]="compRightColDefs"
-              [gridOptions]="{ rowHeight: 36, headerHeight: 36, animateRows: false,
-                               defaultColDef: { resizable: true } }"
+              [columnDefs]="compRightCols"
+              [gridOptions]="compRightGridOpts"
               (gridReady)="compRightGridApi = $event.api">
             </ag-grid-angular>
           </div>

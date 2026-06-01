@@ -227,6 +227,74 @@ export class PmoActividadesComponent implements OnInit {
   compRightGridApi!:  GridApi;
   isLoadingComp       = false;
   isLoadingRight      = false;
+
+  // GridOptions definidas como propiedades fijas (no inline en HTML)
+  readonly compLeftGridOpts: GridOptions = {
+    rowHeight: 32, headerHeight: 36, animateRows: false,
+    rowSelection: 'single' as any,
+    suppressCellFocus: false,
+    defaultColDef: { sortable: true, resizable: true, filter: true },
+  };
+
+  readonly compRightGridOpts: GridOptions = {
+    rowHeight: 36, headerHeight: 36, animateRows: false,
+    defaultColDef: { resizable: true },
+  };
+
+  // ColDefs izquierda — fijas, se crean una sola vez
+  readonly compLeftCols: ColDef[] = [
+    { field: 'activity',    headerName: 'EDT',        width: 80,  pinned: 'left' },
+    { field: 'description', headerName: 'Descripción', flex: 2,   tooltipField: 'description' },
+    { field: 'unit',        headerName: 'Unidad',     width: 80  },
+    { field: 'quantity',    headerName: 'Cantidad',   width: 90,  type: 'numericColumn',
+      valueFormatter: (p: any) => p.value != null ? Number(p.value).toLocaleString('es-MX') : '' },
+    { field: 'costMX',      headerName: 'Costo MX',   width: 110, type: 'numericColumn',
+      valueFormatter: (p: any) => p.value != null ? Number(p.value).toLocaleString('es-MX', { minimumFractionDigits: 2 }) : '' },
+    { field: 'costDLL',     headerName: 'Costo USD',  width: 110, type: 'numericColumn',
+      valueFormatter: (p: any) => p.value != null ? Number(p.value).toLocaleString('en-US', { minimumFractionDigits: 2 }) : '' },
+    { field: 'startDate',   headerName: 'Inicio',     width: 100,
+      valueFormatter: (p: any) => p.value ? String(p.value).split('T')[0] : '' },
+    { field: 'endDate',     headerName: 'Fin',        width: 100,
+      valueFormatter: (p: any) => p.value ? String(p.value).split('T')[0] : '' },
+    { field: 'ponderado',   headerName: 'Pond. %',    width: 90,  type: 'numericColumn',
+      valueFormatter: (p: any) => p.value != null ? Number(p.value).toFixed(2) + '%' : '' },
+  ];
+
+  // ColDefs derecha — las cellStyle usan this.compSelectedRow dinámicamente
+  readonly compRightCols: ColDef[] = [
+    { field: 'convName',    headerName: 'Versión', width: 130, pinned: 'left',
+      cellStyle: (p: any) => p.data?.exists === false ? { background: '#f8d7da', fontWeight: '600' } : { fontWeight: '600' } },
+    { field: 'description', headerName: 'Descripción', flex: 2,
+      cellStyle: (p: any) => !p.data?.exists ? { background: '#f8d7da' } :
+        this.compDiffStyle(p.value, this.compSelectedRow?.description, 'text') },
+    { field: 'unit',        headerName: 'Unidad', width: 80,
+      cellStyle: (p: any) => !p.data?.exists ? { background: '#f8d7da' } :
+        this.compDiffStyle(p.value, this.compSelectedRow?.unit, 'text') },
+    { field: 'quantity',    headerName: 'Cantidad', width: 90, type: 'numericColumn',
+      valueFormatter: (p: any) => !p.data?.exists ? 'No existe' : (p.value != null ? Number(p.value).toLocaleString('es-MX') : '—'),
+      cellStyle: (p: any) => !p.data?.exists ? { background: '#f8d7da', color: '#721c24' } :
+        this.compDiffStyle(p.value, this.compSelectedRow?.quantity, 'number') },
+    { field: 'costMX',      headerName: 'Costo MX', width: 110, type: 'numericColumn',
+      valueFormatter: (p: any) => !p.data?.exists ? '—' : (p.value != null ? Number(p.value).toLocaleString('es-MX', { minimumFractionDigits: 2 }) : '—'),
+      cellStyle: (p: any) => !p.data?.exists ? { background: '#f8d7da' } :
+        this.compDiffStyle(p.value, this.compSelectedRow?.costMX, 'number') },
+    { field: 'costDLL',     headerName: 'Costo USD', width: 110, type: 'numericColumn',
+      valueFormatter: (p: any) => !p.data?.exists ? '—' : (p.value != null ? Number(p.value).toLocaleString('en-US', { minimumFractionDigits: 2 }) : '—'),
+      cellStyle: (p: any) => !p.data?.exists ? { background: '#f8d7da' } :
+        this.compDiffStyle(p.value, this.compSelectedRow?.costDLL, 'number') },
+    { field: 'startDate',   headerName: 'Inicio', width: 100,
+      valueFormatter: (p: any) => !p.data?.exists ? '—' : (p.value ? String(p.value).split('T')[0] : '—'),
+      cellStyle: (p: any) => !p.data?.exists ? { background: '#f8d7da' } :
+        this.compDiffStyle(p.value, this.compSelectedRow?.startDate ? String(this.compSelectedRow.startDate).split('T')[0] : null, 'date') },
+    { field: 'endDate',     headerName: 'Fin', width: 100,
+      valueFormatter: (p: any) => !p.data?.exists ? '—' : (p.value ? String(p.value).split('T')[0] : '—'),
+      cellStyle: (p: any) => !p.data?.exists ? { background: '#f8d7da' } :
+        this.compDiffStyle(p.value, this.compSelectedRow?.endDate ? String(this.compSelectedRow.endDate).split('T')[0] : null, 'date') },
+    { field: 'ponderado',   headerName: 'Pond. %', width: 90, type: 'numericColumn',
+      valueFormatter: (p: any) => !p.data?.exists ? '—' : (p.value != null ? Number(p.value).toFixed(2) + '%' : '—'),
+      cellStyle: (p: any) => !p.data?.exists ? { background: '#f8d7da' } :
+        this.compDiffStyle(p.value, this.compSelectedRow?.ponderado, 'number') },
+  ];
   zoomLevel: 'month' | 'week' = 'month';
   showOnlyCritical = false;
 
@@ -1517,8 +1585,11 @@ export class PmoActividadesComponent implements OnInit {
     );
     this.compRightData  = results;
     this.isLoadingRight = false;
-    if (this.compRightGridApi && !this.compRightGridApi.isDestroyed())
+    // Refrescar estilos de celdas después de actualizar compSelectedRow
+    if (this.compRightGridApi && !this.compRightGridApi.isDestroyed()) {
       this.compRightGridApi.setGridOption('rowData', results);
+      setTimeout(() => this.compRightGridApi?.refreshCells({ force: true }), 50);
+    }
   }
 
   // Estilo de celda: compara valor de versión vs original
@@ -1540,65 +1611,4 @@ export class PmoActividadesComponent implements OnInit {
     return {};
   }
 
-  get compLeftColDefs(): ColDef[] {
-    return [
-      { field: 'activity',    headerName: 'EDT',        width: 80,  pinned: 'left' },
-      { field: 'description', headerName: 'Descripción', flex: 2,   tooltipField: 'description' },
-      { field: 'unit',        headerName: 'Unidad',     width: 80  },
-      { field: 'quantity',    headerName: 'Cantidad',   width: 90,  type: 'numericColumn',
-        valueFormatter: p => p.value != null ? Number(p.value).toLocaleString('es-MX') : '' },
-      { field: 'costMX',      headerName: 'Costo MX',   width: 110, type: 'numericColumn',
-        valueFormatter: p => p.value != null ? Number(p.value).toLocaleString('es-MX', { minimumFractionDigits: 2 }) : '' },
-      { field: 'costDLL',     headerName: 'Costo USD',  width: 110, type: 'numericColumn',
-        valueFormatter: p => p.value != null ? Number(p.value).toLocaleString('en-US', { minimumFractionDigits: 2 }) : '' },
-      { field: 'startDate',   headerName: 'Inicio',     width: 100,
-        valueFormatter: p => p.value ? String(p.value).split('T')[0] : '' },
-      { field: 'endDate',     headerName: 'Fin',        width: 100,
-        valueFormatter: p => p.value ? String(p.value).split('T')[0] : '' },
-      { field: 'ponderado',   headerName: 'Pond. %',    width: 90,  type: 'numericColumn',
-        valueFormatter: p => p.value != null ? Number(p.value).toFixed(2) + '%' : '' },
-    ];
-  }
-
-  get compRightColDefs(): ColDef[] {
-    const orig = this.compSelectedRow;
-    const fmt  = (v: any) => v != null ? Number(v).toLocaleString('es-MX', { minimumFractionDigits: 2 }) : '—';
-    const fmtD = (v: any) => v ? String(v).split('T')[0] : '—';
-
-    return [
-      { field: 'convName',    headerName: 'Versión', width: 130, pinned: 'left',
-        cellStyle: p => p.data?.exists === false ? { background: '#f8d7da', fontWeight: '600' } : { fontWeight: '600' }
-      },
-      { field: 'description', headerName: 'Descripción', flex: 2,
-        cellStyle: p => !p.data?.exists ? { background: '#f8d7da' } :
-          this.compDiffStyle(p.value, orig?.description, 'text') },
-      { field: 'unit',        headerName: 'Unidad', width: 80,
-        cellStyle: p => !p.data?.exists ? { background: '#f8d7da' } :
-          this.compDiffStyle(p.value, orig?.unit, 'text') },
-      { field: 'quantity',    headerName: 'Cantidad', width: 90, type: 'numericColumn',
-        valueFormatter: p => !p.data?.exists ? 'No existe' : (p.value != null ? Number(p.value).toLocaleString('es-MX') : '—'),
-        cellStyle: p => !p.data?.exists ? { background: '#f8d7da', color: '#721c24' } :
-          this.compDiffStyle(p.value, orig?.quantity, 'number') },
-      { field: 'costMX',      headerName: 'Costo MX', width: 110, type: 'numericColumn',
-        valueFormatter: p => !p.data?.exists ? '—' : fmt(p.value),
-        cellStyle: p => !p.data?.exists ? { background: '#f8d7da' } :
-          this.compDiffStyle(p.value, orig?.costMX, 'number') },
-      { field: 'costDLL',     headerName: 'Costo USD', width: 110, type: 'numericColumn',
-        valueFormatter: p => !p.data?.exists ? '—' : fmt(p.value),
-        cellStyle: p => !p.data?.exists ? { background: '#f8d7da' } :
-          this.compDiffStyle(p.value, orig?.costDLL, 'number') },
-      { field: 'startDate',   headerName: 'Inicio', width: 100,
-        valueFormatter: p => !p.data?.exists ? '—' : fmtD(p.value),
-        cellStyle: p => !p.data?.exists ? { background: '#f8d7da' } :
-          this.compDiffStyle(p.value, orig?.startDate ? String(orig.startDate).split('T')[0] : null, 'date') },
-      { field: 'endDate',     headerName: 'Fin', width: 100,
-        valueFormatter: p => !p.data?.exists ? '—' : fmtD(p.value),
-        cellStyle: p => !p.data?.exists ? { background: '#f8d7da' } :
-          this.compDiffStyle(p.value, orig?.endDate ? String(orig.endDate).split('T')[0] : null, 'date') },
-      { field: 'ponderado',   headerName: 'Pond. %', width: 90, type: 'numericColumn',
-        valueFormatter: p => !p.data?.exists ? '—' : (p.value != null ? Number(p.value).toFixed(2) + '%' : '—'),
-        cellStyle: p => !p.data?.exists ? { background: '#f8d7da' } :
-          this.compDiffStyle(p.value, orig?.ponderado, 'number') },
-    ];
-  }
 }
