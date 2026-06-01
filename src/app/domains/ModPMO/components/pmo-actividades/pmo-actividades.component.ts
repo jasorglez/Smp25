@@ -1554,8 +1554,10 @@ export class PmoActividadesComponent implements OnInit {
       const raw: any[] = Array.isArray(res?.data) ? res.data : (Array.isArray(res) ? res : []);
       this.compLeftData = raw.map(r => ({
         ...r,
-        startDate: r.startDate ?? r.startdate ?? '',
-        endDate:   r.endDate   ?? r.enDate ?? r.endate ?? '',
+        description: r.text ?? r.description ?? r.especification ?? '',
+        unit:        r.measure ?? r.unit ?? '',
+        startDate:   r.startDate ?? r.startdate ?? '',
+        endDate:     r.endDate   ?? r.enDate ?? r.endate ?? '',
       }));
     } finally { this.isLoadingComp = false; }
   }
@@ -1568,7 +1570,7 @@ export class PmoActividadesComponent implements OnInit {
 
     const idPrj  = this.selectedProject.id ?? this.selectedProject.idProject;
     const wbs    = String(row.activity ?? '');
-    const desc   = String(row.description ?? '');
+    const desc   = String(row.description ?? row.text ?? '');
 
     const results = await Promise.all(
       this.otherConventions.map(async (conv) => {
@@ -1578,17 +1580,17 @@ export class PmoActividadesComponent implements OnInit {
         const items: any[] = Array.isArray(res?.data) ? res.data : (Array.isArray(res) ? res : []);
         const found = items.find(i =>
           (wbs && String(i.activity ?? '') === wbs) ||
-          String(i.description ?? '') === desc
+          (desc && (String(i.text ?? i.description ?? '') === desc))
         );
         return {
           convName:    conv.name || conv.folio || `Ver. #${conv.id}`,
           convId:      conv.id,
           exists:      !!found,
-          description: found?.description  ?? null,
-          unit:        found?.unit         ?? null,
-          quantity:    found?.quantity != null ? Number(found.quantity)   : null,
-          costMX:      found?.costMX   != null ? Number(found.costMX)     : null,
-          costDLL:     found?.costDLL  != null ? Number(found.costDLL)    : null,
+          description: found ? (found.text ?? found.description ?? null) : null,
+          unit:        found ? (found.measure ?? found.unit ?? null)      : null,
+          quantity:    found?.quantity  != null ? Number(found.quantity)  : null,
+          costMX:      found?.costMX    != null ? Number(found.costMX)    : null,
+          costDLL:     found?.costDLL   != null ? Number(found.costDLL)   : null,
           startDate:   found ? String(found.startDate ?? found.startdate ?? '').split('T')[0] : null,
           endDate:     found ? String(found.endDate   ?? found.enDate ?? found.endate ?? '').split('T')[0] : null,
           ponderado:   found?.ponderado != null ? Number(found.ponderado) : null,
