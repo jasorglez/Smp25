@@ -6,6 +6,7 @@ import { lastValueFrom }        from 'rxjs';
 import { ProjectsService }      from 'app/services/projects.service';
 import { WorkprogramsService }  from 'app/services/workprograms.service';
 import { AdvanceService }       from 'app/services/advance.service';
+import { ConventionsService }   from 'app/services/conventions.service';
 import { SignalsService }       from 'app/services/signals.service';
 
 // ════════════════════════════════════════════════════════════════════════════
@@ -133,13 +134,17 @@ export class PmoDashboardComponent implements OnInit {
   private _projectsService     = inject(ProjectsService);
   private _workprogramsService = inject(WorkprogramsService);
   private _advanceService      = inject(AdvanceService);
+  private _convService         = inject(ConventionsService);
   private _signalsService      = inject(SignalsService);
 
   // ── Selección ─────────────────────────────────────────────────────────────
-  projects:        any[] = [];
-  selectedProject: any   = null;
-  idCompany:       number = 0;
-  isLoading        = false;
+  projects:           any[] = [];
+  selectedProject:    any   = null;
+  conventions:        any[] = [];
+  selectedConvention: any   = null;
+  isLoadingConv             = false;
+  idCompany:          number = 0;
+  isLoading           = false;
 
   // ── EVM ───────────────────────────────────────────────────────────────────
   acManual = 0;   // Costo real — manual hasta tener módulo Recursos
@@ -187,6 +192,32 @@ export class PmoDashboardComponent implements OnInit {
 
   async onProjectChange(): Promise<void> {
     if (!this.selectedProject) return;
+    this.selectedConvention = null;
+    this.conventions        = [];
+    await this.loadConventions();
+  }
+
+  async loadConventions(): Promise<void> {
+    const idContrato = this.selectedProject?.idContrato ?? this.selectedProject?.id_contrato ?? 0;
+    if (!idContrato) { await this.loadDashboard(); return; }
+    this.isLoadingConv = true;
+    try {
+      const res: any = await lastValueFrom(
+        this._convService.getConventionsByContractOrProject('contract', idContrato)
+      );
+      const raw = Array.isArray(res) ? res : (Array.isArray(res?.data) ? res.data : []);
+      this.conventions = raw.filter((c: any) => c.active !== false).sort((a: any, b: any) => a.id - b.id);
+      const vigente = this.conventions.find((c: any) => c.vigente);
+      this.selectedConvention = vigente ?? (this.conventions.length ? this.conventions[this.conventions.length - 1] : null);
+    } catch {
+      this.conventions = [];
+    } finally {
+      this.isLoadingConv = false;
+    }
+    await this.loadDashboard();
+  }
+
+  async onConventionChange(): Promise<void> {
     await this.loadDashboard();
   }
 
@@ -195,12 +226,19 @@ export class PmoDashboardComponent implements OnInit {
     this.isLoading = true;
     try {
       const idProject = this.selectedProject.id ?? this.selectedProject.idProject;
+      const idConv    = this.selectedConvention?.id ?? null;
 
-      // Cargar datos en paralelo
+      // Cargar datos en paralelo — filtrados por convenio si hay uno seleccionado
+      const tasksObs    = idConv
+        ? this._workprogramsService.getByConvention(idConv, idProject)
+        : this._workprogramsService.getWorkPrograms(idProject, 'Project');
+      const advancesObs = idConv
+        ? this._advanceService.getAdvancesByConvenio(idProject, 'Project', idConv)
+        : this._advanceService.getAdvancesByProject(idProject, 'Project');
+
       const [tasks, advancesRes] = await Promise.all([
-        lastValueFrom(this._workprogramsService.getWorkPrograms(idProject, 'Project')),
-        lastValueFrom(this._advanceService.getAdvancesByProject(idProject, 'Project'))
-          .catch(() => []),
+        lastValueFrom(tasksObs),
+        lastValueFrom(advancesObs).catch(() => []),
       ]);
 
       const advances: any[] = Array.isArray((advancesRes as any)?.data)

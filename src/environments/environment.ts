@@ -85,5 +85,5 @@ export const environment = {
     // publicKey: 'TEST-4399133a-4676-42a2-ab85-d946370bf96a',
   },
 
-  version: '7.54 (01 Junio 2026) fix(actividades): endDate y comparacion movida al nivel principal',
+  version: '7.55 (01 Junio 2026) fix(dashboard): filtro por convenio en tareas y avances',
 };

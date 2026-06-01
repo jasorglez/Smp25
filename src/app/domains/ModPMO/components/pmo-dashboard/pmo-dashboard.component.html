@@ -14,10 +14,27 @@
       </div>
     </div>
 
-    <div class="col-md-3" *ngIf="selectedProject">
+    <!-- Selector de convenio/versión -->
+    <div class="col-md-3" *ngIf="selectedProject && (conventions.length || isLoadingConv)">
+      <div class="input-group input-group-sm">
+        <span class="input-group-text bg-primary text-white">
+          <i class="bi bi-file-earmark-text me-1"></i> Versión
+          <span *ngIf="isLoadingConv" class="ms-1 spinner-border spinner-border-sm"></span>
+        </span>
+        <select class="form-select" [(ngModel)]="selectedConvention"
+                (ngModelChange)="onConventionChange()" [disabled]="isLoadingConv">
+          <option [ngValue]="null">— Todas —</option>
+          <option *ngFor="let c of conventions" [ngValue]="c">
+            {{ c.vigente ? '★ ' : '' }}{{ c.name || c.folio || ('Ver. #' + c.id) }}
+          </option>
+        </select>
+      </div>
+    </div>
+
+    <div class="col-md-2" *ngIf="selectedProject">
       <div class="input-group input-group-sm">
         <span class="input-group-text" title="Costo Real Acumulado (AC). Cuando tengas el módulo Recursos se llenará automático.">
-          <i class="bi bi-cash me-1"></i> AC — Costo Real (MXN)
+          <i class="bi bi-cash me-1"></i> AC (MXN)
         </span>
         <input type="number" class="form-control" [(ngModel)]="acManual"
                (ngModelChange)="onAcChange()" min="0" placeholder="0.00">
