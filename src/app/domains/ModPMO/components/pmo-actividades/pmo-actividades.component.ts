@@ -369,7 +369,13 @@ export class PmoActividadesComponent implements OnInit {
       field: 'startDate', headerName: 'Inicio', width: 115, editable: true,
       cellEditor: 'agDateCellEditor',
       valueGetter: (p) => p.data?.startDate ? String(p.data.startDate).substring(0, 10) : '',
-      valueSetter: (p) => { p.data.startDate = p.newValue; return true; },
+      valueSetter: (p) => {
+        const v = p.newValue;
+        p.data.startDate = v instanceof Date
+          ? `${v.getFullYear()}-${String(v.getMonth()+1).padStart(2,'0')}-${String(v.getDate()).padStart(2,'0')}`
+          : (v ? String(v).substring(0, 10) : '');
+        return true;
+      },
       valueFormatter: (p) => {
         if (!p.value) return '';
         const [y, m, d] = String(p.value).split('-');
@@ -381,7 +387,13 @@ export class PmoActividadesComponent implements OnInit {
       field: 'endDate', headerName: 'Término', width: 115, editable: true,
       cellEditor: 'agDateCellEditor',
       valueGetter: (p) => p.data?.endDate ? String(p.data.endDate).substring(0, 10) : '',
-      valueSetter: (p) => { p.data.endDate = p.newValue; return true; },
+      valueSetter: (p) => {
+        const v = p.newValue;
+        p.data.endDate = v instanceof Date
+          ? `${v.getFullYear()}-${String(v.getMonth()+1).padStart(2,'0')}-${String(v.getDate()).padStart(2,'0')}`
+          : (v ? String(v).substring(0, 10) : '');
+        return true;
+      },
       valueFormatter: (p) => {
         if (!p.value) return '';
         const [y, m, d] = String(p.value).split('-');
