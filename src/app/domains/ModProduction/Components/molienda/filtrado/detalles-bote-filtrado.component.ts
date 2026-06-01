@@ -74,7 +74,11 @@ interface ModalEntry {
                [style.background]="lockedViewMode ? '#f8f9fa' : '#fff3e0'" style="flex-shrink:0;">
             <span style="font-weight:600;font-size:0.92rem;" [style.color]="lockedViewMode ? '#495057' : '#e65100'">
               <i *ngIf="lockedViewMode" class="bi bi-lock-fill me-1"></i>
-              {{ lockedViewMode ? 'Botes asignados (bloqueado)' : 'Asignar botes' }}
+              {{ lockedViewMode ? 'Botes asignados' : 'Asignar botes' }}
+              <span *ngIf="matPrimaName" style="font-weight:400;">— {{ matPrimaName }}</span>
+              <span *ngIf="modalRow?.fecha" style="font-weight:400; font-size:0.82rem; margin-left:6px; opacity:0.75;">
+                {{ modalRow!.fecha | date:'dd/MM/yyyy' }}
+              </span>
             </span>
             <button class="btn-close btn-sm" (click)="closeModal()"></button>
           </div>
@@ -268,6 +272,8 @@ interface ModalEntry {
   `,
   styles: [`
     :host { display: block; height: 100%; overflow: hidden; }
+    :host ::ng-deep .locked-row { background: #e9ecef !important; color: #6c757d !important; }
+    :host ::ng-deep .locked-row .ag-cell { color: #6c757d !important; }
 
     .bote-card {
       display: flex;
@@ -416,6 +422,7 @@ export class DetallesBoteFiltradoComponent {
 
   private idMolienda: number | null = null;
   private matPrimaId: number | null = null;
+  matPrimaName: string = '';
   boteOptions: BoteOption[] = [];
   // usageMap: idBoteCatalog → suma total de cantidad en todos los matdetalles
   private usageMap: Record<number, number> = {};
@@ -494,13 +501,18 @@ export class DetallesBoteFiltradoComponent {
     rowHeight: 22,
     autoSizeStrategy: { type: 'fitCellContents' },
     defaultColDef: { resizable: true },
+    rowClassRules: {
+      'locked-row': (p: any) => !!p.data?.locked,
+    },
   };
 
   // ── Init ──────────────────────────────────────────────────────────────────
 
   agInit(params: any) {
-    this.idMolienda = params?.data?.id ?? null;
-    this.matPrimaId = params?.data?.matPrima ?? null;
+    this.idMolienda  = params?.data?.id ?? null;
+    this.matPrimaId  = params?.data?.matPrima ?? null;
+    const opts: { id: number; name: string }[] = params?.context?.articuloOptions ?? [];
+    this.matPrimaName = opts.find(o => o.id === this.matPrimaId)?.name ?? '';
     this.init();
   }
 
