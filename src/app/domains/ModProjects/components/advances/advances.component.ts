@@ -32,7 +32,8 @@ interface ContractAdvance {
   accumulateProgram?: number; accumulatePhysical?: number;
   date: string; physicalAdvanced: number; programAdvanced: number;
   idContract?: number | null;
-  idProject?: number | null;   // contexto PMO (sin contrato)
+  idProject?: number | null;
+  idConvenio?: number | null;
 }
 
 interface ActiveTask {
@@ -324,6 +325,7 @@ export class AdvancesComponent implements OnInit, OnChanges {
       id: tempId, date: new Date().toISOString().split('T')[0],
       idContract:       isPmo ? null : (this.effectiveContractId ?? 0),
       idProject:        isPmo ? this.idProject : null,
+      idConvenio:       this.idConvention ?? 0,
       physicalAdvanced: 0, programAdvanced: 0,
       accumulateProgram: 0, accumulatePhysical: 0, __isNew: true,
     };
@@ -637,10 +639,10 @@ export class AdvancesComponent implements OnInit, OnChanges {
     const clean: any = { ...data };
     delete clean.__isNew; delete clean.__modified;
     if (clean.id && String(clean.id).startsWith('temp_')) delete clean.id;
-    // Contexto PMO: asegurar type=Project
     const isPmo = this.isPmoScope;
-    clean.type   = isPmo ? 'Project' : 'Contract';
-    clean.active = 1;
+    clean.type      = isPmo ? 'Project' : 'Contract';
+    clean.active    = 1;
+    clean.idConvenio = this.idConvention ?? 0;
     if (isPmo) clean.idProject = this.idProject;
     return clean;
   }

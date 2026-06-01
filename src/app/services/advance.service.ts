@@ -20,6 +20,10 @@ export class AdvanceService {
     return this.http.get(`${this.apiUrl}/Advanced/${projectId}/${type}`, { headers: this.trackingService.getHeaders() });
   }
 
+  getAdvancesByConvenio(projectId: number, type: string, idConvenio: number): Observable<any> {
+    return this.http.get(`${this.apiUrl}/Advanced/${projectId}/${type}/${idConvenio}`, { headers: this.trackingService.getHeaders() });
+  }
+
   addAdvance(data: any): Observable<any> {
     return this.http.post(`${this.apiUrl}/Advanced`, data, { headers: this.trackingService.getHeaders() });
   }
