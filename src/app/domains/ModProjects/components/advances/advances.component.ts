@@ -986,12 +986,13 @@ export class AdvancesComponent implements OnInit, OnChanges {
   }
 
   private async getDailySummariesWithFallback(): Promise<DailySummary[]> {
-    const scopes = [
-      { idContract: this.effectiveContractId, idConvention: this.idConvention },
-      { idContract: this.effectiveContractId, idConvention: null },
-      { idContract: null, idConvention: this.idConvention },
-      { idContract: null, idConvention: null }
-    ];
+    // Si hay convenio seleccionado, consultar SOLO ese convenio — no mezclar revisiones
+    const scopes = this.idConvention
+      ? [{ idContract: this.effectiveContractId, idConvention: this.idConvention }]
+      : [
+          { idContract: this.effectiveContractId, idConvention: null },
+          { idContract: null,                     idConvention: null }
+        ];
 
     for (const scope of scopes) {
       const summaries = await lastValueFrom(
@@ -1013,12 +1014,13 @@ export class AdvancesComponent implements OnInit, OnChanges {
   }
 
   private async getProgramAdvanceForDate(date: string): Promise<number> {
-    const scopes = [
-      { idContract: this.effectiveContractId, idConvention: this.idConvention },
-      { idContract: this.effectiveContractId, idConvention: null },
-      { idContract: null, idConvention: this.idConvention },
-      { idContract: null, idConvention: null }
-    ];
+    // Si hay convenio seleccionado, consultar SOLO ese convenio
+    const scopes = this.idConvention
+      ? [{ idContract: this.effectiveContractId, idConvention: this.idConvention }]
+      : [
+          { idContract: this.effectiveContractId, idConvention: null },
+          { idContract: null,                     idConvention: null }
+        ];
 
     for (const scope of scopes) {
       const summaries = await lastValueFrom(
