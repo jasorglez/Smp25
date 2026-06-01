@@ -218,35 +218,43 @@ export class PmoReporteSeguimientoComponent {
       const projEnd   = allEnds.length   ? allEnds.sort().reverse()[0] : cut;
 
       // ── Avances ordenados hasta el corte ─────────────────────────────────────
+      // Sort por fecha ASC, luego por id ASC — evita que registros con acum=0
+      // del mismo día queden al final y rompan el cálculo
       const advSorted = advances
         .map((a: any) => ({ ...a, dateStr: dateStr(a.date) }))
         .filter(a => a.dateStr && a.dateStr <= cut)
-        .sort((a, b) => a.dateStr.localeCompare(b.dateStr));
+        .sort((a, b) => {
+          const d = a.dateStr.localeCompare(b.dateStr);
+          return d !== 0 ? d : Number(a.id ?? 0) - Number(b.id ?? 0);
+        });
 
-      // ── Detectar si los acumulados están guardados en BD o hay que calcularlos ──
-      // Algunos convenios solo tienen programadvanced/physicaladvanced por día,
-      // sin accumulateprogram/accumulatephysical calculados. En ese caso sumamos.
-      const hasStoredAccum = advSorted.some(a =>
-        Number(a.accumulateProgram ?? a.accumulateprogram ?? 0) > 0 ||
+      // Programado: siempre por suma acumulada de programadvanced (el stored puede
+      // ser incorrecto si fue calculado mezclando convenios).
+      // Real: usar accumulatephysical guardado si existe, sino suma corrida.
+      const hasStoredReal = advSorted.some(a =>
         Number(a.accumulatePhysical ?? a.accumulatephysical ?? 0) > 0
       );
 
       let runProg = 0, runReal = 0;
       const advCalc = advSorted.map(a => {
-        if (hasStoredAccum) {
+        runProg = Math.round((runProg + Number(a.programAdvanced ?? a.programadvanced ?? 0)) * 10000) / 10000;
+        if (hasStoredReal) {
           return {
             ...a,
-            _prog: Number(a.accumulateProgram  ?? a.accumulateprogram  ?? 0),
+            _prog: runProg,
             _real: Number(a.accumulatePhysical ?? a.accumulatephysical ?? 0),
           };
         }
-        runProg = Math.round((runProg + Number(a.programAdvanced ?? a.programadvanced ?? 0)) * 10000) / 10000;
         runReal = Math.round((runReal + Number(a.physicalAdvanced ?? a.physicaladvanced ?? 0)) * 10000) / 10000;
         return { ...a, _prog: runProg, _real: runReal };
       });
 
-      const lastAdv = advCalc.length ? advCalc[advCalc.length - 1] : null;
-      const prevAdv = advCalc.length > 1 ? advCalc[advCalc.length - 2] : null;
+      // Usar el último registro con physicalAdvanced > 0 como referencia real
+      const advWithReal  = advCalc.filter(a => Number(a.physicalAdvanced ?? a.physicaladvanced ?? 0) > 0 || Number(a._real) > 0);
+      const lastAdv      = advWithReal.length ? advWithReal[advWithReal.length - 1]
+                         : advCalc.length     ? advCalc[advCalc.length - 1] : null;
+      const prevAdv      = advWithReal.length > 1 ? advWithReal[advWithReal.length - 2]
+                         : advCalc.length > 1     ? advCalc[advCalc.length - 2] : null;
 
       const progAcum   = lastAdv?._prog ?? 0;
       const realAcum   = lastAdv?._real ?? 0;
