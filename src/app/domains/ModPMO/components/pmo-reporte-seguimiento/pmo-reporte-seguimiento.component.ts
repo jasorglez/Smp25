@@ -203,8 +203,14 @@ export class PmoReporteSeguimientoComponent {
       const root: any      = rootRes ?? {};
       const tasks: any[]   = Array.isArray((tasksRaw as any)?.data) ? (tasksRaw as any).data
                            : (Array.isArray(tasksRaw) ? tasksRaw as any[] : []);
-      const advances: any[] = Array.isArray((advancesRaw as any)?.data) ? (advancesRaw as any).data
-                            : (Array.isArray(advancesRaw) ? advancesRaw as any[] : []);
+
+      const allAdvances: any[] = Array.isArray((advancesRaw as any)?.data) ? (advancesRaw as any).data
+                               : (Array.isArray(advancesRaw) ? advancesRaw as any[] : []);
+
+      // Filtrar avances por versión si hay una seleccionada (campo id_convenio → idConvenio)
+      const advances: any[] = idVer
+        ? allAdvances.filter(a => Number(a.idConvenio ?? a.id_convenio ?? a.IdConvenio ?? 0) === Number(idVer))
+        : allAdvances;
 
       // ── Fechas del proyecto (de las tareas raíz) ─────────────────────────────
       const allStarts = tasks.map(t => dateStr(t.startdate ?? t.startDate)).filter(Boolean);

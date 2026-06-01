@@ -85,5 +85,5 @@ export const environment = {
     // publicKey: 'TEST-4399133a-4676-42a2-ab85-d946370bf96a',
   },
 
-  version: '7.47 (01 Junio 2026) fix(tablero): versiones por Contract igual que Avances',
+  version: '7.48 (01 Junio 2026) fix(tablero): avances filtrados por idConvenio al seleccionar version',
 };
