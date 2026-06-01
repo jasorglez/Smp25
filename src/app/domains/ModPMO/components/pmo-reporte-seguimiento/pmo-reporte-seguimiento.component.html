@@ -14,6 +14,19 @@
       </option>
     </select>
 
+    <!-- Versión -->
+    <label class="mb-0 small fw-semibold ms-2">Versión:</label>
+    <select class="form-select form-select-sm" style="max-width:260px;"
+            [(ngModel)]="selectedVersionId" (change)="onVersionChange()"
+            [disabled]="!selectedProjectId || loadingVersions">
+      <option [ngValue]="null">
+        {{ loadingVersions ? 'Cargando...' : versions.length === 0 ? '-- Sin versiones --' : '-- Todas --' }}
+      </option>
+      <option *ngFor="let v of versions" [ngValue]="v.id ?? v.idConvention">
+        {{ v.name ?? v.nombre ?? v.version }}
+      </option>
+    </select>
+
     <label class="mb-0 small fw-semibold ms-2">Fecha de Corte:</label>
     <input type="date" class="form-control form-control-sm" style="width:150px;"
            [(ngModel)]="fechaCorte">
@@ -56,6 +69,9 @@
       <div class="rep-project-name">{{ report.projectName }}</div>
       <div class="rep-company-name text-muted small">{{ report.companyName }}</div>
       <div class="rep-tablero-badge">Tablero de Seguimiento</div>
+      <div *ngIf="report.versionName" class="rep-version-badge">
+        <i class="bi bi-bookmark-fill me-1"></i>{{ report.versionName }}
+      </div>
     </div>
     <div class="rep-header-logo text-end">
       <img *ngIf="report.logo2" [src]="report.logo2" class="rep-logo" alt="logo2">

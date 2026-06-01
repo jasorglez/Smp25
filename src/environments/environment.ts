@@ -85,5 +85,5 @@ export const environment = {
     // publicKey: 'TEST-4399133a-4676-42a2-ab85-d946370bf96a',
   },
 
-  version: '7.45 (31 Mayo 2026) fix(licencia): paid = activo permanente sin importar fechas',
+  version: '7.46 (01 Junio 2026) feat(tablero): dropdown de versiones en Tablero Seguimiento PMO',
 };

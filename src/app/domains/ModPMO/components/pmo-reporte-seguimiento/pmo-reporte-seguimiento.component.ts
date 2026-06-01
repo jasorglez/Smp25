@@ -8,6 +8,7 @@ import { ProjectsService }     from 'app/services/projects.service';
 import { WorkprogramsService } from 'app/services/workprograms.service';
 import { AdvanceService }      from 'app/services/advance.service';
 import { RootService }         from 'app/services/root.service';
+import { ConventionsService }  from 'app/services/conventions.service';
 
 // ─── Interfaces ──────────────────────────────────────────────────────────────
 interface TaskRow {
@@ -19,7 +20,7 @@ interface TaskRow {
 
 interface ReporteData {
   logo1: string; logo2: string; companyName: string;
-  projectName: string;
+  projectName: string; versionName: string;
   fechaCorte: string; fechaInicio: string; fechaFin: string;
   progAnterior: number; progActual: number; progAcumulado: number;
   realAnterior: number; realActual: number; realAcumulado: number;
@@ -79,16 +80,22 @@ export class PmoReporteSeguimientoComponent {
   @ViewChild('sCurveChart') sCurveChart?: ChartComponent;
   @ViewChild('barChart')    barChart?:    ChartComponent;
 
-  private _signals  = inject(SignalsService);
-  private _projects = inject(ProjectsService);
-  private _wp       = inject(WorkprogramsService);
-  private _adv      = inject(AdvanceService);
-  private _root     = inject(RootService);
+  private _signals      = inject(SignalsService);
+  private _projects     = inject(ProjectsService);
+  private _wp           = inject(WorkprogramsService);
+  private _adv          = inject(AdvanceService);
+  private _root         = inject(RootService);
+  private _conventions  = inject(ConventionsService);
 
   // ── Estado ──────────────────────────────────────────────────────────────────
   idCompany      = 0;
   projects: any[] = [];
   selectedProjectId: number | null = null;
+
+  versions: any[] = [];
+  selectedVersionId: number | null = null;
+  loadingVersions = false;
+
   fechaCorte = (() => {
     const d = new Date();
     return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
@@ -123,7 +130,31 @@ export class PmoReporteSeguimientoComponent {
   }
 
   async onProjectChange(): Promise<void> {
-    if (this.selectedProjectId) await this.buildReport();
+    this.versions = [];
+    this.selectedVersionId = null;
+    this.report = null;
+    if (!this.selectedProjectId) return;
+    await this.loadVersions();
+  }
+
+  async loadVersions(): Promise<void> {
+    this.loadingVersions = true;
+    try {
+      const res: any = await lastValueFrom(
+        this._conventions.getConventionsByContractOrProject('Project', this.selectedProjectId)
+      ).catch(() => []);
+      this.versions = Array.isArray(res?.data) ? res.data : (Array.isArray(res) ? res : []);
+      // Auto-seleccionar si solo hay una versión
+      if (this.versions.length === 1) {
+        this.selectedVersionId = this.versions[0].id ?? this.versions[0].idConvention;
+      }
+    } finally {
+      this.loadingVersions = false;
+    }
+  }
+
+  onVersionChange(): void {
+    this.report = null;
   }
 
   // ── Construir reporte ────────────────────────────────────────────────────────
@@ -132,13 +163,19 @@ export class PmoReporteSeguimientoComponent {
     this.isLoading = true;
     this.report    = null;
     try {
-      const idPrj = this.selectedProjectId;
-      const cut   = this.fechaCorte;
+      const idPrj    = this.selectedProjectId;
+      const idVer    = this.selectedVersionId;
+      const cut      = this.fechaCorte;
+
+      // Workprogram: si hay versión seleccionada usar endpoint byconvention, si no todos
+      const wpCall = idVer
+        ? this._wp.getByConvention(idVer, idPrj)
+        : this._wp.getWorkPrograms(idPrj, 'Project');
 
       // Cargar en paralelo
       const [rootRes, tasksRaw, advancesRaw] = await Promise.all([
         lastValueFrom(this._root.getRootbyId(this.idCompany)).catch(() => ({})),
-        lastValueFrom(this._wp.getWorkPrograms(idPrj, 'Project')).catch(() => []),
+        lastValueFrom(wpCall).catch(() => []),
         lastValueFrom(this._adv.getAdvancesByProject(idPrj, 'Project')).catch(() => []),
       ]);
 
@@ -276,7 +313,7 @@ export class PmoReporteSeguimientoComponent {
 
         this.report = this.buildReportObj({
           logo1: root.picture ?? '', logo2: root.picture2 ?? '',
-          companyName: root.name ?? '', projectName: this.getProjectName(),
+          companyName: root.name ?? '', projectName: this.getProjectName(), versionName: this.getVersionName(),
           fechaCorte: cut, fechaInicio: projStart, fechaFin: projEnd,
           progAnterior: progPrev, progActual, progAcumulado: progAcum,
           realAnterior: realPrev, realActual, realAcumulado: realAcum,
@@ -319,6 +356,12 @@ export class PmoReporteSeguimientoComponent {
   private getProjectName(): string {
     const p = this.projects.find(x => Number(x.id ?? x.idProject) === Number(this.selectedProjectId));
     return p?.name ?? p?.nombre ?? p?.projectName ?? 'Proyecto';
+  }
+
+  private getVersionName(): string {
+    if (!this.selectedVersionId) return '';
+    const v = this.versions.find(x => Number(x.id ?? x.idConvention) === Number(this.selectedVersionId));
+    return v?.name ?? v?.nombre ?? v?.version ?? '';
   }
 
   private buildFooterText(spi: number, retSI: number, ret: number, eac: string): string {
