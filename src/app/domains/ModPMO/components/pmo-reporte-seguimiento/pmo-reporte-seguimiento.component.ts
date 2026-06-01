@@ -223,13 +223,35 @@ export class PmoReporteSeguimientoComponent {
         .filter(a => a.dateStr && a.dateStr <= cut)
         .sort((a, b) => a.dateStr.localeCompare(b.dateStr));
 
-      const lastAdv     = advSorted.length ? advSorted[advSorted.length - 1] : null;
-      const prevAdv     = advSorted.length > 1 ? advSorted[advSorted.length - 2] : null;
+      // ── Detectar si los acumulados están guardados en BD o hay que calcularlos ──
+      // Algunos convenios solo tienen programadvanced/physicaladvanced por día,
+      // sin accumulateprogram/accumulatephysical calculados. En ese caso sumamos.
+      const hasStoredAccum = advSorted.some(a =>
+        Number(a.accumulateProgram ?? a.accumulateprogram ?? 0) > 0 ||
+        Number(a.accumulatePhysical ?? a.accumulatephysical ?? 0) > 0
+      );
 
-      const progAcum  = Number(lastAdv?.accumulateProgram  ?? lastAdv?.accumulateprogram  ?? 0);
-      const realAcum  = Number(lastAdv?.accumulatePhysical ?? lastAdv?.accumulatephysical ?? 0);
-      const progPrev  = Number(prevAdv?.accumulateProgram  ?? prevAdv?.accumulateprogram  ?? 0);
-      const realPrev  = Number(prevAdv?.accumulatePhysical ?? prevAdv?.accumulatephysical ?? 0);
+      let runProg = 0, runReal = 0;
+      const advCalc = advSorted.map(a => {
+        if (hasStoredAccum) {
+          return {
+            ...a,
+            _prog: Number(a.accumulateProgram  ?? a.accumulateprogram  ?? 0),
+            _real: Number(a.accumulatePhysical ?? a.accumulatephysical ?? 0),
+          };
+        }
+        runProg = Math.round((runProg + Number(a.programAdvanced ?? a.programadvanced ?? 0)) * 10000) / 10000;
+        runReal = Math.round((runReal + Number(a.physicalAdvanced ?? a.physicaladvanced ?? 0)) * 10000) / 10000;
+        return { ...a, _prog: runProg, _real: runReal };
+      });
+
+      const lastAdv = advCalc.length ? advCalc[advCalc.length - 1] : null;
+      const prevAdv = advCalc.length > 1 ? advCalc[advCalc.length - 2] : null;
+
+      const progAcum   = lastAdv?._prog ?? 0;
+      const realAcum   = lastAdv?._real ?? 0;
+      const progPrev   = prevAdv?._prog ?? 0;
+      const realPrev   = prevAdv?._real ?? 0;
       const progActual = Math.max(0, progAcum - progPrev);
       const realActual = Math.max(0, realAcum - realPrev);
 
@@ -305,10 +327,10 @@ export class PmoReporteSeguimientoComponent {
       const prog:   number[] = [];
       const real:   number[] = [];
 
-      advSorted.forEach(a => {
+      advCalc.forEach(a => {
         labels.push(a.dateStr);
-        prog.push(Math.round(Number(a.accumulateProgram  ?? a.accumulateprogram  ?? 0) * 100) / 100);
-        real.push(Math.round(Number(a.accumulatePhysical ?? a.accumulatephysical ?? 0) * 100) / 100);
+        prog.push(Math.round(a._prog * 100) / 100);
+        real.push(Math.round(a._real * 100) / 100);
       });
 
       // Tendencia estadística: regresión lineal sobre avance real → proyectar a fechaFin
