@@ -5,11 +5,12 @@ import { NgApexchartsModule } from 'ng-apexcharts';
 import { PosService } from 'app/services/pos.service';
 import { SignalsService } from 'app/services/signals.service';
 import { ProspectosService, ESTADOS_PROSPECTO } from 'app/services/prospectos.service';
+import { KanbanProspectosComponent } from '../kanban-prospectos/kanban-prospectos.component';
 
 @Component({
   selector: 'app-pos-dashboard',
   standalone: true,
-  imports: [CommonModule, FormsModule, NgApexchartsModule],
+  imports: [CommonModule, FormsModule, NgApexchartsModule, KanbanProspectosComponent],
   templateUrl: './pos-dashboard.component.html',
 })
 export class PosDashboardComponent {
@@ -18,7 +19,7 @@ export class PosDashboardComponent {
   private prospectosSvc   = inject(ProspectosService);
 
   // ── Tabs ──────────────────────────────────────────────────────────────────
-  tab: 'pos' | 'crm' = 'pos';
+  tab: 'pos' | 'crm' | 'kanban' = 'pos';
 
   idCompany    = 0;
   selectedDate = new Date().toISOString().substring(0, 10);
