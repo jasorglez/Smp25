@@ -120,7 +120,7 @@ interface ModalEntry {
             <div *ngIf="!modalEntries.length" class="text-center text-muted py-4" style="font-size:0.85rem;">
               Sin botes asignados
             </div>
-            <div style="display:flex;flex-wrap:wrap;gap:12px;justify-content:flex-start;">
+            <div style="display:flex;flex-wrap:wrap;gap:0;justify-content:flex-start;">
               <ng-container *ngFor="let entry of modalEntries">
                 <div class="bote-card"
                      [class.bote-card--hidden]="selectedEntry && selectedEntry !== entry"
@@ -188,7 +188,9 @@ interface ModalEntry {
                            placeholder="Comentario (opcional)"
                            (click)="$event.stopPropagation()" maxlength="500">
                     <div class="d-flex gap-1 mt-1">
-                      <button class="btn btn-sm btn-success flex-fill" (click)="confirmEntry(); $event.stopPropagation()">
+                      <button class="btn btn-sm btn-success flex-fill"
+                              (click)="confirmEntry(); $event.stopPropagation()"
+                              [disabled]="isInputInvalid(entry)">
                         <i class="bi bi-check-lg"></i>
                       </button>
                       <button class="btn btn-sm btn-outline-secondary flex-fill" (click)="cancelEntry(); $event.stopPropagation()">
@@ -285,8 +287,9 @@ interface ModalEntry {
       border-radius: 10px;
       padding: 10px 8px 8px;
       gap: 5px;
+      margin: 0 12px 12px 0;
       transition: opacity 0.28s ease, transform 0.28s ease, box-shadow 0.15s, border-color 0.15s,
-                  max-width 0.28s ease, padding 0.28s ease, margin 0.28s ease;
+                  max-width 0.28s ease, width 0.28s ease, padding 0.28s ease, margin 0.28s ease;
       overflow: hidden;
       max-width: 210px;
     }
@@ -294,6 +297,8 @@ interface ModalEntry {
       opacity: 0;
       transform: scale(0.82);
       max-width: 0;
+      width: 0;
+      flex-basis: 0 !important;
       padding-left: 0;
       padding-right: 0;
       margin: 0;
@@ -301,7 +306,7 @@ interface ModalEntry {
     }
     .bote-card:not(.bote-card--selected):not(.bote-card--hidden) { cursor: pointer; }
     .bote-card:not(.bote-card--selected):not(.bote-card--hidden):hover { box-shadow: 0 2px 8px rgba(0,0,0,0.12); }
-    .bote-card--selected { width: 208px; box-shadow: 0 0 0 3px rgba(13,110,253,0.35), 0 3px 10px rgba(0,0,0,0.15); }
+    .bote-card--selected { order: -1; width: 208px; box-shadow: 0 0 0 3px rgba(13,110,253,0.35), 0 3px 10px rgba(0,0,0,0.15); }
     .bote-card--full    { border-color: #dc3545; background: #fff5f5; }
     .bote-card--empty   {
       border-color: #198754;
@@ -573,8 +578,14 @@ export class DetallesBoteFiltradoComponent {
         prefixNumMap.set(item.id, n);
       });
 
+      const moFaseId = (prefijosData ?? []).find((p: any) => p.prefijo === 'MO')?.id ?? null;
+
       const sorted = allActive
-        .filter((m: any) => this.matPrimaId == null || m.idMatPrima === this.matPrimaId);
+        .filter((m: any) => {
+          if (moFaseId != null && m.idPrefijoFase !== moFaseId) return false;
+          if (this.matPrimaId != null && m.idMatPrima !== this.matPrimaId) return false;
+          return true;
+        });
 
       this.boteOptions = sorted.map((item: any) => {
         const fasePrefijo = item.idPrefijoFase != null ? (fajePrefijoMap.get(item.idPrefijoFase) ?? '') : '';
@@ -646,6 +657,10 @@ export class DetallesBoteFiltradoComponent {
   openModal(row: MatDetalleRow) {
     this.modalRow = row;
 
+    // Jugo ya distribuido en TODOS los botes de esta fila
+    const totalAsignadoEnFila = row.botes.reduce((s, b) => s + b.cantidad, 0);
+    const jugoRestante = Math.max(0, (row.jugo ?? 0) - totalAsignadoEnFila);
+
     this.modalEntries = this.boteOptions.map(opt => {
       const asignacion = row.botes.find(b => b.idBoteCatalog === opt.id) ?? null;
       // Espacio utilizado por otros (excluye la asignación de ESTA fila)
@@ -654,8 +669,8 @@ export class DetallesBoteFiltradoComponent {
       const disponible = opt.volumen - externo;
       const lleno      = disponible <= 0;
 
-      // Mostrar: botes con espacio disponible O botes ya asignados en esta fila
-      if (lleno && asignacion === null) return null;
+      // Ocultar: bote lleno sin asignación, o sin jugo restante sin asignación
+      if ((lleno || jugoRestante <= 0) && asignacion === null) return null;
 
       return {
         opt,
@@ -693,6 +708,10 @@ export class DetallesBoteFiltradoComponent {
 
   selectEntry(entry: ModalEntry) {
     if ((entry.lleno && entry.asignacion === null) || this.modalLocked) return;
+    if (entry.asignacion === null) {
+      const totalAsignado = (this.modalRow?.botes ?? []).reduce((s, b) => s + b.cantidad, 0);
+      if (totalAsignado >= (this.modalRow?.jugo ?? 0)) return;
+    }
     // Guardamos el total actual como base; el input arranca vacío (nueva adición)
     this.selectedEntryOriginalValue = entry.inputValue ?? 0;
     entry.inputValue = null;
@@ -715,6 +734,28 @@ export class DetallesBoteFiltradoComponent {
     // newVal = adición nueva; newTotal = lo que quedará en DB
     const existingTotal = Number(this.selectedEntryOriginalValue) || 0;
     const newTotal = existingTotal + newVal;
+
+    // Validar capacidad del bote
+    const capacidadParaEstaFila = entry.opt.volumen - entry.espacioUtilizadoExterno;
+    if (newTotal > capacidadParaEstaFila) {
+      this.modalValidationMsg =
+        `Excede la capacidad del bote: máximo ${capacidadParaEstaFila.toFixed(0)} L (ya asignado: ${existingTotal.toFixed(0)} L).`;
+      return;
+    }
+
+    // Validar jugo disponible de la fila
+    const jugoRow = this.modalRow.jugo ?? 0;
+    const asignadoEnOtros = this.modalRow.botes
+      .filter(b => b.idBoteCatalog !== entry.opt.id)
+      .reduce((s, b) => s + b.cantidad, 0);
+    if (asignadoEnOtros + newTotal > jugoRow) {
+      const disponibleParaEste = Math.max(0, jugoRow - asignadoEnOtros - existingTotal);
+      this.modalValidationMsg =
+        `Solo quedan ${disponibleParaEste.toFixed(0)} L de jugo disponibles en esta fila.`;
+      return;
+    }
+
+    this.modalValidationMsg = '';
 
     // Guardar bote (crear/patch)
     try {
@@ -820,9 +861,19 @@ export class DetallesBoteFiltradoComponent {
   }
 
   maxInput(entry: ModalEntry): number {
-    const disponible = entry.opt.volumen - entry.espacioUtilizadoExterno;
-    const jugoRow    = this.modalRow?.jugo ?? 0;
-    return Math.min(disponible, jugoRow);
+    // Espacio en el bote disponible para nuevas adiciones de esta fila
+    const capacidadParaEstaFila = entry.opt.volumen - entry.espacioUtilizadoExterno;
+    const yaAsignado = Number(this.selectedEntryOriginalValue) || 0;
+    const espacioEnBote = Math.max(0, capacidadParaEstaFila - yaAsignado);
+
+    // Jugo disponible: total - lo ya distribuido en OTROS botes - lo ya guardado en este
+    const jugoRow = this.modalRow?.jugo ?? 0;
+    const asignadoEnOtros = (this.modalRow?.botes ?? [])
+      .filter(b => b.idBoteCatalog !== entry.opt.id)
+      .reduce((s, b) => s + b.cantidad, 0);
+    const jugoDisponible = Math.max(0, jugoRow - asignadoEnOtros - yaAsignado);
+
+    return Math.min(espacioEnBote, jugoDisponible);
   }
 
   isInputInvalid(entry: ModalEntry): boolean {

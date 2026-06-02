@@ -48,7 +48,11 @@ import { alerts } from 'app/helpers/alerts';
       </div>
     </div>
   `,
-  styles: [`:host { display: block; height: 100%; overflow: hidden; }`]
+  styles: [`
+    :host { display: block; height: 100%; overflow: hidden; }
+    :host ::ng-deep .fully-bote-assigned { background: #dee2e6 !important; color: #6c757d !important; }
+    :host ::ng-deep .fully-bote-assigned .ag-cell { color: #6c757d !important; }
+  `]
 })
 export class DetallesMatprimaFiltradoComponent {
   private productionService = inject(ProductionService);
@@ -102,8 +106,6 @@ export class DetallesMatprimaFiltradoComponent {
       editable: false,
       cellStyle: { cursor: 'pointer' },
       cellRenderer: (params: any) => {
-        const name = this.articuloOptions.find(a => a.id === params.value)?.name
-          ?? (params.value != null ? String(params.value) : '—');
         const count = params.data?.articuloCount ?? 0;
         const link = `color:#4a148c; text-decoration:underline; cursor:pointer;`;
         return `<span style="${link}">${count}</span>`;
@@ -144,7 +146,12 @@ export class DetallesMatprimaFiltradoComponent {
     rowHeight: 22,
     rowSelection: 'single',
     autoSizeStrategy: { type: 'fitCellContents' },
-    rowClassRules: { 'new-row-highlight': (p: any) => !!p.data?.__isNew },
+    rowClassRules: {
+      'new-row-highlight':    (p: any) => !!p.data?.__isNew,
+      'fully-bote-assigned':  (p: any) => !p.data?.__isNew
+                                         && p.data?.jugo != null
+                                         && p.data?.boteAsignado >= p.data?.jugo,
+    },
     defaultColDef: { resizable: true, sortable: true },
     masterDetail: true,
     detailRowHeight: 200,
@@ -213,14 +220,16 @@ export class DetallesMatprimaFiltradoComponent {
   async loadData() {
     if (!this.idMolienda) { this.rowData = []; return; }
     try {
-      const [items, counts, sums] = await Promise.all([
+      const [items, counts, sums, boteSums] = await Promise.all([
         lastValueFrom(this.productionService.getMoliendaMatDetalleByMolienda(this.idMolienda)),
         lastValueFrom(this.productionService.getMoliendaMatArticuloCountsByMolienda(this.idMolienda)),
         lastValueFrom(this.productionService.getMoliendaMatArticuloSumsByMolienda(this.idMolienda)),
+        lastValueFrom(this.productionService.getMoliendaBoteSumsByMolienda(this.idMolienda)),
       ]);
       const mapped = (Array.isArray(items) ? items : []).map(i => {
         const cantidadSum = (sums as Record<number, number>)[i.id] ?? 0;
-        const row = { ...this.mapRow(i), articuloCount: (counts as Record<number, number>)[i.id] ?? 0, cantidadSum };
+        const boteAsignado = (boteSums as Record<number, number>)[i.id] ?? 0;
+        const row = { ...this.mapRow(i), articuloCount: (counts as Record<number, number>)[i.id] ?? 0, cantidadSum, boteAsignado };
         row.rendimiento = this.calcRendimiento(row.jugo, cantidadSum);
         return row;
       });
@@ -293,14 +302,9 @@ export class DetallesMatprimaFiltradoComponent {
         await lastValueFrom(this.productionService.updateMoliendaMatDetalle(row.id, this.toPayload(row)));
         row.__modified = false;
       }
-      this.originalRowData = JSON.parse(JSON.stringify(this.rowData));
       this.hasChanges = false;
-      this.notifyParentHasDetail(this.rowData.length > 0);
-      // Forzar re-render para que isRowMaster se re-evalúe en las filas recién guardadas
-      if (this.gridApi && !this.gridApi.isDestroyed()) {
-        this.gridApi.setGridOption('rowData', [...this.rowData]);
-      }
       alerts.reqSuccessToast('Guardado');
+      await this.loadData();
     } catch (e) {
       console.error('Error guardando detalle matprima:', e);
       alerts.reqErrorToast('Error al guardar');
