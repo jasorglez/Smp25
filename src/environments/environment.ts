@@ -85,5 +85,5 @@ export const environment = {
     // publicKey: 'TEST-4399133a-4676-42a2-ab85-d946370bf96a',
   },
 
-  version: '7.68 (02 Junio 2026) feat(prospectos): mensaje WhatsApp personalizado con nombre de empresa',
+  version: '7.69 (02 Junio 2026) fix(prospectos): registros más recientes aparecen primero en el grid',
 };

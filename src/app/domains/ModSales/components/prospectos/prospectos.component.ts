@@ -278,10 +278,18 @@ export class ProspectosComponent implements OnInit {
   }
 
   private ordenarProspectos(data: any[]) {
+    const toMs = (ts: any): number => {
+      if (!ts) return 0;
+      if (ts.toDate) return ts.toDate().getTime();
+      return new Date(ts).getTime();
+    };
+
     return [...data].sort((a, b) => {
       if (!!a.__isNew !== !!b.__isNew) return a.__isNew ? -1 : 1;
       if ((a.activo !== false) !== (b.activo !== false)) return a.activo === false ? 1 : -1;
-      return 0;
+      const fechaA = toMs(a.fechaUltimaInteraccion) || toMs(a.fechaCreacion);
+      const fechaB = toMs(b.fechaUltimaInteraccion) || toMs(b.fechaCreacion);
+      return fechaB - fechaA; // más reciente arriba
     });
   }
 
