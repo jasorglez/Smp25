@@ -4,6 +4,7 @@ import { FormsModule } from '@angular/forms';
 import { NgApexchartsModule } from 'ng-apexcharts';
 import { PosService } from 'app/services/pos.service';
 import { SignalsService } from 'app/services/signals.service';
+import { ProspectosService, ESTADOS_PROSPECTO } from 'app/services/prospectos.service';
 
 @Component({
   selector: 'app-pos-dashboard',
@@ -12,11 +13,15 @@ import { SignalsService } from 'app/services/signals.service';
   templateUrl: './pos-dashboard.component.html',
 })
 export class PosDashboardComponent {
-  private posService    = inject(PosService);
-  private signalsService = inject(SignalsService);
+  private posService      = inject(PosService);
+  private signalsService  = inject(SignalsService);
+  private prospectosSvc   = inject(ProspectosService);
+
+  // ── Tabs ──────────────────────────────────────────────────────────────────
+  tab: 'pos' | 'crm' = 'pos';
 
   idCompany    = 0;
-  selectedDate = new Date().toISOString().substring(0, 10); // hoy
+  selectedDate = new Date().toISOString().substring(0, 10);
   loading      = false;
   sales: any[] = [];
 
@@ -37,13 +42,81 @@ export class PosDashboardComponent {
   // ── Recent tickets ────────────────────────────────────────────────────────
   recentTickets: any[] = [];
 
+  // ── CRM KPIs ──────────────────────────────────────────────────────────────
+  readonly etapas    = ESTADOS_PROSPECTO;
+  crmLoading         = false;
+  crmProspectos: any[] = [];
+  conteoPorEtapa: Record<string, number> = {};
+  vencidosHoy: any[] = [];
+  demosHoy:    any[] = [];
+  kpisCrm: { label: string; valor: number; icon: string; color: string }[] = [];
+
   constructor() {
     effect(() => {
       this.idCompany = this.signalsService.getRootSelectedBySidebar()() ?? 0;
-      if (this.idCompany) this.loadData();
+      if (this.idCompany) { this.loadData(); this.loadCrm(); }
     });
   }
 
+  // ── CRM ───────────────────────────────────────────────────────────────────
+  loadCrm() {
+    if (!this.idCompany) return;
+    this.crmLoading = true;
+    this.prospectosSvc.getProspectosByCompany(this.idCompany).subscribe({
+      next: (data) => { this.crmProspectos = data; this.calcKpis(); this.crmLoading = false; },
+      error: () => { this.crmLoading = false; }
+    });
+  }
+
+  private calcKpis() {
+    const hoy    = new Date(); hoy.setHours(0,0,0,0);
+    const manana = new Date(hoy); manana.setDate(manana.getDate() + 1);
+    const toDate = (v: any) => v?.toDate ? v.toDate() : v ? new Date(v) : null;
+
+    this.conteoPorEtapa = {};
+    ESTADOS_PROSPECTO.forEach(e => this.conteoPorEtapa[e.value] = 0);
+    this.crmProspectos.forEach(p => {
+      if (this.conteoPorEtapa[p.estado] !== undefined) this.conteoPorEtapa[p.estado]++;
+    });
+
+    const activos = this.crmProspectos.filter(p => !['ganado','perdido'].includes(p.estado));
+    this.vencidosHoy = activos.filter(p => { const f = toDate(p.fechaProximoSeguimiento); return f && f < hoy; });
+    this.demosHoy    = this.crmProspectos.filter(p => {
+      if (p.estado !== 'demo_agendada') return false;
+      const f = toDate(p.fechaProximoSeguimiento);
+      return f && f >= hoy && f < manana;
+    });
+
+    const nuevosHoy = this.crmProspectos.filter(p => { const f = toDate(p.fechaCreacion); return f && f >= hoy && f < manana; }).length;
+
+    this.kpisCrm = [
+      { label: 'Nuevos hoy',             valor: nuevosHoy,                        icon: 'bi-person-plus',       color: 'primary' },
+      { label: 'Seguimientos vencidos',   valor: this.vencidosHoy.length,          icon: 'bi-alarm',             color: this.vencidosHoy.length > 0 ? 'danger' : 'success' },
+      { label: 'Demos hoy',              valor: this.demosHoy.length,              icon: 'bi-camera-video',      color: this.demosHoy.length > 0 ? 'warning' : 'secondary' },
+      { label: 'Cotizaciones enviadas',   valor: this.conteoPorEtapa['cotizacion_enviada'] || 0, icon: 'bi-file-earmark-text', color: 'info'    },
+      { label: 'En negociación',          valor: this.conteoPorEtapa['negociacion'] || 0,        icon: 'bi-handshake',         color: 'dark'    },
+      { label: 'Pipeline activo',         valor: activos.length,                   icon: 'bi-funnel',            color: 'secondary' },
+    ];
+  }
+
+  pctFunnel(etapa: string): number {
+    const total = Object.values(this.conteoPorEtapa).reduce((a, b) => a + b, 0);
+    return total ? Math.round((this.conteoPorEtapa[etapa] || 0) / total * 100) : 0;
+  }
+
+  fmtFecha(v: any): string {
+    if (!v) return '';
+    const d = v?.toDate ? v.toDate() : new Date(v);
+    return d.toLocaleDateString('es-MX', { day: '2-digit', month: 'short' });
+  }
+
+  estaVencido(v: any): boolean {
+    if (!v) return false;
+    const d = v?.toDate ? v.toDate() : new Date(v);
+    return d < new Date();
+  }
+
+  // ── POS ───────────────────────────────────────────────────────────────────
   loadData() {
     if (!this.idCompany) return;
     this.loading     = false;

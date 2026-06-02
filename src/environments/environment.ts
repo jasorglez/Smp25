@@ -85,5 +85,5 @@ export const environment = {
     // publicKey: 'TEST-4399133a-4676-42a2-ab85-d946370bf96a',
   },
 
-  version: '7.62 (01 Junio 2026) feat(crm): embudo 8 etapas + campos giro/competidor/seguimiento + dashboard 2 tabs + kanban',
+  version: '7.63 (01 Junio 2026) feat(crm): dashboard 2 tabs en pos-dashboard existente POS + CRM',
 };
