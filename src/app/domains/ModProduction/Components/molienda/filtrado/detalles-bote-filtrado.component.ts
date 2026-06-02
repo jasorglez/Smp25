@@ -533,7 +533,22 @@ export class DetallesBoteFiltradoComponent {
     const idCompany = this.signalsService.getRootSelectedBySidebar()();
     if (!idCompany) return;
     try {
-      const catalogs = await lastValueFrom(this.catalogService.getAll(idCompany));
+      const [catalogs, prefijosData, matData] = await Promise.all([
+        lastValueFrom(this.catalogService.getAll(idCompany)),
+        lastValueFrom(this.productionService.getMoliendaPrefijos(idCompany)),
+        lastValueFrom(this.mxmService.getByType(idCompany, 'MOLIENDA')),
+      ]);
+
+      // Mapa idPrefijoFase → prefijo string
+      const fajePrefijoMap = new Map<number, string>(
+        (prefijosData ?? []).map((p: any) => [p.id, p.prefijo ?? ''])
+      );
+      // Mapa idArticulo → prefijo del material
+      const artPrefijoMap = new Map<number, string>(
+        (matData ?? []).filter((m: any) => m.idArticulo != null)
+          .map((m: any) => [m.idArticulo, m.prefijo ?? ''])
+      );
+
       const botesCatalog = (catalogs ?? []).find(c => {
         const d = (c.description || '').trim().toLowerCase()
           .normalize('NFD').replace(/[̀-ͯ]/g, '');
@@ -542,23 +557,35 @@ export class DetallesBoteFiltradoComponent {
       if (!botesCatalog) return;
 
       const items = await lastValueFrom(this.mxmService.getByCatalog(idCompany, botesCatalog.id));
-      // Numerar globalmente (todos los activos del catálogo, ordenados por id)
       const allActive = (items ?? [])
         .filter((m: any) => m.active !== false)
         .sort((a: any, b: any) => (a.id ?? 0) - (b.id ?? 0));
 
-      const globalNumMap = new Map<number, number>();
-      allActive.forEach((item: any, i: number) => globalNumMap.set(item.id, i + 1));
+      // Numeración por grupo de prefijo (igual que en el catálogo)
+      const groupCounters = new Map<string, number>();
+      const prefixNumMap  = new Map<number, number>();
+      allActive.forEach((item: any) => {
+        const fp  = item.idPrefijoFase != null ? (fajePrefijoMap.get(item.idPrefijoFase) ?? '') : '';
+        const ap  = item.idMatPrima    != null ? (artPrefijoMap.get(item.idMatPrima)     ?? '') : '';
+        const key = `${fp}${ap}`;
+        const n   = (groupCounters.get(key) ?? 0) + 1;
+        groupCounters.set(key, n);
+        prefixNumMap.set(item.id, n);
+      });
 
-      // Filtrar por mat prima pero conservar el número global
       const sorted = allActive
         .filter((m: any) => this.matPrimaId == null || m.idMatPrima === this.matPrimaId);
 
-      this.boteOptions = sorted.map((item: any) => ({
-        id: item.id,
-        description: `/ ${item.cantidad ?? ''} - ${globalNumMap.get(item.id)}`,
-        volumen: Number(item.cantidad ?? 0),
-      }));
+      this.boteOptions = sorted.map((item: any) => {
+        const fasePrefijo = item.idPrefijoFase != null ? (fajePrefijoMap.get(item.idPrefijoFase) ?? '') : '';
+        const artPrefijo  = item.idMatPrima    != null ? (artPrefijoMap.get(item.idMatPrima)     ?? '') : '';
+        const num = prefixNumMap.get(item.id) ?? '';
+        return {
+          id: item.id,
+          description: `${fasePrefijo}${artPrefijo}/${item.cantidad ?? ''}-${num}`,
+          volumen: Number(item.cantidad ?? 0),
+        };
+      });
     } catch (e) {
       console.error('Error cargando opciones de bote:', e);
     }

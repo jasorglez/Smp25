@@ -3,7 +3,7 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { AgGridAngular } from 'ag-grid-angular';
 import { ColDef, GridApi, GridReadyEvent } from 'ag-grid-community';
-import { forkJoin, lastValueFrom } from 'rxjs';
+import { forkJoin, lastValueFrom, of } from 'rxjs';
 import { SelectWithTooltipEditorV2Component } from 'app/shared/select-with-tooltip-editor-v2.component';
 import { ConfiguracionPageComponent } from '../configuracion/configuracion-page/configuracion-page.component';
 import { ExtractionFermentationCatalogItem, ExtractionFermentationCatalogService } from '../../../../services/extraction-fermentation-catalog.service';
@@ -12,6 +12,7 @@ import { MaterialXModuloService } from '../../../../services/materialxmodulo.ser
 import { SignalsService } from '../../../../services/signals.service';
 import { CatalogProductionService, CatalogProductionItem } from '../../../../services/catalog-production.service';
 import { alerts } from 'app/helpers/alerts';
+import { ProductionService } from '../../../../services/production.service';
 
 @Component({
   selector: 'app-catalogosproduccion',
@@ -378,6 +379,13 @@ import { alerts } from 'app/helpers/alerts';
               <p class="sidebar-title">Lista Tablas</p>
               <div class="sidebar-list">
                 <div class="sidebar-empty" *ngIf="!catalogSidebarItems.length">Sin categorías</div>
+                <!-- Entrada estática Prefijos Fases -->
+                <div class="sidebar-item catalog-entry"
+                     [class.active]="prefijoFaseMode"
+                     (click)="selectPrefijoFase()"
+                     style="cursor:pointer; font-style:italic; border-top:1px solid #dee2e6; margin-top:4px; padding-top:6px;">
+                  <span><i class="bi bi-tag-fill me-1 text-secondary"></i>Prefijos Fases</span>
+                </div>
                 <div
                   class="sidebar-item catalog-entry"
                   *ngFor="let item of catalogSidebarItems; trackBy: trackByCatalogItem"
@@ -446,7 +454,18 @@ import { alerts } from 'app/helpers/alerts';
             </div>
           </div>
 
-          <div class="catalog-actions" *ngIf="!showHierarchicalTable">
+          <!-- Botones Prefijos Fases -->
+          <div class="catalog-actions" *ngIf="prefijoFaseMode">
+            <button class="action-btn add" (click)="addPrefijoFase()"><i class="bi bi-plus-lg"></i></button>
+            <button class="action-btn save" (click)="savePrefijoFases()" [disabled]="!prefijoFaseHasChanges">
+              <i class="bi bi-floppy"></i>
+              <span *ngIf="prefijoFaseHasChanges" class="dirty-dot"></span>
+            </button>
+            <button class="action-btn revert" (click)="revertPrefijoFases()"><i class="bi bi-arrow-clockwise"></i></button>
+            <button class="action-btn delete" (click)="deletePrefijoFase()" [disabled]="!prefijoFaseSelectedRow"><i class="bi bi-trash"></i></button>
+          </div>
+
+          <div class="catalog-actions" *ngIf="!showHierarchicalTable && !prefijoFaseMode">
             <button class="action-btn add" (click)="add()" [disabled]="!gridApi || !selectedCatalogSidebarId" title="Selecciona una categoría para agregar">
               <i class="bi bi-plus-lg"></i>
             </button>
@@ -479,7 +498,22 @@ import { alerts } from 'app/helpers/alerts';
             <div class="helper-row" *ngIf="toastMsg()">
               <div class="toast-mini">{{ toastMsg() }}</div>
             </div>
-            <div class="panel-content" *ngIf="!showHierarchicalTable">
+
+            <!-- Panel Prefijos Fases -->
+            <div class="panel-content" *ngIf="prefijoFaseMode">
+              <ag-grid-angular
+                class="ag-theme-quartz catalog-grid"
+                [rowData]="prefijoFaseRows"
+                [columnDefs]="prefijoFaseColDefs"
+                [gridOptions]="prefijoFaseGridOptions"
+                (gridReady)="onPrefijoFaseGridReady($event)"
+                (cellValueChanged)="$any($event).data.__modified = true; prefijoFaseHasChanges = true"
+                (rowClicked)="prefijoFaseSelectedRow = $event.data"
+                style="height: 470px; width: 100%;">
+              </ag-grid-angular>
+            </div>
+
+            <div class="panel-content" *ngIf="!showHierarchicalTable && !prefijoFaseMode">
               <ag-grid-angular
                 class="ag-theme-quartz catalog-grid"
                 [rowData]="rowData()"
@@ -754,11 +788,12 @@ export class CatalogosProduccionComponent {
   private signalsService    = inject(SignalsService);
   private catalogService    = inject(ExtractionFermentationCatalogService);
   private hierService       = inject(CatalogProductionService);
+  private productionService = inject(ProductionService);
   activeTab = 'molienda';
   private idRoot = 0;
   private materiales: any[] = [];
   private materialesIdToDesc = new Map<number, string>();
-  private matPrimaOptions: { id: number; description: string }[] = [];
+  private matPrimaOptions: { id: number; description: string; prefijo: string }[] = [];
   catalogSidebarItems: ExtractionFermentationCatalogItem[] = [];
   selectedCatalogSidebarId: number | null = null;
   editingCatalogId: number | null = null;
@@ -774,6 +809,52 @@ export class CatalogosProduccionComponent {
   private enterPressed = false;
   private editableColumnOrder = ['idArticulo'];
   isBotesMode = false;
+
+  // ── Prefijos Fases ──
+  prefijoFaseOptions: { id: number; prefijo: string; nombreFase: string }[] = [];
+  prefijoFaseMode = false;
+  prefijoFaseRows: any[] = [];
+  private prefijoFaseOriginal: any[] = [];
+  prefijoFaseHasChanges = false;
+  prefijoFaseSelectedRow: any = null;
+  prefijoFaseGridApi!: GridApi;
+
+  readonly prefijoFaseColDefs: ColDef[] = [
+    {
+      field: 'nombreFase', headerName: 'Nombre Fase', editable: true, flex: 1,
+      cellEditor: 'agTextCellEditor',
+      valueSetter: (p: any) => {
+        const val = String(p.newValue ?? '').toUpperCase();
+        const dup = this.prefijoFaseRows.some(r => r !== p.data && (r.nombreFase ?? '').toUpperCase() === val);
+        if (dup) { this.showToast(`Nombre duplicado: "${val}"`); return false; }
+        p.data.nombreFase = val; p.data.__modified = true; this.prefijoFaseHasChanges = true; return true;
+      },
+    },
+    {
+      field: 'prefijo', headerName: 'Prefijo Fase', editable: true, width: 160,
+      cellEditor: 'agTextCellEditor',
+      valueSetter: (p: any) => {
+        const val = String(p.newValue ?? '').toUpperCase();
+        const dup = this.prefijoFaseRows.some(r => r !== p.data && (r.prefijo ?? '').toUpperCase() === val);
+        if (dup) { this.showToast(`Prefijo duplicado: "${val}"`); return false; }
+        p.data.prefijo = val; p.data.__modified = true; this.prefijoFaseHasChanges = true; return true;
+      },
+    },
+    {
+      field: 'active', headerName: 'Activo', width: 90, editable: true,
+      cellRenderer: 'agCheckboxCellRenderer',
+      valueSetter: (p: any) => { p.data.active = p.newValue; p.data.__modified = true; this.prefijoFaseHasChanges = true; return true; },
+    },
+  ];
+
+  readonly prefijoFaseGridOptions: any = {
+    getRowId: (p: any) => String(p.data.id ?? p.data.__tempId),
+    headerHeight: 25, rowHeight: 22,
+    rowSelection: 'single',
+    autoSizeStrategy: { type: 'fitCellContents' },
+    defaultColDef: { resizable: true },
+    rowClassRules: { 'new-row-highlight': (p: any) => !!p.data?.__isNew },
+  };
 
   // ── Tabla Jerárquica (solo «Características de manzana», datos mock en frontend) ──
   showHierarchicalTable = false;
@@ -838,21 +919,21 @@ export class CatalogosProduccionComponent {
   // ── Columnas Botes ──
   boteColumnDefs: ColDef[] = [
     {
-      headerName: 'Bote',
-      field: 'boteNum',
-      width: 80,
-      editable: false,
-      valueFormatter: (p: any) => p.value != null ? String(p.value) : '—',
-    },
-    {
-      headerName: 'Volumen',
-      field: 'cantidad',
-      width: 120,
-      editable: true,
-      type: 'numericColumn',
-      valueParser: (p: any) => {
-        const n = parseInt(p.newValue, 10);
-        return isNaN(n) ? null : n;
+      headerName: 'Fase',
+      field: 'idPrefijoFase',
+      width: 160,
+      editable: (p: any) => !p.data?.hasUsage,
+      cellEditor: SelectWithTooltipEditorV2Component,
+      cellEditorParams: () => ({
+        options: [
+          { id: null, description: '— Sin fase —' },
+          ...this.prefijoFaseOptions.map(f => ({ id: f.id, description: `${f.prefijo} - ${f.nombreFase}` })),
+        ],
+      }),
+      valueFormatter: (p: any) => {
+        if (p.value == null) return '';
+        const f = this.prefijoFaseOptions.find(o => o.id === p.value);
+        return f ? `${f.prefijo} - ${f.nombreFase}` : String(p.value);
       },
     },
     {
@@ -860,7 +941,7 @@ export class CatalogosProduccionComponent {
       field: 'idMatPrima',
       flex: 1,
       minWidth: 160,
-      editable: true,
+      editable: (p: any) => !p.data?.hasUsage,
       cellEditor: SelectWithTooltipEditorV2Component,
       cellEditorParams: () => ({ options: this.matPrimaOptions }),
       valueFormatter: (p: any) => {
@@ -869,16 +950,29 @@ export class CatalogosProduccionComponent {
       },
     },
     {
+      headerName: 'Volumen',
+      field: 'cantidad',
+      width: 120,
+      editable: (p: any) => !p.data?.hasUsage,
+      type: 'numericColumn',
+      valueParser: (p: any) => {
+        const n = parseInt(p.newValue, 10);
+        return isNaN(n) ? null : n;
+      },
+    },
+    {
       headerName: 'Código',
       field: 'codigo',
-      flex: 1,
-      minWidth: 160,
+      width: 160,
       editable: false,
       valueGetter: (p: any) => {
-        const bote = p.data?.boteNum != null ? p.data.boteNum : '';
-        const vol  = p.data?.cantidad != null ? p.data.cantidad : '';
-        if (bote === '' && vol === '') return '';
-        return `/ ${vol} - ${bote}`;
+        const faseId = p.data?.idPrefijoFase;
+        const matId  = p.data?.idMatPrima;
+        const fasePrefijo = faseId != null ? (this.prefijoFaseOptions.find(f => f.id === faseId)?.prefijo ?? '') : '';
+        const artPrefijo  = matId  != null ? (this.matPrimaOptions.find(m => m.id === matId)?.prefijo ?? '') : '';
+        const num = p.data?.prefixNum != null ? p.data.prefixNum : '';
+        const vol = p.data?.cantidad  != null ? p.data.cantidad  : '';
+        return `${fasePrefijo}${artPrefijo}/${vol}-${num}`;
       },
     },
     {
@@ -893,7 +987,10 @@ export class CatalogosProduccionComponent {
   boteGridOptions = {
     headerHeight: 25,
     rowHeight: 20,
-    rowClassRules: { 'new-row-highlight': (p: any) => !!p.data?.__isNew },
+    rowClassRules: {
+      'new-row-highlight': (p: any) => !!p.data?.__isNew,
+      'locked-row': (p: any) => !!p.data?.hasUsage,
+    },
     defaultColDef: {
       suppressKeyboardEvent: (params: any) => {
         if (params.event.key === 'Enter' && params.editing) {
@@ -924,6 +1021,14 @@ export class CatalogosProduccionComponent {
         };
       },
       valueFormatter: (p: any) => this.materialesIdToDesc.get(p.value) ?? '',
+    },
+    {
+      headerName: 'Prefijo Mat Prima',
+      field: 'prefijo',
+      width: 150,
+      editable: true,
+      cellEditor: 'agTextCellEditor',
+      valueSetter: (p: any) => { p.data.prefijo = String(p.newValue ?? '').toUpperCase(); p.data.__modified = true; this.hasUnsavedChanges = true; return true; },
     },
     {
       headerName: 'edit col Bultos',
@@ -1050,6 +1155,9 @@ export class CatalogosProduccionComponent {
       }
 
       this.idRoot = idRoot;
+      this.productionService.getMoliendaPrefijos(idRoot).subscribe((pfs: any[]) => {
+        this.prefijoFaseOptions = (pfs ?? []).map(p => ({ id: p.id, prefijo: p.prefijo ?? '', nombreFase: p.nombreFase ?? '' }));
+      });
       forkJoin({
         mats: this.materialsService.getMaterialsxview(idRoot),
         mxm:  this.mxmService.getByType(idRoot, 'MOLIENDA'),
@@ -1058,11 +1166,18 @@ export class CatalogosProduccionComponent {
         this.materialesIdToDesc.clear();
         this.materiales.forEach(m => this.materialesIdToDesc.set(m.id, m.articulo));
 
-        this.matPrimaOptions = ((mxm as any[]) ?? [])
+        // Mapa idArticulo → prefijo del material
+        const mxmList: any[] = (mxm as any[]) ?? [];
+        const artPrefijoMap = new Map<number, string>();
+        mxmList.forEach(m => { if (m.idArticulo != null) artPrefijoMap.set(m.idArticulo, m.prefijo ?? ''); });
+        (this as any)._artPrefijoMap = artPrefijoMap;
+
+        this.matPrimaOptions = mxmList
           .filter((m: any) => m.active !== false && m.molienda === true && m.idArticulo != null)
           .map((m: any) => ({
             id: m.idArticulo,
             description: this.materialesIdToDesc.get(m.idArticulo) ?? String(m.idArticulo),
+            prefijo: m.prefijo ?? '',
           }))
           .sort((a, b) => a.description.localeCompare(b.description, 'es', { sensitivity: 'base' }));
 
@@ -1116,6 +1231,7 @@ export class CatalogosProduccionComponent {
         valor: true,
         idCatalog: this.selectedCatalogSidebarId,
         idMatPrima: null,
+        idPrefijoFase: null,
         boteNum: nextNum,
         __isNew: true,
       }, ...this.rowData()]);
@@ -1130,6 +1246,7 @@ export class CatalogosProduccionComponent {
       editBultos: false,
       valor: false,
       molienda: false,
+      prefijo: '',
       idCatalog: this.selectedCatalogSidebarId,
       __isNew: true
     }, ...this.rowData()]);
@@ -1154,6 +1271,7 @@ export class CatalogosProduccionComponent {
             editBultos: false,
             molienda: false,
             idMatPrima: r.idMatPrima ?? null,
+            idPrefijoFase: r.idPrefijoFase ?? null,
           }
         : {
             idCompany: this.idRoot,
@@ -1164,6 +1282,7 @@ export class CatalogosProduccionComponent {
             active: r.valor,
             editBultos: r.editBultos || false,
             molienda: r.molienda || false,
+            prefijo: r.prefijo ?? null,
           };
       return r.__isNew ? this.mxmService.create(payload) : this.mxmService.update(r.id, payload);
     });
@@ -1185,6 +1304,10 @@ export class CatalogosProduccionComponent {
     if (!this.selectedRow) return;
     if (!this.selectedCatalogSidebarId) {
       this.showToast('Selecciona una categoría primero');
+      return;
+    }
+    if (this.isBotesMode && this.selectedRow.hasUsage) {
+      this.showToast('Este bote tiene jugo asignado y no puede borrarse');
       return;
     }
     if (this.selectedRow.__isNew) {
@@ -1943,8 +2066,101 @@ export class CatalogosProduccionComponent {
     });
   }
 
+  // ──────────────────── Prefijos Fases ────────────────────
+
+  selectPrefijoFase() {
+    this.selectedCatalogSidebarId = null;
+    this.showHierarchicalTable    = false;
+    this.isBotesMode              = false;
+    this.prefijoFaseMode          = true;
+    this.prefijoFaseSelectedRow   = null;
+    this.prefijoFaseHasChanges    = false;
+    this.loadPrefijoFases();
+  }
+
+  private loadPrefijoFases() {
+    if (!this.idRoot) return;
+    this.productionService.getMoliendaPrefijos(this.idRoot).subscribe((data: any[]) => {
+      const rows = (data ?? []).map(p => ({
+        id: p.id, nombreFase: p.nombreFase, prefijo: p.prefijo, active: p.active,
+        __isNew: false, __modified: false,
+      }));
+      this.prefijoFaseOriginal = JSON.parse(JSON.stringify(rows));
+      this.prefijoFaseRows     = rows;
+      if (this.prefijoFaseGridApi && !this.prefijoFaseGridApi.isDestroyed())
+        this.prefijoFaseGridApi.setGridOption('rowData', rows);
+    });
+  }
+
+  onPrefijoFaseGridReady(params: GridReadyEvent) {
+    this.prefijoFaseGridApi = params.api;
+  }
+
+  addPrefijoFase() {
+    const newRow = { id: null, __tempId: `pf_${Date.now()}`, __isNew: true, nombreFase: '', prefijo: '', active: true };
+    this.prefijoFaseRows = [newRow, ...this.prefijoFaseRows];
+    this.prefijoFaseHasChanges = true;
+    if (this.prefijoFaseGridApi && !this.prefijoFaseGridApi.isDestroyed()) {
+      this.prefijoFaseGridApi.setGridOption('rowData', this.prefijoFaseRows);
+      setTimeout(() => this.prefijoFaseGridApi.startEditingCell({ rowIndex: 0, colKey: 'nombreFase' }), 0);
+    }
+  }
+
+  async savePrefijoFases() {
+    const news  = this.prefijoFaseRows.filter(r => r.__isNew);
+    const mods  = this.prefijoFaseRows.filter(r => r.__modified && !r.__isNew);
+
+    try {
+      for (const r of news) {
+        const created = await lastValueFrom(this.productionService.createMoliendaPrefijo({
+          idCompany: this.idRoot, nombreFase: r.nombreFase, prefijo: r.prefijo, active: r.active,
+        }));
+        r.id = created.id; r.__isNew = false;
+      }
+      for (const r of mods) {
+        await lastValueFrom(this.productionService.updateMoliendaPrefijo(r.id, {
+          nombreFase: r.nombreFase, prefijo: r.prefijo, active: r.active,
+        }));
+        r.__modified = false;
+      }
+      this.prefijoFaseOriginal   = JSON.parse(JSON.stringify(this.prefijoFaseRows));
+      this.prefijoFaseHasChanges = false;
+      this.showToast('Guardado');
+    } catch { this.showToast('Error al guardar'); }
+  }
+
+  revertPrefijoFases() {
+    this.prefijoFaseRows       = JSON.parse(JSON.stringify(this.prefijoFaseOriginal));
+    this.prefijoFaseHasChanges = false;
+    this.prefijoFaseSelectedRow = null;
+    if (this.prefijoFaseGridApi && !this.prefijoFaseGridApi.isDestroyed())
+      this.prefijoFaseGridApi.setGridOption('rowData', this.prefijoFaseRows);
+  }
+
+  async deletePrefijoFase() {
+    if (!this.prefijoFaseSelectedRow) return;
+    const row = this.prefijoFaseSelectedRow;
+    if (row.__isNew) {
+      this.prefijoFaseRows = this.prefijoFaseRows.filter(r => r !== row);
+      this.prefijoFaseSelectedRow = null;
+      this.prefijoFaseHasChanges = this.prefijoFaseRows.some(r => r.__isNew || r.__modified);
+      if (this.prefijoFaseGridApi && !this.prefijoFaseGridApi.isDestroyed())
+        this.prefijoFaseGridApi.setGridOption('rowData', this.prefijoFaseRows);
+      return;
+    }
+    try {
+      await lastValueFrom(this.productionService.deleteMoliendaPrefijo(row.id));
+      this.prefijoFaseRows = this.prefijoFaseRows.filter(r => r !== row);
+      this.prefijoFaseOriginal = this.prefijoFaseOriginal.filter(r => r.id !== row.id);
+      this.prefijoFaseSelectedRow = null;
+      if (this.prefijoFaseGridApi && !this.prefijoFaseGridApi.isDestroyed())
+        this.prefijoFaseGridApi.setGridOption('rowData', this.prefijoFaseRows);
+    } catch { this.showToast('Error al eliminar'); }
+  }
+
   onSelectCatalogSidebar(item: ExtractionFermentationCatalogItem) {
     this.selectedCatalogSidebarId = item.id;
+    this.prefijoFaseMode = false;
     if (this.isCaracteristicasManzana(item)) {
       this.showHierarchicalTable = true;
       this.isBotesMode = false;
@@ -1994,21 +2210,44 @@ export class CatalogosProduccionComponent {
 
   private loadCatalogData(idCatalog: number) {
     if (!this.idRoot) return;
-    this.mxmService.getByCatalog(this.idRoot, idCatalog).subscribe((data: any[]) => {
+    forkJoin({
+      data:  this.mxmService.getByCatalog(this.idRoot, idCatalog),
+      usage: this.isBotesMode ? this.productionService.getMoliendaBoteUsage() : of({}),
+    }).subscribe(({ data, usage }: any) => {
+      const usageMap: Record<number, number> = usage ?? {};
       let rows: any[];
       if (this.isBotesMode) {
-        rows = (data ?? []).map(m => ({
+        rows = (data ?? []).map((m: any) => ({
           id: m.id,
           type: m.type,
           cantidad: m.cantidad,
           valor: m.active,
           idCatalog: m.idCatalog,
           idMatPrima: m.idMatPrima ?? null,
+          idPrefijoFase: m.idPrefijoFase ?? null,
+          hasUsage: (usageMap[m.id] ?? 0) > 0,
         }));
-        // Ordenar por id y asignar boteNum global (no por posición filtrada)
-        rows.sort((a: any, b: any) => (a.id ?? 0) - (b.id ?? 0));
-        rows.forEach((r, i) => { r.boteNum = i + 1; });
-        // Nota: boteNum es global dentro del catálogo de botes, no por mat prima
+        rows.sort((a: any, b: any) => {
+          const faseA = this.prefijoFaseOptions.find((f: any) => f.id === a.idPrefijoFase)?.nombreFase ?? '';
+          const faseB = this.prefijoFaseOptions.find((f: any) => f.id === b.idPrefijoFase)?.nombreFase ?? '';
+          const cmpFase = faseA.localeCompare(faseB, 'es', { sensitivity: 'base' });
+          if (cmpFase !== 0) return cmpFase;
+          const matA = this.matPrimaOptions.find((m: any) => m.id === a.idMatPrima)?.description ?? '';
+          const matB = this.matPrimaOptions.find((m: any) => m.id === b.idMatPrima)?.description ?? '';
+          return matA.localeCompare(matB, 'es', { sensitivity: 'base' });
+        });
+        rows.forEach((r: any, i: number) => { r.boteNum = i + 1; });
+
+        // Calcular prefixNum: numeración secuencial por grupo de prefijo
+        const groupCounters = new Map<string, number>();
+        rows.forEach((r: any) => {
+          const fp = r.idPrefijoFase != null ? (this.prefijoFaseOptions.find((f: any) => f.id === r.idPrefijoFase)?.prefijo ?? '') : '';
+          const ap = r.idMatPrima   != null ? (this.matPrimaOptions.find((m: any) => m.id === r.idMatPrima)?.prefijo ?? '') : '';
+          const key = `${fp}${ap}`;
+          const n = (groupCounters.get(key) ?? 0) + 1;
+          groupCounters.set(key, n);
+          r.prefixNum = n;
+        });
       } else {
         rows = (data ?? []).map(m => ({
           id: m.id,
@@ -2018,6 +2257,7 @@ export class CatalogosProduccionComponent {
           idCatalog: m.idCatalog,
           editBultos: m.editBultos,
           molienda: m.molienda ?? false,
+          prefijo: m.prefijo ?? '',
         }));
         rows.sort((a: any, b: any) =>
           (this.materialesIdToDesc.get(a.idArticulo) ?? '').localeCompare(

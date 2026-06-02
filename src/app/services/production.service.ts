@@ -247,4 +247,18 @@ export class ProductionService {
   getMoliendaBoteHistorialByMatDetalle(idMatDetalle: number): Observable<any[]> {
     return this.http.get<any[]>(`${environment.urlProduction}/MoliendaBote/historial/matdetalle/${idMatDetalle}`, { headers: this.trackingService.getHeaders() });
   }
+
+  // ── Prefijos Fase ──
+  getMoliendaPrefijos(idCompany: number): Observable<any[]> {
+    return this.http.get<any[]>(`${environment.urlProduction}/MoliendaPrefijo?idCompany=${idCompany}`, { headers: this.trackingService.getHeaders() });
+  }
+  createMoliendaPrefijo(data: { idCompany: number; nombreFase: string; prefijo: string; active: boolean }): Observable<any> {
+    return this.http.post<any>(`${environment.urlProduction}/MoliendaPrefijo`, data, { headers: this.trackingService.getHeaders() });
+  }
+  updateMoliendaPrefijo(id: number, data: { nombreFase: string; prefijo: string; active: boolean }): Observable<any> {
+    return this.http.put<any>(`${environment.urlProduction}/MoliendaPrefijo/${id}`, data, { headers: this.trackingService.getHeaders() });
+  }
+  deleteMoliendaPrefijo(id: number): Observable<void> {
+    return this.http.delete<void>(`${environment.urlProduction}/MoliendaPrefijo/${id}`, { headers: this.trackingService.getHeaders() });
+  }
 }
