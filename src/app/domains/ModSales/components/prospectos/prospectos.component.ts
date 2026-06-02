@@ -27,8 +27,12 @@ export class ProspectosComponent implements OnInit {
   private storageSvc = inject(StoragesService);
   private _colDefs: ColDef[] = [];
 
+  // ── Pestañas ─────────────────────────────────────────────────────────────
+  activeTab: 'prospectos' | 'plantillas' = 'prospectos';
+  savingPlantillas = false;
+
   // ── Plantillas de mensaje por giro ({empresa} se reemplaza con el nombre real) ──
-  private readonly MENSAJES_GIRO: Record<string, string> = {
+  private readonly MENSAJES_DEFAULT: Record<string, string> = {
     'Servicios': `Hola {empresa}, buen día.\n\n¿Le gustaría generar ingresos adicionales sin inversión?\n\nEn BI2 desarrollamos software, buscamos despachos contables como aliados comerciales para ofrecer ERP, Construcción, Administración, Municipios, Escuelas, Puntos Ventas, Bot Whatsapp e Inteligencia Artificial a sus clientes, con atractivas comisiones por cada venta.\n\n¿Podemos agendar una llamada de 10 minutos para explicarle el programa?\n\nSaludos.\nJosé Angel Soriano | BI2\nwww.bi2.mx\nwww.youtube.com/@bi2mx`,
     'Restaurante':  `Hola {empresa}, buen día.\n\n[Mensaje para Restaurantes — pendiente redactar]\n\nSaludos.\nJosé Angel Soriano | BI2\nwww.bi2.mx`,
     'Clínica':      `Hola {empresa}, buen día.\n\n[Mensaje para Clínicas — pendiente redactar]\n\nSaludos.\nJosé Angel Soriano | BI2\nwww.bi2.mx`,
@@ -39,6 +43,8 @@ export class ProspectosComponent implements OnInit {
     'Gobierno':     `Hola {empresa}, buen día.\n\n[Mensaje para Gobierno — pendiente redactar]\n\nSaludos.\nJosé Angel Soriano | BI2\nwww.bi2.mx`,
     'Otro':         `Hola {empresa}, buen día.\n\n[Mensaje genérico — pendiente redactar]\n\nSaludos.\nJosé Angel Soriano | BI2\nwww.bi2.mx`,
   };
+
+  plantillas: Record<string, string> = { ...this.MENSAJES_DEFAULT };
 
   constructor() {
     effect(() => {
@@ -275,6 +281,32 @@ export class ProspectosComponent implements OnInit {
 
   ngOnInit() {
     this.cargarProspectos();
+    this.cargarPlantillas();
+  }
+
+  async cargarPlantillas() {
+    if (!this.idRoot) return;
+    const guardadas = await this.svc.getPlantillas(this.idRoot);
+    if (guardadas) {
+      this.plantillas = { ...this.MENSAJES_DEFAULT, ...guardadas };
+    }
+  }
+
+  async guardarPlantillas() {
+    if (!this.idRoot) return;
+    this.savingPlantillas = true;
+    try {
+      await this.svc.savePlantillas(this.idRoot, this.plantillas);
+      Swal.fire({ icon: 'success', title: 'Plantillas guardadas', timer: 1400, showConfirmButton: false });
+    } catch {
+      Swal.fire('Error', 'No se pudieron guardar las plantillas.', 'error');
+    } finally {
+      this.savingPlantillas = false;
+    }
+  }
+
+  resetPlantilla(giro: string) {
+    this.plantillas[giro] = this.MENSAJES_DEFAULT[giro] ?? '';
   }
 
   private ordenarProspectos(data: any[]) {
@@ -456,7 +488,7 @@ export class ProspectosComponent implements OnInit {
     const giro    = data?.giro ?? '';
     const empresa = data?.empresa || data?.nombre || 'prospecto';
     const telefono = data?.telefono ?? '';
-    const msgBase  = (this.MENSAJES_GIRO[giro] ?? this.MENSAJES_GIRO['Otro']).replace(/\{empresa\}/g, empresa);
+    const msgBase  = (this.plantillas[giro] ?? this.plantillas['Otro'] ?? '').replace(/\{empresa\}/g, empresa);
 
     const result = await Swal.fire({
       title: `<i class="bi bi-whatsapp" style="color:#25D366"></i> WhatsApp — ${empresa}`,

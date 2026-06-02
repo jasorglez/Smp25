@@ -11,6 +11,8 @@ import {
   increment,
   Timestamp,
   getDocs,
+  getDoc,
+  setDoc,
 } from '@angular/fire/firestore';
 import { Observable, from, of, switchMap } from 'rxjs';
 import { SignalsService } from './signals.service';
@@ -252,5 +254,16 @@ export class ProspectosService {
     if (typeof value.toDate === 'function') return value.toDate().getTime();
     if (typeof value.seconds === 'number') return value.seconds * 1000;
     return new Date(value).getTime();
+  }
+
+  // ── Plantillas WhatsApp por empresa ──────────────────────────────────────
+
+  async getPlantillas(idCompany: number): Promise<Record<string, string> | null> {
+    const snap = await getDoc(doc(this.firestore, 'whatsapp-plantillas', String(idCompany)));
+    return snap.exists() ? (snap.data() as Record<string, string>) : null;
+  }
+
+  async savePlantillas(idCompany: number, plantillas: Record<string, string>): Promise<void> {
+    await setDoc(doc(this.firestore, 'whatsapp-plantillas', String(idCompany)), plantillas);
   }
 }

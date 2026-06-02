@@ -1,10 +1,27 @@
 <section class="sales-mod-shell">
   <header class="sales-mod-head sales-mod-reveal d-flex align-items-baseline gap-3">
     <h2 class="sales-mod-title mb-0">Vendedores</h2>
-    <p class="sales-mod-subtitle mb-0">Gestiona prospectos, estados y seguimiento. Usa la barra de acciones para agregar, guardar o revertir cambios.</p>
+    <p class="sales-mod-subtitle mb-0">Gestiona prospectos, estados y seguimiento.</p>
   </header>
 
-  <div class="sales-mod-body">
+  <!-- Pestañas -->
+  <ul class="nav nav-tabs px-3 pt-2" style="border-bottom:1px solid #dee2e6">
+    <li class="nav-item">
+      <button class="nav-link" [class.active]="activeTab === 'prospectos'"
+              (click)="activeTab = 'prospectos'">
+        <i class="bi bi-people me-1"></i> Prospectos
+      </button>
+    </li>
+    <li class="nav-item">
+      <button class="nav-link" [class.active]="activeTab === 'plantillas'"
+              (click)="activeTab = 'plantillas'">
+        <i class="bi bi-whatsapp me-1" style="color:#25D366"></i> Plantillas WhatsApp
+      </button>
+    </li>
+  </ul>
+
+  <!-- ── TAB: Prospectos ───────────────────────────────────────────────── -->
+  <div class="sales-mod-body" *ngIf="activeTab === 'prospectos'">
     <aside class="sales-mod-aside sales-mod-reveal-delay">
       <div class="sales-mod-aside-inner">
         <button type="button" class="btn btn-success" (click)="add()" [disabled]="!gridApi" title="Agregar prospecto">
@@ -49,4 +66,51 @@
       </div>
     </main>
   </div>
+
+  <!-- ── TAB: Plantillas WhatsApp ─────────────────────────────────────── -->
+  <div class="p-3" *ngIf="activeTab === 'plantillas'">
+    <div class="d-flex align-items-center gap-2 mb-3">
+      <span class="text-muted small">
+        Usa <code>{{ '{' }}empresa{{ '}' }}</code> donde quieras insertar el nombre del prospecto.
+        Los cambios se aplican a todos los envíos futuros.
+      </span>
+      <button class="btn btn-sm btn-success ms-auto" (click)="guardarPlantillas()" [disabled]="savingPlantillas">
+        <span *ngIf="savingPlantillas" class="spinner-border spinner-border-sm me-1"></span>
+        <i *ngIf="!savingPlantillas" class="bi bi-floppy me-1"></i>
+        Guardar plantillas
+      </button>
+    </div>
+
+    <div class="row g-3">
+      <div class="col-12 col-md-6" *ngFor="let giro of GIROS">
+        <div class="card border h-100">
+          <div class="card-header py-1 px-2 d-flex align-items-center gap-2"
+               style="background:#f8f9fa;font-size:.85rem;font-weight:600">
+            <i class="bi bi-whatsapp" style="color:#25D366"></i>
+            {{ giro }}
+            <button class="btn btn-link btn-sm p-0 ms-auto text-muted"
+                    title="Restaurar mensaje por defecto"
+                    (click)="resetPlantilla(giro)">
+              <i class="bi bi-arrow-counterclockwise"></i>
+            </button>
+          </div>
+          <div class="card-body p-2">
+            <textarea class="form-control form-control-sm"
+                      style="height:160px;font-size:.78rem;font-family:monospace;resize:vertical"
+                      [(ngModel)]="plantillas[giro]">
+            </textarea>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="mt-3 text-end">
+      <button class="btn btn-success" (click)="guardarPlantillas()" [disabled]="savingPlantillas">
+        <span *ngIf="savingPlantillas" class="spinner-border spinner-border-sm me-1"></span>
+        <i *ngIf="!savingPlantillas" class="bi bi-floppy me-1"></i>
+        Guardar plantillas
+      </button>
+    </div>
+  </div>
+
 </section>
