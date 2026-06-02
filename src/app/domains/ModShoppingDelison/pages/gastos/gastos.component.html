@@ -43,6 +43,23 @@
       <p>No hay entradas pendientes de pago.</p>
     </div>
 
+    <!-- Leyenda de colores: Anticipo / Crédito / Contado -->
+    <div class="d-flex gap-3 mb-2 align-items-center flex-wrap"
+         *ngIf="!capturaLoading && !capturaError && capturaRows.length > 0">
+      <div class="d-flex align-items-center gap-1">
+        <div style="width:14px; height:14px; border-radius:3px; background:#90CAF9; border:1px solid #1976d2; flex-shrink:0;"></div>
+        <span style="font-size:11px; color:#555;">ANTICIPO</span>
+      </div>
+      <div class="d-flex align-items-center gap-1">
+        <div style="width:14px; height:14px; border-radius:3px; background:#FFCC80; border:1px solid #ef6c00; flex-shrink:0;"></div>
+        <span style="font-size:11px; color:#555;">CRÉDITO</span>
+      </div>
+      <div class="d-flex align-items-center gap-1">
+        <div style="width:14px; height:14px; border-radius:3px; background:#A5D6A7; border:1px solid #2e7d32; flex-shrink:0;"></div>
+        <span style="font-size:11px; color:#555;">SIN ANTICIPO NI CRÉDITO</span>
+      </div>
+    </div>
+
     <ag-grid-angular
       *ngIf="!capturaLoading && capturaRows.length > 0"
       class="ag-theme-quartz captura-grid"

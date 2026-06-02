@@ -52,6 +52,7 @@ export class AuthService {
 
   // Timer de cierre al expirar el JWT (sin modal de advertencia previa).
   private sessionExpireTimer: any = null;
+  private isLoggingOut = false;
 
   /** Cierre por inactividad (sin eventos de usuario en el documento). */
   private idleTimer: ReturnType<typeof setTimeout> | null = null;
@@ -60,6 +61,16 @@ export class AuthService {
   private lastActivityThrottleAt = 0;
   private idleListenersAttached = false;
   private readonly onIdleActivity = (): void => this.recordUserActivity();
+  private readonly onVisibilityChange = (): void => {
+    if (!localStorage.getItem('token')) return;
+    if (document.hidden) {
+      // Tab en background — pausar idle timer para no cerrar sesión por inactividad de tab
+      if (this.idleTimer) { clearTimeout(this.idleTimer); this.idleTimer = null; }
+    } else {
+      // Tab volvió al frente — reiniciar idle timer
+      this.recordUserActivity();
+    }
+  };
 
   constructor() {
     effect(() => {
@@ -74,12 +85,41 @@ export class AuthService {
 
   // ─── Inicia los timers de sesión una vez que el token está en localStorage ───
   startSessionTimers(): void {
+    this.isLoggingOut = false;
     this.clearSessionTimers();
 
     const token = localStorage.getItem('token');
     if (!token) return;
 
+    // Timer proactivo: renovar el JWT 2 minutos antes de que expire
+    const expiry = this.getTokenExpiry(token);
+    if (expiry) {
+      const msUntilExpiry = expiry - Date.now();
+      if (msUntilExpiry > 0) {
+        const renewDelay = Math.max(0, msUntilExpiry - 2 * 60 * 1000);
+        this.sessionExpireTimer = setTimeout(() => {
+          this.sessionExpireTimer = null;
+          this.ngZone.run(() => this.renewSessionToken());
+        }, renewDelay);
+      }
+    }
+
     this.startIdleWatch();
+  }
+
+  private renewSessionToken(): void {
+    if (this.isLoggingOut) return;
+    const userId = this.signalsService.getIdUSer()();
+    if (!userId || userId <= 0) return;
+    this.http.get<any>(`${environment.urlSecurity}/Auth/renew/token/${userId}`,
+      { headers: this.trackingService.getHeaders() })
+      .pipe(catchError(() => of(null)))
+      .subscribe((resp: any) => {
+        if (resp?.data?.token) {
+          localStorage.setItem('token', resp.data.token);
+          this.startSessionTimers();
+        }
+      });
   }
 
   /**
@@ -109,6 +149,7 @@ export class AuthService {
     document.addEventListener('scroll', this.onIdleActivity, opts);
     document.addEventListener('wheel', this.onIdleActivity, opts);
     document.addEventListener('mousemove', this.onIdleActivity, opts);
+    document.addEventListener('visibilitychange', this.onVisibilityChange);
     this.idleListenersAttached = true;
   }
 
@@ -121,6 +162,7 @@ export class AuthService {
       document.removeEventListener('scroll', this.onIdleActivity, { capture: true } as any);
       document.removeEventListener('wheel', this.onIdleActivity, { capture: true } as any);
       document.removeEventListener('mousemove', this.onIdleActivity, { capture: true } as any);
+      document.removeEventListener('visibilitychange', this.onVisibilityChange);
       this.idleListenersAttached = false;
     }
     if (this.idleTimer) {
@@ -157,6 +199,8 @@ export class AuthService {
       this.stopIdleWatch();
       return;
     }
+    if (this.isLoggingOut) return;
+    this.isLoggingOut = true;
     Swal.close();
     try {
       sessionStorage.setItem('idleLogoutNotice', '1');
@@ -243,6 +287,8 @@ export class AuthService {
 
   /** Cierre por sesión expirada (token caducado y refresh fallido): logout limpio + aviso en login. */
   handleSessionExpired(): void {
+    if (this.isLoggingOut) return;
+    this.isLoggingOut = true;
     Swal.close();
     try {
       sessionStorage.setItem('sessionExpiredNotice', '1');
