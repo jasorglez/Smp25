@@ -373,28 +373,7 @@ export class ProspectosComponent implements OnInit {
     const toSave = this.rowData.filter(p => p.__isNew || p.__modified);
     if (!toSave.length) return;
 
-    // Prospectos sin WhatsApp enviado (estado = 'prospecto' o sin teléfono)
-    const sinWhatsapp = toSave.filter(p =>
-      (p.estado ?? 'prospecto') === 'prospecto' && p.activo !== false
-    );
-
-    if (sinWhatsapp.length) {
-      const lista = sinWhatsapp
-        .map((p: any) => `• ${p.empresa || p.nombre}${p.telefono && p.telefono !== 'SIN NUMERO' ? ` <span style="color:#888">(${p.telefono})</span>` : ' <span style="color:#dc3545">sin teléfono</span>'}`)
-        .join('<br>');
-
-      const res = await Swal.fire({
-        icon: 'warning',
-        title: '¿Enviaste WhatsApp?',
-        html: `Los siguientes prospectos <b>no han sido contactados</b>:<br><br>${lista}<br><br>¿Deseas guardar de todas formas?`,
-        showCancelButton: true,
-        confirmButtonText: 'Sí, guardar',
-        cancelButtonText: 'Cancelar',
-        confirmButtonColor: '#0d6efd',
-      });
-      if (!res.isConfirmed) return;
-    }
-
+    const nuevos: any[] = [];
     const errores: string[] = [];
     for (const p of toSave) {
       const empresa = p.empresa?.trim() ?? '';
@@ -412,6 +391,7 @@ export class ProspectosComponent implements OnInit {
       try {
         if (p.__isNew) {
           await this.svc.crearProspecto(p);
+          nuevos.push(p);
         } else {
           await this.svc.actualizarProspecto(p.id!, {
             nombre:                 p.nombre,
@@ -434,8 +414,26 @@ export class ProspectosComponent implements OnInit {
 
     if (errores.length) {
       Swal.fire('Atención', errores.join('\n'), 'warning');
-    } else {
-      Swal.fire({ icon: 'success', title: 'Guardado', timer: 1200, showConfirmButton: false });
+      return;
+    }
+
+    Swal.fire({ icon: 'success', title: 'Guardado', timer: 900, showConfirmButton: false });
+
+    // Por cada nuevo guardado, preguntar si envía WhatsApp
+    for (const p of nuevos) {
+      if (!p.telefono || p.telefono === 'SIN NUMERO') continue;
+      const res = await Swal.fire({
+        icon: 'question',
+        title: '¿Enviar WhatsApp?',
+        html: `¿Deseas enviarle un mensaje a <b>${p.empresa || p.nombre}</b>?`,
+        showCancelButton: true,
+        confirmButtonText: '<i class="bi bi-whatsapp"></i> Sí, enviar',
+        cancelButtonText: 'Ahora no',
+        confirmButtonColor: '#25D366',
+      });
+      if (res.isConfirmed) {
+        await this.abrirWhatsappProspecto(p);
+      }
     }
   }
 
