@@ -10,6 +10,7 @@ import { SignalsService } from 'app/services/signals.service';
 import { UsersService } from 'app/services/users.service';
 import { DetalleInteraccionesComponent } from './detalle-interacciones.component';
 import { ButtonCellRendererIncomeComponent } from 'app/domains/ModAdmon/components/income/button-cell-renderer-income.component';
+import { StoragesService } from 'app/services/storages.service';
 import Swal from 'sweetalert2';
 
 @Component({
@@ -23,7 +24,21 @@ export class ProspectosComponent implements OnInit {
   private svc        = inject(ProspectosService);
   private signalsSvc = inject(SignalsService);
   private usersSvc   = inject(UsersService);
+  private storageSvc = inject(StoragesService);
   private _colDefs: ColDef[] = [];
+
+  // ── Plantillas de mensaje por giro ───────────────────────────────────────
+  private readonly MENSAJES_GIRO: Record<string, string> = {
+    'Servicios': `Hola, buen día.\n\n¿Le gustaría generar ingresos adicionales sin inversión?\n\nEn BI2 desarrollamos software, buscamos despachos contables como aliados comerciales para ofrecer ERP, Construcción, Administración, Municipios, Escuelas, Puntos Ventas, Bot Whatsapp e Inteligencia Artificial a sus clientes, con atractivas comisiones por cada venta.\n\n¿Podemos agendar una llamada de 10 minutos para explicarle el programa?\n\nSaludos.\nJosé Angel Soriano | BI2\nwww.bi2.mx\nwww.youtube.com/@bi2mx`,
+    'Restaurante':  `Hola, buen día.\n\n[Mensaje para Restaurantes — pendiente redactar]\n\nSaludos.\nJosé Angel Soriano | BI2\nwww.bi2.mx`,
+    'Clínica':      `Hola, buen día.\n\n[Mensaje para Clínicas — pendiente redactar]\n\nSaludos.\nJosé Angel Soriano | BI2\nwww.bi2.mx`,
+    'Escuela':      `Hola, buen día.\n\n[Mensaje para Escuelas — pendiente redactar]\n\nSaludos.\nJosé Angel Soriano | BI2\nwww.bi2.mx`,
+    'Construcción': `Hola, buen día.\n\n[Mensaje para Construcción — pendiente redactar]\n\nSaludos.\nJosé Angel Soriano | BI2\nwww.bi2.mx`,
+    'Comercio':     `Hola, buen día.\n\n[Mensaje para Comercio — pendiente redactar]\n\nSaludos.\nJosé Angel Soriano | BI2\nwww.bi2.mx`,
+    'Manufactura':  `Hola, buen día.\n\n[Mensaje para Manufactura — pendiente redactar]\n\nSaludos.\nJosé Angel Soriano | BI2\nwww.bi2.mx`,
+    'Gobierno':     `Hola, buen día.\n\n[Mensaje para Gobierno — pendiente redactar]\n\nSaludos.\nJosé Angel Soriano | BI2\nwww.bi2.mx`,
+    'Otro':         `Hola, buen día.\n\n[Mensaje genérico — pendiente redactar]\n\nSaludos.\nJosé Angel Soriano | BI2\nwww.bi2.mx`,
+  };
 
   constructor() {
     effect(() => {
@@ -128,6 +143,22 @@ export class ProspectosComponent implements OnInit {
         },
         valueGetter: (params) => params.data?.countInteracciones ?? 0,
         cellStyle: { backgroundColor: '#e8f0fb', cursor: 'pointer' },
+      },
+      {
+        field: 'whatsapp',
+        headerName: 'WhatsApp',
+        width: 110,
+        editable: false,
+        cellRenderer: (p: any) => {
+          const phone = p.data?.telefono ?? '';
+          const hasPhone = phone && phone !== 'SIN NUMERO';
+          const color = hasPhone ? '#25D366' : '#6c757d';
+          return `<button style="background:${color};border:none;color:#fff;border-radius:4px;padding:2px 8px;font-size:.8rem;cursor:${hasPhone ? 'pointer' : 'default'}" title="${hasPhone ? 'Enviar WhatsApp' : 'Sin número registrado'}">
+            <i class="bi bi-whatsapp"></i> Enviar
+          </button>`;
+        },
+        onCellClicked: (p: any) => { if (p.data?.telefono && p.data.telefono !== 'SIN NUMERO') this.abrirWhatsappProspecto(p.data); },
+        cellStyle: { cursor: 'pointer' },
       },
       {
         field: 'estado', headerName: 'Estado', width: 155,
@@ -387,6 +418,130 @@ export class ProspectosComponent implements OnInit {
     if (!ts) return '';
     const d = ts.toDate ? ts.toDate() : new Date(ts);
     return d.toLocaleDateString('es-MX', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+  }
+
+  // ── WhatsApp ──────────────────────────────────────────────────────────────
+
+  async abrirWhatsappProspecto(data: any) {
+    const giro    = data?.giro ?? '';
+    const empresa = data?.empresa || data?.nombre || 'prospecto';
+    const telefono = data?.telefono ?? '';
+    const msgBase  = this.MENSAJES_GIRO[giro] ?? this.MENSAJES_GIRO['Otro'];
+
+    const result = await Swal.fire({
+      title: `<i class="bi bi-whatsapp" style="color:#25D366"></i> WhatsApp — ${empresa}`,
+      width: 640,
+      html: `
+        <div style="text-align:left;font-size:.875rem">
+          <label style="font-weight:600">Teléfono</label>
+          <input id="sw-phone" class="swal2-input" style="margin:4px 0 10px" placeholder="5512345678" value="${telefono}">
+
+          <label style="font-weight:600">Mensaje <small style="color:#888;font-weight:400">(editable)</small></label>
+          <textarea id="sw-msg" class="swal2-textarea" style="height:150px;font-size:.8rem;margin:4px 0 10px">${msgBase}</textarea>
+
+          <label style="font-weight:600">Imágenes</label>
+          <div style="display:flex;flex-direction:column;gap:6px;margin-top:6px">
+            <label style="cursor:pointer">
+              <input type="radio" name="sw-opt" value="C" checked style="margin-right:6px">
+              📝 Sin imágenes — las agrego desde mi teléfono
+            </label>
+            <label style="cursor:pointer">
+              <input type="radio" name="sw-opt" value="B" style="margin-right:6px">
+              🔗 Incluir link en el mensaje
+            </label>
+            <div id="sw-link-wrap" style="display:none;margin-left:22px;margin-top:-2px">
+              <input id="sw-link" class="swal2-input" style="margin:2px 0 0" placeholder="https://www.bi2.mx">
+            </div>
+            <label style="cursor:pointer">
+              <input type="radio" name="sw-opt" value="A" style="margin-right:6px">
+              📎 Subir imágenes a la nube (1-2 archivos JPG/PNG)
+            </label>
+            <div id="sw-files-wrap" style="display:none;margin-left:22px;margin-top:-2px">
+              <div style="margin-bottom:4px"><small style="color:#666">Imagen 1</small><br>
+                <input type="file" id="sw-img1" accept="image/jpeg,image/png">
+              </div>
+              <div><small style="color:#666">Imagen 2 (opcional)</small><br>
+                <input type="file" id="sw-img2" accept="image/jpeg,image/png">
+              </div>
+            </div>
+          </div>
+        </div>
+      `,
+      didOpen: () => {
+        document.querySelectorAll<HTMLInputElement>('input[name="sw-opt"]').forEach(r => {
+          r.addEventListener('change', () => {
+            const v = (document.querySelector<HTMLInputElement>('input[name="sw-opt"]:checked'))?.value ?? 'C';
+            (document.getElementById('sw-link-wrap') as HTMLElement).style.display  = v === 'B' ? 'block' : 'none';
+            (document.getElementById('sw-files-wrap') as HTMLElement).style.display = v === 'A' ? 'block' : 'none';
+          });
+        });
+      },
+      showCancelButton: true,
+      confirmButtonText: '<i class="bi bi-whatsapp"></i> Abrir WhatsApp',
+      cancelButtonText: 'Cancelar',
+      confirmButtonColor: '#25D366',
+      showLoaderOnConfirm: true,
+      preConfirm: async () => {
+        const phone = (document.getElementById('sw-phone') as HTMLInputElement).value.trim();
+        const msg   = (document.getElementById('sw-msg')   as HTMLTextAreaElement).value.trim();
+        const opt   = (document.querySelector<HTMLInputElement>('input[name="sw-opt"]:checked'))?.value ?? 'C';
+        const link  = (document.getElementById('sw-link')  as HTMLInputElement)?.value?.trim() ?? '';
+        const img1  = (document.getElementById('sw-img1')  as HTMLInputElement)?.files?.[0] ?? null;
+        const img2  = (document.getElementById('sw-img2')  as HTMLInputElement)?.files?.[0] ?? null;
+
+        const normalized = this.normalizeWhatsappNumber(phone);
+        if (!normalized) {
+          Swal.showValidationMessage('Número inválido. Escribe 10 dígitos o incluye clave de país (ej. 525512345678).');
+          return false;
+        }
+
+        let mensajeFinal = msg;
+
+        if (opt === 'B' && link) {
+          mensajeFinal += `\n\n🔗 ${link}`;
+        } else if (opt === 'A') {
+          const archivos = [img1, img2].filter((f): f is File => !!f);
+          if (archivos.length) {
+            Swal.showValidationMessage('Subiendo imágenes...');
+            const urls: string[] = [];
+            for (const file of archivos) {
+              try {
+                const url = await this.storageSvc.uploadFile(file, `whatsapp-prospectos/${Date.now()}_${file.name}`);
+                urls.push(url);
+              } catch {
+                Swal.showValidationMessage(`Error al subir ${file.name}. Intenta de nuevo.`);
+                return false;
+              }
+            }
+            mensajeFinal += '\n\n' + urls.join('\n');
+          }
+        }
+
+        return { phone: normalized, msg: mensajeFinal };
+      },
+      allowOutsideClick: () => !Swal.isLoading(),
+    });
+
+    if (!result.isConfirmed || !result.value) return;
+
+    const { phone, msg } = result.value as { phone: string; msg: string };
+    window.open(`https://wa.me/${phone}?text=${encodeURIComponent(msg)}`, '_blank', 'noopener,noreferrer');
+
+    Swal.fire({
+      icon: 'success',
+      title: 'WhatsApp listo',
+      text: `Abierto para ${phone}`,
+      timer: 1800,
+      showConfirmButton: false,
+    });
+  }
+
+  private normalizeWhatsappNumber(value: string): string | null {
+    const digits = String(value ?? '').replace(/\D/g, '');
+    if (!digits) return null;
+    if (digits.length === 10) return `52${digits}`;
+    if (digits.length < 11 || digits.length > 15) return null;
+    return digits;
   }
 }
 

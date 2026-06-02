@@ -85,5 +85,5 @@ export const environment = {
     // publicKey: 'TEST-4399133a-4676-42a2-ab85-d946370bf96a',
   },
 
-  version: '7.65 (01 Junio 2026) fix(prospectos): giro competidor seguimiento se guardan al actualizar',
+  version: '7.66 (02 Junio 2026) feat(prospectos): WhatsApp por prospecto con plantilla por giro e imágenes',
 };
