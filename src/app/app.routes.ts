@@ -16,6 +16,14 @@ export const routes: Routes = [
       ),
   },
   {
+    // Ruta pública sin auth guard — menú del restaurante para clientes
+    path: 'menu',
+    loadComponent: () =>
+      import('./pages/menu-publico/menu-publico.component').then(
+        (m) => m.MenuPublicoComponent
+      ),
+  },
+  {
     path: '',
     component: MainPageComponent,
     children: [

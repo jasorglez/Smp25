@@ -1,0 +1,83 @@
+<div class="menu-publico-wrapper">
+
+  <!-- Header -->
+  <div class="mp-header">
+    <h1>🍽️ Cocina del Barrio</h1>
+    <p class="mp-subtitulo">Menú del día — {{ hoy }}</p>
+  </div>
+
+  <!-- Loading -->
+  <div *ngIf="cargando()" class="mp-loading">
+    <div class="spinner-border text-warning" role="status"></div>
+    <p>Cargando menú...</p>
+  </div>
+
+  <!-- Pedido enviado OK -->
+  <div *ngIf="pedidoOk()" class="mp-ok">
+    <div class="mp-ok-icon">✅</div>
+    <h2>¡Pedido recibido!</h2>
+    <p>La cocina ya lo tiene. Te avisamos cuando esté listo.</p>
+    <button class="btn btn-warning mt-3" (click)="pedidoOk.set(false); cargarMenu()">
+      Hacer otro pedido
+    </button>
+  </div>
+
+  <!-- Menú del día -->
+  <div *ngIf="!cargando() && !pedidoOk()">
+
+    <div *ngIf="menu().length === 0" class="mp-vacio">
+      <p>No hay menú disponible hoy.</p>
+    </div>
+
+    <div *ngIf="menu().length > 0">
+
+      <!-- Categorías -->
+      <div *ngFor="let cat of categorias()" class="mp-categoria">
+        <h3 class="mp-cat-titulo">{{ cat }}</h3>
+        <div *ngFor="let item of itemsPorCategoria(cat)" class="mp-item">
+          <div class="mp-item-info">
+            <span class="mp-item-nombre">{{ item.descripcion }}</span>
+            <span class="mp-item-precio">${{ item.precio | number:'1.2-2' }}</span>
+          </div>
+          <div class="mp-item-ctrl">
+            <button class="btn-ctrl" (click)="quitar(item)"
+                    [disabled]="cantidadEnCarrito(item.id) === 0">−</button>
+            <span class="mp-cant">{{ cantidadEnCarrito(item.id) }}</span>
+            <button class="btn-ctrl btn-add" (click)="agregar(item)">+</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Carrito -->
+      <div class="mp-carrito" [class.mp-carrito-visible]="!carritoVacio">
+        <h4>Tu pedido</h4>
+        <div *ngFor="let c of carrito()" class="mp-carrito-item">
+          <span>{{ c.cantidad }}× {{ c.descripcion }}</span>
+          <span>${{ c.precio * c.cantidad | number:'1.2-2' }}</span>
+        </div>
+        <div class="mp-total">Total: <strong>${{ total | number:'1.2-2' }}</strong></div>
+      </div>
+
+      <!-- Formulario -->
+      <div class="mp-form" *ngIf="!carritoVacio">
+        <h4>Tus datos</h4>
+        <input type="text" class="form-control mb-2"
+               placeholder="Tu nombre *" [(ngModel)]="nombre" maxlength="100">
+        <input type="tel" class="form-control mb-2"
+               placeholder="WhatsApp (opcional)" [(ngModel)]="telefono" maxlength="20">
+        <textarea class="form-control mb-3" rows="2"
+                  placeholder="Notas (sin cebolla, para llevar...)" [(ngModel)]="notas" maxlength="300"></textarea>
+
+        <div *ngIf="errorMsg()" class="alert alert-danger py-2">{{ errorMsg() }}</div>
+
+        <button class="btn btn-warning btn-lg w-100"
+                (click)="enviarPedido()" [disabled]="enviando()">
+          <span *ngIf="enviando()" class="spinner-border spinner-border-sm me-2"></span>
+          {{ enviando() ? 'Enviando...' : 'Hacer pedido — $' + (total | number:'1.2-2') }}
+        </button>
+      </div>
+
+    </div>
+  </div>
+
+</div>
