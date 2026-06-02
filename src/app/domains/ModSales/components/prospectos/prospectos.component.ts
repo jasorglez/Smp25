@@ -527,11 +527,43 @@ export class ProspectosComponent implements OnInit {
     const { phone, msg } = result.value as { phone: string; msg: string };
     window.open(`https://wa.me/${phone}?text=${encodeURIComponent(msg)}`, '_blank', 'noopener,noreferrer');
 
+    // Registrar interacción whatsapp en el historial
+    if (data.id) {
+      try {
+        await this.svc.registrarInteraccion(data.id, {
+          tipo:           'whatsapp',
+          descripcion:    `WhatsApp enviado${data.giro ? ` — giro: ${data.giro}` : ''}`,
+          idVendedor:     this.idVendedor,
+          nombreVendedor: this.nombreVendedor,
+          resultado:      'neutral',
+        });
+        data.countInteracciones = (data.countInteracciones ?? 0) + 1;
+        data.fechaUltimaInteraccion = new Date();
+
+        // Pasar a 'contactado' solo si todavía está como 'prospecto'
+        if ((data.estado ?? 'prospecto') === 'prospecto') {
+          await this.svc.cambiarEstado(data.id, 'contactado', this.idVendedor, this.nombreVendedor);
+          data.estado = 'contactado';
+          data.countInteracciones += 1; // cambiarEstado también registra una interacción
+        }
+
+        // Refrescar el row en el grid
+        this.gridApi.forEachNode((node: any) => {
+          if (node.data?.id === data.id) {
+            node.setData({ ...node.data, estado: data.estado, countInteracciones: data.countInteracciones, fechaUltimaInteraccion: data.fechaUltimaInteraccion });
+          }
+        });
+      } catch {
+        // El WhatsApp ya se abrió — solo registramos el fallo silenciosamente
+        console.warn('[Prospectos] No se pudo registrar interacción WhatsApp');
+      }
+    }
+
     Swal.fire({
       icon: 'success',
       title: 'WhatsApp listo',
-      text: `Abierto para ${phone}`,
-      timer: 1800,
+      text: data.estado === 'contactado' ? `✅ Prospecto marcado como Contactado` : `Abierto para ${phone}`,
+      timer: 2000,
       showConfirmButton: false,
     });
   }
