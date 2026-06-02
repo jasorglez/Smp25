@@ -40,6 +40,8 @@ export interface PendingPayment {
   idEntrega: number | null;
   proveedor: string | null;
   cantidad: number;
+  cantidadOc: number;
+  cantidadReq: number;
   precioUnitario: number;
   valorPago: number;
   masIva: boolean;
@@ -51,12 +53,14 @@ export interface PendingPayment {
   calculoAnticipo: boolean;       // true = bloque ANTICIPO; false = bloque CRÉDITO
   condicionCantidad: number;      // crédito → N días; anticipo → % del total
   credito: boolean;               // entrada ya ingresada a crédito (pendiente de pago)
+  fechaVencimiento?: string | null; // fecha de vencimiento manual (YYYY-MM-DD); null = calculada en runtime
   anticipoPagado: boolean;        // el dinero del anticipo de la OC ya se entregó
   anticipoMonto: number;          // monto total del anticipo registrado
   anticipoSaldo: number;          // anticipo_monto − Σ aplicado
   metodoAnticipo: string | null;  // 'FIFO' | 'PRORRATEO' (null hasta la 1ª aplicación)
   numProrrateo: number | null;    // entregas para prorrateo (si ya se eligió)
   numEntregasPlan: number;        // entregas creadas (default de prorrateo)
+  numEntradasAlmacen: number;     // entradas reales en entradas_molienda para esta OC+material
 }
 
 export interface ConfirmPaymentPayload {
@@ -72,6 +76,7 @@ export interface ConfirmPaymentPayload {
   masIva: boolean;
   notaFactura?: string | null;
   cantidad: number;
+  fechaVencimiento?: string | null; // fecha de vencimiento manual (YYYY-MM-DD); null = no cambiar
   // Aplicación de anticipo (bloque ANTICIPO)
   anticipoAplicado?: number | null;
   metodoAnticipo?: string | null;   // 'FIFO' | 'PRORRATEO'
@@ -136,8 +141,8 @@ export class GastosService {
   }
 
   /** Ingresa una entrada "a crédito": material disponible + pago pendiente a N días. */
-  activarCredito(idEntrada: number): Observable<any> {
-    return this.http.post(`${environment.urlWarehouse}/Gastos/activar-credito`, { idEntrada }, {
+  activarCredito(idEntrada: number, fechaVencimiento?: string | null): Observable<any> {
+    return this.http.post(`${environment.urlWarehouse}/Gastos/activar-credito`, { idEntrada, fechaVencimiento }, {
       headers: this.trackingService.getHeaders()
     });
   }

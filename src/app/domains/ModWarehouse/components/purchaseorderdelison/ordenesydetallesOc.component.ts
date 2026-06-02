@@ -142,6 +142,7 @@ interface OcTooltipData {
         </div>
       </div>
     </div>
+
   `,
   styles: [`
     :host { display: block; height: 100%; overflow: hidden; }
@@ -166,6 +167,7 @@ export class OrdenesydetallesOcComponent implements OnDestroy {
   private entregasPendingSub: Subscription;
   private conditionsPendingSub: Subscription;
   private countSub?: Subscription;
+
 
   constructor() {
     // Cuando se vacían las conditions pendientes (guardado global), quitar color rosa
@@ -363,7 +365,9 @@ export class OrdenesydetallesOcComponent implements OnDestroy {
           const f = p.data?.fechaAnticipo ? this.formatFechaDmy(p.data.fechaAnticipo) : '';
           return `<div style="display:flex;align-items:center;gap:6px;height:100%;">
                     <span style="font-weight:600;">${fmt}</span>
-                    <span style="color:#2e7d32;font-weight:700;font-size:.78rem;" title="Anticipo pagado ${f}">✓ Pagado${f ? ' ' + f : ''}</span>
+                    <span style="color:#2e7d32;font-weight:700;font-size:.78rem;">✓ Pagado</span>
+                    <span class="oc-fecha-anticipo-edit" title="Click para editar fecha de pago"
+                          style="font-size:.75rem;color:#2e7d32;cursor:pointer;text-decoration:underline dotted;white-space:nowrap;">${f ? f + ' ✏️' : '(sin fecha) ✏️'}</span>
                   </div>`;
         }
         return `<div style="display:flex;align-items:center;gap:8px;height:100%;">
@@ -373,7 +377,8 @@ export class OrdenesydetallesOcComponent implements OnDestroy {
       },
       onCellClicked: (p: any) => {
         const target = p.event?.target as HTMLElement;
-        if (target?.closest?.('.oc-marcar-anticipo')) this.onMarcarAnticipo(p.data);
+        if (target?.closest?.('.oc-marcar-anticipo')) { this.onMarcarAnticipo(p.data); return; }
+        if (target?.closest?.('.oc-fecha-anticipo-edit')) { this.editAnticFecha(p.data); return; }
       },
       cellStyle: { textAlign: 'left' },
     },
@@ -1266,6 +1271,48 @@ export class OrdenesydetallesOcComponent implements OnDestroy {
         this.rowData = [];
       },
     });
+  }
+
+  // ── Editor de fecha de pago del anticipo vía SweetAlert2 ──
+  async editAnticFecha(row: any): Promise<void> {
+    const current = row?.fechaAnticipo
+      ? String(row.fechaAnticipo).substring(0, 10)
+      : new Date().toISOString().split('T')[0];
+
+    const picked = await Swal.fire({
+      title: 'Fecha de pago del anticipo',
+      input: 'date',
+      inputValue: current,
+      showCancelButton: true,
+      confirmButtonText: 'Continuar',
+      cancelButtonText: 'Cancelar',
+      confirmButtonColor: '#3085d6',
+      cancelButtonColor: '#d33',
+      inputAttributes: { style: 'font-size:1rem;padding:6px 10px;border-radius:6px;' },
+      preConfirm: (date) => {
+        if (!date) return Swal.showValidationMessage('Selecciona una fecha válida');
+        return date;
+      }
+    });
+    if (!picked.isConfirmed || !picked.value) return;
+
+    const fechaFmt = this.formatFechaDmy(picked.value);
+    const confirm = await alerts.confirmAlertHtml(
+      'Modificar fecha de pago',
+      `¿Estás seguro que deseas cambiar la fecha de pago del anticipo a <b>${fechaFmt}</b>?`,
+      'question', 'Sí, cambiar'
+    );
+    if (!confirm.isConfirmed) return;
+
+    try {
+      await lastValueFrom(this.gastosService.marcarAnticipo(row.id, Number(row.anticipoOc) || 0, picked.value));
+      row.fechaAnticipo = picked.value;
+      if (this.gridApi && !this.gridApi.isDestroyed())
+        this.gridApi.setGridOption('rowData', this.rowData);
+      alerts.reqSuccessToast('Fecha actualizada', `Anticipo ${row.folio}: fecha de pago actualizada a ${fechaFmt}.`);
+    } catch {
+      alerts.reqErrorToast('Error', 'No se pudo actualizar la fecha de pago.');
+    }
   }
 
   /** Registra el pago del anticipo de una OC (monto = Anticipo OC calculado). */

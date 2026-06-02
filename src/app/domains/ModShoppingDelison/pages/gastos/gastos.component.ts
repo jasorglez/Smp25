@@ -1,6 +1,7 @@
 import { CommonModule } from '@angular/common';
 import { Component, effect, inject } from '@angular/core';
 import { FormsModule } from '@angular/forms';
+import Swal from 'sweetalert2';
 import { AgGridModule } from 'ag-grid-angular';
 import { ColDef, GridApi, GridReadyEvent } from 'ag-grid-community';
 import { lastValueFrom } from 'rxjs';
@@ -94,6 +95,7 @@ export class GastosComponent {
   hasUnsavedCaptura = false;
   private capturaGridApi?: GridApi;
 
+
   capturaColDefs: ColDef[] = [
     { field: 'branchName', headerName: 'Sucursal', width: 110, pinned: 'left' },
     {
@@ -158,7 +160,16 @@ export class GastosComponent {
       editable: true, cellRenderer: 'agCheckboxCellRenderer',
       cellStyle: { backgroundColor: '#fffde7', textAlign: 'center' },
     },
-    { field: 'cantidad', headerName: 'Cant.', width: 90, type: 'numericColumn' },
+    {
+      field: 'cantidad', headerName: 'Cant.', width: 90, type: 'numericColumn',
+      tooltipComponent: StyledTooltipComponent,
+      tooltipValueGetter: (p: any) => {
+        const req = Number(p.data?.cantidadReq) || 0;
+        const oc  = Number(p.data?.cantidadOc)  || 0;
+        if (!req && !oc) return null;
+        return `CANTIDAD\nCantidad Requisición: ${req}\nCantidad OC: ${oc}`;
+      },
+    },
     {
       field: 'precioUnitario', headerName: 'P. Unit.', width: 100, type: 'numericColumn',
       editable: (p: any) => p.data?.docType === 'CR',
@@ -189,6 +200,10 @@ export class GastosComponent {
       tooltipComponent: StyledTooltipComponent,
       tooltipValueGetter: (p: any) => {
         const d = p.data || {};
+        // Bloqueo secuencial → prioridad máxima
+        if (this.isPagarBloqueadoPorSecuencia(d)) {
+          return `PAGO BLOQUEADO\nDebes pagar primero la entrada anterior de este artículo`;
+        }
         // Crédito → botón Crédito
         if (d.calculoAnticipo === false && Number(d.condicionCantidad) > 0 && d.credito !== true) {
           const dias = Number(d.condicionCantidad) || 0;
@@ -198,30 +213,44 @@ export class GastosComponent {
         if (d.calculoAnticipo === true) {
           const monto = Number(d.anticipoMonto) || 0;
           const saldo = Number(d.anticipoSaldo) || 0;
+          const pct   = Number(d.condicionCantidad) || 0;
           return d.anticipoPagado
-            ? `ANTICIPO\nAnticipo: ${this.money(monto)}\nSaldo disponible: ${this.money(saldo)}`
-            : `ANTICIPO\nAnticipo por registrar: ${this.money(monto)}`;
+            ? `ANTICIPO\nAnticipo: ${pct}% ${this.money(monto)}\nSaldo disponible: ${this.money(saldo)}`
+            : `ANTICIPO\nAnticipo por registrar: ${pct}% ${this.money(monto)}`;
         }
         return null;
       },
       cellRenderer: (p: any) => {
-        // Crédito: condición de crédito (calculoAnticipo=false) con N días > 0 y aún no ingresada a crédito.
         const esCredito = p.data?.calculoAnticipo === false && Number(p.data?.condicionCantidad) > 0;
         const yaCredito = p.data?.credito === true;
-        const ghost = 'background:none;border:none;padding:2px 6px;font-size:0.74rem;font-weight:500;cursor:pointer;border-radius:4px;';
-        const btnPagar = `<button class="gx-pagar" style="${ghost}color:#2e7d32;">Pagar</button>`;
+        const ghost = 'background:none;border:none;padding:2px 6px;font-size:0.74rem;font-weight:500;border-radius:4px;';
+        // Si la entrada ya está a crédito, bloquear "Pagar" hasta que llegue la fecha de vencimiento.
+        const vencDate = yaCredito ? this.computeVencimiento(p.data) : '';
+        const hoy = this.toIso(new Date());
+        const pagarBloqueadoVenc = yaCredito && !!vencDate && hoy < vencDate;
+        // Bloqueo secuencial: si existe una entrada anterior (misma OC + mismo artículo) aún pendiente.
+        const pagarBloqueadoSeq = this.isPagarBloqueadoPorSecuencia(p.data);
+        const pagarBloqueado = pagarBloqueadoVenc || pagarBloqueadoSeq;
+        const btnPagar = pagarBloqueado
+          ? `<button class="gx-pagar" disabled style="${ghost}color:#bbb;cursor:not-allowed;opacity:0.55;">Pagar</button>`
+          : `<button class="gx-pagar" style="${ghost}color:#2e7d32;cursor:pointer;">Pagar</button>`;
         const btnCredito = (esCredito && !yaCredito)
-          ? `<button class="gx-credito" style="${ghost}color:#ef6c00;">Crédito</button>`
+          ? `<button class="gx-credito" style="${ghost}color:#ef6c00;cursor:pointer;">Crédito</button>`
           : '';
         const venceLbl = yaCredito
-          ? `<span style="font-size:0.68rem;color:#ef6c00;">vence ${this.fmtDate(this.computeVencimiento(p.data))}</span>`
+          ? `<span class="gx-vence-date" title="Click para editar fecha de vencimiento" style="font-size:0.68rem;color:#ef6c00;cursor:pointer;text-decoration:underline dotted;white-space:nowrap;">vence ${this.fmtDate(vencDate)} ✏️</span>`
           : '';
         return `<div style="display:flex;gap:2px;justify-content:center;align-items:center;height:100%;">${btnCredito}${btnPagar}${venceLbl}</div>`;
       },
       onCellClicked: (p: any) => {
         const target = p.event?.target as HTMLElement;
         if (target?.closest?.('.gx-credito')) { this.onCredito(p.data); return; }
-        if (target?.closest?.('.gx-pagar')) { this.onPagar(p.data); return; }
+        if (target?.closest?.('.gx-pagar')) {
+          const btn = target.closest('.gx-pagar') as HTMLButtonElement;
+          if (btn?.disabled) return;
+          this.onPagar(p.data); return;
+        }
+        if (target?.closest?.('.gx-vence-date')) { this.editVenceDate(p.data); return; }
       },
       cellStyle: { textAlign: 'center', cursor: 'pointer' },
     },
@@ -500,6 +529,14 @@ export class GastosComponent {
 
   async onPagar(row: PendingPayment): Promise<void> {
     if (!row) return;
+    if ((row as any).__venceModified) {
+      alerts.basicAlert('Guarda primero', 'Modificaste la fecha de vencimiento. Debes guardar los cambios antes de continuar con el pago.', 'warning');
+      return;
+    }
+    if (this.isPagarBloqueadoPorSecuencia(row)) {
+      alerts.basicAlert('Pago bloqueado', 'Debes pagar primero la entrada anterior de este artículo antes de continuar.', 'warning');
+      return;
+    }
     if (row.docType === 'CR' && (!row.proveedor || String(row.proveedor).trim() === '')) {
       alerts.basicAlert('Falta proveedor', 'Captura el proveedor antes de pagar esta compra rápida.', 'warning');
       return;
@@ -568,8 +605,10 @@ export class GastosComponent {
     );
     if (!confirm.isConfirmed) return;
     try {
-      await lastValueFrom(this.gastosService.activarCredito(row.idEntrada));
+      const fechaVenc = this.computeVencimiento(row);
+      await lastValueFrom(this.gastosService.activarCredito(row.idEntrada, fechaVenc || null));
       row.credito = true;
+      if (fechaVenc) row.fechaVencimiento = fechaVenc;
       // Placeholder almacén global.
       alerts.reqSuccessToast('Insertado en almacén', `${row.folio} ingresado a crédito (placeholder almacén global).`);
       this.capturaGridApi?.refreshCells({ force: true });
@@ -579,8 +618,11 @@ export class GastosComponent {
     }
   }
 
-  /** Fecha de vencimiento del crédito = fecha de recepción + N días. */
+  /** Fecha de vencimiento del crédito.
+   *  Prioridad: (1) fecha manual guardada en BD (row.fechaVencimiento),
+   *             (2) calculada en runtime = fechaRecepcion + N días.  */
   private computeVencimiento(row: any): string {
+    if (row?.fechaVencimiento) return row.fechaVencimiento.toString().substring(0, 10);
     const dias = Number(row?.condicionCantidad) || 0;
     const base = row?.fechaRecepcion ? new Date(row.fechaRecepcion) : new Date();
     if (isNaN(base.getTime())) return '';
@@ -611,7 +653,13 @@ export class GastosComponent {
   openAnticipoModal(row: PendingPayment): void {
     this.anticipoRow = row;
     this.anticipoMetodo = 'FIFO';
-    this.anticipoN = Math.max(1, Number(row.numProrrateo) || Number(row.numEntregasPlan) || 1);
+    // Prioridad: método ya fijado → entradas reales si > planeadas → planeadas si > 1 → 1
+    const planN    = Number(row.numEntregasPlan)    || 0;
+    const almacenN = Number(row.numEntradasAlmacen) || 0;
+    const baseN    = almacenN > planN ? almacenN : planN;
+    this.anticipoN = Number(row.numProrrateo) > 0
+      ? Number(row.numProrrateo)
+      : baseN > 1 ? baseN : 1;
     this.showAnticipoModal = true;
   }
 
@@ -654,7 +702,7 @@ export class GastosComponent {
       await Promise.all(
         modificadas.map(r => lastValueFrom(this.gastosService.savePending(this.buildPayload(r))))
       );
-      modificadas.forEach(r => { (r as any).__modified = false; });
+      modificadas.forEach(r => { (r as any).__modified = false; (r as any).__venceModified = false; });
       this.hasUnsavedCaptura = false;
       alerts.reqSuccessToast('Guardado', `${modificadas.length} fila(s) guardada(s).`);
     } catch (err) {
@@ -672,6 +720,7 @@ export class GastosComponent {
       closeSource: row.closeSource,
       valorPago: Number(row.valorPago) || 0,
       fechaPago: row.fechaPago ?? this.toIso(new Date()),
+      fechaVencimiento: row.fechaVencimiento ?? null,
       proveedor: row.proveedor,
       // Opción B: se persiste el precio BASE (sin IVA) en detailsreqoc.price.
       precioUnitario: (row as any).__precioBase != null ? Number((row as any).__precioBase) : (row.precioUnitario != null ? Number(row.precioUnitario) : null),
@@ -816,8 +865,69 @@ export class GastosComponent {
     this.crProviderSelectedId = null;
   }
 
+  /** Bloquea "Pagar" si existe otra fila pendiente con el mismo folio base + artículo y número menor.
+   *  Ejemplo: E2 queda bloqueada mientras E1 (misma OC, mismo artículo) siga sin pagarse. */
+  private isPagarBloqueadoPorSecuencia(row: any): boolean {
+    if (!row?.folio || !row?.articulo) return false;
+    // Extraer base y número: "OC-BOD9-P1-ALE1418-E2" → base="OC-BOD9-P1-ALE1418", n=2
+    const match = String(row.folio).match(/^(.+)-E(\d+)$/i);
+    if (!match) return false;
+    const base = match[1];
+    const n    = Number(match[2]);
+    if (n <= 1) return false; // E1 nunca se bloquea por secuencia
+    // Buscar en capturaRows si hay alguna entrada con mismo base + mismo artículo + número menor
+    return this.capturaRows.some(r => {
+      if (r === row || !r.folio || !r.articulo) return false;
+      if (r.articulo !== row.articulo) return false;
+      const m = String(r.folio).match(/^(.+)-E(\d+)$/i);
+      if (!m) return false;
+      return m[1] === base && Number(m[2]) < n;
+    });
+  }
+
+  // ── Editor de fecha de vencimiento vía SweetAlert2 ─────────
+  async editVenceDate(row: any): Promise<void> {
+    const current = this.computeVencimiento(row);
+    const picked = await Swal.fire({
+      title: 'Fecha de vencimiento',
+      input: 'date',
+      inputValue: current,
+      showCancelButton: true,
+      confirmButtonText: 'Continuar',
+      cancelButtonText: 'Cancelar',
+      confirmButtonColor: '#3085d6',
+      cancelButtonColor: '#d33',
+      inputAttributes: { style: 'font-size:1rem;padding:6px 10px;border-radius:6px;' },
+      preConfirm: (date) => {
+        if (!date) return Swal.showValidationMessage('Selecciona una fecha válida');
+        return date;
+      }
+    });
+    if (!picked.isConfirmed || !picked.value) return;
+
+    const fechaFmt = this.fmtDate(picked.value);
+    const confirm = await alerts.confirmAlertHtml(
+      'Modificar fecha de vencimiento',
+      `¿Estás seguro que deseas cambiar la fecha de vencimiento a <b>${fechaFmt}</b>?<br><br><small style="color:#888;">Recuerda guardar para que el cambio se persista en la base de datos.</small>`,
+      'question', 'Sí, cambiar'
+    );
+    if (!confirm.isConfirmed) return;
+
+    row.fechaVencimiento = picked.value;
+    (row as any).__modified = true;
+    (row as any).__venceModified = true;
+    this.hasUnsavedCaptura = true;
+    this.capturaGridApi?.refreshCells({ rowNodes: undefined, force: true });
+  }
+
   fmtDate(value: any): string {
     if (!value) return '';
+    const str = value.toString().substring(0, 10);
+    // Parsear YYYY-MM-DD directo para evitar el shift de timezone (new Date("YYYY-MM-DD") = UTC midnight → día anterior en hora local)
+    if (/^\d{4}-\d{2}-\d{2}$/.test(str)) {
+      const [y, m, d] = str.split('-');
+      return `${d}/${m}/${y}`;
+    }
     const d = value instanceof Date ? value : new Date(value);
     if (isNaN(d.getTime())) return '';
     return `${String(d.getDate()).padStart(2, '0')}/${String(d.getMonth() + 1).padStart(2, '0')}/${d.getFullYear()}`;

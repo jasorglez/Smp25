@@ -2,7 +2,8 @@ import { Component, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { AgGridAngular } from 'ag-grid-angular';
 import { ColDef, GridApi, GridReadyEvent } from 'ag-grid-enterprise';
-import { lastValueFrom, Subscription } from 'rxjs';
+import { lastValueFrom, Observable, Subscription, take } from 'rxjs';
+import { AG_GRID_LOCALE_ES } from 'assets/i18n/ag-grid.locale.es';
 import { MoliendaService } from '../../../../../services/molienda.service';
 import { OcAndReqsService } from '../../../../../services/ocandreqs.service';
 import { CustomersService } from '../../../../../services/customers.service';
@@ -48,6 +49,7 @@ interface ReqOption {
           [rowData]="rowData"
           [columnDefs]="colDefs"
           [gridOptions]="gridOptions"
+          [localeText]="localeText"
           (gridReady)="onGridReady($event)"
           (firstDataRendered)="onFirstDataRenderedReq($event)"
           (cellClicked)="onCellClicked($event)"
@@ -102,7 +104,7 @@ interface ReqOption {
         </div>
 
         <div *ngIf="selectedOcRow"
-             style="flex: 1 1 auto; min-height: 0; border-top: 2px solid #0d47a1; background: #eceff1;
+             style="flex: 0 0 400px; min-height: 0; border-top: 2px solid #0d47a1; background: #eceff1;
                     padding: 4px; display: flex; flex-direction: column; overflow: hidden;">
           <!-- Título + Botones CRUD Entradas -->
           <div style="display: flex; align-items: center; justify-content: space-between; gap: 6px; margin-bottom: 3px; flex-shrink: 0;">
@@ -200,11 +202,13 @@ export class DetalleMoliendaComponent {
   nivel4GridApi!: GridApi;
   private nivel5GridApi!: GridApi;
   private countSub?: Subscription;
+  private entradasDataSub?: Subscription;
   private deptsCsv: string = '';
   private initCompleted = false;
   private providersMap: Map<number, string> | null = null;
 
   detailType: 'entradas' | 'salidas' = 'entradas';
+  readonly localeText = AG_GRID_LOCALE_ES;
   rowData: any[] = [];
   reqOptions: ReqOption[] = [];
 
@@ -315,6 +319,7 @@ export class DetalleMoliendaComponent {
       'selected-row-highlight': (p: any) => p.data === this.selectedReqRow,
     },
     tooltipShowDelay: 300,
+    popupParent: document.body,
     defaultColDef: { resizable: true, sortable: true, textAlign: 'center' },
     onFirstDataRendered: (params: any) => params.api.autoSizeAllColumns(),
   };
@@ -331,7 +336,8 @@ export class DetalleMoliendaComponent {
       // planned = diasCondicionCompra; real = entregasCount; muestra delta cuando hay entregas.
       valueFormatter: (p: any) => {
         // SIN LÍMITE: no hay "planeado"; muestra el conteo real de entradas (filas del Nivel 4).
-        if (String(p.data?.tipoOc ?? '').toUpperCase() === 'COMPRA AUTORIZADA SIN LIMITE') {
+        const t = String(p.data?.tipoOc ?? '').toUpperCase();
+        if (t === 'COMPRA AUTORIZADA SIN LIMITE' || t === 'COMPRA INMEDIATA') {
           return String(Number(p.data?.entradasCount ?? 0));
         }
         const planned = Number(p.data?.diasCondicionCompra ?? 0);
@@ -675,7 +681,8 @@ export class DetalleMoliendaComponent {
 
   // ── Nivel 4: Entradas por OC (demo local; sustituir por API cuando exista) ──
   nivel4ColDefs: ColDef[] = [
-    { field: 'idEntrada', headerName: 'ID Entrada', width: 95, type: 'numericColumn', filter: 'agNumberColumnFilter' },
+    { field: 'folioEntrega', headerName: 'Folio Entrada', width: 200, editable: false, cellStyle: { color: '#0d47a1', fontWeight: '600' } },
+    { field: 'idEntrada', headerName: 'ID Entrada', width: 95, type: 'numericColumn', filter: 'agNumberColumnFilter', hide: true },
     {
       field: 'fechaRecepcion',
       headerName: 'Fecha recepción',
@@ -902,18 +909,6 @@ export class DetalleMoliendaComponent {
       },
     },
     {
-      field: 'comentario',
-      headerName: 'Comentario',
-      minWidth: 180,
-      flex: 1,
-      editable: (p: any) => !this.selectedOcRow?.close && !this.selectedMultiEntregaIsClosed && !p?.data?.close,
-      valueSetter: (params) => {
-        params.data.comentario = params.newValue ?? '';
-        this.onEntradaCellValueChanged(params);
-        return true;
-      },
-    },
-    {
       field: 'pdfCount',
       headerName: '📤 PDF',
       editable: false,
@@ -945,7 +940,6 @@ export class DetalleMoliendaComponent {
       cellStyle: { backgroundColor: '#cce5ff', textAlign: 'center' },
       onCellClicked: (params) => this.toggleDetailColumn(params, 'documents'),
     },
-    { field: 'usuario', headerName: 'Usuario', width: 100 },
     {
       // Cierre por ENTRADA. Visible solo para OCs "COMPRA AUTORIZADA SIN LIMITE"
       // (se controla con setColumnVisible en loadEntradasForOc). Al marcarse, bloquea la fila.
@@ -972,6 +966,19 @@ export class DetalleMoliendaComponent {
       editable: (p: any) => !this.selectedOcRow?.close && !this.selectedMultiEntregaIsClosed && !p?.data?.close,
       cellRenderer: 'agCheckboxCellRenderer',
     },
+    {
+      field: 'comentario',
+      headerName: 'Comentario',
+      minWidth: 180,
+      flex: 1,
+      editable: (p: any) => !this.selectedOcRow?.close && !this.selectedMultiEntregaIsClosed && !p?.data?.close,
+      valueSetter: (params) => {
+        params.data.comentario = params.newValue ?? '';
+        this.onEntradaCellValueChanged(params);
+        return true;
+      },
+    },
+    { field: 'usuario', headerName: 'Usuario', width: 100 },
   ];
 
   nivel4GridOptions: any = {
@@ -1101,14 +1108,52 @@ export class DetalleMoliendaComponent {
     this.caracteristicasCategories = params?.caracteristicasCategories ?? [];
     this.caracteristicasFamilies = params?.caracteristicasFamilies ?? [];
     this.buildNivel5ColumnDefs();
-    console.log('DetalleMoliendaComponent initialized with params:', params);
     const departmentOptions = params?.departmentOptions ?? [];
     this.deptsCsv = departmentOptions
       .map((d: any) => d.id)
       .filter((id: any) => id)
       .join(',');
 
-    // Si el padre ya sincronizó y pasó los datos, úsalos directamente sin HTTP
+    // Flujo async: padre abre la cascada inmediatamente y sincroniza en background.
+    // Mostrar loading hasta que lleguen los datos.
+    const entradasData$ = params?.entradasData$ as Observable<any> | null;
+    if (entradasData$) {
+      if (this.gridApi && !this.gridApi.isDestroyed()) this.gridApi.showLoadingOverlay();
+      this.entradasDataSub?.unsubscribe();
+      this.entradasDataSub = entradasData$.pipe(take(1)).subscribe(async (data: any) => {
+        this.bultosCantidad            = data.bultosCantidad ?? null;
+        this.bultosCantidadARevisar    = data.bultosCantidadARevisar ?? null;
+        this.proporcionRevision        = data.proporcionRevision ?? null;
+        this.caracteristicasCategories = data.caracteristicasCategories ?? [];
+        this.caracteristicasFamilies   = data.caracteristicasFamilies ?? [];
+        this.buildNivel5ColumnDefs();
+        this.reqOptions = data.reqs ?? [];
+        this.rowData = (data.details ?? []).map((d: any) => {
+          const req = this.reqOptions.find((r: any) => r.id === d.idRequisition);
+          return {
+            id:            d.id,
+            idRequisition: d.idRequisition ?? null,
+            folio:         req?.folio ?? '',
+            cantidadReq:   d.cantidadReq ?? 0,
+            numCantidadOc: d.numCantidadOc ?? 0,
+            cantidad:      d.cantidad ?? 0,
+            idCatalog:     d.idCatalog ?? null,
+          };
+        });
+        this.rowData = await this.enrichReqRowsWithResta(this.rowData);
+        this.initCompleted = true;
+        if (this.gridApi && !this.gridApi.isDestroyed()) {
+          this.gridApi.setGridOption('rowData', this.rowData);
+          this.gridApi.hideOverlay();
+          this.updateParentCount();
+        }
+        this.loadReqEntregasSums();
+        this.loadCompraRapidaRows();
+      });
+      return;
+    }
+
+    // Flujo precargado: el padre ya tenía los datos del ciclo anterior
     const preloadedReqs = params?.preloadedReqs as any[] | undefined;
     const preloadedDetails = params?.preloadedDetails as any[] | undefined;
 
@@ -1117,13 +1162,13 @@ export class DetalleMoliendaComponent {
       this.rowData = preloadedDetails.map((d: any) => {
         const req = this.reqOptions.find((r: any) => r.id === d.idRequisition);
         return {
-          id: d.id,
+          id:            d.id,
           idRequisition: d.idRequisition ?? null,
-          folio: req?.folio ?? '',
-          cantidadReq: d.cantidadReq ?? 0,
+          folio:         req?.folio ?? '',
+          cantidadReq:   d.cantidadReq ?? 0,
           numCantidadOc: d.numCantidadOc ?? 0,
-          cantidad: d.cantidad ?? 0,
-          idCatalog: d.idCatalog ?? null,
+          cantidad:      d.cantidad ?? 0,
+          idCatalog:     d.idCatalog ?? null,
         };
       });
       this.rowData = await this.enrichReqRowsWithResta(this.rowData);
@@ -1159,13 +1204,16 @@ export class DetalleMoliendaComponent {
 
   onGridReady(params: GridReadyEvent) {
     this.gridApi = params.api;
-    if (this.initCompleted) {
-      if (this.rowData.length) {
-        this.gridApi.setGridOption('rowData', this.rowData);
-        this.updateParentCount();
-      } else {
-        this.loadData();
-      }
+    if (!this.initCompleted) {
+      // Datos aún cargando (flujo async o normal): mostrar overlay
+      this.gridApi.showLoadingOverlay();
+      return;
+    }
+    if (this.rowData.length) {
+      this.gridApi.setGridOption('rowData', this.rowData);
+      this.updateParentCount();
+    } else {
+      this.loadData();
     }
   }
 
@@ -1325,7 +1373,9 @@ export class DetalleMoliendaComponent {
         ? await lastValueFrom(this.entradaService.getByOcAndMaterial(row.id, idMaterial))
         : await lastValueFrom(this.entradaService.getByOc(row.id));
 
-      this.cascadeEntradaData = (Array.isArray(entradas) ? entradas : []).map((e: EntradaMolienda) => ({
+      const tipoOcNorm = String(row?.tipoOc ?? '').toUpperCase();
+      const isSinLimite = tipoOcNorm === 'COMPRA AUTORIZADA SIN LIMITE' || tipoOcNorm === 'COMPRA INMEDIATA';
+      this.cascadeEntradaData = (Array.isArray(entradas) ? entradas : []).map((e: EntradaMolienda, i: number) => ({
         id: e.id,
         idEntrada: e.id,
         idEntrega: e.idEntrega ?? null,
@@ -1336,8 +1386,10 @@ export class DetalleMoliendaComponent {
         pago: e.pago ?? 0,
         fechaPago: e.fechaPago ? this.isoToLocalDate(String(e.fechaPago)) : null,
         notaFactura: e.notaFactura ?? '',
-        // Folio de entrega: stored si existe; si no, se calcula para mostrar (single-entrega → N=1).
-        folioEntrega: (e.folioEntrega && String(e.folioEntrega).trim()) ? e.folioEntrega : this.buildFolioEntrega(1),
+        // SIN LIMITE: folio secuencial por índice (E1, E2, E3…). Otros tipos: siempre E1.
+        folioEntrega: (e.folioEntrega && String(e.folioEntrega).trim())
+          ? e.folioEntrega
+          : this.buildFolioEntrega(isSinLimite ? i + 1 : 1),
         pdfCount: 0,
         usuario: e.usuario ?? '',
         liberacion: e.liberacion ?? false,
@@ -1387,9 +1439,10 @@ export class DetalleMoliendaComponent {
       this.syncSelectedOcRestaFromEntradas();
       if (this.nivel4GridApi && !this.nivel4GridApi.isDestroyed()) {
         this.nivel4GridApi.setGridOption('rowData', this.cascadeEntradaData);
-        // Columna "Cerrar Entrega" solo para OCs "COMPRA AUTORIZADA SIN LIMITE".
-        const isSinLimite = String(row?.tipoOc ?? '').toUpperCase() === 'COMPRA AUTORIZADA SIN LIMITE';
-        this.nivel4GridApi.setColumnVisible('close', isSinLimite);
+        // Columna "Cerrar Entrega" para OCs "COMPRA AUTORIZADA SIN LIMITE" y "COMPRA INMEDIATA".
+        const tipoOcUp = String(row?.tipoOc ?? '').toUpperCase();
+        const showClose = tipoOcUp === 'COMPRA AUTORIZADA SIN LIMITE' || tipoOcUp === 'COMPRA INMEDIATA';
+        this.nivel4GridApi.setColumnVisible('close', showClose);
       }
       // Compra Rápida: posicionar el cursor en "Fecha recepción" de la fila auto-generada.
       if (row?.type === 'CR') this.focusNuevaEntradaFecha();
@@ -2032,10 +2085,14 @@ export class DetalleMoliendaComponent {
       ? this.isoToLocalDate(String(this.selectedOcRow.fechaXEntrega))
       : new Date();
 
-    // N de entrega: índice de la entrega seleccionada (multi) o 1 (single-entrega).
-    const nEntrega = this.selectedMultiEntregaCaratRow
-      ? (this.multiEntregasData.indexOf(this.selectedMultiEntregaCaratRow) + 1)
-      : 1;
+    // N de entrega: secuencial para SIN LIMITE, índice multi-entrega, o 1 para single-entrega.
+    const tipoOcAdd = String(this.selectedOcRow?.tipoOc ?? '').toUpperCase();
+    const isSinLimiteAdd = tipoOcAdd === 'COMPRA AUTORIZADA SIN LIMITE' || tipoOcAdd === 'COMPRA INMEDIATA';
+    const nEntrega = isSinLimiteAdd
+      ? this.cascadeEntradaData.length + 1
+      : this.selectedMultiEntregaCaratRow
+        ? (this.multiEntregasData.indexOf(this.selectedMultiEntregaCaratRow) + 1)
+        : 1;
 
     const newRow = {
       idEntrada: null,

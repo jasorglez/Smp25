@@ -357,6 +357,14 @@ import { ProductionService } from '../../../../services/production.service';
         min-height: 400px;
       }
     }
+    :host ::ng-deep .inactive-row {
+      background-color: #f5f5f5 !important;
+      color: #bdbdbd !important;
+      font-style: italic;
+    }
+    :host ::ng-deep .inactive-row .ag-cell {
+      color: #bdbdbd !important;
+    }
   `],
   template: `
     <div class="catalog-shell">
@@ -1016,7 +1024,7 @@ export class CatalogosProduccionComponent {
         const usados = new Set(this.rowData().map((r: any) => r.idArticulo).filter(Boolean));
         return {
           options: this.materiales
-            .filter(m => !usados.has(m.id))
+            .filter(m => !usados.has(m.id) && m.categoria === 'MATERIA PRIMA' && m.active !== false)
             .map(m => ({ id: m.id, description: m.articulo })),
         };
       },
@@ -1056,7 +1064,10 @@ export class CatalogosProduccionComponent {
   gridOptions = {
     headerHeight: 25,
     rowHeight: 20,
-    rowClassRules: { 'new-row-highlight': (p: any) => !!p.data?.__isNew },
+    rowClassRules: {
+      'new-row-highlight': (p: any) => !!p.data?.__isNew,
+      'inactive-row': (p: any) => p.data?.valor === false,
+    },
     defaultColDef: {
       suppressKeyboardEvent: (params: any) => {
         if (params.event.key === 'Enter' && params.editing) {
@@ -1112,7 +1123,7 @@ export class CatalogosProduccionComponent {
         const usados = new Set(this.rowData1().map((r: any) => r.idArticulo).filter(Boolean));
         return {
           options: this.materiales
-            .filter(m => !usados.has(m.id))
+            .filter(m => !usados.has(m.id) && m.categoria === 'MATERIA PRIMA' && m.active !== false)
             .map(m => ({ id: m.id, description: m.articulo })),
         };
       },
@@ -1130,7 +1141,10 @@ export class CatalogosProduccionComponent {
   gridOptions1 = {
     headerHeight: 25,
     rowHeight: 20,
-    rowClassRules: { 'new-row-highlight': (p: any) => !!p.data?.__isNew },
+    rowClassRules: {
+      'new-row-highlight': (p: any) => !!p.data?.__isNew,
+      'inactive-row': (p: any) => p.data?.valor === false,
+    },
     defaultColDef: {
       suppressKeyboardEvent: (params: any) => {
         if (params.event.key === 'Enter' && params.editing) {

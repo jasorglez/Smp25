@@ -392,6 +392,11 @@ body {
 .oc-fadeIn  { animation: ocFadeIn  .18s ease both; }
 .oc-fadeOut { animation: ocFadeOut .15s ease both; }
 
+/* Tooltips de AG Grid por encima de filas de detalle (master-detail crea nuevo stacking context) */
+.ag-popup {
+  z-index: 10100 !important;
+}
+
 /* El panel de ng-select (appendTo body) debe quedar sobre los modales (z-index 10000) */
 .ng-dropdown-panel {
   z-index: 10050 !important;
