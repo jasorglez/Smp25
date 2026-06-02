@@ -341,6 +341,28 @@ export class ProspectosComponent implements OnInit {
     const toSave = this.rowData.filter(p => p.__isNew || p.__modified);
     if (!toSave.length) return;
 
+    // Prospectos sin WhatsApp enviado (estado = 'prospecto' o sin teléfono)
+    const sinWhatsapp = toSave.filter(p =>
+      (p.estado ?? 'prospecto') === 'prospecto' && p.activo !== false
+    );
+
+    if (sinWhatsapp.length) {
+      const lista = sinWhatsapp
+        .map((p: any) => `• ${p.empresa || p.nombre}${p.telefono && p.telefono !== 'SIN NUMERO' ? ` <span style="color:#888">(${p.telefono})</span>` : ' <span style="color:#dc3545">sin teléfono</span>'}`)
+        .join('<br>');
+
+      const res = await Swal.fire({
+        icon: 'warning',
+        title: '¿Enviaste WhatsApp?',
+        html: `Los siguientes prospectos <b>no han sido contactados</b>:<br><br>${lista}<br><br>¿Deseas guardar de todas formas?`,
+        showCancelButton: true,
+        confirmButtonText: 'Sí, guardar',
+        cancelButtonText: 'Cancelar',
+        confirmButtonColor: '#0d6efd',
+      });
+      if (!res.isConfirmed) return;
+    }
+
     const errores: string[] = [];
     for (const p of toSave) {
       const empresa = p.empresa?.trim() ?? '';
