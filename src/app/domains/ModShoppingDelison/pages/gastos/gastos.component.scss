@@ -401,3 +401,10 @@
 /* ── Botones minimalistas de la columna Acción (Captura) ───────────────────── */
 .gx-pagar:hover   { background: rgba(46,125,50,.10) !important; }
 .gx-credito:hover { background: rgba(239,108,0,.10) !important; }
+
+/* ── Color de fila en Captura según condición de pago (leyenda) ────────────── */
+:host ::ng-deep .captura-grid {
+  .gx-row-anticipo { background-color: #e3f2fd !important; }  /* azul  */
+  .gx-row-credito  { background-color: #fff3e0 !important; }  /* naranja */
+  .gx-row-contado  { background-color: #e8f5e9 !important; }  /* verde */
+}

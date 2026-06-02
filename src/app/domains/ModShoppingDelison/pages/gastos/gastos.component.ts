@@ -184,17 +184,37 @@ export class GastosComponent {
     },
     {
       headerName: 'Acción', width: 150, pinned: 'right', sortable: false, filter: false,
+      // Tooltip estándar (StyledTooltipComponent): días de crédito en el botón Crédito,
+      // o saldo de anticipo en el botón Pagar (crédito/anticipo son excluyentes por fila).
+      tooltipComponent: StyledTooltipComponent,
+      tooltipValueGetter: (p: any) => {
+        const d = p.data || {};
+        // Crédito → botón Crédito
+        if (d.calculoAnticipo === false && Number(d.condicionCantidad) > 0 && d.credito !== true) {
+          const dias = Number(d.condicionCantidad) || 0;
+          return `CRÉDITO\n${dias} días de crédito`;
+        }
+        // Anticipo (abono) → botón Pagar
+        if (d.calculoAnticipo === true) {
+          const monto = Number(d.anticipoMonto) || 0;
+          const saldo = Number(d.anticipoSaldo) || 0;
+          return d.anticipoPagado
+            ? `ANTICIPO\nAnticipo: ${this.money(monto)}\nSaldo disponible: ${this.money(saldo)}`
+            : `ANTICIPO\nAnticipo por registrar: ${this.money(monto)}`;
+        }
+        return null;
+      },
       cellRenderer: (p: any) => {
         // Crédito: condición de crédito (calculoAnticipo=false) con N días > 0 y aún no ingresada a crédito.
         const esCredito = p.data?.calculoAnticipo === false && Number(p.data?.condicionCantidad) > 0;
         const yaCredito = p.data?.credito === true;
         const ghost = 'background:none;border:none;padding:2px 6px;font-size:0.74rem;font-weight:500;cursor:pointer;border-radius:4px;';
-        const btnPagar = `<button class="gx-pagar" title="Pagar" style="${ghost}color:#2e7d32;">Pagar</button>`;
+        const btnPagar = `<button class="gx-pagar" style="${ghost}color:#2e7d32;">Pagar</button>`;
         const btnCredito = (esCredito && !yaCredito)
-          ? `<button class="gx-credito" title="Ingresar a crédito" style="${ghost}color:#ef6c00;">Crédito</button>`
+          ? `<button class="gx-credito" style="${ghost}color:#ef6c00;">Crédito</button>`
           : '';
         const venceLbl = yaCredito
-          ? `<span title="A crédito, pendiente de pago" style="font-size:0.68rem;color:#ef6c00;">vence ${this.fmtDate(this.computeVencimiento(p.data))}</span>`
+          ? `<span style="font-size:0.68rem;color:#ef6c00;">vence ${this.fmtDate(this.computeVencimiento(p.data))}</span>`
           : '';
         return `<div style="display:flex;gap:2px;justify-content:center;align-items:center;height:100%;">${btnCredito}${btnPagar}${venceLbl}</div>`;
       },
@@ -213,6 +233,13 @@ export class GastosComponent {
     tooltipShowDelay: 300,
     defaultColDef: { resizable: true, sortable: true, filter: true },
     components: { crProveedorEditor: CrProveedorEditorComponent },
+    // Color de fila según la condición de pago (ver leyenda):
+    // azul=anticipo, naranja=crédito, verde=sin anticipo ni crédito (contado).
+    rowClassRules: {
+      'gx-row-anticipo': (p: any) => p.data?.calculoAnticipo === true,
+      'gx-row-credito':  (p: any) => p.data?.calculoAnticipo === false && Number(p.data?.condicionCantidad) > 0,
+      'gx-row-contado':  (p: any) => p.data?.calculoAnticipo !== true && !(Number(p.data?.condicionCantidad) > 0),
+    },
     onCellValueChanged: (event: any) => {
       const field = event?.colDef?.field;
       const row = event?.data;

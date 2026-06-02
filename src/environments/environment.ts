@@ -72,5 +72,5 @@ export const environment = {
 
   urlRefreshToken: 'https://securetoken.googleapis.com/v1/token?key=AIzaSyDxCBGKk8nT09hdW85-PyOkhw5_JPZLF1A',
 
-  version: '2.52.294 (2 Junio 2026) - Fila gris cuando jugo 100% asignado a botes'
+  version: '2.52.295 (2 Junio 2026) - Auth: isLoggingOut guard evita doble logout; visibilitychange pausa idle timer en tabs background; timer proactivo renueva JWT 2 min antes de expirar; authErrorNotice ahora muestra mensaje en login'
 };

@@ -14,7 +14,7 @@ import { CommonModule } from '@angular/common';
       <div class="cr-row"><span class="cr-label">Total</span><span class="cr-val">{{ total }}</span></div>
       <div class="cr-row"><span class="cr-label">Nota / Factura</span><span class="cr-val">{{ notaFactura }}</span></div>
       <div class="cr-row"><span class="cr-label">Fecha entrada almacén</span><span class="cr-val">{{ fechaEntradaAlmacen }}</span></div>
-      <div class="cr-row"><span class="cr-label">Cantidad entrada almacén</span><span class="cr-val">{{ cantidadEntradaAlmacen }}</span></div>
+      <div class="cr-row"><span class="cr-label">Cad. Min. Req</span><span class="cr-val">{{ cadMinReq }}</span></div>
     </div>
   `,
   styles: [`
@@ -46,7 +46,7 @@ export class CompraRapidaArticuloTooltipComponent implements ITooltipAngularComp
   total = '—';
   notaFactura = '—';
   fechaEntradaAlmacen = '—';
-  cantidadEntradaAlmacen = '—';
+  cadMinReq = '—';
 
   agInit(params: ITooltipParams): void {
     const d: any = params.data || {};
@@ -55,8 +55,8 @@ export class CompraRapidaArticuloTooltipComponent implements ITooltipAngularComp
     this.total = this.fmtMoneda(d.total);
     this.notaFactura = d.notaFactura || '—';
     this.fechaEntradaAlmacen = this.fmtFecha(d.fechaEntradaAlmacen);
-    this.cantidadEntradaAlmacen = (d.cantidadEntradaAlmacen != null && d.cantidadEntradaAlmacen !== '')
-      ? Number(d.cantidadEntradaAlmacen).toLocaleString('es-MX') : '—';
+    this.cadMinReq = (d.caducidadMinimaRequerida != null && d.caducidadMinimaRequerida !== '')
+      ? String(d.caducidadMinimaRequerida) : '—';
   }
 
   private fmtMoneda(v: any): string {

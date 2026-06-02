@@ -557,12 +557,15 @@ export class PurchaseOrderDelisonComponent implements OnInit, OnDestroy {
         recurrent: it.recurrent || '',
         article: it.article || '',
         numArticle: it.numArticle || '',
+        // Proveedor capturado al pagar la CR en la Hoja de Gastos.
+        proveedor: it.proveedor ?? it.nameProvider ?? it.provint ?? '',
         quantity: it.quantity || 0,
         caducidadMinimaRequerida: it.caducidadMinimaRequerida || '',
         comment: it.comment || '',
-        // Para el tooltip de la columna Artículo
-        price: it.price ?? 0,
-        total: it.total ?? 0,
+        // Para el tooltip de la columna Artículo (datos del pago de la CR):
+        // precioUnitario = base o base+IVA (igual que P. Unit. en Gastos); totalPagado = monto real pagado.
+        price: it.precioUnitario ?? it.price ?? 0,
+        total: it.totalPagado ?? it.total ?? 0,
         notaFactura: it.notaFactura || '',
         fechaEntradaAlmacen: it.fechaEntradaAlmacen || '',
         cantidadEntradaAlmacen: it.cantidadEntradaAlmacen ?? '',

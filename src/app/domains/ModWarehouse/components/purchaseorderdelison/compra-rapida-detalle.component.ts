@@ -42,6 +42,7 @@ export class CompraRapidaDetalleComponent implements OnDestroy {
     { field: 'department', headerName: 'Departamento que solicita', width: 200 },
     { field: 'solicitedBy', headerName: 'Solicitado por', width: 180 },
     { field: 'recurrent', headerName: 'Recurrente', width: 130 },
+    { field: 'proveedor', headerName: 'Proveedor', width: 160 },
     {
       field: 'article',
       headerName: 'Artículo',
@@ -52,7 +53,10 @@ export class CompraRapidaDetalleComponent implements OnDestroy {
     },
     { field: 'numArticle', headerName: '# Artículo', width: 140 },
     { field: 'quantity', headerName: 'Cantidad Requerida', width: 160, type: 'numericColumn' },
-    { field: 'caducidadMinimaRequerida', headerName: 'Cad. Min. Req', width: 140 },
+    {
+      field: 'cantidadEntradaAlmacen', headerName: 'Cantidad entrada almacén', width: 180, type: 'numericColumn',
+      valueFormatter: (p: any) => (p.value != null && p.value !== '') ? Number(p.value).toLocaleString('es-MX') : '',
+    },
     { field: 'comment', headerName: 'Comentarios', flex: 1, minWidth: 160 },
     {
       headerName: 'PDF',
