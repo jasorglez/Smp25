@@ -27,17 +27,17 @@ export class ProspectosComponent implements OnInit {
   private storageSvc = inject(StoragesService);
   private _colDefs: ColDef[] = [];
 
-  // ── Plantillas de mensaje por giro ───────────────────────────────────────
+  // ── Plantillas de mensaje por giro ({empresa} se reemplaza con el nombre real) ──
   private readonly MENSAJES_GIRO: Record<string, string> = {
-    'Servicios': `Hola, buen día.\n\n¿Le gustaría generar ingresos adicionales sin inversión?\n\nEn BI2 desarrollamos software, buscamos despachos contables como aliados comerciales para ofrecer ERP, Construcción, Administración, Municipios, Escuelas, Puntos Ventas, Bot Whatsapp e Inteligencia Artificial a sus clientes, con atractivas comisiones por cada venta.\n\n¿Podemos agendar una llamada de 10 minutos para explicarle el programa?\n\nSaludos.\nJosé Angel Soriano | BI2\nwww.bi2.mx\nwww.youtube.com/@bi2mx`,
-    'Restaurante':  `Hola, buen día.\n\n[Mensaje para Restaurantes — pendiente redactar]\n\nSaludos.\nJosé Angel Soriano | BI2\nwww.bi2.mx`,
-    'Clínica':      `Hola, buen día.\n\n[Mensaje para Clínicas — pendiente redactar]\n\nSaludos.\nJosé Angel Soriano | BI2\nwww.bi2.mx`,
-    'Escuela':      `Hola, buen día.\n\n[Mensaje para Escuelas — pendiente redactar]\n\nSaludos.\nJosé Angel Soriano | BI2\nwww.bi2.mx`,
-    'Construcción': `Hola, buen día.\n\n[Mensaje para Construcción — pendiente redactar]\n\nSaludos.\nJosé Angel Soriano | BI2\nwww.bi2.mx`,
-    'Comercio':     `Hola, buen día.\n\n[Mensaje para Comercio — pendiente redactar]\n\nSaludos.\nJosé Angel Soriano | BI2\nwww.bi2.mx`,
-    'Manufactura':  `Hola, buen día.\n\n[Mensaje para Manufactura — pendiente redactar]\n\nSaludos.\nJosé Angel Soriano | BI2\nwww.bi2.mx`,
-    'Gobierno':     `Hola, buen día.\n\n[Mensaje para Gobierno — pendiente redactar]\n\nSaludos.\nJosé Angel Soriano | BI2\nwww.bi2.mx`,
-    'Otro':         `Hola, buen día.\n\n[Mensaje genérico — pendiente redactar]\n\nSaludos.\nJosé Angel Soriano | BI2\nwww.bi2.mx`,
+    'Servicios': `Hola {empresa}, buen día.\n\n¿Le gustaría generar ingresos adicionales sin inversión?\n\nEn BI2 desarrollamos software, buscamos despachos contables como aliados comerciales para ofrecer ERP, Construcción, Administración, Municipios, Escuelas, Puntos Ventas, Bot Whatsapp e Inteligencia Artificial a sus clientes, con atractivas comisiones por cada venta.\n\n¿Podemos agendar una llamada de 10 minutos para explicarle el programa?\n\nSaludos.\nJosé Angel Soriano | BI2\nwww.bi2.mx\nwww.youtube.com/@bi2mx`,
+    'Restaurante':  `Hola {empresa}, buen día.\n\n[Mensaje para Restaurantes — pendiente redactar]\n\nSaludos.\nJosé Angel Soriano | BI2\nwww.bi2.mx`,
+    'Clínica':      `Hola {empresa}, buen día.\n\n[Mensaje para Clínicas — pendiente redactar]\n\nSaludos.\nJosé Angel Soriano | BI2\nwww.bi2.mx`,
+    'Escuela':      `Hola {empresa}, buen día.\n\n[Mensaje para Escuelas — pendiente redactar]\n\nSaludos.\nJosé Angel Soriano | BI2\nwww.bi2.mx`,
+    'Construcción': `Hola {empresa}, buen día.\n\n[Mensaje para Construcción — pendiente redactar]\n\nSaludos.\nJosé Angel Soriano | BI2\nwww.bi2.mx`,
+    'Comercio':     `Hola {empresa}, buen día.\n\n[Mensaje para Comercio — pendiente redactar]\n\nSaludos.\nJosé Angel Soriano | BI2\nwww.bi2.mx`,
+    'Manufactura':  `Hola {empresa}, buen día.\n\n[Mensaje para Manufactura — pendiente redactar]\n\nSaludos.\nJosé Angel Soriano | BI2\nwww.bi2.mx`,
+    'Gobierno':     `Hola {empresa}, buen día.\n\n[Mensaje para Gobierno — pendiente redactar]\n\nSaludos.\nJosé Angel Soriano | BI2\nwww.bi2.mx`,
+    'Otro':         `Hola {empresa}, buen día.\n\n[Mensaje genérico — pendiente redactar]\n\nSaludos.\nJosé Angel Soriano | BI2\nwww.bi2.mx`,
   };
 
   constructor() {
@@ -426,7 +426,7 @@ export class ProspectosComponent implements OnInit {
     const giro    = data?.giro ?? '';
     const empresa = data?.empresa || data?.nombre || 'prospecto';
     const telefono = data?.telefono ?? '';
-    const msgBase  = this.MENSAJES_GIRO[giro] ?? this.MENSAJES_GIRO['Otro'];
+    const msgBase  = (this.MENSAJES_GIRO[giro] ?? this.MENSAJES_GIRO['Otro']).replace(/\{empresa\}/g, empresa);
 
     const result = await Swal.fire({
       title: `<i class="bi bi-whatsapp" style="color:#25D366"></i> WhatsApp — ${empresa}`,
