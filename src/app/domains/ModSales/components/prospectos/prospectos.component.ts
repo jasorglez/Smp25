@@ -278,11 +278,12 @@ export class ProspectosComponent implements OnInit {
 
   add() {
     const nuevo: any = {
-      nombre: '', telefono: 'SIN NUMERO', empresa: '', puesto: 'GERENTE', domicilio: 'SIN DOMICILIO', estado: 'nuevo',
+      nombre: '', telefono: 'SIN NUMERO', empresa: '', puesto: 'GERENTE', domicilio: 'SIN DOMICILIO', estado: 'prospecto',
       idVendedorActual: this.idVendedor, nombreVendedorActual: this.nombreVendedor,
       chatIdVendedorActual: '', idCompany: this.idRoot,
       creadoPor: 'web', idVendedorCreador: this.idVendedor,
       notas: '', idCustomer: null, activo: true,
+      giro: '', competidor: '', fechaProximoSeguimiento: null,
       fechaCreacion: null, fechaUltimaInteraccion: null,
       countInteracciones: 0,
       __isNew: true, __modified: false,
@@ -320,10 +321,17 @@ export class ProspectosComponent implements OnInit {
           await this.svc.crearProspecto(p);
         } else {
           await this.svc.actualizarProspecto(p.id!, {
-            nombre: p.nombre, telefono: p.telefono,
-            empresa: p.empresa, puesto: p.puesto, domicilio: p.domicilio, estado: p.estado,
-            idVendedorActual: p.idVendedorActual,
-            nombreVendedorActual: p.nombreVendedorActual,
+            nombre:                 p.nombre,
+            telefono:               p.telefono,
+            empresa:                p.empresa,
+            puesto:                 p.puesto,
+            domicilio:              p.domicilio,
+            estado:                 p.estado,
+            idVendedorActual:       p.idVendedorActual,
+            nombreVendedorActual:   p.nombreVendedorActual,
+            giro:                   p.giro ?? '',
+            competidor:             p.competidor ?? '',
+            fechaProximoSeguimiento: p.fechaProximoSeguimiento ?? null,
           });
         }
       } catch {
