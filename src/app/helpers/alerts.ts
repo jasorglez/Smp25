@@ -39,6 +39,21 @@ export class alerts{
 
 	}
 
+	static confirmAlertHtml(title:string, html:string, icon:SweetAlertIcon, confirmButtonText:string){
+
+		return Swal.fire({
+			title: title,
+			html: html,
+			icon: icon,
+			showCancelButton: true,
+			confirmButtonColor: '#3085d6',
+			cancelButtonColor: '#d33',
+			confirmButtonText: confirmButtonText,
+			customClass: { container: 'swal-over-modal' }
+		})
+
+	}
+
 	/*=============================================
 	Función para modal de input/textarea
 	=============================================*/

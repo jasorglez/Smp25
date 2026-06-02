@@ -36,16 +36,17 @@ export const environment = {
 
   urlBpi: 'https://ms-pruebas-api.bi2.mx/bpi/api', // 5005
 
-  //urlWarehouse: 'https://ms-pruebas-api.bi2.mx/warehouse/api', // 5007
-  urlWarehouse: 'http://localhost:5199/api',
+  urlWarehouse: 'https://ms-pruebas-api.bi2.mx/warehouse/api', // 5007
+  //urlWarehouse: 'http://localhost:5199/api',
+
   urlAdministration: 'https://ms-pruebas-api.bi2.mx/tracking/api', // 5006 -- Tambien conocido como Tracking
   //urlAdministration : 'http://localhost:5047/api', // 5006 -- Tambien conocido como Tracking
 
   urlNotifications: 'https://ms-pruebas-api.bi2.mx/notifications/api', // 5011 -- NotificationsTelegram
   //urlNotifications: 'http://localhost:5011/api',
 
-  //urlProduction: 'https://ms-pruebas-api.bi2.mx/production/api', // 5051 -- Production
-  urlProduction: 'http://localhost:5051/api',
+  urlProduction: 'https://ms-pruebas-api.bi2.mx/production/api', // 5051 -- Production
+  //urlProduction: 'http://localhost:5051/api',
 
   urlMantenimiento: 'https://ms-pruebas-api.bi2.mx/maintenance/api',
 
@@ -72,5 +73,5 @@ export const environment = {
 
   urlRefreshToken: 'https://securetoken.googleapis.com/v1/token?key=AIzaSyDxCBGKk8nT09hdW85-PyOkhw5_JPZLF1A',
 
-  version: '2.52.296 (2 Junio 2026) - num_bote persistido en BD; backend asigna numeración incremental por grupo'
+  version: '2.52.304 (2 Junio 2026) - Gastos: botón Pagar bloqueado secuencialmente (E2 espera a que E1 esté pagada, mismo artículo + misma OC base)'
 };

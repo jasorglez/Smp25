@@ -4,7 +4,7 @@ import { AgGridAngular } from 'ag-grid-angular';
 import { ColDef, GridApi, GridReadyEvent } from 'ag-grid-enterprise';
 import { AG_GRID_LOCALE_ES } from 'assets/i18n/ag-grid.locale.es';
 import { DetalleMoliendaComponent } from './detalle-almmolienda.component';
-import { lastValueFrom } from 'rxjs';
+import { lastValueFrom, Subject } from 'rxjs';
 import { SignalsService } from '../../../../../services/signals.service';
 import { BranchsService } from '../../../../../services/branchs.service';
 import { MaterialsService } from '../../../../../services/materials.service';
@@ -133,6 +133,7 @@ export class AlmmoliendaComponent {
   // Datos precargados del último sync — se pasan al detalle para evitar HTTP redundante
   private lastSyncedReqs: any[]    = [];
   private lastSyncedDetails: any[] = [];
+  private entradasData$ = new Subject<any>();
 
   private renderer: Renderer2;
   private tooltipElement: HTMLElement | null = null;
@@ -348,6 +349,7 @@ export class AlmmoliendaComponent {
         departmentOptions: this.departmentOptions,
         preloadedReqs:     isEntradas ? this.lastSyncedReqs    : [],
         preloadedDetails:  isEntradas ? this.lastSyncedDetails : [],
+        entradasData$:     isEntradas ? this.entradasData$.asObservable() : null,
         bultosCantidad:    this.bultosCantidad,
         bultosCantidadARevisar: this.bultosCantidadARevisar,
         proporcionRevision: this.proporcionRevision,
@@ -555,7 +557,7 @@ export class AlmmoliendaComponent {
       (Array.isArray(matsData) ? matsData : []).forEach((m: any) => matsMap.set(m.id, m.articulo));
       console.log('Materiales crudos:', mxmData);
       this.matPrimaOptions = (Array.isArray(mxmData) ? mxmData : [])
-        .filter((m: any) => m.active !== false)
+        .filter((m: any) => m.active !== false && m.idArticulo != null)
         .map((m: any) => ({
           id: m.idArticulo,
           name: matsMap.get(m.idArticulo) ?? String(m.idArticulo),
@@ -852,7 +854,7 @@ export class AlmmoliendaComponent {
     };
   }
 
-  async toggleCascade(node: any, type: string) {
+  toggleCascade(node: any, type: string) {
     if (node.data?.__isNew) return;
 
     if (this.expandedRowId === node.id && this.expandedDetailType === type) {
@@ -866,7 +868,10 @@ export class AlmmoliendaComponent {
     }
 
     if (type === 'entradas') {
-      await this.syncEntradasDetails(node.data);
+      // Subject fresco para esta expansión; limpiar estado anterior
+      this.entradasData$ = new Subject<any>();
+      this.lastSyncedReqs    = [];
+      this.lastSyncedDetails = [];
     }
 
     if (this.expandedRowId) {
@@ -884,6 +889,22 @@ export class AlmmoliendaComponent {
     this.expandedDetailType = type;
     this.gridApi.onRowHeightChanged();
     setTimeout(() => node.setExpanded(true), 0);
+
+    // Entradas: sincronizar en background y emitir cuando termine
+    if (type === 'entradas') {
+      this.syncEntradasDetails(node.data).then(() => {
+        this.entradasData$.next({
+          reqs:                      this.lastSyncedReqs,
+          details:                   this.lastSyncedDetails,
+          bultosCantidad:            this.bultosCantidad,
+          bultosCantidadARevisar:    this.bultosCantidadARevisar,
+          proporcionRevision:        this.proporcionRevision,
+          caracteristicasCategories: this.caracteristicasCategories,
+          caracteristicasFamilies:   this.caracteristicasFamilies,
+        });
+        this.entradasData$.complete();
+      });
+    }
   }
 
   private async syncEntradasDetails(rowData: any) {

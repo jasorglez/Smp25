@@ -126,26 +126,23 @@ export class PurchaseOrderDelisonComponent implements OnInit, OnDestroy {
   }
 
   ngOnInit() {
-    setTimeout(() => {
-      this.idRoot  = this.signalsService.getRootSelectedBySidebar()();
-      this.idUser  = this.signalsService.getIdUSer()();
+    const tryInit = (attempt = 0) => {
+      this.idRoot = this.signalsService.getRootSelectedBySidebar()();
+      this.idUser = this.signalsService.getIdUSer()();
 
-      if (this.idRoot) {
+      if (this.idRoot && this.idUser) {
         this.loadBranches();
         this.loadProviders();
         this.loadMaterials();
+        this.isInitialized = true;
+      } else if (attempt < 10) {
+        // Auth o empresa aún no listos → reintentar con backoff suave
+        setTimeout(() => tryInit(attempt + 1), 300);
       } else {
-        setTimeout(() => {
-          this.idRoot = this.signalsService.getRootSelectedBySidebar()();
-          if (this.idRoot) {
-            this.loadBranches();
-            this.loadProviders();
-            this.loadMaterials();
-          }
-        }, 300);
+        this.isInitialized = true;
       }
-      this.isInitialized = true;
-    }, 200);
+    };
+    setTimeout(() => tryInit(), 200);
   }
 
   // ==================== CARGA INICIAL ====================
@@ -223,9 +220,11 @@ export class PurchaseOrderDelisonComponent implements OnInit, OnDestroy {
     if (this.idBranch === null || this.idBranch === undefined) {
       this.fullRowData = [];
       this.rowData = [];
+      if (this.gridApi) this.gridApi.setGridOption('rowData', []);
       return;
     }
     this.rowData = null;
+    if (this.gridApi) this.gridApi.showLoadingOverlay();
 
     if (this.idBranch < 0) {
       this.loadFromAllBranches();
@@ -595,6 +594,9 @@ export class PurchaseOrderDelisonComponent implements OnInit, OnDestroy {
     this.gridApi = params.api;
     this.buildInitialGridContext();
     this.gridApi.setGridOption('context', this.gridContext);
+
+    // Si rowData aún es null cuando el grid está listo, mostrar overlay de carga
+    if (this.rowData === null) this.gridApi.showLoadingOverlay();
 
     this.gridApi.setGridOption('detailCellRendererParams', {
       // El detalle lo carga el cell renderer con ITEMS.load (no el sub-grid por defecto).
