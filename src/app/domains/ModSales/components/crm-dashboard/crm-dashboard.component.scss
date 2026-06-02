@@ -1,0 +1,33 @@
+.crm-dash-wrapper { padding: 16px; }
+
+// ── KPI Grid ────────────────────────────────────────────────────────────────
+.kpi-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+  gap: 12px;
+}
+
+.kpi-card {
+  border-radius: 12px;
+  padding: 14px 16px;
+  color: white;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  box-shadow: 0 2px 8px rgba(0,0,0,.15);
+
+  .kpi-icon { font-size: 1.8rem; opacity: .85; }
+  .kpi-valor { font-size: 1.9rem; font-weight: 700; line-height: 1; }
+  .kpi-label { font-size: .75rem; opacity: .9; margin-top: 2px; }
+}
+
+.bg-orange  { background: #e65100 !important; }
+
+// ── Funnel ───────────────────────────────────────────────────────────────────
+.funnel-row { padding: 0 4px; }
+
+// ── Bootstrap color overrides for custom stages ───────────────────────────
+.badge.bg-purple { background-color: #7b2d8b !important; }
+.badge.bg-orange { background-color: #e65100 !important; }
+.progress-bar.bg-purple { background-color: #7b2d8b !important; }
+.progress-bar.bg-orange { background-color: #e65100 !important; }

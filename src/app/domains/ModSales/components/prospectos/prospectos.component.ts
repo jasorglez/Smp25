@@ -4,7 +4,8 @@ import { FormsModule } from '@angular/forms';
 import { AgGridModule } from 'ag-grid-angular';
 import { ColDef, GridApi, GridReadyEvent } from 'ag-grid-enterprise';
 import { AG_GRID_LOCALE_ES } from 'assets/i18n/ag-grid.locale.es';
-import { ProspectosService, Prospecto, ESTADOS_PROSPECTO } from 'app/services/prospectos.service';
+import { ProspectosService, Prospecto, ESTADOS_PROSPECTO, GIROS_PROSPECTO } from 'app/services/prospectos.service';
+import { Timestamp } from '@angular/fire/firestore';
 import { SignalsService } from 'app/services/signals.service';
 import { UsersService } from 'app/services/users.service';
 import { DetalleInteraccionesComponent } from './detalle-interacciones.component';
@@ -54,7 +55,8 @@ export class ProspectosComponent implements OnInit {
   get nombreVendedor() { return this.signalsSvc.getDisplayName()(); }
 
   // ── Enter-key navigation ─────────────────────────────────────────────────
-  private editableColumnOrder = ['nombreVendedorActual', 'empresa', 'nombre', 'puesto', 'telefono', 'domicilio', 'estado'];
+  private editableColumnOrder = ['nombreVendedorActual', 'empresa', 'nombre', 'puesto', 'telefono', 'giro', 'competidor', 'domicilio', 'estado'];
+  readonly GIROS = GIROS_PROSPECTO;
   private enterPressed = false;
 
   defaultColDef: ColDef = {
@@ -151,23 +153,56 @@ export class ProspectosComponent implements OnInit {
           return true;
         },
       },
-      { field: 'empresa',  headerName: 'Empresa',  width: 180, editable: true, filter: true },
-      { field: 'nombre',   headerName: 'Nombre',   width: 160, editable: true, filter: true },
-      { field: 'puesto',   headerName: 'Puesto',   width: 140, editable: true },
-      { field: 'telefono', headerName: 'Teléfono', width: 145, editable: true },
-      { field: 'domicilio', headerName: 'Domicilio', width: 220, editable: true, filter: true },
+      { field: 'empresa',    headerName: 'Empresa',    width: 180, editable: true, filter: true },
+      { field: 'nombre',     headerName: 'Nombre',     width: 160, editable: true, filter: true },
+      { field: 'puesto',     headerName: 'Puesto',     width: 130, editable: true },
+      { field: 'telefono',   headerName: 'Teléfono',   width: 130, editable: true },
+      {
+        field: 'giro', headerName: 'Giro', width: 130, editable: true,
+        cellEditor: 'agSelectCellEditor',
+        cellEditorParams: { values: GIROS_PROSPECTO },
+      },
+      { field: 'competidor', headerName: 'Compite con', width: 145, editable: true },
+      { field: 'domicilio',  headerName: 'Domicilio',   width: 180, editable: true, filter: true },
+      {
+        field: 'fechaProximoSeguimiento',
+        headerName: 'Próx. Seguimiento', width: 155, editable: true,
+        cellEditor: 'agDateCellEditor',
+        valueGetter: (p: any) => {
+          const v = p.data?.fechaProximoSeguimiento;
+          if (!v) return '';
+          const d = v?.toDate ? v.toDate() : new Date(v);
+          return d.toISOString().substring(0, 10);
+        },
+        valueSetter: (p: any) => {
+          p.data.fechaProximoSeguimiento = p.newValue
+            ? Timestamp.fromDate(new Date(p.newValue))
+            : null;
+          return true;
+        },
+        valueFormatter: (p: any) => {
+          if (!p.value) return '';
+          const [y, m, d] = String(p.value).split('-');
+          return d && m && y ? `${d}/${m}/${y}` : p.value;
+        },
+        cellStyle: (p: any) => {
+          if (!p.value) return null;
+          const hoy = new Date(); hoy.setHours(0,0,0,0);
+          const fecha = new Date(p.value);
+          if (fecha < hoy) return { backgroundColor: '#fde8e8', color: '#c0392b', fontWeight: 'bold' };
+          if (fecha.toDateString() === hoy.toDateString()) return { backgroundColor: '#fff3cd', color: '#856404', fontWeight: 'bold' };
+          return null;
+        },
+      },
       {
         field: 'fechaUltimaInteraccion',
-        headerName: 'Última Interacción', width: 175, editable: false,
+        headerName: 'Última Interac.', width: 145, editable: false,
         cellRenderer: (p: any) => this.formatFecha(p.value),
       },
       {
-        field: 'creadoPor', headerName: 'Canal', width: 90, editable: false,
+        field: 'creadoPor', headerName: 'Canal', width: 80, editable: false,
         cellRenderer: (p: any) => {
-          const icon =
-            p.value === 'telegram' ? '📱' :
-            p.value === 'whatsapp' ? '💬' :
-            '🖥️';
+          const icon = p.value === 'telegram' ? '📱' : p.value === 'whatsapp' ? '💬' : '🖥️';
           return `${icon} ${p.value ?? ''}`;
         },
       },

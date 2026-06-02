@@ -35,6 +35,10 @@ export interface Prospecto {
   idCustomer: string | null;
   activo: boolean;
   countInteracciones?: number;
+  // ── Campos CRM extendidos ───────────────────────────────────────────────
+  giro?: string;               // Restaurante, Clínica, Escuela, Construcción, Otro
+  competidor?: string;         // Sistema que usa actualmente (Soft Restaurant, etc.)
+  fechaProximoSeguimiento?: Timestamp | null;
   __isNew?: boolean;
   __modified?: boolean;
 }
@@ -55,12 +59,19 @@ export interface NuevaInteraccionPayload extends Omit<Interaccion, 'id' | 'fecha
 }
 
 export const ESTADOS_PROSPECTO = [
-  { value: 'nuevo',             label: 'Nuevo',             icon: '🆕', color: 'secondary' },
-  { value: 'contactado',        label: 'Contactado',        icon: '📞', color: 'info'      },
-  { value: 'interesado',        label: 'Interesado',        icon: '⭐', color: 'primary'   },
-  { value: 'propuesta_enviada', label: 'Propuesta Enviada', icon: '📄', color: 'warning'   },
-  { value: 'ganado',            label: 'Ganado',            icon: '🏆', color: 'success'   },
-  { value: 'perdido',           label: 'Perdido',           icon: '❌', color: 'danger'    },
+  { value: 'prospecto',          label: 'Prospecto',          icon: '👤', color: 'secondary', orden: 0 },
+  { value: 'contactado',         label: 'Contactado',         icon: '📞', color: 'info',      orden: 1 },
+  { value: 'demo_agendada',      label: 'Demo Agendada',      icon: '📅', color: 'primary',   orden: 2 },
+  { value: 'demo_realizada',     label: 'Demo Realizada',     icon: '👀', color: 'purple',    orden: 3 },
+  { value: 'cotizacion_enviada', label: 'Cotización Enviada', icon: '📄', color: 'warning',   orden: 4 },
+  { value: 'negociacion',        label: 'Negociación',        icon: '🤝', color: 'orange',    orden: 5 },
+  { value: 'ganado',             label: 'Ganado',             icon: '🏆', color: 'success',   orden: 6 },
+  { value: 'perdido',            label: 'Perdido',            icon: '❌', color: 'danger',    orden: 7 },
+];
+
+export const GIROS_PROSPECTO = [
+  'Restaurante', 'Clínica', 'Escuela', 'Construcción',
+  'Comercio', 'Servicios', 'Manufactura', 'Gobierno', 'Otro',
 ];
 
 @Injectable({ providedIn: 'root' })
@@ -91,26 +102,38 @@ export class ProspectosService {
     );
   }
 
+  // Consulta por empresa para Kanban y Dashboard
+  getProspectosByCompany(idCompany: number): Observable<Prospecto[]> {
+    const ref = collection(this.firestore, this.COL);
+    return collectionData(
+      query(ref, where('idCompany', '==', idCompany), where('activo', '==', true)),
+      { idField: 'id' },
+    ) as Observable<Prospecto[]>;
+  }
+
   async crearProspecto(p: Partial<Prospecto>): Promise<string> {
     const ref = collection(this.firestore, this.COL);
     const now = Timestamp.now();
     const docRef = await addDoc(ref, {
-      nombre:               p.nombre ?? '',
-      telefono:             p.telefono ?? '',
-      empresa:              p.empresa ?? '',
-      domicilio:            p.domicilio ?? '',
-      estado:               'nuevo',
-      activo:               true,
-      creadoPor:            'web',
-      idVendedorActual:     p.idVendedorActual ?? 0,
-      nombreVendedorActual: p.nombreVendedorActual ?? '',
-      chatIdVendedorActual: '',
-      idCompany:            p.idCompany ?? null,
-      idVendedorCreador:    p.idVendedorActual ?? 0,
+      nombre:                 p.nombre ?? '',
+      telefono:               p.telefono ?? '',
+      empresa:                p.empresa ?? '',
+      domicilio:              p.domicilio ?? '',
+      estado:                 'prospecto',
+      activo:                 true,
+      creadoPor:              'web',
+      idVendedorActual:       p.idVendedorActual ?? 0,
+      nombreVendedorActual:   p.nombreVendedorActual ?? '',
+      chatIdVendedorActual:   '',
+      idCompany:              p.idCompany ?? null,
+      idVendedorCreador:      p.idVendedorActual ?? 0,
       notas:                  '',
       puesto:                 p.puesto ?? '',
       idCustomer:             null,
       countInteracciones:     0,
+      giro:                   p.giro ?? '',
+      competidor:             p.competidor ?? '',
+      fechaProximoSeguimiento: p.fechaProximoSeguimiento ?? null,
       fechaCreacion:          now,
       fechaUltimaInteraccion: now,
     });

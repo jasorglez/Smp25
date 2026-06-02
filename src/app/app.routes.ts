@@ -1831,6 +1831,24 @@ export const routes: Routes = [
             data: { permissions: { master: 'sales', detailed: 'dashboard' } },
           },
           {
+            path: 'crm-dashboard',
+            loadComponent: () =>
+              import(
+                './domains/ModSales/components/crm-dashboard/crm-dashboard.component'
+              ).then((m) => m.CrmDashboardComponent),
+            canActivate: [MasterPermissionsGuard],
+            data: { permissions: { master: 'sales', detailed: 'dashboard' } },
+          },
+          {
+            path: 'kanban',
+            loadComponent: () =>
+              import(
+                './domains/ModSales/components/kanban-prospectos/kanban-prospectos.component'
+              ).then((m) => m.KanbanProspectosComponent),
+            canActivate: [MasterPermissionsGuard],
+            data: { permissions: { master: 'sales', detailed: 'prospectos' } },
+          },
+          {
             path: 'setup-sales',
             loadComponent: () =>
               import(

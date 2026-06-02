@@ -1,0 +1,132 @@
+<div class="kanban-wrapper">
+
+  <!-- Toolbar -->
+  <div class="kanban-toolbar d-flex flex-wrap gap-2 mb-3 align-items-center">
+    <span class="fw-bold"><i class="bi bi-kanban me-1"></i>Pipeline de Ventas</span>
+    <select class="form-select form-select-sm" style="width:160px" [(ngModel)]="filtroVendedor">
+      <option value="">Todos los vendedores</option>
+      <option *ngFor="let v of vendedoresUnicos()" [value]="v">{{ v }}</option>
+    </select>
+    <select class="form-select form-select-sm" style="width:140px" [(ngModel)]="filtroGiro">
+      <option value="">Todos los giros</option>
+      <option *ngFor="let g of girosUnicos()" [value]="g">{{ g }}</option>
+    </select>
+    <button class="btn btn-sm btn-outline-secondary ms-auto" (click)="cargar()">
+      <i class="bi bi-arrow-clockwise"></i> Actualizar
+    </button>
+  </div>
+
+  <!-- Loading -->
+  <div *ngIf="cargando" class="text-center py-5">
+    <div class="spinner-border text-primary"></div>
+  </div>
+
+  <!-- Board -->
+  <div *ngIf="!cargando" class="kanban-board">
+    <div *ngFor="let etapa of etapas" class="kanban-col">
+
+      <!-- Encabezado de columna -->
+      <div class="kanban-col-header bg-{{ etapa.color }}">
+        <span>{{ etapa.icon }} {{ etapa.label }}</span>
+        <span class="kanban-badge">{{ countEtapa(etapa.value) }}</span>
+      </div>
+
+      <!-- Tarjetas -->
+      <div class="kanban-col-body">
+        <div *ngIf="prospectosPorEtapa(etapa.value).length === 0"
+             class="kanban-empty">Sin prospectos</div>
+
+        <div *ngFor="let p of prospectosPorEtapa(etapa.value)"
+             class="kanban-card"
+             [class.kanban-card-vencido]="estaVencido(p.fechaProximoSeguimiento)"
+             (click)="seleccionar(p)">
+
+          <div class="kanban-card-empresa">{{ p.empresa || '—' }}</div>
+          <div class="kanban-card-nombre">{{ p.nombre }}</div>
+
+          <div class="kanban-card-meta d-flex justify-content-between mt-1">
+            <small class="text-muted">{{ p.giro || '' }}</small>
+            <small [class.text-danger]="estaVencido(p.fechaProximoSeguimiento)"
+                   [class.text-muted]="!estaVencido(p.fechaProximoSeguimiento)">
+              <i class="bi bi-calendar2"></i>
+              {{ formatFecha(p.fechaProximoSeguimiento) || 'Sin fecha' }}
+            </small>
+          </div>
+
+          <div class="kanban-card-vendedor mt-1">
+            <i class="bi bi-person text-muted"></i>
+            <small class="text-muted">{{ p.nombreVendedorActual || '—' }}</small>
+          </div>
+
+          <div *ngIf="p.competidor" class="kanban-card-competidor mt-1">
+            <small class="badge bg-light text-secondary">⚔️ {{ p.competidor }}</small>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<!-- ── Modal detalle / mover etapa ─────────────────────────────────────── -->
+<div class="kanban-modal-overlay" *ngIf="mostrarDetalle" (click)="cerrarDetalle()">
+  <div class="kanban-modal" (click)="$event.stopPropagation()">
+
+    <div class="kanban-modal-header">
+      <div>
+        <div class="fw-bold fs-5">{{ selected?.empresa || selected?.nombre }}</div>
+        <small class="text-muted">{{ selected?.nombre }} · {{ selected?.telefono }}</small>
+      </div>
+      <button class="btn-close" (click)="cerrarDetalle()"></button>
+    </div>
+
+    <div class="kanban-modal-body">
+
+      <!-- Info actual -->
+      <div class="row g-2 mb-3">
+        <div class="col-6">
+          <label class="form-label small text-muted mb-0">Estado actual</label>
+          <div>
+            <span class="badge bg-{{ getEtapa(selected?.estado || '')?.color }}">
+              {{ getEtapa(selected?.estado || '')?.icon }}
+              {{ getEtapa(selected?.estado || '')?.label }}
+            </span>
+          </div>
+        </div>
+        <div class="col-6">
+          <label class="form-label small text-muted mb-0">Giro</label>
+          <div>{{ selected?.giro || '—' }}</div>
+        </div>
+        <div class="col-6">
+          <label class="form-label small text-muted mb-0">Vendedor</label>
+          <div>{{ selected?.nombreVendedorActual || '—' }}</div>
+        </div>
+        <div class="col-6">
+          <label class="form-label small text-muted mb-0">Próx. Seguimiento</label>
+          <div [class.text-danger]="estaVencido(selected?.fechaProximoSeguimiento)">
+            {{ formatFecha(selected?.fechaProximoSeguimiento) || 'Sin fecha' }}
+          </div>
+        </div>
+        <div class="col-12" *ngIf="selected?.competidor">
+          <label class="form-label small text-muted mb-0">Compite con</label>
+          <div>⚔️ {{ selected?.competidor }}</div>
+        </div>
+        <div class="col-12" *ngIf="selected?.notas">
+          <label class="form-label small text-muted mb-0">Notas</label>
+          <div class="text-secondary">{{ selected?.notas }}</div>
+        </div>
+      </div>
+
+      <!-- Mover a etapa -->
+      <div class="fw-semibold mb-2">Mover a:</div>
+      <div class="kanban-etapas-btns">
+        <button *ngFor="let e of etapasSiguientes()"
+                class="btn btn-sm btn-outline-secondary mb-1"
+                (click)="moverA(e.value)">
+          {{ e.icon }} {{ e.label }}
+        </button>
+      </div>
+
+    </div>
+  </div>
+</div>
