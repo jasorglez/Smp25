@@ -73,5 +73,5 @@ export const environment = {
 
   urlRefreshToken: 'https://securetoken.googleapis.com/v1/token?key=AIzaSyDxCBGKk8nT09hdW85-PyOkhw5_JPZLF1A',
 
-  version: '2.52.286 (31 Mayo 2026) - Fix reactivar proveedor inactivo (Gastos CR + Cotización): se quitó getCustomerById (GET /Customer/{id} daba 404); ahora updateCustomer hace PUT con el objeto crudo ya cargado de getProvidersForGrid + active/vigente=true'
+  version: '2.52.287 (1 Junio 2026) - Filtrado botes nomenclatura y numeración'
 };
