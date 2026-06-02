@@ -2254,6 +2254,7 @@ export class CatalogosProduccionComponent {
           idCatalog: m.idCatalog,
           idMatPrima: m.idMatPrima ?? null,
           idPrefijoFase: m.idPrefijoFase ?? null,
+          prefixNum: m.numBote ?? null,   // viene del backend
           hasUsage: (usageMap[m.id] ?? 0) > 0,
         }));
         rows.sort((a: any, b: any) => {
@@ -2266,17 +2267,6 @@ export class CatalogosProduccionComponent {
           return matA.localeCompare(matB, 'es', { sensitivity: 'base' });
         });
         rows.forEach((r: any, i: number) => { r.boteNum = i + 1; });
-
-        // Calcular prefixNum: numeración secuencial por grupo de prefijo
-        const groupCounters = new Map<string, number>();
-        rows.forEach((r: any) => {
-          const fp = r.idPrefijoFase != null ? (this.prefijoFaseOptions.find((f: any) => f.id === r.idPrefijoFase)?.prefijo ?? '') : '';
-          const ap = r.idMatPrima   != null ? (this.matPrimaOptions.find((m: any) => m.id === r.idMatPrima)?.prefijo ?? '') : '';
-          const key = `${fp}${ap}`;
-          const n = (groupCounters.get(key) ?? 0) + 1;
-          groupCounters.set(key, n);
-          r.prefixNum = n;
-        });
       } else {
         rows = (data ?? []).map(m => ({
           id: m.id,
