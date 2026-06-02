@@ -793,7 +793,7 @@ export class CatalogosProduccionComponent {
   private idRoot = 0;
   private materiales: any[] = [];
   private materialesIdToDesc = new Map<number, string>();
-  private matPrimaOptions: { id: number; description: string; prefijo: string }[] = [];
+  private matPrimaOptions: { id: number; description: string; prefijo: string; idPrefijoFase: number | null }[] = [];
   catalogSidebarItems: ExtractionFermentationCatalogItem[] = [];
   selectedCatalogSidebarId: number | null = null;
   editingCatalogId: number | null = null;
@@ -943,7 +943,13 @@ export class CatalogosProduccionComponent {
       minWidth: 160,
       editable: (p: any) => !p.data?.hasUsage,
       cellEditor: SelectWithTooltipEditorV2Component,
-      cellEditorParams: () => ({ options: this.matPrimaOptions }),
+      cellEditorParams: (p: any) => {
+        const faseId = p.data?.idPrefijoFase ?? null;
+        const filtered = faseId != null
+          ? this.matPrimaOptions.filter(m => m.idPrefijoFase === faseId)
+          : this.matPrimaOptions;
+        return { options: filtered };
+      },
       valueFormatter: (p: any) => {
         if (p.value == null) return '';
         return this.matPrimaOptions.find(o => o.id === p.value)?.description ?? String(p.value);
@@ -1155,13 +1161,15 @@ export class CatalogosProduccionComponent {
       }
 
       this.idRoot = idRoot;
-      this.productionService.getMoliendaPrefijos(idRoot).subscribe((pfs: any[]) => {
-        this.prefijoFaseOptions = (pfs ?? []).map(p => ({ id: p.id, prefijo: p.prefijo ?? '', nombreFase: p.nombreFase ?? '' }));
-      });
       forkJoin({
+        pfs:  this.productionService.getMoliendaPrefijos(idRoot),
         mats: this.materialsService.getMaterialsxview(idRoot),
         mxm:  this.mxmService.getByType(idRoot, 'MOLIENDA'),
-      }).subscribe(({ mats, mxm }: any) => {
+      }).subscribe(({ pfs, mats, mxm }: any) => {
+        // Fases — deben estar listas antes de construir matPrimaOptions
+        this.prefijoFaseOptions = (pfs ?? []).map((p: any) => ({ id: p.id, prefijo: p.prefijo ?? '', nombreFase: p.nombreFase ?? '' }));
+        const moFaseId = this.prefijoFaseOptions.find(f => f.prefijo === 'MO')?.id ?? null;
+
         this.materiales = (mats as any[]) ?? [];
         this.materialesIdToDesc.clear();
         this.materiales.forEach(m => this.materialesIdToDesc.set(m.id, m.articulo));
@@ -1172,12 +1180,14 @@ export class CatalogosProduccionComponent {
         mxmList.forEach(m => { if (m.idArticulo != null) artPrefijoMap.set(m.idArticulo, m.prefijo ?? ''); });
         (this as any)._artPrefijoMap = artPrefijoMap;
 
+        // Mat primas: molienda=true → fase MO; otros registros con id_prefijo_fase explícito → su fase
         this.matPrimaOptions = mxmList
-          .filter((m: any) => m.active !== false && m.molienda === true && m.idArticulo != null)
+          .filter((m: any) => m.active !== false && m.idArticulo != null && (m.molienda === true || m.idPrefijoFase != null))
           .map((m: any) => ({
             id: m.idArticulo,
             description: this.materialesIdToDesc.get(m.idArticulo) ?? String(m.idArticulo),
             prefijo: m.prefijo ?? '',
+            idPrefijoFase: m.idPrefijoFase ?? (m.molienda === true ? moFaseId : null),
           }))
           .sort((a, b) => a.description.localeCompare(b.description, 'es', { sensitivity: 'base' }));
 
@@ -1196,6 +1206,21 @@ export class CatalogosProduccionComponent {
   onRowClicked(event: any)                 { this.selectedRow = event.data; }
   onCellValueChanged(event: any) {
     if (!event.data.__isNew) { event.data.__modified = true; this.hasUnsavedChanges = true; }
+
+    if (this.isBotesMode && event.colDef?.field === 'idPrefijoFase') {
+      const faseId = event.newValue;
+      const matId  = event.data.idMatPrima;
+      if (matId != null) {
+        const stillValid = faseId == null
+          || this.matPrimaOptions.some(m => m.id === matId && m.idPrefijoFase === faseId);
+        if (!stillValid) {
+          event.data.idMatPrima = null;
+          event.data.__modified = true;
+          this.hasUnsavedChanges = true;
+          if (this.gridApi) this.gridApi.refreshCells({ rowNodes: [event.node], columns: ['idMatPrima'], force: true });
+        }
+      }
+    }
   }
   onCellEditingStopped(event: any) {
     if (!this.enterPressed) return;
@@ -1210,9 +1235,12 @@ export class CatalogosProduccionComponent {
 
   loadGridData() {
     this.mxmService.getAll(this.idRoot).subscribe((modulos: any[]) => {
-      const rows = (modulos ?? []).map(m => ({ id: m.id, type: m.type, idArticulo: m.idArticulo, valor: m.active }));
+      const rows = (modulos ?? []).map(m => ({
+        id: m.id, type: m.type, idArticulo: m.idArticulo, valor: m.active,
+        prefijo: m.prefijo ?? '', editBultos: m.editBultos ?? false,
+        molienda: m.molienda ?? false, idPrefijoFase: m.idPrefijoFase ?? null,
+      }));
       this.originalRowData = JSON.parse(JSON.stringify(rows));
-      //console.log('Loaded grid data:', rows);
       this.rowData.set(rows);
     });
   }
@@ -1283,6 +1311,7 @@ export class CatalogosProduccionComponent {
             editBultos: r.editBultos || false,
             molienda: r.molienda || false,
             prefijo: r.prefijo ?? null,
+            idPrefijoFase: r.idPrefijoFase ?? null,
           };
       return r.__isNew ? this.mxmService.create(payload) : this.mxmService.update(r.id, payload);
     });
@@ -2258,6 +2287,7 @@ export class CatalogosProduccionComponent {
           editBultos: m.editBultos,
           molienda: m.molienda ?? false,
           prefijo: m.prefijo ?? '',
+          idPrefijoFase: m.idPrefijoFase ?? null,
         }));
         rows.sort((a: any, b: any) =>
           (this.materialesIdToDesc.get(a.idArticulo) ?? '').localeCompare(

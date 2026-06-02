@@ -224,6 +224,10 @@ export class ProductionService {
     return this.http.get<Record<number, number>>(`${environment.urlProduction}/MoliendaBote/usage`, { headers: this.trackingService.getHeaders() });
   }
 
+  getMoliendaBoteSumsByMolienda(idMolienda: number): Observable<Record<number, number>> {
+    return this.http.get<Record<number, number>>(`${environment.urlProduction}/MoliendaBote/sums/molienda/${idMolienda}`, { headers: this.trackingService.getHeaders() });
+  }
+
   createMoliendaBote(data: { idMatDetalle: number; idBoteCatalog: number | null; cantidad: number | null }): Observable<any> {
     return this.http.post<any>(`${environment.urlProduction}/MoliendaBote`, data, { headers: this.trackingService.getHeaders() });
   }
