@@ -2,7 +2,7 @@ import { Component, effect, inject, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { NgApexchartsModule } from 'ng-apexcharts';
-import { ProspectosService, ESTADOS_PROSPECTO } from 'app/services/prospectos.service';
+import { ProspectosService, ESTADOS_PROSPECTO, calcularScore, nivelScore } from 'app/services/prospectos.service';
 import { PosService } from 'app/services/pos.service';
 import { SignalsService } from 'app/services/signals.service';
 import { Timestamp } from '@angular/fire/firestore';
@@ -27,11 +27,12 @@ export class CrmDashboardComponent implements OnInit {
   private prospectosSvc = inject(ProspectosService);
   private signalsSvc    = inject(SignalsService);
 
-  tab: 'pos' | 'crm' = 'crm';
+  tab: 'pos' | 'crm' | 'reportes' = 'crm';
   idCompany = 0;
   cargando  = false;
 
   kpis: KpiCrm[] = [];
+  prospectos: any[] = [];
 
   // Prospectos por etapa para el mini-funnel
   etapas = ESTADOS_PROSPECTO.filter(e => !['ganado','perdido'].includes(e.value));
@@ -63,6 +64,7 @@ export class CrmDashboardComponent implements OnInit {
   }
 
   private calcularKpis(prospectos: any[]) {
+    this.prospectos = prospectos;
     const hoy    = new Date(); hoy.setHours(0,0,0,0);
     const manana = new Date(hoy); manana.setDate(manana.getDate() + 1);
 
@@ -149,6 +151,79 @@ export class CrmDashboardComponent implements OnInit {
         tooltip: 'Total de prospectos activos',
       },
     ];
+  }
+
+  // ── Reportes CRM ──────────────────────────────────────────────────────────
+
+  get tasaCierre(): number {
+    const g = this.prospectos.filter(p => p.estado === 'ganado').length;
+    const per = this.prospectos.filter(p => p.estado === 'perdido').length;
+    return (g + per) > 0 ? Math.round(g / (g + per) * 100) : 0;
+  }
+
+  get promInteracciones(): number {
+    if (!this.prospectos.length) return 0;
+    return Math.round(this.prospectos.reduce((a, p) => a + (p.countInteracciones ?? 0), 0) / this.prospectos.length);
+  }
+
+  get sinActividad7(): number {
+    const limite = Date.now() - 7 * 86_400_000;
+    const activos = this.prospectos.filter(p => !['ganado', 'perdido'].includes(p.estado));
+    return activos.filter(p => {
+      const ts = p.fechaUltimaInteraccion;
+      if (!ts) return true;
+      const ms = ts?.toDate ? ts.toDate().getTime() : new Date(ts).getTime();
+      return ms < limite;
+    }).length;
+  }
+
+  get rankingVendedores() {
+    const map = new Map<string, { ganados: number; total: number; perdidos: number }>();
+    this.prospectos.forEach(p => {
+      const v = p.nombreVendedorActual || 'Sin asignar';
+      if (!map.has(v)) map.set(v, { ganados: 0, total: 0, perdidos: 0 });
+      const e = map.get(v)!;
+      e.total++;
+      if (p.estado === 'ganado')  e.ganados++;
+      if (p.estado === 'perdido') e.perdidos++;
+    });
+    return [...map.entries()]
+      .map(([nombre, d]) => ({
+        nombre, total: d.total, ganados: d.ganados, perdidos: d.perdidos,
+        tasa: (d.ganados + d.perdidos) > 0 ? Math.round(d.ganados / (d.ganados + d.perdidos) * 100) : 0,
+      }))
+      .sort((a, b) => b.ganados - a.ganados)
+      .slice(0, 8);
+  }
+
+  get porGiro() {
+    const map = new Map<string, number>();
+    this.prospectos.forEach(p => map.set(p.giro || 'Sin giro', (map.get(p.giro || 'Sin giro') ?? 0) + 1));
+    const total = this.prospectos.length || 1;
+    return [...map.entries()]
+      .sort((a, b) => b[1] - a[1])
+      .map(([giro, count]) => ({ giro, count, pct: Math.round(count / total * 100) }));
+  }
+
+  get scoreDistrib() {
+    const total = this.prospectos.length || 1;
+    const hot  = this.prospectos.filter(p => calcularScore(p) >= 70).length;
+    const warm = this.prospectos.filter(p => { const s = calcularScore(p); return s >= 40 && s < 70; }).length;
+    const cold = this.prospectos.filter(p => calcularScore(p) < 40).length;
+    return [
+      { label: '🔥 Hot',  count: hot,  pct: Math.round(hot  / total * 100), color: 'danger'  },
+      { label: '👍 Warm', count: warm, pct: Math.round(warm / total * 100), color: 'warning' },
+      { label: '❄️ Cold', count: cold, pct: Math.round(cold / total * 100), color: 'info'    },
+    ];
+  }
+
+  get conversionFunnel() {
+    const total = this.prospectos.length || 1;
+    return ESTADOS_PROSPECTO.map(e => ({
+      ...e,
+      count: this.conteoPorEtapa[e.value] || 0,
+      pct:   Math.round((this.conteoPorEtapa[e.value] || 0) / total * 100),
+    }));
   }
 
   porcentajeFunnel(etapa: string): number {

@@ -12,6 +12,11 @@
         <i class="bi bi-cash-register me-1"></i> Ventas POS
       </button>
     </li>
+    <li class="nav-item">
+      <button class="nav-link" [class.active]="tab==='reportes'" (click)="tab='reportes'">
+        <i class="bi bi-graph-up-arrow me-1"></i> Reportes CRM
+      </button>
+    </li>
   </ul>
 
   <!-- ══ TAB CRM ══════════════════════════════════════════════════════════ -->
@@ -113,6 +118,185 @@
   <!-- ══ TAB POS ══════════════════════════════════════════════════════════ -->
   <div *ngIf="tab==='pos'">
     <app-pos-dashboard></app-pos-dashboard>
+  </div>
+
+  <!-- ══ TAB REPORTES CRM ══════════════════════════════════════════════════ -->
+  <div *ngIf="tab==='reportes'">
+
+    <div *ngIf="cargando" class="text-center py-5">
+      <div class="spinner-border text-primary"></div>
+    </div>
+
+    <div *ngIf="!cargando">
+
+      <!-- KPIs de conversión -->
+      <div class="row g-3 mb-4">
+        <div class="col-6 col-md-3">
+          <div class="card text-center border-success">
+            <div class="card-body py-3">
+              <div class="fs-2 fw-bold text-success">{{ tasaCierre }}%</div>
+              <small class="text-muted">Tasa de cierre</small>
+              <div class="text-muted" style="font-size:.72rem">Ganados / (Ganados+Perdidos)</div>
+            </div>
+          </div>
+        </div>
+        <div class="col-6 col-md-3">
+          <div class="card text-center border-primary">
+            <div class="card-body py-3">
+              <div class="fs-2 fw-bold text-primary">{{ prospectos.length }}</div>
+              <small class="text-muted">Total prospectos</small>
+              <div class="text-muted" style="font-size:.72rem">Incluyendo ganados y perdidos</div>
+            </div>
+          </div>
+        </div>
+        <div class="col-6 col-md-3">
+          <div class="card text-center" [class.border-danger]="sinActividad7 > 0" [class.border-secondary]="sinActividad7 === 0">
+            <div class="card-body py-3">
+              <div class="fs-2 fw-bold" [class.text-danger]="sinActividad7 > 0" [class.text-secondary]="sinActividad7 === 0">
+                {{ sinActividad7 }}
+              </div>
+              <small class="text-muted">Sin actividad +7 días</small>
+              <div class="text-muted" style="font-size:.72rem">Prospectos activos fríos</div>
+            </div>
+          </div>
+        </div>
+        <div class="col-6 col-md-3">
+          <div class="card text-center border-info">
+            <div class="card-body py-3">
+              <div class="fs-2 fw-bold text-info">{{ promInteracciones }}</div>
+              <small class="text-muted">Promedio interacciones</small>
+              <div class="text-muted" style="font-size:.72rem">Por prospecto</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Ranking vendedores + Distribución giro -->
+      <div class="row g-3 mb-4">
+
+        <!-- Ranking vendedores -->
+        <div class="col-md-7">
+          <div class="card shadow-sm h-100">
+            <div class="card-header py-2 fw-bold">
+              <i class="bi bi-trophy me-1 text-warning"></i> Ranking Vendedores
+            </div>
+            <div class="card-body p-0">
+              <table class="table table-sm table-hover mb-0">
+                <thead class="table-light">
+                  <tr>
+                    <th>#</th>
+                    <th>Vendedor</th>
+                    <th class="text-center">Total</th>
+                    <th class="text-center text-success">Ganados</th>
+                    <th class="text-center text-danger">Perdidos</th>
+                    <th class="text-center">Tasa</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr *ngFor="let v of rankingVendedores; let i = index">
+                    <td class="text-muted">{{ i+1 }}</td>
+                    <td class="fw-semibold">{{ v.nombre }}</td>
+                    <td class="text-center">{{ v.total }}</td>
+                    <td class="text-center text-success fw-bold">{{ v.ganados }}</td>
+                    <td class="text-center text-danger">{{ v.perdidos }}</td>
+                    <td class="text-center">
+                      <span class="badge" [class.bg-success]="v.tasa >= 50" [class.bg-warning]="v.tasa >= 25 && v.tasa < 50" [class.bg-danger]="v.tasa < 25">
+                        {{ v.tasa }}%
+                      </span>
+                    </td>
+                  </tr>
+                  <tr *ngIf="rankingVendedores.length === 0">
+                    <td colspan="6" class="text-center text-muted py-3">Sin datos</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+        <!-- Distribución por giro -->
+        <div class="col-md-5">
+          <div class="card shadow-sm h-100">
+            <div class="card-header py-2 fw-bold">
+              <i class="bi bi-pie-chart me-1 text-info"></i> Por Giro de Negocio
+            </div>
+            <div class="card-body">
+              <div *ngFor="let g of porGiro" class="mb-2">
+                <div class="d-flex justify-content-between align-items-center mb-1">
+                  <small class="fw-semibold">{{ g.giro }}</small>
+                  <small class="text-muted">{{ g.count }} ({{ g.pct }}%)</small>
+                </div>
+                <div class="progress" style="height:6px">
+                  <div class="progress-bar bg-info" [style.width]="g.pct + '%'"></div>
+                </div>
+              </div>
+              <div *ngIf="porGiro.length === 0" class="text-muted text-center py-3">Sin datos</div>
+            </div>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- Score distribution + Conversión por etapa -->
+      <div class="row g-3">
+
+        <!-- Score Hot/Warm/Cold -->
+        <div class="col-md-4">
+          <div class="card shadow-sm h-100">
+            <div class="card-header py-2 fw-bold">
+              <i class="bi bi-speedometer2 me-1"></i> Distribución Score
+            </div>
+            <div class="card-body">
+              <div *ngFor="let s of scoreDistrib" class="mb-3">
+                <div class="d-flex justify-content-between mb-1">
+                  <span class="fw-semibold">{{ s.label }}</span>
+                  <span class="badge bg-{{ s.color }}">{{ s.count }} · {{ s.pct }}%</span>
+                </div>
+                <div class="progress" style="height:8px">
+                  <div class="progress-bar bg-{{ s.color }}" [style.width]="s.pct + '%'"></div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Conversión por etapa -->
+        <div class="col-md-8">
+          <div class="card shadow-sm h-100">
+            <div class="card-header py-2 fw-bold">
+              <i class="bi bi-funnel me-1"></i> Conversión por Etapa
+            </div>
+            <div class="card-body p-0">
+              <table class="table table-sm mb-0">
+                <thead class="table-light">
+                  <tr>
+                    <th>Etapa</th>
+                    <th class="text-center">Prospectos</th>
+                    <th class="text-center">% del Total</th>
+                    <th style="width:35%">Barra</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr *ngFor="let e of conversionFunnel">
+                    <td>
+                      <span class="badge bg-{{ e.color }}" style="font-size:.72rem">{{ e.icon }} {{ e.label }}</span>
+                    </td>
+                    <td class="text-center fw-bold">{{ e.count }}</td>
+                    <td class="text-center text-muted">{{ e.pct }}%</td>
+                    <td>
+                      <div class="progress" style="height:6px">
+                        <div class="progress-bar bg-{{ e.color }}" [style.width]="e.pct + '%'"></div>
+                      </div>
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </div>
   </div>
 
 </div>
