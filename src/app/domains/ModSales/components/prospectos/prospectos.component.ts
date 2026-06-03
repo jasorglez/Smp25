@@ -28,7 +28,7 @@ export class ProspectosComponent implements OnInit {
   private _colDefs: ColDef[] = [];
 
   // ── Pestañas ─────────────────────────────────────────────────────────────
-  activeTab: 'prospectos' | 'plantillas' = 'prospectos';
+  activeTab: 'prospectos' | 'plantillas' | 'reportes' = 'prospectos';
   savingPlantillas = false;
 
   // ── Plantillas de mensaje por giro ({empresa} se reemplaza con el nombre real) ──
@@ -68,6 +68,10 @@ export class ProspectosComponent implements OnInit {
   selectedItem:     any      = null;
   hasUnsavedChanges = false;
   loading           = false;
+
+  // ── Reportes ──────────────────────────────────────────────────────────────
+  reportesData: any[] = [];
+  loadingReportes = false;
 
   vendedores: { id: number; displayName: string }[] = [];
 
@@ -488,6 +492,86 @@ export class ProspectosComponent implements OnInit {
     if (!ts) return '';
     const d = ts.toDate ? ts.toDate() : new Date(ts);
     return d.toLocaleDateString('es-MX', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+  }
+
+  // ── Reportes ──────────────────────────────────────────────────────────────
+
+  cargarReportes() {
+    if (!this.idRoot || this.reportesData.length) return;
+    this.loadingReportes = true;
+    this.svc.getProspectosByCompany(this.idRoot).subscribe({
+      next: data => { this.reportesData = data; this.loadingReportes = false; },
+      error: () => { this.loadingReportes = false; },
+    });
+  }
+
+  get rTasaCierre() {
+    const g = this.reportesData.filter(p => p.estado === 'ganado').length;
+    const per = this.reportesData.filter(p => p.estado === 'perdido').length;
+    return (g + per) > 0 ? Math.round(g / (g + per) * 100) : 0;
+  }
+
+  get rSinActividad7() {
+    const limite = Date.now() - 7 * 86_400_000;
+    return this.reportesData
+      .filter(p => !['ganado', 'perdido'].includes(p.estado))
+      .filter(p => {
+        const ts = p.fechaUltimaInteraccion;
+        if (!ts) return true;
+        const ms = ts?.toDate ? ts.toDate().getTime() : new Date(ts).getTime();
+        return ms < limite;
+      }).length;
+  }
+
+  get rPromInteracciones() {
+    if (!this.reportesData.length) return 0;
+    return Math.round(this.reportesData.reduce((a, p) => a + (p.countInteracciones ?? 0), 0) / this.reportesData.length);
+  }
+
+  get rRankingVendedores() {
+    const map = new Map<string, { ganados: number; total: number; perdidos: number }>();
+    this.reportesData.forEach(p => {
+      const v = p.nombreVendedorActual || 'Sin asignar';
+      if (!map.has(v)) map.set(v, { ganados: 0, total: 0, perdidos: 0 });
+      const e = map.get(v)!;
+      e.total++;
+      if (p.estado === 'ganado')  e.ganados++;
+      if (p.estado === 'perdido') e.perdidos++;
+    });
+    return [...map.entries()]
+      .map(([nombre, d]) => ({
+        nombre, total: d.total, ganados: d.ganados, perdidos: d.perdidos,
+        tasa: (d.ganados + d.perdidos) > 0 ? Math.round(d.ganados / (d.ganados + d.perdidos) * 100) : 0,
+      }))
+      .sort((a, b) => b.ganados - a.ganados).slice(0, 8);
+  }
+
+  get rPorGiro() {
+    const map = new Map<string, number>();
+    this.reportesData.forEach(p => map.set(p.giro || 'Sin giro', (map.get(p.giro || 'Sin giro') ?? 0) + 1));
+    const total = this.reportesData.length || 1;
+    return [...map.entries()].sort((a, b) => b[1] - a[1])
+      .map(([giro, count]) => ({ giro, count, pct: Math.round(count / total * 100) }));
+  }
+
+  get rScoreDistrib() {
+    const total = this.reportesData.length || 1;
+    const hot  = this.reportesData.filter(p => calcularScore(p) >= 70).length;
+    const warm = this.reportesData.filter(p => { const s = calcularScore(p); return s >= 40 && s < 70; }).length;
+    const cold = this.reportesData.filter(p => calcularScore(p) < 40).length;
+    return [
+      { label: '🔥 Hot',  count: hot,  pct: Math.round(hot  / total * 100), color: 'danger'  },
+      { label: '👍 Warm', count: warm, pct: Math.round(warm / total * 100), color: 'warning' },
+      { label: '❄️ Cold', count: cold, pct: Math.round(cold / total * 100), color: 'info'    },
+    ];
+  }
+
+  get rConversionFunnel() {
+    const total = this.reportesData.length || 1;
+    return ESTADOS_PROSPECTO.map(e => {
+      const count = this.reportesData.filter(p => p.estado === e.value).length;
+      return { ...e, count, pct: Math.round(count / total * 100) };
+    });
   }
 
   // ── WhatsApp ──────────────────────────────────────────────────────────────
