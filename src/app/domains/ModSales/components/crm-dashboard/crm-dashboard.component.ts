@@ -39,8 +39,9 @@ export class CrmDashboardComponent implements OnInit {
   conteoPorEtapa: Record<string, number> = {};
 
   // Seguimientos vencidos hoy
-  vencidosHoy: any[] = [];
-  demosHoy:    any[] = [];
+  vencidosHoy:   any[] = [];
+  demosHoy:      any[] = [];
+  proximos7dias: any[] = [];
 
   constructor() {
     effect(() => {
@@ -106,6 +107,17 @@ export class CrmDashboardComponent implements OnInit {
 
     // KPI: En negociación
     const enNegociacion = prospectos.filter(p => p.estado === 'negociacion').length;
+
+    // Próximos 7 días con seguimiento
+    const en7dias = new Date(hoy); en7dias.setDate(en7dias.getDate() + 7);
+    this.proximos7dias = prospectos.filter(p => {
+      const f = toDate(p.fechaProximoSeguimiento);
+      return f && f >= manana && f <= en7dias;
+    }).sort((a, b) => {
+      const fa = toDate(a.fechaProximoSeguimiento);
+      const fb = toDate(b.fechaProximoSeguimiento);
+      return (fa?.getTime() ?? 0) - (fb?.getTime() ?? 0);
+    });
 
     this.kpis = [
       {

@@ -69,6 +69,15 @@ export class ProspectosComponent implements OnInit {
   hasUnsavedChanges = false;
   loading           = false;
 
+  // ── Stats Bar ─────────────────────────────────────────────────────────────
+
+  get statActivos()     { return this.rowData.filter(p => p.activo !== false && !['ganado','perdido'].includes(p.estado)).length; }
+  get statGanados()     { return this.rowData.filter(p => p.estado === 'ganado').length; }
+  get statNegociacion() { return this.rowData.filter(p => p.estado === 'negociacion').length; }
+  get statCotizEnv()    { return this.rowData.filter(p => p.estado === 'cotizacion_enviada').length; }
+  get statHot()         { return this.rowData.filter(p => !['ganado','perdido'].includes(p.estado) && calcularScore(p) >= 70).length; }
+  get statSinFecha()    { return this.rowData.filter(p => p.activo !== false && !['ganado','perdido'].includes(p.estado) && !p.fechaProximoSeguimiento).length; }
+
   // ── Alertas de Inactividad ────────────────────────────────────────────────
 
   private diasSinContacto(p: any): number {

@@ -61,6 +61,34 @@
     </aside>
 
     <main class="sales-mod-main sales-mod-reveal-delay-2">
+
+      <!-- Stats Bar -->
+      <div class="d-flex flex-wrap gap-2 px-2 pt-2 pb-1" *ngIf="!loading && rowData.length > 0">
+        <span class="badge rounded-pill bg-primary px-3 py-2">
+          <i class="bi bi-people-fill me-1"></i>{{ statActivos }} activos
+        </span>
+        <span class="badge rounded-pill bg-success px-3 py-2">
+          🏆 {{ statGanados }} ganados
+        </span>
+        <span class="badge rounded-pill bg-danger px-3 py-2" *ngIf="statHot > 0">
+          🔥 {{ statHot }} Hot
+        </span>
+        <span class="badge rounded-pill bg-warning text-dark px-3 py-2" *ngIf="statCotizEnv > 0">
+          📄 {{ statCotizEnv }} cotiz. enviadas
+        </span>
+        <span class="badge rounded-pill px-3 py-2 text-white" *ngIf="statNegociacion > 0"
+              style="background:#7b2d8b">
+          🤝 {{ statNegociacion }} en negociación
+        </span>
+        <span class="badge rounded-pill bg-danger px-3 py-2" *ngIf="totalAlertas > 0"
+              (click)="activeTab='alertas'" style="cursor:pointer" title="Ver alertas">
+          <i class="bi bi-bell-fill me-1"></i>{{ totalAlertas }} alertas
+        </span>
+        <span class="badge rounded-pill bg-secondary px-3 py-2" *ngIf="statSinFecha > 0">
+          <i class="bi bi-calendar-x me-1"></i>{{ statSinFecha }} sin fecha
+        </span>
+      </div>
+
       <div class="text-center py-5" *ngIf="loading">
         <div class="spinner-border spinner-border-sm text-primary"></div>
         <span class="ms-2 text-muted small">Cargando prospectos...</span>

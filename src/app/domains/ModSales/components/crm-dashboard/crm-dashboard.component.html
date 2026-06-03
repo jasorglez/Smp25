@@ -43,7 +43,7 @@
       <div class="row g-3">
 
         <!-- Mini Funnel -->
-        <div class="col-md-4">
+        <div class="col-md-3">
           <div class="card shadow-sm h-100">
             <div class="card-header py-2 fw-bold">
               <i class="bi bi-funnel me-1"></i> Embudo de Ventas
@@ -65,7 +65,7 @@
         </div>
 
         <!-- Seguimientos vencidos -->
-        <div class="col-md-4">
+        <div class="col-md-3">
           <div class="card shadow-sm h-100 border-danger">
             <div class="card-header py-2 fw-bold text-danger">
               <i class="bi bi-alarm me-1"></i> Seguimientos Vencidos
@@ -90,7 +90,7 @@
         </div>
 
         <!-- Demos hoy -->
-        <div class="col-md-4">
+        <div class="col-md-3">
           <div class="card shadow-sm h-100 border-warning">
             <div class="card-header py-2 fw-bold text-warning">
               <i class="bi bi-camera-video me-1"></i> Demos Hoy
@@ -105,6 +105,31 @@
                      class="list-group-item py-2 px-3">
                   <div class="fw-semibold">{{ p.empresa || p.nombre }}</div>
                   <small class="text-muted">{{ p.nombreVendedorActual }}</small>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Próximos 7 días -->
+        <div class="col-md-3">
+          <div class="card shadow-sm h-100 border-info">
+            <div class="card-header py-2 fw-bold text-info">
+              <i class="bi bi-calendar-week me-1"></i> Próximos 7 días
+              <span class="badge bg-info ms-1">{{ proximos7dias.length }}</span>
+            </div>
+            <div class="card-body p-0">
+              <div *ngIf="proximos7dias.length === 0" class="p-3 text-muted text-center">
+                <i class="bi bi-calendar-check fs-3"></i><br>Sin seguimientos próximos
+              </div>
+              <div class="list-group list-group-flush">
+                <div *ngFor="let p of proximos7dias | slice:0:6"
+                     class="list-group-item py-2 px-3">
+                  <div class="fw-semibold text-truncate" style="max-width:180px">{{ p.empresa || p.nombre }}</div>
+                  <div class="d-flex justify-content-between">
+                    <small class="text-muted">{{ p.nombre }}</small>
+                    <small class="text-info fw-bold">{{ formatFecha(p.fechaProximoSeguimiento) }}</small>
+                  </div>
                 </div>
               </div>
             </div>
