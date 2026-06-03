@@ -204,6 +204,22 @@ export class GastosComponent {
         if (this.isPagarBloqueadoPorSecuencia(d)) {
           return `PAGO BLOQUEADO\nDebes pagar primero la entrada anterior de este artículo`;
         }
+        // Compra rápida sin proveedor
+        if (d.docType === 'CR' && (!d.proveedor || String(d.proveedor).trim() === '')) {
+          return `PAGO BLOQUEADO\nCaptura el proveedor antes de pagar`;
+        }
+        // Compra rápida sin precio unitario
+        if (d.docType === 'CR' && !(Number(d.precioUnitario) > 0)) {
+          return `PAGO BLOQUEADO\nCaptura el precio unitario antes de pagar`;
+        }
+        // Compra rápida con cambios sin guardar
+        if (d.docType === 'CR' && d.__modified === true) {
+          return `PAGO BLOQUEADO\nGuarda los cambios antes de pagar`;
+        }
+        // Anticipo requerido pero NO registrado → bloquear hasta registrarlo en el grid de OCs.
+        if (d.calculoAnticipo === true && d.anticipoPagado !== true) {
+          return `PAGO BLOQUEADO\nNo has registrado el anticipo.\nRegístralo para poder continuar.`;
+        }
         // Crédito → botón Crédito
         if (d.calculoAnticipo === false && Number(d.condicionCantidad) > 0 && d.credito !== true) {
           const dias = Number(d.condicionCantidad) || 0;
@@ -230,7 +246,15 @@ export class GastosComponent {
         const pagarBloqueadoVenc = yaCredito && !!vencDate && hoy < vencDate;
         // Bloqueo secuencial: si existe una entrada anterior (misma OC + mismo artículo) aún pendiente.
         const pagarBloqueadoSeq = this.isPagarBloqueadoPorSecuencia(p.data);
-        const pagarBloqueado = pagarBloqueadoVenc || pagarBloqueadoSeq;
+        // Compra rápida sin precio unitario o sin proveedor capturado → no se puede pagar.
+        const esCR = p.data?.docType === 'CR';
+        const pagarBloqueadoPrecio = esCR && !(Number(p.data?.precioUnitario) > 0);
+        const pagarBloqueadoProv = esCR && (!p.data?.proveedor || String(p.data?.proveedor).trim() === '');
+        // Cambios sin guardar en la fila → debe guardar antes de pagar.
+        const pagarBloqueadoModif = esCR && p.data?.__modified === true;
+        // Anticipo requerido pero no registrado (aplica a cualquier docType).
+        const pagarBloqueadoAnticipo = p.data?.calculoAnticipo === true && p.data?.anticipoPagado !== true;
+        const pagarBloqueado = pagarBloqueadoVenc || pagarBloqueadoSeq || pagarBloqueadoPrecio || pagarBloqueadoProv || pagarBloqueadoModif || pagarBloqueadoAnticipo;
         const btnPagar = pagarBloqueado
           ? `<button class="gx-pagar" disabled style="${ghost}color:#bbb;cursor:not-allowed;opacity:0.55;">Pagar</button>`
           : `<button class="gx-pagar" style="${ghost}color:#2e7d32;cursor:pointer;">Pagar</button>`;
@@ -283,7 +307,8 @@ export class GastosComponent {
           row.valorPago = (Number(row.precioUnitario) || 0) * (Number(row.cantidad) || 0);
         }
         (row as any).__modified = true;
-        if (field === 'masIva' || field === 'precioUnitario') {
+        // Refrescar la fila para reevaluar el bloqueo del botón Pagar (precio/proveedor en CR).
+        if (field === 'masIva' || field === 'precioUnitario' || field === 'proveedor') {
           event.api.refreshCells({ rowNodes: [event.node], force: true });
         }
       }
@@ -541,6 +566,19 @@ export class GastosComponent {
       alerts.basicAlert('Falta proveedor', 'Captura el proveedor antes de pagar esta compra rápida.', 'warning');
       return;
     }
+    if (row.docType === 'CR' && !(Number(row.precioUnitario) > 0)) {
+      alerts.basicAlert('Falta precio unitario', 'Captura el precio unitario antes de pagar esta compra rápida.', 'warning');
+      return;
+    }
+    if (row.docType === 'CR' && (row as any).__modified === true) {
+      alerts.basicAlert('Guarda primero', 'Guarda los cambios antes de pagar esta compra rápida.', 'warning');
+      return;
+    }
+    // Anticipo requerido pero NO registrado → bloquear hasta registrarlo en el grid de OCs.
+    if (row.calculoAnticipo === true && row.anticipoPagado !== true) {
+      alerts.basicAlert('Anticipo no registrado', 'No has registrado el anticipo, registra el anticipo para poder continuar.', 'warning');
+      return;
+    }
 
     // Bloque ANTICIPO: si la OC tiene anticipo pagado con saldo disponible, aplicarlo a esta entrada.
     const tieneAnticipo = row.calculoAnticipo === true && row.anticipoPagado === true && Number(row.anticipoSaldo) > 0;
@@ -704,6 +742,8 @@ export class GastosComponent {
       );
       modificadas.forEach(r => { (r as any).__modified = false; (r as any).__venceModified = false; });
       this.hasUnsavedCaptura = false;
+      // Refrescar para reevaluar el bloqueo del botón Pagar ahora que ya no hay cambios pendientes.
+      this.capturaGridApi?.refreshCells({ force: true });
       alerts.reqSuccessToast('Guardado', `${modificadas.length} fila(s) guardada(s).`);
     } catch (err) {
       console.error('Error guardando cambios de captura:', err);

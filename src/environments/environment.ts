@@ -73,5 +73,5 @@ export const environment = {
 
   urlRefreshToken: 'https://securetoken.googleapis.com/v1/token?key=AIzaSyDxCBGKk8nT09hdW85-PyOkhw5_JPZLF1A',
 
-  version: '2.52.330 (3 Junio 2026) - Badge NUPNPN soporta Todas las sucursales en sidebar'
+  version: '2.52.339 (3 Junio 2026) - Tooltip anticipo no registrado en 2 lineas para que no se corte'
 };

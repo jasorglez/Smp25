@@ -101,6 +101,13 @@ export class CompraRapidaDetalleComponent implements OnDestroy {
     },
     { field: 'quantity', headerName: 'Cantidad Requerida', width: 160, type: 'numericColumn' },
     {
+      field: 'price', headerName: 'P. Unitario', width: 130, type: 'numericColumn',
+      // Precio unitario capturado al pagar la Compra Rápida en la Hoja de Gastos.
+      valueFormatter: (p: any) => (p.value != null && p.value !== '' && Number(p.value) > 0)
+        ? Number(p.value).toLocaleString('es-MX', { style: 'currency', currency: 'MXN' })
+        : '',
+    },
+    {
       field: 'cantidadEntradaAlmacen', headerName: 'Cantidad entrada almacén', width: 180, type: 'numericColumn',
       valueFormatter: (p: any) => (p.value != null && p.value !== '') ? Number(p.value).toLocaleString('es-MX') : '',
     },

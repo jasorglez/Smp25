@@ -60,6 +60,7 @@ export class CrProveedorEditorComponent implements ICellEditorAngularComp, After
   providers: any[] = [];
   selectedId: number | null = null;
   private selectedName: string | null = null;
+  private isValidating = false; // bloquea cancelEdit durante validación async (ej. SweetAlert fuera del editor)
   private params!: ICellEditorParams & {
     providers?: any[];
     inactiveProviders?: { id: number; name: string; raw?: any }[];
@@ -104,6 +105,7 @@ export class CrProveedorEditorComponent implements ICellEditorAngularComp, After
 
   private onOutsideMouseDown(e: MouseEvent): void {
     if (this.overlayEl) return;                       // el overlay de nuevo proveedor maneja sus clicks
+    if (this.isValidating) return;                    // validación async en curso (SweetAlert fuera del editor): no cancelar
     const target = e.target as Node;
     if (this.elRef.nativeElement.contains(target)) return;  // click dentro del editor/dropdown
     // Evita la condición de carrera con singleClickEdit: si el click es en la misma celda,
@@ -128,16 +130,26 @@ export class CrProveedorEditorComponent implements ICellEditorAngularComp, After
     }
     const found = this.providers.find(p => p.id === id);
     if (!found) return;
-    // Ejecutar las validaciones (Sin Código Externo + Sucursal) antes de cerrar.
+    // Setear selectedName de inmediato para que getValue() devuelva el valor
+    // aunque stopEditing() sea llamado por AG Grid antes de que el async complete.
+    this.selectedName = found.description ?? '';
     void this.runValidationAndClose(found.id, found.description ?? '');
   }
 
   private async runValidationAndClose(id: number, name: string): Promise<void> {
     if (this.params.onProviderSelected) {
-      const result = await this.params.onProviderSelected(id, name);
+      // Bloquea cancelEdit mientras la validación (que abre SweetAlerts fuera del editor) está en curso.
+      this.isValidating = true;
+      let result: string | null;
+      try {
+        result = await this.params.onProviderSelected(id, name);
+      } finally {
+        this.isValidating = false;
+      }
       if (result === null) {
         // Usuario canceló la validación → revertir selección visual y mantener editor abierto.
         this.selectedId = null;
+        this.selectedName = null;  // limpiar para no commitear si stopEditing se llama externamente
         setTimeout(() => this.ngSelect?.open(), 50);
         return;
       }

@@ -1119,6 +1119,20 @@ export class ComparacionPreciosComponent implements OnInit, OnDestroy {
 
       this.gridApi?.refreshCells({ rowNodes: [event.node], force: true });
 
+      // Auto-rellenar Cantidad x Prov. con la Cantidad Requerida cuando el artículo tiene UN SOLO
+      // proveedor y el tipo OC es positivo limitado (NO aplica a "SIN LIMITE"). Sobrescribe el valor previo.
+      if (this.POSITIVE_LIMITED_TYPES.includes(event.newValue)) {
+        const articuloItemId = Number(event.data?.articuloItemId ?? 0);
+        const proveedoresDelArticulo = this.rowData
+          .filter(r => Number(r.articuloItemId ?? 0) === articuloItemId).length;
+        if (proveedoresDelArticulo === 1) {
+          event.data.cantidadConceptualizada = Number(event.data?.cantidadComprar) || 0;
+          event.data.costoTotal = this.lineTotal(event.data.costoUnitario, event.data.cantidadConceptualizada);
+          this.gridApi?.refreshCells({ rowNodes: [event.node], force: true });
+          this.updatePinnedBottomRow();
+        }
+      }
+
       // Cuando tipoOc cambia a un tipo positivo limitado, verificar que cantidadConceptualizada >= compraMinima
       if (this.POSITIVE_LIMITED_TYPES.includes(event.newValue)) {
         const compraMin = Number(event.data?.compraMinima) || 0;
