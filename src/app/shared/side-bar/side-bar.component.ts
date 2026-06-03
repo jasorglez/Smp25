@@ -10,6 +10,7 @@ import { CompanysService } from 'app/services/companys.service';
 import { MenuService } from 'app/services/menu.service';
 import { RootService } from 'app/services/root.service';
 import { SignalsService } from 'app/services/signals.service';
+import { OcAndReqsService } from 'app/services/ocandreqs.service';
 import { TrackingService } from 'app/services/tracking.service';
 import { TraductorService } from 'app/services/traductor.service';
 import { UsersService } from 'app/services/users.service';
@@ -72,7 +73,8 @@ export class SideBarComponent {
     private branchService: BranchsService,
     private userService: UsersService,
     private signalsService: SignalsService,
-    private menuService: MenuService
+    private menuService: MenuService,
+    private ocAndReqsService: OcAndReqsService
   ) {
     this.guardUiTick = this.signalsService.guardRefreshTick;
     this.hasNupnpn = () => this.signalsService.getHasNupnpnCompraRapida()();
@@ -83,6 +85,15 @@ export class SideBarComponent {
         await this.getpermissionxBranchs(parseInt(this.selectedRoot, 10));
         setTimeout(() => this.signalsService.resetSignalBranchList());
       }
+    });
+
+    // Verificar NUPNPN después de que el auth esté confirmado (guardRefreshTick > 0)
+    // y la sucursal esté seleccionada. Ambas condiciones garantizan que el token es válido.
+    effect(() => {
+      const tick    = this.signalsService.guardRefreshTick();
+      const branchId = this.signalsService.getBranchSelectedBySidebar()();
+      if (tick === 0 || branchId == null || branchId === 0) return;
+      this.checkNupnpnBadge(branchId);
     });
   }
 
@@ -159,6 +170,40 @@ export class SideBarComponent {
     }
 
     await this.reloadGuardForSelectedBranch();
+
+    // Auth confirmado: verificar artículos NUPNPN para el badge del sidebar
+    this.checkNupnpnBadge(Number(chosen.id));
+  }
+
+  private async checkNupnpnBadge(branchId: number): Promise<void> {
+    if (!branchId) {
+      this.signalsService.setHasNupnpnCompraRapida(false);
+      return;
+    }
+
+    // Determinar qué sucursales consultar:
+    //  - id positivo → solo esa sucursal
+    //  - id negativo ("Todas las sucursales") → todas las sucursales reales (id positivo)
+    const branchIds = branchId > 0
+      ? [branchId]
+      : this.branchData.filter(b => b.id > 0).map(b => b.id);
+
+    // branchData aún no cargado (carrera de init): no sobrescribir el valor persistido.
+    if (branchIds.length === 0) return;
+
+    try {
+      const results = await Promise.all(
+        branchIds.map(id =>
+          lastValueFrom(this.ocAndReqsService.getCompraRapidaItems(id)).catch(() => [] as any[])
+        )
+      );
+      const hasNupnpn = results.some((items: any[]) =>
+        (items || []).some((it: any) => String(it.numArticle || '').toUpperCase().startsWith('NUPNPN'))
+      );
+      this.signalsService.setHasNupnpnCompraRapida(hasNupnpn);
+    } catch {
+      // No alterar el badge si falla la consulta
+    }
   }
 
   trackById(_index: number, item: { id: number }): number {
@@ -390,6 +435,7 @@ export class SideBarComponent {
       }
 
       await this.reloadGuardForSelectedBranch();
+      this.checkNupnpnBadge(Number(this.selectedBranchId));
     }
   }
 

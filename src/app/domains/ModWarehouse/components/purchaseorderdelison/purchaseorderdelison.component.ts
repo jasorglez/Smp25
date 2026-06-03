@@ -101,9 +101,11 @@ export class PurchaseOrderDelisonComponent implements OnInit, OnDestroy {
       this.entregasPendingService.hasPending$,
     ]).subscribe(([condiciones, entregas]) => (this.hasUnsavedChanges = condiciones || entregas));
 
-    // Recalcular badge NUPNPN cuando el detalle guarda una clasificación
+    // Recalcular badge NUPNPN cuando el detalle guarda una clasificación.
+    // Se omite el disparo inicial (trigger === 0) para no resetear a false antes de cargar datos.
     effect(() => {
-      this.signalsService.getNupnpnRecheckTrigger()();
+      const trigger = this.signalsService.getNupnpnRecheckTrigger()();
+      if (trigger === 0) return;
       const hasNupnpn = this.compraRapidaRowData.some(row =>
         (row.items || []).some((it: any) => String(it.numArticle || '').toUpperCase().startsWith('NUPNPN'))
       );

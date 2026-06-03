@@ -996,10 +996,15 @@ getMasterUpdateTrigger() {
     return this.ocCreatedNotification;
   }
 
-  private hasNupnpnCompraRapida = signal<boolean>(false);
+  private hasNupnpnCompraRapida = signal<boolean>(
+    typeof localStorage !== 'undefined' && localStorage.getItem('nupnpn_badge') === 'true'
+  );
 
   setHasNupnpnCompraRapida(value: boolean) {
     this.hasNupnpnCompraRapida.set(value);
+    if (typeof localStorage !== 'undefined') {
+      localStorage.setItem('nupnpn_badge', String(value));
+    }
   }
 
   getHasNupnpnCompraRapida() {
