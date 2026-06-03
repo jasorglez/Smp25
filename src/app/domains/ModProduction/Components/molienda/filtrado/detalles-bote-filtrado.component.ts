@@ -109,134 +109,170 @@ interface ModalEntry {
             </span>
           </div>
 
-          <!-- Grid de tarjetas de botes -->
-          <div style="overflow-y:auto;flex:1;padding:16px;">
-            <!-- Botón regresar (solo modo bloqueado con bote abierto) -->
-            <div *ngIf="lockedViewMode && selectedEntry" class="mb-3">
-              <button class="btn btn-sm btn-outline-secondary" (click)="selectLockedEntry(selectedEntry!)">
-                <i class="bi bi-arrow-left me-1"></i> Regresar
-              </button>
-            </div>
-            <div *ngIf="!modalEntries.length" class="text-center text-muted py-4" style="font-size:0.85rem;">
-              Sin botes asignados
-            </div>
-            <div style="display:flex;flex-wrap:wrap;gap:0;justify-content:flex-start;">
-              <ng-container *ngFor="let entry of modalEntries">
-                <div class="bote-card"
-                     [class.bote-card--hidden]="selectedEntry && selectedEntry !== entry"
-                     [class.bote-card--full]="fillPct(entry.espacioUtilizadoExterno + baseMine(entry), entry.opt.volumen) >= 100"
-                     [class.bote-card--empty]="baseMine(entry) === 0 && entry.espacioUtilizadoExterno === 0"
-                     [class.bote-card--partial]="baseMine(entry) > 0 || entry.espacioUtilizadoExterno > 0"
-                     [class.bote-card--selected]="!lockedViewMode && selectedEntry === entry"
-                     (click)="lockedViewMode ? selectLockedEntry(entry) : (selectedEntry ? null : selectEntry(entry))">
+          <!-- Área central: botes + panel historial -->
+          <div style="display:flex;flex:1;overflow:hidden;gap:0;">
 
-                  <!-- Barril con nivel de llenado -->
-                  <div class="bote-barrel"
-                       [class.bote-barrel--full]="fillPct(entry.espacioUtilizadoExterno + baseMine(entry), entry.opt.volumen) >= 100"
-                       [class.bote-barrel--empty]="baseMine(entry) === 0 && entry.espacioUtilizadoExterno === 0"
-                       [class.bote-barrel--partial]="baseMine(entry) > 0 || entry.espacioUtilizadoExterno > 0">
-                    <!-- Nivel: externo (otras filas) -->
-                    <div class="bote-fill bote-fill--external"
-                         [class.bote-fill--external-locked]="lockedViewMode"
-                         [style.height.%]="fillPct(entry.espacioUtilizadoExterno, entry.opt.volumen)"
-                         [class.bote-fill--red]="!lockedViewMode && fillPct(entry.espacioUtilizadoExterno + baseMine(entry), entry.opt.volumen) >= 100">
-                    </div>
-                    <!-- Nivel: ya asignado de esta fila -->
-                    <div class="bote-fill bote-fill--mine"
-                         [style.height.%]="fillPct(baseMine(entry), entry.opt.volumen)"
-                         [style.bottom.%]="fillPct(entry.espacioUtilizadoExterno, entry.opt.volumen)"
-                         [class.bote-fill--red]="fillPct(entry.espacioUtilizadoExterno + baseMine(entry), entry.opt.volumen) >= 100">
-                    </div>
-                    <!-- Nivel: nueva adición que se está escribiendo (solo en modo edición) -->
-                    <div *ngIf="selectedEntry === entry"
-                         class="bote-fill bote-fill--new"
-                         [style.height.%]="fillPct(+(entry.inputValue ?? 0), entry.opt.volumen)"
-                         [style.bottom.%]="fillPct(entry.espacioUtilizadoExterno + baseMine(entry), entry.opt.volumen)">
-                    </div>
-                    <!-- Icono centrado -->
-                    <i class="bi bi-bucket-fill bote-icon"
-                       [style.color]="baseMine(entry) === 0 && entry.espacioUtilizadoExterno === 0 ? '#0a6640' : '#843f00'"></i>
-                    <!-- Disponible / Asignado -->
-                    <span class="bote-pct"
-                          [style.color]="baseMine(entry) === 0 && entry.espacioUtilizadoExterno === 0 ? '#0a6640' : '#843f00'">
-                      {{ lockedViewMode
-                           ? ((entry.asignacion?.cantidad ?? 0) | number:'1.0-0') + ' L'
-                           : (disponible(entry) | number:'1.0-0') + ' L' }}
-                    </span>
-                  </div>
+            <!-- Izquierda: tarjetas de botes (se encoge al bote seleccionado cuando hay uno) -->
+            <div style="overflow-y:auto;padding:16px;"
+                 [style.flex]="selectedEntry ? '0 0 auto' : '1 1 auto'">
+              <div *ngIf="!modalEntries.length" class="text-center text-muted py-4" style="font-size:0.85rem;">
+                Sin botes asignados
+              </div>
+              <div style="display:flex;flex-wrap:wrap;gap:0;justify-content:flex-start;">
+                <ng-container *ngFor="let entry of modalEntries">
+                  <div class="bote-card"
+                       [class.bote-card--hidden]="selectedEntry && selectedEntry !== entry"
+                       [class.bote-card--full]="fillPct(entry.espacioUtilizadoExterno + baseMine(entry), entry.opt.volumen) >= 100"
+                       [class.bote-card--empty]="baseMine(entry) === 0 && entry.espacioUtilizadoExterno === 0"
+                       [class.bote-card--partial]="(baseMine(entry) > 0 || entry.espacioUtilizadoExterno > 0) && fillPct(entry.espacioUtilizadoExterno + baseMine(entry), entry.opt.volumen) < 100"
+                       [class.bote-card--selected]="!lockedViewMode && selectedEntry === entry"
+                       (click)="lockedViewMode ? selectLockedEntry(entry) : (selectedEntry ? null : selectEntry(entry))">
 
-                  <!-- Etiqueta -->
-                  <div class="bote-label" [title]="entry.opt.description">
-                    {{ entry.opt.description }}
-                  </div>
-
-
-                  <!-- Modo edición: input + botones -->
-                  <ng-container *ngIf="!lockedViewMode && selectedEntry === entry">
-                    <input
-                      type="number"
-                      class="form-control form-control-sm text-center bote-input"
-                      [class.is-invalid]="isInputInvalid(entry)"
-                      [class.bote-input--active]="(entry.inputValue ?? 0) > 0"
-                      [(ngModel)]="entry.inputValue"
-                      [min]="0"
-                      [max]="maxInput(entry)"
-                      [disabled]="(entry.lleno && entry.asignacion === null) || modalLocked"
-                      placeholder="0 L"
-                      (ngModelChange)="onInputChange()"
-                      (click)="$event.stopPropagation()">
-                    <!-- Comentario opcional -->
-                    <input type="text" class="form-control form-control-sm bote-input mt-1"
-                           [(ngModel)]="entryComentario"
-                           placeholder="Comentario (opcional)"
-                           (click)="$event.stopPropagation()" maxlength="500">
-                    <div class="d-flex gap-1 mt-1">
-                      <button class="btn btn-sm btn-success flex-fill"
-                              (click)="confirmEntry(); $event.stopPropagation()"
-                              [disabled]="isInputInvalid(entry)">
-                        <i class="bi bi-check-lg"></i>
-                      </button>
-                      <button class="btn btn-sm btn-outline-secondary flex-fill" (click)="cancelEntry(); $event.stopPropagation()">
-                        <i class="bi bi-x-lg"></i>
-                      </button>
-                    </div>
-                    <!-- Historial en modo edición -->
-                    <div *ngIf="selectedEntryHistorial.length" class="bote-historial" (click)="$event.stopPropagation()">
-                      <div class="bote-historial__title"><i class="bi bi-clock-history me-1"></i>Historial</div>
-                      <div *ngFor="let h of selectedEntryHistorial" class="bote-historial__row">
-                        <span class="bote-historial__fecha">{{ h.fecha | date:'dd/MM/yy HH:mm' }}</span>
-                        <span class="bote-historial__user" [title]="h.usuario ?? ''">{{ (h.usuario ?? '') | slice:0:10 }}</span>
-                        <span class="bote-historial__cant">+{{ h.cantidad | number:'1.0-0' }} L</span>
-                        <span *ngIf="h.comentario" class="bote-historial__comment"
-                              [title]="h.comentario">
-                          <i class="bi bi-chat-fill"></i>
-                        </span>
+                    <!-- Barril con nivel de llenado -->
+                    <div class="bote-barrel"
+                         [class.bote-barrel--full]="fillPct(entry.espacioUtilizadoExterno + baseMine(entry), entry.opt.volumen) >= 100"
+                         [class.bote-barrel--empty]="baseMine(entry) === 0 && entry.espacioUtilizadoExterno === 0"
+                         [class.bote-barrel--partial]="(baseMine(entry) > 0 || entry.espacioUtilizadoExterno > 0) && fillPct(entry.espacioUtilizadoExterno + baseMine(entry), entry.opt.volumen) < 100">
+                      <!-- Nivel: externo (otras filas) -->
+                      <div class="bote-fill bote-fill--external"
+                           [class.bote-fill--external-locked]="lockedViewMode"
+                           [style.height.%]="fillPct(entry.espacioUtilizadoExterno, entry.opt.volumen)"
+                           [class.bote-fill--red]="!lockedViewMode && fillPct(entry.espacioUtilizadoExterno + baseMine(entry), entry.opt.volumen) >= 100">
                       </div>
-                    </div>
-                  </ng-container>
-
-                  <!-- Modo bloqueado: solo historial al seleccionar -->
-                  <ng-container *ngIf="lockedViewMode && selectedEntry === entry">
-                    <div *ngIf="selectedEntryHistorial.length; else noHistorial" class="bote-historial" (click)="$event.stopPropagation()">
-                      <div class="bote-historial__title"><i class="bi bi-clock-history me-1"></i>Historial</div>
-                      <div *ngFor="let h of selectedEntryHistorial" class="bote-historial__row">
-                        <span class="bote-historial__fecha">{{ h.fecha | date:'dd/MM/yy HH:mm' }}</span>
-                        <span class="bote-historial__user" [title]="h.usuario ?? ''">{{ (h.usuario ?? '') | slice:0:10 }}</span>
-                        <span class="bote-historial__cant">+{{ h.cantidad | number:'1.0-0' }} L</span>
-                        <span *ngIf="h.comentario" class="bote-historial__comment"
-                              [title]="h.comentario">
-                          <i class="bi bi-chat-fill"></i>
-                        </span>
+                      <!-- Nivel: ya asignado de esta fila -->
+                      <div class="bote-fill bote-fill--mine"
+                           [style.height.%]="fillPct(baseMine(entry), entry.opt.volumen)"
+                           [style.bottom.%]="fillPct(entry.espacioUtilizadoExterno, entry.opt.volumen)"
+                           [class.bote-fill--red]="fillPct(entry.espacioUtilizadoExterno + baseMine(entry), entry.opt.volumen) >= 100">
                       </div>
+                      <!-- Nivel: nueva adición (solo modo edición) -->
+                      <div *ngIf="selectedEntry === entry"
+                           class="bote-fill bote-fill--new"
+                           [style.height.%]="fillPct(+(entry.inputValue ?? 0), entry.opt.volumen)"
+                           [style.bottom.%]="fillPct(entry.espacioUtilizadoExterno + baseMine(entry), entry.opt.volumen)">
+                      </div>
+                      <i class="bi bi-bucket-fill bote-icon"
+                         [style.color]="baseMine(entry) === 0 && entry.espacioUtilizadoExterno === 0 ? '#0a6640' : '#843f00'"></i>
+                      <span class="bote-pct"
+                            [style.color]="baseMine(entry) === 0 && entry.espacioUtilizadoExterno === 0 ? '#0a6640' : '#843f00'">
+                        {{ lockedViewMode
+                             ? ((entry.asignacion?.cantidad ?? 0) | number:'1.0-0') + ' L'
+                             : (disponible(entry) | number:'1.0-0') + ' L' }}
+                      </span>
                     </div>
-                    <ng-template #noHistorial>
-                      <span style="font-size:0.72rem; color:#adb5bd;">Sin registros</span>
-                    </ng-template>
-                  </ng-container>
 
-                </div>
+                    <!-- Etiqueta -->
+                    <div class="bote-label" [title]="entry.opt.description">
+                      {{ entry.opt.description }}
+                    </div>
+
+                    <!-- Modo edición: agregar o retirar -->
+                    <ng-container *ngIf="!lockedViewMode && selectedEntry === entry">
+
+                      <!-- Toggle Agregar / Retirar (solo si ya tiene jugo asignado) -->
+                      <div *ngIf="entry.asignacion !== null" class="d-flex gap-1 mt-1"
+                           (click)="$event.stopPropagation()">
+                        <button class="btn flex-fill"
+                                style="font-size:0.72rem;padding:2px 4px;"
+                                [class.btn-success]="!retiroMode"
+                                [class.btn-outline-success]="retiroMode"
+                                (click)="retiroMode = false; retiroValue = null; retiroComent = ''">
+                          <i class="bi bi-plus-lg"></i> Agregar
+                        </button>
+                        <button class="btn flex-fill"
+                                style="font-size:0.72rem;padding:2px 4px;"
+                                [class.btn-danger]="retiroMode"
+                                [class.btn-outline-danger]="!retiroMode"
+                                (click)="retiroMode = true; entry.inputValue = null">
+                          <i class="bi bi-dash-lg"></i> Retirar
+                        </button>
+                      </div>
+
+                      <!-- Formulario agregar -->
+                      <ng-container *ngIf="!retiroMode">
+                        <input
+                          type="number"
+                          class="form-control form-control-sm text-center bote-input mt-1"
+                          [class.is-invalid]="isInputInvalid(entry)"
+                          [class.bote-input--active]="(entry.inputValue ?? 0) > 0"
+                          [(ngModel)]="entry.inputValue"
+                          [min]="0"
+                          [max]="maxInput(entry)"
+                          [disabled]="(entry.lleno && entry.asignacion === null) || modalLocked"
+                          placeholder="0 L"
+                          (ngModelChange)="onInputChange()"
+                          (click)="$event.stopPropagation()">
+                        <input type="text" class="form-control form-control-sm bote-input mt-1"
+                               [(ngModel)]="entryComentario"
+                               placeholder="Comentario (opcional)"
+                               (click)="$event.stopPropagation()" maxlength="500">
+                        <div class="d-flex gap-1 mt-1">
+                          <button class="btn btn-sm btn-success flex-fill"
+                                  (click)="confirmEntry(); $event.stopPropagation()"
+                                  [disabled]="isInputInvalid(entry)">
+                            <i class="bi bi-check-lg"></i>
+                          </button>
+                          <button class="btn btn-sm btn-outline-secondary flex-fill"
+                                  (click)="cancelEntry(); $event.stopPropagation()">
+                            <i class="bi bi-x-lg"></i>
+                          </button>
+                        </div>
+                      </ng-container>
+
+                      <!-- Formulario retirar -->
+                      <ng-container *ngIf="retiroMode">
+                        <input
+                          type="number"
+                          class="form-control form-control-sm text-center bote-input mt-1"
+                          [(ngModel)]="retiroValue"
+                          [min]="1"
+                          [max]="entry.asignacion?.cantidad ?? 0"
+                          placeholder="Litros a retirar"
+                          (click)="$event.stopPropagation()">
+                        <input type="text" class="form-control form-control-sm bote-input mt-1"
+                               [(ngModel)]="retiroComent"
+                               placeholder="Motivo (requerido)"
+                               (click)="$event.stopPropagation()" maxlength="500">
+                        <div class="d-flex gap-1 mt-1">
+                          <button class="btn btn-sm btn-danger flex-fill"
+                                  (click)="confirmRetiro(entry); $event.stopPropagation()"
+                                  [disabled]="!retiroValue || !retiroComent.trim()">
+                            <i class="bi bi-check-lg"></i>
+                          </button>
+                          <button class="btn btn-sm btn-outline-secondary flex-fill"
+                                  (click)="cancelEntry(); $event.stopPropagation()">
+                            <i class="bi bi-x-lg"></i>
+                          </button>
+                        </div>
+                      </ng-container>
+
+                    </ng-container>
+
+                  </div>
+                </ng-container>
+              </div>
+            </div>
+
+            <!-- Derecha: panel historial — flex:1 llena todo el espacio restante -->
+            <div *ngIf="selectedEntry" class="historial-panel" style="flex:1;">
+              <div class="historial-panel__header">
+                <i class="bi bi-clock-history me-1"></i>
+                Historial — {{ selectedEntry.opt.description }}
+              </div>
+              <ng-container *ngIf="selectedEntryHistorial.length; else sinHistorial">
+                <ag-grid-angular
+                  class="ag-theme-quartz"
+                  [rowData]="selectedEntryHistorial"
+                  [columnDefs]="historialColDefs"
+                  [gridOptions]="historialGridOptions"
+                  style="width:100%; height:100%; flex:1; min-height:0;">
+                </ag-grid-angular>
               </ng-container>
+              <ng-template #sinHistorial>
+                <div class="historial-panel__empty">Sin registros</div>
+              </ng-template>
             </div>
+
           </div>
 
           <!-- Prompt de bloqueo (solo modo edición) -->
@@ -391,36 +427,34 @@ interface ModalEntry {
       background: #fff3e0;
     }
 
-    .bote-historial {
-      width: 100%;
-      background: #f8f9fa;
-      border: 1px solid #dee2e6;
-      border-radius: 6px;
-      padding: 5px 7px;
-      max-height: 120px;
-      overflow-y: auto;
-    }
-    .bote-historial__title {
-      font-size: 0.68rem;
-      font-weight: 700;
-      color: #6c757d;
-      text-transform: uppercase;
-      letter-spacing: 0.03em;
-      margin-bottom: 3px;
-    }
-    .bote-historial__row {
+    .historial-panel {
       display: flex;
-      justify-content: space-between;
-      font-size: 0.72rem;
-      color: #495057;
-      padding: 1px 0;
-      border-bottom: 1px solid #e9ecef;
+      flex-direction: column;
+      border-left: 1px solid #dee2e6;
+      background: #f8f9fa;
+      overflow: hidden;
+      min-width: 0;
     }
-    .bote-historial__row:last-child { border-bottom: none; }
-    .bote-historial__user { color: #6c757d; font-style: italic; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 70px; }
-    .bote-historial__cant { font-weight: 600; color: #198754; }
-    .bote-historial__comment { color: #0d6efd; cursor: help; margin-left: 2px; }
-    .bote-historial__comment:hover { color: #0a58ca; }
+    .historial-panel__header {
+      padding: 8px 12px;
+      font-size: 0.78rem;
+      font-weight: 600;
+      color: #495057;
+      border-bottom: 1px solid #dee2e6;
+      flex-shrink: 0;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .historial-panel__empty {
+      padding: 16px 12px;
+      font-size: 0.78rem;
+      color: #adb5bd;
+    }
+    .historial-panel ::ng-deep .ag-root-wrapper { border: none; }
+    .historial-panel ::ng-deep .ag-header { background: #f0f0f0; }
+    .historial-panel ::ng-deep .ag-cell { font-size: 0.72rem; padding: 0 6px; line-height: 18px; }
+    .historial-panel ::ng-deep .ag-header-cell-label { font-size: 0.68rem; }
   `]
 })
 export class DetallesBoteFiltradoComponent {
@@ -452,6 +486,9 @@ export class DetallesBoteFiltradoComponent {
   entryComentario: string = '';
   showLockPrompt = false;
   lockedViewMode = false;
+  retiroMode     = false;
+  retiroValue:   number | null = null;
+  retiroComent   = '';
 
   get totalInputModal(): number {
     return this.modalEntries.reduce((s, e) => {
@@ -461,6 +498,68 @@ export class DetallesBoteFiltradoComponent {
       return s + base;
     }, 0);
   }
+
+// ── Historial grid ────────────────────────────────────────────────────────
+
+  readonly historialColDefs: ColDef[] = [
+    {
+      field: 'fecha',
+      headerName: 'Fecha',
+      width: 120,
+      valueFormatter: (p: any) => {
+        if (!p.value) return '';
+        const d = new Date(p.value);
+        return `${String(d.getDate()).padStart(2,'0')}/${String(d.getMonth()+1).padStart(2,'0')}/${String(d.getFullYear()).slice(2)} ${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`;
+      },
+    },
+    {
+      field: 'usuario',
+      headerName: 'Usuario',
+      width: 140,
+    },
+    {
+      field: 'cantidad',
+      headerName: 'Litros',
+      width: 75,
+      type: 'numericColumn',
+      valueFormatter: (p: any) => {
+        if (p.value == null) return '';
+        const v = Number(p.value);
+        return v < 0 ? `−${Math.abs(v).toFixed(0)}` : `+${v.toFixed(0)}`;
+      },
+      cellStyle: (p: any) => ({
+        fontWeight: '600',
+        color: Number(p.value) < 0 ? '#dc3545' : '#198754',
+      }),
+    },
+    {
+      field: 'comentario',
+      headerName: 'Comentario',
+      flex: 1,
+      wrapText: true,
+      autoHeight: true,
+      cellStyle: {
+        'white-space': 'normal',
+        'word-break': 'break-word',
+        'line-height': '1.45',
+        'padding': '3px 8px',
+        'font-size': '0.72rem',
+        'color': '#495057',
+      },
+      cellRenderer: (p: any) => p.value
+        ? `<span>${String(p.value).replace(/</g, '&lt;')}</span>`
+        : `<span style="color:#ced4da;">—</span>`,
+    },
+  ];
+
+  readonly historialGridOptions: any = {
+    headerHeight: 22,
+    rowHeight: 22,
+    defaultColDef: { resizable: true, sortable: false },
+    suppressCellFocus: true,
+    suppressMovableColumns: true,
+    getRowHeight: (p: any) => p.data?.comentario ? undefined : 22,
+  };
 
 // ── Grid ──────────────────────────────────────────────────────────────────
 
@@ -676,9 +775,9 @@ export class DetallesBoteFiltradoComponent {
     this.modalValidationMsg = '';
     this.modalLocked    = row.locked;
     this.lockedViewMode = row.locked;
-    // En modo bloqueado solo mostramos botes con asignación
+    // En modo bloqueado solo mostramos botes con jugo efectivamente asignado
     if (row.locked) {
-      this.modalEntries = this.modalEntries.filter(e => e.asignacion !== null);
+      this.modalEntries = this.modalEntries.filter(e => e.asignacion !== null && (e.asignacion.cantidad ?? 0) > 0);
     }
     this.modalOpen = true;
   }
@@ -813,12 +912,89 @@ export class DetallesBoteFiltradoComponent {
     this.selectedEntryOriginalValue = null;
     this.selectedEntryHistorial = [];
     this.entryComentario = '';
+    this.retiroMode  = false;
+    this.retiroValue = null;
+    this.retiroComent = '';
     this.onInputChange();
+  }
+
+  async confirmRetiro(entry: ModalEntry) {
+    if (!entry.asignacion || !this.retiroValue || !this.retiroComent.trim() || !this.modalRow) return;
+
+    const amount       = Math.abs(Number(this.retiroValue));
+    const existingTotal = Number(entry.asignacion.cantidad) || 0;
+    const newTotal      = existingTotal - amount;
+
+    if (newTotal < 0) {
+      this.modalValidationMsg = `No puedes retirar más de ${existingTotal.toFixed(0)} L asignados.`;
+      return;
+    }
+    this.modalValidationMsg = '';
+    const usuario = this.signalsService.getDisplayName()() ?? '';
+
+    try {
+      await lastValueFrom(this.productionService.patchMoliendaBoteCantidad(entry.asignacion.id, newTotal));
+      entry.asignacion.cantidad = newTotal;
+
+      await lastValueFrom(this.productionService.createMoliendaBoteHistorial({
+        idMoliendaBote: entry.asignacion.id,
+        cantidad: -amount,          // negativo = retiro
+        usuario,
+        comentario: this.retiroComent.trim(),
+      }));
+
+      // Recargar historial del panel
+      this.selectedEntryHistorial = await lastValueFrom(
+        this.productionService.getMoliendaBoteHistorialByBote(entry.asignacion.id)
+      );
+
+      // Actualizar inputValue visual
+      entry.inputValue = newTotal > 0 ? newTotal : null;
+
+      // Recalcular bote en la fila
+      const b = this.modalRow.botes.find(b => b.id === entry.asignacion!.id);
+      if (b) b.cantidad = newTotal;
+      const volAsignado = this.modalRow.botes.reduce((s, b) => s + b.cantidad, 0);
+      this.modalRow.resta       = this.modalRow.jugo != null ? this.modalRow.jugo - volAsignado : null;
+      this.modalRow.boteDisplay = this.buildBoteDisplay(this.modalRow.botes);
+      if (this.gridApi && !this.gridApi.isDestroyed()) {
+        const node = this.gridApi.getRowNode(String(this.modalRow.id));
+        if (node) { node.setData({ ...this.modalRow }); this.gridApi.refreshCells({ rowNodes: [node], force: true }); }
+      }
+
+      // Salir del modo retiro pero mantener el bote seleccionado (para ver historial)
+      this.retiroMode   = false;
+      this.retiroValue  = null;
+      this.retiroComent = '';
+      this.selectedEntry = null;
+      this.selectedEntryOriginalValue = null;
+      this.onInputChange();
+    } catch (e) {
+      console.error('Error retirando jugo:', e);
+      this.modalValidationMsg = 'Error al retirar jugo.';
+    }
   }
 
   async confirmLock() {
     await this.onLockChange(true);
     this.showLockPrompt = false;
+
+    // Cancelar edición activa si la hay
+    if (this.selectedEntry) {
+      this.selectedEntry.inputValue = this.selectedEntryOriginalValue;
+      this.selectedEntry            = null;
+      this.selectedEntryOriginalValue = null;
+      this.selectedEntryHistorial   = [];
+      this.entryComentario          = '';
+      this.retiroMode               = false;
+      this.retiroValue              = null;
+      this.retiroComent             = '';
+    }
+
+    // Cambiar a vista bloqueada (igual que al abrir un modal ya bloqueado)
+    this.modalLocked    = true;
+    this.lockedViewMode = true;
+    this.modalEntries   = this.modalEntries.filter(e => e.asignacion !== null && (e.asignacion.cantidad ?? 0) > 0);
   }
 
   dismissLock() {
@@ -955,9 +1131,11 @@ export class DetallesBoteFiltradoComponent {
   // Retorna el total "base" para visualización: si está en modo edición usa el valor previo guardado
   baseMine(entry: ModalEntry): number {
     if (!this.lockedViewMode && this.selectedEntry === entry) {
+      // En edición: mostrar lo ya guardado (base) antes de la nueva adición
       return Number(this.selectedEntryOriginalValue) || 0;
     }
-    return Number(entry.inputValue) || 0;
+    // Fuera de edición: usar siempre el valor confirmado en BD
+    return Number(entry.asignacion?.cantidad) || 0;
   }
 
   disponible(entry: ModalEntry): number {
@@ -985,8 +1163,9 @@ export class DetallesBoteFiltradoComponent {
   }
 
   private buildBoteDisplay(botes: BoteAsignacion[]): string {
-    if (!botes.length) return '';
-    return botes
+    const activos = botes.filter(b => (b.cantidad ?? 0) > 0);
+    if (!activos.length) return '';
+    return activos
       .map(b => {
         const opt = this.boteOptions.find(o => o.id === b.idBoteCatalog);
         return opt ? `${opt.description} (${b.cantidad})` : `#${b.idBoteCatalog}`;
