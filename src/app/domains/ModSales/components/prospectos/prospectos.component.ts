@@ -459,7 +459,7 @@ export class ProspectosComponent implements OnInit {
       chatIdVendedorActual: '', idCompany: this.idRoot,
       creadoPor: 'web', idVendedorCreador: this.idVendedor,
       notas: '', idCustomer: null, activo: true,
-      correo: '', giro: '', fuente: '', tags: [], competidor: '', fechaProximoSeguimiento: null,
+      correo: '', giro: '', fuente: 'Redes sociales', tags: [], competidor: '', fechaProximoSeguimiento: null,
       fechaCreacion: null, fechaUltimaInteraccion: null,
       countInteracciones: 0,
       __isNew: true, __modified: false,
@@ -906,5 +906,6 @@ export class ProspectosComponent implements OnInit {
     return digits;
   }
 }
+
 
 
