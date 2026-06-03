@@ -352,6 +352,16 @@ export class ProspectosService {
       .sort((a, b) => this.getTimestampMillis(a.fechaVencimiento) - this.getTimestampMillis(b.fechaVencimiento));
   }
 
+  async getTareasCompletadasByProspecto(idProspecto: string): Promise<Tarea[]> {
+    const snap = await getDocs(
+      query(collection(this.firestore, this.TAREAS_COL),
+        where('idProspecto', '==', idProspecto),
+        where('completada', '==', true),
+      )
+    );
+    return snap.docs.map(d => ({ id: d.id, ...d.data() }) as Tarea);
+  }
+
   async getTareasByVendedor(idVendedor: number, idCompany: number): Promise<Tarea[]> {
     const snap = await getDocs(
       query(collection(this.firestore, this.TAREAS_COL),

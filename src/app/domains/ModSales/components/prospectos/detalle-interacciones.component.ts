@@ -57,6 +57,12 @@ import Swal from 'sweetalert2';
             <span class="badge bg-warning text-dark ms-1" *ngIf="tareasData.length">{{tareasData.length}}</span>
           </button>
         </li>
+        <li class="nav-item">
+          <button class="nav-link py-1 px-2" [class.active]="detalleTab==='timeline'"
+                  (click)="detalleTab='timeline'; cargarTimeline()">
+            <i class="bi bi-calendar2-event me-1"></i>Timeline
+          </button>
+        </li>
       </ul>
 
       <!-- TAB: Interacciones -->
@@ -180,6 +186,35 @@ import Swal from 'sweetalert2';
         </div>
       </ng-container>
 
+      <!-- TAB: Timeline -->
+      <ng-container *ngIf="detalleTab==='timeline'">
+        <div *ngIf="loadingTimeline" class="text-center py-3">
+          <div class="spinner-border spinner-border-sm text-primary"></div>
+        </div>
+        <div *ngIf="!loadingTimeline && timelineItems.length === 0" class="text-muted small text-center py-3">
+          <i class="bi bi-calendar2-x"></i> Sin actividad registrada
+        </div>
+        <div class="timeline-wrap">
+          <div *ngFor="let item of timelineItems; let last = last" class="tl-item" [class.tl-last]="last">
+            <div class="tl-dot" [ngClass]="'tl-dot-' + colorTipo(item.tipo)"></div>
+            <div class="tl-content">
+              <div class="d-flex align-items-center gap-2 mb-1">
+                <i class="bi {{iconTipo(item.tipo)}}" [ngClass]="'text-' + colorTipo(item.tipo)"></i>
+                <span class="small fw-semibold">{{labelTipo(item.tipo)}}</span>
+                <span *ngIf="item.resultado" class="badge ms-1"
+                      [ngClass]="item.resultado==='positivo' ? 'bg-success' : item.resultado==='negativo' ? 'bg-danger' : 'bg-secondary'"
+                      style="font-size:.65rem">{{item.resultado}}</span>
+                <span class="text-muted small ms-auto">{{formatFecha(item.fecha)}}</span>
+              </div>
+              <div class="small">{{item.descripcion}}</div>
+              <div class="small text-muted" *ngIf="item.autor">
+                <i class="bi bi-person me-1"></i>{{item.autor}}
+              </div>
+            </div>
+          </div>
+        </div>
+      </ng-container>
+
     </div>
   `,
   styles: [`
@@ -188,6 +223,18 @@ import Swal from 'sweetalert2';
       background-color: #f0f4ff;
       border-top: 2px solid #0d6efd;
     }
+    .timeline-wrap { padding: 4px 0; max-height: 260px; overflow-y: auto; }
+    .tl-item { display: flex; gap: 12px; padding: 6px 0; position: relative; }
+    .tl-item:not(.tl-last)::before { content:''; position:absolute; left:7px; top:20px; bottom:-6px; width:2px; background:#dee2e6; }
+    .tl-dot { width:16px; height:16px; border-radius:50%; flex-shrink:0; margin-top:3px; border:2px solid #fff; box-shadow:0 0 0 2px #dee2e6; }
+    .tl-dot-primary   { background:#0d6efd; }
+    .tl-dot-success   { background:#198754; }
+    .tl-dot-warning   { background:#ffc107; }
+    .tl-dot-danger    { background:#dc3545; }
+    .tl-dot-info      { background:#0dcaf0; }
+    .tl-dot-secondary { background:#6c757d; }
+    .tl-dot-purple    { background:#7b2d8b; }
+    .tl-content { flex:1; background:#fff; border-radius:6px; padding:6px 10px; border:1px solid #e9ecef; font-size:.82rem; }
   `]
 })
 export class DetalleInteraccionesComponent implements OnInit {
@@ -211,8 +258,8 @@ export class DetalleInteraccionesComponent implements OnInit {
   estados          = ESTADOS_PROSPECTO;
   tiposInteraccion = ['contacto', 'llamada', 'reunión', 'email', 'whatsapp', 'visita'];
 
-  // ── Tareas ────────────────────────────────────────────────────────────────
-  detalleTab: 'interacciones' | 'tareas' = 'interacciones';
+  // ── Tareas + Timeline ─────────────────────────────────────────────────────
+  detalleTab: 'interacciones' | 'tareas' | 'timeline' = 'interacciones';
   tareasData: Tarea[] = [];
   loadingTareas = false;
   showTareaForm = false;
@@ -220,6 +267,22 @@ export class DetalleInteraccionesComponent implements OnInit {
   tareaDesc = '';
   tareaFechaVenc = this.getTodayDateLocal();
   readonly TIPOS_TAREA = TIPOS_TAREA;
+
+  // Timeline
+  timelineItems: Array<{ fecha: any; tipo: string; descripcion: string; resultado?: string; autor: string }> = [];
+  loadingTimeline = false;
+
+  private readonly TIPO_META: Record<string, { icon: string; color: string; label: string }> = {
+    llamada:          { icon: 'bi-telephone-fill',  color: 'primary',   label: 'Llamada' },
+    email:            { icon: 'bi-envelope-fill',   color: 'info',      label: 'Email' },
+    whatsapp:         { icon: 'bi-whatsapp',         color: 'success',   label: 'WhatsApp' },
+    'reunión':        { icon: 'bi-people-fill',      color: 'purple',    label: 'Reunión' },
+    visita:           { icon: 'bi-building',         color: 'secondary', label: 'Visita' },
+    contacto:         { icon: 'bi-person-check-fill',color: 'primary',   label: 'Contacto' },
+    cambio_estado:    { icon: 'bi-arrow-repeat',     color: 'warning',   label: 'Cambio Estado' },
+    demo:             { icon: 'bi-laptop',           color: 'info',      label: 'Demo' },
+    tarea_completada: { icon: 'bi-check-circle-fill',color: 'success',   label: 'Tarea ✓' },
+  };
 
   AG_GRID_LOCALE_ES = AG_GRID_LOCALE_ES;
 
@@ -536,6 +599,42 @@ export class DetalleInteraccionesComponent implements OnInit {
     f.setHours(0, 0, 0, 0);
     return f.getTime() === hoy.getTime();
   }
+
+  // ── Timeline ─────────────────────────────────────────────────────────────
+
+  async cargarTimeline() {
+    if (!this.prospecto?.id) return;
+    this.loadingTimeline = true;
+    const [interacciones, tareasOk] = await Promise.all([
+      this.rowData.length ? Promise.resolve(this.rowData) : this.svc.getInteracciones(this.prospecto.id),
+      this.svc.getTareasCompletadasByProspecto(this.prospecto.id),
+    ]);
+    const fromInter = interacciones.map((i: any) => ({
+      fecha: i.fecha, tipo: i.tipo, descripcion: i.descripcion,
+      resultado: i.resultado, autor: i.nombreVendedor ?? '',
+    }));
+    const fromTareas = tareasOk.map(t => ({
+      fecha: t.fechaCompletada ?? t.fechaCreacion,
+      tipo: 'tarea_completada',
+      descripcion: `[${t.tipo}] ${t.descripcion}`,
+      resultado: 'positivo',
+      autor: t.nombreVendedor,
+    }));
+    this.timelineItems = [...fromInter, ...fromTareas]
+      .sort((a, b) => this.getMs(b.fecha) - this.getMs(a.fecha));
+    this.loadingTimeline = false;
+  }
+
+  private getMs(ts: any): number {
+    if (!ts) return 0;
+    if (ts.toDate) return ts.toDate().getTime();
+    if (ts.seconds) return ts.seconds * 1000;
+    return new Date(ts).getTime();
+  }
+
+  iconTipo(tipo: string)  { return (this.TIPO_META[tipo] ?? this.TIPO_META['contacto']).icon; }
+  colorTipo(tipo: string) { return (this.TIPO_META[tipo] ?? this.TIPO_META['contacto']).color; }
+  labelTipo(tipo: string) { return (this.TIPO_META[tipo] ?? { label: tipo }).label; }
 
   // ── Helpers ───────────────────────────────────────────────────────────────
 
