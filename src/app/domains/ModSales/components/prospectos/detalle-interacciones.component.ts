@@ -5,6 +5,7 @@ import { AgGridModule } from 'ag-grid-angular';
 import { ColDef, GridApi, GridReadyEvent, ICellRendererParams } from 'ag-grid-enterprise';
 import { AG_GRID_LOCALE_ES } from 'assets/i18n/ag-grid.locale.es';
 import { ProspectosService, Interaccion, ESTADOS_PROSPECTO, Tarea, TIPOS_TAREA } from 'app/services/prospectos.service';
+import { CotizacionesService } from 'app/services/cotizaciones.service';
 import { SignalsService } from 'app/services/signals.service';
 import { Timestamp } from '@angular/fire/firestore';
 import Swal from 'sweetalert2';
@@ -27,6 +28,11 @@ import Swal from 'sweetalert2';
         </span>
         <span class="text-muted small">
           <i class="bi bi-phone"></i> {{ prospecto?.telefono }}
+        </span>
+        <span *ngIf="countCotizaciones > 0"
+              class="badge bg-primary ms-1" style="font-size:.72rem"
+              title="Cotizaciones vinculadas">
+          <i class="bi bi-file-earmark-text me-1"></i>{{ countCotizaciones }} cotiz.
         </span>
         <div class="ms-auto d-flex gap-1 align-items-center flex-wrap">
           <span class="small text-muted me-1">Cambiar a:</span>
@@ -239,6 +245,7 @@ import Swal from 'sweetalert2';
 })
 export class DetalleInteraccionesComponent implements OnInit {
   private svc        = inject(ProspectosService);
+  private cotSvc     = inject(CotizacionesService);
   private signalsSvc = inject(SignalsService);
   private _colDefs: ColDef[] = [];
 
@@ -247,6 +254,7 @@ export class DetalleInteraccionesComponent implements OnInit {
 
   prospecto: any = null;
   rowData: Interaccion[] = [];
+  countCotizaciones = 0;
 
   // ── Interacciones ─────────────────────────────────────────────────────────
   showForm       = false;
@@ -347,6 +355,10 @@ export class DetalleInteraccionesComponent implements OnInit {
     this.params    = params;
     this.prospecto = params.data;
     this.cargarInteracciones();
+    if (this.prospecto?.id) {
+      this.cotSvc.getCotizacionesByProspecto(this.prospecto.id)
+        .then(c => this.countCotizaciones = c.length);
+    }
   }
 
   private updateCountInParent() {

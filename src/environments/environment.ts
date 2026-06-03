@@ -85,5 +85,5 @@ export const environment = {
     // publicKey: 'TEST-4399133a-4676-42a2-ab85-d946370bf96a',
   },
 
-  version: '7.79 (02 Junio 2026) feat(crm): fuente del prospecto lead source con reporte por canal',
+  version: '7.80 (02 Junio 2026) feat(crm): vinculacion cotizacion-prospecto cerrar venta y perdido',
 };

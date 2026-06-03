@@ -114,6 +114,20 @@ export class CotizacionesService {
     return docRef.id;
   }
 
+  async getCotizacionesByProspecto(idProspecto: string): Promise<Cotizacion[]> {
+    const snap = await getDocs(
+      query(collection(this.firestore, this.COL),
+        where('idProspecto', '==', idProspecto),
+        where('activo', '==', true),
+      )
+    );
+    return snap.docs.map(d => ({ id: d.id, ...d.data() }) as Cotizacion);
+  }
+
+  async actualizarEstadoCotizacion(id: string, estado: string): Promise<void> {
+    await updateDoc(doc(this.firestore, this.COL, id), { estado });
+  }
+
   /** Cotizaciones del módulo Administración → Clientes */
   getCotizacionesByCliente(idCliente: number, idCompany: number): Observable<Cotizacion[]> {
     const ref = collection(this.firestore, this.COL);

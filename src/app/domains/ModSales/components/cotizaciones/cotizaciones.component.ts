@@ -112,6 +112,23 @@ export class CotizacionesComponent implements OnInit, OnDestroy {
 
   colDefs: ColDef[] = [
     {
+      headerName: 'Acción', colId: 'accion', width: 110, editable: false,
+      cellRenderer: (p: any) => {
+        if (p.data?.estado === 'aceptada' && p.data?.idProspecto) {
+          return `<button class="btn btn-sm btn-success py-0 px-2" style="font-size:.75rem">🏆 Cerrar Venta</button>`;
+        }
+        if (p.data?.estado === 'rechazada' && p.data?.idProspecto) {
+          return `<button class="btn btn-sm btn-danger py-0 px-2" style="font-size:.75rem">✗ Perdido</button>`;
+        }
+        return '<span class="text-muted" style="font-size:.75rem">—</span>';
+      },
+      onCellClicked: (p: any) => {
+        if (p.data?.estado === 'aceptada' && p.data?.idProspecto) this.cerrarVenta(p.data);
+        if (p.data?.estado === 'rechazada' && p.data?.idProspecto) this.marcarPerdido(p.data);
+      },
+      cellStyle: { cursor: 'pointer' },
+    },
+    {
       field: 'pdf', headerName: 'PDF', width: 70, editable: false,
       cellRenderer: ButtonCellRendererIncomeComponent,
       cellRendererParams: {
@@ -341,6 +358,89 @@ export class CotizacionesComponent implements OnInit, OnDestroy {
       this.selectedItem = null;
       Swal.fire({ icon: 'success', title: 'Eliminado', timer: 1200, showConfirmButton: false });
     } catch { Swal.fire('Error', 'No se pudo eliminar.', 'error'); }
+  }
+
+  // ── Vinculación CRM ───────────────────────────────────────────────────────
+
+  async cerrarVenta(cot: any) {
+    const res = await Swal.fire({
+      icon: 'question',
+      title: '¿Cerrar Venta?',
+      html: `Se marcará el prospecto <b>${cot.nombreProspecto}</b> como <b>🏆 Ganado</b>.<br>
+             <small class="text-muted">Cotización: ${cot.numCotizacion}</small>`,
+      showCancelButton: true,
+      confirmButtonColor: '#198754',
+      confirmButtonText: '🏆 Sí, cerrar venta',
+      cancelButtonText: 'Cancelar',
+    });
+    if (!res.isConfirmed) return;
+    try {
+      await this.prospectosSvc.cambiarEstado(
+        cot.idProspecto, 'ganado', this.idVendedor, this.nombreVendedor
+      );
+      await this.prospectosSvc.registrarInteraccion(cot.idProspecto, {
+        tipo:           'cotizacion_aceptada',
+        descripcion:    `Cotización ${cot.numCotizacion} aceptada — Venta cerrada`,
+        idVendedor:     this.idVendedor,
+        nombreVendedor: this.nombreVendedor,
+        resultado:      'positivo',
+      });
+      // Refrescar fila
+      this.gridApi.forEachNode((node: any) => {
+        if (node.data?.id === cot.id) {
+          node.setData({ ...node.data, _vendido: true });
+        }
+      });
+      Swal.fire({
+        icon: 'success',
+        title: '¡Venta cerrada!',
+        html: `<b>${cot.nombreProspecto}</b> marcado como <b>🏆 Ganado</b>`,
+        timer: 2000, showConfirmButton: false,
+      });
+    } catch {
+      Swal.fire('Error', 'No se pudo actualizar el prospecto.', 'error');
+    }
+  }
+
+  async marcarPerdido(cot: any) {
+    const { value: motivo } = await Swal.fire({
+      icon: 'warning',
+      title: '¿Marcar como Perdido?',
+      html: `Prospecto: <b>${cot.nombreProspecto}</b>`,
+      input: 'select',
+      inputOptions: {
+        'precio':       'Precio muy alto',
+        'competidor':   'Eligió al competidor',
+        'timing':       'No era el momento',
+        'sin_respuesta':'Sin respuesta del cliente',
+        'otro':         'Otro motivo',
+      },
+      inputPlaceholder: 'Motivo (opcional)',
+      showCancelButton: true,
+      confirmButtonColor: '#dc3545',
+      confirmButtonText: '✗ Marcar Perdido',
+      cancelButtonText: 'Cancelar',
+    });
+    if (motivo === undefined) return; // cancelled
+    const motivoTexto: Record<string, string> = {
+      precio: 'Precio muy alto', competidor: 'Eligió al competidor',
+      timing: 'No era el momento', sin_respuesta: 'Sin respuesta del cliente', otro: 'Otro',
+    };
+    try {
+      await this.prospectosSvc.cambiarEstado(
+        cot.idProspecto, 'perdido', this.idVendedor, this.nombreVendedor
+      );
+      await this.prospectosSvc.registrarInteraccion(cot.idProspecto, {
+        tipo:           'cotizacion_rechazada',
+        descripcion:    `Cotización ${cot.numCotizacion} rechazada${motivo ? ' — ' + motivoTexto[motivo] : ''}`,
+        idVendedor:     this.idVendedor,
+        nombreVendedor: this.nombreVendedor,
+        resultado:      'negativo',
+      });
+      Swal.fire({ icon: 'info', title: 'Prospecto marcado como Perdido', timer: 1500, showConfirmButton: false });
+    } catch {
+      Swal.fire('Error', 'No se pudo actualizar el prospecto.', 'error');
+    }
   }
 
   // ── Helpers ───────────────────────────────────────────────────────────────
