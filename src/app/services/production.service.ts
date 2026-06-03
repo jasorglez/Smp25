@@ -110,6 +110,42 @@ export class ProductionService {
     return this.http.delete<any>(`${environment.urlProduction}/preparacion/historial/${id}`, { headers: this.trackingService.getHeaders() });
   }
 
+  // ── Liberación Jarabe (N2-C) ──────────────────────────────────────────────
+
+  getLiberacion(idPreparacion: number): Observable<any[]> {
+    return this.http.get<any[]>(`${environment.urlProduction}/preparacion/${idPreparacion}/liberacion`, { headers: this.trackingService.getHeaders() });
+  }
+
+  createLiberacion(data: any): Observable<any> {
+    return this.http.post<any>(`${environment.urlProduction}/preparacion/liberacion`, data, { headers: this.trackingService.getHeaders() });
+  }
+
+  updateLiberacion(id: number, data: any): Observable<any> {
+    return this.http.put<any>(`${environment.urlProduction}/preparacion/liberacion/${id}`, data, { headers: this.trackingService.getHeaders() });
+  }
+
+  deleteLiberacion(id: number): Observable<any> {
+    return this.http.delete<any>(`${environment.urlProduction}/preparacion/liberacion/${id}`, { headers: this.trackingService.getHeaders() });
+  }
+
+  // ── Limpieza (N2-D) ───────────────────────────────────────────────────────
+
+  getLimpieza(idPreparacion: number): Observable<any[]> {
+    return this.http.get<any[]>(`${environment.urlProduction}/preparacion/${idPreparacion}/limpieza`, { headers: this.trackingService.getHeaders() });
+  }
+
+  createLimpieza(data: any): Observable<any> {
+    return this.http.post<any>(`${environment.urlProduction}/preparacion/limpieza`, data, { headers: this.trackingService.getHeaders() });
+  }
+
+  updateLimpieza(id: number, data: any): Observable<any> {
+    return this.http.put<any>(`${environment.urlProduction}/preparacion/limpieza/${id}`, data, { headers: this.trackingService.getHeaders() });
+  }
+
+  deleteLimpieza(id: number): Observable<any> {
+    return this.http.delete<any>(`${environment.urlProduction}/preparacion/limpieza/${id}`, { headers: this.trackingService.getHeaders() });
+  }
+
   // ── Material Jarabe ────────────────────────────────────────────────────────
 
   getMaterialJarabeAll(): Observable<MaterialJarabeConfig[]> {

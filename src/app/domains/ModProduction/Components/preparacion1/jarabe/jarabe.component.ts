@@ -93,6 +93,10 @@ export class JarabeComponent implements OnInit {
   branchNames: string[] = [];
   rawMaterials: any[] = [];
   rawMaterialNames: string[] = [];
+  /** Personal de Calidad (para dropdowns de Liberación y Parámetros) */
+  personalCalidad: string[] = [];
+  /** Personal de Preparación 1 (para dropdowns de Limpieza) */
+  personalPrep1: string[] = [];
   /** Igual que Proveedores: Enter cierra edición y onCellEditingStopped abre la siguiente celda editable */
   private enterPressedFlag = false;
   activeBranchFilter: number | null = null;
@@ -316,6 +320,9 @@ export class JarabeComponent implements OnInit {
       historialGastos: item.historialCount || 0,
       adicional: item.adicional || '',
       activom: item.active !== false,
+      personal: item.personal || '',
+      cuantoQueda: item.cuantoQueda ?? null,
+      comentarios: item.comentarios || '',
       detailType: null,
       isExpanded: false,
       preparacionData: [],
@@ -324,6 +331,19 @@ export class JarabeComponent implements OnInit {
       __modified: false,
       saved: true
     };
+  }
+
+  /** Sincronización bidireccional de comentarios entre N2-A, N2-B y N2-C */
+  syncComentarios(value: string, origen: string) {
+    if (!this.expandedRowId) return;
+    this.gridApi.forEachNode((node: any) => {
+      if (node.id === this.expandedRowId) {
+        node.data.comentarios = value;
+        node.data.__modified = true;
+        this.hasUnsavedChanges = true;
+        this.gridApi.refreshCells({ rowNodes: [node], columns: ['comentarios'], force: true });
+      }
+    });
   }
 
   private mapDetalle(item: any): any {
@@ -397,7 +417,10 @@ export class JarabeComponent implements OnInit {
       nota: item.nota || '',
       historialCount: item.historialGastos || 0,
       adicional: item.adicional,
-      active: item.activom !== false
+      active: item.activom !== false,
+      personal: item.personal || null,
+      cuantoQueda: item.cuantoQueda ?? null,
+      comentarios: item.comentarios || null
     };
   }
 
@@ -621,9 +644,90 @@ export class JarabeComponent implements OnInit {
         }
       },
       {
+        field: 'personal',
+        headerName: 'Personal',
+        width: 160,
+        editable: true,
+        cellEditor: 'agTextCellEditor',
+        valueSetter: (params: any) => {
+          params.data.personal = params.newValue ? params.newValue.toUpperCase() : '';
+          params.data.__modified = true;
+          this.hasUnsavedChanges = true;
+          return true;
+        }
+      },
+      {
+        field: 'cuantoQueda',
+        headerName: 'Cuánto Queda',
+        width: 130,
+        editable: true,
+        type: 'numericColumn',
+        cellEditor: 'agNumberCellEditor',
+        cellEditorParams: { min: 0, precision: 2 },
+        valueSetter: (params: any) => {
+          params.data.cuantoQueda = params.newValue;
+          params.data.__modified = true;
+          this.hasUnsavedChanges = true;
+          return true;
+        }
+      },
+      {
+        field: 'liberacion',
+        headerName: 'Liberación',
+        width: 120,
+        editable: false,
+        cellRenderer: (params: any) => {
+          const isNew = !!params.data?.__isNew;
+          const container = document.createElement('div');
+          container.style.cssText = isNew
+            ? 'display: flex; align-items: center; gap: 6px; cursor: not-allowed; color: #aaa;'
+            : 'display: flex; align-items: center; gap: 6px; cursor: pointer; color: #2e7d32; text-decoration: underline;';
+          container.innerHTML = `<i class="bi bi-unlock"></i><span>Liberar</span>`;
+          if (!isNew) {
+            container.addEventListener('click', () => this.toggleCascade(params.node, 'liberacion'));
+          }
+          return container;
+        },
+        cellStyle: { backgroundColor: '#f1f8e9', cursor: 'pointer' }
+      },
+      {
+        field: 'limpieza',
+        headerName: 'Limpieza',
+        width: 110,
+        editable: false,
+        cellRenderer: (params: any) => {
+          const isNew = !!params.data?.__isNew;
+          const container = document.createElement('div');
+          container.style.cssText = isNew
+            ? 'display: flex; align-items: center; gap: 6px; cursor: not-allowed; color: #aaa;'
+            : 'display: flex; align-items: center; gap: 6px; cursor: pointer; color: #1565c0; text-decoration: underline;';
+          container.innerHTML = `<i class="bi bi-moisture"></i><span>Limpieza</span>`;
+          if (!isNew) {
+            container.addEventListener('click', () => this.toggleCascade(params.node, 'limpieza'));
+          }
+          return container;
+        },
+        cellStyle: { backgroundColor: '#e3f2fd', cursor: 'pointer' }
+      },
+      {
+        field: 'comentarios',
+        headerName: 'Comentarios',
+        flex: 1,
+        minWidth: 160,
+        editable: true,
+        cellEditor: 'agLargeTextCellEditor',
+        cellEditorPopup: true,
+        valueSetter: (params: any) => {
+          params.data.comentarios = params.newValue || '';
+          params.data.__modified = true;
+          this.hasUnsavedChanges = true;
+          return true;
+        }
+      },
+      {
         field: 'activom',
-        headerName: 'Activom',
-        width: 80,
+        headerName: 'Activo',
+        width: 75,
         editable: false,
         cellRenderer: (params: any) => {
           const input = document.createElement('input');
@@ -666,7 +770,7 @@ export class JarabeComponent implements OnInit {
               force: true,
             });
             detailParams.successCallback(mapped);
-          } else {
+          } else if (detailParams.data.detailType === 'historial') {
             const historial = await lastValueFrom(this.productionService.getHistorial(detailParams.data.id));
             const mappedHist = historial.map((h: any) => this.mapHistorial(h));
             // Mantener también el conteo del historial consistente
@@ -677,6 +781,8 @@ export class JarabeComponent implements OnInit {
               force: true,
             });
             detailParams.successCallback(mappedHist);
+          } else {
+            detailParams.successCallback([]);
           }
         } catch (error) {
           console.error('Error loading detail data:', error);

@@ -392,6 +392,9 @@ export class OrdenesydetallesOcComponent implements OnDestroy {
     },
     tooltipShowDelay: 300,
     defaultColDef: { resizable: true, sortable: true },
+    onColumnResized: () => this.saveOcColumnState(),
+    onColumnMoved: () => this.saveOcColumnState(),
+    onColumnVisible: () => this.saveOcColumnState()
   };
 
   itemsColDefs: ColDef[] = [
@@ -424,7 +427,7 @@ export class OrdenesydetallesOcComponent implements OnDestroy {
         : null,
     },
     { field: 'typeoc', headerName: 'Tipo OC', width: 160, editable: false },
-    { field: 'numarticle', headerName: '# Item OC', width: 140, hide: true },
+    { field: 'numarticle', headerName: '# Item OC', width: 140 },
     {
       field: 'namearticle',
       headerName: 'Artículo',
@@ -737,6 +740,9 @@ export class OrdenesydetallesOcComponent implements OnDestroy {
         }
       }
     },
+    onColumnResized: () => this.saveItemsColumnState(),
+    onColumnMoved: () => this.saveItemsColumnState(),
+    onColumnVisible: () => this.saveItemsColumnState()
   };
 
   nivel3ColDefs: ColDef[] = [
@@ -934,6 +940,9 @@ export class OrdenesydetallesOcComponent implements OnDestroy {
       }
       this.syncSelectedItemQuantityDelta();
     },
+    onColumnResized: () => this.saveNivel3ColumnState(),
+    onColumnMoved: () => this.saveNivel3ColumnState(),
+    onColumnVisible: () => this.saveNivel3ColumnState()
   };
 
   agInit(params: any): void {
@@ -997,10 +1006,55 @@ export class OrdenesydetallesOcComponent implements OnDestroy {
     }
   }
 
+  private getColKey(suffix: string): string {
+    const email = localStorage.getItem('mail') ?? 'guest';
+    return `${suffix}_${email}`;
+  }
+
+  private saveOcColumnState() {
+    if (this.gridApi && !this.gridApi.isDestroyed()) {
+      localStorage.setItem(this.getColKey('ordenesOcMain'), JSON.stringify(this.gridApi.getColumnState()));
+    }
+  }
+
+  private loadOcColumnState() {
+    try {
+      const stored = localStorage.getItem(this.getColKey('ordenesOcMain'));
+      if (stored && this.gridApi) this.gridApi.applyColumnState({ state: JSON.parse(stored) });
+    } catch (e) { console.warn('Error cargando estado columnas OC:', e); }
+  }
+
+  private saveItemsColumnState() {
+    if (this.itemsGridApi && !this.itemsGridApi.isDestroyed()) {
+      localStorage.setItem(this.getColKey('ordenesOcItems'), JSON.stringify(this.itemsGridApi.getColumnState()));
+    }
+  }
+
+  private loadItemsColumnState() {
+    try {
+      const stored = localStorage.getItem(this.getColKey('ordenesOcItems'));
+      if (stored && this.itemsGridApi) this.itemsGridApi.applyColumnState({ state: JSON.parse(stored) });
+    } catch (e) { console.warn('Error cargando estado columnas Items:', e); }
+  }
+
+  private saveNivel3ColumnState() {
+    if (this.nivel3GridApi && !this.nivel3GridApi.isDestroyed()) {
+      localStorage.setItem(this.getColKey('ordenesOcNivel3'), JSON.stringify(this.nivel3GridApi.getColumnState()));
+    }
+  }
+
+  private loadNivel3ColumnState() {
+    try {
+      const stored = localStorage.getItem(this.getColKey('ordenesOcNivel3'));
+      if (stored && this.nivel3GridApi) this.nivel3GridApi.applyColumnState({ state: JSON.parse(stored) });
+    } catch (e) { console.warn('Error cargando estado columnas Nivel3:', e); }
+  }
+
   onGridReady(params: GridReadyEvent) {
     this.gridApi = params.api;
     this.gridReady = true;
     this.tryLoadData();
+    setTimeout(() => this.loadOcColumnState(), 50);
   }
 
   onItemsGridReady(params: GridReadyEvent) {
@@ -1008,6 +1062,7 @@ export class OrdenesydetallesOcComponent implements OnDestroy {
     if (this.itemsData.length) {
       this.itemsGridApi.setGridOption('rowData', this.itemsData);
     }
+    setTimeout(() => this.loadItemsColumnState(), 50);
   }
 
   onNivel3GridReady(params: GridReadyEvent) {
@@ -1016,6 +1071,7 @@ export class OrdenesydetallesOcComponent implements OnDestroy {
       this.nivel3GridApi.setGridOption('rowData', this.nivel3Data);
       this.autosizeNivel3();
     }
+    setTimeout(() => this.loadNivel3ColumnState(), 50);
   }
 
   private openNivel3(articleRow: any): void {

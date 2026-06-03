@@ -24,6 +24,9 @@ import { ICellRendererParams } from 'ag-grid-enterprise';
         <button type="button" class="btn btn-sm btn-warning" (click)="deshacer()">
           <i class="bi bi-arrow-clockwise"></i> Deshacer
         </button>
+        <button type="button" class="btn btn-sm btn-success" (click)="guardar()" [disabled]="!canSave">
+          <i class="bi bi-floppy"></i> Guardar
+        </button>
       </div>
       <table style="width: 100%; max-width: 760px; border-collapse: collapse; margin-top: 6px;">
         <thead>
@@ -68,6 +71,7 @@ export class ClasificacionCascadaComponent implements ICellRendererAngularComp {
   categoria: number | null = null;
   familia: number | null = null;
   subfamilia: number | null = null;
+  canSave = false;
 
   agInit(params: ICellRendererParams): void {
     this.parent = params.context?.componentParent;
@@ -129,6 +133,10 @@ export class ClasificacionCascadaComponent implements ICellRendererAngularComp {
     }
   }
 
+  guardar(): void {
+    this.parent?.guardarClasificaciones?.();
+  }
+
   private aplicar(): void {
     if (!this.row) return;
     this.row.clasifCategoria = this.categoria;
@@ -136,6 +144,7 @@ export class ClasificacionCascadaComponent implements ICellRendererAngularComp {
     this.row.clasifSubfamilia = this.subfamilia;
     // Pendiente de guardar solo cuando los 3 están seleccionados
     this.row.__clasifPendiente = !!(this.categoria && this.familia && this.subfamilia);
+    this.canSave = !!this.row.__clasifPendiente;
     this.parent?.marcarClasifModificado?.();
   }
 }
