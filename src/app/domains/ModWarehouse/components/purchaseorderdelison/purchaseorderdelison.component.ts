@@ -62,6 +62,7 @@ export class PurchaseOrderDelisonComponent implements OnInit, OnDestroy {
   private expandedRowId: string | null = null;
 
   activeTab: 'oc' | 'compraRapida' = 'oc';
+  get hasNupnpn() { return this.signalsService.getHasNupnpnCompraRapida()(); }
   rowData: any[] | null = null;
   fullRowData: any[] = [];
   gridHeight         = '80vh';
@@ -99,6 +100,19 @@ export class PurchaseOrderDelisonComponent implements OnInit, OnDestroy {
       this.conditionsPendingService.hasPending$,
       this.entregasPendingService.hasPending$,
     ]).subscribe(([condiciones, entregas]) => (this.hasUnsavedChanges = condiciones || entregas));
+
+    // Recalcular badge NUPNPN cuando el detalle guarda una clasificación
+    effect(() => {
+      this.signalsService.getNupnpnRecheckTrigger()();
+      const hasNupnpn = this.compraRapidaRowData.some(row =>
+        (row.items || []).some((it: any) => String(it.numArticle || '').toUpperCase().startsWith('NUPNPN'))
+      );
+      this.signalsService.setHasNupnpnCompraRapida(hasNupnpn);
+      // Refrescar columna reqFolio para actualizar el badge de nivel 1
+      if (this.compraRapidaGridApi && !this.compraRapidaGridApi.isDestroyed()) {
+        this.compraRapidaGridApi.refreshCells({ columns: ['reqFolio'], force: true });
+      }
+    });
 
     effect(() => {
       const newIdBranch = this.signalsService.getBranchSelectedBySidebar()();
@@ -162,6 +176,7 @@ export class PurchaseOrderDelisonComponent implements OnInit, OnDestroy {
         if (current !== null && current !== undefined) {
           this.idBranch = current;
           this.loadPurchaseOrders();
+          this.loadCompraRapida(); // carga en background para mostrar badge NUPNPN sin necesidad de ir al tab
         }
       },
       error: () => {
@@ -445,7 +460,28 @@ export class PurchaseOrderDelisonComponent implements OnInit, OnDestroy {
       cellStyle: { backgroundColor: '#f8f9fa', fontWeight: 'bold' },
     },
     { field: 'sucursal', headerName: 'Sucursal', width: 160, filter: true },
-    { field: 'reqFolio', headerName: '# Requisición', width: 150, filter: true },
+    {
+      field: 'reqFolio',
+      headerName: '# Requisición',
+      width: 150,
+      filter: true,
+      cellRenderer: (params: any) => {
+        const folio = params.value || '';
+        const hasNupnpn = (params.data?.items || []).some(
+          (it: any) => String(it.numArticle || '').toUpperCase().startsWith('NUPNPN')
+        );
+        const div = document.createElement('div');
+        div.style.cssText = 'display:flex; align-items:center; gap:6px;';
+        div.innerHTML = `<span>${folio}</span>`;
+        if (hasNupnpn) {
+          const dot = document.createElement('span');
+          dot.style.cssText = 'width:8px; height:8px; background:#d32f2f; border-radius:50%; flex-shrink:0; display:inline-block;';
+          dot.title = 'Contiene artículos nuevos sin nomenclatura (NUPNPN)';
+          div.appendChild(dot);
+        }
+        return div;
+      }
+    },
     {
       headerName: '# Compras Rapidas',
       width: 160,
@@ -578,6 +614,13 @@ export class PurchaseOrderDelisonComponent implements OnInit, OnDestroy {
       });
     }
     this.compraRapidaRowData = Array.from(byReq.values());
+
+    // Detectar artículos NUPNPN y notificar al signal global para badges en sidebar/tabs
+    const hasNupnpn = this.compraRapidaRowData.some(row =>
+      (row.items || []).some((it: any) => String(it.numArticle || '').toUpperCase().startsWith('NUPNPN'))
+    );
+    this.signalsService.setHasNupnpnCompraRapida(hasNupnpn);
+
     if (this.compraRapidaGridApi && !this.compraRapidaGridApi.isDestroyed()) {
       this.compraRapidaGridApi.setGridOption('rowData', this.compraRapidaRowData);
       setTimeout(() => {

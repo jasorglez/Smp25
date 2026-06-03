@@ -8,10 +8,14 @@
       </span>
     </li>
     <li class="nav-item" role="presentation">
-      <span id="tab-purchaseorder-comprarapida" class="nav-link" [class.active]="activeTab === 'compraRapida'"
+      <span id="tab-purchaseorder-comprarapida" class="nav-link position-relative" [class.active]="activeTab === 'compraRapida'"
         role="tab" [attr.aria-selected]="activeTab === 'compraRapida'" style="cursor:pointer;"
         (click)="onTabChange('compraRapida')">
         Sección Compra Rapida
+        <span *ngIf="hasNupnpn"
+              style="position:absolute; top:4px; right:4px; width:8px; height:8px;
+                     background:#d32f2f; border-radius:50%; display:inline-block;">
+        </span>
       </span>
     </li>
   </ul>

@@ -25,6 +25,7 @@ import { SharedModule } from '../shared.module';
 })
 export class SideBarComponent {
   readonly guardUiTick: Signal<number>;
+  hasNupnpn: () => boolean = () => false;
   readonly defaultCompanyLogo = './assets/img/default.png';
 
   /** Siempre true pero lee guardRefreshTick para forzar re-evaluación reactiva del *ngIf */
@@ -74,6 +75,7 @@ export class SideBarComponent {
     private menuService: MenuService
   ) {
     this.guardUiTick = this.signalsService.guardRefreshTick;
+    this.hasNupnpn = () => this.signalsService.getHasNupnpnCompraRapida()();
 
     effect(async () => {
       const shouldUpdate = this.signalsService.getUpdateBranchList()();

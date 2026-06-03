@@ -4,17 +4,20 @@ import { DomainsModule } from 'app/domains/domainsmodule';
 import { AuthService } from 'app/services/auth.service';
 import { MenuService } from 'app/services/menu.service';
 import { SignalsService } from 'app/services/signals.service';
+import { CommonModule } from '@angular/common';
 
 @Component({
   selector: 'app-procmenucompras',
   standalone: true,
-  imports: [RouterModule, DomainsModule],
+  imports: [RouterModule, DomainsModule, CommonModule],
   templateUrl: './procmenucompras.component.html',
 })
 export class ProcmenucomprasComponent implements OnInit {
   authService = inject(AuthService);
   private signalsService = inject(SignalsService);
   private menuService = inject(MenuService);
+
+  get hasNupnpn() { return this.signalsService.getHasNupnpnCompraRapida()(); }
 
   tabMenus: { masterIdentifier: string; identifier: string; permissionName: string; route: string; icon: string; principalSubIdentifier: string; tabOrder: number; skipPermission?: boolean }[] = [];
 

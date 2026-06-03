@@ -32,12 +32,15 @@ import { ClasificacionCascadaComponent } from 'app/domains/ModShoppingDelison/pa
       </div>
     </div>
   `,
-  styles: [`:host { display: block; height: 100%; overflow: hidden; }`]
+  styles: [
+    `:host { display: block; height: 100%; overflow: hidden; }`,
+    `::ng-deep .nupnpn-row { background-color: #ffebee !important; }`
+  ]
 })
 export class CompraRapidaDetalleComponent implements OnDestroy {
   private overlayService = inject(EntradaDocumentsOverlayService);
   private intandoutDocumentsService = inject(IntandoutDocumentsService);
-  private signalsService = inject(SignalsService);
+  signalsService = inject(SignalsService);
   private catalogsService = inject(CatalogsService);
   private materialsService = inject(MaterialsService);
 
@@ -147,6 +150,9 @@ export class CompraRapidaDetalleComponent implements OnDestroy {
     tooltipShowDelay: 300,
     popupParent: typeof document !== 'undefined' ? document.body : null,
     defaultColDef: { resizable: true, sortable: true },
+    rowClassRules: {
+      'nupnpn-row': (params: any) => String(params.data?.numArticle || '').toUpperCase().startsWith('NUPNPN'),
+    },
     onFirstDataRendered: (params: any) => params.api.autoSizeAllColumns(),
     masterDetail: true,
     isRowMaster: (data: any) => String(data?.numArticle || '').toUpperCase().startsWith('NUPNPN'),
@@ -207,6 +213,8 @@ export class CompraRapidaDetalleComponent implements OnDestroy {
       this.gridApi.onRowHeightChanged();
       this.gridApi.refreshCells({ force: true });
     }
+    // Notificar al padre para que recalcule el badge NUPNPN
+    this.signalsService.triggerNupnpnRecheck();
   }
 
   private cargarCatalogosClasificacion(): void {

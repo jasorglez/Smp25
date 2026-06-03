@@ -995,4 +995,24 @@ getMasterUpdateTrigger() {
   getOcCreatedNotification() {
     return this.ocCreatedNotification;
   }
+
+  private hasNupnpnCompraRapida = signal<boolean>(false);
+
+  setHasNupnpnCompraRapida(value: boolean) {
+    this.hasNupnpnCompraRapida.set(value);
+  }
+
+  getHasNupnpnCompraRapida() {
+    return this.hasNupnpnCompraRapida.asReadonly();
+  }
+
+  private nupnpnRecheckTrigger = signal<number>(0);
+
+  triggerNupnpnRecheck() {
+    this.nupnpnRecheckTrigger.update(n => n + 1);
+  }
+
+  getNupnpnRecheckTrigger() {
+    return this.nupnpnRecheckTrigger.asReadonly();
+  }
 }

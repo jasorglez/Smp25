@@ -73,5 +73,5 @@ export const environment = {
 
   urlRefreshToken: 'https://securetoken.googleapis.com/v1/token?key=AIzaSyDxCBGKk8nT09hdW85-PyOkhw5_JPZLF1A',
 
-  version: '2.52.320 (3 Junio 2026) - Agregar/retirar/bloquear mejor manejo'
+  version: '2.52.325 (3 Junio 2026) - Badge NUPNPN en fila nivel 1 de Compra Rapida'
 };

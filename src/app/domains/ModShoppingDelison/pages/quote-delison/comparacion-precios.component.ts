@@ -634,6 +634,12 @@ export class ComparacionPreciosComponent implements OnInit, OnDestroy {
           console.warn('[Comparacion] Error cargando datos auxiliares:', err);
         }
 
+        // Fallback para data existente: si hay OCs reales cargadas en ocPairs,
+        // el pedimento está cerrado aunque locked=false en BD (datos anteriores al fix).
+        if (!this.ocGenerada && this.ocPairs.length > 0) {
+          this.ocGenerada = true;
+        }
+
         this.loading = false;
 
         if (this.articulos.length === 0) {
@@ -731,8 +737,9 @@ export class ComparacionPreciosComponent implements OnInit, OnDestroy {
           // ✅ Mapear OC → pedimento usando idProvider (vía providerSlotMap, ya cargado)
           const idProv = Number(oc.idProvider);
           const slot = idProv > 0 ? this.providerSlotMap.get(idProv) : undefined;
-          const pedimento = slot?.folio || '';
-          if (idProv > 0) this.proveedoresConOc.add(idProv);
+          if (!slot) return null; // OC de otro pedimento, no aplica aquí
+          const pedimento = slot.folio || '';
+          this.proveedoresConOc.add(idProv);
           return { pedimento, oc: folio };
         })
         .filter(Boolean) as { pedimento: string; oc: string }[];
@@ -1417,15 +1424,29 @@ export class ComparacionPreciosComponent implements OnInit, OnDestroy {
 
     this.originalRowData = JSON.parse(JSON.stringify(this.rowData));
     this.hasUnsavedChanges = false;
-    this.ocGenerada = allTotalizado;
+    this.ocGenerada = generatedFolios.length > 0;
     this.ocPairs = generatedPairs;
     for (const [provId] of rowsByProvider) this.proveedoresConOc.add(provId);
 
-    // Bloquear la requisición solo si todos los ítems están totalizados
-    if (allTotalizado && this.requisitionId) {
+    // Bloquear el pedimento individual (cotizacionId) siempre que se genere al menos una OC.
+    // Este lock es permanente: no lo toca el auto-corrector de quote-delison (que solo opera sobre el REQUIS).
+    if (generatedFolios.length > 0 && this.cotizacionId) {
       await lastValueFrom(
-        this.ocAndReqsService.lockRequisition(this.requisitionId, true)
+        this.ocAndReqsService.lockRequisition(this.cotizacionId, true)
       ).catch(() => {});
+    }
+
+    // Bloquear la requisición padre solo si TODOS los pedimentos ya están terminados.
+    // Se usa shouldLockRequisicion para no cerrar prematuramente cuando otros pedimentos siguen abiertos.
+    if (this.requisitionId) {
+      const shouldLock = await lastValueFrom(
+        this.ocAndReqsService.shouldLockRequisicion(this.requisitionId)
+      ).catch(() => ({ shouldLock: false }));
+      if (shouldLock?.shouldLock) {
+        await lastValueFrom(
+          this.ocAndReqsService.lockRequisition(this.requisitionId, true)
+        ).catch(() => {});
+      }
     }
 
     this.cdr.detectChanges();
@@ -2227,6 +2248,13 @@ export class ComparacionPreciosComponent implements OnInit, OnDestroy {
     try {
       await this.patchRegistros();
       await this.updateMaterialsAfterOC();
+
+      // Bloquear el pedimento individual primero
+      if (this.cotizacionId) {
+        await lastValueFrom(
+          this.ocAndReqsService.lockRequisition(this.cotizacionId, true)
+        ).catch(e => console.warn('⚠️ No se pudo bloquear el pedimento:', e));
+      }
 
       await lastValueFrom(
         this.ocAndReqsService.lockRequisition(this.requisitionId, true)
