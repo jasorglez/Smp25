@@ -73,5 +73,5 @@ export const environment = {
 
   urlRefreshToken: 'https://securetoken.googleapis.com/v1/token?key=AIzaSyDxCBGKk8nT09hdW85-PyOkhw5_JPZLF1A',
 
-  version: '2.52.304 (2 Junio 2026) - Gastos: botón Pagar bloqueado secuencialmente (E2 espera a que E1 esté pagada, mismo artículo + misma OC base)'
+  version: '2.52.320 (3 Junio 2026) - Agregar/retirar/bloquear mejor manejo'
 };

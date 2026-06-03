@@ -83,10 +83,12 @@ interface ModalEntry {
             <button class="btn-close btn-sm" (click)="closeModal()"></button>
           </div>
 
-          <!-- Lock (solo en modo edición) -->
-          <div *ngIf="!lockedViewMode" class="px-3 pt-2 pb-1 border-bottom d-flex align-items-center gap-2" style="flex-shrink:0; background:#fff8e1;">
+          <!-- Lock (solo en modo edición y cuando resta = 0) -->
+          <div *ngIf="!lockedViewMode && (modalRow?.resta ?? 1) === 0"
+               class="px-3 pt-2 pb-1 border-bottom d-flex align-items-center gap-2"
+               style="flex-shrink:0; background:#fff8e1;">
             <input type="checkbox" id="modalLock" style="width:1rem;height:1rem;margin:0;cursor:pointer;"
-                   [(ngModel)]="modalLocked" (ngModelChange)="onLockChange($event)">
+                   [ngModel]="modalLocked" (click)="onLockCheckboxClick($event)">
             <label for="modalLock" class="mb-0" style="font-size:0.82rem; cursor:pointer; user-select:none;">
               <i class="bi bi-lock-fill me-1" style="color:#e65100;"></i> Bloquear cambios
             </label>
@@ -141,9 +143,10 @@ interface ModalEntry {
                       </div>
                       <!-- Nivel: ya asignado de esta fila -->
                       <div class="bote-fill bote-fill--mine"
+                           [class.bote-fill--mine-locked]="lockedViewMode"
                            [style.height.%]="fillPct(baseMine(entry), entry.opt.volumen)"
                            [style.bottom.%]="fillPct(entry.espacioUtilizadoExterno, entry.opt.volumen)"
-                           [class.bote-fill--red]="fillPct(entry.espacioUtilizadoExterno + baseMine(entry), entry.opt.volumen) >= 100">
+                           [class.bote-fill--red]="!lockedViewMode && fillPct(entry.espacioUtilizadoExterno + baseMine(entry), entry.opt.volumen) >= 100">
                       </div>
                       <!-- Nivel: nueva adición (solo modo edición) -->
                       <div *ngIf="selectedEntry === entry"
@@ -224,11 +227,17 @@ interface ModalEntry {
                         <input
                           type="number"
                           class="form-control form-control-sm text-center bote-input mt-1"
+                          [class.is-invalid]="(retiroValue ?? 0) > (entry.asignacion?.cantidad ?? 0) || (retiroValue ?? 0) <= 0"
                           [(ngModel)]="retiroValue"
                           [min]="1"
                           [max]="entry.asignacion?.cantidad ?? 0"
                           placeholder="Litros a retirar"
                           (click)="$event.stopPropagation()">
+                        <div *ngIf="(retiroValue ?? 0) > (entry.asignacion?.cantidad ?? 0)"
+                             style="font-size:0.68rem;color:#dc3545;text-align:center;"
+                             (click)="$event.stopPropagation()">
+                          Máx. {{ entry.asignacion?.cantidad ?? 0 | number:'1.0-0' }} L
+                        </div>
                         <input type="text" class="form-control form-control-sm bote-input mt-1"
                                [(ngModel)]="retiroComent"
                                placeholder="Motivo (requerido)"
@@ -236,7 +245,7 @@ interface ModalEntry {
                         <div class="d-flex gap-1 mt-1">
                           <button class="btn btn-sm btn-danger flex-fill"
                                   (click)="confirmRetiro(entry); $event.stopPropagation()"
-                                  [disabled]="!retiroValue || !retiroComent.trim()">
+                                  [disabled]="!retiroValue || (retiroValue ?? 0) <= 0 || (retiroValue ?? 0) > (entry.asignacion?.cantidad ?? 0) || !retiroComent.trim()">
                             <i class="bi bi-check-lg"></i>
                           </button>
                           <button class="btn btn-sm btn-outline-secondary flex-fill"
@@ -291,20 +300,10 @@ interface ModalEntry {
             </div>
           </div>
 
-          <!-- Footer (solo modo edición) -->
-          <div *ngIf="!lockedViewMode" class="d-flex align-items-center justify-content-between px-3 py-2 border-top" style="flex-shrink:0;">
-            <span *ngIf="modalValidationMsg" style="font-size:0.78rem;color:#c62828;">
-              {{ modalValidationMsg }}
-            </span>
-            <span *ngIf="!modalValidationMsg"></span>
-            <div class="d-flex gap-2">
-              <button class="btn btn-sm btn-secondary" (click)="closeModal()">Cancelar</button>
-              <button class="btn btn-sm btn-primary" (click)="confirmModal()"
-                      [disabled]="saving || !!modalValidationMsg">
-                <span *ngIf="saving" class="spinner-border spinner-border-sm me-1"></span>
-                Guardar
-              </button>
-            </div>
+          <!-- Footer: solo mensaje de validación (sin Cancelar/Guardar) -->
+          <div *ngIf="!lockedViewMode && modalValidationMsg"
+               class="px-3 py-2 border-top" style="flex-shrink:0;">
+            <span style="font-size:0.78rem;color:#c62828;">{{ modalValidationMsg }}</span>
           </div>
 
         </div>
@@ -320,17 +319,17 @@ interface ModalEntry {
       display: flex;
       flex-direction: column;
       align-items: center;
-      width: 169px;
+      width: 203px;
       background: #fff;
       border: 1.5px solid #dee2e6;
       border-radius: 10px;
-      padding: 10px 8px 8px;
+      padding: 12px 10px 10px;
       gap: 5px;
       margin: 0 12px 12px 0;
       transition: opacity 0.28s ease, transform 0.28s ease, box-shadow 0.15s, border-color 0.15s,
                   max-width 0.28s ease, width 0.28s ease, padding 0.28s ease, margin 0.28s ease;
       overflow: hidden;
-      max-width: 210px;
+      max-width: 252px;
     }
     .bote-card--hidden {
       opacity: 0;
@@ -345,7 +344,7 @@ interface ModalEntry {
     }
     .bote-card:not(.bote-card--selected):not(.bote-card--hidden) { cursor: pointer; }
     .bote-card:not(.bote-card--selected):not(.bote-card--hidden):hover { box-shadow: 0 2px 8px rgba(0,0,0,0.12); }
-    .bote-card--selected { order: -1; width: 208px; box-shadow: 0 0 0 3px rgba(13,110,253,0.35), 0 3px 10px rgba(0,0,0,0.15); }
+    .bote-card--selected { order: -1; width: 250px; box-shadow: 0 0 0 3px rgba(13,110,253,0.35), 0 3px 10px rgba(0,0,0,0.15); }
     .bote-card--full    { border-color: #dc3545; background: #fff5f5; }
     .bote-card--empty   {
       border-color: #198754;
@@ -357,8 +356,8 @@ interface ModalEntry {
 
     .bote-barrel {
       position: relative;
-      width: 83px;
-      height: 94px;
+      width: 100px;
+      height: 113px;
       border: 2px solid #adb5bd;
       border-radius: 10px;
       overflow: hidden;
@@ -378,7 +377,8 @@ interface ModalEntry {
     }
     .bote-fill--external        { background: rgba(108,117,125,0.28); }
     .bote-fill--external-locked { background: rgba(108,117,125,0.10) !important; }
-    .bote-fill--mine     { background: rgba(253,126,20,0.55); }
+    .bote-fill--mine             { background: rgba(253,126,20,0.55); }
+    .bote-fill--mine-locked      { background: rgba(25,135,84,0.60) !important; }
     .bote-fill--new      { background: rgba(13,110,253,0.40); }
     .bote-fill--red      { background: rgba(220,53,69,0.45) !important; }
     .bote-fill--green    { background: rgba(25,135,84,0.35) !important; }
@@ -782,6 +782,19 @@ export class DetallesBoteFiltradoComponent {
     this.modalOpen = true;
   }
 
+  async onLockCheckboxClick(event: Event) {
+    event.preventDefault(); // No cambiar visualmente hasta confirmar
+    const confirm = await alerts.confirmAlert(
+      'Bloquear asignación',
+      '¿Confirmas bloquear los cambios de esta asignación?<br>Una vez bloqueada no podrá modificarse.',
+      'warning',
+      'Sí, bloquear'
+    );
+    if (!confirm.isConfirmed) return;
+    await this.onLockChange(true);
+    await this.doConfirmLock();
+  }
+
   async onLockChange(locked: boolean) {
     if (!this.modalRow) return;
     try {
@@ -793,7 +806,7 @@ export class DetallesBoteFiltradoComponent {
       }
     } catch (e) {
       console.error('Error guardando lock:', e);
-      this.modalLocked = !locked; // revertir si falla
+      this.modalLocked = !locked;
     }
   }
 
@@ -847,6 +860,15 @@ export class DetallesBoteFiltradoComponent {
     }
 
     this.modalValidationMsg = '';
+
+    // Confirmar con el usuario
+    const confirmAdd = await alerts.confirmAlert(
+      'Confirmar asignación',
+      `¿Confirmas agregar <strong>${newVal.toFixed(0)} L</strong> al bote <strong>${entry.opt.description}</strong>?<br>Total quedará en <strong>${newTotal.toFixed(0)} L</strong>.`,
+      'question',
+      'Sí, confirmar'
+    );
+    if (!confirmAdd.isConfirmed) return;
 
     // Guardar bote (crear/patch)
     try {
@@ -930,6 +952,16 @@ export class DetallesBoteFiltradoComponent {
       return;
     }
     this.modalValidationMsg = '';
+
+    // Confirmar con el usuario
+    const confirmRet = await alerts.confirmAlert(
+      'Confirmar retiro',
+      `¿Confirmas retirar <strong>${amount.toFixed(0)} L</strong> del bote <strong>${entry.opt.description}</strong>?<br>Motivo: <em>${this.retiroComent}</em>`,
+      'warning',
+      'Sí, retirar'
+    );
+    if (!confirmRet.isConfirmed) return;
+
     const usuario = this.signalsService.getDisplayName()() ?? '';
 
     try {
@@ -976,22 +1008,33 @@ export class DetallesBoteFiltradoComponent {
   }
 
   async confirmLock() {
-    await this.onLockChange(true);
-    this.showLockPrompt = false;
+    const confirm = await alerts.confirmAlert(
+      'Bloquear asignación',
+      '¿Confirmas bloquear los cambios de esta asignación?<br>Una vez bloqueada no podrá modificarse.',
+      'warning',
+      'Sí, bloquear'
+    );
+    if (!confirm.isConfirmed) return;
 
+    this.showLockPrompt = false;
+    await this.onLockChange(true);
+    await this.doConfirmLock();
+  }
+
+  private async doConfirmLock() {
     // Cancelar edición activa si la hay
     if (this.selectedEntry) {
-      this.selectedEntry.inputValue = this.selectedEntryOriginalValue;
-      this.selectedEntry            = null;
+      this.selectedEntry.inputValue   = this.selectedEntryOriginalValue;
+      this.selectedEntry              = null;
       this.selectedEntryOriginalValue = null;
-      this.selectedEntryHistorial   = [];
-      this.entryComentario          = '';
-      this.retiroMode               = false;
-      this.retiroValue              = null;
-      this.retiroComent             = '';
+      this.selectedEntryHistorial     = [];
+      this.entryComentario            = '';
+      this.retiroMode                 = false;
+      this.retiroValue                = null;
+      this.retiroComent               = '';
     }
 
-    // Cambiar a vista bloqueada (igual que al abrir un modal ya bloqueado)
+    // Cambiar a vista bloqueada
     this.modalLocked    = true;
     this.lockedViewMode = true;
     this.modalEntries   = this.modalEntries.filter(e => e.asignacion !== null && (e.asignacion.cantidad ?? 0) > 0);
