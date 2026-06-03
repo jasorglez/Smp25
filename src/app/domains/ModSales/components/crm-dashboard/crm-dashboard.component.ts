@@ -7,6 +7,7 @@ import { PosService } from 'app/services/pos.service';
 import { SignalsService } from 'app/services/signals.service';
 import { Timestamp } from '@angular/fire/firestore';
 import { PosDashboardComponent } from '../pos-dashboard/pos-dashboard.component';
+import { KanbanProspectosComponent } from '../kanban-prospectos/kanban-prospectos.component';
 
 interface KpiCrm {
   label: string;
@@ -19,7 +20,7 @@ interface KpiCrm {
 @Component({
   selector: 'app-crm-dashboard',
   standalone: true,
-  imports: [CommonModule, FormsModule, NgApexchartsModule, PosDashboardComponent],
+  imports: [CommonModule, FormsModule, NgApexchartsModule, PosDashboardComponent, KanbanProspectosComponent],
   templateUrl: './crm-dashboard.component.html',
   styleUrls: ['./crm-dashboard.component.scss'],
 })
@@ -27,7 +28,7 @@ export class CrmDashboardComponent implements OnInit {
   private prospectosSvc = inject(ProspectosService);
   private signalsSvc    = inject(SignalsService);
 
-  tab: 'pos' | 'crm' | 'reportes' = 'crm';
+  tab: 'kanban' | 'pos' | 'reportes' = 'kanban';
   idCompany = 0;
   cargando  = false;
 

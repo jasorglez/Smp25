@@ -85,5 +85,5 @@ export const environment = {
     // publicKey: 'TEST-4399133a-4676-42a2-ab85-d946370bf96a',
   },
 
-  version: '7.83 (03 Junio 2026) fix(crm): Dashboard apunta a crm-dashboard con permiso prospectos',
+  version: '7.84 (03 Junio 2026) refactor(crm): Kanban como pestana en Dashboard quita Prospeccion CRM y Pipeline nav',
 };
