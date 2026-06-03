@@ -2363,7 +2363,9 @@ export class OrdenesComponent implements OnInit, OnDestroy {
             ${otsNoEliminables.length > 0 ? `<p class="text-muted small">Nota: ${otsNoEliminables.length} OT(s) no se eliminaron porque tienen reportes asociados.</p>` : ''}
           `,
           icon: 'success',
-          confirmButtonText: 'Aceptar'
+          showConfirmButton: false,
+          timer: 4000,
+          timerProgressBar: true,
         });
       } else if (errors.length > 0) {
         await Swal.fire({
