@@ -196,9 +196,10 @@
           </div>
         </div>
         <div class="col-md-5">
-          <div class="card shadow-sm">
+          <!-- Por Giro -->
+          <div class="card shadow-sm mb-3">
             <div class="card-header py-2 fw-bold"><i class="bi bi-pie-chart me-1 text-info"></i>Por Giro</div>
-            <div class="card-body">
+            <div class="card-body py-2">
               <div *ngFor="let g of rPorGiro" class="mb-2">
                 <div class="d-flex justify-content-between mb-1">
                   <small class="fw-semibold">{{g.giro}}</small>
@@ -207,6 +208,25 @@
                 <div class="progress" style="height:5px">
                   <div class="progress-bar bg-info" [style.width]="g.pct+'%'"></div>
                 </div>
+              </div>
+            </div>
+          </div>
+          <!-- Por Fuente -->
+          <div class="card shadow-sm">
+            <div class="card-header py-2 fw-bold"><i class="bi bi-signpost-split me-1 text-warning"></i>Por Fuente</div>
+            <div class="card-body py-2">
+              <div *ngFor="let f of rPorFuente" class="mb-2">
+                <div class="d-flex justify-content-between mb-1">
+                  <small class="fw-semibold">{{f.icon}} {{f.fuente}}</small>
+                  <small class="text-muted">{{f.count}} ({{f.pct}}%)</small>
+                </div>
+                <div class="progress" style="height:5px">
+                  <div class="progress-bar bg-warning" [style.width]="f.pct+'%'"></div>
+                </div>
+              </div>
+              <div *ngIf="rPorFuente.length === 0 || (rPorFuente.length === 1 && rPorFuente[0].fuente === 'Sin fuente')"
+                   class="text-muted small text-center py-1">
+                Aún no hay fuentes registradas
               </div>
             </div>
           </div>

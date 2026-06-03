@@ -112,6 +112,10 @@
             {{ formatFecha(selected?.fechaProximoSeguimiento) || 'Sin fecha' }}
           </div>
         </div>
+        <div class="col-6" *ngIf="selected?.fuente">
+          <label class="form-label small text-muted mb-0">Fuente</label>
+          <div>{{ selected?.fuente }}</div>
+        </div>
         <div class="col-12" *ngIf="selected?.competidor">
           <label class="form-label small text-muted mb-0">Compite con</label>
           <div>⚔️ {{ selected?.competidor }}</div>

@@ -39,8 +39,9 @@ export interface Prospecto {
   activo: boolean;
   countInteracciones?: number;
   // ── Campos CRM extendidos ───────────────────────────────────────────────
-  giro?: string;               // Restaurante, Clínica, Escuela, Construcción, Otro
-  competidor?: string;         // Sistema que usa actualmente (Soft Restaurant, etc.)
+  giro?: string;
+  fuente?: string;             // Origen del prospecto: Referido, WhatsApp, Web, etc.
+  competidor?: string;
   fechaProximoSeguimiento?: Timestamp | null;
   __isNew?: boolean;
   __modified?: boolean;
@@ -75,6 +76,12 @@ export const ESTADOS_PROSPECTO = [
 export const GIROS_PROSPECTO = [
   'Restaurante', 'Clínica', 'Escuela', 'Construcción',
   'Comercio', 'Servicios', 'Manufactura', 'Gobierno', 'Otro',
+];
+
+export const FUENTES_PROSPECTO = [
+  'Referido', 'WhatsApp', 'Web', 'Expo/Evento',
+  'Llamada fría', 'Redes sociales', 'LinkedIn',
+  'Email', 'Vendedor directo', 'Otro',
 ];
 
 export interface Tarea {
@@ -195,6 +202,7 @@ export class ProspectosService {
       idCustomer:             null,
       countInteracciones:     0,
       giro:                   p.giro ?? '',
+      fuente:                 p.fuente ?? '',
       competidor:             p.competidor ?? '',
       fechaProximoSeguimiento: p.fechaProximoSeguimiento ?? null,
       fechaCreacion:          now,

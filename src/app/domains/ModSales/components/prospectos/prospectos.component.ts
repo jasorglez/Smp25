@@ -4,7 +4,7 @@ import { FormsModule } from '@angular/forms';
 import { AgGridModule } from 'ag-grid-angular';
 import { ColDef, GridApi, GridReadyEvent } from 'ag-grid-enterprise';
 import { AG_GRID_LOCALE_ES } from 'assets/i18n/ag-grid.locale.es';
-import { ProspectosService, Prospecto, ESTADOS_PROSPECTO, GIROS_PROSPECTO, calcularScore, nivelScore } from 'app/services/prospectos.service';
+import { ProspectosService, Prospecto, ESTADOS_PROSPECTO, GIROS_PROSPECTO, FUENTES_PROSPECTO, calcularScore, nivelScore } from 'app/services/prospectos.service';
 import { Timestamp } from '@angular/fire/firestore';
 import { SignalsService } from 'app/services/signals.service';
 import { UsersService } from 'app/services/users.service';
@@ -83,8 +83,15 @@ export class ProspectosComponent implements OnInit {
   get nombreVendedor() { return this.signalsSvc.getDisplayName()(); }
 
   // ── Enter-key navigation ─────────────────────────────────────────────────
-  private editableColumnOrder = ['nombreVendedorActual', 'empresa', 'nombre', 'puesto', 'telefono', 'giro', 'competidor', 'domicilio', 'estado'];
-  readonly GIROS = GIROS_PROSPECTO;
+  private editableColumnOrder = ['nombreVendedorActual', 'empresa', 'nombre', 'puesto', 'telefono', 'giro', 'fuente', 'competidor', 'domicilio', 'estado'];
+  readonly GIROS    = GIROS_PROSPECTO;
+  readonly FUENTES  = FUENTES_PROSPECTO;
+
+  private readonly FUENTE_ICONS: Record<string, string> = {
+    'Referido': '🤝', 'WhatsApp': '💬', 'Web': '🌐', 'Expo/Evento': '🎪',
+    'Llamada fría': '📞', 'Redes sociales': '📱', 'LinkedIn': '💼',
+    'Email': '📧', 'Vendedor directo': '👤', 'Otro': '❓',
+  };
   private enterPressed = false;
 
   defaultColDef: ColDef = {
@@ -215,6 +222,16 @@ export class ProspectosComponent implements OnInit {
         field: 'giro', headerName: 'Giro', width: 130, editable: true,
         cellEditor: 'agSelectCellEditor',
         cellEditorParams: { values: GIROS_PROSPECTO },
+      },
+      {
+        field: 'fuente', headerName: 'Fuente', width: 140, editable: true,
+        cellEditor: 'agSelectCellEditor',
+        cellEditorParams: { values: FUENTES_PROSPECTO },
+        cellRenderer: (p: any) => {
+          if (!p.value) return '';
+          const icon = this.FUENTE_ICONS[p.value] ?? '❓';
+          return `${icon} ${p.value}`;
+        },
       },
       { field: 'competidor', headerName: 'Compite con', width: 145, editable: true },
       { field: 'domicilio',  headerName: 'Domicilio',   width: 180, editable: true, filter: true },
@@ -371,7 +388,7 @@ export class ProspectosComponent implements OnInit {
       chatIdVendedorActual: '', idCompany: this.idRoot,
       creadoPor: 'web', idVendedorCreador: this.idVendedor,
       notas: '', idCustomer: null, activo: true,
-      giro: '', competidor: '', fechaProximoSeguimiento: null,
+      giro: '', fuente: '', competidor: '', fechaProximoSeguimiento: null,
       fechaCreacion: null, fechaUltimaInteraccion: null,
       countInteracciones: 0,
       __isNew: true, __modified: false,
@@ -420,6 +437,7 @@ export class ProspectosComponent implements OnInit {
             idVendedorActual:       p.idVendedorActual,
             nombreVendedorActual:   p.nombreVendedorActual,
             giro:                   p.giro ?? '',
+            fuente:                 p.fuente ?? '',
             competidor:             p.competidor ?? '',
             fechaProximoSeguimiento: p.fechaProximoSeguimiento ?? null,
           });
@@ -607,6 +625,17 @@ export class ProspectosComponent implements OnInit {
     const total = this.reportesData.length || 1;
     return [...map.entries()].sort((a, b) => b[1] - a[1])
       .map(([giro, count]) => ({ giro, count, pct: Math.round(count / total * 100) }));
+  }
+
+  get rPorFuente() {
+    const map = new Map<string, number>();
+    this.reportesData.forEach(p => map.set(p.fuente || 'Sin fuente', (map.get(p.fuente || 'Sin fuente') ?? 0) + 1));
+    const total = this.reportesData.length || 1;
+    return [...map.entries()].sort((a, b) => b[1] - a[1])
+      .map(([fuente, count]) => ({
+        fuente, count, pct: Math.round(count / total * 100),
+        icon: this.FUENTE_ICONS[fuente] ?? '❓',
+      }));
   }
 
   get rScoreDistrib() {
