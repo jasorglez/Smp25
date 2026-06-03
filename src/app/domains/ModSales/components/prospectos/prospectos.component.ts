@@ -482,15 +482,21 @@ export class ProspectosComponent implements OnInit {
     const errores: string[] = [];
     for (const p of toSave) {
       const empresa = p.empresa?.trim() ?? '';
-      const nombre = p.nombre?.trim() ?? '';
+      const nombre  = p.nombre?.trim()  ?? '';
+      const correo  = p.correo?.trim()  ?? '';
 
       if (!empresa || !nombre) {
         const camposFaltantes = [
           !empresa ? 'Empresa' : null,
-          !nombre ? 'Nombre' : null,
+          !nombre  ? 'Nombre'  : null,
         ].filter(Boolean).join('/');
+        errores.push(`Sin ${camposFaltantes}: "${empresa || nombre || '(vacío)'}"`);
+        continue;
+      }
 
-        errores.push(`Sin ${camposFaltantes}: "${empresa || nombre || '(vacio)'}"`);
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
+      if (correo && !emailRegex.test(correo)) {
+        errores.push(`Correo inválido en "${empresa}": ${correo}`);
         continue;
       }
       try {
