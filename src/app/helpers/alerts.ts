@@ -11,6 +11,17 @@ export class alerts{
 
 	static basicAlert(title:string, text:string, icon:SweetAlertIcon){
 
+		if (icon === 'success') {
+			return Swal.fire({
+				toast: true, position: 'top-end',
+				icon: 'success', title,
+				text: text || undefined,
+				showConfirmButton: false,
+				timer: 2000, timerProgressBar: true,
+				customClass: { container: 'swal-over-modal' },
+			});
+		}
+
 		return Swal.fire({
 			title,
 			text,

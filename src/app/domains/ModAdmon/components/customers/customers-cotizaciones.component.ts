@@ -1,4 +1,4 @@
-import { Component, inject, Input, OnChanges } from '@angular/core';
+﻿import { Component, inject, Input, OnChanges } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { AgGridModule } from 'ag-grid-angular';
 import { ICellRendererAngularComp } from 'ag-grid-angular';
@@ -390,10 +390,7 @@ export class CustomersCotizacionesComponent implements ICellRendererAngularComp,
         { activo: false } as any
       );
       this.selectedItem = null;
-      Swal.fire({
-        icon: 'success', title: 'Eliminado',
-        timer: 1200, showConfirmButton: false,
-      });
+      Swal.fire({ toast: true, position: 'top-end', icon: 'success', title: 'Eliminado', showConfirmButton: false, timer: 2000, timerProgressBar: true });
     } catch {
       Swal.fire('Error', 'No se pudo eliminar la cotización.', 'error');
     }
@@ -413,3 +410,4 @@ export class CustomersCotizacionesComponent implements ICellRendererAngularComp,
     this.sub?.unsubscribe();
   }
 }
+

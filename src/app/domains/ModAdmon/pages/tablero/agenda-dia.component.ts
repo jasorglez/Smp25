@@ -1,4 +1,4 @@
-import { Component, inject, OnInit, signal } from '@angular/core';
+﻿import { Component, inject, OnInit, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute } from '@angular/router';
@@ -266,7 +266,7 @@ export class AgendaDiaComponent implements OnInit {
           this.notifConfig.googleEmail        = undefined;
           this.notifConfig.googleRefreshToken = undefined;
         }
-        Swal.fire({ icon: 'success', title: 'Desconectado', timer: 1500, showConfirmButton: false });
+        Swal.fire({ toast: true, position: 'top-end', icon: 'success', title: 'Desconectado', showConfirmButton: false, timer: 2000, timerProgressBar: true });
       },
       error: () => Swal.fire('Error', 'No se pudo desconectar.', 'error'),
     });
@@ -314,7 +314,7 @@ export class AgendaDiaComponent implements OnInit {
     this.agendaSvc.saveNotificationConfig(config).subscribe({
       next: () => {
         this.notifConfig = config;
-        Swal.fire({ icon: 'success', title: 'Guardado', timer: 1500, showConfirmButton: false });
+        Swal.fire({ toast: true, position: 'top-end', icon: 'success', title: 'Guardado', showConfirmButton: false, timer: 2000, timerProgressBar: true });
       },
       error: () => Swal.fire('Error', 'No se pudo guardar.', 'error'),
     });
@@ -381,3 +381,4 @@ export class AgendaDiaComponent implements OnInit {
     return `border-${TIPOS_AGENDA.find(t => t.value === tipo)?.color ?? 'secondary'}`;
   }
 }
+
