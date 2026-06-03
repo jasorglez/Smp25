@@ -1,7 +1,7 @@
 import { Component, effect, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { ProspectosService, Prospecto, ESTADOS_PROSPECTO } from 'app/services/prospectos.service';
+import { ProspectosService, Prospecto, ESTADOS_PROSPECTO, calcularScore, nivelScore } from 'app/services/prospectos.service';
 import { SignalsService } from 'app/services/signals.service';
 import { Timestamp } from '@angular/fire/firestore';
 
@@ -105,4 +105,7 @@ export class KanbanProspectosComponent {
   etapasSiguientes(): typeof ESTADOS_PROSPECTO {
     return ESTADOS_PROSPECTO.filter(e => e.value !== this.selected?.estado);
   }
+
+  score(p: Prospecto)  { return calcularScore(p); }
+  nivel(p: Prospecto)  { return nivelScore(calcularScore(p)); }
 }

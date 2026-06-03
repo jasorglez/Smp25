@@ -1849,6 +1849,15 @@ export const routes: Routes = [
             data: { permissions: { master: 'sales', detailed: 'prospectos' } },
           },
           {
+            path: 'mis-tareas',
+            loadComponent: () =>
+              import(
+                './domains/ModSales/components/mis-tareas/mis-tareas.component'
+              ).then((m) => m.MisTareasComponent),
+            canActivate: [MasterPermissionsGuard],
+            data: { permissions: { master: 'sales', detailed: 'prospectos' } },
+          },
+          {
             path: 'setup-sales',
             loadComponent: () =>
               import(

@@ -1,0 +1,126 @@
+<section class="sales-mod-shell">
+  <header class="sales-mod-head sales-mod-reveal d-flex align-items-baseline gap-3">
+    <h2 class="sales-mod-title mb-0"><i class="bi bi-check2-square me-2"></i>Mis Tareas</h2>
+    <p class="sales-mod-subtitle mb-0">Actividades pendientes de seguimiento CRM.</p>
+    <button class="btn btn-sm btn-outline-secondary ms-auto" (click)="cargar()" [disabled]="loading">
+      <i class="bi bi-arrow-clockwise"></i> Actualizar
+    </button>
+  </header>
+
+  <!-- Loading -->
+  <div *ngIf="loading" class="text-center py-5">
+    <div class="spinner-border text-primary"></div>
+    <p class="text-muted mt-2">Cargando tareas...</p>
+  </div>
+
+  <!-- Sin tareas -->
+  <div *ngIf="!loading && tareas.length === 0" class="text-center py-5 text-muted">
+    <i class="bi bi-check2-all" style="font-size:3rem"></i>
+    <p class="mt-3 mb-0 fw-semibold">Sin tareas pendientes</p>
+    <small>Las tareas se crean desde el historial de cada prospecto</small>
+  </div>
+
+  <div *ngIf="!loading && tareas.length > 0" class="p-3">
+
+    <!-- Resumen -->
+    <div class="d-flex gap-3 mb-4 flex-wrap">
+      <div class="rounded border p-3 text-center" style="min-width:110px;background:#fde8e8">
+        <div class="fw-bold fs-4 text-danger">{{ vencidas.length }}</div>
+        <small class="text-danger">🔴 Vencidas</small>
+      </div>
+      <div class="rounded border p-3 text-center" style="min-width:110px;background:#fff9e6">
+        <div class="fw-bold fs-4" style="color:#856404">{{ hoy.length }}</div>
+        <small style="color:#856404">🟡 Para hoy</small>
+      </div>
+      <div class="rounded border p-3 text-center" style="min-width:110px;background:#f8fff8">
+        <div class="fw-bold fs-4 text-success">{{ proximas.length }}</div>
+        <small class="text-success">🟢 Próximas</small>
+      </div>
+    </div>
+
+    <!-- Vencidas -->
+    <ng-container *ngIf="vencidas.length > 0">
+      <h6 class="text-danger mb-2">🔴 Vencidas</h6>
+      <div *ngFor="let t of vencidas"
+           class="d-flex align-items-start gap-2 p-2 mb-2 rounded border"
+           style="background:#fde8e8">
+        <div class="flex-grow-1">
+          <div class="d-flex gap-2 align-items-center mb-1 flex-wrap">
+            <span class="badge bg-info text-dark" style="font-size:.72rem">{{ t.tipo }}</span>
+            <span class="small fw-semibold">{{ t.empresaProspecto }}</span>
+            <span class="text-muted small">— {{ t.nombreProspecto }}</span>
+          </div>
+          <div class="small">{{ t.descripcion }}</div>
+          <div class="small text-danger mt-1">
+            <i class="bi bi-exclamation-triangle me-1"></i>{{ formatFecha(t.fechaVencimiento) }}
+          </div>
+        </div>
+        <div class="d-flex gap-1 flex-shrink-0">
+          <button class="btn btn-sm btn-success py-0 px-2" title="Completar" (click)="completar(t)">
+            <i class="bi bi-check-lg"></i>
+          </button>
+          <button class="btn btn-sm btn-outline-danger py-0 px-2" title="Eliminar" (click)="eliminar(t)">
+            <i class="bi bi-trash"></i>
+          </button>
+        </div>
+      </div>
+    </ng-container>
+
+    <!-- Hoy -->
+    <ng-container *ngIf="hoy.length > 0">
+      <h6 class="mb-2 mt-3" style="color:#856404">🟡 Para hoy</h6>
+      <div *ngFor="let t of hoy"
+           class="d-flex align-items-start gap-2 p-2 mb-2 rounded border"
+           style="background:#fff9e6">
+        <div class="flex-grow-1">
+          <div class="d-flex gap-2 align-items-center mb-1 flex-wrap">
+            <span class="badge bg-info text-dark" style="font-size:.72rem">{{ t.tipo }}</span>
+            <span class="small fw-semibold">{{ t.empresaProspecto }}</span>
+            <span class="text-muted small">— {{ t.nombreProspecto }}</span>
+          </div>
+          <div class="small">{{ t.descripcion }}</div>
+          <div class="small mt-1" style="color:#856404">
+            <i class="bi bi-clock me-1"></i>Para hoy
+          </div>
+        </div>
+        <div class="d-flex gap-1 flex-shrink-0">
+          <button class="btn btn-sm btn-success py-0 px-2" title="Completar" (click)="completar(t)">
+            <i class="bi bi-check-lg"></i>
+          </button>
+          <button class="btn btn-sm btn-outline-danger py-0 px-2" title="Eliminar" (click)="eliminar(t)">
+            <i class="bi bi-trash"></i>
+          </button>
+        </div>
+      </div>
+    </ng-container>
+
+    <!-- Próximas -->
+    <ng-container *ngIf="proximas.length > 0">
+      <h6 class="text-success mb-2 mt-3">🟢 Próximas</h6>
+      <div *ngFor="let t of proximas"
+           class="d-flex align-items-start gap-2 p-2 mb-2 rounded border"
+           style="background:#f8fff8">
+        <div class="flex-grow-1">
+          <div class="d-flex gap-2 align-items-center mb-1 flex-wrap">
+            <span class="badge bg-info text-dark" style="font-size:.72rem">{{ t.tipo }}</span>
+            <span class="small fw-semibold">{{ t.empresaProspecto }}</span>
+            <span class="text-muted small">— {{ t.nombreProspecto }}</span>
+          </div>
+          <div class="small">{{ t.descripcion }}</div>
+          <div class="small text-muted mt-1">
+            <i class="bi bi-calendar2-event me-1"></i>{{ formatFecha(t.fechaVencimiento) }}
+          </div>
+        </div>
+        <div class="d-flex gap-1 flex-shrink-0">
+          <button class="btn btn-sm btn-success py-0 px-2" title="Completar" (click)="completar(t)">
+            <i class="bi bi-check-lg"></i>
+          </button>
+          <button class="btn btn-sm btn-outline-danger py-0 px-2" title="Eliminar" (click)="eliminar(t)">
+            <i class="bi bi-trash"></i>
+          </button>
+        </div>
+      </div>
+    </ng-container>
+
+  </div>
+</section>

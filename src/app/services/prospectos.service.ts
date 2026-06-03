@@ -95,6 +95,47 @@ export interface Tarea {
 
 export const TIPOS_TAREA = ['llamada', 'reunión', 'email', 'seguimiento', 'visita', 'demo', 'cotizar', 'otro'];
 
+// ── Score CRM ─────────────────────────────────────────────────────────────────
+export function calcularScore(p: Prospecto): number {
+  if (!p || p.activo === false) return 0;
+  let score = 0;
+
+  const scoreEstado: Record<string, number> = {
+    prospecto: 5, contactado: 15, demo_agendada: 25,
+    demo_realizada: 35, cotizacion_enviada: 45, negociacion: 55,
+    ganado: 60, perdido: 0,
+  };
+  score += scoreEstado[p.estado] ?? 5;
+
+  score += Math.min(20, (p.countInteracciones ?? 0) * 2);
+
+  const toMs = (ts: any): number => {
+    if (!ts) return 0;
+    if (ts.toDate) return ts.toDate().getTime();
+    if (ts.seconds) return ts.seconds * 1000;
+    return new Date(ts).getTime();
+  };
+  const dias = p.fechaUltimaInteraccion
+    ? Math.floor((Date.now() - toMs(p.fechaUltimaInteraccion)) / 86_400_000)
+    : 999;
+  if      (dias > 30) score -= 20;
+  else if (dias > 14) score -= 10;
+  else if (dias > 7)  score -= 5;
+
+  if (p.fechaProximoSeguimiento)              score += 5;
+  if (p.giro && p.giro !== '')               score += 5;
+  if (p.competidor && p.competidor !== '')   score += 5;
+  if (p.telefono && p.telefono !== 'SIN NUMERO') score += 5;
+
+  return Math.max(0, Math.min(100, score));
+}
+
+export function nivelScore(score: number): { label: string; color: string; icon: string } {
+  if (score >= 70) return { label: 'Hot',  color: 'danger',  icon: '🔥' };
+  if (score >= 40) return { label: 'Warm', color: 'warning', icon: '👍' };
+  return                   { label: 'Cold', color: 'info',    icon: '❄️' };
+}
+
 @Injectable({ providedIn: 'root' })
 export class ProspectosService {
   private firestore = inject(Firestore);

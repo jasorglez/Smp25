@@ -41,7 +41,12 @@
              [class.kanban-card-vencido]="estaVencido(p.fechaProximoSeguimiento)"
              (click)="seleccionar(p)">
 
-          <div class="kanban-card-empresa">{{ p.empresa || '—' }}</div>
+          <div class="d-flex justify-content-between align-items-center">
+            <div class="kanban-card-empresa">{{ p.empresa || '—' }}</div>
+            <span class="badge bg-{{ nivel(p).color }}" style="font-size:.68rem" title="Score CRM">
+              {{ nivel(p).icon }} {{ score(p) }}
+            </span>
+          </div>
           <div class="kanban-card-nombre">{{ p.nombre }}</div>
 
           <div class="kanban-card-meta d-flex justify-content-between mt-1">
