@@ -530,7 +530,11 @@ export class ProspectosComponent implements OnInit {
       return;
     }
 
-    Swal.fire({ icon: 'success', title: 'Guardado', timer: 900, showConfirmButton: false });
+    Swal.fire({
+      toast: true, position: 'top-end',
+      icon: 'success', title: 'Registro guardado',
+      showConfirmButton: false, timer: 2000, timerProgressBar: true,
+    });
 
     // Por cada nuevo guardado, preguntar si envía WhatsApp
     for (const p of nuevos) {
