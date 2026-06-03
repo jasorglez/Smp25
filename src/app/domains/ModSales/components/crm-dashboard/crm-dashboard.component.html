@@ -3,8 +3,13 @@
   <!-- Tabs -->
   <ul class="nav nav-tabs mb-3">
     <li class="nav-item">
+      <button class="nav-link" [class.active]="tab==='crm'" (click)="tab='crm'">
+        <i class="bi bi-funnel me-1"></i> Prospectación CRM
+      </button>
+    </li>
+    <li class="nav-item">
       <button class="nav-link" [class.active]="tab==='kanban'" (click)="tab='kanban'">
-        <i class="bi bi-kanban-fill me-1"></i> Pipeline
+        <i class="bi bi-kanban-fill me-1"></i> Kanban
       </button>
     </li>
     <li class="nav-item">
@@ -18,6 +23,116 @@
       </button>
     </li>
   </ul>
+
+  <!-- ══ TAB PROSPECTACIÓN CRM ════════════════════════════════════════════ -->
+  <div *ngIf="tab==='crm'">
+
+    <div *ngIf="cargando" class="text-center py-5">
+      <div class="spinner-border text-primary"></div>
+    </div>
+
+    <div *ngIf="!cargando">
+
+      <!-- KPI Cards -->
+      <div class="kpi-grid mb-4">
+        <div *ngFor="let k of kpis" class="kpi-card {{ k.color }}">
+          <div class="kpi-icon"><i class="bi {{ k.icon }}"></i></div>
+          <div class="kpi-body">
+            <div class="kpi-valor">{{ k.valor }}</div>
+            <div class="kpi-label" [title]="k.tooltip">{{ k.label }}</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Fila: Funnel + Seguimientos + Demos + Próximos 7d -->
+      <div class="row g-3">
+
+        <div class="col-md-3">
+          <div class="card shadow-sm h-100">
+            <div class="card-header py-2 fw-bold"><i class="bi bi-funnel me-1"></i> Embudo de Ventas</div>
+            <div class="card-body p-2">
+              <div *ngFor="let e of etapas" class="mb-2">
+                <div class="d-flex justify-content-between align-items-center mb-1">
+                  <small class="fw-semibold">{{ e.icon }} {{ e.label }}</small>
+                  <span class="badge bg-{{ e.color }}">{{ conteoPorEtapa[e.value] || 0 }}</span>
+                </div>
+                <div class="progress" style="height:6px">
+                  <div class="progress-bar bg-{{ e.color }}" [style.width]="porcentajeFunnel(e.value) + '%'"></div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="col-md-3">
+          <div class="card shadow-sm h-100 border-danger">
+            <div class="card-header py-2 fw-bold text-danger">
+              <i class="bi bi-alarm me-1"></i> Seguimientos Vencidos
+              <span class="badge bg-danger ms-1">{{ vencidosHoy.length }}</span>
+            </div>
+            <div class="card-body p-0">
+              <div *ngIf="vencidosHoy.length === 0" class="p-3 text-muted text-center">
+                <i class="bi bi-check-circle text-success fs-3"></i><br>Sin vencidos 🎉
+              </div>
+              <div class="list-group list-group-flush">
+                <div *ngFor="let p of vencidosHoy | slice:0:7" class="list-group-item py-2 px-3">
+                  <div class="fw-semibold text-truncate" style="max-width:180px">{{ p.empresa || p.nombre }}</div>
+                  <div class="d-flex justify-content-between">
+                    <small class="text-muted">{{ p.nombre }}</small>
+                    <small class="text-danger fw-bold">{{ formatFecha(p.fechaProximoSeguimiento) }}</small>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="col-md-3">
+          <div class="card shadow-sm h-100 border-warning">
+            <div class="card-header py-2 fw-bold text-warning">
+              <i class="bi bi-camera-video me-1"></i> Demos Hoy
+              <span class="badge bg-warning text-dark ms-1">{{ demosHoy.length }}</span>
+            </div>
+            <div class="card-body p-0">
+              <div *ngIf="demosHoy.length === 0" class="p-3 text-muted text-center">
+                <i class="bi bi-calendar-x fs-3"></i><br>Sin demos hoy
+              </div>
+              <div class="list-group list-group-flush">
+                <div *ngFor="let p of demosHoy" class="list-group-item py-2 px-3">
+                  <div class="fw-semibold">{{ p.empresa || p.nombre }}</div>
+                  <small class="text-muted">{{ p.nombreVendedorActual }}</small>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="col-md-3">
+          <div class="card shadow-sm h-100 border-info">
+            <div class="card-header py-2 fw-bold text-info">
+              <i class="bi bi-calendar-week me-1"></i> Próximos 7 días
+              <span class="badge bg-info ms-1">{{ proximos7dias.length }}</span>
+            </div>
+            <div class="card-body p-0">
+              <div *ngIf="proximos7dias.length === 0" class="p-3 text-muted text-center">
+                <i class="bi bi-calendar-check fs-3"></i><br>Sin seguimientos próximos
+              </div>
+              <div class="list-group list-group-flush">
+                <div *ngFor="let p of proximos7dias | slice:0:6" class="list-group-item py-2 px-3">
+                  <div class="fw-semibold text-truncate" style="max-width:180px">{{ p.empresa || p.nombre }}</div>
+                  <div class="d-flex justify-content-between">
+                    <small class="text-muted">{{ p.nombre }}</small>
+                    <small class="text-info fw-bold">{{ formatFecha(p.fechaProximoSeguimiento) }}</small>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </div>
 
   <!-- ══ TAB KANBAN ═══════════════════════════════════════════════════════ -->
   <div *ngIf="tab==='kanban'">

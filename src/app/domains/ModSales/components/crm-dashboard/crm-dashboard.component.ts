@@ -28,7 +28,7 @@ export class CrmDashboardComponent implements OnInit {
   private prospectosSvc = inject(ProspectosService);
   private signalsSvc    = inject(SignalsService);
 
-  tab: 'kanban' | 'pos' | 'reportes' = 'kanban';
+  tab: 'crm' | 'kanban' | 'pos' | 'reportes' = 'crm';
   idCompany = 0;
   cargando  = false;
 
