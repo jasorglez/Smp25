@@ -94,6 +94,19 @@
         <span class="ms-2 text-muted small">Cargando prospectos...</span>
       </div>
 
+      <!-- Filtro tag -->
+      <div class="px-2 pb-1" *ngIf="!loading">
+        <div class="input-group input-group-sm" style="max-width:220px">
+          <span class="input-group-text bg-light"><i class="bi bi-tag"></i></span>
+          <input class="form-control" placeholder="Filtrar por tag..."
+                 [(ngModel)]="filtroTag" (ngModelChange)="aplicarFiltroTag($event)">
+          <button class="btn btn-outline-secondary" *ngIf="filtroTag"
+                  (click)="filtroTag=''; aplicarFiltroTag('')">
+            <i class="bi bi-x"></i>
+          </button>
+        </div>
+      </div>
+
       <div class="sales-mod-card p-2" *ngIf="!loading">
         <ag-grid-angular
           class="ag-theme-quartz small-text-ag-grid sales-mod-ag"
@@ -362,6 +375,20 @@
               </div>
             </div>
           </div>
+          <!-- Por Tag -->
+          <div class="card shadow-sm mb-3" *ngIf="rPorTag.length > 0">
+            <div class="card-header py-2 fw-bold"><i class="bi bi-tags me-1 text-primary"></i>Por Tag</div>
+            <div class="card-body py-2">
+              <div class="d-flex flex-wrap gap-1">
+                <span *ngFor="let t of rPorTag"
+                      class="badge bg-light text-dark border px-2 py-1"
+                      style="font-size:.78rem">
+                  #{{t.tag}} <span class="badge bg-secondary ms-1">{{t.count}}</span>
+                </span>
+              </div>
+            </div>
+          </div>
+
           <!-- Por Fuente -->
           <div class="card shadow-sm">
             <div class="card-header py-2 fw-bold"><i class="bi bi-signpost-split me-1 text-warning"></i>Por Fuente</div>

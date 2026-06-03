@@ -66,6 +66,9 @@
           <div *ngIf="p.competidor" class="kanban-card-competidor mt-1">
             <small class="badge bg-light text-secondary">⚔️ {{ p.competidor }}</small>
           </div>
+          <div *ngIf="p.tags?.length" class="d-flex flex-wrap gap-1 mt-1">
+            <span *ngFor="let tag of p.tags" class="badge bg-light text-dark border" style="font-size:.65rem">#{{tag}}</span>
+          </div>
         </div>
       </div>
     </div>

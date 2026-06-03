@@ -140,6 +140,7 @@ export class ProspectosComponent implements OnInit {
   private editableColumnOrder = ['nombreVendedorActual', 'empresa', 'nombre', 'puesto', 'telefono', 'giro', 'fuente', 'competidor', 'domicilio', 'estado'];
   readonly GIROS    = GIROS_PROSPECTO;
   readonly FUENTES  = FUENTES_PROSPECTO;
+  filtroTag = '';
 
   private readonly FUENTE_ICONS: Record<string, string> = {
     'Referido': '🤝', 'WhatsApp': '💬', 'Web': '🌐', 'Expo/Evento': '🎪',
@@ -286,6 +287,15 @@ export class ProspectosComponent implements OnInit {
           const icon = this.FUENTE_ICONS[p.value] ?? '❓';
           return `${icon} ${p.value}`;
         },
+      },
+      {
+        field: 'tags', headerName: 'Tags', width: 170, editable: false,
+        cellRenderer: (p: any) => {
+          const tags: string[] = p.value ?? [];
+          if (!tags.length) return '';
+          return tags.map(t => `<span class="badge bg-light text-dark border me-1" style="font-size:.7rem">#${t}</span>`).join('');
+        },
+        getQuickFilterText: (p: any) => (p.value ?? []).join(' '),
       },
       { field: 'competidor', headerName: 'Compite con', width: 145, editable: true },
       { field: 'domicilio',  headerName: 'Domicilio',   width: 180, editable: true, filter: true },
@@ -442,7 +452,7 @@ export class ProspectosComponent implements OnInit {
       chatIdVendedorActual: '', idCompany: this.idRoot,
       creadoPor: 'web', idVendedorCreador: this.idVendedor,
       notas: '', idCustomer: null, activo: true,
-      giro: '', fuente: '', competidor: '', fechaProximoSeguimiento: null,
+      giro: '', fuente: '', tags: [], competidor: '', fechaProximoSeguimiento: null,
       fechaCreacion: null, fechaUltimaInteraccion: null,
       countInteracciones: 0,
       __isNew: true, __modified: false,
@@ -679,6 +689,16 @@ export class ProspectosComponent implements OnInit {
     const total = this.reportesData.length || 1;
     return [...map.entries()].sort((a, b) => b[1] - a[1])
       .map(([giro, count]) => ({ giro, count, pct: Math.round(count / total * 100) }));
+  }
+
+  aplicarFiltroTag(valor: string) {
+    this.gridApi?.setGridOption('quickFilterText', valor ?? '');
+  }
+
+  get rPorTag() {
+    const map = new Map<string, number>();
+    this.reportesData.forEach(p => (p.tags ?? []).forEach((t: string) => map.set(t, (map.get(t) ?? 0) + 1)));
+    return [...map.entries()].sort((a, b) => b[1] - a[1]).map(([tag, count]) => ({ tag, count }));
   }
 
   get rPorFuente() {

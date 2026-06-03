@@ -47,6 +47,24 @@ import Swal from 'sweetalert2';
         </div>
       </div>
 
+      <!-- Tags -->
+      <div class="d-flex flex-wrap align-items-center gap-1 mb-2">
+        <span *ngFor="let tag of (prospecto?.tags ?? [])"
+              class="badge bg-light text-dark border d-inline-flex align-items-center gap-1"
+              style="font-size:.72rem">
+          #{{tag}}
+          <button (click)="removeTag(tag)"
+                  style="background:none;border:none;padding:0;color:#999;line-height:1;font-size:.75rem;cursor:pointer">✕</button>
+        </span>
+        <div class="input-group input-group-sm" style="width:150px">
+          <input class="form-control form-control-sm" placeholder="+ tag"
+                 [(ngModel)]="nuevoTag" (keydown.enter)="addTag()">
+          <button class="btn btn-outline-secondary btn-sm" (click)="addTag()">
+            <i class="bi bi-plus-lg"></i>
+          </button>
+        </div>
+      </div>
+
       <!-- Sub-tabs -->
       <ul class="nav nav-tabs mb-2" style="font-size:.82rem">
         <li class="nav-item">
@@ -275,6 +293,9 @@ export class DetalleInteraccionesComponent implements OnInit {
   tareaDesc = '';
   tareaFechaVenc = this.getTodayDateLocal();
   readonly TIPOS_TAREA = TIPOS_TAREA;
+
+  // Tags
+  nuevoTag = '';
 
   // Timeline
   timelineItems: Array<{ fecha: any; tipo: string; descripcion: string; resultado?: string; autor: string }> = [];
@@ -610,6 +631,33 @@ export class DetalleInteraccionesComponent implements OnInit {
     const f = (t.fechaVencimiento as any)?.toDate ? (t.fechaVencimiento as any).toDate() : new Date(t.fechaVencimiento as any);
     f.setHours(0, 0, 0, 0);
     return f.getTime() === hoy.getTime();
+  }
+
+  // ── Tags ─────────────────────────────────────────────────────────────────
+
+  async addTag() {
+    const t = this.nuevoTag.toLowerCase().trim().replace(/\s+/g, '-');
+    if (!t || !this.prospecto?.id) return;
+    if ((this.prospecto.tags ?? []).includes(t)) { this.nuevoTag = ''; return; }
+    await this.svc.addTag(this.prospecto.id, t);
+    this.prospecto.tags = [...(this.prospecto.tags ?? []), t];
+    this.refreshTagsInParent();
+    this.nuevoTag = '';
+  }
+
+  async removeTag(tag: string) {
+    if (!this.prospecto?.id) return;
+    await this.svc.removeTag(this.prospecto.id, tag);
+    this.prospecto.tags = (this.prospecto.tags ?? []).filter((x: string) => x !== tag);
+    this.refreshTagsInParent();
+  }
+
+  private refreshTagsInParent() {
+    const parentNode = this.params?.node?.parent;
+    if (parentNode?.data) {
+      parentNode.data.tags = this.prospecto.tags;
+      this.params.api?.refreshCells({ rowNodes: [parentNode], columns: ['tags'], force: true });
+    }
   }
 
   // ── Timeline ─────────────────────────────────────────────────────────────

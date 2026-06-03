@@ -9,6 +9,8 @@ import {
   doc,
   updateDoc,
   deleteDoc,
+  arrayUnion,
+  arrayRemove,
   increment,
   Timestamp,
   getDocs,
@@ -40,7 +42,8 @@ export interface Prospecto {
   countInteracciones?: number;
   // ── Campos CRM extendidos ───────────────────────────────────────────────
   giro?: string;
-  fuente?: string;             // Origen del prospecto: Referido, WhatsApp, Web, etc.
+  fuente?: string;
+  tags?: string[];             // Etiquetas libres: 'vip', 'retomar-q4', 'precio-sensible', etc.
   competidor?: string;
   fechaProximoSeguimiento?: Timestamp | null;
   __isNew?: boolean;
@@ -203,6 +206,7 @@ export class ProspectosService {
       countInteracciones:     0,
       giro:                   p.giro ?? '',
       fuente:                 p.fuente ?? '',
+      tags:                   p.tags ?? [],
       competidor:             p.competidor ?? '',
       fechaProximoSeguimiento: p.fechaProximoSeguimiento ?? null,
       fechaCreacion:          now,
@@ -392,6 +396,16 @@ export class ProspectosService {
 
   async eliminarTarea(tareaId: string): Promise<void> {
     await deleteDoc(doc(this.firestore, this.TAREAS_COL, tareaId));
+  }
+
+  // ── Tags ─────────────────────────────────────────────────────────────────
+
+  async addTag(prospectoId: string, tag: string): Promise<void> {
+    await updateDoc(doc(this.firestore, this.COL, prospectoId), { tags: arrayUnion(tag) });
+  }
+
+  async removeTag(prospectoId: string, tag: string): Promise<void> {
+    await updateDoc(doc(this.firestore, this.COL, prospectoId), { tags: arrayRemove(tag) });
   }
 
   // ── Cuotas de Ventas ──────────────────────────────────────────────────────
