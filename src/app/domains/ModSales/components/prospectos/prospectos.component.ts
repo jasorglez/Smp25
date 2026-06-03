@@ -28,7 +28,7 @@ export class ProspectosComponent implements OnInit {
   private _colDefs: ColDef[] = [];
 
   // ── Pestañas ─────────────────────────────────────────────────────────────
-  activeTab: 'prospectos' | 'plantillas' | 'reportes' = 'prospectos';
+  activeTab: 'prospectos' | 'plantillas' | 'reportes' | 'alertas' = 'prospectos';
   savingPlantillas = false;
 
   // ── Plantillas de mensaje por giro ({empresa} se reemplaza con el nombre real) ──
@@ -68,6 +68,51 @@ export class ProspectosComponent implements OnInit {
   selectedItem:     any      = null;
   hasUnsavedChanges = false;
   loading           = false;
+
+  // ── Alertas de Inactividad ────────────────────────────────────────────────
+
+  private diasSinContacto(p: any): number {
+    const ts = p.fechaUltimaInteraccion;
+    if (!ts) return 999;
+    const ms = ts?.toDate ? ts.toDate().getTime() : new Date(ts).getTime();
+    return Math.floor((Date.now() - ms) / 86_400_000);
+  }
+
+  private prospectosActivos() {
+    return this.rowData.filter(p =>
+      p.activo !== false && !['ganado', 'perdido'].includes(p.estado)
+    );
+  }
+
+  get alertasCriticas()  { return this.prospectosActivos().filter(p => this.diasSinContacto(p) > 30)  .map(p => ({ ...p, dias: this.diasSinContacto(p) })).sort((a,b) => b.dias - a.dias); }
+  get alertasUrgentes()  { return this.prospectosActivos().filter(p => { const d = this.diasSinContacto(p); return d > 14 && d <= 30; }).map(p => ({ ...p, dias: this.diasSinContacto(p) })).sort((a,b) => b.dias - a.dias); }
+  get alertasAtencion()  { return this.prospectosActivos().filter(p => { const d = this.diasSinContacto(p); return d > 7 && d <= 14;  }).map(p => ({ ...p, dias: this.diasSinContacto(p) })).sort((a,b) => b.dias - a.dias); }
+  get totalAlertas()     { return this.alertasCriticas.length + this.alertasUrgentes.length; }
+
+  async seguimientoRapido(p: any) {
+    const { value: desc } = await Swal.fire({
+      title: `📝 Seguimiento — ${p.empresa || p.nombre}`,
+      input: 'text',
+      inputPlaceholder: 'Describe brevemente el contacto realizado...',
+      showCancelButton: true,
+      confirmButtonText: 'Registrar',
+      cancelButtonText: 'Cancelar',
+      inputValidator: v => !v?.trim() ? 'Escribe una descripción' : null,
+    });
+    if (!desc?.trim() || !p.id) return;
+    try {
+      await this.svc.registrarInteraccion(p.id, {
+        tipo: 'seguimiento', descripcion: desc.trim(),
+        idVendedor: this.idVendedor, nombreVendedor: this.nombreVendedor, resultado: 'neutral',
+      });
+      // Actualiza el row en memoria para que desaparezca de alertas
+      const row = this.rowData.find(r => r.id === p.id);
+      if (row) row.fechaUltimaInteraccion = new Date();
+      Swal.fire({ icon: 'success', title: 'Seguimiento registrado', timer: 1200, showConfirmButton: false });
+    } catch {
+      Swal.fire('Error', 'No se pudo registrar.', 'error');
+    }
+  }
 
   // ── Reportes + Cuotas ─────────────────────────────────────────────────────
   reportesData: any[] = [];
