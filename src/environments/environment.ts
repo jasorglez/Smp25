@@ -85,5 +85,5 @@ export const environment = {
     // publicKey: 'TEST-4399133a-4676-42a2-ab85-d946370bf96a',
   },
 
-  version: '7.87 (03 Junio 2026) feat(crm): tags etiquetas libres por prospecto',
+  version: '7.88 (03 Junio 2026) feat(ventas): correo validado + toast global en ModSales',
 };
