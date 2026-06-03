@@ -37,6 +37,7 @@ export interface Prospecto {
   fechaUltimaInteraccion: Timestamp;
   notas: string;
   puesto: string;
+  correo?: string;
   idCustomer: string | null;
   activo: boolean;
   countInteracciones?: number;
@@ -202,6 +203,7 @@ export class ProspectosService {
       idVendedorCreador:      p.idVendedorActual ?? 0,
       notas:                  '',
       puesto:                 p.puesto ?? '',
+      correo:                 p.correo ?? '',
       idCustomer:             null,
       countInteracciones:     0,
       giro:                   p.giro ?? '',

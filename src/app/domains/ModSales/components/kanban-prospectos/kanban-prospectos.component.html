@@ -115,6 +115,10 @@
             {{ formatFecha(selected?.fechaProximoSeguimiento) || 'Sin fecha' }}
           </div>
         </div>
+        <div class="col-6" *ngIf="selected?.correo">
+          <label class="form-label small text-muted mb-0">Correo</label>
+          <div><a [href]="'mailto:' + selected?.correo" class="text-primary small">{{ selected?.correo }}</a></div>
+        </div>
         <div class="col-6" *ngIf="selected?.fuente">
           <label class="form-label small text-muted mb-0">Fuente</label>
           <div>{{ selected?.fuente }}</div>

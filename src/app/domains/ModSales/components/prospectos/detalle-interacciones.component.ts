@@ -29,6 +29,10 @@ import Swal from 'sweetalert2';
         <span class="text-muted small">
           <i class="bi bi-phone"></i> {{ prospecto?.telefono }}
         </span>
+        <a *ngIf="prospecto?.correo" [href]="'mailto:' + prospecto?.correo"
+           class="small text-primary" (click)="$event.stopPropagation()">
+          <i class="bi bi-envelope me-1"></i>{{ prospecto?.correo }}
+        </a>
         <span *ngIf="countCotizaciones > 0"
               class="badge bg-primary ms-1" style="font-size:.72rem"
               title="Cotizaciones vinculadas">

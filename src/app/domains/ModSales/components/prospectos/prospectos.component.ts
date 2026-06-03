@@ -137,7 +137,7 @@ export class ProspectosComponent implements OnInit {
   get nombreVendedor() { return this.signalsSvc.getDisplayName()(); }
 
   // ── Enter-key navigation ─────────────────────────────────────────────────
-  private editableColumnOrder = ['nombreVendedorActual', 'empresa', 'nombre', 'puesto', 'telefono', 'giro', 'fuente', 'competidor', 'domicilio', 'estado'];
+  private editableColumnOrder = ['nombreVendedorActual', 'empresa', 'nombre', 'puesto', 'telefono', 'correo', 'giro', 'fuente', 'competidor', 'domicilio', 'estado'];
   readonly GIROS    = GIROS_PROSPECTO;
   readonly FUENTES  = FUENTES_PROSPECTO;
   filtroTag = '';
@@ -273,6 +273,13 @@ export class ProspectosComponent implements OnInit {
       { field: 'nombre',     headerName: 'Nombre',     width: 160, editable: true, filter: true },
       { field: 'puesto',     headerName: 'Puesto',     width: 130, editable: true },
       { field: 'telefono',   headerName: 'Teléfono',   width: 130, editable: true },
+      {
+        field: 'correo', headerName: 'Correo', width: 190, editable: true,
+        cellRenderer: (p: any) => {
+          if (!p.value) return '';
+          return `<a href="mailto:${p.value}" onclick="event.stopPropagation()" style="color:#0d6efd">${p.value}</a>`;
+        },
+      },
       {
         field: 'giro', headerName: 'Giro', width: 130, editable: true,
         cellEditor: 'agSelectCellEditor',
@@ -452,7 +459,7 @@ export class ProspectosComponent implements OnInit {
       chatIdVendedorActual: '', idCompany: this.idRoot,
       creadoPor: 'web', idVendedorCreador: this.idVendedor,
       notas: '', idCustomer: null, activo: true,
-      giro: '', fuente: '', tags: [], competidor: '', fechaProximoSeguimiento: null,
+      correo: '', giro: '', fuente: '', tags: [], competidor: '', fechaProximoSeguimiento: null,
       fechaCreacion: null, fechaUltimaInteraccion: null,
       countInteracciones: 0,
       __isNew: true, __modified: false,
@@ -500,6 +507,7 @@ export class ProspectosComponent implements OnInit {
             estado:                 p.estado,
             idVendedorActual:       p.idVendedorActual,
             nombreVendedorActual:   p.nombreVendedorActual,
+            correo:                 p.correo ?? '',
             giro:                   p.giro ?? '',
             fuente:                 p.fuente ?? '',
             competidor:             p.competidor ?? '',
