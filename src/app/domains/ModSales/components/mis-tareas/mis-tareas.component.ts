@@ -1,4 +1,4 @@
-import { Component, effect, inject } from '@angular/core';
+﻿import { Component, effect, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ProspectosService, Tarea } from 'app/services/prospectos.service';
 import { SignalsService } from 'app/services/signals.service';
@@ -63,7 +63,7 @@ export class MisTareasComponent {
     try {
       await this.svc.completarTarea(t.id!);
       this.tareas = this.tareas.filter(x => x.id !== t.id);
-      Swal.fire({ icon: 'success', title: '¡Tarea completada!', timer: 1000, showConfirmButton: false });
+      Swal.fire({ toast: true, position: 'top-end', icon: 'success', title: '¡Tarea completada!', showConfirmButton: false, timer: 2000, timerProgressBar: true });
     } catch {
       Swal.fire('Error', 'No se pudo completar.', 'error');
     }
@@ -84,3 +84,4 @@ export class MisTareasComponent {
     }
   }
 }
+

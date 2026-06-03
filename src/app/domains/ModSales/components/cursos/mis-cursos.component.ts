@@ -1,4 +1,4 @@
-import { Component, OnInit, inject, effect } from '@angular/core';
+﻿import { Component, OnInit, inject, effect } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { AgGridModule } from 'ag-grid-angular';
@@ -292,7 +292,7 @@ export class MisCursosComponent implements OnInit {
         await this.svc.crearCurso(this.form);
       }
       this.cerrarModal();
-      Swal.fire({ icon: 'success', title: 'Guardado', timer: 1300, showConfirmButton: false });
+      Swal.fire({ toast: true, position: 'top-end', icon: 'success', title: 'Guardado', showConfirmButton: false, timer: 2000, timerProgressBar: true });
     } catch { Swal.fire('Error', 'No se pudo guardar.', 'error'); }
     finally   { this.guardando = false; }
   }
@@ -307,7 +307,7 @@ export class MisCursosComponent implements OnInit {
     });
     if (!value) return;
     await this.svc.expandirCupo(this.selectedItem.id!, Number(value));
-    Swal.fire({ icon: 'success', title: 'Cupo actualizado', timer: 1300, showConfirmButton: false });
+    Swal.fire({ toast: true, position: 'top-end', icon: 'success', title: 'Cupo actualizado', showConfirmButton: false, timer: 2000, timerProgressBar: true });
   }
 
   async eliminar() {
@@ -346,3 +346,4 @@ export class MisCursosComponent implements OnInit {
       .toLocaleDateString('es-MX', { day: '2-digit', month: 'short', year: 'numeric' });
   }
 }
+

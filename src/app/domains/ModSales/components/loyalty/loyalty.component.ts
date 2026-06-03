@@ -1,4 +1,4 @@
-import { Component, effect, inject, OnInit } from '@angular/core';
+﻿import { Component, effect, inject, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { AgGridModule } from 'ag-grid-angular';
@@ -283,7 +283,7 @@ export class LoyaltyComponent implements OnInit {
         }
       }
 
-      Swal.fire({ icon: 'success', title: 'Guardado', timer: 1200, showConfirmButton: false });
+      Swal.fire({ toast: true, position: 'top-end', icon: 'success', title: 'Guardado', showConfirmButton: false, timer: 2000, timerProgressBar: true });
       this.loadPrograms();
     } catch {
       Swal.fire('Error', 'No se pudieron guardar los cambios.', 'error');
@@ -312,7 +312,7 @@ export class LoyaltyComponent implements OnInit {
       this.loyaltyService.deleteProgram(row.id).pipe(
         catchError(() => { Swal.fire('Error', 'No se pudo eliminar.', 'error'); return EMPTY; })
       ).subscribe(() => {
-        Swal.fire({ icon: 'success', title: 'Eliminado', timer: 1200, showConfirmButton: false });
+        Swal.fire({ toast: true, position: 'top-end', icon: 'success', title: 'Eliminado', showConfirmButton: false, timer: 2000, timerProgressBar: true });
         this.selectedProgram = null;
         this.loadPrograms();
       });
@@ -361,7 +361,7 @@ export class LoyaltyComponent implements OnInit {
       if (result.rewardEarned) {
         Swal.fire('🎉 ¡Recompensa!', result.rewardDescription, 'success');
       } else {
-        Swal.fire({ icon: 'success', title: 'Sello agregado', text: `Sellos: ${result.card.currentStamps}`, timer: 1500, showConfirmButton: false });
+        Swal.fire({ toast: true, position: 'top-end', icon: 'success', title: 'Sello agregado', showConfirmButton: false, timer: 2000, timerProgressBar: true });
       }
       this.loadCards();
     });
@@ -461,7 +461,7 @@ export class LoyaltyComponent implements OnInit {
         await this.posService.saveLoyaltyFamilyConfig(this.idCompany, payload).toPromise();
       }
 
-      Swal.fire({ icon: 'success', title: 'Guardado', timer: 1200, showConfirmButton: false });
+      Swal.fire({ toast: true, position: 'top-end', icon: 'success', title: 'Guardado', showConfirmButton: false, timer: 2000, timerProgressBar: true });
     } catch {
       Swal.fire('Error', 'No se pudieron guardar los factores.', 'error');
     } finally {
@@ -469,3 +469,4 @@ export class LoyaltyComponent implements OnInit {
     }
   }
 }
+

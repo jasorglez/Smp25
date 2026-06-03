@@ -1,4 +1,4 @@
-import { Component, effect, inject, OnInit } from '@angular/core';
+﻿import { Component, effect, inject, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { AgGridModule } from 'ag-grid-angular';
@@ -117,7 +117,7 @@ export class ProspectosComponent implements OnInit {
       // Actualiza el row en memoria para que desaparezca de alertas
       const row = this.rowData.find(r => r.id === p.id);
       if (row) row.fechaUltimaInteraccion = new Date();
-      Swal.fire({ icon: 'success', title: 'Seguimiento registrado', timer: 1200, showConfirmButton: false });
+      Swal.fire({ toast: true, position: 'top-end', icon: 'success', title: 'Seguimiento registrado', showConfirmButton: false, timer: 2000, timerProgressBar: true });
     } catch {
       Swal.fire('Error', 'No se pudo registrar.', 'error');
     }
@@ -402,7 +402,7 @@ export class ProspectosComponent implements OnInit {
     this.savingPlantillas = true;
     try {
       await this.svc.savePlantillas(this.idRoot, this.plantillas);
-      Swal.fire({ icon: 'success', title: 'Plantillas guardadas', timer: 1400, showConfirmButton: false });
+      Swal.fire({ toast: true, position: 'top-end', icon: 'success', title: 'Plantillas guardadas', showConfirmButton: false, timer: 2000, timerProgressBar: true });
     } catch {
       Swal.fire('Error', 'No se pudieron guardar las plantillas.', 'error');
     } finally {
@@ -585,7 +585,7 @@ export class ProspectosComponent implements OnInit {
       this.originalData = JSON.parse(JSON.stringify(this.rowData));
       this.gridApi.setGridOption('rowData', this.rowData);
       this.selectedItem = null;
-      Swal.fire({ icon: 'success', title: 'Eliminado', timer: 1200, showConfirmButton: false });
+      Swal.fire({ toast: true, position: 'top-end', icon: 'success', title: 'Eliminado', showConfirmButton: false, timer: 2000, timerProgressBar: true });
     } catch {
       Swal.fire('Error', 'No se pudo eliminar.', 'error');
     }
@@ -617,7 +617,7 @@ export class ProspectosComponent implements OnInit {
     try {
       await this.svc.saveCuotasMes(this.idRoot, this.mesActual, this.cuotasMes);
       this.cuotasEditando = false;
-      Swal.fire({ icon: 'success', title: 'Cuotas guardadas', timer: 1200, showConfirmButton: false });
+      Swal.fire({ toast: true, position: 'top-end', icon: 'success', title: 'Cuotas guardadas', showConfirmButton: false, timer: 2000, timerProgressBar: true });
     } catch {
       Swal.fire('Error', 'No se pudieron guardar las cuotas.', 'error');
     }
@@ -906,4 +906,5 @@ export class ProspectosComponent implements OnInit {
     return digits;
   }
 }
+
 

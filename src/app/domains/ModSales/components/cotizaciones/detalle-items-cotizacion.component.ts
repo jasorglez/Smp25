@@ -1,4 +1,4 @@
-import { Component, inject } from '@angular/core';
+﻿import { Component, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { AgGridModule } from 'ag-grid-angular';
@@ -386,7 +386,7 @@ export class DetalleItemsCotizacionComponent implements ICellRendererAngularComp
       this.originalData = JSON.parse(JSON.stringify(this.rowData));
       this.hasChanges   = false;
       this.updateCountInParent();
-      Swal.fire({ icon: 'success', title: 'Guardado', timer: 1200, showConfirmButton: false });
+      Swal.fire({ toast: true, position: 'top-end', icon: 'success', title: 'Guardado', showConfirmButton: false, timer: 2000, timerProgressBar: true });
     } catch (e: any) {
       console.error('[Cotizaciones] Error guardando items:', e);
       Swal.fire('Error', e?.message ?? 'No se pudo guardar.', 'error');
@@ -705,7 +705,7 @@ export class DetalleItemsCotizacionComponent implements ICellRendererAngularComp
       }
 
       this.cerrarModalCorreo();
-      Swal.fire({ icon: 'success', title: 'Correo enviado', text: `Se envió a ${this.emailPara}`, timer: 2500, showConfirmButton: false });
+      Swal.fire({ toast: true, position: 'top-end', icon: 'success', title: 'Correo enviado', showConfirmButton: false, timer: 2000, timerProgressBar: true });
     } catch (e: any) {
       console.error('[Cotizaciones] Error enviando correo:', e);
       Swal.fire('Error', 'No se pudo enviar el correo.', 'error');
@@ -993,3 +993,4 @@ export class DetalleItemsCotizacionComponent implements ICellRendererAngularComp
   estadoColor(val: string) { return ESTADOS_COTIZACION.find(e => e.value === val)?.color ?? 'secondary'; }
   estadoLabel(val: string) { return ESTADOS_COTIZACION.find(e => e.value === val)?.label ?? val; }
 }
+
