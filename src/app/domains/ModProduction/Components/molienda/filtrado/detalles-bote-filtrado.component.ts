@@ -135,12 +135,13 @@ interface ModalEntry {
                        [class.bote-barrel--full]="fillPct(entry.espacioUtilizadoExterno + baseMine(entry), entry.opt.volumen) >= 100"
                        [class.bote-barrel--empty]="baseMine(entry) === 0 && entry.espacioUtilizadoExterno === 0"
                        [class.bote-barrel--partial]="baseMine(entry) > 0 || entry.espacioUtilizadoExterno > 0">
-                    <!-- Nivel: externo -->
+                    <!-- Nivel: externo (otras filas) -->
                     <div class="bote-fill bote-fill--external"
+                         [class.bote-fill--external-locked]="lockedViewMode"
                          [style.height.%]="fillPct(entry.espacioUtilizadoExterno, entry.opt.volumen)"
-                         [class.bote-fill--red]="fillPct(entry.espacioUtilizadoExterno + baseMine(entry), entry.opt.volumen) >= 100">
+                         [class.bote-fill--red]="!lockedViewMode && fillPct(entry.espacioUtilizadoExterno + baseMine(entry), entry.opt.volumen) >= 100">
                     </div>
-                    <!-- Nivel: ya asignado de esta fila (total guardado) -->
+                    <!-- Nivel: ya asignado de esta fila -->
                     <div class="bote-fill bote-fill--mine"
                          [style.height.%]="fillPct(baseMine(entry), entry.opt.volumen)"
                          [style.bottom.%]="fillPct(entry.espacioUtilizadoExterno, entry.opt.volumen)"
@@ -155,10 +156,12 @@ interface ModalEntry {
                     <!-- Icono centrado -->
                     <i class="bi bi-bucket-fill bote-icon"
                        [style.color]="baseMine(entry) === 0 && entry.espacioUtilizadoExterno === 0 ? '#0a6640' : '#843f00'"></i>
-                    <!-- Disponible -->
+                    <!-- Disponible / Asignado -->
                     <span class="bote-pct"
                           [style.color]="baseMine(entry) === 0 && entry.espacioUtilizadoExterno === 0 ? '#0a6640' : '#843f00'">
-                      {{ disponible(entry) | number:'1.0-0' }} L
+                      {{ lockedViewMode
+                           ? ((entry.asignacion?.cantidad ?? 0) | number:'1.0-0') + ' L'
+                           : (disponible(entry) | number:'1.0-0') + ' L' }}
                     </span>
                   </div>
 
@@ -337,7 +340,8 @@ interface ModalEntry {
       left: 0; right: 0; bottom: 0;
       transition: height 0.35s ease;
     }
-    .bote-fill--external { background: rgba(108,117,125,0.28); }
+    .bote-fill--external        { background: rgba(108,117,125,0.28); }
+    .bote-fill--external-locked { background: rgba(108,117,125,0.10) !important; }
     .bote-fill--mine     { background: rgba(253,126,20,0.55); }
     .bote-fill--new      { background: rgba(13,110,253,0.40); }
     .bote-fill--red      { background: rgba(220,53,69,0.45) !important; }
