@@ -85,5 +85,5 @@ export const environment = {
     // publicKey: 'TEST-4399133a-4676-42a2-ab85-d946370bf96a',
   },
 
-  version: '7.82 (02 Junio 2026) feat(crm): stats bar en prospectos + proximos 7 dias en CRM dashboard',
+  version: '7.83 (03 Junio 2026) fix(crm): Dashboard apunta a crm-dashboard con permiso prospectos',
 };
