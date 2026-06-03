@@ -566,18 +566,6 @@ export class DetallesBoteFiltradoComponent {
         .filter((m: any) => m.active !== false)
         .sort((a: any, b: any) => (a.id ?? 0) - (b.id ?? 0));
 
-      // Numeración por grupo de prefijo (igual que en el catálogo)
-      const groupCounters = new Map<string, number>();
-      const prefixNumMap  = new Map<number, number>();
-      allActive.forEach((item: any) => {
-        const fp  = item.idPrefijoFase != null ? (fajePrefijoMap.get(item.idPrefijoFase) ?? '') : '';
-        const ap  = item.idMatPrima    != null ? (artPrefijoMap.get(item.idMatPrima)     ?? '') : '';
-        const key = `${fp}${ap}`;
-        const n   = (groupCounters.get(key) ?? 0) + 1;
-        groupCounters.set(key, n);
-        prefixNumMap.set(item.id, n);
-      });
-
       const moFaseId = (prefijosData ?? []).find((p: any) => p.prefijo === 'MO')?.id ?? null;
 
       const sorted = allActive
@@ -590,7 +578,7 @@ export class DetallesBoteFiltradoComponent {
       this.boteOptions = sorted.map((item: any) => {
         const fasePrefijo = item.idPrefijoFase != null ? (fajePrefijoMap.get(item.idPrefijoFase) ?? '') : '';
         const artPrefijo  = item.idMatPrima    != null ? (artPrefijoMap.get(item.idMatPrima)     ?? '') : '';
-        const num = prefixNumMap.get(item.id) ?? '';
+        const num = item.numBote ?? '';   // viene del backend
         return {
           id: item.id,
           description: `${fasePrefijo}${artPrefijo}/${item.cantidad ?? ''}-${num}`,
