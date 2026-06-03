@@ -259,7 +259,7 @@ export class ProspectosComponent implements OnInit {
         },
       },
       {
-        field: 'nombreVendedorActual', headerName: 'Vendedor', width: 185, editable: true,
+        field: 'nombreVendedorActual', headerName: 'Vendedor', width: 95, editable: true,
         cellEditor: 'agSelectCellEditor',
         cellEditorParams: () => ({ values: this.vendedores.map(v => v.displayName) }),
         valueSetter: (params: any) => {
