@@ -369,7 +369,8 @@ export class PurchaseOrderDelisonComponent implements OnInit, OnDestroy {
       }
     },
     onColumnResized: () => this.saveColumnState(),
-    onColumnMoved: () => this.saveColumnState()
+    onColumnMoved: () => this.saveColumnState(),
+    onColumnVisible: () => this.saveColumnState()
   };
 
   colMaster: ColDef[] = [
@@ -480,14 +481,17 @@ export class PurchaseOrderDelisonComponent implements OnInit, OnDestroy {
     isRowMaster: (data: any) => Array.isArray(data?.items) && data.items.length > 0,
     onFirstDataRendered: (params: any) => params.api.autoSizeAllColumns(),
     detailCellRendererSelector: () => ({ component: CompraRapidaDetalleComponent }),
-    // Altura del detalle ajustada al número de compras rápidas (título + header + filas + padding).
+    // Altura del detalle: título + header + filas + espacio para panel de clasificación NUPNPN.
     getRowHeight: (params: any) => {
       if (params.node?.detail) {
         const count = params.data?.items?.length ?? 0;
-        return 30 + 25 + count * 28 + 20;
+        return 30 + 25 + count * 28 + 500;
       }
       return undefined;
     },
+    onColumnResized: () => this.saveCompraRapidaColumnState(),
+    onColumnMoved: () => this.saveCompraRapidaColumnState(),
+    onColumnVisible: () => this.saveCompraRapidaColumnState()
   };
 
   onCompraRapidaGridReady(params: GridReadyEvent) {
@@ -495,6 +499,7 @@ export class PurchaseOrderDelisonComponent implements OnInit, OnDestroy {
     if (this.compraRapidaRowData.length) {
       this.compraRapidaGridApi.setGridOption('rowData', this.compraRapidaRowData);
     }
+    setTimeout(() => this.loadCompraRapidaColumnStateFromStorage(), 50);
   }
 
   onTabChange(tab: 'oc' | 'compraRapida') {
@@ -556,6 +561,7 @@ export class PurchaseOrderDelisonComponent implements OnInit, OnDestroy {
         recurrent: it.recurrent || '',
         article: it.article || '',
         numArticle: it.numArticle || '',
+        idSupplie: it.idSupplie || 0,
         // Proveedor capturado al pagar la CR en la Hoja de Gastos.
         proveedor: it.proveedor ?? it.nameProvider ?? it.provint ?? '',
         quantity: it.quantity || 0,
@@ -609,22 +615,45 @@ export class PurchaseOrderDelisonComponent implements OnInit, OnDestroy {
     setTimeout(() => this.loadColumnStateFromStorage(), 50);
   }
 
+  private getColKey(suffix: string): string {
+    const email = localStorage.getItem('mail') ?? 'guest';
+    return `${suffix}_${email}`;
+  }
+
   private saveColumnState() {
     if (this.gridApi) {
       this.columnState = this.gridApi.getColumnState();
-      localStorage.setItem('purchaseOrderColumnState', JSON.stringify(this.columnState));
+      localStorage.setItem(this.getColKey('purchaseOrderMain'), JSON.stringify(this.columnState));
     }
   }
 
   private loadColumnStateFromStorage() {
     try {
-      const stored = localStorage.getItem('purchaseOrderColumnState');
+      const stored = localStorage.getItem(this.getColKey('purchaseOrderMain'));
       if (stored && this.gridApi) {
         this.columnState = JSON.parse(stored);
         this.gridApi.applyColumnState({ state: this.columnState });
       }
     } catch (e) {
       console.warn('Error cargando estado de columnas:', e);
+    }
+  }
+
+  private saveCompraRapidaColumnState() {
+    if (this.compraRapidaGridApi && !this.compraRapidaGridApi.isDestroyed()) {
+      const state = this.compraRapidaGridApi.getColumnState();
+      localStorage.setItem(this.getColKey('purchaseOrderCompraRapida'), JSON.stringify(state));
+    }
+  }
+
+  private loadCompraRapidaColumnStateFromStorage() {
+    try {
+      const stored = localStorage.getItem(this.getColKey('purchaseOrderCompraRapida'));
+      if (stored && this.compraRapidaGridApi) {
+        this.compraRapidaGridApi.applyColumnState({ state: JSON.parse(stored) });
+      }
+    } catch (e) {
+      console.warn('Error cargando estado de columnas (compra rápida):', e);
     }
   }
 

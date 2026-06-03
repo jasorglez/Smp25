@@ -6,11 +6,15 @@ import { lastValueFrom, Subscription } from 'rxjs';
 import { CompraRapidaArticuloTooltipComponent } from './compra-rapida-articulo-tooltip.component';
 import { EntradaDocumentsOverlayService } from 'app/services/entrada-documents-overlay.service';
 import { IntandoutDocumentsService } from 'app/services/intandoutDocuments.service';
+import { SignalsService } from 'app/services/signals.service';
+import { CatalogsService } from 'app/services/catalogs.service';
+import { MaterialsService } from 'app/services/materials.service';
+import { ClasificacionCascadaComponent } from 'app/domains/ModShoppingDelison/pages/quote-delison/clasificacion-cascada.component';
 
 @Component({
   selector: 'app-compra-rapida-detalle',
   standalone: true,
-  imports: [CommonModule, AgGridAngular],
+  imports: [CommonModule, AgGridAngular, ClasificacionCascadaComponent],
   template: `
     <div style="padding: 6px; height: 100%; display: flex; flex-direction: column; box-sizing: border-box; overflow: hidden;">
       <div style="margin-bottom: 4px; flex-shrink: 0;">
@@ -33,10 +37,19 @@ import { IntandoutDocumentsService } from 'app/services/intandoutDocuments.servi
 export class CompraRapidaDetalleComponent implements OnDestroy {
   private overlayService = inject(EntradaDocumentsOverlayService);
   private intandoutDocumentsService = inject(IntandoutDocumentsService);
+  private signalsService = inject(SignalsService);
+  private catalogsService = inject(CatalogsService);
+  private materialsService = inject(MaterialsService);
+
   private gridApi!: GridApi;
   private countSub?: Subscription;
   rowData: any[] = [];
   reqFolio = '';
+  hasUnsavedChanges = false;
+
+  catCategorias: any[] = [];
+  catFamilias: any[] = [];
+  catSubfamilias: any[] = [];
 
   colDefs: ColDef[] = [
     { field: 'department', headerName: 'Departamento que solicita', width: 200 },
@@ -51,7 +64,38 @@ export class CompraRapidaDetalleComponent implements OnDestroy {
       tooltipValueGetter: (p: any) => p.data?.article || '',
       tooltipComponent: 'compraRapidaArticuloTooltip',
     },
-    { field: 'numArticle', headerName: '# Artículo', width: 140 },
+    {
+      field: 'numArticle',
+      headerName: '# Artículo',
+      width: 160,
+      cellStyle: (p: any) => String(p.value || '').toUpperCase().startsWith('NUPNPN')
+        ? { cursor: 'pointer', backgroundColor: '#fff9e6', textDecoration: 'underline', color: '#b8860b' }
+        : null,
+      cellRenderer: (p: any) => {
+        const val = String(p.value ?? '');
+        if (val.toUpperCase().startsWith('NUPNPN')) {
+          const chevron = p.node?.expanded ? '▼' : '▶';
+          return `<span style="margin-right:4px;">${chevron}</span>${val}`;
+        }
+        return val;
+      },
+      onCellClicked: (e: any) => {
+        const val = String(e.data?.numArticle || '').toUpperCase();
+        if (!val.startsWith('NUPNPN')) return;
+        const willExpand = !e.node.expanded;
+        if (willExpand) {
+          this.gridApi.forEachNode((other: any) => {
+            if (other.id !== e.node.id) other.setRowHeight(0);
+          });
+          e.node.setExpanded(true);
+        } else {
+          e.node.setExpanded(false);
+          this.gridApi.forEachNode((other: any) => other.setRowHeight(undefined));
+        }
+        this.gridApi.onRowHeightChanged();
+        this.gridApi.refreshCells({ rowNodes: [e.node], columns: ['numArticle'], force: true });
+      }
+    },
     { field: 'quantity', headerName: 'Cantidad Requerida', width: 160, type: 'numericColumn' },
     {
       field: 'cantidadEntradaAlmacen', headerName: 'Cantidad entrada almacén', width: 180, type: 'numericColumn',
@@ -66,7 +110,6 @@ export class CompraRapidaDetalleComponent implements OnDestroy {
       onCellClicked: (params: any) => {
         const crId = params.data?.crId;
         if (!crId) return;
-        // Documentos compartidos con el nivel 4 de almacén molienda (misma llave CR).
         this.overlayService.open({ idEntrada: crId, docType: 'compra_rapida' });
       },
       cellRenderer: (params: any) => {
@@ -102,17 +145,22 @@ export class CompraRapidaDetalleComponent implements OnDestroy {
     rowHeight: 28,
     components: { compraRapidaArticuloTooltip: CompraRapidaArticuloTooltipComponent },
     tooltipShowDelay: 300,
-    // Renderiza el tooltip a nivel de document.body para que no lo recorte el overflow del grid.
     popupParent: typeof document !== 'undefined' ? document.body : null,
     defaultColDef: { resizable: true, sortable: true },
     onFirstDataRendered: (params: any) => params.api.autoSizeAllColumns(),
+    masterDetail: true,
+    isRowMaster: (data: any) => String(data?.numArticle || '').toUpperCase().startsWith('NUPNPN'),
+    detailCellRenderer: ClasificacionCascadaComponent,
+    getRowHeight: (p: any) => p?.node?.detail ? 200 : undefined,
+    context: { componentParent: this },
   };
 
   agInit(params: any): void {
     this.reqFolio = params?.data?.reqFolio || '';
     this.rowData = params?.data?.items || [];
+    this.hasUnsavedChanges = false;
     this.loadPdfCounts();
-    // Refresco en vivo del conteo cuando se guarda/elimina un documento del CR.
+    this.cargarCatalogosClasificacion();
     this.countSub?.unsubscribe();
     this.countSub = this.overlayService.countUpdated$.subscribe(({ idEntrada, count }) => {
       const row = this.rowData.find((r: any) => r.crId === idEntrada);
@@ -127,6 +175,58 @@ export class CompraRapidaDetalleComponent implements OnDestroy {
 
   onGridReady(params: GridReadyEvent): void {
     this.gridApi = params.api;
+  }
+
+  marcarClasifModificado(): void {
+    this.hasUnsavedChanges = true;
+  }
+
+  async guardarClasificaciones(): Promise<void> {
+    const rows = this.rowData.filter((r: any) => r.__clasifPendiente && r.idSupplie > 0);
+    if (!rows.length) return;
+    for (const row of rows) {
+      try {
+        const resp: any = await lastValueFrom(this.materialsService.updateMaterial(String(row.idSupplie), {
+          idCategory: row.clasifCategoria,
+          idFamilia: row.clasifFamilia,
+          idSubfamilia: row.clasifSubfamilia
+        }));
+        const nuevoInsumo = resp?.insumo || resp?.Insumo;
+        if (nuevoInsumo) row.numArticle = nuevoInsumo;
+        delete row.__clasifPendiente;
+      } catch (e) {
+        console.error('Error reclasificando material', row.idSupplie, e);
+      }
+    }
+    this.hasUnsavedChanges = false;
+    if (this.gridApi && !this.gridApi.isDestroyed()) {
+      this.gridApi.forEachNode((node: any) => {
+        node.setExpanded(false);
+        node.setRowHeight(undefined);
+      });
+      this.gridApi.onRowHeightChanged();
+      this.gridApi.refreshCells({ force: true });
+    }
+  }
+
+  private cargarCatalogosClasificacion(): void {
+    const idCompany = this.signalsService.getRootSelectedBySidebar()();
+    if (!idCompany) return;
+    const tieneBits = (x: any) =>
+      (x?.valueAdditionBit === true || x?.valueAdditionBit === 1) ||
+      (x?.valueAdditionBit3 === true || x?.valueAdditionBit3 === 1);
+    this.catalogsService.getCatalogs(idCompany, 'CATEGORY').subscribe({
+      next: (d: any[]) => this.catCategorias = (Array.isArray(d) ? d : []).filter(tieneBits),
+      error: () => this.catCategorias = []
+    });
+    this.catalogsService.getCatalogs(idCompany, 'FAM-CAT').subscribe({
+      next: (d: any[]) => this.catFamilias = (Array.isArray(d) ? d : []).filter(tieneBits),
+      error: () => this.catFamilias = []
+    });
+    this.catalogsService.getCatalogs(idCompany, 'SUB-FAM').subscribe({
+      next: (d: any[]) => this.catSubfamilias = (Array.isArray(d) ? d : []).filter(tieneBits),
+      error: () => this.catSubfamilias = []
+    });
   }
 
   private async loadPdfCounts(): Promise<void> {
