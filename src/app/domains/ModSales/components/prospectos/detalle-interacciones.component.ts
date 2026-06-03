@@ -4,8 +4,9 @@ import { FormsModule } from '@angular/forms';
 import { AgGridModule } from 'ag-grid-angular';
 import { ColDef, GridApi, GridReadyEvent, ICellRendererParams } from 'ag-grid-enterprise';
 import { AG_GRID_LOCALE_ES } from 'assets/i18n/ag-grid.locale.es';
-import { ProspectosService, Interaccion, ESTADOS_PROSPECTO } from 'app/services/prospectos.service';
+import { ProspectosService, Interaccion, ESTADOS_PROSPECTO, Tarea, TIPOS_TAREA } from 'app/services/prospectos.service';
 import { SignalsService } from 'app/services/signals.service';
+import { Timestamp } from '@angular/fire/firestore';
 import Swal from 'sweetalert2';
 
 @Component({
@@ -15,10 +16,8 @@ import Swal from 'sweetalert2';
   template: `
     <div class="detail-container">
 
-      <!-- Toolbar detalle -->
+      <!-- Info bar + cambiar estado -->
       <div class="d-flex align-items-center gap-2 mb-2 flex-wrap">
-
-        <!-- Info del prospecto -->
         <span class="badge" [ngClass]="'bg-' + estadoColor(prospecto?.estado)">
           {{ estadoIcon(prospecto?.estado) }} {{ estadoLabel(prospecto?.estado) }}
         </span>
@@ -29,9 +28,7 @@ import Swal from 'sweetalert2';
         <span class="text-muted small">
           <i class="bi bi-phone"></i> {{ prospecto?.telefono }}
         </span>
-
         <div class="ms-auto d-flex gap-1 align-items-center flex-wrap">
-          <!-- Cambiar estado rápido -->
           <span class="small text-muted me-1">Cambiar a:</span>
           <button *ngFor="let e of estados"
             class="btn btn-sm py-0 px-1"
@@ -41,60 +38,147 @@ import Swal from 'sweetalert2';
             [title]="e.label">
             {{ e.icon }}
           </button>
+        </div>
+      </div>
 
-          <div class="vr mx-1"></div>
+      <!-- Sub-tabs -->
+      <ul class="nav nav-tabs mb-2" style="font-size:.82rem">
+        <li class="nav-item">
+          <button class="nav-link py-1 px-2" [class.active]="detalleTab==='interacciones'"
+                  (click)="detalleTab='interacciones'">
+            <i class="bi bi-clock-history me-1"></i>Historial
+            <span class="badge bg-secondary ms-1" *ngIf="rowData.length">{{rowData.length}}</span>
+          </button>
+        </li>
+        <li class="nav-item">
+          <button class="nav-link py-1 px-2" [class.active]="detalleTab==='tareas'"
+                  (click)="detalleTab='tareas'; cargarTareas()">
+            <i class="bi bi-check2-square me-1"></i>Tareas
+            <span class="badge bg-warning text-dark ms-1" *ngIf="tareasData.length">{{tareasData.length}}</span>
+          </button>
+        </li>
+      </ul>
 
-          <!-- Registrar interacción -->
+      <!-- TAB: Interacciones -->
+      <ng-container *ngIf="detalleTab==='interacciones'">
+        <div class="text-end mb-1">
           <button class="btn btn-sm btn-outline-primary py-0" (click)="showForm = !showForm">
             <i class="bi bi-plus-lg"></i> Registrar
           </button>
         </div>
-      </div>
 
-      <!-- Formulario nueva interacción -->
-      <div class="border border-primary rounded p-2 mb-2 bg-white" *ngIf="showForm">
-        <div class="row g-1">
-          <div class="col-md-3">
-            <select class="form-select form-select-sm" [(ngModel)]="intTipo">
-              <option *ngFor="let t of tiposInteraccion" [value]="t">{{ t }}</option>
-            </select>
-          </div>
-          <div class="col-md-2">
-            <select class="form-select form-select-sm" [(ngModel)]="intResultado">
-              <option value="positivo">Positivo</option>
-              <option value="neutral">Neutral</option>
-              <option value="negativo">Negativo</option>
-            </select>
-          </div>
-          <div class="col-md-3">
-            <input class="form-control form-control-sm" type="datetime-local" [(ngModel)]="intFecha" />
-          </div>
-          <div class="col-md-4">
-            <input class="form-control form-control-sm" [(ngModel)]="intDescripcion"
-                   placeholder="Descripción de la interacción..." />
-          </div>
-          <div class="col-md-2 d-flex gap-1">
-            <button class="btn btn-sm btn-primary" (click)="guardarInteraccion()">
-              <i class="bi bi-floppy"></i> Guardar
-            </button>
-            <button class="btn btn-sm btn-warning" (click)="showForm = false">
-              <i class="bi bi-x-lg"></i>
-            </button>
+        <!-- Formulario nueva interacción -->
+        <div class="border border-primary rounded p-2 mb-2 bg-white" *ngIf="showForm">
+          <div class="row g-1">
+            <div class="col-md-3">
+              <select class="form-select form-select-sm" [(ngModel)]="intTipo">
+                <option *ngFor="let t of tiposInteraccion" [value]="t">{{ t }}</option>
+              </select>
+            </div>
+            <div class="col-md-2">
+              <select class="form-select form-select-sm" [(ngModel)]="intResultado">
+                <option value="positivo">Positivo</option>
+                <option value="neutral">Neutral</option>
+                <option value="negativo">Negativo</option>
+              </select>
+            </div>
+            <div class="col-md-3">
+              <input class="form-control form-control-sm" type="datetime-local" [(ngModel)]="intFecha" />
+            </div>
+            <div class="col-md-4">
+              <input class="form-control form-control-sm" [(ngModel)]="intDescripcion"
+                     placeholder="Descripción de la interacción..." />
+            </div>
+            <div class="col-md-2 d-flex gap-1">
+              <button class="btn btn-sm btn-primary" (click)="guardarInteraccion()">
+                <i class="bi bi-floppy"></i> Guardar
+              </button>
+              <button class="btn btn-sm btn-warning" (click)="showForm = false">
+                <i class="bi bi-x-lg"></i>
+              </button>
+            </div>
           </div>
         </div>
-      </div>
 
-      <!-- Grid de interacciones -->
-      <ag-grid-angular
-        class="ag-theme-quartz"
-        [rowData]="rowData"
-        [columnDefs]="colDefs"
-        [defaultColDef]="defaultColDef"
-        [localeText]="AG_GRID_LOCALE_ES"
-        [gridOptions]="gridOptions"
-        (gridReady)="onGridReady($event)"
-        style="height:280px; width:100%">
-      </ag-grid-angular>
+        <!-- Grid de interacciones -->
+        <ag-grid-angular
+          class="ag-theme-quartz"
+          [rowData]="rowData"
+          [columnDefs]="colDefs"
+          [defaultColDef]="defaultColDef"
+          [localeText]="AG_GRID_LOCALE_ES"
+          [gridOptions]="gridOptions"
+          (gridReady)="onGridReady($event)"
+          style="height:240px; width:100%">
+        </ag-grid-angular>
+      </ng-container>
+
+      <!-- TAB: Tareas -->
+      <ng-container *ngIf="detalleTab==='tareas'">
+        <div class="text-end mb-1">
+          <button class="btn btn-sm btn-outline-success py-0" (click)="showTareaForm = !showTareaForm">
+            <i class="bi bi-plus-lg"></i> Nueva Tarea
+          </button>
+        </div>
+
+        <!-- Formulario nueva tarea -->
+        <div class="border border-success rounded p-2 mb-2 bg-white" *ngIf="showTareaForm">
+          <div class="row g-1">
+            <div class="col-md-3">
+              <select class="form-select form-select-sm" [(ngModel)]="tareaTipo">
+                <option *ngFor="let t of TIPOS_TAREA" [value]="t">{{ t }}</option>
+              </select>
+            </div>
+            <div class="col-md-2">
+              <input class="form-control form-control-sm" type="date" [(ngModel)]="tareaFechaVenc" />
+            </div>
+            <div class="col-md-5">
+              <input class="form-control form-control-sm" [(ngModel)]="tareaDesc"
+                     placeholder="¿Qué hay que hacer?" />
+            </div>
+            <div class="col-md-2 d-flex gap-1">
+              <button class="btn btn-sm btn-success" (click)="crearTareaLocal()">
+                <i class="bi bi-floppy"></i>
+              </button>
+              <button class="btn btn-sm btn-warning" (click)="showTareaForm = false">
+                <i class="bi bi-x-lg"></i>
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Loading -->
+        <div *ngIf="loadingTareas" class="text-center py-3">
+          <div class="spinner-border spinner-border-sm text-success"></div>
+        </div>
+
+        <!-- Sin tareas -->
+        <div *ngIf="!loadingTareas && tareasData.length === 0"
+             class="text-muted small text-center py-3">
+          <i class="bi bi-check2-all"></i> Sin tareas pendientes para este prospecto
+        </div>
+
+        <!-- Lista de tareas -->
+        <div *ngFor="let t of tareasData"
+             class="d-flex align-items-center gap-2 mb-1 p-2 rounded border"
+             [style.background]="esTareaVencida(t) ? '#fde8e8' : esTareaHoy(t) ? '#fff9e6' : '#f8fff8'">
+          <span class="badge bg-info text-dark" style="font-size:.72rem;min-width:70px">{{ t.tipo }}</span>
+          <span class="flex-grow-1 small">{{ t.descripcion }}</span>
+          <span class="small"
+                [style.color]="esTareaVencida(t) ? '#c0392b' : esTareaHoy(t) ? '#856404' : '#555'">
+            <i class="bi bi-calendar2-event me-1"></i>{{ formatFechaTarea(t.fechaVencimiento) }}
+            <span *ngIf="esTareaVencida(t)" class="ms-1">⚠️</span>
+          </span>
+          <button class="btn btn-sm btn-outline-success py-0 px-1" title="Completar"
+                  (click)="completarTareaLocal(t)">
+            <i class="bi bi-check-lg"></i>
+          </button>
+          <button class="btn btn-sm btn-outline-danger py-0 px-1" title="Eliminar"
+                  (click)="eliminarTareaLocal(t)">
+            <i class="bi bi-trash"></i>
+          </button>
+        </div>
+      </ng-container>
 
     </div>
   `,
@@ -117,6 +201,7 @@ export class DetalleInteraccionesComponent implements OnInit {
   prospecto: any = null;
   rowData: Interaccion[] = [];
 
+  // ── Interacciones ─────────────────────────────────────────────────────────
   showForm       = false;
   intTipo        = 'contacto';
   intResultado   = 'neutral';
@@ -125,6 +210,16 @@ export class DetalleInteraccionesComponent implements OnInit {
 
   estados          = ESTADOS_PROSPECTO;
   tiposInteraccion = ['contacto', 'llamada', 'reunión', 'email', 'whatsapp', 'visita'];
+
+  // ── Tareas ────────────────────────────────────────────────────────────────
+  detalleTab: 'interacciones' | 'tareas' = 'interacciones';
+  tareasData: Tarea[] = [];
+  loadingTareas = false;
+  showTareaForm = false;
+  tareaTipo = 'llamada';
+  tareaDesc = '';
+  tareaFechaVenc = this.getTodayDateLocal();
+  readonly TIPOS_TAREA = TIPOS_TAREA;
 
   AG_GRID_LOCALE_ES = AG_GRID_LOCALE_ES;
 
@@ -143,44 +238,6 @@ export class DetalleInteraccionesComponent implements OnInit {
   };
 
   defaultColDef: ColDef = { sortable: true, resizable: true };
-
-  legacyColDefs: ColDef[] = [
-    {
-      field: 'fecha', headerName: 'Fecha', width: 165,
-      cellRenderer: (p: any) => this.formatFecha(p.value),
-      cellStyle: { cursor: 'pointer', backgroundColor: '#fff8e1' },
-      tooltipValueGetter: () => 'Doble clic para editar fecha',
-      onCellDoubleClicked: (p: any) => this.editarFechaInteraccion(p.data),
-    },
-    {
-      field: 'tipo', headerName: 'Tipo', width: 110,
-      cellStyle: { cursor: 'pointer', backgroundColor: '#eefaf0' },
-      tooltipValueGetter: () => 'Doble clic para editar tipo',
-      onCellDoubleClicked: (p: any) => this.editarTipoInteraccion(p.data),
-    },
-    { field: 'descripcion', headerName: 'Descripción', flex: 1    },
-    {
-      field: 'descripcion', headerName: 'DescripciÃ³n', flex: 1,
-      cellStyle: { cursor: 'pointer', backgroundColor: '#eef4ff' },
-      tooltipValueGetter: () => 'Doble clic para editar descripciÃ³n',
-      onCellDoubleClicked: (p: any) => this.editarDescripcionInteraccion(p.data),
-    },
-    {
-      field: 'descripcion', headerName: 'Descripcion', flex: 1,
-      cellStyle: { cursor: 'pointer', backgroundColor: '#eef4ff' },
-      tooltipValueGetter: () => 'Doble clic para editar descripcion',
-      onCellDoubleClicked: (p: any) => this.editarDescripcionInteraccion(p.data),
-    },
-    {
-      field: 'resultado', headerName: 'Resultado', width: 110,
-      cellRenderer: (p: any) => {
-        const color = p.value === 'positivo' ? 'success' : p.value === 'negativo' ? 'danger' : 'secondary';
-        return `<span class="badge bg-${color}">${p.value}</span>`;
-      },
-    },
-    { field: 'nombreVendedor', headerName: 'Por', width: 130 },
-    { field: 'creadoPor',      headerName: 'Canal', width: 90 },
-  ];
 
   get colDefs(): ColDef[] {
     if (this._colDefs.length > 0) return this._colDefs;
@@ -252,7 +309,7 @@ export class DetalleInteraccionesComponent implements OnInit {
 
   ngOnInit() {}
 
-  // ── Datos ─────────────────────────────────────────────────────────────────
+  // ── Interacciones ─────────────────────────────────────────────────────────
 
   async cargarInteracciones() {
     if (!this.prospecto?.id) return;
@@ -278,7 +335,7 @@ export class DetalleInteraccionesComponent implements OnInit {
       this.intDescripcion = '';
       this.intFecha = this.getCurrentDateTimeLocal();
       this.showForm = false;
-      await this.cargarInteracciones();  // ya llama updateCountInParent()
+      await this.cargarInteracciones();
       Swal.fire({
         icon: result.synced ? 'success' : 'warning',
         title: result.synced ? 'Registrada' : 'Registrada con sincronizacion pendiente',
@@ -395,6 +452,91 @@ export class DetalleInteraccionesComponent implements OnInit {
     }
   }
 
+  // ── Tareas ────────────────────────────────────────────────────────────────
+
+  async cargarTareas() {
+    if (!this.prospecto?.id) return;
+    this.loadingTareas = true;
+    this.tareasData = await this.svc.getTareasByProspecto(this.prospecto.id);
+    this.loadingTareas = false;
+  }
+
+  async crearTareaLocal() {
+    if (!this.tareaDesc.trim()) {
+      Swal.fire('Requerido', 'Escribe una descripción para la tarea.', 'warning');
+      return;
+    }
+    if (!this.tareaFechaVenc) {
+      Swal.fire('Requerido', 'Selecciona una fecha de vencimiento.', 'warning');
+      return;
+    }
+    try {
+      await this.svc.crearTarea({
+        idProspecto:      this.prospecto.id,
+        nombreProspecto:  this.prospecto.nombre ?? '',
+        empresaProspecto: this.prospecto.empresa ?? '',
+        tipo:             this.tareaTipo,
+        descripcion:      this.tareaDesc.trim(),
+        fechaVencimiento: Timestamp.fromDate(new Date(this.tareaFechaVenc + 'T12:00:00')),
+        idVendedor:       this.idVendedor,
+        nombreVendedor:   this.nombreVendedor,
+        idCompany:        this.prospecto.idCompany ?? 0,
+      });
+      this.tareaDesc = '';
+      this.tareaFechaVenc = this.getTodayDateLocal();
+      this.showTareaForm = false;
+      await this.cargarTareas();
+      Swal.fire({ icon: 'success', title: 'Tarea creada', timer: 1200, showConfirmButton: false });
+    } catch {
+      Swal.fire('Error', 'No se pudo crear la tarea.', 'error');
+    }
+  }
+
+  async completarTareaLocal(tarea: Tarea) {
+    try {
+      await this.svc.completarTarea(tarea.id!);
+      this.tareasData = this.tareasData.filter(t => t.id !== tarea.id);
+      Swal.fire({ icon: 'success', title: '¡Tarea completada!', timer: 1000, showConfirmButton: false });
+    } catch {
+      Swal.fire('Error', 'No se pudo completar la tarea.', 'error');
+    }
+  }
+
+  async eliminarTareaLocal(tarea: Tarea) {
+    const res = await Swal.fire({
+      title: '¿Eliminar tarea?', text: tarea.descripcion,
+      icon: 'warning', showCancelButton: true,
+      confirmButtonColor: '#dc3545', confirmButtonText: 'Eliminar', cancelButtonText: 'Cancelar',
+    });
+    if (!res.isConfirmed) return;
+    try {
+      await this.svc.eliminarTarea(tarea.id!);
+      this.tareasData = this.tareasData.filter(t => t.id !== tarea.id);
+    } catch {
+      Swal.fire('Error', 'No se pudo eliminar.', 'error');
+    }
+  }
+
+  formatFechaTarea(ts: any): string {
+    if (!ts) return '';
+    const d = ts.toDate ? ts.toDate() : new Date(ts);
+    return d.toLocaleDateString('es-MX', { day: '2-digit', month: 'short', year: 'numeric' });
+  }
+
+  esTareaVencida(t: Tarea): boolean {
+    const hoy = new Date(); hoy.setHours(0, 0, 0, 0);
+    const f = (t.fechaVencimiento as any)?.toDate ? (t.fechaVencimiento as any).toDate() : new Date(t.fechaVencimiento as any);
+    f.setHours(0, 0, 0, 0);
+    return f < hoy;
+  }
+
+  esTareaHoy(t: Tarea): boolean {
+    const hoy = new Date(); hoy.setHours(0, 0, 0, 0);
+    const f = (t.fechaVencimiento as any)?.toDate ? (t.fechaVencimiento as any).toDate() : new Date(t.fechaVencimiento as any);
+    f.setHours(0, 0, 0, 0);
+    return f.getTime() === hoy.getTime();
+  }
+
   // ── Helpers ───────────────────────────────────────────────────────────────
 
   estadoColor(val: string) { return ESTADOS_PROSPECTO.find(e => e.value === val)?.color ?? 'secondary'; }
@@ -405,6 +547,12 @@ export class DetalleInteraccionesComponent implements OnInit {
     const now = new Date();
     const offset = now.getTimezoneOffset();
     return new Date(now.getTime() - offset * 60000).toISOString().slice(0, 16);
+  }
+
+  private getTodayDateLocal(): string {
+    const now = new Date();
+    const offset = now.getTimezoneOffset();
+    return new Date(now.getTime() - offset * 60000).toISOString().slice(0, 10);
   }
 
   private formatDateTimeLocal(ts: any): string {

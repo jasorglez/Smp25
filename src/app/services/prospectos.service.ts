@@ -8,6 +8,7 @@ import {
   where,
   doc,
   updateDoc,
+  deleteDoc,
   increment,
   Timestamp,
   getDocs,
@@ -76,11 +77,30 @@ export const GIROS_PROSPECTO = [
   'Comercio', 'Servicios', 'Manufactura', 'Gobierno', 'Otro',
 ];
 
+export interface Tarea {
+  id?: string;
+  idProspecto: string;
+  nombreProspecto: string;
+  empresaProspecto: string;
+  tipo: string;
+  descripcion: string;
+  fechaVencimiento: Timestamp;
+  completada: boolean;
+  idVendedor: number;
+  nombreVendedor: string;
+  idCompany: number;
+  fechaCreacion: Timestamp;
+  fechaCompletada?: Timestamp | null;
+}
+
+export const TIPOS_TAREA = ['llamada', 'reunión', 'email', 'seguimiento', 'visita', 'demo', 'cotizar', 'otro'];
+
 @Injectable({ providedIn: 'root' })
 export class ProspectosService {
   private firestore = inject(Firestore);
   private signalsSvc = inject(SignalsService);
   private readonly COL = 'prospectos';
+  private readonly TAREAS_COL = 'tareas-crm';
 
   // Consulta simple: primero por vendedor; si no hay resultados, cae a la empresa
   getProspectos(idVendedor: number): Observable<Prospecto[]> {
@@ -265,5 +285,53 @@ export class ProspectosService {
 
   async savePlantillas(idCompany: number, plantillas: Record<string, string>): Promise<void> {
     await setDoc(doc(this.firestore, 'whatsapp-plantillas', String(idCompany)), plantillas);
+  }
+
+  // ── Tareas CRM ────────────────────────────────────────────────────────────
+
+  async crearTarea(data: Omit<Tarea, 'id' | 'fechaCreacion' | 'completada' | 'fechaCompletada'>): Promise<string> {
+    const ref = await addDoc(collection(this.firestore, this.TAREAS_COL), {
+      ...data,
+      completada: false,
+      fechaCreacion: Timestamp.now(),
+      fechaCompletada: null,
+    });
+    return ref.id;
+  }
+
+  async getTareasByProspecto(idProspecto: string): Promise<Tarea[]> {
+    const snap = await getDocs(
+      query(collection(this.firestore, this.TAREAS_COL),
+        where('idProspecto', '==', idProspecto),
+        where('completada', '==', false),
+      )
+    );
+    return snap.docs
+      .map(d => ({ id: d.id, ...d.data() }) as Tarea)
+      .sort((a, b) => this.getTimestampMillis(a.fechaVencimiento) - this.getTimestampMillis(b.fechaVencimiento));
+  }
+
+  async getTareasByVendedor(idVendedor: number, idCompany: number): Promise<Tarea[]> {
+    const snap = await getDocs(
+      query(collection(this.firestore, this.TAREAS_COL),
+        where('idVendedor', '==', idVendedor),
+        where('completada', '==', false),
+      )
+    );
+    return snap.docs
+      .map(d => ({ id: d.id, ...d.data() }) as Tarea)
+      .filter(t => t.idCompany === idCompany)
+      .sort((a, b) => this.getTimestampMillis(a.fechaVencimiento) - this.getTimestampMillis(b.fechaVencimiento));
+  }
+
+  async completarTarea(tareaId: string): Promise<void> {
+    await updateDoc(doc(this.firestore, this.TAREAS_COL, tareaId), {
+      completada: true,
+      fechaCompletada: Timestamp.now(),
+    });
+  }
+
+  async eliminarTarea(tareaId: string): Promise<void> {
+    await deleteDoc(doc(this.firestore, this.TAREAS_COL, tareaId));
   }
 }

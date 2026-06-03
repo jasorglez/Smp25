@@ -4,7 +4,7 @@ import { FormsModule } from '@angular/forms';
 import { AgGridModule } from 'ag-grid-angular';
 import { ColDef, GridApi, GridReadyEvent } from 'ag-grid-enterprise';
 import { AG_GRID_LOCALE_ES } from 'assets/i18n/ag-grid.locale.es';
-import { ProspectosService, Prospecto, ESTADOS_PROSPECTO, GIROS_PROSPECTO } from 'app/services/prospectos.service';
+import { ProspectosService, Prospecto, ESTADOS_PROSPECTO, GIROS_PROSPECTO, Tarea } from 'app/services/prospectos.service';
 import { Timestamp } from '@angular/fire/firestore';
 import { SignalsService } from 'app/services/signals.service';
 import { UsersService } from 'app/services/users.service';
@@ -28,7 +28,7 @@ export class ProspectosComponent implements OnInit {
   private _colDefs: ColDef[] = [];
 
   // ── Pestañas ─────────────────────────────────────────────────────────────
-  activeTab: 'prospectos' | 'plantillas' = 'prospectos';
+  activeTab: 'prospectos' | 'plantillas' | 'tareas' = 'prospectos';
   savingPlantillas = false;
 
   // ── Plantillas de mensaje por giro ({empresa} se reemplaza con el nombre real) ──
@@ -68,6 +68,10 @@ export class ProspectosComponent implements OnInit {
   selectedItem:     any      = null;
   hasUnsavedChanges = false;
   loading           = false;
+
+  // ── Mis Tareas ────────────────────────────────────────────────────────────
+  tareasVendedor: Tarea[] = [];
+  loadingTareas = false;
 
   vendedores: { id: number; displayName: string }[] = [];
 
@@ -282,6 +286,7 @@ export class ProspectosComponent implements OnInit {
   ngOnInit() {
     this.cargarProspectos();
     this.cargarPlantillas();
+    this.cargarTareasVendedor();
   }
 
   async cargarPlantillas() {
@@ -478,6 +483,65 @@ export class ProspectosComponent implements OnInit {
     if (!ts) return '';
     const d = ts.toDate ? ts.toDate() : new Date(ts);
     return d.toLocaleDateString('es-MX', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+  }
+
+  // ── Mis Tareas ────────────────────────────────────────────────────────────
+
+  async cargarTareasVendedor() {
+    if (!this.idVendedor || !this.idRoot) return;
+    this.loadingTareas = true;
+    this.tareasVendedor = await this.svc.getTareasByVendedor(this.idVendedor, this.idRoot);
+    this.loadingTareas = false;
+  }
+
+  async completarTareaVendedor(tarea: Tarea) {
+    try {
+      await this.svc.completarTarea(tarea.id!);
+      this.tareasVendedor = this.tareasVendedor.filter(t => t.id !== tarea.id);
+      Swal.fire({ icon: 'success', title: '¡Tarea completada!', timer: 1000, showConfirmButton: false });
+    } catch {
+      Swal.fire('Error', 'No se pudo completar la tarea.', 'error');
+    }
+  }
+
+  async eliminarTareaVendedor(tarea: Tarea) {
+    const res = await Swal.fire({
+      title: '¿Eliminar tarea?', text: tarea.descripcion,
+      icon: 'warning', showCancelButton: true,
+      confirmButtonColor: '#dc3545', confirmButtonText: 'Eliminar', cancelButtonText: 'Cancelar',
+    });
+    if (!res.isConfirmed) return;
+    try {
+      await this.svc.eliminarTarea(tarea.id!);
+      this.tareasVendedor = this.tareasVendedor.filter(t => t.id !== tarea.id);
+    } catch {
+      Swal.fire('Error', 'No se pudo eliminar.', 'error');
+    }
+  }
+
+  get tareasVencidas() { return this.tareasVendedor.filter(t => this.esTareaVencida(t)); }
+  get tareasHoy()      { return this.tareasVendedor.filter(t => !this.esTareaVencida(t) && this.esTareaHoy(t)); }
+  get tareasProximas() { return this.tareasVendedor.filter(t => !this.esTareaVencida(t) && !this.esTareaHoy(t)); }
+  get countTareasPendientes() { return this.tareasVencidas.length + this.tareasHoy.length; }
+
+  esTareaVencida(t: Tarea): boolean {
+    const hoy = new Date(); hoy.setHours(0, 0, 0, 0);
+    const f = (t.fechaVencimiento as any)?.toDate ? (t.fechaVencimiento as any).toDate() : new Date(t.fechaVencimiento as any);
+    f.setHours(0, 0, 0, 0);
+    return f < hoy;
+  }
+
+  esTareaHoy(t: Tarea): boolean {
+    const hoy = new Date(); hoy.setHours(0, 0, 0, 0);
+    const f = (t.fechaVencimiento as any)?.toDate ? (t.fechaVencimiento as any).toDate() : new Date(t.fechaVencimiento as any);
+    f.setHours(0, 0, 0, 0);
+    return f.getTime() === hoy.getTime();
+  }
+
+  formatFechaTarea(ts: any): string {
+    if (!ts) return '';
+    const d = ts.toDate ? ts.toDate() : new Date(ts);
+    return d.toLocaleDateString('es-MX', { day: '2-digit', month: 'short', year: 'numeric' });
   }
 
   // ── WhatsApp ──────────────────────────────────────────────────────────────
