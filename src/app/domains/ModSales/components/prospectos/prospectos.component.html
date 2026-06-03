@@ -253,6 +253,77 @@
         </div>
       </div>
 
+      <!-- Cuotas del mes -->
+      <div class="row g-3 mt-1">
+        <div class="col-12">
+          <div class="card shadow-sm">
+            <div class="card-header py-2 d-flex align-items-center gap-2">
+              <span class="fw-bold"><i class="bi bi-bullseye me-1 text-danger"></i>Cuotas del Mes — {{ mesActual }}</span>
+              <button class="btn btn-sm ms-auto"
+                      [class.btn-outline-warning]="!cuotasEditando"
+                      [class.btn-success]="cuotasEditando"
+                      (click)="cuotasEditando ? guardarCuotas() : cuotasEditando = true">
+                <i class="bi" [class.bi-pencil]="!cuotasEditando" [class.bi-floppy]="cuotasEditando"></i>
+                {{ cuotasEditando ? 'Guardar' : 'Editar metas' }}
+              </button>
+              <button *ngIf="cuotasEditando" class="btn btn-sm btn-outline-secondary"
+                      (click)="cuotasEditando = false">
+                <i class="bi bi-x-lg"></i>
+              </button>
+            </div>
+            <div class="card-body p-0">
+              <table class="table table-sm mb-0">
+                <thead class="table-light">
+                  <tr>
+                    <th>Vendedor</th>
+                    <th class="text-center">Meta cierres</th>
+                    <th class="text-center">Ganados este mes</th>
+                    <th class="text-center">Avance</th>
+                    <th style="width:30%">Progreso</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr *ngFor="let c of tablaCuotas">
+                    <td class="fw-semibold">{{ c.nombre }}</td>
+                    <td class="text-center">
+                      <input *ngIf="cuotasEditando" type="number" min="0" class="form-control form-control-sm text-center"
+                             style="width:70px;margin:0 auto" [value]="c.meta"
+                             (change)="setCuota(c.nombre, $any($event.target).value)">
+                      <span *ngIf="!cuotasEditando">{{ c.meta || '—' }}</span>
+                    </td>
+                    <td class="text-center fw-bold text-success">{{ c.actual }}</td>
+                    <td class="text-center">
+                      <span class="badge"
+                            [class.bg-success]="c.pct >= 100"
+                            [class.bg-warning]="c.pct >= 50 && c.pct < 100"
+                            [class.bg-danger]="c.pct < 50 && c.meta > 0"
+                            [class.bg-secondary]="c.meta === 0">
+                        {{ c.meta > 0 ? c.pct + '%' : 'Sin meta' }}
+                      </span>
+                    </td>
+                    <td>
+                      <div class="progress" style="height:8px" *ngIf="c.meta > 0">
+                        <div class="progress-bar"
+                             [class.bg-success]="c.pct >= 100"
+                             [class.bg-warning]="c.pct >= 50 && c.pct < 100"
+                             [class.bg-danger]="c.pct < 50"
+                             [style.width]="c.pct + '%'">
+                        </div>
+                      </div>
+                    </td>
+                  </tr>
+                  <tr *ngIf="tablaCuotas.length === 0">
+                    <td colspan="5" class="text-muted text-center py-3">
+                      Haz clic en "Editar metas" para asignar cuotas mensuales
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
+
     </div>
   </div>
 

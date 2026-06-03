@@ -69,9 +69,12 @@ export class ProspectosComponent implements OnInit {
   hasUnsavedChanges = false;
   loading           = false;
 
-  // ── Reportes ──────────────────────────────────────────────────────────────
+  // ── Reportes + Cuotas ─────────────────────────────────────────────────────
   reportesData: any[] = [];
   loadingReportes = false;
+  cuotasMes: Record<string, number> = {};
+  cuotasEditando = false;
+  readonly mesActual = new Date().toISOString().slice(0, 7); // YYYY-MM
 
   vendedores: { id: number; displayName: string }[] = [];
 
@@ -500,9 +503,61 @@ export class ProspectosComponent implements OnInit {
     if (!this.idRoot || this.reportesData.length) return;
     this.loadingReportes = true;
     this.svc.getProspectosByCompany(this.idRoot).subscribe({
-      next: data => { this.reportesData = data; this.loadingReportes = false; },
+      next: async data => {
+        this.reportesData = data;
+        this.cuotasMes = await this.svc.getCuotasMes(this.idRoot!, this.mesActual);
+        this.loadingReportes = false;
+      },
       error: () => { this.loadingReportes = false; },
     });
+  }
+
+  async guardarCuotas() {
+    if (!this.idRoot) return;
+    try {
+      await this.svc.saveCuotasMes(this.idRoot, this.mesActual, this.cuotasMes);
+      this.cuotasEditando = false;
+      Swal.fire({ icon: 'success', title: 'Cuotas guardadas', timer: 1200, showConfirmButton: false });
+    } catch {
+      Swal.fire('Error', 'No se pudieron guardar las cuotas.', 'error');
+    }
+  }
+
+  get ganadosEsteMesPorVendedor(): Record<string, number> {
+    const inicio = new Date(this.mesActual + '-01');
+    const fin = new Date(inicio.getFullYear(), inicio.getMonth() + 1, 1);
+    const result: Record<string, number> = {};
+    this.reportesData
+      .filter(p => {
+        if (p.estado !== 'ganado') return false;
+        const ts = p.fechaUltimaInteraccion;
+        if (!ts) return false;
+        const d = ts?.toDate ? ts.toDate() : new Date(ts);
+        return d >= inicio && d < fin;
+      })
+      .forEach(p => {
+        const v = p.nombreVendedorActual || 'Sin asignar';
+        result[v] = (result[v] ?? 0) + 1;
+      });
+    return result;
+  }
+
+  get tablaCuotas() {
+    const vendedores = new Set<string>([
+      ...Object.keys(this.cuotasMes),
+      ...this.rRankingVendedores.map(v => v.nombre),
+    ]);
+    return [...vendedores].map(nombre => {
+      const meta   = this.cuotasMes[nombre] ?? 0;
+      const actual = this.ganadosEsteMesPorVendedor[nombre] ?? 0;
+      const pct    = meta > 0 ? Math.min(100, Math.round(actual / meta * 100)) : 0;
+      return { nombre, meta, actual, pct };
+    }).sort((a, b) => b.pct - a.pct);
+  }
+
+  setCuota(nombre: string, valor: string) {
+    const n = parseInt(valor, 10);
+    this.cuotasMes = { ...this.cuotasMes, [nombre]: isNaN(n) ? 0 : n };
   }
 
   get rTasaCierre() {

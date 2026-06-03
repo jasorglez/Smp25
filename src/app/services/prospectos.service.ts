@@ -375,4 +375,15 @@ export class ProspectosService {
   async eliminarTarea(tareaId: string): Promise<void> {
     await deleteDoc(doc(this.firestore, this.TAREAS_COL, tareaId));
   }
+
+  // ── Cuotas de Ventas ──────────────────────────────────────────────────────
+
+  async getCuotasMes(idCompany: number, mes: string): Promise<Record<string, number>> {
+    const snap = await getDoc(doc(this.firestore, 'cuotas-crm', `${idCompany}_${mes}`));
+    return snap.exists() ? (snap.data() as Record<string, number>) : {};
+  }
+
+  async saveCuotasMes(idCompany: number, mes: string, cuotas: Record<string, number>): Promise<void> {
+    await setDoc(doc(this.firestore, 'cuotas-crm', `${idCompany}_${mes}`), cuotas);
+  }
 }

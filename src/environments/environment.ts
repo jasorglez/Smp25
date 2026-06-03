@@ -85,5 +85,5 @@ export const environment = {
     // publicKey: 'TEST-4399133a-4676-42a2-ab85-d946370bf96a',
   },
 
-  version: '7.76 (02 Junio 2026) feat(crm): reportes CRM dentro de Prospectos - accesible sin permiso dashboard',
+  version: '7.77 (02 Junio 2026) feat(crm): cuotas mensuales por vendedor en Reportes CRM',
 };
