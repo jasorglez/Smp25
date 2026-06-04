@@ -17,19 +17,20 @@ import { alerts } from 'app/helpers/alerts';
       <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 5px; flex-shrink: 0;">
         <strong style="font-size: 0.85rem; color: #4a148c;">Detalle de Materia Prima</strong>
         <div class="d-flex gap-1">
-          <button class="btn btn-xs btn-success" (click)="addRow()" [disabled]="!gridApi">
+          <button class="btn btn-success" (click)="addRow()" [disabled]="!gridApi" title="Agregar">
             <i class="bi bi-plus-lg"></i>
           </button>
-          <button class="btn btn-xs btn-primary position-relative" (click)="saveChanges()" [disabled]="!hasChanges">
+          <button class="btn btn-primary position-relative" (click)="saveChanges()" [disabled]="!hasChanges && !hasChildChanges()" title="Guardar cambios">
             <i class="bi bi-floppy"></i>
-            <span *ngIf="hasChanges"
+            <span *ngIf="hasChanges || hasChildChanges()"
                   class="position-absolute top-0 start-100 translate-middle p-2 bg-danger border border-light rounded-circle">
+              <span class="visually-hidden">Hay cambios sin guardar</span>
             </span>
           </button>
-          <button class="btn btn-xs btn-warning" (click)="revert()">
+          <button class="btn btn-warning" (click)="revert()" title="Deshacer cambios">
             <i class="bi bi-arrow-clockwise"></i>
           </button>
-          <button class="btn btn-xs btn-danger" (click)="deleteRow()" [disabled]="!selectedRow">
+          <button class="btn btn-danger" (click)="deleteRow()" [disabled]="!selectedRow" title="Eliminar">
             <i class="bi bi-trash"></i>
           </button>
         </div>
@@ -110,9 +111,7 @@ export class DetallesMatprimaFiltradoComponent {
         const link = `color:#4a148c; text-decoration:underline; cursor:pointer;`;
         return `<span style="${link}">${count}</span>`;
       },
-      onCellClicked: (event: any) => {
-        if (!event.data?.__isNew && event.data?.id != null) this.toggleArticuloDetail(event.node);
-      },
+      onCellClicked: (event: any) => this.toggleArticuloDetail(event.node),
     },
     {
       field: 'jugo',
@@ -153,9 +152,15 @@ export class DetallesMatprimaFiltradoComponent {
                                          && p.data?.boteAsignado >= p.data?.jugo,
     },
     defaultColDef: { resizable: true, sortable: true },
+    postSortRows: (params: any) => {
+      const rows: any[] = params.nodes;
+      for (let i = rows.length - 1; i >= 0; i--) {
+        if (rows[i].data?.__isNew) rows.unshift(rows.splice(i, 1)[0]);
+      }
+    },
     masterDetail: true,
     detailRowHeight: 200,
-    isRowMaster: (data: any) => !data?.__isNew && data?.id != null,
+    isRowMaster: () => true,
     detailCellRenderer: DetallesArticuloFiltradoComponent,
     detailCellRendererParams: () => ({
       context: {
@@ -193,6 +198,13 @@ export class DetallesMatprimaFiltradoComponent {
   onCellValueChanged(event: any) {
     event.data.__modified = true;
     this.hasChanges = true;
+  }
+
+  private openDetailNode(node: any) {
+    this.gridApi.forEachNode((n: any) => { if (n.id !== node.id) n.setRowHeight(0); });
+    this.activeExpandedNodeId = node.id;
+    this.gridApi.onRowHeightChanged();
+    setTimeout(() => node.setExpanded(true), 0);
   }
 
   toggleArticuloDetail(node: any) {
@@ -288,10 +300,19 @@ export class DetallesMatprimaFiltradoComponent {
     }
   }
 
+  hasChildChanges(): boolean {
+    return this.rowData.some(r => {
+      const fn = r.__articuloHasChanges;
+      return fn ? fn() : !!r.__pendingArticulosDirty;
+    });
+  }
+
   async saveChanges() {
+    // Discard empty rows (auto-inserted but jugo never filled)
+    this.rowData = this.rowData.filter(r => !(r.__isNew && r.jugo == null));
     const newRows = this.rowData.filter(r => r.__isNew);
     const modRows = this.rowData.filter(r => r.__modified && !r.__isNew);
-    if (!newRows.length && !modRows.length) return;
+    if (!newRows.length && !modRows.length && !this.hasChildChanges()) return;
     try {
       for (const row of newRows) {
         const created = await lastValueFrom(this.productionService.createMoliendaMatDetalle(this.toPayload(row)));
@@ -303,8 +324,22 @@ export class DetallesMatprimaFiltradoComponent {
         row.__modified = false;
       }
       this.hasChanges = false;
+
+      // Save all child article grids (expanded or collapsed)
+      for (const row of this.rowData) {
+        const hasChanges = row.__articuloHasChanges ? row.__articuloHasChanges() : !!row.__pendingArticulosDirty;
+        if (hasChanges && row.__articuloSave) await row.__articuloSave();
+      }
+
       alerts.reqSuccessToast('Guardado');
+      const expandedId = this.activeExpandedNodeId;
       await this.loadData();
+      if (expandedId && this.gridApi && !this.gridApi.isDestroyed()) {
+        setTimeout(() => {
+          const node = this.gridApi.getRowNode(expandedId);
+          if (node) this.openDetailNode(node);
+        }, 50);
+      }
     } catch (e) {
       console.error('Error guardando detalle matprima:', e);
       alerts.reqErrorToast('Error al guardar');
@@ -312,6 +347,13 @@ export class DetallesMatprimaFiltradoComponent {
   }
 
   revert() {
+    // Clear child cached state before replacing rowData
+    this.rowData.forEach(r => {
+      r.__pendingArticulos = undefined;
+      r.__pendingArticulosDirty = false;
+      r.__articuloHasChanges = undefined;
+      r.__articuloSave = undefined;
+    });
     this.rowData = JSON.parse(JSON.stringify(this.originalRowData));
     this.hasChanges = false;
     this.selectedRow = null;

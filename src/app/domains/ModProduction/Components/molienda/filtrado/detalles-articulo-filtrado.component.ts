@@ -1,4 +1,4 @@
-import { Component, inject } from '@angular/core';
+import { Component, inject, OnDestroy } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { AgGridAngular } from 'ag-grid-angular';
 import { ColDef, GridApi, GridReadyEvent } from 'ag-grid-enterprise';
@@ -16,19 +16,10 @@ import { alerts } from 'app/helpers/alerts';
       <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 5px; flex-shrink: 0;">
         <strong style="font-size: 0.8rem; color: #1b5e20;">Artículos de Materia Prima</strong>
         <div class="d-flex gap-1">
-          <button class="btn btn-xs btn-success" (click)="addRow()" [disabled]="!gridApi">
-            <i class="bi bi-plus-lg"></i>
-          </button>
-          <button class="btn btn-xs btn-primary position-relative" (click)="saveChanges()" [disabled]="!hasChanges">
-            <i class="bi bi-floppy"></i>
-            <span *ngIf="hasChanges"
-                  class="position-absolute top-0 start-100 translate-middle p-2 bg-danger border border-light rounded-circle">
-            </span>
-          </button>
-          <button class="btn btn-xs btn-warning" (click)="revert()">
+          <button class="btn btn-warning" (click)="revert()" title="Deshacer cambios">
             <i class="bi bi-arrow-clockwise"></i>
           </button>
-          <button class="btn btn-xs btn-danger" (click)="deleteRow()" [disabled]="!selectedRow">
+          <button class="btn btn-danger" (click)="deleteRow()" [disabled]="!selectedRow" title="Eliminar">
             <i class="bi bi-trash"></i>
           </button>
         </div>
@@ -49,7 +40,7 @@ import { alerts } from 'app/helpers/alerts';
   `,
   styles: [`:host { display: block; height: 100%; overflow: hidden; }`]
 })
-export class DetallesArticuloFiltradoComponent {
+export class DetallesArticuloFiltradoComponent implements OnDestroy {
   private productionService = inject(ProductionService);
 
   private internalParams: any;
@@ -60,8 +51,14 @@ export class DetallesArticuloFiltradoComponent {
 
   gridApi!: GridApi;
   rowData: any[] = [];
-  hasChanges = false;
   selectedRow: any = null;
+
+  private _hasChanges = false;
+  get hasChanges(): boolean { return this._hasChanges; }
+  set hasChanges(value: boolean) {
+    this._hasChanges = value;
+    if (this.internalParams?.data) this.internalParams.data.__pendingArticulosDirty = value;
+  }
 
   colDefs: ColDef[] = [
     {
@@ -79,7 +76,15 @@ export class DetallesArticuloFiltradoComponent {
         };
       },
       valueFormatter: (p: any) => this.articuloOptions.find(a => a.id === p.value)?.name ?? '',
-      valueSetter: (p: any) => { p.data.idArticulo = p.newValue; p.data.__modified = true; this.hasChanges = true; return true; },
+      valueSetter: (p: any) => {
+        p.data.idArticulo = p.newValue;
+        p.data.__modified = true;
+        this.hasChanges = true;
+        // When the empty auto row gets its first value, insert the next empty row
+        if (p.data.__isNew && p.oldValue == null && p.newValue != null)
+          setTimeout(() => this.addAutoRow(false), 0);
+        return true;
+      },
     },
     {
       field: 'cantidad',
@@ -108,15 +113,91 @@ export class DetallesArticuloFiltradoComponent {
     this.idMatDetalle = params?.data?.id ?? null;
     this.articuloOptions = params?.context?.articuloOptions ?? [];
     this.idMatPrimaParent = params?.data?.idMatPrima ?? params?.context?.idMatPrimaParent ?? null;
-    console.log('[articulo-filtrado] idMatPrimaParent:', this.idMatPrimaParent, 'params.data:', params?.data);
-    if (this.gridApi && !this.gridApi.isDestroyed()) this.loadData();
+
+    // Restore cached rows if component was collapsed with unsaved changes
+    const cached = params?.data?.__pendingArticulos;
+    if (Array.isArray(cached) && params?.data?.__pendingArticulosDirty) {
+      this.rowData = cached;
+      this._hasChanges = true;
+      if (this.gridApi && !this.gridApi.isDestroyed()) {
+        this.gridApi.setGridOption('rowData', this.rowData);
+        this.addAutoRow();
+      }
+    } else if (this.gridApi && !this.gridApi.isDestroyed()) {
+      this.loadData();
+    }
+
+    this.registerOnRow(params);
+  }
+
+  private registerOnRow(params: any) {
+    if (!params?.data) return;
+    params.data.__articuloHasChanges = () => this._hasChanges;
+    params.data.__articuloSave = () => this.saveChanges();
   }
 
   refresh(): boolean { return false; }
 
+  ngOnDestroy() {
+    const data = this.internalParams?.data;
+    if (!data) return;
+
+    // Cache current rows and dirty flag so the parent can save even when collapsed
+    data.__pendingArticulos = JSON.parse(JSON.stringify(this.rowData));
+    data.__pendingArticulosDirty = this._hasChanges;
+
+    if (!this._hasChanges) {
+      data.__articuloHasChanges = () => false;
+      data.__articuloSave = async () => {};
+      return;
+    }
+
+    // Replace live references with offline closures that use the cached snapshot
+    const productionSvc = this.productionService;
+    const idMatDetalle = this.idMatDetalle;
+    const cachedRows: any[] = data.__pendingArticulos;
+    const onCountChanged = this.internalParams?.context?.onArticuloCountChanged;
+
+    data.__articuloHasChanges = () => !!data.__pendingArticulosDirty;
+    data.__articuloSave = async () => {
+      if (!data.__pendingArticulosDirty) return;
+      // Resolve real ID: parent may have saved this row and updated data.id after collapse
+      const realIdMatDetalle = idMatDetalle ?? (data.id as number) ?? null;
+      // Discard empty rows (auto-inserted but never filled)
+      const newRows = cachedRows.filter((r: any) => r.__isNew && r.idArticulo);
+      const modRows = cachedRows.filter((r: any) => r.__modified && !r.__isNew);
+      for (const row of newRows) {
+        const created = await lastValueFrom(productionSvc.createMoliendaMatArticulo({
+          idMatDetalle: realIdMatDetalle, idArticulo: row.idArticulo, cantidad: row.cantidad ?? 0,
+        }));
+        row.id = created.id;
+        row.__isNew = false;
+      }
+      for (const row of modRows) {
+        await lastValueFrom(productionSvc.updateMoliendaMatArticulo(row.id, {
+          idMatDetalle: realIdMatDetalle, idArticulo: row.idArticulo, cantidad: row.cantidad ?? 0,
+        }));
+        row.__modified = false;
+      }
+      data.__pendingArticulosDirty = false;
+      if (onCountChanged) {
+        const saved = cachedRows.filter((r: any) => !r.__isNew);
+        onCountChanged(idMatDetalle, saved.length, saved.reduce((s: number, r: any) => s + (Number(r.cantidad) || 0), 0));
+      }
+    };
+  }
+
   onGridReady(params: GridReadyEvent) {
     this.gridApi = params.api;
-    this.loadData();
+    if (this._hasChanges && this.rowData.length) {
+      this.gridApi.setGridOption('rowData', this.rowData);
+      this.addAutoRow();
+    } else if (!this.idMatDetalle) {
+      // New parent row: grid just mounted, add the auto row directly
+      this.addAutoRow();
+    } else {
+      this.loadData();
+    }
   }
 
   onSelectionChanged(event: any) {
@@ -130,7 +211,11 @@ export class DetallesArticuloFiltradoComponent {
   }
 
   async loadData() {
-    if (!this.idMatDetalle) { this.rowData = []; return; }
+    if (!this.idMatDetalle) {
+      this.rowData = [];
+      if (this.gridApi && !this.gridApi.isDestroyed()) this.addAutoRow();
+      return;
+    }
     try {
       const items = await lastValueFrom(this.productionService.getMoliendaMatArticuloByDetalle(this.idMatDetalle));
       const mapped = (Array.isArray(items) ? items : []).map(i => ({
@@ -146,8 +231,27 @@ export class DetallesArticuloFiltradoComponent {
       this.originalRowData = JSON.parse(JSON.stringify(this.rowData));
       if (this.gridApi && !this.gridApi.isDestroyed())
         this.gridApi.setGridOption('rowData', this.rowData);
+      this.addAutoRow();
     } catch (e) {
       console.error('Error cargando artículos de mat detalle:', e);
+    }
+  }
+
+  private addAutoRow(focusNew = true) {
+    // Don't add if there's already an unfilled new row
+    if (this.rowData.some(r => r.__isNew && !r.idArticulo)) return;
+    const autoRow = {
+      id: null, __tempId: `auto_${Date.now()}`, __isNew: true,
+      idMatDetalle: this.idMatDetalle,
+      idArticulo: null,
+      cantidad: null,
+    };
+    this.rowData = [autoRow, ...this.rowData];
+    // hasChanges stays false — no real data yet
+    if (this.gridApi && !this.gridApi.isDestroyed()) {
+      this.gridApi.setGridOption('rowData', this.rowData);
+      if (focusNew)
+        setTimeout(() => this.gridApi.startEditingCell({ rowIndex: 0, colKey: 'idArticulo' }), 80);
     }
   }
 
@@ -167,13 +271,17 @@ export class DetallesArticuloFiltradoComponent {
   }
 
   async saveChanges() {
+    // Discard empty rows (auto-inserted but never filled)
+    this.rowData = this.rowData.filter(r => !(r.__isNew && !r.idArticulo));
     const newRows = this.rowData.filter(r => r.__isNew);
     const modRows = this.rowData.filter(r => r.__modified && !r.__isNew);
-    if (!newRows.length && !modRows.length) return;
+    if (!newRows.length && !modRows.length) { this._hasChanges = false; return; }
+    // Resolve real ID: parent may have just saved this row and updated data.id
+    const realId = this.idMatDetalle ?? (this.internalParams?.data?.id as number) ?? null;
     try {
       for (const row of newRows) {
         const created = await lastValueFrom(this.productionService.createMoliendaMatArticulo({
-          idMatDetalle: this.idMatDetalle,
+          idMatDetalle: realId,
           idArticulo: row.idArticulo,
           cantidad: row.cantidad ?? 0,
         }));
@@ -182,7 +290,7 @@ export class DetallesArticuloFiltradoComponent {
       }
       for (const row of modRows) {
         await lastValueFrom(this.productionService.updateMoliendaMatArticulo(row.id, {
-          idMatDetalle: this.idMatDetalle,
+          idMatDetalle: realId,
           idArticulo: row.idArticulo,
           cantidad: row.cantidad ?? 0,
         }));
@@ -206,6 +314,7 @@ export class DetallesArticuloFiltradoComponent {
     this.selectedRow = null;
     if (this.gridApi && !this.gridApi.isDestroyed())
       this.gridApi.setGridOption('rowData', this.rowData);
+    this.addAutoRow();
   }
 
   async deleteRow() {
