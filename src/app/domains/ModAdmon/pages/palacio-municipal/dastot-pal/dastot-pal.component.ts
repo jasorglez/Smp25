@@ -14,9 +14,15 @@ import { CommonModule } from '@angular/common';
 import {
   ApexChart,
   ApexNonAxisChartSeries,
+  ApexAxisChartSeries,
   ApexResponsive,
   ApexLegend,
   ApexDataLabels,
+  ApexXAxis,
+  ApexYAxis,
+  ApexPlotOptions,
+  ApexFill,
+  ApexTooltip,
   ChartComponent,
   NgApexchartsModule,
 } from 'ng-apexcharts';
@@ -30,6 +36,19 @@ export type ChartOptions = {
   legend: ApexLegend;
   dataLabels: ApexDataLabels;
   colors: string[];
+};
+
+export type BarChartOptions = {
+  series: ApexAxisChartSeries;
+  chart: ApexChart;
+  xaxis: ApexXAxis;
+  yaxis: ApexYAxis | ApexYAxis[];
+  plotOptions: ApexPlotOptions;
+  dataLabels: ApexDataLabels;
+  legend: ApexLegend;
+  colors: string[];
+  tooltip: ApexTooltip;
+  fill: ApexFill;
 };
 
 interface TotalData {
@@ -55,6 +74,7 @@ interface TotalData {
 export class DastotPalComponent implements OnInit {
   @ViewChild('chartIngresos') chartIngresos!: ChartComponent;
   @ViewChild('chartEgresos') chartEgresos!: ChartComponent;
+  @ViewChild('chartBar') chartBar!: ChartComponent;
   @ViewChild('reportView') reportView!: ElementRef<HTMLElement>;
 
   authService = inject(AuthService);
@@ -74,8 +94,8 @@ export class DastotPalComponent implements OnInit {
   pdfProgressText: string = '';
 
   // Date range variables
-  startDate: string = '2025-01-01';
-  endDate: string = '2025-12-31';
+  startDate: string = `${new Date().getFullYear()}-01-01`;
+  endDate: string = `${new Date().getFullYear()}-12-31`;
 
   constructor() {
     // Escuchar cambios en la señal de root
@@ -153,6 +173,57 @@ export class DastotPalComponent implements OnInit {
         },
       },
     ],
+  };
+
+  // Totales globales
+  get totalIngresos(): number {
+    const source = this.allRowData.length > 0 ? this.allRowData : this.rowData;
+    return source.reduce((sum, item) => sum + (item.ingresos || 0), 0);
+  }
+
+  get totalEgresos(): number {
+    const source = this.allRowData.length > 0 ? this.allRowData : this.rowData;
+    return source.reduce((sum, item) => sum + (item.egresos || 0), 0);
+  }
+
+  get totalDiferencia(): number {
+    return this.totalIngresos - this.totalEgresos;
+  }
+
+  getPercentIngresos(value: number | undefined): string {
+    if (!value || this.totalIngresos === 0) return '0.0';
+    return ((value / this.totalIngresos) * 100).toFixed(1);
+  }
+
+  getPercentEgresos(value: number | undefined): string {
+    if (!value || this.totalEgresos === 0) return '0.0';
+    return ((value / this.totalEgresos) * 100).toFixed(1);
+  }
+
+  // Gráfico de barras comparativo
+  public chartBarOptions: any = {
+    series: [],
+    chart: { type: 'bar', height: 300, toolbar: { show: false } },
+    xaxis: {
+      categories: [],
+      labels: { rotate: -35, style: { fontSize: '10px' }, trim: true, maxHeight: 80 }
+    },
+    yaxis: {
+      labels: {
+        formatter: (val: number) => '$' + val.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 })
+      }
+    },
+    plotOptions: { bar: { horizontal: false, columnWidth: '60%', borderRadius: 3 } },
+    dataLabels: { enabled: false },
+    legend: { position: 'top' },
+    colors: ['#28a745', '#dc3545'],
+    tooltip: {
+      y: {
+        formatter: (val: number) => '$' + val.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+      }
+    },
+    fill: { opacity: 1 },
+    grid: { borderColor: '#e7e7e7' }
   };
 
   // Column definitions for AG Grid
@@ -268,7 +339,7 @@ export class DastotPalComponent implements OnInit {
   }
 
   // Variable para almacenar todos los datos originales
-  private allRowData: TotalData[] = [];
+  protected allRowData: TotalData[] = [];
   private expandedNodeAccount: string | null = null;
 
   toggleDetail(node: any, detailType: string): void {
@@ -448,6 +519,23 @@ export class DastotPalComponent implements OnInit {
 
     this.chartIngresosOptions.series = [ingEstatalTotal, ingMunicipalTotal, ingPropiosTotal];
     this.chartEgresosOptions.series = [egrEstatalTotal, egrMunicipalTotal, egrPropiosTotal];
+
+    // Actualizar gráfico de barras comparativo
+    const categories = this.rowData.map(item => {
+      const name = item.nameAccount || '';
+      return name.length > 25 ? name.substring(0, 22) + '...' : name;
+    });
+    this.chartBarOptions = {
+      ...this.chartBarOptions,
+      xaxis: {
+        ...this.chartBarOptions.xaxis,
+        categories
+      },
+      series: [
+        { name: 'Ingresos', data: this.rowData.map(item => Number(item.ingresos || 0)) },
+        { name: 'Egresos', data: this.rowData.map(item => Number(item.egresos || 0)) },
+      ]
+    };
   }
 
   onDateRangeChange(): void {

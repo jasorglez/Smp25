@@ -16,6 +16,46 @@
     </div>
   </div>
 
+  <!-- KPI Total -->
+  <div class="row mb-3" *ngIf="!isLoading && (rowData.length > 0 || allRowData.length > 0)">
+    <div class="col-md-4">
+      <div class="card text-white bg-success shadow-sm">
+        <div class="card-body py-2 px-3">
+          <div class="d-flex justify-content-between align-items-center">
+            <div>
+              <div class="small text-white-50 fw-semibold">TOTAL INGRESOS</div>
+              <div class="fw-bold h5 mb-0">{{ totalIngresos | currency:'USD':'symbol':'1.2-2' }}</div>
+            </div>
+            <i class="bi bi-graph-up-arrow fs-1 opacity-50"></i>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="col-md-8">
+      <div class="card border-success shadow-sm h-100">
+        <div class="card-body py-2 d-flex align-items-center">
+          <div class="d-flex justify-content-around w-100">
+            <div class="text-center">
+              <div class="fw-bold small" style="color: #00E396">Estatal</div>
+              <div class="small">{{ +chartOptions.series[0] | currency:'USD':'symbol':'1.0-0' }}</div>
+              <span class="badge bg-secondary" style="font-size: 10px;">{{ getPercent(+chartOptions.series[0]) }}%</span>
+            </div>
+            <div class="text-center">
+              <div class="fw-bold small" style="color: #008FFB">Municipal</div>
+              <div class="small">{{ +chartOptions.series[1] | currency:'USD':'symbol':'1.0-0' }}</div>
+              <span class="badge bg-secondary" style="font-size: 10px;">{{ getPercent(+chartOptions.series[1]) }}%</span>
+            </div>
+            <div class="text-center">
+              <div class="fw-bold small" style="color: #FEB019">Propios</div>
+              <div class="small">{{ +chartOptions.series[2] | currency:'USD':'symbol':'1.0-0' }}</div>
+              <span class="badge bg-secondary" style="font-size: 10px;">{{ getPercent(+chartOptions.series[2]) }}%</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <!-- Layout: Grid (izquierda) + Gráfica (derecha) -->
   <div class="row">
     <!-- Grid de resumen de ingresos por cuenta -->
@@ -52,42 +92,24 @@
             [colors]="chartOptions.colors" [legend]="chartOptions.legend" [dataLabels]="chartOptions.dataLabels"
             [responsive]="chartOptions.responsive"></apx-chart>
 
-          <!-- Totales -->
-          <div class="mt-3">
-            <h6 class="text-center mb-3">Totales por Cuenta</h6>
-            <div class="d-flex justify-content-around">
-              <div class="text-center">
-                <div class="fw-bold" style="color: #00E396">Estatal</div>
-                <div class="fs-5">
-                  {{
-                  chartOptions.series[0]?.toLocaleString('en-US', {
-                  style: 'currency',
-                  currency: 'USD'
-                  })
-                  }}
-                </div>
+          <!-- Totales con porcentajes -->
+          <div class="mt-2">
+            <h6 class="text-center mb-2">Distribución</h6>
+            <div class="d-flex flex-column gap-2 px-1">
+              <div class="d-flex justify-content-between align-items-center">
+                <span class="fw-bold small" style="color: #00E396"><i class="bi bi-circle-fill me-1"></i>Estatal</span>
+                <span class="small">{{ +chartOptions.series[0] | currency:'USD':'symbol':'1.0-0' }}</span>
+                <span class="badge bg-secondary" style="font-size: 10px;">{{ getPercent(+chartOptions.series[0]) }}%</span>
               </div>
-              <div class="text-center">
-                <div class="fw-bold" style="color: #008FFB">Municipal</div>
-                <div class="fs-5">
-                  {{
-                  chartOptions.series[1]?.toLocaleString('en-US', {
-                  style: 'currency',
-                  currency: 'USD'
-                  })
-                  }}
-                </div>
+              <div class="d-flex justify-content-between align-items-center">
+                <span class="fw-bold small" style="color: #008FFB"><i class="bi bi-circle-fill me-1"></i>Municipal</span>
+                <span class="small">{{ +chartOptions.series[1] | currency:'USD':'symbol':'1.0-0' }}</span>
+                <span class="badge bg-secondary" style="font-size: 10px;">{{ getPercent(+chartOptions.series[1]) }}%</span>
               </div>
-              <div class="text-center">
-                <div class="fw-bold" style="color: #FEB019">Propios</div>
-                <div class="fs-5">
-                  {{
-                  chartOptions.series[2]?.toLocaleString('en-US', {
-                  style: 'currency',
-                  currency: 'USD'
-                  })
-                  }}
-                </div>
+              <div class="d-flex justify-content-between align-items-center">
+                <span class="fw-bold small" style="color: #FEB019"><i class="bi bi-circle-fill me-1"></i>Propios</span>
+                <span class="small">{{ +chartOptions.series[2] | currency:'USD':'symbol':'1.0-0' }}</span>
+                <span class="badge bg-secondary" style="font-size: 10px;">{{ getPercent(+chartOptions.series[2]) }}%</span>
               </div>
             </div>
           </div>

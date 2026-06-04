@@ -62,8 +62,8 @@ export class DashegrPalComponent implements OnInit {
   errorMessage: string = '';
 
   // Date range variables
-  startDate: string = '2025-01-01';
-  endDate: string = '2025-12-31';
+  startDate: string = `${new Date().getFullYear()}-01-01`;
+  endDate: string = `${new Date().getFullYear()}-12-31`;
 
   constructor() {
     // Escuchar cambios en la señal de root
@@ -108,6 +108,16 @@ export class DashegrPalComponent implements OnInit {
       },
     ],
   };
+
+  get totalEgresos(): number {
+    const source = this.allRowData.length > 0 ? this.allRowData : this.rowData;
+    return source.reduce((sum, item) => sum + (item.ingresos || 0), 0);
+  }
+
+  getPercent(value: number | undefined): string {
+    if (!value || this.totalEgresos === 0) return '0.0';
+    return ((value / this.totalEgresos) * 100).toFixed(1);
+  }
 
   // Column definitions for AG Grid
   columnDefs: ColDef[] = [
@@ -173,7 +183,7 @@ export class DashegrPalComponent implements OnInit {
   }
 
   // Variable para almacenar todos los datos originales
-  private allRowData: ExpenseData[] = [];
+  protected allRowData: ExpenseData[] = [];
 
   toggleDetail(node: any): void {
     const isExpanded = node.expanded;
