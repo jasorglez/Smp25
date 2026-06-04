@@ -60,9 +60,6 @@ export class InandoutStComponent implements OnInit {
   isDirectEntryMode: boolean = false;
 
   readonly addNewSentinel = { id: '__ADD_NEW__', description: '+ Agregar Registro' };
-  showAddCatalogForm = false;
-  newCatalogDesc = '';
-  savingCatalog = false;
   private previousCatalog: any = null;
 
   public rowSelection: 'single' | 'multiple' = 'single';
@@ -138,11 +135,15 @@ export class InandoutStComponent implements OnInit {
         this.catalogs = data;
         if (this.catalogs.length > 0) {
           this.selectedCatalog = this.catalogs[0];
+          this.previousCatalog = this.catalogs[0];
         }
-        console.log('Catalogs loaded:', this.catalogs);
       },
       error: (error) => {
-        console.error('Error loading catalogs:', error);
+        if (error?.status === 404) {
+          this.catalogs = []; // sin catálogos aún, no es error
+        } else {
+          console.error('Error loading catalogs:', error);
+        }
       }
     });
   }
@@ -156,10 +157,13 @@ export class InandoutStComponent implements OnInit {
         if (this.otList.length > 0) {
           this.selectedOt = this.otList[0];
         }
-        console.log('OTs loaded:', this.otList);
       },
       error: (error) => {
-        console.error('Error loading OTs:', error);
+        if (error?.status === 404) {
+          this.otList = []; // sin OTs aún, no es error
+        } else {
+          console.error('Error loading OTs:', error);
+        }
       }
     });
   }
@@ -187,30 +191,38 @@ export class InandoutStComponent implements OnInit {
     this.loadEntries();
   }
 
-  onCatalogChange() {
+  async onCatalogChange(): Promise<void> {
     if (this.selectedCatalog?.id === '__ADD_NEW__') {
       this.selectedCatalog = this.previousCatalog;
-      this.showAddCatalogForm = true;
+      const result = await alerts.inputAlert(
+        'Nuevo Tipo de Movimiento',
+        `Tipo: ${this.movementType === 'IN' ? 'Entrada' : 'Salida'}`,
+        'text', '',
+        {
+          inputAttributes: { placeholder: 'Descripción del tipo de movimiento...' },
+          confirmButtonText: 'Guardar',
+          confirmButtonColor: '#28a745'
+        }
+      );
+      if (result.isConfirmed && result.value) {
+        await this.saveNewCatalog(result.value);
+      }
       return;
     }
     this.previousCatalog = this.selectedCatalog;
-    this.showAddCatalogForm = false;
     this.loadEntries();
   }
 
-  async saveNewCatalog(): Promise<void> {
-    if (!this.newCatalogDesc.trim() || !this.idRoot) return;
-    this.savingCatalog = true;
+  async saveNewCatalog(description: string): Promise<void> {
+    if (!this.idRoot) return;
     try {
       const payload = {
-        description: this.newCatalogDesc.trim().toUpperCase(),
+        description: description.trim().toUpperCase(),
         type: this.movementType,
         idCompany: this.idRoot,
         active: true
       };
       const created = await lastValueFrom(this.catalogsService.addCatalog(payload));
-      this.newCatalogDesc = '';
-      this.showAddCatalogForm = false;
       await new Promise<void>(resolve => {
         this.catalogsService.getCatalogs(this.idRoot!, this.movementType).subscribe({
           next: (data) => { this.catalogs = data; resolve(); },
@@ -219,18 +231,13 @@ export class InandoutStComponent implements OnInit {
       });
       this.selectedCatalog = this.catalogs.find(c => c.id === created?.id)
         ?? this.catalogs[this.catalogs.length - 1];
+      this.previousCatalog = this.selectedCatalog;
       this.loadEntries();
-      alerts.basicAlert('Creado', 'Tipo de movimiento agregado correctamente', 'success');
-    } catch {
-      alerts.basicAlert('Error', 'No se pudo crear el tipo de movimiento', 'error');
-    } finally {
-      this.savingCatalog = false;
+      alerts.toastAlert('Tipo de movimiento creado', 'success');
+    } catch (error: any) {
+      const msg = error?.error?.message || error?.message || 'Error desconocido';
+      alerts.basicAlert('Error', `No se pudo crear: ${msg}`, 'error');
     }
-  }
-
-  cancelNewCatalog(): void {
-    this.showAddCatalogForm = false;
-    this.newCatalogDesc = '';
   }
 
   onOtChange() {

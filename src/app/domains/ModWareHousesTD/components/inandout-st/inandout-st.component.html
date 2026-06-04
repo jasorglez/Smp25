@@ -32,25 +32,6 @@
             + Agregar Registro
           </option>
         </select>
-
-        <!-- Formulario inline para nuevo tipo de movimiento -->
-        <div *ngIf="showAddCatalogForm" class="d-flex gap-1 mt-1 align-items-center">
-          <input
-            type="text"
-            class="form-control form-control-sm"
-            [(ngModel)]="newCatalogDesc"
-            placeholder="Descripción del nuevo tipo..."
-            (keyup.enter)="saveNewCatalog()"
-            autofocus
-            style="font-size:0.8rem;" />
-          <button class="btn btn-sm btn-success" (click)="saveNewCatalog()"
-            [disabled]="!newCatalogDesc.trim() || savingCatalog" title="Guardar">
-            <i class="bi bi-check-lg"></i>
-          </button>
-          <button class="btn btn-sm btn-outline-secondary" (click)="cancelNewCatalog()" title="Cancelar">
-            <i class="bi bi-x-lg"></i>
-          </button>
-        </div>
       </div>
     </div>
     <div class="col-4">
