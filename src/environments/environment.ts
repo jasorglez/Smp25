@@ -85,7 +85,7 @@ export const environment = {
     // publicKey: 'TEST-4399133a-4676-42a2-ab85-d946370bf96a',
   },
 
-  version: '8.04 (03 Junio 2026) fix(admon): tablero hijos compactos nivel 2',
+  version: '8.05 (04 Junio 2026) fix(ui): hijos Almacenes y Compras compactos nivel 2',
 };
 
 

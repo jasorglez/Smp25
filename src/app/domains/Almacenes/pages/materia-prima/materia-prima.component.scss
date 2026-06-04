@@ -1,39 +1,18 @@
-// Estilos para navegación de segundo nivel
-.nav-level-2 {
-  background-color: #f8f9fa;
-  padding: 10px;
-  border-radius: 10px;
-  margin-bottom: 15px;
-}
+/* Hijos nivel 2 — más pequeños que el padre */
+.nav-level-2 { gap: 3px; flex-wrap: wrap; background-color: #f8f9fa; padding: 6px 8px; border-radius: 8px; margin-bottom: 10px; }
 
-.blue-tab-light {
-  background-color: #17a2b8;
-  color: white !important;
+.nav-level-2 .nav-link {
+  font-size: 0.68rem;
+  padding: 0.2rem 0.6rem;
   border-radius: 20px;
-  margin: 0 3px;
-  padding: 8px 16px;
-  transition: all 0.3s ease;
-  font-size: 0.9rem;
-  
-  &:hover {
-    background-color: #138496;
-    color: white !important;
-    transform: translateY(-2px);
-  }
-  
-  &.active {
-    background-color: #0d6674 !important;
-    color: white !important;
-    box-shadow: 0 4px 8px rgba(0,0,0,0.2);
-    font-weight: 600;
-  }
+  font-weight: 500;
+  color: #fff;
+  background-color: #6c9ecf;
+  border: 1px solid #5a8fc5;
+  i { font-size: 0.72rem; margin-right: 3px; }
+  &:hover { background-color: #4a7db5; color: #fff; }
+  &.active { background-color: #099728; border-color: #077a20; color: #fff; }
 }
 
-.card {
-  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-}
-
-.card-header {
-  background: linear-gradient(135deg, #e3f2fd 0%, #bbdefb 100%);
-  border-bottom: 2px solid #2196f3;
-}
+.card { box-shadow: 0 2px 4px rgba(0,0,0,0.08); }
+.card-header { background: #f8f9fa; border-bottom: 1px solid #dee2e6; }
