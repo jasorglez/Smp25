@@ -83,9 +83,9 @@ export const environment = {
     publicKey: 'APP_USR-ffba3d82-7423-4dbc-9012-4ca0571dae19', //Produccion
     // Pruebas (descomenta esta linea y comenta la de Produccion para cambiar manualmente)
     // publicKey: 'TEST-4399133a-4676-42a2-ab85-d946370bf96a',
-  },
+  },cl
 
-  version: '4.16 (04 Junio 2026) fix(warehouse): active 1 no bool en payload CatalogDTO',
+  version: '4.17 (04 Junio 2026) fix(logistica): búsqueda Nombre clientes usa contains en Set Filter',
 };
 
 

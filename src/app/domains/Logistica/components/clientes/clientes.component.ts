@@ -285,7 +285,13 @@ export class ClientesLogisticaComponent implements CanComponentDeactivate {
         filter: true,
         width: 270,
         cellEditor: 'autocompleteEditor',
-        filterParams: { defaultToNothingSelected: true },
+        filterParams: {
+          defaultToNothingSelected: true,
+          textMatcher: ({ filterText, value }: { filterText: string; value: string }) => {
+            if (!filterText) return true;
+            return String(value ?? '').toLowerCase().includes(filterText.toLowerCase());
+          },
+        },
         cellEditorParams: () => {
           const isPersistedRow = (e: any) => {
             const id = e?.id;
