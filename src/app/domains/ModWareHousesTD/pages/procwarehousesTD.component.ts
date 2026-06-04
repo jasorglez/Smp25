@@ -9,6 +9,7 @@ import { SignalsService } from 'app/services/signals.service';
   standalone: true,
   imports: [RouterModule, DomainsModule],
   templateUrl: './procwarehousesTD.component.html',
+  styleUrl: './procwarehousesTD.component.scss',
 })
 export class ProcWarehousesTDComponent {
   authService = inject(AuthService);
