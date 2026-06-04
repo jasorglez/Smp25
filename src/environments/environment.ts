@@ -85,7 +85,7 @@ export const environment = {
     // publicKey: 'TEST-4399133a-4676-42a2-ab85-d946370bf96a',
   },
 
-  version: '4.13 (04 Junio 2026) fix(municipio): fallas-incidencias header reducido grid 360px',
+  version: '4.14 (04 Junio 2026) feat(warehouse): agregar registro en tipo de movimiento',
 };
 
 

@@ -59,6 +59,12 @@ export class InandoutStComponent implements OnInit {
   users: any[] = [];
   isDirectEntryMode: boolean = false;
 
+  readonly addNewSentinel = { id: '__ADD_NEW__', description: '+ Agregar Registro' };
+  showAddCatalogForm = false;
+  newCatalogDesc = '';
+  savingCatalog = false;
+  private previousCatalog: any = null;
+
   public rowSelection: 'single' | 'multiple' = 'single';
   public paginationPageSize = 15;
   public paginationPageSizeSelector: number[] | boolean = [15, 50, 100];
@@ -182,7 +188,49 @@ export class InandoutStComponent implements OnInit {
   }
 
   onCatalogChange() {
+    if (this.selectedCatalog?.id === '__ADD_NEW__') {
+      this.selectedCatalog = this.previousCatalog;
+      this.showAddCatalogForm = true;
+      return;
+    }
+    this.previousCatalog = this.selectedCatalog;
+    this.showAddCatalogForm = false;
     this.loadEntries();
+  }
+
+  async saveNewCatalog(): Promise<void> {
+    if (!this.newCatalogDesc.trim() || !this.idRoot) return;
+    this.savingCatalog = true;
+    try {
+      const payload = {
+        description: this.newCatalogDesc.trim().toUpperCase(),
+        type: this.movementType,
+        idCompany: this.idRoot,
+        active: true
+      };
+      const created = await lastValueFrom(this.catalogsService.addCatalog(payload));
+      this.newCatalogDesc = '';
+      this.showAddCatalogForm = false;
+      await new Promise<void>(resolve => {
+        this.catalogsService.getCatalogs(this.idRoot!, this.movementType).subscribe({
+          next: (data) => { this.catalogs = data; resolve(); },
+          error: () => resolve()
+        });
+      });
+      this.selectedCatalog = this.catalogs.find(c => c.id === created?.id)
+        ?? this.catalogs[this.catalogs.length - 1];
+      this.loadEntries();
+      alerts.basicAlert('Creado', 'Tipo de movimiento agregado correctamente', 'success');
+    } catch {
+      alerts.basicAlert('Error', 'No se pudo crear el tipo de movimiento', 'error');
+    } finally {
+      this.savingCatalog = false;
+    }
+  }
+
+  cancelNewCatalog(): void {
+    this.showAddCatalogForm = false;
+    this.newCatalogDesc = '';
   }
 
   onOtChange() {
