@@ -1,264 +1,74 @@
-// Estilos modernos para el m�dulo de proyectos
+/* Nav Proyectos — icono arriba + texto abajo, mismo estilo que Ventas */
 .modern-card {
   border: none;
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
-  border-radius: 12px;
-  overflow: hidden;
-  background: linear-gradient(135deg, #f8f9ff 0%, #ffffff 100%);
-  transition: all 0.3s ease;
-
-  &:hover {
-    box-shadow: 0 8px 30px rgba(0, 0, 0, 0.12);
-  }
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.07);
+  border-radius: 8px;
 }
 
 .modern-header {
-  background: linear-gradient(135deg, #6c7ce7 0%, #8b6db8 100%);
-  border: none;
-  padding: 0.8rem;
-  color: white;
-  position: relative;
-  overflow: hidden;
-
-  &::before {
-    content: '';
-    position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    background: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><defs><pattern id="grain" width="100" height="100" patternUnits="userSpaceOnUse"><circle cx="25" cy="25" r="1" fill="white" opacity="0.05"/><circle cx="75" cy="75" r="1" fill="white" opacity="0.05"/><circle cx="50" cy="10" r="0.5" fill="white" opacity="0.03"/></pattern></defs><rect width="100" height="100" fill="url(%23grain)"/></svg>');
-    pointer-events: none;
-  }
+  background: #f8f9fa;
+  border-bottom: 1px solid #dee2e6;
+  padding: 0.5rem 0.75rem;
 }
 
 .nav-wrapper {
   position: relative;
-  z-index: 1;
 }
 
 .modern-nav {
-  gap: 0.5rem;
+  gap: 4px;
   flex-wrap: wrap;
-  justify-content: flex-start;
-  margin-bottom: 0;
 
-  .nav-item {
-    margin-bottom: 0.5rem;
-  }
-
-  .nav-link {
-    color: rgba(255, 255, 255, 0.8);
-    background: rgba(255, 255, 255, 0.1);
-    border: 1px solid rgba(255, 255, 255, 0.2);
-    border-radius: 6px;
-    padding: 0.4rem 0.8rem;
-    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-    font-weight: 500;
-    text-decoration: none;
+  .nav-link.modern-tab {
     display: flex;
+    flex-direction: column;
     align-items: center;
-    gap: 0.35rem;
-    min-height: 32px; // Reducido de 44px a 32px
-    backdrop-filter: blur(10px);
-    position: relative;
-    overflow: hidden;
-
-    // Efecto de brillo sutil
-    &::before {
-      content: '';
-      position: absolute;
-      top: 0;
-      left: -100%;
-      width: 100%;
-      height: 100%;
-      background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
-      transition: left 0.5s;
-    }
+    justify-content: center;
+    width: 76px;
+    min-width: 76px;
+    padding: 6px 4px 5px;
+    border-radius: 10px;
+    font-weight: 500;
+    text-align: center;
+    color: #fff;
+    background-color: #5a8fc5;
+    border: 1px solid #4a7db5;
+    transition: background-color 0.15s ease, transform 0.1s ease;
+    text-decoration: none;
 
     i {
-      font-size: 0.9rem;
-      transition: transform 0.3s ease;
+      font-size: 1.25rem;
+      margin: 0 0 3px 0;
+      display: block;
     }
 
     span {
-      font-size: 0.75rem;
-      white-space: nowrap;
+      font-size: 0.60rem;
+      line-height: 1.15;
+      display: block;
+      white-space: normal;
+      word-break: break-word;
     }
 
-    // Estados hover y active
     &:hover {
-      color: white;
-      background: rgba(255, 255, 255, 0.2);
-      border-color: rgba(255, 255, 255, 0.4);
-      transform: translateY(-2px);
-      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-
-      &::before {
-        left: 100%;
-      }
-
-      i {
-        transform: scale(1.1);
-      }
+      background-color: #4a7db5;
+      transform: translateY(-1px);
+      color: #fff;
     }
 
     &.active {
-      color: white;
-      background: rgba(255, 255, 255, 0.25);
-      border-color: rgba(255, 255, 255, 0.5);
-      box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
-      transform: translateY(-1px);
-
-      i {
-        transform: scale(1.05);
-      }
-
-      // Indicador de estado activo
-      &::after {
-        content: '';
-        position: absolute;
-        bottom: 0;
-        left: 50%;
-        transform: translateX(-50%);
-        width: 30px;
-        height: 3px;
-        background: white;
-        border-radius: 2px;
-      }
-    }
-
-    // Estados de focus para accesibilidad
-    &:focus {
-      outline: none;
-      box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.3);
+      background-color: #099728;
+      border-color: #077a20;
+      color: #fff;
     }
   }
 }
 
-// Animaciones para el router-outlet
 router-outlet + * {
-  animation: fadeIn 0.4s ease-in-out;
+  animation: fadeIn 0.3s ease-in-out;
 }
 
 @keyframes fadeIn {
-  from {
-    opacity: 0;
-    transform: translateY(10px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
-// Responsive Design
-@media (max-width: 768px) {
-  .modern-header {
-    padding: 1rem;
-  }
-
-  .modern-nav {
-    .nav-link {
-      padding: 0.6rem 1rem;
-      font-size: 0.85rem;
-      
-      i {
-        font-size: 1rem;
-      }
-
-      span {
-        font-size: 0.8rem;
-      }
-    }
-  }
-}
-
-@media (max-width: 576px) {
-  .modern-nav {
-    justify-content: center;
-    
-    .nav-link {
-      flex-direction: column;
-      padding: 0.75rem 0.5rem;
-      min-width: 80px;
-      text-align: center;
-      gap: 0.25rem;
-
-      i {
-        font-size: 1.2rem;
-      }
-
-      span {
-        font-size: 0.75rem;
-        line-height: 1.2;
-      }
-    }
-  }
-}
-
-// Animaci�n para carga inicial
-.modern-card {
-  animation: slideUp 0.6s ease-out;
-}
-
-@keyframes slideUp {
-  from {
-    opacity: 0;
-    transform: translateY(30px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
-// Estados de loading (por si se necesitan)
-.nav-link.loading {
-  pointer-events: none;
-  
-  &::after {
-    content: '';
-    position: absolute;
-    top: 50%;
-    left: 50%;
-    transform: translate(-50%, -50%);
-    width: 16px;
-    height: 16px;
-    border: 2px solid rgba(255, 255, 255, 0.3);
-    border-top-color: white;
-    border-radius: 50%;
-    animation: spin 0.8s linear infinite;
-  }
-}
-
-@keyframes spin {
-  to {
-    transform: translate(-50%, -50%) rotate(360deg);
-  }
-}
-
-// Mejoras de accesibilidad
-@media (prefers-reduced-motion: reduce) {
-  .modern-nav .nav-link,
-  .modern-card,
-  router-outlet + * {
-    animation: none;
-    transition: none;
-  }
-  
-  .modern-nav .nav-link:hover {
-    transform: none;
-  }
-}
-
-// Dark mode support (por si se implementa)
-@media (prefers-color-scheme: dark) {
-  .modern-card {
-    background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
-  }
-  
-  .modern-header {
-    background: linear-gradient(135deg, #2c4a82 0%, #6b5b95 100%);
-  }
+  from { opacity: 0; transform: translateY(6px); }
+  to   { opacity: 1; transform: translateY(0); }
 }

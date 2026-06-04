@@ -1,29 +1,51 @@
-// Estilos para el page de estimaciones
-.nav-pills .nav-link.green-tab {
-  color: #28a745;
-  border: 1px solid transparent;
-  
-  &:hover {
-    color: #fff;
-    background-color: #28a745;
-    border-color: #28a745;
+/* Nav Estimaciones — icono arriba + texto abajo */
+.nav.nav-pills {
+  gap: 4px;
+  flex-wrap: wrap;
+}
+
+.nav.nav-pills .nav-link.green-tab {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  width: 76px;
+  min-width: 76px;
+  padding: 6px 4px 5px;
+  border-radius: 10px;
+  font-weight: 500;
+  text-align: center;
+  color: #fff;
+  background-color: #5a8fc5;
+  border: 1px solid #4a7db5;
+  transition: background-color 0.15s ease, transform 0.1s ease;
+
+  i {
+    font-size: 1.25rem;
+    margin: 0 0 3px 0;
+    display: block;
   }
-  
+
+  span {
+    font-size: 0.60rem;
+    line-height: 1.15;
+    display: block;
+    white-space: normal;
+    word-break: break-word;
+  }
+
+  &:hover {
+    background-color: #4a7db5;
+    transform: translateY(-1px);
+  }
+
   &.active {
+    background-color: #099728;
+    border-color: #077a20;
     color: #fff;
-    background-color: #28a745;
-    border-color: #28a745;
   }
 }
 
 .card-header {
   background-color: #f8f9fa;
-}
-
-.nav-pills .nav-item {
-  margin-right: 5px;
-}
-
-.nav-pills .nav-link i {
-  margin-right: 5px;
 }
