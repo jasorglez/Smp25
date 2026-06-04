@@ -82,17 +82,34 @@
 // ── Links de navegación ────────────────────────────────────────────────────────
 .sidebarback .nav-link {
   color: var(--sb-text);
-  padding: 8px 12px;
-  border-radius: 5px;
-  transition: background-color 0.25s ease, color 0.25s ease;
-  font-size: 0.75rem;
+  padding: 5px 4px 4px;
+  border-radius: 8px;
+  transition: background-color 0.2s ease, color 0.2s ease, box-shadow 0.2s ease;
+  font-size: 0.58rem;
+  flex-direction: column !important;
+  align-items: center !important;
+  justify-content: center;
+  text-align: center;
 }
 
 .sidebarback .nav-link mat-icon {
   color: var(--sb-icon);
-  font-size: 1rem;
-  margin-right: 6px;
-  transition: color 0.25s ease;
+  font-size: 1.3rem !important;
+  width: 1.3rem !important;
+  height: 1.3rem !important;
+  line-height: 1 !important;
+  margin-right: 0 !important;
+  margin-bottom: 3px;
+  transition: color 0.2s ease;
+}
+
+.sidebarback .nav-link span {
+  font-size: 0.58rem !important;
+  line-height: 1.15;
+  white-space: normal;
+  text-align: center;
+  max-width: 90px;
+  word-break: break-word;
 }
 
 .sidebarback .nav-link:hover {
@@ -108,7 +125,8 @@
 .active-link {
   background-color: var(--sb-active) !important;
   color: #fff !important;
-  border-radius: 4px;
+  border-radius: 0 8px 8px 0 !important;
+  box-shadow: inset 3px 0 0 #099728 !important;
 
   mat-icon { color: #fff !important; }
 }
@@ -137,7 +155,7 @@
   padding: 8px;
 }
 
-.sidebarback span:not(.visually-hidden) {
+.sidebarback span:not(.visually-hidden):not(.nav-link span) {
   font-size: 0.85rem;
 }
 
@@ -206,25 +224,27 @@
 .temp-expanded .nav-link span { display: inline !important; }
 
 .collapsed:not(.temp-expanded) .nav-link {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
   padding: 8px 2px;
   text-align: center;
 }
 .collapsed:not(.temp-expanded) .nav-link mat-icon {
-  margin-right: 0;
-  margin-bottom: 2px;
+  margin-bottom: 0 !important;
 }
 
 .temp-expanded .nav-link {
-  display: flex; flex-direction: row;
-  align-items: center; justify-content: flex-start;
-  padding: 8px 12px; text-align: left;
+  flex-direction: row !important;
+  align-items: center !important;
+  justify-content: flex-start !important;
+  padding: 7px 10px !important;
+  text-align: left !important;
 }
 .temp-expanded .nav-link mat-icon {
-  margin-right: 6px; margin-bottom: 0;
+  margin-right: 8px !important;
+  margin-bottom: 0 !important;
+}
+.temp-expanded .nav-link span {
+  font-size: 0.72rem !important;
+  white-space: nowrap !important;
 }
 
 // ── Botón colapsar ─────────────────────────────────────────────────────────────
