@@ -1,3 +1,20 @@
-:host {
-  display: block;
+:host { display: block; }
+
+/* Reducción ~35% del header y botón */
+h5 {
+  font-size: 0.88rem !important;
+  mat-icon { font-size: 1rem !important; width: 1rem !important; height: 1rem !important; }
 }
+
+.btn {
+  font-size: 0.68rem !important;
+  padding: 0.18rem 0.45rem !important;
+  mat-icon { font-size: 0.78rem !important; width: 0.78rem !important; height: 0.78rem !important; }
+}
+
+.fw-semibold {
+  font-size: 0.72rem !important;
+  mat-icon { font-size: 0.85rem !important; width: 0.85rem !important; height: 0.85rem !important; }
+}
+
+.badge { font-size: 0.58rem !important; }
