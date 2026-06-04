@@ -12,7 +12,7 @@ import { alerts } from 'app/helpers/alerts';
   standalone: true,
   imports: [CommonModule, AgGridAngular],
   template: `
-    <div style="padding: 6px; height: 100%; display: flex; flex-direction: column; box-sizing: border-box; overflow: hidden; background-color: #e8f5e9;">
+    <div style="position: absolute; top: 0; left: 0; right: 0; bottom: 0; padding: 6px; display: flex; flex-direction: column; box-sizing: border-box; overflow: hidden; background-color: #e8f5e9;">
       <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 5px; flex-shrink: 0;">
         <strong style="font-size: 0.8rem; color: #1b5e20;">Artículos de Materia Prima</strong>
         <div class="d-flex gap-1">
@@ -38,7 +38,7 @@ import { alerts } from 'app/helpers/alerts';
       </div>
     </div>
   `,
-  styles: [`:host { display: block; height: 100%; overflow: hidden; }`]
+  styles: [`:host { display: block; height: 100%; overflow: hidden; position: relative; }`]
 })
 export class DetallesArticuloFiltradoComponent implements OnDestroy {
   private productionService = inject(ProductionService);
@@ -246,12 +246,14 @@ export class DetallesArticuloFiltradoComponent implements OnDestroy {
       idArticulo: null,
       cantidad: null,
     };
-    this.rowData = [autoRow, ...this.rowData];
+    this.rowData = [...this.rowData, autoRow];
     // hasChanges stays false — no real data yet
     if (this.gridApi && !this.gridApi.isDestroyed()) {
       this.gridApi.setGridOption('rowData', this.rowData);
-      if (focusNew)
-        setTimeout(() => this.gridApi.startEditingCell({ rowIndex: 0, colKey: 'idArticulo' }), 80);
+      if (focusNew) {
+        const lastIdx = this.rowData.length - 1;
+        setTimeout(() => this.gridApi.startEditingCell({ rowIndex: lastIdx, colKey: 'idArticulo' }), 80);
+      }
     }
   }
 

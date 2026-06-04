@@ -13,7 +13,7 @@ import { alerts } from 'app/helpers/alerts';
   standalone: true,
   imports: [CommonModule, AgGridAngular],
   template: `
-    <div style="padding: 6px; height: 100%; display: flex; flex-direction: column; box-sizing: border-box; overflow: hidden; background-color: #f3f0ff;">
+    <div style="position: absolute; top: 0; left: 0; right: 0; bottom: 0; padding: 6px; display: flex; flex-direction: column; box-sizing: border-box; overflow: hidden; background-color: #f3f0ff;">
       <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 5px; flex-shrink: 0;">
         <strong style="font-size: 0.85rem; color: #4a148c;">Detalle de Materia Prima</strong>
         <div class="d-flex gap-1">
@@ -50,7 +50,7 @@ import { alerts } from 'app/helpers/alerts';
     </div>
   `,
   styles: [`
-    :host { display: block; height: 100%; overflow: hidden; }
+    :host { display: block; height: 100%; overflow: hidden; position: relative; }
     :host ::ng-deep .fully-bote-assigned { background: #dee2e6 !important; color: #6c757d !important; }
     :host ::ng-deep .fully-bote-assigned .ag-cell { color: #6c757d !important; }
   `]
@@ -59,11 +59,13 @@ export class DetallesMatprimaFiltradoComponent {
   private productionService = inject(ProductionService);
   private signalsService = inject(SignalsService);
 
+
   private internalParams: any;
   private idMolienda: number | null = null;
   private idMatPrimaMolienda: number | null = null;
   private articuloOptions: { id: number; name: string }[] = [];
   private originalRowData: any[] = [];
+
   private activeExpandedNodeId: string | null = null;
 
   gridApi!: GridApi;
@@ -159,7 +161,7 @@ export class DetallesMatprimaFiltradoComponent {
       }
     },
     masterDetail: true,
-    detailRowHeight: 200,
+    detailRowHeight: Math.max(100, Math.max(200, window.innerHeight * 0.8 - 45) - 102),
     isRowMaster: () => true,
     detailCellRenderer: DetallesArticuloFiltradoComponent,
     detailCellRendererParams: () => ({
@@ -199,6 +201,7 @@ export class DetallesMatprimaFiltradoComponent {
     event.data.__modified = true;
     this.hasChanges = true;
   }
+
 
   private openDetailNode(node: any) {
     this.gridApi.forEachNode((n: any) => { if (n.id !== node.id) n.setRowHeight(0); });
