@@ -85,7 +85,7 @@ export const environment = {
     // publicKey: 'TEST-4399133a-4676-42a2-ab85-d946370bf96a',
   },
 
-  version: '7.99 (03 Junio 2026) feat(ui): menus N1 icono-arriba y N2 pills compactas en todos los modulos',
+  version: '8.00 (03 Junio 2026) fix(admon): paginas hijas Admon con pills N2 compactas',
 };
 
 
