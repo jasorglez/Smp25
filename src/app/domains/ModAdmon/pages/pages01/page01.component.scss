@@ -2,11 +2,15 @@
 .nav.nav-pills { gap: 3px; flex-wrap: wrap; }
 
 .nav.nav-pills .nav-link.green-tab {
-  font-size: 0.68rem;
-  padding: 0.2rem 0.6rem;
+  font-size: 0.65rem;
+  padding: 0.22rem 0.55rem;
   border-radius: 20px;
   font-weight: 500;
-  white-space: nowrap;
+  white-space: normal;
+  word-break: break-word;
+  text-align: center;
+  max-width: 120px;
+  line-height: 1.2;
   color: #fff;
   background-color: #6c9ecf;
   border: 1px solid #5a8fc5;
