@@ -3,18 +3,18 @@
     <div class="card-header px-2">
       <ul class="nav nav-pills">
         <li class="nav-item" *ngIf="authService.hasDetailedPermission('red', 'procesos')">
-          <a class="nav-link green-tab d-flex align-items-center" routerLink="procesos" routerLinkActive="active">
-            <mat-icon>settings</mat-icon> Procesos
+          <a class="nav-link green-tab" routerLink="procesos" routerLinkActive="active">
+            <mat-icon>settings</mat-icon><span>Procesos</span>
           </a>
         </li>
         <li class="nav-item" *ngIf="authService.hasDetailedPermission('red', 'reportes')">
-          <a class="nav-link green-tab d-flex align-items-center" routerLink="reportes" routerLinkActive="active">
-            <mat-icon>bar_chart</mat-icon> Reportes
+          <a class="nav-link green-tab" routerLink="reportes" routerLinkActive="active">
+            <mat-icon>bar_chart</mat-icon><span>Reportes</span>
           </a>
         </li>
         <li class="nav-item" *ngIf="authService.hasDetailedPermission('red', 'registros')">
-          <a class="nav-link green-tab d-flex align-items-center" routerLink="registros" routerLinkActive="active">
-            <mat-icon>list_alt</mat-icon> Registros
+          <a class="nav-link green-tab" routerLink="registros" routerLinkActive="active">
+            <mat-icon>list_alt</mat-icon><span>Registros</span>
           </a>
         </li>
       </ul>
