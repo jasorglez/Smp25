@@ -85,7 +85,7 @@ export const environment = {
     // publicKey: 'TEST-4399133a-4676-42a2-ab85-d946370bf96a',
   },
 
-  version: '4.11 (04 Junio 2026) fix(municipio): dashboards-pal Ingresos Egresos Total compacto',
+  version: '4.12 (04 Junio 2026) fix(municipio): reduccion 35pct clasificador cat-egresos cat-ingresos',,
 };
 
 

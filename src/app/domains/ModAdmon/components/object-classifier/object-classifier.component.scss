@@ -233,3 +233,53 @@
   box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075) !important;
   border: 1px solid rgba(0, 0, 0, 0.125);
 }
+
+// ── Reducción global ~35% ─────────────────────────────────────────────────────
+.container-fluid { padding: 0.75rem !important; }
+
+h4 { font-size: 0.92rem !important; margin-bottom: 0.2rem !important;
+  i { font-size: 0.9rem !important; }
+}
+
+p.text-muted { font-size: 0.68rem !important; margin-bottom: 0 !important; }
+
+.form-control, .form-select {
+  font-size: 0.70rem !important;
+  padding: 0.18rem 0.45rem !important;
+  min-height: 26px !important;
+  height: 26px !important;
+}
+
+.input-group-text {
+  font-size: 0.70rem !important;
+  padding: 0.18rem 0.45rem !important;
+}
+
+.btn:not(.btn-close) {
+  font-size: 0.70rem !important;
+  padding: 0.2rem 0.5rem !important;
+  i { font-size: 0.75rem !important; }
+}
+
+.row.mb-4, .mb-4 { margin-bottom: 0.6rem !important; }
+.row.mb-3, .mb-3 { margin-bottom: 0.4rem !important; }
+
+.breadcrumb { font-size: 0.65rem !important; margin-bottom: 0 !important; }
+.badge { font-size: 0.58rem !important; }
+
+// Botonera lateral más compacta
+.d-flex.flex-column {
+  button {
+    width: 28px !important;
+    height: 28px !important;
+    i { font-size: 0.80rem !important; }
+
+    &.btn-sm {
+      width: 28px !important;
+      height: 24px !important;
+      i { font-size: 0.70rem !important; }
+    }
+  }
+}
+
+.spinner-border { width: 1.5rem !important; height: 1.5rem !important; }
