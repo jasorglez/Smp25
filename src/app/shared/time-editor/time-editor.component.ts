@@ -1,8 +1,12 @@
 import { Component, ViewChild, ElementRef, AfterViewInit } from '@angular/core';
+import { CommonModule } from '@angular/common';
+import { FormsModule } from '@angular/forms';
 import { ICellEditorAngularComp } from 'ag-grid-angular';
 
 @Component({
   selector: 'app-time-editor',
+  standalone: true,
+  imports: [CommonModule, FormsModule],
   template: `
     <input #input
            type="time"

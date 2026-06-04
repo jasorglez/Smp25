@@ -376,7 +376,7 @@ export class PurchaseOrderDelisonComponent implements OnInit {
       {
         field: 'ocCount',
         headerName: 'Pedimentos',
-        width: 110,
+        width: 150,
         editable: false,
         type: 'numericColumn',
         cellStyle: { fontWeight: 'bold', textAlign: 'center', backgroundColor: '#f1f8e9' }
