@@ -8,7 +8,7 @@ import { SharedModule } from 'app/shared/shared.module';
   standalone: true,
   imports: [RouterModule, DomainsModule, SharedModule],
   templateUrl: './pages04.component.html',
-
+  styleUrl: './pages04.component.scss',
 })
 export class Pages04Component {
 
