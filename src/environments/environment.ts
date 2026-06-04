@@ -85,7 +85,7 @@ export const environment = {
     // publicKey: 'TEST-4399133a-4676-42a2-ab85-d946370bf96a',
   },
 
-  version: '7.96 (03 Junio 2026) feat(ventas): menu principal icono arriba texto abajo estilo app movil',
+  version: '7.97 (03 Junio 2026) feat(pmo): menu icono arriba texto abajo igual que Ventas',
 };
 
 
