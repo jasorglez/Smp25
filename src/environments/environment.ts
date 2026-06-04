@@ -85,7 +85,7 @@ export const environment = {
     // publicKey: 'TEST-4399133a-4676-42a2-ab85-d946370bf96a',
   },
 
-  version: '7.92 (03 Junio 2026) feat(dashboard): mejoras Dashboard Municipio - KPIs, barras comparativas, porcentajes',
+  version: '7.93 (03 Junio 2026) feat(ventas): botones menú compactos tipo chip',
 };
 
 

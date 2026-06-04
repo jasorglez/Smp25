@@ -1,3 +1,35 @@
+/* Compact nav-pills Ventas */
+.nav.nav-pills {
+  gap: 3px;
+  flex-wrap: wrap;
+}
+
+.nav.nav-pills .nav-link.green-tab {
+  font-size: 0.72rem;
+  padding: 0.22rem 0.6rem;
+  border-radius: 20px;
+  font-weight: 500;
+  white-space: nowrap;
+  color: #fff;
+  background-color: #007bff;
+  border-color: #0056b3;
+  transition: background-color 0.15s ease;
+
+  i {
+    font-size: 0.78rem;
+    margin-right: 2px;
+  }
+
+  &:hover {
+    background-color: #0056b3;
+  }
+
+  &.active {
+    background-color: #099728 !important;
+    border-color: #0f481c !important;
+  }
+}
+
 /* Franja de submenú bajo las pestañas (Punto de venta) */
 .pos-tabs-submenu {
   margin: 0.25rem 0 0;
