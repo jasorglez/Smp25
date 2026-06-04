@@ -4,101 +4,85 @@
       <ul class="nav nav-pills">
 
         <li class="nav-item" *ngIf="authService.hasDetailedPermission('administration', 'dashboard')">
-          <a class="nav-link green-tab d-flex align-items-center" routerLink="dashmodadmon" routerLinkActive="active">
-            <mat-icon>analytics</mat-icon> {{ 'dashboardBi' | translate }}
+          <a class="nav-link green-tab" routerLink="dashmodadmon" routerLinkActive="active">
+            <mat-icon>analytics</mat-icon><span>{{ 'dashboardBi' | translate }}</span>
           </a>
         </li>
-
         <li class="nav-item" *ngIf="authService.hasDetailedPermission('administration', 'dashboard-hco')">
-          <a class="nav-link green-tab d-flex align-items-center" routerLink="dashboard-hco" routerLinkActive="active">
-            <mat-icon>dashboard</mat-icon> {{ 'dashboard' | translate }}
+          <a class="nav-link green-tab" routerLink="dashboard-hco" routerLinkActive="active">
+            <mat-icon>dashboard</mat-icon><span>{{ 'dashboard' | translate }}</span>
           </a>
         </li>
-
         <li class="nav-item" *ngIf="authService.hasDetailedPermission('administration', 'setup')">
-          <a class="nav-link green-tab d-flex align-items-center" routerLink="setup" routerLinkActive="active">
-            <mat-icon>phonelink_setup</mat-icon> {{ 'setting' | translate }}
+          <a class="nav-link green-tab" routerLink="setup" routerLinkActive="active">
+            <mat-icon>phonelink_setup</mat-icon><span>{{ 'setting' | translate }}</span>
           </a>
         </li>
-
         <li class="nav-item" *ngIf="authService.hasDetailedPermission('administration', 'bank')">
-          <a class="nav-link green-tab d-flex align-items-center" routerLink="page01" routerLinkActive="active">
-            <mat-icon>account_balance</mat-icon> {{ 'bank' | translate }}
+          <a class="nav-link green-tab" routerLink="page01" routerLinkActive="active">
+            <mat-icon>account_balance</mat-icon><span>{{ 'bank' | translate }}</span>
           </a>
         </li>
-
         <li class="nav-item" *ngIf="authService.hasDetailedPermission('administration', 'transfers')">
-          <a class="nav-link green-tab d-flex align-items-center" routerLink="transferencias" routerLinkActive="active">
-            <mat-icon>swap_horiz</mat-icon> Transferencias
+          <a class="nav-link green-tab" routerLink="transferencias" routerLinkActive="active">
+            <mat-icon>swap_horiz</mat-icon><span>Transferencias</span>
           </a>
         </li>
-
         <li class="nav-item" *ngIf="authService.hasDetailedPermission('administration', 'aportaciones')">
-          <a class="nav-link green-tab d-flex align-items-center" routerLink="aportaciones" routerLinkActive="active">
-            <mat-icon>account_balance_wallet</mat-icon> Aportación
+          <a class="nav-link green-tab" routerLink="aportaciones" routerLinkActive="active">
+            <mat-icon>account_balance_wallet</mat-icon><span>Aportación</span>
           </a>
         </li>
-
         <li class="nav-item" *ngIf="authService.hasDetailedPermission('administration', 'income')">
-          <a class="nav-link green-tab d-flex align-items-center" routerLink="income" routerLinkActive="active">
-            <mat-icon>payments</mat-icon> {{ 'income' | translate }}
+          <a class="nav-link green-tab" routerLink="income" routerLinkActive="active">
+            <mat-icon>payments</mat-icon><span>{{ 'income' | translate }}</span>
           </a>
         </li>
-
         <li class="nav-item" *ngIf="authService.hasDetailedPermission('administration', 'expend')">
-          <a class="nav-link green-tab d-flex align-items-center" routerLink="expend" routerLinkActive="active">
-            <mat-icon>paid</mat-icon> {{ 'expend' | translate }}
+          <a class="nav-link green-tab" routerLink="expend" routerLinkActive="active">
+            <mat-icon>paid</mat-icon><span>{{ 'expend' | translate }}</span>
           </a>
         </li>
-
         <li class="nav-item" *ngIf="authService.hasDetailedPermission('administration', 'expend-rapido')">
-          <a class="nav-link green-tab d-flex align-items-center" routerLink="expend-rapido" routerLinkActive="active">
-            <mat-icon>bolt</mat-icon> Egreso Rápido
+          <a class="nav-link green-tab" routerLink="expend-rapido" routerLinkActive="active">
+            <mat-icon>bolt</mat-icon><span>Egreso Rápido</span>
           </a>
         </li>
-
         <li class="nav-item" *ngIf="authService.hasDetailedPermission('administration', 'stakeholder-expend')">
-          <a class="nav-link green-tab d-flex align-items-center" routerLink="stakeholder-expend" routerLinkActive="active">
-            <mat-icon>group_remove</mat-icon> Retiro Socios
+          <a class="nav-link green-tab" routerLink="stakeholder-expend" routerLinkActive="active">
+            <mat-icon>group_remove</mat-icon><span>Retiro Socios</span>
           </a>
         </li>
-
         <li class="nav-item" *ngIf="idUser === 42">
-          <a class="nav-link green-tab d-flex align-items-center" routerLink="masterExpenses" routerLinkActive="active">
-            <mat-icon>paid</mat-icon> {{ 'expend' | translate }} 3
+          <a class="nav-link green-tab" routerLink="masterExpenses" routerLinkActive="active">
+            <mat-icon>paid</mat-icon><span>Egresos 3</span>
           </a>
         </li>
-
-        <li class="nav-item me-2" *ngIf="authService.hasDetailedPermission('administration', 'customer')">
-          <a class="nav-link green-tab d-flex align-items-center" routerLink="page02" routerLinkActive="active">
-            <mat-icon>people</mat-icon> {{ 'customer' | translate }}
+        <li class="nav-item" *ngIf="authService.hasDetailedPermission('administration', 'customer')">
+          <a class="nav-link green-tab" routerLink="page02" routerLinkActive="active">
+            <mat-icon>people</mat-icon><span>{{ 'customer' | translate }}</span>
           </a>
         </li>
-
         <li class="nav-item">
-          <a class="nav-link" routerLink="providers-st" routerLinkActive="active">
-            <i class="bi bi-people-fill"></i> {{'providers' | translate}}
+          <a class="nav-link green-tab" routerLink="providers-st" routerLinkActive="active">
+            <i class="bi bi-people-fill"></i><span>Proveedores</span>
           </a>
         </li>
-
-        <li class="nav-item me-2" *ngIf="authService.hasDetailedPermission('administration', 'electronic_invoice')">
-          <a class="nav-link green-tab d-flex align-items-center" routerLink="page04" routerLinkActive="active">
-            <mat-icon>receipt_longe</mat-icon> {{ 'electronic_invoice' | translate }}
+        <li class="nav-item" *ngIf="authService.hasDetailedPermission('administration', 'electronic_invoice')">
+          <a class="nav-link green-tab" routerLink="page04" routerLinkActive="active">
+            <mat-icon>receipt_long</mat-icon><span>Fact. Electrónica</span>
           </a>
         </li>
-
-<li class="nav-item me-2" *ngIf="authService.hasDetailedPermission('administration', 'accounting_accounts')">
-          <a class="nav-link green-tab d-flex align-items-center" routerLink="cuentas-contables"
-            routerLinkActive="active">
-            <mat-icon>account_tree</mat-icon> {{ 'Cuentas Contables' | translate }}
+        <li class="nav-item" *ngIf="authService.hasDetailedPermission('administration', 'accounting_accounts')">
+          <a class="nav-link green-tab" routerLink="cuentas-contables" routerLinkActive="active">
+            <mat-icon>account_tree</mat-icon><span>Cuentas Contables</span>
           </a>
         </li>
-
         <li class="nav-item" *ngIf="authService.hasDetailedPermission('administration', 'catalogs')">
-          <a class="nav-link green-tab" routerLink="catalogs" routerLinkActive="active"><i class="bi bi-list-ul"></i>
-            {{'catalogs' | translate}}</a>
+          <a class="nav-link green-tab" routerLink="catalogs" routerLinkActive="active">
+            <i class="bi bi-list-ul"></i><span>Catálogos</span>
+          </a>
         </li>
-
 
       </ul>
     </div>

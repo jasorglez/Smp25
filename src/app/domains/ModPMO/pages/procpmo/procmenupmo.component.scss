@@ -1,1 +1,61 @@
-/* PMO Menu — inherits project-wide modern-card/modern-nav styles */
+/* Nav PMO — icono arriba + texto abajo, mismo estilo que Ventas */
+.modern-card {
+  border: none;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.07);
+  border-radius: 8px;
+}
+
+.modern-header {
+  background: #f8f9fa;
+  border-bottom: 1px solid #dee2e6;
+  padding: 0.5rem 0.75rem;
+}
+
+.modern-nav {
+  gap: 4px;
+  flex-wrap: wrap;
+
+  .nav-link.modern-tab {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    width: 76px;
+    min-width: 76px;
+    padding: 6px 4px 5px;
+    border-radius: 10px;
+    font-weight: 500;
+    text-align: center;
+    color: #fff;
+    background-color: #5a8fc5;
+    border: 1px solid #4a7db5;
+    transition: background-color 0.15s ease, transform 0.1s ease;
+    text-decoration: none;
+
+    i {
+      font-size: 1.25rem;
+      margin: 0 0 3px 0;
+      display: block;
+    }
+
+    span {
+      font-size: 0.60rem;
+      line-height: 1.15;
+      display: block;
+      white-space: normal;
+      word-break: break-word;
+    }
+
+    &:hover {
+      background-color: #4a7db5;
+      transform: translateY(-1px);
+      color: #fff;
+    }
+
+    &.active {
+      background-color: #099728;
+      border-color: #077a20;
+      color: #fff;
+    }
+  }
+}

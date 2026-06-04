@@ -85,7 +85,7 @@ export const environment = {
     // publicKey: 'TEST-4399133a-4676-42a2-ab85-d946370bf96a',
   },
 
-  version: '7.98 (03 Junio 2026) feat(pmo): todos los menus PMO con estilo Opcion A igual que Ventas',
+  version: '7.99 (03 Junio 2026) feat(ui): menus N1 icono-arriba y N2 pills compactas en todos los modulos',
 };
 
 

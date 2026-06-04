@@ -1,35 +1,26 @@
-/* Estilos personalizados */
-.green-tab {
-  color: #ffffff; /* Color del texto */
-  background-color: #099728; /* Color de fondo */
-  border-color: #0f481c; /* Color del borde */
-}
+/* Nav — Nivel 1: icono arriba + texto abajo */
+.nav.nav-pills { gap: 4px; flex-wrap: wrap; }
 
-.green-tab:hover {
-  color: #ffffff; /* Color del texto en hover */
-  background-color: #218838; /* Cambia el color de fondo al pasar el ratón sobre el tab */
-  border-color: #1e7e34; /* Cambia el color del borde al pasar el ratón sobre el tab */
-}
-.bg-blue {
-  background-color: rgb(0, 145, 255);
-}
+.nav.nav-pills .nav-link.green-tab {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  width: 76px;
+  min-width: 76px;
+  padding: 6px 4px 5px;
+  border-radius: 10px;
+  font-weight: 500;
+  text-align: center;
+  color: #fff;
+  background-color: #5a8fc5;
+  border: 1px solid #4a7db5;
+  transition: background-color 0.15s ease, transform 0.1s ease;
+  text-decoration: none;
 
-.bg-green {
-  color: #ffffff; /* Color del texto */
-  background-color: rgb(4, 84, 44);
-  border-color: #021306; /* Color del borde */
-}
+  i { font-size: 1.25rem; margin: 0 0 3px 0; display: block; }
+  span { font-size: 0.60rem; line-height: 1.15; display: block; white-space: normal; word-break: break-word; }
 
-  .table td, .table th {
-    padding: 0.25rem; /* Ajuste el relleno vertical */
-  }
-
-  #chart {
-      max-width: 400px;
-      margin: 30px auto;
-      padding: 0;
-  }
-
-  .invisible {
-    display: none;
+  &:hover { background-color: #4a7db5; transform: translateY(-1px); color: #fff; }
+  &.active { background-color: #099728; border-color: #077a20; color: #fff; }
 }

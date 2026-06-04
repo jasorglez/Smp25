@@ -1,47 +1,20 @@
-/* Nav PMO — icono arriba + texto abajo */
-.nav.nav-pills {
-  gap: 4px;
-  flex-wrap: wrap;
-}
+/* Nav — Nivel 2: pills compactas (sub-módulo) */
+.nav.nav-pills { gap: 3px; flex-wrap: wrap; }
 
 .nav.nav-pills .nav-link.green-tab {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  width: 76px;
-  min-width: 76px;
-  padding: 6px 4px 5px;
-  border-radius: 10px;
+  font-size: 0.68rem;
+  padding: 0.2rem 0.6rem;
+  border-radius: 20px;
   font-weight: 500;
-  text-align: center;
+  white-space: nowrap;
   color: #fff;
-  background-color: #5a8fc5;
-  border: 1px solid #4a7db5;
-  transition: background-color 0.15s ease, transform 0.1s ease;
+  background-color: #6c9ecf;
+  border: 1px solid #5a8fc5;
+  transition: background-color 0.15s ease;
+  text-decoration: none;
 
-  i {
-    font-size: 1.25rem;
-    margin: 0 0 3px 0;
-    display: block;
-  }
+  i { font-size: 0.72rem; margin-right: 3px; }
 
-  span {
-    font-size: 0.60rem;
-    line-height: 1.15;
-    display: block;
-    white-space: normal;
-    word-break: break-word;
-  }
-
-  &:hover {
-    background-color: #4a7db5;
-    transform: translateY(-1px);
-  }
-}
-
-.nav-pills .nav-link.active {
-  background-color: #099728 !important;
-  border-color: #077a20 !important;
-  color: #fff !important;
+  &:hover { background-color: #4a7db5; color: #fff; }
+  &.active { background-color: #099728; border-color: #077a20; color: #fff; }
 }

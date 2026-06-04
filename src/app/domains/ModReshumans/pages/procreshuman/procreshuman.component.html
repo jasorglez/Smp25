@@ -10,25 +10,29 @@
 
                   
                <li class="nav-item" *ngIf="authService.hasDetailedPermission('hr', 'employees')">
-                  <a class="nav-link green-tab" routerLink="employees" routerLinkActive="active"><i
-                        class="bi bi-list-ul"></i> {{'employees' | translate}}</a>
+                  <a class="nav-link green-tab" routerLink="employees" routerLinkActive="active">
+                    <i class="bi bi-people-fill"></i><span>{{'employees' | translate}}</span>
+                  </a>
                </li>
-                <li class="nav-item" *ngIf="authService.hasDetailedPermission('hr', 'clock')">
-                  <a class="nav-link green-tab" routerLink="clock" routerLinkActive="active"><i class="bi bi-stopwatch"></i>
-                     Checador</a>
+               <li class="nav-item" *ngIf="authService.hasDetailedPermission('hr', 'clock')">
+                  <a class="nav-link green-tab" routerLink="clock" routerLinkActive="active">
+                    <i class="bi bi-stopwatch"></i><span>Checador</span>
+                  </a>
                </li>
                <li class="nav-item" *ngIf="authService.hasDetailedPermission('hr', 'payroll')">
-                  <a class="nav-link green-tab" routerLink="payroll" routerLinkActive="active"><i class="bi bi-cash-coin"></i>
-                     Nómina</a>
+                  <a class="nav-link green-tab" routerLink="payroll" routerLinkActive="active">
+                    <i class="bi bi-cash-coin"></i><span>Nómina</span>
+                  </a>
                </li>
-
                <li class="nav-item" *ngIf="authService.hasDetailedPermission('hr', 'catalogs')">
-                  <a class="nav-link green-tab" routerLink="catalogs" routerLinkActive="active"><i
-                      class="bi bi-list-ul"></i> {{'catalogs' | translate}}</a>
+                  <a class="nav-link green-tab" routerLink="catalogs" routerLinkActive="active">
+                    <i class="bi bi-journal-text"></i><span>{{'catalogs' | translate}}</span>
+                  </a>
                </li>
                <li class="nav-item" *ngIf="authService.hasDetailedPermission('hr', 'setup')">
-                  <a class="nav-link green-tab" routerLink="setup" routerLinkActive="active"><i class="bi bi-gear"></i>
-                     Configuración</a>
+                  <a class="nav-link green-tab" routerLink="setup" routerLinkActive="active">
+                    <i class="bi bi-gear"></i><span>Config</span>
+                  </a>
                </li>
  
    

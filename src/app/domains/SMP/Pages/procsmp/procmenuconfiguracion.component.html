@@ -4,47 +4,54 @@
          <ul class="nav nav-pills">
 
             <li class="nav-item" *ngIf="isRoot">
-               <a class="nav-link green-tab" routerLink="corporativos" routerLinkActive="active"><i
-                     class="bi bi-globe2"></i> Corporativos</a>
+               <a class="nav-link green-tab" routerLink="corporativos" routerLinkActive="active">
+                 <i class="bi bi-globe2"></i><span>Corporativos</span>
+               </a>
             </li>
             <li class="nav-item" *ngIf="isRoot">
-               <a class="nav-link green-tab" routerLink="root" routerLinkActive="active"><i
-                     class="bi bi-building-fill-gear"></i> {{ 'root' | translate}}</a>
+               <a class="nav-link green-tab" routerLink="root" routerLinkActive="active">
+                 <i class="bi bi-building-fill-gear"></i><span>{{ 'root' | translate}}</span>
+               </a>
             </li>
-
             <li class="nav-item" *ngIf="canSeeBranches || isRoot">
-               <a class="nav-link green-tab" routerLink="branches" routerLinkActive="active"><i
-                     class="bi bi-building-fill-gear"></i> {{ 'branchs' | translate}}</a>
+               <a class="nav-link green-tab" routerLink="branches" routerLinkActive="active">
+                 <i class="bi bi-diagram-3-fill"></i><span>{{ 'branchs' | translate}}</span>
+               </a>
             </li>
             <li class="nav-item" *ngIf="authService.hasDetailedPermission('setup', 'stores')">
-               <a class="nav-link green-tab" routerLink="stores" routerLinkActive="active"><i
-                   class="bi bi-shop"></i>{{ 'stores' | translate}}</a>
+               <a class="nav-link green-tab" routerLink="stores" routerLinkActive="active">
+                 <i class="bi bi-shop"></i><span>{{ 'stores' | translate}}</span>
+               </a>
             </li>
             <li class="nav-item" *ngIf="authService.hasDetailedPermission('setup', 'cash-registers')">
-               <a class="nav-link green-tab" routerLink="cashRegisters" routerLinkActive="active"><i
-                  class="bi bi-wallet2"></i>{{ 'Caja registradora' | translate}}</a>
+               <a class="nav-link green-tab" routerLink="cashRegisters" routerLinkActive="active">
+                 <i class="bi bi-wallet2"></i><span>Cajas</span>
+               </a>
             </li>
-
             <li class="nav-item" *ngIf="authService.hasDetailedPermission('setup', 'users')">
-               <a class="nav-link green-tab" routerLink="users" routerLinkActive="active"><i
-                     class="bi bi-person-bounding-box"></i> {{ 'user' | translate}}</a>
+               <a class="nav-link green-tab" routerLink="users" routerLinkActive="active">
+                 <i class="bi bi-person-bounding-box"></i><span>{{ 'user' | translate}}</span>
+               </a>
             </li>
             <li class="nav-item" *ngIf="isRoot">
-               <a class="nav-link green-tab" routerLink="login" routerLinkActive="active"><i
-                     class="bi bi-box-arrow-in-right"></i> Login</a>
+               <a class="nav-link green-tab" routerLink="login" routerLinkActive="active">
+                 <i class="bi bi-box-arrow-in-right"></i><span>Login</span>
+               </a>
             </li>
-
             <li class="nav-item" *ngIf="authService.hasDetailedPermission('setup', 'log')">
-               <a class="nav-link green-tab" routerLink="logs" routerLinkActive="active"><i
-                     class="bi bi-archive-fill"></i> {{ 'log' | translate}}</a>
+               <a class="nav-link green-tab" routerLink="logs" routerLinkActive="active">
+                 <i class="bi bi-archive-fill"></i><span>{{ 'log' | translate}}</span>
+               </a>
             </li>
             <li class="nav-item" *ngIf="authService.hasDetailedPermission('setup', 'roles')">
-               <a class="nav-link green-tab" routerLink="roles" routerLinkActive="active"><i
-                     class="bi bi-building-fill-gear"></i>Departamento</a>
+               <a class="nav-link green-tab" routerLink="roles" routerLinkActive="active">
+                 <i class="bi bi-people-fill"></i><span>Departamento</span>
+               </a>
             </li>
             <li class="nav-item" *ngIf="isRoot">
-               <a class="nav-link green-tab" routerLink="menu" routerLinkActive="active"><i
-                     class="bi bi-building-fill-gear"></i> {{ 'menu' | translate}}</a>
+               <a class="nav-link green-tab" routerLink="menu" routerLinkActive="active">
+                 <i class="bi bi-list-ul"></i><span>{{ 'menu' | translate}}</span>
+               </a>
             </li>
 
          </ul>

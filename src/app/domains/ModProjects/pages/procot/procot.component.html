@@ -5,35 +5,35 @@
         
         <li class="nav-item">
           <a class="nav-link green-tab" routerLink="ordenes" routerLinkActive="active">
-            <i class="bi bi-file-earmark-text"></i><span>{{'orders' | translate}}</span>
+            <i class="bi bi-file-earmark-text me-1"></i>{{'orders' | translate}}
           </a>
         </li>
 
         @if (signalsService.getrootChoose() == true) {
           <li class="nav-item">
             <a class="nav-link green-tab" routerLink="catastrales" routerLinkActive="active">
-              <i class="bi bi-wrench"></i><span>OT Manuales</span>
+              <i class="bi bi-wrench me-1"></i>OT Manuales
             </a>
           </li>
         }
 
         <li class="nav-item">
           <a class="nav-link green-tab" routerLink="inspeccion" routerLinkActive="active">
-            <i class="bi bi-search"></i><span>Reportes Diarios</span>
+            <i class="bi bi-search me-1"></i>Reportes Diarios
           </a>
         </li>
 
         @if (signalsService.getrootChoose() == true) {
           <li class="nav-item">
             <a class="nav-link green-tab" routerLink="unidad" routerLinkActive="active">
-              <i class="bi bi-pie-chart-fill"></i><span>{{'graphs' | translate}}</span>
+              <i class="bi bi-pie-chart-fill me-1"></i>{{'graphs' | translate}}
             </a>
           </li>
         }
 
         <li class="nav-item">
           <a class="nav-link green-tab" routerLink="conexion" routerLinkActive="active">
-            <i class="bi bi-diagram-3"></i><span>Work Program</span>
+            <i class="bi bi-diagram-3 me-1"></i>Work Program
           </a>
         </li>
 
