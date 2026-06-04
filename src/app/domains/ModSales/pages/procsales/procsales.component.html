@@ -11,30 +11,9 @@
                <a class="nav-link green-tab" routerLink="setup-sales" routerLinkActive="active"><i
                      class="bi bi-list-ul"></i> {{'setting' | translate}}</a>
             </li>
-            <li class="nav-item" *ngIf="authService.hasDetailedPermission('sales', 'stores')">
-               <a class="nav-link green-tab" routerLink="stores" routerLinkActive="active"><i class="bi bi-shop"></i>
-                  {{'stores' | translate}} </a>
-            </li>
-            <li class="nav-item" *ngIf="authService.hasDetailedPermission('sales', 'cash-register')">
-               <a class="nav-link green-tab" routerLink="cash-register" routerLinkActive="active"><i
-                     class="bi bi-pc-display-horizontal"></i> {{'cash_register' | translate}}</a>
-            </li>
-            <li class="nav-item" *ngIf="authService.hasDetailedPermission('sales', 'pos')">
-               <a class="nav-link green-tab" routerLink="before-pos" routerLinkActive="active">
+            <li class="nav-item" *ngIf="hasPosGroupPermission">
+               <a class="nav-link green-tab" routerLink="before-pos" [class.active]="isPosGroupActive">
                   <i class="bi bi-cart"></i> {{'point_of_sale' | translate}}</a>
-            </li>
-            <li class="nav-item" *ngIf="authService.hasDetailedPermission('sales', 'mesas')">
-               <a class="nav-link green-tab" routerLink="restaurant-mesas" routerLinkActive="active">
-                  <i class="bi bi-house-door"></i> Gestión de Mesas</a>
-            </li>
-            <li class="nav-item" *ngIf="authService.hasDetailedPermission('sales', 'closebox')">
-               <a class="nav-link green-tab" routerLink="cash-closing" routerLinkActive="active">
-                  <i class="bi bi-calculator"></i> Corte de Caja</a>
-            </li>
-            <li class="nav-item" *ngIf="authService.hasDetailedPermission('sales', 'returns')">
-               <a class="nav-link green-tab" routerLink="returns" routerLinkActive="active"><i
-                     class="bi bi-receipt-cutoff"></i> {{'returns' | translate}} {{'and' | translate}}
-                  {{'ticket_reimpression' | translate}}</a>
             </li>
             <li class="nav-item" *ngIf="authService.hasDetailedPermission('sales', 'entrances')">
                <a class="nav-link green-tab" routerLink="entrances" routerLinkActive="active"><i
@@ -48,11 +27,6 @@
                <a class="nav-link green-tab" routerLink="products" routerLinkActive="active">
                  <i class="bi bi-box-seam-fill"></i> Productos/Servicios</a>
             </li>
-            <li class="nav-item" *ngIf="authService.hasDetailedPermission('sales', 'reports')">
-               <a class="nav-link green-tab" routerLink="reports" routerLinkActive="active"><i
-                     class="bi bi-graph-up"></i> {{'sales_reports' | translate}} </a>
-            </li>
-
             <li class="nav-item" *ngIf="authService.hasDetailedPermission('sales', 'out-pos')">
                <a class="nav-link green-tab" routerLink="out-pos" routerLinkActive="active"><i
                      class="bi bi-journal-check"></i> {{'out_pos' | translate}} </a>
@@ -60,11 +34,6 @@
             <li class="nav-item" *ngIf="authService.hasDetailedPermission('sales', 'prospectos')">
                <a class="nav-link green-tab" routerLink="prospectos" routerLinkActive="active">
                  <i class="bi bi-people-fill"></i> Prospectos
-               </a>
-            </li>
-            <li class="nav-item" *ngIf="authService.hasDetailedPermission('sales', 'prospectos')">
-               <a class="nav-link green-tab" routerLink="mis-tareas" routerLinkActive="active">
-                 <i class="bi bi-check2-square"></i> Mis Tareas
                </a>
             </li>
             <li class="nav-item" *ngIf="authService.hasDetailedPermission('sales', 'cotizaciones')">
@@ -99,6 +68,41 @@
             </li>
          </ul>
 
+         <!-- Sub-barra Punto de Venta -->
+         <div class="pos-subnav" *ngIf="isPosGroupActive">
+            <a class="pos-subnav-btn" routerLink="before-pos" routerLinkActive="active"
+               *ngIf="authService.hasDetailedPermission('sales', 'pos')">
+               <i class="bi bi-cart"></i> POS
+            </a>
+            <a class="pos-subnav-btn" routerLink="stores" routerLinkActive="active"
+               *ngIf="authService.hasDetailedPermission('sales', 'stores')">
+               <i class="bi bi-shop"></i> Tiendas
+            </a>
+            <a class="pos-subnav-btn" routerLink="cash-register" routerLinkActive="active"
+               *ngIf="authService.hasDetailedPermission('sales', 'cash-register')">
+               <i class="bi bi-pc-display-horizontal"></i> Cajas
+            </a>
+            <a class="pos-subnav-btn" routerLink="restaurant-mesas" routerLinkActive="active"
+               *ngIf="authService.hasDetailedPermission('sales', 'mesas')">
+               <i class="bi bi-house-door"></i> Mesas
+            </a>
+            <a class="pos-subnav-btn" routerLink="cash-closing" routerLinkActive="active"
+               *ngIf="authService.hasDetailedPermission('sales', 'closebox')">
+               <i class="bi bi-calculator"></i> Corte de Caja
+            </a>
+            <a class="pos-subnav-btn" routerLink="returns" routerLinkActive="active"
+               *ngIf="authService.hasDetailedPermission('sales', 'returns')">
+               <i class="bi bi-receipt-cutoff"></i> Devoluciones
+            </a>
+            <a class="pos-subnav-btn" routerLink="reports" routerLinkActive="active"
+               *ngIf="authService.hasDetailedPermission('sales', 'reports')">
+               <i class="bi bi-graph-up"></i> Reportes
+            </a>
+            <a class="pos-subnav-btn" routerLink="mis-tareas" routerLinkActive="active"
+               *ngIf="authService.hasDetailedPermission('sales', 'prospectos')">
+               <i class="bi bi-check2-square"></i> Mis Tareas
+            </a>
+         </div>
 
 <div class="procsales-outlet">
            <router-outlet></router-outlet>

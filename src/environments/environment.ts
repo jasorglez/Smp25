@@ -85,7 +85,7 @@ export const environment = {
     // publicKey: 'TEST-4399133a-4676-42a2-ab85-d946370bf96a',
   },
 
-  version: '7.94 (03 Junio 2026) fix(ventas): azul mas suave en botones menu',
+  version: '7.95 (03 Junio 2026) feat(ventas): sub-barra POS con Tiendas Cajas Mesas Corte Devoluciones Reportes Tareas',
 };
 
 
