@@ -68,7 +68,7 @@
   background: linear-gradient(160deg, var(--sb-bg) 0%, var(--sb-bg2) 100%);
   padding: 0;
   color: var(--sb-text);
-  width: 225px;
+  width: 185px;
   transition: width 0.3s ease, background 0.4s ease;
   font-size: 0.85rem;
 }
@@ -137,18 +137,52 @@
   border-color: var(--sb-border) !important;
 }
 
-// ── Selects ────────────────────────────────────────────────────────────────────
+// ── Selects — compactos con hover expand ───────────────────────────────────────
 .sidebarback .form-select {
-  font-size: 0.85rem;
-  padding: 4px 8px;
-  height: auto;
-  min-height: 30px;
-  margin-bottom: 5px !important;
+  font-size: 0.62rem;
+  padding: 2px 20px 2px 6px;
+  height: 24px;
+  min-height: 24px;
+  margin-bottom: 4px !important;
+  background-color: rgba(255,255,255,0.08);
+  border: 1px solid var(--sb-border);
+  color: var(--sb-text);
+  border-radius: 6px;
+  opacity: 0.78;
+  cursor: pointer;
+  transition: height 0.2s ease, font-size 0.2s ease,
+              padding 0.2s ease, opacity 0.2s ease,
+              background-color 0.2s ease, border-color 0.2s ease;
+
+  &:hover, &:focus {
+    height: 30px;
+    min-height: 30px;
+    font-size: 0.72rem;
+    padding: 4px 24px 4px 8px;
+    opacity: 1;
+    background-color: rgba(255,255,255,0.16);
+    border-color: rgba(255,255,255,0.4);
+    outline: none;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.25);
+  }
 }
 
 .sidebarback .form-select option {
-  font-size: 0.85rem;
-  padding: 3px;
+  font-size: 0.8rem;
+  padding: 4px;
+  background-color: #1e2a3a;
+  color: #fff;
+}
+
+// Etiquetas "Select Contracts / Projects" — mini header
+.sidebarback .overflow-auto > span > span:not(.badge) {
+  display: block;
+  font-size: 0.50rem !important;
+  text-transform: uppercase;
+  letter-spacing: 0.6px;
+  opacity: 0.55;
+  margin-bottom: 1px;
+  margin-top: 2px;
 }
 
 .sidebarback .overflow-auto {
@@ -165,7 +199,7 @@
   top: 0;
   bottom: 0;
   left: 0;
-  width: 225px;
+  width: 185px;
   z-index: 1030;
   transition: width 0.3s ease;
   overflow-y: auto;
@@ -178,18 +212,18 @@
 }
 
 .collapsed.temp-expanded.sidebar {
-  width: 225px;
+  width: 185px;
 }
 
 // ── Colapsado: selects ─────────────────────────────────────────────────────────
 .collapsed:not(.temp-expanded) .form-select {
-  width: 50px !important;
-  height: 35px !important;
+  width: 46px !important;
+  height: 28px !important;
   padding: 2px !important;
   font-size: 10px !important;
   margin: 2px auto !important;
   appearance: none;
-  background: transparent;
+  background: rgba(255,255,255,0.08);
   border: 1px solid var(--sb-border);
   color: transparent;
   cursor: pointer;
@@ -199,20 +233,23 @@
   background-repeat: no-repeat;
   background-position: right 2px center;
   background-size: 12px;
-  padding-right: 20px !important;
+  padding-right: 18px !important;
+  transition: none;
 }
 
 .collapsed:not(.temp-expanded) .form-select option { display: none; }
 
 .temp-expanded .form-select {
   width: 100% !important;
-  height: auto !important;
+  height: 30px !important;
+  min-height: 30px !important;
   padding: 4px 8px !important;
-  font-size: 0.85rem !important;
-  margin: 0 0 5px 0 !important;
-  background: white;
-  color: #333;
-  border: 1px solid #ccc;
+  font-size: 0.72rem !important;
+  margin: 0 0 4px 0 !important;
+  background-color: rgba(255,255,255,0.16) !important;
+  color: var(--sb-text) !important;
+  border: 1px solid rgba(255,255,255,0.35) !important;
+  opacity: 1 !important;
   appearance: menulist;
 }
 

@@ -85,7 +85,7 @@ export const environment = {
     // publicKey: 'TEST-4399133a-4676-42a2-ab85-d946370bf96a',
   },
 
-  version: '8.07 (04 Junio 2026) feat(sidebar): C+A icono arriba texto abajo barra verde activo',
+  version: '8.08 (04 Junio 2026) feat(sidebar): selects mini compactos hover-expand sidebar 185px',
 };
 
 
