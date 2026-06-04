@@ -85,7 +85,7 @@ export const environment = {
     // publicKey: 'TEST-4399133a-4676-42a2-ab85-d946370bf96a',
   },
 
-  version: '8.03 (03 Junio 2026) fix(admon): hijos pages01-04 compactos con mat-icon reducido',
+  version: '8.04 (03 Junio 2026) fix(admon): tablero hijos compactos nivel 2',
 };
 
 

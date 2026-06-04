@@ -1,5 +1,21 @@
-.nav-pills .nav-link {
-  display: flex;
-  align-items: center;
-  gap: 0.25rem;
+/* Hijos nivel 2 — más pequeños que el padre */
+.nav.nav-pills { gap: 3px; flex-wrap: wrap; }
+.nav.nav-pills .nav-link.green-tab {
+  font-size: 0.68rem;
+  padding: 0.2rem 0.6rem;
+  border-radius: 20px;
+  font-weight: 500;
+  color: #fff;
+  background-color: #6c9ecf;
+  border: 1px solid #5a8fc5;
+  .material-icons, mat-icon {
+    font-size: 0.85rem !important;
+    width: 0.85rem !important;
+    height: 0.85rem !important;
+    line-height: 1 !important;
+    vertical-align: middle;
+    margin-right: 3px;
+  }
+  &:hover { background-color: #4a7db5; color: #fff; }
+  &.active { background-color: #099728; border-color: #077a20; color: #fff; }
 }
