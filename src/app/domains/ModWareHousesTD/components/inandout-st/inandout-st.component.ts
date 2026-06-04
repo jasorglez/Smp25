@@ -220,7 +220,8 @@ export class InandoutStComponent implements OnInit {
         description: description.trim().toUpperCase(),
         type: this.movementType,
         idCompany: this.idRoot,
-        active: true
+        active: 1,    // short en el DTO, no boolean
+        vigente: true
       };
       const created = await lastValueFrom(this.catalogsService.addCatalog(payload));
       await new Promise<void>(resolve => {
