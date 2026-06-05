@@ -339,8 +339,6 @@ export class ProspectosComponent implements OnInit {
         },
         getQuickFilterText: (p: any) => (p.value ?? []).join(' '),
       },
-      { field: 'competidor', headerName: 'Compite con', width: 145, editable: true },
-      { field: 'domicilio',  headerName: 'Domicilio',   width: 180, editable: true, filter: true },
       {
         field: 'cp', headerName: 'CP', width: 90, editable: true, filter: true,
         cellStyle: { backgroundColor: '#eef4ff' },
@@ -400,6 +398,7 @@ export class ProspectosComponent implements OnInit {
           return true;
         },
       },
+      { field: 'domicilio',  headerName: 'Domicilio',   width: 180, editable: true, filter: true },
       {
         field: 'fechaProximoSeguimiento',
         headerName: 'Próx. Seguimiento', width: 155, editable: true,
@@ -442,6 +441,7 @@ export class ProspectosComponent implements OnInit {
           return `${icon} ${p.value ?? ''}`;
         },
       },
+      { field: 'competidor', headerName: 'Compite con', width: 145, editable: true },
       {
         field: 'nombreVendedorActual', headerName: 'Vendedor', width: 95, editable: true,
         cellEditor: 'agSelectCellEditor',
