@@ -1,4 +1,6 @@
 ﻿import { Component, effect, inject, OnInit } from '@angular/core';
+import { lastValueFrom } from 'rxjs';
+import { InegiService } from 'app/services/inegi.service';
 
 const ESTADOS_MEXICO = [
   'Aguascalientes', 'Baja California', 'Baja California Sur', 'Campeche',
@@ -34,6 +36,7 @@ export class ProspectosComponent implements OnInit {
   private signalsSvc = inject(SignalsService);
   private usersSvc   = inject(UsersService);
   private storageSvc = inject(StoragesService);
+  private inegiSvc   = inject(InegiService);
   private _colDefs: ColDef[] = [];
 
   // ── Pestañas ─────────────────────────────────────────────────────────────
@@ -77,6 +80,7 @@ export class ProspectosComponent implements OnInit {
   selectedItem:     any      = null;
   hasUnsavedChanges = false;
   loading           = false;
+  infoCp:           any;
 
   // ── Stats Bar ─────────────────────────────────────────────────────────────
 
@@ -146,7 +150,7 @@ export class ProspectosComponent implements OnInit {
   get nombreVendedor() { return this.signalsSvc.getDisplayName()(); }
 
   // ── Enter-key navigation ─────────────────────────────────────────────────
-  private editableColumnOrder = ['nombreVendedorActual', 'empresa', 'nombre', 'puesto', 'telefono', 'correo', 'giro', 'fuente', 'competidor', 'domicilio', 'estadoRepublica', 'municipio', 'estado'];
+  private editableColumnOrder = ['nombreVendedorActual', 'empresa', 'nombre', 'puesto', 'telefono', 'correo', 'giro', 'fuente', 'competidor', 'domicilio', 'cp', 'estadoRepublica', 'municipio', 'estado'];
   readonly GIROS    = GIROS_PROSPECTO;
   readonly FUENTES  = FUENTES_PROSPECTO;
   filtroTag = '';
@@ -201,6 +205,17 @@ export class ProspectosComponent implements OnInit {
       'row-inactivo':      (p: any) => p.data?.activo === false,
       'row-ganado':        (p: any) => !p.data?.__isNew && p.data?.estado === 'ganado',
       'row-perdido':       (p: any) => !p.data?.__isNew && p.data?.estado === 'perdido',
+    },
+    onCellValueChanged: (event: any) => {
+      if (event.colDef.field === 'cp' && event.newValue) {
+        this.getZipCodeData(event.newValue).then((data: any) => {
+          if (data && data.length > 0) {
+            event.data.estadoRepublica = data[0].estado ?? event.data.estadoRepublica;
+            event.data.municipio       = data[0].ciudad ?? event.data.municipio;
+            this.gridApi.applyTransaction({ update: [event.data] });
+          }
+        });
+      }
     },
     onRowClicked: (event: any) => {
       const colId = event.column?.getColId();
@@ -327,6 +342,10 @@ export class ProspectosComponent implements OnInit {
       },
       { field: 'competidor', headerName: 'Compite con', width: 145, editable: true },
       { field: 'domicilio',  headerName: 'Domicilio',   width: 180, editable: true, filter: true },
+      {
+        field: 'cp', headerName: 'CP', width: 90, editable: true, filter: true,
+        cellStyle: { backgroundColor: '#eef4ff' },
+      },
       {
         field: 'estadoRepublica',
         headerName: 'Estado (República)',
@@ -496,7 +515,7 @@ export class ProspectosComponent implements OnInit {
       chatIdVendedorActual: '', idCompany: this.idRoot,
       creadoPor: 'web', idVendedorCreador: this.idVendedor,
       notas: '', idCustomer: null, activo: true,
-      correo: '', giro: '', fuente: 'Redes sociales', tags: [], competidor: '', estadoRepublica: '', municipio: '', fechaProximoSeguimiento: null,
+      correo: '', giro: '', fuente: 'Redes sociales', tags: [], competidor: '', cp: '', estadoRepublica: '', municipio: '', fechaProximoSeguimiento: null,
       fechaCreacion: null, fechaUltimaInteraccion: null,
       countInteracciones: 0,
       __isNew: true, __modified: false,
@@ -554,6 +573,7 @@ export class ProspectosComponent implements OnInit {
             giro:                   p.giro ?? '',
             fuente:                 p.fuente ?? '',
             competidor:             p.competidor ?? '',
+            cp:                     p.cp ?? '',
             estadoRepublica:        p.estadoRepublica ?? '',
             municipio:              p.municipio ?? '',
             fechaProximoSeguimiento: p.fechaProximoSeguimiento ?? null,
@@ -634,6 +654,19 @@ export class ProspectosComponent implements OnInit {
     if (!ts) return '';
     const d = ts.toDate ? ts.toDate() : new Date(ts);
     return d.toLocaleDateString('es-MX', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+  }
+
+  async getZipCodeData(cp: string): Promise<any> {
+    try {
+      const data = await lastValueFrom(this.inegiSvc.getZipCodeData(cp));
+      this.infoCp = data;
+      return data;
+    } catch (error: any) {
+      if (error?.status === 404) {
+        Swal.fire({ toast: true, position: 'top-end', icon: 'warning', title: 'CP no encontrado', showConfirmButton: false, timer: 2000 });
+      }
+      return null;
+    }
   }
 
   // ── Reportes ──────────────────────────────────────────────────────────────
