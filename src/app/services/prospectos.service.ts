@@ -1,4 +1,4 @@
-import { inject, Injectable } from '@angular/core';
+import { inject, Injectable, Injector, runInInjectionContext } from '@angular/core';
 import {
   Firestore,
   collection,
@@ -151,8 +151,9 @@ export function nivelScore(score: number): { label: string; color: string; icon:
 
 @Injectable({ providedIn: 'root' })
 export class ProspectosService {
-  private firestore = inject(Firestore);
+  private firestore  = inject(Firestore);
   private signalsSvc = inject(SignalsService);
+  private injector   = inject(Injector);
   private readonly COL = 'prospectos';
   private readonly TAREAS_COL = 'tareas-crm';
 
@@ -160,16 +161,14 @@ export class ProspectosService {
   getProspectos(idVendedor: number): Observable<Prospecto[]> {
     const ref = collection(this.firestore, this.COL);
     const currentRoot = this.signalsSvc.getRootSelectedBySidebar()();
-    const byVendor$ = (collectionData(
-      query(ref, where('idVendedorActual', '==', idVendedor)),
-      { idField: 'id' },
-    ) as Observable<Prospecto[]>);
+    const byVendor$ = runInInjectionContext(this.injector, () =>
+      collectionData(query(ref, where('idVendedorActual', '==', idVendedor)), { idField: 'id' }) as Observable<Prospecto[]>
+    );
 
     const byCompany$ = currentRoot
-      ? (collectionData(
-          query(ref, where('idCompany', '==', currentRoot)),
-          { idField: 'id' },
-        ) as Observable<Prospecto[]>)
+      ? runInInjectionContext(this.injector, () =>
+          collectionData(query(ref, where('idCompany', '==', currentRoot)), { idField: 'id' }) as Observable<Prospecto[]>
+        )
       : of([]);
 
     return byVendor$.pipe(
@@ -181,10 +180,9 @@ export class ProspectosService {
   // Consulta por empresa para Kanban y Dashboard
   getProspectosByCompany(idCompany: number): Observable<Prospecto[]> {
     const ref = collection(this.firestore, this.COL);
-    return collectionData(
-      query(ref, where('idCompany', '==', idCompany), where('activo', '==', true)),
-      { idField: 'id' },
-    ) as Observable<Prospecto[]>;
+    return runInInjectionContext(this.injector, () =>
+      collectionData(query(ref, where('idCompany', '==', idCompany), where('activo', '==', true)), { idField: 'id' }) as Observable<Prospecto[]>
+    );
   }
 
   async crearProspecto(p: Partial<Prospecto>): Promise<string> {
@@ -271,7 +269,9 @@ export class ProspectosService {
   }
 
   async getInteracciones(prospectoId: string): Promise<Interaccion[]> {
-    const snap = await getDocs(collection(this.firestore, `${this.COL}/${prospectoId}/interacciones`));
+    const snap = await runInInjectionContext(this.injector, () =>
+      getDocs(collection(this.firestore, `${this.COL}/${prospectoId}/interacciones`))
+    );
     return snap.docs
       .map(d => ({ id: d.id, ...d.data() }) as Interaccion)
       .sort((a, b) => {
@@ -336,7 +336,9 @@ export class ProspectosService {
   // ── Plantillas WhatsApp por empresa ──────────────────────────────────────
 
   async getPlantillas(idCompany: number): Promise<Record<string, string> | null> {
-    const snap = await getDoc(doc(this.firestore, 'whatsapp-plantillas', String(idCompany)));
+    const snap = await runInInjectionContext(this.injector, () =>
+      getDoc(doc(this.firestore, 'whatsapp-plantillas', String(idCompany)))
+    );
     return snap.exists() ? (snap.data() as Record<string, string>) : null;
   }
 
@@ -357,11 +359,8 @@ export class ProspectosService {
   }
 
   async getTareasByProspecto(idProspecto: string): Promise<Tarea[]> {
-    const snap = await getDocs(
-      query(collection(this.firestore, this.TAREAS_COL),
-        where('idProspecto', '==', idProspecto),
-        where('completada', '==', false),
-      )
+    const snap = await runInInjectionContext(this.injector, () =>
+      getDocs(query(collection(this.firestore, this.TAREAS_COL), where('idProspecto', '==', idProspecto), where('completada', '==', false)))
     );
     return snap.docs
       .map(d => ({ id: d.id, ...d.data() }) as Tarea)
@@ -369,21 +368,15 @@ export class ProspectosService {
   }
 
   async getTareasCompletadasByProspecto(idProspecto: string): Promise<Tarea[]> {
-    const snap = await getDocs(
-      query(collection(this.firestore, this.TAREAS_COL),
-        where('idProspecto', '==', idProspecto),
-        where('completada', '==', true),
-      )
+    const snap = await runInInjectionContext(this.injector, () =>
+      getDocs(query(collection(this.firestore, this.TAREAS_COL), where('idProspecto', '==', idProspecto), where('completada', '==', true)))
     );
     return snap.docs.map(d => ({ id: d.id, ...d.data() }) as Tarea);
   }
 
   async getTareasByVendedor(idVendedor: number, idCompany: number): Promise<Tarea[]> {
-    const snap = await getDocs(
-      query(collection(this.firestore, this.TAREAS_COL),
-        where('idVendedor', '==', idVendedor),
-        where('completada', '==', false),
-      )
+    const snap = await runInInjectionContext(this.injector, () =>
+      getDocs(query(collection(this.firestore, this.TAREAS_COL), where('idVendedor', '==', idVendedor), where('completada', '==', false)))
     );
     return snap.docs
       .map(d => ({ id: d.id, ...d.data() }) as Tarea)
@@ -415,7 +408,9 @@ export class ProspectosService {
   // ── Cuotas de Ventas ──────────────────────────────────────────────────────
 
   async getCuotasMes(idCompany: number, mes: string): Promise<Record<string, number>> {
-    const snap = await getDoc(doc(this.firestore, 'cuotas-crm', `${idCompany}_${mes}`));
+    const snap = await runInInjectionContext(this.injector, () =>
+      getDoc(doc(this.firestore, 'cuotas-crm', `${idCompany}_${mes}`))
+    );
     return snap.exists() ? (snap.data() as Record<string, number>) : {};
   }
 
