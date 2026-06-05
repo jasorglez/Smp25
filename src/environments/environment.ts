@@ -85,7 +85,7 @@ export const environment = {
     // publicKey: 'TEST-4399133a-4676-42a2-ab85-d946370bf96a',
   },
 
-  version: '4.19 (05 Junio 2026) fix(prospectos): grid -20% alto total',
+  version: '4.20 (05 Junio 2026) fix(prospectos): grid -10%-7% alto',
 };
 
 
