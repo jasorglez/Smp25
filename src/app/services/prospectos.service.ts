@@ -47,6 +47,7 @@ export interface Prospecto {
   tags?: string[];             // Etiquetas libres: 'vip', 'retomar-q4', 'precio-sensible', etc.
   competidor?: string;
   estadoRepublica?: string;
+  municipio?: string;
   fechaProximoSeguimiento?: Timestamp | null;
   __isNew?: boolean;
   __modified?: boolean;

@@ -85,7 +85,7 @@ export const environment = {
     // publicKey: 'TEST-4399133a-4676-42a2-ab85-d946370bf96a',
   },
 
-  version: '4.23 (05 Junio 2026) fix(prospectos): estadoRepublica en interfaz Prospecto',
+  version: '4.24 (05 Junio 2026) feat(prospectos): col Municipio dinámico INEGI por estado',
 };
 
 
