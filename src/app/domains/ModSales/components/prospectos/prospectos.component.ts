@@ -1,4 +1,13 @@
 ﻿import { Component, effect, inject, OnInit } from '@angular/core';
+
+const ESTADOS_MEXICO = [
+  'Aguascalientes', 'Baja California', 'Baja California Sur', 'Campeche',
+  'Chiapas', 'Chihuahua', 'Ciudad de México', 'Coahuila', 'Colima', 'Durango',
+  'Estado de México', 'Guanajuato', 'Guerrero', 'Hidalgo', 'Jalisco',
+  'Michoacán', 'Morelos', 'Nayarit', 'Nuevo León', 'Oaxaca', 'Puebla',
+  'Querétaro', 'Quintana Roo', 'San Luis Potosí', 'Sinaloa', 'Sonora',
+  'Tabasco', 'Tamaulipas', 'Tlaxcala', 'Veracruz', 'Yucatán', 'Zacatecas',
+];
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { AgGridModule } from 'ag-grid-angular';
@@ -137,7 +146,7 @@ export class ProspectosComponent implements OnInit {
   get nombreVendedor() { return this.signalsSvc.getDisplayName()(); }
 
   // ── Enter-key navigation ─────────────────────────────────────────────────
-  private editableColumnOrder = ['nombreVendedorActual', 'empresa', 'nombre', 'puesto', 'telefono', 'correo', 'giro', 'fuente', 'competidor', 'domicilio', 'estado'];
+  private editableColumnOrder = ['nombreVendedorActual', 'empresa', 'nombre', 'puesto', 'telefono', 'correo', 'giro', 'fuente', 'competidor', 'domicilio', 'estadoRepublica', 'estado'];
   readonly GIROS    = GIROS_PROSPECTO;
   readonly FUENTES  = FUENTES_PROSPECTO;
   filtroTag = '';
@@ -205,6 +214,18 @@ export class ProspectosComponent implements OnInit {
     if (this._colDefs.length > 0) return this._colDefs;
 
     this._colDefs = [
+      {
+        colId: 'rowNum',
+        headerName: '#',
+        width: 55,
+        editable: false,
+        pinned: 'left',
+        lockPinned: true,
+        lockPosition: true,
+        suppressMovable: true,
+        valueGetter: (p: any) => (p.node.rowIndex ?? 0) + 1,
+        cellStyle: { color: '#6c757d', fontWeight: '600', textAlign: 'center' },
+      },
       {
         field: 'historial',
         headerName: 'Historial',
@@ -306,6 +327,15 @@ export class ProspectosComponent implements OnInit {
       },
       { field: 'competidor', headerName: 'Compite con', width: 145, editable: true },
       { field: 'domicilio',  headerName: 'Domicilio',   width: 180, editable: true, filter: true },
+      {
+        field: 'estadoRepublica',
+        headerName: 'Estado (República)',
+        width: 160,
+        editable: true,
+        filter: true,
+        cellEditor: 'agSelectCellEditor',
+        cellEditorParams: { values: ESTADOS_MEXICO },
+      },
       {
         field: 'fechaProximoSeguimiento',
         headerName: 'Próx. Seguimiento', width: 155, editable: true,
@@ -459,7 +489,7 @@ export class ProspectosComponent implements OnInit {
       chatIdVendedorActual: '', idCompany: this.idRoot,
       creadoPor: 'web', idVendedorCreador: this.idVendedor,
       notas: '', idCustomer: null, activo: true,
-      correo: '', giro: '', fuente: 'Redes sociales', tags: [], competidor: '', fechaProximoSeguimiento: null,
+      correo: '', giro: '', fuente: 'Redes sociales', tags: [], competidor: '', estadoRepublica: '', fechaProximoSeguimiento: null,
       fechaCreacion: null, fechaUltimaInteraccion: null,
       countInteracciones: 0,
       __isNew: true, __modified: false,
@@ -517,6 +547,7 @@ export class ProspectosComponent implements OnInit {
             giro:                   p.giro ?? '',
             fuente:                 p.fuente ?? '',
             competidor:             p.competidor ?? '',
+            estadoRepublica:        p.estadoRepublica ?? '',
             fechaProximoSeguimiento: p.fechaProximoSeguimiento ?? null,
           });
         }
