@@ -1,15 +1,6 @@
 ﻿import { Component, effect, inject, OnInit } from '@angular/core';
 import { lastValueFrom } from 'rxjs';
 import { InegiService } from 'app/services/inegi.service';
-
-const ESTADOS_MEXICO = [
-  'Aguascalientes', 'Baja California', 'Baja California Sur', 'Campeche',
-  'Chiapas', 'Chihuahua', 'Ciudad de México', 'Coahuila', 'Colima', 'Durango',
-  'Estado de México', 'Guanajuato', 'Guerrero', 'Hidalgo', 'Jalisco',
-  'Michoacán', 'Morelos', 'Nayarit', 'Nuevo León', 'Oaxaca', 'Puebla',
-  'Querétaro', 'Quintana Roo', 'San Luis Potosí', 'Sinaloa', 'Sonora',
-  'Tabasco', 'Tamaulipas', 'Tlaxcala', 'Veracruz', 'Yucatán', 'Zacatecas',
-];
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { AgGridModule } from 'ag-grid-angular';
@@ -22,6 +13,7 @@ import { UsersService } from 'app/services/users.service';
 import { DetalleInteraccionesComponent } from './detalle-interacciones.component';
 import { ButtonCellRendererIncomeComponent } from 'app/domains/ModAdmon/components/income/button-cell-renderer-income.component';
 import { StoragesService } from 'app/services/storages.service';
+import { ESTADOS_MEXICO, getMunicipiosByEstado, normalizeEstadoMexicoName, normalizeMunicipioMexicoName } from 'app/shared/catalogs/municipios-mexico';
 import Swal from 'sweetalert2';
 
 @Component({
@@ -210,8 +202,14 @@ export class ProspectosComponent implements OnInit {
       if (event.colDef.field === 'cp' && event.newValue) {
         this.getZipCodeData(event.newValue).then((data: any) => {
           if (data && data.length > 0) {
-            event.data.estadoRepublica = data[0].estado ?? event.data.estadoRepublica;
-            event.data.municipio       = data[0].ciudad ?? event.data.municipio;
+            const estadoNormalizado = normalizeEstadoMexicoName(data[0].estado ?? event.data.estadoRepublica);
+            const municipioNormalizado = normalizeMunicipioMexicoName(
+              estadoNormalizado,
+              data[0].ciudad ?? event.data.municipio,
+            );
+
+            event.data.estadoRepublica = estadoNormalizado || event.data.estadoRepublica;
+            event.data.municipio = municipioNormalizado || event.data.municipio;
             this.gridApi.applyTransaction({ update: [event.data] });
           }
         });
@@ -352,8 +350,25 @@ export class ProspectosComponent implements OnInit {
         width: 160,
         editable: true,
         filter: true,
-        cellEditor: 'agSelectCellEditor',
-        cellEditorParams: { values: ESTADOS_MEXICO },
+        cellEditor: 'agRichSelectCellEditor',
+        cellEditorParams: {
+          values: ESTADOS_MEXICO,
+          allowTyping: true,
+          filterList: true,
+          searchType: 'match',
+          highlightMatch: true,
+        },
+        tooltipValueGetter: (params: any) => params.value ?? '',
+        valueSetter: (params: any) => {
+          const estadoAnterior = normalizeEstadoMexicoName(params.data.estadoRepublica);
+          const nuevoEstado = normalizeEstadoMexicoName(params.newValue);
+
+          params.data.estadoRepublica = nuevoEstado;
+          if (estadoAnterior !== nuevoEstado) {
+            params.data.municipio = '';
+          }
+          return true;
+        },
       },
       {
         field: 'municipio',
@@ -361,6 +376,28 @@ export class ProspectosComponent implements OnInit {
         width: 155,
         editable: true,
         filter: true,
+        cellEditor: 'agRichSelectCellEditor',
+        cellEditorParams: (params: any) => ({
+          values: getMunicipiosByEstado(params.data?.estadoRepublica),
+          allowTyping: true,
+          filterList: true,
+          searchType: 'match',
+          highlightMatch: true,
+          valueListMaxWidth: 420,
+          valueListMaxHeight: 320,
+        }),
+        tooltipValueGetter: (params: any) => params.value ?? '',
+        cellRenderer: (params: any) => {
+          const value = params.value ?? '';
+          return value ? `<span title="${String(value).replace(/"/g, '&quot;')}">${value}</span>` : '';
+        },
+        valueSetter: (params: any) => {
+          params.data.municipio = normalizeMunicipioMexicoName(
+            params.data?.estadoRepublica,
+            params.newValue,
+          );
+          return true;
+        },
       },
       {
         field: 'fechaProximoSeguimiento',

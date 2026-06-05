@@ -22,3 +22,10 @@
 :host ::ng-deep .sales-mod-ag {
   height: clamp(51vh, 67vh, 75vh);
 }
+
+::ng-deep .ag-select-list .ag-list-item,
+::ng-deep .ag-select-list .ag-select-list-item,
+::ng-deep .ag-select-list .ag-select-list-item span {
+  font-size: 12px !important;
+  line-height: 1.15 !important;
+}
