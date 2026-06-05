@@ -335,7 +335,14 @@ export class DetalleMoliendaComponent {
       // Espejo del mismo cálculo de la tabla "Ítems de OC-…" en purchaseorderdelison:
       // planned = diasCondicionCompra; real = entregasCount; muestra delta cuando hay entregas.
       valueFormatter: (p: any) => {
-        // SIN LÍMITE: no hay "planeado"; muestra el conteo real de entradas (filas del Nivel 4).
+        // Multi-entrega (N definido), SIN importar el Tipo OC: muestra "cerradas / N"
+        // (ej. 0/5, 1/5 … 5/5). N = total de entregas; cerradas = entregas con "Cerrado Entrega".
+        const N = Number(p.data?.entregasPlaneadas ?? 0);
+        if (N > 1) {
+          const cerradas = Number(p.data?.entregasCerradas ?? 0);
+          return `${cerradas}/${N}`;
+        }
+        // SIN LÍMITE / COMPRA INMEDIATA de una sola entrega: conteo real de recepciones (Nivel 4).
         const t = String(p.data?.tipoOc ?? '').toUpperCase();
         if (t === 'COMPRA AUTORIZADA SIN LIMITE' || t === 'COMPRA INMEDIATA') {
           return String(Number(p.data?.entradasCount ?? 0));
@@ -426,12 +433,14 @@ export class DetalleMoliendaComponent {
     {
       field: 'price', headerName: 'Precio unitario', width: 120, type: 'numericColumn',
       // Precio guardado = BASE (Opción B). Si la línea tiene IVA, se muestra con IVA REDONDEADO a 2 dec.
+      // Multi-entrega (>1 entrega): el precio se muestra POR ENTREGA en el grid de Entradas → aquí "—".
       valueGetter: (p: any) => {
+        if (this.ocEntregasCount(p.data) > 1) return null;
         const base = Number(p.data?.price) || 0;
         const v = p.data?.masIva ? base * (1 + this.ivaPercent / 100) : base;
         return Math.round(v * 100) / 100;
       },
-      valueFormatter: (p: any) => this.fmtMoneda(p.value),
+      valueFormatter: (p: any) => this.ocEntregasCount(p.data) > 1 ? '—' : this.fmtMoneda(p.value),
     },
     { field: 'condEspecial', headerName: 'Cond. Especial', flex: 2, minWidth: 130, hide: true },
     {
@@ -880,6 +889,42 @@ export class DetalleMoliendaComponent {
       },
     },
     {
+      // Precio unitario POR ENTREGA: precio base del ítem OC × IVA propio de la entrega (round2).
+      colId: 'precioUnitarioEntrega',
+      headerName: 'Precio unitario',
+      width: 130,
+      type: 'numericColumn',
+      valueGetter: (p: any) => {
+        const base = Number(this.selectedOcRow?.price) || 0;
+        const v = p.data?.masIva ? base * (1 + this.ivaPercent / 100) : base;
+        return Math.round(v * 100) / 100;
+      },
+      valueFormatter: (p) => this.fmtMoneda(p.value),
+      cellRenderer: (p: any) => {
+        const formatted = this.fmtMoneda(p.value);
+        if (p.data?.masIva !== true) {
+          const span = document.createElement('span');
+          span.textContent = formatted;
+          span.style.cssText = 'display:block; text-align:right; width:100%;';
+          return span;
+        }
+        // Precio con IVA + badge "+IVA" (desglose en title nativo).
+        const base = Number(this.selectedOcRow?.price) || 0;
+        const iva = this.ivaPercent || 0;
+        const div = document.createElement('div');
+        div.style.cssText = 'display:flex; align-items:center; justify-content:flex-end; gap:4px; width:100%;';
+        div.title = `Base: ${this.fmtMoneda(base)}  ·  IVA: ${iva}%  ·  Con IVA: ${formatted}`;
+        const span = document.createElement('span');
+        span.textContent = formatted;
+        div.appendChild(span);
+        const badge = document.createElement('span');
+        badge.textContent = '+IVA';
+        badge.style.cssText = 'font-size:0.6rem; background:#e3f2fd; color:#1565c0; border-radius:3px; padding:0 3px; font-weight:700; line-height:1.5; flex-shrink:0;';
+        div.appendChild(badge);
+        return div;
+      },
+    },
+    {
       field: 'pago',
       headerName: 'Total x entrega',
       width: 130,
@@ -887,9 +932,9 @@ export class DetalleMoliendaComponent {
       valueGetter: (params) => {
         const qty = Number(params.data?.cantidadEntrada) || 0;
         const price = Number(this.selectedOcRow?.price) || 0;
-        // Precio = BASE (Opción B). Aplica IVA si la OC tiene mas_iva, REDONDEANDO el precio
-        // unitario a 2 dec ANTES de multiplicar (para que cuadre con el precio mostrado).
-        const factor = this.selectedOcRow?.masIva ? (1 + this.ivaPercent / 100) : 1;
+        // Precio = BASE (Opción B). Aplica IVA de LA ENTREGA (params.data.masIva) para que cada una
+        // sea independiente, REDONDEANDO el precio unitario a 2 dec ANTES de multiplicar.
+        const factor = params.data?.masIva ? (1 + this.ivaPercent / 100) : 1;
         const unit = Math.round(price * factor * 100) / 100;
         return unit * qty;
       },
@@ -1360,6 +1405,17 @@ export class DetalleMoliendaComponent {
     await this.loadEntradasForOc(row);
   }
 
+  /** Número efectivo de entregas de una OC (Nivel 3). SIN LÍMITE/COMPRA INMEDIATA → entradas reales;
+   *  multi-entrega → entregas reales o el planeado (diasCondicionCompra). */
+  private ocEntregasCount(data: any): number {
+    const t = String(data?.tipoOc ?? '').toUpperCase();
+    if (t === 'COMPRA AUTORIZADA SIN LIMITE' || t === 'COMPRA INMEDIATA') {
+      return Number(data?.entradasCount ?? 0);
+    }
+    const real = Number(data?.entregasCount ?? 0);
+    return real > 0 ? real : (Number(data?.diasCondicionCompra ?? 0) || 1);
+  }
+
   /** Carga las entradas (recepciones) de una OC + material en el grid nivel 4. */
   private async loadEntradasForOc(row: any): Promise<void> {
     this.cascadeEntradaData = [];
@@ -1398,6 +1454,20 @@ export class DetalleMoliendaComponent {
         comentario: e.comentario ?? '',
       }));
       console.log('Entradas cargadas para OC', row.folio, this.cascadeEntradaData);
+
+      // IVA por entrega: mapear entregas_oc.mas_iva sobre cada entrada (vía idEntrega). Para entradas
+      // sin entrega (sin límite/inmediata directa) se usa el IVA de la OC (selectedOcRow/row).
+      try {
+        const entregas: any[] = await lastValueFrom(this.entregaOcService.getByDetail(row.id)).catch(() => []);
+        const masIvaByEntrega = new Map<number, boolean>(
+          (Array.isArray(entregas) ? entregas : []).map((g: any) => [g.id, g.masIva === true])
+        );
+        this.cascadeEntradaData.forEach((entradaRow: any) => {
+          entradaRow.masIva = (entradaRow.idEntrega != null && masIvaByEntrega.has(entradaRow.idEntrega))
+            ? masIvaByEntrega.get(entradaRow.idEntrega)
+            : (row?.masIva === true);
+        });
+      } catch { /* si falla, las entradas quedan sin IVA por entrega (cae al base) */ }
 
       // Cargar abreviaciones de características para cada entrada en paralelo
       const familyAbrevMap = new Map<string, string>();
@@ -1978,13 +2048,20 @@ export class DetalleMoliendaComponent {
           ).catch(() => []);
           const suma = entregas.reduce((acc: number, e: any) => acc + Number(e.cantidadRecibir ?? 0), 0);
           oc.__sumaCantidadRecibir = suma > 0 ? suma : null;
+          // "Cantidad Entregas": N = total de entregas (filas del Detalle de entregas);
+          // cerradas = entregas con "Cerrado Entrega" (entregas_oc.close = true).
+          const arrEntregas = Array.isArray(entregas) ? entregas : [];
+          oc.entregasPlaneadas = arrEntregas.length;
+          oc.entregasCerradas = arrEntregas.filter((e: any) => e?.close === true).length;
         } else {
           oc.__sumaCantidadRecibir = null;
+          oc.entregasPlaneadas = 0;
+          oc.entregasCerradas = 0;
         }
-      } catch { oc.__sumaCantidadRecibir = null; }
+      } catch { oc.__sumaCantidadRecibir = null; oc.entregasPlaneadas = 0; oc.entregasCerradas = 0; }
     }));
     if (this.cascadeOcGridApi && !this.cascadeOcGridApi.isDestroyed())
-      this.cascadeOcGridApi.refreshCells({ columns: ['cantidad'], force: true });
+      this.cascadeOcGridApi.refreshCells({ columns: ['cantidad', 'entregasCount'], force: true });
   }
 
   private async loadReqEntregasSums(): Promise<void> {
@@ -2488,7 +2565,11 @@ export class DetalleMoliendaComponent {
     const allClosed = this.multiEntregasData.length > 0 &&
                       this.multiEntregasData.every((r: any) => r.close === true);
     this.selectedOcMultiRow.__allEntradasClosed = allClosed;
-    this.cascadeOcGridApi.refreshCells({ columns: ['folio'], force: true });
+    // "Cantidad Entregas" en vivo: recuenta entregas y cerradas tras cerrar una (0/N → 1/N → …).
+    this.selectedOcMultiRow.entregasPlaneadas = this.multiEntregasData.length;
+    this.selectedOcMultiRow.entregasCerradas =
+      this.multiEntregasData.filter((r: any) => r.close === true).length;
+    this.cascadeOcGridApi.refreshCells({ columns: ['folio', 'entregasCount'], force: true });
   }
 
   async saveCaracteristicas(silent = false) {

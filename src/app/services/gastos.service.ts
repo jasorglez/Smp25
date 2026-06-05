@@ -61,6 +61,32 @@ export interface PendingPayment {
   numProrrateo: number | null;    // entregas para prorrateo (si ya se eligió)
   numEntregasPlan: number;        // entregas creadas (default de prorrateo)
   numEntradasAlmacen: number;     // entradas reales en entradas_molienda para esta OC+material
+
+  // Gasto general no-material (anticipo, servicio, nómina…). Si viene, la fila es de
+  // Delison.gastos_generales (no de entradas_molienda); docType = tipo_gasto ('ANTICIPO').
+  idGastoGeneral?: number | null;
+
+  // Desglose de artículos de la OC detrás del anticipo (para el tooltip de la columna Artículo).
+  anticipoItems?: AnticipoItem[] | null;
+
+  // Consumo del anticipo por entrega (tooltip de la columna Valor en la fila de anticipo).
+  anticipoConsumo?: AnticipoConsumo[] | null;
+  // Monto del anticipo aplicado a ESTA entrada (para el neto en el histórico).
+  anticipoAplicado?: number;
+  // Porcentaje ORIGINAL del anticipo (condiciones_pago.cantidad), sin recalcular con IVA.
+  anticipoPorcentaje?: number;
+}
+
+export interface AnticipoItem {
+  articulo: string;
+  cantidad: number;
+  precioUnitario: number;
+  total: number;
+}
+
+export interface AnticipoConsumo {
+  folioEntrega: string;
+  descuento: number;
 }
 
 export interface ConfirmPaymentPayload {
@@ -150,6 +176,13 @@ export class GastosService {
   /** Marca el anticipo de una OC como pagado (desde el grid de Órdenes de Compra). */
   marcarAnticipo(idOc: number, monto: number, fecha?: string | null): Observable<any> {
     return this.http.post(`${environment.urlWarehouse}/Gastos/marcar-anticipo`, { idOc, monto, fecha }, {
+      headers: this.trackingService.getHeaders()
+    });
+  }
+
+  /** Paga un anticipo EN TRÁMITE desde la Captura de Gastos (lo marca PAGADO con su fecha). */
+  confirmAnticipo(idGastoGeneral: number, fechaPago?: string | null, notaFactura?: string | null): Observable<any> {
+    return this.http.post(`${environment.urlWarehouse}/Gastos/confirm-anticipo`, { idGastoGeneral, fechaPago, notaFactura }, {
       headers: this.trackingService.getHeaders()
     });
   }

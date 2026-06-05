@@ -997,7 +997,13 @@ export class ComparacionPreciosComponent implements OnInit, OnDestroy {
   public footerEndWidth: number = 88;
 
   private updatePinnedBottomRow() {
-    this.pinnedTotal = this.rowData.reduce((acc, r) => acc + (Number(r.costoTotal) || 0), 0);
+    // Mantener row.costoTotal en sync (defensivo) y sumar con el mismo cálculo de la celda.
+    let total = 0;
+    for (const r of this.rowData) {
+      r.costoTotal = this.computeCostoTotalForRow(r);
+      total += r.costoTotal;
+    }
+    this.pinnedTotal = total;
   }
 
   /** Opción A: redondea el costo unitario (ya con IVA si aplica) a 2 decimales ANTES de
@@ -1007,6 +1013,38 @@ export class ComparacionPreciosComponent implements OnInit, OnDestroy {
   private round2(n: any): number { return Math.round((Number(n) || 0) * 100) / 100; }
   private lineTotal(costoUnitario: any, cantidad: any): number {
     return this.round2(costoUnitario) * (Number(cantidad) || 0);
+  }
+
+  /**
+   * Costo Total de una fila (fuente única para la celda y el footer "Total x Pedimento").
+   *  - Tipos positivos limitados / negativos / sin clasificar → costo unitario × CANTIDAD X PROV.
+   *  - "COMPRA AUTORIZADA SIN LIMITE": la cantidad por proveedor no aplica (es 0). Para no dejarlo
+   *    en $0, la PRIMERA fila sin-límite del artículo cubre el RESTO que no tomaron los positivos:
+   *        resto = max(0, CANTIDAD REQUERIDA − Σ cantidad x prov. de positivos limitados)
+   *        costo total = costo unitario × resto
+   *    Las demás filas sin-límite del mismo artículo quedan en 0 (evita doble conteo).
+   *  El costo unitario ya viene con IVA incluido cuando aplica; se usa tal cual.
+   */
+  private computeCostoTotalForRow(row: any): number {
+    if (!row) return 0;
+    const unit = this.round2(row.costoUnitario);
+
+    if (row.tipoOc !== 'COMPRA AUTORIZADA SIN LIMITE') {
+      return unit * (Number(row.cantidadConceptualizada) || 0);
+    }
+
+    // Sin límite: solo la primera fila sin-límite del artículo toma el resto.
+    const itemId = Number(row.articuloItemId ?? 0) || 0;
+    const rowsArticulo = this.rowData.filter(r => Number(r.articuloItemId ?? 0) === itemId);
+    const sinLimiteRows = rowsArticulo.filter(r => r.tipoOc === 'COMPRA AUTORIZADA SIN LIMITE');
+    if (sinLimiteRows.length === 0 || sinLimiteRows[0] !== row) return 0;
+
+    const sumPositivas = rowsArticulo
+      .filter(r => this.POSITIVE_LIMITED_TYPES.includes(r.tipoOc))
+      .reduce((acc, r) => acc + (Number(r.cantidadConceptualizada) || 0), 0);
+    const requerida = Number(row.cantidadComprar) || 0;
+    const resto = Math.max(0, requerida - sumPositivas);
+    return unit * resto;
   }
 
   private updateFooterWidths() {
@@ -1083,6 +1121,7 @@ export class ComparacionPreciosComponent implements OnInit, OnDestroy {
             if (Number(node.data?.articuloItemId) === articuloItemId) affectedNodes.push(node);
           });
           this.gridApi?.refreshCells({ rowNodes: affectedNodes, force: true });
+          this.updatePinnedBottomRow();
 
           const numArticle = event.data?.numArticle || event.data?.numArticuloInterno || '';
           if (numArticle && this.requisitionId) {
@@ -1092,6 +1131,7 @@ export class ComparacionPreciosComponent implements OnInit, OnDestroy {
                 row.cantidadConceptualizada = saved.cantidad;
               }
               this.gridApi?.refreshCells({ rowNodes: affectedNodes, force: true });
+              this.updatePinnedBottomRow();
             }, undefined, undefined, String(event.data?.articulo ?? ''));
           }
           return;
@@ -1101,7 +1141,9 @@ export class ComparacionPreciosComponent implements OnInit, OnDestroy {
       if (isNegative) {
         const oldCantidad = event.data.cantidadConceptualizada ?? 0;
         event.data.cantidadConceptualizada = 0;
-        this.gridApi?.refreshCells({ rowNodes: [event.node], force: true });
+        // refresh completo: al volverse negativo este proveedor cambia el "resto" del sin-límite hermano.
+        this.gridApi?.refreshCells({ force: true });
+        this.updatePinnedBottomRow();
 
         const numArticle = event.data?.numArticle || event.data?.numArticuloInterno || '';
         if (numArticle && this.requisitionId) {
@@ -1109,7 +1151,8 @@ export class ComparacionPreciosComponent implements OnInit, OnDestroy {
           this.openNegativeTypeChat(numArticle, event.newValue, () => {
             event.data.tipoOc = event.oldValue;
             event.data.cantidadConceptualizada = oldCantidad;
-            this.gridApi?.refreshCells({ rowNodes: [event.node], force: true });
+            this.gridApi?.refreshCells({ force: true });
+            this.updatePinnedBottomRow();
           }, needsProviderTab ? Number(event.data?.proveedorId ?? 0) : undefined,
              needsProviderTab ? String(event.data?.proveedorNombre ?? '') : undefined,
              String(event.data?.articulo ?? ''));
@@ -1117,7 +1160,8 @@ export class ComparacionPreciosComponent implements OnInit, OnDestroy {
         return;
       }
 
-      this.gridApi?.refreshCells({ rowNodes: [event.node], force: true });
+      // refresh completo: un cambio de tipo OC altera el "resto" del sin-límite del mismo artículo.
+      this.gridApi?.refreshCells({ force: true });
 
       // Auto-rellenar Cantidad x Prov. con la Cantidad Requerida cuando el artículo tiene UN SOLO
       // proveedor y el tipo OC es positivo limitado (NO aplica a "SIN LIMITE"). Sobrescribe el valor previo.
@@ -2159,8 +2203,8 @@ export class ComparacionPreciosComponent implements OnInit, OnDestroy {
         // así no depende de que row.costoTotal esté sincronizado manualmente.
         valueGetter: (params: any) => {
           if (!params.data) return 0;
-          // Opción A: round2(unit con IVA) × cantidad → coincide con la cotización.
-          return this.lineTotal(params.data.costoUnitario, params.data.cantidadConceptualizada);
+          // Opción A: round2(unit con IVA) × cantidad. Para sin-límite, la primera fila cubre el resto.
+          return this.computeCostoTotalForRow(params.data);
         },
         cellStyle: { backgroundColor: '#c8e6c9', fontWeight: '600', padding: '4px', textAlign: 'center' },
         valueFormatter: (params: any) =>
