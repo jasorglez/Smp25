@@ -392,6 +392,11 @@ body {
 .oc-fadeIn  { animation: ocFadeIn  .18s ease both; }
 .oc-fadeOut { animation: ocFadeOut .15s ease both; }
 
+/* AG Grid master-detail: propagar altura para que el renderer hijo ocupe todo el espacio */
+.ag-details-row {
+  height: 100% !important;
+}
+
 /* Tooltips de AG Grid por encima de filas de detalle (master-detail crea nuevo stacking context) */
 .ag-popup {
   z-index: 10100 !important;
