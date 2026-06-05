@@ -166,14 +166,17 @@ export class ProspectosComponent implements OnInit {
     if (!estadoNombre || this.municipiosCargados.has(estadoNombre)) return;
     const id = this.ESTADO_INEGI_ID[estadoNombre];
     if (!id) return;
+    // Marca el estado como "en carga" con array vacío para no relanzar la petición
+    this.municipiosCargados.set(estadoNombre, []);
     this.inegiSvc.getMunicipios(id).subscribe({
       next: (data: any) => {
-        const municipios: string[] = (data?.datos ?? [])
-          .map((m: any) => m.nom_mun as string)
+        const municipios: string[] = (data?.datos ?? data ?? [])
+          .map((m: any) => (m.nom_mun ?? m.nombre ?? m.name ?? '') as string)
           .filter(Boolean)
           .sort((a: string, b: string) => a.localeCompare(b, 'es'));
         this.municipiosCargados.set(estadoNombre, municipios);
       },
+      error: () => this.municipiosCargados.delete(estadoNombre),
     });
   }
 
@@ -371,7 +374,6 @@ export class ProspectosComponent implements OnInit {
         filter: true,
         cellEditor: 'agSelectCellEditor',
         cellEditorParams: { values: ESTADOS_MEXICO },
-        onCellClicked: (p: any) => this.cargarMunicipios(p.data?.estadoRepublica),
       },
       {
         field: 'municipio',
@@ -383,7 +385,6 @@ export class ProspectosComponent implements OnInit {
         cellEditorParams: (params: any) => ({
           values: this.municipiosCargados.get(params.data?.estadoRepublica ?? '') ?? [],
         }),
-        onCellClicked: (p: any) => this.cargarMunicipios(p.data?.estadoRepublica),
       },
       {
         field: 'fechaProximoSeguimiento',
@@ -466,6 +467,7 @@ export class ProspectosComponent implements OnInit {
   ngOnInit() {
     this.cargarProspectos();
     this.cargarPlantillas();
+    ESTADOS_MEXICO.forEach(e => this.cargarMunicipios(e));
   }
 
   async cargarPlantillas() {
