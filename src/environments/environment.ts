@@ -85,7 +85,7 @@ export const environment = {
     // publicKey: 'TEST-4399133a-4676-42a2-ab85-d946370bf96a',
   },
 
-  version: '4.26 (05 Junio 2026) fix(prospectos): runInInjectionContext Firebase + municipios',
+  version: '4.27 (05 Junio 2026) fix(prospectos): municipio texto libre sin INEGI',
 };
 
 

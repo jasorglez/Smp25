@@ -17,7 +17,6 @@ import { ProspectosService, Prospecto, ESTADOS_PROSPECTO, GIROS_PROSPECTO, FUENT
 import { Timestamp } from '@angular/fire/firestore';
 import { SignalsService } from 'app/services/signals.service';
 import { UsersService } from 'app/services/users.service';
-import { InegiService } from 'app/services/inegi.service';
 import { DetalleInteraccionesComponent } from './detalle-interacciones.component';
 import { ButtonCellRendererIncomeComponent } from 'app/domains/ModAdmon/components/income/button-cell-renderer-income.component';
 import { StoragesService } from 'app/services/storages.service';
@@ -35,7 +34,6 @@ export class ProspectosComponent implements OnInit {
   private signalsSvc = inject(SignalsService);
   private usersSvc   = inject(UsersService);
   private storageSvc = inject(StoragesService);
-  private inegiSvc   = inject(InegiService);
   private _colDefs: ColDef[] = [];
 
   // ── Pestañas ─────────────────────────────────────────────────────────────
@@ -147,39 +145,6 @@ export class ProspectosComponent implements OnInit {
   get idRoot()         { return this.signalsSvc.getRootSelectedBySidebar()(); }
   get nombreVendedor() { return this.signalsSvc.getDisplayName()(); }
 
-  // ── Municipios INEGI ──────────────────────────────────────────────────────
-  private readonly ESTADO_INEGI_ID: Record<string, string> = {
-    'Aguascalientes': '01', 'Baja California': '02', 'Baja California Sur': '03',
-    'Campeche': '04', 'Coahuila': '05', 'Colima': '06', 'Chiapas': '07',
-    'Chihuahua': '08', 'Ciudad de México': '09', 'Durango': '10',
-    'Guanajuato': '11', 'Guerrero': '12', 'Hidalgo': '13', 'Jalisco': '14',
-    'Estado de México': '15', 'Michoacán': '16', 'Morelos': '17', 'Nayarit': '18',
-    'Nuevo León': '19', 'Oaxaca': '20', 'Puebla': '21', 'Querétaro': '22',
-    'Quintana Roo': '23', 'San Luis Potosí': '24', 'Sinaloa': '25', 'Sonora': '26',
-    'Tabasco': '27', 'Tamaulipas': '28', 'Tlaxcala': '29', 'Veracruz': '30',
-    'Yucatán': '31', 'Zacatecas': '32',
-  };
-
-  private municipiosCargados = new Map<string, string[]>();
-
-  private cargarMunicipios(estadoNombre: string): void {
-    if (!estadoNombre || this.municipiosCargados.has(estadoNombre)) return;
-    const id = this.ESTADO_INEGI_ID[estadoNombre];
-    if (!id) return;
-    // Marca el estado como "en carga" con array vacío para no relanzar la petición
-    this.municipiosCargados.set(estadoNombre, []);
-    this.inegiSvc.getMunicipios(id).subscribe({
-      next: (data: any) => {
-        const municipios: string[] = (data?.datos ?? data ?? [])
-          .map((m: any) => (m.nom_mun ?? m.nombre ?? m.name ?? '') as string)
-          .filter(Boolean)
-          .sort((a: string, b: string) => a.localeCompare(b, 'es'));
-        this.municipiosCargados.set(estadoNombre, municipios);
-      },
-      error: () => this.municipiosCargados.delete(estadoNombre),
-    });
-  }
-
   // ── Enter-key navigation ─────────────────────────────────────────────────
   private editableColumnOrder = ['nombreVendedorActual', 'empresa', 'nombre', 'puesto', 'telefono', 'correo', 'giro', 'fuente', 'competidor', 'domicilio', 'estadoRepublica', 'municipio', 'estado'];
   readonly GIROS    = GIROS_PROSPECTO;
@@ -209,10 +174,6 @@ export class ProspectosComponent implements OnInit {
     if (!event.data.__isNew) {
       event.data.__modified = true;
       this.hasUnsavedChanges = true;
-    }
-    if (event.column.getColId() === 'estadoRepublica' && event.newValue) {
-      event.data.municipio = '';
-      this.cargarMunicipios(event.newValue);
     }
     if (!this.enterPressed) return;
     this.enterPressed = false;
@@ -381,10 +342,6 @@ export class ProspectosComponent implements OnInit {
         width: 155,
         editable: true,
         filter: true,
-        cellEditor: 'agSelectCellEditor',
-        cellEditorParams: (params: any) => ({
-          values: this.municipiosCargados.get(params.data?.estadoRepublica ?? '') ?? [],
-        }),
       },
       {
         field: 'fechaProximoSeguimiento',
@@ -467,7 +424,6 @@ export class ProspectosComponent implements OnInit {
   ngOnInit() {
     this.cargarProspectos();
     this.cargarPlantillas();
-    ESTADOS_MEXICO.forEach(e => this.cargarMunicipios(e));
   }
 
   async cargarPlantillas() {
@@ -526,9 +482,6 @@ export class ProspectosComponent implements OnInit {
         this.originalData = JSON.parse(JSON.stringify(this.rowData));
         this.hasUnsavedChanges = false;
         this.loading = false;
-        // Precargar municipios de los estados ya existentes en los datos
-        const estadosUnicos = [...new Set(this.rowData.map((p: any) => p.estadoRepublica).filter(Boolean))];
-        estadosUnicos.forEach((e: string) => this.cargarMunicipios(e));
       },
       error: () => { this.loading = false; },
     });
