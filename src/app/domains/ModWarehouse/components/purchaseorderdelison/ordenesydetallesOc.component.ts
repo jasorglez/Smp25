@@ -33,6 +33,7 @@ interface OcRow {
   totalOc?: number;
   anticipoOc?: number;
   anticipoPagado?: boolean;
+  anticipoEstado?: string | null;   // 'EN_TRAMITE' | 'PAGADO' | null
   fechaAnticipo?: string | null;
   close?: boolean;
   __allItemsBlocked?: boolean;
@@ -361,13 +362,23 @@ export class OrdenesydetallesOcComponent implements OnDestroy {
         const monto = Number(p.data?.anticipoOc) || 0;
         if (monto <= 0) return '';
         const fmt = monto.toLocaleString('es-MX', { style: 'currency', currency: 'MXN', minimumFractionDigits: 2 });
-        if (p.data?.anticipoPagado) {
+        // 3 estados del anticipo (anticipoEstado): PAGADO | EN_TRAMITE | (null = sin registrar).
+        // Compatibilidad: si no viene anticipoEstado pero anticipoPagado=true, se trata como PAGADO.
+        const estado = p.data?.anticipoEstado || (p.data?.anticipoPagado ? 'PAGADO' : null);
+
+        if (estado === 'PAGADO') {
+          // Fecha SOLO visual (read-only) — viene de Gastos (día en que se pagó).
           const f = p.data?.fechaAnticipo ? this.formatFechaDmy(p.data.fechaAnticipo) : '';
           return `<div style="display:flex;align-items:center;gap:6px;height:100%;">
                     <span style="font-weight:600;">${fmt}</span>
                     <span style="color:#2e7d32;font-weight:700;font-size:.78rem;">✓ Pagado</span>
-                    <span class="oc-fecha-anticipo-edit" title="Click para editar fecha de pago"
-                          style="font-size:.75rem;color:#2e7d32;cursor:pointer;text-decoration:underline dotted;white-space:nowrap;">${f ? f + ' ✏️' : '(sin fecha) ✏️'}</span>
+                    ${f ? `<span style="font-size:.75rem;color:#2e7d32;white-space:nowrap;">${f}</span>` : ''}
+                  </div>`;
+        }
+        if (estado === 'EN_TRAMITE') {
+          return `<div style="display:flex;align-items:center;gap:6px;height:100%;">
+                    <span style="font-weight:600;">${fmt}</span>
+                    <span style="color:#1565c0;font-weight:700;font-size:.78rem;background:#e3f2fd;border:1px solid #90caf9;border-radius:4px;padding:1px 6px;">En trámite</span>
                   </div>`;
         }
         return `<div style="display:flex;align-items:center;gap:8px;height:100%;">
@@ -378,7 +389,6 @@ export class OrdenesydetallesOcComponent implements OnDestroy {
       onCellClicked: (p: any) => {
         const target = p.event?.target as HTMLElement;
         if (target?.closest?.('.oc-marcar-anticipo')) { this.onMarcarAnticipo(p.data); return; }
-        if (target?.closest?.('.oc-fecha-anticipo-edit')) { this.editAnticFecha(p.data); return; }
       },
       cellStyle: { textAlign: 'left' },
     },
@@ -482,7 +492,9 @@ export class OrdenesydetallesOcComponent implements OnDestroy {
       width: 140,
       type: 'numericColumn',
       // Precio guardado = BASE. Si la línea tiene IVA, se muestra con IVA REDONDEADO a 2 dec.
+      // Multi-entrega (>1 entrega): el precio se muestra POR ENTREGA en Nivel 5 → aquí va "—".
       valueGetter: (p: any) => {
+        if (this.itemEntregasCount(p.data) > 1) return null;
         const base = Number(p.data?.price) || 0;
         const v = p.data?.masIva ? base * (1 + this.ivaPercent / 100) : base;
         return Math.round(v * 100) / 100;
@@ -494,6 +506,13 @@ export class OrdenesydetallesOcComponent implements OnDestroy {
           : '';
       },
       cellRenderer: (p: any) => {
+        // Multi-entrega → "—" (el precio unitario vive por entrega en Nivel 5).
+        if (this.itemEntregasCount(p.data) > 1) {
+          const dash = document.createElement('span');
+          dash.textContent = '—';
+          dash.style.cssText = 'display:block; text-align:right; width:100%; color:#9e9e9e;';
+          return dash;
+        }
         const masIva = p.data?.masIva === true;
         const formatted = Number.isFinite(Number(p.value)) && Number(p.value) > 0
           ? Number(p.value).toLocaleString('es-MX', { style: 'currency', currency: 'MXN', minimumFractionDigits: 2 })
@@ -532,10 +551,14 @@ export class OrdenesydetallesOcComponent implements OnDestroy {
       headerName: 'Total',
       width: 120,
       type: 'numericColumn',
-      // Total = precio unitario con IVA REDONDEADO a 2 dec × cantidad (para que cuadre con el precio mostrado).
+      // Total del ítem. Multi-entrega: suma de los "Total x Entrega" (cada entrega con su IVA y su
+      // cantidad real de almacén) → __totalReal, calculado en loadItemsAlmacenData. Single-entrega:
+      // round2(precio con IVA) × cantidad recibida en almacén (si entró) o la planeada.
       valueGetter: (p: any) => {
+        if (p.data?.__totalReal != null) return p.data.__totalReal;
         const base = Number(p.data?.price) || 0;
-        const qty = Number(p.data?.quantity) || 0;
+        const qtyAlmacen = Number(p.data?.cantidadEntradaAlmacen) || 0;
+        const qty = qtyAlmacen > 0 ? qtyAlmacen : (Number(p.data?.quantity) || 0);
         const factor = p.data?.masIva ? (1 + this.ivaPercent / 100) : 1;
         const unit = Math.round(base * factor * 100) / 100;
         return unit * qty;
@@ -774,20 +797,66 @@ export class OrdenesydetallesOcComponent implements OnDestroy {
       valueParser: (p) => { const n = Number(p.newValue); return isNaN(n) ? p.oldValue : n; },
     },
     {
+      // Precio unitario POR ENTREGA: precio base del ítem OC × IVA propio de la entrega (round2).
+      colId: 'precioUnitarioEntrega',
+      headerName: 'Precio unitario',
+      width: 140,
+      editable: false,
+      type: 'numericColumn',
+      valueGetter: (p: any) => {
+        const base = Number(this.selectedArticleRow?.price) || 0;
+        const v = p.data?.masIva ? base * (1 + this.ivaPercent / 100) : base;
+        return Math.round(v * 100) / 100;
+      },
+      valueFormatter: (p) => {
+        const n = Number(p.value);
+        return Number.isFinite(n) && n > 0
+          ? n.toLocaleString('es-MX', { style: 'currency', currency: 'MXN', minimumFractionDigits: 2 })
+          : '';
+      },
+      cellRenderer: (p: any) => {
+        const formatted = Number.isFinite(Number(p.value)) && Number(p.value) > 0
+          ? Number(p.value).toLocaleString('es-MX', { style: 'currency', currency: 'MXN', minimumFractionDigits: 2 })
+          : '';
+        if (p.data?.masIva !== true) {
+          const span = document.createElement('span');
+          span.textContent = formatted;
+          span.style.cssText = 'display:block; text-align:right; width:100%;';
+          return span;
+        }
+        // Mismo visual que Nivel 4: precio con IVA + badge "+IVA" + tooltip de desglose.
+        const base = Number(this.selectedArticleRow?.price) || 0;
+        const div = document.createElement('div');
+        div.style.cssText = 'display:flex; align-items:center; justify-content:flex-end; gap:4px; width:100%; cursor:help;';
+        const span = document.createElement('span');
+        span.textContent = formatted;
+        div.appendChild(span);
+        const badge = document.createElement('span');
+        badge.textContent = '+IVA';
+        badge.style.cssText = 'font-size:0.6rem; background:#e3f2fd; color:#1565c0; border-radius:3px; padding:0 3px; font-weight:700; line-height:1.5; flex-shrink:0;';
+        div.appendChild(badge);
+        div.addEventListener('mouseenter', (ev: MouseEvent) => this.showPriceIvaTooltip(ev, base, Number(p.value)));
+        div.addEventListener('mousemove', (ev: MouseEvent) => this.moveOcTooltip(ev));
+        div.addEventListener('mouseleave', () => this.hideOcTooltip());
+        return div;
+      },
+    },
+    {
       field: 'totalEntrega',
       headerName: 'Total x Entrega',
       width: 140,
       editable: false,
       type: 'numericColumn',
       cellStyle: { backgroundColor: '#eeeeee', color: '#424242' },
-      // En vivo (Opción A): round2(precio unit con IVA) × cantidad a recibir, leyendo price/masIva
-      // del artículo seleccionado. Así refleja el IVA aunque se haya marcado luego en Gastos y
-      // corrige entregas ya guardadas con total base, sin depender del valor almacenado.
+      // En vivo (Opción A): round2(precio unit con IVA) × cantidad. El IVA es el de LA ENTREGA
+      // (p.data.masIva); el precio base viene del ítem OC. La cantidad usada es la REALMENTE recibida
+      // en almacén (cantidadEntradaAlmacen) si ya entró; mientras no, la planeada (cantidadRecibir).
       valueGetter: (p: any) => {
-        const qty = Number(p.data?.cantidadRecibir) || 0;
+        const qtyAlmacen = Number(p.data?.cantidadEntradaAlmacen) || 0;
+        const qty = qtyAlmacen > 0 ? qtyAlmacen : (Number(p.data?.cantidadRecibir) || 0);
         if (!qty) return p.data?.totalEntrega ?? null;
         const base = Number(this.selectedArticleRow?.price) || 0;
-        const factor = this.selectedArticleRow?.masIva ? (1 + this.ivaPercent / 100) : 1;
+        const factor = p.data?.masIva ? (1 + this.ivaPercent / 100) : 1;
         const unit = Math.round(base * factor * 100) / 100;
         return unit * qty;
       },
@@ -1110,9 +1179,15 @@ export class OrdenesydetallesOcComponent implements OnDestroy {
     } catch { return this.todayIso(); }
   }
 
+  /** Número efectivo de entregas de un ítem OC: conteo real si existe, si no el planeado (conditions). */
+  private itemEntregasCount(data: any): number {
+    const real = Number(data?.entregasCount ?? 0);
+    return real > 0 ? real : (Number(data?.conditions ?? 0) || 1);
+  }
+
   private emptyNivel3Row(fechaBase?: string): any {
     const today = this.todayIso();
-    return { id: null, fechaEntrega: fechaBase ?? today, cantidadRecibir: null, notaFactura: '', totalEntrega: null, fechaEntradaAlmacen: '' };
+    return { id: null, fechaEntrega: fechaBase ?? today, cantidadRecibir: null, notaFactura: '', totalEntrega: null, fechaEntradaAlmacen: '', masIva: false };
   }
 
   private addDaysToIso(isoDate: string, days: number): string {
@@ -1167,6 +1242,7 @@ export class OrdenesydetallesOcComponent implements OnDestroy {
               notaFactura: s.notaFactura ?? '',
               totalEntrega: s.totalEntrega ?? null,
               fechaEntradaAlmacen: s.fechaEntradaAlmacen ?? '',
+              masIva: (s as any).masIva ?? false,   // IVA propio de la entrega (multi-entrega)
             }))
           : Array.from({ length: planned }, (_, i) => this.emptyNivel3Row(this.addDaysToIso(fechaBase, i)));
 
@@ -1308,6 +1384,7 @@ export class OrdenesydetallesOcComponent implements OnDestroy {
             totalOc: Number(oc.total ?? oc.Total ?? 0) || 0,
             anticipoOc: Number(oc.anticipoOc ?? oc.AnticipoOc ?? 0) || 0,
             anticipoPagado: (oc.anticipoPagado ?? oc.AnticipoPagado) === true,
+            anticipoEstado: oc.anticipoEstado ?? oc.AnticipoEstado ?? null,
             fechaAnticipo: oc.fechaAnticipo ?? oc.FechaAnticipo ?? null,
             close: oc.close ?? oc.Close ?? false,
           };
@@ -1371,27 +1448,27 @@ export class OrdenesydetallesOcComponent implements OnDestroy {
     }
   }
 
-  /** Registra el pago del anticipo de una OC (monto = Anticipo OC calculado). */
+  /** Registra el anticipo de una OC (queda EN TRÁMITE y aparece en la Captura de Gastos). */
   async onMarcarAnticipo(row: any): Promise<void> {
     if (!row?.id) return;
     const monto = Number(row.anticipoOc) || 0;
     if (monto <= 0) return;
     const fmt = monto.toLocaleString('es-MX', { style: 'currency', currency: 'MXN', minimumFractionDigits: 2 });
     const confirm = await alerts.confirmAlert(
-      'Registrar pago de anticipo',
-      `¿Confirmas que ya se entregó el anticipo de ${fmt} para la OC ${row.folio}? Este saldo se aplicará a las entregas en la Hoja de Gastos.`,
+      'Registrar anticipo',
+      `Se registrará el anticipo de ${fmt} para la OC ${row.folio}. Quedará EN TRÁMITE y aparecerá en la Captura de Gastos, donde deberás pagarlo para que cuente. ¿Continuar?`,
       'question', 'Sí, registrar'
     );
     if (!confirm.isConfirmed) return;
     try {
       await lastValueFrom(this.gastosService.marcarAnticipo(row.id, monto));
-      row.anticipoPagado = true;
+      row.anticipoEstado = 'EN_TRAMITE';   // pasa a trámite (el pago real se hace en Captura)
       row.fechaAnticipo = new Date().toISOString().split('T')[0];
       if (this.gridApi && !this.gridApi.isDestroyed()) {
         this.gridApi.refreshCells({ rowNodes: [], force: true });
         this.gridApi.setGridOption('rowData', this.rowData);
       }
-      alerts.reqSuccessToast('Anticipo registrado', `${row.folio}: anticipo de ${fmt} marcado como pagado.`);
+      alerts.reqSuccessToast('Anticipo registrado', `${row.folio}: anticipo de ${fmt} en trámite. Págalo en la Captura de Gastos.`);
     } catch (err) {
       console.error('Error marcando anticipo:', err);
       alerts.reqErrorToast('Error', 'No se pudo registrar el anticipo.');
@@ -1833,13 +1910,38 @@ export class OrdenesydetallesOcComponent implements OnDestroy {
             row.__notaFromGasto = false;
           }
         }
+
+        // Total real del ítem MULTI-ENTREGA = Σ "Total x Entrega" de sus entregas (cada una con su
+        // IVA y su cantidad: almacén si entró, si no la planeada). Así cuadra con la suma del Nivel 5.
+        if (this.itemEntregasCount(row) > 1) {
+          try {
+            const entregas: any[] = await lastValueFrom(this.entregaOcService.getByDetail(row.id)).catch(() => []);
+            const almacenByEntrega = new Map<number, number>();
+            for (const e of list) {
+              const ide = Number((e as any).idEntrega ?? 0);
+              if (ide > 0) almacenByEntrega.set(ide, (almacenByEntrega.get(ide) ?? 0) + Number(e.cantidadEntrada ?? 0));
+            }
+            const base = Number(row.price) || 0;
+            let totalReal = 0;
+            for (const g of (Array.isArray(entregas) ? entregas : [])) {
+              const factor = (g as any).masIva ? (1 + this.ivaPercent / 100) : 1;
+              const unit = Math.round(base * factor * 100) / 100;
+              const qa = almacenByEntrega.get(Number(g.id)) ?? 0;
+              const qty = qa > 0 ? qa : (Number(g.cantidadRecibir) || 0);
+              totalReal += unit * qty;
+            }
+            row.__totalReal = totalReal;
+          } catch { row.__totalReal = null; }
+        } else {
+          row.__totalReal = null;
+        }
       } catch {
         row.cantidadEntradaAlmacen = null;
         row.fechaEntradaAlmacen = null;
       }
     }));
     if (this.itemsGridApi && !this.itemsGridApi.isDestroyed()) {
-      this.itemsGridApi.refreshCells({ columns: ['cantidadEntradaAlmacen', 'fechaEntradaAlmacen', 'notaFactura'], force: true });
+      this.itemsGridApi.refreshCells({ columns: ['cantidadEntradaAlmacen', 'fechaEntradaAlmacen', 'notaFactura', 'total'], force: true });
     }
   }
 
@@ -1941,7 +2043,8 @@ export class OrdenesydetallesOcComponent implements OnDestroy {
       }
     }));
     if (this.nivel3GridApi && !this.nivel3GridApi.isDestroyed()) {
-      this.nivel3GridApi.refreshCells({ columns: ['cantidadEntradaAlmacen', 'fechaEntradaAlmacen', 'pdf'], force: true });
+      // 'totalEntrega' se incluye para recalcular el Total x Entrega ahora que ya hay cantidad de almacén.
+      this.nivel3GridApi.refreshCells({ columns: ['cantidadEntradaAlmacen', 'fechaEntradaAlmacen', 'totalEntrega', 'pdf'], force: true });
     }
   }
 

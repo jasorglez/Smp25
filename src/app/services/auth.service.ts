@@ -409,12 +409,35 @@ export class AuthService {
     );
   }
 
+  private _permCache    = new Map<number, Observable<any>>();
+  private _permAdvCache = new Map<string, Observable<any>>();
+
   fetchUserPermissions(userId: number): Observable<any> {
-    return this.http.get(`${environment.urlSecurity}/UserSystemPermissions/guard/${userId}`, { headers: this.trackingService.getHeaders() });
+    if (!this._permCache.has(userId)) {
+      this._permCache.set(
+        userId,
+        this.http.get(`${environment.urlSecurity}/UserSystemPermissions/guard/${userId}`, { headers: this.trackingService.getHeaders() })
+          .pipe(shareReplay(1))
+      );
+    }
+    return this._permCache.get(userId)!;
   }
 
   fetchUserPermissionsAdvanced(userId: number, idBranch: number): Observable<any> {
-    return this.http.get(`${environment.urlSecurity}/UserSystemPermissions/guardAdvanced/${userId}/${idBranch}`, { headers: this.trackingService.getHeaders() });
+    const key = `${userId}_${idBranch}`;
+    if (!this._permAdvCache.has(key)) {
+      this._permAdvCache.set(
+        key,
+        this.http.get(`${environment.urlSecurity}/UserSystemPermissions/guardAdvanced/${userId}/${idBranch}`, { headers: this.trackingService.getHeaders() })
+          .pipe(shareReplay(1))
+      );
+    }
+    return this._permAdvCache.get(key)!;
+  }
+
+  clearPermissionsCache(): void {
+    this._permCache.clear();
+    this._permAdvCache.clear();
   }
 
   /**

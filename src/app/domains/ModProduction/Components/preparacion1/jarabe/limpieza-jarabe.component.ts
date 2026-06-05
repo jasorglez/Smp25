@@ -6,12 +6,13 @@ import { ColDef, GridApi, GridReadyEvent } from 'ag-grid-enterprise';
 import { AG_GRID_LOCALE_ES } from 'assets/i18n/ag-grid.locale.es';
 import { alerts } from 'app/helpers/alerts';
 import { ProductionService } from 'app/services/production.service';
+import { PartesLimpiezaComponent } from './partes-limpieza.component';
 import { lastValueFrom } from 'rxjs';
 
 @Component({
   selector: 'app-limpieza-jarabe',
   standalone: true,
-  imports: [CommonModule, FormsModule, AgGridModule],
+  imports: [CommonModule, FormsModule, AgGridModule, PartesLimpiezaComponent],
   template: `
     <div style="padding: 5px; background-color: #e3f2fd; height: 100%; display: flex; flex-direction: column; box-sizing: border-box; overflow: hidden;">
       <div style="margin-bottom: 5px; display: flex; justify-content: space-between; align-items: center; flex-shrink: 0;">
@@ -142,12 +143,18 @@ export class LimpiezaJarabeComponent implements OnInit, OnChanges {
     if (this.gridApi) this.loadData();
   }
 
+  expandedPartesRowId: string | null = null;
+
   public gridOptions: any = {
     rowSelection: 'single',
     headerHeight: 32,
     rowHeight: 32,
     animateRows: true,
-    rowClassRules: { 'new-row-highlight': (p: any) => !!p.data?.__isNew }
+    rowClassRules: { 'new-row-highlight': (p: any) => !!p.data?.__isNew },
+    masterDetail: true,
+    detailRowHeight: 180,
+    isRowMaster: () => true,
+    detailCellRenderer: PartesLimpiezaComponent,
   };
 
   colDefs: ColDef[] = [
@@ -168,6 +175,24 @@ export class LimpiezaJarabeComponent implements OnInit, OnChanges {
         p.data.fecha = p.newValue instanceof Date ? p.newValue : (p.newValue ? new Date(p.newValue) : null);
         p.data.__modified = true; this.hasUnsavedChanges = true; return true;
       }
+    },
+    {
+      field: 'partesCount',
+      headerName: 'Actividades',
+      width: 120,
+      editable: false,
+      cellRenderer: (p: any) => {
+        const count = p.value || 0;
+        const isNew = !!p.data?.__isNew;
+        const container = document.createElement('div');
+        container.style.cssText = isNew
+          ? 'display:flex;align-items:center;gap:6px;cursor:not-allowed;color:#aaa;'
+          : 'display:flex;align-items:center;gap:6px;cursor:pointer;color:#c62828;text-decoration:underline;';
+        container.innerHTML = `<i class="bi bi-puzzle"></i><span>${count} parte(s)</span>`;
+        if (!isNew) container.addEventListener('click', () => this.togglePartesCascade(p.node));
+        return container;
+      },
+      cellStyle: { backgroundColor: '#fce4ec', cursor: 'pointer' }
     },
     {
       field: 'realizo',
@@ -224,22 +249,39 @@ export class LimpiezaJarabeComponent implements OnInit, OnChanges {
     const idPreparacion = this.internalParams?.data?.id;
     if (!idPreparacion) return;
     this.dataLoaded = true;
-    try {
-      const data = await lastValueFrom(this.productionService.getLimpieza(idPreparacion));
-      this.rowData = (Array.isArray(data) ? data : []).map((d: any) => this.mapItem(d));
-      this.originalRowData = this.rowData.map(r => ({ ...r }));
-      this.gridApi?.setGridOption('rowData', this.rowData);
-    } catch { this.rowData = []; }
+    this.rowData = [
+      { id: 1, idPreparacion, fecha: new Date('2026-05-10'), partesCount: 3, realizo: 'JUAN PÉREZ',   verifico: 'MARÍA LÓPEZ',  observaciones: 'Limpieza completa del área de jarabe', __isNew: false, __modified: false },
+      { id: 2, idPreparacion, fecha: new Date('2026-05-17'), partesCount: 2, realizo: 'CARLOS RUIZ',  verifico: 'ANA MARTÍNEZ', observaciones: 'Limpieza rutinaria semanal',           __isNew: false, __modified: false },
+      { id: 3, idPreparacion, fecha: new Date('2026-05-24'), partesCount: 4, realizo: 'PEDRO GÓMEZ',  verifico: 'JUAN PÉREZ',   observaciones: '',                                     __isNew: false, __modified: false },
+    ];
+    this.originalRowData = this.rowData.map(r => ({ ...r }));
+    this.gridApi?.setGridOption('rowData', this.rowData);
   }
 
   private mapItem(d: any): any {
     return {
       id: d.id, idPreparacion: d.idPreparacion,
       fecha: d.fecha ? new Date(d.fecha) : null,
+      partesCount: d.partesCount ?? 0,
       realizo: d.realizo ?? '', verifico: d.verifico ?? '',
       observaciones: d.observaciones ?? '',
       __isNew: false, __modified: false
     };
+  }
+
+  togglePartesCascade(node: any) {
+    if (this.expandedPartesRowId === node.id) {
+      node.setExpanded(false);
+      this.expandedPartesRowId = null;
+    } else {
+      if (this.expandedPartesRowId) {
+        this.gridApi.forEachNode((n: any) => {
+          if (n.id === this.expandedPartesRowId) n.setExpanded(false);
+        });
+      }
+      this.expandedPartesRowId = node.id;
+      setTimeout(() => node.setExpanded(true), 0);
+    }
   }
 
   addItem() {
@@ -247,7 +289,7 @@ export class LimpiezaJarabeComponent implements OnInit, OnChanges {
     if (!idPreparacion) { alerts.basicAlert('Aviso', 'Guarda el registro principal antes de agregar limpieza.', 'warning'); return; }
     const newItem = {
       id: `temp_${++this.tempIdCounter}`, idPreparacion,
-      fecha: new Date(), realizo: '', verifico: '', observaciones: '',
+      fecha: new Date(), partesCount: 0, realizo: '', verifico: '', observaciones: '',
       __isNew: true, __modified: false
     };
     this.rowData = [newItem, ...this.rowData];

@@ -111,6 +111,23 @@ export const routes: Routes = [
             ],
           },
           {
+            path: 'inventario',
+            loadComponent: () =>
+              import(
+                './domains/Almacenes/pages/inventario/inventario.component'
+              ).then((i) => i.InventarioComponent),
+            children: [
+              { path: '', redirectTo: 'materia-prima', pathMatch: 'full' },
+              {
+                path: 'materia-prima',
+                loadComponent: () =>
+                  import(
+                    './domains/Almacenes/components/inventario-materia-prima/inventario-materia-prima.component'
+                  ).then((m) => m.InventarioMateriaPrimaComponent),
+              },
+            ],
+          },
+          {
             path: 'catalogo',
             loadComponent: () =>
               import('./domains/SMP/Components/catalogs/catalogs.component')

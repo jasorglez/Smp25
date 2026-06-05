@@ -107,9 +107,18 @@ export class GastosComponent {
     { field: 'folio', headerName: 'Folio entrega', width: 170 },
     {
       headerName: 'Tipo Req', width: 160,
-      valueGetter: (p: any) => p.data?.docType === 'CR' ? 'Compra Rápida' : (p.data?.tipoOc || '—'),
+      valueGetter: (p: any) => p.data?.docType === 'ANTICIPO' ? 'Anticipo'
+        : (p.data?.docType === 'CR' ? 'Compra Rápida' : (p.data?.tipoOc || '—')),
     },
-    { field: 'articulo', headerName: 'Artículo', width: 150 },
+    {
+      field: 'articulo', headerName: 'Artículo', width: 150,
+      // Anticipo: la celda solo dice "Artículo" (subrayado punteado) y el desglose va en el tooltip.
+      cellRenderer: (p: any) => p.data?.docType === 'ANTICIPO' ? 'Anticipo' : (p.value ?? ''),
+      cellStyle: (p: any) => p.data?.docType === 'ANTICIPO'
+        ? { textDecoration: 'underline dotted', cursor: 'help' } : null,
+      tooltipComponent: StyledTooltipComponent,
+      tooltipValueGetter: (p: any) => this.buildAnticipoTooltip(p.data),
+    },
     { field: 'numArticulo', headerName: 'Num. Articulo', width: 130 },
     {
       field: 'proveedor', headerName: 'Proveedor', width: 170,
@@ -162,8 +171,11 @@ export class GastosComponent {
     },
     {
       field: 'cantidad', headerName: 'Cant.', width: 90, type: 'numericColumn',
+      // Un anticipo no tiene cantidad (es un monto único) → mostrar "—".
+      valueFormatter: (p: any) => p.data?.docType === 'ANTICIPO' ? '—' : p.value,
       tooltipComponent: StyledTooltipComponent,
       tooltipValueGetter: (p: any) => {
+        if (p.data?.docType === 'ANTICIPO') return null;
         const req = Number(p.data?.cantidadReq) || 0;
         const oc  = Number(p.data?.cantidadOc)  || 0;
         if (!req && !oc) return null;
@@ -174,7 +186,8 @@ export class GastosComponent {
       field: 'precioUnitario', headerName: 'P. Unit.', width: 100, type: 'numericColumn',
       editable: (p: any) => p.data?.docType === 'CR',
       cellEditor: 'agNumberCellEditor',
-      valueFormatter: (p: any) => this.money(p.value),
+      // Un anticipo no tiene precio unitario → mostrar "—".
+      valueFormatter: (p: any) => p.data?.docType === 'ANTICIPO' ? '—' : this.money(p.value),
       cellStyle: (p: any) => p.data?.docType === 'CR' ? { backgroundColor: '#fffde7' } : null,
       // Cuando el IVA está aplicado, el tooltip muestra el P. Unit. original (sin IVA).
       tooltipComponent: StyledTooltipComponent,
@@ -187,7 +200,12 @@ export class GastosComponent {
       field: 'valorPago', headerName: 'Valor', width: 110, type: 'numericColumn',
       editable: false,                       // calculado: P. Unit. × Cant. (con IVA si aplica)
       valueFormatter: (p: any) => this.money(p.value),
-      cellStyle: { backgroundColor: '#eef2f6', fontWeight: '600' },
+      cellStyle: (p: any) => p.data?.docType === 'ANTICIPO'
+        ? { backgroundColor: '#eef2f6', fontWeight: '600', textDecoration: 'underline dotted', cursor: 'help' }
+        : { backgroundColor: '#eef2f6', fontWeight: '600' },
+      // Anticipo: tooltip con Costo total OC y % del anticipo.
+      tooltipComponent: StyledTooltipComponent,
+      tooltipValueGetter: (p: any) => this.buildAnticipoValorTooltip(p.data),
     },
     {
       field: 'fechaRecepcion', headerName: 'Fecha Recep.', width: 120,
@@ -216,9 +234,9 @@ export class GastosComponent {
         if (d.docType === 'CR' && d.__modified === true) {
           return `PAGO BLOQUEADO\nGuarda los cambios antes de pagar`;
         }
-        // Anticipo requerido pero NO registrado → bloquear hasta registrarlo en el grid de OCs.
+        // Anticipo requerido pero aún no PAGADO → bloquear la entrega hasta pagar el anticipo.
         if (d.calculoAnticipo === true && d.anticipoPagado !== true) {
-          return `PAGO BLOQUEADO\nNo has registrado el anticipo.\nRegístralo para poder continuar.`;
+          return `PAGO BLOQUEADO\nRegistra y paga el anticipo\nde esta OC antes de continuar.`;
         }
         // Crédito → botón Crédito
         if (d.calculoAnticipo === false && Number(d.condicionCantidad) > 0 && d.credito !== true) {
@@ -289,9 +307,10 @@ export class GastosComponent {
     // Color de fila según la condición de pago (ver leyenda):
     // azul=anticipo, naranja=crédito, verde=sin anticipo ni crédito (contado).
     rowClassRules: {
-      'gx-row-anticipo': (p: any) => p.data?.calculoAnticipo === true,
-      'gx-row-credito':  (p: any) => p.data?.calculoAnticipo === false && Number(p.data?.condicionCantidad) > 0,
-      'gx-row-contado':  (p: any) => p.data?.calculoAnticipo !== true && !(Number(p.data?.condicionCantidad) > 0),
+      // La fila de anticipo (gasto general) también va azul.
+      'gx-row-anticipo': (p: any) => p.data?.calculoAnticipo === true || p.data?.docType === 'ANTICIPO',
+      'gx-row-credito':  (p: any) => p.data?.docType !== 'ANTICIPO' && p.data?.calculoAnticipo === false && Number(p.data?.condicionCantidad) > 0,
+      'gx-row-contado':  (p: any) => p.data?.docType !== 'ANTICIPO' && p.data?.calculoAnticipo !== true && !(Number(p.data?.condicionCantidad) > 0),
     },
     onCellValueChanged: (event: any) => {
       const field = event?.colDef?.field;
@@ -373,30 +392,58 @@ export class GastosComponent {
     { field: 'fechaPago', headerName: 'Fecha Pago', width: 120, filter: 'agDateColumnFilter', valueFormatter: (p: any) => this.fmtDate(p.value) },
     { field: 'branchName', headerName: 'Sucursal', width: 110 },
     { field: 'folio', headerName: 'Folio entrega', width: 170 },
-    { headerName: 'Tipo Req', width: 160, valueGetter: (p: any) => p.data?.docType === 'CR' ? 'Compra Rápida' : (p.data?.tipoOc || '—') },
-    { field: 'articulo', headerName: 'Artículo', width: 150 },
+    { headerName: 'Tipo Req', width: 160, valueGetter: (p: any) => p.data?.docType === 'ANTICIPO' ? 'Anticipo' : (p.data?.docType === 'CR' ? 'Compra Rápida' : (p.data?.tipoOc || '—')) },
+    {
+      field: 'articulo', headerName: 'Artículo', width: 150,
+      cellRenderer: (p: any) => p.data?.docType === 'ANTICIPO' ? 'Anticipo' : (p.value ?? ''),
+      cellStyle: (p: any) => p.data?.docType === 'ANTICIPO'
+        ? { textDecoration: 'underline dotted', cursor: 'help' } : null,
+      tooltipComponent: StyledTooltipComponent,
+      tooltipValueGetter: (p: any) => this.buildAnticipoTooltip(p.data),
+    },
     { field: 'numArticulo', headerName: 'Num. Articulo', width: 130, hide: true },   // oculta solo en el histórico
     { field: 'proveedor', headerName: 'Proveedor', width: 150 },
     { field: 'notaFactura', headerName: 'Nota / Factura', width: 130 },
     { field: 'masIva', headerName: 'IVA', width: 70, cellRenderer: 'agCheckboxCellRenderer', cellStyle: { textAlign: 'center' } },
-    { field: 'cantidad', headerName: 'Cant.', width: 90, type: 'numericColumn' },
+    { field: 'cantidad', headerName: 'Cant.', width: 90, type: 'numericColumn', valueFormatter: (p: any) => p.data?.docType === 'ANTICIPO' ? '—' : p.value },
     {
       headerName: 'P. Unit.', width: 100, type: 'numericColumn',
       // P. Unit. efectivo pagado = valor / cantidad (ya incluye IVA porque el pago lo incluye).
       valueGetter: (p: any) => {
+        if (p.data?.docType === 'ANTICIPO') return null;   // anticipo: monto único, sin P. Unit.
         const q = Number(p.data?.cantidad) || 0;
         const v = Number(p.data?.valorPago) || 0;
         return q > 0 ? Math.round((v / q) * 100) / 100 : 0;
       },
-      valueFormatter: (p: any) => this.money(p.value),
+      valueFormatter: (p: any) => p.data?.docType === 'ANTICIPO' ? '—' : this.money(p.value),
     },
-    { field: 'valorPago', headerName: 'Valor', width: 110, type: 'numericColumn', valueFormatter: (p: any) => this.money(p.value), cellStyle: { fontWeight: '600' } },
+    {
+      field: 'valorPago', headerName: 'Valor', width: 110, type: 'numericColumn',
+      // Entrega con anticipo aplicado → muestra el NETO (bruto − anticipo aplicado). Anticipo → su monto.
+      valueFormatter: (p: any) => this.money(this.histValorNeto(p.data)),
+      cellStyle: (p: any) => {
+        const esAnticipo = p.data?.docType === 'ANTICIPO';
+        const tieneDesc = !esAnticipo && (Number(p.data?.anticipoAplicado) || 0) > 0;
+        return (esAnticipo || tieneDesc)
+          ? { fontWeight: '600', textDecoration: 'underline dotted', cursor: 'help' }
+          : { fontWeight: '600' };
+      },
+      // Anticipo → tooltip de consumo; entrega con descuento → tooltip Bruto/Anticipo/Neto.
+      tooltipComponent: StyledTooltipComponent,
+      tooltipValueGetter: (p: any) => p.data?.docType === 'ANTICIPO'
+        ? this.buildAnticipoValorTooltip(p.data)
+        : this.buildEntregaValorTooltip(p.data),
+    },
   ];
 
   historicoGridOptions: any = {
     headerHeight: 30,
     rowHeight: 30,
     defaultColDef: { resizable: true, sortable: true, filter: true },
+    // Anticipo (gasto general) → fila azul, consistente con la Captura.
+    rowClassRules: {
+      'gx-row-anticipo': (p: any) => p.data?.docType === 'ANTICIPO',
+    },
     onFirstDataRendered: (p: any) => { p.api.autoSizeAllColumns(); this.recomputeHistTotals(); },
     isExternalFilterPresent: () => this.histHasExternalFilter(),
     doesExternalFilterPass: (node: any) => this.histFilterPass(node),
@@ -409,6 +456,15 @@ export class GastosComponent {
 
   loadHistorico(): void {
     if (!this.idCompany) return;
+    // Default al entrar: periodo "Semana" (solo si el usuario no ha elegido otro). Respeta su selección.
+    if (!this.histPeriod) {
+      this.histPeriod = 'SEMANA';
+      const today = new Date();
+      const monday = new Date(today); const day = (today.getDay() + 6) % 7;
+      monday.setDate(today.getDate() - day);
+      this.histStart = this.toIso(monday);
+      this.histEnd = this.toIso(today);
+    }
     this.histLoading = true;
     this.histError = '';
     this.gastosService.getPaidPayments(this.idCompany).subscribe({
@@ -417,7 +473,7 @@ export class GastosComponent {
         this.histProveedores = [...new Set(this.historicoRows.map(r => r.proveedor || '').filter(Boolean))].sort();
         this.histSucursales = [...new Set(this.historicoRows.map(r => r.branchName || '').filter(Boolean))].sort();
         this.histLoading = false;
-        setTimeout(() => { this.histGridApi?.autoSizeAllColumns(); this.recomputeHistTotals(); }, 0);
+        setTimeout(() => { this.histGridApi?.autoSizeAllColumns(); this.applyHistFilters(); this.recomputeHistTotals(); }, 0);
       },
       error: (err) => {
         console.error('Error cargando histórico de pagos:', err);
@@ -470,10 +526,109 @@ export class GastosComponent {
     return true;
   }
 
+  /** Construye el objeto del tooltip tabular (StyledTooltipComponent) para una fila de anticipo:
+   *  columnas Artículo · Cantidad · P. Unit · Total x art., con divisor + suma. */
+  buildAnticipoTooltip(row: any): any {
+    if (!row || row.docType !== 'ANTICIPO') return null;
+    const items = row.anticipoItems || [];
+    if (!items.length) return null;
+    const rows = items.map((it: any) => [
+      it.articulo || '',
+      String(it.cantidad ?? 0),
+      this.money(Number(it.precioUnitario) || 0),
+      this.money(Number(it.total) || 0),
+    ]);
+    const total = items.reduce((s: number, it: any) => s + (Number(it.total) || 0), 0);
+    return {
+      title: 'Artículos del anticipo',
+      table: {
+        headers: ['Artículo', 'Cantidad', 'P. Unit', 'Total x art.'],
+        rows,
+        totalFmt: this.money(total),
+      },
+    };
+  }
+
+  /** Tooltip de la columna Valor en la fila de ANTICIPO: total + % (una vez) y el consumo por entrega. */
+  buildAnticipoValorTooltip(row: any): any {
+    if (!row || row.docType !== 'ANTICIPO') return null;
+    const total = Number(row.valorPago) || 0;   // total del anticipo
+    // Porcentaje ORIGINAL (condiciones_pago.cantidad) que viene del backend; NO recalcular con IVA.
+    const pct = Number(row.anticipoPorcentaje) || 0;
+    const consumo = row.anticipoConsumo || [];
+    let restante = total;
+    const rows = consumo.map((c: any) => {
+      const desc = Number(c.descuento) || 0;
+      restante = restante - desc;
+      return [c.folioEntrega || '', this.money(desc), this.money(restante)];
+    });
+    return {
+      title: 'Anticipo',
+      summary: [ ['Total anticipo', this.money(total)], ['Porcentaje', `${pct}%`] ],
+      table: { headers: ['Folio entrega', 'Descuento', 'Restante'], rows },
+    };
+  }
+
+  /** Tooltip de la columna Valor en una ENTREGA con anticipo aplicado: Bruto / Anticipo aplicado / Neto,
+   *  más el estado del anticipo (Total → desglose por entrada hasta ésta → restante). */
+  buildEntregaValorTooltip(row: any): any {
+    if (!row || row.docType === 'ANTICIPO') return null;
+    const aplicado = Number(row.anticipoAplicado) || 0;
+    if (aplicado <= 0) return null;
+    const bruto = Number(row.valorPago) || 0;
+    const neto = bruto - aplicado;
+
+    const result: any = {
+      title: 'Pago de entrega',
+      table: {
+        headers: ['Concepto', 'Monto'],
+        rows: [
+          ['Bruto', this.money(bruto)],
+          ['Anticipo aplicado', '-' + this.money(aplicado)],
+        ],
+        totalFmt: this.money(neto),
+      },
+    };
+
+    // Estado del anticipo: total y desglose acumulado hasta ESTA entrada (incluida).
+    const total = Number(row.anticipoMonto) || 0;
+    const consumo = Array.isArray(row.anticipoConsumo) ? row.anticipoConsumo : [];
+    if (total > 0 && consumo.length) {
+      const folio = String(row.folio ?? '');
+      const idx = consumo.findIndex((c: any) => String(c.folioEntrega ?? '') === folio);
+      // Hasta la entrada actual (si está en el ledger); si no (pendiente), todas + ésta al final.
+      const hasta = idx >= 0
+        ? consumo.slice(0, idx + 1)
+        : [...consumo, { folioEntrega: folio, descuento: aplicado }];
+
+      let restante = total;
+      const ledgerRows = hasta.map((c: any) => {
+        const desc = Number(c.descuento) || 0;
+        restante = restante - desc;
+        return [c.folioEntrega || '', '-' + this.money(desc), this.money(restante)];
+      });
+
+      result.extra = {
+        title: 'Anticipo',
+        summary: [['Total anticipo', this.money(total)]],
+        table: { headers: ['Entrada', 'Descuento', 'Restante'], rows: ledgerRows, totalFmt: this.money(restante) },
+      };
+    }
+
+    return result;
+  }
+
+  /** Valor neto de una fila del histórico: entrega = bruto − anticipo aplicado; anticipo = su monto. */
+  private histValorNeto(d: any): number {
+    const v = Number(d?.valorPago) || 0;
+    if (d?.docType === 'ANTICIPO') return v;
+    return v - (Number(d?.anticipoAplicado) || 0);
+  }
+
   private recomputeHistTotals(): void {
     let count = 0, total = 0;
     this.histGridApi?.forEachNodeAfterFilterAndSort((n: any) => {
-      count++; total += Number(n.data?.valorPago) || 0;
+      count++; total += this.histValorNeto(n.data);
     });
     this.histCount = count;
     this.histTotal = total;
@@ -484,20 +639,21 @@ export class GastosComponent {
     const rows: any[] = [];
     this.histGridApi?.forEachNodeAfterFilterAndSort((n: any) => {
       const d = n.data;
+      const esAnticipo = d.docType === 'ANTICIPO';
       const q = Number(d.cantidad) || 0; const v = Number(d.valorPago) || 0;
       rows.push({
         'Fecha Pago': this.fmtDate(d.fechaPago),
         'Sucursal': d.branchName,
         'Folio': d.folio,
-        'Tipo Req': d.docType === 'CR' ? 'Compra Rápida' : (d.tipoOc || ''),
+        'Tipo Req': esAnticipo ? 'Anticipo' : (d.docType === 'CR' ? 'Compra Rápida' : (d.tipoOc || '')),
         'Artículo': d.articulo,
         'Num. Articulo': d.numArticulo || '',
         'Proveedor': d.proveedor || '',
         'Nota / Factura': d.notaFactura || '',
         'IVA': d.masIva ? 'Sí' : 'No',
-        'Cantidad': q,
-        'P. Unit.': q > 0 ? Math.round((v / q) * 100) / 100 : 0,
-        'Valor': v,
+        'Cantidad': esAnticipo ? '' : q,
+        'P. Unit.': esAnticipo ? '' : (q > 0 ? Math.round((v / q) * 100) / 100 : 0),
+        'Valor': this.histValorNeto(d),   // neto: entrega = bruto − anticipo aplicado
       });
     });
     if (rows.length === 0) { alerts.basicAlert('Sin datos', 'No hay filas para exportar.', 'info'); return; }
@@ -534,6 +690,9 @@ export class GastosComponent {
         // Opción B: detailsreqoc.price es SIEMPRE el precio BASE (sin IVA). No dividir.
         // El display (con IVA) y el Valor se recalculan a partir del base.
         list.forEach((r: any) => {
+          // Gastos generales (anticipo, etc.): su Valor es un monto único, NO cantidad×precio.
+          // No recalcular por IVA (eso pondría valorPago=0). Se conserva el monto del backend.
+          if (r.idGastoGeneral) { r.__precioBase = 0; return; }
           r.__precioBase = Number(r.precioUnitario) || 0;
           this.recalcRowIva(r);
         });
@@ -552,8 +711,31 @@ export class GastosComponent {
     });
   }
 
+  /** Paga una fila de gasto general (anticipo EN TRÁMITE) desde la Captura. */
+  async onPagarAnticipo(row: PendingPayment): Promise<void> {
+    if (!row?.idGastoGeneral) return;
+    const confirm = await alerts.confirmAlert(
+      'Confirmar pago de anticipo',
+      `¿Confirmar el pago del anticipo de ${this.money(row.valorPago)} para "${row.folio}"? Se registrará con la fecha de hoy.`,
+      'question', 'Sí, pagar'
+    );
+    if (!confirm.isConfirmed) return;
+    try {
+      const fechaPago = row.fechaPago ?? this.toIso(new Date());
+      await lastValueFrom(this.gastosService.confirmAnticipo(row.idGastoGeneral, fechaPago, row.notaFactura ?? null));
+      this.capturaRows = this.capturaRows.filter(r => r.idGastoGeneral !== row.idGastoGeneral);
+      alerts.reqSuccessToast('Anticipo pagado', `${row.folio}: anticipo registrado como pagado.`);
+      this.loadReport();
+    } catch (err) {
+      console.error('Error pagando anticipo:', err);
+      alerts.reqErrorToast('Error', 'No se pudo registrar el pago del anticipo.');
+    }
+  }
+
   async onPagar(row: PendingPayment): Promise<void> {
     if (!row) return;
+    // Fila de gasto general (anticipo, etc.): se paga por su propio flujo, no por entradas_molienda.
+    if (row.idGastoGeneral) { await this.onPagarAnticipo(row); return; }
     if ((row as any).__venceModified) {
       alerts.basicAlert('Guarda primero', 'Modificaste la fecha de vencimiento. Debes guardar los cambios antes de continuar con el pago.', 'warning');
       return;
@@ -574,24 +756,18 @@ export class GastosComponent {
       alerts.basicAlert('Guarda primero', 'Guarda los cambios antes de pagar esta compra rápida.', 'warning');
       return;
     }
-    // Anticipo requerido pero NO registrado → bloquear hasta registrarlo en el grid de OCs.
+    // Anticipo requerido pero aún no PAGADO → bloquear la entrega hasta pagar el anticipo.
     if (row.calculoAnticipo === true && row.anticipoPagado !== true) {
-      alerts.basicAlert('Anticipo no registrado', 'No has registrado el anticipo, registra el anticipo para poder continuar.', 'warning');
+      alerts.basicAlert('Anticipo pendiente', 'Registra y paga el anticipo de esta OC antes de pagar esta entrega.', 'warning');
       return;
     }
 
-    // Bloque ANTICIPO: si la OC tiene anticipo pagado con saldo disponible, aplicarlo a esta entrada.
+    // Bloque ANTICIPO: si la OC tiene anticipo pagado con saldo disponible, SIEMPRE abrir el modal.
+    // 1ª entrega → método editable. 2ª+ → modal de solo visualización (método fijo, deshabilitado).
+    // El botón "Aplicar y pagar" del modal es la confirmación del pago en todos los casos.
     const tieneAnticipo = row.calculoAnticipo === true && row.anticipoPagado === true && Number(row.anticipoSaldo) > 0;
     if (tieneAnticipo) {
-      if (row.metodoAnticipo) {
-        // Método ya fijado en una entrada previa → aplicar automático (sin modal).
-        const n = Number(row.numProrrateo) || Number(row.numEntregasPlan) || 1;
-        const aplicado = this.calcAnticipoAplicado(row, row.metodoAnticipo as 'FIFO' | 'PRORRATEO', n);
-        await this.doPagar(row, aplicado, row.metodoAnticipo, row.numProrrateo ?? null);
-      } else {
-        // Primera entrada → abrir modal para elegir FIFO/Prorrateo.
-        this.openAnticipoModal(row);
-      }
+      this.openAnticipoModal(row);
       return;
     }
 
@@ -687,11 +863,16 @@ export class GastosComponent {
   anticipoRow: PendingPayment | null = null;
   anticipoMetodo: 'FIFO' | 'PRORRATEO' = 'FIFO';
   anticipoN = 1;
+  // true = método ya fijado (2ª+ entrega) → modal de solo visualización (controles deshabilitados).
+  anticipoMetodoFijo = false;
 
   openAnticipoModal(row: PendingPayment): void {
     this.anticipoRow = row;
-    this.anticipoMetodo = 'FIFO';
-    // Prioridad: método ya fijado → entradas reales si > planeadas → planeadas si > 1 → 1
+    // Si el método ya quedó fijado por una entrega previa → preseleccionarlo y mostrar el modal
+    // como SOLO VISUALIZACIÓN (radios + N visibles pero deshabilitados). Si no, editable (1ª entrega).
+    this.anticipoMetodoFijo = !!row.metodoAnticipo;
+    this.anticipoMetodo = (row.metodoAnticipo as 'FIFO' | 'PRORRATEO') || 'FIFO';
+    // Prioridad: número de prorrateo ya fijado → entradas reales si > planeadas → planeadas si > 1 → 1
     const planN    = Number(row.numEntregasPlan)    || 0;
     const almacenN = Number(row.numEntradasAlmacen) || 0;
     const baseN    = almacenN > planN ? almacenN : planN;
