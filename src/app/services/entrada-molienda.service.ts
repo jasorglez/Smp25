@@ -19,6 +19,7 @@ export interface EntradaMolienda {
   usuario?: string | null;
   comentario?: string | null;
   liberacion?: boolean;
+  credito?: boolean;
   close?: boolean;
   folioEntrega?: string | null;
   active?: boolean;

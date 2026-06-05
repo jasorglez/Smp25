@@ -468,7 +468,7 @@ export class DetalleMoliendaComponent {
     },
     {
       field: 'close',
-      headerName: 'Cerrado',
+      headerName: 'Cerrar OC',
       width: 100,
       editable: false,
       cellRenderer: (params: any) => {
@@ -520,10 +520,23 @@ export class DetalleMoliendaComponent {
           return;
         }
 
+        // Alerta si aún no se alcanza la cantidad objetivo. El umbral depende del Tipo OC:
+        //  · SIN LÍMITE → cantidad REQUERIDA de la requisición (Nivel 2, cantidadReq).
+        //  · otros tipos → "Cantidad" de la OC (por proveedor).
+        const sumEntradas = (entradas as any[])
+          .reduce((acc: number, e: any) => acc + Number(e?.cantidadEntrada ?? 0), 0);
+        const esSinLimite = String(params.data?.tipoOc ?? '').toUpperCase() === 'COMPRA AUTORIZADA SIN LIMITE';
+        const umbral = esSinLimite
+          ? Number(this.selectedReqRow?.cantidadReq ?? 0)
+          : Number(params.data?.cantidad ?? 0);
+        const noAlcanza = umbral > 0 && sumEntradas < umbral;
+
         const confirm = await alerts.confirmAlert(
           'Cerrar Orden de Compra',
-          `¿Está seguro que desea cerrar la OC "${params.data.folio}"?`,
-          'question',
+          noAlcanza
+            ? `¿Está seguro de que quiere cerrar la OC "${params.data.folio}"? No ha llegado a la cantidad requerida del artículo (recibido ${sumEntradas} de ${umbral}).`
+            : `¿Está seguro que desea cerrar la OC "${params.data.folio}"?`,
+          noAlcanza ? 'warning' : 'question',
           'Sí, cerrar'
         );
 
@@ -1008,8 +1021,11 @@ export class DetalleMoliendaComponent {
       field: 'liberacion',
       headerName: 'Liberación',
       width: 100,
-      editable: (p: any) => !this.selectedOcRow?.close && !this.selectedMultiEntregaIsClosed && !p?.data?.close,
+      // Opción A: una entrada a CRÉDITO ya está liberada en el almacén → checkbox marcado y no editable.
+      editable: (p: any) => !this.selectedOcRow?.close && !this.selectedMultiEntregaIsClosed && !p?.data?.close && !p?.data?.credito,
       cellRenderer: 'agCheckboxCellRenderer',
+      valueGetter: (p: any) => !!(p.data?.liberacion || p.data?.credito),
+      valueSetter: (p: any) => { p.data.liberacion = p.newValue === true; return true; },
     },
     {
       field: 'comentario',
@@ -1449,6 +1465,7 @@ export class DetalleMoliendaComponent {
         pdfCount: 0,
         usuario: e.usuario ?? '',
         liberacion: e.liberacion ?? false,
+        credito: e.credito ?? false,
         close: e.close ?? false,
         carat: '',
         comentario: e.comentario ?? '',
@@ -1597,6 +1614,7 @@ export class DetalleMoliendaComponent {
         pdfCount: 0,
         usuario: e.usuario ?? '',
         liberacion: e.liberacion ?? false,
+        credito: e.credito ?? false,
         close: e.close ?? false,
         carat: '',
         comentario: e.comentario ?? '',

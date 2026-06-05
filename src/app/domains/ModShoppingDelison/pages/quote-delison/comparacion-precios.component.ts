@@ -1861,6 +1861,31 @@ export class ComparacionPreciosComponent implements OnInit, OnDestroy {
     const AUTHORIZED = ['COMPRA INMEDIATA', 'COMPRA AUTORIZADA', 'COMPRA AUTORIZADA EN OTRA FECHA', 'COMPRA AUTORIZADA SIN LIMITE'];
     const NOT_AUTHORIZED = ['COMPRA NO AUTORIZADA', 'CAMBIO DE ESPECIFICACIONES', 'ARTICULO NO AUTORIZADO'];
 
+    // SNAPSHOT del por_autorizar REAL de cada material (maestro), leído justo antes de tocar banderas.
+    // Las banderas active/por_autorizar solo deben cambiar para artículos que ERAN NUEVOS
+    // (por_autorizar=1). Un artículo viejo (ya autorizado) NO debe desactivarse ni re-marcarse por
+    // recibir un tipo OC negativo en una requisición. Si el snapshot falla, NO se toca nada.
+    const idRoot = this.signalsService.getRootSelectedBySidebar()();
+    if (!idRoot) return;
+    const eraNuevo = new Map<number, boolean>();
+    try {
+      const materials: any = await lastValueFrom(this.materialsService.getMaterialsxview(idRoot));
+      if (Array.isArray(materials)) {
+        for (const m of materials) {
+          const mid = Number(m?.id);
+          if (Number.isFinite(mid) && mid > 0) {
+            const nuevo =
+              m?.porAutorizar === true || m?.porAutorizar === 1 ||
+              m?.por_autorizar === true || m?.por_autorizar === 1;
+            eraNuevo.set(mid, nuevo);
+          }
+        }
+      }
+    } catch (e) {
+      console.warn('⚠️ No se pudo leer el snapshot de por_autorizar; no se tocan banderas de materiales:', e);
+      return;
+    }
+
     const rowsByMaterial = new Map<number, any[]>();
     for (const row of this.rowData) {
       if (row.idSupplie && row.idSupplie > 0 && row.tipoOc) {
@@ -1871,6 +1896,9 @@ export class ComparacionPreciosComponent implements OnInit, OnDestroy {
     }
 
     for (const [materialId, rows] of rowsByMaterial) {
+      // Solo artículos que ERAN NUEVOS (por_autorizar=1). Los viejos no se tocan.
+      if (!eraNuevo.get(materialId)) continue;
+
       const hasAnyPositive = rows.some(r => AUTHORIZED.includes(r.tipoOc));
       const allNegative = rows.every(r => NOT_AUTHORIZED.includes(r.tipoOc));
 
@@ -1880,7 +1908,7 @@ export class ComparacionPreciosComponent implements OnInit, OnDestroy {
           this.materialsService.updateMaterial(materialId.toString(), { active: true, porAutorizar: false })
         ).catch(e => console.warn(`⚠️ No se pudo autorizar material ${materialId}:`, e));
       } else if (allNegative) {
-        // Todos NEGATIVOS → desactivar el material
+        // Todos NEGATIVOS → desactivar el material (solo aplica a artículos nuevos)
         await lastValueFrom(
           this.materialsService.updateMaterial(materialId.toString(), { active: false, porAutorizar: true })
         ).catch(e => console.warn(`⚠️ No se pudo desactivar material ${materialId}:`, e));

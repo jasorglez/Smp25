@@ -823,8 +823,7 @@ export class GastosComponent {
       await lastValueFrom(this.gastosService.activarCredito(row.idEntrada, fechaVenc || null));
       row.credito = true;
       if (fechaVenc) row.fechaVencimiento = fechaVenc;
-      // Placeholder almacén global.
-      alerts.reqSuccessToast('Insertado en almacén', `${row.folio} ingresado a crédito (placeholder almacén global).`);
+      alerts.reqSuccessToast('Insertado en almacén', `${row.folio} ingresado a crédito y sumado al almacén global. Queda pendiente de pago.`);
       this.capturaGridApi?.refreshCells({ force: true });
     } catch (err) {
       console.error('Error activando crédito:', err);
