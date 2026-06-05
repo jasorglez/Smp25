@@ -232,9 +232,6 @@ export class ProspectosComponent implements OnInit {
         headerName: '#',
         width: 55,
         editable: false,
-        pinned: 'left',
-        lockPinned: true,
-        lockPosition: true,
         suppressMovable: true,
         valueGetter: (p: any) => (p.node.rowIndex ?? 0) + 1,
         cellStyle: { color: '#6c757d', fontWeight: '600', textAlign: 'center' },
@@ -293,17 +290,15 @@ export class ProspectosComponent implements OnInit {
         },
       },
       {
-        field: 'nombreVendedorActual', headerName: 'Vendedor', width: 95, editable: true,
-        cellEditor: 'agSelectCellEditor',
-        cellEditorParams: () => ({ values: this.vendedores.map(v => v.displayName) }),
-        valueSetter: (params: any) => {
-          params.data.nombreVendedorActual = params.newValue;
-          const found = this.vendedores.find(v => v.displayName === params.newValue);
-          if (found) params.data.idVendedorActual = found.id;
-          return true;
-        },
+        field: 'empresa',
+        headerName: 'Empresa',
+        width: 180,
+        editable: true,
+        filter: true,
+        pinned: 'left',
+        lockPinned: true,
+        lockPosition: true,
       },
-      { field: 'empresa',    headerName: 'Empresa',    width: 180, editable: true, filter: true },
       { field: 'nombre',     headerName: 'Nombre',     width: 160, editable: true, filter: true },
       { field: 'puesto',     headerName: 'Puesto',     width: 130, editable: true },
       { field: 'telefono',   headerName: 'Teléfono',   width: 130, editable: true },
@@ -439,6 +434,17 @@ export class ProspectosComponent implements OnInit {
         cellRenderer: (p: any) => {
           const icon = p.value === 'telegram' ? '📱' : p.value === 'whatsapp' ? '💬' : '🖥️';
           return `${icon} ${p.value ?? ''}`;
+        },
+      },
+      {
+        field: 'nombreVendedorActual', headerName: 'Vendedor', width: 95, editable: true,
+        cellEditor: 'agSelectCellEditor',
+        cellEditorParams: () => ({ values: this.vendedores.map(v => v.displayName) }),
+        valueSetter: (params: any) => {
+          params.data.nombreVendedorActual = params.newValue;
+          const found = this.vendedores.find(v => v.displayName === params.newValue);
+          if (found) params.data.idVendedorActual = found.id;
+          return true;
         },
       },
     ];
