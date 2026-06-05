@@ -1,8 +1,8 @@
 import { HttpClient } from '@angular/common/http';
 import { inject, Injectable } from '@angular/core';
 import { environment } from '@env/environment';
-import { Observable } from 'rxjs';
-import { shareReplay } from 'rxjs/operators';
+import { Observable, from } from 'rxjs';
+import { shareReplay, switchMap } from 'rxjs/operators';
 import { TrackingService } from './tracking.service';
 import { SignalsService } from './signals.service';
 

@@ -19,7 +19,7 @@ import { lastValueFrom } from 'rxjs';
   imports: [CommonModule, FormsModule, AgGridModule, DetalleWrapperComponent, SelectWithTooltipEditorV2Component],
   template: `
     <div class="container-fluid h-100 p-3">
-      <div style="display: flex; height: calc(100vh - 120px);">
+      <div style="display: flex; height: calc(100vh - 280px);">
 
         <!-- Botones CRUD lateral izquierdo -->
         <div style="display: flex; flex-direction: column; gap: 5px; margin-right: 10px; padding: 10px; background-color: #f8f9fa; border-radius: 5px; height: fit-content;">
@@ -636,7 +636,7 @@ export class JarabeComponent implements OnInit {
         cellStyle: { backgroundColor: '#e3f2fd', cursor: 'pointer' }
       },
  
-
+/*
    {
         field: 'articulo',
         headerName: 'Artículo',
@@ -717,7 +717,7 @@ export class JarabeComponent implements OnInit {
       {
         field: 'adicional',
         headerName: 'Adicional',
-        width: 120,
+        width: 140,
         editable: true,
         cellEditor: 'agTextCellEditor',
         valueSetter: (params) => {
@@ -732,7 +732,7 @@ export class JarabeComponent implements OnInit {
       {
         field: 'liberacion',
         headerName: 'Liberación',
-        width: 120,
+        width: 140,
         editable: false,
         cellRenderer: (params: any) => {
           const isNew = !!params.data?.__isNew;
@@ -748,7 +748,7 @@ export class JarabeComponent implements OnInit {
         },
         cellStyle: { backgroundColor: '#f1f8e9', cursor: 'pointer' }
       },
-  
+  */
       {
         field: 'activom',
         headerName: 'Activo',

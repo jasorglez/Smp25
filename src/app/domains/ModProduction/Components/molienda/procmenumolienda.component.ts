@@ -1,4 +1,4 @@
-import { Component, inject, OnInit } from '@angular/core';
+import { ChangeDetectorRef, Component, inject, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterModule } from '@angular/router';
 import { MenuService } from 'app/services/menu.service';
@@ -11,6 +11,7 @@ import { AuthService } from 'app/services/auth.service';
   templateUrl: './procmenumolienda.component.html',
 })
 export class ProcmenumoliendaComponent implements OnInit {
+  private cdr = inject(ChangeDetectorRef);
   authService = inject(AuthService);
   private menuService = inject(MenuService);
 
@@ -18,7 +19,7 @@ export class ProcmenumoliendaComponent implements OnInit {
 
   ngOnInit(): void {
     this.menuService.getSubTabMenus('molienda_princ').subscribe({
-      next: (tabs) => { this.tabMenus = tabs; },
+      next: (tabs) => { this.tabMenus = tabs; this.cdr.detectChanges(); },
       error: (err) => console.error('Error cargando sub-tabs molienda', err)
     });
   }

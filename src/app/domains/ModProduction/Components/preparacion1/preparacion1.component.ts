@@ -1,4 +1,4 @@
-import { Component, inject, OnInit } from '@angular/core';
+import { ChangeDetectorRef, Component, inject, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterModule } from '@angular/router';
 import { MenuService } from 'app/services/menu.service';
@@ -31,12 +31,13 @@ import { AuthService } from 'app/services/auth.service';
 export class Preparacion1Component implements OnInit {
   authService = inject(AuthService);
   private menuService = inject(MenuService);
+  private cdr = inject(ChangeDetectorRef);
 
   tabMenus: { detailedIdentifier: string; identifier: string; permissionName: string; route: string; icon: string; tabOrder: number }[] = [];
 
   ngOnInit(): void {
     this.menuService.getSubTabMenus('preparacion1').subscribe({
-      next: (tabs) => { this.tabMenus = tabs; },
+      next: (tabs) => { this.tabMenus = tabs; this.cdr.detectChanges(); },
       error: (err) => console.error('Error cargando sub-tabs preparacion1', err)
     });
   }

@@ -1,4 +1,4 @@
-import { Component, inject, OnInit } from '@angular/core';
+import { ChangeDetectorRef, Component, inject, OnInit } from '@angular/core';
 import { RouterModule } from '@angular/router';
 import { DomainsModule } from 'app/domains/domainsmodule';
 import { AuthService } from 'app/services/auth.service';
@@ -13,6 +13,7 @@ import { CommonModule } from '@angular/common';
   templateUrl: './procmenucompras.component.html',
 })
 export class ProcmenucomprasComponent implements OnInit {
+  private cdr = inject(ChangeDetectorRef);
   authService = inject(AuthService);
   private signalsService = inject(SignalsService);
   private menuService = inject(MenuService);
@@ -55,6 +56,7 @@ export class ProcmenucomprasComponent implements OnInit {
         }
 
         this.tabMenus = tabs;
+        this.cdr.detectChanges();
       },
       error: (err) => console.error('Error loading tab menus:', err)
     });

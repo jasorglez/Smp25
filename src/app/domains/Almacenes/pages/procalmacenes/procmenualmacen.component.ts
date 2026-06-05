@@ -1,4 +1,4 @@
-import { Component, inject, OnInit } from '@angular/core';
+import { ChangeDetectorRef, Component, inject, OnInit } from '@angular/core';
 import { TranslateModule } from '@ngx-translate/core';
 import { SharedModule } from 'app/shared/shared.module';
 import { DomainsModule } from 'app/domains/domainsmodule';
@@ -15,6 +15,7 @@ import { MenuService } from 'app/services/menu.service';
   styleUrl: './procmenualmacen.component.scss'
 })
 export class ProcmenualmacenComponent implements OnInit {
+  private cdr = inject(ChangeDetectorRef);
   private signalsService = inject(SignalsService);
   private menuService = inject(MenuService);
   authService = inject(AuthService);
@@ -31,7 +32,7 @@ export class ProcmenualmacenComponent implements OnInit {
 
   loadTabMenus() {
     this.menuService.getTabMenus('warehouses').subscribe({
-      next: (tabs) => { this.tabMenus = tabs; },
+      next: (tabs) => { this.tabMenus = tabs; this.cdr.detectChanges(); },
       error: (err) => console.error('Error loading almacenes tab menus:', err)
     });
   }

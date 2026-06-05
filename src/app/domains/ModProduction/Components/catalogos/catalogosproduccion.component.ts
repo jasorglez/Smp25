@@ -555,15 +555,41 @@ import { BranchsService } from '../../../../services/branchs.service';
         <ng-container *ngIf="activeTab === 'preparacion1'">
           <!-- Lista Tablas: PADREs desde BD (type='CATALOGO') -->
           <aside class="catalog-sidebar">
-            <p class="sidebar-title">Lista Tablas</p>
+            <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:8px;">
+              <p class="sidebar-title" style="margin:0;">Lista Tablas</p>
+              <div style="display:flex; gap:4px;">
+                <button class="btn btn-xs btn-success" style="padding:1px 6px; font-size:0.75rem;"
+                        (click)="addPadre1()" title="Agregar">
+                  <i class="bi bi-plus-lg"></i>
+                </button>
+                <button class="btn btn-xs btn-danger" style="padding:1px 6px; font-size:0.75rem;"
+                        (click)="deletePadre1()" [disabled]="!selectedPadre1" title="Borrar">
+                  <i class="bi bi-trash"></i>
+                </button>
+              </div>
+            </div>
             <div class="sidebar-list">
               <div class="sidebar-empty" *ngIf="!padres1.length">Sin categorías</div>
               <div class="sidebar-item catalog-entry"
                    *ngFor="let p of padres1"
                    [class.active]="selectedPadre1?.id === p.id"
                    (click)="onSelectPadre1(p)"
+                   (dblclick)="startEditPadre1(p, $event)"
                    style="cursor:pointer;">
-                {{ p.description }}
+                <ng-container *ngIf="editingPadreId !== p.id">
+                  {{ p.description }}
+                </ng-container>
+                <div *ngIf="editingPadreId === p.id" style="display:flex; gap:4px; align-items:center;">
+                  <input type="text" class="form-control form-control-sm"
+                         [(ngModel)]="editingPadreDesc"
+                         (keyup.enter)="savePadreEdit()"
+                         (keyup.escape)="cancelPadreEdit()"
+                         (click)="$event.stopPropagation()"
+                         style="height:22px; font-size:0.8rem; flex:1;"
+                         autofocus>
+                  <button class="btn btn-xs btn-success" style="padding:0 5px;" (click)="savePadreEdit(); $event.stopPropagation()">✓</button>
+                  <button class="btn btn-xs btn-secondary" style="padding:0 5px;" (click)="cancelPadreEdit(); $event.stopPropagation()">✕</button>
+                </div>
               </div>
             </div>
           </aside>
@@ -598,38 +624,32 @@ import { BranchsService } from '../../../../services/branchs.service';
                 [rowData]="hijos1"
                 [columnDefs]="hijosColDefs1"
                 [gridOptions]="hijosGridOptions1"
-                (gridReady)="gridApiHijos1 = $event.api"
+                (gridReady)="onHijosGridReady1($event)"
                 (rowClicked)="onSelectHijo1($event.data)"
                 style="height: 210px; width: 100%;">
               </ag-grid-angular>
 
-              <!-- Grid NIETOs -->
-              <ng-container *ngIf="selectedHijo1">
-                <div class="panel-toolbar" style="border-top:1px solid #c7daf8; margin-top:6px;">
-                  <div class="panel-title">{{ selectedHijo1.description }} — Catálogos</div>
-                  <div class="d-flex gap-1 align-items-center">
-                    <button class="btn btn-sm btn-success"  (click)="addNieto1()"     title="Agregar"><i class="bi bi-plus-lg"></i></button>
-                    <button class="btn btn-sm btn-primary position-relative"  (click)="saveNietos1()"  [disabled]="!hasUnsavedNietos1" title="Guardar">
-                      <i class="bi bi-floppy"></i><span *ngIf="hasUnsavedNietos1" class="dirty-dot"></span>
-                    </button>
-                    <button class="btn btn-sm btn-warning"  (click)="revertNietos1()"                  title="Deshacer"><i class="bi bi-arrow-clockwise"></i></button>
-                    <button class="btn btn-sm btn-danger"   (click)="deleteNieto1()"  [disabled]="!selectedNieto1" title="Borrar"><i class="bi bi-trash"></i></button>
-                  </div>
+              <!-- Grid NIETOs — siempre presente para evitar destrucción del gridApi -->
+              <div class="panel-toolbar" style="border-top:1px solid #c7daf8; margin-top:6px;">
+                <div class="panel-title">{{ selectedHijo1 ? selectedHijo1.description + ' — Catálogos' : 'Catálogos' }}</div>
+                <div class="d-flex gap-1 align-items-center" *ngIf="selectedHijo1">
+                  <button class="btn btn-sm btn-success"  (click)="addNieto1()"     title="Agregar"><i class="bi bi-plus-lg"></i></button>
+                  <button class="btn btn-sm btn-primary position-relative"  (click)="saveNietos1()"  [disabled]="!hasUnsavedNietos1" title="Guardar">
+                    <i class="bi bi-floppy"></i><span *ngIf="hasUnsavedNietos1" class="dirty-dot"></span>
+                  </button>
+                  <button class="btn btn-sm btn-warning"  (click)="revertNietos1()"                  title="Deshacer"><i class="bi bi-arrow-clockwise"></i></button>
+                  <button class="btn btn-sm btn-danger"   (click)="deleteNieto1()"  [disabled]="!selectedNieto1" title="Borrar"><i class="bi bi-trash"></i></button>
                 </div>
-                <ag-grid-angular
-                  class="ag-theme-quartz catalog-grid"
-                  [rowData]="nietos1"
-                  [columnDefs]="nietosColDefs1"
-                  [gridOptions]="nietosGridOptions1"
-                  (gridReady)="gridApiNietos1 = $event.api"
-                  (rowClicked)="selectedNieto1 = $event.data"
-                  style="height: 210px; width: 100%;">
-                </ag-grid-angular>
-              </ng-container>
-
-              <div class="helper-message" *ngIf="!selectedHijo1" style="font-size:0.85rem; color:#888;">
-                Selecciona un grupo para ver sus catálogos
               </div>
+              <ag-grid-angular
+                class="ag-theme-quartz catalog-grid"
+                [rowData]="nietos1"
+                [columnDefs]="nietosColDefs1"
+                [gridOptions]="nietosGridOptions1"
+                (gridReady)="gridApiNietos1 = $event.api"
+                (rowClicked)="selectedNieto1 = $event.data"
+                style="height: 210px; width: 100%;">
+              </ag-grid-angular>
             </ng-container>
           </section>
         </ng-container>
@@ -919,8 +939,10 @@ export class CatalogosProduccionComponent {
   editingItem: any = null;
 
   // ── Preparación 1 — Jerárquico desde BD ──
-  padres1:         CatalogProductionItem[] = [];
-  selectedPadre1:  CatalogProductionItem | null = null;
+  padres1:             CatalogProductionItem[] = [];
+  selectedPadre1:      CatalogProductionItem | null = null;
+  editingPadreId:      number | null = null;
+  editingPadreDesc:    string = '';
   hijos1:          CatalogProductionItem[] = [];
   selectedHijo1:   CatalogProductionItem | null = null;
   nietos1:         CatalogProductionItem[] = [];
@@ -2538,6 +2560,55 @@ export class CatalogosProduccionComponent {
     });
   }
 
+  async addPadre1(): Promise<void> {
+    const desc = window.prompt('Nombre de la nueva categoría:');
+    if (!desc?.trim()) return;
+    try {
+      const created = await lastValueFrom(this.hierService.create({
+        idCompany: this.idRoot, idMasterCatalog: 0,
+        description: desc.trim().toUpperCase(), type: 'CATALOGO',
+        active: 1, vigente: true,
+      }));
+      this.padres1 = [...this.padres1, created];
+      this.showToast1('Categoría creada');
+    } catch { this.showToast1('Error al crear'); }
+  }
+
+  startEditPadre1(padre: CatalogProductionItem, event: Event): void {
+    event.stopPropagation();
+    this.editingPadreId   = padre.id ?? null;
+    this.editingPadreDesc = padre.description;
+  }
+
+  async savePadreEdit(): Promise<void> {
+    if (!this.editingPadreId || !this.editingPadreDesc.trim()) { this.cancelPadreEdit(); return; }
+    try {
+      await lastValueFrom(this.hierService.update(this.editingPadreId, {
+        description: this.editingPadreDesc.trim().toUpperCase()
+      }));
+      const idx = this.padres1.findIndex(p => p.id === this.editingPadreId);
+      if (idx !== -1) this.padres1[idx] = { ...this.padres1[idx], description: this.editingPadreDesc.trim().toUpperCase() };
+      if (this.selectedPadre1?.id === this.editingPadreId)
+        this.selectedPadre1 = { ...this.selectedPadre1, description: this.editingPadreDesc.trim().toUpperCase() };
+      this.showToast1('Actualizado');
+    } catch { this.showToast1('Error al actualizar'); }
+    this.cancelPadreEdit();
+  }
+
+  cancelPadreEdit(): void { this.editingPadreId = null; this.editingPadreDesc = ''; }
+
+  async deletePadre1(): Promise<void> {
+    if (!this.selectedPadre1) return;
+    const r = await alerts.confirmAlert('¿Eliminar?', `¿Eliminar "${this.selectedPadre1.description}"?`, 'warning', 'Sí, eliminar');
+    if (!r.isConfirmed) return;
+    try {
+      await lastValueFrom(this.hierService.delete(this.selectedPadre1.id!));
+      this.padres1 = this.padres1.filter(p => p.id !== this.selectedPadre1!.id);
+      this.selectedPadre1 = null; this.hijos1 = []; this.nietos1 = [];
+      this.showToast1('Eliminado');
+    } catch { this.showToast1('Error al eliminar'); }
+  }
+
   onSelectPadre1(padre: CatalogProductionItem): void {
     this.selectedPadre1  = padre;
     this.selectedHijo1   = null;
@@ -2549,6 +2620,17 @@ export class CatalogosProduccionComponent {
     this.loadHijos1(padre.id!);
   }
 
+  onHijosGridReady1(event: any): void {
+    this.gridApiHijos1 = event.api;
+    if (this.hijos1.length > 0) {
+      this.gridApiHijos1.setGridOption('rowData', this.hijos1);
+      setTimeout(() => {
+        const node = this.gridApiHijos1?.getDisplayedRowAtIndex(0);
+        if (node) node.setSelected(true);
+      }, 50);
+    }
+  }
+
   private loadHijos1(idPadre: number): void {
     this.hierService.getAll(this.idRoot, idPadre).subscribe({
       next: (items) => {
@@ -2556,6 +2638,8 @@ export class CatalogosProduccionComponent {
         this.originalHijos1 = JSON.parse(JSON.stringify(this.hijos1));
         if (this.gridApiHijos1 && !this.gridApiHijos1.isDestroyed())
           this.gridApiHijos1.setGridOption('rowData', this.hijos1);
+        if (this.hijos1.length > 0)
+          this.onSelectHijo1(this.hijos1[0]);
       },
       error: () => { this.hijos1 = []; }
     });

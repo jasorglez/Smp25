@@ -1,4 +1,4 @@
-import { Component, inject, OnInit } from '@angular/core';
+import { ChangeDetectorRef, Component, inject, OnInit } from '@angular/core';
 import { RouterModule } from '@angular/router';
 import { DomainsModule } from 'app/domains/domainsmodule';
 import { SignalsService } from 'app/services/signals.service';
@@ -14,6 +14,7 @@ import { environment } from '@env/environment';
   styleUrl: './procmenuconfiguracion.component.scss'
 })
 export class ProcmenuconfiguracionComponent implements OnInit {
+  private cdr = inject(ChangeDetectorRef);
   private signalsService = inject(SignalsService);
   private menuService = inject(MenuService);
   authService = inject(AuthService);
@@ -30,7 +31,7 @@ export class ProcmenuconfiguracionComponent implements OnInit {
 
   loadTabMenus() {
     this.menuService.getTabMenus('setup').subscribe({
-      next: (tabs) => { this.tabMenus = tabs; },
+      next: (tabs) => { this.tabMenus = tabs; this.cdr.detectChanges(); },
       error: (err) => console.error('Error loading setup tab menus:', err)
     });
   }
