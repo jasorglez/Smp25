@@ -1,15 +1,36 @@
 :host {
   display: block;
+  height: 100%;
 }
 
 .container-fluid {
   padding: 8px;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.detail-toolbar {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  flex: 0 0 auto;
+  background: #fff;
+  padding-bottom: 4px;
+}
+
+.detail-grid-shell {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: hidden;
 }
 
 ::ng-deep .ag-theme-quartz.pedidos-detalles-grid {
   --ag-header-height: 30px;
   --ag-row-height: 30px;
   --ag-font-size: 11px;
+  height: 100%;
 }
 
 ::ng-deep .ag-theme-quartz.pedidos-detalles-grid .ag-sticky-bottom,
