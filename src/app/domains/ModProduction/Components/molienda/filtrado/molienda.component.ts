@@ -10,6 +10,7 @@ import { ProductionService } from 'app/services/production.service';
 import { MaterialXModuloService } from 'app/services/materialxmodulo.service';
 import { MaterialsService } from 'app/services/materials.service';
 import { MoliendaService } from 'app/services/molienda.service';
+import { InventarioMpService } from 'app/services/inventario-mp.service';
 import { DetallesEntradasMoliendaComponent } from './detalles-entradasmolienda.component';
 import { SelectWithTooltipEditorV2Component } from 'app/shared/select-with-tooltip-editor-v2.component';
 import { DetailRouterFiltradoComponent } from './detail-router-filtrado.component';
@@ -67,6 +68,10 @@ export class MoliendaComponent {
   private mxmService = inject(MaterialXModuloService);
   private materialsService = inject(MaterialsService);
   private moliendaService = inject(MoliendaService);
+  private inventarioMpService = inject(InventarioMpService);
+
+  // idSucursal → (idMaterial → cantidad total)
+  private inventarioPorSucursal = new Map<number, Map<number, number>>();
 
   gridApi!: GridApi;
   rowData: any[] = [];
@@ -203,11 +208,12 @@ export class MoliendaComponent {
     detailRowHeight: Math.max(200, window.innerHeight * 0.8 - 25 - 20),
     isRowMaster: (data: any) => data?.id != null,
     detailCellRenderer: DetailRouterFiltradoComponent,
-    detailCellRendererParams: () => ({
+    detailCellRendererParams: (params: any) => ({
       context: {
         onMatDetailChanged: (idMolienda: number, hasDetail: boolean) =>
           this.onMatDetailChanged(idMolienda, hasDetail),
-        articuloOptions: this.allActiveArticuloOptions,
+        articuloOptions: this.getArticulosParaSucursal(params?.data?.sucursal),
+        allArticuloOptions: this.allActiveArticuloOptions,
       },
     }),
     isExternalFilterPresent: () => this.activeMatPrimaFilter != null,
@@ -250,14 +256,24 @@ export class MoliendaComponent {
     this.hasChanges = true;
   }
 
+  private getArticulosParaSucursal(idSucursal: number | null): { id: number; name: string; cantidad?: number }[] {
+    if (!idSucursal) return this.allActiveArticuloOptions;
+    const disponibles = this.inventarioPorSucursal.get(idSucursal);
+    if (!disponibles) return [];
+    return this.allActiveArticuloOptions
+      .filter(o => disponibles.has(o.id))
+      .map(o => ({ ...o, cantidad: disponibles.get(o.id) }));
+  }
+
   private async loadBranches(idUser: number, idCompany: number) {
     const currentBranch = this.signalService.getBranchSelectedBySidebar()();
     if (currentBranch) this.idBranch = currentBranch;
     try {
-      const [branchData, mxmData, matsData] = await Promise.all([
+      const [branchData, mxmData, matsData, invData] = await Promise.all([
         lastValueFrom(this.branchsService.getBranchesByUserAndCompany(idUser, idCompany)),
         lastValueFrom(this.mxmService.getByType(idCompany, 'MOLIENDA')),
         lastValueFrom(this.materialsService.getMaterialsxview(idCompany)),
+        lastValueFrom(this.inventarioMpService.getGerencial(idCompany)),
       ]);
 
       const list: any[] = (branchData as any)?.project ?? (Array.isArray(branchData) ? branchData : []);
@@ -282,6 +298,20 @@ export class MoliendaComponent {
         .map((m: any) => ({ id: m.idArticulo, name: matsMap.get(m.idArticulo) ?? String(m.idArticulo) }))
         .filter(m => m.name)
         .sort(sortByName);
+
+      // Construir mapa idSucursal → Set<idMaterial> con inventario > 0
+      this.inventarioPorSucursal.clear();
+      for (const fila of (invData?.filas ?? [])) {
+        for (const [colId, cant] of Object.entries(fila.valores)) {
+          const cantidad = cant as number;
+          if (cantidad > 0) {
+            const idSuc = Number(colId);
+            if (!this.inventarioPorSucursal.has(idSuc))
+              this.inventarioPorSucursal.set(idSuc, new Map());
+            this.inventarioPorSucursal.get(idSuc)!.set(fila.idMaterial, cantidad);
+          }
+        }
+      }
 
       await this.loadData();
     } catch (e) {

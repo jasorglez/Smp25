@@ -64,6 +64,7 @@ export class DetallesMatprimaFiltradoComponent {
   private idMolienda: number | null = null;
   private idMatPrimaMolienda: number | null = null;
   private articuloOptions: { id: number; name: string }[] = [];
+  private allArticuloOptions: { id: number; name: string }[] = [];
   private originalRowData: any[] = [];
 
   private activeExpandedNodeId: string | null = null;
@@ -167,6 +168,7 @@ export class DetallesMatprimaFiltradoComponent {
     detailCellRendererParams: () => ({
       context: {
         articuloOptions: this.articuloOptions,
+        allArticuloOptions: this.allArticuloOptions,
         idMatPrimaParent: this.idMatPrimaMolienda,
         onArticuloCountChanged: (idMatDetalle: number, count: number, cantidadSum: number) =>
           this.onArticuloCountChanged(idMatDetalle, count, cantidadSum),
@@ -179,6 +181,7 @@ export class DetallesMatprimaFiltradoComponent {
     this.idMolienda = params?.data?.id ?? null;
     this.idMatPrimaMolienda = params?.data?.matPrima ?? null;
     this.articuloOptions = params?.context?.articuloOptions ?? [];
+    this.allArticuloOptions = params?.context?.allArticuloOptions ?? this.articuloOptions;
     if (this.gridApi && !this.gridApi.isDestroyed()) this.loadData();
   }
 

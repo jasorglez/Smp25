@@ -73,5 +73,5 @@ export const environment = {
 
   urlRefreshToken: 'https://securetoken.googleapis.com/v1/token?key=AIzaSyDxCBGKk8nT09hdW85-PyOkhw5_JPZLF1A',
 
-  version: '2.52.362 (4 Junio 2026) - Fix Inventario MP vacio: effect con allowSignalWrites (NG0600 abortaba cargar) + guardia idCompany truthy'
+  version: '2.52.363 (4 Junio 2026) - Molienda con inventario almacen'
 };

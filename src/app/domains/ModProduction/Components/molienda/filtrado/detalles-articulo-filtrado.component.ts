@@ -45,7 +45,8 @@ export class DetallesArticuloFiltradoComponent implements OnDestroy {
 
   private internalParams: any;
   private idMatDetalle: number | null = null;
-  private articuloOptions: { id: number; name: string }[] = [];
+  private articuloOptions: { id: number; name: string; cantidad?: number }[] = [];
+  private allArticuloOptions: { id: number; name: string }[] = [];
   private idMatPrimaParent: number | null = null;
   private originalRowData: any[] = [];
 
@@ -72,10 +73,10 @@ export class DetallesArticuloFiltradoComponent implements OnDestroy {
         return {
           options: this.articuloOptions
             .filter(a => !usados.has(a.id) && a.id !== this.idMatPrimaParent)
-            .map(a => ({ id: a.id, description: a.name })),
+            .map(a => ({ id: a.id, description: a.cantidad != null ? `${a.name} (${a.cantidad})` : a.name })),
         };
       },
-      valueFormatter: (p: any) => this.articuloOptions.find(a => a.id === p.value)?.name ?? '',
+      valueFormatter: (p: any) => this.allArticuloOptions.find(a => a.id === p.value)?.name ?? '',
       valueSetter: (p: any) => {
         p.data.idArticulo = p.newValue;
         p.data.__modified = true;
@@ -93,7 +94,17 @@ export class DetallesArticuloFiltradoComponent implements OnDestroy {
       editable: true,
       cellEditor: 'agNumberCellEditor',
       valueFormatter: (p: any) => p.value != null ? String(Number(p.value)) : '',
-      valueSetter: (p: any) => { p.data.cantidad = p.newValue; p.data.__modified = true; this.hasChanges = true; return true; },
+      valueSetter: (p: any) => {
+        const disponible = this.articuloOptions.find(a => a.id === p.data.idArticulo)?.cantidad;
+        if (disponible != null && p.newValue > disponible) {
+          alerts.reqErrorToast(`Máximo disponible: ${disponible}`);
+          return false;
+        }
+        p.data.cantidad = p.newValue;
+        p.data.__modified = true;
+        this.hasChanges = true;
+        return true;
+      },
     },
   ];
 
@@ -112,6 +123,7 @@ export class DetallesArticuloFiltradoComponent implements OnDestroy {
     this.internalParams = params;
     this.idMatDetalle = params?.data?.id ?? null;
     this.articuloOptions = params?.context?.articuloOptions ?? [];
+    this.allArticuloOptions = params?.context?.allArticuloOptions ?? this.articuloOptions;
     this.idMatPrimaParent = params?.data?.idMatPrima ?? params?.context?.idMatPrimaParent ?? null;
 
     // Restore cached rows if component was collapsed with unsaved changes
@@ -345,8 +357,8 @@ export class DetallesArticuloFiltradoComponent implements OnDestroy {
 
   private sortRows() {
     this.rowData.sort((a: any, b: any) => {
-      const na = this.articuloOptions.find(o => o.id === a.idArticulo)?.name ?? '';
-      const nb = this.articuloOptions.find(o => o.id === b.idArticulo)?.name ?? '';
+      const na = this.allArticuloOptions.find(o => o.id === a.idArticulo)?.name ?? '';
+      const nb = this.allArticuloOptions.find(o => o.id === b.idArticulo)?.name ?? '';
       return na.localeCompare(nb, 'es', { sensitivity: 'base' });
     });
   }
