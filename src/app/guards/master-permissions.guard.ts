@@ -38,21 +38,15 @@ export class MasterPermissionsGuard implements CanActivate {
     }
     
 
-    // Leemos los valores de los signals aquí, dentro de canActivate
     const isAdvanced = this.signalsService.getIsAdvanced();
     const idBranch = this.signalsService.getBranchSelectedBySidebar()();
 
-    // Si es avanzado pero aún no se selecciona una sucursal, no podemos verificar permisos avanzados.
-    if (isAdvanced && !idBranch) {
-      // Podrías redirigir o simplemente denegar el acceso hasta que se seleccione una sucursal.
-      // Por ahora, lo trataremos como si no tuviera permisos.
-      this.router.navigate(['/unauthorized']);
-      return of(false);
-    }
+    // Si es avanzado pero la sucursal aún no está lista, usamos permisos básicos
+    const useAdvanced = isAdvanced && !!idBranch;
 
     return this.permissionService.getUserId(email).pipe(
       switchMap((userId) =>
-        isAdvanced
+        useAdvanced
           ? forkJoin({
               basic: this.permissionService.fetchUserPermissions(userId),
               advanced: this.permissionService.fetchUserPermissionsAdvanced(

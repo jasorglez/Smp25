@@ -20,6 +20,8 @@ export interface CatalogProductionItem {
   price?: number | null;
   active?: number;
   dateModified?: string | null;
+  __isNew?: boolean;
+  __modified?: boolean;
 }
 
 @Injectable({ providedIn: 'root' })
