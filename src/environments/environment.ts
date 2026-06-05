@@ -85,7 +85,7 @@ export const environment = {
     // publicKey: 'TEST-4399133a-4676-42a2-ab85-d946370bf96a',
   },
 
-  version: '4.29 (05 Junio 2026) feat(prospectos): municipios por estado en dropdown dependiente',
+  version: '4.30 (05 Junio 2026) fix(logistica): acciones visibles en detalle de pedidos',
 };
 
 
