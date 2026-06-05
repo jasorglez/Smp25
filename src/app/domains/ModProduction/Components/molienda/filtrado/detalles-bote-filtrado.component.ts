@@ -9,6 +9,7 @@ import { alerts } from 'app/helpers/alerts';
 import { SignalsService } from 'app/services/signals.service';
 import { ExtractionFermentationCatalogService } from 'app/services/extraction-fermentation-catalog.service';
 import { MaterialXModuloService } from 'app/services/materialxmodulo.service';
+import { BranchsService } from 'app/services/branchs.service';
 
 interface BoteOption {
   id: number;
@@ -462,9 +463,13 @@ export class DetallesBoteFiltradoComponent {
   private signalsService    = inject(SignalsService);
   private catalogService    = inject(ExtractionFermentationCatalogService);
   private mxmService        = inject(MaterialXModuloService);
+  private branchsService    = inject(BranchsService);
 
-  private idMolienda: number | null = null;
-  private matPrimaId: number | null = null;
+  private branchPrefijoMap = new Map<number, string>();
+
+  private idMolienda:   number | null = null;
+  private matPrimaId:   number | null = null;
+  private rowBranchId:  number | null = null;
   matPrimaName: string = '';
   boteOptions: BoteOption[] = [];
   // usageMap: idBoteCatalog → suma total de cantidad en todos los matdetalles
@@ -619,6 +624,7 @@ export class DetallesBoteFiltradoComponent {
   agInit(params: any) {
     this.idMolienda  = params?.data?.id ?? null;
     this.matPrimaId  = params?.data?.matPrima ?? null;
+    this.rowBranchId = params?.data?.sucursal ?? null;
     const opts: { id: number; name: string }[] = params?.context?.articuloOptions ?? [];
     this.matPrimaName = opts.find(o => o.id === this.matPrimaId)?.name ?? '';
     this.init();
@@ -641,11 +647,16 @@ export class DetallesBoteFiltradoComponent {
     const idCompany = this.signalsService.getRootSelectedBySidebar()();
     if (!idCompany) return;
     try {
-      const [catalogs, prefijosData, matData] = await Promise.all([
+      const [catalogs, prefijosData, matData, branchesData] = await Promise.all([
         lastValueFrom(this.catalogService.getAll(idCompany)),
         lastValueFrom(this.productionService.getMoliendaPrefijos(idCompany)),
         lastValueFrom(this.mxmService.getByType(idCompany, 'MOLIENDA')),
+        lastValueFrom(this.branchsService.getBranches(idCompany)),
       ]);
+
+      this.branchPrefijoMap = new Map<number, string>(
+        ((branchesData ?? []) as any[]).map((b: any) => [b.id as number, (b.prefix ?? '') as string])
+      );
 
       // Mapa idPrefijoFase → prefijo string
       const fajePrefijoMap = new Map<number, string>(
@@ -674,17 +685,21 @@ export class DetallesBoteFiltradoComponent {
       const sorted = allActive
         .filter((m: any) => {
           if (moFaseId != null && m.idPrefijoFase !== moFaseId) return false;
-          if (this.matPrimaId != null && m.idMatPrima !== this.matPrimaId) return false;
+          if (this.matPrimaId  != null && m.idMatPrima  !== this.matPrimaId)  return false;
+          if (this.rowBranchId != null && m.idBranch    !== this.rowBranchId) return false;
           return true;
         });
 
       this.boteOptions = sorted.map((item: any) => {
         const fasePrefijo = item.idPrefijoFase != null ? (fajePrefijoMap.get(item.idPrefijoFase) ?? '') : '';
         const artPrefijo  = item.idMatPrima    != null ? (artPrefijoMap.get(item.idMatPrima)     ?? '') : '';
-        const num = item.numBote ?? '';   // viene del backend
+        const branchPref  = item.idBranch      != null ? (this.branchPrefijoMap.get(item.idBranch) ?? '') : '';
+        const year     = String(item.anio ?? new Date().getFullYear()).slice(-2);
+        const num      = item.numBote  ?? '';
+        const contador = item.contador ?? 1;
         return {
           id: item.id,
-          description: `${fasePrefijo}${artPrefijo}/${item.cantidad ?? ''}-${num}`,
+          description: `${branchPref}${fasePrefijo}${artPrefijo}${year}/${item.cantidad ?? ''}-${num}/${contador}`,
           volumen: Number(item.cantidad ?? 0),
         };
       });

@@ -13,6 +13,7 @@ import { SignalsService } from '../../../../services/signals.service';
 import { CatalogProductionService, CatalogProductionItem } from '../../../../services/catalog-production.service';
 import { alerts } from 'app/helpers/alerts';
 import { ProductionService } from '../../../../services/production.service';
+import { BranchsService } from '../../../../services/branchs.service';
 
 @Component({
   selector: 'app-catalogosproduccion',
@@ -797,6 +798,9 @@ export class CatalogosProduccionComponent {
   private catalogService    = inject(ExtractionFermentationCatalogService);
   private hierService       = inject(CatalogProductionService);
   private productionService = inject(ProductionService);
+  private branchsService    = inject(BranchsService);
+
+  branchOptions: { id: number; name: string; prefix: string }[] = [];
   activeTab = 'molienda';
   private idRoot = 0;
   private materiales: any[] = [];
@@ -815,7 +819,8 @@ export class CatalogosProduccionComponent {
   private originalRowData: any[] = [];
   gridApi!: GridApi;
   private enterPressed = false;
-  private editableColumnOrder = ['idArticulo'];
+  private editableColumnOrder     = ['idArticulo'];
+  private boteEditableColumnOrder = ['idBranch', 'idPrefijoFase', 'idMatPrima', 'cantidad'];
   isBotesMode = false;
 
   // ── Prefijos Fases ──
@@ -927,6 +932,24 @@ export class CatalogosProduccionComponent {
   // ── Columnas Botes ──
   boteColumnDefs: ColDef[] = [
     {
+      headerName: 'Sucursal',
+      field: 'idBranch',
+      width: 170,
+      editable: (p: any) => !p.data?.hasUsage,
+      cellEditor: SelectWithTooltipEditorV2Component,
+      cellEditorParams: () => ({
+        options: [
+          { id: null, description: '— Sin sucursal —' },
+          ...this.branchOptions.map(b => ({ id: b.id, description: b.name })),
+        ],
+      }),
+      valueFormatter: (p: any) => {
+        if (p.value == null) return '';
+        const b = this.branchOptions.find(o => o.id === p.value);
+        return b ? b.name : String(p.value);
+      },
+    },
+    {
       headerName: 'Fase',
       field: 'idPrefijoFase',
       width: 160,
@@ -979,14 +1002,25 @@ export class CatalogosProduccionComponent {
       field: 'codigo',
       width: 160,
       editable: false,
-      valueGetter: (p: any) => {
-        const faseId = p.data?.idPrefijoFase;
-        const matId  = p.data?.idMatPrima;
-        const fasePrefijo = faseId != null ? (this.prefijoFaseOptions.find(f => f.id === faseId)?.prefijo ?? '') : '';
-        const artPrefijo  = matId  != null ? (this.matPrimaOptions.find(m => m.id === matId)?.prefijo ?? '') : '';
-        const num = p.data?.prefixNum != null ? p.data.prefixNum : '';
-        const vol = p.data?.cantidad  != null ? p.data.cantidad  : '';
-        return `${fasePrefijo}${artPrefijo}/${vol}-${num}`;
+    },
+    {
+      headerName: 'Contador',
+      field: 'contador',
+      width: 100,
+      editable: false,
+      cellRenderer: (p: any) => {
+        const val = p.data?.contador ?? 1;
+        return `<span style="font-weight:600;margin-right:6px;">${val}</span>`
+             + `<button data-action="inc" style="font-size:0.68rem;padding:1px 6px;border:1px solid #6c757d;border-radius:4px;background:#fff;cursor:pointer;line-height:1.4;">+1</button>`;
+      },
+      onCellClicked: (p: any) => {
+        if ((p.event?.target as HTMLElement)?.getAttribute('data-action') === 'inc') {
+          p.data.contador = (p.data.contador ?? 1) + 1;
+          p.data.codigo   = this.buildCodigo(p.data);
+          p.data.__modified = true;
+          this.hasUnsavedChanges = true;
+          p.api.applyTransaction({ update: [p.data] });
+        }
       },
     },
     {
@@ -999,6 +1033,7 @@ export class CatalogosProduccionComponent {
   ];
 
   boteGridOptions = {
+    getRowId: (p: any) => p.data.id != null ? String(p.data.id) : `new_${p.data.boteNum}`,
     headerHeight: 25,
     rowHeight: 20,
     rowClassRules: {
@@ -1176,10 +1211,16 @@ export class CatalogosProduccionComponent {
 
       this.idRoot = idRoot;
       forkJoin({
-        pfs:  this.productionService.getMoliendaPrefijos(idRoot),
-        mats: this.materialsService.getMaterialsxview(idRoot),
-        mxm:  this.mxmService.getByType(idRoot, 'MOLIENDA'),
-      }).subscribe(({ pfs, mats, mxm }: any) => {
+        pfs:      this.productionService.getMoliendaPrefijos(idRoot),
+        mats:     this.materialsService.getMaterialsxview(idRoot),
+        mxm:      this.mxmService.getByType(idRoot, 'MOLIENDA'),
+        branches: this.branchsService.getBranches(idRoot),
+      }).subscribe(({ pfs, mats, mxm, branches }: any) => {
+        this.branchOptions = ((branches ?? []) as any[]).map((b: any) => ({
+          id: b.id,
+          name: b.name ?? '',
+          prefix: b.prefix ?? '',
+        }));
         // Fases — deben estar listas antes de construir matPrimaOptions
         this.prefijoFaseOptions = (pfs ?? []).map((p: any) => ({ id: p.id, prefijo: p.prefijo ?? '', nombreFase: p.nombreFase ?? '' }));
         const moFaseId = this.prefijoFaseOptions.find(f => f.prefijo === 'MO')?.id ?? null;
@@ -1221,6 +1262,11 @@ export class CatalogosProduccionComponent {
   onCellValueChanged(event: any) {
     if (!event.data.__isNew) { event.data.__modified = true; this.hasUnsavedChanges = true; }
 
+    if (this.isBotesMode && ['idBranch','idPrefijoFase','idMatPrima','cantidad'].includes(event.colDef?.field)) {
+      event.data.codigo = this.buildCodigo(event.data);
+      if (this.gridApi) this.gridApi.refreshCells({ rowNodes: [event.node], columns: ['codigo'], force: true });
+    }
+
     if (this.isBotesMode && event.colDef?.field === 'idPrefijoFase') {
       const faseId = event.newValue;
       const matId  = event.data.idMatPrima;
@@ -1239,9 +1285,10 @@ export class CatalogosProduccionComponent {
   onCellEditingStopped(event: any) {
     if (!this.enterPressed) return;
     this.enterPressed = false;
-    const idx = this.editableColumnOrder.indexOf(event.column.getColId());
-    if (idx !== -1 && idx < this.editableColumnOrder.length - 1) {
-      setTimeout(() => this.gridApi.startEditingCell({ rowIndex: event.rowIndex, colKey: this.editableColumnOrder[idx + 1] }), 100);
+    const order = this.isBotesMode ? this.boteEditableColumnOrder : this.editableColumnOrder;
+    const idx = order.indexOf(event.column.getColId());
+    if (idx !== -1 && idx < order.length - 1) {
+      setTimeout(() => this.gridApi.startEditingCell({ rowIndex: event.rowIndex, colKey: order[idx + 1] }), 100);
     }
   }
 
@@ -1274,11 +1321,15 @@ export class CatalogosProduccionComponent {
         idCatalog: this.selectedCatalogSidebarId,
         idMatPrima: null,
         idPrefijoFase: null,
+        idBranch: null,
+        anio: null,
+        contador: 1,
+        codigo: '',
         boteNum: nextNum,
         __isNew: true,
       }, ...this.rowData()]);
       this.hasUnsavedChanges = true;
-      setTimeout(() => this.gridApi.startEditingCell({ rowIndex: 0, colKey: 'cantidad' }), 0);
+      setTimeout(() => this.gridApi.startEditingCell({ rowIndex: 0, colKey: 'idBranch' }), 0);
       return;
     }
     this.rowData.set([{
@@ -1314,6 +1365,10 @@ export class CatalogosProduccionComponent {
             molienda: false,
             idMatPrima: r.idMatPrima ?? null,
             idPrefijoFase: r.idPrefijoFase ?? null,
+            idBranch: r.idBranch ?? null,
+            anio: r.anio ?? null,
+            numBote: r.prefixNum ?? null,
+            contador: r.contador ?? 1,
           }
         : {
             idCompany: this.idRoot,
@@ -2221,6 +2276,17 @@ export class CatalogosProduccionComponent {
     return d.startsWith('caracteristicas de');
   }
 
+  buildCodigo(row: any): string {
+    const branchPref  = row.idBranch      != null ? (this.branchOptions.find(b => b.id === row.idBranch)?.prefix ?? '') : '';
+    const fasePrefijo = row.idPrefijoFase != null ? (this.prefijoFaseOptions.find(f => f.id === row.idPrefijoFase)?.prefijo ?? '') : '';
+    const artPrefijo  = row.idMatPrima    != null ? (this.matPrimaOptions.find(m => m.id === row.idMatPrima)?.prefijo ?? '') : '';
+    const year     = String(row.anio ?? new Date().getFullYear()).slice(-2);
+    const num      = row.prefixNum != null ? row.prefixNum : '';
+    const vol      = row.cantidad  != null ? row.cantidad  : '';
+    const contador = row.contador  ?? 1;
+    return `${branchPref}${fasePrefijo}${artPrefijo}${year}/${vol}-${num}/${contador}`;
+  }
+
   private isBotesCatalog(item: ExtractionFermentationCatalogItem): boolean {
     const raw = (item.description || '').trim().toLowerCase();
     const d = raw.normalize('NFD').replace(/[\u0300-\u036f]/g, '');
@@ -2268,10 +2334,17 @@ export class CatalogosProduccionComponent {
           idCatalog: m.idCatalog,
           idMatPrima: m.idMatPrima ?? null,
           idPrefijoFase: m.idPrefijoFase ?? null,
-          prefixNum: m.numBote ?? null,   // viene del backend
+          idBranch: m.idBranch ?? null,
+          anio: m.anio ?? null,
+          prefixNum: m.numBote ?? null,
+          contador: m.contador ?? 1,
           hasUsage: (usageMap[m.id] ?? 0) > 0,
-        }));
+        })).map((r: any) => ({ ...r, codigo: this.buildCodigo(r) }));
         rows.sort((a: any, b: any) => {
+          const branchA = this.branchOptions.find((br: any) => br.id === a.idBranch)?.name ?? '';
+          const branchB = this.branchOptions.find((br: any) => br.id === b.idBranch)?.name ?? '';
+          const cmpBranch = branchA.localeCompare(branchB, 'es', { sensitivity: 'base' });
+          if (cmpBranch !== 0) return cmpBranch;
           const faseA = this.prefijoFaseOptions.find((f: any) => f.id === a.idPrefijoFase)?.nombreFase ?? '';
           const faseB = this.prefijoFaseOptions.find((f: any) => f.id === b.idPrefijoFase)?.nombreFase ?? '';
           const cmpFase = faseA.localeCompare(faseB, 'es', { sensitivity: 'base' });
