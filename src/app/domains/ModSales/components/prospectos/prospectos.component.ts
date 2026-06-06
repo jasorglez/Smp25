@@ -1124,7 +1124,8 @@ export class ProspectosComponent implements OnInit {
             ...(cc ? { cc } : {}),
             message: {
               subject,
-              html: body.replace(/\n/g, '<br>'),
+              text: body,
+              html: `<div style="font-family:Arial,sans-serif;font-size:14px;line-height:1.6;white-space:pre-wrap">${body.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')}</div>`,
               ...(attachments.length ? { attachments } : {}),
             },
           });
