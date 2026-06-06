@@ -85,7 +85,7 @@ export const environment = {
     // publicKey: 'TEST-4399133a-4676-42a2-ab85-d946370bf96a',
   },
 
-  version: '4.35 (05 Junio 2026) feat(prospectos): email modal mas amplio con adjuntos PDF',
+  version: '4.36 (05 Junio 2026) fix(prospectos): email incluye text+html para mostrar plantilla correctamente',
 };
 
 
