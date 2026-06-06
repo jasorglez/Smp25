@@ -1237,11 +1237,6 @@ export class ProvidersComponent implements CanComponentDeactivate {
       // Guardar también los cambios de ProviderXTable
       await this.saveProviderXTableChanges();
 
-      alerts.basicAlert(
-        'Datos actualizados',
-        'Se han actualizado los datos correctamente.',
-        'success'
-      );
       this.notSavedChanges = false;
       this.newlyAddedRows = [];
 
@@ -1621,12 +1616,6 @@ export class ProvidersComponent implements CanComponentDeactivate {
           await lastValueFrom(this.providersService.updateProviderXTable(change.id, change.data));
         }
       }
-
-      alerts.basicAlert(
-        'Datos actualizados',
-        'Se han actualizado los contactos correctamente.',
-        'success'
-      );
 
       // Reload contact data
       for (const providerId of Object.keys(this.providersXTableData)) {
