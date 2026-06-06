@@ -615,50 +615,87 @@ export class DashAdmonComponent implements OnInit {
   private buildEgresosChart(data: any[]): void {
     const now   = new Date();
     const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-    const plotOpts = { bar: { horizontal: false, columnWidth: '60%', borderRadius: 3, distributed: true } };
 
+    // ── Filtrar por rango seleccionado ──────────────────────────────────────
+    let filtered: any[];
     if (this.egresosRange === 1) {
-      const yr   = now.getFullYear();
-      const mo   = now.getMonth();
-      const days = new Date(yr, mo + 1, 0).getDate();
-      const byDay = Array(days).fill(0);
-
-      data.forEach(e => {
+      const yr = now.getFullYear(), mo = now.getMonth();
+      filtered = data.filter(e => {
         const d = new Date(e.dateExpend);
-        if (d.getFullYear() === yr && d.getMonth() === mo) {
-          byDay[d.getDate() - 1] += Number(e.totalFinal) || 0;
-        }
+        return d.getFullYear() === yr && d.getMonth() === mo;
       });
-
-      this.egresosColors      = ['#transparent'];
-      this.egresosPlotOptions = { ...plotOpts };
-      this.egresosChart       = { ...this.egresosChart, type: 'bar', height: 320, legend: { show: false } };
-      this.egresosXaxis       = { categories: Array.from({ length: days }, (_, i) => String(i + 1)), labels: { style: { fontSize: '10px', colors: '#64748b' } } };
-      this.egresosSeries      = [{ name: 'Egresos', data: byDay.map((v, i) => ({ x: String(i + 1), y: v, fillColor: this.BAR_PALETTE[i % this.BAR_PALETTE.length] })) }];
-
     } else {
       const fromDate = new Date(now.getFullYear(), now.getMonth() - this.egresosRange + 1, 1);
-      const byDay: { [key: string]: number } = {};
-
-      data.forEach(e => {
+      filtered = data.filter(e => {
         const d = new Date(e.dateExpend);
-        if (d >= fromDate && d <= today) {
-          const key = `${String(d.getDate()).padStart(2,'0')}/${String(d.getMonth()+1).padStart(2,'0')}`;
-          byDay[key] = (byDay[key] || 0) + (Number(e.totalFinal) || 0);
-        }
+        return d >= fromDate && d <= today;
       });
+    }
 
-      const sortedKeys = Object.keys(byDay).sort((a, b) => {
+    // ── Agrupar: día → entidad → total (mismo proveedor mismo día = suma) ──
+    const dayEntityMap = new Map<string, Map<string, number>>();
+    const entityTotals = new Map<string, number>();
+
+    filtered.forEach(e => {
+      const d = new Date(e.dateExpend);
+      const dayKey = this.egresosRange === 1
+        ? String(d.getDate())
+        : `${String(d.getDate()).padStart(2,'0')}/${String(d.getMonth()+1).padStart(2,'0')}`;
+      const entity = (e.entityName || 'Sin nombre').toString().trim();
+      const amount = Number(e.totalFinal) || 0;
+
+      if (!dayEntityMap.has(dayKey)) dayEntityMap.set(dayKey, new Map());
+      const em = dayEntityMap.get(dayKey)!;
+      em.set(entity, (em.get(entity) || 0) + amount);
+      entityTotals.set(entity, (entityTotals.get(entity) || 0) + amount);
+    });
+
+    // ── Ordenar días ────────────────────────────────────────────────────────
+    let sortedDays: string[];
+    if (this.egresosRange === 1) {
+      const days = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
+      sortedDays = Array.from({ length: days }, (_, i) => String(i + 1));
+    } else {
+      sortedDays = Array.from(dayEntityMap.keys()).sort((a, b) => {
         const [da, ma] = a.split('/').map(Number);
         const [db, mb] = b.split('/').map(Number);
         return ma !== mb ? ma - mb : da - db;
       });
-
-      this.egresosColors      = ['#transparent'];
-      this.egresosPlotOptions = { ...plotOpts };
-      this.egresosChart       = { ...this.egresosChart, type: 'bar', height: 320, legend: { show: false } };
-      this.egresosXaxis       = { categories: sortedKeys, labels: { rotate: -45, rotateAlways: true, style: { fontSize: '9px', colors: '#64748b' } } };
-      this.egresosSeries      = [{ name: 'Egresos', data: sortedKeys.map((k, i) => ({ x: k, y: byDay[k], fillColor: this.BAR_PALETTE[i % this.BAR_PALETTE.length] })) }];
     }
+
+    // ── Ordenar entidades: mayor gasto total = primer color ─────────────────
+    const sortedEntities = Array.from(entityTotals.entries())
+      .sort((a, b) => b[1] - a[1])
+      .map(([name]) => name);
+
+    // ── Construir series (una por proveedor/empleado) ───────────────────────
+    const series = sortedEntities.map(entity => ({
+      name: entity,
+      data: sortedDays.map(day => +(dayEntityMap.get(day)?.get(entity) || 0).toFixed(2))
+    }));
+
+    this.egresosSeries      = series;
+    this.egresosColors      = sortedEntities.map((_, i) => this.BAR_PALETTE[i % this.BAR_PALETTE.length]);
+    this.egresosChart       = { type: 'bar', height: 320, width: '100%', stacked: true, toolbar: { show: false }, fontFamily: 'Inter, system-ui, sans-serif' };
+    this.egresosPlotOptions = { bar: { horizontal: false, columnWidth: '60%', borderRadius: 2 } };
+    this.egresosDataLabels  = { enabled: false };
+    this.egresosLegend      = { show: false };
+    this.egresosXaxis       = {
+      categories: sortedDays,
+      labels: {
+        rotate: this.egresosRange === 1 ? 0 : -45,
+        rotateAlways: this.egresosRange !== 1,
+        style: { fontSize: '9px', colors: '#64748b' }
+      }
+    };
+    this.egresosTooltip     = {
+      shared: true,
+      intersect: false,
+      y: {
+        formatter: (v: number) => v > 0
+          ? '$' + v.toLocaleString('es-MX', { minimumFractionDigits: 2 })
+          : (null as any)
+      }
+    };
   }
 }
