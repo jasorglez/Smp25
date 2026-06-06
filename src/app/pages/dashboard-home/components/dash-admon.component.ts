@@ -155,7 +155,11 @@ import { SignalrService } from 'app/services/signalr.service';
         <div class="col-12 col-xl-6">
           <div class="chart-card h-100">
             <div class="chart-header d-flex justify-content-between align-items-center">
-              <span><i class="bi bi-graph-down-arrow me-2 text-danger"></i>Egresos por Día — {{ egresosRangeLabel }}</span>
+              <span>
+                <i class="bi bi-graph-down-arrow me-2 text-danger"></i>
+                Egresos por Día — {{ egresosRangeLabel }}
+                <span class="ms-2 fw-bold text-danger" style="font-size:13px">\${{ egresosTotal | number:'1.2-2' }}</span>
+              </span>
               <div class="btn-group btn-group-sm" role="group">
                 <button type="button" class="btn" [class.btn-danger]="egresosRange===1" [class.btn-outline-danger]="egresosRange!==1" (click)="setEgresosRange(1)">1 Mes</button>
                 <button type="button" class="btn" [class.btn-danger]="egresosRange===3" [class.btn-outline-danger]="egresosRange!==3" (click)="setEgresosRange(3)">3 Meses</button>
@@ -401,6 +405,7 @@ export class DashAdmonComponent implements OnInit {
 
   egresosRange: number = 1;
   egresosRangeLabel: string = '';
+  egresosTotal: number = 0;
   topEntityList: { name: string; total: number; type: string }[] = [];
   topEntityTotal: number = 0;
   topEntityLabel: string = '';
@@ -649,6 +654,9 @@ export class DashAdmonComponent implements OnInit {
       em.set(entity, (em.get(entity) || 0) + amount);
       entityTotals.set(entity, (entityTotals.get(entity) || 0) + amount);
     });
+
+    // ── Total del período ────────────────────────────────────────────────────
+    this.egresosTotal = filtered.reduce((sum, e) => sum + (Number(e.totalFinal) || 0), 0);
 
     // ── Ordenar días ────────────────────────────────────────────────────────
     let sortedDays: string[];
