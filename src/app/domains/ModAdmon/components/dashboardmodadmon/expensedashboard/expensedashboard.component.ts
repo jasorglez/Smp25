@@ -288,27 +288,37 @@ export class ExpensedashboardComponent {
       return;
     }
 
+    // day → entity(company/empleado) → total acumulado
     const dayMap = new Map<string, Map<string, number>>();
-    const categoriesSet = new Set<string>();
+    const entityTotals = new Map<string, number>();
 
     filtered.forEach(c => {
       const day = String(c.dateexpend).substring(0, 10);
-      // typeexpense del view: "PROVEEDORES    " / "EMPLEADOS      " → trim
-      const cat = (c.typeexpense ?? 'SIN CLASIFICAR').toString().trim() || 'SIN CLASIFICAR';
+      const type = (c.typeexpense ?? '').toString().trim();
+      const entity = type === 'EMPLEADOS'
+        ? ((c.nameempleado ?? '').toString().trim() || 'SIN EMPLEADO')
+        : ((c.company ?? '').toString().trim() || 'SIN PROVEEDOR');
       const amount = Number(c.totalconcepto ?? 0);
 
-      categoriesSet.add(cat);
+      // Acumular por día → entidad (Opción A: mismo proveedor mismo día = suma)
       if (!dayMap.has(day)) dayMap.set(day, new Map());
-      const catMap = dayMap.get(day)!;
-      catMap.set(cat, (catMap.get(cat) || 0) + amount);
+      const dm = dayMap.get(day)!;
+      dm.set(entity, (dm.get(entity) || 0) + amount);
+
+      // Total global por entidad (para ordenar colores: mayor gasto = primer color)
+      entityTotals.set(entity, (entityTotals.get(entity) || 0) + amount);
     });
 
     const sortedDays = Array.from(dayMap.keys()).sort();
-    const categories = Array.from(categoriesSet).sort();
 
-    const series = categories.map(cat => ({
-      name: cat,
-      data: sortedDays.map(day => +(dayMap.get(day)?.get(cat) || 0).toFixed(2))
+    // Ordenar entidades de mayor a menor gasto total → color más llamativo al top spender
+    const sortedEntities = Array.from(entityTotals.entries())
+      .sort((a, b) => b[1] - a[1])
+      .map(([name]) => name);
+
+    const series = sortedEntities.map(entity => ({
+      name: entity,
+      data: sortedDays.map(day => +(dayMap.get(day)?.get(entity) || 0).toFixed(2))
     }));
 
     const xLabels = sortedDays.map(d => {
@@ -322,9 +332,19 @@ export class ExpensedashboardComponent {
       plotOptions: { bar: { horizontal: false, columnWidth: '70%' } },
       dataLabels: { enabled: false },
       xaxis: { categories: xLabels, labels: { rotate: -45, style: { fontSize: '10px' } } },
-      yaxis: { labels: { formatter: (val) => '$' + (val / 1000).toFixed(0) + 'K' } },
-      title: { text: 'EGRESOS POR DÍA Y TIPO', align: 'left', style: { color: '#ffc107', fontSize: '14px' } },
-      tooltip: { y: { formatter: (val) => `$${val.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` } }
+      yaxis: { labels: { formatter: (val: number) => '$' + (val / 1000).toFixed(0) + 'K' } },
+      title: { text: 'EGRESOS POR DÍA Y PROVEEDOR', align: 'left', style: { color: '#ffc107', fontSize: '14px' } },
+      tooltip: {
+        shared: true,
+        intersect: false,
+        y: {
+          formatter: (val: number, opts: any) => {
+            if (!val || val === 0) return null as any;
+            const entity = opts?.w?.config?.series?.[opts.seriesIndex]?.name ?? '';
+            return `${entity}: $${val.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+          }
+        }
+      }
     };
   }
 

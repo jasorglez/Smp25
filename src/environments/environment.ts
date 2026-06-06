@@ -85,7 +85,7 @@ export const environment = {
     // publicKey: 'TEST-4399133a-4676-42a2-ab85-d946370bf96a',
   },
 
-  version: '4.37 (06 Junio 2026) fix(modadmon): quitar await en success toasts proveedores clientes almacenes',
+  version: '4.38 (06 Junio 2026) feat(dashboard): egresos x dia stacked por proveedor con tooltip',
 };
 
 
