@@ -1135,14 +1135,10 @@ export class CatFamSubComponent {
       
       this.closeModals();
       await this.loadCatalogData();
-      
-      // Mostrar alert Y LUEGO restaurar selección
-      await alerts.basicAlert('Éxito', 'Categoría creada correctamente.', 'success');
-      
-      // Restaurar selección si había una
       if (selectedId) {
         this.restoreSelectionAfterReload(selectedId, selectedNodeLevel || 'category');
       }
+      alerts.basicAlert('Éxito', 'Categoría creada correctamente.', 'success');
     } catch (error: any) {
       console.error('Error al crear categoría:', error);
       const errorMsg = error?.error?.message || error?.message || 'Error desconocido';
@@ -1191,14 +1187,10 @@ export class CatFamSubComponent {
       
       this.closeModals();
       await this.loadCatalogData();
-      
-      // Mostrar alert Y LUEGO restaurar selección
-      await alerts.basicAlert('Éxito', 'Familia creada correctamente.', 'success');
-      
-      // Restaurar selección si había una
       if (selectedId) {
         this.restoreSelectionAfterReload(selectedId, selectedNodeLevel || 'family');
       }
+      alerts.basicAlert('Éxito', 'Familia creada correctamente.', 'success');
     } catch (error: any) {
       console.error('Error al crear familia:', error);
       const errorMsg = error?.error?.message || error?.message || 'Error desconocido';
@@ -1251,14 +1243,10 @@ export class CatFamSubComponent {
       
       this.closeModals();
       await this.loadCatalogData();
-      
-      // Mostrar alert Y LUEGO restaurar selección
-      await alerts.basicAlert('Éxito', 'Subfamilia creada correctamente.', 'success');
-      
-      // Restaurar selección si había una
       if (selectedId) {
         this.restoreSelectionAfterReload(selectedId, selectedNodeLevel || 'subfamily');
       }
+      alerts.basicAlert('Éxito', 'Subfamilia creada correctamente.', 'success');
     } catch (error: any) {
       console.error('Error al crear subfamilia:', error);
       const errorMsg = error?.error?.message || error?.message || 'Error desconocido';
@@ -1302,15 +1290,9 @@ export class CatFamSubComponent {
       console.log('Respuesta del servidor (actualización):', response);
       
       this.closeModals();
-      
-      // Recargar datos primero
       await this.loadCatalogData();
-      
-      // MOSTRAR EL ALERT Y LUEGO RESTAURAR SELECCIÓN
-      await alerts.basicAlert('Éxito', 'Registro actualizado correctamente.', 'success');
-      
-      // Restaurar selección DESPUÉS de que el alert se cierre
       this.restoreSelectionAfterReload(selectedId, selectedNodeLevel);
+      alerts.basicAlert('Éxito', 'Registro actualizado correctamente.', 'success');
     } catch (error: any) {
       console.error('Error al actualizar:', error);
       const errorMsg = error?.error?.message || error?.message || 'Error desconocido';

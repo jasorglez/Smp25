@@ -1429,6 +1429,7 @@ export class CustomersComponent implements CanComponentDeactivate {
         this.lastEditedRowId = 'SELECT_MAX_ID';
       }
 
+      alerts.basicAlert('Datos actualizados', 'Se han guardado los datos correctamente.', 'success');
       this.notSavedChanges = false;
       this.newlyAddedRows = [];
 

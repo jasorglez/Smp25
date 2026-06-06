@@ -730,7 +730,7 @@ export class DetallesTiposProveedorComponent implements ICellRendererAngularComp
         }
       }
 
-      await alerts.basicAlert(
+      alerts.basicAlert(
         'Eliminado exitoso',
         'El registro se ha eliminado correctamente.',
         'success'
@@ -1076,7 +1076,7 @@ export class DetallesTiposProveedorComponent implements ICellRendererAngularComp
       }
 
       // AHORA mostrar el alert (después de restaurar el focus)
-      await alerts.basicAlert(
+      alerts.basicAlert(
         'Guardado exitoso',
         'Los cambios se han guardado correctamente.',
         'success'
