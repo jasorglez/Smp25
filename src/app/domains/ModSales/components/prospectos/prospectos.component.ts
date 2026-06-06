@@ -1044,17 +1044,38 @@ export class ProspectosComponent implements OnInit {
 
     const result = await Swal.fire({
       title: `<i class="bi bi-envelope" style="color:#0d6efd"></i> Email — ${empresa}`,
-      width: 640,
+      width: 820,
       html: `
-        <div style="text-align:left;font-size:.875rem">
-          <label style="font-weight:600">Para</label>
-          <input id="se-to" class="swal2-input" style="margin:4px 0 10px" placeholder="correo@empresa.com" value="${correo}">
-          <label style="font-weight:600">CC <small style="color:#888;font-weight:400">(opcional)</small></label>
-          <input id="se-cc" class="swal2-input" style="margin:4px 0 10px" placeholder="copia@ejemplo.com">
-          <label style="font-weight:600">Asunto</label>
-          <input id="se-subject" class="swal2-input" style="margin:4px 0 10px" value="${asunto}">
-          <label style="font-weight:600">Mensaje <small style="color:#888;font-weight:400">(editable)</small></label>
-          <textarea id="se-body" class="swal2-textarea" style="height:160px;font-size:.8rem;margin:4px 0">${msgBase}</textarea>
+        <div style="text-align:left;font-size:.875rem;display:grid;grid-template-columns:1fr 1fr;gap:0 16px">
+          <div>
+            <label style="font-weight:600">Para *</label>
+            <input id="se-to" class="swal2-input" style="margin:4px 0 10px" placeholder="correo@empresa.com" value="${correo}">
+          </div>
+          <div>
+            <label style="font-weight:600">CC <small style="color:#888;font-weight:400">(opcional)</small></label>
+            <input id="se-cc" class="swal2-input" style="margin:4px 0 10px" placeholder="copia@ejemplo.com">
+          </div>
+          <div style="grid-column:1/-1">
+            <label style="font-weight:600">Asunto *</label>
+            <input id="se-subject" class="swal2-input" style="margin:4px 0 10px" value="${asunto}">
+          </div>
+          <div style="grid-column:1/-1">
+            <label style="font-weight:600">Mensaje <small style="color:#888;font-weight:400">(editable)</small></label>
+            <textarea id="se-body" class="swal2-textarea" style="height:180px;font-size:.82rem;margin:4px 0 10px">${msgBase}</textarea>
+          </div>
+          <div style="grid-column:1/-1">
+            <label style="font-weight:600">Adjuntos <small style="color:#888;font-weight:400">(PDF, opcional — máx 2)</small></label>
+            <div style="display:flex;gap:12px;margin-top:6px;flex-wrap:wrap">
+              <div style="flex:1;min-width:220px">
+                <div style="font-size:.78rem;color:#555;margin-bottom:3px">📄 Carta de Presentación</div>
+                <input type="file" id="se-adj1" accept="application/pdf" style="font-size:.8rem;width:100%">
+              </div>
+              <div style="flex:1;min-width:220px">
+                <div style="font-size:.78rem;color:#555;margin-bottom:3px">📋 Cotización / Propuesta</div>
+                <input type="file" id="se-adj2" accept="application/pdf" style="font-size:.8rem;width:100%">
+              </div>
+            </div>
+          </div>
         </div>
       `,
       showCancelButton: true,
@@ -1067,6 +1088,9 @@ export class ProspectosComponent implements OnInit {
         const cc      = (document.getElementById('se-cc')      as HTMLInputElement).value.trim();
         const subject = (document.getElementById('se-subject') as HTMLInputElement).value.trim();
         const body    = (document.getElementById('se-body')    as HTMLTextAreaElement).value.trim();
+        const adj1    = (document.getElementById('se-adj1')    as HTMLInputElement).files?.[0] ?? null;
+        const adj2    = (document.getElementById('se-adj2')    as HTMLInputElement).files?.[0] ?? null;
+
         const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
         if (!to || !emailRegex.test(to)) {
           Swal.showValidationMessage('Escribe un correo válido en el campo Para.');
@@ -1076,11 +1100,33 @@ export class ProspectosComponent implements OnInit {
           Swal.showValidationMessage('El asunto es obligatorio.');
           return false;
         }
+
+        const toBase64 = (file: File): Promise<string> =>
+          new Promise((res, rej) => {
+            const r = new FileReader();
+            r.onload  = () => res((r.result as string).split(',')[1]);
+            r.onerror = rej;
+            r.readAsDataURL(file);
+          });
+
+        const attachments: any[] = [];
+        try {
+          if (adj1) attachments.push({ filename: adj1.name, content: await toBase64(adj1), encoding: 'base64' });
+          if (adj2) attachments.push({ filename: adj2.name, content: await toBase64(adj2), encoding: 'base64' });
+        } catch {
+          Swal.showValidationMessage('Error al leer el archivo adjunto.');
+          return false;
+        }
+
         try {
           await addDoc(collection(this.firestore, 'mail'), {
             to,
             ...(cc ? { cc } : {}),
-            message: { subject, html: body.replace(/\n/g, '<br>') },
+            message: {
+              subject,
+              html: body.replace(/\n/g, '<br>'),
+              ...(attachments.length ? { attachments } : {}),
+            },
           });
           return { to, subject };
         } catch {
