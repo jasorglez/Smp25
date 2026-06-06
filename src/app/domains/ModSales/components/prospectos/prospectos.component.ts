@@ -7,7 +7,7 @@ import { AgGridModule } from 'ag-grid-angular';
 import { ColDef, GridApi, GridReadyEvent } from 'ag-grid-enterprise';
 import { AG_GRID_LOCALE_ES } from 'assets/i18n/ag-grid.locale.es';
 import { ProspectosService, Prospecto, ESTADOS_PROSPECTO, GIROS_PROSPECTO, FUENTES_PROSPECTO, calcularScore, nivelScore } from 'app/services/prospectos.service';
-import { Timestamp } from '@angular/fire/firestore';
+import { Timestamp, Firestore, addDoc, collection } from '@angular/fire/firestore';
 import { SignalsService } from 'app/services/signals.service';
 import { UsersService } from 'app/services/users.service';
 import { DetalleInteraccionesComponent } from './detalle-interacciones.component';
@@ -29,6 +29,7 @@ export class ProspectosComponent implements OnInit {
   private usersSvc   = inject(UsersService);
   private storageSvc = inject(StoragesService);
   private inegiSvc   = inject(InegiService);
+  private firestore  = inject(Firestore);
   private _colDefs: ColDef[] = [];
 
   // ── Pestañas ─────────────────────────────────────────────────────────────
@@ -267,6 +268,21 @@ export class ProspectosComponent implements OnInit {
           </button>`;
         },
         onCellClicked: (p: any) => { if (p.data?.telefono && p.data.telefono !== 'SIN NUMERO') this.abrirWhatsappProspecto(p.data); },
+        cellStyle: { cursor: 'pointer' },
+      },
+      {
+        field: 'email_btn',
+        headerName: 'Email',
+        width: 95,
+        editable: false,
+        cellRenderer: (p: any) => {
+          const hasEmail = !!p.data?.correo;
+          const color = hasEmail ? '#0d6efd' : '#6c757d';
+          return `<button style="background:${color};border:none;color:#fff;border-radius:4px;padding:2px 8px;font-size:.8rem;cursor:${hasEmail ? 'pointer' : 'default'}" title="${hasEmail ? 'Enviar Email' : 'Sin correo registrado'}">
+            <i class="bi bi-envelope"></i> Enviar
+          </button>`;
+        },
+        onCellClicked: (p: any) => { if (p.data?.correo) this.abrirEmailProspecto(p.data); },
         cellStyle: { cursor: 'pointer' },
       },
       {
@@ -1014,6 +1030,100 @@ export class ProspectosComponent implements OnInit {
       icon: 'success',
       title: 'WhatsApp listo',
       text: data.estado === 'contactado' ? `✅ Prospecto marcado como Contactado` : `Abierto para ${phone}`,
+      timer: 2000,
+      showConfirmButton: false,
+    });
+  }
+
+  async abrirEmailProspecto(data: any) {
+    const giro    = data?.giro ?? '';
+    const empresa = data?.empresa || data?.nombre || 'prospecto';
+    const correo  = data?.correo ?? '';
+    const msgBase = (this.plantillas[giro] ?? this.plantillas['Otro'] ?? '').replace(/\{empresa\}/g, empresa);
+    const asunto  = `BI2 — Propuesta Comercial para ${empresa}`;
+
+    const result = await Swal.fire({
+      title: `<i class="bi bi-envelope" style="color:#0d6efd"></i> Email — ${empresa}`,
+      width: 640,
+      html: `
+        <div style="text-align:left;font-size:.875rem">
+          <label style="font-weight:600">Para</label>
+          <input id="se-to" class="swal2-input" style="margin:4px 0 10px" placeholder="correo@empresa.com" value="${correo}">
+          <label style="font-weight:600">CC <small style="color:#888;font-weight:400">(opcional)</small></label>
+          <input id="se-cc" class="swal2-input" style="margin:4px 0 10px" placeholder="copia@ejemplo.com">
+          <label style="font-weight:600">Asunto</label>
+          <input id="se-subject" class="swal2-input" style="margin:4px 0 10px" value="${asunto}">
+          <label style="font-weight:600">Mensaje <small style="color:#888;font-weight:400">(editable)</small></label>
+          <textarea id="se-body" class="swal2-textarea" style="height:160px;font-size:.8rem;margin:4px 0">${msgBase}</textarea>
+        </div>
+      `,
+      showCancelButton: true,
+      confirmButtonText: '<i class="bi bi-send"></i> Enviar Email',
+      cancelButtonText: 'Cancelar',
+      confirmButtonColor: '#0d6efd',
+      showLoaderOnConfirm: true,
+      preConfirm: async () => {
+        const to      = (document.getElementById('se-to')      as HTMLInputElement).value.trim();
+        const cc      = (document.getElementById('se-cc')      as HTMLInputElement).value.trim();
+        const subject = (document.getElementById('se-subject') as HTMLInputElement).value.trim();
+        const body    = (document.getElementById('se-body')    as HTMLTextAreaElement).value.trim();
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
+        if (!to || !emailRegex.test(to)) {
+          Swal.showValidationMessage('Escribe un correo válido en el campo Para.');
+          return false;
+        }
+        if (!subject) {
+          Swal.showValidationMessage('El asunto es obligatorio.');
+          return false;
+        }
+        try {
+          await addDoc(collection(this.firestore, 'mail'), {
+            to,
+            ...(cc ? { cc } : {}),
+            message: { subject, html: body.replace(/\n/g, '<br>') },
+          });
+          return { to, subject };
+        } catch {
+          Swal.showValidationMessage('Error al enviar el email. Intenta de nuevo.');
+          return false;
+        }
+      },
+      allowOutsideClick: () => !Swal.isLoading(),
+    });
+
+    if (!result.isConfirmed || !result.value) return;
+    const { to, subject } = result.value as { to: string; subject: string };
+
+    if (data.id) {
+      try {
+        await this.svc.registrarInteraccion(data.id, {
+          tipo: 'email',
+          descripcion: `Email enviado a ${to} — "${subject}"`,
+          idVendedor: this.idVendedor,
+          nombreVendedor: this.nombreVendedor,
+          resultado: 'neutral',
+        });
+        data.countInteracciones = (data.countInteracciones ?? 0) + 1;
+        data.fechaUltimaInteraccion = new Date();
+        if ((data.estado ?? 'prospecto') === 'prospecto') {
+          await this.svc.cambiarEstado(data.id, 'contactado', this.idVendedor, this.nombreVendedor);
+          data.estado = 'contactado';
+          data.countInteracciones += 1;
+        }
+        this.gridApi.forEachNode((node: any) => {
+          if (node.data?.id === data.id) {
+            node.setData({ ...node.data, estado: data.estado, countInteracciones: data.countInteracciones, fechaUltimaInteraccion: data.fechaUltimaInteraccion });
+          }
+        });
+      } catch {
+        console.warn('[Prospectos] No se pudo registrar interacción Email');
+      }
+    }
+
+    Swal.fire({
+      icon: 'success',
+      title: 'Email enviado',
+      text: data.estado === 'contactado' ? '✅ Prospecto marcado como Contactado' : `Enviado a ${to}`,
       timer: 2000,
       showConfirmButton: false,
     });
