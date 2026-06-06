@@ -592,18 +592,8 @@ export class ProvidersPaymentsComponent {
         })
       )
       .subscribe(() => {
-        alerts.basicAlert(
-          'Eliminar entrada',
-          'Entrada eliminada satisfactoriamente.',
-          'success'
-        );
+        alerts.basicAlert('Eliminar entrada', 'Entrada eliminada satisfactoriamente.', 'success');
         this.loadData();
-
-        alerts.basicAlert(
-          'Eliminar entrada',
-          'Entrada eliminada satisfactoriamente.',
-          'success'
-        );
         this.masterNotSavedChanges = false;
         this.signalsService.triggerRefreshEmployees();
       });

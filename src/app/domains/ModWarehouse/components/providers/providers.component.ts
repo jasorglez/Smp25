@@ -1562,8 +1562,7 @@ export class ProvidersComponent implements CanComponentDeactivate {
       }
 
       if (newDetails.length > 0 || modifiedDetails.length > 0) {
-        // Esperar a que el alert se cierre antes de continuar
-        await alerts.basicAlert(
+        alerts.basicAlert(
           'Detalles guardados',
           'Se han guardado los detalles correctamente.',
           'success'
