@@ -576,6 +576,11 @@ export class DetallesExpenditureComponent implements OnInit, OnDestroy {
               if (params.data.__isNew && !params.data.description) {
                 params.data.description = `Salario de ${employeeName}`;
               }
+              // Auto-fill cuenta contable desde historial
+              if (params.data.__isNew) {
+                const hist = this.context?.componentParent?.conceptsHistoryBySpend?.get(employee.id);
+                if (hist?.idContribuyente) params.data.idContribuyente = hist.idContribuyente;
+              }
               return true;
             }
           } else if (type === 'PROVEEDORES') {
@@ -585,6 +590,12 @@ export class DetallesExpenditureComponent implements OnInit, OnDestroy {
               params.data.idExpense = provider.id;
               params.data.selectedEntity = providerName;
               params.data.groupEntity = this.getGroupEntityLabel(params.data);
+              // Auto-fill cuenta contable y concepto desde historial
+              if (params.data.__isNew) {
+                const hist = this.context?.componentParent?.conceptsHistoryBySpend?.get(provider.id);
+                if (hist?.idContribuyente) params.data.idContribuyente = hist.idContribuyente;
+                if (hist?.description && !params.data.description) params.data.description = hist.description;
+              }
               return true;
             }
           } else if (type === 'OTROS') {

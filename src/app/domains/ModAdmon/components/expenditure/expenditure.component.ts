@@ -203,6 +203,8 @@ export class ExpenditureComponent implements OnDestroy, OnChanges {
   employees: any[] = [];
   providers: any[] = [];
   cuentasContables: any[] = [];
+  // Historial: idExpense → última cuenta contable y descripción usada con ese proveedor/empleado
+  conceptsHistoryBySpend: Map<number, { idContribuyente: number; description: string }> = new Map();
   cuentasContablesNivel2: any[] = [];
   cuentasContablesNivel3: any[] = [];
   projects: any[] = [];
@@ -1414,8 +1416,18 @@ export class ExpenditureComponent implements OnDestroy, OnChanges {
     this.incomesAndExpensesService.getConceptsFromIncomesAndExpenses(expenditureId).subscribe({
       next: (data: any) => {
         console.log(`✅ PADRE: Conceptos recibidos del servidor para ID ${expenditureId}:`, data?.length || 0);
-        if (data && data.length > 0) {
-          console.log('   Primer concepto:', data[0]);
+        // Acumular historial: para cada concepto con proveedor/empleado y cuenta contable, recordar la última combinación usada
+        if (Array.isArray(data)) {
+          data.forEach((c: any) => {
+            const idExpense = c.idExpense ?? c.id_spend;
+            const idContribuyente = c.idContribuyente ?? c.id_contribuyente;
+            if (idExpense && idContribuyente) {
+              this.conceptsHistoryBySpend.set(Number(idExpense), {
+                idContribuyente: Number(idContribuyente),
+                description: c.description ?? c.descconcepto ?? ''
+              });
+            }
+          });
         }
         successCallback(data);
       },
