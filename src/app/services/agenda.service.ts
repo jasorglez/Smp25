@@ -6,7 +6,8 @@ import { TrackingService } from './tracking.service';
 
 export interface AgendaCliente {
   id?:                   number;
-  idCliente:             number;
+  idCliente?:            number;
+  idProspecto?:          number;
   idCompany:             number;
   tipo:                  string;
   titulo:                string;
@@ -48,6 +49,13 @@ export class AgendaService {
   getByCliente(idCliente: number, idCompany: number): Observable<AgendaCliente[]> {
     return this.http.get<AgendaCliente[]>(
       `${this.base}/cliente/${idCliente}/${idCompany}`,
+      { headers: this.tracking.getHeaders() }
+    );
+  }
+
+  getByProspecto(idProspecto: number, idCompany: number): Observable<AgendaCliente[]> {
+    return this.http.get<AgendaCliente[]>(
+      `${this.base}/prospecto/${idProspecto}/${idCompany}`,
       { headers: this.tracking.getHeaders() }
     );
   }
