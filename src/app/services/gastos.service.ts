@@ -46,6 +46,7 @@ export interface PendingPayment {
   valorPago: number;
   masIva: boolean;
   notaFactura: string | null;
+  numNotaFactura: string | null;
   fechaRecepcion: string | null;
   fechaPago: string | null;
 
@@ -101,6 +102,7 @@ export interface ConfirmPaymentPayload {
   precioUnitario?: number | null;
   masIva: boolean;
   notaFactura?: string | null;
+  numNotaFactura?: string | null;
   cantidad: number;
   fechaVencimiento?: string | null; // fecha de vencimiento manual (YYYY-MM-DD); null = no cambiar
   // Aplicación de anticipo (bloque ANTICIPO)
@@ -167,8 +169,8 @@ export class GastosService {
   }
 
   /** Ingresa una entrada "a crédito": material disponible + pago pendiente a N días. */
-  activarCredito(idEntrada: number, fechaVencimiento?: string | null): Observable<any> {
-    return this.http.post(`${environment.urlWarehouse}/Gastos/activar-credito`, { idEntrada, fechaVencimiento }, {
+  activarCredito(idEntrada: number, fechaVencimiento?: string | null, notaFactura?: string | null, numNotaFactura?: string | null): Observable<any> {
+    return this.http.post(`${environment.urlWarehouse}/Gastos/activar-credito`, { idEntrada, fechaVencimiento, notaFactura, numNotaFactura }, {
       headers: this.trackingService.getHeaders()
     });
   }

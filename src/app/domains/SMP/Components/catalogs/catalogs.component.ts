@@ -31,6 +31,10 @@ import { SubatalogsComponent } from "../../../ModWarehouse/components/catalogs/c
 import { AutorizacionMontosComponent } from "../../../ModShoppingDelison/pages/subPages/autorizacion-montos/autorizacion-montos.component";
 import { ProductosTerminadosComponent } from "../../../Almacenes/pages/productos-terminados/productos-terminados.component";
 import { CondicionesPagoComponent } from "../../../ModShoppingDelison/pages/subPages/condiciones-pago/condiciones-pago.component";
+import { DescripcionEmpaqueComponent } from "../../../ModShoppingDelison/pages/subPages/descripcion-empaque/descripcion-empaque.component";
+import { UnidadesComponent } from "../../../ModShoppingDelison/pages/subPages/unidades/unidades.component";
+import { DimensionesComponent } from "../../../ModShoppingDelison/pages/subPages/dimensiones/dimensiones.component";
+import { PesoVolumenComponent } from "../../../ModShoppingDelison/pages/subPages/peso-volumen/peso-volumen.component";
 
 //soriano
 @Component({
@@ -46,7 +50,11 @@ import { CondicionesPagoComponent } from "../../../ModShoppingDelison/pages/subP
     CatFamSubComponent, EleccionFamiliasComponent,
     AutorizacionMontosComponent,
     ProductosTerminadosComponent,
-    CondicionesPagoComponent
+    CondicionesPagoComponent,
+    DescripcionEmpaqueComponent,
+    UnidadesComponent,
+    DimensionesComponent,
+    PesoVolumenComponent
 ],
   templateUrl: './catalogs.component.html',
   styleUrl: './catalogs.component.scss',
@@ -69,6 +77,9 @@ export class CatalogsComponent implements CanComponentDeactivate {
   montos:boolean = false;
   prodTerminado:boolean = false;
   condicionesPago:boolean = false;
+  enConstruccion: string = '';
+  requisicionesTab: string = 'autorizacion';
+  materialesTab: string = 'empaque';
   gridHeight: string = '50vh';
   prefixAndConsecutive: any[] = [];
   private tempIdCounter: number = 0;
@@ -145,6 +156,7 @@ export class CatalogsComponent implements CanComponentDeactivate {
     this.montos = false;
     this.prodTerminado = false;
     this.condicionesPago = false;
+    this.enConstruccion = '';
   }
 
   showMontos(){
@@ -152,6 +164,7 @@ export class CatalogsComponent implements CanComponentDeactivate {
     this.montos = true;
     this.prodTerminado = false;
     this.condicionesPago = false;
+    this.enConstruccion = '';
   }
 
   showProdTerminado(){
@@ -159,6 +172,7 @@ export class CatalogsComponent implements CanComponentDeactivate {
     this.montos = false;
     this.prodTerminado = true;
     this.condicionesPago = false;
+    this.enConstruccion = '';
   }
 
   showCondicionesPago(){
@@ -166,6 +180,15 @@ export class CatalogsComponent implements CanComponentDeactivate {
     this.montos = false;
     this.prodTerminado = false;
     this.condicionesPago = true;
+    this.enConstruccion = '';
+  }
+
+  showEnConstruccion(item: string){
+    this.cat = false;
+    this.montos = false;
+    this.prodTerminado = false;
+    this.condicionesPago = false;
+    this.enConstruccion = item;
   }
 
   permisos(type: string){

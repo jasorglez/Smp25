@@ -496,7 +496,8 @@ export class QuoteDelisonComponent implements OnInit, OnDestroy, CanComponentDea
             descriptionNewArticle: item.descriptionNewArticle || '',
             urlNewArticle: item.urlNewArticle || '',
             justificationNewArticle: item.justificationNewArticle || '',
-            caducidadMinimaRequerida: item.caducidadMinimaRequerida || item.caducidad || item.expiration || ''
+            caducidadMinimaRequerida: item.caducidadMinimaRequerida || item.caducidad || item.expiration || '',
+            idProveedorSugerido: item.idProveedorSugerido ?? null  // proveedor sugerido por el panel (para el 💡)
           })),
           createdAt: cotizacion.dateCreate,
           dateModified: cotizacion.dateModified

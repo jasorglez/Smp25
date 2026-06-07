@@ -55,7 +55,7 @@ export class GastosComponent {
   crProviderSelectedId: number | null = null;
 
   // Persistencia de columnas (por usuario, en BD) — clave única de este grid.
-  private readonly CAPTURA_GRID_KEY = 'gastos-captura';
+  private readonly CAPTURA_GRID_KEY = 'gastos-captura-v2';
   private capturaHasSavedState = false; // hay estado guardado → no autoSize
   private capturaStateLoaded = false;   // ya cargó/aplicó → habilita guardar
 
@@ -157,6 +157,16 @@ export class GastosComponent {
       cellRenderer: (p: any) => p.data?.docType === 'CR' && !p.data?.proveedor
         ? '<span style="color:#e65100;font-style:italic;">Seleccionar proveedor ▾</span>'
         : (p.value || ''),
+    },
+    {
+      field: 'numNotaFactura', headerName: '# Nota/Factura', width: 130,
+      editable: true, cellStyle: { backgroundColor: '#fffde7' },
+      valueSetter: (params: any) => {
+        params.data.numNotaFactura = params.newValue;
+        (params.data as any).__modified = true;
+        this.hasUnsavedCaptura = true;
+        return true;
+      },
     },
     {
       field: 'notaFactura', headerName: 'Nota / Factura', width: 140,
@@ -403,6 +413,7 @@ export class GastosComponent {
     },
     { field: 'numArticulo', headerName: 'Num. Articulo', width: 130, hide: true },   // oculta solo en el histórico
     { field: 'proveedor', headerName: 'Proveedor', width: 150 },
+    { field: 'numNotaFactura', headerName: '# Nota/Factura', width: 120 },
     { field: 'notaFactura', headerName: 'Nota / Factura', width: 130 },
     { field: 'masIva', headerName: 'IVA', width: 70, cellRenderer: 'agCheckboxCellRenderer', cellStyle: { textAlign: 'center' } },
     { field: 'cantidad', headerName: 'Cant.', width: 90, type: 'numericColumn', valueFormatter: (p: any) => p.data?.docType === 'ANTICIPO' ? '—' : p.value },
@@ -649,6 +660,7 @@ export class GastosComponent {
         'Artículo': d.articulo,
         'Num. Articulo': d.numArticulo || '',
         'Proveedor': d.proveedor || '',
+        '# Nota/Factura': d.numNotaFactura || '',
         'Nota / Factura': d.notaFactura || '',
         'IVA': d.masIva ? 'Sí' : 'No',
         'Cantidad': esAnticipo ? '' : q,
@@ -820,7 +832,7 @@ export class GastosComponent {
     if (!confirm.isConfirmed) return;
     try {
       const fechaVenc = this.computeVencimiento(row);
-      await lastValueFrom(this.gastosService.activarCredito(row.idEntrada, fechaVenc || null));
+      await lastValueFrom(this.gastosService.activarCredito(row.idEntrada, fechaVenc || null, row.notaFactura ?? null, row.numNotaFactura ?? null));
       row.credito = true;
       if (fechaVenc) row.fechaVencimiento = fechaVenc;
       alerts.reqSuccessToast('Insertado en almacén', `${row.folio} ingresado a crédito y sumado al almacén global. Queda pendiente de pago.`);
@@ -946,6 +958,7 @@ export class GastosComponent {
       precioUnitario: (row as any).__precioBase != null ? Number((row as any).__precioBase) : (row.precioUnitario != null ? Number(row.precioUnitario) : null),
       masIva: !!row.masIva,
       notaFactura: row.notaFactura,
+      numNotaFactura: row.numNotaFactura,
       cantidad: Number(row.cantidad) || 0,
     };
   }

@@ -79,7 +79,7 @@ export class DetailCellRendererComponentCuentas implements ICellRendererAngularC
     masterDetail: true,
      isRowMaster: (dataItem) => {
     // Asignar un detailType por defecto si no existe para evitar errores en el selector
-    if (!dataItem.detailType) dataItem.detailType = 'campo1';
+    if (!dataItem.detailType) dataItem.detailType = 'campo11';
     return true; // Todas las filas de proveedores son maestras
   },
     //detailCellRenderer: 'detallesCuentasRenderer',
@@ -99,7 +99,7 @@ export class DetailCellRendererComponentCuentas implements ICellRendererAngularC
           },
         }
       };
-    } else if (params.data.detailType === 'campo1') {
+    } else if (params.data.detailType === 'campo11') {
       params.node.setRowHeight(800);
       return {
         component: 'detallesCuentasRenderer',
@@ -219,11 +219,11 @@ export class DetailCellRendererComponentCuentas implements ICellRendererAngularC
       flex: 1
     },
     {
-      field: 'campo1',
+      field: 'campo11',
       headerName: 'Numero Factura/Nota',
       editable: false,
       // Este cellRenderer muestra el ícono y el valor, y permite expandir/colapsar el detalle al hacer clic
-      cellRenderer: this.createDetailToggleCellRenderer('campo1'),
+      cellRenderer: this.createDetailToggleCellRenderer('campo11'),
       flex: 1,
       cellStyle: { backgroundColor: '#d4edda' }
     },
@@ -284,7 +284,7 @@ export class DetailCellRendererComponentCuentas implements ICellRendererAngularC
           const value = isNumeric ? this.currencyPipe.transform(params.value, '', 'symbol', '1.2-2') : '$0.00';
           div.innerHTML = `${value}`;
         break;
-        case 'campo1':
+        case 'campo11':
           div.innerHTML = `${params.value}`;
         break;
       }
@@ -401,7 +401,7 @@ export class DetailCellRendererComponentCuentas implements ICellRendererAngularC
         const selectedRow = this.selectedCuenta;
         const selectedCuentaId = selectedRow?.id;
         const selectedCuentaFecha = selectedRow?.campo3; // Fecha requisicion como respaldo
-        const selectedCuentaNumero = selectedRow?.campo1; // Numero factura/nota como respaldo
+        const selectedCuentaNumero = selectedRow?.campo11; // Numero factura/nota como respaldo
 
         // Guardar (ESPERA a que el usuario cierre el alert)
         await this.params.context.CUENTA.save(this.providerId, this.cuentaRowData, 'CUENTA');
@@ -431,7 +431,7 @@ export class DetailCellRendererComponentCuentas implements ICellRendererAngularC
           if (!rowToSelect && selectedCuentaNumero) {
             rowToSelect = this.cuentaRowData.find(r =>
               r.campo3 === selectedCuentaFecha &&
-              r.campo1 === selectedCuentaNumero
+              r.campo11 === selectedCuentaNumero
             );
           }
 

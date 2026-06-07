@@ -63,11 +63,11 @@ pdfMake.vfs = pdfFonts.vfs;
                 {{ item.description }}
               </span>
               <ng-container *ngIf="!item.__isHeader">
-                <span *ngIf="item.isPrincipal" title="Proveedor principal de los artículos">⭐ </span>{{ item.description }}
+                <span *ngIf="item.isPrincipal" title="Proveedor principal de los artículos">⭐ </span><span *ngIf="item.isSugerido" title="Sugerido por la requisición" style="color:#1565c0;font-weight:700;">💡 </span>{{ item.description }}<span *ngIf="item.isSugerido" style="color:#1565c0;font-size:11px;font-weight:700;"> · Sugerido por requisición</span>
               </ng-container>
             </ng-template>
             <ng-template ng-label-tmp let-item="item">
-              <span *ngIf="item.isPrincipal">⭐ </span>{{ item.description }}
+              <span *ngIf="item.isPrincipal">⭐ </span><span *ngIf="item.isSugerido" title="Sugerido por la requisición">💡 </span>{{ item.description }}
             </ng-template>
           </ng-select>
           <input type="file" #fileInput accept=".pdf" style="display: none;" (change)="onFileSelected($event)">
@@ -268,6 +268,8 @@ export class DetalleItemsProveedorComponent {
   private readonly NEW_PROVIDER_SENTINEL = -1;
   private rowsMissingProvider: any[] = [];
   private principalProviderIds = new Set<number>();
+  // Proveedores sugeridos por la requisición (panel de presentaciones) para los artículos del slot.
+  private sugeridoProviderIds = new Set<number>();
   private inactiveProviders: { id: number; name: string; raw: any }[] = [];  // externos inactivos para validar duplicados / reactivar
 
   public AG_GRID_LOCALE_ES = AG_GRID_LOCALE_ES;
@@ -423,6 +425,12 @@ export class DetalleItemsProveedorComponent {
   buildRowData() {
     const articulos = (this.params.data.articulos || []).filter((item: any) => !!item.pedimento);
     console.log('🔨 buildRowData: Construyendo datos iniciales con', articulos.length, 'artículos');
+    // Proveedores sugeridos (panel de requisición) de los artículos de este slot.
+    this.sugeridoProviderIds.clear();
+    articulos.forEach((item: any) => {
+      const idSug = Number(item.idProveedorSugerido);
+      if (idSug > 0) this.sugeridoProviderIds.add(idSug);
+    });
     this.rowData = articulos.map((item: any, index: number) => ({
       id: item.id || 0,
       active: true,
@@ -1249,7 +1257,7 @@ export class DetalleItemsProveedorComponent {
       : this.providers.filter(p => p.id === this.NEW_PROVIDER_SENTINEL || !usedIds.has(p.id));
 
     // Construir orden manual: + Nuevo → ⭐ Principales → Header Compañía → Compañías → Header Contacto → Contactos
-    const withFlag = base.map(p => ({ ...p, isPrincipal: this.principalProviderIds.has(p.id) }));
+    const withFlag = base.map(p => ({ ...p, isPrincipal: this.principalProviderIds.has(p.id), isSugerido: this.sugeridoProviderIds.has(p.id) }));
     const newProvider = withFlag.find(p => p.id === this.NEW_PROVIDER_SENTINEL);
     const headerCompany = withFlag.find(p => p.__isHeader && p.id === '__header_company__');
     const headerContact = withFlag.find(p => p.__isHeader && p.id === '__header_contact__');

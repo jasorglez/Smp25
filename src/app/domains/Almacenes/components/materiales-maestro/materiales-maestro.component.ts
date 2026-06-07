@@ -634,6 +634,15 @@ export class MaterialesMaestroComponent implements OnInit, OnDestroy {
         }
       },
       {
+        field: 'validaPresentaciones',
+        headerName: 'Valida Presentaciones',
+        width: 160,
+        editable: true,
+        cellRenderer: 'agCheckboxCellRenderer',
+        cellEditor: 'agCheckboxCellEditor',
+        headerTooltip: 'Si está activo, la requisición valida que la cantidad sea combinación de presentaciones (además del mínimo de compra).',
+      },
+      {
         field: 'providerCount',
         headerName: 'Proveedor',
         width: 120,
@@ -1484,7 +1493,8 @@ export class MaterialesMaestroComponent implements OnInit, OnDestroy {
       folioOcorReq: '',
       vigente: row.vigente === true || row.vigente === 1 ? true : false,
       active: row.active ?? true,
-      porAutorizar: !!(row.porAutorizar ?? row.autorizacion ?? row.pendingAuthorization ?? false)
+      porAutorizar: !!(row.porAutorizar ?? row.autorizacion ?? row.pendingAuthorization ?? false),
+      validaPresentaciones: !!(row.validaPresentaciones ?? false)
     };
   }
 

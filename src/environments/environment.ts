@@ -73,5 +73,5 @@ export const environment = {
 
   urlRefreshToken: 'https://securetoken.googleapis.com/v1/token?key=AIzaSyDxCBGKk8nT09hdW85-PyOkhw5_JPZLF1A',
 
-  version: '2.52.366 (4 Junio 2026) - Fix menu Compras: Gastos duplicado. loadTabMenus trabaja sobre copia del array cacheado (shareReplay) + guarda idempotente; ya no acumula por splice'
+  version: '2.52.390 (6 Junio 2026) - CADENA 💡 COMPLETA: el mapeo de pedimento.items en quote-delison NO copiaba idProveedorSugerido (lo descartaba) → articulos sin el campo → dropdown sin 💡. Agregado al mapeo. Ahora panel→guardado→getReqItems→pedimento.items→modal→sugeridoProviderIds→💡'
 };

@@ -16,6 +16,7 @@ import { firstValueFrom, lastValueFrom, Subscription } from 'rxjs';
 import { AuthService } from 'app/services/auth.service';
 import { ItemCommentsCellRendererComponent } from 'app/shared/item-comments-cell-renderer/item-comments-cell-renderer.component';
 import { ItemCommentsService } from 'app/services/item-comments.service';
+import { PresentacionesPanelComponent } from './presentaciones-panel.component';
 import { DomSanitizer, SafeResourceUrl } from '@angular/platform-browser';
 import { ReceiptsDelisonService } from 'app/services/receipts-delison.service';
 import { PrefixSetupService } from 'app/services/prefix-setup.service';
@@ -29,7 +30,7 @@ import { RolesService } from 'app/services/roles.service';
 @Component({
   selector: 'app-detalles-requisicion-delison',
   standalone: true,
-  imports: [CommonModule, FormsModule, AgGridModule, SelectWithTooltipEditorV2Component, MultiLineEditorComponent, ItemCommentsCellRendererComponent, SearchableComboboxComponent],
+  imports: [CommonModule, FormsModule, AgGridModule, SelectWithTooltipEditorV2Component, MultiLineEditorComponent, ItemCommentsCellRendererComponent, SearchableComboboxComponent, PresentacionesPanelComponent],
   template: `
     <!-- Items Grid View -->
     <div *ngIf="detailType === 'items'" style="padding: 5px; background-color: #e3f2fd; height: 100%; max-height: 100%; display: flex; flex-direction: column; box-sizing: border-box; overflow: hidden;">
@@ -116,6 +117,18 @@ import { RolesService } from 'app/services/roles.service';
         </ag-grid-angular>
       </div>
     </div>
+
+    <!-- Panel de Presentaciones (cajero) — se abre desde la celda Cantidad Requerida -->
+    <app-presentaciones-panel
+      *ngIf="panelOpen"
+      [idMaterial]="panelMaterialId"
+      [cantidad]="panelCantidad"
+      [articleName]="panelArticle"
+      [providerNames]="panelProviderNames"
+      [permitirDividir]="false"
+      (seleccionar)="onPanelSeleccionar($event)"
+      (cerrar)="onPanelCerrar()">
+    </app-presentaciones-panel>
 
      <!-- Modal para Nuevo Artículo (NgbModal lo monta en <body> para quedar por encima de todo) -->
     <ng-template #newArticleModalTpl>
@@ -377,6 +390,16 @@ export class DetallesRequisicionDelisonComponent implements OnInit, OnDestroy {
   hasRowSelected: boolean = false;
   hasProviderAssigned: boolean = false; // true = cotización con proveedor asignado → no eliminar
   materials: any[] = [];
+  // Panel de Presentaciones (cajero) — disparado desde la celda Cantidad Requerida.
+  validaPresentMap: Map<number, boolean> = new Map();
+  panelOpen = false;
+  panelMaterialId = 0;
+  panelCantidad = 0;
+  panelArticle = '';
+  panelProviderNames: Map<number, string> | null = null;
+  private panelRow: any = null;
+  // Comentarios del panel pendientes de postear (al guardar): { materialId, texto }.
+  private _deferredPanelComments: { materialId: number; texto: string }[] = [];
   frequentArticles: any[] = [];  // TOP 3 artículos más solicitados
   totalRequisitions: number = 0; // Total de requisiciones para calcular porcentajes
   private pedimentoCounter: number = 1;
@@ -573,6 +596,7 @@ export class DetallesRequisicionDelisonComponent implements OnInit, OnDestroy {
           nameArticle: item.namearticle || item.nameArticle || '',
           numArticle: item.numarticle || item.numArticle || '',
           provint: item.provint || '',
+          idProveedorSugerido: item.idProveedorSugerido ?? null, // proveedor sugerido por el panel
           typePriority: item.typePriority || 'Normal',
           pedimiento: item.pedimento || false, // ✅ Cargar desde backend, siempre debe ser false después de Multiguardar
           pedimentoNumber: item.pedimentoNum || '', // ✅ String con números separados por coma (ej: "1,3,4,6")
@@ -615,6 +639,9 @@ export class DetallesRequisicionDelisonComponent implements OnInit, OnDestroy {
           },
           error: () => { } // silencioso
         });
+
+        // Opción 3: postear los comentarios del panel ya con la fila recargada (numArticle real).
+        this.postDeferredPanelComments();
       },
       error: (error) => {
         console.error('❌ Error al cargar items:', error);
@@ -652,11 +679,14 @@ export class DetallesRequisicionDelisonComponent implements OnInit, OnDestroy {
             code: material.insumo,            // Código/número de material
             measure: material.measure || '',
             active: material.active,
+            validaPresentaciones: !!(material as any).validaPresentaciones, // dispara el panel de presentaciones
             // Campos adicionales que podrían ser útiles
             idCategory: material.idCategory,
             idFamilia: material.idFamilia,
             idSubfamilia: material.idSubfamilia
           }));
+        // Mapa rápido idMaterial → valida_presentaciones (para el botón del panel en Cantidad).
+        this.validaPresentMap = new Map(this.materials.map((m: any) => [m.id, !!m.validaPresentaciones]));
 
         // Cargar opciones para el combobox "Nombre del Artículo" en el modal
         // Incluye activos e inactivos para detectar duplicados en cualquier caso
@@ -990,10 +1020,12 @@ export class DetallesRequisicionDelisonComponent implements OnInit, OnDestroy {
             this.loadProviders(selectedMaterial.id, type).then(() => {
             });
 
-            // Refrescar las celdas para mostrar el articleNumber actualizado y limpiar proveedor
+            // Refrescar las celdas para mostrar el articleNumber actualizado y limpiar proveedor.
+            // Incluye 'quantity' para que el icono 🧮 (panel de presentaciones) aparezca de inmediato
+            // si el material recién seleccionado tiene el flag valida_presentaciones.
             this.gridApi.refreshCells({
               rowNodes: [params.node],
-              columns: ['articleNumber', 'idProvider'],
+              columns: ['articleNumber', 'idProvider', 'quantity'],
               force: true
             });
 
@@ -1057,16 +1089,39 @@ export class DetallesRequisicionDelisonComponent implements OnInit, OnDestroy {
       {
         field: 'quantity',
         headerName: 'Cantidad Requerida',
-        width: 100,
+        width: 120,
         suppressSizeToFit: true,
         // ✅ Bloqueada cuando el usuario no tiene la combinación (sucursal, depto) del REQ padre.
         editable: (params: any) => params.data?.__isNew || this.canEditItemsInThisReq,
         type: 'numericColumn',
         cellEditor: 'agNumberCellEditor',
+        // Para materiales con flag valida_presentaciones: muestra un botón 🧮 que abre el panel.
+        cellRenderer: (params: any) => {
+          const idMat = params.data?.materialId ?? params.data?.idSupplie;
+          const hasFlag = !!(idMat && this.validaPresentMap?.get(Number(idMat)));
+          const wrap = document.createElement('div');
+          wrap.style.cssText = 'display:flex;align-items:center;justify-content:flex-end;gap:6px;height:100%;';
+          const val = document.createElement('span');
+          val.textContent = (params.value === null || params.value === undefined || params.value === '') ? '' : String(params.value);
+          wrap.appendChild(val);
+          if (hasFlag) {
+            const btn = document.createElement('button');
+            btn.textContent = '🧮';
+            btn.title = 'Armar cantidad con presentaciones';
+            btn.style.cssText = 'border:none;background:#e3f2fd;color:#1565c0;border-radius:4px;cursor:pointer;padding:0 6px;line-height:18px;';
+            btn.addEventListener('click', (e) => { e.stopPropagation(); this.openPresentacionesPanel(params.data); });
+            wrap.appendChild(btn);
+          }
+          return wrap;
+        },
         cellStyle: (params: any) => {
           const base: any = { textAlign: 'right' };
           if (!(params.data?.__isNew || this.canEditItemsInThisReq)) {
             base.backgroundColor = '#f0f0f0';
+          }
+          const idMat = params.data?.materialId ?? params.data?.idSupplie;
+          if (idMat && this.validaPresentMap?.get(Number(idMat))) {
+            base.backgroundColor = '#e8f5e9';   // verde suave: usa panel de presentaciones
           }
           return base;
         },
@@ -1599,6 +1654,11 @@ export class DetallesRequisicionDelisonComponent implements OnInit, OnDestroy {
       return;
     }
 
+    // Captura comentarios del panel pendientes (keyed por material) para postearlos tras la recarga.
+    this._deferredPanelComments = this.rowData
+      .filter((r: any) => r.__pendingPresentComment)
+      .map((r: any) => ({ materialId: Number(r.materialId ?? r.idSupplie), texto: r.__pendingPresentComment }));
+
     if (!this.isAddingNewItem && !this.hasUnsavedChanges) {
       alerts.reqBasicAlert('Sin cambios', 'No hay cambios pendientes por guardar', 'info');
       return;
@@ -1743,7 +1803,8 @@ export class DetallesRequisicionDelisonComponent implements OnInit, OnDestroy {
         compraRapida: item.compraRapida === true,
         descriptionNewArticle: item.descriptionNewArticle || '',
         urlNewArticle: item.urlNewArticle || '',
-        justificationNewArticle: item.justificationNewArticle || ''
+        justificationNewArticle: item.justificationNewArticle || '',
+        idProveedorSugerido: item.idProveedorSugerido ?? null
       };
 
       return firstValueFrom(this.ocAndReqsService.addReqItem(payload));
@@ -1783,7 +1844,8 @@ export class DetallesRequisicionDelisonComponent implements OnInit, OnDestroy {
         compraRapida: item.compraRapida === true,
         descriptionNewArticle: item.descriptionNewArticle || '',
         urlNewArticle: item.urlNewArticle || '',
-        justificationNewArticle: item.justificationNewArticle || ''
+        justificationNewArticle: item.justificationNewArticle || '',
+        idProveedorSugerido: item.idProveedorSugerido ?? null
       };
 
       return firstValueFrom(this.ocAndReqsService.updateReqItem(item.id.toString(), payload));
@@ -2020,7 +2082,8 @@ export class DetallesRequisicionDelisonComponent implements OnInit, OnDestroy {
           pedimento: fueSeleccionado, // ✅ true = solicitado, false = solo snapshot
           descriptionNewArticle: item.descriptionNewArticle || '', // Descripción del artículo nuevo
           urlNewArticle: item.urlNewArticle || '', // URL/Link del artículo nuevo
-          justificationNewArticle: item.justificationNewArticle || '' // Justificación del artículo nuevo
+          justificationNewArticle: item.justificationNewArticle || '', // Justificación del artículo nuevo
+          idProveedorSugerido: item.idProveedorSugerido ?? null // ⚠️ preservar: SetValues lo borraría si falta
         };
 
 
@@ -2076,7 +2139,8 @@ export class DetallesRequisicionDelisonComponent implements OnInit, OnDestroy {
           pedimentoNum: item.pedimentoNumber || '', // ✅ String con números separados por coma (ej: "1,3,4,6")
           descriptionNewArticle: item.descriptionNewArticle || '', // Descripción del artículo nuevo
           urlNewArticle: item.urlNewArticle || '', // URL/Link del artículo nuevo
-          justificationNewArticle: item.justificationNewArticle || '' // Justificación del artículo nuevo
+          justificationNewArticle: item.justificationNewArticle || '', // Justificación del artículo nuevo
+          idProveedorSugerido: item.idProveedorSugerido ?? null // ⚠️ preservar: SetValues lo borraría si falta
         };
 
 
@@ -2375,6 +2439,72 @@ export class DetallesRequisicionDelisonComponent implements OnInit, OnDestroy {
   onSelectionChanged(_event: any): void {
     const selectedRows = this.gridApi?.getSelectedRows() || [];
     this.hasRowSelected = selectedRows.length > 0;
+  }
+
+  // ==================== PANEL DE PRESENTACIONES (cajero) ====================
+
+  /** Abre el panel para armar la cantidad del artículo con presentaciones por proveedor. */
+  async openPresentacionesPanel(row: any): Promise<void> {
+    const idMaterial = row?.materialId ?? row?.idSupplie;
+    if (!idMaterial) return;
+    this.panelRow = row;
+    this.panelMaterialId = idMaterial;
+    this.panelCantidad = Number(row?.quantity) || 0;
+    this.panelArticle = row?.article || '';
+    // Resuelve nombres desde el maestro de proveedores (por id), no desde loadProviders:
+    // loadProviders filtra por sucursal autorizada y usa el campo idProvider, no cubría todos.
+    try {
+      const allProvs: any = await firstValueFrom(
+        this.customersService.getCustomersByCompany(this.idRoot || 0, 'PROVIDERS')
+      ).catch(() => []);
+      const map = new Map<number, string>();
+      (allProvs || []).forEach((p: any) => {
+        const name = p.name || p.company || p.description || `Proveedor ${p.id}`;
+        if (p.id) map.set(Number(p.id), name);
+      });
+      this.panelProviderNames = map;
+    } catch { this.panelProviderNames = null; }
+    this.panelOpen = true;
+  }
+
+  /** El usuario eligió una cantidad/proveedor en el panel: la escribe en la celda + comenta. */
+  onPanelSeleccionar(ev: { cantidad: number; idProvider: number; proveedor: string; texto: string }): void {
+    if (this.panelRow) {
+      this.panelRow.quantity = ev.cantidad;
+      this.panelRow.idProveedorSugerido = ev.idProvider;   // proveedor sugerido (se persiste al guardar)
+      this.panelRow.__modified = true;
+      this.hasUnsavedChanges = true;
+      // Opción 3: el comentario NO se postea ahora (eso recargaría el grid y borraría lo no guardado).
+      // Se deja pendiente en la fila y se postea cuando el usuario GUARDA (saveChanges → tras recargar).
+      this.panelRow.__pendingPresentComment = `🧮 [Req] ${ev.texto}`;
+      this.gridApi?.refreshCells({ force: true });
+    }
+    this.onPanelCerrar();
+  }
+
+  onPanelCerrar(): void {
+    this.panelOpen = false;
+    this.panelRow = null;
+  }
+
+  /** Postea los comentarios del panel pendientes, ya con las filas recargadas (numArticle real). */
+  private postDeferredPanelComments(): void {
+    if (!this._deferredPanelComments.length) return;
+    const pending = this._deferredPanelComments;
+    this._deferredPanelComments = [];   // limpiar ANTES de emitir (evita reentradas vía commentSaved$ → loadData)
+    for (const c of pending) {
+      const row = this.rowData.find((r: any) => Number(r.materialId ?? r.idSupplie) === c.materialId);
+      const numArticle = row?.numArticle || (row?.idSupplie ? `SUPP-${row.idSupplie}` : '');
+      if (!numArticle) continue;
+      this.itemCommentsService.openChatFor$.next({
+        documentType: 'REQ',
+        idDocument: this.requisitionId,
+        numArticle,
+        autoMessage: c.texto,
+        forceComment: true,
+        articleName: row?.article || '',
+      });
+    }
   }
 
 
