@@ -1,34 +1,60 @@
 <section class="sales-mod-shell">
 
   <!-- Pestañas -->
-  <ul class="nav nav-tabs px-3 pt-2" style="border-bottom:1px solid #dee2e6">
-    <li class="nav-item">
-      <button class="nav-link" [class.active]="activeTab === 'prospectos'"
-              (click)="activeTab = 'prospectos'">
-        <i class="bi bi-people me-1"></i> Prospectos
+  <div class="d-flex align-items-center px-3 pt-2" style="border-bottom:1px solid #dee2e6">
+    <ul class="nav nav-tabs border-0 flex-grow-1">
+      <li class="nav-item">
+        <button class="nav-link" [class.active]="activeTab === 'prospectos'"
+                (click)="activeTab = 'prospectos'">
+          <i class="bi bi-people me-1"></i> Prospectos
+        </button>
+      </li>
+      <li class="nav-item">
+        <button class="nav-link" [class.active]="activeTab === 'plantillas'"
+                (click)="activeTab = 'plantillas'">
+          <i class="bi bi-whatsapp me-1" style="color:#25D366"></i> Plantillas WhatsApp
+        </button>
+      </li>
+      <li class="nav-item">
+        <button class="nav-link" [class.active]="activeTab === 'reportes'"
+                (click)="activeTab = 'reportes'; cargarReportes()">
+          <i class="bi bi-graph-up-arrow me-1"></i> Reportes CRM
+        </button>
+      </li>
+      <li class="nav-item">
+        <button class="nav-link position-relative" [class.active]="activeTab === 'alertas'"
+                (click)="activeTab = 'alertas'">
+          <i class="bi bi-bell me-1"></i> Alertas
+          <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger"
+                *ngIf="totalAlertas > 0" style="font-size:.65rem">{{ totalAlertas }}</span>
+        </button>
+      </li>
+    </ul>
+
+    <!-- Google Calendar -->
+    <div class="d-flex align-items-center gap-2 pb-1">
+      <button *ngIf="!notifConfig?.googleConnected"
+              class="btn btn-sm btn-outline-danger"
+              (click)="connectGoogle()"
+              title="Conectar con Google Calendar">
+        <img src="https://www.gstatic.com/images/branding/product/1x/calendar_16dp.png"
+             width="14" height="14" class="me-1" alt="Google">
+        Conectar Google
       </button>
-    </li>
-    <li class="nav-item">
-      <button class="nav-link" [class.active]="activeTab === 'plantillas'"
-              (click)="activeTab = 'plantillas'">
-        <i class="bi bi-whatsapp me-1" style="color:#25D366"></i> Plantillas WhatsApp
-      </button>
-    </li>
-    <li class="nav-item">
-      <button class="nav-link" [class.active]="activeTab === 'reportes'"
-              (click)="activeTab = 'reportes'; cargarReportes()">
-        <i class="bi bi-graph-up-arrow me-1"></i> Reportes CRM
-      </button>
-    </li>
-    <li class="nav-item">
-      <button class="nav-link position-relative" [class.active]="activeTab === 'alertas'"
-              (click)="activeTab = 'alertas'">
-        <i class="bi bi-bell me-1"></i> Alertas
-        <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger"
-              *ngIf="totalAlertas > 0" style="font-size:.65rem">{{ totalAlertas }}</span>
-      </button>
-    </li>
-  </ul>
+
+      <div *ngIf="notifConfig?.googleConnected" class="d-flex align-items-center gap-1">
+        <span class="badge bg-success">
+          <img src="https://www.gstatic.com/images/branding/product/1x/calendar_16dp.png"
+               width="12" height="12" class="me-1" alt="Google">
+          {{ notifConfig?.googleEmail || 'Google Calendar' }}
+        </span>
+        <button class="btn btn-sm btn-outline-danger" (click)="disconnectGoogle()"
+                title="Desconectar Google Calendar" style="font-size:.7rem;padding:2px 6px">
+          <i class="bi bi-x"></i>
+        </button>
+      </div>
+    </div>
+  </div>
 
   <!-- ── TAB: Prospectos ───────────────────────────────────────────────── -->
   <div class="sales-mod-body" *ngIf="activeTab === 'prospectos'">

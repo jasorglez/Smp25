@@ -1,5 +1,6 @@
 ﻿import { Component, effect, inject, OnInit } from '@angular/core';
 import { lastValueFrom } from 'rxjs';
+import { ActivatedRoute } from '@angular/router';
 import { InegiService } from 'app/services/inegi.service';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
@@ -7,6 +8,7 @@ import { AgGridModule } from 'ag-grid-angular';
 import { ColDef, GridApi, GridReadyEvent } from 'ag-grid-enterprise';
 import { AG_GRID_LOCALE_ES } from 'assets/i18n/ag-grid.locale.es';
 import { ProspectosService, Prospecto, ESTADOS_PROSPECTO, GIROS_PROSPECTO, FUENTES_PROSPECTO, calcularScore, nivelScore } from 'app/services/prospectos.service';
+import { AgendaService, NotificationConfig } from 'app/services/agenda.service';
 import { Timestamp, Firestore, addDoc, collection } from '@angular/fire/firestore';
 import { SignalsService } from 'app/services/signals.service';
 import { UsersService } from 'app/services/users.service';
@@ -25,12 +27,16 @@ import Swal from 'sweetalert2';
 })
 export class ProspectosComponent implements OnInit {
   private svc        = inject(ProspectosService);
+  private agendaSvc  = inject(AgendaService);
   private signalsSvc = inject(SignalsService);
   private usersSvc   = inject(UsersService);
   private storageSvc = inject(StoragesService);
   private inegiSvc   = inject(InegiService);
   private firestore  = inject(Firestore);
+  private route      = inject(ActivatedRoute);
   private _colDefs: ColDef[] = [];
+
+  notifConfig: NotificationConfig | null = null;
 
   // ── Pestañas ─────────────────────────────────────────────────────────────
   activeTab: 'prospectos' | 'plantillas' | 'reportes' | 'alertas' = 'prospectos';
@@ -503,11 +509,74 @@ export class ProspectosComponent implements OnInit {
     }
   }
 
+  // ── Google Calendar ──────────────────────────────────────────────────────
+
+  private cargarNotifConfig() {
+    if (!this.idRoot) return;
+    this.agendaSvc.getNotificationConfig(this.idRoot).subscribe({
+      next: (cfg) => { this.notifConfig = cfg; },
+    });
+  }
+
+  private detectarCallbackGoogle() {
+    this.route.queryParams.subscribe(params => {
+      if (params['googleAuth'] === 'success') {
+        const email = params['email'] ?? '';
+        Swal.fire({
+          icon: 'success',
+          title: '¡Google Calendar conectado!',
+          html: email
+            ? `Cuenta: <strong>${email}</strong><br>Los eventos se crearán automáticamente.`
+            : 'Los eventos se crearán automáticamente en tu Google Calendar.',
+          timer: 3000, showConfirmButton: false,
+        });
+        this.cargarNotifConfig();
+      } else if (params['googleAuth'] === 'error') {
+        Swal.fire({
+          icon: 'error',
+          title: 'Error al conectar Google Calendar',
+          text: 'Intenta de nuevo o verifica las credenciales en Google Cloud Console.',
+        });
+      }
+    });
+  }
+
+  connectGoogle() {
+    this.agendaSvc.connectGoogle(this.idRoot).subscribe({
+      next: ({ url }) => window.open(url, '_blank', 'width=600,height=700'),
+      error: () => Swal.fire('Error', 'No se pudo obtener la URL de autorización.', 'error'),
+    });
+  }
+
+  async disconnectGoogle() {
+    const res = await Swal.fire({
+      title: '¿Desconectar Google Calendar?',
+      text:  'Los eventos ya creados quedan en tu Google Calendar, pero ya no se sincronizarán nuevos.',
+      icon:  'question', showCancelButton: true,
+      confirmButtonText: 'Sí, desconectar', cancelButtonText: 'Cancelar',
+    });
+    if (!res.isConfirmed) return;
+
+    this.agendaSvc.disconnectGoogle(this.idRoot).subscribe({
+      next: () => {
+        if (this.notifConfig) {
+          this.notifConfig.googleConnected    = false;
+          this.notifConfig.googleEmail        = undefined;
+          this.notifConfig.googleRefreshToken = undefined;
+        }
+        Swal.fire({ toast: true, position: 'top-end', icon: 'success', title: 'Desconectado', showConfirmButton: false, timer: 2000, timerProgressBar: true });
+      },
+      error: () => Swal.fire('Error', 'No se pudo desconectar.', 'error'),
+    });
+  }
+
   // ── Lifecycle ─────────────────────────────────────────────────────────────
 
   ngOnInit() {
     this.cargarProspectos();
     this.cargarPlantillas();
+    this.cargarNotifConfig();
+    this.detectarCallbackGoogle();
   }
 
   async cargarPlantillas() {

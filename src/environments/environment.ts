@@ -85,7 +85,7 @@ export const environment = {
     // publicKey: 'TEST-4399133a-4676-42a2-ab85-d946370bf96a',
   },
 
-  version: '4.42 (06 Junio 2026) feat(egresos): auto-fill cuenta contable y concepto por historial proveedor',
+  version: '4.43 (07 Junio 2026) feat(prospectos): integración Google Calendar OAuth2',
 };
 
 
