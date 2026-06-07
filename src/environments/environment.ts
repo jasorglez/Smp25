@@ -85,7 +85,7 @@ export const environment = {
     // publicKey: 'TEST-4399133a-4676-42a2-ab85-d946370bf96a',
   },
 
-  version: '4.43 (07 Junio 2026) feat(prospectos): integración Google Calendar OAuth2',
+  version: '4.44 (07 Junio 2026) feat(prospectos): panel agenda + citas con Google Calendar',
 };
 
 

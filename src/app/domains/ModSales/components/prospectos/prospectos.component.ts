@@ -12,7 +12,7 @@ import { AgendaService, NotificationConfig } from 'app/services/agenda.service';
 import { Timestamp, Firestore, addDoc, collection } from '@angular/fire/firestore';
 import { SignalsService } from 'app/services/signals.service';
 import { UsersService } from 'app/services/users.service';
-import { DetalleInteraccionesComponent } from './detalle-interacciones.component';
+import { ProspectosDetailWrapperComponent } from './prospectos-detail-wrapper.component';
 import { ButtonCellRendererIncomeComponent } from 'app/domains/ModAdmon/components/income/button-cell-renderer-income.component';
 import { StoragesService } from 'app/services/storages.service';
 import { ESTADOS_MEXICO, getMunicipiosByEstado, normalizeEstadoMexicoName, normalizeMunicipioMexicoName } from 'app/shared/catalogs/municipios-mexico';
@@ -21,7 +21,7 @@ import Swal from 'sweetalert2';
 @Component({
   selector: 'app-prospectos',
   standalone: true,
-  imports: [CommonModule, FormsModule, AgGridModule, DetalleInteraccionesComponent, ButtonCellRendererIncomeComponent],
+  imports: [CommonModule, FormsModule, AgGridModule, ProspectosDetailWrapperComponent, ButtonCellRendererIncomeComponent],
   templateUrl: './prospectos.component.html',
   styleUrl: './prospectos.component.scss',
 })
@@ -198,7 +198,7 @@ export class ProspectosComponent implements OnInit {
     masterDetail: true,
     detailRowHeight: 400,
     isRowMaster: () => true,
-    detailCellRenderer: DetalleInteraccionesComponent,
+    detailCellRenderer: ProspectosDetailWrapperComponent,
     rowClassRules: {
       'new-row-highlight': (p: any) => !!p.data?.__isNew,
       'row-inactivo':      (p: any) => p.data?.activo === false,
@@ -290,6 +290,21 @@ export class ProspectosComponent implements OnInit {
         },
         onCellClicked: (p: any) => { if (p.data?.correo) this.abrirEmailProspecto(p.data); },
         cellStyle: { cursor: 'pointer' },
+      },
+      {
+        field: 'agenda_btn',
+        headerName: 'Agenda',
+        width: 95,
+        editable: false,
+        cellRenderer: (p: any) => {
+          const isActive = p.data?.__detailMode === 'agenda' && p.node?.expanded;
+          const bg = isActive ? '#198754' : '#6f42c1';
+          return `<button style="background:${bg};border:none;color:#fff;border-radius:4px;padding:2px 8px;font-size:.8rem;cursor:pointer" title="Ver / agregar citas">
+            <i class="bi bi-calendar-plus"></i> Citas
+          </button>`;
+        },
+        onCellClicked: (p: any) => this.toggleAgenda(p.node),
+        cellStyle: { cursor: 'pointer', backgroundColor: '#f3eeff' },
       },
       {
         headerName: 'Score', colId: 'score', width: 88, editable: false,
@@ -487,24 +502,42 @@ export class ProspectosComponent implements OnInit {
   // ── Cascada (igual que income) ────────────────────────────────────────────
 
   toggleCascade(node: any) {
-    const api = this.gridApi;
-    const isExpanded = node.expanded;
+    this.switchDetail(node, 'interacciones');
+  }
 
-    if (isExpanded) {
+  toggleAgenda(node: any) {
+    this.switchDetail(node, 'agenda');
+  }
+
+  private switchDetail(node: any, mode: 'interacciones' | 'agenda') {
+    const api = this.gridApi;
+    const isExpanded   = node.expanded;
+    const currentMode  = node.data?.__detailMode ?? 'interacciones';
+
+    // Si ya está expandido en el mismo modo → colapsar
+    if (isExpanded && currentMode === mode) {
       node.setExpanded(false);
       api.forEachNode((n: any) => n.setRowHeight(undefined));
       api.onRowHeightChanged();
+      return;
+    }
+
+    // Cambiar el modo en el data (el wrapper lo leerá al expandir)
+    if (node.data) node.data.__detailMode = mode;
+
+    if (isExpanded) {
+      // Forzar re-render: collapse → expand
+      node.setExpanded(false);
+      setTimeout(() => node.setExpanded(true), 0);
     } else {
-      // Colapsar cualquier otro expandido
+      // Colapsar cualquier otro expandido y ocultar otras filas
       api.forEachNode((n: any) => {
         if (n.expanded && n.id !== node.id) n.setExpanded(false);
       });
-      // Ocultar otras filas
       api.forEachNode((n: any) => {
         if (n.id !== node.id) n.setRowHeight(0);
       });
       api.onRowHeightChanged();
-
       setTimeout(() => node.setExpanded(true), 0);
     }
   }
