@@ -1715,6 +1715,21 @@ export const routes: Routes = [
             }
           },
 
+          {
+            path: 'saldo',
+            loadComponent: () =>
+              import(
+                './domains/ModAdmon/components/saldos-palacio/saldos-palacio.component'
+              ).then((s) => s.SaldosPalacioComponent),
+            canActivate: [TrackingGuard],
+            data: {
+              tracking: {
+                logMessage: 'Click en Saldo - Módulo Administración',
+                category: 'Administration'
+              }
+            }
+          },
+
         ],
       },
 
