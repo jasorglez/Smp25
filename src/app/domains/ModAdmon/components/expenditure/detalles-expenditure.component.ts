@@ -737,6 +737,18 @@ export class DetallesExpenditureComponent implements OnInit, OnDestroy {
         headerName: 'Comentario',
         editable: true,
         width: 150
+      },
+      {
+        field: 'graficar',
+        headerName: 'Graficar',
+        editable: true,
+        type: 'boolean',
+        width: 100,
+        cellRenderer: (params: ICellRendererParams) => {
+          if (params.node.group) return '';
+          const val = params.value !== false;
+          return `<span style="font-size:16px;cursor:pointer">${val ? '✅' : '⬜'}</span>`;
+        }
       }
     ];
 
@@ -826,6 +838,7 @@ export class DetallesExpenditureComponent implements OnInit, OnDestroy {
       iva2: 0,
       totalFinal: 0,
       comment: '',
+      graficar: true,
       active: true,
       __isNew: true,
       __modified: false
