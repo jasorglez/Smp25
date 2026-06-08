@@ -110,26 +110,18 @@ import { SignalrService } from 'app/services/signalr.service';
       </div>
 
       <!-- ── SALDO BANCARIO (solo Root) ── -->
-      <div class="row g-3 mb-3" *ngIf="isRootUser && cuentasBanco.length">
+      <div class="row g-2 mb-2" *ngIf="isRootUser && cuentasBanco.length">
         <div class="col-12">
-          <div class="saldo-strip">
-            <div class="saldo-strip-header">
-              <i class="bi bi-bank2 me-2"></i>
-              <span>Saldo Bancario al Día de Hoy</span>
-              <span class="saldo-strip-fecha ms-2">{{ hoyLabel }}</span>
-            </div>
-            <div class="saldo-strip-body">
-              <div *ngFor="let c of cuentasBanco" class="saldo-card">
-                <div class="saldo-card-bank">{{ c.bankName || 'Banco' }}</div>
-                <div class="saldo-card-name">{{ c.nameAccount }}</div>
-                <div class="saldo-card-amount">\${{ c.saldo | number:'1.2-2' }}</div>
-              </div>
-              <div class="saldo-card saldo-card-total">
-                <div class="saldo-card-bank">TOTAL</div>
-                <div class="saldo-card-name">{{ cuentasBanco.length }} cuenta{{ cuentasBanco.length !== 1 ? 's' : '' }}</div>
-                <div class="saldo-card-amount saldo-total-amount">\${{ saldoTotal | number:'1.2-2' }}</div>
-              </div>
-            </div>
+          <div class="saldo-row-wrap">
+            <span class="saldo-row-label"><i class="bi bi-bank2 me-1"></i>Saldo {{ hoyLabel }}</span>
+            <span class="saldo-row-sep">|</span>
+            <ng-container *ngFor="let c of cuentasBanco; let last = last">
+              <span class="saldo-row-cuenta">{{ c.nameAccount }}</span>
+              <span class="saldo-row-monto">\${{ c.saldo | number:'1.2-2' }}</span>
+              <span class="saldo-row-sep" *ngIf="!last || cuentasBanco.length > 0">|</span>
+            </ng-container>
+            <span class="saldo-row-total-label">TOTAL {{ cuentasBanco.length }} cta{{ cuentasBanco.length !== 1 ? 's' : '' }}</span>
+            <span class="saldo-row-total">\${{ saldoTotal | number:'1.2-2' }}</span>
           </div>
         </div>
       </div>
@@ -350,50 +342,49 @@ import { SignalrService } from 'app/services/signalr.service';
     .egreso-footer .footer-total { color: #c0392b; }
 
     /* ── Saldo Bancario Root ── */
-    .saldo-strip {
-      background: #fff;
-      border-radius: 8px;
-      box-shadow: 0 1px 6px rgba(0,0,0,0.07);
-      overflow: hidden;
-      border-top: 2px solid #0d9488;
-    }
-    .saldo-strip-header {
-      padding: 5px 14px;
-      background: linear-gradient(135deg, #0f766e 0%, #0d9488 100%);
-      color: #fff;
-      font-weight: 700;
-      font-size: 11px;
+    .saldo-row-wrap {
       display: flex;
       align-items: center;
-    }
-    .saldo-strip-fecha {
-      font-weight: 400;
-      font-size: 10px;
-      opacity: 0.85;
-    }
-    .saldo-strip-body {
-      display: flex;
       flex-wrap: wrap;
-      gap: 0;
-      padding: 0;
-    }
-    .saldo-card {
-      flex: 1 1 120px;
-      padding: 6px 12px;
-      border-right: 1px solid #f0fdfb;
+      gap: 6px;
       background: #f0fdfa;
-      transition: background 0.15s;
+      border: 1px solid #99f6e4;
+      border-radius: 6px;
+      padding: 5px 12px;
+      font-size: 11px;
     }
-    .saldo-card:last-child { border-right: none; }
-    .saldo-card:hover { background: #ccfbf1; }
-    .saldo-card-bank {
-      font-size: 9px;
+    .saldo-row-label {
       font-weight: 700;
       color: #0f766e;
-      text-transform: uppercase;
-      letter-spacing: 0.4px;
-      margin-bottom: 1px;
+      white-space: nowrap;
     }
+    .saldo-row-sep {
+      color: #94a3b8;
+      font-size: 10px;
+    }
+    .saldo-row-cuenta {
+      color: #334155;
+      font-weight: 600;
+      white-space: nowrap;
+    }
+    .saldo-row-monto {
+      color: #0f766e;
+      font-weight: 700;
+      white-space: nowrap;
+    }
+    .saldo-row-total-label {
+      color: #64748b;
+      font-size: 10px;
+      font-weight: 600;
+      white-space: nowrap;
+    }
+    .saldo-row-total {
+      color: #0f172a;
+      font-weight: 800;
+      font-size: 12px;
+      white-space: nowrap;
+    }
+    /* estilos viejos eliminados — mantener línea para evitar error */
     .saldo-card-name {
       font-size: 10px;
       font-weight: 600;
