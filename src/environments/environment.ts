@@ -85,7 +85,7 @@ export const environment = {
     // publicKey: 'TEST-4399133a-4676-42a2-ab85-d946370bf96a',
   },
 
-  version: '4.54 (08 Junio 2026) fix(dashboard): saldo bancario se recarga al guardar egreso via SignalR',
+  version: '4.55 (08 Junio 2026) fix(bancos): boton actualizar saldo y movimientos en AccountBanks',
 };
 
 

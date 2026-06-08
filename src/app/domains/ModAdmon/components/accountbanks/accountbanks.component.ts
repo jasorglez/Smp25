@@ -751,6 +751,16 @@ export class AccountbanksComponent implements CanComponentDeactivate {
     this.notSavedChanges = false;
   }
 
+  refreshAll() {
+    const prevSelected = this.selectedRowData?.id?.toString() ?? null;
+    this.lastSelectedId = null;
+    this.obtenerDatos();
+    if (prevSelected) {
+      this.rowDetails = [];
+      this.loadBalanceData(prevSelected);
+    }
+  }
+
   private cleanDataForServer(data: any): any {
     const companyId = parseInt(localStorage.getItem('company') || '0');
 
