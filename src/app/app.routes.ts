@@ -1716,7 +1716,7 @@ export const routes: Routes = [
           },
 
           {
-            path: 'saldo',
+            path: 'saldos',
             loadComponent: () =>
               import(
                 './domains/ModAdmon/components/saldos-palacio/saldos-palacio.component'
@@ -1724,7 +1724,7 @@ export const routes: Routes = [
             canActivate: [TrackingGuard],
             data: {
               tracking: {
-                logMessage: 'Click en Saldo - Módulo Administración',
+                logMessage: 'Click en Saldos - Módulo Administración',
                 category: 'Administration'
               }
             }
