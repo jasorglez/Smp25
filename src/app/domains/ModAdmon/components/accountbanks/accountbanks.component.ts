@@ -519,7 +519,7 @@ export class AccountbanksComponent implements CanComponentDeactivate, OnDestroy 
   }
 
   private loadBalanceData(id: string) {
-    if (!id || id === this.lastSelectedId) return;
+    if (!id) return;
 
     this.lastSelectedId = id;
     this.rowDetails = [];
