@@ -85,7 +85,7 @@ export const environment = {
     // publicKey: 'TEST-4399133a-4676-42a2-ab85-d946370bf96a',
   },
 
-  version: '4.45 (08 Junio 2026) feat(dashboard): saldo bancario del día para usuarios Root',
+  version: '4.46 (08 Junio 2026) fix(auth): logout inmediato si token expirado al recargar página',
 };
 
 
