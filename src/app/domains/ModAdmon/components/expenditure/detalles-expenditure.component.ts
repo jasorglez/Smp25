@@ -349,6 +349,7 @@ export class DetallesExpenditureComponent implements OnInit, OnDestroy {
               typeExpense: type,
               selectedEntity
             }),
+            graficar: concept.graficar !== false, // undefined → true (compatibilidad hacia atrás)
             __isNew: false,
             __modified: false
           };
