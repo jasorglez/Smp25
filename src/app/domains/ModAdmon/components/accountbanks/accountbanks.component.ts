@@ -1,6 +1,8 @@
-import { Component, HostListener, inject } from '@angular/core';
+import { Component, HostListener, inject, OnDestroy } from '@angular/core';
 import { RouterModule } from '@angular/router';
 import { DomainsModule } from 'app/domains/domainsmodule';
+import { SignalrService } from 'app/services/signalr.service';
+import { Subscription } from 'rxjs';
 
 import {
   CellDoubleClickedEvent,
@@ -43,11 +45,21 @@ interface Bank {
   templateUrl: './accountbanks.component.html',
   styleUrl: './accountbanks.component.scss',
 })
-export class AccountbanksComponent implements CanComponentDeactivate {
+export class AccountbanksComponent implements CanComponentDeactivate, OnDestroy {
   authService = inject(AuthService);
+  private signalRService = inject(SignalrService);
+  private admonSub!: Subscription;
+
   ngOnInit() {
     this.obtenerDatos();
     this.obtenerBanks();
+    this.admonSub = this.signalRService.admonUpdate$.subscribe(data => {
+      if (data) this.refreshAll();
+    });
+  }
+
+  ngOnDestroy() {
+    this.admonSub?.unsubscribe();
   }
 
   @HostListener('window:beforeunload', ['$event'])
