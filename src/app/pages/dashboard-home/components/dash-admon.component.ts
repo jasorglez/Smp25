@@ -15,7 +15,7 @@ import { SignalrService } from 'app/services/signalr.service';
   imports: [CommonModule, NgApexchartsModule, DecimalPipe, FormsModule],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
-    <div class="p-3">
+    <div class="p-2">
 
       <!-- ── FILA INGRESOS: Top | Barras | Pie ── -->
       <div class="row g-3 mb-3">
@@ -248,9 +248,9 @@ import { SignalrService } from 'app/services/signalr.service';
       overflow: hidden;
     }
     .chart-header {
-      padding: 12px 20px;
+      padding: 8px 14px;
       font-weight: 700;
-      font-size: 14px;
+      font-size: 12px;
       color: #1a237e;
       border-bottom: 1px solid #f0f0f0;
       background: #fafbff;
@@ -260,8 +260,8 @@ import { SignalrService } from 'app/services/signalr.service';
     }
     .client-list-body {
       overflow-y: auto;
-      max-height: 360px;
-      padding: 8px 12px;
+      max-height: 270px;
+      padding: 6px 10px;
     }
     .client-row {
       display: flex;
@@ -352,23 +352,23 @@ import { SignalrService } from 'app/services/signalr.service';
     /* ── Saldo Bancario Root ── */
     .saldo-strip {
       background: #fff;
-      border-radius: 10px;
-      box-shadow: 0 2px 12px rgba(0,0,0,0.07);
+      border-radius: 8px;
+      box-shadow: 0 1px 6px rgba(0,0,0,0.07);
       overflow: hidden;
-      border-top: 3px solid #0d9488;
+      border-top: 2px solid #0d9488;
     }
     .saldo-strip-header {
-      padding: 10px 20px;
+      padding: 5px 14px;
       background: linear-gradient(135deg, #0f766e 0%, #0d9488 100%);
       color: #fff;
       font-weight: 700;
-      font-size: 13px;
+      font-size: 11px;
       display: flex;
       align-items: center;
     }
     .saldo-strip-fecha {
       font-weight: 400;
-      font-size: 11px;
+      font-size: 10px;
       opacity: 0.85;
     }
     .saldo-strip-body {
@@ -378,8 +378,8 @@ import { SignalrService } from 'app/services/signalr.service';
       padding: 0;
     }
     .saldo-card {
-      flex: 1 1 160px;
-      padding: 12px 18px;
+      flex: 1 1 120px;
+      padding: 6px 12px;
       border-right: 1px solid #f0fdfb;
       background: #f0fdfa;
       transition: background 0.15s;
@@ -387,24 +387,24 @@ import { SignalrService } from 'app/services/signalr.service';
     .saldo-card:last-child { border-right: none; }
     .saldo-card:hover { background: #ccfbf1; }
     .saldo-card-bank {
-      font-size: 10px;
+      font-size: 9px;
       font-weight: 700;
       color: #0f766e;
       text-transform: uppercase;
-      letter-spacing: 0.5px;
-      margin-bottom: 2px;
+      letter-spacing: 0.4px;
+      margin-bottom: 1px;
     }
     .saldo-card-name {
-      font-size: 12px;
+      font-size: 10px;
       font-weight: 600;
       color: #1e293b;
       white-space: nowrap;
       overflow: hidden;
       text-overflow: ellipsis;
-      margin-bottom: 4px;
+      margin-bottom: 2px;
     }
     .saldo-card-amount {
-      font-size: 15px;
+      font-size: 12px;
       font-weight: 800;
       color: #0d9488;
     }
@@ -413,7 +413,7 @@ import { SignalrService } from 'app/services/signalr.service';
       border-left: 2px solid #16a34a;
     }
     .saldo-card-total .saldo-card-bank { color: #15803d; }
-    .saldo-total-amount { color: #15803d; font-size: 17px; }
+    .saldo-total-amount { color: #15803d; font-size: 13px; }
 
     .date-range-bar {
       display: flex;
@@ -463,7 +463,7 @@ export class DashAdmonComponent implements OnInit {
   ingPieSeries:      number[] = [];
   ingPieLabels:      string[] = [];
   ingPieColors:      string[] = ['#3b82f6','#10b981','#f59e0b','#8b5cf6','#ec4899','#06b6d4','#f97316','#14b8a6'];
-  ingPieChart:       any = { type: 'pie', height: 300, dropShadow: { enabled: true, top: 4, left: 4, blur: 6, opacity: 0.25 }, toolbar: { show: false }, fontFamily: 'Inter, system-ui, sans-serif' };
+  ingPieChart:       any = { type: 'pie', height: 240, dropShadow: { enabled: true, top: 4, left: 4, blur: 6, opacity: 0.25 }, toolbar: { show: false }, fontFamily: 'Inter, system-ui, sans-serif' };
   ingPiePlotOptions: any = { pie: { customScale: 0.9, expandOnClick: true, dataLabels: { offset: -5, minAngleToShowLabel: 8 } } };
   ingPieDataLabels:  any = { enabled: true, formatter: (val: number) => val.toFixed(1) + '%', style: { fontSize: '10px', fontWeight: '700' }, dropShadow: { enabled: false } };
   ingPieLegend:      any = { show: true, position: 'bottom', fontSize: '10px', itemMargin: { horizontal: 4, vertical: 2 } };
@@ -473,7 +473,7 @@ export class DashAdmonComponent implements OnInit {
   egrPieSeries:      number[] = [];
   egrPieLabels:      string[] = [];
   egrPieColors:      string[] = ['#e74c3c','#e67e22','#9b59b6','#1abc9c','#3498db','#e91e63','#ff5722','#607d8b'];
-  egrPieChart:       any = { type: 'pie', height: 300, dropShadow: { enabled: true, top: 4, left: 4, blur: 6, opacity: 0.25 }, toolbar: { show: false }, fontFamily: 'Inter, system-ui, sans-serif' };
+  egrPieChart:       any = { type: 'pie', height: 240, dropShadow: { enabled: true, top: 4, left: 4, blur: 6, opacity: 0.25 }, toolbar: { show: false }, fontFamily: 'Inter, system-ui, sans-serif' };
   egrPiePlotOptions: any = { pie: { customScale: 0.9, expandOnClick: true, dataLabels: { offset: -5, minAngleToShowLabel: 8 } } };
   egrPieDataLabels:  any = { enabled: true, formatter: (val: number) => val.toFixed(1) + '%', style: { fontSize: '10px', fontWeight: '700' }, dropShadow: { enabled: false } };
   egrPieLegend:      any = { show: true, position: 'bottom', fontSize: '10px', itemMargin: { horizontal: 4, vertical: 2 } };
@@ -481,7 +481,7 @@ export class DashAdmonComponent implements OnInit {
 
   // ── Ingresos ──
   ingresosSeries:      any[]   = [];
-  ingresosChart:       any     = { type: 'line', height: 360, width: '100%', stacked: true, toolbar: { show: false }, fontFamily: 'Inter, system-ui, sans-serif' };
+  ingresosChart:       any     = { type: 'line', height: 280, width: '100%', stacked: true, toolbar: { show: false }, fontFamily: 'Inter, system-ui, sans-serif' };
   ingresosXaxis:       any     = { categories: [], labels: { rotate: -45, rotateAlways: true, style: { fontSize: '10px', colors: '#64748b' } } };
   ingresosYaxis:       any     = { labels: { formatter: (v: number) => v >= 1_000_000 ? '$' + (v/1_000_000).toFixed(1)+'M' : '$'+(v/1000).toFixed(0)+'K', style: { colors: '#64748b', fontSize: '11px' } } };
   ingresosStroke:      any     = { width: [], curve: 'straight' };
@@ -494,7 +494,7 @@ export class DashAdmonComponent implements OnInit {
 
   // ── Egresos por día ──
   egresosSeries:      any[]   = [];
-  egresosChart:       any     = { type: 'bar', height: 320, width: '100%', toolbar: { show: false }, fontFamily: 'Inter, system-ui, sans-serif', legend: { show: false } };
+  egresosChart:       any     = { type: 'bar', height: 250, width: '100%', toolbar: { show: false }, fontFamily: 'Inter, system-ui, sans-serif', legend: { show: false } };
   egresosXaxis:       any     = { categories: [] };
   egresosYaxis:       any     = { labels: { formatter: (v: number) => '$'+(v/1000).toFixed(0)+'K', style: { colors: '#64748b', fontSize: '11px' } } };
   egresosPlotOptions: any     = { bar: { horizontal: false, columnWidth: '60%', borderRadius: 3, distributed: true } };
@@ -797,7 +797,7 @@ export class DashAdmonComponent implements OnInit {
 
     this.egresosSeries      = series;
     this.egresosColors      = sortedEntities.map((_, i) => this.BAR_PALETTE[i % this.BAR_PALETTE.length]);
-    this.egresosChart       = { type: 'bar', height: 320, width: '100%', stacked: true, toolbar: { show: false }, fontFamily: 'Inter, system-ui, sans-serif' };
+    this.egresosChart       = { type: 'bar', height: 250, width: '100%', stacked: true, toolbar: { show: false }, fontFamily: 'Inter, system-ui, sans-serif' };
     this.egresosPlotOptions = { bar: { horizontal: false, columnWidth: '60%', borderRadius: 2 } };
     this.egresosDataLabels  = { enabled: false };
     this.egresosLegend      = { show: false };
