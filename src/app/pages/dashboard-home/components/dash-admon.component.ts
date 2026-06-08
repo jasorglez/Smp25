@@ -5,6 +5,7 @@ import { FormsModule } from '@angular/forms';
 import { NgApexchartsModule } from 'ng-apexcharts';
 import { debounceTime, filter } from 'rxjs';
 import { IncomesAndExpensesService } from 'app/services/incomes-and-expenses.service';
+import { AdministrationService } from 'app/services/administration.service';
 import { SignalsService } from 'app/services/signals.service';
 import { SignalrService } from 'app/services/signalr.service';
 
@@ -106,6 +107,31 @@ import { SignalrService } from 'app/services/signalr.service';
           </div>
         </div>
 
+      </div>
+
+      <!-- ── SALDO BANCARIO (solo Root) ── -->
+      <div class="row g-3 mb-3" *ngIf="isRootUser && cuentasBanco.length">
+        <div class="col-12">
+          <div class="saldo-strip">
+            <div class="saldo-strip-header">
+              <i class="bi bi-bank2 me-2"></i>
+              <span>Saldo Bancario al Día de Hoy</span>
+              <span class="saldo-strip-fecha ms-2">{{ hoyLabel }}</span>
+            </div>
+            <div class="saldo-strip-body">
+              <div *ngFor="let c of cuentasBanco" class="saldo-card">
+                <div class="saldo-card-bank">{{ c.bankName || 'Banco' }}</div>
+                <div class="saldo-card-name">{{ c.nameAccount }}</div>
+                <div class="saldo-card-amount">\${{ c.saldo | number:'1.2-2' }}</div>
+              </div>
+              <div class="saldo-card saldo-card-total">
+                <div class="saldo-card-bank">TOTAL</div>
+                <div class="saldo-card-name">{{ cuentasBanco.length }} cuenta{{ cuentasBanco.length !== 1 ? 's' : '' }}</div>
+                <div class="saldo-card-amount saldo-total-amount">\${{ saldoTotal | number:'1.2-2' }}</div>
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
 
       <!-- ── FILA EGRESOS: Top | Barras | Pie ── -->
@@ -322,6 +348,73 @@ import { SignalrService } from 'app/services/signalr.service';
     }
     .egreso-footer { border-top-color: #fecaca; background: #fff5f5; }
     .egreso-footer .footer-total { color: #c0392b; }
+
+    /* ── Saldo Bancario Root ── */
+    .saldo-strip {
+      background: #fff;
+      border-radius: 10px;
+      box-shadow: 0 2px 12px rgba(0,0,0,0.07);
+      overflow: hidden;
+      border-top: 3px solid #0d9488;
+    }
+    .saldo-strip-header {
+      padding: 10px 20px;
+      background: linear-gradient(135deg, #0f766e 0%, #0d9488 100%);
+      color: #fff;
+      font-weight: 700;
+      font-size: 13px;
+      display: flex;
+      align-items: center;
+    }
+    .saldo-strip-fecha {
+      font-weight: 400;
+      font-size: 11px;
+      opacity: 0.85;
+    }
+    .saldo-strip-body {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0;
+      padding: 0;
+    }
+    .saldo-card {
+      flex: 1 1 160px;
+      padding: 12px 18px;
+      border-right: 1px solid #f0fdfb;
+      background: #f0fdfa;
+      transition: background 0.15s;
+    }
+    .saldo-card:last-child { border-right: none; }
+    .saldo-card:hover { background: #ccfbf1; }
+    .saldo-card-bank {
+      font-size: 10px;
+      font-weight: 700;
+      color: #0f766e;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      margin-bottom: 2px;
+    }
+    .saldo-card-name {
+      font-size: 12px;
+      font-weight: 600;
+      color: #1e293b;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      margin-bottom: 4px;
+    }
+    .saldo-card-amount {
+      font-size: 15px;
+      font-weight: 800;
+      color: #0d9488;
+    }
+    .saldo-card-total {
+      background: #f0fdf4;
+      border-left: 2px solid #16a34a;
+    }
+    .saldo-card-total .saldo-card-bank { color: #15803d; }
+    .saldo-total-amount { color: #15803d; font-size: 17px; }
+
     .date-range-bar {
       display: flex;
       align-items: center;
@@ -345,11 +438,18 @@ import { SignalrService } from 'app/services/signalr.service';
 export class DashAdmonComponent implements OnInit {
 
   private incomesService  = inject(IncomesAndExpensesService);
+  private adminService    = inject(AdministrationService);
   private signalsService  = inject(SignalsService);
   private signalrService  = inject(SignalrService);
   private destroyRef      = inject(DestroyRef);
   private zone            = inject(NgZone);
   private cdr             = inject(ChangeDetectorRef);
+
+  // ── Saldo Bancario (solo Root) ──
+  isRootUser:   boolean = false;
+  cuentasBanco: any[]   = [];
+  saldoTotal:   number  = 0;
+  hoyLabel:     string  = new Date().toLocaleDateString('es-MX', { weekday: 'long', day: '2-digit', month: 'long', year: 'numeric' });
 
   // ── Clientes ──
   clientList: { name: string; total: number }[] = [];
@@ -423,9 +523,11 @@ export class DashAdmonComponent implements OnInit {
 
     effect(() => {
       const rootId = this.signalsService.getRootSelectedBySidebar()();
+      this.isRootUser = !!this.signalsService.getUserRoot()();
       if (rootId) {
         this.loadIngresos(rootId);
         this.loadEgresos(rootId);
+        if (this.isRootUser) this.loadCuentasBanco(rootId);
       }
     });
     this.updateEgresosRangeLabel();
@@ -564,6 +666,17 @@ export class DashAdmonComponent implements OnInit {
     this.topEntityLabel = (from && to)
       ? `${fmt(this.provStartDate)} – ${fmt(this.provEndDate)}`
       : 'Todo el período';
+  }
+
+  private loadCuentasBanco(rootId: number): void {
+    this.adminService.getAccountBanks(rootId).subscribe({
+      next: (data: any[]) => {
+        this.cuentasBanco = (data || []).filter(c => (Number(c.saldo) || 0) > 0);
+        this.saldoTotal   = this.cuentasBanco.reduce((s, c) => s + (Number(c.saldo) || 0), 0);
+        this.cdr.markForCheck();
+      },
+      error: () => {},
+    });
   }
 
   // Tendencia multianual: barras por mes por año + línea de tendencia
