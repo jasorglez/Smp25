@@ -548,6 +548,7 @@ export class DashAdmonComponent implements OnInit {
         if (!data?.idRoot || data.idRoot === rootId) {
           this.loadIngresos(rootId);
           this.loadEgresos(rootId);
+          if (this.isRootUser) this.loadCuentasBanco(rootId);
         }
       });
     });
