@@ -517,6 +517,7 @@ export class AccountbanksComponent implements CanComponentDeactivate {
       next: (response: any) => {
         if (response.success && response.hasData) {
           this.rowDetails = response.data;
+          this.syncSaldoFromMovimientos(id);
         } else {
           this.rowDetails = [];
           alerts.basicAlert('Aviso', 'No hay datos disponibles', 'info');
@@ -529,6 +530,42 @@ export class AccountbanksComponent implements CanComponentDeactivate {
       complete: () => {
         this.isLoading = false;
       },
+    });
+  }
+
+  private syncSaldoFromMovimientos(accountId: string) {
+    if (!this.rowDetails?.length) return;
+
+    // Ordenar por fecha descendente y tomar el más reciente
+    const sorted = [...this.rowDetails].sort((a, b) => {
+      return new Date(b.fecha).getTime() - new Date(a.fecha).getTime();
+    });
+    const ultimoSaldo = parseFloat(sorted[0].saldo) || 0;
+
+    // Buscar la fila master correspondiente
+    const masterNode = (() => {
+      let found: any = null;
+      this.gridApi.forEachNode(n => {
+        if (String(n.data?.id) === String(accountId)) found = n;
+      });
+      return found;
+    })();
+
+    if (!masterNode) return;
+
+    const saldoActual = parseFloat(masterNode.data.saldo) || 0;
+    if (Math.abs(saldoActual - ultimoSaldo) < 0.01) return; // ya está sincronizado
+
+    // Actualizar en memoria y refrescar la celda
+    masterNode.data.saldo = ultimoSaldo;
+    this.gridApi.refreshCells({ rowNodes: [masterNode], columns: ['saldo'], force: true });
+
+    // Persistir silenciosamente en DB
+    const payload = { ...masterNode.data, saldo: ultimoSaldo };
+    delete payload.__isNew;
+    delete payload.__modified;
+    this.administrationService.updateAccountBanks(String(accountId), payload).subscribe({
+      error: (err) => console.error('[syncSaldo] Error al sincronizar saldo:', err),
     });
   }
 
