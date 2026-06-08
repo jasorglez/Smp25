@@ -1509,6 +1509,7 @@ export class ExpenditureComponent implements OnDestroy, OnChanges {
         total: total
       });
 
+      this.signalRService.notifyAdmonUpdate('egreso', this.idRoot);
       console.log('✅ PADRE: Maestro actualizado con totales');
 
     } catch (error) {

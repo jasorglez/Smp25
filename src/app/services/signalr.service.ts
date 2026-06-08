@@ -355,6 +355,12 @@ public startConnection(hubEndpoint: string = 'storageHub', token?: string): void
     }
   }
 
+  public notifyAdmonUpdate(type: string, idRoot: number): void {
+    if (this.admonHubConnection?.state === signalR.HubConnectionState.Connected) {
+      this.admonHubConnection.invoke('NotifyAdmonUpdate', type, idRoot).catch(() => {});
+    }
+  }
+
   // Método para parar conexión - MANTENIDO EXACTAMENTE IGUAL
   public stopConnection(): void {
     if (this.hubConnection) {
