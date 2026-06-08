@@ -85,7 +85,7 @@ export const environment = {
     // publicKey: 'TEST-4399133a-4676-42a2-ab85-d946370bf96a',
   },
 
-  version: '4.48 (08 Junio 2026) fix(dashboard): reducir tamaño saldo strip y gráficos para fit en pantalla',
+  version: '4.49 (08 Junio 2026) fix(bancos): saldo master = mismo criterio que detalle (Status+Active+tipos)',
 };
 
 
