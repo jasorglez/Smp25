@@ -85,7 +85,7 @@ export const environment = {
     // publicKey: 'TEST-4399133a-4676-42a2-ab85-d946370bf96a',
   },
 
-  version: '4.56 (08 Junio 2026) fix(bancos): SignalR auto-refresca saldo al guardar egreso',
+  version: '4.57 (08 Junio 2026) fix(bancos): balance recarga siempre al seleccionar cuenta',
 };
 
 
