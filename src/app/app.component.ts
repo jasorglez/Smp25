@@ -35,6 +35,12 @@ export class AppComponent implements OnInit {
   }
 
   private loadPermissions(email: string, isAdvanced: boolean, idBranch: number | null) {
+    // Si el token expiró, cerrar sesión inmediatamente sin hacer llamadas al backend
+    if (this.authService.isTokenExpired()) {
+      this.authService.logout();
+      return;
+    }
+
     // Si los permisos ya existen y no han cambiado las condiciones, no recargar.
     if (this.authService.getUserPermissions() && Object.keys(this.authService.getUserPermissions()).length > 0) {
       if (!isAdvanced || (isAdvanced && idBranch === this.lastLoadedBranchId)) {

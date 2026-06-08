@@ -156,6 +156,14 @@ export class AuthService {
     }
   }
 
+  isTokenExpired(): boolean {
+    const token = localStorage.getItem('token');
+    if (!token) return true;
+    const expiry = this.getTokenExpiry(token);
+    if (!expiry) return true;
+    return Date.now() >= expiry;
+  }
+
   // ─── Limpia los timers existentes ───
   clearSessionTimers(): void {
     if (this.sessionWarningTimer) {
