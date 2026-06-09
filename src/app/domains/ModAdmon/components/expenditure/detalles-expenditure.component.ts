@@ -1,4 +1,4 @@
-import { Component, OnInit, inject, OnDestroy, HostListener, ElementRef } from '@angular/core';
+import { Component, OnInit, inject, OnDestroy, HostListener, ElementRef, ViewChild } from '@angular/core';
 import Swal from 'sweetalert2';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
@@ -28,6 +28,7 @@ import { lastValueFrom } from 'rxjs';
     <div class="detail-grid-container" *ngIf="detailType === 'concepts'"
       (mouseenter)="onGridInteractionStart()"
       (mouseleave)="onGridInteractionEnd()">
+      
       <div class="detail-actions d-flex justify-content-between align-items-center mb-2">
         <div class="totals-display">
           <span class="badge bg-secondary me-2">Subtotal: {{ subtotal | currency:'MXN' }}</span>
@@ -35,25 +36,25 @@ import { lastValueFrom } from 'rxjs';
           <span class="badge bg-primary">Total: {{ total | currency:'MXN' }}</span>
         </div>
         <div class="d-flex">
-          <button class="btn btn-outline-secondary btn-sm me-2" (click)="closeDetail()">
+          <button type="button" class="btn btn-outline-secondary btn-sm me-2" (click)="closeDetail()">
             <i class="bi bi-x-lg"></i> Cerrar
           </button>
-          <button class="btn btn-primary btn-sm me-2" (click)="addConcept()">
+          <button type="button" class="btn btn-primary btn-sm me-2" (click)="addConcept()">
             <i class="bi bi-plus-lg"></i> Agregar
           </button>
-          <button class="btn btn-info btn-sm me-2 text-white" (click)="pegarComprobante()"
-            [disabled]="isParsingImage" title="Pega la imagen del comprobante (Ctrl+C primero)">
+          <button type="button" class="btn btn-info btn-sm me-2 text-white" (click)="seleccionarComprobante()"
+            [disabled]="isParsingImage" title="Selecciona una imagen del comprobante">
             <span *ngIf="isParsingImage" class="spinner-border spinner-border-sm me-1"></span>
-            <i *ngIf="!isParsingImage" class="bi bi-clipboard-image me-1"></i>
-            {{ isParsingImage ? 'Analizando...' : 'Pegar comprobante' }}
+            <i *ngIf="!isParsingImage" class="bi bi-image me-1"></i>
+            {{ isParsingImage ? 'Analizando...' : 'Leer comprobante' }}
           </button>
-          <button class="btn btn-warning btn-sm me-2" (click)="discardChanges()">
+          <button type="button" class="btn btn-warning btn-sm me-2" (click)="discardChanges()">
             <i class="bi bi-arrow-counterclockwise"></i> Deshacer
           </button>
-          <button class="btn btn-danger btn-sm me-2" (click)="deleteSelectedConcept()">
+          <button type="button" class="btn btn-danger btn-sm me-2" (click)="deleteSelectedConcept()">
             <i class="bi bi-trash"></i> Eliminar
           </button>
-          <button class="btn btn-success btn-sm position-relative" (click)="saveChanges()">
+          <button type="button" class="btn btn-success btn-sm position-relative" (click)="saveChanges()">
             <i class="bi bi-floppy"></i> Guardar
             <span class="position-absolute top-0 start-100 translate-middle p-2 bg-danger border border-light rounded-circle"
               *ngIf="hasUnsavedChanges">
@@ -62,6 +63,8 @@ import { lastValueFrom } from 'rxjs';
           </button>
         </div>
       </div>
+
+      <input #comprobanteInput type="file" accept="image/*" class="d-none" (change)="onComprobanteSelected($event)">
       <ag-grid-angular
         #agGrid
         class="ag-theme-quartz small-text-ag-grid"
@@ -76,6 +79,20 @@ import { lastValueFrom } from 'rxjs';
         [components]="components"
         style="height: 480px; width: 100%;">
       </ag-grid-angular>
+      <div class="mt-3" *ngIf="comprobantePreviewUrl">
+        <div class="card border-0 shadow-sm">
+          <div class="card-body py-2 px-3">
+            <div class="d-flex justify-content-between align-items-center mb-2">
+              <strong class="small text-muted">Vista previa del comprobante</strong>
+              <button type="button" class="btn btn-sm btn-outline-secondary" (click)="limpiarPreviewComprobante()">
+                <i class="bi bi-x-lg"></i>
+              </button>
+            </div>
+            <img [src]="comprobantePreviewUrl" alt="Vista previa del comprobante"
+              style="max-height: 220px; width: auto; max-width: 100%; border-radius: 0.375rem; border: 1px solid #dee2e6;">
+          </div>
+        </div>
+      </div>
     </div>
 
     <!-- PDF Report View -->
@@ -226,7 +243,8 @@ export class DetallesExpenditureComponent implements OnInit, OnDestroy {
   private isEditingGrid: boolean = false;
 
   isParsingImage: boolean = false;
-  private _fileInputComprobante: HTMLInputElement | null = null;
+  @ViewChild('comprobanteInput') comprobanteInput?: ElementRef<HTMLInputElement>;
+  comprobantePreviewUrl: string | null = null;
 
   // Provider Modal properties
   showProviderModal: boolean = false;
@@ -441,10 +459,7 @@ export class DetallesExpenditureComponent implements OnInit, OnDestroy {
     if (this.originalPdfUrl) {
       URL.revokeObjectURL(this.originalPdfUrl);
     }
-    if (this._fileInputComprobante) {
-      document.body.removeChild(this._fileInputComprobante);
-      this._fileInputComprobante = null;
-    }
+    this.limpiarPreviewComprobante();
   }
 
   onGridReady(params: GridReadyEvent) {
@@ -1735,6 +1750,118 @@ export class DetallesExpenditureComponent implements OnInit, OnDestroy {
 
   // ==================== COMPROBANTE CON GEMINI (PORTAPAPELES) ====================
 
+  public seleccionarComprobante() {
+    const input = this.comprobanteInput?.nativeElement;
+    if (!input) {
+      alerts.basicAlert('Error', 'No se pudo abrir el selector de imagen.', 'error');
+      return;
+    }
+    input.value = '';
+    input.click();
+  }
+
+  public async onComprobanteSelected(event: Event) {
+    const input = event.target as HTMLInputElement;
+    const file = input.files?.[0] ?? null;
+    if (!file) return;
+    await this.procesarComprobanteDesdeImagen(file);
+    input.value = '';
+  }
+
+  private async procesarComprobanteDesdeImagen(file: File) {
+    if (!file.type.startsWith('image/')) {
+      alerts.basicAlert('Archivo inválido', 'Selecciona una imagen válida del comprobante.', 'warning');
+      return;
+    }
+
+    this.actualizarPreviewComprobante(file);
+    this.isParsingImage = true;
+    const timer = setTimeout(() => { this.isParsingImage = false; }, 30000);
+
+    this.administrationService.parseComprobante(file).subscribe({
+      next: (data: any) => {
+        clearTimeout(timer);
+        this.isParsingImage = false;
+        console.log('Comprobante analizado:', JSON.stringify(data));
+        const parsedData = this.normalizeComprobanteResponse(data);
+
+        if (!parsedData || typeof parsedData !== 'object') {
+          alerts.basicAlert('Sin datos', 'La imagen se leyó pero no devolvió datos utilizables.', 'warning');
+          return;
+        }
+
+        void this.preguntarTipoEntidadYBuscar(parsedData);
+      },
+      error: (err: any) => {
+        clearTimeout(timer);
+        console.error('Error analizando comprobante:', err);
+        this.isParsingImage = false;
+        const msg = err?.error?.message || err?.message || 'No se pudo analizar el comprobante.';
+        alerts.basicAlert('Error', msg, 'error');
+      }
+    });
+  }
+
+  private actualizarPreviewComprobante(file: File) {
+    this.limpiarPreviewComprobante();
+    this.comprobantePreviewUrl = URL.createObjectURL(file);
+  }
+
+  public limpiarPreviewComprobante() {
+    if (this.comprobantePreviewUrl) {
+      URL.revokeObjectURL(this.comprobantePreviewUrl);
+      this.comprobantePreviewUrl = null;
+    }
+  }
+
+  private normalizeComprobanteResponse(data: any): any {
+    if (!data || typeof data !== 'object') return data;
+
+    const candidates = [
+      data.data,
+      data.Data,
+      data.result,
+      data.Result,
+      data.payload,
+      data.Payload,
+      data.comprobante,
+      data.Comprobante,
+      data
+    ];
+
+    return candidates.find(candidate => {
+      if (!candidate || typeof candidate !== 'object') return false;
+      return ['monto', 'fecha', 'descripcion', 'referencia'].some(key => key in candidate);
+    }) || data;
+  }
+
+  private showComprobanteDebugModal(rawData: any, parsedData: any) {
+    void Swal.fire({
+      title: 'JSON leído del comprobante',
+      width: '900px',
+      confirmButtonText: 'Cerrar',
+      html: `
+        <div style="text-align:left">
+          <div style="margin-bottom:12px;">
+            <strong>Objeto usado para insertar</strong>
+            <pre style="max-height:180px;overflow:auto;background:#f8f9fa;border:1px solid #dee2e6;border-radius:6px;padding:12px;font-size:12px;">${this.escapeHtml(JSON.stringify(parsedData, null, 2))}</pre>
+          </div>
+          <div>
+            <strong>Respuesta cruda del endpoint</strong>
+            <pre style="max-height:260px;overflow:auto;background:#111827;color:#f9fafb;border-radius:6px;padding:12px;font-size:12px;">${this.escapeHtml(JSON.stringify(rawData, null, 2))}</pre>
+          </div>
+        </div>
+      `
+    });
+  }
+
+  private escapeHtml(value: string): string {
+    return String(value)
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;');
+  }
+
   public async pegarComprobante() {
     try {
       const items = await navigator.clipboard.read();
@@ -1770,18 +1897,112 @@ export class DetallesExpenditureComponent implements OnInit, OnDestroy {
     }
   }
 
-  private addConceptFromComprobante(data: any) {
+  private async preguntarTipoEntidadYBuscar(parsedData: any): Promise<void> {
+    const nombre = parsedData?.descripcion || '';
+
+    const tipoResult = await Swal.fire({
+      title: '¿A quién va dirigido este pago?',
+      text: nombre ? `Nombre en comprobante: "${nombre}"` : undefined,
+      icon: 'question',
+      showCancelButton: true,
+      showDenyButton: true,
+      confirmButtonText: '🏢 Proveedor',
+      denyButtonText: '👤 Empleado',
+      cancelButtonText: 'Omitir',
+      reverseButtons: false
+    });
+
+    if (tipoResult.dismiss) {
+      this.addConceptFromComprobante(parsedData, 'PROVEEDORES', null);
+      return;
+    }
+
+    const tipo = tipoResult.isConfirmed ? 'PROVEEDORES' : 'EMPLEADOS';
+    const lista = tipo === 'PROVEEDORES' ? this._providers : this._employees;
+
+    if (!nombre) {
+      this.addConceptFromComprobante(parsedData, tipo, null);
+      return;
+    }
+
+    const match = this.buscarMejorCoincidencia(nombre, lista, tipo);
+
+    if (!match) {
+      alerts.basicAlert(
+        'Sin coincidencia',
+        `No se encontró ningún ${tipo === 'PROVEEDORES' ? 'proveedor' : 'empleado'} parecido a "${nombre}".`,
+        'info'
+      );
+      this.addConceptFromComprobante(parsedData, tipo, null);
+      return;
+    }
+
+    const displayName = tipo === 'PROVEEDORES'
+      ? this.getProviderDisplayName(match)
+      : this.getEmployeeDisplayName(match);
+
+    const confirmResult = await Swal.fire({
+      title: '¿Es este el destinatario?',
+      html: `<strong>${displayName}</strong>`,
+      icon: 'question',
+      confirmButtonText: 'Sí, usar este',
+      cancelButtonText: 'No, agregar sin asignar',
+      showCancelButton: true
+    });
+
+    this.addConceptFromComprobante(parsedData, tipo, confirmResult.isConfirmed ? match : null);
+  }
+
+  private buscarMejorCoincidencia(nombre: string, lista: any[], tipo: string): any {
+    if (!nombre || !lista?.length) return null;
+
+    const normalizar = (s: string) =>
+      (s || '').toLowerCase()
+        .normalize('NFD').replace(/[̀-ͯ]/g, '')
+        .replace(/[^a-z0-9 ]/g, ' ')
+        .trim();
+
+    const palabras = normalizar(nombre).split(/\s+/).filter(p => p.length > 2);
+    if (!palabras.length) return null;
+
+    let mejorScore = 0;
+    let mejorItem: any = null;
+
+    for (const item of lista) {
+      const display = tipo === 'PROVEEDORES'
+        ? this.getProviderDisplayName(item)
+        : this.getEmployeeDisplayName(item);
+      const normalDisplay = normalizar(display);
+      let score = 0;
+      for (const palabra of palabras) {
+        if (normalDisplay.includes(palabra)) score++;
+      }
+      if (score > mejorScore) {
+        mejorScore = score;
+        mejorItem = item;
+      }
+    }
+
+    return mejorScore > 0 ? mejorItem : null;
+  }
+
+  private addConceptFromComprobante(data: any, tipoExpense: string = 'PROVEEDORES', entityMatch: any = null) {
+    const tipo = tipoExpense;
+    const idExpense = entityMatch?.id ?? null;
+    const selectedEntity = entityMatch
+      ? (tipo === 'PROVEEDORES' ? this.getProviderDisplayName(entityMatch) : this.getEmployeeDisplayName(entityMatch))
+      : null;
     const tempId = `temp_concept_${this.tempIdCounter++}`;
     const rawMonto = String(data?.monto ?? '0').replace(/[^0-9.]/g, '');
     const monto    = parseFloat(rawMonto) || 0;
     const newConcept = {
       id:              tempId,
       idIncorExp:      this.params.data.id,
-      typeExpense:     'PROVEEDORES',
-      idExpense:       null,
+      typeExpense:     tipo,
+      idExpense:       idExpense,
       idContribuyente: null,
-      selectedEntity:  null,
-      groupEntity:     this.getGroupEntityLabel({ typeExpense: 'PROVEEDORES', selectedEntity: null }),
+      selectedEntity:  selectedEntity,
+      groupEntity:     this.getGroupEntityLabel({ typeExpense: tipo, selectedEntity }),
       dateExpend:      data?.fecha || this.getTodayDateForInput(),
       description:     data?.descripcion || '',
       quantity:        1,
