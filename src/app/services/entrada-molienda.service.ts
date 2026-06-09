@@ -24,6 +24,11 @@ export interface EntradaMolienda {
   folioEntrega?: string | null;
   active?: boolean;
   dateModified?: string;
+  // Fase 4: conversión a MXN registrada al pagar (solo cuando liberacion=true).
+  montoMxn?: number | null;
+  tipoCambio?: number | null;
+  moneda?: string | null;
+  fuenteTc?: string | null;
 }
 
 @Injectable({ providedIn: 'root' })

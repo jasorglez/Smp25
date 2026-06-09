@@ -181,6 +181,9 @@ export class DetailCellRendererPedimentosComponent implements OnInit, OnDestroy 
         // ✅ Slots dinámicos de proveedores (mín 1 default, máx 26 por pedimento)
         providerSlots,
         branchPrefix: pedimento.branchPrefix || '',
+        // ✅ Prefijo del departamento (para folio COTIZ/OC) + nombre (para mensajes de validación)
+        deptPrefijo: this.params.data.deptPrefijo || '',
+        departmentName: this.params.data.department || '',
         pdf: 'PDF',
         creo: pedimento.createdBy || 'N/A',
         createdBy: pedimento.createdBy || 'N/A',
@@ -487,6 +490,8 @@ export class DetailCellRendererPedimentosComponent implements OnInit, OnDestroy 
             slotInfo: params.data.slotInfo,
             branchPrefix: params.data.branchPrefix,
             pedimentoNum: params.data.numeroPedimentoRaw,
+            deptPrefijo: params.data.deptPrefijo || '',
+            departmentName: params.data.departmentName || '',
             // ✅ Para validación de duplicados: slots hermanos (excepto el activo)
             siblingSlots: (params.data.providerSlots || []).filter(
               (s: ProviderSlotInfo) => s.slotIndex !== params.data.slotInfo?.slotIndex
@@ -853,7 +858,8 @@ export class DetailCellRendererPedimentosComponent implements OnInit, OnDestroy 
       selectedProviderIds,
       idBranchFromReq: this.params.data.idReference || 0,
       idDepartamentFromReq: this.params.data.idDepartament || 0,
-      departmentName: this.params.data.department || ''
+      departmentName: this.params.data.department || '',
+      deptPrefijoFromReq: this.params.data.deptPrefijo || ''
     });
   }
 

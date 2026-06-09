@@ -216,6 +216,12 @@
                 <i class="bi bi-speedometer2"></i> Peso / Volumen
               </a>
             </li>
+            <li class="nav-item">
+              <a class="nav-link" [class.active]="materialesTab === 'monedas'"
+                 (click)="materialesTab = 'monedas'" style="cursor:pointer;">
+                <i class="bi bi-cash-coin"></i> Monedas
+              </a>
+            </li>
           </ul>
           <div *ngIf="materialesTab === 'empaque'">
             <app-descripcion-empaque></app-descripcion-empaque>
@@ -228,6 +234,9 @@
           </div>
           <div *ngIf="materialesTab === 'pesovolumen'">
             <app-peso-volumen></app-peso-volumen>
+          </div>
+          <div *ngIf="materialesTab === 'monedas'">
+            <app-monedas></app-monedas>
           </div>
         </div>
 

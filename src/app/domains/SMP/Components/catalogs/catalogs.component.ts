@@ -35,6 +35,7 @@ import { DescripcionEmpaqueComponent } from "../../../ModShoppingDelison/pages/s
 import { UnidadesComponent } from "../../../ModShoppingDelison/pages/subPages/unidades/unidades.component";
 import { DimensionesComponent } from "../../../ModShoppingDelison/pages/subPages/dimensiones/dimensiones.component";
 import { PesoVolumenComponent } from "../../../ModShoppingDelison/pages/subPages/peso-volumen/peso-volumen.component";
+import { MonedasComponent } from "../../../ModShoppingDelison/pages/subPages/monedas/monedas.component";
 
 //soriano
 @Component({
@@ -54,7 +55,8 @@ import { PesoVolumenComponent } from "../../../ModShoppingDelison/pages/subPages
     DescripcionEmpaqueComponent,
     UnidadesComponent,
     DimensionesComponent,
-    PesoVolumenComponent
+    PesoVolumenComponent,
+    MonedasComponent
 ],
   templateUrl: './catalogs.component.html',
   styleUrl: './catalogs.component.scss',

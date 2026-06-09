@@ -22,12 +22,14 @@ import { EmpaquePesoVolumenService } from 'app/services/empaque-peso-volumen.ser
 import { EmpaqueDescripcionService } from 'app/services/empaque-descripcion.service';
 import { runAutosizeAllColumns } from 'app/helpers/ag-grid-autosize.helper';
 import { PendingChangesService } from 'app/services/pending-changes.service';
+import { CurrencyService } from 'app/services/currency.service';
+import { PrecioMonedaEditorComponent, MonedaOpt } from '../editors/precio-moneda-editor.component';
 
 @Component({
   selector: 'app-detalle-asignproveeds-matmaestro',
   standalone: true,
   providers: [CurrencyPipe],
-  imports: [AgGridModule, CommonModule, AutocompleteEditorComponent],
+  imports: [AgGridModule, CommonModule, AutocompleteEditorComponent, PrecioMonedaEditorComponent],
   template: `
     <div
       style="padding: 10px; background-color: #e3f2fd; height: 100%; display: flex; flex-direction: column;">
@@ -64,6 +66,7 @@ import { PendingChangesService } from 'app/services/pending-changes.service';
           [components]="components"
           (gridReady)="onProveedorGridReady($event)"
           (cellValueChanged)="onProveedorCellValueChanged($event)"
+          (cellEditingStopped)="onProveedorCellEditingStopped($event)"
           (selectionChanged)="onProveedorSelectionChanged($event)">
         </ag-grid-angular> <!-- (cellClicked)="onCellClicked($event)" -->
 
@@ -99,6 +102,13 @@ export class DetalleAsignProveedsMaestroComponent implements ICellRendererAngula
   private empaquePesoVolumenService = inject(EmpaquePesoVolumenService);
   private empaqueDescripcionService = inject(EmpaqueDescripcionService);
   private pendingChangesService = inject(PendingChangesService);
+  private currencyService = inject(CurrencyService);
+
+  /** Catálogo de monedas (type='CURRENCY') para el editor/formatter de Precio Unitario. */
+  monedas: MonedaOpt[] = [];
+  private monedasMap = new Map<number, MonedaOpt>();
+  /** Id de la moneda default (MXN) para filas nuevas / precios sin moneda. */
+  defaultCurrencyId: number | null = null;
 
   private _sucursalSub: Subscription;
   private saverId: string = '';
@@ -599,10 +609,15 @@ export class DetalleAsignProveedsMaestroComponent implements ICellRendererAngula
       field: 'campo9',
       headerName: 'Precio Unitario',
       editable: (params: any) => !this.isBlockedByProviderDeactivation(params.data?.idTabla),
-      width: 130,
-      cellEditor: 'agNumberCellEditor',
-      cellEditorParams: { precision: 2, min: 0 },
-      valueFormatter: (params: any) => (params.value > 0 ? `$${Number(params.value).toFixed(2)}` : '$0.00'),
+      width: 150,
+      // Editor compuesto: número + dropdown de moneda en la misma celda (Opción C).
+      cellEditor: PrecioMonedaEditorComponent,
+      cellEditorParams: () => ({ monedas: this.monedas, defaultCurrencyId: this.defaultCurrencyId }),
+      // Al cerrar: concatena valor + abreviatura de la moneda → "2.87 MXN".
+      valueFormatter: (params: any) => {
+        const n = Number(params.value) || 0;
+        return `${n.toFixed(2)} ${this.currencyAbbr(params.data?.idCurrency)}`;
+      },
       valueSetter: (params: any) => {
         const n = parseFloat(String(params.newValue));
         params.data.campo9 = isNaN(n) || n < 0 ? 0 : n;
@@ -680,6 +695,7 @@ export class DetalleAsignProveedsMaestroComponent implements ICellRendererAngula
 
     this.loadProviders();
     this.loadBranches();
+    this.loadMonedas();
     if (Array.isArray(cached)) {
       // Restaurar filas previas (incluye no guardadas con __isNew/__modified).
       this.proveedorRowData = cached;
@@ -714,6 +730,37 @@ export class DetalleAsignProveedsMaestroComponent implements ICellRendererAngula
       providers: this.providers, // Pasar lista de proveedores para resolver nombres en detalles-sucursalesproveedor
       filteredProviders: this.filteredProviders // Pasar proveedores filtrados también
     };
+  }
+
+  /** Carga el catálogo de monedas (type='CURRENCY') y resuelve la moneda default (MXN). */
+  private loadMonedas(): void {
+    const idCompany = this.idRoot || this.signalsService.getRootSelectedBySidebar()();
+    if (!idCompany) return;
+    this.currencyService.getCurrencies(idCompany).subscribe({
+      next: (data: any) => {
+        const list = Array.isArray(data) ? data : (data?.catalog ?? []);
+        this.monedas = (list || []).map((c: any) => ({
+          id: Number(c.id),
+          abreviatura: (c.valueAddition || '').toString().trim(),
+          nombre: c.description || ''
+        }));
+        this.monedasMap = new Map(this.monedas.map(m => [m.id, m]));
+        // Default MXN: por abreviatura 'MXN', o nombre con "peso"/"mexic"; si no, la primera.
+        const mxn = this.monedas.find(m => m.abreviatura.toUpperCase() === 'MXN')
+          || this.monedas.find(m => /peso|mexic/i.test(m.nombre))
+          || this.monedas[0];
+        this.defaultCurrencyId = mxn ? mxn.id : null;
+        this.proveedorGridApi?.refreshCells({ columns: ['campo9'], force: true });
+      },
+      error: () => { this.monedas = []; this.monedasMap = new Map(); this.defaultCurrencyId = null; }
+    });
+  }
+
+  /** Abreviatura de la moneda de una fila (o 'MXN' si no resuelve). */
+  private currencyAbbr(idCurrency: any): string {
+    const id = (idCurrency !== undefined && idCurrency !== null) ? Number(idCurrency) : this.defaultCurrencyId;
+    const m = id != null ? this.monedasMap.get(Number(id)) : undefined;
+    return (m?.abreviatura || m?.nombre || 'MXN');
   }
 
   /** Notificación desde el sub-grid de Empaque (Nivel 4) para encender el botón Guardar. */
@@ -1093,6 +1140,19 @@ export class DetalleAsignProveedsMaestroComponent implements ICellRendererAngula
     this.syncCacheToParams();
   }
 
+  /** El editor compuesto de Precio Unitario puede cambiar SOLO la moneda (campo9 igual) → no
+   *  dispara cellValueChanged. Aquí capturamos el __modified que dejó el editor para marcar cambios
+   *  y refrescar la celda (re-concatenar la abreviatura). */
+  onProveedorCellEditingStopped(event: any) {
+    if (event?.column?.getColId?.() === 'campo9') {
+      if (event.data?.__modified) {
+        this.hasProveedorChanges = true;
+        this.syncCacheToParams();
+      }
+      this.proveedorGridApi?.refreshCells({ rowNodes: [event.node], columns: ['campo9'], force: true });
+    }
+  }
+
   onProveedorSelectionChanged(event: any): void {
     const selectedRows = event.api.getSelectedRows();
     this.selectedProveedor = selectedRows.length > 0 ? selectedRows[0] : null;
@@ -1125,6 +1185,7 @@ export class DetalleAsignProveedsMaestroComponent implements ICellRendererAngula
       campo6: '',              // Caducidad/Garantía
       campo7: false,           // Por autorizar
       campo9: 0,               // Precio unitario
+      idCurrency: this.defaultCurrencyId,  // Moneda default (MXN)
       campo10: branchId,       // ID sucursal (del sidebar)
       branchName,              // Nombre de sucursal (del sidebar)
       type: 'MATERIAL',

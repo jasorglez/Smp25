@@ -530,6 +530,7 @@ export class QuoteDelisonComponent implements OnInit, OnDestroy, CanComponentDea
         requestedBy: requisicion.solicit || '',
         department: departmentName,
         idDepartament: requisicion.idDepartament || 0,
+        deptPrefijo: (dept?.prefijo || '').trim().toUpperCase(),
         idReference: requisicion.idReference,
         __lastModifiedSort: lastModifiedFromPedimentos
       };
@@ -702,6 +703,7 @@ export class QuoteDelisonComponent implements OnInit, OnDestroy, CanComponentDea
             requestedBy: requisicion.solicit || '',
             department: departmentName,
             idDepartament: requisicion.idDepartament || 0,
+            deptPrefijo: (dept?.prefijo || '').trim().toUpperCase(),
             idReference: requisicion.idReference,
             __lastModifiedSort: lastModifiedFromPedimentos
           };

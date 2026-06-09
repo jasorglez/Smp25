@@ -73,5 +73,5 @@ export const environment = {
 
   urlRefreshToken: 'https://securetoken.googleapis.com/v1/token?key=AIzaSyDxCBGKk8nT09hdW85-PyOkhw5_JPZLF1A',
 
-  version: '2.52.390 (6 Junio 2026) - CADENA 💡 COMPLETA: el mapeo de pedimento.items en quote-delison NO copiaba idProveedorSugerido (lo descartaba) → articulos sin el campo → dropdown sin 💡. Agregado al mapeo. Ahora panel→guardado→getReqItems→pedimento.items→modal→sugeridoProviderIds→💡'
+  version: '2.52.414 (8 Junio 2026) - FASE 4 completa: conversión MXN al pagar (diálogo TC Banxico→respaldo→manual, Gastos histórico/totales en MXN, back v6.32) + almacén molienda (detalle-almmolienda Nivel 4/5 Precio unitario y Total x entrega) muestra MXN "en seco" SOLO cuando la entrada ya está pagada (opción B: usa tipo_cambio guardado; si no, valor original). Nivel 3 (precio OC) queda en original. ⚠️ correr add_currency_rates_table.sql + add_montomxn_to_entradas_y_gastos.sql antes del backend'
 };

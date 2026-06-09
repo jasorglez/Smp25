@@ -13,6 +13,7 @@ import { StyledTooltipComponent } from 'app/shared/styled-tooltip/styled-tooltip
 import { CustomersService } from 'app/services/customers.service';
 import { ProvidersService } from 'app/services/providers.service';
 import { SucursalByMaterialProveedorService } from 'app/services/sucursalByMaterialProveedor.service';
+import { CurrencyService } from 'app/services/currency.service';
 import { alerts } from 'app/helpers/alerts';
 import { NgSelectModule } from '@ng-select/ng-select';
 import { CrProveedorEditorComponent } from './cr-proveedor-editor.component';
@@ -39,6 +40,7 @@ export class GastosComponent {
   private customersService = inject(CustomersService);
   private providersService = inject(ProvidersService);
   private sucursalByMaterialService = inject(SucursalByMaterialProveedorService);
+  private currencyService = inject(CurrencyService);
 
   // ── Dropdown de proveedor para filas CR ─────────────────────────────────────
   private readonly NEW_PROVIDER_SENTINEL = -1;
@@ -726,15 +728,24 @@ export class GastosComponent {
   /** Paga una fila de gasto general (anticipo EN TRÁMITE) desde la Captura. */
   async onPagarAnticipo(row: PendingPayment): Promise<void> {
     if (!row?.idGastoGeneral) return;
-    const confirm = await alerts.confirmAlert(
-      'Confirmar pago de anticipo',
-      `¿Confirmar el pago del anticipo de ${this.money(row.valorPago)} para "${row.folio}"? Se registrará con la fecha de hoy.`,
-      'question', 'Sí, pagar'
-    );
-    if (!confirm.isConfirmed) return;
+    // MXN: confirmación simple. Moneda extranjera: el diálogo de tipo de cambio confirma.
+    const esMXN = !row.moneda || row.moneda.trim().toUpperCase() === 'MXN';
+    let fx: { tipoCambio: number; moneda: string; fuenteTc: string | null } | null;
+    if (esMXN) {
+      const confirm = await alerts.confirmAlert(
+        'Confirmar pago de anticipo',
+        `¿Confirmar el pago del anticipo de ${this.money(row.valorPago)} para "${row.folio}"? Se registrará con la fecha de hoy.`,
+        'question', 'Sí, pagar'
+      );
+      if (!confirm.isConfirmed) return;
+      fx = { tipoCambio: 1, moneda: 'MXN', fuenteTc: null };
+    } else {
+      fx = await this.promptTipoCambio(row);
+      if (!fx) return;
+    }
     try {
       const fechaPago = row.fechaPago ?? this.toIso(new Date());
-      await lastValueFrom(this.gastosService.confirmAnticipo(row.idGastoGeneral, fechaPago, row.notaFactura ?? null));
+      await lastValueFrom(this.gastosService.confirmAnticipo(row.idGastoGeneral, fechaPago, row.notaFactura ?? null, fx.tipoCambio, fx.moneda, fx.fuenteTc));
       this.capturaRows = this.capturaRows.filter(r => r.idGastoGeneral !== row.idGastoGeneral);
       alerts.reqSuccessToast('Anticipo pagado', `${row.folio}: anticipo registrado como pagado.`);
       this.loadReport();
@@ -784,18 +795,87 @@ export class GastosComponent {
     }
 
     // Flujo normal (contado / crédito ya recibido).
-    const confirm = await alerts.confirmAlert(
-      'Confirmar pago',
-      `¿Confirmar el pago de ${this.money(row.valorPago)} para "${row.articulo}" (${row.folio})? Se liberará la entrada.`,
-      'question', 'Sí, pagar'
-    );
-    if (!confirm.isConfirmed) return;
+    // MXN: confirmación simple aquí. Moneda extranjera: la confirmación es el diálogo de tipo de
+    // cambio dentro de doPagar (evita doble diálogo).
+    const esMXN = !row.moneda || row.moneda.trim().toUpperCase() === 'MXN';
+    if (esMXN) {
+      const confirm = await alerts.confirmAlert(
+        'Confirmar pago',
+        `¿Confirmar el pago de ${this.money(row.valorPago)} para "${row.articulo}" (${row.folio})? Se liberará la entrada.`,
+        'question', 'Sí, pagar'
+      );
+      if (!confirm.isConfirmed) return;
+    }
     await this.doPagar(row, 0, null, null);
   }
 
-  /** Ejecuta el pago (confirmPayment), con o sin anticipo aplicado. */
+  /**
+   * Fase 4: resuelve el tipo de cambio a MXN para el pago. MXN → {1, 'MXN'} sin diálogo.
+   * Moneda extranjera → trae el TC (Banxico/respaldo), lo muestra editable (override) y actúa como
+   * confirmación del pago. Devuelve null si el usuario cancela.
+   */
+  private async promptTipoCambio(row: { moneda?: string | null; valorPago: number; fechaPago?: string | null }):
+    Promise<{ tipoCambio: number; moneda: string; fuenteTc: string | null } | null> {
+    const iso = (row.moneda || '').trim().toUpperCase();
+    if (!iso || iso === 'MXN') return { tipoCambio: 1, moneda: 'MXN', fuenteTc: null };
+
+    const fecha = row.fechaPago ?? this.toIso(new Date());
+    const monto = Number(row.valorPago) || 0;
+
+    let sugerido: number | null = null;
+    let fuente = 'MANUAL';
+    try {
+      const r = await lastValueFrom(this.currencyService.getRate(iso, fecha));
+      if (r && Number(r.tasa) > 0) { sugerido = Number(r.tasa); fuente = r.fuente || 'MANUAL'; }
+    } catch { /* sin conexión → captura manual */ }
+
+    const fuenteLbl = sugerido != null ? fuente : 'sin conexión — captura manual';
+    const mxnIni = sugerido != null ? (monto * sugerido) : 0;
+    const res = await Swal.fire({
+      title: `Tipo de cambio ${iso} → MXN`,
+      html: `<div style="font-size:0.9rem;text-align:left;line-height:1.7;">
+               <div>Monto: <b>${monto.toFixed(2)} ${iso}</b> &nbsp;·&nbsp; Fecha: ${fecha}</div>
+               <div>Fuente: <b>${fuenteLbl}</b></div>
+               <div style="margin-top:8px;">Tipo de cambio (MXN por 1 ${iso}):</div>
+               <div style="margin-top:6px;">= <b id="cp-mxn">$${mxnIni.toFixed(2)}</b> MXN</div>
+             </div>`,
+      input: 'text',
+      inputValue: sugerido != null ? String(sugerido) : '',
+      inputAttributes: { inputmode: 'decimal' },
+      showCancelButton: true,
+      confirmButtonText: 'Confirmar pago',
+      cancelButtonText: 'Cancelar',
+      confirmButtonColor: '#2e7d32',
+      didOpen: () => {
+        const inp = Swal.getInput();
+        const lbl = document.getElementById('cp-mxn');
+        if (inp && lbl) {
+          inp.addEventListener('input', () => {
+            const n = parseFloat(inp.value.replace(',', '.'));
+            lbl.textContent = '$' + (n > 0 ? (monto * n) : 0).toFixed(2);
+          });
+        }
+      },
+      preConfirm: (val: any) => {
+        const n = parseFloat(String(val).replace(',', '.'));
+        if (!(n > 0)) { Swal.showValidationMessage('Captura un tipo de cambio válido'); return false; }
+        return n;
+      }
+    });
+    if (!res.isConfirmed) return null;
+    const tc = Number(res.value);
+    const fuenteFinal = (sugerido != null && Math.abs(tc - sugerido) < 1e-9) ? fuente : 'MANUAL';
+    return { tipoCambio: tc, moneda: iso, fuenteTc: fuenteFinal };
+  }
+
+  /** Ejecuta el pago (confirmPayment), con o sin anticipo aplicado. Resuelve el TC a MXN (Fase 4). */
   private async doPagar(row: PendingPayment, anticipoAplicado: number, metodo: string | null, numProrrateo: number | null): Promise<void> {
+    const fx = await this.promptTipoCambio(row);
+    if (!fx) return;   // pago cancelado en el diálogo de tipo de cambio
     const payload = this.buildPayload(row);
+    payload.tipoCambio = fx.tipoCambio;
+    payload.moneda = fx.moneda;
+    payload.fuenteTc = fx.fuenteTc;
     if (anticipoAplicado > 0) {
       payload.anticipoAplicado = anticipoAplicado;
       payload.metodoAnticipo = metodo;

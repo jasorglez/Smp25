@@ -82,4 +82,19 @@ export class ItemCommentsService {
       { headers: this.trackingService.getHeaders() }
     );
   }
+
+  /**
+   * Borrado FÍSICO de comentarios de un artículo en un documento.
+   * - Sin textPrefix: borra TODOS (al eliminar un renglón de la requisición; los comentarios se
+   *   atan a numArticle, no al id del renglón, así que no deben reaparecer al re-agregar).
+   * - Con textPrefix: borra solo los que empiezan así (ej. "🧮 [Req]" del panel de presentaciones),
+   *   para reemplazar el anterior y dejar solo el último, sin tocar comentarios manuales.
+   */
+  deleteCommentsByArticle(documentType: string, idDocument: number, numArticle: string, textPrefix?: string): Observable<{ deleted: number }> {
+    const prefixParam = textPrefix ? `&textPrefix=${encodeURIComponent(textPrefix)}` : '';
+    return this.http.delete<{ deleted: number }>(
+      `${environment.urlWarehouse}/ItemComments/by-article?documentType=${documentType}&idDocument=${idDocument}&numArticle=${encodeURIComponent(numArticle)}${prefixParam}`,
+      { headers: this.trackingService.getHeaders() }
+    );
+  }
 }

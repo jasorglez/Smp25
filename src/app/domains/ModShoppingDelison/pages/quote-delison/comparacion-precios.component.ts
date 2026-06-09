@@ -13,48 +13,44 @@ import { UsersService } from 'app/services/users.service';
 import { AutorizacionMontoService } from 'app/services/autorizacion-monto.service';
 import { SetupService } from 'app/services/setup.service';
 import { PrefixSetupService } from 'app/services/prefix-setup.service';
+import { CurrencyService } from 'app/services/currency.service';
 import { ItemCommentsCellRendererComponent } from 'app/shared/item-comments-cell-renderer/item-comments-cell-renderer.component';
 import { ItemCommentsService } from 'app/services/item-comments.service';
+import { EmpaqueDescripcionService, ProveedorPresentaciones } from 'app/services/empaque-descripcion.service';
+import { resolverUnidadArticulo, denomsDeProveedor, UnidadArticulo } from 'app/domains/ModWarehouse/components/requisitionsdelison/presentaciones-unidad.helper';
+import { CantidadProveedorPanelComponent } from './cantidad-proveedor-panel.component';
 import { NgbModal, NgbModalRef } from '@ng-bootstrap/ng-bootstrap';
 import { alerts } from 'app/helpers/alerts';
-import { lastValueFrom, Subscription, take } from 'rxjs';
+import { lastValueFrom, Subscription, take, forkJoin, of } from 'rxjs';
+import { catchError, map } from 'rxjs/operators';
 
 
 @Component({
   selector: 'app-comparacion-precios',
   standalone: true,
-  imports: [CommonModule, FormsModule, AgGridModule, ItemCommentsCellRendererComponent],
+  imports: [CommonModule, FormsModule, AgGridModule, ItemCommentsCellRendererComponent, CantidadProveedorPanelComponent],
   template: `
     <div class="comparacion-container">
-      <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:12px;">
-        <h5 class="mb-0" style="display:flex; align-items:center; flex-wrap:wrap; gap:4px;">
-          Comparación de Precios por Proveedor
-          <span *ngIf="departmentName"
-                style="background:#6a1b9a; color:#fff; border-radius:4px; padding:2px 8px; font-size:0.82rem; font-weight:700; margin-left:8px; letter-spacing:1px; text-transform: uppercase;">
-            {{ departmentName }}
-          </span>
-          <span *ngIf="requisitionFolio"
-                style="background:#2e7d32; color:#fff; border-radius:4px; padding:2px 8px; font-size:0.82rem; font-weight:700; margin-left:8px; letter-spacing:1px;">
-            {{ requisitionFolio }}
-          </span>
-          <span *ngIf="cotizacionFolio"
-                style="background:#1565c0; color:#fff; border-radius:4px; padding:2px 8px; font-size:0.82rem; font-weight:700; margin-left:6px; letter-spacing:1px;">
-            {{ cotizacionFolio }}
-          </span>
-          <!-- Estado OC -->
-          <span [style.background]="ocGenerada ? '#b71c1c' : '#388e3c'"
-                style="color:#fff; border-radius:4px; padding:2px 8px; font-size:0.75rem; font-weight:700; margin-left:6px; letter-spacing:1px; display:inline-flex; align-items:center; gap:4px;">
-            <i [class]="ocGenerada ? 'bi bi-lock-fill' : 'bi bi-unlock-fill'" style="font-size:0.7rem;"></i>
-            {{ ocGenerada ? 'CERRADA' : 'ABIERTA' }}
-          </span>
-          <!-- Pares Pedimento → OC generadas -->
-          <span *ngFor="let par of ocPairs"
-                style="background:#e65100; color:#fff; border-radius:4px; padding:2px 8px; font-size:0.78rem; font-weight:700; margin-left:4px; letter-spacing:0.5px; display:inline-flex; align-items:center; gap:4px;">
-            <i class="bi bi-file-earmark-check" style="font-size:0.7rem;"></i>
-            {{ par.pedimento }} → {{ par.oc }}
-          </span>
-        </h5>
-        <button type="button" class="btn-close" (click)="closed.emit()"></button>
+      <div class="cmp-header">
+        <div class="cmp-titlewrap">
+          <h5 class="cmp-title">Comparación de Precios por Proveedor</h5>
+          <div class="cmp-badges">
+            <span *ngIf="departmentName" class="pill pill-dept">{{ departmentName }}</span>
+            <span *ngIf="requisitionFolio" class="pill">{{ requisitionFolio }}</span>
+            <span *ngIf="cotizacionFolio" class="pill">{{ cotizacionFolio }}</span>
+            <!-- Estado OC -->
+            <span class="pill" [class.pill-open]="!ocGenerada" [class.pill-closed]="ocGenerada">
+              <i [class]="ocGenerada ? 'bi bi-lock-fill' : 'bi bi-unlock-fill'"></i>
+              {{ ocGenerada ? 'CERRADA' : 'ABIERTA' }}
+            </span>
+            <!-- Pares Pedimento → OC generadas -->
+            <span *ngFor="let par of ocPairs" class="pill pill-oc">
+              <i class="bi bi-file-earmark-check"></i>
+              {{ par.pedimento }} → {{ par.oc }}
+            </span>
+          </div>
+        </div>
+        <button type="button" class="btn-close cmp-close" (click)="closed.emit()"></button>
       </div>
 
       <!-- Loading state -->
@@ -71,7 +67,7 @@ import { lastValueFrom, Subscription, take } from 'rxjs';
       <!-- Data loaded -->
       <div *ngIf="!loading && !error && articulos.length > 0" style="flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column;">
         <div class="article-toolbar-row" style="flex-shrink: 0;">
-          <div class="actions d-flex align-items-center gap-2" style="margin-left: auto;">
+          <div class="actions cmp-toolbar d-flex align-items-center gap-2" style="margin-left: auto;">
             <span *ngIf="hasConflictingTipoOc"
                   style="font-size:11px; color:#b71c1c; font-weight:600; display:flex; align-items:center; gap:4px; max-width:320px;">
               <i class="bi bi-exclamation-triangle-fill"></i>
@@ -125,15 +121,12 @@ import { lastValueFrom, Subscription, take } from 'rxjs';
         </div>
 
         <!-- Banner CERRADA -->
-        <div *ngIf="ocGenerada"
-             style="flex-shrink: 0; background: #b71c1c; color: #fff; font-weight: 700; font-size: 1rem;
-                    letter-spacing: 2px; text-align: center; padding: 8px 16px; border-radius: 6px;
-                    margin-bottom: 8px; display: flex; align-items: center; justify-content: center; gap: 10px;">
+        <div *ngIf="ocGenerada" class="cmp-banner-closed">
           <i class="bi bi-lock-fill"></i>
           CERRADA — Órdenes de compra generadas. Esta comparación no puede modificarse.
         </div>
 
-        <div style="flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column;">
+        <div class="cmp-gridwrap" style="flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column;">
           <ag-grid-angular
             #agGrid
             class="ag-theme-quartz small-text-ag-grid"
@@ -152,18 +145,13 @@ import { lastValueFrom, Subscription, take } from 'rxjs';
           </ag-grid-angular>
 
           <!-- Footer "Total x Pedimento" - anchos sincronizados dinámicamente con columnas CANTIDAD X PROV., COSTO TOTAL y CHAT -->
-          <div *ngIf="rowData.length > 0"
-               style="display: flex; align-items: stretch; flex-shrink: 0; height: 40px; font-size: 11px; font-family: inherit;">
+          <div *ngIf="rowData.length > 0" class="cmp-footer">
             <div style="flex: 1 1 auto;"></div>
-            <div [style.width.px]="footerLabelWidth"
-                 style="background-color: #e8f5e9; color: #1b5e20; font-weight: 700;
-                        display: flex; align-items: center; justify-content: center; padding: 4px;">
+            <div [style.width.px]="footerLabelWidth" class="cmp-footer-label">
               Total x Pedimento
             </div>
-            <div [style.width.px]="footerValueWidth"
-                 style="background-color: #81c784; color: #1b5e20; font-weight: 700;
-                        display: flex; align-items: center; justify-content: center; padding: 4px;">
-              {{ '$' + pinnedTotal.toFixed(2) }}
+            <div [style.width.px]="footerValueWidth" class="cmp-footer-value">
+              {{ pinnedTotalDisplay }}
             </div>
             <div [style.width.px]="footerEndWidth"></div>
           </div>
@@ -196,31 +184,222 @@ import { lastValueFrom, Subscription, take } from 'rxjs';
       </div>
     </div>
 
+    <!-- Modal: Cantidad x Prov. por presentaciones (bultos/cajas/etc.) -->
+    <app-cantidad-proveedor-panel
+      *ngIf="cantidadPanelOpen"
+      [articleName]="cantidadPanelArticle"
+      [proveedorName]="cantidadPanelProveedor"
+      [unidad]="cantidadPanelUnidad"
+      [esPieza]="cantidadPanelEsPieza"
+      [minCompra]="cantidadPanelMinCompra"
+      [cantidadRequerida]="cantidadPanelRequerida"
+      [yaAsignadoOtros]="cantidadPanelAsignadoOtros"
+      [cantidadActual]="cantidadPanelActual"
+      [presentaciones]="cantidadPanelDenoms"
+      (seleccionar)="onCantidadPanelSeleccionar($event)"
+      (cerrar)="closeCantidadPanel()">
+    </app-cantidad-proveedor-panel>
+
   `,
   styles: [`
     .comparacion-container {
-      padding: 15px;
-      background-color: #f8f9fa;
-      border-radius: 8px;
+      /* Paleta minimalista (neutros tintados en frío + acentos contenidos) */
+      --bg: oklch(0.978 0.004 255);
+      --surface: oklch(0.995 0.002 255);
+      --surface-2: oklch(0.965 0.005 255);
+      --surface-3: oklch(0.945 0.006 255);
+      --border: oklch(0.905 0.006 255);
+      --border-strong: oklch(0.84 0.008 255);
+      --text: oklch(0.34 0.022 262);
+      --text-muted: oklch(0.55 0.016 262);
+      --accent: oklch(0.55 0.13 256);
+      --accent-700: oklch(0.47 0.13 256);
+      --accent-50: oklch(0.965 0.022 256);
+      --ok-50: oklch(0.965 0.03 152);
+      --ok-100: oklch(0.93 0.055 152);
+      --ok-200: oklch(0.88 0.07 152);
+      --ok-700: oklch(0.46 0.1 152);
+      --danger: oklch(0.55 0.16 25);
+      --danger-50: oklch(0.96 0.032 25);
+
+      padding: 18px 20px;
+      background: var(--bg);
+      border-radius: 12px;
       height: 100%;
       display: flex;
       flex-direction: column;
       box-sizing: border-box;
       overflow: auto;
+      color: var(--text);
     }
 
-    h5 {
-      color: #333;
+    /* ── Header ── */
+    .cmp-header {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 12px;
+      margin-bottom: 16px;
+    }
+    .cmp-titlewrap { display: flex; flex-direction: column; gap: 9px; min-width: 0; }
+    .cmp-title {
+      margin: 0;
+      font-size: 1.02rem;
+      font-weight: 650;
+      letter-spacing: -0.01em;
+      color: var(--text);
+    }
+    .cmp-badges { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
+    .cmp-close { opacity: 0.45; transition: opacity 0.15s ease; flex-shrink: 0; }
+    .cmp-close:hover { opacity: 0.85; }
+
+    /* ── Pills de estado ── */
+    .pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      font-size: 0.7rem;
       font-weight: 600;
-      margin-bottom: 15px;
+      letter-spacing: 0.03em;
+      padding: 3px 9px;
+      border-radius: 999px;
+      background: var(--surface-3);
+      color: var(--text-muted);
+      border: 1px solid var(--border);
+      text-transform: uppercase;
+      white-space: nowrap;
+      line-height: 1.4;
     }
+    .pill i { font-size: 0.66rem; }
+    .pill-dept { background: oklch(0.952 0.024 292); color: oklch(0.46 0.12 292); border-color: oklch(0.9 0.04 292); }
+    .pill-open { background: var(--ok-50); color: var(--ok-700); border-color: var(--ok-200); }
+    .pill-closed { background: var(--danger-50); color: var(--danger); border-color: oklch(0.9 0.05 25); }
+    .pill-oc { background: oklch(0.96 0.03 62); color: oklch(0.5 0.11 62); border-color: oklch(0.9 0.05 62); text-transform: none; }
 
+    /* ── Toolbar ── */
     .article-toolbar-row {
       display: flex;
       align-items: center;
       gap: 12px;
-      margin-bottom: 10px;
+      margin-bottom: 12px;
       flex-wrap: wrap;
+    }
+    .cmp-toolbar .btn {
+      border-radius: 9px;
+      font-weight: 600;
+      font-size: 0.78rem;
+      padding: 7px 15px;
+      box-shadow: none !important;
+      letter-spacing: 0.01em;
+      transition: background-color 0.15s ease, color 0.15s ease, border-color 0.15s ease;
+    }
+    .cmp-toolbar .btn i { font-size: 0.8rem; }
+    .cmp-toolbar .btn:focus, .cmp-toolbar .btn:active { box-shadow: none !important; }
+    /* Generar OC = CTA sólido (acento) */
+    .cmp-toolbar .btn-primary { background: var(--accent); border: 1px solid var(--accent); color: #fff; }
+    .cmp-toolbar .btn-primary:hover:not(:disabled) { background: var(--accent-700); border-color: var(--accent-700); color: #fff; }
+    /* Guardar = tonal verde */
+    .cmp-toolbar .btn-success { background: var(--ok-50); border: 1px solid var(--ok-200); color: var(--ok-700); }
+    .cmp-toolbar .btn-success:hover:not(:disabled) { background: var(--ok-100); border-color: var(--ok-200); color: var(--ok-700); }
+    /* Finalizar Req = ghost danger */
+    .cmp-toolbar .btn-danger { background: transparent; border: 1px solid transparent; color: var(--danger); }
+    .cmp-toolbar .btn-danger:hover:not(:disabled) { background: var(--danger-50); border-color: transparent; color: var(--danger); }
+    /* Deshacer = ghost neutral */
+    .cmp-toolbar .btn-warning { background: transparent; border: 1px solid var(--border); color: var(--text-muted); }
+    .cmp-toolbar .btn-warning:hover:not(:disabled) { background: var(--surface-3); border-color: var(--border-strong); color: var(--text); }
+    .cmp-toolbar .btn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+    /* ── Banner CERRADA ── */
+    .cmp-banner-closed {
+      flex-shrink: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+      background: var(--danger-50);
+      color: var(--danger);
+      border: 1px solid oklch(0.9 0.05 25);
+      border-radius: 10px;
+      font-weight: 650;
+      font-size: 0.85rem;
+      letter-spacing: 0.04em;
+      padding: 9px 16px;
+      margin-bottom: 10px;
+    }
+
+    /* ── Grid (ag-theme-quartz) refinado ── */
+    :host ::ng-deep .comparacion-container .ag-theme-quartz {
+      --ag-background-color: var(--surface);
+      --ag-odd-row-background-color: var(--surface);
+      --ag-header-background-color: var(--surface-2);
+      --ag-header-foreground-color: var(--text-muted);
+      --ag-foreground-color: var(--text);
+      --ag-border-color: var(--border);
+      --ag-row-border-color: var(--border);
+      --ag-header-column-separator-display: none;
+      --ag-header-column-resize-handle-display: none;
+      --ag-font-size: 12px;
+      --ag-header-height: 38px;
+      --ag-row-height: 34px;
+      --ag-cell-horizontal-padding: 12px;
+      --ag-row-hover-color: var(--accent-50);
+      --ag-selected-row-background-color: var(--accent-50);
+      --ag-input-focus-border-color: var(--accent);
+      --ag-wrapper-border-radius: 0;
+    }
+    :host ::ng-deep .comparacion-container .ag-theme-quartz .ag-root-wrapper { border: none; }
+    :host ::ng-deep .comparacion-container .ag-theme-quartz .ag-header {
+      border-bottom: 1px solid var(--border-strong);
+    }
+    :host ::ng-deep .comparacion-container .ag-theme-quartz .ag-header-cell-text {
+      font-weight: 650;
+      letter-spacing: 0.03em;
+      font-size: 0.66rem;
+      text-transform: uppercase;
+    }
+
+    /* Card que envuelve grid + footer para un borde y esquinas limpias */
+    .cmp-gridwrap {
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      overflow: hidden;
+      background: var(--surface);
+      box-shadow: 0 1px 2px oklch(0.5 0.02 262 / 0.05);
+    }
+
+    /* ── Footer "Total x Pedimento" ── */
+    .cmp-footer {
+      display: flex;
+      align-items: stretch;
+      flex-shrink: 0;
+      height: 38px;
+      font-size: 0.72rem;
+      border-top: 1px solid var(--border);
+    }
+    .cmp-footer-label {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 4px 8px;
+      background: var(--ok-50);
+      color: var(--ok-700);
+      font-weight: 650;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      font-size: 0.62rem;
+      text-align: center;
+    }
+    .cmp-footer-value {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 4px 8px;
+      background: var(--ok-100);
+      color: var(--ok-700);
+      font-weight: 700;
+      font-size: 0.78rem;
+      text-align: center;
+      font-variant-numeric: tabular-nums;
     }
 
     :host ::ng-deep .ag-cell.cell-cantidad-comprar,
@@ -265,9 +444,9 @@ import { lastValueFrom, Subscription, take } from 'rxjs';
     :host ::ng-deep .ag-cell.cell-col-prioridad {
       box-sizing: border-box;
       box-shadow:
-        inset 0 -1px 0 rgba(33, 50, 83, 0.25),
-        inset 1px 0 0 rgba(33, 50, 83, 0.2),
-        inset -1px 0 0 rgba(33, 50, 83, 0.2);
+        inset 0 -1px 0 var(--border-strong),
+        inset 1px 0 0 var(--border),
+        inset -1px 0 0 var(--border);
     }
 
     .date-picker-overlay {
@@ -330,6 +509,29 @@ export class ComparacionPreciosComponent implements OnInit, OnDestroy {
   private autorizacionMontoService = inject(AutorizacionMontoService);
   private setupService = inject(SetupService);
   private prefixSetupService = inject(PrefixSetupService);
+  private currencyService = inject(CurrencyService);
+  private empaqueService = inject(EmpaqueDescripcionService);
+
+  // Fase 2: catálogo de monedas para mostrar la abreviatura junto a Costo Unit/Total (Opción A, sin convertir).
+  private monedasMap = new Map<number, string>();
+  private defaultCurrencyId: number | null = null;
+
+  // Presentaciones por artículo (idSupplie) + unidad base resuelta (regla piezas>1 → pz, si no kg/L).
+  private presentacionesByArticulo = new Map<number, ProveedorPresentaciones[]>();
+  private unidadByArticulo = new Map<number, UnidadArticulo>();
+
+  // Modal de "Cantidad x Prov." por presentaciones.
+  cantidadPanelOpen = false;
+  cantidadPanelRow: any = null;
+  cantidadPanelArticle = '';
+  cantidadPanelProveedor = '';
+  cantidadPanelUnidad = '';
+  cantidadPanelEsPieza = false;
+  cantidadPanelMinCompra = 0;
+  cantidadPanelRequerida = 0;
+  cantidadPanelAsignadoOtros = 0;
+  cantidadPanelActual = 0;
+  cantidadPanelDenoms: { base: number; descripcion: string; unidad: string }[] = [];
   private ivaPercent: number = 0;
   private renderer: Renderer2;
   private gridApi!: GridApi;
@@ -361,6 +563,7 @@ export class ComparacionPreciosComponent implements OnInit, OnDestroy {
   @Input() idBranchFromReq: number = 0;
   @Input() idDepartamentFromReq: number = 0;
   @Input() departmentName: string = '';
+  @Input() deptPrefijoFromReq: string = '';
   @Output() closed = new EventEmitter<void>();
 
   ocGenerada = false;
@@ -428,7 +631,37 @@ export class ComparacionPreciosComponent implements OnInit, OnDestroy {
       }
     });
     this.loadUserNivelMonto();
+    this.loadMonedas();
     this.loadComparisonData();
+  }
+
+  /** Fase 2: carga catálogo de monedas (type=CURRENCY) y resuelve la default (MXN). */
+  private loadMonedas(): void {
+    const idCompany = this.signalsService.getRootSelectedBySidebar()();
+    if (!idCompany) return;
+    this.currencyService.getCurrencies(idCompany).subscribe({
+      next: (data: any) => {
+        const list = Array.isArray(data) ? data : (data?.catalog ?? []);
+        this.monedasMap = new Map<number, string>();
+        let mxnId: number | null = null;
+        (list || []).forEach((c: any) => {
+          const id = Number(c.id);
+          const abrev = (c.valueAddition || '').toString().trim();
+          const nombre = c.description || '';
+          this.monedasMap.set(id, abrev || nombre);
+          if (mxnId === null && (abrev.toUpperCase() === 'MXN' || /peso|mexic/i.test(nombre))) mxnId = id;
+        });
+        this.defaultCurrencyId = mxnId ?? (list?.[0]?.id != null ? Number(list[0].id) : null);
+        this.gridApi?.refreshCells({ columns: ['costoUnitario', 'costoTotal', 'costoXCompraMinima'], force: true });
+      },
+      error: () => { this.monedasMap = new Map(); this.defaultCurrencyId = null; }
+    });
+  }
+
+  /** Abreviatura de la moneda de una fila (o 'MXN' si no resuelve). */
+  private currencyAbbr(idCurrency: any): string {
+    const id = (idCurrency !== undefined && idCurrency !== null) ? Number(idCurrency) : this.defaultCurrencyId;
+    return (id != null ? this.monedasMap.get(Number(id)) : '') || 'MXN';
   }
 
   /**
@@ -627,7 +860,7 @@ export class ComparacionPreciosComponent implements OnInit, OnDestroy {
         // loadCotizSlots PRIMERO: loadExistingOcFolios depende de slotFolioMap
         try {
           await this.loadCotizSlots();
-          const auxLoads: Promise<void>[] = [this.loadCodigosExternos()];
+          const auxLoads: Promise<void>[] = [this.loadCodigosExternos(), this.loadPresentaciones()];
           if (this.requisitionId) auxLoads.push(this.loadExistingOcFolios());
           await Promise.all(auxLoads);
         } catch (err) {
@@ -655,6 +888,90 @@ export class ComparacionPreciosComponent implements OnInit, OnDestroy {
         alerts.basicAlert('Error', this.error, 'error');
       }
     });
+  }
+
+  /**
+   * Carga las presentaciones (Nivel 3) de cada artículo del pedimento y resuelve su unidad base
+   * (regla piezas>1 → pz, si no kg/L) validando consistencia. Alimenta el modal de Cantidad x Prov.
+   */
+  private async loadPresentaciones(): Promise<void> {
+    this.presentacionesByArticulo.clear();
+    this.unidadByArticulo.clear();
+    const ids = Array.from(new Set(
+      (this.articulos || [])
+        .map((a: any) => Number(a.idSupplie) || 0)
+        .filter((id: number) => id > 0)
+    ));
+    if (ids.length === 0) return;
+    const results = await lastValueFrom(
+      forkJoin(ids.map(id =>
+        this.empaqueService.getPresentacionesByMaterial(id).pipe(
+          map(data => ({ id, data: Array.isArray(data) ? data : [] })),
+          catchError(() => of({ id, data: [] as ProveedorPresentaciones[] }))
+        )
+      ))
+    ).catch(() => [] as { id: number; data: ProveedorPresentaciones[] }[]);
+    for (const r of (results || [])) {
+      this.presentacionesByArticulo.set(r.id, r.data);
+      this.unidadByArticulo.set(r.id, resolverUnidadArticulo(r.data));
+    }
+  }
+
+  /** ¿La fila usa el modal de presentaciones? (artículo con presentaciones consistentes + proveedor con denoms) */
+  private rowUsaModalPresentaciones(row: any): boolean {
+    const idSupplie = Number(row?.idSupplie) || 0;
+    const provId = Number(row?.proveedorId) || 0;
+    if (idSupplie <= 0 || provId <= 0) return false;
+    const unidad = this.unidadByArticulo.get(idSupplie);
+    if (!unidad || !unidad.tienePresentaciones || !unidad.consistente) return false;
+    const provs = this.presentacionesByArticulo.get(idSupplie) || [];
+    const prov = provs.find(p => Number(p.idProvider) === provId);
+    return !!prov && denomsDeProveedor(prov).length > 0;
+  }
+
+  /** Abre el modal de Cantidad x Prov. con el contexto del artículo/proveedor y el restante. */
+  private openCantidadPanel(row: any): void {
+    const idSupplie = Number(row?.idSupplie) || 0;
+    const provId = Number(row?.proveedorId) || 0;
+    const unidad = this.unidadByArticulo.get(idSupplie);
+    const provs = this.presentacionesByArticulo.get(idSupplie) || [];
+    const prov = provs.find(p => Number(p.idProvider) === provId);
+    if (!unidad || !prov) return;
+
+    const articuloItemId = Number(row?.articuloItemId ?? 0);
+    const sumOtros = this.rowData
+      .filter(r => Number(r.articuloItemId ?? 0) === articuloItemId && r !== row)
+      .reduce((acc, r) => acc + (Number(r.cantidadConceptualizada) || 0), 0);
+
+    this.cantidadPanelRow = row;
+    this.cantidadPanelArticle = row?.articulo || '';
+    this.cantidadPanelProveedor = row?.proveedorNombre || `Proveedor ${provId}`;
+    this.cantidadPanelUnidad = unidad.unidad;
+    this.cantidadPanelEsPieza = unidad.esPieza;
+    this.cantidadPanelMinCompra = Number(prov.minCompra) || 0;
+    this.cantidadPanelRequerida = Number(row?.cantidadComprar) || 0;
+    this.cantidadPanelAsignadoOtros = sumOtros;
+    this.cantidadPanelActual = Number(row?.cantidadConceptualizada) || 0;
+    this.cantidadPanelDenoms = denomsDeProveedor(prov);
+    this.cantidadPanelOpen = true;
+  }
+
+  onCantidadPanelSeleccionar(ev: { cantidad: number; texto: string }): void {
+    const row = this.cantidadPanelRow;
+    this.cantidadPanelOpen = false;
+    if (!row) { this.cantidadPanelRow = null; return; }
+    row.cantidadConceptualizada = Number(ev.cantidad) || 0;
+    row.costoTotal = this.lineTotal(row.costoUnitario, row.cantidadConceptualizada);
+    this.hasUnsavedChanges = true;
+    this.savedAtLeastOnce = false;
+    this.gridApi?.refreshCells({ force: true });
+    this.updatePinnedBottomRow();
+    this.cantidadPanelRow = null;
+  }
+
+  closeCantidadPanel(): void {
+    this.cantidadPanelOpen = false;
+    this.cantidadPanelRow = null;
   }
 
   private async loadCodigosExternos(): Promise<void> {
@@ -777,7 +1094,10 @@ export class ComparacionPreciosComponent implements OnInit, OnDestroy {
       // fallback a defaults si la carga falla
     }
     const providerCode    = (provName || '').trim().toUpperCase().slice(0, providerInitials) || 'PRO';
-    const folio           = `${ocPrefix}-${branchPrefix}-${pedimentoPrefix}${pedimentoNumber}-${providerCode}${provId}`;
+    // Prefijo del departamento (ej. "EF") entre sucursal y pedimento → OC-JIC7-EF-P1-VEY1425.
+    // Siempre existe porque la COTIZ no se pudo crear sin él (validación en detalle-items-proveedor).
+    const deptSeg         = (this.deptPrefijoFromReq || '').trim().toUpperCase();
+    const folio           = `${ocPrefix}-${branchPrefix}-${deptSeg ? deptSeg + '-' : ''}${pedimentoPrefix}${pedimentoNumber}-${providerCode}${provId}`;
 
     const dateCreate = new Date().toISOString().split('T')[0];
     const ocPayload = {
@@ -841,6 +1161,7 @@ export class ComparacionPreciosComponent implements OnInit, OnDestroy {
         observation:   row.numArticuloExterno || '',
         typeOc:        row.tipoOc || '',
         masIva:        !!row.masIva,   // propaga el "+ IVA" de la cotización a la OC (se ve en Captura de Gastos)
+        idCurrency:    row.idCurrency ?? null,   // Fase 2: hereda la moneda de la COTIZ a la OC
         comment:       '',
         datePostpone
       };
@@ -887,6 +1208,7 @@ export class ComparacionPreciosComponent implements OnInit, OnDestroy {
       const slotItemIdsPorProv = articulo.slotItemIds || {};
       const tiposOcPorProv = articulo.tiposOc || {};
       const masIvasPorProv = articulo.masIvas || {};
+      const monedasPorProv = articulo.monedas || {};   // Fase 2: moneda del precio por proveedor (NULL = MXN)
       const cantidadComprar = Number(articulo.cantidad ?? articulo.cantidadComprar ?? 0) || 0;
       const articuloItemId = Number(articulo.id ?? 0) || 0;
       const idSupplie = articulo.idSupplie || 0;
@@ -919,6 +1241,7 @@ export class ComparacionPreciosComponent implements OnInit, OnDestroy {
         const tipoOc =
           tiposOcPorProv[provId] ?? tiposOcPorProv[provId.toString()] ?? 'SELECCIONE UNA OPCION';
         const masIva = !!(masIvasPorProv[provId] ?? masIvasPorProv[provId.toString()] ?? false);
+        const idCurrency = monedasPorProv[provId] ?? monedasPorProv[provId.toString()] ?? null;
         const costoUnitarioDisplay = masIva ? costoUnitario * (1 + this.ivaPercent / 100) : costoUnitario;
         const costoTotal = this.lineTotal(costoUnitarioDisplay, cantidadConceptualizada);
         const costoXCompraMinima = costoUnitario * compraMinima;
@@ -950,6 +1273,7 @@ export class ComparacionPreciosComponent implements OnInit, OnDestroy {
           costoTotal,
           costoXCompraMinima,
           masIva,
+          idCurrency,
           comentario,
           tipoOc,
           cantidadConceptualizada,
@@ -992,6 +1316,7 @@ export class ComparacionPreciosComponent implements OnInit, OnDestroy {
   }
 
   public pinnedTotal: number = 0;
+  public pinnedTotalDisplay: string = '$0.00 MXN';
   public footerLabelWidth: number = 135;
   public footerValueWidth: number = 105;
   public footerEndWidth: number = 88;
@@ -1004,6 +1329,30 @@ export class ComparacionPreciosComponent implements OnInit, OnDestroy {
       total += r.costoTotal;
     }
     this.pinnedTotal = total;
+    // Display por moneda (Opción A, sin convertir): subtotales agrupados por moneda.
+    this.pinnedTotalDisplay = this.buildTotalsByCurrencyDisplay(this.rowData);
+  }
+
+  /**
+   * Total(es) por moneda para el footer "Total x Pedimento". Agrupa el costo total por moneda
+   * (no convierte). 1 moneda → "$X.XX MXN"; varias → "$X.XX MXN / $Y.YY USD" con orden estable
+   * (la moneda default/MXN primero, luego alfabético por abreviatura).
+   */
+  private buildTotalsByCurrencyDisplay(rows: any[]): string {
+    const sums = new Map<number, number>();
+    for (const r of rows) {
+      const id = (r?.idCurrency !== undefined && r?.idCurrency !== null)
+        ? Number(r.idCurrency)
+        : (this.defaultCurrencyId ?? -1);
+      sums.set(id, (sums.get(id) || 0) + this.computeCostoTotalForRow(r));
+    }
+    if (sums.size === 0) return `$0.00 ${this.currencyAbbr(this.defaultCurrencyId)}`;
+    const entries = Array.from(sums.entries()).sort((a, b) => {
+      if (a[0] === this.defaultCurrencyId) return -1;
+      if (b[0] === this.defaultCurrencyId) return 1;
+      return this.currencyAbbr(a[0]).localeCompare(this.currencyAbbr(b[0]));
+    });
+    return entries.map(([id, sum]) => `$${sum.toFixed(2)} ${this.currencyAbbr(id)}`).join(' / ');
   }
 
   /** Opción A: redondea el costo unitario (ya con IVA si aplica) a 2 decimales ANTES de
@@ -1211,15 +1560,32 @@ export class ComparacionPreciosComponent implements OnInit, OnDestroy {
       }
     }
     if (field === 'cantidadConceptualizada') {
-      const cantidadValidada = this.getValidatedCantidadConceptualizada(event.newValue, event.data);
-      event.data.cantidadConceptualizada = cantidadValidada;
-
       const cantidadComprar = Number(event.data?.cantidadComprar) || 0;
       const articuloItemId = Number(event.data?.articuloItemId ?? 0);
       const sumOtros = this.rowData
         .filter(r => Number(r.articuloItemId ?? 0) === articuloItemId && r !== event.data)
         .reduce((acc, r) => acc + (Number(r.cantidadConceptualizada) || 0), 0);
       const maxAllowed = Math.max(0, cantidadComprar - sumOtros);
+
+      const rawNum = Number(event.newValue);
+
+      // 1) Excede la cantidad requerida → revertir al valor ORIGINAL (no al mínimo) + mensaje correcto.
+      if (Number.isFinite(rawNum) && rawNum > maxAllowed) {
+        event.data.cantidadConceptualizada = Number(event.oldValue) || 0;
+        event.data.costoTotal = this.lineTotal(event.data.costoUnitario, event.data.cantidadConceptualizada);
+        this.gridApi?.refreshCells({ rowNodes: [event.node], force: true });
+        alerts.basicAlert(
+          'Cantidad no permitida',
+          `No puedes comprar más de la cantidad requerida (${cantidadComprar}).`,
+          'warning'
+        );
+        this.updatePinnedBottomRow();
+        return;
+      }
+
+      // 2) Dentro del límite: normalizar y validar compra mínima.
+      const cantidadValidada = this.getValidatedCantidadConceptualizada(event.newValue, event.data);
+      event.data.cantidadConceptualizada = cantidadValidada;
 
       // Tipo OC positivo (excepto SIN LIMITE) exige cantidad por proveedor >= compra mínima
       const compraMin = Number(event.data?.compraMinima) || 0;
@@ -1242,12 +1608,6 @@ export class ComparacionPreciosComponent implements OnInit, OnDestroy {
             'warning'
           );
         }
-      } else if (cantidadValidada < Number(event.newValue)) {
-        alerts.basicAlert(
-          'Cantidad inválida',
-          `La suma de cantidades por proveedor no puede superar la cantidad requerida (${cantidadComprar}). Máximo permitido para este proveedor: ${maxAllowed.toFixed(2)}.`,
-          'warning'
-        );
       }
 
       event.data.costoTotal = this.lineTotal(event.data.costoUnitario, event.data.cantidadConceptualizada);
@@ -2155,7 +2515,7 @@ export class ComparacionPreciosComponent implements OnInit, OnDestroy {
         type: 'numericColumn',
         cellStyle: { backgroundColor: '#fff9c4', textAlign: 'center', padding: '4px' },
         valueFormatter: (params: any) =>
-          params.value != null ? `$${Number(params.value).toFixed(2)}` : '$0.00'
+          `$${(Number(params.value) || 0).toFixed(2)} ${this.currencyAbbr(params.data?.idCurrency)}`
       },
       {
         field: 'costoXCompraMinima',
@@ -2198,17 +2558,30 @@ export class ComparacionPreciosComponent implements OnInit, OnDestroy {
         width: 135,
         editable: (params: any) => {
           if (this.proveedoresConOc.has(Number(params.data?.proveedorId ?? 0))) return false;
+          // Con presentaciones consistentes → se captura por modal (no editor inline).
+          if (this.rowUsaModalPresentaciones(params.data)) return false;
           const tipoOc = params.data?.tipoOc;
           return tipoOc === 'COMPRA INMEDIATA' || tipoOc === 'COMPRA AUTORIZADA EN OTRA FECHA';
         },
         type: 'numericColumn',
         cellEditor: 'agNumberCellEditor',
-        cellEditorParams: (params: any) => ({
+        // Sin `max` aquí a propósito: si el editor capa el valor, el handler nunca ve que excediste
+        // y caía en la rama de "ajustar al mínimo". El tope (cantidad requerida) se valida en
+        // onCellValueChanged, revirtiendo al valor original con el mensaje correcto.
+        cellEditorParams: () => ({
           precision: 2,
           isFloat: true,
-          min: 0,
-          max: Number(params.data?.cantidadComprar) || 0
+          min: 0
         }),
+        // Si la fila usa modal, al hacer click abre el panel de presentaciones (Cantidad x Prov).
+        onCellClicked: (params: any) => {
+          if (this.proveedoresConOc.has(Number(params.data?.proveedorId ?? 0))) return;
+          const t = params.data?.tipoOc;
+          const asignable = t === 'COMPRA INMEDIATA' || t === 'COMPRA AUTORIZADA EN OTRA FECHA';
+          if (!asignable) return;
+          if (!this.rowUsaModalPresentaciones(params.data)) return;
+          this.openCantidadPanel(params.data);
+        },
         valueFormatter: (params: any) =>
           params.value != null ? Number(params.value).toFixed(2) : '0.00',
         cellStyle: (params: any) => {
@@ -2218,7 +2591,9 @@ export class ComparacionPreciosComponent implements OnInit, OnDestroy {
             return { textAlign: 'center', padding: '4px',
                      backgroundColor: '#eeeeee', color: '#9e9e9e' };
           }
+          const usaModal = !locked && this.rowUsaModalPresentaciones(params.data);
           return { textAlign: 'center', padding: '4px',
+                   cursor: usaModal ? 'pointer' : undefined,
                    backgroundColor: locked ? '#eeeeee' : undefined, color: locked ? '#9e9e9e' : undefined };
         }
       },
@@ -2236,7 +2611,7 @@ export class ComparacionPreciosComponent implements OnInit, OnDestroy {
         },
         cellStyle: { backgroundColor: '#c8e6c9', fontWeight: '600', padding: '4px', textAlign: 'center' },
         valueFormatter: (params: any) =>
-          params.value != null ? `$${Number(params.value).toFixed(2)}` : '$0.00'
+          `$${(Number(params.value) || 0).toFixed(2)} ${this.currencyAbbr(params.data?.idCurrency)}`
       },
       {
         field: 'comentario',

@@ -17,6 +17,7 @@ import { AuthService } from 'app/services/auth.service';
 import { ItemCommentsCellRendererComponent } from 'app/shared/item-comments-cell-renderer/item-comments-cell-renderer.component';
 import { ItemCommentsService } from 'app/services/item-comments.service';
 import { PresentacionesPanelComponent } from './presentaciones-panel.component';
+import { CantidadMinimosPanelComponent, ProvMinimo } from './cantidad-minimos-panel.component';
 import { DomSanitizer, SafeResourceUrl } from '@angular/platform-browser';
 import { ReceiptsDelisonService } from 'app/services/receipts-delison.service';
 import { PrefixSetupService } from 'app/services/prefix-setup.service';
@@ -30,7 +31,7 @@ import { RolesService } from 'app/services/roles.service';
 @Component({
   selector: 'app-detalles-requisicion-delison',
   standalone: true,
-  imports: [CommonModule, FormsModule, AgGridModule, SelectWithTooltipEditorV2Component, MultiLineEditorComponent, ItemCommentsCellRendererComponent, SearchableComboboxComponent, PresentacionesPanelComponent],
+  imports: [CommonModule, FormsModule, AgGridModule, SelectWithTooltipEditorV2Component, MultiLineEditorComponent, ItemCommentsCellRendererComponent, SearchableComboboxComponent, PresentacionesPanelComponent, CantidadMinimosPanelComponent],
   template: `
     <!-- Items Grid View -->
     <div *ngIf="detailType === 'items'" style="padding: 5px; background-color: #e3f2fd; height: 100%; max-height: 100%; display: flex; flex-direction: column; box-sizing: border-box; overflow: hidden;">
@@ -129,6 +130,16 @@ import { RolesService } from 'app/services/roles.service';
       (seleccionar)="onPanelSeleccionar($event)"
       (cerrar)="onPanelCerrar()">
     </app-presentaciones-panel>
+
+    <!-- Modal de cantidad + mínimos (artículos SIN flag valida_presentaciones) -->
+    <app-cantidad-minimos-panel
+      *ngIf="minPanelOpen"
+      [articleName]="minPanelArticle"
+      [cantidad]="minPanelCantidad"
+      [providers]="minPanelProviders"
+      (seleccionar)="onMinPanelSeleccionar($event)"
+      (cerrar)="onMinPanelCerrar()">
+    </app-cantidad-minimos-panel>
 
      <!-- Modal para Nuevo Artículo (NgbModal lo monta en <body> para quedar por encima de todo) -->
     <ng-template #newArticleModalTpl>
@@ -398,6 +409,12 @@ export class DetallesRequisicionDelisonComponent implements OnInit, OnDestroy {
   panelArticle = '';
   panelProviderNames: Map<number, string> | null = null;
   private panelRow: any = null;
+  // Modal de cantidad + mínimos (artículos SIN flag valida_presentaciones).
+  minPanelOpen = false;
+  minPanelArticle = '';
+  minPanelCantidad = 0;
+  minPanelProviders: ProvMinimo[] = [];
+  private minPanelRow: any = null;
   // Comentarios del panel pendientes de postear (al guardar): { materialId, texto }.
   private _deferredPanelComments: { materialId: number; texto: string }[] = [];
   frequentArticles: any[] = [];  // TOP 3 artículos más solicitados
@@ -484,8 +501,9 @@ export class DetallesRequisicionDelisonComponent implements OnInit, OnDestroy {
     this.currentBranchId = params.data?.idReference || 0;
 
     if (this.detailType === 'items') {
-      this.loadMaterials();
-      this.loadData();
+      // Encadenar: loadData DESPUÉS de loadMaterials para que validaPresentMap ya esté listo
+      // al construir las filas (evita perder el flag valida_presentaciones al reabrir el detalle).
+      this.loadMaterials().then(() => this.loadData());
       this.loadCatalogs();
       this.loadCanMultiguardar();
       this.loadCanEditItems();
@@ -578,6 +596,9 @@ export class DetallesRequisicionDelisonComponent implements OnInit, OnDestroy {
           idRequisition: item.idMovement, // El servidor usa idMovement
           idSupplie: item.idSupplie,
           materialId: item.idSupplie, // Para el editor de materiales
+          // Bandera por fila: si el material usa panel de presentaciones (verde + bloqueo).
+          // Se guarda en la fila para que NO dependa del timing del Map al re-renderizar tras Guardar.
+          validaPresentaciones: !!this.validaPresentMap?.get(Number(item.idSupplie)),
           article: item.description || '', // Usar description como article
           code: item.code || '',
           intorext: item.intorext || 'Interno',
@@ -655,56 +676,71 @@ export class DetallesRequisicionDelisonComponent implements OnInit, OnDestroy {
     });
   }
 
-  loadMaterials() {
-    // Obtener idRoot desde el signal service
-    this.idRoot = this.signalsService.getRootSelectedBySidebar()();
+  /**
+   * Carga materiales y arma validaPresentMap. Devuelve Promise para poder encadenar loadData()
+   * DESPUÉS (evita la carrera donde loadData construía filas con el mapa vacío → flag perdido al reabrir).
+   */
+  loadMaterials(): Promise<void> {
+    return new Promise<void>((resolve) => {
+      // Obtener idRoot desde el signal service
+      this.idRoot = this.signalsService.getRootSelectedBySidebar()();
 
-    if (!this.idRoot) {
-
-      this.materials = [];
-      return;
-    }
-
-
-
-    // Cargar materiales desde el endpoint real
-    this.materialsService.getMaterialsxview(this.idRoot).subscribe({
-      next: (data) => {
-        // Mapear los datos del endpoint al formato esperado por el SearchableSelect
-        this.materials = data
-          .filter(material => material.active) // Solo materiales activos
-          .map(material => ({
-            id: material.id,
-            description: material.articulo,  // Nombre del artículo
-            code: material.insumo,            // Código/número de material
-            measure: material.measure || '',
-            active: material.active,
-            validaPresentaciones: !!(material as any).validaPresentaciones, // dispara el panel de presentaciones
-            // Campos adicionales que podrían ser útiles
-            idCategory: material.idCategory,
-            idFamilia: material.idFamilia,
-            idSubfamilia: material.idSubfamilia
-          }));
-        // Mapa rápido idMaterial → valida_presentaciones (para el botón del panel en Cantidad).
-        this.validaPresentMap = new Map(this.materials.map((m: any) => [m.id, !!m.validaPresentaciones]));
-
-        // Cargar opciones para el combobox "Nombre del Artículo" en el modal
-        // Incluye activos e inactivos para detectar duplicados en cualquier caso
-        this.newArticleNameOptions = data
-          .filter((material: any) => material.articulo?.trim())
-          .sort((a: any, b: any) => (a.articulo || '').localeCompare(b.articulo || ''))
-          .map((material: any) => ({
-            description: material.articulo,
-            status: material.active ? 'Activo' : 'Inactivo'
-          }));
-
-      },
-      error: (error) => {
-        console.error('❌ Error al cargar materiales:', error);
-        alerts.reqErrorToast('Error', 'No se pudieron cargar los materiales');
+      if (!this.idRoot) {
         this.materials = [];
-        this.newArticleNameOptions = [];
+        resolve();
+        return;
       }
+
+      // Cargar materiales desde el endpoint real
+      this.materialsService.getMaterialsxview(this.idRoot).subscribe({
+        next: (data) => {
+          // Mapear los datos del endpoint al formato esperado por el SearchableSelect
+          this.materials = data
+            .filter(material => material.active) // Solo materiales activos
+            .map(material => ({
+              id: material.id,
+              description: material.articulo,  // Nombre del artículo
+              code: material.insumo,            // Código/número de material
+              measure: material.measure || '',
+              active: material.active,
+              validaPresentaciones: !!(material as any).validaPresentaciones, // dispara el panel de presentaciones
+              // Campos adicionales que podrían ser útiles
+              idCategory: material.idCategory,
+              idFamilia: material.idFamilia,
+              idSubfamilia: material.idSubfamilia
+            }));
+          // Mapa rápido idMaterial → valida_presentaciones (para el botón del panel en Cantidad).
+          this.validaPresentMap = new Map(this.materials.map((m: any) => [m.id, !!m.validaPresentaciones]));
+
+          // Respaldo: si ya había filas cargadas (loadData ganó la carrera), re-aplicar la bandera
+          // por fila ahora que el mapa está listo, y refrescar la celda Cantidad.
+          if (this.rowData?.length) {
+            this.rowData.forEach((r: any) => {
+              r.validaPresentaciones = !!this.validaPresentMap.get(Number(r.materialId ?? r.idSupplie));
+            });
+            this.gridApi?.refreshCells({ columns: ['quantity'], force: true });
+          }
+
+          // Cargar opciones para el combobox "Nombre del Artículo" en el modal
+          // Incluye activos e inactivos para detectar duplicados en cualquier caso
+          this.newArticleNameOptions = data
+            .filter((material: any) => material.articulo?.trim())
+            .sort((a: any, b: any) => (a.articulo || '').localeCompare(b.articulo || ''))
+            .map((material: any) => ({
+              description: material.articulo,
+              status: material.active ? 'Activo' : 'Inactivo'
+            }));
+
+          resolve();
+        },
+        error: (error) => {
+          console.error('❌ Error al cargar materiales:', error);
+          alerts.reqErrorToast('Error', 'No se pudieron cargar los materiales');
+          this.materials = [];
+          this.newArticleNameOptions = [];
+          resolve();
+        }
+      });
     });
   }
 
@@ -781,7 +817,9 @@ export class DetallesRequisicionDelisonComponent implements OnInit, OnDestroy {
             const providerObj = {
               idProvider: providerId,
               providerName: realName,
-              typeIntOrExt: realType
+              typeIntOrExt: realType,
+              // Mínimo de compra (proveedorxtablas.minima_compra) para el modal de cantidad sin flag.
+              minCompra: Number(rel?.minCompra ?? rel?.MinCompra ?? 0) || 0
             };
             validatedProviders.push(providerObj);
           }
@@ -1008,6 +1046,16 @@ export class DetallesRequisicionDelisonComponent implements OnInit, OnDestroy {
             // ✅ CAMBIO 1: Actualizar # del artículo con el num-mat (código)
             params.data.numArticle = selectedMaterial.code || '';
 
+            // Bandera por fila: ¿este material usa panel de presentaciones? (verde/rojo + bloqueo).
+            params.data.validaPresentaciones = !!selectedMaterial.validaPresentaciones;
+            // El proveedor sugerido pertenecía al material anterior → limpiarlo al cambiar de material.
+            params.data.idProveedorSugerido = null;
+            // Si la fila usa modal (flag presentaciones o Externo sin flag), la cantidad se define
+            // en el modal → arranca en 0 (pendiente/rojo).
+            if (selectedMaterial.validaPresentaciones || this.isExterno(params.data)) {
+              params.data.quantity = 0;
+            }
+
             // Limpiar el proveedor cuando cambia el material
             params.data.idProvider = 0;
             params.data.nameProvider = '';
@@ -1092,36 +1140,56 @@ export class DetallesRequisicionDelisonComponent implements OnInit, OnDestroy {
         width: 120,
         suppressSizeToFit: true,
         // ✅ Bloqueada cuando el usuario no tiene la combinación (sucursal, depto) del REQ padre.
-        editable: (params: any) => params.data?.__isNew || this.canEditItemsInThisReq,
+        //    Además: si la fila usa modal (flag presentaciones o Externo sin flag), NO es editable
+        //    a mano — la cantidad se escoge en el modal al hacer click en la celda.
+        editable: (params: any) => {
+          if (this.usesQtyModal(params.data)) return false;
+          return params.data?.__isNew || this.canEditItemsInThisReq;
+        },
         type: 'numericColumn',
         cellEditor: 'agNumberCellEditor',
-        // Para materiales con flag valida_presentaciones: muestra un botón 🧮 que abre el panel.
+        // Filas con modal: la celda completa abre el modal correspondiente. El click se maneja
+        // en onCellClicked; aquí solo se muestra el valor (con cursor pointer + tooltip).
         cellRenderer: (params: any) => {
-          const idMat = params.data?.materialId ?? params.data?.idSupplie;
-          const hasFlag = !!(idMat && this.validaPresentMap?.get(Number(idMat)));
+          const useModal = this.usesQtyModal(params.data);
           const wrap = document.createElement('div');
-          wrap.style.cssText = 'display:flex;align-items:center;justify-content:flex-end;gap:6px;height:100%;';
+          wrap.style.cssText = `display:flex;align-items:center;justify-content:flex-end;height:100%;${useModal ? 'cursor:pointer;' : ''}`;
+          if (useModal) {
+            const flag = this.hasPresentFlag(params.data);
+            wrap.title = this.isQtyResolved(params.data)
+              ? (flag ? 'Click para volver a armar la cantidad con presentaciones' : 'Click para cambiar la cantidad')
+              : '⚠ Falta definir la cantidad: click para abrir el modal';
+          }
           const val = document.createElement('span');
           val.textContent = (params.value === null || params.value === undefined || params.value === '') ? '' : String(params.value);
           wrap.appendChild(val);
-          if (hasFlag) {
-            const btn = document.createElement('button');
-            btn.textContent = '🧮';
-            btn.title = 'Armar cantidad con presentaciones';
-            btn.style.cssText = 'border:none;background:#e3f2fd;color:#1565c0;border-radius:4px;cursor:pointer;padding:0 6px;line-height:18px;';
-            btn.addEventListener('click', (e) => { e.stopPropagation(); this.openPresentacionesPanel(params.data); });
-            wrap.appendChild(btn);
-          }
           return wrap;
+        },
+        // Click en la celda con modal → abre el modal correspondiente (presentaciones o mínimos).
+        onCellClicked: (params: any) => {
+          if (!this.usesQtyModal(params.data)) return;
+          const canEdit = params.data?.__isNew || this.canEditItemsInThisReq;
+          if (!canEdit) return;
+          if (this.hasPresentFlag(params.data)) {
+            this.openPresentacionesPanel(params.data);
+          } else {
+            this.openMinimosPanel(params.data);
+          }
         },
         cellStyle: (params: any) => {
           const base: any = { textAlign: 'right' };
           if (!(params.data?.__isNew || this.canEditItemsInThisReq)) {
             base.backgroundColor = '#f0f0f0';
           }
-          const idMat = params.data?.materialId ?? params.data?.idSupplie;
-          if (idMat && this.validaPresentMap?.get(Number(idMat))) {
-            base.backgroundColor = '#e8f5e9';   // verde suave: usa panel de presentaciones
+          if (this.usesQtyModal(params.data)) {
+            base.cursor = 'pointer';
+            if (this.isQtyResolved(params.data)) {
+              base.backgroundColor = '#e8f5e9';   // verde: ya pasó por el modal (cascada/acordeón/modal)
+              base.border = 'none';
+            } else {
+              base.backgroundColor = '#ffebee';   // rojo suave: pendiente de definir en el modal
+              base.border = '1px solid #e53935';
+            }
           }
           return base;
         },
@@ -1188,6 +1256,13 @@ export class DetallesRequisicionDelisonComponent implements OnInit, OnDestroy {
             params.data.__modified = true;
             this.hasUnsavedChanges = true;
 
+            // Al pasar a Externo (sin flag) la cantidad se define en el modal de mínimos → arranca
+            // en 0 (pendiente). El proveedor sugerido solo aplica al modal, se limpia siempre.
+            params.data.idProveedorSugerido = null;
+            if (!this.hasPresentFlag(params.data) && this.isExterno(params.data)) {
+              params.data.quantity = 0;
+            }
+
             // Pre-cargar proveedores para el nuevo tipo
             const materialId = params.data.idSupplie || params.data.materialId || 0;
             if (materialId > 0) {
@@ -1195,10 +1270,10 @@ export class DetallesRequisicionDelisonComponent implements OnInit, OnDestroy {
               });
             }
 
-            // Refrescar la columna de proveedores para actualizar la lista
+            // Refrescar columnas de proveedor y cantidad (cambia su modal-ness/color).
             this.gridApi.refreshCells({
               rowNodes: [params.node],
-              columns: ['idProvider'],
+              columns: ['idProvider', 'quantity'],
               force: true
             });
           }
@@ -1613,6 +1688,16 @@ export class DetallesRequisicionDelisonComponent implements OnInit, OnDestroy {
     try {
       await firstValueFrom(this.ocAndReqsService.deleteReqItem(selectedItem.id));
 
+      // Borrado FÍSICO de los comentarios del artículo: se atan a (REQ, requisición, numArticle),
+      // no al id del renglón, así que al borrar el ítem hay que limpiarlos para que no reaparezcan
+      // al re-agregar el mismo artículo.
+      const numArticleDel = selectedItem.numArticle || (selectedItem.idSupplie ? `SUPP-${selectedItem.idSupplie}` : '');
+      if (numArticleDel) {
+        try {
+          await firstValueFrom(this.itemCommentsService.deleteCommentsByArticle('REQ', this.requisitionId, numArticleDel));
+        } catch { /* no bloquear el borrado del ítem */ }
+      }
+
       // Limpiar el documento CR de compra rápida si correspondía a este item (sin entradas).
       try {
         await firstValueFrom(this.ocAndReqsService.syncCompraRapida(this.requisitionId));
@@ -1708,6 +1793,26 @@ export class DetallesRequisicionDelisonComponent implements OnInit, OnDestroy {
       alerts.reqWarningToast(
         'Campo obligatorio',
         `Seleccione un proveedor en: ${filas}`
+      );
+      return;
+    }
+
+    // Bloqueo: artículos que usan modal (flag presentaciones o Externo sin flag) deben definir
+    // su cantidad en el modal. Sin resolver (cantidad 0 / sin proveedor en el caso flag) no se
+    // permite guardar, para no perder la validación de mínimo de compra del modal.
+    const itemsQtyPendientes = this.rowData.filter((item: any) =>
+      (item.__isNew || item.__modified) &&
+      this.usesQtyModal(item) &&
+      !this.isQtyResolved(item)
+    );
+
+    if (itemsQtyPendientes.length > 0) {
+      const nombres = itemsQtyPendientes
+        .map((it: any) => it.article || it.nameArticle || 'Artículo')
+        .join(', ');
+      alerts.reqWarningToast(
+        'Falta definir la cantidad',
+        `Estos artículos requieren definir la cantidad en su modal (haz click en la celda Cantidad Requerida): ${nombres}`
       );
       return;
     }
@@ -2443,6 +2548,43 @@ export class DetallesRequisicionDelisonComponent implements OnInit, OnDestroy {
 
   // ==================== PANEL DE PRESENTACIONES (cajero) ====================
 
+  /** ¿La fila usa el panel de presentaciones? Lee la bandera por fila (con fallback al Map). */
+  private hasPresentFlag(row: any): boolean {
+    if (!row) return false;
+    if (row.validaPresentaciones !== undefined && row.validaPresentaciones !== null) {
+      return !!row.validaPresentaciones;
+    }
+    const idMat = row.materialId ?? row.idSupplie;
+    return !!(idMat && this.validaPresentMap?.get(Number(idMat)));
+  }
+
+  /** Un artículo con flag está "resuelto" si pasó por el modal: proveedor sugerido + cantidad > 0. */
+  private isPresentResolved(row: any): boolean {
+    return Number(row?.idProveedorSugerido) > 0 && Number(row?.quantity) > 0;
+  }
+
+  /** ¿La fila es de tipo Externo? (las Internas se editan a mano, sin modal de mínimos). */
+  private isExterno(row: any): boolean {
+    return (row?.intorext || '').toLowerCase() !== 'interno';
+  }
+
+  /**
+   * ¿La celda Cantidad de esta fila usa un modal?
+   * - Con flag valida_presentaciones → modal de presentaciones (cajero).
+   * - Sin flag pero Externo → modal de cantidad + mínimos por proveedor.
+   * - Sin flag e Interno → editable a mano (sin modal).
+   */
+  private usesQtyModal(row: any): boolean {
+    if (this.hasPresentFlag(row)) return true;
+    return this.isExterno(row);
+  }
+
+  /** "Resuelto" según el tipo de modal: flag = proveedor+cantidad; mínimos = cantidad>0. */
+  private isQtyResolved(row: any): boolean {
+    if (this.hasPresentFlag(row)) return this.isPresentResolved(row);
+    return Number(row?.quantity) > 0;   // modal de mínimos ya validó el mínimo
+  }
+
   /** Abre el panel para armar la cantidad del artículo con presentaciones por proveedor. */
   async openPresentacionesPanel(row: any): Promise<void> {
     const idMaterial = row?.materialId ?? row?.idSupplie;
@@ -2487,24 +2629,76 @@ export class DetallesRequisicionDelisonComponent implements OnInit, OnDestroy {
     this.panelRow = null;
   }
 
-  /** Postea los comentarios del panel pendientes, ya con las filas recargadas (numArticle real). */
-  private postDeferredPanelComments(): void {
+  // ----- Modal de cantidad + mínimos (artículos SIN flag) -----
+
+  /** Abre el modal de cantidad + mínimos de compra para un artículo Externo sin flag. */
+  async openMinimosPanel(row: any): Promise<void> {
+    const idMaterial = row?.materialId ?? row?.idSupplie;
+    if (!idMaterial) return;
+    this.minPanelRow = row;
+    this.minPanelArticle = row?.article || '';
+    this.minPanelCantidad = Number(row?.quantity) || 0;
+    const provs = await this.loadProviders(idMaterial, row?.intorext || 'Externo');
+    this.minPanelProviders = (provs || []).map((p: any) => ({
+      idProvider: p.idProvider,
+      providerName: p.providerName || `Proveedor ${p.idProvider}`,
+      minCompra: Number(p.minCompra || 0)
+    }));
+    this.minPanelOpen = true;
+  }
+
+  /** El usuario aceptó la cantidad en el modal de mínimos: la escribe en la celda. */
+  onMinPanelSeleccionar(ev: { cantidad: number; idProvider: number; proveedor: string }): void {
+    if (this.minPanelRow) {
+      this.minPanelRow.quantity = ev.cantidad;
+      // Solo se sugiere proveedor si exactamente uno cumple el mínimo (idProvider>0).
+      this.minPanelRow.idProveedorSugerido = ev.idProvider > 0 ? ev.idProvider : null;
+      this.minPanelRow.__modified = true;
+      this.hasUnsavedChanges = true;
+      this.gridApi?.refreshCells({ force: true });
+    }
+    this.onMinPanelCerrar();
+  }
+
+  onMinPanelCerrar(): void {
+    this.minPanelOpen = false;
+    this.minPanelRow = null;
+  }
+
+  /**
+   * Postea los comentarios del panel pendientes de forma SILENCIOSA (Opción B), ya con las filas
+   * recargadas (numArticle real). El texto del panel (ej. "75 L con ALEX: 3×25 L") ya trae lo
+   * necesario, así que NO se abre el chat de comentarios: se guarda directo con addComment.
+   */
+  private async postDeferredPanelComments(): Promise<void> {
     if (!this._deferredPanelComments.length) return;
     const pending = this._deferredPanelComments;
-    this._deferredPanelComments = [];   // limpiar ANTES de emitir (evita reentradas vía commentSaved$ → loadData)
+    this._deferredPanelComments = [];   // limpiar ANTES (evita reentradas vía commentSaved$ → loadData)
+    const idUser = this.signalsService.getIdUSer()();
+    const userName = this.signalsService.getDisplayName()() || '';
     for (const c of pending) {
       const row = this.rowData.find((r: any) => Number(r.materialId ?? r.idSupplie) === c.materialId);
       const numArticle = row?.numArticle || (row?.idSupplie ? `SUPP-${row.idSupplie}` : '');
       if (!numArticle) continue;
-      this.itemCommentsService.openChatFor$.next({
-        documentType: 'REQ',
-        idDocument: this.requisitionId,
-        numArticle,
-        autoMessage: c.texto,
-        forceComment: true,
-        articleName: row?.article || '',
-      });
+      try {
+        // Reemplazo: borrar (hard) los comentarios de panel previos de este artículo (prefijo
+        // "🧮 [Req]") para que quede SOLO el último. No toca los comentarios manuales del usuario.
+        await firstValueFrom(
+          this.itemCommentsService.deleteCommentsByArticle('REQ', this.requisitionId, numArticle, '🧮 [Req]')
+        ).catch(() => null);
+        await firstValueFrom(this.itemCommentsService.addComment({
+          documentType: 'REQ',
+          idDocument: this.requisitionId,
+          numArticle,
+          idUser,
+          userName,
+          text: c.texto,
+          active: true
+        }));
+      } catch { /* si falla un comentario, no bloquear el resto del flujo */ }
     }
+    // Refrescar las celdas para que aparezca el indicador de comentario, sin abrir el modal.
+    this.gridApi?.refreshCells({ force: true });
   }
 
 

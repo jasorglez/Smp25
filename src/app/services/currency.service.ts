@@ -19,4 +19,14 @@ export class CurrencyService {
   getPaymentTypes(idCompany: number) {
     return this.http.get(`${environment.urlWarehouse}/Catalog/getCatalogs?idCompany=${idCompany}&type=TYPECURRENCY`, { headers: this.trackingService.getHeaders() });
   }
+
+  /**
+   * Fase 4: tipo de cambio a MXN de una moneda a una fecha (Banxico FIX → respaldo → caché).
+   * El backend devuelve 204 (body vacío) si ninguna fuente respondió → el frontend pide TC manual.
+   */
+  getRate(moneda: string, fecha: string): Observable<{ tasa: number; fuente: string; fecha: string } | null> {
+    return this.http.get<{ tasa: number; fuente: string; fecha: string }>(
+      `${environment.urlWarehouse}/Currency/rate?moneda=${encodeURIComponent(moneda)}&fecha=${encodeURIComponent(fecha)}`,
+      { headers: this.trackingService.getHeaders() });
+  }
 }

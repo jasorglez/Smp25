@@ -3,6 +3,7 @@ import { Component, EventEmitter, Input, OnInit, Output, inject } from '@angular
 import { FormsModule } from '@angular/forms';
 import { EmpaqueDescripcionService, ProveedorPresentaciones } from 'app/services/empaque-descripcion.service';
 import { evaluateProvider, ProviderEval, Denom, Composition } from './presentaciones-composer.helper';
+import { baseEfectiva, resolverUnidadArticulo } from './presentaciones-unidad.helper';
 
 interface ProvViewModel {
   idProvider: number;
@@ -170,23 +171,21 @@ export class PresentacionesPanelComponent implements OnInit {
   }
 
   private build(): void {
-    // Determina la base global por el primer tipo encontrado.
-    const firstTipo = this.raw.flatMap(p => p.presentaciones).map(x => x.tipo).find(t => !!t);
-    this.baseGlobal = this.baseUnit(firstTipo);
+    // Unidad base del artículo según la regla piezas>1 → pz, si no kg/L (consistente con el comparador).
+    const u = resolverUnidadArticulo(this.raw);
+    this.baseGlobal = u.unidad;
 
     this.provs = this.raw.map(p => {
-      const base = this.baseUnit(p.presentaciones.find(x => x.tipo)?.tipo);
-      const denoms: Denom[] = p.presentaciones
-        .filter(x => x.medidaBase && x.medidaBase > 0)
-        .map(x => ({ base: x.medidaBase!, descripcion: x.descripcionEmpaque ?? '', unidad: this.baseUnit(x.tipo) }));
+      const efectivas = p.presentaciones
+        .map(x => ({ e: baseEfectiva(x), x }))
+        .filter(o => o.e.base > 0 && o.e.unidad);
+      const denoms: Denom[] = efectivas.map(o => ({ base: o.e.base, descripcion: o.x.descripcionEmpaque ?? '', unidad: o.e.unidad }));
       return {
         idProvider: p.idProvider,
         nombre: this.providerNames?.get(p.idProvider) ?? `Proveedor ${p.idProvider}`,
         minCompra: p.minCompra,
-        base,
-        presentaciones: p.presentaciones
-          .filter(x => x.medidaBase)
-          .map(x => ({ label: `${(x.medidaBase ?? 0)} ${this.baseUnit(x.tipo)}`, base: x.medidaBase ?? 0 })),
+        base: u.unidad,
+        presentaciones: efectivas.map(o => ({ label: `${o.e.base} ${o.e.unidad}`, base: o.e.base })),
         evalResult: evaluateProvider(this.cantidad, p.minCompra, denoms),
         splitInput: null,
         splitEval: null,

@@ -26,6 +26,7 @@ import { ClasificacionCascadaComponent } from './clasificacion-cascada.component
 import { CostoIvaTooltipService } from './costo-iva-tooltip.service';
 import { SetupService } from 'app/services/setup.service';
 import { CondicionesPagoService, CondicionPagoDto } from 'app/services/condiciones-pago.service';
+import { CurrencyService } from 'app/services/currency.service';
 
 pdfMake.vfs = pdfFonts.vfs;
 
@@ -140,7 +141,7 @@ pdfMake.vfs = pdfFonts.vfs;
                   background: #c8e6c9; border-top: 2px solid #388e3c; padding: 4px 12px;">
         <span style="font-weight: bold; font-size: 0.85rem; color: #1b5e20;">Total Cotización:&nbsp;</span>
         <span style="font-weight: bold; font-size: 0.9rem; color: #1b5e20;">
-          {{ totalCostoTotal | currency:'MXN':'symbol':'1.2-2' }}
+          {{ totalCotizacionDisplay }}
         </span>
       </div>
     </div>
@@ -181,6 +182,11 @@ export class DetalleItemsProveedorComponent {
   private costoIvaTooltip = inject(CostoIvaTooltipService);
   private setupService    = inject(SetupService);
   private condicionesPagoService = inject(CondicionesPagoService);
+  private currencyService = inject(CurrencyService);
+
+  // Fase 2: catálogo de monedas para mostrar la abreviatura junto a Costo Unit/Total (Opción A, sin convertir).
+  private monedasMap = new Map<number, string>();
+  private defaultCurrencyId: number | null = null;
   private ivaPercent: number = 0;
   private ivaConfigurado: boolean = false;
   condicionesPagoOpts: CondicionPagoDto[] = [];
@@ -219,6 +225,10 @@ export class DetalleItemsProveedorComponent {
   private slotInfo: any = null;
   /** Prefijo de sucursal (ej: "BOD15") extraído del folio de la requisición. */
   private branchPrefix: string = 'NOPREF';
+  /** Prefijo del departamento (ej: "EF") para el folio COTIZ/OC. Si está vacío, se bloquea el guardado. */
+  private deptPrefijo: string = '';
+  /** Nombre del departamento (para mensajes de validación). */
+  private departmentName: string = '';
   /** Número de pedimento (1, 2, 3...) usado en el folio: ${type}-{branchPrefix}-P{pedimentoNum}-PRO{idProvider}. */
   private pedimentoNum: number = 0;
   /** Slots hermanos (proveedores ya asignados al mismo pedimento, excepto este slot) — para evitar duplicados. */
@@ -237,6 +247,7 @@ export class DetalleItemsProveedorComponent {
     }
   }
   totalCostoTotal: number = 0;
+  totalCotizacionDisplay: string = '$0.00 MXN';
   providerLabel: string = '';
   providerField: string = '';
   private _colDefs: ColDef[] | null = null;
@@ -302,6 +313,35 @@ export class DetalleItemsProveedorComponent {
     this.agInit(fakeParams);
   }
 
+  /** Fase 2: carga catálogo de monedas (type=CURRENCY) y resuelve la default (MXN). */
+  private loadMonedas(): void {
+    const idCompany = this.signalsService.getRootSelectedBySidebar()();
+    if (!idCompany) return;
+    this.currencyService.getCurrencies(idCompany).subscribe({
+      next: (data: any) => {
+        const list = Array.isArray(data) ? data : (data?.catalog ?? []);
+        this.monedasMap = new Map<number, string>();
+        let mxnId: number | null = null;
+        (list || []).forEach((c: any) => {
+          const id = Number(c.id);
+          const abrev = (c.valueAddition || '').toString().trim();
+          const nombre = c.description || '';
+          this.monedasMap.set(id, abrev || nombre);
+          if (mxnId === null && (abrev.toUpperCase() === 'MXN' || /peso|mexic/i.test(nombre))) mxnId = id;
+        });
+        this.defaultCurrencyId = mxnId ?? (list?.[0]?.id != null ? Number(list[0].id) : null);
+        this.gridApi?.refreshCells({ columns: ['costoUnitario', 'costoTotal'], force: true });
+      },
+      error: () => { this.monedasMap = new Map(); this.defaultCurrencyId = null; }
+    });
+  }
+
+  /** Abreviatura de la moneda de una fila (o 'MXN' si no resuelve). */
+  private currencyAbbr(idCurrency: any): string {
+    const id = (idCurrency !== undefined && idCurrency !== null) ? Number(idCurrency) : this.defaultCurrencyId;
+    return (id != null ? this.monedasMap.get(Number(id)) : '') || 'MXN';
+  }
+
   agInit(params: ICellRendererParams): void {
     this.params = params;
     this.providerLabel = (params as any).providerLabel || params.data?.providerLabel || params.context?.providerLabel || 'Proveedor';
@@ -309,6 +349,8 @@ export class DetalleItemsProveedorComponent {
     this.slotInfo = (params as any).slotInfo || params.data?.slotInfo || params.context?.slotInfo || null;
     this.branchPrefix = (params as any).branchPrefix || params.data?.branchPrefix || 'NOPREF';
     this.pedimentoNum = (params as any).pedimentoNum || params.data?.numeroPedimentoRaw || 0;
+    this.deptPrefijo = ((params as any).deptPrefijo || params.data?.deptPrefijo || '').trim().toUpperCase();
+    this.departmentName = (params as any).departmentName || params.data?.departmentName || '';
     this.siblingSlots = (params as any).siblingSlots || [];
     this.onSlotSavedCallback = (params as any).onSlotSaved || null;
     this.requisitionId = params.data?.requisitionId || null;
@@ -340,6 +382,7 @@ export class DetalleItemsProveedorComponent {
 
     this.buildRowData();
     this.cargarCatalogosClasificacion();
+    this.loadMonedas();
     const idCompany = this.signalsService.getRootSelectedBySidebar()();
     // IVA viene del setup de la sucursal de la REQ que se está cotizando
     if (this.idBranch) {
@@ -577,6 +620,8 @@ export class DetalleItemsProveedorComponent {
           row.codigoExterno = match.campo11 || '';
           row.compraMinima = match.minCompra || 0;
           row.costoUnitario = match.campo9 || 0;
+          // Hereda la moneda del proveedor (NULL = MXN). Solo viaja; se convierte hasta el pago.
+          row.idCurrency = match.idCurrency ?? null;
           row.costoTotal = (Math.round((row.costoUnitario || 0) * (row.masIva ? (1 + this.ivaPercent / 100) : 1) * 100) / 100) * (row.cantidadConfirmada || 0);
           row.proveedorXTablaId = match.id || 0;
           row.proveedorXTablaObj = match;
@@ -719,6 +764,15 @@ export class DetalleItemsProveedorComponent {
       );
       return;
     }
+    // Bloqueo duro: el departamento debe tener prefijo asignado (se concatena en el folio COTIZ/OC).
+    if (!this.deptPrefijo) {
+      await alerts.basicAlert(
+        'Departamento sin prefijo',
+        `El departamento '${this.departmentName || ''}' no tiene prefijo asignado. Asígnalo en el catálogo de Departamentos antes de continuar.`,
+        'warning'
+      );
+      return;
+    }
     this.savingChanges = true;
     try {
       await this.guardarClasificaciones();
@@ -771,9 +825,10 @@ export class DetalleItemsProveedorComponent {
   private async saveCotizOrOC(type: 'COTIZ' | 'OC'): Promise<string> {
     const idRoot = this.signalsService.getRootSelectedBySidebar()();
     const idBranch = this.signalsService.getBranchSelectedBySidebar()();
-    // ✅ Nueva nomenclatura de folio: ${type}-{branchPrefix}-P{pedimentoNum}-PRO{idProvider}
-    // Ejemplo: COTIZ-BOD15-P1-PRO1414  /  OC-BOD15-P1-PRO1414
-    const folio = `${type}-${this.branchPrefix || 'NOPREF'}-P${this.pedimentoNum || 0}-PRO${this.selectedProviderId}`;
+    // ✅ Nueva nomenclatura de folio: ${type}-{branchPrefix}-{deptPrefijo}-P{pedimentoNum}-PRO{idProvider}
+    // Ejemplo: COTIZ-BOD15-EF-P1-PRO1414  /  OC-BOD15-EF-P1-PRO1414
+    const deptSeg = (this.deptPrefijo || '').trim().toUpperCase();
+    const folio = `${type}-${this.branchPrefix || 'NOPREF'}-${deptSeg ? deptSeg + '-' : ''}P${this.pedimentoNum || 0}-PRO${this.selectedProviderId}`;
     const providerName = this.getSelectedProviderName();
     const dateCreate = new Date().toISOString().split('T')[0];
     // Derivar el string de condiciones desde el DTO seleccionado (backward compat).
@@ -828,8 +883,9 @@ export class DetalleItemsProveedorComponent {
       const datePostpone = weeks > 0 ? d.toISOString().split('T')[0] : '';
       return {
         idMovement: newOcId, idSupplie: row.idSupplie || 0, idProvider: this.selectedProviderId, nameProvider: providerName, quantity: parseFloat(row.cantidadConfirmada) || 0,
-        price: parseFloat(row.costoUnitario) || 0, type, recurrent: row.recurrent || 'Recurrente', nameArticle: row.articulo || '', numArticle: String(row.numArticulo || ''), observation: String(row.codigoExterno ?? '').trim(), typeOc: row.typeOC || '', comment: row.comment || '', tiempoEntrega: row.tiempoEntrega > 0 ? String(row.tiempoEntrega) : '0', compraMinima: isNaN(parseInt(String(row.compraMinima))) ? 0 : parseInt(String(row.compraMinima)), caducidadMinimaRequerida: row.caducidadMinimaRequerida || '', datePostpone,
-        masIva: row.masIva ?? false
+        price: parseFloat(row.costoUnitario) || 0, type, recurrent: row.recurrent || 'Recurrente', nameArticle: row.articulo || '', numArticle: String(row.numArticulo || ''), observation: String(row.codigoExterno ?? '').trim(), typeOc: row.typeOC || '', comment: row.comment || '', tiempoEntrega: row.tiempoEntrega > 0 ? String(row.tiempoEntrega) : '0', compraMinima: isNaN(parseFloat(String(row.compraMinima))) ? 0 : parseFloat(String(row.compraMinima)), caducidadMinimaRequerida: row.caducidadMinimaRequerida || '', datePostpone,
+        masIva: row.masIva ?? false,
+        idCurrency: row.idCurrency ?? null
       };
     });
     // Fetch current DB items to update in place (prevents delete+reinsert duplication)
@@ -873,7 +929,7 @@ export class DetalleItemsProveedorComponent {
           const updatedProv = {
             ...row.proveedorXTablaObj,
             campo11: String(row.codigoExterno ?? '').trim(),
-            minCompra: isNaN(parseInt(String(row.compraMinima))) ? 0 : parseInt(String(row.compraMinima)),
+            minCompra: isNaN(parseFloat(String(row.compraMinima))) ? 0 : parseFloat(String(row.compraMinima)),
             campo9: isNaN(parseFloat(String(row.costoUnitario))) ? 0 : parseFloat(String(row.costoUnitario))
           };
           this.providersService.updateProviderXTable(row.proveedorXTablaId, updatedProv)
@@ -1005,7 +1061,8 @@ export class DetalleItemsProveedorComponent {
         cantidadConfirmada: item.quantity || 0,
         costoTotal: (item.masIva ?? false) ? (Math.round((item.price || 0) * (1 + this.ivaPercent / 100) * 100) / 100) * (item.quantity || 0) : (item.total || 0),
         autorizado: item.autorizado || false, oc: '', typeOC: item.typeoc || item.typeOc || '', comment: item.comment || '',
-        masIva: item.masIva ?? false
+        masIva: item.masIva ?? false,
+        idCurrency: item.idCurrency ?? item.id_currency ?? null
       }));
 
       console.log('✅ loadSavedItems: Datos mapeados:', mappedData);
@@ -1108,15 +1165,18 @@ export class DetalleItemsProveedorComponent {
         }
       },
       { field: 'compraMinima', headerName: 'Compra Mín.', width: 145, editable: !this.ocGenerated,
-        cellEditor: 'agNumberCellEditor', cellEditorParams: { min: 0, precision: 0 },
+        cellEditor: 'agNumberCellEditor', cellEditorParams: { min: 0, precision: 1 },
         valueFormatter: (params: any) => {
           if (!this.selectedProviderId) return '-';
-          return params.value > 0 ? String(Math.floor(params.value)) : '';
+          const n = Number(params.value);
+          if (!(n > 0)) return '';
+          const r = Math.round(n * 10) / 10;   // 1 decimal; sin ceros sobrantes (2 → "2", 1.5 → "1.5")
+          return String(r);
         },
         valueSetter: (params: any) => {
-          const n = parseInt(String(params.newValue));
+          const n = parseFloat(String(params.newValue));
           if (isNaN(n) || n <= 0) { alerts.reqErrorToast('Compra Mín. inválida', 'La compra mínima debe ser mayor que cero'); return false; }
-          params.data.compraMinima = n;
+          params.data.compraMinima = Math.round(n * 10) / 10;   // máximo 1 decimal
           return true;
         }
       },
@@ -1133,7 +1193,8 @@ export class DetalleItemsProveedorComponent {
           // Se muestra el costo CON IVA (round2) cuando la fila tiene + IVA; el original va en el tooltip.
           const base = Number(params.value) || 0;
           const shown = params.data?.masIva ? Math.round(base * (1 + this.ivaPercent / 100) * 100) / 100 : base;
-          return shown ? `$${shown.toFixed(2)}` : '$0.00';
+          const abbr = this.currencyAbbr(params.data?.idCurrency);
+          return `$${(shown || 0).toFixed(2)} ${abbr}`;
         },
         valueSetter: (params: any) => {
           const val = parseFloat(params.newValue);
@@ -1147,7 +1208,8 @@ export class DetalleItemsProveedorComponent {
       { field: 'costoTotal', headerName: 'Costo Total', width: 170,
         valueFormatter: (params: any) => {
           if (!this.selectedProviderId) return '-';
-          return params.value ? `$${params.value.toFixed(2)}` : '$0.00';
+          const abbr = this.currencyAbbr(params.data?.idCurrency);
+          return `$${(Number(params.value) || 0).toFixed(2)} ${abbr}`;
         }
       },
       { headerName: 'Comentarios💬', width: 170, sortable: false, filter: false,
@@ -1223,7 +1285,33 @@ export class DetalleItemsProveedorComponent {
   }
 
   private getSelectedProviderName(): string { return this.selectedProviderObj?.description || 'Sin seleccionar'; }
-  updateTotal() { this.totalCostoTotal = this.rowData.reduce((sum, row) => sum + (row.costoTotal || 0), 0); }
+  updateTotal() {
+    this.totalCostoTotal = this.rowData.reduce((sum, row) => sum + (row.costoTotal || 0), 0);
+    this.totalCotizacionDisplay = this.buildTotalsByCurrencyDisplay(this.rowData);
+  }
+
+  /**
+   * "Total Cotización" por moneda (Opción A, sin convertir). Agrupa costoTotal por moneda;
+   * 1 moneda → "$X.XX MXN"; varias → "$X.XX MXN / $Y.YY USD" (default/MXN primero).
+   */
+  private buildTotalsByCurrencyDisplay(rows: any[]): string {
+    const sums = new Map<number, number>();
+    for (const r of (rows || [])) {
+      const id = (r?.idCurrency !== undefined && r?.idCurrency !== null)
+        ? Number(r.idCurrency)
+        : (this.defaultCurrencyId ?? -1);
+      sums.set(id, (sums.get(id) || 0) + (Number(r?.costoTotal) || 0));
+    }
+    if (sums.size === 0) return `$0.00 ${this.currencyAbbr(this.defaultCurrencyId)}`;
+    const entries = Array.from(sums.entries()).sort((a, b) => {
+      if (a[0] === this.defaultCurrencyId) return -1;
+      if (b[0] === this.defaultCurrencyId) return 1;
+      return this.currencyAbbr(a[0]).localeCompare(this.currencyAbbr(b[0]));
+    });
+    return entries.map(([id, sum]) =>
+      `$${sum.toLocaleString('es-MX', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ${this.currencyAbbr(id)}`
+    ).join(' / ');
+  }
   updateHasRowsWithTypeOC() { this.hasRowsWithTypeOC = this.rowData.some(row => !!(row.typeOC && row.typeOC.trim() !== '')); }
   get allCostosValid(): boolean { return !!this.selectedProviderId; }
 
@@ -1256,7 +1344,7 @@ export class DetalleItemsProveedorComponent {
       ? this.providers
       : this.providers.filter(p => p.id === this.NEW_PROVIDER_SENTINEL || !usedIds.has(p.id));
 
-    // Construir orden manual: + Nuevo → ⭐ Principales → Header Compañía → Compañías → Header Contacto → Contactos
+    // Construir orden manual: + Nuevo → ⭐ Principales → 💡 Sugerido → Header Compañía → Compañías → Header Contacto → Contactos
     const withFlag = base.map(p => ({ ...p, isPrincipal: this.principalProviderIds.has(p.id), isSugerido: this.sugeridoProviderIds.has(p.id) }));
     const newProvider = withFlag.find(p => p.id === this.NEW_PROVIDER_SENTINEL);
     const headerCompany = withFlag.find(p => p.__isHeader && p.id === '__header_company__');
@@ -1265,16 +1353,22 @@ export class DetalleItemsProveedorComponent {
     const principals = realProviders
       .filter(p => p.isPrincipal)
       .sort((a, b) => (a.sortKey || '').localeCompare(b.sortKey || '', 'es', { sensitivity: 'base' }));
+    // Sugeridos por la requisición que NO son principales → se muestran justo debajo de los
+    // principales (estrella), fuera de su grupo Compañía/Contacto para no duplicarlos.
+    const sugeridos = realProviders
+      .filter(p => p.isSugerido && !p.isPrincipal)
+      .sort((a, b) => (a.sortKey || '').localeCompare(b.sortKey || '', 'es', { sensitivity: 'base' }));
     const companies = realProviders
-      .filter(p => !p.isPrincipal && p.group === 'Compañía')
+      .filter(p => !p.isPrincipal && !p.isSugerido && p.group === 'Compañía')
       .sort((a, b) => (a.sortKey || '').localeCompare(b.sortKey || '', 'es', { sensitivity: 'base' }));
     const contacts = realProviders
-      .filter(p => !p.isPrincipal && p.group === 'Contacto')
+      .filter(p => !p.isPrincipal && !p.isSugerido && p.group === 'Contacto')
       .sort((a, b) => (a.sortKey || '').localeCompare(b.sortKey || '', 'es', { sensitivity: 'base' }));
 
     const result: any[] = [];
     if (newProvider) result.push(newProvider);
     if (principals.length > 0) result.push(...principals);
+    if (sugeridos.length > 0) result.push(...sugeridos);   // 💡 justo debajo de la estrella
     if (companies.length > 0 && headerCompany) {
       result.push(headerCompany);
       result.push(...companies);

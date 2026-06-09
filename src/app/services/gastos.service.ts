@@ -76,6 +76,13 @@ export interface PendingPayment {
   anticipoAplicado?: number;
   // Porcentaje ORIGINAL del anticipo (condiciones_pago.cantidad), sin recalcular con IVA.
   anticipoPorcentaje?: number;
+
+  // ── Fase 4: moneda y conversión a MXN ──
+  // En PENDIENTES: moneda del ítem a convertir (USD/EUR/MXN). En HISTÓRICO: la moneda con que se pagó.
+  moneda?: string | null;
+  // En HISTÓRICO: TC aplicado y fuente; valorPago ya viene en MXN.
+  tipoCambio?: number | null;
+  fuenteTc?: string | null;
 }
 
 export interface AnticipoItem {
@@ -109,6 +116,10 @@ export interface ConfirmPaymentPayload {
   anticipoAplicado?: number | null;
   metodoAnticipo?: string | null;   // 'FIFO' | 'PRORRATEO'
   numProrrateo?: number | null;
+  // Fase 4: conversión a MXN (moneda extranjera). El backend persiste monto_mxn = valorPago × tipoCambio.
+  tipoCambio?: number | null;
+  moneda?: string | null;
+  fuenteTc?: string | null;
 }
 
 @Injectable({
@@ -183,8 +194,10 @@ export class GastosService {
   }
 
   /** Paga un anticipo EN TRÁMITE desde la Captura de Gastos (lo marca PAGADO con su fecha). */
-  confirmAnticipo(idGastoGeneral: number, fechaPago?: string | null, notaFactura?: string | null): Observable<any> {
-    return this.http.post(`${environment.urlWarehouse}/Gastos/confirm-anticipo`, { idGastoGeneral, fechaPago, notaFactura }, {
+  confirmAnticipo(idGastoGeneral: number, fechaPago?: string | null, notaFactura?: string | null,
+                  tipoCambio?: number | null, moneda?: string | null, fuenteTc?: string | null): Observable<any> {
+    return this.http.post(`${environment.urlWarehouse}/Gastos/confirm-anticipo`,
+      { idGastoGeneral, fechaPago, notaFactura, tipoCambio, moneda, fuenteTc }, {
       headers: this.trackingService.getHeaders()
     });
   }

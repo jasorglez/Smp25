@@ -338,6 +338,32 @@ export class RolesDelisonComponent {
         }
       },
       {
+        field: 'prefijo',
+        headerName: 'Prefijo',
+        width: 110,
+        editable: true,
+        cellEditorParams: { maxLength: 4 },
+        valueSetter: (params) => {
+          const normalized = (params.newValue || '').toUpperCase().trim().slice(0, 4);
+          // Vacío permitido; si tiene valor, validar que no se repita entre departamentos.
+          if (normalized) {
+            const duplicate = this.rowData.some((row, index) =>
+              index !== params.node.rowIndex && (row.prefijo || '').toUpperCase().trim() === normalized
+            );
+            if (duplicate) {
+              alerts.basicAlert(
+                'Prefijo duplicado',
+                `El prefijo "${normalized}" ya está asignado a otro departamento.`,
+                'error'
+              );
+              return false;
+            }
+          }
+          params.data.prefijo = normalized;
+          return true;
+        }
+      },
+      {
         field: 'visualizadorAlmacenMoliendaDepto',
         headerName: 'Visualizador Almacen molienda Depto',
         headerTooltip: 'Visualizador Almacen molienda Depto',
@@ -476,6 +502,7 @@ export class RolesDelisonComponent {
       idCompany: this.idRoot,
       description: '',
       comment: '',
+      prefijo: '',
       active: true,
       visualizadorAlmacenMoliendaDepto: false,
       visualizadorMultiguardar: false,

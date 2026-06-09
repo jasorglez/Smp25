@@ -912,9 +912,11 @@ export class DetalleMoliendaComponent {
         const v = p.data?.masIva ? base * (1 + this.ivaPercent / 100) : base;
         return Math.round(v * 100) / 100;
       },
-      valueFormatter: (p) => this.fmtMoneda(p.value),
+      valueFormatter: (p) => this.fmtMoneda(this.toMxnIfPaid(p.data, p.value)),
       cellRenderer: (p: any) => {
-        const formatted = this.fmtMoneda(p.value);
+        // Almacén: si la entrada ya se pagó, se muestra en MXN (convertido en seco); si no, original.
+        const shown = this.toMxnIfPaid(p.data, p.value);
+        const formatted = this.fmtMoneda(shown);
         if (p.data?.masIva !== true) {
           const span = document.createElement('span');
           span.textContent = formatted;
@@ -922,7 +924,7 @@ export class DetalleMoliendaComponent {
           return span;
         }
         // Precio con IVA + badge "+IVA" (desglose en title nativo).
-        const base = Number(this.selectedOcRow?.price) || 0;
+        const base = this.toMxnIfPaid(p.data, Number(this.selectedOcRow?.price) || 0);
         const iva = this.ivaPercent || 0;
         const div = document.createElement('div');
         div.style.cssText = 'display:flex; align-items:center; justify-content:flex-end; gap:4px; width:100%;';
@@ -951,7 +953,7 @@ export class DetalleMoliendaComponent {
         const unit = Math.round(price * factor * 100) / 100;
         return unit * qty;
       },
-      valueFormatter: (p) => this.fmtMoneda(p.value),
+      valueFormatter: (p) => this.fmtMoneda(this.toMxnIfPaid(p.data, p.value)),
     },
     {
       // Fecha en que se confirmó el pago desde la Hoja de Gastos (read-only aquí).
@@ -1465,6 +1467,7 @@ export class DetalleMoliendaComponent {
         pdfCount: 0,
         usuario: e.usuario ?? '',
         liberacion: e.liberacion ?? false,
+        tipoCambio: e.tipoCambio ?? null,   // Fase 4: TC con que se pagó (para mostrar en MXN)
         credito: e.credito ?? false,
         close: e.close ?? false,
         carat: '',
@@ -1614,6 +1617,7 @@ export class DetalleMoliendaComponent {
         pdfCount: 0,
         usuario: e.usuario ?? '',
         liberacion: e.liberacion ?? false,
+        tipoCambio: e.tipoCambio ?? null,   // Fase 4: TC con que se pagó (para mostrar en MXN)
         credito: e.credito ?? false,
         close: e.close ?? false,
         carat: '',
@@ -1860,6 +1864,17 @@ export class DetalleMoliendaComponent {
   private fmtEntero(v: any): string {
     if (v == null || v === '') return '';
     return Number(v).toLocaleString('es-MX');
+  }
+
+  /**
+   * Fase 4 (almacén): convierte un valor a MXN SOLO si la entrada ya está pagada (liberacion=true)
+   * y trae tipo de cambio. Mientras no se pague, se muestra el valor en su moneda original.
+   * El almacén siempre ve el monto "en seco" (sin abreviatura ni TC), ya en pesos una vez pagado.
+   */
+  private toMxnIfPaid(row: any, val: any): number {
+    const v = Number(val) || 0;
+    const tc = Number(row?.tipoCambio) || 0;
+    return (row?.liberacion && tc > 0) ? v * tc : v;
   }
 
   private fmtMoneda(v: any): string {

@@ -6,6 +6,7 @@ import { OcAndReqsService } from 'app/services/ocandreqs.service';
 import { CustomersService } from 'app/services/customers.service';
 import { SetupOcService } from 'app/services/setup-oc.service';
 import { SetupService } from 'app/services/setup.service';
+import { CurrencyService } from 'app/services/currency.service';
 import { ConditionsPendingService } from 'app/services/conditions-pending.service';
 import { SignalsService } from 'app/services/signals.service';
 import { EntregaOcService } from 'app/services/entrega-oc.service';
@@ -36,6 +37,7 @@ interface OcRow {
   anticipoEstado?: string | null;   // 'EN_TRAMITE' | 'PAGADO' | null
   fechaAnticipo?: string | null;
   close?: boolean;
+  idCurrency?: number | null;        // moneda de la OC (de sus ítems); NULL = MXN
   __allItemsBlocked?: boolean;
 }
 
@@ -164,6 +166,11 @@ export class OrdenesydetallesOcComponent implements OnDestroy {
   private intandoutDocumentsService = inject(IntandoutDocumentsService);
   private entradaMoliendaService = inject(EntradaMoliendaService);
   private gastosService = inject(GastosService);
+  private currencyService = inject(CurrencyService);
+
+  // Fase 2: catálogo de monedas para mostrar la abreviatura junto a Precio/Total (Opción A, sin convertir).
+  private monedasMap = new Map<number, string>();
+  private defaultCurrencyId: number | null = null;
 
   private entregasPendingSub: Subscription;
   private conditionsPendingSub: Subscription;
@@ -350,7 +357,7 @@ export class OrdenesydetallesOcComponent implements OnDestroy {
       valueFormatter: (p) => {
         const n = Number(p.value);
         return Number.isFinite(n)
-          ? n.toLocaleString('es-MX', { style: 'currency', currency: 'MXN', minimumFractionDigits: 2 })
+          ? `${n.toLocaleString('es-MX', { style: 'currency', currency: 'MXN', minimumFractionDigits: 2 })} ${this.currencyAbbr(p.data?.idCurrency)}`
           : '';
       },
     },
@@ -361,7 +368,7 @@ export class OrdenesydetallesOcComponent implements OnDestroy {
       cellRenderer: (p: any) => {
         const monto = Number(p.data?.anticipoOc) || 0;
         if (monto <= 0) return '';
-        const fmt = monto.toLocaleString('es-MX', { style: 'currency', currency: 'MXN', minimumFractionDigits: 2 });
+        const fmt = `${monto.toLocaleString('es-MX', { style: 'currency', currency: 'MXN', minimumFractionDigits: 2 })} ${this.currencyAbbr(p.data?.idCurrency)}`;
         // 3 estados del anticipo (anticipoEstado): PAGADO | EN_TRAMITE | (null = sin registrar).
         // Compatibilidad: si no viene anticipoEstado pero anticipoPagado=true, se trata como PAGADO.
         const estado = p.data?.anticipoEstado || (p.data?.anticipoPagado ? 'PAGADO' : null);
@@ -502,7 +509,7 @@ export class OrdenesydetallesOcComponent implements OnDestroy {
       valueFormatter: (p) => {
         const n = Number(p.value);
         return Number.isFinite(n) && n > 0
-          ? n.toLocaleString('es-MX', { style: 'currency', currency: 'MXN', minimumFractionDigits: 2 })
+          ? `${n.toLocaleString('es-MX', { style: 'currency', currency: 'MXN', minimumFractionDigits: 2 })} ${this.currencyAbbr(p.data?.idCurrency)}`
           : '';
       },
       cellRenderer: (p: any) => {
@@ -514,8 +521,9 @@ export class OrdenesydetallesOcComponent implements OnDestroy {
           return dash;
         }
         const masIva = p.data?.masIva === true;
+        const abbr = this.currencyAbbr(p.data?.idCurrency);
         const formatted = Number.isFinite(Number(p.value)) && Number(p.value) > 0
-          ? Number(p.value).toLocaleString('es-MX', { style: 'currency', currency: 'MXN', minimumFractionDigits: 2 })
+          ? `${Number(p.value).toLocaleString('es-MX', { style: 'currency', currency: 'MXN', minimumFractionDigits: 2 })} ${abbr}`
           : '';
 
         if (!masIva) {
@@ -566,7 +574,7 @@ export class OrdenesydetallesOcComponent implements OnDestroy {
       valueFormatter: (p) => {
         const n = Number(p.value);
         return Number.isFinite(n) && n > 0
-          ? n.toLocaleString('es-MX', { style: 'currency', currency: 'MXN', minimumFractionDigits: 2 })
+          ? `${n.toLocaleString('es-MX', { style: 'currency', currency: 'MXN', minimumFractionDigits: 2 })} ${this.currencyAbbr(p.data?.idCurrency)}`
           : '';
       },
     },
@@ -811,12 +819,13 @@ export class OrdenesydetallesOcComponent implements OnDestroy {
       valueFormatter: (p) => {
         const n = Number(p.value);
         return Number.isFinite(n) && n > 0
-          ? n.toLocaleString('es-MX', { style: 'currency', currency: 'MXN', minimumFractionDigits: 2 })
+          ? `${n.toLocaleString('es-MX', { style: 'currency', currency: 'MXN', minimumFractionDigits: 2 })} ${this.currencyAbbr(this.selectedArticleRow?.idCurrency)}`
           : '';
       },
       cellRenderer: (p: any) => {
+        const abbr = this.currencyAbbr(this.selectedArticleRow?.idCurrency);
         const formatted = Number.isFinite(Number(p.value)) && Number(p.value) > 0
-          ? Number(p.value).toLocaleString('es-MX', { style: 'currency', currency: 'MXN', minimumFractionDigits: 2 })
+          ? `${Number(p.value).toLocaleString('es-MX', { style: 'currency', currency: 'MXN', minimumFractionDigits: 2 })} ${abbr}`
           : '';
         if (p.data?.masIva !== true) {
           const span = document.createElement('span');
@@ -863,7 +872,7 @@ export class OrdenesydetallesOcComponent implements OnDestroy {
       valueFormatter: (p) => {
         const n = Number(p.value);
         return Number.isFinite(n) && n > 0
-          ? n.toLocaleString('es-MX', { style: 'currency', currency: 'MXN', minimumFractionDigits: 2 })
+          ? `${n.toLocaleString('es-MX', { style: 'currency', currency: 'MXN', minimumFractionDigits: 2 })} ${this.currencyAbbr(this.selectedArticleRow?.idCurrency)}`
           : '';
       },
     },
@@ -1021,6 +1030,35 @@ export class OrdenesydetallesOcComponent implements OnDestroy {
     this.loadConditionsRange();
   }
 
+  /** Fase 2: carga catálogo de monedas (type=CURRENCY) y resuelve la default (MXN). */
+  private loadMonedas(): void {
+    const idCompany = this.signalsService.getRootSelectedBySidebar()();
+    if (!idCompany) return;
+    this.currencyService.getCurrencies(idCompany).subscribe({
+      next: (data: any) => {
+        const list = Array.isArray(data) ? data : (data?.catalog ?? []);
+        this.monedasMap = new Map<number, string>();
+        let mxnId: number | null = null;
+        (list || []).forEach((c: any) => {
+          const id = Number(c.id);
+          const abrev = (c.valueAddition || '').toString().trim();
+          const nombre = c.description || '';
+          this.monedasMap.set(id, abrev || nombre);
+          if (mxnId === null && (abrev.toUpperCase() === 'MXN' || /peso|mexic/i.test(nombre))) mxnId = id;
+        });
+        this.defaultCurrencyId = mxnId ?? (list?.[0]?.id != null ? Number(list[0].id) : null);
+        if (this.itemsGridApi) this.itemsGridApi.refreshCells({ force: true });
+      },
+      error: () => { this.monedasMap = new Map(); this.defaultCurrencyId = null; }
+    });
+  }
+
+  /** Abreviatura de la moneda de una fila (o 'MXN' si no resuelve). */
+  private currencyAbbr(idCurrency: any): string {
+    const id = (idCurrency !== undefined && idCurrency !== null) ? Number(idCurrency) : this.defaultCurrencyId;
+    return (id != null ? this.monedasMap.get(Number(id)) : '') || 'MXN';
+  }
+
   private loadConditionsRange(): void {
     // Preferimos idReference de la fila (la sucursal de la OC); fallback al sidebar
     const idBranch = this.internalParams?.data?.idReference
@@ -1044,6 +1082,7 @@ export class OrdenesydetallesOcComponent implements OnDestroy {
       },
       error: () => { this.ivaPercent = 0; }
     });
+    this.loadMonedas();
   }
 
   refresh(params: any): boolean {
@@ -1383,6 +1422,7 @@ export class OrdenesydetallesOcComponent implements OnDestroy {
             condicionesPago: oc.condicionesPago || oc.condiciones_pago || '',
             totalOc: Number(oc.total ?? oc.Total ?? 0) || 0,
             anticipoOc: Number(oc.anticipoOc ?? oc.AnticipoOc ?? 0) || 0,
+            idCurrency: oc.idCurrency ?? oc.id_currency ?? null,   // moneda de la OC (de sus ítems)
             anticipoPagado: (oc.anticipoPagado ?? oc.AnticipoPagado) === true,
             anticipoEstado: oc.anticipoEstado ?? oc.AnticipoEstado ?? null,
             fechaAnticipo: oc.fechaAnticipo ?? oc.FechaAnticipo ?? null,
@@ -1488,6 +1528,9 @@ export class OrdenesydetallesOcComponent implements OnDestroy {
         const ocItems: any[] = await lastValueFrom(this.ocAndReqsService.getReqItems(oc.id));
         const items = Array.isArray(ocItems) ? ocItems : [];
 
+        // Moneda de la OC = la de sus ítems (un solo proveedor → una sola moneda). NULL = MXN.
+        oc.idCurrency = items.length > 0 ? (items[0].idCurrency ?? items[0].id_currency ?? null) : (oc.idCurrency ?? null);
+
         // Cargar items de la requisición padre (cacheado por idReq)
         let reqItems: any[] = [];
         const idReq = Number(oc.idReq || 0);
@@ -1537,6 +1580,10 @@ export class OrdenesydetallesOcComponent implements OnDestroy {
         this.ocTooltipDataMap.set(oc.id, { typeoc: oc.typeoc || '', items: [] });
       }
     }));
+    // Refrescar para que Total x OC / Anticipo OC muestren ya la abreviatura de moneda resuelta.
+    if (this.gridApi && !this.gridApi.isDestroyed()) {
+      this.gridApi.refreshCells({ force: true });
+    }
   }
 
   // ============= TOOLTIP FLOTANTE PARA COLUMNA OC =============

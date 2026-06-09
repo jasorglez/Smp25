@@ -10,6 +10,7 @@ export interface ComparacionOverlayData {
   idBranchFromReq?: number;
   idDepartamentFromReq?: number;
   departmentName?: string;
+  deptPrefijoFromReq?: string;
 }
 
 @Injectable({ providedIn: 'root' })
