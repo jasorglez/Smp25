@@ -16,6 +16,13 @@ export const routes: Routes = [
       ),
   },
   {
+    path: 'demo',
+    loadComponent: () =>
+      import('./login/pages/demo-login/demo-login.component').then(
+        (m) => m.DemoLoginComponent
+      ),
+  },
+  {
     // Ruta pública sin auth guard — menú del restaurante para clientes
     path: 'menu',
     loadComponent: () =>

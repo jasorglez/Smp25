@@ -5,6 +5,19 @@
   <!-- Contenedor principal -->
   <div class="main-content-container d-flex flex-column min-vh-100">
 
+    <!-- Banner: modo demo -->
+    <div *ngIf="isDemo()"
+         class="alert mb-0 py-1 px-3 d-flex align-items-center justify-content-between gap-2"
+         style="border-radius:0; font-size:0.85rem; background:#fff3cd; border:none; border-bottom:1px solid #ffc107;">
+      <span>
+        <i class="bi bi-lightning-charge-fill text-warning me-1"></i>
+        <strong>Modo Demo</strong> — Estás explorando con datos de ejemplo.
+      </span>
+      <a href="/login" class="btn btn-sm btn-warning py-0 px-2" style="font-size:0.8rem;">
+        Iniciar sesión con mi cuenta
+      </a>
+    </div>
+
     <!-- Banner: licencia próxima a vencer (< 5 días y no expirada) — no se muestra a root -->
     <div *ngIf="licenseDays() <= 5 && licenseStatus() !== 'expired' && !isRootUser()"
          class="alert alert-warning alert-dismissible mb-0 py-1 px-3 d-flex align-items-center gap-2"

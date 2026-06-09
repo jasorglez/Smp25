@@ -31,6 +31,10 @@ export class MainPageComponent implements OnInit {
     this.signalsService.getemailChoose() === environment.root
   );
 
+  isDemo = computed(() =>
+    this.signalsService.getemailChoose() === environment.demo?.email
+  );
+
   constructor() {
     effect(() => {
       const newBranchId = this.signalsService.getBranchSelectedBySidebar()();
