@@ -40,12 +40,17 @@ import { lastValueFrom } from 'rxjs';
           <button class="btn btn-primary btn-sm me-2" (click)="addConcept()">
             <i class="bi bi-plus-lg"></i> Agregar
           </button>
-          <button class="btn btn-info btn-sm me-2 text-white" (click)="openComprobantePicker()"
-            [disabled]="isParsingImage" title="Crear concepto desde imagen de transferencia">
+          <label class="btn btn-info btn-sm me-2 text-white mb-0 position-relative"
+            title="Crear concepto desde imagen de transferencia"
+            [style.pointer-events]="isParsingImage ? 'none' : 'auto'"
+            [class.disabled]="isParsingImage">
             <span *ngIf="isParsingImage" class="spinner-border spinner-border-sm me-1"></span>
             <i *ngIf="!isParsingImage" class="bi bi-camera me-1"></i>
             {{ isParsingImage ? 'Analizando...' : 'Desde comprobante' }}
-          </button>
+            <input type="file" accept="image/*" [disabled]="isParsingImage"
+              style="position:absolute;top:0;left:0;width:100%;height:100%;opacity:0;cursor:pointer;font-size:0"
+              (change)="onFileComprobanteChange($event)">
+          </label>
           <button class="btn btn-warning btn-sm me-2" (click)="discardChanges()">
             <i class="bi bi-arrow-counterclockwise"></i> Deshacer
           </button>
@@ -1732,41 +1737,28 @@ export class DetallesExpenditureComponent implements OnInit, OnDestroy {
 
   // ==================== COMPROBANTE CON GEMINI ====================
 
-  public openComprobantePicker() {
-    console.log('📷 [1] openComprobantePicker called');
-    if (!this._fileInputComprobante) {
-      console.log('📷 [2] Creando input nativo...');
-      const input = document.createElement('input');
-      input.type = 'file';
-      input.accept = 'image/*';
-      input.style.display = 'none';
-      document.body.appendChild(input);
-      input.addEventListener('change', () => {
-        console.log('📷 [3] change event fired, files:', input.files?.length);
-        const file = input.files?.[0];
-        input.value = '';
-        if (!file) { this.isParsingImage = false; return; }
-        console.log('📷 [4] Enviando a Gemini:', file.name, file.size);
-        const safetyTimer = setTimeout(() => { this.isParsingImage = false; }, 30000);
-        this.administrationService.parseComprobante(file).subscribe({
-          next: (data: any) => {
-            clearTimeout(safetyTimer);
-            console.log('📷 [5] Respuesta Gemini:', JSON.stringify(data));
-            this.isParsingImage = false;
-            this.addConceptFromComprobante(data);
-          },
-          error: (err: any) => {
-            clearTimeout(safetyTimer);
-            console.error('📷 [ERROR]', err.status, err.message, err);
-            this.isParsingImage = false;
-            alerts.basicAlert('Error', 'No se pudo analizar el comprobante. Intenta de nuevo.', 'error');
-          }
-        });
-      });
-      this._fileInputComprobante = input;
-    }
-    console.log('📷 [6] Llamando .click() en el input');
-    this._fileInputComprobante.click();
+  public onFileComprobanteChange(event: Event) {
+    const input = event.target as HTMLInputElement;
+    const file = input.files?.[0];
+    input.value = '';
+    if (!file) return;
+    console.log('📷 Archivo seleccionado:', file.name, file.size);
+    this.isParsingImage = true;
+    const safetyTimer = setTimeout(() => { this.isParsingImage = false; }, 30000);
+    this.administrationService.parseComprobante(file).subscribe({
+      next: (data: any) => {
+        clearTimeout(safetyTimer);
+        console.log('📷 Respuesta Gemini:', JSON.stringify(data));
+        this.isParsingImage = false;
+        this.addConceptFromComprobante(data);
+      },
+      error: (err: any) => {
+        clearTimeout(safetyTimer);
+        console.error('📷 ERROR HTTP:', err.status, err.message);
+        this.isParsingImage = false;
+        alerts.basicAlert('Error', 'No se pudo analizar el comprobante. Intenta de nuevo.', 'error');
+      }
+    });
   }
 
   private addConceptFromComprobante(data: any) {
