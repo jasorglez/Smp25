@@ -85,7 +85,7 @@ export const environment = {
     // publicKey: 'TEST-4399133a-4676-42a2-ab85-d946370bf96a',
   },
 
-  version: '4.64 (08 Junio 2026) debug(expenditure): logs en openComprobantePicker',
+  version: '4.65 (08 Junio 2026) fix(expenditure): safety timer reset isParsingImage',
 };
 
 
