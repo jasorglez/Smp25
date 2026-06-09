@@ -85,7 +85,7 @@ export const environment = {
     // publicKey: 'TEST-4399133a-4676-42a2-ab85-d946370bf96a',
   },
 
-  version: '4.62 (08 Junio 2026) fix(expenditure): file input nativo para comprobante AG Grid',
+  version: '4.63 (08 Junio 2026) fix(expenditure): public openComprobantePicker strictTemplates',
 };
 
 
