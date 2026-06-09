@@ -285,10 +285,10 @@ public gridOptions: any = {
         width: 190,
         cellEditor: 'agSelectCellEditor',
         cellEditorParams: () => ({
-          values: this.departamentos.map((item) => item.id),
+          values: Array.isArray(this.departamentos) ? this.departamentos.map((item) => item.id) : [],
         }),
         valueFormatter: (params) => {
-          const foundItem = this.departamentos.find((item) => item.id === params.value);
+          const foundItem = Array.isArray(this.departamentos) ? this.departamentos.find((item) => item.id === params.value) : null;
           return foundItem ? `${foundItem.description}` : params.value;
         },
       },
@@ -305,10 +305,10 @@ public gridOptions: any = {
   width: 180,
   cellEditor: 'agSelectCellEditor',
   cellEditorParams: () => ({
-    values: this.requisiciones.map((item) => item.id),
+    values: Array.isArray(this.requisiciones) ? this.requisiciones.map((item) => item.id) : [],
   }),
   valueFormatter: (params) => {
-    const foundItem = this.requisiciones.find((item) => item.id === params.value);
+    const foundItem = Array.isArray(this.requisiciones) ? this.requisiciones.find((item) => item.id === params.value) : null;
     return foundItem ? `${foundItem.folio}` : (params.value || '');
   },
   onCellValueChanged: (params) => {
@@ -673,11 +673,13 @@ obtenerProveedores() {
 
   obtenerDepartamentos() {
     this.departmentsService.getDepartments(this.idRoot).subscribe(
-      (data: Catalog[]) => {
-        this.departamentos = data;
-        console.log(this.departamentos);
+      (data: any) => {
+        this.departamentos = Array.isArray(data) ? data : (data?.data ?? data?.roles ?? []);
       },
-      (error) => console.error('Error fetching departments:', error)
+      (error) => {
+        console.error('Error fetching departments:', error);
+        this.departamentos = [];
+      }
     );
   }
 
