@@ -40,9 +40,7 @@ import { lastValueFrom } from 'rxjs';
           <button class="btn btn-primary btn-sm me-2" (click)="addConcept()">
             <i class="bi bi-plus-lg"></i> Agregar
           </button>
-          <input #fileInputComprobante type="file" accept="image/*" style="display:none"
-            (change)="onComprobanteSelected($event)">
-          <button class="btn btn-info btn-sm me-2 text-white" (click)="fileInputComprobante.click()"
+          <button class="btn btn-info btn-sm me-2 text-white" (click)="openComprobantePicker()"
             [disabled]="isParsingImage" title="Crear concepto desde imagen de transferencia">
             <span *ngIf="isParsingImage" class="spinner-border spinner-border-sm me-1"></span>
             <i *ngIf="!isParsingImage" class="bi bi-camera me-1"></i>
@@ -226,6 +224,7 @@ export class DetallesExpenditureComponent implements OnInit, OnDestroy {
   private isEditingGrid: boolean = false;
 
   isParsingImage: boolean = false;
+  private _fileInputComprobante: HTMLInputElement | null = null;
 
   // Provider Modal properties
   showProviderModal: boolean = false;
@@ -436,9 +435,12 @@ export class DetallesExpenditureComponent implements OnInit, OnDestroy {
 
   ngOnDestroy() {
     this.stopAutoRefresh();
-    // Clean up PDF URL
     if (this.originalPdfUrl) {
       URL.revokeObjectURL(this.originalPdfUrl);
+    }
+    if (this._fileInputComprobante) {
+      document.body.removeChild(this._fileInputComprobante);
+      this._fileInputComprobante = null;
     }
   }
 
@@ -1730,27 +1732,32 @@ export class DetallesExpenditureComponent implements OnInit, OnDestroy {
 
   // ==================== COMPROBANTE CON GEMINI ====================
 
-  onComprobanteSelected(event: any) {
-    console.log('📷 [1] onComprobanteSelected called', event.target.files);
-    const file = event.target.files?.[0];
-    if (!file) { console.log('📷 [1] No file selected'); return; }
-    console.log('📷 [2] File:', file.name, file.size, file.type);
-    event.target.value = '';
-
-    this.isParsingImage = true;
-    console.log('📷 [3] Calling parseComprobante...');
-    this.administrationService.parseComprobante(file).subscribe({
-      next: (data: any) => {
-        console.log('📷 [4] Gemini response:', JSON.stringify(data));
-        this.isParsingImage = false;
-        this.addConceptFromComprobante(data);
-      },
-      error: (err: any) => {
-        console.error('📷 [ERROR] parseComprobante failed:', err.status, err.message, err);
-        this.isParsingImage = false;
-        alerts.basicAlert('Error', 'No se pudo analizar el comprobante. Intenta de nuevo.', 'error');
-      }
-    });
+  openComprobantePicker() {
+    if (!this._fileInputComprobante) {
+      const input = document.createElement('input');
+      input.type = 'file';
+      input.accept = 'image/*';
+      input.style.display = 'none';
+      document.body.appendChild(input);
+      input.addEventListener('change', () => {
+        const file = input.files?.[0];
+        input.value = '';
+        if (!file) return;
+        this.isParsingImage = true;
+        this.administrationService.parseComprobante(file).subscribe({
+          next: (data: any) => {
+            this.isParsingImage = false;
+            this.addConceptFromComprobante(data);
+          },
+          error: () => {
+            this.isParsingImage = false;
+            alerts.basicAlert('Error', 'No se pudo analizar el comprobante. Intenta de nuevo.', 'error');
+          }
+        });
+      });
+      this._fileInputComprobante = input;
+    }
+    this._fileInputComprobante.click();
   }
 
   private addConceptFromComprobante(data: any) {
