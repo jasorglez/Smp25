@@ -320,7 +320,6 @@ export class DetallesExpenditureComponent implements OnInit, OnDestroy {
       this.loadConceptsDataForReport();
     }
 
-    setTimeout(() => { this.setupComprobanteNative(); }, 300);
   }
 
   loadConceptsData() {
@@ -1750,8 +1749,10 @@ export class DetallesExpenditureComponent implements OnInit, OnDestroy {
         return file;
       }
     }).then(result => {
+      console.log('📷 Swal result:', result.isConfirmed, result.value);
       if (!result.isConfirmed || !result.value) return;
       const file = result.value as File;
+      console.log('📷 Enviando archivo:', file.name, file.size, file.type);
       this.isParsingImage = true;
       const timer = setTimeout(() => { this.isParsingImage = false; }, 30000);
       this.administrationService.parseComprobante(file).subscribe({
