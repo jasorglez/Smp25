@@ -1733,23 +1733,29 @@ export class DetallesExpenditureComponent implements OnInit, OnDestroy {
   // ==================== COMPROBANTE CON GEMINI ====================
 
   public openComprobantePicker() {
+    console.log('📷 [1] openComprobantePicker called');
     if (!this._fileInputComprobante) {
+      console.log('📷 [2] Creando input nativo...');
       const input = document.createElement('input');
       input.type = 'file';
       input.accept = 'image/*';
       input.style.display = 'none';
       document.body.appendChild(input);
       input.addEventListener('change', () => {
+        console.log('📷 [3] change event fired, files:', input.files?.length);
         const file = input.files?.[0];
         input.value = '';
         if (!file) return;
+        console.log('📷 [4] Enviando a Gemini:', file.name, file.size);
         this.isParsingImage = true;
         this.administrationService.parseComprobante(file).subscribe({
           next: (data: any) => {
+            console.log('📷 [5] Respuesta Gemini:', JSON.stringify(data));
             this.isParsingImage = false;
             this.addConceptFromComprobante(data);
           },
-          error: () => {
+          error: (err: any) => {
+            console.error('📷 [ERROR]', err.status, err.message, err);
             this.isParsingImage = false;
             alerts.basicAlert('Error', 'No se pudo analizar el comprobante. Intenta de nuevo.', 'error');
           }
@@ -1757,6 +1763,7 @@ export class DetallesExpenditureComponent implements OnInit, OnDestroy {
       });
       this._fileInputComprobante = input;
     }
+    console.log('📷 [6] Llamando .click() en el input');
     this._fileInputComprobante.click();
   }
 
