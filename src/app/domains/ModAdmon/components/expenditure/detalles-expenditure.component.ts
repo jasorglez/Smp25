@@ -1733,6 +1733,7 @@ export class DetallesExpenditureComponent implements OnInit, OnDestroy {
   // ==================== COMPROBANTE CON GEMINI ====================
 
   public openComprobantePicker() {
+    alert('📷 openComprobantePicker llamado');
     console.log('📷 [1] openComprobantePicker called');
     if (!this._fileInputComprobante) {
       console.log('📷 [2] Creando input nativo...');
