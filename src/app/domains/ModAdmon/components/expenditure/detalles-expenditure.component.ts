@@ -12,6 +12,7 @@ import { SelectWithTooltipEditorV2Component } from 'app/shared/select-with-toolt
 import { SignalsService } from 'app/services/signals.service';
 // import { ProviderModalService } from '../egresos-palacio/services/provider-modal.service'; // Ya no needed
 import { CustomersService } from 'app/services/customers.service';
+import { AdministrationService } from 'app/services/administration.service';
 import pdfMake from 'pdfmake/build/pdfmake';
 import * as pdfFonts from 'pdfmake/build/vfs_fonts';
 import { lastValueFrom } from 'rxjs';
@@ -38,6 +39,14 @@ import { lastValueFrom } from 'rxjs';
           </button>
           <button class="btn btn-primary btn-sm me-2" (click)="addConcept()">
             <i class="bi bi-plus-lg"></i> Agregar
+          </button>
+          <input #fileInputComprobante type="file" accept="image/*" style="display:none"
+            (change)="onComprobanteSelected($event)">
+          <button class="btn btn-info btn-sm me-2 text-white" (click)="fileInputComprobante.click()"
+            [disabled]="isParsingImage" title="Crear concepto desde imagen de transferencia">
+            <span *ngIf="isParsingImage" class="spinner-border spinner-border-sm me-1"></span>
+            <i *ngIf="!isParsingImage" class="bi bi-camera me-1"></i>
+            {{ isParsingImage ? 'Analizando...' : 'Desde comprobante' }}
           </button>
           <button class="btn btn-warning btn-sm me-2" (click)="discardChanges()">
             <i class="bi bi-arrow-counterclockwise"></i> Deshacer
@@ -187,6 +196,7 @@ export class DetallesExpenditureComponent implements OnInit, OnDestroy {
   private signalsService = inject(SignalsService);
   // private providerModalService = inject(ProviderModalService); // Ya no needed
   private customersService = inject(CustomersService);
+  private administrationService = inject(AdministrationService);
 
   rowData: any[] = [];
   hasUnsavedChanges: boolean = false;
@@ -214,6 +224,8 @@ export class DetallesExpenditureComponent implements OnInit, OnDestroy {
   private lastServerFingerprint: string = '';
   private isInteractingWithGrid: boolean = false;
   private isEditingGrid: boolean = false;
+
+  isParsingImage: boolean = false;
 
   // Provider Modal properties
   showProviderModal: boolean = false;
@@ -1714,5 +1726,67 @@ export class DetallesExpenditureComponent implements OnInit, OnDestroy {
 
     const expense = expenses.find((e: any) => e.id === this.expenditureData.idExpend);
     return expense ? expense.description : 'Sin descripción';
+  }
+
+  // ==================== COMPROBANTE CON GEMINI ====================
+
+  onComprobanteSelected(event: any) {
+    const file = event.target.files?.[0];
+    if (!file) return;
+    event.target.value = '';
+
+    this.isParsingImage = true;
+    this.administrationService.parseComprobante(file).subscribe({
+      next: (data: any) => {
+        this.isParsingImage = false;
+        this.addConceptFromComprobante(data);
+      },
+      error: () => {
+        this.isParsingImage = false;
+        alerts.basicAlert('Error', 'No se pudo analizar el comprobante. Intenta de nuevo.', 'error');
+      }
+    });
+  }
+
+  private addConceptFromComprobante(data: any) {
+    const tempId = `temp_concept_${this.tempIdCounter++}`;
+    const monto  = Number(data?.monto || 0);
+    const newConcept = {
+      id:              tempId,
+      idIncorExp:      this.params.data.id,
+      typeExpense:     'PROVEEDORES',
+      idExpense:       null,
+      idContribuyente: null,
+      selectedEntity:  null,
+      groupEntity:     this.getGroupEntityLabel({ typeExpense: 'PROVEEDORES', selectedEntity: null }),
+      dateExpend:      data?.fecha || this.getTodayDateForInput(),
+      description:     data?.descripcion || '',
+      quantity:        1,
+      unit:            '',
+      price:           monto,
+      total:           monto,
+      iva:             false,
+      iva2:            0,
+      totalFinal:      monto,
+      comment:         data?.referencia || '',
+      graficar:        true,
+      active:          true,
+      __isNew:         true,
+      __modified:      false
+    };
+
+    this.rowData = [newConcept, ...this.rowData];
+    this.hasUnsavedChanges = true;
+    this.gridApi.setGridOption('rowData', this.rowData);
+    this.recalculateTotals();
+
+    if (this.context?.CONCEPTS?.updateCount) {
+      this.context.CONCEPTS.updateCount(this.params.data.id, this.rowData.length);
+    }
+
+    setTimeout(() => {
+      this.gridApi.ensureIndexVisible(0);
+      this.gridApi.startEditingCell({ rowIndex: 0, colKey: 'typeExpense' });
+    }, 100);
   }
 }

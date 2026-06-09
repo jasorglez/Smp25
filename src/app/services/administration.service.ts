@@ -314,4 +314,11 @@ updateCertificates(idRoot: number, formData: FormData): Observable<any> {
     return this.http.delete(`${environment.urlAdministration}/DocumentosComprobados/${id}`, { headers: this.trackingService.getHeaders() });
   }
 
+  parseComprobante(file: File): Observable<any> {
+    const formData = new FormData();
+    formData.append('image', file);
+    const headers = this.trackingService.getHeaders().delete('Content-Type');
+    return this.http.post(`${environment.urlAdministration}/ConceptsxIncorExp/parse-comprobante`, formData, { headers });
+  }
+
 }
