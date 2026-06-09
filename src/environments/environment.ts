@@ -85,7 +85,7 @@ export const environment = {
     // publicKey: 'TEST-4399133a-4676-42a2-ab85-d946370bf96a',
   },
 
-  version: '4.58 (08 Junio 2026) feat(dashboard): saldo bancario en una sola linea compacta',
+  version: '4.59 (08 Junio 2026) feat(expenditure): agregar concepto desde comprobante via Gemini',
 };
 
 
