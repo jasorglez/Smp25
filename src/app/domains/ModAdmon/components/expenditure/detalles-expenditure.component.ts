@@ -1736,23 +1736,31 @@ export class DetallesExpenditureComponent implements OnInit, OnDestroy {
   // ==================== COMPROBANTE CON GEMINI ====================
 
   public abrirDialogoComprobante() {
+    let archivoSeleccionado: File | null = null;
+
     Swal.fire({
-      title: 'Seleccionar comprobante',
+      title: '📷 Seleccionar comprobante',
       html: `<input type="file" id="swal-comprobante" accept="image/*" class="form-control mt-2">`,
       showCancelButton: true,
       confirmButtonText: 'Analizar',
       cancelButtonText: 'Cancelar',
+      didOpen: () => {
+        const inp = document.getElementById('swal-comprobante') as HTMLInputElement;
+        if (inp) {
+          inp.addEventListener('change', () => {
+            archivoSeleccionado = inp.files?.[0] || null;
+            console.log('📷 Archivo en Swal:', archivoSeleccionado?.name);
+          });
+        }
+      },
       preConfirm: () => {
-        const input = document.getElementById('swal-comprobante') as HTMLInputElement;
-        const file = input?.files?.[0];
-        if (!file) { Swal.showValidationMessage('Selecciona una imagen'); return false; }
-        return file;
+        if (!archivoSeleccionado) { Swal.showValidationMessage('Selecciona una imagen primero'); return false; }
+        return archivoSeleccionado;
       }
     }).then(result => {
       console.log('📷 Swal result:', result.isConfirmed, result.value);
       if (!result.isConfirmed || !result.value) return;
       const file = result.value as File;
-      console.log('📷 Enviando archivo:', file.name, file.size, file.type);
       this.isParsingImage = true;
       const timer = setTimeout(() => { this.isParsingImage = false; }, 30000);
       this.administrationService.parseComprobante(file).subscribe({
