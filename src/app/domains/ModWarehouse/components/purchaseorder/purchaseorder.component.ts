@@ -1053,8 +1053,9 @@ export class PurchaseOrderComponent implements CanComponentDeactivate {
     const newItem = {
       id: tempId,
       folio: folio || '',
+      idRoot: this.idRoot,
       typeReference: this.typeReference,
-      idReference: this.idProject,
+      idReference: this.idReference,
       dateCreate: new Date().toISOString(),
       idProvider: 0,
       idDepartament: 0,
