@@ -81,7 +81,7 @@ export class CatalogsService {
   }
 
   getLocations(): Observable<any[]> {
-    return this.http.get<any[]>(`${environment.urlWarehouse}/Catalog?type=Ubication`, { headers: this.trackingService.getHeaders() });
+    return this.http.get<any[]>(`${environment.urlWarehouse}/Catalog/ubications`, { headers: this.trackingService.getHeaders() });
   }
 
   getDocumentTypes(): Observable<any[]> {

@@ -86,7 +86,7 @@ export const environment = {
     // publicKey: 'TEST-4399133a-4676-42a2-ab85-d946370bf96a',
   },
 
-  version: '4.80 (09 Junio 2026) fix: OC addMasterRow idRoot+idReference correcto',
+  version: '4.81 (09 Junio 2026) fix: getLocations endpoint correcto ubications bi2',
 };
 
 
