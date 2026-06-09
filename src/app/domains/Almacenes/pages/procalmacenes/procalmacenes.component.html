@@ -22,6 +22,12 @@
             <i class="bi bi-gear-fill"></i><span>Config</span>
           </a>
         </li>
+        <li class="nav-item">
+          <a class="nav-link green-tab" routerLink="inventario" routerLinkActive="active"
+             (click)="onTabSelected('inventario')">
+            <i class="bi bi-clipboard-data"></i><span>Inventario</span>
+          </a>
+        </li>
       </ul>
 
       <router-outlet></router-outlet>
