@@ -1,4 +1,5 @@
 import { Component, effect, HostListener, inject } from '@angular/core';
+import Swal from 'sweetalert2';
 import {
   CellDoubleClickedEvent,
   ColDef,
@@ -75,6 +76,7 @@ export class PurchaseOrderComponent implements CanComponentDeactivate {
   idProject: number = null;
   idReference: number = null;
   private tempIdCounter: number = 0;
+  private isHandlingSentinel: boolean = false;
   idRequisition: number = null;
   private expandedRowId: string | null = null;
   private masterGridApi: GridApi;
@@ -223,7 +225,28 @@ export class PurchaseOrderComponent implements CanComponentDeactivate {
         });
       }
     },
-    onCellValueChanged: (event: any) => {
+    onCellValueChanged: async (event: any) => {
+      if (this.isHandlingSentinel) return;
+      const colId: string = event.column.getColId();
+      if (event.newValue === '__ADD_NEW__') {
+        this.isHandlingSentinel = true;
+        event.data[colId] = event.oldValue ?? null;
+        this.masterGridApi?.refreshCells({ rowNodes: [event.node], force: true });
+
+        let newId: number | null = null;
+        if (colId === 'idProvider')      newId = await this.openAddProveedorDialog();
+        else if (colId === 'idCurrency') newId = await this.openAddMonedaDialog();
+        else if (colId === 'idPayment')  newId = await this.openAddTipoPagoDialog();
+
+        if (newId) {
+          event.data[colId] = newId;
+          event.data.__modified = true;
+          this.masterNotSavedChanges = true;
+          this.masterGridApi?.refreshCells({ rowNodes: [event.node], force: true });
+        }
+        this.isHandlingSentinel = false;
+        return;
+      }
       event.data.__modified = true;
       this.masterNotSavedChanges = true;
       setTimeout(() => {
@@ -400,12 +423,11 @@ export class PurchaseOrderComponent implements CanComponentDeactivate {
         filter: true,
         width: 150,
         cellEditor: 'agSelectCellEditor',
-        cellEditorParams: {
-          values: this.proveedores
-            ? this.proveedores.map((item) => item.id)
-            : [],
-        },
+        cellEditorParams: () => ({
+          values: [...(this.proveedores ? this.proveedores.map((item) => item.id) : []), '__ADD_NEW__'],
+        }),
         valueFormatter: (params) => {
+          if (params.value === '__ADD_NEW__') return '+ Agregar Nuevo';
           const foundItem = this.proveedores
             ? this.proveedores.find((item) => item.id === params.value)
             : null;
@@ -418,10 +440,11 @@ export class PurchaseOrderComponent implements CanComponentDeactivate {
         editable: true,
         width: 150,
         cellEditor: 'agSelectCellEditor',
-        cellEditorParams: {
-          values: this.monedas ? this.monedas.map((item) => item.id) : [],
-        },
+        cellEditorParams: () => ({
+          values: [...(this.monedas ? this.monedas.map((item) => item.id) : []), '__ADD_NEW__'],
+        }),
         valueFormatter: (params) => {
+          if (params.value === '__ADD_NEW__') return '+ Agregar Nuevo';
           const foundItem = this.monedas
             ? this.monedas.find((item) => item.id === params.value)
             : null;
@@ -434,10 +457,11 @@ export class PurchaseOrderComponent implements CanComponentDeactivate {
         editable: true,
         width: 150,
         cellEditor: 'agSelectCellEditor',
-        cellEditorParams: {
-          values: this.tipoPago ? this.tipoPago.map((item) => item.id) : [],
-        },
+        cellEditorParams: () => ({
+          values: [...(this.tipoPago ? this.tipoPago.map((item) => item.id) : []), '__ADD_NEW__'],
+        }),
         valueFormatter: (params) => {
+          if (params.value === '__ADD_NEW__') return '+ Agregar Nuevo';
           const foundItem = this.tipoPago
             ? this.tipoPago.find((item) => item.id === params.value)
             : null;
@@ -835,6 +859,101 @@ export class PurchaseOrderComponent implements CanComponentDeactivate {
       },
       (error) => console.error('Error fetching payment types:', error)
     );
+  }
+
+  async openAddProveedorDialog(): Promise<number | null> {
+    const result = await Swal.fire({
+      title: 'Nuevo Proveedor',
+      html: `
+        <input id="prov-name" class="swal2-input" placeholder="Nombre del proveedor">
+        <input id="prov-rfc"  class="swal2-input" placeholder="RFC">
+      `,
+      showCancelButton: true,
+      confirmButtonText: 'Agregar',
+      cancelButtonText: 'Cancelar',
+      focusConfirm: false,
+      preConfirm: (): { name: string; rfc: string } | null => {
+        const name = (document.getElementById('prov-name') as HTMLInputElement).value.trim();
+        const rfc  = (document.getElementById('prov-rfc')  as HTMLInputElement).value.trim();
+        if (!name) { Swal.showValidationMessage('El nombre es requerido'); return null; }
+        return { name, rfc };
+      },
+    });
+    if (!result.isConfirmed || !result.value) return null;
+    try {
+      const created: any = await lastValueFrom(
+        this.providersService.addProvider({ name: result.value.name, rfc: result.value.rfc, idRoot: this.idRoot })
+      );
+      await new Promise<void>((resolve) =>
+        this.providersService.getProviders(this.idRoot).subscribe({
+          next: (data: any) => { this.proveedores = Array.isArray(data) ? data : []; resolve(); },
+          error: () => resolve(),
+        })
+      );
+      this.updateDetailContext();
+      return created?.id ?? null;
+    } catch {
+      alerts.basicAlert('Error', 'No se pudo agregar el proveedor.', 'error');
+      return null;
+    }
+  }
+
+  async openAddMonedaDialog(): Promise<number | null> {
+    const result = await Swal.fire({
+      title: 'Nueva Moneda',
+      input: 'text',
+      inputLabel: 'Descripción (ej. USD, EUR, MXN)',
+      inputPlaceholder: 'Descripción de la moneda',
+      showCancelButton: true,
+      confirmButtonText: 'Agregar',
+      cancelButtonText: 'Cancelar',
+      inputValidator: (value) => (!value?.trim() ? 'La descripción es requerida' : null),
+    });
+    if (!result.isConfirmed || !result.value) return null;
+    try {
+      const created: any = await lastValueFrom(
+        this.catalogsService.addCatalog({ description: result.value.trim(), type: 'Currency', idCompany: this.idRoot })
+      );
+      await new Promise<void>((resolve) =>
+        this.currencyService.getCurrencies(this.idRoot).subscribe({
+          next: (data: any) => { this.monedas = Array.isArray(data) ? data : []; resolve(); },
+          error: () => resolve(),
+        })
+      );
+      return created?.id ?? null;
+    } catch {
+      alerts.basicAlert('Error', 'No se pudo agregar la moneda.', 'error');
+      return null;
+    }
+  }
+
+  async openAddTipoPagoDialog(): Promise<number | null> {
+    const result = await Swal.fire({
+      title: 'Nueva Forma de Pago',
+      input: 'text',
+      inputLabel: 'Descripción',
+      inputPlaceholder: 'Ej: Transferencia, Cheque, Efectivo',
+      showCancelButton: true,
+      confirmButtonText: 'Agregar',
+      cancelButtonText: 'Cancelar',
+      inputValidator: (value) => (!value?.trim() ? 'La descripción es requerida' : null),
+    });
+    if (!result.isConfirmed || !result.value) return null;
+    try {
+      const created: any = await lastValueFrom(
+        this.catalogsService.addCatalog({ description: result.value.trim(), type: 'TYPECURRENCY', idCompany: this.idRoot })
+      );
+      await new Promise<void>((resolve) =>
+        this.currencyService.getPaymentTypes(this.idRoot).subscribe({
+          next: (data: any) => { this.tipoPago = Array.isArray(data) ? data : []; resolve(); },
+          error: () => resolve(),
+        })
+      );
+      return created?.id ?? null;
+    } catch {
+      alerts.basicAlert('Error', 'No se pudo agregar la forma de pago.', 'error');
+      return null;
+    }
   }
 
   onMasterSelectionChanged(event: any) {

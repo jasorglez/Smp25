@@ -86,7 +86,7 @@ export const environment = {
     // publicKey: 'TEST-4399133a-4676-42a2-ab85-d946370bf96a',
   },
 
-  version: '4.76 (09 Junio 2026) feat: modulo Inventario Almacenes con ajuste fisico',
+  version: '4.77 (09 Junio 2026) feat: Agregar Nuevo en combos Proveedor, Moneda, Forma de pago OC',
 };
 
 
