@@ -6,7 +6,8 @@ import { ColDef, GridApi, GridReadyEvent } from 'ag-grid-enterprise';
 import Swal from 'sweetalert2';
 import { SignalsService } from 'app/services/signals.service';
 import { InventarioWarehouseService } from 'app/services/inventario-warehouse.service';
-import { WarehousesService } from 'app/services/warehouses.service';
+import { PermitionsService } from 'app/services/permitions.service';
+import { TrackingService } from 'app/services/tracking.service';
 import { alerts } from 'app/helpers/alerts';
 
 @Component({
@@ -23,7 +24,7 @@ import { alerts } from 'app/helpers/alerts';
         <select class="form-select form-select-sm" style="min-width:180px; max-width:240px"
                 [(ngModel)]="selectedWarehouse">
           <option [value]="0">— Todos —</option>
-          <option *ngFor="let w of warehouses" [value]="w.id">{{ w.name }}</option>
+          <option *ngFor="let w of warehouses" [value]="w.idAlmacen">{{ w.nombreAlmacen || w.name }}</option>
         </select>
       </div>
 
@@ -81,7 +82,8 @@ import { alerts } from 'app/helpers/alerts';
 export class InventarioComponent {
   private signalsService     = inject(SignalsService);
   private inventarioService  = inject(InventarioWarehouseService);
-  private warehousesService  = inject(WarehousesService);
+  private permitionsService  = inject(PermitionsService);
+  private trackingService    = inject(TrackingService);
 
   rowData:           any[]   = [];
   warehouses:        any[]   = [];
@@ -182,12 +184,13 @@ export class InventarioComponent {
   onGridReady(e: GridReadyEvent) { this.gridApi = e.api; }
 
   loadWarehouses() {
-    if (!this.idCompany) return;
-    this.warehousesService.getSimpleWarehouses(this.idCompany).subscribe({
+    const email = this.trackingService.getEmail();
+    if (!email) return;
+    this.permitionsService.getPermisionswarehousexEmail(email).subscribe({
       next: (data: any[]) => {
         this.warehouses = Array.isArray(data) ? data : [];
         if (this.warehouses.length && !this.selectedWarehouse)
-          this.selectedWarehouse = this.warehouses[0].id;
+          this.selectedWarehouse = this.warehouses[0].idAlmacen;
       },
       error: () => {},
     });
