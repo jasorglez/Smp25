@@ -1,4 +1,4 @@
-import { Component, OnInit, inject, OnDestroy, HostListener } from '@angular/core';
+import { Component, OnInit, inject, OnDestroy, HostListener, ElementRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { AgGridModule } from 'ag-grid-angular';
@@ -40,17 +40,13 @@ import { lastValueFrom } from 'rxjs';
           <button class="btn btn-primary btn-sm me-2" (click)="addConcept()">
             <i class="bi bi-plus-lg"></i> Agregar
           </button>
-          <label class="btn btn-info btn-sm me-2 text-white mb-0 position-relative"
-            title="Crear concepto desde imagen de transferencia"
-            [style.pointer-events]="isParsingImage ? 'none' : 'auto'"
-            [class.disabled]="isParsingImage">
+          <button class="btn btn-info btn-sm me-2 text-white" data-comprobante-btn
+            [class.disabled]="isParsingImage"
+            title="Crear concepto desde imagen de transferencia">
             <span *ngIf="isParsingImage" class="spinner-border spinner-border-sm me-1"></span>
             <i *ngIf="!isParsingImage" class="bi bi-camera me-1"></i>
             {{ isParsingImage ? 'Analizando...' : 'Desde comprobante' }}
-            <input type="file" accept="image/*" [disabled]="isParsingImage"
-              style="position:absolute;top:0;left:0;width:100%;height:100%;opacity:0;cursor:pointer;font-size:0"
-              (change)="onFileComprobanteChange($event)">
-          </label>
+          </button>
           <button class="btn btn-warning btn-sm me-2" (click)="discardChanges()">
             <i class="bi bi-arrow-counterclockwise"></i> Deshacer
           </button>
@@ -196,6 +192,7 @@ export class DetallesExpenditureComponent implements OnInit, OnDestroy {
   private gridApi!: GridApi;
   private context: any;
   private sanitizer = inject(DomSanitizer);
+  private el       = inject(ElementRef);
   private signalsService = inject(SignalsService);
   // private providerModalService = inject(ProviderModalService); // Ya no needed
   private customersService = inject(CustomersService);
@@ -322,6 +319,8 @@ export class DetallesExpenditureComponent implements OnInit, OnDestroy {
       this.stopAutoRefresh();
       this.loadConceptsDataForReport();
     }
+
+    setTimeout(() => { this.setupComprobanteNative(); }, 300);
   }
 
   loadConceptsData() {
@@ -1737,27 +1736,50 @@ export class DetallesExpenditureComponent implements OnInit, OnDestroy {
 
   // ==================== COMPROBANTE CON GEMINI ====================
 
-  public onFileComprobanteChange(event: Event) {
-    const input = event.target as HTMLInputElement;
-    const file = input.files?.[0];
-    input.value = '';
-    if (!file) return;
-    console.log('📷 Archivo seleccionado:', file.name, file.size);
-    this.isParsingImage = true;
-    const safetyTimer = setTimeout(() => { this.isParsingImage = false; }, 30000);
-    this.administrationService.parseComprobante(file).subscribe({
-      next: (data: any) => {
-        clearTimeout(safetyTimer);
-        console.log('📷 Respuesta Gemini:', JSON.stringify(data));
-        this.isParsingImage = false;
-        this.addConceptFromComprobante(data);
-      },
-      error: (err: any) => {
-        clearTimeout(safetyTimer);
-        console.error('📷 ERROR HTTP:', err.status, err.message);
-        this.isParsingImage = false;
-        alerts.basicAlert('Error', 'No se pudo analizar el comprobante. Intenta de nuevo.', 'error');
-      }
+  public onFileComprobanteChange(_event: Event) {}
+
+  private setupComprobanteNative() {
+    const btn = this.el.nativeElement.querySelector('[data-comprobante-btn]') as HTMLElement;
+    if (!btn) { console.warn('📷 botón comprobante no encontrado'); return; }
+    console.log('📷 botón comprobante encontrado, adjuntando listener nativo');
+
+    btn.addEventListener('click', (e: MouseEvent) => {
+      e.stopPropagation();
+      if (this.isParsingImage) return;
+
+      const input = document.createElement('input');
+      input.type = 'file';
+      input.accept = 'image/*';
+      input.style.cssText = 'position:fixed;top:-200px;left:-200px;opacity:0';
+      document.body.appendChild(input);
+
+      input.addEventListener('change', () => {
+        const file = input.files?.[0];
+        if (document.body.contains(input)) document.body.removeChild(input);
+        if (!file) return;
+        console.log('📷 Archivo:', file.name, file.size);
+        this.isParsingImage = true;
+        const timer = setTimeout(() => { this.isParsingImage = false; }, 30000);
+        this.administrationService.parseComprobante(file).subscribe({
+          next: (data: any) => {
+            clearTimeout(timer);
+            console.log('📷 Gemini:', JSON.stringify(data));
+            this.isParsingImage = false;
+            this.addConceptFromComprobante(data);
+          },
+          error: (err: any) => {
+            clearTimeout(timer);
+            console.error('📷 ERROR:', err.status, err.message);
+            this.isParsingImage = false;
+            alerts.basicAlert('Error', 'No se pudo analizar el comprobante.', 'error');
+          }
+        });
+      });
+
+      input.click();
+      setTimeout(() => {
+        if (document.body.contains(input)) document.body.removeChild(input);
+      }, 60000);
     });
   }
 
