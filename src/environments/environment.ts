@@ -85,7 +85,7 @@ export const environment = {
     // publicKey: 'TEST-4399133a-4676-42a2-ab85-d946370bf96a',
   },
 
-  version: '4.65 (08 Junio 2026) fix(expenditure): safety timer reset isParsingImage',
+  version: '4.66 (08 Junio 2026) fix(expenditure): label overlay evita user activation block',
 };
 
 
