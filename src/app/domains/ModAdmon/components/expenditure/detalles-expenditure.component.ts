@@ -41,11 +41,11 @@ import { lastValueFrom } from 'rxjs';
           <button class="btn btn-primary btn-sm me-2" (click)="addConcept()">
             <i class="bi bi-plus-lg"></i> Agregar
           </button>
-          <button class="btn btn-info btn-sm me-2 text-white" (click)="abrirDialogoComprobante()"
-            [disabled]="isParsingImage" title="Crear concepto desde imagen de transferencia">
+          <button class="btn btn-info btn-sm me-2 text-white" (click)="pegarComprobante()"
+            [disabled]="isParsingImage" title="Pega la imagen del comprobante (Ctrl+C primero)">
             <span *ngIf="isParsingImage" class="spinner-border spinner-border-sm me-1"></span>
-            <i *ngIf="!isParsingImage" class="bi bi-camera me-1"></i>
-            {{ isParsingImage ? 'Analizando...' : 'Desde comprobante' }}
+            <i *ngIf="!isParsingImage" class="bi bi-clipboard-image me-1"></i>
+            {{ isParsingImage ? 'Analizando...' : 'Pegar comprobante' }}
           </button>
           <button class="btn btn-warning btn-sm me-2" (click)="discardChanges()">
             <i class="bi bi-arrow-counterclockwise"></i> Deshacer
@@ -1733,34 +1733,22 @@ export class DetallesExpenditureComponent implements OnInit, OnDestroy {
     return expense ? expense.description : 'Sin descripción';
   }
 
-  // ==================== COMPROBANTE CON GEMINI ====================
+  // ==================== COMPROBANTE CON GEMINI (PORTAPAPELES) ====================
 
-  public abrirDialogoComprobante() {
-    let archivoSeleccionado: File | null = null;
-
-    Swal.fire({
-      title: '📷 Seleccionar comprobante',
-      html: `<input type="file" id="swal-comprobante" accept="image/*" class="form-control mt-2">`,
-      showCancelButton: true,
-      confirmButtonText: 'Analizar',
-      cancelButtonText: 'Cancelar',
-      didOpen: () => {
-        const inp = document.getElementById('swal-comprobante') as HTMLInputElement;
-        if (inp) {
-          inp.addEventListener('change', () => {
-            archivoSeleccionado = inp.files?.[0] || null;
-            console.log('📷 Archivo en Swal:', archivoSeleccionado?.name);
-          });
-        }
-      },
-      preConfirm: () => {
-        if (!archivoSeleccionado) { Swal.showValidationMessage('Selecciona una imagen primero'); return false; }
-        return archivoSeleccionado;
+  public async pegarComprobante() {
+    try {
+      const items = await navigator.clipboard.read();
+      let blob: Blob | null = null;
+      for (const item of items) {
+        const imageType = item.types.find(t => t.startsWith('image/'));
+        if (imageType) { blob = await item.getType(imageType); break; }
       }
-    }).then(result => {
-      console.log('📷 Swal result:', result.isConfirmed, result.value);
-      if (!result.isConfirmed || !result.value) return;
-      const file = result.value as File;
+      if (!blob) {
+        alerts.basicAlert('Sin imagen', 'No hay imagen en el portapapeles. Copia la imagen del comprobante primero (clic derecho → Copiar imagen)', 'info');
+        return;
+      }
+      const file = new File([blob], 'comprobante.png', { type: blob.type });
+      console.log('📷 Imagen del portapapeles:', file.size, file.type);
       this.isParsingImage = true;
       const timer = setTimeout(() => { this.isParsingImage = false; }, 30000);
       this.administrationService.parseComprobante(file).subscribe({
@@ -1777,7 +1765,9 @@ export class DetallesExpenditureComponent implements OnInit, OnDestroy {
           alerts.basicAlert('Error', 'No se pudo analizar el comprobante.', 'error');
         }
       });
-    });
+    } catch {
+      alerts.basicAlert('Permiso denegado', 'Permite el acceso al portapapeles cuando el navegador lo solicite', 'warning');
+    }
   }
 
   private addConceptFromComprobante(data: any) {
