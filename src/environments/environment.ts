@@ -51,6 +51,7 @@ export const environment = {
   urlMantenimiento: 'https://endpoints.biapp.com.mx/maintenance/api',
 
   root: 'root@bi2.mx',
+  demo: { email: 'demo@bi2.mx', password: '123456' },
 
   //  urlAzure    : 'https://localhost:7089/',
 
@@ -85,7 +86,7 @@ export const environment = {
     // publicKey: 'TEST-4399133a-4676-42a2-ab85-d946370bf96a',
   },
 
-  version: '4.74 (09 Junio 2026) feat(expenditure): pregunta proveedor/empleado y busca nombre OCR',
+  version: '4.75 (09 Junio 2026) feat: auto-login demo via /demo con banner modo demo',
 };
 
 
