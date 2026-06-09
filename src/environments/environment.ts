@@ -85,7 +85,7 @@ export const environment = {
     // publicKey: 'TEST-4399133a-4676-42a2-ab85-d946370bf96a',
   },
 
-  version: '4.71 (08 Junio 2026) feat(expenditure): comprobante via portapapeles clipboard API',
+  version: '4.74 (09 Junio 2026) feat(expenditure): pregunta proveedor/empleado y busca nombre OCR',
 };
 
 
