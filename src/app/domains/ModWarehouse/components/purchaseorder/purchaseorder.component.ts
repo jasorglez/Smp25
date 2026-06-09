@@ -19,6 +19,7 @@ import { OcAndReqsService } from 'app/services/ocandreqs.service';
 import { ProvidersService } from 'app/services/providers.service';
 import { DepartmentsService } from 'app/services/departments.service';
 import { CurrencyService } from 'app/services/currency.service';
+import { CustomersService } from 'app/services/customers.service';
 import { SignalsService } from 'app/services/signals.service';
 import { ModalService } from 'app/services/modal.service';
 import { ReceiptsService } from 'app/services/receipts.service';
@@ -63,6 +64,7 @@ export class PurchaseOrderComponent implements CanComponentDeactivate {
   private receiptsService = inject(ReceiptsService);
   private usersService = inject(UsersService);
   private materialsService = inject(MaterialsService);
+  private customersService = inject(CustomersService);
   private setupService = inject(SetupService);
   private prefixSetupService = inject(PrefixSetupService);
   private notificationsService = inject(NotificationsTelegramService);
@@ -76,7 +78,6 @@ export class PurchaseOrderComponent implements CanComponentDeactivate {
   idProject: number = null;
   idReference: number = null;
   private tempIdCounter: number = 0;
-  private isHandlingSentinel: boolean = false;
   idRequisition: number = null;
   private expandedRowId: string | null = null;
   private masterGridApi: GridApi;
@@ -225,28 +226,8 @@ export class PurchaseOrderComponent implements CanComponentDeactivate {
         });
       }
     },
-    onCellValueChanged: async (event: any) => {
-      if (this.isHandlingSentinel) return;
-      const colId: string = event.column.getColId();
-      if (event.newValue === '__ADD_NEW__') {
-        this.isHandlingSentinel = true;
-        event.data[colId] = event.oldValue ?? null;
-        this.masterGridApi?.refreshCells({ rowNodes: [event.node], force: true });
-
-        let newId: number | null = null;
-        if (colId === 'idProvider')      newId = await this.openAddProveedorDialog();
-        else if (colId === 'idCurrency') newId = await this.openAddMonedaDialog();
-        else if (colId === 'idPayment')  newId = await this.openAddTipoPagoDialog();
-
-        if (newId) {
-          event.data[colId] = newId;
-          event.data.__modified = true;
-          this.masterNotSavedChanges = true;
-          this.masterGridApi?.refreshCells({ rowNodes: [event.node], force: true });
-        }
-        this.isHandlingSentinel = false;
-        return;
-      }
+    onCellValueChanged: (event: any) => {
+      if (event.newValue === '__ADD_NEW__') return;
       event.data.__modified = true;
       this.masterNotSavedChanges = true;
       setTimeout(() => {
@@ -798,21 +779,19 @@ export class PurchaseOrderComponent implements CanComponentDeactivate {
   }
 
   obtenerProveedores() {
-    // Si los proveedores ya están cargados, no recargar
     if (this.proveedores && this.proveedores.length > 0) {
       console.log('⚠️ Proveedores ya cargados, no se vuelven a cargar');
       return;
     }
-
-    this.providersService.getProviders(this.idRoot).subscribe(
-      (data: any) => {
-        this.proveedores = data;
+    this.materialsService.getProvidersxmaterials(this.idRoot).subscribe({
+      next: (data: any) => {
+        const arr = Array.isArray(data) ? data : [];
+        this.proveedores = arr.map((p: any) => ({ id: p.id, name: p.company || p.namecontact || '' }));
         console.log('✅ Proveedores cargados:', this.proveedores.length);
-        // Actualizar el context después de cargar proveedores
         this.updateDetailContext();
       },
-      (error) => console.error('Error fetching requisitions:', error)
-    );
+      error: (err) => console.error('Error fetching providers:', err),
+    });
   }
 
   obtenerUsuarios() {
@@ -861,12 +840,19 @@ export class PurchaseOrderComponent implements CanComponentDeactivate {
     );
   }
 
+  private async handleSentinel(colId: string): Promise<number | null> {
+    if (colId === 'idProvider')      return this.openAddProveedorDialog();
+    if (colId === 'idCurrency')      return this.openAddMonedaDialog();
+    if (colId === 'idPayment')       return this.openAddTipoPagoDialog();
+    return null;
+  }
+
   async openAddProveedorDialog(): Promise<number | null> {
     const result = await Swal.fire({
       title: 'Nuevo Proveedor',
       html: `
-        <input id="prov-name" class="swal2-input" placeholder="Nombre del proveedor">
-        <input id="prov-rfc"  class="swal2-input" placeholder="RFC">
+        <input id="prov-name" class="swal2-input" placeholder="Nombre / Empresa">
+        <input id="prov-rfc"  class="swal2-input" placeholder="RFC (opcional)">
       `,
       showCancelButton: true,
       confirmButtonText: 'Agregar',
@@ -882,11 +868,23 @@ export class PurchaseOrderComponent implements CanComponentDeactivate {
     if (!result.isConfirmed || !result.value) return null;
     try {
       const created: any = await lastValueFrom(
-        this.providersService.addProvider({ name: result.value.name, rfc: result.value.rfc, idRoot: this.idRoot })
+        this.customersService.addCustomer({
+          namecontact: result.value.name,
+          company:     result.value.name,
+          rfc:         result.value.rfc || 'SIN RFC',
+          id_root:     this.idRoot,
+          type:        'PROVIDERS',
+          active:      true,
+          vigente:     true,
+        })
       );
       await new Promise<void>((resolve) =>
-        this.providersService.getProviders(this.idRoot).subscribe({
-          next: (data: any) => { this.proveedores = Array.isArray(data) ? data : []; resolve(); },
+        this.materialsService.getProvidersxmaterials(this.idRoot).subscribe({
+          next: (data: any) => {
+            const arr = Array.isArray(data) ? data : [];
+            this.proveedores = arr.map((p: any) => ({ id: p.id, name: p.company || p.namecontact || '' }));
+            resolve();
+          },
           error: () => resolve(),
         })
       );
@@ -983,6 +981,22 @@ export class PurchaseOrderComponent implements CanComponentDeactivate {
   }
 
   onMasterCellValueChanged(event: any) {
+    const colId = event.column.getColId();
+    if (event.newValue === '__ADD_NEW__') {
+      const node = event.node;
+      node.data[colId] = event.oldValue ?? null;
+      this.masterGridApi?.refreshCells({ rowNodes: [node], force: true });
+      this.handleSentinel(colId).then(newId => {
+        if (newId) {
+          node.data[colId] = newId;
+          node.data.__modified = true;
+          this.masterNotSavedChanges = true;
+          this.masterGridApi?.refreshCells({ rowNodes: [node], force: true });
+        }
+      });
+      return;
+    }
+
     const updatedData = { ...event.data };
 
     // Preservar el estado temporal y la selección
