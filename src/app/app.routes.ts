@@ -318,6 +318,13 @@ export const routes: Routes = [
                 './domains/ModWarehouse/components/configwarehouse/configwarehouse.component'
               ).then((c) => c.ConfigwarehouseComponent),
           },
+          {
+            path: 'inventario',
+            loadComponent: () =>
+              import(
+                './domains/Almacenes/components/inventario/inventario.component'
+              ).then((m) => m.InventarioComponent),
+          },
         ],
       },
       {

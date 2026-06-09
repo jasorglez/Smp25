@@ -65,6 +65,15 @@ export class ProcalmacenesComponent {
         this.trackingService.getEmail()
       );
     }
+
+    if (tabName === 'inventario') {
+      this.trackingService.addLog(
+        this.trackingService.getnameComp(),
+        'Click en la Pestaña Inventario',
+        'Almacenes',
+        this.trackingService.getEmail()
+      );
+    }
   }
 
 
