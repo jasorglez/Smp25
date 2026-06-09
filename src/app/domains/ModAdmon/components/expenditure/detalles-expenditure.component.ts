@@ -1750,7 +1750,8 @@ export class DetallesExpenditureComponent implements OnInit, OnDestroy {
 
   private addConceptFromComprobante(data: any) {
     const tempId = `temp_concept_${this.tempIdCounter++}`;
-    const monto  = Number(data?.monto || 0);
+    const rawMonto = String(data?.monto ?? '0').replace(/[^0-9.]/g, '');
+    const monto    = parseFloat(rawMonto) || 0;
     const newConcept = {
       id:              tempId,
       idIncorExp:      this.params.data.id,
