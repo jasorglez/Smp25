@@ -1732,7 +1732,7 @@ export class DetallesExpenditureComponent implements OnInit, OnDestroy {
 
   // ==================== COMPROBANTE CON GEMINI ====================
 
-  openComprobantePicker() {
+  public openComprobantePicker() {
     if (!this._fileInputComprobante) {
       const input = document.createElement('input');
       input.type = 'file';
