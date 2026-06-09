@@ -783,7 +783,7 @@ export class PurchaseOrderComponent implements CanComponentDeactivate {
       console.log('⚠️ Proveedores ya cargados, no se vuelven a cargar');
       return;
     }
-    this.materialsService.getProvidersxmaterials(this.idRoot).subscribe({
+    this.customersService.getCustomersByCompany(this.idRoot, 'PROVIDERS').subscribe({
       next: (data: any) => {
         const arr = Array.isArray(data) ? data : [];
         this.proveedores = arr.map((p: any) => ({ id: p.id, name: p.company || p.namecontact || '' }));
@@ -857,6 +857,7 @@ export class PurchaseOrderComponent implements CanComponentDeactivate {
       showCancelButton: true,
       confirmButtonText: 'Agregar',
       cancelButtonText: 'Cancelar',
+      allowOutsideClick: false,
       focusConfirm: false,
       preConfirm: (): { name: string; rfc: string } | null => {
         const name = (document.getElementById('prov-name') as HTMLInputElement).value.trim();
@@ -879,7 +880,7 @@ export class PurchaseOrderComponent implements CanComponentDeactivate {
         })
       );
       await new Promise<void>((resolve) =>
-        this.materialsService.getProvidersxmaterials(this.idRoot).subscribe({
+        this.customersService.getCustomersByCompany(this.idRoot, 'PROVIDERS').subscribe({
           next: (data: any) => {
             const arr = Array.isArray(data) ? data : [];
             this.proveedores = arr.map((p: any) => ({ id: p.id, name: p.company || p.namecontact || '' }));
@@ -905,6 +906,7 @@ export class PurchaseOrderComponent implements CanComponentDeactivate {
       showCancelButton: true,
       confirmButtonText: 'Agregar',
       cancelButtonText: 'Cancelar',
+      allowOutsideClick: false,
       inputValidator: (value) => (!value?.trim() ? 'La descripción es requerida' : null),
     });
     if (!result.isConfirmed || !result.value) return null;
@@ -934,6 +936,7 @@ export class PurchaseOrderComponent implements CanComponentDeactivate {
       showCancelButton: true,
       confirmButtonText: 'Agregar',
       cancelButtonText: 'Cancelar',
+      allowOutsideClick: false,
       inputValidator: (value) => (!value?.trim() ? 'La descripción es requerida' : null),
     });
     if (!result.isConfirmed || !result.value) return null;
@@ -986,14 +989,16 @@ export class PurchaseOrderComponent implements CanComponentDeactivate {
       const node = event.node;
       node.data[colId] = event.oldValue ?? null;
       this.masterGridApi?.refreshCells({ rowNodes: [node], force: true });
-      this.handleSentinel(colId).then(newId => {
-        if (newId) {
-          node.data[colId] = newId;
-          node.data.__modified = true;
-          this.masterNotSavedChanges = true;
-          this.masterGridApi?.refreshCells({ rowNodes: [node], force: true });
-        }
-      });
+      setTimeout(() => {
+        this.handleSentinel(colId).then(newId => {
+          if (newId) {
+            node.data[colId] = newId;
+            node.data.__modified = true;
+            this.masterNotSavedChanges = true;
+            this.masterGridApi?.refreshCells({ rowNodes: [node], force: true });
+          }
+        });
+      }, 150);
       return;
     }
 
