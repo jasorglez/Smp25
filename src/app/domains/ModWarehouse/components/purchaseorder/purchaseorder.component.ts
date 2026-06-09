@@ -1,4 +1,4 @@
-import { Component, effect, HostListener, inject } from '@angular/core';
+import { Component, effect, HostListener, inject, NgZone } from '@angular/core';
 import Swal from 'sweetalert2';
 import {
   CellDoubleClickedEvent,
@@ -65,6 +65,7 @@ export class PurchaseOrderComponent implements CanComponentDeactivate {
   private usersService = inject(UsersService);
   private materialsService = inject(MaterialsService);
   private customersService = inject(CustomersService);
+  private ngZone = inject(NgZone);
   private setupService = inject(SetupService);
   private prefixSetupService = inject(PrefixSetupService);
   private notificationsService = inject(NotificationsTelegramService);
@@ -823,21 +824,17 @@ export class PurchaseOrderComponent implements CanComponentDeactivate {
   }
 
   obtenerMonedas() {
-    this.currencyService.getCurrencies(this.idRoot).subscribe(
-      (data: Catalog[]) => {
-        this.monedas = data;
-      },
-      (error) => console.error('Error fetching currencies:', error)
-    );
+    this.currencyService.getCurrencies(this.idRoot).subscribe({
+      next: (data: any) => { this.monedas = Array.isArray(data) ? data : []; },
+      error: () => { this.monedas = []; },
+    });
   }
 
   obtenerTipoPago() {
-    this.currencyService.getPaymentTypes(this.idRoot).subscribe(
-      (data: Catalog[]) => {
-        this.tipoPago = data;
-      },
-      (error) => console.error('Error fetching payment types:', error)
-    );
+    this.currencyService.getPaymentTypes(this.idRoot).subscribe({
+      next: (data: any) => { this.tipoPago = Array.isArray(data) ? data : []; },
+      error: () => { this.tipoPago = []; },
+    });
   }
 
   private async handleSentinel(colId: string): Promise<number | null> {
@@ -900,19 +897,23 @@ export class PurchaseOrderComponent implements CanComponentDeactivate {
   async openAddMonedaDialog(): Promise<number | null> {
     const result = await Swal.fire({
       title: 'Nueva Moneda',
-      input: 'text',
-      inputLabel: 'Descripción (ej. USD, EUR, MXN)',
-      inputPlaceholder: 'Descripción de la moneda',
+      html: `<input id="moneda-desc" class="swal2-input" placeholder="Ej: USD, EUR, MXN">`,
       showCancelButton: true,
       confirmButtonText: 'Agregar',
       cancelButtonText: 'Cancelar',
       allowOutsideClick: false,
-      inputValidator: (value) => (!value?.trim() ? 'La descripción es requerida' : null),
+      focusConfirm: false,
+      didOpen: () => { document.getElementById('moneda-desc')?.focus(); },
+      preConfirm: (): string | null => {
+        const val = (document.getElementById('moneda-desc') as HTMLInputElement).value.trim();
+        if (!val) { Swal.showValidationMessage('La descripción es requerida'); return null; }
+        return val;
+      },
     });
     if (!result.isConfirmed || !result.value) return null;
     try {
       const created: any = await lastValueFrom(
-        this.catalogsService.addCatalog({ description: result.value.trim(), type: 'Currency', idCompany: this.idRoot })
+        this.catalogsService.addCatalog({ description: result.value, type: 'Currency', idCompany: this.idRoot })
       );
       await new Promise<void>((resolve) =>
         this.currencyService.getCurrencies(this.idRoot).subscribe({
@@ -930,19 +931,23 @@ export class PurchaseOrderComponent implements CanComponentDeactivate {
   async openAddTipoPagoDialog(): Promise<number | null> {
     const result = await Swal.fire({
       title: 'Nueva Forma de Pago',
-      input: 'text',
-      inputLabel: 'Descripción',
-      inputPlaceholder: 'Ej: Transferencia, Cheque, Efectivo',
+      html: `<input id="pago-desc" class="swal2-input" placeholder="Ej: Transferencia, Cheque, Efectivo">`,
       showCancelButton: true,
       confirmButtonText: 'Agregar',
       cancelButtonText: 'Cancelar',
       allowOutsideClick: false,
-      inputValidator: (value) => (!value?.trim() ? 'La descripción es requerida' : null),
+      focusConfirm: false,
+      didOpen: () => { document.getElementById('pago-desc')?.focus(); },
+      preConfirm: (): string | null => {
+        const val = (document.getElementById('pago-desc') as HTMLInputElement).value.trim();
+        if (!val) { Swal.showValidationMessage('La descripción es requerida'); return null; }
+        return val;
+      },
     });
     if (!result.isConfirmed || !result.value) return null;
     try {
       const created: any = await lastValueFrom(
-        this.catalogsService.addCatalog({ description: result.value.trim(), type: 'TYPECURRENCY', idCompany: this.idRoot })
+        this.catalogsService.addCatalog({ description: result.value, type: 'TYPECURRENCY', idCompany: this.idRoot })
       );
       await new Promise<void>((resolve) =>
         this.currencyService.getPaymentTypes(this.idRoot).subscribe({
@@ -990,15 +995,17 @@ export class PurchaseOrderComponent implements CanComponentDeactivate {
       node.data[colId] = event.oldValue ?? null;
       this.masterGridApi?.refreshCells({ rowNodes: [node], force: true });
       setTimeout(() => {
-        this.handleSentinel(colId).then(newId => {
-          if (newId) {
-            node.data[colId] = newId;
-            node.data.__modified = true;
-            this.masterNotSavedChanges = true;
-            this.masterGridApi?.refreshCells({ rowNodes: [node], force: true });
-          }
+        this.ngZone.run(() => {
+          this.handleSentinel(colId).then(newId => {
+            if (newId) {
+              node.data[colId] = newId;
+              node.data.__modified = true;
+              this.masterNotSavedChanges = true;
+              this.masterGridApi?.refreshCells({ rowNodes: [node], force: true });
+            }
+          });
         });
-      }, 150);
+      }, 300);
       return;
     }
 
