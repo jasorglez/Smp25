@@ -1731,17 +1731,22 @@ export class DetallesExpenditureComponent implements OnInit, OnDestroy {
   // ==================== COMPROBANTE CON GEMINI ====================
 
   onComprobanteSelected(event: any) {
+    console.log('📷 [1] onComprobanteSelected called', event.target.files);
     const file = event.target.files?.[0];
-    if (!file) return;
+    if (!file) { console.log('📷 [1] No file selected'); return; }
+    console.log('📷 [2] File:', file.name, file.size, file.type);
     event.target.value = '';
 
     this.isParsingImage = true;
+    console.log('📷 [3] Calling parseComprobante...');
     this.administrationService.parseComprobante(file).subscribe({
       next: (data: any) => {
+        console.log('📷 [4] Gemini response:', JSON.stringify(data));
         this.isParsingImage = false;
         this.addConceptFromComprobante(data);
       },
-      error: () => {
+      error: (err: any) => {
+        console.error('📷 [ERROR] parseComprobante failed:', err.status, err.message, err);
         this.isParsingImage = false;
         alerts.basicAlert('Error', 'No se pudo analizar el comprobante. Intenta de nuevo.', 'error');
       }
