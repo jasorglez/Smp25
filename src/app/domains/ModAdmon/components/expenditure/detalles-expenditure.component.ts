@@ -1745,16 +1745,18 @@ export class DetallesExpenditureComponent implements OnInit, OnDestroy {
         console.log('📷 [3] change event fired, files:', input.files?.length);
         const file = input.files?.[0];
         input.value = '';
-        if (!file) return;
+        if (!file) { this.isParsingImage = false; return; }
         console.log('📷 [4] Enviando a Gemini:', file.name, file.size);
-        this.isParsingImage = true;
+        const safetyTimer = setTimeout(() => { this.isParsingImage = false; }, 30000);
         this.administrationService.parseComprobante(file).subscribe({
           next: (data: any) => {
+            clearTimeout(safetyTimer);
             console.log('📷 [5] Respuesta Gemini:', JSON.stringify(data));
             this.isParsingImage = false;
             this.addConceptFromComprobante(data);
           },
           error: (err: any) => {
+            clearTimeout(safetyTimer);
             console.error('📷 [ERROR]', err.status, err.message, err);
             this.isParsingImage = false;
             alerts.basicAlert('Error', 'No se pudo analizar el comprobante. Intenta de nuevo.', 'error');
