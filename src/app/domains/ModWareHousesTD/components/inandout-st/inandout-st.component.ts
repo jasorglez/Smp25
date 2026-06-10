@@ -17,7 +17,7 @@ import { DetailCellRendererEntryItemsComponent } from './detail-cell-renderer-en
 import { alerts } from 'app/helpers/alerts';
 import { ButtonCellRendererComponent } from './button-cell-renderer.component';
 import { PdfButtonCellRendererComponent } from '../../../ModAdmon/components/egresos-palacio/pdf-button-cell-renderer.component';
-import { lastValueFrom } from 'rxjs';
+import { catchError, forkJoin, lastValueFrom, of } from 'rxjs';
 import { ActivatedRoute } from '@angular/router';
 import { UsersService } from 'app/services/users.service';
 
@@ -85,6 +85,9 @@ export class InandoutStComponent implements OnInit {
 
     effect(() => {
       this.idBranch = this.signalsService.getBranchSelectedBySidebar()();
+      if (this.idBranch) {
+        this.loadOcList();
+      }
     });
 
     effect(() => {
@@ -164,16 +167,27 @@ export class InandoutStComponent implements OnInit {
   }
 
   loadOcList() {
-    if (!this.projectId) return;
-    this.ocService.getOcAndReqs('project', this.projectId, 'OC').subscribe({
-      next: (data: any) => {
-        this.ocList = Array.isArray(data) ? data : [];
+    const calls: any[] = [];
+    if (this.idBranch) {
+      calls.push(this.ocService.getOcAndReqs('branch', this.idBranch, 'OC').pipe(catchError(() => of([]))));
+    }
+    if (this.projectId) {
+      calls.push(this.ocService.getOcAndReqs('project', this.projectId, 'OC').pipe(catchError(() => of([]))));
+    }
+    if (calls.length === 0) return;
+
+    forkJoin(calls).subscribe({
+      next: (results: any[]) => {
+        const combined: any[] = (results as any[][]).flat();
+        const seen = new Set<number>();
+        this.ocList = combined.filter((oc: any) => {
+          if (!oc?.id || seen.has(oc.id)) return false;
+          seen.add(oc.id);
+          return true;
+        });
         this.refreshColumns();
       },
-      error: (error) => {
-        if (error?.status !== 404) console.error('Error loading OC list:', error);
-        this.ocList = [];
-      }
+      error: () => { this.ocList = []; }
     });
   }
 
@@ -355,11 +369,16 @@ export class InandoutStComponent implements OnInit {
         editable: true,
         cellEditor: 'agSelectCellEditor',
         cellEditorParams: () => ({
-          values: this.projectList.map(p => p.id)
+          values: this.projectList.map(p => p.description || p.name || `#${p.id}`)
         }),
         valueFormatter: (params: any) => {
           const proj = this.projectList.find(p => p.id === params.value);
           return proj ? (proj.description || proj.name || `#${params.value}`) : (params.value || '');
+        },
+        valueSetter: (params: any) => {
+          const proj = this.projectList.find(p => (p.description || p.name) === params.newValue);
+          if (proj) { params.data.idProject = proj.id; return true; }
+          return false;
         }
       },
       {
@@ -369,11 +388,16 @@ export class InandoutStComponent implements OnInit {
         editable: true,
         cellEditor: 'agSelectCellEditor',
         cellEditorParams: () => ({
-          values: this.warehouses.map(wh => wh.idAlmacen)
+          values: this.warehouses.map(wh => wh.name)
         }),
         valueFormatter: (params: any) => {
           const wh = this.warehouses.find(w => w.idAlmacen === params.value);
           return wh ? wh.name : (params.value || '');
+        },
+        valueSetter: (params: any) => {
+          const wh = this.warehouses.find(w => w.name === params.newValue);
+          if (wh) { params.data.idWarehouse = wh.idAlmacen; return true; }
+          return false;
         }
       },
       {
@@ -383,42 +407,61 @@ export class InandoutStComponent implements OnInit {
         editable: true,
         cellEditor: 'agSelectCellEditor',
         cellEditorParams: () => ({
-          values: [...this.catalogs.map(c => c.id), '__ADD_NEW__']
+          values: [...this.catalogs.map(c => c.description), '+ Agregar Registro']
         }),
         valueFormatter: (params: any) => {
-          if (params.value === '__ADD_NEW__') return '+ Agregar Registro';
           const cat = this.catalogs.find(c => c.id === params.value);
           return cat ? cat.description : (params.value || '');
+        },
+        valueSetter: (params: any) => {
+          if (params.newValue === '+ Agregar Registro') return false; // manejado en cellEditingStopped
+          const cat = this.catalogs.find(c => c.description === params.newValue);
+          if (cat) { params.data.idType = cat.id; return true; }
+          return false;
         }
       },
       {
         field: 'idOt',
         headerName: 'OT',
-        width: 130,
+        width: 160,
         editable: true,
         cellEditor: 'agSelectCellEditor',
         cellEditorParams: () => ({
-          values: [0, ...this.otList.map(ot => ot.id)]
+          values: ['(Sin OT)', ...this.otList.map(ot => ot.description || ot.folio || ot.num || `OT #${ot.id}`)]
         }),
         valueFormatter: (params: any) => {
           if (!params.value) return '(Sin OT)';
           const ot = this.otList.find(o => o.id === params.value);
-          return ot ? (ot.description || `OT #${ot.id}`) : params.value;
+          return ot ? (ot.description || ot.folio || ot.num || `OT #${ot.id}`) : `OT #${params.value}`;
+        },
+        valueSetter: (params: any) => {
+          if (params.newValue === '(Sin OT)') { params.data.idOt = null; return true; }
+          const ot = this.otList.find(o =>
+            (o.description || o.folio || o.num || `OT #${o.id}`) === params.newValue
+          );
+          if (ot) { params.data.idOt = ot.id; return true; }
+          return false;
         }
       },
       {
         field: 'idOc',
         headerName: 'Orden de Compra',
-        width: 150,
+        width: 160,
         editable: true,
         cellEditor: 'agSelectCellEditor',
         cellEditorParams: () => ({
-          values: [0, ...this.ocList.map(oc => oc.id)]
+          values: ['(Sin OC)', ...this.ocList.map(oc => oc.folio || `OC #${oc.id}`)]
         }),
         valueFormatter: (params: any) => {
           if (!params.value || params.value === 0) return '(Sin OC)';
           const oc = this.ocList.find(o => o.id === params.value);
-          return oc ? (oc.folio || `OC #${oc.id}`) : params.value;
+          return oc ? (oc.folio || `OC #${oc.id}`) : `OC #${params.value}`;
+        },
+        valueSetter: (params: any) => {
+          if (params.newValue === '(Sin OC)') { params.data.idOc = 0; return true; }
+          const oc = this.ocList.find(o => (o.folio || `OC #${o.id}`) === params.newValue);
+          if (oc) { params.data.idOc = oc.id; return true; }
+          return false;
         }
       },
       {
@@ -654,7 +697,7 @@ export class InandoutStComponent implements OnInit {
 
   onCellEditingStopped(event: any): void {
     // Sentinel para Tipo de Movimiento en el grid
-    if (event.colDef.field === 'idType' && event.newValue === '__ADD_NEW__') {
+    if (event.colDef.field === 'idType' && event.newValue === '+ Agregar Registro') {
       event.node.data.idType = event.oldValue ?? null;
       this.gridApi.refreshCells({ rowNodes: [event.node], force: true });
       this.openAddTipoDialogForNode(event.node);
