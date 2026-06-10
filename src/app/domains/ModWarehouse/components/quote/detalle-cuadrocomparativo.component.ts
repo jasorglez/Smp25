@@ -240,24 +240,40 @@ export class DetalleCuadroComparativoComponent implements ICellRendererAngularCo
   // ==================== PDF ====================
 
   async generatePdf(): Promise<void> {
+    try {
+      await this._buildAndOpenPdf();
+    } catch (err) {
+      console.error('[PDF] Error generando reporte:', err);
+      alert('Error al generar PDF. Revisa la consola para detalles.');
+    }
+  }
+
+  private async _buildAndOpenPdf(): Promise<void> {
     const q      = this.quoteRow;
     const idRoot = q._idRoot;
     const depts  = q._departamentos ?? [];
     const reqs   = q._requisiciones ?? [];
 
-    // Datos empresa
+    // ── Datos empresa ──
     let rootData: any = {};
     try {
       rootData = await lastValueFrom(this.rootService.getRootbyId(idRoot));
-    } catch { /* sin datos empresa */ }
+    } catch { /* empresa no disponible */ }
 
-    // Logos — convertImageToBase64 resuelve siempre (fallback interno si falla)
-    const logoB64  = await this.b64Service.convertImageToBase64(rootData?.picture  ?? '');
-    const logo2B64 = rootData?.picture2
+    // ── Logos (convertImageToBase64 siempre resuelve con fallback interno) ──
+    let logoB64:  string;
+    let logo2B64: string;
+    if (rootData?.picture) {
+      logoB64 = await this.b64Service.convertImageToBase64(rootData.picture);
+    } else {
+      // 1×1 px PNG transparente como placeholder
+      logoB64 = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==';
+    }
+    logo2B64 = rootData?.picture2
       ? await this.b64Service.convertImageToBase64(rootData.picture2)
-      : logoB64;   // fallback al logo principal si no hay logo2
+      : logoB64;
 
-    const companyName  = rootData?.name    ?? rootData?.company ?? 'Empresa';
+    const companyName  = rootData?.name    ?? rootData?.company ?? '';
     const companyRfc   = rootData?.rfc     ?? '';
     const companyAddr  = rootData?.address ?? rootData?.city ?? '';
     const companyTel   = rootData?.phone   ?? rootData?.tel ?? '';
@@ -267,57 +283,48 @@ export class DetalleCuadroComparativoComponent implements ICellRendererAngularCo
     const reqFolio = reqs.find((r: any)  => r.id === q.idReq)?.folio ?? q.idReq ?? '';
     const fecha    = q.dateCreate ? String(q.dateCreate).substring(0, 10) : '';
 
-    // ── ENCABEZADO (logos por nombre, diccionario images:) ──
+    // ── ENCABEZADO ──
     const header: any = {
       columns: [
-        { image: 'logo',  width: 80, alignment: 'left'  },
+        { image: 'logo',  width: 80, alignment: 'left',  margin: [0, 0, 8, 0] },
         {
           stack: [
-            { text: companyName.toUpperCase(), fontSize: 11, bold: true, color: NAVY, alignment: 'center' },
-            companyRfc  ? { text: `RFC: ${companyRfc}`,  fontSize: 7, color: GRAY, alignment: 'center', margin: [0,1,0,0] } : null,
-            companyAddr ? { text: companyAddr,            fontSize: 7, color: GRAY, alignment: 'center', margin: [0,1,0,0] } : null,
-            companyTel  ? { text: `Tel: ${companyTel}`,  fontSize: 7, color: GRAY, alignment: 'center', margin: [0,1,0,0] } : null,
+            ...(companyName ? [{ text: companyName.toUpperCase(), fontSize: 11, bold: true, color: NAVY, alignment: 'center' }] : []),
+            ...(companyRfc  ? [{ text: `RFC: ${companyRfc}`,  fontSize: 7, color: GRAY, alignment: 'center', margin: [0,1,0,0] }] : []),
+            ...(companyAddr ? [{ text: companyAddr,            fontSize: 7, color: GRAY, alignment: 'center', margin: [0,1,0,0] }] : []),
+            ...(companyTel  ? [{ text: `Tel: ${companyTel}`,  fontSize: 7, color: GRAY, alignment: 'center', margin: [0,1,0,0] }] : []),
             { text: 'CUADRO COMPARATIVO DE PRECIOS', fontSize: 9, bold: true, color: BLUE, alignment: 'center', margin: [0,4,0,0] },
-          ].filter(Boolean),
-          margin: [8, 0, 8, 0],
+          ],
+          margin: [0, 0, 0, 0],
         },
-        { image: 'logo2', width: 80, alignment: 'right' },
+        { image: 'logo2', width: 80, alignment: 'right', margin: [8, 0, 0, 0] },
       ],
-      margin: [0, 0, 0, 8],
+      margin: [0, 0, 0, 10],
     };
 
-    // ── DATOS COTIZACIÓN ──
+    // ── INFO COTIZACIÓN ──
+    const mkCell = (txt: string, bold = false) => ({
+      text: String(txt ?? ''), fontSize: 7,
+      ...(bold ? { bold: true, color: NAVY } : {}),
+      fillColor: LBLUE,
+    });
+
     const infoTable: any = {
       table: {
         widths: [60, '*', 60, '*'],
         body: [
-          [
-            { text: 'Folio:',        bold: true, fontSize: 7, color: NAVY },
-            { text: q.folio ?? '',   fontSize: 7 },
-            { text: 'Fecha:',        bold: true, fontSize: 7, color: NAVY },
-            { text: fecha,           fontSize: 7 },
-          ],
-          [
-            { text: 'Solicitante:',  bold: true, fontSize: 7, color: NAVY },
-            { text: q.solicit ?? '', fontSize: 7 },
-            { text: 'Depto.:',       bold: true, fontSize: 7, color: NAVY },
-            { text: deptName,        fontSize: 7 },
-          ],
-          [
-            { text: 'Requisición:',  bold: true, fontSize: 7, color: NAVY },
-            { text: String(reqFolio), fontSize: 7, colSpan: 3 }, {}, {},
-          ],
+          [ mkCell('Folio:',true),      mkCell(q.folio ?? ''),     mkCell('Fecha:',true),  mkCell(fecha)   ],
+          [ mkCell('Solicitante:',true), mkCell(q.solicit ?? ''),   mkCell('Depto.:',true), mkCell(deptName)],
+          [ mkCell('Requisición:',true), { ...mkCell(String(reqFolio)), colSpan: 3 }, {}, {} ],
         ],
       },
       layout: { hLineWidth: () => 0.3, vLineWidth: () => 0.3, hLineColor: () => '#cccccc', vLineColor: () => '#cccccc' },
       margin: [0, 0, 0, 10],
-      fillColor: LBLUE,
     };
 
     // ── TABLA COMPARATIVA ──
-    const provCols  = this.activeProviders;
+    const provCols   = this.activeProviders;
     const provColors = ['#1a5a9a', '#28a745', '#d4a017'];
-
     const tableWidths = [20, '*', ...provCols.map(() => 90)];
 
     const tableHeader: any[] = [
@@ -325,27 +332,27 @@ export class DetalleCuadroComparativoComponent implements ICellRendererAngularCo
       { text: 'Material', fontSize: 7, bold: true, fillColor: NAVY, color: '#fff' },
       ...provCols.map((p, i) => ({
         text: p.name, fontSize: 7, bold: true,
-        fillColor: provColors[i] ?? NAVY, color: '#fff', alignment: 'center'
+        fillColor: provColors[i] || NAVY, color: '#fff', alignment: 'center',
       })),
     ];
 
     const tableRows = this.rowData.map((row, idx) => {
-      const bg = idx % 2 === 1 ? LBLUE : null;
+      const bg = idx % 2 === 1 ? LBLUE : '#ffffff';
       const cells: any[] = [
         { text: idx + 1, fontSize: 7, alignment: 'center', fillColor: bg },
         { text: row.productName ?? '', fontSize: 7, fillColor: bg },
       ];
       provCols.forEach(p => {
-        const d = row[`p${p.slot}`];
+        const d    = row[`p${p.slot}`];
         const best = this.isBestPrice(row, p.slot);
         if (!d) {
-          cells.push({ text: 'N/C', fontSize: 7, alignment: 'center', color: '#aaa', fillColor: bg });
+          cells.push({ text: 'N/C', fontSize: 7, alignment: 'center', color: '#aaaaaa', fillColor: bg });
         } else {
           cells.push({
             stack: [
               { text: `$${Number(d.price).toFixed(2)} × ${d.quantity}`, fontSize: 6, color: GRAY },
               { text: `= $${Number(d.total).toFixed(2)}${best ? ' ✓' : ''}`, fontSize: 8,
-                bold: best, color: best ? GREEN : '#333' },
+                bold: best, color: best ? GREEN : '#333333' },
             ],
             fillColor: best ? '#d4edda' : bg,
             alignment: 'right',
@@ -355,7 +362,6 @@ export class DetalleCuadroComparativoComponent implements ICellRendererAngularCo
       return cells;
     });
 
-    // Fila totales
     const totalRow: any[] = [
       { text: '', fillColor: '#f0f0f0' },
       { text: 'TOTAL', fontSize: 7, bold: true, fillColor: '#f0f0f0', color: NAVY },
@@ -367,49 +373,36 @@ export class DetalleCuadroComparativoComponent implements ICellRendererAngularCo
     });
 
     const tabla: any = {
-      table: {
-        headerRows: 1,
-        widths: tableWidths,
-        body: [tableHeader, ...tableRows, totalRow],
-      },
-      layout: {
-        hLineWidth: () => 0.4, vLineWidth: () => 0.4,
-        hLineColor: () => '#cccccc', vLineColor: () => '#cccccc',
-      },
+      table: { headerRows: 1, widths: tableWidths, body: [tableHeader, ...tableRows, totalRow] },
+      layout: { hLineWidth: () => 0.4, vLineWidth: () => 0.4, hLineColor: () => '#cccccc', vLineColor: () => '#cccccc' },
       margin: [0, 0, 0, 10],
     };
 
-    // ── LEYENDA ──
     const leyenda: any = {
       columns: [
         { canvas: [{ type: 'rect', x: 0, y: 2, w: 10, h: 10, color: '#d4edda' }], width: 14 },
         { text: ' Mejor precio por material', fontSize: 7, color: GRAY },
       ],
-      margin: [0, 0, 0, 0],
     };
 
     // ── docDefinition ──
     const docDef: any = {
-      pageSize:    'LETTER',
+      pageSize:        'LETTER',
       pageOrientation: provCols.length >= 3 ? 'landscape' : 'portrait',
-      pageMargins: [40, 40, 40, 55],
+      pageMargins:     [40, 40, 40, 55],
+      images: { logo: logoB64, logo2: logo2B64 },
+      content: [header, infoTable, tabla, leyenda],
       footer: (currentPage: number, pageCount: number) => ({
         columns: [
-          { text: companyEmail, fontSize: 6, color: GRAY, margin: [40, 0, 0, 0] },
-          { text: companyName,  fontSize: 6, color: GRAY, alignment: 'center' },
+          { text: companyEmail,                      fontSize: 6, color: GRAY, margin: [40, 0, 0, 0] },
+          { text: companyName,                       fontSize: 6, color: GRAY, alignment: 'center' },
           { text: `Pág. ${currentPage} / ${pageCount}`, fontSize: 6, color: GRAY, alignment: 'right', margin: [0, 0, 40, 0] },
         ],
         margin: [0, 8, 0, 0],
       }),
-      content: [header, infoTable, tabla, leyenda],
-      images: {
-        logo:  logoB64,
-        logo2: logo2B64,
-      },
-      styles: { thCell: { fontSize: 7, bold: true } },
       defaultStyle: { font: 'Roboto' },
     };
 
-    pdfMake.createPdf(docDef).open();
+    pdfMake.createPdf(docDef).download('cuadro-comparativo.pdf');
   }
 }

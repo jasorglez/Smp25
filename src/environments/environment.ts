@@ -86,5 +86,5 @@ export const environment = {
     // publicKey: 'TEST-4399133a-4676-42a2-ab85-d946370bf96a',
   },
 
-  version: '5.00 (10 Junio 2026 13:00) feat(quotes): cuadro comparativo X button + PDF report con logos',
+  version: '5.01 (10 Junio 2026 13:30) fix(quotes): PDF download en vez de open, fillColor no null, logos placeholder',
 };
