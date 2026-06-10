@@ -86,7 +86,7 @@ export const environment = {
     // publicKey: 'TEST-4399133a-4676-42a2-ab85-d946370bf96a',
   },
 
-  version: '4.86 (09 Junio 2026) feat: Entradas auto-importa items desde OC al seleccionar',
+  version: '4.87 (09 Junio 2026) feat: inandout-st combos Proyecto/Almacen/Tipo/OT/OC en grid',
 };
 
 

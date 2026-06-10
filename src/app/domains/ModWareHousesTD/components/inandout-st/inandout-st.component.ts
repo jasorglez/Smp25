@@ -11,6 +11,8 @@ import { InandoutService } from 'app/services/inandout.service';
 import { CatalogsService } from 'app/services/catalogs.service';
 import { MaterialsService } from 'app/services/materials.service';
 import { OtService } from 'app/services/ot.service';
+import { OcAndReqsService } from 'app/services/ocandreqs.service';
+import { ProjectsService } from 'app/services/projects.service';
 import { DetailCellRendererEntryItemsComponent } from './detail-cell-renderer-entry-items.component';
 import { alerts } from 'app/helpers/alerts';
 import { ButtonCellRendererComponent } from './button-cell-renderer.component';
@@ -35,14 +37,16 @@ export class InandoutStComponent implements OnInit {
   private catalogsService = inject(CatalogsService);
   private materialsService = inject(MaterialsService);
   private otService = inject(OtService);
+  private ocService = inject(OcAndReqsService);
+  private projectsService = inject(ProjectsService);
   private route = inject(ActivatedRoute);
   private usersService = inject(UsersService);
 
-  private isGeneratingReport: boolean = false; // Flag para evitar múltiples clics
+  private isGeneratingReport: boolean = false;
   rowData: any[] = [];
   selectedWarehouse: any = null;
   warehouses: any[] = [];
-  gridHeight: string = '78vh';
+  gridHeight: string = '85vh';
   selectedEntry: any = null;
   hasUnsavedChanges: boolean = false;
   idRoot: number | null = null;
@@ -56,10 +60,11 @@ export class InandoutStComponent implements OnInit {
   selectedCatalog: any = null;
   otList: any[] = [];
   selectedOt: any = null;
+  ocList: any[] = [];
+  projectList: any[] = [];
   users: any[] = [];
-  isDirectEntryMode: boolean = false;
 
-  readonly addNewSentinel = { id: '__ADD_NEW__', description: '+ Agregar Registro' };
+  readonly addNewSentinel = '__ADD_NEW__';
   private previousCatalog: any = null;
 
   public rowSelection: 'single' | 'multiple' = 'single';
@@ -70,44 +75,41 @@ export class InandoutStComponent implements OnInit {
   constructor() {
     effect(() => {
       this.idRoot = this.signalsService.getRootSelectedBySidebar()();
-      console.log('idRoot set to:', this.idRoot);
       const email = this.trackingService.getEmail();
       if (this.idRoot && email) {
         this.loadCatalogs();
         this.loadUsers();
+        this.loadProjectList();
       }
     });
 
     effect(() => {
       this.idBranch = this.signalsService.getBranchSelectedBySidebar()();
-      console.log('idBranch set to:', this.idBranch);
     });
 
     effect(() => {
       this.projectId = this.signalsService.getProjectSelectedBySidebar()();
-      console.log('projectId set to:', this.projectId);
       const email = this.trackingService.getEmail();
       if (this.projectId && email) {
         this.loadWarehouses(email);
         this.loadOts();
+        this.loadOcList();
       }
     });
   }
 
   ngOnInit() {
-    console.log('ngOnInit called');
     this.movementType = this.route.snapshot.data['movementType'] || 'IN';
-    console.log('movementType:', this.movementType);
-
     this.loadUsers();
-
     const email = this.trackingService.getEmail();
     if (this.idRoot && email) {
       this.loadCatalogs();
+      this.loadProjectList();
     }
     if (this.projectId && email) {
       this.loadWarehouses(email);
       this.loadOts();
+      this.loadOcList();
     }
   }
 
@@ -119,6 +121,7 @@ export class InandoutStComponent implements OnInit {
           this.selectedWarehouse = this.warehouses[0];
           this.loadEntries();
         }
+        this.refreshColumns();
       },
       error: (error) => {
         console.error('Error loading warehouses:', error);
@@ -129,7 +132,6 @@ export class InandoutStComponent implements OnInit {
 
   loadCatalogs() {
     if (!this.idRoot) return;
-
     this.catalogsService.getCatalogs(this.idRoot, this.movementType).subscribe({
       next: (data) => {
         this.catalogs = data;
@@ -137,54 +139,73 @@ export class InandoutStComponent implements OnInit {
           this.selectedCatalog = this.catalogs[0];
           this.previousCatalog = this.catalogs[0];
         }
+        this.refreshColumns();
       },
       error: (error) => {
-        if (error?.status === 404) {
-          this.catalogs = []; // sin catálogos aún, no es error
-        } else {
-          console.error('Error loading catalogs:', error);
-        }
+        if (error?.status !== 404) console.error('Error loading catalogs:', error);
+        this.catalogs = [];
       }
     });
   }
 
   loadOts() {
     if (!this.projectId) return;
-
     this.otService.get2fieldsByPect(this.projectId).subscribe({
       next: (data) => {
         this.otList = data;
-        if (this.otList.length > 0) {
-          this.selectedOt = this.otList[0];
-        }
+        if (this.otList.length > 0) this.selectedOt = this.otList[0];
+        this.refreshColumns();
       },
       error: (error) => {
-        if (error?.status === 404) {
-          this.otList = []; // sin OTs aún, no es error
-        } else {
-          console.error('Error loading OTs:', error);
-        }
+        if (error?.status !== 404) console.error('Error loading OTs:', error);
+        this.otList = [];
+      }
+    });
+  }
+
+  loadOcList() {
+    if (!this.projectId) return;
+    this.ocService.getOcAndReqs('project', this.projectId, 'OC').subscribe({
+      next: (data: any) => {
+        this.ocList = Array.isArray(data) ? data : [];
+        this.refreshColumns();
+      },
+      error: (error) => {
+        if (error?.status !== 404) console.error('Error loading OC list:', error);
+        this.ocList = [];
+      }
+    });
+  }
+
+  loadProjectList() {
+    if (!this.idRoot) return;
+    this.projectsService.getProjectListByCompany(this.idRoot).subscribe({
+      next: (data: any) => {
+        this.projectList = Array.isArray(data) ? data : (data?.data ?? []);
+        this.refreshColumns();
+      },
+      error: (error) => {
+        if (error?.status !== 404) console.error('Error loading projects:', error);
+        this.projectList = [];
       }
     });
   }
 
   loadUsers() {
     if (!this.idRoot) return;
-
     this.usersService.get2fieldsUsers(this.idRoot).subscribe({
       next: (data) => {
-        console.log('Users response:', data);
         this.users = data.data || data;
-        console.log('Users loaded:', this.users);
-        // Update columnDefs to refresh the combo options
-        if (this.gridApi) {
-          this.gridApi.setGridOption('columnDefs', this.colMaster);
-        }
+        this.refreshColumns();
       },
-      error: (error) => {
-        console.error('Error loading users:', error);
-      }
+      error: (error) => console.error('Error loading users:', error)
     });
+  }
+
+  private refreshColumns() {
+    if (this.gridApi) {
+      this.gridApi.setGridOption('columnDefs', this.colMaster);
+    }
   }
 
   onWarehouseChange() {
@@ -213,31 +234,29 @@ export class InandoutStComponent implements OnInit {
     this.loadEntries();
   }
 
-  async saveNewCatalog(description: string): Promise<void> {
-    if (!this.idRoot) return;
+  async saveNewCatalog(description: string): Promise<number | null> {
+    if (!this.idRoot) return null;
     try {
       const payload = {
         description: description.trim().toUpperCase(),
         type: this.movementType,
         idCompany: this.idRoot,
-        active: 1,    // short en el DTO, no boolean
+        active: 1,
         vigente: true
       };
       const created = await lastValueFrom(this.catalogsService.addCatalog(payload));
       await new Promise<void>(resolve => {
         this.catalogsService.getCatalogs(this.idRoot!, this.movementType).subscribe({
-          next: (data) => { this.catalogs = data; resolve(); },
+          next: (data) => { this.catalogs = data; this.refreshColumns(); resolve(); },
           error: () => resolve()
         });
       });
-      this.selectedCatalog = this.catalogs.find(c => c.id === created?.id)
-        ?? this.catalogs[this.catalogs.length - 1];
-      this.previousCatalog = this.selectedCatalog;
-      this.loadEntries();
       alerts.toastAlert('Tipo de movimiento creado', 'success');
+      return created?.id ?? null;
     } catch (error: any) {
       const msg = error?.error?.message || error?.message || 'Error desconocido';
       alerts.basicAlert('Error', `No se pudo crear: ${msg}`, 'error');
+      return null;
     }
   }
 
@@ -245,10 +264,8 @@ export class InandoutStComponent implements OnInit {
     this.loadEntries();
   }
 
-
   loadEntries() {
     if (!this.selectedWarehouse || !this.projectId) return;
-
     this.inandoutService.getInAndOuts(this.projectId, this.selectedWarehouse.idAlmacen, this.movementType).subscribe({
       next: (data: any[]) => {
         this.rowData = data.map(entry => ({
@@ -257,10 +274,9 @@ export class InandoutStComponent implements OnInit {
           detailType: null,
           detailData: []
         }));
-        console.log(`${this.movementType === 'IN' ? 'Entries' : 'Exits'} loaded:`, this.rowData);
       },
       error: (error) => {
-        console.error(`Error loading ${this.movementType === 'IN' ? 'entries' : 'exits'}:`, error);
+        console.error(`Error loading entries:`, error);
         alerts.basicAlert('Error', `Error al cargar ${this.movementType === 'IN' ? 'entradas' : 'salidas'}`, 'error');
       }
     });
@@ -275,19 +291,12 @@ export class InandoutStComponent implements OnInit {
     isRowMaster: (dataItem: any) => true,
     detailCellRenderer: DetailCellRendererEntryItemsComponent,
     getRowClass: (params: any) => {
-      if (params.node.isSelected()) {
-        return 'selected-row';
-      }
-      if (params.data.__isNew) {
-        return 'new-row-highlight';
-      }
-      if (params.data.__modified) {
-        return 'modified-row';
-      }
+      if (params.node.isSelected()) return 'selected-row';
+      if (params.data.__isNew) return 'new-row-highlight';
+      if (params.data.__modified) return 'modified-row';
       return '';
     },
     onRowClicked: (event: any) => {
-      // Seleccionar la fila al hacer clic en cualquier celda, excepto en la columna PDF
       if (event.column && event.column.getColId() !== 'pdfReport') {
         event.node.setSelected(true);
       }
@@ -295,24 +304,14 @@ export class InandoutStComponent implements OnInit {
     onRowSelected: (event: any) => {
       if (event.node.isSelected()) {
         this.gridApi.forEachNode((node) => {
-          if (node.id !== event.node.id) {
-            node.setSelected(false);
-          }
+          if (node.id !== event.node.id) node.setSelected(false);
         });
       }
     },
     onCellValueChanged: (event: any) => {
-      console.log('Cell value changed:', event);
-
       if (event.colDef.field === 'directEntry') {
-        event.data.directEntry = event.newValue === true || event.newValue === 1 ? true : false;
-        console.log('Direct Entry changed to:', event.data.directEntry);
+        event.data.directEntry = event.newValue === true || event.newValue === 1;
       }
-
-      if (event.colDef.field === 'idAutoriza') {
-        console.log('idAutoriza changed to:', event.newValue, 'for row:', event.data.id);
-      }
-
       event.data.__modified = true;
       this.hasUnsavedChanges = true;
       setTimeout(() => {
@@ -321,18 +320,12 @@ export class InandoutStComponent implements OnInit {
     }
   };
 
-  private _colMaster: ColDef[] = [];
-
   get colMaster(): ColDef[] {
-    if (this._colMaster.length > 0) {
-      return this._colMaster;
-    }
-
-    this._colMaster = [
+    return [
       {
         field: 'countrow',
         headerName: 'Items',
-        width: 90,
+        width: 80,
         cellRenderer: ButtonCellRendererComponent,
         cellRendererParams: {
           onClick: (node: any) => this.toggleCascade(node),
@@ -344,24 +337,94 @@ export class InandoutStComponent implements OnInit {
       {
         field: 'pdfReport',
         headerName: 'PDF',
-        width: 90,
+        width: 70,
         cellRenderer: PdfButtonCellRendererComponent,
         cellRendererParams: {
-          onClick: (node: any) => {
-            console.log('🔵 PDF Click detectado en InAndOut-ST - ID:', node.data.id);
-            this.toggleReportDetail(node);
-          },
+          onClick: (node: any) => this.toggleReportDetail(node),
           icon: 'bi-file-earmark-pdf',
           iconColor: '#dc3545',
-          title: 'Hacer clic para generar el reporte PDF'
+          title: 'Generar reporte PDF'
         },
         editable: false,
         cellStyle: { backgroundColor: '#fff3e0', textAlign: 'center' }
       },
       {
+        field: 'idProject',
+        headerName: 'Proyecto',
+        width: 160,
+        editable: true,
+        cellEditor: 'agSelectCellEditor',
+        cellEditorParams: () => ({
+          values: this.projectList.map(p => p.id)
+        }),
+        valueFormatter: (params: any) => {
+          const proj = this.projectList.find(p => p.id === params.value);
+          return proj ? (proj.description || proj.name || `#${params.value}`) : (params.value || '');
+        }
+      },
+      {
+        field: 'idWarehouse',
+        headerName: 'Almacén',
+        width: 140,
+        editable: true,
+        cellEditor: 'agSelectCellEditor',
+        cellEditorParams: () => ({
+          values: this.warehouses.map(wh => wh.idAlmacen)
+        }),
+        valueFormatter: (params: any) => {
+          const wh = this.warehouses.find(w => w.idAlmacen === params.value);
+          return wh ? wh.name : (params.value || '');
+        }
+      },
+      {
+        field: 'idType',
+        headerName: 'Tipo de Movimiento',
+        width: 170,
+        editable: true,
+        cellEditor: 'agSelectCellEditor',
+        cellEditorParams: () => ({
+          values: [...this.catalogs.map(c => c.id), '__ADD_NEW__']
+        }),
+        valueFormatter: (params: any) => {
+          if (params.value === '__ADD_NEW__') return '+ Agregar Registro';
+          const cat = this.catalogs.find(c => c.id === params.value);
+          return cat ? cat.description : (params.value || '');
+        }
+      },
+      {
+        field: 'idOt',
+        headerName: 'OT',
+        width: 130,
+        editable: true,
+        cellEditor: 'agSelectCellEditor',
+        cellEditorParams: () => ({
+          values: [0, ...this.otList.map(ot => ot.id)]
+        }),
+        valueFormatter: (params: any) => {
+          if (!params.value) return '(Sin OT)';
+          const ot = this.otList.find(o => o.id === params.value);
+          return ot ? (ot.description || `OT #${ot.id}`) : params.value;
+        }
+      },
+      {
+        field: 'idOc',
+        headerName: 'Orden de Compra',
+        width: 150,
+        editable: true,
+        cellEditor: 'agSelectCellEditor',
+        cellEditorParams: () => ({
+          values: [0, ...this.ocList.map(oc => oc.id)]
+        }),
+        valueFormatter: (params: any) => {
+          if (!params.value || params.value === 0) return '(Sin OC)';
+          const oc = this.ocList.find(o => o.id === params.value);
+          return oc ? (oc.folio || `OC #${oc.id}`) : params.value;
+        }
+      },
+      {
         field: 'folio',
         headerName: 'Folio',
-        width: 120,
+        width: 110,
         filter: true,
         editable: true,
         valueSetter: (params: any) => {
@@ -372,7 +435,7 @@ export class InandoutStComponent implements OnInit {
       {
         field: 'date',
         headerName: 'Fecha',
-        width: 120,
+        width: 110,
         editable: true,
         valueFormatter: (params: any) => {
           if (!params.value) return '';
@@ -382,27 +445,6 @@ export class InandoutStComponent implements OnInit {
           params.data.date = params.newValue;
           return true;
         }
-      },
-      {
-        field: 'idWarehouse',
-        headerName: 'Almacén ID',
-        width: 100,
-        hide : true,
-        editable: false
-      },
-      {
-        field: 'idType',
-        headerName: 'Tipo ID',
-        width: 100,
-        hide : true,
-        editable: false
-      },
-      {
-        field: 'idOt',
-        headerName: 'OT ID',
-        width: 100,
-        hide : true,
-        editable: false
       },
       {
         field: 'numBill',
@@ -417,7 +459,7 @@ export class InandoutStComponent implements OnInit {
       {
         field: 'deliverName',
         headerName: 'Entregado Por',
-        width: 200,
+        width: 180,
         editable: true,
         valueSetter: (params: any) => {
           params.data.deliverName = params.newValue ? params.newValue.toUpperCase() : '';
@@ -426,14 +468,14 @@ export class InandoutStComponent implements OnInit {
       },
       {
         field: 'idAutoriza',
-        headerName: 'Autorizado Por:',
-        width: 200,
+        headerName: 'Autorizado Por',
+        width: 180,
         editable: true,
         cellDataType: false,
         cellEditor: 'agSelectCellEditor',
-        cellEditorParams: {
+        cellEditorParams: () => ({
           values: this.users.map(u => u.displayName)
-        },
+        }),
         valueFormatter: (params: any) => {
           const user = this.users.find(u => u.id === params.value);
           return user ? user.displayName : params.value;
@@ -441,7 +483,6 @@ export class InandoutStComponent implements OnInit {
         valueSetter: (params: any) => {
           const user = this.users.find(u => u.displayName === params.newValue);
           if (user) {
-            console.log('Setting idAutoriza to:', user.id);
             params.data.idAutoriza = user.id;
             params.data.__modified = true;
           }
@@ -451,7 +492,7 @@ export class InandoutStComponent implements OnInit {
       {
         field: 'comment',
         headerName: 'Comentario',
-        width: 400,
+        width: 300,
         editable: true,
         valueSetter: (params: any) => {
           params.data.comment = params.newValue ? params.newValue.toUpperCase() : '';
@@ -459,60 +500,32 @@ export class InandoutStComponent implements OnInit {
         }
       }
     ];
-
-    return this._colMaster;
   }
 
   onCellClicked(event: any): void {
     event.node.setSelected(true);
 
     const colId = event.column.getColId();
-    const isDetailColumn = colId === 'countrow';
-
-    if (isDetailColumn) {
+    if (colId === 'countrow') {
       const node = event.node;
       const api = event.api;
-
       const isCurrentlyExpanded = node.expanded && event.data.detailType === 'items';
 
       if (isCurrentlyExpanded) {
-        // Si ya está expandido, colapsarlo y mostrar todas las filas
         node.setExpanded(false);
-
-        api.forEachNode((otherNode: any) => {
-          otherNode.setRowHeight(undefined);
-        });
+        api.forEachNode((otherNode: any) => otherNode.setRowHeight(undefined));
         api.onRowHeightChanged();
       } else {
-        // Colapsar cualquier otra fila expandida
         api.forEachNode((otherNode: any) => {
-          if (otherNode.expanded && otherNode.id !== node.id) {
-            otherNode.setExpanded(false);
-          }
+          if (otherNode.expanded && otherNode.id !== node.id) otherNode.setExpanded(false);
         });
-
-        // Ocultar todas las demás filas (altura 0)
         api.forEachNode((otherNode: any) => {
-          if (otherNode.id !== node.id) {
-            otherNode.setRowHeight(0);
-          }
+          if (otherNode.id !== node.id) otherNode.setRowHeight(0);
         });
-
-        // Si la fila está expandida con otro tipo de detalle, cerrarla primero
-        if (node.expanded && event.data.detailType !== 'items') {
-          node.setExpanded(false);
-        }
-
-        // Cambiar el tipo de detalle
+        if (node.expanded && event.data.detailType !== 'items') node.setExpanded(false);
         event.data.detailType = 'items';
-
-        // Aplicar los cambios de altura
         api.onRowHeightChanged();
-
-        // Expandir con el detalle correspondiente
-        setTimeout(() => {
-          node.setExpanded(true);
-        }, 0);
+        setTimeout(() => node.setExpanded(true), 0);
       }
     }
   }
@@ -528,115 +541,52 @@ export class InandoutStComponent implements OnInit {
   }
 
   async toggleReportDetail(node: any) {
-    console.log('🟢 toggleReportDetail llamado en InAndOut-ST - ID:', node.data.id, 'isGenerating:', this.isGeneratingReport);
-
     const api = this.gridApi;
     const isCurrentlyExpanded = node.expanded && node.data.detailType === 'report';
 
     if (isCurrentlyExpanded) {
-      // Si ya está expandido con el reporte, colapsarlo
-      console.log('🟡 Colapsando reporte expandido en InAndOut-ST');
       node.setExpanded(false);
-
-      // Restaurar alturas de todas las filas
-      api.forEachNode((otherNode: any) => {
-        otherNode.setRowHeight(undefined);
-      });
+      api.forEachNode((otherNode: any) => otherNode.setRowHeight(undefined));
       api.onRowHeightChanged();
-      return; // Salir temprano
-    }
-
-    // Verificar si ya se está generando un reporte
-    if (this.isGeneratingReport) {
-      console.log('🔴 Ya se está generando un reporte en InAndOut-ST, ignorando clic');
-      alerts.basicAlert(
-        'Procesando',
-        'Ya se está generando un reporte. Por favor espere.',
-        'warning'
-      );
       return;
     }
 
-    // Marcar que se está generando
+    if (this.isGeneratingReport) {
+      alerts.basicAlert('Procesando', 'Ya se está generando un reporte. Por favor espere.', 'warning');
+      return;
+    }
+
     this.isGeneratingReport = true;
-    console.log('🟢 Iniciando generación de reporte en InAndOut-ST');
-
-    // Mostrar mensaje de progreso inicial
     let progress = 0;
-    alerts.showLoadingWithProgress(
-      'Generando reporte...',
-      'Por favor espere mientras se procesa el documento',
-      progress
-    );
-
+    alerts.showLoadingWithProgress('Generando reporte...', 'Por favor espere mientras se procesa el documento', progress);
     const progressInterval = setInterval(() => {
       progress += 10;
-      if (progress <= 90) {
-        alerts.updateLoadingProgress(
-          'Generando reporte...',
-          'Por favor espere mientras se procesa el documento',
-          progress
-        );
-      }
+      if (progress <= 90) alerts.updateLoadingProgress('Generando reporte...', 'Por favor espere mientras se procesa el documento', progress);
     }, 100);
 
     try {
-      // Colapsar cualquier otra fila expandida
       api.forEachNode((otherNode: any) => {
-        if (otherNode.expanded && otherNode.id !== node.id) {
-          otherNode.setExpanded(false);
-        }
+        if (otherNode.expanded && otherNode.id !== node.id) otherNode.setExpanded(false);
       });
-
-      // Ocultar todas las demás filas
       api.forEachNode((otherNode: any) => {
-        if (otherNode.id !== node.id) {
-          otherNode.setRowHeight(0);
-        }
+        if (otherNode.id !== node.id) otherNode.setRowHeight(0);
       });
-
-      // Si la fila está expandida con otro tipo de detalle, cerrarla
-      if (node.expanded && node.data.detailType !== 'report') {
-        node.setExpanded(false);
-      }
-
-      // Cambiar el tipo de detalle a 'report'
+      if (node.expanded && node.data.detailType !== 'report') node.setExpanded(false);
       node.data.detailType = 'report';
-
-      // Aplicar cambios de altura
       api.onRowHeightChanged();
-
-      // Expandir con el reporte
       await new Promise(resolve => setTimeout(resolve, 1000));
       node.setExpanded(true);
-
-      // Completar progreso al 100%
       clearInterval(progressInterval);
-      alerts.updateLoadingProgress(
-        'Reporte generado',
-        'El documento se ha procesado correctamente',
-        100
-      );
-
-      console.log('✅ Reporte generado exitosamente en InAndOut-ST');
-
-      // Cerrar mensaje de carga después de 800ms
+      alerts.updateLoadingProgress('Reporte generado', 'El documento se ha procesado correctamente', 100);
       setTimeout(() => {
         alerts.closeLoading();
-        this.isGeneratingReport = false; // Liberar el lock
-        console.log('🔓 Lock liberado en InAndOut-ST');
+        this.isGeneratingReport = false;
       }, 800);
-
     } catch (error) {
       clearInterval(progressInterval);
       alerts.closeLoading();
-      this.isGeneratingReport = false; // Liberar el lock en caso de error
-      console.log('🔴 Error generando reporte en InAndOut-ST, lock liberado');
-      alerts.basicAlert(
-        'Error',
-        'Ocurrió un error al generar el reporte. Por favor, intente nuevamente.',
-        'error'
-      );
+      this.isGeneratingReport = false;
+      alerts.basicAlert('Error', 'Ocurrió un error al generar el reporte. Por favor, intente nuevamente.', 'error');
       console.error('Error generando reporte:', error);
     }
   }
@@ -649,21 +599,14 @@ export class InandoutStComponent implements OnInit {
           node.data.detailType = null;
         }
       });
-
-      // Restaurar alturas
-      this.gridApi.forEachNode((node) => {
-        node.setRowHeight(undefined);
-      });
+      this.gridApi.forEachNode((node) => node.setRowHeight(undefined));
       this.gridApi.onRowHeightChanged();
     }
   }
 
   onGridReady(params: GridReadyEvent) {
     this.gridApi = params.api;
-
-    // Update columnDefs to ensure combo options are set
     this.gridApi.setGridOption('columnDefs', this.colMaster);
-
     this.gridApi.setGridOption('detailCellRendererParams', {
       getDetailRowData: (params) => {
         params.successCallback(params.data.detailData);
@@ -698,34 +641,6 @@ export class InandoutStComponent implements OnInit {
   onSelectionChanged(event: any): void {
     const selectedRows = event.api.getSelectedRows();
     this.selectedEntry = selectedRows.length > 0 ? selectedRows[0] : null;
-
-    // Sincronizar los combo boxes con la fila seleccionada
-    if (this.selectedEntry) {
-      console.log('🔍 Fila seleccionada:', this.selectedEntry);
-      console.log('📦 Warehouses disponibles:', this.warehouses);
-      console.log('📋 Catalogs disponibles:', this.catalogs);
-      console.log('🔧 OTs disponibles:', this.otList);
-
-      // Sincronizar Almacén
-      this.selectedWarehouse = this.warehouses.find(wh => wh.idAlmacen === this.selectedEntry.idWarehouse);
-      console.log('✅ Warehouse sincronizado:', this.selectedWarehouse);
-
-      // Sincronizar Catálogo/Tipo de Entrada
-      this.selectedCatalog = this.catalogs.find(cat => cat.id === this.selectedEntry.idType);
-      console.log('✅ Catalog sincronizado:', this.selectedCatalog);
-
-      // Sincronizar OT
-      this.selectedOt = this.otList.find(ot => ot.id === this.selectedEntry.idOt);
-      console.log('✅ OT sincronizado:', this.selectedOt);
-    }
-  }
-
-  onCellMouseOver(event: any): void {
-    if (event.data) {
-      this.selectedWarehouse = this.warehouses.find(wh => wh.idAlmacen === event.data.idWarehouse);
-      this.selectedCatalog = this.catalogs.find(cat => cat.id === event.data.idType);
-      this.selectedOt = this.otList.find(ot => ot.id === event.data.idOt);
-    }
   }
 
   onCellValueChanged(event: any): void {
@@ -735,9 +650,40 @@ export class InandoutStComponent implements OnInit {
     this.hasUnsavedChanges = true;
   }
 
+  isDirectEntryMode: boolean = false;
+
   onCellEditingStopped(event: any): void {
+    // Sentinel para Tipo de Movimiento en el grid
+    if (event.colDef.field === 'idType' && event.newValue === '__ADD_NEW__') {
+      event.node.data.idType = event.oldValue ?? null;
+      this.gridApi.refreshCells({ rowNodes: [event.node], force: true });
+      this.openAddTipoDialogForNode(event.node);
+      return;
+    }
     if (event.colDef.field === 'directEntry') {
       this.isDirectEntryMode = event.newValue;
+    }
+  }
+
+  async openAddTipoDialogForNode(node: any): Promise<void> {
+    const result = await alerts.inputAlert(
+      'Nuevo Tipo de Movimiento',
+      `Tipo: ${this.movementType === 'IN' ? 'Entrada' : 'Salida'}`,
+      'text', '',
+      {
+        inputAttributes: { placeholder: 'Descripción del tipo de movimiento...' },
+        confirmButtonText: 'Guardar',
+        confirmButtonColor: '#28a745'
+      }
+    );
+    if (result.isConfirmed && result.value) {
+      const newId = await this.saveNewCatalog(result.value);
+      if (newId !== null) {
+        node.data.idType = newId;
+        node.data.__modified = true;
+        this.hasUnsavedChanges = true;
+        this.gridApi.refreshCells({ rowNodes: [node], force: true });
+      }
     }
   }
 
@@ -756,13 +702,13 @@ export class InandoutStComponent implements OnInit {
       id: tempId,
       idBranch: this.idBranch,
       idProject: this.projectId,
-      idWarehouse: this.selectedWarehouse.idAlmacen,
+      idWarehouse: this.selectedWarehouse?.idAlmacen || 0,
       idType: this.selectedCatalog?.id || 0,
       idOt: this.selectedOt?.id || 0,
+      idOc: 0,
       folio: '',
       date: new Date().toISOString(),
       deliveryDate: new Date().toISOString(),
-      idOc: 0,
       numBill: 'SIN FACTURA',
       deliverName: 'POR CLIENTE',
       idAutoriza: 0,
@@ -770,7 +716,6 @@ export class InandoutStComponent implements OnInit {
       type: this.movementType,
       active: true,
       directEntry: false,
-      //ocList: '',
       countrow: 0,
       detailType: null,
       detailData: [],
@@ -783,28 +728,9 @@ export class InandoutStComponent implements OnInit {
     this.gridApi.setGridOption('rowData', this.rowData);
 
     setTimeout(() => {
-      const firstRowIndex = 0;
-      this.gridApi.ensureIndexVisible(firstRowIndex);
-      this.gridApi.startEditingCell({
-        rowIndex: firstRowIndex,
-        colKey: 'folio'
-      });
+      this.gridApi.ensureIndexVisible(0);
+      this.gridApi.startEditingCell({ rowIndex: 0, colKey: 'folio' });
     }, 0);
-  }
-
-  editEntry(): void {
-    if (!this.selectedEntry) {
-      alerts.basicAlert('Selección requerida', 'Por favor seleccione una entrada para editar', 'warning');
-      return;
-    }
-
-    const selectedNode = this.gridApi.getSelectedNodes()[0];
-    if (selectedNode) {
-      this.gridApi.startEditingCell({
-        rowIndex: selectedNode.rowIndex!,
-        colKey: 'folio'
-      });
-    }
   }
 
   async deleteEntry(): Promise<void> {
@@ -822,16 +748,14 @@ export class InandoutStComponent implements OnInit {
 
     if (result.isConfirmed) {
       try {
-        const entryId = typeof this.selectedEntry.id === 'string' ?
-          parseInt(this.selectedEntry.id.replace('temp_', '')) :
-          this.selectedEntry.id;
-
+        const entryId = typeof this.selectedEntry.id === 'string'
+          ? parseInt(this.selectedEntry.id.replace('temp_', ''))
+          : this.selectedEntry.id;
         await lastValueFrom(this.inandoutService.deleteInAndOut(entryId));
         alerts.basicAlert('Eliminado', 'La entrada ha sido eliminada correctamente', 'success');
         this.selectedEntry = null;
         this.loadEntries();
       } catch (error: any) {
-        console.error('Error al eliminar entrada:', error);
         const errorMsg = error?.error?.message || error?.message || 'Error desconocido';
         alerts.basicAlert('Error', `No se pudo eliminar la entrada: ${errorMsg}`, 'error');
       }
@@ -839,7 +763,6 @@ export class InandoutStComponent implements OnInit {
   }
 
   async saveChanges(): Promise<void> {
-    console.log('🚀 saveChanges called');
     if (!this.hasUnsavedChanges) {
       alerts.basicAlert('Sin cambios', 'No hay cambios pendientes por guardar', 'info');
       return;
@@ -847,9 +770,6 @@ export class InandoutStComponent implements OnInit {
 
     const newRows = this.rowData.filter((row: any) => row.__isNew);
     const modifiedRows = this.rowData.filter((row: any) => row.__modified && !row.__isNew);
-
-    console.log('📝 newRows:', newRows);
-    console.log('✏️ modifiedRows:', modifiedRows);
 
     if (newRows.length === 0 && modifiedRows.length === 0) {
       alerts.basicAlert('Sin cambios', 'No hay cambios pendientes por guardar', 'info');
@@ -862,17 +782,14 @@ export class InandoutStComponent implements OnInit {
         const entryData = this.prepareEntryData(newRow);
         await lastValueFrom(this.inandoutService.addInAndOut(entryData));
       }
-
       for (const modifiedRow of modifiedRows) {
         const entryData = this.prepareEntryData(modifiedRow);
         await lastValueFrom(this.inandoutService.updateInAndOut(modifiedRow.id, entryData));
       }
-
       alerts.basicAlert('Guardado', 'Los cambios han sido guardados correctamente', 'success');
       this.hasUnsavedChanges = false;
       this.loadEntries();
     } catch (error: any) {
-      console.error('Error al guardar cambios:', error);
       const errorMsg = error?.error?.message || error?.message || 'Error desconocido';
       alerts.basicAlert('Error', `No se pudieron guardar los cambios: ${errorMsg}`, 'error');
     }
@@ -881,20 +798,21 @@ export class InandoutStComponent implements OnInit {
   private prepareEntryData(row: any): any {
     return {
       idBranch: this.idBranch,
-      idProject: this.projectId,
-      idWarehouse: this.selectedWarehouse.idAlmacen,
-      idType: this.selectedCatalog?.id || 0,
+      idProject: row.idProject || this.projectId,
+      idWarehouse: row.idWarehouse || this.selectedWarehouse?.idAlmacen || 0,
+      idType: row.idType || 0,
+      idOt: row.idOt || 0,
+      idOc: row.idOc || 0,
       folio: row.folio || '',
       date: row.date || new Date().toISOString(),
       deliveryDate: row.deliveryDate || new Date().toISOString(),
-      idOc: 0,
       numBill: row.numBill || '',
       deliverName: row.deliverName || '',
       idAutoriza: row.idAutoriza || 0,
       comment: row.comment || '',
       type: this.movementType,
       active: row.active ?? true,
-      directEntry: row.directEntry === true || row.directEntry === 1 ? true : false,
+      directEntry: row.directEntry === true || row.directEntry === 1,
       ocList: row.ocList || '',
       countrow: row.countrow || 0
     };
@@ -907,13 +825,11 @@ export class InandoutStComponent implements OnInit {
     alerts.basicAlert('Recargado', 'Los datos han sido recargados', 'success');
   }
 
-  // ==================== MÉTODOS CRUD PARA ITEMS DE ENTRADA ====================
+  // ==================== ITEMS DE ENTRADA ====================
 
   loadEntryItemsData(entryId: number, successCallback: any) {
     this.inandoutService.getInAndOutItems(entryId).subscribe({
-      next: (data: any) => {
-        successCallback(data);
-      },
+      next: (data: any) => successCallback(data),
       error: (error) => {
         console.error('Error loading entry items:', error);
         successCallback([]);
@@ -927,48 +843,25 @@ export class InandoutStComponent implements OnInit {
 
     try {
       for (const item of newItems) {
-        const cleaned = this.cleanItemData(item);
-        await lastValueFrom(this.inandoutService.addInAndOutItem(cleaned));
+        await lastValueFrom(this.inandoutService.addInAndOutItem(this.cleanItemData(item)));
       }
-
       for (const item of modifiedItems) {
-        const cleaned = this.cleanItemData(item);
-        await lastValueFrom(this.inandoutService.updateInAndOutItem(item.id, cleaned));
+        await lastValueFrom(this.inandoutService.updateInAndOutItem(item.id, this.cleanItemData(item)));
       }
 
       if (newItems.length > 0 || modifiedItems.length > 0) {
-        alerts.basicAlert(
-          'Detalles guardados',
-          'Se han guardado los items correctamente.',
-          'success'
-        );
-
-        // Actualizar el contador de items localmente
+        alerts.basicAlert('Detalles guardados', 'Se han guardado los items correctamente.', 'success');
         this.updateEntryItemsCount(entryId, data.length);
-
-        // Persistir el countrow en el backend
         const masterEntry = this.rowData.find(entry => entry.id === entryId);
         if (masterEntry) {
           masterEntry.countrow = data.length;
-          const entryData = this.prepareEntryData(masterEntry);
-          await lastValueFrom(this.inandoutService.updateInAndOut(String(entryId), entryData));
-          console.log(`✅ Persistido countrow=${data.length} para entrada ${entryId}`);
+          await lastValueFrom(this.inandoutService.updateInAndOut(String(entryId), this.prepareEntryData(masterEntry)));
         }
-
-        // Limpiar los flags
-        data.forEach(row => {
-          delete row.__isNew;
-          delete row.__modified;
-        });
+        data.forEach(row => { delete row.__isNew; delete row.__modified; });
       }
-
     } catch (error) {
       console.error('Error saving entry items:', error);
-      alerts.basicAlert(
-        'Error',
-        'Error al guardar los items.',
-        'error'
-      );
+      alerts.basicAlert('Error', 'Error al guardar los items.', 'error');
     }
   }
 
@@ -979,7 +872,6 @@ export class InandoutStComponent implements OnInit {
     if (params.data.__isNew) {
       params.api.applyTransaction({ remove: [params.data] });
       this.hasUnsavedChanges = true;
-      // Update count in master grid
       const currentCount = params.api.getDisplayedRowCount();
       this.updateEntryItemsCount(entryId, currentCount - 1);
       successCallback();
@@ -990,11 +882,7 @@ export class InandoutStComponent implements OnInit {
         successCallback();
       } catch (error) {
         console.error('Error deleting detail row:', error);
-        alerts.basicAlert(
-          'Error',
-          'Error al eliminar el item.',
-          'error'
-        );
+        alerts.basicAlert('Error', 'Error al eliminar el item.', 'error');
       }
     }
   }
@@ -1011,18 +899,12 @@ export class InandoutStComponent implements OnInit {
     return cleanedData;
   }
 
-  // Método para actualizar el countrow count de una entrada específica
   updateEntryItemsCount(entryId: number, count: number) {
     if (this.gridApi) {
       this.gridApi.forEachNode((node) => {
         if (node.data && node.data.id === entryId) {
           node.data.countrow = count;
-          this.gridApi.refreshCells({
-            rowNodes: [node],
-            columns: ['countrow'],
-            force: true
-          });
-          console.log(`✅ Actualizado "Items" para entrada ${entryId}: ${count}`);
+          this.gridApi.refreshCells({ rowNodes: [node], columns: ['countrow'], force: true });
         }
       });
     }
