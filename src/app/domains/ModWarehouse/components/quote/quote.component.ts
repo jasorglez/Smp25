@@ -596,6 +596,16 @@ public gridOptions: any = {
           }
           return params.value;
         },
+        tooltipValueGetter: (params) => {
+          const foundItem = this.requisitionItems
+            ? this.requisitionItems.find((item: any) => item.id === params.value)
+            : null;
+          if (foundItem) {
+            const product = this.productos.find((p: any) => p.id === foundItem.idSupplie);
+            return product ? `${product.description} (Cant: ${foundItem.quantity})` : '';
+          }
+          return '';
+        },
         onCellValueChanged: (params) => {
           this.onRequisitionItemChanged(params);
         }

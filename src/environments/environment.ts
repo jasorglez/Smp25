@@ -86,7 +86,5 @@ export const environment = {
     // publicKey: 'TEST-4399133a-4676-42a2-ab85-d946370bf96a',
   },
 
-  version: '4.92 (09 Junio 2026) fix(quotes): proveedor usa campo company en lugar de name',
+  version: '4.93 (10 Junio 2026) feat(purchases): tooltip descripcion completa en combo materiales',
 };
-
-

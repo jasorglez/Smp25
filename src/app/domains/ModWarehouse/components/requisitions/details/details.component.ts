@@ -123,6 +123,10 @@ public gridOptions: any = {
         valueFormatter: (params) => {
           const foundItem = this.productos ? this.productos.find(item => item.id === params.value) : null;
           return foundItem ? `${foundItem.description}` : params.value;
+        },
+        tooltipValueGetter: (params) => {
+          const foundItem = this.productos ? this.productos.find(item => item.id === params.value) : null;
+          return foundItem ? foundItem.description : '';
         }
       },
       { field: 'quantity', headerName: 'Cantidad', editable: true, filter: true, flex: 1 },
