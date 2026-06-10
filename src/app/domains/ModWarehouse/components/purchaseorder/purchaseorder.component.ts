@@ -1,4 +1,4 @@
-import { Component, effect, HostListener, inject, NgZone } from '@angular/core';
+import { Component, effect, HostListener, inject } from '@angular/core';
 import Swal from 'sweetalert2';
 import {
   CellDoubleClickedEvent,
@@ -65,7 +65,6 @@ export class PurchaseOrderComponent implements CanComponentDeactivate {
   private usersService = inject(UsersService);
   private materialsService = inject(MaterialsService);
   private customersService = inject(CustomersService);
-  private ngZone = inject(NgZone);
   private setupService = inject(SetupService);
   private prefixSetupService = inject(PrefixSetupService);
   private notificationsService = inject(NotificationsTelegramService);
@@ -228,7 +227,6 @@ export class PurchaseOrderComponent implements CanComponentDeactivate {
       }
     },
     onCellValueChanged: (event: any) => {
-      if (event.newValue === '__ADD_NEW__') return;
       event.data.__modified = true;
       this.masterNotSavedChanges = true;
       setTimeout(() => {
@@ -406,10 +404,9 @@ export class PurchaseOrderComponent implements CanComponentDeactivate {
         width: 150,
         cellEditor: 'agSelectCellEditor',
         cellEditorParams: () => ({
-          values: [...(this.proveedores ? this.proveedores.map((item) => item.id) : []), '__ADD_NEW__'],
+          values: this.proveedores ? this.proveedores.map((item) => item.id) : [],
         }),
         valueFormatter: (params) => {
-          if (params.value === '__ADD_NEW__') return '+ Agregar Nuevo';
           const foundItem = this.proveedores
             ? this.proveedores.find((item) => item.id === params.value)
             : null;
@@ -423,10 +420,9 @@ export class PurchaseOrderComponent implements CanComponentDeactivate {
         width: 150,
         cellEditor: 'agSelectCellEditor',
         cellEditorParams: () => ({
-          values: [...(this.monedas ? this.monedas.map((item) => item.id) : []), '__ADD_NEW__'],
+          values: this.monedas ? this.monedas.map((item) => item.id) : [],
         }),
         valueFormatter: (params) => {
-          if (params.value === '__ADD_NEW__') return '+ Agregar Nuevo';
           const foundItem = this.monedas
             ? this.monedas.find((item) => item.id === params.value)
             : null;
@@ -440,10 +436,9 @@ export class PurchaseOrderComponent implements CanComponentDeactivate {
         width: 150,
         cellEditor: 'agSelectCellEditor',
         cellEditorParams: () => ({
-          values: [...(this.tipoPago ? this.tipoPago.map((item) => item.id) : []), '__ADD_NEW__'],
+          values: this.tipoPago ? this.tipoPago.map((item) => item.id) : [],
         }),
         valueFormatter: (params) => {
-          if (params.value === '__ADD_NEW__') return '+ Agregar Nuevo';
           const foundItem = this.tipoPago
             ? this.tipoPago.find((item) => item.id === params.value)
             : null;
@@ -837,13 +832,6 @@ export class PurchaseOrderComponent implements CanComponentDeactivate {
     });
   }
 
-  private async handleSentinel(colId: string): Promise<number | null> {
-    if (colId === 'idProvider')      return this.openAddProveedorDialog();
-    if (colId === 'idCurrency')      return this.openAddMonedaDialog();
-    if (colId === 'idPayment')       return this.openAddTipoPagoDialog();
-    return null;
-  }
-
   async openAddProveedorDialog(): Promise<number | null> {
     const result = await Swal.fire({
       title: 'Nuevo Proveedor',
@@ -989,26 +977,6 @@ export class PurchaseOrderComponent implements CanComponentDeactivate {
   }
 
   onMasterCellValueChanged(event: any) {
-    const colId = event.column.getColId();
-    if (event.newValue === '__ADD_NEW__') {
-      const node = event.node;
-      node.data[colId] = event.oldValue ?? null;
-      this.masterGridApi?.refreshCells({ rowNodes: [node], force: true });
-      setTimeout(() => {
-        this.ngZone.run(() => {
-          this.handleSentinel(colId).then(newId => {
-            if (newId) {
-              node.data[colId] = newId;
-              node.data.__modified = true;
-              this.masterNotSavedChanges = true;
-              this.masterGridApi?.refreshCells({ rowNodes: [node], force: true });
-            }
-          });
-        });
-      }, 300);
-      return;
-    }
-
     const updatedData = { ...event.data };
 
     // Preservar el estado temporal y la selección

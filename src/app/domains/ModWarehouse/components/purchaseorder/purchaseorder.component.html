@@ -37,13 +37,21 @@
             <span class="visually-hidden">Hay cambios sin guardar</span>
           </span>
         </button>
-
         <button type="button" class="btn btn-warning" (click)="revertMasterData()" title="Deshacer cambios">
           <i class="bi bi-arrow-clockwise"></i>
         </button>
-
         <button type="button" class="btn btn-danger" (click)="deleteMasterEntry()" title="Eliminar orden de compra">
           <i class="bi bi-trash"></i>
+        </button>
+        <hr class="my-1">
+        <button type="button" class="btn btn-outline-secondary btn-sm" (click)="openAddProveedorDialog()" title="Agregar nuevo proveedor">
+          <i class="bi bi-building-add"></i>
+        </button>
+        <button type="button" class="btn btn-outline-secondary btn-sm" (click)="openAddMonedaDialog()" title="Agregar nueva moneda">
+          <i class="bi bi-currency-exchange"></i>
+        </button>
+        <button type="button" class="btn btn-outline-secondary btn-sm" (click)="openAddTipoPagoDialog()" title="Agregar forma de pago">
+          <i class="bi bi-credit-card-2-front"></i>
         </button>
       </div>
     </div>

@@ -86,7 +86,7 @@ export const environment = {
     // publicKey: 'TEST-4399133a-4676-42a2-ab85-d946370bf96a',
   },
 
-  version: '4.82 (09 Junio 2026) fix: sentinel dialogs html+ngZone+300ms, monedas catchError',
+  version: '4.83 (09 Junio 2026) fix: OC catalogs via botones toolbar, sin sentinel AG Grid',
 };
 
 
