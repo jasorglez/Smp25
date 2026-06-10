@@ -29,6 +29,7 @@ import { confirmExitIfUnsaved } from 'app/helpers/can-deactivate.helper';
 import { ProviderDetailCellRendererComponent } from './provider-detail-cell-renderer.component';
 import { ProviderQuoteDetailComponent } from './provider-quote-detail.component';
 import { DetailCellRendererPedimentosComponent } from '../../../ModShoppingDelison/pages/quote-delison/detail-cell-renderer-pedimentos.component';
+import { DetailCellRendererComparisonComponent } from './detail-cell-renderer-comparison.component';
 
 interface Catalog {
   id: number;
@@ -43,7 +44,7 @@ interface Provider {
 @Component({
   selector: 'app-quote',
   standalone: true,
-  imports: [CommonModule, FormsModule, AgGridModule, MultiLineEditorComponent, ProviderDetailCellRendererComponent, ProviderQuoteDetailComponent, DetailCellRendererPedimentosComponent],
+  imports: [CommonModule, FormsModule, AgGridModule, MultiLineEditorComponent, ProviderDetailCellRendererComponent, ProviderQuoteDetailComponent, DetailCellRendererPedimentosComponent, DetailCellRendererComparisonComponent],
   templateUrl: './quote.component.html',
   styleUrl: './quote.component.scss'
 })
@@ -316,21 +317,21 @@ public gridOptions: any = {
   }
 },
 {
-  field: 'pedimento',
-  headerName: 'Pedimento #',
+  field: 'comparativo',
+  headerName: 'Comparativo',
   editable: false,
   width: 150,
-  filter: true,
   cellRenderer: (params: any) => {
-    const count = params.data?.pedimentosCount || 0;
-    const label = params.value ? `#${params.value} (${count})` : `${count} pedimentos`;
-    const btnClass = count > 0 ? 'btn-info' : 'btn-outline-info';
+    const count = [params.data?.proveedor1Id, params.data?.proveedor2Id, params.data?.proveedor3Id]
+      .filter(id => id > 0).length;
+    const btnClass = count >= 2 ? 'btn-info' : 'btn-outline-info';
+    const label = `<i class="bi bi-table"></i> ${count} prov.`;
     return `<div style="text-align: center; padding: 5px; cursor: pointer;">
               <div class="btn btn-sm ${btnClass}" style="pointer-events: none;">${label}</div>
             </div>`;
   },
   onCellClicked: (params: any) => {
-    this.openPedimentoDetail(params.data);
+    this.openComparisonDetail(params.data);
   }
 },
 
@@ -1548,6 +1549,24 @@ createQuote(idQuote: number, action: string) {
     ];
   }
 
+
+  // ==================== COMPARISON DETAIL ====================
+
+  openComparisonDetail(quoteData: any): void {
+    if (!this.masterGridApi) return;
+    this.masterGridApi.setGridOption('detailCellRenderer', DetailCellRendererComparisonComponent);
+    this.masterGridApi.setGridOption('detailCellRendererParams', {
+      getDetailRowData: (params: any) => params.successCallback([params.data])
+    });
+    this.masterGridApi.forEachNode((node: any) => {
+      if (node.data?.id === quoteData.id) {
+        node.setExpanded(false);
+        setTimeout(() => node.setExpanded(true), 50);
+      } else if (node.expanded) {
+        node.setExpanded(false);
+      }
+    });
+  }
 
   // ==================== PEDIMENTOS METHODS ====================
 

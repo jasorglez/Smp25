@@ -86,5 +86,5 @@ export const environment = {
     // publicKey: 'TEST-4399133a-4676-42a2-ab85-d946370bf96a',
   },
 
-  version: '4.94 (10 Junio 2026) style(grid): combo popup fuente 11px ancho min 360px global',
+  version: '4.95 (10 Junio 2026) feat(quotes): columna Comparativo reemplaza Pedimento con cuadro comparativo inline',
 };
