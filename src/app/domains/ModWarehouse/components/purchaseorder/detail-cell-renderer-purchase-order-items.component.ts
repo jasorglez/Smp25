@@ -150,7 +150,8 @@ export class DetailCellRendererPurchaseOrderItemsComponent implements OnInit {
       {
         field: 'idProvider',
         headerName: 'Proveedor',
-        editable: true,
+        hide: true,
+        editable: false,
         width: 200,
         cellEditor: 'agRichSelectCellEditor',
         cellEditorParams: {
@@ -328,7 +329,7 @@ export class DetailCellRendererPurchaseOrderItemsComponent implements OnInit {
     }
 
     // Validar que todos los items tengan producto, proveedor y fecha
-    const isValid = this.rowData.every(item => item.idSupplie && item.idProvider && item.dateuse);
+    const isValid = this.rowData.every(item => item.idSupplie && item.dateuse);
     if (!isValid) {
       alerts.basicAlert('Validación', 'Todos los items deben tener producto, proveedor y fecha de uso', 'warning');
       return;
