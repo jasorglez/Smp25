@@ -13,7 +13,7 @@
       <!-- Combo box para cambiar proveedor -->
       <div class="d-flex align-items-center gap-2" *ngIf="!isLocked">
         <label class="text-white small mb-0">Cambiar Proveedor:</label>
-        <select class="form-select form-select-sm" style="width: 200px;"
+        <select class="form-select form-select-sm" style="width: 200px; color: #212529; background-color: #fff;"
                 [disabled]="!proveedores || proveedores.length === 0">
           <option [ngValue]="null" selected>{{ providerName || 'Seleccione proveedor' }}</option>
           <option *ngFor="let prov of proveedores"
