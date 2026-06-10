@@ -321,4 +321,11 @@ updateCertificates(idRoot: number, formData: FormData): Observable<any> {
     return this.http.post(`${environment.urlAdministration}/ConceptsxIncorExp/parse-comprobante`, formData, { headers });
   }
 
+  parseComprobantePdf(file: File): Observable<any> {
+    const formData = new FormData();
+    formData.append('pdf', file);
+    const headers = this.trackingService.getHeaders().delete('Content-Type');
+    return this.http.post(`${environment.urlAdministration}/ConceptsxIncorExp/parse-comprobante-pdf`, formData, { headers });
+  }
+
 }
