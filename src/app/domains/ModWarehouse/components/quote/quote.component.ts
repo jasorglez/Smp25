@@ -1244,7 +1244,7 @@ createQuote(idQuote: number, action: string) {
 
     // Get provider name
     const provider = this.proveedores.find((p: any) => p.id === idProvider);
-    const providerName = provider ? provider.name : `Proveedor ${idProvider}`;
+    const providerName = provider ? (provider.company || provider.name || `Proveedor ${idProvider}`) : `Proveedor ${idProvider}`;
 
     // Get REQUIS data to copy fields
     const requis = this.requisiciones.find((r: any) => r.id === quoteData.idReq);
@@ -1423,13 +1423,13 @@ createQuote(idQuote: number, action: string) {
            this.cotizSlots[index] = {
              cotizId: cotiz.id,
              idProvider: cotiz.idProvider,
-             providerName: provider ? provider.name : `Proveedor ${cotiz.idProvider}`
+             providerName: provider ? (provider.company || provider.name || `Proveedor ${cotiz.idProvider}`) : `Proveedor ${cotiz.idProvider}`
            };
 
 // Update provider data on master row AND grid data
             if (this.masterSelectedRowData) {
               this.masterSelectedRowData[`proveedor${index + 1}Id`] = cotiz.idProvider;
-              this.masterSelectedRowData[`proveedor${index + 1}Name`] = provider ? provider.name : `Proveedor ${cotiz.idProvider}`;
+              this.masterSelectedRowData[`proveedor${index + 1}Name`] = provider ? (provider.company || provider.name || `Proveedor ${cotiz.idProvider}`) : `Proveedor ${cotiz.idProvider}`;
               this.masterSelectedRowData[`proveedor${index + 1}CotizId`] = cotiz.id;
               this.masterSelectedRowData[`proveedor${index + 1}Count`] = cotiz.countrow || 0;
               
@@ -1437,7 +1437,7 @@ createQuote(idQuote: number, action: string) {
               const gridRowData = this.masterRowData.find(row => row.id === this.masterSelectedRowData.id);
               if (gridRowData) {
                 gridRowData[`proveedor${index + 1}Id`] = cotiz.idProvider;
-                gridRowData[`proveedor${index + 1}Name`] = provider ? provider.name : `Proveedor ${cotiz.idProvider}`;
+                gridRowData[`proveedor${index + 1}Name`] = provider ? (provider.company || provider.name || `Proveedor ${cotiz.idProvider}`) : `Proveedor ${cotiz.idProvider}`;
                 gridRowData[`proveedor${index + 1}CotizId`] = cotiz.id;
                 gridRowData[`proveedor${index + 1}Count`] = cotiz.countrow || 0;
                 console.log(`✅ Updated grid row data for provider ${index + 1}:`, {
@@ -1504,7 +1504,7 @@ createQuote(idQuote: number, action: string) {
         matching.slice(0, 3).forEach((cotiz: any, index: number) => {
           const provider = this.proveedores.find((p: any) => p.id === cotiz.idProvider);
           row[`proveedor${index + 1}Id`] = cotiz.idProvider;
-          row[`proveedor${index + 1}Name`] = provider ? provider.name : `Proveedor ${cotiz.idProvider}`;
+          row[`proveedor${index + 1}Name`] = provider ? (provider.company || provider.name || `Proveedor ${cotiz.idProvider}`) : `Proveedor ${cotiz.idProvider}`;
           row[`proveedor${index + 1}CotizId`] = cotiz.id;
           row[`proveedor${index + 1}Count`] = cotiz.countrow || 0;
         });

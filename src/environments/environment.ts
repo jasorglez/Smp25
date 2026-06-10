@@ -86,7 +86,7 @@ export const environment = {
     // publicKey: 'TEST-4399133a-4676-42a2-ab85-d946370bf96a',
   },
 
-  version: '4.91 (09 Junio 2026) fix(quotes): select proveedor texto visible en header oscuro',
+  version: '4.92 (09 Junio 2026) fix(quotes): proveedor usa campo company en lugar de name',
 };
 
 

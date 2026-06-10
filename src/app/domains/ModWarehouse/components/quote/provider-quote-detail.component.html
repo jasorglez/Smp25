@@ -19,7 +19,7 @@
           <option *ngFor="let prov of proveedores"
                   [ngValue]="prov.id"
                   [selected]="prov.id === idProvider">
-            {{ prov.name }}
+            {{ prov.company || prov.name }}
           </option>
         </select>
       </div>
