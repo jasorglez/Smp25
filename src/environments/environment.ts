@@ -86,7 +86,7 @@ export const environment = {
     // publicKey: 'TEST-4399133a-4676-42a2-ab85-d946370bf96a',
   },
 
-  version: '4.85 (09 Junio 2026) fix: oculta Proveedor en detalle OC items',
+  version: '4.86 (09 Junio 2026) feat: Entradas auto-importa items desde OC al seleccionar',
 };
 
 

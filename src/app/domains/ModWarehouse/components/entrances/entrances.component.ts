@@ -683,7 +683,46 @@ export class EntrancesComponent implements OnInit, CanComponentDeactivate {
       .getInAndOutItems(this.IdInAndOut)
       .subscribe((data: any) => {
         this.detailsRowData = data;
+        // Auto-import OC items when details are empty and OC is set
+        if (data.length === 0 && this.masterSelectedRowData?.idOc > 0) {
+          this.importarItemsDeOC(this.masterSelectedRowData.idOc);
+        }
       });
+  }
+
+  importarItemsDeOC(idOc: number) {
+    if (!idOc || idOc <= 0) return;
+    this.ocService.getReqItems(idOc).subscribe(
+      (items: any[]) => {
+        if (!items || items.length === 0) {
+          alerts.basicAlert('OC sin items', 'La orden de compra seleccionada no tiene artículos.', 'info');
+          return;
+        }
+        const activeItems = items.filter(item => item.active !== false && item.active !== 0);
+        this.detailsRowData = activeItems.map(item => {
+          const tempId = `temp_${this.tempIdCounter++}`;
+          this.newlyAddedDetailRows.push(tempId);
+          return {
+            id: tempId,
+            idInandout: this.IdInAndOut,
+            idProduct: item.idSupplie,
+            quantity: 0,
+            pending: item.quantity,
+            total: item.quantity,
+            active: true,
+            __isNew: true,
+          };
+        });
+        this.detailsNotSavedChanges = true;
+        if (this.detailsGridApi) {
+          this.detailsGridApi.setGridOption('rowData', this.detailsRowData);
+        }
+      },
+      (error) => {
+        console.error('Error al importar items de OC:', error);
+        alerts.basicAlert('Error', 'No se pudieron cargar los artículos de la OC.', 'error');
+      }
+    );
   }
 
   obtenerProductos() {
