@@ -724,7 +724,8 @@ export class ProspectosComponent implements OnInit {
       }
       try {
         if (p.__isNew) {
-          await this.svc.crearProspecto(p);
+          const newId = await this.svc.crearProspecto(p);
+          p.id = newId;
           nuevos.push(p);
         } else {
           await this.svc.actualizarProspecto(p.id!, {
