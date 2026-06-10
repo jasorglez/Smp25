@@ -86,5 +86,5 @@ export const environment = {
     // publicKey: 'TEST-4399133a-4676-42a2-ab85-d946370bf96a',
   },
 
-  version: '4.96 (10 Junio 2026) fix(quotes): comparativo col cantidad, total en lugar de precio unitario, columnas mas angostas',
+  version: '4.97 (10 Junio 2026) fix(quotes): comparativo formula PU x cant = total dos lineas sin col cantidad',
 };
