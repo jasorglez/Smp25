@@ -126,7 +126,7 @@ export class ProviderQuoteDetailComponent implements OnInit {
     // Get provider name
     if (this.idProvider) {
       const provider = this.proveedores.find((p: any) => p.id === this.idProvider);
-      this.providerName = provider ? provider.name : `Proveedor ${this.idProvider}`;
+      this.providerName = provider ? (provider.company || provider.name || `Proveedor ${this.idProvider}`) : `Proveedor ${this.idProvider}`;
     }
 
     console.log('Provider Quote Detail - Data:', {
@@ -376,7 +376,7 @@ export class ProviderQuoteDetailComponent implements OnInit {
           idMovement: this.cotizId,
           idSupplie: item.idSupplie,
           idProvider: this.idProvider,
-          nameProvider: provider ? provider.name : '',
+          nameProvider: provider ? (provider.company || provider.name || '') : '',
           quantity: item.quantity,
           price: item.price,
           type: 'COTIZ',

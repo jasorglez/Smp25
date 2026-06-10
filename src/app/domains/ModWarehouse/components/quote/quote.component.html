@@ -68,7 +68,7 @@
           <label class="form-label fw-bold">Proveedor:</label>
           <select class="form-select" [(ngModel)]="selectedProviderId">
             <option [ngValue]="null" disabled>-- Seleccione un proveedor --</option>
-            <option *ngFor="let prov of proveedores" [ngValue]="prov.id">{{ prov.name }}</option>
+            <option *ngFor="let prov of proveedores" [ngValue]="prov.id">{{ prov.company || prov.name }}</option>
           </select>
         </div>
         <div class="alert alert-info small" *ngIf="masterSelectedRowData?.idReq">
