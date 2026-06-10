@@ -86,5 +86,5 @@ export const environment = {
     // publicKey: 'TEST-4399133a-4676-42a2-ab85-d946370bf96a',
   },
 
-  version: '5.01 (10 Junio 2026 13:30) fix(quotes): PDF download en vez de open, fillColor no null, logos placeholder',
+  version: '5.02 (10 Junio 2026 14:00) fix(quotes): PDF pdfMake.vfs correcto + signalsService idRoot',
 };

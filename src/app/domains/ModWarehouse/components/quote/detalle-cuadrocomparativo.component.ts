@@ -5,11 +5,13 @@ import { ColDef, GridReadyEvent } from 'ag-grid-enterprise';
 import { ICellRendererAngularComp } from 'ag-grid-angular';
 import { OcAndReqsService } from 'app/services/ocandreqs.service';
 import { RootService } from 'app/services/root.service';
+import { SignalsService } from 'app/services/signals.service';
 import { Base64EncodeService } from 'app/services/base64encode.service';
 import { lastValueFrom } from 'rxjs';
 import pdfMake from 'pdfmake/build/pdfmake';
-import * as pdfFonts from 'pdfmake/build/vfs_fonts';
-(pdfMake as any).vfs = (pdfFonts as any).pdfMake?.vfs ?? (pdfFonts as any).default?.pdfMake?.vfs;
+import pdfFonts from 'pdfmake/build/vfs_fonts';
+
+pdfMake.vfs = pdfFonts.vfs;
 
 const NAVY  = '#003366';
 const BLUE  = '#1a5a9a';
@@ -67,9 +69,10 @@ const GRAY  = '#555555';
   `
 })
 export class DetalleCuadroComparativoComponent implements ICellRendererAngularComp {
-  private quotesService = inject(OcAndReqsService);
-  private rootService   = inject(RootService);
-  private b64Service    = inject(Base64EncodeService);
+  private quotesService   = inject(OcAndReqsService);
+  private rootService     = inject(RootService);
+  private signalsService  = inject(SignalsService);
+  private b64Service      = inject(Base64EncodeService);
 
   private params: any;
   private quoteRow: any;
@@ -249,35 +252,30 @@ export class DetalleCuadroComparativoComponent implements ICellRendererAngularCo
   }
 
   private async _buildAndOpenPdf(): Promise<void> {
-    const q      = this.quoteRow;
-    const idRoot = q._idRoot;
-    const depts  = q._departamentos ?? [];
-    const reqs   = q._requisiciones ?? [];
+    const q     = this.quoteRow;
+    const depts = q._departamentos ?? [];
+    const reqs  = q._requisiciones ?? [];
 
-    // ── Datos empresa ──
-    let rootData: any = {};
-    try {
-      rootData = await lastValueFrom(this.rootService.getRootbyId(idRoot));
-    } catch { /* empresa no disponible */ }
+    // ── Datos empresa (igual que detail-cell-renderer-requisition-report) ──
+    const idRoot = this.signalsService.getRootSelectedBySidebar()();
+    const companyData: any = await lastValueFrom(this.rootService.getRootbyId(idRoot));
 
-    // ── Logos (convertImageToBase64 siempre resuelve con fallback interno) ──
-    let logoB64:  string;
-    let logo2B64: string;
-    if (rootData?.picture) {
-      logoB64 = await this.b64Service.convertImageToBase64(rootData.picture);
-    } else {
-      // 1×1 px PNG transparente como placeholder
-      logoB64 = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==';
-    }
-    logo2B64 = rootData?.picture2
-      ? await this.b64Service.convertImageToBase64(rootData.picture2)
-      : logoB64;
+    // ── Logos — patrón exacto de requisicion-report ──
+    const logoBase64  = companyData?.picture
+      ? await this.b64Service.convertImageToBase64(companyData.picture)
+      : '';
+    const logo2Base64 = companyData?.picture2
+      ? await this.b64Service.convertImageToBase64(companyData.picture2)
+      : logoBase64;
+    const watermarkBase64 = companyData?.picture3
+      ? await this.b64Service.convertImageToBase64(companyData.picture3)
+      : null;
 
-    const companyName  = rootData?.name    ?? rootData?.company ?? '';
-    const companyRfc   = rootData?.rfc     ?? '';
-    const companyAddr  = rootData?.address ?? rootData?.city ?? '';
-    const companyTel   = rootData?.phone   ?? rootData?.tel ?? '';
-    const companyEmail = rootData?.email   ?? '';
+    const companyName  = companyData?.name    ?? companyData?.company ?? '';
+    const companyRfc   = companyData?.rfc     ?? '';
+    const companyAddr  = companyData?.address ?? companyData?.city ?? '';
+    const companyTel   = companyData?.phone   ?? companyData?.tel ?? '';
+    const companyEmail = companyData?.email   ?? '';
 
     const deptName = depts.find((d: any) => d.id === q.idDepartament)?.description ?? '';
     const reqFolio = reqs.find((r: any)  => r.id === q.idReq)?.folio ?? q.idReq ?? '';
@@ -286,18 +284,18 @@ export class DetalleCuadroComparativoComponent implements ICellRendererAngularCo
     // ── ENCABEZADO ──
     const header: any = {
       columns: [
-        { image: 'logo',  width: 80, alignment: 'left',  margin: [0, 0, 8, 0] },
+        { image: 'logo',  width: 80, alignment: 'left' },
         {
           stack: [
-            ...(companyName ? [{ text: companyName.toUpperCase(), fontSize: 11, bold: true, color: NAVY, alignment: 'center' }] : []),
+            { text: companyName || 'Empresa', fontSize: 11, bold: true, color: NAVY, alignment: 'center' },
             ...(companyRfc  ? [{ text: `RFC: ${companyRfc}`,  fontSize: 7, color: GRAY, alignment: 'center', margin: [0,1,0,0] }] : []),
             ...(companyAddr ? [{ text: companyAddr,            fontSize: 7, color: GRAY, alignment: 'center', margin: [0,1,0,0] }] : []),
             ...(companyTel  ? [{ text: `Tel: ${companyTel}`,  fontSize: 7, color: GRAY, alignment: 'center', margin: [0,1,0,0] }] : []),
             { text: 'CUADRO COMPARATIVO DE PRECIOS', fontSize: 9, bold: true, color: BLUE, alignment: 'center', margin: [0,4,0,0] },
           ],
-          margin: [0, 0, 0, 0],
+          width: '*',
         },
-        { image: 'logo2', width: 80, alignment: 'right', margin: [8, 0, 0, 0] },
+        { image: 'logo2', width: 80, alignment: 'right' },
       ],
       margin: [0, 0, 0, 10],
     };
@@ -390,12 +388,15 @@ export class DetalleCuadroComparativoComponent implements ICellRendererAngularCo
       pageSize:        'LETTER',
       pageOrientation: provCols.length >= 3 ? 'landscape' : 'portrait',
       pageMargins:     [40, 40, 40, 55],
-      images: { logo: logoB64, logo2: logo2B64 },
+      background: watermarkBase64 ? [{ image: 'watermark', width: 400, opacity: 0.15, absolutePosition: { x: 106, y: 250 } }] : [],
+      images: watermarkBase64
+        ? { logo: logoBase64, logo2: logo2Base64, watermark: watermarkBase64 }
+        : { logo: logoBase64, logo2: logo2Base64 },
       content: [header, infoTable, tabla, leyenda],
       footer: (currentPage: number, pageCount: number) => ({
         columns: [
-          { text: companyEmail,                      fontSize: 6, color: GRAY, margin: [40, 0, 0, 0] },
-          { text: companyName,                       fontSize: 6, color: GRAY, alignment: 'center' },
+          { text: companyEmail, fontSize: 6, color: GRAY, margin: [40, 0, 0, 0] },
+          { text: companyName,  fontSize: 6, color: GRAY, alignment: 'center' },
           { text: `Pág. ${currentPage} / ${pageCount}`, fontSize: 6, color: GRAY, alignment: 'right', margin: [0, 0, 40, 0] },
         ],
         margin: [0, 8, 0, 0],
