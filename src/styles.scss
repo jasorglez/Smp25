@@ -104,6 +104,26 @@ body {
   border-right: 1px solid var(--ag-border-color) !important;
 }
 
+/* Combo box popups — fuente reducida y ancho ampliado (estándar global AG Grid) */
+.ag-popup .ag-select-list {
+  min-width: 360px;
+}
+.ag-popup .ag-select-list-item {
+  font-size: 11px !important;
+  padding: 3px 8px !important;
+  line-height: 1.4;
+}
+.ag-popup .ag-rich-select-list {
+  min-width: 360px;
+}
+.ag-popup .ag-rich-select-row {
+  font-size: 11px !important;
+  line-height: 1.4;
+}
+.ag-popup .ag-rich-select-field input {
+  font-size: 11px !important;
+}
+
 // DHTMLX Gantt CSS
 @import "dhtmlx-gantt/codebase/dhtmlxgantt.css";
 
