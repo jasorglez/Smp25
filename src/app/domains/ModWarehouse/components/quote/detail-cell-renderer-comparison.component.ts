@@ -145,7 +145,7 @@ export class DetailCellRendererComparisonComponent implements ICellRendererAngul
       this.colDefs.push({
         headerName: prov.name,
         field: `p${slot}`,
-        width: 150,
+        width: 75,
         cellRenderer: (params: any) => {
           if (params.node?.rowPinned) {
             const total = params.value ?? 0;
