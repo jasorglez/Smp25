@@ -135,6 +135,11 @@ export class DetailCellRendererPurchaseOrderItemsComponent implements OnInit {
           const foundItem = this.productos.find((item) => item.id === params.value);
           return foundItem ? foundItem.description : params.value;
         },
+        tooltipValueGetter: (params) => {
+          if (!params.value) return '';
+          const foundItem = this.productos.find((item: any) => item.id === params.value);
+          return foundItem ? foundItem.description : '';
+        },
         valueSetter: (params: any) => {
           // Validar si el material ya existe
           const existingItem = this.findExistingMaterial(params.newValue);
