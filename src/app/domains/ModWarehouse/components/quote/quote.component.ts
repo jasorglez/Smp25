@@ -29,7 +29,7 @@ import { confirmExitIfUnsaved } from 'app/helpers/can-deactivate.helper';
 import { ProviderDetailCellRendererComponent } from './provider-detail-cell-renderer.component';
 import { ProviderQuoteDetailComponent } from './provider-quote-detail.component';
 import { DetailCellRendererPedimentosComponent } from '../../../ModShoppingDelison/pages/quote-delison/detail-cell-renderer-pedimentos.component';
-import { DetailCellRendererComparisonComponent } from './detail-cell-renderer-comparison.component';
+import { DetalleCuadroComparativoComponent } from './detalle-cuadrocomparativo.component';
 
 interface Catalog {
   id: number;
@@ -44,7 +44,7 @@ interface Provider {
 @Component({
   selector: 'app-quote',
   standalone: true,
-  imports: [CommonModule, FormsModule, AgGridModule, MultiLineEditorComponent, ProviderDetailCellRendererComponent, ProviderQuoteDetailComponent, DetailCellRendererPedimentosComponent, DetailCellRendererComparisonComponent],
+  imports: [CommonModule, FormsModule, AgGridModule, MultiLineEditorComponent, ProviderDetailCellRendererComponent, ProviderQuoteDetailComponent, DetailCellRendererPedimentosComponent, DetalleCuadroComparativoComponent],
   templateUrl: './quote.component.html',
   styleUrl: './quote.component.scss'
 })
@@ -1554,7 +1554,7 @@ createQuote(idQuote: number, action: string) {
 
   openComparisonDetail(quoteData: any): void {
     if (!this.masterGridApi) return;
-    this.masterGridApi.setGridOption('detailCellRenderer', DetailCellRendererComparisonComponent);
+    this.masterGridApi.setGridOption('detailCellRenderer', DetalleCuadroComparativoComponent);
     this.masterGridApi.setGridOption('detailCellRendererParams', {
       getDetailRowData: (params: any) => params.successCallback([params.data])
     });
