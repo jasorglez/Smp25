@@ -1,4 +1,4 @@
-import { Component } from '@angular/core';
+import { Component, AfterViewInit, ViewChild } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ICellRendererAngularComp } from 'ag-grid-angular';
 import { ICellRendererParams } from 'ag-grid-enterprise';
@@ -21,15 +21,26 @@ import { ProspectosAgendaComponent } from './prospectos-agenda.component';
     </app-prospectos-agenda>
   `,
 })
-export class ProspectosDetailWrapperComponent implements ICellRendererAngularComp {
+export class ProspectosDetailWrapperComponent implements ICellRendererAngularComp, AfterViewInit {
+  @ViewChild(DetalleInteraccionesComponent) detalleRef!: DetalleInteraccionesComponent;
+
   mode:      'interacciones' | 'agenda' = 'interacciones';
   prospecto: any    = null;
   idCompany: number = 0;
 
+  private storedParams!: ICellRendererParams;
+
   agInit(params: ICellRendererParams): void {
-    this.prospecto = params.data;
-    this.idCompany = (params as any).context?.idCompany ?? 0;
-    this.mode      = params.data?.__detailMode ?? 'interacciones';
+    this.storedParams = params;
+    this.prospecto    = params.data;
+    this.idCompany    = (params as any).context?.idCompany ?? 0;
+    this.mode         = params.data?.__detailMode ?? 'interacciones';
+  }
+
+  ngAfterViewInit(): void {
+    if (this.mode === 'interacciones' && this.detalleRef) {
+      this.detalleRef.agInit(this.storedParams);
+    }
   }
 
   refresh(): boolean { return false; }
