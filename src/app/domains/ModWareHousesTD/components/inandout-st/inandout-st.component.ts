@@ -668,6 +668,9 @@ export class InandoutStComponent implements OnInit {
           },
           updateCount: (entryId: number, count: number) => {
             this.updateEntryItemsCount(entryId, count);
+          },
+          importFromOC: (idOc: number, entryId: any, callback: (data: any[]) => void) => {
+            this.importItemsFromOC(idOc, entryId, callback);
           }
         },
         materialsService: this.materialsService
@@ -871,6 +874,34 @@ export class InandoutStComponent implements OnInit {
         console.error('Error loading entry items:', error);
         successCallback([]);
       }
+    });
+  }
+
+  importItemsFromOC(idOc: number, entryId: any, callback: (data: any[]) => void) {
+    if (!idOc || idOc <= 0) { callback([]); return; }
+    this.ocService.getReqItems(idOc).subscribe({
+      next: (items: any[]) => {
+        if (!items || items.length === 0) { callback([]); return; }
+        const activeItems = items.filter((item: any) => item.active !== false && item.active !== 0);
+        let tempCounter = Date.now();
+        const mapped = activeItems.map((item: any) => ({
+          id: `temp_item_${tempCounter++}`,
+          idInandout: entryId,
+          idProduct: item.idSupplie || item.idProduct || 0,
+          code: item.code || '',
+          description: item.description || '',
+          materialName: item.description || '',
+          measure: item.measure || '',
+          quantity: 0,
+          pending: item.quantity || 0,
+          total: item.quantity || 0,
+          active: true,
+          __isNew: true,
+          __modified: false
+        }));
+        callback(mapped);
+      },
+      error: () => callback([])
     });
   }
 
