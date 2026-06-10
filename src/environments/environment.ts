@@ -86,7 +86,7 @@ export const environment = {
     // publicKey: 'TEST-4399133a-4676-42a2-ab85-d946370bf96a',
   },
 
-  version: '4.89 (09 Junio 2026) fix: agRichSelectCellEditor para OT/OC/Tipo/Almacen guarda IDs correctamente',
+  version: '4.90 (09 Junio 2026) feat: auto-importar items de OC al abrir detalle en entry-st',
 };
 
 

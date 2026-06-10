@@ -21,6 +21,10 @@ import { PdfReportsService } from 'app/services/pdf-reports.service';
         <button class="btn btn-primary btn-sm me-2" (click)="addItem()">
           <i class="bi bi-plus-lg"></i> Agregar
         </button>
+        <button *ngIf="entryData?.idOc > 0" class="btn btn-secondary btn-sm me-2" (click)="importarItemsDeOC()"
+          title="Importar artículos desde la Orden de Compra">
+          <i class="bi bi-box-arrow-in-down"></i> OC
+        </button>
         <button class="btn btn-warning btn-sm me-2" (click)="discardChanges()">
           <i class="bi bi-arrow-counterclockwise"></i> Deshacer
         </button>
@@ -125,6 +129,15 @@ export class DetailCellRendererEntryItemsComponent implements OnInit {
     if (this.context && this.context.ITEMS && this.context.ITEMS.load) {
       const entryId = this.params.data.id;
       this.context.ITEMS.load(entryId, (data: any[]) => {
+        if (data.length === 0 && this.params.data?.idOc > 0 && this.context.ITEMS.importFromOC) {
+          this.context.ITEMS.importFromOC(this.params.data.idOc, entryId, (ocItems: any[]) => {
+            this.rowData = ocItems;
+            if (this.gridApi) this.gridApi.setGridOption('rowData', this.rowData);
+            if (ocItems.length > 0) this.hasUnsavedChanges = true;
+            if (this.context.ITEMS.updateCount) this.context.ITEMS.updateCount(entryId, this.rowData.length);
+          });
+          return;
+        }
         this.rowData = data.map(item => ({
           ...item,
           materialName: item.description || '',
@@ -134,12 +147,31 @@ export class DetailCellRendererEntryItemsComponent implements OnInit {
         if (this.gridApi) {
           this.gridApi.setGridOption('rowData', this.rowData);
         }
-        // Update the count in master grid
         if (this.context && this.context.ITEMS && this.context.ITEMS.updateCount) {
           this.context.ITEMS.updateCount(entryId, this.rowData.length);
         }
       });
     }
+  }
+
+  importarItemsDeOC() {
+    const idOc = this.params.data?.idOc;
+    if (!idOc || idOc <= 0) {
+      alerts.basicAlert('Sin OC', 'Esta entrada no tiene una Orden de Compra asignada', 'warning');
+      return;
+    }
+    const entryId = this.params.data.id;
+    this.context.ITEMS.importFromOC(idOc, entryId, (ocItems: any[]) => {
+      if (!ocItems || ocItems.length === 0) {
+        alerts.basicAlert('Sin artículos', 'La OC no tiene artículos activos para importar', 'info');
+        return;
+      }
+      this.rowData = ocItems;
+      if (this.gridApi) this.gridApi.setGridOption('rowData', this.rowData);
+      this.hasUnsavedChanges = true;
+      if (this.context.ITEMS.updateCount) this.context.ITEMS.updateCount(entryId, this.rowData.length);
+      alerts.toastAlert(`${ocItems.length} artículo(s) importados de la OC`, 'success');
+    });
   }
 
   loadDataForReport() {
