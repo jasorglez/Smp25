@@ -123,7 +123,7 @@ export class DetailCellRendererComparisonComponent implements ICellRendererAngul
       {
         headerName: '#',
         valueGetter: (p: any) => p.node?.rowPinned ? '' : (p.node?.rowIndex ?? 0) + 1,
-        width: 55,
+        width: 50,
         pinned: 'left',
         cellStyle: { textAlign: 'center', color: '#999' }
       },
@@ -131,11 +131,22 @@ export class DetailCellRendererComparisonComponent implements ICellRendererAngul
         field: 'productName',
         headerName: 'Material',
         flex: 2,
-        minWidth: 180,
+        minWidth: 160,
         pinned: 'left',
         cellStyle: (p: any) => p.node?.rowPinned
           ? { fontWeight: 'bold', textAlign: 'right', paddingRight: '8px' }
           : {}
+      },
+      {
+        headerName: 'Cant.',
+        valueGetter: (p: any) => {
+          if (p.node?.rowPinned) return '';
+          const d = p.data;
+          return d?.p1?.quantity ?? d?.p2?.quantity ?? d?.p3?.quantity ?? '';
+        },
+        width: 65,
+        pinned: 'left',
+        cellStyle: { textAlign: 'center', color: '#555' }
       }
     ];
 
@@ -145,7 +156,7 @@ export class DetailCellRendererComparisonComponent implements ICellRendererAngul
       this.colDefs.push({
         headerName: prov.name,
         field: `p${slot}`,
-        width: 160,
+        width: 120,
         cellRenderer: (params: any) => {
           if (params.node?.rowPinned) {
             const total = params.value ?? 0;
@@ -160,8 +171,7 @@ export class DetailCellRendererComparisonComponent implements ICellRendererAngul
           const color  = best ? '#155724' : '#333';
           const check  = best ? '✓ ' : '';
           return `<div style="text-align:right;padding:2px 6px;font-weight:${weight};color:${color};">
-                    <div>${check}$${Number(data.price).toFixed(2)}</div>
-                    <div style="font-size:10px;color:#888;">$${Number(data.total).toFixed(2)}</div>
+                    ${check}$${Number(data.total).toFixed(2)}
                   </div>`;
         },
         cellStyle: (params: any) => {
