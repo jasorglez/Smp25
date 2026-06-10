@@ -1554,9 +1554,28 @@ createQuote(idQuote: number, action: string) {
 
   openComparisonDetail(quoteData: any): void {
     if (!this.masterGridApi) return;
+
+    // Toggle: si ya está expandido, cerrar
+    let isExpanded = false;
+    this.masterGridApi.forEachNode((node: any) => {
+      if (node.data?.id === quoteData.id && node.expanded) isExpanded = true;
+    });
+    if (isExpanded) {
+      this.masterGridApi.forEachNode((node: any) => {
+        if (node.data?.id === quoteData.id) node.setExpanded(false);
+      });
+      return;
+    }
+
     this.masterGridApi.setGridOption('detailCellRenderer', DetalleCuadroComparativoComponent);
     this.masterGridApi.setGridOption('detailCellRendererParams', {
-      getDetailRowData: (params: any) => params.successCallback([params.data])
+      getDetailRowData: (params: any) => params.successCallback([{
+        ...params.data,
+        _idRoot: this.idRoot,
+        _departamentos: this.departamentos,
+        _requisiciones: this.requisiciones,
+        _masterGridApi: this.masterGridApi
+      }])
     });
     this.masterGridApi.forEachNode((node: any) => {
       if (node.data?.id === quoteData.id) {
