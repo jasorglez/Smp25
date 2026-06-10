@@ -29,7 +29,6 @@ import { confirmExitIfUnsaved } from 'app/helpers/can-deactivate.helper';
 import { ProviderDetailCellRendererComponent } from './provider-detail-cell-renderer.component';
 import { ProviderQuoteDetailComponent } from './provider-quote-detail.component';
 import { DetailCellRendererPedimentosComponent } from '../../../ModShoppingDelison/pages/quote-delison/detail-cell-renderer-pedimentos.component';
-import { DetailCellRendererComparisonComponent } from './detail-cell-renderer-comparison.component';
 
 interface Catalog {
   id: number;
@@ -44,7 +43,7 @@ interface Provider {
 @Component({
   selector: 'app-quote',
   standalone: true,
-  imports: [CommonModule, FormsModule, AgGridModule, MultiLineEditorComponent, ProviderDetailCellRendererComponent, ProviderQuoteDetailComponent, DetailCellRendererPedimentosComponent, DetailCellRendererComparisonComponent],
+  imports: [CommonModule, FormsModule, AgGridModule, MultiLineEditorComponent, ProviderDetailCellRendererComponent, ProviderQuoteDetailComponent, DetailCellRendererPedimentosComponent],
   templateUrl: './quote.component.html',
   styleUrl: './quote.component.scss'
 })
@@ -216,15 +215,13 @@ private lastProcessedQuote: number = null;
   }
 
   // Column Definitions: Defines the columns to be displayed.
-isOpeningProviderDetail: boolean = false;
-
 public gridOptions: any = {
     headerHeight: 25,
     rowHeight: 35,
     masterDetail: true,
-    detailRowHeight: 400,
+    detailRowHeight: 800,
     isRowMaster: (dataItem: any) => true,
-    detailCellRenderer: DetailCellRendererComparisonComponent,
+    detailCellRenderer: ProviderDetailCellRendererComponent,
     getRowClass: (params) => {
       // Verificar si la fila está seleccionada
       if (params.node.isSelected()) {
@@ -318,6 +315,25 @@ public gridOptions: any = {
     this.onRequisitionChanged(params);
   }
 },
+{
+  field: 'pedimento',
+  headerName: 'Pedimento #',
+  editable: false,
+  width: 150,
+  filter: true,
+  cellRenderer: (params: any) => {
+    const count = params.data?.pedimentosCount || 0;
+    const label = params.value ? `#${params.value} (${count})` : `${count} pedimentos`;
+    const btnClass = count > 0 ? 'btn-info' : 'btn-outline-info';
+    return `<div style="text-align: center; padding: 5px; cursor: pointer;">
+              <div class="btn btn-sm ${btnClass}" style="pointer-events: none;">${label}</div>
+            </div>`;
+  },
+  onCellClicked: (params: any) => {
+    this.openPedimentoDetail(params.data);
+  }
+},
+
 {
   field: 'proveedor1',
   headerName: 'Proveedor 1',
@@ -414,6 +430,45 @@ public gridOptions: any = {
   },
   },
      ];
+
+    // Add comparison column only when activateOc is false
+    if (!this.activateOc) {
+      this._colMaster.push({
+        field: 'comparacion',
+        headerName: 'Comparación',
+        width: 130,
+        cellRenderer: (params: any) => {
+          // Only show button if at least 2 providers have quotes
+          const hasP1 = params.data.proveedor1Id > 0;
+          const hasP2 = params.data.proveedor2Id > 0;
+          const hasP3 = params.data.proveedor3Id > 0;
+          const providerCount = [hasP1, hasP2, hasP3].filter(Boolean).length;
+
+          if (providerCount < 2) {
+            return `<div style="text-align: center; padding: 5px;">
+                      <span class="text-muted small">Min. 2 proveedores</span>
+                    </div>`;
+          }
+
+          return `<div style="text-align: center; padding: 5px;">
+                    <button class="btn btn-sm btn-info" style="pointer-events: none;">
+                      <i class="bi bi-table"></i> Comparar
+                    </button>
+                  </div>`;
+        },
+        editable: false,
+        onCellClicked: (params: any) => {
+          const hasP1 = params.data.proveedor1Id > 0;
+          const hasP2 = params.data.proveedor2Id > 0;
+          const hasP3 = params.data.proveedor3Id > 0;
+          const providerCount = [hasP1, hasP2, hasP3].filter(Boolean).length;
+
+          if (providerCount >= 2) {
+            this.openComparisonModal(params.data);
+          }
+        }
+      });
+    }
 
     return this._colMaster;
   }
@@ -838,28 +893,10 @@ obtenerProveedores() {
   onMasterGridReady(params: GridReadyEvent) {
     this.masterGridApi = params.api;
 
-    // Configurar cuadro comparativo como detail por defecto
-    this.setComparisonAsDefaultDetail();
-
-    // Cuando el usuario expande una fila sin haber clickeado un proveedor → volver al comparativo
-    params.api.addEventListener('rowGroupOpened', (event: any) => {
-      if (event.expanded && !this.isOpeningProviderDetail) {
-        this.setComparisonAsDefaultDetail();
-      }
-    });
-
     // Set initial context for detail cell renderer
     this.updateGridContext();
 
     console.log('Master grid ready, idRoot:', this.idRoot);
-  }
-
-  private setComparisonAsDefaultDetail() {
-    if (!this.masterGridApi) return;
-    this.masterGridApi.setGridOption('detailCellRenderer', DetailCellRendererComparisonComponent);
-    this.masterGridApi.setGridOption('detailCellRendererParams', {
-      getDetailRowData: (p: any) => p.successCallback([p.data])
-    });
   }
 
   updateGridContext() {
@@ -1323,7 +1360,6 @@ createQuote(idQuote: number, action: string) {
   // Open the provider detail grid with COTIZ data
   private openProviderDetail(quoteData: any, providerNumber: number, cotizId: number, idProvider: number): void {
     if (this.masterGridApi) {
-      this.isOpeningProviderDetail = true;
       this.masterGridApi.setGridOption('detailCellRenderer', ProviderQuoteDetailComponent);
 
       this.masterGridApi.setGridOption('detailCellRendererParams', {
@@ -1360,10 +1396,7 @@ createQuote(idQuote: number, action: string) {
       this.masterGridApi.forEachNode((node: any) => {
         if (node.data && node.data.id === quoteData.id) {
           node.setExpanded(false);
-          setTimeout(() => {
-            node.setExpanded(true);
-            this.isOpeningProviderDetail = false;
-          }, 50);
+          setTimeout(() => node.setExpanded(true), 50);
         } else if (node.expanded) {
           node.setExpanded(false);
         }
