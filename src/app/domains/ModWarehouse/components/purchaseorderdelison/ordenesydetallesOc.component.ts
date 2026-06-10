@@ -7,11 +7,16 @@ import { CustomersService } from 'app/services/customers.service';
 import { SetupOcService } from 'app/services/setup-oc.service';
 import { SetupService } from 'app/services/setup.service';
 import { CurrencyService } from 'app/services/currency.service';
+import { EmpaqueDescripcionService, ProveedorPresentaciones } from 'app/services/empaque-descripcion.service';
+import { resolverUnidadArticulo, denomsDeProveedor } from 'app/domains/ModWarehouse/components/requisitionsdelison/presentaciones-unidad.helper';
+import { evaluateProvider } from 'app/domains/ModWarehouse/components/requisitionsdelison/presentaciones-composer.helper';
+import { map as rxMap, catchError as rxCatch } from 'rxjs/operators';
+import { EntregasDistribucionPanelComponent } from './entregas-distribucion-panel.component';
 import { ConditionsPendingService } from 'app/services/conditions-pending.service';
 import { SignalsService } from 'app/services/signals.service';
 import { EntregaOcService } from 'app/services/entrega-oc.service';
 import { EntregasPendingService } from 'app/services/entregas-pending.service';
-import { lastValueFrom, Subscription } from 'rxjs';
+import { lastValueFrom, Subscription, forkJoin, of } from 'rxjs';
 import Swal from 'sweetalert2';
 import { EntradaDocumentsOverlayService } from 'app/services/entrada-documents-overlay.service';
 import { IntandoutDocumentsService } from 'app/services/intandoutDocuments.service';
@@ -56,7 +61,7 @@ interface OcTooltipData {
 @Component({
   selector: 'app-ordenesydetallesoc',
   standalone: true,
-  imports: [CommonModule, AgGridAngular],
+  imports: [CommonModule, AgGridAngular, EntregasDistribucionPanelComponent],
   template: `
     <div style="padding: 6px; height: 100%; display: flex; flex-direction: column; box-sizing: border-box; overflow: hidden; position: relative;">
       <div *ngIf="alertMessage"
@@ -115,6 +120,11 @@ interface OcTooltipData {
         <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 3px; flex-shrink: 0;">
           <span style="font-size: 0.78rem; font-weight: bold; color: #2e7d32;">Detalle de {{ selectedArticleRow.namearticle }}</span>
           <div style="display: flex; gap: 4px;">
+            <button (click)="openEntregasModal(selectedArticleRow)"
+                    style="font-size: 0.7rem; padding: 1px 7px; border: 1px solid #1565c0; border-radius: 4px;
+                           background: #e3f2fd; color: #1565c0; cursor: pointer; line-height: 1.6;">
+              <i class="bi bi-grid-1x2-fill"></i> Repartir
+            </button>
             <button (click)="addNivel3Row()"
                     style="font-size: 0.7rem; padding: 1px 7px; border: 1px solid #2e7d32; border-radius: 4px;
                            background: #e8f5e9; color: #2e7d32; cursor: pointer; line-height: 1.6;">
@@ -146,6 +156,24 @@ interface OcTooltipData {
       </div>
     </div>
 
+    <!-- Modal: reparto de entregas (Cantidad a Recibir por entrega, validado por presentaciones/mínimo) -->
+    <app-entregas-distribucion-panel
+      *ngIf="edPanelOpen"
+      [articleName]="edPanelArticle"
+      [proveedorName]="edPanelProveedor"
+      [unidad]="edPanelUnidad"
+      [esPieza]="edPanelEsPieza"
+      [total]="edPanelTotal"
+      [minEfectivo]="edPanelMinEfectivo"
+      [numEntregas]="edPanelN"
+      [maxN]="edPanelMaxN"
+      [packages]="edPanelPackages"
+      [cantidadesActuales]="edPanelActuales"
+      [bloqueadas]="edPanelBloqueadas"
+      (seleccionar)="onEdPanelSeleccionar($event)"
+      (cerrar)="closeEdPanel()">
+    </app-entregas-distribucion-panel>
+
   `,
   styles: [`
     :host { display: block; height: 100%; overflow: hidden; }
@@ -167,10 +195,35 @@ export class OrdenesydetallesOcComponent implements OnDestroy {
   private entradaMoliendaService = inject(EntradaMoliendaService);
   private gastosService = inject(GastosService);
   private currencyService = inject(CurrencyService);
+  private empaqueService = inject(EmpaqueDescripcionService);
 
   // Fase 2: catálogo de monedas para mostrar la abreviatura junto a Precio/Total (Opción A, sin convertir).
   private monedasMap = new Map<number, string>();
   private defaultCurrencyId: number | null = null;
+
+  // Presentaciones/empaque por ítem (idSupplie) del proveedor de la OC: mínimo efectivo (múltiplo de
+  // paquete ≥ compra mínima), denominaciones y unidad base. Para capar "Cantidad Entregas" y validar
+  // "Cantidad a Recibir" (cada entrega ≥ mínimo efectivo y múltiplo de paquete).
+  private itemPackInfo = new Map<number, {
+    minEfectivo: number;
+    packages: { base: number; descripcion: string; unidad: string }[];
+    unidad: string;
+    esPieza: boolean;
+  }>();
+
+  // Modal de reparto de entregas (Etapa 2).
+  edPanelOpen = false;
+  edPanelArticle = '';
+  edPanelProveedor = '';
+  edPanelUnidad = '';
+  edPanelEsPieza = false;
+  edPanelTotal = 0;
+  edPanelMinEfectivo = 0;
+  edPanelN = 1;
+  edPanelMaxN = 1;
+  edPanelPackages: { base: number; descripcion: string; unidad: string }[] = [];
+  edPanelActuales: number[] = [];
+  edPanelBloqueadas: boolean[] = [];
 
   private entregasPendingSub: Subscription;
   private conditionsPendingSub: Subscription;
@@ -255,9 +308,10 @@ export class OrdenesydetallesOcComponent implements OnDestroy {
   selectedOcRow: OcRow | null = null;
 
   get itemsFlexSize(): string {
-    if (this.selectedArticleRow) return '0 0 130px';
-    // title bar ≈ 28px + ag-header ≈ 32px + per row 42px + padding 16px, cap at 500px
-    const h = Math.min(200 + this.itemsData.length * 42, 500);
+    // Con el detalle de entregas abierto, el grid de ítems se reduce pero con más alto que antes.
+    if (this.selectedArticleRow) return '0 0 200px';
+    // title bar ≈ 28px + ag-header ≈ 32px + per row 42px + padding; más alto y mayor tope.
+    const h = Math.min(280 + this.itemsData.length * 42, 680);
     return `0 0 ${h}px`;
   }
   providers: any[] = [];
@@ -425,7 +479,8 @@ export class OrdenesydetallesOcComponent implements OnDestroy {
         && !((p.data?.entregasCount ?? 0) > 0)
         && p.data?.typeoc !== 'COMPRA AUTORIZADA SIN LIMITE',
       cellEditor: 'agRichSelectCellEditor',
-      cellEditorParams: () => ({ values: this.conditionsOptions }),
+      // Solo hasta el número de entregas donde cada una pueda cumplir el mínimo efectivo del proveedor.
+      cellEditorParams: (p: any) => ({ values: this.opcionesEntregas(p.data) }),
       valueParser: (p) => { const n = Number(p.newValue); return isNaN(n) ? p.oldValue : n; },
       valueFormatter: (p: any) => {
         // `conditions` (p.value) = plan original elegido en el dropdown.
@@ -686,6 +741,8 @@ export class OrdenesydetallesOcComponent implements OnDestroy {
     rowClassRules: {
       'item-blocked-row': (p: any) => p.data?.__blocked === true,
     },
+    // Renderiza popups (dropdown "Cantidad Entregas") a nivel body para que no los recorte el grid.
+    popupParent: typeof document !== 'undefined' ? document.body : null,
     onFirstDataRendered: (params: any) => params.api.autoSizeAllColumns(),
     onCellValueChanged: (event: any) => {
       if (event.colDef.field === 'datepostpone') {
@@ -762,12 +819,22 @@ export class OrdenesydetallesOcComponent implements OnDestroy {
         event.api.refreshCells({ rowNodes: [event.node], columns: ['namearticle', 'notaFactura', 'fechaEntradaAlmacen', 'cantidadEntradaAlmacen'], force: true });
 
         const min = this.conditionsOptions.length ? this.conditionsOptions[0] : 1;
-        if (event.data === this.selectedArticleRow) {
-          if (newCond <= min) {
-            this.closeNivel3();
-          } else {
-            this.buildNivel3Grid(event.data, true);
+        if (newCond <= min) {
+          // 1 entrega → no hay reparto; cerrar el detalle si estaba abierto.
+          if (event.data === this.selectedArticleRow) this.closeNivel3();
+        } else {
+          // N≥2 → expandir el ítem (si no lo estaba) y abrir el modal de reparto.
+          if (event.data !== this.selectedArticleRow) {
+            if (event.data.__originalConditions == null) event.data.__originalConditions = Number(event.data.conditions ?? 0);
+            if (event.data.__originalEntregasCount == null) event.data.__originalEntregasCount = Number(event.data.entregasCount ?? 0);
+            this.selectedArticleRow = event.data;
+            if (this.itemsGridApi) {
+              this.itemsGridApi.forEachNode((node: any) => node.setRowHeight(node.data === event.data ? undefined : 0));
+              this.itemsGridApi.onRowHeightChanged();
+            }
           }
+          this.buildNivel3Grid(event.data, true);
+          this.openEntregasModal(event.data);
         }
       }
     },
@@ -1001,6 +1068,22 @@ export class OrdenesydetallesOcComponent implements OnDestroy {
           this.showInlineAlert(`La cantidad excede la cotización (máx. ${maxQty})`);
           return;
         }
+        // Validación por presentaciones: cada entrega ≥ mínimo efectivo y múltiplo de presentación.
+        const info = this.itemPackInfo.get(Number(this.selectedArticleRow?.idSupplie ?? this.selectedArticleRow?.idsupplie ?? 0));
+        if (info && info.minEfectivo > 0 && newVal > 0) {
+          if (newVal < info.minEfectivo - 1e-6) {
+            event.data.cantidadRecibir = event.oldValue ?? null;
+            event.api.refreshCells({ rowNodes: [event.node], columns: ['cantidadRecibir'], force: true });
+            this.showInlineAlert(`La cantidad por entrega no puede ser menor al mínimo (${info.minEfectivo.toLocaleString('es-MX')}). Usa "Repartir".`);
+            return;
+          }
+          if (info.packages.length && !this.esCantidadComponible(newVal, info.packages)) {
+            event.data.cantidadRecibir = event.oldValue ?? null;
+            event.api.refreshCells({ rowNodes: [event.node], columns: ['cantidadRecibir'], force: true });
+            this.showInlineAlert('La cantidad debe ser múltiplo de las presentaciones del proveedor. Usa "Repartir".');
+            return;
+          }
+        }
         // Total x Entrega = precio unitario CON IVA REDONDEADO a 2 dec (Opción A) × cantidad,
         // igual que la columna "Total" del ítem; así cuadra aunque el IVA se haya marcado en Gastos.
         const base = Number(this.selectedArticleRow?.price ?? 0);
@@ -1083,6 +1166,196 @@ export class OrdenesydetallesOcComponent implements OnDestroy {
       error: () => { this.ivaPercent = 0; }
     });
     this.loadMonedas();
+  }
+
+  /**
+   * Carga las presentaciones del proveedor de la OC por material de cada ítem y calcula el mínimo
+   * efectivo (múltiplo de presentación más chico ≥ compra mínima). Alimenta el cap del dropdown
+   * "Cantidad Entregas" y la validación de "Cantidad a Recibir".
+   */
+  private loadItemsPackInfo(): void {
+    this.itemPackInfo.clear();
+    const provId = Number(this.selectedOcRow?.idProvider) || 0;
+    const ids = Array.from(new Set(
+      (this.itemsData || [])
+        .map((it: any) => Number(it.idSupplie ?? it.idsupplie ?? 0))
+        .filter((id: number) => id > 0)
+    ));
+    if (ids.length === 0) return;
+    forkJoin(ids.map(id =>
+      this.empaqueService.getPresentacionesByMaterial(id).pipe(
+        rxMap(data => ({ id, data: Array.isArray(data) ? data : [] })),
+        rxCatch(() => of({ id, data: [] as ProveedorPresentaciones[] }))
+      )
+    )).subscribe((results: { id: number; data: ProveedorPresentaciones[] }[]) => {
+      for (const r of (results || [])) {
+        const provs = r.data || [];
+        // SOLO las presentaciones del proveedor de ESTA OC. Si no tiene, NO usar las de otro proveedor
+        // (eso inflaba el mínimo efectivo): sin presentaciones → mínimo efectivo = compra mínima cruda.
+        const prov = provs.find(p => Number(p.idProvider) === provId) || null;
+        const unidadInfo = resolverUnidadArticulo(prov ? [prov] : []);
+        const packages = prov ? denomsDeProveedor(prov) : [];
+        const item = (this.itemsData || []).find((it: any) => Number(it.idSupplie ?? it.idsupplie ?? 0) === r.id);
+        const minRaw = Number(item?.compraMinima ?? item?.compraminima ?? 0) || 0;
+        this.itemPackInfo.set(r.id, {
+          minEfectivo: this.calcMinEfectivo(minRaw, packages),
+          packages,
+          unidad: unidadInfo.unidad,
+          esPieza: unidadInfo.esPieza,
+        });
+      }
+      if (this.itemsGridApi && !this.itemsGridApi.isDestroyed())
+        this.itemsGridApi.refreshCells({ columns: ['conditions'], force: true });
+    });
+  }
+
+  /** Mínimo efectivo: múltiplo de presentación más chico ≥ compra mínima. Sin presentaciones → el mínimo. */
+  private calcMinEfectivo(minCompra: number, packages: { base: number }[]): number {
+    const min = Number(minCompra) || 0;
+    if (min <= 0) return 0;
+    const denoms = (packages || []).filter(p => p.base > 0);
+    if (denoms.length === 0) return min;
+    const ev = evaluateProvider(min, 0, denoms.map(p => ({ base: p.base, descripcion: '', unidad: '' })));
+    return ev.exact?.total ?? ev.above?.total ?? min;
+  }
+
+  /** ¿La cantidad es componible exactamente con las presentaciones? Sin presentaciones → libre. */
+  private esCantidadComponible(v: number, packages: { base: number }[]): boolean {
+    const denoms = (packages || []).filter(p => p.base > 0);
+    if (denoms.length === 0) return true;
+    const ev = evaluateProvider(v, 0, denoms.map(p => ({ base: p.base, descripcion: '', unidad: '' })));
+    return !!ev.exact;
+  }
+
+  /** Opciones de "Cantidad Entregas" para un ítem: setupMin..maxN, maxN = floor(total / mínimo efectivo). */
+  opcionesEntregas(itemRow: any): number[] {
+    const setupMin = this.conditionsOptions.length ? this.conditionsOptions[0] : 1;
+    const setupMax = this.conditionsOptions.length ? this.conditionsOptions[this.conditionsOptions.length - 1] : 1;
+    const total = Number(itemRow?.quantity) || 0;
+    const info = this.itemPackInfo.get(Number(itemRow?.idSupplie ?? itemRow?.idsupplie ?? 0));
+    const minEf = info?.minEfectivo ?? (Number(itemRow?.compraMinima) || 0);
+    let maxN = setupMax;
+    if (minEf > 0 && total > 0) maxN = Math.min(setupMax, Math.floor(total / minEf));
+    if (maxN < setupMin) maxN = setupMin;
+    const out: number[] = [];
+    for (let n = setupMin; n <= maxN; n++) out.push(n);
+    return out.length ? out : [setupMin];
+  }
+
+  /** Abre el modal de reparto para el ítem seleccionado (usa las entregas actuales como pre-llenado). */
+  openEntregasModal(itemRow: any): void {
+    if (!itemRow) return;
+    const info = this.itemPackInfo.get(Number(itemRow?.idSupplie ?? itemRow?.idsupplie ?? 0));
+    this.edPanelArticle = itemRow?.namearticle || '';
+    this.edPanelProveedor = this.selectedOcRow?.providerName || '';
+    this.edPanelUnidad = info?.unidad || '';
+    this.edPanelEsPieza = info?.esPieza || false;
+    this.edPanelTotal = Number(itemRow?.quantity) || 0;
+    this.edPanelMinEfectivo = info?.minEfectivo ?? (Number(itemRow?.compraMinima) || 0);
+    this.edPanelPackages = info?.packages || [];
+    // N = número de filas reales de entregas (lo que se ve en el detalle), no `conditions`.
+    const filas = this.nivel3Data || [];
+    this.edPanelN = Math.max(1, filas.length || Number(itemRow?.conditions) || 1);
+    this.edPanelMaxN = Math.max(...this.opcionesEntregas(itemRow), this.edPanelN);
+    this.edPanelActuales = filas.map(r => Number(r.cantidadRecibir) || 0);
+    this.edPanelBloqueadas = filas.map(r => this.entregaBloqueada(r));
+    this.edPanelOpen = true;
+  }
+
+  /** Una entrega está bloqueada si ya está cerrada o ya entró a almacén (no se edita ni se elimina). */
+  private entregaBloqueada(row: any): boolean {
+    return !!row?.close || !!row?.fechaEntradaAlmacen;
+  }
+
+  onEdPanelSeleccionar(ev: { cantidades: number[]; numEntregas: number }): void {
+    this.edPanelOpen = false;
+    this.aplicarReparto(ev.cantidades || [], Number(ev.numEntregas) || (this.nivel3Data || []).length);
+  }
+
+  closeEdPanel(): void { this.edPanelOpen = false; }
+
+  /**
+   * Aplica el reparto del modal: ajusta el número de filas de entregas a `numEntregas`
+   * (agrega al final / borra físicamente las sobrantes pendientes), escribe las cantidades
+   * y propaga el cambio (entregasCount + pending). Las entregas cerradas no se tocan ni se borran.
+   */
+  private async aplicarReparto(cantidades: number[], numEntregas: number): Promise<void> {
+    if (!this.selectedArticleRow) return;
+    const idDetail = Number(this.selectedArticleRow?.id);
+    const fechaBase = this.dateToIso(this.selectedArticleRow.datepostpone);
+    let current = this.nivel3Data.length;
+
+    // 1) Agregar filas pendientes al final.
+    if (numEntregas > current) {
+      const toAdd = numEntregas - current;
+      const added: any[] = [];
+      for (let k = 0; k < toAdd; k++) {
+        added.push({ ...this.emptyNivel3Row(this.addDaysToIso(fechaBase, current + k)), __touched: true });
+      }
+      this.nivel3Data = [...this.nivel3Data, ...added];
+      this.selectedArticleRow.entregasCount = Number(this.selectedArticleRow.entregasCount ?? 0) + toAdd;
+      current = this.nivel3Data.length;
+    }
+
+    // 2) Quitar filas sobrantes (siempre desde el final, nunca cerradas) con borrado FÍSICO en BD.
+    while (this.nivel3Data.length > numEntregas) {
+      const removed = this.nivel3Data[this.nivel3Data.length - 1];
+      if (this.entregaBloqueada(removed)) {
+        // Salvaguarda: no se elimina una entrega cerrada/recibida aunque el modal lo pidiera.
+        this.showInlineAlert('No se puede quitar una entrega ya cerrada/recibida');
+        break;
+      }
+      if (removed?.id) {
+        try {
+          const docs = await lastValueFrom(
+            this.intandoutDocumentsService.getIntandoutDocumentsById(Number(removed.id), 'entrega')
+          ).catch(() => []);
+          if (Array.isArray(docs) && docs.length > 0) {
+            await Promise.all(docs.map((doc: any) =>
+              lastValueFrom(this.intandoutDocumentsService.deleteIntandoutDocuments(doc.id)).catch(() => {})
+            ));
+          }
+          await lastValueFrom(this.entregaOcService.delete(Number(removed.id)));
+        } catch {
+          this.showInlineAlert('No se pudo borrar una entrega');
+          break;
+        }
+        // Bajar baseline y originalEntregasCount (la BD ya no la tiene).
+        this.originalNivel3Data = this.originalNivel3Data.slice(0, -1);
+        this.selectedArticleRow.__originalEntregasCount = Math.max(
+          0, Number(this.selectedArticleRow.__originalEntregasCount ?? 0) - 1
+        );
+      }
+      this.nivel3Data = this.nivel3Data.slice(0, -1);
+      this.selectedArticleRow.entregasCount = Math.max(0, Number(this.selectedArticleRow.entregasCount ?? 0) - 1);
+    }
+
+    // 3) Escribir cantidades por entrega (índice alineado; las cerradas no se modifican).
+    const base = Number(this.selectedArticleRow?.price ?? 0);
+    const factor = this.selectedArticleRow?.masIva ? (1 + this.ivaPercent / 100) : 1;
+    const unit = Math.round(base * factor * 100) / 100;
+    for (let i = 0; i < this.nivel3Data.length; i++) {
+      const row = this.nivel3Data[i];
+      if (this.entregaBloqueada(row)) continue;
+      const qty = Number(cantidades[i]) || 0;
+      row.cantidadRecibir = qty;
+      row.totalEntrega = Number.isFinite(unit * qty) ? unit * qty : 0;
+      row.__touched = true;
+    }
+
+    // 4) Propagar.
+    this.hasNivel3Changes = true;
+    this.selectedNivel3Row = null;
+    if (idDetail) {
+      this.entregasPendingService.set(idDetail, this.nivel3Data);
+      this.entregasPendingService.setVisible(idDetail, this.nivel3Data);
+    }
+    if (this.nivel3GridApi && !this.nivel3GridApi.isDestroyed()) {
+      this.nivel3GridApi.setGridOption('rowData', this.nivel3Data);
+      this.nivel3GridApi.refreshCells({ force: true });
+    }
+    this.refreshConditionsCell();
+    this.syncSelectedItemQuantityDelta();
   }
 
   refresh(params: any): boolean {
@@ -1786,8 +2059,8 @@ export class OrdenesydetallesOcComponent implements OnDestroy {
   async deleteNivel3Row(): Promise<void> {
     if (!this.selectedArticleRow) return;
     const lastRow = this.nivel3Data[this.nivel3Data.length - 1];
-    if (lastRow?.close === true) {
-      this.showInlineAlert('No puedes eliminar porque esta entrega ya está cerrada');
+    if (this.entregaBloqueada(lastRow)) {
+      this.showInlineAlert('No puedes eliminar porque esta entrega ya está cerrada/recibida');
       return;
     }
     if (this.nivel3Data.length <= 1) {
@@ -2176,6 +2449,7 @@ export class OrdenesydetallesOcComponent implements OnDestroy {
         this.loadItemsPdfCounts();
         this.loadItemsEntregasSums();
         this.loadItemsAlmacenData();
+        this.loadItemsPackInfo();   // presentaciones + mínimo efectivo (cap "Cantidad Entregas")
       },
       error: () => {
         this.itemsData = [];

@@ -83,6 +83,9 @@ export interface PendingPayment {
   // En HISTÓRICO: TC aplicado y fuente; valorPago ya viene en MXN.
   tipoCambio?: number | null;
   fuenteTc?: string | null;
+  // TC con que se pagó el anticipo de la OC. El anticipo aplicado/desglose viene en moneda original;
+  // se multiplica por este TC para mostrarlo en MXN. 1 si MXN o sin anticipo.
+  tcAnticipo?: number | null;
 }
 
 export interface AnticipoItem {

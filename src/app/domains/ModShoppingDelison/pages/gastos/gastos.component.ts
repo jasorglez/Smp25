@@ -199,7 +199,7 @@ export class GastosComponent {
       editable: (p: any) => p.data?.docType === 'CR',
       cellEditor: 'agNumberCellEditor',
       // Un anticipo no tiene precio unitario → mostrar "—".
-      valueFormatter: (p: any) => p.data?.docType === 'ANTICIPO' ? '—' : this.money(p.value),
+      valueFormatter: (p: any) => p.data?.docType === 'ANTICIPO' ? '—' : `${this.money(p.value)} ${this.monedaAbbr(p.data)}`,
       cellStyle: (p: any) => p.data?.docType === 'CR' ? { backgroundColor: '#fffde7' } : null,
       // Cuando el IVA está aplicado, el tooltip muestra el P. Unit. original (sin IVA).
       tooltipComponent: StyledTooltipComponent,
@@ -209,9 +209,9 @@ export class GastosComponent {
           : null,
     },
     {
-      field: 'valorPago', headerName: 'Valor', width: 110, type: 'numericColumn',
+      field: 'valorPago', headerName: 'Valor', width: 120, type: 'numericColumn',
       editable: false,                       // calculado: P. Unit. × Cant. (con IVA si aplica)
-      valueFormatter: (p: any) => this.money(p.value),
+      valueFormatter: (p: any) => `${this.money(p.value)} ${this.monedaAbbr(p.data)}`,
       cellStyle: (p: any) => p.data?.docType === 'ANTICIPO'
         ? { backgroundColor: '#eef2f6', fontWeight: '600', textDecoration: 'underline dotted', cursor: 'help' }
         : { backgroundColor: '#eef2f6', fontWeight: '600' },
@@ -428,12 +428,14 @@ export class GastosComponent {
         const v = Number(p.data?.valorPago) || 0;
         return q > 0 ? Math.round((v / q) * 100) / 100 : 0;
       },
-      valueFormatter: (p: any) => p.data?.docType === 'ANTICIPO' ? '—' : this.money(p.value),
+      // En el histórico todo ya está convertido a MXN (valorPago = monto_mxn) → etiqueta fija "MXN".
+      valueFormatter: (p: any) => p.data?.docType === 'ANTICIPO' ? '—' : `${this.money(p.value)} MXN`,
     },
     {
-      field: 'valorPago', headerName: 'Valor', width: 110, type: 'numericColumn',
+      field: 'valorPago', headerName: 'Valor', width: 120, type: 'numericColumn',
       // Entrega con anticipo aplicado → muestra el NETO (bruto − anticipo aplicado). Anticipo → su monto.
-      valueFormatter: (p: any) => this.money(this.histValorNeto(p.data)),
+      // El histórico ya está en MXN (valorPago = monto_mxn).
+      valueFormatter: (p: any) => `${this.money(this.histValorNeto(p.data))} MXN`,
       cellStyle: (p: any) => {
         const esAnticipo = p.data?.docType === 'ANTICIPO';
         const tieneDesc = !esAnticipo && (Number(p.data?.anticipoAplicado) || 0) > 0;
@@ -565,13 +567,15 @@ export class GastosComponent {
   /** Tooltip de la columna Valor en la fila de ANTICIPO: total + % (una vez) y el consumo por entrega. */
   buildAnticipoValorTooltip(row: any): any {
     if (!row || row.docType !== 'ANTICIPO') return null;
-    const total = Number(row.valorPago) || 0;   // total del anticipo
+    const total = Number(row.valorPago) || 0;   // total del anticipo (ya en MXN para anticipo pagado)
     // Porcentaje ORIGINAL (condiciones_pago.cantidad) que viene del backend; NO recalcular con IVA.
     const pct = Number(row.anticipoPorcentaje) || 0;
+    // El consumo por entrega viene en moneda original → a MXN con el TC del anticipo (Fase 4).
+    const tcAnt = Number(row.tcAnticipo) || 1;
     const consumo = row.anticipoConsumo || [];
     let restante = total;
     const rows = consumo.map((c: any) => {
-      const desc = Number(c.descuento) || 0;
+      const desc = (Number(c.descuento) || 0) * tcAnt;
       restante = restante - desc;
       return [c.folioEntrega || '', this.money(desc), this.money(restante)];
     });
@@ -586,7 +590,9 @@ export class GastosComponent {
    *  más el estado del anticipo (Total → desglose por entrada hasta ésta → restante). */
   buildEntregaValorTooltip(row: any): any {
     if (!row || row.docType === 'ANTICIPO') return null;
-    const aplicado = Number(row.anticipoAplicado) || 0;
+    // Anticipo aplicado viene en moneda original → a MXN con el TC del anticipo (bruto ya está en MXN).
+    const tcAnt = Number(row.tcAnticipo) || 1;
+    const aplicado = (Number(row.anticipoAplicado) || 0) * tcAnt;
     if (aplicado <= 0) return null;
     const bruto = Number(row.valorPago) || 0;
     const neto = bruto - aplicado;
@@ -603,20 +609,21 @@ export class GastosComponent {
       },
     };
 
-    // Estado del anticipo: total y desglose acumulado hasta ESTA entrada (incluida).
-    const total = Number(row.anticipoMonto) || 0;
+    // Estado del anticipo: total y desglose acumulado hasta ESTA entrada (incluida). Todo a MXN (× TC anticipo).
+    const total = (Number(row.anticipoMonto) || 0) * tcAnt;
     const consumo = Array.isArray(row.anticipoConsumo) ? row.anticipoConsumo : [];
     if (total > 0 && consumo.length) {
       const folio = String(row.folio ?? '');
       const idx = consumo.findIndex((c: any) => String(c.folioEntrega ?? '') === folio);
       // Hasta la entrada actual (si está en el ledger); si no (pendiente), todas + ésta al final.
+      // Nota: 'aplicado' ya está en MXN; el consumo del ledger viene en moneda original (se convierte abajo).
       const hasta = idx >= 0
         ? consumo.slice(0, idx + 1)
-        : [...consumo, { folioEntrega: folio, descuento: aplicado }];
+        : [...consumo, { folioEntrega: folio, descuento: (Number(row.anticipoAplicado) || 0) }];
 
       let restante = total;
       const ledgerRows = hasta.map((c: any) => {
-        const desc = Number(c.descuento) || 0;
+        const desc = (Number(c.descuento) || 0) * tcAnt;
         restante = restante - desc;
         return [c.folioEntrega || '', '-' + this.money(desc), this.money(restante)];
       });
@@ -631,11 +638,14 @@ export class GastosComponent {
     return result;
   }
 
-  /** Valor neto de una fila del histórico: entrega = bruto − anticipo aplicado; anticipo = su monto. */
+  /** Valor neto de una fila del histórico: entrega = bruto − anticipo aplicado; anticipo = su monto.
+   *  El bruto (valorPago) ya viene en MXN; el anticipo aplicado viene en moneda original → se convierte
+   *  con el TC con que se pagó el anticipo (Fase 4). */
   private histValorNeto(d: any): number {
     const v = Number(d?.valorPago) || 0;
     if (d?.docType === 'ANTICIPO') return v;
-    return v - (Number(d?.anticipoAplicado) || 0);
+    const tcAnt = Number(d?.tcAnticipo) || 1;
+    return v - (Number(d?.anticipoAplicado) || 0) * tcAnt;
   }
 
   private recomputeHistTotals(): void {
@@ -1395,6 +1405,12 @@ export class GastosComponent {
 
   money(value: number): string {
     return (value ?? 0).toLocaleString('es-MX', { style: 'currency', currency: 'MXN' });
+  }
+
+  /** Abreviatura de la moneda de una fila (USD/EUR/MXN). En Captura, los valores van en moneda original. */
+  monedaAbbr(row: any): string {
+    const m = (row?.moneda || '').toString().trim().toUpperCase();
+    return m || 'MXN';
   }
 
   get periodLabel(): string {

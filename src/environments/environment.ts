@@ -73,5 +73,5 @@ export const environment = {
 
   urlRefreshToken: 'https://securetoken.googleapis.com/v1/token?key=AIzaSyDxCBGKk8nT09hdW85-PyOkhw5_JPZLF1A',
 
-  version: '2.52.414 (8 Junio 2026) - FASE 4 completa: conversión MXN al pagar (diálogo TC Banxico→respaldo→manual, Gastos histórico/totales en MXN, back v6.32) + almacén molienda (detalle-almmolienda Nivel 4/5 Precio unitario y Total x entrega) muestra MXN "en seco" SOLO cuando la entrada ya está pagada (opción B: usa tipo_cambio guardado; si no, valor original). Nivel 3 (precio OC) queda en original. ⚠️ correr add_currency_rates_table.sql + add_montomxn_to_entradas_y_gastos.sql antes del backend'
+  version: '2.52.426 (9 Junio 2026) - Modal Repartir entregas (Selección OC): reabrible vía botón Repartir; encabezado muestra el mínimo; botones Agregar/Eliminar (última) para cambiar el N de entregas (borrado FÍSICO de las sobrantes en BD); Opción B parcial: entregas cerradas/recibidas en gris (solo lectura, no se eliminan), solo se editan las pendientes; Sugerir reparte solo pendientes; al Confirmar, si N cambió actualiza Cantidad Entregas y regenera filas del detalle'
 };

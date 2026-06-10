@@ -20,6 +20,7 @@ import { PrefixSetupService } from 'app/services/prefix-setup.service';
 import { Router } from '@angular/router';
 import { DetailEntradaDocumentsComponent } from './detail-entrada-documents/detail-entrada-documents.component';
 import { CustomOcTooltipComponent } from './custom-oc-tooltip.component';
+import { StyledTooltipComponent } from 'app/shared/styled-tooltip/styled-tooltip.component';
 
 interface ReqOption {
   id: number;
@@ -431,16 +432,16 @@ export class DetalleMoliendaComponent {
       },
     },
     {
-      field: 'price', headerName: 'Precio unitario', width: 120, type: 'numericColumn',
-      // Precio guardado = BASE (Opción B). Si la línea tiene IVA, se muestra con IVA REDONDEADO a 2 dec.
-      // Multi-entrega (>1 entrega): el precio se muestra POR ENTREGA en el grid de Entradas → aquí "—".
-      valueGetter: (p: any) => {
-        if (this.ocEntregasCount(p.data) > 1) return null;
-        const base = Number(p.data?.price) || 0;
-        const v = p.data?.masIva ? base * (1 + this.ivaPercent / 100) : base;
-        return Math.round(v * 100) / 100;
+      field: 'price', headerName: 'Precio unitario', width: 130, type: 'numericColumn',
+      // Fase 4: muestra el precio de la ÚLTIMA entrada PAGADA (ya convertido a MXN); si ninguna está
+      // pagada, el precio original. El tooltip lista el histórico de entradas (precio/total por entrada).
+      valueGetter: (p: any) => this.nivel3PrecioCelda(p.data),
+      valueFormatter: (p: any) => {
+        const mon = this.ultimaEntradaPagada(p.data) ? 'MXN' : this.ocMonedaOriginal(p.data);
+        return `${this.fmtMoneda(p.value)} ${mon}`;
       },
-      valueFormatter: (p: any) => this.ocEntregasCount(p.data) > 1 ? '—' : this.fmtMoneda(p.value),
+      tooltipComponent: StyledTooltipComponent,
+      tooltipValueGetter: (p: any) => this.buildNivel3PrecioTooltip(p.data),
     },
     { field: 'condEspecial', headerName: 'Cond. Especial', flex: 2, minWidth: 130, hide: true },
     {
@@ -599,6 +600,9 @@ export class DetalleMoliendaComponent {
     },
     defaultColDef: { resizable: true, sortable: true, textAlign: 'center' },
     tooltipShowDelay: 300,
+    // Renderiza los popups/tooltips a nivel body para que el tooltip histórico no se recorte
+    // por la baja altura/overflow del grid del Nivel 3.
+    popupParent: typeof document !== 'undefined' ? document.body : null,
     onFirstDataRendered: (params: any) => params.api.autoSizeAllColumns(),
   };
 
@@ -912,23 +916,23 @@ export class DetalleMoliendaComponent {
         const v = p.data?.masIva ? base * (1 + this.ivaPercent / 100) : base;
         return Math.round(v * 100) / 100;
       },
-      valueFormatter: (p) => this.fmtMoneda(this.toMxnIfPaid(p.data, p.value)),
+      valueFormatter: (p) => `${this.fmtMoneda(this.toMxnIfPaid(p.data, p.value))} ${this.nivel4Moneda(p.data)}`,
+      // Tooltip: valor ORIGINAL (moneda extranjera) cuando ya se convirtió a MXN.
+      tooltipComponent: StyledTooltipComponent,
+      tooltipValueGetter: (p: any) => this.nivel4OriginalTooltip(p.data, p.value),
       cellRenderer: (p: any) => {
         // Almacén: si la entrada ya se pagó, se muestra en MXN (convertido en seco); si no, original.
         const shown = this.toMxnIfPaid(p.data, p.value);
-        const formatted = this.fmtMoneda(shown);
+        const formatted = `${this.fmtMoneda(shown)} ${this.nivel4Moneda(p.data)}`;
         if (p.data?.masIva !== true) {
           const span = document.createElement('span');
           span.textContent = formatted;
           span.style.cssText = 'display:block; text-align:right; width:100%;';
           return span;
         }
-        // Precio con IVA + badge "+IVA" (desglose en title nativo).
-        const base = this.toMxnIfPaid(p.data, Number(this.selectedOcRow?.price) || 0);
-        const iva = this.ivaPercent || 0;
+        // Precio con IVA + badge "+IVA". El valor original (extranjera) va en el tooltip de la columna.
         const div = document.createElement('div');
         div.style.cssText = 'display:flex; align-items:center; justify-content:flex-end; gap:4px; width:100%;';
-        div.title = `Base: ${this.fmtMoneda(base)}  ·  IVA: ${iva}%  ·  Con IVA: ${formatted}`;
         const span = document.createElement('span');
         span.textContent = formatted;
         div.appendChild(span);
@@ -942,7 +946,7 @@ export class DetalleMoliendaComponent {
     {
       field: 'pago',
       headerName: 'Total x entrega',
-      width: 130,
+      width: 140,
       type: 'numericColumn',
       valueGetter: (params) => {
         const qty = Number(params.data?.cantidadEntrada) || 0;
@@ -953,7 +957,10 @@ export class DetalleMoliendaComponent {
         const unit = Math.round(price * factor * 100) / 100;
         return unit * qty;
       },
-      valueFormatter: (p) => this.fmtMoneda(this.toMxnIfPaid(p.data, p.value)),
+      valueFormatter: (p) => `${this.fmtMoneda(this.toMxnIfPaid(p.data, p.value))} ${this.nivel4Moneda(p.data)}`,
+      // Tooltip: total ORIGINAL (moneda extranjera) cuando ya se convirtió a MXN.
+      tooltipComponent: StyledTooltipComponent,
+      tooltipValueGetter: (p: any) => this.nivel4OriginalTooltip(p.data, p.value),
     },
     {
       // Fecha en que se confirmó el pago desde la Hoja de Gastos (read-only aquí).
@@ -1078,6 +1085,8 @@ export class DetalleMoliendaComponent {
     },
     onCellEditingStopped: (event: any) => this.onEntradaCellEditingStopped(event),
     tooltipShowDelay: 300,
+    // Tooltips a nivel body para que no los recorte el contenedor del grid.
+    popupParent: typeof document !== 'undefined' ? document.body : null,
     onFirstDataRendered: (params: any) => params.api.autoSizeAllColumns(),
   };
 
@@ -1468,6 +1477,8 @@ export class DetalleMoliendaComponent {
         usuario: e.usuario ?? '',
         liberacion: e.liberacion ?? false,
         tipoCambio: e.tipoCambio ?? null,   // Fase 4: TC con que se pagó (para mostrar en MXN)
+        moneda: e.moneda ?? null,           // Fase 4: moneda original (para el tooltip del valor original)
+        montoMxn: e.montoMxn ?? null,
         credito: e.credito ?? false,
         close: e.close ?? false,
         carat: '',
@@ -1618,6 +1629,8 @@ export class DetalleMoliendaComponent {
         usuario: e.usuario ?? '',
         liberacion: e.liberacion ?? false,
         tipoCambio: e.tipoCambio ?? null,   // Fase 4: TC con que se pagó (para mostrar en MXN)
+        moneda: e.moneda ?? null,           // Fase 4: moneda original (para el tooltip del valor original)
+        montoMxn: e.montoMxn ?? null,
         credito: e.credito ?? false,
         close: e.close ?? false,
         carat: '',
@@ -1877,6 +1890,87 @@ export class DetalleMoliendaComponent {
     return (row?.liberacion && tc > 0) ? v * tc : v;
   }
 
+  // ── Fase 4: precio/total por entrada para el almacén (convertido a MXN solo si la entrada está pagada). ──
+
+  /** Precio unitario base de la OC (con IVA si aplica), en moneda ORIGINAL. */
+  private ocPrecioBase(oc: any): number {
+    const base = Number(oc?.price) || 0;
+    return Math.round((oc?.masIva ? base * (1 + this.ivaPercent / 100) : base) * 100) / 100;
+  }
+
+  /** ¿La entrada ya se pagó y convirtió a MXN? */
+  private entradaEsMxn(e: any): boolean { return !!(e?.liberacion && Number(e?.tipoCambio) > 0); }
+
+  /** Precio unitario a mostrar de una entrada: MXN (monto_mxn/cant) si pagada; original si no. */
+  private entradaUnit(oc: any, e: any): number {
+    const cant = Number(e?.cantidadEntrada) || 0;
+    if (this.entradaEsMxn(e) && Number(e?.montoMxn) > 0 && cant > 0) {
+      return Math.round((Number(e.montoMxn) / cant) * 100) / 100;
+    }
+    return this.ocPrecioBase(oc);
+  }
+
+  /** Total a mostrar de una entrada: monto_mxn si pagada; precio×cant original si no. */
+  private entradaTotal(oc: any, e: any): number {
+    const cant = Number(e?.cantidadEntrada) || 0;
+    if (this.entradaEsMxn(e) && Number(e?.montoMxn) > 0) return Number(e.montoMxn);
+    return this.ocPrecioBase(oc) * cant;
+  }
+
+  /** Última entrada PAGADA de la OC (la que define el precio convertido del Nivel 3). */
+  private ultimaEntradaPagada(oc: any): any {
+    const arr = Array.isArray(oc?.__entradas) ? oc.__entradas : [];
+    let last: any = null;
+    for (const e of arr) if (this.entradaEsMxn(e)) last = e;
+    return last;
+  }
+
+  /** Etiqueta de moneda de la moneda original de la OC (USD/EUR/MXN). */
+  private ocMonedaOriginal(oc: any): string {
+    return (String(oc?.moneda || '').trim().toUpperCase()) || 'MXN';
+  }
+
+  /** Precio unitario que muestra la celda de Nivel 3: última entrada pagada (MXN) o el original. */
+  private nivel3PrecioCelda(oc: any): number {
+    const last = this.ultimaEntradaPagada(oc);
+    return last ? this.entradaUnit(oc, last) : this.ocPrecioBase(oc);
+  }
+
+  /** Tooltip histórico del Nivel 3: una fila por entrada [Entrada, Cantidad, Precio, Total] + suma. */
+  buildNivel3PrecioTooltip(oc: any): any {
+    const arr = Array.isArray(oc?.__entradas) ? oc.__entradas : [];
+    if (!arr.length) return null;
+    let suma = 0;
+    const rows = arr.map((e: any, i: number) => {
+      const cant = Number(e?.cantidadEntrada) || 0;
+      const unit = this.entradaUnit(oc, e);
+      const total = this.entradaTotal(oc, e);
+      suma += total;
+      const mon = this.entradaEsMxn(e) ? 'MXN' : (String(e?.moneda || oc?.moneda || '').toUpperCase() || 'MXN');
+      const etiqueta = e?.folioEntrega || ('E' + (i + 1));
+      return [etiqueta, this.fmtEntero(cant), `${this.fmtMoneda(unit)} ${mon}`, `${this.fmtMoneda(total)} ${mon}`];
+    });
+    return {
+      title: 'Histórico de entradas',
+      table: { headers: ['Entrada', 'Cantidad', 'Precio', 'Total'], rows, totalFmt: this.fmtMoneda(suma) },
+    };
+  }
+
+  /** Etiqueta de moneda para una fila de entrada (Nivel 4): MXN si pagada, original si no. */
+  private nivel4Moneda(e: any): string {
+    if (this.entradaEsMxn(e)) return 'MXN';
+    return (String(e?.moneda || this.selectedOcRow?.moneda || '').toUpperCase()) || 'MXN';
+  }
+
+  /** Tooltip con el valor ORIGINAL (moneda extranjera) de una entrada ya convertida a MXN. null si no aplica. */
+  private nivel4OriginalTooltip(e: any, originalVal: any): string | null {
+    if (!this.entradaEsMxn(e)) return null;                 // aún no convertida → nada que mostrar
+    // Moneda original: la de la entrada; si faltara, la de la OC (selectedOcRow).
+    const orig = (String(e?.moneda || this.selectedOcRow?.moneda || '').toUpperCase());
+    if (!orig || orig === 'MXN') return null;               // era MXN → no hay original distinto
+    return `Original: ${this.fmtMoneda(originalVal)} ${orig}`;
+  }
+
   private fmtMoneda(v: any): string {
     if (v == null || v === '') return '';
     return new Intl.NumberFormat('es-MX', {
@@ -2052,6 +2146,8 @@ export class DetalleMoliendaComponent {
             resta: Number(oc?.cantidad ?? 0) - sumaEntradas,
             // Conteo real de entradas (usado por "Cantidad Entregas" en OCs SIN LÍMITE).
             entradasCount: arr.length,
+            // Fase 4: entradas de la OC (para convertir el precio del Nivel 3 + tooltip histórico).
+            __entradas: arr,
           };
         } catch (error) {
           console.error(`Error cargando entradas para la OC ${oc?.id}:`, error);
