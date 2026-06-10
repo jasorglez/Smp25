@@ -43,10 +43,16 @@ import { lastValueFrom } from 'rxjs';
             <i class="bi bi-plus-lg"></i> Agregar
           </button>
           <button type="button" class="btn btn-info btn-sm me-2 text-white" (click)="seleccionarComprobante()"
-            [disabled]="isParsingImage" title="Selecciona una imagen del comprobante">
+            [disabled]="isParsingImage || isParsingPdf" title="Selecciona una imagen del comprobante">
             <span *ngIf="isParsingImage" class="spinner-border spinner-border-sm me-1"></span>
             <i *ngIf="!isParsingImage" class="bi bi-image me-1"></i>
-            {{ isParsingImage ? 'Analizando...' : 'Leer comprobante' }}
+            {{ isParsingImage ? 'Analizando...' : 'Leer imagen' }}
+          </button>
+          <button type="button" class="btn btn-warning btn-sm me-2" (click)="seleccionarComprobantePdf()"
+            [disabled]="isParsingPdf || isParsingImage" title="Selecciona un PDF del comprobante">
+            <span *ngIf="isParsingPdf" class="spinner-border spinner-border-sm me-1"></span>
+            <i *ngIf="!isParsingPdf" class="bi bi-file-pdf me-1"></i>
+            {{ isParsingPdf ? 'Analizando...' : 'Leer PDF' }}
           </button>
           <button type="button" class="btn btn-warning btn-sm me-2" (click)="discardChanges()">
             <i class="bi bi-arrow-counterclockwise"></i> Deshacer
@@ -65,6 +71,7 @@ import { lastValueFrom } from 'rxjs';
       </div>
 
       <input #comprobanteInput type="file" accept="image/*" class="d-none" (change)="onComprobanteSelected($event)">
+      <input #comprobantePdfInput type="file" accept=".pdf,application/pdf" class="d-none" (change)="onComprobantePdfSelected($event)">
       <ag-grid-angular
         #agGrid
         class="ag-theme-quartz small-text-ag-grid"
@@ -90,6 +97,21 @@ import { lastValueFrom } from 'rxjs';
             </div>
             <img [src]="comprobantePreviewUrl" alt="Vista previa del comprobante"
               style="max-height: 220px; width: auto; max-width: 100%; border-radius: 0.375rem; border: 1px solid #dee2e6;">
+          </div>
+        </div>
+      </div>
+      <div class="mt-3" *ngIf="comprobantePdfName">
+        <div class="card border-0 shadow-sm border-warning">
+          <div class="card-body py-2 px-3">
+            <div class="d-flex justify-content-between align-items-center">
+              <div class="d-flex align-items-center gap-2">
+                <i class="bi bi-file-pdf text-danger" style="font-size: 1.4rem;"></i>
+                <span class="small text-muted">{{ comprobantePdfName }}</span>
+              </div>
+              <button type="button" class="btn btn-sm btn-outline-secondary" (click)="limpiarPreviewPdf()">
+                <i class="bi bi-x-lg"></i>
+              </button>
+            </div>
           </div>
         </div>
       </div>
@@ -243,8 +265,11 @@ export class DetallesExpenditureComponent implements OnInit, OnDestroy {
   private isEditingGrid: boolean = false;
 
   isParsingImage: boolean = false;
+  isParsingPdf: boolean = false;
   @ViewChild('comprobanteInput') comprobanteInput?: ElementRef<HTMLInputElement>;
+  @ViewChild('comprobantePdfInput') comprobantePdfInput?: ElementRef<HTMLInputElement>;
   comprobantePreviewUrl: string | null = null;
+  comprobantePdfName: string | null = null;
 
   // Provider Modal properties
   showProviderModal: boolean = false;
@@ -460,6 +485,7 @@ export class DetallesExpenditureComponent implements OnInit, OnDestroy {
       URL.revokeObjectURL(this.originalPdfUrl);
     }
     this.limpiarPreviewComprobante();
+    this.limpiarPreviewPdf();
   }
 
   onGridReady(params: GridReadyEvent) {
@@ -1812,6 +1838,60 @@ export class DetallesExpenditureComponent implements OnInit, OnDestroy {
       URL.revokeObjectURL(this.comprobantePreviewUrl);
       this.comprobantePreviewUrl = null;
     }
+  }
+
+  public seleccionarComprobantePdf() {
+    const input = this.comprobantePdfInput?.nativeElement;
+    if (!input) {
+      alerts.basicAlert('Error', 'No se pudo abrir el selector de PDF.', 'error');
+      return;
+    }
+    input.value = '';
+    input.click();
+  }
+
+  public onComprobantePdfSelected(event: Event) {
+    const input = event.target as HTMLInputElement;
+    const file = input.files?.[0] ?? null;
+    if (!file) return;
+    void this.procesarComprobantesDesdePdf(file);
+    input.value = '';
+  }
+
+  private async procesarComprobantesDesdePdf(file: File) {
+    if (file.type !== 'application/pdf' && !file.name.toLowerCase().endsWith('.pdf')) {
+      alerts.basicAlert('Archivo inválido', 'Selecciona un archivo PDF válido.', 'warning');
+      return;
+    }
+
+    this.comprobantePdfName = file.name;
+    this.isParsingPdf = true;
+    const timer = setTimeout(() => { this.isParsingPdf = false; }, 60000);
+
+    this.administrationService.parseComprobantePdf(file).subscribe({
+      next: (data: any) => {
+        clearTimeout(timer);
+        this.isParsingPdf = false;
+        const parsedData = this.normalizeComprobanteResponse(data);
+
+        if (!parsedData || typeof parsedData !== 'object') {
+          alerts.basicAlert('Sin datos', 'El PDF se leyó pero no devolvió datos utilizables.', 'warning');
+          return;
+        }
+
+        void this.preguntarTipoEntidadYBuscar(parsedData);
+      },
+      error: (err: any) => {
+        clearTimeout(timer);
+        this.isParsingPdf = false;
+        const msg = err?.error?.message || err?.message || 'No se pudo analizar el PDF.';
+        alerts.basicAlert('Error', msg, 'error');
+      }
+    });
+  }
+
+  public limpiarPreviewPdf() {
+    this.comprobantePdfName = null;
   }
 
   private normalizeComprobanteResponse(data: any): any {

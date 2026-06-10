@@ -86,5 +86,5 @@ export const environment = {
     // publicKey: 'TEST-4399133a-4676-42a2-ab85-d946370bf96a',
   },
 
-  version: '5.03 (10 Junio 2026 14:30) fix(prospectos): wrapper pasa params a DetalleInteracciones via ViewChild',
+  version: '5.04 (10 Junio 2026 16:00) feat(egresos): leer comprobante PDF via Gemini con nuevo endpoint',
 };
