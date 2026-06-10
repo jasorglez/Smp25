@@ -404,12 +404,11 @@ export class PurchaseOrderComponent implements CanComponentDeactivate {
         width: 150,
         cellEditor: 'agSelectCellEditor',
         cellEditorParams: () => ({
-          values: this.proveedores ? this.proveedores.map((item) => item.id) : [],
+          values: [...(this.proveedores ? this.proveedores.map((item) => item.id) : []), '__ADD_NEW__'],
         }),
         valueFormatter: (params) => {
-          const foundItem = this.proveedores
-            ? this.proveedores.find((item) => item.id === params.value)
-            : null;
+          if (params.value === '__ADD_NEW__') return '+ Agregar Nuevo';
+          const foundItem = this.proveedores ? this.proveedores.find((item) => item.id === params.value) : null;
           return foundItem ? `${foundItem.name}` : params.value;
         },
       },     
@@ -420,12 +419,11 @@ export class PurchaseOrderComponent implements CanComponentDeactivate {
         width: 150,
         cellEditor: 'agSelectCellEditor',
         cellEditorParams: () => ({
-          values: this.monedas ? this.monedas.map((item) => item.id) : [],
+          values: [...(this.monedas ? this.monedas.map((item) => item.id) : []), '__ADD_NEW__'],
         }),
         valueFormatter: (params) => {
-          const foundItem = this.monedas
-            ? this.monedas.find((item) => item.id === params.value)
-            : null;
+          if (params.value === '__ADD_NEW__') return '+ Agregar Nuevo';
+          const foundItem = this.monedas ? this.monedas.find((item) => item.id === params.value) : null;
           return foundItem ? `${foundItem.description}` : params.value;
         },
       },
@@ -436,9 +434,10 @@ export class PurchaseOrderComponent implements CanComponentDeactivate {
         width: 150,
         cellEditor: 'agSelectCellEditor',
         cellEditorParams: () => ({
-          values: this.tipoPago ? this.tipoPago.map((item) => item.id) : [],
+          values: [...(this.tipoPago ? this.tipoPago.map((item) => item.id) : []), '__ADD_NEW__'],
         }),
         valueFormatter: (params) => {
+          if (params.value === '__ADD_NEW__') return '+ Agregar Nuevo';
           const foundItem = this.tipoPago
             ? this.tipoPago.find((item) => item.id === params.value)
             : null;
@@ -901,7 +900,7 @@ export class PurchaseOrderComponent implements CanComponentDeactivate {
     if (!result.isConfirmed || !result.value) return null;
     try {
       const created: any = await lastValueFrom(
-        this.catalogsService.addCatalog({ description: result.value, type: 'Currency', idCompany: this.idRoot })
+        this.catalogsService.addCatalog({ description: result.value, type: 'Currency', idCompany: this.idRoot, active: 1, vigente: true })
       );
       await new Promise<void>((resolve) =>
         this.currencyService.getCurrencies(this.idRoot).subscribe({
@@ -935,7 +934,7 @@ export class PurchaseOrderComponent implements CanComponentDeactivate {
     if (!result.isConfirmed || !result.value) return null;
     try {
       const created: any = await lastValueFrom(
-        this.catalogsService.addCatalog({ description: result.value, type: 'TYPECURRENCY', idCompany: this.idRoot })
+        this.catalogsService.addCatalog({ description: result.value, type: 'TYPECURRENCY', idCompany: this.idRoot, active: 1, vigente: true })
       );
       await new Promise<void>((resolve) =>
         this.currencyService.getPaymentTypes(this.idRoot).subscribe({
@@ -976,7 +975,33 @@ export class PurchaseOrderComponent implements CanComponentDeactivate {
     }
   }
 
+  onMasterCellEditingStopped(event: any) {
+    const colId = event.column.getColId();
+    if (event.newValue === '__ADD_NEW__') {
+      const node = event.node;
+      node.data[colId] = event.oldValue ?? null;
+      this.masterGridApi?.refreshCells({ rowNodes: [node], force: true });
+      const dialogMap: Record<string, () => Promise<number | null>> = {
+        idProvider: () => this.openAddProveedorDialog(),
+        idCurrency: () => this.openAddMonedaDialog(),
+        idPayment:  () => this.openAddTipoPagoDialog(),
+      };
+      const openDialog = dialogMap[colId];
+      if (openDialog) {
+        openDialog().then(newId => {
+          if (newId) {
+            node.data[colId] = newId;
+            node.data.__modified = true;
+            this.masterNotSavedChanges = true;
+            this.masterGridApi?.refreshCells({ rowNodes: [node], force: true });
+          }
+        });
+      }
+    }
+  }
+
   onMasterCellValueChanged(event: any) {
+    if (event.newValue === '__ADD_NEW__') return;
     const updatedData = { ...event.data };
 
     // Preservar el estado temporal y la selección

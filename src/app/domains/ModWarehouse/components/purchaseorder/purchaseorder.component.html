@@ -63,6 +63,7 @@
         [gridOptions]="gridOptions"
         (selectionChanged)="onMasterSelectionChanged($event)" 
         (cellValueChanged)="onMasterCellValueChanged($event)"
+        (cellEditingStopped)="onMasterCellEditingStopped($event)"
         (rowSelected)="onMasterRowSelected($event)"
         (gridReady)="onMasterGridReady($event)"
         [rowSelection]="rowSelection" 
