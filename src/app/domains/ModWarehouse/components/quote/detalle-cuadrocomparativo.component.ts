@@ -240,7 +240,7 @@ export class DetalleCuadroComparativoComponent implements ICellRendererAngularCo
   // ==================== PDF ====================
 
   async generatePdf(): Promise<void> {
-    const q    = this.quoteRow;
+    const q      = this.quoteRow;
     const idRoot = q._idRoot;
     const depts  = q._departamentos ?? [];
     const reqs   = q._requisiciones ?? [];
@@ -251,41 +251,37 @@ export class DetalleCuadroComparativoComponent implements ICellRendererAngularCo
       rootData = await lastValueFrom(this.rootService.getRootbyId(idRoot));
     } catch { /* sin datos empresa */ }
 
-    const tryB64 = async (url: string) => {
-      try { return await this.b64Service.convertImageToBase64(url); } catch { return null; }
-    };
-    const logoB64  = rootData?.picture  ? await tryB64(rootData.picture)  : null;
-    const logo2B64 = rootData?.picture2 ? await tryB64(rootData.picture2) : null;
+    // Logos — convertImageToBase64 resuelve siempre (fallback interno si falla)
+    const logoB64  = await this.b64Service.convertImageToBase64(rootData?.picture  ?? '');
+    const logo2B64 = rootData?.picture2
+      ? await this.b64Service.convertImageToBase64(rootData.picture2)
+      : logoB64;   // fallback al logo principal si no hay logo2
 
-    const companyName = rootData?.name  ?? rootData?.company ?? 'Empresa';
-    const companyRfc  = rootData?.rfc   ?? '';
-    const companyAddr = rootData?.address ?? rootData?.city ?? '';
-    const companyTel  = rootData?.phone ?? rootData?.tel ?? '';
-    const companyEmail= rootData?.email ?? '';
+    const companyName  = rootData?.name    ?? rootData?.company ?? 'Empresa';
+    const companyRfc   = rootData?.rfc     ?? '';
+    const companyAddr  = rootData?.address ?? rootData?.city ?? '';
+    const companyTel   = rootData?.phone   ?? rootData?.tel ?? '';
+    const companyEmail = rootData?.email   ?? '';
 
     const deptName = depts.find((d: any) => d.id === q.idDepartament)?.description ?? '';
-    const reqFolio = reqs.find((r: any) => r.id === q.idReq)?.folio ?? q.idReq ?? '';
+    const reqFolio = reqs.find((r: any)  => r.id === q.idReq)?.folio ?? q.idReq ?? '';
     const fecha    = q.dateCreate ? String(q.dateCreate).substring(0, 10) : '';
 
-    // ── ENCABEZADO ──
-    const logoCol  = (b64: string | null, w = 75) =>
-      b64 ? { image: b64, width: w, alignment: 'center' as const }
-           : { text: '', width: w };
-
+    // ── ENCABEZADO (logos por nombre, diccionario images:) ──
     const header: any = {
       columns: [
-        logoCol(logoB64),
+        { image: 'logo',  width: 80, alignment: 'left'  },
         {
           stack: [
             { text: companyName.toUpperCase(), fontSize: 11, bold: true, color: NAVY, alignment: 'center' },
             companyRfc  ? { text: `RFC: ${companyRfc}`,  fontSize: 7, color: GRAY, alignment: 'center', margin: [0,1,0,0] } : null,
-            companyAddr ? { text: companyAddr, fontSize: 7, color: GRAY, alignment: 'center', margin: [0,1,0,0] } : null,
+            companyAddr ? { text: companyAddr,            fontSize: 7, color: GRAY, alignment: 'center', margin: [0,1,0,0] } : null,
             companyTel  ? { text: `Tel: ${companyTel}`,  fontSize: 7, color: GRAY, alignment: 'center', margin: [0,1,0,0] } : null,
-            { text: 'CUADRO COMPARATIVO DE PRECIOS', fontSize: 9, bold: true, color: BLUE, alignment: 'center', margin: [0, 4, 0, 0] },
+            { text: 'CUADRO COMPARATIVO DE PRECIOS', fontSize: 9, bold: true, color: BLUE, alignment: 'center', margin: [0,4,0,0] },
           ].filter(Boolean),
           margin: [8, 0, 8, 0],
         },
-        logoCol(logo2B64),
+        { image: 'logo2', width: 80, alignment: 'right' },
       ],
       margin: [0, 0, 0, 8],
     };
@@ -406,6 +402,10 @@ export class DetalleCuadroComparativoComponent implements ICellRendererAngularCo
         margin: [0, 8, 0, 0],
       }),
       content: [header, infoTable, tabla, leyenda],
+      images: {
+        logo:  logoB64,
+        logo2: logo2B64,
+      },
       styles: { thCell: { fontSize: 7, bold: true } },
       defaultStyle: { font: 'Roboto' },
     };
