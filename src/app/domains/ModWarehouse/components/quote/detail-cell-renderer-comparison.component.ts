@@ -54,7 +54,7 @@ export class DetailCellRendererComparisonComponent implements ICellRendererAngul
 
   innerGridOptions: any = {
     headerHeight: 25,
-    rowHeight: 32,
+    rowHeight: 42,
     suppressRowClickSelection: true,
     defaultColDef: { resizable: true, sortable: false }
   };
@@ -136,17 +136,6 @@ export class DetailCellRendererComparisonComponent implements ICellRendererAngul
         cellStyle: (p: any) => p.node?.rowPinned
           ? { fontWeight: 'bold', textAlign: 'right', paddingRight: '8px' }
           : {}
-      },
-      {
-        headerName: 'Cant.',
-        valueGetter: (p: any) => {
-          if (p.node?.rowPinned) return '';
-          const d = p.data;
-          return d?.p1?.quantity ?? d?.p2?.quantity ?? d?.p3?.quantity ?? '';
-        },
-        width: 65,
-        pinned: 'left',
-        cellStyle: { textAlign: 'center', color: '#555' }
       }
     ];
 
@@ -156,7 +145,7 @@ export class DetailCellRendererComparisonComponent implements ICellRendererAngul
       this.colDefs.push({
         headerName: prov.name,
         field: `p${slot}`,
-        width: 120,
+        width: 150,
         cellRenderer: (params: any) => {
           if (params.node?.rowPinned) {
             const total = params.value ?? 0;
@@ -166,12 +155,13 @@ export class DetailCellRendererComparisonComponent implements ICellRendererAngul
           }
           const data = params.value;
           if (!data) return '<span style="color:#bbb;font-size:10px;padding:2px 6px;">N/C</span>';
-          const best = this.isBestPrice(params.node?.data, slot);
+          const best   = this.isBestPrice(params.node?.data, slot);
+          const color  = best ? '#155724' : '#555';
           const weight = best ? 'bold' : 'normal';
-          const color  = best ? '#155724' : '#333';
-          const check  = best ? '✓ ' : '';
-          return `<div style="text-align:right;padding:2px 6px;font-weight:${weight};color:${color};">
-                    ${check}$${Number(data.total).toFixed(2)}
+          const check  = best ? ' ✓' : '';
+          return `<div style="text-align:right;padding:1px 6px;line-height:1.3;">
+                    <div style="font-size:10px;color:#999;">$${Number(data.price).toFixed(2)} × ${data.quantity}</div>
+                    <div style="font-weight:${weight};color:${color};">= $${Number(data.total).toFixed(2)}${check}</div>
                   </div>`;
         },
         cellStyle: (params: any) => {
