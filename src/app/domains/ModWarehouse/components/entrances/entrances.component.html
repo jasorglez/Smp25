@@ -65,6 +65,11 @@
       </div>
       <div class="col text-right"><button type="button" class="btn btn-primary me-1" (click)="addDetailsRow()"><i
             class="bi bi-plus-lg"></i></button>
+        <button *ngIf="masterSelectedRowData?.idOc > 0" type="button" class="btn btn-secondary ms-1 me-1"
+          (click)="importarItemsDeOC(masterSelectedRowData.idOc)"
+          title="Importar artículos desde la Orden de Compra">
+          <i class="bi bi-box-arrow-in-down"></i> OC
+        </button>
         <button type="button" class="btn btn-success ms-1 me-1 position-relative" (click)="saveDetailsChanges()">
           <i class="bi bi-floppy"></i>
           <span
