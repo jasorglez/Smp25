@@ -367,18 +367,18 @@ export class InandoutStComponent implements OnInit {
         headerName: 'Proyecto',
         width: 160,
         editable: true,
-        cellEditor: 'agSelectCellEditor',
+        cellEditor: 'agRichSelectCellEditor',
         cellEditorParams: () => ({
-          values: this.projectList.map(p => p.description || p.name || `#${p.id}`)
+          values: this.projectList.map(p => p.id),
+          valueListMaxHeight: 200,
+          formatValue: (value: any) => {
+            const p = this.projectList.find(x => x.id === value);
+            return p ? (p.description || p.name || `#${value}`) : `#${value}`;
+          }
         }),
         valueFormatter: (params: any) => {
-          const proj = this.projectList.find(p => p.id === params.value);
-          return proj ? (proj.description || proj.name || `#${params.value}`) : (params.value || '');
-        },
-        valueSetter: (params: any) => {
-          const proj = this.projectList.find(p => (p.description || p.name) === params.newValue);
-          if (proj) { params.data.idProject = proj.id; return true; }
-          return false;
+          const p = this.projectList.find(x => x.id === params.value);
+          return p ? (p.description || p.name || `#${params.value}`) : (params.value || '');
         }
       },
       {
@@ -386,18 +386,18 @@ export class InandoutStComponent implements OnInit {
         headerName: 'Almacén',
         width: 140,
         editable: true,
-        cellEditor: 'agSelectCellEditor',
+        cellEditor: 'agRichSelectCellEditor',
         cellEditorParams: () => ({
-          values: this.warehouses.map(wh => wh.name)
+          values: this.warehouses.map(wh => wh.idAlmacen),
+          valueListMaxHeight: 200,
+          formatValue: (value: any) => {
+            const wh = this.warehouses.find(w => w.idAlmacen === value);
+            return wh ? wh.name : value;
+          }
         }),
         valueFormatter: (params: any) => {
           const wh = this.warehouses.find(w => w.idAlmacen === params.value);
           return wh ? wh.name : (params.value || '');
-        },
-        valueSetter: (params: any) => {
-          const wh = this.warehouses.find(w => w.name === params.newValue);
-          if (wh) { params.data.idWarehouse = wh.idAlmacen; return true; }
-          return false;
         }
       },
       {
@@ -405,19 +405,19 @@ export class InandoutStComponent implements OnInit {
         headerName: 'Tipo de Movimiento',
         width: 170,
         editable: true,
-        cellEditor: 'agSelectCellEditor',
+        cellEditor: 'agRichSelectCellEditor',
         cellEditorParams: () => ({
-          values: [...this.catalogs.map(c => c.description), '+ Agregar Registro']
+          values: [...this.catalogs.map(c => c.id), '__ADD_NEW__'],
+          valueListMaxHeight: 200,
+          formatValue: (value: any) => {
+            if (value === '__ADD_NEW__') return '+ Agregar Registro';
+            const cat = this.catalogs.find(c => c.id === value);
+            return cat ? cat.description : value;
+          }
         }),
         valueFormatter: (params: any) => {
           const cat = this.catalogs.find(c => c.id === params.value);
           return cat ? cat.description : (params.value || '');
-        },
-        valueSetter: (params: any) => {
-          if (params.newValue === '+ Agregar Registro') return false; // manejado en cellEditingStopped
-          const cat = this.catalogs.find(c => c.description === params.newValue);
-          if (cat) { params.data.idType = cat.id; return true; }
-          return false;
         }
       },
       {
@@ -425,22 +425,20 @@ export class InandoutStComponent implements OnInit {
         headerName: 'OT',
         width: 160,
         editable: true,
-        cellEditor: 'agSelectCellEditor',
+        cellEditor: 'agRichSelectCellEditor',
         cellEditorParams: () => ({
-          values: ['(Sin OT)', ...this.otList.map(ot => ot.description || ot.folio || ot.num || `OT #${ot.id}`)]
+          values: [0, ...this.otList.map(ot => ot.id)],
+          valueListMaxHeight: 220,
+          formatValue: (value: any) => {
+            if (!value) return '(Sin OT)';
+            const ot = this.otList.find(o => o.id === value);
+            return ot ? (ot.description || ot.folio || ot.num || `OT #${ot.id}`) : `OT #${value}`;
+          }
         }),
         valueFormatter: (params: any) => {
           if (!params.value) return '(Sin OT)';
           const ot = this.otList.find(o => o.id === params.value);
           return ot ? (ot.description || ot.folio || ot.num || `OT #${ot.id}`) : `OT #${params.value}`;
-        },
-        valueSetter: (params: any) => {
-          if (params.newValue === '(Sin OT)') { params.data.idOt = null; return true; }
-          const ot = this.otList.find(o =>
-            (o.description || o.folio || o.num || `OT #${o.id}`) === params.newValue
-          );
-          if (ot) { params.data.idOt = ot.id; return true; }
-          return false;
         }
       },
       {
@@ -448,20 +446,20 @@ export class InandoutStComponent implements OnInit {
         headerName: 'Orden de Compra',
         width: 160,
         editable: true,
-        cellEditor: 'agSelectCellEditor',
+        cellEditor: 'agRichSelectCellEditor',
         cellEditorParams: () => ({
-          values: ['(Sin OC)', ...this.ocList.map(oc => oc.folio || `OC #${oc.id}`)]
+          values: [0, ...this.ocList.map(oc => oc.id)],
+          valueListMaxHeight: 220,
+          formatValue: (value: any) => {
+            if (!value) return '(Sin OC)';
+            const oc = this.ocList.find(o => o.id === value);
+            return oc ? (oc.folio || `OC #${oc.id}`) : `OC #${value}`;
+          }
         }),
         valueFormatter: (params: any) => {
           if (!params.value || params.value === 0) return '(Sin OC)';
           const oc = this.ocList.find(o => o.id === params.value);
           return oc ? (oc.folio || `OC #${oc.id}`) : `OC #${params.value}`;
-        },
-        valueSetter: (params: any) => {
-          if (params.newValue === '(Sin OC)') { params.data.idOc = 0; return true; }
-          const oc = this.ocList.find(o => (o.folio || `OC #${o.id}`) === params.newValue);
-          if (oc) { params.data.idOc = oc.id; return true; }
-          return false;
         }
       },
       {
@@ -514,22 +512,18 @@ export class InandoutStComponent implements OnInit {
         headerName: 'Autorizado Por',
         width: 180,
         editable: true,
-        cellDataType: false,
-        cellEditor: 'agSelectCellEditor',
+        cellEditor: 'agRichSelectCellEditor',
         cellEditorParams: () => ({
-          values: this.users.map(u => u.displayName)
+          values: this.users.map(u => u.id),
+          valueListMaxHeight: 220,
+          formatValue: (value: any) => {
+            const user = this.users.find(u => u.id === value);
+            return user ? user.displayName : value;
+          }
         }),
         valueFormatter: (params: any) => {
           const user = this.users.find(u => u.id === params.value);
-          return user ? user.displayName : params.value;
-        },
-        valueSetter: (params: any) => {
-          const user = this.users.find(u => u.displayName === params.newValue);
-          if (user) {
-            params.data.idAutoriza = user.id;
-            params.data.__modified = true;
-          }
-          return true;
+          return user ? user.displayName : (params.value || '');
         }
       },
       {
@@ -697,7 +691,7 @@ export class InandoutStComponent implements OnInit {
 
   onCellEditingStopped(event: any): void {
     // Sentinel para Tipo de Movimiento en el grid
-    if (event.colDef.field === 'idType' && event.newValue === '+ Agregar Registro') {
+    if (event.colDef.field === 'idType' && event.newValue === '__ADD_NEW__') {
       event.node.data.idType = event.oldValue ?? null;
       this.gridApi.refreshCells({ rowNodes: [event.node], force: true });
       this.openAddTipoDialogForNode(event.node);
