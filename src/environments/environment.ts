@@ -86,5 +86,5 @@ export const environment = {
     // publicKey: 'TEST-4399133a-4676-42a2-ab85-d946370bf96a',
   },
 
-  version: '4.98 (10 Junio 2026) fix(quotes): comparativo columnas proveedor 75px',
+  version: '4.99 (10 Junio 2026) fix(quotes): comparativo font 8-9px rename a detalle-cuadrocomparativo',
 };

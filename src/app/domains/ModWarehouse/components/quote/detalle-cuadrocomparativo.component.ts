@@ -7,7 +7,7 @@ import { OcAndReqsService } from 'app/services/ocandreqs.service';
 import { lastValueFrom } from 'rxjs';
 
 @Component({
-  selector: 'app-detail-cell-renderer-comparison',
+  selector: 'app-detalle-cuadrocomparativo',
   standalone: true,
   imports: [CommonModule, AgGridModule],
   template: `
@@ -44,7 +44,7 @@ import { lastValueFrom } from 'rxjs';
     </div>
   `
 })
-export class DetailCellRendererComparisonComponent implements ICellRendererAngularComp {
+export class DetalleCuadroComparativoComponent implements ICellRendererAngularComp {
   private quotesService = inject(OcAndReqsService);
 
   loading = true;
@@ -149,19 +149,19 @@ export class DetailCellRendererComparisonComponent implements ICellRendererAngul
         cellRenderer: (params: any) => {
           if (params.node?.rowPinned) {
             const total = params.value ?? 0;
-            return `<div style="text-align:right;padding:2px 6px;font-weight:bold;color:#155724;">
+            return `<div style="text-align:right;padding:2px 4px;font-size:9px;font-weight:bold;color:#155724;">
                       $${Number(total).toFixed(2)}
                     </div>`;
           }
           const data = params.value;
-          if (!data) return '<span style="color:#bbb;font-size:10px;padding:2px 6px;">N/C</span>';
+          if (!data) return '<span style="color:#bbb;font-size:8px;padding:2px 4px;">N/C</span>';
           const best   = this.isBestPrice(params.node?.data, slot);
           const color  = best ? '#155724' : '#555';
           const weight = best ? 'bold' : 'normal';
           const check  = best ? ' ✓' : '';
-          return `<div style="text-align:right;padding:1px 6px;line-height:1.3;">
-                    <div style="font-size:10px;color:#999;">$${Number(data.price).toFixed(2)} × ${data.quantity}</div>
-                    <div style="font-weight:${weight};color:${color};">= $${Number(data.total).toFixed(2)}${check}</div>
+          return `<div style="text-align:right;padding:1px 4px;line-height:1.3;">
+                    <div style="font-size:8px;color:#999;">$${Number(data.price).toFixed(1)} × ${data.quantity}</div>
+                    <div style="font-size:9px;font-weight:${weight};color:${color};">= $${Number(data.total).toFixed(1)}${check}</div>
                   </div>`;
         },
         cellStyle: (params: any) => {
