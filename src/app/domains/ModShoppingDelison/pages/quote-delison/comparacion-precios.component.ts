@@ -130,12 +130,13 @@ import { catchError, map } from 'rxjs/operators';
           <ag-grid-angular
             #agGrid
             class="ag-theme-quartz small-text-ag-grid"
-            [rowData]="rowData"
+            [rowData]="gridRowData"
             [columnDefs]="colDefs"
             [gridOptions]="gridOptions"
             [localeText]="AG_GRID_LOCALE_ES"
             (gridReady)="onGridReady($event)"
             (firstDataRendered)="onFirstDataRendered($event)"
+            (gridSizeChanged)="onGridSizeChanged()"
             (rowDataUpdated)="onRowDataUpdated()"
             (cellValueChanged)="onCellValueChanged($event)"
             (cellMouseOver)="onCellMouseOver($event)"
@@ -143,18 +144,6 @@ import { catchError, map } from 'rxjs/operators';
             (columnResized)="onColumnResized()"
             style="width: 100%; flex: 0 0 auto;">
           </ag-grid-angular>
-
-          <!-- Footer "Total x Pedimento" - anchos sincronizados dinámicamente con columnas CANTIDAD X PROV., COSTO TOTAL y CHAT -->
-          <div *ngIf="rowData.length > 0" class="cmp-footer">
-            <div style="flex: 1 1 auto;"></div>
-            <div [style.width.px]="footerLabelWidth" class="cmp-footer-label">
-              Total x Pedimento
-            </div>
-            <div [style.width.px]="footerValueWidth" class="cmp-footer-value">
-              {{ pinnedTotalDisplay }}
-            </div>
-            <div [style.width.px]="footerEndWidth"></div>
-          </div>
         </div>
       </div>
 
@@ -377,6 +366,7 @@ import { catchError, map } from 'rxjs/operators';
       border-top: 1px solid var(--border);
     }
     .cmp-footer-label {
+      flex: 0 0 auto;
       display: flex;
       align-items: center;
       justify-content: center;
@@ -390,6 +380,7 @@ import { catchError, map } from 'rxjs/operators';
       text-align: center;
     }
     .cmp-footer-value {
+      flex: 0 0 auto;
       display: flex;
       align-items: center;
       justify-content: center;
@@ -400,6 +391,9 @@ import { catchError, map } from 'rxjs/operators';
       font-size: 0.78rem;
       text-align: center;
       font-variant-numeric: tabular-nums;
+    }
+    .cmp-footer-spacer {
+      flex: 0 0 auto;
     }
 
     :host ::ng-deep .ag-cell.cell-cantidad-comprar,
@@ -1284,13 +1278,15 @@ export class ComparacionPreciosComponent implements OnInit, OnDestroy {
     }
 
     this.rowData = rows;
+    this.syncGridRowData();
   }
 
   private pushRowDataToGridIfReady(_alsoSchedule: boolean) {
     setTimeout(() => {
       if (this.gridApi) {
         this.gridApi.setGridOption('columnDefs', this.colDefs);
-        this.gridApi.setGridOption('rowData', this.rowData);
+        this.syncGridRowData();
+        this.gridApi.setGridOption('rowData', this.gridRowData);
         this.updatePinnedBottomRow();
       }
     }, 0);
@@ -1300,13 +1296,16 @@ export class ComparacionPreciosComponent implements OnInit, OnDestroy {
     this.gridApi = params.api;
     this.gridApi.setGridOption('columnDefs', this.colDefs);
     if (this.rowData?.length) {
-      this.gridApi.setGridOption('rowData', this.rowData);
+      this.syncGridRowData();
+      this.gridApi.setGridOption('rowData', this.gridRowData);
       this.updatePinnedBottomRow();
     }
   }
 
   onFirstDataRendered(_params: any) {
-    this.updateFooterWidths();
+    setTimeout(() => {
+      this.updateFooterWidths();
+    }, 100);
   }
 
   onRowDataUpdated() {}
@@ -1315,11 +1314,26 @@ export class ComparacionPreciosComponent implements OnInit, OnDestroy {
     this.updateFooterWidths();
   }
 
+  onGridSizeChanged() {
+    this.updateFooterWidths();
+  }
+
   public pinnedTotal: number = 0;
   public pinnedTotalDisplay: string = '$0.00 MXN';
   public footerLabelWidth: number = 135;
   public footerValueWidth: number = 105;
   public footerEndWidth: number = 88;
+
+  /** Datos que ve el grid = filas reales + un renglón extra de total ("Total x Pedimento") al final.
+   *  El renglón de total NO está en `this.rowData` (no afecta cálculos/guardado), solo en el grid. */
+  public gridRowData: any[] = [];
+
+  /** Reconstruye `gridRowData` anexando el renglón de total tras las filas reales. */
+  private syncGridRowData(): void {
+    this.gridRowData = this.rowData.length > 0
+      ? [...this.rowData, { __isTotal: true }]
+      : [];
+  }
 
   private updatePinnedBottomRow() {
     // Mantener row.costoTotal en sync (defensivo) y sumar con el mismo cálculo de la celda.
@@ -1331,6 +1345,8 @@ export class ComparacionPreciosComponent implements OnInit, OnDestroy {
     this.pinnedTotal = total;
     // Display por moneda (Opción A, sin convertir): subtotales agrupados por moneda.
     this.pinnedTotalDisplay = this.buildTotalsByCurrencyDisplay(this.rowData);
+    // Refrescar el renglón de total para que muestre el monto recalculado.
+    this.gridApi?.refreshCells({ force: true });
   }
 
   /**
@@ -1403,10 +1419,13 @@ export class ComparacionPreciosComponent implements OnInit, OnDestroy {
     for (const col of cols) {
       const field = col.getColDef?.()?.field;
       const w = col.getActualWidth?.() || 0;
-      if (field === 'cantidadConceptualizada') this.footerLabelWidth = w;
-      else if (field === 'costoTotal') this.footerValueWidth = w;
-      else if (field === 'comentario') this.footerEndWidth = w;
+      if (w > 0) {
+        if (field === 'cantidadConceptualizada') this.footerLabelWidth = w;
+        else if (field === 'costoTotal') this.footerValueWidth = w;
+        else if (field === 'comentario') this.footerEndWidth = w;
+      }
     }
+    this.cdr.detectChanges();
   }
 
   private getValidatedCantidadConceptualizada(rawValue: any, row: any) {
@@ -2165,8 +2184,10 @@ export class ComparacionPreciosComponent implements OnInit, OnDestroy {
     }
     this.rowData = JSON.parse(JSON.stringify(this.originalRowData));
     this.hasUnsavedChanges = false;
+    this.syncGridRowData();
     if (this.gridApi) {
-      this.gridApi.setGridOption('rowData', this.rowData);
+      this.gridApi.setGridOption('rowData', this.gridRowData);
+      this.updatePinnedBottomRow();
     }
   }
 
@@ -2279,7 +2300,7 @@ export class ComparacionPreciosComponent implements OnInit, OnDestroy {
   onCellMouseOver(event: any): void {
     const field = event.colDef?.field;
     const data = event.data;
-    if (!data) return;
+    if (!data || data.__isTotal) return;
     const cellEl = event.event?.target as HTMLElement;
     if (!cellEl) return;
     const rect = cellEl.getBoundingClientRect();
@@ -2424,20 +2445,23 @@ export class ComparacionPreciosComponent implements OnInit, OnDestroy {
         editable: false,
         cellClass: 'cell-cantidad-comprar cell-col-articulo',
         headerClass: 'header-cantidad-comprar',
-        rowSpan: (params: any) => (params.data?.__isBlockStart ? (params.data.__blockRowSpan || 1) : 0),
-        cellStyle: {
-          padding: '4px',
-          backgroundColor: '#e8f4fd',
-          whiteSpace: 'nowrap',
-          overflow: 'hidden',
-          textOverflow: 'ellipsis'
-        }
+        rowSpan: (params: any) => params.data?.__isTotal ? 1 : (params.data?.__isBlockStart ? (params.data.__blockRowSpan || 1) : 0),
+        cellStyle: (params: any) => params.data?.__isTotal
+          ? { backgroundColor: '#ffffff' }
+          : {
+              padding: '4px',
+              backgroundColor: '#e8f4fd',
+              whiteSpace: 'nowrap',
+              overflow: 'hidden',
+              textOverflow: 'ellipsis'
+            }
       },
       {
         field: 'proveedorNombre',
         headerName: 'PROVEEDOR',
         width: 190,
         cellStyle: (params: any) => {
+          if (params.data?.__isTotal) return { backgroundColor: '#ffffff' };
           const locked = this.proveedoresConOc.has(Number(params.data?.proveedorId ?? 0));
           return locked
             ? { backgroundColor: '#eeeeee', fontWeight: '500', padding: '4px', color: '#9e9e9e' }
@@ -2473,15 +2497,17 @@ export class ComparacionPreciosComponent implements OnInit, OnDestroy {
         cellEditor: 'agNumberCellEditor',
         cellClass: 'cell-cantidad-comprar cell-col-cantidad-a-comprar',
         headerClass: 'header-cantidad-comprar',
-        rowSpan: (params: any) => (params.data?.__isBlockStart ? (params.data.__blockRowSpan || 1) : 0),
-        cellStyle: {
-          padding: '4px',
-          backgroundColor: '#e8f4fd',
-          textAlign: 'center',
-          whiteSpace: 'nowrap',
-          overflow: 'hidden',
-          textOverflow: 'ellipsis'
-        }
+        rowSpan: (params: any) => params.data?.__isTotal ? 1 : (params.data?.__isBlockStart ? (params.data.__blockRowSpan || 1) : 0),
+        cellStyle: (params: any) => params.data?.__isTotal
+          ? { backgroundColor: '#ffffff' }
+          : {
+              padding: '4px',
+              backgroundColor: '#e8f4fd',
+              textAlign: 'center',
+              whiteSpace: 'nowrap',
+              overflow: 'hidden',
+              textOverflow: 'ellipsis'
+            }
       },
       {
         field: 'nuevoRecurrente',
@@ -2513,8 +2539,11 @@ export class ComparacionPreciosComponent implements OnInit, OnDestroy {
         width: 110,
         editable: false,
         type: 'numericColumn',
-        cellStyle: { backgroundColor: '#fff9c4', textAlign: 'center', padding: '4px' },
+        cellStyle: (params: any) => params.data?.__isTotal
+          ? { backgroundColor: '#ffffff' }
+          : { backgroundColor: '#fff9c4', textAlign: 'center', padding: '4px' },
         valueFormatter: (params: any) =>
+          params.data?.__isTotal ? '' :
           `$${(Number(params.value) || 0).toFixed(2)} ${this.currencyAbbr(params.data?.idCurrency)}`
       },
       {
@@ -2533,7 +2562,7 @@ export class ComparacionPreciosComponent implements OnInit, OnDestroy {
         headerName: 'TIPO OC',
         width: 230,
         minWidth: 200,
-        editable: (params: any) => !this.proveedoresConOc.has(Number(params.data?.proveedorId ?? 0)),
+        editable: (params: any) => !params.data?.__isTotal && !this.proveedoresConOc.has(Number(params.data?.proveedorId ?? 0)),
         singleClickEdit: true,
         cellEditor: 'agRichSelectCellEditor',
         cellEditorPopup: true,
@@ -2583,8 +2612,12 @@ export class ComparacionPreciosComponent implements OnInit, OnDestroy {
           this.openCantidadPanel(params.data);
         },
         valueFormatter: (params: any) =>
-          params.value != null ? Number(params.value).toFixed(2) : '0.00',
+          params.data?.__isTotal ? 'Total x Pedimento' :
+          (params.value != null ? Number(params.value).toFixed(2) : '0.00'),
         cellStyle: (params: any) => {
+          if (params.data?.__isTotal) {
+            return { textAlign: 'right', padding: '4px', fontWeight: '700', color: '#1b5e20' };
+          }
           const locked = this.proveedoresConOc.has(Number(params.data?.proveedorId ?? 0));
           const sinLimite = params.data?.tipoOc === 'COMPRA AUTORIZADA SIN LIMITE';
           if (sinLimite) {
@@ -2605,12 +2638,14 @@ export class ComparacionPreciosComponent implements OnInit, OnDestroy {
         // valueGetter calcula en tiempo real desde costoUnitario × cantidadConceptualizada,
         // así no depende de que row.costoTotal esté sincronizado manualmente.
         valueGetter: (params: any) => {
+          if (params.data?.__isTotal) return null;
           if (!params.data) return 0;
           // Opción A: round2(unit con IVA) × cantidad. Para sin-límite, la primera fila cubre el resto.
           return this.computeCostoTotalForRow(params.data);
         },
         cellStyle: { backgroundColor: '#c8e6c9', fontWeight: '600', padding: '4px', textAlign: 'center' },
         valueFormatter: (params: any) =>
+          params.data?.__isTotal ? this.pinnedTotalDisplay :
           `$${(Number(params.value) || 0).toFixed(2)} ${this.currencyAbbr(params.data?.idCurrency)}`
       },
       {
@@ -2618,7 +2653,10 @@ export class ComparacionPreciosComponent implements OnInit, OnDestroy {
         headerName: 'CHAT',
         width: 88,
         editable: false,
-        cellRenderer: ItemCommentsCellRendererComponent,
+        // En la fila de total (pinned) no se muestra el chat.
+        cellRendererSelector: (params: any) => params.data?.__isTotal
+          ? undefined
+          : { component: ItemCommentsCellRendererComponent },
         cellRendererParams: (params: any) => ({
           documentType: 'REQ',
           idDocument: this.requisitionId,
