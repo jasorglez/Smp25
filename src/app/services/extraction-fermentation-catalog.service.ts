@@ -11,6 +11,8 @@ export interface ExtractionFermentationCatalogItem {
   description: string;
   active: boolean;
   molienda: boolean;
+  // Categoría "Características de {material}": id del material ligado. NULL = categoría general.
+  idMaterial?: number | null;
 }
 
 @Injectable({

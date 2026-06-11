@@ -46,7 +46,7 @@
             [paginationPageSizeSelector]="paginationPageSizeSelector" rowSelection="single"
             (selectionChanged)="onSelectionChanged($event)" (cellValueChanged)="onCellValueChanged($event)"
             (cellEditingStopped)="onCellEditingStopped($event)" (rowSelected)="onSelectedRow($event)"
-            (gridReady)="onGridReady($event)" (rowGroupOpened)="onRowGroupOpened($event)" [components]="components"
+            (gridReady)="onGridReady($event)" (firstDataRendered)="onFirstDataRendered()" (rowGroupOpened)="onRowGroupOpened($event)" [components]="components"
             [gridOptions]="gridOptions" [stopEditingWhenCellsLoseFocus]="true">
           </ag-grid-angular>
         </div>

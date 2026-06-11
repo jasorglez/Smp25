@@ -343,6 +343,8 @@ export class UsersComponent implements OnDestroy {
       return;
     }
 
+    this.gridApi?.showLoadingOverlay();
+
     const logFetch = () =>
       this.trackingService.addLog(
         this.trackingService.getnameComp(),
@@ -369,9 +371,13 @@ export class UsersComponent implements OnDestroy {
             countByUser.set(uid, (countByUser.get(uid) ?? 0) + 1);
           }
           this.applyUsersListResponse(users, countByUser);
+          this.gridApi?.hideOverlay();
           logFetch();
         },
-        error: (error) => console.error('Error al obtener los datos:', error),
+        error: (error) => {
+          console.error('Error al obtener los datos:', error);
+          this.gridApi?.hideOverlay();
+        },
       });
     } else {
       forkJoin({
@@ -382,9 +388,13 @@ export class UsersComponent implements OnDestroy {
         next: ({ users, branches, branchPerms }) => {
           const countByUser = this.buildBranchCountByUserForCompany(branchPerms, branches);
           this.applyUsersListResponse(users, countByUser);
+          this.gridApi?.hideOverlay();
           logFetch();
         },
-        error: (error) => console.error('Error al obtener los datos:', error),
+        error: (error) => {
+          console.error('Error al obtener los datos:', error);
+          this.gridApi?.hideOverlay();
+        },
       });
     }
   }
@@ -670,6 +680,10 @@ export class UsersComponent implements OnDestroy {
     const showSecurity = this.isAdvanced || this.idUser === 42 || this.idRoot === 9;
     this.gridApi.setColumnsVisible(['idRol'], showSecurity);
     this.applyDetailRowHeight();
+  }
+
+  onFirstDataRendered() {
+    if (this.gridApi) this.gridApi.autoSizeAllColumns();
   }
 
   onRowGroupOpened(event: any) {

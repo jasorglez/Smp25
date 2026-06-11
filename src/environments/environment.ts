@@ -73,5 +73,5 @@ export const environment = {
 
   urlRefreshToken: 'https://securetoken.googleapis.com/v1/token?key=AIzaSyDxCBGKk8nT09hdW85-PyOkhw5_JPZLF1A',
 
-  version: '2.52.434 (10 Junio 2026) - Molienda: mediciones de botes en cascada (master-detail AG Grid)'
+  version: '2.52.457 (10 Junio 2026) - Almacén molienda: validación Datos externos al cerrar también en Cerrar Entrega (multi-entrega), igual que Cerrar OC; bloquea si alguna entrada no tiene lotes'
 };

@@ -604,9 +604,18 @@ export class AlmmoliendaComponent {
       const categorias = await lastValueFrom(this.catalogoCategorias.getAllByBranch(idCompany, this.idBranch));
       console.log('Categorías crudas:', categorias);
 
+      this.catalogoCategoriasSucursal = Array.isArray(categorias) ? categorias : [];
+
+      // Sin catálogo ligado (idCatalog null) → el material NO tiene organolépticas: no cargar el árbol
+      // global (getAll sin idCatalog devuelve TODO). Así la pestaña organolépticas no aparece.
+      if (idCatalog == null) {
+        this.caracteristicasCategories = [];
+        this.caracteristicasFamilies = [];
+        return;
+      }
+
       const allItems = await lastValueFrom(this.catalogService.getAll(idCompany, idCatalog));
       const itemsArray = Array.isArray(allItems) ? allItems : [];
-      this.catalogoCategoriasSucursal = Array.isArray(categorias) ? categorias : [];
 
       this.caracteristicasCategories = itemsArray
         .filter((item: any) => item.type === 'CATEGORY')
@@ -655,21 +664,12 @@ export class AlmmoliendaComponent {
       .trim();
   }
 
-  private getCategoriaCatalogoIdByArticulo(idArticulo: string | null | undefined): number | null {
-    const articulo = this.getArticuloComparableText(idArticulo);
-    if (!articulo || !Array.isArray(this.catalogoCategoriasSucursal)) return null;
-
-    const exactMatch = this.catalogoCategoriasSucursal.find((categoria) =>
-      this.getCategoriaComparableText(categoria.description) === articulo
-    );
-    if (exactMatch?.id) return exactMatch.id;
-
-    const partialMatch = this.catalogoCategoriasSucursal.find((categoria) => {
-      const categoriaTexto = this.getCategoriaComparableText(categoria.description);
-      return categoriaTexto.includes(articulo) || articulo.includes(categoriaTexto);
-    });
-
-    return partialMatch?.id ?? null;
+  /** Catálogo organoléptico ("Características de …") ligado al material por id_material.
+   *  Un artículo "tiene organolépticas" ⟺ esta función devuelve un id. (Antes era match por nombre.) */
+  private getCategoriaCatalogoIdByMaterial(idMaterial: number | null | undefined): number | null {
+    if (!idMaterial || !Array.isArray(this.catalogoCategoriasSucursal)) return null;
+    const match = this.catalogoCategoriasSucursal.find((categoria: any) => categoria.idMaterial === idMaterial);
+    return match?.id ?? null;
   }
 
   private getMaterialConfigByArticulo(idArticulo: string | null | undefined) {
@@ -912,7 +912,8 @@ export class AlmmoliendaComponent {
     if (!idMolienda || !sucursal || !idMaterial) return;
 
     await this.loadBultosCantidad(this.idRoot, sucursal);
-    const idCatalog = this.getCategoriaCatalogoIdByArticulo(rowData?.id_articulo);
+    // Catálogo organoléptico ligado por id_material (antes era match frágil por nombre).
+    const idCatalog = this.getCategoriaCatalogoIdByMaterial(idMaterial);
     await this.loadCaracteristicasCategories(this.idRoot, idCatalog);
 
     const today = new Date().toISOString().substring(0, 10);

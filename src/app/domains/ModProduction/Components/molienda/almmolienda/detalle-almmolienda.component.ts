@@ -10,9 +10,14 @@ import { CustomersService } from '../../../../../services/customers.service';
 import { SignalsService } from '../../../../../services/signals.service';
 import { TrackingService } from '../../../../../services/tracking.service';
 import { EntradaMoliendaService, EntradaMolienda } from '../../../../../services/entrada-molienda.service';
+import { DatosExternosMoliendaService, DatosExternosMolienda } from '../../../../../services/datos-externos-molienda.service';
 import { SetupService } from 'app/services/setup.service';
 import { EntregaOc, EntregaOcService } from '../../../../../services/entrega-oc.service';
 import { CaracteristicasEntradaService } from '../../../../../services/caracteristicas-entrada.service';
+import { CaracteristicasMateriaPrimaService } from 'app/services/caracteristicas-materia-prima.service';
+import { RevisionCaracteristicasEntradaService, RevisionCaracteristicaEntrada } from 'app/services/revision-caracteristicas-entrada.service';
+import { EmployeesService } from 'app/services/employees.service';
+import { FormsModule } from '@angular/forms';
 import { IntandoutDocumentsService } from 'app/services/intandoutDocuments.service';
 import { EntradaDocumentsOverlayService } from 'app/services/entrada-documents-overlay.service';
 import { alerts } from 'app/helpers/alerts';
@@ -32,7 +37,7 @@ interface ReqOption {
 @Component({
   selector: 'app-detalle-almmolienda',
   standalone: true,
-  imports: [CommonModule, AgGridAngular, DetailEntradaDocumentsComponent, CustomOcTooltipComponent],
+  imports: [CommonModule, FormsModule, AgGridAngular, DetailEntradaDocumentsComponent, CustomOcTooltipComponent],
   template: `
     <div style="padding: 6px; height: 100%; display: flex; flex-direction: column; box-sizing: border-box; overflow: hidden;"
          [style.backgroundColor]="detailType === 'entradas' ? '#e8f5e9' : '#fce4ec'">
@@ -131,7 +136,7 @@ interface ReqOption {
               </button>
             </div>
           </div>
-          <div [style.flex]="selectedEntradaCaratRow ? '0 0 85px' : '1 1 auto'"
+          <div [style.flex]="(selectedEntradaCaratRow || selectedEntradaDatosRow) ? '0 0 85px' : '1 1 auto'"
                style="min-height: 58px; position: relative; overflow: hidden;">
             <ag-grid-angular
               class="ag-theme-quartz small-text-ag-grid"
@@ -144,16 +149,79 @@ interface ReqOption {
             </ag-grid-angular>
           </div>
 
-          <!-- Level 5: Características (cascada) -->
-          <div *ngIf="selectedEntradaCaratRow"
-               style="flex: 0 0 105px; min-height: 0; border-top: 2px solid #558b2f; background: #f1f8e9;
+          <!-- Level 5: Datos externos (versión gasto: lotes por entrada) -->
+          <div *ngIf="selectedEntradaDatosRow"
+               style="flex: 0 0 135px; min-height: 0; border-top: 2px solid #2e7d32; background: #e8f5e9;
                       padding: 4px; display: flex; flex-direction: column; overflow: hidden;">
             <div style="margin-bottom: 3px; flex-shrink: 0;">
-              <span style="font-size: 0.76rem; font-weight: bold; color: #558b2f;">
-                Características — Entrada {{ selectedEntradaCaratRow.idEntrada }}
+              <span style="font-size: 0.76rem; font-weight: bold; color: #2e7d32;">
+                Datos externos — Entrada {{ selectedEntradaDatosRow.idEntrada || 'nueva' }}
               </span>
             </div>
             <div style="flex: 1 1 auto; min-height: 0; position: relative; overflow: hidden;">
+              <ag-grid-angular
+                class="ag-theme-quartz small-text-ag-grid"
+                [rowData]="cascadeDatosData"
+                [columnDefs]="datosExternosColDefs"
+                [gridOptions]="datosExternosGridOptions"
+                (gridReady)="onDatosExternosGridReady($event)"
+                style="width: 100%; height: 100%; position: absolute; top: 0; left: 0; right: 0; bottom: 0;">
+              </ag-grid-angular>
+            </div>
+          </div>
+
+          <!-- Level 5: Características — Entrada (2 pestañas) -->
+          <div *ngIf="selectedEntradaCaratRow"
+               style="flex: 0 0 150px; min-height: 0; border-top: 2px solid #558b2f; background: #f1f8e9;
+                      padding: 4px; display: flex; flex-direction: column; overflow: hidden;">
+            <!-- Encabezado: título + pestañas + revisor -->
+            <div style="display:flex; align-items:center; justify-content:space-between; gap:8px; margin-bottom:4px; flex-shrink:0;">
+              <div style="display:flex; align-items:center; gap:6px;">
+                <span style="font-size: 0.76rem; font-weight: bold; color: #558b2f;">
+                  Características — Entrada {{ selectedEntradaCaratRow.idEntrada }}
+                </span>
+                <button type="button" (click)="caractActiveTab = 'mp'"
+                        [style.background]="caractActiveTab === 'mp' ? '#2e7d32' : '#e0e0e0'"
+                        [style.color]="caractActiveTab === 'mp' ? '#fff' : '#555'"
+                        style="border:0; border-radius:4px; padding:2px 8px; font-size:0.7rem; font-weight:600; cursor:pointer;">
+                  Características de materia prima
+                </button>
+                <button type="button" *ngIf="hasOrganolepticas" (click)="caractActiveTab = 'organolepticas'"
+                        [style.background]="caractActiveTab === 'organolepticas' ? '#2e7d32' : '#e0e0e0'"
+                        [style.color]="caractActiveTab === 'organolepticas' ? '#fff' : '#555'"
+                        style="border:0; border-radius:4px; padding:2px 8px; font-size:0.7rem; font-weight:600; cursor:pointer;">
+                  Características organolépticas
+                </button>
+              </div>
+              <div *ngIf="caractActiveTab === 'mp'" style="display:flex; align-items:center; gap:4px;">
+                <span style="font-size:0.7rem; color:#37474f; font-weight:600;">Revisó:</span>
+                <select [(ngModel)]="selectedRevisorId" (ngModelChange)="onRevisorChange()"
+                        [disabled]="selectedOcRow?.close || selectedMultiEntregaIsClosed"
+                        style="padding:2px 6px; border:1px solid #b0bec5; border-radius:4px; font-size:0.72rem; max-width:220px;">
+                  <option [ngValue]="null">— Selecciona —</option>
+                  <option *ngFor="let e of revisorOptions" [ngValue]="e.id">{{ e.name }}</option>
+                </select>
+              </div>
+            </div>
+
+            <!-- Pestaña: Características de materia prima -->
+            <div *ngIf="caractActiveTab === 'mp'" style="flex: 1 1 auto; min-height: 0; position: relative; overflow: hidden;">
+              <div *ngIf="!cascadeMpCaractData.length"
+                   style="padding:6px; font-size:0.74rem; color:#6b7280;">
+                Este material no tiene características activas registradas en Materia Prima.
+              </div>
+              <ag-grid-angular *ngIf="cascadeMpCaractData.length"
+                class="ag-theme-quartz small-text-ag-grid"
+                [rowData]="cascadeMpCaractData"
+                [columnDefs]="mpCaractColDefs"
+                [gridOptions]="mpCaractGridOptions"
+                (gridReady)="onMpCaractGridReady($event)"
+                style="width: 100%; height: 100%; position: absolute; top: 0; left: 0; right: 0; bottom: 0;">
+              </ag-grid-angular>
+            </div>
+
+            <!-- Pestaña: Características organolépticas (dinámica existente) -->
+            <div *ngIf="caractActiveTab === 'organolepticas'" style="flex: 1 1 auto; min-height: 0; position: relative; overflow: hidden;">
               <ag-grid-angular
                 class="ag-theme-quartz small-text-ag-grid"
                 [rowData]="cascadeCaratData"
@@ -185,10 +253,14 @@ export class DetalleMoliendaComponent {
   private signalsService = inject(SignalsService);
   private trackingService = inject(TrackingService);
   private entradaService = inject(EntradaMoliendaService);
+  private datosExternosService = inject(DatosExternosMoliendaService);
   private setupService = inject(SetupService);
   private ivaPercent = 0;   // IVA% de la sucursal (setup almacén); precio guardado = BASE (Opción B)
   private entregaOcService = inject(EntregaOcService);
   private caracteristicasService = inject(CaracteristicasEntradaService);
+  private caracteristicasMpService = inject(CaracteristicasMateriaPrimaService);
+  private revisionService = inject(RevisionCaracteristicasEntradaService);
+  private employeesService = inject(EmployeesService);
   private intandoutDocumentsService = inject(IntandoutDocumentsService);
   private entradaDocumentsOverlayService = inject(EntradaDocumentsOverlayService);
   private prefixSetupService = inject(PrefixSetupService);
@@ -230,7 +302,21 @@ export class DetalleMoliendaComponent {
   hasUnsavedChangesCaracteristicas = false;
   private originalCaracteristicasData: any[] = [];
   private existingCaratIds = new Map<number, number>(); // categoryId → recordId en BD
-  private editableEntradaColumnOrder = ['fechaRecepcion', 'cantidadEntrada', 'bultos', 'revisionConfigu', 'comentario', 'liberacion'];
+  // ── Características — Entrada con 2 pestañas ──
+  caractActiveTab: 'mp' | 'organolepticas' = 'mp';
+  cascadeMpCaractData: any[] = [];          // filas por característica (Característica/Revisó/Comentarios)
+  private mpCaractGridApi!: GridApi;
+  revisorOptions: { id: number; name: string }[] = [];   // empleados Extracción y Fermentación
+  selectedRevisorId: number | null = null;  // revisor de la entrada (uno por entrada)
+  /** ¿Este material tiene catálogo organoléptico? (caracteristicasCategories no vacío). */
+  get hasOrganolepticas(): boolean {
+    return Array.isArray(this.caracteristicasCategories) && this.caracteristicasCategories.length > 0;
+  }
+  // ── Nivel 5 "Datos externos" (versión gasto: lotes por entrada) ──
+  selectedEntradaDatosRow: any = null;
+  cascadeDatosData: any[] = [];
+  private datosExternosGridApi!: GridApi;
+  private editableEntradaColumnOrder = ['fechaRecepcion', 'bultos', 'revisionConfigu', 'comentario', 'liberacion'];
   private enterPressed = false;
   bultosCantidad: number | null = null;
   bultosCantidadARevisar: number | null = null;
@@ -521,6 +607,24 @@ export class DetalleMoliendaComponent {
           return;
         }
 
+        // Validar que CADA entrada tenga "Datos externos" (lotes) capturados; si alguna está vacía
+        // (null), no se permite cerrar la OC.
+        const lotesPorEntrada = await Promise.all((entradas as any[]).map(async (e: any) => {
+          const lotes = await lastValueFrom(this.datosExternosService.getByEntrada(e.id)).catch(() => []);
+          return { id: e.id, count: Array.isArray(lotes) ? lotes.length : 0 };
+        }));
+        const sinDatos = lotesPorEntrada.filter(r => r.count === 0).map(r => r.id);
+        if (sinDatos.length) {
+          params.data.close = false;
+          params.api.refreshCells({ rowNodes: [params.node], columns: ['close'], force: true });
+          await alerts.basicAlert(
+            'Cerrar Orden de Compra',
+            `No se puede cerrar la OC: falta capturar Datos externos en la(s) entrada(s): ${sinDatos.join(', ')}.`,
+            'warning'
+          );
+          return;
+        }
+
         // Alerta si aún no se alcanza la cantidad objetivo. El umbral depende del Tipo OC:
         //  · SIN LÍMITE → cantidad REQUERIDA de la requisición (Nivel 2, cantidadReq).
         //  · otros tipos → "Cantidad" de la OC (por proveedor).
@@ -762,13 +866,46 @@ export class DetalleMoliendaComponent {
       },
     },
     {
+      // VERDE: abre el Nivel 5 "Datos externos" (lotes). Lote/Caducidad/Cantidad x Lote viven ahí.
+      field: 'datosExternosCell',
+      headerName: 'Datos externos',
+      width: 120,
+      sortable: false,
+      cellStyle: () => ({ backgroundColor: '#c8e6c9', textAlign: 'center' }),
+      cellRenderer: (params: any) => {
+        const nLotes = Array.isArray(params.data?.datosExternos)
+          ? params.data.datosExternos.filter((d: any) => this.datoExternoTieneDatos(d)).length
+          : 0;
+        const container = document.createElement('div');
+        container.style.cssText = 'display:flex;align-items:center;justify-content:center;height:100%;cursor:pointer;';
+        if (nLotes > 0) {
+          container.style.cssText += 'font-size:0.68rem;font-weight:600;color:#1b5e20;';
+          container.textContent = `${nLotes} lote(s)`;
+        } else {
+          container.style.cssText += 'color:#2e7d32;font-weight:500;font-size:1.2rem;';
+          container.textContent = '↓';
+        }
+        container.addEventListener('click', (ev) => {
+          ev.stopPropagation();
+          this.toggleDatosExternos(params.data);
+        });
+        return container;
+      },
+    },
+    {
+      // No-CR: solo-lectura = suma de "Cantidad x Lote" del Nivel 5 (Datos externos).
+      // CR: editable a mano (CR no tiene Datos externos).
       field: 'cantidadEntrada',
       headerName: 'Cantidad Entrada',
       width: 130,
       type: 'numericColumn',
-      editable: (p: any) => !this.selectedOcRow?.close && !this.selectedMultiEntregaIsClosed && !p?.data?.close,
+      editable: (p: any) => this.selectedOcRow?.type === 'CR'
+        && !this.selectedOcRow?.close && !this.selectedMultiEntregaIsClosed && !p?.data?.close,
       valueFormatter: (p) => this.fmtEntero(p.value),
       onCellValueChanged: (event: any) => this.onEntradaCellValueChanged(event),
+      cellStyle: () => this.selectedOcRow?.type === 'CR'
+        ? null
+        : { backgroundColor: '#f5f5f5', color: '#37474f' },
     },
     {
       field: 'bultos',
@@ -830,18 +967,8 @@ export class DetalleMoliendaComponent {
       headerName: 'Características',
       width: 100,
       sortable: false,
-      cellStyle: () => this.selectedOcRow?.type === 'CR'
-        ? { backgroundColor: '#f0f0f0', textAlign: 'center' }
-        : { backgroundColor: '#c8e6c9', textAlign: 'center' },
+      cellStyle: () => ({ backgroundColor: '#c8e6c9', textAlign: 'center' }),
       cellRenderer: (params: any) => {
-        // Compra Rápida: Características deshabilitada (sin click).
-        if (this.selectedOcRow?.type === 'CR') {
-          const disabled = document.createElement('div');
-          disabled.style.cssText = 'display:flex;align-items:center;justify-content:center;height:100%;color:#bdbdbd;cursor:not-allowed;';
-          disabled.textContent = '—';
-          return disabled;
-        }
-
         const carat = params.data?.carat;
         const hasData = carat && typeof carat === 'string' && carat.trim().length > 0;
 
@@ -861,6 +988,7 @@ export class DetalleMoliendaComponent {
           if (this.selectedEntradaCaratRow === params.data) {
             this.selectedEntradaCaratRow = null;
             this.cascadeCaratData = [];
+            this.cascadeMpCaractData = [];
             this.existingCaratIds.clear();
             this.hasUnsavedChangesCaracteristicas = false;
           } else {
@@ -869,6 +997,7 @@ export class DetalleMoliendaComponent {
             this.selectedEntradaCaratRow = params.data;
             this.hasUnsavedChangesCaracteristicas = false;
             this.existingCaratIds.clear();
+            this.caractActiveTab = 'mp';
 
             const idEntrada = params.data.idEntrada;
             let row: any = { idEntrada };
@@ -900,6 +1029,9 @@ export class DetalleMoliendaComponent {
             if (this.nivel5GridApi && !this.nivel5GridApi.isDestroyed()) {
               this.nivel5GridApi.setGridOption('rowData', this.cascadeCaratData);
             }
+
+            // Pestaña "Características de materia prima": filas por característica + revisión.
+            await this.loadMpCaracteristicas(idEntrada);
           }
         });
         return container;
@@ -1123,6 +1255,121 @@ export class DetalleMoliendaComponent {
     onFirstDataRendered: (params: any) => params.api.autoSizeAllColumns(),
   };
 
+  // ── Pestaña "Características de materia prima" (filas por característica) ──
+  private readonly EXTRACCION_FERMENTACION_DEPT_ID = 62;
+
+  mpCaractColDefs: ColDef[] = [
+    { field: 'caracteristica', headerName: 'Característica', flex: 1, minWidth: 180, editable: false,
+      cellStyle: { fontWeight: '600', color: '#1b5e20' } },
+    {
+      field: 'reviso', headerName: 'Revisó', width: 90,
+      editable: (p: any) => !this.selectedOcRow?.close && !this.selectedMultiEntregaIsClosed,
+      cellRenderer: 'agCheckboxCellRenderer',
+      cellEditor: 'agCheckboxCellEditor',
+    },
+    {
+      field: 'comentarios', headerName: 'Comentarios', flex: 1, minWidth: 200,
+      editable: (p: any) => !this.selectedOcRow?.close && !this.selectedMultiEntregaIsClosed,
+      valueSetter: (params: any) => {
+        params.data.comentarios = (params.newValue ?? '').toString().toUpperCase();
+        return true;
+      },
+    },
+  ];
+
+  mpCaractGridOptions: any = {
+    headerHeight: 25,
+    rowHeight: 24,
+    popupParent: typeof document !== 'undefined' ? document.body : null,
+    onCellValueChanged: () => { this.hasUnsavedChangesCaracteristicas = true; },
+    defaultColDef: { resizable: true, sortable: false },
+    onFirstDataRendered: (params: any) => params.api.autoSizeAllColumns(),
+  };
+
+  // ── Nivel 5: Datos externos (versión gasto) ───────────────────────
+  // Sin botones Agregar/Guardar; auto-append al escribir en la última fila; la última fila
+  // vacía no se persiste. La SUMA de "Cantidad x Lote" alimenta "Cantidad Entrada" (Nivel 4).
+  datosExternosColDefs: ColDef[] = [
+    {
+      headerName: '#',
+      width: 45,
+      valueGetter: (p) => (p.node?.rowIndex ?? 0) + 1,
+      cellStyle: { fontWeight: 'bold' },
+    },
+    {
+      field: 'lote',
+      headerName: 'Lote',
+      flex: 1,
+      minWidth: 130,
+      editable: (p: any) => !this.selectedOcRow?.close && !this.selectedMultiEntregaIsClosed,
+      valueSetter: (params) => {
+        params.data.lote = params.newValue ?? '';
+        return true;
+      },
+    },
+    {
+      field: 'caducidadMeses',
+      headerName: 'Caducidad en meses',
+      width: 160,
+      type: 'numericColumn',
+      editable: (p: any) => !this.selectedOcRow?.close && !this.selectedMultiEntregaIsClosed,
+      valueSetter: (params) => {
+        const v = params.newValue;
+        if (v === null || v === undefined || v === '') {
+          params.data.caducidadMeses = null;
+        } else {
+          const n = parseInt(String(v), 10);
+          params.data.caducidadMeses = (isNaN(n) || n < 0) ? (params.oldValue ?? null) : n;
+        }
+        return true;
+      },
+      valueFormatter: (p) => this.fmtEntero(p.value),
+    },
+    {
+      field: 'cantidadXLote',
+      headerName: 'Cantidad x Lote',
+      width: 140,
+      type: 'numericColumn',
+      editable: (p: any) => !this.selectedOcRow?.close && !this.selectedMultiEntregaIsClosed,
+      valueSetter: (params) => {
+        const v = params.newValue;
+        if (v === null || v === undefined || v === '') {
+          params.data.cantidadXLote = null;
+        } else {
+          const n = Number(v);
+          params.data.cantidadXLote = (isNaN(n) || n < 0) ? (params.oldValue ?? null) : n;
+        }
+        return true;
+      },
+      valueFormatter: (p) => this.fmtEntero(p.value),
+    },
+  ];
+
+  datosExternosGridOptions: any = {
+    headerHeight: 25,
+    rowHeight: 25,
+    popupParent: typeof document !== 'undefined' ? document.body : null,
+    rowClassRules: {
+      'new-row-highlight': (p: any) => !!p.data?.__isNew,
+    },
+    onCellValueChanged: (event: any) => this.onDatoExternoEdited(event),
+    singleClickEdit: false,
+    defaultColDef: {
+      resizable: true,
+      sortable: false,
+      textAlign: 'center',
+      suppressKeyboardEvent: (params: any) => {
+        if (params.event.key === 'Enter' && params.editing) {
+          setTimeout(() => { if (this.datosExternosGridApi) this.datosExternosGridApi.stopEditing(); }, 0);
+          return true;
+        }
+        return false;
+      },
+    },
+    tooltipShowDelay: 300,
+    onFirstDataRendered: (params: any) => params.api.autoSizeAllColumns(),
+  };
+
   // ── Lifecycle ─────────────────────────────────────────────────────
   async agInit(params: any) { await this.init(params); }
   refresh(params: any): boolean { this.internalParams = params; return true; }
@@ -1312,6 +1559,208 @@ export class DetalleMoliendaComponent {
       this.nivel5GridApi.setGridOption('rowData', this.cascadeCaratData);
   }
 
+  // ── Pestaña "Características de materia prima" ──────────────────────
+  onMpCaractGridReady(params: GridReadyEvent) {
+    this.mpCaractGridApi = params.api;
+    if (this.cascadeMpCaractData.length)
+      this.mpCaractGridApi.setGridOption('rowData', this.cascadeMpCaractData);
+  }
+
+  onRevisorChange() {
+    this.hasUnsavedChangesCaracteristicas = true;
+  }
+
+  /** Carga las características Activo del material + su revisión guardada para la entrada. */
+  private async loadMpCaracteristicas(idEntrada: number): Promise<void> {
+    this.cascadeMpCaractData = [];
+    this.selectedRevisorId = null;
+    const idMaterial = this.internalParams?.data?.idMaterial;
+    if (!idMaterial) return;
+
+    await this.loadRevisorOptions();
+
+    try {
+      const [caracts, revisiones] = await Promise.all([
+        lastValueFrom(this.caracteristicasMpService.getByMaterial(Number(idMaterial))).catch(() => []),
+        idEntrada ? lastValueFrom(this.revisionService.getByEntrada(idEntrada)).catch(() => []) : Promise.resolve([]),
+      ]);
+      const activos = (Array.isArray(caracts) ? caracts : []).filter((c: any) => c.activo !== false);
+      const revByCaract = new Map<number, any>(
+        (Array.isArray(revisiones) ? revisiones : []).map((r: any) => [r.idCaracteristica, r])
+      );
+      // Revisor de la entrada: el de cualquier revisión existente.
+      const anyRev = (Array.isArray(revisiones) ? revisiones : []).find((r: any) => r.idTrabajador != null);
+      this.selectedRevisorId = anyRev?.idTrabajador ?? null;
+
+      this.cascadeMpCaractData = activos.map((c: any) => {
+        const rev = revByCaract.get(c.id);
+        return {
+          idCaracteristica: c.id,
+          caracteristica: c.caracteristica ?? '',
+          reviso: rev?.reviso ?? false,
+          comentarios: rev?.comentarios ?? '',
+          revisionId: rev?.id ?? null,
+        };
+      });
+      if (this.mpCaractGridApi && !this.mpCaractGridApi.isDestroyed()) {
+        this.mpCaractGridApi.setGridOption('rowData', this.cascadeMpCaractData);
+      }
+    } catch (e) {
+      console.error('Error cargando características de materia prima:', e);
+      this.cascadeMpCaractData = [];
+    }
+  }
+
+  /** Empleados del depto Extracción y Fermentación (sucursal del Nivel 1) para el dropdown revisor. */
+  private async loadRevisorOptions(): Promise<void> {
+    if (this.revisorOptions.length) return;   // ya cargados
+    const idBranch = this.internalParams?.data?.sucursal;
+    if (!idBranch) { this.revisorOptions = []; return; }
+    try {
+      const emps: any = await lastValueFrom(this.employeesService.getEmployees(Number(idBranch)));
+      this.revisorOptions = (Array.isArray(emps) ? emps : [])
+        .filter((e: any) => Number(e.idDepto) === this.EXTRACCION_FERMENTACION_DEPT_ID)
+        .map((e: any) => ({ id: e.id, name: (e.name ?? e.fullName ?? `Empleado ${e.id}`).toString() }))
+        .sort((a: any, b: any) => a.name.localeCompare(b.name, 'es', { sensitivity: 'base' }));
+    } catch { this.revisorOptions = []; }
+  }
+
+  /** Persiste la revisión de características de materia prima de la entrada abierta. */
+  private async saveMpRevision(idEntrada: number): Promise<void> {
+    if (!idEntrada || !this.cascadeMpCaractData.length) return;
+    const ops: Promise<any>[] = [];
+    for (const r of this.cascadeMpCaractData) {
+      const payload: RevisionCaracteristicaEntrada = {
+        idEntrada,
+        idCaracteristica: r.idCaracteristica,
+        reviso: r.reviso === true,
+        comentarios: (r.comentarios ?? '').toString().toUpperCase() || null,
+        idTrabajador: this.selectedRevisorId ?? null,
+      };
+      if (r.revisionId) {
+        ops.push(lastValueFrom(this.revisionService.update(r.revisionId, payload)));
+      } else {
+        ops.push(lastValueFrom(this.revisionService.create(payload)).then((created: any) => { r.revisionId = created?.id ?? null; }));
+      }
+    }
+    await Promise.all(ops);
+  }
+
+  // ── Nivel 5 "Datos externos" (versión gasto) ──────────────────────
+  onDatosExternosGridReady(params: GridReadyEvent) {
+    this.datosExternosGridApi = params.api;
+    if (this.cascadeDatosData.length)
+      this.datosExternosGridApi.setGridOption('rowData', this.cascadeDatosData);
+  }
+
+  /** ¿La fila de dato externo tiene algún dato capturado? (las 3 vacías = fila trailing). */
+  datoExternoTieneDatos(d: any): boolean {
+    if (!d) return false;
+    const lote = (d.lote ?? '').toString().trim();
+    const tieneCad = d.caducidadMeses != null && d.caducidadMeses !== '';
+    const tieneCant = d.cantidadXLote != null && d.cantidadXLote !== '';
+    return lote !== '' || tieneCad || tieneCant;
+  }
+
+  private buildBlankDatoExterno(): any {
+    return { id: null, lote: '', caducidadMeses: null, cantidadXLote: null, __isNew: true };
+  }
+
+  /** Abre/cierra el acordeón Datos externos para una entrada (excluyente con Características). */
+  toggleDatosExternos(entradaRow: any): void {
+    if (this.selectedEntradaDatosRow === entradaRow) {
+      this.selectedEntradaDatosRow = null;
+      this.cascadeDatosData = [];
+      return;
+    }
+    // Excluyente con Características
+    this.selectedEntradaCaratRow = null;
+    this.cascadeCaratData = [];
+    this.closeDocumentsModal();
+
+    this.selectedEntradaDatosRow = entradaRow;
+    // Trabaja sobre la copia almacenada en la entrada; siempre con una fila vacía al final.
+    const base = Array.isArray(entradaRow.datosExternos) ? [...entradaRow.datosExternos] : [];
+    base.push(this.buildBlankDatoExterno());
+    this.cascadeDatosData = base;
+    if (this.datosExternosGridApi && !this.datosExternosGridApi.isDestroyed()) {
+      this.datosExternosGridApi.setGridOption('rowData', this.cascadeDatosData);
+    }
+  }
+
+  /** Edición en el grid Datos externos: auto-append, recálculo de Cantidad Entrada y badge. */
+  private onDatoExternoEdited(params: any): void {
+    if (params?.data && !params.data.__isNew) params.data.__modified = true;
+
+    // Auto-append: si la última fila ya tiene datos, agrega otra vacía.
+    const last = this.cascadeDatosData[this.cascadeDatosData.length - 1];
+    if (last && this.datoExternoTieneDatos(last)) {
+      this.cascadeDatosData = [...this.cascadeDatosData, this.buildBlankDatoExterno()];
+      if (this.datosExternosGridApi && !this.datosExternosGridApi.isDestroyed()) {
+        this.datosExternosGridApi.setGridOption('rowData', this.cascadeDatosData);
+      }
+    }
+
+    // Persistir el set en la entrada (sin la(s) trailing vacía(s) se filtra al guardar).
+    if (this.selectedEntradaDatosRow) {
+      this.selectedEntradaDatosRow.datosExternos = this.cascadeDatosData;
+      this.recomputeCantidadEntrada(this.selectedEntradaDatosRow);
+      // Marca la entrada modificada para que saveEntradas la incluya y persista cantidadEntrada.
+      if (!this.selectedEntradaDatosRow.__isNew) this.selectedEntradaDatosRow.__modified = true;
+    }
+    this.hasUnsavedChangesEntradas = true;
+  }
+
+  /** Cantidad Entrada (Nivel 4) = suma de Cantidad x Lote de los datos externos de la entrada. */
+  private recomputeCantidadEntrada(entradaRow: any): void {
+    const lotes = Array.isArray(entradaRow?.datosExternos) ? entradaRow.datosExternos : [];
+    const suma = lotes.reduce((acc: number, d: any) => acc + (Number(d?.cantidadXLote) || 0), 0);
+    entradaRow.cantidadEntrada = suma;
+    if (this.nivel4GridApi && !this.nivel4GridApi.isDestroyed()) {
+      this.nivel4GridApi.refreshCells({ columns: ['cantidadEntrada', 'datosExternosCell', 'pago', 'precioUnitarioEntrega'], force: true });
+    }
+    this.syncSelectedOcRestaFromEntradas();
+  }
+
+  /** Persiste los lotes (datos externos) de una entrada: crea/actualiza con datos, borra los vaciados. */
+  private async syncDatosExternosForEntrada(entradaRow: any): Promise<void> {
+    if (!entradaRow?.id) return;
+    const lotes: any[] = Array.isArray(entradaRow.datosExternos) ? entradaRow.datosExternos : [];
+
+    // Filas con datos → upsert; filas con id pero ya vacías → borrar.
+    const conDatos = lotes.filter((d) => this.datoExternoTieneDatos(d));
+    const aBorrar  = lotes.filter((d) => d.id && !this.datoExternoTieneDatos(d));
+
+    await Promise.all(aBorrar.map((d) => lastValueFrom(this.datosExternosService.delete(d.id))));
+
+    for (const d of conDatos) {
+      const payload: DatosExternosMolienda = {
+        idEntrada: entradaRow.id,
+        lote: (d.lote ?? '').toString().trim() || null,
+        caducidadMeses: d.caducidadMeses != null && d.caducidadMeses !== '' ? Number(d.caducidadMeses) : null,
+        cantidadXLote: d.cantidadXLote != null && d.cantidadXLote !== '' ? Number(d.cantidadXLote) : null,
+      };
+      if (d.id) {
+        await lastValueFrom(this.datosExternosService.update(d.id, payload));
+      } else {
+        const created = await lastValueFrom(this.datosExternosService.create(payload));
+        d.id = created?.id ?? null;
+      }
+      delete d.__isNew;
+      delete d.__modified;
+    }
+
+    // Conservar solo las filas con datos (sin trailing/vaciadas) y refrescar el acordeón si está abierto.
+    entradaRow.datosExternos = conDatos;
+    this.recomputeCantidadEntrada(entradaRow);
+    if (this.selectedEntradaDatosRow === entradaRow) {
+      this.cascadeDatosData = [...conDatos, this.buildBlankDatoExterno()];
+      if (this.datosExternosGridApi && !this.datosExternosGridApi.isDestroyed()) {
+        this.datosExternosGridApi.setGridOption('rowData', this.cascadeDatosData);
+      }
+    }
+  }
+
   onFirstDataRenderedReq(params: any) {
     if (this.gridApi && !this.gridApi.isDestroyed()) {
       this.gridApi.autoSizeAllColumns();
@@ -1463,6 +1912,7 @@ export class DetalleMoliendaComponent {
         idEntrada: e.id,
         idEntrega: e.idEntrega ?? null,
         fechaRecepcion: e.fechaRecepcion ? this.isoToLocalDate(String(e.fechaRecepcion)) : null,
+        datosExternos: [],   // Nivel 5: lotes (se cargan después y recalculan cantidadEntrada)
         cantidadEntrada: e.cantidadEntrada ?? 0,
         bultos: e.bultos ?? 0,
         revisionConfigu: e.revisionConfigu ?? 0,
@@ -1527,6 +1977,22 @@ export class DetalleMoliendaComponent {
             entradaRow.carat = parts.join(' / ');
           }
         } catch { /* sin características, carat queda vacío */ }
+
+        // Datos externos (Nivel 5): lotes de esta entrada. La suma de cantidad_x_lote
+        // recalcula Cantidad Entrada (Nivel 4) para reflejar el valor real guardado.
+        if (entradaRow.idEntrada) {
+          try {
+            const lotes = await lastValueFrom(this.datosExternosService.getByEntrada(entradaRow.idEntrada));
+            entradaRow.datosExternos = (Array.isArray(lotes) ? lotes : []).map((d: DatosExternosMolienda) => ({
+              id: d.id,
+              lote: d.lote ?? '',
+              caducidadMeses: d.caducidadMeses ?? null,
+              cantidadXLote: d.cantidadXLote ?? null,
+            }));
+            const suma = entradaRow.datosExternos.reduce((acc: number, d: any) => acc + (Number(d?.cantidadXLote) || 0), 0);
+            if (entradaRow.datosExternos.length > 0) entradaRow.cantidadEntrada = suma;
+          } catch { entradaRow.datosExternos = []; }
+        }
       }));
 
       this.originalCascadeEntradaData = JSON.parse(JSON.stringify(this.cascadeEntradaData));
@@ -1579,6 +2045,7 @@ export class DetalleMoliendaComponent {
     return {
       idEntrada: null,
       fechaRecepcion: new Date(),
+      datosExternos: [],
       cantidadEntrada: 0,
       bultos: 0,
       revisionConfigu: 0,
@@ -1617,6 +2084,7 @@ export class DetalleMoliendaComponent {
         idEntrada: e.id,
         idEntrega: e.idEntrega ?? null,
         fechaRecepcion: e.fechaRecepcion ? this.isoToLocalDate(String(e.fechaRecepcion)) : null,
+        datosExternos: [],   // Nivel 5: lotes (se cargan después y recalculan cantidadEntrada)
         cantidadEntrada: e.cantidadEntrada ?? 0,
         bultos: e.bultos ?? 0,
         revisionConfigu: e.revisionConfigu ?? 0,
@@ -1663,6 +2131,21 @@ export class DetalleMoliendaComponent {
             entradaRow.carat = parts.join(' / ');
           }
         } catch { /* sin características */ }
+
+        // Datos externos (Nivel 5): lotes de esta entrada; recalculan Cantidad Entrada.
+        if (entradaRow.idEntrada) {
+          try {
+            const lotes = await lastValueFrom(this.datosExternosService.getByEntrada(entradaRow.idEntrada));
+            entradaRow.datosExternos = (Array.isArray(lotes) ? lotes : []).map((d: DatosExternosMolienda) => ({
+              id: d.id,
+              lote: d.lote ?? '',
+              caducidadMeses: d.caducidadMeses ?? null,
+              cantidadXLote: d.cantidadXLote ?? null,
+            }));
+            const suma = entradaRow.datosExternos.reduce((acc: number, d: any) => acc + (Number(d?.cantidadXLote) || 0), 0);
+            if (entradaRow.datosExternos.length > 0) entradaRow.cantidadEntrada = suma;
+          } catch { entradaRow.datosExternos = []; }
+        }
       }));
 
       this.originalCascadeEntradaData = JSON.parse(JSON.stringify(this.cascadeEntradaData));
@@ -2303,6 +2786,7 @@ export class DetalleMoliendaComponent {
     const newRow = {
       idEntrada: null,
       fechaRecepcion: fechaDefault,
+      datosExternos: [],   // Nivel 5: lotes (Cantidad Entrada = suma de Cantidad x Lote)
       cantidadEntrada: 0,
       bultos: 0,
       revisionConfigu: 0,
@@ -2351,6 +2835,47 @@ export class DetalleMoliendaComponent {
     }
 
     const toSave = this.cascadeEntradaData.filter(r => r.__isNew || r.__modified);
+
+    // Validar Datos externos (Nivel 5): cada fila de lote con datos debe traer Lote + Caducidad
+    // + Cantidad x Lote completos (la última fila vacía se ignora). Aplica a las entradas por guardar.
+    for (const r of toSave) {
+      const lotes = Array.isArray(r.datosExternos) ? r.datosExternos : [];
+      const incompleta = lotes.some((d: any) => {
+        if (!this.datoExternoTieneDatos(d)) return false; // fila vacía → se ignora
+        const loteOk = (d.lote ?? '').toString().trim() !== '';
+        const cadOk = d.caducidadMeses != null && d.caducidadMeses !== '' && !isNaN(Number(d.caducidadMeses));
+        const cantOk = d.cantidadXLote != null && d.cantidadXLote !== '' && !isNaN(Number(d.cantidadXLote));
+        return !(loteOk && cadOk && cantOk);
+      });
+      if (incompleta) {
+        await alerts.basicAlert('Datos externos incompletos', 'Cada lote debe tener Lote, Caducidad en meses y Cantidad x Lote.', 'warning');
+        return;
+      }
+    }
+
+    // Validar Características (panel abierto): todas las características de materia prima deben estar
+    // REVISADAS (+ revisor) y, si el material tiene organolépticas, esa pestaña también llena.
+    if (this.selectedEntradaCaratRow) {
+      if (this.cascadeMpCaractData.length) {
+        const faltaReviso = this.cascadeMpCaractData.some((r: any) => r.reviso !== true);
+        if (faltaReviso || !this.selectedRevisorId) {
+          await alerts.basicAlert('Características incompletas', 'Necesitas llenar características del producto para poder guardar su entrada.', 'warning');
+          return;
+        }
+      }
+      if (this.hasOrganolepticas) {
+        const row0 = this.cascadeCaratData?.[0] ?? {};
+        const faltaOrg = this.caracteristicasCategories.some((cat: any) => {
+          const id = cat.id || cat.originalId;
+          const v = row0[`cat_${id}`];
+          return v == null || String(v).trim() === '';
+        });
+        if (faltaOrg) {
+          await alerts.basicAlert('Características incompletas', 'Necesitas llenar características del producto para poder guardar su entrada.', 'warning');
+          return;
+        }
+      }
+    }
 
     // N de entrega para el Folio (misma entrega/single para todas las filas de esta vista).
     const nEntregaSave = this.selectedMultiEntregaCaratRow
@@ -2412,6 +2937,9 @@ export class DetalleMoliendaComponent {
           await lastValueFrom(this.entradaService.update(row.id, payload));
           row.__modified = false;
         }
+
+        // Datos externos (Nivel 5): sincronizar lotes de esta entrada (ya tiene id).
+        await this.syncDatosExternosForEntrada(row);
       }
 
       this.hasUnsavedChangesEntradas = false;
@@ -2438,7 +2966,14 @@ export class DetalleMoliendaComponent {
         }
       }
 
-      if (this.hasUnsavedChangesCaracteristicas) await this.saveCaracteristicas(true);
+      if (this.hasUnsavedChangesCaracteristicas) {
+        if (this.hasOrganolepticas) await this.saveCaracteristicas(true);
+        // Revisión de características de materia prima de la entrada abierta.
+        if (this.selectedEntradaCaratRow?.idEntrada) {
+          await this.saveMpRevision(this.selectedEntradaCaratRow.idEntrada);
+        }
+        this.hasUnsavedChangesCaracteristicas = false;
+      }
       await alerts.basicAlert('Éxito', 'Cambios guardados.', 'success');
     } catch (err) {
       console.error('Error guardando entradas:', err);
@@ -2653,6 +3188,23 @@ export class DetalleMoliendaComponent {
       if (!Array.isArray(entradas) || entradas.length === 0) {
         params.api.refreshCells({ rowNodes: [params.node], columns: ['close'], force: true });
         await alerts.basicAlert('Cerrar Entrega', 'No se puede cerrar esta entrega porque aún no hay datos registrados.', 'warning');
+        return;
+      }
+
+      // Validar que CADA entrada de la entrega tenga "Datos externos" (lotes); si alguna está
+      // vacía (null), no se permite cerrar la entrega.
+      const lotesPorEntrada = await Promise.all((entradas as any[]).map(async (e: any) => {
+        const lotes = await lastValueFrom(this.datosExternosService.getByEntrada(e.id)).catch(() => []);
+        return { id: e.id, count: Array.isArray(lotes) ? lotes.length : 0 };
+      }));
+      const sinDatos = lotesPorEntrada.filter(r => r.count === 0).map(r => r.id);
+      if (sinDatos.length) {
+        params.api.refreshCells({ rowNodes: [params.node], columns: ['close'], force: true });
+        await alerts.basicAlert(
+          'Cerrar Entrega',
+          `No se puede cerrar la entrega: falta capturar Datos externos en la(s) entrada(s): ${sinDatos.join(', ')}.`,
+          'warning'
+        );
         return;
       }
     }

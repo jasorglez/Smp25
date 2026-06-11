@@ -479,6 +479,10 @@ export class BranchesComponent implements CanComponentDeactivate {
     this.masterGridApi = params.api;
   }
 
+  onMasterFirstDataRendered() {
+    if (this.masterGridApi) this.masterGridApi.autoSizeAllColumns();
+  }
+
   addMasterRow() {
     const tempId = `temp_${this.tempIdCounter++}`;
     const newItem = {

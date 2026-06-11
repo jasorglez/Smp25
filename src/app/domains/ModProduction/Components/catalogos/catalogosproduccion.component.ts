@@ -32,13 +32,13 @@ import { CatalogoParamMoliendaComponent } from '../molienda/catalogo-param-molie
     }
     .catalog-frame {
       display: grid;
-      grid-template-columns: 250px 52px minmax(0, 1fr);
+      grid-template-columns: 320px 52px minmax(0, 1fr);
       gap: 16px;
       align-items: start;
       min-height: 520px;
     }
     .catalog-frame.catalog-frame--hier-toolbar {
-      grid-template-columns: 250px 52px minmax(0, 1fr);
+      grid-template-columns: 320px 52px minmax(0, 1fr);
     }
     .catalog-sidebar-stack {
       display: flex;
