@@ -88,7 +88,7 @@ export class MoliendaComponent {
   private idBranch = 0;
   private activeMatPrimaFilter: number | null = null;
   private activeExpandedNodeId: string | null = null;
-  private activeDetailType: 'inventario' | 'matprima' | 'bote' | null = null;
+  private activeDetailType: 'inventario' | 'matprima' | 'bote' | 'parametros' | null = null;
 
   colDefs: ColDef[] = [
     { field: 'active', headerName: 'Activo', width: 80, editable: true, cellRenderer: 'agCheckboxCellRenderer', valueSetter: (p: any) => { p.data.active = p.newValue; p.data.__modified = true; this.hasChanges = true; return true; } }, {
@@ -179,7 +179,7 @@ export class MoliendaComponent {
     { field: 'jugo', hide: true, headerName: 'Jugo', editable: true, cellEditor: 'agNumberCellEditor' },
     { field: 'liberPorCompra', hide: true, headerName: 'Liber. x Compra', editable: true, cellRenderer: 'agCheckboxCellRenderer', cellEditor: 'agCheckboxCellEditor' },
     { field: 'adicional', hide: true, headerName: 'Adicional', editable: true },
-    { field: 'ohJugos', headerName: 'OH Jugos', editable: true, cellEditor: 'agNumberCellEditor', valueSetter: (p: any) => { p.data.ohJugos = p.newValue; p.data.__modified = true; this.hasChanges = true; return true; } },
+    { field: 'ohJugos', headerName: 'OH Jugos', hide: true, editable: true, cellEditor: 'agNumberCellEditor', valueSetter: (p: any) => { p.data.ohJugos = p.newValue; p.data.__modified = true; this.hasChanges = true; return true; } },
     {
       field: 'bote',
       headerName: 'Asignar bote',
@@ -190,7 +190,16 @@ export class MoliendaComponent {
         if (!event.data?.__isNew && event.data?.id != null) this.toggleBoteDetail(event.node);
       },
     },
-    { field: 'parametros', headerName: 'Asignar parámetros', editable: true, valueSetter: (p: any) => { p.data.parametros = p.newValue; p.data.__modified = true; this.hasChanges = true; return true; } },
+    {
+      field: 'parametros',
+      headerName: 'Asignar parámetros',
+      editable: false,
+      cellStyle: { cursor: 'pointer', color: '#7b1fa2', textDecoration: 'underline' },
+      cellRenderer: (p: any) => p.data?.__isNew ? '' : 'Parámetros',
+      onCellClicked: (event: any) => {
+        if (!event.data?.__isNew && event.data?.id != null) this.toggleParametrosDetail(event.node);
+      },
+    },
   ];
 
   gridOptions: any = {
@@ -214,6 +223,9 @@ export class MoliendaComponent {
           this.onMatDetailChanged(idMolienda, hasDetail),
         articuloOptions: this.getArticulosParaSucursal(params?.data?.sucursal),
         allArticuloOptions: this.allActiveArticuloOptions,
+        allMoliendaRows: this.rowData,
+        matPrimaOptions: this.matPrimaOptions,
+        userBranches: this.userBranches,
       },
     }),
     isExternalFilterPresent: () => this.activeMatPrimaFilter != null,
@@ -452,6 +464,25 @@ export class MoliendaComponent {
     node.data.__detailType = 'bote';
     this.activeExpandedNodeId = node.id;
     this.activeDetailType = 'bote';
+    this.gridApi.onRowHeightChanged();
+    setTimeout(() => node.setExpanded(true), 0);
+  }
+
+  toggleParametrosDetail(node: any) {
+    if (this.activeExpandedNodeId === node.id && this.activeDetailType === 'parametros') {
+      node.setExpanded(false);
+      node.data.__detailType = null;
+      this.activeExpandedNodeId = null;
+      this.activeDetailType = null;
+      this.gridApi.forEachNode((n: any) => n.setRowHeight(undefined));
+      this.gridApi.onRowHeightChanged();
+      return;
+    }
+    this.collapseActive();
+    this.gridApi.forEachNode((n: any) => { if (n.id !== node.id) n.setRowHeight(0); });
+    node.data.__detailType = 'parametros';
+    this.activeExpandedNodeId = node.id;
+    this.activeDetailType = 'parametros';
     this.gridApi.onRowHeightChanged();
     setTimeout(() => node.setExpanded(true), 0);
   }

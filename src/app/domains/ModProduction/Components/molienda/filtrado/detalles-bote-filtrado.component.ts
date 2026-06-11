@@ -406,10 +406,9 @@ interface ModalEntry {
       font-weight: 600;
       color: #343a40;
       text-align: center;
-      white-space: nowrap;
-      overflow: hidden;
-      text-overflow: ellipsis;
-      max-width: 114px;
+      white-space: normal;
+      word-break: break-word;
+      max-width: 190px;
     }
     .bote-capacity {
       font-size: 0.7rem;
