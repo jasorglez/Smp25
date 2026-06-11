@@ -45,8 +45,8 @@ export const environment = {
   urlNotifications: 'https://ms-pruebas-api.bi2.mx/notifications/api', // 5011 -- NotificationsTelegram
   //urlNotifications: 'http://localhost:5011/api',
 
-  urlProduction: 'https://ms-pruebas-api.bi2.mx/production/api', // 5051 -- Production
-  //urlProduction: 'http://localhost:5051/api',
+  //urlProduction: 'https://ms-pruebas-api.bi2.mx/production/api', // 5051 -- Production
+  urlProduction: 'http://localhost:5051/api',
 
   urlMantenimiento: 'https://ms-pruebas-api.bi2.mx/maintenance/api',
 
@@ -73,5 +73,5 @@ export const environment = {
 
   urlRefreshToken: 'https://securetoken.googleapis.com/v1/token?key=AIzaSyDxCBGKk8nT09hdW85-PyOkhw5_JPZLF1A',
 
-  version: '2.52.426 (9 Junio 2026) - Modal Repartir entregas (Selección OC): reabrible vía botón Repartir; encabezado muestra el mínimo; botones Agregar/Eliminar (última) para cambiar el N de entregas (borrado FÍSICO de las sobrantes en BD); Opción B parcial: entregas cerradas/recibidas en gris (solo lectura, no se eliminan), solo se editan las pendientes; Sugerir reparte solo pendientes; al Confirmar, si N cambió actualiza Cantidad Entregas y regenera filas del detalle'
+  version: '2.52.434 (10 Junio 2026) - Molienda: mediciones de botes en cascada (master-detail AG Grid)'
 };

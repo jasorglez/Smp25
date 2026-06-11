@@ -131,7 +131,10 @@
       "mcp__b2-mssql-security__list_databases",
       "mcp__b2-mssql-security__get_table_schema",
       "mcp__b2-mssql-administration__get_table_schema",
-      "mcp__b2-mssql-production__get_table_schema"
+      "mcp__b2-mssql-production__get_table_schema",
+      "Bash(xargs -I {} basename {})",
+      "mcp__production-delison-pruebas__execute_sql",
+      "mcp__security-delison-pruebas__execute_sql"
     ],
     "deny": [],
     "ask": []

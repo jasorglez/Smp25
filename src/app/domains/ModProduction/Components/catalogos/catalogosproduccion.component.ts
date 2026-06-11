@@ -14,11 +14,12 @@ import { CatalogProductionService, CatalogProductionItem } from '../../../../ser
 import { alerts } from 'app/helpers/alerts';
 import { ProductionService } from '../../../../services/production.service';
 import { BranchsService } from '../../../../services/branchs.service';
+import { CatalogoParamMoliendaComponent } from '../molienda/catalogo-param-molienda/catalogo-param-molienda.component';
 
 @Component({
   selector: 'app-catalogosproduccion',
   standalone: true,
-  imports: [CommonModule, FormsModule, AgGridAngular, SelectWithTooltipEditorV2Component, ConfiguracionPageComponent],
+  imports: [CommonModule, FormsModule, AgGridAngular, SelectWithTooltipEditorV2Component, ConfiguracionPageComponent, CatalogoParamMoliendaComponent],
   styles: [`
     :host {
       display: block;
@@ -474,7 +475,7 @@ import { BranchsService } from '../../../../services/branchs.service';
             <button class="action-btn delete" (click)="deletePrefijoFase()" [disabled]="!prefijoFaseSelectedRow"><i class="bi bi-trash"></i></button>
           </div>
 
-          <div class="catalog-actions" *ngIf="!showHierarchicalTable && !prefijoFaseMode">
+          <div class="catalog-actions" *ngIf="!showHierarchicalTable && !prefijoFaseMode && !isParamsMode">
             <button class="action-btn add" (click)="add()" [disabled]="!gridApi || !selectedCatalogSidebarId" title="Selecciona una categoría para agregar">
               <i class="bi bi-plus-lg"></i>
             </button>
@@ -489,6 +490,8 @@ import { BranchsService } from '../../../../services/branchs.service';
               <i class="bi bi-trash"></i>
             </button>
           </div>
+
+          <div class="catalog-actions" *ngIf="isParamsMode"></div>
 
           <div class="catalog-actions hier-actions" *ngIf="showHierarchicalTable">
             <button class="action-btn add" (click)="addHierarchicalCatalogItem()" title="Agregar (según selección y columna)">
@@ -522,7 +525,7 @@ import { BranchsService } from '../../../../services/branchs.service';
               </ag-grid-angular>
             </div>
 
-            <div class="panel-content" *ngIf="!showHierarchicalTable && !prefijoFaseMode">
+            <div class="panel-content" *ngIf="!showHierarchicalTable && !prefijoFaseMode && !isParamsMode">
               <ag-grid-angular
                 class="ag-theme-quartz catalog-grid"
                 [rowData]="rowData()"
@@ -534,6 +537,10 @@ import { BranchsService } from '../../../../services/branchs.service';
                 (cellEditingStopped)="onCellEditingStopped($event)"
                 style="height: 470px; width: 100%;">
               </ag-grid-angular>
+            </div>
+
+            <div class="panel-content" *ngIf="isParamsMode" style="height:470px;overflow:hidden;">
+              <app-catalogo-param-molienda style="display:block;height:100%;"></app-catalogo-param-molienda>
             </div>
 
             <div class="panel-content" *ngIf="showHierarchicalTable">
@@ -859,7 +866,8 @@ export class CatalogosProduccionComponent {
   private enterPressed = false;
   private editableColumnOrder     = ['idArticulo'];
   private boteEditableColumnOrder = ['idBranch', 'idPrefijoFase', 'idMatPrima', 'cantidad'];
-  isBotesMode = false;
+  isBotesMode  = false;
+  isParamsMode = false;
 
   // ── Prefijos Fases ──
   prefijoFaseOptions: { id: number; prefijo: string; nombreFase: string }[] = [];
@@ -2186,6 +2194,7 @@ export class CatalogosProduccionComponent {
     this.selectedCatalogSidebarId = null;
     this.showHierarchicalTable    = false;
     this.isBotesMode              = false;
+    this.isParamsMode             = false;
     this.prefijoFaseMode          = true;
     this.prefijoFaseSelectedRow   = null;
     this.prefijoFaseHasChanges    = false;
@@ -2277,11 +2286,17 @@ export class CatalogosProduccionComponent {
     this.prefijoFaseMode = false;
     if (this.isCaracteristicasManzana(item)) {
       this.showHierarchicalTable = true;
-      this.isBotesMode = false;
+      this.isBotesMode  = false;
+      this.isParamsMode = false;
       this.loadHierarchicalData();
+    } else if (this.isParametrosCatalog(item)) {
+      this.showHierarchicalTable = false;
+      this.isBotesMode  = false;
+      this.isParamsMode = true;
     } else {
       this.showHierarchicalTable = false;
-      this.isBotesMode = this.isBotesCatalog(item);
+      this.isParamsMode = false;
+      this.isBotesMode  = this.isBotesCatalog(item);
       this.loadCatalogData(item.id);
     }
   }
@@ -2290,6 +2305,12 @@ export class CatalogosProduccionComponent {
     const raw = (item.description || '').trim().toLowerCase();
     const d = raw.normalize('NFD').replace(/[\u0300-\u036f]/g, '');
     return d.startsWith('caracteristicas de');
+  }
+
+  private isParametrosCatalog(item: ExtractionFermentationCatalogItem): boolean {
+    const raw = (item.description || '').trim().toLowerCase();
+    const d = raw.normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+    return d.startsWith('parametros');
   }
 
   buildCodigo(row: any): string {
