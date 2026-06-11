@@ -140,14 +140,18 @@
       "Read(//home/gargadon/Source/Production/Production/Production/Controllers/Delison/**)",
       "Bash(cat)",
       "Read(//tmp/**)",
-      "mcp__warehouses-delison-pruebas__execute_sql"
+      "mcp__warehouses-delison-pruebas__execute_sql",
+      "Bash(find /home/gargadon/Source/MicroserviciosWarehouse -name \"*ItemComment*\" -o -name \"*Comment*\" | grep -v bin | grep -v obj)",
+      "Read(//home/gargadon/Source/MicroserviciosWarehouse/**)"
     ],
     "deny": [],
     "ask": [],
     "additionalDirectories": [
       "/home/gargadon/Source/Production/Production/Production/Service/Delison",
       "/home/gargadon/Source/Production/Production/Production/Controllers/Delison",
-      "/home/gargadon/Source/Production/Production/Production"
+      "/home/gargadon/Source/Production/Production/Production",
+      "/home/gargadon/Source/MicroserviciosWarehouse/Warehouse/Service",
+      "/home/gargadon/Source/MicroserviciosWarehouse/Warehouse/Controllers"
     ]
   },
   "enableAllProjectMcpServers": true,

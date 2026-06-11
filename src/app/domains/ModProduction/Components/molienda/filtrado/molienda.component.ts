@@ -184,7 +184,7 @@ export class MoliendaComponent {
       field: 'bote',
       headerName: 'Asignar bote',
       editable: false,
-      cellStyle: { cursor: 'pointer', color: '#e65100', textDecoration: 'underline' },
+      cellStyle: (p: any) => p.data?.__isNew ? {} : { cursor: 'pointer', backgroundColor: '#e8f5e9', color: '#2e7d32', fontWeight: '600' },
       cellRenderer: (p: any) => p.data?.__isNew ? '' : 'Botes',
       onCellClicked: (event: any) => {
         if (!event.data?.__isNew && event.data?.id != null) this.toggleBoteDetail(event.node);
@@ -194,7 +194,7 @@ export class MoliendaComponent {
       field: 'parametros',
       headerName: 'Asignar parámetros',
       editable: false,
-      cellStyle: { cursor: 'pointer', color: '#7b1fa2', textDecoration: 'underline' },
+      cellStyle: (p: any) => p.data?.__isNew ? {} : { cursor: 'pointer', backgroundColor: '#e8f5e9', color: '#2e7d32', fontWeight: '600' },
       cellRenderer: (p: any) => p.data?.__isNew ? '' : 'Parámetros',
       onCellClicked: (event: any) => {
         if (!event.data?.__isNew && event.data?.id != null) this.toggleParametrosDetail(event.node);
