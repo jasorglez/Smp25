@@ -73,5 +73,5 @@ export const environment = {
 
   urlRefreshToken: 'https://securetoken.googleapis.com/v1/token?key=AIzaSyDxCBGKk8nT09hdW85-PyOkhw5_JPZLF1A',
 
-  version: '2.52.457 (10 Junio 2026) - Almacén molienda: validación Datos externos al cerrar también en Cerrar Entrega (multi-entrega), igual que Cerrar OC; bloquea si alguna entrada no tiene lotes'
+  version: '2.52.463 (11 Junio 2026 / backend v6.35) - Inventario Materia Prima EN VIVO: gerencial y por sucursal se calculan en tiempo real desde entradas liberadas + lotes (− salidas=0), ya NO leen el snapshot inventario_mp. Si se borran las entradas, muestra 0. inventario_mp reservado para histórico'
 };

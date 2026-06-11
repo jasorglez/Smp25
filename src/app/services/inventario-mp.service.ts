@@ -23,6 +23,27 @@ export interface InventarioMpVista {
   filas: InventarioMpFila[];
 }
 
+// ── Detalle de lotes de una celda (material × departamento × sucursal) ──
+export interface InventarioMpMovimiento {
+  tipo: 'ENTRADA' | 'SALIDA';
+  fecha?: string | null;
+  cantidadEntrada?: number | null;
+  cantidadSalida?: number | null;
+  quien: string;
+}
+export interface InventarioMpLote {
+  idEntrada: number;
+  idDatoExterno: number;
+  lote: string;
+  folioEntrada: string;
+  cantidadInventario: number;
+  movimientos: InventarioMpMovimiento[];
+}
+export interface InventarioMpDetalle {
+  total: number;
+  lotes: InventarioMpLote[];
+}
+
 @Injectable({ providedIn: 'root' })
 export class InventarioMpService {
   private http = inject(HttpClient);
@@ -40,6 +61,14 @@ export class InventarioMpService {
   getPorSucursal(idCompany: number, idSucursal: number): Observable<InventarioMpVista> {
     return this.http.get<InventarioMpVista>(
       `${environment.urlWarehouse}/InventarioMp/porSucursal/${idCompany}/${idSucursal}`,
+      { headers: this.trackingService.getHeaders() }
+    );
+  }
+
+  // Detalle de lotes de una celda (material × departamento × sucursal).
+  getDetalle(idMaterial: number, idDepartamento: number, idSucursal: number): Observable<InventarioMpDetalle> {
+    return this.http.get<InventarioMpDetalle>(
+      `${environment.urlWarehouse}/InventarioMp/detalle/${idMaterial}/${idDepartamento}/${idSucursal}`,
       { headers: this.trackingService.getHeaders() }
     );
   }

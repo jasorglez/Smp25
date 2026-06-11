@@ -1851,6 +1851,7 @@ export class DetalleMoliendaComponent {
     this.originalCascadeEntradaData = [];
     this.hasUnsavedChangesEntradas = false;
     this.selectedEntradaRow = null;
+    this.resetNivel5Panels();
 
     if (this.cascadeOcGridApi && !this.cascadeOcGridApi.isDestroyed()) {
       this.cascadeOcGridApi.forEachNode((node: any) => {
@@ -1898,6 +1899,7 @@ export class DetalleMoliendaComponent {
     this.originalCascadeEntradaData = [];
     this.hasUnsavedChangesEntradas = false;
     this.selectedEntradaRow = null;
+    this.resetNivel5Panels();
 
     try {
       const idMaterial = this.internalParams?.data?.idMaterial;
@@ -2068,6 +2070,7 @@ export class DetalleMoliendaComponent {
     this.originalCascadeEntradaData = [];
     this.hasUnsavedChangesEntradas = false;
     this.selectedEntradaRow = null;
+    this.resetNivel5Panels();
 
     try {
       const idMaterial = this.internalParams?.data?.idMaterial;
@@ -2178,11 +2181,25 @@ export class DetalleMoliendaComponent {
     this.cascadeEntradaData = [];
     this.multiEntregasData = [];
     this.selectedMultiEntregaCaratRow = null;
+    this.resetNivel5Panels();
     if (this.cascadeOcGridApi && !this.cascadeOcGridApi.isDestroyed()) {
       this.cascadeOcGridApi.forEachNode((node: any) => node.setRowHeight(undefined));
       this.cascadeOcGridApi.onRowHeightChanged();
       this.cascadeOcGridApi.refreshCells({ force: true });
     }
+  }
+
+  /** Cierra/reinicia los paneles de Nivel 5 (Datos externos + Características) para que NO queden
+   *  "pegados" mostrando la entrada anterior al cambiar de OC, requisición o entrada. */
+  private resetNivel5Panels(): void {
+    this.selectedEntradaDatosRow = null;
+    this.cascadeDatosData = [];
+    this.selectedEntradaCaratRow = null;
+    this.cascadeCaratData = [];
+    this.cascadeMpCaractData = [];
+    this.selectedRevisorId = null;
+    this.existingCaratIds.clear();
+    this.hasUnsavedChangesCaracteristicas = false;
   }
 
   // ── Nivel 4 múltiples entregas: carga + CRUD ──────────────────────
@@ -2214,14 +2231,14 @@ export class DetalleMoliendaComponent {
     // Abre/cierra el grid de Entradas (nivel 5) apuntando a la entrega seleccionada.
     if (closing) {
       this.selectedOcRow = null;
-      this.selectedEntradaCaratRow = null;
       this.cascadeEntradaData = [];
       this.hasUnsavedChangesEntradas = false;
       this.selectedEntradaRow = null;
+      this.resetNivel5Panels();
       return;
     }
 
-    this.selectedEntradaCaratRow = null;
+    this.resetNivel5Panels();
     this.selectedOcRow = this.selectedOcMultiRow;
     await this.loadEntradasForEntrega(row, this.selectedOcMultiRow);
   }

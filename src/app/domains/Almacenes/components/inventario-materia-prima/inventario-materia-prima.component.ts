@@ -8,6 +8,7 @@ import {
   InventarioMpService,
   InventarioMpVista,
   InventarioMpColumna,
+  InventarioMpDetalle,
 } from 'app/services/inventario-mp.service';
 
 /**
@@ -61,7 +62,110 @@ import {
         </ag-grid-angular>
       </div>
     </div>
+
+    <!-- ── Modal detalle de lotes (solo lectura) ── -->
+    <div *ngIf="detalleAbierto()" class="imp-overlay" (click)="cerrarDetalle()">
+      <div class="imp-modal" (click)="$event.stopPropagation()">
+        <div class="imp-modal-head">
+          <div>
+            <h6 class="m-0 fw-bold text-success">{{ detalleTitulo() }}</h6>
+            <div class="small text-muted">Total: <b>{{ fmt(detalle()?.total ?? 0) }}</b></div>
+          </div>
+          <button class="btn-close" (click)="cerrarDetalle()"></button>
+        </div>
+
+        <div class="imp-modal-body">
+          <div *ngIf="detalleCargando()" class="text-center text-muted py-3">
+            <span class="spinner-border spinner-border-sm me-2"></span> Cargando…
+          </div>
+
+          <div *ngIf="!detalleCargando() && (detalle()?.lotes?.length ?? 0) === 0" class="text-center text-muted py-3">
+            Sin lotes con inventario para esta celda.
+          </div>
+
+          <!-- Nivel 1: lotes (una fila por entrada). Acordeón con focus. -->
+          <table *ngIf="!detalleCargando() && (detalle()?.lotes?.length ?? 0) > 0" class="imp-table">
+            <thead>
+              <tr>
+                <th>Lote</th>
+                <th>Folio entrada</th>
+                <th class="num">Cantidad inventario</th>
+              </tr>
+            </thead>
+            <tbody>
+              <ng-container *ngFor="let l of detalle()?.lotes">
+                <tr *ngIf="loteExpandido() === null || loteExpandido() === l.idDatoExterno"
+                    class="imp-row-lote" [class.imp-row-open]="loteExpandido() === l.idDatoExterno"
+                    (click)="toggleLote(l.idDatoExterno)">
+                  <td>{{ l.lote }}</td>
+                  <td>{{ l.folioEntrada }}</td>
+                  <td class="num">
+                    <span class="imp-chevron">{{ loteExpandido() === l.idDatoExterno ? '▼' : '▶' }}</span>
+                    {{ fmt(l.cantidadInventario) }}
+                  </td>
+                </tr>
+                <!-- Nivel 2: movimientos del lote-entrada -->
+                <tr *ngIf="loteExpandido() === l.idDatoExterno">
+                  <td colspan="3" class="imp-sub-cell">
+                    <table class="imp-subtable">
+                      <thead>
+                        <tr>
+                          <th>Fecha Entrada / Salida</th>
+                          <th class="num">Cantidad Entrada</th>
+                          <th class="num">Cantidad Salida</th>
+                          <th>Quien agregó / utilizó</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        <tr *ngFor="let m of l.movimientos">
+                          <td>{{ m.fecha }}</td>
+                          <td class="num">{{ m.cantidadEntrada != null ? fmt(m.cantidadEntrada) : '—' }}</td>
+                          <td class="num">{{ m.cantidadSalida != null ? fmt(m.cantidadSalida) : '—' }}</td>
+                          <td>{{ m.quien }}</td>
+                        </tr>
+                        <tr *ngIf="!l.movimientos?.length">
+                          <td colspan="4" class="text-muted text-center">Sin movimientos.</td>
+                        </tr>
+                      </tbody>
+                    </table>
+                  </td>
+                </tr>
+              </ng-container>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
   `,
+  styles: [`
+    .imp-overlay {
+      position: fixed; inset: 0; background: rgba(0,0,0,0.45);
+      display: flex; align-items: center; justify-content: center; z-index: 1060;
+    }
+    .imp-modal {
+      background: #fff; border-radius: 12px; width: min(760px, 94vw);
+      max-height: 88vh; display: flex; flex-direction: column; overflow: hidden;
+      box-shadow: 0 18px 50px rgba(0,0,0,0.25);
+    }
+    .imp-modal-head {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 14px 18px; border-bottom: 1px solid #e8eef5; background: #f7fbf8;
+    }
+    .imp-modal-body { padding: 14px 18px; overflow: auto; }
+    .imp-table { width: 100%; border-collapse: collapse; font-size: 0.85rem; }
+    .imp-table th, .imp-table td { border: 1px solid #e0e6ee; padding: 6px 10px; text-align: left; }
+    .imp-table thead th { background: #e8f5e9; font-weight: 600; }
+    .imp-table .num { text-align: right; }
+    .imp-row-lote { cursor: pointer; }
+    .imp-row-lote:hover { background: #f1f8e9; }
+    .imp-row-open { background: #e8f5e9; font-weight: 600; }
+    .imp-chevron { color: #2e7d32; margin-right: 4px; }
+    .imp-sub-cell { background: #fafdf9; padding: 8px 10px; }
+    .imp-subtable { width: 100%; border-collapse: collapse; font-size: 0.8rem; }
+    .imp-subtable th, .imp-subtable td { border: 1px solid #d7e3d2; padding: 5px 8px; }
+    .imp-subtable thead th { background: #d7ecd9; font-weight: 600; }
+    .imp-subtable .num { text-align: right; }
+  `],
 })
 export class InventarioMateriaPrimaComponent {
   private signalsService = inject(SignalsService);
@@ -72,6 +176,13 @@ export class InventarioMateriaPrimaComponent {
 
   cargando = signal<boolean>(false);
   ocultarCeros = signal<boolean>(false);
+
+  // ── Modal detalle de lotes (solo vista por sucursal) ──
+  detalleAbierto = signal<boolean>(false);
+  detalleCargando = signal<boolean>(false);
+  detalleTitulo = signal<string>('');
+  detalle = signal<InventarioMpDetalle | null>(null);
+  loteExpandido = signal<number | null>(null);   // idDatoExterno expandido (acordeón con focus)
 
   // Estado de la vista actual
   private vista = signal<InventarioMpVista>({ columnas: [], filas: [] });
@@ -106,6 +217,7 @@ export class InventarioMateriaPrimaComponent {
       },
     ];
 
+    const porSucursal = !this.esGerencial();
     for (const c of this.vista().columnas) {
       cols.push({
         headerName: c.nombre,
@@ -114,6 +226,11 @@ export class InventarioMateriaPrimaComponent {
         minWidth: 130,
         flex: 1,
         valueFormatter: p => this.fmt(p.value),
+        // Solo en la vista por sucursal la celda de departamento abre el detalle de lotes.
+        cellStyle: porSucursal
+          ? { cursor: 'pointer', color: '#0d47a1', textDecoration: 'underline' }
+          : undefined,
+        onCellClicked: porSucursal ? (p: any) => this.onCeldaDeptoClick(c.id, p.data) : undefined,
       });
     }
 
@@ -177,7 +294,7 @@ export class InventarioMateriaPrimaComponent {
 
   private mapearFilas(vista: InventarioMpVista): any[] {
     return (vista.filas ?? []).map(f => {
-      const row: any = { articulo: f.articulo, total: f.total ?? 0 };
+      const row: any = { idMaterial: f.idMaterial, articulo: f.articulo, total: f.total ?? 0 };
       for (const c of vista.columnas) {
         row['c' + c.id] = (f.valores && f.valores[c.id] != null) ? f.valores[c.id] : 0;
       }
@@ -185,13 +302,44 @@ export class InventarioMateriaPrimaComponent {
     });
   }
 
-  private fmt(v: any): string {
+  fmt(v: any): string {
     const n = Number(v ?? 0);
     if (!isFinite(n)) return '0';
     return n.toLocaleString('es-MX', {
       minimumFractionDigits: Number.isInteger(n) ? 0 : 2,
       maximumFractionDigits: 2,
     });
+  }
+
+  // ── Modal detalle de lotes ──
+  private onCeldaDeptoClick(idDepartamento: number, row: any): void {
+    if (this.esGerencial()) return;
+    const idMaterial = Number(row?.idMaterial ?? 0);
+    const idSucursal = Number(this.signalsService.getBranchSelectedBySidebar()() ?? 0);
+    if (!idMaterial || !idDepartamento || !idSucursal) return;
+
+    const deptoNombre = this.vista().columnas.find(c => c.id === idDepartamento)?.nombre ?? '';
+    this.detalleTitulo.set(`${row.articulo} - ${deptoNombre}`);
+    this.detalleAbierto.set(true);
+    this.detalleCargando.set(true);
+    this.detalle.set(null);
+    this.loteExpandido.set(null);
+
+    this.inventarioService.getDetalle(idMaterial, idDepartamento, idSucursal).subscribe({
+      next: (d) => { this.detalle.set(d ?? { total: 0, lotes: [] }); this.detalleCargando.set(false); },
+      error: () => { this.detalle.set({ total: 0, lotes: [] }); this.detalleCargando.set(false); },
+    });
+  }
+
+  cerrarDetalle(): void {
+    this.detalleAbierto.set(false);
+    this.detalle.set(null);
+    this.loteExpandido.set(null);
+  }
+
+  /** Acordeón con focus: al expandir un lote, las demás filas se ocultan. */
+  toggleLote(idDatoExterno: number): void {
+    this.loteExpandido.set(this.loteExpandido() === idDatoExterno ? null : idDatoExterno);
   }
 
   // Imprime/exporta a PDF generando una tabla HTML limpia en una ventana nueva.
