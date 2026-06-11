@@ -73,9 +73,5 @@ export const environment = {
 
   urlRefreshToken: 'https://securetoken.googleapis.com/v1/token?key=AIzaSyDxCBGKk8nT09hdW85-PyOkhw5_JPZLF1A',
 
-<<<<<<< HEAD
-  version: '2.52.463 (11 Junio 2026 / backend v6.35) - Inventario Materia Prima EN VIVO: gerencial y por sucursal se calculan en tiempo real desde entradas liberadas + lotes (− salidas=0), ya NO leen el snapshot inventario_mp. Si se borran las entradas, muestra 0. inventario_mp reservado para histórico'
-=======
   version: '2.52.458 (11 Junio 2026) - Molienda: materias primas por medición en cascada (master-detail)'
->>>>>>> 7cf7cacb231e2fd47194fc4e92bea487ddd3ebd1
 };
