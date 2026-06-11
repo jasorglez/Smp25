@@ -594,6 +594,7 @@ export class PurchaseOrderDelisonComponent implements OnInit, OnDestroy {
         });
       }
       byReq.get(key).items.push({
+        folioCr: it.folioCr || '',
         department: it.departmentName || 'Sin Departamento',
         solicitedBy: it.solicitedBy || '',
         recurrent: it.recurrent || '',
@@ -606,12 +607,16 @@ export class PurchaseOrderDelisonComponent implements OnInit, OnDestroy {
         caducidadMinimaRequerida: it.caducidadMinimaRequerida || '',
         comment: it.comment || '',
         // Para el tooltip de la columna Artículo (datos del pago de la CR):
-        // precioUnitario = base o base+IVA (igual que P. Unit. en Gastos); totalPagado = monto real pagado.
-        price: it.precioUnitario ?? it.price ?? 0,
+        // price = precio en MXN (celda); precioUnitarioOriginal = precio en moneda original (tooltip).
+        price: it.precioUnitarioMxn ?? it.precioUnitario ?? it.price ?? 0,
+        precioUnitarioOriginal: it.precioUnitarioOriginal ?? it.precioUnitario ?? 0,
         total: it.totalPagado ?? it.total ?? 0,
         notaFactura: it.notaFactura || '',
         fechaEntradaAlmacen: it.fechaEntradaAlmacen || '',
         cantidadEntradaAlmacen: it.cantidadEntradaAlmacen ?? '',
+        // Total CR: costo total en MXN (lleno solo al pagar la CR en Captura de Gastos).
+        totalCr: it.totalCr ?? null,
+        moneda: it.moneda || 'MXN',
         crId: it.crId ?? null,            // documento CR (para PDF compartido con almacén molienda)
       });
     }

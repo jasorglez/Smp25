@@ -44,6 +44,7 @@
               [defaultColDef]="defaultColDef"
               (selectionChanged)="onMasterSelectionChanged($event)" [gridOptions]="gridOptions"
               (gridReady)="onMasterGridReady($event)"
+              (firstDataRendered)="onMasterFirstDataRendered()"
               [rowSelection]="rowSelection"
               (cellEditingStopped)="onCellEditingStopped($event)"
               [paginationPageSize]="paginationPageSize" [paginationPageSizeSelector]="paginationPageSizeSelector"

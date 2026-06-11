@@ -109,6 +109,8 @@ export interface ConfirmPaymentPayload {
   valorPago: number;
   fechaPago?: string | null;
   proveedor?: string | null;
+  idProvider?: number | null;   // id del proveedor (CR): para componer el folio CR-...-{abrev}{id} al pagar
+  idCurrency?: number | null;   // CR: id del catálogo de moneda (actualiza detailsreqoc.id_currency → monedaItem en next load)
   precioUnitario?: number | null;
   masIva: boolean;
   notaFactura?: string | null;

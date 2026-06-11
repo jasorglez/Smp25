@@ -17,6 +17,7 @@ import { CurrencyService } from 'app/services/currency.service';
 import { alerts } from 'app/helpers/alerts';
 import { NgSelectModule } from '@ng-select/ng-select';
 import { CrProveedorEditorComponent } from './cr-proveedor-editor.component';
+import { PrecioMonedaEditorComponent } from 'app/domains/Almacenes/components/materiales-maestro/editors/precio-moneda-editor.component';
 import * as XLSX from 'xlsx';
 
 type Lens = 'PAGADO' | 'COMPROMETIDO';
@@ -28,7 +29,7 @@ interface PivotAxis { id: number; name: string; total: number; }
 @Component({
   selector: 'app-gastos',
   standalone: true,
-  imports: [CommonModule, FormsModule, AgGridModule, NgSelectModule, CrProveedorEditorComponent],
+  imports: [CommonModule, FormsModule, AgGridModule, NgSelectModule, CrProveedorEditorComponent, PrecioMonedaEditorComponent],
   templateUrl: './gastos.component.html',
   styleUrls: ['./gastos.component.scss'],
 })
@@ -55,6 +56,11 @@ export class GastosComponent {
   }
   crProviderRow: any = null;        // fila CR actualmente editando proveedor
   crProviderSelectedId: number | null = null;
+
+  // ── Monedas para editor compuesto P. Unit (filas CR) ───────────────────────
+  monedasList: { id: number; abreviatura: string; nombre: string }[] = [];
+  private monedasMap = new Map<number, string>();
+  defaultCurrencyId: number | null = null;
 
   // Persistencia de columnas (por usuario, en BD) — clave única de este grid.
   private readonly CAPTURA_GRID_KEY = 'gastos-captura-v2';
@@ -197,7 +203,13 @@ export class GastosComponent {
     {
       field: 'precioUnitario', headerName: 'P. Unit.', width: 100, type: 'numericColumn',
       editable: (p: any) => p.data?.docType === 'CR',
-      cellEditor: 'agNumberCellEditor',
+      cellEditorSelector: (p: any) => p.data?.docType === 'CR'
+        ? { component: 'precioMonedaEditor' }
+        : { component: 'agNumberCellEditor' },
+      cellEditorParams: (p: any) => ({
+        monedas: this.monedasList,
+        defaultCurrencyId: this.defaultCurrencyId,
+      }),
       // Un anticipo no tiene precio unitario → mostrar "—".
       valueFormatter: (p: any) => p.data?.docType === 'ANTICIPO' ? '—' : `${this.money(p.value)} ${this.monedaAbbr(p.data)}`,
       cellStyle: (p: any) => p.data?.docType === 'CR' ? { backgroundColor: '#fffde7' } : null,
@@ -315,7 +327,7 @@ export class GastosComponent {
     rowHeight: 30,
     tooltipShowDelay: 300,
     defaultColDef: { resizable: true, sortable: true, filter: true },
-    components: { crProveedorEditor: CrProveedorEditorComponent },
+    components: { crProveedorEditor: CrProveedorEditorComponent, precioMonedaEditor: PrecioMonedaEditorComponent },
     // Color de fila según la condición de pago (ver leyenda):
     // azul=anticipo, naranja=crédito, verde=sin anticipo ni crédito (contado).
     rowClassRules: {
@@ -336,6 +348,10 @@ export class GastosComponent {
           const iva = this.ivaByBranch.get(row.idReference) ?? 0;
           (row as any).__precioBase = row.masIva ? (Number(row.precioUnitario) || 0) / (1 + iva / 100) : (Number(row.precioUnitario) || 0);
           row.valorPago = (Number(row.precioUnitario) || 0) * (Number(row.cantidad) || 0);
+          // Persistir la abreviatura de moneda para valueFormatter y buildPayload.
+          if (row.docType === 'CR' && row.idCurrency != null) {
+            row.moneda = this.monedasMap.get(Number(row.idCurrency)) || 'MXN';
+          }
         }
         (row as any).__modified = true;
         // Refrescar la fila para reevaluar el bloqueo del botón Pagar (precio/proveedor en CR).
@@ -369,6 +385,7 @@ export class GastosComponent {
         this.loadReport();
         this.loadPending();
         this.loadCrProviders(idCompany);
+        this.loadMonedas(idCompany);
       }
     });
   }
@@ -1050,6 +1067,9 @@ export class GastosComponent {
       notaFactura: row.notaFactura,
       numNotaFactura: row.numNotaFactura,
       cantidad: Number(row.cantidad) || 0,
+      moneda: row.moneda ?? null,
+      idProvider: (row as any).idProvider != null ? Number((row as any).idProvider) : null,
+      idCurrency: (row as any).idCurrency != null ? Number((row as any).idCurrency) : null,
     };
   }
 
@@ -1116,6 +1136,10 @@ export class GastosComponent {
       } catch { /* Si falla la consulta de sucursales, continuamos */ }
     }
 
+    // Capturar el id del proveedor en la fila: necesario para componer el folio CR
+    // (CR-BOD9-GO-ALE1418, sufijo = abreviatura + id del proveedor) al pagar.
+    if (row) { row.idProvider = providerId; (row as any).__modified = true; }
+
     return providerName;   // validación pasó → usar este proveedor
   }
 
@@ -1164,6 +1188,28 @@ export class GastosComponent {
     } catch {
       this.crProviders = [{ id: this.NEW_PROVIDER_SENTINEL, description: '+ Nuevo Proveedor' }];
     }
+  }
+
+  private loadMonedas(idCompany: number): void {
+    this.currencyService.getCurrencies(idCompany).subscribe({
+      next: (data: any) => {
+        const list = Array.isArray(data) ? data : (data?.catalog ?? []);
+        this.monedasMap = new Map<number, string>();
+        let mxnId: number | null = null;
+        const result: { id: number; abreviatura: string; nombre: string }[] = [];
+        (list || []).forEach((c: any) => {
+          const id = Number(c.id);
+          const abreviatura = (c.valueAddition || '').toString().trim();
+          const nombre = c.description || '';
+          this.monedasMap.set(id, abreviatura || nombre);
+          result.push({ id, abreviatura, nombre });
+          if (mxnId === null && (abreviatura.toUpperCase() === 'MXN' || /peso|mexic/i.test(nombre))) mxnId = id;
+        });
+        this.monedasList = result;
+        this.defaultCurrencyId = mxnId ?? (list?.[0]?.id != null ? Number(list[0].id) : null);
+      },
+      error: () => { this.monedasList = []; this.defaultCurrencyId = null; }
+    });
   }
 
   openCrProviderDropdown(row: any): void {

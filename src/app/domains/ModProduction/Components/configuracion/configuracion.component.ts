@@ -4,6 +4,9 @@ import { FormsModule } from '@angular/forms';
 import { ExtractionFermentationCatalogItem, ExtractionFermentationCatalogService } from 'app/services/extraction-fermentation-catalog.service';
 import { ExtractionFermentationBultosService, ExtractionFermentationBultosItem } from 'app/services/extraction-fermentation-bultos.service';
 import { SignalsService } from 'app/services/signals.service';
+import { MaterialXModuloService } from 'app/services/materialxmodulo.service';
+import { MaterialsService } from 'app/services/materials.service';
+import { forkJoin } from 'rxjs';
 
 @Component({
   selector: 'app-configuracion-prod',
@@ -292,12 +295,29 @@ import { SignalsService } from 'app/services/signals.service';
                           Guardando cambios...
                         </div>
                         <div class="chip-list" *ngIf="catalogoCategorias.length">
-                          <span class="chip" *ngFor="let item of catalogoCategorias" [class.editing]="editingCategoriaId === item.id">
-                            <ng-container *ngIf="editingCategoriaId !== item.id">
+                          <span class="chip" *ngFor="let item of catalogoCategorias"
+                                [class.editing]="editingCategoriaId === item.id"
+                                [style.border]="needsMaterialAssign(item) ? '1px solid #e6a23c' : null"
+                                [style.background]="needsMaterialAssign(item) ? '#fff7e6' : null">
+                            <ng-container *ngIf="editingCategoriaId !== item.id && assigningCategoriaId !== item.id">
                               <span (dblclick)="startEditCategoria(item, $event)" style="cursor: pointer; flex: 1;">
                                 {{ item.description }}
+                                <small *ngIf="item.idMaterial != null" style="color:#2e7d32; font-weight:600;">· {{ materialNameFor(item) }}</small>
+                                <small *ngIf="needsMaterialAssign(item)" title="Falta enlazar material" style="color:#e6a23c; font-weight:700;">⚠ sin material</small>
                               </span>
+                              <button *ngIf="needsMaterialAssign(item)" type="button" (click)="startAssignMaterial(item)" [disabled]="isSaving"
+                                      title="Asignar material" style="padding:2px 6px; background:#e6a23c; color:#fff; border:0; border-radius:3px; cursor:pointer; font-size:0.72rem; margin-right:4px;">
+                                Asignar material
+                              </button>
                               <button type="button" (click)="removeCategoria(item)" [disabled]="isSaving">×</button>
+                            </ng-container>
+                            <ng-container *ngIf="assigningCategoriaId === item.id">
+                              <select [(ngModel)]="assignMaterialId" style="flex:1; padding:2px 6px; border:1px solid #e6a23c; border-radius:4px; font-size:0.85rem;">
+                                <option [ngValue]="null" disabled>Selecciona material…</option>
+                                <option *ngFor="let m of availableMaterialOptions" [ngValue]="m.id">{{ m.name }}</option>
+                              </select>
+                              <button type="button" (click)="confirmAssignMaterial(item)" [disabled]="isSaving || !assignMaterialId" style="padding:2px 6px; background:#2e7d32; color:#fff; border:0; border-radius:3px; cursor:pointer; font-size:0.85rem; margin-left:4px;">✓</button>
+                              <button type="button" (click)="cancelAssignMaterial()" [disabled]="isSaving" style="padding:2px 6px; background:#999; color:#fff; border:0; border-radius:3px; cursor:pointer; margin-left:4px; font-size:0.85rem;">✕</button>
                             </ng-container>
                             <ng-container *ngIf="editingCategoriaId === item.id">
                               <input
@@ -326,6 +346,25 @@ import { SignalsService } from 'app/services/signals.service';
                           <button class="minimal-btn" type="button" (click)="addCategoria()" [disabled]="!idRoot || !idBranch || idBranch < 0 || !newCategoria.trim() || isSaving">
                             Agregar
                           </button>
+                        </div>
+
+                        <!-- Crear categoría "Características de {material}" ligada por id_material -->
+                        <div style="display:flex; align-items:center; gap:8px; margin-top:8px;">
+                          <span style="font-size:0.88rem; color:#37474f; font-weight:600; white-space:nowrap;">Características de</span>
+                          <select class="minimal-input" [(ngModel)]="selectedMaterialId"
+                                  [disabled]="!idRoot || !idBranch || idBranch < 0 || isSaving"
+                                  style="flex:1 1 auto; min-width:0;">
+                            <option [ngValue]="null" disabled>Selecciona materia prima…</option>
+                            <option *ngFor="let m of availableMaterialOptions" [ngValue]="m.id">{{ m.name }}</option>
+                          </select>
+                          <button class="minimal-btn" type="button" (click)="addCaracteristicaCategoria()"
+                                  [disabled]="!idRoot || !idBranch || idBranch < 0 || !selectedMaterialId || isSaving"
+                                  style="flex:0 0 auto; min-width:110px;">
+                            Agregar
+                          </button>
+                        </div>
+                        <div *ngIf="idRoot && !availableMaterialOptions.length && materiaPrimaOptions.length" style="font-size:0.78rem; color:#6b7280; margin-top:4px;">
+                          Todas las materias primas activas ya tienen su catálogo de características.
                         </div>
                       </div>
                     </div>
@@ -401,6 +440,8 @@ export class ConfiguracionProdComponent {
   private catalogService = inject(ExtractionFermentationCatalogService);
   private bultosService = inject(ExtractionFermentationBultosService);
   private signalsService = inject(SignalsService);
+  private mxmService = inject(MaterialXModuloService);
+  private materialsService = inject(MaterialsService);
 
   activeTab = 'molienda';
   openSection: 'catalogo' | 'bultos' = 'catalogo';
@@ -414,6 +455,13 @@ export class ConfiguracionProdComponent {
   editingCategoriaText = '';
 
   catalogoCategorias: ExtractionFermentationCatalogItem[] = [];
+
+  // ── Categorías "Características de {material}" enlazadas por id_material ──
+  // Materia prima de "Vista extracción y fermentación" (MaterialXModulo MOLIENDA, Activo=true).
+  materiaPrimaOptions: { id: number; name: string }[] = [];
+  selectedMaterialId: number | null = null;        // dropdown para crear nueva "Características de"
+  assigningCategoriaId: number | null = null;      // categoría existente a la que se asigna material
+  assignMaterialId: number | null = null;          // material elegido en el dropdown de asignación
 
   bultosCantidad: number | null = null;
   bultosCantidadARevisar: number | null = null;
@@ -548,7 +596,118 @@ export class ConfiguracionProdComponent {
       },
     });
 
+    this.loadMateriaPrimaOptions();
     this.loadBultos();
+  }
+
+  /** Materia prima de "Vista extracción y fermentación" (MaterialXModulo MOLIENDA con Activo=true). */
+  private loadMateriaPrimaOptions() {
+    if (!this.idRoot) return;
+    forkJoin({
+      mxm:  this.mxmService.getByType(this.idRoot, 'MOLIENDA'),
+      mats: this.materialsService.getMaterialsxview(this.idRoot),
+    }).subscribe({
+      next: ({ mxm, mats }: any) => {
+        const idToName = new Map<number, string>();
+        (Array.isArray(mats) ? mats : []).forEach((m: any) => idToName.set(m.id, m.articulo));
+        this.materiaPrimaOptions = (Array.isArray(mxm) ? mxm : [])
+          .filter((m: any) => m.active === true && m.idArticulo != null)
+          .map((m: any) => ({ id: m.idArticulo, name: idToName.get(m.idArticulo) ?? String(m.idArticulo) }))
+          .sort((a: any, b: any) => a.name.localeCompare(b.name, 'es', { sensitivity: 'base' }));
+      },
+      error: () => { this.materiaPrimaOptions = []; },
+    });
+  }
+
+  // ── Helpers de categorías "Características de {material}" ──
+  private normalizeTxt(v: string | null | undefined): string {
+    return (v ?? '').toString().normalize('NFD').replace(/\p{Diacritic}/gu, '').toLowerCase().trim();
+  }
+
+  /** ¿La categoría es del tipo "Características de …"? (por descripción o por tener id_material). */
+  isCaracteristicaCategoria(item: ExtractionFermentationCatalogItem): boolean {
+    return item.idMaterial != null || this.normalizeTxt(item.description).startsWith('caracteristicas de');
+  }
+
+  /** Categoría "Características de" SIN material asignado (las viejas creadas por texto). */
+  needsMaterialAssign(item: ExtractionFermentationCatalogItem): boolean {
+    return this.isCaracteristicaCategoria(item) && item.idMaterial == null;
+  }
+
+  /** Nombre del material ligado a una categoría (para mostrar como etiqueta). */
+  materialNameFor(item: ExtractionFermentationCatalogItem): string {
+    if (item.idMaterial == null) return '';
+    return this.materiaPrimaOptions.find(m => m.id === item.idMaterial)?.name ?? `#${item.idMaterial}`;
+  }
+
+  /** Ids de material ya asignados (para no duplicar en los dropdowns). */
+  private get assignedMaterialIds(): number[] {
+    return this.catalogoCategorias.filter(c => c.idMaterial != null).map(c => c.idMaterial as number);
+  }
+
+  /** Opciones de material disponibles (excluye los ya asignados). */
+  get availableMaterialOptions(): { id: number; name: string }[] {
+    const used = new Set(this.assignedMaterialIds);
+    return this.materiaPrimaOptions.filter(m => !used.has(m.id));
+  }
+
+  /** Crea una categoría "Características de {material}" ligada por id_material. */
+  addCaracteristicaCategoria() {
+    if (!this.selectedMaterialId || !this.idRoot || !this.idBranch || this.idBranch < 0 || this.isSaving) return;
+    const mat = this.materiaPrimaOptions.find(m => m.id === this.selectedMaterialId);
+    if (!mat) return;
+
+    this.isSaving = true;
+    this.catalogService.create({
+      idCompany: this.idRoot,
+      idBranch: this.idBranch,
+      description: `Características de ${mat.name}`,
+      idMaterial: mat.id,
+      active: true,
+    }).subscribe({
+      next: (created) => {
+        this.catalogoCategorias = [...this.catalogoCategorias, created]
+          .sort((a, b) => a.description.localeCompare(b.description));
+        this.selectedMaterialId = null;
+        this.openSection = 'catalogo';
+        this.catalogService.bumpRefreshTrigger();
+        this.isSaving = false;
+      },
+      error: () => { this.isSaving = false; },
+    });
+  }
+
+  startAssignMaterial(item: ExtractionFermentationCatalogItem) {
+    this.assigningCategoriaId = item.id;
+    this.assignMaterialId = item.idMaterial ?? null;
+  }
+
+  cancelAssignMaterial() {
+    this.assigningCategoriaId = null;
+    this.assignMaterialId = null;
+  }
+
+  /** Asigna (sin borrar el árbol) el id_material a una categoría existente. */
+  confirmAssignMaterial(item: ExtractionFermentationCatalogItem) {
+    if (!this.assignMaterialId || this.isSaving) return;
+    this.isSaving = true;
+    this.catalogService.update(item.id, {
+      idCompany: item.idCompany,
+      description: item.description,
+      active: item.active,
+      molienda: item.molienda,
+      idMaterial: this.assignMaterialId,
+    }).subscribe({
+      next: (updated) => {
+        const idx = this.catalogoCategorias.findIndex(c => c.id === item.id);
+        if (idx >= 0) this.catalogoCategorias[idx] = { ...this.catalogoCategorias[idx], idMaterial: this.assignMaterialId };
+        this.assigningCategoriaId = null;
+        this.assignMaterialId = null;
+        this.catalogService.bumpRefreshTrigger();
+        this.isSaving = false;
+      },
+      error: () => { this.isSaving = false; },
+    });
   }
 
   private loadBultos() {

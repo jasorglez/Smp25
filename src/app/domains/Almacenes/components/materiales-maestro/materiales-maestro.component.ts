@@ -14,6 +14,7 @@ import { DetallesCostosxmaterialesComponent } from './details/detalles-costosxma
 import { DetailCellRendererSubfamiliaComponent } from './details/detail-cell-renderer-subfamilia.component';
 import { DetallesSucursalesProveedorComponent } from './details/detalles-sucursalesproveedor.component';
 import { DetailCellRendererParametrosComponent } from './details/detail-cell-renderer-parametros.component';
+import { DetailCellRendererCaracteristicasMpComponent } from './details/detail-cell-renderer-caracteristicas-mp.component';
 import { DetailCellRendererHistoricoComponent } from './details/detail-cell-renderer-historico.component';
 import { DetailCellRendererJarabeComponent } from './details/detail-cell-renderer-jarabe.component';
 import { SelectWithTooltipEditorV2Component } from 'app/shared/select-with-tooltip-editor-v2.component';
@@ -45,6 +46,7 @@ import { PendingChangesService } from 'app/services/pending-changes.service';
     DetailCellRendererSubfamiliaComponent,
     DetallesSucursalesProveedorComponent,
     DetailCellRendererParametrosComponent,
+    DetailCellRendererCaracteristicasMpComponent,
     DetailCellRendererHistoricoComponent,
     DetailCellRendererJarabeComponent,
     SelectWithTooltipEditorV2Component,
@@ -314,6 +316,7 @@ export class MaterialesMaestroComponent implements OnInit, OnDestroy {
     detailCellRendererSubfamilia: DetailCellRendererSubfamiliaComponent,
     detailCellRendererProveedorSucursal: DetallesSucursalesProveedorComponent,
     detailCellRendererParametros: DetailCellRendererParametrosComponent,
+    detailCellRendererCaracteristicasMp: DetailCellRendererCaracteristicasMpComponent,
     detailCellRendererHistorico: DetailCellRendererHistoricoComponent,
     detailCellRendererJarabe: DetailCellRendererJarabeComponent
   };
@@ -348,6 +351,8 @@ export class MaterialesMaestroComponent implements OnInit, OnDestroy {
           return { component: 'detailCellRendererCostos' };
         } else if (params.data.detailType === 'parametros') {
           return { component: 'detailCellRendererParametros' };
+        } else if (params.data.detailType === 'caracteristicas') {
+          return { component: 'detailCellRendererCaracteristicasMp' };
         } else if (params.data.detailType === 'historico') {
           return { component: 'detailCellRendererHistorico' };
         }
@@ -684,9 +689,21 @@ export class MaterialesMaestroComponent implements OnInit, OnDestroy {
         },
         cellStyle: { backgroundColor: '#e8f5e9', cursor: 'pointer', textDecoration: 'underline' }
       },
-      
-      
- 
+      {
+        // VERDE: abre la cascada "Características" por material (Activo + Característica).
+        field: 'caracteristicas',
+        headerName: 'Características',
+        width: 150,
+        hide: this.hideNonProductiveColumns,
+        cellRenderer: (params: any) => {
+          const count = params.value || 0;
+          return count;
+        },
+        cellStyle: { backgroundColor: '#c8e6c9', cursor: 'pointer', textDecoration: 'underline' }
+      },
+
+
+
      {
         field: 'historico',
         headerName: 'Historico',
@@ -779,6 +796,7 @@ export class MaterialesMaestroComponent implements OnInit, OnDestroy {
     if (colId === 'providerCount') return 'proveedores';
     if (colId === 'subfamilyCount') return 'subfamilia';
     if (colId === 'parametros') return 'parametros';
+    if (colId === 'caracteristicas') return 'caracteristicas';
     if (colId === 'costo') return 'costos';
     if (colId === 'historico') return 'historico';
     return null;
@@ -817,7 +835,7 @@ export class MaterialesMaestroComponent implements OnInit, OnDestroy {
     this.idSelect = event.data.id; // Asignar el ID seleccionado
 
     const colId = event.column.getColId();
-    const isDetailColumn = colId === 'providerCount' || colId === 'subfamilyCount' || colId === 'parametros' || colId === 'costo' || colId === 'historico';
+    const isDetailColumn = colId === 'providerCount' || colId === 'subfamilyCount' || colId === 'parametros' || colId === 'caracteristicas' || colId === 'costo' || colId === 'historico';
 
     if (isDetailColumn) {
       // Bloqueo previo por `__isNew` removido: con el Guardar centralizado del Nivel 1
