@@ -10,6 +10,7 @@ import { MaterialXModuloService } from 'app/services/materialxmodulo.service';
 import { BranchsService } from 'app/services/branchs.service';
 import { alerts } from 'app/helpers/alerts';
 import { MedicionesBoteComponent } from './mediciones-bote.component';
+import { ItemCommentsService, ItemComment } from 'app/services/item-comments.service';
 
 interface BoteVista {
   id: number;
@@ -44,16 +45,6 @@ interface BoteVista {
           </span>
         </div>
 
-        <!-- Leyenda (solo cuando no hay bote seleccionado) -->
-        <div *ngIf="!selectedBote"
-             style="padding: 3px 8px; flex-shrink: 0; font-size: 0.72rem; color: #795548; display: flex; gap: 10px;">
-          <span>
-            <span style="display:inline-block;width:10px;height:10px;background:rgba(253,126,20,0.55);border-radius:2px;margin-right:3px;"></span>Este reg.
-          </span>
-          <span>
-            <span style="display:inline-block;width:10px;height:10px;background:rgba(108,117,125,0.28);border-radius:2px;margin-right:3px;"></span>Otros
-          </span>
-        </div>
 
         <!-- Loading -->
         <div *ngIf="loading"
@@ -77,28 +68,15 @@ interface BoteVista {
           <div *ngIf="!selectedBote || selectedBote.id === b.id"
                class="bote-card"
                [class.bote-card--selected]="selectedBote?.id === b.id"
-               [class.bote-card--full]="totalPct(b) >= 100"
-               [class.bote-card--empty]="totalPct(b) === 0"
-               [class.bote-card--partial]="totalPct(b) > 0 && totalPct(b) < 100"
                (click)="selectBote(b)"
                style="cursor: pointer;">
 
-            <div class="bote-barrel"
-                 [class.bote-barrel--full]="totalPct(b) >= 100"
-                 [class.bote-barrel--empty]="totalPct(b) === 0"
-                 [class.bote-barrel--partial]="totalPct(b) > 0 && totalPct(b) < 100">
-              <div class="bote-fill bote-fill--external" [style.height.%]="externalPct(b)"></div>
-              <div class="bote-fill bote-fill--mine" [style.height.%]="minePct(b)" [style.bottom.%]="externalPct(b)"></div>
-              <i class="bi bi-bucket-fill bote-icon"
-                 [style.color]="totalPct(b) === 0 ? '#0a6640' : '#843f00'"></i>
-              <span class="bote-pct">{{ disponible(b) | number:'1.0-0' }} L</span>
+            <div class="bote-barrel">
+              <i class="bi bi-bucket-fill bote-icon" style="color:#843f00;"></i>
             </div>
 
             <div class="bote-label" [title]="b.description">{{ b.description }}</div>
 
-            <div style="font-size:0.67rem;color:#6c757d;text-align:center;">
-              {{ b.myLiters | number:'1.0-0' }} / {{ b.volumen | number:'1.0-0' }} L
-            </div>
           </div>
           </ng-container>
         </div>
@@ -131,18 +109,71 @@ interface BoteVista {
         </div>
 
         <!-- Grid -->
-        <div style="flex:1 1 auto;min-height:0;">
+        <div class="params-grid-wrapper" style="flex:1 1 auto;min-height:0;">
           <ag-grid-angular
             class="ag-theme-quartz small-text-ag-grid"
             style="width:100%;height:100%;"
             [rowData]="paramsRowData"
             [columnDefs]="colDefs"
             [gridOptions]="gridOptions"
-            [context]="{ idArticulo: matPrimaId, matPrimaOptions: matPrimaOptions }"
+            [context]="paramsGridContext"
             (gridReady)="onParamsGridReady($event)"
             (selectionChanged)="onParamsSelectionChanged($event)"
             (cellValueChanged)="onCellValueChanged()">
           </ag-grid-angular>
+        </div>
+
+      </div>
+
+      <!-- ─── Panel comentarios read-only ─── -->
+      <div *ngIf="showComments"
+           style="width:290px;flex-shrink:0;display:flex;flex-direction:column;border-left:2px solid #bbdefb;background:#f8fbff;overflow:hidden;">
+
+        <!-- Header -->
+        <div style="padding:5px 8px;flex-shrink:0;border-bottom:1px solid #bbdefb;display:flex;align-items:center;justify-content:space-between;">
+          <span style="font-size:0.8rem;color:#1565c0;font-weight:600;">
+            <i class="bi bi-chat-text me-1"></i>Comentarios del folio
+          </span>
+          <span style="cursor:pointer;color:#9e9e9e;font-size:0.78rem;"
+                (click)="showComments=false;commentsFolioId=null;paramsGridApi?.refreshCells({columns:['verComentarios'],force:true})">
+            <i class="bi bi-x-lg"></i>
+          </span>
+        </div>
+
+        <!-- Loading -->
+        <div *ngIf="commentsLoading"
+             style="flex:1;display:flex;align-items:center;justify-content:center;color:#9e9e9e;font-size:0.82rem;">
+          <i class="bi bi-hourglass-split me-2"></i>Cargando…
+        </div>
+
+        <!-- Sin comentarios -->
+        <div *ngIf="!commentsLoading && !commentsData.length"
+             style="flex:1;display:flex;align-items:center;justify-content:center;color:#9e9e9e;font-size:0.82rem;text-align:center;padding:16px;">
+          <div>
+            <i class="bi bi-chat" style="font-size:1.8rem;display:block;opacity:0.3;margin-bottom:6px;"></i>
+            Sin comentarios en este folio
+          </div>
+        </div>
+
+        <!-- Lista de comentarios -->
+        <div *ngIf="!commentsLoading && commentsData.length"
+             style="flex:1 1 auto;overflow-y:auto;padding:8px;display:flex;flex-direction:column;gap:6px;">
+          <div *ngFor="let item of commentsData"
+               style="border:1px solid #e3f2fd;border-radius:6px;padding:6px 8px;background:#fff;">
+            <!-- Meta -->
+            <div style="display:flex;justify-content:space-between;align-items:baseline;flex-wrap:wrap;gap:2px;margin-bottom:3px;">
+              <strong style="font-size:0.73rem;color:#1565c0;">{{ item.comment.userName }}</strong>
+              <span style="font-size:0.68rem;color:#9e9e9e;">{{ item.comment.createdAt | date:'dd/MM HH:mm' }}</span>
+            </div>
+            <!-- Fase + medición -->
+            <div *ngIf="item.faseFe || item.fecha"
+                 style="font-size:0.68rem;color:#e65100;margin-bottom:3px;">
+              <span *ngIf="item.faseFe"><i class="bi bi-layers me-1"></i>{{ item.faseFe }}</span>
+              <span *ngIf="item.fecha" style="margin-left:6px;color:#6c757d;">{{ item.fecha }} {{ item.hora }}</span>
+            </div>
+            <!-- Texto -->
+            <div style="font-size:0.78rem;color:#212529;white-space:pre-wrap;word-break:break-word;">{{ getCommentBody(item.comment.text) }}</div>
+          </div>
         </div>
 
       </div>
@@ -155,7 +186,7 @@ interface BoteVista {
 
     .bote-card {
       display: flex; flex-direction: column; align-items: center;
-      width: 120px; background: #fff; border: 1.5px solid #dee2e6;
+      width: 150px; background: #fff; border: 1.5px solid #dee2e6;
       border-radius: 10px; padding: 8px 6px 6px; gap: 4px;
       transition: box-shadow 0.15s, border-color 0.15s, transform 0.15s;
     }
@@ -185,18 +216,18 @@ interface BoteVista {
       font-size: 0.56rem; font-weight: 700; color: #343a40; z-index: 3;
     }
     .bote-label {
-      font-size: 0.68rem; font-weight: 600; color: #343a40;
-      text-align: center; white-space: nowrap; overflow: hidden;
-      text-overflow: ellipsis; max-width: 108px;
+      font-size: 0.72rem; font-weight: 600; color: #343a40;
+      text-align: center; white-space: normal; word-break: break-word;
+      max-width: 138px;
     }
   `],
 })
 export class VistaBotesFiltradoComponent {
   private productionService = inject(ProductionService);
-  private signalsService    = inject(SignalsService);
-  private catalogService    = inject(ExtractionFermentationCatalogService);
-  private mxmService        = inject(MaterialXModuloService);
-  private branchsService    = inject(BranchsService);
+  private signalsService = inject(SignalsService);
+  private catalogService = inject(ExtractionFermentationCatalogService);
+  private mxmService = inject(MaterialXModuloService);
+  private branchsService = inject(BranchsService);
 
   // Barriles
   botes: BoteVista[] = [];
@@ -211,11 +242,22 @@ export class VistaBotesFiltradoComponent {
   hasChanges = false;
   selectedParamRow: any = null;
 
-  private idMolienda:  number | null = null;
-  matPrimaId:          number | null = null;
+  private idMolienda: number | null = null;
+  matPrimaId: number | null = null;
   private rowBranchId: number | null = null;
 
-  matPrimaOptions:   { id: number; name: string }[] = [];
+  matPrimaOptions: { id: number; name: string }[] = [];
+  medicionesCountMap: Record<number, number> = {};
+  paramsGridContext: any = {};
+  private onBotesLoadedCb: ((count: number) => void) | null = null;
+
+  // Panel de comentarios (read-only)
+  showComments = false;
+  commentsLoading = false;
+  commentsData: { comment: ItemComment; faseFe: string; fecha: string; hora: string }[] = [];
+  commentsFolioId: number | null = null;
+
+  private itemCommentsService = inject(ItemCommentsService);
 
   // ── Column defs para el grid de parámetros ────────────────────────────────
   colDefs: ColDef[] = [
@@ -233,10 +275,12 @@ export class VistaBotesFiltradoComponent {
       flex: 1,
       cellRenderer: (p: any) => {
         if (!p.data?.id) return '—';
+        const count = this.medicionesCountMap[p.data.id];
+        const countBadge = count != null ? ` (${count})` : '';
         const a = document.createElement('a');
         a.href = '#';
         a.style.cssText = 'color:#1565c0;text-decoration:underline;font-size:0.78rem;';
-        a.textContent = p.node?.expanded ? '▲ Ocultar' : '▼ Ver mediciones';
+        a.textContent = p.node?.expanded ? '▲ Ocultar' : `▼ Ver mediciones${countBadge}`;
         a.addEventListener('click', (ev) => {
           ev.preventDefault();
           p.node.setExpanded(!p.node.expanded);
@@ -262,36 +306,65 @@ export class VistaBotesFiltradoComponent {
       cellEditor: 'agCheckboxCellEditor',
       valueSetter: (p: any) => { p.data.libLimpieza = p.newValue; p.data.__modified = true; this.hasChanges = true; return true; },
     },
+    {
+      field: 'verComentarios', headerName: '💬', width: 46, editable: false, sortable: false,
+      cellRenderer: (p: any) => {
+        if (!p.data?.id) return '';
+        const isActive = this.commentsFolioId === p.data.id && this.showComments;
+        const btn = document.createElement('button');
+        btn.style.cssText = 'background:none;border:none;padding:0;cursor:pointer;font-size:14px;';
+        btn.innerHTML = `<i class="bi bi-chat-text" style="color:${isActive ? '#1565c0' : '#aaa'};"></i>`;
+        btn.addEventListener('click', (ev) => { ev.stopPropagation(); this.toggleFolioComments(p.data); });
+        return btn;
+      },
+    },
   ];
 
   gridOptions: any = {
-    getRowId:                      (p: any) => String(p.data.id ?? p.data.__tempId),
-    headerHeight:                  25,
-    rowHeight:                     22,
-    rowSelection:                  'single',
-    suppressRowClickSelection:     false,
+    getRowId: (p: any) => String(p.data.id ?? p.data.__tempId),
+    headerHeight: 25,
+    rowHeight: 22,
+    rowSelection: 'single',
+    suppressRowClickSelection: false,
     stopEditingWhenCellsLoseFocus: true,
-    masterDetail:                  true,
-    isRowMaster:                   (data: any) => !!data?.id && !data?.__isNew,
-    detailCellRenderer:            MedicionesBoteComponent,
-    detailRowHeight:               300,
+    masterDetail: true,
+    isRowMaster: (data: any) => !!data?.id && !data?.__isNew,
+    detailCellRenderer: MedicionesBoteComponent,
+    // Molienda grid = 80vh (window.innerHeight * 0.8).
+    // Offsets: molienda header 45px + detalles-parametros header+tabs 70px + vista-botes params header 30px = 145px.
+    detailRowHeight: Math.max(180, window.innerHeight * 0.8 - 195),
     rowClassRules: { 'new-row-highlight': (p: any) => !!p.data?.__isNew },
     onRowSelected: (e: any) => { if (e.node.isSelected()) this.selectedParamRow = e.data; },
+    onRowGroupOpened: (e: any) => {
+      this.paramsGridApi?.refreshCells({ rowNodes: [e.node], columns: ['parametros'], force: true });
+    },
   };
 
   // ── Init ──────────────────────────────────────────────────────────────────
 
   agInit(params: any) {
-    this.idMolienda  = params?.data?.id ?? null;
-    this.matPrimaId  = params?.data?.matPrima ?? null;
+    this.idMolienda = params?.data?.id ?? null;
+    this.matPrimaId = params?.data?.matPrima ?? null;
     this.rowBranchId = params?.data?.sucursal ?? null;
     const opts: { id: number; name: string }[] = params?.context?.articuloOptions ?? [];
-    this.matPrimaOptions = params?.context?.matPrimaOptions ?? opts;
+    this.matPrimaOptions   = params?.context?.matPrimaOptions ?? opts;
+    const allArticuloOptions: { id: number; name: string }[] = params?.context?.allArticuloOptions ?? opts;
     this.matPrimaName = opts.find(o => o.id === this.matPrimaId)?.name ?? '';
+    this.onBotesLoadedCb = params?.context?.onBotesLoaded ?? null;
     // Reset state when switching tabs
-    this.selectedBote = null;
-    this.paramsRowData = [];
-    this.hasChanges = false;
+    this.selectedBote      = null;
+    this.paramsRowData     = [];
+    this.medicionesCountMap = {};
+    this.hasChanges        = false;
+    this.paramsGridContext  = {
+      idArticulo:               this.matPrimaId,
+      matPrimaOptions:          this.matPrimaOptions,
+      allArticuloOptions,
+      onMedicionesCountChanged: (id: number, count: number) => {
+        this.medicionesCountMap[id] = count;
+        this.paramsGridApi?.refreshCells({ columns: ['parametros'], force: true });
+      },
+    };
     this.loadBotes();
   }
 
@@ -350,8 +423,8 @@ export class VistaBotesFiltradoComponent {
       const filtered = ((items ?? []) as any[]).filter((m: any) => {
         if (m.active === false) return false;
         if (moFaseId != null && m.idPrefijoFase !== moFaseId) return false;
-        if (this.matPrimaId  != null && m.idMatPrima  !== this.matPrimaId)  return false;
-        if (this.rowBranchId != null && m.idBranch    !== this.rowBranchId) return false;
+        if (this.matPrimaId != null && m.idMatPrima !== this.matPrimaId) return false;
+        if (this.rowBranchId != null && m.idBranch !== this.rowBranchId) return false;
         return true;
       });
 
@@ -360,26 +433,27 @@ export class VistaBotesFiltradoComponent {
           .then(u => u ?? {} as Record<number, number>).catch(() => ({} as Record<number, number>)),
         this.idMolienda
           ? lastValueFrom(this.productionService.getMoliendaBoteSumsByMolienda(this.idMolienda))
-              .then(u => u ?? {} as Record<number, number>).catch(() => ({} as Record<number, number>))
+            .then(u => u ?? {} as Record<number, number>).catch(() => ({} as Record<number, number>))
           : Promise.resolve({} as Record<number, number>),
       ]);
 
       this.botes = filtered.map((item: any) => {
         const fasePrefijo = item.idPrefijoFase != null ? (fajePrefijoMap.get(item.idPrefijoFase) ?? '') : '';
-        const artPrefijo  = item.idMatPrima    != null ? (artPrefijoMap.get(item.idMatPrima)     ?? '') : '';
-        const branchPref  = item.idBranch      != null ? (branchPrefijoMap.get(item.idBranch)    ?? '') : '';
-        const year   = String(item.anio ?? new Date().getFullYear()).slice(-2);
-        const num    = item.numBote  ?? '';
-        const count  = item.contador ?? 1;
+        const artPrefijo = item.idMatPrima != null ? (artPrefijoMap.get(item.idMatPrima) ?? '') : '';
+        const branchPref = item.idBranch != null ? (branchPrefijoMap.get(item.idBranch) ?? '') : '';
+        const year = String(item.anio ?? new Date().getFullYear()).slice(-2);
+        const num = item.numBote ?? '';
+        const count = item.contador ?? 1;
         const description = `${branchPref}${fasePrefijo}${artPrefijo}${year}/${item.cantidad ?? ''}-${num}/${count}`;
         return {
-          id:          item.id,
+          id: item.id,
           description,
-          volumen:     Number(item.cantidad ?? 0),
-          myLiters:    Number(myUsage[item.id]    ?? 0),
+          volumen: Number(item.cantidad ?? 0),
+          myLiters: Number(myUsage[item.id] ?? 0),
           totalLiters: Number(globalUsage[item.id] ?? 0),
         };
       });
+      this.onBotesLoadedCb?.(this.botes.length);
 
       // Auto-crear folios para botes que aún no tienen entrada en molienda_params
       if (this.idMolienda && this.botes.length) {
@@ -390,10 +464,10 @@ export class VistaBotesFiltradoComponent {
         const missing = this.botes.filter(b => !existingBoteIds.has(b.id));
         await Promise.all(missing.map(b =>
           lastValueFrom(this.productionService.createMoliendaParams({
-            idMolienda:    this.idMolienda!,
+            idMolienda: this.idMolienda!,
             idBoteCatalog: b.id,
-            folio:         b.description,
-            libLimpieza:   false,
+            folio: b.description,
+            libLimpieza: false,
           })).catch(() => null)
         ));
       }
@@ -427,18 +501,28 @@ export class VistaBotesFiltradoComponent {
         this.productionService.getMoliendaParamsByMoliendaAndBote(this.idMolienda, bote.id)
       );
       const mapped = (Array.isArray(items) ? items : []).map((i: any) => ({
-        id:          i.id,
-        folio:       i.folio       ?? bote.description,
-        parametros:  i.parametros  ?? '',
-        objetivo:    i.objetivo    ?? null,
+        id: i.id,
+        folio: i.folio ?? bote.description,
+        parametros: i.parametros ?? '',
+        objetivo: i.objetivo ?? null,
         libLimpieza: !!i.libLimpieza,
-        __isNew:     false,
-        __modified:  false,
+        __isNew: false,
+        __modified: false,
       }));
       this.originalParamsRowData = JSON.parse(JSON.stringify(mapped));
       this.paramsRowData = mapped;
       if (this.paramsGridApi && !this.paramsGridApi.isDestroyed())
         this.paramsGridApi.setGridOption('rowData', mapped);
+
+      // Cargar conteo de mediciones para mostrar en el link antes de expandir
+      mapped.filter(r => r.id).forEach(r => {
+        lastValueFrom(this.productionService.getMoliendaMedicionesByParams(r.id))
+          .then((med: any) => {
+            this.medicionesCountMap[r.id] = (med as any[])?.length ?? 0;
+            this.paramsGridApi?.refreshCells({ columns: ['parametros'], force: true });
+          })
+          .catch(() => { });
+      });
     } catch (e) {
       console.error('Error cargando params:', e);
     }
@@ -449,9 +533,9 @@ export class VistaBotesFiltradoComponent {
     const newRow = {
       id: null, __tempId: `new_${Date.now()}`,
       __isNew: true, __modified: false,
-      folio:       this.selectedBote.description,   // clave del bote = folio
-      parametros:  '',
-      objetivo:    null,
+      folio: this.selectedBote.description,   // clave del bote = folio
+      parametros: '',
+      objetivo: null,
       libLimpieza: false,
     };
     this.paramsRowData = [newRow, ...this.paramsRowData];
@@ -469,24 +553,25 @@ export class VistaBotesFiltradoComponent {
     try {
       for (const row of newRows) {
         const created = await lastValueFrom(this.productionService.createMoliendaParams({
-          idMolienda:    this.idMolienda!,
+          idMolienda: this.idMolienda!,
           idBoteCatalog: this.selectedBote!.id,
-          folio:         row.folio       || undefined,
-          parametros:    row.parametros  || undefined,
-          objetivo:      row.objetivo    ?? undefined,
-          libLimpieza:   !!row.libLimpieza,
+          folio: row.folio || undefined,
+          parametros: row.parametros || undefined,
+          objetivo: row.objetivo ?? undefined,
+          libLimpieza: !!row.libLimpieza,
         }));
         row.id = created.id; row.__isNew = false; row.__modified = false;
       }
       for (const row of modRows) {
         await lastValueFrom(this.productionService.updateMoliendaParams(row.id, {
-          folio:       row.folio       || undefined,
-          parametros:  row.parametros  || undefined,
-          objetivo:    row.objetivo    ?? undefined,
+          folio: row.folio || undefined,
+          parametros: row.parametros || undefined,
+          objetivo: row.objetivo ?? undefined,
           libLimpieza: !!row.libLimpieza,
         }));
         row.__modified = false;
       }
+
       this.originalParamsRowData = JSON.parse(JSON.stringify(this.paramsRowData));
       this.hasChanges = false;
       if (this.paramsGridApi) this.paramsGridApi.setGridOption('rowData', this.paramsRowData);
@@ -522,6 +607,56 @@ export class VistaBotesFiltradoComponent {
       console.error('Error eliminando param:', e);
       alerts.reqErrorToast('Error al eliminar');
     }
+  }
+
+  // ── Panel de comentarios read-only ───────────────────────────────────────
+
+  async toggleFolioComments(row: any) {
+    if (this.commentsFolioId === row.id && this.showComments) {
+      this.showComments = false;
+      this.commentsFolioId = null;
+      this.paramsGridApi?.refreshCells({ columns: ['verComentarios'], force: true });
+      return;
+    }
+    this.commentsFolioId = row.id;
+    this.showComments = true;
+    this.commentsLoading = true;
+    this.commentsData = [];
+    this.paramsGridApi?.refreshCells({ columns: ['verComentarios'], force: true });
+
+    try {
+      const mediciones = await lastValueFrom(
+        this.productionService.getMoliendaMedicionesByParams(row.id)
+      ).catch(() => [] as any[]);
+
+      const medMap = new Map<string, any>(
+        (mediciones as any[]).map((m: any) => [String(m.id), m])
+      );
+
+      const batches = await Promise.all(
+        (mediciones as any[]).map((m: any) =>
+          lastValueFrom(
+            this.itemCommentsService.getComments('MEDICION', row.id, String(m.id))
+          ).catch(() => [] as ItemComment[])
+        )
+      );
+
+      this.commentsData = (batches as ItemComment[][])
+        .flat()
+        .map(c => {
+          const med = medMap.get(String(c.numArticle));
+          return { comment: c, faseFe: med?.faseFe ?? '', fecha: med?.fecha ?? '', hora: med?.hora ?? '' };
+        })
+        .sort((a, b) => new Date(a.comment.createdAt ?? 0).getTime() - new Date(b.comment.createdAt ?? 0).getTime());
+    } finally {
+      this.commentsLoading = false;
+    }
+  }
+
+  getCommentBody(text: string): string {
+    if (!text) return '';
+    const nl = text.indexOf('\n');
+    return nl > 0 ? text.substring(nl + 1).trim() : text;
   }
 
   // ── Cálculos visuales de barriles ─────────────────────────────────────────

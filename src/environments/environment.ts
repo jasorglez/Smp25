@@ -45,8 +45,8 @@ export const environment = {
   urlNotifications: 'https://ms-pruebas-api.bi2.mx/notifications/api', // 5011 -- NotificationsTelegram
   //urlNotifications: 'http://localhost:5011/api',
 
-  //urlProduction: 'https://ms-pruebas-api.bi2.mx/production/api', // 5051 -- Production
-  urlProduction: 'http://localhost:5051/api',
+  urlProduction: 'https://ms-pruebas-api.bi2.mx/production/api', // 5051 -- Production
+  //urlProduction: 'http://localhost:5051/api',
 
   urlMantenimiento: 'https://ms-pruebas-api.bi2.mx/maintenance/api',
 
@@ -73,5 +73,5 @@ export const environment = {
 
   urlRefreshToken: 'https://securetoken.googleapis.com/v1/token?key=AIzaSyDxCBGKk8nT09hdW85-PyOkhw5_JPZLF1A',
 
-  version: '2.52.457 (10 Junio 2026) - Almacén molienda: validación Datos externos al cerrar también en Cerrar Entrega (multi-entrega), igual que Cerrar OC; bloquea si alguna entrada no tiene lotes'
+  version: '2.52.458 (11 Junio 2026) - Molienda: materias primas por medición en cascada (master-detail)'
 };

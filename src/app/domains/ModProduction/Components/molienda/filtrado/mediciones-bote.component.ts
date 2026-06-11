@@ -6,6 +6,8 @@ import { ICellRendererAngularComp } from 'ag-grid-angular';
 import { lastValueFrom } from 'rxjs';
 import { ProductionService } from 'app/services/production.service';
 import { alerts } from 'app/helpers/alerts';
+import { ItemCommentsCellRendererComponent } from 'app/shared/item-comments-cell-renderer/item-comments-cell-renderer.component';
+import { MedicionMatPrimaComponent } from './medicion-mat-prima.component';
 
 interface ParamCatalog {
   id: number;
@@ -17,13 +19,14 @@ interface ParamCatalog {
 @Component({
   selector: 'app-mediciones-bote',
   standalone: true,
-  imports: [CommonModule, AgGridAngular],
+  imports: [CommonModule, AgGridAngular, ItemCommentsCellRendererComponent, MedicionMatPrimaComponent],
+  styles: [':host { display: block; height: 100%; overflow: hidden; }'],
   template: `
     <div style="height:100%;display:flex;flex-direction:column;background:#fff8e1;border-top:2px solid #ffe0b2;">
 
       <!-- Toolbar -->
-      <div style="padding:5px 10px;flex-shrink:0;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid #ffe0b2;">
-        <span style="font-size:0.8rem;color:#e65100;font-weight:600;">
+      <div style="padding:3px 8px;flex-shrink:0;border-bottom:1px solid #ffe0b2;display:flex;align-items:center;gap:6px;">
+        <span style="font-size:0.78rem;color:#e65100;font-weight:600;flex:1;">
           <i class="bi bi-clipboard-data me-1"></i>
           Mediciones — <span style="font-weight:400;">{{ folioLabel }}</span>
           <span *ngIf="loading" class="ms-2 text-warning" style="font-size:0.75rem;">
@@ -31,18 +34,22 @@ interface ParamCatalog {
           </span>
         </span>
         <div class="d-flex gap-1">
-          <button class="btn btn-success btn-sm" style="padding:1px 7px;" (click)="addRow()" [disabled]="!gridApi || loading">
-            <i class="bi bi-plus-lg"></i>
+          <button class="btn btn-sm btn-success" (click)="addRow()" [disabled]="!gridApi">
+            <i class="bi bi-plus-lg"></i> Agregar
           </button>
-          <button class="btn btn-primary btn-sm position-relative" style="padding:1px 7px;" (click)="saveChanges()" [disabled]="!hasChanges || loading">
-            <i class="bi bi-floppy"></i>
-            <span *ngIf="hasChanges" class="position-absolute top-0 start-100 translate-middle p-2 bg-danger border border-light rounded-circle"></span>
+          <button class="btn btn-sm btn-primary position-relative"
+                  (click)="saveChanges()" [disabled]="!hasChanges && !hasChildChanges()">
+            <i class="bi bi-floppy"></i> Guardar
+            <span *ngIf="hasChanges || hasChildChanges()"
+                  class="position-absolute top-0 start-100 translate-middle p-2 bg-danger border border-light rounded-circle">
+              <span class="visually-hidden">Cambios sin guardar</span>
+            </span>
           </button>
-          <button class="btn btn-warning btn-sm" style="padding:1px 7px;" (click)="revert()" [disabled]="loading">
-            <i class="bi bi-arrow-clockwise"></i>
+          <button class="btn btn-sm btn-warning" (click)="revert()">
+            <i class="bi bi-arrow-clockwise"></i> Deshacer
           </button>
-          <button class="btn btn-danger btn-sm" style="padding:1px 7px;" (click)="deleteRow()" [disabled]="!selectedRow || loading">
-            <i class="bi bi-trash"></i>
+          <button class="btn btn-sm btn-danger" (click)="deleteRow()" [disabled]="!selectedRow">
+            <i class="bi bi-trash"></i> Borrar
           </button>
         </div>
       </div>
@@ -65,6 +72,7 @@ interface ParamCatalog {
           [rowData]="rowData"
           [columnDefs]="colDefs"
           [gridOptions]="gridOptions"
+          [context]="medicionGridContext"
           (gridReady)="onGridReady($event)"
           (selectionChanged)="onSelectionChanged($event)"
           (cellValueChanged)="onCellValueChanged($event)">
@@ -83,37 +91,69 @@ export class MedicionesBoteComponent implements ICellRendererAngularComp {
   gridApi!: GridApi;
   rowData: any[] = [];
   private originalRowData: any[] = [];
-  hasChanges = false;
   selectedRow: any = null;
 
   colDefs: ColDef[] = [];
   private params: ParamCatalog[] = [];
   private idMoliendaParams: number | null = null;
-  private idArticulo:       number | null = null;
-  private matPrimaOptions:  { id: number; name: string }[] = [];
+  private idArticulo: number | null = null;
+  private matPrimaOptions: { id: number; name: string }[] = [];
+
+  matPrimaCountMap: Record<number, number> = {};
+  medicionGridContext: any = {};
 
   gridOptions: any = {
-    getRowId:                       (p: any) => String(p.data.id ?? p.data.__tempId),
-    headerHeight:                   24,
-    rowHeight:                      22,
-    rowSelection:                   'single',
-    stopEditingWhenCellsLoseFocus:  true,
+    getRowId: (p: any) => String(p.data.id ?? p.data.__tempId),
+    headerHeight: 24,
+    rowHeight: 22,
+    rowSelection: 'single',
+    stopEditingWhenCellsLoseFocus: true,
+    masterDetail: true,
+    isRowMaster: (data: any) => !!data?.id && !data?.__isNew,
+    detailCellRenderer: MedicionMatPrimaComponent,
+    // mediciones panel = 80vh-195; restar toolbar (36) + header ag-grid (24) + fila (22) + buffer (4)
+    detailRowHeight: Math.max(120, window.innerHeight * 0.8 - 281),
     rowClassRules: { 'new-row-highlight': (p: any) => !!p.data?.__isNew },
+    onRowGroupOpened: (e: any) => {
+      this.gridApi?.refreshCells({ rowNodes: [e.node], columns: ['matPrima'], force: true });
+    },
   };
 
   // ── ICellRendererAngularComp ──────────────────────────────────────────────
+
+  private onCountChanged: ((id: number, count: number) => void) | null = null;
+  private _hasChanges = false;
+
+  get hasChanges() { return this._hasChanges; }
+  set hasChanges(v: boolean) { this._hasChanges = v; }
 
   agInit(params: any): void {
     this.idMoliendaParams = params.data?.id ?? null;
     this.folioLabel       = params.data?.folio ?? '';
     this.idArticulo       = params.context?.idArticulo ?? null;
     this.matPrimaOptions  = params.context?.matPrimaOptions ?? [];
+    this.onCountChanged   = params.context?.onMedicionesCountChanged ?? null;
+    this.matPrimaCountMap = {};
+    const allArticuloOptions: { id: number; name: string }[] =
+      params.context?.allArticuloOptions ?? this.matPrimaOptions;
+    this.medicionGridContext = {
+      matPrimaOptions:   this.matPrimaOptions,
+      allArticuloOptions,
+      idArticulo:        this.idArticulo,
+      onMatPrimaCountChanged: (idMedicion: number, count: number) => {
+        this.matPrimaCountMap[idMedicion] = count;
+        this.gridApi?.refreshCells({ columns: ['matPrima'], force: true });
+      },
+    };
+
     if (this.idMoliendaParams) this.loadAll();
   }
 
   refresh(): boolean { return false; }
 
   // ── Data loading ──────────────────────────────────────────────────────────
+
+  reloadData() { if (this.idMoliendaParams) this.loadAll(); }
 
   private async loadAll() {
     this.loading = true;
@@ -136,7 +176,7 @@ export class MedicionesBoteComponent implements ICellRendererAngularComp {
       }));
 
       this.buildColDefs();
-      this.buildRowData(mediciones as any[]);
+      this.buildRowData(mediciones as any[], true);
     } catch (e) {
       console.error('Error cargando mediciones:', e);
     } finally {
@@ -146,32 +186,36 @@ export class MedicionesBoteComponent implements ICellRendererAngularComp {
 
   private buildColDefs() {
     const fixed: ColDef[] = [
-      {
-        field: 'fecha', headerName: 'Fecha', editable: true, width: 120,
-        cellEditor: 'agTextCellEditor',
-        cellEditorParams: { maxLength: 10 },
-        valueSetter: (p: any) => { p.data.fecha = p.newValue; p.data.__modified = true; return true; },
-      },
-      {
-        field: 'hora', headerName: 'Hora', editable: true, width: 88,
-        cellEditor: 'agTextCellEditor',
-        cellEditorParams: { maxLength: 8 },
-        valueSetter: (p: any) => { p.data.hora = p.newValue; p.data.__modified = true; return true; },
-      },
+      { field: 'fecha', headerName: 'Fecha', editable: false, width: 120 },
+      { field: 'hora',  headerName: 'Hora',  editable: false, width: 88  },
       {
         field: 'faseFe', headerName: 'Fase FE', editable: true, width: 95,
         valueSetter: (p: any) => { p.data.faseFe = p.newValue; p.data.__modified = true; return true; },
       },
       {
-        field: 'idMateriaPrima', headerName: 'Materia Prima', editable: true, width: 170,
-        cellEditor: 'agSelectCellEditor',
-        cellEditorParams: { values: [null, ...this.matPrimaOptions.map(m => m.id)] },
-        valueFormatter: (p: any) =>
-          p.value == null ? '' : (this.matPrimaOptions.find(m => m.id === p.value)?.name ?? String(p.value)),
-        valueSetter: (p: any) => {
-          p.data.idMateriaPrima = p.newValue == null ? null : Number(p.newValue);
-          p.data.__modified = true; return true;
+        field: 'matPrima', headerName: 'Mat. Prima', editable: false, width: 140,
+        cellRenderer: (p: any) => {
+          if (!p.data?.id) return '—';
+          const count = this.matPrimaCountMap[p.data.id];
+          const badge = count != null ? ` (${count})` : '';
+          const a = document.createElement('a');
+          a.href = '#';
+          a.style.cssText = 'color:#2e7d32;text-decoration:underline;font-size:0.78rem;';
+          a.textContent = p.node?.expanded ? '▲ Ocultar' : `▼ Mat. Prima${badge}`;
+          a.addEventListener('click', ev => { ev.preventDefault(); p.node.setExpanded(!p.node.expanded); });
+          return a;
         },
+      },
+      {
+        field: 'comentarios', headerName: '💬', width: 52, editable: false,
+        cellRenderer: ItemCommentsCellRendererComponent,
+        cellRendererParams: (p: any) => ({
+          documentType: 'MEDICION',
+          idDocument: this.idMoliendaParams ?? 0,
+          numArticle: String(p.data?.id ?? p.data?.__tempId ?? ''),
+          locked: !!p.data?.__isNew || !p.data?.id,
+          articleName: [p.data?.fecha, p.data?.hora].filter(Boolean).join(' '),
+        }),
       },
     ];
 
@@ -200,14 +244,15 @@ export class MedicionesBoteComponent implements ICellRendererAngularComp {
       },
     }));
 
-    this.colDefs = [...fixed, ...paramCols];
+    const [colFecha, colHora, colFaseFe, colMatPrima, colComentarios] = fixed;
+    this.colDefs = [colFecha, colHora, colFaseFe, ...paramCols, colMatPrima, colComentarios];
   }
 
-  buildRowData(mediciones: any[]) {
+  buildRowData(mediciones: any[], notify = false) {
     const mapped = mediciones.map((m: any) => {
       const row: any = {
         id: m.id, fecha: m.fecha, hora: m.hora,
-        faseFe: m.faseFe ?? '', idMateriaPrima: m.idMateriaPrima ?? null,
+        faseFe: m.faseFe ?? '',
         __isNew: false, __modified: false,
       };
       for (const param of this.params) {
@@ -217,9 +262,11 @@ export class MedicionesBoteComponent implements ICellRendererAngularComp {
       return row;
     });
     this.originalRowData = JSON.parse(JSON.stringify(mapped));
-    this.rowData = mapped;
+    this.rowData = [...mapped];
     if (this.gridApi && !this.gridApi.isDestroyed())
-      this.gridApi.setGridOption('rowData', mapped);
+      this.gridApi.setGridOption('rowData', this.rowData);
+    if (notify && this.idMoliendaParams != null)
+      this.onCountChanged?.(this.idMoliendaParams, mapped.length);
   }
 
   onGridReady(e: GridReadyEvent) {
@@ -240,12 +287,12 @@ export class MedicionesBoteComponent implements ICellRendererAngularComp {
 
   addRow() {
     const today = new Date();
-    const fecha = `${today.getFullYear()}-${String(today.getMonth()+1).padStart(2,'0')}-${String(today.getDate()).padStart(2,'0')}`;
-    const hora  = `${String(today.getHours()).padStart(2,'0')}:${String(today.getMinutes()).padStart(2,'0')}:00`;
+    const fecha = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
+    const hora = `${String(today.getHours()).padStart(2, '0')}:${String(today.getMinutes()).padStart(2, '0')}:00`;
     const newRow: any = {
       id: null, __tempId: `new_${Date.now()}`,
       __isNew: true, __modified: false,
-      fecha, hora, faseFe: '', idMateriaPrima: null,
+      fecha, hora, faseFe: '',
     };
     for (const p of this.params) newRow[`param_${p.id}`] = null;
     this.rowData = [newRow, ...this.rowData];
@@ -256,13 +303,18 @@ export class MedicionesBoteComponent implements ICellRendererAngularComp {
     }
   }
 
+  hasChildChanges(): boolean {
+    return this.rowData.some(r => r.__matPrimaHasChanges?.() || !!r.__matPrimaHasDirty);
+  }
+
   async saveChanges() {
     if (!this.idMoliendaParams) return;
+    // Descartar filas en blanco (sin fecha ni hora)
+    this.rowData = this.rowData.filter(r => !(r.__isNew && !r.fecha && !r.hora));
     const toDto = (row: any) => ({
       idMoliendaParams: this.idMoliendaParams!,
       fecha: row.fecha, hora: row.hora,
       faseFe: row.faseFe || undefined,
-      idMateriaPrima: row.idMateriaPrima ?? undefined,
       valores: this.params.map(p => ({
         idParamCatalog: p.id,
         valor: row[`param_${p.id}`] ?? undefined,
@@ -273,11 +325,18 @@ export class MedicionesBoteComponent implements ICellRendererAngularComp {
         await lastValueFrom(this.productionService.createMoliendaMedicion(toDto(row)));
       for (const row of this.rowData.filter(r => r.__modified && !r.__isNew))
         await lastValueFrom(this.productionService.updateMoliendaMedicion(row.id, toDto(row)));
+
+      // Guardar tablas hijas (mat prima por medición)
+      for (const row of this.rowData) {
+        const dirty = row.__matPrimaHasChanges?.() || !!row.__matPrimaHasDirty;
+        if (dirty && row.__matPrimaSave) await row.__matPrimaSave();
+      }
+
       this.hasChanges = false;
       const mediciones = await lastValueFrom(
         this.productionService.getMoliendaMedicionesByParams(this.idMoliendaParams!)
       ).catch(() => [] as any[]);
-      this.buildRowData(mediciones as any[]);
+      this.buildRowData(mediciones as any[], true);
     } catch (e) {
       console.error('Error guardando mediciones:', e);
       alerts.reqErrorToast('Error al guardar');
@@ -306,6 +365,8 @@ export class MedicionesBoteComponent implements ICellRendererAngularComp {
       this.originalRowData = this.originalRowData.filter(r => r.id !== this.selectedRow!.id);
       this.selectedRow = null;
       if (this.gridApi) this.gridApi.setGridOption('rowData', this.rowData);
+      if (this.idMoliendaParams != null)
+        this.onCountChanged?.(this.idMoliendaParams, this.rowData.length);
     } catch (e) {
       console.error('Error eliminando medición:', e);
       alerts.reqErrorToast('Error al eliminar');

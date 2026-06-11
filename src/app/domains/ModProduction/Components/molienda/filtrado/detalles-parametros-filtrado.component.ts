@@ -1,6 +1,8 @@
-import { Component, ViewChild, AfterViewInit } from '@angular/core';
+import { Component, ViewChild, AfterViewInit, inject, ChangeDetectorRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { lastValueFrom } from 'rxjs';
 import { VistaBotesFiltradoComponent } from './vista-botes-filtrado.component';
+import { ProductionService } from 'app/services/production.service';
 
 @Component({
   selector: 'app-detalles-parametros-filtrado',
@@ -29,6 +31,10 @@ import { VistaBotesFiltradoComponent } from './vista-botes-filtrado.component';
                   [style.background-color]="activeRow?.id === row.id ? '#e1bee7' : 'rgba(255,255,255,0.4)'"
                   [style.border-color]="activeRow?.id === row.id ? '#9c27b0 #9c27b0 #e1bee7' : 'transparent'">
             {{ getMatPrimaName(row.matPrima) }}
+            <span *ngIf="botesCountMap[row.id] != null"
+                  style="font-size:0.7rem;font-weight:400;opacity:0.75;margin-left:3px;">
+              ({{ botesCountMap[row.id] }})
+            </span>
           </button>
         </li>
         <li *ngIf="!matPrimaRows.length"
@@ -60,12 +66,16 @@ import { VistaBotesFiltradoComponent } from './vista-botes-filtrado.component';
   `,
 })
 export class DetallesParametrosFiltradoComponent implements AfterViewInit {
+  private productionService = inject(ProductionService);
+  private cdr = inject(ChangeDetectorRef);
+
   @ViewChild('botesVista') botesVistaRef?: VistaBotesFiltradoComponent;
 
   matPrimaRows: any[] = [];
   activeRow: any = null;
   sucursalName = '';
   matPrimaOptions: { id: number; name: string }[] = [];
+  botesCountMap: Record<number, number> = {};
 
   private currentContext: any = null;
   private pendingInit: any = null;
@@ -82,6 +92,21 @@ export class DetallesParametrosFiltradoComponent implements AfterViewInit {
 
     const defaultRow = this.matPrimaRows.find(r => r.id === params.data?.id) ?? this.matPrimaRows[0] ?? null;
     this.activeRow = defaultRow;
+
+    // Carga anticipada de conteos de botes para todas las pestañas
+    const ids = this.matPrimaRows.map(r => r.id).filter(Boolean) as number[];
+    if (ids.length) {
+      Promise.all(ids.map(id =>
+        lastValueFrom(this.productionService.getMoliendaParamsByMolienda(id))
+          .then((items: any[]) => ({ id, count: items?.length ?? 0 }))
+          .catch(() => ({ id, count: 0 }))
+      )).then(results => {
+        const map: Record<number, number> = {};
+        results.forEach(r => { map[r.id] = r.count; });
+        this.botesCountMap = map;
+        this.cdr.detectChanges();
+      });
+    }
 
     if (defaultRow) {
       if (this.botesVistaRef) {
@@ -110,8 +135,12 @@ export class DetallesParametrosFiltradoComponent implements AfterViewInit {
     this.botesVistaRef?.agInit({
       data: row,
       context: {
-        articuloOptions: this.matPrimaOptions,
+        articuloOptions:  this.matPrimaOptions,
         allArticuloOptions: this.matPrimaOptions,
+        onBotesLoaded: (count: number) => {
+          this.botesCountMap = { ...this.botesCountMap, [row.id]: count };
+          this.cdr.detectChanges();
+        },
         ...this.currentContext,
       },
     });

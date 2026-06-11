@@ -134,10 +134,21 @@
       "mcp__b2-mssql-production__get_table_schema",
       "Bash(xargs -I {} basename {})",
       "mcp__production-delison-pruebas__execute_sql",
-      "mcp__security-delison-pruebas__execute_sql"
+      "mcp__security-delison-pruebas__execute_sql",
+      "Bash(find /home/gargadon/Source/Production -name \"MoliendaParams*\" | head -10 && echo \"---\" && ls /home/gargadon/Source/Production/Production/Production/Controllers/Delison/ | grep -i molienda)",
+      "Read(//home/gargadon/Source/Production/**)",
+      "Read(//home/gargadon/Source/Production/Production/Production/Controllers/Delison/**)",
+      "Bash(cat)",
+      "Read(//tmp/**)",
+      "mcp__warehouses-delison-pruebas__execute_sql"
     ],
     "deny": [],
-    "ask": []
+    "ask": [],
+    "additionalDirectories": [
+      "/home/gargadon/Source/Production/Production/Production/Service/Delison",
+      "/home/gargadon/Source/Production/Production/Production/Controllers/Delison",
+      "/home/gargadon/Source/Production/Production/Production"
+    ]
   },
   "enableAllProjectMcpServers": true,
   "enabledMcpjsonServers": [
