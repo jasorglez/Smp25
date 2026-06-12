@@ -223,6 +223,7 @@ export class ExpenditureComponent implements OnDestroy, OnChanges {
   bankAccounts: any[] = [];
   prefixAndConsecutive: any[] = [];
   saldoCuenta: number | null = null;
+  saldoDisponible: number | null = null;
 
   private _idAccount: number;
 
@@ -365,6 +366,7 @@ export class ExpenditureComponent implements OnDestroy, OnChanges {
 
           console.log('✅ Egresos cargados:', this.incomes.length);
           resolve();
+          this.recalcularSaldoDisponible();
         },
         error: (err) => {
           console.error('Error obteniendo egresos. Código:', err.status, 'Detalles:', err);
@@ -378,9 +380,18 @@ export class ExpenditureComponent implements OnDestroy, OnChanges {
   }
 
   loadSaldoCuenta(): void {
-    if (!this.idAccount) { this.saldoCuenta = null; return; }
+    if (!this.idAccount) { this.saldoCuenta = null; this.saldoDisponible = null; return; }
     const account = this.bankAccounts.find(a => a.id === this.idAccount);
     this.saldoCuenta = account != null ? (Number(account.saldo) || 0) : null;
+    this.recalcularSaldoDisponible();
+  }
+
+  recalcularSaldoDisponible(): void {
+    if (this.saldoCuenta === null) { this.saldoDisponible = null; return; }
+    const totalGastos = this.incomes
+      .filter(i => (i.status || '').toLowerCase() !== 'cancelada')
+      .reduce((sum, i) => sum + (Number(i.total) || 0), 0);
+    this.saldoDisponible = this.saldoCuenta - totalGastos;
   }
 
   async getBills() {
@@ -910,6 +921,7 @@ export class ExpenditureComponent implements OnDestroy, OnChanges {
                 tax: totals.tax,
                 total: totals.total
               });
+              this.recalcularSaldoDisponible();
               void this.getBankAccounts();
             }
           }

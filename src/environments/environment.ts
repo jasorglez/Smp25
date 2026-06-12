@@ -86,5 +86,5 @@ export const environment = {
     // publicKey: 'TEST-4399133a-4676-42a2-ab85-d946370bf96a',
   },
 
-  version: '5.11 (12 Junio 2026 12:30) fix(egresos): saldo usa AccountBanks.saldo igual que Dashboard',
+  version: '5.12 (12 Junio 2026 13:00) feat(egresos): saldo disponible en tiempo real y validacion limite',
 };
