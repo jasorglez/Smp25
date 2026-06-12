@@ -2134,7 +2134,9 @@ export class DetallesExpenditureComponent implements OnInit, OnDestroy {
 
     try {
       const result: any = await lastValueFrom(this.employeesService.addEmployee(payload));
-      const nuevoEmpleado = { id: result.id, name: nombre };
+      const newId = typeof result === 'number' ? result : (result?.id ?? result?.Id ?? null);
+      if (!newId) console.warn('crearEmpleadoAutomatico: respuesta sin id', result);
+      const nuevoEmpleado = { id: newId, name: nombre };
 
       if (this.context?.componentParent?.employees) {
         this.context.componentParent.employees.push(nuevoEmpleado);
@@ -2151,7 +2153,9 @@ export class DetallesExpenditureComponent implements OnInit, OnDestroy {
       alerts.toastAlert(`Empleado "${nombre}" creado correctamente`, 'success');
       return nuevoEmpleado;
     } catch (error: any) {
-      alerts.basicAlert('Error', `No se pudo crear el empleado. ${error?.error?.message || error?.message || ''}`, 'error');
+      const detalle = error?.error?.message || error?.error?.title || error?.message || JSON.stringify(error?.error || error);
+      console.error('crearEmpleadoAutomatico error:', error);
+      alerts.basicAlert('Error', `No se pudo crear el empleado.\n${detalle}`, 'error');
       return null;
     }
   }
