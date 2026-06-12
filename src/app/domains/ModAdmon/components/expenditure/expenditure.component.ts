@@ -222,6 +222,7 @@ export class ExpenditureComponent implements OnDestroy, OnChanges {
 
   bankAccounts: any[] = [];
   prefixAndConsecutive: any[] = [];
+  saldoCuenta: number | null = null;
 
   private _idAccount: number;
 
@@ -363,6 +364,7 @@ export class ExpenditureComponent implements OnDestroy, OnChanges {
 
           console.log('✅ Egresos cargados:', this.incomes.length);
           resolve();
+          void this.loadSaldoCuenta();
         },
         error: (err) => {
           console.error('Error obteniendo egresos. Código:', err.status, 'Detalles:', err);
@@ -373,6 +375,20 @@ export class ExpenditureComponent implements OnDestroy, OnChanges {
     });
     this.trackingService.addLog(this.trackingService.getnameComp(), `Mostrar Listado de Egresos`, 'Egresos ',
       this.trackingService.getEmail());
+  }
+
+  async loadSaldoCuenta(): Promise<void> {
+    if (!this.idAccount) { this.saldoCuenta = null; return; }
+    try {
+      const response: any = await lastValueFrom(this.administrationService.getBalance(this.idAccount));
+      if (response?.hasData && Array.isArray(response.data) && response.data.length > 0) {
+        this.saldoCuenta = parseFloat(response.data[response.data.length - 1].saldo) || 0;
+      } else {
+        this.saldoCuenta = 0;
+      }
+    } catch {
+      this.saldoCuenta = null;
+    }
   }
 
   async getBills() {
@@ -902,6 +918,7 @@ export class ExpenditureComponent implements OnDestroy, OnChanges {
                 tax: totals.tax,
                 total: totals.total
               });
+              void this.loadSaldoCuenta();
             }
           }
         }

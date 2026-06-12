@@ -86,5 +86,5 @@ export const environment = {
     // publicKey: 'TEST-4399133a-4676-42a2-ab85-d946370bf96a',
   },
 
-  version: '5.09 (12 Junio 2026 11:15) fix(egresos): mismo fix id auto-create para empleado',
+  version: '5.10 (12 Junio 2026 12:00) feat(egresos): badge saldo cuenta en tiempo real',
 };

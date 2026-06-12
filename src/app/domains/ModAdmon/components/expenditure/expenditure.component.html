@@ -22,7 +22,7 @@
   </div>
 
   <!-- Leyenda de estatus y empresa -->
-  <div class="row mb-2">
+  <div class="row mb-2 align-items-center">
     <div class="col-auto">
       <div class="d-flex flex-wrap gap-1 align-items-center">
         <span class="badge bg-primary text-white px-2 py-1" style="font-size: 0.7rem;">
@@ -36,6 +36,19 @@
         </span>
         <span class="badge bg-warning text-dark px-2 py-1" style="font-size: 0.7rem;">
           <i class="bi bi-circle-fill me-1" style="font-size: 0.5rem;"></i>Entregada
+        </span>
+        <span class="vr mx-1" style="opacity:0.3;"></span>
+        <span class="badge px-3 py-1"
+              [class.bg-success]="saldoCuenta !== null && saldoCuenta >= 0"
+              [class.bg-danger]="saldoCuenta !== null && saldoCuenta < 0"
+              [class.bg-secondary]="saldoCuenta === null"
+              style="font-size: 0.82rem; font-weight: 600;">
+          <i class="bi bi-wallet2 me-1"></i>
+          Saldo:
+          <ng-container *ngIf="saldoCuenta !== null">
+            {{ saldoCuenta | currency:'MXN':'symbol':'1.2-2' }}
+          </ng-container>
+          <ng-container *ngIf="saldoCuenta === null">—</ng-container>
         </span>
       </div>
     </div>
