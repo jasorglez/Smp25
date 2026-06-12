@@ -1040,6 +1040,22 @@ export class DetallesExpenditureComponent implements OnInit, OnDestroy {
     this.iva2 = this.rowData.reduce((acc, row) => acc + (Number(row.iva2) || 0), 0);
     this.total = this.rowData.reduce((acc, row) => acc + (Number(row.totalFinal) || 0), 0);
 
+    // Validar que el total no exceda el saldo disponible de la cuenta
+    const saldoDisponible: number | null = this.context?.componentParent?.saldoDisponible ?? null;
+    if (saldoDisponible !== null) {
+      const totalActualEsteEgreso = Number(this.params.data?.total) || 0;
+      const presupuesto = saldoDisponible + totalActualEsteEgreso;
+      if (this.total > presupuesto) {
+        const fmt = (n: number) => n.toLocaleString('es-MX', { style: 'currency', currency: 'MXN' });
+        alerts.basicAlert(
+          'Saldo insuficiente',
+          `El total del egreso (${fmt(this.total)}) excede el saldo disponible de la cuenta (${fmt(presupuesto)}).`,
+          'warning'
+        );
+        return;
+      }
+    }
+
     // Save to backend
     if (this.context && this.context.CONCEPTS && this.context.CONCEPTS.save) {
       const expenditureId = this.params.data.id;
