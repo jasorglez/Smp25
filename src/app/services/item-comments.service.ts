@@ -1,6 +1,7 @@
 import { HttpClient } from '@angular/common/http';
 import { inject, Injectable } from '@angular/core';
 import { Observable, Subject } from 'rxjs';
+import { map } from 'rxjs/operators';
 import { environment } from '@env/environment';
 import { TrackingService } from './tracking.service';
 
@@ -50,6 +51,13 @@ export class ItemCommentsService {
       `${environment.urlWarehouse}/ItemComments?documentType=${documentType}&idDocument=${idDocument}&numArticle=${encodeURIComponent(numArticle)}`,
       { headers: this.trackingService.getHeaders() }
     );
+  }
+
+  getCommentCount(documentType: string, idDocument: number): Observable<number> {
+    return this.http.get<{ count: number }>(
+      `${environment.urlWarehouse}/ItemComments/count?documentType=${documentType}&idDocument=${idDocument}`,
+      { headers: this.trackingService.getHeaders() }
+    ).pipe(map(r => r.count));
   }
 
   getProviderComments(documentType: string, idDocument: number, idProvider: number, numArticle: string = ''): Observable<ItemComment[]> {

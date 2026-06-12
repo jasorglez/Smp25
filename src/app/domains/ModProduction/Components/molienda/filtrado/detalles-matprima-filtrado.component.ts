@@ -172,9 +172,15 @@ export class DetallesMatprimaFiltradoComponent {
         idMatPrimaParent: this.idMatPrimaMolienda,
         onArticuloCountChanged: (idMatDetalle: number, count: number, cantidadSum: number) =>
           this.onArticuloCountChanged(idMatDetalle, count, cantidadSum),
+        // Encadenados desde molienda.component para el modal de salida por lote (Nivel 3):
+        idSucursal: this.idSucursalCtx,
+        openSalidaModal: this.openSalidaModalCtx,
       },
     }),
   };
+
+  private idSucursalCtx: number | null = null;
+  private openSalidaModalCtx: ((p: any) => void) | null = null;
 
   agInit(params: any) {
     this.internalParams = params;
@@ -182,6 +188,8 @@ export class DetallesMatprimaFiltradoComponent {
     this.idMatPrimaMolienda = params?.data?.matPrima ?? null;
     this.articuloOptions = params?.context?.articuloOptions ?? [];
     this.allArticuloOptions = params?.context?.allArticuloOptions ?? this.articuloOptions;
+    this.idSucursalCtx = params?.context?.idSucursal ?? null;
+    this.openSalidaModalCtx = params?.context?.openSalidaModal ?? null;
     if (this.gridApi && !this.gridApi.isDestroyed()) this.loadData();
   }
 

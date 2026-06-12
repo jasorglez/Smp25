@@ -144,6 +144,11 @@ export class MedicionesBoteComponent implements ICellRendererAngularComp {
         this.matPrimaCountMap[idMedicion] = count;
         this.gridApi?.refreshCells({ columns: ['matPrima'], force: true });
       },
+      // Propagar modal de salida por lote al componente de mat prima
+      idSucursal:      params.context?.idSucursal ?? null,
+      openSalidaModal: params.context?.openSalidaModal ?? null,
+      // articuloOptions doblemente filtrado (active=1 + inventario > 0)
+      articuloOptions: params.context?.articuloOptions ?? [],
     };
 
     if (this.idMoliendaParams) this.loadAll();
@@ -194,6 +199,7 @@ export class MedicionesBoteComponent implements ICellRendererAngularComp {
       },
       {
         field: 'matPrima', headerName: 'Mat. Prima', editable: false, width: 140,
+        cellStyle: (p: any) => p.data?.id ? { backgroundColor: '#e8f5e9', cursor: 'pointer' } : {},
         cellRenderer: (p: any) => {
           if (!p.data?.id) return '—';
           const count = this.matPrimaCountMap[p.data.id];
@@ -236,7 +242,7 @@ export class MedicionesBoteComponent implements ICellRendererAngularComp {
         const n = Number(v);
         if (param.valorMin != null && n < param.valorMin) return { backgroundColor: '#ffeeba', color: '#856404' };
         if (param.valorMax != null && n > param.valorMax) return { backgroundColor: '#f8d7da', color: '#721c24' };
-        return { backgroundColor: '#d4edda', color: '#155724' };
+        return null;
       },
       valueSetter: (p: any) => {
         p.data[`param_${param.id}`] = p.newValue ?? null;

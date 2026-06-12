@@ -1,5 +1,5 @@
 import { CommonModule } from '@angular/common';
-import { Component, EventEmitter, Input, OnInit, Output, inject } from '@angular/core';
+import { AfterViewInit, Component, ElementRef, EventEmitter, Input, OnInit, Output, ViewChild, inject } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { EmpaqueDescripcionService, ProveedorPresentaciones } from 'app/services/empaque-descripcion.service';
 import { evaluateProvider, ProviderEval, Denom, Composition } from './presentaciones-composer.helper';
@@ -34,7 +34,7 @@ interface ProvViewModel {
 
       <div class="pp-qty">
         <label>Cantidad requerida</label>
-        <input type="number" min="0" step="0.01" [(ngModel)]="cantidad" (ngModelChange)="recompute()" />
+        <input #cantidadInput type="number" min="0" step="0.01" [(ngModel)]="cantidad" (ngModelChange)="recompute()" />
         <span class="pp-base">{{ baseGlobal }}</span>
         <div class="pp-modes" *ngIf="permitirDividir">
           <button [class.active]="modo==='uno'" (click)="modo='uno'">Un proveedor</button>
@@ -138,7 +138,7 @@ interface ProvViewModel {
     .pp-split-eval{margin-top:6px;font-size:12px;} .pp-ok{color:#2e7d32;}
   `]
 })
-export class PresentacionesPanelComponent implements OnInit {
+export class PresentacionesPanelComponent implements OnInit, AfterViewInit {
   @Input() idMaterial!: number;
   @Input() cantidad = 0;
   @Input() articleName = '';
@@ -150,6 +150,8 @@ export class PresentacionesPanelComponent implements OnInit {
   @Output() seleccionar = new EventEmitter<{ cantidad: number; idProvider: number; proveedor: string; texto: string }>();
   @Output() cerrar = new EventEmitter<void>();
 
+  @ViewChild('cantidadInput') cantidadInput!: ElementRef<HTMLInputElement>;
+
   private svc = inject(EmpaqueDescripcionService);
 
   loading = true;
@@ -157,6 +159,10 @@ export class PresentacionesPanelComponent implements OnInit {
   baseGlobal = '';        // L o kg (según el tipo de las presentaciones)
   provs: ProvViewModel[] = [];
   private raw: ProveedorPresentaciones[] = [];
+
+  ngAfterViewInit(): void {
+    setTimeout(() => this.cantidadInput?.nativeElement?.focus(), 50);
+  }
 
   ngOnInit(): void {
     if (!this.permitirDividir) this.modo = 'uno';   // sin modo dividir → siempre un proveedor
