@@ -34,7 +34,7 @@ export const routes: Routes = [
         canActivate: [MasterPermissionsGuard],
         data: { permissions: { master: 'warehouses' } },
         children: [
-          { path: '', redirectTo: 'materia-prima', pathMatch: 'full' },
+          { path: '', redirectTo: 'producto-terminado', pathMatch: 'full' },
           {
             path: 'warehouses',
             loadComponent: () => import('./domains/ModWarehouse/components/warehouses/warehouses.component').then((w) => w.WarehousesComponent),
