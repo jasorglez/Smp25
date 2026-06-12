@@ -118,7 +118,7 @@ import {
                       </thead>
                       <tbody>
                         <tr *ngFor="let m of l.movimientos">
-                          <td>{{ m.fecha }}</td>
+                          <td>{{ fmtFecha(m.fecha) }}</td>
                           <td class="num">{{ m.cantidadEntrada != null ? fmt(m.cantidadEntrada) : '—' }}</td>
                           <td class="num">{{ m.cantidadSalida != null ? fmt(m.cantidadSalida) : '—' }}</td>
                           <td>{{ m.quien }}</td>
@@ -309,6 +309,17 @@ export class InventarioMateriaPrimaComponent {
       minimumFractionDigits: Number.isInteger(n) ? 0 : 2,
       maximumFractionDigits: 2,
     });
+  }
+
+  fmtFecha(v: any): string {
+    if (!v) return '—';
+    try {
+      const d = new Date(v);
+      if (isNaN(d.getTime())) return String(v);
+      const dd = String(d.getDate()).padStart(2, '0');
+      const mm = String(d.getMonth() + 1).padStart(2, '0');
+      return `${dd}/${mm}/${d.getFullYear()}`;
+    } catch { return String(v); }
   }
 
   // ── Modal detalle de lotes ──

@@ -27,6 +27,7 @@ import { CostoIvaTooltipService } from './costo-iva-tooltip.service';
 import { SetupService } from 'app/services/setup.service';
 import { CondicionesPagoService, CondicionPagoDto } from 'app/services/condiciones-pago.service';
 import { CurrencyService } from 'app/services/currency.service';
+import { PrecioMonedaEditorComponent } from 'app/domains/Almacenes/components/materiales-maestro/editors/precio-moneda-editor.component';
 
 pdfMake.vfs = pdfFonts.vfs;
 
@@ -186,6 +187,8 @@ export class DetalleItemsProveedorComponent {
 
   // Fase 2: catálogo de monedas para mostrar la abreviatura junto a Costo Unit/Total (Opción A, sin convertir).
   private monedasMap = new Map<number, string>();
+  // Lista para el editor compuesto monto+moneda en Costo Unit.
+  monedasList: { id: number; abreviatura: string; nombre: string }[] = [];
   private defaultCurrencyId: number | null = null;
   private ivaPercent: number = 0;
   private ivaConfigurado: boolean = false;
@@ -321,12 +324,14 @@ export class DetalleItemsProveedorComponent {
       next: (data: any) => {
         const list = Array.isArray(data) ? data : (data?.catalog ?? []);
         this.monedasMap = new Map<number, string>();
+        this.monedasList = [];
         let mxnId: number | null = null;
         (list || []).forEach((c: any) => {
           const id = Number(c.id);
           const abrev = (c.valueAddition || '').toString().trim();
           const nombre = c.description || '';
           this.monedasMap.set(id, abrev || nombre);
+          this.monedasList.push({ id, abreviatura: abrev, nombre });
           if (mxnId === null && (abrev.toUpperCase() === 'MXN' || /peso|mexic/i.test(nombre))) mxnId = id;
         });
         this.defaultCurrencyId = mxnId ?? (list?.[0]?.id != null ? Number(list[0].id) : null);
@@ -1188,6 +1193,10 @@ export class DetalleItemsProveedorComponent {
         }
       },
       { field: 'costoUnitario', headerName: 'Costo Unit.', width: 140, editable: !this.ocGenerated,
+        // Editor compuesto monto + moneda (igual que Gastos/COTIZ): permite capturar costo y elegir
+        // la moneda cuando el artículo es nuevo para el proveedor (o cambiarla en cualquier fila).
+        cellEditor: PrecioMonedaEditorComponent,
+        cellEditorParams: () => ({ monedas: this.monedasList, defaultCurrencyId: this.defaultCurrencyId }),
         valueFormatter: (params: any) => {
           if (!this.selectedProviderId) return '-';
           // Se muestra el costo CON IVA (round2) cuando la fila tiene + IVA; el original va en el tooltip.
@@ -1202,6 +1211,8 @@ export class DetalleItemsProveedorComponent {
           params.data.costoUnitario = val;
           const unit = params.data.masIva ? Math.round(val * (1 + this.ivaPercent / 100) * 100) / 100 : val;
           params.data.costoTotal = unit * (params.data.cantidadConfirmada || 0);
+          // El editor pudo cambiar la moneda (idCurrency) → refrescar la moneda mostrada en Costo Total.
+          setTimeout(() => this.gridApi?.refreshCells({ rowNodes: [params.node], columns: ['costoUnitario', 'costoTotal'], force: true }), 0);
           return true;
         } },
       { field: 'masIva', headerName: '+ IVA', width: 100, cellRenderer: 'agCheckboxCellRenderer', cellEditor: 'agCheckboxCellEditor', editable: !this.ocGenerated },

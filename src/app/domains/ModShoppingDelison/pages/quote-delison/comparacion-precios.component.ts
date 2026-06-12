@@ -1156,6 +1156,8 @@ export class ComparacionPreciosComponent implements OnInit, OnDestroy {
         typeOc:        row.tipoOc || '',
         masIva:        !!row.masIva,   // propaga el "+ IVA" de la cotización a la OC (se ve en Captura de Gastos)
         idCurrency:    row.idCurrency ?? null,   // Fase 2: hereda la moneda de la COTIZ a la OC
+        // Nace NO liberado: el almacén no lo lee hasta marcar "Liberar para almacén" en Selección de OC.
+        liberarAlmacen: false,
         comment:       '',
         datePostpone
       };

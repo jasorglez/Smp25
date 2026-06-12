@@ -178,6 +178,9 @@ interface OcTooltipData {
   styles: [`
     :host { display: block; height: 100%; overflow: hidden; }
     :host ::ng-deep .item-blocked-row .ag-cell:not([col-id="itemspdf"]) { background-color: #ffebee !important; color: #b71c1c !important; }
+    /* Ítem NO liberado para almacén → fila rosa. Va sobre la fila (no la celda) para que las
+       celdas con color propio (verde cascada Artículo, gris bloqueado, azul almacén) lo conserven. */
+    :host ::ng-deep .ag-theme-quartz .ag-row.item-not-liberated-row { background-color: #fce4ec !important; }
   `]
 })
 export class OrdenesydetallesOcComponent implements OnDestroy {
@@ -675,6 +678,32 @@ export class OrdenesydetallesOcComponent implements OnDestroy {
       },
     },
     {
+      // "Liberar para almacén": al marcar, el almacén del depto que pidió la OC puede leer/recibir
+      // este ítem. La OC se crea en "Generar OC" con todos sus ítems NO liberados (gated aquí).
+      headerName: 'Liberar para almacén',
+      colId: 'liberarAlmacen',
+      width: 150,
+      sortable: false,
+      editable: false,
+      cellStyle: { textAlign: 'center' },
+      cellRenderer: (p: any) => {
+        const checked = p.data?.__liberarAlmacen === true;
+        const div = document.createElement('div');
+        div.style.cssText = 'display:flex; align-items:center; justify-content:center; height:100%;';
+        const cb = document.createElement('input');
+        cb.type = 'checkbox';
+        cb.checked = checked;
+        cb.style.cssText = 'width:16px; height:16px; cursor:pointer;';
+        cb.title = checked ? 'Liberado para almacén' : 'No liberado (el almacén no lo lee)';
+        cb.addEventListener('click', (ev: Event) => {
+          ev.stopPropagation();
+          this.onToggleLiberarAlmacen(p.data, (ev.target as HTMLInputElement).checked);
+        });
+        div.appendChild(cb);
+        return div;
+      },
+    },
+    {
       headerName: 'PDF',
       colId: 'itemspdf',
       width: 70,
@@ -740,6 +769,8 @@ export class OrdenesydetallesOcComponent implements OnDestroy {
     defaultColDef: { resizable: true, sortable: true, wrapHeaderText: true },
     rowClassRules: {
       'item-blocked-row': (p: any) => p.data?.__blocked === true,
+      // Fila rosa mientras el ítem NO esté liberado para almacén (no aplica a cerrados).
+      'item-not-liberated-row': (p: any) => p.data?.__liberarAlmacen === false && p.data?.__blocked !== true,
     },
     // Renderiza popups (dropdown "Cantidad Entregas") a nivel body para que no los recorte el grid.
     popupParent: typeof document !== 'undefined' ? document.body : null,
@@ -2196,6 +2227,26 @@ export class OrdenesydetallesOcComponent implements OnDestroy {
     }
   }
 
+  // Libera/oculta el ítem para el almacén del depto que pidió la OC. Persiste de inmediato
+  // (no requiere el botón Guardar) y repinta la fila (rosa = no liberado).
+  private onToggleLiberarAlmacen(row: any, value: boolean): void {
+    if (!row?.id) return;
+    const prev = row.__liberarAlmacen === true;
+    row.__liberarAlmacen = value;
+    if (this.itemsGridApi && !this.itemsGridApi.isDestroyed()) this.itemsGridApi.redrawRows();
+    this.ocAndReqsService.patchLiberarAlmacen(Number(row.id), value).subscribe({
+      next: () => {
+        this.showInlineAlert(value ? 'Ítem liberado para almacén' : 'Ítem retirado del almacén');
+      },
+      error: () => {
+        // Revertir el cambio visual si falla la persistencia.
+        row.__liberarAlmacen = prev;
+        if (this.itemsGridApi && !this.itemsGridApi.isDestroyed()) this.itemsGridApi.redrawRows();
+        this.showInlineAlert('No se pudo actualizar "Liberar para almacén"');
+      },
+    });
+  }
+
   private async loadItemsAlmacenData(): Promise<void> {
     const idOc = this.selectedOcRow?.id ?? null;
     if (!idOc || !this.itemsData.length) return;
@@ -2437,6 +2488,8 @@ export class OrdenesydetallesOcComponent implements OnDestroy {
           conditions: it.diasCondicionCompra ?? 1,
           typeoc: it.typeoc || it.typeOc || '',
           datepostponeConfirmada: it.datepostponeConfirmada ?? false,
+          // "Liberar para almacén": gate de lectura del almacén. Default true para datos viejos/CR.
+          __liberarAlmacen: it.liberarAlmacen ?? true,
           __originalDatepostpone: (it.datepostpone || '').substring(0, 10),
           __pendingDateSave: false,
         }));

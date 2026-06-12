@@ -73,5 +73,5 @@ export const environment = {
 
   urlRefreshToken: 'https://securetoken.googleapis.com/v1/token?key=AIzaSyDxCBGKk8nT09hdW85-PyOkhw5_JPZLF1A',
 
-  version: '2.52.458 (11 Junio 2026) - Molienda: materias primas por medición en cascada (master-detail)'
+  version: '2.52.473 (11 Junio 2026) - Modal gastar MP: dropdown empleados activos depto EyF (RRHH), fecha guardada con fecha actual (no null), fechas en formato DD/MM/YYYY en modal lotes e inventario MP'
 };

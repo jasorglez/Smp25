@@ -14,11 +14,12 @@ import { InventarioMpService } from 'app/services/inventario-mp.service';
 import { DetallesEntradasMoliendaComponent } from './detalles-entradasmolienda.component';
 import { SelectWithTooltipEditorV2Component } from 'app/shared/select-with-tooltip-editor-v2.component';
 import { DetailRouterFiltradoComponent } from './detail-router-filtrado.component';
+import { SalidaLotesModalComponent } from './salida-lotes-modal.component';
 
 @Component({
   selector: 'app-molienda-filtrado',
   standalone: true,
-  imports: [CommonModule, AgGridAngular, DetallesEntradasMoliendaComponent, SelectWithTooltipEditorV2Component, DetailRouterFiltradoComponent],
+  imports: [CommonModule, AgGridAngular, DetallesEntradasMoliendaComponent, SelectWithTooltipEditorV2Component, DetailRouterFiltradoComponent, SalidaLotesModalComponent],
   template: `
     <div class="col-12">
       <div class="row g-2">
@@ -59,9 +60,23 @@ import { DetailRouterFiltradoComponent } from './detail-router-filtrado.componen
         </div>
       </div>
     </div>
+
+    <!-- Modal: gastar materia prima por lote (FEFO) -->
+    <app-salida-lotes-modal *ngIf="salidaModal"
+      [articuloOptions]="salidaModal.articuloOptions"
+      [idSucursal]="salidaModal.idSucursal"
+      [idDepartamento]="EXTRACCION_FERMENTACION_DEPT_ID"
+      [idArticuloActual]="salidaModal.idArticuloActual"
+      [salidasPrevias]="salidaModal.salidasPrevias"
+      (resolve)="onSalidaResolve($event)"
+      (cancel)="salidaModal = null">
+    </app-salida-lotes-modal>
   `,
 })
 export class MoliendaComponent {
+  readonly EXTRACCION_FERMENTACION_DEPT_ID = 62;
+  // Estado del modal de salida por lote (lo dispara el Nivel 3 vía context).
+  salidaModal: { articuloOptions: any[]; idSucursal: number; idArticuloActual: number | null; salidasPrevias: { [idDatoExterno: number]: number }; onResolve: (r: any) => void } | null = null;
   private signalService = inject(SignalsService);
   private branchsService = inject(BranchsService);
   private productionService = inject(ProductionService);
@@ -226,6 +241,9 @@ export class MoliendaComponent {
         allMoliendaRows: this.rowData,
         matPrimaOptions: this.matPrimaOptions,
         userBranches: this.userBranches,
+        // Para el modal de salida por lote (Nivel 3):
+        idSucursal: params?.data?.sucursal ?? null,
+        openSalidaModal: (p: any) => this.openSalidaModal(p),
       },
     }),
     isExternalFilterPresent: () => this.activeMatPrimaFilter != null,
@@ -266,6 +284,17 @@ export class MoliendaComponent {
   onCellValueChanged(event: any) {
     event.data.__modified = true;
     this.hasChanges = true;
+  }
+
+  // Abre el modal de salida por lote (llamado desde Nivel 3 vía context).
+  openSalidaModal(payload: { articuloOptions: any[]; idSucursal: number; idArticuloActual: number | null; salidasPrevias?: { [idDatoExterno: number]: number }; onResolve: (r: any) => void }) {
+    this.salidaModal = { ...payload, salidasPrevias: payload.salidasPrevias ?? {} };
+  }
+
+  onSalidaResolve(res: { idArticulo: number; cantidad: number; lotes: { idDatoExterno: number; cantidad: number }[] }) {
+    const cb = this.salidaModal?.onResolve;
+    this.salidaModal = null;
+    cb?.(res);
   }
 
   private getArticulosParaSucursal(idSucursal: number | null): { id: number; name: string; cantidad?: number }[] {

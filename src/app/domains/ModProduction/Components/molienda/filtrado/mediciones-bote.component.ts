@@ -144,6 +144,11 @@ export class MedicionesBoteComponent implements ICellRendererAngularComp {
         this.matPrimaCountMap[idMedicion] = count;
         this.gridApi?.refreshCells({ columns: ['matPrima'], force: true });
       },
+      // Propagar modal de salida por lote al componente de mat prima
+      idSucursal:      params.context?.idSucursal ?? null,
+      openSalidaModal: params.context?.openSalidaModal ?? null,
+      // articuloOptions doblemente filtrado (active=1 + inventario > 0)
+      articuloOptions: params.context?.articuloOptions ?? [],
     };
 
     if (this.idMoliendaParams) this.loadAll();

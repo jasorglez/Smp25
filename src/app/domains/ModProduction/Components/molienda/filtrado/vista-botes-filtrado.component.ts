@@ -364,6 +364,11 @@ export class VistaBotesFiltradoComponent {
         this.medicionesCountMap[id] = count;
         this.paramsGridApi?.refreshCells({ columns: ['parametros'], force: true });
       },
+      // Propagar modal de salida por lote al sub-nivel de mediciones
+      idSucursal:        params?.context?.idSucursal ?? null,
+      openSalidaModal:   params?.context?.openSalidaModal ?? null,
+      // articuloOptions ya filtrado: active=1 en Vista EyF + inventario > 0 en sucursal
+      articuloOptions:   params?.context?.articuloOptions ?? [],
     };
     this.loadBotes();
   }

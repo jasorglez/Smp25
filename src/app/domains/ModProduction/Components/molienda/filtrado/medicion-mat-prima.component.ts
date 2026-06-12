@@ -5,8 +5,8 @@ import { ColDef, GridApi, GridReadyEvent } from 'ag-grid-enterprise';
 import { ICellRendererAngularComp } from 'ag-grid-angular';
 import { lastValueFrom } from 'rxjs';
 import { ProductionService } from 'app/services/production.service';
+import { SalidasMpService } from 'app/services/salidas-mp.service';
 import { alerts } from 'app/helpers/alerts';
-import { SelectWithTooltipEditorV2Component } from 'app/shared/select-with-tooltip-editor-v2.component';
 
 @Component({
   selector: 'app-medicion-mat-prima',
@@ -45,6 +45,7 @@ import { SelectWithTooltipEditorV2Component } from 'app/shared/select-with-toolt
 })
 export class MedicionMatPrimaComponent implements ICellRendererAngularComp {
   private productionService = inject(ProductionService);
+  private salidasService = inject(SalidasMpService);
 
   gridApi!: GridApi;
   rowData: any[] = [];
@@ -57,6 +58,10 @@ export class MedicionMatPrimaComponent implements ICellRendererAngularComp {
   private matPrimaOptions: { id: number; name: string }[] = [];
   private idMatPrimaParent: number | null = null;
   private onCountChanged: ((id: number, count: number) => void) | null = null;
+  private openSalidaModal: ((p: any) => void) | null = null;
+  private idSucursal: number | null = null;
+  private articuloOptionsFiltered: { id: number; name: string; cantidad?: number }[] = [];
+  private readonly EXTRACCION_FERMENTACION_DEPT_ID = 62;
 
   colDefs: ColDef[] = [];
 
@@ -81,6 +86,9 @@ export class MedicionMatPrimaComponent implements ICellRendererAngularComp {
     this.matPrimaOptions   = params.context?.allArticuloOptions ?? params.context?.matPrimaOptions ?? [];
     this.idMatPrimaParent  = params.context?.idArticulo ?? null;
     this.onCountChanged    = params.context?.onMatPrimaCountChanged ?? null;
+    this.openSalidaModal         = params.context?.openSalidaModal ?? null;
+    this.idSucursal              = params.context?.idSucursal ?? null;
+    this.articuloOptionsFiltered = params.context?.articuloOptions ?? [];
 
     // Registrar callbacks en el row para que el padre los llame al guardar
     if (params.data) {
@@ -99,38 +107,96 @@ export class MedicionMatPrimaComponent implements ICellRendererAngularComp {
       {
         field: 'idMatPrima',
         headerName: 'Materia Prima',
-        editable: true,
+        editable: false,
         flex: 1,
-        cellEditor: SelectWithTooltipEditorV2Component,
-        cellEditorParams: () => {
-          const usadas = new Set(
-            this.rowData.filter(r => r !== this.selectedRow).map((r: any) => r.idMatPrima).filter(Boolean)
-          );
-          return {
-            options: this.matPrimaOptions
-              .filter(m => !usadas.has(m.id) && m.id !== this.idMatPrimaParent)
-              .map(m => ({ id: m.id, description: m.name })),
-          };
-        },
+        cellStyle: { cursor: 'pointer', color: '#0d47a1', textDecoration: 'underline' },
         valueFormatter: (p: any) =>
-          p.value == null ? '' : (this.matPrimaOptions.find(m => m.id === p.value)?.name ?? String(p.value)),
-        valueSetter: (p: any) => {
-          p.data.idMatPrima = p.newValue == null ? null : Number(p.newValue);
-          p.data.__modified = true;
-          if (p.data.__isNew && p.oldValue == null && p.newValue != null) setTimeout(() => this.addAutoRow(false), 0);
-          return true;
-        },
+          p.value == null
+            ? 'Elegir…'
+            : (this.matPrimaOptions.find(m => m.id === p.value)?.name ?? String(p.value)),
+        onCellClicked: (p: any) => this.abrirModalSalida(p.data),
       },
       {
         field: 'cantidad',
         headerName: 'Cantidad',
-        editable: true,
+        editable: false,
         width: 120,
-        cellEditor: 'agNumberCellEditor',
+        // Espejo: se llena desde el modal (suma de lo tomado por lote). No editable.
+        cellStyle: { backgroundColor: '#f5f5f5', color: '#37474f' },
         valueFormatter: (p: any) => p.value != null ? Number(p.value).toFixed(4) : '',
-        valueSetter: (p: any) => { p.data.cantidad = p.newValue ?? null; p.data.__modified = true; return true; },
       },
     ];
+  }
+
+  private async abrirModalSalida(row: any) {
+    if (!this.openSalidaModal || !this.idSucursal) {
+      alerts.reqErrorToast('No se pudo abrir el selector de lotes (falta sucursal).');
+      return;
+    }
+    this.selectedRow = row;
+    const usadas = new Set(this.rowData.filter(r => r !== row).map((r: any) => r.idMatPrima).filter(Boolean));
+    // Usar articuloOptionsFiltered: active=1 en Vista EyF + inventario > 0 en sucursal
+    const opciones = this.articuloOptionsFiltered
+      .filter(m => !usadas.has(m.id) && m.id !== this.idMatPrimaParent)
+      .map(m => ({ id: m.id, name: m.name, cantidad: (m as any).cantidad }));
+
+    // Cargar salidas previas si la fila ya está guardada (modo edición).
+    let salidasPrevias: { [idDatoExterno: number]: number } = {};
+    if (row.id) {
+      try {
+        const previas = await lastValueFrom(this.salidasService.getByOrigen('MOLIENDA', row.id)).catch(() => []);
+        for (const s of (Array.isArray(previas) ? previas : [])) {
+          salidasPrevias[s.idDatoExterno] = (salidasPrevias[s.idDatoExterno] ?? 0) + s.cantidad;
+        }
+      } catch { /* si falla, abre sin pre-llenar */ }
+    }
+
+    this.openSalidaModal({
+      articuloOptions: opciones,
+      idSucursal: this.idSucursal,
+      idArticuloActual: row.idMatPrima ?? null,
+      salidasPrevias,
+      onResolve: (res: { idArticulo: number; cantidad: number; empleado: string; lotes: any[] }) =>
+        this.aplicarSalida(row, res),
+    });
+  }
+
+  private aplicarSalida(row: any, res: { idArticulo: number; cantidad: number; empleado: string; lotes: any[] }) {
+    const eraNuevoVacio = row.__isNew && row.idMatPrima == null;
+    row.idMatPrima = res.idArticulo;
+    row.cantidad   = res.cantidad;
+    row.__salidasLotes = res.lotes;
+    row.__empleadoSalida = res.empleado;
+    row.__modified = true;
+    this.hasChanges = true;
+    if (this.gridApi && !this.gridApi.isDestroyed()) this.gridApi.refreshCells({ force: true });
+    if (eraNuevoVacio) setTimeout(() => this.addAutoRow(false), 0);
+  }
+
+  private async persistSalidas(row: any) {
+    const idOrigen = row.id;
+    const lotes = Array.isArray(row.__salidasLotes) ? row.__salidasLotes : null;
+    if (!idOrigen || !lotes) return;
+    try {
+      const previas: any = await lastValueFrom(this.salidasService.getByOrigen('MOLIENDA', idOrigen)).catch(() => []);
+      await Promise.all((Array.isArray(previas) ? previas : []).map((s: any) =>
+        lastValueFrom(this.salidasService.delete(s.id))));
+      const usuario = row.__empleadoSalida ?? '';
+      const fecha = new Date().toISOString().split('T')[0];
+      for (const l of lotes) {
+        await lastValueFrom(this.salidasService.create({
+          idDatoExterno: l.idDatoExterno,
+          idMaterial: row.idMatPrima,
+          cantidad: l.cantidad,
+          fecha,
+          usuario,
+          idOrigen,
+          tipoOrigen: 'MOLIENDA',
+        }));
+      }
+    } catch (e) {
+      console.error('Error guardando salidas MP (medición):', e);
+    }
   }
 
   private async loadData() {
@@ -219,6 +285,7 @@ export class MedicionMatPrimaComponent implements ICellRendererAngularComp {
           cantidad:   row.cantidad ?? undefined,
         }));
         row.id = created.id; row.__isNew = false; row.__modified = false;
+        await this.persistSalidas(row);
       }
       for (const row of this.rowData.filter(r => r.__modified && !r.__isNew && r.id)) {
         await lastValueFrom(this.productionService.updateMedicionMatPrima(row.id, {
@@ -226,6 +293,7 @@ export class MedicionMatPrimaComponent implements ICellRendererAngularComp {
           cantidad:   row.cantidad ?? undefined,
         }));
         row.__modified = false;
+        await this.persistSalidas(row);
       }
       this.originalRowData = JSON.parse(JSON.stringify(this.rowData));
       this.hasChanges = false;
