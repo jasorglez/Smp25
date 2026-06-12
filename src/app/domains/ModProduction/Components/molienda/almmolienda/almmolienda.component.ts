@@ -18,6 +18,7 @@ import { alerts } from 'app/helpers/alerts';
 import { ExtractionFermentationBultosService } from '../../../../../services/extraction-fermentation-bultos.service';
 import { ExtractionFermentationCatalogItem, ExtractionFermentationCatalogService } from 'app/services/extraction-fermentation-catalog.service';
 import { CatalogProductionService } from '../../../../../services/catalog-production.service';
+import { SalidasMpService } from 'app/services/salidas-mp.service';
 
 @Component({
   selector: 'app-almmolienda',
@@ -102,6 +103,7 @@ export class AlmmoliendaComponent {
   private bultosService = inject(ExtractionFermentationBultosService);
   private catalogService = inject(CatalogProductionService);
   private catalogoCategorias = inject(ExtractionFermentationCatalogService);
+  private salidasMpService   = inject(SalidasMpService);
 
   hasUnsavedChanges = false;
   selectedRow: any  = null;
@@ -112,7 +114,7 @@ export class AlmmoliendaComponent {
   gridApi!: GridApi;
   private idRoot = 0;
   private enterPressed = false;
-  private editableColumnOrder = ['sucursal', 'id_articulo', 'ajustesInventarios', 'comentarios'];
+  private editableColumnOrder = ['sucursal', 'id_articulo', 'comentarios'];
 
   userBranches: any[] = [];
   branchNames: string[] = [];
@@ -301,22 +303,6 @@ export class AlmmoliendaComponent {
       cellStyle: { backgroundColor: '#e8f5e9', cursor: 'pointer' }
     },
    
-    {
-      headerName: 'Total Inventarios',
-      field: 'totalInventarios',
-      width: 150,
-      editable: false,
-      type: 'numericColumn',
-      valueFormatter: (p) => String(Math.trunc(p.value ?? 0)),
-      cellStyle: { backgroundColor: '#f0f4ff', fontWeight: '600' }
-    },
-    {
-      headerName: 'Ajustes Inventarios',
-      field: 'ajustesInventarios',
-      width: 150,
-      editable: true,
-      type: 'numericColumn',
-    },
     {
       headerName: 'Comentarios',
       field: 'comentarios',
@@ -709,14 +695,13 @@ export class AlmmoliendaComponent {
         .join(',');
 
       // Entradas: contar requisiciones reales en ocandreq (no DetailsMolienda).
-      // Esto da el valor correcto sin necesidad de abrir la cascada.
-      // Salidas: sigue contando DetailsMolienda (no hay sync automático para salidas).
+      // Salidas: contar desde salidas_mp (fuente real del sistema de salidas).
       const countsPromises = mapped
         .filter(row => row.id && row.sucursal && row.idMaterial)
         .map(async row => {
           const [reqs, salidas, crItems] = await Promise.all([
             lastValueFrom(this.ocAndReqsService.getReqsByBranchMaterial(row.sucursal, row.idMaterial, deptsCsv)),
-            lastValueFrom(this.moliendaService.getDetails(row.id, 'SALIDA')),
+            lastValueFrom(this.salidasMpService.getResumen(row.idMaterial, row.sucursal)).catch(() => []),
             lastValueFrom(this.ocAndReqsService.getCompraRapidaItems(row.sucursal, row.idMaterial)).catch(() => []),
           ]);
           // Entradas = requisiciones OC + requisiciones distintas con compra rápida (mismo material).

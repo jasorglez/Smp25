@@ -18,6 +18,15 @@ export interface LoteDisponible {
   proveedor: string;
 }
 
+// Resumen de salida para el Nivel 2 "Salidas" del Almacén Molienda.
+export interface SalidaResumen {
+  folioEntrada: string;
+  lote: string;
+  fecha?: string | null;
+  cantidad: number;
+  usuario?: string | null;
+}
+
 // Una salida (consumo) de materia prima por lote.
 export interface SalidaMp {
   id?: number;
@@ -41,6 +50,13 @@ export class SalidasMpService {
   getDisponibles(idMaterial: number, idDepartamento: number, idSucursal: number): Observable<LoteDisponible[]> {
     return this.http.get<LoteDisponible[]>(
       `${this.apiUrl}/disponibles/${idMaterial}/${idDepartamento}/${idSucursal}`,
+      { headers: this.trackingService.getHeaders() }
+    );
+  }
+
+  getResumen(idMaterial: number, idSucursal: number): Observable<SalidaResumen[]> {
+    return this.http.get<SalidaResumen[]>(
+      `${this.apiUrl}/resumen/${idMaterial}/${idSucursal}`,
       { headers: this.trackingService.getHeaders() }
     );
   }

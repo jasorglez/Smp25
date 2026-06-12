@@ -17,6 +17,7 @@ import { CaracteristicasEntradaService } from '../../../../../services/caracteri
 import { CaracteristicasMateriaPrimaService } from 'app/services/caracteristicas-materia-prima.service';
 import { RevisionCaracteristicasEntradaService, RevisionCaracteristicaEntrada } from 'app/services/revision-caracteristicas-entrada.service';
 import { EmployeesService } from 'app/services/employees.service';
+import { SalidasMpService } from 'app/services/salidas-mp.service';
 import { FormsModule } from '@angular/forms';
 import { IntandoutDocumentsService } from 'app/services/intandoutDocuments.service';
 import { EntradaDocumentsOverlayService } from 'app/services/entrada-documents-overlay.service';
@@ -261,6 +262,7 @@ export class DetalleMoliendaComponent {
   private caracteristicasMpService = inject(CaracteristicasMateriaPrimaService);
   private revisionService = inject(RevisionCaracteristicasEntradaService);
   private employeesService = inject(EmployeesService);
+  private salidasMpService = inject(SalidasMpService);
   private intandoutDocumentsService = inject(IntandoutDocumentsService);
   private entradaDocumentsOverlayService = inject(EntradaDocumentsOverlayService);
   private prefixSetupService = inject(PrefixSetupService);
@@ -1420,6 +1422,9 @@ export class DetalleMoliendaComponent {
       }
     });
     this.detailType = params?.data?.detailType ?? 'entradas';
+    if (this.detailType === 'salidas') {
+      this.colDefs = this.buildSalidasColDefs();
+    }
     this.bultosCantidad = params?.bultosCantidad ?? null;
     this.bultosCantidadARevisar = params?.bultosCantidadARevisar ?? null;
     this.proporcionRevision = params?.proporcionRevision ?? null;
@@ -1434,8 +1439,10 @@ export class DetalleMoliendaComponent {
       .join(',');
 
     // Flujo async: padre abre la cascada inmediatamente y sincroniza en background.
-    // Mostrar loading hasta que lleguen los datos.
-    const entradasData$ = params?.entradasData$ as Observable<any> | null;
+    // Mostrar loading hasta que lleguen los datos. Solo aplica para entradas.
+    const entradasData$ = this.detailType !== 'salidas'
+      ? params?.entradasData$ as Observable<any> | null
+      : null;
     if (entradasData$) {
       if (this.gridApi && !this.gridApi.isDestroyed()) this.gridApi.showLoadingOverlay();
       this.entradasDataSub?.unsubscribe();
@@ -1472,11 +1479,11 @@ export class DetalleMoliendaComponent {
       return;
     }
 
-    // Flujo precargado: el padre ya tenía los datos del ciclo anterior
+    // Flujo precargado: el padre ya tenía los datos del ciclo anterior (solo entradas).
     const preloadedReqs = params?.preloadedReqs as any[] | undefined;
     const preloadedDetails = params?.preloadedDetails as any[] | undefined;
 
-    if (preloadedReqs?.length && preloadedDetails !== undefined) {
+    if (this.detailType !== 'salidas' && preloadedReqs?.length && preloadedDetails !== undefined) {
       this.reqOptions = preloadedReqs;
       this.rowData = preloadedDetails.map((d: any) => {
         const req = this.reqOptions.find((r: any) => r.id === d.idRequisition);
@@ -1501,8 +1508,10 @@ export class DetalleMoliendaComponent {
       return;
     }
 
-    // Flujo normal (salidas o sin precarga)
-    await this.loadReqOptions();
+    // Flujo normal
+    if (this.detailType !== 'salidas') {
+      await this.loadReqOptions();
+    }
     this.initCompleted = true;
     if (this.gridApi && !this.gridApi.isDestroyed()) this.loadData();
   }
@@ -2482,6 +2491,11 @@ export class DetalleMoliendaComponent {
   }
 
   async loadData() {
+    if (this.detailType === 'salidas') {
+      await this.loadSalidasData();
+      return;
+    }
+
     const idMolienda = this.internalParams?.data?.id;
     if (!idMolienda || typeof idMolienda === 'string') {
       this.rowData = [];
@@ -2491,7 +2505,7 @@ export class DetalleMoliendaComponent {
     }
 
     try {
-      const type = this.detailType === 'entradas' ? 'ENTRADA' : 'SALIDA';
+      const type = 'ENTRADA';
       const items = await lastValueFrom(this.moliendaService.getDetails(idMolienda, type));
       this.rowData = (Array.isArray(items) ? items : []).map((d: any) => {
         const req = this.reqOptions.find(r => r.id === d.idRequisition);
@@ -2513,6 +2527,86 @@ export class DetalleMoliendaComponent {
       this.loadCompraRapidaRows();
     } catch (error) {
       console.error('Error loading details molienda:', error);
+    }
+  }
+
+  private buildSalidasColDefs(): ColDef[] {
+    return [
+      {
+        headerName: '#',
+        width: 45,
+        valueGetter: (p) => (p.node?.rowIndex ?? 0) + 1,
+        cellStyle: { fontWeight: 'bold' },
+      },
+      {
+        field: 'folioEntrada',
+        headerName: 'Folio Entrada',
+        width: 160,
+        editable: false,
+        valueFormatter: (p) => (p.value ?? '').toUpperCase(),
+      },
+      {
+        field: 'lote',
+        headerName: 'Lote',
+        width: 130,
+        editable: false,
+        valueFormatter: (p) => (p.value ?? '').toUpperCase(),
+      },
+      {
+        field: 'fecha',
+        headerName: 'Fecha',
+        width: 110,
+        editable: false,
+        valueFormatter: (p) => {
+          if (!p.value) return '—';
+          const d = new Date(p.value);
+          if (isNaN(d.getTime())) return String(p.value);
+          const dd = String(d.getDate()).padStart(2, '0');
+          const mm = String(d.getMonth() + 1).padStart(2, '0');
+          return `${dd}/${mm}/${d.getFullYear()}`;
+        },
+      },
+      {
+        field: 'cantidad',
+        headerName: 'Cantidad',
+        width: 100,
+        editable: false,
+        type: 'numericColumn',
+      },
+      {
+        field: 'usuario',
+        headerName: 'Quien utilizó',
+        flex: 1,
+        minWidth: 140,
+        editable: false,
+        valueFormatter: (p) => (p.value ?? '').toUpperCase(),
+      },
+    ];
+  }
+
+  private async loadSalidasData() {
+    const idMaterial = this.internalParams?.data?.idMaterial;
+    const idSucursal = this.internalParams?.data?.sucursal;
+    if (!idMaterial || !idSucursal) {
+      this.rowData = [];
+      if (this.gridApi && !this.gridApi.isDestroyed())
+        this.gridApi.setGridOption('rowData', []);
+      return;
+    }
+    try {
+      const items = await lastValueFrom(this.salidasMpService.getResumen(idMaterial, idSucursal));
+      this.rowData = (Array.isArray(items) ? items : []).map((s: any) => ({
+        folioEntrada: s.folioEntrada ?? '',
+        lote:         (s.lote ?? '').toUpperCase(),
+        fecha:        s.fecha ?? null,
+        cantidad:     s.cantidad ?? 0,
+        usuario:      (s.usuario ?? '').toUpperCase(),
+      }));
+      if (this.gridApi && !this.gridApi.isDestroyed())
+        this.gridApi.setGridOption('rowData', this.rowData);
+      this.updateParentCount();
+    } catch (error) {
+      console.error('Error loading salidas MP:', error);
     }
   }
 

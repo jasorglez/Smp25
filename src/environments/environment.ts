@@ -73,5 +73,5 @@ export const environment = {
 
   urlRefreshToken: 'https://securetoken.googleapis.com/v1/token?key=AIzaSyDxCBGKk8nT09hdW85-PyOkhw5_JPZLF1A',
 
-  version: '2.52.459 (11 Junio 2026) - Molienda: medicion de materias primas por parametro'
+  version: '2.52.478 (12 Junio 2026) - Molienda: submenus hardcodeados + Total Inventarios'
 };
