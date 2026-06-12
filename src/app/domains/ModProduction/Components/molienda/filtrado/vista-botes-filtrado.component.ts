@@ -256,6 +256,7 @@ export class VistaBotesFiltradoComponent {
   commentsLoading = false;
   commentsData: { comment: ItemComment; faseFe: string; fecha: string; hora: string }[] = [];
   commentsFolioId: number | null = null;
+  commentCountMap: Record<number, number> = {};
 
   private itemCommentsService = inject(ItemCommentsService);
 
@@ -273,6 +274,7 @@ export class VistaBotesFiltradoComponent {
       headerName: 'Mediciones',
       editable: false,
       flex: 1,
+      cellStyle: (p: any) => p.data?.id ? { backgroundColor: '#e8f5e9', cursor: 'pointer' } : {},
       cellRenderer: (p: any) => {
         if (!p.data?.id) return '—';
         const count = this.medicionesCountMap[p.data.id];
@@ -307,13 +309,15 @@ export class VistaBotesFiltradoComponent {
       valueSetter: (p: any) => { p.data.libLimpieza = p.newValue; p.data.__modified = true; this.hasChanges = true; return true; },
     },
     {
-      field: 'verComentarios', headerName: '💬', width: 46, editable: false, sortable: false,
+      field: 'verComentarios', headerName: '💬', width: 56, editable: false, sortable: false,
       cellRenderer: (p: any) => {
         if (!p.data?.id) return '';
         const isActive = this.commentsFolioId === p.data.id && this.showComments;
+        const count = this.commentCountMap[p.data.id] ?? 0;
         const btn = document.createElement('button');
-        btn.style.cssText = 'background:none;border:none;padding:0;cursor:pointer;font-size:14px;';
-        btn.innerHTML = `<i class="bi bi-chat-text" style="color:${isActive ? '#1565c0' : '#aaa'};"></i>`;
+        btn.style.cssText = 'background:none;border:none;padding:0;cursor:pointer;font-size:14px;position:relative;display:inline-flex;align-items:center;gap:3px;';
+        const badge = count > 0 ? `<span style="font-size:0.65rem;font-weight:700;color:${isActive ? '#1565c0' : '#555'}">${count}</span>` : '';
+        btn.innerHTML = `<i class="bi bi-chat-text" style="color:${isActive ? '#1565c0' : count > 0 ? '#555' : '#ccc'};"></i>${badge}`;
         btn.addEventListener('click', (ev) => { ev.stopPropagation(); this.toggleFolioComments(p.data); });
         return btn;
       },
@@ -519,12 +523,19 @@ export class VistaBotesFiltradoComponent {
       if (this.paramsGridApi && !this.paramsGridApi.isDestroyed())
         this.paramsGridApi.setGridOption('rowData', mapped);
 
-      // Cargar conteo de mediciones para mostrar en el link antes de expandir
+      // Cargar conteo de mediciones y conteo de comentarios por folio
       mapped.filter(r => r.id).forEach(r => {
         lastValueFrom(this.productionService.getMoliendaMedicionesByParams(r.id))
           .then((med: any) => {
             this.medicionesCountMap[r.id] = (med as any[])?.length ?? 0;
             this.paramsGridApi?.refreshCells({ columns: ['parametros'], force: true });
+          })
+          .catch(() => { });
+
+        lastValueFrom(this.itemCommentsService.getCommentCount('MEDICION', r.id))
+          .then((count: number) => {
+            this.commentCountMap[r.id] = count;
+            this.paramsGridApi?.refreshCells({ columns: ['verComentarios'], force: true });
           })
           .catch(() => { });
       });
@@ -655,6 +666,8 @@ export class VistaBotesFiltradoComponent {
         .sort((a, b) => new Date(a.comment.createdAt ?? 0).getTime() - new Date(b.comment.createdAt ?? 0).getTime());
     } finally {
       this.commentsLoading = false;
+      this.commentCountMap[row.id] = this.commentsData.length;
+      this.paramsGridApi?.refreshCells({ columns: ['verComentarios'], force: true });
     }
   }
 

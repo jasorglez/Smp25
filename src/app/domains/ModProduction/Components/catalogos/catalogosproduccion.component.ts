@@ -529,7 +529,7 @@ import { CatalogoParamMoliendaComponent } from '../molienda/catalogo-param-molie
               <ag-grid-angular
                 class="ag-theme-quartz catalog-grid"
                 [rowData]="rowData()"
-                [columnDefs]="isBotesMode ? boteColumnDefs : columnDefs"
+                [columnDefs]="isBotesMode ? boteColumnDefs : isFasesFEMode ? fasesFEColDefs : columnDefs"
                 [gridOptions]="isBotesMode ? boteGridOptions : gridOptions"
                 (gridReady)="onGridReady($event)"
                 (cellValueChanged)="onCellValueChanged($event)"
@@ -868,6 +868,7 @@ export class CatalogosProduccionComponent {
   private boteEditableColumnOrder = ['idBranch', 'idPrefijoFase', 'idMatPrima', 'cantidad'];
   isBotesMode  = false;
   isParamsMode = false;
+  isFasesFEMode = false;
 
   // ── Prefijos Fases ──
   prefijoFaseOptions: { id: number; prefijo: string; nombreFase: string }[] = [];
@@ -1139,6 +1140,24 @@ export class CatalogosProduccionComponent {
       headerName: 'Molienda',
       field: 'molienda',
       width: 100,
+      editable: true,
+      cellRenderer: 'agCheckboxCellRenderer',
+    },
+  ];
+
+  fasesFEColDefs: ColDef[] = [
+    {
+      headerName: 'Nombre Fase',
+      field: 'prefijo',
+      flex: 1,
+      editable: true,
+      cellEditor: 'agTextCellEditor',
+      valueSetter: (p: any) => { p.data.prefijo = String(p.newValue ?? '').trim(); p.data.__modified = true; this.hasUnsavedChanges = true; return true; },
+    },
+    {
+      headerName: 'Activo',
+      field: 'valor',
+      width: 90,
       editable: true,
       cellRenderer: 'agCheckboxCellRenderer',
     },
@@ -2286,19 +2305,27 @@ export class CatalogosProduccionComponent {
     this.prefijoFaseMode = false;
     if (this.isCaracteristicasManzana(item)) {
       this.showHierarchicalTable = true;
-      this.isBotesMode  = false;
-      this.isParamsMode = false;
+      this.isBotesMode   = false;
+      this.isParamsMode  = false;
+      this.isFasesFEMode = false;
       this.loadHierarchicalData();
     } else if (this.isParametrosCatalog(item)) {
       this.showHierarchicalTable = false;
-      this.isBotesMode  = false;
-      this.isParamsMode = true;
+      this.isBotesMode   = false;
+      this.isParamsMode  = true;
+      this.isFasesFEMode = false;
     } else {
       this.showHierarchicalTable = false;
-      this.isParamsMode = false;
-      this.isBotesMode  = this.isBotesCatalog(item);
+      this.isParamsMode  = false;
+      this.isBotesMode   = this.isBotesCatalog(item);
+      this.isFasesFEMode = !this.isBotesMode && this.isFasesFECatalog(item);
       this.loadCatalogData(item.id);
     }
+  }
+
+  private isFasesFECatalog(item: ExtractionFermentationCatalogItem): boolean {
+    const d = (item.description || '').trim().toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
+    return d.startsWith('fases fe');
   }
 
   private isCaracteristicasManzana(item: ExtractionFermentationCatalogItem): boolean {
@@ -2341,7 +2368,9 @@ export class CatalogosProduccionComponent {
       this.showToast('El nombre no puede estar vacío');
       return;
     }
-    this.catalogService.update(this.editingCatalogId, { description: this.editingCatalogDescription }).subscribe(() => {
+    const item = this.catalogSidebarItems.find(x => x.id === this.editingCatalogId);
+    if (!item) return;
+    this.catalogService.update(this.editingCatalogId, { ...item, description: this.editingCatalogDescription.trim() }).subscribe(() => {
       this.showToast('Categoría actualizada');
       this.editingCatalogId = null;
       this.editingCatalogDescription = '';

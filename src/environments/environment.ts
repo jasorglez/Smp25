@@ -36,8 +36,8 @@ export const environment = {
 
   urlBpi: 'https://ms-pruebas-api.bi2.mx/bpi/api', // 5005
 
-  urlWarehouse: 'https://ms-pruebas-api.bi2.mx/warehouse/api', // 5007
-  //urlWarehouse: 'http://localhost:5199/api',
+  //urlWarehouse: 'https://ms-pruebas-api.bi2.mx/warehouse/api', // 5007
+  urlWarehouse: 'http://localhost:5199/api',
 
   urlAdministration: 'https://ms-pruebas-api.bi2.mx/tracking/api', // 5006 -- Tambien conocido como Tracking
   //urlAdministration : 'http://localhost:5047/api', // 5006 -- Tambien conocido como Tracking
@@ -73,5 +73,5 @@ export const environment = {
 
   urlRefreshToken: 'https://securetoken.googleapis.com/v1/token?key=AIzaSyDxCBGKk8nT09hdW85-PyOkhw5_JPZLF1A',
 
-  version: '2.52.473 (11 Junio 2026) - Modal gastar MP: dropdown empleados activos depto EyF (RRHH), fecha guardada con fecha actual (no null), fechas en formato DD/MM/YYYY en modal lotes e inventario MP'
+  version: '2.52.459 (11 Junio 2026) - Molienda: medicion de materias primas por parametro'
 };
