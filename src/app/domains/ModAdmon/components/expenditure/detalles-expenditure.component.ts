@@ -14,6 +14,8 @@ import { SignalsService } from 'app/services/signals.service';
 // import { ProviderModalService } from '../egresos-palacio/services/provider-modal.service'; // Ya no needed
 import { CustomersService } from 'app/services/customers.service';
 import { AdministrationService } from 'app/services/administration.service';
+import { EmployeesService } from 'app/services/employees.service';
+import { RolesService } from 'app/services/roles.service';
 import pdfMake from 'pdfmake/build/pdfmake';
 import * as pdfFonts from 'pdfmake/build/vfs_fonts';
 import { lastValueFrom } from 'rxjs';
@@ -236,6 +238,8 @@ export class DetallesExpenditureComponent implements OnInit, OnDestroy {
   // private providerModalService = inject(ProviderModalService); // Ya no needed
   private customersService = inject(CustomersService);
   private administrationService = inject(AdministrationService);
+  private employeesService = inject(EmployeesService);
+  private rolesService = inject(RolesService);
 
   rowData: any[] = [];
   hasUnsavedChanges: boolean = false;
@@ -2022,10 +2026,24 @@ export class DetallesExpenditureComponent implements OnInit, OnDestroy {
           this.addConceptFromComprobante(parsedData, tipo, nuevoProveedor);
           return;
         }
+      } else if (tipo === 'EMPLEADOS' && nombre) {
+        const crearResult = await Swal.fire({
+          title: 'Empleado no encontrado',
+          html: `No existe un empleado similar a <strong>"${nombre}"</strong>.<br>¿Deseas crearlo automáticamente?`,
+          icon: 'question',
+          confirmButtonText: 'Sí, crear',
+          cancelButtonText: 'No, continuar sin asignar',
+          showCancelButton: true
+        });
+        if (crearResult.isConfirmed) {
+          const nuevoEmpleado = await this.crearEmpleadoAutomatico(nombre);
+          this.addConceptFromComprobante(parsedData, tipo, nuevoEmpleado);
+          return;
+        }
       } else {
         alerts.basicAlert(
           'Sin coincidencia',
-          `No se encontró ningún empleado parecido a "${nombre}".`,
+          `No se encontró ningún ${tipo === 'PROVEEDORES' ? 'proveedor' : 'empleado'} parecido a "${nombre}".`,
           'info'
         );
       }
@@ -2080,6 +2098,60 @@ export class DetallesExpenditureComponent implements OnInit, OnDestroy {
     }
 
     return mejorScore > 0 ? mejorItem : null;
+  }
+
+  private async crearEmpleadoAutomatico(nombre: string): Promise<{ id: number; name: string } | null> {
+    const idRoot   = this.context?.idRoot   || 0;
+    const idBranch = this.context?.componentParent?.idBranch || this.context?.idBranch || 0;
+
+    // Obtener primer departamento disponible
+    let idDepto = 0;
+    try {
+      const roles: any[] = await lastValueFrom(this.rolesService.getCatalogRoles(idRoot));
+      if (Array.isArray(roles) && roles.length > 0) {
+        idDepto = roles[0].id;
+      }
+    } catch { /* si falla, idDepto queda en 0 */ }
+
+    // Código generado: primeras 3 letras + timestamp corto
+    const codigo = (nombre.replace(/\s+/g, '').substring(0, 3).toUpperCase() || 'EMP') +
+                   Date.now().toString().slice(-5);
+
+    const payload = {
+      name:         nombre,
+      employeeCode: codigo,
+      idBranch,
+      idDepto,
+      idPosition:   null,
+      idBank:       null,
+      priceXHour:   0,
+      vigente:      true,
+      active:       true,
+      ingressDate:  new Date().toISOString().substring(0, 10)
+    };
+
+    try {
+      const result: any = await lastValueFrom(this.employeesService.addEmployee(payload));
+      const nuevoEmpleado = { id: result.id, name: nombre };
+
+      if (this.context?.componentParent?.employees) {
+        this.context.componentParent.employees.push(nuevoEmpleado);
+      } else if (this.context?.employees) {
+        this.context.employees.push(nuevoEmpleado);
+      }
+      this.employees.push(nuevoEmpleado);
+
+      this._colDefs = [];
+      if (this.gridApi) {
+        this.gridApi.setGridOption('columnDefs', this.colDefs);
+      }
+
+      alerts.toastAlert(`Empleado "${nombre}" creado correctamente`, 'success');
+      return nuevoEmpleado;
+    } catch (error: any) {
+      alerts.basicAlert('Error', `No se pudo crear el empleado. ${error?.error?.message || error?.message || ''}`, 'error');
+      return null;
+    }
   }
 
   private async crearProveedorAutomatico(nombre: string): Promise<{ id: number; name: string } | null> {
