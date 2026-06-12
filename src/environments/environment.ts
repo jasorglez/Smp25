@@ -86,5 +86,5 @@ export const environment = {
     // publicKey: 'TEST-4399133a-4676-42a2-ab85-d946370bf96a',
   },
 
-  version: '5.07 (12 Junio 2026 10:30) feat(egresos): auto-crear empleado si no existe al leer comprobante',
+  version: '5.08 (12 Junio 2026 11:00) fix(egresos): umbral busqueda proveedor/empleado, id auto-create',
 };
