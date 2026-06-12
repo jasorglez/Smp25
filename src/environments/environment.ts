@@ -86,5 +86,5 @@ export const environment = {
     // publicKey: 'TEST-4399133a-4676-42a2-ab85-d946370bf96a',
   },
 
-  version: '5.05 (10 Junio 2026 18:30) fix(prospectos): registrar interaccion WhatsApp al guardar nuevo prospecto',
+  version: '5.06 (12 Junio 2026 10:00) feat(egresos): auto-crear proveedor si no existe al leer comprobante',
 };

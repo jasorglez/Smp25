@@ -2008,11 +2008,27 @@ export class DetallesExpenditureComponent implements OnInit, OnDestroy {
     const match = this.buscarMejorCoincidencia(nombre, lista, tipo);
 
     if (!match) {
-      alerts.basicAlert(
-        'Sin coincidencia',
-        `No se encontró ningún ${tipo === 'PROVEEDORES' ? 'proveedor' : 'empleado'} parecido a "${nombre}".`,
-        'info'
-      );
+      if (tipo === 'PROVEEDORES' && nombre) {
+        const crearResult = await Swal.fire({
+          title: 'Proveedor no encontrado',
+          html: `No existe un proveedor similar a <strong>"${nombre}"</strong>.<br>¿Deseas crearlo automáticamente?`,
+          icon: 'question',
+          confirmButtonText: 'Sí, crear',
+          cancelButtonText: 'No, continuar sin asignar',
+          showCancelButton: true
+        });
+        if (crearResult.isConfirmed) {
+          const nuevoProveedor = await this.crearProveedorAutomatico(nombre);
+          this.addConceptFromComprobante(parsedData, tipo, nuevoProveedor);
+          return;
+        }
+      } else {
+        alerts.basicAlert(
+          'Sin coincidencia',
+          `No se encontró ningún empleado parecido a "${nombre}".`,
+          'info'
+        );
+      }
       this.addConceptFromComprobante(parsedData, tipo, null);
       return;
     }
@@ -2064,6 +2080,36 @@ export class DetallesExpenditureComponent implements OnInit, OnDestroy {
     }
 
     return mejorScore > 0 ? mejorItem : null;
+  }
+
+  private async crearProveedorAutomatico(nombre: string): Promise<{ id: number; name: string } | null> {
+    const idRoot = this.context?.idRoot || 0;
+    const payload = {
+      ...this.newProvider,
+      idRoot,
+      idBranch: this.context?.componentParent?.idBranch || 0,
+      company: nombre,
+      nameContact: nombre,
+    };
+    try {
+      const result: any = await lastValueFrom(this.customersService.addCustomer(payload));
+      const nuevoProveedor = { id: result.id, name: nombre };
+      if (this.context?.componentParent?.providers) {
+        this.context.componentParent.providers.push(nuevoProveedor);
+      } else if (this.context?.providers) {
+        this.context.providers.push(nuevoProveedor);
+      }
+      this.providers.push(nuevoProveedor);
+      this._colDefs = [];
+      if (this.gridApi) {
+        this.gridApi.setGridOption('columnDefs', this.colDefs);
+      }
+      alerts.toastAlert(`Proveedor "${nombre}" creado correctamente`, 'success');
+      return nuevoProveedor;
+    } catch (error: any) {
+      alerts.basicAlert('Error', `No se pudo crear el proveedor. ${error?.error?.message || error?.message || ''}`, 'error');
+      return null;
+    }
   }
 
   private addConceptFromComprobante(data: any, tipoExpense: string = 'PROVEEDORES', entityMatch: any = null) {
