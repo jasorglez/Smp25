@@ -2097,7 +2097,9 @@ export class DetallesExpenditureComponent implements OnInit, OnDestroy {
       }
     }
 
-    return mejorScore > 0 ? mejorItem : null;
+    // Requiere al menos 40% de las palabras coincidiendo (mínimo 2 para nombres largos)
+    const minScore = palabras.length <= 2 ? 1 : Math.ceil(palabras.length * 0.4);
+    return mejorScore >= minScore ? mejorItem : null;
   }
 
   private async crearEmpleadoAutomatico(nombre: string): Promise<{ id: number; name: string } | null> {
@@ -2165,7 +2167,10 @@ export class DetallesExpenditureComponent implements OnInit, OnDestroy {
     };
     try {
       const result: any = await lastValueFrom(this.customersService.addCustomer(payload));
-      const nuevoProveedor = { id: result.id, name: nombre };
+      // Backend puede devolver el objeto completo, solo el id numérico, o Id (PascalCase)
+      const newId = typeof result === 'number' ? result : (result?.id ?? result?.Id ?? null);
+      if (!newId) console.warn('crearProveedorAutomatico: respuesta sin id', result);
+      const nuevoProveedor = { id: newId, name: nombre };
       if (this.context?.componentParent?.providers) {
         this.context.componentParent.providers.push(nuevoProveedor);
       } else if (this.context?.providers) {
@@ -2179,7 +2184,9 @@ export class DetallesExpenditureComponent implements OnInit, OnDestroy {
       alerts.toastAlert(`Proveedor "${nombre}" creado correctamente`, 'success');
       return nuevoProveedor;
     } catch (error: any) {
-      alerts.basicAlert('Error', `No se pudo crear el proveedor. ${error?.error?.message || error?.message || ''}`, 'error');
+      const detalle = error?.error?.message || error?.error?.title || error?.message || JSON.stringify(error?.error || error);
+      console.error('crearProveedorAutomatico error:', error);
+      alerts.basicAlert('Error', `No se pudo crear el proveedor.\n${detalle}`, 'error');
       return null;
     }
   }
