@@ -240,6 +240,7 @@ export class ExpenditureComponent implements OnDestroy, OnChanges {
       }
 
       this.signalsService.setIdIncomeAndExpense(null);
+      this.loadSaldoCuenta();
       this.getExpenditure();
     }
   }
@@ -364,7 +365,6 @@ export class ExpenditureComponent implements OnDestroy, OnChanges {
 
           console.log('✅ Egresos cargados:', this.incomes.length);
           resolve();
-          void this.loadSaldoCuenta();
         },
         error: (err) => {
           console.error('Error obteniendo egresos. Código:', err.status, 'Detalles:', err);
@@ -377,18 +377,10 @@ export class ExpenditureComponent implements OnDestroy, OnChanges {
       this.trackingService.getEmail());
   }
 
-  async loadSaldoCuenta(): Promise<void> {
+  loadSaldoCuenta(): void {
     if (!this.idAccount) { this.saldoCuenta = null; return; }
-    try {
-      const response: any = await lastValueFrom(this.administrationService.getBalance(this.idAccount));
-      if (response?.hasData && Array.isArray(response.data) && response.data.length > 0) {
-        this.saldoCuenta = parseFloat(response.data[response.data.length - 1].saldo) || 0;
-      } else {
-        this.saldoCuenta = 0;
-      }
-    } catch {
-      this.saldoCuenta = null;
-    }
+    const account = this.bankAccounts.find(a => a.id === this.idAccount);
+    this.saldoCuenta = account != null ? (Number(account.saldo) || 0) : null;
   }
 
   async getBills() {
@@ -918,7 +910,7 @@ export class ExpenditureComponent implements OnDestroy, OnChanges {
                 tax: totals.tax,
                 total: totals.total
               });
-              void this.loadSaldoCuenta();
+              void this.getBankAccounts();
             }
           }
         }
@@ -1140,6 +1132,7 @@ export class ExpenditureComponent implements OnDestroy, OnChanges {
       this.notSavedChanges = false;
       this.newlyAddedRows = [];
       await this.getExpenditure();
+      await this.getBankAccounts();
     } catch (error) {
       console.error(error);
       alerts.basicAlert(
@@ -1235,6 +1228,7 @@ export class ExpenditureComponent implements OnDestroy, OnChanges {
             this.idAccount = this.bankAccounts[0].id;
           }
           resolve();
+          this.loadSaldoCuenta();
         },
         error => {
           console.error(error);
