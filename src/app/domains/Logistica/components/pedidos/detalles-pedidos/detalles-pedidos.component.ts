@@ -687,6 +687,14 @@ get colDefs(): ColDef[] {
       return;
     }
 
+    const confirm = await alerts.confirmAlert(
+      '¿Eliminar registro?',
+      '¿Deseas borrar este registro?',
+      'warning',
+      'Sí, borrar'
+    );
+    if (!confirm?.isConfirmed) return;
+
     try {
       await lastValueFrom(this.pedidosService.deleteDetalle(selectedItem.id));
       this.rowData = this.rowData.filter(item => item !== selectedItem);
