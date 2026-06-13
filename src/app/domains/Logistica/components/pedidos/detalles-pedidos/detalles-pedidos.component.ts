@@ -667,18 +667,14 @@ get colDefs(): ColDef[] {
       __modified: false
     };
 
-    this.rowData = [...this.rowData, newItem];
+    this.rowData = [newItem, ...this.rowData];
     this.hasUnsavedChanges = true;
     this.gridApi.setGridOption('rowData', this.rowData);
     this.notifyTotalVentaToParent();
 
     setTimeout(() => {
-      const lastRowIndex = this.rowData.length - 1;
-      this.gridApi.ensureIndexVisible(lastRowIndex, 'bottom');
-      this.gridApi.startEditingCell({
-        rowIndex: lastRowIndex,
-        colKey: 'clienteName'
-      });
+      this.gridApi.ensureIndexVisible(0, 'top');
+      this.gridApi.startEditingCell({ rowIndex: 0, colKey: 'clienteName' });
     }, 100);
   }
 
