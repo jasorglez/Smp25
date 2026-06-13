@@ -674,12 +674,12 @@ get colDefs(): ColDef[] {
 
     setTimeout(() => {
       const lastRowIndex = this.rowData.length - 1;
-      this.gridApi.ensureIndexVisible(lastRowIndex);
+      this.gridApi.ensureIndexVisible(lastRowIndex, 'bottom');
       this.gridApi.startEditingCell({
         rowIndex: lastRowIndex,
         colKey: 'clienteName'
       });
-    }, 0);
+    }, 100);
   }
 
   async deleteSelectedItem() {
@@ -748,9 +748,11 @@ get colDefs(): ColDef[] {
     }
 
     // Duplicado: misma combinación cliente + producto + plataforma + estado
+    // Solo filas con cliente asignado y producto para evitar falsos positivos en filas nuevas vacías
     const norm = (v: any) => String(v ?? '').trim().toUpperCase();
     const groups = new Map<string, any[]>();
     for (const r of this.rowData) {
+      if (!r?.idCliente || !r?.producto?.trim()) continue;
       const k = `${norm(r?.idCliente)}||${norm(r?.producto)}||${norm(r?.plataforma)}||${norm(r?.estado)}`;
       const arr = groups.get(k) ?? [];
       arr.push(r);
