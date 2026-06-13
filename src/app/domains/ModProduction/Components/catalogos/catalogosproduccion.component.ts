@@ -475,7 +475,7 @@ import { CatalogoParamMoliendaComponent } from '../molienda/catalogo-param-molie
             <button class="action-btn delete" (click)="deletePrefijoFase()" [disabled]="!prefijoFaseSelectedRow"><i class="bi bi-trash"></i></button>
           </div>
 
-          <div class="catalog-actions" *ngIf="!showHierarchicalTable && !prefijoFaseMode && !isParamsMode">
+          <div class="catalog-actions" *ngIf="!showHierarchicalTable && !prefijoFaseMode && !isParamsMode && !isActividadesMode">
             <button class="action-btn add" (click)="add()" [disabled]="!gridApi || !selectedCatalogSidebarId" title="Selecciona una categoría para agregar">
               <i class="bi bi-plus-lg"></i>
             </button>
@@ -487,6 +487,22 @@ import { CatalogoParamMoliendaComponent } from '../molienda/catalogo-param-molie
               <i class="bi bi-arrow-clockwise"></i>
             </button>
             <button class="action-btn delete" (click)="deleteRow()" [disabled]="!selectedRow || !selectedCatalogSidebarId" title="Borrar fila">
+              <i class="bi bi-trash"></i>
+            </button>
+          </div>
+
+          <div class="catalog-actions" *ngIf="isActividadesMode">
+            <button class="action-btn add" (click)="addActividad()" title="Agregar actividad">
+              <i class="bi bi-plus-lg"></i>
+            </button>
+            <button class="action-btn save" (click)="saveActividades()" [disabled]="!actividadesHasChanges" title="Guardar">
+              <i class="bi bi-floppy"></i>
+              <span *ngIf="actividadesHasChanges" class="dirty-dot"></span>
+            </button>
+            <button class="action-btn revert" (click)="revertActividades()" title="Deshacer">
+              <i class="bi bi-arrow-clockwise"></i>
+            </button>
+            <button class="action-btn delete" (click)="deleteActividad()" [disabled]="!actividadesSelectedRow" title="Borrar">
               <i class="bi bi-trash"></i>
             </button>
           </div>
@@ -525,7 +541,7 @@ import { CatalogoParamMoliendaComponent } from '../molienda/catalogo-param-molie
               </ag-grid-angular>
             </div>
 
-            <div class="panel-content" *ngIf="!showHierarchicalTable && !prefijoFaseMode && !isParamsMode">
+            <div class="panel-content" *ngIf="!showHierarchicalTable && !prefijoFaseMode && !isParamsMode && !isActividadesMode">
               <ag-grid-angular
                 class="ag-theme-quartz catalog-grid"
                 [rowData]="rowData()"
@@ -535,6 +551,20 @@ import { CatalogoParamMoliendaComponent } from '../molienda/catalogo-param-molie
                 (cellValueChanged)="onCellValueChanged($event)"
                 (rowClicked)="onRowClicked($event)"
                 (cellEditingStopped)="onCellEditingStopped($event)"
+                style="height: 470px; width: 100%;">
+              </ag-grid-angular>
+            </div>
+
+            <!-- Actividades -->
+            <div class="panel-content" *ngIf="isActividadesMode">
+              <ag-grid-angular
+                class="ag-theme-quartz catalog-grid"
+                [rowData]="actividadesRows"
+                [columnDefs]="actividadesColDefs"
+                [gridOptions]="actividadesGridOptions"
+                (gridReady)="onActividadesGridReady($event)"
+                (cellValueChanged)="onActividadesCellValueChanged($event)"
+                (rowClicked)="actividadesSelectedRow = $event.data"
                 style="height: 470px; width: 100%;">
               </ag-grid-angular>
             </div>
@@ -866,9 +896,54 @@ export class CatalogosProduccionComponent {
   private enterPressed = false;
   private editableColumnOrder     = ['idArticulo'];
   private boteEditableColumnOrder = ['idBranch', 'idPrefijoFase', 'idMatPrima', 'cantidad'];
-  isBotesMode  = false;
-  isParamsMode = false;
-  isFasesFEMode = false;
+  isBotesMode      = false;
+  isParamsMode     = false;
+  isFasesFEMode    = false;
+  isActividadesMode = false;
+
+  // ── Actividades ──
+  actividadesRows: any[] = [];
+  private actividadesOriginal: any[] = [];
+  actividadesHasChanges = false;
+  actividadesSelectedRow: any = null;
+  actividadesGridApi!: GridApi;
+
+  readonly PERIODICIDAD_OPTIONS = ['Diario', 'Cada 2 días', 'Cada semana', 'Cada 2 semanas', 'Ninguno'];
+
+  readonly actividadesColDefs: ColDef[] = [
+    {
+      field: 'actividad', headerName: 'Actividad', flex: 1, editable: true,
+      cellEditor: 'agTextCellEditor',
+      valueSetter: (p: any) => {
+        p.data.actividad = String(p.newValue ?? '').trim();
+        p.data.__modified = true; return true;
+      },
+    },
+    {
+      field: 'periodicidad', headerName: 'Periodicidad', width: 180, editable: true,
+      cellEditor: SelectWithTooltipEditorV2Component,
+      cellEditorParams: () => ({
+        options: this.PERIODICIDAD_OPTIONS.map(o => ({ id: o, description: o })),
+      }),
+      valueFormatter: (p: any) => p.value ?? '',
+      valueSetter: (p: any) => {
+        p.data.periodicidad = p.newValue ?? null; p.data.__modified = true; return true;
+      },
+    },
+    {
+      field: 'active', headerName: 'Activo', width: 90, editable: true,
+      cellRenderer: 'agCheckboxCellRenderer',
+      valueSetter: (p: any) => { p.data.active = p.newValue; p.data.__modified = true; return true; },
+    },
+  ];
+
+  readonly actividadesGridOptions: any = {
+    getRowId: (p: any) => String(p.data.id ?? p.data.__tempId),
+    headerHeight: 25, rowHeight: 22,
+    rowSelection: 'single',
+    rowClassRules: { 'new-row-highlight': (p: any) => !!p.data?.__isNew },
+    defaultColDef: { resizable: true },
+  };
 
   // ── Prefijos Fases ──
   prefijoFaseOptions: { id: number; prefijo: string; nombreFase: string }[] = [];
@@ -2224,6 +2299,7 @@ export class CatalogosProduccionComponent {
     this.showHierarchicalTable    = false;
     this.isBotesMode              = false;
     this.isParamsMode             = false;
+    this.isActividadesMode        = false;
     this.prefijoFaseMode          = true;
     this.prefijoFaseSelectedRow   = null;
     this.prefijoFaseHasChanges    = false;
@@ -2315,22 +2391,37 @@ export class CatalogosProduccionComponent {
     this.prefijoFaseMode = false;
     if (this.isCaracteristicasManzana(item)) {
       this.showHierarchicalTable = true;
-      this.isBotesMode   = false;
-      this.isParamsMode  = false;
-      this.isFasesFEMode = false;
+      this.isBotesMode        = false;
+      this.isParamsMode       = false;
+      this.isFasesFEMode      = false;
+      this.isActividadesMode  = false;
       this.loadHierarchicalData();
     } else if (this.isParametrosCatalog(item)) {
       this.showHierarchicalTable = false;
-      this.isBotesMode   = false;
-      this.isParamsMode  = true;
-      this.isFasesFEMode = false;
+      this.isBotesMode        = false;
+      this.isParamsMode       = true;
+      this.isFasesFEMode      = false;
+      this.isActividadesMode  = false;
+    } else if (this.isActividadesCatalog(item)) {
+      this.showHierarchicalTable = false;
+      this.isBotesMode        = false;
+      this.isParamsMode       = false;
+      this.isFasesFEMode      = false;
+      this.isActividadesMode  = true;
+      this.loadActividadesData(item.id);
     } else {
       this.showHierarchicalTable = false;
-      this.isParamsMode  = false;
-      this.isBotesMode   = this.isBotesCatalog(item);
-      this.isFasesFEMode = !this.isBotesMode && this.isFasesFECatalog(item);
+      this.isParamsMode       = false;
+      this.isActividadesMode  = false;
+      this.isBotesMode        = this.isBotesCatalog(item);
+      this.isFasesFEMode      = !this.isBotesMode && this.isFasesFECatalog(item);
       this.loadCatalogData(item.id);
     }
+  }
+
+  private isActividadesCatalog(item: ExtractionFermentationCatalogItem): boolean {
+    const d = (item.description || '').trim().toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
+    return d.startsWith('actividades');
   }
 
   private isFasesFECatalog(item: ExtractionFermentationCatalogItem): boolean {
@@ -2864,5 +2955,106 @@ export class CatalogosProduccionComponent {
         this.gridApiNietos1.setGridOption('rowData', this.nietos1);
       this.showToast1('Borrado');
     } catch { this.showToast1('Error al eliminar'); }
+  }
+
+  // ── Actividades ────────────────────────────────────────────────────────────
+
+  onActividadesGridReady(e: GridReadyEvent) {
+    this.actividadesGridApi = e.api;
+    if (this.actividadesRows.length) this.actividadesGridApi.setGridOption('rowData', this.actividadesRows);
+  }
+
+  onActividadesCellValueChanged(e: any) {
+    if (!e.data.__isNew) e.data.__modified = true;
+    this.actividadesHasChanges = true;
+  }
+
+  private loadActividadesData(idCatalog: number) {
+    this.productionService.getMoliendaActividadesByCatalog(idCatalog).subscribe({
+      next: (items) => {
+        const rows = (items ?? []).map((i: any) => ({
+          id: i.id,
+          actividad: i.actividad ?? '',
+          periodicidad: i.periodicidad ?? null,
+          active: i.active,
+          __isNew: false, __modified: false,
+        }));
+        this.actividadesOriginal = JSON.parse(JSON.stringify(rows));
+        this.actividadesRows = [...rows];
+        if (this.actividadesGridApi && !this.actividadesGridApi.isDestroyed())
+          this.actividadesGridApi.setGridOption('rowData', this.actividadesRows);
+      },
+      error: () => { this.actividadesRows = []; }
+    });
+  }
+
+  addActividad() {
+    if (!this.selectedCatalogSidebarId) return;
+    const newRow: any = {
+      id: null, __tempId: `new_${Date.now()}`, __isNew: true, __modified: false,
+      actividad: '', periodicidad: null, active: true,
+    };
+    this.actividadesRows = [newRow, ...this.actividadesRows];
+    this.actividadesHasChanges = true;
+    if (this.actividadesGridApi) {
+      this.actividadesGridApi.setGridOption('rowData', this.actividadesRows);
+      setTimeout(() => this.actividadesGridApi.startEditingCell({ rowIndex: 0, colKey: 'actividad' }), 50);
+    }
+  }
+
+  async saveActividades() {
+    if (!this.selectedCatalogSidebarId) return;
+    const newRows = this.actividadesRows.filter(r => r.__isNew);
+    const modRows = this.actividadesRows.filter(r => r.__modified && !r.__isNew && r.id);
+    try {
+      for (const r of newRows) {
+        await lastValueFrom(this.productionService.createMoliendaActividad({
+          idCatalog: this.selectedCatalogSidebarId!,
+          actividad: r.actividad || undefined,
+          periodicidad: r.periodicidad || undefined,
+        }));
+      }
+      for (const r of modRows) {
+        await lastValueFrom(this.productionService.updateMoliendaActividad(r.id, {
+          actividad: r.actividad,
+          periodicidad: r.periodicidad,
+          active: r.active,
+        }));
+      }
+      this.actividadesHasChanges = false;
+      this.showToast('Guardado');
+      this.loadActividadesData(this.selectedCatalogSidebarId!);
+    } catch {
+      alerts.basicAlert('Error', 'No se pudieron guardar los cambios.', 'error');
+    }
+  }
+
+  revertActividades() {
+    this.actividadesRows = JSON.parse(JSON.stringify(this.actividadesOriginal));
+    this.actividadesHasChanges = false;
+    this.actividadesSelectedRow = null;
+    if (this.actividadesGridApi) this.actividadesGridApi.setGridOption('rowData', this.actividadesRows);
+  }
+
+  async deleteActividad() {
+    const row = this.actividadesSelectedRow;
+    if (!row) return;
+    if (row.__isNew) {
+      this.actividadesRows = this.actividadesRows.filter(r => r !== row);
+      this.actividadesSelectedRow = null;
+      this.actividadesHasChanges = this.actividadesRows.some(r => r.__isNew || r.__modified);
+      if (this.actividadesGridApi) this.actividadesGridApi.setGridOption('rowData', this.actividadesRows);
+      return;
+    }
+    const confirm = await alerts.confirmAlert('¿Eliminar?', `¿Eliminar "${row.actividad}"?`, 'warning', 'Sí, eliminar');
+    if (!confirm.isConfirmed) return;
+    try {
+      await lastValueFrom(this.productionService.deleteMoliendaActividad(row.id));
+      this.actividadesRows = this.actividadesRows.filter(r => r !== row);
+      this.actividadesOriginal = this.actividadesOriginal.filter(r => r.id !== row.id);
+      this.actividadesSelectedRow = null;
+      if (this.actividadesGridApi) this.actividadesGridApi.setGridOption('rowData', this.actividadesRows);
+      this.showToast('Borrado');
+    } catch { alerts.basicAlert('Error', 'No se pudo eliminar.', 'error'); }
   }
 }

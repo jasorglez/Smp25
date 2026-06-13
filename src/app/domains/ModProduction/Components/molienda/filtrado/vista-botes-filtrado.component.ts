@@ -10,6 +10,7 @@ import { MaterialXModuloService } from 'app/services/materialxmodulo.service';
 import { BranchsService } from 'app/services/branchs.service';
 import { alerts } from 'app/helpers/alerts';
 import { MedicionesBoteComponent } from './mediciones-bote.component';
+import { ParamsDetailRendererComponent } from './params-detail-renderer.component';
 import { ItemCommentsService, ItemComment } from 'app/services/item-comments.service';
 
 interface BoteVista {
@@ -23,7 +24,7 @@ interface BoteVista {
 @Component({
   selector: 'app-vista-botes-filtrado',
   standalone: true,
-  imports: [CommonModule, AgGridAngular, MedicionesBoteComponent],
+  imports: [CommonModule, AgGridAngular, MedicionesBoteComponent, ParamsDetailRendererComponent],
   template: `
     <div style="height: 100%; display: flex; overflow: hidden; background: #fff8e1;">
 
@@ -90,9 +91,12 @@ interface BoteVista {
         <div style="padding: 5px 8px; flex-shrink: 0; border-bottom: 1px solid #ffe0b2; display: flex; align-items: center; justify-content: space-between;">
           <span style="font-size: 0.8rem; color: #e65100; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
             <i class="bi bi-sliders me-1"></i>{{ selectedBote.description }}
+            <span *ngIf="boteVacio" style="font-size:0.72rem;color:#dc3545;font-weight:400;margin-left:6px;">
+              <i class="bi bi-exclamation-triangle-fill"></i> Bote vacío
+            </span>
           </span>
           <div class="d-flex gap-1" style="flex-shrink: 0;">
-            <button class="btn btn-success btn-sm" style="padding:1px 6px;" (click)="addRow()" [disabled]="!paramsGridApi">
+            <button class="btn btn-success btn-sm" style="padding:1px 6px;" (click)="addRow()" [disabled]="!paramsGridApi || boteVacio">
               <i class="bi bi-plus-lg"></i>
             </button>
             <button class="btn btn-primary btn-sm position-relative" style="padding:1px 6px;" (click)="saveChanges()" [disabled]="!hasChanges">
@@ -102,7 +106,7 @@ interface BoteVista {
             <button class="btn btn-warning btn-sm" style="padding:1px 6px;" (click)="revert()">
               <i class="bi bi-arrow-clockwise"></i>
             </button>
-            <button class="btn btn-danger btn-sm" style="padding:1px 6px;" (click)="deleteRow()" [disabled]="!selectedParamRow">
+            <button class="btn btn-danger btn-sm" style="padding:1px 6px;" (click)="deleteRow()" [disabled]="!selectedParamRow || boteVacio">
               <i class="bi bi-trash"></i>
             </button>
           </div>
@@ -234,6 +238,7 @@ export class VistaBotesFiltradoComponent {
   loading = false;
   matPrimaName = '';
   selectedBote: BoteVista | null = null;
+  get boteVacio(): boolean { return (this.selectedBote?.totalLiters ?? 0) === 0; }
 
   // Grid de parámetros
   paramsGridApi!: GridApi;
@@ -248,9 +253,11 @@ export class VistaBotesFiltradoComponent {
 
   matPrimaOptions: { id: number; name: string }[] = [];
   medicionesCountMap: Record<number, number> = {};
+  libLimpiezaCountMap: Record<number, number> = {};
   paramsGridContext: any = {};
   private onBotesLoadedCb: ((count: number) => void) | null = null;
   fasesFEOptions: { id: string; description: string }[] = [];
+  actividadesOptions: { id: number; actividad: string; periodicidad: string | null }[] = [];
 
   // Panel de comentarios (read-only)
   showComments = false;
@@ -280,13 +287,24 @@ export class VistaBotesFiltradoComponent {
         if (!p.data?.id) return '—';
         const count = this.medicionesCountMap[p.data.id];
         const countBadge = count != null ? ` (${count})` : '';
+        const isActive = p.node?.expanded && p.data.__detailMode === 'mediciones';
         const a = document.createElement('a');
         a.href = '#';
         a.style.cssText = 'color:#1565c0;text-decoration:underline;font-size:0.78rem;';
-        a.textContent = p.node?.expanded ? '▲ Ocultar' : `▼ Ver mediciones${countBadge}`;
+        a.textContent = isActive ? '▲ Ocultar' : `▼ Ver mediciones${countBadge}`;
         a.addEventListener('click', (ev) => {
           ev.preventDefault();
-          p.node.setExpanded(!p.node.expanded);
+          if (this.boteVacio) return;
+          if (p.node.expanded && p.data.__detailMode === 'mediciones') {
+            p.node.setExpanded(false);
+          } else if (p.node.expanded && p.data.__detailMode !== 'mediciones') {
+            p.data.__detailMode = 'mediciones';
+            p.node.setExpanded(false);
+            setTimeout(() => p.node.setExpanded(true), 50);
+          } else {
+            p.data.__detailMode = 'mediciones';
+            p.node.setExpanded(true);
+          }
         });
         return a;
       },
@@ -302,12 +320,35 @@ export class VistaBotesFiltradoComponent {
     },
     {
       field: 'libLimpieza',
-      headerName: 'Liberación Limpieza',
-      editable: true,
-      width: 155,
-      cellRenderer: 'agCheckboxCellRenderer',
-      cellEditor: 'agCheckboxCellEditor',
-      valueSetter: (p: any) => { p.data.libLimpieza = p.newValue; p.data.__modified = true; this.hasChanges = true; return true; },
+      headerName: 'Lib. Limpieza',
+      editable: false,
+      width: 150,
+      cellStyle: (p: any) => p.data?.id ? { backgroundColor: '#e8f5e9', cursor: 'pointer' } : {},
+      cellRenderer: (p: any) => {
+        if (!p.data?.id) return '—';
+        const count = this.libLimpiezaCountMap[p.data.id];
+        const countBadge = count != null ? ` (${count})` : '';
+        const isActive = p.node?.expanded && p.data.__detailMode === 'liberacion';
+        const a = document.createElement('a');
+        a.href = '#';
+        a.style.cssText = 'color:#155724;text-decoration:underline;font-size:0.78rem;';
+        a.textContent = isActive ? '▲ Ocultar' : `▼ Liberaciones${countBadge}`;
+        a.addEventListener('click', (ev) => {
+          ev.preventDefault();
+          if (this.boteVacio) return;
+          if (p.node.expanded && p.data.__detailMode === 'liberacion') {
+            p.node.setExpanded(false);
+          } else if (p.node.expanded && p.data.__detailMode !== 'liberacion') {
+            p.data.__detailMode = 'liberacion';
+            p.node.setExpanded(false);
+            setTimeout(() => p.node.setExpanded(true), 50);
+          } else {
+            p.data.__detailMode = 'liberacion';
+            p.node.setExpanded(true);
+          }
+        });
+        return a;
+      },
     },
     {
       field: 'verComentarios', headerName: '💬', width: 56, editable: false, sortable: false,
@@ -334,14 +375,14 @@ export class VistaBotesFiltradoComponent {
     stopEditingWhenCellsLoseFocus: true,
     masterDetail: true,
     isRowMaster: (data: any) => !!data?.id && !data?.__isNew,
-    detailCellRenderer: MedicionesBoteComponent,
+    detailCellRenderer: ParamsDetailRendererComponent,
     // Molienda grid = 80vh (window.innerHeight * 0.8).
     // Offsets: molienda header 45px + detalles-parametros header+tabs 70px + vista-botes params header 30px = 145px.
     detailRowHeight: Math.max(180, window.innerHeight * 0.8 - 195),
     rowClassRules: { 'new-row-highlight': (p: any) => !!p.data?.__isNew },
     onRowSelected: (e: any) => { if (e.node.isSelected()) this.selectedParamRow = e.data; },
     onRowGroupOpened: (e: any) => {
-      this.paramsGridApi?.refreshCells({ rowNodes: [e.node], columns: ['parametros'], force: true });
+      this.paramsGridApi?.refreshCells({ rowNodes: [e.node], columns: ['parametros', 'libLimpieza'], force: true });
     },
   };
 
@@ -363,6 +404,7 @@ export class VistaBotesFiltradoComponent {
     this.hasChanges        = false;
     this.paramsGridContext  = {
       idArticulo:               this.matPrimaId,
+      idBranch:                 this.rowBranchId,
       matPrimaOptions:          this.matPrimaOptions,
       allArticuloOptions,
       fasesFEOptions:           this.fasesFEOptions,
@@ -433,16 +475,31 @@ export class VistaBotesFiltradoComponent {
         return d.startsWith('fases fe');
       });
 
-      const [items, fasesFEItems] = await Promise.all([
+      const actividadesCatalog = (catalogs ?? []).find((c: any) => {
+        const d = (c.description || '').trim().toLowerCase()
+          .normalize('NFD').replace(/[̀-ͯ]/g, '');
+        return d.startsWith('actividades');
+      });
+
+      const [items, fasesFEItems, actividadesItems] = await Promise.all([
         botesCatalog ? lastValueFrom(this.mxmService.getByCatalog(idCompany, botesCatalog.id)) : Promise.resolve([]),
         fasesFECatalog ? lastValueFrom(this.mxmService.getByCatalog(idCompany, fasesFECatalog.id)) : Promise.resolve([]),
+        actividadesCatalog ? lastValueFrom(this.productionService.getMoliendaActividadesByCatalog(actividadesCatalog.id)) : Promise.resolve([]),
       ]);
 
       this.fasesFEOptions = ((fasesFEItems ?? []) as any[])
         .filter((m: any) => m.active !== false && m.prefijo)
         .map((m: any) => ({ id: m.prefijo as string, description: m.prefijo as string }));
 
-      this.paramsGridContext = { ...this.paramsGridContext, fasesFEOptions: this.fasesFEOptions };
+      this.actividadesOptions = ((actividadesItems ?? []) as any[])
+        .filter((a: any) => a.active !== false)
+        .map((a: any) => ({ id: a.id, actividad: a.actividad ?? '', periodicidad: a.periodicidad ?? null }));
+
+      this.paramsGridContext = {
+        ...this.paramsGridContext,
+        fasesFEOptions: this.fasesFEOptions,
+        actividadesOptions: this.actividadesOptions,
+      };
 
       if (!botesCatalog) return;
       const moFaseId = (prefijosData ?? []).find((p: any) => p.prefijo === 'MO')?.id ?? null;
@@ -533,6 +590,8 @@ export class VistaBotesFiltradoComponent {
         parametros: i.parametros ?? '',
         objetivo: i.objetivo ?? null,
         libLimpieza: !!i.libLimpieza,
+        idBranch: this.rowBranchId,
+        botesVacios: (bote.totalLiters ?? 0) === 0,
         __isNew: false,
         __modified: false,
       }));
@@ -558,6 +617,13 @@ export class VistaBotesFiltradoComponent {
             this.paramsGridApi?.refreshCells({ columns: ['verComentarios'], force: true });
           })
           .catch(() => { });
+
+        lastValueFrom(this.productionService.getMoliendaLibLimpiezaByParams(r.id))
+          .then((items: any) => {
+            this.libLimpiezaCountMap[r.id] = (items as any[])?.length ?? 0;
+            this.paramsGridApi?.refreshCells({ columns: ['libLimpieza'], force: true });
+          })
+          .catch(() => { });
       });
     } catch (e) {
       console.error('Error cargando params:', e);
@@ -565,14 +631,15 @@ export class VistaBotesFiltradoComponent {
   }
 
   addRow() {
-    if (!this.selectedBote) return;
+    if (!this.selectedBote || this.boteVacio) return;
     const newRow = {
       id: null, __tempId: `new_${Date.now()}`,
       __isNew: true, __modified: false,
-      folio: this.selectedBote.description,   // clave del bote = folio
+      folio: this.selectedBote.description,
       parametros: '',
       objetivo: null,
       libLimpieza: false,
+      idBranch: this.rowBranchId,
     };
     this.paramsRowData = [newRow, ...this.paramsRowData];
     this.hasChanges = true;
@@ -625,7 +692,7 @@ export class VistaBotesFiltradoComponent {
   }
 
   async deleteRow() {
-    if (!this.selectedParamRow) return;
+    if (!this.selectedParamRow || this.boteVacio) return;
     if (this.selectedParamRow.__isNew) {
       this.paramsRowData = this.paramsRowData.filter(r => r !== this.selectedParamRow);
       this.selectedParamRow = null;

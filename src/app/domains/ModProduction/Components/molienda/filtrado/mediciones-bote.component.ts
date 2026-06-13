@@ -1,4 +1,4 @@
-import { Component, inject } from '@angular/core';
+import { Component, Input, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { AgGridAngular } from 'ag-grid-angular';
 import { ColDef, GridApi, GridReadyEvent } from 'ag-grid-enterprise';
@@ -130,6 +130,8 @@ export class MedicionesBoteComponent implements ICellRendererAngularComp {
 
   get hasChanges() { return this._hasChanges; }
   set hasChanges(v: boolean) { this._hasChanges = v; }
+
+  @Input() set agParams(p: any) { if (p) this.agInit(p); }
 
   agInit(params: any): void {
     this.idMoliendaParams = params.data?.id ?? null;

@@ -73,5 +73,5 @@ export const environment = {
 
   urlRefreshToken: 'https://securetoken.googleapis.com/v1/token?key=AIzaSyDxCBGKk8nT09hdW85-PyOkhw5_JPZLF1A',
 
-  version: '2.52.479 (12 Junio 2026) - Almacenes: solo Productos Terminados e Inventario en menu'
+  version: '2.52.482 (13 Junio 2026) - Producción: Actividades realizadas en Liberacion Limpieza'
 };

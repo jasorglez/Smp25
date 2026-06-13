@@ -323,6 +323,34 @@ export class ProductionService {
     return this.http.post<Record<number, number>>(`${environment.urlProduction}/MoliendaParams/bote-counts`, ids, { headers: this.trackingService.getHeaders() });
   }
 
+  // ── Molienda Lib. Limpieza ────────────────────────────────────────────────
+  getMoliendaLibLimpiezaByParams(idParams: number): Observable<any[]> {
+    return this.http.get<any[]>(`${environment.urlProduction}/MoliendaLibLimpieza/params/${idParams}`, { headers: this.trackingService.getHeaders() });
+  }
+  createMoliendaLibLimpieza(data: { idParams: number; fecha?: string; empleadosIds?: string; idUsuario?: number; actividadesIds?: string }): Observable<any> {
+    return this.http.post<any>(`${environment.urlProduction}/MoliendaLibLimpieza`, data, { headers: this.trackingService.getHeaders() });
+  }
+  updateMoliendaLibLimpieza(id: number, data: { fecha?: string; empleadosIds?: string; idUsuario?: number; actividadesIds?: string }): Observable<any> {
+    return this.http.put<any>(`${environment.urlProduction}/MoliendaLibLimpieza/${id}`, data, { headers: this.trackingService.getHeaders() });
+  }
+  deleteMoliendaLibLimpieza(id: number): Observable<void> {
+    return this.http.delete<void>(`${environment.urlProduction}/MoliendaLibLimpieza/${id}`, { headers: this.trackingService.getHeaders() });
+  }
+
+  // ── Catálogo de Actividades ────────────────────────────────────────────────
+  getMoliendaActividadesByCatalog(idCatalog: number): Observable<any[]> {
+    return this.http.get<any[]>(`${environment.urlProduction}/MoliendaActividad/catalog/${idCatalog}`, { headers: this.trackingService.getHeaders() });
+  }
+  createMoliendaActividad(data: { idCatalog: number; actividad?: string; periodicidad?: string }): Observable<any> {
+    return this.http.post<any>(`${environment.urlProduction}/MoliendaActividad`, data, { headers: this.trackingService.getHeaders() });
+  }
+  updateMoliendaActividad(id: number, data: { actividad?: string; periodicidad?: string; active?: boolean }): Observable<any> {
+    return this.http.put<any>(`${environment.urlProduction}/MoliendaActividad/${id}`, data, { headers: this.trackingService.getHeaders() });
+  }
+  deleteMoliendaActividad(id: number): Observable<void> {
+    return this.http.delete<void>(`${environment.urlProduction}/MoliendaActividad/${id}`, { headers: this.trackingService.getHeaders() });
+  }
+
   // ── Catálogo de parámetros de molienda ────────────────────────────────────
   getMoliendaParamCatalog(): Observable<any[]> {
     return this.http.get<any[]>(`${environment.urlProduction}/MoliendaParamCatalog`, { headers: this.trackingService.getHeaders() });
