@@ -1533,6 +1533,13 @@ export class ExpenditureComponent implements OnDestroy, OnChanges {
       });
 
       this.signalRService.notifyAdmonUpdate('egreso', this.idRoot);
+
+      // Recargar saldo bancario real después de guardar
+      this.administrationService.getAccountBanks(this.idRoot).subscribe((data: any) => {
+        this.bankAccounts = data || [];
+        this.loadSaldoCuenta();
+      });
+
       console.log('✅ PADRE: Maestro actualizado con totales');
 
     } catch (error) {
@@ -2200,7 +2207,6 @@ export class ExpenditureComponent implements OnDestroy, OnChanges {
         console.log('❌ No se encontró el item en el array local');
       }
     }
-    this.recalcularSaldoDisponible();
   }
 
 }
