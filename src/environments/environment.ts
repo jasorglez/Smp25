@@ -87,4 +87,4 @@ export const environment = {
   },
 
   version: '5.13 (12 Junio 2026 16:30) fix(egresos): badge saldo muestra saldo real cuenta igual que Dashboard',
-};en Adm
+};
