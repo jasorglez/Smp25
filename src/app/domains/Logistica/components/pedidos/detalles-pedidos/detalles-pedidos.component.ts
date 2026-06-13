@@ -676,46 +676,29 @@ get colDefs(): ColDef[] {
 
     const selectedItem = selectedRows[0];
 
-    // Fila nueva (sin guardar): quitar solo del grid
+    // Fila nueva (sin guardar): quitar solo del grid sin llamar al API
     if (selectedItem.__isNew) {
       this.rowData = this.rowData.filter(item => item !== selectedItem);
       this.gridApi.setGridOption('rowData', this.rowData);
       this.notifyTotalVentaToParent();
-      this.updateCountInParent();
+      if (this.context?.CONCEPTS?.updateCount) {
+        this.context.CONCEPTS.updateCount(this.params.data.id, this.rowData.length);
+      }
       return;
     }
 
-    const confirm = await alerts.confirmAlert(
-      '¿Desactivar detalle?',
-      '¿Está seguro que desea eliminar este registro?',
-      'warning',
-      'Sí, eliminar'
-    );
-    if (!confirm?.isConfirmed) return;
-
     try {
-      await lastValueFrom(this.pedidosService.updateDetalle(selectedItem.id, {
-        ...selectedItem,
-        active: 0,
-        clienteName: undefined,
-        __isNew: undefined,
-        __modified: undefined,
-      }));
+      await lastValueFrom(this.pedidosService.deleteDetalle(selectedItem.id));
       this.rowData = this.rowData.filter(item => item !== selectedItem);
       this.gridApi.setGridOption('rowData', this.rowData);
       this.notifyTotalVentaToParent();
-      this.updateCountInParent();
+      if (this.context?.CONCEPTS?.updateCount) {
+        this.context.CONCEPTS.updateCount(this.params.data.id, this.rowData.length);
+      }
       alerts.toastAlert('Registro eliminado', 'success');
     } catch (err) {
-      console.error('Error al desactivar detalle:', err);
+      console.error('Error al eliminar detalle:', err);
       alerts.basicAlert('Error', 'No se pudo eliminar el registro', 'error');
-    }
-  }
-
-  private updateCountInParent(): void {
-    const pedidoId = this.params?.data?.id;
-    if (pedidoId && this.context?.CONCEPTS?.updateCount) {
-      this.context.CONCEPTS.updateCount(pedidoId, this.rowData.length);
     }
   }
 
