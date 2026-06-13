@@ -1,8 +1,6 @@
-import { ChangeDetectorRef, Component, inject, OnInit } from '@angular/core';
+import { Component } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterModule } from '@angular/router';
-import { MenuService } from 'app/services/menu.service';
-import { AuthService } from 'app/services/auth.service';
 
 @Component({
   selector: 'app-procmenumolienda',
@@ -10,17 +8,14 @@ import { AuthService } from 'app/services/auth.service';
   imports: [CommonModule, RouterModule],
   templateUrl: './procmenumolienda.component.html',
 })
-export class ProcmenumoliendaComponent implements OnInit {
-  private cdr = inject(ChangeDetectorRef);
-  authService = inject(AuthService);
-  private menuService = inject(MenuService);
-
-  tabMenus: { detailedIdentifier: string; identifier: string; permissionName: string; route: string; icon: string; tabOrder: number }[] = [];
-
-  ngOnInit(): void {
-    this.menuService.getSubTabMenus('molienda_princ').subscribe({
-      next: (tabs) => { this.tabMenus = tabs; this.cdr.detectChanges(); },
-      error: (err) => console.error('Error cargando sub-tabs molienda', err)
-    });
-  }
+export class ProcmenumoliendaComponent {
+  tabMenus = [
+    { route: 'filtrado',        icon: 'bi bi-houses',        permissionName: 'Molienda' },
+    { route: 'fermentacion',    icon: 'bi bi-boxes',         permissionName: 'Fermentacion' },
+    { route: 'clarificacion1',  icon: 'bi bi-journal-text',  permissionName: 'Clarificacion 1' },
+    { route: 'clarificacion2',  icon: 'bi bi-cart-fill',     permissionName: 'Clarificacion 2' },
+    { route: 'envasado',        icon: 'bi bi-graph-up',      permissionName: 'Envasado' },
+    { route: 'almmolienda',     icon: 'bi bi-box-seam',      permissionName: 'Almacen Molienda' },
+    { route: 'totalinventarios',icon: 'bi bi-clipboard-data',permissionName: 'Total Inventarios' },
+  ];
 }

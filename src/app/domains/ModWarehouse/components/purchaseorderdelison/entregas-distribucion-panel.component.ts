@@ -57,6 +57,9 @@ import { evaluateProvider } from 'app/domains/ModWarehouse/components/requisitio
             <button type="button" class="ed-step" (click)="inc(i)" [disabled]="r.bloqueada">+</button>
             <span class="ed-unidad">{{ unidad }}</span>
           </span>
+          <span class="ed-note">
+            <small *ngIf="esBalancer(i)" class="ed-balancer-note">↻ esta entrada se re-calcula sola cuando mueve cualquier otra</small>
+          </span>
           <span class="ed-flag" *ngIf="r.bloqueada">🔒 cerrada</span>
           <span class="ed-flag" *ngIf="!r.bloqueada" [class.ok]="filaValida(i)" [class.bad]="!filaValida(i)">
             {{ filaValida(i) ? '✓' : (r.cantidad < minEfectivo ? '< mínimo' : 'no múltiplo') }}
@@ -99,7 +102,9 @@ import { evaluateProvider } from 'app/domains/ModWarehouse/components/requisitio
     .ed-del { background: oklch(0.96 0.032 25); border-color: oklch(0.88 0.06 25); color: oklch(0.52 0.16 25); }
     .ed-del:hover:not(:disabled) { background: oklch(0.93 0.05 25); }
     .ed-body { padding: 4px 20px 8px; display: flex; flex-direction: column; }
-    .ed-row { display: grid; grid-template-columns: 60px 1fr 110px; align-items: center; gap: 8px; padding: 8px 0; border-bottom: 1px solid oklch(0.945 0.006 255); }
+    .ed-row { display: grid; grid-template-columns: 56px auto minmax(0, 1fr) auto; align-items: center; gap: 8px; padding: 8px 0; border-bottom: 1px solid oklch(0.945 0.006 255); }
+    .ed-note { min-width: 0; overflow: hidden; }
+    .ed-balancer-note { display: block; font-size: 0.68rem; color: oklch(0.5 0.1 256); font-style: italic; line-height: 1.2; white-space: normal; overflow-wrap: anywhere; }
     .ed-row-locked { opacity: 0.85; }
     .ed-row-locked .ed-ent { color: oklch(0.6 0.012 262); }
     .ed-row-locked .ed-input input { background: oklch(0.945 0.004 255); color: oklch(0.6 0.012 262); border-color: oklch(0.9 0.006 255); }
@@ -216,13 +221,56 @@ export class EntregasDistribucionPanelComponent implements OnInit {
     this.rows = this.rows.slice(0, -1);
   }
 
+  /** Índice de la última entrega PENDIENTE (la "balanceadora" que absorbe el restante). */
+  get balancerIndex(): number {
+    for (let i = this.rows.length - 1; i >= 0; i--) {
+      if (!this.rows[i].bloqueada) return i;
+    }
+    return -1;
+  }
+  esBalancer(i: number): boolean { return i === this.balancerIndex && !this.rows[i]?.bloqueada; }
+
+  /**
+   * Tras editar una entrega que NO es la balanceadora: clampea su valor para que la balanceadora
+   * no quede por debajo del mínimo (ni negativa) y recalcula la balanceadora = total − suma de las demás.
+   */
+  private rebalancearDesde(i: number): void {
+    const b = this.balancerIndex;
+    if (b < 0 || i === b) return;   // sin balanceadora, o se editó la propia balanceadora → no se reparte
+
+    // Suma de todas las entregas excepto la editada y la balanceadora.
+    let sumOtros = 0;
+    this.rows.forEach((r, idx) => { if (idx !== i && idx !== b) sumOtros += Number(r.cantidad) || 0; });
+    sumOtros = this.round(sumOtros);
+
+    // Máximo permitido en la editada para que la balanceadora cumpla el mínimo.
+    let maxV = this.round(this.total - this.minEfectivo - sumOtros);
+    if (maxV < 0) maxV = 0;
+
+    let v = Number(this.rows[i].cantidad) || 0;
+    if (v < 0) v = 0;
+    if (v > maxV) v = maxV;                          // valor más cercano que sí deja cumplir el mínimo
+    if (this.packages.length) {                       // si hay presentaciones, bajar al múltiplo válido
+      const step = this.stepSize;
+      if (step > 0) v = Math.floor(v / step) * step;
+    }
+    if (this.esPieza) v = Math.floor(v);
+    this.rows[i].cantidad = this.round(v);
+
+    // Balanceadora = cantidad pedida − suma de todas las demás (incluye cerradas).
+    const sumExceptoBal = this.round(this.rows.reduce((a, r, idx) => a + (idx === b ? 0 : (Number(r.cantidad) || 0)), 0));
+    this.rows[b].cantidad = this.round(this.total - sumExceptoBal);
+  }
+
   inc(i: number): void {
     if (this.rows[i]?.bloqueada) return;
     this.rows[i].cantidad = this.round((Number(this.rows[i].cantidad) || 0) + this.stepSize);
+    this.rebalancearDesde(i);
   }
   dec(i: number): void {
     if (this.rows[i]?.bloqueada) return;
     this.rows[i].cantidad = Math.max(0, this.round((Number(this.rows[i].cantidad) || 0) - this.stepSize));
+    this.rebalancearDesde(i);
   }
   onChange(i: number): void {
     if (this.rows[i]?.bloqueada) return;
@@ -230,6 +278,7 @@ export class EntregasDistribucionPanelComponent implements OnInit {
     if (this.esPieza) v = Math.floor(v);
     if (v < 0) v = 0;
     this.rows[i].cantidad = v;
+    this.rebalancearDesde(i);
   }
 
   /** Reparto sugerido SOLO sobre las entregas pendientes; las cerradas quedan fijas. */
