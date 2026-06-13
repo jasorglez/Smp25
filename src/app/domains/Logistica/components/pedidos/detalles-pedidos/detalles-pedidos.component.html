@@ -18,11 +18,11 @@
         *ngIf="hasUnsavedChanges">
       </span>
     </button>
+    <button type="button" class="btn btn-danger btn-sm" (click)="deleteSelectedItem()" [disabled]="isLocked || !selectedRow">
+      <i class="bi bi-trash"></i> Eliminar
+    </button>
     <button type="button" class="btn btn-warning btn-sm" (click)="discardChanges()" [disabled]="isLocked || !hasUnsavedChanges">
       <i class="bi bi-arrow-clockwise"></i> Deshacer
-    </button>
-    <button type="button" class="btn btn-danger btn-sm" (click)="deleteSelectedItem()" [disabled]="isLocked">
-      <i class="bi bi-trash"></i> Eliminar
     </button>
   </div>
   <!-- Grid de detalles -->
