@@ -749,48 +749,6 @@ get colDefs(): ColDef[] {
       return;
     }
 
-    // Duplicado: misma combinación cliente + producto + plataforma + estado
-    // Solo filas con cliente asignado y producto para evitar falsos positivos en filas nuevas vacías
-    const norm = (v: any) => String(v ?? '').trim().toUpperCase();
-    const groups = new Map<string, any[]>();
-    for (const r of this.rowData) {
-      if (!r?.idCliente || !r?.producto?.trim()) continue;
-      const k = `${norm(r?.idCliente)}||${norm(r?.producto)}||${norm(r?.plataforma)}||${norm(r?.estado)}`;
-      const arr = groups.get(k) ?? [];
-      arr.push(r);
-      groups.set(k, arr);
-    }
-
-    const duplicates = [...groups.values()].filter(arr => arr.length > 1);
-    if (duplicates.length > 0) {
-      const result = await alerts.confirmAlert(
-        'Duplicado detectado',
-        'Este cliente ya tiene el mismo producto, plataforma y estado más de una vez.\n\n¿Quieres sumar las cantidades y eliminar los duplicados?',
-        'warning',
-        'Sí, aumentar cantidad'
-      );
-      if (!result?.isConfirmed) return;
-
-      for (const arr of duplicates) {
-        const keep = arr.find(r => !r.__isNew && r?.id) ?? arr[0];
-        keep.cantidad = arr.reduce((sum, r) => sum + (Number(r?.cantidad) || 0), 0) || 1;
-        keep.__modified = true;
-        for (const r of arr) {
-          if (r === keep) continue;
-          if (!r.__isNew && r?.id && this.context?.pedidosService?.deleteDetalle) {
-            try { await lastValueFrom(this.context.pedidosService.deleteDetalle(r.id)); } catch {}
-          }
-          this.rowData = this.rowData.filter(x => x !== r);
-        }
-      }
-
-      this.hasUnsavedChanges = true;
-      if (this.gridApi) {
-        this.gridApi.setGridOption('rowData', this.rowData);
-        this.gridApi.refreshCells({ force: true });
-      }
-    }
-
     if (this.context && this.context.CONCEPTS && this.context.CONCEPTS.save) {
       const pedidoId = this.params.data.id;
       const detallesActualizados = await this.context.CONCEPTS.save(pedidoId, { detalles: this.rowData });
