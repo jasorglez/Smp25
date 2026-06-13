@@ -24,6 +24,12 @@ import { lastValueFrom } from 'rxjs';
             *ngIf="hasUnsavedChanges">
           </span>
         </button>
+        <button type="button"
+          class="btn btn-danger btn-sm"
+          (click)="deleteSelectedItem()"
+          [disabled]="!selectedRow">
+          <i class="bi bi-trash"></i> Eliminar
+        </button>
       </div>
       <ag-grid-angular
         style="width: 100%; height: 100%;"
@@ -47,6 +53,7 @@ export class DetallesClientesComponent implements ICellRendererAngularComp {
 
   rowData: any[] = [];
   hasUnsavedChanges: boolean = false;
+  selectedRow: any = null;
   public AG_GRID_LOCALE_ES = AG_GRID_LOCALE_ES;
 
   public defaultColDef: ColDef = {
@@ -59,6 +66,11 @@ export class DetallesClientesComponent implements ICellRendererAngularComp {
     headerHeight: 28,
     rowHeight: 26,
     animateRows: true,
+    rowSelection: 'single',
+    onSelectionChanged: (event: any) => {
+      const rows = event.api.getSelectedRows();
+      this.selectedRow = rows.length > 0 ? rows[0] : null;
+    },
     // Como estaba antes: grupos colapsados por default
     groupDefaultExpanded: 0,
     // Footer por grupo (no total global al final)
@@ -229,6 +241,35 @@ export class DetallesClientesComponent implements ICellRendererAngularComp {
       comentario: row.comentario,
       active: row.active ?? true,
     };
+  }
+
+  async deleteSelectedItem(): Promise<void> {
+    if (!this.selectedRow || !this.selectedRow.id) return;
+
+    const confirm = await alerts.confirmAlert(
+      '¿Eliminar registro?',
+      '¿Está seguro que desea eliminar este registro?',
+      'warning',
+      'Sí, eliminar'
+    );
+    if (!confirm?.isConfirmed) return;
+
+    try {
+      await lastValueFrom(this.context.pedidosService.updateDetalle(
+        this.selectedRow.id,
+        { ...this.buildPayload(this.selectedRow), active: 0 }
+      ));
+      this.rowData = this.rowData.filter(r => r !== this.selectedRow);
+      this.selectedRow = null;
+      if (this.gridApi) {
+        this.gridApi.setGridOption('rowData', this.rowData);
+        this.gridApi.refreshClientSideRowModel('group');
+      }
+      alerts.toastAlert('Registro eliminado', 'success');
+    } catch (err) {
+      console.error('[DetallesClientes] Error eliminando:', err);
+      alerts.basicAlert('Error', 'No se pudo eliminar el registro', 'error');
+    }
   }
 
   async saveChanges(): Promise<void> {
