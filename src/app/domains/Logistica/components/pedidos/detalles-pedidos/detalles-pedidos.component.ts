@@ -275,7 +275,9 @@ export class DetallesPedidosComponent implements OnInit, OnDestroy {
     if (this.context && this.context.CONCEPTS && this.context.CONCEPTS.load) {
       const pedidoId = this.params.data.id;
       this.context.CONCEPTS.load(pedidoId, (data: any[]) => {
-        this.rowData = data.map(item => ({
+        this.rowData = data
+          .filter(item => item.active !== false && item.active !== 0)
+          .map(item => ({
           ...item,
           clienteName: this.resolveClienteName(item.idCliente) || item.clienteName || '',
           __isNew: false,
@@ -673,8 +675,12 @@ get colDefs(): ColDef[] {
     this.notifyTotalVentaToParent();
 
     setTimeout(() => {
-      this.gridApi.ensureIndexVisible(0, 'top');
-      this.gridApi.startEditingCell({ rowIndex: 0, colKey: 'clienteName' });
+      let targetIndex = 0;
+      this.gridApi.forEachNodeAfterFilterAndSort((node, index) => {
+        if (node.data?.id === tempId) targetIndex = index;
+      });
+      this.gridApi.ensureIndexVisible(targetIndex, 'middle');
+      this.gridApi.startEditingCell({ rowIndex: targetIndex, colKey: 'clienteName' });
     }, 100);
   }
 
