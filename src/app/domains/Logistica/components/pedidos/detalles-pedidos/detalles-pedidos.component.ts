@@ -662,7 +662,7 @@ get colDefs(): ColDef[] {
     }, 0);
   }
 
-  deleteSelectedItem() {
+  async deleteSelectedItem() {
     if (this.isLocked) {
       alerts.basicAlert('Pedido bloqueado', 'No se pueden eliminar items. Este pedido está en proceso.', 'warning');
       return;
@@ -675,14 +675,47 @@ get colDefs(): ColDef[] {
     }
 
     const selectedItem = selectedRows[0];
-    if (this.context && this.context.CONCEPTS && this.context.CONCEPTS.delete) {
-      const newCount = this.rowData.length - 1;
-      this.context.CONCEPTS.delete({ data: selectedItem, api: this.gridApi }, () => {
-        this.rowData = this.rowData.filter(item => item.id !== selectedItem.id);
-        this.gridApi.setGridOption('rowData', this.rowData);
-        this.hasUnsavedChanges = true;
-        this.notifyTotalVentaToParent();
-      }, newCount);
+
+    // Fila nueva (sin guardar): quitar solo del grid
+    if (selectedItem.__isNew) {
+      this.rowData = this.rowData.filter(item => item !== selectedItem);
+      this.gridApi.setGridOption('rowData', this.rowData);
+      this.notifyTotalVentaToParent();
+      this.updateCountInParent();
+      return;
+    }
+
+    const confirm = await alerts.confirmAlert(
+      '¿Desactivar detalle?',
+      '¿Está seguro que desea eliminar este registro?',
+      'warning',
+      'Sí, eliminar'
+    );
+    if (!confirm?.isConfirmed) return;
+
+    try {
+      await lastValueFrom(this.pedidosService.updateDetalle(selectedItem.id, {
+        ...selectedItem,
+        active: 0,
+        clienteName: undefined,
+        __isNew: undefined,
+        __modified: undefined,
+      }));
+      this.rowData = this.rowData.filter(item => item !== selectedItem);
+      this.gridApi.setGridOption('rowData', this.rowData);
+      this.notifyTotalVentaToParent();
+      this.updateCountInParent();
+      alerts.toastAlert('Registro eliminado', 'success');
+    } catch (err) {
+      console.error('Error al desactivar detalle:', err);
+      alerts.basicAlert('Error', 'No se pudo eliminar el registro', 'error');
+    }
+  }
+
+  private updateCountInParent(): void {
+    const pedidoId = this.params?.data?.id;
+    if (pedidoId && this.context?.CONCEPTS?.updateCount) {
+      this.context.CONCEPTS.updateCount(pedidoId, this.rowData.length);
     }
   }
 
