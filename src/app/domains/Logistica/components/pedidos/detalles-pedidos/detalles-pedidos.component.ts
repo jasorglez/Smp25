@@ -1,4 +1,4 @@
-import { Component, OnInit, inject } from '@angular/core';
+import { Component, OnInit, OnDestroy, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { AgGridModule } from 'ag-grid-angular';
@@ -26,7 +26,7 @@ import Swal from 'sweetalert2';
   templateUrl: './detalles-pedidos.component.html',
   styleUrls: ['./detalles-pedidos.component.scss']
 })
-export class DetallesPedidosComponent implements OnInit {
+export class DetallesPedidosComponent implements OnInit, OnDestroy {
   private params!: ICellRendererParams;
   private gridApi!: GridApi;
   private context: any;
@@ -63,6 +63,8 @@ export class DetallesPedidosComponent implements OnInit {
   bancos: any[] = [];
   hasBancoInfo: boolean = false;
   bancoModalTitle: string = 'Agregar pago al banco';
+
+  private keyboardShortcuts?: (ev: KeyboardEvent) => void;
 
   /** Enter visto en captura (popup Rich Select no dispara cellKeyDown del grid) */
   private sawEnterDuringEdit = false;
@@ -116,9 +118,28 @@ export class DetallesPedidosComponent implements OnInit {
     this.loadBancos();
   }
 
+  ngOnDestroy() {
+    if (this.keyboardShortcuts) {
+      window.removeEventListener('keydown', this.keyboardShortcuts);
+    }
+  }
+
   agInit(params: ICellRendererParams): void {
     this.params = params;
     this.context = params.context;
+
+    this.keyboardShortcuts = (ev: KeyboardEvent) => {
+      const tag = (ev.target as HTMLElement)?.tagName;
+      if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return;
+      if (ev.key === 'Insert') {
+        ev.preventDefault();
+        this.addItem();
+      } else if (ev.key === 'F10') {
+        ev.preventDefault();
+        this.saveChanges();
+      }
+    };
+    window.addEventListener('keydown', this.keyboardShortcuts);
     this.isLocked = params.data?.locked === true;
     this.detailType = params.data?.detailType || 'pedidos';
 
