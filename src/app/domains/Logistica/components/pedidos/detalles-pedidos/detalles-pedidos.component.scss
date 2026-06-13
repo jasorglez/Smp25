@@ -13,11 +13,12 @@
 
 .detail-toolbar {
   position: sticky;
-  top: 0;
+  bottom: 0;
   z-index: 2;
   flex: 0 0 auto;
   background: #fff;
-  padding-bottom: 4px;
+  border-top: 1px solid #dee2e6;
+  padding-top: 4px;
 }
 
 .detail-grid-shell {
