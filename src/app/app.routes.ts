@@ -2271,7 +2271,7 @@ export const routes: Routes = [
               { path: 'clarificacion1',loadComponent: () => import('./domains/ModProduction/Components/molienda/clarificacion1/clarificacion1.component').then(m => m.Clarificacion1Component) },
               { path: 'clarificacion2',loadComponent: () => import('./domains/ModProduction/Components/molienda/clarificacion2/clarificacion2.component').then(m => m.Clarificacion2Component) },
               { path: 'envasado',      loadComponent: () => import('./domains/ModProduction/Components/molienda/envasado/envasado.component').then(m => m.EnvasadoMoliendaComponent) },
-              { path: 'almmolienda',      loadComponent: () => import('./domains/ModProduction/Components/molienda/almmolienda/almmolienda.component').then(m => m.AlmmoliendaComponent) },
+              { path: 'almmolienda',      loadComponent: () => import('./domains/ModProduction/Components/molienda/almmolienda/almmolienda-tabs.component').then(m => m.AlmmoliendaTabsComponent) },
               { path: 'totalinventarios', loadComponent: () => import('./domains/ModProduction/Components/molienda/total-inventarios/total-inventarios.component').then(m => m.TotalInventariosComponent) },
             ],
           },

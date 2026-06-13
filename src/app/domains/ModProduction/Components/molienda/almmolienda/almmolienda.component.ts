@@ -91,6 +91,8 @@ import { SalidasMpService } from 'app/services/salidas-mp.service';
 })
 export class AlmmoliendaComponent {
   @Input() tipo: string = 'Molienda';
+  /** Si se define, el dropdown de Artículo solo muestra materiales con esa familia (ej. 'BASICA') */
+  @Input() familiaFilter: string | null = null;
 
   private signalsService = inject(SignalsService);
   private branchsService = inject(BranchsService);
@@ -118,7 +120,7 @@ export class AlmmoliendaComponent {
 
   userBranches: any[] = [];
   branchNames: string[] = [];
-  matPrimaOptions: { id: number; name: string; editBultos: boolean }[] = [];
+  matPrimaOptions: { id: number; name: string; editBultos: boolean; familia: string }[] = [];
   departmentOptions: any[] = [];
   idBranch: number | null = null;
   activeBranchFilter: number | null = null;
@@ -245,9 +247,11 @@ export class AlmmoliendaComponent {
             .filter(r => r !== params.data && r.sucursal === sucursal && r.id_articulo)
             .map((r: any) => r.id_articulo)
         );
+        const filtroFamilia = this.familiaFilter?.toUpperCase() ?? null;
         return {
           options: this.matPrimaOptions
             .filter(m => !usados.has(m.name))
+            .filter(m => !filtroFamilia || m.familia === filtroFamilia)
             .map(m => ({ id: m.name, description: m.name })),
         };
       },
@@ -318,7 +322,7 @@ export class AlmmoliendaComponent {
     components: {
       selectV2: SelectWithTooltipEditorV2Component,
     },
-    getRowId: (params: any) => String(params.data.id ?? params.data.__tempId),
+    getRowId: (params: any) => String(params.data.__tempId ?? params.data.id),
     headerHeight: 25,
     rowHeight: 25,
     rowClassRules: { 'new-row-highlight': (p: any) => !!p.data?.__isNew },
@@ -539,16 +543,21 @@ export class AlmmoliendaComponent {
         lastValueFrom(this.rolesService.getAuthorizedDepartments(idCompany)),
       ]);
       const deptsData = (deptsResponse as any)?.data || deptsResponse || [];
-      const matsMap = new Map<number, string>();
-      (Array.isArray(matsData) ? matsData : []).forEach((m: any) => matsMap.set(m.id, m.articulo));
-      console.log('Materiales crudos:', mxmData);
+      const matsMap = new Map<number, { name: string; familia: string }>();
+      (Array.isArray(matsData) ? matsData : []).forEach((m: any) =>
+        matsMap.set(m.id, { name: m.articulo ?? String(m.id), familia: (m.familia ?? '').toUpperCase() })
+      );
       this.matPrimaOptions = (Array.isArray(mxmData) ? mxmData : [])
         .filter((m: any) => m.active !== false && m.idArticulo != null)
-        .map((m: any) => ({
-          id: m.idArticulo,
-          name: matsMap.get(m.idArticulo) ?? String(m.idArticulo),
-          editBultos: !!m.editBultos,
-        }))
+        .map((m: any) => {
+          const mat = matsMap.get(m.idArticulo);
+          return {
+            id: m.idArticulo,
+            name: mat?.name ?? String(m.idArticulo),
+            editBultos: !!m.editBultos,
+            familia: mat?.familia ?? '',
+          };
+        })
         .filter(m => m.name);
       this.departmentOptions = Array.isArray(deptsData) ? deptsData : [];
       this._columnDefs = [];
@@ -682,8 +691,8 @@ export class AlmmoliendaComponent {
   }
 
   async loadData(idCompany: number) {
-    this.rowData.set(null);
-    if (this.gridApi) this.gridApi.setGridOption('rowData', null);
+    this.rowData.set([]);
+    if (this.gridApi) this.gridApi.setGridOption('rowData', []);
     try {
       const items = await lastValueFrom(this.moliendaService.getAll(idCompany, this.tipo));
       console.log('Raw data from API:', items);
@@ -1032,15 +1041,9 @@ export class AlmmoliendaComponent {
       }
 
       const saved = newRows.length + modifiedRows.length;
-      const sorted = this.sortRowsByBranchAndArticle(this.rowData());
       this.hasUnsavedChanges = false;
-      this.rowData.set(sorted);
-      this.originalRowData   = JSON.parse(JSON.stringify(sorted));
-      if (this.gridApi) {
-        this.gridApi.setGridOption('rowData', sorted);
-        this.gridApi.refreshCells({ columns: ['entradas', 'salidas'], force: true });
-      }
       this.showToast(`${saved} registro(s) guardado(s)`);
+      await this.loadData(this.idRoot);
     } catch (error) {
       console.error('Error saving molienda:', error);
       alerts.basicAlert('Error', 'Ocurrió un error al guardar.', 'error');
