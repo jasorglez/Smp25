@@ -73,5 +73,5 @@ export const environment = {
 
   urlRefreshToken: 'https://securetoken.googleapis.com/v1/token?key=AIzaSyDxCBGKk8nT09hdW85-PyOkhw5_JPZLF1A',
 
-  version: '2.52.479 (12 Junio 2026) - Almacenes: solo Productos Terminados e Inventario en menu'
+  version: '2.52.487 (13 Junio 2026) - Almacen Molienda: fix fila amarilla persiste - getRowId prefiere __tempId para rowId estable'
 };

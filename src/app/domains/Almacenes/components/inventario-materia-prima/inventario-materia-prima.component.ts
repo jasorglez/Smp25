@@ -1,9 +1,10 @@
-import { Component, inject, signal, effect, computed } from '@angular/core';
+import { Component, inject, signal, effect, computed, Input } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { AgGridAngular } from 'ag-grid-angular';
 import { ColDef, GridApi, GridReadyEvent } from 'ag-grid-enterprise';
 import { AG_GRID_LOCALE_ES } from 'assets/i18n/ag-grid.locale.es';
 import { SignalsService } from 'app/services/signals.service';
+import { MaterialXModuloService } from 'app/services/materialxmodulo.service';
 import {
   InventarioMpService,
   InventarioMpVista,
@@ -170,6 +171,19 @@ import {
 export class InventarioMateriaPrimaComponent {
   private signalsService = inject(SignalsService);
   private inventarioService = inject(InventarioMpService);
+  private mxmService = inject(MaterialXModuloService);
+
+  /**
+   * Filtro extra OPCIONAL (solo se usa en Total Inventarios → Materia Prima):
+   * cuando es true, solo se muestran las materias primas que están dadas de alta
+   * en la "Vista extracción y fermentación" (MaterialXModulo tipo MOLIENDA) con active = 1.
+   * En Almacenes → Inventario sigue mostrando TODAS las materias primas (default false).
+   */
+  filtrarMolienda = signal<boolean>(false);
+  @Input() set soloMolienda(v: boolean) { this.filtrarMolienda.set(!!v); }
+
+  // null = sin filtro; Set = idArticulo permitidos (active=1 en MaterialXModulo MOLIENDA)
+  private idsPermitidos = signal<Set<number> | null>(null);
 
   locale = AG_GRID_LOCALE_ES;
   private gridApi?: GridApi;
@@ -201,7 +215,10 @@ export class InventarioMateriaPrimaComponent {
   private todasLasFilas = signal<any[]>([]);
 
   rowsVisibles = computed(() => {
-    const rows = this.todasLasFilas();
+    let rows = this.todasLasFilas();
+    // Filtro extra Total Inventarios: solo materias primas de extracción y fermentación activas.
+    const permitidos = this.idsPermitidos();
+    if (permitidos) rows = rows.filter(r => permitidos.has(Number(r.idMaterial)));
     return this.ocultarCeros() ? rows.filter(r => (r.total ?? 0) !== 0) : rows;
   });
 
@@ -256,9 +273,29 @@ export class InventarioMateriaPrimaComponent {
       const idCompany = this.signalsService.getRootSelectedBySidebar()();
       const idBranch = this.signalsService.getBranchSelectedBySidebar()();
       const branchName = this.signalsService.getBranchNameSelectedBySidebar()();
+      const filtrar = this.filtrarMolienda();
       if (!idCompany) return;   // espera empresa válida (no null, no 0)
       this.cargar(idCompany, idBranch, branchName ?? '');
+      if (filtrar) this.cargarIdsPermitidos(idCompany);
+      else this.idsPermitidos.set(null);
     }, { allowSignalWrites: true });
+  }
+
+  /** Carga las materias primas activas de extracción y fermentación (MaterialXModulo MOLIENDA). */
+  private cargarIdsPermitidos(idCompany: number) {
+    this.mxmService.getByType(idCompany, 'MOLIENDA').subscribe({
+      next: (list) => {
+        const set = new Set<number>();
+        (list ?? []).forEach((m: any) => {
+          if (m.active && m.idArticulo != null) set.add(Number(m.idArticulo));
+        });
+        this.idsPermitidos.set(set);
+      },
+      error: (err) => {
+        console.error('Error cargando materias primas de molienda:', err);
+        this.idsPermitidos.set(new Set());
+      },
+    });
   }
 
   onGridReady(e: GridReadyEvent) {

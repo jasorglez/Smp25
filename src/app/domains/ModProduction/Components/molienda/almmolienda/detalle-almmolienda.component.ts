@@ -2533,10 +2533,18 @@ export class DetalleMoliendaComponent {
   private buildSalidasColDefs(): ColDef[] {
     return [
       {
-        headerName: '#',
-        width: 45,
-        valueGetter: (p) => (p.node?.rowIndex ?? 0) + 1,
-        cellStyle: { fontWeight: 'bold' },
+        field: 'fecha',
+        headerName: 'Fecha',
+        width: 110,
+        editable: false,
+        valueFormatter: (p) => {
+          if (!p.value) return '—';
+          const d = new Date(p.value);
+          if (isNaN(d.getTime())) return String(p.value);
+          const dd = String(d.getDate()).padStart(2, '0');
+          const mm = String(d.getMonth() + 1).padStart(2, '0');
+          return `${dd}/${mm}/${d.getFullYear()}`;
+        },
       },
       {
         field: 'folioEntrada',
@@ -2551,20 +2559,6 @@ export class DetalleMoliendaComponent {
         width: 130,
         editable: false,
         valueFormatter: (p) => (p.value ?? '').toUpperCase(),
-      },
-      {
-        field: 'fecha',
-        headerName: 'Fecha',
-        width: 110,
-        editable: false,
-        valueFormatter: (p) => {
-          if (!p.value) return '—';
-          const d = new Date(p.value);
-          if (isNaN(d.getTime())) return String(p.value);
-          const dd = String(d.getDate()).padStart(2, '0');
-          const mm = String(d.getMonth() + 1).padStart(2, '0');
-          return `${dd}/${mm}/${d.getFullYear()}`;
-        },
       },
       {
         field: 'cantidad',

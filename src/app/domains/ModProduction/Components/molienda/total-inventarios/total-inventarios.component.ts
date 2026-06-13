@@ -1,10 +1,11 @@
 import { Component } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { InventarioMateriaPrimaComponent } from 'app/domains/Almacenes/components/inventario-materia-prima/inventario-materia-prima.component';
 
 @Component({
   selector: 'app-total-inventarios',
   standalone: true,
-  imports: [CommonModule],
+  imports: [CommonModule, InventarioMateriaPrimaComponent],
   template: `
     <div class="container-fluid mt-3">
       <!-- Pestañas -->
@@ -24,10 +25,10 @@ import { CommonModule } from '@angular/common';
       </ul>
 
       <!-- Contenido -->
-      <div *ngIf="activeTab === 'materiaprima'" class="text-center py-5 text-muted">
-        <i class="bi bi-tools fs-1 d-block mb-3"></i>
-        <h5>En construcción</h5>
-        <p class="small">Materia Prima — próximamente disponible</p>
+      <div *ngIf="activeTab === 'materiaprima'">
+        <!-- Misma tabla de Inventario Materia Prima, filtrada a las materias primas
+             activas de extracción y fermentación (MaterialXModulo MOLIENDA, active=1). -->
+        <app-inventario-materia-prima [soloMolienda]="true"></app-inventario-materia-prima>
       </div>
 
       <div *ngIf="activeTab === 'materianoproima'" class="text-center py-5 text-muted">
