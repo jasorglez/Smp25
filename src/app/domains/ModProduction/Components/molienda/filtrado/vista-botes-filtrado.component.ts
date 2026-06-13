@@ -250,6 +250,7 @@ export class VistaBotesFiltradoComponent {
   medicionesCountMap: Record<number, number> = {};
   paramsGridContext: any = {};
   private onBotesLoadedCb: ((count: number) => void) | null = null;
+  fasesFEOptions: { id: string; description: string }[] = [];
 
   // Panel de comentarios (read-only)
   showComments = false;
@@ -364,6 +365,7 @@ export class VistaBotesFiltradoComponent {
       idArticulo:               this.matPrimaId,
       matPrimaOptions:          this.matPrimaOptions,
       allArticuloOptions,
+      fasesFEOptions:           this.fasesFEOptions,
       onMedicionesCountChanged: (id: number, count: number) => {
         this.medicionesCountMap[id] = count;
         this.paramsGridApi?.refreshCells({ columns: ['parametros'], force: true });
@@ -419,9 +421,25 @@ export class VistaBotesFiltradoComponent {
           .normalize('NFD').replace(/[̀-ͯ]/g, '');
         return d.startsWith('botes molienda') || d.startsWith('botes');
       });
-      if (!botesCatalog) return;
 
-      const items = await lastValueFrom(this.mxmService.getByCatalog(idCompany, botesCatalog.id));
+      const fasesFECatalog = (catalogs ?? []).find((c: any) => {
+        const d = (c.description || '').trim().toLowerCase()
+          .normalize('NFD').replace(/[̀-ͯ]/g, '');
+        return d.startsWith('fases fe');
+      });
+
+      const [items, fasesFEItems] = await Promise.all([
+        botesCatalog ? lastValueFrom(this.mxmService.getByCatalog(idCompany, botesCatalog.id)) : Promise.resolve([]),
+        fasesFECatalog ? lastValueFrom(this.mxmService.getByCatalog(idCompany, fasesFECatalog.id)) : Promise.resolve([]),
+      ]);
+
+      this.fasesFEOptions = ((fasesFEItems ?? []) as any[])
+        .filter((m: any) => m.active !== false && m.prefijo)
+        .map((m: any) => ({ id: m.prefijo as string, description: m.prefijo as string }));
+
+      this.paramsGridContext = { ...this.paramsGridContext, fasesFEOptions: this.fasesFEOptions };
+
+      if (!botesCatalog) return;
       const moFaseId = (prefijosData ?? []).find((p: any) => p.prefijo === 'MO')?.id ?? null;
 
       const filtered = ((items ?? []) as any[]).filter((m: any) => {
@@ -515,8 +533,10 @@ export class VistaBotesFiltradoComponent {
       }));
       this.originalParamsRowData = JSON.parse(JSON.stringify(mapped));
       this.paramsRowData = mapped;
-      if (this.paramsGridApi && !this.paramsGridApi.isDestroyed())
+      if (this.paramsGridApi && !this.paramsGridApi.isDestroyed()) {
         this.paramsGridApi.setGridOption('rowData', mapped);
+        this.paramsGridApi.autoSizeAllColumns();
+      }
 
       // Cargar conteo de mediciones y conteo de comentarios por folio
       mapped.filter(r => r.id).forEach(r => {

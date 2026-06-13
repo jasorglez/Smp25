@@ -1152,7 +1152,17 @@ export class CatalogosProduccionComponent {
       flex: 1,
       editable: true,
       cellEditor: 'agTextCellEditor',
-      valueSetter: (p: any) => { p.data.prefijo = String(p.newValue ?? '').trim(); p.data.__modified = true; this.hasUnsavedChanges = true; return true; },
+      valueSetter: (p: any) => {
+        const val = String(p.newValue ?? '').trim();
+        if (!val) return false;
+        let dup = false;
+        this.gridApi?.forEachNode((node: any) => {
+          if (node.data !== p.data && (node.data?.prefijo ?? '').toLowerCase() === val.toLowerCase()) dup = true;
+        });
+        if (dup) { this.showToast('Ya existe una fase con ese nombre'); return false; }
+        p.data.prefijo = val; p.data.__modified = true; this.hasUnsavedChanges = true;
+        return true;
+      },
     },
     {
       headerName: 'Activo',

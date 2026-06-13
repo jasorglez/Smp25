@@ -146,6 +146,7 @@ export class MedicionMatPrimaComponent implements ICellRendererAngularComp {
       this.rowData = [...mapped];
       if (this.gridApi && !this.gridApi.isDestroyed()) {
         this.gridApi.setGridOption('rowData', this.rowData);
+        this.gridApi.autoSizeAllColumns();
         this.addAutoRow();
       }
       this.onCountChanged?.(this.idMedicion!, mapped.length);

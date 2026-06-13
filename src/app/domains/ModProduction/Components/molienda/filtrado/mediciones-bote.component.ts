@@ -8,6 +8,9 @@ import { ProductionService } from 'app/services/production.service';
 import { alerts } from 'app/helpers/alerts';
 import { ItemCommentsCellRendererComponent } from 'app/shared/item-comments-cell-renderer/item-comments-cell-renderer.component';
 import { MedicionMatPrimaComponent } from './medicion-mat-prima.component';
+import { SelectWithTooltipEditorV2Component } from 'app/shared/select-with-tooltip-editor-v2.component';
+import { SelectOption } from 'app/shared/select-dropdown.service';
+import { TimeEditorComponent } from 'app/domains/Indicadores/components/ind01/timeinactives/time-editor.component';
 
 interface ParamCatalog {
   id: number;
@@ -19,7 +22,7 @@ interface ParamCatalog {
 @Component({
   selector: 'app-mediciones-bote',
   standalone: true,
-  imports: [CommonModule, AgGridAngular, ItemCommentsCellRendererComponent, MedicionMatPrimaComponent],
+  imports: [CommonModule, AgGridAngular, ItemCommentsCellRendererComponent, MedicionMatPrimaComponent, SelectWithTooltipEditorV2Component, TimeEditorComponent],
   styles: [':host { display: block; height: 100%; overflow: hidden; }'],
   template: `
     <div style="height:100%;display:flex;flex-direction:column;background:#fff8e1;border-top:2px solid #ffe0b2;">
@@ -98,6 +101,7 @@ export class MedicionesBoteComponent implements ICellRendererAngularComp {
   private idMoliendaParams: number | null = null;
   private idArticulo: number | null = null;
   private matPrimaOptions: { id: number; name: string }[] = [];
+  private fasesFEOptions: SelectOption[] = [];
 
   matPrimaCountMap: Record<number, number> = {};
   medicionGridContext: any = {};
@@ -132,6 +136,7 @@ export class MedicionesBoteComponent implements ICellRendererAngularComp {
     this.folioLabel       = params.data?.folio ?? '';
     this.idArticulo       = params.context?.idArticulo ?? null;
     this.matPrimaOptions  = params.context?.matPrimaOptions ?? [];
+    this.fasesFEOptions   = params.context?.fasesFEOptions ?? [];
     this.onCountChanged   = params.context?.onMedicionesCountChanged ?? null;
     this.matPrimaCountMap = {};
     const allArticuloOptions: { id: number; name: string }[] =
@@ -186,11 +191,56 @@ export class MedicionesBoteComponent implements ICellRendererAngularComp {
 
   private buildColDefs() {
     const fixed: ColDef[] = [
-      { field: 'fecha', headerName: 'Fecha', editable: false, width: 120 },
-      { field: 'hora',  headerName: 'Hora',  editable: false, width: 88  },
       {
-        field: 'faseFe', headerName: 'Fase FE', editable: true, width: 95,
-        valueSetter: (p: any) => { p.data.faseFe = p.newValue; p.data.__modified = true; return true; },
+        field: 'fecha', headerName: 'Fecha', editable: true, width: 120,
+        cellEditor: 'agDateCellEditor',
+        valueGetter: (p: any) => {
+          if (!p.data?.fecha) return null;
+          const [y, m, d] = String(p.data.fecha).split('-').map(Number);
+          return new Date(y, m - 1, d);
+        },
+        valueFormatter: (p: any) => {
+          if (!p.value) return '';
+          const d: Date = p.value instanceof Date ? p.value : new Date(p.value);
+          if (isNaN(d.getTime())) return String(p.value ?? '');
+          return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+        },
+        valueSetter: (p: any) => {
+          if (!p.newValue) return false;
+          let iso: string;
+          if (p.newValue instanceof Date) {
+            const d = p.newValue as Date;
+            iso = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+          } else {
+            const s = String(p.newValue);
+            iso = s.includes('T') ? s.split('T')[0] : s;
+          }
+          p.data.fecha = iso; p.data.__modified = true; return true;
+        },
+      },
+      {
+        field: 'hora', headerName: 'Hora', editable: true, width: 88,
+        cellEditor: TimeEditorComponent,
+        valueSetter: (p: any) => { p.data.hora = p.newValue; p.data.__modified = true; return true; },
+      },
+      {
+        field: 'faseFe', headerName: 'Fase FE', editable: true, width: 110,
+        cellEditor: SelectWithTooltipEditorV2Component,
+        cellEditorParams: (p: any) => {
+          const usedByOthers = new Set(
+            this.rowData.filter(r => r !== p.data && r.faseFe).map((r: any) => r.faseFe)
+          );
+          return { options: this.fasesFEOptions.filter(o => !usedByOthers.has(o.id)) };
+        },
+        valueFormatter: (p: any) => p.value ?? '',
+        valueSetter: (p: any) => {
+          const val = p.newValue ?? '';
+          if (val) {
+            const duplicate = this.rowData.some(r => r !== p.data && r.faseFe === val);
+            if (duplicate) { alerts.basicAlert('Fase repetida', `La fase "${val}" ya existe en esta medición.`, 'warning'); return false; }
+          }
+          p.data.faseFe = val; p.data.__modified = true; return true;
+        },
       },
       {
         field: 'matPrima', headerName: 'Mat. Prima', editable: false, width: 140,
