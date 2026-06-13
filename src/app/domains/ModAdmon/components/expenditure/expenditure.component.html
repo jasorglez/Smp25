@@ -39,16 +39,16 @@
         </span>
         <span class="vr mx-1" style="opacity:0.3;"></span>
         <span class="badge px-3 py-1"
-              [class.bg-success]="saldoDisponible !== null && saldoDisponible >= 0"
-              [class.bg-danger]="saldoDisponible !== null && saldoDisponible < 0"
-              [class.bg-secondary]="saldoDisponible === null"
+              [class.bg-success]="saldoCuenta !== null && saldoCuenta >= 0"
+              [class.bg-danger]="saldoCuenta !== null && saldoCuenta < 0"
+              [class.bg-secondary]="saldoCuenta === null"
               style="font-size: 0.82rem; font-weight: 600;">
           <i class="bi bi-wallet2 me-1"></i>
           Saldo:
-          <ng-container *ngIf="saldoDisponible !== null">
-            {{ saldoDisponible | currency:'MXN':'symbol':'1.2-2' }}
+          <ng-container *ngIf="saldoCuenta !== null">
+            {{ saldoCuenta | currency:'MXN':'symbol':'1.2-2' }}
           </ng-container>
-          <ng-container *ngIf="saldoDisponible === null">—</ng-container>
+          <ng-container *ngIf="saldoCuenta === null">—</ng-container>
         </span>
       </div>
     </div>
