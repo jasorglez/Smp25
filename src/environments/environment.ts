@@ -86,5 +86,5 @@ export const environment = {
     // publicKey: 'TEST-4399133a-4676-42a2-ab85-d946370bf96a',
   },
 
-  version: '5.14 (12 Junio 2026 16:50) fix(egresos): validacion saldo detalle usa saldoCuenta real',
+  version: '5.15 (12 Junio 2026 17:15) feat(egresos): saldo disponible actualiza en tiempo real al guardar detalle',
 };

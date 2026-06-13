@@ -2200,6 +2200,7 @@ export class ExpenditureComponent implements OnDestroy, OnChanges {
         console.log('❌ No se encontró el item en el array local');
       }
     }
+    this.recalcularSaldoDisponible();
   }
 
 }
