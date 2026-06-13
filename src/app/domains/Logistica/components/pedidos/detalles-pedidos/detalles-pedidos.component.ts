@@ -557,7 +557,6 @@ get colDefs(): ColDef[] {
     rowHeight: 30,
     animateRows: true,
     rowSelection: 'single',
-    domLayout: 'autoHeight',
     suppressDragLeaveHidesColumns: true,
     suppressHorizontalScroll: true,
     suppressRowTransform: true,
