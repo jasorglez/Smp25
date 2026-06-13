@@ -86,5 +86,5 @@ export const environment = {
     // publicKey: 'TEST-4399133a-4676-42a2-ab85-d946370bf96a',
   },
 
-  version: '5.18 (13 Junio 2026 09:00) fix(pedidos): nueva fila sigue posicion real tras sort grid',
+  version: '5.19 (13 Junio 2026 10:00) fix(pedidos): eliminar deteccion duplicados',
 };
