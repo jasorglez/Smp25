@@ -86,5 +86,5 @@ export const environment = {
     // publicKey: 'TEST-4399133a-4676-42a2-ab85-d946370bf96a',
   },
 
-  version: '5.16 (12 Junio 2026 17:45) fix(egresos): saldo muestra saldoCuenta real recargando banco tras guardar',
+  version: '5.17 (12 Junio 2026 18:30) feat(pedidos): soft-delete detalle con active=0',
 };
