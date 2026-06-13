@@ -255,10 +255,7 @@ export class DetallesClientesComponent implements ICellRendererAngularComp {
     if (!confirm?.isConfirmed) return;
 
     try {
-      await lastValueFrom(this.context.pedidosService.updateDetalle(
-        this.selectedRow.id,
-        { ...this.buildPayload(this.selectedRow), active: 0 }
-      ));
+      await lastValueFrom(this.context.pedidosService.deleteDetalle(this.selectedRow.id));
       this.rowData = this.rowData.filter(r => r !== this.selectedRow);
       this.selectedRow = null;
       if (this.gridApi) {
