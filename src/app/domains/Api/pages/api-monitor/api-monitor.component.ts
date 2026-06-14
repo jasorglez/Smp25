@@ -8,7 +8,8 @@ import { AgGridAngular } from 'ag-grid-angular';
 import { ColDef, GridApi, GridReadyEvent } from 'ag-grid-community';
 
 import { ApiMonitorService, ApiResumen, ApiPorHora, ApiTopEndpoint,
-         ApiLogItem, ApiUsuarioActivo, LoginLogItem, ServerMetrics } from '../../services/api-monitor.service';
+         ApiLogItem, ApiUsuarioActivo, LoginLogItem, ServerMetrics,
+         ApiUsuarioPeriodo } from '../../services/api-monitor.service';
 
 @Component({
   selector: 'app-api-monitor',
@@ -20,7 +21,7 @@ import { ApiMonitorService, ApiResumen, ApiPorHora, ApiTopEndpoint,
 export class ApiMonitorComponent implements OnInit {
   private svc = inject(ApiMonitorService);
 
-  activeTab: 'dashboard' | 'top' | 'logs' | 'servidor' = 'dashboard';
+  activeTab: 'dashboard' | 'top' | 'logs' | 'usuarios' | 'servidor' = 'dashboard';
   activeServerTab: '66' | '76' = '66';
   loading = false;
 
@@ -87,6 +88,27 @@ export class ApiMonitorComponent implements OnInit {
   // ── Login log ────────────────────────────────────────────────────────────
   loginsRecientes: LoginLogItem[] = [];
 
+  // ── Por usuario ───────────────────────────────────────────────────────────
+  usuariosData: ApiUsuarioPeriodo[] = [];
+  usuariosGridApi!: GridApi;
+  chartUsuariosOpts: any = { series: [], chart: { type: 'donut', height: 260 }, labels: [] };
+  usuariosColDefs: ColDef[] = [
+    { field: 'email',      headerName: 'Usuario',     flex: 1,   minWidth: 180 },
+    { field: 'idCompany',  headerName: 'Empresa',     width: 90,  cellStyle: { textAlign: 'center' } },
+    { field: 'total',      headerName: 'Total',       width: 90,  sort: 'desc',
+      cellStyle: p => ({ fontWeight: 'bold', color: p.value > 500 ? '#dc3545' : p.value > 100 ? '#fd7e14' : 'inherit' }) },
+    { field: 'gets',       headerName: 'GET',         width: 80,  cellStyle: { color: '#0d6efd' } },
+    { field: 'posts',      headerName: 'POST',        width: 80,  cellStyle: { color: '#198754' } },
+    { field: 'puts',       headerName: 'PUT',         width: 80,  cellStyle: { color: '#fd7e14' } },
+    { field: 'deletes',    headerName: 'DELETE',      width: 80,  cellStyle: { color: '#dc3545' } },
+    { field: 'avgMs',      headerName: 'Avg ms',      width: 90,
+      cellStyle: p => p.value > 2000 ? { color: '#dc3545' } : p.value > 500 ? { color: '#fd7e14' } : null },
+    { field: 'errores',    headerName: 'Errores',     width: 90,
+      cellStyle: p => p.value > 0 ? { color: '#dc3545', fontWeight: 'bold' } : null },
+    { field: 'ultimaVez',  headerName: 'Última vez',  width: 155,
+      valueFormatter: p => p.value ? new Date(p.value).toLocaleString('es-MX') : '' },
+  ];
+
   // ── Server metrics ────────────────────────────────────────────────────────
   serverMetrics: ServerMetrics | null = null;
   serverMetricsLoading = false;
@@ -98,16 +120,18 @@ export class ApiMonitorComponent implements OnInit {
 
   selectTab(tab: typeof this.activeTab): void {
     this.activeTab = tab;
-    if (tab === 'top')      this.loadTop();
-    if (tab === 'logs')     this.loadLogs();
+    if (tab === 'top')       this.loadTop();
+    if (tab === 'logs')      this.loadLogs();
     if (tab === 'dashboard') this.loadDashboard();
-    if (tab === 'servidor') this.loadServerMetrics();
+    if (tab === 'usuarios')  this.loadUsuarios();
+    if (tab === 'servidor')  this.loadServerMetrics();
   }
 
   applyDateFilter(): void {
     if (this.activeTab === 'dashboard') this.loadDashboard();
     if (this.activeTab === 'top')       this.loadTop();
     if (this.activeTab === 'logs')      this.loadLogs();
+    if (this.activeTab === 'usuarios')  this.loadUsuarios();
   }
 
   // ── Dashboard ─────────────────────────────────────────────────────────────
@@ -133,6 +157,10 @@ export class ApiMonitorComponent implements OnInit {
 
     this.svc.getLoginsRecientes(this.startDate, this.endDate).subscribe({
       next: d => { this.loginsRecientes = d; }
+    });
+
+    this.svc.getPorUsuario(this.startDate, this.endDate, 30).subscribe({
+      next: d => { this.usuariosData = d; this.buildUsuariosChart(d); }
     });
   }
 
@@ -235,6 +263,47 @@ export class ApiMonitorComponent implements OnInit {
   private defaultEnd(): string {
     return new Date().toISOString().substring(0, 10);
   }
+
+  // ── Por usuario ───────────────────────────────────────────────────────────
+  loadUsuarios(): void {
+    this.loading = true;
+    this.svc.getPorUsuario(this.startDate, this.endDate, 30).subscribe({
+      next: d => {
+        this.usuariosData = d;
+        this.buildUsuariosChart(d);
+        this.loading = false;
+      },
+      error: () => { this.loading = false; }
+    });
+  }
+
+  private buildUsuariosChart(data: ApiUsuarioPeriodo[]): void {
+    const top10 = data.slice(0, 10);
+    const otros = data.slice(10).reduce((s, u) => s + u.total, 0);
+    const labels = top10.map(u => u.email.split('@')[0]);
+    const series = top10.map(u => u.total);
+    if (otros > 0) { labels.push('Otros'); series.push(otros); }
+    this.chartUsuariosOpts = {
+      series,
+      chart: { type: 'donut', height: 260, toolbar: { show: false } },
+      labels,
+      legend: { position: 'right', fontSize: '11px' },
+      plotOptions: { pie: { donut: { size: '55%', labels: {
+        show: true,
+        total: { show: true, label: 'Total', formatter: (w: any) => w.globals.seriesTotals.reduce((a: number, b: number) => a + b, 0).toLocaleString() }
+      } } } },
+      tooltip: { y: { formatter: (v: number) => v.toLocaleString() + ' req' } }
+    };
+  }
+
+  drillToUser(email: string): void {
+    this.logsFilterEmail = email;
+    this.logsPage = 1;
+    this.activeTab = 'logs';
+    this.loadLogs();
+  }
+
+  onUsuariosGridReady(e: GridReadyEvent): void { this.usuariosGridApi = e.api; }
 
   // ── Server Metrics ────────────────────────────────────────────────────────
   loadServerMetrics(): void {
