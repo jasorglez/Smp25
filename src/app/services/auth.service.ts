@@ -321,7 +321,8 @@ export class AuthService {
   }
 
   isRoot(): boolean {
-    return this.signalsService.getemailChoose() === environment.root;
+    const email = this.signalsService.getemailChoose() || localStorage.getItem('mail') || '';
+    return email.toLowerCase() === environment.root.toLowerCase();
   }
 
   hasMasterPermission(masterPermissionKey: string): boolean {
