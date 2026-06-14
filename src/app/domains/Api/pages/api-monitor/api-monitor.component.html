@@ -319,86 +319,147 @@
   <!-- ─── SERVIDOR ───────────────────────────────────────────────────────── -->
   <div *ngIf="activeTab==='servidor'">
 
-    <!-- Server sub-tabs -->
-    <ul class="nav nav-pills mb-3">
-      <li class="nav-item">
-        <a class="nav-link" [class.active]="activeServerTab==='66'"
-           (click)="activeServerTab='66'" style="cursor:pointer">
-          <i class="bi bi-hdd-network me-1"></i>66.179.240.10 <span class="badge bg-success ms-1">Producción</span>
-        </a>
-      </li>
-      <li class="nav-item">
-        <a class="nav-link" [class.active]="activeServerTab==='76'"
-           (click)="activeServerTab='76'" style="cursor:pointer">
-          <i class="bi bi-hdd-network me-1"></i>76.13.28.145 <span class="badge bg-warning text-dark ms-1">Pruebas</span>
-        </a>
-      </li>
-    </ul>
+    <!-- Spinner / error -->
+    <div *ngIf="serverMetricsLoading" class="text-center py-5">
+      <div class="spinner-border text-primary"></div>
+      <div class="mt-2 text-muted small">Leyendo métricas del host...</div>
+    </div>
 
-    <!-- Server info placeholder -->
-    <div class="row g-3">
-      <div class="col-md-6">
-        <div class="card border-0 shadow-sm">
-          <div class="card-header bg-transparent py-2 fw-semibold small">
-            <i class="bi bi-cpu me-1 text-primary"></i>
-            Servidor {{ activeServerTab === '66' ? '66.179.240.10' : '76.13.28.145' }}
-            <span class="badge ms-2" [ngClass]="activeServerTab==='66' ? 'bg-success' : 'bg-warning text-dark'">
-              {{ activeServerTab==='66' ? 'Producción' : 'Pruebas' }}
-            </span>
+    <div *ngIf="serverMetricsError" class="alert alert-danger">
+      <i class="bi bi-exclamation-triangle me-2"></i>
+      No se pudo conectar a <code>/api/ServerMetrics</code>. Verifica que Security esté desplegado con los volúmenes <code>/proc</code>.
+    </div>
+
+    <!-- Métricas reales -->
+    <ng-container *ngIf="serverMetrics && !serverMetricsLoading">
+
+      <!-- KPI row -->
+      <div class="row g-3 mb-3">
+
+        <!-- CPU -->
+        <div class="col-6 col-md-3">
+          <div class="card border-0 shadow-sm h-100">
+            <div class="card-body text-center">
+              <div class="small text-muted mb-1"><i class="bi bi-cpu me-1"></i>CPU</div>
+              <div class="fs-2 fw-bold" [ngClass]="kpiClass(serverMetrics.cpu.usedPct, 70, 90)">
+                {{ serverMetrics.cpu.usedPct }}%
+              </div>
+              <div class="progress mt-2" style="height:6px">
+                <div class="progress-bar {{ gaugeClass(serverMetrics.cpu.usedPct) }}"
+                     [style.width.%]="serverMetrics.cpu.usedPct"></div>
+              </div>
+            </div>
           </div>
-          <div class="card-body">
-            <div class="alert alert-info mb-0">
-              <i class="bi bi-info-circle me-2"></i>
-              Las métricas del servidor (CPU, RAM, disco, conexiones) requieren un agente instalado en el host
-              o acceso SSH desde el microservicio.
-              <br><br>
-              <strong>Pendiente:</strong> instalar endpoint de métricas en el servidor
-              <code>{{ activeServerTab === '66' ? '66.179.240.10' : '76.13.28.145' }}</code>
-              que exponga datos via <code>GET /api/ServerMetrics</code>.
-              <br><br>
-              Mientras tanto, accede via SSH:
-              <pre class="mt-2 mb-0 p-2 bg-dark text-light rounded" style="font-size: 0.8rem">ssh jsoriano&#64;5.181.218.92
-docker stats --no-stream</pre>
+        </div>
+
+        <!-- RAM -->
+        <div class="col-6 col-md-3">
+          <div class="card border-0 shadow-sm h-100">
+            <div class="card-body text-center">
+              <div class="small text-muted mb-1"><i class="bi bi-memory me-1"></i>RAM</div>
+              <div class="fs-2 fw-bold" [ngClass]="kpiClass(serverMetrics.ram.usedPct, 70, 90)">
+                {{ serverMetrics.ram.usedPct }}%
+              </div>
+              <div class="progress mt-2" style="height:6px">
+                <div class="progress-bar {{ gaugeClass(serverMetrics.ram.usedPct) }}"
+                     [style.width.%]="serverMetrics.ram.usedPct"></div>
+              </div>
+              <div class="small text-muted mt-1">
+                {{ serverMetrics.ram.usedMb | number }} / {{ serverMetrics.ram.totalMb | number }} MB
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Uptime -->
+        <div class="col-6 col-md-3">
+          <div class="card border-0 shadow-sm h-100">
+            <div class="card-body text-center">
+              <div class="small text-muted mb-1"><i class="bi bi-clock-history me-1"></i>Uptime</div>
+              <div class="fs-4 fw-bold text-info">{{ serverMetrics.uptime.formatted }}</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Load avg -->
+        <div class="col-6 col-md-3">
+          <div class="card border-0 shadow-sm h-100">
+            <div class="card-body text-center">
+              <div class="small text-muted mb-1"><i class="bi bi-activity me-1"></i>Load avg</div>
+              <div class="fw-bold">
+                <span class="fs-5">{{ serverMetrics.load.load1 }}</span>
+                <span class="text-muted small"> · {{ serverMetrics.load.load5 }} · {{ serverMetrics.load.load15 }}</span>
+              </div>
+              <div class="small text-muted">1m · 5m · 15m</div>
             </div>
           </div>
         </div>
       </div>
-      <div class="col-md-6">
-        <div class="card border-0 shadow-sm">
-          <div class="card-header bg-transparent py-2 fw-semibold small">
-            <i class="bi bi-boxes me-1 text-info"></i>Contenedores Docker
-          </div>
-          <div class="card-body">
-            <table class="table table-sm mb-0">
-              <thead class="table-light"><tr><th>Contenedor</th><th>Puerto</th><th>Base</th></tr></thead>
-              <tbody>
-                <tr *ngIf="activeServerTab==='66'">
-                  <td>security</td><td>5003</td><td>security</td>
-                </tr>
-                <tr *ngIf="activeServerTab==='66'">
-                  <td>bpi</td><td>5005</td><td>administration</td>
-                </tr>
-                <tr *ngIf="activeServerTab==='66'">
-                  <td>telegram</td><td>5232</td><td>smp / security</td>
-                </tr>
-                <tr *ngIf="activeServerTab==='66'">
-                  <td>warehouse</td><td>5007</td><td>warehouses</td>
-                </tr>
-                <tr *ngIf="activeServerTab==='66'">
-                  <td>administration</td><td>5006</td><td>administration</td>
-                </tr>
-                <tr *ngIf="activeServerTab==='76'">
-                  <td colspan="3" class="text-muted">Servidor de pruebas — misma arquitectura Docker</td>
-                </tr>
-              </tbody>
-            </table>
-          </div>
+
+      <!-- Discos -->
+      <div class="card border-0 shadow-sm mb-3">
+        <div class="card-header bg-transparent py-2 fw-semibold small">
+          <i class="bi bi-hdd me-1 text-warning"></i>Discos
+        </div>
+        <div class="card-body p-0">
+          <table class="table table-sm mb-0">
+            <thead class="table-light">
+              <tr>
+                <th>Dispositivo</th>
+                <th>Mount</th>
+                <th class="text-end">Total GB</th>
+                <th class="text-end">Usado GB</th>
+                <th class="text-end">Libre GB</th>
+                <th style="width:160px">Uso</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr *ngFor="let d of serverMetrics.disks">
+                <td class="small text-muted">{{ d.dev }}</td>
+                <td class="fw-semibold">{{ d.mount }}</td>
+                <td class="text-end">{{ d.totalGb }}</td>
+                <td class="text-end" [ngClass]="kpiClass(d.usedPct, 70, 90)">{{ d.usedGb }}</td>
+                <td class="text-end">{{ d.freeGb }}</td>
+                <td>
+                  <div class="d-flex align-items-center gap-2">
+                    <div class="progress flex-grow-1" style="height:6px">
+                      <div class="progress-bar {{ gaugeClass(d.usedPct) }}"
+                           [style.width.%]="d.usedPct"></div>
+                    </div>
+                    <span class="small" [ngClass]="kpiClass(d.usedPct, 70, 90)">{{ d.usedPct }}%</span>
+                  </div>
+                </td>
+              </tr>
+            </tbody>
+          </table>
         </div>
       </div>
-    </div>
 
-    <!-- LoginLog widget -->
-    <div class="card border-0 shadow-sm mt-3">
+      <!-- Red -->
+      <div class="card border-0 shadow-sm mb-3" *ngIf="serverMetrics.network?.length">
+        <div class="card-header bg-transparent py-2 fw-semibold small">
+          <i class="bi bi-ethernet me-1 text-info"></i>Red (acumulado desde boot)
+        </div>
+        <div class="card-body p-0">
+          <table class="table table-sm mb-0">
+            <thead class="table-light">
+              <tr><th>Interfaz</th><th class="text-end">RX MB</th><th class="text-end">TX MB</th></tr>
+            </thead>
+            <tbody>
+              <tr *ngFor="let n of serverMetrics.network">
+                <td class="fw-semibold">{{ n.name }}</td>
+                <td class="text-end">{{ n.rxMb | number }}</td>
+                <td class="text-end">{{ n.txMb | number }}</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+    </ng-container>
+
+    <!-- Logins recientes -->
+    <div class="card border-0 shadow-sm mt-1">
       <div class="card-header bg-transparent py-2 d-flex align-items-center">
         <span class="fw-semibold small">
           <i class="bi bi-people-fill me-1 text-success"></i>Últimos logins registrados
