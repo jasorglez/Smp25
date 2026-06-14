@@ -414,7 +414,7 @@ export class DetallesExpenditureComponent implements OnInit, OnDestroy {
             __isNew: false,
             __modified: false
           };
-        });
+        }).sort((a: any, b: any) => this.getDateSortValue(b.dateExpend) - this.getDateSortValue(a.dateExpend));
         // Calculate total for each concept
         this.rowData.forEach(concept => {
           concept.total = (concept.quantity || 0) * (concept.price || 0);
