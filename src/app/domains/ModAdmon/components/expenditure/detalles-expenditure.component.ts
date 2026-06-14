@@ -2220,12 +2220,19 @@ export class DetallesExpenditureComponent implements OnInit, OnDestroy {
     const tempId = `temp_concept_${this.tempIdCounter++}`;
     const rawMonto = String(data?.monto ?? '0').replace(/[^0-9.]/g, '');
     const monto    = parseFloat(rawMonto) || 0;
+    // Rellena idContribuyente desde historial igual que el valueSetter manual
+    let idContribuyente: number | null = null;
+    if (entityMatch?.id != null) {
+      const hist = this.context?.componentParent?.conceptsHistoryBySpend?.get(entityMatch.id);
+      if (hist?.idContribuyente) idContribuyente = hist.idContribuyente;
+    }
+
     const newConcept = {
       id:              tempId,
       idIncorExp:      this.params.data.id,
       typeExpense:     tipo,
       idExpense:       idExpense,
-      idContribuyente: null,
+      idContribuyente: idContribuyente,
       selectedEntity:  selectedEntity,
       groupEntity:     this.getGroupEntityLabel({ typeExpense: tipo, selectedEntity }),
       dateExpend:      data?.fecha || this.getTodayDateForInput(),
