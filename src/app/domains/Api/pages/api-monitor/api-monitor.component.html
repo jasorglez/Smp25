@@ -347,6 +347,19 @@
   <!-- ─── USUARIOS ───────────────────────────────────────────────────────── -->
   <div *ngIf="activeTab==='usuarios'">
 
+    <!-- Barra de estado auto-refresh -->
+    <div class="d-flex align-items-center gap-2 mb-3 px-1">
+      <span *ngIf="autoRefreshing" class="spinner-border spinner-border-sm text-primary" style="width:14px;height:14px"></span>
+      <i *ngIf="!autoRefreshing" class="bi bi-arrow-clockwise text-success"></i>
+      <span class="small text-muted">
+        Auto-refresh cada 30s
+        <span *ngIf="lastUpdated"> · Actualizado: <strong>{{ lastUpdated | date:'HH:mm:ss' }}</strong></span>
+      </span>
+      <button class="btn btn-sm btn-outline-secondary ms-auto py-0 px-2" (click)="loadUsuarios()" [disabled]="loading || autoRefreshing">
+        <i class="bi bi-arrow-clockwise me-1"></i>Refrescar
+      </button>
+    </div>
+
     <!-- Donut + top 3 -->
     <div class="row g-3 mb-3">
 

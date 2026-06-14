@@ -1,4 +1,4 @@
-import { Component, OnInit, inject, ViewChild } from '@angular/core';
+import { Component, OnInit, OnDestroy, inject, ViewChild } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { NgApexchartsModule, ApexChart, ApexAxisChartSeries, ApexXAxis,
@@ -18,7 +18,7 @@ import { ApiMonitorService, ApiResumen, ApiPorHora, ApiTopEndpoint,
   templateUrl: './api-monitor.component.html',
   styleUrls: ['./api-monitor.component.scss']
 })
-export class ApiMonitorComponent implements OnInit {
+export class ApiMonitorComponent implements OnInit, OnDestroy {
   private svc = inject(ApiMonitorService);
 
   activeTab: 'dashboard' | 'top' | 'logs' | 'usuarios' | 'servidor' = 'dashboard';
@@ -114,16 +114,28 @@ export class ApiMonitorComponent implements OnInit {
   serverMetricsLoading = false;
   serverMetricsError = false;
 
+  // ── Auto-polling (tab Usuarios) ───────────────────────────────────────────
+  lastUpdated:   Date | null = null;
+  autoRefreshing = false;
+  private readonly POLL_MS = 30_000;
+  private pollingHandle:      ReturnType<typeof setInterval> | null = null;
+  private visibilityListener: (() => void) | null = null;
+
   ngOnInit(): void {
     this.loadDashboard();
   }
 
+  ngOnDestroy(): void {
+    this.stopPolling();
+  }
+
   selectTab(tab: typeof this.activeTab): void {
+    if (this.activeTab === 'usuarios' && tab !== 'usuarios') this.stopPolling();
     this.activeTab = tab;
     if (tab === 'top')       this.loadTop();
     if (tab === 'logs')      this.loadLogs();
     if (tab === 'dashboard') this.loadDashboard();
-    if (tab === 'usuarios')  this.loadUsuarios();
+    if (tab === 'usuarios')  { this.loadUsuarios(); this.startPolling(); }
     if (tab === 'servidor')  this.loadServerMetrics();
   }
 
@@ -271,10 +283,46 @@ export class ApiMonitorComponent implements OnInit {
       next: d => {
         this.usuariosData = d;
         this.buildUsuariosChart(d);
+        this.lastUpdated = new Date();
         this.loading = false;
       },
       error: () => { this.loading = false; }
     });
+  }
+
+  private silentRefreshUsuarios(): void {
+    this.autoRefreshing = true;
+    this.svc.getPorUsuario(this.startDate, this.endDate, 30).subscribe({
+      next: d => {
+        this.usuariosData = d;
+        this.buildUsuariosChart(d);
+        this.lastUpdated = new Date();
+        this.autoRefreshing = false;
+      },
+      error: () => { this.autoRefreshing = false; }
+    });
+  }
+
+  private startPolling(): void {
+    this.stopPolling();
+    this.pollingHandle = setInterval(() => {
+      if (document.visibilityState === 'visible') this.silentRefreshUsuarios();
+    }, this.POLL_MS);
+
+    this.visibilityListener = () => {
+      if (document.visibilityState === 'visible' && this.activeTab === 'usuarios') {
+        this.silentRefreshUsuarios();
+      }
+    };
+    document.addEventListener('visibilitychange', this.visibilityListener);
+  }
+
+  private stopPolling(): void {
+    if (this.pollingHandle) { clearInterval(this.pollingHandle); this.pollingHandle = null; }
+    if (this.visibilityListener) {
+      document.removeEventListener('visibilitychange', this.visibilityListener);
+      this.visibilityListener = null;
+    }
   }
 
   private buildUsuariosChart(data: ApiUsuarioPeriodo[]): void {
