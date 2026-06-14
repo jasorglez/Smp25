@@ -72,6 +72,22 @@ export interface LoginLogItem {
   fechaLogin: string;
 }
 
+export interface ApiUsuarioPeriodo {
+  idUser:     number | null;
+  email:      string;
+  idCompany:  number | null;
+  total:      number;
+  avgMs:      number;
+  maxMs:      number;
+  errores:    number;
+  gets:       number;
+  posts:      number;
+  puts:       number;
+  deletes:    number;
+  ultimaVez:  string;
+  primeraVez: string;
+}
+
 export interface ServerMetrics {
   cpu:     { usedPct: number };
   ram:     { totalMb: number; usedMb: number; freeMb: number; usedPct: number };
@@ -138,5 +154,10 @@ export class ApiMonitorService {
 
   getServerMetrics(): Observable<ServerMetrics> {
     return this.http.get<ServerMetrics>(`${environment.urlSecurity}/ServerMetrics`);
+  }
+
+  getPorUsuario(startDate?: string, endDate?: string, limit = 30): Observable<ApiUsuarioPeriodo[]> {
+    let p = this.buildParams(startDate, endDate).set('limit', limit);
+    return this.http.get<ApiUsuarioPeriodo[]>(`${this.base}/por-usuario`, { params: p });
   }
 }
