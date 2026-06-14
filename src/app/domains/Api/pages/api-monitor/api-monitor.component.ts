@@ -8,7 +8,7 @@ import { AgGridAngular } from 'ag-grid-angular';
 import { ColDef, GridApi, GridReadyEvent } from 'ag-grid-community';
 
 import { ApiMonitorService, ApiResumen, ApiPorHora, ApiTopEndpoint,
-         ApiLogItem, ApiUsuarioActivo } from '../../services/api-monitor.service';
+         ApiLogItem, ApiUsuarioActivo, LoginLogItem } from '../../services/api-monitor.service';
 
 @Component({
   selector: 'app-api-monitor',
@@ -84,6 +84,9 @@ export class ApiMonitorComponent implements OnInit {
   ];
   logsGridApi!: GridApi;
 
+  // ── Login log ────────────────────────────────────────────────────────────
+  loginsRecientes: LoginLogItem[] = [];
+
   // ── Server metrics (static placeholder until real data available) ─────────
   serverProd = {
     host: '66.179.240.10',
@@ -132,6 +135,10 @@ export class ApiMonitorComponent implements OnInit {
 
     this.svc.getUsuariosActivos().subscribe({
       next: d => { this.usuariosActivos = d; }
+    });
+
+    this.svc.getLoginsRecientes(this.startDate, this.endDate).subscribe({
+      next: d => { this.loginsRecientes = d; }
     });
   }
 
