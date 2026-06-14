@@ -86,5 +86,5 @@ export const environment = {
     // publicKey: 'TEST-4399133a-4676-42a2-ab85-d946370bf96a',
   },
 
-  version: '5.19 (13 Junio 2026 10:00) fix(pedidos): eliminar deteccion duplicados',
+  version: '5.20 (14 Junio 2026 10:00) feat(egresos): descripcion = nombre + concepto de imagen',
 };
