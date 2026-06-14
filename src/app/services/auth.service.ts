@@ -320,6 +320,10 @@ export class AuthService {
     return this.userPermissions;
   }
 
+  isRoot(): boolean {
+    return this.signalsService.getemailChoose() === environment.root;
+  }
+
   hasMasterPermission(masterPermissionKey: string): boolean {
     return this.userPermissions?.[masterPermissionKey]?.active === true;
   }

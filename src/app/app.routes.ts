@@ -2629,6 +2629,14 @@ export const routes: Routes = [
       },
 
       {
+        path: 'api',
+        canActivate: [RootOnlyGuard],
+        loadComponent: () =>
+          import('./domains/Api/pages/api-monitor/api-monitor.component').then(
+            (m) => m.ApiMonitorComponent
+          ),
+      },
+      {
         path: 'unauthorized',
         loadComponent: () =>
           import('./shared/unauthorized/unauthorized.component').then(
