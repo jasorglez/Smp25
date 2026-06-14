@@ -399,14 +399,41 @@ docker stats --no-stream</pre>
 
     <!-- LoginLog widget -->
     <div class="card border-0 shadow-sm mt-3">
-      <div class="card-header bg-transparent py-2 fw-semibold small">
-        <i class="bi bi-people-fill me-1 text-success"></i>Últimos logins registrados
+      <div class="card-header bg-transparent py-2 d-flex align-items-center">
+        <span class="fw-semibold small">
+          <i class="bi bi-people-fill me-1 text-success"></i>Últimos logins registrados
+        </span>
+        <span class="badge bg-success ms-2">{{ loginsRecientes.length }}</span>
+        <small class="text-muted ms-auto">security.LoginLog · período seleccionado</small>
       </div>
-      <div class="card-body py-2">
-        <div class="alert alert-secondary mb-0 small">
-          Los logins se registran en <code>security.LoginLog</code> y se pueden consultar en el bot de Telegram
-          → <strong>🔐 Seguridad → Listado conectados</strong>.
-        </div>
+      <div class="card-body p-0">
+        <table class="table table-sm table-hover mb-0">
+          <thead class="table-light">
+            <tr>
+              <th>Nombre</th>
+              <th>Email</th>
+              <th class="text-center">Empresa</th>
+              <th>Sucursal</th>
+              <th>Fecha/Hora</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr *ngFor="let l of loginsRecientes">
+              <td class="fw-semibold">{{ l.displayName || '—' }}</td>
+              <td class="small text-muted">{{ l.email }}</td>
+              <td class="text-center">
+                <span class="badge bg-secondary">{{ l.idCompany ?? '—' }}</span>
+              </td>
+              <td class="small">{{ l.branch || '—' }}</td>
+              <td class="small text-muted">{{ l.fechaLogin | date:'dd/MM/yyyy HH:mm' }}</td>
+            </tr>
+            <tr *ngIf="!loginsRecientes.length">
+              <td colspan="5" class="text-center text-muted py-3">
+                <i class="bi bi-inbox me-1"></i>Sin logins en el período seleccionado
+              </td>
+            </tr>
+          </tbody>
+        </table>
       </div>
     </div>
 

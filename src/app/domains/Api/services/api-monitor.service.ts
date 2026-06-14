@@ -62,6 +62,16 @@ export interface ApiUsuarioActivo {
   ultimaVez: string;
 }
 
+export interface LoginLogItem {
+  id: number;
+  idUser: number;
+  displayName: string | null;
+  email: string | null;
+  idCompany: number | null;
+  branch: string | null;
+  fechaLogin: string;
+}
+
 @Injectable({ providedIn: 'root' })
 export class ApiMonitorService {
   private http = inject(HttpClient);
@@ -110,5 +120,10 @@ export class ApiMonitorService {
 
   getUsuariosActivos(): Observable<ApiUsuarioActivo[]> {
     return this.http.get<ApiUsuarioActivo[]>(`${this.base}/usuarios-activos`);
+  }
+
+  getLoginsRecientes(startDate?: string, endDate?: string, limit = 50): Observable<LoginLogItem[]> {
+    let p = this.buildParams(startDate, endDate).set('limit', limit);
+    return this.http.get<LoginLogItem[]>(`${this.base}/logins-recientes`, { params: p });
   }
 }

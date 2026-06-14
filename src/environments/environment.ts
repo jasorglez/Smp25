@@ -86,5 +86,5 @@ export const environment = {
     // publicKey: 'TEST-4399133a-4676-42a2-ab85-d946370bf96a',
   },
 
-  version: '5.22 (14 Junio 2026 17:30) fix(api-monitor): isRoot fallback localStorage mail',
+  version: '5.23 (14 Junio 2026 18:00) feat(api-monitor): tabla logins recientes desde LoginLog',
 };
