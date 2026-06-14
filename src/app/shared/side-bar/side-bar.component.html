@@ -354,6 +354,18 @@
         </a>
       </li>
       
+      <li class="nav-item" *ngIf="authService.isRoot()">
+        <a
+          class="nav-link d-flex align-items-center"
+          [routerLink]="['/api']"
+          routerLinkActive="active-link"
+          [matTooltip]="isSidebarCollapsed ? 'API Monitor' : ''"
+          matTooltipPosition="right"
+        >
+          <mat-icon>monitor_heart</mat-icon> <span>API Monitor</span>
+        </a>
+      </li>
+
       <li class="nav-item">
 <a
           class="nav-link d-flex align-items-center"
