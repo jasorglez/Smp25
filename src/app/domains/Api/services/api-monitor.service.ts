@@ -72,6 +72,15 @@ export interface LoginLogItem {
   fechaLogin: string;
 }
 
+export interface ServerMetrics {
+  cpu:     { usedPct: number };
+  ram:     { totalMb: number; usedMb: number; freeMb: number; usedPct: number };
+  disks:   { dev: string; mount: string; totalGb: number; usedGb: number; freeGb: number; usedPct: number }[];
+  network: { name: string; rxMb: number; txMb: number }[];
+  uptime:  { seconds: number; formatted: string };
+  load:    { load1: number; load5: number; load15: number };
+}
+
 @Injectable({ providedIn: 'root' })
 export class ApiMonitorService {
   private http = inject(HttpClient);
@@ -125,5 +134,9 @@ export class ApiMonitorService {
   getLoginsRecientes(startDate?: string, endDate?: string, limit = 50): Observable<LoginLogItem[]> {
     let p = this.buildParams(startDate, endDate).set('limit', limit);
     return this.http.get<LoginLogItem[]>(`${this.base}/logins-recientes`, { params: p });
+  }
+
+  getServerMetrics(): Observable<ServerMetrics> {
+    return this.http.get<ServerMetrics>(`${environment.urlSecurity}/ServerMetrics`);
   }
 }

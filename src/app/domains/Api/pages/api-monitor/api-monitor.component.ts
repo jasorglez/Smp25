@@ -8,7 +8,7 @@ import { AgGridAngular } from 'ag-grid-angular';
 import { ColDef, GridApi, GridReadyEvent } from 'ag-grid-community';
 
 import { ApiMonitorService, ApiResumen, ApiPorHora, ApiTopEndpoint,
-         ApiLogItem, ApiUsuarioActivo, LoginLogItem } from '../../services/api-monitor.service';
+         ApiLogItem, ApiUsuarioActivo, LoginLogItem, ServerMetrics } from '../../services/api-monitor.service';
 
 @Component({
   selector: 'app-api-monitor',
@@ -87,17 +87,10 @@ export class ApiMonitorComponent implements OnInit {
   // ── Login log ────────────────────────────────────────────────────────────
   loginsRecientes: LoginLogItem[] = [];
 
-  // ── Server metrics (static placeholder until real data available) ─────────
-  serverProd = {
-    host: '66.179.240.10',
-    cpu: null as number | null, ram: null as number | null,
-    disk: null as number | null, uptime: null as string | null
-  };
-  serverTest = {
-    host: '76.13.28.145',
-    cpu: null as number | null, ram: null as number | null,
-    disk: null as number | null, uptime: null as string | null
-  };
+  // ── Server metrics ────────────────────────────────────────────────────────
+  serverMetrics: ServerMetrics | null = null;
+  serverMetricsLoading = false;
+  serverMetricsError = false;
 
   ngOnInit(): void {
     this.loadDashboard();
@@ -105,9 +98,10 @@ export class ApiMonitorComponent implements OnInit {
 
   selectTab(tab: typeof this.activeTab): void {
     this.activeTab = tab;
-    if (tab === 'top')     this.loadTop();
-    if (tab === 'logs')    this.loadLogs();
+    if (tab === 'top')      this.loadTop();
+    if (tab === 'logs')     this.loadLogs();
     if (tab === 'dashboard') this.loadDashboard();
+    if (tab === 'servidor') this.loadServerMetrics();
   }
 
   applyDateFilter(): void {
@@ -240,6 +234,22 @@ export class ApiMonitorComponent implements OnInit {
 
   private defaultEnd(): string {
     return new Date().toISOString().substring(0, 10);
+  }
+
+  // ── Server Metrics ────────────────────────────────────────────────────────
+  loadServerMetrics(): void {
+    this.serverMetricsLoading = true;
+    this.serverMetricsError   = false;
+    this.svc.getServerMetrics().subscribe({
+      next: d => { this.serverMetrics = d; this.serverMetricsLoading = false; },
+      error: () => { this.serverMetricsError = true; this.serverMetricsLoading = false; }
+    });
+  }
+
+  gaugeClass(pct: number): string {
+    if (pct >= 90) return 'bg-danger';
+    if (pct >= 70) return 'bg-warning';
+    return 'bg-success';
   }
 
   get totalPages(): number {

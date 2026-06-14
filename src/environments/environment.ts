@@ -86,5 +86,5 @@ export const environment = {
     // publicKey: 'TEST-4399133a-4676-42a2-ab85-d946370bf96a',
   },
 
-  version: '5.24 (14 Junio 2026 18:30) fix(api-monitor): SecurityApi usa host.docker.internal para logs distributed',
+  version: '5.25 (14 Junio 2026 19:00) feat(api-monitor): metricas servidor CPU/RAM/disco/red en tab Servidor',
 };
