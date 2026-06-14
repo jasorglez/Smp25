@@ -86,5 +86,5 @@ export const environment = {
     // publicKey: 'TEST-4399133a-4676-42a2-ab85-d946370bf96a',
   },
 
-  version: '5.27 (14 Junio 2026 22:10) fix(egresos): detalles ordenados por fecha desc al cargar',
+  version: '5.28 (14 Junio 2026 22:30) fix(egresos): imagen rellena idContribuyente desde historial',
 };
