@@ -1931,7 +1931,7 @@ export class DetallesExpenditureComponent implements OnInit, OnDestroy {
 
     return candidates.find(candidate => {
       if (!candidate || typeof candidate !== 'object') return false;
-      return ['monto', 'fecha', 'descripcion', 'referencia'].some(key => key in candidate);
+      return ['monto', 'fecha', 'descripcion', 'referencia', 'concepto'].some(key => key in candidate);
     }) || data;
   }
 
@@ -2229,7 +2229,7 @@ export class DetallesExpenditureComponent implements OnInit, OnDestroy {
       selectedEntity:  selectedEntity,
       groupEntity:     this.getGroupEntityLabel({ typeExpense: tipo, selectedEntity }),
       dateExpend:      data?.fecha || this.getTodayDateForInput(),
-      description:     data?.descripcion || '',
+      description:     [data?.descripcion, data?.concepto].filter(Boolean).join(' '),
       quantity:        1,
       unit:            '',
       price:           monto,
