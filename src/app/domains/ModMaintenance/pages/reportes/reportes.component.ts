@@ -10,7 +10,9 @@ import { EquipmentService } from 'app/services/equipment.service';
 import { SignalsService } from 'app/services/signals.service';
 import { WorkorderService } from 'app/services/workorder.service';
 import { TrackingService } from 'app/services/tracking.service';
-import { forkJoin } from 'rxjs';
+import { RootService } from 'app/services/root.service';
+import { Base64EncodeService } from 'app/services/base64encode.service';
+import { forkJoin, lastValueFrom } from 'rxjs';
 
 interface Report {
   id: string;
@@ -32,6 +34,8 @@ export class ReportesComponent implements OnInit {
   private signalsService = inject(SignalsService);
   private workorderService = inject(WorkorderService);
   private trackingService = inject(TrackingService);
+  private rootService = inject(RootService);
+  private base64Service = inject(Base64EncodeService);
 
   idcompany: number = 0;
   idBranch: number = 0;
@@ -170,349 +174,289 @@ export class ReportesComponent implements OnInit {
     );
   }
 
-  private exportAssetsReport(format: string): void {
+  private async exportAssetsReport(format: string): Promise<void> {
     const reportId = 'REP-001';
     this.exportingReportId = reportId;
     this.exportingFormat = format;
 
-    this.equipmentService.getEquipmentByBranch(this.idBranch).subscribe({
-      next: (assets: any[]) => {
-        const rows = this.mapAssetsForReport(assets || []);
-        const headers = [
-          'ID',
-          'Descripcion',
-          'Medida',
-          'Cantidad',
-          'DiasTrabajo',
-          'CostoMN',
-          'CostoUSD',
-          'PrecioMN',
-          'PrecioUSD',
-          'Cobrado',
-          'Imprimir',
-          'Estado'
-        ];
+    try {
+      const assets = await lastValueFrom(this.equipmentService.getEquipmentByBranch(this.idBranch));
+      const rows = this.mapAssetsForReport(assets || []);
+      const headers = [
+        'ID',
+        'Descripcion',
+        'Medida',
+        'Cantidad',
+        'DiasTrabajo',
+        'CostoMN',
+        'CostoUSD',
+        'PrecioMN',
+        'PrecioUSD',
+        'Cobrado',
+        'Imprimir',
+        'Estado'
+      ];
 
-        if (format === 'CSV') {
-          this.downloadCsv(rows, headers, this.buildFileName('informe_activos', 'csv'));
-        } else if (format === 'Excel') {
-          this.downloadExcel(rows, 'Activos', this.buildFileName('informe_activos', 'xlsx'));
-        } else if (format === 'PDF') {
-          this.downloadPdf(
-            'Informe de Activos',
-            'Catálogo completo de activos con estado y ubicación',
-            rows,
-            headers,
-            this.buildFileName('informe_activos', 'pdf')
-          );
-        }
-
-        this.trackingService.addLog(
-          String(this.idcompany),
-          `Reporte exportado: Informe de Activos (${format})`,
-          'ModMaintenance/Reportes',
-          ''
+      if (format === 'CSV') {
+        this.downloadCsv(rows, headers, this.buildFileName('informe_activos', 'csv'));
+      } else if (format === 'Excel') {
+        this.downloadExcel(rows, 'Activos', this.buildFileName('informe_activos', 'xlsx'));
+      } else if (format === 'PDF') {
+        await this.downloadPdf(
+          'Informe de Activos',
+          'Catálogo completo de activos con estado y ubicación',
+          rows,
+          headers,
+          this.buildFileName('informe_activos', 'pdf')
         );
-        alerts.basicAlert(
-          'Éxito',
-          `Informe de Activos exportado en ${format}.`,
-          'success'
-        );
-        this.exportingReportId = null;
-        this.exportingFormat = null;
-      },
-      error: (error) => {
-        console.error('Error exporting asset report:', error);
-        alerts.basicAlert(
-          'Error',
-          'No fue posible obtener los activos para generar el reporte.',
-          'error'
-        );
-        this.exportingReportId = null;
-        this.exportingFormat = null;
       }
-    });
+
+      this.trackingService.addLog(
+        String(this.idcompany),
+        `Reporte exportado: Informe de Activos (${format})`,
+        'ModMaintenance/Reportes',
+        ''
+      );
+      alerts.basicAlert('Éxito', `Informe de Activos exportado en ${format}.`, 'success');
+    } catch (error) {
+      console.error('Error exporting asset report:', error);
+      alerts.basicAlert('Error', 'No fue posible obtener los activos para generar el reporte.', 'error');
+    } finally {
+      this.exportingReportId = null;
+      this.exportingFormat = null;
+    }
   }
 
-  private exportWorkOrdersReport(format: string): void {
+  private async exportWorkOrdersReport(format: string): Promise<void> {
     const reportId = 'REP-002';
     this.exportingReportId = reportId;
     this.exportingFormat = format;
 
-    this.workorderService.getAll(this.idBranch.toString()).subscribe({
-      next: (workOrders: any[]) => {
-        const filteredWorkOrders = this.filterWorkOrdersByDateRange(workOrders || [], reportId);
-        const rows = this.mapWorkOrdersForReport(filteredWorkOrders);
-        const headers = [
-          'Folio',
-          'Titulo',
-          'Tipo',
-          'Prioridad',
-          'Estado',
-          'AsignadoA',
-          'Activo',
-          'FechaProgramada',
-          'HorasEstimadas',
-          'CostoTotal'
-        ];
-        const allHeaders = [
-          'ID',
-          'Folio',
-          'Titulo',
-          'Tipo',
-          'Prioridad',
-          'Estado',
-          'SolicitadoPor',
-          'AsignadoA',
-          'Departamento',
-          'Activo',
-          'FechaProgramada',
-          'HorasEstimadas',
-          'HorasReales',
-          'CostoManoObra',
-          'CostoRefacciones',
-          'CostoTotal',
-          'FechaCreacion',
-          'FechaCompletada',
-          'Descripcion',
-          'DescripcionFalla',
-          'Observaciones',
-          'ActivoRegistro'
-        ];
+    try {
+      const workOrders = await lastValueFrom(this.workorderService.getAll(this.idBranch.toString()));
+      const filteredWorkOrders = this.filterWorkOrdersByDateRange(workOrders || [], reportId);
+      const rows = this.mapWorkOrdersForReport(filteredWorkOrders);
+      const headers = [
+        'Folio',
+        'Titulo',
+        'Tipo',
+        'Prioridad',
+        'Estado',
+        'AsignadoA',
+        'Activo',
+        'FechaProgramada',
+        'HorasEstimadas',
+        'CostoTotal'
+      ];
+      const allHeaders = [
+        'ID',
+        'Folio',
+        'Titulo',
+        'Tipo',
+        'Prioridad',
+        'Estado',
+        'SolicitadoPor',
+        'AsignadoA',
+        'Departamento',
+        'Activo',
+        'FechaProgramada',
+        'HorasEstimadas',
+        'HorasReales',
+        'CostoManoObra',
+        'CostoRefacciones',
+        'CostoTotal',
+        'FechaCreacion',
+        'FechaCompletada',
+        'Descripcion',
+        'DescripcionFalla',
+        'Observaciones',
+        'ActivoRegistro'
+      ];
 
-        if (format === 'CSV') {
-          this.downloadCsv(rows, allHeaders, this.buildFileName('informe_workorders', 'csv'));
-        } else if (format === 'Excel') {
-          this.downloadExcel(rows, 'WorkOrders', this.buildFileName('informe_workorders', 'xlsx'));
-        } else if (format === 'PDF') {
-          const range = this.dateRangeByReport[reportId];
-          const subtitle = range?.from && range?.to
-            ? `Período: ${this.formatDateValue(range.from)} - ${this.formatDateValue(range.to)}`
-            : 'Historial completo de órdenes de trabajo';
-          this.downloadPdf(
-            'Órdenes de Trabajo',
-            subtitle,
-            rows,
-            headers,
-            this.buildFileName('informe_workorders', 'pdf')
-          );
-        }
-
-        this.trackingService.addLog(
-          String(this.idcompany),
-          `Reporte exportado: Órdenes de Trabajo (${format})`,
-          'ModMaintenance/Reportes',
-          ''
-        );
-        alerts.basicAlert(
-          'Éxito',
-          `Informe de Órdenes de Trabajo exportado en ${format}.`,
-          'success'
-        );
-        this.exportingReportId = null;
-        this.exportingFormat = null;
-      },
-      error: (error) => {
-        console.error('Error exporting work orders report:', error);
-        alerts.basicAlert(
-          'Error',
-          'No fue posible obtener las órdenes de trabajo para generar el reporte.',
-          'error'
-        );
-        this.exportingReportId = null;
-        this.exportingFormat = null;
+      if (format === 'CSV') {
+        this.downloadCsv(rows, allHeaders, this.buildFileName('informe_workorders', 'csv'));
+      } else if (format === 'Excel') {
+        this.downloadExcel(rows, 'WorkOrders', this.buildFileName('informe_workorders', 'xlsx'));
+      } else if (format === 'PDF') {
+        const range = this.dateRangeByReport[reportId];
+        const subtitle = range?.from && range?.to
+          ? `Período: ${this.formatDateValue(range.from)} - ${this.formatDateValue(range.to)}`
+          : 'Historial completo de órdenes de trabajo';
+        await this.downloadPdf('Órdenes de Trabajo', subtitle, rows, headers, this.buildFileName('informe_workorders', 'pdf'));
       }
-    });
+
+      this.trackingService.addLog(
+        String(this.idcompany),
+        `Reporte exportado: Órdenes de Trabajo (${format})`,
+        'ModMaintenance/Reportes',
+        ''
+      );
+      alerts.basicAlert('Éxito', `Informe de Órdenes de Trabajo exportado en ${format}.`, 'success');
+    } catch (error) {
+      console.error('Error exporting work orders report:', error);
+      alerts.basicAlert('Error', 'No fue posible obtener las órdenes de trabajo para generar el reporte.', 'error');
+    } finally {
+      this.exportingReportId = null;
+      this.exportingFormat = null;
+    }
   }
 
-  private exportMaintenanceCostsReport(format: string): void {
+  private async exportMaintenanceCostsReport(format: string): Promise<void> {
     const reportId = 'REP-003';
     this.exportingReportId = reportId;
     this.exportingFormat = format;
 
-    this.workorderService.getAll(this.idBranch.toString()).subscribe({
-      next: (workOrders: any[]) => {
-        const rows = this.mapMaintenanceCostsForReport(workOrders || []);
-        const headers = [
-          'Periodo',
-          'TipoMantenimiento',
-          'TotalOrdenes',
-          'OrdenesCompletadas',
-          'CostoManoObra',
-          'CostoRefacciones',
-          'CostoTotal',
-          'PromedioPorOrden'
-        ];
+    try {
+      const workOrders = await lastValueFrom(this.workorderService.getAll(this.idBranch.toString()));
+      const rows = this.mapMaintenanceCostsForReport(workOrders || []);
+      const headers = [
+        'Periodo',
+        'TipoMantenimiento',
+        'TotalOrdenes',
+        'OrdenesCompletadas',
+        'CostoManoObra',
+        'CostoRefacciones',
+        'CostoTotal',
+        'PromedioPorOrden'
+      ];
 
-        if (format === 'CSV') {
-          this.downloadCsv(rows, headers, this.buildFileName('informe_costos_mantenimiento', 'csv'));
-        } else if (format === 'Excel') {
-          this.downloadExcel(rows, 'CostosMantenimiento', this.buildFileName('informe_costos_mantenimiento', 'xlsx'));
-        } else if (format === 'PDF') {
-          this.downloadPdf(
-            'Costos de Mantenimiento',
-            'Análisis de costos por tipo de mantenimiento y período',
-            rows,
-            headers,
-            this.buildFileName('informe_costos_mantenimiento', 'pdf')
-          );
-        }
-
-        this.trackingService.addLog(
-          String(this.idcompany),
-          `Reporte exportado: Costos de Mantenimiento (${format})`,
-          'ModMaintenance/Reportes',
-          ''
+      if (format === 'CSV') {
+        this.downloadCsv(rows, headers, this.buildFileName('informe_costos_mantenimiento', 'csv'));
+      } else if (format === 'Excel') {
+        this.downloadExcel(rows, 'CostosMantenimiento', this.buildFileName('informe_costos_mantenimiento', 'xlsx'));
+      } else if (format === 'PDF') {
+        await this.downloadPdf(
+          'Costos de Mantenimiento',
+          'Análisis de costos por tipo de mantenimiento y período',
+          rows,
+          headers,
+          this.buildFileName('informe_costos_mantenimiento', 'pdf')
         );
-        alerts.basicAlert(
-          'Éxito',
-          `Informe de Costos de Mantenimiento exportado en ${format}.`,
-          'success'
-        );
-        this.exportingReportId = null;
-        this.exportingFormat = null;
-      },
-      error: (error) => {
-        console.error('Error exporting maintenance costs report:', error);
-        alerts.basicAlert(
-          'Error',
-          'No fue posible obtener las órdenes para generar el informe de costos.',
-          'error'
-        );
-        this.exportingReportId = null;
-        this.exportingFormat = null;
       }
-    });
+
+      this.trackingService.addLog(
+        String(this.idcompany),
+        `Reporte exportado: Costos de Mantenimiento (${format})`,
+        'ModMaintenance/Reportes',
+        ''
+      );
+      alerts.basicAlert('Éxito', `Informe de Costos de Mantenimiento exportado en ${format}.`, 'success');
+    } catch (error) {
+      console.error('Error exporting maintenance costs report:', error);
+      alerts.basicAlert('Error', 'No fue posible obtener las órdenes para generar el informe de costos.', 'error');
+    } finally {
+      this.exportingReportId = null;
+      this.exportingFormat = null;
+    }
   }
 
-  private exportPreventiveMaintenanceReport(format: string): void {
+  private async exportPreventiveMaintenanceReport(format: string): Promise<void> {
     const reportId = 'REP-005';
     this.exportingReportId = reportId;
     this.exportingFormat = format;
 
-    this.workorderService.getAll(this.idBranch.toString()).subscribe({
-      next: (workOrders: any[]) => {
-        const rows = this.mapPreventiveMaintenanceForReport(workOrders || []);
-        const headers = [
-          'Periodo',
-          'Folio',
-          'Activo',
-          'Departamento',
-          'Estado',
-          'FechaProgramada',
-          'FechaCompletada',
-          'DiasAtraso',
-          'Cumplimiento'
-        ];
+    try {
+      const workOrders = await lastValueFrom(this.workorderService.getAll(this.idBranch.toString()));
+      const rows = this.mapPreventiveMaintenanceForReport(workOrders || []);
+      const headers = [
+        'Periodo',
+        'Folio',
+        'Activo',
+        'Departamento',
+        'Estado',
+        'FechaProgramada',
+        'FechaCompletada',
+        'DiasAtraso',
+        'Cumplimiento'
+      ];
 
-        if (format === 'CSV') {
-          this.downloadCsv(rows, headers, this.buildFileName('informe_mantenimiento_preventivo', 'csv'));
-        } else if (format === 'Excel') {
-          this.downloadExcel(rows, 'MantenimientoPreventivo', this.buildFileName('informe_mantenimiento_preventivo', 'xlsx'));
-        } else if (format === 'PDF') {
-          this.downloadPdf(
-            'Mantenimiento Preventivo',
-            'Calendario y cumplimiento de mantenimientos preventivos',
-            rows,
-            headers,
-            this.buildFileName('informe_mantenimiento_preventivo', 'pdf')
-          );
-        }
-
-        this.trackingService.addLog(
-          String(this.idcompany),
-          `Reporte exportado: Mantenimiento Preventivo (${format})`,
-          'ModMaintenance/Reportes',
-          ''
+      if (format === 'CSV') {
+        this.downloadCsv(rows, headers, this.buildFileName('informe_mantenimiento_preventivo', 'csv'));
+      } else if (format === 'Excel') {
+        this.downloadExcel(rows, 'MantenimientoPreventivo', this.buildFileName('informe_mantenimiento_preventivo', 'xlsx'));
+      } else if (format === 'PDF') {
+        await this.downloadPdf(
+          'Mantenimiento Preventivo',
+          'Calendario y cumplimiento de mantenimientos preventivos',
+          rows,
+          headers,
+          this.buildFileName('informe_mantenimiento_preventivo', 'pdf')
         );
-        alerts.basicAlert(
-          'Éxito',
-          `Informe de Mantenimiento Preventivo exportado en ${format}.`,
-          'success'
-        );
-        this.exportingReportId = null;
-        this.exportingFormat = null;
-      },
-      error: (error) => {
-        console.error('Error exporting preventive maintenance report:', error);
-        alerts.basicAlert(
-          'Error',
-          'No fue posible obtener las órdenes para generar el reporte preventivo.',
-          'error'
-        );
-        this.exportingReportId = null;
-        this.exportingFormat = null;
       }
-    });
+
+      this.trackingService.addLog(
+        String(this.idcompany),
+        `Reporte exportado: Mantenimiento Preventivo (${format})`,
+        'ModMaintenance/Reportes',
+        ''
+      );
+      alerts.basicAlert('Éxito', `Informe de Mantenimiento Preventivo exportado en ${format}.`, 'success');
+    } catch (error) {
+      console.error('Error exporting preventive maintenance report:', error);
+      alerts.basicAlert('Error', 'No fue posible obtener las órdenes para generar el reporte preventivo.', 'error');
+    } finally {
+      this.exportingReportId = null;
+      this.exportingFormat = null;
+    }
   }
 
-  private exportEquipmentAvailabilityReport(format: string): void {
+  private async exportEquipmentAvailabilityReport(format: string): Promise<void> {
     const reportId = 'REP-004';
     this.exportingReportId = reportId;
     this.exportingFormat = format;
 
-    forkJoin({
-      assets: this.equipmentService.getEquipmentByBranch(this.idBranch),
-      workOrders: this.workorderService.getAll(this.idBranch.toString())
-    }).subscribe({
-      next: (result: any) => {
-        const filteredWorkOrders = this.filterWorkOrdersByDateRange(result.workOrders || [], reportId);
-        const rows = this.mapEquipmentAvailabilityForReport(result.assets || [], filteredWorkOrders, reportId);
-        const headers = [
-          'IDActivo',
-          'Activo',
-          'Periodo',
-          'TotalOT',
-          'OTCorrectivas',
-          'HorasInactividad',
-          'HorasPeriodo',
-          'Disponibilidad',
-          'EstadoDisponibilidad'
-        ];
+    try {
+      const result = await lastValueFrom(forkJoin({
+        assets: this.equipmentService.getEquipmentByBranch(this.idBranch),
+        workOrders: this.workorderService.getAll(this.idBranch.toString())
+      })) as any;
 
-        if (format === 'CSV') {
-          this.downloadCsv(rows, headers, this.buildFileName('informe_disponibilidad_equipos', 'csv'));
-        } else if (format === 'Excel') {
-          this.downloadExcel(rows, 'DisponibilidadEquipos', this.buildFileName('informe_disponibilidad_equipos', 'xlsx'));
-        } else if (format === 'PDF') {
-          const range = this.dateRangeByReport[reportId];
-          const subtitle = range?.from && range?.to
-            ? `Período: ${this.formatDateValue(range.from)} - ${this.formatDateValue(range.to)}`
-            : 'Tiempo de actividad y downtime por equipo';
-          this.downloadPdf(
-            'Disponibilidad de Equipos',
-            subtitle,
-            rows,
-            headers,
-            this.buildFileName('informe_disponibilidad_equipos', 'pdf')
-          );
-        }
+      const filteredWorkOrders = this.filterWorkOrdersByDateRange(result.workOrders || [], reportId);
+      const rows = this.mapEquipmentAvailabilityForReport(result.assets || [], filteredWorkOrders, reportId);
+      const headers = [
+        'IDActivo',
+        'Activo',
+        'Periodo',
+        'TotalOT',
+        'OTCorrectivas',
+        'HorasInactividad',
+        'HorasPeriodo',
+        'Disponibilidad',
+        'EstadoDisponibilidad'
+      ];
 
-        this.trackingService.addLog(
-          String(this.idcompany),
-          `Reporte exportado: Disponibilidad de Equipos (${format})`,
-          'ModMaintenance/Reportes',
-          ''
+      if (format === 'CSV') {
+        this.downloadCsv(rows, headers, this.buildFileName('informe_disponibilidad_equipos', 'csv'));
+      } else if (format === 'Excel') {
+        this.downloadExcel(rows, 'DisponibilidadEquipos', this.buildFileName('informe_disponibilidad_equipos', 'xlsx'));
+      } else if (format === 'PDF') {
+        const range = this.dateRangeByReport[reportId];
+        const subtitle = range?.from && range?.to
+          ? `Período: ${this.formatDateValue(range.from)} - ${this.formatDateValue(range.to)}`
+          : 'Tiempo de actividad y downtime por equipo';
+        await this.downloadPdf(
+          'Disponibilidad de Equipos',
+          subtitle,
+          rows,
+          headers,
+          this.buildFileName('informe_disponibilidad_equipos', 'pdf')
         );
-        alerts.basicAlert(
-          'Éxito',
-          `Informe de Disponibilidad de Equipos exportado en ${format}.`,
-          'success'
-        );
-        this.exportingReportId = null;
-        this.exportingFormat = null;
-      },
-      error: (error) => {
-        console.error('Error exporting equipment availability report:', error);
-        alerts.basicAlert(
-          'Error',
-          'No fue posible obtener los datos para generar el reporte de disponibilidad.',
-          'error'
-        );
-        this.exportingReportId = null;
-        this.exportingFormat = null;
       }
-    });
+
+      this.trackingService.addLog(
+        String(this.idcompany),
+        `Reporte exportado: Disponibilidad de Equipos (${format})`,
+        'ModMaintenance/Reportes',
+        ''
+      );
+      alerts.basicAlert('Éxito', `Informe de Disponibilidad de Equipos exportado en ${format}.`, 'success');
+    } catch (error) {
+      console.error('Error exporting equipment availability report:', error);
+      alerts.basicAlert('Error', 'No fue posible obtener los datos para generar el reporte de disponibilidad.', 'error');
+    } finally {
+      this.exportingReportId = null;
+      this.exportingFormat = null;
+    }
   }
 
   isExporting(reportId: string, format: string): boolean {
@@ -758,10 +702,32 @@ export class ReportesComponent implements OnInit {
     XLSX.writeFile(workbook, fileName);
   }
 
-  private downloadPdf(title: string, subtitle: string, rows: any[], headers: string[], fileName: string): void {
-    const tableBody: any[][] = [];
+  private async downloadPdf(title: string, subtitle: string, rows: any[], headers: string[], fileName: string): Promise<void> {
+    // Fetch company logos (standard 2-logo header)
+    const tryB64 = async (url: string): Promise<string | null> => {
+      try { return await this.base64Service.convertImageToBase64(url); } catch { return null; }
+    };
 
-    // Header row
+    let logoB64: string | null = null;
+    let logo2B64: string | null = null;
+    let companyName = '';
+
+    try {
+      const root: any = await lastValueFrom(this.rootService.getRootbyId(this.idcompany));
+      companyName = root?.name || '';
+      logoB64  = root?.picture  ? await tryB64(root.picture)  : null;
+      logo2B64 = root?.picture2 ? await tryB64(root.picture2) : logoB64;
+    } catch { /* logos opcionales */ }
+
+    const imgs: Record<string, string> = {};
+    if (logoB64)  imgs['logo']  = logoB64;
+    if (logo2B64) imgs['logo2'] = logo2B64;
+
+    const logoLeft:  any = logoB64  ? { image: 'logo',  width: 70, alignment: 'left'  } : { text: companyName, bold: true, fontSize: 10 };
+    const logoRight: any = logo2B64 ? { image: 'logo2', width: 70, alignment: 'right' } : { text: '' };
+
+    // Build table body
+    const tableBody: any[][] = [];
     tableBody.push(
       headers.map((header) => ({
         text: this.formatHeaderLabel(header),
@@ -769,18 +735,12 @@ export class ReportesComponent implements OnInit {
         alignment: 'center'
       }))
     );
-
-    // Data rows
     for (const row of rows) {
       tableBody.push(
         headers.map((header) => {
           const value = row[header] ?? '';
           const isNumeric = typeof value === 'number' || !isNaN(Number(value));
-          return {
-            text: String(value),
-            alignment: isNumeric ? 'right' : 'left',
-            fontSize: 8
-          };
+          return { text: String(value), alignment: isNumeric ? 'right' : 'left', fontSize: 8 };
         })
       );
     }
@@ -790,41 +750,40 @@ export class ReportesComponent implements OnInit {
     const docDefinition: any = {
       pageSize: 'LETTER',
       pageOrientation: headers.length > 6 ? 'landscape' : 'portrait',
-      pageMargins: [30, 80, 30, 50],
-      header: {
-        columns: [
+      pageMargins: [30, 100, 30, 50],
+      images: Object.keys(imgs).length > 0 ? imgs : undefined,
+      header: (_currentPage: number, _pageCount: number) => ({
+        margin: [30, 15, 30, 5],
+        stack: [
           {
-            stack: [
-              { text: title, style: 'reportTitle' },
-              { text: subtitle, style: 'reportSubtitle' }
-            ],
-            margin: [30, 20, 30, 0]
-          }
+            table: {
+              widths: ['*', '*', '*'],
+              body: [[
+                logoLeft,
+                {
+                  stack: [
+                    { text: companyName, bold: true, fontSize: 11, color: '#1e3a5f', alignment: 'center' },
+                    { text: title, fontSize: 13, bold: true, color: '#1e40af', alignment: 'center', margin: [0, 2, 0, 0] },
+                    { text: subtitle, fontSize: 8, color: '#64748b', alignment: 'center', margin: [0, 2, 0, 0] }
+                  ]
+                },
+                logoRight
+              ]]
+            },
+            layout: 'noBorders'
+          },
+          { canvas: [{ type: 'line', x1: 0, y1: 4, x2: 555, y2: 4, lineWidth: 1, lineColor: '#1e40af' }] }
         ]
-      },
+      }),
       footer: (currentPage: number, pageCount: number) => ({
         columns: [
-          {
-            text: `Generado: ${this.formatDateValue(new Date().toISOString())}`,
-            alignment: 'left',
-            fontSize: 8,
-            margin: [30, 0, 0, 0]
-          },
-          {
-            text: `Página ${currentPage} de ${pageCount}`,
-            alignment: 'right',
-            fontSize: 8,
-            margin: [0, 0, 30, 0]
-          }
+          { text: `Generado: ${this.formatDateValue(new Date().toISOString())}`, alignment: 'left', fontSize: 7, margin: [30, 0, 0, 0] },
+          { text: `Página ${currentPage} de ${pageCount}`, alignment: 'right', fontSize: 7, margin: [0, 0, 30, 0] }
         ]
       }),
       content: [
         {
-          table: {
-            headerRows: 1,
-            widths: columnWidths,
-            body: tableBody
-          },
+          table: { headerRows: 1, widths: columnWidths, body: tableBody },
           layout: {
             fillColor: (rowIndex: number) => (rowIndex === 0 ? '#1e40af' : (rowIndex % 2 === 0 ? '#f8fafc' : null)),
             hLineWidth: () => 0.5,
@@ -833,37 +792,13 @@ export class ReportesComponent implements OnInit {
             vLineColor: () => '#cbd5e1'
           }
         },
-        {
-          text: `Total de registros: ${rows.length}`,
-          style: 'totalRecords',
-          margin: [0, 10, 0, 0]
-        }
+        { text: `Total de registros: ${rows.length}`, style: 'totalRecords', margin: [0, 10, 0, 0] }
       ],
       styles: {
-        reportTitle: {
-          fontSize: 16,
-          bold: true,
-          color: '#1e3a5f'
-        },
-        reportSubtitle: {
-          fontSize: 10,
-          color: '#64748b',
-          margin: [0, 4, 0, 0]
-        },
-        tableHeader: {
-          fontSize: 8,
-          bold: true,
-          color: '#ffffff'
-        },
-        totalRecords: {
-          fontSize: 9,
-          italics: true,
-          color: '#64748b'
-        }
+        tableHeader: { fontSize: 8, bold: true, color: '#ffffff' },
+        totalRecords: { fontSize: 9, italics: true, color: '#64748b' }
       },
-      defaultStyle: {
-        fontSize: 9
-      }
+      defaultStyle: { fontSize: 9 }
     };
 
     pdfMake.createPdf(docDefinition).download(fileName);
