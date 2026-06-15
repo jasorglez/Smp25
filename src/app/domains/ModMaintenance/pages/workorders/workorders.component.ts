@@ -367,4 +367,60 @@ export class WorkordersComponent implements OnInit {
   canCreateByBranch(): boolean {
     return this.idBranch > 0;
   }
+
+  // Estado — máquina de transiciones válidas
+  private readonly STATUS_TRANSITIONS: Record<string, string[]> = {
+    'pendiente':  ['en-proceso', 'cancelada'],
+    'en-proceso': ['pausada', 'completada', 'cancelada'],
+    'pausada':    ['en-proceso', 'cancelada'],
+    'completada': [],
+    'cancelada':  []
+  };
+
+  private readonly STATUS_META: Record<string, { label: string; btnClass: string; icon: string }> = {
+    'en-proceso': { label: 'Iniciar',    btnClass: 'btn-primary',   icon: 'play-fill' },
+    'pausada':    { label: 'Pausar',     btnClass: 'btn-warning',   icon: 'pause-fill' },
+    'completada': { label: 'Completar',  btnClass: 'btn-success',   icon: 'check-lg' },
+    'cancelada':  { label: 'Cancelar',   btnClass: 'btn-danger',    icon: 'x-lg' }
+  };
+
+  getAvailableTransitions(workOrder: any): { status: string; label: string; btnClass: string; icon: string }[] {
+    const current = (workOrder?.status || '').toLowerCase();
+    return (this.STATUS_TRANSITIONS[current] || []).map(s => ({ status: s, ...this.STATUS_META[s] }));
+  }
+
+  onChangeStatus(workOrder: any, newStatus: string, event?: Event): void {
+    if (event) event.stopPropagation();
+    const meta = this.STATUS_META[newStatus];
+    const label = meta?.label || newStatus;
+    if (!confirm(`¿${label} la orden "${workOrder.folio || workOrder.title}"?`)) return;
+
+    this.workorderService.updateStatus(workOrder.id, newStatus).subscribe({
+      next: () => {
+        this.trackingService.addLog(
+          String(this.idcompany),
+          `OT ${workOrder.folio} → estado: ${newStatus}`,
+          'ModMaintenance/WorkOrders',
+          ''
+        );
+        if (this.showWorkOrderDetail) this.closeWorkOrderDetail();
+        this.loadData();
+      },
+      error: (err) => console.error('Error updating status:', err)
+    });
+  }
+
+  getStatusSteps(): { status: string; label: string; done: boolean; active: boolean }[] {
+    const flow = ['pendiente', 'en-proceso', 'completada'];
+    const current = (this.selectedWorkOrder?.status || '').toLowerCase();
+    const isCancelled = current === 'cancelada';
+    const isPaused = current === 'pausada';
+    const currentIdx = flow.indexOf(isCancelled || isPaused ? 'en-proceso' : current);
+    return flow.map((s, i) => ({
+      status: s,
+      label: s === 'en-proceso' ? 'En Proceso' : s.charAt(0).toUpperCase() + s.slice(1),
+      done: i < currentIdx || current === 'completada',
+      active: s === current || (isPaused && s === 'en-proceso')
+    }));
+  }
 }

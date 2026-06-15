@@ -86,5 +86,5 @@ export const environment = {
     // publicKey: 'TEST-4399133a-4676-42a2-ab85-d946370bf96a',
   },
 
-  version: '5.40 (15 Junio 2026 15:00) feat(dashboard): graficas ApexCharts tipo/estado/tendencia en mantenimiento',
+  version: '5.41 (15 Junio 2026 15:30) feat(workorders): flujo de estados validado con maquina de transiciones',
 };
