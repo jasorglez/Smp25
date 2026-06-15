@@ -91,6 +91,25 @@
 .stat-icon.green { color: #10b981; }
 .stat-icon.purple { color: #8b5cf6; }
 
+/* Charts 2-col layout (Tipo + Estado) */
+.charts-2col {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+
+/* Chart full-width (Tendencia) */
+.chart-full {
+  margin-bottom: 1rem;
+}
+
+@media (max-width: 768px) {
+  .charts-2col {
+    grid-template-columns: 1fr;
+  }
+}
+
 /* Cards Grid */
 .cards-grid {
   display: grid;
