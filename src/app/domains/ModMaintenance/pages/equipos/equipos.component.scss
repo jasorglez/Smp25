@@ -377,6 +377,24 @@
   color: white;
 }
 
+/* Equipment ng-select — letra pequeña, dropdown ancho */
+::ng-deep .equipment-select {
+  .ng-select-container {
+    font-size: 0.78rem;
+    min-height: 34px;
+  }
+  .ng-input > input {
+    font-size: 0.78rem;
+  }
+  .ng-placeholder {
+    font-size: 0.78rem;
+  }
+  .ng-value-label {
+    font-size: 0.78rem;
+  }
+}
+
+
 /* Responsive Design */
 @media (max-width: 768px) {
   .equipos-container {
