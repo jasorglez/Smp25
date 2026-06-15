@@ -6,6 +6,7 @@ import { EquipmentService } from 'app/services/equipment.service';
 import { SignalsService } from 'app/services/signals.service';
 import { MaintenanceCatalogService } from 'app/services/maintenance-catalog.service';
 import { TrackingService } from 'app/services/tracking.service';
+import { WorkorderService } from 'app/services/workorder.service';
 import { alerts } from 'app/helpers/alerts';
 
 @Component({
@@ -24,6 +25,7 @@ export class AssetsComponent implements OnInit {
   private router = inject(Router);
   private catalogService = inject(MaintenanceCatalogService);
   private trackingService = inject(TrackingService);
+  private workorderService = inject(WorkorderService);
 
   idcompany: number = 0;
   idBranch: number = 0;
@@ -53,6 +55,12 @@ export class AssetsComponent implements OnInit {
   showMeasureModal: boolean = false;
   savingMeasure: boolean = false;
   newMeasureDescription: string = '';
+
+  // History
+  showHistory: boolean = false;
+  historyAsset: any = null;
+  assetHistory: any[] = [];
+  loadingHistory: boolean = false;
 
   // Pagination
   pageSize: number = 9;
@@ -317,6 +325,65 @@ export class AssetsComponent implements OnInit {
 
   getInactiveCount(): number {
     return this.assets.filter(a => !a.active).length;
+  }
+
+  openHistory(asset: any, event?: Event): void {
+    if (event) event.stopPropagation();
+    this.historyAsset = asset;
+    this.showHistory = true;
+    this.assetHistory = [];
+    this.loadingHistory = true;
+    this.workorderService.getByAsset(asset.id).subscribe({
+      next: (data: any[]) => {
+        this.assetHistory = data || [];
+        this.loadingHistory = false;
+      },
+      error: () => {
+        this.assetHistory = [];
+        this.loadingHistory = false;
+      }
+    });
+  }
+
+  closeHistory(): void {
+    this.showHistory = false;
+    this.historyAsset = null;
+    this.assetHistory = [];
+  }
+
+  historyTotals() {
+    const completed = this.assetHistory.filter(w => w.status === 'completada');
+    const totalCost = this.assetHistory.reduce((s, w) => s + (Number(w.totalCost) || 0), 0);
+    const totalHours = this.assetHistory.reduce((s, w) => s + (Number(w.actualHours) || Number(w.estimatedHours) || 0), 0);
+    let mtbf: number | null = null;
+    if (completed.length >= 2) {
+      const dates = completed
+        .map(w => new Date(w.completedDate || w.scheduledDate).getTime())
+        .filter(d => !isNaN(d))
+        .sort((a, b) => a - b);
+      if (dates.length >= 2) {
+        const diffs = dates.slice(1).map((d, i) => (d - dates[i]) / 86400000);
+        mtbf = Math.round(diffs.reduce((s, d) => s + d, 0) / diffs.length);
+      }
+    }
+    return { total: this.assetHistory.length, completed: completed.length, totalCost, totalHours, mtbf };
+  }
+
+  statusBadge(status: string): string {
+    const map: any = {
+      'completada': 'bg-success', 'en-proceso': 'bg-primary',
+      'pendiente': 'bg-warning text-dark', 'pausada': 'bg-secondary',
+      'cancelada': 'bg-danger'
+    };
+    return map[status] || 'bg-secondary';
+  }
+
+  typeBadge(type: string): string {
+    const map: any = {
+      'preventivo': 'bg-info text-dark', 'correctivo': 'bg-danger',
+      'predictivo': 'bg-purple', 'inspeccion': 'bg-secondary', 'mejora': 'bg-success'
+    };
+    return map[type] || 'bg-secondary';
   }
 
   private updateContext(): void {
