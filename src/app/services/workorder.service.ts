@@ -39,4 +39,8 @@ export class WorkorderService {
   delete(id: number): Observable<any> {
     return this.http.delete(`${environment.urlMantenimiento}/WorkOrder/${id}`, { headers: this.trackingService.getHeaders() });
   }
+
+  getByAsset(assetId: string | number): Observable<any> {
+    return this.http.get(`${environment.urlMantenimiento}/WorkOrder/asset/${assetId}`, { headers: this.trackingService.getHeaders() });
+  }
 }
