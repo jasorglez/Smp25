@@ -230,12 +230,15 @@ export class MaterialesComponent implements OnInit {
       const prefix  = this.form.type === 'IN' ? 'ENT' : 'SAL';
       const folio   = `${prefix}-MNT-${year}-${Date.now().toString().slice(-5)}`;
 
-      const saved = await lastValueFrom(this.movementService.add({
+      const payload = {
         ...this.form,
         folio,
         idWorkorder: +this.form.idWorkorder!,
         idBranch:    String(this.idBranch)
-      }));
+      };
+      console.log('[Materiales] POST WorkOrderMovement payload:', payload);
+
+      const saved = await lastValueFrom(this.movementService.add(payload));
 
       // 2. Guardar items
       const itemOps = validItems.map(i =>
@@ -271,10 +274,14 @@ export class MaterialesComponent implements OnInit {
       this.saving = false;
       this.showForm = false;
       this.loadAll();
-    } catch (err) {
-      console.error(err);
+    } catch (err: any) {
+      console.error('[Materiales] saveMovement error:', err);
       this.saving = false;
-      alert('Error al guardar el movimiento');
+      const status  = err?.status ?? '?';
+      const body    = typeof err?.error === 'string'
+        ? err.error
+        : (err?.error?.message ?? err?.message ?? JSON.stringify(err?.error ?? err));
+      alert(`Error ${status} al guardar el movimiento:\n${body}`);
     }
   }
 

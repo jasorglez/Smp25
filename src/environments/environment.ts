@@ -86,5 +86,5 @@ export const environment = {
     // publicKey: 'TEST-4399133a-4676-42a2-ab85-d946370bf96a',
   },
 
-  version: '5.53 (15 Junio 2026 03:20) fix(materiales): almacenes por idBranch, default modal=Entrada',
+  version: '5.54 (15 Junio 2026 12:00) fix(materiales): mejor display error HTTP en saveMovement',
 };
