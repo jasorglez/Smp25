@@ -1,0 +1,255 @@
+<div class="mnt-mat-container">
+
+  <!-- Header -->
+  <div class="mnt-mat-header">
+    <div class="d-flex align-items-center gap-3 flex-wrap">
+      <div>
+        <h4 class="mb-0"><i class="bi bi-boxes me-2"></i>Materiales de Mantenimiento</h4>
+        <small class="text-muted">Entradas y salidas de materiales por OT</small>
+      </div>
+      <div class="ms-auto d-flex gap-2 flex-wrap align-items-center">
+        <!-- Filtros -->
+        <select class="form-select form-select-sm" style="width:130px" [(ngModel)]="filterType">
+          <option value="">Todos</option>
+          <option value="IN">Entradas</option>
+          <option value="OUT">Salidas</option>
+        </select>
+        <select class="form-select form-select-sm" style="width:210px" [(ngModel)]="filterOT">
+          <option value="">Todas las OTs</option>
+          <option *ngFor="let wo of workOrders" [value]="wo.id">{{ wo.folio }} — {{ wo.title }}</option>
+        </select>
+        <button class="btn btn-success btn-sm" (click)="openForm()" [disabled]="loading">
+          <i class="bi bi-plus-lg me-1"></i>Nuevo Movimiento
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Spinner -->
+  <div *ngIf="loading" class="text-center py-5">
+    <div class="spinner-border text-primary"></div>
+    <p class="mt-2 text-muted">Cargando...</p>
+  </div>
+
+  <div *ngIf="!loading" class="mnt-mat-body">
+
+    <!-- Master: lista movimientos -->
+    <div class="mnt-master-panel">
+      <div *ngIf="filteredMovements.length === 0" class="text-center text-muted py-4 fst-italic small">
+        Sin movimientos registrados
+      </div>
+      <div *ngFor="let mv of filteredMovements"
+           class="mnt-movement-row"
+           [class.selected]="selectedMovement?.id === mv.id"
+           (click)="selectMovement(mv)">
+        <div class="d-flex align-items-start gap-2">
+          <span class="badge mt-1" [ngClass]="mv.type === 'IN' ? 'bg-success' : 'bg-danger'">
+            <i class="bi" [ngClass]="mv.type === 'IN' ? 'bi-arrow-down-circle' : 'bi-arrow-up-circle'"></i>
+            {{ mv.type === 'IN' ? 'Entrada' : 'Salida' }}
+          </span>
+          <div class="flex-grow-1 overflow-hidden">
+            <div class="fw-semibold text-truncate">{{ mv.folio }}</div>
+            <small class="text-muted d-block text-truncate">{{ otLabel(mv.idWorkorder) }}</small>
+            <small class="text-muted">{{ mv.date | date:'dd/MM/yyyy' }} · {{ warehouseLabel(mv.idWarehouse) }}</small>
+          </div>
+          <button class="btn btn-xs btn-outline-danger flex-shrink-0" (click)="deleteMovement(mv, $event)" title="Eliminar">
+            <i class="bi bi-trash"></i>
+          </button>
+        </div>
+        <div *ngIf="mv.notes" class="text-muted small mt-1 text-truncate">{{ mv.notes }}</div>
+      </div>
+    </div>
+
+    <!-- Detail: items del movimiento seleccionado -->
+    <div class="mnt-detail-panel">
+      <div *ngIf="!selectedMovement" class="text-center text-muted py-5 fst-italic">
+        <i class="bi bi-arrow-left-circle" style="font-size:2rem"></i>
+        <p class="mt-2">Selecciona un movimiento para ver sus materiales</p>
+      </div>
+
+      <ng-container *ngIf="selectedMovement">
+        <div class="mnt-detail-header">
+          <span class="fw-bold">{{ selectedMovement.folio }}</span>
+          <span class="badge ms-2" [ngClass]="selectedMovement.type === 'IN' ? 'bg-success' : 'bg-danger'">
+            {{ selectedMovement.type === 'IN' ? 'Entrada' : 'Salida' }}
+          </span>
+          <span class="text-muted ms-3 small">{{ otLabel(selectedMovement.idWorkorder) }}</span>
+          <span class="text-muted ms-3 small">{{ warehouseLabel(selectedMovement.idWarehouse) }}</span>
+        </div>
+
+        <div *ngIf="loadingItems" class="text-center py-3">
+          <div class="spinner-border spinner-border-sm text-primary"></div>
+        </div>
+
+        <div *ngIf="!loadingItems" class="table-responsive">
+          <table class="table table-sm table-hover align-middle">
+            <thead class="table-light">
+              <tr>
+                <th>#</th>
+                <th>Material</th>
+                <th class="text-end">Cantidad</th>
+                <th class="text-end">Costo Unit.</th>
+                <th class="text-end">Total</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr *ngFor="let item of movementItems; let i = index">
+                <td class="text-muted">{{ i + 1 }}</td>
+                <td>{{ item.materialName }}</td>
+                <td class="text-end fw-semibold">{{ item.quantity | number:'1.0-4' }}</td>
+                <td class="text-end">{{ formatCurrency(item.unitCost!) }}</td>
+                <td class="text-end fw-bold text-primary">{{ formatCurrency(item.totalCost!) }}</td>
+              </tr>
+              <tr *ngIf="movementItems.length === 0">
+                <td colspan="5" class="text-center text-muted fst-italic py-3">Sin materiales</td>
+              </tr>
+            </tbody>
+            <tfoot *ngIf="movementItems.length > 0">
+              <tr class="table-secondary">
+                <td colspan="4" class="text-end fw-bold">Total movimiento:</td>
+                <td class="text-end fw-bold text-success">
+                  {{ formatCurrency(movementItems.reduce((s,i) => s + (i.totalCost||0), 0)) }}
+                </td>
+              </tr>
+            </tfoot>
+          </table>
+        </div>
+      </ng-container>
+    </div>
+  </div>
+</div>
+
+<!-- ── Modal Nuevo Movimiento ─────────────────────────────────── -->
+<div class="modal-backdrop-mnt" *ngIf="showForm" (click)="closeForm()"></div>
+<div class="modal-mnt" *ngIf="showForm" (click)="$event.stopPropagation()">
+
+  <div class="modal-mnt-header">
+    <h5 class="mb-0"><i class="bi bi-plus-circle me-2"></i>Nuevo Movimiento de Materiales</h5>
+    <button class="btn btn-sm btn-outline-secondary" (click)="closeForm()"><i class="bi bi-x-lg"></i></button>
+  </div>
+
+  <div class="modal-mnt-body">
+    <!-- Cabecera movimiento -->
+    <div class="row g-2 mb-3">
+      <div class="col-md-4">
+        <label class="form-label fw-semibold">Tipo *</label>
+        <div class="btn-group w-100">
+          <button class="btn btn-sm" [class.btn-danger]="form.type==='OUT'" [class.btn-outline-danger]="form.type!=='OUT'"
+                  (click)="form.type='OUT'">
+            <i class="bi bi-arrow-up-circle me-1"></i>Salida
+          </button>
+          <button class="btn btn-sm" [class.btn-success]="form.type==='IN'" [class.btn-outline-success]="form.type!=='IN'"
+                  (click)="form.type='IN'">
+            <i class="bi bi-arrow-down-circle me-1"></i>Entrada
+          </button>
+        </div>
+      </div>
+      <div class="col-md-4">
+        <label class="form-label fw-semibold">Orden de Trabajo *</label>
+        <select class="form-select form-select-sm" [(ngModel)]="form.idWorkorder">
+          <option [ngValue]="undefined">— Seleccionar OT —</option>
+          <option *ngFor="let wo of workOrders" [ngValue]="wo.id">
+            {{ wo.folio }} — {{ wo.title }}
+          </option>
+        </select>
+      </div>
+      <div class="col-md-4">
+        <label class="form-label fw-semibold">Almacén *</label>
+        <select class="form-select form-select-sm" [(ngModel)]="form.idWarehouse">
+          <option [ngValue]="undefined">— Seleccionar —</option>
+          <option *ngFor="let wh of warehouses" [ngValue]="wh.id">
+            {{ wh.name || wh.nombreAlmacen }}
+          </option>
+        </select>
+      </div>
+      <div class="col-md-4">
+        <label class="form-label fw-semibold">Fecha</label>
+        <input type="date" class="form-control form-control-sm" [(ngModel)]="form.date">
+      </div>
+      <div class="col-md-8">
+        <label class="form-label fw-semibold">Notas</label>
+        <input type="text" class="form-control form-control-sm" [(ngModel)]="form.notes" placeholder="Observaciones opcionales...">
+      </div>
+    </div>
+
+    <!-- Tabla de items -->
+    <div class="d-flex justify-content-between align-items-center mb-2">
+      <span class="fw-semibold">Materiales</span>
+      <button class="btn btn-sm btn-outline-primary" (click)="addFormItem()">
+        <i class="bi bi-plus-lg me-1"></i>Agregar material
+      </button>
+    </div>
+
+    <div class="table-responsive">
+      <table class="table table-sm align-middle">
+        <thead class="table-light">
+          <tr>
+            <th style="width:35%">Material *</th>
+            <th style="width:12%" class="text-center">Stock</th>
+            <th style="width:12%" class="text-center">Cantidad *</th>
+            <th style="width:15%" class="text-end">Costo Unit.</th>
+            <th style="width:15%" class="text-end">Total</th>
+            <th style="width:5%"></th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr *ngFor="let item of formItems">
+            <td>
+              <select class="form-select form-select-sm"
+                      [(ngModel)]="item.idMaterial"
+                      (ngModelChange)="onMaterialSelect(item)">
+                <option [ngValue]="0">— Material —</option>
+                <option *ngFor="let m of materials" [ngValue]="m.id">
+                  {{ m.description || m.articulo }}
+                </option>
+              </select>
+            </td>
+            <td class="text-center">
+              <span class="badge"
+                    [ngClass]="item.currentStock <= 0 ? 'bg-danger' : item.currentStock < 5 ? 'bg-warning text-dark' : 'bg-success'">
+                {{ item.currentStock | number:'1.0-2' }}
+              </span>
+            </td>
+            <td>
+              <input type="number" class="form-control form-control-sm text-center" min="0.0001" step="1"
+                     [(ngModel)]="item.quantity" (ngModelChange)="onQtyChange(item)">
+            </td>
+            <td class="text-end">{{ formatCurrency(item.unitCost) }}</td>
+            <td class="text-end fw-semibold text-primary">{{ formatCurrency(item.totalCost) }}</td>
+            <td class="text-center">
+              <button class="btn btn-xs btn-outline-danger" (click)="removeFormItem(item.tempId)"
+                      [disabled]="formItems.length === 1">
+                <i class="bi bi-trash"></i>
+              </button>
+            </td>
+          </tr>
+        </tbody>
+        <tfoot>
+          <tr class="table-secondary">
+            <td colspan="4" class="text-end fw-bold">Total:</td>
+            <td class="text-end fw-bold text-success">{{ formatCurrency(formTotal) }}</td>
+            <td></td>
+          </tr>
+        </tfoot>
+      </table>
+    </div>
+
+    <div *ngIf="form.type === 'OUT'" class="alert alert-warning py-2 small mb-0">
+      <i class="bi bi-exclamation-triangle me-1"></i>
+      Las salidas descuentan el stock del almacén seleccionado.
+    </div>
+    <div *ngIf="form.type === 'IN'" class="alert alert-success py-2 small mb-0">
+      <i class="bi bi-info-circle me-1"></i>
+      Las entradas suman al stock del almacén seleccionado.
+    </div>
+  </div>
+
+  <div class="modal-mnt-footer">
+    <button class="btn btn-secondary btn-sm" (click)="closeForm()" [disabled]="saving">Cancelar</button>
+    <button class="btn btn-primary btn-sm" (click)="saveMovement()" [disabled]="saving">
+      <span *ngIf="saving" class="spinner-border spinner-border-sm me-1"></span>
+      <i *ngIf="!saving" class="bi bi-floppy me-1"></i>
+      {{ saving ? 'Guardando...' : 'Guardar movimiento' }}
+    </button>
+  </div>
+</div>
