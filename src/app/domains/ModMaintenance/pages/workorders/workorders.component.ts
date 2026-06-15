@@ -8,6 +8,8 @@ import { EquipmentService } from 'app/services/equipment.service';
 import { EmployeesService } from 'app/services/employees.service';
 import { SignalsService } from 'app/services/signals.service';
 import { TrackingService } from 'app/services/tracking.service';
+import { WorkOrderPhotoService, WorkOrderPhoto } from 'app/services/workorder-photo.service';
+import { ImageHandlerService } from 'app/services/image-handler.service';
 import { forkJoin } from 'rxjs';
 
 @Component({
@@ -25,6 +27,8 @@ export class WorkordersComponent implements OnInit {
   private employeesService = inject(EmployeesService);
   private signalsService = inject(SignalsService);
   private trackingService = inject(TrackingService);
+  private photoService = inject(WorkOrderPhotoService);
+  private imageHandler = inject(ImageHandlerService);
   private router = inject(Router);
 
   idcompany: number = 0;
@@ -196,12 +200,15 @@ export class WorkordersComponent implements OnInit {
   viewWorkOrderDetail(workOrder: any): void {
     this.selectedWorkOrder = workOrder;
     this.selectedWorkOrderTasks = [];
+    this.photos = [];
+    this.photoCaption = '';
     this.showWorkOrderDetail = true;
 
     this.taskService.getByWorkOrder(workOrder.id).subscribe({
       next: (tasks: any) => this.selectedWorkOrderTasks = tasks || [],
       error: () => this.selectedWorkOrderTasks = []
     });
+    this.loadPhotos(workOrder.id);
   }
 
   closeWorkOrderDetail(): void {
@@ -368,6 +375,17 @@ export class WorkordersComponent implements OnInit {
     return this.idBranch > 0;
   }
 
+  viewMode: 'list' | 'kanban' = 'list';
+
+  get kanbanColumns() {
+    return [
+      { status: 'pendiente',  label: 'Pendiente',  colorClass: 'warning text-dark', orders: this.filteredWorkOrders.filter(w => w.status === 'pendiente') },
+      { status: 'en-proceso', label: 'En Proceso', colorClass: 'primary',           orders: this.filteredWorkOrders.filter(w => w.status === 'en-proceso') },
+      { status: 'pausada',    label: 'Pausada',    colorClass: 'secondary',         orders: this.filteredWorkOrders.filter(w => w.status === 'pausada') },
+      { status: 'completada', label: 'Completada', colorClass: 'success',           orders: this.filteredWorkOrders.filter(w => w.status === 'completada') },
+    ];
+  }
+
   // Estado — máquina de transiciones válidas
   private readonly STATUS_TRANSITIONS: Record<string, string[]> = {
     'pendiente':  ['en-proceso', 'cancelada'],
@@ -422,5 +440,54 @@ export class WorkordersComponent implements OnInit {
       done: i < currentIdx || current === 'completada',
       active: s === current || (isPaused && s === 'en-proceso')
     }));
+  }
+
+  // ── Evidencias fotográficas ──
+  photos: WorkOrderPhoto[] = [];
+  loadingPhotos: boolean = false;
+  uploadingPhoto: boolean = false;
+  photoCaption: string = '';
+
+  loadPhotos(idWorkorder: number): void {
+    this.loadingPhotos = true;
+    this.photoService.getByWorkOrder(idWorkorder).subscribe({
+      next: (photos) => { this.photos = photos || []; this.loadingPhotos = false; },
+      error: () => { this.photos = []; this.loadingPhotos = false; }
+    });
+  }
+
+  onPhotoFileSelected(event: Event): void {
+    const input = event.target as HTMLInputElement;
+    const file = input.files?.[0];
+    if (!file) return;
+    this.uploadingPhoto = true;
+    this.imageHandler.uploadFileToFirebase(file, 'fotos-ordenes-mantenimiento').then((url: string) => {
+      const photo: WorkOrderPhoto = {
+        idWorkorder: this.selectedWorkOrder.id,
+        imageUrl: url,
+        description: this.photoCaption || ''
+      };
+      this.photoService.add(photo).subscribe({
+        next: (saved) => {
+          this.photos = [saved, ...this.photos];
+          this.photoCaption = '';
+          this.uploadingPhoto = false;
+        },
+        error: () => this.uploadingPhoto = false
+      });
+    }).catch(() => this.uploadingPhoto = false);
+    input.value = '';
+  }
+
+  deletePhoto(photo: WorkOrderPhoto, event: Event): void {
+    event.stopPropagation();
+    if (!confirm('¿Eliminar esta foto?')) return;
+    this.photoService.delete(photo.id!).subscribe({
+      next: () => { this.photos = this.photos.filter(p => p.id !== photo.id); }
+    });
+  }
+
+  openPhotoFull(url: string): void {
+    window.open(url, '_blank');
   }
 }

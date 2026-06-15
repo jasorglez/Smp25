@@ -63,6 +63,16 @@
         <option *ngFor="let dept of departments" [value]="dept.value">{{ dept.label }}</option>
       </select>
 
+      <div class="btn-group me-2">
+        <button class="btn btn-sm" [class.btn-primary]="viewMode==='list'" [class.btn-outline-secondary]="viewMode!=='list'"
+                title="Vista Lista" (click)="viewMode='list'">
+          <i class="bi bi-list-ul"></i>
+        </button>
+        <button class="btn btn-sm" [class.btn-primary]="viewMode==='kanban'" [class.btn-outline-secondary]="viewMode!=='kanban'"
+                title="Vista Kanban" (click)="viewMode='kanban'">
+          <i class="bi bi-kanban"></i>
+        </button>
+      </div>
       <button class="btn btn-primary filter-btn" (click)="onNewWorkOrder()" [disabled]="!canCreateByBranch()">
         <i class="bi bi-plus-lg"></i> Nueva Orden
       </button>
@@ -83,8 +93,41 @@
     <p class="mt-2 text-muted">No se encontraron órdenes de trabajo</p>
   </div>
 
+  <!-- Kanban View -->
+  <div class="kanban-board" *ngIf="!loading && viewMode === 'kanban'">
+    <div class="kanban-column" *ngFor="let col of kanbanColumns">
+      <div [class]="'kanban-column-header bg-' + col.colorClass">
+        <span class="fw-semibold">{{ col.label }}</span>
+        <span class="badge bg-white text-dark ms-2">{{ col.orders.length }}</span>
+      </div>
+      <div class="kanban-cards">
+        <div class="kanban-card" *ngFor="let wo of col.orders" (click)="viewWorkOrderDetail(wo)">
+          <div class="d-flex justify-content-between align-items-start mb-1">
+            <span class="kanban-folio text-primary fw-semibold small">{{ wo.folio }}</span>
+            <span [class]="'badge small ' + getPriorityClass(wo.priority)">{{ wo.priority | titlecase }}</span>
+          </div>
+          <div class="kanban-title fw-semibold small mb-1">{{ wo.title }}</div>
+          <div class="text-muted small mb-2">
+            <i class="bi bi-gear-fill me-1"></i>{{ wo.assetName || 'Sin activo' }}
+          </div>
+          <div class="d-flex gap-1 flex-wrap">
+            <ng-container *ngFor="let t of getAvailableTransitions(wo)">
+              <button [class]="'btn btn-sm py-0 px-1 ' + t.btnClass" [title]="t.label"
+                      (click)="onChangeStatus(wo, t.status, $event)">
+                <i [class]="'bi bi-' + t.icon" style="font-size:0.7rem"></i>
+              </button>
+            </ng-container>
+          </div>
+        </div>
+        <div class="text-muted text-center py-3 small" *ngIf="col.orders.length === 0">
+          <i class="bi bi-inbox opacity-50"></i><br>Vacío
+        </div>
+      </div>
+    </div>
+  </div>
+
   <!-- Work Orders List -->
-  <div class="workorders-grid" *ngIf="!loading">
+  <div class="workorders-grid" *ngIf="!loading && viewMode === 'list'">
     <div class="workorder-card" *ngFor="let workOrder of filteredWorkOrders" (click)="viewWorkOrderDetail(workOrder)">
       <div class="workorder-header">
         <div class="workorder-info">
@@ -329,6 +372,45 @@
                 {{ task.description }}
               </li>
             </ul>
+          </div>
+        </div>
+
+        <!-- Evidencias Fotográficas -->
+        <div class="detail-section full-width mt-3">
+          <h4 class="section-title">
+            <i class="bi bi-images icon-section"></i>
+            Evidencias Fotográficas
+            <span class="badge bg-secondary ms-2">{{ photos.length }}</span>
+          </h4>
+
+          <!-- Upload -->
+          <div class="d-flex align-items-center gap-2 mb-3 flex-wrap">
+            <input type="text" class="form-control form-control-sm" style="max-width:220px"
+                   placeholder="Descripción (opcional)" [(ngModel)]="photoCaption">
+            <label class="btn btn-sm btn-outline-primary mb-0" [class.disabled]="uploadingPhoto">
+              <i class="bi bi-upload me-1"></i>
+              {{ uploadingPhoto ? 'Subiendo...' : 'Subir foto' }}
+              <input type="file" accept="image/*" class="d-none" (change)="onPhotoFileSelected($event)" [disabled]="uploadingPhoto">
+            </label>
+            <div *ngIf="uploadingPhoto" class="spinner-border spinner-border-sm text-primary" role="status"></div>
+          </div>
+
+          <!-- Loading -->
+          <div *ngIf="loadingPhotos" class="text-center text-muted py-2">
+            <div class="spinner-border spinner-border-sm me-1"></div> Cargando fotos...
+          </div>
+
+          <!-- Gallery -->
+          <div *ngIf="!loadingPhotos" class="photo-gallery">
+            <div *ngIf="photos.length === 0" class="text-muted small fst-italic">Sin evidencias fotográficas.</div>
+            <div *ngFor="let photo of photos" class="photo-thumb-card">
+              <img [src]="photo.imageUrl" [alt]="photo.description || 'Foto'"
+                   class="photo-thumb" (click)="openPhotoFull(photo.imageUrl!)">
+              <div class="photo-caption">{{ photo.description || '—' }}</div>
+              <button class="btn btn-xs btn-danger photo-del-btn" (click)="deletePhoto(photo, $event)" title="Eliminar foto">
+                <i class="bi bi-trash-fill"></i>
+              </button>
+            </div>
           </div>
         </div>
 

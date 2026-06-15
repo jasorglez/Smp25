@@ -48,6 +48,7 @@
     "ng-bootstrap": "^0.46.0",
     "pdfmake": "^0.2.12",
     "pkijs": "^3.2.4",
+    "qrcode": "^1.5.4",
     "rollup": "^4.54.0",
     "rxjs": "~7.8.0",
     "sweetalert2": "^11.12.3",

@@ -105,6 +105,10 @@
           (click)="openHistory(asset, $event)">
           <i class="bi bi-clock-history"></i>
         </button>
+        <button class="btn btn-sm btn-outline-dark action-btn" title="Código QR"
+          (click)="openQR(asset, $event)">
+          <i class="bi bi-qr-code"></i>
+        </button>
         <button class="btn btn-sm btn-outline-warning action-btn" (click)="openEditForm(asset, $event)">
           <i class="bi bi-pencil"></i>
         </button>
@@ -335,6 +339,29 @@
     </div>
   </div>
 
+  <!-- QR Modal -->
+  <div class="modal-backdrop" *ngIf="showQR" (click)="closeQR()"></div>
+  <div class="asset-detail-modal" *ngIf="showQR" style="max-width:380px;">
+    <div class="modal-content" (click)="$event.stopPropagation()">
+      <div class="modal-header" style="background:#1e3a5f;color:#fff;">
+        <h2 class="modal-title"><i class="bi bi-qr-code me-2"></i>Código QR</h2>
+        <button class="btn btn-sm btn-outline-light close-btn" (click)="closeQR()"><i class="bi bi-x-lg"></i></button>
+      </div>
+      <div class="modal-body text-center py-4">
+        <h5 class="fw-bold mb-1">{{ qrAsset?.description }}</h5>
+        <small class="text-muted">ID: {{ qrAsset?.id }} | {{ qrAsset?.assetType || 'Sin tipo' }}</small>
+        <div class="mt-3 mb-2">
+          <img [src]="qrDataUrl" style="width:220px;height:220px;border-radius:8px;box-shadow:0 2px 8px rgba(0,0,0,.15)" alt="QR Code">
+        </div>
+        <p class="text-muted small">Escanea para identificar el activo</p>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" (click)="closeQR()">Cerrar</button>
+        <button class="btn btn-dark" (click)="printQR()"><i class="bi bi-printer me-1"></i>Imprimir</button>
+      </div>
+    </div>
+  </div>
+
   <!-- History Modal -->
   <div class="modal-backdrop" *ngIf="showHistory" (click)="closeHistory()"></div>
   <div class="asset-detail-modal" *ngIf="showHistory" style="max-width:900px;">
@@ -382,10 +409,22 @@
                 <small class="text-muted">Costo Acumulado</small>
               </div>
             </div>
-            <div class="col-12 col-md-3" *ngIf="historyTotals().mtbf !== null">
+            <div class="col-6 col-md-3" *ngIf="historyTotals().mtbf !== null">
               <div class="border rounded p-3 text-center bg-light">
                 <div class="fs-3 fw-bold text-info">{{ historyTotals().mtbf }}</div>
-                <small class="text-muted">MTBF (días entre fallas)</small>
+                <small class="text-muted">MTBF (días)</small>
+              </div>
+            </div>
+            <div class="col-6 col-md-3" *ngIf="historyTotals().mttr !== null">
+              <div class="border rounded p-3 text-center bg-light">
+                <div class="fs-3 fw-bold text-purple" style="color:#8b5cf6">{{ historyTotals().mttr }}</div>
+                <small class="text-muted">MTTR (hrs reparación)</small>
+              </div>
+            </div>
+            <div class="col-6 col-md-3" *ngIf="historyTotals().pctCumplimiento !== null">
+              <div class="border rounded p-3 text-center bg-light">
+                <div class="fs-3 fw-bold text-success">{{ historyTotals().pctCumplimiento }}%</div>
+                <small class="text-muted">Cumplimiento a tiempo</small>
               </div>
             </div>
           </div>

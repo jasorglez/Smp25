@@ -86,5 +86,5 @@ export const environment = {
     // publicKey: 'TEST-4399133a-4676-42a2-ab85-d946370bf96a',
   },
 
-  version: '5.42 (15 Junio 2026 16:30) feat(checklist): plantillas de checklist backend+frontend+catalogos',
+  version: '5.43 (15 Junio 2026 18:30) feat(workorders): kanban view QR MTTR telegram fotos OT redirect newasset',
 };
