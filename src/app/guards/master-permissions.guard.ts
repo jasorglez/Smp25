@@ -22,15 +22,16 @@ export class MasterPermissionsGuard implements CanActivate {
     route: ActivatedRouteSnapshot,
     state: RouterStateSnapshot
   ): Observable<boolean> {
-    const requiredPermissions = route.data['permissions'];
-    if (!requiredPermissions) {
-      return of(true);
-    }
-
+    // Siempre verificar autenticación primero
     const email = localStorage.getItem('mail');
     if (!email) {
       this.router.navigate(['/login']);
       return of(false);
+    }
+
+    const requiredPermissions = route.data['permissions'];
+    if (!requiredPermissions) {
+      return of(true);
     }
     
 
