@@ -1829,6 +1829,13 @@ export const routes: Routes = [
                 './domains/ModMaintenance/components/personal/personal.component'
               ).then((p) => p.PersonalComponent),
           },
+          {
+            path: 'materiales',
+            loadComponent: () =>
+              import(
+                './domains/ModMaintenance/pages/materiales/materiales.component'
+              ).then((m) => m.MaterialesComponent),
+          },
         ],
       },
       {
