@@ -91,23 +91,53 @@
 .stat-icon.green { color: #10b981; }
 .stat-icon.purple { color: #8b5cf6; }
 
-/* Charts 2-col layout (Tipo + Estado) */
-.charts-2col {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 1rem;
-  margin-bottom: 1rem;
+/* Section label */
+.dash-label {
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: #64748b;
+  margin-bottom: 0;
 }
 
-/* Chart full-width (Tendencia) */
-.chart-full {
-  margin-bottom: 1rem;
+/* Mini KPI cell */
+.kpi-cell {
+  background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
+  border-radius: 10px;
+  padding: 0.75rem;
+  border: 1px solid #e2e8f0;
+  position: relative;
+  overflow: hidden;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  &:hover { transform: translateY(-2px); box-shadow: 0 4px 16px rgba(0,0,0,.08); }
 }
 
-@media (max-width: 768px) {
-  .charts-2col {
-    grid-template-columns: 1fr;
-  }
+.kpi-ico {
+  font-size: 1.3rem;
+  display: block;
+  margin-bottom: 0.3rem;
+}
+
+.kpi-blue  { color: #3b82f6; }
+.kpi-orange { color: #f59e0b; }
+.kpi-green  { color: #10b981; }
+.kpi-purple { color: #8b5cf6; }
+
+.kpi-val {
+  font-size: 1.7rem;
+  font-weight: 800;
+  color: #1e293b;
+  line-height: 1.1;
+}
+
+.kpi-lbl {
+  font-size: 0.62rem;
+  font-weight: 600;
+  color: #94a3b8;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  margin-top: 0.15rem;
 }
 
 /* Cards Grid */

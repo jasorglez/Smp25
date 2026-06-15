@@ -179,7 +179,7 @@ export class DashboardComponent implements OnInit {
     const tipoSeries = tipoKeys.map(k => workOrders.filter(w => (w.type || '').toLowerCase() === k).length);
     this.chartTipo = {
       series: tipoSeries,
-      chart: { type: 'donut', height: 280 },
+      chart: { type: 'donut', height: 250 },
       labels: tipoLabels,
       colors: ['#22c55e', '#ef4444', '#8b5cf6', '#64748b', '#3b82f6'],
       legend: { position: 'bottom' },
@@ -194,7 +194,7 @@ export class DashboardComponent implements OnInit {
     const estadoData = estadoKeys.map(k => workOrders.filter(w => (w.status || '').toLowerCase() === k).length);
     this.chartEstado = {
       series: [{ name: 'OTs', data: estadoData }],
-      chart: { type: 'bar', height: 280 },
+      chart: { type: 'bar', height: 250 },
       plotOptions: { bar: { horizontal: true, borderRadius: 4 } },
       colors: ['#f59e0b', '#3b82f6', '#94a3b8', '#22c55e', '#ef4444'],
       xaxis: { categories: estados },
@@ -224,13 +224,19 @@ export class DashboardComponent implements OnInit {
         { name: 'Preventivo', data: preventivos },
         { name: 'Correctivo', data: correctivos }
       ],
-      chart: { type: 'line', height: 360, toolbar: { show: false } },
-      stroke: { curve: 'smooth', width: 2 },
+      chart: { type: 'area', height: 340, toolbar: { show: false }, zoom: { enabled: false } },
+      stroke: { curve: 'smooth', width: 3 },
+      fill: {
+        type: 'gradient',
+        gradient: { shadeIntensity: 1, opacityFrom: 0.45, opacityTo: 0.05, stops: [0, 90, 100] }
+      },
       colors: ['#22c55e', '#ef4444'],
-      xaxis: { categories: months },
-      markers: { size: 4 },
-      legend: { position: 'top' },
-      tooltip: { y: { formatter: (v: number) => `${v} OTs` } }
+      xaxis: { categories: months, axisBorder: { show: false }, axisTicks: { show: false } },
+      yaxis: { labels: { formatter: (v: number) => `${v}` } },
+      markers: { size: 5, hover: { size: 7 } },
+      legend: { position: 'top', horizontalAlign: 'right' },
+      tooltip: { y: { formatter: (v: number) => `${v} OTs` }, shared: true, intersect: false },
+      grid: { borderColor: '#f1f5f9', strokeDashArray: 4 }
     };
   }
 

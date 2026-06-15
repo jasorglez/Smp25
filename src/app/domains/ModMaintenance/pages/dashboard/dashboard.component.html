@@ -1,4 +1,3 @@
-<!-- Dashboard Content -->
 <div class="main-content">
   <div class="text-center p-5" *ngIf="loading">
     <div class="spinner-border text-primary" role="status">
@@ -13,122 +12,114 @@
   </div>
 
   <ng-container *ngIf="!loading && !errorMessage">
-  <!-- Stats Cards -->
-  <div class="stats-grid">
-    <div class="stat-card" *ngFor="let stat of stats">
-      <div class="stat-content">
-        <div class="stat-info">
-          <p class="stat-label">{{ stat.label }}</p>
-          <p class="stat-value">{{ stat.value }}</p>
+
+    <!-- FILA 1: KPIs | OTs por Tipo | OTs por Estado -->
+    <div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:1rem; margin-bottom:1rem; align-items:start;">
+
+      <!-- Panel KPIs -->
+      <div class="card p-3">
+        <p class="dash-label"><i class="bi bi-activity me-1"></i> Indicadores Clave</p>
+        <div style="display:grid; grid-template-columns:1fr 1fr; gap:0.6rem; margin-top:0.4rem;">
+          <div *ngFor="let stat of stats" class="kpi-cell">
+            <i [class]="'bi bi-' + stat.icon + ' kpi-ico kpi-' + stat.color"></i>
+            <div class="kpi-val">{{ stat.value }}</div>
+            <div class="kpi-lbl">{{ stat.label }}</div>
+          </div>
         </div>
-        <i [class]="'bi bi-' + stat.icon + ' stat-icon ' + stat.color"></i>
       </div>
-    </div>
-  </div>
 
-  <!-- Fila 1: OTs por Tipo + OTs por Estado, compactos lado a lado -->
-  <div *ngIf="chartTipo" style="display:grid; grid-template-columns:1fr 1fr; gap:1rem; margin-bottom:1rem;">
-    <div class="card p-3">
-      <h6 class="fw-semibold mb-2"><i class="bi bi-pie-chart me-1 text-primary"></i> OTs por Tipo</h6>
-      <apx-chart
-        [series]="chartTipo.series"
-        [chart]="chartTipo.chart"
-        [labels]="chartTipo.labels"
-        [colors]="chartTipo.colors"
-        [legend]="chartTipo.legend"
-        [plotOptions]="chartTipo.plotOptions"
-        [dataLabels]="chartTipo.dataLabels"
-        [tooltip]="chartTipo.tooltip">
-      </apx-chart>
-    </div>
-    <div class="card p-3">
-      <h6 class="fw-semibold mb-2"><i class="bi bi-bar-chart me-1 text-warning"></i> OTs por Estado</h6>
-      <apx-chart
-        [series]="chartEstado.series"
-        [chart]="chartEstado.chart"
-        [plotOptions]="chartEstado.plotOptions"
-        [colors]="chartEstado.colors"
-        [xaxis]="chartEstado.xaxis"
-        [dataLabels]="chartEstado.dataLabels"
-        [tooltip]="chartEstado.tooltip">
-      </apx-chart>
-    </div>
-  </div>
+      <!-- OTs por Tipo -->
+      <div class="card p-3" *ngIf="chartTipo">
+        <p class="dash-label"><i class="bi bi-pie-chart-fill me-1 text-primary"></i> OTs por Tipo</p>
+        <apx-chart
+          [series]="chartTipo.series"
+          [chart]="chartTipo.chart"
+          [labels]="chartTipo.labels"
+          [colors]="chartTipo.colors"
+          [legend]="chartTipo.legend"
+          [plotOptions]="chartTipo.plotOptions"
+          [dataLabels]="chartTipo.dataLabels"
+          [tooltip]="chartTipo.tooltip">
+        </apx-chart>
+      </div>
 
-  <!-- Fila 2: Tendencia full-width, grande y destacada -->
-  <div *ngIf="chartTendencia" style="margin-bottom:1rem;">
-    <div class="card p-3">
-      <h6 class="fw-semibold mb-2"><i class="bi bi-graph-up me-1 text-success"></i> Tendencia Últimos 6 Meses</h6>
+      <!-- OTs por Estado -->
+      <div class="card p-3" *ngIf="chartEstado">
+        <p class="dash-label"><i class="bi bi-bar-chart-fill me-1 text-warning"></i> OTs por Estado</p>
+        <apx-chart
+          [series]="chartEstado.series"
+          [chart]="chartEstado.chart"
+          [plotOptions]="chartEstado.plotOptions"
+          [colors]="chartEstado.colors"
+          [xaxis]="chartEstado.xaxis"
+          [dataLabels]="chartEstado.dataLabels"
+          [tooltip]="chartEstado.tooltip">
+        </apx-chart>
+      </div>
+
+    </div>
+
+    <!-- FILA 2: Tendencia Últimos 6 Meses — FULL WIDTH, GRANDE -->
+    <div class="card p-3" style="margin-bottom:1rem;" *ngIf="chartTendencia">
+      <p class="dash-label"><i class="bi bi-graph-up-arrow me-1 text-success"></i> Tendencia Últimos 6 Meses — Preventivo vs Correctivo</p>
       <apx-chart
         [series]="chartTendencia.series"
         [chart]="chartTendencia.chart"
         [stroke]="chartTendencia.stroke"
+        [fill]="chartTendencia.fill"
         [colors]="chartTendencia.colors"
         [xaxis]="chartTendencia.xaxis"
         [markers]="chartTendencia.markers"
         [legend]="chartTendencia.legend"
-        [tooltip]="chartTendencia.tooltip">
+        [tooltip]="chartTendencia.tooltip"
+        [grid]="chartTendencia.grid">
       </apx-chart>
     </div>
-  </div>
 
-  <!-- Recent Orders and Upcoming Maintenance -->
-  <div class="cards-grid">
-    <!-- Recent Orders -->
-    <div class="card">
-      <h3 class="card-title">
-        <i class="bi bi-clipboard-list icon-title"></i>
-        Órdenes de Trabajo Recientes
-      </h3>
-      <div class="orders-list">
-        <div class="order-item" *ngFor="let order of recentOrders">
-          <div class="order-header">
-            <div>
-              <p class="order-id">{{ order.id }}</p>
-              <p class="order-asset">{{ order.asset }}</p>
+    <!-- FILA 3: OT Recientes + Próximos -->
+    <div style="display:grid; grid-template-columns:1fr 1fr; gap:1rem;">
+
+      <div class="card">
+        <h3 class="card-title"><i class="bi bi-clipboard-list icon-title"></i> Órdenes de Trabajo Recientes</h3>
+        <div class="orders-list">
+          <div class="order-item" *ngFor="let order of recentOrders">
+            <div class="order-header">
+              <div>
+                <p class="order-id">{{ order.id }}</p>
+                <p class="order-asset">{{ order.asset }}</p>
+              </div>
+              <span [class]="'priority-badge ' + getPriorityClass(order.priority)">{{ order.priority }}</span>
             </div>
-            <span [class]="'priority-badge ' + getPriorityClass(order.priority)">
-              {{ order.priority }}
-            </span>
+            <div class="order-footer">
+              <span class="order-type">{{ order.type }}</span>
+              <span [class]="'status-badge ' + getStatusClass(order.status)">{{ order.status }}</span>
+            </div>
+            <p class="order-technician">Técnico: {{ order.technician }}</p>
           </div>
-          <div class="order-footer">
-            <span class="order-type">{{ order.type }}</span>
-            <span [class]="'status-badge ' + getStatusClass(order.status)">
-              {{ order.status }}
-            </span>
-          </div>
-          <p class="order-technician">Técnico: {{ order.technician }}</p>
-        </div>
-        <div class="text-muted" *ngIf="recentOrders.length === 0">
-          No hay órdenes recientes.
+          <div class="text-muted small" *ngIf="recentOrders.length === 0">No hay órdenes recientes.</div>
         </div>
       </div>
-    </div>
 
-    <!-- Upcoming Maintenance -->
-    <div class="card">
-      <h3 class="card-title">
-        <i class="bi bi-calendar icon-title"></i>
-        Próximos Mantenimientos
-      </h3>
-      <div class="maintenance-list">
-        <div class="maintenance-item" *ngFor="let maint of upcomingMaintenance">
-          <div class="maintenance-content">
-            <div>
-              <p class="maintenance-asset">{{ maint.asset }}</p>
-              <p class="maintenance-type">{{ maint.type }}</p>
-            </div>
-            <div class="maintenance-schedule">
-              <p class="maintenance-date">{{ maint.date }}</p>
-              <p class="maintenance-hours">{{ maint.hours }}</p>
+      <div class="card">
+        <h3 class="card-title"><i class="bi bi-calendar icon-title"></i> Próximos Mantenimientos</h3>
+        <div class="maintenance-list">
+          <div class="maintenance-item" *ngFor="let maint of upcomingMaintenance">
+            <div class="maintenance-content">
+              <div>
+                <p class="maintenance-asset">{{ maint.asset }}</p>
+                <p class="maintenance-type">{{ maint.type }}</p>
+              </div>
+              <div class="maintenance-schedule">
+                <p class="maintenance-date">{{ maint.date }}</p>
+                <p class="maintenance-hours">{{ maint.hours }}</p>
+              </div>
             </div>
           </div>
-        </div>
-        <div class="text-muted" *ngIf="upcomingMaintenance.length === 0">
-          No hay mantenimientos próximos.
+          <div class="text-muted small" *ngIf="upcomingMaintenance.length === 0">No hay mantenimientos próximos.</div>
         </div>
       </div>
+
     </div>
-  </div>
+
   </ng-container>
 </div>
