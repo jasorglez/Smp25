@@ -86,5 +86,5 @@ export const environment = {
     // publicKey: 'TEST-4399133a-4676-42a2-ab85-d946370bf96a',
   },
 
-  version: '5.48 (15 Junio 2026 00:30) fix(dashboard): Tipo+Estado 200px compactos, Tendencia 360px destacado',
+  version: '5.49 (15 Junio 2026 01:00) fix(dashboard): inline-style grid, Tipo+Estado 280px, Tendencia 360px',
 };
