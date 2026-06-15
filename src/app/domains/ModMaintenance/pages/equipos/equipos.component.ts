@@ -129,10 +129,13 @@ export class EquiposComponent implements OnInit {
                 employeeName: this.getEmployeeName(m.idEmployee),
                 baseHours: this.getEmployeeBaseHours(m.idEmployee)
               }));
+              let hourlyRate = this.getEmployeeBaseHours(team.leader);
+              for (const m of members) hourlyRate += m.baseHours;
               return {
                 ...team,
                 leaderName: this.getEmployeeName(team.leader),
-                members: members
+                members: members,
+                hourlyRate: Math.round(hourlyRate * 100) / 100
               };
             });
             this.loading = false;
