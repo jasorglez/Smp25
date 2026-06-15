@@ -282,3 +282,19 @@ body {
 .swal-minimal-icon {
   transform: scale(0.85);
 }
+
+/* Equipment ng-select dropdown panel (appendTo=body — fuera del componente) */
+.ng-dropdown-panel.equipment-select {
+  min-width: 480px !important;
+  width: auto !important;
+}
+.ng-dropdown-panel.equipment-select .ng-option {
+  font-size: 0.78rem !important;
+  white-space: normal !important;
+  line-height: 1.35 !important;
+  padding: 6px 10px !important;
+}
+.ng-dropdown-panel.equipment-select .ng-option-label {
+  white-space: normal !important;
+  word-break: break-word !important;
+}
