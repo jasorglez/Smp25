@@ -341,8 +341,8 @@
 
   <!-- QR Modal -->
   <div class="modal-backdrop" *ngIf="showQR" (click)="closeQR()"></div>
-  <div class="asset-detail-modal" *ngIf="showQR" style="max-width:380px;">
-    <div class="modal-content" (click)="$event.stopPropagation()">
+  <div class="asset-detail-modal" *ngIf="showQR">
+    <div class="modal-content" style="max-width:380px;" (click)="$event.stopPropagation()">
       <div class="modal-header" style="background:#1e3a5f;color:#fff;">
         <h2 class="modal-title"><i class="bi bi-qr-code me-2"></i>Código QR</h2>
         <button class="btn btn-sm btn-outline-light close-btn" (click)="closeQR()"><i class="bi bi-x-lg"></i></button>
@@ -364,8 +364,8 @@
 
   <!-- History Modal -->
   <div class="modal-backdrop" *ngIf="showHistory" (click)="closeHistory()"></div>
-  <div class="asset-detail-modal" *ngIf="showHistory" style="max-width:900px;">
-    <div class="modal-content" (click)="$event.stopPropagation()">
+  <div class="asset-detail-modal" *ngIf="showHistory">
+    <div class="modal-content" style="max-width:900px;" (click)="$event.stopPropagation()">
       <div class="modal-header bg-info text-white">
         <h2 class="modal-title">
           <i class="bi bi-clock-history me-2"></i>Historial — {{ historyAsset?.description }}
