@@ -327,9 +327,16 @@
             <i class="bi bi-check-lg-square me-2 text-primary"></i>
             Lista de Tareas/Checklist
           </h5>
-          <button type="button" class="btn btn-primary btn-sm" (click)="addTask()" [disabled]="!canCreateByBranch()">
-            <i class="bi bi-plus-lg"></i> Agregar Tarea
-          </button>
+          <div class="d-flex gap-2">
+            <button type="button" class="btn btn-outline-secondary btn-sm" (click)="openTemplateModal()"
+                    [disabled]="!canCreateByBranch() || checklistTemplates.length === 0"
+                    title="Cargar desde plantilla">
+              <i class="bi bi-layout-text-window me-1"></i> Plantilla
+            </button>
+            <button type="button" class="btn btn-primary btn-sm" (click)="addTask()" [disabled]="!canCreateByBranch()">
+              <i class="bi bi-plus-lg"></i> Agregar Tarea
+            </button>
+          </div>
         </div>
         <div class="card-body">
           <div class="mb-3" *ngFor="let task of tasks; let i = index">
@@ -340,6 +347,58 @@
               <button type="button" class="btn btn-outline-danger" (click)="removeTask(task.id)"
                       [disabled]="tasks.length === 1">
                 <i class="bi bi-trash"></i>
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Template Modal -->
+      <div class="modal fade show d-block" *ngIf="showTemplateModal" style="background:rgba(0,0,0,.5);" tabindex="-1">
+        <div class="modal-dialog modal-lg">
+          <div class="modal-content">
+            <div class="modal-header bg-secondary text-white">
+              <h5 class="modal-title"><i class="bi bi-layout-text-window me-2"></i>Cargar Plantilla de Checklist</h5>
+              <button type="button" class="btn-close btn-close-white" (click)="closeTemplateModal()"></button>
+            </div>
+            <div class="modal-body row g-3">
+              <div class="col-md-5">
+                <label class="fw-semibold mb-2 d-block">Plantillas disponibles</label>
+                <div class="list-group" style="max-height:300px; overflow-y:auto;">
+                  <button type="button" *ngFor="let t of filteredTemplates"
+                    [class]="'list-group-item list-group-item-action' + (selectedTemplate?.id === t.id ? ' active' : '')"
+                    (click)="onSelectTemplate(t)">
+                    <div class="fw-semibold">{{ t.name }}</div>
+                    <small *ngIf="t.maintenanceType" class="opacity-75">Tipo: {{ t.maintenanceType }}</small>
+                  </button>
+                  <div class="list-group-item text-muted" *ngIf="filteredTemplates.length === 0">
+                    No hay plantillas para este tipo de mantenimiento.
+                  </div>
+                </div>
+              </div>
+              <div class="col-md-7">
+                <label class="fw-semibold mb-2 d-block">Vista previa de tareas</label>
+                <div *ngIf="loadingTemplateItems" class="text-center py-3">
+                  <div class="spinner-border spinner-border-sm text-secondary"></div>
+                </div>
+                <ul class="list-group" *ngIf="!loadingTemplateItems && templateItems.length > 0" style="max-height:300px; overflow-y:auto;">
+                  <li class="list-group-item" *ngFor="let item of templateItems; let i = index">
+                    <i class="bi bi-check-circle me-2 text-muted"></i>{{ item.description }}
+                  </li>
+                </ul>
+                <div class="text-muted text-center py-3" *ngIf="!loadingTemplateItems && templateItems.length === 0 && selectedTemplate">
+                  Esta plantilla no tiene tareas.
+                </div>
+                <div class="text-muted text-center py-3" *ngIf="!selectedTemplate">
+                  Selecciona una plantilla para ver las tareas.
+                </div>
+              </div>
+            </div>
+            <div class="modal-footer">
+              <button type="button" class="btn btn-secondary" (click)="closeTemplateModal()">Cancelar</button>
+              <button type="button" class="btn btn-primary" (click)="applyTemplate()"
+                      [disabled]="!selectedTemplate || templateItems.length === 0">
+                <i class="bi bi-check-lg me-1"></i> Aplicar Plantilla ({{ templateItems.length }} tareas)
               </button>
             </div>
           </div>
