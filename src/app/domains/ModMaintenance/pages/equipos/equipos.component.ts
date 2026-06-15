@@ -4,6 +4,7 @@ import { FormsModule } from '@angular/forms';
 import { NgSelectComponent } from '@ng-select/ng-select';
 import { TeamService } from 'app/services/team.service';
 import { EmployeesService } from 'app/services/employees.service';
+import { EquipmentService } from 'app/services/equipment.service';
 import { SignalsService } from 'app/services/signals.service';
 import { MaintenanceCatalogService } from 'app/services/maintenance-catalog.service';
 import { TrackingService } from 'app/services/tracking.service';
@@ -22,6 +23,7 @@ export class EquiposComponent implements OnInit {
 
   private teamService = inject(TeamService);
   private employeesService = inject(EmployeesService);
+  private equipmentService = inject(EquipmentService);
   private signalsService = inject(SignalsService);
   private catalogService = inject(MaintenanceCatalogService);
   private trackingService = inject(TrackingService);
@@ -44,10 +46,13 @@ export class EquiposComponent implements OnInit {
     leader: null as number | null,
     specialty: '',
     status: 'Activo',
-    memberIds: [] as number[]
+    memberIds: [] as number[],
+    idEquipment: null as number | null
   };
 
   calculatedHourlyRate: number = 0;
+
+  equipmentList: any[] = [];
 
   // Specialties loaded from catalog (SPECIALTY type)
   specialties: any[] = [];
@@ -93,16 +98,15 @@ export class EquiposComponent implements OnInit {
     this.loading = true;
     const idBranchStr = this.idBranch.toString();
 
-    // Load specialties from catalog
     if (this.idcompany > 0) {
       this.catalogService.getByCompanyAndType(this.idcompany, 'SPECIALTY').subscribe({
-        next: (data) => {
-          this.specialties = data;
-        },
-        error: (err) => {
-          console.error('Error loading specialties catalog:', err);
-          this.specialties = [];
-        }
+        next: (data) => { this.specialties = data; },
+        error: () => { this.specialties = []; }
+      });
+
+      this.equipmentService.getEquipment(this.idcompany).subscribe({
+        next: (data: any) => { this.equipmentList = (data || []).filter((e: any) => e.active !== false); },
+        error: () => { this.equipmentList = []; }
       });
     }
 
@@ -163,6 +167,12 @@ export class EquiposComponent implements OnInit {
     return emp ? emp.name : `Empleado #${id}`;
   }
 
+  getEquipmentDescription(id: number | null): string {
+    if (!id) return '';
+    const eq = this.equipmentList.find((e: any) => e.id === id);
+    return eq?.description || '';
+  }
+
   getEmployeeBaseHours(id: number | null): number {
     if (!id) return 0;
     const emp = this.employees.find((e: any) => e.id === id);
@@ -212,7 +222,8 @@ export class EquiposComponent implements OnInit {
       leader: null,
       specialty: '',
       status: 'Activo',
-      memberIds: []
+      memberIds: [],
+      idEquipment: null
     };
     this.calculatedHourlyRate = 0;
     this.updateAvailableMembers();
@@ -227,7 +238,8 @@ export class EquiposComponent implements OnInit {
       leader: team.leader || null,
       specialty: team.specialty || '',
       status: team.status || 'Activo',
-      memberIds: (team.members || []).map((m: any) => m.idEmployee)
+      memberIds: (team.members || []).map((m: any) => m.idEmployee),
+      idEquipment: team.idEquipment || null
     };
     this.updateAvailableMembers();
     this.showForm = true;
@@ -250,6 +262,7 @@ export class EquiposComponent implements OnInit {
       specialty: this.formData.specialty,
       status: this.formData.status,
       hourlyRate: this.calculatedHourlyRate,
+      idEquipment: this.formData.idEquipment || null,
       active: true
     };
 

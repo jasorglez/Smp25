@@ -63,6 +63,10 @@
           <i class="bi bi-currency-dollar icon-small"></i>
           <span><strong>Costo/Hora:</strong> {{ formatCurrency(team.hourlyRate) }}</span>
         </div>
+        <div class="detail-item" *ngIf="team.idEquipment">
+          <i class="bi bi-gear icon-small"></i>
+          <span><strong>Equipo:</strong> {{ getEquipmentDescription(team.idEquipment) }}</span>
+        </div>
       </div>
 
       <div class="team-members" *ngIf="team.members.length > 0">
@@ -111,6 +115,18 @@
                 <option *ngFor="let spec of specialties" [value]="spec.description">{{ spec.description }}</option>
                 <option [value]="createSpecialtyOption">+ Crear nueva especialidad...</option>
               </select>
+            </div>
+            <div class="col-md-6 mb-3">
+              <label class="form-label">Equipo de Proyectos</label>
+              <ng-select
+                [(ngModel)]="formData.idEquipment"
+                [items]="equipmentList"
+                bindLabel="description"
+                bindValue="id"
+                name="idEquipment"
+                placeholder="Seleccionar equipo..."
+                [clearable]="true"
+              ></ng-select>
             </div>
             <div class="col-md-6 mb-3">
               <label class="form-label">Lider del Equipo</label>
