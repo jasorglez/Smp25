@@ -26,6 +26,54 @@
     </div>
   </div>
 
+  <!-- Charts Row -->
+  <div class="row g-3 mb-4" *ngIf="chartTipo">
+    <div class="col-12 col-lg-4">
+      <div class="card p-3">
+        <h6 class="fw-semibold mb-2"><i class="bi bi-pie-chart me-1 text-primary"></i> OTs por Tipo</h6>
+        <apx-chart
+          [series]="chartTipo.series"
+          [chart]="chartTipo.chart"
+          [labels]="chartTipo.labels"
+          [colors]="chartTipo.colors"
+          [legend]="chartTipo.legend"
+          [plotOptions]="chartTipo.plotOptions"
+          [dataLabels]="chartTipo.dataLabels"
+          [tooltip]="chartTipo.tooltip">
+        </apx-chart>
+      </div>
+    </div>
+    <div class="col-12 col-lg-4">
+      <div class="card p-3">
+        <h6 class="fw-semibold mb-2"><i class="bi bi-bar-chart me-1 text-warning"></i> OTs por Estado</h6>
+        <apx-chart
+          [series]="chartEstado.series"
+          [chart]="chartEstado.chart"
+          [plotOptions]="chartEstado.plotOptions"
+          [colors]="chartEstado.colors"
+          [xaxis]="chartEstado.xaxis"
+          [dataLabels]="chartEstado.dataLabels"
+          [tooltip]="chartEstado.tooltip">
+        </apx-chart>
+      </div>
+    </div>
+    <div class="col-12 col-lg-4">
+      <div class="card p-3">
+        <h6 class="fw-semibold mb-2"><i class="bi bi-graph-up me-1 text-success"></i> Tendencia Últimos 6 Meses</h6>
+        <apx-chart
+          [series]="chartTendencia.series"
+          [chart]="chartTendencia.chart"
+          [stroke]="chartTendencia.stroke"
+          [colors]="chartTendencia.colors"
+          [xaxis]="chartTendencia.xaxis"
+          [markers]="chartTendencia.markers"
+          [legend]="chartTendencia.legend"
+          [tooltip]="chartTendencia.tooltip">
+        </apx-chart>
+      </div>
+    </div>
+  </div>
+
   <!-- Recent Orders and Upcoming Maintenance -->
   <div class="cards-grid">
     <!-- Recent Orders -->

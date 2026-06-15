@@ -5,6 +5,7 @@ import { EquipmentService } from 'app/services/equipment.service';
 import { SignalsService } from 'app/services/signals.service';
 import { WorkorderService } from 'app/services/workorder.service';
 import { TrackingService } from 'app/services/tracking.service';
+import { NgApexchartsModule } from 'ng-apexcharts';
 
 interface Stat {
   label: string;
@@ -32,7 +33,7 @@ interface UpcomingMaintenance {
 @Component({
   selector: 'app-dashboard',
   standalone: true,
-  imports: [CommonModule],
+  imports: [CommonModule, NgApexchartsModule],
   templateUrl: './dashboard.component.html',
   styleUrl: './dashboard.component.scss'
 })
@@ -57,8 +58,12 @@ export class DashboardComponent implements OnInit {
   ];
 
   recentOrders: WorkOrder[] = [];
-
   upcomingMaintenance: UpcomingMaintenance[] = [];
+
+  // Charts
+  chartTipo: any = null;
+  chartEstado: any = null;
+  chartTendencia: any = null;
 
   constructor() {
     effect(() => {
@@ -107,6 +112,7 @@ export class DashboardComponent implements OnInit {
         this.updateStats(assets, workOrders);
         this.recentOrders = this.buildRecentOrders(workOrders);
         this.upcomingMaintenance = this.buildUpcomingMaintenance(workOrders);
+        this.buildCharts(workOrders);
 
         this.loading = false;
       },
@@ -164,6 +170,68 @@ export class DashboardComponent implements OnInit {
         status: this.toLabel(wo.status),
         technician: wo.assignedTo || 'Sin asignar'
       }));
+  }
+
+  private buildCharts(workOrders: any[]): void {
+    // Donut — OTs por tipo
+    const tipoLabels = ['Preventivo', 'Correctivo', 'Predictivo', 'Inspección', 'Mejora'];
+    const tipoKeys  = ['preventivo', 'correctivo', 'predictivo', 'inspeccion', 'mejora'];
+    const tipoSeries = tipoKeys.map(k => workOrders.filter(w => (w.type || '').toLowerCase() === k).length);
+    this.chartTipo = {
+      series: tipoSeries,
+      chart: { type: 'donut', height: 260 },
+      labels: tipoLabels,
+      colors: ['#22c55e', '#ef4444', '#8b5cf6', '#64748b', '#3b82f6'],
+      legend: { position: 'bottom' },
+      plotOptions: { pie: { donut: { size: '60%' } } },
+      dataLabels: { enabled: true, formatter: (v: number) => v > 0 ? v.toFixed(0) : '' },
+      tooltip: { y: { formatter: (v: number) => `${v} OTs` } }
+    };
+
+    // Barras horizontales — por estado
+    const estados = ['Pendiente', 'En Proceso', 'Pausada', 'Completada', 'Cancelada'];
+    const estadoKeys = ['pendiente', 'en-proceso', 'pausada', 'completada', 'cancelada'];
+    const estadoData = estadoKeys.map(k => workOrders.filter(w => (w.status || '').toLowerCase() === k).length);
+    this.chartEstado = {
+      series: [{ name: 'OTs', data: estadoData }],
+      chart: { type: 'bar', height: 260 },
+      plotOptions: { bar: { horizontal: true, borderRadius: 4 } },
+      colors: ['#f59e0b', '#3b82f6', '#94a3b8', '#22c55e', '#ef4444'],
+      xaxis: { categories: estados },
+      dataLabels: { enabled: true },
+      tooltip: { y: { formatter: (v: number) => `${v} OTs` } }
+    };
+
+    // Línea — tendencia de OTs por mes (últimos 6 meses)
+    const now = new Date();
+    const months: string[] = [];
+    const preventivos: number[] = [];
+    const correctivos: number[] = [];
+    for (let i = 5; i >= 0; i--) {
+      const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+      const y = d.getFullYear();
+      const m = d.getMonth();
+      months.push(d.toLocaleDateString('es-MX', { month: 'short', year: '2-digit' }));
+      const woMes = workOrders.filter(w => {
+        const dt = new Date(w.scheduledDate || w.createdDate || '');
+        return !isNaN(dt.getTime()) && dt.getFullYear() === y && dt.getMonth() === m;
+      });
+      preventivos.push(woMes.filter(w => (w.type || '').toLowerCase() === 'preventivo').length);
+      correctivos.push(woMes.filter(w => (w.type || '').toLowerCase() === 'correctivo').length);
+    }
+    this.chartTendencia = {
+      series: [
+        { name: 'Preventivo', data: preventivos },
+        { name: 'Correctivo', data: correctivos }
+      ],
+      chart: { type: 'line', height: 260, toolbar: { show: false } },
+      stroke: { curve: 'smooth', width: 2 },
+      colors: ['#22c55e', '#ef4444'],
+      xaxis: { categories: months },
+      markers: { size: 4 },
+      legend: { position: 'top' },
+      tooltip: { y: { formatter: (v: number) => `${v} OTs` } }
+    };
   }
 
   private buildUpcomingMaintenance(workOrders: any[]): UpcomingMaintenance[] {
