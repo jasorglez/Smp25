@@ -179,7 +179,7 @@ export class DashboardComponent implements OnInit {
     const tipoSeries = tipoKeys.map(k => workOrders.filter(w => (w.type || '').toLowerCase() === k).length);
     this.chartTipo = {
       series: tipoSeries,
-      chart: { type: 'donut', height: 250 },
+      chart: { type: 'donut', height: 300 },
       labels: tipoLabels,
       colors: ['#22c55e', '#ef4444', '#8b5cf6', '#64748b', '#3b82f6'],
       legend: { position: 'bottom' },
@@ -194,7 +194,7 @@ export class DashboardComponent implements OnInit {
     const estadoData = estadoKeys.map(k => workOrders.filter(w => (w.status || '').toLowerCase() === k).length);
     this.chartEstado = {
       series: [{ name: 'OTs', data: estadoData }],
-      chart: { type: 'bar', height: 250 },
+      chart: { type: 'bar', height: 300 },
       plotOptions: { bar: { horizontal: true, borderRadius: 4 } },
       colors: ['#f59e0b', '#3b82f6', '#94a3b8', '#22c55e', '#ef4444'],
       xaxis: { categories: estados },
@@ -224,7 +224,7 @@ export class DashboardComponent implements OnInit {
         { name: 'Preventivo', data: preventivos },
         { name: 'Correctivo', data: correctivos }
       ],
-      chart: { type: 'area', height: 340, toolbar: { show: false }, zoom: { enabled: false } },
+      chart: { type: 'area', height: 300, toolbar: { show: false }, zoom: { enabled: false } },
       stroke: { curve: 'smooth', width: 3 },
       fill: {
         type: 'gradient',
