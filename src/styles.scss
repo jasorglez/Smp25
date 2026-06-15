@@ -298,3 +298,19 @@ body {
   white-space: normal !important;
   word-break: break-word !important;
 }
+
+/* Materials ng-select dropdown panel (appendTo=body — newworkorder) */
+.ng-dropdown-panel.material-select {
+  min-width: 380px !important;
+  width: auto !important;
+}
+.ng-dropdown-panel.material-select .ng-option {
+  font-size: 0.78rem !important;
+  white-space: normal !important;
+  line-height: 1.3 !important;
+  padding: 5px 10px !important;
+}
+.ng-dropdown-panel.material-select .ng-option-label {
+  white-space: normal !important;
+  word-break: break-word !important;
+}
