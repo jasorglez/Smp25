@@ -224,7 +224,7 @@ export class DashboardComponent implements OnInit {
         { name: 'Preventivo', data: preventivos },
         { name: 'Correctivo', data: correctivos }
       ],
-      chart: { type: 'line', height: 260, toolbar: { show: false } },
+      chart: { type: 'line', height: 220, toolbar: { show: false } },
       stroke: { curve: 'smooth', width: 2 },
       colors: ['#22c55e', '#ef4444'],
       xaxis: { categories: months },
