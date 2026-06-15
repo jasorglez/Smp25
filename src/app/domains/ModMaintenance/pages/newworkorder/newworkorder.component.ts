@@ -13,6 +13,7 @@ import { TeamService } from 'app/services/team.service';
 import { MaterialsService } from 'app/services/materials.service';
 import { SignalsService } from 'app/services/signals.service';
 import { TrackingService } from 'app/services/tracking.service';
+import { ChecklistTemplateService } from 'app/services/checklist-template.service';
 import { forkJoin } from 'rxjs';
 
 interface Task {
@@ -51,6 +52,7 @@ export class NewworkorderComponent implements OnInit {
   private materialsService = inject(MaterialsService);
   private signalsService = inject(SignalsService);
   private trackingService = inject(TrackingService);
+  private checklistTemplateService = inject(ChecklistTemplateService);
   private router = inject(Router);
   private route = inject(ActivatedRoute);
 
@@ -93,6 +95,14 @@ export class NewworkorderComponent implements OnInit {
   materials: any[] = [];
   selectedMaterials: MaterialItem[] = [];
   selectedTeam: any = null;
+
+  // Checklist templates
+  checklistTemplates: any[] = [];
+  filteredTemplates: any[] = [];
+  showTemplateModal: boolean = false;
+  selectedTemplate: any = null;
+  templateItems: any[] = [];
+  loadingTemplateItems: boolean = false;
 
   departments: string[] = [
     'Producción',
@@ -157,7 +167,8 @@ export class NewworkorderComponent implements OnInit {
       assets: this.equipmentService.getEquipmentByBranch(this.idBranch),
       employees: this.employeesService.getEmployees(this.idBranch),
       teams: this.teamService.getAll(idBranchStr),
-      materials: this.materialsService.getMaterials(this.idcompany, 'CONSUMABLE')
+      materials: this.materialsService.getMaterials(this.idcompany, 'CONSUMABLE'),
+      templates: this.checklistTemplateService.getAll(this.idcompany)
     };
 
     if (this.isEditing && this.editingId) {
@@ -172,6 +183,7 @@ export class NewworkorderComponent implements OnInit {
         this.employees = (result.employees || []).filter((e: any) => e.active);
         this.teams = result.teams || [];
         this.materials = (result.materials || []).filter((m: any) => m.active);
+        this.checklistTemplates = result.templates || [];
 
         if (this.isEditing && result.workOrder) {
           const wo = result.workOrder;
@@ -625,5 +637,50 @@ export class NewworkorderComponent implements OnInit {
 
   canCreateByBranch(): boolean {
     return this.idBranch > 0;
+  }
+
+  openTemplateModal(): void {
+    this.filteredTemplates = this.checklistTemplates.filter(
+      t => !t.maintenanceType || t.maintenanceType === this.formData.type
+    );
+    this.selectedTemplate = null;
+    this.templateItems = [];
+    this.showTemplateModal = true;
+  }
+
+  closeTemplateModal(): void {
+    this.showTemplateModal = false;
+    this.selectedTemplate = null;
+    this.templateItems = [];
+  }
+
+  onSelectTemplate(template: any): void {
+    this.selectedTemplate = template;
+    this.templateItems = [];
+    this.loadingTemplateItems = true;
+    this.checklistTemplateService.getItems(template.id).subscribe({
+      next: (items: any[]) => {
+        this.templateItems = items || [];
+        this.loadingTemplateItems = false;
+      },
+      error: () => { this.templateItems = []; this.loadingTemplateItems = false; }
+    });
+  }
+
+  applyTemplate(): void {
+    if (!this.templateItems.length) return;
+    const nextId = this.tasks.length > 0 ? Math.max(...this.tasks.map(t => t.id)) + 1 : 1;
+    const newTasks = this.templateItems.map((item: any, i: number) => ({
+      id: nextId + i,
+      description: item.description || '',
+      completed: false
+    }));
+    // Replace blank single default task, otherwise append
+    if (this.tasks.length === 1 && !this.tasks[0].description) {
+      this.tasks = newTasks;
+    } else {
+      this.tasks = [...this.tasks, ...newTasks];
+    }
+    this.closeTemplateModal();
   }
 }

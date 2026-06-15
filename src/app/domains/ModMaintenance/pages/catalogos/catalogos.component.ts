@@ -4,6 +4,7 @@ import { FormsModule } from '@angular/forms';
 import { AgGridModule } from 'ag-grid-angular';
 import { ColDef, GridApi, GridReadyEvent, CellValueChangedEvent } from 'ag-grid-enterprise';
 import { MaintenanceCatalogService } from 'app/services/maintenance-catalog.service';
+import { ChecklistTemplateService } from 'app/services/checklist-template.service';
 import { SignalsService } from 'app/services/signals.service';
 import { TrackingService } from 'app/services/tracking.service';
 import { AG_GRID_LOCALE_ES } from 'assets/i18n/ag-grid.locale.es';
@@ -26,6 +27,7 @@ interface CatalogType {
 export class CatalogosMaintenanceComponent implements OnInit {
 
   private catalogService = inject(MaintenanceCatalogService);
+  private templateService = inject(ChecklistTemplateService);
   private signalsService = inject(SignalsService);
   private trackingService = inject(TrackingService);
 
@@ -48,9 +50,22 @@ export class CatalogosMaintenanceComponent implements OnInit {
     { type: 'MEASURE', label: 'Unidad de Medida', description: 'Unidades de medida para activos (DIA, HRS, PZA, KG, etc.)' }
   ];
 
+  activeTab: 'catalogos' | 'plantillas' = 'catalogos';
   selectedType: string = 'ASSET_TYPE';
   rowData: any[] = [];
   private tempIdCounter: number = 0;
+
+  // Checklist Templates
+  templates: any[] = [];
+  selectedTpl: any = null;
+  tplItems: any[] = [];
+  showTplForm: boolean = false;
+  showItemForm: boolean = false;
+  tplFormData: any = { name: '', maintenanceType: '' };
+  itemFormData: any = { description: '', sortOrder: 0 };
+  savingTpl: boolean = false;
+  loadingTpl: boolean = false;
+  maintenanceTypes = ['', 'preventivo', 'correctivo', 'predictivo', 'inspeccion', 'mejora'];
 
   colDefs: ColDef[] = [
     {
@@ -318,5 +333,89 @@ export class CatalogosMaintenanceComponent implements OnInit {
 
   canSave(): boolean {
     return this.idCompany > 0 && this.hasUnsavedChanges && !this.saving;
+  }
+
+  // ---- Checklist Templates ----
+
+  onTabChange(tab: 'catalogos' | 'plantillas'): void {
+    this.activeTab = tab;
+    if (tab === 'plantillas') this.loadTemplates();
+  }
+
+  loadTemplates(): void {
+    if (!this.idCompany) return;
+    this.loadingTpl = true;
+    this.templateService.getAll(this.idCompany).subscribe({
+      next: (data) => { this.templates = data || []; this.loadingTpl = false; },
+      error: () => { this.templates = []; this.loadingTpl = false; }
+    });
+  }
+
+  selectTemplate(tpl: any): void {
+    this.selectedTpl = tpl;
+    this.tplItems = [];
+    this.templateService.getItems(tpl.id).subscribe({
+      next: (items) => this.tplItems = items || [],
+      error: () => this.tplItems = []
+    });
+  }
+
+  openTplForm(tpl?: any): void {
+    if (tpl) {
+      this.tplFormData = { name: tpl.name, maintenanceType: tpl.maintenanceType || '', editId: tpl.id };
+    } else {
+      this.tplFormData = { name: '', maintenanceType: '', editId: null };
+    }
+    this.showTplForm = true;
+  }
+
+  saveTpl(): void {
+    if (!this.tplFormData.name?.trim()) { alert('Nombre es requerido'); return; }
+    this.savingTpl = true;
+    const payload = { idCompany: String(this.idCompany), name: this.tplFormData.name.trim(), maintenanceType: this.tplFormData.maintenanceType || null, active: true };
+    const op = this.tplFormData.editId
+      ? this.templateService.update(this.tplFormData.editId, payload)
+      : this.templateService.add(payload);
+    op.subscribe({
+      next: () => { this.savingTpl = false; this.showTplForm = false; this.loadTemplates(); },
+      error: () => { alert('Error al guardar'); this.savingTpl = false; }
+    });
+  }
+
+  deleteTpl(tpl: any): void {
+    if (!confirm(`¿Eliminar plantilla "${tpl.name}"?`)) return;
+    this.templateService.delete(tpl.id).subscribe({
+      next: () => { if (this.selectedTpl?.id === tpl.id) { this.selectedTpl = null; this.tplItems = []; } this.loadTemplates(); },
+      error: () => alert('Error al eliminar')
+    });
+  }
+
+  openItemForm(item?: any): void {
+    if (item) {
+      this.itemFormData = { description: item.description, sortOrder: item.sortOrder, editId: item.id };
+    } else {
+      this.itemFormData = { description: '', sortOrder: this.tplItems.length + 1, editId: null };
+    }
+    this.showItemForm = true;
+  }
+
+  saveItem(): void {
+    if (!this.itemFormData.description?.trim()) { alert('Descripción es requerida'); return; }
+    const payload = { idTemplate: this.selectedTpl.id, description: this.itemFormData.description.trim(), sortOrder: this.itemFormData.sortOrder || 0, active: true };
+    const op = this.itemFormData.editId
+      ? this.templateService.updateItem(this.itemFormData.editId, payload)
+      : this.templateService.addItem(payload);
+    op.subscribe({
+      next: () => { this.showItemForm = false; this.selectTemplate(this.selectedTpl); },
+      error: () => alert('Error al guardar item')
+    });
+  }
+
+  deleteItem(item: any): void {
+    if (!confirm(`¿Eliminar tarea "${item.description}"?`)) return;
+    this.templateService.deleteItem(item.id).subscribe({
+      next: () => this.selectTemplate(this.selectedTpl),
+      error: () => alert('Error al eliminar')
+    });
   }
 }

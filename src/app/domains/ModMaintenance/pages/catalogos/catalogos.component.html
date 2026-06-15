@@ -12,6 +12,149 @@
     </div>
   </div>
 
+  <!-- Tabs -->
+  <ul class="nav nav-tabs mb-3">
+    <li class="nav-item">
+      <button class="nav-link" [class.active]="activeTab === 'catalogos'" (click)="onTabChange('catalogos')">
+        <i class="bi bi-list-ul me-1"></i> Catálogos
+      </button>
+    </li>
+    <li class="nav-item">
+      <button class="nav-link" [class.active]="activeTab === 'plantillas'" (click)="onTabChange('plantillas')">
+        <i class="bi bi-layout-text-window me-1"></i> Plantillas de Checklist
+      </button>
+    </li>
+  </ul>
+
+  <!-- Plantillas Tab -->
+  <div *ngIf="activeTab === 'plantillas' && idCompany > 0">
+    <div class="row g-3">
+      <!-- Template list -->
+      <div class="col-md-4">
+        <div class="card h-100">
+          <div class="card-header d-flex justify-content-between align-items-center">
+            <h6 class="mb-0"><i class="bi bi-layout-text-window me-1"></i>Plantillas</h6>
+            <button class="btn btn-sm btn-success" (click)="openTplForm()"><i class="bi bi-plus-lg"></i></button>
+          </div>
+          <div class="card-body p-2">
+            <div class="text-center py-3" *ngIf="loadingTpl"><div class="spinner-border spinner-border-sm"></div></div>
+            <div class="list-group list-group-flush" *ngIf="!loadingTpl">
+              <button type="button" *ngFor="let t of templates"
+                [class]="'list-group-item list-group-item-action d-flex justify-content-between align-items-center' + (selectedTpl?.id === t.id ? ' active' : '')"
+                (click)="selectTemplate(t)">
+                <div>
+                  <div class="fw-semibold">{{ t.name }}</div>
+                  <small *ngIf="t.maintenanceType" class="opacity-75">{{ t.maintenanceType }}</small>
+                </div>
+                <div class="d-flex gap-1">
+                  <button class="btn btn-xs btn-outline-warning btn-sm py-0 px-1" (click)="openTplForm(t); $event.stopPropagation()">
+                    <i class="bi bi-pencil"></i>
+                  </button>
+                  <button class="btn btn-xs btn-outline-danger btn-sm py-0 px-1" (click)="deleteTpl(t); $event.stopPropagation()">
+                    <i class="bi bi-trash"></i>
+                  </button>
+                </div>
+              </button>
+              <div class="list-group-item text-muted text-center" *ngIf="templates.length === 0">
+                No hay plantillas. Haz clic en + para crear.
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Items list -->
+      <div class="col-md-8">
+        <div class="card h-100">
+          <div class="card-header d-flex justify-content-between align-items-center">
+            <h6 class="mb-0"><i class="bi bi-check2-all me-1"></i>
+              Tareas de: {{ selectedTpl?.name || '—' }}</h6>
+            <button class="btn btn-sm btn-success" (click)="openItemForm()" [disabled]="!selectedTpl">
+              <i class="bi bi-plus-lg"></i> Agregar Tarea
+            </button>
+          </div>
+          <div class="card-body p-2">
+            <div class="text-muted text-center py-4" *ngIf="!selectedTpl">
+              Selecciona una plantilla para ver sus tareas.
+            </div>
+            <table class="table table-sm table-hover" *ngIf="selectedTpl">
+              <thead class="table-light">
+                <tr><th style="width:50px">#</th><th>Descripción de Tarea</th><th style="width:100px"></th></tr>
+              </thead>
+              <tbody>
+                <tr *ngFor="let item of tplItems">
+                  <td class="text-muted">{{ item.sortOrder }}</td>
+                  <td>{{ item.description }}</td>
+                  <td class="text-end">
+                    <button class="btn btn-sm btn-outline-warning py-0 px-1 me-1" (click)="openItemForm(item)"><i class="bi bi-pencil"></i></button>
+                    <button class="btn btn-sm btn-outline-danger py-0 px-1" (click)="deleteItem(item)"><i class="bi bi-trash"></i></button>
+                  </td>
+                </tr>
+                <tr *ngIf="tplItems.length === 0">
+                  <td colspan="3" class="text-muted text-center py-3">Sin tareas. Agrega con el botón +</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Template Form Modal -->
+    <div class="modal fade show d-block" *ngIf="showTplForm" style="background:rgba(0,0,0,.5);">
+      <div class="modal-dialog">
+        <div class="modal-content">
+          <div class="modal-header"><h5 class="modal-title">{{ tplFormData.editId ? 'Editar' : 'Nueva' }} Plantilla</h5>
+            <button class="btn-close" (click)="showTplForm=false"></button></div>
+          <div class="modal-body">
+            <div class="mb-3">
+              <label class="form-label">Nombre *</label>
+              <input type="text" class="form-control" [(ngModel)]="tplFormData.name" placeholder="Ej: Revisión Motor">
+            </div>
+            <div class="mb-3">
+              <label class="form-label">Tipo de Mantenimiento (opcional)</label>
+              <select class="form-select" [(ngModel)]="tplFormData.maintenanceType">
+                <option value="">Todos los tipos</option>
+                <option *ngFor="let t of maintenanceTypes.slice(1)" [value]="t">{{ t | titlecase }}</option>
+              </select>
+            </div>
+          </div>
+          <div class="modal-footer">
+            <button class="btn btn-secondary" (click)="showTplForm=false">Cancelar</button>
+            <button class="btn btn-primary" (click)="saveTpl()" [disabled]="savingTpl">
+              {{ savingTpl ? 'Guardando...' : 'Guardar' }}
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Item Form Modal -->
+    <div class="modal fade show d-block" *ngIf="showItemForm" style="background:rgba(0,0,0,.5);">
+      <div class="modal-dialog">
+        <div class="modal-content">
+          <div class="modal-header"><h5 class="modal-title">{{ itemFormData.editId ? 'Editar' : 'Nueva' }} Tarea</h5>
+            <button class="btn-close" (click)="showItemForm=false"></button></div>
+          <div class="modal-body">
+            <div class="mb-3">
+              <label class="form-label">Descripción de la tarea *</label>
+              <textarea class="form-control" [(ngModel)]="itemFormData.description" rows="3"
+                placeholder="Ej: Verificar nivel de aceite del motor"></textarea>
+            </div>
+            <div class="mb-3">
+              <label class="form-label">Orden</label>
+              <input type="number" class="form-control" [(ngModel)]="itemFormData.sortOrder" min="0">
+            </div>
+          </div>
+          <div class="modal-footer">
+            <button class="btn btn-secondary" (click)="showItemForm=false">Cancelar</button>
+            <button class="btn btn-primary" (click)="saveItem()">Guardar</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <!-- Warning if no company -->
   <div class="alert alert-warning" *ngIf="idCompany <= 0">
     <i class="bi bi-exclamation-triangle me-2"></i>
@@ -19,7 +162,7 @@
   </div>
 
   <!-- Main Content -->
-  <div class="row" *ngIf="idCompany > 0">
+  <div class="row" *ngIf="idCompany > 0 && activeTab === 'catalogos'">
     <!-- Sidebar - Catalog Types -->
     <div class="col-md-3">
       <div class="card h-100">
