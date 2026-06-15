@@ -86,5 +86,5 @@ export const environment = {
     // publicKey: 'TEST-4399133a-4676-42a2-ab85-d946370bf96a',
   },
 
-  version: '5.50 (15 Junio 2026 01:45) feat(dashboard): rediseño 3col×2filas, KPIs compactos, Tendencia area-chart',
+  version: '5.51 (15 Junio 2026 02:30) feat(dashboard): grid 3x2 real con grid-template-areas span2',
 };

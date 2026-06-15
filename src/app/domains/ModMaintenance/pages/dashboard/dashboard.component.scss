@@ -91,6 +91,24 @@
 .stat-icon.green { color: #10b981; }
 .stat-icon.purple { color: #8b5cf6; }
 
+/* ── Rejilla principal 3 × 2 ─────────────────── */
+.dash-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  grid-template-rows: auto auto;
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+
+/* Tendencia ocupa columnas 1 y 2 de la fila 2 */
+.dash-span2 { grid-column: span 2; }
+
+/* OT Recientes (col 3, fila 2): scroll interno */
+.dash-recientes {
+  overflow-y: auto;
+  max-height: 380px;
+}
+
 /* Section label */
 .dash-label {
   font-size: 0.72rem;
@@ -98,46 +116,49 @@
   text-transform: uppercase;
   letter-spacing: 0.06em;
   color: #64748b;
-  margin-bottom: 0;
+  margin-bottom: 0.4rem;
 }
 
-/* Mini KPI cell */
-.kpi-cell {
-  background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
-  border-radius: 10px;
-  padding: 0.75rem;
-  border: 1px solid #e2e8f0;
-  position: relative;
-  overflow: hidden;
-  transition: transform 0.2s ease, box-shadow 0.2s ease;
-  &:hover { transform: translateY(-2px); box-shadow: 0 4px 16px rgba(0,0,0,.08); }
+/* KPI list vertical */
+.kpi-list { display: flex; flex-direction: column; gap: 0.5rem; flex: 1; }
+
+.kpi-row {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.55rem 0.75rem;
+  border-radius: 8px;
+  background: #f8fafc;
+  border-left: 4px solid currentColor;
+  transition: background 0.2s ease;
+  &:hover { background: #f1f5f9; }
 }
 
-.kpi-ico {
-  font-size: 1.3rem;
-  display: block;
-  margin-bottom: 0.3rem;
-}
-
-.kpi-blue  { color: #3b82f6; }
+.kpi-ico { font-size: 1.4rem; flex-shrink: 0; }
+.kpi-blue   { color: #3b82f6; }
 .kpi-orange { color: #f59e0b; }
 .kpi-green  { color: #10b981; }
 .kpi-purple { color: #8b5cf6; }
 
 .kpi-val {
-  font-size: 1.7rem;
+  font-size: 1.5rem;
   font-weight: 800;
   color: #1e293b;
-  line-height: 1.1;
+  line-height: 1;
 }
 
 .kpi-lbl {
-  font-size: 0.62rem;
+  font-size: 0.63rem;
   font-weight: 600;
   color: #94a3b8;
   text-transform: uppercase;
   letter-spacing: 0.04em;
-  margin-top: 0.15rem;
+}
+
+/* Responsive: en mobile todo apila */
+@media (max-width: 900px) {
+  .dash-grid { grid-template-columns: 1fr; }
+  .dash-span2 { grid-column: span 1; }
 }
 
 /* Cards Grid */
