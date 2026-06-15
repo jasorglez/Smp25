@@ -163,7 +163,7 @@ export class EquiposComponent implements OnInit {
   getEmployeeBaseHours(id: number | null): number {
     if (!id) return 0;
     const emp = this.employees.find((e: any) => e.id === id);
-    return emp?.baseHours || emp?.basehours || 0;
+    return emp?.priceXHour || emp?.pricexhour || 0;
   }
 
   updateAvailableMembers(): void {
