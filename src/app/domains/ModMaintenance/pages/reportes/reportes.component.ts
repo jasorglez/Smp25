@@ -703,9 +703,16 @@ export class ReportesComponent implements OnInit {
   }
 
   private async downloadPdf(title: string, subtitle: string, rows: any[], headers: string[], fileName: string): Promise<void> {
-    // Fetch company logos (standard 2-logo header)
+    // Logos son opcionales — si no cargan en 3s, se omiten
     const tryB64 = async (url: string): Promise<string | null> => {
-      try { return await this.base64Service.convertImageToBase64(url); } catch { return null; }
+      const fetch = (async () => {
+        try {
+          const r = await this.base64Service.convertImageToBase64(url);
+          return r && r.startsWith('data:image/') ? r : null;
+        } catch { return null; }
+      })();
+      const timeout = new Promise<null>(res => setTimeout(() => res(null), 3000));
+      return Promise.race([fetch, timeout]);
     };
 
     let logoB64: string | null = null;
@@ -751,7 +758,7 @@ export class ReportesComponent implements OnInit {
       pageSize: 'LETTER',
       pageOrientation: headers.length > 6 ? 'landscape' : 'portrait',
       pageMargins: [30, 100, 30, 50],
-      images: Object.keys(imgs).length > 0 ? imgs : undefined,
+      ...(Object.keys(imgs).length > 0 ? { images: imgs } : {}),
       header: (_currentPage: number, _pageCount: number) => ({
         margin: [30, 15, 30, 5],
         stack: [
