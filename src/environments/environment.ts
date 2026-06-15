@@ -86,5 +86,5 @@ export const environment = {
     // publicKey: 'TEST-4399133a-4676-42a2-ab85-d946370bf96a',
   },
 
-  version: '5.36 (15 Junio 2026 12:00) fix(reportes): PDF bloqueado por XHR logo sin timeout corregido',
+  version: '5.37 (15 Junio 2026 12:30) fix(security): dashboard/publicidad requieren sesion activa',
 };

@@ -41,6 +41,7 @@ export const routes: Routes = [
           import('./pages/welcome/welcome.component').then(
             (m) => m.WelcomeComponent
           ),
+        canActivate: [MasterPermissionsGuard],
       },
       {
         path: 'dashboard',
@@ -48,6 +49,7 @@ export const routes: Routes = [
           import('./pages/dashboard-home/dashboard-home.component').then(
             (m) => m.DashboardHomeComponent
           ),
+        canActivate: [MasterPermissionsGuard],
       },
       {
         path: 'proceswar',
