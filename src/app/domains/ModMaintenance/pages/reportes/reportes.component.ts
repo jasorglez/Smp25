@@ -87,10 +87,17 @@ export class ReportesComponent implements OnInit {
 
   ngOnInit(): void {
     this.updateCompanyId();
+    const now = new Date();
+    const y = now.getFullYear();
+    const m = String(now.getMonth() + 1).padStart(2, '0');
+    const lastDay = new Date(y, now.getMonth() + 1, 0).getDate();
+    const defaultFrom = `${y}-${m}-01`;
+    const defaultTo   = `${y}-${m}-${String(lastDay).padStart(2, '0')}`;
+
     for (const report of this.reports) {
-      this.selectedFormatByReport[report.id] = 'CSV';
+      this.selectedFormatByReport[report.id] = 'PDF';
       if (this.requiresDateRange(report.id)) {
-        this.dateRangeByReport[report.id] = { from: '', to: '' };
+        this.dateRangeByReport[report.id] = { from: defaultFrom, to: defaultTo };
       }
     }
     this.trackingService.addLog(
@@ -742,12 +749,25 @@ export class ReportesComponent implements OnInit {
         alignment: 'center'
       }))
     );
+    const currencyHeaders = new Set([
+      'CostoMN','CostoUSD','PrecioMN','PrecioUSD',
+      'CostoManoObra','CostoRefacciones','CostoTotal','PromedioPorOrden'
+    ]);
+
     for (const row of rows) {
       tableBody.push(
         headers.map((header) => {
           const value = row[header] ?? '';
-          const isNumeric = typeof value === 'number' || !isNaN(Number(value));
-          return { text: String(value), alignment: isNumeric ? 'right' : 'left', fontSize: 8 };
+          const isCurrency = currencyHeaders.has(header);
+          const num = Number(value);
+          const isNumeric = typeof value === 'number' || (!isCurrency && !isNaN(num) && value !== '');
+          let text: string;
+          if (isCurrency && !isNaN(num)) {
+            text = `$${num.toLocaleString('es-MX', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+          } else {
+            text = String(value);
+          }
+          return { text, alignment: (isCurrency || isNumeric) ? 'right' : 'left', fontSize: 8 };
         })
       );
     }
