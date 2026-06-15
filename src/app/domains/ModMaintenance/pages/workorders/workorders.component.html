@@ -145,18 +145,19 @@
       </div>
 
       <div class="workorder-actions">
-        <button class="btn btn-sm btn-outline-primary action-btn" (click)="onEditWorkOrder(workOrder); $event.stopPropagation()">
+        <button class="btn btn-sm btn-outline-primary action-btn" title="Editar"
+          (click)="onEditWorkOrder(workOrder); $event.stopPropagation()">
           <i class="bi bi-pencil"></i>
         </button>
-        <button class="btn btn-sm btn-outline-success action-btn" (click)="onCompleteWorkOrder(workOrder); $event.stopPropagation()"
-                *ngIf="workOrder.status !== 'completada' && workOrder.status !== 'cancelada'">
-          <i class="bi bi-check-lg"></i>
-        </button>
-        <button class="btn btn-sm btn-outline-danger action-btn" (click)="onCancelWorkOrder(workOrder); $event.stopPropagation()"
-                *ngIf="workOrder.status !== 'completada' && workOrder.status !== 'cancelada'">
-          <i class="bi bi-x-lg"></i>
-        </button>
-        <button class="btn btn-sm btn-outline-danger action-btn" (click)="deleteWorkOrder(workOrder); $event.stopPropagation()">
+        <ng-container *ngFor="let t of getAvailableTransitions(workOrder)">
+          <button [class]="'btn btn-sm btn-outline-' + t.btnClass.replace('btn-','') + ' action-btn'"
+                  [title]="t.label"
+                  (click)="onChangeStatus(workOrder, t.status, $event)">
+            <i [class]="'bi bi-' + t.icon"></i>
+          </button>
+        </ng-container>
+        <button class="btn btn-sm btn-outline-danger action-btn" title="Eliminar"
+          (click)="deleteWorkOrder(workOrder); $event.stopPropagation()">
           <i class="bi bi-trash"></i>
         </button>
       </div>
@@ -331,28 +332,48 @@
           </div>
         </div>
 
-        <!-- Progress Bar -->
-        <div class="progress-section">
-          <h4 class="section-title">
-            <i class="bi bi-graph-up icon-section"></i>
-            Progreso
+        <!-- Status Timeline -->
+        <div class="progress-section mt-3">
+          <h4 class="section-title mb-2">
+            <i class="bi bi-arrow-right-circle icon-section"></i>
+            Flujo de Estado
           </h4>
-          <div class="progress-container">
-            <div class="progress-bar">
-              <div class="progress-fill" [style.width.%]="getProgressPercentage(selectedWorkOrder)"></div>
-            </div>
-            <span class="progress-text">{{ getProgressPercentage(selectedWorkOrder) }}% Completado</span>
+          <div class="d-flex align-items-center gap-1 flex-wrap">
+            <ng-container *ngFor="let step of getStatusSteps(); let last = last">
+              <span [ngClass]="{
+                'badge': true,
+                'bg-success': step.done,
+                'bg-primary': step.active && !step.done,
+                'bg-secondary': !step.done && !step.active,
+                'fs-6 px-3 py-2': true
+              }">
+                <i class="bi me-1" [ngClass]="step.done ? 'bi-check-circle' : (step.active ? 'bi-arrow-right-circle' : 'bi-circle')"></i>
+                {{ step.label }}
+              </span>
+              <i class="bi bi-arrow-right text-muted" *ngIf="!last"></i>
+            </ng-container>
+            <span class="badge bg-danger fs-6 px-3 py-2"
+                  *ngIf="selectedWorkOrder?.status === 'cancelada'">
+              <i class="bi bi-x-circle me-1"></i> Cancelada
+            </span>
+            <span class="badge bg-warning text-dark fs-6 px-3 py-2"
+                  *ngIf="selectedWorkOrder?.status === 'pausada'">
+              <i class="bi bi-pause-circle me-1"></i> Pausada
+            </span>
           </div>
         </div>
       </div>
 
-      <div class="modal-footer">
+      <div class="modal-footer flex-wrap gap-2">
         <button class="btn btn-secondary" (click)="closeWorkOrderDetail()">Cerrar</button>
-        <button class="btn btn-primary" (click)="onEditWorkOrder(selectedWorkOrder!)">Editar Orden</button>
-        <button class="btn btn-success" (click)="onCompleteWorkOrder(selectedWorkOrder!); closeWorkOrderDetail()"
-                *ngIf="selectedWorkOrder!.status !== 'completada' && selectedWorkOrder!.status !== 'cancelada'">
-          Marcar como Completada
+        <button class="btn btn-primary" (click)="onEditWorkOrder(selectedWorkOrder!)">
+          <i class="bi bi-pencil me-1"></i> Editar
         </button>
+        <ng-container *ngFor="let t of getAvailableTransitions(selectedWorkOrder)">
+          <button [class]="'btn ' + t.btnClass" (click)="onChangeStatus(selectedWorkOrder, t.status)">
+            <i [class]="'bi bi-' + t.icon + ' me-1'"></i>{{ t.label }}
+          </button>
+        </ng-container>
       </div>
     </div>
   </div>
