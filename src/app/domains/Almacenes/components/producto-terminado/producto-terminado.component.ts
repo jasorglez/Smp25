@@ -70,7 +70,8 @@ export class ProductoTerminadoComponent {
       valueAddition2: '',
       active: true,
       valueAdditionBit: false,
-      valueAdditionBit2: false
+      valueAdditionBit2: false,
+      valueAdditionBit3: false
     };
     
     // Datos para edición
@@ -340,6 +341,16 @@ export class ProductoTerminadoComponent {
         },
 
         {
+          headerName: 'Ext. y Ferm.',
+          field: 'valueAdditionBit3',
+          width: 120,
+          editable: (p: any) => p.data?.nodeLevel !== 'subfamily',
+          cellRendererSelector: (p: any) =>
+            p.data?.nodeLevel === 'subfamily'
+              ? { component: () => '' }
+              : { component: 'agCheckboxCellRenderer' },
+        },
+        {
           headerName: 'Activo',
           field: 'vigente',
           width: 100,
@@ -362,6 +373,24 @@ export class ProductoTerminadoComponent {
     // Cambios en celdas
     onCellValueChanged(event: any) {
   
+      // Si se cambió Extracción y Fermentación
+      if (event.colDef.field === 'valueAdditionBit3') {
+        event.data.__modified = true;
+        // Categoría → cascada a sabores (families), no toca presentaciones
+        if (event.data.nodeLevel === 'category') {
+          const catId = event.data.originalId;
+          this.treeData.forEach(node => {
+            if (node.nodeLevel === 'family' && node.parentCategoryId === catId) {
+              node.valueAdditionBit3 = event.newValue;
+              node.__modified = true;
+            }
+          });
+          this.gridApi.refreshCells({ force: true });
+        }
+        this.saveVigenteChanges();
+        return;
+      }
+
       // Si se cambió la columna vigente
       if (event.colDef.field === 'vigente') {
         const newValue = event.newValue;
@@ -602,6 +631,7 @@ export class ProductoTerminadoComponent {
             valueAddition2: item.valueAddition2 || 'NA',
             valueAdditionBit: item.valueAdditionBit || false,
             valueAdditionBit2: item.valueAdditionBit2 || false,
+            valueAdditionBit3: item.valueAdditionBit3 || false,
             vigente: item.vigente,
             type: item.type,
             parentId: item.parentId || 0,
@@ -900,6 +930,7 @@ export class ProductoTerminadoComponent {
       this.modalForm.active = item.active === 1;
       this.modalForm.valueAdditionBit = item.valueAdditionBit || false;
       this.modalForm.valueAdditionBit2 = item.valueAdditionBit2 || false;
+      this.modalForm.valueAdditionBit3 = item.valueAdditionBit3 || false;
       this.showEditModal = true;
     }
     
@@ -921,7 +952,8 @@ export class ProductoTerminadoComponent {
         valueAddition2: '',
         active: true,
         valueAdditionBit: false,
-        valueAdditionBit2: false
+        valueAdditionBit2: false,
+        valueAdditionBit3: false
       };
     }
   
@@ -1102,6 +1134,7 @@ export class ProductoTerminadoComponent {
          valueAddition2: String(data.valueAddition2 || 'NA'),
          valueAdditionBit: Boolean(data.valueAdditionBit || false),
          valueAdditionBit2: Boolean(data.valueAdditionBit2 || false),
+         valueAdditionBit3: Boolean(data.valueAdditionBit3 || false),
          vigente: Boolean(data.vigente !== false),
          type: String(data.type),
          parentId: Number(data.parentId || 0),
