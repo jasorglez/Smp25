@@ -86,5 +86,5 @@ export const environment = {
     // publicKey: 'TEST-4399133a-4676-42a2-ab85-d946370bf96a',
   },
 
-  version: '5.31 (14 Junio 2026 23:55) feat(equipos): combo equipo de proyectos vincula Mantenimiento con ERP',
+  version: '5.32 (15 Junio 2026 00:10) style(reportes): compact header/grid/stats igual que resto de ModMaintenance',
 };
