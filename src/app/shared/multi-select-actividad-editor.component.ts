@@ -9,6 +9,11 @@ export interface ActividadOption {
   periodicidad: string | null;
 }
 
+function daysUntil(date: Date): number {
+  const today = new Date(); today.setHours(0, 0, 0, 0);
+  return Math.ceil((date.getTime() - today.getTime()) / 86_400_000);
+}
+
 @Component({
   selector: 'app-multi-select-actividad-editor',
   standalone: true,
@@ -17,11 +22,16 @@ export interface ActividadOption {
     <div class="msa-container" #container>
       <div class="msa-header">Actividades realizadas</div>
       <div class="msa-list">
-        <label *ngFor="let act of options" class="msa-item" [class.msa-item--checked]="isSelected(act.id)">
-          <input type="checkbox" [checked]="isSelected(act.id)" (change)="toggle(act.id)">
+        <label *ngFor="let act of options" class="msa-item"
+               [class.msa-item--checked]="isSelected(act.id)"
+               [class.msa-item--blocked]="isBlocked(act.id)">
+          <input type="checkbox" [checked]="isSelected(act.id)"
+                 [disabled]="isBlocked(act.id)"
+                 (change)="toggle(act.id)">
           <div class="msa-info">
-            <span class="msa-name">{{ act.actividad }}</span>
-            <span *ngIf="act.periodicidad" class="msa-badge">{{ act.periodicidad }}</span>
+            <span class="msa-name" [class.msa-name--blocked]="isBlocked(act.id)">{{ act.actividad }}</span>
+            <span *ngIf="blockedLabel(act.id) as label" class="msa-badge msa-badge--blocked">{{ label }}</span>
+            <span *ngIf="!blockedLabel(act.id) && act.periodicidad && act.periodicidad !== 'Ninguno'" class="msa-badge">{{ act.periodicidad }}</span>
           </div>
         </label>
         <div *ngIf="options.length === 0" class="msa-empty">Sin actividades en catálogo</div>
@@ -62,6 +72,10 @@ export interface ActividadOption {
       background: #d1ecf1; color: #0c5460; font-weight: 500; width: fit-content;
     }
     .msa-empty { font-size: 0.78rem; color: #9e9e9e; text-align: center; padding: 16px; }
+    .msa-item--blocked { opacity: 0.55; cursor: not-allowed; }
+    .msa-item--blocked input { cursor: not-allowed; }
+    .msa-name--blocked { color: #6c757d; }
+    .msa-badge--blocked { background: #f8d7da; color: #721c24; }
     .msa-footer {
       display: flex; align-items: center; gap: 6px; justify-content: flex-end;
       padding: 6px 10px; border-top: 1px solid #e9ecef; background: #f8f9fa;
@@ -73,12 +87,29 @@ export class MultiSelectActividadEditorComponent implements ICellEditorAngularCo
   private params: any;
   options: ActividadOption[] = [];
   private selected: Set<number> = new Set();
+  private availableIds: Set<number> | null = null;
+  private nextAvailableDates: Map<number, Date> | null = null;
 
   agInit(params: any): void {
-    this.params  = params;
-    this.options = (params.options as ActividadOption[]) ?? [];
+    this.params             = params;
+    this.options            = (params.options as ActividadOption[]) ?? [];
+    this.availableIds       = params.availableIds ?? null;
+    this.nextAvailableDates = params.nextAvailableDates ?? null;
     const raw: string = params.value ?? '[]';
     try { (JSON.parse(raw) as number[]).forEach(id => this.selected.add(id)); } catch { /* empty */ }
+  }
+
+  isBlocked(id: number): boolean {
+    if (!this.availableIds) return false;
+    return !this.availableIds.has(id) && !this.selected.has(id);
+  }
+
+  blockedLabel(id: number): string | null {
+    if (!this.nextAvailableDates) return null;
+    const next = this.nextAvailableDates.get(id);
+    if (!next) return null;
+    const days = daysUntil(next);
+    return days <= 1 ? 'mañana' : `en ${days} días`;
   }
 
   ngOnInit(): void {}
