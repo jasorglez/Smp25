@@ -1,7 +1,8 @@
 import { Component, effect, inject, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { forkJoin, lastValueFrom } from 'rxjs';
+import { forkJoin, lastValueFrom, of } from 'rxjs';
+import { catchError } from 'rxjs/operators';
 import { SignalsService } from 'app/services/signals.service';
 import { TrackingService } from 'app/services/tracking.service';
 import { WorkorderService } from 'app/services/workorder.service';
@@ -95,16 +96,18 @@ export class MaterialesComponent implements OnInit {
     const email = localStorage.getItem('mail') || '';
 
     forkJoin({
-      workOrders:  this.workorderService.getAll(String(this.idBranch)),
-      materials:   this.materialsService.getMaterials(this.idCompany, 'CONSUMABLE'),
-      inventory:   this.inventarioService.getInventario(this.idCompany),
-      warehouses:  this.warehousesService.getSimpleWarehouses(this.idCompany),
-      permissions: this.permissionsService.getUserxPermissionByEmail('warehouse', email),
-      movements:   this.movementService.getByBranch(String(this.idBranch))
+      workOrders:  this.workorderService.getAll(String(this.idBranch)).pipe(catchError(() => of([]))),
+      materials:   this.materialsService.getMaterials(this.idCompany, 'CONSUMABLE').pipe(catchError(() => of([]))),
+      inventory:   this.inventarioService.getInventario(this.idCompany).pipe(catchError(() => of([]))),
+      warehouses:  this.warehousesService.getSimpleWarehouses(this.idCompany).pipe(catchError(() => of([]))),
+      permissions: this.permissionsService.getUserxPermissionByEmail('warehouse', email).pipe(catchError(() => of([]))),
+      movements:   this.movementService.getByBranch(String(this.idBranch)).pipe(catchError(() => of([])))
     }).subscribe({
       next: (r: any) => {
         this.workOrders = (r.workOrders || []).filter((w: any) => w.active !== false);
-        this.materials  = (r.materials  || []).filter((m: any) => m.active !== false);
+        const mats = (r.materials || []).filter((m: any) => m.active !== false);
+        // Si el filtro CONSUMABLE no retorna nada, cargar todos
+        this.materials = mats.length ? mats : (r.materials || []);
         this.inventory  = r.inventory  || [];
 
         const perms: any[] = r.permissions || [];
