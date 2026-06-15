@@ -99,7 +99,7 @@ export class MaterialesComponent implements OnInit {
       workOrders:  this.workorderService.getAll(String(this.idBranch)).pipe(catchError(() => of([]))),
       materials:   this.materialsService.getMaterials(this.idCompany, 'CONSUMABLE').pipe(catchError(() => of([]))),
       inventory:   this.inventarioService.getInventario(this.idCompany).pipe(catchError(() => of([]))),
-      warehouses:  this.warehousesService.getSimpleWarehouses(this.idCompany).pipe(catchError(() => of([]))),
+      warehouses:  this.warehousesService.getSimpleWarehouses(this.idBranch).pipe(catchError(() => of([]))),
       permissions: this.permissionsService.getUserxPermissionByEmail('warehouse', email).pipe(catchError(() => of([]))),
       movements:   this.movementService.getByBranch(String(this.idBranch)).pipe(catchError(() => of([])))
     }).subscribe({
@@ -146,7 +146,7 @@ export class MaterialesComponent implements OnInit {
   openForm(): void {
     this.form = {
       idBranch:    String(this.idBranch),
-      type:        'OUT',
+      type:        'IN',
       date:        new Date().toISOString().split('T')[0],
       idWarehouse: this.warehouses[0]?.id ?? undefined,
       idWorkorder: undefined,

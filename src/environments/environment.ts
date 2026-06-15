@@ -86,5 +86,5 @@ export const environment = {
     // publicKey: 'TEST-4399133a-4676-42a2-ab85-d946370bf96a',
   },
 
-  version: '5.52 (15 Junio 2026 02:50) fix(materiales): catchError en forkJoin, combos OT y material visibles',
+  version: '5.53 (15 Junio 2026 03:20) fix(materiales): almacenes por idBranch, default modal=Entrada',
 };
