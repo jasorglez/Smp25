@@ -26,8 +26,8 @@
     </div>
   </div>
 
-  <!-- Charts Fila 1: Tipo + Estado lado a lado -->
-  <div class="charts-2col" *ngIf="chartTipo">
+  <!-- Fila 1: OTs por Tipo + OTs por Estado, compactos lado a lado -->
+  <div *ngIf="chartTipo" style="display:grid; grid-template-columns:1fr 1fr; gap:1rem; margin-bottom:1rem;">
     <div class="card p-3">
       <h6 class="fw-semibold mb-2"><i class="bi bi-pie-chart me-1 text-primary"></i> OTs por Tipo</h6>
       <apx-chart
@@ -55,8 +55,8 @@
     </div>
   </div>
 
-  <!-- Charts Fila 2: Tendencia ancho completo -->
-  <div class="chart-full" *ngIf="chartTendencia">
+  <!-- Fila 2: Tendencia full-width, grande y destacada -->
+  <div *ngIf="chartTendencia" style="margin-bottom:1rem;">
     <div class="card p-3">
       <h6 class="fw-semibold mb-2"><i class="bi bi-graph-up me-1 text-success"></i> Tendencia Últimos 6 Meses</h6>
       <apx-chart
