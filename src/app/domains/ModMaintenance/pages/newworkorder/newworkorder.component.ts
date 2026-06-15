@@ -14,6 +14,7 @@ import { MaterialsService } from 'app/services/materials.service';
 import { SignalsService } from 'app/services/signals.service';
 import { TrackingService } from 'app/services/tracking.service';
 import { ChecklistTemplateService } from 'app/services/checklist-template.service';
+import { NotificationsTelegramService } from 'app/services/notifications-telegram.service';
 import { forkJoin } from 'rxjs';
 
 interface Task {
@@ -53,6 +54,7 @@ export class NewworkorderComponent implements OnInit {
   private signalsService = inject(SignalsService);
   private trackingService = inject(TrackingService);
   private checklistTemplateService = inject(ChecklistTemplateService);
+  private notificationService = inject(NotificationsTelegramService);
   private router = inject(Router);
   private route = inject(ActivatedRoute);
 
@@ -410,6 +412,17 @@ export class NewworkorderComponent implements OnInit {
                 'ModMaintenance/NewWorkOrder',
                 ''
               );
+              // Fire-and-forget Telegram alert for urgent work orders
+              if (workOrderData.priority === 'urgente') {
+                this.notificationService.sendNotification({
+                  documentType: 'OT_URGENTE',
+                  documentId: created.id,
+                  folio: workOrderData.folio,
+                  description: `⚠️ OT URGENTE: ${workOrderData.title} | Activo: ${workOrderData.assetName || 'N/A'}`,
+                  idSolicit: 0,
+                  idAuthorize: 0
+                }).subscribe({ error: () => {} });
+              }
               if (config) {
                 this.configService.update(config.id, { ...config, consecutiveWO: consecutive + 1 }).subscribe();
               }

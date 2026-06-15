@@ -1800,13 +1800,7 @@ export const routes: Routes = [
                 './domains/ModMaintenance/pages/reportes/reportes.component'
               ).then((r) => r.ReportesComponent),
           },
-          {
-            path: 'newasset',
-            loadComponent: () =>
-              import(
-                './domains/ModMaintenance/pages/newasset/newasset.component'
-              ).then((n) => n.NewassetComponent),
-          },
+          { path: 'newasset', redirectTo: 'assets', pathMatch: 'full' },
           {
             path: 'setup',
             loadComponent: () =>

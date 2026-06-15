@@ -1,6 +1,7 @@
 import { Component, effect, inject, OnInit } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { CommonModule } from '@angular/common';
+import QRCode from 'qrcode';
 import { Router } from '@angular/router';
 import { EquipmentService } from 'app/services/equipment.service';
 import { SignalsService } from 'app/services/signals.service';
@@ -61,6 +62,11 @@ export class AssetsComponent implements OnInit {
   historyAsset: any = null;
   assetHistory: any[] = [];
   loadingHistory: boolean = false;
+
+  // QR
+  showQR: boolean = false;
+  qrAsset: any = null;
+  qrDataUrl: string = '';
 
   // Pagination
   pageSize: number = 9;
@@ -327,6 +333,40 @@ export class AssetsComponent implements OnInit {
     return this.assets.filter(a => !a.active).length;
   }
 
+  async openQR(asset: any, event?: Event): Promise<void> {
+    if (event) event.stopPropagation();
+    this.qrAsset = asset;
+    this.qrDataUrl = await QRCode.toDataURL(
+      `MANT-${asset.id} | ${asset.description} | ${asset.assetType || ''}`,
+      { width: 280, margin: 2, color: { dark: '#1e3a5f', light: '#ffffff' } }
+    );
+    this.showQR = true;
+  }
+
+  closeQR(): void {
+    this.showQR = false;
+    this.qrAsset = null;
+    this.qrDataUrl = '';
+  }
+
+  printQR(): void {
+    const win = window.open('', '_blank');
+    if (!win) return;
+    win.document.write(`
+      <html><head><title>QR Activo</title></head>
+      <body style="text-align:center;padding:24px;font-family:Arial,sans-serif">
+        <h2 style="color:#1e3a5f;margin-bottom:4px">${this.qrAsset?.description}</h2>
+        <p style="color:#64748b;margin:0">ID: ${this.qrAsset?.id} | ${this.qrAsset?.assetType || 'Sin tipo'}</p>
+        <img src="${this.qrDataUrl}" style="margin:16px auto;display:block;width:220px">
+        <p style="font-size:11px;color:#94a3b8">Módulo de Mantenimiento</p>
+      </body></html>
+    `);
+    win.document.close();
+    win.focus();
+    win.print();
+    win.close();
+  }
+
   openHistory(asset: any, event?: Event): void {
     if (event) event.stopPropagation();
     this.historyAsset = asset;
@@ -355,18 +395,35 @@ export class AssetsComponent implements OnInit {
     const completed = this.assetHistory.filter(w => w.status === 'completada');
     const totalCost = this.assetHistory.reduce((s, w) => s + (Number(w.totalCost) || 0), 0);
     const totalHours = this.assetHistory.reduce((s, w) => s + (Number(w.actualHours) || Number(w.estimatedHours) || 0), 0);
+
+    // MTBF: días promedio entre fallas (OTs correctivas completadas)
     let mtbf: number | null = null;
-    if (completed.length >= 2) {
-      const dates = completed
+    const correctivos = completed.filter(w => (w.type || '').toLowerCase() === 'correctivo');
+    if (correctivos.length >= 2) {
+      const dates = correctivos
         .map(w => new Date(w.completedDate || w.scheduledDate).getTime())
-        .filter(d => !isNaN(d))
-        .sort((a, b) => a - b);
+        .filter(d => !isNaN(d)).sort((a, b) => a - b);
       if (dates.length >= 2) {
         const diffs = dates.slice(1).map((d, i) => (d - dates[i]) / 86400000);
         mtbf = Math.round(diffs.reduce((s, d) => s + d, 0) / diffs.length);
       }
     }
-    return { total: this.assetHistory.length, completed: completed.length, totalCost, totalHours, mtbf };
+
+    // MTTR: horas promedio para completar una OT correctiva
+    let mttr: number | null = null;
+    const correctivosConHoras = correctivos.filter(w => Number(w.actualHours) > 0);
+    if (correctivosConHoras.length > 0) {
+      mttr = Math.round((correctivosConHoras.reduce((s, w) => s + Number(w.actualHours), 0) / correctivosConHoras.length) * 10) / 10;
+    }
+
+    // % cumplimiento: OTs completadas en o antes de fecha programada
+    const cumplidas = completed.filter(w => {
+      if (!w.completedDate || !w.scheduledDate) return false;
+      return new Date(w.completedDate) <= new Date(w.scheduledDate);
+    });
+    const pctCumplimiento = completed.length > 0 ? Math.round((cumplidas.length / completed.length) * 100) : null;
+
+    return { total: this.assetHistory.length, completed: completed.length, totalCost, totalHours, mtbf, mttr, pctCumplimiento };
   }
 
   statusBadge(status: string): string {
