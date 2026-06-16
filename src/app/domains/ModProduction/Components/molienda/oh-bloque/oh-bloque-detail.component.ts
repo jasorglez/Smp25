@@ -76,6 +76,17 @@ export class OhBloqueDetailComponent {
       },
       onCellClicked: (event: any) => this.toggleProductosDetail(event.node),
     },
+    {
+      field: 'cantidadProducidaTotal',
+      headerName: 'Total producido',
+      width: 150,
+      editable: false,
+      cellStyle: { backgroundColor: '#e8f5e9', color: '#1b5e20', fontWeight: '600' },
+      cellRenderer: (p: any) => {
+        const total = this.calcTotalProducida(p.data?.productos);
+        return total != null ? String(total) : '';
+      },
+    },
   ];
 
   readonly gridOptions: any = {
@@ -117,7 +128,7 @@ export class OhBloqueDetailComponent {
     } catch {}
 
     // Cargar cantidades desde la tabla real
-    let dbProductos: { idBloqueEf: number; idProducto: number; cantidad: number | null }[] = [];
+    let dbProductos: { idBloqueEf: number; idProducto: number; cantidad: number | null; cantidadProducida: number | null }[] = [];
     if (this.idOhBloque) {
       try {
         const raw = await lastValueFrom(
@@ -128,10 +139,10 @@ export class OhBloqueDetailComponent {
     }
 
     // Agrupar productos por bloque
-    const productosPorBloque = new Map<number, { idProducto: number; cantidad: number | null }[]>();
+    const productosPorBloque = new Map<number, { idProducto: number; cantidad: number | null; cantidadProducida: number | null }[]>();
     for (const p of dbProductos) {
       if (!productosPorBloque.has(p.idBloqueEf)) productosPorBloque.set(p.idBloqueEf, []);
-      productosPorBloque.get(p.idBloqueEf)!.push({ idProducto: p.idProducto, cantidad: p.cantidad });
+      productosPorBloque.get(p.idBloqueEf)!.push({ idProducto: p.idProducto, cantidad: p.cantidad, cantidadProducida: p.cantidadProducida });
     }
 
     this.rows = bloques.map(b => {
@@ -183,12 +194,18 @@ export class OhBloqueDetailComponent {
     row.productos = productos;
     row.cantidadTotal = this.calcTotal(productos);
     const node = this.gridApi?.getRowNode(String(bloqueId));
-    if (node) this.gridApi.refreshCells({ rowNodes: [node], columns: ['cantidadTotal'], force: true });
+    if (node) this.gridApi.refreshCells({ rowNodes: [node], columns: ['cantidadTotal', 'cantidadProducidaTotal'], force: true });
   }
 
   private calcTotal(productos: any[]): number | null {
     if (!productos?.length) return null;
     const s = productos.reduce((acc: number, p: any) => acc + (p.cantidad ?? 0), 0);
+    return s > 0 ? s : null;
+  }
+
+  private calcTotalProducida(productos: any[]): number | null {
+    if (!productos?.length) return null;
+    const s = productos.reduce((acc: number, p: any) => acc + (p.cantidadProducida ?? 0), 0);
     return s > 0 ? s : null;
   }
 

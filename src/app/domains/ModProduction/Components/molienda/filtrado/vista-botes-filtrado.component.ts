@@ -39,11 +39,6 @@ interface BoteVista {
             <i class="bi bi-bucket-fill me-1"></i>Botes
             <span *ngIf="matPrimaName" style="font-weight: 400;"> — {{ matPrimaName }}</span>
           </strong>
-          <span *ngIf="selectedBote"
-                style="font-size: 0.7rem; color: #9e9e9e; cursor: pointer; text-decoration: underline;"
-                (click)="closeBotePanel()">
-            Cerrar
-          </span>
         </div>
 
 
@@ -72,8 +67,25 @@ interface BoteVista {
                (click)="selectBote(b)"
                style="cursor: pointer;">
 
-            <div class="bote-barrel">
-              <i class="bi bi-bucket-fill bote-icon" style="color:#843f00;"></i>
+            <div class="bote-barrel"
+                 [class.bote-barrel--full]="totalPct(b) >= 100"
+                 [class.bote-barrel--empty]="b.totalLiters === 0"
+                 [class.bote-barrel--partial]="b.totalLiters > 0 && totalPct(b) < 100">
+
+              <div class="bote-fill bote-fill--external"
+                   [style.height.%]="externalPct(b)">
+              </div>
+              <div class="bote-fill bote-fill--mine"
+                   [style.height.%]="minePct(b)"
+                   [style.bottom.%]="externalPct(b)">
+              </div>
+
+              <i class="bi bi-bucket-fill bote-icon"
+                 [style.color]="b.totalLiters === 0 ? '#0a6640' : '#843f00'"></i>
+
+              <span class="bote-pct" [style.color]="b.totalLiters === 0 ? '#0a6640' : '#843f00'">
+                {{ b.totalLiters | number:'1.0-0' }} L
+              </span>
             </div>
 
             <div class="bote-label" [title]="b.description">{{ b.description }}</div>
@@ -109,6 +121,10 @@ interface BoteVista {
             <button class="btn btn-danger btn-sm" style="padding:1px 6px;" (click)="deleteRow()" [disabled]="!selectedParamRow || boteVacio">
               <i class="bi bi-trash"></i>
             </button>
+            <span style="font-size: 0.7rem; color: #9e9e9e; cursor: pointer; text-decoration: underline; align-self: center; margin-left: 4px;"
+                  (click)="closeBotePanel()">
+              Cerrar
+            </span>
           </div>
         </div>
 

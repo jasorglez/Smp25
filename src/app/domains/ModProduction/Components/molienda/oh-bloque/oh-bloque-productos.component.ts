@@ -50,6 +50,11 @@ export class OhBloqueProductosComponent {
         return true;
       },
     },
+    {
+      field: 'cantidadProducida', headerName: 'Cantidad producida', width: 150, editable: false,
+      cellStyle: { backgroundColor: '#e8f5e9', color: '#1b5e20', fontWeight: '600' },
+      valueFormatter: (p: any) => p.value != null ? Math.round(p.value).toString() : '',
+    },
   ];
 
   readonly gridOptions: any = {
@@ -64,9 +69,11 @@ export class OhBloqueProductosComponent {
     const disponibles: { id: number }[] = params.context?.productosDisponibles ?? [];
     const saved: { idProducto: number; cantidad: number | null }[] = params.data?.productos ?? [];
     const savedMap = new Map(saved.map((s: any) => [s.idProducto, s.cantidad]));
+    const producidaMap = new Map(saved.map((s: any) => [s.idProducto, s.cantidadProducida]));
     this.rows = disponibles.map(p => ({
       idProducto: p.id,
       cantidad: savedMap.get(p.id) ?? null,
+      cantidadProducida: producidaMap.get(p.id) ?? null,
     }));
   }
 
