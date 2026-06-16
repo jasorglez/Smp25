@@ -249,6 +249,8 @@ export class DetalleItemsCotizacionComponent implements ICellRendererAngularComp
           params.data.nombreMaterial = mat.description;
           params.data.idMaterial     = mat.id;
           params.data.unidad         = mat.measure ?? '';
+          params.data.precio         = mat.precioVenta ?? 0;
+          params.data.subtotal       = (params.data.cantidad ?? 0) * params.data.precio;
         } else {
           params.data.nombreMaterial = params.newValue;
         }
@@ -333,6 +335,7 @@ export class DetalleItemsCotizacionComponent implements ICellRendererAngularComp
           description: i.description ?? '',
           measure:     i.measure ?? '',
           familia:     i.familia ?? '',
+          precioVenta: i.ventaMN ?? 0,
         }));
       },
       error: () => { this.materiales = []; },
@@ -348,9 +351,12 @@ export class DetalleItemsCotizacionComponent implements ICellRendererAngularComp
   }
 
   onCellEditingStopped(event: any) {
-    if (event.column.getColId() === 'cantidad' || event.column.getColId() === 'precio') {
+    const colId = event.column.getColId();
+    if (colId === 'cantidad' || colId === 'precio') {
       event.data.subtotal = (event.data.cantidad ?? 0) * (event.data.precio ?? 0);
       this.gridApi.refreshCells({ rowNodes: [event.node], columns: ['subtotal'] });
+    } else if (colId === 'nombreMaterial') {
+      this.gridApi.refreshCells({ rowNodes: [event.node], columns: ['unidad', 'precio', 'subtotal'] });
     }
     this.hasChanges = true;
 
