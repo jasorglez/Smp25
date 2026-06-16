@@ -35,23 +35,28 @@ export class ProductionService {
   private trackingService = inject(TrackingService);
 
   // ── Preparacion (nivel 1) ──────────────────────────────────────────────────
+  // v2.51 — backend renombró PreparacionController → PreparationController (rutas en inglés).
+  // Ver Production.Controllers.Delison.PreparationController / PreparationDetalleController /
+  // PreparationDetalleParamsController / PreparationLimpiezaController.
 
   getAll(): Observable<any[]> {
-    return this.http.get<any[]>(`${environment.urlProduction}/preparacion`, { headers: this.trackingService.getHeaders() });
+    return this.http.get<any[]>(`${environment.urlProduction}/Preparation`, { headers: this.trackingService.getHeaders() });
   }
 
   create(data: any): Observable<any> {
-    return this.http.post<any>(`${environment.urlProduction}/preparacion`, data, { headers: this.trackingService.getHeaders() });
+    return this.http.post<any>(`${environment.urlProduction}/Preparation`, data, { headers: this.trackingService.getHeaders() });
   }
 
   update(id: number, data: any): Observable<any> {
-    return this.http.put<any>(`${environment.urlProduction}/preparacion/${id}`, data, { headers: this.trackingService.getHeaders() });
+    return this.http.put<any>(`${environment.urlProduction}/Preparation/${id}`, data, { headers: this.trackingService.getHeaders() });
   }
 
   delete(id: number): Observable<any> {
-    return this.http.delete<any>(`${environment.urlProduction}/preparacion/${id}`, { headers: this.trackingService.getHeaders() });
+    return this.http.delete<any>(`${environment.urlProduction}/Preparation/${id}`, { headers: this.trackingService.getHeaders() });
   }
 
+  // TODO: backend ya no expone /detalles/frequent (controller eliminado en el refactor a
+  // Preparation). Sin reemplazo todavía — este endpoint sigue dando 404 hasta que se agregue.
   getFrequentIngredientes(): Observable<{ ingredientes: any[]; totalPreparaciones: number }> {
     return this.http.get<any>(`${environment.urlProduction}/preparacion/detalles/frequent`, { headers: this.trackingService.getHeaders() });
   }
@@ -59,40 +64,42 @@ export class ProductionService {
   // ── Detalles - ingredientes (nivel 2a) ────────────────────────────────────
 
   getDetalles(idPreparacion: number): Observable<any[]> {
-    return this.http.get<any[]>(`${environment.urlProduction}/preparacion/${idPreparacion}/detalles`, { headers: this.trackingService.getHeaders() });
+    return this.http.get<any[]>(`${environment.urlProduction}/PreparationDetalle/preparacion/${idPreparacion}`, { headers: this.trackingService.getHeaders() });
   }
 
   createDetalle(data: any): Observable<any> {
-    return this.http.post<any>(`${environment.urlProduction}/preparacion/detalles`, data, { headers: this.trackingService.getHeaders() });
+    return this.http.post<any>(`${environment.urlProduction}/PreparationDetalle`, data, { headers: this.trackingService.getHeaders() });
   }
 
   updateDetalle(id: number, data: any): Observable<any> {
-    return this.http.put<any>(`${environment.urlProduction}/preparacion/detalles/${id}`, data, { headers: this.trackingService.getHeaders() });
+    return this.http.put<any>(`${environment.urlProduction}/PreparationDetalle/${id}`, data, { headers: this.trackingService.getHeaders() });
   }
 
   deleteDetalle(id: number): Observable<any> {
-    return this.http.delete<any>(`${environment.urlProduction}/preparacion/detalles/${id}`, { headers: this.trackingService.getHeaders() });
+    return this.http.delete<any>(`${environment.urlProduction}/PreparationDetalle/${id}`, { headers: this.trackingService.getHeaders() });
   }
 
   // ── Params - parámetros por ingrediente (nivel 3) ─────────────────────────
 
   getParams(idDetalle: number): Observable<any[]> {
-    return this.http.get<any[]>(`${environment.urlProduction}/preparacion/detalles/${idDetalle}/params`, { headers: this.trackingService.getHeaders() });
+    return this.http.get<any[]>(`${environment.urlProduction}/PreparationDetalleParams/detalle/${idDetalle}`, { headers: this.trackingService.getHeaders() });
   }
 
   createParams(data: any): Observable<any> {
-    return this.http.post<any>(`${environment.urlProduction}/preparacion/params`, data, { headers: this.trackingService.getHeaders() });
+    return this.http.post<any>(`${environment.urlProduction}/PreparationDetalleParams`, data, { headers: this.trackingService.getHeaders() });
   }
 
   updateParams(id: number, data: any): Observable<any> {
-    return this.http.put<any>(`${environment.urlProduction}/preparacion/params/${id}`, data, { headers: this.trackingService.getHeaders() });
+    return this.http.put<any>(`${environment.urlProduction}/PreparationDetalleParams/${id}`, data, { headers: this.trackingService.getHeaders() });
   }
 
   deleteParams(id: number): Observable<any> {
-    return this.http.delete<any>(`${environment.urlProduction}/preparacion/params/${id}`, { headers: this.trackingService.getHeaders() });
+    return this.http.delete<any>(`${environment.urlProduction}/PreparationDetalleParams/${id}`, { headers: this.trackingService.getHeaders() });
   }
 
   // ── Historial - gastos (nivel 2b) ─────────────────────────────────────────
+  // TODO: backend eliminó HistorialGasto/PreparacionService en el refactor a Preparation y no
+  // hay controller de reemplazo. Estas 4 rutas siguen dando 404 hasta que se agregue uno.
 
   getHistorial(idPreparacion: number): Observable<any[]> {
     return this.http.get<any[]>(`${environment.urlProduction}/preparacion/${idPreparacion}/historial`, { headers: this.trackingService.getHeaders() });
@@ -111,6 +118,8 @@ export class ProductionService {
   }
 
   // ── Liberación Jarabe (N2-C) ──────────────────────────────────────────────
+  // TODO: el modelo PreparacionLiberacion sigue existiendo pero no tiene controller en el
+  // refactor a Preparation. Estas 4 rutas siguen dando 404 hasta que se agregue uno.
 
   getLiberacion(idPreparacion: number): Observable<any[]> {
     return this.http.get<any[]>(`${environment.urlProduction}/preparacion/${idPreparacion}/liberacion`, { headers: this.trackingService.getHeaders() });
@@ -131,19 +140,19 @@ export class ProductionService {
   // ── Limpieza (N2-D) ───────────────────────────────────────────────────────
 
   getLimpieza(idPreparacion: number): Observable<any[]> {
-    return this.http.get<any[]>(`${environment.urlProduction}/preparacion/${idPreparacion}/limpieza`, { headers: this.trackingService.getHeaders() });
+    return this.http.get<any[]>(`${environment.urlProduction}/PreparationLimpieza/preparacion/${idPreparacion}`, { headers: this.trackingService.getHeaders() });
   }
 
   createLimpieza(data: any): Observable<any> {
-    return this.http.post<any>(`${environment.urlProduction}/preparacion/limpieza`, data, { headers: this.trackingService.getHeaders() });
+    return this.http.post<any>(`${environment.urlProduction}/PreparationLimpieza`, data, { headers: this.trackingService.getHeaders() });
   }
 
   updateLimpieza(id: number, data: any): Observable<any> {
-    return this.http.put<any>(`${environment.urlProduction}/preparacion/limpieza/${id}`, data, { headers: this.trackingService.getHeaders() });
+    return this.http.put<any>(`${environment.urlProduction}/PreparationLimpieza/${id}`, data, { headers: this.trackingService.getHeaders() });
   }
 
   deleteLimpieza(id: number): Observable<any> {
-    return this.http.delete<any>(`${environment.urlProduction}/preparacion/limpieza/${id}`, { headers: this.trackingService.getHeaders() });
+    return this.http.delete<any>(`${environment.urlProduction}/PreparationLimpieza/${id}`, { headers: this.trackingService.getHeaders() });
   }
 
   // ── Material Jarabe ────────────────────────────────────────────────────────
@@ -443,5 +452,26 @@ export class ProductionService {
   }
   deleteMedicionMatPrima(id: number): Observable<void> {
     return this.http.delete<void>(`${environment.urlProduction}/MoliendaMedicionMatPrima/${id}`, { headers: this.trackingService.getHeaders() });
+  }
+
+  // ── CatalogJerarquico (Preparacion 1 — Lista Tablas / Grupos / Catálogos) ─
+  getCatalogJerarquicoByType(type: string, idCompany: number): Observable<any[]> {
+    return this.http.get<any[]>(`${environment.urlProduction}/CatalogJerarquico/bytype?type=${type}&idCompany=${idCompany}`, { headers: this.trackingService.getHeaders() });
+  }
+
+  getCatalogJerarquicoByMaster(idCompany: number, idCatalog: number): Observable<any[]> {
+    return this.http.get<any[]>(`${environment.urlProduction}/CatalogJerarquico?idCompany=${idCompany}&idCatalog=${idCatalog}`, { headers: this.trackingService.getHeaders() });
+  }
+
+  createCatalogJerarquico(data: any): Observable<any> {
+    return this.http.post<any>(`${environment.urlProduction}/CatalogJerarquico`, data, { headers: this.trackingService.getHeaders() });
+  }
+
+  updateCatalogJerarquico(id: number, data: any): Observable<any> {
+    return this.http.put<any>(`${environment.urlProduction}/CatalogJerarquico/${id}`, data, { headers: this.trackingService.getHeaders() });
+  }
+
+  deleteCatalogJerarquico(id: number): Observable<any> {
+    return this.http.delete<any>(`${environment.urlProduction}/CatalogJerarquico/${id}`, { headers: this.trackingService.getHeaders() });
   }
 }
