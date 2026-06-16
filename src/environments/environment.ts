@@ -86,5 +86,5 @@ export const environment = {
     // publicKey: 'TEST-4399133a-4676-42a2-ab85-d946370bf96a',
   },
 
-  version: '5.57 (16 Junio 2026 12:00) fix(usuarios): firma/foto perfil usaban ruta users/ no permitida en Storage Rules',
+  version: '5.58 (16 Junio 2026 13:00) style(api-monitor): grids estandarizados a 650px y small-text-ag-grid',
 }; 
