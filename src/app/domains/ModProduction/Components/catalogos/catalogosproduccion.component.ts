@@ -15,11 +15,12 @@ import { alerts } from 'app/helpers/alerts';
 import { ProductionService } from '../../../../services/production.service';
 import { BranchsService } from '../../../../services/branchs.service';
 import { CatalogoParamMoliendaComponent } from '../molienda/catalogo-param-molienda/catalogo-param-molienda.component';
+import { MultiSelectActividadEditorComponent } from 'app/shared/multi-select-actividad-editor.component';
 
 @Component({
   selector: 'app-catalogosproduccion',
   standalone: true,
-  imports: [CommonModule, FormsModule, AgGridAngular, SelectWithTooltipEditorV2Component, ConfiguracionPageComponent, CatalogoParamMoliendaComponent],
+  imports: [CommonModule, FormsModule, AgGridAngular, SelectWithTooltipEditorV2Component, ConfiguracionPageComponent, CatalogoParamMoliendaComponent, MultiSelectActividadEditorComponent],
   styles: [`
     :host {
       display: block;
@@ -475,7 +476,7 @@ import { CatalogoParamMoliendaComponent } from '../molienda/catalogo-param-molie
             <button class="action-btn delete" (click)="deletePrefijoFase()" [disabled]="!prefijoFaseSelectedRow"><i class="bi bi-trash"></i></button>
           </div>
 
-          <div class="catalog-actions" *ngIf="!showHierarchicalTable && !prefijoFaseMode && !isParamsMode && !isActividadesMode">
+          <div class="catalog-actions" *ngIf="!showHierarchicalTable && !prefijoFaseMode && !isParamsMode && !isActividadesMode && !isBloquesEFMode">
             <button class="action-btn add" (click)="add()" [disabled]="!gridApi || !selectedCatalogSidebarId" title="Selecciona una categoría para agregar">
               <i class="bi bi-plus-lg"></i>
             </button>
@@ -503,6 +504,22 @@ import { CatalogoParamMoliendaComponent } from '../molienda/catalogo-param-molie
               <i class="bi bi-arrow-clockwise"></i>
             </button>
             <button class="action-btn delete" (click)="deleteActividad()" [disabled]="!actividadesSelectedRow" title="Borrar">
+              <i class="bi bi-trash"></i>
+            </button>
+          </div>
+
+          <div class="catalog-actions" *ngIf="isBloquesEFMode">
+            <button class="action-btn add" (click)="addBloqueEF()" title="Agregar bloque">
+              <i class="bi bi-plus-lg"></i>
+            </button>
+            <button class="action-btn save" (click)="saveBloquesEF()" [disabled]="!bloquesEFHasChanges" title="Guardar">
+              <i class="bi bi-floppy"></i>
+              <span *ngIf="bloquesEFHasChanges" class="dirty-dot"></span>
+            </button>
+            <button class="action-btn revert" (click)="revertBloquesEF()" title="Deshacer">
+              <i class="bi bi-arrow-clockwise"></i>
+            </button>
+            <button class="action-btn delete" (click)="deleteBloqueEF()" [disabled]="!bloquesEFSelectedRow" title="Borrar">
               <i class="bi bi-trash"></i>
             </button>
           </div>
@@ -541,7 +558,7 @@ import { CatalogoParamMoliendaComponent } from '../molienda/catalogo-param-molie
               </ag-grid-angular>
             </div>
 
-            <div class="panel-content" *ngIf="!showHierarchicalTable && !prefijoFaseMode && !isParamsMode && !isActividadesMode">
+            <div class="panel-content" *ngIf="!showHierarchicalTable && !prefijoFaseMode && !isParamsMode && !isActividadesMode && !isBloquesEFMode">
               <ag-grid-angular
                 class="ag-theme-quartz catalog-grid"
                 [rowData]="rowData()"
@@ -565,6 +582,20 @@ import { CatalogoParamMoliendaComponent } from '../molienda/catalogo-param-molie
                 (gridReady)="onActividadesGridReady($event)"
                 (cellValueChanged)="onActividadesCellValueChanged($event)"
                 (rowClicked)="actividadesSelectedRow = $event.data"
+                style="height: 470px; width: 100%;">
+              </ag-grid-angular>
+            </div>
+
+            <!-- Bloques Extracción y Fermentación -->
+            <div class="panel-content" *ngIf="isBloquesEFMode">
+              <ag-grid-angular
+                class="ag-theme-quartz catalog-grid"
+                [rowData]="bloquesEFRows"
+                [columnDefs]="bloquesEFColDefs"
+                [gridOptions]="bloquesEFGridOptions"
+                (gridReady)="onBloquesEFGridReady($event)"
+                (cellValueChanged)="onBloquesEFCellValueChanged($event)"
+                (rowClicked)="bloquesEFSelectedRow = $event.data"
                 style="height: 470px; width: 100%;">
               </ag-grid-angular>
             </div>
@@ -900,6 +931,55 @@ export class CatalogosProduccionComponent {
   isParamsMode     = false;
   isFasesFEMode    = false;
   isActividadesMode = false;
+
+  // ── Bloques EF ──
+  isBloquesEFMode = false;
+  bloquesEFRows: any[] = [];
+  private bloquesEFOriginal: any[] = [];
+  bloquesEFHasChanges = false;
+  bloquesEFSelectedRow: any = null;
+  bloquesEFGridApi!: GridApi;
+  private bloquesEFProductOptions: { id: number; producto: string; categoria: string }[] = [];
+
+  get bloquesEFColDefs(): ColDef[] {
+    return [
+      {
+        field: 'bloque', headerName: 'Bloque', flex: 1, editable: true,
+        cellEditor: 'agTextCellEditor',
+        valueSetter: (p: any) => { p.data.bloque = String(p.newValue ?? '').trim(); p.data.__modified = true; return true; },
+      },
+      {
+        field: 'productoIds', headerName: 'Producto', flex: 2, editable: true,
+        cellEditor: MultiSelectActividadEditorComponent,
+        cellEditorPopup: true,
+        cellEditorParams: () => ({
+          title: 'Productos terminados',
+          options: this.bloquesEFProductOptions.map(o => ({ id: o.id, actividad: o.producto, periodicidad: null, group: o.categoria })),
+        }),
+        valueFormatter: (p: any) => {
+          if (!p.value) return '';
+          try {
+            const ids: number[] = JSON.parse(p.value);
+            return ids.map(id => { const o = this.bloquesEFProductOptions.find(x => x.id === id); return o ? `${o.categoria} - ${o.producto}` : ''; }).filter(Boolean).join(', ');
+          } catch { return ''; }
+        },
+        valueSetter: (p: any) => { p.data.productoIds = p.newValue ?? null; p.data.__modified = true; return true; },
+      },
+      {
+        field: 'active', headerName: 'Activo', width: 90, editable: true,
+        cellRenderer: 'agCheckboxCellRenderer',
+        valueSetter: (p: any) => { p.data.active = p.newValue; p.data.__modified = true; return true; },
+      },
+    ];
+  }
+
+  readonly bloquesEFGridOptions: any = {
+    getRowId: (p: any) => String(p.data.id ?? p.data.__tempId),
+    headerHeight: 25, rowHeight: 22,
+    rowSelection: 'single',
+    rowClassRules: { 'new-row-highlight': (p: any) => !!p.data?.__isNew },
+    defaultColDef: { resizable: true },
+  };
 
   // ── Actividades ──
   actividadesRows: any[] = [];
@@ -2308,6 +2388,7 @@ export class CatalogosProduccionComponent {
     this.isBotesMode              = false;
     this.isParamsMode             = false;
     this.isActividadesMode        = false;
+    this.isBloquesEFMode          = false;
     this.prefijoFaseMode          = true;
     this.prefijoFaseSelectedRow   = null;
     this.prefijoFaseHasChanges    = false;
@@ -2416,8 +2497,23 @@ export class CatalogosProduccionComponent {
       this.isParamsMode       = false;
       this.isFasesFEMode      = false;
       this.isActividadesMode  = true;
+      this.isBloquesEFMode    = false;
       this.loadActividadesData(item.id);
+    } else if (this.isBloquesEFCatalog(item)) {
+      this.showHierarchicalTable = false;
+      this.isBotesMode        = false;
+      this.isParamsMode       = false;
+      this.isFasesFEMode      = false;
+      this.isActividadesMode  = false;
+      this.isBloquesEFMode    = true;
+      if (this.idRoot) {
+        this.productionService.getProductosTerminadosEF(this.idRoot).subscribe(items => {
+          this.bloquesEFProductOptions = items ?? [];
+        });
+      }
+      this.loadBloquesEFData(item.id);
     } else {
+      this.isBloquesEFMode    = false;
       this.showHierarchicalTable = false;
       this.isParamsMode       = false;
       this.isActividadesMode  = false;
@@ -2447,6 +2543,11 @@ export class CatalogosProduccionComponent {
     const raw = (item.description || '').trim().toLowerCase();
     const d = raw.normalize('NFD').replace(/[\u0300-\u036f]/g, '');
     return d.startsWith('parametros');
+  }
+
+  private isBloquesEFCatalog(item: ExtractionFermentationCatalogItem): boolean {
+    const d = (item.description || '').trim().toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+    return d.startsWith('bloques');
   }
 
   buildCodigo(row: any): string {
@@ -3063,6 +3164,98 @@ export class CatalogosProduccionComponent {
       this.actividadesOriginal = this.actividadesOriginal.filter(r => r.id !== row.id);
       this.actividadesSelectedRow = null;
       if (this.actividadesGridApi) this.actividadesGridApi.setGridOption('rowData', this.actividadesRows);
+      this.showToast('Borrado');
+    } catch { alerts.basicAlert('Error', 'No se pudo eliminar.', 'error'); }
+  }
+
+  // ── Bloques EF ─────────────────────────────────────────────────────────────
+
+  onBloquesEFGridReady(e: GridReadyEvent) {
+    this.bloquesEFGridApi = e.api;
+    if (this.bloquesEFRows.length) this.bloquesEFGridApi.setGridOption('rowData', this.bloquesEFRows);
+  }
+
+  onBloquesEFCellValueChanged(e: any) {
+    if (!e.data.__isNew) e.data.__modified = true;
+    this.bloquesEFHasChanges = true;
+  }
+
+  private loadBloquesEFData(idCatalog: number) {
+    this.productionService.getMoliendaBloqueEFByCatalog(idCatalog).subscribe({
+      next: (items) => {
+        const rows = (items ?? []).map((i: any) => ({
+          id: i.id, bloque: i.bloque ?? '', productoIds: i.productoIds ?? null,
+          active: i.active, __isNew: false, __modified: false,
+        }));
+        this.bloquesEFOriginal = JSON.parse(JSON.stringify(rows));
+        this.bloquesEFRows = [...rows];
+        if (this.bloquesEFGridApi && !this.bloquesEFGridApi.isDestroyed())
+          this.bloquesEFGridApi.setGridOption('rowData', this.bloquesEFRows);
+      },
+      error: () => { this.bloquesEFRows = []; }
+    });
+  }
+
+  addBloqueEF() {
+    const newRow: any = {
+      id: null, __tempId: `new_${Date.now()}`, __isNew: true, __modified: false,
+      bloque: '', productoIds: null, active: true,
+    };
+    this.bloquesEFRows = [newRow, ...this.bloquesEFRows];
+    this.bloquesEFHasChanges = true;
+    if (this.bloquesEFGridApi) {
+      this.bloquesEFGridApi.setGridOption('rowData', this.bloquesEFRows);
+      setTimeout(() => this.bloquesEFGridApi.startEditingCell({ rowIndex: 0, colKey: 'bloque' }), 50);
+    }
+  }
+
+  async saveBloquesEF() {
+    if (!this.selectedCatalogSidebarId) return;
+    const newRows = this.bloquesEFRows.filter(r => r.__isNew);
+    const modRows = this.bloquesEFRows.filter(r => r.__modified && !r.__isNew && r.id);
+    try {
+      for (const r of newRows) {
+        await lastValueFrom(this.productionService.createMoliendaBloqueEF({
+          idCatalog: this.selectedCatalogSidebarId, idCompany: this.idRoot,
+          bloque: r.bloque, productoIds: r.productoIds ?? null, active: r.active,
+        }));
+      }
+      for (const r of modRows) {
+        await lastValueFrom(this.productionService.updateMoliendaBloqueEF(r.id, {
+          bloque: r.bloque, productoIds: r.productoIds ?? null, active: r.active,
+        }));
+      }
+      this.bloquesEFHasChanges = false;
+      this.showToast('Guardado');
+      this.loadBloquesEFData(this.selectedCatalogSidebarId!);
+    } catch { alerts.basicAlert('Error', 'No se pudieron guardar los cambios.', 'error'); }
+  }
+
+  revertBloquesEF() {
+    this.bloquesEFRows = JSON.parse(JSON.stringify(this.bloquesEFOriginal));
+    this.bloquesEFHasChanges = false;
+    this.bloquesEFSelectedRow = null;
+    if (this.bloquesEFGridApi) this.bloquesEFGridApi.setGridOption('rowData', this.bloquesEFRows);
+  }
+
+  async deleteBloqueEF() {
+    const row = this.bloquesEFSelectedRow;
+    if (!row) return;
+    if (row.__isNew) {
+      this.bloquesEFRows = this.bloquesEFRows.filter(r => r !== row);
+      this.bloquesEFSelectedRow = null;
+      this.bloquesEFHasChanges = this.bloquesEFRows.some(r => r.__isNew || r.__modified);
+      if (this.bloquesEFGridApi) this.bloquesEFGridApi.setGridOption('rowData', this.bloquesEFRows);
+      return;
+    }
+    const confirm = await alerts.confirmAlert('¿Eliminar?', `¿Eliminar "${row.bloque}"?`, 'warning', 'Sí, eliminar');
+    if (!confirm.isConfirmed) return;
+    try {
+      await lastValueFrom(this.productionService.deleteMoliendaBloqueEF(row.id));
+      this.bloquesEFRows = this.bloquesEFRows.filter(r => r !== row);
+      this.bloquesEFOriginal = this.bloquesEFOriginal.filter(r => r.id !== row.id);
+      this.bloquesEFSelectedRow = null;
+      if (this.bloquesEFGridApi) this.bloquesEFGridApi.setGridOption('rowData', this.bloquesEFRows);
       this.showToast('Borrado');
     } catch { alerts.basicAlert('Error', 'No se pudo eliminar.', 'error'); }
   }

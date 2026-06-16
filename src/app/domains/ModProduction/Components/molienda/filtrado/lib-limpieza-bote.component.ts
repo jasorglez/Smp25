@@ -91,6 +91,38 @@ export class LibLimpiezaBoteComponent {
   private employeeOptions: EmployeeOption[] = [];
   private userOptions: SelectOption[] = [];
   private actividadesOptions: ActividadOption[] = [];
+  private availableIds: Set<number> = new Set();
+  private nextAvailableDates: Map<number, Date> = new Map();
+
+  private static readonly PERIOD_DAYS: Record<string, number> = {
+    'Diario': 1, 'Cada 2 días': 2, 'Cada semana': 7, 'Cada 2 semanas': 14,
+  };
+
+  private computeAvailability(rows: any[]): void {
+    const lastDone = new Map<number, Date>();
+    for (const row of rows) {
+      if (!row.fecha || !row.actividadesIds) continue;
+      const fecha = new Date(row.fecha + 'T00:00:00');
+      let ids: number[] = [];
+      try { ids = JSON.parse(row.actividadesIds); } catch { /* empty */ }
+      for (const id of ids) {
+        if (!lastDone.has(id) || fecha > lastDone.get(id)!) lastDone.set(id, fecha);
+      }
+    }
+    const today = new Date(); today.setHours(0, 0, 0, 0);
+    this.availableIds.clear();
+    this.nextAvailableDates.clear();
+    for (const act of this.actividadesOptions) {
+      const days = LibLimpiezaBoteComponent.PERIOD_DAYS[act.periodicidad ?? ''];
+      if (!days) { this.availableIds.add(act.id); continue; } // 'Ninguno' o sin periodicidad → siempre
+      const last = lastDone.get(act.id);
+      if (!last) { this.availableIds.add(act.id); continue; } // nunca hecha → disponible
+      const next = new Date(last);
+      next.setDate(next.getDate() + days);
+      if (today >= next) this.availableIds.add(act.id);
+      else this.nextAvailableDates.set(act.id, next);
+    }
+  }
 
   gridOptions: any = {
     getRowId: (p: any) => String(p.data.id ?? p.data.__tempId),
@@ -215,7 +247,11 @@ export class LibLimpiezaBoteComponent {
         field: 'actividadesIds', headerName: 'Actividades', editable: true, flex: 1,
         cellEditor: MultiSelectActividadEditorComponent,
         cellEditorPopup: true,
-        cellEditorParams: () => ({ options: this.actividadesOptions }),
+        cellEditorParams: () => ({
+          options: this.actividadesOptions,
+          availableIds: this.availableIds,
+          nextAvailableDates: this.nextAvailableDates,
+        }),
         valueFormatter: (p: any) => {
           if (!p.value || !this.actividadesOptions.length) return '';
           try {
@@ -268,6 +304,7 @@ export class LibLimpiezaBoteComponent {
       }));
       this.originalRowData = JSON.parse(JSON.stringify(mapped));
       this.rowData = [...mapped];
+      this.computeAvailability(mapped);
       if (this.gridApi && !this.gridApi.isDestroyed()) {
         this.gridApi.setGridOption('rowData', this.rowData);
         this.gridApi.autoSizeAllColumns();
