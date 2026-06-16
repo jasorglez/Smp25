@@ -45,8 +45,8 @@ export const environment = {
   urlNotifications: 'https://ms-pruebas-api.bi2.mx/notifications/api', // 5011 -- NotificationsTelegram
   //urlNotifications: 'http://localhost:5011/api',
 
-  //urlProduction: 'https://ms-pruebas-api.bi2.mx/production/api', // 5051 -- Production
-  urlProduction: 'http://localhost:5051/api',
+  urlProduction: 'https://ms-pruebas-api.bi2.mx/production/api', // 5051 -- Production
+  //urlProduction: 'http://localhost:5051/api',
 
   urlMantenimiento: 'https://ms-pruebas-api.bi2.mx/maintenance/api',
 
