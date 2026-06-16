@@ -638,7 +638,35 @@ import { HijosDetailRendererComponent } from './hijos-detail-renderer.component'
           </aside>
 
           <div class="catalog-actions"></div>
-          <section class="catalog-panel"></section>
+
+          <section class="catalog-panel">
+            <div class="helper-message" *ngIf="!selectedHijo1">
+              Selecciona un grupo del detalle para ver sus catálogos
+            </div>
+            <ng-container *ngIf="selectedHijo1">
+              <div class="panel-toolbar">
+                <div class="panel-title">{{ selectedHijo1.description }} — Catálogos</div>
+                <div class="d-flex gap-1 align-items-center">
+                  <button class="btn btn-sm btn-success"  (click)="addNieto1()"    title="Agregar"><i class="bi bi-plus-lg"></i></button>
+                  <button class="btn btn-sm btn-primary position-relative" (click)="saveNietos1()" [disabled]="!hasUnsavedNietos1" title="Guardar">
+                    <i class="bi bi-floppy"></i>
+                    <span *ngIf="hasUnsavedNietos1" class="position-absolute top-0 start-100 translate-middle p-1 bg-danger border border-light rounded-circle"></span>
+                  </button>
+                  <button class="btn btn-sm btn-warning"  (click)="revertNietos1()"                        title="Deshacer"><i class="bi bi-arrow-clockwise"></i></button>
+                  <button class="btn btn-sm btn-danger"   (click)="deleteNieto1()" [disabled]="!selectedNieto1" title="Borrar"><i class="bi bi-trash"></i></button>
+                </div>
+              </div>
+              <ag-grid-angular
+                class="ag-theme-quartz small-text-ag-grid"
+                [rowData]="nietos1"
+                [columnDefs]="nietosColDefs1"
+                [gridOptions]="nietosGridOptions1"
+                (gridReady)="gridApiNietos1 = $event.api"
+                (rowClicked)="selectedNieto1 = $event.data"
+                style="height:500px; width:100%;">
+              </ag-grid-angular>
+            </ng-container>
+          </section>
         </ng-container>
 
         <ng-container *ngIf="activeTab === 'preparacion2' || activeTab === 'cerveza' || activeTab === 'envasado'">
@@ -1506,6 +1534,19 @@ export class CatalogosProduccionComponent {
       setTimeout(() => this.gridApi.startEditingCell({ rowIndex: 0, colKey: 'idBranch' }), 0);
       return;
     }
+    if (this.isFasesFEMode) {
+      this.rowData.set([{
+        id: null,
+        type: 'MOLIENDA',
+        prefijo: '',
+        valor: true,
+        idCatalog: this.selectedCatalogSidebarId,
+        __isNew: true
+      }, ...this.rowData()]);
+      this.hasUnsavedChanges = true;
+      setTimeout(() => this.gridApi.startEditingCell({ rowIndex: 0, colKey: 'prefijo' }), 0);
+      return;
+    }
     this.rowData.set([{
       id: null,
       type: 'MOLIENDA',
@@ -1543,6 +1584,19 @@ export class CatalogosProduccionComponent {
             anio: r.anio ?? null,
             numBote: r.prefixNum ?? null,
             contador: r.contador ?? 1,
+          }
+        : this.isFasesFEMode
+        ? {
+            idCompany: this.idRoot,
+            idArticulo: null,
+            cantidad: 1,
+            type: r.type,
+            idCatalog: r.idCatalog || this.selectedCatalogSidebarId,
+            active: r.valor,
+            prefijo: (r.prefijo ?? '').trim(),
+            editBultos: false,
+            molienda: false,
+            idPrefijoFase: null,
           }
         : {
             idCompany: this.idRoot,
@@ -2571,6 +2625,16 @@ export class CatalogosProduccionComponent {
           return matA.localeCompare(matB, 'es', { sensitivity: 'base' });
         });
         rows.forEach((r: any, i: number) => { r.boteNum = i + 1; });
+      } else if (this.isFasesFEMode) {
+        rows = (data ?? []).map((m: any) => ({
+          id: m.id,
+          type: m.type,
+          prefijo: m.prefijo ?? '',
+          valor: m.active,
+          idCatalog: m.idCatalog,
+        }));
+        rows.sort((a: any, b: any) =>
+          String(a.prefijo ?? '').localeCompare(String(b.prefijo ?? ''), 'es', { sensitivity: 'base' }));
       } else {
         const prefijoMap = (this as any)._artPrefijoFromMatsMap as Map<number, string> | undefined;
         rows = (data ?? []).map(m => ({
@@ -2854,7 +2918,12 @@ export class CatalogosProduccionComponent {
   }
 
   onSelectHijo1(hijo: CatalogProductionItem): void {
-    this.selectedHijo1 = hijo;
+    if (!hijo) { this.selectedHijo1 = null; this.nietos1 = []; return; }
+    this.selectedHijo1  = hijo;
+    this.selectedNieto1 = null;
+    this.nietos1        = [];
+    this.hasUnsavedNietos1 = false;
+    this.loadNietos1(hijo.id!);
   }
 
   private loadNietos1(idHijo: number): void {
