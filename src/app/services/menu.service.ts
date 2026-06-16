@@ -1,7 +1,8 @@
 import { HttpClient } from '@angular/common/http';
 import { inject, Injectable } from '@angular/core';
 import { environment } from '@env/environment';
-import { Observable } from 'rxjs';
+import { Observable, from } from 'rxjs';
+import { shareReplay, switchMap } from 'rxjs/operators';
 import { TrackingService } from './tracking.service';
 import { SignalsService } from './signals.service';
 
@@ -14,6 +15,10 @@ export class MenuService {
 
    private trackingService = inject(TrackingService);
    private http = inject(HttpClient);
+
+  private _sidebarMenusCache = new Map<number, Observable<any[]>>();
+  private _tabMenusCache     = new Map<string, Observable<any[]>>();
+  private _subTabMenusCache  = new Map<string, Observable<any[]>>();
 
   
   getMenu(idCompany: number): Observable<any> {
@@ -29,14 +34,42 @@ export class MenuService {
   }
 
   getSidebarMenus(idCompany: number): Observable<{ identifier: string; permissionName: string; route: string; icon: string }[]> {
-    return this.http.get<any[]>(`${environment.urlSecurity}/MenuXCompany/${idCompany}/sidebar`, { headers: this.trackingService.getHeaders() });
+    if (!this._sidebarMenusCache.has(idCompany)) {
+      this._sidebarMenusCache.set(
+        idCompany,
+        this.http.get<any[]>(`${environment.urlSecurity}/MenuXCompany/${idCompany}/sidebar`, { headers: this.trackingService.getHeaders() }).pipe(shareReplay(1))
+      );
+    }
+    return this._sidebarMenusCache.get(idCompany)!;
+  }
+
+  clearSidebarCache(idCompany?: number): void {
+    if (idCompany != null) {
+      this._sidebarMenusCache.delete(idCompany);
+    } else {
+      this._sidebarMenusCache.clear();
+      this._tabMenusCache.clear();
+      this._subTabMenusCache.clear();
+    }
   }
   getTabMenus(masterIdentifier: string): Observable<{ masterIdentifier: string; identifier: string; permissionName: string; route: string; icon: string; principalSubIdentifier: string; tabOrder: number }[]> {
-    return this.http.get<any[]>(`${environment.urlSecurity}/DetailedPermissions/tabs/${masterIdentifier}`, { headers: this.trackingService.getHeaders() });
+    if (!this._tabMenusCache.has(masterIdentifier)) {
+      this._tabMenusCache.set(
+        masterIdentifier,
+        this.http.get<any[]>(`${environment.urlSecurity}/DetailedPermissions/tabs/${masterIdentifier}`, { headers: this.trackingService.getHeaders() }).pipe(shareReplay(1))
+      );
+    }
+    return this._tabMenusCache.get(masterIdentifier)!;
   }
 
   getSubTabMenus(detailedIdentifier: string): Observable<{ detailedIdentifier: string; identifier: string; permissionName: string; route: string; icon: string; tabOrder: number }[]> {
-    return this.http.get<any[]>(`${environment.urlSecurity}/SubDetailedPermissions/tabs/${detailedIdentifier}`, { headers: this.trackingService.getHeaders() });
+    if (!this._subTabMenusCache.has(detailedIdentifier)) {
+      this._subTabMenusCache.set(
+        detailedIdentifier,
+        this.http.get<any[]>(`${environment.urlSecurity}/SubDetailedPermissions/tabs/${detailedIdentifier}`, { headers: this.trackingService.getHeaders() }).pipe(shareReplay(1))
+      );
+    }
+    return this._subTabMenusCache.get(detailedIdentifier)!;
   }
 
   updateMenu(idCompany: number, permissions: any[]): Observable<any> {

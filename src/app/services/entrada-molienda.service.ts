@@ -4,6 +4,14 @@ import { Observable } from 'rxjs';
 import { environment } from '@env/environment';
 import { TrackingService } from './tracking.service';
 
+export interface EntradaResumen {
+  folioEntrada: string;
+  lote: string;
+  fecha?: string | null;
+  cantidad: number;
+  usuario?: string | null;
+}
+
 export interface EntradaMolienda {
   id?: number;
   idOc: number;
@@ -19,10 +27,16 @@ export interface EntradaMolienda {
   usuario?: string | null;
   comentario?: string | null;
   liberacion?: boolean;
+  credito?: boolean;
   close?: boolean;
   folioEntrega?: string | null;
   active?: boolean;
   dateModified?: string;
+  // Fase 4: conversión a MXN registrada al pagar (solo cuando liberacion=true).
+  montoMxn?: number | null;
+  tipoCambio?: number | null;
+  moneda?: string | null;
+  fuenteTc?: string | null;
 }
 
 @Injectable({ providedIn: 'root' })
@@ -77,6 +91,13 @@ export class EntradaMoliendaService {
   delete(id: number): Observable<void> {
     return this.http.delete<void>(
       `${environment.urlWarehouse}/EntradaMolienda/${id}`,
+      { headers: this.trackingService.getHeaders() }
+    );
+  }
+
+  getResumen(idMaterial: number, idSucursal: number): Observable<EntradaResumen[]> {
+    return this.http.get<EntradaResumen[]>(
+      `${environment.urlWarehouse}/EntradaMolienda/resumen/${idMaterial}/${idSucursal}`,
       { headers: this.trackingService.getHeaders() }
     );
   }

@@ -34,7 +34,7 @@ export const routes: Routes = [
         canActivate: [MasterPermissionsGuard],
         data: { permissions: { master: 'warehouses' } },
         children: [
-          { path: '', redirectTo: 'materia-prima', pathMatch: 'full' },
+          { path: '', redirectTo: 'producto-terminado', pathMatch: 'full' },
           {
             path: 'warehouses',
             loadComponent: () => import('./domains/ModWarehouse/components/warehouses/warehouses.component').then((w) => w.WarehousesComponent),
@@ -107,6 +107,23 @@ export const routes: Routes = [
                     './domains/Almacenes/pages/productos-terminados/productos-terminados.component'
                   ).then((p) => p.ProductosTerminadosComponent),
                 canDeactivate: [UnsavedChangesGuard],
+              },
+            ],
+          },
+          {
+            path: 'inventario',
+            loadComponent: () =>
+              import(
+                './domains/Almacenes/pages/inventario/inventario.component'
+              ).then((i) => i.InventarioComponent),
+            children: [
+              { path: '', redirectTo: 'materia-prima', pathMatch: 'full' },
+              {
+                path: 'materia-prima',
+                loadComponent: () =>
+                  import(
+                    './domains/Almacenes/components/inventario-materia-prima/inventario-materia-prima.component'
+                  ).then((m) => m.InventarioMateriaPrimaComponent),
               },
             ],
           },
@@ -2254,7 +2271,9 @@ export const routes: Routes = [
               { path: 'clarificacion1',loadComponent: () => import('./domains/ModProduction/Components/molienda/clarificacion1/clarificacion1.component').then(m => m.Clarificacion1Component) },
               { path: 'clarificacion2',loadComponent: () => import('./domains/ModProduction/Components/molienda/clarificacion2/clarificacion2.component').then(m => m.Clarificacion2Component) },
               { path: 'envasado',      loadComponent: () => import('./domains/ModProduction/Components/molienda/envasado/envasado.component').then(m => m.EnvasadoMoliendaComponent) },
-              { path: 'almmolienda',   loadComponent: () => import('./domains/ModProduction/Components/molienda/almmolienda/almmolienda.component').then(m => m.AlmmoliendaComponent) },
+              { path: 'almmolienda',      loadComponent: () => import('./domains/ModProduction/Components/molienda/almmolienda/almmolienda-tabs.component').then(m => m.AlmmoliendaTabsComponent) },
+              { path: 'ohbloque',         loadComponent: () => import('./domains/ModProduction/Components/molienda/oh-bloque/oh-bloque.component').then(m => m.OhBloqueComponent) },
+              { path: 'totalinventarios', loadComponent: () => import('./domains/ModProduction/Components/molienda/total-inventarios/total-inventarios.component').then(m => m.TotalInventariosComponent) },
             ],
           },
           {

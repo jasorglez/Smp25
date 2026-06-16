@@ -13,11 +13,14 @@ import { SignalsService } from '../../../../services/signals.service';
 import { CatalogProductionService, CatalogProductionItem } from '../../../../services/catalog-production.service';
 import { alerts } from 'app/helpers/alerts';
 import { ProductionService } from '../../../../services/production.service';
+import { BranchsService } from '../../../../services/branchs.service';
+import { CatalogoParamMoliendaComponent } from '../molienda/catalogo-param-molienda/catalogo-param-molienda.component';
+import { MultiSelectActividadEditorComponent } from 'app/shared/multi-select-actividad-editor.component';
 
 @Component({
   selector: 'app-catalogosproduccion',
   standalone: true,
-  imports: [CommonModule, FormsModule, AgGridAngular, SelectWithTooltipEditorV2Component, ConfiguracionPageComponent],
+  imports: [CommonModule, FormsModule, AgGridAngular, SelectWithTooltipEditorV2Component, ConfiguracionPageComponent, CatalogoParamMoliendaComponent, MultiSelectActividadEditorComponent],
   styles: [`
     :host {
       display: block;
@@ -30,13 +33,13 @@ import { ProductionService } from '../../../../services/production.service';
     }
     .catalog-frame {
       display: grid;
-      grid-template-columns: 250px 52px minmax(0, 1fr);
+      grid-template-columns: 320px 52px minmax(0, 1fr);
       gap: 16px;
       align-items: start;
       min-height: 520px;
     }
     .catalog-frame.catalog-frame--hier-toolbar {
-      grid-template-columns: 250px 52px minmax(0, 1fr);
+      grid-template-columns: 320px 52px minmax(0, 1fr);
     }
     .catalog-sidebar-stack {
       display: flex;
@@ -473,7 +476,7 @@ import { ProductionService } from '../../../../services/production.service';
             <button class="action-btn delete" (click)="deletePrefijoFase()" [disabled]="!prefijoFaseSelectedRow"><i class="bi bi-trash"></i></button>
           </div>
 
-          <div class="catalog-actions" *ngIf="!showHierarchicalTable && !prefijoFaseMode">
+          <div class="catalog-actions" *ngIf="!showHierarchicalTable && !prefijoFaseMode && !isParamsMode && !isActividadesMode && !isBloquesEFMode">
             <button class="action-btn add" (click)="add()" [disabled]="!gridApi || !selectedCatalogSidebarId" title="Selecciona una categoría para agregar">
               <i class="bi bi-plus-lg"></i>
             </button>
@@ -488,6 +491,40 @@ import { ProductionService } from '../../../../services/production.service';
               <i class="bi bi-trash"></i>
             </button>
           </div>
+
+          <div class="catalog-actions" *ngIf="isActividadesMode">
+            <button class="action-btn add" (click)="addActividad()" title="Agregar actividad">
+              <i class="bi bi-plus-lg"></i>
+            </button>
+            <button class="action-btn save" (click)="saveActividades()" [disabled]="!actividadesHasChanges" title="Guardar">
+              <i class="bi bi-floppy"></i>
+              <span *ngIf="actividadesHasChanges" class="dirty-dot"></span>
+            </button>
+            <button class="action-btn revert" (click)="revertActividades()" title="Deshacer">
+              <i class="bi bi-arrow-clockwise"></i>
+            </button>
+            <button class="action-btn delete" (click)="deleteActividad()" [disabled]="!actividadesSelectedRow" title="Borrar">
+              <i class="bi bi-trash"></i>
+            </button>
+          </div>
+
+          <div class="catalog-actions" *ngIf="isBloquesEFMode">
+            <button class="action-btn add" (click)="addBloqueEF()" title="Agregar bloque">
+              <i class="bi bi-plus-lg"></i>
+            </button>
+            <button class="action-btn save" (click)="saveBloquesEF()" [disabled]="!bloquesEFHasChanges" title="Guardar">
+              <i class="bi bi-floppy"></i>
+              <span *ngIf="bloquesEFHasChanges" class="dirty-dot"></span>
+            </button>
+            <button class="action-btn revert" (click)="revertBloquesEF()" title="Deshacer">
+              <i class="bi bi-arrow-clockwise"></i>
+            </button>
+            <button class="action-btn delete" (click)="deleteBloqueEF()" [disabled]="!bloquesEFSelectedRow" title="Borrar">
+              <i class="bi bi-trash"></i>
+            </button>
+          </div>
+
+          <div class="catalog-actions" *ngIf="isParamsMode"></div>
 
           <div class="catalog-actions hier-actions" *ngIf="showHierarchicalTable">
             <button class="action-btn add" (click)="addHierarchicalCatalogItem()" title="Agregar (según selección y columna)">
@@ -521,11 +558,11 @@ import { ProductionService } from '../../../../services/production.service';
               </ag-grid-angular>
             </div>
 
-            <div class="panel-content" *ngIf="!showHierarchicalTable && !prefijoFaseMode">
+            <div class="panel-content" *ngIf="!showHierarchicalTable && !prefijoFaseMode && !isParamsMode && !isActividadesMode && !isBloquesEFMode">
               <ag-grid-angular
                 class="ag-theme-quartz catalog-grid"
                 [rowData]="rowData()"
-                [columnDefs]="isBotesMode ? boteColumnDefs : columnDefs"
+                [columnDefs]="isBotesMode ? boteColumnDefs : isFasesFEMode ? fasesFEColDefs : columnDefs"
                 [gridOptions]="isBotesMode ? boteGridOptions : gridOptions"
                 (gridReady)="onGridReady($event)"
                 (cellValueChanged)="onCellValueChanged($event)"
@@ -533,6 +570,38 @@ import { ProductionService } from '../../../../services/production.service';
                 (cellEditingStopped)="onCellEditingStopped($event)"
                 style="height: 470px; width: 100%;">
               </ag-grid-angular>
+            </div>
+
+            <!-- Actividades -->
+            <div class="panel-content" *ngIf="isActividadesMode">
+              <ag-grid-angular
+                class="ag-theme-quartz catalog-grid"
+                [rowData]="actividadesRows"
+                [columnDefs]="actividadesColDefs"
+                [gridOptions]="actividadesGridOptions"
+                (gridReady)="onActividadesGridReady($event)"
+                (cellValueChanged)="onActividadesCellValueChanged($event)"
+                (rowClicked)="actividadesSelectedRow = $event.data"
+                style="height: 470px; width: 100%;">
+              </ag-grid-angular>
+            </div>
+
+            <!-- Bloques Extracción y Fermentación -->
+            <div class="panel-content" *ngIf="isBloquesEFMode">
+              <ag-grid-angular
+                class="ag-theme-quartz catalog-grid"
+                [rowData]="bloquesEFRows"
+                [columnDefs]="bloquesEFColDefs"
+                [gridOptions]="bloquesEFGridOptions"
+                (gridReady)="onBloquesEFGridReady($event)"
+                (cellValueChanged)="onBloquesEFCellValueChanged($event)"
+                (rowClicked)="bloquesEFSelectedRow = $event.data"
+                style="height: 470px; width: 100%;">
+              </ag-grid-angular>
+            </div>
+
+            <div class="panel-content" *ngIf="isParamsMode" style="height:470px;overflow:hidden;">
+              <app-catalogo-param-molienda style="display:block;height:100%;"></app-catalogo-param-molienda>
             </div>
 
             <div class="panel-content" *ngIf="showHierarchicalTable">
@@ -552,66 +621,104 @@ import { ProductionService } from '../../../../services/production.service';
         </ng-container>
 
         <ng-container *ngIf="activeTab === 'preparacion1'">
+          <!-- Lista Tablas: PADREs desde BD (type='CATALOGO') -->
           <aside class="catalog-sidebar">
-            <p class="sidebar-title">Lista Tablas</p>
+            <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:8px;">
+              <p class="sidebar-title" style="margin:0;">Lista Tablas</p>
+              <div style="display:flex; gap:4px;">
+                <button class="btn btn-xs btn-success" style="padding:1px 6px; font-size:0.75rem;"
+                        (click)="addPadre1()" title="Agregar">
+                  <i class="bi bi-plus-lg"></i>
+                </button>
+                <button class="btn btn-xs btn-danger" style="padding:1px 6px; font-size:0.75rem;"
+                        (click)="deletePadre1()" [disabled]="!selectedPadre1" title="Borrar">
+                  <i class="bi bi-trash"></i>
+                </button>
+              </div>
+            </div>
             <div class="sidebar-list">
-              <div class="sidebar-item" *ngFor="let cat of categorias1">{{ cat.label }}</div>
+              <div class="sidebar-empty" *ngIf="!padres1.length">Sin categorías</div>
+              <div class="sidebar-item catalog-entry"
+                   *ngFor="let p of padres1"
+                   [class.active]="selectedPadre1?.id === p.id"
+                   (click)="onSelectPadre1(p)"
+                   (dblclick)="startEditPadre1(p, $event)"
+                   style="cursor:pointer;">
+                <ng-container *ngIf="editingPadreId !== p.id">
+                  {{ p.description }}
+                </ng-container>
+                <div *ngIf="editingPadreId === p.id" style="display:flex; gap:4px; align-items:center;">
+                  <input type="text" class="form-control form-control-sm"
+                         [(ngModel)]="editingPadreDesc"
+                         (keyup.enter)="savePadreEdit()"
+                         (keyup.escape)="cancelPadreEdit()"
+                         (click)="$event.stopPropagation()"
+                         style="height:22px; font-size:0.8rem; flex:1;"
+                         autofocus>
+                  <button class="btn btn-xs btn-success" style="padding:0 5px;" (click)="savePadreEdit(); $event.stopPropagation()">✓</button>
+                  <button class="btn btn-xs btn-secondary" style="padding:0 5px;" (click)="cancelPadreEdit(); $event.stopPropagation()">✕</button>
+                </div>
+              </div>
             </div>
           </aside>
 
+          <!-- Botones CRUD HIJOs -->
           <div class="catalog-actions">
-            <button class="action-btn add" (click)="add1()" [disabled]="!gridApi1 || !selectedType1 || selectedType1 === 'P1_JARABE'" title="Agregar">
-              <i class="bi bi-plus-lg"></i>
+            <button class="action-btn add"    (click)="addHijo1()"    [disabled]="!selectedPadre1"   title="Agregar hijo"><i class="bi bi-plus-lg"></i></button>
+            <button class="action-btn save"   (click)="saveHijos1()"  [disabled]="!hasUnsavedHijos1" title="Guardar hijos">
+              <i class="bi bi-floppy"></i><span *ngIf="hasUnsavedHijos1" class="dirty-dot"></span>
             </button>
-            <button class="action-btn save" (click)="saveChanges1()" [disabled]="!hasUnsavedChanges1 || !selectedType1 || selectedType1 === 'P1_JARABE'" title="Guardar">
-              <i class="bi bi-floppy"></i>
-              <span *ngIf="hasUnsavedChanges1" class="dirty-dot"></span>
-            </button>
-            <button class="action-btn revert" (click)="revertChanges1()" [disabled]="!selectedType1 || selectedType1 === 'P1_JARABE'" title="Deshacer">
-              <i class="bi bi-arrow-clockwise"></i>
-            </button>
+            <button class="action-btn revert" (click)="revertHijos1()"                               title="Deshacer"><i class="bi bi-arrow-clockwise"></i></button>
+            <button class="action-btn delete" (click)="deleteHijo1()" [disabled]="!selectedHijo1"    title="Borrar hijo"><i class="bi bi-trash"></i></button>
           </div>
 
           <section class="catalog-panel">
-            <div class="panel-toolbar">
-              <div class="panel-title">Descripción</div>
-              <div class="panel-meta">
-                <span>Activo</span>
-                <button type="button" class="danger-link" (click)="deleteRow1()" [disabled]="!selectedRow1 || !selectedType1 || selectedType1 === 'P1_JARABE'">Borrar</button>
+            <div *ngIf="toastMsg1()" class="helper-row"><div class="toast-mini">{{ toastMsg1() }}</div></div>
+
+            <div class="helper-message" *ngIf="!selectedPadre1">
+              Selecciona una categoría de la lista para ver los grupos
+            </div>
+
+            <ng-container *ngIf="selectedPadre1">
+              <!-- Grid HIJOs -->
+              <div class="panel-toolbar">
+                <div class="panel-title">{{ selectedPadre1.description }} — Grupos</div>
+                <div class="panel-meta" style="font-size:0.8rem; color:#888;">
+                  {{ hijos1.length }} registro(s)
+                </div>
               </div>
-            </div>
-
-            <div class="helper-row">
-              <select class="form-select form-select-sm panel-select"
-                      [(ngModel)]="selectedType1"
-                      (ngModelChange)="onTypeChange1($event)">
-                <option value="">-- Selecciona categoría --</option>
-                <option *ngFor="let cat of categorias1" [value]="cat.key">{{ cat.label }}</option>
-              </select>
-              <div *ngIf="toastMsg1()" class="toast-mini">{{ toastMsg1() }}</div>
-            </div>
-
-            <div class="helper-message" *ngIf="!selectedType1">
-              Selecciona una categoría para ver los materiales
-            </div>
-
-            <div class="panel-content" *ngIf="selectedType1 === 'P1_JARABE'">
-              <app-configuracion-page></app-configuracion-page>
-            </div>
-
-            <div class="panel-content" *ngIf="selectedType1 && selectedType1 !== 'P1_JARABE'">
               <ag-grid-angular
                 class="ag-theme-quartz catalog-grid"
-                [rowData]="rowData1()"
-                [columnDefs]="columnDefs1"
-                [gridOptions]="gridOptions1"
-                (gridReady)="onGridReady1($event)"
-                (cellValueChanged)="onCellValueChanged1($event)"
-                (rowClicked)="onRowClicked1($event)"
-                (cellEditingStopped)="onCellEditingStopped1($event)"
-                style="height: 430px; width: 100%;">
+                [rowData]="hijos1"
+                [columnDefs]="hijosColDefs1"
+                [gridOptions]="hijosGridOptions1"
+                (gridReady)="onHijosGridReady1($event)"
+                (rowClicked)="onSelectHijo1($event.data)"
+                style="height: 210px; width: 100%;">
               </ag-grid-angular>
-            </div>
+
+              <!-- Grid NIETOs — siempre presente para evitar destrucción del gridApi -->
+              <div class="panel-toolbar" style="border-top:1px solid #c7daf8; margin-top:6px;">
+                <div class="panel-title">{{ selectedHijo1 ? selectedHijo1.description + ' — Catálogos' : 'Catálogos' }}</div>
+                <div class="d-flex gap-1 align-items-center" *ngIf="selectedHijo1">
+                  <button class="btn btn-sm btn-success"  (click)="addNieto1()"     title="Agregar"><i class="bi bi-plus-lg"></i></button>
+                  <button class="btn btn-sm btn-primary position-relative"  (click)="saveNietos1()"  [disabled]="!hasUnsavedNietos1" title="Guardar">
+                    <i class="bi bi-floppy"></i><span *ngIf="hasUnsavedNietos1" class="dirty-dot"></span>
+                  </button>
+                  <button class="btn btn-sm btn-warning"  (click)="revertNietos1()"                  title="Deshacer"><i class="bi bi-arrow-clockwise"></i></button>
+                  <button class="btn btn-sm btn-danger"   (click)="deleteNieto1()"  [disabled]="!selectedNieto1" title="Borrar"><i class="bi bi-trash"></i></button>
+                </div>
+              </div>
+              <ag-grid-angular
+                class="ag-theme-quartz catalog-grid"
+                [rowData]="nietos1"
+                [columnDefs]="nietosColDefs1"
+                [gridOptions]="nietosGridOptions1"
+                (gridReady)="gridApiNietos1 = $event.api"
+                (rowClicked)="selectedNieto1 = $event.data"
+                style="height: 210px; width: 100%;">
+              </ag-grid-angular>
+            </ng-container>
           </section>
         </ng-container>
 
@@ -797,6 +904,9 @@ export class CatalogosProduccionComponent {
   private catalogService    = inject(ExtractionFermentationCatalogService);
   private hierService       = inject(CatalogProductionService);
   private productionService = inject(ProductionService);
+  private branchsService    = inject(BranchsService);
+
+  branchOptions: { id: number; name: string; prefix: string }[] = [];
   activeTab = 'molienda';
   private idRoot = 0;
   private materiales: any[] = [];
@@ -815,8 +925,105 @@ export class CatalogosProduccionComponent {
   private originalRowData: any[] = [];
   gridApi!: GridApi;
   private enterPressed = false;
-  private editableColumnOrder = ['idArticulo'];
-  isBotesMode = false;
+  private editableColumnOrder     = ['idArticulo'];
+  private boteEditableColumnOrder = ['idBranch', 'idPrefijoFase', 'idMatPrima', 'cantidad'];
+  isBotesMode      = false;
+  isParamsMode     = false;
+  isFasesFEMode    = false;
+  isActividadesMode = false;
+
+  // ── Bloques EF ──
+  isBloquesEFMode = false;
+  bloquesEFRows: any[] = [];
+  private bloquesEFOriginal: any[] = [];
+  bloquesEFHasChanges = false;
+  bloquesEFSelectedRow: any = null;
+  bloquesEFGridApi!: GridApi;
+  private bloquesEFProductOptions: { id: number; producto: string; categoria: string }[] = [];
+
+  get bloquesEFColDefs(): ColDef[] {
+    return [
+      {
+        field: 'bloque', headerName: 'Bloque', flex: 1, editable: true,
+        cellEditor: 'agTextCellEditor',
+        valueSetter: (p: any) => { p.data.bloque = String(p.newValue ?? '').trim(); p.data.__modified = true; return true; },
+      },
+      {
+        field: 'productoIds', headerName: 'Producto', flex: 2, editable: true,
+        cellEditor: MultiSelectActividadEditorComponent,
+        cellEditorPopup: true,
+        cellEditorParams: () => ({
+          title: 'Productos terminados',
+          options: this.bloquesEFProductOptions.map(o => ({ id: o.id, actividad: o.producto, periodicidad: null, group: o.categoria })),
+        }),
+        valueFormatter: (p: any) => {
+          if (!p.value) return '';
+          try {
+            const ids: number[] = JSON.parse(p.value);
+            return ids.map(id => { const o = this.bloquesEFProductOptions.find(x => x.id === id); return o ? `${o.categoria} - ${o.producto}` : ''; }).filter(Boolean).join(', ');
+          } catch { return ''; }
+        },
+        valueSetter: (p: any) => { p.data.productoIds = p.newValue ?? null; p.data.__modified = true; return true; },
+      },
+      {
+        field: 'active', headerName: 'Activo', width: 90, editable: true,
+        cellRenderer: 'agCheckboxCellRenderer',
+        valueSetter: (p: any) => { p.data.active = p.newValue; p.data.__modified = true; return true; },
+      },
+    ];
+  }
+
+  readonly bloquesEFGridOptions: any = {
+    getRowId: (p: any) => String(p.data.id ?? p.data.__tempId),
+    headerHeight: 25, rowHeight: 22,
+    rowSelection: 'single',
+    rowClassRules: { 'new-row-highlight': (p: any) => !!p.data?.__isNew },
+    defaultColDef: { resizable: true },
+  };
+
+  // ── Actividades ──
+  actividadesRows: any[] = [];
+  private actividadesOriginal: any[] = [];
+  actividadesHasChanges = false;
+  actividadesSelectedRow: any = null;
+  actividadesGridApi!: GridApi;
+
+  readonly PERIODICIDAD_OPTIONS = ['Diario', 'Cada 2 días', 'Cada semana', 'Cada 2 semanas', 'Ninguno'];
+
+  readonly actividadesColDefs: ColDef[] = [
+    {
+      field: 'actividad', headerName: 'Actividad', flex: 1, editable: true,
+      cellEditor: 'agTextCellEditor',
+      valueSetter: (p: any) => {
+        p.data.actividad = String(p.newValue ?? '').trim();
+        p.data.__modified = true; return true;
+      },
+    },
+    {
+      field: 'periodicidad', headerName: 'Periodicidad', width: 180, editable: true,
+      cellEditor: SelectWithTooltipEditorV2Component,
+      cellEditorParams: () => ({
+        options: this.PERIODICIDAD_OPTIONS.map(o => ({ id: o, description: o })),
+      }),
+      valueFormatter: (p: any) => p.value ?? '',
+      valueSetter: (p: any) => {
+        p.data.periodicidad = p.newValue ?? null; p.data.__modified = true; return true;
+      },
+    },
+    {
+      field: 'active', headerName: 'Activo', width: 90, editable: true,
+      cellRenderer: 'agCheckboxCellRenderer',
+      valueSetter: (p: any) => { p.data.active = p.newValue; p.data.__modified = true; return true; },
+    },
+  ];
+
+  readonly actividadesGridOptions: any = {
+    getRowId: (p: any) => String(p.data.id ?? p.data.__tempId),
+    headerHeight: 25, rowHeight: 22,
+    rowSelection: 'single',
+    rowClassRules: { 'new-row-highlight': (p: any) => !!p.data?.__isNew },
+    defaultColDef: { resizable: true },
+  };
 
   // ── Prefijos Fases ──
   prefijoFaseOptions: { id: number; prefijo: string; nombreFase: string }[] = [];
@@ -895,26 +1102,22 @@ export class CatalogosProduccionComponent {
   selectedHierarchicalNodeLevel: 'category' | 'family' | 'subfamily' | null = null;
   editingItem: any = null;
 
-  // ── Preparación 1 ──
-  readonly categorias1 = [
-    { key: 'P1_JARABE',    label: 'Jarabe' },
-    { key: 'P1_REFRESCO',  label: 'Refresco' },
-    { key: 'P1_SIDRAS',    label: 'Sidras' },
-    { key: 'P1_ALCOHOLES', label: 'Alcoholes' },
-    { key: 'P1_COCTELES',  label: 'Cocteles' },
-    { key: 'P1_VINOS',     label: 'Vinos' },
-    { key: 'P1_LICORES',   label: 'Licores' },
-  ];
-
-  selectedType1      = '';
-  hasUnsavedChanges1 = false;
-  selectedRow1: any  = null;
-  toastMsg1          = signal('');
-  rowData1           = signal<any[]>([]);
-  private originalRowData1: any[] = [];
-  gridApi1!: GridApi;
-  private enterPressed1 = false;
-  private editableColumnOrder1 = ['idArticulo'];
+  // ── Preparación 1 — Jerárquico desde BD ──
+  padres1:             CatalogProductionItem[] = [];
+  selectedPadre1:      CatalogProductionItem | null = null;
+  editingPadreId:      number | null = null;
+  editingPadreDesc:    string = '';
+  hijos1:          CatalogProductionItem[] = [];
+  selectedHijo1:   CatalogProductionItem | null = null;
+  nietos1:         CatalogProductionItem[] = [];
+  selectedNieto1:  CatalogProductionItem | null = null;
+  private originalHijos1:  CatalogProductionItem[] = [];
+  private originalNietos1: CatalogProductionItem[] = [];
+  hasUnsavedHijos1  = false;
+  hasUnsavedNietos1 = false;
+  gridApiHijos1!:  GridApi;
+  gridApiNietos1!: GridApi;
+  toastMsg1 = signal('');
 
   tabs = [
     { key: 'molienda',     label: 'Molienda' },
@@ -926,6 +1129,24 @@ export class CatalogosProduccionComponent {
 
   // ── Columnas Botes ──
   boteColumnDefs: ColDef[] = [
+    {
+      headerName: 'Sucursal',
+      field: 'idBranch',
+      width: 170,
+      editable: (p: any) => !p.data?.hasUsage,
+      cellEditor: SelectWithTooltipEditorV2Component,
+      cellEditorParams: () => ({
+        options: [
+          { id: null, description: '— Sin sucursal —' },
+          ...this.branchOptions.map(b => ({ id: b.id, description: b.name })),
+        ],
+      }),
+      valueFormatter: (p: any) => {
+        if (p.value == null) return '';
+        const b = this.branchOptions.find(o => o.id === p.value);
+        return b ? b.name : String(p.value);
+      },
+    },
     {
       headerName: 'Fase',
       field: 'idPrefijoFase',
@@ -979,14 +1200,25 @@ export class CatalogosProduccionComponent {
       field: 'codigo',
       width: 160,
       editable: false,
-      valueGetter: (p: any) => {
-        const faseId = p.data?.idPrefijoFase;
-        const matId  = p.data?.idMatPrima;
-        const fasePrefijo = faseId != null ? (this.prefijoFaseOptions.find(f => f.id === faseId)?.prefijo ?? '') : '';
-        const artPrefijo  = matId  != null ? (this.matPrimaOptions.find(m => m.id === matId)?.prefijo ?? '') : '';
-        const num = p.data?.prefixNum != null ? p.data.prefixNum : '';
-        const vol = p.data?.cantidad  != null ? p.data.cantidad  : '';
-        return `${fasePrefijo}${artPrefijo}/${vol}-${num}`;
+    },
+    {
+      headerName: 'Contador',
+      field: 'contador',
+      width: 100,
+      editable: false,
+      cellRenderer: (p: any) => {
+        const val = p.data?.contador ?? 1;
+        return `<span style="font-weight:600;margin-right:6px;">${val}</span>`
+             + `<button data-action="inc" style="font-size:0.68rem;padding:1px 6px;border:1px solid #6c757d;border-radius:4px;background:#fff;cursor:pointer;line-height:1.4;">+1</button>`;
+      },
+      onCellClicked: (p: any) => {
+        if ((p.event?.target as HTMLElement)?.getAttribute('data-action') === 'inc') {
+          p.data.contador = (p.data.contador ?? 1) + 1;
+          p.data.codigo   = this.buildCodigo(p.data);
+          p.data.__modified = true;
+          this.hasUnsavedChanges = true;
+          p.api.applyTransaction({ update: [p.data] });
+        }
       },
     },
     {
@@ -999,6 +1231,7 @@ export class CatalogosProduccionComponent {
   ];
 
   boteGridOptions = {
+    getRowId: (p: any) => p.data.id != null ? String(p.data.id) : `new_${p.data.boteNum}`,
     headerHeight: 25,
     rowHeight: 20,
     rowClassRules: {
@@ -1040,9 +1273,11 @@ export class CatalogosProduccionComponent {
       headerName: 'Prefijo Mat Prima',
       field: 'prefijo',
       width: 150,
-      editable: true,
-      cellEditor: 'agTextCellEditor',
-      valueSetter: (p: any) => { p.data.prefijo = String(p.newValue ?? '').toUpperCase(); p.data.__modified = true; this.hasUnsavedChanges = true; return true; },
+      editable: false,
+      valueGetter: (p: any) => {
+        const map = (this as any)._artPrefijoFromMatsMap as Map<number, string> | undefined;
+        return map?.get(p.data?.idArticulo) ?? '';
+      },
     },
     {
       headerName: 'edit col Bultos',
@@ -1062,6 +1297,34 @@ export class CatalogosProduccionComponent {
       headerName: 'Molienda',
       field: 'molienda',
       width: 100,
+      editable: true,
+      cellRenderer: 'agCheckboxCellRenderer',
+    },
+  ];
+
+  fasesFEColDefs: ColDef[] = [
+    {
+      headerName: 'Nombre Fase',
+      field: 'prefijo',
+      flex: 1,
+      editable: true,
+      cellEditor: 'agTextCellEditor',
+      valueSetter: (p: any) => {
+        const val = String(p.newValue ?? '').trim();
+        if (!val) return false;
+        let dup = false;
+        this.gridApi?.forEachNode((node: any) => {
+          if (node.data !== p.data && (node.data?.prefijo ?? '').toLowerCase() === val.toLowerCase()) dup = true;
+        });
+        if (dup) { this.showToast('Ya existe una fase con ese nombre'); return false; }
+        p.data.prefijo = val; p.data.__modified = true; this.hasUnsavedChanges = true;
+        return true;
+      },
+    },
+    {
+      headerName: 'Activo',
+      field: 'valor',
+      width: 90,
       editable: true,
       cellRenderer: 'agCheckboxCellRenderer',
     },
@@ -1116,51 +1379,48 @@ export class CatalogosProduccionComponent {
     return this._hierarchicalGridOptionsCache;
   }
 
-  // ── Columnas Preparación 1 ──
-  columnDefs1: ColDef[] = [
-    {
-      headerName: 'Articulos1',
-      field: 'idArticulo',
-      flex: 1,
-      minWidth: 150,
-      editable: true,
-      cellEditor: SelectWithTooltipEditorV2Component,
-      cellEditorParams: () => {
-        const usados = new Set(this.rowData1().map((r: any) => r.idArticulo).filter(Boolean));
-        return {
-          options: this.materiales
-            .filter(m => !usados.has(m.id) && m.categoria === 'MATERIA PRIMA' && m.active !== false)
-            .map(m => ({ id: m.id, description: m.articulo })),
-        };
-      },
-      valueFormatter: (p: any) => this.materialesIdToDesc.get(p.value) ?? '',
+  // ── Columnas Preparación 1 — HIJOs ──
+  readonly hijosColDefs1: ColDef[] = [
+    { headerName: '#', width: 50, valueGetter: (p: any) => p.node.rowIndex + 1,
+      cellStyle: { backgroundColor: '#f8f9fa', fontWeight: 'bold' } },
+    { field: 'description', headerName: 'Descripción', flex: 1, editable: true,
+      cellEditor: 'agTextCellEditor',
+      valueSetter: (p: any) => {
+        p.data.description = String(p.newValue ?? '').toUpperCase();
+        p.data.__modified = true; this.hasUnsavedHijos1 = true; return true;
+      }
     },
-    {
-      headerName: 'Valor',
-      field: 'valor',
-      width: 140,
-      editable: true,
+    { field: 'active', headerName: 'Activo', width: 90, editable: true,
       cellRenderer: 'agCheckboxCellRenderer',
+      valueSetter: (p: any) => { p.data.active = p.newValue ? 1 : 0; p.data.__modified = true; this.hasUnsavedHijos1 = true; return true; }
     },
   ];
 
-  gridOptions1 = {
-    headerHeight: 25,
-    rowHeight: 20,
-    rowClassRules: {
-      'new-row-highlight': (p: any) => !!p.data?.__isNew,
-      'inactive-row': (p: any) => p.data?.valor === false,
+  readonly hijosGridOptions1: any = {
+    headerHeight: 25, rowHeight: 22, rowSelection: 'single', animateRows: true,
+    rowClassRules: { 'new-row-highlight': (p: any) => !!p.data?.__isNew },
+  };
+
+  // ── Columnas Preparación 1 — NIETOs ──
+  readonly nietosColDefs1: ColDef[] = [
+    { headerName: '#', width: 50, valueGetter: (p: any) => p.node.rowIndex + 1,
+      cellStyle: { backgroundColor: '#f8f9fa', fontWeight: 'bold' } },
+    { field: 'description', headerName: 'Descripción', flex: 1, editable: true,
+      cellEditor: 'agTextCellEditor',
+      valueSetter: (p: any) => {
+        p.data.description = String(p.newValue ?? '').toUpperCase();
+        p.data.__modified = true; this.hasUnsavedNietos1 = true; return true;
+      }
     },
-    defaultColDef: {
-      suppressKeyboardEvent: (params: any) => {
-        if (params.event.key === 'Enter' && params.editing) {
-          this.enterPressed1 = true;
-          setTimeout(() => { if (this.gridApi1) this.gridApi1.stopEditing(); }, 0);
-          return true;
-        }
-        return false;
-      },
+    { field: 'active', headerName: 'Activo', width: 90, editable: true,
+      cellRenderer: 'agCheckboxCellRenderer',
+      valueSetter: (p: any) => { p.data.active = p.newValue ? 1 : 0; p.data.__modified = true; this.hasUnsavedNietos1 = true; return true; }
     },
+  ];
+
+  readonly nietosGridOptions1: any = {
+    headerHeight: 25, rowHeight: 22, rowSelection: 'single', animateRows: true,
+    rowClassRules: { 'new-row-highlight': (p: any) => !!p.data?.__isNew },
   };
 
   constructor() {
@@ -1176,10 +1436,16 @@ export class CatalogosProduccionComponent {
 
       this.idRoot = idRoot;
       forkJoin({
-        pfs:  this.productionService.getMoliendaPrefijos(idRoot),
-        mats: this.materialsService.getMaterialsxview(idRoot),
-        mxm:  this.mxmService.getByType(idRoot, 'MOLIENDA'),
-      }).subscribe(({ pfs, mats, mxm }: any) => {
+        pfs:      this.productionService.getMoliendaPrefijos(idRoot),
+        mats:     this.materialsService.getMaterialsxview(idRoot),
+        mxm:      this.mxmService.getByType(idRoot, 'MOLIENDA'),
+        branches: this.branchsService.getBranches(idRoot),
+      }).subscribe(({ pfs, mats, mxm, branches }: any) => {
+        this.branchOptions = ((branches ?? []) as any[]).map((b: any) => ({
+          id: b.id,
+          name: b.name ?? '',
+          prefix: b.prefix ?? '',
+        }));
         // Fases — deben estar listas antes de construir matPrimaOptions
         this.prefijoFaseOptions = (pfs ?? []).map((p: any) => ({ id: p.id, prefijo: p.prefijo ?? '', nombreFase: p.nombreFase ?? '' }));
         const moFaseId = this.prefijoFaseOptions.find(f => f.prefijo === 'MO')?.id ?? null;
@@ -1188,7 +1454,12 @@ export class CatalogosProduccionComponent {
         this.materialesIdToDesc.clear();
         this.materiales.forEach(m => this.materialesIdToDesc.set(m.id, m.articulo));
 
-        // Mapa idArticulo → prefijo del material
+        // Mapa idArticulo → prefijo desde Materials (fuente de verdad, editable desde Materiales Maestro)
+        const artPrefijoFromMatsMap = new Map<number, string>();
+        this.materiales.forEach(m => { if (m.id != null) artPrefijoFromMatsMap.set(m.id, m.prefijo ?? ''); });
+        (this as any)._artPrefijoFromMatsMap = artPrefijoFromMatsMap;
+
+        // Mapa idArticulo → prefijo del material (legacy, de mxm — se mantiene para compatibilidad interna)
         const mxmList: any[] = (mxm as any[]) ?? [];
         const artPrefijoMap = new Map<number, string>();
         mxmList.forEach(m => { if (m.idArticulo != null) artPrefijoMap.set(m.idArticulo, m.prefijo ?? ''); });
@@ -1206,6 +1477,7 @@ export class CatalogosProduccionComponent {
           .sort((a, b) => a.description.localeCompare(b.description, 'es', { sensitivity: 'base' }));
 
         this.loadCatalogSidebar();
+        this.loadPadres1();
         this.rowData.set([]);
         this.selectedCatalogSidebarId = null;
       });
@@ -1220,6 +1492,11 @@ export class CatalogosProduccionComponent {
   onRowClicked(event: any)                 { this.selectedRow = event.data; }
   onCellValueChanged(event: any) {
     if (!event.data.__isNew) { event.data.__modified = true; this.hasUnsavedChanges = true; }
+
+    if (this.isBotesMode && ['idBranch','idPrefijoFase','idMatPrima','cantidad'].includes(event.colDef?.field)) {
+      event.data.codigo = this.buildCodigo(event.data);
+      if (this.gridApi) this.gridApi.refreshCells({ rowNodes: [event.node], columns: ['codigo'], force: true });
+    }
 
     if (this.isBotesMode && event.colDef?.field === 'idPrefijoFase') {
       const faseId = event.newValue;
@@ -1239,9 +1516,10 @@ export class CatalogosProduccionComponent {
   onCellEditingStopped(event: any) {
     if (!this.enterPressed) return;
     this.enterPressed = false;
-    const idx = this.editableColumnOrder.indexOf(event.column.getColId());
-    if (idx !== -1 && idx < this.editableColumnOrder.length - 1) {
-      setTimeout(() => this.gridApi.startEditingCell({ rowIndex: event.rowIndex, colKey: this.editableColumnOrder[idx + 1] }), 100);
+    const order = this.isBotesMode ? this.boteEditableColumnOrder : this.editableColumnOrder;
+    const idx = order.indexOf(event.column.getColId());
+    if (idx !== -1 && idx < order.length - 1) {
+      setTimeout(() => this.gridApi.startEditingCell({ rowIndex: event.rowIndex, colKey: order[idx + 1] }), 100);
     }
   }
 
@@ -1249,9 +1527,11 @@ export class CatalogosProduccionComponent {
 
   loadGridData() {
     this.mxmService.getAll(this.idRoot).subscribe((modulos: any[]) => {
+      const prefijoMap = (this as any)._artPrefijoFromMatsMap as Map<number, string> | undefined;
       const rows = (modulos ?? []).map(m => ({
         id: m.id, type: m.type, idArticulo: m.idArticulo, valor: m.active,
-        prefijo: m.prefijo ?? '', editBultos: m.editBultos ?? false,
+        prefijo: prefijoMap?.get(m.idArticulo) ?? '',
+        editBultos: m.editBultos ?? false,
         molienda: m.molienda ?? false, idPrefijoFase: m.idPrefijoFase ?? null,
       }));
       this.originalRowData = JSON.parse(JSON.stringify(rows));
@@ -1274,11 +1554,15 @@ export class CatalogosProduccionComponent {
         idCatalog: this.selectedCatalogSidebarId,
         idMatPrima: null,
         idPrefijoFase: null,
+        idBranch: null,
+        anio: null,
+        contador: 1,
+        codigo: '',
         boteNum: nextNum,
         __isNew: true,
       }, ...this.rowData()]);
       this.hasUnsavedChanges = true;
-      setTimeout(() => this.gridApi.startEditingCell({ rowIndex: 0, colKey: 'cantidad' }), 0);
+      setTimeout(() => this.gridApi.startEditingCell({ rowIndex: 0, colKey: 'idBranch' }), 0);
       return;
     }
     this.rowData.set([{
@@ -1314,6 +1598,10 @@ export class CatalogosProduccionComponent {
             molienda: false,
             idMatPrima: r.idMatPrima ?? null,
             idPrefijoFase: r.idPrefijoFase ?? null,
+            idBranch: r.idBranch ?? null,
+            anio: r.anio ?? null,
+            numBote: r.prefixNum ?? null,
+            contador: r.contador ?? 1,
           }
         : {
             idCompany: this.idRoot,
@@ -1324,7 +1612,6 @@ export class CatalogosProduccionComponent {
             active: r.valor,
             editBultos: r.editBultos || false,
             molienda: r.molienda || false,
-            prefijo: r.prefijo ?? null,
             idPrefijoFase: r.idPrefijoFase ?? null,
           };
       return r.__isNew ? this.mxmService.create(payload) : this.mxmService.update(r.id, payload);
@@ -1364,23 +1651,7 @@ export class CatalogosProduccionComponent {
     });
   }
 
-  // ──────────────────── Preparación 1 ────────────────────
-
-  onGridReady1(params: GridReadyEvent)      { this.gridApi1 = params.api; }
-  onRowClicked1(event: any)                 { this.selectedRow1 = event.data; }
-  onCellValueChanged1(event: any) {
-    if (!event.data.__isNew) { event.data.__modified = true; this.hasUnsavedChanges1 = true; }
-  }
-  onCellEditingStopped1(event: any) {
-    if (!this.enterPressed1) return;
-    this.enterPressed1 = false;
-    const idx = this.editableColumnOrder1.indexOf(event.column.getColId());
-    if (idx !== -1 && idx < this.editableColumnOrder1.length - 1) {
-      setTimeout(() => this.gridApi1.startEditingCell({ rowIndex: event.rowIndex, colKey: this.editableColumnOrder1[idx + 1] }), 100);
-    }
-  }
-
-  private showToast1(msg: string) { this.toastMsg1.set(msg); setTimeout(() => this.toastMsg1.set(''), 1500); }
+  private showToast1(msg: string) { this.toastMsg1.set(msg); setTimeout(() => this.toastMsg1.set(''), 1800); }
 
   private loadCatalogSidebar() {
     if (!this.idRoot) return;
@@ -2115,6 +2386,9 @@ export class CatalogosProduccionComponent {
     this.selectedCatalogSidebarId = null;
     this.showHierarchicalTable    = false;
     this.isBotesMode              = false;
+    this.isParamsMode             = false;
+    this.isActividadesMode        = false;
+    this.isBloquesEFMode          = false;
     this.prefijoFaseMode          = true;
     this.prefijoFaseSelectedRow   = null;
     this.prefijoFaseHasChanges    = false;
@@ -2206,19 +2480,85 @@ export class CatalogosProduccionComponent {
     this.prefijoFaseMode = false;
     if (this.isCaracteristicasManzana(item)) {
       this.showHierarchicalTable = true;
-      this.isBotesMode = false;
+      this.isBotesMode        = false;
+      this.isParamsMode       = false;
+      this.isFasesFEMode      = false;
+      this.isActividadesMode  = false;
       this.loadHierarchicalData();
-    } else {
+    } else if (this.isParametrosCatalog(item)) {
       this.showHierarchicalTable = false;
-      this.isBotesMode = this.isBotesCatalog(item);
+      this.isBotesMode        = false;
+      this.isParamsMode       = true;
+      this.isFasesFEMode      = false;
+      this.isActividadesMode  = false;
+    } else if (this.isActividadesCatalog(item)) {
+      this.showHierarchicalTable = false;
+      this.isBotesMode        = false;
+      this.isParamsMode       = false;
+      this.isFasesFEMode      = false;
+      this.isActividadesMode  = true;
+      this.isBloquesEFMode    = false;
+      this.loadActividadesData(item.id);
+    } else if (this.isBloquesEFCatalog(item)) {
+      this.showHierarchicalTable = false;
+      this.isBotesMode        = false;
+      this.isParamsMode       = false;
+      this.isFasesFEMode      = false;
+      this.isActividadesMode  = false;
+      this.isBloquesEFMode    = true;
+      if (this.idRoot) {
+        this.productionService.getProductosTerminadosEF(this.idRoot).subscribe(items => {
+          this.bloquesEFProductOptions = items ?? [];
+        });
+      }
+      this.loadBloquesEFData(item.id);
+    } else {
+      this.isBloquesEFMode    = false;
+      this.showHierarchicalTable = false;
+      this.isParamsMode       = false;
+      this.isActividadesMode  = false;
+      this.isBotesMode        = this.isBotesCatalog(item);
+      this.isFasesFEMode      = !this.isBotesMode && this.isFasesFECatalog(item);
       this.loadCatalogData(item.id);
     }
+  }
+
+  private isActividadesCatalog(item: ExtractionFermentationCatalogItem): boolean {
+    const d = (item.description || '').trim().toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
+    return d.startsWith('actividades');
+  }
+
+  private isFasesFECatalog(item: ExtractionFermentationCatalogItem): boolean {
+    const d = (item.description || '').trim().toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
+    return d.startsWith('fases fe');
   }
 
   private isCaracteristicasManzana(item: ExtractionFermentationCatalogItem): boolean {
     const raw = (item.description || '').trim().toLowerCase();
     const d = raw.normalize('NFD').replace(/[\u0300-\u036f]/g, '');
     return d.startsWith('caracteristicas de');
+  }
+
+  private isParametrosCatalog(item: ExtractionFermentationCatalogItem): boolean {
+    const raw = (item.description || '').trim().toLowerCase();
+    const d = raw.normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+    return d.startsWith('parametros');
+  }
+
+  private isBloquesEFCatalog(item: ExtractionFermentationCatalogItem): boolean {
+    const d = (item.description || '').trim().toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+    return d.startsWith('bloques');
+  }
+
+  buildCodigo(row: any): string {
+    const branchPref  = row.idBranch      != null ? (this.branchOptions.find(b => b.id === row.idBranch)?.prefix ?? '') : '';
+    const fasePrefijo = row.idPrefijoFase != null ? (this.prefijoFaseOptions.find(f => f.id === row.idPrefijoFase)?.prefijo ?? '') : '';
+    const artPrefijo  = row.idMatPrima    != null ? (this.matPrimaOptions.find(m => m.id === row.idMatPrima)?.prefijo ?? '') : '';
+    const year     = String(row.anio ?? new Date().getFullYear()).slice(-2);
+    const num      = row.prefixNum != null ? row.prefixNum : '';
+    const vol      = row.cantidad  != null ? row.cantidad  : '';
+    const contador = row.contador  ?? 1;
+    return `${branchPref}${fasePrefijo}${artPrefijo}${year}/${vol}-${num}/${contador}`;
   }
 
   private isBotesCatalog(item: ExtractionFermentationCatalogItem): boolean {
@@ -2238,7 +2578,9 @@ export class CatalogosProduccionComponent {
       this.showToast('El nombre no puede estar vacío');
       return;
     }
-    this.catalogService.update(this.editingCatalogId, { description: this.editingCatalogDescription }).subscribe(() => {
+    const item = this.catalogSidebarItems.find(x => x.id === this.editingCatalogId);
+    if (!item) return;
+    this.catalogService.update(this.editingCatalogId, { ...item, description: this.editingCatalogDescription.trim() }).subscribe(() => {
       this.showToast('Categoría actualizada');
       this.editingCatalogId = null;
       this.editingCatalogDescription = '';
@@ -2268,10 +2610,17 @@ export class CatalogosProduccionComponent {
           idCatalog: m.idCatalog,
           idMatPrima: m.idMatPrima ?? null,
           idPrefijoFase: m.idPrefijoFase ?? null,
-          prefixNum: m.numBote ?? null,   // viene del backend
+          idBranch: m.idBranch ?? null,
+          anio: m.anio ?? null,
+          prefixNum: m.numBote ?? null,
+          contador: m.contador ?? 1,
           hasUsage: (usageMap[m.id] ?? 0) > 0,
-        }));
+        })).map((r: any) => ({ ...r, codigo: this.buildCodigo(r) }));
         rows.sort((a: any, b: any) => {
+          const branchA = this.branchOptions.find((br: any) => br.id === a.idBranch)?.name ?? '';
+          const branchB = this.branchOptions.find((br: any) => br.id === b.idBranch)?.name ?? '';
+          const cmpBranch = branchA.localeCompare(branchB, 'es', { sensitivity: 'base' });
+          if (cmpBranch !== 0) return cmpBranch;
           const faseA = this.prefijoFaseOptions.find((f: any) => f.id === a.idPrefijoFase)?.nombreFase ?? '';
           const faseB = this.prefijoFaseOptions.find((f: any) => f.id === b.idPrefijoFase)?.nombreFase ?? '';
           const cmpFase = faseA.localeCompare(faseB, 'es', { sensitivity: 'base' });
@@ -2282,6 +2631,7 @@ export class CatalogosProduccionComponent {
         });
         rows.forEach((r: any, i: number) => { r.boteNum = i + 1; });
       } else {
+        const prefijoMap = (this as any)._artPrefijoFromMatsMap as Map<number, string> | undefined;
         rows = (data ?? []).map(m => ({
           id: m.id,
           type: m.type,
@@ -2290,7 +2640,7 @@ export class CatalogosProduccionComponent {
           idCatalog: m.idCatalog,
           editBultos: m.editBultos,
           molienda: m.molienda ?? false,
-          prefijo: m.prefijo ?? '',
+          prefijo: prefijoMap?.get(m.idArticulo) ?? '',
           idPrefijoFase: m.idPrefijoFase ?? null,
         }));
         rows.sort((a: any, b: any) =>
@@ -2461,43 +2811,452 @@ export class CatalogosProduccionComponent {
     this.hierarchicalData = treeData;
   }
 
-  onTypeChange1(type: string) {
-    this.selectedType1 = type; this.hasUnsavedChanges1 = false; this.selectedRow1 = null; this.rowData1.set([]);
-    if (!type || !this.idRoot) return;
-    this.loadGridData1(type);
-  }
+  // ──────────────────── Preparación 1 — Jerárquico ────────────────────
 
-  loadGridData1(type: string) {
-    this.mxmService.getByType(this.idRoot, type).subscribe((modulos: any[]) => {
-      const rows = (modulos ?? []).map(m => ({ id: m.id, idArticulo: m.idArticulo, valor: m.active }));
-      this.originalRowData1 = JSON.parse(JSON.stringify(rows));
-      this.rowData1.set(rows);
+  private loadPadres1(): void {
+    if (!this.idRoot) return;
+    this.hierService.getByType('CATALOGO', this.idRoot).subscribe({
+      next: (items) => { this.padres1 = items ?? []; },
+      error: () => { this.padres1 = []; }
     });
   }
 
-  add1() {
-    this.rowData1.set([{ id: null, idArticulo: null, valor: false, __isNew: true }, ...this.rowData1()]);
-    this.hasUnsavedChanges1 = true;
-    setTimeout(() => this.gridApi1.startEditingCell({ rowIndex: 0, colKey: 'idArticulo' }), 0);
+  async addPadre1(): Promise<void> {
+    const desc = window.prompt('Nombre de la nueva categoría:');
+    if (!desc?.trim()) return;
+    try {
+      const created = await lastValueFrom(this.hierService.create({
+        idCompany: this.idRoot, idMasterCatalog: 0,
+        description: desc.trim().toUpperCase(), type: 'CATALOGO',
+        active: 1, vigente: true,
+      }));
+      this.padres1 = [...this.padres1, created];
+      this.showToast1('Categoría creada');
+    } catch { this.showToast1('Error al crear'); }
   }
 
-  saveChanges1() {
-    const saves = this.rowData1().filter(r => r.__isNew || r.__modified).map(r => {
-      const payload = { idCompany: this.idRoot, idArticulo: r.idArticulo, cantidad: 1, type: this.selectedType1, active: r.valor };
-      return r.__isNew ? this.mxmService.create(payload) : this.mxmService.update(r.id, payload);
-    });
-    if (!saves.length) return;
-    forkJoin(saves).subscribe(() => { this.hasUnsavedChanges1 = false; this.showToast1('Guardado'); this.loadGridData1(this.selectedType1); });
+  startEditPadre1(padre: CatalogProductionItem, event: Event): void {
+    event.stopPropagation();
+    this.editingPadreId   = padre.id ?? null;
+    this.editingPadreDesc = padre.description;
   }
 
-  revertChanges1() { this.rowData1.set(JSON.parse(JSON.stringify(this.originalRowData1))); this.hasUnsavedChanges1 = false; this.selectedRow1 = null; }
+  async savePadreEdit(): Promise<void> {
+    if (!this.editingPadreId || !this.editingPadreDesc.trim()) { this.cancelPadreEdit(); return; }
+    try {
+      await lastValueFrom(this.hierService.update(this.editingPadreId, {
+        description: this.editingPadreDesc.trim().toUpperCase()
+      }));
+      const idx = this.padres1.findIndex(p => p.id === this.editingPadreId);
+      if (idx !== -1) this.padres1[idx] = { ...this.padres1[idx], description: this.editingPadreDesc.trim().toUpperCase() };
+      if (this.selectedPadre1?.id === this.editingPadreId)
+        this.selectedPadre1 = { ...this.selectedPadre1, description: this.editingPadreDesc.trim().toUpperCase() };
+      this.showToast1('Actualizado');
+    } catch { this.showToast1('Error al actualizar'); }
+    this.cancelPadreEdit();
+  }
 
-  deleteRow1() {
-    if (!this.selectedRow1) return;
-    if (this.selectedRow1.__isNew) {
-      this.rowData1.set(this.rowData1().filter(r => r !== this.selectedRow1)); this.selectedRow1 = null;
-      this.hasUnsavedChanges1 = this.rowData1().some(r => r.__isNew || r.__modified); return;
+  cancelPadreEdit(): void { this.editingPadreId = null; this.editingPadreDesc = ''; }
+
+  async deletePadre1(): Promise<void> {
+    if (!this.selectedPadre1) return;
+    const r = await alerts.confirmAlert('¿Eliminar?', `¿Eliminar "${this.selectedPadre1.description}"?`, 'warning', 'Sí, eliminar');
+    if (!r.isConfirmed) return;
+    try {
+      await lastValueFrom(this.hierService.delete(this.selectedPadre1.id!));
+      this.padres1 = this.padres1.filter(p => p.id !== this.selectedPadre1!.id);
+      this.selectedPadre1 = null; this.hijos1 = []; this.nietos1 = [];
+      this.showToast1('Eliminado');
+    } catch { this.showToast1('Error al eliminar'); }
+  }
+
+  onSelectPadre1(padre: CatalogProductionItem): void {
+    this.selectedPadre1  = padre;
+    this.selectedHijo1   = null;
+    this.selectedNieto1  = null;
+    this.hijos1          = [];
+    this.nietos1         = [];
+    this.hasUnsavedHijos1  = false;
+    this.hasUnsavedNietos1 = false;
+    this.loadHijos1(padre.id!);
+  }
+
+  onHijosGridReady1(event: any): void {
+    this.gridApiHijos1 = event.api;
+    if (this.hijos1.length > 0) {
+      this.gridApiHijos1.setGridOption('rowData', this.hijos1);
+      setTimeout(() => {
+        const node = this.gridApiHijos1?.getDisplayedRowAtIndex(0);
+        if (node) node.setSelected(true);
+      }, 50);
     }
-    this.mxmService.delete(this.selectedRow1.id).subscribe(() => { this.selectedRow1 = null; this.showToast1('Borrado'); this.loadGridData1(this.selectedType1); });
+  }
+
+  private loadHijos1(idPadre: number): void {
+    this.hierService.getAll(this.idRoot, idPadre).subscribe({
+      next: (items) => {
+        this.hijos1 = (items ?? []).map(i => ({ ...i, __isNew: false, __modified: false }));
+        this.originalHijos1 = JSON.parse(JSON.stringify(this.hijos1));
+        if (this.gridApiHijos1 && !this.gridApiHijos1.isDestroyed())
+          this.gridApiHijos1.setGridOption('rowData', this.hijos1);
+        if (this.hijos1.length > 0)
+          this.onSelectHijo1(this.hijos1[0]);
+      },
+      error: () => { this.hijos1 = []; }
+    });
+  }
+
+  onSelectHijo1(hijo: CatalogProductionItem): void {
+    this.selectedHijo1  = hijo;
+    this.selectedNieto1 = null;
+    this.nietos1        = [];
+    this.hasUnsavedNietos1 = false;
+    this.loadNietos1(hijo.id!);
+  }
+
+  private loadNietos1(idHijo: number): void {
+    this.hierService.getAll(this.idRoot, idHijo).subscribe({
+      next: (items) => {
+        this.nietos1 = (items ?? []).map(i => ({ ...i, __isNew: false, __modified: false }));
+        this.originalNietos1 = JSON.parse(JSON.stringify(this.nietos1));
+        if (this.gridApiNietos1 && !this.gridApiNietos1.isDestroyed())
+          this.gridApiNietos1.setGridOption('rowData', this.nietos1);
+      },
+      error: () => { this.nietos1 = []; }
+    });
+  }
+
+  // ── CRUD HIJOs ──
+
+  addHijo1(): void {
+    if (!this.selectedPadre1) return;
+    const newRow: any = {
+      id: null, description: '', active: 1,
+      idCompany: this.idRoot, idMasterCatalog: this.selectedPadre1.id,
+      type: this.selectedPadre1.description, __isNew: true, __modified: false
+    };
+    this.hijos1 = [newRow, ...this.hijos1];
+    this.hasUnsavedHijos1 = true;
+    if (this.gridApiHijos1 && !this.gridApiHijos1.isDestroyed()) {
+      this.gridApiHijos1.setGridOption('rowData', this.hijos1);
+      setTimeout(() => this.gridApiHijos1.startEditingCell({ rowIndex: 0, colKey: 'description' }), 0);
+    }
+  }
+
+  async saveHijos1(): Promise<void> {
+    const news = this.hijos1.filter((r: any) => r.__isNew && r.description);
+    const mods = this.hijos1.filter((r: any) => r.__modified && !r.__isNew);
+    try {
+      for (const r of news) {
+        const created = await lastValueFrom(this.hierService.create({
+          idCompany: this.idRoot, idMasterCatalog: this.selectedPadre1!.id,
+          description: r.description, type: r.type ?? this.selectedPadre1!.description,
+          active: r.active ?? 1, vigente: true,
+        }));
+        r.id = created.id; r.__isNew = false; r.__modified = false;
+      }
+      for (const r of mods) {
+        await lastValueFrom(this.hierService.update(r.id, { description: r.description, active: r.active }));
+        r.__modified = false;
+      }
+      this.originalHijos1 = JSON.parse(JSON.stringify(this.hijos1));
+      this.hasUnsavedHijos1 = false;
+      this.showToast1('Guardado');
+    } catch { this.showToast1('Error al guardar'); }
+  }
+
+  revertHijos1(): void {
+    this.hijos1 = JSON.parse(JSON.stringify(this.originalHijos1));
+    this.hasUnsavedHijos1 = false;
+    this.selectedHijo1 = null;
+    this.nietos1 = [];
+    if (this.gridApiHijos1 && !this.gridApiHijos1.isDestroyed())
+      this.gridApiHijos1.setGridOption('rowData', this.hijos1);
+  }
+
+  async deleteHijo1(): Promise<void> {
+    if (!this.selectedHijo1) return;
+    const hijo = this.selectedHijo1 as any;
+    if (hijo.__isNew) {
+      this.hijos1 = this.hijos1.filter(r => r !== hijo);
+      this.selectedHijo1 = null; this.nietos1 = [];
+      this.hasUnsavedHijos1 = this.hijos1.some((r: any) => r.__isNew || r.__modified);
+      if (this.gridApiHijos1 && !this.gridApiHijos1.isDestroyed())
+        this.gridApiHijos1.setGridOption('rowData', this.hijos1);
+      return;
+    }
+    const r = await alerts.confirmAlert('¿Eliminar?', `¿Eliminar "${hijo.description}"?`, 'warning', 'Sí, eliminar');
+    if (!r.isConfirmed) return;
+    try {
+      await lastValueFrom(this.hierService.delete(hijo.id));
+      this.hijos1 = this.hijos1.filter(h => h.id !== hijo.id);
+      this.selectedHijo1 = null; this.nietos1 = [];
+      if (this.gridApiHijos1 && !this.gridApiHijos1.isDestroyed())
+        this.gridApiHijos1.setGridOption('rowData', this.hijos1);
+      this.showToast1('Borrado');
+    } catch { this.showToast1('Error al eliminar'); }
+  }
+
+  // ── CRUD NIETOs ──
+
+  addNieto1(): void {
+    if (!this.selectedHijo1) return;
+    const newRow: any = {
+      id: null, description: '', active: 1,
+      idCompany: this.idRoot, idMasterCatalog: this.selectedHijo1.id,
+      type: this.selectedHijo1.type, __isNew: true, __modified: false
+    };
+    this.nietos1 = [newRow, ...this.nietos1];
+    this.hasUnsavedNietos1 = true;
+    if (this.gridApiNietos1 && !this.gridApiNietos1.isDestroyed()) {
+      this.gridApiNietos1.setGridOption('rowData', this.nietos1);
+      setTimeout(() => this.gridApiNietos1.startEditingCell({ rowIndex: 0, colKey: 'description' }), 0);
+    }
+  }
+
+  async saveNietos1(): Promise<void> {
+    const news = this.nietos1.filter((r: any) => r.__isNew && r.description);
+    const mods = this.nietos1.filter((r: any) => r.__modified && !r.__isNew);
+    try {
+      for (const r of news) {
+        const created = await lastValueFrom(this.hierService.create({
+          idCompany: this.idRoot, idMasterCatalog: this.selectedHijo1!.id,
+          description: r.description, type: r.type ?? this.selectedHijo1!.type,
+          active: r.active ?? 1, vigente: true,
+        }));
+        r.id = created.id; r.__isNew = false; r.__modified = false;
+      }
+      for (const r of mods) {
+        await lastValueFrom(this.hierService.update(r.id, { description: r.description, active: r.active }));
+        r.__modified = false;
+      }
+      this.originalNietos1 = JSON.parse(JSON.stringify(this.nietos1));
+      this.hasUnsavedNietos1 = false;
+      this.showToast1('Guardado');
+    } catch { this.showToast1('Error al guardar'); }
+  }
+
+  revertNietos1(): void {
+    this.nietos1 = JSON.parse(JSON.stringify(this.originalNietos1));
+    this.hasUnsavedNietos1 = false;
+    this.selectedNieto1 = null;
+    if (this.gridApiNietos1 && !this.gridApiNietos1.isDestroyed())
+      this.gridApiNietos1.setGridOption('rowData', this.nietos1);
+  }
+
+  async deleteNieto1(): Promise<void> {
+    if (!this.selectedNieto1) return;
+    const nieto = this.selectedNieto1 as any;
+    if (nieto.__isNew) {
+      this.nietos1 = this.nietos1.filter(r => r !== nieto);
+      this.selectedNieto1 = null;
+      this.hasUnsavedNietos1 = this.nietos1.some((r: any) => r.__isNew || r.__modified);
+      if (this.gridApiNietos1 && !this.gridApiNietos1.isDestroyed())
+        this.gridApiNietos1.setGridOption('rowData', this.nietos1);
+      return;
+    }
+    const r = await alerts.confirmAlert('¿Eliminar?', `¿Eliminar "${nieto.description}"?`, 'warning', 'Sí, eliminar');
+    if (!r.isConfirmed) return;
+    try {
+      await lastValueFrom(this.hierService.delete(nieto.id));
+      this.nietos1 = this.nietos1.filter(n => n.id !== nieto.id);
+      this.selectedNieto1 = null;
+      if (this.gridApiNietos1 && !this.gridApiNietos1.isDestroyed())
+        this.gridApiNietos1.setGridOption('rowData', this.nietos1);
+      this.showToast1('Borrado');
+    } catch { this.showToast1('Error al eliminar'); }
+  }
+
+  // ── Actividades ────────────────────────────────────────────────────────────
+
+  onActividadesGridReady(e: GridReadyEvent) {
+    this.actividadesGridApi = e.api;
+    if (this.actividadesRows.length) this.actividadesGridApi.setGridOption('rowData', this.actividadesRows);
+  }
+
+  onActividadesCellValueChanged(e: any) {
+    if (!e.data.__isNew) e.data.__modified = true;
+    this.actividadesHasChanges = true;
+  }
+
+  private loadActividadesData(idCatalog: number) {
+    this.productionService.getMoliendaActividadesByCatalog(idCatalog).subscribe({
+      next: (items) => {
+        const rows = (items ?? []).map((i: any) => ({
+          id: i.id,
+          actividad: i.actividad ?? '',
+          periodicidad: i.periodicidad ?? null,
+          active: i.active,
+          __isNew: false, __modified: false,
+        }));
+        this.actividadesOriginal = JSON.parse(JSON.stringify(rows));
+        this.actividadesRows = [...rows];
+        if (this.actividadesGridApi && !this.actividadesGridApi.isDestroyed())
+          this.actividadesGridApi.setGridOption('rowData', this.actividadesRows);
+      },
+      error: () => { this.actividadesRows = []; }
+    });
+  }
+
+  addActividad() {
+    if (!this.selectedCatalogSidebarId) return;
+    const newRow: any = {
+      id: null, __tempId: `new_${Date.now()}`, __isNew: true, __modified: false,
+      actividad: '', periodicidad: null, active: true,
+    };
+    this.actividadesRows = [newRow, ...this.actividadesRows];
+    this.actividadesHasChanges = true;
+    if (this.actividadesGridApi) {
+      this.actividadesGridApi.setGridOption('rowData', this.actividadesRows);
+      setTimeout(() => this.actividadesGridApi.startEditingCell({ rowIndex: 0, colKey: 'actividad' }), 50);
+    }
+  }
+
+  async saveActividades() {
+    if (!this.selectedCatalogSidebarId) return;
+    const newRows = this.actividadesRows.filter(r => r.__isNew);
+    const modRows = this.actividadesRows.filter(r => r.__modified && !r.__isNew && r.id);
+    try {
+      for (const r of newRows) {
+        await lastValueFrom(this.productionService.createMoliendaActividad({
+          idCatalog: this.selectedCatalogSidebarId!,
+          actividad: r.actividad || undefined,
+          periodicidad: r.periodicidad || undefined,
+        }));
+      }
+      for (const r of modRows) {
+        await lastValueFrom(this.productionService.updateMoliendaActividad(r.id, {
+          actividad: r.actividad,
+          periodicidad: r.periodicidad,
+          active: r.active,
+        }));
+      }
+      this.actividadesHasChanges = false;
+      this.showToast('Guardado');
+      this.loadActividadesData(this.selectedCatalogSidebarId!);
+    } catch {
+      alerts.basicAlert('Error', 'No se pudieron guardar los cambios.', 'error');
+    }
+  }
+
+  revertActividades() {
+    this.actividadesRows = JSON.parse(JSON.stringify(this.actividadesOriginal));
+    this.actividadesHasChanges = false;
+    this.actividadesSelectedRow = null;
+    if (this.actividadesGridApi) this.actividadesGridApi.setGridOption('rowData', this.actividadesRows);
+  }
+
+  async deleteActividad() {
+    const row = this.actividadesSelectedRow;
+    if (!row) return;
+    if (row.__isNew) {
+      this.actividadesRows = this.actividadesRows.filter(r => r !== row);
+      this.actividadesSelectedRow = null;
+      this.actividadesHasChanges = this.actividadesRows.some(r => r.__isNew || r.__modified);
+      if (this.actividadesGridApi) this.actividadesGridApi.setGridOption('rowData', this.actividadesRows);
+      return;
+    }
+    const confirm = await alerts.confirmAlert('¿Eliminar?', `¿Eliminar "${row.actividad}"?`, 'warning', 'Sí, eliminar');
+    if (!confirm.isConfirmed) return;
+    try {
+      await lastValueFrom(this.productionService.deleteMoliendaActividad(row.id));
+      this.actividadesRows = this.actividadesRows.filter(r => r !== row);
+      this.actividadesOriginal = this.actividadesOriginal.filter(r => r.id !== row.id);
+      this.actividadesSelectedRow = null;
+      if (this.actividadesGridApi) this.actividadesGridApi.setGridOption('rowData', this.actividadesRows);
+      this.showToast('Borrado');
+    } catch { alerts.basicAlert('Error', 'No se pudo eliminar.', 'error'); }
+  }
+
+  // ── Bloques EF ─────────────────────────────────────────────────────────────
+
+  onBloquesEFGridReady(e: GridReadyEvent) {
+    this.bloquesEFGridApi = e.api;
+    if (this.bloquesEFRows.length) this.bloquesEFGridApi.setGridOption('rowData', this.bloquesEFRows);
+  }
+
+  onBloquesEFCellValueChanged(e: any) {
+    if (!e.data.__isNew) e.data.__modified = true;
+    this.bloquesEFHasChanges = true;
+  }
+
+  private loadBloquesEFData(idCatalog: number) {
+    this.productionService.getMoliendaBloqueEFByCatalog(idCatalog).subscribe({
+      next: (items) => {
+        const rows = (items ?? []).map((i: any) => ({
+          id: i.id, bloque: i.bloque ?? '', productoIds: i.productoIds ?? null,
+          active: i.active, __isNew: false, __modified: false,
+        }));
+        this.bloquesEFOriginal = JSON.parse(JSON.stringify(rows));
+        this.bloquesEFRows = [...rows];
+        if (this.bloquesEFGridApi && !this.bloquesEFGridApi.isDestroyed())
+          this.bloquesEFGridApi.setGridOption('rowData', this.bloquesEFRows);
+      },
+      error: () => { this.bloquesEFRows = []; }
+    });
+  }
+
+  addBloqueEF() {
+    const newRow: any = {
+      id: null, __tempId: `new_${Date.now()}`, __isNew: true, __modified: false,
+      bloque: '', productoIds: null, active: true,
+    };
+    this.bloquesEFRows = [newRow, ...this.bloquesEFRows];
+    this.bloquesEFHasChanges = true;
+    if (this.bloquesEFGridApi) {
+      this.bloquesEFGridApi.setGridOption('rowData', this.bloquesEFRows);
+      setTimeout(() => this.bloquesEFGridApi.startEditingCell({ rowIndex: 0, colKey: 'bloque' }), 50);
+    }
+  }
+
+  async saveBloquesEF() {
+    if (!this.selectedCatalogSidebarId) return;
+    const newRows = this.bloquesEFRows.filter(r => r.__isNew);
+    const modRows = this.bloquesEFRows.filter(r => r.__modified && !r.__isNew && r.id);
+    try {
+      for (const r of newRows) {
+        await lastValueFrom(this.productionService.createMoliendaBloqueEF({
+          idCatalog: this.selectedCatalogSidebarId, idCompany: this.idRoot,
+          bloque: r.bloque, productoIds: r.productoIds ?? null, active: r.active,
+        }));
+      }
+      for (const r of modRows) {
+        await lastValueFrom(this.productionService.updateMoliendaBloqueEF(r.id, {
+          bloque: r.bloque, productoIds: r.productoIds ?? null, active: r.active,
+        }));
+      }
+      this.bloquesEFHasChanges = false;
+      this.showToast('Guardado');
+      this.loadBloquesEFData(this.selectedCatalogSidebarId!);
+    } catch { alerts.basicAlert('Error', 'No se pudieron guardar los cambios.', 'error'); }
+  }
+
+  revertBloquesEF() {
+    this.bloquesEFRows = JSON.parse(JSON.stringify(this.bloquesEFOriginal));
+    this.bloquesEFHasChanges = false;
+    this.bloquesEFSelectedRow = null;
+    if (this.bloquesEFGridApi) this.bloquesEFGridApi.setGridOption('rowData', this.bloquesEFRows);
+  }
+
+  async deleteBloqueEF() {
+    const row = this.bloquesEFSelectedRow;
+    if (!row) return;
+    if (row.__isNew) {
+      this.bloquesEFRows = this.bloquesEFRows.filter(r => r !== row);
+      this.bloquesEFSelectedRow = null;
+      this.bloquesEFHasChanges = this.bloquesEFRows.some(r => r.__isNew || r.__modified);
+      if (this.bloquesEFGridApi) this.bloquesEFGridApi.setGridOption('rowData', this.bloquesEFRows);
+      return;
+    }
+    const confirm = await alerts.confirmAlert('¿Eliminar?', `¿Eliminar "${row.bloque}"?`, 'warning', 'Sí, eliminar');
+    if (!confirm.isConfirmed) return;
+    try {
+      await lastValueFrom(this.productionService.deleteMoliendaBloqueEF(row.id));
+      this.bloquesEFRows = this.bloquesEFRows.filter(r => r !== row);
+      this.bloquesEFOriginal = this.bloquesEFOriginal.filter(r => r.id !== row.id);
+      this.bloquesEFSelectedRow = null;
+      if (this.bloquesEFGridApi) this.bloquesEFGridApi.setGridOption('rowData', this.bloquesEFRows);
+      this.showToast('Borrado');
+    } catch { alerts.basicAlert('Error', 'No se pudo eliminar.', 'error'); }
   }
 }

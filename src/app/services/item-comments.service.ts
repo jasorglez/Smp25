@@ -1,6 +1,7 @@
 import { HttpClient } from '@angular/common/http';
 import { inject, Injectable } from '@angular/core';
 import { Observable, Subject } from 'rxjs';
+import { map } from 'rxjs/operators';
 import { environment } from '@env/environment';
 import { TrackingService } from './tracking.service';
 
@@ -52,6 +53,13 @@ export class ItemCommentsService {
     );
   }
 
+  getCommentCount(documentType: string, idDocument: number): Observable<number> {
+    return this.http.get<{ count: number }>(
+      `${environment.urlWarehouse}/ItemComments/count?documentType=${documentType}&idDocument=${idDocument}`,
+      { headers: this.trackingService.getHeaders() }
+    ).pipe(map(r => r.count));
+  }
+
   getProviderComments(documentType: string, idDocument: number, idProvider: number, numArticle: string = ''): Observable<ItemComment[]> {
     const articleParam = numArticle ? `&numArticle=${encodeURIComponent(numArticle)}` : '';
     return this.http.get<ItemComment[]>(
@@ -79,6 +87,21 @@ export class ItemCommentsService {
     return this.http.put<ItemComment>(
       `${environment.urlWarehouse}/ItemComments/${id}`,
       { text },
+      { headers: this.trackingService.getHeaders() }
+    );
+  }
+
+  /**
+   * Borrado FÍSICO de comentarios de un artículo en un documento.
+   * - Sin textPrefix: borra TODOS (al eliminar un renglón de la requisición; los comentarios se
+   *   atan a numArticle, no al id del renglón, así que no deben reaparecer al re-agregar).
+   * - Con textPrefix: borra solo los que empiezan así (ej. "🧮 [Req]" del panel de presentaciones),
+   *   para reemplazar el anterior y dejar solo el último, sin tocar comentarios manuales.
+   */
+  deleteCommentsByArticle(documentType: string, idDocument: number, numArticle: string, textPrefix?: string): Observable<{ deleted: number }> {
+    const prefixParam = textPrefix ? `&textPrefix=${encodeURIComponent(textPrefix)}` : '';
+    return this.http.delete<{ deleted: number }>(
+      `${environment.urlWarehouse}/ItemComments/by-article?documentType=${documentType}&idDocument=${idDocument}&numArticle=${encodeURIComponent(numArticle)}${prefixParam}`,
       { headers: this.trackingService.getHeaders() }
     );
   }

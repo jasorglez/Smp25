@@ -1,4 +1,4 @@
-import { Component, inject, OnInit } from '@angular/core';
+import { ChangeDetectorRef, Component, inject, OnInit } from '@angular/core';
 import { RouterModule } from '@angular/router';
 import { DomainsModule } from 'app/domains/domainsmodule';
 import { AuthService } from 'app/services/auth.service';
@@ -13,6 +13,7 @@ import { CommonModule } from '@angular/common';
   templateUrl: './procmenucompras.component.html',
 })
 export class ProcmenucomprasComponent implements OnInit {
+  private cdr = inject(ChangeDetectorRef);
   authService = inject(AuthService);
   private signalsService = inject(SignalsService);
   private menuService = inject(MenuService);
@@ -28,26 +29,34 @@ export class ProcmenucomprasComponent implements OnInit {
 
   loadTabMenus() {
     this.menuService.getTabMenus('shoppingDelison').subscribe({
-      next: (tabs) => {
+      next: (cached) => {
+        // getTabMenus cachea el array con shareReplay(1): es la MISMA referencia en cada navegación.
+        // Trabajamos sobre una COPIA para no mutar el caché (si no, el splice acumula "Gastos").
+        const tabs = [...cached];
+
         const materiaPrimaTab = tabs.find(t => t.identifier === 'materia-prima');
         if (materiaPrimaTab) {
           materiaPrimaTab.permissionName = 'Materiales Maestros';
         }
 
-        const gastosTab = {
-          masterIdentifier: 'shoppingDelison',
-          identifier: 'gastos',
-          permissionName: 'Gastos',
-          route: 'gastos',
-          icon: 'bi bi-receipt',
-          principalSubIdentifier: '',
-          tabOrder: 4.5,
-          skipPermission: true,
-        };
-        const ocIdx = tabs.findIndex(t => t.identifier === 'purchas_eorder');
-        tabs.splice(ocIdx + 1, 0, gastosTab);
+        // Guarda idempotente: insertar "Gastos" solo si no existe ya.
+        if (!tabs.some(t => t.identifier === 'gastos')) {
+          const gastosTab = {
+            masterIdentifier: 'shoppingDelison',
+            identifier: 'gastos',
+            permissionName: 'Gastos',
+            route: 'gastos',
+            icon: 'bi bi-receipt',
+            principalSubIdentifier: '',
+            tabOrder: 4.5,
+            skipPermission: true,
+          };
+          const ocIdx = tabs.findIndex(t => t.identifier === 'purchas_eorder');
+          tabs.splice(ocIdx + 1, 0, gastosTab);
+        }
 
         this.tabMenus = tabs;
+        this.cdr.detectChanges();
       },
       error: (err) => console.error('Error loading tab menus:', err)
     });

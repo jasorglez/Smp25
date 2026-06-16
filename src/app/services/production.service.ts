@@ -301,4 +301,147 @@ export class ProductionService {
   deleteMoliendaPrefijo(id: number): Observable<void> {
     return this.http.delete<void>(`${environment.urlProduction}/MoliendaPrefijo/${id}`, { headers: this.trackingService.getHeaders() });
   }
+
+  // ── Molienda Params (Folio / Parámetros / Objetivo / Lib. Limpieza) ────────
+  getMoliendaParamsByMolienda(idMolienda: number): Observable<any[]> {
+    return this.http.get<any[]>(`${environment.urlProduction}/MoliendaParams/molienda/${idMolienda}`, { headers: this.trackingService.getHeaders() });
+  }
+  getMoliendaParamsByMoliendaAndBote(idMolienda: number, idBoteCatalog: number): Observable<any[]> {
+    return this.http.get<any[]>(`${environment.urlProduction}/MoliendaParams/molienda/${idMolienda}/bote/${idBoteCatalog}`, { headers: this.trackingService.getHeaders() });
+  }
+  createMoliendaParams(data: { idMolienda: number; idBoteCatalog?: number; folio?: string; parametros?: string; objetivo?: number; libLimpieza: boolean }): Observable<any> {
+    return this.http.post<any>(`${environment.urlProduction}/MoliendaParams`, data, { headers: this.trackingService.getHeaders() });
+  }
+  updateMoliendaParams(id: number, data: { folio?: string; parametros?: string; objetivo?: number; libLimpieza: boolean }): Observable<any> {
+    return this.http.put<any>(`${environment.urlProduction}/MoliendaParams/${id}`, data, { headers: this.trackingService.getHeaders() });
+  }
+  deleteMoliendaParams(id: number): Observable<void> {
+    return this.http.delete<void>(`${environment.urlProduction}/MoliendaParams/${id}`, { headers: this.trackingService.getHeaders() });
+  }
+
+  getMoliendaParamsBoteCounts(ids: number[]): Observable<Record<number, number>> {
+    return this.http.post<Record<number, number>>(`${environment.urlProduction}/MoliendaParams/bote-counts`, ids, { headers: this.trackingService.getHeaders() });
+  }
+
+  // ── Molienda Lib. Limpieza ────────────────────────────────────────────────
+  getMoliendaLibLimpiezaByParams(idParams: number): Observable<any[]> {
+    return this.http.get<any[]>(`${environment.urlProduction}/MoliendaLibLimpieza/params/${idParams}`, { headers: this.trackingService.getHeaders() });
+  }
+  createMoliendaLibLimpieza(data: { idParams: number; fecha?: string; empleadosIds?: string; idUsuario?: number; actividadesIds?: string }): Observable<any> {
+    return this.http.post<any>(`${environment.urlProduction}/MoliendaLibLimpieza`, data, { headers: this.trackingService.getHeaders() });
+  }
+  updateMoliendaLibLimpieza(id: number, data: { fecha?: string; empleadosIds?: string; idUsuario?: number; actividadesIds?: string }): Observable<any> {
+    return this.http.put<any>(`${environment.urlProduction}/MoliendaLibLimpieza/${id}`, data, { headers: this.trackingService.getHeaders() });
+  }
+  deleteMoliendaLibLimpieza(id: number): Observable<void> {
+    return this.http.delete<void>(`${environment.urlProduction}/MoliendaLibLimpieza/${id}`, { headers: this.trackingService.getHeaders() });
+  }
+
+  // ── Catálogo de Actividades ────────────────────────────────────────────────
+  getMoliendaActividadesByCatalog(idCatalog: number): Observable<any[]> {
+    return this.http.get<any[]>(`${environment.urlProduction}/MoliendaActividad/catalog/${idCatalog}`, { headers: this.trackingService.getHeaders() });
+  }
+  createMoliendaActividad(data: { idCatalog: number; actividad?: string; periodicidad?: string }): Observable<any> {
+    return this.http.post<any>(`${environment.urlProduction}/MoliendaActividad`, data, { headers: this.trackingService.getHeaders() });
+  }
+  updateMoliendaActividad(id: number, data: { actividad?: string; periodicidad?: string; active?: boolean }): Observable<any> {
+    return this.http.put<any>(`${environment.urlProduction}/MoliendaActividad/${id}`, data, { headers: this.trackingService.getHeaders() });
+  }
+  deleteMoliendaActividad(id: number): Observable<void> {
+    return this.http.delete<void>(`${environment.urlProduction}/MoliendaActividad/${id}`, { headers: this.trackingService.getHeaders() });
+  }
+
+  // ── Catálogo Bloques Extracción y Fermentación ────────────────────────────
+  getMoliendaBloqueEFByCatalog(idCatalog: number): Observable<any[]> {
+    return this.http.get<any[]>(`${environment.urlProduction}/MoliendaBloqueEF/catalog/${idCatalog}`, { headers: this.trackingService.getHeaders() });
+  }
+  getProductosTerminadosEF(idCompany: number): Observable<{ id: number; producto: string; categoria: string }[]> {
+    return this.http.get<any[]>(`${environment.urlWarehouse}/Catalog/productos-ef?idCompany=${idCompany}`, { headers: this.trackingService.getHeaders() });
+  }
+  createMoliendaBloqueEF(data: any): Observable<any> {
+    return this.http.post<any>(`${environment.urlProduction}/MoliendaBloqueEF`, data, { headers: this.trackingService.getHeaders() });
+  }
+  updateMoliendaBloqueEF(id: number, data: any): Observable<any> {
+    return this.http.put<any>(`${environment.urlProduction}/MoliendaBloqueEF/${id}`, data, { headers: this.trackingService.getHeaders() });
+  }
+  deleteMoliendaBloqueEF(id: number): Observable<void> {
+    return this.http.delete<void>(`${environment.urlProduction}/MoliendaBloqueEF/${id}`, { headers: this.trackingService.getHeaders() });
+  }
+  getMoliendaBloqueEFByCompany(idCompany: number): Observable<any[]> {
+    return this.http.get<any[]>(`${environment.urlProduction}/MoliendaBloqueEF/company/${idCompany}`, { headers: this.trackingService.getHeaders() });
+  }
+
+  // ── OH y Bloque ────────────────────────────────────────────────────────────
+  getOhBloqueByCompany(idCompany: number): Observable<any[]> {
+    return this.http.get<any[]>(`${environment.urlProduction}/OhBloque/company/${idCompany}`, { headers: this.trackingService.getHeaders() });
+  }
+  createOhBloque(data: any): Observable<any> {
+    return this.http.post<any>(`${environment.urlProduction}/OhBloque`, data, { headers: this.trackingService.getHeaders() });
+  }
+  updateOhBloque(id: number, data: any): Observable<any> {
+    return this.http.put<any>(`${environment.urlProduction}/OhBloque/${id}`, data, { headers: this.trackingService.getHeaders() });
+  }
+  deleteOhBloque(id: number): Observable<void> {
+    return this.http.delete<void>(`${environment.urlProduction}/OhBloque/${id}`, { headers: this.trackingService.getHeaders() });
+  }
+
+  getOhBloqueProductosByOhBloque(idOhBloque: number): Observable<any[]> {
+    return this.http.get<any[]>(`${environment.urlProduction}/OhBloqueProducto/by-oh-bloque/${idOhBloque}`, { headers: this.trackingService.getHeaders() });
+  }
+
+  saveOhBloqueProductosBatch(idOhBloque: number, items: any[]): Observable<void> {
+    return this.http.post<void>(`${environment.urlProduction}/OhBloqueProducto/batch/${idOhBloque}`, items, { headers: this.trackingService.getHeaders() });
+  }
+
+  // ── Catálogo de parámetros de molienda ────────────────────────────────────
+  getMoliendaParamCatalog(): Observable<any[]> {
+    return this.http.get<any[]>(`${environment.urlProduction}/MoliendaParamCatalog`, { headers: this.trackingService.getHeaders() });
+  }
+  getMoliendaParamCatalogByArticulo(idArticulo: number): Observable<any[]> {
+    return this.http.get<any[]>(`${environment.urlProduction}/MoliendaParamCatalog/articulo/${idArticulo}`, { headers: this.trackingService.getHeaders() });
+  }
+  createMoliendaParamCatalog(data: { nombre: string; valorMin?: number; valorMax?: number; idArticulo?: number }): Observable<any> {
+    return this.http.post<any>(`${environment.urlProduction}/MoliendaParamCatalog`, data, { headers: this.trackingService.getHeaders() });
+  }
+  updateMoliendaParamCatalog(id: number, data: { nombre: string; valorMin?: number; valorMax?: number; idArticulo?: number }): Observable<any> {
+    return this.http.put<any>(`${environment.urlProduction}/MoliendaParamCatalog/${id}`, data, { headers: this.trackingService.getHeaders() });
+  }
+  deleteMoliendaParamCatalog(id: number): Observable<void> {
+    return this.http.delete<void>(`${environment.urlProduction}/MoliendaParamCatalog/${id}`, { headers: this.trackingService.getHeaders() });
+  }
+
+  // ── Configuración parámetro × materia prima (activo + mín/máx) ───────────
+  getMoliendaParamConfigByParam(idParam: number): Observable<any[]> {
+    return this.http.get<any[]>(`${environment.urlProduction}/MoliendaParamConfig/param/${idParam}`, { headers: this.trackingService.getHeaders() });
+  }
+  upsertMoliendaParamConfig(data: { idParam: number; idArticulo: number; valorMin?: number; valorMax?: number; active: boolean }): Observable<any> {
+    return this.http.post<any>(`${environment.urlProduction}/MoliendaParamConfig`, data, { headers: this.trackingService.getHeaders() });
+  }
+
+  // ── Mediciones por bote (parámetros medidos) ──────────────────────────────
+  getMoliendaMedicionesByParams(idMoliendaParams: number): Observable<any[]> {
+    return this.http.get<any[]>(`${environment.urlProduction}/MoliendaMedicion/params/${idMoliendaParams}`, { headers: this.trackingService.getHeaders() });
+  }
+  createMoliendaMedicion(dto: { idMoliendaParams: number; fecha: string; hora: string; faseFe?: string; idMateriaPrima?: number; valores: { idParamCatalog: number; valor?: number }[] }): Observable<any> {
+    return this.http.post<any>(`${environment.urlProduction}/MoliendaMedicion`, dto, { headers: this.trackingService.getHeaders() });
+  }
+  updateMoliendaMedicion(id: number, dto: { idMoliendaParams: number; fecha: string; hora: string; faseFe?: string; idMateriaPrima?: number; valores: { idParamCatalog: number; valor?: number }[] }): Observable<any> {
+    return this.http.put<any>(`${environment.urlProduction}/MoliendaMedicion/${id}`, dto, { headers: this.trackingService.getHeaders() });
+  }
+  deleteMoliendaMedicion(id: number): Observable<void> {
+    return this.http.delete<void>(`${environment.urlProduction}/MoliendaMedicion/${id}`, { headers: this.trackingService.getHeaders() });
+  }
+
+  getMedicionMatPrimas(idMedicion: number): Observable<any[]> {
+    return this.http.get<any[]>(`${environment.urlProduction}/MoliendaMedicionMatPrima/medicion/${idMedicion}`, { headers: this.trackingService.getHeaders() });
+  }
+  createMedicionMatPrima(dto: { idMedicion: number; idMatPrima: number; cantidad?: number }): Observable<any> {
+    return this.http.post<any>(`${environment.urlProduction}/MoliendaMedicionMatPrima`, dto, { headers: this.trackingService.getHeaders() });
+  }
+  updateMedicionMatPrima(id: number, dto: { idMatPrima: number; cantidad?: number }): Observable<any> {
+    return this.http.put<any>(`${environment.urlProduction}/MoliendaMedicionMatPrima/${id}`, dto, { headers: this.trackingService.getHeaders() });
+  }
+  deleteMedicionMatPrima(id: number): Observable<void> {
+    return this.http.delete<void>(`${environment.urlProduction}/MoliendaMedicionMatPrima/${id}`, { headers: this.trackingService.getHeaders() });
+  }
 }

@@ -137,28 +137,18 @@ export class DetalleJarabeComponent implements OnInit, OnChanges {
   }
 
   private async loadFromServer(idPreparacion: number): Promise<void> {
-    try {
-      const detalles = await lastValueFrom(this.preparacionService.getDetalles(idPreparacion));
-      this.rowData = detalles.map((item: any) => ({
-        id: item.id,
-        idPreparacion: item.idPreparacion,
-        ingrediente: item.ingrediente || '',
-        prep: item.prep || '',
-        correccion: item.correccion || '',
-        parametrosCount: item.parametrosCount || 0,
-        __isNew: false,
-        __modified: false
-      }));
-      this.originalRowData = JSON.parse(JSON.stringify(this.rowData));
-      this.dataLoaded = true;
-
-      if (this.gridApi && !this.gridApi.isDestroyed()) {
-        this.gridApi.setGridOption('rowData', this.rowData);
-        this.gridApi.redrawRows();
-      }
-    } catch (error) {
-      console.error('Error loading detalles:', error);
-      this.dataLoaded = true;
+    this.rowData = [
+      { id: 1, idPreparacion, ingrediente: 'Azúcar',         prep: 12.50, correccion: 0.25, parametrosCount: 2, __isNew: false, __modified: false },
+      { id: 2, idPreparacion, ingrediente: 'Ácido Cítrico',  prep:  3.75, correccion: 0.10, parametrosCount: 1, __isNew: false, __modified: false },
+      { id: 3, idPreparacion, ingrediente: 'Benzoato',       prep:  0.80, correccion: 0.05, parametrosCount: 0, __isNew: false, __modified: false },
+      { id: 4, idPreparacion, ingrediente: 'Colorante Rojo', prep:  0.30, correccion: 0.02, parametrosCount: 0, __isNew: false, __modified: false },
+      { id: 5, idPreparacion, ingrediente: 'Saborizante',    prep:  1.20, correccion: 0.15, parametrosCount: 1, __isNew: false, __modified: false },
+    ];
+    this.originalRowData = JSON.parse(JSON.stringify(this.rowData));
+    this.dataLoaded = true;
+    if (this.gridApi && !this.gridApi.isDestroyed()) {
+      this.gridApi.setGridOption('rowData', this.rowData);
+      this.gridApi.redrawRows();
     }
   }
 
@@ -219,17 +209,22 @@ export class DetalleJarabeComponent implements OnInit, OnChanges {
           return true;
         }
       },
+
       {
         field: 'prep',
-        headerName: 'Prep',
-        width: 150,
+        headerName: 'Cant. Prep',
+        width: 130,
         editable: true,
-        cellEditor: 'agSelectCellEditor',
-        cellEditorParams: {
-          values: ['Disolución', 'Hervor', 'Incorporación', 'Mezclado', 'Filtrado', 'Enfriamiento', 'Pasteurización', 'Neutralización']
+        type: 'numericColumn',
+        cellEditor: 'agNumberCellEditor',
+        cellEditorParams: { min: 0, precision: 2 },
+        valueFormatter: (params) => {
+          const n = parseFloat(params.value);
+          return !isNaN(n) ? n.toFixed(2) : '';
         },
         valueSetter: (params) => {
-          params.data.prep = params.newValue;
+          const n = parseFloat(params.newValue);
+          params.data.prep = !isNaN(n) ? n : null;
           params.data.__modified = true;
           this.hasUnsavedChanges = true;
           return true;
@@ -237,33 +232,39 @@ export class DetalleJarabeComponent implements OnInit, OnChanges {
       },
       {
         field: 'correccion',
-        headerName: 'Corección',
-        width: 150,
+        headerName: 'Cant. Corrección',
+        width: 140,
         editable: true,
-        cellEditor: 'agTextCellEditor',
+        type: 'numericColumn',
+        cellEditor: 'agNumberCellEditor',
+        cellEditorParams: { min: 0, precision: 2 },
+        valueFormatter: (params) => {
+          const n = parseFloat(params.value);
+          return !isNaN(n) ? n.toFixed(2) : '';
+        },
         valueSetter: (params) => {
-          params.data.correccion = params.newValue ? params.newValue.toUpperCase() : '';
+          const n = parseFloat(params.newValue);
+          params.data.correccion = !isNaN(n) ? n : null;
           params.data.__modified = true;
           this.hasUnsavedChanges = true;
           return true;
         }
       },
+
       {
-        field: 'parametrosCount',
-        headerName: 'Parámetros',
+        field: 'comentarios',
+        headerName: 'Comentarios',
         flex: 1,
-        editable: false,
-        cellRenderer: (params: any) => {
-          const count = params.data?.parametrosCount || 0;
-          const container = document.createElement('div');
-          container.style.cssText = 'display: flex; align-items: center; gap: 8px; cursor: pointer; color: #7b1fa2; text-decoration: underline;';
-          container.innerHTML = `<span>${count} parametro(s)</span>`;
-          container.addEventListener('click', () => {
-            this.toggleParametrosCascade(params.node);
-          });
-          return container;
-        },
-        cellStyle: { backgroundColor: '#f3e5f5', cursor: 'pointer' }
+        minWidth: 160,
+        editable: true,
+        cellEditor: 'agLargeTextCellEditor',
+        cellEditorPopup: true,
+        valueSetter: (params: any) => {
+          params.data.comentarios = params.newValue || '';
+          params.data.__modified = true;
+          this.hasUnsavedChanges = true;
+          return true;
+        }
       },
   
     ];
@@ -293,8 +294,8 @@ export class DetalleJarabeComponent implements OnInit, OnChanges {
     const newItem = {
       id: tempId,
       ingrediente: '',
-      prep: 'Disolución',
-      correccion: '',
+      prep: null,
+      correccion: null,
       parametrosCount: 0,
       __isNew: true,
       __modified: false,

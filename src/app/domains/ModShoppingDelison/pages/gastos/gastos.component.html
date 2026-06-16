@@ -115,7 +115,7 @@
       <!-- Resultados + total + export -->
       <div class="hist-summary">
         <span class="res">Resultados: <strong>{{ histCount }}</strong></span>
-        <span class="tot">💰 Total pagado (filtrado): <strong>{{ money(histTotal) }}</strong></span>
+        <span class="tot">💰 Total pagado (filtrado): <strong>{{ money(histTotal) }} MXN</strong></span>
         <button type="button" class="btn btn-sm btn-outline-success" (click)="exportHistExcel()"><i class="bi bi-file-earmark-excel"></i> Excel</button>
       </div>
     </div>
@@ -266,14 +266,15 @@
         <span class="ant-chip">Anticipo OC: <b>{{ money(anticipoMontoTotal) }}</b></span>
         <span class="ant-chip ant-chip-saldo">Saldo disponible: <b>{{ money(anticipoSaldoActual) }}</b></span>
       </div>
-      <p class="ant-hint">Elige cómo aplicar el anticipo. El método queda fijo para las siguientes entregas de esta OC.</p>
+      <p class="ant-hint" *ngIf="!anticipoMetodoFijo">Elige cómo aplicar el anticipo. El método queda fijo para las siguientes entregas de esta OC.</p>
+      <p class="ant-hint" *ngIf="anticipoMetodoFijo">El método de anticipo ya quedó fijo para esta OC (solo visualización). Revisa y presiona "Aplicar y pagar" para confirmar.</p>
     </div>
 
     <div class="ant-options">
       <!-- FIFO -->
       <label class="ant-option" [class.ant-selected]="anticipoMetodo==='FIFO'">
         <div class="ant-option-head">
-          <input type="radio" name="antMetodo" value="FIFO" [(ngModel)]="anticipoMetodo">
+          <input type="radio" name="antMetodo" value="FIFO" [(ngModel)]="anticipoMetodo" [disabled]="anticipoMetodoFijo">
           <span class="ant-option-title">FIFO (consumir primero)</span>
         </div>
         <div class="ant-option-body">
@@ -287,14 +288,14 @@
       <!-- PRORRATEO -->
       <label class="ant-option" [class.ant-selected]="anticipoMetodo==='PRORRATEO'">
         <div class="ant-option-head">
-          <input type="radio" name="antMetodo" value="PRORRATEO" [(ngModel)]="anticipoMetodo">
+          <input type="radio" name="antMetodo" value="PRORRATEO" [(ngModel)]="anticipoMetodo" [disabled]="anticipoMetodoFijo">
           <span class="ant-option-title">Prorrateo (repartir)</span>
         </div>
         <div class="ant-option-body">
           <p>El anticipo se reparte entre las entregas.</p>
           <div class="ant-row ant-nrow">
             <span>Entre cuántas entregas:</span>
-            <input type="number" min="1" class="ant-ninput" [(ngModel)]="anticipoN">
+            <input type="number" min="1" class="ant-ninput" [(ngModel)]="anticipoN" [disabled]="anticipoMetodoFijo">
           </div>
           <div class="ant-row ant-muted"><span>Por entrega:</span><b>{{ money(anticipoProrrateoPorEntrega) }}</b></div>
           <div class="ant-row"><span>Se aplica a esta entrega:</span><b class="ant-aplica">{{ money(anticipoProrrateoAplicado) }}</b></div>

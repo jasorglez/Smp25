@@ -1,38 +1,24 @@
-import { Component, inject, OnInit } from '@angular/core';
-import { TranslateModule } from '@ngx-translate/core';
-import { SharedModule } from 'app/shared/shared.module';
-import { DomainsModule } from 'app/domains/domainsmodule';
+import { Component, inject } from '@angular/core';
+import { CommonModule } from '@angular/common';
 import { RouterModule } from '@angular/router';
-import { AuthService } from 'app/services/auth.service';
 import { SignalsService } from 'app/services/signals.service';
-import { MenuService } from 'app/services/menu.service';
 
 @Component({
   selector: 'app-procmenualmacen',
   standalone: true,
-  imports: [TranslateModule, RouterModule, DomainsModule, SharedModule],
+  imports: [CommonModule, RouterModule],
   templateUrl: './procmenualmacen.component.html',
   styleUrl: './procmenualmacen.component.scss'
 })
-export class ProcmenualmacenComponent implements OnInit {
+export class ProcmenualmacenComponent {
   private signalsService = inject(SignalsService);
-  private menuService = inject(MenuService);
-  authService = inject(AuthService);
 
-  tabMenus: { masterIdentifier: string; identifier: string; permissionName: string; route: string; icon: string; principalSubIdentifier: string; tabOrder: number }[] = [];
+  tabMenus = [
+    { route: 'producto-terminado', icon: 'bi bi-box-seam',    permissionName: 'Productos Terminados' },
+    { route: 'inventario',         icon: 'bi bi-clipboard2-data', permissionName: 'Inventario' },
+  ];
 
   constructor() {
     this.signalsService.setCatalogSelected('WAREHOUSE');
-  }
-
-  ngOnInit() {
-    this.loadTabMenus();
-  }
-
-  loadTabMenus() {
-    this.menuService.getTabMenus('warehouses').subscribe({
-      next: (tabs) => { this.tabMenus = tabs; },
-      error: (err) => console.error('Error loading almacenes tab menus:', err)
-    });
   }
 }

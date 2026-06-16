@@ -73,5 +73,5 @@ export const environment = {
 
   urlRefreshToken: 'https://securetoken.googleapis.com/v1/token?key=AIzaSyDxCBGKk8nT09hdW85-PyOkhw5_JPZLF1A',
 
-  version: '2.52.339 (3 Junio 2026) - Tooltip anticipo no registrado en 2 lineas para que no se corte'
+  version: '2.52.498 (15 Junio 2026) - Fix Requisiciones atascada en "Cargando..." al recargar (esperar idUser de Firebase, evita Branch?idUser=0 → 404)'
 };

@@ -6,11 +6,17 @@ import { OcAndReqsService } from 'app/services/ocandreqs.service';
 import { CustomersService } from 'app/services/customers.service';
 import { SetupOcService } from 'app/services/setup-oc.service';
 import { SetupService } from 'app/services/setup.service';
+import { CurrencyService } from 'app/services/currency.service';
+import { EmpaqueDescripcionService, ProveedorPresentaciones } from 'app/services/empaque-descripcion.service';
+import { resolverUnidadArticulo, denomsDeProveedor } from 'app/domains/ModWarehouse/components/requisitionsdelison/presentaciones-unidad.helper';
+import { evaluateProvider } from 'app/domains/ModWarehouse/components/requisitionsdelison/presentaciones-composer.helper';
+import { map as rxMap, catchError as rxCatch } from 'rxjs/operators';
+import { EntregasDistribucionPanelComponent } from './entregas-distribucion-panel.component';
 import { ConditionsPendingService } from 'app/services/conditions-pending.service';
 import { SignalsService } from 'app/services/signals.service';
 import { EntregaOcService } from 'app/services/entrega-oc.service';
 import { EntregasPendingService } from 'app/services/entregas-pending.service';
-import { lastValueFrom, Subscription } from 'rxjs';
+import { lastValueFrom, Subscription, forkJoin, of } from 'rxjs';
 import Swal from 'sweetalert2';
 import { EntradaDocumentsOverlayService } from 'app/services/entrada-documents-overlay.service';
 import { IntandoutDocumentsService } from 'app/services/intandoutDocuments.service';
@@ -33,8 +39,10 @@ interface OcRow {
   totalOc?: number;
   anticipoOc?: number;
   anticipoPagado?: boolean;
+  anticipoEstado?: string | null;   // 'EN_TRAMITE' | 'PAGADO' | null
   fechaAnticipo?: string | null;
   close?: boolean;
+  idCurrency?: number | null;        // moneda de la OC (de sus ítems); NULL = MXN
   __allItemsBlocked?: boolean;
 }
 
@@ -53,7 +61,7 @@ interface OcTooltipData {
 @Component({
   selector: 'app-ordenesydetallesoc',
   standalone: true,
-  imports: [CommonModule, AgGridAngular],
+  imports: [CommonModule, AgGridAngular, EntregasDistribucionPanelComponent],
   template: `
     <div style="padding: 6px; height: 100%; display: flex; flex-direction: column; box-sizing: border-box; overflow: hidden; position: relative;">
       <div *ngIf="alertMessage"
@@ -112,6 +120,11 @@ interface OcTooltipData {
         <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 3px; flex-shrink: 0;">
           <span style="font-size: 0.78rem; font-weight: bold; color: #2e7d32;">Detalle de {{ selectedArticleRow.namearticle }}</span>
           <div style="display: flex; gap: 4px;">
+            <button (click)="openEntregasModal(selectedArticleRow)"
+                    style="font-size: 0.7rem; padding: 1px 7px; border: 1px solid #1565c0; border-radius: 4px;
+                           background: #e3f2fd; color: #1565c0; cursor: pointer; line-height: 1.6;">
+              <i class="bi bi-grid-1x2-fill"></i> Repartir
+            </button>
             <button (click)="addNivel3Row()"
                     style="font-size: 0.7rem; padding: 1px 7px; border: 1px solid #2e7d32; border-radius: 4px;
                            background: #e8f5e9; color: #2e7d32; cursor: pointer; line-height: 1.6;">
@@ -143,10 +156,31 @@ interface OcTooltipData {
       </div>
     </div>
 
+    <!-- Modal: reparto de entregas (Cantidad a Recibir por entrega, validado por presentaciones/mínimo) -->
+    <app-entregas-distribucion-panel
+      *ngIf="edPanelOpen"
+      [articleName]="edPanelArticle"
+      [proveedorName]="edPanelProveedor"
+      [unidad]="edPanelUnidad"
+      [esPieza]="edPanelEsPieza"
+      [total]="edPanelTotal"
+      [minEfectivo]="edPanelMinEfectivo"
+      [numEntregas]="edPanelN"
+      [maxN]="edPanelMaxN"
+      [packages]="edPanelPackages"
+      [cantidadesActuales]="edPanelActuales"
+      [bloqueadas]="edPanelBloqueadas"
+      (seleccionar)="onEdPanelSeleccionar($event)"
+      (cerrar)="closeEdPanel()">
+    </app-entregas-distribucion-panel>
+
   `,
   styles: [`
     :host { display: block; height: 100%; overflow: hidden; }
     :host ::ng-deep .item-blocked-row .ag-cell:not([col-id="itemspdf"]) { background-color: #ffebee !important; color: #b71c1c !important; }
+    /* Ítem NO liberado para almacén → fila rosa. Va sobre la fila (no la celda) para que las
+       celdas con color propio (verde cascada Artículo, gris bloqueado, azul almacén) lo conserven. */
+    :host ::ng-deep .ag-theme-quartz .ag-row.item-not-liberated-row { background-color: #fce4ec !important; }
   `]
 })
 export class OrdenesydetallesOcComponent implements OnDestroy {
@@ -163,6 +197,36 @@ export class OrdenesydetallesOcComponent implements OnDestroy {
   private intandoutDocumentsService = inject(IntandoutDocumentsService);
   private entradaMoliendaService = inject(EntradaMoliendaService);
   private gastosService = inject(GastosService);
+  private currencyService = inject(CurrencyService);
+  private empaqueService = inject(EmpaqueDescripcionService);
+
+  // Fase 2: catálogo de monedas para mostrar la abreviatura junto a Precio/Total (Opción A, sin convertir).
+  private monedasMap = new Map<number, string>();
+  private defaultCurrencyId: number | null = null;
+
+  // Presentaciones/empaque por ítem (idSupplie) del proveedor de la OC: mínimo efectivo (múltiplo de
+  // paquete ≥ compra mínima), denominaciones y unidad base. Para capar "Cantidad Entregas" y validar
+  // "Cantidad a Recibir" (cada entrega ≥ mínimo efectivo y múltiplo de paquete).
+  private itemPackInfo = new Map<number, {
+    minEfectivo: number;
+    packages: { base: number; descripcion: string; unidad: string }[];
+    unidad: string;
+    esPieza: boolean;
+  }>();
+
+  // Modal de reparto de entregas (Etapa 2).
+  edPanelOpen = false;
+  edPanelArticle = '';
+  edPanelProveedor = '';
+  edPanelUnidad = '';
+  edPanelEsPieza = false;
+  edPanelTotal = 0;
+  edPanelMinEfectivo = 0;
+  edPanelN = 1;
+  edPanelMaxN = 1;
+  edPanelPackages: { base: number; descripcion: string; unidad: string }[] = [];
+  edPanelActuales: number[] = [];
+  edPanelBloqueadas: boolean[] = [];
 
   private entregasPendingSub: Subscription;
   private conditionsPendingSub: Subscription;
@@ -247,9 +311,10 @@ export class OrdenesydetallesOcComponent implements OnDestroy {
   selectedOcRow: OcRow | null = null;
 
   get itemsFlexSize(): string {
-    if (this.selectedArticleRow) return '0 0 130px';
-    // title bar ≈ 28px + ag-header ≈ 32px + per row 42px + padding 16px, cap at 500px
-    const h = Math.min(200 + this.itemsData.length * 42, 500);
+    // Con el detalle de entregas abierto, el grid de ítems se reduce pero con más alto que antes.
+    if (this.selectedArticleRow) return '0 0 200px';
+    // title bar ≈ 28px + ag-header ≈ 32px + per row 42px + padding; más alto y mayor tope.
+    const h = Math.min(280 + this.itemsData.length * 42, 680);
     return `0 0 ${h}px`;
   }
   providers: any[] = [];
@@ -349,7 +414,7 @@ export class OrdenesydetallesOcComponent implements OnDestroy {
       valueFormatter: (p) => {
         const n = Number(p.value);
         return Number.isFinite(n)
-          ? n.toLocaleString('es-MX', { style: 'currency', currency: 'MXN', minimumFractionDigits: 2 })
+          ? `${n.toLocaleString('es-MX', { style: 'currency', currency: 'MXN', minimumFractionDigits: 2 })} ${this.currencyAbbr(p.data?.idCurrency)}`
           : '';
       },
     },
@@ -360,14 +425,24 @@ export class OrdenesydetallesOcComponent implements OnDestroy {
       cellRenderer: (p: any) => {
         const monto = Number(p.data?.anticipoOc) || 0;
         if (monto <= 0) return '';
-        const fmt = monto.toLocaleString('es-MX', { style: 'currency', currency: 'MXN', minimumFractionDigits: 2 });
-        if (p.data?.anticipoPagado) {
+        const fmt = `${monto.toLocaleString('es-MX', { style: 'currency', currency: 'MXN', minimumFractionDigits: 2 })} ${this.currencyAbbr(p.data?.idCurrency)}`;
+        // 3 estados del anticipo (anticipoEstado): PAGADO | EN_TRAMITE | (null = sin registrar).
+        // Compatibilidad: si no viene anticipoEstado pero anticipoPagado=true, se trata como PAGADO.
+        const estado = p.data?.anticipoEstado || (p.data?.anticipoPagado ? 'PAGADO' : null);
+
+        if (estado === 'PAGADO') {
+          // Fecha SOLO visual (read-only) — viene de Gastos (día en que se pagó).
           const f = p.data?.fechaAnticipo ? this.formatFechaDmy(p.data.fechaAnticipo) : '';
           return `<div style="display:flex;align-items:center;gap:6px;height:100%;">
                     <span style="font-weight:600;">${fmt}</span>
                     <span style="color:#2e7d32;font-weight:700;font-size:.78rem;">✓ Pagado</span>
-                    <span class="oc-fecha-anticipo-edit" title="Click para editar fecha de pago"
-                          style="font-size:.75rem;color:#2e7d32;cursor:pointer;text-decoration:underline dotted;white-space:nowrap;">${f ? f + ' ✏️' : '(sin fecha) ✏️'}</span>
+                    ${f ? `<span style="font-size:.75rem;color:#2e7d32;white-space:nowrap;">${f}</span>` : ''}
+                  </div>`;
+        }
+        if (estado === 'EN_TRAMITE') {
+          return `<div style="display:flex;align-items:center;gap:6px;height:100%;">
+                    <span style="font-weight:600;">${fmt}</span>
+                    <span style="color:#1565c0;font-weight:700;font-size:.78rem;background:#e3f2fd;border:1px solid #90caf9;border-radius:4px;padding:1px 6px;">En trámite</span>
                   </div>`;
         }
         return `<div style="display:flex;align-items:center;gap:8px;height:100%;">
@@ -378,7 +453,6 @@ export class OrdenesydetallesOcComponent implements OnDestroy {
       onCellClicked: (p: any) => {
         const target = p.event?.target as HTMLElement;
         if (target?.closest?.('.oc-marcar-anticipo')) { this.onMarcarAnticipo(p.data); return; }
-        if (target?.closest?.('.oc-fecha-anticipo-edit')) { this.editAnticFecha(p.data); return; }
       },
       cellStyle: { textAlign: 'left' },
     },
@@ -408,7 +482,8 @@ export class OrdenesydetallesOcComponent implements OnDestroy {
         && !((p.data?.entregasCount ?? 0) > 0)
         && p.data?.typeoc !== 'COMPRA AUTORIZADA SIN LIMITE',
       cellEditor: 'agRichSelectCellEditor',
-      cellEditorParams: () => ({ values: this.conditionsOptions }),
+      // Solo hasta el número de entregas donde cada una pueda cumplir el mínimo efectivo del proveedor.
+      cellEditorParams: (p: any) => ({ values: this.opcionesEntregas(p.data) }),
       valueParser: (p) => { const n = Number(p.newValue); return isNaN(n) ? p.oldValue : n; },
       valueFormatter: (p: any) => {
         // `conditions` (p.value) = plan original elegido en el dropdown.
@@ -482,7 +557,9 @@ export class OrdenesydetallesOcComponent implements OnDestroy {
       width: 140,
       type: 'numericColumn',
       // Precio guardado = BASE. Si la línea tiene IVA, se muestra con IVA REDONDEADO a 2 dec.
+      // Multi-entrega (>1 entrega): el precio se muestra POR ENTREGA en Nivel 5 → aquí va "—".
       valueGetter: (p: any) => {
+        if (this.itemEntregasCount(p.data) > 1) return null;
         const base = Number(p.data?.price) || 0;
         const v = p.data?.masIva ? base * (1 + this.ivaPercent / 100) : base;
         return Math.round(v * 100) / 100;
@@ -490,13 +567,21 @@ export class OrdenesydetallesOcComponent implements OnDestroy {
       valueFormatter: (p) => {
         const n = Number(p.value);
         return Number.isFinite(n) && n > 0
-          ? n.toLocaleString('es-MX', { style: 'currency', currency: 'MXN', minimumFractionDigits: 2 })
+          ? `${n.toLocaleString('es-MX', { style: 'currency', currency: 'MXN', minimumFractionDigits: 2 })} ${this.currencyAbbr(p.data?.idCurrency)}`
           : '';
       },
       cellRenderer: (p: any) => {
+        // Multi-entrega → "—" (el precio unitario vive por entrega en Nivel 5).
+        if (this.itemEntregasCount(p.data) > 1) {
+          const dash = document.createElement('span');
+          dash.textContent = '—';
+          dash.style.cssText = 'display:block; text-align:right; width:100%; color:#9e9e9e;';
+          return dash;
+        }
         const masIva = p.data?.masIva === true;
+        const abbr = this.currencyAbbr(p.data?.idCurrency);
         const formatted = Number.isFinite(Number(p.value)) && Number(p.value) > 0
-          ? Number(p.value).toLocaleString('es-MX', { style: 'currency', currency: 'MXN', minimumFractionDigits: 2 })
+          ? `${Number(p.value).toLocaleString('es-MX', { style: 'currency', currency: 'MXN', minimumFractionDigits: 2 })} ${abbr}`
           : '';
 
         if (!masIva) {
@@ -532,10 +617,14 @@ export class OrdenesydetallesOcComponent implements OnDestroy {
       headerName: 'Total',
       width: 120,
       type: 'numericColumn',
-      // Total = precio unitario con IVA REDONDEADO a 2 dec × cantidad (para que cuadre con el precio mostrado).
+      // Total del ítem. Multi-entrega: suma de los "Total x Entrega" (cada entrega con su IVA y su
+      // cantidad real de almacén) → __totalReal, calculado en loadItemsAlmacenData. Single-entrega:
+      // round2(precio con IVA) × cantidad recibida en almacén (si entró) o la planeada.
       valueGetter: (p: any) => {
+        if (p.data?.__totalReal != null) return p.data.__totalReal;
         const base = Number(p.data?.price) || 0;
-        const qty = Number(p.data?.quantity) || 0;
+        const qtyAlmacen = Number(p.data?.cantidadEntradaAlmacen) || 0;
+        const qty = qtyAlmacen > 0 ? qtyAlmacen : (Number(p.data?.quantity) || 0);
         const factor = p.data?.masIva ? (1 + this.ivaPercent / 100) : 1;
         const unit = Math.round(base * factor * 100) / 100;
         return unit * qty;
@@ -543,7 +632,7 @@ export class OrdenesydetallesOcComponent implements OnDestroy {
       valueFormatter: (p) => {
         const n = Number(p.value);
         return Number.isFinite(n) && n > 0
-          ? n.toLocaleString('es-MX', { style: 'currency', currency: 'MXN', minimumFractionDigits: 2 })
+          ? `${n.toLocaleString('es-MX', { style: 'currency', currency: 'MXN', minimumFractionDigits: 2 })} ${this.currencyAbbr(p.data?.idCurrency)}`
           : '';
       },
     },
@@ -586,6 +675,32 @@ export class OrdenesydetallesOcComponent implements OnDestroy {
         if (iso) return `${iso[3]}/${iso[2]}/${iso[1]}`;
         const date = new Date(p.value);
         return `${String(date.getDate()).padStart(2,'0')}/${String(date.getMonth()+1).padStart(2,'0')}/${date.getFullYear()}`;
+      },
+    },
+    {
+      // "Liberar para almacén": al marcar, el almacén del depto que pidió la OC puede leer/recibir
+      // este ítem. La OC se crea en "Generar OC" con todos sus ítems NO liberados (gated aquí).
+      headerName: 'Liberar para almacén',
+      colId: 'liberarAlmacen',
+      width: 150,
+      sortable: false,
+      editable: false,
+      cellStyle: { textAlign: 'center' },
+      cellRenderer: (p: any) => {
+        const checked = p.data?.__liberarAlmacen === true;
+        const div = document.createElement('div');
+        div.style.cssText = 'display:flex; align-items:center; justify-content:center; height:100%;';
+        const cb = document.createElement('input');
+        cb.type = 'checkbox';
+        cb.checked = checked;
+        cb.style.cssText = 'width:16px; height:16px; cursor:pointer;';
+        cb.title = checked ? 'Liberado para almacén' : 'No liberado (el almacén no lo lee)';
+        cb.addEventListener('click', (ev: Event) => {
+          ev.stopPropagation();
+          this.onToggleLiberarAlmacen(p.data, (ev.target as HTMLInputElement).checked);
+        });
+        div.appendChild(cb);
+        return div;
       },
     },
     {
@@ -654,7 +769,11 @@ export class OrdenesydetallesOcComponent implements OnDestroy {
     defaultColDef: { resizable: true, sortable: true, wrapHeaderText: true },
     rowClassRules: {
       'item-blocked-row': (p: any) => p.data?.__blocked === true,
+      // Fila rosa mientras el ítem NO esté liberado para almacén (no aplica a cerrados).
+      'item-not-liberated-row': (p: any) => p.data?.__liberarAlmacen === false && p.data?.__blocked !== true,
     },
+    // Renderiza popups (dropdown "Cantidad Entregas") a nivel body para que no los recorte el grid.
+    popupParent: typeof document !== 'undefined' ? document.body : null,
     onFirstDataRendered: (params: any) => params.api.autoSizeAllColumns(),
     onCellValueChanged: (event: any) => {
       if (event.colDef.field === 'datepostpone') {
@@ -731,12 +850,22 @@ export class OrdenesydetallesOcComponent implements OnDestroy {
         event.api.refreshCells({ rowNodes: [event.node], columns: ['namearticle', 'notaFactura', 'fechaEntradaAlmacen', 'cantidadEntradaAlmacen'], force: true });
 
         const min = this.conditionsOptions.length ? this.conditionsOptions[0] : 1;
-        if (event.data === this.selectedArticleRow) {
-          if (newCond <= min) {
-            this.closeNivel3();
-          } else {
-            this.buildNivel3Grid(event.data, true);
+        if (newCond <= min) {
+          // 1 entrega → no hay reparto; cerrar el detalle si estaba abierto.
+          if (event.data === this.selectedArticleRow) this.closeNivel3();
+        } else {
+          // N≥2 → expandir el ítem (si no lo estaba) y abrir el modal de reparto.
+          if (event.data !== this.selectedArticleRow) {
+            if (event.data.__originalConditions == null) event.data.__originalConditions = Number(event.data.conditions ?? 0);
+            if (event.data.__originalEntregasCount == null) event.data.__originalEntregasCount = Number(event.data.entregasCount ?? 0);
+            this.selectedArticleRow = event.data;
+            if (this.itemsGridApi) {
+              this.itemsGridApi.forEachNode((node: any) => node.setRowHeight(node.data === event.data ? undefined : 0));
+              this.itemsGridApi.onRowHeightChanged();
+            }
           }
+          this.buildNivel3Grid(event.data, true);
+          this.openEntregasModal(event.data);
         }
       }
     },
@@ -774,27 +903,74 @@ export class OrdenesydetallesOcComponent implements OnDestroy {
       valueParser: (p) => { const n = Number(p.newValue); return isNaN(n) ? p.oldValue : n; },
     },
     {
+      // Precio unitario POR ENTREGA: precio base del ítem OC × IVA propio de la entrega (round2).
+      colId: 'precioUnitarioEntrega',
+      headerName: 'Precio unitario',
+      width: 140,
+      editable: false,
+      type: 'numericColumn',
+      valueGetter: (p: any) => {
+        const base = Number(this.selectedArticleRow?.price) || 0;
+        const v = p.data?.masIva ? base * (1 + this.ivaPercent / 100) : base;
+        return Math.round(v * 100) / 100;
+      },
+      valueFormatter: (p) => {
+        const n = Number(p.value);
+        return Number.isFinite(n) && n > 0
+          ? `${n.toLocaleString('es-MX', { style: 'currency', currency: 'MXN', minimumFractionDigits: 2 })} ${this.currencyAbbr(this.selectedArticleRow?.idCurrency)}`
+          : '';
+      },
+      cellRenderer: (p: any) => {
+        const abbr = this.currencyAbbr(this.selectedArticleRow?.idCurrency);
+        const formatted = Number.isFinite(Number(p.value)) && Number(p.value) > 0
+          ? `${Number(p.value).toLocaleString('es-MX', { style: 'currency', currency: 'MXN', minimumFractionDigits: 2 })} ${abbr}`
+          : '';
+        if (p.data?.masIva !== true) {
+          const span = document.createElement('span');
+          span.textContent = formatted;
+          span.style.cssText = 'display:block; text-align:right; width:100%;';
+          return span;
+        }
+        // Mismo visual que Nivel 4: precio con IVA + badge "+IVA" + tooltip de desglose.
+        const base = Number(this.selectedArticleRow?.price) || 0;
+        const div = document.createElement('div');
+        div.style.cssText = 'display:flex; align-items:center; justify-content:flex-end; gap:4px; width:100%; cursor:help;';
+        const span = document.createElement('span');
+        span.textContent = formatted;
+        div.appendChild(span);
+        const badge = document.createElement('span');
+        badge.textContent = '+IVA';
+        badge.style.cssText = 'font-size:0.6rem; background:#e3f2fd; color:#1565c0; border-radius:3px; padding:0 3px; font-weight:700; line-height:1.5; flex-shrink:0;';
+        div.appendChild(badge);
+        div.addEventListener('mouseenter', (ev: MouseEvent) => this.showPriceIvaTooltip(ev, base, Number(p.value)));
+        div.addEventListener('mousemove', (ev: MouseEvent) => this.moveOcTooltip(ev));
+        div.addEventListener('mouseleave', () => this.hideOcTooltip());
+        return div;
+      },
+    },
+    {
       field: 'totalEntrega',
       headerName: 'Total x Entrega',
       width: 140,
       editable: false,
       type: 'numericColumn',
       cellStyle: { backgroundColor: '#eeeeee', color: '#424242' },
-      // En vivo (Opción A): round2(precio unit con IVA) × cantidad a recibir, leyendo price/masIva
-      // del artículo seleccionado. Así refleja el IVA aunque se haya marcado luego en Gastos y
-      // corrige entregas ya guardadas con total base, sin depender del valor almacenado.
+      // En vivo (Opción A): round2(precio unit con IVA) × cantidad. El IVA es el de LA ENTREGA
+      // (p.data.masIva); el precio base viene del ítem OC. La cantidad usada es la REALMENTE recibida
+      // en almacén (cantidadEntradaAlmacen) si ya entró; mientras no, la planeada (cantidadRecibir).
       valueGetter: (p: any) => {
-        const qty = Number(p.data?.cantidadRecibir) || 0;
+        const qtyAlmacen = Number(p.data?.cantidadEntradaAlmacen) || 0;
+        const qty = qtyAlmacen > 0 ? qtyAlmacen : (Number(p.data?.cantidadRecibir) || 0);
         if (!qty) return p.data?.totalEntrega ?? null;
         const base = Number(this.selectedArticleRow?.price) || 0;
-        const factor = this.selectedArticleRow?.masIva ? (1 + this.ivaPercent / 100) : 1;
+        const factor = p.data?.masIva ? (1 + this.ivaPercent / 100) : 1;
         const unit = Math.round(base * factor * 100) / 100;
         return unit * qty;
       },
       valueFormatter: (p) => {
         const n = Number(p.value);
         return Number.isFinite(n) && n > 0
-          ? n.toLocaleString('es-MX', { style: 'currency', currency: 'MXN', minimumFractionDigits: 2 })
+          ? `${n.toLocaleString('es-MX', { style: 'currency', currency: 'MXN', minimumFractionDigits: 2 })} ${this.currencyAbbr(this.selectedArticleRow?.idCurrency)}`
           : '';
       },
     },
@@ -923,6 +1099,22 @@ export class OrdenesydetallesOcComponent implements OnDestroy {
           this.showInlineAlert(`La cantidad excede la cotización (máx. ${maxQty})`);
           return;
         }
+        // Validación por presentaciones: cada entrega ≥ mínimo efectivo y múltiplo de presentación.
+        const info = this.itemPackInfo.get(Number(this.selectedArticleRow?.idSupplie ?? this.selectedArticleRow?.idsupplie ?? 0));
+        if (info && info.minEfectivo > 0 && newVal > 0) {
+          if (newVal < info.minEfectivo - 1e-6) {
+            event.data.cantidadRecibir = event.oldValue ?? null;
+            event.api.refreshCells({ rowNodes: [event.node], columns: ['cantidadRecibir'], force: true });
+            this.showInlineAlert(`La cantidad por entrega no puede ser menor al mínimo (${info.minEfectivo.toLocaleString('es-MX')}). Usa "Repartir".`);
+            return;
+          }
+          if (info.packages.length && !this.esCantidadComponible(newVal, info.packages)) {
+            event.data.cantidadRecibir = event.oldValue ?? null;
+            event.api.refreshCells({ rowNodes: [event.node], columns: ['cantidadRecibir'], force: true });
+            this.showInlineAlert('La cantidad debe ser múltiplo de las presentaciones del proveedor. Usa "Repartir".');
+            return;
+          }
+        }
         // Total x Entrega = precio unitario CON IVA REDONDEADO a 2 dec (Opción A) × cantidad,
         // igual que la columna "Total" del ítem; así cuadra aunque el IVA se haya marcado en Gastos.
         const base = Number(this.selectedArticleRow?.price ?? 0);
@@ -952,6 +1144,35 @@ export class OrdenesydetallesOcComponent implements OnDestroy {
     this.loadConditionsRange();
   }
 
+  /** Fase 2: carga catálogo de monedas (type=CURRENCY) y resuelve la default (MXN). */
+  private loadMonedas(): void {
+    const idCompany = this.signalsService.getRootSelectedBySidebar()();
+    if (!idCompany) return;
+    this.currencyService.getCurrencies(idCompany).subscribe({
+      next: (data: any) => {
+        const list = Array.isArray(data) ? data : (data?.catalog ?? []);
+        this.monedasMap = new Map<number, string>();
+        let mxnId: number | null = null;
+        (list || []).forEach((c: any) => {
+          const id = Number(c.id);
+          const abrev = (c.valueAddition || '').toString().trim();
+          const nombre = c.description || '';
+          this.monedasMap.set(id, abrev || nombre);
+          if (mxnId === null && (abrev.toUpperCase() === 'MXN' || /peso|mexic/i.test(nombre))) mxnId = id;
+        });
+        this.defaultCurrencyId = mxnId ?? (list?.[0]?.id != null ? Number(list[0].id) : null);
+        if (this.itemsGridApi) this.itemsGridApi.refreshCells({ force: true });
+      },
+      error: () => { this.monedasMap = new Map(); this.defaultCurrencyId = null; }
+    });
+  }
+
+  /** Abreviatura de la moneda de una fila (o 'MXN' si no resuelve). */
+  private currencyAbbr(idCurrency: any): string {
+    const id = (idCurrency !== undefined && idCurrency !== null) ? Number(idCurrency) : this.defaultCurrencyId;
+    return (id != null ? this.monedasMap.get(Number(id)) : '') || 'MXN';
+  }
+
   private loadConditionsRange(): void {
     // Preferimos idReference de la fila (la sucursal de la OC); fallback al sidebar
     const idBranch = this.internalParams?.data?.idReference
@@ -975,6 +1196,197 @@ export class OrdenesydetallesOcComponent implements OnDestroy {
       },
       error: () => { this.ivaPercent = 0; }
     });
+    this.loadMonedas();
+  }
+
+  /**
+   * Carga las presentaciones del proveedor de la OC por material de cada ítem y calcula el mínimo
+   * efectivo (múltiplo de presentación más chico ≥ compra mínima). Alimenta el cap del dropdown
+   * "Cantidad Entregas" y la validación de "Cantidad a Recibir".
+   */
+  private loadItemsPackInfo(): void {
+    this.itemPackInfo.clear();
+    const provId = Number(this.selectedOcRow?.idProvider) || 0;
+    const ids = Array.from(new Set(
+      (this.itemsData || [])
+        .map((it: any) => Number(it.idSupplie ?? it.idsupplie ?? 0))
+        .filter((id: number) => id > 0)
+    ));
+    if (ids.length === 0) return;
+    forkJoin(ids.map(id =>
+      this.empaqueService.getPresentacionesByMaterial(id).pipe(
+        rxMap(data => ({ id, data: Array.isArray(data) ? data : [] })),
+        rxCatch(() => of({ id, data: [] as ProveedorPresentaciones[] }))
+      )
+    )).subscribe((results: { id: number; data: ProveedorPresentaciones[] }[]) => {
+      for (const r of (results || [])) {
+        const provs = r.data || [];
+        // SOLO las presentaciones del proveedor de ESTA OC. Si no tiene, NO usar las de otro proveedor
+        // (eso inflaba el mínimo efectivo): sin presentaciones → mínimo efectivo = compra mínima cruda.
+        const prov = provs.find(p => Number(p.idProvider) === provId) || null;
+        const unidadInfo = resolverUnidadArticulo(prov ? [prov] : []);
+        const packages = prov ? denomsDeProveedor(prov) : [];
+        const item = (this.itemsData || []).find((it: any) => Number(it.idSupplie ?? it.idsupplie ?? 0) === r.id);
+        const minRaw = Number(item?.compraMinima ?? item?.compraminima ?? 0) || 0;
+        this.itemPackInfo.set(r.id, {
+          minEfectivo: this.calcMinEfectivo(minRaw, packages),
+          packages,
+          unidad: unidadInfo.unidad,
+          esPieza: unidadInfo.esPieza,
+        });
+      }
+      if (this.itemsGridApi && !this.itemsGridApi.isDestroyed())
+        this.itemsGridApi.refreshCells({ columns: ['conditions'], force: true });
+    });
+  }
+
+  /** Mínimo efectivo: múltiplo de presentación más chico ≥ compra mínima. Sin presentaciones → el mínimo. */
+  private calcMinEfectivo(minCompra: number, packages: { base: number }[]): number {
+    const min = Number(minCompra) || 0;
+    if (min <= 0) return 0;
+    const denoms = (packages || []).filter(p => p.base > 0);
+    if (denoms.length === 0) return min;
+    const ev = evaluateProvider(min, 0, denoms.map(p => ({ base: p.base, descripcion: '', unidad: '' })));
+    return ev.exact?.total ?? ev.above?.total ?? min;
+  }
+
+  /** ¿La cantidad es componible exactamente con las presentaciones? Sin presentaciones → libre. */
+  private esCantidadComponible(v: number, packages: { base: number }[]): boolean {
+    const denoms = (packages || []).filter(p => p.base > 0);
+    if (denoms.length === 0) return true;
+    const ev = evaluateProvider(v, 0, denoms.map(p => ({ base: p.base, descripcion: '', unidad: '' })));
+    return !!ev.exact;
+  }
+
+  /** Opciones de "Cantidad Entregas" para un ítem: setupMin..maxN, maxN = floor(total / mínimo efectivo). */
+  opcionesEntregas(itemRow: any): number[] {
+    const setupMin = this.conditionsOptions.length ? this.conditionsOptions[0] : 1;
+    const setupMax = this.conditionsOptions.length ? this.conditionsOptions[this.conditionsOptions.length - 1] : 1;
+    const total = Number(itemRow?.quantity) || 0;
+    const info = this.itemPackInfo.get(Number(itemRow?.idSupplie ?? itemRow?.idsupplie ?? 0));
+    const minEf = info?.minEfectivo ?? (Number(itemRow?.compraMinima) || 0);
+    let maxN = setupMax;
+    if (minEf > 0 && total > 0) maxN = Math.min(setupMax, Math.floor(total / minEf));
+    if (maxN < setupMin) maxN = setupMin;
+    const out: number[] = [];
+    for (let n = setupMin; n <= maxN; n++) out.push(n);
+    return out.length ? out : [setupMin];
+  }
+
+  /** Abre el modal de reparto para el ítem seleccionado (usa las entregas actuales como pre-llenado). */
+  openEntregasModal(itemRow: any): void {
+    if (!itemRow) return;
+    const info = this.itemPackInfo.get(Number(itemRow?.idSupplie ?? itemRow?.idsupplie ?? 0));
+    this.edPanelArticle = itemRow?.namearticle || '';
+    this.edPanelProveedor = this.selectedOcRow?.providerName || '';
+    this.edPanelUnidad = info?.unidad || '';
+    this.edPanelEsPieza = info?.esPieza || false;
+    this.edPanelTotal = Number(itemRow?.quantity) || 0;
+    this.edPanelMinEfectivo = info?.minEfectivo ?? (Number(itemRow?.compraMinima) || 0);
+    this.edPanelPackages = info?.packages || [];
+    // N = número de filas reales de entregas (lo que se ve en el detalle), no `conditions`.
+    const filas = this.nivel3Data || [];
+    this.edPanelN = Math.max(1, filas.length || Number(itemRow?.conditions) || 1);
+    this.edPanelMaxN = Math.max(...this.opcionesEntregas(itemRow), this.edPanelN);
+    this.edPanelActuales = filas.map(r => Number(r.cantidadRecibir) || 0);
+    this.edPanelBloqueadas = filas.map(r => this.entregaBloqueada(r));
+    this.edPanelOpen = true;
+  }
+
+  /** Una entrega está bloqueada si ya está cerrada o ya entró a almacén (no se edita ni se elimina). */
+  private entregaBloqueada(row: any): boolean {
+    return !!row?.close || !!row?.fechaEntradaAlmacen;
+  }
+
+  onEdPanelSeleccionar(ev: { cantidades: number[]; numEntregas: number }): void {
+    this.edPanelOpen = false;
+    this.aplicarReparto(ev.cantidades || [], Number(ev.numEntregas) || (this.nivel3Data || []).length);
+  }
+
+  closeEdPanel(): void { this.edPanelOpen = false; }
+
+  /**
+   * Aplica el reparto del modal: ajusta el número de filas de entregas a `numEntregas`
+   * (agrega al final / borra físicamente las sobrantes pendientes), escribe las cantidades
+   * y propaga el cambio (entregasCount + pending). Las entregas cerradas no se tocan ni se borran.
+   */
+  private async aplicarReparto(cantidades: number[], numEntregas: number): Promise<void> {
+    if (!this.selectedArticleRow) return;
+    const idDetail = Number(this.selectedArticleRow?.id);
+    const fechaBase = this.dateToIso(this.selectedArticleRow.datepostpone);
+    let current = this.nivel3Data.length;
+
+    // 1) Agregar filas pendientes al final.
+    if (numEntregas > current) {
+      const toAdd = numEntregas - current;
+      const added: any[] = [];
+      for (let k = 0; k < toAdd; k++) {
+        added.push({ ...this.emptyNivel3Row(this.addDaysToIso(fechaBase, current + k)), __touched: true });
+      }
+      this.nivel3Data = [...this.nivel3Data, ...added];
+      this.selectedArticleRow.entregasCount = Number(this.selectedArticleRow.entregasCount ?? 0) + toAdd;
+      current = this.nivel3Data.length;
+    }
+
+    // 2) Quitar filas sobrantes (siempre desde el final, nunca cerradas) con borrado FÍSICO en BD.
+    while (this.nivel3Data.length > numEntregas) {
+      const removed = this.nivel3Data[this.nivel3Data.length - 1];
+      if (this.entregaBloqueada(removed)) {
+        // Salvaguarda: no se elimina una entrega cerrada/recibida aunque el modal lo pidiera.
+        this.showInlineAlert('No se puede quitar una entrega ya cerrada/recibida');
+        break;
+      }
+      if (removed?.id) {
+        try {
+          const docs = await lastValueFrom(
+            this.intandoutDocumentsService.getIntandoutDocumentsById(Number(removed.id), 'entrega')
+          ).catch(() => []);
+          if (Array.isArray(docs) && docs.length > 0) {
+            await Promise.all(docs.map((doc: any) =>
+              lastValueFrom(this.intandoutDocumentsService.deleteIntandoutDocuments(doc.id)).catch(() => {})
+            ));
+          }
+          await lastValueFrom(this.entregaOcService.delete(Number(removed.id)));
+        } catch {
+          this.showInlineAlert('No se pudo borrar una entrega');
+          break;
+        }
+        // Bajar baseline y originalEntregasCount (la BD ya no la tiene).
+        this.originalNivel3Data = this.originalNivel3Data.slice(0, -1);
+        this.selectedArticleRow.__originalEntregasCount = Math.max(
+          0, Number(this.selectedArticleRow.__originalEntregasCount ?? 0) - 1
+        );
+      }
+      this.nivel3Data = this.nivel3Data.slice(0, -1);
+      this.selectedArticleRow.entregasCount = Math.max(0, Number(this.selectedArticleRow.entregasCount ?? 0) - 1);
+    }
+
+    // 3) Escribir cantidades por entrega (índice alineado; las cerradas no se modifican).
+    const base = Number(this.selectedArticleRow?.price ?? 0);
+    const factor = this.selectedArticleRow?.masIva ? (1 + this.ivaPercent / 100) : 1;
+    const unit = Math.round(base * factor * 100) / 100;
+    for (let i = 0; i < this.nivel3Data.length; i++) {
+      const row = this.nivel3Data[i];
+      if (this.entregaBloqueada(row)) continue;
+      const qty = Number(cantidades[i]) || 0;
+      row.cantidadRecibir = qty;
+      row.totalEntrega = Number.isFinite(unit * qty) ? unit * qty : 0;
+      row.__touched = true;
+    }
+
+    // 4) Propagar.
+    this.hasNivel3Changes = true;
+    this.selectedNivel3Row = null;
+    if (idDetail) {
+      this.entregasPendingService.set(idDetail, this.nivel3Data);
+      this.entregasPendingService.setVisible(idDetail, this.nivel3Data);
+    }
+    if (this.nivel3GridApi && !this.nivel3GridApi.isDestroyed()) {
+      this.nivel3GridApi.setGridOption('rowData', this.nivel3Data);
+      this.nivel3GridApi.refreshCells({ force: true });
+    }
+    this.refreshConditionsCell();
+    this.syncSelectedItemQuantityDelta();
   }
 
   refresh(params: any): boolean {
@@ -1110,9 +1522,15 @@ export class OrdenesydetallesOcComponent implements OnDestroy {
     } catch { return this.todayIso(); }
   }
 
+  /** Número efectivo de entregas de un ítem OC: conteo real si existe, si no el planeado (conditions). */
+  private itemEntregasCount(data: any): number {
+    const real = Number(data?.entregasCount ?? 0);
+    return real > 0 ? real : (Number(data?.conditions ?? 0) || 1);
+  }
+
   private emptyNivel3Row(fechaBase?: string): any {
     const today = this.todayIso();
-    return { id: null, fechaEntrega: fechaBase ?? today, cantidadRecibir: null, notaFactura: '', totalEntrega: null, fechaEntradaAlmacen: '' };
+    return { id: null, fechaEntrega: fechaBase ?? today, cantidadRecibir: null, notaFactura: '', totalEntrega: null, fechaEntradaAlmacen: '', masIva: false };
   }
 
   private addDaysToIso(isoDate: string, days: number): string {
@@ -1167,6 +1585,7 @@ export class OrdenesydetallesOcComponent implements OnDestroy {
               notaFactura: s.notaFactura ?? '',
               totalEntrega: s.totalEntrega ?? null,
               fechaEntradaAlmacen: s.fechaEntradaAlmacen ?? '',
+              masIva: (s as any).masIva ?? false,   // IVA propio de la entrega (multi-entrega)
             }))
           : Array.from({ length: planned }, (_, i) => this.emptyNivel3Row(this.addDaysToIso(fechaBase, i)));
 
@@ -1307,7 +1726,9 @@ export class OrdenesydetallesOcComponent implements OnDestroy {
             condicionesPago: oc.condicionesPago || oc.condiciones_pago || '',
             totalOc: Number(oc.total ?? oc.Total ?? 0) || 0,
             anticipoOc: Number(oc.anticipoOc ?? oc.AnticipoOc ?? 0) || 0,
+            idCurrency: oc.idCurrency ?? oc.id_currency ?? null,   // moneda de la OC (de sus ítems)
             anticipoPagado: (oc.anticipoPagado ?? oc.AnticipoPagado) === true,
+            anticipoEstado: oc.anticipoEstado ?? oc.AnticipoEstado ?? null,
             fechaAnticipo: oc.fechaAnticipo ?? oc.FechaAnticipo ?? null,
             close: oc.close ?? oc.Close ?? false,
           };
@@ -1371,27 +1792,27 @@ export class OrdenesydetallesOcComponent implements OnDestroy {
     }
   }
 
-  /** Registra el pago del anticipo de una OC (monto = Anticipo OC calculado). */
+  /** Registra el anticipo de una OC (queda EN TRÁMITE y aparece en la Captura de Gastos). */
   async onMarcarAnticipo(row: any): Promise<void> {
     if (!row?.id) return;
     const monto = Number(row.anticipoOc) || 0;
     if (monto <= 0) return;
     const fmt = monto.toLocaleString('es-MX', { style: 'currency', currency: 'MXN', minimumFractionDigits: 2 });
     const confirm = await alerts.confirmAlert(
-      'Registrar pago de anticipo',
-      `¿Confirmas que ya se entregó el anticipo de ${fmt} para la OC ${row.folio}? Este saldo se aplicará a las entregas en la Hoja de Gastos.`,
+      'Registrar anticipo',
+      `Se registrará el anticipo de ${fmt} para la OC ${row.folio}. Quedará EN TRÁMITE y aparecerá en la Captura de Gastos, donde deberás pagarlo para que cuente. ¿Continuar?`,
       'question', 'Sí, registrar'
     );
     if (!confirm.isConfirmed) return;
     try {
       await lastValueFrom(this.gastosService.marcarAnticipo(row.id, monto));
-      row.anticipoPagado = true;
+      row.anticipoEstado = 'EN_TRAMITE';   // pasa a trámite (el pago real se hace en Captura)
       row.fechaAnticipo = new Date().toISOString().split('T')[0];
       if (this.gridApi && !this.gridApi.isDestroyed()) {
         this.gridApi.refreshCells({ rowNodes: [], force: true });
         this.gridApi.setGridOption('rowData', this.rowData);
       }
-      alerts.reqSuccessToast('Anticipo registrado', `${row.folio}: anticipo de ${fmt} marcado como pagado.`);
+      alerts.reqSuccessToast('Anticipo registrado', `${row.folio}: anticipo de ${fmt} en trámite. Págalo en la Captura de Gastos.`);
     } catch (err) {
       console.error('Error marcando anticipo:', err);
       alerts.reqErrorToast('Error', 'No se pudo registrar el anticipo.');
@@ -1410,6 +1831,9 @@ export class OrdenesydetallesOcComponent implements OnDestroy {
       try {
         const ocItems: any[] = await lastValueFrom(this.ocAndReqsService.getReqItems(oc.id));
         const items = Array.isArray(ocItems) ? ocItems : [];
+
+        // Moneda de la OC = la de sus ítems (un solo proveedor → una sola moneda). NULL = MXN.
+        oc.idCurrency = items.length > 0 ? (items[0].idCurrency ?? items[0].id_currency ?? null) : (oc.idCurrency ?? null);
 
         // Cargar items de la requisición padre (cacheado por idReq)
         let reqItems: any[] = [];
@@ -1460,6 +1884,10 @@ export class OrdenesydetallesOcComponent implements OnDestroy {
         this.ocTooltipDataMap.set(oc.id, { typeoc: oc.typeoc || '', items: [] });
       }
     }));
+    // Refrescar para que Total x OC / Anticipo OC muestren ya la abreviatura de moneda resuelta.
+    if (this.gridApi && !this.gridApi.isDestroyed()) {
+      this.gridApi.refreshCells({ force: true });
+    }
   }
 
   // ============= TOOLTIP FLOTANTE PARA COLUMNA OC =============
@@ -1662,8 +2090,8 @@ export class OrdenesydetallesOcComponent implements OnDestroy {
   async deleteNivel3Row(): Promise<void> {
     if (!this.selectedArticleRow) return;
     const lastRow = this.nivel3Data[this.nivel3Data.length - 1];
-    if (lastRow?.close === true) {
-      this.showInlineAlert('No puedes eliminar porque esta entrega ya está cerrada');
+    if (this.entregaBloqueada(lastRow)) {
+      this.showInlineAlert('No puedes eliminar porque esta entrega ya está cerrada/recibida');
       return;
     }
     if (this.nivel3Data.length <= 1) {
@@ -1799,6 +2227,26 @@ export class OrdenesydetallesOcComponent implements OnDestroy {
     }
   }
 
+  // Libera/oculta el ítem para el almacén del depto que pidió la OC. Persiste de inmediato
+  // (no requiere el botón Guardar) y repinta la fila (rosa = no liberado).
+  private onToggleLiberarAlmacen(row: any, value: boolean): void {
+    if (!row?.id) return;
+    const prev = row.__liberarAlmacen === true;
+    row.__liberarAlmacen = value;
+    if (this.itemsGridApi && !this.itemsGridApi.isDestroyed()) this.itemsGridApi.redrawRows();
+    this.ocAndReqsService.patchLiberarAlmacen(Number(row.id), value).subscribe({
+      next: () => {
+        this.showInlineAlert(value ? 'Ítem liberado para almacén' : 'Ítem retirado del almacén');
+      },
+      error: () => {
+        // Revertir el cambio visual si falla la persistencia.
+        row.__liberarAlmacen = prev;
+        if (this.itemsGridApi && !this.itemsGridApi.isDestroyed()) this.itemsGridApi.redrawRows();
+        this.showInlineAlert('No se pudo actualizar "Liberar para almacén"');
+      },
+    });
+  }
+
   private async loadItemsAlmacenData(): Promise<void> {
     const idOc = this.selectedOcRow?.id ?? null;
     if (!idOc || !this.itemsData.length) return;
@@ -1833,13 +2281,38 @@ export class OrdenesydetallesOcComponent implements OnDestroy {
             row.__notaFromGasto = false;
           }
         }
+
+        // Total real del ítem MULTI-ENTREGA = Σ "Total x Entrega" de sus entregas (cada una con su
+        // IVA y su cantidad: almacén si entró, si no la planeada). Así cuadra con la suma del Nivel 5.
+        if (this.itemEntregasCount(row) > 1) {
+          try {
+            const entregas: any[] = await lastValueFrom(this.entregaOcService.getByDetail(row.id)).catch(() => []);
+            const almacenByEntrega = new Map<number, number>();
+            for (const e of list) {
+              const ide = Number((e as any).idEntrega ?? 0);
+              if (ide > 0) almacenByEntrega.set(ide, (almacenByEntrega.get(ide) ?? 0) + Number(e.cantidadEntrada ?? 0));
+            }
+            const base = Number(row.price) || 0;
+            let totalReal = 0;
+            for (const g of (Array.isArray(entregas) ? entregas : [])) {
+              const factor = (g as any).masIva ? (1 + this.ivaPercent / 100) : 1;
+              const unit = Math.round(base * factor * 100) / 100;
+              const qa = almacenByEntrega.get(Number(g.id)) ?? 0;
+              const qty = qa > 0 ? qa : (Number(g.cantidadRecibir) || 0);
+              totalReal += unit * qty;
+            }
+            row.__totalReal = totalReal;
+          } catch { row.__totalReal = null; }
+        } else {
+          row.__totalReal = null;
+        }
       } catch {
         row.cantidadEntradaAlmacen = null;
         row.fechaEntradaAlmacen = null;
       }
     }));
     if (this.itemsGridApi && !this.itemsGridApi.isDestroyed()) {
-      this.itemsGridApi.refreshCells({ columns: ['cantidadEntradaAlmacen', 'fechaEntradaAlmacen', 'notaFactura'], force: true });
+      this.itemsGridApi.refreshCells({ columns: ['cantidadEntradaAlmacen', 'fechaEntradaAlmacen', 'notaFactura', 'total'], force: true });
     }
   }
 
@@ -1941,7 +2414,8 @@ export class OrdenesydetallesOcComponent implements OnDestroy {
       }
     }));
     if (this.nivel3GridApi && !this.nivel3GridApi.isDestroyed()) {
-      this.nivel3GridApi.refreshCells({ columns: ['cantidadEntradaAlmacen', 'fechaEntradaAlmacen', 'pdf'], force: true });
+      // 'totalEntrega' se incluye para recalcular el Total x Entrega ahora que ya hay cantidad de almacén.
+      this.nivel3GridApi.refreshCells({ columns: ['cantidadEntradaAlmacen', 'fechaEntradaAlmacen', 'totalEntrega', 'pdf'], force: true });
     }
   }
 
@@ -2014,6 +2488,8 @@ export class OrdenesydetallesOcComponent implements OnDestroy {
           conditions: it.diasCondicionCompra ?? 1,
           typeoc: it.typeoc || it.typeOc || '',
           datepostponeConfirmada: it.datepostponeConfirmada ?? false,
+          // "Liberar para almacén": gate de lectura del almacén. Default true para datos viejos/CR.
+          __liberarAlmacen: it.liberarAlmacen ?? true,
           __originalDatepostpone: (it.datepostpone || '').substring(0, 10),
           __pendingDateSave: false,
         }));
@@ -2026,6 +2502,7 @@ export class OrdenesydetallesOcComponent implements OnDestroy {
         this.loadItemsPdfCounts();
         this.loadItemsEntregasSums();
         this.loadItemsAlmacenData();
+        this.loadItemsPackInfo();   // presentaciones + mínimo efectivo (cap "Cantidad Entregas")
       },
       error: () => {
         this.itemsData = [];

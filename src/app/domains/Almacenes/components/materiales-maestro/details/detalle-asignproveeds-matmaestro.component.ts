@@ -17,14 +17,19 @@ import { DetalleEmpaqueProveedorComponent } from './detalle-empaque-proveedor.co
 import { SucursalByMaterialProveedorService } from 'app/services/sucursalByMaterialProveedor.service';
 import { firstValueFrom } from 'rxjs';
 import { OcAndReqsService } from 'app/services/ocandreqs.service';
+import { EmpaqueMedidaService } from 'app/services/empaque-medida.service';
+import { EmpaquePesoVolumenService } from 'app/services/empaque-peso-volumen.service';
+import { EmpaqueDescripcionService } from 'app/services/empaque-descripcion.service';
 import { runAutosizeAllColumns } from 'app/helpers/ag-grid-autosize.helper';
 import { PendingChangesService } from 'app/services/pending-changes.service';
+import { CurrencyService } from 'app/services/currency.service';
+import { PrecioMonedaEditorComponent, MonedaOpt } from '../editors/precio-moneda-editor.component';
 
 @Component({
   selector: 'app-detalle-asignproveeds-matmaestro',
   standalone: true,
   providers: [CurrencyPipe],
-  imports: [AgGridModule, CommonModule, AutocompleteEditorComponent],
+  imports: [AgGridModule, CommonModule, AutocompleteEditorComponent, PrecioMonedaEditorComponent],
   template: `
     <div
       style="padding: 10px; background-color: #e3f2fd; height: 100%; display: flex; flex-direction: column;">
@@ -61,6 +66,7 @@ import { PendingChangesService } from 'app/services/pending-changes.service';
           [components]="components"
           (gridReady)="onProveedorGridReady($event)"
           (cellValueChanged)="onProveedorCellValueChanged($event)"
+          (cellEditingStopped)="onProveedorCellEditingStopped($event)"
           (selectionChanged)="onProveedorSelectionChanged($event)">
         </ag-grid-angular> <!-- (cellClicked)="onCellClicked($event)" -->
 
@@ -92,7 +98,17 @@ export class DetalleAsignProveedsMaestroComponent implements ICellRendererAngula
   private materialsService = inject(MaterialsService);
   private sucursalByMaterialProveedorService = inject(SucursalByMaterialProveedorService);
   private ocAndReqsService = inject(OcAndReqsService);
+  private empaqueMedidaService = inject(EmpaqueMedidaService);
+  private empaquePesoVolumenService = inject(EmpaquePesoVolumenService);
+  private empaqueDescripcionService = inject(EmpaqueDescripcionService);
   private pendingChangesService = inject(PendingChangesService);
+  private currencyService = inject(CurrencyService);
+
+  /** Catálogo de monedas (type='CURRENCY') para el editor/formatter de Precio Unitario. */
+  monedas: MonedaOpt[] = [];
+  private monedasMap = new Map<number, MonedaOpt>();
+  /** Id de la moneda default (MXN) para filas nuevas / precios sin moneda. */
+  defaultCurrencyId: number | null = null;
 
   private _sucursalSub: Subscription;
   private saverId: string = '';
@@ -105,6 +121,9 @@ export class DetalleAsignProveedsMaestroComponent implements ICellRendererAngula
   proveedorGridApi: any;
   gridApi: any; // Alias for backward compatibility
   selectedProveedor: any = null;
+
+  /** Detalle (Nivel 3/4) que estaba abierto antes de un reload, para reabrirlo tras guardar. */
+  private _pendingExpandRestore: { idTabla: any; detailType: string; empaqueDetailType: string } | null = null;
 
   /** Cambios pendientes del Nivel 2. El setter notifica al servicio central
    *  para que el botón Guardar del Nivel 1 encienda su badge rojo y sincroniza
@@ -590,10 +609,15 @@ export class DetalleAsignProveedsMaestroComponent implements ICellRendererAngula
       field: 'campo9',
       headerName: 'Precio Unitario',
       editable: (params: any) => !this.isBlockedByProviderDeactivation(params.data?.idTabla),
-      width: 130,
-      cellEditor: 'agNumberCellEditor',
-      cellEditorParams: { precision: 2, min: 0 },
-      valueFormatter: (params: any) => (params.value > 0 ? `$${Number(params.value).toFixed(2)}` : '$0.00'),
+      width: 150,
+      // Editor compuesto: número + dropdown de moneda en la misma celda (Opción C).
+      cellEditor: PrecioMonedaEditorComponent,
+      cellEditorParams: () => ({ monedas: this.monedas, defaultCurrencyId: this.defaultCurrencyId }),
+      // Al cerrar: concatena valor + abreviatura de la moneda → "2.87 MXN".
+      valueFormatter: (params: any) => {
+        const n = Number(params.value) || 0;
+        return `${n.toFixed(2)} ${this.currencyAbbr(params.data?.idCurrency)}`;
+      },
       valueSetter: (params: any) => {
         const n = parseFloat(String(params.newValue));
         params.data.campo9 = isNaN(n) || n < 0 ? 0 : n;
@@ -671,6 +695,7 @@ export class DetalleAsignProveedsMaestroComponent implements ICellRendererAngula
 
     this.loadProviders();
     this.loadBranches();
+    this.loadMonedas();
     if (Array.isArray(cached)) {
       // Restaurar filas previas (incluye no guardadas con __isNew/__modified).
       this.proveedorRowData = cached;
@@ -707,6 +732,37 @@ export class DetalleAsignProveedsMaestroComponent implements ICellRendererAngula
     };
   }
 
+  /** Carga el catálogo de monedas (type='CURRENCY') y resuelve la moneda default (MXN). */
+  private loadMonedas(): void {
+    const idCompany = this.idRoot || this.signalsService.getRootSelectedBySidebar()();
+    if (!idCompany) return;
+    this.currencyService.getCurrencies(idCompany).subscribe({
+      next: (data: any) => {
+        const list = Array.isArray(data) ? data : (data?.catalog ?? []);
+        this.monedas = (list || []).map((c: any) => ({
+          id: Number(c.id),
+          abreviatura: (c.valueAddition || '').toString().trim(),
+          nombre: c.description || ''
+        }));
+        this.monedasMap = new Map(this.monedas.map(m => [m.id, m]));
+        // Default MXN: por abreviatura 'MXN', o nombre con "peso"/"mexic"; si no, la primera.
+        const mxn = this.monedas.find(m => m.abreviatura.toUpperCase() === 'MXN')
+          || this.monedas.find(m => /peso|mexic/i.test(m.nombre))
+          || this.monedas[0];
+        this.defaultCurrencyId = mxn ? mxn.id : null;
+        this.proveedorGridApi?.refreshCells({ columns: ['campo9'], force: true });
+      },
+      error: () => { this.monedas = []; this.monedasMap = new Map(); this.defaultCurrencyId = null; }
+    });
+  }
+
+  /** Abreviatura de la moneda de una fila (o 'MXN' si no resuelve). */
+  private currencyAbbr(idCurrency: any): string {
+    const id = (idCurrency !== undefined && idCurrency !== null) ? Number(idCurrency) : this.defaultCurrencyId;
+    const m = id != null ? this.monedasMap.get(Number(id)) : undefined;
+    return (m?.abreviatura || m?.nombre || 'MXN');
+  }
+
   /** Notificación desde el sub-grid de Empaque (Nivel 4) para encender el botón Guardar. */
   notifyChildChanged(): void {
     this.hasProveedorChanges = true;
@@ -728,12 +784,12 @@ export class DetalleAsignProveedsMaestroComponent implements ICellRendererAngula
       const isCurrentlyExpanded = node.expanded && event.data.detailType === detailType;
 
       if (isCurrentlyExpanded) {
-        // Colapsar: cerrar el detalle y restaurar la altura de todas las filas.
+        // Colapsar: cerrar el detalle y restaurar la altura de todas las filas (igual que Nivel 1/2).
         node.setExpanded(false);
         api.forEachNode((n: any) => n.setRowHeight(undefined));
         api.onRowHeightChanged();
       } else {
-        // Patrón acordeón: ocultar las demás filas (altura 0) y mostrar sólo ésta + su detalle.
+        // Acordeón: ocultar las demás filas (altura 0) y mostrar sólo ésta + su detalle.
         api.forEachNode((otherNode: any) => {
           if (otherNode.id === node.id) {
             otherNode.setRowHeight(undefined);
@@ -923,6 +979,9 @@ export class DetalleAsignProveedsMaestroComponent implements ICellRendererAngula
   }
 
   loadProveedorData() {
+    // Captura el detalle abierto (Nivel 3/4) antes del reload para reabrirlo después.
+    this._pendingExpandRestore = this.captureExpandedState();
+
     // Si el material aún no fue guardado en BD (id temporal), no hay datos que cargar:
     // el usuario puede agregar proveedores en memoria y se persistirán cuando el Guardar
     // del Nivel 1 primero cree el material y luego propague el ID real vía idMap.
@@ -950,11 +1009,53 @@ export class DetalleAsignProveedsMaestroComponent implements ICellRendererAngula
 
         this.sortProveedorRowData();
         this.syncCacheToParams();
+        this.restoreExpandedState();
         void this.loadSucursalCounts().then(() => {
           setTimeout(() => this.autosizeProveedorColumns(), 0);
         });
       });
     }
+  }
+
+  /** Devuelve el proveedor (idTabla) con detalle abierto y su tipo, o null. */
+  private captureExpandedState(): { idTabla: any; detailType: string; empaqueDetailType: string } | null {
+    if (!this.proveedorGridApi) return null;
+    let result: { idTabla: any; detailType: string; empaqueDetailType: string } | null = null;
+    this.proveedorGridApi.forEachNode((n: any) => {
+      if (n.expanded && n.data?.detailType) {
+        result = {
+          idTabla: n.data.idTabla,
+          detailType: n.data.detailType,
+          empaqueDetailType: n.data.__empaqueDetailType || '',  // medidas | pesovolumen (sub-detalle)
+        };
+      }
+    });
+    return result;
+  }
+
+  /** Reabre el detalle que estaba abierto antes del reload (mejora UX tras guardar). */
+  private restoreExpandedState(): void {
+    const target = this._pendingExpandRestore;
+    this._pendingExpandRestore = null;
+    if (!target || !this.proveedorGridApi) return;
+    setTimeout(() => {
+      let node: any = null;
+      this.proveedorGridApi.forEachNode((n: any) => {
+        if (n.data?.idTabla === target.idTabla) node = n;
+      });
+      if (!node) return;
+      node.data.detailType = target.detailType;
+      // Propaga qué sub-detalle (medidas|pesovolumen) estaba abierto a la fila nueva.
+      if (target.empaqueDetailType) node.data.__empaqueDetailType = target.empaqueDetailType;
+      // Acordeón sólo para el detalle de empaque (igual que su handler).
+      if (target.detailType === 'proveedorEmpaque') {
+        this.proveedorGridApi.forEachNode((n: any) => {
+          n.setRowHeight(n.id === node.id ? undefined : 0);
+        });
+        this.proveedorGridApi.onRowHeightChanged();
+      }
+      node.setExpanded(true);
+    }, 50);
   }
 
   private async fetchMissingProviders() {
@@ -1039,6 +1140,19 @@ export class DetalleAsignProveedsMaestroComponent implements ICellRendererAngula
     this.syncCacheToParams();
   }
 
+  /** El editor compuesto de Precio Unitario puede cambiar SOLO la moneda (campo9 igual) → no
+   *  dispara cellValueChanged. Aquí capturamos el __modified que dejó el editor para marcar cambios
+   *  y refrescar la celda (re-concatenar la abreviatura). */
+  onProveedorCellEditingStopped(event: any) {
+    if (event?.column?.getColId?.() === 'campo9') {
+      if (event.data?.__modified) {
+        this.hasProveedorChanges = true;
+        this.syncCacheToParams();
+      }
+      this.proveedorGridApi?.refreshCells({ rowNodes: [event.node], columns: ['campo9'], force: true });
+    }
+  }
+
   onProveedorSelectionChanged(event: any): void {
     const selectedRows = event.api.getSelectedRows();
     this.selectedProveedor = selectedRows.length > 0 ? selectedRows[0] : null;
@@ -1071,6 +1185,7 @@ export class DetalleAsignProveedsMaestroComponent implements ICellRendererAngula
       campo6: '',              // Caducidad/Garantía
       campo7: false,           // Por autorizar
       campo9: 0,               // Precio unitario
+      idCurrency: this.defaultCurrencyId,  // Moneda default (MXN)
       campo10: branchId,       // ID sucursal (del sidebar)
       branchName,              // Nombre de sucursal (del sidebar)
       type: 'MATERIAL',
@@ -1151,6 +1266,19 @@ export class DetalleAsignProveedsMaestroComponent implements ICellRendererAngula
                       row.id && !String(row.id).startsWith('temp_')
       ).map((row: any) => ({ id: row.id as number, active: row.active === true || row.active === 1 }));
 
+      // Capturar medidas de empaque (Nivel 4) ANTES del reload. El id real del proveedor
+      // se resuelve con newProveedorIdMap (temp→real) tras MATERIAL.save.
+      // Presentaciones de empaque (Nivel 4) por proveedor. Solo filas con datos (la vacía final no).
+      const empaqueToSave = this.proveedorRowData
+        .filter((row: any) => row.__empaqueDirty)
+        .map((row: any) => ({
+          rowIdRaw: row.id,
+          presentaciones: (Array.isArray(row.__empaqueRows) ? row.__empaqueRows : [])
+            .filter((p: any) => !!p.idDescripcionEmpaque || (p.piezaXPaquete != null && p.piezaXPaquete !== '')
+              || (Array.isArray(p.__medidas) && p.__medidas.length > 0)
+              || (Array.isArray(p.__pesoVolumen) && p.__pesoVolumen.length > 0)),
+        }));
+
       try {
         // Guardar los cambios. MATERIAL.save devuelve Map<tempProveedorId, realProveedorId>
         // que propagamos al idMap compartido para que el Nivel 3 (sucursales) pueda remapear
@@ -1166,6 +1294,37 @@ export class DetalleAsignProveedsMaestroComponent implements ICellRendererAngula
 
         // Esperar un poco para que el servidor procese
         await new Promise(resolve => setTimeout(resolve, 500));
+
+        // Persistir presentaciones (cascada de 2 niveles): proveedor → presentaciones → medidas/peso.
+        for (const emp of empaqueToSave) {
+          let realId = (typeof emp.rowIdRaw === 'number') ? emp.rowIdRaw : Number(emp.rowIdRaw);
+          if (!realId || String(emp.rowIdRaw).startsWith('temp_')) {
+            const mapped = newProveedorIdMap?.get(String(emp.rowIdRaw));
+            if (mapped) realId = mapped;
+          }
+          if (!realId || realId <= 0) continue;
+          try {
+            // 1) Guardar presentaciones; devuelve filas con ids en el MISMO orden enviado.
+            const items = emp.presentaciones.map((p: any) => ({
+              idDescripcionEmpaque: p.idDescripcionEmpaque ?? null,
+              piezaXPaquete: (p.piezaXPaquete === '' || p.piezaXPaquete === undefined) ? null : (p.piezaXPaquete ?? null),
+            }));
+            const saved = await firstValueFrom(this.empaqueDescripcionService.saveByProveedor(realId, items));
+            // 2) Por cada presentación (mismo índice), guardar sus medidas y peso/volumen con el id real.
+            for (let i = 0; i < (saved?.length ?? 0); i++) {
+              const empId = saved[i].id!;
+              const pres = emp.presentaciones[i];
+              const meds = Array.isArray(pres?.__medidas) ? pres.__medidas : [];
+              const pvs  = Array.isArray(pres?.__pesoVolumen) ? pres.__pesoVolumen : [];
+              await firstValueFrom(this.empaqueMedidaService.saveByEmpaque(empId, meds))
+                .catch(e => console.warn(`⚠️ medidas presentación ${empId}:`, e));
+              await firstValueFrom(this.empaquePesoVolumenService.saveByEmpaque(empId, pvs))
+                .catch(e => console.warn(`⚠️ peso/volumen presentación ${empId}:`, e));
+            }
+          } catch (e) {
+            console.warn(`⚠️ No se pudieron guardar presentaciones del proveedor ${realId}:`, e);
+          }
+        }
 
         // Sincronizar campo11 → detailsreqoc.observation para cotizaciones existentes
         for (const row of rowsToSync) {

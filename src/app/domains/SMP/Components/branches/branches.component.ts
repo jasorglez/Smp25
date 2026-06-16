@@ -67,7 +67,7 @@ export class BranchesComponent implements CanComponentDeactivate {
   private tempIdCounter: number = 0;
 
   // Enter-key navigation
-  private editableColumnOrder = ['name', 'description', 'idEstado', 'address'];
+  private editableColumnOrder = ['prefix', 'name', 'description', 'idEstado', 'address'];
   private enterPressed: boolean = false;
 
   public defaultColDef: ColDef = {
@@ -232,7 +232,8 @@ export class BranchesComponent implements CanComponentDeactivate {
       description: data.description,
       address: data.address,
       orden: data.orden,
-      active: data.active
+      active: data.active,
+      prefix: data.prefix ?? null
     });
     this.modalService.open(this.content, { size: 'lg' });
   }
@@ -264,6 +265,27 @@ export class BranchesComponent implements CanComponentDeactivate {
 
     // Agregar el resto de las columnas
     columns.push(
+      {
+        field: 'prefix',
+        headerName: 'Prefijo',
+        editable: true,
+        filter: true,
+        width: 100,
+        valueSetter: (params) => {
+          const val = params.newValue ? String(params.newValue).trim().toUpperCase() : null;
+          if (val) {
+            const duplicate = this.masterRowData.some(
+              (row) => row.id !== params.data.id && row.prefix?.toUpperCase() === val
+            );
+            if (duplicate) {
+              alerts.basicAlert('Prefijo duplicado', 'Ya existe una sucursal con ese prefijo.', 'error');
+              return false;
+            }
+          }
+          params.data[params.colDef.field] = val;
+          return true;
+        },
+      },
       {
         field: 'name',
         headerName: 'Nombre *',
@@ -457,6 +479,10 @@ export class BranchesComponent implements CanComponentDeactivate {
     this.masterGridApi = params.api;
   }
 
+  onMasterFirstDataRendered() {
+    if (this.masterGridApi) this.masterGridApi.autoSizeAllColumns();
+  }
+
   addMasterRow() {
     const tempId = `temp_${this.tempIdCounter++}`;
     const newItem = {
@@ -468,6 +494,7 @@ export class BranchesComponent implements CanComponentDeactivate {
       address: '',
       orden: 0,
       active: true,
+      prefix: null,
       __isNew: true,
     };
 
@@ -495,6 +522,17 @@ export class BranchesComponent implements CanComponentDeactivate {
   async onSubmit() {
     if (this.addBranch.valid) {
       const formData = this.addBranch.value;
+      const prefixVal = formData.prefix ? String(formData.prefix).trim().toUpperCase() : null;
+      if (prefixVal) {
+        const duplicate = this.masterRowData.some(
+          (row) => row.id !== formData.id && row.prefix?.toUpperCase() === prefixVal
+        );
+        if (duplicate) {
+          alerts.basicAlert('Prefijo duplicado', 'Ya existe una sucursal con ese prefijo.', 'error');
+          return;
+        }
+      }
+
       const newItem = {
         id: formData.id || `temp_${this.tempIdCounter++}`,
         idCompany: this.signalsService.getemailChoose() === environment.root ? formData.idCompany : this.idRoot,
@@ -504,6 +542,7 @@ export class BranchesComponent implements CanComponentDeactivate {
         address: formData.address.toUpperCase(),
         orden: formData.orden || 0,
         vigente: formData.vigente || 1,
+        prefix: prefixVal,
         __isNew: !formData.id,
         __modified: !!formData.id
       };
@@ -792,7 +831,8 @@ export class BranchesComponent implements CanComponentDeactivate {
       description: new FormControl('', [Validators.required]),
       address: new FormControl('', [Validators.required]),
       orden: new FormControl(0),
-      vigente: new FormControl(true)
+      vigente: new FormControl(true),
+      prefix: new FormControl(null)
     });
   }
 }

@@ -4,6 +4,7 @@ import { AgGridAngular } from 'ag-grid-angular';
 import { ColDef, GridApi, GridReadyEvent } from 'ag-grid-enterprise';
 import { OcAndReqsService } from 'app/services/ocandreqs.service';
 import { OrdenesydetallesOcComponent } from './ordenesydetallesOc.component';
+import { CurrencyService } from 'app/services/currency.service';
 import { forkJoin, of } from 'rxjs';
 import { map, catchError } from 'rxjs/operators';
 
@@ -36,12 +37,68 @@ import { map, catchError } from 'rxjs/operators';
 })
 export class PedimentosXRequisicionComponent {
   private ocAndReqsService = inject(OcAndReqsService);
+  private currencyService = inject(CurrencyService);
+
+  // Catálogo de monedas para el "$ Total x Pedimento" por moneda (Opción A, sin convertir).
+  private monedasMap = new Map<number, string>();
+  private defaultCurrencyId: number | null = null;
 
   private internalParams: any;
   private gridApi!: GridApi;
 
   rowData: any[] = [];
   requisiconFolio: string = '';
+
+  /** Carga catálogo de monedas (type=CURRENCY) y resuelve la default (MXN). */
+  private loadMonedas(idCompany: number): void {
+    if (!idCompany) return;
+    this.currencyService.getCurrencies(idCompany).subscribe({
+      next: (data: any) => {
+        const list = Array.isArray(data) ? data : (data?.catalog ?? []);
+        this.monedasMap = new Map<number, string>();
+        let mxnId: number | null = null;
+        (list || []).forEach((c: any) => {
+          const id = Number(c.id);
+          const abrev = (c.valueAddition || '').toString().trim();
+          const nombre = c.description || '';
+          this.monedasMap.set(id, abrev || nombre);
+          if (mxnId === null && (abrev.toUpperCase() === 'MXN' || /peso|mexic/i.test(nombre))) mxnId = id;
+        });
+        this.defaultCurrencyId = mxnId ?? (list?.[0]?.id != null ? Number(list[0].id) : null);
+        if (this.gridApi && !this.gridApi.isDestroyed()) this.gridApi.refreshCells({ force: true });
+      },
+      error: () => { this.monedasMap = new Map(); this.defaultCurrencyId = null; }
+    });
+  }
+
+  /** Abreviatura de una moneda (o 'MXN' si no resuelve). */
+  private currencyAbbr(idCurrency: any): string {
+    const id = (idCurrency !== undefined && idCurrency !== null) ? Number(idCurrency) : this.defaultCurrencyId;
+    return (id != null ? this.monedasMap.get(Number(id)) : '') || 'MXN';
+  }
+
+  /**
+   * "$ Total x Pedimento" por moneda. Agrupa el total de las OCs del pedimento por su moneda
+   * (no convierte). 1 moneda → "$X.XX MXN"; varias → "$X.XX MXN / $Y.YY USD" (default/MXN primero).
+   */
+  private buildTotalsByCurrencyDisplay(ocs: any[]): string {
+    const sums = new Map<number, number>();
+    for (const oc of (ocs || [])) {
+      const id = (oc?.idCurrency !== undefined && oc?.idCurrency !== null)
+        ? Number(oc.idCurrency)
+        : (this.defaultCurrencyId ?? -1);
+      sums.set(id, (sums.get(id) || 0) + (Number(oc?.total ?? oc?.Total) || 0));
+    }
+    if (sums.size === 0) return `$0.00 ${this.currencyAbbr(this.defaultCurrencyId)}`;
+    const entries = Array.from(sums.entries()).sort((a, b) => {
+      if (a[0] === this.defaultCurrencyId) return -1;
+      if (b[0] === this.defaultCurrencyId) return 1;
+      return this.currencyAbbr(a[0]).localeCompare(this.currencyAbbr(b[0]));
+    });
+    return entries.map(([id, sum]) =>
+      `$${sum.toLocaleString('es-MX', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ${this.currencyAbbr(id)}`
+    ).join(' / ');
+  }
 
   colDefs: ColDef[] = [
     {
@@ -86,7 +143,9 @@ export class PedimentosXRequisicionComponent {
       headerName: '$ Total x Pedimento',
       width: 180,
       editable: false,
+      // Subtotales por moneda (Opción A): "$X.XX MXN / $Y.YY USD" si hay mezcla; una sola si no.
       valueFormatter: (p) => {
+        if (p.data?.totalPedimentoDisplay) return p.data.totalPedimentoDisplay;
         const n = Number(p.value) || 0;
         return '$' + n.toLocaleString('es-MX', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
       },
@@ -136,6 +195,8 @@ export class PedimentosXRequisicionComponent {
       return;
     }
 
+    this.loadMonedas(Number(idCompany) || 0);
+
     this.ocAndReqsService.getPedimentosByRequisicion(idRequisicion).subscribe({
       next: (pedimentos: any[]) => {
         const peds = Array.isArray(pedimentos) ? pedimentos : [];
@@ -148,15 +209,15 @@ export class PedimentosXRequisicionComponent {
           return;
         }
 
-        // Por cada pedimento, contar sus OCs reales (las mismas que muestra el grid de detalle).
+        // Por cada pedimento, traer sus OCs reales (para contar y para los subtotales por moneda).
         forkJoin(
           peds.map((p: any) =>
             this.ocAndReqsService.getOcsByPedimento(p.id).pipe(
-              map((ocs: any[]) => (Array.isArray(ocs) ? ocs.length : 0)),
-              catchError(() => of(0))
+              map((ocs: any[]) => (Array.isArray(ocs) ? ocs : [])),
+              catchError(() => of([] as any[]))
             )
           )
-        ).subscribe((counts: number[]) => {
+        ).subscribe((ocsPerPed: any[][]) => {
           // idReference (sucursal) heredado de la requisición padre — necesario para
           // que el componente de detalle de OCs pueda cargar el rango de Condic. Compra
           // desde setup_oc sin depender del branch del sidebar.
@@ -164,15 +225,20 @@ export class PedimentosXRequisicionComponent {
                            ?? this.internalParams?.data?.id_reference
                            ?? this.internalParams?.data?.idBranch
                            ?? null;
-          this.rowData = peds.map((p: any, i: number) => ({
-            id:        p.id,
-            folio:     p.folio || '',
-            pedimento: p.pedimento || 0,
-            ocNumber:  counts[i] ?? 0,
-            totalPedimento: p.totalPedimento ?? p.TotalPedimento ?? 0,
-            idCompany: idCompany,
-            idReference: idReference,
-          }));
+          this.rowData = peds.map((p: any, i: number) => {
+            const ocs = ocsPerPed[i] || [];
+            return {
+              id:        p.id,
+              folio:     p.folio || '',
+              pedimento: p.pedimento || 0,
+              ocNumber:  ocs.length,
+              totalPedimento: p.totalPedimento ?? p.TotalPedimento ?? 0,
+              // Subtotales por moneda (Opción A): suma de Total x OC agrupada por moneda.
+              totalPedimentoDisplay: this.buildTotalsByCurrencyDisplay(ocs),
+              idCompany: idCompany,
+              idReference: idReference,
+            };
+          });
 
           if (this.gridApi && !this.gridApi.isDestroyed()) {
             this.gridApi.setGridOption('rowData', this.rowData);

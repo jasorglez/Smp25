@@ -13,6 +13,7 @@ export interface EntregaOc {
   totalEntrega?: number | null;
   fechaEntradaAlmacen?: string | null;
   close?: boolean;
+  masIva?: boolean;          // IVA propio de la entrega (multi-entrega)
   active?: boolean;
   dateModified?: string;
 }

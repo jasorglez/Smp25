@@ -1,4 +1,4 @@
-import { Component, inject, signal, effect, Input, Renderer2, RendererFactory2 } from '@angular/core';
+import { Component, inject, signal, effect, untracked, Input, Renderer2, RendererFactory2 } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { AgGridAngular } from 'ag-grid-angular';
 import { ColDef, GridApi, GridReadyEvent } from 'ag-grid-enterprise';
@@ -18,6 +18,7 @@ import { alerts } from 'app/helpers/alerts';
 import { ExtractionFermentationBultosService } from '../../../../../services/extraction-fermentation-bultos.service';
 import { ExtractionFermentationCatalogItem, ExtractionFermentationCatalogService } from 'app/services/extraction-fermentation-catalog.service';
 import { CatalogProductionService } from '../../../../../services/catalog-production.service';
+import { SalidasMpService } from 'app/services/salidas-mp.service';
 
 @Component({
   selector: 'app-almmolienda',
@@ -68,7 +69,7 @@ import { CatalogProductionService } from '../../../../../services/catalog-produc
         </div>
 
         <!-- GRID -->
-        <div class="flex-grow-1">
+        <div class="flex-grow-1" style="position: relative;">
           <ag-grid-angular
             class="ag-theme-quartz small-text-ag-grid"
             [columnDefs]="columnDefs"
@@ -81,6 +82,12 @@ import { CatalogProductionService } from '../../../../../services/catalog-produc
             (cellEditingStopped)="onCellEditingStopped($event)"
             style="height: 80vh; width: 100%;">
           </ag-grid-angular>
+          <div *ngIf="activeBranchFilter != null && filteredRowCount === 0 && rowData() !== null"
+               style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
+                      text-align: center; color: #9e9e9e; pointer-events: none; user-select: none;">
+            <i class="bi bi-inbox" style="font-size: 2.5rem; display: block; margin-bottom: 8px;"></i>
+            No hay registros para <strong>{{ activeBranchName }}</strong>
+          </div>
         </div>
 
       </div>
@@ -90,6 +97,10 @@ import { CatalogProductionService } from '../../../../../services/catalog-produc
 })
 export class AlmmoliendaComponent {
   @Input() tipo: string = 'Molienda';
+  /** Si se define, filtra filas y dropdown por familia. Acepta un valor ('BASICA') o varios (['1RA FASE','2DA FASE']). */
+  @Input() familiaFilter: string | string[] | null = null;
+  /** Cuando es true, el Level 2 de Entradas muestra vista simple (Fecha/Lote/Cantidad) en lugar del flujo OC/REQ. */
+  @Input() entradasSimple: boolean = false;
 
   private signalsService = inject(SignalsService);
   private branchsService = inject(BranchsService);
@@ -102,6 +113,7 @@ export class AlmmoliendaComponent {
   private bultosService = inject(ExtractionFermentationBultosService);
   private catalogService = inject(CatalogProductionService);
   private catalogoCategorias = inject(ExtractionFermentationCatalogService);
+  private salidasMpService   = inject(SalidasMpService);
 
   hasUnsavedChanges = false;
   selectedRow: any  = null;
@@ -112,14 +124,16 @@ export class AlmmoliendaComponent {
   gridApi!: GridApi;
   private idRoot = 0;
   private enterPressed = false;
-  private editableColumnOrder = ['sucursal', 'id_articulo', 'ajustesInventarios', 'comentarios'];
+  private editableColumnOrder = ['sucursal', 'id_articulo', 'comentarios'];
 
   userBranches: any[] = [];
   branchNames: string[] = [];
-  matPrimaOptions: { id: number; name: string; editBultos: boolean }[] = [];
+  matPrimaOptions: { id: number; name: string; editBultos: boolean; familia: string }[] = [];
   departmentOptions: any[] = [];
   idBranch: number | null = null;
   activeBranchFilter: number | null = null;
+  activeBranchName: string = '';
+  filteredRowCount: number | null = null;
   expandedRowId: string | null = null;
   expandedDetailType: string | null = null;
   private _columnDefs: ColDef[] = [];
@@ -243,9 +257,15 @@ export class AlmmoliendaComponent {
             .filter(r => r !== params.data && r.sucursal === sucursal && r.id_articulo)
             .map((r: any) => r.id_articulo)
         );
+        const filtroFamilias = this.familiaFilter
+          ? (Array.isArray(this.familiaFilter)
+              ? this.familiaFilter.map(f => f.toUpperCase())
+              : [this.familiaFilter.toUpperCase()])
+          : null;
         return {
           options: this.matPrimaOptions
             .filter(m => !usados.has(m.name))
+            .filter(m => !filtroFamilias || filtroFamilias.includes(m.familia))
             .map(m => ({ id: m.name, description: m.name })),
         };
       },
@@ -302,22 +322,6 @@ export class AlmmoliendaComponent {
     },
    
     {
-      headerName: 'Total Inventarios',
-      field: 'totalInventarios',
-      width: 150,
-      editable: false,
-      type: 'numericColumn',
-      valueFormatter: (p) => String(Math.trunc(p.value ?? 0)),
-      cellStyle: { backgroundColor: '#f0f4ff', fontWeight: '600' }
-    },
-    {
-      headerName: 'Ajustes Inventarios',
-      field: 'ajustesInventarios',
-      width: 150,
-      editable: true,
-      type: 'numericColumn',
-    },
-    {
       headerName: 'Comentarios',
       field: 'comentarios',
       flex: 2,
@@ -332,7 +336,7 @@ export class AlmmoliendaComponent {
     components: {
       selectV2: SelectWithTooltipEditorV2Component,
     },
-    getRowId: (params: any) => String(params.data.id ?? params.data.__tempId),
+    getRowId: (params: any) => String(params.data.__tempId ?? params.data.id),
     headerHeight: 25,
     rowHeight: 25,
     rowClassRules: { 'new-row-highlight': (p: any) => !!p.data?.__isNew },
@@ -350,6 +354,7 @@ export class AlmmoliendaComponent {
         preloadedReqs:     isEntradas ? this.lastSyncedReqs    : [],
         preloadedDetails:  isEntradas ? this.lastSyncedDetails : [],
         entradasData$:     isEntradas ? this.entradasData$.asObservable() : null,
+        entradasSimple:    this.entradasSimple,
         bultosCantidad:    this.bultosCantidad,
         bultosCantidadARevisar: this.bultosCantidadARevisar,
         proporcionRevision: this.proporcionRevision,
@@ -370,6 +375,7 @@ export class AlmmoliendaComponent {
       },
     },
     onFirstDataRendered: (params: any) => params.api.autoSizeAllColumns(),
+    suppressNoRowsOverlay: true,
   };
 
   constructor(rendererFactory: RendererFactory2) {
@@ -378,10 +384,12 @@ export class AlmmoliendaComponent {
     effect(() => {
       const idUser = this.signalsService.idUser();
       const idCompany = this.signalsService.getRootSelectedBySidebar()();
-      const idBranch = this.signalsService.getBranchSelectedBySidebar()();
       if (idUser && idCompany) {
         this.idRoot = idCompany;
-        this.idBranch = idBranch;
+        // Lee la sucursal sin registrarla como dependencia reactiva para
+        // evitar que un cambio de sucursal dispare un reload completo del grid.
+        // El filtrado por sucursal lo maneja el segundo effect via onFilterChanged().
+        this.idBranch = untracked(() => this.signalsService.getBranchSelectedBySidebar()());
         this.loadUserBranches();
         this.loadRawMaterials(idCompany);
       }
@@ -391,9 +399,12 @@ export class AlmmoliendaComponent {
       const branchId = this.signalsService.getBranchSelectedBySidebar()();
       const branchName = this.signalsService.getBranchNameSelectedBySidebar()();
       const isAll = !branchName || branchName === 'Todas las sucursales' || (branchId != null && branchId < 0);
+      this.idBranch = branchId;
       this.activeBranchFilter = isAll ? null : branchId;
+      this.activeBranchName = isAll ? '' : (branchName ?? '');
       if (this.gridApi) {
         this.gridApi.onFilterChanged();
+        this.filteredRowCount = this.gridApi.getDisplayedRowCount();
       }
     });
 
@@ -553,16 +564,21 @@ export class AlmmoliendaComponent {
         lastValueFrom(this.rolesService.getAuthorizedDepartments(idCompany)),
       ]);
       const deptsData = (deptsResponse as any)?.data || deptsResponse || [];
-      const matsMap = new Map<number, string>();
-      (Array.isArray(matsData) ? matsData : []).forEach((m: any) => matsMap.set(m.id, m.articulo));
-      console.log('Materiales crudos:', mxmData);
+      const matsMap = new Map<number, { name: string; familia: string }>();
+      (Array.isArray(matsData) ? matsData : []).forEach((m: any) =>
+        matsMap.set(m.id, { name: m.articulo ?? String(m.id), familia: (m.familia ?? '').toUpperCase() })
+      );
       this.matPrimaOptions = (Array.isArray(mxmData) ? mxmData : [])
         .filter((m: any) => m.active !== false && m.idArticulo != null)
-        .map((m: any) => ({
-          id: m.idArticulo,
-          name: matsMap.get(m.idArticulo) ?? String(m.idArticulo),
-          editBultos: !!m.editBultos,
-        }))
+        .map((m: any) => {
+          const mat = matsMap.get(m.idArticulo);
+          return {
+            id: m.idArticulo,
+            name: mat?.name ?? String(m.idArticulo),
+            editBultos: !!m.editBultos,
+            familia: mat?.familia ?? '',
+          };
+        })
         .filter(m => m.name);
       this.departmentOptions = Array.isArray(deptsData) ? deptsData : [];
       this._columnDefs = [];
@@ -604,9 +620,18 @@ export class AlmmoliendaComponent {
       const categorias = await lastValueFrom(this.catalogoCategorias.getAllByBranch(idCompany, this.idBranch));
       console.log('Categorías crudas:', categorias);
 
+      this.catalogoCategoriasSucursal = Array.isArray(categorias) ? categorias : [];
+
+      // Sin catálogo ligado (idCatalog null) → el material NO tiene organolépticas: no cargar el árbol
+      // global (getAll sin idCatalog devuelve TODO). Así la pestaña organolépticas no aparece.
+      if (idCatalog == null) {
+        this.caracteristicasCategories = [];
+        this.caracteristicasFamilies = [];
+        return;
+      }
+
       const allItems = await lastValueFrom(this.catalogService.getAll(idCompany, idCatalog));
       const itemsArray = Array.isArray(allItems) ? allItems : [];
-      this.catalogoCategoriasSucursal = Array.isArray(categorias) ? categorias : [];
 
       this.caracteristicasCategories = itemsArray
         .filter((item: any) => item.type === 'CATEGORY')
@@ -655,21 +680,12 @@ export class AlmmoliendaComponent {
       .trim();
   }
 
-  private getCategoriaCatalogoIdByArticulo(idArticulo: string | null | undefined): number | null {
-    const articulo = this.getArticuloComparableText(idArticulo);
-    if (!articulo || !Array.isArray(this.catalogoCategoriasSucursal)) return null;
-
-    const exactMatch = this.catalogoCategoriasSucursal.find((categoria) =>
-      this.getCategoriaComparableText(categoria.description) === articulo
-    );
-    if (exactMatch?.id) return exactMatch.id;
-
-    const partialMatch = this.catalogoCategoriasSucursal.find((categoria) => {
-      const categoriaTexto = this.getCategoriaComparableText(categoria.description);
-      return categoriaTexto.includes(articulo) || articulo.includes(categoriaTexto);
-    });
-
-    return partialMatch?.id ?? null;
+  /** Catálogo organoléptico ("Características de …") ligado al material por id_material.
+   *  Un artículo "tiene organolépticas" ⟺ esta función devuelve un id. (Antes era match por nombre.) */
+  private getCategoriaCatalogoIdByMaterial(idMaterial: number | null | undefined): number | null {
+    if (!idMaterial || !Array.isArray(this.catalogoCategoriasSucursal)) return null;
+    const match = this.catalogoCategoriasSucursal.find((categoria: any) => categoria.idMaterial === idMaterial);
+    return match?.id ?? null;
   }
 
   private getMaterialConfigByArticulo(idArticulo: string | null | undefined) {
@@ -696,12 +712,19 @@ export class AlmmoliendaComponent {
   }
 
   async loadData(idCompany: number) {
-    this.rowData.set(null);
-    if (this.gridApi) this.gridApi.setGridOption('rowData', null);
+    this.rowData.set([]);
+    if (this.gridApi) this.gridApi.setGridOption('rowData', []);
     try {
       const items = await lastValueFrom(this.moliendaService.getAll(idCompany, this.tipo));
       console.log('Raw data from API:', items);
-      const mapped = (Array.isArray(items) ? items : []).map(i => this.mapRow(i));
+      const filtroFamilias = this.familiaFilter
+        ? (Array.isArray(this.familiaFilter)
+            ? this.familiaFilter.map(f => f.toUpperCase())
+            : [this.familiaFilter.toUpperCase()])
+        : null;
+      const mapped = (Array.isArray(items) ? items : [])
+        .map(i => this.mapRow(i))
+        .filter(row => !filtroFamilias || filtroFamilias.includes(row.familia));
 
       const deptsCsv = this.departmentOptions
         .map((d: any) => d.id)
@@ -709,14 +732,13 @@ export class AlmmoliendaComponent {
         .join(',');
 
       // Entradas: contar requisiciones reales en ocandreq (no DetailsMolienda).
-      // Esto da el valor correcto sin necesidad de abrir la cascada.
-      // Salidas: sigue contando DetailsMolienda (no hay sync automático para salidas).
+      // Salidas: contar desde salidas_mp (fuente real del sistema de salidas).
       const countsPromises = mapped
         .filter(row => row.id && row.sucursal && row.idMaterial)
         .map(async row => {
           const [reqs, salidas, crItems] = await Promise.all([
             lastValueFrom(this.ocAndReqsService.getReqsByBranchMaterial(row.sucursal, row.idMaterial, deptsCsv)),
-            lastValueFrom(this.moliendaService.getDetails(row.id, 'SALIDA')),
+            lastValueFrom(this.salidasMpService.getResumen(row.idMaterial, row.sucursal)).catch(() => []),
             lastValueFrom(this.ocAndReqsService.getCompraRapidaItems(row.sucursal, row.idMaterial)).catch(() => []),
           ]);
           // Entradas = requisiciones OC + requisiciones distintas con compra rápida (mismo material).
@@ -744,12 +766,18 @@ export class AlmmoliendaComponent {
       this.originalRowData = JSON.parse(JSON.stringify(sorted));
       
       this.rowData.set(sorted);
-      //console.log('Loaded molienda:', this.rowData());  
-      if (this.gridApi) this.gridApi.setGridOption('rowData', sorted);
+      //console.log('Loaded molienda:', this.rowData());
+      if (this.gridApi) {
+        this.gridApi.setGridOption('rowData', sorted);
+        this.filteredRowCount = this.gridApi.getDisplayedRowCount();
+      }
     } catch (error) {
       console.error('Error loading molienda:', error);
       this.rowData.set([]);
-      if (this.gridApi) this.gridApi.setGridOption('rowData', []);
+      if (this.gridApi) {
+        this.gridApi.setGridOption('rowData', []);
+        this.filteredRowCount = 0;
+      }
     }
   }
 
@@ -819,13 +847,15 @@ export class AlmmoliendaComponent {
   }
 
   private mapRow(i: any): any {
-    const nombreMaterial = this.matPrimaOptions.find(m => m.id === i.idMaterial)?.name ?? '';
+    const matOption = this.matPrimaOptions.find(m => m.id === i.idMaterial);
+    const nombreMaterial = matOption?.name ?? '';
     return {
       id:                 i.id,
       active:             i.active ?? true,
       sucursal:           i.idSucursal   ?? null,
       idMaterial:         i.idMaterial   ?? null,
       id_articulo:        nombreMaterial,
+      familia:            matOption?.familia ?? '',
       entradas:           i.entradas     ?? 0,
       salidas:            i.salidas      ?? 0,
       totalEntradas:      (i as any).totalEntradas ?? null,
@@ -912,7 +942,8 @@ export class AlmmoliendaComponent {
     if (!idMolienda || !sucursal || !idMaterial) return;
 
     await this.loadBultosCantidad(this.idRoot, sucursal);
-    const idCatalog = this.getCategoriaCatalogoIdByArticulo(rowData?.id_articulo);
+    // Catálogo organoléptico ligado por id_material (antes era match frágil por nombre).
+    const idCatalog = this.getCategoriaCatalogoIdByMaterial(idMaterial);
     await this.loadCaracteristicasCategories(this.idRoot, idCatalog);
 
     const today = new Date().toISOString().substring(0, 10);
@@ -1046,15 +1077,9 @@ export class AlmmoliendaComponent {
       }
 
       const saved = newRows.length + modifiedRows.length;
-      const sorted = this.sortRowsByBranchAndArticle(this.rowData());
       this.hasUnsavedChanges = false;
-      this.rowData.set(sorted);
-      this.originalRowData   = JSON.parse(JSON.stringify(sorted));
-      if (this.gridApi) {
-        this.gridApi.setGridOption('rowData', sorted);
-        this.gridApi.refreshCells({ columns: ['entradas', 'salidas'], force: true });
-      }
       this.showToast(`${saved} registro(s) guardado(s)`);
+      await this.loadData(this.idRoot);
     } catch (error) {
       console.error('Error saving molienda:', error);
       alerts.basicAlert('Error', 'Ocurrió un error al guardar.', 'error');

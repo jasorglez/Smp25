@@ -3,30 +3,37 @@
      <div class="card-header p-2">
         <ul class="nav nav-pills">
           <li *ngIf="typeCatalog === 'shoppingDelison'">
+            <a class="nav-link green-tab" [class.active]="enConstruccion === 'proveedores'" (click)="showEnConstruccion('proveedores')" style="cursor: pointer;">
+              <i class="bi bi-people"></i> Proveedores
+            </a>
+          </li>
+          <li *ngIf="typeCatalog === 'shoppingDelison'">
+            <a class="nav-link green-tab" [class.active]="enConstruccion === 'materiales'" (click)="showEnConstruccion('materiales')" style="cursor: pointer;">
+              <i class="bi bi-boxes"></i> Materiales Maestros
+            </a>
+          </li>
+          <li *ngIf="typeCatalog === 'shoppingDelison'">
+            <a class="nav-link green-tab" [class.active]="enConstruccion === 'requisiciones'" (click)="showEnConstruccion('requisiciones')" style="cursor: pointer;">
+              <i class="bi bi-list-check"></i> Requisiciones
+            </a>
+          </li>
+          <li *ngIf="typeCatalog === 'shoppingDelison'">
+            <a class="nav-link green-tab" [class.active]="enConstruccion === 'ordenes'" (click)="showEnConstruccion('ordenes')" style="cursor: pointer;">
+              <i class="bi bi-cart"></i> Ordenes de compra
+            </a>
+          </li>
+          <li *ngIf="typeCatalog === 'shoppingDelison'">
+            <a class="nav-link green-tab" [class.active]="enConstruccion === 'gastos'" (click)="showEnConstruccion('gastos')" style="cursor: pointer;">
+              <i class="bi bi-receipt"></i> Gastos
+            </a>
+          </li>
+          <li *ngIf="typeCatalog === 'shoppingDelison'">
             <a class="nav-link green-tab"
               [class.active]="cat"
               (click)="refres(true)"
               style="cursor: pointer;"
               >
               <i class="bi bi-list-ul"></i>CAT-FAM-SUB
-            </a>
-          </li>
-          <li *ngIf="typeCatalog === 'shoppingDelison'">
-            <a class="nav-link green-tab"
-              [class.active]="montos"
-              (click)="showMontos()"
-              style="cursor: pointer;"
-              >
-              <i class="bi bi-cash-stack"></i> AUTORIZACIÓN DE MONTOS
-            </a>
-          </li>
-          <li *ngIf="typeCatalog === 'shoppingDelison'">
-            <a class="nav-link green-tab"
-              [class.active]="condicionesPago"
-              (click)="showCondicionesPago()"
-              style="cursor: pointer;"
-              >
-              <i class="bi bi-credit-card"></i> CONDICIONES DE PAGOS
             </a>
           </li>
           <li class="nav-item" *ngFor="let item of listsections">
@@ -155,14 +162,90 @@
         <div *ngIf="cat === true">
           <app-cat-fam-sub></app-cat-fam-sub>
         </div>
-        <div *ngIf="montos === true">
-          <app-autorizacion-montos></app-autorizacion-montos>
-        </div>
         <div *ngIf="prodTerminado === true">
           <app-productos-terminados></app-productos-terminados>
         </div>
-        <div *ngIf="condicionesPago === true">
-          <app-condiciones-pago></app-condiciones-pago>
+        <!-- Requisiciones: pestañas internas con Autorización de Montos y Condiciones de Pago -->
+        <div *ngIf="enConstruccion === 'requisiciones'">
+          <ul class="nav nav-tabs mt-2 mb-2 px-2">
+            <li class="nav-item">
+              <a class="nav-link" [class.active]="requisicionesTab === 'autorizacion'"
+                 (click)="requisicionesTab = 'autorizacion'" style="cursor:pointer;">
+                <i class="bi bi-cash-stack"></i> Autorización de Montos
+              </a>
+            </li>
+            <li class="nav-item">
+              <a class="nav-link" [class.active]="requisicionesTab === 'condiciones'"
+                 (click)="requisicionesTab = 'condiciones'" style="cursor:pointer;">
+                <i class="bi bi-credit-card"></i> Condiciones de Pago
+              </a>
+            </li>
+          </ul>
+          <div *ngIf="requisicionesTab === 'autorizacion'">
+            <app-autorizacion-montos></app-autorizacion-montos>
+          </div>
+          <div *ngIf="requisicionesTab === 'condiciones'">
+            <app-condiciones-pago></app-condiciones-pago>
+          </div>
+        </div>
+
+        <!-- Materiales Maestros: pestañas internas (Descripción Empaque / Unidades / Dimensiones) -->
+        <div *ngIf="enConstruccion === 'materiales'">
+          <ul class="nav nav-tabs mt-2 mb-2 px-2">
+            <li class="nav-item">
+              <a class="nav-link" [class.active]="materialesTab === 'empaque'"
+                 (click)="materialesTab = 'empaque'" style="cursor:pointer;">
+                <i class="bi bi-box"></i> Descripción Empaque
+              </a>
+            </li>
+            <li class="nav-item">
+              <a class="nav-link" [class.active]="materialesTab === 'unidades'"
+                 (click)="materialesTab = 'unidades'" style="cursor:pointer;">
+                <i class="bi bi-rulers"></i> Unidades
+              </a>
+            </li>
+            <li class="nav-item">
+              <a class="nav-link" [class.active]="materialesTab === 'dimensiones'"
+                 (click)="materialesTab = 'dimensiones'" style="cursor:pointer;">
+                <i class="bi bi-arrows-angle-expand"></i> Dimensiones
+              </a>
+            </li>
+            <li class="nav-item">
+              <a class="nav-link" [class.active]="materialesTab === 'pesovolumen'"
+                 (click)="materialesTab = 'pesovolumen'" style="cursor:pointer;">
+                <i class="bi bi-speedometer2"></i> Peso / Volumen
+              </a>
+            </li>
+            <li class="nav-item">
+              <a class="nav-link" [class.active]="materialesTab === 'monedas'"
+                 (click)="materialesTab = 'monedas'" style="cursor:pointer;">
+                <i class="bi bi-cash-coin"></i> Monedas
+              </a>
+            </li>
+          </ul>
+          <div *ngIf="materialesTab === 'empaque'">
+            <app-descripcion-empaque></app-descripcion-empaque>
+          </div>
+          <div *ngIf="materialesTab === 'unidades'">
+            <app-unidades></app-unidades>
+          </div>
+          <div *ngIf="materialesTab === 'dimensiones'">
+            <app-dimensiones></app-dimensiones>
+          </div>
+          <div *ngIf="materialesTab === 'pesovolumen'">
+            <app-peso-volumen></app-peso-volumen>
+          </div>
+          <div *ngIf="materialesTab === 'monedas'">
+            <app-monedas></app-monedas>
+          </div>
+        </div>
+
+        <!-- En construcción: para los demás ítems (Proveedores, Ordenes, Gastos) -->
+        <div *ngIf="enConstruccion !== '' && enConstruccion !== 'requisiciones' && enConstruccion !== 'materiales'"
+             style="display:flex; flex-direction:column; align-items:center; justify-content:center; padding: 60px 20px; color:#6c757d;">
+          <i class="bi bi-tools" style="font-size:3rem; margin-bottom:16px; color:#adb5bd;"></i>
+          <h5 style="font-weight:600; margin-bottom:8px;">En construcción</h5>
+          <p style="margin:0;">Esta sección estará disponible próximamente.</p>
         </div>
       </div>
   </div>

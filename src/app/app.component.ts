@@ -38,6 +38,7 @@ import { DetailEntradaDocumentsComponent } from './domains/ModProduction/Compone
           [idBranchFromReq]="comparacionData.idBranchFromReq"
           [idDepartamentFromReq]="comparacionData.idDepartamentFromReq"
           [departmentName]="comparacionData.departmentName"
+          [deptPrefijoFromReq]="comparacionData.deptPrefijoFromReq || ''"
           (closed)="closeComparacion()"
           style="display:flex; flex-direction:column; height:100%;">
         </app-comparacion-precios>

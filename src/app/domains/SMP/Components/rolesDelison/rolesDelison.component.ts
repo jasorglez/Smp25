@@ -192,6 +192,16 @@ export class RolesDelisonComponent {
   onGridReady(params: GridReadyEvent) {
     this.gridApi = params.api;
   }
+
+  onFirstDataRendered() {
+    if (!this.gridApi) return;
+    this.gridApi.autoSizeAllColumns();
+    // Las columnas Visualizador se fuerzan angostas para que el header haga wrap en 2 líneas.
+    this.gridApi.setColumnWidths([
+      { key: 'visualizadorAlmacenMoliendaDepto', newWidth: 160 },
+      { key: 'visualizadorMultiguardar', newWidth: 105 },
+    ]);
+  }
   // Column Definitions: Defines the columns to be displayed.
   public gridOptions: any = {
     rowHeight: 20,
@@ -338,12 +348,37 @@ export class RolesDelisonComponent {
         }
       },
       {
+        field: 'prefijo',
+        headerName: 'Prefijo',
+        width: 110,
+        editable: true,
+        cellEditorParams: { maxLength: 4 },
+        valueSetter: (params) => {
+          const normalized = (params.newValue || '').toUpperCase().trim().slice(0, 4);
+          // Vacío permitido; si tiene valor, validar que no se repita entre departamentos.
+          if (normalized) {
+            const duplicate = this.rowData.some((row, index) =>
+              index !== params.node.rowIndex && (row.prefijo || '').toUpperCase().trim() === normalized
+            );
+            if (duplicate) {
+              alerts.basicAlert(
+                'Prefijo duplicado',
+                `El prefijo "${normalized}" ya está asignado a otro departamento.`,
+                'error'
+              );
+              return false;
+            }
+          }
+          params.data.prefijo = normalized;
+          return true;
+        }
+      },
+      {
         field: 'visualizadorAlmacenMoliendaDepto',
-        headerName: 'Visualizador Almacen molienda Depto',
+        headerName: 'Visualizador\nAlmacen molienda Depto',
         headerTooltip: 'Visualizador Almacen molienda Depto',
-        minWidth: 220,
-        width: 240,
-        maxWidth: 320,
+        minWidth: 100,
+        width: 120,
         wrapHeaderText: true,
         autoHeaderHeight: true,
         cellRenderer: (params: any) => {
@@ -359,11 +394,10 @@ export class RolesDelisonComponent {
       },
       {
         field: 'visualizadorMultiguardar',
-        headerName: 'Visualizador multiguardar',
+        headerName: 'Visualizador\nmultiguardar',
         headerTooltip: 'Visualizador multiguardar',
-        minWidth: 220,
-        width: 240,
-        maxWidth: 320,
+        minWidth: 100,
+        width: 120,
         wrapHeaderText: true,
         autoHeaderHeight: true,
         cellRenderer: (params: any) => {
@@ -476,6 +510,7 @@ export class RolesDelisonComponent {
       idCompany: this.idRoot,
       description: '',
       comment: '',
+      prefijo: '',
       active: true,
       visualizadorAlmacenMoliendaDepto: false,
       visualizadorMultiguardar: false,

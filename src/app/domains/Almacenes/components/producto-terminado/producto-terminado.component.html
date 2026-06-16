@@ -338,6 +338,18 @@
             </label>
           </div>
 
+          <div class="form-check mt-3">
+            <input
+              class="form-check-input"
+              type="checkbox"
+              id="editExtraccionFermentacion"
+              [(ngModel)]="modalForm.valueAdditionBit3"
+              name="valueAdditionBit3">
+            <label class="form-check-label" for="editExtraccionFermentacion">
+              Extracción y Fermentación
+            </label>
+          </div>
+
           <!-- Checkboxes para Subfamilias - OCULTOS para Producto Terminado -->
           <div *ngIf="false && editingItem?.nodeLevel === 'subfamily'" class="mt-3">
             <div class="form-check">

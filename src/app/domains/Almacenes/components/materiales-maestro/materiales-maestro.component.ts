@@ -14,6 +14,7 @@ import { DetallesCostosxmaterialesComponent } from './details/detalles-costosxma
 import { DetailCellRendererSubfamiliaComponent } from './details/detail-cell-renderer-subfamilia.component';
 import { DetallesSucursalesProveedorComponent } from './details/detalles-sucursalesproveedor.component';
 import { DetailCellRendererParametrosComponent } from './details/detail-cell-renderer-parametros.component';
+import { DetailCellRendererCaracteristicasMpComponent } from './details/detail-cell-renderer-caracteristicas-mp.component';
 import { DetailCellRendererHistoricoComponent } from './details/detail-cell-renderer-historico.component';
 import { DetailCellRendererJarabeComponent } from './details/detail-cell-renderer-jarabe.component';
 import { SelectWithTooltipEditorV2Component } from 'app/shared/select-with-tooltip-editor-v2.component';
@@ -45,6 +46,7 @@ import { PendingChangesService } from 'app/services/pending-changes.service';
     DetailCellRendererSubfamiliaComponent,
     DetallesSucursalesProveedorComponent,
     DetailCellRendererParametrosComponent,
+    DetailCellRendererCaracteristicasMpComponent,
     DetailCellRendererHistoricoComponent,
     DetailCellRendererJarabeComponent,
     SelectWithTooltipEditorV2Component,
@@ -314,6 +316,7 @@ export class MaterialesMaestroComponent implements OnInit, OnDestroy {
     detailCellRendererSubfamilia: DetailCellRendererSubfamiliaComponent,
     detailCellRendererProveedorSucursal: DetallesSucursalesProveedorComponent,
     detailCellRendererParametros: DetailCellRendererParametrosComponent,
+    detailCellRendererCaracteristicasMp: DetailCellRendererCaracteristicasMpComponent,
     detailCellRendererHistorico: DetailCellRendererHistoricoComponent,
     detailCellRendererJarabe: DetailCellRendererJarabeComponent
   };
@@ -348,6 +351,8 @@ export class MaterialesMaestroComponent implements OnInit, OnDestroy {
           return { component: 'detailCellRendererCostos' };
         } else if (params.data.detailType === 'parametros') {
           return { component: 'detailCellRendererParametros' };
+        } else if (params.data.detailType === 'caracteristicas') {
+          return { component: 'detailCellRendererCaracteristicasMp' };
         } else if (params.data.detailType === 'historico') {
           return { component: 'detailCellRendererHistorico' };
         }
@@ -517,6 +522,35 @@ export class MaterialesMaestroComponent implements OnInit, OnDestroy {
         }
       },
       {
+        field: 'prefijo',
+        headerName: 'Prefijo',
+        width: 120,
+        editable: true,
+        hide: this.sectionBitFilter === 'ARTICULOSNUEVOS',
+        cellEditor: 'agTextCellEditor',
+        valueSetter: (params: any) => {
+          const newValue = (params.newValue ?? '').toString().toUpperCase().trim();
+          if (newValue) {
+            const duplicate = (this.rowData || []).some((row: any) =>
+              row !== params.data &&
+              (row.prefijo ?? '').toString().toUpperCase().trim() === newValue
+            );
+            if (duplicate) {
+              alerts.basicAlert(
+                'Prefijo duplicado',
+                `El prefijo "${newValue}" ya está asignado a otro artículo.`,
+                'error'
+              );
+              return false;
+            }
+          }
+          params.data.prefijo = newValue;
+          params.data.__modified = true;
+          this.hasUnsavedChanges = true;
+          return true;
+        },
+      },
+      {
         field: 'idCategory',
         headerName: 'Categoria',
         width: 250,
@@ -634,6 +668,15 @@ export class MaterialesMaestroComponent implements OnInit, OnDestroy {
         }
       },
       {
+        field: 'validaPresentaciones',
+        headerName: 'Valida Presentaciones',
+        width: 160,
+        editable: true,
+        cellRenderer: 'agCheckboxCellRenderer',
+        cellEditor: 'agCheckboxCellEditor',
+        headerTooltip: 'Si está activo, la requisición valida que la cantidad sea combinación de presentaciones (además del mínimo de compra).',
+      },
+      {
         field: 'providerCount',
         headerName: 'Proveedor',
         width: 120,
@@ -675,9 +718,21 @@ export class MaterialesMaestroComponent implements OnInit, OnDestroy {
         },
         cellStyle: { backgroundColor: '#e8f5e9', cursor: 'pointer', textDecoration: 'underline' }
       },
-      
-      
- 
+      {
+        // VERDE: abre la cascada "Características" por material (Activo + Característica).
+        field: 'caracteristicas',
+        headerName: 'Características',
+        width: 150,
+        hide: this.hideNonProductiveColumns,
+        cellRenderer: (params: any) => {
+          const count = params.value || 0;
+          return count;
+        },
+        cellStyle: { backgroundColor: '#c8e6c9', cursor: 'pointer', textDecoration: 'underline' }
+      },
+
+
+
      {
         field: 'historico',
         headerName: 'Historico',
@@ -770,6 +825,7 @@ export class MaterialesMaestroComponent implements OnInit, OnDestroy {
     if (colId === 'providerCount') return 'proveedores';
     if (colId === 'subfamilyCount') return 'subfamilia';
     if (colId === 'parametros') return 'parametros';
+    if (colId === 'caracteristicas') return 'caracteristicas';
     if (colId === 'costo') return 'costos';
     if (colId === 'historico') return 'historico';
     return null;
@@ -808,7 +864,7 @@ export class MaterialesMaestroComponent implements OnInit, OnDestroy {
     this.idSelect = event.data.id; // Asignar el ID seleccionado
 
     const colId = event.column.getColId();
-    const isDetailColumn = colId === 'providerCount' || colId === 'subfamilyCount' || colId === 'parametros' || colId === 'costo' || colId === 'historico';
+    const isDetailColumn = colId === 'providerCount' || colId === 'subfamilyCount' || colId === 'parametros' || colId === 'caracteristicas' || colId === 'costo' || colId === 'historico';
 
     if (isDetailColumn) {
       // Bloqueo previo por `__isNew` removido: con el Guardar centralizado del Nivel 1
@@ -1090,6 +1146,7 @@ export class MaterialesMaestroComponent implements OnInit, OnDestroy {
       stockMax: 0,
       vigente: true,
       active: true,
+      prefijo: '',
       __isNew: true,
     };
 
@@ -1484,7 +1541,9 @@ export class MaterialesMaestroComponent implements OnInit, OnDestroy {
       folioOcorReq: '',
       vigente: row.vigente === true || row.vigente === 1 ? true : false,
       active: row.active ?? true,
-      porAutorizar: !!(row.porAutorizar ?? row.autorizacion ?? row.pendingAuthorization ?? false)
+      porAutorizar: !!(row.porAutorizar ?? row.autorizacion ?? row.pendingAuthorization ?? false),
+      validaPresentaciones: !!(row.validaPresentaciones ?? false),
+      prefijo: (row.prefijo ?? '').toString().toUpperCase() || null,
     };
   }
 

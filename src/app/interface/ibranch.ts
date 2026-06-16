@@ -7,4 +7,5 @@ export interface Ibranch {
   address?: string;
   orden?: number;
   active?: boolean;
+  prefix?: string;
 }

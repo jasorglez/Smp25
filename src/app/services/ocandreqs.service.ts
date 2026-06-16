@@ -121,6 +121,15 @@ export class OcAndReqsService {
     );
   }
 
+  // Libera/oculta un ítem de OC para el almacén del depto que pidió la OC.
+  patchLiberarAlmacen(id: number, value: boolean): Observable<any> {
+    return this.http.patch(
+      `${environment.urlWarehouse}/Detailsreqoc/${id}/liberar-almacen`,
+      JSON.stringify(value),
+      { headers: this.trackingService.getHeaders() }
+    );
+  }
+
   syncObservationBySupplieAndProvider(idSupplie: number, idProvider: number, observation: string): Observable<any> {
     return this.http.patch(
       `${environment.urlWarehouse}/Detailsreqoc/sync-observation?idSupplie=${idSupplie}&idProvider=${idProvider}&observation=${encodeURIComponent(observation)}`,

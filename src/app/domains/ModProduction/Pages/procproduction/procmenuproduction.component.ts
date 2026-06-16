@@ -1,4 +1,4 @@
-import { Component, inject, OnInit } from '@angular/core';
+import { ChangeDetectorRef, Component, inject, OnInit } from '@angular/core';
 import { RouterModule } from '@angular/router';
 import { DomainsModule } from 'app/domains/domainsmodule';
 import { AuthService } from 'app/services/auth.service';
@@ -16,6 +16,7 @@ export class ProcmenuprodcutionComponent implements OnInit {
   authService = inject(AuthService);
   private signalsService = inject(SignalsService);
   private menuService = inject(MenuService);
+  private cdr = inject(ChangeDetectorRef);
 
   tabMenus: { masterIdentifier: string; identifier: string; permissionName: string; route: string; icon: string; principalSubIdentifier: string; tabOrder: number }[] = [];
 
@@ -26,7 +27,7 @@ export class ProcmenuprodcutionComponent implements OnInit {
 
   loadTabMenus() {
     this.menuService.getTabMenus('production').subscribe({
-      next: (tabs) => { this.tabMenus = tabs; },
+      next: (tabs) => { this.tabMenus = tabs; this.cdr.detectChanges(); },
       error: (err) => console.error('Error loading Production tab menus:', err)
     });
   }

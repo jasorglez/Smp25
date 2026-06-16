@@ -1,4 +1,4 @@
-import { Component, inject, OnInit } from '@angular/core';
+import { ChangeDetectorRef, Component, inject, OnInit } from '@angular/core';
 import { RouterModule } from '@angular/router';
 import { DomainsModule } from 'app/domains/domainsmodule';
 import { AuthService } from 'app/services/auth.service';
@@ -13,6 +13,7 @@ import { SignalsService } from 'app/services/signals.service';
   styleUrl: './procmenurechuman.component.scss',
 })
 export class ProcmenurehumanComponent implements OnInit {
+  private cdr = inject(ChangeDetectorRef);
   authService = inject(AuthService);
   private signalsService = inject(SignalsService);
   private menuService = inject(MenuService);
@@ -26,7 +27,7 @@ export class ProcmenurehumanComponent implements OnInit {
 
   loadTabMenus() {
     this.menuService.getTabMenus('hr').subscribe({
-      next: (tabs) => { this.tabMenus = tabs; },
+      next: (tabs) => { this.tabMenus = tabs; this.cdr.detectChanges(); },
       error: (err) => console.error('Error loading HR tab menus:', err)
     });
   }

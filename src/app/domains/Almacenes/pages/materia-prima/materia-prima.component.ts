@@ -1,4 +1,4 @@
-import { Component, inject, OnInit } from '@angular/core';
+import { ChangeDetectorRef, Component, inject, OnInit } from '@angular/core';
 import { TranslateModule } from '@ngx-translate/core';
 import { TrackingService } from '../../../../services/tracking.service';
 import { SharedModule } from 'app/shared/shared.module';
@@ -18,6 +18,7 @@ import { CommonModule } from '@angular/common';
 })
 export class MateriaPrimaComponent implements OnInit {
 
+  private cdr = inject(ChangeDetectorRef);
   private signalsService = inject(SignalsService);
   private trackingService = inject(TrackingService);
   private menuService = inject(MenuService);
@@ -27,7 +28,7 @@ export class MateriaPrimaComponent implements OnInit {
 
   ngOnInit(): void {
     this.menuService.getSubTabMenus('mat_prim').subscribe({
-      next: (tabs) => { this.tabMenus = tabs; },
+      next: (tabs) => { this.tabMenus = tabs; this.cdr.detectChanges(); },
       error: (err) => console.error('Error cargando sub-tabs materia-prima', err)
     });
   }

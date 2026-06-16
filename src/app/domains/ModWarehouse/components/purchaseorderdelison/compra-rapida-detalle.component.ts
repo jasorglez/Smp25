@@ -10,6 +10,7 @@ import { SignalsService } from 'app/services/signals.service';
 import { CatalogsService } from 'app/services/catalogs.service';
 import { MaterialsService } from 'app/services/materials.service';
 import { ClasificacionCascadaComponent } from 'app/domains/ModShoppingDelison/pages/quote-delison/clasificacion-cascada.component';
+import { StyledTooltipComponent } from 'app/shared/styled-tooltip/styled-tooltip.component';
 
 @Component({
   selector: 'app-compra-rapida-detalle',
@@ -55,6 +56,11 @@ export class CompraRapidaDetalleComponent implements OnDestroy {
   catSubfamilias: any[] = [];
 
   colDefs: ColDef[] = [
+    {
+      field: 'folioCr', headerName: 'Folio CR', width: 150, pinned: 'left',
+      // CR-{sucursal sin guion}-{prefijo depto}. Se completa con proveedor+id al pagar en Hoja de Gastos.
+      cellStyle: { fontWeight: '600', color: '#2e7d32' },
+    },
     { field: 'department', headerName: 'Departamento que solicita', width: 200 },
     { field: 'solicitedBy', headerName: 'Solicitado por', width: 180 },
     { field: 'recurrent', headerName: 'Recurrente', width: 130 },
@@ -101,15 +107,32 @@ export class CompraRapidaDetalleComponent implements OnDestroy {
     },
     { field: 'quantity', headerName: 'Cantidad Requerida', width: 160, type: 'numericColumn' },
     {
-      field: 'price', headerName: 'P. Unitario', width: 130, type: 'numericColumn',
-      // Precio unitario capturado al pagar la Compra Rápida en la Hoja de Gastos.
-      valueFormatter: (p: any) => (p.value != null && p.value !== '' && Number(p.value) > 0)
-        ? Number(p.value).toLocaleString('es-MX', { style: 'currency', currency: 'MXN' })
-        : '',
+      field: 'price', headerName: 'P. Unitario', width: 150, type: 'numericColumn',
+      // Muestra precio en MXN. Tooltip azul con precio original si moneda ≠ MXN.
+      valueFormatter: (p: any) => {
+        if (p.value == null || p.value === '' || Number(p.value) <= 0) return '';
+        return Number(p.value).toLocaleString('es-MX', { style: 'currency', currency: 'MXN' }) + ' MXN';
+      },
+      tooltipComponent: StyledTooltipComponent,
+      tooltipValueGetter: (p: any) => {
+        const moneda = p.data?.moneda || 'MXN';
+        if (moneda === 'MXN') return null;
+        const orig = Number(p.data?.precioUnitarioOriginal ?? 0);
+        if (orig <= 0) return null;
+        return `Precio original\n${orig.toLocaleString('es-MX', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ${moneda}`;
+      },
     },
     {
       field: 'cantidadEntradaAlmacen', headerName: 'Cantidad entrada almacén', width: 180, type: 'numericColumn',
       valueFormatter: (p: any) => (p.value != null && p.value !== '') ? Number(p.value).toLocaleString('es-MX') : '',
+    },
+    {
+      field: 'totalCr', headerName: 'Total CR', width: 150, type: 'numericColumn',
+      // Costo total ya convertido a MXN (monto_mxn = pago × TC). Se llena al pagar la CR.
+      cellStyle: { fontWeight: '600', color: '#2e7d32' },
+      valueFormatter: (p: any) => (p.value != null && p.value !== '' && Number(p.value) > 0)
+        ? Number(p.value).toLocaleString('es-MX', { style: 'currency', currency: 'MXN' }) + ' MXN'
+        : '',
     },
     { field: 'comment', headerName: 'Comentarios', flex: 1, minWidth: 160 },
     {

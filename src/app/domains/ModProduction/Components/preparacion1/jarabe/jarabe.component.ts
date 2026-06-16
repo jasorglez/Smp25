@@ -19,7 +19,7 @@ import { lastValueFrom } from 'rxjs';
   imports: [CommonModule, FormsModule, AgGridModule, DetalleWrapperComponent, SelectWithTooltipEditorV2Component],
   template: `
     <div class="container-fluid h-100 p-3">
-      <div style="display: flex; height: calc(100vh - 120px);">
+      <div style="display: flex; height: calc(100vh - 280px);">
 
         <!-- Botones CRUD lateral izquierdo -->
         <div style="display: flex; flex-direction: column; gap: 5px; margin-right: 10px; padding: 10px; background-color: #f8f9fa; border-radius: 5px; height: fit-content;">
@@ -128,6 +128,8 @@ export class JarabeComponent implements OnInit {
     sortable: true,
     resizable: true,
     filter: true,
+    wrapHeaderText: true,
+    autoHeaderHeight: true,
     cellClassRules: {
       'new-row-cell': (params: any) => !!params.data?.__isNew
     },
@@ -479,13 +481,163 @@ export class JarabeComponent implements OnInit {
           return true;
         }
       },
-      {
+    
+        {
         field: 'nota',
         headerName: 'Nota',
         width: 180,
+        hide: true,
         editable: false
       },
+
+
       {
+        field: 'fechaElaboracion',
+        headerName: 'Fecha Elaboración',
+        width: 150,
+        editable: true,
+        cellDataType: 'date',
+        cellEditor: 'agDateCellEditor',
+        valueFormatter: (params) => {
+          if (!params.value) return '';
+          const d: Date = params.value instanceof Date ? params.value : new Date(params.value);
+          if (isNaN(d.getTime())) return '';
+          return `${String(d.getDate()).padStart(2, '0')}/${String(d.getMonth() + 1).padStart(2, '0')}/${d.getFullYear()}`;
+        },
+        valueSetter: (params) => {
+          if (!params.newValue) return false;
+          params.data.fechaElaboracion = params.newValue instanceof Date ? params.newValue : new Date(params.newValue);
+          params.data.__modified = true;
+          this.hasUnsavedChanges = true;
+          return true;
+        }
+      },
+
+   
+
+       {
+        field: 'preparacion',
+        headerName: 'Preparación',
+        width: 160,
+        editable: false,
+        cellRenderer: (params: any) => {
+          const count = params.value || 0;
+          const isNew = !!params.data?.__isNew;
+          const container = document.createElement('div');
+          container.style.cssText = isNew
+            ? 'display: flex; align-items: center; gap: 8px; cursor: not-allowed; color: #aaa;'
+            : 'display: flex; align-items: center; gap: 8px; cursor: pointer; color: #0d6efd; text-decoration: underline;';
+          container.innerHTML = `<span>${count} ingrediente(s)</span>`;
+          container.addEventListener('click', () => {
+            this.toggleCascade(params.node, 'preparacion');
+          });
+          return container;
+        },
+        cellStyle: { backgroundColor: '#e8f5e9', cursor: 'pointer' }
+      },
+
+      {
+        field: 'parametrosCount',
+        headerName: 'Parámetros',
+           width: 150,
+        editable: false,
+        cellRenderer: (params: any) => {
+          const count = params.data?.parametrosCount || 0;
+          const container = document.createElement('div');
+          container.style.cssText = 'display: flex; align-items: center; gap: 8px; cursor: pointer; color: #7b1fa2; text-decoration: underline;';
+          container.innerHTML = `<span>${count} parametro(s)</span>`;
+          container.addEventListener('click', () => {
+          //  this.toggleParametrosCascade(params.node);
+          });
+          return container;
+        },
+        cellStyle: { backgroundColor: '#f3e5f5', cursor: 'pointer' }
+      },
+
+      
+      {
+        field: 'cantidad',
+        headerName: 'Cantidad',
+        width: 140,
+        editable: true,
+        type: 'numericColumn',
+        cellEditor: 'agNumberCellEditor',
+        cellEditorParams: { min: 0, precision: 2 },
+        valueSetter: (params) => {
+          params.data.cantidad = params.newValue;
+          params.data.__modified = true;
+          this.hasUnsavedChanges = true;
+          return true;
+        }
+      },
+
+        {
+        field: 'lote',
+        headerName: 'Lote',
+        width: 150,
+        editable: true,
+        cellEditor: 'agTextCellEditor',
+        valueSetter: (params) => {
+          params.data.lote = params.newValue ? params.newValue.toUpperCase() : '';
+          params.data.__modified = true;
+          this.hasUnsavedChanges = true;
+          return true;
+        }
+      },
+
+      {
+        field: 'personal',
+        headerName: 'Personal',
+        width: 160,
+        editable: true,
+        cellEditor: 'agTextCellEditor',
+        valueSetter: (params: any) => {
+          params.data.personal = params.newValue ? params.newValue.toUpperCase() : '';
+          params.data.__modified = true;
+          this.hasUnsavedChanges = true;
+          return true;
+        }
+      },
+
+
+     {
+        field: 'cuantoQueda',
+        headerName: 'Cuánto Queda',
+        width: 130,
+        editable: true,
+        type: 'numericColumn',
+        cellEditor: 'agNumberCellEditor',
+        cellEditorParams: { min: 0, precision: 2 },
+        valueSetter: (params: any) => {
+          params.data.cuantoQueda = params.newValue;
+          params.data.__modified = true;
+          this.hasUnsavedChanges = true;
+          return true;
+        }
+      },
+
+      {
+        field: 'limpieza',
+        headerName: 'Limpieza',
+        width: 150,
+        editable: false,
+        cellRenderer: (params: any) => {
+          const isNew = !!params.data?.__isNew;
+          const container = document.createElement('div');
+          container.style.cssText = isNew
+            ? 'display: flex; align-items: center; gap: 6px; cursor: not-allowed; color: #aaa;'
+            : 'display: flex; align-items: center; gap: 6px; cursor: pointer; color: #1565c0; text-decoration: underline;';
+          container.innerHTML = `<i class="bi bi-moisture"></i><span>Limpieza</span>`;
+          if (!isNew) {
+            container.addEventListener('click', () => this.toggleCascade(params.node, 'limpieza'));
+          }
+          return container;
+        },
+        cellStyle: { backgroundColor: '#e3f2fd', cursor: 'pointer' }
+      },
+ 
+/*
+   {
         field: 'articulo',
         headerName: 'Artículo',
         width: 200,
@@ -526,75 +678,7 @@ export class JarabeComponent implements OnInit {
           return true;
         }
       },
-      {
-        field: 'lote',
-        headerName: 'Lote',
-        width: 150,
-        editable: true,
-        cellEditor: 'agTextCellEditor',
-        valueSetter: (params) => {
-          params.data.lote = params.newValue ? params.newValue.toUpperCase() : '';
-          params.data.__modified = true;
-          this.hasUnsavedChanges = true;
-          return true;
-        }
-      },
-      {
-        field: 'fechaElaboracion',
-        headerName: 'Fecha Elaboración',
-        width: 150,
-        editable: true,
-        cellDataType: 'date',
-        cellEditor: 'agDateCellEditor',
-        valueFormatter: (params) => {
-          if (!params.value) return '';
-          const d: Date = params.value instanceof Date ? params.value : new Date(params.value);
-          if (isNaN(d.getTime())) return '';
-          return `${String(d.getDate()).padStart(2, '0')}/${String(d.getMonth() + 1).padStart(2, '0')}/${d.getFullYear()}`;
-        },
-        valueSetter: (params) => {
-          if (!params.newValue) return false;
-          params.data.fechaElaboracion = params.newValue instanceof Date ? params.newValue : new Date(params.newValue);
-          params.data.__modified = true;
-          this.hasUnsavedChanges = true;
-          return true;
-        }
-      },
-      {
-        field: 'preparacion',
-        headerName: 'Preparación',
-        width: 160,
-        editable: false,
-        cellRenderer: (params: any) => {
-          const count = params.value || 0;
-          const isNew = !!params.data?.__isNew;
-          const container = document.createElement('div');
-          container.style.cssText = isNew
-            ? 'display: flex; align-items: center; gap: 8px; cursor: not-allowed; color: #aaa;'
-            : 'display: flex; align-items: center; gap: 8px; cursor: pointer; color: #0d6efd; text-decoration: underline;';
-          container.innerHTML = `<span>${count} ingrediente(s)</span>`;
-          container.addEventListener('click', () => {
-            this.toggleCascade(params.node, 'preparacion');
-          });
-          return container;
-        },
-        cellStyle: { backgroundColor: '#e8f5e9', cursor: 'pointer' }
-      },
-      {
-        field: 'cantidad',
-        headerName: 'Cantidad',
-        width: 120,
-        editable: true,
-        type: 'numericColumn',
-        cellEditor: 'agNumberCellEditor',
-        cellEditorParams: { min: 0, precision: 2 },
-        valueSetter: (params) => {
-          params.data.cantidad = params.newValue;
-          params.data.__modified = true;
-          this.hasUnsavedChanges = true;
-          return true;
-        }
-      },
+
       {
         field: 'observaciones',
         headerName: 'Observaciones',
@@ -633,7 +717,7 @@ export class JarabeComponent implements OnInit {
       {
         field: 'adicional',
         headerName: 'Adicional',
-        width: 120,
+        width: 140,
         editable: true,
         cellEditor: 'agTextCellEditor',
         valueSetter: (params) => {
@@ -643,38 +727,12 @@ export class JarabeComponent implements OnInit {
           return true;
         }
       },
-      {
-        field: 'personal',
-        headerName: 'Personal',
-        width: 160,
-        editable: true,
-        cellEditor: 'agTextCellEditor',
-        valueSetter: (params: any) => {
-          params.data.personal = params.newValue ? params.newValue.toUpperCase() : '';
-          params.data.__modified = true;
-          this.hasUnsavedChanges = true;
-          return true;
-        }
-      },
-      {
-        field: 'cuantoQueda',
-        headerName: 'Cuánto Queda',
-        width: 130,
-        editable: true,
-        type: 'numericColumn',
-        cellEditor: 'agNumberCellEditor',
-        cellEditorParams: { min: 0, precision: 2 },
-        valueSetter: (params: any) => {
-          params.data.cuantoQueda = params.newValue;
-          params.data.__modified = true;
-          this.hasUnsavedChanges = true;
-          return true;
-        }
-      },
+
+
       {
         field: 'liberacion',
         headerName: 'Liberación',
-        width: 120,
+        width: 140,
         editable: false,
         cellRenderer: (params: any) => {
           const isNew = !!params.data?.__isNew;
@@ -690,40 +748,7 @@ export class JarabeComponent implements OnInit {
         },
         cellStyle: { backgroundColor: '#f1f8e9', cursor: 'pointer' }
       },
-      {
-        field: 'limpieza',
-        headerName: 'Limpieza',
-        width: 110,
-        editable: false,
-        cellRenderer: (params: any) => {
-          const isNew = !!params.data?.__isNew;
-          const container = document.createElement('div');
-          container.style.cssText = isNew
-            ? 'display: flex; align-items: center; gap: 6px; cursor: not-allowed; color: #aaa;'
-            : 'display: flex; align-items: center; gap: 6px; cursor: pointer; color: #1565c0; text-decoration: underline;';
-          container.innerHTML = `<i class="bi bi-moisture"></i><span>Limpieza</span>`;
-          if (!isNew) {
-            container.addEventListener('click', () => this.toggleCascade(params.node, 'limpieza'));
-          }
-          return container;
-        },
-        cellStyle: { backgroundColor: '#e3f2fd', cursor: 'pointer' }
-      },
-      {
-        field: 'comentarios',
-        headerName: 'Comentarios',
-        flex: 1,
-        minWidth: 160,
-        editable: true,
-        cellEditor: 'agLargeTextCellEditor',
-        cellEditorPopup: true,
-        valueSetter: (params: any) => {
-          params.data.comentarios = params.newValue || '';
-          params.data.__modified = true;
-          this.hasUnsavedChanges = true;
-          return true;
-        }
-      },
+  */
       {
         field: 'activom',
         headerName: 'Activo',

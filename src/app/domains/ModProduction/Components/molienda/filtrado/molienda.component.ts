@@ -10,14 +10,16 @@ import { ProductionService } from 'app/services/production.service';
 import { MaterialXModuloService } from 'app/services/materialxmodulo.service';
 import { MaterialsService } from 'app/services/materials.service';
 import { MoliendaService } from 'app/services/molienda.service';
+import { InventarioMpService } from 'app/services/inventario-mp.service';
 import { DetallesEntradasMoliendaComponent } from './detalles-entradasmolienda.component';
 import { SelectWithTooltipEditorV2Component } from 'app/shared/select-with-tooltip-editor-v2.component';
 import { DetailRouterFiltradoComponent } from './detail-router-filtrado.component';
+import { SalidaLotesModalComponent } from './salida-lotes-modal.component';
 
 @Component({
   selector: 'app-molienda-filtrado',
   standalone: true,
-  imports: [CommonModule, AgGridAngular, DetallesEntradasMoliendaComponent, SelectWithTooltipEditorV2Component, DetailRouterFiltradoComponent],
+  imports: [CommonModule, AgGridAngular, DetallesEntradasMoliendaComponent, SelectWithTooltipEditorV2Component, DetailRouterFiltradoComponent, SalidaLotesModalComponent],
   template: `
     <div class="col-12">
       <div class="row g-2">
@@ -58,15 +60,33 @@ import { DetailRouterFiltradoComponent } from './detail-router-filtrado.componen
         </div>
       </div>
     </div>
+
+    <!-- Modal: gastar materia prima por lote (FEFO) -->
+    <app-salida-lotes-modal *ngIf="salidaModal"
+      [articuloOptions]="salidaModal.articuloOptions"
+      [idSucursal]="salidaModal.idSucursal"
+      [idDepartamento]="EXTRACCION_FERMENTACION_DEPT_ID"
+      [idArticuloActual]="salidaModal.idArticuloActual"
+      [salidasPrevias]="salidaModal.salidasPrevias"
+      (resolve)="onSalidaResolve($event)"
+      (cancel)="salidaModal = null">
+    </app-salida-lotes-modal>
   `,
 })
 export class MoliendaComponent {
+  readonly EXTRACCION_FERMENTACION_DEPT_ID = 62;
+  // Estado del modal de salida por lote (lo dispara el Nivel 3 vía context).
+  salidaModal: { articuloOptions: any[]; idSucursal: number; idArticuloActual: number | null; salidasPrevias: { [idDatoExterno: number]: number }; onResolve: (r: any) => void } | null = null;
   private signalService = inject(SignalsService);
   private branchsService = inject(BranchsService);
   private productionService = inject(ProductionService);
   private mxmService = inject(MaterialXModuloService);
   private materialsService = inject(MaterialsService);
   private moliendaService = inject(MoliendaService);
+  private inventarioMpService = inject(InventarioMpService);
+
+  // idSucursal → (idMaterial → cantidad total)
+  private inventarioPorSucursal = new Map<number, Map<number, number>>();
 
   gridApi!: GridApi;
   rowData: any[] = [];
@@ -83,7 +103,7 @@ export class MoliendaComponent {
   private idBranch = 0;
   private activeMatPrimaFilter: number | null = null;
   private activeExpandedNodeId: string | null = null;
-  private activeDetailType: 'inventario' | 'matprima' | 'bote' | null = null;
+  private activeDetailType: 'inventario' | 'matprima' | 'bote' | 'parametros' | null = null;
 
   colDefs: ColDef[] = [
     { field: 'active', headerName: 'Activo', width: 80, editable: true, cellRenderer: 'agCheckboxCellRenderer', valueSetter: (p: any) => { p.data.active = p.newValue; p.data.__modified = true; this.hasChanges = true; return true; } }, {
@@ -174,18 +194,27 @@ export class MoliendaComponent {
     { field: 'jugo', hide: true, headerName: 'Jugo', editable: true, cellEditor: 'agNumberCellEditor' },
     { field: 'liberPorCompra', hide: true, headerName: 'Liber. x Compra', editable: true, cellRenderer: 'agCheckboxCellRenderer', cellEditor: 'agCheckboxCellEditor' },
     { field: 'adicional', hide: true, headerName: 'Adicional', editable: true },
-    { field: 'ohJugos', headerName: 'OH Jugos', editable: true, cellEditor: 'agNumberCellEditor', valueSetter: (p: any) => { p.data.ohJugos = p.newValue; p.data.__modified = true; this.hasChanges = true; return true; } },
+    { field: 'ohJugos', headerName: 'OH Jugos', hide: true, editable: true, cellEditor: 'agNumberCellEditor', valueSetter: (p: any) => { p.data.ohJugos = p.newValue; p.data.__modified = true; this.hasChanges = true; return true; } },
     {
       field: 'bote',
       headerName: 'Asignar bote',
       editable: false,
-      cellStyle: { cursor: 'pointer', color: '#e65100', textDecoration: 'underline' },
+      cellStyle: (p: any) => p.data?.__isNew ? {} : { cursor: 'pointer', backgroundColor: '#e8f5e9', color: '#2e7d32', fontWeight: '600' },
       cellRenderer: (p: any) => p.data?.__isNew ? '' : 'Botes',
       onCellClicked: (event: any) => {
         if (!event.data?.__isNew && event.data?.id != null) this.toggleBoteDetail(event.node);
       },
     },
-    { field: 'parametros', headerName: 'Asignar parámetros', editable: true, valueSetter: (p: any) => { p.data.parametros = p.newValue; p.data.__modified = true; this.hasChanges = true; return true; } },
+    {
+      field: 'parametros',
+      headerName: 'Asignar parámetros',
+      editable: false,
+      cellStyle: (p: any) => p.data?.__isNew ? {} : { cursor: 'pointer', backgroundColor: '#e8f5e9', color: '#2e7d32', fontWeight: '600' },
+      cellRenderer: (p: any) => p.data?.__isNew ? '' : 'Parámetros',
+      onCellClicked: (event: any) => {
+        if (!event.data?.__isNew && event.data?.id != null) this.toggleParametrosDetail(event.node);
+      },
+    },
   ];
 
   gridOptions: any = {
@@ -203,11 +232,18 @@ export class MoliendaComponent {
     detailRowHeight: Math.max(200, window.innerHeight * 0.8 - 25 - 20),
     isRowMaster: (data: any) => data?.id != null,
     detailCellRenderer: DetailRouterFiltradoComponent,
-    detailCellRendererParams: () => ({
+    detailCellRendererParams: (params: any) => ({
       context: {
         onMatDetailChanged: (idMolienda: number, hasDetail: boolean) =>
           this.onMatDetailChanged(idMolienda, hasDetail),
-        articuloOptions: this.allActiveArticuloOptions,
+        articuloOptions: this.getArticulosParaSucursal(params?.data?.sucursal),
+        allArticuloOptions: this.allActiveArticuloOptions,
+        allMoliendaRows: this.rowData,
+        matPrimaOptions: this.matPrimaOptions,
+        userBranches: this.userBranches,
+        // Para el modal de salida por lote (Nivel 3):
+        idSucursal: params?.data?.sucursal ?? null,
+        openSalidaModal: (p: any) => this.openSalidaModal(p),
       },
     }),
     isExternalFilterPresent: () => this.activeMatPrimaFilter != null,
@@ -250,14 +286,35 @@ export class MoliendaComponent {
     this.hasChanges = true;
   }
 
+  // Abre el modal de salida por lote (llamado desde Nivel 3 vía context).
+  openSalidaModal(payload: { articuloOptions: any[]; idSucursal: number; idArticuloActual: number | null; salidasPrevias?: { [idDatoExterno: number]: number }; onResolve: (r: any) => void }) {
+    this.salidaModal = { ...payload, salidasPrevias: payload.salidasPrevias ?? {} };
+  }
+
+  onSalidaResolve(res: { idArticulo: number; cantidad: number; lotes: { idDatoExterno: number; cantidad: number }[] }) {
+    const cb = this.salidaModal?.onResolve;
+    this.salidaModal = null;
+    cb?.(res);
+  }
+
+  private getArticulosParaSucursal(idSucursal: number | null): { id: number; name: string; cantidad?: number }[] {
+    if (!idSucursal) return this.allActiveArticuloOptions;
+    const disponibles = this.inventarioPorSucursal.get(idSucursal);
+    if (!disponibles) return [];
+    return this.allActiveArticuloOptions
+      .filter(o => disponibles.has(o.id))
+      .map(o => ({ ...o, cantidad: disponibles.get(o.id) }));
+  }
+
   private async loadBranches(idUser: number, idCompany: number) {
     const currentBranch = this.signalService.getBranchSelectedBySidebar()();
     if (currentBranch) this.idBranch = currentBranch;
     try {
-      const [branchData, mxmData, matsData] = await Promise.all([
+      const [branchData, mxmData, matsData, invData] = await Promise.all([
         lastValueFrom(this.branchsService.getBranchesByUserAndCompany(idUser, idCompany)),
         lastValueFrom(this.mxmService.getByType(idCompany, 'MOLIENDA')),
         lastValueFrom(this.materialsService.getMaterialsxview(idCompany)),
+        lastValueFrom(this.inventarioMpService.getGerencial(idCompany)),
       ]);
 
       const list: any[] = (branchData as any)?.project ?? (Array.isArray(branchData) ? branchData : []);
@@ -282,6 +339,20 @@ export class MoliendaComponent {
         .map((m: any) => ({ id: m.idArticulo, name: matsMap.get(m.idArticulo) ?? String(m.idArticulo) }))
         .filter(m => m.name)
         .sort(sortByName);
+
+      // Construir mapa idSucursal → Set<idMaterial> con inventario > 0
+      this.inventarioPorSucursal.clear();
+      for (const fila of (invData?.filas ?? [])) {
+        for (const [colId, cant] of Object.entries(fila.valores)) {
+          const cantidad = cant as number;
+          if (cantidad > 0) {
+            const idSuc = Number(colId);
+            if (!this.inventarioPorSucursal.has(idSuc))
+              this.inventarioPorSucursal.set(idSuc, new Map());
+            this.inventarioPorSucursal.get(idSuc)!.set(fila.idMaterial, cantidad);
+          }
+        }
+      }
 
       await this.loadData();
     } catch (e) {
@@ -422,6 +493,25 @@ export class MoliendaComponent {
     node.data.__detailType = 'bote';
     this.activeExpandedNodeId = node.id;
     this.activeDetailType = 'bote';
+    this.gridApi.onRowHeightChanged();
+    setTimeout(() => node.setExpanded(true), 0);
+  }
+
+  toggleParametrosDetail(node: any) {
+    if (this.activeExpandedNodeId === node.id && this.activeDetailType === 'parametros') {
+      node.setExpanded(false);
+      node.data.__detailType = null;
+      this.activeExpandedNodeId = null;
+      this.activeDetailType = null;
+      this.gridApi.forEachNode((n: any) => n.setRowHeight(undefined));
+      this.gridApi.onRowHeightChanged();
+      return;
+    }
+    this.collapseActive();
+    this.gridApi.forEachNode((n: any) => { if (n.id !== node.id) n.setRowHeight(0); });
+    node.data.__detailType = 'parametros';
+    this.activeExpandedNodeId = node.id;
+    this.activeDetailType = 'parametros';
     this.gridApi.onRowHeightChanged();
     setTimeout(() => node.setExpanded(true), 0);
   }

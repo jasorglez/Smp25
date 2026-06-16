@@ -22,6 +22,13 @@ export class EmployeesService {
     return this.http.get(`${environment.urlAdministration}/Employee/branchVigente/${idBranch}`, { headers: this.trackingService.getHeaders() });
   }
   
+  getEmployeesByDepto(idDepto: number): Observable<{ id: number; name: string }[]> {
+    return this.http.get<{ id: number; name: string }[]>(
+      `${environment.urlAdministration}/Employee/depto/${idDepto}`,
+      { headers: this.trackingService.getHeaders() }
+    );
+  }
+
   getEmployeeById(id: number): Observable<any> {
     return this.http.get<any[]>(`${environment.urlAdministration}/Employee/${id}`, { headers: this.trackingService.getHeaders() });
   }

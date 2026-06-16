@@ -1,4 +1,4 @@
-import { Component, computed, effect, Signal } from '@angular/core';
+import { ChangeDetectorRef, Component, computed, effect, NgZone, Signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { EMPTY, lastValueFrom } from 'rxjs';
 
@@ -74,7 +74,9 @@ export class SideBarComponent {
     private userService: UsersService,
     private signalsService: SignalsService,
     private menuService: MenuService,
-    private ocAndReqsService: OcAndReqsService
+    private ocAndReqsService: OcAndReqsService,
+    private cdr: ChangeDetectorRef,
+    private ngZone: NgZone
   ) {
     this.guardUiTick = this.signalsService.guardRefreshTick;
     this.hasNupnpn = () => this.signalsService.getHasNupnpnCompraRapida()();
@@ -467,11 +469,10 @@ export class SideBarComponent {
     }
 
     this.trackingService.setnameComp(company.name ?? '');
-    this.signalsService.setCompanyName(company.name ?? '');
-
     const resolvedLogo = this.resolveCompanyLogo(company.picture);
     this.trackingService.setpictureComp(resolvedLogo);
     this.companyLogoSrc = resolvedLogo;
+    Promise.resolve().then(() => this.signalsService.setCompanyName(company.name ?? ''));
 
     this.trackingService.setPictureComp2(company.picture2 ?? '');
     this.trackingService.setPictureComp3(company.picture3 ?? '');
@@ -649,9 +650,7 @@ export class SideBarComponent {
 
   loadSidebarMenus(idCompany: number): void {
     this.menuService.getSidebarMenus(idCompany).subscribe({
-      next: (menus) => {
-        this.sidebarMenus = menus;
-      },
+      next: (menus) => this.ngZone.run(() => { this.sidebarMenus = menus; }),
       error: (err) => console.error('Error cargando menus del sidebar:', err),
     });
   }
