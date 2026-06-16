@@ -528,7 +528,7 @@ export class UsersComponent implements OnDestroy {
                   // Mostrar indicador de carga
                   alerts.showLoading('Subiendo imagen', 'Por favor espere mientras se sube la imagen de perfil...');
                   // Subir imagen a Firebase y obtener la URL
-                  const url = await this.imageHandlerService.uploadFileToFirebase(file, 'users/profile');
+                  const url = await this.imageHandlerService.uploadFileToFirebase(file, 'images/users-profile');
                   params.data.picture = url;
                   params.data.__modified = true;
                   this.gridApi.refreshCells({ rowNodes: [params.node] });
@@ -536,10 +536,11 @@ export class UsersComponent implements OnDestroy {
                   // Cerrar loading y mostrar éxito
                   alerts.closeLoading();
                   alerts.basicAlert('Imagen subida', 'La imagen de perfil se subió correctamente', 'success');
-                } catch (error) {
+                } catch (error: any) {
                   console.error('Error al subir imagen:', error);
                   alerts.closeLoading();
-                  alerts.basicAlert('Error', 'No se pudo subir la imagen a Firebase', 'error');
+                  const msg = error?.code || error?.message || 'No se pudo subir la imagen a Firebase';
+                  alerts.basicAlert('Error', msg, 'error');
                 }
               }
               document.body.removeChild(input);
@@ -587,7 +588,7 @@ export class UsersComponent implements OnDestroy {
                   // Mostrar indicador de carga
                   alerts.showLoading('Subiendo firma', 'Por favor espere mientras se sube la firma...');
                   // Subir firma a Firebase y obtener la URL
-                  const url = await this.imageHandlerService.uploadFileToFirebase(file, 'users/signatures');
+                  const url = await this.imageHandlerService.uploadFileToFirebase(file, 'images/users-signatures');
                   params.data.signature = url;
                   params.data.__modified = true;
                   this.gridApi.refreshCells({ rowNodes: [params.node] });
@@ -595,10 +596,11 @@ export class UsersComponent implements OnDestroy {
                   // Cerrar loading y mostrar éxito
                   alerts.closeLoading();
                   alerts.basicAlert('Firma subida', 'La firma se subió correctamente', 'success');
-                } catch (error) {
+                } catch (error: any) {
                   console.error('Error al subir firma:', error);
                   alerts.closeLoading();
-                  alerts.basicAlert('Error', 'No se pudo subir la firma a Firebase', 'error');
+                  const msg = error?.code || error?.message || 'No se pudo subir la firma a Firebase';
+                  alerts.basicAlert('Error', msg, 'error');
                 }
               }
               document.body.removeChild(input);

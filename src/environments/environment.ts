@@ -86,5 +86,5 @@ export const environment = {
     // publicKey: 'TEST-4399133a-4676-42a2-ab85-d946370bf96a',
   },
 
-  version: '5.56 (16 Junio 2026 11:00) feat(cotizaciones): precio venta automatico al seleccionar material',
+  version: '5.57 (16 Junio 2026 12:00) fix(usuarios): firma/foto perfil usaban ruta users/ no permitida en Storage Rules',
 }; 
