@@ -4,6 +4,14 @@ import { Observable } from 'rxjs';
 import { environment } from '@env/environment';
 import { TrackingService } from './tracking.service';
 
+export interface EntradaResumen {
+  folioEntrada: string;
+  lote: string;
+  fecha?: string | null;
+  cantidad: number;
+  usuario?: string | null;
+}
+
 export interface EntradaMolienda {
   id?: number;
   idOc: number;
@@ -83,6 +91,13 @@ export class EntradaMoliendaService {
   delete(id: number): Observable<void> {
     return this.http.delete<void>(
       `${environment.urlWarehouse}/EntradaMolienda/${id}`,
+      { headers: this.trackingService.getHeaders() }
+    );
+  }
+
+  getResumen(idMaterial: number, idSucursal: number): Observable<EntradaResumen[]> {
+    return this.http.get<EntradaResumen[]>(
+      `${environment.urlWarehouse}/EntradaMolienda/resumen/${idMaterial}/${idSucursal}`,
       { headers: this.trackingService.getHeaders() }
     );
   }

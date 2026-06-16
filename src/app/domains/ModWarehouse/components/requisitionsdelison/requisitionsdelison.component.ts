@@ -56,6 +56,7 @@ export class RequisitionsDelisonComponent implements OnInit {
   private gridApi!: GridApi;
   private isGeneratingReport: boolean = false;
   private isInitialized: boolean = false; // Flag para saber si ya se inicializó el componente
+  private initStarted: boolean = false; // Flag para evitar doble inicialización (espera idUser de Firebase)
   private renderer: Renderer2;
   private departmentTooltipElement: HTMLElement | null = null;
   private solicitedByTooltipElement: HTMLElement | null = null;
@@ -63,9 +64,30 @@ export class RequisitionsDelisonComponent implements OnInit {
 
   constructor(rendererFactory: RendererFactory2) {
     this.renderer = rendererFactory.createRenderer(null, null);
+
+    // ✅ Inicialización: espera a que Firebase resuelva idUser (signal, arranca en 0)
+    // antes de cargar sucursales. Evita la llamada Branch?idUser=0 que devolvía 404
+    // y dejaba la tabla atascada en "Cargando...". El effect se re-ejecuta solo
+    // cuando idUser pasa de 0 al valor real.
+    effect(() => {
+      const idUser = this.signalsService.getIdUSer()();
+      const idRoot = this.signalsService.getRootSelectedBySidebar()();
+      if (!this.initStarted && idUser && idRoot) {
+        this.initStarted = true;
+        this.idUser = idUser;
+        this.idRoot = idRoot;
+        this.currentUserName = this.signalsService.getDisplayName()() || 'Usuario';
+        this.loadBranches();
+        this.obtenerDepartamentos();
+        this.isInitialized = true;
+      }
+    });
+
     // ✅ Usar effect para reaccionar a cambios en el signal de sucursal
     effect(() => {
       const newIdBranch = this.signalsService.getBranchSelectedBySidebar()();
+      const newBranchName = this.signalsService.getBranchNameSelectedBySidebar()();
+      this.activeBranchName = (newIdBranch != null && newIdBranch > 0) ? (newBranchName ?? '') : '';
 
 
 
@@ -136,6 +158,7 @@ export class RequisitionsDelisonComponent implements OnInit {
   branches: any[] = []; // Catálogo de sucursales
   branchesLoaded: boolean = false; // Flag para saber si ya se cargaron las sucursales
   currentUserName: string = ''; // Nombre del usuario actual
+  activeBranchName: string = '';
   selectedRequisitionId: number | null = null; // ID de la requisición seleccionada para PDF
 
   // ✅ Cache de roles por sucursal: Map<idBranch, roles[]>
@@ -179,35 +202,8 @@ export class RequisitionsDelisonComponent implements OnInit {
   };
 
   ngOnInit() {
-    // ✅ Esperar a que los signals se establezcan antes de inicializar
-    setTimeout(() => {
-      this.idRoot = this.signalsService.getRootSelectedBySidebar()();
-      this.currentUserName = this.signalsService.getDisplayName()() || 'Usuario';
-      this.idUser = this.signalsService.getIdUSer()(); // ✅ Obtener ID del usuario
-
-
-
-      // ✅ Solo cargar si idRoot es válido
-      if (this.idRoot) {
-        this.loadBranches();
-        this.obtenerDepartamentos();
-      } else {
-
-        // Reintentar después de un delay adicional
-        setTimeout(() => {
-          this.idRoot = this.signalsService.getRootSelectedBySidebar()();
-          if (this.idRoot) {
-
-            this.loadBranches();
-            this.obtenerDepartamentos();
-          }
-        }, 300);
-      }
-
-      // ✅ Marcar como inicializado
-      this.isInitialized = true;
-
-    }, 200);
+    // La inicialización se realiza en el effect del constructor, que espera a que
+    // Firebase resuelva idUser (signal) antes de cargar sucursales/departamentos.
   }
 
   loadBranches() {
@@ -243,6 +239,19 @@ export class RequisitionsDelisonComponent implements OnInit {
 
         this.branches = [];
         this.branchesLoaded = true; // Marcar como cargado aunque haya error
+
+        // Aunque falle el catálogo de sucursales, intentar cargar requisiciones
+        // para no dejar la tabla atascada en "Cargando...".
+        const currentIdBranch = this.signalsService.getBranchSelectedBySidebar()();
+        if (currentIdBranch !== null && currentIdBranch !== undefined) {
+          this.idBranch = currentIdBranch;
+          this.loadRequisitions();
+        } else {
+          this.rowData = [];
+          if (this.gridApi) {
+            this.gridApi.setGridOption('rowData', []);
+          }
+        }
       }
     });
   }
@@ -708,7 +717,8 @@ export class RequisitionsDelisonComponent implements OnInit {
       // Al terminar preloadRolesForBranch se dispara onFilterChanged() y se re-evalúa.
       if (!allowedRoles) return false;
       return allowedRoles.some((r: any) => Number(r?.id || 0) === deptId);
-    }
+    },
+    suppressNoRowsOverlay: true,
   };
 
   @HostListener('window:resize')

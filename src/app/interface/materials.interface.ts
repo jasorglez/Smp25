@@ -53,6 +53,7 @@ export interface MaterialsResponse {
   __isNew?: boolean;
   __modified?: boolean;
   porAutorizar?: boolean;
+  prefijo?: string | null;
 }
 
 export interface PricePresentations {

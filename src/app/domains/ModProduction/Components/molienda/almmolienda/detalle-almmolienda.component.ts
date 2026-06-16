@@ -9,7 +9,7 @@ import { OcAndReqsService } from '../../../../../services/ocandreqs.service';
 import { CustomersService } from '../../../../../services/customers.service';
 import { SignalsService } from '../../../../../services/signals.service';
 import { TrackingService } from '../../../../../services/tracking.service';
-import { EntradaMoliendaService, EntradaMolienda } from '../../../../../services/entrada-molienda.service';
+import { EntradaMoliendaService, EntradaMolienda, EntradaResumen } from '../../../../../services/entrada-molienda.service';
 import { DatosExternosMoliendaService, DatosExternosMolienda } from '../../../../../services/datos-externos-molienda.service';
 import { SetupService } from 'app/services/setup.service';
 import { EntregaOc, EntregaOcService } from '../../../../../services/entrega-oc.service';
@@ -283,6 +283,7 @@ export class DetalleMoliendaComponent {
   private providersMap: Map<number, string> | null = null;
 
   detailType: 'entradas' | 'salidas' = 'entradas';
+  entradasSimple = false;
   readonly localeText = AG_GRID_LOCALE_ES;
   rowData: any[] = [];
   reqOptions: ReqOption[] = [];
@@ -1421,9 +1422,10 @@ export class DetalleMoliendaComponent {
         }
       }
     });
-    this.detailType = params?.data?.detailType ?? 'entradas';
-    if (this.detailType === 'salidas') {
-      this.colDefs = this.buildSalidasColDefs();
+    this.detailType    = params?.data?.detailType ?? 'entradas';
+    this.entradasSimple = !!(params?.entradasSimple) && this.detailType === 'entradas';
+    if (this.detailType === 'salidas' || this.entradasSimple) {
+      this.colDefs = this.buildSalidasColDefs(this.entradasSimple ? 'Quien generó' : 'Quien utilizó');
     }
     this.bultosCantidad = params?.bultosCantidad ?? null;
     this.bultosCantidadARevisar = params?.bultosCantidadARevisar ?? null;
@@ -1439,8 +1441,8 @@ export class DetalleMoliendaComponent {
       .join(',');
 
     // Flujo async: padre abre la cascada inmediatamente y sincroniza en background.
-    // Mostrar loading hasta que lleguen los datos. Solo aplica para entradas.
-    const entradasData$ = this.detailType !== 'salidas'
+    // Mostrar loading hasta que lleguen los datos. Solo aplica para entradas normales.
+    const entradasData$ = (this.detailType !== 'salidas' && !this.entradasSimple)
       ? params?.entradasData$ as Observable<any> | null
       : null;
     if (entradasData$) {
@@ -1483,7 +1485,7 @@ export class DetalleMoliendaComponent {
     const preloadedReqs = params?.preloadedReqs as any[] | undefined;
     const preloadedDetails = params?.preloadedDetails as any[] | undefined;
 
-    if (this.detailType !== 'salidas' && preloadedReqs?.length && preloadedDetails !== undefined) {
+    if (this.detailType !== 'salidas' && !this.entradasSimple && preloadedReqs?.length && preloadedDetails !== undefined) {
       this.reqOptions = preloadedReqs;
       this.rowData = preloadedDetails.map((d: any) => {
         const req = this.reqOptions.find((r: any) => r.id === d.idRequisition);
@@ -2495,6 +2497,10 @@ export class DetalleMoliendaComponent {
       await this.loadSalidasData();
       return;
     }
+    if (this.entradasSimple) {
+      await this.loadEntradasSimpleData();
+      return;
+    }
 
     const idMolienda = this.internalParams?.data?.id;
     if (!idMolienda || typeof idMolienda === 'string') {
@@ -2530,7 +2536,7 @@ export class DetalleMoliendaComponent {
     }
   }
 
-  private buildSalidasColDefs(): ColDef[] {
+  private buildSalidasColDefs(usuarioHeader: string = 'Quien utilizó'): ColDef[] {
     return [
       {
         field: 'fecha',
@@ -2569,13 +2575,44 @@ export class DetalleMoliendaComponent {
       },
       {
         field: 'usuario',
-        headerName: 'Quien utilizó',
+        headerName: usuarioHeader,
         flex: 1,
         minWidth: 140,
         editable: false,
         valueFormatter: (p) => (p.value ?? '').toUpperCase(),
       },
     ];
+  }
+
+  private async loadEntradasSimpleData() {
+    const idMaterial = this.internalParams?.data?.idMaterial;
+    const idSucursal = this.internalParams?.data?.sucursal;
+    if (!idMaterial || !idSucursal) {
+      this.rowData = [];
+      if (this.gridApi && !this.gridApi.isDestroyed())
+        this.gridApi.setGridOption('rowData', []);
+      return;
+    }
+    try {
+      const items = await lastValueFrom(this.entradaService.getResumen(idMaterial, idSucursal));
+      this.rowData = (Array.isArray(items) ? items : []).map((e: EntradaResumen) => ({
+        folioEntrada: (e.folioEntrada ?? '').toUpperCase(),
+        lote:         (e.lote ?? '').toUpperCase(),
+        fecha:        e.fecha ?? null,
+        cantidad:     e.cantidad ?? 0,
+        usuario:      (e.usuario ?? '').toUpperCase(),
+      }));
+      if (this.gridApi && !this.gridApi.isDestroyed()) {
+        this.gridApi.setGridOption('rowData', this.rowData);
+        setTimeout(() => { if (this.gridApi && !this.gridApi.isDestroyed()) this.gridApi.autoSizeAllColumns(); });
+      }
+      this.updateParentCount();
+    } catch (error) {
+      console.error('Error loading entradas simple:', error);
+      this.rowData = [];
+      if (this.gridApi && !this.gridApi.isDestroyed())
+        this.gridApi.setGridOption('rowData', []);
+    }
   }
 
   private async loadSalidasData() {
@@ -2596,8 +2633,10 @@ export class DetalleMoliendaComponent {
         cantidad:     s.cantidad ?? 0,
         usuario:      (s.usuario ?? '').toUpperCase(),
       }));
-      if (this.gridApi && !this.gridApi.isDestroyed())
+      if (this.gridApi && !this.gridApi.isDestroyed()) {
         this.gridApi.setGridOption('rowData', this.rowData);
+        setTimeout(() => { if (this.gridApi && !this.gridApi.isDestroyed()) this.gridApi.autoSizeAllColumns(); });
+      }
       this.updateParentCount();
     } catch (error) {
       console.error('Error loading salidas MP:', error);

@@ -29,7 +29,7 @@
     </nav>
 
     <!-- Right Panel: Grid -->
-    <div class="col">
+    <div class="col" style="position: relative;">
       <!-- Leyenda de colores -->
       <div class="d-flex gap-3 mb-2 align-items-center flex-wrap">
         <div class="d-flex align-items-center gap-1">
@@ -59,6 +59,12 @@
         (cellEditingStopped)="onCellEditingStopped($event)"
         (rowGroupOpened)="onRowGroupOpened($event)">
       </ag-grid-angular>
+      <div *ngIf="idBranch != null && idBranch > 0 && rowData !== null && rowData.length === 0"
+           style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
+                  text-align: center; color: #9e9e9e; pointer-events: none; user-select: none;">
+        <i class="bi bi-inbox" style="font-size: 2.5rem; display: block; margin-bottom: 8px;"></i>
+        No hay registros para <strong>{{ activeBranchName }}</strong>
+      </div>
     </div>
   </div>
 </div>

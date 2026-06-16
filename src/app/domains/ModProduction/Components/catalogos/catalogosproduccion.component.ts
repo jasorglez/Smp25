@@ -1193,9 +1193,11 @@ export class CatalogosProduccionComponent {
       headerName: 'Prefijo Mat Prima',
       field: 'prefijo',
       width: 150,
-      editable: true,
-      cellEditor: 'agTextCellEditor',
-      valueSetter: (p: any) => { p.data.prefijo = String(p.newValue ?? '').toUpperCase(); p.data.__modified = true; this.hasUnsavedChanges = true; return true; },
+      editable: false,
+      valueGetter: (p: any) => {
+        const map = (this as any)._artPrefijoFromMatsMap as Map<number, string> | undefined;
+        return map?.get(p.data?.idArticulo) ?? '';
+      },
     },
     {
       headerName: 'edit col Bultos',
@@ -1372,7 +1374,12 @@ export class CatalogosProduccionComponent {
         this.materialesIdToDesc.clear();
         this.materiales.forEach(m => this.materialesIdToDesc.set(m.id, m.articulo));
 
-        // Mapa idArticulo → prefijo del material
+        // Mapa idArticulo → prefijo desde Materials (fuente de verdad, editable desde Materiales Maestro)
+        const artPrefijoFromMatsMap = new Map<number, string>();
+        this.materiales.forEach(m => { if (m.id != null) artPrefijoFromMatsMap.set(m.id, m.prefijo ?? ''); });
+        (this as any)._artPrefijoFromMatsMap = artPrefijoFromMatsMap;
+
+        // Mapa idArticulo → prefijo del material (legacy, de mxm — se mantiene para compatibilidad interna)
         const mxmList: any[] = (mxm as any[]) ?? [];
         const artPrefijoMap = new Map<number, string>();
         mxmList.forEach(m => { if (m.idArticulo != null) artPrefijoMap.set(m.idArticulo, m.prefijo ?? ''); });
@@ -1440,9 +1447,11 @@ export class CatalogosProduccionComponent {
 
   loadGridData() {
     this.mxmService.getAll(this.idRoot).subscribe((modulos: any[]) => {
+      const prefijoMap = (this as any)._artPrefijoFromMatsMap as Map<number, string> | undefined;
       const rows = (modulos ?? []).map(m => ({
         id: m.id, type: m.type, idArticulo: m.idArticulo, valor: m.active,
-        prefijo: m.prefijo ?? '', editBultos: m.editBultos ?? false,
+        prefijo: prefijoMap?.get(m.idArticulo) ?? '',
+        editBultos: m.editBultos ?? false,
         molienda: m.molienda ?? false, idPrefijoFase: m.idPrefijoFase ?? null,
       }));
       this.originalRowData = JSON.parse(JSON.stringify(rows));
@@ -1523,7 +1532,6 @@ export class CatalogosProduccionComponent {
             active: r.valor,
             editBultos: r.editBultos || false,
             molienda: r.molienda || false,
-            prefijo: r.prefijo ?? null,
             idPrefijoFase: r.idPrefijoFase ?? null,
           };
       return r.__isNew ? this.mxmService.create(payload) : this.mxmService.update(r.id, payload);
@@ -2522,6 +2530,7 @@ export class CatalogosProduccionComponent {
         });
         rows.forEach((r: any, i: number) => { r.boteNum = i + 1; });
       } else {
+        const prefijoMap = (this as any)._artPrefijoFromMatsMap as Map<number, string> | undefined;
         rows = (data ?? []).map(m => ({
           id: m.id,
           type: m.type,
@@ -2530,7 +2539,7 @@ export class CatalogosProduccionComponent {
           idCatalog: m.idCatalog,
           editBultos: m.editBultos,
           molienda: m.molienda ?? false,
-          prefijo: m.prefijo ?? '',
+          prefijo: prefijoMap?.get(m.idArticulo) ?? '',
           idPrefijoFase: m.idPrefijoFase ?? null,
         }));
         rows.sort((a: any, b: any) =>

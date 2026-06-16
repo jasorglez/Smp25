@@ -522,6 +522,35 @@ export class MaterialesMaestroComponent implements OnInit, OnDestroy {
         }
       },
       {
+        field: 'prefijo',
+        headerName: 'Prefijo',
+        width: 120,
+        editable: true,
+        hide: this.sectionBitFilter === 'ARTICULOSNUEVOS',
+        cellEditor: 'agTextCellEditor',
+        valueSetter: (params: any) => {
+          const newValue = (params.newValue ?? '').toString().toUpperCase().trim();
+          if (newValue) {
+            const duplicate = (this.rowData || []).some((row: any) =>
+              row !== params.data &&
+              (row.prefijo ?? '').toString().toUpperCase().trim() === newValue
+            );
+            if (duplicate) {
+              alerts.basicAlert(
+                'Prefijo duplicado',
+                `El prefijo "${newValue}" ya está asignado a otro artículo.`,
+                'error'
+              );
+              return false;
+            }
+          }
+          params.data.prefijo = newValue;
+          params.data.__modified = true;
+          this.hasUnsavedChanges = true;
+          return true;
+        },
+      },
+      {
         field: 'idCategory',
         headerName: 'Categoria',
         width: 250,
@@ -1117,6 +1146,7 @@ export class MaterialesMaestroComponent implements OnInit, OnDestroy {
       stockMax: 0,
       vigente: true,
       active: true,
+      prefijo: '',
       __isNew: true,
     };
 
@@ -1512,7 +1542,8 @@ export class MaterialesMaestroComponent implements OnInit, OnDestroy {
       vigente: row.vigente === true || row.vigente === 1 ? true : false,
       active: row.active ?? true,
       porAutorizar: !!(row.porAutorizar ?? row.autorizacion ?? row.pendingAuthorization ?? false),
-      validaPresentaciones: !!(row.validaPresentaciones ?? false)
+      validaPresentaciones: !!(row.validaPresentaciones ?? false),
+      prefijo: (row.prefijo ?? '').toString().toUpperCase() || null,
     };
   }
 

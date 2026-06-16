@@ -4,8 +4,8 @@ import { AlmmoliendaComponent } from './almmolienda.component';
 
 /**
  * Contenedor de pestañas para Almacén Molienda:
- *  - Materia Prima Básica → tabla existente (AlmmoliendaComponent).
- *  - Materia Prima de 1ra y 2da Fase → en construcción.
+ *  - Materia Prima Básica       → filtra familia='BASICA'
+ *  - Materia Prima 1ra/2da Fase → filtra familias=['1RA FASE','2DA FASE']
  */
 @Component({
   selector: 'app-almmolienda-tabs',
@@ -17,33 +17,41 @@ import { AlmmoliendaComponent } from './almmolienda.component';
       <ul class="nav nav-tabs mb-3">
         <li class="nav-item">
           <button class="nav-link" [class.active]="activeTab === 'basica'"
-                  (click)="activeTab = 'basica'">
+                  (click)="setTab('basica')">
             Materia Prima Básica
           </button>
         </li>
         <li class="nav-item">
           <button class="nav-link" [class.active]="activeTab === 'fases'"
-                  (click)="activeTab = 'fases'">
+                  (click)="setTab('fases')">
             Materia Prima de 1ra y 2da Fase
           </button>
         </li>
       </ul>
 
-      <!-- Materia Prima Básica: tabla existente.
-           Se mantiene en el DOM (hidden) para no perder estado al cambiar de pestaña. -->
+      <!-- Básica: siempre en DOM para preservar estado (es la pestaña por defecto). -->
       <div [hidden]="activeTab !== 'basica'">
         <app-almmolienda familiaFilter="BASICA"></app-almmolienda>
       </div>
 
-      <!-- Materia Prima de 1ra y 2da Fase: en construcción -->
-      <div *ngIf="activeTab === 'fases'" class="text-center py-5 text-muted">
-        <i class="bi bi-tools fs-1 d-block mb-3"></i>
-        <h5>En construcción</h5>
-        <p class="small">Materia Prima de 1ra y 2da Fase — próximamente disponible</p>
+      <!-- Fases: se instancia la PRIMERA vez que el usuario abre la pestaña (tab ya visible),
+           así autoSizeAllColumns funciona correctamente. Después se oculta con [hidden]. -->
+      <div [hidden]="activeTab !== 'fases'">
+        <app-almmolienda *ngIf="fasesInitialized"
+                         [familiaFilter]="fasesFilter"
+                         [entradasSimple]="true">
+        </app-almmolienda>
       </div>
     </div>
   `,
 })
 export class AlmmoliendaTabsComponent {
   activeTab: 'basica' | 'fases' = 'basica';
+  fasesInitialized = false;
+  readonly fasesFilter = ['1RA FASE', '2DA FASE'];
+
+  setTab(tab: 'basica' | 'fases') {
+    if (tab === 'fases') this.fasesInitialized = true;
+    this.activeTab = tab;
+  }
 }
