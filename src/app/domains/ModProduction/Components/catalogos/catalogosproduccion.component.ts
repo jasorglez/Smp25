@@ -16,11 +16,12 @@ import { ProductionService } from '../../../../services/production.service';
 import { BranchsService } from '../../../../services/branchs.service';
 import { CatalogoParamMoliendaComponent } from '../molienda/catalogo-param-molienda/catalogo-param-molienda.component';
 import { MultiSelectActividadEditorComponent } from 'app/shared/multi-select-actividad-editor.component';
+import { HijosDetailRendererComponent } from './hijos-detail-renderer.component';
 
 @Component({
   selector: 'app-catalogosproduccion',
   standalone: true,
-  imports: [CommonModule, FormsModule, AgGridAngular, SelectWithTooltipEditorV2Component, ConfiguracionPageComponent, CatalogoParamMoliendaComponent, MultiSelectActividadEditorComponent],
+  imports: [CommonModule, FormsModule, AgGridAngular, SelectWithTooltipEditorV2Component, ConfiguracionPageComponent, CatalogoParamMoliendaComponent, MultiSelectActividadEditorComponent, HijosDetailRendererComponent],
   styles: [`
     :host {
       display: block;
@@ -621,105 +622,23 @@ import { MultiSelectActividadEditorComponent } from 'app/shared/multi-select-act
         </ng-container>
 
         <ng-container *ngIf="activeTab === 'preparacion1'">
-          <!-- Lista Tablas: PADREs desde BD (type='CATALOGO') -->
-          <aside class="catalog-sidebar">
-            <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:8px;">
+          <!-- Lista Tablas: PADREs desde BD (type='CATALOGO') — AG Grid, sin CRUD -->
+          <aside class="catalog-sidebar" style="padding:0; overflow:hidden; display:flex; flex-direction:column;">
+            <div style="padding:6px 10px; background:#e8ecf0; border-bottom:1px solid #c0c8d0; flex-shrink:0;">
               <p class="sidebar-title" style="margin:0;">Lista Tablas</p>
-              <div style="display:flex; gap:4px;">
-                <button class="btn btn-xs btn-success" style="padding:1px 6px; font-size:0.75rem;"
-                        (click)="addPadre1()" title="Agregar">
-                  <i class="bi bi-plus-lg"></i>
-                </button>
-                <button class="btn btn-xs btn-danger" style="padding:1px 6px; font-size:0.75rem;"
-                        (click)="deletePadre1()" [disabled]="!selectedPadre1" title="Borrar">
-                  <i class="bi bi-trash"></i>
-                </button>
-              </div>
             </div>
-            <div class="sidebar-list">
-              <div class="sidebar-empty" *ngIf="!padres1.length">Sin categorías</div>
-              <div class="sidebar-item catalog-entry"
-                   *ngFor="let p of padres1"
-                   [class.active]="selectedPadre1?.id === p.id"
-                   (click)="onSelectPadre1(p)"
-                   (dblclick)="startEditPadre1(p, $event)"
-                   style="cursor:pointer;">
-                <ng-container *ngIf="editingPadreId !== p.id">
-                  {{ p.description }}
-                </ng-container>
-                <div *ngIf="editingPadreId === p.id" style="display:flex; gap:4px; align-items:center;">
-                  <input type="text" class="form-control form-control-sm"
-                         [(ngModel)]="editingPadreDesc"
-                         (keyup.enter)="savePadreEdit()"
-                         (keyup.escape)="cancelPadreEdit()"
-                         (click)="$event.stopPropagation()"
-                         style="height:22px; font-size:0.8rem; flex:1;"
-                         autofocus>
-                  <button class="btn btn-xs btn-success" style="padding:0 5px;" (click)="savePadreEdit(); $event.stopPropagation()">✓</button>
-                  <button class="btn btn-xs btn-secondary" style="padding:0 5px;" (click)="cancelPadreEdit(); $event.stopPropagation()">✕</button>
-                </div>
-              </div>
-            </div>
+            <ag-grid-angular
+              class="ag-theme-quartz small-text-ag-grid"
+              [rowData]="padres1"
+              [columnDefs]="padres1ColDefs"
+              [gridOptions]="padres1GridOptions"
+              (gridReady)="onPadres1GridReady($event)"
+              style="height:650px; width:100%;">
+            </ag-grid-angular>
           </aside>
 
-          <!-- Botones CRUD HIJOs -->
-          <div class="catalog-actions">
-            <button class="action-btn add"    (click)="addHijo1()"    [disabled]="!selectedPadre1"   title="Agregar hijo"><i class="bi bi-plus-lg"></i></button>
-            <button class="action-btn save"   (click)="saveHijos1()"  [disabled]="!hasUnsavedHijos1" title="Guardar hijos">
-              <i class="bi bi-floppy"></i><span *ngIf="hasUnsavedHijos1" class="dirty-dot"></span>
-            </button>
-            <button class="action-btn revert" (click)="revertHijos1()"                               title="Deshacer"><i class="bi bi-arrow-clockwise"></i></button>
-            <button class="action-btn delete" (click)="deleteHijo1()" [disabled]="!selectedHijo1"    title="Borrar hijo"><i class="bi bi-trash"></i></button>
-          </div>
-
-          <section class="catalog-panel">
-            <div *ngIf="toastMsg1()" class="helper-row"><div class="toast-mini">{{ toastMsg1() }}</div></div>
-
-            <div class="helper-message" *ngIf="!selectedPadre1">
-              Selecciona una categoría de la lista para ver los grupos
-            </div>
-
-            <ng-container *ngIf="selectedPadre1">
-              <!-- Grid HIJOs -->
-              <div class="panel-toolbar">
-                <div class="panel-title">{{ selectedPadre1.description }} — Grupos</div>
-                <div class="panel-meta" style="font-size:0.8rem; color:#888;">
-                  {{ hijos1.length }} registro(s)
-                </div>
-              </div>
-              <ag-grid-angular
-                class="ag-theme-quartz catalog-grid"
-                [rowData]="hijos1"
-                [columnDefs]="hijosColDefs1"
-                [gridOptions]="hijosGridOptions1"
-                (gridReady)="onHijosGridReady1($event)"
-                (rowClicked)="onSelectHijo1($event.data)"
-                style="height: 210px; width: 100%;">
-              </ag-grid-angular>
-
-              <!-- Grid NIETOs — siempre presente para evitar destrucción del gridApi -->
-              <div class="panel-toolbar" style="border-top:1px solid #c7daf8; margin-top:6px;">
-                <div class="panel-title">{{ selectedHijo1 ? selectedHijo1.description + ' — Catálogos' : 'Catálogos' }}</div>
-                <div class="d-flex gap-1 align-items-center" *ngIf="selectedHijo1">
-                  <button class="btn btn-sm btn-success"  (click)="addNieto1()"     title="Agregar"><i class="bi bi-plus-lg"></i></button>
-                  <button class="btn btn-sm btn-primary position-relative"  (click)="saveNietos1()"  [disabled]="!hasUnsavedNietos1" title="Guardar">
-                    <i class="bi bi-floppy"></i><span *ngIf="hasUnsavedNietos1" class="dirty-dot"></span>
-                  </button>
-                  <button class="btn btn-sm btn-warning"  (click)="revertNietos1()"                  title="Deshacer"><i class="bi bi-arrow-clockwise"></i></button>
-                  <button class="btn btn-sm btn-danger"   (click)="deleteNieto1()"  [disabled]="!selectedNieto1" title="Borrar"><i class="bi bi-trash"></i></button>
-                </div>
-              </div>
-              <ag-grid-angular
-                class="ag-theme-quartz catalog-grid"
-                [rowData]="nietos1"
-                [columnDefs]="nietosColDefs1"
-                [gridOptions]="nietosGridOptions1"
-                (gridReady)="gridApiNietos1 = $event.api"
-                (rowClicked)="selectedNieto1 = $event.data"
-                style="height: 210px; width: 100%;">
-              </ag-grid-angular>
-            </ng-container>
-          </section>
+          <div class="catalog-actions"></div>
+          <section class="catalog-panel"></section>
         </ng-container>
 
         <ng-container *ngIf="activeTab === 'preparacion2' || activeTab === 'cerveza' || activeTab === 'envasado'">
@@ -1115,9 +1034,31 @@ export class CatalogosProduccionComponent {
   private originalNietos1: CatalogProductionItem[] = [];
   hasUnsavedHijos1  = false;
   hasUnsavedNietos1 = false;
+  gridApiPadres1!: GridApi;
   gridApiHijos1!:  GridApi;
   gridApiNietos1!: GridApi;
   toastMsg1 = signal('');
+
+  readonly padres1ColDefs: ColDef[] = [
+    {
+      field: 'description',
+      headerName: 'Tabla',
+      flex: 1,
+      editable: false,
+      cellRenderer: 'agGroupCellRenderer'
+    }
+  ];
+
+  readonly padres1GridOptions: any = {
+    headerHeight: 30,
+    rowHeight: 30,
+    rowSelection: 'single',
+    animateRows: true,
+    masterDetail: true,
+    isRowMaster: () => true,
+    detailCellRenderer: HijosDetailRendererComponent,
+    detailRowHeight: 220
+  };
 
   tabs = [
     { key: 'molienda',     label: 'Molienda' },
@@ -2871,14 +2812,20 @@ export class CatalogosProduccionComponent {
   }
 
   onSelectPadre1(padre: CatalogProductionItem): void {
-    this.selectedPadre1  = padre;
-    this.selectedHijo1   = null;
-    this.selectedNieto1  = null;
-    this.hijos1          = [];
-    this.nietos1         = [];
-    this.hasUnsavedHijos1  = false;
-    this.hasUnsavedNietos1 = false;
-    this.loadHijos1(padre.id!);
+    this.selectedPadre1 = padre;
+    if (!this.gridApiPadres1) return;
+    this.gridApiPadres1.forEachNode(node => {
+      if (node.data?.id === padre.id) {
+        node.setExpanded(!node.expanded);
+      }
+    });
+  }
+
+  onPadres1GridReady(event: any): void {
+    this.gridApiPadres1 = event.api;
+    event.api.setGridOption('detailCellRendererParams', {
+      onHijoSelected: (hijo: any) => this.onSelectHijo1(hijo)
+    });
   }
 
   onHijosGridReady1(event: any): void {
@@ -2907,11 +2854,7 @@ export class CatalogosProduccionComponent {
   }
 
   onSelectHijo1(hijo: CatalogProductionItem): void {
-    this.selectedHijo1  = hijo;
-    this.selectedNieto1 = null;
-    this.nietos1        = [];
-    this.hasUnsavedNietos1 = false;
-    this.loadNietos1(hijo.id!);
+    this.selectedHijo1 = hijo;
   }
 
   private loadNietos1(idHijo: number): void {

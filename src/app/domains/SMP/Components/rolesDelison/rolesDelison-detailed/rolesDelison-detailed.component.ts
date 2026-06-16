@@ -17,7 +17,6 @@ import { AutocompleteEditorComponent } from 'app/shared/autocomplete-editor/auto
 import { FormBuilder, FormGroup, Validators } from '@angular/forms';
 import { ClockService } from 'app/services/clock.service';
 import { TimeEditorComponent } from 'app/shared/time-editor/time-editor.component';
-import { TimeEditorModule } from 'app/shared/time-editor/time-editor.module';
 import { lastValueFrom, concat, toArray, forkJoin } from 'rxjs';
 import { RolesService } from 'app/services/roles.service';
 import { TimeService } from 'app/services/time.service';
@@ -27,7 +26,7 @@ import { AuthService } from 'app/services/auth.service';
 @Component({
   selector: 'app-roles-detailed',
   standalone: true,
-  imports: [RouterModule, DomainsModule, AgGridModule, TimeEditorModule],
+  imports: [RouterModule, DomainsModule, AgGridModule, TimeEditorComponent],
   templateUrl: './rolesDelison-detailed.component.html',
   styleUrl: './rolesDelison-detailed.component.scss'
 })

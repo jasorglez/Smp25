@@ -102,6 +102,12 @@
         },
         "serve": {
           "builder": "@angular-devkit/build-angular:dev-server",
+          "options": {
+            "headers": {
+              "Cache-Control": "no-store, no-cache, must-revalidate",
+              "Pragma": "no-cache"
+            }
+          },
           "configurations": {
             "production": {
               "buildTarget": "Delison:build:production"

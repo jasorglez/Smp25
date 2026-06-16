@@ -73,5 +73,5 @@ export const environment = {
 
   urlRefreshToken: 'https://securetoken.googleapis.com/v1/token?key=AIzaSyDxCBGKk8nT09hdW85-PyOkhw5_JPZLF1A',
 
-  version: '2.52.498 (15 Junio 2026) - Fix Requisiciones atascada en "Cargando..." al recargar (esperar idUser de Firebase, evita Branch?idUser=0 → 404)'
+  version: '2.52.506 (16 Junio 2026) - Catalogos/Preparacion1: fix doble-click, onSelectHijo1 vacio'
 };
