@@ -16,6 +16,7 @@ export class ProcmenumoliendaComponent {
     { route: 'clarificacion2',  icon: 'bi bi-cart-fill',     permissionName: 'Clarificacion 2' },
     { route: 'envasado',        icon: 'bi bi-graph-up',      permissionName: 'Envasado' },
     { route: 'almmolienda',     icon: 'bi bi-box-seam',      permissionName: 'Almacen Molienda' },
+    { route: 'ohbloque',        icon: 'bi bi-calendar2-week', permissionName: 'OH y Bloque' },
     { route: 'totalinventarios',icon: 'bi bi-clipboard-data',permissionName: 'Total Inventarios' },
   ];
 }

@@ -73,5 +73,5 @@ export const environment = {
 
   urlRefreshToken: 'https://securetoken.googleapis.com/v1/token?key=AIzaSyDxCBGKk8nT09hdW85-PyOkhw5_JPZLF1A',
 
-  version: '2.52.489 (15 Junio 2026) - Producción: Liberacion limpieza periodicidad y actividades'
+  version: '2.52.418 (16 Junio 2026) - MoliendaBloqueEF en Production microservicio'
 };

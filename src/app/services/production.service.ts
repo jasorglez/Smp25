@@ -351,6 +351,48 @@ export class ProductionService {
     return this.http.delete<void>(`${environment.urlProduction}/MoliendaActividad/${id}`, { headers: this.trackingService.getHeaders() });
   }
 
+  // ── Catálogo Bloques Extracción y Fermentación ────────────────────────────
+  getMoliendaBloqueEFByCatalog(idCatalog: number): Observable<any[]> {
+    return this.http.get<any[]>(`${environment.urlProduction}/MoliendaBloqueEF/catalog/${idCatalog}`, { headers: this.trackingService.getHeaders() });
+  }
+  getProductosTerminadosEF(idCompany: number): Observable<{ id: number; producto: string; categoria: string }[]> {
+    return this.http.get<any[]>(`${environment.urlWarehouse}/Catalog/productos-ef?idCompany=${idCompany}`, { headers: this.trackingService.getHeaders() });
+  }
+  createMoliendaBloqueEF(data: any): Observable<any> {
+    return this.http.post<any>(`${environment.urlProduction}/MoliendaBloqueEF`, data, { headers: this.trackingService.getHeaders() });
+  }
+  updateMoliendaBloqueEF(id: number, data: any): Observable<any> {
+    return this.http.put<any>(`${environment.urlProduction}/MoliendaBloqueEF/${id}`, data, { headers: this.trackingService.getHeaders() });
+  }
+  deleteMoliendaBloqueEF(id: number): Observable<void> {
+    return this.http.delete<void>(`${environment.urlProduction}/MoliendaBloqueEF/${id}`, { headers: this.trackingService.getHeaders() });
+  }
+  getMoliendaBloqueEFByCompany(idCompany: number): Observable<any[]> {
+    return this.http.get<any[]>(`${environment.urlProduction}/MoliendaBloqueEF/company/${idCompany}`, { headers: this.trackingService.getHeaders() });
+  }
+
+  // ── OH y Bloque ────────────────────────────────────────────────────────────
+  getOhBloqueByCompany(idCompany: number): Observable<any[]> {
+    return this.http.get<any[]>(`${environment.urlProduction}/OhBloque/company/${idCompany}`, { headers: this.trackingService.getHeaders() });
+  }
+  createOhBloque(data: any): Observable<any> {
+    return this.http.post<any>(`${environment.urlProduction}/OhBloque`, data, { headers: this.trackingService.getHeaders() });
+  }
+  updateOhBloque(id: number, data: any): Observable<any> {
+    return this.http.put<any>(`${environment.urlProduction}/OhBloque/${id}`, data, { headers: this.trackingService.getHeaders() });
+  }
+  deleteOhBloque(id: number): Observable<void> {
+    return this.http.delete<void>(`${environment.urlProduction}/OhBloque/${id}`, { headers: this.trackingService.getHeaders() });
+  }
+
+  getOhBloqueProductosByOhBloque(idOhBloque: number): Observable<any[]> {
+    return this.http.get<any[]>(`${environment.urlProduction}/OhBloqueProducto/by-oh-bloque/${idOhBloque}`, { headers: this.trackingService.getHeaders() });
+  }
+
+  saveOhBloqueProductosBatch(idOhBloque: number, items: any[]): Observable<void> {
+    return this.http.post<void>(`${environment.urlProduction}/OhBloqueProducto/batch/${idOhBloque}`, items, { headers: this.trackingService.getHeaders() });
+  }
+
   // ── Catálogo de parámetros de molienda ────────────────────────────────────
   getMoliendaParamCatalog(): Observable<any[]> {
     return this.http.get<any[]>(`${environment.urlProduction}/MoliendaParamCatalog`, { headers: this.trackingService.getHeaders() });

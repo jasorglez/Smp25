@@ -7,6 +7,7 @@ export interface ActividadOption {
   id: number;
   actividad: string;
   periodicidad: string | null;
+  group?: string;
 }
 
 function daysUntil(date: Date): number {
@@ -20,24 +21,28 @@ function daysUntil(date: Date): number {
   imports: [CommonModule, FormsModule],
   template: `
     <div class="msa-container" #container>
-      <div class="msa-header">Actividades realizadas</div>
+      <div class="msa-header">{{ title }}</div>
       <div class="msa-list">
-        <label *ngFor="let act of options" class="msa-item"
-               [class.msa-item--checked]="isSelected(act.id)"
-               [class.msa-item--blocked]="isBlocked(act.id)">
-          <input type="checkbox" [checked]="isSelected(act.id)"
-                 [disabled]="isBlocked(act.id)"
-                 (change)="toggle(act.id)">
-          <div class="msa-info">
-            <span class="msa-name" [class.msa-name--blocked]="isBlocked(act.id)">{{ act.actividad }}</span>
-            <span *ngIf="blockedLabel(act.id) as label" class="msa-badge msa-badge--blocked">{{ label }}</span>
-            <span *ngIf="!blockedLabel(act.id) && act.periodicidad && act.periodicidad !== 'Ninguno'" class="msa-badge">{{ act.periodicidad }}</span>
-          </div>
-        </label>
-        <div *ngIf="options.length === 0" class="msa-empty">Sin actividades en catálogo</div>
+        <ng-container *ngFor="let act of options; let i = index">
+          <div *ngIf="act.group && (i === 0 || options[i-1].group !== act.group)"
+               class="msa-group-header">{{ act.group }}</div>
+          <label class="msa-item"
+                 [class.msa-item--checked]="isSelected(act.id)"
+                 [class.msa-item--blocked]="isBlocked(act.id)">
+            <input type="checkbox" [checked]="isSelected(act.id)"
+                   [disabled]="isBlocked(act.id)"
+                   (change)="toggle(act.id)">
+            <div class="msa-info">
+              <span class="msa-name" [class.msa-name--blocked]="isBlocked(act.id)">{{ act.actividad }}</span>
+              <span *ngIf="blockedLabel(act.id) as label" class="msa-badge msa-badge--blocked">{{ label }}</span>
+              <span *ngIf="!blockedLabel(act.id) && act.periodicidad && act.periodicidad !== 'Ninguno'" class="msa-badge">{{ act.periodicidad }}</span>
+            </div>
+          </label>
+        </ng-container>
+        <div *ngIf="options.length === 0" class="msa-empty">Sin opciones en catálogo</div>
       </div>
       <div class="msa-footer">
-        <span class="msa-count">{{ selectedCount }}/{{ options.length }} realizadas</span>
+        <span class="msa-count">{{ selectedCount }}/{{ options.length }} seleccionados</span>
         <button class="btn btn-sm btn-primary" (click)="confirm()">Aceptar</button>
         <button class="btn btn-sm btn-secondary ms-1" (click)="cancel()">Cancelar</button>
       </div>
@@ -71,6 +76,11 @@ function daysUntil(date: Date): number {
       display: inline-block; font-size: 0.67rem; padding: 0 5px; border-radius: 10px;
       background: #d1ecf1; color: #0c5460; font-weight: 500; width: fit-content;
     }
+    .msa-group-header {
+      font-size: 0.7rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em;
+      color: #6c757d; padding: 6px 10px 2px; background: #f8f9fa; border-top: 1px solid #e9ecef;
+    }
+    .msa-group-header:first-child { border-top: none; }
     .msa-empty { font-size: 0.78rem; color: #9e9e9e; text-align: center; padding: 16px; }
     .msa-item--blocked { opacity: 0.55; cursor: not-allowed; }
     .msa-item--blocked input { cursor: not-allowed; }
@@ -86,6 +96,7 @@ function daysUntil(date: Date): number {
 export class MultiSelectActividadEditorComponent implements ICellEditorAngularComp, OnInit {
   private params: any;
   options: ActividadOption[] = [];
+  title = 'Actividades realizadas';
   private selected: Set<number> = new Set();
   private availableIds: Set<number> | null = null;
   private nextAvailableDates: Map<number, Date> | null = null;
@@ -93,6 +104,7 @@ export class MultiSelectActividadEditorComponent implements ICellEditorAngularCo
   agInit(params: any): void {
     this.params             = params;
     this.options            = (params.options as ActividadOption[]) ?? [];
+    this.title              = params.title ?? 'Actividades realizadas';
     this.availableIds       = params.availableIds ?? null;
     this.nextAvailableDates = params.nextAvailableDates ?? null;
     const raw: string = params.value ?? '[]';
