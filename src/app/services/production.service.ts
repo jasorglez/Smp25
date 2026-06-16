@@ -402,6 +402,10 @@ export class ProductionService {
     return this.http.post<void>(`${environment.urlProduction}/OhBloqueProducto/batch/${idOhBloque}`, items, { headers: this.trackingService.getHeaders() });
   }
 
+  updateOhBloqueProductoCantidadProducida(id: number, cantidadProducida: number): Observable<any> {
+    return this.http.put<any>(`${environment.urlProduction}/OhBloqueProducto/cantidad-producida/${id}`, cantidadProducida, { headers: this.trackingService.getHeaders() });
+  }
+
   // ── Catálogo de parámetros de molienda ────────────────────────────────────
   getMoliendaParamCatalog(): Observable<any[]> {
     return this.http.get<any[]>(`${environment.urlProduction}/MoliendaParamCatalog`, { headers: this.trackingService.getHeaders() });

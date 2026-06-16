@@ -5,6 +5,7 @@ import { ColDef, GridApi, GridReadyEvent } from 'ag-grid-enterprise';
 import { ICellRendererAngularComp } from 'ag-grid-angular';
 import { lastValueFrom } from 'rxjs';
 import { ProductionService } from 'app/services/production.service';
+import { SignalsService } from 'app/services/signals.service';
 import { alerts } from 'app/helpers/alerts';
 import { ItemCommentsCellRendererComponent } from 'app/shared/item-comments-cell-renderer/item-comments-cell-renderer.component';
 import { MedicionMatPrimaComponent } from './medicion-mat-prima.component';
@@ -87,6 +88,7 @@ interface ParamCatalog {
 })
 export class MedicionesBoteComponent implements ICellRendererAngularComp {
   private productionService = inject(ProductionService);
+  private signalsService = inject(SignalsService);
 
   loading = false;
   folioLabel = '';
@@ -275,6 +277,24 @@ export class MedicionesBoteComponent implements ICellRendererAngularComp {
           articleName: [p.data?.fecha, p.data?.hora].filter(Boolean).join(' '),
         }),
       },
+      {
+        field: 'cerrarEntrada', headerName: '', width: 100, editable: false, sortable: false,
+        cellRenderer: (p: any) => {
+          if (!p.data?.id) return '';
+          const btn = document.createElement('button');
+          btn.style.cssText = 'padding:1px 6px;font-size:0.72rem;';
+          if (p.data.__cerrado) {
+            btn.className = 'btn btn-sm btn-outline-secondary';
+            btn.disabled = true;
+            btn.innerHTML = '<i class="bi bi-check-circle-fill"></i> Cerrado';
+          } else {
+            btn.className = 'btn btn-sm btn-outline-success';
+            btn.innerHTML = '<i class="bi bi-x-circle"></i> Cerrar';
+          }
+          btn.addEventListener('click', (ev) => { ev.stopPropagation(); this.closeEntry(p.data, p); });
+          return btn;
+        },
+      },
     ];
 
     const paramCols: ColDef[] = this.params.map(param => ({
@@ -358,6 +378,62 @@ export class MedicionesBoteComponent implements ICellRendererAngularComp {
     if (this.gridApi) {
       this.gridApi.setGridOption('rowData', this.rowData);
       setTimeout(() => this.gridApi.startEditingCell({ rowIndex: 0, colKey: 'fecha' }), 50);
+    }
+  }
+
+  // ── Cerrar entrada de medición → enviar OH a Cantidad producida del bloque ──
+
+  async closeEntry(row: any, cellParams: any) {
+    if (row.__cerrado || !row.id) return;
+    const ohParam = this.params.find(p => (p.nombre ?? '').trim().toUpperCase() === 'OH');
+    if (!ohParam) {
+      alerts.basicAlert('Sin parámetro OH', 'No hay un parámetro "OH" configurado para esta materia prima.', 'warning');
+      return;
+    }
+    const rawOh = row[`param_${ohParam.id}`];
+    if (rawOh == null) {
+      alerts.basicAlert('Falta OH', 'Captura el valor de OH antes de cerrar la entrada.', 'warning');
+      return;
+    }
+    const ohValue = Number(rawOh);
+    if (!this.idArticulo) return;
+
+    const idCompany = this.signalsService.getRootSelectedBySidebar()();
+    if (!idCompany) return;
+
+    try {
+      const ohBloques = await lastValueFrom(this.productionService.getOhBloqueByCompany(idCompany)).catch(() => [] as any[]);
+
+      for (const ohBloque of (ohBloques ?? [])) {
+        let bloqueConfigs: { id: number; enabled: boolean; ohMin: number | null; ohMax: number | null }[] = [];
+        try { bloqueConfigs = JSON.parse(ohBloque.bloqueIds ?? '[]'); } catch { continue; }
+
+        const matchingBloqueIds = bloqueConfigs
+          .filter(b => b.enabled && b.ohMin != null && b.ohMax != null && ohValue >= b.ohMin! && ohValue <= b.ohMax!)
+          .map(b => b.id);
+        if (!matchingBloqueIds.length) continue;
+
+        const productos = await lastValueFrom(
+          this.productionService.getOhBloqueProductosByOhBloque(ohBloque.id)
+        ).catch(() => [] as any[]);
+
+        const entry = (productos ?? []).find((pr: any) =>
+          matchingBloqueIds.includes(pr.idBloqueEf) && pr.idProducto === this.idArticulo && pr.cantidad != null
+        );
+
+        if (entry) {
+          await lastValueFrom(this.productionService.updateOhBloqueProductoCantidadProducida(entry.id, ohValue));
+          row.__cerrado = true;
+          this.gridApi?.refreshCells({ rowNodes: [cellParams?.node].filter(Boolean), columns: ['cerrarEntrada'], force: true });
+          alerts.reqSuccessToast('Entrada cerrada', 'OH enviado a Cantidad producida del bloque.');
+          return;
+        }
+      }
+
+      alerts.basicAlert('Sin bloque coincidente', 'No se encontró un bloque habilitado con este producto para el OH capturado.', 'warning');
+    } catch (e) {
+      console.error('Error cerrando entrada:', e);
+      alerts.reqErrorToast('Error al cerrar entrada');
     }
   }
 
