@@ -121,16 +121,22 @@ export class SearchableSelectComponent implements ICellEditorAngularComp {
           const activeValue = this.normalizeText(activeOption?.[displayField]);
 
           if (typedValue && typedValue === activeValue) {
-            this.selectOption(activeOption);
+            this.selectOption(activeOption); // llama stopEditing + postEnterAction internamente
           } else {
             this.selectedOption = null;
             this.value = this.searchText;
             this.params.api.stopEditing();
+            if (typeof this.params.postEnterAction === 'function') {
+              setTimeout(() => this.params.postEnterAction(this.params), 0);
+            }
           }
         } else {
           this.selectedOption = null;
           this.value = this.searchText;
           this.params.api.stopEditing();
+          if (typeof this.params.postEnterAction === 'function') {
+            setTimeout(() => this.params.postEnterAction(this.params), 0);
+          }
         }
         break;
       case 'Escape':
@@ -224,6 +230,9 @@ export class SearchableSelectComponent implements ICellEditorAngularComp {
     }
     setTimeout(() => {
       this.params.api.stopEditing();
+      if (typeof this.params.postEnterAction === 'function') {
+        setTimeout(() => this.params.postEnterAction(this.params), 0);
+      }
     }, 0);
   }
 

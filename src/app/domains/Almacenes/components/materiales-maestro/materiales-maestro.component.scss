@@ -51,6 +51,15 @@
     border-left: 4px solid #ffc107;
   }
 
+  // Fila inactiva (borrado lógico)
+  .inactive-row-highlight {
+    background-color: #f5f5f5 !important;
+    color: #757575 !important;
+    font-style: italic;
+    border-left: 4px solid #bdbdbd;
+  }
+
+
   // Estilos para checkboxes
   input[type="checkbox"] {
     width: 16px;

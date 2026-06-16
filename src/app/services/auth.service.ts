@@ -1,5 +1,5 @@
 import { ApplicationRef, effect, inject, Injectable, NgZone } from '@angular/core';
-import { HttpClient } from '@angular/common/http';
+import { HttpClient, HttpHeaders } from '@angular/common/http';
 import { Router } from '@angular/router';
 import {
   Auth,
@@ -11,7 +11,7 @@ import {
   authState,
 } from '@angular/fire/auth';
 import { TrackingService } from './tracking.service';
-import { BehaviorSubject, catchError, firstValueFrom, map, Observable, of, switchMap, tap, throwError } from 'rxjs';
+import { BehaviorSubject, catchError, finalize, firstValueFrom, map, Observable, of, shareReplay, switchMap, tap, throwError } from 'rxjs';
 import { environment } from '../../environments/environment';
 import { Ilogin } from 'app/interface/ilogin';
 import { SignalsService } from './signals.service';
@@ -52,6 +52,7 @@ export class AuthService {
 
   // Timer de cierre al expirar el JWT (sin modal de advertencia previa).
   private sessionExpireTimer: any = null;
+  private isLoggingOut = false;
 
   /** Cierre por inactividad (sin eventos de usuario en el documento). */
   private idleTimer: ReturnType<typeof setTimeout> | null = null;
@@ -60,6 +61,16 @@ export class AuthService {
   private lastActivityThrottleAt = 0;
   private idleListenersAttached = false;
   private readonly onIdleActivity = (): void => this.recordUserActivity();
+  private readonly onVisibilityChange = (): void => {
+    if (!localStorage.getItem('token')) return;
+    if (document.hidden) {
+      // Tab en background — pausar idle timer para no cerrar sesión por inactividad de tab
+      if (this.idleTimer) { clearTimeout(this.idleTimer); this.idleTimer = null; }
+    } else {
+      // Tab volvió al frente — reiniciar idle timer
+      this.recordUserActivity();
+    }
+  };
 
   constructor() {
     effect(() => {
@@ -74,12 +85,41 @@ export class AuthService {
 
   // ─── Inicia los timers de sesión una vez que el token está en localStorage ───
   startSessionTimers(): void {
+    this.isLoggingOut = false;
     this.clearSessionTimers();
 
     const token = localStorage.getItem('token');
     if (!token) return;
 
+    // Timer proactivo: renovar el JWT 2 minutos antes de que expire
+    const expiry = this.getTokenExpiry(token);
+    if (expiry) {
+      const msUntilExpiry = expiry - Date.now();
+      if (msUntilExpiry > 0) {
+        const renewDelay = Math.max(0, msUntilExpiry - 2 * 60 * 1000);
+        this.sessionExpireTimer = setTimeout(() => {
+          this.sessionExpireTimer = null;
+          this.ngZone.run(() => this.renewSessionToken());
+        }, renewDelay);
+      }
+    }
+
     this.startIdleWatch();
+  }
+
+  private renewSessionToken(): void {
+    if (this.isLoggingOut) return;
+    const userId = this.signalsService.getIdUSer()();
+    if (!userId || userId <= 0) return;
+    this.http.get<any>(`${environment.urlSecurity}/Auth/renew/token/${userId}`,
+      { headers: this.trackingService.getHeaders() })
+      .pipe(catchError(() => of(null)))
+      .subscribe((resp: any) => {
+        if (resp?.data?.token) {
+          localStorage.setItem('token', resp.data.token);
+          this.startSessionTimers();
+        }
+      });
   }
 
   /**
@@ -109,6 +149,7 @@ export class AuthService {
     document.addEventListener('scroll', this.onIdleActivity, opts);
     document.addEventListener('wheel', this.onIdleActivity, opts);
     document.addEventListener('mousemove', this.onIdleActivity, opts);
+    document.addEventListener('visibilitychange', this.onVisibilityChange);
     this.idleListenersAttached = true;
   }
 
@@ -121,6 +162,7 @@ export class AuthService {
       document.removeEventListener('scroll', this.onIdleActivity, { capture: true } as any);
       document.removeEventListener('wheel', this.onIdleActivity, { capture: true } as any);
       document.removeEventListener('mousemove', this.onIdleActivity, { capture: true } as any);
+      document.removeEventListener('visibilitychange', this.onVisibilityChange);
       this.idleListenersAttached = false;
     }
     if (this.idleTimer) {
@@ -157,6 +199,8 @@ export class AuthService {
       this.stopIdleWatch();
       return;
     }
+    if (this.isLoggingOut) return;
+    this.isLoggingOut = true;
     Swal.close();
     try {
       sessionStorage.setItem('idleLogoutNotice', '1');
@@ -211,6 +255,47 @@ export class AuthService {
       console.error('Error registrando el usuario:', error);
       throw error;
     }
+  }
+
+  /** Refresh single-flight del idToken usando el refreshToken de Firebase.
+   *  Si ya hay un refresh en curso, todas las peticiones comparten el mismo observable. */
+  private refreshInFlight$: Observable<string> | null = null;
+
+  refreshIdToken(): Observable<string> {
+    if (this.refreshInFlight$) return this.refreshInFlight$;
+
+    const refreshToken = localStorage.getItem('refreshToken');
+    if (!refreshToken) {
+      return throwError(() => new Error('No refresh token disponible'));
+    }
+
+    const body = `grant_type=refresh_token&refresh_token=${encodeURIComponent(refreshToken)}`;
+    this.refreshInFlight$ = this.http.post<any>(environment.urlRefreshToken, body, {
+      headers: new HttpHeaders({ 'Content-Type': 'application/x-www-form-urlencoded' }),
+    }).pipe(
+      map((resp: any) => {
+        if (!resp?.id_token) throw new Error('Refresh sin id_token');
+        localStorage.setItem('token', resp.id_token);
+        if (resp.refresh_token) localStorage.setItem('refreshToken', resp.refresh_token);
+        return resp.id_token as string;
+      }),
+      shareReplay(1),
+      finalize(() => { this.refreshInFlight$ = null; })
+    );
+    return this.refreshInFlight$;
+  }
+
+  /** Cierre por sesión expirada (token caducado y refresh fallido): logout limpio + aviso en login. */
+  handleSessionExpired(): void {
+    if (this.isLoggingOut) return;
+    this.isLoggingOut = true;
+    Swal.close();
+    try {
+      sessionStorage.setItem('sessionExpiredNotice', '1');
+    } catch {
+      /* ignorar quota / modo privado */
+    }
+    void this.logout();
   }
 
   async logout() {

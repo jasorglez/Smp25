@@ -31,12 +31,20 @@ export class SetupService {
       return this.http.get<any[]>(`${environment.urlWarehouse}/Setup/company/${idCompany}`, { headers: this.trackingService.getHeaders() });
     }
 
+    getWarehouseSetupByBranch(idBranch: number): Observable<any> {
+      return this.http.get<any>(`${environment.urlWarehouse}/Setup/branch/${idBranch}`, { headers: this.trackingService.getHeaders() });
+    }
+
     addWarehouseSetup(data: any): Observable<any> {
       return this.http.post(`${environment.urlWarehouse}/Setup`, data, { headers: this.trackingService.getHeaders() });
     }
 
     updateWarehouseSetup(idCompany: number, data: any): Observable<any> {
       return this.http.put<any[]>(`${environment.urlWarehouse}/Setup/company/${idCompany}`, data, { headers: this.trackingService.getHeaders() });
+    }
+
+    updateWarehouseSetupByBranch(idBranch: number, data: any): Observable<any> {
+      return this.http.put<any>(`${environment.urlWarehouse}/Setup/branch/${idBranch}`, data, { headers: this.trackingService.getHeaders() });
     }
     
 

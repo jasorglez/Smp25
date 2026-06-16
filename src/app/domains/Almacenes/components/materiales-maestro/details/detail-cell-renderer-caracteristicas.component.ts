@@ -4,6 +4,7 @@ import { ICellRendererParams } from 'ag-grid-enterprise';
 import { AgGridModule } from 'ag-grid-angular';
 import { CommonModule } from '@angular/common';
 import { alerts } from 'app/helpers/alerts';
+import { runAutosizeAllColumns } from 'app/helpers/ag-grid-autosize.helper';
 
 @Component({
   selector: 'app-detail-cell-renderer-caracteristicas',
@@ -53,7 +54,8 @@ export class DetailCellRendererCaracteristicasComponent implements ICellRenderer
     headerHeight: 25,
     rowHeight: 20,
     suppressEnterWhenEditing: false,
-    rowSelection: 'single'
+    rowSelection: 'single',
+    onFirstDataRendered: (params: any) => runAutosizeAllColumns(params.api),
   };
 
   caracteristicasColumnDefs: any[] = [
@@ -92,7 +94,6 @@ export class DetailCellRendererCaracteristicasComponent implements ICellRenderer
 
   onCaracteristicasGridReady(params: any) {
     this.caracteristicasGridApi = params.api;
-    params.api.sizeColumnsToFit();
   }
 
   onCaracteristicasSelectionChanged(event: any): void {

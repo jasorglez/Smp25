@@ -4,11 +4,12 @@ import { DomainsModule } from 'app/domains/domainsmodule';
 import { AuthService } from 'app/services/auth.service';
 import { MenuService } from 'app/services/menu.service';
 import { SignalsService } from 'app/services/signals.service';
+import { CommonModule } from '@angular/common';
 
 @Component({
   selector: 'app-procmenucompras',
   standalone: true,
-  imports: [RouterModule, DomainsModule],
+  imports: [RouterModule, DomainsModule, CommonModule],
   templateUrl: './procmenucompras.component.html',
 })
 export class ProcmenucomprasComponent implements OnInit {
@@ -16,7 +17,9 @@ export class ProcmenucomprasComponent implements OnInit {
   private signalsService = inject(SignalsService);
   private menuService = inject(MenuService);
 
-  tabMenus: { masterIdentifier: string; identifier: string; permissionName: string; route: string; icon: string; principalSubIdentifier: string; tabOrder: number }[] = [];
+  get hasNupnpn() { return this.signalsService.getHasNupnpnCompraRapida()(); }
+
+  tabMenus: { masterIdentifier: string; identifier: string; permissionName: string; route: string; icon: string; principalSubIdentifier: string; tabOrder: number; skipPermission?: boolean }[] = [];
 
   ngOnInit() {
     this.signalsService.setCatalogSelected('SHOPPINGDELISON');
@@ -25,7 +28,27 @@ export class ProcmenucomprasComponent implements OnInit {
 
   loadTabMenus() {
     this.menuService.getTabMenus('shoppingDelison').subscribe({
-      next: (tabs) => { this.tabMenus = tabs; },
+      next: (tabs) => {
+        const materiaPrimaTab = tabs.find(t => t.identifier === 'materia-prima');
+        if (materiaPrimaTab) {
+          materiaPrimaTab.permissionName = 'Materiales Maestros';
+        }
+
+        const gastosTab = {
+          masterIdentifier: 'shoppingDelison',
+          identifier: 'gastos',
+          permissionName: 'Gastos',
+          route: 'gastos',
+          icon: 'bi bi-receipt',
+          principalSubIdentifier: '',
+          tabOrder: 4.5,
+          skipPermission: true,
+        };
+        const ocIdx = tabs.findIndex(t => t.identifier === 'purchas_eorder');
+        tabs.splice(ocIdx + 1, 0, gastosTab);
+
+        this.tabMenus = tabs;
+      },
       error: (err) => console.error('Error loading tab menus:', err)
     });
   }

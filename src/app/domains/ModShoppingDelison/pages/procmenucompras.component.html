@@ -5,11 +5,15 @@
 
                <ng-container *ngFor="let tab of tabMenus">
                  <li class="nav-item"
-                     *ngIf="tab.principalSubIdentifier
+                     *ngIf="tab.skipPermission || (tab.principalSubIdentifier
                        ? authService.hasSubDetailedPermission(tab.masterIdentifier, tab.identifier, tab.principalSubIdentifier)
-                       : authService.hasDetailedPermission(tab.masterIdentifier, tab.identifier)">
-                   <a class="nav-link green-tab" [routerLink]="tab.route" routerLinkActive="active">
+                       : authService.hasDetailedPermission(tab.masterIdentifier, tab.identifier))">
+                   <a class="nav-link green-tab position-relative" [routerLink]="tab.route" routerLinkActive="active">
                      <i [class]="tab.icon"></i> {{ tab.permissionName }}
+                     <span *ngIf="hasNupnpn && tab.identifier === 'purchas_eorder'"
+                           style="position:absolute; top:4px; right:4px; width:8px; height:8px;
+                                  background:#d32f2f; border-radius:50%; display:inline-block;">
+                     </span>
                    </a>
                  </li>
                </ng-container>

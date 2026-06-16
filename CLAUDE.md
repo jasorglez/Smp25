@@ -1,6 +1,6 @@
 # CLAUDE.md
 
-This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+This file provides guidance to Claude Code when working with code in this repository.
 
 ## Development Commands
 
@@ -283,6 +283,186 @@ When compacting this conversation, always preserve:
 - **Fila nueva amarilla**: `rowClassRules: { 'new-row-highlight': params => !!params.data?.__isNew }` — CSS global en `styles.scss`
 - **Backend field naming**: DB usa snake_case/lowercase, frontend usa camelCase. Siempre verificar antes de enviar al backend.
 - **Signals para colores**: `signalsService.setReqTypeOcBulk(flags)` llena el mapa, `effect()` hace `refreshCells()`, `cellStyle` lee el mapa.
+
+## Módulo Reloj Checador — detail-clock-2
+
+Componente: `src/app/domains/ModReshumans/components/checkout/detail-clock-2/detail-clock-2.component.ts`
+
+### Validación de patrón IN/OUT
+
+Al editar cualquier celda de `type`, `checkTime` o `date`, se disparan dos validaciones:
+
+1. **`validateDayPattern(dateStr)`**: Para días con hora entre 09:00 y 21:00 (horario normal):
+   - Máximo 2 IN y 2 OUT por día
+   - El primer registro del día debe ser IN
+   - No puede haber dos del mismo tipo consecutivos (IN-IN o OUT-OUT)
+
+2. **`validateExtraHoursWindow(dateStr)`**: Para filas con hora < 9 o ≥ 21 (horas extra):
+   - Ventana nocturna: INs a partir de 21:00 del día D deben tener OUT antes de 09:00 del día D+1
+   - Ventana matutina: OUTs antes de 09:00 del día D deben tener un IN desde 21:00 del día D-1
+
+Si falla alguna validación, se muestra un **Bootstrap Toast** (no banner) con el mensaje. El toast se llama con `showPatternToast(message)`.
+
+### `agDateCellEditor` devuelve objeto `Date`
+
+El `valueParser` de la columna fecha debe manejar tanto strings como objetos `Date`:
+
+```typescript
+valueParser: (params) => {
+  if (!params.newValue) return null;
+  try {
+    if ((params.newValue as any) instanceof Date) {
+      const d = params.newValue as any as Date;
+      return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+    }
+    // ... manejo de string
+  } catch { return null; }
+}
+```
+
+**Por qué:** `agDateCellEditor` entrega un `Date` object al `valueParser`, no un string. Si se llama `.split('-')` sobre un `Date`, lanza excepción y la celda queda con `null`.
+
+### Helper `toIsoDateStr`
+
+Normaliza cualquier valor de fecha (Date object, string ISO, string DD-MM-YYYY) a `YYYY-MM-DD`. Se usa al inicio de `validateDayPattern` y `validateExtraHoursWindow` para evitar `RangeError: Invalid time value`.
+
+### Ajuste horario en entradas manuales
+
+Al guardar filas nuevas, se llama `POST /calculate-adjustment` para cada una y se aplica `realTimeBySystem`/`adjustedTimeBySystem` en `cleanDataForServer(data, adjustment?)`.
+
+### `pendingExits` cellRenderer — filtro de hora
+
+`validOutCount` también filtra `hour >= 9 && hour < 21` para que los OUTs de horas extra no cancelen INs de horario normal:
+
+```typescript
+const validOutCount = [...groupData].filter(node => {
+  const record = node.data;
+  if (!record.valid || record.type !== 'OUT') return false;
+  const hour = record.checkTime ? parseInt(record.checkTime.split(':')[0], 10) : -1;
+  return hour >= 9 && hour < 21;
+}).length;
+```
+
+**Nota:** El cálculo definitivo de `pendingOuts` en el backend usa `lastIn.HasValue` post-loop (ver CLAUDE.md de MicroServicioTracking), no conteo por hora. El cellRenderer del frontend es solo visual.
+
+### Discrepancia de faltas entre `detail-clock-2` y `master-clock` (resuelto en backend)
+
+`detail-clock-2` usa `IncidentsByEmployee`; `master-clock` usa `IncidentsByCompany`. La fuente de verdad para faltas son los **registros marker `valid=false, type=IN`** (`AUTO_ABSENCE_T1`/`T2`).
+
+Correcciones aplicadas en el backend:
+- Lógica de faltas reemplaza `ShouldCountAsAbsence` con: `checks.Any(c => !c.Valid && c.Type=="IN" && c.Holiday != true)` para el día
+- `IncidentsByCompany` eliminó el `AddDays(-1)` que recortaba el cap de `today` — ya usa `today` directo
+- `IncidentsByEmployee` usa `<= endDate` (antes `< endDate` excluía el último día)
+
+Si los números vuelven a diferir, verificar que ambos métodos usen el mismo rango de fechas y la misma lógica de marker.
+
+### `master-clock` — Panel lateral con click en celda (colDef-level)
+
+El patrón correcto es definir `onCellClicked` **dentro de la definición de columna**, no como evento global en el template. Ver `employees/table.component.ts` como referencia.
+
+```typescript
+// master-clock.component.ts — en columnDefs
+{
+  field: 'baseHours',
+  onCellClicked: (params: any) => this.togglePanel(params, 'details'),
+  cellStyle: { cursor: 'pointer' }
+},
+{
+  field: 'specialExtraHours',
+  onCellClicked: (params: any) => this.togglePanel(params, 'special'),
+  cellStyle: { cursor: 'pointer' }
+},
+```
+
+```typescript
+// Estado del panel — reemplaza isOpen: boolean
+openPanel: 'details' | 'special' | null = null;
+
+private togglePanel(params: any, panel: 'details' | 'special'): void {
+  if (!params.data) return;
+  this.selectedRowData = params.data;
+  if (this.openPanel === panel) {
+    this.closePanel();
+  } else {
+    if (this.openPanel === null) this.adjustGridSize();
+    this.showDetailsTab = panel === 'details';
+    this.showSpecialTimesTab = panel === 'special';
+    this.openPanel = panel;
+  }
+}
+
+private closePanel(): void {
+  this.gridHeight = '80vh';
+  this.showDetailsTab = false;
+  this.showSpecialTimesTab = false;
+  this.openPanel = null;
+  this.gridApi.setFilterModel(null);
+  this.gridApi.onFilterChanged();
+}
+```
+
+- Click en `baseHours` → abre/cierra panel de detalles
+- Click en `specialExtraHours` → abre/cierra panel de horas extra especiales
+- Click en la celda ya abierta → cierra
+- Click en celda distinta mientras hay panel abierto → cambia al otro panel
+- `(cellClicked)` en el template HTML ya **no existe** — todo es via colDef
+
+### `special-extra-hours-master` — Modo doble (branch / employee)
+
+Accesible solo desde `master-clock` (removido del menú de checkout y de `app.routes.ts`).
+
+```typescript
+// Dos modos — determinados por signals en constructor
+mode: 'branch' | 'employee' = 'branch';
+idEmployee: number | null = null;
+
+constructor() {
+  effect(() => {
+    const emp = this.signalsService.getDetailClockForEmployee()();
+    if (emp?.idEmployee) {
+      this.mode = 'employee';
+      this.idEmployee = emp.idEmployee;
+      // usar emp.start / emp.end como rango
+      this.obtenerDatos();
+    }
+  });
+  effect(() => {
+    const branch = this.signalsService.getBranchSelectedBySidebar()();
+    if (this.mode === 'branch') {
+      // react to branch change
+      this.obtenerDatos();
+    }
+  });
+}
+```
+
+`obtenerDatos()` despacha a `getSpecialExtraHoursByEmployee` o `getSpecialExtraHoursByBranch` según `mode`.
+
+El date picker y botón "Consultar" solo se muestran en `*ngIf="mode === 'branch'"`.
+
+### Botonera en componentes de reloj
+
+La botonera (Agregar, Guardar, Deshacer, Borrar) va **arriba a la derecha del ag-grid, en horizontal**:
+
+```html
+<div class="d-flex justify-content-end gap-1 mb-1">
+  <button class="btn btn-sm btn-success" ...>Agregar</button>
+  <button class="btn btn-sm btn-primary" ...>Guardar</button>
+  <!-- etc -->
+</div>
+```
+
+Aplica a: `detail-clock-2` y `special-extra-hours-master`. No va en columna vertical al costado.
+
+### Horas Extra Especiales en `master-clock` — colores por estado de aprobación
+
+Las celdas de horas extra especiales en `master-clock` usan colores para indicar el estado de aprobación:
+
+- **Rojo** (`text-danger` / `#dc3545`): `allow_special_extra = false` — rechazadas
+- **Amarillo** (`text-warning` / `#ffc107`): `allow_special_extra = null` — pendientes de revisión
+- **Verde** (color existente): `allow_special_extra = true` — aprobadas
+
+---
 
 ## Project Memories
 

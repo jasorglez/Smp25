@@ -4,6 +4,8 @@ import { AgGridAngular } from 'ag-grid-angular';
 import { ColDef, GridApi, GridReadyEvent } from 'ag-grid-enterprise';
 import { OcAndReqsService } from 'app/services/ocandreqs.service';
 import { OrdenesydetallesOcComponent } from './ordenesydetallesOc.component';
+import { forkJoin, of } from 'rxjs';
+import { map, catchError } from 'rxjs/operators';
 
 @Component({
   selector: 'app-pedimentos-x-requisicion',
@@ -11,7 +13,7 @@ import { OrdenesydetallesOcComponent } from './ordenesydetallesOc.component';
   imports: [CommonModule, AgGridAngular, OrdenesydetallesOcComponent],
   template: `
     <div style="padding: 6px; height: 100%; display: flex; flex-direction: column;
-                box-sizing: border-box; overflow: hidden; background: #e8f5e9;">
+                box-sizing: border-box; overflow: hidden;">
 
       <div style="margin-bottom: 4px; flex-shrink: 0;">
         <strong style="font-size: 0.85rem;">Pedimentos de {{ requisiconFolio }}</strong>
@@ -73,33 +75,22 @@ export class PedimentosXRequisicionComponent {
       }
     },
     {
-      field: 'fechaPedimento',
-      headerName: 'Fecha',
-      width: 120,
-      valueFormatter: (p) => {
-        if (!p.value) return '';
-        const date = new Date(p.value);
-        const d = String(date.getDate()).padStart(2, '0');
-        const m = String(date.getMonth() + 1).padStart(2, '0');
-        const y = date.getFullYear();
-        return `${d}/${m}/${y}`;
-      },
-    },
-    {
-      field: 'articulos',
-      headerName: 'Artículos',
+      field: 'ocNumber',
+      headerName: '# OC',
       width: 130,
       editable: false,
-      valueGetter: (params) => {
-        const articulos = params.data?.articulos || [];
-        const articulosExternos = articulos.filter(
-          (item: any) => (item.intorext || item.tipo || '').toLowerCase() !== 'interno'
-        );
-        const solicitados = articulosExternos.filter((item: any) => item.pedimento === true).length;
-        const total = articulosExternos.length;
-        return `${solicitados}/${total}`;
+      cellStyle: { fontWeight: 'bold', textAlign: 'center' },
+    },
+    {
+      field: 'totalPedimento',
+      headerName: '$ Total x Pedimento',
+      width: 180,
+      editable: false,
+      valueFormatter: (p) => {
+        const n = Number(p.value) || 0;
+        return '$' + n.toLocaleString('es-MX', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
       },
-      cellStyle: { fontWeight: 'bold', textAlign: 'center', backgroundColor: '#fff9c4' },
+      cellStyle: { fontWeight: 'bold', textAlign: 'right', backgroundColor: '#e8f5e9', color: '#1b5e20' },
     },
   ];
 
@@ -119,7 +110,7 @@ export class PedimentosXRequisicionComponent {
 
   agInit(params: any): void {
     this.internalParams = params;
-    this.requisiconFolio = params?.data?.folio || '';
+    this.requisiconFolio = params?.data?.reqFolio || params?.data?.folio || '';
     // onGridReady cargará los datos
   }
 
@@ -146,40 +137,48 @@ export class PedimentosXRequisicionComponent {
     }
 
     this.ocAndReqsService.getPedimentosByRequisicion(idRequisicion).subscribe({
-      next: async (pedimentos: any[]) => {
+      next: (pedimentos: any[]) => {
         const peds = Array.isArray(pedimentos) ? pedimentos : [];
-        
-        // Import lastValueFrom dynamically to avoid touching top-level imports
-        const { lastValueFrom } = await import('rxjs');
 
-        // Cargar los artículos de cada pedimento
-        const pedsConArticulos = await Promise.all(peds.map(async (p: any) => {
-          let articulos = p.articulos || [];
-          if (!articulos.length) {
-            try {
-              const items = await lastValueFrom(this.ocAndReqsService.getReqItems(p.id));
-              articulos = items || [];
-            } catch(e) {
-              console.error('Error loading items for pedimento', p.id, e);
-            }
+        if (peds.length === 0) {
+          this.rowData = [];
+          if (this.gridApi && !this.gridApi.isDestroyed()) {
+            this.gridApi.setGridOption('rowData', []);
           }
-          return {
-            id:             p.id,
-            idPedimento:    p.id,
-            idCompany:      idCompany,
-            folio:          p.folio || '',
-            pedimento:      p.pedimento || 0,
-            fechaPedimento: p.dateCreate || p.dateModified || '',
-            ocCount:        p.countrow || 0,
-            articulos:      articulos,
-          };
-        }));
-
-        this.rowData = pedsConArticulos;
-
-        if (this.gridApi && !this.gridApi.isDestroyed()) {
-          this.gridApi.setGridOption('rowData', this.rowData);
+          return;
         }
+
+        // Por cada pedimento, contar sus OCs reales (las mismas que muestra el grid de detalle).
+        forkJoin(
+          peds.map((p: any) =>
+            this.ocAndReqsService.getOcsByPedimento(p.id).pipe(
+              map((ocs: any[]) => (Array.isArray(ocs) ? ocs.length : 0)),
+              catchError(() => of(0))
+            )
+          )
+        ).subscribe((counts: number[]) => {
+          // idReference (sucursal) heredado de la requisición padre — necesario para
+          // que el componente de detalle de OCs pueda cargar el rango de Condic. Compra
+          // desde setup_oc sin depender del branch del sidebar.
+          const idReference = this.internalParams?.data?.idReference
+                           ?? this.internalParams?.data?.id_reference
+                           ?? this.internalParams?.data?.idBranch
+                           ?? null;
+          this.rowData = peds.map((p: any, i: number) => ({
+            id:        p.id,
+            folio:     p.folio || '',
+            pedimento: p.pedimento || 0,
+            ocNumber:  counts[i] ?? 0,
+            totalPedimento: p.totalPedimento ?? p.TotalPedimento ?? 0,
+            idCompany: idCompany,
+            idReference: idReference,
+          }));
+
+          if (this.gridApi && !this.gridApi.isDestroyed()) {
+            this.gridApi.setGridOption('rowData', this.rowData);
+            this.gridApi.autoSizeAllColumns();
+          }
+        });
       },
       error: () => {
         this.rowData = [];

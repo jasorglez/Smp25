@@ -1,0 +1,469 @@
+# GEMINI.md
+
+This file provides guidance to Gemini CLI when working with code in this repository.
+
+## Development Commands
+
+**Start Development Server:**
+```bash
+npm start
+# or
+ng serve
+```
+
+**Build for Production:**
+```bash
+npm run build
+# or 
+ng build --configuration production
+```
+
+**Run Tests:**
+```bash
+npm test
+# or
+ng test
+```
+
+**Build and Watch:**
+```bash
+npm run watch
+# or
+ng build --watch --configuration nt
+```
+
+## Architecture Overview
+
+This is an Angular 18 application (project name: "Delison") that connects to a C# backend. The application uses a domain-driven architecture with the following structure:
+
+### Domain Architecture
+The application is organized into distinct business domains under `src/app/domains/`:
+
+- **Admonapp**: Administrative application functionality
+- **Dashboards**: Business intelligence dashboards with components for different data visualizations
+- **Indicadores**: KPI and indicators management 
+- **ModAdmon**: Administrative module for financial management
+- **ModMaintenance**: Maintenance module for equipment and personnel
+- **ModProjects**: Project management module with contracts, estimates, and oilfield operations
+- **ModReshumans**: Human Resources module with payroll, employees, and time tracking
+- **ModSales**: Sales and POS system with inventory management
+- **SMP**: System management and permissions
+- **Warehouse**: Warehouse and inventory management
+
+### Key Architectural Patterns
+
+**Domain Structure:** Each domain follows a consistent pattern:
+- `components/` - Reusable UI components specific to the domain
+- `pages/` - Main page components that orchestrate domain functionality
+- Components follow Angular naming conventions with `.component.ts|html|scss`
+
+**Shared Architecture:**
+- `src/app/shared/` - Contains reusable components, pipes, and modules
+- `src/app/services/` - Business logic and API services
+- `src/app/interface/` - TypeScript interfaces and data models
+- `src/app/guards/` - Route guards for authentication and permissions
+
+### Technology Stack
+
+**Core Framework:** Angular 18 with TypeScript
+**UI Framework:** Bootstrap 5, Angular Material, ng-bootstrap
+**Data Visualization:** ApexCharts (ng-apexcharts), ECharts, AG Grid Enterprise
+**Maps:** Leaflet with TypeScript definitions
+**Firebase:** Authentication and backend services
+**PDF Generation:** PDFMake
+**Excel:** XLSX library
+**Internationalization:** Angular i18n with ngx-translate
+**Time Management:** Specialized components for clock/time tracking
+
+### Configuration Notes
+
+**TypeScript Configuration:**
+- Strict mode disabled (`"strict": false`)
+- Base URL configured to `./src` with path aliases
+- Environment alias: `@env/*` maps to `environments/*`
+
+**Build Configuration:**
+- Production budget: 3MB warning, 7MB error for initial bundle
+- Component styles: 64kB warning, 256kB error
+- SCSS preprocessing enabled
+- Multiple external scripts and CSS libraries integrated
+
+**Testing:**
+- Jasmine and Karma configured
+- Tests disabled by default in Angular schematics (`"skipTests": true`)
+
+### Development Workflow
+
+The application supports hot reloading in development mode and includes comprehensive build optimization for production. The codebase appears to be a comprehensive business management system with modules for HR, sales, projects, warehousing, and administrative functions.
+
+## CRUD Forms Standard (v2.50.4 - 24 Oct 2025)
+
+**IMPORTANT:** All CRUD forms in the application MUST follow this standard pattern established in `materiales-maestro` component.
+
+### Version Management
+
+**ALWAYS update version in `src/environments/environment.ts` (line 68) when making changes:**
+```typescript
+version: '2.50.4 (24 Octubre 2025 17:45)'
+```
+Format: `MAJOR.MINOR.PATCH (DD Month YYYY HH:MM)`
+
+### Color System (Bootstrap 5)
+
+Standard colors for ALL CRUD operations:
+```typescript
+const CRUD_COLORS = {
+  'agregar':  'btn-success',     // Green - Create new
+  'guardar':  'btn-primary',     // Blue - Save changes
+  'editar':   'btn-warning',     // Yellow - Edit/Modify
+  'eliminar': 'btn-danger',      // Red - Delete
+  'deshacer': 'btn-warning',     // Yellow - Undo/Revert
+
+  // Dynamic modal colors by entity type
+  'subfamilia':   'bg-primary',   // Blue
+  'flavor':       'bg-info',      // Cyan
+  'presentation': 'bg-secondary'  // Gray
+};
+```
+
+### Standard Button Bar (4 mandatory buttons)
+
+```html
+<div class="d-flex gap-2">
+  <!-- 1. Add (Green) -->
+  <button class="btn btn-sm btn-success me-2" (click)="add()" [disabled]="!gridApi">
+    <i class="bi bi-plus-lg"></i> Agregar
+  </button>
+
+  <!-- 2. Save (Blue with red badge when changes exist) -->
+  <button class="btn btn-sm btn-primary me-2 position-relative"
+          (click)="saveChanges()" [disabled]="!hasUnsavedChanges">
+    <i class="bi bi-floppy"></i> Guardar
+    <span class="position-absolute top-0 start-100 translate-middle p-2 bg-danger border border-light rounded-circle"
+          *ngIf="hasUnsavedChanges">
+      <span class="visually-hidden">Hay cambios sin guardar</span>
+    </span>
+  </button>
+
+  <!-- 3. Undo (Yellow) -->
+  <button class="btn btn-sm btn-warning me-2" (click)="revertChanges()">
+    <i class="bi bi-arrow-clockwise"></i> Deshacer
+  </button>
+
+  <!-- 4. Delete (Red) -->
+  <button class="btn btn-sm btn-danger" (click)="delete()" [disabled]="!selectedItem">
+    <i class="bi bi-trash"></i> Borrar
+  </button>
+</div>
+```
+
+### Modal Architecture
+
+**NEVER place modals inside AG Grid cell renderers** (they won't display correctly). Use service-based architecture:
+
+```
+Parent Component (e.g., materiales-maestro.component.html)
+  ├── Universal Modal (lines 52-102)
+  │   ├── Dynamic color by entity type
+  │   ├── Dynamic icon (add/edit)
+  │   ├── Dynamic title
+  │   └── Single modal for all entity types
+  └── Modal backdrop
+
+Intermediary Service (e.g., subfamilia-modal.service.ts)
+  ├── modalRequest$ Observable
+  ├── saveConfirmed$ Observable
+  ├── openModal(data)
+  └── confirmSave(data)
+
+Child Cell Renderer (detail-cell-renderer-*.component.ts)
+  ├── Grid + Buttons
+  ├── Double-click → calls service
+  └── Service opens modal in parent
+```
+
+### Standard Workflow
+
+1. User performs action (add/edit/double-click)
+2. Cell renderer calls modal service
+3. Parent component shows modal
+4. User fills form → Click "Guardar/Actualizar"
+5. Service sends confirmation
+6. Cell renderer updates data (marks `__isNew` or `__modified`)
+7. "Guardar" button activates (red badge appears)
+8. User clicks "Guardar" → Saves all changes to DB
+9. Reload from server
+10. Grid refreshed
+
+### Required Variables
+
+```typescript
+// In component
+gridApi!: GridApi;
+treeData: any[] = [];
+originalTreeData: any[] = []; // For reverting changes
+selectedRowData: any = null;
+hasUnsavedChanges: boolean = false;
+```
+
+### Required Methods
+
+```typescript
+async saveChanges() {
+  const itemsToSave = this.treeData.filter(item => item.__isNew || item.__modified);
+  // Save to DB with catalogsService
+  await this.loadCatalogData(); // Reload from server
+}
+
+revertChanges() {
+  this.treeData = JSON.parse(JSON.stringify(this.originalTreeData));
+  this.hasUnsavedChanges = false;
+  this.gridApi.setGridOption('rowData', this.flattenTreeData());
+}
+```
+
+### Event Handling in Columns
+
+**Click vs Double-Click separation:**
+```typescript
+{
+  headerName: 'Column',
+  onCellClicked: (event) => {
+    // Single click on chevron → expand/collapse
+    if (event.event.target.classList.contains('chevron-icon')) {
+      this.toggleExpansion(event.data);
+      event.event.stopPropagation();
+    }
+  },
+  onCellDoubleClicked: (event) => {
+    // Double click on text → open edit modal
+    if (!event.event.target.classList.contains('chevron-icon')) {
+      this.openEditModal(event.data);
+    }
+  }
+}
+```
+
+### Reference Implementation
+
+**Location:** `src/app/domains/Almacenes/components/materiales-maestro/`
+- `services/subfamilia-modal.service.ts` - Modal service
+- `details/detail-cell-renderer-subfamilia.component.ts` - Cell renderer with buttons and grid
+- `materiales-maestro.component.html` (lines 52-102) - Universal modal
+- `materiales-maestro.component.ts` (lines 703-779) - Modal logic
+
+**This pattern applies to:**
+- ✅ All new CRUD forms
+- ✅ All domains (Almacenes, ModSales, ModProjects, ModAdmon, ModReshumans, etc.)
+- ✅ Any component with create/read/update/delete operations
+
+## Compact Instructions
+
+When compacting this conversation, always preserve:
+
+### Critical Context (NEVER lose)
+1. **MCP SQL config**: branch `branchDelison`/pruebas → servidor `76.13.28.145` → prefijo `b2-` (ej. `b2-mssql-warehouses`). Producción `main` → `66.179.240.10` → sin prefijo.
+2. **Git branch**: todo trabajo en `branchDelison`. NUNCA commitear en `main` directamente.
+3. **Full-stack**: Frontend Angular `C:\Developer\Angular\angular18\smp25` + Backend C# `C:\Developer\Visual Studio 22\c#\MicroServicios`. Ambas carpetas tienen acceso permanente — no pedir permisos.
+4. **Comunicación entre componentes**: SIEMPRE Signals (`SignalsService`), NUNCA `@Output()`.
+5. **Effect en constructor**: `effect()` SIEMPRE en el `constructor()`, NUNCA en `ngOnInit()`.
+6. **Versiones**: actualizar `environment.ts` (frontend) y `Program.cs` (backend) en cada cambio. Fecha actual en el string de versión.
+
+### Módulo Delison (ModWarehouse / ModShoppingDelison)
+- **Tablas principales**: `dbo.ocandreq` (maestro REQ/COTIZ/OC) + `dbo.detailsreqoc` (ítems) + `Delison.item_comments` (chat)
+- **Flujo de documentos**: REQUIS → COTIZ (id_req=requisición.id) → OC
+- **typeOC**: se asigna en ítems de la **COTIZ** (`detailsreqoc`), NO en la REQUIS — los ítems de REQUIS tienen `typeoc=null`
+- **id_busines**: columna `id_busines` en `ocandreq` vale `0` en registros viejos — NO filtrar por este campo
+- **Colores # Requisicion**: naranja pastel=`COMPRA NO AUTORIZADA`, amarillo pastel=`CAMBIO DE ESPECIFICACIONES`, gradiente 50/50 si ambos. Flags vienen de `POST /Ocandreq/typeoc-flags` con body `[int[] reqIds]`
+- **Mini-chat**: `ItemCommentsService` + `ItemChatOverlayComponent` (root level, fuera del DOM de AG Grid). `openChatFor$` Subject activa el panel. Tag encoded como primera línea: `"CAMBIO DE ESPECIFICACIONES\nMensaje del usuario"`
+- **AG Grid + position:fixed**: AG Grid usa `transform: translateY()` que rompe `position:fixed`. Solución: overlay en `app.component` raíz.
+
+### Patrones técnicos clave
+- **AG Grid Enter-key nav**: `suppressKeyboardEvent` en `defaultColDef` + `onCellEditingStopped` + `editableColumnOrder[]`
+- **Fila nueva amarilla**: `rowClassRules: { 'new-row-highlight': params => !!params.data?.__isNew }` — CSS global en `styles.scss`
+- **Backend field naming**: DB usa snake_case/lowercase, frontend usa camelCase. Siempre verificar antes de enviar al backend.
+- **Signals para colores**: `signalsService.setReqTypeOcBulk(flags)` llena el mapa, `effect()` hace `refreshCells()`, `cellStyle` lee el mapa.
+
+## Módulo Reloj Checador — detail-clock-2
+
+Componente: `src/app/domains/ModReshumans/components/checkout/detail-clock-2/detail-clock-2.component.ts`
+
+### Validación de patrón IN/OUT
+
+Al editar cualquier celda de `type`, `checkTime` o `date`, se disparan dos validaciones:
+
+1. **`validateDayPattern(dateStr)`**: Para días con hora entre 09:00 y 21:00 (horario normal):
+   - Máximo 2 IN y 2 OUT por día
+   - El primer registro del día debe ser IN
+   - No puede haber dos del mismo tipo consecutivos (IN-IN o OUT-OUT)
+
+2. **`validateExtraHoursWindow(dateStr)`**: Para filas con hora < 9 o ≥ 21 (horas extra):
+   - Ventana nocturna: INs a partir de 21:00 del día D deben tener OUT antes de 09:00 del día D+1
+   - Ventana matutina: OUTs antes de 09:00 del día D deben tener un IN desde 21:00 del día D-1
+
+Si falla alguna validación, se muestra un **Bootstrap Toast** (no banner) con el mensaje. El toast se llama con `showPatternToast(message)`.
+
+### `agDateCellEditor` devuelve objeto `Date`
+
+El `valueParser` de la columna fecha debe manejar tanto strings como objetos `Date`:
+
+```typescript
+valueParser: (params) => {
+  if (!params.newValue) return null;
+  try {
+    if ((params.newValue as any) instanceof Date) {
+      const d = params.newValue as any as Date;
+      return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+    }
+    // ... manejo de string
+  } catch { return null; }
+}
+```
+
+**Por qué:** `agDateCellEditor` entrega un `Date` object al `valueParser`, no un string. Si se llama `.split('-')` sobre un `Date`, lanza excepción y la celda queda con `null`.
+
+### Helper `toIsoDateStr`
+
+Normaliza cualquier valor de fecha (Date object, string ISO, string DD-MM-YYYY) a `YYYY-MM-DD`. Se usa al inicio de `validateDayPattern` y `validateExtraHoursWindow` para evitar `RangeError: Invalid time value`.
+
+### Ajuste horario en entradas manuales
+
+Al guardar filas nuevas, se llama `POST /calculate-adjustment` para cada una y se aplica `realTimeBySystem`/`adjustedTimeBySystem` en `cleanDataForServer(data, adjustment?)`.
+
+### `pendingExits` cellRenderer — filtro de hora
+
+`validOutCount` también filtra `hour >= 9 && hour < 21` para que los OUTs de horas extra no cancelen INs de horario normal:
+
+```typescript
+const validOutCount = [...groupData].filter(node => {
+  const record = node.data;
+  if (!record.valid || record.type !== 'OUT') return false;
+  const hour = record.checkTime ? parseInt(record.checkTime.split(':')[0], 10) : -1;
+  return hour >= 9 && hour < 21;
+}).length;
+```
+
+**Nota:** El cálculo definitivo de `pendingOuts` en el backend usa `lastIn.HasValue` post-loop (ver CLAUDE.md de MicroServicioTracking), no conteo por hora. El cellRenderer del frontend es solo visual.
+
+### Discrepancia de faltas entre `detail-clock-2` y `master-clock` (resuelto en backend)
+
+`detail-clock-2` usa `IncidentsByEmployee`; `master-clock` usa `IncidentsByCompany`. La fuente de verdad para faltas son los **registros marker `valid=false, type=IN`** (`AUTO_ABSENCE_T1`/`T2`).
+
+Correcciones aplicadas en el backend:
+- Lógica de faltas reemplaza `ShouldCountAsAbsence` con: `checks.Any(c => !c.Valid && c.Type=="IN" && c.Holiday != true)` para el día
+- `IncidentsByCompany` eliminó el `AddDays(-1)` que recortaba el cap de `today` — ya usa `today` directo
+- `IncidentsByEmployee` usa `<= endDate` (antes `< endDate` excluía el último día)
+
+Si los números vuelven a diferir, verificar que ambos métodos usen el mismo rango de fechas y la misma lógica de marker.
+
+### `master-clock` — Panel lateral con click en celda (colDef-level)
+
+El patrón correcto es definir `onCellClicked` **dentro de la definición de columna**, no como evento global en el template. Ver `employees/table.component.ts` como referencia.
+
+```typescript
+// master-clock.component.ts — en columnDefs
+{
+  field: 'baseHours',
+  onCellClicked: (params: any) => this.togglePanel(params, 'details'),
+  cellStyle: { cursor: 'pointer' }
+},
+{
+  field: 'specialExtraHours',
+  onCellClicked: (params: any) => this.togglePanel(params, 'special'),
+  cellStyle: { cursor: 'pointer' }
+},
+```
+
+```typescript
+// Estado del panel — reemplaza isOpen: boolean
+openPanel: 'details' | 'special' | null = null;
+
+private togglePanel(params: any, panel: 'details' | 'special'): void {
+  if (!params.data) return;
+  this.selectedRowData = params.data;
+  if (this.openPanel === panel) {
+    this.closePanel();
+  } else {
+    if (this.openPanel === null) this.adjustGridSize();
+    this.showDetailsTab = panel === 'details';
+    this.showSpecialTimesTab = panel === 'special';
+    this.openPanel = panel;
+  }
+}
+
+private closePanel(): void {
+  this.gridHeight = '80vh';
+  this.showDetailsTab = false;
+  this.showSpecialTimesTab = false;
+  this.openPanel = null;
+  this.gridApi.setFilterModel(null);
+  this.gridApi.onFilterChanged();
+}
+```
+
+- Click en `baseHours` → abre/cierra panel de detalles
+- Click en `specialExtraHours` → abre/cierra panel de horas extra especiales
+- Click en la celda ya abierta → cierra
+- Click en celda distinta mientras hay panel abierto → cambia al otro panel
+- `(cellClicked)` en el template HTML ya **no existe** — todo es via colDef
+
+### `special-extra-hours-master` — Modo doble (branch / employee)
+
+Accesible solo desde `master-clock` (removido del menú de checkout y de `app.routes.ts`).
+
+```typescript
+// Dos modos — determinados por signals en constructor
+mode: 'branch' | 'employee' = 'branch';
+idEmployee: number | null = null;
+
+constructor() {
+  effect(() => {
+    const emp = this.signalsService.getDetailClockForEmployee()();
+    if (emp?.idEmployee) {
+      this.mode = 'employee';
+      this.idEmployee = emp.idEmployee;
+      // usar emp.start / emp.end como rango
+      this.obtenerDatos();
+    }
+  });
+  effect(() => {
+    const branch = this.signalsService.getBranchSelectedBySidebar()();
+    if (this.mode === 'branch') {
+      // react to branch change
+      this.obtenerDatos();
+    }
+  });
+}
+```
+
+`obtenerDatos()` despacha a `getSpecialExtraHoursByEmployee` o `getSpecialExtraHoursByBranch` según `mode`.
+
+El date picker y botón "Consultar" solo se muestran en `*ngIf="mode === 'branch'"`.
+
+### Botonera en componentes de reloj
+
+La botonera (Agregar, Guardar, Deshacer, Borrar) va **arriba a la derecha del ag-grid, en horizontal**:
+
+```html
+<div class="d-flex justify-content-end gap-1 mb-1">
+  <button class="btn btn-sm btn-success" ...>Agregar</button>
+  <button class="btn btn-sm btn-primary" ...>Guardar</button>
+  <!-- etc -->
+</div>
+```
+
+Aplica a: `detail-clock-2` y `special-extra-hours-master`. No va en columna vertical al costado.
+
+---
+
+## Project Memories
+
+- Hasta aaqui funciona relativamente bien
+- hasta aqui todo bien
+- Se ha añadido estimados
+- Portando app a Angular
+- Añadiendo @capacitor/angular al proyecto
+- Interfaz para OT añadida, con Capacitor
+- Se ha cambiado el formato de la lista de OT en ot/ordenes
+- Se ha modificado reportes-estimaciones
+

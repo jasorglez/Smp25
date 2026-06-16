@@ -23,6 +23,13 @@ export class MaterialXModuloService {
     );
   }
 
+  getByCatalog(idCompany: number, idCatalog: number): Observable<any[]> {
+    return this.http.get<any[]>(
+      `${environment.urlWarehouse}/MaterialXModulo/ByCatalog?idCompany=${idCompany}&idCatalog=${idCatalog}`,
+      { headers: this.trackingService.getHeaders() }
+    );
+  }
+
   create(data: any): Observable<any> {
     return this.http.post<any>(
       `${environment.urlWarehouse}/MaterialXModulo`,

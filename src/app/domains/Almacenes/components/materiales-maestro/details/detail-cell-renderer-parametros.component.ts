@@ -1,13 +1,15 @@
-import { Component, effect, inject, signal } from '@angular/core';
+import { Component, effect, inject, OnDestroy, signal } from '@angular/core';
 import { ICellRendererAngularComp } from 'ag-grid-angular';
 import { ICellRendererParams } from 'ag-grid-enterprise';
 import { AgGridModule } from 'ag-grid-angular';
 import { CommonModule } from '@angular/common';
 import { alerts } from 'app/helpers/alerts';
+import { runAutosizeAllColumns } from 'app/helpers/ag-grid-autosize.helper';
 import { ColDef, GridApi, GridReadyEvent, ValueGetterParams, ValueSetterParams, IRowNode, ValueFormatterParams } from 'ag-grid-community';
 import { ParameterByMaterialDescriptionService } from 'app/services/parameterByMaterialDescription.service';
 import { SelectWithTooltipEditorV2Component } from 'app/shared/select-with-tooltip-editor-v2.component';
 import { catchError, concat, EMPTY, lastValueFrom, toArray } from 'rxjs';
+import { PendingChangesService } from 'app/services/pending-changes.service';
 
 @Component({
   selector: 'app-detail-cell-renderer-parametros',
@@ -30,13 +32,7 @@ import { catchError, concat, EMPTY, lastValueFrom, toArray } from 'rxjs';
             >
               <i class="bi bi-plus-circle"></i> Agregar
             </button>
-            <button
-              class="btn btn-sm btn-primary me-2"
-              (click)="saveParametros()"
-              [disabled]="!hasParametrosChanges"
-            >
-              <i class="bi bi-floppy"></i> Guardar
-            </button>
+            <!-- Guardar centralizado en Nivel 1 (materiales-maestro). Ver PendingChangesService. -->
             <button
               class="btn btn-sm btn-warning me-2"
               (click)="refreshParametros()"
@@ -65,8 +61,11 @@ import { catchError, concat, EMPTY, lastValueFrom, toArray } from 'rxjs';
     </div>
   `
 })
-export class DetailCellRendererParametrosComponent implements ICellRendererAngularComp {
+export class DetailCellRendererParametrosComponent implements ICellRendererAngularComp, OnDestroy {
   private parameterByMaterialDescriptionService = inject(ParameterByMaterialDescriptionService);
+  private pendingChangesService = inject(PendingChangesService);
+  private saverId: string = '';
+
   params: any;
   materialId: number;
   materialName: string;
@@ -75,8 +74,22 @@ export class DetailCellRendererParametrosComponent implements ICellRendererAngul
   private gridApi!: GridApi;
   // Parámetros grid properties
   parametrosRowData: any[] = [];
-  hasParametrosChanges: boolean = false;
   parametrosGridApi: any;
+
+  /** True si el materialId todavía es temporal. */
+  private isTempMaterialId(): boolean {
+    return typeof this.materialId === 'string' && String(this.materialId).startsWith('temp_');
+  }
+
+  /** Cambios pendientes. El setter notifica al servicio central. */
+  private _hasParametrosChanges: boolean = false;
+  get hasParametrosChanges(): boolean { return this._hasParametrosChanges; }
+  set hasParametrosChanges(value: boolean) {
+    this._hasParametrosChanges = value;
+    if (this.saverId) {
+      this.pendingChangesService.notifyChanges(this.saverId, value);
+    }
+  }
 
   selectedParametro = signal<any>(null);
 
@@ -84,15 +97,7 @@ export class DetailCellRendererParametrosComponent implements ICellRendererAngul
     headerHeight: 25,
     rowHeight: 20,
     rowSelection: 'single',
-    onFirstDataRendered: (params) => {
-
-      const allColumnIds: string[] = [];
-      params.api.getColumns()?.forEach((column: any) => {
-        allColumnIds.push(column.getId());
-      });
-
-      params.api.autoSizeColumns(allColumnIds, false);
-    }
+    onFirstDataRendered: (params: any) => runAutosizeAllColumns(params.api),
   };
    private cleanDataForServer(data: any): any {
     const cleanedData = { ...data };
@@ -233,13 +238,26 @@ export class DetailCellRendererParametrosComponent implements ICellRendererAngul
 
   agInit(params: any): void {
     this.params = params;
-    this.refreshParametros();
     this.materialId = params.data.id;
     this.materialName = params.data.articulo;
+
+    // Registro en el bus central para que el Guardar único del Nivel 1 invoque saveParametros().
+    this.saverId = `parametros-${this.materialId}-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
+    this.pendingChangesService.register(this.saverId, {
+      hasChanges: false,
+      save: (idMap?: Map<string, number>) => this.saveParametros(idMap)
+    });
+
+    this.refreshParametros();
     this.parameterVigentes();
     this.parameters();
-    // Load fake data for parámetros
     this.loadParametrosData();
+  }
+
+  ngOnDestroy(): void {
+    if (this.saverId) {
+      this.pendingChangesService.unregister(this.saverId);
+    }
   }
    constructor() {
       effect(() => {
@@ -259,6 +277,11 @@ export class DetailCellRendererParametrosComponent implements ICellRendererAngul
     );
   }
   parameterVigentes(){
+    // Si el material aún es nuevo (id temporal), no hay parámetros en BD que consultar.
+    if (this.isTempMaterialId()) {
+      this.parameter = [];
+      return;
+    }
     this.parameterByMaterialDescriptionService.getParameter(9, this.materialId).subscribe(
       (data: any) => {
         this.parameter= data;
@@ -288,12 +311,16 @@ export class DetailCellRendererParametrosComponent implements ICellRendererAngul
   }
 
   loadParametrosData() {
+    // Si el material aún no fue guardado en BD (id temporal), no hay datos que cargar.
+    if (this.isTempMaterialId()) {
+      this.parametrosRowData = [];
+      return Promise.resolve(true);
+    }
     return new Promise((resolve) => {
       this.parameterByMaterialDescriptionService.getParameterByMaterialDescription(this.materialId).subscribe(
         (data: any) => {
             this.parametrosRowData = data;
-
-          // Calcular y almacenar los valores calculados para cada fila
+            resolve(true);
         },
         (error) => {
           console.error('Error fetching data:', error);
@@ -348,23 +375,23 @@ export class DetailCellRendererParametrosComponent implements ICellRendererAngul
 }
 
 
-  async saveParametros() {
-    /*
-    if (this.params && this.params.context && this.params.context.PARAMETROS && this.params.context.PARAMETROS.save) {
-      try {
-        await this.params.context.PARAMETROS.save(this.materialId, this.parametrosRowData, 'PARAMETROS');
-
-        await new Promise(resolve => setTimeout(resolve, 500));
-
-        this.hasParametrosChanges = false;
-
-        // Reload data
-        this.loadParametrosData();
-
-      } catch (error) {
-        console.error('Error saving parámetros:', error);
+  async saveParametros(idMap?: Map<string, number>) {
+    // Remapeo de ID temporal → real cuando el Nivel 1 acaba de crear el material padre.
+    if (this.isTempMaterialId() && idMap) {
+      const realId = idMap.get(String(this.materialId));
+      if (realId) {
+        this.materialId = realId;
+        this.parametrosRowData.forEach((row: any) => {
+          if (row.idMaster && String(row.idMaster).startsWith('temp_')) {
+            row.idMaster = realId;
+          }
+        });
       }
-    }*/
+    }
+
+    // Cuando se invoca desde el Guardar centralizado sin cambios reales, salir silencioso.
+    if (!this.hasParametrosChanges && idMap) return;
+
     const newRows = this.parametrosRowData.filter((row) => row.__isNew);
     const modifiedRows = this.parametrosRowData.filter(
         (row) => row.__modified && !row.__isNew

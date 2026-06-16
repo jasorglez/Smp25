@@ -60,7 +60,7 @@
         <ng-template #showIfAllowed>
           <li class="nav-item" *ngIf="authService.hasMenuMasterPermission(menu.identifier)">
           <a
-            class="nav-link d-flex align-items-center"
+            class="nav-link d-flex align-items-center position-relative"
             [routerLink]="[menu.route]"
             routerLinkActive="active-link"
             (click)="onMenuItemClick(menu.permissionName)"
@@ -69,6 +69,10 @@
           >
             <mat-icon>{{ menu.icon }}</mat-icon>
             <span>{{ menu.permissionName }}</span>
+            <span *ngIf="hasNupnpn() && menu.route?.includes('shoppingDelison')"
+                  style="position:absolute; top:6px; right:6px; width:8px; height:8px;
+                         background:#d32f2f; border-radius:50%; display:inline-block; flex-shrink:0;">
+            </span>
           </a>
         </li>
         </ng-template>

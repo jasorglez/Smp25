@@ -1045,16 +1045,16 @@ obtenerProveedores() {
         concat(...addObservables, ...updateObservables).pipe(toArray())
       );
 
-      // Lock requisitions that are assigned to saved QUOTEs
-      // Get all rows that have a requisition associated
-      const allRowsWithReq = [...newRows, ...modifiedRows].filter(row => row.idReq);
-
-      for (const row of allRowsWithReq) {
+      // Lock requisition only when ALL its pedimentos have OCs generated
+      const uniqueReqIds = [...new Set([...newRows, ...modifiedRows].filter(row => row.idReq).map(row => row.idReq))];
+      for (const idReq of uniqueReqIds) {
         try {
-          // Use the new PATCH endpoint to lock the requisition
-          await lastValueFrom(this.quotesService.lockRequisition(row.idReq, true));
+          const check = await lastValueFrom(this.quotesService.shouldLockRequisicion(idReq));
+          if (check?.shouldLock) {
+            await lastValueFrom(this.quotesService.lockRequisition(idReq, true));
+          }
         } catch (err) {
-          console.error('Error locking requisition:', row.idReq, err);
+          console.error('Error checking/locking requisicion:', idReq, err);
         }
       }
 
@@ -1668,14 +1668,15 @@ private cleanDataForServer(data: any): any {
 
   getSetupData(): Promise<void> {
     return new Promise((resolve, reject) => {
-      this.setupService.getWarehouseSetup(this.idRoot).subscribe({
+      const idBranch = this.signalsService.getBranchSelectedBySidebar()();
+      if (!idBranch) { resolve(); return; }
+      this.setupService.getWarehouseSetupByBranch(idBranch).subscribe({
         next: (data: any) => {
-          this.projectOrBranch = data[0].projectOrBranch;
+          this.projectOrBranch = data?.projectOrBranch;
           this.typeReference = this.projectOrBranch ? 'project' : 'branch';
-          this.activateOc = data[0].activateOc !== false; // Default to true if not set
-          // Reset column cache when setup changes
+          this.activateOc = data?.activateOc !== false;
           this._colMaster = [];
-          resolve(); // Resolvemos la promesa aquí
+          resolve();
         },
         error: (err) => {
           if (err.status === 404) {

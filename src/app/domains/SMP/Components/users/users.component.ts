@@ -26,6 +26,7 @@ import { ModalService } from 'app/services/permissions-modal.service';
 import { UsersDetailWrapperComponent } from './details/users-detail-wrapper.component';
 import { ButtonCellRendererExpenditureComponent } from 'app/domains/ModAdmon/components/egresos-palacio/button-cell-renderer-expenditure.component';
 import { MasterPermissions2Service } from 'app/services/master-permissions-2.service';
+import { AutorizacionMontoService } from 'app/services/autorizacion-monto.service';
 
 @Injectable({
   providedIn: 'root',
@@ -100,7 +101,11 @@ export class UsersComponent implements OnDestroy {
   private modalService = inject(ModalService);
   private masterPermissions2Service = inject(MasterPermissions2Service);
   private branchsService = inject(BranchsService);
+  private autorizacionMontoService = inject(AutorizacionMontoService);
   authService = inject(AuthService);
+
+  /** Niveles de autorización de monto de la empresa actual (para la columna "Nivel x monto"). */
+  nivelesMontoOptions: any[] = [];
 
   /** UserSystem › Setup Usuarios (Departamento / Security) por fila de usuario. */
   private userSetupFlagsById = new Map<number, { department: boolean; security: boolean }>();
@@ -193,6 +198,7 @@ export class UsersComponent implements OnDestroy {
         this.obtenerDatos();
         this.getRoles();
         this.obtenerEmpleados();
+        this.loadNivelesMonto();
       }
       this.verification();
       if (this.signalsService.getRefresSecurity()()) {
@@ -403,6 +409,37 @@ export class UsersComponent implements OnDestroy {
   getDepartmentName(idDepartament: number): string {
     const department = this.departamentos.find(dept => dept.id === idDepartament);
     return department ? department.description : 'Departamento no encontrado';
+  }
+
+  loadNivelesMonto() {
+    if (!(typeof this.idRoot === 'number' && this.idRoot > 0)) {
+      this.nivelesMontoOptions = [];
+      return;
+    }
+    this.autorizacionMontoService.getByCompany(this.idRoot).subscribe({
+      next: (data: any) => {
+        this.nivelesMontoOptions = Array.isArray(data) ? data : [];
+        this.gridApi?.refreshCells({ force: true, columns: ['nivelMonto'] });
+      },
+      error: (error) => {
+        console.error('Error cargando niveles de monto:', error);
+        this.nivelesMontoOptions = [];
+      }
+    });
+  }
+
+  /**
+   * Formatea un nivel de monto como: "Descripcion = $montoMin / $montoMax".
+   * Si montoMax es null, se muestra "Sin límite" para indicar tope abierto.
+   */
+  public formatNivelMonto(id: any): string {
+    const nivel = this.nivelesMontoOptions.find((n: any) => n.id === id);
+    if (!nivel) return '';
+    const fmt = (v: any) =>
+      (v == null ? '' : '$' + Number(v).toLocaleString('es-MX', { maximumFractionDigits: 0 }));
+    const min = fmt(nivel.montoMin);
+    const max = nivel.montoMax == null ? 'Sin límite' : fmt(nivel.montoMax);
+    return `${nivel.descripcion} = ${min} / ${max}`;
   }
 
   procesoData(userId: number): Observable<any> {
@@ -827,6 +864,40 @@ export class UsersComponent implements OnDestroy {
         width: 90,
       },
       {
+        field: 'lecturaAmplia',
+        headerName: 'Lectura amplia',
+        width: 220,
+        editable: true,
+        cellEditor: 'agRichSelectCellEditor',
+        cellEditorParams: () => ({
+          values: [false, true],
+          formatValue: (value: any) => value === true ? 'Todas mis sucursales' : 'Solo mis departamentos',
+          cellHeight: 30
+        }),
+        valueFormatter: (params: any) => params.value === true ? 'Todas mis sucursales' : 'Solo mis departamentos',
+        cellStyle: { cursor: 'pointer' }
+      },
+      {
+        field: 'nivelMonto',
+        headerName: 'Nivel x monto',
+        width: 280,
+        editable: true,
+        cellEditor: 'agRichSelectCellEditor',
+        cellEditorParams: () => ({
+          values: this.nivelesMontoOptions
+            .filter((n: any) => n.active === true || n.active === 1)
+            .sort((a: any, b: any) => a.nivel - b.nivel)
+            .map((n: any) => n.id),
+          formatValue: (value: any) => this.formatNivelMonto(value),
+          cellHeight: 30
+        }),
+        valueFormatter: (params: any) => {
+          if (params.value == null) return '-';
+          return this.formatNivelMonto(params.value) || '-';
+        },
+        cellStyle: { cursor: 'pointer' }
+      },
+      {
         field: 'picture',
         headerName: 'Imagen de perfil',
         cellRenderer: (params) => {
@@ -1027,6 +1098,8 @@ export class UsersComponent implements OnDestroy {
       usersmall: 'SINUSER',
       allowWhatsapp: true,
       isRoot: false,
+      nivelMonto: null,
+      lecturaAmplia: false,
       __isNew: true
     };
 

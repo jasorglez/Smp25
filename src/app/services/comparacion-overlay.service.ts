@@ -8,6 +8,8 @@ export interface ComparacionOverlayData {
   requisitionFolio: string;
   selectedProviderIds: number[];
   idBranchFromReq?: number;
+  idDepartamentFromReq?: number;
+  departmentName?: string;
 }
 
 @Injectable({ providedIn: 'root' })

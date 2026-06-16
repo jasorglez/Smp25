@@ -110,6 +110,42 @@ export class ProductionService {
     return this.http.delete<any>(`${environment.urlProduction}/preparacion/historial/${id}`, { headers: this.trackingService.getHeaders() });
   }
 
+  // ── Liberación Jarabe (N2-C) ──────────────────────────────────────────────
+
+  getLiberacion(idPreparacion: number): Observable<any[]> {
+    return this.http.get<any[]>(`${environment.urlProduction}/preparacion/${idPreparacion}/liberacion`, { headers: this.trackingService.getHeaders() });
+  }
+
+  createLiberacion(data: any): Observable<any> {
+    return this.http.post<any>(`${environment.urlProduction}/preparacion/liberacion`, data, { headers: this.trackingService.getHeaders() });
+  }
+
+  updateLiberacion(id: number, data: any): Observable<any> {
+    return this.http.put<any>(`${environment.urlProduction}/preparacion/liberacion/${id}`, data, { headers: this.trackingService.getHeaders() });
+  }
+
+  deleteLiberacion(id: number): Observable<any> {
+    return this.http.delete<any>(`${environment.urlProduction}/preparacion/liberacion/${id}`, { headers: this.trackingService.getHeaders() });
+  }
+
+  // ── Limpieza (N2-D) ───────────────────────────────────────────────────────
+
+  getLimpieza(idPreparacion: number): Observable<any[]> {
+    return this.http.get<any[]>(`${environment.urlProduction}/preparacion/${idPreparacion}/limpieza`, { headers: this.trackingService.getHeaders() });
+  }
+
+  createLimpieza(data: any): Observable<any> {
+    return this.http.post<any>(`${environment.urlProduction}/preparacion/limpieza`, data, { headers: this.trackingService.getHeaders() });
+  }
+
+  updateLimpieza(id: number, data: any): Observable<any> {
+    return this.http.put<any>(`${environment.urlProduction}/preparacion/limpieza/${id}`, data, { headers: this.trackingService.getHeaders() });
+  }
+
+  deleteLimpieza(id: number): Observable<any> {
+    return this.http.delete<any>(`${environment.urlProduction}/preparacion/limpieza/${id}`, { headers: this.trackingService.getHeaders() });
+  }
+
   // ── Material Jarabe ────────────────────────────────────────────────────────
 
   getMaterialJarabeAll(): Observable<MaterialJarabeConfig[]> {
@@ -158,5 +194,111 @@ export class ProductionService {
 
   deleteMoliendaDetalle(id: number): Observable<void> {
     return this.http.delete<void>(`${environment.urlProduction}/Molienda/detalle/${id}`, { headers: this.trackingService.getHeaders() });
+  }
+
+  // ── Molienda Mat Detalle ───────────────────────────────────────────────────
+
+  getMoliendaMatDetalleByMolienda(idMolienda: number): Observable<any[]> {
+    return this.http.get<any[]>(`${environment.urlProduction}/MoliendaMatDetalle/molienda/${idMolienda}`, { headers: this.trackingService.getHeaders() });
+  }
+
+  getMoliendaMatDetalleCountsByCompany(idCompany: number): Observable<Record<number, number>> {
+    return this.http.get<Record<number, number>>(`${environment.urlProduction}/MoliendaMatDetalle/counts/company/${idCompany}`, { headers: this.trackingService.getHeaders() });
+  }
+
+  createMoliendaMatDetalle(data: any): Observable<any> {
+    return this.http.post<any>(`${environment.urlProduction}/MoliendaMatDetalle`, data, { headers: this.trackingService.getHeaders() });
+  }
+
+  updateMoliendaMatDetalle(id: number, data: any): Observable<any> {
+    return this.http.put<any>(`${environment.urlProduction}/MoliendaMatDetalle/${id}`, data, { headers: this.trackingService.getHeaders() });
+  }
+
+  patchMoliendaMatDetalleLocked(id: number, locked: boolean): Observable<any> {
+    return this.http.patch<any>(`${environment.urlProduction}/MoliendaMatDetalle/${id}/locked`, locked, { headers: this.trackingService.getHeaders() });
+  }
+
+  patchMoliendaMatDetalleBote(id: number, bote: number | null): Observable<any> {
+    return this.http.patch<any>(`${environment.urlProduction}/MoliendaMatDetalle/${id}/bote`, bote, { headers: this.trackingService.getHeaders() });
+  }
+
+  deleteMoliendaMatDetalle(id: number): Observable<void> {
+    return this.http.delete<void>(`${environment.urlProduction}/MoliendaMatDetalle/${id}`, { headers: this.trackingService.getHeaders() });
+  }
+
+  getMoliendaMatArticuloSumsByMolienda(idMolienda: number): Observable<Record<number, number>> {
+    return this.http.get<Record<number, number>>(`${environment.urlProduction}/MoliendaMatArticulo/sums/molienda/${idMolienda}`, { headers: this.trackingService.getHeaders() });
+  }
+
+  getMoliendaMatArticuloCountsByMolienda(idMolienda: number): Observable<Record<number, number>> {
+    return this.http.get<Record<number, number>>(`${environment.urlProduction}/MoliendaMatArticulo/counts/molienda/${idMolienda}`, { headers: this.trackingService.getHeaders() });
+  }
+
+  getMoliendaMatArticuloByDetalle(idMatDetalle: number): Observable<any[]> {
+    return this.http.get<any[]>(`${environment.urlProduction}/MoliendaMatArticulo/matdetalle/${idMatDetalle}`, { headers: this.trackingService.getHeaders() });
+  }
+
+  createMoliendaMatArticulo(data: any): Observable<any> {
+    return this.http.post<any>(`${environment.urlProduction}/MoliendaMatArticulo`, data, { headers: this.trackingService.getHeaders() });
+  }
+
+  updateMoliendaMatArticulo(id: number, data: any): Observable<any> {
+    return this.http.put<any>(`${environment.urlProduction}/MoliendaMatArticulo/${id}`, data, { headers: this.trackingService.getHeaders() });
+  }
+
+  deleteMoliendaMatArticulo(id: number): Observable<void> {
+    return this.http.delete<void>(`${environment.urlProduction}/MoliendaMatArticulo/${id}`, { headers: this.trackingService.getHeaders() });
+  }
+
+  // ── Molienda Bote (asignación múltiple de botes) ──────────────────────────
+
+  getMoliendaBoteByMatDetalle(idMatDetalle: number): Observable<any[]> {
+    return this.http.get<any[]>(`${environment.urlProduction}/MoliendaBote/matdetalle/${idMatDetalle}`, { headers: this.trackingService.getHeaders() });
+  }
+
+  getMoliendaBoteUsage(): Observable<Record<number, number>> {
+    return this.http.get<Record<number, number>>(`${environment.urlProduction}/MoliendaBote/usage`, { headers: this.trackingService.getHeaders() });
+  }
+
+  getMoliendaBoteSumsByMolienda(idMolienda: number): Observable<Record<number, number>> {
+    return this.http.get<Record<number, number>>(`${environment.urlProduction}/MoliendaBote/sums/molienda/${idMolienda}`, { headers: this.trackingService.getHeaders() });
+  }
+
+  createMoliendaBote(data: { idMatDetalle: number; idBoteCatalog: number | null; cantidad: number | null }): Observable<any> {
+    return this.http.post<any>(`${environment.urlProduction}/MoliendaBote`, data, { headers: this.trackingService.getHeaders() });
+  }
+
+  patchMoliendaBoteCantidad(id: number, cantidad: number | null): Observable<any> {
+    return this.http.patch<any>(`${environment.urlProduction}/MoliendaBote/${id}/cantidad`, { cantidad }, { headers: this.trackingService.getHeaders() });
+  }
+
+  deleteMoliendaBote(id: number): Observable<void> {
+    return this.http.delete<void>(`${environment.urlProduction}/MoliendaBote/${id}`, { headers: this.trackingService.getHeaders() });
+  }
+
+  createMoliendaBoteHistorial(data: { idMoliendaBote: number; cantidad: number; usuario?: string; comentario?: string }): Observable<any> {
+    return this.http.post<any>(`${environment.urlProduction}/MoliendaBote/historial`, data, { headers: this.trackingService.getHeaders() });
+  }
+
+  getMoliendaBoteHistorialByBote(idMoliendaBote: number): Observable<any[]> {
+    return this.http.get<any[]>(`${environment.urlProduction}/MoliendaBote/historial/bote/${idMoliendaBote}`, { headers: this.trackingService.getHeaders() });
+  }
+
+  getMoliendaBoteHistorialByMatDetalle(idMatDetalle: number): Observable<any[]> {
+    return this.http.get<any[]>(`${environment.urlProduction}/MoliendaBote/historial/matdetalle/${idMatDetalle}`, { headers: this.trackingService.getHeaders() });
+  }
+
+  // ── Prefijos Fase ──
+  getMoliendaPrefijos(idCompany: number): Observable<any[]> {
+    return this.http.get<any[]>(`${environment.urlProduction}/MoliendaPrefijo?idCompany=${idCompany}`, { headers: this.trackingService.getHeaders() });
+  }
+  createMoliendaPrefijo(data: { idCompany: number; nombreFase: string; prefijo: string; active: boolean }): Observable<any> {
+    return this.http.post<any>(`${environment.urlProduction}/MoliendaPrefijo`, data, { headers: this.trackingService.getHeaders() });
+  }
+  updateMoliendaPrefijo(id: number, data: { nombreFase: string; prefijo: string; active: boolean }): Observable<any> {
+    return this.http.put<any>(`${environment.urlProduction}/MoliendaPrefijo/${id}`, data, { headers: this.trackingService.getHeaders() });
+  }
+  deleteMoliendaPrefijo(id: number): Observable<void> {
+    return this.http.delete<void>(`${environment.urlProduction}/MoliendaPrefijo/${id}`, { headers: this.trackingService.getHeaders() });
   }
 }

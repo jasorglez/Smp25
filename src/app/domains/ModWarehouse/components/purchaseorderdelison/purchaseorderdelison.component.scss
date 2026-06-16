@@ -1,5 +1,15 @@
 // Purchase Order Delison Component Styles
 
+// ─── Tab wrapper ──────────────────────────────────────────────────────────────
+@keyframes fadeSlideIn {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+.purchaseorder-tab-root {
+  animation: fadeSlideIn 0.3s ease both;
+}
+
 :host ::ng-deep .small-text-ag-grid .ag-header-cell-label {
   white-space: normal;
   line-height: 1.15;

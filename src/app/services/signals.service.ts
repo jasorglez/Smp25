@@ -369,6 +369,7 @@ getMasterUpdateTrigger() {
   private companyNameSmall = signal<string>(null);
   private selectedContract = signal<number>(null);
   idUser = signal<number>(0);
+  lecturaAmplia = signal<boolean>(false);
   private displayName = signal<string>(null);
   private userRoot = signal<number>(null);
   private selectedProject = signal<number>(null);
@@ -993,5 +994,30 @@ getMasterUpdateTrigger() {
 
   getOcCreatedNotification() {
     return this.ocCreatedNotification;
+  }
+
+  private hasNupnpnCompraRapida = signal<boolean>(
+    typeof localStorage !== 'undefined' && localStorage.getItem('nupnpn_badge') === 'true'
+  );
+
+  setHasNupnpnCompraRapida(value: boolean) {
+    this.hasNupnpnCompraRapida.set(value);
+    if (typeof localStorage !== 'undefined') {
+      localStorage.setItem('nupnpn_badge', String(value));
+    }
+  }
+
+  getHasNupnpnCompraRapida() {
+    return this.hasNupnpnCompraRapida.asReadonly();
+  }
+
+  private nupnpnRecheckTrigger = signal<number>(0);
+
+  triggerNupnpnRecheck() {
+    this.nupnpnRecheckTrigger.update(n => n + 1);
+  }
+
+  getNupnpnRecheckTrigger() {
+    return this.nupnpnRecheckTrigger.asReadonly();
   }
 }

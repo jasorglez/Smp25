@@ -23,7 +23,7 @@ import { ItemCommentsService } from 'app/services/item-comments.service';
         <span class="small fw-semibold text-dark">Cotización de proveedor guardada — no puede modificarse la solicitud de artículos en este pedimento.</span>
       </div>
       <!-- Barra de botones CRUD -->
-      <div style="margin-bottom: 5px; display: flex; justify-content: flex-end; align-items: center; flex-shrink: 0;">
+      <div style="margin-bottom: 5px; display: flex; justify-content: flex-end; align-items: center; flex-shrink: 0; position: relative; z-index: 10; background-color: #f8f9fa; padding: 5px 0;">
         <div class="d-flex gap-1">
           <button class="btn btn-primary btn-xs position-relative" (click)="save()" [disabled]="articulosLocked || !hasUnsavedChanges">
             <i class="bi bi-floppy"></i> Guardar
@@ -49,6 +49,7 @@ import { ItemCommentsService } from 'app/services/item-comments.service';
           [gridOptions]="gridOptions"
           [localeText]="AG_GRID_LOCALE_ES"
           (gridReady)="onGridReady($event)"
+          (firstDataRendered)="onFirstDataRendered($event)"
           style="width: 100%; flex: 1 1 auto; min-height: 0;">
         </ag-grid-angular>
       </div>
@@ -150,9 +151,9 @@ export class DetalleItemsPedimentosComponent implements ICellRendererAngularComp
       ]);
       const cotizList = Array.isArray(cotizData) ? cotizData : [];
       const ocList = (Array.isArray(ocData) ? ocData : []).filter((c: any) => Number(c.idReq) === Number(reqId));
-      const slotSuffixes = ['-A-', '-B-', '-C-'];
-      const hasAnyCotiz = cotizList.some((c: any) => slotSuffixes.some(s => c.folio?.includes(s)));
-      const hasAnyOc = ocList.some((c: any) => slotSuffixes.some(s => c.folio?.includes(s)));
+      // ✅ Nueva nomenclatura: cualquier registro con idProvider>0 es un slot válido
+      const hasAnyCotiz = cotizList.some((c: any) => Number(c.idProvider) > 0);
+      const hasAnyOc = ocList.some((c: any) => Number(c.idProvider) > 0);
       if (hasAnyCotiz || hasAnyOc) {
         const d = this.params?.node?.data as { articulosPedimentoLocked?: boolean } | undefined;
         if (d) {
@@ -193,6 +194,10 @@ export class DetalleItemsPedimentosComponent implements ICellRendererAngularComp
     this.autoAdjustColumns();
   }
 
+  onFirstDataRendered(params: any) {
+    this.autoAdjustColumns();
+  }
+
   @HostListener('window:resize')
   onWindowResize() {
     this.autoAdjustColumns();
@@ -201,6 +206,11 @@ export class DetalleItemsPedimentosComponent implements ICellRendererAngularComp
   private autoAdjustColumns() {
     if (!this.gridApi) return;
     const apiAny = this.gridApi as any;
+    // Priorizar el ajuste por contenido para que las columnas no se estiren innecesariamente
+    if (typeof apiAny.autoSizeAllColumns === 'function') {
+      apiAny.autoSizeAllColumns(true);
+      return;
+    }
     if (typeof apiAny.sizeColumnsToFit === 'function') {
       apiAny.sizeColumnsToFit();
     }
@@ -238,7 +248,8 @@ export class DetalleItemsPedimentosComponent implements ICellRendererAngularComp
       typePriority: item.typePriority || 'Normal',
       descriptionNewArticle: item.descriptionNewArticle || '',
       urlNewArticle: item.urlNewArticle || '',
-      justificationNewArticle: item.justificationNewArticle || ''
+      justificationNewArticle: item.justificationNewArticle || '',
+      caducidadMinimaRequerida: item.caducidadMinimaRequerida || item.caducidad || item.expiration || ''
     };
   }
 
@@ -288,6 +299,7 @@ export class DetalleItemsPedimentosComponent implements ICellRendererAngularComp
         tipo: item.intorext || item.tipo,
         proveedorInterno: item.proveedorInterno,
         tipoPrioridad: item.typePriority || item.priority,
+        caducidadMinimaRequerida: item.caducidadMinimaRequerida || item.caducidad || item.expiration || '',
         comment: item.comment || item.observation || item.observaciones || '',
         pedimento: item.pedimento || false,
         pedimentoNumber: item.pedimentoNum || '',
@@ -354,7 +366,8 @@ export class DetalleItemsPedimentosComponent implements ICellRendererAngularComp
           pedimento: item.pedimento,
           descriptionNewArticle: rawItem.descriptionNewArticle || '',
           urlNewArticle: rawItem.urlNewArticle || '',
-          justificationNewArticle: rawItem.justificationNewArticle || ''
+          justificationNewArticle: rawItem.justificationNewArticle || '',
+          caducidadMinimaRequerida: String(item.caducidadMinimaRequerida || rawItem.caducidadMinimaRequerida || '')
         };
 
         await firstValueFrom(this.ocAndReqsService.updateReqItem(item.id.toString(), cotizPayload));
@@ -564,18 +577,27 @@ export class DetalleItemsPedimentosComponent implements ICellRendererAngularComp
       },
       {
         field: 'numeroArticulo',
-        headerName: '# Articulo',
+        headerName: '# Interno de Articulo',
         width: 100,
         flex: 0,
         suppressSizeToFit: true
       },
       {
         field: 'cantidad',
-        headerName: 'Cantidad',
+        headerName: 'Cantidad Requerida',
         width: 85,
         flex: 0,
         suppressSizeToFit: true,
         cellStyle: { textAlign: 'right' }
+      },
+      {
+        field: 'caducidadMinimaRequerida',
+        headerName: 'Caducidad Minima Requerida',
+        width: 140,
+        flex: 0,
+        suppressSizeToFit: true,
+        editable: (params: any) => !this.articulosLocked,
+        cellStyle: { textAlign: 'center' }
       },
       {
         field: 'tipoPrioridad',
@@ -595,7 +617,7 @@ export class DetalleItemsPedimentosComponent implements ICellRendererAngularComp
         cellRendererParams: (params: any) => ({
           documentType: 'REQ',
           idDocument: this.requisitionId,
-          numArticle: params.data?.numeroArticulo || '',
+          numArticle: params.data?.numeroArticulo || (params.data?.idSupplie ? `SUPP-${params.data.idSupplie}` : ''),
           locked: false
         }),
       },
@@ -664,8 +686,7 @@ export class DetalleItemsPedimentosComponent implements ICellRendererAngularComp
     rowSelection: 'single',
     getRowId: (params: any) => String(params.data.id),
     autoSizeStrategy: {
-      type: 'fitGridWidth',
-      defaultMinWidth: 90,
+      type: 'fitCellContents',
     },
     defaultColDef: {
       resizable: true,
@@ -676,6 +697,20 @@ export class DetalleItemsPedimentosComponent implements ICellRendererAngularComp
     },
     onFirstDataRendered: () => {
       this.autoAdjustColumns();
+    },
+    onCellEditingStopped: (event: any) => {
+      if (event.colDef.field === 'caducidadMinimaRequerida') {
+        const n = parseInt(String(event.newValue), 10);
+        if (!isNaN(n) && n >= 0) {
+          const row = this.rowData.find((r: any) => r.id === event.data.id);
+          if (row) {
+            row.caducidadMinimaRequerida = n;
+            row.__modified = true;
+            this.hasUnsavedChanges = true;
+            this.gridApi.refreshCells({ rowNodes: [event.node], columns: ['caducidadMinimaRequerida'], force: true });
+          }
+        }
+      }
     },
     onRowClicked: (event: any) => {
       this.selectedRow = event.data;

@@ -48,6 +48,14 @@ export class ClockService {
     });
   }
 
+  calculateAdjustment(employeeId: number, timestamp: string, type: string): Observable<{ realTimeBySystem: string | null; adjustedTimeBySystem: string | null }> {
+    return this.http.post<{ realTimeBySystem: string | null; adjustedTimeBySystem: string | null }>(
+      `${environment.urlAdministration}/EmployeesxCheckInsOuts/calculate-adjustment`,
+      { employeeId, timestamp, type },
+      { headers: this.trackingService.getHeaders() }
+    );
+  }
+
 
   updateCheckInOutForDiscrepancies(id: number, data: any): Observable<any> {
     return this.http.patch(`${environment.urlAdministration}/EmployeesxCheckInsOuts/${id}/discrepance`, data, {
@@ -87,6 +95,28 @@ export class ClockService {
     return this.http.get(`${environment.urlAdministration}/EmployeesxCheckInsOuts/branch/${idBranch}/discrepances`, {
       headers: this.trackingService.getHeaders(),
     });
+  }
+
+  getSpecialExtraHoursByEmployee(idEmployee: number, start: string, end: string): Observable<any> {
+    return this.http.get(
+      `${environment.urlAdministration}/EmployeesxCheckInsOuts/employee/${idEmployee}/special-extra-hours?start=${start}&end=${end}`,
+      { headers: this.trackingService.getHeaders() }
+    );
+  }
+
+  getSpecialExtraHoursByBranch(idBranch: number, start: string, end: string): Observable<any> {
+    return this.http.get(
+      `${environment.urlAdministration}/EmployeesxCheckInsOuts/branch/${idBranch}/special-extra-hours?start=${start}&end=${end}`,
+      { headers: this.trackingService.getHeaders() }
+    );
+  }
+
+  updateSpecialExtraHours(id: number, data: { allowSpecialExtra: boolean | null; specialExtraApprovedBy: string | null }): Observable<any> {
+    return this.http.patch(
+      `${environment.urlAdministration}/EmployeesxCheckInsOuts/${id}/special-extra`,
+      data,
+      { headers: this.trackingService.getHeaders() }
+    );
   }
   getCatalogs(idCompany: number): Observable<any> {
     return this.http.get(`${environment.urlWarehouse}/Catalog/getCatalogsAll?idCompany=${idCompany}`, {

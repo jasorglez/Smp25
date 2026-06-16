@@ -1,165 +1,219 @@
-<div class="container-fluid mt-4 mb-4 light-blue-background">
-        <div class="container-fluid mt-4 mb-4 light-blue-background">
-            <div class="col-12">
-                <div class="form-group">
-                    <label>Ver Requisiciones por:</label>
+<div class="setup-warehouse">
+  <div class="sw-card">
 
-                    <div>
-                        <input type="radio" id="project" name="projectOrBranch" [(ngModel)]="warehouseSetup.projectOrBranch" [value]="true" (change)="onProjectOrBranchChange()">
-                        <label for="project"> Proyectos</label>
-                    </div>
+    <!-- Header -->
+    <div class="sw-header">
+      <div class="sw-header-icon">
+        <i class="bi bi-gear-wide-connected"></i>
+      </div>
+      <div class="sw-header-text">
+        <h2 class="sw-title">Requisiciones</h2>
+        <p class="sw-subtitle">Gestiona requisiciones, prefijos y notificaciones de compras.</p>
+      </div>
+    </div>
 
-                    <div>
-                        <input type="radio" id="branch" name="projectOrBranch" [(ngModel)]="warehouseSetup.projectOrBranch" [value]="false" (change)="onProjectOrBranchChange()">
-                        <label for="branch">Sucursales</label>
-                    </div>
+    <!-- Aviso: ninguna sucursal específica seleccionada -->
+    <div *ngIf="!branchIsValid" class="sw-branch-notice sw-animate">
+      <i class="bi bi-geo-alt"></i>
+      <span>Por favor primero selecciona una sucursal en el menú lateral.</span>
+    </div>
 
-                </div>
+    <!-- Contenido principal (solo si hay sucursal válida) -->
+    <ng-container *ngIf="branchIsValid">
 
-                <!-- Sección de configuración según selección -->
-                <div class="form-group mt-4" *ngIf="warehouseSetup.projectOrBranch !== null && warehouseSetup.projectOrBranch !== undefined">
-
-                    <!-- Mensaje para Proyectos cuando no hay contrato seleccionado -->
-                    <div *ngIf="warehouseSetup.projectOrBranch === true && !selectedContract" class="alert alert-warning" role="alert">
-                        <i class="bi bi-exclamation-triangle-fill me-2"></i>
-                        Primero debe elegir un contrato para modificar esta parte.
-                    </div>
-
-                    <!-- Formulario para Sucursales -->
-                    <div *ngIf="warehouseSetup.projectOrBranch === false">
-                        <div class="row mb-3">
-                            <div class="col-md-4">
-                                <label for="branchSelect">Sucursal:</label>
-                                <select id="branchSelect" name="branchSelect" [(ngModel)]="selectedBranchOrProject" class="form-select" (change)="onBranchOrProjectSelection()">
-                                    <option [value]="null">Seleccione una sucursal</option>
-                                    <option *ngFor="let branch of branches" [value]="branch.id">{{ branch.name || branch.description }}</option>
-                                </select>
-                            </div>
-                        </div>
-                        <!-- Campos de Prefijos para Sucursales -->
-                        <div *ngIf="selectedBranchOrProject">
-                            <h6 class="mt-3 mb-2">Configuración de Prefijos</h6>
-                            <div class="row mb-2">
-                                <div class="col-md-2"><label>Requisiciones:</label></div>
-                                <div class="col-md-2">
-                                    <input type="text" [(ngModel)]="prefixReq" class="form-control form-control-sm" placeholder="Prefijo" maxlength="10">
-                                </div>
-                                <div class="col-md-2">
-                                    <input type="number" [(ngModel)]="consecutiveReq" class="form-control form-control-sm" placeholder="Consecutivo" min="0">
-                                </div>
-                            </div>
-                            <div class="row mb-2">
-                                <div class="col-md-2"><label>Cotizaciones:</label></div>
-                                <div class="col-md-2">
-                                    <input type="text" [(ngModel)]="prefixCotiz" class="form-control form-control-sm" placeholder="Prefijo" maxlength="7">
-                                </div>
-                                <div class="col-md-2">
-                                    <input type="number" [(ngModel)]="consecutiveCotiz" class="form-control form-control-sm" placeholder="Consecutivo" min="0">
-                                </div>
-                            </div>
-                            <div class="row mb-2">
-                                <div class="col-md-2"><label>Órdenes de Compra:</label></div>
-                                <div class="col-md-2">
-                                    <input type="text" [(ngModel)]="prefixOc" class="form-control form-control-sm" placeholder="Prefijo" maxlength="7">
-                                </div>
-                                <div class="col-md-2">
-                                    <input type="number" [(ngModel)]="consecutiveOc" class="form-control form-control-sm" placeholder="Consecutivo" min="0">
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Formulario para Proyectos (solo si hay contrato seleccionado) -->
-                    <div *ngIf="warehouseSetup.projectOrBranch === true && selectedContract">
-                        <div class="row mb-3">
-                            <div class="col-md-4">
-                                <label for="projectSelect">Proyecto:</label>
-                                <select id="projectSelect" name="projectSelect" [(ngModel)]="selectedBranchOrProject" class="form-select" (change)="onBranchOrProjectSelection()">
-                                    <option [value]="null">Seleccione un proyecto</option>
-                                    <option *ngFor="let project of projects" [value]="project.id">{{ project.name || project.description }}</option>
-                                </select>
-                            </div>
-                        </div>
-                        <!-- Campos de Prefijos para Proyectos -->
-                        <div *ngIf="selectedBranchOrProject">
-                            <h6 class="mt-3 mb-2">Configuración de Prefijos</h6>
-                            <div class="row mb-2">
-                                <div class="col-md-2"><label>Requisiciones:</label></div>
-                                <div class="col-md-2">
-                                    <input type="text" [(ngModel)]="prefixReq" class="form-control form-control-sm" placeholder="Prefijo" maxlength="10">
-                                </div>
-                                <div class="col-md-2">
-                                    <input type="number" [(ngModel)]="consecutiveReq" class="form-control form-control-sm" placeholder="Consecutivo" min="0">
-                                </div>
-                            </div>
-                            <div class="row mb-2">
-                                <div class="col-md-2"><label>Cotizaciones:</label></div>
-                                <div class="col-md-2">
-                                    <input type="text" [(ngModel)]="prefixCotiz" class="form-control form-control-sm" placeholder="Prefijo" maxlength="7">
-                                </div>
-                                <div class="col-md-2">
-                                    <input type="number" [(ngModel)]="consecutiveCotiz" class="form-control form-control-sm" placeholder="Consecutivo" min="0">
-                                </div>
-                            </div>
-                            <div class="row mb-2">
-                                <div class="col-md-2"><label>Órdenes de Compra:</label></div>
-                                <div class="col-md-2">
-                                    <input type="text" [(ngModel)]="prefixOc" class="form-control form-control-sm" placeholder="Prefijo" maxlength="7">
-                                </div>
-                                <div class="col-md-2">
-                                    <input type="number" [(ngModel)]="consecutiveOc" class="form-control form-control-sm" placeholder="Consecutivo" min="0">
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                </div>
-
-                <div class="form-group mt-4">
-                    <div class="form-check">
-                        <input type="checkbox" class="form-check-input" id="activateOc" name="activateOc"
-                               [(ngModel)]="warehouseSetup.activateOc">
-                        <label class="form-check-label" for="activateOc">
-                            Activar Órdenes de Compra
-                        </label>
-                    </div>
-                </div>
-
-                <div class="form-group mt-4">
-                    <label for="notifications">Activar notificaciones:</label>
-                    <input type="checkbox" id="notifications" name="notifications">
-                </div>
-        
-                <div class="row">
-                    <div class="col-md-6">
-                        <div class="form-group mt-4">
-                            <label for="notificationChannels">Canales de notificación:</label>
-                            <select id="notificationChannels" name="notificationChannels" multiple class="form-control">
-                                <option value="email">Correo</option>
-                                <option value="sms">SMS</option>
-                                <option value="whatsapp">WhatsApp</option>
-                                <option value="slack">Telegram</option>
-                            </select>
-                        </div>
-                    </div>
-                    <div class="col-md-6">
-                        <div class="form-group mt-4">
-                            <label for="notificationEvents">Eventos a notificar:</label>
-                            <select id="notificationEvents" name="notificationEvents" multiple class="form-control">
-                                <option value="lowStock">Stock bajo</option>
-                                <option value="orderReceived">Pedido recibido</option>
-                                <option value="orderDelayed">Pedido retrasado</option>
-                            </select>
-                        </div>
-                    </div>
-                </div>
-                <div class="mt-4 text-end">
-                    <button type="button" class="btn btn-primary me-2" (click)="saveData()"><i
-                            class="fas fa-save me-2"></i>Guardar</button>
-                    <button type="button" class="btn btn-secondary" (click)="revertChanges()"><i
-                            class="fas fa-times me-2"></i>Cancelar</button>
-                </div>
-            </div>
+      <!-- Ver requisiciones por (OCULTO: siempre se usa Sucursales) -->
+      <!--
+      <div class="sw-section">
+        <span class="sw-label">Ver requisiciones por</span>
+        <div class="sw-segmented">
+          <label class="sw-segment" [class.active]="warehouseSetup.projectOrBranch === true">
+            <input type="radio" name="projectOrBranch" [(ngModel)]="warehouseSetup.projectOrBranch" [value]="true" (change)="onProjectOrBranchChange()">
+            <i class="bi bi-diagram-3-fill"></i>
+            <span>Proyectos</span>
+          </label>
+          <label class="sw-segment" [class.active]="warehouseSetup.projectOrBranch === false">
+            <input type="radio" name="projectOrBranch" [(ngModel)]="warehouseSetup.projectOrBranch" [value]="false" (change)="onProjectOrBranchChange()">
+            <i class="bi bi-shop"></i>
+            <span>Sucursales</span>
+          </label>
         </div>
-</div>
+      </div>
+      -->
 
+      <!-- Configuración según selección -->
+      <div class="sw-section sw-animate" *ngIf="warehouseSetup.projectOrBranch !== null && warehouseSetup.projectOrBranch !== undefined">
+
+        <!-- Aviso: proyecto sin contrato -->
+        <div *ngIf="warehouseSetup.projectOrBranch === true && !selectedContract" class="sw-alert sw-animate">
+          <i class="bi bi-exclamation-triangle-fill"></i>
+          <span>Primero debe elegir un contrato para modificar esta parte.</span>
+        </div>
+
+        <!-- Formulario Sucursales -->
+        <div *ngIf="warehouseSetup.projectOrBranch === false" class="sw-animate">
+          <div class="sw-field">
+            <label>Sucursal</label>
+            <div class="sw-branch-display">
+              <i class="bi bi-shop"></i>
+              <span>{{ selectedBranchName || 'Sucursal seleccionada en el menú lateral' }}</span>
+            </div>
+          </div>
+
+          <div *ngIf="selectedBranchOrProject" class="sw-animate">
+            <span class="sw-label sw-label-mt">Configuración de prefijos</span>
+            <div class="sw-prefix-grid">
+              <div class="sw-prefix-card">
+                <div class="sw-prefix-head"><i class="bi bi-file-earmark-text"></i><span>Requisiciones</span></div>
+                <div class="sw-prefix-inputs">
+                  <input type="text" [(ngModel)]="prefixReq" class="sw-input" placeholder="Prefijo" maxlength="10">
+                  <input type="number" [(ngModel)]="consecutiveReq" class="sw-input" placeholder="Consecutivo" min="0">
+                </div>
+              </div>
+              <div class="sw-prefix-card">
+                <div class="sw-prefix-head"><i class="bi bi-clipboard-check"></i><span>Pedimentos</span></div>
+                <div class="sw-prefix-inputs">
+                  <input type="text" [(ngModel)]="prefixCotiz" class="sw-input" placeholder="Prefijo" maxlength="7">
+                </div>
+                <small class="sw-prefix-hint">Ingresa el prefijo del pedimento al registrar una OC</small>
+              </div>
+              <div class="sw-prefix-card">
+                <div class="sw-prefix-head"><i class="bi bi-lightning-charge"></i><span>Compra Rapida</span></div>
+                <div class="sw-prefix-inputs">
+                  <input type="text" [(ngModel)]="prefixCompraInmediata" class="sw-input" placeholder="Prefijo" maxlength="7">
+                  <input type="number" [(ngModel)]="consecutiveCompraInmediata" class="sw-input" placeholder="Consecutivo" min="0">
+                </div>
+              </div>
+              <div class="sw-prefix-card">
+                <div class="sw-prefix-head"><i class="bi bi-arrow-left-right"></i><span>Traspaso Interno</span></div>
+                <div class="sw-prefix-inputs">
+                  <input type="text" [(ngModel)]="prefixTraspaso" class="sw-input" placeholder="Prefijo" maxlength="7">
+                  <input type="number" [(ngModel)]="consecutiveTraspaso" class="sw-input" placeholder="Consecutivo" min="0">
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Formulario Proyectos -->
+        <div *ngIf="warehouseSetup.projectOrBranch === true && selectedContract" class="sw-animate">
+          <div class="sw-field">
+            <label for="projectSelect">Proyecto</label>
+            <select id="projectSelect" name="projectSelect" [(ngModel)]="selectedBranchOrProject" class="sw-select" (change)="onBranchOrProjectSelection()">
+              <option [value]="null">Seleccione un proyecto</option>
+              <option *ngFor="let project of projects" [value]="project.id">{{ project.name || project.description }}</option>
+            </select>
+          </div>
+
+          <div *ngIf="selectedBranchOrProject" class="sw-animate">
+            <span class="sw-label sw-label-mt">Configuración de prefijos</span>
+            <div class="sw-prefix-grid">
+              <div class="sw-prefix-card">
+                <div class="sw-prefix-head"><i class="bi bi-file-earmark-text"></i><span>Requisiciones</span></div>
+                <div class="sw-prefix-inputs">
+                  <input type="text" [(ngModel)]="prefixReq" class="sw-input" placeholder="Prefijo" maxlength="10">
+                  <input type="number" [(ngModel)]="consecutiveReq" class="sw-input" placeholder="Consecutivo" min="0">
+                </div>
+              </div>
+              <div class="sw-prefix-card">
+                <div class="sw-prefix-head"><i class="bi bi-clipboard-check"></i><span>Pedimentos</span></div>
+                <div class="sw-prefix-inputs">
+                  <input type="text" [(ngModel)]="prefixCotiz" class="sw-input" placeholder="Prefijo" maxlength="7">
+                </div>
+                <small class="sw-prefix-hint">Ingresa el prefijo del pedimento al registrar una OC</small>
+              </div>
+              <div class="sw-prefix-card">
+                <div class="sw-prefix-head"><i class="bi bi-lightning-charge"></i><span>Compra Rapida</span></div>
+                <div class="sw-prefix-inputs">
+                  <input type="text" [(ngModel)]="prefixCompraInmediata" class="sw-input" placeholder="Prefijo" maxlength="7">
+                  <input type="number" [(ngModel)]="consecutiveCompraInmediata" class="sw-input" placeholder="Consecutivo" min="0">
+                </div>
+              </div>
+              <div class="sw-prefix-card">
+                <div class="sw-prefix-head"><i class="bi bi-arrow-left-right"></i><span>Traspaso Interno</span></div>
+                <div class="sw-prefix-inputs">
+                  <input type="text" [(ngModel)]="prefixTraspaso" class="sw-input" placeholder="Prefijo" maxlength="7">
+                  <input type="number" [(ngModel)]="consecutiveTraspaso" class="sw-input" placeholder="Consecutivo" min="0">
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- Opciones -->
+      <div class="sw-section">
+        <span class="sw-label">Opciones</span>
+        <label class="sw-switch-row">
+          <input type="checkbox" id="activateOc" name="activateOc" [(ngModel)]="warehouseSetup.activateOc">
+          <span class="sw-switch"></span>
+          <span class="sw-switch-text">Activar Órdenes de Compra</span>
+        </label>
+        <label class="sw-switch-row">
+          <input type="checkbox" id="notifications" name="notifications">
+          <span class="sw-switch"></span>
+          <span class="sw-switch-text">Activar notificaciones</span>
+        </label>
+      </div>
+
+      <!-- IVA -->
+      <div class="sw-section">
+        <span class="sw-label">IVA</span>
+        <div class="sw-iva-row">
+          <div class="sw-iva-input-wrap">
+            <input
+              type="number"
+              [(ngModel)]="warehouseSetup.iva"
+              name="iva"
+              class="sw-input sw-iva-input"
+              placeholder="0.00"
+              min="0"
+              max="100"
+              step="0.01"
+              (keydown)="$event.key === '-' ? $event.preventDefault() : null"
+            >
+            <span class="sw-iva-symbol">%</span>
+          </div>
+          <span class="sw-iva-preview" *ngIf="warehouseSetup.iva !== null && warehouseSetup.iva !== undefined">
+            IVA actual: <strong>{{ warehouseSetup.iva | number:'1.2-2' }}%</strong>
+          </span>
+        </div>
+      </div>
+
+      <!-- Notificaciones -->
+      <div class="sw-section">
+        <div class="sw-two-col">
+          <div class="sw-field">
+            <label for="notificationChannels">Canales de notificación</label>
+            <select id="notificationChannels" name="notificationChannels" multiple class="sw-select sw-select-multi">
+              <option value="email">Correo</option>
+              <option value="sms">SMS</option>
+              <option value="whatsapp">WhatsApp</option>
+              <option value="slack">Telegram</option>
+            </select>
+          </div>
+          <div class="sw-field">
+            <label for="notificationEvents">Eventos a notificar</label>
+            <select id="notificationEvents" name="notificationEvents" multiple class="sw-select sw-select-multi">
+              <option value="lowStock">Stock bajo</option>
+              <option value="orderReceived">Pedido recibido</option>
+              <option value="orderDelayed">Pedido retrasado</option>
+            </select>
+          </div>
+        </div>
+      </div>
+
+      <!-- Acciones -->
+      <div class="sw-actions">
+        <button type="button" class="sw-btn sw-btn-ghost" (click)="revertChanges()">
+          <i class="bi bi-x-lg"></i> Cancelar
+        </button>
+        <button type="button" class="sw-btn sw-btn-primary" (click)="saveData()">
+          <i class="bi bi-check-lg"></i> Guardar
+        </button>
+      </div>
+
+    </ng-container>
+
+  </div>
+</div>

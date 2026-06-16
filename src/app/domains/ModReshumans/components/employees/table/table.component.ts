@@ -145,8 +145,6 @@ export class EmployeesTableComponent implements CanComponentDeactivate {
     detailEmployeePersonalData: DetailEmployeePersonalDataComponent,
   };
 
-  detailMode: 'clock' | 'loans' | 'savings' | 'documents' | 'personalData' = 'clock';
-  private expandingViaColumn = false;
 
   constructor() {
     effect(async () => {
@@ -191,23 +189,17 @@ export class EmployeesTableComponent implements CanComponentDeactivate {
     rowBuffer: 20,
     masterDetail: true,
     isRowMaster: () => true,
-    detailCellRendererSelector: () => {
-      if (this.detailMode === 'loans') return { component: 'detailEmployeeLoans' };
-      if (this.detailMode === 'savings') return { component: 'detailEmployeeSavings' };
-      if (this.detailMode === 'documents') return { component: 'detailEmployeeDocuments' };
-      if (this.detailMode === 'personalData') return { component: 'detailEmployeePersonalData' };
+    detailCellRendererSelector: (params) => {
+      const t = params.data?.detailType;
+      if (t === 'loans') return { component: 'detailEmployeeLoans' };
+      if (t === 'savings') return { component: 'detailEmployeeSavings' };
+      if (t === 'documents') return { component: 'detailEmployeeDocuments' };
+      if (t === 'personalData') return { component: 'detailEmployeePersonalData' };
       return { component: 'detailEmployeeClock' };
     },
     detailRowHeight: 980,
-    onRowGroupOpened: (event: any) => {
-      if (!event.expanded) {
-        event.api.setFilterModel(null);
-        this.detailMode = 'clock';
-      } else if (!this.expandingViaColumn) {
-        this.detailMode = 'clock';
-      }
-      this.expandingViaColumn = false;
-    },
+    keepDetailRows: false,
+    onRowGroupOpened: (_event: any) => {},
     getRowClass: (params) => {
       // Verificar si la fila está seleccionada
       if (params.node.isSelected()) {
@@ -248,20 +240,22 @@ export class EmployeesTableComponent implements CanComponentDeactivate {
 
         if (currentColIndex >= 0 && currentColIndex < editableColumns.length - 1) {
           params.api.stopEditing();
-          
+
           const nextColId = editableColumns[currentColIndex + 1].getColId();
           params.api.setFocusedCell(params.node.rowIndex, nextColId);
-          
+
           // CRITICAL: AG-Grid ignores startEditingCell if called synchronously inside an event handler
           setTimeout(() => {
             const nextColDef = params.api.getColumn(nextColId)?.getColDef();
             const isSelect = nextColDef?.cellEditor === 'agSelectCellEditor';
-            
+
             params.api.startEditingCell({
               rowIndex: params.node.rowIndex,
               colKey: nextColId,
-              key: isSelect ? ' ' : undefined // Usa espacio para abrir agSelect, evita Enter
             });
+            if (isSelect) {
+              setTimeout(() => this.openAgSelectDropdown(), 120);
+            }
           }, 50);
         } else {
           params.api.stopEditing();
@@ -270,15 +264,6 @@ export class EmployeesTableComponent implements CanComponentDeactivate {
       }
     },
     onCellDoubleClicked: this.onCellDoubleClicked.bind(this),
-    onFirstDataRendered: (params) => {
-      const allColumnIds: string[] = [];
-      params.api.getColumns()?.forEach((column: any) => {
-        allColumnIds.push(column.getId());
-      });
-
-      // Autoajustar todas las columnas al contenido (skipHeader=false considera header y datos)
-      params.api.autoSizeColumns(allColumnIds, false);
-    },
     onColumnPinned: () => this.saveColumnState(),
     onColumnVisible: () => this.saveColumnState(),
     onColumnMoved: (event) => { if (event.finished) this.saveColumnState(); },
@@ -373,21 +358,25 @@ export class EmployeesTableComponent implements CanComponentDeactivate {
             return {
               values: this.branchs
                 ? this.branchs
-                  .slice() // Creamos una copia para no modificar el array original
-                  .sort((a, b) => a.name.localeCompare(b.name)) // Ordenamos por nombre
-                  .map((item) => item.id) // Extraemos solo los IDs
+                  .slice()
+                  .sort((a, b) => a.name.localeCompare(b.name))
+                  .map((item) => item.name) // Mostramos nombres para fácil selección con teclado
                 : [],
             };
           },
+          valueSetter: (params) => {
+            const selected = params.newValue;
+            const found = this.branchs?.find(b => b.name === selected);
+            if (!found) return false;
+            params.data.idBranch = found.id;
+            return true;
+          },
 
           valueFormatter: (params) => {
-            // Handle potential null values and properly format the displayed value
             if (!params.value) return '';
-
             const foundBranch = this.branchs
               ? this.branchs.find((item) => item.id === params.value)
               : null;
-
             return foundBranch ? foundBranch.name : params.value;
           },
           valueGetter: (params) => {
@@ -548,23 +537,7 @@ export class EmployeesTableComponent implements CanComponentDeactivate {
             }
             return `<span>${hoursStr}</span><span class="text-primary ms-2" style="cursor:pointer;font-size:0.75rem;text-decoration:underline"><i class="bi bi-clock me-1"></i>Ver</span>`;
           },
-          onCellClicked: (params: any) => {
-            const expand = !params.node.expanded;
-            params.api.forEachNode((n: any) => { if (n.expanded) n.setExpanded(false); });
-            if (expand) {
-              params.api.setFilterModel({ id: { filterType: 'number', type: 'equals', filter: params.data.id } });
-              params.node.setExpanded(true);
-            }
-          },
-        },
-        {
-          field: 'documents',
-          headerName: 'Docs',
-          editable: false,
-          suppressMovable: true,
-          width: 70,
-          cellRenderer: () => `<i class="bi bi-file-earmark-text" style="cursor:pointer;" title="Ver documentos del empleado"></i>`,
-          cellStyle: { backgroundColor: '#cce5ff', textAlign: 'center' },
+          onCellClicked: (params: any) => this.toggleDetailColumn(params, 'clock'),
         },
         {
           field: 'loan',
@@ -588,7 +561,8 @@ export class EmployeesTableComponent implements CanComponentDeactivate {
             }
             return '$0.00';
           },
-          cellStyle: { backgroundColor: '#d4edda' },
+          cellStyle: { backgroundColor: '#d4edda', cursor: 'pointer' },
+          onCellClicked: (params: any) => this.toggleDetailColumn(params, 'loans'),
         },
         {
           field: 'saving',
@@ -603,7 +577,6 @@ export class EmployeesTableComponent implements CanComponentDeactivate {
           },
           suppressMovable: true,
           width: 100,
-
           valueFormatter: (params) => {
             if (params.value) {
               return new Intl.NumberFormat('es-MX', {
@@ -613,7 +586,8 @@ export class EmployeesTableComponent implements CanComponentDeactivate {
             }
             return '$0.00';
           },
-          cellStyle: { backgroundColor: '#d4edda' },
+          cellStyle: { backgroundColor: '#d4edda', cursor: 'pointer' },
+          onCellClicked: (params: any) => this.toggleDetailColumn(params, 'savings'),
         },
         {
           field: 'priceXHour',
@@ -658,6 +632,7 @@ export class EmployeesTableComponent implements CanComponentDeactivate {
           width: 120,
           cellRenderer: () => `<i class="bi bi-person-lines-fill" style="cursor:pointer;" title="Ver datos personales"></i>`,
           cellStyle: { backgroundColor: '#e2d9f3', textAlign: 'center' },
+          onCellClicked: (params: any) => this.toggleDetailColumn(params, 'personalData'),
         },
         {
           field: 'idDepto',
@@ -689,7 +664,10 @@ export class EmployeesTableComponent implements CanComponentDeactivate {
           cellEditorParams: (params) => {
             return {
               values: this.catalogRoles
-                ? this.catalogRoles.map(item => item.id)
+                ? this.catalogRoles
+                  .slice()
+                  .sort((a, b) => a.description.localeCompare(b.description))
+                  .map(item => item.description) // descripción = lo que valueGetter devuelve
                 : []
             };
           },
@@ -699,7 +677,10 @@ export class EmployeesTableComponent implements CanComponentDeactivate {
             return found ? found.description : params.value;
           },
           valueSetter: (params) => {
-            const newDeptId = params.newValue;
+            const selectedDesc = params.newValue;
+            const found = this.catalogRoles?.find(r => r.description === selectedDesc);
+            if (!found) return false;
+            const newDeptId = found.id;
 
             if (params.data.idDepto === newDeptId) return false;
 
@@ -765,7 +746,10 @@ export class EmployeesTableComponent implements CanComponentDeactivate {
           cellEditorParams: (params) => {
             return {
               values: this.catalogPosiciones
-                ? this.catalogPosiciones.map(item => item.description)
+                ? this.catalogPosiciones
+                  .slice()
+                  .sort((a, b) => a.description.localeCompare(b.description))
+                  .map(item => item.description)
                 : []
             };
           },
@@ -814,24 +798,30 @@ export class EmployeesTableComponent implements CanComponentDeactivate {
           width: 200,
           cellEditor: 'agSelectCellEditor',
           cellEditorParams: () => ({
-            values: this.banks.map((user) => user.id),
+            values: this.banks
+              ? [
+                  ...this.banks.filter(b => b.name === 'EFECTIVO'),
+                  ...this.banks.filter(b => b.name !== 'EFECTIVO').sort((a, b) => a.name.localeCompare(b.name)),
+                ].map(b => b.name)
+              : [],
           }),
           valueGetter: (params) => {
-            if (!params.data || !params.data.idBank) return 'EFECTIVO';
-            const foundBank = this.banks?.find((user) => user.id === params.data.idBank);
-            return foundBank ? foundBank.name : 'EFECTIVO';
+            if (!params.data || !params.data.idBank) return '';
+            const foundBank = this.banks?.find((b) => b.id === params.data.idBank);
+            return foundBank ? foundBank.name : '';
           },
-          valueFormatter: (params) => {
-            const foundBank = this.banks
-              ? this.banks.find((user) => user.id === params.value)
-              : null;
-            return foundBank ? `${foundBank.name}` : params.value;
+          valueSetter: (params) => {
+            const selectedName = params.newValue;
+            const found = this.banks?.find(b => b.name === selectedName);
+            if (!found) return false;
+            params.data.idBank = found.id;
+            return true;
           },
 
         },
         {
           field: 'ingressDate',
-          headerName: 'Fecha de ingreso',
+          headerName: 'Fecha de ingreso 2',
           editable: (params) => {
             if (params.data.__isNew) {
               return true;
@@ -959,21 +949,25 @@ export class EmployeesTableComponent implements CanComponentDeactivate {
             return {
               values: this.branchs
                 ? this.branchs
-                  .slice() // Creamos una copia para no modificar el array original
-                  .sort((a, b) => a.name.localeCompare(b.name)) // Ordenamos por nombre
-                  .map((item) => item.id) // Extraemos solo los IDs
+                  .slice()
+                  .sort((a, b) => a.name.localeCompare(b.name))
+                  .map((item) => item.name) // Mostramos nombres para fácil selección con teclado
                 : [],
             };
           },
+          valueSetter: (params) => {
+            const selected = params.newValue;
+            const found = this.branchs?.find(b => b.name === selected);
+            if (!found) return false;
+            params.data.idBranch = found.id;
+            return true;
+          },
 
           valueFormatter: (params) => {
-            // Handle potential null values and properly format the displayed value
             if (!params.value) return '';
-
             const foundBranch = this.branchs
               ? this.branchs.find((item) => item.id === params.value)
               : null;
-
             return foundBranch ? foundBranch.name : params.value;
           },
           valueGetter: (params) => {
@@ -1177,23 +1171,7 @@ export class EmployeesTableComponent implements CanComponentDeactivate {
             }
             return `<span>${hoursStr}</span><span class="text-primary ms-2" style="cursor:pointer;font-size:0.75rem;text-decoration:underline"><i class="bi bi-clock me-1"></i>Ver</span>`;
           },
-          onCellClicked: (params: any) => {
-            const expand = !params.node.expanded;
-            params.api.forEachNode((n: any) => { if (n.expanded) n.setExpanded(false); });
-            if (expand) {
-              params.api.setFilterModel({ id: { filterType: 'number', type: 'equals', filter: params.data.id } });
-              params.node.setExpanded(true);
-            }
-          },
-        },
-        {
-          field: 'documents',
-          headerName: 'Docs',
-          editable: false,
-          suppressMovable: true,
-          width: 70,
-          cellRenderer: () => `<i class="bi bi-file-earmark-text" style="cursor:pointer;" title="Ver documentos del empleado"></i>`,
-          cellStyle: { backgroundColor: '#cce5ff', textAlign: 'center' },
+          onCellClicked: (params: any) => this.toggleDetailColumn(params, 'clock'),
         },
         {
           field: 'loan',
@@ -1217,7 +1195,8 @@ export class EmployeesTableComponent implements CanComponentDeactivate {
             }
             return '$0.00';
           },
-          cellStyle: { backgroundColor: '#d4edda' },
+          cellStyle: { backgroundColor: '#d4edda', cursor: 'pointer' },
+          onCellClicked: (params: any) => this.toggleDetailColumn(params, 'loans'),
         },
         {
           field: 'saving',
@@ -1232,7 +1211,6 @@ export class EmployeesTableComponent implements CanComponentDeactivate {
           },
           suppressMovable: true,
           width: 100,
-
           valueFormatter: (params) => {
             if (params.value) {
               return new Intl.NumberFormat('es-MX', {
@@ -1242,7 +1220,8 @@ export class EmployeesTableComponent implements CanComponentDeactivate {
             }
             return '$0.00';
           },
-          cellStyle: { backgroundColor: '#d4edda' },
+          cellStyle: { backgroundColor: '#d4edda', cursor: 'pointer' },
+          onCellClicked: (params: any) => this.toggleDetailColumn(params, 'savings'),
         },
         {
           field: 'priceXHour',
@@ -1286,7 +1265,8 @@ export class EmployeesTableComponent implements CanComponentDeactivate {
           suppressMovable: true,
           width: 120,
           cellRenderer: () => `<i class="bi bi-person-lines-fill" style="cursor:pointer;" title="Ver datos personales"></i>`,
-          cellStyle: { backgroundColor: '#e2d9f3', textAlign: 'center' },
+          cellStyle: { backgroundColor: '#d4edda', textAlign: 'center' },
+          onCellClicked: (params: any) => this.toggleDetailColumn(params, 'personalData'),
         },
         {
           field: 'idDepto',
@@ -1307,7 +1287,10 @@ export class EmployeesTableComponent implements CanComponentDeactivate {
           width: 190,
           cellEditor: 'agSelectCellEditor',
           onCellValueChanged: (params) => {
-            const newRolId = params.newValue;
+            // params.newValue es la descripción; buscar el ID correspondiente
+            const selectedDesc = params.newValue;
+            const found = this.catalogRoles?.find((r: any) => r.description === selectedDesc);
+            const newRolId = found?.id;
             if (newRolId && newRolId !== params.oldValue) {
               this.getPoscionesbyRole(newRolId);
             }
@@ -1315,7 +1298,10 @@ export class EmployeesTableComponent implements CanComponentDeactivate {
           cellEditorParams: (params) => {
             return {
               values: this.catalogRoles
-                ? this.catalogRoles.map(item => item.id)
+                ? this.catalogRoles
+                  .slice()
+                  .sort((a, b) => a.description.localeCompare(b.description))
+                  .map(item => item.description) // descripción = lo que valueGetter devuelve
                 : []
             };
           },
@@ -1325,7 +1311,10 @@ export class EmployeesTableComponent implements CanComponentDeactivate {
             return found ? found.description : params.value;
           },
           valueSetter: (params) => {
-            const newDeptId = params.newValue;
+            const selectedDesc = params.newValue;
+            const found = this.catalogRoles?.find((r: any) => r.description === selectedDesc);
+            if (!found) return false;
+            const newDeptId = found.id;
 
             if (params.data.idDepto === newDeptId) return false;
 
@@ -1381,7 +1370,10 @@ export class EmployeesTableComponent implements CanComponentDeactivate {
           cellEditorParams: (params) => {
             return {
               values: this.catalogPosiciones
-                ? this.catalogPosiciones.map(item => item.description)
+                ? this.catalogPosiciones
+                  .slice()
+                  .sort((a, b) => a.description.localeCompare(b.description))
+                  .map(item => item.description)
                 : []
             };
           },
@@ -1430,18 +1422,24 @@ export class EmployeesTableComponent implements CanComponentDeactivate {
           width: 200,
           cellEditor: 'agSelectCellEditor',
           cellEditorParams: () => ({
-            values: this.banks.map((user) => user.id),
+            values: this.banks
+              ? [
+                  ...this.banks.filter(b => b.name === 'EFECTIVO'),
+                  ...this.banks.filter(b => b.name !== 'EFECTIVO').sort((a, b) => a.name.localeCompare(b.name)),
+                ].map(b => b.name)
+              : [],
           }),
           valueGetter: (params) => {
-            if (!params.data || !params.data.idBank) return 'EFECTIVO';
-            const foundBank = this.banks?.find((user) => user.id === params.data.idBank);
-            return foundBank ? foundBank.name : 'EFECTIVO';
+            if (!params.data || !params.data.idBank) return '';
+            const foundBank = this.banks?.find((b) => b.id === params.data.idBank);
+            return foundBank ? foundBank.name : '';
           },
-          valueFormatter: (params) => {
-            const foundBank = this.banks
-              ? this.banks.find((user) => user.id === params.value)
-              : null;
-            return foundBank ? `${foundBank.name}` : params.value;
+          valueSetter: (params) => {
+            const selectedName = params.newValue;
+            const found = this.banks?.find(b => b.name === selectedName);
+            if (!found) return false;
+            params.data.idBank = found.id;
+            return true;
           },
 
         },
@@ -1635,7 +1633,7 @@ export class EmployeesTableComponent implements CanComponentDeactivate {
   getBanks() {
     this.administrationService.get2fieldsBanks().subscribe(
       (data: any) => {
-        this.banks = [{ id: null, name: 'EFECTIVO' }, ...data];
+        this.banks = data;
       },
       (error) => {
         if (error.status == 404) this.banks = [];
@@ -1653,6 +1651,14 @@ export class EmployeesTableComponent implements CanComponentDeactivate {
       placeholder: 'Buscar empleado...',
       popupWidth: 310,
       onOptionSelected: (option: any) => this.applySelectedEmployeeToRow(option, params),
+      postEnterAction: (editorParams: any) => {
+        const rowIndex = editorParams.node?.rowIndex ?? editorParams.rowIndex;
+        if (rowIndex == null) return;
+        this.gridApi.setFocusedCell(rowIndex, 'employeeCode');
+        setTimeout(() => {
+          this.gridApi.startEditingCell({ rowIndex, colKey: 'employeeCode' });
+        }, 50);
+      },
     };
   }
 
@@ -1664,6 +1670,16 @@ export class EmployeesTableComponent implements CanComponentDeactivate {
       searchFields: ['employeeCode', 'name', 'email'],
       placeholder: 'Buscar código...',
       popupWidth: 310,
+      postEnterAction: (editorParams: any) => {
+        // Saltar a Precio por Hora al dar Enter en Username
+        const targetCol = this.idRoot !== 18 ? 'priceXHour' : 'idDepto';
+        const rowIndex = editorParams.node?.rowIndex ?? editorParams.rowIndex;
+        if (rowIndex == null) return;
+        this.gridApi.setFocusedCell(rowIndex, targetCol);
+        setTimeout(() => {
+          this.gridApi.startEditingCell({ rowIndex, colKey: targetCol });
+        }, 50);
+      },
     };
   }
 
@@ -1802,6 +1818,7 @@ export class EmployeesTableComponent implements CanComponentDeactivate {
   onMasterGridReady(params: GridReadyEvent) {
     this.gridApi = params.api;
     this.restoreColumnState();
+    setTimeout(() => this.gridApi.autoSizeAllColumns(false), 0);
   }
 
   onMasterRowSelected(event: any) {
@@ -1857,13 +1874,59 @@ export class EmployeesTableComponent implements CanComponentDeactivate {
         });
       }
 
-      this.gridApi.startEditingCell({
-        rowIndex: newRowIndex,
-        colKey: 'idBranch',
-        key: ' '
-      });
+      // Para filas nuevas, enfocar directamente la columna Sucursal (idBranch).
+      // Si no está visible, caer al primer editable que no sea checkbox (vigente).
+      const displayedCols = this.gridApi.getAllDisplayedColumns();
+      const firstEditableCol =
+        displayedCols.find((col: any) => col.getColId() === 'idBranch') ??
+        displayedCols.find((col: any) => {
+          const colDef = col.getColDef();
+          if (colDef.field === 'vigente') return false;
+          if (typeof colDef.editable === 'function') {
+            return colDef.editable({ data: newItem, node: rowNode, column: col, colDef });
+          }
+          return colDef.editable === true;
+        });
+
+      if (firstEditableCol) {
+        const firstColKey = firstEditableCol.getColId();
+        this.gridApi.startEditingCell({ rowIndex: newRowIndex, colKey: firstColKey });
+        // Abrir dropdown si es un agSelectCellEditor
+        if (firstEditableCol.getColDef()?.cellEditor === 'agSelectCellEditor') {
+          setTimeout(() => this.openAgSelectDropdown(), 120);
+        }
+      }
     }, 100);
 
+  }
+
+  /** Abre el dropdown del agSelectCellEditor activo disparando mousedown+click en su trigger. */
+  private openAgSelectDropdown(): void {
+    // 1. Intentar via la instancia del editor (más fiable)
+    const editors = this.gridApi?.getCellEditorInstances?.();
+    if (editors && editors.length > 0) {
+      const editorInstance = editors[0] as any;
+      const editorEl: HTMLElement =
+        editorInstance.getGui?.() ?? editorInstance.eGui ?? null;
+      if (editorEl) {
+        const picker = editorEl.querySelector(
+          '.ag-picker-field-wrapper'
+        ) as HTMLElement;
+        if (picker) {
+          picker.dispatchEvent(new MouseEvent('mousedown', { bubbles: true, cancelable: true }));
+          picker.click();
+          return;
+        }
+      }
+    }
+    // 2. Fallback: buscar en el documento completo
+    const picker = document.querySelector(
+      '.ag-popup-editor .ag-picker-field-wrapper, .ag-cell-editor .ag-picker-field-wrapper'
+    ) as HTMLElement;
+    if (picker) {
+      picker.dispatchEvent(new MouseEvent('mousedown', { bubbles: true, cancelable: true }));
+      picker.click();
+    }
   }
 
   async saveMasterChanges() {
@@ -2507,20 +2570,22 @@ export class EmployeesTableComponent implements CanComponentDeactivate {
         this.catalogPosiciones = [];
       }
     }
-    if (colId === 'loan' || colId === 'saving' || colId === 'documents' || colId === 'personalData') {
-      const rowNode = event.node;
-      const newMode = colId === 'loan' ? 'loans' : colId === 'saving' ? 'savings' : colId === 'personalData' ? 'personalData' : 'documents';
-      if (rowNode.expanded && this.detailMode === newMode) {
-        rowNode.setExpanded(false);
-        this.gridApi.setFilterModel(null);
-        this.gridApi.onFilterChanged();
-      } else {
-        this.detailMode = newMode;
-        this.expandingViaColumn = true;
-        this.gridApi.setFilterModel({ id: { type: 'equals', filter: event.data.id } });
-        this.gridApi.onFilterChanged();
-        rowNode.setExpanded(true);
-      }
+  }
+
+  private toggleDetailColumn(params: any, detailType: string): void {
+    const node = params.node;
+    const api = params.api;
+    const isCurrentlyExpanded = node.expanded && params.data.detailType === detailType;
+
+    api.forEachNode((n: any) => { if (n.expanded) n.setExpanded(false); });
+
+    if (isCurrentlyExpanded) {
+      api.setFilterModel(null);
+    } else {
+      api.setFilterModel(null);
+      params.data.detailType = detailType;
+      api.setFilterModel({ id: { filterType: 'number', type: 'equals', filter: params.data.id } });
+      node.setExpanded(true);
     }
   }
 

@@ -1,5 +1,5 @@
 import { CommonModule } from '@angular/common';
-import { Component, inject } from '@angular/core';
+import { Component, inject, OnDestroy } from '@angular/core';
 import { alerts } from 'app/helpers/alerts';
 import { AgGridModule, ICellRendererAngularComp } from 'ag-grid-angular';
 import { catchError, concat, EMPTY, lastValueFrom, toArray } from 'rxjs';
@@ -9,6 +9,8 @@ import { SelectWithTooltipEditorV2Component } from 'app/shared/select-with-toolt
 import { BranchsService } from 'app/services/branchs.service';
 import { SignalsService } from 'app/services/signals.service';
 import { SucursalByMaterialProveedorService } from 'app/services/sucursalByMaterialProveedor.service';
+import { runAutosizeAllColumns } from 'app/helpers/ag-grid-autosize.helper';
+import { PendingChangesService } from 'app/services/pending-changes.service';
 
 @Component({
   selector: 'app-detalles-sucursalesproveedor',
@@ -23,12 +25,7 @@ import { SucursalByMaterialProveedorService } from 'app/services/sucursalByMater
             <button class="btn btn-sm btn-success" (click)="addSucursal()">
               <i class="bi bi-plus-lg"></i> Agregar
             </button>
-            <button class="btn btn-sm btn-primary position-relative" (click)="saveSucursales()" [disabled]="!hasChanges">
-              <i class="bi bi-floppy"></i> Guardar
-              <span *ngIf="hasChanges" class="position-absolute top-0 start-100 translate-middle p-2 bg-danger border border-light rounded-circle">
-                <span class="visually-hidden">Hay cambios sin guardar</span>
-              </span>
-            </button>
+            <!-- Guardar centralizado en Nivel 1 (materiales-maestro). Ver PendingChangesService. -->
             <button class="btn btn-sm btn-warning" (click)="revertChanges()" >
                 <i class="bi bi-arrow-clockwise"></i> Deshacer
             </button>
@@ -51,17 +48,31 @@ import { SucursalByMaterialProveedorService } from 'app/services/sucursalByMater
     </div>
   `,
 })
-export class DetallesSucursalesProveedorComponent implements ICellRendererAngularComp {
+export class DetallesSucursalesProveedorComponent implements ICellRendererAngularComp, OnDestroy {
   private branchsService = inject(BranchsService);
   private signalsService = inject(SignalsService);
   private sucursalByMaterialProveedorService = inject(SucursalByMaterialProveedorService);
+  private pendingChangesService = inject(PendingChangesService);
 
   public params!: ICellRendererParams;
   public providerName: string = '';
   private gridApi!: GridApi;
   private idRoot: number;
+  private saverId: string = '';
 
-  public hasChanges: boolean = false;
+  /** Cambios pendientes del Nivel 3. El setter notifica al servicio central
+   *  y sincroniza el flag al cache de `params.data` (sobrevive al desmonte). */
+  private _hasChanges: boolean = false;
+  get hasChanges(): boolean { return this._hasChanges; }
+  set hasChanges(value: boolean) {
+    this._hasChanges = value;
+    if (this.saverId) {
+      this.pendingChangesService.notifyChanges(this.saverId, value);
+    }
+    if (this.params?.data) {
+      (this.params.data as any).__pendingSucursalesDirty = value;
+    }
+  }
   public sucursalRowData: any[] = [];
   public allBranches: any[] = [];
   public originalSucursalRowData: any[] = [];
@@ -73,8 +84,13 @@ export class DetallesSucursalesProveedorComponent implements ICellRendererAngula
     rowSelection: 'single' as const,
     suppressClickEdit: false,
     stopEditingWhenCellsLoseFocus: true,
-    enableFiltering: true,
-    enableSorting: true,
+    defaultColDef: {
+      filter: false,
+      suppressHeaderFilterButton: true,
+      floatingFilter: false,
+      sortable: true,
+    },
+    onFirstDataRendered: (params: any) => runAutosizeAllColumns(params.api),
   };
 
   public sucursalColumnDefs: ColDef[] = [];
@@ -82,8 +98,47 @@ export class DetallesSucursalesProveedorComponent implements ICellRendererAngula
   agInit(params: ICellRendererParams): void {
     this.params = params;
     this.signalsService.setIdProveedor(params.data.id);
-    this.loadCatalogData();
-    this.providerName = params.data.providerName || 'N/A';
+
+    // Registro en el bus central. El callback acepta idMap para remapear `idMaterialByProveedor`
+    // cuando el proveedor padre era nuevo (tempId) y el Nivel 2 ya lo creó en BD.
+    // Cache de filas pendientes en `params.data` (sobrevive al desmonte del componente
+     // cuando AG Grid colapsa el detail row). Sin este cache, las filas no guardadas se
+     // pierden al cerrar y reabrir la cascada.
+    const cached = (params.data as any).__pendingSucursales;
+    const hasPendingChanges = !!(params.data as any).__pendingSucursalesDirty;
+
+    // Registro en el bus central. Importante: si hay cambios pendientes en caché,
+    // marcamos el saver como dirty para que el badge del Guardar único se mantenga encendido.
+    this.saverId = `sucursales-${params.data.id}-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
+    this.pendingChangesService.register(this.saverId, {
+      hasChanges: hasPendingChanges,
+      save: (idMap?: Map<string, number>) => this.saveSucursales(idMap)
+    });
+
+    if (Array.isArray(cached)) {
+      // Restaurar filas previas (incluye no guardadas con __isNew/__modified).
+      this.sucursalRowData = cached;
+      this.originalSucursalRowData = JSON.parse(JSON.stringify(cached.filter((r: any) => !r.__isNew)));
+      this._hasChanges = hasPendingChanges;
+      setTimeout(() => this.scheduleAutosize(), 0);
+    } else {
+      this.loadCatalogData();
+    }
+
+    // Obtener nombre del proveedor: primero desde providerName, sino buscar en contexto
+    let displayName = params.data.providerName || 'N/A';
+    if ((!params.data.providerName || params.data.providerName === '') && params.data.idTabla) {
+      const providers = params.context?.providers || [];
+      const filteredProviders = params.context?.filteredProviders || [];
+      const provider = filteredProviders.find((p: any) => p.id === params.data.idTabla)
+        || providers.find((p: any) => p.id === params.data.idTabla);
+
+      if (provider) {
+        displayName = provider.name || provider.description || provider.nameContact || provider.company || 'N/A';
+      }
+    }
+    this.providerName = displayName;
+
     this.idRoot = this.signalsService.getRootSelectedBySidebar()();
 
     this.loadAllBranches().then(() => {
@@ -93,7 +148,6 @@ export class DetallesSucursalesProveedorComponent implements ICellRendererAngula
           headerName: 'Sucursal',
           width: 200,
           editable: true,
-          filter: true,
 
           cellEditor: SelectWithTooltipEditorV2Component,
 
@@ -171,7 +225,6 @@ export class DetallesSucursalesProveedorComponent implements ICellRendererAngula
           headerName: 'Fecha Alta',
           width: 120,
           editable: true,
-          filter: 'agDateColumnFilter',
           cellEditor: 'agDateCellEditor',
           valueFormatter: (params) => {
             if (!params.value) return '';
@@ -181,34 +234,39 @@ export class DetallesSucursalesProveedorComponent implements ICellRendererAngula
           },
           cellStyle: { textAlign: 'center' }
         },
-        { field: 'stockMinimo', headerName: 'Stock Minimo', width: 120, editable: true, type: 'numericColumn', filter: 'agNumberColumnFilter' },
-        { field: 'resurtido', headerName: 'Resurtido', width: 120, editable: true, type: 'numericColumn', filter: 'agNumberColumnFilter' },
-        { field: 'capacidadMaxAlmacen', headerName: 'Capacidad Max. Almacen', width: 180, editable: true, type: 'numericColumn', filter: 'agNumberColumnFilter' },
+        { field: 'stockMinimo', headerName: 'Stock Minimo', width: 120, editable: true, type: 'numericColumn' },
+        { field: 'resurtido', headerName: 'Resurtido', width: 120, editable: true, type: 'numericColumn' },
+        { field: 'capacidadMaxAlmacen', headerName: 'Capacidad Max. Almacen', width: 180, editable: true, type: 'numericColumn' },
         {
           field: 'tiempoDeEntrega',
           headerName: 'Tiempo de Entrega en semanas',
           width: 150,
           editable: true,
-          type: 'numericColumn',
-          filter: 'agNumberColumnFilter',
+          cellEditor: 'agNumberCellEditor',
+          cellEditorParams: { precision: 0, min: 0 },
+          valueFormatter: (params: any) => (params.value > 0 ? String(params.value) : ''),
           valueSetter: (params: any) => {
-            params.data.tiempoDeEntrega = params.newValue;
+            const n = parseInt(String(params.newValue));
+            params.data.tiempoDeEntrega = isNaN(n) || n < 0 ? 0 : n;
             return true;
           }
         },
         {
           field: 'vigente', headerName: 'Activo', width: 100, editable: true,
           cellRenderer: 'agCheckboxCellRenderer', cellEditor: 'agCheckboxCellEditor',
-          filter: true
         },
         // Columna 8 (oculta o para datos internos)
         { field: 'id', headerName: 'ID', width: 80, hide: true }
       ];
 
-      // Usar los datos falsos generados en el componente padre
-      //this.sucursalRowData = params.data.sucursalDetailData || [];
-      //this.originalSucursalRowData = JSON.parse(JSON.stringify(this.sucursalRowData)); // Guardar copia original
+      // Columnas asíncronas: onFirstDataRendered puede haber corrido sin defs; repetir autosize al estar listas.
+      setTimeout(() => this.scheduleAutosize(), 0);
     });
+  }
+
+  private scheduleAutosize(): void {
+    if (!this.gridApi) return;
+    runAutosizeAllColumns(this.gridApi);
   }
 
   async loadAllBranches() {
@@ -217,8 +275,30 @@ export class DetallesSucursalesProveedorComponent implements ICellRendererAngula
     }
   }
 
+  /** True si el proveedor padre todavía es nuevo (id temporal). */
+  private isTempProveedorId(idProveedor: any): boolean {
+    return typeof idProveedor === 'string' && String(idProveedor).startsWith('temp_');
+  }
+
+  /** Persiste las filas en `params.data` para que sobrevivan al desmonte del componente
+   *  (cuando AG Grid colapsa el detail row). Sin esto, las filas no guardadas se pierden. */
+  private syncCacheToParams(): void {
+    if (!this.params?.data) return;
+    (this.params.data as any).__pendingSucursales = this.sucursalRowData;
+    (this.params.data as any).__pendingSucursalesDirty = this._hasChanges;
+  }
+
   loadCatalogData() {
     const idProveedor = this.signalsService.getIdProveedor();
+    // Si el proveedor padre aún no fue guardado en BD (id temporal), no hay datos que cargar;
+    // el usuario agrega sucursales en memoria y se persistirán cuando el Guardar centralizado
+    // primero cree el proveedor y luego propague el ID real vía idMap.
+    if (this.isTempProveedorId(idProveedor)) {
+      this.sucursalRowData = [];
+      this.originalSucursalRowData = [];
+      setTimeout(() => this.scheduleAutosize(), 0);
+      return;
+    }
     this.sucursalByMaterialProveedorService.getSucursalByMaterial(idProveedor).subscribe(
       (data: any) => {
         this.sucursalRowData = data.map((row: any) => ({
@@ -226,6 +306,8 @@ export class DetallesSucursalesProveedorComponent implements ICellRendererAngula
           fechaAlta: row.fechaAlta ? new Date(row.fechaAlta) : null
         }));
         this.originalSucursalRowData = JSON.parse(JSON.stringify(this.sucursalRowData));
+        this.syncCacheToParams();
+        setTimeout(() => this.scheduleAutosize(), 0);
       },
       (error) => console.error('Error fetching data:', error)
     );
@@ -235,14 +317,21 @@ export class DetallesSucursalesProveedorComponent implements ICellRendererAngula
     return false;
   }
 
+  ngOnDestroy(): void {
+    if (this.saverId) {
+      this.pendingChangesService.unregister(this.saverId);
+    }
+  }
+
   onGridReady(params: GridReadyEvent) {
     this.gridApi = params.api;
-    params.api.sizeColumnsToFit();
+    setTimeout(() => this.scheduleAutosize(), 0);
   }
 
   onCellValueChanged(event: any) {
     event.data.__modified = true;
     this.hasChanges = true;
+    this.syncCacheToParams();
   }
 
   onSelectionChanged(event: any) {
@@ -270,7 +359,9 @@ export class DetallesSucursalesProveedorComponent implements ICellRendererAngula
     };
     this.sucursalRowData = [newRow, ...this.sucursalRowData];
     this.hasChanges = true;
+    this.syncCacheToParams();
     setTimeout(() => {
+      this.scheduleAutosize();
       this.gridApi.startEditingCell({ rowIndex: 0, colKey: 'idSucursal' });
     }, 100);
   }
@@ -283,11 +374,49 @@ export class DetallesSucursalesProveedorComponent implements ICellRendererAngula
     this.sucursalRowData = JSON.parse(JSON.stringify(this.originalSucursalRowData));
     this.gridApi.setGridOption('rowData', this.sucursalRowData);
     this.hasChanges = false;
+    // Limpiar cache: ya no hay cambios pendientes.
+    if (this.params?.data) {
+      delete (this.params.data as any).__pendingSucursales;
+      delete (this.params.data as any).__pendingSucursalesDirty;
+    }
     this.loadCatalogData();
     this.selectedSucursal = null;
   }
 
-  async saveSucursales() {
+  async saveSucursales(idMap?: Map<string, number>) {
+    // Remapeo de tempProveedorId → realProveedorId. CRÍTICO: el remap de cada fila se hace
+    // SIEMPRE que `idMaterialByProveedor` sea string temporal y esté en el mapa, sin importar
+    // el estado de `this.params.data.id` (que pudo mutarse externamente al guardar Nivel 2).
+    if (idMap && this.sucursalRowData.length > 0) {
+      this.sucursalRowData.forEach((row: any) => {
+        const ref = row.idMaterialByProveedor;
+        if (ref != null && typeof ref === 'string' && ref.startsWith('temp_')) {
+          const realId = idMap.get(ref);
+          if (realId) row.idMaterialByProveedor = realId;
+        }
+      });
+    }
+
+    // Sanity check: ninguna fila a guardar debe tener idMaterialByProveedor temporal.
+    const rowsWithTempFk = this.sucursalRowData.filter(
+      (row: any) => (row.__isNew || row.__modified) && typeof row.idMaterialByProveedor === 'string' && String(row.idMaterialByProveedor).startsWith('temp_')
+    );
+    if (rowsWithTempFk.length > 0) {
+      console.error('[saveSucursales] ABORTADO: filas con idMaterialByProveedor temporal:', rowsWithTempFk, 'idMap:', idMap);
+      alerts.basicAlert(
+        'Error de sincronización',
+        'No se pudo vincular el proveedor recién creado con las sucursales. Recarga la página.',
+        'error'
+      );
+      return;
+    }
+
+    console.log('[saveSucursales] inicio. idMap:', idMap ? Array.from(idMap.entries()) : 'undefined',
+      'sucursalRowData FK:', this.sucursalRowData.map(r => ({ id: r.id, idMaterialByProveedor: r.idMaterialByProveedor, __isNew: r.__isNew })));
+
+    // Cuando se invoca desde el Guardar centralizado sin cambios reales, salir silencioso.
+    if (!this.hasChanges && idMap) return;
+
     // Aquí iría la lógica para guardar en el servidor
     /*const isValid = this.sucursalRowData.every(
                 (item) =>
@@ -309,6 +438,7 @@ export class DetallesSucursalesProveedorComponent implements ICellRendererAngula
 
     const addObservables = newRows.map((row) => {
       const cleanedData = this.cleanDataForServer(row);
+      console.log('[saveSucursales] POST SucursalByMaterialProveedor payload:', cleanedData);
       return this.sucursalByMaterialProveedorService.addSucursalByMaterial(cleanedData);
     });
 
@@ -337,6 +467,11 @@ export class DetallesSucursalesProveedorComponent implements ICellRendererAngula
         'success'
       );
       this.hasChanges = false;
+      // Limpiar cache: los datos ya están persistidos en BD.
+      if (this.params?.data) {
+        delete (this.params.data as any).__pendingSucursales;
+        delete (this.params.data as any).__pendingSucursalesDirty;
+      }
       this.loadCatalogData();
 
       // Notificar al componente de proveedores para que quite el color rosa
@@ -354,8 +489,12 @@ export class DetallesSucursalesProveedorComponent implements ICellRendererAngula
         }
         this.lastEditedRowId = null; // Resetear el ID
       }*/
-    } catch (error) {
+    } catch (error: any) {
       console.error(error);
+      console.error('[saveSucursales] backend error body:', error?.error);
+      if (error?.error?.errors) {
+        console.error('[saveSucursales] validation errors:', JSON.stringify(error.error.errors, null, 2));
+      }
       alerts.basicAlert(
         'Error',
         'Ocurrió un error al actualizar los datos. Por favor, intente nuevamente.',

@@ -1,28 +1,37 @@
-<div class="col-12 mt-3 light-blue-background">
-  <div class="row mt-1">
-    <!-- Columna de botones -->
-    <div class="col-auto">
-      <div class="d-flex flex-column gap-1">
-        <button type="button" class="btn btn-primary ms-1 me-1" (click)="addDetailRow()" *ngIf="authService.getCrudPermissionDetail('hr', 'clock','MaeChe_Ajus', 'create')" >
-          <i class="bi bi-plus-lg"></i>
-        </button>
-        <button type="button" class="btn btn-success ms-1 me-1 position-relative" (click)="saveDetailChanges()" *ngIf="authService.getCrudPermissionDetail('hr', 'clock','MaeChe_Ajus', 'create') || authService.getCrudPermissionDetail('hr', 'clock','MaeChe_Ajus', 'update')" >
-          <i class="bi bi-floppy"></i>
-          <span
-            class="position-absolute top-0 start-100 translate-middle p-2 bg-danger border border-light rounded-circle"
-            *ngIf="notSavedChanges">
-            <span class="visually-hidden">Hay cambios sin guardar</span>
-          </span> 
-        </button>
-        <button type="button" class="btn btn-warning ms-1 me-1" (click)="revertDetailData()">
-          <i class="bi bi-arrow-clockwise"></i>
-        </button>
-        <button type="button" class="btn btn-info ms-1 me-1" data-bs-toggle="modal" data-bs-target="#addJustificanteModal" *ngIf="authService.getCrudPermissionDetail('hr', 'clock','MaeChe_Fes', 'read')">
-          <i class="bi bi-cake"></i>
-        </button>
+<!-- Toast de validación de patrón -->
+<div class="toast-container position-fixed top-0 end-0 p-3" style="z-index: 1100">
+  <div id="clockPatternToast" class="toast align-items-center text-bg-warning border-0" role="alert" aria-live="assertive" aria-atomic="true">
+    <div class="d-flex">
+      <div class="toast-body fw-semibold">
+        <i class="bi bi-exclamation-triangle-fill me-1"></i>{{ toastMessage }}
       </div>
+      <button type="button" class="btn-close me-2 m-auto" data-bs-dismiss="toast" aria-label="Cerrar"></button>
     </div>
+  </div>
+</div>
 
+<div class="col-12 mt-3 light-blue-background">
+  <!-- Botonera arriba a la derecha -->
+  <div class="d-flex justify-content-end gap-1 mb-1">
+    <button type="button" class="btn btn-primary btn-sm" (click)="addDetailRow()" *ngIf="authService.getCrudPermissionDetail('hr', 'clock','MaeChe_Ajus', 'create')">
+      <i class="bi bi-plus-lg"></i>
+    </button>
+    <button type="button" class="btn btn-success btn-sm position-relative" (click)="saveDetailChanges()" *ngIf="authService.getCrudPermissionDetail('hr', 'clock','MaeChe_Ajus', 'create') || authService.getCrudPermissionDetail('hr', 'clock','MaeChe_Ajus', 'update')">
+      <i class="bi bi-floppy"></i>
+      <span class="position-absolute top-0 start-100 translate-middle p-2 bg-danger border border-light rounded-circle"
+            *ngIf="notSavedChanges">
+        <span class="visually-hidden">Hay cambios sin guardar</span>
+      </span>
+    </button>
+    <button type="button" class="btn btn-warning btn-sm" (click)="revertDetailData()">
+      <i class="bi bi-arrow-clockwise"></i>
+    </button>
+    <button type="button" class="btn btn-info btn-sm" data-bs-toggle="modal" data-bs-target="#addJustificanteModal" *ngIf="authService.getCrudPermissionDetail('hr', 'clock','MaeChe_Fes', 'read')">
+      <i class="bi bi-cake"></i>
+    </button>
+  </div>
+
+  <div class="row mt-1">
     <!-- Columna de la tabla -->
     <div class="col">
       <ag-grid-angular style="width: 100%" [ngStyle]="{ height: gridHeight }" class="ag-theme-quartz small-text-ag-grid"

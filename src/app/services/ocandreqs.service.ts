@@ -96,6 +96,10 @@ export class OcAndReqsService {
     return this.http.patch(`${environment.urlWarehouse}/Ocandreq/${id}/lock`, { locked }, { headers: this.trackingService.getHeaders() });
   }
 
+  shouldLockRequisicion(id: number): Observable<{ shouldLock: boolean }> {
+    return this.http.get<{ shouldLock: boolean }>(`${environment.urlWarehouse}/Ocandreq/${id}/should-lock`, { headers: this.trackingService.getHeaders() });
+  }
+
   setCountItem(id: number, countItem: number): Observable<any> {
     return this.http.patch(`${environment.urlWarehouse}/Ocandreq/${id}/countitem`, { countItem }, { headers: this.trackingService.getHeaders() });
   }
@@ -138,6 +142,22 @@ export class OcAndReqsService {
     );
   }
 
+  patchDatePostponeConfirmada(id: number, value: boolean): Observable<any> {
+    return this.http.patch(
+      `${environment.urlWarehouse}/Detailsreqoc/${id}/datepostpone-confirmada`,
+      JSON.stringify(value),
+      { headers: this.trackingService.getHeaders() }
+    );
+  }
+
+  patchTotalPedimento(id: number, totalPedimento: number): Observable<any> {
+    return this.http.patch(
+      `${environment.urlWarehouse}/Ocandreq/${id}/total-pedimento`,
+      { totalPedimento: totalPedimento },
+      { headers: this.trackingService.getHeaders() }
+    );
+  }
+
   getOcsByReqMaterial(idReq: number, idMaterial: number, depts?: string): Observable<any[]> {
     const deptsParam = depts ? `&depts=${encodeURIComponent(depts)}` : '';
     return this.http.get<any[]>(
@@ -158,6 +178,14 @@ export class OcAndReqsService {
   patchProveedorXTablaCampo7(campo1: number, idTabla: number, valor: boolean): Observable<any> {
     return this.http.patch(
       `${environment.urlWarehouse}/ProveedorXTabla/campo7/by-material-provider/${campo1}/${idTabla}`,
+      JSON.stringify(valor),
+      { headers: this.trackingService.getHeaders() }
+    );
+  }
+
+  patchProveedorXTablaPrincipal(campo1: number, idTabla: number, valor: boolean): Observable<any> {
+    return this.http.patch(
+      `${environment.urlWarehouse}/ProveedorXTabla/principal/by-material-provider/${campo1}/${idTabla}`,
       JSON.stringify(valor),
       { headers: this.trackingService.getHeaders() }
     );
@@ -185,9 +213,23 @@ export class OcAndReqsService {
     );
   }
 
+  getOcsDetailsForRequisition(idRequisition: number): Observable<any[]> {
+    return this.http.get<any[]>(
+      `${environment.urlWarehouse}/Ocandreq/ocs-details-by-requisition?idRequisition=${idRequisition}`,
+      { headers: this.trackingService.getHeaders() }
+    );
+  }
+
   getPedimentosByRequisicion(idRequisicion: number): Observable<any[]> {
     return this.http.get<any[]>(
-      `${environment.urlWarehouse}/Ocandreq?typeReference=requisition&idReference=${idRequisicion}&type=COTIZ`,
+      `${environment.urlWarehouse}/Ocandreq/pedimentos-by-requisicion?idRequisicion=${idRequisicion}`,
+      { headers: this.trackingService.getHeaders() }
+    );
+  }
+
+  getOcsByBranch(idBranch: number): Observable<any[]> {
+    return this.http.get<any[]>(
+      `${environment.urlWarehouse}/Ocandreq/ocs-by-branch?idBranch=${idBranch}`,
       { headers: this.trackingService.getHeaders() }
     );
   }
@@ -195,6 +237,28 @@ export class OcAndReqsService {
   getOcsByPedimento(idPedimento: number): Observable<any[]> {
     return this.http.get<any[]>(
       `${environment.urlWarehouse}/Ocandreq/ocs-by-pedimento?idPedimento=${idPedimento}`,
+      { headers: this.trackingService.getHeaders() }
+    );
+  }
+
+  getCompraRapidaItems(idBranch: number, idMaterial: number = 0): Observable<any[]> {
+    return this.http.get<any[]>(
+      `${environment.urlWarehouse}/Ocandreq/compra-rapida-items?idBranch=${idBranch}&idMaterial=${idMaterial}`,
+      { headers: this.trackingService.getHeaders() }
+    );
+  }
+
+  syncCompraRapida(idReq: number): Observable<any> {
+    return this.http.post<any>(
+      `${environment.urlWarehouse}/Ocandreq/sync-compra-rapida?idReq=${idReq}`,
+      {},
+      { headers: this.trackingService.getHeaders() }
+    );
+  }
+
+  compraRapidaHasEntradas(idItem: number): Observable<boolean> {
+    return this.http.get<boolean>(
+      `${environment.urlWarehouse}/Ocandreq/compra-rapida-has-entradas?idItem=${idItem}`,
       { headers: this.trackingService.getHeaders() }
     );
   }

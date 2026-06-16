@@ -1,0 +1,56 @@
+<div class="col-12 mt-3 light-blue-background">
+
+  <!-- Barra superior: fechas a la izquierda, botones a la derecha -->
+  <div class="row mt-1 mb-1 align-items-end ms-1" [formGroup]="selectFechas">
+    <ng-container *ngIf="mode === 'branch'">
+      <div class="col-auto">
+        <label class="form-label small mb-0">Fecha inicio</label>
+        <input type="date" class="form-control form-control-sm" formControlName="fechaInicio">
+      </div>
+      <div class="col-auto">
+        <label class="form-label small mb-0">Fecha fin</label>
+        <input type="date" class="form-control form-control-sm" formControlName="fechaFin">
+      </div>
+      <div class="col-auto align-self-end">
+        <button type="button" class="btn btn-sm btn-primary" (click)="consultar()">
+          <i class="bi bi-search"></i> Consultar
+        </button>
+      </div>
+    </ng-container>
+
+    <div class="col d-flex justify-content-end gap-1 align-items-center">
+      <!-- Guardar -->
+      <button type="button" class="btn btn-success btn-sm position-relative" (click)="saveChanges()">
+        <i class="bi bi-floppy"></i>
+        <span class="position-absolute top-0 start-100 translate-middle p-2 bg-danger border border-light rounded-circle"
+              *ngIf="notSavedChanges">
+          <span class="visually-hidden">Hay cambios sin guardar</span>
+        </span>
+      </button>
+      <!-- Deshacer -->
+      <button type="button" class="btn btn-warning btn-sm" (click)="revert()">
+        <i class="bi bi-arrow-clockwise"></i>
+      </button>
+    </div>
+  </div>
+
+  <!-- Grid -->
+  <div class="row mt-1">
+    <div class="col">
+      <ag-grid-angular
+        style="width: 100%;"
+        [ngStyle]="{'height': gridHeight}"
+        class="ag-theme-quartz small-text-ag-grid"
+        [rowData]="rowData"
+        [columnDefs]="colMaster"
+        [defaultColDef]="defaultColDef"
+        [gridOptions]="gridOptions"
+        (cellValueChanged)="onCellValueChanged($event)"
+        (gridReady)="onGridReady($event)"
+        [pagination]="false"
+        [stopEditingWhenCellsLoseFocus]="true">
+      </ag-grid-angular>
+    </div>
+  </div>
+
+</div>

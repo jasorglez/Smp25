@@ -23,7 +23,7 @@ export class SetupwarehouseComponent {
   private prefixSetupService = inject(PrefixSetupService);
 
   idCompany: number;
-  warehouseSetup: any = { projectOrBranch: null };
+  warehouseSetup: any = { projectOrBranch: false };
   newData: boolean = false;
 
   // Propiedades para listas
@@ -43,17 +43,44 @@ export class SetupwarehouseComponent {
   consecutiveCotiz: number = 0;
   prefixOc: string = '';
   consecutiveOc: number = 0;
+  prefixOcProveedor: string = '';
+  consecutiveOcProveedor: number = 0;
+  prefixCompraInmediata: string = '';
+  consecutiveCompraInmediata: number = 0;
+  prefixTraspaso: string = '';
+  consecutiveTraspaso: number = 0;
+  // Identificador Entregas: solo prefijo de texto (tarjeta en la pestaña Órdenes de Compra)
+  prefixEntrega: string = '';
+
+  // iva se enlaza directamente en warehouseSetup.iva (cargado y guardado con getData/saveData)
+
+  selectedBranch: number | null = null;
+  get branchIsValid(): boolean {
+    return this.selectedBranch !== null && this.selectedBranch > 0;
+  }
+
+  get selectedBranchName(): string {
+    const branch = this.branches.find(b => b.id == this.selectedBranch);
+    return branch ? (branch.name || branch.description || '') : '';
+  }
 
   ngOnInit() {
     this.idCompany = this.signalsService.getRootSelectedBySidebar()();
-    this.getData();
   }
 
   constructor() {
     effect(() => {
       this.idCompany = this.signalsService.getRootSelectedBySidebar()();
-      this.getData();
       this.loadBranches();
+    });
+
+    // La sucursal proviene del selector del sidebar; al cambiar se carga el setup + prefijos de esa sucursal
+    effect(() => {
+      const branchId = this.signalsService.getBranchSelectedBySidebar()();
+      this.selectedBranch = branchId;
+      this.selectedBranchOrProject = branchId;
+      this.getData();
+      this.onBranchOrProjectSelection();
     });
 
     // Observar cambios en el contrato seleccionado
@@ -70,13 +97,22 @@ export class SetupwarehouseComponent {
   }
 
   getData() {
-    this.setupService.getWarehouseSetup(this.idCompany).subscribe({
+    // Si no hay sucursal seleccionada, no cargar nada
+    if (!this.selectedBranch || this.selectedBranch <= 0) {
+      this.warehouseSetup = { projectOrBranch: false };
+      this.newData = true;
+      return;
+    }
+
+    this.setupService.getWarehouseSetupByBranch(this.selectedBranch).subscribe({
       next: (data: any) => {
-        this.warehouseSetup = data[0];
+        this.warehouseSetup = data || {};
+        this.warehouseSetup.projectOrBranch = false;
+        this.newData = false;
       },
       error: (err) => {
         if (err.status === 404) {
-          this.warehouseSetup = {};
+          this.warehouseSetup = { projectOrBranch: false };
           this.newData = true;
         } else {
           console.error(err);
@@ -86,10 +122,26 @@ export class SetupwarehouseComponent {
   }
 
   saveData() {
-    // Primero guardar la configuración general de warehouse
+    if (!this.selectedBranch || this.selectedBranch <= 0) {
+      alerts.basicAlert("Atención", "Selecciona una sucursal en el menú lateral", "warning");
+      return;
+    }
+
+    // El prefijo de Pedimentos es obligatorio: se usa al generar OCs (ej. OC-BOD-PE1-GON1429)
+    if (!this.prefixCotiz?.trim()) {
+      alerts.basicAlert("Atención", "El prefijo de Pedimentos es obligatorio", "warning");
+      return;
+    }
+
+    // NOTA: las validaciones de "prefijo de Órdenes de Compra" e "iniciales del proveedor"
+    // se trasladaron a la pestaña Órdenes de Compra (configSubPage.saveOc), ya que esas
+    // tarjetas ahora se editan y guardan desde ahí. La lógica de PrefixSetup (savePrefixData)
+    // se mantiene igual y sigue siendo dueña del registro.
+
     const saveGeneralConfig = () => {
       if (this.newData) {
         this.warehouseSetup.idCompany = this.idCompany;
+        this.warehouseSetup.idBranch = this.selectedBranch;
         this.setupService.addWarehouseSetup(this.warehouseSetup).subscribe({
           next: () => {
             this.getData();
@@ -101,7 +153,7 @@ export class SetupwarehouseComponent {
           }
         });
       } else {
-        this.setupService.updateWarehouseSetup(this.idCompany, this.warehouseSetup).subscribe({
+        this.setupService.updateWarehouseSetupByBranch(this.selectedBranch, this.warehouseSetup).subscribe({
           next: () => {
             this.getData();
             this.savePrefixData();
@@ -134,6 +186,13 @@ export class SetupwarehouseComponent {
       consecutiveCotiz: this.consecutiveCotiz || 0,
       prefixOc: this.prefixOc || null,
       consecutiveOc: this.consecutiveOc || 0,
+      prefixOcProveedor: this.prefixOcProveedor || null,
+      consecutiveOcProveedor: this.consecutiveOcProveedor || 0,
+      prefixCompraInmediata: this.prefixCompraInmediata || null,
+      consecutiveCompraInmediata: this.consecutiveCompraInmediata || 0,
+      prefixTraspaso: this.prefixTraspaso || null,
+      consecutiveTraspaso: this.consecutiveTraspaso || 0,
+      prefixEntrega: this.prefixEntrega || null,
       active: true
     };
 
@@ -202,6 +261,14 @@ export class SetupwarehouseComponent {
         this.consecutiveCotiz = data.consecutiveCotiz || 0;
         this.prefixOc = data.prefixOc || '';
         this.consecutiveOc = data.consecutiveOc || 0;
+        this.prefixOcProveedor = data.prefixOcProveedor || '';
+        // Iniciales del proveedor en OC: si no está configurado, usar 3 (comportamiento histórico)
+        this.consecutiveOcProveedor = data.consecutiveOcProveedor || 3;
+        this.prefixCompraInmediata = data.prefixCompraInmediata || '';
+        this.consecutiveCompraInmediata = data.consecutiveCompraInmediata || 0;
+        this.prefixTraspaso = data.prefixTraspaso || '';
+        this.consecutiveTraspaso = data.consecutiveTraspaso || 0;
+        this.prefixEntrega = data.prefixEntrega || '';
         this.hasPrefixData = true;
       },
       error: (err) => {
@@ -219,6 +286,14 @@ export class SetupwarehouseComponent {
     this.consecutiveCotiz = 0;
     this.prefixOc = '';
     this.consecutiveOc = 0;
+    this.prefixOcProveedor = '';
+    // Default a 3 iniciales (comportamiento histórico hardcoded)
+    this.consecutiveOcProveedor = 3;
+    this.prefixCompraInmediata = '';
+    this.consecutiveCompraInmediata = 0;
+    this.prefixTraspaso = '';
+    this.consecutiveTraspaso = 0;
+    this.prefixEntrega = '';
     this.hasPrefixData = false;
   }
 

@@ -1,0 +1,313 @@
+<div class="gastos-page">
+
+  <!-- Barra de pestañas (estilo imagen 9) -->
+  <ul class="gastos-tabs">
+    <li [class.active]="activeTab === 'captura'" (click)="setTab('captura')">📋 Captura</li>
+    <li [class.active]="activeTab === 'historico'" (click)="setTab('historico')">🧾 Histórico de Pagos</li>
+    <li [class.active]="activeTab === 'reporte'" (click)="setTab('reporte')">📊 Reporte Gerencial</li>
+  </ul>
+
+  <!-- ════════════════ PESTAÑA: CAPTURA ════════════════ -->
+  <div class="tab-pane captura" *ngIf="activeTab === 'captura'">
+    <div class="captura-header">
+      <div class="title-block">
+        <h4><i class="bi bi-receipt"></i> Captura de Gastos</h4>
+        <span class="caption">Entradas cerradas en almacén, pendientes de pago</span>
+      </div>
+      <div class="d-flex gap-2 align-items-center">
+        <button type="button" class="btn btn-sm btn-primary position-relative"
+                (click)="saveCaptura()" [disabled]="!hasUnsavedCaptura" title="Guardar cambios sin concluir el pago">
+          <i class="bi bi-floppy"></i> Guardar
+          <span *ngIf="hasUnsavedCaptura"
+                class="position-absolute top-0 start-100 translate-middle p-2 bg-danger border border-light rounded-circle"
+                style="width:10px;height:10px;padding:0 !important;"></span>
+        </button>
+        <button type="button" class="btn btn-sm btn-outline-secondary" (click)="loadPending()" title="Refrescar">
+          <i class="bi bi-arrow-clockwise"></i>
+        </button>
+      </div>
+    </div>
+
+    <div class="state-block" *ngIf="capturaLoading">
+      <div class="spinner-border text-success" role="status"></div>
+      <p>Cargando pendientes…</p>
+    </div>
+
+    <div class="state-block error" *ngIf="!capturaLoading && capturaError">
+      <i class="bi bi-exclamation-triangle"></i>
+      <p>{{ capturaError }}</p>
+    </div>
+
+    <div class="state-block empty" *ngIf="!capturaLoading && !capturaError && capturaRows.length === 0">
+      <i class="bi bi-inbox"></i>
+      <p>No hay entradas pendientes de pago.</p>
+    </div>
+
+    <!-- Leyenda de colores: Anticipo / Crédito / Contado -->
+    <div class="d-flex gap-3 mb-2 align-items-center flex-wrap"
+         *ngIf="!capturaLoading && !capturaError && capturaRows.length > 0">
+      <div class="d-flex align-items-center gap-1">
+        <div style="width:14px; height:14px; border-radius:3px; background:#90CAF9; border:1px solid #1976d2; flex-shrink:0;"></div>
+        <span style="font-size:11px; color:#555;">ANTICIPO</span>
+      </div>
+      <div class="d-flex align-items-center gap-1">
+        <div style="width:14px; height:14px; border-radius:3px; background:#FFCC80; border:1px solid #ef6c00; flex-shrink:0;"></div>
+        <span style="font-size:11px; color:#555;">CRÉDITO</span>
+      </div>
+      <div class="d-flex align-items-center gap-1">
+        <div style="width:14px; height:14px; border-radius:3px; background:#A5D6A7; border:1px solid #2e7d32; flex-shrink:0;"></div>
+        <span style="font-size:11px; color:#555;">SIN ANTICIPO NI CRÉDITO</span>
+      </div>
+    </div>
+
+    <ag-grid-angular
+      *ngIf="!capturaLoading && capturaRows.length > 0"
+      class="ag-theme-quartz captura-grid"
+      [rowData]="capturaRows"
+      [columnDefs]="capturaColDefs"
+      [gridOptions]="capturaGridOptions"
+      (gridReady)="onCapturaGridReady($event)">
+    </ag-grid-angular>
+
+  </div>
+
+  <!-- ════════════════ PESTAÑA: HISTÓRICO DE PAGOS ════════════════ -->
+  <div class="tab-pane historico" *ngIf="activeTab === 'historico'">
+
+    <!-- Command bar -->
+    <div class="hist-cmdbar">
+      <div class="hist-search">
+        <i class="bi bi-search"></i>
+        <input type="text" [(ngModel)]="histSearch" placeholder="Buscar en todo (folio, artículo, proveedor, nota…)" />
+        <i class="bi bi-x-circle clear" *ngIf="histSearch" (click)="histSearch=''"></i>
+      </div>
+
+      <div class="hist-filters">
+        <div class="btn-group period-toggle" role="group">
+          <button type="button" class="btn btn-sm" [class.active]="histPeriod==='HOY'" (click)="setHistPeriod('HOY')">Hoy</button>
+          <button type="button" class="btn btn-sm" [class.active]="histPeriod==='SEMANA'" (click)="setHistPeriod('SEMANA')">Semana</button>
+          <button type="button" class="btn btn-sm" [class.active]="histPeriod==='MES'" (click)="setHistPeriod('MES')">Mes</button>
+        </div>
+        <div class="date-range">
+          <input type="date" class="form-control form-control-sm" [(ngModel)]="histStart" (change)="onHistRangeChange()" />
+          <span>→</span>
+          <input type="date" class="form-control form-control-sm" [(ngModel)]="histEnd" (change)="onHistRangeChange()" />
+        </div>
+        <select class="form-select form-select-sm" [(ngModel)]="histProveedor" (change)="applyHistFilters()">
+          <option value="">Proveedor: Todos</option>
+          <option *ngFor="let p of histProveedores" [value]="p">{{ p }}</option>
+        </select>
+        <select class="form-select form-select-sm" [(ngModel)]="histSucursal" (change)="applyHistFilters()">
+          <option value="">Sucursal: Todas</option>
+          <option *ngFor="let s of histSucursales" [value]="s">{{ s }}</option>
+        </select>
+      </div>
+
+      <!-- Chips activos -->
+      <div class="hist-chips" *ngIf="histSearch || histStart || histEnd || histProveedor || histSucursal">
+        <span class="chip" *ngIf="histSearch">"{{ histSearch }}" <i class="bi bi-x" (click)="histSearch=''"></i></span>
+        <span class="chip" *ngIf="histStart || histEnd">{{ histStart || '…' }} → {{ histEnd || '…' }} <i class="bi bi-x" (click)="histPeriod='';histStart='';histEnd='';applyHistFilters()"></i></span>
+        <span class="chip" *ngIf="histProveedor">{{ histProveedor }} <i class="bi bi-x" (click)="histProveedor='';applyHistFilters()"></i></span>
+        <span class="chip" *ngIf="histSucursal">{{ histSucursal }} <i class="bi bi-x" (click)="histSucursal='';applyHistFilters()"></i></span>
+        <button class="btn btn-sm btn-link clear-all" (click)="clearHistFilters()">Limpiar todo</button>
+      </div>
+
+      <!-- Resultados + total + export -->
+      <div class="hist-summary">
+        <span class="res">Resultados: <strong>{{ histCount }}</strong></span>
+        <span class="tot">💰 Total pagado (filtrado): <strong>{{ money(histTotal) }}</strong></span>
+        <button type="button" class="btn btn-sm btn-outline-success" (click)="exportHistExcel()"><i class="bi bi-file-earmark-excel"></i> Excel</button>
+      </div>
+    </div>
+
+    <div class="state-block" *ngIf="histLoading">
+      <div class="spinner-border text-success" role="status"></div>
+      <p>Cargando histórico…</p>
+    </div>
+    <div class="state-block error" *ngIf="!histLoading && histError"><i class="bi bi-exclamation-triangle"></i><p>{{ histError }}</p></div>
+    <div class="state-block empty" *ngIf="!histLoading && !histError && historicoRows.length === 0"><i class="bi bi-inbox"></i><p>Aún no hay pagos registrados.</p></div>
+
+    <ag-grid-angular
+      *ngIf="!histLoading && historicoRows.length > 0"
+      class="ag-theme-quartz hist-grid"
+      [rowData]="historicoRows"
+      [columnDefs]="historicoColDefs"
+      [gridOptions]="historicoGridOptions"
+      [quickFilterText]="histSearch"
+      (gridReady)="onHistGridReady($event)">
+    </ag-grid-angular>
+  </div>
+
+  <!-- ════════════════ PESTAÑA: REPORTE GERENCIAL ════════════════ -->
+  <div class="tab-pane reporte gastos-report" *ngIf="activeTab === 'reporte'">
+
+    <!-- Encabezado + filtros -->
+    <div class="report-header">
+      <div class="title-block">
+        <h4><i class="bi bi-graph-up-arrow"></i> Reporte Gerencial de Gastos</h4>
+        <span class="period-caption">{{ periodLabel }}</span>
+      </div>
+
+      <div class="controls">
+        <div class="btn-group lens-toggle" role="group">
+          <button type="button" class="btn btn-sm" [class.active]="lens === 'PAGADO'" (click)="setLens('PAGADO')">
+            <i class="bi bi-cash-stack"></i> Pagado
+          </button>
+          <button type="button" class="btn btn-sm" [class.active]="lens === 'COMPROMETIDO'" (click)="setLens('COMPROMETIDO')">
+            <i class="bi bi-file-earmark-text"></i> Comprometido
+          </button>
+        </div>
+
+        <div class="btn-group period-toggle" role="group">
+          <button type="button" class="btn btn-sm" [class.active]="period === 'HOY'" (click)="setPeriod('HOY')">Hoy</button>
+          <button type="button" class="btn btn-sm" [class.active]="period === 'SEMANA'" (click)="setPeriod('SEMANA')">Semana</button>
+          <button type="button" class="btn btn-sm" [class.active]="period === 'MES'" (click)="setPeriod('MES')">Mes</button>
+        </div>
+
+        <div class="date-range">
+          <input type="date" class="form-control form-control-sm" [(ngModel)]="startDate" (change)="onCustomDateChange()" />
+          <span>→</span>
+          <input type="date" class="form-control form-control-sm" [(ngModel)]="endDate" (change)="onCustomDateChange()" />
+        </div>
+
+        <button type="button" class="btn btn-sm btn-outline-secondary" (click)="loadReport()" title="Refrescar">
+          <i class="bi bi-arrow-clockwise"></i>
+        </button>
+      </div>
+    </div>
+
+    <!-- KPIs -->
+    <div class="kpi-row" *ngIf="!loading && report">
+      <div class="kpi-card total">
+        <span class="kpi-label">Total {{ lens === 'PAGADO' ? 'pagado' : 'comprometido' }}</span>
+        <span class="kpi-value">{{ money(grandTotal) }}</span>
+      </div>
+      <div class="kpi-card">
+        <span class="kpi-label">Transacciones</span>
+        <span class="kpi-value">{{ totalTransacciones }}</span>
+      </div>
+      <div class="kpi-card">
+        <span class="kpi-label">Top departamento</span>
+        <span class="kpi-value sm">{{ topDepartment?.name || '—' }}</span>
+        <span class="kpi-sub" *ngIf="topDepartment">{{ money(topDepartment.total) }}</span>
+      </div>
+      <div class="kpi-card">
+        <span class="kpi-label">Top sucursal</span>
+        <span class="kpi-value sm">{{ topBranch?.name || '—' }}</span>
+        <span class="kpi-sub" *ngIf="topBranch">{{ money(topBranch.total) }}</span>
+      </div>
+    </div>
+
+    <div class="state-block" *ngIf="loading">
+      <div class="spinner-border text-success" role="status"></div>
+      <p>Cargando reporte…</p>
+    </div>
+
+    <div class="state-block error" *ngIf="!loading && errorMsg">
+      <i class="bi bi-exclamation-triangle"></i>
+      <p>{{ errorMsg }}</p>
+    </div>
+
+    <div class="state-block empty" *ngIf="!loading && !errorMsg && report && branches.length === 0">
+      <i class="bi bi-inbox"></i>
+      <p>Sin gastos en el periodo seleccionado.</p>
+    </div>
+
+    <!-- Matriz pivote Sucursal × Departamento -->
+    <div class="matrix-wrap" *ngIf="!loading && branches.length > 0">
+      <table class="pivot-table">
+        <thead>
+          <tr>
+            <th class="corner">Sucursal \ Departamento</th>
+            <th *ngFor="let d of departments" class="dept-head" [title]="d.name">{{ d.name }}</th>
+            <th class="row-total-head">Total</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr *ngFor="let b of branches">
+            <th class="branch-head" [title]="b.name">{{ b.name }}</th>
+            <td *ngFor="let d of departments"
+                class="cell"
+                [style.background]="cellBg(b.id, d.id)"
+                [class.zero]="cellValue(b.id, d.id) === 0"
+                [title]="cell(b.id, d.id) ? (cell(b.id, d.id)?.numTransacciones + ' transacción(es)') : 'Sin movimiento'">
+              <ng-container *ngIf="cellValue(b.id, d.id) > 0">{{ money(cellValue(b.id, d.id)) }}</ng-container>
+              <span *ngIf="cellValue(b.id, d.id) === 0" class="dash">—</span>
+            </td>
+            <td class="row-total">{{ money(b.total) }}</td>
+          </tr>
+        </tbody>
+        <tfoot>
+          <tr>
+            <th class="corner">Total</th>
+            <td *ngFor="let d of departments" class="col-total">{{ money(d.total) }}</td>
+            <td class="grand-total">{{ money(grandTotal) }}</td>
+          </tr>
+        </tfoot>
+      </table>
+    </div>
+
+  </div>
+
+</div>
+
+<!-- ── Modal: aplicación de anticipo (FIFO vs Prorrateo) ───────────────────── -->
+<div class="ant-modal-backdrop" *ngIf="showAnticipoModal && anticipoRow" (click)="cancelAnticipoModal()">
+  <div class="ant-modal" (click)="$event.stopPropagation()">
+    <div class="ant-modal-header">
+      <span>Aplicar anticipo a la entrega</span>
+      <button type="button" class="ant-close" (click)="cancelAnticipoModal()">✕</button>
+    </div>
+
+    <div class="ant-modal-sub">
+      <div><strong>{{ anticipoRow.articulo }}</strong> — {{ anticipoRow.folio }}</div>
+      <div class="ant-chips">
+        <span class="ant-chip">Total entrega: <b>{{ money(anticipoGross) }}</b></span>
+        <span class="ant-chip">Anticipo OC: <b>{{ money(anticipoMontoTotal) }}</b></span>
+        <span class="ant-chip ant-chip-saldo">Saldo disponible: <b>{{ money(anticipoSaldoActual) }}</b></span>
+      </div>
+      <p class="ant-hint">Elige cómo aplicar el anticipo. El método queda fijo para las siguientes entregas de esta OC.</p>
+    </div>
+
+    <div class="ant-options">
+      <!-- FIFO -->
+      <label class="ant-option" [class.ant-selected]="anticipoMetodo==='FIFO'">
+        <div class="ant-option-head">
+          <input type="radio" name="antMetodo" value="FIFO" [(ngModel)]="anticipoMetodo">
+          <span class="ant-option-title">FIFO (consumir primero)</span>
+        </div>
+        <div class="ant-option-body">
+          <p>El anticipo cubre por completo las primeras entregas hasta agotarse.</p>
+          <div class="ant-row"><span>Se aplica a esta entrega:</span><b class="ant-aplica">{{ money(anticipoFifoAplicado) }}</b></div>
+          <div class="ant-row"><span>Pagas ahora:</span><b class="ant-neto">{{ money(anticipoFifoNeto) }}</b></div>
+          <div class="ant-row ant-muted"><span>Saldo de anticipo restante:</span><b>{{ money(anticipoFifoSaldoRestante) }}</b></div>
+        </div>
+      </label>
+
+      <!-- PRORRATEO -->
+      <label class="ant-option" [class.ant-selected]="anticipoMetodo==='PRORRATEO'">
+        <div class="ant-option-head">
+          <input type="radio" name="antMetodo" value="PRORRATEO" [(ngModel)]="anticipoMetodo">
+          <span class="ant-option-title">Prorrateo (repartir)</span>
+        </div>
+        <div class="ant-option-body">
+          <p>El anticipo se reparte entre las entregas.</p>
+          <div class="ant-row ant-nrow">
+            <span>Entre cuántas entregas:</span>
+            <input type="number" min="1" class="ant-ninput" [(ngModel)]="anticipoN">
+          </div>
+          <div class="ant-row ant-muted"><span>Por entrega:</span><b>{{ money(anticipoProrrateoPorEntrega) }}</b></div>
+          <div class="ant-row"><span>Se aplica a esta entrega:</span><b class="ant-aplica">{{ money(anticipoProrrateoAplicado) }}</b></div>
+          <div class="ant-row"><span>Pagas ahora:</span><b class="ant-neto">{{ money(anticipoProrrateoNeto) }}</b></div>
+          <div class="ant-row ant-muted"><span>Saldo de anticipo restante:</span><b>{{ money(anticipoProrrateoSaldoRestante) }}</b></div>
+        </div>
+      </label>
+    </div>
+
+    <div class="ant-modal-footer">
+      <button type="button" class="btn btn-sm btn-outline-secondary" (click)="cancelAnticipoModal()">Cancelar</button>
+      <button type="button" class="btn btn-sm btn-success" (click)="confirmAnticipoModal()">Aplicar y pagar</button>
+    </div>
+  </div>
+</div>
+

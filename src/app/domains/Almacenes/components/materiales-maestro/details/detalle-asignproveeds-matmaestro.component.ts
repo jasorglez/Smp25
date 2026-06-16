@@ -13,9 +13,12 @@ import { ProvidersService } from 'app/services/providers.service';
 import { MaterialsService } from 'app/services/materials.service';
 import { SelectWithTooltipEditorV2Component } from 'app/shared/select-with-tooltip-editor-v2.component';
 import { DetallesSucursalesProveedorComponent } from './detalles-sucursalesproveedor.component';
+import { DetalleEmpaqueProveedorComponent } from './detalle-empaque-proveedor.component';
 import { SucursalByMaterialProveedorService } from 'app/services/sucursalByMaterialProveedor.service';
 import { firstValueFrom } from 'rxjs';
 import { OcAndReqsService } from 'app/services/ocandreqs.service';
+import { runAutosizeAllColumns } from 'app/helpers/ag-grid-autosize.helper';
+import { PendingChangesService } from 'app/services/pending-changes.service';
 
 @Component({
   selector: 'app-detalle-asignproveeds-matmaestro',
@@ -35,16 +38,7 @@ import { OcAndReqsService } from 'app/services/ocandreqs.service';
               [disabled]="!proveedorGridApi">
               <i class="bi bi-person-plus"></i> Agregar
             </button>
-            <button
-              class="btn btn-sm btn-primary me-2 position-relative"
-              (click)="saveProveedores()"
-              [disabled]="!hasProveedorChanges">
-              <i class="bi bi-floppy"></i> Guardar
-              <span class="position-absolute top-0 start-100 translate-middle p-2 bg-danger border border-light rounded-circle"
-                *ngIf="hasProveedorChanges">
-                <span class="visually-hidden">Hay cambios sin guardar</span>
-              </span>
-            </button>
+            <!-- Guardar centralizado en Nivel 1 (materiales-maestro). Ver PendingChangesService. -->
             <button
               class="btn btn-sm btn-warning me-2"
               (click)="revertChanges()">
@@ -72,7 +66,22 @@ import { OcAndReqsService } from 'app/services/ocandreqs.service';
 
       </div>
     </div>
-  `
+  `,
+  styles: [`
+    /* Min. Compras: sin icono de filtro; menú de columna (⋯) alineado a la derecha */
+    :host ::ng-deep .ag-header-cell[col-id="minCompra"] .ag-header-cell-comp-wrapper {
+      display: flex;
+      align-items: center;
+      width: 100%;
+    }
+    :host ::ng-deep .ag-header-cell[col-id="minCompra"] .ag-cell-label-container {
+      flex: 1;
+      min-width: 0;
+    }
+    :host ::ng-deep .ag-header-cell[col-id="minCompra"] .ag-header-cell-menu-button {
+      margin-left: auto;
+    }
+  `]
 })
 export class DetalleAsignProveedsMaestroComponent implements ICellRendererAngularComp, OnDestroy {
 
@@ -83,8 +92,10 @@ export class DetalleAsignProveedsMaestroComponent implements ICellRendererAngula
   private materialsService = inject(MaterialsService);
   private sucursalByMaterialProveedorService = inject(SucursalByMaterialProveedorService);
   private ocAndReqsService = inject(OcAndReqsService);
+  private pendingChangesService = inject(PendingChangesService);
 
   private _sucursalSub: Subscription;
+  private saverId: string = '';
 
   params: any;
   materialId: number;
@@ -94,7 +105,29 @@ export class DetalleAsignProveedsMaestroComponent implements ICellRendererAngula
   proveedorGridApi: any;
   gridApi: any; // Alias for backward compatibility
   selectedProveedor: any = null;
-  hasProveedorChanges: boolean = false;
+
+  /** Cambios pendientes del Nivel 2. El setter notifica al servicio central
+   *  para que el botón Guardar del Nivel 1 encienda su badge rojo y sincroniza
+   *  el flag al cache de `params.data` (sobrevive al desmonte). */
+  private _hasProveedorChanges: boolean = false;
+  get hasProveedorChanges(): boolean { return this._hasProveedorChanges; }
+  set hasProveedorChanges(value: boolean) {
+    this._hasProveedorChanges = value;
+    if (this.saverId) {
+      this.pendingChangesService.notifyChanges(this.saverId, value);
+    }
+    if (this.params?.data) {
+      (this.params.data as any).__pendingProveedoresDirty = value;
+    }
+  }
+
+  /** Persiste las filas en `params.data` para que sobrevivan al desmonte del componente
+   *  (cuando AG Grid colapsa el detail row). Sin esto, los proveedores no guardados se pierden. */
+  private syncCacheToParams(): void {
+    if (!this.params?.data) return;
+    (this.params.data as any).__pendingProveedores = this.proveedorRowData;
+    (this.params.data as any).__pendingProveedoresDirty = this._hasProveedorChanges;
+  }
 
   // Catálogos
   providers: any[] = []; // Todos los proveedores
@@ -228,9 +261,39 @@ export class DetalleAsignProveedsMaestroComponent implements ICellRendererAngula
   }
 
   // Helper para formatear nombre de proveedor sin "undefined"
-  private getProviderDisplayName(provider: any): string {
+  getProviderDisplayName(provider: any): string {
     if (!provider) return '';
     return provider.name || provider.description || provider.nameContact || provider.company || '';
+  }
+
+  /** True cuando el proveedor fue desactivado globalmente desde providers.component (customers.vigente=false). */
+  private isBlockedByProviderDeactivation(idTabla: number): boolean {
+    if (!idTabla) return false;
+    const provider = this.providers?.find((p: any) => p.id === idTabla);
+    if (!provider) return false;
+    return !(
+      provider.vigente === true || provider.vigente === 1 ||
+      provider.Vigente === true || provider.Vigente === 1 ||
+      provider.active === true  || provider.active === 1  ||
+      provider.Active === true  || provider.Active === 1
+    );
+  }
+
+  /** Min. Compras: solo enteros ≥ 0; sin letras ni decimales. */
+  private parseMinComprasInteger(raw: unknown): { valid: boolean; value: number } {
+    if (raw === null || raw === undefined || raw === '') {
+      return { valid: true, value: 0 };
+    }
+    if (typeof raw === 'number') {
+      if (!Number.isFinite(raw)) return { valid: false, value: 0 };
+      if (!Number.isInteger(raw)) return { valid: false, value: 0 };
+      if (raw < 0) return { valid: false, value: 0 };
+      return { valid: true, value: raw };
+    }
+    const s = String(raw).trim();
+    if (s === '') return { valid: true, value: 0 };
+    if (!/^\d+$/.test(s)) return { valid: false, value: 0 };
+    return { valid: true, value: parseInt(s, 10) };
   }
 
   proveedorGridOptions: any = {
@@ -239,6 +302,12 @@ export class DetalleAsignProveedsMaestroComponent implements ICellRendererAngula
     rowSelection: 'single',
     masterDetail: true,
     detailRowHeight: 300,
+    getRowStyle: (params: any) => {
+      if (this.isBlockedByProviderDeactivation(params.data?.idTabla)) {
+        return { background: '#fce4ec', color: '#c62828', fontStyle: 'italic' };
+      }
+      return null;
+    },
     isRowMaster: (dataItem: any) => {
       // Cada fila de proveedor puede tener un detalle de sucursal
       return true;
@@ -247,14 +316,19 @@ export class DetalleAsignProveedsMaestroComponent implements ICellRendererAngula
       if (params.data.detailType === 'proveedorSucursal') {
         return { component: 'detailCellRendererProveedorSucursal' };
       }
+      if (params.data.detailType === 'proveedorEmpaque') {
+        return { component: 'detailCellRendererProveedorEmpaque' };
+      }
       return undefined;
     },
-    onCellClicked: this.onCellClicked.bind(this)
+    onCellClicked: this.onCellClicked.bind(this),
+    onFirstDataRendered: (params: any) => runAutosizeAllColumns(params.api),
   };
 
   components = {
     autocompleteEditor: AutocompleteEditorComponent,
-    detailCellRendererProveedorSucursal: DetallesSucursalesProveedorComponent
+    detailCellRendererProveedorSucursal: DetallesSucursalesProveedorComponent,
+    detailCellRendererProveedorEmpaque: DetalleEmpaqueProveedorComponent
   };
 
   proveedorColumnDefs: ColDef[] = [
@@ -272,7 +346,7 @@ export class DetalleAsignProveedsMaestroComponent implements ICellRendererAngula
     {
       field: 'active',
       headerName: 'Activo',
-      editable: true,
+      editable: (params: any) => !this.isBlockedByProviderDeactivation(params.data?.idTabla),
       width: 80,
       cellRenderer: 'agCheckboxCellRenderer',
       cellEditor: 'agCheckboxCellEditor',
@@ -284,7 +358,7 @@ export class DetalleAsignProveedsMaestroComponent implements ICellRendererAngula
     {
       field: 'principal',
       headerName: 'Principal',
-      editable: true,
+      editable: (params: any) => !this.isBlockedByProviderDeactivation(params.data?.idTabla),
       width: 111,
       cellRenderer: 'agCheckboxCellRenderer',
       cellEditor: 'agCheckboxCellEditor',
@@ -335,7 +409,7 @@ export class DetalleAsignProveedsMaestroComponent implements ICellRendererAngula
     {
       field: 'idTabla',
       headerName: 'Proveedor',
-      editable: true,
+      editable: (params: any) => !this.isBlockedByProviderDeactivation(params.data?.idTabla),
       width: 200,
       flex: 1,
       cellStyle: (params: any) => {
@@ -470,70 +544,86 @@ export class DetalleAsignProveedsMaestroComponent implements ICellRendererAngula
     {
       field: 'campo11',
       headerName: 'Codigo Externo',
-      editable: true,
+      editable: (params: any) => !this.isBlockedByProviderDeactivation(params.data?.idTabla),
       width: 140
+    },
+
+    /** Compra mínima por proveedor-material; se persiste en proveedorxtablas.minima_compra (type MATERIAL). */
+    {
+      field: 'minCompra',
+      headerName: 'Min. Compras',
+      editable: (params: any) => !this.isBlockedByProviderDeactivation(params.data?.idTabla),
+      width: 130,
+      filter: false,
+      suppressHeaderFilterButton: true,
+      cellEditor: 'agNumberCellEditor',
+      cellEditorParams: { min: 0, precision: 0 },
+      valueFormatter: (params: any) => {
+        const v = params.value;
+        if (v === null || v === undefined || v === '') return '';
+        const n = Number(v);
+        return Number.isFinite(n) && n > 0 ? String(Math.floor(n)) : '';
+      },
+      valueParser: (params: any) => {
+        const parsed = this.parseMinComprasInteger(params.newValue);
+        if (!parsed.valid) {
+          return params.oldValue ?? params.data?.minCompra ?? 0;
+        }
+        return parsed.value;
+      },
+      valueSetter: (params: any) => {
+        const parsed = this.parseMinComprasInteger(params.newValue);
+        if (!parsed.valid) {
+          alerts.basicAlert(
+            'Min. Compras',
+            'Solo se permiten números enteros (sin letras ni decimales).',
+            'warning'
+          );
+          return false;
+        }
+        params.data.minCompra = parsed.value;
+        return true;
+      },
     },
 
     {
       field: 'campo9',
       headerName: 'Precio Unitario',
-      editable: true,
+      editable: (params: any) => !this.isBlockedByProviderDeactivation(params.data?.idTabla),
       width: 130,
-      valueFormatter: (params: any) => {
-        const isNumeric = params.value !== null && params.value !== '' && !isNaN(Number(params.value));
-        return isNumeric ? this.currencyPipe.transform(params.value, '', 'symbol', '1.2-2') : '$0.00';
-      },
-      valueParser: (params: any) => {
-        return Number(params.newValue) || 0;
+      cellEditor: 'agNumberCellEditor',
+      cellEditorParams: { precision: 2, min: 0 },
+      valueFormatter: (params: any) => (params.value > 0 ? `$${Number(params.value).toFixed(2)}` : '$0.00'),
+      valueSetter: (params: any) => {
+        const n = parseFloat(String(params.newValue));
+        params.data.campo9 = isNaN(n) || n < 0 ? 0 : n;
+        return true;
       }
     },
 
     {
+      // Disparador para abrir el sub-grid Nivel 4 (Empaque). El nombre que ve el usuario
+      // es "Descripción Artículo"; al hacer click se expande la cascada con los 4 campos
+      // antes inline (campo2..campo5). No es editable inline — se edita en el sub-grid.
+      // Bloqueo por `__isNew` removido: PendingChangesService permite editar antes de guardar
+      // y los 4 campos (campo2..5) ya viven en `params.data` del proveedor.
       field: 'campo2',
-      headerName: 'Descripción Empaque',
-      editable: true,
-      width: 180,
+      colId: 'empaqueTrigger',
+      headerName: 'Descripción Artículo',
+      editable: false,
+      width: 170,
       flex: 1,
-      valueSetter: (params: any) => {
-        params.data.campo2 = params.newValue ? params.newValue.toUpperCase() : '';
-        return true;
-      }
-    },
-    {
-      field: 'campo3',
-      headerName: 'Pieza x Paquete',
-      editable: true,
-      width: 120,
-      valueSetter: (params: any) => {
-        params.data.campo3 = params.newValue ? params.newValue.toUpperCase() : '';
-        return true;
-      }
-    },
-    {
-      field: 'campo4',
-      headerName: 'Medidas',
-      editable: true,
-      width: 120,
-      flex: 1,
-      valueSetter: (params: any) => {
-        params.data.campo4 = params.newValue ? params.newValue.toUpperCase() : '';
-        return true;
-      }
-    },
-    {
-      field: 'campo5',
-      headerName: 'Peso/Volumen',
-      editable: true,
-      width: 140,
-      valueSetter: (params: any) => {
-        params.data.campo5 = params.newValue ? params.newValue.toUpperCase() : '';
-        return true;
+      cellStyle: { backgroundColor: '#fff3e0', cursor: 'pointer', textDecoration: 'underline' },
+      cellRenderer: (params: any) => {
+        const div = document.createElement('div');
+        div.innerText = 'Ver';
+        return div;
       }
     },
     {
       field: 'campo6',
       headerName: 'Caducidad o Garantía(Meses)',
-      editable: true,
+      editable: (params: any) => !this.isBlockedByProviderDeactivation(params.data?.idTabla),
       width: 160,
       flex: 1,
       valueSetter: (params: any) => {
@@ -546,20 +636,12 @@ export class DetalleAsignProveedsMaestroComponent implements ICellRendererAngula
       headerName: 'Sucursal',
       width: 150,
       flex: 1,
-      cellStyle: (params: any) => {
-        if (params.data?.__isNew) {
-          return { backgroundColor: '#f5f5f5', cursor: 'not-allowed', color: '#bdbdbd' };
-        }
-        return { backgroundColor: '#e8f5e9', cursor: 'pointer', textDecoration: 'underline' };
-      },
+      // Bloqueo por `__isNew` removido: PendingChangesService permite agregar sucursales antes
+      // de guardar el proveedor; el remapeo idMap (temp→real) actualiza idMaterialByProveedor.
+      cellStyle: { backgroundColor: '#e8f5e9', cursor: 'pointer', textDecoration: 'underline' },
       cellRenderer: (params: any) => {
         const div = document.createElement('div');
-        if (params.data?.__isNew) {
-          div.innerText = 'Guarda primero';
-          div.title = 'Guarda el proveedor antes de ver sucursales';
-        } else {
-          div.innerText = 'Ver';
-        }
+        div.innerText = 'Ver';
         return div;
       }
     }
@@ -572,10 +654,30 @@ export class DetalleAsignProveedsMaestroComponent implements ICellRendererAngula
     this.materialSubfamilyId = params.data.idSubfamilia; // CORRECTO: usar idSubfamilia, no idFamilia
     this.idRoot = this.signalsService.getRootSelectedBySidebar()();
 
+    // Cache de filas pendientes en `params.data` (sobrevive al desmonte del componente
+    // cuando AG Grid colapsa el detail row). Sin este cache, los proveedores no guardados
+    // se pierden al cerrar y reabrir la cascada del Nivel 2.
+    const cached = (params.data as any).__pendingProveedores;
+    const hasPendingChanges = !!(params.data as any).__pendingProveedoresDirty;
+
+    // Registro en el bus central para que el Guardar único del Nivel 1 invoque saveProveedores().
+    // Si el material aún es nuevo (id temporal), el callback recibirá un `idMap` con el ID real
+    // tras el guardado del Nivel 1, para remapear `materialId` y `campo1` antes de POSTear.
+    this.saverId = `proveedores-${this.materialId}-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
+    this.pendingChangesService.register(this.saverId, {
+      hasChanges: hasPendingChanges,
+      save: (idMap?: Map<string, number>) => this.saveProveedores(idMap)
+    });
 
     this.loadProviders();
     this.loadBranches();
-    this.loadProveedorData();
+    if (Array.isArray(cached)) {
+      // Restaurar filas previas (incluye no guardadas con __isNew/__modified).
+      this.proveedorRowData = cached;
+      this._hasProveedorChanges = hasPendingChanges;
+    } else {
+      this.loadProveedorData();
+    }
 
     // Suscribirse al evento de sucursal guardada para quitar color rosa
     this._sucursalSub = this.sucursalByMaterialProveedorService.sucursalSaved$.subscribe(
@@ -599,20 +701,58 @@ export class DetalleAsignProveedsMaestroComponent implements ICellRendererAngula
     // Pasar el contexto del componente padre (MaterialesMaestroComponent) al siguiente nivel de detalle
     this.proveedorGridOptions.context = {
       ...params.context,
-      componentParent: this // Ahora este componente es el padre del detalle de sucursal
+      componentParent: this, // Ahora este componente es el padre del detalle de sucursal
+      providers: this.providers, // Pasar lista de proveedores para resolver nombres en detalles-sucursalesproveedor
+      filteredProviders: this.filteredProviders // Pasar proveedores filtrados también
     };
+  }
+
+  /** Notificación desde el sub-grid de Empaque (Nivel 4) para encender el botón Guardar. */
+  notifyChildChanged(): void {
+    this.hasProveedorChanges = true;
   }
 
   onCellClicked(event: any): void {
     const colId = event.column.getColId();
 
+    // Nivel 4 — Empaque (Descripción Artículo): abre/colapsa el detalle con los 4 campos.
+    if (colId === 'empaqueTrigger') {
+      // Bloqueo `__isNew` removido: el sub-grid edita campo2..5 directamente sobre params.data
+      // del proveedor, que se persiste junto con el proveedor cuando se ejecuta el Guardar único.
+      if (this.isBlockedByProviderDeactivation(event.data?.idTabla)) {
+        return;
+      }
+      const node = event.node;
+      const api = event.api;
+      const detailType = 'proveedorEmpaque';
+      const isCurrentlyExpanded = node.expanded && event.data.detailType === detailType;
+
+      if (isCurrentlyExpanded) {
+        // Colapsar: cerrar el detalle y restaurar la altura de todas las filas.
+        node.setExpanded(false);
+        api.forEachNode((n: any) => n.setRowHeight(undefined));
+        api.onRowHeightChanged();
+      } else {
+        // Patrón acordeón: ocultar las demás filas (altura 0) y mostrar sólo ésta + su detalle.
+        api.forEachNode((otherNode: any) => {
+          if (otherNode.id === node.id) {
+            otherNode.setRowHeight(undefined);
+          } else {
+            if (otherNode.expanded) otherNode.setExpanded(false);
+            otherNode.setRowHeight(0);
+          }
+        });
+        api.onRowHeightChanged();
+        event.data.detailType = detailType;
+        setTimeout(() => node.setExpanded(true), 0);
+      }
+      return;
+    }
+
     if (colId === 'branchName') {
-      if (event.data?.__isNew) {
-        alerts.basicAlert(
-          'Guarda primero',
-          'Debes guardar el proveedor antes de asignar sucursales.',
-          'warning'
-        );
+      // Bloqueo `__isNew` removido: el sub-grid de sucursales se puede editar antes del Guardar
+      // único; el remapeo idMap actualiza idMaterialByProveedor al ID real del proveedor.
+      if (this.isBlockedByProviderDeactivation(event.data?.idTabla)) {
         return;
       }
       const node = event.node;
@@ -662,6 +802,9 @@ export class DetalleAsignProveedsMaestroComponent implements ICellRendererAngula
 
   ngOnDestroy() {
     this._sucursalSub?.unsubscribe();
+    if (this.saverId) {
+      this.pendingChangesService.unregister(this.saverId);
+    }
   }
 
   refresh(): boolean {
@@ -670,30 +813,40 @@ export class DetalleAsignProveedsMaestroComponent implements ICellRendererAngula
 
   async loadProviders() {
     try {
-      // 1. Cargar todos los proveedores vigentes + tipos del Warehouse en paralelo
+      // 1. Cargar TODOS los proveedores (activos e inactivos) + tipos del Warehouse en paralelo
+      // getProvidersForGrid devuelve todos sin filtrar por vigente, necesario para resolver nombres
       const [allProviders, warehouseProviders]: any = await Promise.all([
-        this.customersService.getCustomersByCompany(this.idRoot, 'PROVIDERS').toPromise(),
+        firstValueFrom(this.customersService.getProvidersForGrid(this.idRoot)).catch(() => []),
         firstValueFrom(this.materialsService.getProvidersxmaterials(this.idRoot)).catch(() => [])
       ]);
-
-      this.providers = allProviders.filter((p: any) => p.vigente === true || p.vigente === 1);
 
       // Enriquecer proveedores con typeIntOrExt del Warehouse
       const typeMap = new Map<number, string>();
       (warehouseProviders || []).forEach((wp: any) => {
         if (wp.id && wp.typeIntOrExt) typeMap.set(wp.id, wp.typeIntOrExt);
       });
-      this.providers = this.providers.map((p: any) => ({
+      // this.providers contiene TODOS (activos e inactivos) para resolución de nombres en el grid
+      this.providers = (Array.isArray(allProviders) ? allProviders : []).map((p: any) => ({
         ...p,
         typeIntOrExt: typeMap.get(p.id) || null
       }));
+
+      // Mismo criterio visual que la tabla de Proveedores:
+      // el checkbox "Activo" en esa pantalla pinta `vigente`, y `getProvidersForGrid`
+      // lo mapea desde Customer.Active del backend.
+      const activeProviders = this.providers.filter((p: any) =>
+        p.vigente === true || p.vigente === 1 ||
+        p.Vigente === true || p.Vigente === 1 ||
+        p.active === true || p.active === 1 ||
+        p.Active === true || p.Active === 1
+      );
 
       // 2. Filtrar proveedores que manejan la subfamilia del material usando getSubfamilyxVigentes
       if (this.materialSubfamilyId) {
 
         try {
           // Obtener todos los proveedores y sus subfamilias VIGENTES asociadas
-          const providerSubfamilyPromises = this.providers.map(async (provider: any) => {
+          const providerSubfamilyPromises = activeProviders.map(async (provider: any) => {
             try {
               // Usar el endpoint de subfamilias vigentes
               const subfamilies: any = await this.providersService.getSubfamilyxVigentes(provider.id).toPromise();
@@ -722,18 +875,17 @@ export class DetalleAsignProveedsMaestroComponent implements ICellRendererAngula
 
 
           // Crear el arreglo filtrado con la información del proveedor y la subfamilia
-          this.filteredProviders = this.providers.filter(p =>
+          this.filteredProviders = activeProviders.filter(p =>
             providersWithMatchingSubfamily.some(pm => pm.providerId === p.id)
           );
 
         } catch (error) {
           console.error('❌ Error filtrando proveedores por subfamilia:', error);
-          // Si hay error, mostrar todos los proveedores
-          this.filteredProviders = this.providers;
+          this.filteredProviders = activeProviders;
         }
       } else {
-        // Si no hay subfamilia, mostrar todos los proveedores
-        this.filteredProviders = this.providers;
+        // Si no hay subfamilia, mostrar solo los vigentes en el dropdown
+        this.filteredProviders = activeProviders;
       }
 
       // Ordenar filas por nombre de proveedor A-Z (ahora que filteredProviders ya está listo)
@@ -765,14 +917,71 @@ export class DetalleAsignProveedsMaestroComponent implements ICellRendererAngula
     });
   }
 
+  /** True si el materialId todavía es temporal (material aún no guardado en BD). */
+  private isTempMaterialId(): boolean {
+    return typeof this.materialId === 'string' && String(this.materialId).startsWith('temp_');
+  }
+
   loadProveedorData() {
+    // Si el material aún no fue guardado en BD (id temporal), no hay datos que cargar:
+    // el usuario puede agregar proveedores en memoria y se persistirán cuando el Guardar
+    // del Nivel 1 primero cree el material y luego propague el ID real vía idMap.
+    if (this.isTempMaterialId()) {
+      this.proveedorRowData = [];
+      this.syncCacheToParams();
+      return;
+    }
     if (this.params && this.params.context && this.params.context.MATERIAL && this.params.context.MATERIAL.load) {
-      this.params.context.MATERIAL.load(this.materialId, 'MATERIAL', (data: any) => {
+      this.params.context.MATERIAL.load(this.materialId, 'MATERIAL', async (data: any) => {
         this.proveedorRowData = data;
+        await this.fetchMissingProviders();
+
+        // Enriquecer con nombres de proveedores (para mostrar en detalles-sucursalesproveedor)
+        this.proveedorRowData = this.proveedorRowData.map((row: any) => {
+          if (!row.providerName && row.idTabla) {
+            const provider = this.filteredProviders?.find((p: any) => p.id === row.idTabla)
+              || this.providers?.find((p: any) => p.id === row.idTabla);
+            if (provider) {
+              row.providerName = this.getProviderDisplayName(provider);
+            }
+          }
+          return row;
+        });
+
         this.sortProveedorRowData();
-        this.loadSucursalCounts();
+        this.syncCacheToParams();
+        void this.loadSucursalCounts().then(() => {
+          setTimeout(() => this.autosizeProveedorColumns(), 0);
+        });
       });
     }
+  }
+
+  private async fetchMissingProviders() {
+    const missingIds = (this.proveedorRowData || [])
+      .map((row: any) => row.idTabla)
+      .filter((id: any) => id && id > 0 && !this.providers?.some((p: any) => p.id === id));
+
+    if (missingIds.length === 0) return;
+
+    const fetched = await Promise.all(
+      missingIds.map((id: number) =>
+        firstValueFrom(this.customersService.getCustomerById(id)).catch(() => null)
+      )
+    );
+
+    const valid = fetched.filter((p: any) => p != null);
+    if (valid.length > 0) {
+      this.providers = [...(this.providers || []), ...valid];
+      if (this.proveedorGridApi) {
+        this.proveedorGridApi.refreshCells({ force: true });
+      }
+    }
+  }
+
+  private autosizeProveedorColumns(): void {
+    if (!this.proveedorGridApi) return;
+    runAutosizeAllColumns(this.proveedorGridApi);
   }
 
   async loadSucursalCounts() {
@@ -817,7 +1026,6 @@ export class DetalleAsignProveedsMaestroComponent implements ICellRendererAngula
   onProveedorGridReady(params: any) {
     this.proveedorGridApi = params.api;
     this.gridApi = params.api; // Set alias
-    params.api.sizeColumnsToFit();
 
     params.api.addEventListener('selectionChanged', () => {
       const selectedNodes = params.api.getSelectedNodes();
@@ -828,6 +1036,7 @@ export class DetalleAsignProveedsMaestroComponent implements ICellRendererAngula
   onProveedorCellValueChanged(event: any) {
     event.data.__modified = true;
     this.hasProveedorChanges = true;
+    this.syncCacheToParams();
   }
 
   onProveedorSelectionChanged(event: any): void {
@@ -853,6 +1062,7 @@ export class DetalleAsignProveedsMaestroComponent implements ICellRendererAngula
       campo1: this.materialId,  // ID del material
       idTabla: 0,              // ID del proveedor (se seleccionará)
       providerName: '',        // Nombre del proveedor (para mostrar en combo)
+      minCompra: 1,            // Min. compras (proveedorxtablas.minima_compra)
       campo2: '',              // Descripción empaque
       campo3: '',              // Pieza x paquete
       campo11: '',             // Codigo externo
@@ -871,6 +1081,7 @@ export class DetalleAsignProveedsMaestroComponent implements ICellRendererAngula
 
     this.proveedorRowData = [newProveedor, ...this.proveedorRowData];
     this.hasProveedorChanges = true;
+    this.syncCacheToParams();
 
     if (isFirstProvider) {
     }
@@ -880,10 +1091,47 @@ export class DetalleAsignProveedsMaestroComponent implements ICellRendererAngula
         rowIndex: 0,
         colKey: 'idTabla'
       });
+      this.autosizeProveedorColumns();
     }, 100);
   }
 
-  async saveProveedores() {
+  async saveProveedores(idMap?: Map<string, number>) {
+    console.log('[saveProveedores] inicio. materialId:', this.materialId,
+      'idMap:', idMap ? Array.from(idMap.entries()) : 'undefined',
+      'rows campo1:', this.proveedorRowData.map(r => ({ id: r.id, campo1: r.campo1, __isNew: r.__isNew })));
+    // Remapeo de ID temporal → real. CRÍTICO: el remapeo de `row.campo1` se hace SIEMPRE
+    // que el campo sea string temporal y esté en el mapa, independiente de si
+    // `this.materialId` ya no es temporal (porque pudo haberse mutado externamente).
+    if (idMap) {
+      // 1) materialId del componente: remapear si sigue siendo temporal.
+      if (this.isTempMaterialId()) {
+        const realId = idMap.get(String(this.materialId));
+        if (realId) this.materialId = realId;
+      }
+      // 2) campo1 (FK al material) de cada fila: remapear cualquier valor temporal.
+      this.proveedorRowData.forEach((row: any) => {
+        const c1 = row.campo1;
+        if (c1 != null && typeof c1 === 'string' && c1.startsWith('temp_')) {
+          const realId = idMap.get(c1);
+          if (realId) row.campo1 = realId;
+        }
+      });
+    }
+
+    // Sanity check defensivo: ninguna fila a guardar debe tener campo1 temporal.
+    const rowsWithTempCampo1 = this.proveedorRowData.filter(
+      (row: any) => (row.__isNew || row.__modified) && typeof row.campo1 === 'string' && String(row.campo1).startsWith('temp_')
+    );
+    if (rowsWithTempCampo1.length > 0) {
+      console.error('[saveProveedores] ABORTADO: filas con campo1 temporal sin remapear:', rowsWithTempCampo1, 'idMap:', idMap);
+      alerts.basicAlert(
+        'Error de sincronización',
+        'No se pudo vincular el material recién creado con los proveedores. Recarga la página e intenta de nuevo.',
+        'error'
+      );
+      return;
+    }
+
     if (this.params && this.params.context && this.params.context.MATERIAL && this.params.context.MATERIAL.save) {
       // Confirmar cualquier celda que esté en edición antes de guardar
       this.proveedorGridApi?.stopEditing();
@@ -897,9 +1145,24 @@ export class DetalleAsignProveedsMaestroComponent implements ICellRendererAngula
         (row: any) => row.__isNew && row.idTabla > 0 && row.campo1 > 0
       ).map((row: any) => ({ idSupplie: row.campo1, idProveedor: row.idTabla }));
 
+      // Capturar filas modificadas cuyo active cambió, con ID real
+      const rowsToSyncSucursales = this.proveedorRowData.filter(
+        (row: any) => row.__modified &&
+                      row.id && !String(row.id).startsWith('temp_')
+      ).map((row: any) => ({ id: row.id as number, active: row.active === true || row.active === 1 }));
+
       try {
-        // Guardar los cambios
-        await this.params.context.MATERIAL.save(this.materialId, this.proveedorRowData, 'MATERIAL');
+        // Guardar los cambios. MATERIAL.save devuelve Map<tempProveedorId, realProveedorId>
+        // que propagamos al idMap compartido para que el Nivel 3 (sucursales) pueda remapear
+        // su FK `idMaterialByProveedor` al ID real del proveedor recién creado.
+        const newProveedorIdMap: Map<string, number> = await this.params.context.MATERIAL.save(
+          this.materialId,
+          this.proveedorRowData,
+          'MATERIAL'
+        );
+        if (idMap && newProveedorIdMap && newProveedorIdMap.size > 0) {
+          newProveedorIdMap.forEach((realId, tempId) => idMap.set(tempId, realId));
+        }
 
         // Esperar un poco para que el servidor procese
         await new Promise(resolve => setTimeout(resolve, 500));
@@ -911,14 +1174,40 @@ export class DetalleAsignProveedsMaestroComponent implements ICellRendererAngula
           ).catch(e => console.warn(`⚠️ No se pudo sincronizar observation para ${row.campo1}:`, e));
         }
 
-        // Actualizar campo7 (por autorizar) a true para proveedores nuevos
-        for (const prov of newProvidersToAuthorize) {
-          firstValueFrom(
-            this.ocAndReqsService.patchProveedorXTablaCampo7(prov.idSupplie, prov.idProveedor, true)
-          ).catch(e => console.warn(`⚠️ No se pudo marcar "Por autorizar" para material ${prov.idSupplie} proveedor ${prov.idProveedor}:`, e));
+        // DESHABILITADO (2026-05-12): En esta tabla, proveedores nuevos NO deben marcarse como "por autorizar"
+        // Solo deben quedar con campo7 = false al guardar. Esta funcionalidad se usa en otros contextos.
+        // for (const prov of newProvidersToAuthorize) {
+        //   firstValueFrom(
+        //     this.ocAndReqsService.patchProveedorXTablaCampo7(prov.idSupplie, prov.idProveedor, true)
+        //   ).catch(e => console.warn(`⚠️ No se pudo marcar "Por autorizar" para material ${prov.idSupplie} proveedor ${prov.idProveedor}:`, e));
+        // }
+
+        // Sincronizar vigente de sucursales al mismo estado que el proveedor-material
+        for (const { id: rowId, active: newActive } of rowsToSyncSucursales) {
+          try {
+            const sucursales: any[] = await firstValueFrom(
+              this.sucursalByMaterialProveedorService.getSucursalByMaterial(rowId)
+            );
+            if (sucursales?.length > 0) {
+              await Promise.all(
+                sucursales.map((suc: any) =>
+                  firstValueFrom(
+                    this.sucursalByMaterialProveedorService.updateSucursalByMaterial(suc.id, { ...suc, vigente: newActive })
+                  ).catch(e => console.warn(`⚠️ No se pudo sincronizar sucursal ${suc.id}:`, e))
+                )
+              );
+            }
+          } catch (e) {
+            console.warn(`⚠️ No se pudieron sincronizar sucursales del proveedor-material ${rowId}:`, e);
+          }
         }
 
         this.hasProveedorChanges = false;
+        // Limpiar cache: los datos ya están persistidos en BD.
+        if (this.params?.data) {
+          delete (this.params.data as any).__pendingProveedores;
+          delete (this.params.data as any).__pendingProveedoresDirty;
+        }
 
         // Recargar datos desde el servidor para obtener IDs reales
         this.loadProveedorData();
@@ -949,6 +1238,11 @@ export class DetalleAsignProveedsMaestroComponent implements ICellRendererAngula
   }
 
   revertChanges() {
+    // Limpiar cache: ya no hay cambios pendientes.
+    if (this.params?.data) {
+      delete (this.params.data as any).__pendingProveedores;
+      delete (this.params.data as any).__pendingProveedoresDirty;
+    }
     this.loadProveedorData();
     this.hasProveedorChanges = false;
     this.selectedProveedor = null;
@@ -979,16 +1273,30 @@ export class DetalleAsignProveedsMaestroComponent implements ICellRendererAngula
     }
 
     if (this.params && this.params.context && this.params.context.MATERIAL && this.params.context.MATERIAL.delete) {
+      const providerName = this.getProviderDisplayName(
+        this.filteredProviders?.find((p: any) => p.id === this.selectedProveedor.idTabla)
+        || this.providers?.find((p: any) => p.id === this.selectedProveedor.idTabla)
+      ) || `ID ${this.selectedProveedor.idTabla}`;
+
+      const confirm = await alerts.confirmAlert(
+        'Eliminar proveedor',
+        `Se eliminará permanentemente la asignación de "${providerName}" a este material. ¿Continuar?`,
+        'warning',
+        'Sí, eliminar'
+      );
+      if (!confirm.isConfirmed) return;
+
       this.params.context.MATERIAL.delete(
         { data: this.selectedProveedor, api: this.proveedorGridApi },
         () => {
+          // Limpiar cache: estado consistente con el backend tras delete.
+          if (this.params?.data) {
+            delete (this.params.data as any).__pendingProveedores;
+            delete (this.params.data as any).__pendingProveedoresDirty;
+          }
           this.loadProveedorData();
           this.selectedProveedor = null;
-
-          // Limpiar la bandera de cambios pendientes
           this.hasProveedorChanges = false;
-
-          // Actualizar el contador de proveedores en el grid padre
           setTimeout(() => {
             this.updateProviderCountInParent();
           }, 500);

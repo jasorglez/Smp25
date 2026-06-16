@@ -2,8 +2,9 @@ import { Component, inject, signal, effect, Input, Renderer2, RendererFactory2 }
 import { CommonModule } from '@angular/common';
 import { AgGridAngular } from 'ag-grid-angular';
 import { ColDef, GridApi, GridReadyEvent } from 'ag-grid-enterprise';
+import { AG_GRID_LOCALE_ES } from 'assets/i18n/ag-grid.locale.es';
 import { DetalleMoliendaComponent } from './detalle-almmolienda.component';
-import { lastValueFrom } from 'rxjs';
+import { lastValueFrom, Subject } from 'rxjs';
 import { SignalsService } from '../../../../../services/signals.service';
 import { BranchsService } from '../../../../../services/branchs.service';
 import { MaterialsService } from '../../../../../services/materials.service';
@@ -14,6 +15,9 @@ import { DepartmentsService } from '../../../../../services/departments.service'
 import { RolesService } from '../../../../../services/roles.service';
 import { SelectWithTooltipEditorV2Component } from 'app/shared/select-with-tooltip-editor-v2.component';
 import { alerts } from 'app/helpers/alerts';
+import { ExtractionFermentationBultosService } from '../../../../../services/extraction-fermentation-bultos.service';
+import { ExtractionFermentationCatalogItem, ExtractionFermentationCatalogService } from 'app/services/extraction-fermentation-catalog.service';
+import { CatalogProductionService } from '../../../../../services/catalog-production.service';
 
 @Component({
   selector: 'app-almmolienda',
@@ -69,7 +73,9 @@ import { alerts } from 'app/helpers/alerts';
             class="ag-theme-quartz small-text-ag-grid"
             [columnDefs]="columnDefs"
             [gridOptions]="gridOptions"
+            [localeText]="AG_GRID_LOCALE_ES"
             (gridReady)="onGridReady($event)"
+            (firstDataRendered)="onFirstDataRendered($event)"
             (cellValueChanged)="onCellValueChanged($event)"
             (rowClicked)="onRowClicked($event)"
             (cellEditingStopped)="onCellEditingStopped($event)"
@@ -93,11 +99,15 @@ export class AlmmoliendaComponent {
   private ocAndReqsService = inject(OcAndReqsService);
   private departmentsService = inject(DepartmentsService);
   private rolesService = inject(RolesService);
+  private bultosService = inject(ExtractionFermentationBultosService);
+  private catalogService = inject(CatalogProductionService);
+  private catalogoCategorias = inject(ExtractionFermentationCatalogService);
 
   hasUnsavedChanges = false;
   selectedRow: any  = null;
   toastMsg          = signal('');
-  rowData           = signal<any[]>([]);
+  readonly AG_GRID_LOCALE_ES = AG_GRID_LOCALE_ES;
+  rowData           = signal<any[] | null>(null);
   private originalRowData: any[] = [];
   gridApi!: GridApi;
   private idRoot = 0;
@@ -106,16 +116,24 @@ export class AlmmoliendaComponent {
 
   userBranches: any[] = [];
   branchNames: string[] = [];
-  matPrimaOptions: { id: number; name: string }[] = [];
+  matPrimaOptions: { id: number; name: string; editBultos: boolean }[] = [];
   departmentOptions: any[] = [];
+  idBranch: number | null = null;
   activeBranchFilter: number | null = null;
   expandedRowId: string | null = null;
   expandedDetailType: string | null = null;
   private _columnDefs: ColDef[] = [];
+  bultosCantidad: number | null = null;
+  bultosCantidadARevisar: number | null = null;
+  proporcionRevision: number | null = null;
+  catalogoCategoriasSucursal: ExtractionFermentationCatalogItem[] = [];
+  caracteristicasCategories: any[] = [];
+  caracteristicasFamilies: any[] = [];
 
   // Datos precargados del último sync — se pasan al detalle para evitar HTTP redundante
   private lastSyncedReqs: any[]    = [];
   private lastSyncedDetails: any[] = [];
+  private entradasData$ = new Subject<any>();
 
   private renderer: Renderer2;
   private tooltipElement: HTMLElement | null = null;
@@ -142,7 +160,8 @@ export class AlmmoliendaComponent {
       headerName: 'Sucursal',
       field: 'sucursal',
       width: 200,
-      editable: () => !this.activeBranchFilter || this.activeBranchFilter < 0,
+      editable: (params: any) =>
+        (!this.activeBranchFilter || this.activeBranchFilter < 0) && !this.hasEntradas(params.data),
       cellEditor: 'agRichSelectCellEditor',
       cellEditorPopup: true,
       cellEditorParams: () => ({
@@ -164,7 +183,10 @@ export class AlmmoliendaComponent {
         const branch = this.userBranches.find(b => b.id === params.value);
         return branch?.name ?? '';
       },
-      cellStyle: () => {
+      cellStyle: (params: any) => {
+        if (this.hasEntradas(params.data)) {
+          return { backgroundColor: '#f0f0f0', color: '#6c757d' };
+        }
         if (this.activeBranchFilter && this.activeBranchFilter > 0) {
           return { backgroundColor: '#f0f0f0' };
         }
@@ -211,7 +233,7 @@ export class AlmmoliendaComponent {
       field: 'id_articulo',
       flex: 1,
       minWidth: 180,
-      editable: true,
+      editable: (params: any) => !this.hasEntradas(params.data),
       cellDataType: 'text',
       cellEditor: 'selectV2',
       cellEditorParams: (params: any) => {
@@ -232,7 +254,10 @@ export class AlmmoliendaComponent {
         params.data.__modified = true;
         this.hasUnsavedChanges = true;
         return true;
-      }
+      },
+      cellStyle: (params: any) => this.hasEntradas(params.data)
+        ? { backgroundColor: '#f0f0f0', color: '#6c757d' }
+        : {}
     },
 
     {
@@ -319,13 +344,22 @@ export class AlmmoliendaComponent {
     detailCellRenderer: DetalleMoliendaComponent,
     detailCellRendererParams: (params: any) => {
       const isEntradas = params.data?.detailType === 'entradas';
+      const materialConfig = this.getMaterialConfigByArticulo(params.data?.id_articulo);
       return {
         departmentOptions: this.departmentOptions,
         preloadedReqs:     isEntradas ? this.lastSyncedReqs    : [],
         preloadedDetails:  isEntradas ? this.lastSyncedDetails : [],
+        entradasData$:     isEntradas ? this.entradasData$.asObservable() : null,
+        bultosCantidad:    this.bultosCantidad,
+        bultosCantidadARevisar: this.bultosCantidadARevisar,
+        proporcionRevision: this.proporcionRevision,
+        editBultos: materialConfig?.editBultos ?? false,
+        caracteristicasCategories: this.caracteristicasCategories,
+        caracteristicasFamilies: this.caracteristicasFamilies,
       };
     },
     defaultColDef: {
+      textAlign: 'center',
       suppressKeyboardEvent: (params: any) => {
         if (params.event.key === 'Enter' && params.editing) {
           this.enterPressed = true;
@@ -335,6 +369,7 @@ export class AlmmoliendaComponent {
         return false;
       },
     },
+    onFirstDataRendered: (params: any) => params.api.autoSizeAllColumns(),
   };
 
   constructor(rendererFactory: RendererFactory2) {
@@ -343,8 +378,10 @@ export class AlmmoliendaComponent {
     effect(() => {
       const idUser = this.signalsService.idUser();
       const idCompany = this.signalsService.getRootSelectedBySidebar()();
+      const idBranch = this.signalsService.getBranchSelectedBySidebar()();
       if (idUser && idCompany) {
         this.idRoot = idCompany;
+        this.idBranch = idBranch;
         this.loadUserBranches();
         this.loadRawMaterials(idCompany);
       }
@@ -480,6 +517,12 @@ export class AlmmoliendaComponent {
     }
   }
 
+  onFirstDataRendered(params: any) {
+    if (this.gridApi && !this.gridApi.isDestroyed()) {
+      this.gridApi.autoSizeAllColumns();
+    }
+  }
+
   async loadUserBranches() {
     try {
       const idUser = this.signalsService.idUser();
@@ -512,14 +555,22 @@ export class AlmmoliendaComponent {
       const deptsData = (deptsResponse as any)?.data || deptsResponse || [];
       const matsMap = new Map<number, string>();
       (Array.isArray(matsData) ? matsData : []).forEach((m: any) => matsMap.set(m.id, m.articulo));
+      console.log('Materiales crudos:', mxmData);
       this.matPrimaOptions = (Array.isArray(mxmData) ? mxmData : [])
-        .filter((m: any) => m.active !== false)
-        .map((m: any) => ({ id: m.idArticulo, name: matsMap.get(m.idArticulo) ?? String(m.idArticulo) }))
+        .filter((m: any) => m.active !== false && m.idArticulo != null)
+        .map((m: any) => ({
+          id: m.idArticulo,
+          name: matsMap.get(m.idArticulo) ?? String(m.idArticulo),
+          editBultos: !!m.editBultos,
+        }))
         .filter(m => m.name);
       this.departmentOptions = Array.isArray(deptsData) ? deptsData : [];
       this._columnDefs = [];
       if (this.gridApi) this.gridApi.setGridOption('columnDefs', this.columnDefs);
-      await this.loadData(this.idRoot);
+      await Promise.all([
+        this.loadData(this.idRoot),
+        this.loadCaracteristicasCategories(this.idRoot),
+      ]);
     } catch (error) {
       console.error('Error loading raw materials:', error);
     }
@@ -528,6 +579,101 @@ export class AlmmoliendaComponent {
   private showToast(msg: string) {
     this.toastMsg.set(msg);
     setTimeout(() => this.toastMsg.set(''), 1500);
+  }
+
+  private hasEntradas(row: any): boolean {
+    return Number(row?.entradas ?? 0) > 0;
+  }
+
+  private async loadBultosCantidad(idCompany: number, idBranch: number) {
+    try {
+      const result = await lastValueFrom(this.bultosService.getByBranch(idCompany, idBranch));
+      this.bultosCantidad = result?.cantidadBultos ?? null;
+      this.bultosCantidadARevisar = result?.cantidadARevisar ?? null;
+      this.proporcionRevision = result?.proporcionRevision ?? null;
+    } catch (error) {
+      console.error('Error loading bultos cantidad:', error);
+      this.bultosCantidad = null;
+      this.bultosCantidadARevisar = null;
+      this.proporcionRevision = null;
+    }
+  }
+
+  private async loadCaracteristicasCategories(idCompany: number, idCatalog?: number | null) {
+    try {
+      const categorias = await lastValueFrom(this.catalogoCategorias.getAllByBranch(idCompany, this.idBranch));
+      console.log('Categorías crudas:', categorias);
+
+      const allItems = await lastValueFrom(this.catalogService.getAll(idCompany, idCatalog));
+      const itemsArray = Array.isArray(allItems) ? allItems : [];
+      this.catalogoCategoriasSucursal = Array.isArray(categorias) ? categorias : [];
+
+      this.caracteristicasCategories = itemsArray
+        .filter((item: any) => item.type === 'CATEGORY')
+        .sort((a: any, b: any) => {
+          const aDesc = (a.description || '').toLowerCase();
+          const bDesc = (b.description || '').toLowerCase();
+          return aDesc.localeCompare(bDesc);
+        });
+
+      this.caracteristicasFamilies = itemsArray
+        .filter((item: any) => item.type === 'FAM-CAT')
+        .sort((a: any, b: any) => {
+          const aDesc = (a.description || '').toLowerCase();
+          const bDesc = (b.description || '').toLowerCase();
+          return aDesc.localeCompare(bDesc);
+        });
+    } catch (error) {
+      console.error('Error loading características:', error);
+      this.catalogoCategoriasSucursal = [];
+      this.caracteristicasCategories = [];
+      this.caracteristicasFamilies = [];
+    }
+  }
+
+  private normalizeText(value: string | null | undefined): string {
+    return (value ?? '')
+      .toString()
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .toLowerCase()
+      .replace(/[^\w\s]/g, ' ')
+      .replace(/\s+/g, ' ')
+      .trim();
+  }
+
+  private getArticuloComparableText(idArticulo: string | null | undefined): string {
+    return this.normalizeText(idArticulo)
+      .replace(/^fruta\s+/, '')
+      .replace(/^fruto\s+/, '')
+      .trim();
+  }
+
+  private getCategoriaComparableText(description: string | null | undefined): string {
+    return this.normalizeText(description)
+      .replace(/^caracteristicas\s+de\s+/, '')
+      .trim();
+  }
+
+  private getCategoriaCatalogoIdByArticulo(idArticulo: string | null | undefined): number | null {
+    const articulo = this.getArticuloComparableText(idArticulo);
+    if (!articulo || !Array.isArray(this.catalogoCategoriasSucursal)) return null;
+
+    const exactMatch = this.catalogoCategoriasSucursal.find((categoria) =>
+      this.getCategoriaComparableText(categoria.description) === articulo
+    );
+    if (exactMatch?.id) return exactMatch.id;
+
+    const partialMatch = this.catalogoCategoriasSucursal.find((categoria) => {
+      const categoriaTexto = this.getCategoriaComparableText(categoria.description);
+      return categoriaTexto.includes(articulo) || articulo.includes(categoriaTexto);
+    });
+
+    return partialMatch?.id ?? null;
+  }
+
+  private getMaterialConfigByArticulo(idArticulo: string | null | undefined) {
+    return this.matPrimaOptions.find(m => m.name === idArticulo) ?? null;
   }
 
   onRowClicked(event: any)       { this.selectedRow = event.data; }
@@ -550,8 +696,11 @@ export class AlmmoliendaComponent {
   }
 
   async loadData(idCompany: number) {
+    this.rowData.set(null);
+    if (this.gridApi) this.gridApi.setGridOption('rowData', null);
     try {
       const items = await lastValueFrom(this.moliendaService.getAll(idCompany, this.tipo));
+      console.log('Raw data from API:', items);
       const mapped = (Array.isArray(items) ? items : []).map(i => this.mapRow(i));
 
       const deptsCsv = this.departmentOptions
@@ -565,13 +714,16 @@ export class AlmmoliendaComponent {
       const countsPromises = mapped
         .filter(row => row.id && row.sucursal && row.idMaterial)
         .map(async row => {
-          const [reqs, salidas] = await Promise.all([
+          const [reqs, salidas, crItems] = await Promise.all([
             lastValueFrom(this.ocAndReqsService.getReqsByBranchMaterial(row.sucursal, row.idMaterial, deptsCsv)),
             lastValueFrom(this.moliendaService.getDetails(row.id, 'SALIDA')),
+            lastValueFrom(this.ocAndReqsService.getCompraRapidaItems(row.sucursal, row.idMaterial)).catch(() => []),
           ]);
+          // Entradas = requisiciones OC + requisiciones distintas con compra rápida (mismo material).
+          const crReqCount = new Set((crItems as any[]).map((it: any) => it.reqId)).size;
           return {
             id: row.id,
-            entradas: (reqs as any[]).length,
+            entradas: (reqs as any[]).length + crReqCount,
             salidas: salidas.length,
           };
         });
@@ -587,14 +739,47 @@ export class AlmmoliendaComponent {
         }
       });
 
-      this.originalRowData = JSON.parse(JSON.stringify(mapped));
-      this.rowData.set(mapped);
-      if (this.gridApi) this.gridApi.setGridOption('rowData', mapped);
+      const sorted = this.sortRowsByBranchAndArticle(mapped);
+
+      this.originalRowData = JSON.parse(JSON.stringify(sorted));
+      
+      this.rowData.set(sorted);
+      //console.log('Loaded molienda:', this.rowData());  
+      if (this.gridApi) this.gridApi.setGridOption('rowData', sorted);
     } catch (error) {
       console.error('Error loading molienda:', error);
       this.rowData.set([]);
       if (this.gridApi) this.gridApi.setGridOption('rowData', []);
     }
+  }
+
+  private sortRowsByBranchAndArticle(rows: any[]): any[] {
+    return rows
+      .map((row, index) => ({ row, index }))
+      .sort((a, b) => {
+        const activeA = a.row.active !== false;
+        const activeB = b.row.active !== false;
+        if (activeA !== activeB) {
+          return activeA ? -1 : 1;
+        }
+
+        const branchNameA = this.getBranchName(a.row.sucursal);
+        const branchNameB = this.getBranchName(b.row.sucursal);
+        const branchCompare = branchNameA.localeCompare(branchNameB, 'es', { sensitivity: 'base' });
+        if (branchCompare !== 0) return branchCompare;
+
+        const articleNameA = (a.row.id_articulo ?? '').toString();
+        const articleNameB = (b.row.id_articulo ?? '').toString();
+        const articleCompare = articleNameA.localeCompare(articleNameB, 'es', { sensitivity: 'base' });
+        if (articleCompare !== 0) return articleCompare;
+
+        return a.index - b.index;
+      })
+      .map(item => item.row);
+  }
+
+  private getBranchName(idBranch: number | null | undefined): string {
+    return this.userBranches.find(b => b.id === idBranch)?.name ?? '';
   }
 
   private async updateCounterForOcCreation(idRequisition: number, idMaterial: number, idBranch: number) {
@@ -610,11 +795,13 @@ export class AlmmoliendaComponent {
         .join(',');
 
       // Cuenta requisiciones reales (no DetailsMolienda — esos solo existen tras abrir cascada)
-      const reqs = await lastValueFrom(
-        this.ocAndReqsService.getReqsByBranchMaterial(affectedRow.sucursal, affectedRow.idMaterial, deptsCsv)
-      );
+      const [reqs, crItems] = await Promise.all([
+        lastValueFrom(this.ocAndReqsService.getReqsByBranchMaterial(affectedRow.sucursal, affectedRow.idMaterial, deptsCsv)),
+        lastValueFrom(this.ocAndReqsService.getCompraRapidaItems(affectedRow.sucursal, affectedRow.idMaterial)).catch(() => []),
+      ]);
 
-      affectedRow.entradas = (reqs as any[]).length;
+      const crReqCount = new Set((crItems as any[]).map((it: any) => it.reqId)).size;
+      affectedRow.entradas = (reqs as any[]).length + crReqCount;
 
       if (this.gridApi) {
         const node = this.gridApi.getRowNode(affectedRow.id.toString());
@@ -667,7 +854,7 @@ export class AlmmoliendaComponent {
     };
   }
 
-  async toggleCascade(node: any, type: string) {
+  toggleCascade(node: any, type: string) {
     if (node.data?.__isNew) return;
 
     if (this.expandedRowId === node.id && this.expandedDetailType === type) {
@@ -681,7 +868,10 @@ export class AlmmoliendaComponent {
     }
 
     if (type === 'entradas') {
-      await this.syncEntradasDetails(node.data);
+      // Subject fresco para esta expansión; limpiar estado anterior
+      this.entradasData$ = new Subject<any>();
+      this.lastSyncedReqs    = [];
+      this.lastSyncedDetails = [];
     }
 
     if (this.expandedRowId) {
@@ -699,11 +889,31 @@ export class AlmmoliendaComponent {
     this.expandedDetailType = type;
     this.gridApi.onRowHeightChanged();
     setTimeout(() => node.setExpanded(true), 0);
+
+    // Entradas: sincronizar en background y emitir cuando termine
+    if (type === 'entradas') {
+      this.syncEntradasDetails(node.data).then(() => {
+        this.entradasData$.next({
+          reqs:                      this.lastSyncedReqs,
+          details:                   this.lastSyncedDetails,
+          bultosCantidad:            this.bultosCantidad,
+          bultosCantidadARevisar:    this.bultosCantidadARevisar,
+          proporcionRevision:        this.proporcionRevision,
+          caracteristicasCategories: this.caracteristicasCategories,
+          caracteristicasFamilies:   this.caracteristicasFamilies,
+        });
+        this.entradasData$.complete();
+      });
+    }
   }
 
   private async syncEntradasDetails(rowData: any) {
     const { id: idMolienda, sucursal, idMaterial } = rowData;
     if (!idMolienda || !sucursal || !idMaterial) return;
+
+    await this.loadBultosCantidad(this.idRoot, sucursal);
+    const idCatalog = this.getCategoriaCatalogoIdByArticulo(rowData?.id_articulo);
+    await this.loadCaracteristicasCategories(this.idRoot, idCatalog);
 
     const today = new Date().toISOString().substring(0, 10);
     const deptsCsv = this.departmentOptions
@@ -736,11 +946,13 @@ export class AlmmoliendaComponent {
             numCantidadOc: req.numCantidadOc,
             cantidad:      0,
             fecha:         today,
+            idCatalog,
           }))
         );
       } else if (
         existingDetail.cantidadReq   !== req.cantidadReq ||
-        existingDetail.numCantidadOc !== req.numCantidadOc
+        existingDetail.numCantidadOc !== req.numCantidadOc ||
+        (existingDetail.idCatalog ?? null) !== idCatalog
       ) {
         createUpdatePromises.push(
           lastValueFrom(this.moliendaService.updateDetail(existingDetail.id, {
@@ -751,6 +963,7 @@ export class AlmmoliendaComponent {
             numCantidadOc: req.numCantidadOc,
             cantidad:      existingDetail.cantidad ?? 0,
             fecha:         existingDetail.fecha ?? today,
+            idCatalog,
           }))
         );
       }
@@ -768,7 +981,7 @@ export class AlmmoliendaComponent {
         cantidadReq:   req.cantidadReq,
         numCantidadOc: req.numCantidadOc,
         cantidad:      ex?.cantidad ?? 0,
-        idCatalog:     ex?.idCatalog ?? null,
+        idCatalog:     ex?.idCatalog ?? idCatalog ?? null,
       };
     });
   }
@@ -802,8 +1015,23 @@ export class AlmmoliendaComponent {
   }
 
   async saveChanges() {
-    const newRows      = this.rowData().filter(r => r.__isNew);
-    const modifiedRows = this.rowData().filter(r => r.__modified && !r.__isNew);
+    const allData = this.rowData();
+    console.log('Attempting to save data:', allData);
+    const isValid = allData.every(
+      (item) =>
+        item.sucursal != null &&
+        item.id_articulo
+    );
+    if (!isValid) {
+      alerts.basicAlert(
+        'Añadir entrada',
+        'Debe llenar los campos obligatorios antes de guardar.',
+        'error'
+      );
+      return;
+    }
+    const newRows      = allData.filter(r => r.__isNew);
+    const modifiedRows = allData.filter(r => r.__modified && !r.__isNew);
     if (newRows.length === 0 && modifiedRows.length === 0) return;
 
     try {
@@ -818,9 +1046,14 @@ export class AlmmoliendaComponent {
       }
 
       const saved = newRows.length + modifiedRows.length;
+      const sorted = this.sortRowsByBranchAndArticle(this.rowData());
       this.hasUnsavedChanges = false;
-      this.originalRowData   = JSON.parse(JSON.stringify(this.rowData()));
-      if (this.gridApi) this.gridApi.refreshCells({ columns: ['entradas', 'salidas'], force: true });
+      this.rowData.set(sorted);
+      this.originalRowData   = JSON.parse(JSON.stringify(sorted));
+      if (this.gridApi) {
+        this.gridApi.setGridOption('rowData', sorted);
+        this.gridApi.refreshCells({ columns: ['entradas', 'salidas'], force: true });
+      }
       this.showToast(`${saved} registro(s) guardado(s)`);
     } catch (error) {
       console.error('Error saving molienda:', error);
@@ -829,11 +1062,49 @@ export class AlmmoliendaComponent {
   }
 
   revertChanges() {
-    const reverted = JSON.parse(JSON.stringify(this.originalRowData));
+    const reverted = this.sortRowsByBranchAndArticle(JSON.parse(JSON.stringify(this.originalRowData)));
     this.rowData.set(reverted);
     this.hasUnsavedChanges = false;
     this.selectedRow = null;
     if (this.gridApi) this.gridApi.setGridOption('rowData', reverted);
+  }
+
+  private hasRelatedRecords(row: any): boolean {
+    return Number(row?.entradas ?? 0) > 0 || Number(row?.salidas ?? 0) > 0;
+  }
+
+  private async confirmSetInactive(row: any): Promise<boolean> {
+    const result = await alerts.confirmAlert(
+      'Este artículo ya tiene registros',
+      '¿Quiere que lo pase a inactivo?',
+      'warning',
+      'Sí, pasar a inactivo'
+    );
+    if (!result.isConfirmed) return false;
+
+    try {
+      row.active = false;
+      row.__modified = false;
+      await lastValueFrom(this.moliendaService.update(row.id, this.toPayload(row)));
+
+      const sorted = this.sortRowsByBranchAndArticle(this.rowData());
+      this.rowData.set(sorted);
+      this.originalRowData = JSON.parse(JSON.stringify(sorted));
+      this.hasUnsavedChanges = false;
+      this.selectedRow = sorted.find(r => r.id === row.id) ?? null;
+
+      if (this.gridApi) {
+        this.gridApi.setGridOption('rowData', sorted);
+        this.gridApi.refreshCells({ force: true });
+      }
+
+      this.showToast('Marcado como inactivo');
+      return true;
+    } catch (error) {
+      console.error('Error setting molienda inactive:', error);
+      alerts.basicAlert('Error', 'No se pudo cambiar el artículo a inactivo.', 'error');
+      return false;
+    }
   }
 
   async deleteRow() {
@@ -845,6 +1116,11 @@ export class AlmmoliendaComponent {
       this.selectedRow = null;
       this.hasUnsavedChanges = filtered.some((r: any) => r.__isNew || r.__modified);
       if (this.gridApi) this.gridApi.setGridOption('rowData', filtered);
+      return;
+    }
+
+    if (this.hasRelatedRecords(this.selectedRow)) {
+      await this.confirmSetInactive(this.selectedRow);
       return;
     }
 
@@ -861,8 +1137,23 @@ export class AlmmoliendaComponent {
       if (this.gridApi) this.gridApi.setGridOption('rowData', afterDelete);
       this.selectedRow = null;
       this.showToast('Eliminado');
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error deleting molienda:', error);
+
+      const errorText = `${error?.error?.message ?? ''} ${error?.message ?? ''}`.toLowerCase();
+      const shouldOfferInactive =
+        error?.status === 400 ||
+        error?.status === 409 ||
+        errorText.includes('constraint') ||
+        errorText.includes('foreign key') ||
+        errorText.includes('reference') ||
+        errorText.includes('registro');
+
+      if (shouldOfferInactive) {
+        await this.confirmSetInactive(this.selectedRow);
+        return;
+      }
+
       alerts.basicAlert('Error', 'Ocurrió un error al eliminar.', 'error');
     }
   }

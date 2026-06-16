@@ -79,6 +79,20 @@ export class ComploginComponent implements OnInit, OnDestroy {
         'Por seguridad, la sesión se cerró tras 10 minutos sin actividad.',
         'info'
       );
+    } else if (sessionStorage.getItem('sessionExpiredNotice') === '1') {
+      sessionStorage.removeItem('sessionExpiredNotice');
+      alerts.userBasicAlert(
+        'Sesión expirada',
+        'Tu sesión expiró. Por favor, inicia sesión nuevamente.',
+        'info'
+      );
+    } else if (sessionStorage.getItem('authErrorNotice') === '1') {
+      sessionStorage.removeItem('authErrorNotice');
+      alerts.userBasicAlert(
+        'Error de sesión',
+        'No se pudo verificar tu sesión. Por favor, inicia sesión nuevamente.',
+        'warning'
+      );
     }
     this.setRandomCardPosition();
     this.loadLoginBackgroundImages();

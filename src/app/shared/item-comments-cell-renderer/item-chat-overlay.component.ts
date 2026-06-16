@@ -11,11 +11,36 @@ import { SignalsService } from 'app/services/signals.service';
   imports: [CommonModule, FormsModule],
   template: `
     <ng-container *ngIf="showChat">
-      <div class="chat-backdrop" (click)="close()"></div>
+      <div class="chat-backdrop" (click)="!forceComment && close()"></div>
       <div class="chat-panel" (mousedown)="$event.stopPropagation()" (click)="$event.stopPropagation()">
         <div class="chat-header">
-          <span class="chat-title"><i class="bi bi-chat-dots me-1"></i>{{ numArticle }}</span>
-          <button class="btn-close btn-close-white btn-sm" (click)="close()"></button>
+          <div class="chat-tabs" *ngIf="showProviderTabs">
+            <button type="button"
+                    class="chat-tab"
+                    [class.chat-tab-active]="activeTab === 'articulo'"
+                    [disabled]="forceComment && activeTab !== 'articulo'"
+                    [style.opacity]="forceComment && activeTab !== 'articulo' ? '0.4' : '1'"
+                    [style.cursor]="forceComment && activeTab !== 'articulo' ? 'not-allowed' : 'pointer'"
+                    (click)="setTab('articulo')">
+              Mensajes Articulo
+            </button>
+            <button type="button"
+                    class="chat-tab"
+                    [class.chat-tab-active]="activeTab === 'proveedor'"
+                    [disabled]="forceComment && activeTab !== 'proveedor'"
+                    [style.opacity]="forceComment && activeTab !== 'proveedor' ? '0.4' : '1'"
+                    [style.cursor]="forceComment && activeTab !== 'proveedor' ? 'not-allowed' : 'pointer'"
+                    (click)="setTab('proveedor')">
+              Mensajes Proveedor
+            </button>
+          </div>
+          <div class="chat-header-main">
+            <span class="chat-title"><i class="bi bi-chat-dots me-1"></i>{{ headerTitle }}</span>
+            <span *ngIf="forceComment" style="font-size:10px; color:rgba(255,255,255,0.85); font-weight:600;">
+              <i class="bi bi-exclamation-circle me-1"></i>Mensaje obligatorio
+            </span>
+            <button *ngIf="!forceComment" class="btn-close btn-close-white btn-sm" (click)="close()"></button>
+          </div>
         </div>
         <div class="chat-messages">
           <div *ngIf="!comments.length" class="chat-empty">Sin comentarios aún</div>
@@ -80,10 +105,24 @@ import { SignalsService } from 'app/services/signals.service';
       overflow: hidden;
     }
     .chat-header {
-      background: #0d6efd; color: #fff; padding: 10px 12px;
-      display: flex; align-items: center; justify-content: space-between; flex-shrink: 0;
+      background: #0d6efd; color: #fff; padding: 8px 10px 10px;
+      display: flex; flex-direction: column; gap: 8px; flex-shrink: 0;
+    }
+    .chat-header-main {
+      display: flex; align-items: center; justify-content: space-between; gap: 8px;
     }
     .chat-title { font-size: 11px; font-weight: 600; }
+    .chat-tabs {
+      display: grid; grid-template-columns: 1fr 1fr; gap: 4px;
+      background: rgba(255,255,255,0.16); border-radius: 6px; padding: 3px;
+    }
+    .chat-tab {
+      border: 0; border-radius: 4px; background: transparent; color: rgba(255,255,255,0.84);
+      cursor: pointer; font-size: 10px; font-weight: 700; padding: 5px 6px;
+    }
+    .chat-tab-active {
+      background: #fff; color: #0d6efd;
+    }
     .chat-bubble-tag { background: #fff0f0; border-left: 3px solid #c0392b; }
     .chat-tag-inline { color: #c0392b; font-weight: 700; font-size: 10px; margin-left: 4px; }
     .chat-messages {
@@ -125,7 +164,23 @@ export class ItemChatOverlayComponent implements OnInit, OnDestroy {
   numArticle = '';
   documentType = '';
   idDocument = 0;
-  pendingTag = '';   // tag pendiente que se adhiere al próximo mensaje del usuario
+  pendingTag = '';
+  forceComment = false;
+  showProviderTabs = false;
+  activeTab: 'articulo' | 'proveedor' = 'articulo';
+  articleNumArticle = '';
+  articleName = '';
+  idProvider = 0;
+  providerName = '';
+
+  get headerTitle(): string {
+    const articleLabel = this.articleName || this.articleNumArticle || this.numArticle;
+    if (this.showProviderTabs && this.activeTab === 'proveedor') {
+      const providerLabel = this.providerName || 'Proveedor';
+      return articleLabel ? `${articleLabel} - ${providerLabel}` : providerLabel;
+    }
+    return articleLabel;
+  }
 
   ngOnInit() {
     this.sub = this.commentsService.openChatFor$.subscribe(req => {
@@ -134,15 +189,19 @@ export class ItemChatOverlayComponent implements OnInit, OnDestroy {
       this.documentType    = req.documentType;
       this.idDocument      = req.idDocument;
       this.numArticle      = req.numArticle;
+      this.articleNumArticle = req.numArticle;
+      this.articleName     = req.articleName || '';
+      this.providerName    = req.providerMessages?.providerName || '';
+      this.idProvider      = req.providerMessages?.idProvider ?? 0;
+      this.showProviderTabs = !!this.idProvider;
+      this.activeTab       = (req.defaultTab && this.showProviderTabs) ? req.defaultTab : 'articulo';
       this.pendingTag      = req.autoMessage || '';
+      this.forceComment    = req.forceComment ?? false;
       this.newText = '';
       this.cancelEdit();
       this.showChat = true;
       this.focusComposer();
-      this.commentsService.getComments(req.documentType, req.idDocument, req.numArticle).subscribe({
-        next: d => { this.comments = d; },
-        error: () => { this.comments = []; }
-      });
+      this.loadComments();
     });
   }
 
@@ -155,11 +214,41 @@ export class ItemChatOverlayComponent implements OnInit, OnDestroy {
   }
 
   loadComments() {
-    if (!this.documentType || !this.idDocument || !this.numArticle) return;
-    this.commentsService.getComments(this.documentType, this.idDocument, this.numArticle).subscribe({
-      next: d => this.comments = d,
-      error: () => this.comments = []
-    });
+    if (!this.documentType || !this.idDocument) return;
+    if (this.showProviderTabs && this.activeTab === 'proveedor') {
+      if (!this.idProvider) return;
+      this.commentsService.getProviderComments(this.documentType, this.idDocument, this.idProvider, this.articleNumArticle).subscribe({
+        next: d => {
+          // Defensivo: garantizar que solo se muestren comentarios del proveedor seleccionado
+          // (por si el backend no filtra correctamente por idProvider)
+          this.comments = (d || []).filter(c => Number(c.idProvider) === this.idProvider);
+        },
+        error: () => this.comments = []
+      });
+    } else {
+      if (!this.articleNumArticle) return;
+      this.commentsService.getComments(this.documentType, this.idDocument, this.articleNumArticle).subscribe({
+        next: d => {
+          // Defensivo: garantizar que solo se muestren comentarios SIN proveedor (idProvider null)
+          // (por si el backend retorna comentarios de proveedores mezclados)
+          this.comments = (d || []).filter(c => !c.idProvider);
+        },
+        error: () => this.comments = []
+      });
+    }
+  }
+
+  setTab(tab: 'articulo' | 'proveedor') {
+    if (this.activeTab === tab) return;
+    this.activeTab = tab;
+    this.newText = '';
+    this.cancelEdit();
+    this.loadComments();
+    this.focusComposer();
+  }
+
+  private getActiveNumArticle(): string {
+    return this.articleNumArticle;
   }
 
   close() {
@@ -195,10 +284,12 @@ export class ItemChatOverlayComponent implements OnInit, OnDestroy {
       ? `${this.pendingTag}\n${this.newText.trim()}`
       : this.newText.trim();
     try {
+      const isProviderTab = this.showProviderTabs && this.activeTab === 'proveedor';
       const saved = await firstValueFrom(this.commentsService.addComment({
         documentType: this.documentType,
         idDocument:   this.idDocument,
-        numArticle:   this.numArticle,
+        numArticle:   this.articleNumArticle,
+        idProvider:   isProviderTab ? this.idProvider : undefined,
         idUser:       this.currentUserId,
         userName:     this.currentUserName,
         text:         textToSave
@@ -206,7 +297,8 @@ export class ItemChatOverlayComponent implements OnInit, OnDestroy {
       this.comments = [...this.comments, saved];
       this.commentsService.commentSaved$.next(saved);
       this.newText = '';
-      this.pendingTag = '';  // consumido
+      this.pendingTag = '';
+      this.forceComment = false;  // mensaje enviado, ya se puede cerrar
     } finally { this.saving = false; }
   }
 

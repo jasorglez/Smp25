@@ -28,6 +28,9 @@ import { SharedModule } from 'app/shared/shared.module';
 import { CanComponentDeactivate } from 'app/guards/unsaved-changes.guard';
 import { confirmExitIfUnsaved } from 'app/helpers/can-deactivate.helper';
 import { SubatalogsComponent } from "../../../ModWarehouse/components/catalogs/catalogs.component";
+import { AutorizacionMontosComponent } from "../../../ModShoppingDelison/pages/subPages/autorizacion-montos/autorizacion-montos.component";
+import { ProductosTerminadosComponent } from "../../../Almacenes/pages/productos-terminados/productos-terminados.component";
+import { CondicionesPagoComponent } from "../../../ModShoppingDelison/pages/subPages/condiciones-pago/condiciones-pago.component";
 
 //soriano
 @Component({
@@ -40,7 +43,10 @@ import { SubatalogsComponent } from "../../../ModWarehouse/components/catalogs/c
     SharedModule,
     TranslateModule,
     SubatalogsComponent,
-    CatFamSubComponent, EleccionFamiliasComponent
+    CatFamSubComponent, EleccionFamiliasComponent,
+    AutorizacionMontosComponent,
+    ProductosTerminadosComponent,
+    CondicionesPagoComponent
 ],
   templateUrl: './catalogs.component.html',
   styleUrl: './catalogs.component.scss',
@@ -60,6 +66,9 @@ export class CatalogsComponent implements CanComponentDeactivate {
   showDetailsTab: boolean = false;
   typeCatalog: string;
   cat:boolean = false;
+  montos:boolean = false;
+  prodTerminado:boolean = false;
+  condicionesPago:boolean = false;
   gridHeight: string = '50vh';
   prefixAndConsecutive: any[] = [];
   private tempIdCounter: number = 0;
@@ -133,6 +142,30 @@ export class CatalogsComponent implements CanComponentDeactivate {
 
   refres(open: boolean){
     this.cat = open;
+    this.montos = false;
+    this.prodTerminado = false;
+    this.condicionesPago = false;
+  }
+
+  showMontos(){
+    this.cat = false;
+    this.montos = true;
+    this.prodTerminado = false;
+    this.condicionesPago = false;
+  }
+
+  showProdTerminado(){
+    this.cat = false;
+    this.montos = false;
+    this.prodTerminado = true;
+    this.condicionesPago = false;
+  }
+
+  showCondicionesPago(){
+    this.cat = false;
+    this.montos = false;
+    this.prodTerminado = false;
+    this.condicionesPago = true;
   }
 
   permisos(type: string){
@@ -220,12 +253,25 @@ export class CatalogsComponent implements CanComponentDeactivate {
         }
       );
   }
+  private readonly sectionOrder: Record<string, string[]> = {
+    hr: ['EMPLEADOS', 'CHECADOR', 'NOMINA'],
+  };
+
   obtenerTablesSecitons() {
     this.tableService
       .getTablesxmodulesSection(this.signalsService.getCatalogSelected())
       .subscribe(
         (data: any) => {
-          this.listsections = data;
+          const order = this.sectionOrder[this.typeCatalog];
+          if (order) {
+            this.listsections = [...data].sort((a, b) => {
+              const ai = order.indexOf((a.sections ?? '').toUpperCase());
+              const bi = order.indexOf((b.sections ?? '').toUpperCase());
+              return (ai === -1 ? 999 : ai) - (bi === -1 ? 999 : bi);
+            });
+          } else {
+            this.listsections = data;
+          }
         },
         (error) => {
           if (error.status == 404) this.table = [];

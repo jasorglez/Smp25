@@ -16,6 +16,7 @@ import { BranchsService } from 'app/services/branchs.service';
 import { PrefixSetupService } from 'app/services/prefix-setup.service';
 import { ReceiptsDelisonService } from 'app/services/receipts-delison.service';
 import { RolesService } from 'app/services/roles.service';
+import { PermitionsService } from 'app/services/permitions.service';
 import { alerts } from 'app/helpers/alerts';
 import { catchError, EMPTY, firstValueFrom } from 'rxjs';
 import { AuthService } from 'app/services/auth.service';
@@ -49,6 +50,7 @@ export class RequisitionsDelisonComponent implements OnInit {
   private prefixSetupService = inject(PrefixSetupService);
   private receiptsDelisonService = inject(ReceiptsDelisonService);
   private rolesService = inject(RolesService);
+  private permitionsService = inject(PermitionsService);
   public   authService = inject(AuthService);
 
   private gridApi!: GridApi;
@@ -109,9 +111,17 @@ export class RequisitionsDelisonComponent implements OnInit {
         this.gridApi.refreshCells({ columns: ['requisitionNumber'], force: true });
       }
     });
+
+    // ✅ Re-aplica el filtro externo cuando cambia el flag lecturaAmplia del usuario logueado.
+    effect(() => {
+      this.signalsService.lecturaAmplia(); // suscripción reactiva
+      if (this.gridApi) {
+        this.gridApi.onFilterChanged();
+      }
+    });
   }
 
-  rowData: any[] = [];
+  rowData: any[] | null = null;
   fullRowData: any[] = []; // Store original unfiltered data
   gridHeight: string = '80vh';
   hasUnsavedChanges: boolean = false;
@@ -130,6 +140,13 @@ export class RequisitionsDelisonComponent implements OnInit {
 
   // ✅ Cache de roles por sucursal: Map<idBranch, roles[]>
   private rolesByBranchCache: Map<number, any[]> = new Map();
+
+  // ✅ Cache de departamento principal por sucursal: Map<idBranch, {id, description}>
+  private primaryDepartmentByBranch: Map<number, any> = new Map();
+
+  // ✅ Catálogo global de roles/departamentos (todos, sin filtrar por usuario).
+  // Se usa para mostrar el nombre del departamento aunque el usuario no tenga ese rol en esa sucursal.
+  private allRolesByIdMap: Map<number, string> = new Map();
 
   // Datos del prefijo actual
   currentPrefixData: any = null;
@@ -238,6 +255,59 @@ export class RequisitionsDelisonComponent implements OnInit {
       },
       (error) => console.error('Error fetching departments:', error)
     );
+    this.loadAllRolesForCompany();
+  }
+
+  /**
+   * Carga el catálogo completo de roles/departamentos de la empresa (sin filtrar por usuario).
+   * Permite mostrar el nombre del departamento en filas donde el usuario no tiene ese rol asignado.
+   */
+  private loadAllRolesForCompany(): void {
+    if (!this.idRoot) return;
+    this.rolesService.getRoles(this.idRoot).subscribe({
+      next: (response: any) => {
+        const rolesArr = Array.isArray(response?.data)
+          ? response.data
+          : Array.isArray(response) ? response : [];
+        this.allRolesByIdMap.clear();
+        for (const r of rolesArr) {
+          const id = Number(r?.id ?? r?.Id);
+          const desc = r?.description ?? r?.Description ?? '';
+          if (Number.isFinite(id) && id > 0) {
+            this.allRolesByIdMap.set(id, String(desc));
+          }
+        }
+        if (this.gridApi) {
+          this.gridApi.refreshCells({ columns: ['departmentId'], force: true });
+        }
+      },
+      error: () => { /* silencioso */ }
+    });
+  }
+
+  /**
+   * Indica si el usuario logueado tiene la combinación exacta (sucursal, departamento)
+   * dada de alta en sus permisos (permissionBydescription).
+   */
+  private userHasBranchDeptCombination(branchId: number, deptId: number): boolean {
+    if (!branchId || !deptId || branchId <= 0 || deptId <= 0) return false;
+    const allowedRoles = this.rolesByBranchCache.get(branchId);
+    if (!allowedRoles) return false;
+    return allowedRoles.some((r: any) => Number(r?.id || 0) === Number(deptId));
+  }
+
+  /**
+   * Determina si el usuario puede editar las columnas Sucursal/Departamento o borrar la fila.
+   * - Filas nuevas (__isNew): siempre permitido (el usuario las está creando).
+   * - lectura_amplia = false: el filtro externo ya garantiza que solo ve filas autorizadas → permitido.
+   * - lectura_amplia = true: solo si tiene la combinación (sucursal, departamento) en sus permisos.
+   */
+  private canUserModifyRow(rowData: any): boolean {
+    if (rowData?.__isNew) return true;
+    if (this.signalsService.lecturaAmplia() === false) return true;
+    const branchId = Number(rowData?.idReference || 0);
+    const deptId = Number(rowData?.departmentId || 0);
+    return this.userHasBranchDeptCombination(branchId, deptId);
   }
 
 
@@ -259,6 +329,8 @@ export class RequisitionsDelisonComponent implements OnInit {
       this.rowData = [];
       return;
     }
+
+    this.rowData = null;
 
     // 🔍 Detectar si se seleccionó "Todas las sucursales" (ID negativo)
     const isAllBranches = this.idBranch < 0;
@@ -367,22 +439,38 @@ export class RequisitionsDelisonComponent implements OnInit {
 
       // Refrescar el grid
       if (this.gridApi) {
-        this.gridApi.setGridOption('rowData', []);
-        setTimeout(() => {
-          this.gridApi.setGridOption('rowData', this.rowData);
-          this.gridApi.refreshCells({ force: true });
-          this.gridApi.ensureIndexVisible(0);
+        this.gridApi.setGridOption('rowData', this.rowData);
+        this.gridApi.refreshCells({ force: true });
 
-          // ✅ Reabrir la fila que estaba expandida
-          if (expandedRequisitionId) {
-            setTimeout(() => {
-              const nodeToExpand = this.gridApi.getRowNode(String(expandedRequisitionId));
-              if (nodeToExpand) {
-                nodeToExpand.setExpanded(true);
-              }
-            }, 100);
-          }
-        }, 0);
+        // ✅ Reabrir la fila que estaba expandida y aplicar restricciones de altura
+        if (expandedRequisitionId) {
+          setTimeout(() => {
+            const nodeToExpand = this.gridApi.getRowNode(String(expandedRequisitionId));
+            if (nodeToExpand) {
+              // Replicar el mismo flujo que onRowClicked()
+              // 1. Ocultar todas las demás filas (altura 0)
+              this.gridApi.forEachNode((otherNode: any) => {
+                if (otherNode.id !== String(expandedRequisitionId)) {
+                  otherNode.setRowHeight(0);
+                }
+              });
+
+              // 2. Aplicar cambios de altura
+              this.gridApi.onRowHeightChanged();
+
+              // 3. Expandir la fila
+              nodeToExpand.setExpanded(true);
+              nodeToExpand.data.detailType = 'items';
+              nodeToExpand.data.isExpanded = true;
+              this.expandedRowId = nodeToExpand.id;
+
+              // 4. Redraw
+              this.gridApi.redrawRows();
+            }
+          }, 50);
+        } else {
+          this.gridApi.ensureIndexVisible(0);
+        }
       }
 
       // Cargar flags de typeOC desde COTIZs vinculadas
@@ -462,22 +550,38 @@ export class RequisitionsDelisonComponent implements OnInit {
 
         // Refrescar el grid si ya existe
         if (this.gridApi) {
-          this.gridApi.setGridOption('rowData', []);
-          setTimeout(() => {
-            this.gridApi.setGridOption('rowData', this.rowData);
-            this.gridApi.refreshCells({ force: true });
-            this.gridApi.ensureIndexVisible(0);
+          this.gridApi.setGridOption('rowData', this.rowData);
+          this.gridApi.refreshCells({ force: true });
 
-            // ✅ Reabrir la fila que estaba expandida
-            if (expandedRequisitionId) {
-              setTimeout(() => {
-                const nodeToExpand = this.gridApi.getRowNode(String(expandedRequisitionId));
-                if (nodeToExpand) {
-                  nodeToExpand.setExpanded(true);
-                }
-              }, 100);
-            }
-          }, 0);
+          // ✅ Reabrir la fila que estaba expandida y aplicar restricciones de altura
+          if (expandedRequisitionId) {
+            setTimeout(() => {
+              const nodeToExpand = this.gridApi.getRowNode(String(expandedRequisitionId));
+              if (nodeToExpand) {
+                // Replicar el mismo flujo que onRowClicked()
+                // 1. Ocultar todas las demás filas (altura 0)
+                this.gridApi.forEachNode((otherNode: any) => {
+                  if (otherNode.id !== String(expandedRequisitionId)) {
+                    otherNode.setRowHeight(0);
+                  }
+                });
+
+                // 2. Aplicar cambios de altura
+                this.gridApi.onRowHeightChanged();
+
+                // 3. Expandir la fila
+                nodeToExpand.setExpanded(true);
+                nodeToExpand.data.detailType = 'items';
+                nodeToExpand.data.isExpanded = true;
+                this.expandedRowId = nodeToExpand.id;
+
+                // 4. Redraw
+                this.gridApi.redrawRows();
+              }
+            }, 50);
+          } else {
+            this.gridApi.ensureIndexVisible(0);
+          }
         }
 
         // Cargar flags de typeOC desde COTIZs vinculadas
@@ -512,8 +616,7 @@ export class RequisitionsDelisonComponent implements OnInit {
     // Mantiene un layout “bonito” (sin columnas mini) llenando el ancho disponible.
     // En AG Grid nuevas versiones esto evita tener que autoSizeAllColumns.
     autoSizeStrategy: {
-      type: 'fitGridWidth',
-      defaultMinWidth: 110,
+      type: 'fitCellContents',
     },
     masterDetail: true,
     // Se recalcula en caliente en updateDetailRowHeight() para ocupar el alto disponible.
@@ -581,13 +684,30 @@ export class RequisitionsDelisonComponent implements OnInit {
             const timeB = new Date(b.dateModified || b.requestDate).getTime();
             return timeB - timeA;
           });
-          
+
           // Aplicar el nuevo orden al grid
           if (this.gridApi) {
             this.gridApi.setGridOption('rowData', [...this.rowData]);
           }
         }
       }
+    },
+    // ✅ Filtro externo: oculta filas cuyo departamento no está autorizado al usuario logueado
+    // en esa sucursal. Solo aplica cuando lecturaAmplia === false ("Solo mis departamentos").
+    isExternalFilterPresent: () => {
+      return this.signalsService.lecturaAmplia() === false;
+    },
+    doesExternalFilterPass: (node: any) => {
+      // Filas nuevas o sin asignación todavía → pasan (no se restringe la creación).
+      if (node?.data?.__isNew) return true;
+      const branchId = Number(node?.data?.idReference || 0);
+      const deptId = Number(node?.data?.departmentId || 0);
+      if (branchId <= 0 || deptId <= 0) return true;
+      const allowedRoles = this.rolesByBranchCache.get(branchId);
+      // Si la cache aún no terminó de cargar para esa sucursal, ocultar por seguridad.
+      // Al terminar preloadRolesForBranch se dispara onFilterChanged() y se re-evalúa.
+      if (!allowedRoles) return false;
+      return allowedRoles.some((r: any) => Number(r?.id || 0) === deptId);
     }
   };
 
@@ -599,16 +719,7 @@ export class RequisitionsDelisonComponent implements OnInit {
 
   private autoAdjustColumns(): void {
     if (!this.gridApi) return;
-    const apiAny = this.gridApi as any;
-    // Preferimos “fit” al ancho del grid para evitar columnas minúsculas.
-    if (typeof apiAny.sizeColumnsToFit === 'function') {
-      apiAny.sizeColumnsToFit();
-      return;
-    }
-    // Fallback (si existiera en esta versión)
-    if (typeof apiAny.autoSizeAllColumns === 'function') {
-      apiAny.autoSizeAllColumns(false);
-    }
+    this.gridApi.autoSizeAllColumns();
   }
 
   /**
@@ -649,8 +760,13 @@ export class RequisitionsDelisonComponent implements OnInit {
         field: 'idReference',
         headerName: 'Sucursal',
         width: 250,
-        // ✅ Solo editable si está en modo "Todas las sucursales" (idBranch negativo o no definido)
-        editable: () => !this.idBranch || this.idBranch < 0,
+        // ✅ Editable si:
+        //    1) Está en modo "Todas las sucursales" (idBranch negativo o no definido), Y
+        //    2) El usuario tiene la combinación (sucursal, departamento) autorizada en sus permisos.
+        editable: (params: any) => {
+          if (!(!this.idBranch || this.idBranch < 0)) return false;
+          return this.canUserModifyRow(params.data);
+        },
         cellEditor: 'agRichSelectCellEditor',
         cellEditorParams: () => {
           return {
@@ -676,10 +792,14 @@ export class RequisitionsDelisonComponent implements OnInit {
           return branch?.name || branch?.description || '';
         },
         // ✅ Estilo visual para indicar si es editable o no
-        cellStyle: () => {
+        cellStyle: (params: any) => {
           // Si hay una sucursal específica seleccionada (no es "Todas"), hacer fondo gris
           if (this.idBranch && this.idBranch > 0) {
             return { backgroundColor: '#f0f0f0' }; // Gris = no editable
+          }
+          // En modo "Todas las sucursales": gris si el usuario no tiene la combinación autorizada
+          if (!this.canUserModifyRow(params.data)) {
+            return { backgroundColor: '#f0f0f0' };
           }
           return {}; // Sin estilo = editable
         },
@@ -704,7 +824,17 @@ export class RequisitionsDelisonComponent implements OnInit {
             // Precargar departamentos del backend para la sucursal recién seleccionada
             this.preloadRolesForBranch(branchId);
 
-
+            // ✅ Cargar el departamento principal de la nueva sucursal y actualizar automáticamente
+            this.loadPrimaryDepartmentForBranch(branchId).then((principal) => {
+              if (principal) {
+                params.data.departmentId = principal.id;
+                params.data.departmentName = principal.description;
+                // Refrescar solo la celda del departamento para mostrar el cambio
+                if (this.gridApi) {
+                  this.gridApi.refreshCells({ rowNodes: [params.node], force: true, columns: ['departmentId'] });
+                }
+              }
+            });
 
             // 🔄 Obtener el próximo número de requisición para la nueva sucursal
             this.prefixSetupService.getNextFolio('branch', branchId, 'req').then((folio: string | null) => {
@@ -800,7 +930,14 @@ export class RequisitionsDelisonComponent implements OnInit {
       {
         field: 'departmentId',
         headerName: 'Departamento que solicita',
-        width: 200,
+        width: 280,
+        // ✅ Fondo gris cuando el usuario no puede editar la celda (sin la combinación autorizada).
+        cellStyle: (params: any) => {
+          if (!this.canUserModifyRow(params.data)) {
+            return { backgroundColor: '#f0f0f0' };
+          }
+          return {};
+        },
         valueFormatter: (params: any) => {
           if (!params.value) return '';
 
@@ -812,12 +949,19 @@ export class RequisitionsDelisonComponent implements OnInit {
             if (role) return role.description;
           }
 
+          // ✅ Fallback: catálogo global de roles de la empresa. Permite mostrar el nombre
+          //    aunque el usuario no tenga ese rol en esa sucursal (modo lectura amplia).
+          const globalName = this.allRolesByIdMap.get(Number(params.value));
+          if (globalName) return globalName;
+
           return params.value?.toString() || '';
         },
         editable: (params: any) => {
-          return params.data && params.data.idReference > 0;
+          if (!params.data || params.data.idReference <= 0) return false;
+          // ✅ Solo editable si el usuario tiene la combinación (sucursal, departamento) autorizada.
+          return this.canUserModifyRow(params.data);
         },
-        cellEditor: 'agSelectCellEditor',
+        cellEditor: 'agRichSelectCellEditor',
         cellEditorParams: (params: any) => {
           const branchId = params.data?.idReference;
 
@@ -858,7 +1002,16 @@ export class RequisitionsDelisonComponent implements OnInit {
           return {
             values: roles.map(r => r.description),
             valueListGap: 0,
-            valueListMaxHeight: 220
+            valueListMaxHeight: 220,
+            cellWidth: 290,
+            // ✅ Formatear cómo se muestra cada opción en el dropdown
+            formatValue: (value: any) => {
+              if (!value) return '';
+              const role = roles.find(r => r.description === value);
+              return role?.description || value?.toString() || '';
+            },
+            allowTyping: false,
+            filterList: false
           };
         },
         valueGetter: (params: any) => {
@@ -874,6 +1027,11 @@ export class RequisitionsDelisonComponent implements OnInit {
               return role.description;
             }
           }
+
+          // ✅ Fallback: catálogo global de roles (cuando el usuario no tiene ese rol
+          //    en esa sucursal, pero el departamento sí existe en la empresa).
+          const globalName = this.allRolesByIdMap.get(Number(departmentId));
+          if (globalName) return globalName;
 
           return null;
         },
@@ -1413,9 +1571,19 @@ export class RequisitionsDelisonComponent implements OnInit {
     const branch = this.branches.find(b => b.id === selectedBranchId);
     const branchName = branch?.name || branch?.description || '';
 
-    // Pre-poblar el primer departamento disponible del catálogo
-    const defaultDeptId = this.departamentos && this.departamentos.length > 0 ? this.departamentos[0].id : null;
-    const defaultDeptName = this.departamentos && this.departamentos.length > 0 ? this.departamentos[0].description : '';
+    // ✅ Pre-poblar con el departamento principal del usuario para esta sucursal
+    // Si no existe principal, usar el primer departamento disponible del catálogo
+    let defaultDeptId: number | null = null;
+    let defaultDeptName: string = '';
+
+    const principal = this.primaryDepartmentByBranch.get(selectedBranchId);
+    if (principal) {
+      defaultDeptId = principal.id;
+      defaultDeptName = principal.description;
+    } else if (this.departamentos && this.departamentos.length > 0) {
+      defaultDeptId = this.departamentos[0].id;
+      defaultDeptName = this.departamentos[0].description;
+    }
 
     const newId = `temp_${Date.now()}`;
     const newItem = {
@@ -1489,6 +1657,16 @@ export class RequisitionsDelisonComponent implements OnInit {
     const selectedData = selectedNodes[0].data;
     const id = selectedData.id;
 
+    // ✅ Verificar permiso por combinación (sucursal, departamento) cuando aplica.
+    if (!this.canUserModifyRow(selectedData)) {
+      alerts.reqBasicAlert(
+        'Eliminar requisición',
+        'No tienes esta combinación de sucursal + departamento asignada en tu usuario, por lo que no puedes eliminar esta requisición.',
+        'error'
+      );
+      return;
+    }
+
     // Verificar si tiene artículos asociados
     if (selectedData.articlesCount > 0) {
       alerts.reqBasicAlert(
@@ -1559,11 +1737,56 @@ export class RequisitionsDelisonComponent implements OnInit {
   }
 
   /**
+   * ✅ Carga el departamento principal para una sucursal y retorna una Promise.
+   * Útil para casos donde necesitas esperar a que se cargue antes de actualizar datos.
+   */
+  private loadPrimaryDepartmentForBranch(branchId: number): Promise<any | null> {
+    return new Promise((resolve) => {
+      // Si ya está en cache, resolver inmediatamente
+      if (this.primaryDepartmentByBranch.has(branchId)) {
+        resolve(this.primaryDepartmentByBranch.get(branchId));
+        return;
+      }
+
+      // Si no está en cache, cargar y resolver cuando complete
+      this.permitionsService.getRolYPosicion(this.idUser, branchId).subscribe({
+        next: (permisos: any) => {
+          const permisosArr = Array.isArray(permisos)
+            ? permisos
+            : Array.isArray(permisos?.data)
+              ? permisos.data
+              : Array.isArray(permisos?.project)
+                ? permisos.project
+                : Array.isArray(permisos?.permissions)
+                  ? permisos.permissions
+                  : [];
+
+          const principal = permisosArr.find((p: any) => p?.principal === true || p?.principal === 1);
+          if (principal && principal.idRole) {
+            const deptData = {
+              id: principal.idRole,
+              description: principal.roleName || `ID: ${principal.idRole}`
+            };
+            this.primaryDepartmentByBranch.set(branchId, deptData);
+            resolve(deptData);
+          } else {
+            resolve(null);
+          }
+        },
+        error: () => resolve(null) // Resolver incluso en error
+      });
+    });
+  }
+
+  /**
    * Pre-carga los roles para todas las sucursales únicas presentes en las requisiciones
    * Esto permite que el valueFormatter muestre los nombres correctamente al cargar
+   * ✅ También carga el departamento principal del usuario para esa sucursal
    */
   private preloadRolesForBranch(branchId: number): void {
     if (!this.idUser || !branchId || branchId <= 0) return;
+
+    // Cargar roles disponibles
     this.rolesService.getRolesByBranchDelison(this.idUser, branchId).subscribe({
       next: (roles: any[]) => {
         this.rolesByBranchCache.set(branchId, roles.map(r => ({
@@ -1573,9 +1796,37 @@ export class RequisitionsDelisonComponent implements OnInit {
         })));
         if (this.gridApi) {
           this.gridApi.refreshCells({ force: true });
+          // ✅ Re-evaluar filtro externo: la cache ya tiene los roles autorizados de esta sucursal.
+          this.gridApi.onFilterChanged();
         }
       },
       error: () => {}
+    });
+
+    // ✅ Cargar departamento principal del usuario para esta sucursal
+    this.permitionsService.getRolYPosicion(this.idUser, branchId).subscribe({
+      next: (permisos: any) => {
+        const permisosArr = Array.isArray(permisos)
+          ? permisos
+          : Array.isArray(permisos?.data)
+            ? permisos.data
+            : Array.isArray(permisos?.project)
+              ? permisos.project
+              : Array.isArray(permisos?.permissions)
+                ? permisos.permissions
+                : [];
+
+        // Buscar el que tiene principal: true
+        const principal = permisosArr.find((p: any) => p?.principal === true || p?.principal === 1);
+
+        if (principal && principal.idRole) {
+          this.primaryDepartmentByBranch.set(branchId, {
+            id: principal.idRole,
+            description: principal.roleName || `ID: ${principal.idRole}`
+          });
+        }
+      },
+      error: () => {} // Silencioso si falla
     });
   }
 
