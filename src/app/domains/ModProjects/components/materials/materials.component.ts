@@ -668,6 +668,12 @@ export class MaterialsComponent implements CanComponentDeactivate {
         wrapText: true,
         autoHeight: true,
         cellStyle: { 'white-space': 'normal', 'line-height': '1.4', 'padding-top': '4px', 'padding-bottom': '4px' },
+        cellEditor: 'agLargeTextCellEditor',
+        cellEditorParams: {
+          maxLength: 1000,
+          rows: 6,
+          cols: 60
+        },
       },
       {
         field: 'barcode',
