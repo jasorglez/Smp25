@@ -73,5 +73,5 @@ export const environment = {
 
   urlRefreshToken: 'https://securetoken.googleapis.com/v1/token?key=AIzaSyDxCBGKk8nT09hdW85-PyOkhw5_JPZLF1A',
 
-  version: '2.52.513 (16 Junio 2026) - Preparacion1: Config por Materia Prima (PREPARACION1-JARABE)'
+  version: '2.52.514 (17 Junio 2026) - Catalogos: tab Molienda renombrado a Extracción y Fermentación'
 };

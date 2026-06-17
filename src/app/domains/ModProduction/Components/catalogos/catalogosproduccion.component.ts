@@ -1139,7 +1139,7 @@ export class CatalogosProduccionComponent {
   };
 
   tabs = [
-    { key: 'molienda',     label: 'Molienda' },
+    { key: 'molienda',     label: 'Extracción y Fermentación' },
     { key: 'preparacion1', label: 'Preparacion 1' },
     { key: 'preparacion2', label: 'Preparacion 2' },
     { key: 'cerveza',      label: 'Cerveza' },
