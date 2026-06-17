@@ -1,4 +1,4 @@
-import { Component, ElementRef, inject, OnDestroy } from '@angular/core';
+import { Component, ElementRef, inject, OnDestroy, ChangeDetectorRef} from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ICellEditorAngularComp } from 'ag-grid-angular';
@@ -70,6 +70,7 @@ export interface MaterialIconPickerEditorParams extends ICellEditorParams {
 })
 export class MaterialIconPickerCellEditorComponent implements ICellEditorAngularComp, OnDestroy {
   private readonly host = inject(ElementRef<HTMLElement>);
+  private readonly cdr = inject(ChangeDetectorRef);
 
   value: string = '';
   filter: string = '';
@@ -124,7 +125,8 @@ export class MaterialIconPickerCellEditorComponent implements ICellEditorAngular
     const p = params as MaterialIconPickerEditorParams;
     this.iconsOnly = !!p.iconsOnly;
     this.sourceIcons = Array.isArray(p.icons) && p.icons.length > 0 ? [...p.icons] : [];
-  }
+  
+    this.cdr.detectChanges();}
 
   afterGuiAttached(): void {
     // Diferir un tick para no cerrar con el mismo clic que abrió la celda

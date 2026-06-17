@@ -1,4 +1,4 @@
-import { Component, OnInit, OnChanges, SimpleChanges, Input } from '@angular/core';
+import { inject, Component, OnInit, OnChanges, SimpleChanges, Input, ChangeDetectorRef} from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { AgGridModule } from 'ag-grid-angular';
 import { ColDef, GridApi, GridReadyEvent } from 'ag-grid-enterprise';
@@ -29,6 +29,7 @@ import { AG_GRID_LOCALE_ES } from 'assets/i18n/ag-grid.locale.es';
   styles: [`:host { display: block; height: 100%; overflow: hidden; }`]
 })
 export class PartesLimpiezaComponent implements OnInit, OnChanges {
+  private readonly cdr = inject(ChangeDetectorRef);
   @Input() params: any;
   private internalParams: any;
   private gridApi!: GridApi;
@@ -94,7 +95,8 @@ export class PartesLimpiezaComponent implements OnInit, OnChanges {
     this.params = params;
     this.internalParams = params;
     if (this.gridApi) this.loadData();
-  }
+  
+    this.cdr.detectChanges();}
 
   onGridReady(event: GridReadyEvent) {
     this.gridApi = event.api;

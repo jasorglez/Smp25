@@ -4,8 +4,7 @@ import {
   HostListener,
   inject,
   Renderer2,
-  RendererFactory2,
-} from '@angular/core';
+  RendererFactory2, ChangeDetectorRef} from '@angular/core';
 import { SignalsService } from 'app/services/signals.service';
 import { AgGridModule, ICellRendererAngularComp } from 'ag-grid-angular';
 import { FormsModule } from '@angular/forms';
@@ -66,6 +65,7 @@ import { PdfMaterialsDistributionComponent } from './pdf-materials-distribution.
   `]
 })
 export class CustomGroupRendererComponent implements ICellRendererAngularComp {
+  private readonly cdr = inject(ChangeDetectorRef);
   params: any;
   displayText: string = '';
 
@@ -79,7 +79,8 @@ export class CustomGroupRendererComponent implements ICellRendererAngularComp {
     } else {
       this.displayText = params.value;
     }
-  }
+  
+    this.cdr.detectChanges();}
 
   onToggleExpand(): void {
     this.params.node.setExpanded(!this.params.node.expanded);
@@ -134,6 +135,7 @@ export class MaterialsComponent implements CanComponentDeactivate {
   private gridApi: GridApi;
   private tempIdCounter: number = 0;
   private signalsService = inject(SignalsService);
+  private readonly cdr = inject(ChangeDetectorRef);
   private trackingService = inject(TrackingService);
   private materialsService = inject(MaterialsService);
   private catalogsService = inject(CatalogsService);

@@ -1,4 +1,4 @@
-import { Component, Input, Output, EventEmitter, OnInit, inject } from '@angular/core';
+import { Component, Input, Output, EventEmitter, OnInit, inject, ChangeDetectorRef} from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { AgGridModule } from 'ag-grid-angular';
@@ -73,6 +73,7 @@ import { ButtonCellRendererExpenditureComponent } from 'app/domains/ModAdmon/com
 })
 export class ProyectosDetailRendererComponent implements ICellRendererAngularComp {
   private projectsService          = inject(ProjectsService);
+  private readonly cdr = inject(ChangeDetectorRef);
   private usersxpermissionsService = inject(UsersxpermissionsService);
 
   projects: any[] = [];
@@ -101,7 +102,8 @@ export class ProyectosDetailRendererComponent implements ICellRendererAngularCom
     if (this.userId && this.contractId) {
       this.loadData();
     }
-  }
+  
+    this.cdr.detectChanges();}
 
   private loadData(): void {
     forkJoin({

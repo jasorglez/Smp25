@@ -1,5 +1,5 @@
 import { CommonModule } from '@angular/common';
-import { Component, inject, OnDestroy } from '@angular/core';
+import { Component, inject, OnDestroy, ChangeDetectorRef} from '@angular/core';
 import { alerts } from 'app/helpers/alerts';
 import { AgGridModule, ICellRendererAngularComp } from 'ag-grid-angular';
 import { catchError, concat, EMPTY, lastValueFrom, toArray } from 'rxjs';
@@ -50,6 +50,7 @@ import { PendingChangesService } from 'app/services/pending-changes.service';
 })
 export class DetallesSucursalesProveedorComponent implements ICellRendererAngularComp, OnDestroy {
   private branchsService = inject(BranchsService);
+  private readonly cdr = inject(ChangeDetectorRef);
   private signalsService = inject(SignalsService);
   private sucursalByMaterialProveedorService = inject(SucursalByMaterialProveedorService);
   private pendingChangesService = inject(PendingChangesService);
@@ -262,7 +263,8 @@ export class DetallesSucursalesProveedorComponent implements ICellRendererAngula
       // Columnas asíncronas: onFirstDataRendered puede haber corrido sin defs; repetir autosize al estar listas.
       setTimeout(() => this.scheduleAutosize(), 0);
     });
-  }
+  
+    this.cdr.detectChanges();}
 
   private scheduleAutosize(): void {
     if (!this.gridApi) return;

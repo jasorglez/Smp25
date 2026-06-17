@@ -1,4 +1,4 @@
-import { Component, inject, OnDestroy } from '@angular/core';
+import { Component, inject, OnDestroy, ChangeDetectorRef} from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { AgGridAngular } from 'ag-grid-angular';
 import { ColDef, GridApi, GridReadyEvent } from 'ag-grid-enterprise';
@@ -43,6 +43,7 @@ import { alerts } from 'app/helpers/alerts';
 })
 export class DetallesArticuloFiltradoComponent implements OnDestroy {
   private productionService = inject(ProductionService);
+  private readonly cdr = inject(ChangeDetectorRef);
   private salidasService = inject(SalidasMpService);
 
   private internalParams: any;
@@ -164,7 +165,8 @@ export class DetallesArticuloFiltradoComponent implements OnDestroy {
     }
 
     this.registerOnRow(params);
-  }
+  
+    this.cdr.detectChanges();}
 
   private registerOnRow(params: any) {
     if (!params?.data) return;

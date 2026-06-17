@@ -1,4 +1,4 @@
-import { Component, effect, inject } from '@angular/core';
+import { Component, effect, inject, ChangeDetectorRef} from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { AgGridModule } from 'ag-grid-angular';
@@ -73,6 +73,7 @@ import { TrackingService } from 'app/services/tracking.service';
 })
 export class SubfamilyDetailComponent {
   private catalogsService = inject(CatalogsService);
+  private readonly cdr = inject(ChangeDetectorRef);
   private trackingService = inject(TrackingService);
 
   params!: IDetailCellRendererParams;
@@ -104,7 +105,8 @@ export class SubfamilyDetailComponent {
     this.params = params;
     this.parentFamily = params.data;
     this.loadSubfamilies();
-  }
+  
+    this.cdr.detectChanges();}
 
   async loadSubfamilies() {
     const context = this.params.context;

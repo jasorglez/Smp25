@@ -1,4 +1,4 @@
-import { Component, HostListener, inject, OnInit } from '@angular/core';
+import { Component, HostListener, inject, OnInit, ChangeDetectorRef} from '@angular/core';
 import { AgGridModule } from 'ag-grid-angular';
 import { ColDef, GridApi, GridReadyEvent } from 'ag-grid-enterprise';
 import { CommonModule } from '@angular/common';
@@ -17,6 +17,7 @@ import { catchError, concat, EMPTY, lastValueFrom, toArray, map } from 'rxjs';
 export class DetailFamilySubFamilyComponent implements OnInit { 
 
   private familySubFamily = inject(FamilySubFamily);
+  private readonly cdr = inject(ChangeDetectorRef);
   private signalsService = inject(SignalsService);
   private catalogsService = inject(CatalogsService);
 
@@ -65,7 +66,8 @@ export class DetailFamilySubFamilyComponent implements OnInit {
   agInit(params: any) {
     this.params = params;
     this.masterCatalog = params.data.id;
-  }
+  
+    this.cdr.detectChanges();}
 
   onGridReady(event: GridReadyEvent) {
     this.gridApi = event.api;

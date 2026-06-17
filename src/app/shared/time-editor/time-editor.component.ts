@@ -1,4 +1,4 @@
-import { Component, ViewChild, ElementRef, AfterViewInit } from '@angular/core';
+import { inject, Component, ViewChild, ElementRef, AfterViewInit, ChangeDetectorRef} from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ICellEditorAngularComp } from 'ag-grid-angular';
@@ -32,6 +32,7 @@ import { ICellEditorAngularComp } from 'ag-grid-angular';
   `]
 })
 export class TimeEditorComponent implements ICellEditorAngularComp, AfterViewInit {
+  private readonly cdr = inject(ChangeDetectorRef);
   @ViewChild('input') input: ElementRef;
   private params: any;
   value: string;
@@ -74,7 +75,8 @@ export class TimeEditorComponent implements ICellEditorAngularComp, AfterViewIni
       this.value = '00:00:00';
     }
     
-  }
+  
+    this.cdr.detectChanges();}
 
   getValue(): string {
     // Asegúrate de que siempre devuelve un formato de hora válido

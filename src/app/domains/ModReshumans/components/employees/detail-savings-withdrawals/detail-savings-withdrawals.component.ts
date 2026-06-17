@@ -1,5 +1,5 @@
 import { CommonModule } from '@angular/common';
-import { Component, inject } from '@angular/core';
+import { Component, inject, ChangeDetectorRef} from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { AgGridModule } from 'ag-grid-angular';
 import { ColDef, GridApi, GridReadyEvent } from 'ag-grid-enterprise';
@@ -56,6 +56,7 @@ import { catchError, concat, EMPTY, lastValueFrom, toArray } from 'rxjs';
 })
 export class DetailSavingsWithdrawalsComponent {
   private employeesxloansService = inject(EmployeesxloansService);
+  private readonly cdr = inject(ChangeDetectorRef);
   private timeService = inject(TimeService);
   private signalsService = inject(SignalsService);
   authService = inject(AuthService);
@@ -117,7 +118,8 @@ export class DetailSavingsWithdrawalsComponent {
     if (params.context?.getSeccion) this.seccion = params.context.getSeccion();
     if (params.context?.getSubSeccion) this.subSeccion = params.context.getSubSeccion();
     this.loadDetailedData();
-  }
+  
+    this.cdr.detectChanges();}
 
   onDetalleGridReady(params: GridReadyEvent) {
     this.detalleGridApi = params.api;

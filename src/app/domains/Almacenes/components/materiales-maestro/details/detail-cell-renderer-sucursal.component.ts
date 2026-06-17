@@ -1,4 +1,4 @@
-import { Component } from '@angular/core';
+import { inject, Component, ChangeDetectorRef} from '@angular/core';
 import { ICellRendererAngularComp } from 'ag-grid-angular';
 import { ICellRendererParams } from 'ag-grid-enterprise';
 import { AgGridModule } from 'ag-grid-angular';
@@ -42,6 +42,7 @@ import { runAutosizeAllColumns } from 'app/helpers/ag-grid-autosize.helper';
   `
 })
 export class DetailCellRendererSucursalComponent implements ICellRendererAngularComp {
+  private readonly cdr = inject(ChangeDetectorRef);
 
   params: any;
   materialId: number;
@@ -102,7 +103,8 @@ export class DetailCellRendererSucursalComponent implements ICellRendererAngular
 
     // Cargar datos de sucursales desde los datos del material
     this.sucursalRowData = params.data.sucursalData || [];
-  }
+  
+    this.cdr.detectChanges();}
 
   refresh(): boolean {
     return false;

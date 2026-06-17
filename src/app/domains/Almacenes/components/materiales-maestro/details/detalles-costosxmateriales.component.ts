@@ -1,5 +1,5 @@
 import { CommonModule, CurrencyPipe } from '@angular/common';
-import { Component, ElementRef, ViewChild, effect, inject, OnDestroy } from '@angular/core';
+import { Component, ElementRef, ViewChild, effect, inject, OnDestroy, ChangeDetectorRef} from '@angular/core';
 import { AgGridModule, ICellRendererAngularComp } from 'ag-grid-angular';
 import { CellFocusedEvent, CellClickedEvent, ColDef, GridApi, GridReadyEvent, ValueGetterParams, ValueSetterParams, CellKeyDownEvent, Column, IRowNode, ValueFormatterParams } from 'ag-grid-community';
 import { ICellRendererParams } from 'ag-grid-community';
@@ -85,6 +85,7 @@ import { PendingChangesService } from 'app/services/pending-changes.service';
 })
 export class DetallesCostosxmaterialesComponent implements ICellRendererAngularComp, OnDestroy {
   private currencyPipe = inject(CurrencyPipe);
+  private readonly cdr = inject(ChangeDetectorRef);
   private pendingChangesService = inject(PendingChangesService);
   private rawMaterialsService = inject(RawMaterialsService);
   private saverId: string = '';
@@ -464,7 +465,8 @@ export class DetallesCostosxmaterialesComponent implements ICellRendererAngularC
     
     // Generar datos falsos para el grid de costos 
     this.gridOptions.context = this.params.context; // Inicializar el contexto del grid
-  }
+  
+    this.cdr.detectChanges();}
 
   private addFormulaSupport(col: ColDef): ColDef {
     const field = col.field!;

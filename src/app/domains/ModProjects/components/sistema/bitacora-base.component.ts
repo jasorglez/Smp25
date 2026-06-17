@@ -1,4 +1,4 @@
-import { Directive, inject, Input, OnInit } from '@angular/core';
+import { Directive, inject, Input, OnInit, ChangeDetectorRef} from '@angular/core';
 import { ColDef, GridApi, GridReadyEvent, ICellRendererParams } from 'ag-grid-enterprise';
 import { ICellRendererAngularComp } from 'ag-grid-angular';
 import { LogbookService }      from 'app/services/logbook.service';
@@ -88,6 +88,7 @@ export abstract class BitacoraBaseComponent implements OnInit, ICellRendererAngu
   @Input() data: any;
 
   protected logbookService    = inject(LogbookService);
+  private readonly cdr = inject(ChangeDetectorRef);
   protected dailyReportService = inject(DailyReportService);
   protected posicionesService  = inject(PosicionesService);
   protected materialsService   = inject(MaterialsService);
@@ -140,7 +141,8 @@ export abstract class BitacoraBaseComponent implements OnInit, ICellRendererAngu
     this.data       = params.data;
     this.context    = params.context;
     this.reportData = params.data;
-  }
+  
+    this.cdr.detectChanges();}
 
   refresh(params: ICellRendererParams): boolean {
     this.data = params.data; this.reportData = params.data;

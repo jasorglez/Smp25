@@ -1,4 +1,4 @@
-import { Component, ElementRef, OnDestroy, OnInit, ViewChild } from '@angular/core';
+import { inject, Component, ElementRef, OnDestroy, OnInit, ViewChild, ChangeDetectorRef} from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ICellEditorAngularComp } from 'ag-grid-angular';
@@ -54,6 +54,7 @@ export interface EmployeeOption {
   `]
 })
 export class MultiSelectEmployeeEditorComponent implements ICellEditorAngularComp, OnInit, OnDestroy {
+  private readonly cdr = inject(ChangeDetectorRef);
   @ViewChild('searchInput') searchInputRef!: ElementRef<HTMLInputElement>;
 
   private params: any;
@@ -68,7 +69,8 @@ export class MultiSelectEmployeeEditorComponent implements ICellEditorAngularCom
     this.filtered = [...this.options];
     const raw: string = params.value ?? '[]';
     try { (JSON.parse(raw) as number[]).forEach(id => this.selected.add(id)); } catch { /* empty */ }
-  }
+  
+    this.cdr.detectChanges();}
 
   ngOnInit(): void {
     setTimeout(() => this.searchInputRef?.nativeElement?.focus(), 50);

@@ -1,4 +1,4 @@
-﻿import { Component, inject } from '@angular/core';
+﻿import { Component, inject, ChangeDetectorRef} from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ICellRendererParams } from 'ag-grid-enterprise';
 import { DomSanitizer, SafeResourceUrl } from '@angular/platform-browser';
@@ -66,6 +66,7 @@ import pdfFonts from 'pdfmake/build/vfs_fonts';
 })
 export class DetailCellRendererPurchaseOrderReportComponent {
   private sanitizer = inject(DomSanitizer);
+  private readonly cdr = inject(ChangeDetectorRef);
   private signalsService = inject(SignalsService);
   private rootService = inject(RootService);
   private providersService = inject(ProvidersService);
@@ -85,7 +86,8 @@ export class DetailCellRendererPurchaseOrderReportComponent {
     this.params = params;
     this.purchaseOrderData = params.data;
     this.generateReport();
-  }
+  
+    this.cdr.detectChanges();}
 
   async generateReport() {
     this.isLoading = true;

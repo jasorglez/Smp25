@@ -1,4 +1,4 @@
-import { Component, Input, inject } from '@angular/core';
+import { Component, Input, inject, ChangeDetectorRef} from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { AgGridAngular } from 'ag-grid-angular';
 import { ColDef, GridApi, GridReadyEvent } from 'ag-grid-enterprise';
@@ -70,6 +70,7 @@ import { TimeEditorComponent } from 'app/domains/Indicadores/components/ind01/ti
 })
 export class LibLimpiezaBoteComponent {
   private productionService = inject(ProductionService);
+  private readonly cdr = inject(ChangeDetectorRef);
   private employeesService  = inject(EmployeesService);
   private usersService      = inject(UsersService);
   private signalsService    = inject(SignalsService);
@@ -137,7 +138,8 @@ export class LibLimpiezaBoteComponent {
     if (p) this.initFromParams(p);
   }
 
-  agInit(p: any): void { this.initFromParams(p); }
+  agInit(p: any): void { this.initFromParams(p); 
+ this.cdr.detectChanges();}
   refresh(): boolean { return false; }
 
   private async initFromParams(params: any) {

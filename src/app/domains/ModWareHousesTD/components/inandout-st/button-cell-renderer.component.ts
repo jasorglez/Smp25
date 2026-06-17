@@ -1,4 +1,4 @@
-import { Component } from '@angular/core';
+import { inject, Component, ChangeDetectorRef} from '@angular/core';
 import { ICellRendererAngularComp } from 'ag-grid-angular';
 import { ICellRendererParams, IRowNode } from 'ag-grid-community';
 import { CommonModule } from '@angular/common';
@@ -22,6 +22,7 @@ export interface IButtonCellRendererParams extends ICellRendererParams {
   `
 })
 export class ButtonCellRendererComponent implements ICellRendererAngularComp {
+  private readonly cdr = inject(ChangeDetectorRef);
   public params!: IButtonCellRendererParams; // Usamos nuestra interfaz personalizada
   public value: string | number;
   public iconClass: string;
@@ -30,7 +31,8 @@ export class ButtonCellRendererComponent implements ICellRendererAngularComp {
     this.params = params;
     this.value = this.params.value || 0;
     this.iconClass = this.params.icon || 'bi-folder2-open';
-  }
+  
+    this.cdr.detectChanges();}
 
   refresh(params: IButtonCellRendererParams): boolean { // Asegurarse de que el refresco actualice el valor
     this.params = params; // Actualizar los parámetros

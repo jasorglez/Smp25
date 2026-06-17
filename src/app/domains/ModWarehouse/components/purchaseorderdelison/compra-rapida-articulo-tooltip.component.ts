@@ -1,4 +1,4 @@
-import { Component } from '@angular/core';
+import { inject, Component, ChangeDetectorRef} from '@angular/core';
 import { ITooltipAngularComp } from 'ag-grid-angular';
 import { ITooltipParams } from 'ag-grid-community';
 import { CommonModule } from '@angular/common';
@@ -41,6 +41,7 @@ import { CommonModule } from '@angular/common';
   `]
 })
 export class CompraRapidaArticuloTooltipComponent implements ITooltipAngularComp {
+  private readonly cdr = inject(ChangeDetectorRef);
   articulo = 'Artículo';
   precioUnitario = '—';
   total = '—';
@@ -57,7 +58,8 @@ export class CompraRapidaArticuloTooltipComponent implements ITooltipAngularComp
     this.fechaEntradaAlmacen = this.fmtFecha(d.fechaEntradaAlmacen);
     this.cadMinReq = (d.caducidadMinimaRequerida != null && d.caducidadMinimaRequerida !== '')
       ? String(d.caducidadMinimaRequerida) : '—';
-  }
+  
+    this.cdr.detectChanges();}
 
   private fmtMoneda(v: any): string {
     const n = Number(v);

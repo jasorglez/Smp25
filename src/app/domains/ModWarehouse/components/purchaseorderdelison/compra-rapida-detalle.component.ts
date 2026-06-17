@@ -1,4 +1,4 @@
-import { Component, inject, OnDestroy } from '@angular/core';
+import { Component, inject, OnDestroy, ChangeDetectorRef} from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { AgGridAngular } from 'ag-grid-angular';
 import { ColDef, GridApi, GridReadyEvent } from 'ag-grid-enterprise';
@@ -40,6 +40,7 @@ import { StyledTooltipComponent } from 'app/shared/styled-tooltip/styled-tooltip
 })
 export class CompraRapidaDetalleComponent implements OnDestroy {
   private overlayService = inject(EntradaDocumentsOverlayService);
+  private readonly cdr = inject(ChangeDetectorRef);
   private intandoutDocumentsService = inject(IntandoutDocumentsService);
   signalsService = inject(SignalsService);
   private catalogsService = inject(CatalogsService);
@@ -207,7 +208,8 @@ export class CompraRapidaDetalleComponent implements OnDestroy {
         }
       }
     });
-  }
+  
+    this.cdr.detectChanges();}
 
   onGridReady(params: GridReadyEvent): void {
     this.gridApi = params.api;

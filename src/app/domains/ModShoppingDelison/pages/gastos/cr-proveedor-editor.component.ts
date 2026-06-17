@@ -1,4 +1,4 @@
-import { Component, ViewChild, AfterViewInit, OnDestroy, ElementRef, inject } from '@angular/core';
+import { Component, ViewChild, AfterViewInit, OnDestroy, ElementRef, inject, ChangeDetectorRef} from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { NgSelectModule, NgSelectComponent } from '@ng-select/ng-select';
@@ -51,6 +51,7 @@ export class CrProveedorEditorComponent implements ICellEditorAngularComp, After
   @ViewChild('sel') ngSelect!: NgSelectComponent;
 
   private renderer = inject(Renderer2);
+  private readonly cdr = inject(ChangeDetectorRef);
   private elRef = inject(ElementRef);
   private customersService = inject(CustomersService);
   private providersService = inject(ProvidersService);
@@ -79,7 +80,8 @@ export class CrProveedorEditorComponent implements ICellEditorAngularComp, After
     this.params = params;
     this.providers = params.providers ?? [];
     this.inactiveProviders = params.inactiveProviders ?? [];
-  }
+  
+    this.cdr.detectChanges();}
 
   ngAfterViewInit(): void {
     setTimeout(() => this.ngSelect?.open(), 50);

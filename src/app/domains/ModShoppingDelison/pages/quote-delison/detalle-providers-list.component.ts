@@ -1,4 +1,4 @@
-import { Component, OnDestroy } from '@angular/core';
+import { inject, Component, OnDestroy, ChangeDetectorRef} from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { AgGridModule } from 'ag-grid-angular';
 import { ColDef, ICellRendererParams, GridApi } from 'ag-grid-enterprise';
@@ -48,6 +48,7 @@ const MAX_PROVIDER_SLOTS = 26;
   `]
 })
 export class DetalleProvidersListComponent implements ICellRendererAngularComp, OnDestroy {
+  private readonly cdr = inject(ChangeDetectorRef);
   public AG_GRID_LOCALE_ES = AG_GRID_LOCALE_ES;
   public rowData: any[] = [];
   public colDefs: ColDef[] = [];
@@ -71,7 +72,8 @@ export class DetalleProvidersListComponent implements ICellRendererAngularComp, 
     if (this.parentComponent) {
       this.parentComponent.activeProvidersListDetail = this;
     }
-  }
+  
+    this.cdr.detectChanges();}
 
   refresh(params: ICellRendererParams): boolean {
     this.params = params;

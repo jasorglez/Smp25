@@ -1,4 +1,4 @@
-import { Component, inject } from '@angular/core';
+import { Component, inject, ChangeDetectorRef} from '@angular/core';
 import { ColDef, GridApi, GridReadyEvent } from 'ag-grid-enterprise';
 import { AgGridModule } from 'ag-grid-angular';
 import { CommonModule } from '@angular/common';
@@ -72,6 +72,7 @@ export class DocumentPreviewDetailComponent {
   iconClass = '';
   isPending = false;
   private sanitizer = inject(DomSanitizer);
+  private readonly cdr = inject(ChangeDetectorRef);
 
   agInit(params: any) {
     const url: string = params.data?.urlDocument ?? null;
@@ -83,7 +84,8 @@ export class DocumentPreviewDetailComponent {
     const iconSrc = params.data?.__pendingFile?.name ?? url;
     this.iconClass = this.kind === 'office' ? officeIcon(iconSrc) : '';
     this.safeUrl = this.sanitizer.bypassSecurityTrustResourceUrl(url);
-  }
+  
+    this.cdr.detectChanges();}
 }
 
 // ── Documents panel (main detail renderer for the employee row) ──────────────

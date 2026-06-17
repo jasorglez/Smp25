@@ -1,4 +1,4 @@
-import { Component, HostListener, inject, OnInit, OnDestroy } from '@angular/core';
+import { Component, HostListener, inject, OnInit, OnDestroy, ChangeDetectorRef} from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { AgGridModule } from 'ag-grid-angular';
 import { ColDef, ICellRendererParams, GridApi } from 'ag-grid-enterprise';
@@ -81,6 +81,7 @@ export class DetailCellRendererPedimentosComponent implements OnInit, OnDestroy 
   private gridApi!: GridApi;
   private context: any;
   private pedimentoModificationService = inject(PedimentoModificationService);
+  private readonly cdr = inject(ChangeDetectorRef);
   private comparacionOverlayService = inject(ComparacionOverlayService);
   private proveedorItemsOverlayService = inject(ProveedorItemsOverlayService);
   private ocAndReqsService = inject(OcAndReqsService);
@@ -105,7 +106,8 @@ export class DetailCellRendererPedimentosComponent implements OnInit, OnDestroy 
     this.context = params.context;
     this.buildRowData();
     this.loadPedimentosWithOc();
-  }
+  
+    this.cdr.detectChanges();}
 
   private loadPedimentosWithOc(): void {
     const idReq = this.params.data?.id;

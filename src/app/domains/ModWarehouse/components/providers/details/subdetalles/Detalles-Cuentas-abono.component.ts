@@ -1,4 +1,4 @@
-import { Component ,inject} from '@angular/core';
+import { Component ,inject, ChangeDetectorRef} from '@angular/core';
 import { ICellRendererAngularComp } from 'ag-grid-angular';
 import { ICellRendererParams } from 'ag-grid-enterprise';
 import { AgGridModule } from 'ag-grid-angular';
@@ -63,6 +63,7 @@ import { ProvidersService } from 'app/services/providers.service';
 })
 export class DetallesComponentCuentasAbono implements ICellRendererAngularComp {
   private customerService = inject(CustomersService);
+  private readonly cdr = inject(ChangeDetectorRef);
   private signalsService = inject(SignalsService);
   private providersService = inject(ProvidersService);
   authService = inject(AuthService);
@@ -201,7 +202,8 @@ export class DetallesComponentCuentasAbono implements ICellRendererAngularComp {
     this.proveedor = params.data.idTabla;
     this.maximo = params.data.campo6;
     this.loadDetallesCuentasData();
-  }
+  
+    this.cdr.detectChanges();}
 
   refresh(): boolean {
     return false;

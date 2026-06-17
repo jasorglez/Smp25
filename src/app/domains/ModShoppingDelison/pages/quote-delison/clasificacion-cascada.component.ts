@@ -1,4 +1,4 @@
-import { Component } from '@angular/core';
+import { inject, Component, ChangeDetectorRef} from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { NgSelectModule } from '@ng-select/ng-select';
@@ -60,6 +60,7 @@ import { ICellRendererParams } from 'ag-grid-enterprise';
   `
 })
 export class ClasificacionCascadaComponent implements ICellRendererAngularComp {
+  private readonly cdr = inject(ChangeDetectorRef);
   private parent: any;
   private row: any;
   catCategorias: any[] = [];
@@ -86,7 +87,8 @@ export class ClasificacionCascadaComponent implements ICellRendererAngularComp {
     this.subfamilia = this.row?.clasifSubfamilia || null;
     this.recalcularFamilias();
     this.recalcularSubfamilias();
-  }
+  
+    this.cdr.detectChanges();}
 
   refresh(): boolean {
     return false;

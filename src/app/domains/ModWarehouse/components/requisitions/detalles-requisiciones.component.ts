@@ -1,4 +1,4 @@
-import { Component, OnInit } from '@angular/core';
+import { inject, Component, OnInit, ChangeDetectorRef} from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { AgGridModule } from 'ag-grid-angular';
@@ -14,6 +14,7 @@ import { alerts } from 'app/helpers/alerts';
   styleUrl: './detalles-requisiciones.component.scss'
 })
 export class DetallesRequisicionesComponent implements OnInit {
+  private readonly cdr = inject(ChangeDetectorRef);
 
   private params!: ICellRendererParams;
   private gridApi!: GridApi;
@@ -45,7 +46,8 @@ export class DetallesRequisicionesComponent implements OnInit {
     // Check if requisition is locked (assigned to a QUOTE for cotización)
     this.isLocked = params.data?.locked === true;
     this.loadData();
-  }
+  
+    this.cdr.detectChanges();}
 
   loadData() {
     if (this.context && this.context.ITEMS && this.context.ITEMS.load) {

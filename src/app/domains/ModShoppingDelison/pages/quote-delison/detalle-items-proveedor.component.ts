@@ -1,4 +1,4 @@
-﻿import { Component, inject, Renderer2, RendererFactory2, OnDestroy, HostListener, Input, ViewChild, ElementRef } from '@angular/core';
+﻿import { Component, inject, Renderer2, RendererFactory2, OnDestroy, HostListener, Input, ViewChild, ElementRef, ChangeDetectorRef} from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { AgGridModule } from 'ag-grid-angular';
@@ -170,6 +170,7 @@ import { PrecioMonedaEditorComponent } from 'app/domains/Almacenes/components/ma
 })
 export class DetalleItemsProveedorComponent {
   private customersService = inject(CustomersService);
+  private readonly cdr = inject(ChangeDetectorRef);
   private signalsService = inject(SignalsService);
   private ocandreqsService = inject(OcAndReqsService);
   private pedimentoModificationService = inject(PedimentoModificationService);
@@ -314,7 +315,8 @@ export class DetalleItemsProveedorComponent {
       onSlotSaved: data.onSlotSaved
     };
     this.agInit(fakeParams);
-  }
+  
+    this.cdr.detectChanges();}
 
   /** Fase 2: carga catálogo de monedas (type=CURRENCY) y resuelve la default (MXN). */
   private loadMonedas(): void {

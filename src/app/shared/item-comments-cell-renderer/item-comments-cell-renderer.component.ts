@@ -1,4 +1,4 @@
-import { Component, inject, OnDestroy } from '@angular/core';
+import { Component, inject, OnDestroy, ChangeDetectorRef} from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ICellRendererAngularComp } from 'ag-grid-angular';
 import { ICellRendererParams } from 'ag-grid-enterprise';
@@ -45,6 +45,7 @@ type CellParams = ICellRendererParams & {
 })
 export class ItemCommentsCellRendererComponent implements ICellRendererAngularComp, OnDestroy {
   private commentsService = inject(ItemCommentsService);
+  private readonly cdr = inject(ChangeDetectorRef);
   private signalsService  = inject(SignalsService);
   private destroy$ = new Subject<void>();
 
@@ -89,7 +90,8 @@ export class ItemCommentsCellRendererComponent implements ICellRendererAngularCo
           this.loadProviderCount();
         }
       });
-  }
+  
+    this.cdr.detectChanges();}
 
   refresh(params: CellParams): boolean {
     const newNumArticle   = params.numArticle

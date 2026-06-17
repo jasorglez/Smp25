@@ -1,4 +1,4 @@
-import { Component, Input, inject } from '@angular/core';
+import { Component, Input, inject, ChangeDetectorRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { AgGridAngular } from 'ag-grid-angular';
 import { ColDef, GridApi, GridReadyEvent } from 'ag-grid-enterprise';
@@ -89,6 +89,7 @@ interface ParamCatalog {
 export class MedicionesBoteComponent implements ICellRendererAngularComp {
   private productionService = inject(ProductionService);
   private signalsService = inject(SignalsService);
+  private readonly cdr = inject(ChangeDetectorRef);
 
   loading = false;
   folioLabel = '';
@@ -161,6 +162,7 @@ export class MedicionesBoteComponent implements ICellRendererAngularComp {
     };
 
     if (this.idMoliendaParams) this.loadAll();
+    this.cdr.detectChanges();
   }
 
   refresh(): boolean { return false; }

@@ -1,4 +1,4 @@
-import { Component, OnInit, inject } from '@angular/core';
+import { Component, OnInit, inject, ChangeDetectorRef} from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { AgGridModule } from 'ag-grid-angular';
@@ -56,6 +56,7 @@ export class DetailCellRendererRequisitionsPurchasesComponent implements OnInit 
   private gridApi!: GridApi;
   private context: any;
   private ocAndReqsService = inject(OcAndReqsService);
+  private readonly cdr = inject(ChangeDetectorRef);
 
   rowData: any[] = [];
   originalRowData: any[] = []; // Para poder deshacer cambios
@@ -73,7 +74,8 @@ export class DetailCellRendererRequisitionsPurchasesComponent implements OnInit 
     this.params = params;
     this.context = params.context;
     this.loadData();
-  }
+  
+    this.cdr.detectChanges();}
 
   loadData() {
     if (!this.params || !this.params.data) {

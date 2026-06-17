@@ -1,5 +1,5 @@
 
-import { Component, inject } from '@angular/core';
+import { Component, inject, ChangeDetectorRef} from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { AgGridModule } from 'ag-grid-angular';
@@ -126,6 +126,7 @@ pdfMake.vfs = pdfFonts.vfs;
 })
 export class DetallesProveedorComponent {
   private customersService = inject(CustomersService);
+  private readonly cdr = inject(ChangeDetectorRef);
   private signalsService = inject(SignalsService);
   private ocAndReqsService = inject(OcAndReqsService);
 
@@ -171,7 +172,8 @@ export class DetallesProveedorComponent {
 
     this.loadProviders();
     this.loadExistingCotproOrBuildFromArticulos();
-  }
+  
+    this.cdr.detectChanges();}
 
   onGridReady(params: any) {
     this.gridApi = params.api;

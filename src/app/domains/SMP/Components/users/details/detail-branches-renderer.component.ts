@@ -1,4 +1,4 @@
-import { Component, inject } from '@angular/core';
+import { Component, inject, ChangeDetectorRef} from '@angular/core';
 import { ICellRendererAngularComp } from 'ag-grid-angular';
 import { ICellRendererParams } from 'ag-grid-enterprise';
 import { AgGridModule } from 'ag-grid-angular';
@@ -78,6 +78,7 @@ import { UsersService } from 'app/services/users.service';
 })
 export class DetailBranchesRendererComponent implements ICellRendererAngularComp {
   private signalsService = inject(SignalsService);
+  private readonly cdr = inject(ChangeDetectorRef);
   private usersxpermissionsService = inject(UsersxpermissionsService);
   private branchesService = inject(BranchsService);
   private trackingService = inject(TrackingService);
@@ -286,7 +287,8 @@ export class DetailBranchesRendererComponent implements ICellRendererAngularComp
     this.companyName = params.data.companyName || '';
 
     this.loadCatalogs();
-  }
+  
+    this.cdr.detectChanges();}
 
   refresh(): boolean {
     return false;

@@ -1,4 +1,4 @@
-import { Component, effect, HostListener, inject } from '@angular/core';
+import { Component, effect, HostListener, inject, ChangeDetectorRef} from '@angular/core';
 import { ColDef, GridApi, GridReadyEvent, ICellEditorParams } from 'ag-grid-enterprise';
 import { alerts } from 'app/helpers/alerts';
 import { AgGridModule, ICellRendererAngularComp, ICellEditorAngularComp } from 'ag-grid-angular';
@@ -15,11 +15,13 @@ import { ProvidersService } from 'app/services/providers.service';
   template: `<img [src]="params.value" width="30" height="30" alt="Estrella">`
 })
 export class StarCellRendererComponent implements ICellRendererAngularComp {
+  private readonly cdr = inject(ChangeDetectorRef);
   params: any;
 
   agInit(params: any): void {
     this.params = params;
-  }
+  
+    this.cdr.detectChanges();}
 
   refresh(params: any): boolean {
     this.params = params;
@@ -83,6 +85,7 @@ export class StakeholdersComponent {
   idRoot: number;
 
   private steakService = inject(SteakholderService);
+  private readonly cdr = inject(ChangeDetectorRef);
   private signalsService = inject(SignalsService);
   private datePipe = inject(DatePipe);
   private providersService = inject(ProvidersService);

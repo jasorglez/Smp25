@@ -1,4 +1,4 @@
-import { Component ,inject} from '@angular/core';
+import { Component ,inject, ChangeDetectorRef} from '@angular/core';
 import { ICellRendererAngularComp } from 'ag-grid-angular';
 import { ICellRendererParams } from 'ag-grid-enterprise';
 import { AgGridModule } from 'ag-grid-angular';
@@ -72,6 +72,7 @@ import { alerts } from 'app/helpers/alerts';
 })
 export class DetailCellRendererComponentContact implements ICellRendererAngularComp {
    private customersService = inject(CustomersService);
+   private readonly cdr = inject(ChangeDetectorRef);
    authService = inject(AuthService);
    private signalsService = inject(SignalsService);
 
@@ -472,7 +473,8 @@ export class DetailCellRendererComponentContact implements ICellRendererAngularC
     
     // Cargar datos del grid de contactos
     this.loadContactData();
-  }
+  
+    this.cdr.detectChanges();}
 
   refresh(): boolean {
     return false;

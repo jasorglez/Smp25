@@ -1,4 +1,4 @@
-import { Component } from '@angular/core';
+import { inject, Component, ChangeDetectorRef} from '@angular/core';
 import { ICellRendererAngularComp } from 'ag-grid-angular';
 import { ICellRendererParams } from 'ag-grid-enterprise';
 import { AgGridModule } from 'ag-grid-angular';
@@ -28,6 +28,7 @@ import { CommonModule } from '@angular/common';
   `
 })
 export class DetailCellRendererMaterialesComponent implements ICellRendererAngularComp {
+  private readonly cdr = inject(ChangeDetectorRef);
 
   params: any;
   articuloId: number;
@@ -97,7 +98,8 @@ export class DetailCellRendererMaterialesComponent implements ICellRendererAngul
 
     // Cargar datos de materiales desde los datos del artículo
     this.materialesRowData = params.data.materialesData || [];
-  }
+  
+    this.cdr.detectChanges();}
 
   refresh(): boolean {
     return false;

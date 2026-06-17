@@ -1,4 +1,4 @@
-import { Component } from '@angular/core';
+import { inject, Component, ChangeDetectorRef} from '@angular/core';
 import { ICellRendererAngularComp } from 'ag-grid-angular';
 import { ICellRendererParams, IRowNode } from 'ag-grid-community';
 import { CommonModule } from '@angular/common';
@@ -27,6 +27,7 @@ export interface IPdfButtonCellRendererParams extends ICellRendererParams {
   `
 })
 export class PdfButtonCellRendererExpenditure2Component implements ICellRendererAngularComp {
+  private readonly cdr = inject(ChangeDetectorRef);
   public params!: IPdfButtonCellRendererParams;
   public iconClass: string = 'bi bi-file-earmark-pdf';
   public iconColor: string = '#dc3545';
@@ -35,7 +36,8 @@ export class PdfButtonCellRendererExpenditure2Component implements ICellRenderer
     this.params = params;
     this.iconClass = 'bi ' + (this.params.icon || 'bi-file-earmark-pdf');
     this.iconColor = this.params.iconColor || '#dc3545';
-  }
+  
+    this.cdr.detectChanges();}
 
   refresh(params: IPdfButtonCellRendererParams): boolean {
     this.params = params;

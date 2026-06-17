@@ -1,4 +1,4 @@
-import { Component, effect, HostListener, inject } from '@angular/core';
+import { Component, effect, HostListener, inject, ChangeDetectorRef} from '@angular/core';
 import { CellDoubleClickedEvent, ColDef, GridApi, GridReadyEvent, ICellRendererParams } from 'ag-grid-enterprise';
 import { alerts } from 'app/helpers/alerts';
 import { AgGridModule, ICellRendererAngularComp } from 'ag-grid-angular';
@@ -17,11 +17,13 @@ import { ModalService } from 'app/services/modal.service';
   template: `<img [src]="params.value" width="30" height="30" alt="Elija calificación">`
 })
 export class CheckCellRendererComponent implements ICellRendererAngularComp {
+  private readonly cdr = inject(ChangeDetectorRef);
   params: any;
 
   agInit(params: any): void {
     this.params = params;
-  }
+  
+    this.cdr.detectChanges();}
 
   refresh(params: any): boolean {
     this.params = params;
@@ -43,6 +45,7 @@ export class ControlChangesComponent {
   fecha: string;
 
   private signalsService = inject(SignalsService);
+  private readonly cdr = inject(ChangeDetectorRef);
   private datePipe = inject(DatePipe);
   private controlChangesService = inject(ControlChangesService);
   private modalServiceTable = inject(ModalService);

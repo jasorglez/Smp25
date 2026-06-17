@@ -142,7 +142,8 @@ export class PdfMaterialsDistributionComponent implements OnInit, ICellRendererA
   agInit(params: ICellRendererParams): void {
     this.params    = params;
     this.idCompany = (params as any).idCompany ?? (params.context?.idCompany);
-  }
+  
+    this.cdr.detectChanges();}
 
   refresh(_params: ICellRendererParams): boolean { return false; }
 

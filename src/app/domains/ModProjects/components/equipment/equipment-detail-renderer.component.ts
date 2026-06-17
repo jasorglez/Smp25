@@ -151,7 +151,8 @@ export class EquipmentDetailRendererComponent implements ICellRendererAngularCom
     this.idCompany     = (params as any).context?.idCompany ?? data?.idCompany;
     this.equipmentData = data;
     if (this.detailType === 'distribution') this.loadDistribution();
-  }
+  
+    this.cdr.detectChanges();}
 
   refresh(_params: ICellRendererParams): boolean { return false; }
   ngOnInit(): void {}

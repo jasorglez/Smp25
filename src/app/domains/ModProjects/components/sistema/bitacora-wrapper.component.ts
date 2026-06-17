@@ -1,4 +1,4 @@
-import { Component } from '@angular/core';
+import { inject, Component, ChangeDetectorRef} from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ICellRendererParams } from 'ag-grid-enterprise';
 import { ICellRendererAngularComp } from 'ag-grid-angular';
@@ -40,6 +40,7 @@ import { BitacoraNotasComponent }     from './bitacora-notas.component';
   `,
 })
 export class BitacoraWrapperComponent implements ICellRendererAngularComp {
+  private readonly cdr = inject(ChangeDetectorRef);
   data: any       = null;
   ctx:  any       = null;
   detailType      = 'personal';
@@ -48,7 +49,8 @@ export class BitacoraWrapperComponent implements ICellRendererAngularComp {
     this.data       = params.data;
     this.ctx        = params.context;
     this.detailType = params.data?.detailType ?? 'personal';
-  }
+  
+    this.cdr.detectChanges();}
 
   refresh(params: ICellRendererParams): boolean {
     this.data       = params.data;

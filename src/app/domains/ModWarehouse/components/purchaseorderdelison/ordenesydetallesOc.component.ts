@@ -1,4 +1,4 @@
-import { Component, inject, OnDestroy } from '@angular/core';
+import { Component, inject, OnDestroy, ChangeDetectorRef} from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { AgGridAngular } from 'ag-grid-angular';
 import { ColDef, GridApi, GridReadyEvent } from 'ag-grid-enterprise';
@@ -185,6 +185,7 @@ interface OcTooltipData {
 })
 export class OrdenesydetallesOcComponent implements OnDestroy {
   private ocAndReqsService = inject(OcAndReqsService);
+  private readonly cdr = inject(ChangeDetectorRef);
   private customersService = inject(CustomersService);
   private setupOcService = inject(SetupOcService);
   private setupService = inject(SetupService);
@@ -1142,7 +1143,8 @@ export class OrdenesydetallesOcComponent implements OnDestroy {
     this.providersLoaded = false;
     this.loadProviders();
     this.loadConditionsRange();
-  }
+  
+    this.cdr.detectChanges();}
 
   /** Fase 2: carga catálogo de monedas (type=CURRENCY) y resuelve la default (MXN). */
   private loadMonedas(): void {

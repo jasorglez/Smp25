@@ -144,7 +144,8 @@ export class ManoObraDetailRendererComponent implements ICellRendererAngularComp
     this.idCompany    = (params as any).context?.idCompany ?? data?.idCompany;
     this.manoObraData = data;
     if (this.detailType === 'distribution') this.loadDistribution();
-  }
+  
+    this.cdr.detectChanges();}
 
   refresh(_params: ICellRendererParams): boolean { return false; }
   ngOnInit(): void {}

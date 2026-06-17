@@ -1,5 +1,5 @@
 import { CommonModule } from '@angular/common';
-import { Component } from '@angular/core';
+import { inject, Component, ChangeDetectorRef} from '@angular/core';
 import { AgGridModule, ICellRendererAngularComp } from 'ag-grid-angular';
 import { ColDef, GridApi, ICellRendererParams } from 'ag-grid-community';
 
@@ -34,6 +34,7 @@ import { ColDef, GridApi, ICellRendererParams } from 'ag-grid-community';
   `,
 })
 export class DetalleMedidasEmpaqueComponent implements ICellRendererAngularComp {
+  private readonly cdr = inject(ChangeDetectorRef);
   private params!: ICellRendererParams;
   private gridApi!: GridApi;
 
@@ -86,7 +87,8 @@ export class DetalleMedidasEmpaqueComponent implements ICellRendererAngularComp 
     const cached = Array.isArray((params.data as any)?.__medidas) ? (params.data as any).__medidas : [];
     this.rowData = cached.map((r: any) => ({ ...r }));
     this.ensureTrailingEmptyRow();
-  }
+  
+    this.cdr.detectChanges();}
 
   refresh(): boolean { return false; }
 

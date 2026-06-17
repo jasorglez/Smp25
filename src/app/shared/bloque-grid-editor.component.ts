@@ -1,4 +1,4 @@
-import { Component, ElementRef, ViewChild } from '@angular/core';
+import { inject, Component, ElementRef, ViewChild, ChangeDetectorRef} from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { AgGridAngular } from 'ag-grid-angular';
 import { ColDef, GridApi, GridReadyEvent } from 'ag-grid-community';
@@ -50,6 +50,7 @@ export interface BloqueRow {
   `]
 })
 export class BloqueGridEditorComponent implements ICellEditorAngularComp {
+  private readonly cdr = inject(ChangeDetectorRef);
   private params: any;
   rows: BloqueRow[] = [];
   private gridApi!: GridApi;
@@ -108,7 +109,8 @@ export class BloqueGridEditorComponent implements ICellEditorAngularComp {
       ohMax:   saved[b.id]?.ohMax   ?? null,
       cantidad: saved[b.id]?.cantidad ?? null,
     }));
-  }
+  
+    this.cdr.detectChanges();}
 
   onGridReady(e: GridReadyEvent) { this.gridApi = e.api; }
 

@@ -1,5 +1,5 @@
 import { CommonModule } from '@angular/common';
-import { Component } from '@angular/core';
+import { inject, Component, ChangeDetectorRef} from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { ICellEditorAngularComp } from 'ag-grid-angular';
 
@@ -20,6 +20,7 @@ import { ICellEditorAngularComp } from 'ag-grid-angular';
   `]
 })
 export class TimeEditorComponent implements ICellEditorAngularComp {
+  private readonly cdr = inject(ChangeDetectorRef);
     private params: any;
     public displayValue: string;
     private fullValue: string;
@@ -28,7 +29,8 @@ export class TimeEditorComponent implements ICellEditorAngularComp {
       this.params = params;
       this.fullValue = params.value;
       this.displayValue = this.fullValue ? this.fullValue.substring(0, 5) : '';
-    }
+    
+      this.cdr.detectChanges();}
   
     getValue(): any {
       return this.fullValue;

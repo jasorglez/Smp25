@@ -1,4 +1,4 @@
-import { Component, OnInit } from '@angular/core';
+import { inject, Component, OnInit, ChangeDetectorRef} from '@angular/core';
 import { AgGridAngular, ICellRendererAngularComp } from 'ag-grid-angular';
 import { ColDef, GridApi, GridReadyEvent, ICellRendererParams } from 'ag-grid-enterprise';
 import { Observable, of, lastValueFrom } from 'rxjs';
@@ -34,6 +34,7 @@ import { IconPickerCellEditorComponent } from './icon-picker-cell-editor.compone
 })
 
 export class SubDetailedPermissionsComponent implements OnInit, ICellRendererAngularComp {
+  private readonly cdr = inject(ChangeDetectorRef);
   public rowData: any[] = [];
   public gridApi!: GridApi;
   gridHeight: string = '60vh';
@@ -161,7 +162,8 @@ export class SubDetailedPermissionsComponent implements OnInit, ICellRendererAng
         this.rowData = params.data.detailData || [];
       }
     }
-  }
+  
+    this.cdr.detectChanges();}
 
   refresh(params: ICellRendererParams): boolean {
     return false;

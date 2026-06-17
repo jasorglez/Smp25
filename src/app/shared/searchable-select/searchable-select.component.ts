@@ -1,5 +1,5 @@
 import { CommonModule } from '@angular/common';
-import { Component, ElementRef, HostListener } from '@angular/core';
+import { inject, Component, ElementRef, HostListener, ChangeDetectorRef} from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { ICellEditorAngularComp } from 'ag-grid-angular';
 
@@ -77,6 +77,7 @@ import { ICellEditorAngularComp } from 'ag-grid-angular';
   `]
 })
 export class SearchableSelectComponent implements ICellEditorAngularComp {
+  private readonly cdr = inject(ChangeDetectorRef);
   public params: any;
   public value: any;
   public searchText: string = '';
@@ -177,7 +178,8 @@ export class SearchableSelectComponent implements ICellEditorAngularComp {
         input.select();
       }
     });
-  }
+  
+    this.cdr.detectChanges();}
 
   getValue(): any {
     return this.selectedOption ? this.value : this.searchText;

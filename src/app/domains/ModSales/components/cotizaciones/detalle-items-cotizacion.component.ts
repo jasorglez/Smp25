@@ -1,4 +1,4 @@
-import { Component, inject } from '@angular/core';
+import { Component, inject, ChangeDetectorRef} from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { AgGridModule } from 'ag-grid-angular';
@@ -238,6 +238,7 @@ const GRAY  = '#555555';
 })
 export class DetalleItemsCotizacionComponent implements ICellRendererAngularComp {
   private svc        = inject(CotizacionesService);
+  private readonly cdr = inject(ChangeDetectorRef);
   private matSvc     = inject(MaterialsService);
   private rootSvc    = inject(RootService);
   private b64Svc     = inject(Base64EncodeService);
@@ -345,7 +346,8 @@ export class DetalleItemsCotizacionComponent implements ICellRendererAngularComp
       this.cargarMateriales();
       this.cargarItems();
     }
-  }
+  
+    this.cdr.detectChanges();}
 
   // CRÍTICO: retornar true para que AG Grid NO destruya/recree el componente
   // cada vez que el padre actualiza rowData (p.ej. suscripción Firestore)

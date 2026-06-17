@@ -1,4 +1,4 @@
-import { Component, inject } from '@angular/core';
+import { Component, inject, ChangeDetectorRef} from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { AgGridAngular } from 'ag-grid-angular';
 import { ColDef, GridApi, GridReadyEvent } from 'ag-grid-enterprise';
@@ -244,6 +244,7 @@ interface BoteVista {
 })
 export class VistaBotesFiltradoComponent {
   private productionService = inject(ProductionService);
+  private readonly cdr = inject(ChangeDetectorRef);
   private signalsService = inject(SignalsService);
   private catalogService = inject(ExtractionFermentationCatalogService);
   private mxmService = inject(MaterialXModuloService);
@@ -435,7 +436,8 @@ export class VistaBotesFiltradoComponent {
       articuloOptions:   params?.context?.articuloOptions ?? [],
     };
     this.loadBotes();
-  }
+  
+    this.cdr.detectChanges();}
 
   refresh(): boolean { return false; }
 

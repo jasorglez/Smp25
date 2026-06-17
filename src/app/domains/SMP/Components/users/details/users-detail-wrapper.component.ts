@@ -1,4 +1,4 @@
-import { Component, ViewChild } from '@angular/core';
+import { Component, ViewChild, inject, ChangeDetectorRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ICellRendererAngularComp } from 'ag-grid-angular';
 import { DetallePermisosXSucursalesComponent } from './detallepermisosxsucursales.component';
@@ -38,6 +38,7 @@ import { DetalleEmpresasUsuarioComponent } from './detalle-empresas-usuario.comp
   `
 })
 export class UsersDetailWrapperComponent implements ICellRendererAngularComp {
+  private readonly cdr = inject(ChangeDetectorRef);
   permRef?: DetallePermisosXSucursalesComponent;
 
   /**
@@ -71,6 +72,7 @@ export class UsersDetailWrapperComponent implements ICellRendererAngularComp {
     queueMicrotask(() => this.bootstrapPermisosChild());
     // El hijo *ngIf a veces se crea después del microtask; segundo intento tras el siguiente tick.
     setTimeout(() => this.bootstrapPermisosChild(), 0);
+    this.cdr.detectChanges();
   }
 
   refresh(params: any): boolean { return false; }

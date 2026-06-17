@@ -1,4 +1,4 @@
-import { Component } from '@angular/core';
+import { inject, Component, ChangeDetectorRef} from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { AgGridAngular, ICellRendererAngularComp } from 'ag-grid-angular';
@@ -75,6 +75,7 @@ import type { SecuritySubmenuRow } from './security.component';
   `],
 })
 export class SecuritySubmenusComponent implements ICellRendererAngularComp {
+  private readonly cdr = inject(ChangeDetectorRef);
   localeEs = AG_GRID_LOCALE_ES;
   rowData: SecuritySubmenuRow[] = [];
   private gridApi!: GridApi;
@@ -142,7 +143,8 @@ export class SecuritySubmenusComponent implements ICellRendererAngularComp {
     const menuRow: any = params.data;
     this.rowData = (menuRow?.submenus ?? []) as SecuritySubmenuRow[];
     this.parent = (params as any)?.context?.componentParent;
-  }
+  
+    this.cdr.detectChanges();}
 
   refresh(): boolean {
     return false;

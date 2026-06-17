@@ -1,4 +1,4 @@
-import { Component, effect, inject } from '@angular/core';
+import { Component, effect, inject, ChangeDetectorRef} from '@angular/core';
 import { ICellRendererAngularComp } from 'ag-grid-angular';
 import { ICellRendererParams } from 'ag-grid-enterprise';
 import { AgGridModule } from 'ag-grid-angular';
@@ -102,6 +102,7 @@ import { EmployeesService } from 'app/services/employees.service';
 })
 export class DetallePermisosXSucursalesComponent implements ICellRendererAngularComp {
   private signalsService = inject(SignalsService);
+  private readonly cdr = inject(ChangeDetectorRef);
   private usersxpermissionsService = inject(UsersxpermissionsService);
   private branchesService = inject(BranchsService);
   private rootService = inject(RootService);
@@ -434,7 +435,8 @@ export class DetallePermisosXSucursalesComponent implements ICellRendererAngular
 
     this.loadCatalogs();
     this.refreshEditedUserSetupFlags();
-  }
+  
+    this.cdr.detectChanges();}
 
   refresh(): boolean {
     return false;

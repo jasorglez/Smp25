@@ -1,5 +1,5 @@
 import { CommonModule } from '@angular/common';
-import { Component, inject } from '@angular/core';
+import { Component, inject, ChangeDetectorRef} from '@angular/core';
 import { AgGridModule, ICellRendererAngularComp } from 'ag-grid-angular';
 import { ColDef, GridApi, ICellRendererParams } from 'ag-grid-community';
 import { alerts } from 'app/helpers/alerts';
@@ -67,6 +67,7 @@ export class DetalleEmpaqueProveedorComponent implements ICellRendererAngularCom
   private gridApi!: GridApi;
 
   private empaqueSvc    = inject(DescripcionEmpaqueService);
+  private readonly cdr = inject(ChangeDetectorRef);
   private unidadSvc     = inject(UnidadMedidaService);
   private dimensionSvc  = inject(DimensionService);
   private pesoVolSvc    = inject(PesoVolumenService);
@@ -229,7 +230,8 @@ export class DetalleEmpaqueProveedorComponent implements ICellRendererAngularCom
         this.ensureTrailingEmptyRow();
       }
     }
-  }
+  
+    this.cdr.detectChanges();}
 
   refresh(): boolean { return false; }
   private refresh1(): void { if (this.gridApi) this.gridApi.refreshCells({ force: true }); }

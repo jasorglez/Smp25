@@ -1,4 +1,4 @@
-import { Component } from '@angular/core';
+import { inject, Component, ChangeDetectorRef} from '@angular/core';
 import { ICellRendererAngularComp } from 'ag-grid-angular';
 import { ICellRendererParams } from 'ag-grid-enterprise';
 import { AgGridModule } from 'ag-grid-angular';
@@ -59,6 +59,7 @@ import { CommonModule } from '@angular/common';
   `
 })
 export class DetailCellRendererCostosAlmacenComponent implements ICellRendererAngularComp {
+  private readonly cdr = inject(ChangeDetectorRef);
 
   params: any;
   productoName: string;
@@ -85,7 +86,8 @@ export class DetailCellRendererCostosAlmacenComponent implements ICellRendererAn
     this.params = params;
     this.productoName = params.data.producto || 'Producto';
     this.loadData();
-  }
+  
+    this.cdr.detectChanges();}
 
   refresh(): boolean {
     return false;

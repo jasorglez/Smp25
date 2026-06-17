@@ -1,4 +1,4 @@
-import { Component, OnInit, inject } from '@angular/core';
+import { Component, OnInit, inject, ChangeDetectorRef} from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { AgGridModule } from 'ag-grid-angular';
@@ -66,6 +66,7 @@ export class ProviderQuoteDetailComponent implements OnInit {
   private gridApi!: GridApi;
   private context: any;
   private ocAndReqsService = inject(OcAndReqsService);
+  private readonly cdr = inject(ChangeDetectorRef);
   private catalogsService = inject(CatalogsService);
   private providersService = inject(ProvidersService);
   private rootService = inject(RootService);
@@ -133,7 +134,8 @@ export class ProviderQuoteDetailComponent implements OnInit {
 
 
     this.loadProviderQuoteData();
-  }
+  
+    this.cdr.detectChanges();}
 
   async loadProviderQuoteData() {
     // If we have a cotizId, load items from the COTIZ record

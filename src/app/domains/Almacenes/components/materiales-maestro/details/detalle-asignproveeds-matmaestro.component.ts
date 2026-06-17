@@ -1,4 +1,4 @@
-import { Component, inject, OnDestroy, Renderer2, RendererFactory2 } from '@angular/core';
+import { Component, inject, OnDestroy, Renderer2, RendererFactory2, ChangeDetectorRef} from '@angular/core';
 import { Subscription } from 'rxjs';
 import { ICellRendererAngularComp } from 'ag-grid-angular';
 import { ColDef, ICellRendererParams } from 'ag-grid-enterprise';
@@ -92,6 +92,7 @@ import { PrecioMonedaEditorComponent, MonedaOpt } from '../editors/precio-moneda
 export class DetalleAsignProveedsMaestroComponent implements ICellRendererAngularComp, OnDestroy {
 
   private customersService = inject(CustomersService);
+  private readonly cdr = inject(ChangeDetectorRef);
   private branchsService = inject(BranchsService);
   private signalsService = inject(SignalsService);
   private providersService = inject(ProvidersService);
@@ -730,7 +731,8 @@ export class DetalleAsignProveedsMaestroComponent implements ICellRendererAngula
       providers: this.providers, // Pasar lista de proveedores para resolver nombres en detalles-sucursalesproveedor
       filteredProviders: this.filteredProviders // Pasar proveedores filtrados también
     };
-  }
+  
+    this.cdr.detectChanges();}
 
   /** Carga el catálogo de monedas (type='CURRENCY') y resuelve la moneda default (MXN). */
   private loadMonedas(): void {

@@ -1,4 +1,4 @@
-import { Component, OnInit, OnChanges, SimpleChanges, Input, inject } from '@angular/core';
+import { Component, OnInit, OnChanges, SimpleChanges, Input, inject, ChangeDetectorRef} from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { AgGridModule } from 'ag-grid-angular';
@@ -57,6 +57,7 @@ import { lastValueFrom } from 'rxjs';
 })
 export class LiberacionJarabeComponent implements OnInit, OnChanges {
   private productionService = inject(ProductionService);
+  private readonly cdr = inject(ChangeDetectorRef);
 
   @Input() params: any;
   private internalParams: any;
@@ -97,7 +98,8 @@ export class LiberacionJarabeComponent implements OnInit, OnChanges {
     this.internalParams = params;
     this.personalCalidad = params?.context?.componentParent?.personalCalidad ?? [];
     if (this.gridApi) this.loadData();
-  }
+  
+    this.cdr.detectChanges();}
 
   public gridOptions: any = {
     rowSelection: 'single',

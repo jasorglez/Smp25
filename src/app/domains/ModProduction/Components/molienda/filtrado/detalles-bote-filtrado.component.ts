@@ -1,4 +1,4 @@
-import { Component, inject } from '@angular/core';
+import { Component, inject, ChangeDetectorRef} from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { AgGridAngular } from 'ag-grid-angular';
@@ -459,6 +459,7 @@ interface ModalEntry {
 })
 export class DetallesBoteFiltradoComponent {
   private productionService = inject(ProductionService);
+  private readonly cdr = inject(ChangeDetectorRef);
   private signalsService    = inject(SignalsService);
   private catalogService    = inject(ExtractionFermentationCatalogService);
   private mxmService        = inject(MaterialXModuloService);
@@ -627,7 +628,8 @@ export class DetallesBoteFiltradoComponent {
     const opts: { id: number; name: string }[] = params?.context?.articuloOptions ?? [];
     this.matPrimaName = opts.find(o => o.id === this.matPrimaId)?.name ?? '';
     this.init();
-  }
+  
+    this.cdr.detectChanges();}
 
   refresh(): boolean { return false; }
 

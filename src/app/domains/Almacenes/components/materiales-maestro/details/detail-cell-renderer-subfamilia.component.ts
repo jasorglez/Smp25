@@ -1,4 +1,4 @@
-import { Component, inject, OnDestroy, NgZone } from '@angular/core';
+import { Component, inject, OnDestroy, NgZone, ChangeDetectorRef} from '@angular/core';
 import { ICellRendererAngularComp } from 'ag-grid-angular';
 import { ICellRendererParams, ColDef, GridApi, GridReadyEvent } from 'ag-grid-enterprise';
 import { AgGridModule } from 'ag-grid-angular';
@@ -53,6 +53,7 @@ import { PendingChangesService } from 'app/services/pending-changes.service';
 export class DetailCellRendererSubfamiliaComponent implements ICellRendererAngularComp, OnDestroy {
 
   private materialsService = inject(MaterialsService);
+  private readonly cdr = inject(ChangeDetectorRef);
   private modalService = inject(SubfamiliaModalService);
   private ngZone = inject(NgZone);
   private pendingChangesService = inject(PendingChangesService);
@@ -121,7 +122,8 @@ export class DetailCellRendererSubfamiliaComponent implements ICellRendererAngul
 
     // Cargar datos
     this.loadCatalogData();
-  }
+  
+    this.cdr.detectChanges();}
 
   refresh(): boolean {
     return false;

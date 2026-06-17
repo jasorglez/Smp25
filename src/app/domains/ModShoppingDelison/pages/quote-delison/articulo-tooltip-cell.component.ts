@@ -1,4 +1,4 @@
-import { Component, OnDestroy, inject } from '@angular/core';
+import { Component, OnDestroy, inject, ChangeDetectorRef} from '@angular/core';
 import { ICellRendererAngularComp } from 'ag-grid-angular';
 import { ArticuloTooltipService } from './articulo-tooltip.service';
 
@@ -16,13 +16,15 @@ import { ArticuloTooltipService } from './articulo-tooltip.service';
 })
 export class ArticuloTooltipCellComponent implements ICellRendererAngularComp, OnDestroy {
   private tooltipService = inject(ArticuloTooltipService);
+  private readonly cdr = inject(ChangeDetectorRef);
   value: string = '';
   private params: any;
 
   agInit(params: any): void {
     this.params = params;
     this.value = params.value || '';
-  }
+  
+    this.cdr.detectChanges();}
 
   refresh(): boolean {
     return false;

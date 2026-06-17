@@ -1,4 +1,4 @@
-import { Component, OnInit, inject, OnDestroy } from '@angular/core';
+import { Component, OnInit, inject, OnDestroy, ChangeDetectorRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { AgGridModule } from 'ag-grid-angular';
@@ -137,6 +137,7 @@ export class DetailCellRendererIncomeComponent implements OnInit, OnDestroy {
   private sanitizer = inject(DomSanitizer);
   private signalsService = inject(SignalsService);
   private contribuyenteModalService = inject(ContribuyenteModalService);
+  private readonly cdr = inject(ChangeDetectorRef);
 
   rowData: any[] = [];
   hasUnsavedChanges: boolean = false;
@@ -190,6 +191,7 @@ export class DetailCellRendererIncomeComponent implements OnInit, OnDestroy {
       this.loadContribuyentes();
       this.loadConceptsDataForReport();
     }
+    this.cdr.detectChanges();
   }
 
   loadConceptsData() {

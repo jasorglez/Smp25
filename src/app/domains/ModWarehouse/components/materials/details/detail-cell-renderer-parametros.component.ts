@@ -1,4 +1,4 @@
-import { Component } from '@angular/core';
+import { inject, Component, ChangeDetectorRef} from '@angular/core';
 import { ICellRendererAngularComp } from 'ag-grid-angular';
 import { ICellRendererParams } from 'ag-grid-enterprise';
 import { AgGridModule } from 'ag-grid-angular';
@@ -28,6 +28,7 @@ import { CommonModule } from '@angular/common';
   `
 })
 export class DetailCellRendererParametrosComponent implements ICellRendererAngularComp {
+  private readonly cdr = inject(ChangeDetectorRef);
 
   params: any;
   articuloId: number;
@@ -76,7 +77,8 @@ export class DetailCellRendererParametrosComponent implements ICellRendererAngul
 
     // Cargar datos de parámetros desde los datos del artículo
     this.parametrosRowData = params.data.parametrosData || [];
-  }
+  
+    this.cdr.detectChanges();}
 
   refresh(): boolean {
     return false;

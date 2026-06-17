@@ -1,4 +1,4 @@
-import { Component, inject, Renderer2, RendererFactory2 } from '@angular/core';
+import { Component, inject, Renderer2, RendererFactory2, ChangeDetectorRef} from '@angular/core';
 import { ICellRendererAngularComp } from 'ag-grid-angular';
 import { ICellRendererParams, GridApi, GridReadyEvent } from 'ag-grid-enterprise';
 import { CommonModule } from '@angular/common';
@@ -89,6 +89,7 @@ import { SelectWithTooltipEditorV2Component } from 'app/shared/select-with-toolt
 export class DetallesTiposProveedorComponent implements ICellRendererAngularComp {
 
   private catalogsService = inject(CatalogsService);
+  private readonly cdr = inject(ChangeDetectorRef);
   private signalsService = inject(SignalsService);
   private providersService = inject(ProvidersService);
   private customersService = inject(CustomersService);
@@ -435,7 +436,8 @@ export class DetallesTiposProveedorComponent implements ICellRendererAngularComp
 
     // Cargar catálogos y datos del proveedor
     this.loadData();
-  }
+  
+    this.cdr.detectChanges();}
 
   async loadData(): Promise<void> {
     try {

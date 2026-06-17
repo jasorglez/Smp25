@@ -1,4 +1,4 @@
-import { Component, inject } from '@angular/core';
+import { Component, inject, ChangeDetectorRef} from '@angular/core';
 import { ICellRendererAngularComp } from 'ag-grid-angular';
 import { ICellRendererParams } from 'ag-grid-enterprise';
 import { AgGridModule } from 'ag-grid-angular';
@@ -62,6 +62,7 @@ import { SignalsService } from 'app/services/signals.service';
 export class DetailCellRendererPrecioMayoreoComponent implements ICellRendererAngularComp {
 
   private signalsService = inject(SignalsService);
+  private readonly cdr = inject(ChangeDetectorRef);
 
   params: any;
   productoId: number;
@@ -116,7 +117,8 @@ export class DetailCellRendererPrecioMayoreoComponent implements ICellRendererAn
 
     // Cargar datos de descuentos existentes o crear datos por defecto
     this.loadDescuentoData();
-  }
+  
+    this.cdr.detectChanges();}
 
   refresh(): boolean {
     return false;

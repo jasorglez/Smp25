@@ -1,4 +1,4 @@
-import { Component, inject } from '@angular/core';
+import { Component, inject, ChangeDetectorRef} from '@angular/core';
 import { ICellRendererAngularComp } from 'ag-grid-angular';
 
 @Component({
@@ -19,6 +19,7 @@ import { ICellRendererAngularComp } from 'ag-grid-angular';
   `
 })
 export class ChevronCellComponent implements ICellRendererAngularComp {
+  private readonly cdr = inject(ChangeDetectorRef);
   nodeLevel: string = '';
   description: string = '';
   isExpanded: boolean = false;
@@ -32,7 +33,8 @@ export class ChevronCellComponent implements ICellRendererAngularComp {
     this.description = params.data.description || '';
     this.isExpanded = params.data.isExpanded || false;
     this.callbacks = params.callbacks || {};
-  }
+  
+    this.cdr.detectChanges();}
 
   refresh(params: any): boolean {
     this.data = params.data;

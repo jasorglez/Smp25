@@ -1,4 +1,4 @@
-import { Component, inject } from '@angular/core';
+import { Component, inject, ChangeDetectorRef} from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { AgGridAngular } from 'ag-grid-angular';
 import { ColDef, GridApi, GridReadyEvent } from 'ag-grid-enterprise';
@@ -37,6 +37,7 @@ import { map, catchError } from 'rxjs/operators';
 })
 export class PedimentosXRequisicionComponent {
   private ocAndReqsService = inject(OcAndReqsService);
+  private readonly cdr = inject(ChangeDetectorRef);
   private currencyService = inject(CurrencyService);
 
   // Catálogo de monedas para el "$ Total x Pedimento" por moneda (Opción A, sin convertir).
@@ -171,7 +172,8 @@ export class PedimentosXRequisicionComponent {
     this.internalParams = params;
     this.requisiconFolio = params?.data?.reqFolio || params?.data?.folio || '';
     // onGridReady cargará los datos
-  }
+  
+    this.cdr.detectChanges();}
 
   refresh(params: any): boolean {
     this.internalParams = params;

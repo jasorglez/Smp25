@@ -1,4 +1,4 @@
-import { Component, computed, effect, inject, Signal } from '@angular/core';
+import { Component, computed, effect, inject, Signal, ChangeDetectorRef} from '@angular/core';
 import { CatalogsService } from 'app/services/catalogs.service';
 import { TablesxmodulesService } from 'app/services/tablesxmodules.service';
 import { SignalsService } from 'app/services/signals.service';
@@ -213,6 +213,7 @@ export class CatalogsComponent implements CanComponentDeactivate {
 
   currentIndex = 0;
   private catalogService = inject(CatalogsService);
+  private readonly cdr = inject(ChangeDetectorRef);
   private signalsService = inject(SignalsService);
   private tableService = inject(TablesxmodulesService);
 
@@ -694,13 +695,15 @@ export class CatalogsComponent implements CanComponentDeactivate {
   `,
 })
 export class ColorPickerRenderer implements ICellRendererAngularComp {
+  private readonly cdr = inject(ChangeDetectorRef);
   public color: string = '#ffffff';
   public params: any;
 
   agInit(params: any): void {
     this.params = params;
     this.color = params.value || '#ffffff';
-  }
+  
+    this.cdr.detectChanges();}
 
   refresh(params: any): boolean {
     this.color = params.value;

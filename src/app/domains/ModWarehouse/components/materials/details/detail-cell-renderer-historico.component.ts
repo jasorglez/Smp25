@@ -1,4 +1,4 @@
-import { Component } from '@angular/core';
+import { inject, Component, ChangeDetectorRef} from '@angular/core';
 import { ICellRendererAngularComp } from 'ag-grid-angular';
 import { ICellRendererParams } from 'ag-grid-enterprise';
 import { AgGridModule } from 'ag-grid-angular';
@@ -28,6 +28,7 @@ import { CommonModule } from '@angular/common';
   `
 })
 export class DetailCellRendererHistoricoComponent implements ICellRendererAngularComp {
+  private readonly cdr = inject(ChangeDetectorRef);
 
   params: any;
   materialId: number;
@@ -128,7 +129,8 @@ export class DetailCellRendererHistoricoComponent implements ICellRendererAngula
       const dateB = new Date(b.fechaCambio).getTime();
       return dateB - dateA; // Descendente
     });
-  }
+  
+    this.cdr.detectChanges();}
 
   refresh(): boolean {
     return false;

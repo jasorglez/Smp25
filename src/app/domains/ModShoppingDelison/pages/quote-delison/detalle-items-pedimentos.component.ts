@@ -1,4 +1,4 @@
-import { Component, HostListener, inject, OnDestroy } from '@angular/core';
+import { Component, HostListener, inject, OnDestroy, ChangeDetectorRef} from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ICellRendererAngularComp, AgGridModule } from 'ag-grid-angular';
 import { ColDef, GridApi, GridReadyEvent, ICellRendererParams } from 'ag-grid-enterprise';
@@ -79,6 +79,7 @@ export class DetalleItemsPedimentosComponent implements ICellRendererAngularComp
   private context: any;
   private gridApi!: GridApi;
   private ocAndReqsService = inject(OcAndReqsService);
+  private readonly cdr = inject(ChangeDetectorRef);
   private signalsService = inject(SignalsService);
   private pedimentoModificationService = inject(PedimentoModificationService);
   private itemCommentsService = inject(ItemCommentsService);
@@ -132,7 +133,8 @@ export class DetalleItemsPedimentosComponent implements ICellRendererAngularComp
         this.pedimentoModificationService.pedimentoModified$.next(this.cotizacionId);
       }
     });
-  }
+  
+    this.cdr.detectChanges();}
 
   ngOnDestroy(): void {
     this.commentSub?.unsubscribe();

@@ -1,4 +1,4 @@
-import { Component ,inject} from '@angular/core';
+import { Component, inject, ChangeDetectorRef } from '@angular/core';
 import { ICellRendererAngularComp } from 'ag-grid-angular';
 import { ICellRendererParams } from 'ag-grid-enterprise';
 import { AgGridModule } from 'ag-grid-angular';
@@ -130,6 +130,8 @@ export class DetailCellRendererComponentCuentas implements ICellRendererAngularC
 
   }
   };
+
+  private readonly cdr = inject(ChangeDetectorRef);
 
   constructor(private currencyPipe: CurrencyPipe) {}
 
@@ -268,6 +270,7 @@ export class DetailCellRendererComponentCuentas implements ICellRendererAngularC
     // Asegurarse de que el contexto se pase al gridOptions del detalle
     this.cuentaGridOptions.detailCellRendererParams.context = params.context;
     this.loadCuentaData();
+    this.cdr.detectChanges();
   }
 
   refresh(): boolean {

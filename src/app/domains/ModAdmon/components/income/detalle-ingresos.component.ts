@@ -1,4 +1,4 @@
-import { Component, OnInit, inject, OnDestroy } from '@angular/core';
+import { Component, OnInit, inject, OnDestroy, ChangeDetectorRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { AgGridModule } from 'ag-grid-angular';
@@ -115,6 +115,7 @@ export class DetalleIngresosComponent implements OnInit, OnDestroy {
   private incomesAndExpensesService = inject(IncomesAndExpensesService);
   private administrationService = inject(AdministrationService);
   private catalogsService = inject(CatalogsService);
+  private readonly cdr = inject(ChangeDetectorRef);
   private rootService = inject(RootService);
   private base64EncodeService = inject(Base64EncodeService);
 
@@ -169,6 +170,7 @@ export class DetalleIngresosComponent implements OnInit, OnDestroy {
     } else if (this.detailType === 'report') {
       this.loadConceptsDataForReport();
     }
+    this.cdr.detectChanges();
   }
 
   async loadMeasures() {

@@ -1,4 +1,4 @@
-import { Component, OnInit, OnChanges, SimpleChanges, Input, inject } from '@angular/core';
+import { Component, OnInit, OnChanges, SimpleChanges, Input, inject, ChangeDetectorRef} from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { AgGridModule } from 'ag-grid-angular';
@@ -102,6 +102,7 @@ import { lastValueFrom } from 'rxjs';
 })
 export class LimpiezaJarabeComponent implements OnInit, OnChanges {
   private productionService = inject(ProductionService);
+  private readonly cdr = inject(ChangeDetectorRef);
 
   @Input() params: any;
   private internalParams: any;
@@ -141,7 +142,8 @@ export class LimpiezaJarabeComponent implements OnInit, OnChanges {
     this.internalParams = params;
     this.personalPrep1 = params?.context?.componentParent?.personalPrep1 ?? [];
     if (this.gridApi) this.loadData();
-  }
+  
+    this.cdr.detectChanges();}
 
   expandedPartesRowId: string | null = null;
 

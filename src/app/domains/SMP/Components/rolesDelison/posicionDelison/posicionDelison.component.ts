@@ -1,4 +1,4 @@
-import { AfterViewInit, Component, ElementRef, inject, ViewChild } from '@angular/core';
+import { AfterViewInit, Component, ElementRef, inject, ViewChild, ChangeDetectorRef} from '@angular/core';
 import { ICellRendererAngularComp } from 'ag-grid-angular';
 import { ICellRendererParams } from 'ag-grid-enterprise';
 import { AgGridModule } from 'ag-grid-angular';
@@ -190,6 +190,7 @@ export class PosicionDelisonComponent implements ICellRendererAngularComp, After
   isAdvanced: boolean = false;
 
   private modalService = inject(ModalService);
+  private readonly cdr = inject(ChangeDetectorRef);
   
   private editableColumnOrder = ['description'];
   private enterPressed = false;
@@ -292,7 +293,8 @@ export class PosicionDelisonComponent implements ICellRendererAngularComp, After
     this.idUser = this.signalsService.getIdUSer()();
     this.isAdvanced = this.signalsService.getIsAdvanced();
     this.loadPosicionData();
-  }
+  
+    this.cdr.detectChanges();}
 
   ngAfterViewInit(): void {
     // Se elimina la llamada a focus() para evitar el parpadeo/redimensionamiento del grid al abrir el detalle.

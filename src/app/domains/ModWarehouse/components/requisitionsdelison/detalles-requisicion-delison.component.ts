@@ -1,4 +1,4 @@
-import { Component, OnInit, OnDestroy, inject, Renderer2, RendererFactory2, HostListener, TemplateRef, ViewChild } from '@angular/core';
+import { Component, OnInit, OnDestroy, inject, Renderer2, RendererFactory2, HostListener, TemplateRef, ViewChild, ChangeDetectorRef} from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { AgGridModule } from 'ag-grid-angular';
@@ -344,6 +344,7 @@ export class DetallesRequisicionDelisonComponent implements OnInit, OnDestroy {
   private gridApi!: GridApi;
   private context: any;
   private ocAndReqsService = inject(OcAndReqsService);
+  private readonly cdr = inject(ChangeDetectorRef);
   private materialsService = inject(MaterialsService);
   private signalsService = inject(SignalsService);
   private catalogsService = inject(CatalogsService);
@@ -510,7 +511,8 @@ export class DetallesRequisicionDelisonComponent implements OnInit, OnDestroy {
     } else if (this.detailType === 'pdf') {
       this.generatePDF();
     }
-  }
+  
+    this.cdr.detectChanges();}
 
   /**
    * Determina si el usuario puede editar columnas restringidas y borrar ítems de esta requisición.

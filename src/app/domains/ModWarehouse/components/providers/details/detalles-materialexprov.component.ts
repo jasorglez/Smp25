@@ -1,4 +1,4 @@
-import { Component, inject } from '@angular/core';
+import { Component, inject, ChangeDetectorRef} from '@angular/core';
 import { ICellRendererAngularComp } from 'ag-grid-angular';
 import { ICellRendererParams } from 'ag-grid-enterprise';
 import { AgGridModule } from 'ag-grid-angular';
@@ -47,6 +47,7 @@ import { BranchsService } from 'app/services/branchs.service';
 })
 export class DetallesMaterialexprovComponent implements ICellRendererAngularComp {
   private materialsService = inject(MaterialsService);
+  private readonly cdr = inject(ChangeDetectorRef);
   private modalService = inject(NgbModal);
   private signalsService = inject(SignalsService);
   private branchsService = inject(BranchsService);
@@ -139,7 +140,8 @@ export class DetallesMaterialexprovComponent implements ICellRendererAngularComp
 
     // Cargar materiales directamente (no se necesitan catálogos en modo solo lectura)
     this.loadMaterialData();
-  }
+  
+    this.cdr.detectChanges();}
 
   refresh(): boolean {
     return false;

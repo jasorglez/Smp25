@@ -1,4 +1,4 @@
-﻿import { Component, inject } from '@angular/core';
+﻿import { Component, inject, ChangeDetectorRef} from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ICellRendererParams } from 'ag-grid-enterprise';
 import { DomSanitizer, SafeResourceUrl } from '@angular/platform-browser';
@@ -63,6 +63,7 @@ import pdfFonts from 'pdfmake/build/vfs_fonts';
 })
 export class DetailCellRendererPedimentoReportComponent {
   private sanitizer = inject(DomSanitizer);
+  private readonly cdr = inject(ChangeDetectorRef);
   private signalsService = inject(SignalsService);
   private rootService = inject(RootService);
   private customersService = inject(CustomersService);
@@ -81,7 +82,8 @@ export class DetailCellRendererPedimentoReportComponent {
     this.providerLabel = params.data?.reportProviderLabel || 'Proveedor 1';
     this.providerField = params.data?.reportProviderField || 'idProvider';
     this.generateReport();
-  }
+  
+    this.cdr.detectChanges();}
 
   async generateReport() {
     this.isLoading = true;
