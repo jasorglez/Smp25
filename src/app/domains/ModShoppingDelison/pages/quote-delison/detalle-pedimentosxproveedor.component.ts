@@ -43,7 +43,7 @@ const MAX_PROVIDER_SLOTS = 26;
 @Component({
   selector: 'app-detail-cell-renderer-pedimentos',
   standalone: true,
-  imports: [CommonModule, AgGridModule, ButtonCellRendererComponent, CotizProvButtonCellRendererComponent, PdfButtonCellRendererPedimentosComponent, DetalleItemsPedimentosComponent, DetalleItemsProveedorComponent, DetailCellRendererPedimentoReportComponent, DetalleProvidersListComponent],
+  imports: [CommonModule, AgGridModule],
   template: `
     <div class="detail-grid-container">
       <!-- Grid con tamaño completo -->

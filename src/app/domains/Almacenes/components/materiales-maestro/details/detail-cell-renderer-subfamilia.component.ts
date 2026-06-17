@@ -530,6 +530,16 @@ export class DetailCellRendererSubfamiliaComponent implements ICellRendererAngul
     }
   }
 
+  private expandGroupsWithMarkedItems(): void {
+    if (!this.gridApi) return;
+    this.gridApi.forEachNode((node: any) => {
+      if (!node.group) return;
+      const hasMarked = (node.childrenAfterFilter || node.allLeafChildren || [])
+        .some((leaf: any) => !leaf.group && leaf.data?.seUsaAqui === true);
+      if (hasMarked) node.setExpanded(true);
+    });
+  }
+
   // Catalog/expansion helper methods removed - not used in flat structure
 
   /** Envía al Nivel 1 la cantidad de checkboxes "Se usa aquí" activos para actualizar "Donde Usa". */
