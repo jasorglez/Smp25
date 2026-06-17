@@ -1,4 +1,4 @@
-import { Component, inject } from '@angular/core';
+﻿import { Component, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ICellRendererParams } from 'ag-grid-enterprise';
 import { DomSanitizer, SafeResourceUrl } from '@angular/platform-browser';
@@ -12,7 +12,7 @@ import { lastValueFrom } from 'rxjs';
 import pdfMake from 'pdfmake/build/pdfmake';
 import pdfFonts from 'pdfmake/build/vfs_fonts';
 
-pdfMake.vfs = pdfFonts.vfs;
+(pdfMake as any).vfs = pdfFonts['vfs'];
 
 @Component({
   selector: 'app-detail-cell-renderer-requisition-report',

@@ -1,4 +1,4 @@
-import { Component, OnInit } from '@angular/core';
+﻿import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ActivatedRoute } from '@angular/router';
 import { DomSanitizer, SafeResourceUrl } from '@angular/platform-browser';
@@ -7,7 +7,7 @@ import { Base64EncodeService } from '../../../../services/base64encode.service';
 import pdfMake from 'pdfmake/build/pdfmake';
 import pdfFonts from 'pdfmake/build/vfs_fonts';
 
-pdfMake.vfs = pdfFonts.vfs;
+(pdfMake as any).vfs = pdfFonts['vfs'];
 
 @Component({
   selector: 'app-public-doc-viewer',

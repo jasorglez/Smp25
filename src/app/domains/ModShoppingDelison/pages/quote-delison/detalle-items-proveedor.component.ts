@@ -1,4 +1,4 @@
-import { Component, inject, Renderer2, RendererFactory2, OnDestroy, HostListener, Input, ViewChild, ElementRef } from '@angular/core';
+﻿import { Component, inject, Renderer2, RendererFactory2, OnDestroy, HostListener, Input, ViewChild, ElementRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { AgGridModule } from 'ag-grid-angular';
@@ -29,7 +29,7 @@ import { CondicionesPagoService, CondicionPagoDto } from 'app/services/condicion
 import { CurrencyService } from 'app/services/currency.service';
 import { PrecioMonedaEditorComponent } from 'app/domains/Almacenes/components/materiales-maestro/editors/precio-moneda-editor.component';
 
-pdfMake.vfs = pdfFonts.vfs;
+(pdfMake as any).vfs = pdfFonts['vfs'];
 
 @Component({
   selector: 'app-detalle-items-proveedor',
