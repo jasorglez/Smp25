@@ -73,5 +73,5 @@ export const environment = {
 
   urlRefreshToken: 'https://securetoken.googleapis.com/v1/token?key=AIzaSyDxCBGKk8nT09hdW85-PyOkhw5_JPZLF1A',
 
-  version: '2.52.516 (17 Junio 2026) - Múltiples correcciones a ag-grid por migración a Angular 21'
+  version: '2.52.517 (17 Junio 2026) - materiales-maestro rowData a signal (fix NG0100/build TS2349)'
 };
