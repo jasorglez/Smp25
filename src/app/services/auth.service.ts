@@ -91,10 +91,10 @@ export class AuthService {
     if (msUntilWarning > 0) {
       // Programar advertencia 2 minutos antes de expirar
       this.sessionWarningTimer = setTimeout(() => {
-        this.ngZone.run(() => this.showSessionWarning(msUntilExpiry));
+        this.ngZone.run(() => this.showSessionWarning(this.WARNING_BEFORE_EXPIRY_MS));
       }, msUntilWarning);
     } else {
-      // Menos de 2 minutos, mostrar advertencia de inmediato
+      // Menos de 2 minutos, mostrar advertencia con el tiempo real restante
       this.ngZone.run(() => this.showSessionWarning(msUntilExpiry));
     }
 
@@ -135,9 +135,11 @@ export class AuthService {
       willClose: () => {
         clearInterval(timerInterval);
       }
-    }).then((result) => {
-      // Si el usuario hizo clic en "Entendido" o el timer se agotó, cerrar sesión
-      this.logout();
+    }).then((_result) => {
+      // Si el usuario hizo clic en "Entendido" → no hacer nada.
+      // El sessionExpireTimer cerrará la sesión cuando el token realmente expire.
+      // Si el timer del Swal se agotó (dismiss = timer), el sessionExpireTimer
+      // ya llamó Swal.close() + logout(), así que tampoco es necesario actuar aquí.
     });
   }
 
