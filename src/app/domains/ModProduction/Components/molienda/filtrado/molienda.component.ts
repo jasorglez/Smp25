@@ -68,6 +68,7 @@ import { SalidaLotesModalComponent } from './salida-lotes-modal.component';
       [idDepartamento]="EXTRACCION_FERMENTACION_DEPT_ID"
       [idArticuloActual]="salidaModal.idArticuloActual"
       [salidasPrevias]="salidaModal.salidasPrevias"
+      [empleadoActual]="salidaModal.empleadoActual ?? null"
       (resolve)="onSalidaResolve($event)"
       (cancel)="salidaModal = null">
     </app-salida-lotes-modal>
@@ -76,7 +77,7 @@ import { SalidaLotesModalComponent } from './salida-lotes-modal.component';
 export class MoliendaComponent {
   readonly EXTRACCION_FERMENTACION_DEPT_ID = 62;
   // Estado del modal de salida por lote (lo dispara el Nivel 3 vía context).
-  salidaModal: { articuloOptions: any[]; idSucursal: number; idArticuloActual: number | null; salidasPrevias: { [idDatoExterno: number]: number }; onResolve: (r: any) => void } | null = null;
+  salidaModal: { articuloOptions: any[]; idSucursal: number; idArticuloActual: number | null; salidasPrevias: { [idDatoExterno: number]: number }; empleadoActual?: string | null; onResolve: (r: any) => void } | null = null;
   private signalService = inject(SignalsService);
   private branchsService = inject(BranchsService);
   private productionService = inject(ProductionService);

@@ -156,6 +156,7 @@ export class MedicionMatPrimaComponent implements ICellRendererAngularComp {
       idSucursal: this.idSucursal,
       idArticuloActual: row.idMatPrima ?? null,
       salidasPrevias,
+      empleadoActual: row.__empleadoSalida ?? this.rowData.find(r => r !== row && r.__empleadoSalida)?.__empleadoSalida ?? null,
       onResolve: (res: { idArticulo: number; cantidad: number; empleado: string; lotes: any[] }) =>
         this.aplicarSalida(row, res),
     });
@@ -204,10 +205,23 @@ export class MedicionMatPrimaComponent implements ICellRendererAngularComp {
       const items = await lastValueFrom(
         this.productionService.getMedicionMatPrimas(this.idMedicion!)
       ).catch(() => [] as any[]);
-      const mapped = (items as any[]).map((i: any) => ({
-        id: i.id, idMatPrima: i.idMatPrima, cantidad: i.cantidad,
-        __isNew: false, __modified: false,
+
+      const mapped = await Promise.all((items as any[]).map(async (i: any) => {
+        const row: any = {
+          id: i.id, idMatPrima: i.idMatPrima, cantidad: i.cantidad,
+          __isNew: false, __modified: false,
+        };
+        try {
+          const salidas = await lastValueFrom(this.salidasService.getByOrigen('MOLIENDA', i.id)).catch(() => []);
+          const arr = Array.isArray(salidas) ? salidas : [];
+          if (arr.length) {
+            row.__empleadoSalida = arr[0].usuario ?? null;
+            row.__salidasLotes = arr.map((s: any) => ({ idDatoExterno: s.idDatoExterno, cantidad: s.cantidad }));
+          }
+        } catch { /* si falla, abre sin pre-llenar empleado */ }
+        return row;
       }));
+
       this.originalRowData = JSON.parse(JSON.stringify(mapped));
       this.rowData = [...mapped];
       if (this.gridApi && !this.gridApi.isDestroyed()) {

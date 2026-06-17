@@ -1924,6 +1924,29 @@ export class ComparacionPreciosComponent implements OnInit, OnDestroy {
     const AUTHORIZED = ['COMPRA INMEDIATA', 'COMPRA AUTORIZADA', 'COMPRA AUTORIZADA EN OTRA FECHA', 'COMPRA AUTORIZADA SIN LIMITE'];
     const NOT_AUTHORIZED = ['COMPRA NO AUTORIZADA', 'CAMBIO DE ESPECIFICACIONES', 'ARTICULO NO AUTORIZADO'];
 
+    // Snapshot de vínculos proveedor×artículo NUEVOS (campo7/por_autorizar = true) ANTES de
+    // modificar nada. Solo los vínculos recién ligados a ese artículo deben inactivarse + dejar
+    // bandera cuando el Tipo OC es negativo; los vínculos que YA existían (sin bandera) en negativo
+    // solo cierran la OC (no se inactivan ni se les pone bandera), porque ya se les había comprado.
+    const newLinkPairs = new Set<string>(); // clave: `${proveedorId}:${idSupplie}`
+    const provIdsSnapshot = [...new Set(
+      this.rowData.filter(r => r.proveedorId > 0 && r.idSupplie > 0).map(r => r.proveedorId)
+    )];
+    for (const provId of provIdsSnapshot) {
+      try {
+        const recs: any = await lastValueFrom(this.providersService.getProvidersXTable(provId, 'MATERIAL'));
+        const arr: any[] = Array.isArray(recs) ? recs : [];
+        for (const rec of arr) {
+          const esNuevo = rec?.campo7 === true || rec?.campo7 === 1;
+          if (esNuevo && rec?.campo1 != null) {
+            newLinkPairs.add(`${provId}:${Number(rec.campo1)}`);
+          }
+        }
+      } catch (e) {
+        console.warn(`⚠️ No se pudo leer proveedorxtablas del proveedor ${provId} para snapshot:`, e);
+      }
+    }
+
     for (const row of this.rowData) {
       if (row.slotItemId > 0) {
         await lastValueFrom(
@@ -1937,12 +1960,18 @@ export class ComparacionPreciosComponent implements OnInit, OnDestroy {
         }
 
         if (NOT_AUTHORIZED.includes(row.tipoOc) && row.idSupplie > 0 && row.proveedorId > 0) {
-          await lastValueFrom(
-            this.ocAndReqsService.deactivateProveedorForMaterial(row.idSupplie, row.proveedorId)
-          ).catch(e => console.warn(`⚠️ No se pudo desactivar proveedor:`, e));
-          await lastValueFrom(
-            this.ocAndReqsService.patchProveedorXTablaCampo7(row.idSupplie, row.proveedorId, true)
-          ).catch(e => console.warn(`⚠️ No se pudo mantener "Por autorizar" en proveedor negativo:`, e));
+          // Solo si el vínculo proveedor×artículo es NUEVO (recién ligado, con bandera por autorizar):
+          // se inactiva el vínculo y se mantiene la bandera. Si el vínculo YA existía (sin bandera),
+          // el negativo solo cierra la OC (patchTypeOc ya registró el tipo) y NO se toca activo/bandera.
+          const esVinculoNuevo = newLinkPairs.has(`${row.proveedorId}:${row.idSupplie}`);
+          if (esVinculoNuevo) {
+            await lastValueFrom(
+              this.ocAndReqsService.deactivateProveedorForMaterial(row.idSupplie, row.proveedorId)
+            ).catch(e => console.warn(`⚠️ No se pudo desactivar proveedor:`, e));
+            await lastValueFrom(
+              this.ocAndReqsService.patchProveedorXTablaCampo7(row.idSupplie, row.proveedorId, true)
+            ).catch(e => console.warn(`⚠️ No se pudo mantener "Por autorizar" en proveedor negativo:`, e));
+          }
         }
 
         await lastValueFrom(

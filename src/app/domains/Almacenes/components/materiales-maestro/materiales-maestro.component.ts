@@ -92,6 +92,8 @@ export class MaterialesMaestroComponent implements OnInit, OnDestroy {
   gridHeight: string = '80vh';
   selectedMaterial: MaterialsResponse | null = null;
   hasUnsavedChanges: boolean = false;
+  // True mientras corre un guardado: bloquea el botón Guardar para evitar doble click.
+  isSaving: boolean = false;
   idRoot: number | null = null;
   newlyAddedRows: string[] = [];
   private tempIdCounter: number = 0;
@@ -158,6 +160,10 @@ export class MaterialesMaestroComponent implements OnInit, OnDestroy {
       if (newIdRoot && newIdRoot !== this.idRoot) {
         this.idRoot = newIdRoot;
         this.loadMaterials();
+        // Refrescar el contexto del master-detail: si onGridReady corrió ANTES de que el
+        // signal resolviera la empresa, context.idRoot quedó en null y las cascadas (variantes)
+        // no cargaban hasta re-loguear. Esto lo actualiza en cuanto idRoot resuelve/cambia.
+        this.updateGridContext();
       }
     });
   }
@@ -1091,6 +1097,17 @@ export class MaterialesMaestroComponent implements OnInit, OnDestroy {
     });
   }
 
+  /** Actualiza "Donde Usa" con el conteo real de checkboxes activos que proviene del Nivel 2. Sin API call. */
+  updateSubfamilyCountDirect(materialId: number, count: number) {
+    if (!this.gridApi) return;
+    this.gridApi.forEachNode((node) => {
+      if (node.data && node.data.id === materialId) {
+        node.data.subfamilyCount = count;
+        this.gridApi.refreshCells({ rowNodes: [node], columns: ['subfamilyCount'], force: true });
+      }
+    });
+  }
+
   // Método para actualizar el providerCount de un material específico
   updateProviderCount(materialId: number) {
     this.materialsService.getMaterialsxview(this.idRoot).subscribe({
@@ -1236,6 +1253,17 @@ export class MaterialesMaestroComponent implements OnInit, OnDestroy {
         const errorMsg = error?.error?.message || error?.message || 'Error desconocido';
         alerts.basicAlert('Error', `No se pudo eliminar el material: ${errorMsg}`, 'error');
       }
+    }
+  }
+
+  /** Wrapper del botón Guardar: bloquea re-entradas (doble click) mientras corre el guardado. */
+  async onSaveClick(): Promise<void> {
+    if (this.isSaving) return;
+    this.isSaving = true;
+    try {
+      await this.saveChanges();
+    } finally {
+      this.isSaving = false;
     }
   }
 

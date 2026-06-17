@@ -74,7 +74,7 @@ import { DetailEntradaDocumentsComponent } from './domains/ModProduction/Compone
       <div style="background:#fff; border-radius:10px; width:88vw; max-width:100%; height:88vh; display:flex; flex-direction:column; box-shadow:0 8px 40px rgba(0,0,0,0.3); overflow:hidden;"
            (click)="$event.stopPropagation()">
         <div style="display:flex; justify-content:space-between; align-items:center; padding:8px 14px; background:#e3f2fd; border-bottom:1px solid #90caf9; flex-shrink:0;">
-          <span style="font-weight:600; color:#0d47a1;">{{ proveedorData.providerLabel }}</span>
+          <span style="font-weight:600; color:#0d47a1;">{{ proveedorData.headerTitle || proveedorData.providerLabel }}</span>
           <button type="button" class="btn-close" aria-label="Cerrar" (click)="closeProveedor()"></button>
         </div>
         <app-detalle-items-proveedor

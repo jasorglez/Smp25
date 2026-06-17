@@ -15,6 +15,7 @@ import { DetalleItemsPedimentosComponent } from './detalle-items-pedimentos.comp
 import { DetalleItemsProveedorComponent } from './detalle-items-proveedor.component';
 import { DetailCellRendererPedimentoReportComponent } from './detail-cell-renderer-pedimento-report.component';
 import { DetalleProvidersListComponent } from './detalle-providers-list.component';
+import { CotizProvButtonCellRendererComponent } from './cotiz-prov-button-cell-renderer.component';
 
 /** Snapshot del detalle expandido (nivel 3); debe ir solo como `type` y antes del decorador @Component. */
 type ExpandedPedimentoDetailState = {
@@ -42,7 +43,7 @@ const MAX_PROVIDER_SLOTS = 26;
 @Component({
   selector: 'app-detail-cell-renderer-pedimentos',
   standalone: true,
-  imports: [CommonModule, AgGridModule, ButtonCellRendererComponent, PdfButtonCellRendererPedimentosComponent, DetalleItemsPedimentosComponent, DetalleItemsProveedorComponent, DetailCellRendererPedimentoReportComponent, DetalleProvidersListComponent],
+  imports: [CommonModule, AgGridModule, ButtonCellRendererComponent, CotizProvButtonCellRendererComponent, PdfButtonCellRendererPedimentosComponent, DetalleItemsPedimentosComponent, DetalleItemsProveedorComponent, DetailCellRendererPedimentoReportComponent, DetalleProvidersListComponent],
   template: `
     <div class="detail-grid-container">
       <!-- Grid con tamaño completo -->
@@ -417,17 +418,9 @@ export class DetailCellRendererPedimentosComponent implements OnInit, OnDestroy 
         width: 220,
         flex: 0,
         suppressSizeToFit: true,
-        cellRenderer: ButtonCellRendererComponent,
-        cellRendererParams: {
-          onClick: (node: any) => this.toggleProvidersListCascade(node),
-          icon: 'bi-people-fill',
-          title: 'Ver proveedores cotizados (cascada)'
-        },
-        valueGetter: (params: any) => {
-          const slots = params.data?.providerSlots || [];
-          const realCount = slots.filter((s: any) => Number(s?.idProvider) > 0).length;
-          return `${realCount} prov`;
-        },
+        // Componente Angular estable (no parpadea, click OK). El tooltip azul flotante con
+        // Artículo/Cant. Requerida lo maneja el propio componente (panel fixed sobre document.body).
+        cellRenderer: CotizProvButtonCellRendererComponent,
         editable: false,
         cellStyle: { backgroundColor: '#e8f5e9', cursor: 'pointer' }
       },
@@ -647,9 +640,15 @@ export class DetailCellRendererPedimentosComponent implements OnInit, OnDestroy 
     const providerLabel = `Proveedor ${slot.slotIndex}`;
     const slotKey = slot.idProvider != null ? `pro_${slot.idProvider}` : `new_${slot.slotIndex}`;
 
+    // Breadcrumb de cabecera: "BOD-1 > P1 > Proveedor 1" (requisición > pedimento > proveedor).
+    const reqFolio = this.params.data?.requisition || '';
+    const pedNum = node.data.numeroPedimentoRaw || 0;
+    const headerTitle = [reqFolio, `P${pedNum}`, providerLabel].filter(Boolean).join(' > ');
+
     this.proveedorItemsOverlayService.open({
       pedimentoData: node.data,
       providerLabel,
+      headerTitle,
       providerField: slotKey,
       slotInfo: { ...slot },
       branchPrefix: node.data.branchPrefix || 'NOPREF',
