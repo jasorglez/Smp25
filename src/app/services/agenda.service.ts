@@ -112,4 +112,12 @@ export class AgendaService {
       { headers: this.tracking.getHeaders() }
     );
   }
+
+  /** Diagnóstico: prueba si el token puede acceder a Google Calendar */
+  testGoogle(idCompany: number): Observable<{ ok: boolean; detail: string }> {
+    return this.http.get<{ ok: boolean; detail: string }>(
+      `${this.oauthBase}/test?idCompany=${idCompany}`,
+      { headers: this.tracking.getHeaders() }
+    );
+  }
 }
