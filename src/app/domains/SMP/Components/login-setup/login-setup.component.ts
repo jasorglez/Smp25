@@ -1,4 +1,4 @@
-import { Component, ViewChild, ElementRef, inject } from '@angular/core';
+import { Component, ViewChild, ElementRef, inject, ChangeDetectorRef} from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { AgGridModule } from 'ag-grid-angular';
 import { ColDef, GridApi, GridReadyEvent } from 'ag-grid-community';
@@ -17,6 +17,7 @@ export class LoginSetupComponent {
   @ViewChild('fileInput') fileInput: ElementRef<HTMLInputElement>;
 
   private imageHandlerService = inject(ImageHandlerService);
+  private readonly cdr = inject(ChangeDetectorRef);
   private loginSetupService = inject(LoginImageService);
 
   rowData: any[] = [];
@@ -226,7 +227,8 @@ export class LoginSetupComponent {
       alerts.closeLoading();
       alerts.basicAlert('Error', 'No se pudieron guardar los cambios en el servidor.', 'error');
     }
-  }
+  
+    this.cdr.detectChanges();}
 
   revertChanges(): void {
     this.rowData = JSON.parse(JSON.stringify(this.originalRowData));

@@ -158,7 +158,8 @@ export class ImageCellRendererComponent implements ICellRendererAngularComp {
     } catch (error) {
       console.error('Error uploading image:', error);
     }
-  }
+  
+    this.cdr.detectChanges();}
 
   deleteImage(event: Event): void {
     event.stopPropagation();

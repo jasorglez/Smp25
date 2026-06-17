@@ -1,4 +1,4 @@
-import { Component, OnInit, inject, OnDestroy } from '@angular/core';
+import { Component, OnInit, inject, OnDestroy, ChangeDetectorRef} from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { AgGridModule } from 'ag-grid-angular';
@@ -108,6 +108,7 @@ export class DetallesStakeholderExpendComponent implements OnInit, OnDestroy {
   private gridApi!: GridApi;
   private context: any;
   private sanitizer = inject(DomSanitizer);
+  private readonly cdr = inject(ChangeDetectorRef);
   private signalsService = inject(SignalsService);
 
   rowData: any[] = [];
@@ -208,7 +209,8 @@ export class DetallesStakeholderExpendComponent implements OnInit, OnDestroy {
     } else {
       this.generateReport();
     }
-  }
+  
+    this.cdr.detectChanges();}
 
   async loadSetupManagementInfo() {
     if (this.context?.administrationService && this.context?.idRoot) {
@@ -224,7 +226,8 @@ export class DetallesStakeholderExpendComponent implements OnInit, OnDestroy {
         this.setupManagementInfo = null;
       }
     }
-  }
+  
+    this.cdr.detectChanges();}
 
   refresh(params: ICellRendererParams): boolean {
     return false;
@@ -459,7 +462,8 @@ export class DetallesStakeholderExpendComponent implements OnInit, OnDestroy {
         }
       }, newCount);
     }
-  }
+  
+    this.cdr.detectChanges();}
 
   async saveChanges() {
     if (!this.hasUnsavedChanges) {
@@ -540,7 +544,8 @@ export class DetallesStakeholderExpendComponent implements OnInit, OnDestroy {
         console.error('❌ Error al guardar:', error);
       }
     }
-  }
+  
+    this.cdr.detectChanges();}
 
   discardChanges() {
     if (!this.hasUnsavedChanges) {
@@ -857,7 +862,8 @@ export class DetallesStakeholderExpendComponent implements OnInit, OnDestroy {
       this.pdfUrl = null;
       alerts.basicAlert('Error', 'No se pudo generar el reporte PDF', 'error');
     }
-  }
+  
+    this.cdr.detectChanges();}
 
   private generateConceptsTable(): any {
     const tableBody: any[] = [

@@ -1,4 +1,4 @@
-import { Component, effect, HostListener, inject } from '@angular/core';
+import { Component, effect, HostListener, inject, ChangeDetectorRef} from '@angular/core';
 import { RouterModule } from '@angular/router';
 import { DomainsModule } from 'app/domains/domainsmodule';
 import {
@@ -35,6 +35,7 @@ export class CustomersPaymentsComponent {
 
   // Inject of new way for Angular 18
   private customersService = inject(CustomersService);
+  private readonly cdr = inject(ChangeDetectorRef);
   private signalsService = inject(SignalsService);
   private timeService = inject(TimeService);
   public AG_GRID_LOCALE_ES = AG_GRID_LOCALE_ES;
@@ -271,7 +272,8 @@ export class CustomersPaymentsComponent {
         (date.getMonth() + 1)
       ).slice(-2)}-${date.getFullYear()}`,
     };
-  }
+  
+    this.cdr.detectChanges();}
 
   loadData(preserveSelection: boolean = false) {
     if (this.idClient === null || this.idClient === undefined) {
@@ -390,7 +392,8 @@ export class CustomersPaymentsComponent {
         }
       });
     }
-  }
+  
+    this.cdr.detectChanges();}
 
   onMaestroGridReady(params: GridReadyEvent) {
     this.maestroGridApi = params.api;
@@ -466,7 +469,8 @@ export class CustomersPaymentsComponent {
         'error'
       );
     }
-  }
+  
+    this.cdr.detectChanges();}
 
   revertMasterData() {
     this.loadData();
@@ -526,7 +530,8 @@ export class CustomersPaymentsComponent {
         'error'
       );
     }
-  }
+  
+    this.cdr.detectChanges();}
 
   revertDetailData() {
     this.loadDetailedData();

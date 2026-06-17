@@ -1,4 +1,4 @@
-import { Component, effect, HostListener, inject } from '@angular/core';
+import { Component, effect, HostListener, inject, ChangeDetectorRef} from '@angular/core';
 
 import {
   CellDoubleClickedEvent,
@@ -83,6 +83,7 @@ export class WarehousesComponent implements CanComponentDeactivate {
 
   // Inject of new way for Angular 18
   private warehouseService = inject(WarehousesService);
+  private readonly cdr = inject(ChangeDetectorRef);
   private inegiService = inject(InegiService);
   private branchesService = inject(BranchsService);
   private modalServiceTable = inject(ModalService);
@@ -345,7 +346,8 @@ export class WarehousesComponent implements CanComponentDeactivate {
         'error'
       );
     }
-  }
+  
+    this.cdr.detectChanges();}
 
   async Delete() {
     const selectedNodes = this.gridApi.getSelectedNodes();

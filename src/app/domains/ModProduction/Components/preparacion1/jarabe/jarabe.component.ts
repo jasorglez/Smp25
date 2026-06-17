@@ -1,4 +1,4 @@
-import { Component, OnInit, inject, effect } from '@angular/core';
+import { Component, OnInit, inject, effect, ChangeDetectorRef} from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { AgGridModule } from 'ag-grid-angular';
@@ -80,6 +80,7 @@ import { lastValueFrom } from 'rxjs';
 export class JarabeComponent implements OnInit {
 
   private productionService = inject(ProductionService);
+  private readonly cdr = inject(ChangeDetectorRef);
   private signalsService = inject(SignalsService);
   private branchsService = inject(BranchsService);
   private materialsService = inject(MaterialsService);
@@ -266,7 +267,8 @@ export class JarabeComponent implements OnInit {
     } catch (error) {
       console.error('Error loading raw materials:', error);
     }
-  }
+  
+    this.cdr.detectChanges();}
 
   async loadUserBranches() {
     try {
@@ -293,7 +295,8 @@ export class JarabeComponent implements OnInit {
     } catch (error) {
       console.error('Error loading user branches:', error);
     }
-  }
+  
+    this.cdr.detectChanges();}
 
   async loadData() {
     try {
@@ -306,7 +309,8 @@ export class JarabeComponent implements OnInit {
       console.error('Error loading preparaciones:', error);
       this.rowData = [];
     }
-  }
+  
+    this.cdr.detectChanges();}
 
   private mapPreparacion(item: any): any {
     return {
@@ -969,7 +973,8 @@ export class JarabeComponent implements OnInit {
       // Show minimal toast error notification
       alerts.preparacionErrorToast(errorMessage);
     }
-  }
+  
+    this.cdr.detectChanges();}
 
   async saveChanges() {
     const newItems = this.rowData.filter(item => item.__isNew);
@@ -1028,7 +1033,8 @@ export class JarabeComponent implements OnInit {
     } catch (error) {
       alerts.basicAlert('Error', 'Ocurrió un error al guardar los cambios.', 'error');
     }
-  }
+  
+    this.cdr.detectChanges();}
 
   async discardChanges() {
     if (this.hasUnsavedChanges) {
@@ -1039,5 +1045,6 @@ export class JarabeComponent implements OnInit {
     } else {
       alerts.basicAlert('Sin cambios', 'No hay cambios por deshacer', 'info');
     }
-  }
+  
+    this.cdr.detectChanges();}
 }

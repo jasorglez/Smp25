@@ -994,7 +994,8 @@ export class DetailPermisosXDeptosComponent implements ICellRendererAngularComp 
       console.error(error);
       alerts.basicAlert('Error', 'Ocurrió un error al actualizar los datos. Por favor, intente nuevamente.', 'error');
     }
-  }
+  
+    this.cdr.detectChanges();}
 
   deleteSelectedWarehouse() {
     if (!this.selectedWarehouse) {

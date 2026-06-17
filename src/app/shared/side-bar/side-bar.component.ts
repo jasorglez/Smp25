@@ -176,7 +176,8 @@ export class SideBarComponent {
 
     // Auth confirmado: verificar artículos NUPNPN para el badge del sidebar
     this.checkNupnpnBadge(Number(chosen.id));
-  }
+  
+    this.cdr.detectChanges();}
 
   private async checkNupnpnBadge(branchId: number): Promise<void> {
     if (!branchId) {
@@ -207,7 +208,8 @@ export class SideBarComponent {
     } catch {
       // No alterar el badge si falla la consulta
     }
-  }
+  
+    this.cdr.detectChanges();}
 
   trackById(_index: number, item: { id: number }): number {
     return item.id;
@@ -247,7 +249,8 @@ export class SideBarComponent {
     } catch (error) {
       console.error('Error al recargar permisos por sucursal en sidebar:', error);
     }
-  }
+  
+    this.cdr.detectChanges();}
 
   async ngOnInit() {
     const savedCollapsedState = localStorage.getItem('sidebarCollapsed');
@@ -280,7 +283,8 @@ export class SideBarComponent {
         this.loadPermissions();
       }
     });
-  }
+  
+    this.cdr.detectChanges();}
 
   onRootsSelected(event: Event): void {
     this.finishSelectInteraction();
@@ -424,7 +428,8 @@ export class SideBarComponent {
           }
         );
     }
-  }
+  
+    this.cdr.detectChanges();}
 
   async onBranchSelected(event: Event) {
     this.finishSelectInteraction();
@@ -444,7 +449,8 @@ export class SideBarComponent {
       await this.reloadGuardForSelectedBranch();
       this.checkNupnpnBadge(Number(this.selectedBranchId));
     }
-  }
+  
+    this.cdr.detectChanges();}
 
   getHeadersCompanys(companyId) {
     this.rootService.getRootbyId(companyId).subscribe({
@@ -525,7 +531,8 @@ export class SideBarComponent {
     this.trackingService.setPlatform(parseInt(target.value, 10));
     this.selectedCProcessId = parseInt(target.value, 10);
     await this.getPermissionxPlataform(this.selectedCProcessId);
-  }
+  
+    this.cdr.detectChanges();}
 
   async getPermissionxPlataform(id: number) {
     if (this.trackingService.getaplat() === 'Si') {

@@ -1,4 +1,4 @@
-import { Component, effect, inject, OnInit } from '@angular/core';
+import { Component, effect, inject, OnInit, ChangeDetectorRef} from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { AgGridModule } from 'ag-grid-angular';
@@ -26,6 +26,7 @@ interface CatalogType {
 export class CatalogosMaintenanceComponent implements OnInit {
 
   private catalogService = inject(MaintenanceCatalogService);
+  private readonly cdr = inject(ChangeDetectorRef);
   private signalsService = inject(SignalsService);
   private trackingService = inject(TrackingService);
 
@@ -249,7 +250,8 @@ export class CatalogosMaintenanceComponent implements OnInit {
     } finally {
       this.saving = false;
     }
-  }
+  
+    this.cdr.detectChanges();}
 
   revertChanges(): void {
     if (!confirm('¿Desea deshacer todos los cambios?')) {

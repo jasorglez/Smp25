@@ -412,7 +412,8 @@ export class PosicionDelisonComponent implements ICellRendererAngularComp, After
       alerts.basicAlert('Error', 'No se pudieron guardar las posiciones', 'error');
       console.error(error);
     }
-  }
+  
+    this.cdr.detectChanges();}
 
   async deleteSelectedPosicion() {
     if (!this.selectedPosicion) return;
@@ -442,7 +443,8 @@ export class PosicionDelisonComponent implements ICellRendererAngularComp, After
       alerts.basicAlert('Error', 'No se pudo eliminar la posición', 'error');
       console.error(error);
     }
-  }
+  
+    this.cdr.detectChanges();}
 
   private cleanData(data: any): any {
     const cleanedData = { ...data };

@@ -1,6 +1,6 @@
 import { Employee } from '../../setup/models/employee.model';
 import { CommonModule } from '@angular/common';
-import { Component, effect, inject } from '@angular/core';
+import { Component, effect, inject, ChangeDetectorRef} from '@angular/core';
 import { FormsModule, FormGroup } from '@angular/forms';
 import { alerts } from 'app/helpers/alerts';
 import { HRService } from 'app/services/hr.service';
@@ -32,6 +32,7 @@ interface Bank {
 
 export class SetupEmployeesComponent {
   private signalsService = inject(SignalsService);
+  private readonly cdr = inject(ChangeDetectorRef);
   private hrService = inject(HRService);
   private trackingService = inject(TrackingService);
   isLoading: boolean = false;
@@ -63,7 +64,8 @@ export class SetupEmployeesComponent {
     this.idBranch = this.signalsService.getBranchSelectedBySidebar()();
     this.getData();
     //await this.obtenerBanks();
-  }
+  
+    this.cdr.detectChanges();}
 
   constructor(private payrollService: PayrollService, private administrationService: AdministrationService) {
     effect(() => {
@@ -144,7 +146,8 @@ export class SetupEmployeesComponent {
       },
       error: (error) => console.error('Error al enviar los datos:', error)
     });
-  }
+  
+    this.cdr.detectChanges();}
 
   resetForm() {
     // Limpiar datos del archivo

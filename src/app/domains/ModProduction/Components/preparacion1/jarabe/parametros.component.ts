@@ -142,7 +142,8 @@ export class ParametrosComponent implements OnInit, OnChanges {
       console.error('Error loading params:', error);
       this.dataLoaded = true;
     }
-  }
+  
+    this.cdr.detectChanges();}
 
   onGridReady(params: GridReadyEvent): void {
     this.gridApi = params.api;
@@ -339,7 +340,8 @@ export class ParametrosComponent implements OnInit, OnChanges {
       // Show minimal toast error notification
       alerts.preparacionErrorToast(errorMessage);
     }
-  }
+  
+    this.cdr.detectChanges();}
 
   async saveChanges() {
     const newItems = this.rowData.filter(item => item.__isNew);
@@ -388,7 +390,8 @@ export class ParametrosComponent implements OnInit, OnChanges {
       console.error('Error saving params:', error);
       alerts.basicAlert('Error', 'Error al guardar los parámetros', 'error');
     }
-  }
+  
+    this.cdr.detectChanges();}
 
   private async reloadFromServer(idDetalle: number): Promise<void> {
     try {
@@ -430,7 +433,8 @@ export class ParametrosComponent implements OnInit, OnChanges {
     } catch (error) {
       console.error('Error reloading params:', error);
     }
-  }
+  
+    this.cdr.detectChanges();}
 
   discardChanges() {
     if (this.hasUnsavedChanges) {

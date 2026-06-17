@@ -84,7 +84,8 @@ export class BitacoraEquiposComponent extends BitacoraBaseComponent {
       alerts.basicAlert('Error', 'No se pudo crear el equipo. Intente de nuevo.', 'error');
       return null;
     }
-  }
+  
+    this.cdr.detectChanges();}
 
   // DB description → nombre equipo, DB supervisor → nota usuario,
   // DB idResource  → id equipo,     DB position   → horas

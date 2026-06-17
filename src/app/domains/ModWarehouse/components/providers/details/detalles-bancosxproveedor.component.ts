@@ -661,7 +661,8 @@ export class DetallesBancosxproveedorComponent implements ICellRendererAngularCo
         console.error('❌ Error al guardar bancos:', error);
       }
     }
-  }
+  
+    this.cdr.detectChanges();}
 
   deleteSelectedBank() {
     if (!this.selectedBank) {
@@ -722,7 +723,8 @@ export class DetallesBancosxproveedorComponent implements ICellRendererAngularCo
     } catch (error) {
       console.error('❌ Error al actualizar contador de bancos:', error);
     }
-  }
+  
+    this.cdr.detectChanges();}
 
   // ✅ NUEVO: Actualizar el banco principal en la columna fieldBank del grid padre
   private async updatePrincipalBankInParent(principalBankName?: string): Promise<void> {

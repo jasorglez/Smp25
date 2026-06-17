@@ -1,4 +1,4 @@
-import { Component, EventEmitter, Input, OnInit, Output, inject } from '@angular/core';
+import { Component, EventEmitter, Input, OnInit, Output, inject, ChangeDetectorRef} from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { alerts } from 'app/helpers/alerts';
@@ -124,6 +124,7 @@ import { lastValueFrom } from 'rxjs';
 })
 export class SalidaLotesModalComponent implements OnInit {
   private salidasService    = inject(SalidasMpService);
+  private readonly cdr = inject(ChangeDetectorRef);
   private employeesService  = inject(EmployeesService);
 
   @Input() articuloOptions: { id: number; name: string; cantidad?: number }[] = [];
@@ -161,7 +162,8 @@ export class SalidaLotesModalComponent implements OnInit {
       this.empleados = Array.isArray(res) ? res : [];
     } catch { this.empleados = []; }
     this.cargandoEmpleados = false;
-  }
+  
+    this.cdr.detectChanges();}
 
   fmtFecha(v: any): string {
     if (!v) return '—';
@@ -269,7 +271,8 @@ export class SalidaLotesModalComponent implements OnInit {
       .map(l => ({ idDatoExterno: l.idDatoExterno, cantidad: Number(l.tomar) }));
 
     this.resolve.emit({ idArticulo: this.selectedArticulo, cantidad: total, empleado: this.selectedEmpleadoName, lotes });
-  }
+  
+    this.cdr.detectChanges();}
 
   cancelar() { this.cancel.emit(); }
 }

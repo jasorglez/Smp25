@@ -1,5 +1,5 @@
 import { CommonModule } from '@angular/common';
-import { Component, effect, ElementRef, HostListener, inject, TemplateRef, ViewChild } from '@angular/core';
+import { Component, effect, ElementRef, HostListener, inject, TemplateRef, ViewChild, ChangeDetectorRef} from '@angular/core';
 import { FormControl, FormGroup, Validators } from '@angular/forms';
 import { FormsModule } from '@angular/forms';
 import { DomainsModule } from 'app/domains/domainsmodule';
@@ -30,6 +30,7 @@ export class ConventionsComponent {
   @ViewChild('content') content!: TemplateRef<any>;
 
   private conventionsService = inject(ConventionsService);
+  private readonly cdr = inject(ChangeDetectorRef);
   private workprogramsService = inject(WorkprogramsService);
   public signalsService  = inject(SignalsService);
   readonly projectName   = this.signalsService.getProjectNameBySidebar();
@@ -678,7 +679,8 @@ export class ConventionsComponent {
         'error'
       );
     }
-  }
+  
+    this.cdr.detectChanges();}
 
   private cleanDataForServer(data: any): any {
     const cleanedData = { ...data };

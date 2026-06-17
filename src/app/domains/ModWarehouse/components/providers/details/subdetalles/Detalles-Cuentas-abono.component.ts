@@ -303,7 +303,8 @@ export class DetallesComponentCuentasAbono implements ICellRendererAngularComp {
       console.error('Error al guardar los abonos:', error);
       alerts.basicAlert('Error', 'Ocurrió un error al guardar los abonos.', 'error');
     }
-  }
+  
+    this.cdr.detectChanges();}
 
   async deleteSelectedDetallesCuentas() {
     if (!this.selectedDetallesCuentas) {
@@ -335,6 +336,7 @@ export class DetallesComponentCuentasAbono implements ICellRendererAngularComp {
       console.error('Error al eliminar el abono:', err);
       alerts.basicAlert('Error', 'No se pudo eliminar el abono. Revisa la consola para más detalles.', 'error');
     }
-  }
+  
+    this.cdr.detectChanges();}
 
 }

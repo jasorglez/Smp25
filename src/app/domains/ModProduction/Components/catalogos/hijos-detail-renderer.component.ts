@@ -163,7 +163,8 @@ export class HijosDetailRendererComponent implements ICellRendererAngularComp {
     } catch (e) {
       console.error('[HijosDetail] Error al guardar:', e);
     }
-  }
+  
+    this.cdr.detectChanges();}
 
   revert(): void {
     this.rowData = JSON.parse(JSON.stringify(this.original));
@@ -191,5 +192,6 @@ export class HijosDetailRendererComponent implements ICellRendererAngularComp {
     } catch (e) {
       console.error('[HijosDetail] Error al borrar:', e);
     }
-  }
+  
+    this.cdr.detectChanges();}
 }

@@ -321,7 +321,8 @@ export class WorkprogramDistributionComponent implements OnChanges {
       console.error(err);
       alerts.basicAlert('Error', 'Error al guardar la distribución.', 'error');
     }
-  }
+  
+    this.cdr.detectChanges();}
 
   revert(): void {
     this.gridApi?.stopEditing();

@@ -1389,7 +1389,8 @@ export class OrdenesydetallesOcComponent implements OnDestroy {
     }
     this.refreshConditionsCell();
     this.syncSelectedItemQuantityDelta();
-  }
+  
+    this.cdr.detectChanges();}
 
   refresh(params: any): boolean {
     this.internalParams = params;
@@ -1792,7 +1793,8 @@ export class OrdenesydetallesOcComponent implements OnDestroy {
     } catch {
       alerts.reqErrorToast('Error', 'No se pudo actualizar la fecha de pago.');
     }
-  }
+  
+    this.cdr.detectChanges();}
 
   /** Registra el anticipo de una OC (queda EN TRÁMITE y aparece en la Captura de Gastos). */
   async onMarcarAnticipo(row: any): Promise<void> {
@@ -1819,7 +1821,8 @@ export class OrdenesydetallesOcComponent implements OnDestroy {
       console.error('Error marcando anticipo:', err);
       alerts.reqErrorToast('Error', 'No se pudo registrar el anticipo.');
     }
-  }
+  
+    this.cdr.detectChanges();}
 
   /**
    * Pre-carga items de cada OC y de su requisición padre para construir el cache de tooltips.
@@ -1890,7 +1893,8 @@ export class OrdenesydetallesOcComponent implements OnDestroy {
     if (this.gridApi && !this.gridApi.isDestroyed()) {
       this.gridApi.refreshCells({ force: true });
     }
-  }
+  
+    this.cdr.detectChanges();}
 
   // ============= TOOLTIP FLOTANTE PARA COLUMNA OC =============
 
@@ -2163,7 +2167,8 @@ export class OrdenesydetallesOcComponent implements OnDestroy {
       ? this.entregasPendingService.getPendingRows(idDetail) !== undefined
       : this.hasNivel3Changes;
     this.syncSelectedItemQuantityDelta();
-  }
+  
+    this.cdr.detectChanges();}
 
   private showInlineAlert(msg: string): void {
     clearTimeout(this.alertTimeout);
@@ -2227,7 +2232,8 @@ export class OrdenesydetallesOcComponent implements OnDestroy {
     if (this.itemsGridApi && !this.itemsGridApi.isDestroyed()) {
       this.itemsGridApi.refreshCells({ columns: ['itemspdf'], force: true });
     }
-  }
+  
+    this.cdr.detectChanges();}
 
   // Libera/oculta el ítem para el almacén del depto que pidió la OC. Persiste de inmediato
   // (no requiere el botón Guardar) y repinta la fila (rosa = no liberado).
@@ -2316,7 +2322,8 @@ export class OrdenesydetallesOcComponent implements OnDestroy {
     if (this.itemsGridApi && !this.itemsGridApi.isDestroyed()) {
       this.itemsGridApi.refreshCells({ columns: ['cantidadEntradaAlmacen', 'fechaEntradaAlmacen', 'notaFactura', 'total'], force: true });
     }
-  }
+  
+    this.cdr.detectChanges();}
 
   private syncSelectedItemQuantityDelta(): void {
     if (!this.selectedArticleRow || !this.itemsGridApi || this.itemsGridApi.isDestroyed()) return;
@@ -2360,7 +2367,8 @@ export class OrdenesydetallesOcComponent implements OnDestroy {
       // redrawRows re-evalúa rowClassRules (fila rosa) y re-renderiza candado/delta.
       this.itemsGridApi.redrawRows();
     }
-  }
+  
+    this.cdr.detectChanges();}
 
   private async loadOcsBlockedState(): Promise<void> {
     if (!this.rowData.length) return;
@@ -2386,7 +2394,8 @@ export class OrdenesydetallesOcComponent implements OnDestroy {
     if (this.gridApi && !this.gridApi.isDestroyed()) {
       this.gridApi.refreshCells({ columns: ['folio'], force: true });
     }
-  }
+  
+    this.cdr.detectChanges();}
 
   private async loadNivel3EntradaCantidades(): Promise<void> {
     const rowsWithId = this.nivel3Data.filter((r: any) => r.id);
@@ -2419,7 +2428,8 @@ export class OrdenesydetallesOcComponent implements OnDestroy {
       // 'totalEntrega' se incluye para recalcular el Total x Entrega ahora que ya hay cantidad de almacén.
       this.nivel3GridApi.refreshCells({ columns: ['cantidadEntradaAlmacen', 'fechaEntradaAlmacen', 'totalEntrega', 'pdf'], force: true });
     }
-  }
+  
+    this.cdr.detectChanges();}
 
   private async loadNivel3PdfCounts(): Promise<void> {
     const rowsWithId = this.nivel3Data.filter((r: any) => r.id);
@@ -2437,7 +2447,8 @@ export class OrdenesydetallesOcComponent implements OnDestroy {
     if (this.nivel3GridApi && !this.nivel3GridApi.isDestroyed()) {
       this.nivel3GridApi.refreshCells({ columns: ['pdf'], force: true });
     }
-  }
+  
+    this.cdr.detectChanges();}
 
   ngOnDestroy(): void {
     clearTimeout(this.alertTimeout);

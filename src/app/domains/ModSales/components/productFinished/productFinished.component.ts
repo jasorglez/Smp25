@@ -1,4 +1,4 @@
-import { Component, effect, HostListener, inject, signal } from '@angular/core';
+import { Component, effect, HostListener, inject, signal, ChangeDetectorRef} from '@angular/core';
 import {
   CellDoubleClickedEvent,
   ColDef,
@@ -117,6 +117,7 @@ export class ProductFinishedComponent implements CanComponentDeactivate {
 
   // Inject of new way for Angular 18
   private materialsService = inject(MaterialsService);
+  private readonly cdr = inject(ChangeDetectorRef);
   private catalogsService = inject(CatalogsService);
   private modalServiceTable = inject(ModalService);
   private imageHandlerService = inject(ImageHandlerService);
@@ -578,7 +579,8 @@ export class ProductFinishedComponent implements CanComponentDeactivate {
   // TODO para futuros botones de navegacion
   async selectTab(tab: string) {
     await this.activateMeasureTab();
-  }
+  
+    this.cdr.detectChanges();}
 
   async activatedTabs() {
     if (!this.isOpen) {
@@ -592,7 +594,8 @@ export class ProductFinishedComponent implements CanComponentDeactivate {
       this.showMeasureTab = false;
       this.showContainerTabs = false;
     }
-  }
+  
+    this.cdr.detectChanges();}
 
   async activateMeasureTab() {
     if (!this.isOpen || this.showSavingsTab) {
@@ -601,7 +604,8 @@ export class ProductFinishedComponent implements CanComponentDeactivate {
       // this.showSavingsTab = false;
       // this.isOpen = true;
     }
-  }
+  
+    this.cdr.detectChanges();}
 
   async adjustGridSize() {
     this.gridHeight = '40vh'; // Adjust as needed
@@ -721,7 +725,8 @@ export class ProductFinishedComponent implements CanComponentDeactivate {
         'error'
       );
     }
-  }
+  
+    this.cdr.detectChanges();}
 
   async deleteEntry() {
     const selectedNodes = this.gridApi.getSelectedNodes();

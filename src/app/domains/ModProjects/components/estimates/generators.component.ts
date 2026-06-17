@@ -1,4 +1,4 @@
-import { Component, inject, HostListener, Input, OnChanges, SimpleChanges } from '@angular/core';
+import { Component, inject, HostListener, Input, OnChanges, SimpleChanges, ChangeDetectorRef} from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { AgGridModule } from 'ag-grid-angular';
@@ -24,6 +24,7 @@ export class GeneratorsComponent implements OnChanges {
   @Input() idEstimacion: number = 0;
 
   private generatorsService = inject(GeneratorsService);
+  private readonly cdr = inject(ChangeDetectorRef);
   private workprogramsService = inject(WorkprogramsService);
   private signalsService = inject(SignalsService);
   private employeesService = inject(EmployeesService);
@@ -290,7 +291,8 @@ export class GeneratorsComponent implements OnChanges {
         } catch (error) { console.error(`Error cargando items para generador ${generator.id}:`, error); }
       }
     }
-  }
+  
+    this.cdr.detectChanges();}
 
   onRowSelected(event: any) {
     this.selectedRowData = event.data;
@@ -602,7 +604,8 @@ export class GeneratorsComponent implements OnChanges {
       console.error('Error al guardar:', error);
       alerts.basicAlert('Error', 'Ocurrió un error al guardar los datos.', 'error');
     }
-  }
+  
+    this.cdr.detectChanges();}
 
   private cleanDataForServer = (data: any) => ({
     numero: data.numero, 
@@ -630,7 +633,8 @@ export class GeneratorsComponent implements OnChanges {
   private async confirmAction(title: string, message: string): Promise<boolean> {
     const result = await alerts.confirmAlert(title, message, 'warning', 'Sí, eliminar');
     return result.isConfirmed;
-  }
+  
+    this.cdr.detectChanges();}
 
   deleteGenerator() {
     if (!this.selectedRowData || this.selectedNodeType !== 'generator') {
@@ -701,5 +705,6 @@ export class GeneratorsComponent implements OnChanges {
       console.error(error);
       alerts.basicAlert('Error', `Error al eliminar el ${nodeType === 'generator' ? 'generador' : 'item'}.`, 'error');
     }
-  }
+  
+    this.cdr.detectChanges();}
 }

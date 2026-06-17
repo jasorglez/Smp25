@@ -1,4 +1,4 @@
-import { Component, effect, inject } from '@angular/core';
+import { Component, effect, inject, ChangeDetectorRef} from '@angular/core';
 import { ColDef, GridApi, GridReadyEvent, SelectionChangedEvent } from 'ag-grid-enterprise';
 import { alerts } from 'app/helpers/alerts';
 import { EmployeesxloansService } from 'app/services/employeesxloans.service';
@@ -21,6 +21,7 @@ import { SafePipe } from 'app/shared/pipes/safe.pipe';
 })
 export class ContractDetailsComponent {
   private employeesxloansService = inject(EmployeesxloansService);
+  private readonly cdr = inject(ChangeDetectorRef);
   private signalsService = inject(SignalsService);
   private timeService = inject(TimeService);
   private followProjectsService = inject(FollowprojectsService);
@@ -171,7 +172,8 @@ export class ContractDetailsComponent {
         (date.getMonth() + 1)
       ).slice(-2)}-${date.getFullYear()}`,
     };
-  }
+  
+    this.cdr.detectChanges();}
 
   async addRow(type: string) {
     const tempId = `temp_${this.tempIdCounter++}`;
@@ -199,7 +201,8 @@ export class ContractDetailsComponent {
         });
       }
     });
-  }
+  
+    this.cdr.detectChanges();}
 
   onMaestroGridReady(params: GridReadyEvent) {
     this.maestroGridApi = params.api;
@@ -262,7 +265,8 @@ export class ContractDetailsComponent {
         'error'
       );
     }
-  }
+  
+    this.cdr.detectChanges();}
 
   revertMasterData() {
     this.loadData();

@@ -151,7 +151,8 @@ export class DetailSavingsWithdrawalsComponent {
   private async getTime(): Promise<Date> {
     const time = await lastValueFrom(this.timeService.getTime());
     return new Date(time.localTime);
-  }
+  
+    this.cdr.detectChanges();}
 
   async addRow() {
     const date = await this.getTime();
@@ -174,7 +175,8 @@ export class DetailSavingsWithdrawalsComponent {
         this.detalleGridApi.startEditingCell({ rowIndex: 0, colKey: 'total' });
       }
     });
-  }
+  
+    this.cdr.detectChanges();}
 
   async saveDetailChanges() {
     const isValid = this.detalleRowData.every((item) => item.total);
@@ -205,7 +207,8 @@ export class DetailSavingsWithdrawalsComponent {
       }
       console.error(error);
     }
-  }
+  
+    this.cdr.detectChanges();}
 
   revertDetailData() {
     this.loadDetailedData();

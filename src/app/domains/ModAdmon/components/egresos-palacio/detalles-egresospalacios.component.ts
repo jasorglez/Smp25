@@ -1,6 +1,6 @@
 //soriano develop
 
-import { Component, OnInit, inject, OnDestroy, HostListener } from '@angular/core';
+import { Component, OnInit, inject, OnDestroy, HostListener, ChangeDetectorRef} from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { AgGridModule } from 'ag-grid-angular';
@@ -252,6 +252,7 @@ export class DetallesEgresospalaciosComponent implements OnInit, OnDestroy {
   private gridApiDocumentos!: GridApi;
   private context: any;
   private sanitizer = inject(DomSanitizer);
+  private readonly cdr = inject(ChangeDetectorRef);
   private signalsService = inject(SignalsService);
   private customersService = inject(CustomersService);
   private employeesService = inject(EmployeesService);
@@ -341,7 +342,8 @@ export class DetallesEgresospalaciosComponent implements OnInit, OnDestroy {
       await this.loadProviders(); // Esperar a que cargue proveedores para el combo box
       this.loadDocumentosComprobados();
     }
-  }
+  
+    this.cdr.detectChanges();}
 
   loadConceptsData() {
     if (this.context && this.context.CONCEPTS && this.context.CONCEPTS.load) {
@@ -402,7 +404,8 @@ export class DetallesEgresospalaciosComponent implements OnInit, OnDestroy {
       // If no data loader available, show empty state
       this.generateReport();
     }
-  }
+  
+    this.cdr.detectChanges();}
 
   async loadSetupManagementInfo() {
     if (this.context?.administrationService && this.context?.idRoot) {
@@ -419,7 +422,8 @@ export class DetallesEgresospalaciosComponent implements OnInit, OnDestroy {
         this.setupManagementInfo = null;
       }
     }
-  }
+  
+    this.cdr.detectChanges();}
 
   async loadObjetosNivel1() {
     if (this.context?.administrationService && this.context?.idRoot) {
@@ -438,7 +442,8 @@ export class DetallesEgresospalaciosComponent implements OnInit, OnDestroy {
         this.objetosGastoNivel1 = [];
       }
     }
-  }
+  
+    this.cdr.detectChanges();}
 
   async loadObjetosNivel4ParaReporte() {
     if (this.context?.administrationService && this.context?.idRoot) {
@@ -457,7 +462,8 @@ export class DetallesEgresospalaciosComponent implements OnInit, OnDestroy {
         this.objetosGastoHijos = [];
       }
     }
-  }
+  
+    this.cdr.detectChanges();}
 
   loadMeasures() {
     if (this.context && this.context.catalogsService && this.context.idRoot) {
@@ -642,7 +648,8 @@ export class DetallesEgresospalaciosComponent implements OnInit, OnDestroy {
         });
       });
     }
-  }
+  
+    this.cdr.detectChanges();}
 
   /**
    * Determina si el tipo de comprobante del registro maestro es "Empleados"
@@ -1127,7 +1134,8 @@ export class DetallesEgresospalaciosComponent implements OnInit, OnDestroy {
         }
       });
     }
-  }
+  
+    this.cdr.detectChanges();}
 
   async saveChanges() {
     if (!this.hasUnsavedChanges) {
@@ -1252,7 +1260,8 @@ export class DetallesEgresospalaciosComponent implements OnInit, OnDestroy {
         // En caso de error, el padre ya mostró el alert
       }
     }
-  }
+  
+    this.cdr.detectChanges();}
 
   discardChanges() {
     if (!this.hasUnsavedChanges) {
@@ -2220,7 +2229,8 @@ export class DetallesEgresospalaciosComponent implements OnInit, OnDestroy {
       this.pdfUrl = null;
       alerts.basicAlert('Error', 'No se pudo generar el reporte PDF', 'error');
     }
-  }
+  
+    this.cdr.detectChanges();}
 
   private getCurrentDateTime(): string {
     const now = new Date();
@@ -2563,7 +2573,8 @@ export class DetallesEgresospalaciosComponent implements OnInit, OnDestroy {
         }
       });
     }
-  }
+  
+    this.cdr.detectChanges();}
 
   saveDocumentosChanges() {
     if (!this.hasUnsavedDocumentosChanges) {
@@ -2848,7 +2859,8 @@ export class DetallesEgresospalaciosComponent implements OnInit, OnDestroy {
       alerts.closeLoading();
       alerts.basicAlert('Error', 'Error al generar el reporte.', 'error');
     }
-  }
+  
+    this.cdr.detectChanges();}
 
   async getBase64ImageFromUrl(url: string): Promise<string> {
     const response = await fetch(url);
@@ -2859,7 +2871,8 @@ export class DetallesEgresospalaciosComponent implements OnInit, OnDestroy {
       reader.onerror = reject;
       reader.readAsDataURL(blob);
     });
-  }
+  
+    this.cdr.detectChanges();}
 
   getFileNameFromUrl(url: string): string {
     if (!url) return 'Sin archivo';
@@ -3048,7 +3061,8 @@ export class DetallesEgresospalaciosComponent implements OnInit, OnDestroy {
         }
       );
     });
-  }
+  
+    this.cdr.detectChanges();}
 
   openPreviewModal(params: any) {
     const fileUrl = params.data.nombreArchivo;
@@ -3084,7 +3098,8 @@ export class DetallesEgresospalaciosComponent implements OnInit, OnDestroy {
       console.error('Error cargando XML:', error);
       this.previewFileRawUrl = 'Error al cargar el archivo XML';
     }
-  }
+  
+    this.cdr.detectChanges();}
 
   closePreviewModal() {
     this.showPreviewModal = false;

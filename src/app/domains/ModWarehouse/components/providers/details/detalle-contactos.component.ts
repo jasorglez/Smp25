@@ -719,7 +719,8 @@ export class DetailCellRendererComponentContact implements ICellRendererAngularC
       // NO llamar a triggerRefreshEmployees() porque cierra el panel de detalles
       // this.signalsService.triggerRefreshEmployees();
     }
-  }
+  
+    this.cdr.detectChanges();}
 
   deleteSelectedContact() {
     if (!this.selectedContact || !this.params.context.CONTACT.delete) {
@@ -822,7 +823,8 @@ export class DetailCellRendererComponentContact implements ICellRendererAngularC
         'warning'
       );
     }
-  }
+  
+    this.cdr.detectChanges();}
 
   // Actualizar el contador de contactos en la fila del grid padre
   // NOTA: Esta función actualiza temporalmente el contador en memoria.
@@ -847,6 +849,7 @@ export class DetailCellRendererComponentContact implements ICellRendererAngularC
     } catch (error) {
       console.error('❌ Error al actualizar contador de contactos:', error);
     }
-  }
+  
+    this.cdr.detectChanges();}
 
 }

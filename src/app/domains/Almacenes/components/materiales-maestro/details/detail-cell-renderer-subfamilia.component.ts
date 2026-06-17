@@ -173,7 +173,8 @@ export class DetailCellRendererSubfamiliaComponent implements ICellRendererAngul
       this.treeData = [];
       alerts.basicAlert('Error', 'Error al cargar los datos.', 'error');
     }
-  }
+  
+    this.cdr.detectChanges();}
 
   // Hierarchical methods removed - not used in flat structure
 
@@ -434,7 +435,8 @@ export class DetailCellRendererSubfamiliaComponent implements ICellRendererAngul
       const errorMsg = error?.error?.message || error?.message || 'Error desconocido';
       alerts.basicAlert('Error', `Error al guardar los cambios: ${errorMsg}`, 'error');
     }
-  }
+  
+    this.cdr.detectChanges();}
 
   revertChanges() {
     if (!this.hasUnsavedChanges) {
@@ -507,7 +509,8 @@ export class DetailCellRendererSubfamiliaComponent implements ICellRendererAngul
       // Expandir automáticamente los grupos que tienen items marcados
       this.expandGroupsWithMarkedItems();
     }
-  }
+  
+    this.cdr.detectChanges();}
 
   // Reordenar para que items marcados aparezcan primero
   private reorderMarkedItemsFirst() {

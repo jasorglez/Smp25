@@ -642,7 +642,8 @@ export class DetallesBoteFiltradoComponent {
     await this.loadBoteOptions();
     await this.refreshUsage();
     if (this.gridApi && !this.gridApi.isDestroyed()) this.loadData();
-  }
+  
+    this.cdr.detectChanges();}
 
   private async loadBoteOptions() {
     const idCompany = this.signalsService.getRootSelectedBySidebar()();
@@ -707,7 +708,8 @@ export class DetallesBoteFiltradoComponent {
     } catch (e) {
       console.error('Error cargando opciones de bote:', e);
     }
-  }
+  
+    this.cdr.detectChanges();}
 
   private async refreshUsage() {
     try {
@@ -716,7 +718,8 @@ export class DetallesBoteFiltradoComponent {
     } catch (e) {
       console.error('Error cargando usage:', e);
     }
-  }
+  
+    this.cdr.detectChanges();}
 
   async loadData() {
     if (!this.idMolienda) { this.rowData = []; return; }
@@ -757,7 +760,8 @@ export class DetallesBoteFiltradoComponent {
     } catch (e) {
       console.error('Error cargando matdetalles:', e);
     }
-  }
+  
+    this.cdr.detectChanges();}
 
   // ── Modal ──────────────────────────────────────────────────────────────────
 
@@ -809,7 +813,8 @@ export class DetallesBoteFiltradoComponent {
     if (!confirm.isConfirmed) return;
     await this.onLockChange(true);
     await this.doConfirmLock();
-  }
+  
+    this.cdr.detectChanges();}
 
   async onLockChange(locked: boolean) {
     if (!this.modalRow) return;
@@ -824,7 +829,8 @@ export class DetallesBoteFiltradoComponent {
       console.error('Error guardando lock:', e);
       this.modalLocked = !locked;
     }
-  }
+  
+    this.cdr.detectChanges();}
 
   selectEntry(entry: ModalEntry) {
     if ((entry.lleno && entry.asignacion === null) || this.modalLocked) return;
@@ -940,7 +946,8 @@ export class DetallesBoteFiltradoComponent {
     if (this.modalRow.resta === 0 && !this.modalRow.locked) {
       this.showLockPrompt = true;
     }
-  }
+  
+    this.cdr.detectChanges();}
 
   cancelEntry() {
     if (this.selectedEntry) {
@@ -1021,7 +1028,8 @@ export class DetallesBoteFiltradoComponent {
       console.error('Error retirando jugo:', e);
       this.modalValidationMsg = 'Error al retirar jugo.';
     }
-  }
+  
+    this.cdr.detectChanges();}
 
   async confirmLock() {
     const confirm = await alerts.confirmAlert(
@@ -1035,7 +1043,8 @@ export class DetallesBoteFiltradoComponent {
     this.showLockPrompt = false;
     await this.onLockChange(true);
     await this.doConfirmLock();
-  }
+  
+    this.cdr.detectChanges();}
 
   private async doConfirmLock() {
     // Cancelar edición activa si la hay
@@ -1183,7 +1192,8 @@ export class DetallesBoteFiltradoComponent {
       alerts.reqErrorToast('Error al guardar');
       this.saving = false;
     }
-  }
+  
+    this.cdr.detectChanges();}
 
   // ── Helpers ───────────────────────────────────────────────────────────────
 

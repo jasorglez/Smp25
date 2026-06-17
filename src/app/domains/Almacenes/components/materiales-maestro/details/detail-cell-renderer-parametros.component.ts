@@ -449,7 +449,8 @@ export class DetailCellRendererParametrosComponent implements ICellRendererAngul
           'error'
         );
       }
-  }
+  
+    this.cdr.detectChanges();}
 
   deleteSelectedParametro() {
     if (!this.parametrosGridApi) {

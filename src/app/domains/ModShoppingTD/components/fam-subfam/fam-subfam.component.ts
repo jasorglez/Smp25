@@ -195,7 +195,8 @@ export class SubfamilyDetailComponent {
     } catch (error: any) {
       alerts.basicAlert('Error', `Error al guardar: ${error?.error?.message || error?.message || 'Error desconocido'}`, 'error');
     }
-  }
+  
+    this.cdr.detectChanges();}
 
   revertSubfamilies() {
     this.subfamiliesData = JSON.parse(JSON.stringify(this.originalData));
@@ -235,7 +236,8 @@ export class SubfamilyDetailComponent {
         alerts.basicAlert('Error', `Error al eliminar: ${error?.error?.message || error?.message || 'Error desconocido'}`, 'error');
       }
     }
-  }
+  
+    this.cdr.detectChanges();}
 
   private cleanDataForSave(data: any): any {
     const cleaned = { ...data };
@@ -316,6 +318,7 @@ export class SubfamilyDetailComponent {
 })
 export class FamSubfamComponent {
   private signalsService = inject(SignalsService);
+  private readonly cdr = inject(ChangeDetectorRef);
   private catalogsService = inject(CatalogsService);
   private trackingService = inject(TrackingService);
 
@@ -393,7 +396,8 @@ export class FamSubfamComponent {
       console.error('Error loading families:', error);
       alerts.basicAlert('Error', 'Error al cargar las familias.', 'error');
     }
-  }
+  
+    this.cdr.detectChanges();}
 
   async loadAllSubfamilies() {
     try {
@@ -404,7 +408,8 @@ export class FamSubfamComponent {
     } catch (error) {
       console.error('Error loading subfamilies:', error);
     }
-  }
+  
+    this.cdr.detectChanges();}
 
   onFamilySelectionChanged() {
     const selectedNodes = this.familyGridApi?.getSelectedNodes();
@@ -474,7 +479,8 @@ export class FamSubfamComponent {
     } catch (error: any) {
       alerts.basicAlert('Error', `Error al guardar: ${error?.error?.message || error?.message || 'Error desconocido'}`, 'error');
     }
-  }
+  
+    this.cdr.detectChanges();}
 
   revertFamilies() {
     this.familiesData = JSON.parse(JSON.stringify(this.originalFamiliesData));
@@ -520,7 +526,8 @@ export class FamSubfamComponent {
         alerts.basicAlert('Error', `Error al eliminar: ${error?.error?.message || error?.message || 'Error desconocido'}`, 'error');
       }
     }
-  }
+  
+    this.cdr.detectChanges();}
 
   private cleanDataForSave(data: any): any {
     const cleaned = { ...data };

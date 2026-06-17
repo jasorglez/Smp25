@@ -1,4 +1,4 @@
-import { Component, effect, inject } from '@angular/core';
+import { Component, effect, inject, ChangeDetectorRef} from '@angular/core';
 import { ColDef, GridApi, GridReadyEvent, CellDoubleClickedEvent, ICellRendererParams } from 'ag-grid-enterprise';
 import { IncomesAndExpensesService } from 'app/services/incomes-and-expenses.service';
 import { ModalService } from 'app/services/modal.service';
@@ -49,6 +49,7 @@ export interface Stakeholder {
 export class StakeholderExpendComponent {
 
   private incomesAndExpensesService = inject(IncomesAndExpensesService);
+  private readonly cdr = inject(ChangeDetectorRef);
   public modalServiceTable = inject(ModalService);
   private administrationService = inject(AdministrationService);
   private usersService = inject(UsersService);
@@ -784,7 +785,8 @@ export class StakeholderExpendComponent {
       console.error(error);
       alerts.basicAlert('Error', 'Ocurrió un error al actualizar los datos. Por favor, intente nuevamente.', 'error');
     }
-  }
+  
+    this.cdr.detectChanges();}
 
   async deleteEntry() {
     const selectedNodes = this.gridApi.getSelectedNodes();
@@ -825,7 +827,8 @@ export class StakeholderExpendComponent {
       this.notSavedChanges = false;
       this.selectedExpense = null;
     });
-  }
+  
+    this.cdr.detectChanges();}
 
   revert() {
     this.loadStakeholderExpenses();
@@ -1111,7 +1114,8 @@ export class StakeholderExpendComponent {
     } finally {
       this.isGeneratingReport = false;
     }
-  }
+  
+    this.cdr.detectChanges();}
 
   private async getAllStakeholderExpenses(): Promise<any[]> {
     return new Promise((resolve) => {
@@ -1264,7 +1268,8 @@ export class StakeholderExpendComponent {
       );
       console.error('Error generando reporte:', error);
     }
-  }
+  
+    this.cdr.detectChanges();}
 
   collapseCurrentRow(expenditureId: number) {
     if (this.gridApi) {
@@ -1408,7 +1413,8 @@ export class StakeholderExpendComponent {
         'error'
       );
     }
-  }
+  
+    this.cdr.detectChanges();}
 
   async deleteConceptRow(params: any, successCallback: () => void, newCount?: number) {
     const conceptId = params.data.id;
@@ -1450,7 +1456,8 @@ export class StakeholderExpendComponent {
         alerts.basicAlert('Error', 'Error al eliminar el concepto.', 'error');
       }
     }
-  }
+  
+    this.cdr.detectChanges();}
 
   private cleanConceptData(concept: any): any {
     const cleaned = { ...concept };

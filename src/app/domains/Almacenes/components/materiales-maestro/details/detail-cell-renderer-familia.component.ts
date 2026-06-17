@@ -153,7 +153,8 @@ export class DetailCellRendererFamiliaComponent implements ICellRendererAngularC
       // TODO: Implementar eliminación de la subfamilia
       alerts.basicAlert('Funcionalidad no implementada', 'Eliminar subfamilia próximamente', 'info');
     }
-  }
+  
+    this.cdr.detectChanges();}
 
   onCellClicked(event: any): void {
     const colId = event.column.getColId();

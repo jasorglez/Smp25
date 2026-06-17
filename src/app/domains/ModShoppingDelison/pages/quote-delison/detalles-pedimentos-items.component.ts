@@ -251,7 +251,8 @@ export class DetallesPedimentosItemsComponent implements ICellRendererAngularCom
     } catch {
       alerts.basicAlert('Error', 'Ocurrió un error al guardar los cambios', 'error');
     }
-  }
+  
+    this.cdr.detectChanges();}
 
   revert() {
     this.rowData = JSON.parse(JSON.stringify(this.originalRowData));
@@ -359,7 +360,8 @@ export class DetallesPedimentosItemsComponent implements ICellRendererAngularCom
       );
 
     } catch { /* silencioso */ }
-  }
+  
+    this.cdr.detectChanges();}
 
   get colDefs(): ColDef[] {
     if (this._colDefs) {

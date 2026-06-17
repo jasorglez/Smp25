@@ -155,7 +155,8 @@ export class LibLimpiezaBoteComponent {
     await this.loadCatalogs(idCompany);
     this.buildColDefs();
     if (this.idParams) await this.loadData();
-  }
+  
+    this.cdr.detectChanges();}
 
   private async loadCatalogs(idCompany: number | null) {
     try {
@@ -188,7 +189,8 @@ export class LibLimpiezaBoteComponent {
       this.employeeOptions = [];
       this.userOptions     = [];
     }
-  }
+  
+    this.cdr.detectChanges();}
 
   private buildColDefs() {
     this.colDefs = [
@@ -314,7 +316,8 @@ export class LibLimpiezaBoteComponent {
     } finally {
       this.loading = false;
     }
-  }
+  
+    this.cdr.detectChanges();}
 
   onGridReady(e: GridReadyEvent) {
     this.gridApi = e.api;
@@ -382,7 +385,8 @@ export class LibLimpiezaBoteComponent {
     } catch (e) {
       alerts.basicAlert('Error', 'No se pudieron guardar los cambios.', 'error');
     }
-  }
+  
+    this.cdr.detectChanges();}
 
   revert() {
     this.rowData = JSON.parse(JSON.stringify(this.originalRowData));
@@ -403,5 +407,6 @@ export class LibLimpiezaBoteComponent {
     }
     this.selectedRow = null;
     if (this.gridApi) this.gridApi.setGridOption('rowData', this.rowData);
-  }
+  
+    this.cdr.detectChanges();}
 }

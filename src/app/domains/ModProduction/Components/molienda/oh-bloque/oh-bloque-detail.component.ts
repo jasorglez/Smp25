@@ -240,7 +240,8 @@ export class OhBloqueDetailComponent {
       this.params.data?.__tempId,
       bloqueJson
     );
-  }
+  
+    this.cdr.detectChanges();}
 
   refresh(): boolean { return false; }
 }

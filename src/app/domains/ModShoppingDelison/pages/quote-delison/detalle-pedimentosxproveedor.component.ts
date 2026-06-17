@@ -565,7 +565,8 @@ export class DetailCellRendererPedimentosComponent implements OnInit, OnDestroy 
     const allowed = await this.unsavedTracker.confirmExitIfAny();
     if (allowed) this.unsavedTracker.clearAll();
     return allowed;
-  }
+  
+    this.cdr.detectChanges();}
 
   async toggleArticulosCascade(node: any) {
     if (!await this.ensureNoUnsavedChangesBeforeNav()) return;
@@ -619,7 +620,8 @@ export class DetailCellRendererPedimentosComponent implements OnInit, OnDestroy 
         node.setExpanded(true);
       }, 0);
     }
-  }
+  
+    this.cdr.detectChanges();}
 
   /**
    * ✅ Abre la tabla de items por proveedor como MODAL a nivel raíz.
@@ -661,7 +663,8 @@ export class DetailCellRendererPedimentosComponent implements OnInit, OnDestroy 
       ),
       onSlotSaved: (savedSlot: ProviderSlotInfo) => this.onSlotSaved(node, savedSlot)
     });
-  }
+  
+    this.cdr.detectChanges();}
 
   /**
    * ✅ Cascada nivel 3 — sub-grid con los proveedores dinámicos del pedimento + "+" + Comparar.
@@ -715,7 +718,8 @@ export class DetailCellRendererPedimentosComponent implements OnInit, OnDestroy 
         node.setExpanded(true);
       }, wasSameRowExpanded ? 50 : 0);
     }
-  }
+  
+    this.cdr.detectChanges();}
 
   /**
    * Crea un nuevo slot temporal (sin proveedor seleccionado todavía) y abre la cascada
@@ -766,7 +770,8 @@ export class DetailCellRendererPedimentosComponent implements OnInit, OnDestroy 
 
     // Abrir cascada para el nuevo slot (pasar node, ya que es el actual)
     await this.toggleProviderCascade(node, newSlot);
-  }
+  
+    this.cdr.detectChanges();}
 
   async toggleReportCascade(node: any) {
     if (!await this.ensureNoUnsavedChangesBeforeNav()) return;
@@ -827,7 +832,8 @@ export class DetailCellRendererPedimentosComponent implements OnInit, OnDestroy 
         node.setExpanded(true);
       }, 0);
     }
-  }
+  
+    this.cdr.detectChanges();}
 
   async toggleComparacionCascade(nodeOrId: any) {
     if (!await this.ensureNoUnsavedChangesBeforeNav()) return;
@@ -863,7 +869,8 @@ export class DetailCellRendererPedimentosComponent implements OnInit, OnDestroy 
       departmentName: this.params.data.department || '',
       deptPrefijoFromReq: this.params.data.deptPrefijo || ''
     });
-  }
+  
+    this.cdr.detectChanges();}
 
   collapseReportDetail() {
     if (this.expandedRowId && this.gridApi) {

@@ -578,7 +578,8 @@ export class VistaBotesFiltradoComponent {
     } finally {
       this.loading = false;
     }
-  }
+  
+    this.cdr.detectChanges();}
 
   async selectBote(b: BoteVista) {
     if (this.selectedBote?.id === b.id) return;
@@ -586,7 +587,8 @@ export class VistaBotesFiltradoComponent {
     this.hasChanges = false;
     this.selectedParamRow = null;
     await this.loadParams(b);
-  }
+  
+    this.cdr.detectChanges();}
 
   closeBotePanel() {
     this.selectedBote = null;
@@ -646,7 +648,8 @@ export class VistaBotesFiltradoComponent {
     } catch (e) {
       console.error('Error cargando params:', e);
     }
-  }
+  
+    this.cdr.detectChanges();}
 
   addRow() {
     if (!this.selectedBote || this.boteVacio) return;
@@ -700,7 +703,8 @@ export class VistaBotesFiltradoComponent {
       console.error('Error guardando params:', e);
       alerts.reqErrorToast('Error al guardar');
     }
-  }
+  
+    this.cdr.detectChanges();}
 
   revert() {
     this.paramsRowData = JSON.parse(JSON.stringify(this.originalParamsRowData));
@@ -728,7 +732,8 @@ export class VistaBotesFiltradoComponent {
       console.error('Error eliminando param:', e);
       alerts.reqErrorToast('Error al eliminar');
     }
-  }
+  
+    this.cdr.detectChanges();}
 
   // ── Panel de comentarios read-only ───────────────────────────────────────
 
@@ -774,7 +779,8 @@ export class VistaBotesFiltradoComponent {
       this.commentCountMap[row.id] = this.commentsData.length;
       this.paramsGridApi?.refreshCells({ columns: ['verComentarios'], force: true });
     }
-  }
+  
+    this.cdr.detectChanges();}
 
   getCommentBody(text: string): string {
     if (!text) return '';

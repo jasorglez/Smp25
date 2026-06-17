@@ -1,4 +1,4 @@
-import { Component, OnInit, inject } from '@angular/core';
+import { Component, OnInit, inject, ChangeDetectorRef} from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute } from '@angular/router';
@@ -212,6 +212,7 @@ type Estado = 'cargando' | 'no-encontrado' | 'lleno' | 'formulario' | 'enviado' 
 })
 export class RegistroCursosComponent implements OnInit {
   private route = inject(ActivatedRoute);
+  private readonly cdr = inject(ChangeDetectorRef);
   private svc   = inject(CursosService);
 
   estado: Estado = 'cargando';
@@ -242,7 +243,8 @@ export class RegistroCursosComponent implements OnInit {
       this.curso  = curso;
       this.estado = 'formulario';
     } catch { this.estado = 'no-encontrado'; }
-  }
+  
+    this.cdr.detectChanges();}
 
   async enviar() {
     this.submitted = true;
@@ -258,7 +260,8 @@ export class RegistroCursosComponent implements OnInit {
       this.estado = 'enviado';
     } catch { this.estado = 'error'; }
     finally   { this.enviando = false; }
-  }
+  
+    this.cdr.detectChanges();}
 
   fmtDate(ts: Timestamp): string {
     if (!ts) return '';

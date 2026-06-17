@@ -261,7 +261,8 @@ export class DetailsComponent implements OnInit {
       alerts.basicAlert('Formulario incompleto', 'Por favor complete todos los campos requeridos', 'warning');
     }
 
-  }
+  
+    this.cdr.detectChanges();}
 
   // Método helper para debuggear
   getFormErrors() {
@@ -334,7 +335,8 @@ export class DetailsComponent implements OnInit {
       closedApp: formValue.closedApp,
       active: formValue.active
     } as any;
-  }
+  
+    this.cdr.detectChanges();}
 
   private createOt(otData: OtDetails) {
     this.otService.addOt(otData).subscribe({

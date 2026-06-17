@@ -757,14 +757,16 @@ export class PdfDetailComponent implements OnInit, ICellRendererAngularComp {
       console.error('Error generando PDF:', err);
       this.isLoading = false;
     }
-  }
+  
+    this.cdr.detectChanges();}
 
   // ── Helpers privados ────────────────────────────────────────────────────────
   private async tryB64(url: string): Promise<string | null> {
     if (!url) return null;
     try { return await this.base64Service.convertImageToBase64(url); }
     catch { return null; }
-  }
+  
+    this.cdr.detectChanges();}
 
   private fmtCurrency(val: number | null | undefined): string {
     if (val == null) return '$0.00';

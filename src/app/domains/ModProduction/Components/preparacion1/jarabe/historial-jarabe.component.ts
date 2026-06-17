@@ -141,7 +141,8 @@ export class HistorialJarabeComponent implements OnInit, OnChanges {
       console.error('Error loading historial:', error);
       this.dataLoaded = true;
     }
-  }
+  
+    this.cdr.detectChanges();}
 
   onGridReady(params: GridReadyEvent): void {
     this.gridApi = params.api;
@@ -393,7 +394,8 @@ export class HistorialJarabeComponent implements OnInit, OnChanges {
       // Show minimal toast error notification
       alerts.preparacionErrorToast(errorMessage);
     }
-  }
+  
+    this.cdr.detectChanges();}
 
   async saveChanges() {
     const newItems = this.rowData.filter(item => item.__isNew);
@@ -460,7 +462,8 @@ export class HistorialJarabeComponent implements OnInit, OnChanges {
     } catch (error) {
       alerts.basicAlert('Error', 'Ocurrió un error al guardar los cambios.', 'error');
     }
-  }
+  
+    this.cdr.detectChanges();}
 
   private updateParentCount() {
     if (this.internalParams?.node) {
@@ -500,7 +503,8 @@ export class HistorialJarabeComponent implements OnInit, OnChanges {
     } catch (error) {
       console.error('Error reloading historial:', error);
     }
-  }
+  
+    this.cdr.detectChanges();}
 
   discardChanges() {
     if (this.hasUnsavedChanges) {

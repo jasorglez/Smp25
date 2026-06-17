@@ -470,7 +470,8 @@ export class DetalleItemsProveedorComponent {
       this.providers = [{ id: this.NEW_PROVIDER_SENTINEL, description: '+ Nuevo Proveedor' }];
       this.refreshFilteredProviders();
     }
-  }
+  
+    this.cdr.detectChanges();}
 
   buildRowData() {
     const articulos = (this.params.data.articulos || []).filter((item: any) => !!item.pedimento);
@@ -571,7 +572,8 @@ export class DetalleItemsProveedorComponent {
     } catch (e) {
       console.error('Error refrescando numArticulo desde BD', e);
     }
-  }
+  
+    this.cdr.detectChanges();}
 
   // Alto del detail = alto del área del grid menos el header y la fila maestra visible.
   private computeDetailHeight(): number {
@@ -599,7 +601,8 @@ export class DetalleItemsProveedorComponent {
     if (rows.length > 0 && this.gridApi) {
       this.gridApi.refreshCells({ force: true, columns: ['numArticulo'] });
     }
-  }
+  
+    this.cdr.detectChanges();}
 
   async onProviderChange() {
     if (this.selectedProviderId === this.NEW_PROVIDER_SENTINEL) {
@@ -684,7 +687,8 @@ export class DetalleItemsProveedorComponent {
 
       this.gridApi?.setGridOption('rowData', this.rowData);
     } catch (error) { console.error('Error en onProviderChange', error); }
-  }
+  
+    this.cdr.detectChanges();}
 
   private async registerMissingBranchAssignments(rows: any[]) {
     if (!this.idBranch || !this.selectedProviderId) return;
@@ -715,7 +719,8 @@ export class DetalleItemsProveedorComponent {
       alerts.closeLoading();
       alerts.reqErrorToast('Error', 'No se pudo completar el registro automático');
     }
-  }
+  
+    this.cdr.detectChanges();}
 
   private async createMissingProviderAssignments(): Promise<void> {
     const branchId = this.signalsService.getBranchSelectedBySidebar()() || 0;
@@ -734,7 +739,8 @@ export class DetalleItemsProveedorComponent {
       } catch (error) { console.error(`Error creando asignación para ${row.articulo}`, error); }
     }
     this.rowsMissingProvider = [];
-  }
+  
+    this.cdr.detectChanges();}
 
   async saveChanges() {
     if (!this.selectedProviderId) { alert('Seleccione un proveedor.'); return; }
@@ -827,7 +833,8 @@ export class DetalleItemsProveedorComponent {
       const hasAuthorized = this.rowData.some(row => this.AUTHORIZED_TYPES.includes(row.typeOC));
       if (hasAuthorized) { this.savingChanges = false; await this.generateOC(); }
     } catch (error) { alert('Error al guardar.'); } finally { this.savingChanges = false; }
-  }
+  
+    this.cdr.detectChanges();}
 
   private async saveCotizOrOC(type: 'COTIZ' | 'OC'): Promise<string> {
     const idRoot = this.signalsService.getRootSelectedBySidebar()();
@@ -956,7 +963,8 @@ export class DetalleItemsProveedorComponent {
       }
     }
     return folio;
-  }
+  
+    this.cdr.detectChanges();}
 
   private async syncProveedorXTablaFields(idProvider: number): Promise<void> {
     try {
@@ -975,7 +983,8 @@ export class DetalleItemsProveedorComponent {
     } catch (e) {
       console.warn('⚠️ syncProveedorXTablaFields: Error cargando proveedorxtablas', e);
     }
-  }
+  
+    this.cdr.detectChanges();}
 
   private async syncTiempoEntregaFields(rowsForDetails: any[]): Promise<void> {
     try {
@@ -989,7 +998,8 @@ export class DetalleItemsProveedorComponent {
     } catch (e) {
       console.warn('⚠️ syncTiempoEntregaFields: Error sincronizando tiempoEntrega', e);
     }
-  }
+  
+    this.cdr.detectChanges();}
 
   async loadExistingCotiz(): Promise<void> {
     const cotizacionId = this.params.data.cotizacionId;
@@ -1047,7 +1057,8 @@ export class DetalleItemsProveedorComponent {
         this.setArticulosPedimentoLocked(true);
       }
     } catch (err) { console.error('❌ Error loadExistingCotiz:', err); }
-  }
+  
+    this.cdr.detectChanges();}
 
   async loadSavedItems(ocId: number): Promise<void> {
     try {
@@ -1086,7 +1097,8 @@ export class DetalleItemsProveedorComponent {
       this.updateHasRowsWithTypeOC();
       this.refrescarNumArticuloDesdeBD();
     } catch (err) { console.error('❌ Error loadSavedItems:', err); }
-  }
+  
+    this.cdr.detectChanges();}
 
   revertChanges() {
     this.buildRowData();
@@ -1344,7 +1356,8 @@ export class DetalleItemsProveedorComponent {
       } catch { /* silencioso */ }
     }));
     this.refreshFilteredProviders();
-  }
+  
+    this.cdr.detectChanges();}
 
   private refreshFilteredProviders(): void {
     // ✅ Slots hermanos vienen del padre (todos menos este), N proveedores soportados
@@ -1562,7 +1575,8 @@ export class DetalleItemsProveedorComponent {
     } finally {
       this.savingProvider = false;
     }
-  }
+  
+    this.cdr.detectChanges();}
 
   private openNewProviderOverlay(): void {
     this.closeNewProviderOverlay();

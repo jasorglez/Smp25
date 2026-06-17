@@ -667,7 +667,8 @@ export class DetailBranchesRendererComponent implements ICellRendererAngularComp
         'error'
       );
     }
-  }
+  
+    this.cdr.detectChanges();}
 
   deleteSelectedBranch() {
     if (!this.canInteractSucursalesSegundoNivel()) {

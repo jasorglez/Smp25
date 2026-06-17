@@ -1,4 +1,4 @@
-import { Component, effect, HostListener, inject } from '@angular/core';
+import { Component, effect, HostListener, inject, ChangeDetectorRef} from '@angular/core';
 import { RouterModule } from '@angular/router';
 import { DomainsModule } from 'app/domains/domainsmodule';
 import { ColDef, GridApi, GridReadyEvent } from 'ag-grid-enterprise';
@@ -67,6 +67,7 @@ invited: boolean = false;
 
   // Inject services
   private customersService = inject(CustomersService);
+  private readonly cdr = inject(ChangeDetectorRef);
   private signalsService = inject(SignalsService);
   private administrationService = inject(AdministrationService);
   private facturacionService = inject(FacturacionService);
@@ -329,7 +330,8 @@ invited: boolean = false;
         'error'
       );
     }
-  }
+  
+    this.cdr.detectChanges();}
 
   async deleteEntry() {
     const selectedNodes = this.gridApi.getSelectedNodes();

@@ -155,5 +155,6 @@ export class DetallesInventarioMoliendaComponent {
     } catch (error) {
       console.error('Error cargando detalles de inventario:', error);
     }
-  }
+  
+    this.cdr.detectChanges();}
 }

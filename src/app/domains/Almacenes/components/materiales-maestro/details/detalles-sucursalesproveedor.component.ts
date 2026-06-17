@@ -275,7 +275,8 @@ export class DetallesSucursalesProveedorComponent implements ICellRendererAngula
     if (this.idRoot) {
       this.allBranches = await this.branchsService.getBranches2fields(this.idRoot).toPromise();
     }
-  }
+  
+    this.cdr.detectChanges();}
 
   /** True si el proveedor padre todavía es nuevo (id temporal). */
   private isTempProveedorId(idProveedor: any): boolean {
@@ -503,7 +504,8 @@ export class DetallesSucursalesProveedorComponent implements ICellRendererAngula
         'error'
       );
     }
-  }
+  
+    this.cdr.detectChanges();}
 
   private cleanDataForServer(data: any): any {
     const cleanedData = { ...data };

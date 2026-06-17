@@ -1,5 +1,5 @@
 import { CommonModule } from '@angular/common';
-import { Component, effect, inject } from '@angular/core';
+import { Component, effect, inject, ChangeDetectorRef} from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import Swal from 'sweetalert2';
 import { AgGridModule } from 'ag-grid-angular';
@@ -35,6 +35,7 @@ interface PivotAxis { id: number; name: string; total: number; }
 })
 export class GastosComponent {
   private gastosService = inject(GastosService);
+  private readonly cdr = inject(ChangeDetectorRef);
   private signalsService = inject(SignalsService);
   private setupService = inject(SetupService);
   private gridState = inject(GridStatePersistenceService);
@@ -780,7 +781,8 @@ export class GastosComponent {
       console.error('Error pagando anticipo:', err);
       alerts.reqErrorToast('Error', 'No se pudo registrar el pago del anticipo.');
     }
-  }
+  
+    this.cdr.detectChanges();}
 
   async onPagar(row: PendingPayment): Promise<void> {
     if (!row) return;
@@ -834,7 +836,8 @@ export class GastosComponent {
       if (!confirm.isConfirmed) return;
     }
     await this.doPagar(row, 0, null, null);
-  }
+  
+    this.cdr.detectChanges();}
 
   /**
    * Fase 4: resuelve el tipo de cambio a MXN para el pago. MXN → {1, 'MXN'} sin diálogo.
@@ -893,7 +896,8 @@ export class GastosComponent {
     const tc = Number(res.value);
     const fuenteFinal = (sugerido != null && Math.abs(tc - sugerido) < 1e-9) ? fuente : 'MANUAL';
     return { tipoCambio: tc, moneda: iso, fuenteTc: fuenteFinal };
-  }
+  
+    this.cdr.detectChanges();}
 
   /** Ejecuta el pago (confirmPayment), con o sin anticipo aplicado. Resuelve el TC a MXN (Fase 4). */
   private async doPagar(row: PendingPayment, anticipoAplicado: number, metodo: string | null, numProrrateo: number | null): Promise<void> {
@@ -924,7 +928,8 @@ export class GastosComponent {
       console.error('Error confirmando pago:', err);
       alerts.reqErrorToast('Error', 'No se pudo confirmar el pago.');
     }
-  }
+  
+    this.cdr.detectChanges();}
 
   /** Ingresa la entrada "a crédito": material disponible + pago pendiente a N días. */
   async onCredito(row: PendingPayment): Promise<void> {
@@ -948,7 +953,8 @@ export class GastosComponent {
       console.error('Error activando crédito:', err);
       alerts.reqErrorToast('Error', 'No se pudo ingresar a crédito.');
     }
-  }
+  
+    this.cdr.detectChanges();}
 
   /** Fecha de vencimiento del crédito.
    *  Prioridad: (1) fecha manual guardada en BD (row.fechaVencimiento),
@@ -1014,7 +1020,8 @@ export class GastosComponent {
     this.showAnticipoModal = false;
     this.anticipoRow = null;
     await this.doPagar(row, aplicado, metodo, n);
-  }
+  
+    this.cdr.detectChanges();}
 
   // Previews del modal (getters)
   get anticipoGross(): number { return Number(this.anticipoRow?.valorPago) || 0; }
@@ -1048,7 +1055,8 @@ export class GastosComponent {
       console.error('Error guardando cambios de captura:', err);
       alerts.reqErrorToast('Error', 'No se pudieron guardar los cambios.');
     }
-  }
+  
+    this.cdr.detectChanges();}
 
   private buildPayload(row: PendingPayment): ConfirmPaymentPayload {
     return {
@@ -1141,7 +1149,8 @@ export class GastosComponent {
     if (row) { row.idProvider = providerId; (row as any).__modified = true; }
 
     return providerName;   // validación pasó → usar este proveedor
-  }
+  
+    this.cdr.detectChanges();}
 
   // ── Dropdown de proveedor para filas CR ───────────────────────────────────────
   // Carga la lista con el mismo formato que la cotización:
@@ -1188,7 +1197,8 @@ export class GastosComponent {
     } catch {
       this.crProviders = [{ id: this.NEW_PROVIDER_SENTINEL, description: '+ Nuevo Proveedor' }];
     }
-  }
+  
+    this.cdr.detectChanges();}
 
   private loadMonedas(idCompany: number): void {
     this.currencyService.getCurrencies(idCompany).subscribe({
@@ -1287,7 +1297,8 @@ export class GastosComponent {
     (row as any).__venceModified = true;
     this.hasUnsavedCaptura = true;
     this.capturaGridApi?.refreshCells({ rowNodes: undefined, force: true });
-  }
+  
+    this.cdr.detectChanges();}
 
   fmtDate(value: any): string {
     if (!value) return '';
@@ -1313,7 +1324,8 @@ export class GastosComponent {
         this.ivaByBranch.set(idBranch, 0);
       }
     }));
-  }
+  
+    this.cdr.detectChanges();}
 
   /** Recalcula precio unitario y valor aplicando IVA igual que la cotización (precio = base*(1+iva%), valor = precio*cantidad). */
   private recalcRowIva(row: any): void {

@@ -1,4 +1,4 @@
-import { Component, effect, inject, OnInit } from '@angular/core';
+import { Component, effect, inject, OnInit, ChangeDetectorRef} from '@angular/core';
 import { TdConceptsService } from 'app/services/td-concepts.service';
 import { AG_GRID_LOCALE_ES } from 'assets/i18n/ag-grid.locale.es';
 import {
@@ -38,6 +38,7 @@ export class ConceptsComponent implements OnInit, CanComponentDeactivate {
   newlyAddedRows: string[] = [];
 
   private tdConceptsService = inject(TdConceptsService);
+  private readonly cdr = inject(ChangeDetectorRef);
   private signalsService = inject(SignalsService);
 
   public rowSelection: 'single' | 'multiple' = 'single';
@@ -342,7 +343,8 @@ export class ConceptsComponent implements OnInit, CanComponentDeactivate {
         'error'
       );
     }
-  }
+  
+    this.cdr.detectChanges();}
 
   revert(): void {
     this.loadData();
@@ -386,7 +388,8 @@ export class ConceptsComponent implements OnInit, CanComponentDeactivate {
         'error'
       );
     }
-  }
+  
+    this.cdr.detectChanges();}
 
   async canDeactivate(): Promise<boolean> {
     return confirmExitIfUnsaved(this.notSavedChanges);

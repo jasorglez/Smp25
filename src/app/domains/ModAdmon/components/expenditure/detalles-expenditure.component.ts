@@ -1,4 +1,4 @@
-import { Component, OnInit, inject, OnDestroy, HostListener } from '@angular/core';
+import { Component, OnInit, inject, OnDestroy, HostListener, ChangeDetectorRef} from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { AgGridModule } from 'ag-grid-angular';
@@ -180,6 +180,7 @@ export class DetallesExpenditureComponent implements OnInit, OnDestroy {
   private gridApi!: GridApi;
   private context: any;
   private sanitizer = inject(DomSanitizer);
+  private readonly cdr = inject(ChangeDetectorRef);
   private signalsService = inject(SignalsService);
   // private providerModalService = inject(ProviderModalService); // Ya no needed
   private customersService = inject(CustomersService);
@@ -374,7 +375,8 @@ export class DetallesExpenditureComponent implements OnInit, OnDestroy {
       // If no data loader available, show empty state
       this.generateReport();
     }
-  }
+  
+    this.cdr.detectChanges();}
 
   async loadSetupManagementInfo() {
     if (this.context?.administrationService && this.context?.idRoot) {
@@ -390,7 +392,8 @@ export class DetallesExpenditureComponent implements OnInit, OnDestroy {
         this.setupManagementInfo = null;
       }
     }
-  }
+  
+    this.cdr.detectChanges();}
 
   refresh(params: ICellRendererParams): boolean {
     return false;
@@ -791,7 +794,8 @@ export class DetallesExpenditureComponent implements OnInit, OnDestroy {
         }
       }, newCount);
     }
-  }
+  
+    this.cdr.detectChanges();}
 
   async saveChanges() {
     if (!this.hasUnsavedChanges) {
@@ -874,7 +878,8 @@ export class DetallesExpenditureComponent implements OnInit, OnDestroy {
       } catch (error) {
       }
     }
-  }
+  
+    this.cdr.detectChanges();}
 
   discardChanges() {
     if (!this.hasUnsavedChanges) {
@@ -1031,7 +1036,8 @@ export class DetallesExpenditureComponent implements OnInit, OnDestroy {
         'error'
       );
     }
-  }
+  
+    this.cdr.detectChanges();}
 
   onProviderCreated(providerData: { id: number; name: string }) {
     // Refrescar las columnas para que aparezca el nuevo proveedor en el combo
@@ -1399,7 +1405,8 @@ export class DetallesExpenditureComponent implements OnInit, OnDestroy {
       this.pdfUrl = null;
       alerts.basicAlert('Error', 'No se pudo generar el reporte PDF', 'error');
     }
-  }
+  
+    this.cdr.detectChanges();}
 
   private generateConceptsTable(): any {
     const tableBody: any[] = [

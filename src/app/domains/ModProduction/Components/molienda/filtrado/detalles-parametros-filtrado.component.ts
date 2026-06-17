@@ -116,6 +116,7 @@ export class DetallesParametrosFiltradoComponent implements AfterViewInit {
         this.pendingInit = defaultRow;
       }
     }
+    this.cdr.detectChanges();
   }
 
   ngAfterViewInit() {

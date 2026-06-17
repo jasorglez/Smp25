@@ -1,4 +1,4 @@
-import { Component, effect, inject, OnInit } from '@angular/core';
+import { Component, effect, inject, OnInit, ChangeDetectorRef} from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { RolesService, RolesxDetailedPermission } from 'app/services/roles.service';
@@ -49,6 +49,7 @@ interface MasterPermission {
 })
 export class RolesPermissionsViewComponent implements OnInit {
   private rolesService = inject(RolesService);
+  private readonly cdr = inject(ChangeDetectorRef);
   private signalsService = inject(SignalsService);
   private timeService = inject(TimeService);
   private trackingService = inject(TrackingService);
@@ -230,7 +231,8 @@ export class RolesPermissionsViewComponent implements OnInit {
       console.error('Error al guardar los permisos:', error);
       alerts.basicAlert('Error', 'Ocurrió un error al guardar los datos.', 'error');
     }
-  }
+  
+    this.cdr.detectChanges();}
 
   private untransformData(data: MasterPermission[]): any[] {
     const modifiedList = [];

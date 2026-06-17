@@ -1,4 +1,4 @@
-import { Component, effect, HostListener, inject } from '@angular/core';
+import { Component, effect, HostListener, inject, ChangeDetectorRef} from '@angular/core';
 import { RouterModule, ActivatedRoute } from '@angular/router';
 import { DomainsModule } from 'app/domains/domainsmodule';
 import { AG_GRID_LOCALE_ES } from 'assets/i18n/ag-grid.locale.es';
@@ -59,6 +59,7 @@ import { AdministrationService } from 'app/services/administration.service';
 })
 export class PalacioContribuyenteComponent implements CanComponentDeactivate {
   private customerService = inject(CustomersService);
+  private readonly cdr = inject(ChangeDetectorRef);
   private modalServiceTable = inject(ModalService);
   private signalsService = inject(SignalsService);
   private modalService = inject(NgbModal);
@@ -89,7 +90,8 @@ export class PalacioContribuyenteComponent implements CanComponentDeactivate {
       this.obtenerBranchs();
 
     });
-  }
+  
+    this.cdr.detectChanges();}
 
   constructor() {
     effect(async () => {
@@ -778,7 +780,8 @@ export class PalacioContribuyenteComponent implements CanComponentDeactivate {
       }
       return null;
     }
-  }
+  
+    this.cdr.detectChanges();}
 
   onGridReady(params: GridReadyEvent) {
     this.gridApi = params.api;
@@ -912,7 +915,8 @@ export class PalacioContribuyenteComponent implements CanComponentDeactivate {
         'error'
       );
     }
-  }
+  
+    this.cdr.detectChanges();}
 
   private selectRowById(id: number | string) {
 
@@ -1071,7 +1075,8 @@ export class PalacioContribuyenteComponent implements CanComponentDeactivate {
       this.resetGridSize();
       this.isOpen = false;
     }
-  }
+  
+    this.cdr.detectChanges();}
 
   async activateBillingTab() {
     if (!this.isOpen) {
@@ -1083,7 +1088,8 @@ export class PalacioContribuyenteComponent implements CanComponentDeactivate {
       this.resetGridSize();
       this.isOpen = false;
     }
-  }
+  
+    this.cdr.detectChanges();}
 
   resetGridSize() {
     this.gridHeight = '80vh'; // Reset to default height

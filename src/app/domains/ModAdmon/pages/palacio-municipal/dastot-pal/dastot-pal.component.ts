@@ -1,4 +1,4 @@
-import { Component, ElementRef, inject, OnInit, ViewChild, effect } from '@angular/core';
+import { Component, ElementRef, inject, OnInit, ViewChild, effect, ChangeDetectorRef} from '@angular/core';
 import { RouterModule } from '@angular/router';
 import { DomainsModule } from 'app/domains/domainsmodule';
 import { ColDef, GridApi, GridReadyEvent } from 'ag-grid-enterprise';
@@ -59,6 +59,7 @@ export class DastotPalComponent implements OnInit {
 
   authService = inject(AuthService);
   private signalsService = inject(SignalsService);
+  private readonly cdr = inject(ChangeDetectorRef);
   private incomesExpensesService = inject(IncomesAndExpensesService);
   private rootService = inject(RootService);
   private base64EncodeService = inject(Base64EncodeService);
@@ -407,7 +408,8 @@ export class DastotPalComponent implements OnInit {
     } finally {
       this.isLoading = false;
     }
-  }
+  
+    this.cdr.detectChanges();}
 
   updateCharts(): void {
     // Separar totales de INGRESOS por tipo de cuenta
@@ -518,7 +520,8 @@ export class DastotPalComponent implements OnInit {
     } catch {
       return [];
     }
-  }
+  
+    this.cdr.detectChanges();}
 
   async openPdfReport(row: TotalData): Promise<void> {
     if (!row) return;
@@ -581,7 +584,8 @@ export class DastotPalComponent implements OnInit {
       console.error('Error al generar PDF:', error);
       alerts.basicAlert('PDF', 'No se pudo generar el reporte PDF.', 'error');
     }
-  }
+  
+    this.cdr.detectChanges();}
 
   async exportCurrentViewPdf(): Promise<void> {
     this.isGeneratingPdf = true;
@@ -809,7 +813,8 @@ export class DastotPalComponent implements OnInit {
         this.setPdfProgress(0, '');
       }, 700);
     }
-  }
+  
+    this.cdr.detectChanges();}
 
   private async captureApexChartAsBase64(chart: ChartComponent | undefined): Promise<string | null> {
     if (!chart) return null;
@@ -820,5 +825,6 @@ export class DastotPalComponent implements OnInit {
       console.warn('No se pudo capturar grafica ApexCharts:', error);
       return null;
     }
-  }
+  
+    this.cdr.detectChanges();}
 }

@@ -1,4 +1,4 @@
-import { Component, effect, inject } from '@angular/core';
+import { Component, effect, inject, ChangeDetectorRef} from '@angular/core';
 import { MultiLineEditorComponent } from "../../../../../shared/multi-line/multi-line-editor.component";
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
@@ -21,6 +21,7 @@ import { Icatalog } from 'app/interface/icatalog';
 export class AdditionalInfoComponent {
 
   private administrationService = inject(AdministrationService);
+  private readonly cdr = inject(ChangeDetectorRef);
   private signalsService = inject(SignalsService);
   private catalogsService = inject(CatalogsService);
 
@@ -230,7 +231,8 @@ export class AdditionalInfoComponent {
         'error'
       );
     }
-  }
+  
+    this.cdr.detectChanges();}
 
   revert() {
     this.getAdditionalInfo();

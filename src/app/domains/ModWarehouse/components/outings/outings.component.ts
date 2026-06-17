@@ -1,4 +1,4 @@
-import { Component, effect, HostListener, inject, OnInit } from '@angular/core';
+import { Component, effect, HostListener, inject, OnInit, ChangeDetectorRef} from '@angular/core';
 import {
   CellDoubleClickedEvent,
   ColDef,
@@ -54,6 +54,7 @@ interface Catalog {
 export class OutingsComponent implements OnInit, CanComponentDeactivate {
   // Inject services
   private inAndOutsService = inject(InandoutService);
+  private readonly cdr = inject(ChangeDetectorRef);
   private signalsService = inject(SignalsService);
   private modalServiceTable = inject(ModalService);
   private receiptsService = inject(ReceiptsService);
@@ -502,7 +503,8 @@ export class OutingsComponent implements OnInit, CanComponentDeactivate {
       console.error(error);
       return [];
     }
-  }
+  
+    this.cdr.detectChanges();}
 
   onMasterSelectionChanged(event: any) {
     const selectedNodes = event.api.getSelectedNodes();
@@ -647,7 +649,8 @@ export class OutingsComponent implements OnInit, CanComponentDeactivate {
         'error'
       );
     }
-  }
+  
+    this.cdr.detectChanges();}
 
   deleteMasterEntry() {
     const selectedNodes = this.masterGridApi.getSelectedNodes();
@@ -797,7 +800,8 @@ export class OutingsComponent implements OnInit, CanComponentDeactivate {
         'error'
       );
     }
-  }
+  
+    this.cdr.detectChanges();}
 
   async deleteDetailsEntry() {
     const selectedNodes = this.detailsGridApi.getSelectedNodes();

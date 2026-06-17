@@ -1,4 +1,4 @@
-import { Component, inject, OnInit } from '@angular/core';
+import { Component, inject, OnInit, ChangeDetectorRef} from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { AgGridModule } from 'ag-grid-angular';
 import { ColDef, GridApi, GridReadyEvent } from 'ag-grid-enterprise';
@@ -57,6 +57,7 @@ export class PesoVolumenComponent implements OnInit {
   public gridApi!: GridApi;
 
   private svc     = inject(PesoVolumenService);
+  private readonly cdr = inject(ChangeDetectorRef);
   private signals = inject(SignalsService);
 
   rowData: PesoVolumenRow[] = [];
@@ -156,7 +157,8 @@ export class PesoVolumenComponent implements OnInit {
     } catch {
       alerts.basicAlert('Error', 'No se pudo guardar los cambios.', 'error');
     } finally { this.saving = false; }
-  }
+  
+    this.cdr.detectChanges();}
 
   revert() {
     this.rowData = JSON.parse(JSON.stringify(this.originalRowData));
@@ -184,5 +186,6 @@ export class PesoVolumenComponent implements OnInit {
     } catch {
       alerts.basicAlert('Error', 'No se pudo eliminar el registro.', 'error');
     }
-  }
+  
+    this.cdr.detectChanges();}
 }

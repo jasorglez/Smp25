@@ -582,7 +582,8 @@ export class DetailCellRendererProyectosComponent implements ICellRendererAngula
         'error'
       );
     }
-  }
+  
+    this.cdr.detectChanges();}
 
   async deleteSelectedProject() {
     if (!this.selectedProject) {
@@ -636,7 +637,8 @@ export class DetailCellRendererProyectosComponent implements ICellRendererAngula
         );
       }
     }
-  }
+  
+    this.cdr.detectChanges();}
 
   private cleanDataForServer(data: any): any {
     const cleanedData = { ...data };
@@ -683,5 +685,6 @@ export class DetailCellRendererProyectosComponent implements ICellRendererAngula
     } catch (error) {
       console.error('Error updating project count:', error);
     }
-  }
+  
+    this.cdr.detectChanges();}
 }

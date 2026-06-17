@@ -1,4 +1,4 @@
-import { Component, inject } from '@angular/core';
+import { Component, inject, ChangeDetectorRef} from '@angular/core';
 import { RouterModule } from '@angular/router';
 import { DomainsModule } from 'app/domains/domainsmodule';
 import { CatalogsService } from 'app/services/catalogs.service';
@@ -19,6 +19,7 @@ import { concat, lastValueFrom, toArray } from 'rxjs';
 export class DetailsprocessComponent {
 
   private catalogService = inject(CatalogsService);
+  private readonly cdr = inject(ChangeDetectorRef);
   private signalsService = inject(SignalsService);
 
   // variables......
@@ -195,7 +196,8 @@ export class DetailsprocessComponent {
                   'error'
                 );
               }
-    }
+    
+          this.cdr.detectChanges();}
   
 
     revert(){

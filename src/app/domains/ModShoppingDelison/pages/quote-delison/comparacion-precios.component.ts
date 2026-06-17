@@ -909,7 +909,8 @@ export class ComparacionPreciosComponent implements OnInit, OnDestroy {
       this.presentacionesByArticulo.set(r.id, r.data);
       this.unidadByArticulo.set(r.id, resolverUnidadArticulo(r.data));
     }
-  }
+  
+    this.cdr.detectChanges();}
 
   /** ¿La fila usa el modal de presentaciones? (artículo con presentaciones consistentes + proveedor con denoms) */
   private rowUsaModalPresentaciones(row: any): boolean {
@@ -990,7 +991,8 @@ export class ComparacionPreciosComponent implements OnInit, OnDestroy {
         this.codigosExternos.set(prov.id, new Map());
       }
     }
-  }
+  
+    this.cdr.detectChanges();}
 
   /**
    * Extrae el prefijo de sucursal del folio de la requisición.
@@ -1034,7 +1036,8 @@ export class ComparacionPreciosComponent implements OnInit, OnDestroy {
     } catch (e) {
       console.warn('[Comparacion] Error cargando slots COTIZ:', e);
     }
-  }
+  
+    this.cdr.detectChanges();}
 
   private async loadExistingOcFolios(): Promise<void> {
     try {
@@ -1057,7 +1060,8 @@ export class ComparacionPreciosComponent implements OnInit, OnDestroy {
     } catch {
       this.ocPairs = [];
     }
-  }
+  
+    this.cdr.detectChanges();}
 
   private async generateOCForSlot(
     provId: number,
@@ -1172,7 +1176,8 @@ export class ComparacionPreciosComponent implements OnInit, OnDestroy {
     await lastValueFrom(this.ocAndReqsService.setTotal(newOcId, totalSum)).catch(() => {});
 
     return folio;
-  }
+  
+    this.cdr.detectChanges();}
 
   private rebuildAllRowsAndSync() {
     this.buildRowDataForAllArticulos();
@@ -1697,7 +1702,8 @@ export class ComparacionPreciosComponent implements OnInit, OnDestroy {
     this.hasUnsavedChanges = false;
     this.savedAtLeastOnce = true;
     alerts.basicAlert('Guardado', 'Registro guardado correctamente', 'success');
-  }
+  
+    this.cdr.detectChanges();}
 
   async generateOC() {
     if (this.rowData.length === 0 || this.ocGenerada) return;
@@ -1904,7 +1910,8 @@ export class ComparacionPreciosComponent implements OnInit, OnDestroy {
       : `Órdenes de compra generadas:\n${generatedFolios.join('\n')}\n\n⚠️ Hay ${sinTipo.length} artículo(s) sin tipo OC. La requisición sigue abierta.`;
 
     alerts.basicAlert(titulo, mensaje, allTotalizado ? 'success' : 'warning');
-  }
+  
+    this.cdr.detectChanges();}
 
   private async patchTypeOcAndQuantityOnly(): Promise<void> {
     for (const row of this.rowData) {
@@ -1918,7 +1925,8 @@ export class ComparacionPreciosComponent implements OnInit, OnDestroy {
         ).catch(e => console.warn(`⚠️ No se pudo guardar cantidadConceptualizada:`, e));
       }
     }
-  }
+  
+    this.cdr.detectChanges();}
 
   private async patchRegistros(): Promise<void> {
     const AUTHORIZED = ['COMPRA INMEDIATA', 'COMPRA AUTORIZADA', 'COMPRA AUTORIZADA EN OTRA FECHA', 'COMPRA AUTORIZADA SIN LIMITE'];
@@ -2006,7 +2014,8 @@ export class ComparacionPreciosComponent implements OnInit, OnDestroy {
         console.warn(`⚠️ Error al leer/actualizar estado del proveedor ${provId}:`, e);
       }
     }
-  }
+  
+    this.cdr.detectChanges();}
 
   /**
    * Auto-llena el "Tipo de Proveedor" (Categoría/Familia/Subfamilia) en `subfamilyxprovider`
@@ -2147,7 +2156,8 @@ export class ComparacionPreciosComponent implements OnInit, OnDestroy {
         }
       }
     }
-  }
+  
+    this.cdr.detectChanges();}
 
   private openNegativeTypeChat(numArticle: string, tag: string, onRevert: () => void, provId?: number, provName?: string, articleName?: string): void {
     this.itemCommentsService.openChatFor$.next({
@@ -2238,7 +2248,8 @@ export class ComparacionPreciosComponent implements OnInit, OnDestroy {
         });
       }
     }
-  }
+  
+    this.cdr.detectChanges();}
 
   private async updateMaterialsAfterOC(): Promise<void> {
     const AUTHORIZED = ['COMPRA INMEDIATA', 'COMPRA AUTORIZADA', 'COMPRA AUTORIZADA EN OTRA FECHA', 'COMPRA AUTORIZADA SIN LIMITE'];
@@ -2297,7 +2308,8 @@ export class ComparacionPreciosComponent implements OnInit, OnDestroy {
         ).catch(e => console.warn(`⚠️ No se pudo desactivar material ${materialId}:`, e));
       }
     }
-  }
+  
+    this.cdr.detectChanges();}
 
   onCellMouseOver(event: any): void {
     const field = event.colDef?.field;
@@ -2783,6 +2795,7 @@ export class ComparacionPreciosComponent implements OnInit, OnDestroy {
       alerts.closeLoading();
       alerts.basicAlert('Error', 'No se pudo finalizar la requisición. Intenta nuevamente.', 'error');
     }
-  }
+  
+    this.cdr.detectChanges();}
 
 }

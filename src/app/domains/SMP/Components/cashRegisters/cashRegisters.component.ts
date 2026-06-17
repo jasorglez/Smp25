@@ -3,8 +3,7 @@ import {
   Component,
   effect,
   HostListener,
-  inject,
-} from '@angular/core';
+  inject, ChangeDetectorRef} from '@angular/core';
 import { SignalsService } from 'app/services/signals.service';
 import { AgGridModule } from 'ag-grid-angular';
 import { CommonModule } from '@angular/common';
@@ -64,6 +63,7 @@ export class CashRegistersComponent implements CanComponentDeactivate {
 
   private storeCatalog: any[] = [];
   private inegiService = inject(InegiService);
+  private readonly cdr = inject(ChangeDetectorRef);
   private gridApi: GridApi;
   private tempIdCounter: number = 0;
   private signalsService = inject(SignalsService);
@@ -315,7 +315,8 @@ export class CashRegistersComponent implements CanComponentDeactivate {
       await this.resetGridSize();
       this.isOpen = false;
     }
-  }
+  
+    this.cdr.detectChanges();}
   async activateSavingsTab() {
     if (!this.isOpen || this.showLoansTab) {
       await this.adjustGridSize();
@@ -326,7 +327,8 @@ export class CashRegistersComponent implements CanComponentDeactivate {
       await this.resetGridSize();
       this.isOpen = false;
     }
-  }
+  
+    this.cdr.detectChanges();}
 
   async adjustGridSize() {
     this.gridHeight = '20vh'; // Adjust as needed
@@ -507,7 +509,8 @@ export class CashRegistersComponent implements CanComponentDeactivate {
         'error'
       );
     }
-  }
+  
+    this.cdr.detectChanges();}
 
   deleteMasterEntry() {
     const selectedNodes = this.gridApi.getSelectedNodes();

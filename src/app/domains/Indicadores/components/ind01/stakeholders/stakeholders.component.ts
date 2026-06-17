@@ -478,7 +478,8 @@ export class StakeholdersComponent {
         'error'
       );
     }
-  }
+  
+    this.cdr.detectChanges();}
 
   revert() {
     this.obtenerDatos();

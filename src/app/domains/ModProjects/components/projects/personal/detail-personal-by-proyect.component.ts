@@ -288,7 +288,8 @@ agInit(params: any): void {
           'error'
         );
       }
-    }
+    
+       this.cdr.detectChanges();}
   
     private cleanDataForServer(data: any): any {
       const cleanedData = { ...data };

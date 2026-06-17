@@ -1,4 +1,4 @@
-import { Component, inject, OnInit, effect, OnChanges, SimpleChanges, ViewChild } from '@angular/core';
+import { Component, inject, OnInit, effect, OnChanges, SimpleChanges, ViewChild, ChangeDetectorRef} from '@angular/core';
 import { AgGridModule } from 'ag-grid-angular';
 import { ColDef, Grid, GridApi, GridReadyEvent } from 'ag-grid-community';
 import { AdvanceService } from 'app/services/advance.service';
@@ -74,6 +74,7 @@ export class AdvancesComponent implements OnInit, OnChanges {
   }
 
   private _signalsService = inject(SignalsService);
+  private readonly cdr = inject(ChangeDetectorRef);
   private _advancesService = inject(AdvanceService);
 
 
@@ -331,7 +332,8 @@ export class AdvancesComponent implements OnInit, OnChanges {
         'error'
       );
     }
-  }
+  
+    this.cdr.detectChanges();}
   obtenerDatos() {
     this._advancesService.getAdvancesByContract(this.curretnContractSelected, 'Contract').subscribe((advances: ContractAdvance) => {
       let acumuladoProgramado = 0;

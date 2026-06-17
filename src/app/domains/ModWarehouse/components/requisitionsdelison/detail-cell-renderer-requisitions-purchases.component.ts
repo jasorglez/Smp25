@@ -327,7 +327,8 @@ export class DetailCellRendererRequisitionsPurchasesComponent implements OnInit 
       console.error('❌ Error al eliminar item:', error);
       alerts.reqErrorToast('Error', 'No se pudo eliminar el item');
     }
-  }
+  
+    this.cdr.detectChanges();}
 
   async saveChanges() {
     if (!this.hasUnsavedChanges) {
@@ -392,7 +393,8 @@ export class DetailCellRendererRequisitionsPurchasesComponent implements OnInit 
       console.error('❌ Error al guardar cambios:', error);
       alerts.reqErrorToast('Error', 'No se pudieron guardar los cambios');
     }
-  }
+  
+    this.cdr.detectChanges();}
 
   discardChanges() {
     if (!this.hasUnsavedChanges) {

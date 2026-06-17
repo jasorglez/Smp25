@@ -1,5 +1,5 @@
 import { CommonModule } from '@angular/common';
-import { Component, effect, HostListener, inject, OnInit } from '@angular/core';
+import { Component, effect, HostListener, inject, OnInit, ChangeDetectorRef} from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { AgGridModule } from 'ag-grid-angular';
 import { GridApi, ColDef, GridReadyEvent, CellDoubleClickedEvent, ICellRendererParams } from 'ag-grid-enterprise';
@@ -22,6 +22,7 @@ import { DatePipe } from '@angular/common';
 export class IdentificationRiskComponent implements OnInit {
 
   private riskMatrixService = inject(RiskmatrixService);
+  private readonly cdr = inject(ChangeDetectorRef);
   private signalsService = inject(SignalsService);
   private modalServiceTable = inject(ModalService);
   private datePipe = inject(DatePipe);
@@ -310,7 +311,8 @@ export class IdentificationRiskComponent implements OnInit {
         'error'
       );
     }
-  }
+  
+    this.cdr.detectChanges();}
 
   async deleteEntry() {
     const selectedNodes = this.gridApi.getSelectedNodes();

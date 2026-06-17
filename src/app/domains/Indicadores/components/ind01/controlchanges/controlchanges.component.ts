@@ -406,7 +406,8 @@ export class ControlChangesComponent {
         'error'
       );
     }
-  }
+  
+    this.cdr.detectChanges();}
 
   revert() {
     this.obtenerDatos();

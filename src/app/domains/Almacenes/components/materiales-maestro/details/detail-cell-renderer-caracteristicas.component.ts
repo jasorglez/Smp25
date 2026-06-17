@@ -134,5 +134,6 @@ export class DetailCellRendererCaracteristicasComponent implements ICellRenderer
       // TODO: Implementar eliminación de la característica
       alerts.basicAlert('Funcionalidad no implementada', 'Eliminar característica próximamente', 'info');
     }
-  }
+  
+    this.cdr.detectChanges();}
 }

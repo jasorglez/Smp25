@@ -1,5 +1,5 @@
 import { CommonModule } from '@angular/common';
-import { Component, computed, effect, HostListener, inject, Injectable, OnDestroy, ViewChild } from '@angular/core';
+import { Component, computed, effect, HostListener, inject, Injectable, OnDestroy, ViewChild, ChangeDetectorRef} from '@angular/core';
 import { AgGridModule } from 'ag-grid-angular';
 import { ColDef, GridApi, GridReadyEvent } from 'ag-grid-community';
 import { UsersService } from 'app/services/users.service';
@@ -90,6 +90,7 @@ export class UsersComponent implements OnDestroy {
   private _revertingIsRoot = false;
 
   private usersService = inject(UsersService);
+  private readonly cdr = inject(ChangeDetectorRef);
   private imageHandlerService = inject(ImageHandlerService);
   private usersxrootService = inject(UsersxpermissionsService);
   private trackingService = inject(TrackingService);
@@ -371,6 +372,7 @@ export class UsersComponent implements OnDestroy {
             countByUser.set(uid, (countByUser.get(uid) ?? 0) + 1);
           }
           this.applyUsersListResponse(users, countByUser);
+          this.cdr.detectChanges();
           this.gridApi?.hideOverlay();
           logFetch();
         },
@@ -388,6 +390,7 @@ export class UsersComponent implements OnDestroy {
         next: ({ users, branches, branchPerms }) => {
           const countByUser = this.buildBranchCountByUserForCompany(branchPerms, branches);
           this.applyUsersListResponse(users, countByUser);
+          this.cdr.detectChanges();
           this.gridApi?.hideOverlay();
           logFetch();
         },
@@ -408,6 +411,7 @@ export class UsersComponent implements OnDestroy {
     this.rolesService.getRoles(this.idRoot).subscribe(
       (data: any) => {
         this.departamentos = data.data;
+        this.cdr.detectChanges();
       },
       (error) => {
         if (error.status == 404) this.departamentos = [];
@@ -1266,7 +1270,8 @@ export class UsersComponent implements OnDestroy {
       else if (error?.status === 500) errorMessage = 'Error del servidor: Contacte al administrador.';
       alerts.userSaveErrorToast('Error', errorMessage);
     }
-  }
+  
+    this.cdr.detectChanges();}
 
   async deleteUser() {
     const selectedNodes = this.gridApi.getSelectedNodes();
@@ -1599,7 +1604,8 @@ export class UsersComponent implements OnDestroy {
     } catch {
       // name sync is best-effort
     }
-  }
+  
+    this.cdr.detectChanges();}
 
   private cleanDataForServer(data: any): any {
     const cleanedData = { ...data };

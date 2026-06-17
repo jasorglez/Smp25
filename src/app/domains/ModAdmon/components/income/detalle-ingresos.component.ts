@@ -247,7 +247,8 @@ export class DetalleIngresosComponent implements OnInit, OnDestroy {
     } catch (error) {
       console.error('Error loading data for report:', error);
     }
-  }
+  
+    this.cdr.detectChanges();}
 
   async loadSetupManagementInfo() {
     if (!this.idRoot) return;
@@ -257,7 +258,8 @@ export class DetalleIngresosComponent implements OnInit, OnDestroy {
     } catch (error) {
       console.error('Error loading setup management:', error);
     }
-  }
+  
+    this.cdr.detectChanges();}
 
   async loadLogo() {
     if (!this.idRoot) return;
@@ -277,7 +279,8 @@ export class DetalleIngresosComponent implements OnInit, OnDestroy {
     } catch (error) {
       console.error('Error loading logo:', error);
     }
-  }
+  
+    this.cdr.detectChanges();}
 
   calculateTotals() {
     this.subtotal = this.rowData.reduce((acc, row) => acc + (Number(row.total) || 0), 0);
@@ -436,7 +439,8 @@ export class DetalleIngresosComponent implements OnInit, OnDestroy {
       event.data.unit = event.oldValue || '';
       this.gridApi?.applyTransactionAsync({ update: [event.data] });
     }
-  }
+  
+    this.cdr.detectChanges();}
 
   addConcept() {
     const incomeId = this.params.data.id;
@@ -528,7 +532,8 @@ export class DetalleIngresosComponent implements OnInit, OnDestroy {
       console.error('Error saving concepts:', error);
       alerts.basicAlert('Error', 'Error al guardar los conceptos.', 'error');
     }
-  }
+  
+    this.cdr.detectChanges();}
 
   deleteSelectedConcept() {
     const selectedNodes = this.gridApi?.getSelectedNodes();

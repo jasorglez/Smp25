@@ -1,4 +1,4 @@
-import { Component, effect, HostListener, inject } from '@angular/core';
+import { Component, effect, HostListener, inject, ChangeDetectorRef} from '@angular/core';
 import {
   CellDoubleClickedEvent,
   ColDef,
@@ -52,6 +52,7 @@ interface Provider {
 export class RequisitionsComponent implements CanComponentDeactivate {
   // Inject of new way for Angular 18
   private requisitionsService = inject(OcAndReqsService);
+  private readonly cdr = inject(ChangeDetectorRef);
   private providersService = inject(ProvidersService);
   private catalogsService = inject(CatalogsService);
   private departmentsService = inject(DepartmentsService);
@@ -666,7 +667,8 @@ export class RequisitionsComponent implements CanComponentDeactivate {
         this.masterSelectedRowData = newItem;
       }
     });
-  }
+  
+    this.cdr.detectChanges();}
 
   async saveMasterChanges() {
     const isValid = this.masterRowData.every((item) => item.folio);
@@ -715,7 +717,8 @@ export class RequisitionsComponent implements CanComponentDeactivate {
         'error'
       );
     }
-  }
+  
+    this.cdr.detectChanges();}
 
   onDeleteButtonClick(node: any) {
     node.setSelected(true);
@@ -939,7 +942,8 @@ export class RequisitionsComponent implements CanComponentDeactivate {
         'error'
       );
     }
-  }
+  
+    this.cdr.detectChanges();}
 
   async deleteDetailsEntry() {
     const selectedNodes = this.detailsGridApi.getSelectedNodes();
@@ -1230,7 +1234,8 @@ export class RequisitionsComponent implements CanComponentDeactivate {
         'error'
       );
     }
-  }
+  
+    this.cdr.detectChanges();}
 
   async deleteDetailRow(params: any, successCallback: () => void) {
     const requisitionId = params.data.idMovement;
@@ -1255,7 +1260,8 @@ export class RequisitionsComponent implements CanComponentDeactivate {
         );
       }
     }
-  }
+  
+    this.cdr.detectChanges();}
 
   // ==================== UTILITY METHODS ====================
 

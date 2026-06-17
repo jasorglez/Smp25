@@ -1,4 +1,4 @@
-import { Component, effect, HostListener, inject, OnInit } from '@angular/core';
+import { Component, effect, HostListener, inject, OnInit, ChangeDetectorRef} from '@angular/core';
 import { RouterModule, ActivatedRoute } from '@angular/router';
 import { DomainsModule } from 'app/domains/domainsmodule';
 import { CellDoubleClickedEvent, ColDef, GridApi, GridReadyEvent } from 'ag-grid-enterprise';
@@ -26,6 +26,7 @@ import { TrackingService } from 'app/services/tracking.service';
 })
 export default class MasterClockComponent implements OnInit {
   //  private administrationService = inject(AdministrationService);
+  private readonly cdr = inject(ChangeDetectorRef);
   private payrollService = inject(PayrollService);
   private hrService = inject(HRService);
   private signalsService = inject(SignalsService);
@@ -403,6 +404,7 @@ export default class MasterClockComponent implements OnInit {
         }
       },
     ];
+    this.cdr.detectChanges();
   }
 
   private getExpandedGroupKeys(): Set<string> {
@@ -430,6 +432,7 @@ export default class MasterClockComponent implements OnInit {
       this.payrollService.getMasterClock(this.idBranch, fechaInicio, fechaFin).subscribe(
         (data: any) => {
           this.rowData = data;
+          this.cdr.detectChanges();
           this.trackingService.addLog(this.trackingService.getnameComp(), 'Get Registro en Maestro de Checador', 'Menu Maestro de Checador', this.trackingService.getEmail());
           setTimeout(() => {
             this.restoreGroupExpansion(expandedKeys);
@@ -439,6 +442,8 @@ export default class MasterClockComponent implements OnInit {
         },
         (error) => {
           console.error('Error fetching data:', error);
+          this.rowData = [];
+          this.cdr.detectChanges();
           resolve(false);
         }
       );
@@ -589,7 +594,8 @@ export default class MasterClockComponent implements OnInit {
       this.obtenerDatos();
     }
 
-  }
+  
+    this.cdr.detectChanges();}
   async getNextPayrollStartDate(): Promise<void> {
     if (this.idBranch > 0) {
       try {
@@ -606,7 +612,8 @@ export default class MasterClockComponent implements OnInit {
         console.error('Error fetching payroll data:', error);
       }
     }
-  }
+  
+    this.cdr.detectChanges();}
 
   obtenerConfig(): Promise<void> {
     return new Promise((resolve) => {

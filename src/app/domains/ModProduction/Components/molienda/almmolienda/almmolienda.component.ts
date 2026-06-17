@@ -1,4 +1,4 @@
-import { Component, inject, signal, effect, untracked, Input, Renderer2, RendererFactory2 } from '@angular/core';
+import { Component, inject, signal, effect, untracked, Input, Renderer2, RendererFactory2, ChangeDetectorRef} from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { AgGridAngular } from 'ag-grid-angular';
 import { ColDef, GridApi, GridReadyEvent } from 'ag-grid-enterprise';
@@ -103,6 +103,7 @@ export class AlmmoliendaComponent {
   @Input() entradasSimple: boolean = false;
 
   private signalsService = inject(SignalsService);
+  private readonly cdr = inject(ChangeDetectorRef);
   private branchsService = inject(BranchsService);
   private materialsService = inject(MaterialsService);
   private mxmService = inject(MaterialXModuloService);
@@ -554,7 +555,8 @@ export class AlmmoliendaComponent {
     } catch (error) {
       console.error('Error loading user branches:', error);
     }
-  }
+  
+    this.cdr.detectChanges();}
 
   async loadRawMaterials(idCompany: number) {
     try {
@@ -590,7 +592,8 @@ export class AlmmoliendaComponent {
     } catch (error) {
       console.error('Error loading raw materials:', error);
     }
-  }
+  
+    this.cdr.detectChanges();}
 
   private showToast(msg: string) {
     this.toastMsg.set(msg);
@@ -613,7 +616,8 @@ export class AlmmoliendaComponent {
       this.bultosCantidadARevisar = null;
       this.proporcionRevision = null;
     }
-  }
+  
+    this.cdr.detectChanges();}
 
   private async loadCaracteristicasCategories(idCompany: number, idCatalog?: number | null) {
     try {
@@ -654,7 +658,8 @@ export class AlmmoliendaComponent {
       this.caracteristicasCategories = [];
       this.caracteristicasFamilies = [];
     }
-  }
+  
+    this.cdr.detectChanges();}
 
   private normalizeText(value: string | null | undefined): string {
     return (value ?? '')
@@ -779,7 +784,8 @@ export class AlmmoliendaComponent {
         this.filteredRowCount = 0;
       }
     }
-  }
+  
+    this.cdr.detectChanges();}
 
   private sortRowsByBranchAndArticle(rows: any[]): any[] {
     return rows
@@ -844,7 +850,8 @@ export class AlmmoliendaComponent {
     } catch (error) {
       console.warn('Error updating counter for OC creation:', error);
     }
-  }
+  
+    this.cdr.detectChanges();}
 
   private mapRow(i: any): any {
     const matOption = this.matPrimaOptions.find(m => m.id === i.idMaterial);
@@ -1015,7 +1022,8 @@ export class AlmmoliendaComponent {
         idCatalog:     ex?.idCatalog ?? idCatalog ?? null,
       };
     });
-  }
+  
+    this.cdr.detectChanges();}
 
   add() {
     const branchName = this.signalsService.getBranchNameSelectedBySidebar()() ?? '';
@@ -1084,7 +1092,8 @@ export class AlmmoliendaComponent {
       console.error('Error saving molienda:', error);
       alerts.basicAlert('Error', 'Ocurrió un error al guardar.', 'error');
     }
-  }
+  
+    this.cdr.detectChanges();}
 
   revertChanges() {
     const reverted = this.sortRowsByBranchAndArticle(JSON.parse(JSON.stringify(this.originalRowData)));
@@ -1130,7 +1139,8 @@ export class AlmmoliendaComponent {
       alerts.basicAlert('Error', 'No se pudo cambiar el artículo a inactivo.', 'error');
       return false;
     }
-  }
+  
+    this.cdr.detectChanges();}
 
   async deleteRow() {
     if (!this.selectedRow) return;
@@ -1181,5 +1191,6 @@ export class AlmmoliendaComponent {
 
       alerts.basicAlert('Error', 'Ocurrió un error al eliminar.', 'error');
     }
-  }
+  
+    this.cdr.detectChanges();}
 }

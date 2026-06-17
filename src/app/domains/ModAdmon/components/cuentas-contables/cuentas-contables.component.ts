@@ -1,4 +1,4 @@
-import { Component, OnInit, inject, effect, HostListener, ViewChild } from '@angular/core';
+import { Component, OnInit, inject, effect, HostListener, ViewChild, ChangeDetectorRef} from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule, ReactiveFormsModule, FormBuilder, FormGroup } from '@angular/forms';
 import { NgbModal } from '@ng-bootstrap/ng-bootstrap';
@@ -45,6 +45,7 @@ export class CuentasContablesComponent implements OnInit {
   }
 
   private cuentasService = inject(CuentasContablesService);
+  private readonly cdr = inject(ChangeDetectorRef);
   private signalsService = inject(SignalsService);
   private trackingService = inject(TrackingService);
   private modalService = inject(NgbModal);
@@ -537,7 +538,8 @@ export class CuentasContablesComponent implements OnInit {
       return;
     }
     await this.deleteCuenta(this.selectedRowData);
-  }
+  
+    this.cdr.detectChanges();}
 
   openCreateModal(parent?: ICuentaContableTree): void {
     const modalRef = this.modalService.open(ModalCuentaContableComponent, {
@@ -620,7 +622,8 @@ export class CuentasContablesComponent implements OnInit {
         }
       });
     }
-  }
+  
+    this.cdr.detectChanges();}
 
   exportToExcel(): void {
     // Tu implementación existente

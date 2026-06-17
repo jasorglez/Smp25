@@ -214,7 +214,8 @@ export class DetailCellRendererCaracteristicasMpComponent implements ICellRender
       console.error('Error guardando características MP:', e);
       if (!idMap) alerts.basicAlert('Error', 'No se pudieron guardar las características.', 'error');
     }
-  }
+  
+    this.cdr.detectChanges();}
 
   deleteSelected() {
     if (!this.gridApi) { alerts.basicAlert('Error', 'Grid no inicializado.', 'error'); return; }

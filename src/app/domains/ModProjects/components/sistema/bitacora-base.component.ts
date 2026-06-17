@@ -88,7 +88,7 @@ export abstract class BitacoraBaseComponent implements OnInit, ICellRendererAngu
   @Input() data: any;
 
   protected logbookService    = inject(LogbookService);
-  private readonly cdr = inject(ChangeDetectorRef);
+  protected readonly cdr = inject(ChangeDetectorRef);
   protected dailyReportService = inject(DailyReportService);
   protected posicionesService  = inject(PosicionesService);
   protected materialsService   = inject(MaterialsService);
@@ -285,7 +285,8 @@ export abstract class BitacoraBaseComponent implements OnInit, ICellRendererAngu
       const msg = msgs.length ? msgs.join('\n') : (e?.error?.title || e?.message || 'Error desconocido');
       alerts.basicAlert('Error al guardar', msg, 'error');
     }
-  }
+  
+    this.cdr.detectChanges();}
 
   async deleteSelected(): Promise<void> {
     const rows = this.gridApi.getSelectedRows();
@@ -316,7 +317,8 @@ export abstract class BitacoraBaseComponent implements OnInit, ICellRendererAngu
         console.error('Error eliminando ID:', row.id, e);
       },
     });
-  }
+  
+    this.cdr.detectChanges();}
 
   discardChanges(): void { this.loadData(); this.hasUnsavedChanges = false; }
 

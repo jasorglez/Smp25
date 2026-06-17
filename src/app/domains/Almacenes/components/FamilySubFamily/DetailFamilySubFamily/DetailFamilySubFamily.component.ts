@@ -297,7 +297,8 @@ export class DetailFamilySubFamilyComponent implements OnInit {
             }
 
           }
-    }
+    
+          this.cdr.detectChanges();}
 
     private selectRowById(id: number | string) {
     // Dar tiempo al grid para que se actualice

@@ -269,7 +269,8 @@ export class DetallesMatprimaFiltradoComponent {
     } catch (e) {
       console.error('Error cargando detalle matprima:', e);
     }
-  }
+  
+    this.cdr.detectChanges();}
 
   private mapRow(i: any): any {
     return {
@@ -360,7 +361,8 @@ export class DetallesMatprimaFiltradoComponent {
       console.error('Error guardando detalle matprima:', e);
       alerts.reqErrorToast('Error al guardar');
     }
-  }
+  
+    this.cdr.detectChanges();}
 
   revert() {
     // Clear child cached state before replacing rowData
@@ -410,7 +412,8 @@ export class DetallesMatprimaFiltradoComponent {
       console.error('Error eliminando:', e);
       alerts.reqErrorToast('Error al eliminar');
     }
-  }
+  
+    this.cdr.detectChanges();}
 
   private calcRendimiento(jugo: number | null, cantidadSum: number): number | null {
     if (jugo == null || cantidadSum <= 0) return null;

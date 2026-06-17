@@ -1,4 +1,4 @@
-import { Component, inject, OnInit } from '@angular/core';
+import { Component, inject, OnInit, ChangeDetectorRef} from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { AgGridModule } from 'ag-grid-angular';
@@ -19,6 +19,7 @@ import Swal from 'sweetalert2';
 })
 export class ProspectosComponent implements OnInit {
   private svc        = inject(ProspectosService);
+  private readonly cdr = inject(ChangeDetectorRef);
   private signalsSvc = inject(SignalsService);
 
   gridApi!: GridApi;
@@ -234,7 +235,8 @@ export class ProspectosComponent implements OnInit {
     } else {
       Swal.fire({ icon: 'success', title: 'Guardado', timer: 1200, showConfirmButton: false });
     }
-  }
+  
+    this.cdr.detectChanges();}
 
   revertChanges() {
     this.rowData = JSON.parse(JSON.stringify(this.originalData));
@@ -266,7 +268,8 @@ export class ProspectosComponent implements OnInit {
     } catch {
       Swal.fire('Error', 'No se pudo eliminar.', 'error');
     }
-  }
+  
+    this.cdr.detectChanges();}
 
   formatFecha(ts: any): string {
     if (!ts) return '';

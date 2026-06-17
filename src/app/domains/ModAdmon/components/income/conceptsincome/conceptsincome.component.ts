@@ -1,5 +1,5 @@
 import { CommonModule } from '@angular/common';
-import { Component, effect, inject } from '@angular/core';
+import { Component, effect, inject, ChangeDetectorRef} from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { AgGridModule } from 'ag-grid-angular';
 import { ColDef, GridApi, GridReadyEvent } from 'ag-grid-enterprise';
@@ -24,6 +24,7 @@ import { ActivatedRoute } from '@angular/router';
 export class ConceptsincomeComponent {
 
     private incomesAndExpensesService = inject(IncomesAndExpensesService);
+    private readonly cdr = inject(ChangeDetectorRef);
   private signalsService = inject(SignalsService);
   private administrationService = inject(AdministrationService);
   private catalogsService = inject(CatalogsService);
@@ -531,7 +532,8 @@ export class ConceptsincomeComponent {
         'error'
       );
     }
-  }
+  
+    this.cdr.detectChanges();}
 
   async deleteEntry() {
     if (!this.idIncExp) {

@@ -1,4 +1,4 @@
-import { Component, OnInit, OnDestroy, inject, effect, Input, Output, EventEmitter } from '@angular/core';
+import { Component, OnInit, OnDestroy, inject, effect, Input, Output, EventEmitter, ChangeDetectorRef} from '@angular/core';
 import { ActivatedRoute } from '@angular/router';
 import { AG_GRID_LOCALE_ES } from 'assets/i18n/ag-grid.locale.es';
 import { ColDef, GridApi, GridReadyEvent } from 'ag-grid-enterprise';
@@ -66,6 +66,7 @@ export class MaterialesMaestroComponent implements OnInit, OnDestroy {
 
   private gridApi!: GridApi;
   private materialsService = inject(MaterialsService);
+  private readonly cdr = inject(ChangeDetectorRef);
   private signalsService = inject(SignalsService);
   private catalogsService = inject(CatalogsService);
   private providersService = inject(ProvidersService);
@@ -206,7 +207,8 @@ export class MaterialesMaestroComponent implements OnInit, OnDestroy {
     } catch (error) {
       console.error('Error loading catalogs:', error);
     }
-  }
+  
+    this.cdr.detectChanges();}
   
   // Obtener familias de una categoría específica
   getFamiliesByCategory(categoryId: number): any[] {
@@ -248,13 +250,17 @@ export class MaterialesMaestroComponent implements OnInit, OnDestroy {
             if (this.pendingScrollTarget) {
               setTimeout(() => this.scrollToTarget(), 150);
             }
+            this.cdr.detectChanges();
           },
           error: (error) => {
             console.error('Error loading materials:', error);
+            this.rowData = [];
+            this.cdr.detectChanges();
             alerts.basicAlert('Error', 'Error al cargar materiales', 'error');
           }
         });
-  }
+
+    }
 
   // Filtra materiales: solo los que tienen su categoría, familia y subfamilia
   // presentes en los catálogos de la sección (los 3 niveles con el bit en true).
@@ -304,7 +310,8 @@ export class MaterialesMaestroComponent implements OnInit, OnDestroy {
       console.error('❌ Error cargando material filtrado:', error);
       alerts.basicAlert('Error', 'Error al cargar el material', 'error');
     }
-  }
+  
+    this.cdr.detectChanges();}
 
 
   components = {
@@ -1237,7 +1244,8 @@ export class MaterialesMaestroComponent implements OnInit, OnDestroy {
         alerts.basicAlert('Error', `No se pudo eliminar el material: ${errorMsg}`, 'error');
       }
     }
-  }
+  
+    this.cdr.detectChanges();}
 
   async saveChanges(): Promise<void> {
     const hasChildChanges = this.pendingChangesService.hasAnyChanges();
@@ -1469,7 +1477,8 @@ export class MaterialesMaestroComponent implements OnInit, OnDestroy {
       const errorMsg = error?.error?.message || error?.message || 'Error desconocido';
       alerts.basicAlert('Error', `No se pudieron guardar los cambios: ${errorMsg}`, 'error');
     }
-  }
+  
+    this.cdr.detectChanges();}
 
   /**
    * Actualiza la columna "Fecha Cambio" (campo `fecha`) a hoy para los materiales que
@@ -1504,7 +1513,8 @@ export class MaterialesMaestroComponent implements OnInit, OnDestroy {
     if (this.gridApi) {
       this.gridApi.refreshCells({ force: true, columns: ['fecha'] });
     }
-  }
+  
+    this.cdr.detectChanges();}
 
   private prepareMaterialData(row: any): any {
     return {
@@ -1641,7 +1651,8 @@ export class MaterialesMaestroComponent implements OnInit, OnDestroy {
       );
     }
     return newIdMap;
-  }
+  
+    this.cdr.detectChanges();}
 
   async deleteDetailRow(params: any, successCallback: () => void, type: string) {
     const materialId = params.data.campo1;
@@ -1669,7 +1680,8 @@ export class MaterialesMaestroComponent implements OnInit, OnDestroy {
         );
       }
     }
-  }
+  
+    this.cdr.detectChanges();}
 
   private cleanDataForServer(data: any): any {
     const cleanedData = { ...data };
@@ -1805,7 +1817,8 @@ export class MaterialesMaestroComponent implements OnInit, OnDestroy {
       const errorMsg = error?.error?.message || error?.message || 'Error desconocido';
       alerts.basicAlert('Error', `No se pudo guardar el material: ${errorMsg}`, 'error');
     }
-  }
+  
+    this.cdr.detectChanges();}
 
   closeMaterialModal() {
     this.showMaterialModal = false;
@@ -1967,7 +1980,8 @@ export class MaterialesMaestroComponent implements OnInit, OnDestroy {
         }
       }
     }
-  }
+  
+    this.cdr.detectChanges();}
 
   /**
    * Genera el código "Num Mat" (campo insumo) para un material a partir de sus IDs de

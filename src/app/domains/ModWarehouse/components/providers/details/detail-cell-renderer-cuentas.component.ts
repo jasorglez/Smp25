@@ -458,7 +458,8 @@ export class DetailCellRendererComponentCuentas implements ICellRendererAngularC
         console.error('❌ Error al guardar cuentas:', error);
       }
     }
-  }
+  
+    this.cdr.detectChanges();}
 
   deleteSelectedCuenta() {
     if (!this.selectedCuenta) return;

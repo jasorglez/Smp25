@@ -198,7 +198,8 @@ export class MedicionesBoteComponent implements ICellRendererAngularComp {
     } finally {
       this.loading = false;
     }
-  }
+  
+    this.cdr.detectChanges();}
 
   private buildColDefs() {
     const fixed: ColDef[] = [
@@ -437,7 +438,8 @@ export class MedicionesBoteComponent implements ICellRendererAngularComp {
       console.error('Error cerrando entrada:', e);
       alerts.reqErrorToast('Error al cerrar entrada');
     }
-  }
+  
+    this.cdr.detectChanges();}
 
   hasChildChanges(): boolean {
     return this.rowData.some(r => r.__matPrimaHasChanges?.() || !!r.__matPrimaHasDirty);
@@ -477,7 +479,8 @@ export class MedicionesBoteComponent implements ICellRendererAngularComp {
       console.error('Error guardando mediciones:', e);
       alerts.reqErrorToast('Error al guardar');
     }
-  }
+  
+    this.cdr.detectChanges();}
 
   revert() {
     this.rowData = JSON.parse(JSON.stringify(this.originalRowData));
@@ -507,5 +510,6 @@ export class MedicionesBoteComponent implements ICellRendererAngularComp {
       console.error('Error eliminando medición:', e);
       alerts.reqErrorToast('Error al eliminar');
     }
-  }
+  
+    this.cdr.detectChanges();}
 }

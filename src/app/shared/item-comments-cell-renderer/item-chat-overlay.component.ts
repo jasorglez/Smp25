@@ -1,4 +1,4 @@
-import { Component, ElementRef, inject, OnDestroy, OnInit, ViewChild } from '@angular/core';
+import { Component, ElementRef, inject, OnDestroy, OnInit, ViewChild, ChangeDetectorRef} from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Subscription, firstValueFrom } from 'rxjs';
@@ -147,6 +147,7 @@ import { SignalsService } from 'app/services/signals.service';
 })
 export class ItemChatOverlayComponent implements OnInit, OnDestroy {
   private commentsService = inject(ItemCommentsService);
+  private readonly cdr = inject(ChangeDetectorRef);
   private signalsService  = inject(SignalsService);
   private sub?: Subscription;
   private focusTimer?: ReturnType<typeof setTimeout>;
@@ -300,7 +301,8 @@ export class ItemChatOverlayComponent implements OnInit, OnDestroy {
       this.pendingTag = '';
       this.forceComment = false;  // mensaje enviado, ya se puede cerrar
     } finally { this.saving = false; }
-  }
+  
+    this.cdr.detectChanges();}
 
   startEdit(c: ItemComment) { this.editingId = c.id!; this.editingText = c.text; }
   cancelEdit() { this.editingId = null; this.editingText = ''; }
@@ -315,7 +317,8 @@ export class ItemChatOverlayComponent implements OnInit, OnDestroy {
       this.commentsService.commentSaved$.next(updated);
       this.cancelEdit();
     } finally { this.saving = false; }
-  }
+  
+    this.cdr.detectChanges();}
 
   getTag(text: string): string {
     if (!text) return '';

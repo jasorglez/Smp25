@@ -1,5 +1,5 @@
 import { CommonModule } from '@angular/common';
-import { Component, effect, inject, input } from '@angular/core';
+import { Component, effect, inject, input, ChangeDetectorRef} from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { AgGridModule } from 'ag-grid-angular';
 import {
@@ -25,6 +25,7 @@ import { DetailLoanPaymentsComponent } from '../detail-loan-payments/detail-loan
 })
 export class EmployeesxLoansComponent {
   private employeesxloansService = inject(EmployeesxloansService);
+  private readonly cdr = inject(ChangeDetectorRef);
   private signalsService = inject(SignalsService);
   private timeService = inject(TimeService);
   private trackingService = inject(TrackingService);
@@ -224,7 +225,8 @@ export class EmployeesxLoansComponent {
       dateObj: date,
       formatted: `${('0' + date.getDate()).slice(-2)}-${('0' + (date.getMonth() + 1)).slice(-2)}-${date.getFullYear()}`,
     };
-  }
+  
+    this.cdr.detectChanges();}
 
   async addRow() {
     const tempId = `temp_${this.tempIdCounter++}`;
@@ -248,7 +250,8 @@ export class EmployeesxLoansComponent {
         this.maestroGridApi.startEditingCell({ rowIndex: 0, colKey: 'monto' });
       }
     });
-  }
+  
+    this.cdr.detectChanges();}
 
   onMaestroGridReady(params: GridReadyEvent) {
     this.maestroGridApi = params.api;
@@ -284,7 +287,8 @@ export class EmployeesxLoansComponent {
       console.error(error);
       alerts.userSaveErrorToast('Error', 'Ocurrió un error al actualizar los datos. Por favor, intente nuevamente.');
     }
-  }
+  
+    this.cdr.detectChanges();}
 
   revertMasterData() {
     this.loadData();

@@ -433,7 +433,8 @@ export class SubatalogsComponent implements CanComponentDeactivate {
         'error'
       );
     }
-  }
+  
+    this.cdr.detectChanges();}
 
   revert() {
     //this.obtenerTables();

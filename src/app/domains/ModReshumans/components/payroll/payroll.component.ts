@@ -5,8 +5,7 @@ import {
   effect,
   HostListener,
   inject,
-  OnInit,
-} from '@angular/core';
+  OnInit, ChangeDetectorRef} from '@angular/core';
 import { AgGridModule } from 'ag-grid-angular';
 import {
   PayrollService,
@@ -71,6 +70,7 @@ export class PayrollComponent {
   }
 
   private signalsService = inject(SignalsService);
+  private readonly cdr = inject(ChangeDetectorRef);
 
   @HostListener('window:beforeunload', ['$event'])
   unloadNotification($event: any): void {
@@ -510,7 +510,8 @@ export class PayrollComponent {
       );
     }
       */
-  }
+  
+    this.cdr.detectChanges();}
 
   onSelectionChanged(event: any) {
     const selectedNodes = event.api.getSelectedNodes();

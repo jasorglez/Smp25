@@ -1,4 +1,4 @@
-import { Component, effect, inject, TemplateRef, ViewChild } from '@angular/core';
+import { Component, effect, inject, TemplateRef, ViewChild, ChangeDetectorRef} from '@angular/core';
 import { Icontract } from '../../../../interface/icontract';
 
 import { DomainsModule } from 'app/domains/domainsmodule';
@@ -56,6 +56,7 @@ export class ContractsComponent {
 
   // Inject services
   private trackingService = inject(TrackingService);
+  private readonly cdr = inject(ChangeDetectorRef);
   private followprojectsService = inject(FollowprojectsService);
   private signalsService = inject(SignalsService);
   private providersService = inject(ProvidersService);
@@ -185,7 +186,8 @@ export class ContractsComponent {
       await this.resetGridSize();
       this.isOpen = false;
     }
-  }
+  
+    this.cdr.detectChanges();}
 
   async adjustGridSize() {
     this.gridHeight = '20vh';
@@ -716,7 +718,8 @@ export class ContractsComponent {
         'error'
       );
     }
-  }
+  
+    this.cdr.detectChanges();}
 
   private cleanDataForServer(data: any): any {
     const cleanedData = { ...data };
@@ -792,7 +795,8 @@ export class ContractsComponent {
       this.getContracts();
       this.selectedRowData = null;
     });
-  }
+  
+    this.cdr.detectChanges();}
 
   getTermInDays(dateStar: string, dateEnd: string): number {
     const start = new Date(dateStar);

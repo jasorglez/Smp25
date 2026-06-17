@@ -1,4 +1,4 @@
-﻿import { Component, OnInit } from '@angular/core';
+﻿import { Component, OnInit, inject, ChangeDetectorRef} from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ActivatedRoute } from '@angular/router';
 import { DomSanitizer, SafeResourceUrl } from '@angular/platform-browser';
@@ -32,6 +32,7 @@ import pdfFonts from 'pdfmake/build/vfs_fonts';
   `]
 })
 export class PublicDocViewerComponent implements OnInit {
+  private readonly cdr = inject(ChangeDetectorRef);
   loading = true;
   errorMessage = '';
   pdfUrl: SafeResourceUrl | null = null;
@@ -95,7 +96,8 @@ export class PublicDocViewerComponent implements OnInit {
       this.loading = false;
       this.errorMessage = 'Error al generar el reporte PDF.';
     }
-  }
+  
+    this.cdr.detectChanges();}
 
   // ============================================================
   // COPIA EXACTA del reporte de OC (detail-cell-renderer-purchaseorder-report)
@@ -515,7 +517,8 @@ export class PublicDocViewerComponent implements OnInit {
     };
 
     this.createPdfOutput(docDefinition);
-  }
+  
+    this.cdr.detectChanges();}
 
   private async buildGenericReport(data: any) {
     const doc = data.documentData?.document || {};

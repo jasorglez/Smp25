@@ -1,4 +1,4 @@
-import { Component, inject } from '@angular/core';
+import { Component, inject, ChangeDetectorRef} from '@angular/core';
 import { concat, lastValueFrom } from 'rxjs';
 import { toArray, tap } from 'rxjs/operators';
 import { RouterModule } from '@angular/router';
@@ -44,6 +44,7 @@ ngOnInit() {
 
   currentIndex = 0;
   private catalogService = inject(CatalogsService);
+  private readonly cdr = inject(ChangeDetectorRef);
   private signalsService = inject(SignalsService);
 
   public rowSelection: 'single' | 'multiple' = 'single';
@@ -239,7 +240,8 @@ public gridOptions: any = {
       );
     }
 
-  }
+  
+    this.cdr.detectChanges();}
 
 
   revert(){

@@ -1,4 +1,4 @@
-import { Component, effect, HostListener, inject } from '@angular/core';
+import { Component, effect, HostListener, inject, ChangeDetectorRef} from '@angular/core';
 import { ColDef, GridApi, GridReadyEvent, CellDoubleClickedEvent } from 'ag-grid-enterprise';
 import { alerts } from 'app/helpers/alerts';
 import { AgGridModule } from 'ag-grid-angular';
@@ -23,6 +23,7 @@ import { GeneratorsService } from 'app/services/generators.service';
 export class EstimatesComponent {
 
   private estimatesService = inject(EstimatesService);
+  private readonly cdr = inject(ChangeDetectorRef);
   private signalsService = inject(SignalsService);
   private pdfEstimatesService = inject(PdfEstimatesService);
   private trackingService = inject(TrackingService);
@@ -573,7 +574,8 @@ export class EstimatesComponent {
         'error'
       );
     }
-  }
+  
+    this.cdr.detectChanges();}
 
   async deleteEntry() {
     this.trackingService.addLog(
@@ -633,7 +635,8 @@ export class EstimatesComponent {
           this.selectedEstimate = null;
         }
       );
-  }
+  
+    this.cdr.detectChanges();}
 
   revert() {
     this.obtenerDatos();
@@ -669,7 +672,8 @@ export class EstimatesComponent {
 
   async activateGeneratorsTab() {
     await this.adjustGridSize();
-  }
+  
+    this.cdr.detectChanges();}
 
   async adjustGridSize() {
     this.gridHeight = '250px'; // Reducir tamaño del grid
@@ -742,7 +746,8 @@ export class EstimatesComponent {
         'error'
       );
     }
-  }
+  
+    this.cdr.detectChanges();}
 
   private async createEstimateDataFromServices(estimateData: any, estimateItems: any[], conceptsResults: any[][]) {
     // Procesar items y agrupar por categorías si es necesario
@@ -981,7 +986,8 @@ export class EstimatesComponent {
         'error'
       );
     }
-  }
+  
+    this.cdr.detectChanges();}
 
   // Eliminar item de estimación
   async deleteEstimateItem() {
@@ -1033,7 +1039,8 @@ export class EstimatesComponent {
         'error'
       );
     }
-  }
+  
+    this.cdr.detectChanges();}
 
   // Limpiar datos de item para servidor
   private cleanEstimateItemDataForServer(data: any): any {

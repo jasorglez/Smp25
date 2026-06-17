@@ -286,7 +286,8 @@ export class DetallesRequisicionesComponent implements OnInit {
         this.loadData();
       }, 500); // Pequeño delay para asegurar que el servidor procesó
     }
-  }
+  
+    this.cdr.detectChanges();}
 
   discardChanges() {
     if (this.isLocked) {

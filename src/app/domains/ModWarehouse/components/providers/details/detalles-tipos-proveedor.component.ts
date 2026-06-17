@@ -484,7 +484,8 @@ export class DetallesTiposProveedorComponent implements ICellRendererAngularComp
       this.subfamilias = [];
       this.rowData = [];
     }
-  }
+  
+    this.cdr.detectChanges();}
 
   refresh(): boolean {
     return false;
@@ -705,7 +706,8 @@ export class DetallesTiposProveedorComponent implements ICellRendererAngularComp
         'error'
       );
     }
-  }
+  
+    this.cdr.detectChanges();}
 
   async saveChanges(): Promise<void> {
     // Validar que todas las filas tengan las 3 columnas llenas
@@ -1031,14 +1033,16 @@ export class DetallesTiposProveedorComponent implements ICellRendererAngularComp
         'error'
       );
     }
-  }
+  
+    this.cdr.detectChanges();}
 
   async revertChanges(): Promise<void> {
     // Recargar datos desde el endpoint
     await this.loadData();
     this.hasChanges = false;
     this.selectedRow = null;
-  }
+  
+    this.cdr.detectChanges();}
 
   getPreviewString(): string {
     const validRows = this.rowData.filter(

@@ -1,4 +1,4 @@
-import { Component, inject, input, OnInit } from '@angular/core';
+import { Component, inject, input, OnInit, ChangeDetectorRef} from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { AgGridModule } from 'ag-grid-angular';
 import { ColDef, GridApi, GridOptions, GridReadyEvent } from 'ag-grid-enterprise';
@@ -17,6 +17,7 @@ import { lastValueFrom } from 'rxjs';
 })
 export class EmployeePersonalDataComponent implements OnInit {
   private employeeService = inject(EmployeesService);
+  private readonly cdr = inject(ChangeDetectorRef);
   private inegiService = inject(InegiService);
 
   employeeData = input<any>(null);
@@ -209,7 +210,8 @@ export class EmployeePersonalDataComponent implements OnInit {
     this.infoCp = [];
     this.hasUnsavedChanges = false;
     this.gridApi?.setGridOption('rowData', this.rowData);
-  }
+  
+    this.cdr.detectChanges();}
 
   async save() {
     const data = this.employeeData();
@@ -229,9 +231,11 @@ export class EmployeePersonalDataComponent implements OnInit {
     } finally {
       this.saving = false;
     }
-  }
+  
+    this.cdr.detectChanges();}
 
   async revert() {
     await this.refreshFromServer();
-  }
+  
+    this.cdr.detectChanges();}
 }

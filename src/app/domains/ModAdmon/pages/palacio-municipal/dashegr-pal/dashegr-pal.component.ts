@@ -1,4 +1,4 @@
-import { Component, inject, OnInit, ViewChild, effect } from '@angular/core';
+import { Component, inject, OnInit, ViewChild, effect, ChangeDetectorRef} from '@angular/core';
 import { RouterModule } from '@angular/router';
 import { DomainsModule } from 'app/domains/domainsmodule';
 import { ColDef, GridApi, GridReadyEvent } from 'ag-grid-enterprise';
@@ -53,6 +53,7 @@ export class DashegrPalComponent implements OnInit {
 
   authService = inject(AuthService);
   private signalsService = inject(SignalsService);
+  private readonly cdr = inject(ChangeDetectorRef);
   private incomesExpensesService = inject(IncomesAndExpensesService);
 
   // Grid variables
@@ -248,7 +249,8 @@ export class DashegrPalComponent implements OnInit {
     } finally {
       this.isLoading = false;
     }
-  }
+  
+    this.cdr.detectChanges();}
 
   updateChart(): void {
     // Separar totales por tipo de cuenta basado en el nombre

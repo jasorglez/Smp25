@@ -1,5 +1,5 @@
 import { CommonModule } from '@angular/common';
-import { Component, effect, HostListener, inject, ViewChild } from '@angular/core';
+import { Component, effect, HostListener, inject, ViewChild, ChangeDetectorRef} from '@angular/core';
 import { SignalsService } from 'app/services/signals.service';
 import { AgGridModule } from 'ag-grid-angular';
 import { NgbModal } from '@ng-bootstrap/ng-bootstrap';
@@ -37,6 +37,7 @@ export class BranchesComponent implements CanComponentDeactivate {
   @ViewChild('content') content: any;
 
   public signalsService = inject(SignalsService);
+  private readonly cdr = inject(ChangeDetectorRef);
   public environment = environment;
   private branchesService = inject(BranchsService);
   private modalService = inject(NgbModal);
@@ -136,25 +137,25 @@ export class BranchesComponent implements CanComponentDeactivate {
         (data: Ibranch[]) => {
           this.masterRowData = data;
           this.masterNotSavedChanges = false;
+          this.cdr.detectChanges();
         },
         (error) => {
           console.error('Error fetching all branches:', error);
         }
       );
     } else {
-      
       this.branchesService.getBranches(this.idRoot).subscribe(
         (data: Ibranch[]) => {
           this.masterRowData = data.sort((a, b) =>
             a.name.localeCompare(b.name)
           );
           this.masterNotSavedChanges = false;
+          this.cdr.detectChanges();
         },
         (error) => {
           console.error('Error fetching branches:', error);
         }
       );
-    
     }
   }
 
@@ -165,6 +166,7 @@ export class BranchesComponent implements CanComponentDeactivate {
           ...estado,
           id: index + 1,
         }));
+        this.cdr.detectChanges();
       },
       error: (error) => {
         console.error('Error fetching states', error);
@@ -176,6 +178,7 @@ export class BranchesComponent implements CanComponentDeactivate {
     this.rootService.getRoot().subscribe({
       next: (data: any) => {
         this.companies = data;
+        this.cdr.detectChanges();
       },
       error: (error) => {
         console.error('Error al obtener las compañías:', error);
@@ -619,7 +622,8 @@ export class BranchesComponent implements CanComponentDeactivate {
         'error'
       );
     }
-  }
+  
+    this.cdr.detectChanges();}
 
   async saveMasterChanges() {
     const isValid = this.masterRowData.every(
@@ -731,7 +735,8 @@ export class BranchesComponent implements CanComponentDeactivate {
         'error'
       );
     }
-  }
+  
+    this.cdr.detectChanges();}
 
   async deleteBranch() {
     const selectedNodes = this.masterGridApi.getSelectedNodes();

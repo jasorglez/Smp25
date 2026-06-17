@@ -643,7 +643,8 @@ export class DetailPermisosXDeptosComponent implements ICellRendererAngularComp 
       console.error(error);
       alerts.userBasicAlert('Error', 'Ocurrió un error al actualizar los datos. Por favor, intente nuevamente.', 'error');
     }
-  }
+  
+    this.cdr.detectChanges();}
 
   deleteSelectedWarehouse() {
     if (!this.selectedWarehouse) {
@@ -735,7 +736,8 @@ export class DetailPermisosXDeptosComponent implements ICellRendererAngularComp 
         scope: 'userSystem',
       });
     }
-  }
+  
+    this.cdr.detectChanges();}
 
   /** Título del modal: nombre del usuario y posición (no departamento ni sucursal). */
   private buildPermissionsModalTitle(idPosicion: number): string {

@@ -211,7 +211,8 @@ async loadMaterialData(onComplete?: () => void) {
         this.materialGridApi.setGridOption('rowData', this.materialRowData);
       }
     }
-  }
+  
+    this.cdr.detectChanges();}
 
   refreshMaterials() {
     this.loadMaterialData();

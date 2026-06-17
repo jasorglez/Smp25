@@ -207,7 +207,8 @@ export class BitacoraTimesInactivosComponent extends BitacoraBaseComponent {
       const msg = e?.error?.title || e?.message || 'Error desconocido';
       alerts.basicAlert('Error al guardar', msg, 'error');
     }
-  }
+  
+    this.cdr.detectChanges();}
 
   // ── Eliminar ─────────────────────────────────────────────────────────────────
   override async deleteSelected(): Promise<void> {
@@ -227,7 +228,8 @@ export class BitacoraTimesInactivosComponent extends BitacoraBaseComponent {
       next: () => { alerts.basicAlert('Eliminado', 'Registro eliminado', 'success'); this.loadData(); },
       error: () => alerts.basicAlert('Error', 'No se pudo eliminar', 'error'),
     });
-  }
+  
+    this.cdr.detectChanges();}
 
   // ── buildPayload ─────────────────────────────────────────────────────────────
   buildPayload(item: any): any {
@@ -298,5 +300,6 @@ export class BitacoraTimesInactivosComponent extends BitacoraBaseComponent {
       },
       error: () => alerts.basicAlert('Error', `No se pudo agregar la ${label.toLowerCase()}`, 'error'),
     });
-  }
+  
+    this.cdr.detectChanges();}
 }

@@ -170,7 +170,8 @@ export class PdfMaterialsDistributionComponent implements OnInit, ICellRendererA
 
   private async tryB64(url: string): Promise<string | null> {
     try { return await this.base64Service.convertImageToBase64(url); } catch { return null; }
-  }
+  
+    this.cdr.detectChanges();}
 
   private async generatePdf(): Promise<void> {
     this.isLoading = true;
@@ -384,5 +385,6 @@ export class PdfMaterialsDistributionComponent implements OnInit, ICellRendererA
       this.isLoading = false;
       this.cdr.detectChanges();
     }
-  }
+  
+    this.cdr.detectChanges();}
 }

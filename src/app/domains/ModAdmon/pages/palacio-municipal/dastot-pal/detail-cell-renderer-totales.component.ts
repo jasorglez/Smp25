@@ -173,6 +173,7 @@ export class DetailCellRendererTotalesComponent {
       console.error('[DetailCellRendererTotales] Error loading detail data:', error);
       this.rowData = [];
     }
-  }
+  
+    this.cdr.detectChanges();}
 }
 

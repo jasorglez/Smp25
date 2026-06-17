@@ -1,4 +1,4 @@
-import { Component, effect, inject, OnInit } from '@angular/core';
+import { Component, effect, inject, OnInit, ChangeDetectorRef} from '@angular/core';
 import { CellDoubleClickedEvent, ColDef, GridApi, GridReadyEvent, ICellRendererParams } from 'ag-grid-enterprise';
 import { IncomesAndExpensesService } from 'app/services/incomes-and-expenses.service';
 import { ModalService } from 'app/services/modal.service';
@@ -49,6 +49,7 @@ declare var bootstrap: any;
 })
 export class IngresosPalacioComponent implements OnInit {
   private incomesAndExpensesService = inject(IncomesAndExpensesService);
+  private readonly cdr = inject(ChangeDetectorRef);
   private modalServiceTable = inject(ModalService);
   private administrationService = inject(AdministrationService);
   private catalogadmonService = inject(CatalogadmonService);
@@ -867,7 +868,8 @@ async saveChanges() {
       'error'
     );
   }
-}
+
+  this.cdr.detectChanges();}
 
 
   // Método separado para guardar los registros de income
@@ -902,7 +904,8 @@ async saveChanges() {
         forkJoin(allObservables) // Usar forkJoin para ejecutar todas en paralelo
       );
     }
-  }
+  
+    this.cdr.detectChanges();}
 
   async deleteEntry() {
     const selectedNodes = this.gridApi.getSelectedNodes();
@@ -966,7 +969,8 @@ async saveChanges() {
           this.selectedIncomes = null;
         }
       );
-  }
+  
+    this.cdr.detectChanges();}
 
   revert() {
     this.getIncomes();
@@ -1175,7 +1179,8 @@ async saveChanges() {
       );
       console.error('Error generando reporte:', error);
     }
-  }
+  
+    this.cdr.detectChanges();}
 
   collapseReportDetail(incomeId: number) {
     if (this.gridApi) {
@@ -1318,7 +1323,8 @@ async saveChanges() {
         'error'
       );
     }
-  }
+  
+    this.cdr.detectChanges();}
 
   async deleteConceptRow(params: any, successCallback: () => void) {
     const conceptId = params.data.id;
@@ -1340,7 +1346,8 @@ async saveChanges() {
         );
       }
     }
-  }
+  
+    this.cdr.detectChanges();}
 
   private cleanConceptData(data: any): any {
     const cleanedData = { ...data };
@@ -1489,7 +1496,8 @@ async saveChanges() {
         'error'
       );
     }
-  }
+  
+    this.cdr.detectChanges();}
 
   // ==================== MÉTODOS PARA EL REPORTE PDF DE INGRESOS ====================
 
@@ -1559,7 +1567,8 @@ async saveChanges() {
     } finally {
       this.isGeneratingPdfReport = false;
     }
-  }
+  
+    this.cdr.detectChanges();}
 
   private async loadIncomesForDateRange(startDate: string, endDate: string): Promise<any[]> {
     return new Promise((resolve, reject) => {
@@ -1603,7 +1612,8 @@ async saveChanges() {
         }
       });
     });
-  }
+  
+    this.cdr.detectChanges();}
 
   private async loadFullIngresosCatalog(): Promise<any[]> {
     return new Promise((resolve, reject) => {
@@ -1896,7 +1906,8 @@ async saveChanges() {
       console.error('Error en generateIngresosPDF:', error);
       throw error;
     }
-  }
+  
+    this.cdr.detectChanges();}
 
   private buildCatalogTree(catalogData: any[]): any[] {
     const map = new Map<number, any>();

@@ -1,4 +1,4 @@
-import { Component, effect, HostListener, inject, OnInit } from '@angular/core';
+import { Component, effect, HostListener, inject, OnInit, ChangeDetectorRef} from '@angular/core';
 import { RouterModule, ActivatedRoute } from '@angular/router';
 import { DomainsModule } from 'app/domains/domainsmodule';
 import { CellDoubleClickedEvent, ColDef, GridApi, GridReadyEvent, ICellRendererParams } from 'ag-grid-enterprise';
@@ -21,6 +21,7 @@ import { TrackingService } from 'app/services/tracking.service';
 export default class DetailClockComponent implements OnInit {
 
    private payrollService = inject(PayrollService);
+   private readonly cdr = inject(ChangeDetectorRef);
    private signalsService = inject(SignalsService);
    private route = inject(ActivatedRoute);
    private fb = inject(FormBuilder);
@@ -400,7 +401,8 @@ export default class DetailClockComponent implements OnInit {
        this.resetGridSize();
        this.isOpen = false;
      }
-   }
+   
+     this.cdr.detectChanges();}
  
    resetGridSize() {
      this.gridHeight = '80vh'; // Reset to default height

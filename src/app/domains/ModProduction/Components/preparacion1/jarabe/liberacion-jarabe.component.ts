@@ -187,7 +187,8 @@ export class LiberacionJarabeComponent implements OnInit, OnChanges {
     } catch {
       this.rowData = [];
     }
-  }
+  
+    this.cdr.detectChanges();}
 
   private mapItem(d: any): any {
     return {
@@ -229,7 +230,8 @@ export class LiberacionJarabeComponent implements OnInit, OnChanges {
         active: true
       }));
     } catch { /* silently fail, user can retry */ }
-  }
+  
+    this.cdr.detectChanges();}
 
   async saveAll() {
     const newItems = this.rowData.filter(r => r.__isNew);
@@ -254,7 +256,8 @@ export class LiberacionJarabeComponent implements OnInit, OnChanges {
       this.hasUnsavedChanges = false;
       this.gridApi.redrawRows();
     } catch { alerts.basicAlert('Error', 'Error al guardar liberación.', 'error'); }
-  }
+  
+    this.cdr.detectChanges();}
 
   async deleteSelectedItem() {
     const selected = this.gridApi.getSelectedNodes();
@@ -272,7 +275,8 @@ export class LiberacionJarabeComponent implements OnInit, OnChanges {
       this.rowData = this.rowData.filter(r => r.id !== item.id);
       this.gridApi.setGridOption('rowData', this.rowData);
     } catch { alerts.basicAlert('Error', 'Error al eliminar.', 'error'); }
-  }
+  
+    this.cdr.detectChanges();}
 
   discardChanges() { this.loadData(); this.hasUnsavedChanges = false; }
   onCellValueChanged(e: any) { e.data.__modified = true; this.hasUnsavedChanges = true; }

@@ -231,7 +231,8 @@ export class DetailCellRendererIncomeComponent implements OnInit, OnDestroy {
       // If no data loader available, show empty state
       this.generateReport();
     }
-  }
+  
+    this.cdr.detectChanges();}
 
   async loadSetupManagementInfo() {
     if (this.context?.administrationService && this.context?.idRoot) {
@@ -248,7 +249,8 @@ export class DetailCellRendererIncomeComponent implements OnInit, OnDestroy {
         this.setupManagementInfo = null;
       }
     }
-  }
+  
+    this.cdr.detectChanges();}
 
   loadMeasures() {
     if (this.context && this.context.catalogsService && this.context.idRoot) {
@@ -1069,7 +1071,8 @@ export class DetailCellRendererIncomeComponent implements OnInit, OnDestroy {
       this.pdfUrl = null;
       alerts.basicAlert('Error', 'No se pudo generar el reporte PDF', 'error');
     }
-  }
+  
+    this.cdr.detectChanges();}
 
   private formatDate(dateString: string | null | undefined): string {
     if (!dateString) {

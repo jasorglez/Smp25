@@ -107,5 +107,6 @@ export class DetallesEntradasMoliendaComponent {
     } catch (error) {
       console.error('Error cargando entradas molienda:', error);
     }
-  }
+  
+    this.cdr.detectChanges();}
 }

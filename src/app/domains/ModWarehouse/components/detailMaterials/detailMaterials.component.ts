@@ -1,5 +1,5 @@
 import { CommonModule } from '@angular/common';
-import { Component, effect, HostListener, inject } from '@angular/core';
+import { Component, effect, HostListener, inject, ChangeDetectorRef} from '@angular/core';
 import { SignalsService } from 'app/services/signals.service';
 import { AgGridModule } from 'ag-grid-angular';
 import { MultiLineEditorComponent } from 'app/shared/multi-line/multi-line-editor.component';
@@ -38,6 +38,7 @@ declare const bootstrap: any;
 })
 export class DetailMaterialsComponent {
   private signalsService = inject(SignalsService);
+  private readonly cdr = inject(ChangeDetectorRef);
   private branchesService = inject(BranchsService);
   private modalServiceTable = inject(ModalService);
   private inegiService = inject(InegiService);
@@ -615,7 +616,8 @@ export class DetailMaterialsComponent {
         'error'
       );
     }
-  }
+  
+    this.cdr.detectChanges();}
 
   async deleteBranch() {
     const selectedNodes = this.masterGridApi.getSelectedNodes();

@@ -172,7 +172,8 @@ export class DetalleItemsPedimentosComponent implements ICellRendererAngularComp
     } catch (e) {
       console.warn('hydrateArticulosLockIfNeeded', e);
     }
-  }
+  
+    this.cdr.detectChanges();}
 
   refresh(params?: ICellRendererParams): boolean {
     if (params) {
@@ -281,7 +282,8 @@ export class DetalleItemsPedimentosComponent implements ICellRendererAngularComp
     } catch (e) {
       console.warn('refreshArticulosFromServer', e);
     }
-  }
+  
+    this.cdr.detectChanges();}
 
   buildRowData() {
     const articulos = (this.params.data.articulos || []).filter(
@@ -422,7 +424,8 @@ export class DetalleItemsPedimentosComponent implements ICellRendererAngularComp
       console.error('❌ Error al guardar cambios:', error);
       alerts.basicAlert('Error', 'Ocurrió un error al guardar los cambios', 'error');
     }
-  }
+  
+    this.cdr.detectChanges();}
 
   revert() {
     if (this.articulosLocked) return;
@@ -554,7 +557,8 @@ export class DetalleItemsPedimentosComponent implements ICellRendererAngularComp
     } catch (error) {
       console.error('❌ Error al actualizar pedimentoNum en requisición:', error);
     }
-  }
+  
+    this.cdr.detectChanges();}
 
   get colDefs(): ColDef[] {
     if (this._colDefs) {

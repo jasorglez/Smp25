@@ -263,7 +263,8 @@ export class DetailPermissionsUserComponent implements ICellRendererAngularComp 
       this.resetGridSize();
       this.isOpen = false;
     }
-  }
+  
+    this.cdr.detectChanges();}
 
   resetGridSize() {
     this.gridHeight = '80vh'; // Reset to default height
@@ -354,7 +355,8 @@ export class DetailPermissionsUserComponent implements ICellRendererAngularComp 
         'error'
       );
     }
-  }
+  
+    this.cdr.detectChanges();}
 
   revertDetailData() {
     this.obtenerDatos(this.idUser,this.idBranch,this.idRole, this.idPosicion);

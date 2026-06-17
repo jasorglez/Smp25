@@ -836,7 +836,8 @@ export class DetallesRequisicionDelisonComponent implements OnInit, OnDestroy {
       console.error('❌ Error al cargar y validar proveedores:', error);
       return [];
     }
-  }
+  
+    this.cdr.detectChanges();}
 
   private loadFrequentArticles() {
     if (!this.params?.data) return;
@@ -1733,7 +1734,8 @@ export class DetallesRequisicionDelisonComponent implements OnInit, OnDestroy {
       console.error('❌ Error al eliminar item:', error);
       alerts.reqErrorToast('Error', 'No se pudo eliminar el item');
     }
-  }
+  
+    this.cdr.detectChanges();}
 
   async saveChanges() {
     if (!this.params?.data?.departmentId) {
@@ -2024,7 +2026,8 @@ export class DetallesRequisicionDelisonComponent implements OnInit, OnDestroy {
       .catch(() => {
         alerts.reqErrorToast('Error', 'Ocurrió un error al guardar los artículos');
       });
-  }
+  
+    this.cdr.detectChanges();}
 
   async saveMultiGuardar() {
     // 1. Validar que haya al menos un item seleccionado
@@ -2295,7 +2298,8 @@ export class DetallesRequisicionDelisonComponent implements OnInit, OnDestroy {
       alerts.closeLoading();
       alerts.reqErrorToast('Error', 'No se pudo crear la cotización');
     }
-  }
+  
+    this.cdr.detectChanges();}
 
   discardChanges() {
     if (!this.hasUnsavedChanges && !this.isAddingNewItem) {
@@ -2484,7 +2488,8 @@ export class DetallesRequisicionDelisonComponent implements OnInit, OnDestroy {
     } catch (err) {
       // Error cargando catálogos
     }
-  }
+  
+    this.cdr.detectChanges();}
 
   onCategoryChange(): void {
     // Limpiar selecciones dependientes
@@ -2609,7 +2614,8 @@ export class DetallesRequisicionDelisonComponent implements OnInit, OnDestroy {
       this.panelProviderNames = map;
     } catch { this.panelProviderNames = null; }
     this.panelOpen = true;
-  }
+  
+    this.cdr.detectChanges();}
 
   /** El usuario eligió una cantidad/proveedor en el panel: la escribe en la celda + comenta. */
   onPanelSeleccionar(ev: { cantidad: number; idProvider: number; proveedor: string; texto: string }): void {
@@ -2647,7 +2653,8 @@ export class DetallesRequisicionDelisonComponent implements OnInit, OnDestroy {
       minCompra: Number(p.minCompra || 0)
     }));
     this.minPanelOpen = true;
-  }
+  
+    this.cdr.detectChanges();}
 
   /** El usuario aceptó la cantidad en el modal de mínimos: la escribe en la celda. */
   onMinPanelSeleccionar(ev: { cantidad: number; idProvider: number; proveedor: string }): void {
@@ -2701,7 +2708,8 @@ export class DetallesRequisicionDelisonComponent implements OnInit, OnDestroy {
     }
     // Refrescar las celdas para que aparezca el indicador de comentario, sin abrir el modal.
     this.gridApi?.refreshCells({ force: true });
-  }
+  
+    this.cdr.detectChanges();}
 
 
   // ==================== PROPAGACIÓN A PEDIMENTOS ====================
@@ -2834,7 +2842,8 @@ export class DetallesRequisicionDelisonComponent implements OnInit, OnDestroy {
       console.error('❌ Error al propagar cambios a pedimentos:', error);
       // No lanzar error para no bloquear el guardado principal
     }
-  }
+  
+    this.cdr.detectChanges();}
 
   // ==================== PDF METHODS ====================
 
@@ -2869,7 +2878,8 @@ export class DetallesRequisicionDelisonComponent implements OnInit, OnDestroy {
       this.pdfUrl = null;
       alerts.reqErrorToast('Error', 'No se pudo generar el PDF de la requisición');
     }
-  }
+  
+    this.cdr.detectChanges();}
 
   private async createCotizationAutomatically(): Promise<void> {
     try {
@@ -2958,7 +2968,8 @@ export class DetallesRequisicionDelisonComponent implements OnInit, OnDestroy {
     } catch (error) {
       throw error;
     }
-  }
+  
+    this.cdr.detectChanges();}
 
   closeReport() {
     // Emit event to parent component to handle collapse

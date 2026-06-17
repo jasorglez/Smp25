@@ -321,7 +321,8 @@ export class LimpiezaJarabeComponent implements OnInit, OnChanges {
       this.hasUnsavedChanges = false;
       this.gridApi.redrawRows();
     } catch { alerts.basicAlert('Error', 'Error al guardar limpieza.', 'error'); }
-  }
+  
+    this.cdr.detectChanges();}
 
   async deleteSelectedItem() {
     const selected = this.gridApi.getSelectedNodes();
@@ -339,7 +340,8 @@ export class LimpiezaJarabeComponent implements OnInit, OnChanges {
       this.rowData = this.rowData.filter(r => r.id !== item.id);
       this.gridApi.setGridOption('rowData', this.rowData);
     } catch { alerts.basicAlert('Error', 'Error al eliminar.', 'error'); }
-  }
+  
+    this.cdr.detectChanges();}
 
   openObsModal(row: any) {
     this.obsModalRow = row;

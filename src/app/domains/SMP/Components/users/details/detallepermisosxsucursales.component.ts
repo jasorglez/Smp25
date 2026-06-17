@@ -966,7 +966,8 @@ export class DetallePermisosXSucursalesComponent implements ICellRendererAngular
       console.error(error);
       alerts.userBasicAlert('Error', 'Ocurrió un error al actualizar los datos. Por favor, intente nuevamente.', 'error');
     }
-  }
+  
+    this.cdr.detectChanges();}
 
   async deleteSelectedPermission() {
     if (!this.selectedPermission) return;
@@ -1029,7 +1030,8 @@ export class DetallePermisosXSucursalesComponent implements ICellRendererAngular
       this.selectedPermission = null;
       this.signalsService.setSecurityDelta(this.userId, -1);
     });
-  }
+  
+    this.cdr.detectChanges();}
 
   toggleBranches(params?: any) {
     if (params?.data?.__isNew) return;

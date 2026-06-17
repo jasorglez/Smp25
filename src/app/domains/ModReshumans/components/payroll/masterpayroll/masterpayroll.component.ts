@@ -1,6 +1,6 @@
 import { alerts } from 'app/helpers/alerts';
 import { RouterModule } from '@angular/router';
-import { Component, effect, HostListener, inject, OnInit } from '@angular/core';
+import { Component, effect, HostListener, inject, OnInit, ChangeDetectorRef} from '@angular/core';
 import { AgGridModule } from 'ag-grid-angular';
 import { AG_GRID_LOCALE_ES } from 'assets/i18n/ag-grid.locale.es';
 import { CurrencyPipe, formatCurrency } from '@angular/common';
@@ -137,7 +137,8 @@ export class MasterPayrollComponent implements OnInit {
       } else {
         this.fechaFin = this.hoy.toISOString().split('T')[0];
       }
-    }
+    
+      this.cdr.detectChanges();}
     async getNextPayrollStartDate(): Promise<void> {
       if (this.idBranch > 0) {
         try {
@@ -154,7 +155,8 @@ export class MasterPayrollComponent implements OnInit {
           console.error('Error fetching payroll data:', error);
         }
       }
-    }
+    
+      this.cdr.detectChanges();}
   
     obtenerConfig(): Promise<void> {
       return new Promise((resolve) => {
@@ -176,9 +178,11 @@ export class MasterPayrollComponent implements OnInit {
     this.administrationService.getNormalPayrolls(this.idBranch).subscribe(
       (data: any) => {
         this.rowData = data;
+        this.cdr.detectChanges();
       },
       (error) => {
         this.rowData = [];
+        this.cdr.detectChanges();
       }
     );
   }
@@ -199,6 +203,7 @@ export class MasterPayrollComponent implements OnInit {
   }
 
   private signalsService = inject(SignalsService);
+  private readonly cdr = inject(ChangeDetectorRef);
   authService = inject(AuthService);
   private branchesService = inject(BranchsService);
   private administrationService = inject(AdministrationService);
@@ -1036,7 +1041,8 @@ formatDate(dateStr: string): string {
       'error'
     );
   }
-}
+
+    this.cdr.detectChanges();}
 
 
   onSelectionChanged(event: any) {
@@ -1284,7 +1290,7 @@ formatDate(dateStr: string): string {
     this.branchesService.getBrancheswoa(this.idRoot).subscribe(
       (data: any) => {
         this.branchs = data;
-        //console.log('this.branchs ' + this.branchs);
+        this.cdr.detectChanges();
       },
       (error) => console.error('Error fetching data:', error)
     );

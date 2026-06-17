@@ -1,4 +1,4 @@
-import { Component, OnInit, inject, effect, HostListener, OnDestroy } from '@angular/core';
+import { Component, OnInit, inject, effect, HostListener, OnDestroy, ChangeDetectorRef} from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { AgGridModule } from 'ag-grid-angular';
@@ -27,6 +27,7 @@ export class QuoteDelisonComponent implements OnInit, OnDestroy, CanComponentDea
 
   // Inject services
   private signalsService = inject(SignalsService);
+  private readonly cdr = inject(ChangeDetectorRef);
   private ocAndReqsService = inject(OcAndReqsService);
   private branchsService = inject(BranchsService);
   private rolesService = inject(RolesService);
@@ -163,7 +164,8 @@ export class QuoteDelisonComponent implements OnInit, OnDestroy, CanComponentDea
     const allowed = await this.unsavedTracker.confirmExitIfAny();
     if (allowed) this.unsavedTracker.clearAll();
     return allowed;
-  }
+  
+    this.cdr.detectChanges();}
 
   private reorderRequisitions(cotizacionId: number) {
     if (!this.rowData.length || !this.gridApi) return;
@@ -561,7 +563,8 @@ export class QuoteDelisonComponent implements OnInit, OnDestroy, CanComponentDea
         }, 100);
       }
     }
-  }
+  
+    this.cdr.detectChanges();}
 
   private async loadQuotesFromSingleBranch(branchId: number) {
 
@@ -715,6 +718,7 @@ export class QuoteDelisonComponent implements OnInit, OnDestroy, CanComponentDea
         // ✅ Solo mostrar requisiciones que tienen al menos una cotización
         this.fullRowData = requisitionsWithQuotes.filter(r => r.pedimentos && r.pedimentos.length > 0);
         this.rowData = [...this.fullRowData];
+        this.cdr.detectChanges();
 
         this.preloadRolesForQuotes();
 
@@ -742,6 +746,7 @@ export class QuoteDelisonComponent implements OnInit, OnDestroy, CanComponentDea
         // En caso de error, inicializar con array vacío
         this.fullRowData = [];
         this.rowData = [];
+        this.cdr.detectChanges();
       }
     });
   }
@@ -787,7 +792,8 @@ export class QuoteDelisonComponent implements OnInit, OnDestroy, CanComponentDea
       // Expandir el nodo
       node.setExpanded(true);
     }
-  }
+  
+    this.cdr.detectChanges();}
 
   get colMaster(): (ColDef | ColGroupDef)[] {
     if (this._colMaster && this._colMaster.length > 0) {

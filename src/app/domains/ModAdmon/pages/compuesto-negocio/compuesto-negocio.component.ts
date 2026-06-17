@@ -1,5 +1,5 @@
 import { CommonModule } from '@angular/common';
-import { Component, effect, inject } from '@angular/core';
+import { Component, effect, inject, ChangeDetectorRef} from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { IncomesAndExpensesService } from 'app/services/incomes-and-expenses.service';
 import { SignalsService } from 'app/services/signals.service';
@@ -31,6 +31,7 @@ export interface DatosTrimestre {
 })
 export class CompuestoNegocioComponent {
   private incomesAndExpensesService = inject(IncomesAndExpensesService);
+  private readonly cdr = inject(ChangeDetectorRef);
   private signalsService = inject(SignalsService);
   private rootService = inject(RootService);
   private base64EncodeService = inject(Base64EncodeService);
@@ -123,7 +124,8 @@ export class CompuestoNegocioComponent {
     } finally {
       this.isLoading = false;
     }
-  }
+  
+    this.cdr.detectChanges();}
 
   private getTrimestreFromMonth(month: number): number {
     if (month <= 2) return 1;      // Ene, Feb, Mar
@@ -318,7 +320,8 @@ export class CompuestoNegocioComponent {
     } finally {
       this.isExportingPdf = false;
     }
-  }
+  
+    this.cdr.detectChanges();}
 
   private buildPdfHeader(logoBase64: string | null): any {
     const logoCell = logoBase64
@@ -499,5 +502,6 @@ export class CompuestoNegocioComponent {
     } finally {
       this.isExportingXlsx = false;
     }
-  }
+  
+    this.cdr.detectChanges();}
 }

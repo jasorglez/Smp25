@@ -2166,7 +2166,8 @@ export class CatalogosProduccionComponent {
       console.error('Error guardando cambios jerárquicos:', err);
       alerts.basicAlert('Error', 'No se pudieron guardar los cambios.', 'error');
     }
-  }
+  
+    this.cdr.detectChanges();}
 
   addHierarchicalCatalogItem() {
     if (!this.selectedHierarchicalRow) {
@@ -2303,7 +2304,8 @@ export class CatalogosProduccionComponent {
       console.error('Error creating category:', err);
       await alerts.basicAlert('Error', 'No se pudo crear la categoría.', 'error');
     }
-  }
+  
+    this.cdr.detectChanges();}
 
   async saveNewHierarchicalFamily() {
     if (!this.modalForm.description.trim()) {
@@ -2350,7 +2352,8 @@ export class CatalogosProduccionComponent {
       console.error('Error creating family:', err);
       await alerts.basicAlert('Error', 'No se pudo crear la familia.', 'error');
     }
-  }
+  
+    this.cdr.detectChanges();}
 
   async saveNewHierarchicalSubfamily() {
     if (!this.modalForm.description.trim()) {
@@ -2401,7 +2404,8 @@ export class CatalogosProduccionComponent {
       console.error('Error creating subfamily:', err);
       await alerts.basicAlert('Error', 'No se pudo crear la subfamilia.', 'error');
     }
-  }
+  
+    this.cdr.detectChanges();}
 
   async saveHierarchicalEditChanges() {
     if (!this.modalForm.description.trim()) {
@@ -2441,7 +2445,8 @@ export class CatalogosProduccionComponent {
         alerts.basicAlert('Error', 'No se pudo actualizar el registro.', 'error');
       }
     });
-  }
+  
+    this.cdr.detectChanges();}
 
   async deleteHierarchicalItem() {
     if (!this.selectedHierarchicalRow) {
@@ -2473,7 +2478,8 @@ export class CatalogosProduccionComponent {
         alerts.basicAlert('Error', 'No se pudo eliminar el registro.', 'error');
       }
     });
-  }
+  
+    this.cdr.detectChanges();}
 
   // ──────────────────── Prefijos Fases ────────────────────
 
@@ -2539,7 +2545,8 @@ export class CatalogosProduccionComponent {
       this.prefijoFaseHasChanges = false;
       this.showToast('Guardado');
     } catch { this.showToast('Error al guardar'); }
-  }
+  
+    this.cdr.detectChanges();}
 
   revertPrefijoFases() {
     this.prefijoFaseRows       = JSON.parse(JSON.stringify(this.prefijoFaseOriginal));
@@ -2568,7 +2575,8 @@ export class CatalogosProduccionComponent {
       if (this.prefijoFaseGridApi && !this.prefijoFaseGridApi.isDestroyed())
         this.prefijoFaseGridApi.setGridOption('rowData', this.prefijoFaseRows);
     } catch { this.showToast('Error al eliminar'); }
-  }
+  
+    this.cdr.detectChanges();}
 
   onSelectCatalogSidebar(item: ExtractionFermentationCatalogItem) {
     this.selectedCatalogSidebarId = item.id;
@@ -2938,7 +2946,8 @@ export class CatalogosProduccionComponent {
       this.padres1 = [...this.padres1, created];
       this.showToast1('Categoría creada');
     } catch { this.showToast1('Error al crear'); }
-  }
+  
+    this.cdr.detectChanges();}
 
   startEditPadre1(padre: CatalogProductionItem, event: Event): void {
     event.stopPropagation();
@@ -2959,7 +2968,8 @@ export class CatalogosProduccionComponent {
       this.showToast1('Actualizado');
     } catch { this.showToast1('Error al actualizar'); }
     this.cancelPadreEdit();
-  }
+  
+    this.cdr.detectChanges();}
 
   cancelPadreEdit(): void { this.editingPadreId = null; this.editingPadreDesc = ''; }
 
@@ -2973,7 +2983,8 @@ export class CatalogosProduccionComponent {
       this.selectedPadre1 = null; this.hijos1 = []; this.nietos1 = [];
       this.showToast1('Eliminado');
     } catch { this.showToast1('Error al eliminar'); }
-  }
+  
+    this.cdr.detectChanges();}
 
   onSelectPadre1(padre: CatalogProductionItem): void {
     this.selectedPadre1 = padre;
@@ -3075,7 +3086,8 @@ export class CatalogosProduccionComponent {
       this.hasUnsavedHijos1 = false;
       this.showToast1('Guardado');
     } catch { this.showToast1('Error al guardar'); }
-  }
+  
+    this.cdr.detectChanges();}
 
   revertHijos1(): void {
     this.hijos1 = JSON.parse(JSON.stringify(this.originalHijos1));
@@ -3107,7 +3119,8 @@ export class CatalogosProduccionComponent {
         this.gridApiHijos1.setGridOption('rowData', this.hijos1);
       this.showToast1('Borrado');
     } catch { this.showToast1('Error al eliminar'); }
-  }
+  
+    this.cdr.detectChanges();}
 
   // ── CRUD NIETOs ──
 
@@ -3146,7 +3159,8 @@ export class CatalogosProduccionComponent {
       this.hasUnsavedNietos1 = false;
       this.showToast1('Guardado');
     } catch { this.showToast1('Error al guardar'); }
-  }
+  
+    this.cdr.detectChanges();}
 
   revertNietos1(): void {
     this.nietos1 = JSON.parse(JSON.stringify(this.originalNietos1));
@@ -3177,7 +3191,8 @@ export class CatalogosProduccionComponent {
         this.gridApiNietos1.setGridOption('rowData', this.nietos1);
       this.showToast1('Borrado');
     } catch { this.showToast1('Error al eliminar'); }
-  }
+  
+    this.cdr.detectChanges();}
 
   // ── Config por Materia Prima — Preparación 1 ──
 
@@ -3224,7 +3239,8 @@ export class CatalogosProduccionComponent {
       this.prep1ConfigLoading = false;
       this.cdr.detectChanges();
     }
-  }
+  
+    this.cdr.detectChanges();}
 
   onPrep1ConfigGridReady(e: GridReadyEvent): void {
     this.gridApiPrep1Config = e.api;
@@ -3253,7 +3269,8 @@ export class CatalogosProduccionComponent {
       }
       this.prep1ConfigHasChanges = false;
     } catch (e) { alerts.reqErrorToast('Error al guardar configuración'); }
-  }
+  
+    this.cdr.detectChanges();}
 
   // ── Actividades ────────────────────────────────────────────────────────────
 
@@ -3325,7 +3342,8 @@ export class CatalogosProduccionComponent {
     } catch {
       alerts.basicAlert('Error', 'No se pudieron guardar los cambios.', 'error');
     }
-  }
+  
+    this.cdr.detectChanges();}
 
   revertActividades() {
     this.actividadesRows = JSON.parse(JSON.stringify(this.actividadesOriginal));
@@ -3354,7 +3372,8 @@ export class CatalogosProduccionComponent {
       if (this.actividadesGridApi) this.actividadesGridApi.setGridOption('rowData', this.actividadesRows);
       this.showToast('Borrado');
     } catch { alerts.basicAlert('Error', 'No se pudo eliminar.', 'error'); }
-  }
+  
+    this.cdr.detectChanges();}
 
   // ── Bloques EF ─────────────────────────────────────────────────────────────
 
@@ -3417,7 +3436,8 @@ export class CatalogosProduccionComponent {
       this.showToast('Guardado');
       this.loadBloquesEFData(this.selectedCatalogSidebarId!);
     } catch { alerts.basicAlert('Error', 'No se pudieron guardar los cambios.', 'error'); }
-  }
+  
+    this.cdr.detectChanges();}
 
   revertBloquesEF() {
     this.bloquesEFRows = JSON.parse(JSON.stringify(this.bloquesEFOriginal));
@@ -3446,5 +3466,6 @@ export class CatalogosProduccionComponent {
       if (this.bloquesEFGridApi) this.bloquesEFGridApi.setGridOption('rowData', this.bloquesEFRows);
       this.showToast('Borrado');
     } catch { alerts.basicAlert('Error', 'No se pudo eliminar.', 'error'); }
-  }
+  
+    this.cdr.detectChanges();}
 }

@@ -1,4 +1,4 @@
-import { Component, effect, HostListener, inject } from '@angular/core';
+import { Component, effect, HostListener, inject, ChangeDetectorRef} from '@angular/core';
 import { RouterModule, ActivatedRoute } from '@angular/router';
 import { DomainsModule } from 'app/domains/domainsmodule';
 import { AG_GRID_LOCALE_ES } from 'assets/i18n/ag-grid.locale.es';
@@ -60,6 +60,7 @@ import { IncomesAndExpensesService } from 'app/services/incomes-and-expenses.ser
 })
 export class CustomersComponent implements CanComponentDeactivate {s
   private customerService = inject(CustomersService);
+  private readonly cdr = inject(ChangeDetectorRef);
    private modalServiceTable = inject(ModalService);
    private signalsService = inject(SignalsService);
    private modalService = inject(NgbModal);
@@ -91,7 +92,8 @@ export class CustomersComponent implements CanComponentDeactivate {s
       this.obtenerBranchs();
 
     });
-  }
+  
+    this.cdr.detectChanges();}
 
   constructor() {
     effect(async () => {
@@ -870,7 +872,8 @@ export class CustomersComponent implements CanComponentDeactivate {s
       }
       return null;
     }
-  }
+  
+    this.cdr.detectChanges();}
 
   onGridReady(params: GridReadyEvent) {
     this.gridApi = params.api;
@@ -1004,7 +1007,8 @@ export class CustomersComponent implements CanComponentDeactivate {s
         'error'
       );
     }
-  }
+  
+    this.cdr.detectChanges();}
 
   private selectRowById(id: number | string) {
     
@@ -1114,7 +1118,8 @@ export class CustomersComponent implements CanComponentDeactivate {s
         this.notSavedChanges = false;
         this.selectedRowData = null;
       });
-  }
+  
+    this.cdr.detectChanges();}
 
   revert() {
     this.obtenerDatos();
@@ -1199,7 +1204,8 @@ export class CustomersComponent implements CanComponentDeactivate {s
       this.resetGridSize();
       this.isOpen = false;
     }
-  }
+  
+    this.cdr.detectChanges();}
 
   async activateBillingTab() {
     if (!this.isOpen) {
@@ -1211,7 +1217,8 @@ export class CustomersComponent implements CanComponentDeactivate {s
       this.resetGridSize();
       this.isOpen = false;
     }
-  }
+  
+    this.cdr.detectChanges();}
 
   resetGridSize() {
     this.gridHeight = '80vh'; // Reset to default height

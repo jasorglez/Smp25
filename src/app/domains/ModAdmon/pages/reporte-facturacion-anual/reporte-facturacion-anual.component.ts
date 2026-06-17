@@ -1,5 +1,5 @@
 import { CommonModule } from '@angular/common';
-import { Component, effect, inject } from '@angular/core';
+import { Component, effect, inject, ChangeDetectorRef} from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { IncomesAndExpensesService } from 'app/services/incomes-and-expenses.service';
 import { SignalsService } from 'app/services/signals.service';
@@ -34,6 +34,7 @@ export interface FacturacionAnual {
 })
 export class ReporteFacturacionAnualComponent {
   private incomesAndExpensesService = inject(IncomesAndExpensesService);
+  private readonly cdr = inject(ChangeDetectorRef);
   private signalsService = inject(SignalsService);
   private rootService = inject(RootService);
   private base64EncodeService = inject(Base64EncodeService);
@@ -140,7 +141,8 @@ export class ReporteFacturacionAnualComponent {
     } finally {
       this.isLoading = false;
     }
-  }
+  
+    this.cdr.detectChanges();}
 
   private processData(): void {
     // Agrupar ingresos y egresos por año
@@ -354,7 +356,8 @@ export class ReporteFacturacionAnualComponent {
     } finally {
       this.isExportingPdf = false;
     }
-  }
+  
+    this.cdr.detectChanges();}
 
   private buildPdfHeader(logoBase64: string | null): any {
     const logoCell = logoBase64
@@ -572,5 +575,6 @@ export class ReporteFacturacionAnualComponent {
     } finally {
       this.isExportingXlsx = false;
     }
-  }
+  
+    this.cdr.detectChanges();}
 }

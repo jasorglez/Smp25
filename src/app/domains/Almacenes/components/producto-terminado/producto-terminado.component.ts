@@ -1,4 +1,4 @@
-import { Component, effect, HostListener, inject } from '@angular/core';
+import { Component, effect, HostListener, inject, ChangeDetectorRef} from '@angular/core';
 import { ColDef, GridApi, GridReadyEvent } from 'ag-grid-enterprise';
 import { alerts } from 'app/helpers/alerts';
 import { AgGridModule } from 'ag-grid-angular';
@@ -25,6 +25,7 @@ export class ProductoTerminadoComponent {
 
   
     private catalogsService = inject(CatalogsService);
+    private readonly cdr = inject(ChangeDetectorRef);
     private signalsService = inject(SignalsService);
     private trackingService = inject(TrackingService);
   
@@ -144,7 +145,8 @@ export class ProductoTerminadoComponent {
           'error'
         );
       }
-    }
+    
+      this.cdr.detectChanges();}
   
     // Construir estructura plana para 3 columnas con control de expansión
     private buildTreeStructure(categories: any[], families: any[], subfamilies: any[]) {
@@ -666,7 +668,8 @@ export class ProductoTerminadoComponent {
           'error'
         );
       }
-    }
+    
+      this.cdr.detectChanges();}
   
     // Grid listo
     onGridReady(params: GridReadyEvent) {
@@ -845,7 +848,8 @@ export class ProductoTerminadoComponent {
           'error'
         );
       }
-    }
+    
+      this.cdr.detectChanges();}
   
     // Revertir cambios
     revert() {
@@ -997,7 +1001,8 @@ export class ProductoTerminadoComponent {
         const errorMsg = error?.error?.message || error?.message || 'Error desconocido';
         alerts.basicAlert('Error', `Error al crear la categoría: ${errorMsg}`, 'error');
       }
-    }
+    
+      this.cdr.detectChanges();}
     
     // Guardar nueva familia
     async saveNewFamily() {
@@ -1039,7 +1044,8 @@ export class ProductoTerminadoComponent {
         const errorMsg = error?.error?.message || error?.message || 'Error desconocido';
         alerts.basicAlert('Error', `Error al crear el sabor: ${errorMsg}`, 'error');
       }
-    }
+    
+      this.cdr.detectChanges();}
 
     // Guardar nuevo nombre
     async saveNewSubfamily() {
@@ -1085,7 +1091,8 @@ export class ProductoTerminadoComponent {
         const errorMsg = error?.error?.message || error?.message || 'Error desconocido';
         alerts.basicAlert('Error', `Error al crear la presentación: ${errorMsg}`, 'error');
       }
-    }
+    
+      this.cdr.detectChanges();}
     
     // Guardar cambios en edición
     async saveEditChanges() {
@@ -1123,7 +1130,8 @@ export class ProductoTerminadoComponent {
         const errorMsg = error?.error?.message || error?.message || 'Error desconocido';
         alerts.basicAlert('Error', `Error al actualizar el registro: ${errorMsg}`, 'error');
       }
-    }
+    
+      this.cdr.detectChanges();}
   
     // Limpiar datos para servidor
      private cleanDataForServer(data: any): any {

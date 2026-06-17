@@ -1,4 +1,4 @@
-import { Component, effect, HostListener, inject, signal } from '@angular/core';
+import { Component, effect, HostListener, inject, signal, ChangeDetectorRef} from '@angular/core';
 import { AG_GRID_LOCALE_ES } from 'assets/i18n/ag-grid.locale.es';
 import {
   CellDoubleClickedEvent,
@@ -135,6 +135,7 @@ export class MaterialsComponent implements CanComponentDeactivate {
 
   // Inject of new way for Angular 18
   private customerService = inject(CustomersService);
+  private readonly cdr = inject(ChangeDetectorRef);
   private materialsService = inject(MaterialsService);
   private catalogsService = inject(CatalogsService);
   private modalServiceTable = inject(ModalService);
@@ -1569,7 +1570,8 @@ export class MaterialsComponent implements CanComponentDeactivate {
   // TODO para futuros botones de navegacion
   async selectTab(tab: string) {
     await this.activateMeasureTab();
-  }
+  
+    this.cdr.detectChanges();}
 
   async activatedTabs() {
     if (!this.isOpen) {
@@ -1583,7 +1585,8 @@ export class MaterialsComponent implements CanComponentDeactivate {
       this.showMeasureTab = false;
       this.showContainerTabs = false;
     }
-  }
+  
+    this.cdr.detectChanges();}
 
   async activatedTabsProveedoresByBranch() {
     if (!this.isOpen) {
@@ -1597,7 +1600,8 @@ export class MaterialsComponent implements CanComponentDeactivate {
       this.showMeasureTab = false;
       this.showContainerTabsProveedoresByBranch = false;
     }
-  }
+  
+    this.cdr.detectChanges();}
 
   async activateMeasureTab() {
     if (!this.isOpen || this.showSavingsTab) {
@@ -1606,7 +1610,8 @@ export class MaterialsComponent implements CanComponentDeactivate {
       // this.showSavingsTab = false;
       // this.isOpen = true;
     }
-  }
+  
+    this.cdr.detectChanges();}
 
   async adjustGridSize() {
     this.gridHeight = '25vh'; // Adjust as needed
@@ -1829,7 +1834,8 @@ export class MaterialsComponent implements CanComponentDeactivate {
         'error'
       );
     }
-  }
+  
+    this.cdr.detectChanges();}
 
   async deleteEntry() {
     const selectedNodes = this.gridApi.getSelectedNodes();

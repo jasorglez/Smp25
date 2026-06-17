@@ -848,7 +848,8 @@ export class DetallesCostosxmaterialesComponent implements ICellRendererAngularC
             'error'
           );
         }
-  }
+  
+        this.cdr.detectChanges();}
 
   private cleanDataForServer(data: any): any {
     const cleanedData = { ...data };

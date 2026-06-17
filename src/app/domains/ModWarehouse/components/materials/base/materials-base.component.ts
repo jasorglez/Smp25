@@ -1,4 +1,4 @@
-import { Component, effect, HostListener, inject, signal, Directive } from '@angular/core';
+import { Component, effect, HostListener, inject, signal, Directive, ChangeDetectorRef} from '@angular/core';
 import { AG_GRID_LOCALE_ES } from 'assets/i18n/ag-grid.locale.es';
 import {
   CellDoubleClickedEvent,
@@ -101,6 +101,7 @@ export abstract class MaterialsBaseComponent implements CanComponentDeactivate {
 
   // Injected services
   protected customerService = inject(CustomersService);
+  private readonly cdr = inject(ChangeDetectorRef);
   protected materialsService = inject(MaterialsService);
   protected catalogsService = inject(CatalogsService);
   protected modalServiceTable = inject(ModalService);
@@ -278,7 +279,8 @@ export abstract class MaterialsBaseComponent implements CanComponentDeactivate {
 
   async selectTab(tab: string) {
     await this.activateMeasureTab();
-  }
+  
+    this.cdr.detectChanges();}
 
   async activatedTabs() {
     if (!this.isOpen) {
@@ -292,7 +294,8 @@ export abstract class MaterialsBaseComponent implements CanComponentDeactivate {
       this.showMeasureTab = false;
       this.showContainerTabs = false;
     }
-  }
+  
+    this.cdr.detectChanges();}
 
   async activatedTabsProveedoresByBranch() {
     if (!this.isOpen) {
@@ -306,14 +309,16 @@ export abstract class MaterialsBaseComponent implements CanComponentDeactivate {
       this.showMeasureTab = false;
       this.showContainerTabsProveedoresByBranch = false;
     }
-  }
+  
+    this.cdr.detectChanges();}
 
   async activateMeasureTab() {
     if (!this.isOpen || this.showSavingsTab) {
       await this.adjustGridSize();
       this.showMeasureTab = true;
     }
-  }
+  
+    this.cdr.detectChanges();}
 
   async adjustGridSize() {
     this.gridHeight = '25vh';
@@ -419,7 +424,8 @@ export abstract class MaterialsBaseComponent implements CanComponentDeactivate {
         'error'
       );
     }
-  }
+  
+    this.cdr.detectChanges();}
 
   async deleteEntry() {
     const selectedNodes = this.gridApi.getSelectedNodes();

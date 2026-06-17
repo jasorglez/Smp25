@@ -100,6 +100,7 @@ export class DocumentPreviewDetailComponent {
 })
 export class DetailEntradaDocumentsComponent {
   private attachHandlerService = inject(AttachHandlerService);
+  private readonly cdr = inject(ChangeDetectorRef);
   private intandoutDocumentsService = inject(IntandoutDocumentsService);
   private overlayService = inject(EntradaDocumentsOverlayService);
   private parentParams: any = null;
@@ -334,7 +335,8 @@ export class DetailEntradaDocumentsComponent {
     } catch {
       alerts.userSaveErrorToast('Error', 'No se pudieron guardar los documentos.');
     }
-  }
+  
+    this.cdr.detectChanges();}
 
   revertChanges() {
     // Liberar blob URLs pendientes

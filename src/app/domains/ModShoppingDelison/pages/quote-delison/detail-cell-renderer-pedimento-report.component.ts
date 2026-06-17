@@ -142,7 +142,8 @@ export class DetailCellRendererPedimentoReportComponent {
       this.isLoading = false;
       this.pdfUrl = null;
     }
-  }
+  
+    this.cdr.detectChanges();}
 
   private buildDocDefinition(companyData: any, logoBase64: string, logo2Base64: string, watermarkBase64: string | null, providerName: string, articulos: any[]): any {
     const fechaPedimento = this.pedimentoData.fechaPedimento || '';

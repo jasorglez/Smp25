@@ -530,7 +530,8 @@ export class DetailCellRendererEntryItemsComponent implements OnInit {
     } catch (error) {
       console.error('Error generating report PDF:', error);
     }
-  }
+  
+    this.cdr.detectChanges();}
 
   ngOnDestroy() {
     // Clean up blob URL when component is destroyed

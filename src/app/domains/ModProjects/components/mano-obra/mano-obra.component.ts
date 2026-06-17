@@ -1,4 +1,4 @@
-import { Component, effect, inject } from '@angular/core';
+import { Component, effect, inject, ChangeDetectorRef} from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { AgGridModule } from 'ag-grid-angular';
@@ -18,6 +18,7 @@ import { PdfManoObraComponent } from './pdf-mano-obra.component';
 })
 export class ManoObraComponent {
   private signalsService    = inject(SignalsService);
+  private readonly cdr = inject(ChangeDetectorRef);
   private manoObraService   = inject(ManoObraService);
   private posicionesService = inject(PosicionesService);
 
@@ -255,7 +256,8 @@ export class ManoObraComponent {
     } catch (e) {
       alerts.basicAlert('Error', 'No se pudieron guardar los cambios', 'error');
     }
-  }
+  
+    this.cdr.detectChanges();}
 
   revertChanges() {
     this.rowData     = JSON.parse(JSON.stringify(this.originalData));
@@ -286,7 +288,8 @@ export class ManoObraComponent {
     } catch (e) {
       alerts.basicAlert('Error', 'No se pudo eliminar', 'error');
     }
-  }
+  
+    this.cdr.detectChanges();}
 
   // ── Distribución full-width ─────────────────────────────────────────────
 

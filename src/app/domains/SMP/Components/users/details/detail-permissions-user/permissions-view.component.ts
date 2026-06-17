@@ -3020,7 +3020,8 @@ export class PermissionsViewByUserComponent implements OnInit, OnChanges {
       console.error('Error al guardar los permisos:', error);
       alerts.userSaveErrorToast('Error', 'Ocurrió un error al guardar los datos.');
     }
-  }
+  
+    this.cdr.detectChanges();}
 
   private untransformData(data: MasterPermission[]): any[] {
     const modifiedList = [];

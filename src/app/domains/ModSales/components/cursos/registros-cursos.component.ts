@@ -1,4 +1,4 @@
-import { Component, OnInit, inject, effect, OnDestroy } from '@angular/core';
+import { Component, OnInit, inject, effect, OnDestroy, ChangeDetectorRef} from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { AgGridModule } from 'ag-grid-angular';
@@ -64,6 +64,7 @@ import { Subscription } from 'rxjs';
 })
 export class RegistrosCursosComponent implements OnInit, OnDestroy {
   private svc        = inject(CursosService);
+  private readonly cdr = inject(ChangeDetectorRef);
   private signalsSvc = inject(SignalsService);
 
   gridApi!: GridApi;
@@ -142,7 +143,8 @@ export class RegistrosCursosComponent implements OnInit, OnDestroy {
   async togglePagado(registro: RegistroCurso) {
     if (!registro.id || !this.cursoIdSeleccionado) return;
     await this.svc.marcarPagado(this.cursoIdSeleccionado, registro.id, !registro.pagado);
-  }
+  
+    this.cdr.detectChanges();}
 
   exportar() { this.gridApi?.exportDataAsCsv({ fileName: 'registros-curso.csv' }); }
 

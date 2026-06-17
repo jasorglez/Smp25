@@ -247,7 +247,8 @@ export class CompraRapidaDetalleComponent implements OnDestroy {
     }
     // Notificar al padre para que recalcule el badge NUPNPN
     this.signalsService.triggerNupnpnRecheck();
-  }
+  
+    this.cdr.detectChanges();}
 
   private cargarCatalogosClasificacion(): void {
     const idCompany = this.signalsService.getRootSelectedBySidebar()();
@@ -285,7 +286,8 @@ export class CompraRapidaDetalleComponent implements OnDestroy {
     if (this.gridApi && !this.gridApi.isDestroyed()) {
       this.gridApi.refreshCells({ columns: ['pdf'], force: true });
     }
-  }
+  
+    this.cdr.detectChanges();}
 
   refresh(): boolean { return true; }
 

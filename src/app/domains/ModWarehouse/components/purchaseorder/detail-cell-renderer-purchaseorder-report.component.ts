@@ -175,7 +175,8 @@ export class DetailCellRendererPurchaseOrderReportComponent {
       this.isLoading = false;
       this.pdfUrl = null;
     }
-  }
+  
+    this.cdr.detectChanges();}
 
   private formatDate(value: string | Date | null | undefined): string {
     if (!value) return '';

@@ -961,7 +961,8 @@ export class DetalleAsignProveedsMaestroComponent implements ICellRendererAngula
       this.providers = [];
       this.filteredProviders = [];
     }
-  }
+  
+    this.cdr.detectChanges();}
 
   loadBranches() {
     this.branchsService.getBranches2fields(this.idRoot).subscribe({
@@ -1080,7 +1081,8 @@ export class DetalleAsignProveedsMaestroComponent implements ICellRendererAngula
         this.proveedorGridApi.refreshCells({ force: true });
       }
     }
-  }
+  
+    this.cdr.detectChanges();}
 
   private autosizeProveedorColumns(): void {
     if (!this.proveedorGridApi) return;
@@ -1106,7 +1108,8 @@ export class DetalleAsignProveedsMaestroComponent implements ICellRendererAngula
     if (this.proveedorGridApi) {
       this.proveedorGridApi.refreshCells({ force: true });
     }
-  }
+  
+    this.cdr.detectChanges();}
 
   private sortProveedorRowData() {
     if (!this.providers?.length && !this.filteredProviders?.length) return;
@@ -1381,7 +1384,8 @@ export class DetalleAsignProveedsMaestroComponent implements ICellRendererAngula
         console.error('❌ Error al guardar proveedores:', error);
       }
     }
-  }
+  
+    this.cdr.detectChanges();}
 
   // Método para actualizar el contador de proveedores en el grid padre
   updateProviderCountInParent(): void {
@@ -1464,7 +1468,8 @@ export class DetalleAsignProveedsMaestroComponent implements ICellRendererAngula
         }
       );
     }
-  }
+  
+    this.cdr.detectChanges();}
 
   private generateFakeSucursalData(): any[] {
     const sucursalNombres = ['BODEGAS', 'DELI', 'TIENDA 1'];

@@ -316,7 +316,8 @@ export class SubDetailedPermissionsComponent implements OnInit, ICellRendererAng
       console.error(error);
       alerts.basicAlert('Error', 'Error al guardar cambios', 'error');
     }
-  }
+  
+    this.cdr.detectChanges();}
 
   onRefresh() {
     this.loadData();
@@ -346,7 +347,8 @@ export class SubDetailedPermissionsComponent implements OnInit, ICellRendererAng
         alerts.basicAlert('Error', 'Error al eliminar', 'error');
       }
     }
-  }
+  
+    this.cdr.detectChanges();}
 
   filterById(selectedId: any) {
     if (this.gridApi) {

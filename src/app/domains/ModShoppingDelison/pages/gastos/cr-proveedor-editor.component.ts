@@ -160,7 +160,8 @@ export class CrProveedorEditorComponent implements ICellEditorAngularComp, After
       this.selectedName = name;
     }
     this.params.stopEditing();
-  }
+  
+    this.cdr.detectChanges();}
 
   getValue(): string | null { return this.selectedName; }
   isPopup(): boolean { return true; }
@@ -379,5 +380,6 @@ export class CrProveedorEditorComponent implements ICellEditorAngularComp, After
     } catch {
       alerts.reqErrorToast('Error', 'No se pudo crear el proveedor');
     }
-  }
+  
+    this.cdr.detectChanges();}
 }

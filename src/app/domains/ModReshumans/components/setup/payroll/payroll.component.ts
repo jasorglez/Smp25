@@ -1,4 +1,4 @@
-import { Component, effect, inject } from '@angular/core';
+import { Component, effect, inject, ChangeDetectorRef} from '@angular/core';
 import { SignalsService } from 'app/services/signals.service';
 import { CommonModule } from '@angular/common';
 import { NgFor } from '@angular/common';
@@ -36,7 +36,8 @@ interface Bank {
 })
 export class PayrollComponent {
   idBranch: number;
-  private signalsService = inject(SignalsService); 
+  private signalsService = inject(SignalsService);
+  private readonly cdr = inject(ChangeDetectorRef); 
   private trackingService = inject(TrackingService);
   private hrService = inject(HRService);
   private branchsService = inject(BranchsService);
@@ -197,7 +198,8 @@ export class PayrollComponent {
     }
     // Insertar nuevos datos
     
-  }
+  
+    this.cdr.detectChanges();}
   calcularFechas(values: any): Promise<boolean> {
       const diaEncontrado = this.dias.find(d => d.dia === values.startDay);
       this.idDia = diaEncontrado ? diaEncontrado.id : 1;
@@ -318,7 +320,8 @@ export class PayrollComponent {
        },
        error: (error) => console.error('Error al enviar los datos:', error)
      });
-   }
+   
+     this.cdr.detectChanges();}
  
    resetForm() {
      // Limpiar datos del archivo

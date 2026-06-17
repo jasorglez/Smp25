@@ -97,6 +97,7 @@ export class DocumentPreviewDetailComponent {
 })
 export class DetailEmployeeDocumentsComponent {
   private employeesService = inject(EmployeesService);
+  private readonly cdr = inject(ChangeDetectorRef);
   private attachHandlerService = inject(AttachHandlerService);
 
   idEmployee: number | null = null;
@@ -297,7 +298,8 @@ export class DetailEmployeeDocumentsComponent {
     } catch {
       alerts.userSaveErrorToast('Error', 'No se pudieron guardar los documentos.');
     }
-  }
+  
+    this.cdr.detectChanges();}
 
   revertChanges() {
     // Liberar blob URLs pendientes

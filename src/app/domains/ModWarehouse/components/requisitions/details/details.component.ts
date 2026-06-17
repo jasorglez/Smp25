@@ -1,4 +1,4 @@
-import { Component, effect, HostListener, inject } from '@angular/core';
+import { Component, effect, HostListener, inject, ChangeDetectorRef} from '@angular/core';
 import { CellDoubleClickedEvent, ColDef, GridApi, GridReadyEvent, ICellRendererParams } from 'ag-grid-enterprise';
 import { alerts } from 'app/helpers/alerts';
 import { catchError, concat, EMPTY, lastValueFrom, toArray } from 'rxjs';
@@ -80,6 +80,7 @@ export class RequisitionsDetailsComponent {
 
   // Inject of new way for Angular 18
   private requisitionsService = inject(OcAndReqsService);
+  private readonly cdr = inject(ChangeDetectorRef);
   private modalServiceTable = inject(ModalService);
   private materialsService = inject(MaterialsService);
   private signalsService = inject(SignalsService);
@@ -275,7 +276,8 @@ public gridOptions: any = {
         'error'
       );
     }
-  }
+  
+    this.cdr.detectChanges();}
 
   async deleteEntry() {
     const selectedNodes = this.gridApi.getSelectedNodes();

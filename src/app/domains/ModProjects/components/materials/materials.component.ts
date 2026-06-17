@@ -462,7 +462,8 @@ export class MaterialsComponent implements CanComponentDeactivate {
       await this.resetGridSize();
       this.isOpen = false;
     }
-  }
+  
+    this.cdr.detectChanges();}
 
   async activateSavingsTab() {
     if (!this.isOpen || this.showLoansTab) {
@@ -474,7 +475,8 @@ export class MaterialsComponent implements CanComponentDeactivate {
       await this.resetGridSize();
       this.isOpen = false;
     }
-  }
+  
+    this.cdr.detectChanges();}
 
   async adjustGridSize() {
     this.gridHeight = '20vh'; // Adjust as needed
@@ -931,7 +933,8 @@ export class MaterialsComponent implements CanComponentDeactivate {
         'error'
       );
     }
-  }
+  
+    this.cdr.detectChanges();}
 
   deleteMasterEntry() {
     const selectedNodes = this.gridApi.getSelectedNodes();
@@ -1312,7 +1315,8 @@ export class MaterialsComponent implements CanComponentDeactivate {
         'error'
       );
     }
-  }
+  
+    this.cdr.detectChanges();}
 
   onFamilyCreated(familyData: { id: number; description: string }) {
     // Agregar inmediatamente al catálogo local para que cellRenderer lo encuentre
@@ -1397,7 +1401,8 @@ export class MaterialsComponent implements CanComponentDeactivate {
         'error'
       );
     }
-  }
+  
+    this.cdr.detectChanges();}
 
   onSubfamilyCreated(subfamilyData: { id: number; description: string; parentId: number }) {
     // Agregar inmediatamente al catálogo local para que cellRenderer lo encuentre
@@ -1473,7 +1478,8 @@ export class MaterialsComponent implements CanComponentDeactivate {
         'error'
       );
     }
-  }
+  
+    this.cdr.detectChanges();}
 
   onMeasureCreated(measureData: { id: number; description: string }) {
     // Agregar inmediatamente al catálogo local para que cellRenderer lo encuentre

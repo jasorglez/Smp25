@@ -1,4 +1,4 @@
-import { Component, effect, inject } from '@angular/core';
+import { Component, effect, inject, ChangeDetectorRef} from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { AgGridModule } from 'ag-grid-angular';
@@ -25,6 +25,7 @@ import { alerts } from 'app/helpers/alerts';
 })
 export class TransferenciasComponent {
   public signalsService = inject(SignalsService);
+  private readonly cdr = inject(ChangeDetectorRef);
   public trackingService = inject(TrackingService);
   public authService = inject(AuthService);
   private rootService = inject(RootService);
@@ -139,7 +140,8 @@ export class TransferenciasComponent {
       this.allRoots = [];
       this.empresasDestino = [];
     }
-  }
+  
+    this.cdr.detectChanges();}
 
   async loadBankAccountsOrigen() {
     this.administrationService.getAccountBanks(this.root).subscribe({
@@ -165,7 +167,8 @@ export class TransferenciasComponent {
       // Load customers for both companies to find PRÉSTAMOS INTEREMPRESA
       await this.loadCustomers();
     }
-  }
+  
+    this.cdr.detectChanges();}
 
   async loadCustomers() {
     // Load customers from origin company (to find the special customer referencing destination)
@@ -333,7 +336,8 @@ export class TransferenciasComponent {
     } finally {
       this.isTransferring = false;
     }
-  }
+  
+    this.cdr.detectChanges();}
 
   async loadHistorial() {
     if (!this.empresasCorporativo?.length) {
@@ -376,7 +380,8 @@ export class TransferenciasComponent {
         _empresaDestinoId: deposito?.idBusinnes || deposito?._fromCompanyId || null
       };
     }).sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
-  }
+  
+    this.cdr.detectChanges();}
 
   onGridReady(params: GridReadyEvent) {
     this.gridApi = params.api;

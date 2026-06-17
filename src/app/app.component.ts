@@ -1,4 +1,4 @@
-import { Component, effect, inject, OnDestroy, OnInit } from '@angular/core';
+import { Component, effect, inject, OnDestroy, OnInit, ChangeDetectorRef} from '@angular/core';
 import { Router, RouterOutlet } from '@angular/router';
 import { CommonModule } from '@angular/common';
 import { forkJoin, of, Subscription } from 'rxjs';
@@ -98,6 +98,7 @@ export class AppComponent implements OnInit, OnDestroy {
   entradaDocumentsData: EntradaDocumentsOverlayData | null = null;
 
   private authService = inject(AuthService);
+  private readonly cdr = inject(ChangeDetectorRef);
   private signalsService = inject(SignalsService);
   private router = inject(Router);
   private comparacionOverlayService = inject(ComparacionOverlayService);
@@ -155,7 +156,8 @@ export class AppComponent implements OnInit, OnDestroy {
       this.unsavedTracker.clearAll();
     }
     this.proveedorData = null;
-  }
+  
+    this.cdr.detectChanges();}
 
   ngOnDestroy(): void {
     this.permissionsLoadSub?.unsubscribe();

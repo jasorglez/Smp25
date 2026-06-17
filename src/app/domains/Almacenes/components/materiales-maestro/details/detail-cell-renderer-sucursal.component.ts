@@ -150,5 +150,6 @@ export class DetailCellRendererSucursalComponent implements ICellRendererAngular
       // TODO: Implementar eliminación de la sucursal
       alerts.basicAlert('Funcionalidad no implementada', 'Eliminar sucursal próximamente', 'info');
     }
-  }
+  
+    this.cdr.detectChanges();}
 }

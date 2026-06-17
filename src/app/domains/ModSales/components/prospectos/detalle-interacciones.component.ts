@@ -186,7 +186,8 @@ export class DetalleInteraccionesComponent implements OnInit {
     const data = await this.svc.getInteracciones(this.prospecto.id);
     this.rowData = data;
     this.updateCountInParent();
-  }
+  
+    this.cdr.detectChanges();}
 
   async guardarInteraccion() {
     if (!this.intDescripcion.trim()) {
@@ -207,7 +208,8 @@ export class DetalleInteraccionesComponent implements OnInit {
     } catch {
       Swal.fire('Error', 'No se pudo registrar.', 'error');
     }
-  }
+  
+    this.cdr.detectChanges();}
 
   async cambiarEstado(nuevoEstado: string) {
     try {
@@ -221,7 +223,8 @@ export class DetalleInteraccionesComponent implements OnInit {
     } catch {
       Swal.fire('Error', 'No se pudo cambiar el estado.', 'error');
     }
-  }
+  
+    this.cdr.detectChanges();}
 
   // ── Helpers ───────────────────────────────────────────────────────────────
 

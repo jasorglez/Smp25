@@ -186,7 +186,8 @@ export class OhBloqueComponent {
       productoIds: (() => { try { return JSON.parse(b.productoIds ?? '[]'); } catch { return []; } })(),
     }));
     this.productosOptions = productos ?? [];
-  }
+  
+    this.cdr.detectChanges();}
 
   private async loadData() {
     if (!this.idCompany) return;
@@ -214,7 +215,8 @@ export class OhBloqueComponent {
     ]);
     await this.loadData();
     this.hasChanges = false;
-  }
+  
+    this.cdr.detectChanges();}
 
   revert() {
     this.rows = JSON.parse(JSON.stringify(this.original));
@@ -238,5 +240,6 @@ export class OhBloqueComponent {
     this.hasChanges = this.rows.some(r => r.__isNew || r.__modified);
     this.collapseActive();
     this.gridApi.setGridOption('rowData', this.rows);
-  }
+  
+    this.cdr.detectChanges();}
 }

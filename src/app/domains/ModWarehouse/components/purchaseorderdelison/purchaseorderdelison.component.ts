@@ -1,4 +1,4 @@
-import { Component, OnInit, OnDestroy, inject, effect } from '@angular/core';
+import { Component, OnInit, OnDestroy, inject, effect, ChangeDetectorRef} from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Subscription, combineLatest } from 'rxjs';
@@ -46,6 +46,7 @@ import { lastValueFrom } from 'rxjs';
 export class PurchaseOrderDelisonComponent implements OnInit, OnDestroy {
 
   private signalsService          = inject(SignalsService);
+  private readonly cdr = inject(ChangeDetectorRef);
   private ocAndReqsService        = inject(OcAndReqsService);
   private branchsService          = inject(BranchsService);
   private providersService        = inject(ProvidersService);
@@ -320,7 +321,8 @@ export class PurchaseOrderDelisonComponent implements OnInit, OnDestroy {
       this.gridApi.setGridOption('rowData', this.rowData);
       this.gridApi.refreshCells({ force: true });
     }
-  }
+  
+    this.cdr.detectChanges();}
 
   private async loadFromSingleBranch(branchId: number) {
     try {
@@ -344,7 +346,8 @@ export class PurchaseOrderDelisonComponent implements OnInit, OnDestroy {
       this.fullRowData = [];
       this.rowData = [];
     }
-  }
+  
+    this.cdr.detectChanges();}
 
   private async getPedimentoCount(idRequisicion: number): Promise<number> {
     try {
@@ -353,7 +356,8 @@ export class PurchaseOrderDelisonComponent implements OnInit, OnDestroy {
     } catch {
       return 0;
     }
-  }
+  
+    this.cdr.detectChanges();}
 
   // ==================== GRID CONFIG ====================
 
@@ -578,7 +582,8 @@ export class PurchaseOrderDelisonComponent implements OnInit, OnDestroy {
     }
 
     this.setCompraRapidaRows(rawItems);
-  }
+  
+    this.cdr.detectChanges();}
 
   private setCompraRapidaRows(list: any[]) {
     // Agrupar por requisición (# Requisición). Cada maestro lleva sus items en `items`.
@@ -755,7 +760,8 @@ export class PurchaseOrderDelisonComponent implements OnInit, OnDestroy {
     } catch {
       alerts.reqErrorToast('Error', 'No se pudieron guardar los cambios.');
     }
-  }
+  
+    this.cdr.detectChanges();}
 
   revertConditions(): void {
     this.conditionsPendingService.clear();

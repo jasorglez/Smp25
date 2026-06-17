@@ -1,4 +1,4 @@
-import { Component, effect, HostListener, inject, OnInit } from '@angular/core';
+import { Component, effect, HostListener, inject, OnInit, ChangeDetectorRef} from '@angular/core';
 import { RouterModule, ActivatedRoute } from '@angular/router';
 import { DomainsModule } from 'app/domains/domainsmodule';
 import {
@@ -30,6 +30,7 @@ import { TrackingService } from 'app/services/tracking.service';
 })
 export class RolesDetailedComponent implements OnInit {
   private rolesService = inject(RolesService);
+  private readonly cdr = inject(ChangeDetectorRef);
   private signalsService = inject(SignalsService);
   private clockService = inject(ClockService);
   private timeService = inject(TimeService);
@@ -241,7 +242,8 @@ export class RolesDetailedComponent implements OnInit {
       this.resetGridSize();
       this.isOpen = false;
     }
-  }
+  
+    this.cdr.detectChanges();}
 
   resetGridSize() {
     this.gridHeight = '80vh'; // Reset to default height
@@ -318,7 +320,8 @@ export class RolesDetailedComponent implements OnInit {
         'error'
       );
     }
-  }
+  
+    this.cdr.detectChanges();}
 
   revertDetailData() {
     this.obtenerDatos(this.idRole);

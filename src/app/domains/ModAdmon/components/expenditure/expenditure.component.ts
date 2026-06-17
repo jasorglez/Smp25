@@ -1,4 +1,4 @@
-﻿import { Component, effect, inject } from '@angular/core';
+﻿import { Component, effect, inject, ChangeDetectorRef} from '@angular/core';
 import { CellDoubleClickedEvent, ColDef, GridApi, GridReadyEvent, ICellRendererParams } from 'ag-grid-enterprise';
 import { IncomesAndExpensesService } from 'app/services/incomes-and-expenses.service';
 import { ModalService } from 'app/services/modal.service';
@@ -42,6 +42,7 @@ import { DetallesExpenditureComponent } from './detalles-expenditure.component';
 export class ExpenditureComponent {
 
   private incomesAndExpensesService = inject(IncomesAndExpensesService);
+  private readonly cdr = inject(ChangeDetectorRef);
   public modalServiceTable = inject(ModalService);
   private administrationService = inject(AdministrationService);
   private cataalogAdmonService = inject(CatalogadmonService);
@@ -996,7 +997,8 @@ export class ExpenditureComponent {
         'error'
       );
     }
-  }
+  
+    this.cdr.detectChanges();}
 
   async deleteEntry() {
     const selectedNodes = this.gridApi.getSelectedNodes();
@@ -1047,7 +1049,8 @@ export class ExpenditureComponent {
           this.selectedIncomes = null;
         }
       );
-  }
+  
+    this.cdr.detectChanges();}
 
   revert() {
     this.getExpenditure();
@@ -1224,7 +1227,8 @@ export class ExpenditureComponent {
       );
       console.error('Error generando reporte:', error);
     }
-  }
+  
+    this.cdr.detectChanges();}
 
   collapseCurrentRow(expenditureId: number) {
     if (this.gridApi) {
@@ -1352,7 +1356,8 @@ export class ExpenditureComponent {
         'error'
       );
     }
-  }
+  
+    this.cdr.detectChanges();}
 
   async deleteConceptRow(params: any, successCallback: () => void, newCount?: number) {
     const conceptId = params.data.id;
@@ -1394,7 +1399,8 @@ export class ExpenditureComponent {
         alerts.basicAlert('Error', 'Error al eliminar el concepto.', 'error');
       }
     }
-  }
+  
+    this.cdr.detectChanges();}
 
   private cleanConceptData(concept: any): any {
     const cleaned = { ...concept };
@@ -1676,7 +1682,8 @@ export class ExpenditureComponent {
     } finally {
       this.isGeneratingEgresoReport = false;
     }
-  }
+  
+    this.cdr.detectChanges();}
 
   // ==================== REPORTE DE SALDOS (EGRESOS) ====================
 
@@ -1841,7 +1848,8 @@ export class ExpenditureComponent {
     } finally {
       this.isGeneratingEgresoReport = false;
     }
-  }
+  
+    this.cdr.detectChanges();}
 
   private updateMasterRowInGrid(updatedData: { id: number; subtotal: number; tax: number; total: number }) {
 
