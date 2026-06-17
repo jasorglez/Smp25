@@ -164,6 +164,7 @@ export class SideBarComponent {
     const branchDidChange = this.selectedBranchId !== nextId;
 
     this.selectedBranchId = nextId;
+    this.cdr.detectChanges();
     this.signalsService.setBranchSelectedBySidebar(Number(chosen.id));
     this.signalsService.setBranchNameSelectedBySidebar(chosen.name);
 
@@ -305,24 +306,28 @@ export class SideBarComponent {
     this.rootService.get2Root(this.signalsService.idUser()).subscribe({
       next: (data) => {
         const root = Object.values(data);
-        if (root && root.length > 0) {
-          this.rootData = root;
-          this.selectedRoot = this.rootData[0].id;
-          this.applyCompanyHeaderData(this.rootData[0]);
-          this.signalsService.setRootSelectedBySidebar(Number(this.selectedRoot));
-          this.signalsService.setIsAdvanced(this.rootData[0].advanced);
-          this.signalsService.setCompanyNameSmall(this.rootData[0].nameSmall || this.rootData[0].name);
-          this.trackingService.setCompany(this.selectedRoot);
-          this.getHeadersCompanys(this.selectedRoot);
-          this.getpermissionxBranchs(parseInt(this.selectedRoot, 10));
-          this.loadSidebarMenus(parseInt(this.selectedRoot, 10));
-        } else {
-          this.selectedRoot = null;
-        }
+        Promise.resolve().then(() => {
+          if (root && root.length > 0) {
+            this.rootData = root;
+            this.selectedRoot = this.rootData[0].id;
+            this.applyCompanyHeaderData(this.rootData[0]);
+            this.cdr.detectChanges();
+            this.signalsService.setRootSelectedBySidebar(Number(this.selectedRoot));
+            this.signalsService.setIsAdvanced(this.rootData[0].advanced);
+            this.signalsService.setCompanyNameSmall(this.rootData[0].nameSmall || this.rootData[0].name);
+            this.trackingService.setCompany(this.selectedRoot);
+            this.getHeadersCompanys(this.selectedRoot);
+            this.getpermissionxBranchs(parseInt(this.selectedRoot, 10));
+            this.loadSidebarMenus(parseInt(this.selectedRoot, 10));
+          } else {
+            this.selectedRoot = null;
+            this.cdr.detectChanges();
+          }
+        });
       },
       error: (error) => {
         console.error('Error al obtener roots:', error);
-        this.selectedRoot = null;
+        Promise.resolve().then(() => { this.selectedRoot = null; this.cdr.detectChanges(); });
       },
     });
   }
@@ -472,6 +477,7 @@ export class SideBarComponent {
     const resolvedLogo = this.resolveCompanyLogo(company.picture);
     this.trackingService.setpictureComp(resolvedLogo);
     this.companyLogoSrc = resolvedLogo;
+    this.cdr.detectChanges();
     Promise.resolve().then(() => this.signalsService.setCompanyName(company.name ?? ''));
 
     this.trackingService.setPictureComp2(company.picture2 ?? '');
@@ -650,7 +656,7 @@ export class SideBarComponent {
 
   loadSidebarMenus(idCompany: number): void {
     this.menuService.getSidebarMenus(idCompany).subscribe({
-      next: (menus) => this.ngZone.run(() => { this.sidebarMenus = menus; }),
+      next: (menus) => this.ngZone.run(() => { this.sidebarMenus = menus; this.cdr.detectChanges(); }),
       error: (err) => console.error('Error cargando menus del sidebar:', err),
     });
   }

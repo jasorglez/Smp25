@@ -1,11 +1,10 @@
-import { Component, inject, OnInit } from '@angular/core';
+import { ChangeDetectorRef, Component, inject, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { AgGridAngular } from 'ag-grid-angular';
 import { ColDef, GridApi, GridReadyEvent } from 'ag-grid-enterprise';
 import { lastValueFrom } from 'rxjs';
 import { ProductionService } from 'app/services/production.service';
 import { SignalsService } from 'app/services/signals.service';
-import { MaterialXModuloService } from 'app/services/materialxmodulo.service';
 import { MaterialsService } from 'app/services/materials.service';
 import { alerts } from 'app/helpers/alerts';
 
@@ -43,7 +42,7 @@ import { alerts } from 'app/helpers/alerts';
 
         <div style="flex:1 1 auto;min-height:0;">
           <ag-grid-angular
-            class="ag-theme-quartz"
+            class="ag-theme-quartz small-text-ag-grid"
             style="width:100%;height:100%;"
             [rowData]="paramRows"
             [columnDefs]="paramColDefs"
@@ -86,7 +85,7 @@ import { alerts } from 'app/helpers/alerts';
 
         <div *ngIf="selectedParam && !configLoading" style="flex:1 1 auto;min-height:0;">
           <ag-grid-angular
-            class="ag-theme-quartz"
+            class="ag-theme-quartz small-text-ag-grid"
             style="width:100%;height:100%;"
             [rowData]="configRows"
             [columnDefs]="configColDefs"
@@ -103,8 +102,8 @@ import { alerts } from 'app/helpers/alerts';
 export class CatalogoParamMoliendaComponent implements OnInit {
   private productionService = inject(ProductionService);
   private signalsService    = inject(SignalsService);
-  private mxmService        = inject(MaterialXModuloService);
   private materialsService  = inject(MaterialsService);
+  private cdr               = inject(ChangeDetectorRef);
 
   // ── Parámetros (master) ────────────────────────────────────────────────────
   paramGridApi!: GridApi;
@@ -184,16 +183,10 @@ export class CatalogoParamMoliendaComponent implements OnInit {
   async ngOnInit() {
     const idCompany = this.signalsService.getRootSelectedBySidebar()();
     if (idCompany) {
-      const [mxm, mats] = await Promise.all([
-        lastValueFrom(this.mxmService.getByType(idCompany, 'MOLIENDA')).catch(() => []),
-        lastValueFrom(this.materialsService.getMaterialsxview(idCompany)).catch(() => []),
-      ]);
-      const nameMap = new Map<number, string>(
-        ((mats ?? []) as any[]).map((m: any) => [m.id as number, (m.articulo ?? '') as string])
-      );
-      this.articuloOptions = ((mxm ?? []) as any[])
-        .filter((m: any) => m.idArticulo != null)
-        .map((m: any) => ({ id: m.idArticulo as number, name: nameMap.get(m.idArticulo) ?? `Art. ${m.idArticulo}` }))
+      const mats = await lastValueFrom(this.materialsService.getMaterialsxview(idCompany)).catch(() => []);
+      this.articuloOptions = ((mats ?? []) as any[])
+        .filter((m: any) => m.id != null && m.articulo)
+        .map((m: any) => ({ id: Number(m.id), name: (m.articulo as string) }))
         .sort((a, b) => a.name.localeCompare(b.name, 'es', { sensitivity: 'base' }));
     }
     await this.loadParams();
@@ -224,8 +217,9 @@ export class CatalogoParamMoliendaComponent implements OnInit {
     const row = nodes.length ? nodes[0].data : null;
     if (row?.id !== this.selectedParam?.id) {
       this.selectedParam = row;
+      this.cdr.detectChanges();
       if (row?.id) this.loadConfig(row.id);
-      else this.configRows = [];
+      else { this.configRows = []; this.cdr.detectChanges(); }
     }
   }
 
@@ -307,7 +301,10 @@ export class CatalogoParamMoliendaComponent implements OnInit {
       });
       if (this.configGridApi) this.configGridApi.setGridOption('rowData', this.configRows);
     } catch (e) { console.error('Error cargando config:', e); }
-    finally { this.configLoading = false; }
+    finally {
+      this.configLoading = false;
+      this.cdr.detectChanges();
+    }
   }
 
   onConfigGridReady(e: GridReadyEvent) {
@@ -332,6 +329,7 @@ export class CatalogoParamMoliendaComponent implements OnInit {
           valorMin:   row.active ? row.valorMin ?? undefined : undefined,
           valorMax:   row.active ? row.valorMax ?? undefined : undefined,
           active:     row.active,
+          type:       'MOLIENDA',
         }));
         row.__modified = false;
       }

@@ -1,4 +1,4 @@
-import { Component, effect, inject } from '@angular/core';
+﻿import { Component, effect, inject } from '@angular/core';
 import { CellDoubleClickedEvent, ColDef, GridApi, GridReadyEvent, ICellRendererParams } from 'ag-grid-enterprise';
 import { IncomesAndExpensesService } from 'app/services/incomes-and-expenses.service';
 import { ModalService } from 'app/services/modal.service';
@@ -1567,7 +1567,7 @@ private async updateAccountBankConsecutive(account: any, newConsecutive: number)
 
       const pdfMake = (await import('pdfmake/build/pdfmake')).default;
       const pdfFonts = (await import('pdfmake/build/vfs_fonts')).default;
-      pdfMake.vfs = pdfFonts.vfs;
+      (pdfMake as any).vfs = pdfFonts['vfs'];
 
       const period = `Del ${this.reportStartDate} al ${this.reportEndDate}`;
 

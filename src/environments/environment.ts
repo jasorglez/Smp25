@@ -73,5 +73,5 @@ export const environment = {
 
   urlRefreshToken: 'https://securetoken.googleapis.com/v1/token?key=AIzaSyDxCBGKk8nT09hdW85-PyOkhw5_JPZLF1A',
 
-  version: '2.52.526 (17 Junio 2026) - Variantes: contadores Sabor=presentaciones checked, Categoria=sabores con al menos 1 checked'
+  version: '2.52.515 (17 Junio 2026) - Prep1 Catalogos: # en grid izq, busqueda MP, filtros columna, 1 decimal, grid mas alto'
 };

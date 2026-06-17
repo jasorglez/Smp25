@@ -1,4 +1,4 @@
-import { Component, HostListener, inject } from '@angular/core';
+﻿import { Component, HostListener, inject } from '@angular/core';
 import { RouterModule } from '@angular/router';
 import { DomainsModule } from 'app/domains/domainsmodule';
 
@@ -853,7 +853,7 @@ export class AccountbanksComponent implements CanComponentDeactivate {
 
       const pdfMake = (await import('pdfmake/build/pdfmake')).default;
       const pdfFonts = (await import('pdfmake/build/vfs_fonts')).default;
-      pdfMake.vfs = pdfFonts.vfs;
+      (pdfMake as any).vfs = pdfFonts['vfs'];
 
       const period = `Del ${this.reportSaldosStartDate} al ${this.reportSaldosEndDate}`;
 

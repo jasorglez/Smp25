@@ -16,7 +16,6 @@ import { AutocompleteEditorComponent } from 'app/shared/autocomplete-editor/auto
 import { FormBuilder, FormGroup, Validators, ReactiveFormsModule } from '@angular/forms';
 import { ClockService } from 'app/services/clock.service';
 import { TimeEditorComponent } from 'app/shared/time-editor/time-editor.component';
-import { TimeEditorModule } from 'app/shared/time-editor/time-editor.module';
 import { lastValueFrom, concat, toArray, of } from 'rxjs';
 import { catchError } from 'rxjs/operators';
 import { CommonModule } from '@angular/common';
@@ -29,7 +28,7 @@ declare var bootstrap: any;
 @Component({
   selector: 'app-detail-clock-2',
   standalone: true,
-  imports: [RouterModule, DomainsModule, AgGridModule, TimeEditorModule, ReactiveFormsModule, CommonModule],
+  imports: [RouterModule, DomainsModule, AgGridModule, TimeEditorComponent, ReactiveFormsModule, CommonModule],
   templateUrl: './detail-clock-2.component.html',
   styleUrl: './detail-clock-2.component.scss',
 })

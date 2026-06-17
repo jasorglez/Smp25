@@ -142,7 +142,9 @@
       "Read(//tmp/**)",
       "mcp__warehouses-delison-pruebas__execute_sql",
       "Bash(find /home/gargadon/Source/MicroserviciosWarehouse -name \"*ItemComment*\" -o -name \"*Comment*\" | grep -v bin | grep -v obj)",
-      "Read(//home/gargadon/Source/MicroserviciosWarehouse/**)"
+      "Read(//home/gargadon/Source/MicroserviciosWarehouse/**)",
+      "mcp__b2-mssql-production__execute_read_query",
+      "mcp__b2-mssql-production__list_tables"
     ],
     "deny": [],
     "ask": [],

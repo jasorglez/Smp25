@@ -1,4 +1,4 @@
-import { Component, inject, signal, effect } from '@angular/core';
+import { ChangeDetectorRef, Component, inject, signal, effect } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { AgGridAngular } from 'ag-grid-angular';
@@ -16,11 +16,12 @@ import { ProductionService } from '../../../../services/production.service';
 import { BranchsService } from '../../../../services/branchs.service';
 import { CatalogoParamMoliendaComponent } from '../molienda/catalogo-param-molienda/catalogo-param-molienda.component';
 import { MultiSelectActividadEditorComponent } from 'app/shared/multi-select-actividad-editor.component';
+import { HijosDetailRendererComponent } from './hijos-detail-renderer.component';
 
 @Component({
   selector: 'app-catalogosproduccion',
   standalone: true,
-  imports: [CommonModule, FormsModule, AgGridAngular, SelectWithTooltipEditorV2Component, ConfiguracionPageComponent, CatalogoParamMoliendaComponent, MultiSelectActividadEditorComponent],
+  imports: [CommonModule, FormsModule, AgGridAngular, SelectWithTooltipEditorV2Component, ConfiguracionPageComponent, CatalogoParamMoliendaComponent, MultiSelectActividadEditorComponent, HijosDetailRendererComponent],
   styles: [`
     :host {
       display: block;
@@ -621,103 +622,103 @@ import { MultiSelectActividadEditorComponent } from 'app/shared/multi-select-act
         </ng-container>
 
         <ng-container *ngIf="activeTab === 'preparacion1'">
-          <!-- Lista Tablas: PADREs desde BD (type='CATALOGO') -->
-          <aside class="catalog-sidebar">
-            <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:8px;">
+          <!-- Lista Tablas: PADREs desde BD (type='CATALOGO') — AG Grid, sin CRUD -->
+          <aside class="catalog-sidebar" style="padding:0; overflow:hidden; display:flex; flex-direction:column;">
+            <div style="padding:6px 10px; background:#e8ecf0; border-bottom:1px solid #c0c8d0; flex-shrink:0;">
               <p class="sidebar-title" style="margin:0;">Lista Tablas</p>
-              <div style="display:flex; gap:4px;">
-                <button class="btn btn-xs btn-success" style="padding:1px 6px; font-size:0.75rem;"
-                        (click)="addPadre1()" title="Agregar">
-                  <i class="bi bi-plus-lg"></i>
-                </button>
-                <button class="btn btn-xs btn-danger" style="padding:1px 6px; font-size:0.75rem;"
-                        (click)="deletePadre1()" [disabled]="!selectedPadre1" title="Borrar">
-                  <i class="bi bi-trash"></i>
-                </button>
-              </div>
             </div>
-            <div class="sidebar-list">
-              <div class="sidebar-empty" *ngIf="!padres1.length">Sin categorías</div>
-              <div class="sidebar-item catalog-entry"
-                   *ngFor="let p of padres1"
-                   [class.active]="selectedPadre1?.id === p.id"
-                   (click)="onSelectPadre1(p)"
-                   (dblclick)="startEditPadre1(p, $event)"
-                   style="cursor:pointer;">
-                <ng-container *ngIf="editingPadreId !== p.id">
-                  {{ p.description }}
-                </ng-container>
-                <div *ngIf="editingPadreId === p.id" style="display:flex; gap:4px; align-items:center;">
-                  <input type="text" class="form-control form-control-sm"
-                         [(ngModel)]="editingPadreDesc"
-                         (keyup.enter)="savePadreEdit()"
-                         (keyup.escape)="cancelPadreEdit()"
-                         (click)="$event.stopPropagation()"
-                         style="height:22px; font-size:0.8rem; flex:1;"
-                         autofocus>
-                  <button class="btn btn-xs btn-success" style="padding:0 5px;" (click)="savePadreEdit(); $event.stopPropagation()">✓</button>
-                  <button class="btn btn-xs btn-secondary" style="padding:0 5px;" (click)="cancelPadreEdit(); $event.stopPropagation()">✕</button>
-                </div>
-              </div>
-            </div>
+            <ag-grid-angular
+              class="ag-theme-quartz small-text-ag-grid"
+              [rowData]="padres1"
+              [columnDefs]="padres1ColDefs"
+              [gridOptions]="padres1GridOptions"
+              (gridReady)="onPadres1GridReady($event)"
+              style="height:650px; width:100%;">
+            </ag-grid-angular>
           </aside>
 
-          <!-- Botones CRUD HIJOs -->
-          <div class="catalog-actions">
-            <button class="action-btn add"    (click)="addHijo1()"    [disabled]="!selectedPadre1"   title="Agregar hijo"><i class="bi bi-plus-lg"></i></button>
-            <button class="action-btn save"   (click)="saveHijos1()"  [disabled]="!hasUnsavedHijos1" title="Guardar hijos">
-              <i class="bi bi-floppy"></i><span *ngIf="hasUnsavedHijos1" class="dirty-dot"></span>
-            </button>
-            <button class="action-btn revert" (click)="revertHijos1()"                               title="Deshacer"><i class="bi bi-arrow-clockwise"></i></button>
-            <button class="action-btn delete" (click)="deleteHijo1()" [disabled]="!selectedHijo1"    title="Borrar hijo"><i class="bi bi-trash"></i></button>
-          </div>
+          <div class="catalog-actions"></div>
 
           <section class="catalog-panel">
-            <div *ngIf="toastMsg1()" class="helper-row"><div class="toast-mini">{{ toastMsg1() }}</div></div>
-
-            <div class="helper-message" *ngIf="!selectedPadre1">
-              Selecciona una categoría de la lista para ver los grupos
+            <div class="helper-message" *ngIf="!selectedHijo1">
+              Selecciona un grupo del detalle para ver sus catálogos
             </div>
-
-            <ng-container *ngIf="selectedPadre1">
-              <!-- Grid HIJOs -->
+            <ng-container *ngIf="selectedHijo1">
               <div class="panel-toolbar">
-                <div class="panel-title">{{ selectedPadre1.description }} — Grupos</div>
-                <div class="panel-meta" style="font-size:0.8rem; color:#888;">
-                  {{ hijos1.length }} registro(s)
-                </div>
-              </div>
-              <ag-grid-angular
-                class="ag-theme-quartz catalog-grid"
-                [rowData]="hijos1"
-                [columnDefs]="hijosColDefs1"
-                [gridOptions]="hijosGridOptions1"
-                (gridReady)="onHijosGridReady1($event)"
-                (rowClicked)="onSelectHijo1($event.data)"
-                style="height: 210px; width: 100%;">
-              </ag-grid-angular>
-
-              <!-- Grid NIETOs — siempre presente para evitar destrucción del gridApi -->
-              <div class="panel-toolbar" style="border-top:1px solid #c7daf8; margin-top:6px;">
-                <div class="panel-title">{{ selectedHijo1 ? selectedHijo1.description + ' — Catálogos' : 'Catálogos' }}</div>
-                <div class="d-flex gap-1 align-items-center" *ngIf="selectedHijo1">
-                  <button class="btn btn-sm btn-success"  (click)="addNieto1()"     title="Agregar"><i class="bi bi-plus-lg"></i></button>
-                  <button class="btn btn-sm btn-primary position-relative"  (click)="saveNietos1()"  [disabled]="!hasUnsavedNietos1" title="Guardar">
-                    <i class="bi bi-floppy"></i><span *ngIf="hasUnsavedNietos1" class="dirty-dot"></span>
+                <div class="panel-title">{{ selectedHijo1.description }} — Catálogos</div>
+                <div class="d-flex gap-1 align-items-center">
+                  <button class="btn btn-sm btn-success"  (click)="addNieto1()"    title="Agregar"><i class="bi bi-plus-lg"></i></button>
+                  <button class="btn btn-sm btn-primary position-relative" (click)="saveNietos1()" [disabled]="!hasUnsavedNietos1" title="Guardar">
+                    <i class="bi bi-floppy"></i>
+                    <span *ngIf="hasUnsavedNietos1" class="position-absolute top-0 start-100 translate-middle p-1 bg-danger border border-light rounded-circle"></span>
                   </button>
-                  <button class="btn btn-sm btn-warning"  (click)="revertNietos1()"                  title="Deshacer"><i class="bi bi-arrow-clockwise"></i></button>
-                  <button class="btn btn-sm btn-danger"   (click)="deleteNieto1()"  [disabled]="!selectedNieto1" title="Borrar"><i class="bi bi-trash"></i></button>
+                  <button class="btn btn-sm btn-warning"  (click)="revertNietos1()"                        title="Deshacer"><i class="bi bi-arrow-clockwise"></i></button>
+                  <button class="btn btn-sm btn-danger"   (click)="deleteNieto1()" [disabled]="!selectedNieto1" title="Borrar"><i class="bi bi-trash"></i></button>
                 </div>
               </div>
               <ag-grid-angular
-                class="ag-theme-quartz catalog-grid"
+                class="ag-theme-quartz small-text-ag-grid"
                 [rowData]="nietos1"
                 [columnDefs]="nietosColDefs1"
                 [gridOptions]="nietosGridOptions1"
                 (gridReady)="gridApiNietos1 = $event.api"
-                (rowClicked)="selectedNieto1 = $event.data"
-                style="height: 210px; width: 100%;">
+                (rowClicked)="onSelectNieto1($event.data)"
+                style="height:260px; width:100%;">
               </ag-grid-angular>
+
+              <!-- ─── Config por Materia Prima (debajo del grid de Nietos) ─── -->
+              <div style="margin-top:10px;border-top:2px solid #e0e0e0;padding-top:8px;">
+
+                <div class="d-flex align-items-center justify-content-between mb-1" *ngIf="selectedNieto1">
+                  <h6 class="mb-0 text-secondary" style="font-size:0.85rem;">
+                    <i class="bi bi-table me-1"></i>
+                    Configuración por Materia Prima —
+                    <strong class="text-primary">{{ selectedNieto1?.description }}</strong>
+                  </h6>
+                  <button class="btn btn-sm btn-primary position-relative" (click)="savePrep1Config()" [disabled]="!prep1ConfigHasChanges">
+                    <i class="bi bi-floppy"></i> Guardar config
+                    <span *ngIf="prep1ConfigHasChanges"
+                          class="position-absolute top-0 start-100 translate-middle p-2 bg-danger border border-light rounded-circle"></span>
+                  </button>
+                </div>
+
+                <div *ngIf="!selectedNieto1"
+                     style="display:flex;align-items:center;justify-content:center;color:#9e9e9e;font-size:0.85rem;padding:20px 0;">
+                  <div class="text-center">
+                    <i class="bi bi-hand-index-thumb" style="font-size:1.8rem;display:block;opacity:0.3;margin-bottom:6px;"></i>
+                    Selecciona un catálogo para configurar sus rangos por materia prima
+                  </div>
+                </div>
+
+                <div *ngIf="selectedNieto1 && prep1ConfigLoading"
+                     style="display:flex;align-items:center;justify-content:center;color:#9e9e9e;padding:20px 0;">
+                  <i class="bi bi-hourglass-split me-2"></i>Cargando…
+                </div>
+
+                <div *ngIf="selectedNieto1 && !prep1ConfigLoading">
+                  <div class="input-group input-group-sm mb-1" style="max-width:280px;">
+                    <span class="input-group-text"><i class="bi bi-search"></i></span>
+                    <input type="text" class="form-control form-control-sm"
+                           placeholder="Buscar materia prima…"
+                           [(ngModel)]="prep1ConfigSearchText"
+                           (ngModelChange)="gridApiPrep1Config?.setGridOption('quickFilterText', $event)">
+                    <button *ngIf="prep1ConfigSearchText" class="btn btn-outline-secondary btn-sm"
+                            (click)="prep1ConfigSearchText=''; gridApiPrep1Config?.setGridOption('quickFilterText', '')">
+                      <i class="bi bi-x"></i>
+                    </button>
+                  </div>
+                  <ag-grid-angular
+                    class="ag-theme-quartz small-text-ag-grid"
+                    style="width:100%;height:360px;"
+                    [rowData]="prep1ConfigRows"
+                    [columnDefs]="prep1ConfigColDefs"
+                    [gridOptions]="prep1ConfigGridOptions"
+                    (gridReady)="onPrep1ConfigGridReady($event)"
+                    (cellValueChanged)="onPrep1ConfigCellChanged()">
+                  </ag-grid-angular>
+                </div>
+
+              </div>
             </ng-container>
           </section>
         </ng-container>
@@ -905,6 +906,7 @@ export class CatalogosProduccionComponent {
   private hierService       = inject(CatalogProductionService);
   private productionService = inject(ProductionService);
   private branchsService    = inject(BranchsService);
+  private cdr               = inject(ChangeDetectorRef);
 
   branchOptions: { id: number; name: string; prefix: string }[] = [];
   activeTab = 'molienda';
@@ -1115,12 +1117,46 @@ export class CatalogosProduccionComponent {
   private originalNietos1: CatalogProductionItem[] = [];
   hasUnsavedHijos1  = false;
   hasUnsavedNietos1 = false;
+  gridApiPadres1!: GridApi;
   gridApiHijos1!:  GridApi;
   gridApiNietos1!: GridApi;
   toastMsg1 = signal('');
 
+  // Preparación 1 — Config por Materia Prima
+  prep1ConfigRows: any[]  = [];
+  prep1ConfigHasChanges   = false;
+  prep1ConfigLoading      = false;
+  prep1ConfigSearchText   = '';
+  gridApiPrep1Config!: GridApi;
+
+  readonly padres1ColDefs: ColDef[] = [
+    {
+      headerName: '#', width: 42, suppressSizeToFit: true, editable: false,
+      valueGetter: (p: any) => p.node.rowIndex + 1,
+      cellStyle: { backgroundColor: '#f0f4f8', color: '#6c757d', fontWeight: '600', textAlign: 'center' },
+    },
+    {
+      field: 'description',
+      headerName: 'Tabla',
+      flex: 1,
+      editable: false,
+      cellRenderer: 'agGroupCellRenderer'
+    }
+  ];
+
+  readonly padres1GridOptions: any = {
+    headerHeight: 30,
+    rowHeight: 30,
+    rowSelection: 'single',
+    animateRows: true,
+    masterDetail: true,
+    isRowMaster: () => true,
+    detailCellRenderer: HijosDetailRendererComponent,
+    detailRowHeight: 220
+  };
+
   tabs = [
-    { key: 'molienda',     label: 'Molienda' },
+    { key: 'molienda',     label: 'Extracción y Fermentación' },
     { key: 'preparacion1', label: 'Preparacion 1' },
     { key: 'preparacion2', label: 'Preparacion 2' },
     { key: 'cerveza',      label: 'Cerveza' },
@@ -1423,6 +1459,64 @@ export class CatalogosProduccionComponent {
     rowClassRules: { 'new-row-highlight': (p: any) => !!p.data?.__isNew },
   };
 
+  // ── Config por Materia Prima — Preparación 1 ──
+  readonly prep1ConfigColDefs: ColDef[] = [
+    {
+      field: 'articuloName', headerName: 'Materia Prima',
+      editable: false, width: 200,
+      filter: 'agTextColumnFilter',
+      cellStyle: { color: '#495057', fontWeight: '600', backgroundColor: '#f8f9fa' },
+    },
+    {
+      field: 'active', headerName: 'Activo',
+      editable: true, width: 90,
+      filter: 'agSetColumnFilter',
+      cellRenderer: 'agCheckboxCellRenderer',
+      cellEditor:   'agCheckboxCellEditor',
+      cellStyle: (p: any) => ({
+        backgroundColor: p.value ? '#d4edda' : '#f8f9fa',
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+      }),
+      valueSetter: (p: any) => { p.data.active = p.newValue; p.data.__modified = true; return true; },
+    },
+    {
+      field: 'valorMin', headerName: 'Valor Mín',
+      editable: (p: any) => !!p.data.active,
+      width: 120,
+      filter: 'agNumberColumnFilter',
+      cellEditor: 'agNumberCellEditor',
+      cellEditorParams: { precision: 1 },
+      valueFormatter: (p: any) => p.data.active && p.value != null ? Number(p.value).toFixed(1) : '—',
+      cellStyle: (p: any) => ({ color: p.data.active ? '#000' : '#aaa' }),
+      valueSetter: (p: any) => {
+        p.data.valorMin = p.newValue != null ? Math.round(Number(p.newValue) * 10) / 10 : null;
+        p.data.__modified = true; return true;
+      },
+    },
+    {
+      field: 'valorMax', headerName: 'Valor Máx',
+      editable: (p: any) => !!p.data.active,
+      width: 120,
+      filter: 'agNumberColumnFilter',
+      cellEditor: 'agNumberCellEditor',
+      cellEditorParams: { precision: 1 },
+      valueFormatter: (p: any) => p.data.active && p.value != null ? Number(p.value).toFixed(1) : '—',
+      cellStyle: (p: any) => ({ color: p.data.active ? '#000' : '#aaa' }),
+      valueSetter: (p: any) => {
+        p.data.valorMax = p.newValue != null ? Math.round(Number(p.newValue) * 10) / 10 : null;
+        p.data.__modified = true; return true;
+      },
+    },
+  ];
+
+  readonly prep1ConfigGridOptions: any = {
+    getRowId: (p: any) => String(p.data.idArticulo),
+    headerHeight: 26, rowHeight: 24,
+    stopEditingWhenCellsLoseFocus: true,
+    floatingFilter: true,
+    floatingFiltersHeight: 22,
+  };
+
   constructor() {
     effect(() => {
       const idRoot = this.signalsService.getRootSelectedBySidebar()();
@@ -1565,6 +1659,19 @@ export class CatalogosProduccionComponent {
       setTimeout(() => this.gridApi.startEditingCell({ rowIndex: 0, colKey: 'idBranch' }), 0);
       return;
     }
+    if (this.isFasesFEMode) {
+      this.rowData.set([{
+        id: null,
+        type: 'MOLIENDA',
+        prefijo: '',
+        valor: true,
+        idCatalog: this.selectedCatalogSidebarId,
+        __isNew: true
+      }, ...this.rowData()]);
+      this.hasUnsavedChanges = true;
+      setTimeout(() => this.gridApi.startEditingCell({ rowIndex: 0, colKey: 'prefijo' }), 0);
+      return;
+    }
     this.rowData.set([{
       id: null,
       type: 'MOLIENDA',
@@ -1602,6 +1709,19 @@ export class CatalogosProduccionComponent {
             anio: r.anio ?? null,
             numBote: r.prefixNum ?? null,
             contador: r.contador ?? 1,
+          }
+        : this.isFasesFEMode
+        ? {
+            idCompany: this.idRoot,
+            idArticulo: null,
+            cantidad: 1,
+            type: r.type,
+            idCatalog: r.idCatalog || this.selectedCatalogSidebarId,
+            active: r.valor,
+            prefijo: (r.prefijo ?? '').trim(),
+            editBultos: false,
+            molienda: false,
+            idPrefijoFase: null,
           }
         : {
             idCompany: this.idRoot,
@@ -1658,14 +1778,20 @@ export class CatalogosProduccionComponent {
 
     this.catalogService.getAll(this.idRoot).subscribe({
       next: (items) => {
-        this.catalogSidebarItems = items ?? [];
-        if (this.selectedCatalogSidebarId && !this.catalogSidebarItems.some(x => x.id === this.selectedCatalogSidebarId)) {
-          this.selectedCatalogSidebarId = null;
-        }
+        Promise.resolve().then(() => {
+          this.catalogSidebarItems = items ?? [];
+          if (this.selectedCatalogSidebarId && !this.catalogSidebarItems.some(x => x.id === this.selectedCatalogSidebarId)) {
+            this.selectedCatalogSidebarId = null;
+          }
+          this.cdr.detectChanges();
+        });
       },
       error: () => {
-        this.catalogSidebarItems = [];
-        this.selectedCatalogSidebarId = null;
+        Promise.resolve().then(() => {
+          this.catalogSidebarItems = [];
+          this.selectedCatalogSidebarId = null;
+          this.cdr.detectChanges();
+        });
       },
     });
   }
@@ -2630,6 +2756,16 @@ export class CatalogosProduccionComponent {
           return matA.localeCompare(matB, 'es', { sensitivity: 'base' });
         });
         rows.forEach((r: any, i: number) => { r.boteNum = i + 1; });
+      } else if (this.isFasesFEMode) {
+        rows = (data ?? []).map((m: any) => ({
+          id: m.id,
+          type: m.type,
+          prefijo: m.prefijo ?? '',
+          valor: m.active,
+          idCatalog: m.idCatalog,
+        }));
+        rows.sort((a: any, b: any) =>
+          String(a.prefijo ?? '').localeCompare(String(b.prefijo ?? ''), 'es', { sensitivity: 'base' }));
       } else {
         const prefijoMap = (this as any)._artPrefijoFromMatsMap as Map<number, string> | undefined;
         rows = (data ?? []).map(m => ({
@@ -2871,14 +3007,20 @@ export class CatalogosProduccionComponent {
   }
 
   onSelectPadre1(padre: CatalogProductionItem): void {
-    this.selectedPadre1  = padre;
-    this.selectedHijo1   = null;
-    this.selectedNieto1  = null;
-    this.hijos1          = [];
-    this.nietos1         = [];
-    this.hasUnsavedHijos1  = false;
-    this.hasUnsavedNietos1 = false;
-    this.loadHijos1(padre.id!);
+    this.selectedPadre1 = padre;
+    if (!this.gridApiPadres1) return;
+    this.gridApiPadres1.forEachNode(node => {
+      if (node.data?.id === padre.id) {
+        node.setExpanded(!node.expanded);
+      }
+    });
+  }
+
+  onPadres1GridReady(event: any): void {
+    this.gridApiPadres1 = event.api;
+    event.api.setGridOption('detailCellRendererParams', {
+      onHijoSelected: (hijo: any) => this.onSelectHijo1(hijo)
+    });
   }
 
   onHijosGridReady1(event: any): void {
@@ -2907,6 +3049,7 @@ export class CatalogosProduccionComponent {
   }
 
   onSelectHijo1(hijo: CatalogProductionItem): void {
+    if (!hijo) { this.selectedHijo1 = null; this.nietos1 = []; return; }
     this.selectedHijo1  = hijo;
     this.selectedNieto1 = null;
     this.nietos1        = [];
@@ -3065,6 +3208,82 @@ export class CatalogosProduccionComponent {
         this.gridApiNietos1.setGridOption('rowData', this.nietos1);
       this.showToast1('Borrado');
     } catch { this.showToast1('Error al eliminar'); }
+  }
+
+  // ── Config por Materia Prima — Preparación 1 ──
+
+  onSelectNieto1(nieto: any): void {
+    this.selectedNieto1        = nieto;
+    this.prep1ConfigRows       = [];
+    this.prep1ConfigHasChanges = false;
+    this.cdr.detectChanges();
+    if (nieto?.id) this.loadPrep1Config(nieto.id);
+    else { this.prep1ConfigRows = []; this.cdr.detectChanges(); }
+  }
+
+  async loadPrep1Config(idParam: number): Promise<void> {
+    this.prep1ConfigLoading    = true;
+    this.prep1ConfigHasChanges = false;
+    try {
+      const [existing, mats] = await Promise.all([
+        lastValueFrom(this.productionService.getMoliendaParamConfigByParam(idParam, 'PREPARACION1-JARABE')).catch(() => [] as any[]),
+        lastValueFrom(this.materialsService.getMaterialsxview(this.idRoot)).catch(() => []),
+      ]);
+
+      const existingMap  = new Map<number, any>((existing as any[]).map((c: any) => [c.idArticulo, c]));
+
+      const articuloOpts = ((mats as any[]) ?? [])
+        .filter((m: any) => m.id != null && m.articulo)
+        .map((m: any) => ({ id: Number(m.id), name: m.articulo as string }))
+        .sort((a, b) => a.name.localeCompare(b.name, 'es', { sensitivity: 'base' }));
+
+      this.prep1ConfigRows = articuloOpts.map(art => {
+        const cfg = existingMap.get(art.id);
+        return {
+          idArticulo:   art.id,
+          articuloName: art.name,
+          active:       cfg ? !!cfg.active  : false,
+          valorMin:     cfg ? cfg.valorMin  ?? null : null,
+          valorMax:     cfg ? cfg.valorMax  ?? null : null,
+          __modified:   false,
+        };
+      });
+
+      if (this.gridApiPrep1Config) this.gridApiPrep1Config.setGridOption('rowData', this.prep1ConfigRows);
+    } catch (e) { console.error('Error cargando config prep1:', e); }
+    finally {
+      this.prep1ConfigLoading = false;
+      this.cdr.detectChanges();
+    }
+  }
+
+  onPrep1ConfigGridReady(e: GridReadyEvent): void {
+    this.gridApiPrep1Config = e.api;
+    if (this.prep1ConfigRows.length) this.gridApiPrep1Config.setGridOption('rowData', this.prep1ConfigRows);
+  }
+
+  onPrep1ConfigCellChanged(): void {
+    this.prep1ConfigHasChanges = true;
+    if (this.gridApiPrep1Config) this.gridApiPrep1Config.refreshCells({ force: true });
+  }
+
+  async savePrep1Config(): Promise<void> {
+    if (!this.selectedNieto1?.id) return;
+    const dirty = this.prep1ConfigRows.filter(r => r.__modified);
+    try {
+      for (const row of dirty) {
+        await lastValueFrom(this.productionService.upsertMoliendaParamConfig({
+          idParam:    this.selectedNieto1.id,
+          idArticulo: row.idArticulo,
+          valorMin:   row.active ? row.valorMin ?? undefined : undefined,
+          valorMax:   row.active ? row.valorMax ?? undefined : undefined,
+          active:     row.active,
+          type:       'PREPARACION1-JARABE',
+        }));
+        row.__modified = false;
+      }
+      this.prep1ConfigHasChanges = false;
+    } catch (e) { alerts.reqErrorToast('Error al guardar configuración'); }
   }
 
   // ── Actividades ────────────────────────────────────────────────────────────
