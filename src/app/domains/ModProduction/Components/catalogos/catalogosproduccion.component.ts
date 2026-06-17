@@ -662,9 +662,52 @@ import { HijosDetailRendererComponent } from './hijos-detail-renderer.component'
                 [columnDefs]="nietosColDefs1"
                 [gridOptions]="nietosGridOptions1"
                 (gridReady)="gridApiNietos1 = $event.api"
-                (rowClicked)="selectedNieto1 = $event.data"
-                style="height:500px; width:100%;">
+                (rowClicked)="onSelectNieto1($event.data)"
+                style="height:260px; width:100%;">
               </ag-grid-angular>
+
+              <!-- ─── Config por Materia Prima (debajo del grid de Nietos) ─── -->
+              <div style="margin-top:10px;border-top:2px solid #e0e0e0;padding-top:8px;">
+
+                <div class="d-flex align-items-center justify-content-between mb-1" *ngIf="selectedNieto1">
+                  <h6 class="mb-0 text-secondary" style="font-size:0.85rem;">
+                    <i class="bi bi-table me-1"></i>
+                    Configuración por Materia Prima —
+                    <strong class="text-primary">{{ selectedNieto1?.description }}</strong>
+                  </h6>
+                  <button class="btn btn-sm btn-primary position-relative" (click)="savePrep1Config()" [disabled]="!prep1ConfigHasChanges">
+                    <i class="bi bi-floppy"></i> Guardar config
+                    <span *ngIf="prep1ConfigHasChanges"
+                          class="position-absolute top-0 start-100 translate-middle p-2 bg-danger border border-light rounded-circle"></span>
+                  </button>
+                </div>
+
+                <div *ngIf="!selectedNieto1"
+                     style="display:flex;align-items:center;justify-content:center;color:#9e9e9e;font-size:0.85rem;padding:20px 0;">
+                  <div class="text-center">
+                    <i class="bi bi-hand-index-thumb" style="font-size:1.8rem;display:block;opacity:0.3;margin-bottom:6px;"></i>
+                    Selecciona un catálogo para configurar sus rangos por materia prima
+                  </div>
+                </div>
+
+                <div *ngIf="selectedNieto1 && prep1ConfigLoading"
+                     style="display:flex;align-items:center;justify-content:center;color:#9e9e9e;padding:20px 0;">
+                  <i class="bi bi-hourglass-split me-2"></i>Cargando…
+                </div>
+
+                <div *ngIf="selectedNieto1 && !prep1ConfigLoading" style="height:220px;">
+                  <ag-grid-angular
+                    class="ag-theme-quartz small-text-ag-grid"
+                    style="width:100%;height:100%;"
+                    [rowData]="prep1ConfigRows"
+                    [columnDefs]="prep1ConfigColDefs"
+                    [gridOptions]="prep1ConfigGridOptions"
+                    (gridReady)="gridApiPrep1Config = $event.api"
+                    (cellValueChanged)="onPrep1ConfigCellChanged()">
+                  </ag-grid-angular>
+                </div>
+
+              </div>
             </ng-container>
           </section>
         </ng-container>
@@ -1068,6 +1111,12 @@ export class CatalogosProduccionComponent {
   gridApiNietos1!: GridApi;
   toastMsg1 = signal('');
 
+  // Preparación 1 — Config por Materia Prima
+  prep1ConfigRows: any[]  = [];
+  prep1ConfigHasChanges   = false;
+  prep1ConfigLoading      = false;
+  gridApiPrep1Config!: GridApi;
+
   readonly padres1ColDefs: ColDef[] = [
     {
       field: 'description',
@@ -1391,6 +1440,50 @@ export class CatalogosProduccionComponent {
   readonly nietosGridOptions1: any = {
     headerHeight: 25, rowHeight: 22, rowSelection: 'single', animateRows: true,
     rowClassRules: { 'new-row-highlight': (p: any) => !!p.data?.__isNew },
+  };
+
+  // ── Config por Materia Prima — Preparación 1 ──
+  readonly prep1ConfigColDefs: ColDef[] = [
+    {
+      field: 'articuloName', headerName: 'Materia Prima',
+      editable: false, width: 220,
+      cellStyle: { color: '#495057', fontWeight: '600', backgroundColor: '#f8f9fa' },
+    },
+    {
+      field: 'active', headerName: 'Activo',
+      editable: true, width: 90,
+      cellRenderer: 'agCheckboxCellRenderer',
+      cellEditor:   'agCheckboxCellEditor',
+      cellStyle: (p: any) => ({
+        backgroundColor: p.value ? '#d4edda' : '#f8f9fa',
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+      }),
+      valueSetter: (p: any) => { p.data.active = p.newValue; p.data.__modified = true; return true; },
+    },
+    {
+      field: 'valorMin', headerName: 'Valor Mín',
+      editable: (p: any) => !!p.data.active,
+      width: 120,
+      cellEditor: 'agNumberCellEditor',
+      valueFormatter: (p: any) => p.data.active && p.value != null ? Number(p.value).toFixed(4) : '—',
+      cellStyle: (p: any) => ({ color: p.data.active ? '#000' : '#aaa' }),
+      valueSetter: (p: any) => { p.data.valorMin = p.newValue ?? null; p.data.__modified = true; return true; },
+    },
+    {
+      field: 'valorMax', headerName: 'Valor Máx',
+      editable: (p: any) => !!p.data.active,
+      width: 120,
+      cellEditor: 'agNumberCellEditor',
+      valueFormatter: (p: any) => p.data.active && p.value != null ? Number(p.value).toFixed(4) : '—',
+      cellStyle: (p: any) => ({ color: p.data.active ? '#000' : '#aaa' }),
+      valueSetter: (p: any) => { p.data.valorMax = p.newValue ?? null; p.data.__modified = true; return true; },
+    },
+  ];
+
+  readonly prep1ConfigGridOptions: any = {
+    getRowId: (p: any) => String(p.data.idArticulo),
+    headerHeight: 26, rowHeight: 24,
+    stopEditingWhenCellsLoseFocus: true,
   };
 
   constructor() {
@@ -3084,6 +3177,71 @@ export class CatalogosProduccionComponent {
         this.gridApiNietos1.setGridOption('rowData', this.nietos1);
       this.showToast1('Borrado');
     } catch { this.showToast1('Error al eliminar'); }
+  }
+
+  // ── Config por Materia Prima — Preparación 1 ──
+
+  onSelectNieto1(nieto: any): void {
+    this.selectedNieto1       = nieto;
+    this.prep1ConfigRows      = [];
+    this.prep1ConfigHasChanges = false;
+    if (nieto?.id) this.loadPrep1Config(nieto.id);
+  }
+
+  async loadPrep1Config(idParam: number): Promise<void> {
+    this.prep1ConfigLoading    = true;
+    this.prep1ConfigHasChanges = false;
+    try {
+      const existing = await lastValueFrom(
+        this.productionService.getMoliendaParamConfigByParam(idParam, 'PREPARACION1-JARABE')
+      ).catch(() => [] as any[]);
+
+      const existingMap = new Map<number, any>((existing as any[]).map((c: any) => [c.idArticulo, c]));
+
+      const articuloOpts = this.materiales
+        .filter((m: any) => m.id != null && m.articulo)
+        .map((m: any) => ({ id: Number(m.id), name: m.articulo as string }))
+        .sort((a, b) => a.name.localeCompare(b.name, 'es', { sensitivity: 'base' }));
+
+      this.prep1ConfigRows = articuloOpts.map(art => {
+        const cfg = existingMap.get(art.id);
+        return {
+          idArticulo:   art.id,
+          articuloName: art.name,
+          active:       cfg ? !!cfg.active  : false,
+          valorMin:     cfg ? cfg.valorMin  ?? null : null,
+          valorMax:     cfg ? cfg.valorMax  ?? null : null,
+          __modified:   false,
+        };
+      });
+
+      if (this.gridApiPrep1Config) this.gridApiPrep1Config.setGridOption('rowData', this.prep1ConfigRows);
+    } catch (e) { console.error('Error cargando config prep1:', e); }
+    finally     { this.prep1ConfigLoading = false; }
+  }
+
+  onPrep1ConfigCellChanged(): void {
+    this.prep1ConfigHasChanges = true;
+    if (this.gridApiPrep1Config) this.gridApiPrep1Config.refreshCells({ force: true });
+  }
+
+  async savePrep1Config(): Promise<void> {
+    if (!this.selectedNieto1?.id) return;
+    const dirty = this.prep1ConfigRows.filter(r => r.__modified);
+    try {
+      for (const row of dirty) {
+        await lastValueFrom(this.productionService.upsertMoliendaParamConfig({
+          idParam:    this.selectedNieto1.id,
+          idArticulo: row.idArticulo,
+          valorMin:   row.active ? row.valorMin ?? undefined : undefined,
+          valorMax:   row.active ? row.valorMax ?? undefined : undefined,
+          active:     row.active,
+          type:       'PREPARACION1-JARABE',
+        }));
+        row.__modified = false;
+      }
+      this.prep1ConfigHasChanges = false;
+    } catch (e) { alerts.reqErrorToast('Error al guardar configuración'); }
   }
 
   // ── Actividades ────────────────────────────────────────────────────────────

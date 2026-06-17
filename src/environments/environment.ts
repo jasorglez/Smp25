@@ -73,5 +73,5 @@ export const environment = {
 
   urlRefreshToken: 'https://securetoken.googleapis.com/v1/token?key=AIzaSyDxCBGKk8nT09hdW85-PyOkhw5_JPZLF1A',
 
-  version: '2.52.512 (17 Junio 2026) - MoliendaParamConfig: campo type añadido a tabla y endpoints'
+  version: '2.52.513 (16 Junio 2026) - Preparacion1: Config por Materia Prima (PREPARACION1-JARABE)'
 };
