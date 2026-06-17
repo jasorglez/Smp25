@@ -1463,7 +1463,7 @@ export class CatalogosProduccionComponent {
   readonly prep1ConfigColDefs: ColDef[] = [
     {
       field: 'articuloName', headerName: 'Materia Prima',
-      editable: false, flex: 1, minWidth: 180,
+      editable: false, width: 200,
       filter: 'agTextColumnFilter',
       cellStyle: { color: '#495057', fontWeight: '600', backgroundColor: '#f8f9fa' },
     },
