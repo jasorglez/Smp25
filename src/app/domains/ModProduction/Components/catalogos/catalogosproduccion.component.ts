@@ -702,7 +702,7 @@ import { HijosDetailRendererComponent } from './hijos-detail-renderer.component'
                     [rowData]="prep1ConfigRows"
                     [columnDefs]="prep1ConfigColDefs"
                     [gridOptions]="prep1ConfigGridOptions"
-                    (gridReady)="gridApiPrep1Config = $event.api"
+                    (gridReady)="onPrep1ConfigGridReady($event)"
                     (cellValueChanged)="onPrep1ConfigCellChanged()">
                   </ag-grid-angular>
                 </div>
@@ -3182,10 +3182,12 @@ export class CatalogosProduccionComponent {
   // ── Config por Materia Prima — Preparación 1 ──
 
   onSelectNieto1(nieto: any): void {
-    this.selectedNieto1       = nieto;
-    this.prep1ConfigRows      = [];
+    this.selectedNieto1        = nieto;
+    this.prep1ConfigRows       = [];
     this.prep1ConfigHasChanges = false;
+    this.cdr.detectChanges();
     if (nieto?.id) this.loadPrep1Config(nieto.id);
+    else { this.prep1ConfigRows = []; this.cdr.detectChanges(); }
   }
 
   async loadPrep1Config(idParam: number): Promise<void> {
@@ -3218,7 +3220,15 @@ export class CatalogosProduccionComponent {
 
       if (this.gridApiPrep1Config) this.gridApiPrep1Config.setGridOption('rowData', this.prep1ConfigRows);
     } catch (e) { console.error('Error cargando config prep1:', e); }
-    finally     { this.prep1ConfigLoading = false; }
+    finally {
+      this.prep1ConfigLoading = false;
+      this.cdr.detectChanges();
+    }
+  }
+
+  onPrep1ConfigGridReady(e: GridReadyEvent): void {
+    this.gridApiPrep1Config = e.api;
+    if (this.prep1ConfigRows.length) this.gridApiPrep1Config.setGridOption('rowData', this.prep1ConfigRows);
   }
 
   onPrep1ConfigCellChanged(): void {
