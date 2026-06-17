@@ -135,11 +135,14 @@ export class AuthService {
       willClose: () => {
         clearInterval(timerInterval);
       }
-    }).then((_result) => {
-      // Si el usuario hizo clic en "Entendido" → no hacer nada.
-      // El sessionExpireTimer cerrará la sesión cuando el token realmente expire.
-      // Si el timer del Swal se agotó (dismiss = timer), el sessionExpireTimer
-      // ya llamó Swal.close() + logout(), así que tampoco es necesario actuar aquí.
+    }).then((result) => {
+      if (result.isConfirmed) {
+        // Usuario hizo clic en "Entendido" → renovar token para darle sesión completa nueva
+        this.renewToken().then(ok => {
+          if (!ok) this.logout(); // si el backend falla, cerrar sesión
+        });
+      }
+      // Si el Swal cerró por timer o por sessionExpireTimer → el logout ya fue manejado
     });
   }
 
@@ -149,13 +152,43 @@ export class AuthService {
       const payload = token.split('.')[1];
       const decoded = JSON.parse(atob(payload));
       if (decoded.exp) {
-        return decoded.exp * 1000; // exp está en segundos, convertir a ms
+        return decoded.exp * 1000;
       }
       return null;
     } catch (e) {
       console.error('Error decodificando el token:', e);
       return null;
     }
+  }
+
+  // ─── Extrae el userId del JWT (claim nameid) ───
+  private getUserIdFromToken(): number | null {
+    try {
+      const token = localStorage.getItem('token');
+      if (!token) return null;
+      const decoded = JSON.parse(atob(token.split('.')[1]));
+      const id = decoded['nameid'] ?? decoded['sub'] ?? decoded['http://schemas.xmlsoap.org/ws/2005/05/identity/claims/nameidentifier'];
+      return id ? Number(id) : null;
+    } catch { return null; }
+  }
+
+  // ─── Renueva el token llamando al backend y reinicia los timers ───
+  renewToken(): Promise<boolean> {
+    const userId = this.getUserIdFromToken();
+    if (!userId) return Promise.resolve(false);
+
+    return firstValueFrom(
+      this.http.get<any>(
+        `${environment.urlSecurity}/Auth/renew/token/${userId}`,
+        { headers: this.trackingService.getHeaders() }
+      )
+    ).then(res => {
+      const newToken = res?.data?.token;
+      if (!newToken) return false;
+      localStorage.setItem('token', newToken);
+      this.startSessionTimers(); // reinicia con el nuevo token
+      return true;
+    }).catch(() => false);
   }
 
   isTokenExpired(): boolean {
