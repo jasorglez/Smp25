@@ -86,5 +86,5 @@ export const environment = {
     // publicKey: 'TEST-4399133a-4676-42a2-ab85-d946370bf96a',
   },
 
-  version: '5.58 (16 Junio 2026 13:00) style(api-monitor): grids estandarizados a 650px y small-text-ag-grid',
+  version: '5.59 (17 Junio 2026) fix(sesion): Entendido ya no cierra sesión; contador muestra tiempo correcto',
 }; 
