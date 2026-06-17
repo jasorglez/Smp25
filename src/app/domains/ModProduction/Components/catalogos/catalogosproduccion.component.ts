@@ -695,13 +695,25 @@ import { HijosDetailRendererComponent } from './hijos-detail-renderer.component'
                   <i class="bi bi-hourglass-split me-2"></i>Cargando…
                 </div>
 
-                <div *ngIf="selectedNieto1 && !prep1ConfigLoading" style="height:220px;">
+                <div *ngIf="selectedNieto1 && !prep1ConfigLoading">
+                  <div class="input-group input-group-sm mb-1" style="max-width:280px;">
+                    <span class="input-group-text"><i class="bi bi-search"></i></span>
+                    <input type="text" class="form-control form-control-sm"
+                           placeholder="Buscar materia prima…"
+                           [(ngModel)]="prep1ConfigSearchText"
+                           (ngModelChange)="gridApiPrep1Config?.setGridOption('quickFilterText', $event)">
+                    <button *ngIf="prep1ConfigSearchText" class="btn btn-outline-secondary btn-sm"
+                            (click)="prep1ConfigSearchText=''; gridApiPrep1Config?.setGridOption('quickFilterText', '')">
+                      <i class="bi bi-x"></i>
+                    </button>
+                  </div>
                   <ag-grid-angular
                     class="ag-theme-quartz small-text-ag-grid"
-                    style="width:100%;height:100%;"
+                    style="width:100%;height:360px;"
                     [rowData]="prep1ConfigRows"
                     [columnDefs]="prep1ConfigColDefs"
                     [gridOptions]="prep1ConfigGridOptions"
+                    [floatingFilter]="true"
                     (gridReady)="onPrep1ConfigGridReady($event)"
                     (cellValueChanged)="onPrep1ConfigCellChanged()">
                   </ag-grid-angular>
@@ -1115,9 +1127,15 @@ export class CatalogosProduccionComponent {
   prep1ConfigRows: any[]  = [];
   prep1ConfigHasChanges   = false;
   prep1ConfigLoading      = false;
+  prep1ConfigSearchText   = '';
   gridApiPrep1Config!: GridApi;
 
   readonly padres1ColDefs: ColDef[] = [
+    {
+      headerName: '#', width: 42, suppressSizeToFit: true, editable: false,
+      valueGetter: (p: any) => p.node.rowIndex + 1,
+      cellStyle: { backgroundColor: '#f0f4f8', color: '#6c757d', fontWeight: '600', textAlign: 'center' },
+    },
     {
       field: 'description',
       headerName: 'Tabla',
@@ -1446,12 +1464,14 @@ export class CatalogosProduccionComponent {
   readonly prep1ConfigColDefs: ColDef[] = [
     {
       field: 'articuloName', headerName: 'Materia Prima',
-      editable: false, width: 220,
+      editable: false, flex: 1, minWidth: 180,
+      filter: 'agTextColumnFilter',
       cellStyle: { color: '#495057', fontWeight: '600', backgroundColor: '#f8f9fa' },
     },
     {
       field: 'active', headerName: 'Activo',
       editable: true, width: 90,
+      filter: 'agSetColumnFilter',
       cellRenderer: 'agCheckboxCellRenderer',
       cellEditor:   'agCheckboxCellEditor',
       cellStyle: (p: any) => ({
@@ -1464,19 +1484,29 @@ export class CatalogosProduccionComponent {
       field: 'valorMin', headerName: 'Valor Mín',
       editable: (p: any) => !!p.data.active,
       width: 120,
+      filter: 'agNumberColumnFilter',
       cellEditor: 'agNumberCellEditor',
-      valueFormatter: (p: any) => p.data.active && p.value != null ? Number(p.value).toFixed(4) : '—',
+      cellEditorParams: { precision: 1 },
+      valueFormatter: (p: any) => p.data.active && p.value != null ? Number(p.value).toFixed(1) : '—',
       cellStyle: (p: any) => ({ color: p.data.active ? '#000' : '#aaa' }),
-      valueSetter: (p: any) => { p.data.valorMin = p.newValue ?? null; p.data.__modified = true; return true; },
+      valueSetter: (p: any) => {
+        p.data.valorMin = p.newValue != null ? Math.round(Number(p.newValue) * 10) / 10 : null;
+        p.data.__modified = true; return true;
+      },
     },
     {
       field: 'valorMax', headerName: 'Valor Máx',
       editable: (p: any) => !!p.data.active,
       width: 120,
+      filter: 'agNumberColumnFilter',
       cellEditor: 'agNumberCellEditor',
-      valueFormatter: (p: any) => p.data.active && p.value != null ? Number(p.value).toFixed(4) : '—',
+      cellEditorParams: { precision: 1 },
+      valueFormatter: (p: any) => p.data.active && p.value != null ? Number(p.value).toFixed(1) : '—',
       cellStyle: (p: any) => ({ color: p.data.active ? '#000' : '#aaa' }),
-      valueSetter: (p: any) => { p.data.valorMax = p.newValue ?? null; p.data.__modified = true; return true; },
+      valueSetter: (p: any) => {
+        p.data.valorMax = p.newValue != null ? Math.round(Number(p.newValue) * 10) / 10 : null;
+        p.data.__modified = true; return true;
+      },
     },
   ];
 
@@ -1484,6 +1514,7 @@ export class CatalogosProduccionComponent {
     getRowId: (p: any) => String(p.data.idArticulo),
     headerHeight: 26, rowHeight: 24,
     stopEditingWhenCellsLoseFocus: true,
+    floatingFiltersHeight: 24,
   };
 
   constructor() {
