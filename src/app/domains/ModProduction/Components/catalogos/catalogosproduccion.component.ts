@@ -1,4 +1,4 @@
-import { Component, inject, signal, effect } from '@angular/core';
+import { ChangeDetectorRef, Component, inject, signal, effect } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { AgGridAngular } from 'ag-grid-angular';
@@ -852,6 +852,7 @@ export class CatalogosProduccionComponent {
   private hierService       = inject(CatalogProductionService);
   private productionService = inject(ProductionService);
   private branchsService    = inject(BranchsService);
+  private cdr               = inject(ChangeDetectorRef);
 
   branchOptions: { id: number; name: string; prefix: string }[] = [];
   activeTab = 'molienda';
@@ -1657,10 +1658,12 @@ export class CatalogosProduccionComponent {
         if (this.selectedCatalogSidebarId && !this.catalogSidebarItems.some(x => x.id === this.selectedCatalogSidebarId)) {
           this.selectedCatalogSidebarId = null;
         }
+        this.cdr.detectChanges();
       },
       error: () => {
         this.catalogSidebarItems = [];
         this.selectedCatalogSidebarId = null;
+        this.cdr.detectChanges();
       },
     });
   }

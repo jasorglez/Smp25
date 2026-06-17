@@ -1,4 +1,4 @@
-import { Component, inject, OnInit } from '@angular/core';
+import { ChangeDetectorRef, Component, inject, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { AgGridAngular } from 'ag-grid-angular';
 import { ColDef, GridApi, GridReadyEvent } from 'ag-grid-enterprise';
@@ -105,6 +105,7 @@ export class CatalogoParamMoliendaComponent implements OnInit {
   private signalsService    = inject(SignalsService);
   private mxmService        = inject(MaterialXModuloService);
   private materialsService  = inject(MaterialsService);
+  private cdr               = inject(ChangeDetectorRef);
 
   // ── Parámetros (master) ────────────────────────────────────────────────────
   paramGridApi!: GridApi;
@@ -224,8 +225,9 @@ export class CatalogoParamMoliendaComponent implements OnInit {
     const row = nodes.length ? nodes[0].data : null;
     if (row?.id !== this.selectedParam?.id) {
       this.selectedParam = row;
+      this.cdr.detectChanges();
       if (row?.id) this.loadConfig(row.id);
-      else this.configRows = [];
+      else { this.configRows = []; this.cdr.detectChanges(); }
     }
   }
 
@@ -307,7 +309,10 @@ export class CatalogoParamMoliendaComponent implements OnInit {
       });
       if (this.configGridApi) this.configGridApi.setGridOption('rowData', this.configRows);
     } catch (e) { console.error('Error cargando config:', e); }
-    finally { this.configLoading = false; }
+    finally {
+      this.configLoading = false;
+      this.cdr.detectChanges();
+    }
   }
 
   onConfigGridReady(e: GridReadyEvent) {
