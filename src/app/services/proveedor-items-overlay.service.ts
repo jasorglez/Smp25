@@ -6,6 +6,8 @@ export interface ProveedorItemsOverlayData {
   /** node.data del pedimento (articulos, cotizacionId, requisitionId, idBranch, etc.) */
   pedimentoData: any;
   providerLabel: string;
+  /** Título breadcrumb para la cabecera del modal: "BOD-1 > P1 > Proveedor 1". */
+  headerTitle?: string;
   providerField: string;
   slotInfo: any;
   branchPrefix: string;

@@ -1,4 +1,4 @@
-import { Component, HostListener, inject, OnInit, OnDestroy, ChangeDetectorRef} from '@angular/core';
+import { Component, HostListener, inject, OnInit, OnDestroy, ChangeDetectorRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { AgGridModule } from 'ag-grid-angular';
 import { ColDef, ICellRendererParams, GridApi } from 'ag-grid-enterprise';
@@ -15,6 +15,7 @@ import { DetalleItemsPedimentosComponent } from './detalle-items-pedimentos.comp
 import { DetalleItemsProveedorComponent } from './detalle-items-proveedor.component';
 import { DetailCellRendererPedimentoReportComponent } from './detail-cell-renderer-pedimento-report.component';
 import { DetalleProvidersListComponent } from './detalle-providers-list.component';
+import { CotizProvButtonCellRendererComponent } from './cotiz-prov-button-cell-renderer.component';
 
 /** Snapshot del detalle expandido (nivel 3); debe ir solo como `type` y antes del decorador @Component. */
 type ExpandedPedimentoDetailState = {
@@ -42,7 +43,7 @@ const MAX_PROVIDER_SLOTS = 26;
 @Component({
   selector: 'app-detail-cell-renderer-pedimentos',
   standalone: true,
-  imports: [CommonModule, AgGridModule],
+  imports: [CommonModule, AgGridModule, ButtonCellRendererComponent, CotizProvButtonCellRendererComponent, PdfButtonCellRendererPedimentosComponent, DetalleItemsPedimentosComponent, DetalleItemsProveedorComponent, DetailCellRendererPedimentoReportComponent, DetalleProvidersListComponent],
   template: `
     <div class="detail-grid-container">
       <!-- Grid con tamaño completo -->
@@ -106,8 +107,9 @@ export class DetailCellRendererPedimentosComponent implements OnInit, OnDestroy 
     this.context = params.context;
     this.buildRowData();
     this.loadPedimentosWithOc();
-  
-    this.cdr.detectChanges();}
+
+    this.cdr.detectChanges();
+  }
 
   private loadPedimentosWithOc(): void {
     const idReq = this.params.data?.id;
@@ -119,7 +121,7 @@ export class DetailCellRendererPedimentosComponent implements OnInit, OnDestroy 
           this.gridApi.refreshCells({ columns: ['pedimento'], force: true });
         }
       },
-      error: () => {}
+      error: () => { }
     });
   }
 
@@ -419,17 +421,9 @@ export class DetailCellRendererPedimentosComponent implements OnInit, OnDestroy 
         width: 220,
         flex: 0,
         suppressSizeToFit: true,
-        cellRenderer: ButtonCellRendererComponent,
-        cellRendererParams: {
-          onClick: (node: any) => this.toggleProvidersListCascade(node),
-          icon: 'bi-people-fill',
-          title: 'Ver proveedores cotizados (cascada)'
-        },
-        valueGetter: (params: any) => {
-          const slots = params.data?.providerSlots || [];
-          const realCount = slots.filter((s: any) => Number(s?.idProvider) > 0).length;
-          return `${realCount} prov`;
-        },
+        // Componente Angular estable (no parpadea, click OK). El tooltip azul flotante con
+        // Artículo/Cant. Requerida lo maneja el propio componente (panel fixed sobre document.body).
+        cellRenderer: CotizProvButtonCellRendererComponent,
         editable: false,
         cellStyle: { backgroundColor: '#e8f5e9', cursor: 'pointer' }
       },
@@ -565,8 +559,9 @@ export class DetailCellRendererPedimentosComponent implements OnInit, OnDestroy 
     const allowed = await this.unsavedTracker.confirmExitIfAny();
     if (allowed) this.unsavedTracker.clearAll();
     return allowed;
-  
-    this.cdr.detectChanges();}
+
+    this.cdr.detectChanges();
+  }
 
   async toggleArticulosCascade(node: any) {
     if (!await this.ensureNoUnsavedChangesBeforeNav()) return;
@@ -620,8 +615,9 @@ export class DetailCellRendererPedimentosComponent implements OnInit, OnDestroy 
         node.setExpanded(true);
       }, 0);
     }
-  
-    this.cdr.detectChanges();}
+
+    this.cdr.detectChanges();
+  }
 
   /**
    * ✅ Abre la tabla de items por proveedor como MODAL a nivel raíz.
@@ -651,9 +647,15 @@ export class DetailCellRendererPedimentosComponent implements OnInit, OnDestroy 
     const providerLabel = `Proveedor ${slot.slotIndex}`;
     const slotKey = slot.idProvider != null ? `pro_${slot.idProvider}` : `new_${slot.slotIndex}`;
 
+    // Breadcrumb de cabecera: "BOD-1 > P1 > Proveedor 1" (requisición > pedimento > proveedor).
+    const reqFolio = this.params.data?.requisition || '';
+    const pedNum = node.data.numeroPedimentoRaw || 0;
+    const headerTitle = [reqFolio, `P${pedNum}`, providerLabel].filter(Boolean).join(' > ');
+
     this.proveedorItemsOverlayService.open({
       pedimentoData: node.data,
       providerLabel,
+      headerTitle,
       providerField: slotKey,
       slotInfo: { ...slot },
       branchPrefix: node.data.branchPrefix || 'NOPREF',
@@ -663,8 +665,9 @@ export class DetailCellRendererPedimentosComponent implements OnInit, OnDestroy 
       ),
       onSlotSaved: (savedSlot: ProviderSlotInfo) => this.onSlotSaved(node, savedSlot)
     });
-  
-    this.cdr.detectChanges();}
+
+    this.cdr.detectChanges();
+  }
 
   /**
    * ✅ Cascada nivel 3 — sub-grid con los proveedores dinámicos del pedimento + "+" + Comparar.
@@ -718,8 +721,9 @@ export class DetailCellRendererPedimentosComponent implements OnInit, OnDestroy 
         node.setExpanded(true);
       }, wasSameRowExpanded ? 50 : 0);
     }
-  
-    this.cdr.detectChanges();}
+
+    this.cdr.detectChanges();
+  }
 
   /**
    * Crea un nuevo slot temporal (sin proveedor seleccionado todavía) y abre la cascada
@@ -770,8 +774,9 @@ export class DetailCellRendererPedimentosComponent implements OnInit, OnDestroy 
 
     // Abrir cascada para el nuevo slot (pasar node, ya que es el actual)
     await this.toggleProviderCascade(node, newSlot);
-  
-    this.cdr.detectChanges();}
+
+    this.cdr.detectChanges();
+  }
 
   async toggleReportCascade(node: any) {
     if (!await this.ensureNoUnsavedChangesBeforeNav()) return;
@@ -832,8 +837,9 @@ export class DetailCellRendererPedimentosComponent implements OnInit, OnDestroy 
         node.setExpanded(true);
       }, 0);
     }
-  
-    this.cdr.detectChanges();}
+
+    this.cdr.detectChanges();
+  }
 
   async toggleComparacionCascade(nodeOrId: any) {
     if (!await this.ensureNoUnsavedChangesBeforeNav()) return;
@@ -869,8 +875,9 @@ export class DetailCellRendererPedimentosComponent implements OnInit, OnDestroy 
       departmentName: this.params.data.department || '',
       deptPrefijoFromReq: this.params.data.deptPrefijo || ''
     });
-  
-    this.cdr.detectChanges();}
+
+    this.cdr.detectChanges();
+  }
 
   collapseReportDetail() {
     if (this.expandedRowId && this.gridApi) {

@@ -136,6 +136,7 @@ export class SalidaLotesModalComponent implements OnInit {
   @Input() salidasPrevias: { [idDatoExterno: number]: number } = {};
 
   @Input() idDepto: number = 62;
+  @Input() empleadoActual: string | null = null;
 
   @Output() resolve = new EventEmitter<{ idArticulo: number; cantidad: number; empleado: string; lotes: { idDatoExterno: number; cantidad: number }[] }>();
   @Output() cancel = new EventEmitter<void>();
@@ -152,6 +153,7 @@ export class SalidaLotesModalComponent implements OnInit {
 
   ngOnInit() {
     if (this._preselect) { this.selectedArticulo = this._preselect; this.onArticuloChange(); }
+    if (this.empleadoActual) this.selectedEmpleadoName = this.empleadoActual;
     this.loadEmpleados();
   }
 

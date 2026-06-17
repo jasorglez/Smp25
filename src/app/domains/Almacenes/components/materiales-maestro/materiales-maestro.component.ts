@@ -1,4 +1,4 @@
-import { Component, OnInit, OnDestroy, inject, effect, Input, Output, EventEmitter, ChangeDetectorRef} from '@angular/core';
+import { Component, OnInit, OnDestroy, inject, effect, Input, Output, EventEmitter, ChangeDetectorRef } from '@angular/core';
 import { ActivatedRoute } from '@angular/router';
 import { AG_GRID_LOCALE_ES } from 'assets/i18n/ag-grid.locale.es';
 import { ColDef, GridApi, GridReadyEvent } from 'ag-grid-enterprise';
@@ -79,6 +79,8 @@ export class MaterialesMaestroComponent implements OnInit, OnDestroy {
   gridHeight: string = '80vh';
   selectedMaterial: MaterialsResponse | null = null;
   hasUnsavedChanges: boolean = false;
+  // True mientras corre un guardado: bloquea el botón Guardar para evitar doble click.
+  isSaving: boolean = false;
   idRoot: number | null = null;
   newlyAddedRows: string[] = [];
   private tempIdCounter: number = 0;
@@ -88,7 +90,7 @@ export class MaterialesMaestroComponent implements OnInit, OnDestroy {
   categories: any[] = [];
   families: any[] = [];
   subfamilies: any[] = [];
-  idSelect:number = 0;
+  idSelect: number = 0;
 
   // Modal de subfamilias
   private modalSubscription?: Subscription;
@@ -145,6 +147,10 @@ export class MaterialesMaestroComponent implements OnInit, OnDestroy {
       if (newIdRoot && newIdRoot !== this.idRoot) {
         this.idRoot = newIdRoot;
         this.loadMaterials();
+        // Refrescar el contexto del master-detail: si onGridReady corrió ANTES de que el
+        // signal resolviera la empresa, context.idRoot quedó en null y las cascadas (variantes)
+        // no cargaban hasta re-loguear. Esto lo actualiza en cuanto idRoot resuelve/cambia.
+        this.updateGridContext();
       }
     });
   }
@@ -193,12 +199,13 @@ export class MaterialesMaestroComponent implements OnInit, OnDestroy {
     } catch (error) {
       console.error('Error loading catalogs:', error);
     }
-  
-    this.cdr.detectChanges();}
-  
+
+    this.cdr.detectChanges();
+  }
+
   // Obtener familias de una categoría específica
   getFamiliesByCategory(categoryId: number): any[] {
-    return this.families.filter(f => f.parentId === categoryId );
+    return this.families.filter(f => f.parentId === categoryId);
   }
 
   // Obtener subfamilias de una familia específica
@@ -220,33 +227,33 @@ export class MaterialesMaestroComponent implements OnInit, OnDestroy {
     // y subfamilia están las 3 marcadas con el bit de la sección actual.
     await this.loadCatalogs();
 
-        this.materialsService.getMaterialsxview(this.idRoot).subscribe({
-          next: (data) => {
-            this.allMaterialsData = data; // snapshot del estado original en BD
-            this.rowData = this.filterMaterialsByCatalogBit(data)
-              .slice()
-              .sort((a, b) => {
-                const activeA = a.active ? 1 : 0;
-                const activeB = b.active ? 1 : 0;
-                return activeB - activeA;
-              })
-              .map(material => ({
-                ...material,
-              }));
-            if (this.pendingScrollTarget) {
-              setTimeout(() => this.scrollToTarget(), 150);
-            }
-            this.cdr.detectChanges();
-          },
-          error: (error) => {
-            console.error('Error loading materials:', error);
-            this.rowData = [];
-            this.cdr.detectChanges();
-            alerts.basicAlert('Error', 'Error al cargar materiales', 'error');
-          }
-        });
+    this.materialsService.getMaterialsxview(this.idRoot).subscribe({
+      next: (data) => {
+        this.allMaterialsData = data; // snapshot del estado original en BD
+        this.rowData = this.filterMaterialsByCatalogBit(data)
+          .slice()
+          .sort((a, b) => {
+            const activeA = a.active ? 1 : 0;
+            const activeB = b.active ? 1 : 0;
+            return activeB - activeA;
+          })
+          .map(material => ({
+            ...material,
+          }));
+        if (this.pendingScrollTarget) {
+          setTimeout(() => this.scrollToTarget(), 150);
+        }
+        this.cdr.detectChanges();
+      },
+      error: (error) => {
+        console.error('Error loading materials:', error);
+        this.rowData = [];
+        this.cdr.detectChanges();
+        alerts.basicAlert('Error', 'Error al cargar materiales', 'error');
+      }
+    });
 
-    }
+  }
 
   // Filtra materiales: solo los que tienen su categoría, familia y subfamilia
   // presentes en los catálogos de la sección (los 3 niveles con el bit en true).
@@ -296,8 +303,9 @@ export class MaterialesMaestroComponent implements OnInit, OnDestroy {
       console.error('❌ Error cargando material filtrado:', error);
       alerts.basicAlert('Error', 'Error al cargar el material', 'error');
     }
-  
-    this.cdr.detectChanges();}
+
+    this.cdr.detectChanges();
+  }
 
 
   components = {
@@ -571,7 +579,7 @@ export class MaterialesMaestroComponent implements OnInit, OnDestroy {
           this.hasUnsavedChanges = true;
           // Refrescar la fila para actualizar el combo de familia usando setTimeout
           //setTimeout(() => {
-            params.api.refreshCells({ rowNodes: [params.node], force: true });
+          params.api.refreshCells({ rowNodes: [params.node], force: true });
           //}, 0);
         }
       },
@@ -606,7 +614,7 @@ export class MaterialesMaestroComponent implements OnInit, OnDestroy {
           params.data.subfamilia = '';
           this.hasUnsavedChanges = true;
           //setTimeout(() => {
-            params.api.refreshCells({ rowNodes: [params.node], force: true });
+          params.api.refreshCells({ rowNodes: [params.node], force: true });
           //}, 0);
         },
         cellStyle: (params: any) => {
@@ -650,7 +658,7 @@ export class MaterialesMaestroComponent implements OnInit, OnDestroy {
         onCellValueChanged: (params: any) => {
           this.hasUnsavedChanges = true;
           //setTimeout(() => {
-            params.api.refreshCells({ rowNodes: [params.node], force: true });
+          params.api.refreshCells({ rowNodes: [params.node], force: true });
           //}, 0);
         },
         cellStyle: (params: any) => {
@@ -726,7 +734,7 @@ export class MaterialesMaestroComponent implements OnInit, OnDestroy {
 
 
 
-     {
+      {
         field: 'historico',
         headerName: 'Historico',
         width: 150,
@@ -872,7 +880,7 @@ export class MaterialesMaestroComponent implements OnInit, OnDestroy {
           return;
         }
       }
-      
+
       // Marcar que se está abriendo un detalle para evitar re-renders
       this._isOpeningDetail = true;
 
@@ -1006,7 +1014,7 @@ export class MaterialesMaestroComponent implements OnInit, OnDestroy {
       try {
         const localStorageKey = this.getColumnStateKey();
         localStorage.removeItem(localStorageKey);
-      } catch (e) {}
+      } catch (e) { }
     }
   }
 
@@ -1044,11 +1052,11 @@ export class MaterialesMaestroComponent implements OnInit, OnDestroy {
       this.gridApi.setGridOption('detailCellRendererParams', this._detailParams);
     } else {
       // Solo actualizar si hay cambios reales
-      const hasChanges = 
+      const hasChanges =
         this._detailParams.context.idRoot !== this.idRoot ||
         this._detailParams.context.select !== this.idSelect ||
         this._detailParams.context.data !== this.data;
-      
+
       if (hasChanges) {
         this._detailParams.context.idRoot = this.idRoot;
         this._detailParams.context.data = this.data;
@@ -1080,6 +1088,17 @@ export class MaterialesMaestroComponent implements OnInit, OnDestroy {
       },
       error: (error) => {
         console.error('❌ Error al actualizar subfamilyCount:', error);
+      }
+    });
+  }
+
+  /** Actualiza "Donde Usa" con el conteo real de checkboxes activos que proviene del Nivel 2. Sin API call. */
+  updateSubfamilyCountDirect(materialId: number, count: number) {
+    if (!this.gridApi) return;
+    this.gridApi.forEachNode((node) => {
+      if (node.data && node.data.id === materialId) {
+        node.data.subfamilyCount = count;
+        this.gridApi.refreshCells({ rowNodes: [node], columns: ['subfamilyCount'], force: true });
       }
     });
   }
@@ -1230,8 +1249,20 @@ export class MaterialesMaestroComponent implements OnInit, OnDestroy {
         alerts.basicAlert('Error', `No se pudo eliminar el material: ${errorMsg}`, 'error');
       }
     }
-  
-    this.cdr.detectChanges();}
+
+    this.cdr.detectChanges();
+  }
+
+  /** Wrapper del botón Guardar: bloquea re-entradas (doble click) mientras corre el guardado. */
+  async onSaveClick(): Promise<void> {
+    if (this.isSaving) return;
+    this.isSaving = true;
+    try {
+      await this.saveChanges();
+    } finally {
+      this.isSaving = false;
+    }
+  }
 
   async saveChanges(): Promise<void> {
     const hasChildChanges = this.pendingChangesService.hasAnyChanges();
@@ -1284,8 +1315,8 @@ export class MaterialesMaestroComponent implements OnInit, OnDestroy {
     // Validar campos requeridos en filas nuevas
     for (const row of newRows) {
       const faltantes: string[] = [];
-      if (!row.idCategory)   faltantes.push('Categoría');
-      if (!row.idFamilia)    faltantes.push('Familia');
+      if (!row.idCategory) faltantes.push('Categoría');
+      if (!row.idFamilia) faltantes.push('Familia');
       if (!row.idSubfamilia) faltantes.push('Subfamilia');
 
       if (faltantes.length > 0) {
@@ -1463,8 +1494,9 @@ export class MaterialesMaestroComponent implements OnInit, OnDestroy {
       const errorMsg = error?.error?.message || error?.message || 'Error desconocido';
       alerts.basicAlert('Error', `No se pudieron guardar los cambios: ${errorMsg}`, 'error');
     }
-  
-    this.cdr.detectChanges();}
+
+    this.cdr.detectChanges();
+  }
 
   /**
    * Actualiza la columna "Fecha Cambio" (campo `fecha`) a hoy para los materiales que
@@ -1499,8 +1531,9 @@ export class MaterialesMaestroComponent implements OnInit, OnDestroy {
     if (this.gridApi) {
       this.gridApi.refreshCells({ force: true, columns: ['fecha'] });
     }
-  
-    this.cdr.detectChanges();}
+
+    this.cdr.detectChanges();
+  }
 
   private prepareMaterialData(row: any): any {
     return {
@@ -1637,8 +1670,9 @@ export class MaterialesMaestroComponent implements OnInit, OnDestroy {
       );
     }
     return newIdMap;
-  
-    this.cdr.detectChanges();}
+
+    this.cdr.detectChanges();
+  }
 
   async deleteDetailRow(params: any, successCallback: () => void, type: string) {
     const materialId = params.data.campo1;
@@ -1666,8 +1700,9 @@ export class MaterialesMaestroComponent implements OnInit, OnDestroy {
         );
       }
     }
-  
-    this.cdr.detectChanges();}
+
+    this.cdr.detectChanges();
+  }
 
   private cleanDataForServer(data: any): any {
     const cleanedData = { ...data };
@@ -1803,8 +1838,9 @@ export class MaterialesMaestroComponent implements OnInit, OnDestroy {
       const errorMsg = error?.error?.message || error?.message || 'Error desconocido';
       alerts.basicAlert('Error', `No se pudo guardar el material: ${errorMsg}`, 'error');
     }
-  
-    this.cdr.detectChanges();}
+
+    this.cdr.detectChanges();
+  }
 
   closeMaterialModal() {
     this.showMaterialModal = false;
@@ -1966,8 +2002,9 @@ export class MaterialesMaestroComponent implements OnInit, OnDestroy {
         }
       }
     }
-  
-    this.cdr.detectChanges();}
+
+    this.cdr.detectChanges();
+  }
 
   /**
    * Genera el código "Num Mat" (campo insumo) para un material a partir de sus IDs de

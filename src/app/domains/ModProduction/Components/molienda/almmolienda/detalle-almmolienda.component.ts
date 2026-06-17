@@ -23,6 +23,9 @@ import { IntandoutDocumentsService } from 'app/services/intandoutDocuments.servi
 import { EntradaDocumentsOverlayService } from 'app/services/entrada-documents-overlay.service';
 import { alerts } from 'app/helpers/alerts';
 import { PrefixSetupService } from 'app/services/prefix-setup.service';
+import { ProductionService } from 'app/services/production.service';
+import { ExtractionFermentationCatalogService } from 'app/services/extraction-fermentation-catalog.service';
+import { MaterialXModuloService } from 'app/services/materialxmodulo.service';
 import { Router } from '@angular/router';
 import { DetailEntradaDocumentsComponent } from './detail-entrada-documents/detail-entrada-documents.component';
 import { CustomOcTooltipComponent } from './custom-oc-tooltip.component';
@@ -267,6 +270,9 @@ export class DetalleMoliendaComponent {
   private intandoutDocumentsService = inject(IntandoutDocumentsService);
   private entradaDocumentsOverlayService = inject(EntradaDocumentsOverlayService);
   private prefixSetupService = inject(PrefixSetupService);
+  private productionService = inject(ProductionService);
+  private catalogService = inject(ExtractionFermentationCatalogService);
+  private mxmService = inject(MaterialXModuloService);
   private router = inject(Router);
   // Prefijo "Identificador Entregas" de la sucursal (config Órdenes de Compra). Se usa
   // para armar el Folio de entrega: {folioOC}-{prefixEntrega}{N}. Vacío = sin sufijo.
@@ -282,6 +288,7 @@ export class DetalleMoliendaComponent {
   private deptsCsv: string = '';
   private initCompleted = false;
   private providersMap: Map<number, string> | null = null;
+  private boteDescMap: Map<number, string> | null = null;
 
   detailType: 'entradas' | 'salidas' = 'entradas';
   entradasSimple = false;
@@ -2565,13 +2572,7 @@ export class DetalleMoliendaComponent {
           return `${dd}/${mm}/${d.getFullYear()}`;
         },
       },
-      {
-        field: 'folioEntrada',
-        headerName: 'Folio Entrada',
-        width: 160,
-        editable: false,
-        valueFormatter: (p) => (p.value ?? '').toUpperCase(),
-      },
+
       {
         field: 'lote',
         headerName: 'Lote',
@@ -2597,31 +2598,90 @@ export class DetalleMoliendaComponent {
     ];
   }
 
+  private async ensureBoteDescMap(idCompany: number): Promise<void> {
+    if (this.boteDescMap) return;
+    this.boteDescMap = new Map();
+    try {
+      const catalogs = await lastValueFrom(this.catalogService.getAll(idCompany));
+      const botesCatalog = (catalogs ?? []).find((c: any) => {
+        const d = (c.description || '').trim().toLowerCase()
+          .normalize('NFD').replace(/[̀-ͯ]/g, '');
+        return d.startsWith('botes molienda') || d.startsWith('botes');
+      });
+      if (!botesCatalog) return;
+      const items = await lastValueFrom(this.mxmService.getByCatalog(idCompany, botesCatalog.id));
+      for (const item of (items ?? [])) {
+        const year = String(item.anio ?? new Date().getFullYear()).slice(-2);
+        const num = item.numBote ?? '';
+        const contador = item.contador ?? 1;
+        this.boteDescMap.set(item.id, `${year}/${item.cantidad ?? ''}-${num}/${contador}`);
+      }
+    } catch (e) {
+      console.error('Error cargando catálogo de botes:', e);
+    }
+  }
+
   private async loadEntradasSimpleData() {
     const idMaterial = this.internalParams?.data?.idMaterial;
     const idSucursal = this.internalParams?.data?.sucursal;
-    if (!idMaterial || !idSucursal) {
+    const idCompany  = this.signalsService.getRootSelectedBySidebar()();
+    if (!idMaterial || !idSucursal || !idCompany) {
       this.rowData = [];
       if (this.gridApi && !this.gridApi.isDestroyed())
         this.gridApi.setGridOption('rowData', []);
       return;
     }
     try {
-      const items = await lastValueFrom(this.entradaService.getResumen(idMaterial, idSucursal));
-      this.rowData = (Array.isArray(items) ? items : []).map((e: EntradaResumen) => ({
-        folioEntrada: (e.folioEntrada ?? '').toUpperCase(),
-        lote:         (e.lote ?? '').toUpperCase(),
-        fecha:        e.fecha ?? null,
-        cantidad:     e.cantidad ?? 0,
-        usuario:      (e.usuario ?? '').toUpperCase(),
-      }));
+      await this.ensureBoteDescMap(idCompany);
+
+      const moliendas = await lastValueFrom(
+        this.productionService.getMoliendaByCompanyAndSucursal(idCompany, idSucursal)
+      );
+      const matching = (Array.isArray(moliendas) ? moliendas : [])
+        .filter(m => m.idMatPrima === idMaterial && m.active !== false);
+
+      if (!matching.length) {
+        this.rowData = [];
+        if (this.gridApi && !this.gridApi.isDestroyed())
+          this.gridApi.setGridOption('rowData', []);
+        this.updateParentCount();
+        return;
+      }
+
+      const allDetallesArrays = await Promise.all(
+        matching.map(m => lastValueFrom(this.productionService.getMoliendaMatDetalleByMolienda(m.id!)))
+      );
+      const allDetalles: any[] = allDetallesArrays.flat();
+
+      const botesPerDetalle = await Promise.all(
+        allDetalles.map(d => lastValueFrom(this.productionService.getMoliendaBoteByMatDetalle(d.id)))
+      );
+
+      this.rowData = allDetalles.map((d: any, idx: number) => {
+        const botes: any[] = botesPerDetalle[idx] ?? [];
+        const activos = botes.filter(b => (b.cantidad ?? 0) > 0);
+        const lote = activos.length
+          ? activos.map(b => {
+              const desc = this.boteDescMap?.get(b.idBoteCatalog);
+              return desc ? `${desc} (${b.cantidad})` : `BOTE #${b.idBoteCatalog} (${b.cantidad})`;
+            }).join(', ')
+          : 'SIN ASIGNAR';
+
+        return {
+          fecha:    d.fechaMolienda ? String(d.fechaMolienda).split('T')[0] : null,
+          lote,
+          cantidad: d.jugo ?? 0,
+          usuario:  (d.usuario ?? '').toUpperCase(),
+        };
+      });
+
       if (this.gridApi && !this.gridApi.isDestroyed()) {
         this.gridApi.setGridOption('rowData', this.rowData);
         setTimeout(() => { if (this.gridApi && !this.gridApi.isDestroyed()) this.gridApi.autoSizeAllColumns(); });
       }
       this.updateParentCount();
     } catch (error) {
-      console.error('Error loading entradas simple:', error);
+      console.error('Error loading entradas simple (produccion):', error);
       this.rowData = [];
       if (this.gridApi && !this.gridApi.isDestroyed())
         this.gridApi.setGridOption('rowData', []);

@@ -19,6 +19,7 @@ import { ExtractionFermentationBultosService } from '../../../../../services/ext
 import { ExtractionFermentationCatalogItem, ExtractionFermentationCatalogService } from 'app/services/extraction-fermentation-catalog.service';
 import { CatalogProductionService } from '../../../../../services/catalog-production.service';
 import { SalidasMpService } from 'app/services/salidas-mp.service';
+import { ProductionService } from 'app/services/production.service';
 
 @Component({
   selector: 'app-almmolienda',
@@ -115,6 +116,7 @@ export class AlmmoliendaComponent {
   private catalogService = inject(CatalogProductionService);
   private catalogoCategorias = inject(ExtractionFermentationCatalogService);
   private salidasMpService   = inject(SalidasMpService);
+  private productionService  = inject(ProductionService);
 
   hasUnsavedChanges = false;
   selectedRow: any  = null;
@@ -736,6 +738,26 @@ export class AlmmoliendaComponent {
         .filter((id: any) => id)
         .join(',');
 
+      // En modo "1ra y 2da Fase" (entradasSimple), el Nivel 2 de Entradas muestra datos de
+      // Molienda Producción (MoliendaMatDetalle), NO requisiciones. El contador de Entradas debe
+      // contar esos matdetalles. Se precargan con 2 llamadas bulk (moliendas + conteos) para no
+      // hacer N requests por fila.
+      let prodEntradasByRow: Map<any, number> | null = null;
+      if (this.entradasSimple) {
+        const [moliendas, matDetCounts] = await Promise.all([
+          lastValueFrom(this.productionService.getMoliendaByCompany(idCompany)).catch(() => [] as any[]),
+          lastValueFrom(this.productionService.getMoliendaMatDetalleCountsByCompany(idCompany)).catch(() => ({} as Record<number, number>)),
+        ]);
+        prodEntradasByRow = new Map<any, number>();
+        for (const row of mapped) {
+          if (!row.sucursal || !row.idMaterial) { prodEntradasByRow.set(row.id, 0); continue; }
+          const total = (Array.isArray(moliendas) ? moliendas : [])
+            .filter((m: any) => m.idSucursal === row.sucursal && m.idMatPrima === row.idMaterial && m.active !== false)
+            .reduce((sum: number, m: any) => sum + (Number((matDetCounts as any)[m.id]) || 0), 0);
+          prodEntradasByRow.set(row.id, total);
+        }
+      }
+
       // Entradas: contar requisiciones reales en ocandreq (no DetailsMolienda).
       // Salidas: contar desde salidas_mp (fuente real del sistema de salidas).
       const countsPromises = mapped
@@ -750,7 +772,7 @@ export class AlmmoliendaComponent {
           const crReqCount = new Set((crItems as any[]).map((it: any) => it.reqId)).size;
           return {
             id: row.id,
-            entradas: (reqs as any[]).length + crReqCount,
+            entradas: prodEntradasByRow ? (prodEntradasByRow.get(row.id) ?? 0) : (reqs as any[]).length + crReqCount,
             salidas: salidas.length,
           };
         });

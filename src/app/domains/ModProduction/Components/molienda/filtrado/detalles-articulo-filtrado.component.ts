@@ -114,6 +114,7 @@ export class DetallesArticuloFiltradoComponent implements OnDestroy {
       idSucursal,
       idArticuloActual: row.idArticulo ?? null,
       salidasPrevias,
+      empleadoActual: row.__empleadoSalida ?? this.rowData.find(r => r !== row && r.__empleadoSalida)?.__empleadoSalida ?? null,
       onResolve: (res: { idArticulo: number; cantidad: number; empleado: string; lotes: any[] }) => this.aplicarSalida(row, res),
     });
   
@@ -279,13 +280,24 @@ export class DetallesArticuloFiltradoComponent implements OnDestroy {
     }
     try {
       const items = await lastValueFrom(this.productionService.getMoliendaMatArticuloByDetalle(this.idMatDetalle));
-      const mapped = (Array.isArray(items) ? items : []).map(i => ({
-        id: i.id,
-        idMatDetalle: i.idMatDetalle,
-        idArticulo: i.idArticulo ?? null,
-        cantidad: i.cantidad ?? 0,
-        __isNew: false,
-        __modified: false,
+      const mapped = await Promise.all((Array.isArray(items) ? items : []).map(async (i: any) => {
+        const row: any = {
+          id: i.id,
+          idMatDetalle: i.idMatDetalle,
+          idArticulo: i.idArticulo ?? null,
+          cantidad: i.cantidad ?? 0,
+          __isNew: false,
+          __modified: false,
+        };
+        try {
+          const salidas: any = await lastValueFrom(this.salidasService.getByOrigen('MOLIENDA', i.id)).catch(() => []);
+          const arr = Array.isArray(salidas) ? salidas : [];
+          if (arr.length) {
+            row.__empleadoSalida = arr[0].usuario ?? null;
+            row.__salidasLotes = arr.map((s: any) => ({ idDatoExterno: s.idDatoExterno, cantidad: s.cantidad }));
+          }
+        } catch { /* si falla, abre sin pre-llenar empleado */ }
+        return row;
       }));
       this.rowData = mapped;
       this.sortRows();

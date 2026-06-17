@@ -1,4 +1,4 @@
-import { Component, inject, OnDestroy, NgZone, ChangeDetectorRef} from '@angular/core';
+import { Component, inject, OnDestroy, NgZone, ChangeDetectorRef } from '@angular/core';
 import { ICellRendererAngularComp } from 'ag-grid-angular';
 import { ICellRendererParams, ColDef, GridApi, GridReadyEvent } from 'ag-grid-enterprise';
 import { AgGridModule } from 'ag-grid-angular';
@@ -30,7 +30,13 @@ import { PendingChangesService } from 'app/services/pending-changes.service';
         </button>
       </div>
     </div>
+    <div *ngIf="isLoading"
+         style="flex-grow:1; display:flex; align-items:center; justify-content:center; color:#888; font-size:0.9rem;">
+      <i class="bi bi-arrow-repeat" style="margin-right:6px; animation:spin 1s linear infinite;"></i>
+      Cargando...
+    </div>
     <ag-grid-angular
+      *ngIf="!isLoading"
       class="ag-theme-quartz small-text-ag-grid"
       style="width: 100%; flex-grow: 1;"
       [columnDefs]="columnDefs"
@@ -44,10 +50,8 @@ import { PendingChangesService } from 'app/services/pending-changes.service';
 </div>
 `,
   styles: [`
-.chevron-icon {
-  cursor: pointer;
-  margin-right: 5px;
-}
+@keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+.chevron-icon { cursor: pointer; margin-right: 5px; }
 `]
 })
 export class DetailCellRendererSubfamiliaComponent implements ICellRendererAngularComp, OnDestroy {
@@ -65,6 +69,8 @@ export class DetailCellRendererSubfamiliaComponent implements ICellRendererAngul
   materialName: string;
   idRoot: number;
   idFamilia: number;
+
+  isLoading = true;
 
   /** True si el materialId todavía es temporal (material aún no guardado en BD). */
   private isTempMaterialId(): boolean {
@@ -122,8 +128,9 @@ export class DetailCellRendererSubfamiliaComponent implements ICellRendererAngul
 
     // Cargar datos
     this.loadCatalogData();
-  
-    this.cdr.detectChanges();}
+
+    this.cdr.detectChanges();
+  }
 
   refresh(): boolean {
     return false;
@@ -141,10 +148,14 @@ export class DetailCellRendererSubfamiliaComponent implements ICellRendererAngul
   // Cargar datos directamente desde getFinalProduct (sin jerarquía)
   async loadCatalogData() {
 
-    if (!this.idRoot || !this.idFamilia) {
-      console.warn('❌ idRoot o idFamilia es null, no se pueden cargar datos');
+    // Las variantes (productos terminados) son POR EMPRESA → solo se necesita idRoot.
+    // idFamilia no se usa para cargar; exigirlo bloqueaba materiales con familia null/0.
+    if (!this.idRoot) {
+      console.warn('❌ idRoot es null, no se pueden cargar datos');
       return;
     }
+
+    this.isLoading = true;
 
     try {
 
@@ -153,10 +164,7 @@ export class DetailCellRendererSubfamiliaComponent implements ICellRendererAngul
         this.materialsService.getFinalProduct(this.idRoot)
       );
 
-      if (finalProducts.length > 0) {
-      }
-
-      // Asignar directamente como filas planas
+      // Asignar directamente como filas planas (sin mostrar al grid aún)
       this.treeData = finalProducts.map(product => ({
         ...product,
         originalId: product.id,
@@ -164,17 +172,18 @@ export class DetailCellRendererSubfamiliaComponent implements ICellRendererAngul
         isLoadingSeUsa: true
       }));
 
-
       // Cargar el estado "Se usa aquí" para todas las filas
       await this.loadSeUsaAquiStatus();
 
     } catch (error) {
       console.error('❌ Error al cargar datos de productos finales:', error);
       this.treeData = [];
+      this.isLoading = false;
       alerts.basicAlert('Error', 'Error al cargar los datos.', 'error');
     }
-  
-    this.cdr.detectChanges();}
+
+    this.cdr.detectChanges();
+  }
 
   // Hierarchical methods removed - not used in flat structure
 
@@ -196,22 +205,22 @@ export class DetailCellRendererSubfamiliaComponent implements ICellRendererAngul
       groupDefaultExpanded: 0,
       suppressAggFuncInHeader: true,
       autoGroupColumnDef: {
-    minWidth: 200,
-    cellRendererParams: {
-        suppressCount: false,
-        innerRenderer: function(params) {
+        minWidth: 200,
+        cellRendererParams: {
+          suppressCount: false,
+          innerRenderer: function (params) {
             // Si es grupo de categoría
             if (params.node.level === 0) {
-                return params.value; // Categoría
+              return params.value; // Categoría
             }
             // Si es grupo de sabor
             else if (params.node.level === 1) {
-                return params.value; // Sabor
+              return params.value; // Sabor
             }
             return '';
+          }
         }
-    }
-},
+      },
 
       onFirstDataRendered: (params: any) => runAutosizeAllColumns(params.api),
 
@@ -220,128 +229,89 @@ export class DetailCellRendererSubfamiliaComponent implements ICellRendererAngul
 
   // Definición de columnas con grupos separados y filtros independientes
   get columnDefs(): ColDef[] {
-  return [
-    {
-      headerName: 'Categoría',
-      field: 'category',
-      rowGroup: true,
-      rowGroupIndex: 0,
-      cellRenderer: (params: any) => {
-        // category: nivel 0 (top-level group)
-        if (params.node.group && params.node.level === 0) {
-          // Los children de category son nodos "flavor" (nivel 1).
-          let totalCount = 0;
-          let checkedCount = 0;
-          params.node.childrenAfterFilter?.forEach((flavorNode: any) => {
-            // Cada flavorNode tiene sus hijos reales (las filas)
-            const flavorChecked = flavorNode.childrenAfterFilter?.filter((child: any) => child.data?.seUsaAqui === true).length || 0;
-            const flavorTotal = flavorNode.allChildrenCount || 0;
-            checkedCount += flavorChecked;
-            totalCount += flavorTotal;
+    return [
+      {
+        headerName: 'Categoría',
+        field: 'category',
+        rowGroup: true,
+        rowGroupIndex: 0,
+        cellRenderer: (params: any) => {
+          if (params.node.group && params.node.level === 0) {
+            // Contador = sabores con al menos 1 presentación con seUsaAqui = true
+            const flavorsWithCheck = (params.node.childrenAfterFilter || []).filter((flavorNode: any) =>
+              flavorNode.group &&
+              (flavorNode.childrenAfterFilter || []).some((leaf: any) => !leaf.group && leaf.data?.seUsaAqui === true)
+            ).length;
+            return `${params.node.key} (${flavorsWithCheck})`;
+          } else if (params.node.group && params.node.level === 1) {
+            return params.node.key;
+          } else {
+            return params.value || '';
+          }
+        },
+        hide: true
+      },
+
+      {
+        headerName: 'Sabor',
+        field: 'flavor',
+        rowGroup: true,
+        rowGroupIndex: 1,
+        minWidth: 250,
+        cellRenderer: (params: any) => {
+          if (params.node.group && params.node.level === 1) {
+            // Contador = presentaciones con seUsaAqui = true bajo este sabor
+            const checkedCount = (params.node.childrenAfterFilter || []).filter((leaf: any) =>
+              !leaf.group && leaf.data?.seUsaAqui === true
+            ).length;
+            return `${params.node.key} (${checkedCount})`;
+          } else if (params.node.group && params.node.level === 0) {
+            return '';
+          } else {
+            return params.value || '';
+          }
+        },
+        hide: true
+      },
+
+      {
+        headerName: 'Presentación',
+        field: 'presentation',
+        filter: 'agSetColumnFilter',
+        filterParams: {
+          buttons: ['reset', 'apply'],
+          closeOnApply: true,
+          caseSensitive: false
+        },
+        width: 300,
+        resizable: true
+      },
+
+      {
+        headerName: 'Se usa aquí',
+        field: 'seUsaAqui',
+        width: 120,
+        // Checkbox NATIVO de AG Grid: interactivo cuando la celda es editable. Toggla con un
+        // solo click, actualiza el dato y dispara onCellValueChanged (que marca el cambio para
+        // el Guardar del Nivel 1 → materialxfinalproduct). Solo en filas hoja (presentaciones).
+        editable: (params: any) => !params.node.group,
+        cellStyle: { display: 'flex', justifyContent: 'center', alignItems: 'center' },
+        cellRendererSelector: (params: any) =>
+          params.node.group ? undefined : { component: 'agCheckboxCellRenderer' },
+        cellEditor: 'agCheckboxCellEditor',
+        valueGetter: (params: any) => params.node.group ? null : (params.data?.seUsaAqui === true),
+        onCellValueChanged: (params: any) => {
+          if (params.node.group) return;
+          this.onSeUsaAquiChanged({
+            data: params.data,
+            oldValue: params.oldValue === true,
+            newValue: params.newValue === true,
+            node: params.node,
           });
-          return `${params.node.key} (${checkedCount})`;
-        } else if (params.node.group && params.node.level === 1) {
-          // Si por alguna razón llegas a ver el nodo de sabor aquí (no debería si agrupas),
-          // muestra solo la key del flavor.
-          return params.node.key;
-        } else {
-          return params.value || '';
-        }
-      },
-      hide: true
-    },
-
-    {
-      headerName: 'Sabor',
-      field: 'flavor',
-      rowGroup: true,
-      rowGroupIndex: 1,
-      cellRenderer: (params: any) => {
-        // flavor: nivel 1 (segundo nivel)
-        if (params.node.group && params.node.level === 1) {
-          // Este nodo tiene children que son las filas; contamos aquí mismo.
-          const total = params.node.allChildrenCount || 0;
-          const checked = params.node.childrenAfterFilter?.filter((child: any) => child.data?.seUsaAqui === true).length || 0;
-          return `${params.node.key} (${checked})`;
-        } else if (params.node.group && params.node.level === 0) {
-          // Nivel categoria: lo gestionamos en la columna 'Categoría' (arriba).
-          return '';
-        } else {
-          return params.value || '';
-        }
-      },
-      hide: true
-    },
-
-    {
-      headerName: 'Presentación',
-      field: 'presentation',
-      filter: 'agSetColumnFilter',
-      filterParams: {
-        buttons: ['reset', 'apply'],
-        closeOnApply: true,
-        caseSensitive: false
-      },
-      width: 300,
-      resizable: true
-    },
-
-    {
-      headerName: 'Se usa aquí',
-      field: 'seUsaAqui',
-      width: 120,
-      cellRenderer: (params: any) => {
-        if (params.node.group) return '';
-        const checkbox = document.createElement('input');
-        checkbox.type = 'checkbox';
-        checkbox.checked = params.value === true;
-        checkbox.style.cursor = 'pointer';
-        checkbox.style.width = '18px';
-        checkbox.style.height = '18px';
-
-        checkbox.addEventListener('click', (event) => {
-          event.stopPropagation(); // evita expandir/select
-          // Ejecutar la mutación dentro de Angular zone si hace falta (tu código original lo hacía)
-          this.ngZone.run(() => {
-            const oldValue = params.data.seUsaAqui;
-            const newValue = !oldValue;
-            params.data.seUsaAqui = newValue;
-
-            // 1) Notificar al componente (tu handler)
-            this.onSeUsaAquiChanged({ data: params.data, oldValue, newValue, node: params.node });
-
-            // 2) Informar a ag-Grid sobre el cambio de datos para que lo procese bien
-            // Usar applyTransaction para que ag-Grid gestione el rowModel y cambios
-            params.api.applyTransaction({ update: [params.data] });
-
-            // 3) Redibujar nodos de grupo para actualizar los contadores visibles
-            const groupNodes: any[] = [];
-            params.api.forEachNode((n: any) => {
-              if (n.group && (n.level === 0 || n.level === 1)) {
-                groupNodes.push(n);
-              }
-            });
-            if (groupNodes.length) {
-              // redrawRows acepta array de RowNode
-              params.api.redrawRows(groupNodes);
-            } else {
-              // fallback: refrescar toda la vista de celdas
-              params.api.refreshCells({ force: true });
-            }
-          });
-        });
-
-        const wrapper = document.createElement('div');
-        wrapper.style.display = 'flex';
-        wrapper.style.justifyContent = 'center';
-        wrapper.style.alignItems = 'center';
-        wrapper.style.height = '100%';
-        wrapper.appendChild(checkbox);
-        return wrapper;
+        },
       }
-    }
-  ];
-}
+    ];
+  }
 
 
   // Retornar todos los datos (ya son planos)
@@ -422,21 +392,21 @@ export class DetailCellRendererSubfamiliaComponent implements ICellRendererAngul
         delete product.__originalSeUsaAqui;
       }
 
-      alerts.basicAlert('Éxito', 'Cambios guardados correctamente.', 'success');
+      // El mensaje de éxito lo muestra el Guardar centralizado del Nivel 1 (materiales-maestro);
+      // aquí NO se muestra para no duplicar la alerta.
       this.hasUnsavedChanges = false;
       await this.loadCatalogData();
 
-      // Notificar al componente padre para actualizar "Donde usa"
-      if (this.params?.context?.componentParent?.updateSubfamilyCount) {
-        this.params.context.componentParent.updateSubfamilyCount(this.materialId);
-      }
+      // Actualizar contador "Donde Usa" en Nivel 1 (ya recalculado por loadCatalogData)
+      this.notifyParentCount();
     } catch (error: any) {
       console.error('❌ Error al guardar cambios:', error);
       const errorMsg = error?.error?.message || error?.message || 'Error desconocido';
       alerts.basicAlert('Error', `Error al guardar los cambios: ${errorMsg}`, 'error');
     }
-  
-    this.cdr.detectChanges();}
+
+    this.cdr.detectChanges();
+  }
 
   revertChanges() {
     if (!this.hasUnsavedChanges) {
@@ -449,8 +419,8 @@ export class DetailCellRendererSubfamiliaComponent implements ICellRendererAngul
 
     if (this.gridApi) {
       this.gridApi.setGridOption('rowData', this.flattenTreeData());
-      // Reajustar columnas después de revertir
-      setTimeout(() => this.gridApi?.sizeColumnsToFit(), 50);
+      // Autosize columnas después de revertir
+      setTimeout(() => runAutosizeAllColumns(this.gridApi), 50);
     }
 
     alerts.basicAlert('Éxito', 'Cambios revertidos correctamente.', 'success');
@@ -472,9 +442,7 @@ export class DetailCellRendererSubfamiliaComponent implements ICellRendererAngul
         product.isLoadingSeUsa = false;
       });
       this.originalTreeData = JSON.parse(JSON.stringify(this.treeData));
-      if (this.gridApi) {
-        this.gridApi.setGridOption('rowData', this.flattenTreeData());
-      }
+      this.isLoading = false;
       return;
     }
 
@@ -496,12 +464,17 @@ export class DetailCellRendererSubfamiliaComponent implements ICellRendererAngul
     // Esperar a que todas las consultas terminen
     await Promise.all(promises);
 
-
     // Reordenar: items marcados primero
     this.reorderMarkedItemsFirst();
 
-    // IMPORTANTE: Guardar copia para revertir cambios DESPUÉS de cargar todo
+    // Guardar copia para revertir cambios
     this.originalTreeData = JSON.parse(JSON.stringify(this.treeData));
+
+    // Mostrar grid con datos finales — onFirstDataRendered hace el autosize una sola vez
+    this.isLoading = false;
+
+    // Actualizar contador "Donde Usa" en Nivel 1
+    this.notifyParentCount();
 
     // Refrescar el grid para mostrar los checkboxes actualizados
     if (this.gridApi) {
@@ -509,8 +482,9 @@ export class DetailCellRendererSubfamiliaComponent implements ICellRendererAngul
       // Expandir automáticamente los grupos que tienen items marcados
       this.expandGroupsWithMarkedItems();
     }
-  
-    this.cdr.detectChanges();}
+
+    this.cdr.detectChanges();
+  }
 
   // Reordenar para que items marcados aparezcan primero
   private reorderMarkedItemsFirst() {
@@ -523,46 +497,6 @@ export class DetailCellRendererSubfamiliaComponent implements ICellRendererAngul
     // Reordenar: marcados primero, luego no marcados
     this.treeData = [...markedProducts, ...unmarkedProducts];
 
-  }
-
-  // Expandir automáticamente grupos que contienen items marcados
-  private expandGroupsWithMarkedItems() {
-    if (!this.gridApi) return;
-
-
-    // Obtener combinaciones únicas de category + flavor que tienen items marcados
-    const groupsToExpand = new Set<string>();
-
-    this.treeData.forEach(product => {
-      if (product.seUsaAqui === true) {
-        // Agregar la categoría
-        groupsToExpand.add(product.category);
-        // Agregar la combinación categoría + sabor
-        groupsToExpand.add(`${product.category}|${product.flavor}`);
-      }
-    });
-
-
-    // Usar setTimeout para asegurar que el grid ya procesó los datos
-    setTimeout(() => {
-      this.gridApi.forEachNode((node) => {
-        if (node.group) {
-          // Para grupos de nivel 1 (categoría)
-          if (node.level === 0 && groupsToExpand.has(node.key)) {
-            node.setExpanded(true);
-          }
-          // Para grupos de nivel 2 (sabor)
-          else if (node.level === 1) {
-            // Obtener la categoría padre
-            const parentKey = node.parent?.key || '';
-            const groupKey = `${parentKey}|${node.key}`;
-            if (groupsToExpand.has(groupKey)) {
-              node.setExpanded(true);
-            }
-          }
-        }
-      });
-    }, 100);
   }
 
   // Manejar cambios en el checkbox "Se usa aquí" (solo marcar, no guardar)
@@ -588,10 +522,22 @@ export class DetailCellRendererSubfamiliaComponent implements ICellRendererAngul
     // Actualizar el estado de "hasUnsavedChanges"
     this.hasUnsavedChanges = true;
 
-
-    // NO refrescar el grid aquí para evitar perder el estado editable
-    // El reordenamiento y expansión se harán solo al guardar o al cargar inicial
+    // Refrescar filas de grupo para actualizar los contadores de Categoría y Sabor
+    if (this.gridApi) {
+      const groupNodes: any[] = [];
+      this.gridApi.forEachNode((node: any) => { if (node.group) groupNodes.push(node); });
+      this.gridApi.refreshCells({ rowNodes: groupNodes, force: true });
+    }
   }
 
   // Catalog/expansion helper methods removed - not used in flat structure
+
+  /** Envía al Nivel 1 la cantidad de checkboxes "Se usa aquí" activos para actualizar "Donde Usa". */
+  private notifyParentCount(): void {
+    const count = this.treeData.filter(p => p.seUsaAqui === true).length;
+    const parent = this.params?.context?.componentParent;
+    if (parent?.updateSubfamilyCountDirect) {
+      parent.updateSubfamilyCountDirect(this.materialId, count);
+    }
+  }
 }
