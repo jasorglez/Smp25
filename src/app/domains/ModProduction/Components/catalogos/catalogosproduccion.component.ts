@@ -713,7 +713,6 @@ import { HijosDetailRendererComponent } from './hijos-detail-renderer.component'
                     [rowData]="prep1ConfigRows"
                     [columnDefs]="prep1ConfigColDefs"
                     [gridOptions]="prep1ConfigGridOptions"
-                    [floatingFilter]="true"
                     (gridReady)="onPrep1ConfigGridReady($event)"
                     (cellValueChanged)="onPrep1ConfigCellChanged()">
                   </ag-grid-angular>
@@ -1514,7 +1513,8 @@ export class CatalogosProduccionComponent {
     getRowId: (p: any) => String(p.data.idArticulo),
     headerHeight: 26, rowHeight: 24,
     stopEditingWhenCellsLoseFocus: true,
-    floatingFiltersHeight: 24,
+    floatingFilter: true,
+    floatingFiltersHeight: 22,
   };
 
   constructor() {
