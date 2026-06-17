@@ -3192,14 +3192,17 @@ export class CatalogosProduccionComponent {
     this.prep1ConfigLoading    = true;
     this.prep1ConfigHasChanges = false;
     try {
-      const existing = await lastValueFrom(
-        this.productionService.getMoliendaParamConfigByParam(idParam, 'PREPARACION1-JARABE')
-      ).catch(() => [] as any[]);
+      const [existing, jarabeConfigs, allMats] = await Promise.all([
+        lastValueFrom(this.productionService.getMoliendaParamConfigByParam(idParam, 'PREPARACION1-JARABE')).catch(() => [] as any[]),
+        lastValueFrom(this.productionService.getMaterialJarabeAll()).catch(() => []),
+        lastValueFrom(this.materialsService.getMaterialsxview(this.idRoot)).catch(() => []),
+      ]);
 
-      const existingMap = new Map<number, any>((existing as any[]).map((c: any) => [c.idArticulo, c]));
+      const existingMap  = new Map<number, any>((existing as any[]).map((c: any) => [c.idArticulo, c]));
+      const jarabeIds    = new Set((jarabeConfigs as any[]).map((c: any) => Number(c.idMaterial)));
 
-      const articuloOpts = this.materiales
-        .filter((m: any) => m.id != null && m.articulo)
+      const articuloOpts = ((allMats as any[]) ?? [])
+        .filter((m: any) => m.id != null && m.articulo && jarabeIds.has(Number(m.id)))
         .map((m: any) => ({ id: Number(m.id), name: m.articulo as string }))
         .sort((a, b) => a.name.localeCompare(b.name, 'es', { sensitivity: 'base' }));
 
