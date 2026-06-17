@@ -1,4 +1,4 @@
-import { Component, effect, inject } from '@angular/core';
+import { Component, effect, inject, ChangeDetectorRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { AgGridAngular } from 'ag-grid-angular';
 import { ColDef, GridApi, GridReadyEvent } from 'ag-grid-enterprise';
@@ -52,6 +52,7 @@ import { lastValueFrom } from 'rxjs';
 export class OhBloqueComponent {
   private productionService = inject(ProductionService);
   private signalsService    = inject(SignalsService);
+  private readonly cdr      = inject(ChangeDetectorRef);
 
   gridApi!: GridApi;
   rows: any[] = [];
@@ -193,6 +194,7 @@ export class OhBloqueComponent {
     this.original = JSON.parse(JSON.stringify(data ?? []));
     this.rows = (data ?? []).map((r: any) => ({ ...r, __isNew: false, __modified: false }));
     this.gridApi?.setGridOption('rowData', this.rows);
+    this.cdr.detectChanges();
   }
 
   add() {
