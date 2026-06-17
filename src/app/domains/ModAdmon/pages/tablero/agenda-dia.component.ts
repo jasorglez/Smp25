@@ -62,6 +62,10 @@ interface EventoConCliente extends AgendaCliente {
                    width="12" height="12" class="me-1" alt="Google">
               {{ notifConfig?.googleEmail || 'Google Calendar' }}
             </span>
+            <button class="btn btn-xs btn-outline-secondary" (click)="testGoogle()"
+                    title="Probar conexión Google Calendar">
+              <i class="bi bi-bug"></i>
+            </button>
             <button class="btn btn-xs btn-outline-danger" (click)="disconnectGoogle()"
                     title="Desconectar Google Calendar">
               <i class="bi bi-x"></i>
@@ -269,6 +273,18 @@ export class AgendaDiaComponent implements OnInit {
         Swal.fire({ toast: true, position: 'top-end', icon: 'success', title: 'Desconectado', showConfirmButton: false, timer: 2000, timerProgressBar: true });
       },
       error: () => Swal.fire('Error', 'No se pudo desconectar.', 'error'),
+    });
+  }
+
+  testGoogle() {
+    Swal.fire({ title: 'Probando Google Calendar...', didOpen: () => Swal.showLoading() });
+    this.agendaSvc.testGoogle(this.idCompany).subscribe({
+      next: ({ ok, detail }) => Swal.fire({
+        icon: ok ? 'success' : 'error',
+        title: ok ? 'Google Calendar OK' : 'Fallo en Google Calendar',
+        text: detail,
+      }),
+      error: (err) => Swal.fire('Error', err?.error?.detail ?? err?.message ?? 'No se pudo conectar al servidor', 'error'),
     });
   }
 
