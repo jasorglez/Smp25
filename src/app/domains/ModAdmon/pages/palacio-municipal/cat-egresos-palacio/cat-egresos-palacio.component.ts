@@ -43,9 +43,7 @@ interface ICatalogTree {
     RouterModule,
     DomainsModule,
     AgGridModule,
-    MultiLineEditorComponent,
-    ReactiveFormsModule,
-  ],
+    ReactiveFormsModule],
   templateUrl: './cat-egresos-palacio.component.html',
   styleUrl: './cat-egresos-palacio.component.scss',
 })

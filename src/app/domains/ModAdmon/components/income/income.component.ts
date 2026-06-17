@@ -32,8 +32,7 @@ import { ProjectsService } from 'app/services/projects.service';
   selector: 'app-income',
   standalone: true,
   imports: [NgSelectModule, NgSelectComponent, AgGridModule, MultiLineEditorComponent, CommonModule,
-             FormsModule, SelectWithTooltipEditorV2Component, ButtonCellRendererIncomeComponent,
-             PdfButtonCellRendererIncomeComponent, DetalleIngresosComponent],
+             FormsModule],
   templateUrl: './income.component.html',
   styleUrl: './income.component.scss'
 })

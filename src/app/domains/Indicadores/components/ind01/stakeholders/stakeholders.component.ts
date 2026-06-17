@@ -69,7 +69,7 @@ export class CustomSelectEditorComponent implements ICellEditorAngularComp {
 @Component({
   selector: 'app-stakeholders',
   standalone: true,
-  imports: [CommonModule, FormsModule, AgGridModule, StarCellRendererComponent, CustomSelectEditorComponent],
+  imports: [CommonModule, FormsModule, AgGridModule],
   templateUrl: './stakeholders.component.html',
   styleUrls: ['./stakeholders.component.scss'],
   providers: [DatePipe]

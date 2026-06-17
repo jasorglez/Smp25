@@ -23,9 +23,7 @@ interface Bank {
   standalone: true,
   imports: [
     CommonModule,
-    FormsModule,
-    BonusCatalogComponent 
-],
+    FormsModule],
   templateUrl: './setup.component.html',
   
 })

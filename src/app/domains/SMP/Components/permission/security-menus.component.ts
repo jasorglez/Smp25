@@ -11,7 +11,7 @@ import { SecuritySubmenusComponent } from './security-submenus.component';
 @Component({
   selector: 'app-security-menus',
   standalone: true,
-  imports: [CommonModule, FormsModule, AgGridAngular, MaterialIconPickerCellEditorComponent, SecuritySubmenusComponent],
+  imports: [CommonModule, FormsModule, AgGridAngular],
   template: `
     <div class="sec-menus">
       <div class="sec-menus__header">

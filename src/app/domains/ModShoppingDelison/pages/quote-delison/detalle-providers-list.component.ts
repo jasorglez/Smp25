@@ -21,7 +21,7 @@ const MAX_PROVIDER_SLOTS = 26;
 @Component({
   selector: 'app-detalle-providers-list',
   standalone: true,
-  imports: [CommonModule, AgGridModule, ButtonCellRendererComponent],
+  imports: [CommonModule, AgGridModule],
   template: `
     <div class="providers-list-container">
       <ag-grid-angular

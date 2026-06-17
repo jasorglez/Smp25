@@ -11,7 +11,7 @@ import { map, catchError } from 'rxjs/operators';
 @Component({
   selector: 'app-pedimentos-x-requisicion',
   standalone: true,
-  imports: [CommonModule, AgGridAngular, OrdenesydetallesOcComponent],
+  imports: [CommonModule, AgGridAngular],
   template: `
     <div style="padding: 6px; height: 100%; display: flex; flex-direction: column;
                 box-sizing: border-box; overflow: hidden;">

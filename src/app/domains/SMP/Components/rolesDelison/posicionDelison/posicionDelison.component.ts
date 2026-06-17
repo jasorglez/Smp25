@@ -17,7 +17,7 @@ import { ModalService } from 'app/services/permissions-modal.service';
   selector: 'app-posicion-delison',
   standalone: true,
   providers: [CurrencyPipe],
-  imports: [AgGridModule, CommonModule, RolesDetailedDelisonComponent, PermissionsViewByUserComponent],
+  imports: [AgGridModule, CommonModule],
   styles: [`
     ::ng-deep .ag-cell-inline-editing {
       background-color: #fff3cd !important;

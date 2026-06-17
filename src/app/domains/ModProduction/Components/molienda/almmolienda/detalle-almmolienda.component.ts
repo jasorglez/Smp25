@@ -38,7 +38,7 @@ interface ReqOption {
 @Component({
   selector: 'app-detalle-almmolienda',
   standalone: true,
-  imports: [CommonModule, FormsModule, AgGridAngular, DetailEntradaDocumentsComponent, CustomOcTooltipComponent],
+  imports: [CommonModule, FormsModule, AgGridAngular],
   template: `
     <div style="padding: 6px; height: 100%; display: flex; flex-direction: column; box-sizing: border-box; overflow: hidden;"
          [style.backgroundColor]="detailType === 'entradas' ? '#e8f5e9' : '#fce4ec'">

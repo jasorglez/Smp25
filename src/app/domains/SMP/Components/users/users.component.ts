@@ -40,11 +40,8 @@ import { AutorizacionMontoService } from 'app/services/autorizacion-monto.servic
     FormsModule,
     AgGridModule,
     MatDialogModule,
-    DetallePermisosXSucursalesComponent,
     PermissionsViewByUserComponent,
-    ReactiveFormsModule,
-    ButtonCellRendererExpenditureComponent
-  ],
+    ReactiveFormsModule],
   templateUrl: './users.component.html',
   styleUrl: './users.component.scss',
 })

@@ -15,7 +15,7 @@ import { lastValueFrom } from 'rxjs';
 @Component({
   selector: 'app-detalle-jarabe',
   standalone: true,
-  imports: [CommonModule, FormsModule, AgGridModule, ParametrosComponent, SelectWithTooltipEditorV2Component],
+  imports: [CommonModule, FormsModule, AgGridModule],
   template: `
     <div style="padding: 5px; background-color: #e3f2fd; height: 100%; display: flex; flex-direction: column; box-sizing: border-box; overflow: hidden;">
       

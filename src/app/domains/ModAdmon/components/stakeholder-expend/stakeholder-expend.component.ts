@@ -38,11 +38,7 @@ export interface Stakeholder {
     AgGridModule,
     MultiLineEditorComponent,
     CommonModule,
-    FormsModule,
-    ButtonCellRendererStakeholderComponent,
-    PdfButtonCellRendererStakeholderComponent,
-    DetallesStakeholderExpendComponent
-  ],
+    FormsModule],
   templateUrl: './stakeholder-expend.component.html',
   styleUrl: './stakeholder-expend.component.scss'
 })

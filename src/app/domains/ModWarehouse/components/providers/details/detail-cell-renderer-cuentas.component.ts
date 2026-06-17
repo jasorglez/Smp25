@@ -10,7 +10,7 @@ import { DetallesComponentCuentasAbono } from './subdetalles/Detalles-Cuentas-ab
   selector: 'app-detail-cell-renderer-cuentas',
   standalone: true,
   providers: [CurrencyPipe],
-  imports: [AgGridModule, CommonModule, DetallesComponentCuentas, DetallesComponentCuentasAbono],
+  imports: [AgGridModule, CommonModule],
   template: `
     <div 
       style="padding: 10px; background-color: #f8f9fa; height: 100%; display: flex; flex-direction: column;"

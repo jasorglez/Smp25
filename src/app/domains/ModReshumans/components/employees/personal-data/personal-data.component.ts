@@ -11,7 +11,7 @@ import { lastValueFrom } from 'rxjs';
 @Component({
   selector: 'app-employee-personal-data',
   standalone: true,
-  imports: [CommonModule, AgGridModule, DetailEmployeeDocumentsComponent],
+  imports: [CommonModule, AgGridModule],
   templateUrl: './personal-data.component.html',
   styleUrl: './personal-data.component.scss',
 })

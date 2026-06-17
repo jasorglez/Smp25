@@ -13,7 +13,7 @@ import { lastValueFrom } from 'rxjs';
 @Component({
   selector: 'app-configuracion-page',
   standalone: true,
-  imports: [CommonModule, AgGridModule, SelectWithTooltipEditorV2Component],
+  imports: [CommonModule, AgGridModule],
   template: `
     <div class="container-fluid p-3" style="height: calc(100vh - 80px); display: flex; flex-direction: column;">
       <div class="d-flex align-items-center gap-2 mb-2">

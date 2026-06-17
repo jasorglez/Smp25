@@ -40,8 +40,7 @@ declare var bootstrap: any;
   selector: 'app-egresos-palacio',
   standalone: true,
   imports: [NgSelectModule, NgSelectComponent, AgGridModule, MultiLineEditorComponent, CommonModule,
-    FormsModule, ButtonCellRendererExpenditureComponent, DetallesEgresospalaciosComponent,
-    PdfButtonCellRendererComponent, SelectWithTooltipEditorV2Component, DatePipe, ReactiveFormsModule],
+    FormsModule, DatePipe, ReactiveFormsModule],
   templateUrl: './egresos-palacio.component.html',
   styleUrl: './egresos-palacio.component.scss'
 })

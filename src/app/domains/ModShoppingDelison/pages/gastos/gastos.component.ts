@@ -29,7 +29,7 @@ interface PivotAxis { id: number; name: string; total: number; }
 @Component({
   selector: 'app-gastos',
   standalone: true,
-  imports: [CommonModule, FormsModule, AgGridModule, NgSelectModule, CrProveedorEditorComponent, PrecioMonedaEditorComponent],
+  imports: [CommonModule, FormsModule, AgGridModule, NgSelectModule],
   templateUrl: './gastos.component.html',
   styleUrls: ['./gastos.component.scss'],
 })

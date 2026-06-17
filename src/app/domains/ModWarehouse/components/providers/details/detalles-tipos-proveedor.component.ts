@@ -13,7 +13,7 @@ import { SelectWithTooltipEditorV2Component } from 'app/shared/select-with-toolt
 @Component({
   selector: 'app-detalles-tipos-proveedor',
   standalone: true,
-  imports: [CommonModule, AgGridModule, SelectWithTooltipEditorV2Component],
+  imports: [CommonModule, AgGridModule],
   template: `
     <div style="padding: 5px; background-color: #e3f2fd; height: 100%; max-height: 100%; display: flex; flex-direction: column; box-sizing: border-box; overflow: hidden;">
       <!-- Título y botones -->

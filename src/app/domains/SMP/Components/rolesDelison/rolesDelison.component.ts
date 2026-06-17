@@ -39,8 +39,6 @@ import { PermissionsViewByUserComponent } from '../users/details/detail-permissi
     FormsModule,
     AgGridModule,
     MatDialogModule,
-    RolesDetailedDelisonComponent,
-    PosicionDelisonComponent,
     PermissionsViewByUserComponent
   ],
   providers: [CurrencyPipe],

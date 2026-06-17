@@ -16,7 +16,7 @@ import { lastValueFrom } from 'rxjs';
 @Component({
   selector: 'app-jarabe',
   standalone: true,
-  imports: [CommonModule, FormsModule, AgGridModule, DetalleWrapperComponent, SelectWithTooltipEditorV2Component],
+  imports: [CommonModule, FormsModule, AgGridModule],
   template: `
     <div class="container-fluid h-100 p-3">
       <div style="display: flex; height: calc(100vh - 280px);">

@@ -17,10 +17,7 @@ import { MaterialIconPickerCellEditorComponent } from './material-icon-picker-ce
   standalone: true,
   imports: [
     CommonModule,
-    AgGridAngular,
-    DetailedPermissionsComponent,
-    MaterialIconPickerCellEditorComponent,
-  ],
+    AgGridAngular],
   templateUrl: './permission.component.html',
   styles: `
     ::ng-deep .small-text-ag-grid {

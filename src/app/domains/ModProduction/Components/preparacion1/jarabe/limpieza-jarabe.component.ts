@@ -12,7 +12,7 @@ import { lastValueFrom } from 'rxjs';
 @Component({
   selector: 'app-limpieza-jarabe',
   standalone: true,
-  imports: [CommonModule, FormsModule, AgGridModule, PartesLimpiezaComponent],
+  imports: [CommonModule, FormsModule, AgGridModule],
   template: `
     <div style="padding: 5px; background-color: #e3f2fd; height: 100%; display: flex; flex-direction: column; box-sizing: border-box; overflow: hidden;">
       <div style="margin-bottom: 5px; display: flex; justify-content: space-between; align-items: center; flex-shrink: 0;">

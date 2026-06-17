@@ -28,7 +28,7 @@ import { catchError, map } from 'rxjs/operators';
 @Component({
   selector: 'app-comparacion-precios',
   standalone: true,
-  imports: [CommonModule, FormsModule, AgGridModule, ItemCommentsCellRendererComponent, CantidadProveedorPanelComponent],
+  imports: [CommonModule, FormsModule, AgGridModule, CantidadProveedorPanelComponent],
   template: `
     <div class="comparacion-container">
       <div class="cmp-header">

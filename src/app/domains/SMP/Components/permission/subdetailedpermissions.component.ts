@@ -16,9 +16,7 @@ import { IconPickerCellEditorComponent } from './icon-picker-cell-editor.compone
   standalone: true,
   imports: [
     CommonModule,
-    AgGridAngular,
-    IconPickerCellEditorComponent,
-  ],
+    AgGridAngular],
   templateUrl: './detailedpermissions.component.html',
   styles: `
     ::ng-deep .small-text-ag-grid {

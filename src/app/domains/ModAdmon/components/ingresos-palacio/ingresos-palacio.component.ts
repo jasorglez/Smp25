@@ -42,8 +42,7 @@ declare var bootstrap: any;
   selector: 'app-ingresos-palacio',
   standalone: true,
   imports: [NgSelectModule, NgSelectComponent, AgGridModule, MultiLineEditorComponent, CommonModule, ReactiveFormsModule,
-            FormsModule, AdditionalInfoComponent, ConceptsincomeComponent, ButtonCellRendererIncomeComponent,
-            DetailCellRendererIncomeComponent, SelectWithTooltipEditorV2Component, PdfButtonCellRendererComponent],
+            FormsModule],
   templateUrl: './ingresos-palacio.component.html',
   styleUrl: './ingresos-palacio.component.scss'
 })

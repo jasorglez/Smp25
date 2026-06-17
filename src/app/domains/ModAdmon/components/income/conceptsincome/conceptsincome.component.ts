@@ -17,7 +17,7 @@ import { ActivatedRoute } from '@angular/router';
 @Component({
   selector: 'app-conceptsincome',
   standalone: true,
-  imports: [AgGridModule, CommonModule, FormsModule, SearchableSelectComponent],
+  imports: [AgGridModule, CommonModule, FormsModule],
   templateUrl: './conceptsincome.component.html',
   styleUrl: './conceptsincome.component.scss'
 })

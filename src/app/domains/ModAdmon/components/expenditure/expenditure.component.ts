@@ -34,8 +34,7 @@ import { DetallesExpenditureComponent } from './detalles-expenditure.component';
   selector: 'app-expenditure',
   standalone: true,
   imports: [NgSelectModule, NgSelectComponent, AgGridModule, MultiLineEditorComponent, CommonModule,
-    FormsModule, ButtonCellRendererExpenditure2Component, PdfButtonCellRendererExpenditure2Component,
-    DetallesExpenditureComponent],
+    FormsModule],
   templateUrl: './expenditure.component.html',
   styleUrl: './expenditure.component.scss'
 })

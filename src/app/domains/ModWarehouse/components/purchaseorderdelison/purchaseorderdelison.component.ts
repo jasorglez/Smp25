@@ -27,14 +27,7 @@ import { lastValueFrom } from 'rxjs';
   selector: 'app-purchaseorderdelison',
   standalone: true,
   imports: [
-    CommonModule, FormsModule, AgGridModule,
-    ButtonCellRendererComponent,
-    PdfButtonCellRendererPurchaseOrderComponent,
-    DetailCellRendererPurchaseOrderItemsComponent,
-    DetailCellRendererPurchaseOrderReportComponent,
-    PedimentosXRequisicionComponent,
-    CompraRapidaDetalleComponent
-  ],
+    CommonModule, FormsModule, AgGridModule],
   templateUrl: './purchaseorderdelison.component.html',
   styleUrl: './purchaseorderdelison.component.scss',
   styles: [`

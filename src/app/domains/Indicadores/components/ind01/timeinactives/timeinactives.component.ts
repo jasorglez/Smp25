@@ -26,7 +26,7 @@ interface Catalog {
 @Component({
   selector: 'app-timeinactives',
   standalone: true,
-  imports: [CommonModule, FormsModule, AgGridModule, MultiLineEditorComponent, TimeEditorComponent],
+  imports: [CommonModule, FormsModule, AgGridModule, MultiLineEditorComponent],
   templateUrl: './timeinactives.component.html',
   styleUrl: './timeinactives.component.scss',
   providers: [DatePipe]

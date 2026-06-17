@@ -33,7 +33,7 @@ import { PdfDistributionComponent } from './pdf-distribution.component';
 @Component({
   selector: 'storeComponent',
   standalone: true,
-  imports: [CommonModule, FormsModule, AgGridModule, SelectWithTooltipEditorV2Component, EquipmentDetailRendererComponent, PdfDistributionComponent],
+  imports: [CommonModule, FormsModule, AgGridModule, PdfDistributionComponent],
   templateUrl: './equipment.component.html',
   styleUrls: ['./equipment.component.scss'],
 })

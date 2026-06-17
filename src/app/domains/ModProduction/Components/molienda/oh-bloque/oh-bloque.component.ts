@@ -10,7 +10,7 @@ import { lastValueFrom } from 'rxjs';
 @Component({
   selector: 'app-oh-bloque',
   standalone: true,
-  imports: [CommonModule, AgGridAngular, OhBloqueDetailComponent],
+  imports: [CommonModule, AgGridAngular],
   template: `
     <div class="col-12">
       <div class="row g-2">

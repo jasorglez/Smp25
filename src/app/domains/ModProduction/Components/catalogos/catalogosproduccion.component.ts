@@ -21,7 +21,7 @@ import { HijosDetailRendererComponent } from './hijos-detail-renderer.component'
 @Component({
   selector: 'app-catalogosproduccion',
   standalone: true,
-  imports: [CommonModule, FormsModule, AgGridAngular, SelectWithTooltipEditorV2Component, ConfiguracionPageComponent, CatalogoParamMoliendaComponent, MultiSelectActividadEditorComponent, HijosDetailRendererComponent],
+  imports: [CommonModule, FormsModule, AgGridAngular, CatalogoParamMoliendaComponent],
   styles: [`
     :host {
       display: block;

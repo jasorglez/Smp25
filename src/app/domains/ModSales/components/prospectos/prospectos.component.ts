@@ -13,7 +13,7 @@ import Swal from 'sweetalert2';
 @Component({
   selector: 'app-prospectos',
   standalone: true,
-  imports: [CommonModule, FormsModule, AgGridModule, DetalleInteraccionesComponent, ButtonCellRendererIncomeComponent],
+  imports: [CommonModule, FormsModule, AgGridModule],
   templateUrl: './prospectos.component.html',
   styleUrl: './prospectos.component.scss',
 })

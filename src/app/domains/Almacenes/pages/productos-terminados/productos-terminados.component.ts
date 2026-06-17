@@ -21,7 +21,7 @@ import { DetailCellRendererCostosAlmacenComponent } from './detail-cell-renderer
 @Component({
   selector: 'app-productos-terminados',
   standalone: true,
-  imports: [CommonModule, RouterModule, FormsModule, AgGridModule, TranslateModule, DomainsModule, SharedModule, DetailCellRendererPrecioMayoreoComponent, DetailCellRendererCodigoBarrasComponent, DetailCellRendererCostosAlmacenComponent],
+  imports: [CommonModule, RouterModule, FormsModule, AgGridModule, TranslateModule, DomainsModule, SharedModule],
   templateUrl: './productos-terminados.component.html',
   styleUrl: './productos-terminados.component.scss'
 })

@@ -95,7 +95,7 @@ export class CustomGroupRendererComponent implements ICellRendererAngularComp {
 @Component({
   selector: 'storeComponent',
   standalone: true,
-  imports: [CommonModule, FormsModule, AgGridModule, CustomGroupRendererComponent, SelectWithTooltipEditorV2Component, MaterialDetailRendererComponent, PdfMaterialsDistributionComponent],
+  imports: [CommonModule, FormsModule, AgGridModule, PdfMaterialsDistributionComponent],
   templateUrl: './materials.component.html',
   styles: `
     ::ng-deep .small-text-ag-grid {

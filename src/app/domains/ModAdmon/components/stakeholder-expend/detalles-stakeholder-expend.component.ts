@@ -16,7 +16,7 @@ import { lastValueFrom } from 'rxjs';
 @Component({
   selector: 'app-detalles-stakeholder-expend',
   standalone: true,
-  imports: [CommonModule, FormsModule, AgGridModule, MultiLineEditorComponent],
+  imports: [CommonModule, FormsModule, AgGridModule],
   template: `
     <!-- Concepts Grid View -->
     <div class="detail-grid-container" *ngIf="detailType === 'concepts'">

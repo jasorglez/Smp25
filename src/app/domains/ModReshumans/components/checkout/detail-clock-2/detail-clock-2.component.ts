@@ -28,7 +28,7 @@ declare var bootstrap: any;
 @Component({
   selector: 'app-detail-clock-2',
   standalone: true,
-  imports: [RouterModule, DomainsModule, AgGridModule, TimeEditorComponent, ReactiveFormsModule, CommonModule],
+  imports: [RouterModule, DomainsModule, AgGridModule, ReactiveFormsModule, CommonModule],
   templateUrl: './detail-clock-2.component.html',
   styleUrl: './detail-clock-2.component.scss',
 })

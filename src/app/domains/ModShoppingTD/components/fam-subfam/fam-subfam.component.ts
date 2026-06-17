@@ -254,7 +254,7 @@ export class SubfamilyDetailComponent {
 @Component({
   selector: 'app-fam-subfam',
   standalone: true,
-  imports: [CommonModule, FormsModule, AgGridModule, SubfamilyDetailComponent],
+  imports: [CommonModule, FormsModule, AgGridModule],
   template: `
     <div class="container-fluid p-3">
       <div class="card">

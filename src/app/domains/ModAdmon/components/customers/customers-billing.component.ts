@@ -14,7 +14,7 @@ import { FacturacionService } from 'app/services/facturacion.service';
 @Component({
   selector: 'app-customers-billing',
   standalone: true,
-  imports: [RouterModule, DomainsModule, AgGridModule, MultiLineEditorComponent],
+  imports: [RouterModule, DomainsModule, AgGridModule],
   templateUrl: './customers-billing.component.html',
   styleUrl: './customers.component.scss'
 })

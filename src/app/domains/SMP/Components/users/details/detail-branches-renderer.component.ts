@@ -20,7 +20,7 @@ import { UsersService } from 'app/services/users.service';
 @Component({
   selector: 'app-detail-branches-renderer',
   standalone: true,
-  imports: [AgGridModule, CommonModule, DetailPermisosXDeptosComponent],
+  imports: [AgGridModule, CommonModule],
   template: `
     <div style="padding: 10px; background-color: #f0f0f0; height: 100%; display: flex; flex-direction: column;">
       <div style="margin-bottom: 10px; display: flex; justify-content: space-between; align-items: center;">

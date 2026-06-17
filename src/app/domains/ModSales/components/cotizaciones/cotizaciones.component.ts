@@ -16,7 +16,7 @@ import Swal from 'sweetalert2';
 @Component({
   selector: 'app-cotizaciones',
   standalone: true,
-  imports: [CommonModule, FormsModule, AgGridModule, ButtonCellRendererIncomeComponent, DetalleItemsCotizacionComponent, ConfigCotizacionesComponent],
+  imports: [CommonModule, FormsModule, AgGridModule, ConfigCotizacionesComponent],
   templateUrl: './cotizaciones.component.html',
   styleUrl: './cotizaciones.component.scss',
 })

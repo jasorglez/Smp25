@@ -38,21 +38,7 @@ import { PendingChangesService } from 'app/services/pending-changes.service';
   imports: [
     CommonModule,
     FormsModule,
-    AgGridModule,
-    DetalleAsignProveedsMaestroComponent,
-    DetailCellRendererFamiliaComponent,
-    DetailCellRendererSucursalComponent,
-    DetallesCostosxmaterialesComponent,
-    DetailCellRendererSubfamiliaComponent,
-    DetallesSucursalesProveedorComponent,
-    DetailCellRendererParametrosComponent,
-    DetailCellRendererCaracteristicasMpComponent,
-    DetailCellRendererHistoricoComponent,
-    DetailCellRendererJarabeComponent,
-    SelectWithTooltipEditorV2Component,
-    ImageCellRendererComponent,
-    AutocompleteEditorComponent
-  ],
+    AgGridModule],
   templateUrl: './materiales-maestro.component.html',
   styleUrl: './materiales-maestro.component.scss'
 })

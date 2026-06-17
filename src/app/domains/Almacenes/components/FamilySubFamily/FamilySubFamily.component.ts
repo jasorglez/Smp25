@@ -13,7 +13,7 @@ import { DetailFamilySubFamilyComponent } from './DetailFamilySubFamily/DetailFa
 @Component({
   selector: 'app-family-sub-family',
   standalone: true,
-  imports: [AgGridModule, CommonModule , DetailFamilySubFamilyComponent,],
+  imports: [AgGridModule, CommonModule ],
   templateUrl: './FamilySubFamily.component.html',
 })
 export class FamilySubFamilyComponent { 

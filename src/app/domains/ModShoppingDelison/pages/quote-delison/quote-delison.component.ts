@@ -19,7 +19,7 @@ import { lastValueFrom, Subscription } from 'rxjs';
 @Component({
   selector: 'app-quote-delison',
   standalone: true,
-  imports: [CommonModule, FormsModule, AgGridModule, ButtonCellRendererComponent],
+  imports: [CommonModule, FormsModule, AgGridModule],
   templateUrl: './quote-delison.component.html',
   styleUrl: './quote-delison.component.scss'
 })

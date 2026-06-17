@@ -22,7 +22,7 @@ import { DetalleButtonRendererComponent } from "./detalle-button-renderer.compon
 @Component({
   selector: 'app-conventions',
   standalone: true,
-  imports: [DomainsModule, CommonModule, FormsModule, AgGridModule, MultiLineEditorComponent, conventionDetailsComponent, DetalleButtonRendererComponent],
+  imports: [DomainsModule, CommonModule, FormsModule, AgGridModule, MultiLineEditorComponent, conventionDetailsComponent],
   templateUrl: './conventions.component.html',
   styleUrl: './conventions.component.scss'
 })

@@ -34,7 +34,7 @@ import { PrecioMonedaEditorComponent } from 'app/domains/Almacenes/components/ma
 @Component({
   selector: 'app-detalle-items-proveedor',
   standalone: true,
-  imports: [CommonModule, FormsModule, AgGridModule, NgSelectModule, ItemCommentsCellRendererComponent, ClasificacionCascadaComponent],
+  imports: [CommonModule, FormsModule, AgGridModule, NgSelectModule],
   template: `
     <div class="detail-grid-container">
       <!-- Banner de candado cuando ya existe OC -->

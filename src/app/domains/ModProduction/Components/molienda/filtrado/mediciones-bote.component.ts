@@ -23,7 +23,7 @@ interface ParamCatalog {
 @Component({
   selector: 'app-mediciones-bote',
   standalone: true,
-  imports: [CommonModule, AgGridAngular, ItemCommentsCellRendererComponent, MedicionMatPrimaComponent, SelectWithTooltipEditorV2Component, TimeEditorComponent],
+  imports: [CommonModule, AgGridAngular],
   styles: [':host { display: block; height: 100%; overflow: hidden; }'],
   template: `
     <div style="height:100%;display:flex;flex-direction:column;background:#fff8e1;border-top:2px solid #ffe0b2;">

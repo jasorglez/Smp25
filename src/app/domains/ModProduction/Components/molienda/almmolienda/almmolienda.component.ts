@@ -23,7 +23,7 @@ import { SalidasMpService } from 'app/services/salidas-mp.service';
 @Component({
   selector: 'app-almmolienda',
   standalone: true,
-  imports: [CommonModule, AgGridAngular, SelectWithTooltipEditorV2Component, DetalleMoliendaComponent],
+  imports: [CommonModule, AgGridAngular],
   styles: [`
     .toast-mini {
       display: inline-block;

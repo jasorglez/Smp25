@@ -15,7 +15,7 @@ import { StyledTooltipComponent } from 'app/shared/styled-tooltip/styled-tooltip
 @Component({
   selector: 'app-compra-rapida-detalle',
   standalone: true,
-  imports: [CommonModule, AgGridAngular, ClasificacionCascadaComponent],
+  imports: [CommonModule, AgGridAngular],
   template: `
     <div style="padding: 6px; height: 100%; display: flex; flex-direction: column; box-sizing: border-box; overflow: hidden;">
       <div style="margin-bottom: 4px; flex-shrink: 0;">

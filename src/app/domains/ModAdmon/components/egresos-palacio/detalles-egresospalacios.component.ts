@@ -23,7 +23,7 @@ import { lastValueFrom } from 'rxjs';
 @Component({
   selector: 'app-detalles-egresospalacios',
   standalone: true,
-  imports: [CommonModule, FormsModule, AgGridModule, MultiLineEditorComponent, SearchableSelectComponent, SelectWithTooltipEditorV2Component],
+  imports: [CommonModule, FormsModule, AgGridModule],
   template: `
     <!-- Concepts Grid View -->
     <div class="detail-grid-container" *ngIf="detailType === 'concepts'">

@@ -24,7 +24,7 @@ import { EmployeesService } from 'app/services/employees.service';
 @Component({
   selector: 'app-detalle-permisos-x-sucursales',
   standalone: true,
-  imports: [AgGridModule, CommonModule, DetailPermisosXDeptosComponent, DetailBranchesRendererComponent],
+  imports: [AgGridModule, CommonModule],
   styles: [
     `
       :host {

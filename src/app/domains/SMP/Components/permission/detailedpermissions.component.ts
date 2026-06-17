@@ -16,10 +16,7 @@ import { alerts } from 'app/helpers/alerts';
   standalone: true,
   imports: [
     CommonModule,
-    AgGridAngular,
-    SubDetailedPermissionsComponent,
-    IconPickerCellEditorComponent,
-  ],
+    AgGridAngular],
   templateUrl: './detailedpermissions.component.html',
   styles: `
     ::ng-deep .small-text-ag-grid {

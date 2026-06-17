@@ -26,7 +26,7 @@ import { AuthService } from 'app/services/auth.service';
 @Component({
   selector: 'app-detail-permissions-user',
   standalone: true,
-  imports: [RouterModule, DomainsModule, AgGridModule, TimeEditorComponent],
+  imports: [RouterModule, DomainsModule, AgGridModule],
   templateUrl: './detail-permissions-user.component.html',
 })
 export class DetailPermissionsUserComponent implements ICellRendererAngularComp {

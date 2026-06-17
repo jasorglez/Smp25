@@ -13,7 +13,7 @@ import { PdfManoObraComponent } from './pdf-mano-obra.component';
 @Component({
   selector: 'app-mano-obra',
   standalone: true,
-  imports: [CommonModule, FormsModule, AgGridModule, ManoObraDetailRendererComponent, PdfManoObraComponent],
+  imports: [CommonModule, FormsModule, AgGridModule, PdfManoObraComponent],
   templateUrl: './mano-obra.component.html',
 })
 export class ManoObraComponent {

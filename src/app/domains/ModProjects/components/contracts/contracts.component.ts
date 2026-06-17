@@ -20,7 +20,7 @@ import { ProjectsService } from 'app/services/projects.service';
 @Component({
   selector: 'app-contracts',
   standalone: true,
-  imports: [DomainsModule, ContractDetailsComponent, DetailCellRendererProyectosComponent],
+  imports: [DomainsModule, ContractDetailsComponent],
   templateUrl: './contracts.component.html',
   styleUrl: './contracts.component.scss'
 })

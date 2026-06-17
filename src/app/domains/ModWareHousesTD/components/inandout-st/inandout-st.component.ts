@@ -22,7 +22,7 @@ import { UsersService } from 'app/services/users.service';
 @Component({
   selector: 'app-inandout-st',
   standalone: true,
-  imports: [CommonModule, FormsModule, AgGridModule, DetailCellRendererEntryItemsComponent, PdfButtonCellRendererComponent],
+  imports: [CommonModule, FormsModule, AgGridModule],
   templateUrl: './inandout-st.component.html',
 })
 export class InandoutStComponent implements OnInit {

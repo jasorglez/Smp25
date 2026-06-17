@@ -65,14 +65,7 @@ import { TrackingService } from 'app/services/tracking.service';
     RouterModule,
     DomainsModule,
     AgGridModule,
-    MultiLineEditorComponent,
-    ProvidersPaymentsComponent,
-    DetailCellRendererComponentContact,
-    DetallesBancosxproveedorComponent,
-    DetailCellRendererComponentCuentas,
-    DetallesTiposProveedorComponent,
-    DetallesMaterialexprovComponent
-  ],
+    MultiLineEditorComponent],
   templateUrl: './providers.component.html',
   styleUrls: ['./providers.component.scss'],
 })

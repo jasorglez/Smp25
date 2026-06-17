@@ -9,7 +9,7 @@ import { ProductionService } from '../../../../../services/production.service';
 @Component({
   selector: 'app-oh-bloque-detail',
   standalone: true,
-  imports: [CommonModule, AgGridAngular, OhBloqueProductosComponent],
+  imports: [CommonModule, AgGridAngular],
   styles: [`:host { display: block; height: 100%; overflow: hidden; position: relative; }`],
   template: `
     <div style="position: absolute; top: 0; left: 0; right: 0; bottom: 0; padding: 6px; display: flex; flex-direction: column; box-sizing: border-box; overflow: hidden; background-color: #e8f5e9;">

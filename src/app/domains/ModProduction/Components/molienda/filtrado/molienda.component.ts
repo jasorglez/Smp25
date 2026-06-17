@@ -19,7 +19,7 @@ import { SalidaLotesModalComponent } from './salida-lotes-modal.component';
 @Component({
   selector: 'app-molienda-filtrado',
   standalone: true,
-  imports: [CommonModule, AgGridAngular, DetallesEntradasMoliendaComponent, SelectWithTooltipEditorV2Component, DetailRouterFiltradoComponent, SalidaLotesModalComponent],
+  imports: [CommonModule, AgGridAngular, SalidaLotesModalComponent],
   template: `
     <div class="col-12">
       <div class="row g-2">

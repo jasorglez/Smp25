@@ -8,7 +8,7 @@ import { MatDialogContainer } from "@angular/material/dialog";
 @Component({
   selector: 'app-palacio-municipal',
   standalone: true,
-  imports: [CommonModule, RouterOutlet, RouterLink, RouterLinkActive, TranslateModule, MatIconModule, MatDialogContainer],
+  imports: [CommonModule, RouterOutlet, RouterLink, RouterLinkActive, TranslateModule, MatIconModule],
   templateUrl: './palacio-municipal.component.html',
   styleUrl: './palacio-municipal.component.scss'
 })

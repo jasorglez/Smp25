@@ -12,7 +12,7 @@ import { lastValueFrom } from 'rxjs';
 @Component({
   selector: 'app-equipment-detail-renderer',
   standalone: true,
-  imports: [CommonModule, FormsModule, AgGridModule, SelectWithTooltipEditorV2Component],
+  imports: [CommonModule, FormsModule, AgGridModule],
   template: `
 
     <!-- ── DISTRIBUCIÓN ─────────────────────────────────────────────── -->

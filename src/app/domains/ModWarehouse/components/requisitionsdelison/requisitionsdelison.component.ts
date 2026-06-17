@@ -29,7 +29,7 @@ interface Catalog {
 @Component({
   selector: 'app-requisitionsdelison',
   standalone: true,
-  imports: [CommonModule, FormsModule, AgGridModule, ButtonCellRendererComponent, DetallesRequisicionDelisonComponent, DetailCellRendererRequisitionsPurchasesComponent, SelectDepartmentEditorComponent, PdfButtonCellRendererComponent],
+  imports: [CommonModule, FormsModule, AgGridModule],
   templateUrl: './requisitionsdelison.component.html',
   styleUrl: './requisitionsdelison.component.scss',
   styles: [`

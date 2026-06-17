@@ -6,7 +6,7 @@ import { Procindic02Component } from '../procindic02/procindic02.component';
 @Component({
   selector: 'app-procindicgrals',
   standalone: true,
-  imports: [RouterModule,Procindic01Component, Procindic02Component],
+  imports: [RouterModule],
   templateUrl: './procindicgrals.component.html',
   styleUrl: './procindicgrals.component.scss'
 })

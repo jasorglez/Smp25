@@ -20,7 +20,7 @@ import { PendingChangesService } from 'app/services/pending-changes.service';
   selector: 'app-detail-cell-renderer-costos',
   standalone: true,
   providers: [CurrencyPipe],
-  imports: [CommonModule, AgGridModule, FormulaEditorComponent, CurrencyPipe, DetailCellRendererParametrosComponent],
+  imports: [CommonModule, AgGridModule],
   template: `
     <!-- El template permanece igual -->
     <div style="padding: 10px; background-color: #e8f5e9; height: 100%; display: flex; flex-direction: column; box-sizing: border-box;">

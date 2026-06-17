@@ -27,12 +27,7 @@ import { BitacoraWrapperComponent }   from './bitacora-wrapper.component';
   selector: 'app-sistema',
   standalone: true,
   imports: [
-    CommonModule, FormsModule, AgGridModule,
-    ButtonCellRendererExpenditureComponent,
-    PdfButtonCellRendererComponent, PdfDetailComponent,
-    BitacoraPersonalComponent, BitacoraMaterialComponent, BitacoraEquiposComponent,
-    BitacoraWrapperComponent,
-  ],
+    CommonModule, FormsModule, AgGridModule],
   templateUrl: './sistema.component.html',
   styleUrl: './sistema.component.scss'
 })

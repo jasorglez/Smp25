@@ -45,7 +45,7 @@ interface Provider {
 @Component({
   selector: 'app-requisitions',
   standalone: true,
-  imports: [CommonModule, FormsModule, AgGridModule, MultiLineEditorComponent, DeleteButtonCellRendererComponent, PdfButtonCellRendererRequisitionsComponent, DetailCellRendererRequisitionReportComponent],
+  imports: [CommonModule, FormsModule, AgGridModule, MultiLineEditorComponent],
   templateUrl: './requisitions.component.html',
   styleUrl: './requisitions.component.scss',
 })

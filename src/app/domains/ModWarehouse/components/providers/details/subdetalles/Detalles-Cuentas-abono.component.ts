@@ -14,7 +14,7 @@ import { ProvidersService } from 'app/services/providers.service';
 @Component({
   selector: 'app-detalles-cuentas',
   standalone: true,
-  imports: [AgGridModule, CommonModule, CurrencyPipe],
+  imports: [AgGridModule, CommonModule],
   template: `
     <div 
       style="padding: 10px; background-color: #e9ecef; height: 100%; display: flex; flex-direction: column;"

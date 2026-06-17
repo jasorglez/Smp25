@@ -31,7 +31,7 @@ import { RolesService } from 'app/services/roles.service';
 @Component({
   selector: 'app-detalles-requisicion-delison',
   standalone: true,
-  imports: [CommonModule, FormsModule, AgGridModule, SelectWithTooltipEditorV2Component, MultiLineEditorComponent, ItemCommentsCellRendererComponent, SearchableComboboxComponent, PresentacionesPanelComponent, CantidadMinimosPanelComponent],
+  imports: [CommonModule, FormsModule, AgGridModule, MultiLineEditorComponent, SearchableComboboxComponent, PresentacionesPanelComponent, CantidadMinimosPanelComponent],
   template: `
     <!-- Items Grid View -->
     <div *ngIf="detailType === 'items'" style="padding: 5px; background-color: #e3f2fd; height: 100%; max-height: 100%; display: flex; flex-direction: column; box-sizing: border-box; overflow: hidden;">

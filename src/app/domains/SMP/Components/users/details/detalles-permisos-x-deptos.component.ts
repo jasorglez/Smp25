@@ -22,7 +22,7 @@ import { environment } from '@env/environment';
 @Component({
   selector: 'app-detail-permisos-x-deptos',
   standalone: true,
-  imports: [AgGridModule, CommonModule, DetailPermissionsUserComponent, PermissionsViewByUserComponent],
+  imports: [AgGridModule, CommonModule],
   template: `
     <div style="padding: 10px; background-color: #f8f9fa; height: 100%; display: flex; flex-direction: column; box-sizing: border-box;">
       <div style="margin-bottom: 10px; display: flex; justify-content: space-between; align-items: center; flex-shrink: 0;">

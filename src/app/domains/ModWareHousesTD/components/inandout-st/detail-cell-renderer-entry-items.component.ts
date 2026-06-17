@@ -13,7 +13,7 @@ import { PdfReportsService } from 'app/services/pdf-reports.service';
 @Component({
   selector: 'app-detail-cell-renderer-entry-items',
   standalone: true,
-  imports: [CommonModule, FormsModule, AgGridModule, SelectWithTooltipEditorV2Component, SelectMaterialEditorComponent],
+  imports: [CommonModule, FormsModule, AgGridModule],
   template: `
     <!-- Items Grid View -->
     <div class="detail-grid-container" *ngIf="detailType === 'items'">

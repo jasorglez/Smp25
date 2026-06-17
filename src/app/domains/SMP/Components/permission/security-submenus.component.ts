@@ -10,7 +10,7 @@ import type { SecuritySubmenuRow } from './security.component';
 @Component({
   selector: 'app-security-submenus',
   standalone: true,
-  imports: [CommonModule, FormsModule, AgGridAngular, MaterialIconPickerCellEditorComponent],
+  imports: [CommonModule, FormsModule, AgGridAngular],
   template: `
     <div class="sec-submenus">
       <div class="sec-submenus__header">

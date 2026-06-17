@@ -14,7 +14,7 @@ import { ItemCommentsService } from 'app/services/item-comments.service';
 @Component({
   selector: 'app-detalle-items-pedimentos',
   standalone: true,
-  imports: [CommonModule, AgGridModule, ItemCommentsCellRendererComponent],
+  imports: [CommonModule, AgGridModule],
   template: `
     <div class="detail-grid-container">
       <div *ngIf="articulosLocked"

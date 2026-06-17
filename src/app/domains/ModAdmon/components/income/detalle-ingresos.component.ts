@@ -22,7 +22,7 @@ import * as pdfFonts from 'pdfmake/build/vfs_fonts';
 @Component({
   selector: 'app-detalle-ingresos',
   standalone: true,
-  imports: [CommonModule, FormsModule, AgGridModule, MultiLineEditorComponent],
+  imports: [CommonModule, FormsModule, AgGridModule],
   template: `
     <!-- Concepts Grid View -->
     <div class="detail-grid-container" *ngIf="detailType === 'concepts'">

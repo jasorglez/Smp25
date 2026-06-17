@@ -14,7 +14,7 @@ import { lastValueFrom } from 'rxjs';
 @Component({
   selector: 'app-workprogram-distribution',
   standalone: true,
-  imports: [CommonModule, FormsModule, AgGridModule, SelectWithTooltipEditorV2Component],
+  imports: [CommonModule, FormsModule, AgGridModule],
   template: `
 <div *ngIf="visible" class="modal d-block" tabindex="-1"
      style="background:rgba(0,0,0,.45); z-index:1055;">

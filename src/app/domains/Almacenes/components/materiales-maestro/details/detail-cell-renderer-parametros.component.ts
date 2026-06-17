@@ -14,7 +14,7 @@ import { PendingChangesService } from 'app/services/pending-changes.service';
 @Component({
   selector: 'app-detail-cell-renderer-parametros',
   standalone: true,
-  imports: [AgGridModule, CommonModule, SelectWithTooltipEditorV2Component],
+  imports: [AgGridModule, CommonModule],
   template: `
     <div
       style="padding: 10px; background-color: #e9ecef; height: 100%; display: flex; flex-direction: column;"

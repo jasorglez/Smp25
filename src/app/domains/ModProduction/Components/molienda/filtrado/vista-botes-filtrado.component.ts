@@ -24,7 +24,7 @@ interface BoteVista {
 @Component({
   selector: 'app-vista-botes-filtrado',
   standalone: true,
-  imports: [CommonModule, AgGridAngular, MedicionesBoteComponent, ParamsDetailRendererComponent],
+  imports: [CommonModule, AgGridAngular],
   template: `
     <div style="height: 100%; display: flex; overflow: hidden; background: #fff8e1;">
 

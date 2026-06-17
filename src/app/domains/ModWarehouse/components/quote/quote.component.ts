@@ -43,7 +43,7 @@ interface Provider {
 @Component({
   selector: 'app-quote',
   standalone: true,
-  imports: [CommonModule, FormsModule, AgGridModule, MultiLineEditorComponent, ProviderDetailCellRendererComponent, ProviderQuoteDetailComponent],
+  imports: [CommonModule, FormsModule, AgGridModule, MultiLineEditorComponent],
   templateUrl: './quote.component.html',
   styleUrl: './quote.component.scss'
 })

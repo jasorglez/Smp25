@@ -26,7 +26,7 @@ import { AuthService } from 'app/services/auth.service';
 @Component({
   selector: 'app-roles-detailed',
   standalone: true,
-  imports: [RouterModule, DomainsModule, AgGridModule, TimeEditorComponent],
+  imports: [RouterModule, DomainsModule, AgGridModule],
   templateUrl: './rolesDelison-detailed.component.html',
   styleUrl: './rolesDelison-detailed.component.scss'
 })

@@ -29,7 +29,7 @@ import { PrecioMonedaEditorComponent, MonedaOpt } from '../editors/precio-moneda
   selector: 'app-detalle-asignproveeds-matmaestro',
   standalone: true,
   providers: [CurrencyPipe],
-  imports: [AgGridModule, CommonModule, AutocompleteEditorComponent, PrecioMonedaEditorComponent],
+  imports: [AgGridModule, CommonModule],
   template: `
     <div
       style="padding: 10px; background-color: #e3f2fd; height: 100%; display: flex; flex-direction: column;">

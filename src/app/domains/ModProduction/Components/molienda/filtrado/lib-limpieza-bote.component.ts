@@ -17,7 +17,7 @@ import { TimeEditorComponent } from 'app/domains/Indicadores/components/ind01/ti
 @Component({
   selector: 'app-lib-limpieza-bote',
   standalone: true,
-  imports: [CommonModule, AgGridAngular, SelectWithTooltipEditorV2Component, MultiSelectEmployeeEditorComponent, MultiSelectActividadEditorComponent, TimeEditorComponent],
+  imports: [CommonModule, AgGridAngular],
   styles: [':host { display: block; height: 100%; overflow: hidden; }'],
   template: `
     <div style="height:100%;display:flex;flex-direction:column;background:#f0fff4;border-top:2px solid #c3e6cb;">
