@@ -162,6 +162,7 @@ export class OhBloqueDetailComponent {
     });
 
     this.gridApi.setGridOption('rowData', this.rows);
+    this.cdr.detectChanges();
   }
 
   private getProductosDisponibles(data: any): any[] {
