@@ -73,5 +73,5 @@ export const environment = {
 
   urlRefreshToken: 'https://securetoken.googleapis.com/v1/token?key=AIzaSyDxCBGKk8nT09hdW85-PyOkhw5_JPZLF1A',
 
-  version: '2.52.509 (17 Junio 2026) - Catalogos/Molienda: Se corrigio lo de mostrar y guardar prefijo'
+  version: '2.52.512 (17 Junio 2026) - MoliendaParamConfig: campo type añadido a tabla y endpoints'
 };

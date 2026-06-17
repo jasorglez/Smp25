@@ -1654,16 +1654,20 @@ export class CatalogosProduccionComponent {
 
     this.catalogService.getAll(this.idRoot).subscribe({
       next: (items) => {
-        this.catalogSidebarItems = items ?? [];
-        if (this.selectedCatalogSidebarId && !this.catalogSidebarItems.some(x => x.id === this.selectedCatalogSidebarId)) {
-          this.selectedCatalogSidebarId = null;
-        }
-        this.cdr.detectChanges();
+        Promise.resolve().then(() => {
+          this.catalogSidebarItems = items ?? [];
+          if (this.selectedCatalogSidebarId && !this.catalogSidebarItems.some(x => x.id === this.selectedCatalogSidebarId)) {
+            this.selectedCatalogSidebarId = null;
+          }
+          this.cdr.detectChanges();
+        });
       },
       error: () => {
-        this.catalogSidebarItems = [];
-        this.selectedCatalogSidebarId = null;
-        this.cdr.detectChanges();
+        Promise.resolve().then(() => {
+          this.catalogSidebarItems = [];
+          this.selectedCatalogSidebarId = null;
+          this.cdr.detectChanges();
+        });
       },
     });
   }

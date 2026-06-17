@@ -424,10 +424,10 @@ export class ProductionService {
   }
 
   // ── Configuración parámetro × materia prima (activo + mín/máx) ───────────
-  getMoliendaParamConfigByParam(idParam: number): Observable<any[]> {
-    return this.http.get<any[]>(`${environment.urlProduction}/MoliendaParamConfig/param/${idParam}`, { headers: this.trackingService.getHeaders() });
+  getMoliendaParamConfigByParam(idParam: number, type = 'MOLIENDA'): Observable<any[]> {
+    return this.http.get<any[]>(`${environment.urlProduction}/MoliendaParamConfig/param/${idParam}?type=${type}`, { headers: this.trackingService.getHeaders() });
   }
-  upsertMoliendaParamConfig(data: { idParam: number; idArticulo: number; valorMin?: number; valorMax?: number; active: boolean }): Observable<any> {
+  upsertMoliendaParamConfig(data: { idParam: number; idArticulo: number; valorMin?: number; valorMax?: number; active: boolean; type?: string }): Observable<any> {
     return this.http.post<any>(`${environment.urlProduction}/MoliendaParamConfig`, data, { headers: this.trackingService.getHeaders() });
   }
 
