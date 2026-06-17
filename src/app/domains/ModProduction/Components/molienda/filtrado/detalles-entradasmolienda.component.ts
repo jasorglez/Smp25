@@ -1,4 +1,4 @@
-import { Component, inject } from '@angular/core';
+import { Component, inject, ChangeDetectorRef} from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { AgGridAngular } from 'ag-grid-angular';
 import { ColDef, GridApi, GridReadyEvent } from 'ag-grid-enterprise';
@@ -30,6 +30,7 @@ import { MoliendaService } from 'app/services/molienda.service';
 })
 export class DetallesEntradasMoliendaComponent {
   private moliendaService = inject(MoliendaService);
+  private readonly cdr = inject(ChangeDetectorRef);
 
   private internalParams: any;
   private gridApi!: GridApi;
@@ -72,7 +73,8 @@ export class DetallesEntradasMoliendaComponent {
   agInit(params: any) {
     this.internalParams = params;
     if (this.gridApi && !this.gridApi.isDestroyed()) this.loadData();
-  }
+  
+    this.cdr.detectChanges();}
 
   refresh(params: any): boolean {
     this.internalParams = params;
@@ -105,5 +107,6 @@ export class DetallesEntradasMoliendaComponent {
     } catch (error) {
       console.error('Error cargando entradas molienda:', error);
     }
-  }
+  
+    this.cdr.detectChanges();}
 }

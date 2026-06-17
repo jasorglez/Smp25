@@ -1,4 +1,4 @@
-﻿import { Component, effect, inject } from '@angular/core';
+﻿import { Component, effect, inject, ChangeDetectorRef} from '@angular/core';
 import { CellDoubleClickedEvent, ColDef, GridApi, GridReadyEvent, ICellRendererParams } from 'ag-grid-enterprise';
 import { IncomesAndExpensesService } from 'app/services/incomes-and-expenses.service';
 import { ModalService } from 'app/services/modal.service';
@@ -32,13 +32,13 @@ import { ProjectsService } from 'app/services/projects.service';
   selector: 'app-income',
   standalone: true,
   imports: [NgSelectModule, NgSelectComponent, AgGridModule, MultiLineEditorComponent, CommonModule,
-             FormsModule, SelectWithTooltipEditorV2Component, ButtonCellRendererIncomeComponent,
-             PdfButtonCellRendererIncomeComponent, DetalleIngresosComponent],
+             FormsModule],
   templateUrl: './income.component.html',
   styleUrl: './income.component.scss'
 })
 export class IncomeComponent {
   private incomesAndExpensesService = inject(IncomesAndExpensesService);
+  private readonly cdr = inject(ChangeDetectorRef);
   private modalServiceTable = inject(ModalService);
   private administrationService = inject(AdministrationService);
   private customersService = inject(CustomersService);
@@ -180,7 +180,8 @@ export class IncomeComponent {
       console.error('Error al obtener la información de gestión de facturación:', error);
       this.prefixAndConsecutive = [];
     }
-  }
+  
+    this.cdr.detectChanges();}
 
   private gridApi: GridApi;
   private tempIdCounter: number = 0;
@@ -942,7 +943,8 @@ async saveChanges() {
       'error'
     );
   }
-}
+
+  this.cdr.detectChanges();}
 
 
   // Método separado para guardar los registros de income
@@ -977,7 +979,8 @@ async saveChanges() {
         forkJoin(allObservables) // Usar forkJoin para ejecutar todas en paralelo
       );
     }
-  }
+  
+    this.cdr.detectChanges();}
 
 // Actualiza consecin en la cuenta bancaria seleccionada
 private async updateAccountBankConsecutive(account: any, newConsecutive: number): Promise<void> {
@@ -1002,7 +1005,8 @@ private async updateAccountBankConsecutive(account: any, newConsecutive: number)
       })
     )
   );
-}
+
+  this.cdr.detectChanges();}
 
   async deleteEntry() {
     const selectedNodes = this.gridApi.getSelectedNodes();
@@ -1191,7 +1195,8 @@ private async updateAccountBankConsecutive(account: any, newConsecutive: number)
         this.isGeneratingReport = false;
       }, 1000);
     }
-  }
+  
+    this.cdr.detectChanges();}
 
   loadConceptsData(incomeId: number, callback: (data: any[]) => void) {
     this.incomesAndExpensesService.getConceptsFromIncomesAndExpenses(incomeId).subscribe({
@@ -1523,7 +1528,8 @@ private async updateAccountBankConsecutive(account: any, newConsecutive: number)
     } finally {
       this.isGeneratingIngresoReport = false;
     }
-  }
+  
+    this.cdr.detectChanges();}
 
   // ==================== REPORTE DE SALDOS (INGRESOS) ====================
 
@@ -1688,7 +1694,8 @@ private async updateAccountBankConsecutive(account: any, newConsecutive: number)
     } finally {
       this.isGeneratingIngresoReport = false;
     }
-  }
+  
+    this.cdr.detectChanges();}
 
   saveNewCustomer() {
     if (!this.newCustomer.nameContact || !this.newCustomer.idTypecop) {

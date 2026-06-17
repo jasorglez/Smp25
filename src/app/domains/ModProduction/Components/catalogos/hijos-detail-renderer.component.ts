@@ -1,4 +1,4 @@
-import { Component, inject } from '@angular/core';
+import { Component, inject, ChangeDetectorRef} from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ICellRendererAngularComp } from 'ag-grid-angular';
 import { AgGridAngular } from 'ag-grid-angular';
@@ -46,6 +46,7 @@ import { lastValueFrom } from 'rxjs';
 })
 export class HijosDetailRendererComponent implements ICellRendererAngularComp {
   private catalogService = inject(CatalogProductionService);
+  private readonly cdr = inject(ChangeDetectorRef);
   private signalsService = inject(SignalsService);
 
   private params: any;
@@ -83,7 +84,8 @@ export class HijosDetailRendererComponent implements ICellRendererAngularComp {
   agInit(params: any): void {
     this.params = params;
     this.load();
-  }
+  
+    this.cdr.detectChanges();}
 
   refresh(): boolean { return false; }
 
@@ -161,7 +163,8 @@ export class HijosDetailRendererComponent implements ICellRendererAngularComp {
     } catch (e) {
       console.error('[HijosDetail] Error al guardar:', e);
     }
-  }
+  
+    this.cdr.detectChanges();}
 
   revert(): void {
     this.rowData = JSON.parse(JSON.stringify(this.original));
@@ -189,5 +192,6 @@ export class HijosDetailRendererComponent implements ICellRendererAngularComp {
     } catch (e) {
       console.error('[HijosDetail] Error al borrar:', e);
     }
-  }
+  
+    this.cdr.detectChanges();}
 }

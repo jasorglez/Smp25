@@ -1,4 +1,4 @@
-import { Component, OnDestroy } from '@angular/core';
+import { inject, Component, OnDestroy, ChangeDetectorRef} from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { AgGridModule } from 'ag-grid-angular';
@@ -67,6 +67,7 @@ import { Subscription, interval } from 'rxjs';
   `]
 })
 export class DetailCellRendererPurchaseOrderItemsComponent implements OnDestroy {
+  private readonly cdr = inject(ChangeDetectorRef);
 
   private params!: ICellRendererParams;
   private gridApi!: GridApi;
@@ -101,7 +102,8 @@ export class DetailCellRendererPurchaseOrderItemsComponent implements OnDestroy 
         }
       });
     }
-  }
+  
+    this.cdr.detectChanges();}
 
   ngOnDestroy() {
     this.contextUpdateSub?.unsubscribe();

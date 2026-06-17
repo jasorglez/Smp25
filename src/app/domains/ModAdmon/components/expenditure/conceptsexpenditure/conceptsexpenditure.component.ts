@@ -1,5 +1,5 @@
 import { CommonModule } from '@angular/common';
-import { Component, effect, inject, OnInit, signal } from '@angular/core';
+import { Component, effect, inject, OnInit, signal, ChangeDetectorRef} from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute } from '@angular/router';
 import { AgGridModule } from 'ag-grid-angular';
@@ -26,6 +26,7 @@ interface IGenericEntity { id: number; name: string; [key: string]: any; }
   styleUrl: './conceptsexpenditure.component.scss'
 })
 export class ConceptsexpenditureComponent {
+  private readonly cdr = inject(ChangeDetectorRef);
   
     // ... (código constructor y de carga sin cambios)
     private services = {
@@ -607,7 +608,8 @@ export class ConceptsexpenditureComponent {
       console.error('❌ Error en saveChanges:', error);
       alerts.basicAlert('Error', 'Ocurrió un error al guardar los datos.', 'error');
     }
-  }
+  
+    this.cdr.detectChanges();}
   
   
   

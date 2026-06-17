@@ -1,4 +1,4 @@
-import { Component, effect, HostListener, inject } from '@angular/core';
+import { Component, effect, HostListener, inject, ChangeDetectorRef} from '@angular/core';
 import {
   CellDoubleClickedEvent,
   ColDef,
@@ -46,19 +46,14 @@ import { DetailEmployeePersonalDataComponent } from '../detail-employee-personal
     CommonModule,
     FormsModule,
     AgGridModule,
-    MultiLineEditorComponent,
-    SearchableSelectComponent,
-    DetailEmployeeClockComponent,
-    DetailEmployeeLoansComponent,
-    DetailEmployeeSavingsComponent,
-    DetailEmployeeDocumentsComponent,
-  ],
+    MultiLineEditorComponent],
   templateUrl: './table.component.html',
   styleUrls: ['./table.component.scss'],
 })
 export class EmployeesTableComponent implements CanComponentDeactivate {
   // Inject of new way for Angular 18
   private imageHandlerService = inject(ImageHandlerService);
+  private readonly cdr = inject(ChangeDetectorRef);
   private employeeService = inject(EmployeesService);
   private signalsService = inject(SignalsService);
   private modalServiceTable = inject(ModalService);
@@ -2400,7 +2395,8 @@ export class EmployeesTableComponent implements CanComponentDeactivate {
     } catch (error) {
       console.error('Error sincronizando sucursal principal del usuario:', error);
     }
-  }
+  
+    this.cdr.detectChanges();}
 
   private async syncUserPrincipalBranch(row: any): Promise<void> {
     const userIds = await this.resolveUserIdsForEmployee(row);
@@ -2408,7 +2404,8 @@ export class EmployeesTableComponent implements CanComponentDeactivate {
     for (const idUser of userIds) {
       await this.syncSingleUserPrincipalBranch(idUser, row);
     }
-  }
+  
+    this.cdr.detectChanges();}
 
   private async syncSingleUserDeptoPosPermission(idUser: number, row: any): Promise<void> {
     const newDepto = Number(row?.idDepto ?? 0) || 0;
@@ -2463,7 +2460,8 @@ export class EmployeesTableComponent implements CanComponentDeactivate {
     } catch (error) {
       console.error('Error sincronizando departamento/posición del usuario:', error);
     }
-  }
+  
+    this.cdr.detectChanges();}
 
   private async resolveUserIdByEmployeeId(employeeId: number): Promise<number[]> {
     if (employeeId <= 0) return [];
@@ -2477,7 +2475,8 @@ export class EmployeesTableComponent implements CanComponentDeactivate {
         .map((u: any) => Number(u?.id ?? 0))
         .filter((id: number) => id > 0);
     } catch { return []; }
-  }
+  
+    this.cdr.detectChanges();}
 
   private async syncUserDeptoPosPermission(row: any): Promise<void> {
     const employeeId = Number(row?.id ?? 0);
@@ -2489,7 +2488,8 @@ export class EmployeesTableComponent implements CanComponentDeactivate {
     for (const idUser of userIds) {
       await this.syncSingleUserDeptoPosPermission(idUser, row);
     }
-  }
+  
+    this.cdr.detectChanges();}
 
   private generateUniqueClockPassword(): string {
     let isUnique = false;
@@ -2526,7 +2526,8 @@ export class EmployeesTableComponent implements CanComponentDeactivate {
         (date.getMonth() + 1)
       ).slice(-2)}-${date.getFullYear()}`,
     };
-  }
+  
+    this.cdr.detectChanges();}
 
   resetGridSize() {
     this.gridHeight = '80vh';
@@ -2570,7 +2571,8 @@ export class EmployeesTableComponent implements CanComponentDeactivate {
         this.catalogPosiciones = [];
       }
     }
-  }
+  
+    this.cdr.detectChanges();}
 
   private toggleDetailColumn(params: any, detailType: string): void {
     const node = params.node;

@@ -1,4 +1,4 @@
-import { Component, OnInit } from '@angular/core';
+import { inject, Component, OnInit, ChangeDetectorRef} from '@angular/core';
 import { AgGridAngular, ICellRendererAngularComp } from 'ag-grid-angular';
 import { ColDef, GridApi, GridReadyEvent, ICellRendererParams } from 'ag-grid-enterprise';
 import { Observable, of, lastValueFrom } from 'rxjs';
@@ -16,9 +16,7 @@ import { IconPickerCellEditorComponent } from './icon-picker-cell-editor.compone
   standalone: true,
   imports: [
     CommonModule,
-    AgGridAngular,
-    IconPickerCellEditorComponent,
-  ],
+    AgGridAngular],
   templateUrl: './detailedpermissions.component.html',
   styles: `
     ::ng-deep .small-text-ag-grid {
@@ -34,6 +32,7 @@ import { IconPickerCellEditorComponent } from './icon-picker-cell-editor.compone
 })
 
 export class SubDetailedPermissionsComponent implements OnInit, ICellRendererAngularComp {
+  private readonly cdr = inject(ChangeDetectorRef);
   public rowData: any[] = [];
   public gridApi!: GridApi;
   gridHeight: string = '60vh';
@@ -161,7 +160,8 @@ export class SubDetailedPermissionsComponent implements OnInit, ICellRendererAng
         this.rowData = params.data.detailData || [];
       }
     }
-  }
+  
+    this.cdr.detectChanges();}
 
   refresh(params: ICellRendererParams): boolean {
     return false;
@@ -314,7 +314,8 @@ export class SubDetailedPermissionsComponent implements OnInit, ICellRendererAng
       console.error(error);
       alerts.basicAlert('Error', 'Error al guardar cambios', 'error');
     }
-  }
+  
+    this.cdr.detectChanges();}
 
   onRefresh() {
     this.loadData();
@@ -344,7 +345,8 @@ export class SubDetailedPermissionsComponent implements OnInit, ICellRendererAng
         alerts.basicAlert('Error', 'Error al eliminar', 'error');
       }
     }
-  }
+  
+    this.cdr.detectChanges();}
 
   filterById(selectedId: any) {
     if (this.gridApi) {

@@ -4,8 +4,7 @@ import {
   Component,
   inject,
   input,
-  signal,
-} from '@angular/core';
+  signal, ChangeDetectorRef} from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { AgGridModule } from 'ag-grid-angular';
 import {
@@ -31,6 +30,7 @@ import { CatalogsService } from 'app/services/catalogs.service';
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class PriceProductsPresentationsComponent implements OnInit {
+  private readonly cdr = inject(ChangeDetectorRef);
   public inputRowData = input.required<PricePresentations[]>();
 
   public inputIdMaterial = input.required<number>();
@@ -307,5 +307,6 @@ export class PriceProductsPresentationsComponent implements OnInit {
         'error'
       );
     }
-  }
+  
+    this.cdr.detectChanges();}
 }

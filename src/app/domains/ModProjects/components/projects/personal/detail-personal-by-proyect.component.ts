@@ -1,4 +1,4 @@
-import { Component, effect, inject } from '@angular/core';
+import { Component, effect, inject, ChangeDetectorRef} from '@angular/core';
 import { ICellRendererAngularComp } from 'ag-grid-angular';
 import { ICellRendererParams } from 'ag-grid-enterprise';
 import { AgGridModule } from 'ag-grid-angular';
@@ -75,6 +75,7 @@ import { SelectWithTooltipEditorV2Component } from 'app/shared/select-with-toolt
 })
 export class DetailPersonalByProyectComponent implements ICellRendererAngularComp {
   private personalByProyectService = inject(PersonalByProyectService);
+  private readonly cdr = inject(ChangeDetectorRef);
   private signalsService = inject(SignalsService);
   private employeeService = inject(EmployeesService);
   params: any;
@@ -179,7 +180,8 @@ agInit(params: any): void {
   setTimeout(() => {
     this.onUndo();
   }, 500); 
-}
+
+  this.cdr.detectChanges();}
 
  cargarCatalogoEmpleados(idRoot: number): Promise<boolean> {
    return new Promise((resolve) => {
@@ -286,7 +288,8 @@ agInit(params: any): void {
           'error'
         );
       }
-    }
+    
+       this.cdr.detectChanges();}
   
     private cleanDataForServer(data: any): any {
       const cleanedData = { ...data };

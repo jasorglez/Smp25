@@ -1,4 +1,4 @@
-import { Component } from '@angular/core';
+import { inject, Component, ChangeDetectorRef} from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ITooltipAngularComp } from 'ag-grid-angular';
 import { ITooltipParams } from 'ag-grid-community';
@@ -149,6 +149,7 @@ import { ITooltipParams } from 'ag-grid-community';
   `]
 })
 export class StyledTooltipComponent implements ITooltipAngularComp {
+  private readonly cdr = inject(ChangeDetectorRef);
   title = '';
   lines: string[] = [];
   table: { headers: string[]; rows: string[][]; totalFmt?: string } | null = null;
@@ -181,5 +182,6 @@ export class StyledTooltipComponent implements ITooltipAngularComp {
       this.title = '';
       this.lines = parts;
     }
-  }
+  
+    this.cdr.detectChanges();}
 }

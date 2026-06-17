@@ -1,4 +1,4 @@
-import { Component, HostListener, inject } from '@angular/core';
+import { Component, HostListener, inject, ChangeDetectorRef} from '@angular/core';
 import { RouterModule } from '@angular/router';
 import { DomainsModule } from 'app/domains/domainsmodule';
 import { TrackingService } from 'app/services/tracking.service';
@@ -40,6 +40,7 @@ export class BanksComponent implements CanComponentDeactivate {
   }
 
     private trackingService = inject(TrackingService);
+    private readonly cdr = inject(ChangeDetectorRef);
 
   ngOnInit() {
     // this.obtenerDatos();
@@ -351,7 +352,8 @@ export class BanksComponent implements CanComponentDeactivate {
         'error'
       );
     }
-  }
+  
+    this.cdr.detectChanges();}
 
   async deleteEntry() {
     const selectedNodes = this.gridApi.getSelectedNodes();

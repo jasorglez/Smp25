@@ -1,4 +1,4 @@
-import { Component, effect, inject } from '@angular/core';
+import { Component, effect, inject, ChangeDetectorRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { AgGridAngular } from 'ag-grid-angular';
 import { ColDef, GridApi, GridReadyEvent } from 'ag-grid-enterprise';
@@ -10,7 +10,7 @@ import { lastValueFrom } from 'rxjs';
 @Component({
   selector: 'app-oh-bloque',
   standalone: true,
-  imports: [CommonModule, AgGridAngular, OhBloqueDetailComponent],
+  imports: [CommonModule, AgGridAngular],
   template: `
     <div class="col-12">
       <div class="row g-2">
@@ -52,6 +52,7 @@ import { lastValueFrom } from 'rxjs';
 export class OhBloqueComponent {
   private productionService = inject(ProductionService);
   private signalsService    = inject(SignalsService);
+  private readonly cdr      = inject(ChangeDetectorRef);
 
   gridApi!: GridApi;
   rows: any[] = [];
@@ -185,7 +186,8 @@ export class OhBloqueComponent {
       productoIds: (() => { try { return JSON.parse(b.productoIds ?? '[]'); } catch { return []; } })(),
     }));
     this.productosOptions = productos ?? [];
-  }
+  
+    this.cdr.detectChanges();}
 
   private async loadData() {
     if (!this.idCompany) return;
@@ -193,6 +195,7 @@ export class OhBloqueComponent {
     this.original = JSON.parse(JSON.stringify(data ?? []));
     this.rows = (data ?? []).map((r: any) => ({ ...r, __isNew: false, __modified: false }));
     this.gridApi?.setGridOption('rowData', this.rows);
+    this.cdr.detectChanges();
   }
 
   add() {
@@ -212,7 +215,8 @@ export class OhBloqueComponent {
     ]);
     await this.loadData();
     this.hasChanges = false;
-  }
+  
+    this.cdr.detectChanges();}
 
   revert() {
     this.rows = JSON.parse(JSON.stringify(this.original));
@@ -236,5 +240,6 @@ export class OhBloqueComponent {
     this.hasChanges = this.rows.some(r => r.__isNew || r.__modified);
     this.collapseActive();
     this.gridApi.setGridOption('rowData', this.rows);
-  }
+  
+    this.cdr.detectChanges();}
 }

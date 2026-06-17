@@ -1,4 +1,4 @@
-import { Component, inject, Renderer2, RendererFactory2 } from '@angular/core';
+import { Component, inject, Renderer2, RendererFactory2, ChangeDetectorRef} from '@angular/core';
 import { ICellRendererAngularComp } from 'ag-grid-angular';
 import { ICellRendererParams, GridApi, GridReadyEvent } from 'ag-grid-enterprise';
 import { CommonModule } from '@angular/common';
@@ -13,7 +13,7 @@ import { SelectWithTooltipEditorV2Component } from 'app/shared/select-with-toolt
 @Component({
   selector: 'app-detalles-tipos-proveedor',
   standalone: true,
-  imports: [CommonModule, AgGridModule, SelectWithTooltipEditorV2Component],
+  imports: [CommonModule, AgGridModule],
   template: `
     <div style="padding: 5px; background-color: #e3f2fd; height: 100%; max-height: 100%; display: flex; flex-direction: column; box-sizing: border-box; overflow: hidden;">
       <!-- Título y botones -->
@@ -89,6 +89,7 @@ import { SelectWithTooltipEditorV2Component } from 'app/shared/select-with-toolt
 export class DetallesTiposProveedorComponent implements ICellRendererAngularComp {
 
   private catalogsService = inject(CatalogsService);
+  private readonly cdr = inject(ChangeDetectorRef);
   private signalsService = inject(SignalsService);
   private providersService = inject(ProvidersService);
   private customersService = inject(CustomersService);
@@ -435,7 +436,8 @@ export class DetallesTiposProveedorComponent implements ICellRendererAngularComp
 
     // Cargar catálogos y datos del proveedor
     this.loadData();
-  }
+  
+    this.cdr.detectChanges();}
 
   async loadData(): Promise<void> {
     try {
@@ -482,7 +484,8 @@ export class DetallesTiposProveedorComponent implements ICellRendererAngularComp
       this.subfamilias = [];
       this.rowData = [];
     }
-  }
+  
+    this.cdr.detectChanges();}
 
   refresh(): boolean {
     return false;
@@ -703,7 +706,8 @@ export class DetallesTiposProveedorComponent implements ICellRendererAngularComp
         'error'
       );
     }
-  }
+  
+    this.cdr.detectChanges();}
 
   async saveChanges(): Promise<void> {
     // Validar que todas las filas tengan las 3 columnas llenas
@@ -1029,14 +1033,16 @@ export class DetallesTiposProveedorComponent implements ICellRendererAngularComp
         'error'
       );
     }
-  }
+  
+    this.cdr.detectChanges();}
 
   async revertChanges(): Promise<void> {
     // Recargar datos desde el endpoint
     await this.loadData();
     this.hasChanges = false;
     this.selectedRow = null;
-  }
+  
+    this.cdr.detectChanges();}
 
   getPreviewString(): string {
     const validRows = this.rowData.filter(

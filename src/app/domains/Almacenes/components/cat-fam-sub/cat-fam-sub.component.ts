@@ -1,4 +1,4 @@
-import { Component, effect, HostListener, inject } from '@angular/core';
+import { Component, effect, HostListener, inject, ChangeDetectorRef} from '@angular/core';
 import { ColDef, GridApi, GridReadyEvent } from 'ag-grid-enterprise';
 import { alerts } from 'app/helpers/alerts';
 import { AgGridModule } from 'ag-grid-angular';
@@ -20,6 +20,7 @@ import { MaterialsService } from 'app/services/materials.service';
 export class CatFamSubComponent {
 
   private catalogsService = inject(CatalogsService);
+  private readonly cdr = inject(ChangeDetectorRef);
   private signalsService = inject(SignalsService);
   private trackingService = inject(TrackingService);
   private materialsService = inject(MaterialsService);
@@ -122,7 +123,8 @@ export class CatFamSubComponent {
         'error'
       );
     }
-  }
+  
+    this.cdr.detectChanges();}
 
   // Construir estructura plana para 3 columnas con control de expansión
   private buildTreeStructure(categories: any[], families: any[], subfamilies: any[]) {
@@ -840,7 +842,8 @@ export class CatFamSubComponent {
         'error'
       );
     }
-  }
+  
+    this.cdr.detectChanges();}
 
   // Grid listo
   onGridReady(params: GridReadyEvent) {
@@ -1062,7 +1065,8 @@ export class CatFamSubComponent {
         'error'
       );
     }
-  }
+  
+    this.cdr.detectChanges();}
 
   // Revertir cambios
   revert() {
@@ -1246,7 +1250,8 @@ export class CatFamSubComponent {
       const errorMsg = error?.error?.message || error?.message || 'Error desconocido';
       alerts.basicAlert('Error', `Error al crear la categoría: ${errorMsg}`, 'error');
     }
-  }
+  
+    this.cdr.detectChanges();}
   
   // Guardar nueva familia
   async saveNewFamily() {
@@ -1310,7 +1315,8 @@ export class CatFamSubComponent {
       const errorMsg = error?.error?.message || error?.message || 'Error desconocido';
       alerts.basicAlert('Error', `Error al crear la familia: ${errorMsg}`, 'error');
     }
-  }
+  
+    this.cdr.detectChanges();}
   
   // Guardar nueva subfamilia
   async saveNewSubfamily() {
@@ -1378,7 +1384,8 @@ export class CatFamSubComponent {
       const errorMsg = error?.error?.message || error?.message || 'Error desconocido';
       alerts.basicAlert('Error', `Error al crear la subfamilia: ${errorMsg}`, 'error');
     }
-  }
+  
+    this.cdr.detectChanges();}
   
   // Guardar cambios en edición
   async saveEditChanges() {
@@ -1439,7 +1446,8 @@ export class CatFamSubComponent {
       const errorMsg = error?.error?.message || error?.message || 'Error desconocido';
       alerts.basicAlert('Error', `Error al actualizar el registro: ${errorMsg}`, 'error');
     }
-  }
+  
+    this.cdr.detectChanges();}
 
   // Restaurar selección después de recargar datos
   private restoreSelectionAfterReload(selectedId: any, selectedNodeLevel: string) {

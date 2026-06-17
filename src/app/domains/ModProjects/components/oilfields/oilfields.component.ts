@@ -1,4 +1,4 @@
-import { Component, HostListener, inject } from '@angular/core';
+import { Component, HostListener, inject, ChangeDetectorRef} from '@angular/core';
 import { ColDef, GridApi, GridReadyEvent } from 'ag-grid-enterprise';
 import { InegiService } from 'app/services/inegi.service';
 import { alerts } from 'app/helpers/alerts';
@@ -20,6 +20,7 @@ export class OilfieldsComponent {
   private estados: string[] = [];
 
   private oilfieldsService = inject(OilfieldService);
+  private readonly cdr = inject(ChangeDetectorRef);
   private inegiService     = inject(InegiService);
 
   ngOnInit() {
@@ -248,7 +249,8 @@ public gridOptions: any = {
         'error'
       );
     }
-  }
+  
+    this.cdr.detectChanges();}
 
   async deleteEntry() {
     const selectedNodes = this.gridApi.getSelectedNodes();

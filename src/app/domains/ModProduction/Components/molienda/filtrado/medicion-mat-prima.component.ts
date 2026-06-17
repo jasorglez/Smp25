@@ -1,4 +1,4 @@
-import { Component, inject } from '@angular/core';
+import { Component, inject, ChangeDetectorRef} from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { AgGridAngular } from 'ag-grid-angular';
 import { ColDef, GridApi, GridReadyEvent } from 'ag-grid-enterprise';
@@ -45,6 +45,7 @@ import { alerts } from 'app/helpers/alerts';
 })
 export class MedicionMatPrimaComponent implements ICellRendererAngularComp {
   private productionService = inject(ProductionService);
+  private readonly cdr = inject(ChangeDetectorRef);
   private salidasService = inject(SalidasMpService);
 
   gridApi!: GridApi;
@@ -98,7 +99,8 @@ export class MedicionMatPrimaComponent implements ICellRendererAngularComp {
 
     this.buildColDefs();
     if (this.idMedicion) this.loadData();
-  }
+  
+    this.cdr.detectChanges();}
 
   refresh(): boolean { return false; }
 
@@ -160,7 +162,8 @@ export class MedicionMatPrimaComponent implements ICellRendererAngularComp {
       onResolve: (res: { idArticulo: number; cantidad: number; empleado: string; lotes: any[] }) =>
         this.aplicarSalida(row, res),
     });
-  }
+  
+    this.cdr.detectChanges();}
 
   private aplicarSalida(row: any, res: { idArticulo: number; cantidad: number; empleado: string; lotes: any[] }) {
     const eraNuevoVacio = row.__isNew && row.idMatPrima == null;
@@ -198,7 +201,8 @@ export class MedicionMatPrimaComponent implements ICellRendererAngularComp {
     } catch (e) {
       console.error('Error guardando salidas MP (medición):', e);
     }
-  }
+  
+    this.cdr.detectChanges();}
 
   private async loadData() {
     try {
@@ -233,7 +237,8 @@ export class MedicionMatPrimaComponent implements ICellRendererAngularComp {
     } catch (e) {
       console.error('Error cargando mat prima:', e);
     }
-  }
+  
+    this.cdr.detectChanges();}
 
   onGridReady(e: GridReadyEvent) {
     this.gridApi = e.api;
@@ -286,7 +291,8 @@ export class MedicionMatPrimaComponent implements ICellRendererAngularComp {
       console.error('Error eliminando mat prima:', e);
       alerts.reqErrorToast('Error al eliminar');
     }
-  }
+  
+    this.cdr.detectChanges();}
 
   async saveChanges() {
     if (!this.idMedicion) return;
@@ -320,5 +326,6 @@ export class MedicionMatPrimaComponent implements ICellRendererAngularComp {
       alerts.reqErrorToast('Error al guardar mat prima');
       throw e;
     }
-  }
+  
+    this.cdr.detectChanges();}
 }

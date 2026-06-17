@@ -1,4 +1,4 @@
-import { Component } from '@angular/core';
+import { inject, Component, ChangeDetectorRef} from '@angular/core';
 import { ICellRendererAngularComp } from 'ag-grid-angular';
 import { ICellRendererParams } from 'ag-grid-community';
 
@@ -11,6 +11,7 @@ import { ICellRendererParams } from 'ag-grid-community';
   styles: [`:host { display: flex; justify-content: center; align-items: center; height: 100%; }`]
 })
 export class DetalleButtonRendererComponent implements ICellRendererAngularComp {
+  private readonly cdr = inject(ChangeDetectorRef);
   private params: any;
   icon = 'bi bi-list-ul';
   color = '#0d6efd';
@@ -21,7 +22,8 @@ export class DetalleButtonRendererComponent implements ICellRendererAngularComp 
     this.icon = (params as any).icon ?? 'bi bi-list-ul';
     this.color = (params as any).color ?? '#0d6efd';
     this.label = (params as any).label ?? 'Detalle';
-  }
+  
+    this.cdr.detectChanges();}
 
   refresh(params: ICellRendererParams): boolean {
     this.params = params;

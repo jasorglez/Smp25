@@ -1,4 +1,4 @@
-import { Component, OnInit } from '@angular/core';
+import { inject, Component, OnInit, ChangeDetectorRef} from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { AgGridModule } from 'ag-grid-angular';
@@ -44,6 +44,7 @@ import { AG_GRID_LOCALE_ES } from 'assets/i18n/ag-grid.locale.es';
   `]
 })
 export class DetailCellRendererQuotesProvidersComponent implements OnInit {
+  private readonly cdr = inject(ChangeDetectorRef);
 
   private params!: any;
   private gridApi!: GridApi;
@@ -63,7 +64,8 @@ export class DetailCellRendererQuotesProvidersComponent implements OnInit {
     this.params = params;
     this.context = params.context;
     this.loadData();
-  }
+  
+    this.cdr.detectChanges();}
 
   loadData() {
     if (this.context && this.context.componentParent) {

@@ -1,7 +1,7 @@
 
 //soriano develop
 
-import { Component, effect, inject, HostListener } from '@angular/core';
+import { Component, effect, inject, HostListener, ChangeDetectorRef} from '@angular/core';
 import { CellDoubleClickedEvent, ColDef, GridApi, GridReadyEvent, ICellRendererParams } from 'ag-grid-enterprise';
 import { IncomesAndExpensesService } from 'app/services/incomes-and-expenses.service';
 import { ModalService } from 'app/services/modal.service';
@@ -40,14 +40,14 @@ declare var bootstrap: any;
   selector: 'app-egresos-palacio',
   standalone: true,
   imports: [NgSelectModule, NgSelectComponent, AgGridModule, MultiLineEditorComponent, CommonModule,
-    FormsModule, ButtonCellRendererExpenditureComponent, DetallesEgresospalaciosComponent,
-    PdfButtonCellRendererComponent, SelectWithTooltipEditorV2Component, DatePipe, ReactiveFormsModule],
+    FormsModule, DatePipe, ReactiveFormsModule],
   templateUrl: './egresos-palacio.component.html',
   styleUrl: './egresos-palacio.component.scss'
 })
 export class EgresosPalacioComponent {
 
   private incomesAndExpensesService = inject(IncomesAndExpensesService);
+  private readonly cdr = inject(ChangeDetectorRef);
   private modalServiceTable = inject(ModalService);
   private administrationService = inject(AdministrationService);
   private cataalogAdmonService = inject(CatalogadmonService);
@@ -1432,7 +1432,8 @@ export class EgresosPalacioComponent {
         'error'
       );
     }
-  }
+  
+    this.cdr.detectChanges();}
 
   async deleteEntry() {
     const selectedNodes = this.gridApi.getSelectedNodes();
@@ -1485,7 +1486,8 @@ export class EgresosPalacioComponent {
           this.selectedIncomes = null;
         }
       );
-  }
+  
+    this.cdr.detectChanges();}
 
   revert() {
     this.getExpenditure();
@@ -1555,7 +1557,8 @@ export class EgresosPalacioComponent {
     }
 
     return [];
-  }
+  
+    this.cdr.detectChanges();}
 
 
   async getBankAccounts() {
@@ -1804,7 +1807,8 @@ export class EgresosPalacioComponent {
         'error'
       );
     }
-  }
+  
+    this.cdr.detectChanges();}
 
   async toggleCatalogReportDetail(node: any) {
     const api = this.gridApi;
@@ -1906,7 +1910,8 @@ export class EgresosPalacioComponent {
         'error'
       );
     }
-  }
+  
+    this.cdr.detectChanges();}
 
   collapseReportDetail(expenditureId: number) {
     if (this.gridApi) {
@@ -2089,7 +2094,8 @@ export class EgresosPalacioComponent {
         'error'
       );
     }
-  }
+  
+    this.cdr.detectChanges();}
 
   async deleteConceptRow(params: any, successCallback: () => void) {
     const conceptId = params.data.id;
@@ -2114,7 +2120,8 @@ export class EgresosPalacioComponent {
         );
       }
     }
-  }
+  
+    this.cdr.detectChanges();}
 
   private cleanConceptData(data: any): any {
     const cleanedData = { ...data };
@@ -2218,7 +2225,8 @@ export class EgresosPalacioComponent {
         'error'
       );
     }
-  }
+  
+    this.cdr.detectChanges();}
 
   async deleteDocumentoComprobado(params: any, successCallback: () => void) {
     const documentoId = params.data.id;
@@ -2242,7 +2250,8 @@ export class EgresosPalacioComponent {
         );
       }
     }
-  }
+  
+    this.cdr.detectChanges();}
 
   private cleanDocumentoData(data: any): any {
     const cleanedData = { ...data };
@@ -2338,7 +2347,8 @@ export class EgresosPalacioComponent {
         'error'
       );
     }
-  }
+  
+    this.cdr.detectChanges();}
 
   // ==================== MÉTODOS PARA COPIAR REGISTRO ====================
 
@@ -2518,7 +2528,8 @@ export class EgresosPalacioComponent {
     } finally {
       this.isCopyingRecord = false;
     }
-  }
+  
+    this.cdr.detectChanges();}
 
   // ==================== MÉTODOS PARA BÚSQUEDA POR UUID ====================
 
@@ -2626,7 +2637,8 @@ export class EgresosPalacioComponent {
     } finally {
       this.isSearchingUuid = false;
     }
-  }
+  
+    this.cdr.detectChanges();}
 
   async clearUuidFilter() {
     this.uuidFilterActive = false;
@@ -2779,7 +2791,8 @@ export class EgresosPalacioComponent {
     } finally {
       this.isGeneratingConsolidatedReport = false;
     }
-  }
+  
+    this.cdr.detectChanges();}
 
   // ==================== REPORTE CONSOLIDADO (AGRUPADO POR OBJETO DE GASTO) ====================
   private async generateReporteConsolidado(filteredExpenses: any[]) {
@@ -2791,7 +2804,8 @@ export class EgresosPalacioComponent {
 
     // Generar PDF consolidado
     await this.generateConsolidatedPDF(sortedGroups);
-  }
+  
+    this.cdr.detectChanges();}
 
   // ==================== REPORTE AGRUPADO ====================
   private async generateReporteAgrupado(filteredExpenses: any[]) {
@@ -2868,7 +2882,8 @@ export class EgresosPalacioComponent {
       console.error('Error generando reporte de egresos:', error);
       alerts.basicAlert('Error', 'Error al generar el reporte de egresos', 'error');
     }
-  }
+  
+    this.cdr.detectChanges();}
 
   // ==================== REPORTE BITÁCORA (PADRE-HIJO DETALLADO) ====================
   private async generateReporteBitacora(filteredExpenses: any[]) {
@@ -3290,7 +3305,8 @@ export class EgresosPalacioComponent {
       console.error('Error generando bitácora:', error);
       alerts.basicAlert('Error', 'Error al generar la bitácora de egresos', 'error');
     }
-  }
+  
+    this.cdr.detectChanges();}
 
   // ==================== REPORTE BITÁCORA POR CORTES (SUMA AGRUPADA POR DETALLE EGRESO CON DETALLE) ====================
   private async generateReporteBitacoraPorCortes(filteredExpenses: any[]) {
@@ -3789,7 +3805,8 @@ export class EgresosPalacioComponent {
       console.error('Error generando bitácora por cortes:', error);
       alerts.basicAlert('Error', 'Error al generar la bitácora por cortes', 'error');
     }
-  }
+  
+    this.cdr.detectChanges();}
 
   // ==================== REPORTE AGRUPADORES X HOJAS (UNA HOJA POR CADA CATEGORÍA NIVEL 1: 1000, 2000, 3000...) ====================
   /**
@@ -4478,7 +4495,8 @@ export class EgresosPalacioComponent {
       console.error('Error generando reporte Agrupadores X Hojas:', error);
       alerts.basicAlert('Error', 'Error al generar el reporte Agrupadores X Hojas', 'error');
     }
-  }
+  
+    this.cdr.detectChanges();}
 
 
   /**
@@ -4942,7 +4960,8 @@ export class EgresosPalacioComponent {
         'info'
       );
     }
-  }
+  
+    this.cdr.detectChanges();}
 
   /**
    * Formatea un número como moneda sin el símbolo $
@@ -5272,7 +5291,8 @@ export class EgresosPalacioComponent {
         'info'
       );
     }
-  }
+  
+    this.cdr.detectChanges();}
 
   private buildReportPage(
     expense: any,
@@ -5919,7 +5939,8 @@ export class EgresosPalacioComponent {
       console.error('Error generando reporte por catálogo de egresos:', error);
       alerts.basicAlert('Error', 'Error al generar el reporte por catálogo de egresos', 'error');
     }
-  }
+  
+    this.cdr.detectChanges();}
 
   /**
    * Carga el Catálogo de Gasto (EXPENSE) completo - niveles 1, 2, 3
@@ -6383,7 +6404,8 @@ export class EgresosPalacioComponent {
       'Palacio Municipal - Egresos',
       this.trackingService.getEmail()
     );
-  }
+  
+    this.cdr.detectChanges();}
 
   /**
    * Formatea fecha para mostrar en el reporte (DD/MM/YYYY)

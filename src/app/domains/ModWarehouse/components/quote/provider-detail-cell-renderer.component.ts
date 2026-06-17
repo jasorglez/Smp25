@@ -1,4 +1,4 @@
-import { Component, inject } from '@angular/core';
+import { Component, inject, ChangeDetectorRef} from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { AgGridModule } from 'ag-grid-angular';
@@ -32,6 +32,7 @@ import { ProviderQuoteDetailComponent } from './provider-quote-detail.component'
   `]
 })
 export class ProviderDetailCellRendererComponent {
+  private readonly cdr = inject(ChangeDetectorRef);
 
   private params!: ICellRendererParams;
   private context: any;
@@ -40,7 +41,8 @@ export class ProviderDetailCellRendererComponent {
   agInit(params: ICellRendererParams): void {
     this.params = params;
     this.context = params.context;
-  }
+  
+    this.cdr.detectChanges();}
 
   onGridReady(params: GridReadyEvent) {
     this.gridApi = params.api;

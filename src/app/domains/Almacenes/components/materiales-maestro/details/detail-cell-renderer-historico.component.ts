@@ -1,5 +1,5 @@
 import { CommonModule } from '@angular/common';
-import { Component } from '@angular/core';
+import { inject, Component, ChangeDetectorRef} from '@angular/core';
 import { AgGridModule } from 'ag-grid-angular';
 import { ColDef, GridApi, GridReadyEvent } from 'ag-grid-community';
 import { ICellRendererAngularComp } from 'ag-grid-angular';
@@ -27,6 +27,7 @@ import { runAutosizeAllColumns } from 'app/helpers/ag-grid-autosize.helper';
   `
 })
 export class DetailCellRendererHistoricoComponent implements ICellRendererAngularComp {
+  private readonly cdr = inject(ChangeDetectorRef);
   public params!: ICellRendererParams;
   public materialName: string = '';
   private gridApi!: GridApi;
@@ -56,7 +57,8 @@ export class DetailCellRendererHistoricoComponent implements ICellRendererAngula
     this.params = params;
     this.materialName = params.data.articulo || 'N/A';
     this.historicoRowData = this.generateFakeHistoricoData(10);
-  }
+  
+    this.cdr.detectChanges();}
 
   refresh(): boolean {
     return false;

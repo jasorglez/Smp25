@@ -1,4 +1,4 @@
-import { Component, inject } from '@angular/core';
+import { Component, inject, ChangeDetectorRef} from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { AgGridAngular } from 'ag-grid-angular';
 import { ColDef, GridApi, GridReadyEvent } from 'ag-grid-enterprise';
@@ -57,6 +57,7 @@ import { alerts } from 'app/helpers/alerts';
 })
 export class DetallesMatprimaFiltradoComponent {
   private productionService = inject(ProductionService);
+  private readonly cdr = inject(ChangeDetectorRef);
   private signalsService = inject(SignalsService);
 
 
@@ -191,7 +192,8 @@ export class DetallesMatprimaFiltradoComponent {
     this.idSucursalCtx = params?.context?.idSucursal ?? null;
     this.openSalidaModalCtx = params?.context?.openSalidaModal ?? null;
     if (this.gridApi && !this.gridApi.isDestroyed()) this.loadData();
-  }
+  
+    this.cdr.detectChanges();}
 
   refresh(params: any): boolean {
     this.internalParams = params;
@@ -267,7 +269,8 @@ export class DetallesMatprimaFiltradoComponent {
     } catch (e) {
       console.error('Error cargando detalle matprima:', e);
     }
-  }
+  
+    this.cdr.detectChanges();}
 
   private mapRow(i: any): any {
     return {
@@ -358,7 +361,8 @@ export class DetallesMatprimaFiltradoComponent {
       console.error('Error guardando detalle matprima:', e);
       alerts.reqErrorToast('Error al guardar');
     }
-  }
+  
+    this.cdr.detectChanges();}
 
   revert() {
     // Clear child cached state before replacing rowData
@@ -408,7 +412,8 @@ export class DetallesMatprimaFiltradoComponent {
       console.error('Error eliminando:', e);
       alerts.reqErrorToast('Error al eliminar');
     }
-  }
+  
+    this.cdr.detectChanges();}
 
   private calcRendimiento(jugo: number | null, cantidadSum: number): number | null {
     if (jugo == null || cantidadSum <= 0) return null;

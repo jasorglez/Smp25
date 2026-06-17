@@ -3,8 +3,7 @@ import {
   Component,
   effect,
   HostListener,
-  inject,
-} from '@angular/core';
+  inject, ChangeDetectorRef} from '@angular/core';
 import { IncomesAndExpensesService } from 'app/services/incomes-and-expenses.service';
 import { SignalsService } from 'app/services/signals.service';
 import { AgGridModule } from 'ag-grid-angular';
@@ -40,6 +39,7 @@ import { TrackingService } from 'app/services/tracking.service';
 })
 export class MasterExpensesComponent {
   private trackingService = inject(TrackingService);
+  private readonly cdr = inject(ChangeDetectorRef);
   store: any[] = [];
   idcompany: number = null;
   rowData: any[] = [];
@@ -275,7 +275,8 @@ export class MasterExpensesComponent {
       await this.resetGridSize();
       this.isOpen = false;
     }
-  }
+  
+    this.cdr.detectChanges();}
 
   async activateSavingsTab() {
     if (!this.isOpen || this.showLoansTab) {
@@ -287,7 +288,8 @@ export class MasterExpensesComponent {
       await this.resetGridSize();
       this.isOpen = false;
     }
-  }
+  
+    this.cdr.detectChanges();}
 
   async adjustGridSize() {
     this.gridHeight = '20vh'; // Adjust as needed
@@ -604,7 +606,8 @@ export class MasterExpensesComponent {
         'error'
       );
     }
-  }
+  
+    this.cdr.detectChanges();}
 
   deleteMasterEntry() {
     const selectedNodes = this.gridApi.getSelectedNodes();

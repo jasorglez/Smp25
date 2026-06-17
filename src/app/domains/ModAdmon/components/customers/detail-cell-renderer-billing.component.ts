@@ -1,4 +1,4 @@
-import { Component } from '@angular/core';
+import { inject, Component, ChangeDetectorRef} from '@angular/core';
 import { ICellRendererAngularComp } from 'ag-grid-angular';
 import { ICellRendererParams } from 'ag-grid-enterprise';
 import { AgGridModule } from 'ag-grid-angular';
@@ -30,6 +30,7 @@ import { CommonModule } from '@angular/common';
   `
 })
 export class DetailCellRendererBillingComponent implements ICellRendererAngularComp {
+  private readonly cdr = inject(ChangeDetectorRef);
   params: any;
   customerId: number;
   customerName: string;
@@ -93,7 +94,8 @@ export class DetailCellRendererBillingComponent implements ICellRendererAngularC
     // Filter billing data for this customer
     const customersBilling = params?.context?.customersBilling || [];
     this.billingRowData = customersBilling.filter((billing: any) => billing.idCustomer === this.customerId);
-  }
+  
+    this.cdr.detectChanges();}
 
   refresh(): boolean {
     return false;

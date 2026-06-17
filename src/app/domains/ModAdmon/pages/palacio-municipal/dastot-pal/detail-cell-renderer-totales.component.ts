@@ -1,4 +1,4 @@
-import { Component } from '@angular/core';
+import { inject, Component, ChangeDetectorRef} from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { AgGridModule } from 'ag-grid-angular';
 import { ColDef, GridApi, GridReadyEvent } from 'ag-grid-enterprise';
@@ -40,6 +40,7 @@ import { AG_GRID_LOCALE_ES } from 'assets/i18n/ag-grid.locale.es';
   `]
 })
 export class DetailCellRendererTotalesComponent {
+  private readonly cdr = inject(ChangeDetectorRef);
   params: any;
   rowData: any[] = [];
   gridApi!: GridApi;
@@ -130,7 +131,8 @@ export class DetailCellRendererTotalesComponent {
     // Get the detail type from context
     this.detailType = this.params.context?.detailType || 'DEPOSITO';
     this.loadDetailData();
-  }
+  
+    this.cdr.detectChanges();}
 
   onGridReady(params: GridReadyEvent): void {
     this.gridApi = params.api;
@@ -171,6 +173,7 @@ export class DetailCellRendererTotalesComponent {
       console.error('[DetailCellRendererTotales] Error loading detail data:', error);
       this.rowData = [];
     }
-  }
+  
+    this.cdr.detectChanges();}
 }
 

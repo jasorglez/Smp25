@@ -5,8 +5,7 @@ import {
   inject,
   input,
   signal,
-  effect,
-} from '@angular/core';
+  effect, ChangeDetectorRef} from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { AgGridModule } from 'ag-grid-angular';
 import { Icatalog } from 'app/interface/icatalog';
@@ -48,6 +47,7 @@ export class PriceProductsPresentationsComponent implements OnInit {
   catalogsService = inject(CatalogsService);
 
   private signalsService = inject(SignalsService);
+  private readonly cdr = inject(ChangeDetectorRef);
 
   rowData = signal([]);
 
@@ -480,5 +480,6 @@ export class PriceProductsPresentationsComponent implements OnInit {
         'error'
       );
     }
-  }
+  
+    this.cdr.detectChanges();}
 }

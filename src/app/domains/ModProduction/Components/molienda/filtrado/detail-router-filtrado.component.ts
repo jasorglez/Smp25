@@ -1,4 +1,4 @@
-import { Component, AfterViewInit, ViewChild } from '@angular/core';
+import { inject, Component, AfterViewInit, ViewChild, ChangeDetectorRef} from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { DetallesInventarioMoliendaComponent } from './detalles-inventario-molienda.component';
 import { DetallesMatprimaFiltradoComponent } from './detalles-matprima-filtrado.component';
@@ -18,6 +18,7 @@ import { DetallesParametrosFiltradoComponent } from './detalles-parametros-filtr
   styles: [`:host { display: block; height: 100%; overflow: hidden; }`],
 })
 export class DetailRouterFiltradoComponent implements AfterViewInit {
+  private readonly cdr = inject(ChangeDetectorRef);
   @ViewChild('matprima')   matprimaRef?:   DetallesMatprimaFiltradoComponent;
   @ViewChild('bote')       boteRef?:       DetallesBoteFiltradoComponent;
   @ViewChild('inventario') inventarioRef?: DetallesInventarioMoliendaComponent;
@@ -29,7 +30,8 @@ export class DetailRouterFiltradoComponent implements AfterViewInit {
   agInit(params: any) {
     this.params = params;
     this.detailType = params.data?.__detailType ?? 'inventario';
-  }
+  
+    this.cdr.detectChanges();}
 
   ngAfterViewInit() {
     const child =

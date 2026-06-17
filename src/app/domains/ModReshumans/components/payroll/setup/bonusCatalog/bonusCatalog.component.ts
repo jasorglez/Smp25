@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, inject } from '@angular/core';
+import { ChangeDetectionStrategy, Component, inject, ChangeDetectorRef} from '@angular/core';
 import { CellDoubleClickedEvent, ColDef, GridApi, GridReadyEvent, ICellRendererParams } from 'ag-grid-enterprise';
 import { AgGridModule } from 'ag-grid-angular';
 import { CommonModule } from '@angular/common';
@@ -18,6 +18,7 @@ import { catchError, concat, EMPTY, lastValueFrom, toArray, tap } from 'rxjs';
 })
 export class BonusCatalogComponent { 
   private signalsService = inject(SignalsService);
+  private readonly cdr = inject(ChangeDetectorRef);
   private catalogsService = inject(CatalogsService);
   private gridApi: GridApi;
   idBranch: number;
@@ -159,7 +160,8 @@ export class BonusCatalogComponent {
 
     // Puedes agregar lógica adicional aquí si necesitas guardar los datos seleccionados
     this.selectedRowData = selectedRowData;
-  }
+  
+    this.cdr.detectChanges();}
   async activateSavingsTab() {
     if (!this.isOpen || this.showLoansTab) {
       await this.adjustGridSize();
@@ -171,7 +173,8 @@ export class BonusCatalogComponent {
       await this.resetGridSize();
       this.isOpen = false;
     }
-  }
+  
+    this.cdr.detectChanges();}
 
   async activateLoansTab() {
     if (!this.isOpen || this.showSavingsTab) {
@@ -184,7 +187,8 @@ export class BonusCatalogComponent {
       await this.resetGridSize();
       this.isOpen = false;
     }
-  }
+  
+    this.cdr.detectChanges();}
   async adjustGridSize() {
     this.gridHeight = '20vh'; // Adjust as needed
   }
@@ -348,7 +352,8 @@ export class BonusCatalogComponent {
             'error'
           );
         }
-  }
+  
+    this.cdr.detectChanges();}
 
   revert(){
     this.obtenerDatos();

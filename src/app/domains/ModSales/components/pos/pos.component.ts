@@ -33,9 +33,7 @@ import { CustomersService } from 'app/services/customers.service';
     CommonModule,
     FormsModule,
     AgGridModule,
-    SearchableSelectComponent,
-    NgSelectModule,
-  ],
+    NgSelectModule],
   templateUrl: './pos.component.html',
   styleUrl: './pos.component.scss',
 })

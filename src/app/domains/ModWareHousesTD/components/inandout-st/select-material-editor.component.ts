@@ -1,4 +1,4 @@
-import { Component, OnInit } from '@angular/core';
+import { inject, Component, OnInit, ChangeDetectorRef} from '@angular/core';
 import { ICellEditorAngularComp } from 'ag-grid-angular';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
@@ -27,6 +27,7 @@ import { FormsModule } from '@angular/forms';
   `]
 })
 export class SelectMaterialEditorComponent implements ICellEditorAngularComp, OnInit {
+  private readonly cdr = inject(ChangeDetectorRef);
 
   private params: any;
   selectedValue: any = '';
@@ -44,7 +45,8 @@ export class SelectMaterialEditorComponent implements ICellEditorAngularComp, On
       const option = this.options.find(o => o.id == value || o.description === value);
       this.selectedValue = option ? option.id : value;
     }
-  }
+  
+    this.cdr.detectChanges();}
 
   getValue(): any {
     const selectedOption = this.options.find(o => o.id == this.selectedValue);

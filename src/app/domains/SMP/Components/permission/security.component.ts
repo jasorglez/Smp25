@@ -45,7 +45,7 @@ const ICONOS_MATERIAL_OPCIONES: string[] = [
 @Component({
   selector: 'app-security',
   standalone: true,
-  imports: [CommonModule, AgGridAngular, MaterialIconPickerCellEditorComponent, SecurityMenusComponent],
+  imports: [CommonModule, AgGridAngular],
   templateUrl: './security.component.html',
   styleUrl: './security.component.scss',
 })

@@ -1,4 +1,4 @@
-import { Component } from '@angular/core';
+import { inject, Component, ChangeDetectorRef} from '@angular/core';
 import { ICellRendererAngularComp } from 'ag-grid-angular';
 import { ICellRendererParams, IRowNode } from 'ag-grid-community';
 import { CommonModule } from '@angular/common';
@@ -24,6 +24,7 @@ export interface IButtonCellRendererParams extends ICellRendererParams {
   `
 })
 export class ButtonCellRendererIncomeComponent implements ICellRendererAngularComp {
+  private readonly cdr = inject(ChangeDetectorRef);
   public params!: IButtonCellRendererParams;
   public value: string | number;
   public iconClass: string;
@@ -32,7 +33,8 @@ export class ButtonCellRendererIncomeComponent implements ICellRendererAngularCo
     this.params = params;
     this.value = this.params.value || 0;
     this.iconClass = this.params.icon || 'bi-list-ul';
-  }
+  
+    this.cdr.detectChanges();}
 
   refresh(params: IButtonCellRendererParams): boolean {
     this.params = params;

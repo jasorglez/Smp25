@@ -1,5 +1,5 @@
 import { CommonModule } from '@angular/common';
-import { Component, effect, HostListener, inject } from '@angular/core';
+import { Component, effect, HostListener, inject, ChangeDetectorRef} from '@angular/core';
 import { SignalsService } from 'app/services/signals.service';
 import { AgGridModule } from 'ag-grid-angular';
 import { MultiLineEditorComponent } from 'app/shared/multi-line/multi-line-editor.component';
@@ -38,6 +38,7 @@ declare const bootstrap: any;
 })
 export class ProvedoorByBranchComponent { 
   private signalsService = inject(SignalsService);
+  private readonly cdr = inject(ChangeDetectorRef);
 
   idMaterial: number;
 
@@ -426,7 +427,8 @@ export class ProvedoorByBranchComponent {
           'error'
         );
       }
-    }
+    
+      this.cdr.detectChanges();}
   
     async deleteBranch() {
       const selectedNodes = this.masterGridApi.getSelectedNodes();

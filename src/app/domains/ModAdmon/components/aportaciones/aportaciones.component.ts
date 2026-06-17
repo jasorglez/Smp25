@@ -1,4 +1,4 @@
-import { Component, effect, inject } from '@angular/core';
+import { Component, effect, inject, ChangeDetectorRef} from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { AgGridModule } from 'ag-grid-angular';
@@ -24,6 +24,7 @@ import { alerts } from 'app/helpers/alerts';
 })
 export class AportacionesComponent {
   public signalsService = inject(SignalsService);
+  private readonly cdr = inject(ChangeDetectorRef);
   public trackingService = inject(TrackingService);
   public authService = inject(AuthService);
   private rootService = inject(RootService);
@@ -133,7 +134,8 @@ export class AportacionesComponent {
       this.allRoots = [];
       this.empresasDestino = [];
     }
-  }
+  
+    this.cdr.detectChanges();}
 
   async loadSocios(idCorporativo: number) {
     if (!idCorporativo) {
@@ -159,7 +161,8 @@ export class AportacionesComponent {
       console.error('Error loading socios:', err);
       this.socios = [];
     }
-  }
+  
+    this.cdr.detectChanges();}
 
   async onEmpresaDestinoChange() {
     this.idCuentaDestino = null;
@@ -261,7 +264,8 @@ export class AportacionesComponent {
     } finally {
       this.isAportando = false;
     }
-  }
+  
+    this.cdr.detectChanges();}
 
   async loadHistorial() {
     if (!this.empresasCorporativo?.length) {
@@ -286,7 +290,8 @@ export class AportacionesComponent {
     this.historial = allRecords
       .filter(r => r.type === 'APORTACION')
       .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
-  }
+  
+    this.cdr.detectChanges();}
 
   onGridReady(params: GridReadyEvent) {
     this.gridApi = params.api;

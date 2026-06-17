@@ -1,4 +1,4 @@
-import { Component, effect, inject, OnDestroy, OnInit } from '@angular/core';
+import { Component, effect, inject, OnDestroy, OnInit, ChangeDetectorRef } from '@angular/core';
 import { Router, RouterOutlet } from '@angular/router';
 import { CommonModule } from '@angular/common';
 import { forkJoin, of, Subscription } from 'rxjs';
@@ -98,6 +98,7 @@ export class AppComponent implements OnInit, OnDestroy {
   entradaDocumentsData: EntradaDocumentsOverlayData | null = null;
 
   private authService = inject(AuthService);
+  private readonly cdr = inject(ChangeDetectorRef);
   private signalsService = inject(SignalsService);
   private router = inject(Router);
   private comparacionOverlayService = inject(ComparacionOverlayService);
@@ -155,6 +156,8 @@ export class AppComponent implements OnInit, OnDestroy {
       this.unsavedTracker.clearAll();
     }
     this.proveedorData = null;
+
+    this.cdr.detectChanges();
   }
 
   ngOnDestroy(): void {
@@ -192,8 +195,7 @@ export class AppComponent implements OnInit, OnDestroy {
           }
           this.authService.applyEffectivePermissionsTree(tree);
           this.lastLoadedBranchId = branchSnapshot;
-          // Defer to next macrotask so the signal update doesn't fire mid-CD cycle (NG0100)
-          setTimeout(() => this.signalsService.bumpGuardRefreshTick());
+          this.signalsService.bumpGuardRefreshTick();
         },
         error: (error) => console.error('Error fetching permissions:', error),
       });

@@ -1,4 +1,4 @@
-import { Component, inject } from '@angular/core';
+import { Component, inject, ChangeDetectorRef} from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { AgGridAngular } from 'ag-grid-angular';
 import { ColDef, GridApi, GridReadyEvent } from 'ag-grid-enterprise';
@@ -24,7 +24,7 @@ interface BoteVista {
 @Component({
   selector: 'app-vista-botes-filtrado',
   standalone: true,
-  imports: [CommonModule, AgGridAngular, MedicionesBoteComponent, ParamsDetailRendererComponent],
+  imports: [CommonModule, AgGridAngular],
   template: `
     <div style="height: 100%; display: flex; overflow: hidden; background: #fff8e1;">
 
@@ -244,6 +244,7 @@ interface BoteVista {
 })
 export class VistaBotesFiltradoComponent {
   private productionService = inject(ProductionService);
+  private readonly cdr = inject(ChangeDetectorRef);
   private signalsService = inject(SignalsService);
   private catalogService = inject(ExtractionFermentationCatalogService);
   private mxmService = inject(MaterialXModuloService);
@@ -435,7 +436,8 @@ export class VistaBotesFiltradoComponent {
       articuloOptions:   params?.context?.articuloOptions ?? [],
     };
     this.loadBotes();
-  }
+  
+    this.cdr.detectChanges();}
 
   refresh(): boolean { return false; }
 
@@ -576,7 +578,8 @@ export class VistaBotesFiltradoComponent {
     } finally {
       this.loading = false;
     }
-  }
+  
+    this.cdr.detectChanges();}
 
   async selectBote(b: BoteVista) {
     if (this.selectedBote?.id === b.id) return;
@@ -584,7 +587,8 @@ export class VistaBotesFiltradoComponent {
     this.hasChanges = false;
     this.selectedParamRow = null;
     await this.loadParams(b);
-  }
+  
+    this.cdr.detectChanges();}
 
   closeBotePanel() {
     this.selectedBote = null;
@@ -644,7 +648,8 @@ export class VistaBotesFiltradoComponent {
     } catch (e) {
       console.error('Error cargando params:', e);
     }
-  }
+  
+    this.cdr.detectChanges();}
 
   addRow() {
     if (!this.selectedBote || this.boteVacio) return;
@@ -698,7 +703,8 @@ export class VistaBotesFiltradoComponent {
       console.error('Error guardando params:', e);
       alerts.reqErrorToast('Error al guardar');
     }
-  }
+  
+    this.cdr.detectChanges();}
 
   revert() {
     this.paramsRowData = JSON.parse(JSON.stringify(this.originalParamsRowData));
@@ -726,7 +732,8 @@ export class VistaBotesFiltradoComponent {
       console.error('Error eliminando param:', e);
       alerts.reqErrorToast('Error al eliminar');
     }
-  }
+  
+    this.cdr.detectChanges();}
 
   // ── Panel de comentarios read-only ───────────────────────────────────────
 
@@ -772,7 +779,8 @@ export class VistaBotesFiltradoComponent {
       this.commentCountMap[row.id] = this.commentsData.length;
       this.paramsGridApi?.refreshCells({ columns: ['verComentarios'], force: true });
     }
-  }
+  
+    this.cdr.detectChanges();}
 
   getCommentBody(text: string): string {
     if (!text) return '';

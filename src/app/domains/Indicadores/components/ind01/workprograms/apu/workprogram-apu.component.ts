@@ -1,4 +1,4 @@
-import { Component, EventEmitter, Input, OnChanges, Output, inject } from '@angular/core';
+import { Component, EventEmitter, Input, OnChanges, Output, inject, ChangeDetectorRef} from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { AgGridModule } from 'ag-grid-angular';
@@ -29,6 +29,7 @@ export class WorkprogramApuComponent implements OnChanges {
   @Output() costUpdated = new EventEmitter<number>();
 
   private apuService          = inject(WorkprogramApuService);
+  private readonly cdr = inject(ChangeDetectorRef);
   private factorService       = inject(WorkprogramApuFactorService);
   private cuadrillaService    = inject(WorkprogramApuCuadrillaService);
   private manoObraService     = inject(ManoObraService);
@@ -547,7 +548,8 @@ export class WorkprogramApuComponent implements OnChanges {
       console.error('Error guardando APU:', e);
       alerts.basicAlert('Error', 'Error al guardar el APU: ' + (e?.message ?? ''), 'error');
     }
-  }
+  
+    this.cdr.detectChanges();}
 
   revertChanges(): void { this.loadData(); }
 
@@ -692,7 +694,8 @@ export class WorkprogramApuComponent implements OnChanges {
     } catch {
       alerts.basicAlert('Error', 'Error al guardar las cuadrillas', 'error');
     }
-  }
+  
+    this.cdr.detectChanges();}
 
   revertCuadrillas(): void { this.loadCuadrillas(); }
 
@@ -789,7 +792,8 @@ export class WorkprogramApuComponent implements OnChanges {
     } catch {
       alerts.basicAlert('Error', 'Error al guardar los factores', 'error');
     }
-  }
+  
+    this.cdr.detectChanges();}
 
   revertFactors(): void { this.loadFactors(); }
 

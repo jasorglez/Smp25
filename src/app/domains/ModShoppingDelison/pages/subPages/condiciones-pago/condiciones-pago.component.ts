@@ -1,4 +1,4 @@
-import { Component, inject, OnInit } from '@angular/core';
+import { Component, inject, OnInit, ChangeDetectorRef} from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { AgGridModule } from 'ag-grid-angular';
 import { ColDef, GridApi, GridReadyEvent } from 'ag-grid-enterprise';
@@ -63,6 +63,7 @@ export class CondicionesPagoComponent implements OnInit {
   public gridApi!: GridApi;
 
   private svc     = inject(CondicionesPagoService);
+  private readonly cdr = inject(ChangeDetectorRef);
   private signals = inject(SignalsService);
 
   rowData: CondicionPagoRow[] = [];
@@ -211,7 +212,8 @@ export class CondicionesPagoComponent implements OnInit {
     } finally {
       this.saving = false;
     }
-  }
+  
+    this.cdr.detectChanges();}
 
   async deleteSelected() {
     if (!this.selectedRow || this.saving) return;
@@ -237,7 +239,8 @@ export class CondicionesPagoComponent implements OnInit {
     } finally {
       this.saving = false;
     }
-  }
+  
+    this.cdr.detectChanges();}
 
   revertChanges() {
     this.rowData = JSON.parse(JSON.stringify(this.originalRowData));

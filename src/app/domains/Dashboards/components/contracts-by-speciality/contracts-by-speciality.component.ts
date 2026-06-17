@@ -1,4 +1,4 @@
-import { Component, inject, AfterViewInit } from '@angular/core';
+import { Component, inject, AfterViewInit, ChangeDetectorRef} from '@angular/core';
 import { DashboardService } from 'app/services/dashboard.service';
 import * as echarts from 'echarts';
 import { lastValueFrom } from 'rxjs';
@@ -21,17 +21,20 @@ import { lastValueFrom } from 'rxjs';
 })
 export class ContractsBySpecialityComponent implements AfterViewInit {
   private dashboardService = inject(DashboardService);
+  private readonly cdr = inject(ChangeDetectorRef);
   private chartBySpeciality: any;
   public currency: 'mxn' | 'usd' = 'mxn'; // Propiedad para controlar la moneda
 
   async ngAfterViewInit() {
     await this.getContractsBySpecialityAndGraph();
-  }
+  
+    this.cdr.detectChanges();}
 
   async changeCurrency(currency: 'mxn' | 'usd') {
     this.currency = currency; // Cambiar la moneda
     await this.getContractsBySpecialityAndGraph(); // Volver a cargar los datos
-  }
+  
+    this.cdr.detectChanges();}
 
   async getContractsBySpecialityAndGraph(): Promise<void> {
     const data = await lastValueFrom(this.dashboardService.getContractsBySpeciality());
@@ -88,7 +91,8 @@ export class ContractsBySpecialityComponent implements AfterViewInit {
     };
 
     this.chartBySpeciality.setOption(optionBySpeciality);
-  }
+  
+    this.cdr.detectChanges();}
 
   transformData(data: any[]): any[] {
     const nameMap: { [key: string]: string } = {

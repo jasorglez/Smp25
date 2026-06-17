@@ -1,4 +1,4 @@
-import { Component, effect, HostListener, inject } from '@angular/core';
+import { Component, effect, HostListener, inject, ChangeDetectorRef} from '@angular/core';
 import { InegiService } from 'app/services/inegi.service';
 import { StoresService } from 'app/services/stores.service';
 import { States } from 'app/interface/states';
@@ -29,6 +29,7 @@ import { confirmExitIfUnsaved } from 'app/helpers/can-deactivate.helper';
 })
 export class StoresComponent implements CanComponentDeactivate {
   private storesService = inject(StoresService);
+  private readonly cdr = inject(ChangeDetectorRef);
   private inegiService = inject(InegiService);
   private modalServiceTable = inject(ModalService);
   private signalsService = inject(SignalsService);
@@ -225,7 +226,8 @@ export class StoresComponent implements CanComponentDeactivate {
         'error'
       );
     }
-  }
+  
+    this.cdr.detectChanges();}
 
   // Column Definitions: Defines the columns to be displayed.
   public gridOptions: any = {

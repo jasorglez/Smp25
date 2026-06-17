@@ -1,4 +1,4 @@
-import { Component, effect, inject } from '@angular/core';
+import { Component, effect, inject, ChangeDetectorRef} from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { AgGridModule } from 'ag-grid-angular';
@@ -20,6 +20,7 @@ import { alerts } from 'app/helpers/alerts';
 })
 export class AuxiliaresComponent {
   private signalsService       = inject(SignalsService);
+  private readonly cdr = inject(ChangeDetectorRef);
   private auxiliarService      = inject(AuxiliarService);
   private auxiliarItemsService = inject(AuxiliarItemsService);
   private materialService      = inject(MaterialsService);
@@ -314,7 +315,8 @@ export class AuxiliaresComponent {
       this.originalData = JSON.parse(JSON.stringify(this.rowData));
       alerts.basicAlert('OK', 'Auxiliares guardados', 'success');
     } catch { alerts.basicAlert('Error', 'No se pudieron guardar', 'error'); }
-  }
+  
+    this.cdr.detectChanges();}
 
   revertMain() { this.rowData = JSON.parse(JSON.stringify(this.originalData)); this.hasMainChanges = false; }
 
@@ -331,7 +333,8 @@ export class AuxiliaresComponent {
       this.rowData = this.rowData.filter((x) => x !== this.selectedAuxiliar);
       this.selectedAuxiliar = null;
     } catch { alerts.basicAlert('Error', 'No se pudo eliminar', 'error'); }
-  }
+  
+    this.cdr.detectChanges();}
 
   // ── Flag checkboxes ──────────────────────────────────────────────────────
   onFlagChange() {
@@ -386,7 +389,8 @@ export class AuxiliaresComponent {
     this.allItems = this.allItems.filter((x) => x !== item);
     this.selectedMaterialRow = null; this.selectedHerramientaRow = null; this.selectedEquipoRow = null;
     this.refreshSubGrids();
-  }
+  
+    this.cdr.detectChanges();}
 
   // ── Cuadrillas CRUD ──────────────────────────────────────────────────────
   selectCuadrilla(c: any) {
@@ -427,7 +431,8 @@ export class AuxiliaresComponent {
     this.selectedCuadrilla = this.cuadrillas[0] ?? null;
     if (this.selectedCuadrilla) this.selectCuadrilla(this.selectedCuadrilla);
     else this.cuadrillaItemRows = [];
-  }
+  
+    this.cdr.detectChanges();}
 
   async deleteCuadrillaItem() {
     if (!this.selectedCuadrillaItem || !this.selectedCuadrilla) return;
@@ -436,7 +441,8 @@ export class AuxiliaresComponent {
     this.selectedCuadrilla.items = this.selectedCuadrilla.items.filter((x: any) => x !== item);
     this.cuadrillaItemRows = [...this.selectedCuadrilla.items];
     this.selectedCuadrillaItem = null;
-  }
+  
+    this.cdr.detectChanges();}
 
   // ── Guardar todo el detalle ──────────────────────────────────────────────
   async saveDetalle() {
@@ -473,7 +479,8 @@ export class AuxiliaresComponent {
       this.mainGridApi?.refreshCells({ force: true });
       alerts.basicAlert('Guardado', 'Componentes guardados. Costo: $' + this.costoTotal.toLocaleString('es-MX', { minimumFractionDigits: 2 }), 'success');
     } catch (e: any) { console.error(e); alerts.basicAlert('Error', 'Error al guardar componentes', 'error'); }
-  }
+  
+    this.cdr.detectChanges();}
 
   // ── Grid ready events ────────────────────────────────────────────────────
   onMaterialGridReady(e: GridReadyEvent)    { this.materialGridApi = e.api; }

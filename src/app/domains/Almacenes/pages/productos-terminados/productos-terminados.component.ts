@@ -1,4 +1,4 @@
-import { Component, inject, HostListener } from '@angular/core';
+import { Component, inject, HostListener, ChangeDetectorRef} from '@angular/core';
 import { ColDef, GridApi, GridReadyEvent } from 'ag-grid-enterprise';
 import { alerts } from 'app/helpers/alerts';
 import { AgGridModule } from 'ag-grid-angular';
@@ -21,13 +21,14 @@ import { DetailCellRendererCostosAlmacenComponent } from './detail-cell-renderer
 @Component({
   selector: 'app-productos-terminados',
   standalone: true,
-  imports: [CommonModule, RouterModule, FormsModule, AgGridModule, TranslateModule, DomainsModule, SharedModule, DetailCellRendererPrecioMayoreoComponent, DetailCellRendererCodigoBarrasComponent, DetailCellRendererCostosAlmacenComponent],
+  imports: [CommonModule, RouterModule, FormsModule, AgGridModule, TranslateModule, DomainsModule, SharedModule],
   templateUrl: './productos-terminados.component.html',
   styleUrl: './productos-terminados.component.scss'
 })
 export class ProductosTerminadosComponent {
 
   private catalogsService = inject(CatalogsService);
+  private readonly cdr = inject(ChangeDetectorRef);
   private prodTerminadoService = inject(ProdTerminadoService);
   private signalsService = inject(SignalsService);
   private trackingService = inject(TrackingService);
@@ -312,7 +313,8 @@ export class ProductosTerminadosComponent {
         'error'
       );
     }
-  }
+  
+    this.cdr.detectChanges();}
 
   // Cargar datos para el combo box
   async loadComboBoxData() {
@@ -335,7 +337,8 @@ export class ProductosTerminadosComponent {
         'error'
       );
     }
-  }
+  
+    this.cdr.detectChanges();}
 
   // Obtener valores para el combo box
   getComboBoxValues(): string[] {
@@ -444,7 +447,8 @@ export class ProductosTerminadosComponent {
         'error'
       );
     }
-  }
+  
+    this.cdr.detectChanges();}
 
   // Revertir cambios
   revertChanges() {

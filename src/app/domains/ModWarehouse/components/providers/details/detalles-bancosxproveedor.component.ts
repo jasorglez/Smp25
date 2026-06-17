@@ -1,4 +1,4 @@
-import { Component ,inject} from '@angular/core';
+import { Component ,inject, ChangeDetectorRef} from '@angular/core';
 import { ICellRendererAngularComp } from 'ag-grid-angular';
 import { ICellRendererParams } from 'ag-grid-enterprise';
 import { AgGridModule } from 'ag-grid-angular';
@@ -70,6 +70,7 @@ import { SignalsService } from 'app/services/signals.service';
 })
 export class DetallesBancosxproveedorComponent implements ICellRendererAngularComp {
   private administrationService = inject(AdministrationService);
+  private readonly cdr = inject(ChangeDetectorRef);
   private signalsService = inject(SignalsService);
   params: any;
   providerId: number;
@@ -450,7 +451,8 @@ export class DetallesBancosxproveedorComponent implements ICellRendererAngularCo
     this.getBanks(() => {
       this.loadBankData();
     });
-  }
+  
+    this.cdr.detectChanges();}
 
   refresh(): boolean {
     return false;
@@ -659,7 +661,8 @@ export class DetallesBancosxproveedorComponent implements ICellRendererAngularCo
         console.error('❌ Error al guardar bancos:', error);
       }
     }
-  }
+  
+    this.cdr.detectChanges();}
 
   deleteSelectedBank() {
     if (!this.selectedBank) {
@@ -720,7 +723,8 @@ export class DetallesBancosxproveedorComponent implements ICellRendererAngularCo
     } catch (error) {
       console.error('❌ Error al actualizar contador de bancos:', error);
     }
-  }
+  
+    this.cdr.detectChanges();}
 
   // ✅ NUEVO: Actualizar el banco principal en la columna fieldBank del grid padre
   private async updatePrincipalBankInParent(principalBankName?: string): Promise<void> {

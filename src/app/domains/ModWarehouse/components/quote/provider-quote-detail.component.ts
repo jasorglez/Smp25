@@ -1,4 +1,4 @@
-import { Component, OnInit, inject } from '@angular/core';
+import { Component, OnInit, inject, ChangeDetectorRef} from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { AgGridModule } from 'ag-grid-angular';
@@ -66,6 +66,7 @@ export class ProviderQuoteDetailComponent implements OnInit {
   private gridApi!: GridApi;
   private context: any;
   private ocAndReqsService = inject(OcAndReqsService);
+  private readonly cdr = inject(ChangeDetectorRef);
   private catalogsService = inject(CatalogsService);
   private providersService = inject(ProvidersService);
   private rootService = inject(RootService);
@@ -133,7 +134,8 @@ export class ProviderQuoteDetailComponent implements OnInit {
 
 
     this.loadProviderQuoteData();
-  }
+  
+    this.cdr.detectChanges();}
 
   async loadProviderQuoteData() {
     // If we have a cotizId, load items from the COTIZ record
@@ -220,7 +222,8 @@ export class ProviderQuoteDetailComponent implements OnInit {
       console.error('Error loading provider quote data:', error);
       alerts.basicAlert('Error', 'No se pudieron cargar los datos de la requisición', 'error');
     }
-  }
+  
+    this.cdr.detectChanges();}
 
   onGridReady(params: GridReadyEvent) {
     this.gridApi = params.api;
@@ -386,7 +389,8 @@ export class ProviderQuoteDetailComponent implements OnInit {
       console.error('Error saving COTIZ items:', error);
       alerts.basicAlert('Error', 'No se pudieron guardar los cambios.', 'error');
     }
-  }
+  
+    this.cdr.detectChanges();}
 
   deleteSelectedItem() {
     const selectedNodes = this.gridApi.getSelectedNodes();
@@ -540,7 +544,8 @@ export class ProviderQuoteDetailComponent implements OnInit {
       console.error('Error creating OC from COTIZ:', error);
       alerts.basicAlert('Error', 'No se pudo crear la Orden de Compra', 'error');
     }
-  }
+  
+    this.cdr.detectChanges();}
 
   async generatePDF() {
     if (!this.rowData || this.rowData.length === 0) {
@@ -748,7 +753,8 @@ export class ProviderQuoteDetailComponent implements OnInit {
       console.error('Error generando el reporte PDF:', error);
       alerts.basicAlert('Error', 'No se pudo generar el reporte PDF', 'error');
     }
-  }
+  
+    this.cdr.detectChanges();}
 
   private generateItemsTable(accentColor: string): any {
     const tableBody: any[] = [

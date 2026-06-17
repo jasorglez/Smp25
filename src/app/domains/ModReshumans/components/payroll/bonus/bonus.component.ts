@@ -3,8 +3,7 @@ import {
   Component,
   inject,
   OnInit,
-  effect,
-} from '@angular/core';
+  effect, ChangeDetectorRef} from '@angular/core';
 import {
   CellDoubleClickedEvent,
   ColDef,
@@ -61,6 +60,7 @@ import { confirmExitIfUnsaved } from 'app/helpers/can-deactivate.helper';
 })
 export class BonusComponent implements CanComponentDeactivate {
   private signalsService = inject(SignalsService);
+  private readonly cdr = inject(ChangeDetectorRef);
   private catalogsService = inject(CatalogsService);
   private administrationService = inject(AdministrationService);
   private employeeService = inject(EmployeesService);
@@ -266,11 +266,11 @@ export class BonusComponent implements CanComponentDeactivate {
         this.administrationService.getEmployeesBonus(this.fechaInicio, this.fechaFin, this.idBranch)
       );
       this.rowData = data;
-      
     } catch (err) {
       console.error('Error al obtener empleados con bonus:', err);
+      this.rowData = [];
     }
-  }
+    this.cdr.detectChanges();}
 
   obtenerEmpleados() {
     return new Promise((resolve) => {
@@ -645,7 +645,8 @@ export class BonusComponent implements CanComponentDeactivate {
         'error'
       );
     }
-  }
+  
+    this.cdr.detectChanges();}
 
   private selectRowById(id: number | string) {
     // Dar tiempo al grid para que se actualice
@@ -837,7 +838,8 @@ export class BonusComponent implements CanComponentDeactivate {
     await this.obtenerBonosEmpleados();
 
     // Debug opcional
-  }
+  
+    this.cdr.detectChanges();}
 
   getUltimoDiaInicioSemana(desde: Date, diaInicio: number): Date {
     const fecha = new Date(desde); // Clonar para no modificar la original
@@ -935,7 +937,8 @@ export class BonusComponent implements CanComponentDeactivate {
         console.error('Error fetching payroll data:', error);
       }
     }
-  }
+  
+    this.cdr.detectChanges();}
 
 
 }

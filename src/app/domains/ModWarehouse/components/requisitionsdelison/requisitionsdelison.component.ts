@@ -1,4 +1,4 @@
-import { Component, OnInit, inject, effect, Renderer2, RendererFactory2, HostListener, ElementRef } from '@angular/core';
+import { Component, OnInit, inject, effect, Renderer2, RendererFactory2, HostListener, ElementRef, ChangeDetectorRef} from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { AgGridModule } from 'ag-grid-angular';
@@ -29,7 +29,7 @@ interface Catalog {
 @Component({
   selector: 'app-requisitionsdelison',
   standalone: true,
-  imports: [CommonModule, FormsModule, AgGridModule, ButtonCellRendererComponent, DetallesRequisicionDelisonComponent, DetailCellRendererRequisitionsPurchasesComponent, SelectDepartmentEditorComponent, PdfButtonCellRendererComponent],
+  imports: [CommonModule, FormsModule, AgGridModule],
   templateUrl: './requisitionsdelison.component.html',
   styleUrl: './requisitionsdelison.component.scss',
   styles: [`
@@ -44,6 +44,7 @@ export class RequisitionsDelisonComponent implements OnInit {
 
   // Inject services
   private departmentsService = inject(DepartmentsService);
+  private readonly cdr = inject(ChangeDetectorRef);
   private signalsService = inject(SignalsService);
   private ocAndReqsService = inject(OcAndReqsService);
   private branchsService = inject(BranchsService);
@@ -260,7 +261,7 @@ export class RequisitionsDelisonComponent implements OnInit {
     this.departmentsService.getDepartments(this.idRoot).subscribe(
       (data: Catalog[]) => {
         this.departamentos = data;
-
+        this.cdr.detectChanges();
       },
       (error) => console.error('Error fetching departments:', error)
     );
@@ -441,7 +442,7 @@ export class RequisitionsDelisonComponent implements OnInit {
       }
 
       this.rowData = [...this.fullRowData];
-
+      this.cdr.detectChanges();
 
       // ✅ Pre-cargar roles para todas las sucursales únicas en los datos
       this.preloadRolesForRequisitions();
@@ -551,8 +552,7 @@ export class RequisitionsDelisonComponent implements OnInit {
         }
 
         this.rowData = [...this.fullRowData];
-
-
+        this.cdr.detectChanges();
 
         // ✅ Pre-cargar roles para todas las sucursales únicas en los datos
         this.preloadRolesForRequisitions();
@@ -603,6 +603,7 @@ export class RequisitionsDelisonComponent implements OnInit {
         // En caso de error, inicializar con array vacío
         this.fullRowData = [];
         this.rowData = [];
+        this.cdr.detectChanges();
       }
     });
   }
@@ -1366,7 +1367,8 @@ export class RequisitionsDelisonComponent implements OnInit {
 
       }
     }
-  }
+  
+    this.cdr.detectChanges();}
 
   collapsePdfDetail(requisitionId: number) {
     if (this.gridApi) {
@@ -1744,7 +1746,8 @@ export class RequisitionsDelisonComponent implements OnInit {
 
         this.hasUnsavedChanges = false;
       });
-  }
+  
+    this.cdr.detectChanges();}
 
   /**
    * ✅ Carga el departamento principal para una sucursal y retorna una Promise.
@@ -1863,7 +1866,8 @@ export class RequisitionsDelisonComponent implements OnInit {
     } catch {
       return [];
     }
-  }
+  
+    this.cdr.detectChanges();}
 
   private async validateDepartmentsBeforeSave(itemsToSave: any[]): Promise<string | null> {
     for (const item of itemsToSave) {
@@ -1885,7 +1889,8 @@ export class RequisitionsDelisonComponent implements OnInit {
     }
 
     return null;
-  }
+  
+    this.cdr.detectChanges();}
 
   private preloadRolesForRequisitions(): void {
     if (!this.idUser) return;
@@ -1991,7 +1996,8 @@ export class RequisitionsDelisonComponent implements OnInit {
 
     this.gridApi.stopEditing();
     await new Promise(resolve => setTimeout(resolve, 0));
-  }
+  
+    this.cdr.detectChanges();}
 
   async saveChanges(): Promise<void> {
     await this.flushPendingGridEdits();
@@ -2178,7 +2184,8 @@ export class RequisitionsDelisonComponent implements OnInit {
 
       alerts.reqErrorToast('Error', 'Error al guardar los cambios');
     }
-  }
+  
+    this.cdr.detectChanges();}
 
   refreshData(): void {
     this.loadRequisitions();

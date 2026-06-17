@@ -1,4 +1,4 @@
-import { Component ,inject} from '@angular/core';
+import { Component, inject, ChangeDetectorRef } from '@angular/core';
 import { ICellRendererAngularComp } from 'ag-grid-angular';
 import { ICellRendererParams } from 'ag-grid-enterprise';
 import { AgGridModule } from 'ag-grid-angular';
@@ -10,7 +10,7 @@ import { DetallesComponentCuentasAbono } from './subdetalles/Detalles-Cuentas-ab
   selector: 'app-detail-cell-renderer-cuentas',
   standalone: true,
   providers: [CurrencyPipe],
-  imports: [AgGridModule, CommonModule, DetallesComponentCuentas, DetallesComponentCuentasAbono],
+  imports: [AgGridModule, CommonModule],
   template: `
     <div 
       style="padding: 10px; background-color: #f8f9fa; height: 100%; display: flex; flex-direction: column;"
@@ -130,6 +130,8 @@ export class DetailCellRendererComponentCuentas implements ICellRendererAngularC
 
   }
   };
+
+  private readonly cdr = inject(ChangeDetectorRef);
 
   constructor(private currencyPipe: CurrencyPipe) {}
 
@@ -268,6 +270,7 @@ export class DetailCellRendererComponentCuentas implements ICellRendererAngularC
     // Asegurarse de que el contexto se pase al gridOptions del detalle
     this.cuentaGridOptions.detailCellRendererParams.context = params.context;
     this.loadCuentaData();
+    this.cdr.detectChanges();
   }
 
   refresh(): boolean {
@@ -455,7 +458,8 @@ export class DetailCellRendererComponentCuentas implements ICellRendererAngularC
         console.error('❌ Error al guardar cuentas:', error);
       }
     }
-  }
+  
+    this.cdr.detectChanges();}
 
   deleteSelectedCuenta() {
     if (!this.selectedCuenta) return;

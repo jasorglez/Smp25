@@ -1,4 +1,4 @@
-import { Component, Input } from '@angular/core';
+import { inject, Component, Input, ChangeDetectorRef} from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { IHeaderAngularComp } from 'ag-grid-angular';
 import { IHeaderParams } from 'ag-grid-community';
@@ -162,6 +162,7 @@ import { IHeaderParams } from 'ag-grid-community';
   `]
 })
 export class RolesTooltipHeaderComponent implements IHeaderAngularComp {
+  private readonly cdr = inject(ChangeDetectorRef);
   @Input() roles: any[] = [];
   
   showTooltip = false;
@@ -173,7 +174,8 @@ export class RolesTooltipHeaderComponent implements IHeaderAngularComp {
     if (params.context && params.context.roles) {
       this.roles = params.context.roles;
     }
-  }
+  
+    this.cdr.detectChanges();}
   
   refresh(params: IHeaderParams): boolean {
     // Actualizar los roles cuando se refrescan los headers

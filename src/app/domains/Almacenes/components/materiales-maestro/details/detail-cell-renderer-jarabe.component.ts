@@ -1,4 +1,4 @@
-import { Component, inject } from '@angular/core';
+import { Component, inject, ChangeDetectorRef} from '@angular/core';
 import { ICellRendererAngularComp } from 'ag-grid-angular';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
@@ -103,6 +103,7 @@ import { ProductionService, MaterialJarabeConfig } from 'app/services/production
 })
 export class DetailCellRendererJarabeComponent implements ICellRendererAngularComp {
   private materialJarabeService = inject(ProductionService);
+  private readonly cdr = inject(ChangeDetectorRef);
 
   params: any;
   materialId: number = 0;
@@ -122,7 +123,8 @@ export class DetailCellRendererJarabeComponent implements ICellRendererAngularCo
     this.materialId = params.data.id;
     this.materialName = params.data.articulo || params.data.description || '';
     this.loadConfig();
-  }
+  
+    this.cdr.detectChanges();}
 
   refresh(): boolean {
     return false;

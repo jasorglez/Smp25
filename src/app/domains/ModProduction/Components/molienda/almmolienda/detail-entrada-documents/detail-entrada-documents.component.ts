@@ -1,4 +1,4 @@
-import { Component, inject, Input, OnInit } from '@angular/core';
+import { Component, inject, Input, OnInit, ChangeDetectorRef} from '@angular/core';
 import { ColDef, GridApi, GridReadyEvent } from 'ag-grid-enterprise';
 import { AgGridModule } from 'ag-grid-angular';
 import { CommonModule } from '@angular/common';
@@ -74,6 +74,7 @@ export class DocumentPreviewDetailComponent {
   iconClass = '';
   isPending = false;
   private sanitizer = inject(DomSanitizer);
+  private readonly cdr = inject(ChangeDetectorRef);
 
   agInit(params: any) {
     const url: string = params.data?.urlDocument ?? null;
@@ -85,7 +86,8 @@ export class DocumentPreviewDetailComponent {
     const iconSrc = params.data?.__pendingFile?.name ?? url;
     this.iconClass = this.kind === 'office' ? officeIcon(iconSrc) : '';
     this.safeUrl = this.sanitizer.bypassSecurityTrustResourceUrl(url);
-  }
+  
+    this.cdr.detectChanges();}
 }
 
 // ── Documents panel (main detail renderer for the entry row) ─────────────────
@@ -98,6 +100,7 @@ export class DocumentPreviewDetailComponent {
 })
 export class DetailEntradaDocumentsComponent {
   private attachHandlerService = inject(AttachHandlerService);
+  private readonly cdr = inject(ChangeDetectorRef);
   private intandoutDocumentsService = inject(IntandoutDocumentsService);
   private overlayService = inject(EntradaDocumentsOverlayService);
   private parentParams: any = null;
@@ -332,7 +335,8 @@ export class DetailEntradaDocumentsComponent {
     } catch {
       alerts.userSaveErrorToast('Error', 'No se pudieron guardar los documentos.');
     }
-  }
+  
+    this.cdr.detectChanges();}
 
   revertChanges() {
     // Liberar blob URLs pendientes

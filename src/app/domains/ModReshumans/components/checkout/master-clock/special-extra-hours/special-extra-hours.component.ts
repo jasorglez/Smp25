@@ -1,4 +1,4 @@
-import { Component, effect, HostListener, inject } from '@angular/core';
+import { Component, effect, HostListener, inject, ChangeDetectorRef} from '@angular/core';
 import { RouterModule } from '@angular/router';
 import { DomainsModule } from 'app/domains/domainsmodule';
 import {
@@ -36,6 +36,7 @@ export class SpecialExtraHoursComponent {
 
   // Inject of new way for Angular 18
   private clockService = inject(ClockService);
+  private readonly cdr = inject(ChangeDetectorRef);
   private signalsService = inject(SignalsService);
   private timeService = inject(TimeService);
   private trackingService = inject(TrackingService);
@@ -412,7 +413,8 @@ maestroColumnDefs: ColDef[] = [
         (date.getMonth() + 1)
       ).slice(-2)}-${date.getFullYear()}`,
     };
-  }
+  
+    this.cdr.detectChanges();}
 
   loadData(preserveSelection: boolean = false) {
     if (this.idEmployee === null || this.idEmployee === undefined) {
@@ -483,7 +485,8 @@ maestroColumnDefs: ColDef[] = [
         }
       });
     }
-  }
+  
+    this.cdr.detectChanges();}
 
   onMaestroGridReady(params: GridReadyEvent) {
     this.maestroGridApi = params.api;
@@ -549,7 +552,8 @@ maestroColumnDefs: ColDef[] = [
         'error'
       );
     }
-  }
+  
+    this.cdr.detectChanges();}
 
   revertMasterData() {
     this.loadData();

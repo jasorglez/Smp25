@@ -1,5 +1,5 @@
 import { CommonModule } from '@angular/common';
-import { Component } from '@angular/core';
+import { inject, Component, ChangeDetectorRef} from '@angular/core';
 import { AgGridModule, ICellRendererAngularComp } from 'ag-grid-angular';
 import { ColDef, GridApi, ICellRendererParams } from 'ag-grid-community';
 
@@ -31,6 +31,7 @@ import { ColDef, GridApi, ICellRendererParams } from 'ag-grid-community';
   `,
 })
 export class DetallePesoVolumenEmpaqueComponent implements ICellRendererAngularComp {
+  private readonly cdr = inject(ChangeDetectorRef);
   private params!: ICellRendererParams;
   private gridApi!: GridApi;
 
@@ -75,7 +76,8 @@ export class DetallePesoVolumenEmpaqueComponent implements ICellRendererAngularC
     this.rowData = cached.length > 0
       ? [{ ...cached[0] }]
       : [{ medida: null, idUnidad: null }];
-  }
+  
+    this.cdr.detectChanges();}
 
   refresh(): boolean { return false; }
 

@@ -1,4 +1,4 @@
-import { Component, effect, inject, OnInit, OnDestroy, computed } from '@angular/core';
+import { Component, effect, inject, OnInit, OnDestroy, computed, ChangeDetectorRef} from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { TranslateModule } from '@ngx-translate/core';
 import { AgGridModule } from 'ag-grid-angular';
@@ -148,6 +148,7 @@ export class OrdenesComponent implements OnInit, OnDestroy {
 
 
   private otService = inject(OtService);
+  private readonly cdr = inject(ChangeDetectorRef);
   private equipmentService = inject(EquipmentService);
   private dailyReportService = inject(DailyReportService);
   private logbookService = inject(LogbookService);
@@ -380,7 +381,8 @@ export class OrdenesComponent implements OnInit, OnDestroy {
 
     // Llamar a la función unificada de eliminación
     await this.deleteOTsWithValidation(selectedRows);
-  }
+  
+    this.cdr.detectChanges();}
 
   onTipoReporteChange() {
     const selectElement = document.getElementById('tipeReporte') as HTMLSelectElement;
@@ -664,7 +666,8 @@ export class OrdenesComponent implements OnInit, OnDestroy {
       }
     });
 
-  }
+  
+    this.cdr.detectChanges();}
 
 
   cancelar() {
@@ -1826,7 +1829,8 @@ export class OrdenesComponent implements OnInit, OnDestroy {
 
       alerts.basicAlert('Error', errorMessage, 'error');
     }
-  }
+  
+    this.cdr.detectChanges();}
 
   async saveVideosChanges() {
     this.trackingService.addLog(
@@ -1912,7 +1916,8 @@ export class OrdenesComponent implements OnInit, OnDestroy {
 
       alerts.basicAlert('Error', errorMessage, 'error');
     }
-  }
+  
+    this.cdr.detectChanges();}
 
   revertFotografias() {
     this.obtenerFotografias(this.selectedReporteId);
@@ -2175,7 +2180,8 @@ export class OrdenesComponent implements OnInit, OnDestroy {
         }
       }
     }
-  }
+  
+    this.cdr.detectChanges();}
 
   /**
    * Guarda un lote de OTs en el servidor y opcionalmente las elimina de la grilla.
@@ -2196,7 +2202,8 @@ export class OrdenesComponent implements OnInit, OnDestroy {
       alerts.basicAlert('Error', 'Ocurrió un error al actualizar las OTs.', 'error');
       console.error('Error en guardado por lotes:', error);
     }
-  }
+  
+    this.cdr.detectChanges();}
 
   /**
    * Elimina OTs (individuales o grupales), pero solo aquellas que NO tienen reportes diarios asociados.
@@ -2397,7 +2404,8 @@ export class OrdenesComponent implements OnInit, OnDestroy {
       console.error('Error en deleteOTsWithValidation:', error);
       alerts.basicAlert('Error', 'Ocurrió un error al procesar la eliminación de OTs.', 'error');
     }
-  }
+  
+    this.cdr.detectChanges();}
 
   // Configuraciones de grid para las pestañas
   public tabGridOptions: any = {
@@ -2925,7 +2933,8 @@ export class OrdenesComponent implements OnInit, OnDestroy {
       // Fallback al método original
       this.obtenerOTsDelProyectoActual();
     }
-  }
+  
+    this.cdr.detectChanges();}
 
   // Métodos del grid
   onGridReady(params: GridReadyEvent) {
@@ -3188,7 +3197,8 @@ export class OrdenesComponent implements OnInit, OnDestroy {
     } finally {
       this.isChangingProject = false;
     }
-  }
+  
+    this.cdr.detectChanges();}
 
   onMasterCellValueChanged(event: any) {
 
@@ -3856,7 +3866,8 @@ export class OrdenesComponent implements OnInit, OnDestroy {
 
       alerts.basicAlert('Error', errorMessage, 'error');
     }
-  }
+  
+    this.cdr.detectChanges();}
 
   async saveChangesMaterial() {
     this.trackingService.addLog(
@@ -3952,7 +3963,8 @@ export class OrdenesComponent implements OnInit, OnDestroy {
 
       alerts.basicAlert('Error', errorMessage, 'error');
     }
-  }
+  
+    this.cdr.detectChanges();}
 
   async saveChangesEquipos() {
     this.trackingService.addLog(
@@ -4055,7 +4067,8 @@ export class OrdenesComponent implements OnInit, OnDestroy {
 
       alerts.basicAlert('Error', errorMessage, 'error');
     }
-  }
+  
+    this.cdr.detectChanges();}
 
   revertReportes() {
     this.loadDailyReports();
@@ -4311,7 +4324,8 @@ export class OrdenesComponent implements OnInit, OnDestroy {
 
       alerts.basicAlert('Error', errorMessage, 'error');
     }
-  }
+  
+    this.cdr.detectChanges();}
 
   // Métodos CRUD - addRow está arriba para reportes
 
@@ -4362,7 +4376,8 @@ export class OrdenesComponent implements OnInit, OnDestroy {
     } finally {
       this.isUploading = false;
     }
-  }
+  
+    this.cdr.detectChanges();}
 
 
   // Método para limpiar datos antes de enviar al servidor
@@ -4918,7 +4933,8 @@ export class OrdenesComponent implements OnInit, OnDestroy {
 
       alerts.basicAlert('Error', errorMessage, 'error');
     }
-  }
+  
+    this.cdr.detectChanges();}
 
   revertPersonal() {
     // Remover elementos nuevos y revertir modificados
@@ -5018,7 +5034,8 @@ export class OrdenesComponent implements OnInit, OnDestroy {
       this.isGeneratingPdfEmbed = false;
       this.showPdfEmbed = false;
     }
-  }
+  
+    this.cdr.detectChanges();}
 
   obtenerMateriales(selectedReporteId: any) {
     // alert('this.branchs'+ this.idBranch)
@@ -5638,7 +5655,8 @@ export class OrdenesComponent implements OnInit, OnDestroy {
 
       alerts.basicAlert('Error', errorMessage, 'error');
     }
-  }
+  
+    this.cdr.detectChanges();}
 
   // Método para actualizar totalPay después de guardar conceptos
   private async updateTotalPayAfterConceptos(): Promise<void> {
@@ -5677,7 +5695,8 @@ export class OrdenesComponent implements OnInit, OnDestroy {
       console.error('❌ Error al actualizar totalPay:', error);
       // No mostrar error al usuario ya que debe ser silencioso
     }
-  }
+  
+    this.cdr.detectChanges();}
 
   revertConceptos() {
     this.obtenerConcep(this.selectedReporteId);
@@ -5891,7 +5910,8 @@ export class OrdenesComponent implements OnInit, OnDestroy {
 
       alerts.basicAlert('Error', errorMessage, 'error');
     }
-  }
+  
+    this.cdr.detectChanges();}
 
   revertNotas() {
     this.obtenerNotas(this.selectedReporteId);
@@ -6068,7 +6088,8 @@ export class OrdenesComponent implements OnInit, OnDestroy {
       // Limpiar el input para permitir seleccionar el mismo archivo nuevamente
       (event.target as HTMLInputElement).value = '';
     }
-  }
+  
+    this.cdr.detectChanges();}
   triggerFileInput(fileInput: HTMLInputElement) {
     if (!this.hasMultiSelectPermission) {
       alerts.basicAlert('Error', 'No tiene permisos para realizar esta acción.', 'error');
@@ -6145,7 +6166,8 @@ export class OrdenesComponent implements OnInit, OnDestroy {
       this.isUploadingExcel = false;
       this.closeModal();
     }
-  }
+  
+    this.cdr.detectChanges();}
   async onFileSelectedExcelInt(event: any): Promise<void> {
     const file: File = event.target.files[0];
     if (!file) {
@@ -6192,7 +6214,8 @@ export class OrdenesComponent implements OnInit, OnDestroy {
       this.isUploadingExcel = false;
       this.closeModal();
     }
-  }
+  
+    this.cdr.detectChanges();}
   mostrarDiv(): boolean {
     return this.opcionSeleccionada !== 'cargar-excel-externa' && this.opcionSeleccionada !== 'cargar-excel-interna';
   }

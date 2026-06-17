@@ -1,4 +1,4 @@
-import { Component, OnInit, OnChanges, SimpleChanges } from '@angular/core';
+import { inject, Component, OnInit, OnChanges, SimpleChanges, ChangeDetectorRef} from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { DetalleJarabeComponent } from './detalle-jarabe.component';
 import { HistorialJarabeComponent } from './historial-jarabe.component';
@@ -40,6 +40,7 @@ import { LimpiezaJarabeComponent } from './limpieza-jarabe.component';
   `]
 })
 export class DetalleWrapperComponent implements OnInit, OnChanges {
+  private readonly cdr = inject(ChangeDetectorRef);
   params: any;
   detailType: string = '';
 
@@ -54,5 +55,6 @@ export class DetalleWrapperComponent implements OnInit, OnChanges {
   agInit(params: any): void {
     this.params = params;
     this.detailType = params.data?.detailType || '';
-  }
+  
+    this.cdr.detectChanges();}
 }

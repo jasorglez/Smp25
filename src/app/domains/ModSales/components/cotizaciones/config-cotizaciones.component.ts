@@ -1,4 +1,4 @@
-import { Component, Input, OnInit, inject } from '@angular/core';
+import { Component, Input, OnInit, inject, ChangeDetectorRef} from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { CotizacionesService, CotizacionConfig, CONFIG_DEFAULT } from 'app/services/cotizaciones.service';
@@ -112,6 +112,7 @@ import Swal from 'sweetalert2';
 })
 export class ConfigCotizacionesComponent implements OnInit {
   private svc = inject(CotizacionesService);
+  private readonly cdr = inject(ChangeDetectorRef);
 
   @Input() idCompany!: number;
 
@@ -125,7 +126,8 @@ export class ConfigCotizacionesComponent implements OnInit {
     this.loading = true;
     this.config  = await this.svc.getConfig(this.idCompany);
     this.loading = false;
-  }
+  
+    this.cdr.detectChanges();}
 
   formatFolio(): string {
     const next = (this.config.consecutivo ?? 0) + 1;
@@ -142,5 +144,6 @@ export class ConfigCotizacionesComponent implements OnInit {
     } finally {
       this.saving = false;
     }
-  }
+  
+    this.cdr.detectChanges();}
 }

@@ -1,4 +1,4 @@
-import { Component, effect, HostListener, inject, OnInit } from '@angular/core';
+import { Component, effect, HostListener, inject, OnInit, ChangeDetectorRef} from '@angular/core';
 import { RouterModule, ActivatedRoute } from '@angular/router';
 import { DomainsModule } from 'app/domains/domainsmodule';
 import {
@@ -28,12 +28,13 @@ declare var bootstrap: any;
 @Component({
   selector: 'app-detail-clock-2',
   standalone: true,
-  imports: [RouterModule, DomainsModule, AgGridModule, TimeEditorComponent, ReactiveFormsModule, CommonModule],
+  imports: [RouterModule, DomainsModule, AgGridModule, ReactiveFormsModule, CommonModule],
   templateUrl: './detail-clock-2.component.html',
   styleUrl: './detail-clock-2.component.scss',
 })
 export default class DetailClock2Component implements OnInit {
   private clockService = inject(ClockService);
+  private readonly cdr = inject(ChangeDetectorRef);
   private signalsService = inject(SignalsService);
   private route = inject(ActivatedRoute);
   private fb = inject(FormBuilder);
@@ -860,7 +861,8 @@ export default class DetailClock2Component implements OnInit {
       this.resetGridSize();
       this.isOpen = false;
     }
-  }
+  
+    this.cdr.detectChanges();}
 
   resetGridSize() {
     this.gridHeight = '80vh'; // Reset to default height
@@ -1046,7 +1048,8 @@ export default class DetailClock2Component implements OnInit {
         'error'
       );
     }
-  }
+  
+    this.cdr.detectChanges();}
 
   private validateDayPattern(dateStr: string): string | null {
     const normalized = this.toIsoDateStr(dateStr);

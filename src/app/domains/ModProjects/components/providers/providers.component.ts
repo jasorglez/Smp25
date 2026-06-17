@@ -1,4 +1,4 @@
-import { Component, effect, HostListener, inject } from '@angular/core';
+import { Component, effect, HostListener, inject, ChangeDetectorRef} from '@angular/core';
 import { ColDef, GridApi, GridReadyEvent } from 'ag-grid-enterprise';
 import { alerts } from 'app/helpers/alerts';
 import { AgGridModule } from 'ag-grid-angular';
@@ -20,6 +20,7 @@ import { IncomesAndExpensesService } from 'app/services/incomes-and-expenses.ser
 export class ProvidersComponent {
 
   private providersService = inject(ProvidersService);
+  private readonly cdr = inject(ChangeDetectorRef);
   private imageHandlerService = inject(ImageHandlerService);
   private signalsService = inject(SignalsService);
   private incomesAndExpensesService = inject(IncomesAndExpensesService);
@@ -379,7 +380,8 @@ export class ProvidersComponent {
         'error'
       );
     }
-  }
+  
+    this.cdr.detectChanges();}
 
   async deleteEntry() {
     const selectedNodes = this.gridApi.getSelectedNodes();
@@ -455,7 +457,8 @@ export class ProvidersComponent {
           this.selectedRowData = null;
         }
       );
-  }
+  
+    this.cdr.detectChanges();}
 
   revert() {
     this.obtenerDatos();

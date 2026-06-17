@@ -1,4 +1,4 @@
-import { Component, effect, HostListener, inject, Input, OnInit } from '@angular/core';
+import { Component, effect, HostListener, inject, Input, OnInit, ChangeDetectorRef} from '@angular/core';
 import {
   CellDoubleClickedEvent,
   ColDef,
@@ -53,6 +53,7 @@ interface Catalog {
 export class InAndOutComponent implements OnInit {
   // Inject of new way for Angular 18
   private inAndOutsService = inject(InandoutService);
+  private readonly cdr = inject(ChangeDetectorRef);
   private signalsService = inject(SignalsService);
   private modalServiceTable = inject(ModalService);
   private receiptsService = inject(ReceiptsService);
@@ -506,7 +507,8 @@ public gridOptions: any = {
       console.error(error);
       return [];
     }
-  }
+  
+    this.cdr.detectChanges();}
 
   onMasterSelectionChanged(event: any) {
     const selectedNodes = event.api.getSelectedNodes();
@@ -651,7 +653,8 @@ public gridOptions: any = {
         'error'
       );
     }
-  }
+  
+    this.cdr.detectChanges();}
 
   deleteMasterEntry() {
     const selectedNodes = this.masterGridApi.getSelectedNodes();
@@ -801,7 +804,8 @@ public gridOptions: any = {
         'error'
       );
     }
-  }
+  
+    this.cdr.detectChanges();}
 
   async deleteDetailsEntry() {
     const selectedNodes = this.detailsGridApi.getSelectedNodes();

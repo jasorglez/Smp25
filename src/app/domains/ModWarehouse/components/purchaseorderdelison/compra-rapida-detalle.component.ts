@@ -1,4 +1,4 @@
-import { Component, inject, OnDestroy } from '@angular/core';
+import { Component, inject, OnDestroy, ChangeDetectorRef} from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { AgGridAngular } from 'ag-grid-angular';
 import { ColDef, GridApi, GridReadyEvent } from 'ag-grid-enterprise';
@@ -15,7 +15,7 @@ import { StyledTooltipComponent } from 'app/shared/styled-tooltip/styled-tooltip
 @Component({
   selector: 'app-compra-rapida-detalle',
   standalone: true,
-  imports: [CommonModule, AgGridAngular, ClasificacionCascadaComponent],
+  imports: [CommonModule, AgGridAngular],
   template: `
     <div style="padding: 6px; height: 100%; display: flex; flex-direction: column; box-sizing: border-box; overflow: hidden;">
       <div style="margin-bottom: 4px; flex-shrink: 0;">
@@ -40,6 +40,7 @@ import { StyledTooltipComponent } from 'app/shared/styled-tooltip/styled-tooltip
 })
 export class CompraRapidaDetalleComponent implements OnDestroy {
   private overlayService = inject(EntradaDocumentsOverlayService);
+  private readonly cdr = inject(ChangeDetectorRef);
   private intandoutDocumentsService = inject(IntandoutDocumentsService);
   signalsService = inject(SignalsService);
   private catalogsService = inject(CatalogsService);
@@ -207,7 +208,8 @@ export class CompraRapidaDetalleComponent implements OnDestroy {
         }
       }
     });
-  }
+  
+    this.cdr.detectChanges();}
 
   onGridReady(params: GridReadyEvent): void {
     this.gridApi = params.api;
@@ -245,7 +247,8 @@ export class CompraRapidaDetalleComponent implements OnDestroy {
     }
     // Notificar al padre para que recalcule el badge NUPNPN
     this.signalsService.triggerNupnpnRecheck();
-  }
+  
+    this.cdr.detectChanges();}
 
   private cargarCatalogosClasificacion(): void {
     const idCompany = this.signalsService.getRootSelectedBySidebar()();
@@ -283,7 +286,8 @@ export class CompraRapidaDetalleComponent implements OnDestroy {
     if (this.gridApi && !this.gridApi.isDestroyed()) {
       this.gridApi.refreshCells({ columns: ['pdf'], force: true });
     }
-  }
+  
+    this.cdr.detectChanges();}
 
   refresh(): boolean { return true; }
 

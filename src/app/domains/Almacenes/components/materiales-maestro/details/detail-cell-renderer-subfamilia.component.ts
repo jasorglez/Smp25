@@ -1,4 +1,4 @@
-import { Component, inject, OnDestroy, NgZone } from '@angular/core';
+import { Component, inject, OnDestroy, NgZone, ChangeDetectorRef } from '@angular/core';
 import { ICellRendererAngularComp } from 'ag-grid-angular';
 import { ICellRendererParams, ColDef, GridApi, GridReadyEvent } from 'ag-grid-enterprise';
 import { AgGridModule } from 'ag-grid-angular';
@@ -57,6 +57,7 @@ import { PendingChangesService } from 'app/services/pending-changes.service';
 export class DetailCellRendererSubfamiliaComponent implements ICellRendererAngularComp, OnDestroy {
 
   private materialsService = inject(MaterialsService);
+  private readonly cdr = inject(ChangeDetectorRef);
   private modalService = inject(SubfamiliaModalService);
   private ngZone = inject(NgZone);
   private pendingChangesService = inject(PendingChangesService);
@@ -127,6 +128,8 @@ export class DetailCellRendererSubfamiliaComponent implements ICellRendererAngul
 
     // Cargar datos
     this.loadCatalogData();
+
+    this.cdr.detectChanges();
   }
 
   refresh(): boolean {
@@ -178,6 +181,8 @@ export class DetailCellRendererSubfamiliaComponent implements ICellRendererAngul
       this.isLoading = false;
       alerts.basicAlert('Error', 'Error al cargar los datos.', 'error');
     }
+
+    this.cdr.detectChanges();
   }
 
   // Hierarchical methods removed - not used in flat structure
@@ -200,22 +205,22 @@ export class DetailCellRendererSubfamiliaComponent implements ICellRendererAngul
       groupDefaultExpanded: 0,
       suppressAggFuncInHeader: true,
       autoGroupColumnDef: {
-    minWidth: 200,
-    cellRendererParams: {
-        suppressCount: false,
-        innerRenderer: function(params) {
+        minWidth: 200,
+        cellRendererParams: {
+          suppressCount: false,
+          innerRenderer: function (params) {
             // Si es grupo de categoría
             if (params.node.level === 0) {
-                return params.value; // Categoría
+              return params.value; // Categoría
             }
             // Si es grupo de sabor
             else if (params.node.level === 1) {
-                return params.value; // Sabor
+              return params.value; // Sabor
             }
             return '';
+          }
         }
-    }
-},
+      },
 
       onFirstDataRendered: (params: any) => runAutosizeAllColumns(params.api),
 
@@ -224,89 +229,89 @@ export class DetailCellRendererSubfamiliaComponent implements ICellRendererAngul
 
   // Definición de columnas con grupos separados y filtros independientes
   get columnDefs(): ColDef[] {
-  return [
-    {
-      headerName: 'Categoría',
-      field: 'category',
-      rowGroup: true,
-      rowGroupIndex: 0,
-      cellRenderer: (params: any) => {
-        if (params.node.group && params.node.level === 0) {
-          // Contador = sabores con al menos 1 presentación con seUsaAqui = true
-          const flavorsWithCheck = (params.node.childrenAfterFilter || []).filter((flavorNode: any) =>
-            flavorNode.group &&
-            (flavorNode.childrenAfterFilter || []).some((leaf: any) => !leaf.group && leaf.data?.seUsaAqui === true)
-          ).length;
-          return `${params.node.key} (${flavorsWithCheck})`;
-        } else if (params.node.group && params.node.level === 1) {
-          return params.node.key;
-        } else {
-          return params.value || '';
-        }
+    return [
+      {
+        headerName: 'Categoría',
+        field: 'category',
+        rowGroup: true,
+        rowGroupIndex: 0,
+        cellRenderer: (params: any) => {
+          if (params.node.group && params.node.level === 0) {
+            // Contador = sabores con al menos 1 presentación con seUsaAqui = true
+            const flavorsWithCheck = (params.node.childrenAfterFilter || []).filter((flavorNode: any) =>
+              flavorNode.group &&
+              (flavorNode.childrenAfterFilter || []).some((leaf: any) => !leaf.group && leaf.data?.seUsaAqui === true)
+            ).length;
+            return `${params.node.key} (${flavorsWithCheck})`;
+          } else if (params.node.group && params.node.level === 1) {
+            return params.node.key;
+          } else {
+            return params.value || '';
+          }
+        },
+        hide: true
       },
-      hide: true
-    },
 
-    {
-      headerName: 'Sabor',
-      field: 'flavor',
-      rowGroup: true,
-      rowGroupIndex: 1,
-      minWidth: 250,
-      cellRenderer: (params: any) => {
-        if (params.node.group && params.node.level === 1) {
-          // Contador = presentaciones con seUsaAqui = true bajo este sabor
-          const checkedCount = (params.node.childrenAfterFilter || []).filter((leaf: any) =>
-            !leaf.group && leaf.data?.seUsaAqui === true
-          ).length;
-          return `${params.node.key} (${checkedCount})`;
-        } else if (params.node.group && params.node.level === 0) {
-          return '';
-        } else {
-          return params.value || '';
-        }
+      {
+        headerName: 'Sabor',
+        field: 'flavor',
+        rowGroup: true,
+        rowGroupIndex: 1,
+        minWidth: 250,
+        cellRenderer: (params: any) => {
+          if (params.node.group && params.node.level === 1) {
+            // Contador = presentaciones con seUsaAqui = true bajo este sabor
+            const checkedCount = (params.node.childrenAfterFilter || []).filter((leaf: any) =>
+              !leaf.group && leaf.data?.seUsaAqui === true
+            ).length;
+            return `${params.node.key} (${checkedCount})`;
+          } else if (params.node.group && params.node.level === 0) {
+            return '';
+          } else {
+            return params.value || '';
+          }
+        },
+        hide: true
       },
-      hide: true
-    },
 
-    {
-      headerName: 'Presentación',
-      field: 'presentation',
-      filter: 'agSetColumnFilter',
-      filterParams: {
-        buttons: ['reset', 'apply'],
-        closeOnApply: true,
-        caseSensitive: false
+      {
+        headerName: 'Presentación',
+        field: 'presentation',
+        filter: 'agSetColumnFilter',
+        filterParams: {
+          buttons: ['reset', 'apply'],
+          closeOnApply: true,
+          caseSensitive: false
+        },
+        width: 300,
+        resizable: true
       },
-      width: 300,
-      resizable: true
-    },
 
-    {
-      headerName: 'Se usa aquí',
-      field: 'seUsaAqui',
-      width: 120,
-      // Checkbox NATIVO de AG Grid: interactivo cuando la celda es editable. Toggla con un
-      // solo click, actualiza el dato y dispara onCellValueChanged (que marca el cambio para
-      // el Guardar del Nivel 1 → materialxfinalproduct). Solo en filas hoja (presentaciones).
-      editable: (params: any) => !params.node.group,
-      cellStyle: { display: 'flex', justifyContent: 'center', alignItems: 'center' },
-      cellRendererSelector: (params: any) =>
-        params.node.group ? undefined : { component: 'agCheckboxCellRenderer' },
-      cellEditor: 'agCheckboxCellEditor',
-      valueGetter: (params: any) => params.node.group ? null : (params.data?.seUsaAqui === true),
-      onCellValueChanged: (params: any) => {
-        if (params.node.group) return;
-        this.onSeUsaAquiChanged({
-          data: params.data,
-          oldValue: params.oldValue === true,
-          newValue: params.newValue === true,
-          node: params.node,
-        });
-      },
-    }
-  ];
-}
+      {
+        headerName: 'Se usa aquí',
+        field: 'seUsaAqui',
+        width: 120,
+        // Checkbox NATIVO de AG Grid: interactivo cuando la celda es editable. Toggla con un
+        // solo click, actualiza el dato y dispara onCellValueChanged (que marca el cambio para
+        // el Guardar del Nivel 1 → materialxfinalproduct). Solo en filas hoja (presentaciones).
+        editable: (params: any) => !params.node.group,
+        cellStyle: { display: 'flex', justifyContent: 'center', alignItems: 'center' },
+        cellRendererSelector: (params: any) =>
+          params.node.group ? undefined : { component: 'agCheckboxCellRenderer' },
+        cellEditor: 'agCheckboxCellEditor',
+        valueGetter: (params: any) => params.node.group ? null : (params.data?.seUsaAqui === true),
+        onCellValueChanged: (params: any) => {
+          if (params.node.group) return;
+          this.onSeUsaAquiChanged({
+            data: params.data,
+            oldValue: params.oldValue === true,
+            newValue: params.newValue === true,
+            node: params.node,
+          });
+        },
+      }
+    ];
+  }
 
 
   // Retornar todos los datos (ya son planos)
@@ -399,6 +404,8 @@ export class DetailCellRendererSubfamiliaComponent implements ICellRendererAngul
       const errorMsg = error?.error?.message || error?.message || 'Error desconocido';
       alerts.basicAlert('Error', `Error al guardar los cambios: ${errorMsg}`, 'error');
     }
+
+    this.cdr.detectChanges();
   }
 
   revertChanges() {
@@ -468,6 +475,15 @@ export class DetailCellRendererSubfamiliaComponent implements ICellRendererAngul
 
     // Actualizar contador "Donde Usa" en Nivel 1
     this.notifyParentCount();
+
+    // Refrescar el grid para mostrar los checkboxes actualizados
+    if (this.gridApi) {
+      this.gridApi.setGridOption('rowData', this.flattenTreeData());
+      // Expandir automáticamente los grupos que tienen items marcados
+      this.expandGroupsWithMarkedItems();
+    }
+
+    this.cdr.detectChanges();
   }
 
   // Reordenar para que items marcados aparezcan primero
@@ -512,6 +528,16 @@ export class DetailCellRendererSubfamiliaComponent implements ICellRendererAngul
       this.gridApi.forEachNode((node: any) => { if (node.group) groupNodes.push(node); });
       this.gridApi.refreshCells({ rowNodes: groupNodes, force: true });
     }
+  }
+
+  private expandGroupsWithMarkedItems(): void {
+    if (!this.gridApi) return;
+    this.gridApi.forEachNode((node: any) => {
+      if (!node.group) return;
+      const hasMarked = (node.childrenAfterFilter || node.allLeafChildren || [])
+        .some((leaf: any) => !leaf.group && leaf.data?.seUsaAqui === true);
+      if (hasMarked) node.setExpanded(true);
+    });
   }
 
   // Catalog/expansion helper methods removed - not used in flat structure

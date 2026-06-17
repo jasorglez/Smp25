@@ -1,4 +1,4 @@
-import { Component, effect, HostListener, inject } from '@angular/core';
+import { Component, effect, HostListener, inject, ChangeDetectorRef} from '@angular/core';
 import {
   CellDoubleClickedEvent,
   ColDef,
@@ -47,6 +47,7 @@ interface Provider {
 export class RawMaterialsComponent {
   // Inject of new way for Angular 18
   private requisitionsService = inject(OcAndReqsService);
+  private readonly cdr = inject(ChangeDetectorRef);
   private providersService = inject(ProvidersService);
   private catalogsService = inject(CatalogsService);
   private departmentsService = inject(DepartmentsService);
@@ -458,7 +459,8 @@ export class RawMaterialsComponent {
         'error'
       );
     }
-  }
+  
+    this.cdr.detectChanges();}
 
   deleteMasterEntry() {
     const selectedNodes = this.masterGridApi.getSelectedNodes();

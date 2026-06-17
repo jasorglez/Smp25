@@ -1,5 +1,5 @@
 import { CommonModule, CurrencyPipe } from '@angular/common';
-import { Component, computed, effect, HostListener, inject, Injectable, ViewChild } from '@angular/core';
+import { Component, computed, effect, HostListener, inject, Injectable, ViewChild, ChangeDetectorRef} from '@angular/core';
 import { AgGridModule } from 'ag-grid-angular';
 import { ColDef, GridApi, GridReadyEvent } from 'ag-grid-community';
 import { UsersService } from 'app/services/users.service';
@@ -39,8 +39,6 @@ import { PermissionsViewByUserComponent } from '../users/details/detail-permissi
     FormsModule,
     AgGridModule,
     MatDialogModule,
-    RolesDetailedDelisonComponent,
-    PosicionDelisonComponent,
     PermissionsViewByUserComponent
   ],
   providers: [CurrencyPipe],
@@ -74,6 +72,7 @@ export class RolesDelisonComponent {
   private permissionType: string = 'root';
 
   private usersService = inject(UsersService);
+  private readonly cdr = inject(ChangeDetectorRef);
 
   private catalogService = inject(CatalogsService);
   private signalsService = inject(SignalsService);
@@ -180,9 +179,11 @@ export class RolesDelisonComponent {
       (data: any) => {
         const raw = data?.data ?? data ?? [];
         this.rowData = this.sortDepartamentosPorNombre(Array.isArray(raw) ? raw : []);
+        this.cdr.detectChanges();
       },
       (error) => {
         if (error.status == 404) this.rowData = [];
+        this.cdr.detectChanges();
         console.error('Error fetching data:', error);
       }
     );
@@ -615,7 +616,8 @@ export class RolesDelisonComponent {
         'error'
       );
     }
-  }
+  
+    this.cdr.detectChanges();}
 
   async deleteRol() {
     const selectedNodes = this.gridApi.getSelectedNodes();
@@ -680,7 +682,8 @@ export class RolesDelisonComponent {
         this.selectedRowData = null;
       });
     }
-  }
+  
+    this.cdr.detectChanges();}
 
   revert() {
     this.obtenerDatos();

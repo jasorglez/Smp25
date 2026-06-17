@@ -1,4 +1,4 @@
-import { Component, ElementRef, ViewChild } from '@angular/core';
+import { inject, Component, ElementRef, ViewChild, ChangeDetectorRef} from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ICellEditorAngularComp } from 'ag-grid-angular';
@@ -30,6 +30,7 @@ export interface MonedaOpt { id: number; abreviatura: string; nombre: string; }
   `]
 })
 export class PrecioMonedaEditorComponent implements ICellEditorAngularComp {
+  private readonly cdr = inject(ChangeDetectorRef);
   @ViewChild('inp') inpRef!: ElementRef<HTMLInputElement>;
   @ViewChild('sel') selRef!: ElementRef<HTMLSelectElement>;
 
@@ -47,7 +48,8 @@ export class PrecioMonedaEditorComponent implements ICellEditorAngularComp {
     this.idCurrency = (fromRow !== undefined && fromRow !== null)
       ? Number(fromRow)
       : (params.defaultCurrencyId ?? params.colDef?.cellEditorParams?.defaultCurrencyId ?? null);
-  }
+  
+    this.cdr.detectChanges();}
 
   /** Al abrir el editor: foco directo en el input del valor, listo para modificar. */
   afterGuiAttached(): void {

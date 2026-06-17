@@ -1,4 +1,4 @@
-import { Component, inject } from '@angular/core';
+import { Component, inject, ChangeDetectorRef} from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { AgGridAngular } from 'ag-grid-angular';
 import { ColDef, GridApi, GridReadyEvent, IDetailCellRendererParams } from 'ag-grid-enterprise';
@@ -9,7 +9,7 @@ import { ProductionService } from '../../../../../services/production.service';
 @Component({
   selector: 'app-oh-bloque-detail',
   standalone: true,
-  imports: [CommonModule, AgGridAngular, OhBloqueProductosComponent],
+  imports: [CommonModule, AgGridAngular],
   styles: [`:host { display: block; height: 100%; overflow: hidden; position: relative; }`],
   template: `
     <div style="position: absolute; top: 0; left: 0; right: 0; bottom: 0; padding: 6px; display: flex; flex-direction: column; box-sizing: border-box; overflow: hidden; background-color: #e8f5e9;">
@@ -34,6 +34,7 @@ import { ProductionService } from '../../../../../services/production.service';
 })
 export class OhBloqueDetailComponent {
   private productionService = inject(ProductionService);
+  private readonly cdr = inject(ChangeDetectorRef);
   private params: IDetailCellRendererParams & { context: any } = {} as any;
 
   rows: any[] = [];
@@ -110,7 +111,8 @@ export class OhBloqueDetailComponent {
   agInit(params: IDetailCellRendererParams & { context: any }): void {
     this.params = params;
     this.idOhBloque = params.data?.id ?? null;
-  }
+  
+    this.cdr.detectChanges();}
 
   onGridReady(e: GridReadyEvent) {
     this.gridApi = e.api;
@@ -160,6 +162,7 @@ export class OhBloqueDetailComponent {
     });
 
     this.gridApi.setGridOption('rowData', this.rows);
+    this.cdr.detectChanges();
   }
 
   private getProductosDisponibles(data: any): any[] {
@@ -237,7 +240,8 @@ export class OhBloqueDetailComponent {
       this.params.data?.__tempId,
       bloqueJson
     );
-  }
+  
+    this.cdr.detectChanges();}
 
   refresh(): boolean { return false; }
 }

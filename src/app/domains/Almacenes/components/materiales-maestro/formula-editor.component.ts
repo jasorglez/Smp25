@@ -1,4 +1,4 @@
-import { AfterViewInit, Component, ViewChild, ElementRef, signal, WritableSignal } from '@angular/core';
+import { inject, AfterViewInit, Component, ViewChild, ElementRef, signal, WritableSignal, ChangeDetectorRef} from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ICellEditorAngularComp } from 'ag-grid-angular';
 import { ICellEditorParams } from 'ag-grid-community';
@@ -47,6 +47,7 @@ import { Parser } from 'expr-eval';
   `]
 })
 export class FormulaEditorComponent implements ICellEditorAngularComp, AfterViewInit {
+  private readonly cdr = inject(ChangeDetectorRef);
   @ViewChild('input') input!: ElementRef;
 
   private params!: ICellEditorParams;
@@ -58,7 +59,8 @@ export class FormulaEditorComponent implements ICellEditorAngularComp, AfterView
     const formulaField = (params as any).formulaField || 'formulaCol9';
     // Si ya existe una fórmula, la mostramos. Si es un valor, lo mostramos como texto.
     this.value.set(params.data[formulaField] || params.value);
-  }
+  
+    this.cdr.detectChanges();}
 
   ngAfterViewInit() {
     // Enfocar el input al iniciar

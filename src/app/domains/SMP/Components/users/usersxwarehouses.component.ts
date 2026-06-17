@@ -1,4 +1,4 @@
-import { Component, computed, HostListener, inject, effect } from '@angular/core';
+import { Component, computed, HostListener, inject, effect, ChangeDetectorRef} from '@angular/core';
 import { ColDef, GridApi, GridReadyEvent } from 'ag-grid-enterprise';
 import { AgGridModule } from 'ag-grid-angular';
 import { CommonModule } from '@angular/common';
@@ -20,6 +20,7 @@ import { TrackingService } from 'app/services/tracking.service';
 export class UsersxwarehousesComponent {
 
   private signalsService = inject(SignalsService);
+  private readonly cdr = inject(ChangeDetectorRef);
   private warehousesService = inject(WarehousesService);
   private usersxwarehousesService = inject(UsersxpermissionsService);
   private trackingService = inject(TrackingService);
@@ -324,7 +325,8 @@ public gridOptions: any = {
         'error'
       );
     }
-  }
+  
+    this.cdr.detectChanges();}
 
   async deleteEntry() {
     const selectedNodes = this.gridApi.getSelectedNodes();

@@ -1,4 +1,4 @@
-import { Component, effect, inject } from '@angular/core';
+import { Component, effect, inject, ChangeDetectorRef} from '@angular/core';
 import { ICellRendererAngularComp } from 'ag-grid-angular';
 import { ICellRendererParams } from 'ag-grid-enterprise';
 import { AgGridModule } from 'ag-grid-angular';
@@ -24,7 +24,7 @@ import { EmployeesService } from 'app/services/employees.service';
 @Component({
   selector: 'app-detalle-permisos-x-sucursales',
   standalone: true,
-  imports: [AgGridModule, CommonModule, DetailPermisosXDeptosComponent, DetailBranchesRendererComponent],
+  imports: [AgGridModule, CommonModule],
   styles: [
     `
       :host {
@@ -102,6 +102,7 @@ import { EmployeesService } from 'app/services/employees.service';
 })
 export class DetallePermisosXSucursalesComponent implements ICellRendererAngularComp {
   private signalsService = inject(SignalsService);
+  private readonly cdr = inject(ChangeDetectorRef);
   private usersxpermissionsService = inject(UsersxpermissionsService);
   private branchesService = inject(BranchsService);
   private rootService = inject(RootService);
@@ -434,7 +435,8 @@ export class DetallePermisosXSucursalesComponent implements ICellRendererAngular
 
     this.loadCatalogs();
     this.refreshEditedUserSetupFlags();
-  }
+  
+    this.cdr.detectChanges();}
 
   refresh(): boolean {
     return false;
@@ -964,7 +966,8 @@ export class DetallePermisosXSucursalesComponent implements ICellRendererAngular
       console.error(error);
       alerts.userBasicAlert('Error', 'Ocurrió un error al actualizar los datos. Por favor, intente nuevamente.', 'error');
     }
-  }
+  
+    this.cdr.detectChanges();}
 
   async deleteSelectedPermission() {
     if (!this.selectedPermission) return;
@@ -1027,7 +1030,8 @@ export class DetallePermisosXSucursalesComponent implements ICellRendererAngular
       this.selectedPermission = null;
       this.signalsService.setSecurityDelta(this.userId, -1);
     });
-  }
+  
+    this.cdr.detectChanges();}
 
   toggleBranches(params?: any) {
     if (params?.data?.__isNew) return;

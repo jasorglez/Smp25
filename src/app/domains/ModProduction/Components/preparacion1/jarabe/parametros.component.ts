@@ -1,4 +1,4 @@
-import { Component, OnInit, OnChanges, SimpleChanges, Input, inject } from '@angular/core';
+import { Component, OnInit, OnChanges, SimpleChanges, Input, inject, ChangeDetectorRef} from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { AgGridModule } from 'ag-grid-angular';
@@ -65,6 +65,7 @@ import { lastValueFrom } from 'rxjs';
 })
 export class ParametrosComponent implements OnInit, OnChanges {
   private preparacionService = inject(ProductionService);
+  private readonly cdr = inject(ChangeDetectorRef);
 
   @Input() params: any;
   private internalParams: any;
@@ -100,7 +101,8 @@ export class ParametrosComponent implements OnInit, OnChanges {
 
   agInit(params: any): void {
     this.internalParams = params;
-  }
+  
+    this.cdr.detectChanges();}
 
   loadData(): void {
     if (!this.internalParams) return;
@@ -140,7 +142,8 @@ export class ParametrosComponent implements OnInit, OnChanges {
       console.error('Error loading params:', error);
       this.dataLoaded = true;
     }
-  }
+  
+    this.cdr.detectChanges();}
 
   onGridReady(params: GridReadyEvent): void {
     this.gridApi = params.api;
@@ -337,7 +340,8 @@ export class ParametrosComponent implements OnInit, OnChanges {
       // Show minimal toast error notification
       alerts.preparacionErrorToast(errorMessage);
     }
-  }
+  
+    this.cdr.detectChanges();}
 
   async saveChanges() {
     const newItems = this.rowData.filter(item => item.__isNew);
@@ -386,7 +390,8 @@ export class ParametrosComponent implements OnInit, OnChanges {
       console.error('Error saving params:', error);
       alerts.basicAlert('Error', 'Error al guardar los parámetros', 'error');
     }
-  }
+  
+    this.cdr.detectChanges();}
 
   private async reloadFromServer(idDetalle: number): Promise<void> {
     try {
@@ -428,7 +433,8 @@ export class ParametrosComponent implements OnInit, OnChanges {
     } catch (error) {
       console.error('Error reloading params:', error);
     }
-  }
+  
+    this.cdr.detectChanges();}
 
   discardChanges() {
     if (this.hasUnsavedChanges) {

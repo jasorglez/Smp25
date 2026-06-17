@@ -1,4 +1,4 @@
-import { Component, OnInit, inject, effect } from '@angular/core';
+import { Component, OnInit, inject, effect, ChangeDetectorRef} from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { AgGridModule } from 'ag-grid-angular';
 import { ColDef, GridApi, GridReadyEvent } from 'ag-grid-enterprise';
@@ -74,6 +74,7 @@ interface AutorizacionMonto {
 })
 export class AutorizacionMontosComponent implements OnInit {
   private signalsService = inject(SignalsService);
+  private readonly cdr = inject(ChangeDetectorRef);
   private http = inject(HttpClient);
   private trackingService = inject(TrackingService);
   private usersService = inject(UsersService);
@@ -223,7 +224,8 @@ export class AutorizacionMontosComponent implements OnInit {
       alerts.basicAlert('Error', 'No se pudo verificar los usuarios del nivel.', 'error');
       this.revertActive(event);
     }
-  }
+  
+    this.cdr.detectChanges();}
 
   private async moverUsuariosYDesactivar(event: any, nivel: AutorizacionMonto) {
     const destinos = this.rowData.filter(n =>
@@ -281,7 +283,8 @@ export class AutorizacionMontosComponent implements OnInit {
       alerts.basicAlert('Error', 'No se pudo completar la operación.', 'error');
       this.revertActive(event);
     }
-  }
+  
+    this.cdr.detectChanges();}
 
   private async loadData(idCompany: number) {
     try {
@@ -299,7 +302,8 @@ export class AutorizacionMontosComponent implements OnInit {
     if (this.gridApi) {
       this.gridApi.setGridOption('rowData', this.rowData);
     }
-  }
+  
+    this.cdr.detectChanges();}
 
   private defaultLevels(idCompany: number): AutorizacionMonto[] {
     return [
@@ -371,5 +375,6 @@ export class AutorizacionMontosComponent implements OnInit {
     } finally {
       this.saving = false;
     }
-  }
+  
+    this.cdr.detectChanges();}
 }

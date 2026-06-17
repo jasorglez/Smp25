@@ -1,4 +1,4 @@
-import { Component, effect, inject } from '@angular/core';
+import { Component, ChangeDetectorRef, effect, inject } from '@angular/core';
 import { AgGridModule } from 'ag-grid-angular';
 import { ColDef, GridApi, GridReadyEvent } from 'ag-grid-enterprise';
 import { EmployeesxloansService } from 'app/services/employeesxloans.service';
@@ -18,6 +18,7 @@ export class SavingsRegistryComponent {
   private signalsService = inject(SignalsService);
   public AG_GRID_LOCALE_ES = AG_GRID_LOCALE_ES;
   authService = inject(AuthService);
+  private readonly cdr = inject(ChangeDetectorRef);
 
   defaultColDef = {
     flex: 1,
@@ -85,9 +86,12 @@ export class SavingsRegistryComponent {
     this.employeesxloansService.getSavingsRegistry(this.idBranch).subscribe(
       (maestroRowData: any[]) => {
         this.maestroRowData = maestroRowData;
+        this.cdr.detectChanges();
       },
       (error) => {
         console.error('Error loading loans data:', error);
+        this.maestroRowData = [];
+        this.cdr.detectChanges();
       }
     );
   }

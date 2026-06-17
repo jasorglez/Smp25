@@ -12,7 +12,7 @@ import { lastValueFrom } from 'rxjs';
 @Component({
   selector: 'app-material-detail-renderer',
   standalone: true,
-  imports: [CommonModule, FormsModule, AgGridModule, SelectWithTooltipEditorV2Component],
+  imports: [CommonModule, FormsModule, AgGridModule],
   template: `
     <!-- ── DISTRIBUCIÓN ─────────────────────────────────────────────── -->
     <div *ngIf="detailType === 'distribution'"
@@ -166,7 +166,8 @@ export class MaterialDetailRendererComponent implements ICellRendererAngularComp
     this.idCompany    = (params as any).context?.idCompany ?? data?.idCompany;
     this.materialData = data;
     if (this.detailType === 'distribution') this.loadDistribution();
-  }
+  
+    this.cdr.detectChanges();}
 
   refresh(_params: ICellRendererParams): boolean { return false; }
   ngOnInit(): void {}
@@ -333,7 +334,8 @@ export class MaterialDetailRendererComponent implements ICellRendererAngularComp
       console.error(err);
       alerts.basicAlert('Error', 'Error al guardar la distribución.', 'error');
     }
-  }
+  
+    this.cdr.detectChanges();}
 
   revert(): void {
     this.gridApi?.stopEditing();

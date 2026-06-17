@@ -1,4 +1,4 @@
-﻿import { Component, HostListener, inject } from '@angular/core';
+﻿import { Component, HostListener, inject, ChangeDetectorRef} from '@angular/core';
 import { RouterModule } from '@angular/router';
 import { DomainsModule } from 'app/domains/domainsmodule';
 
@@ -90,6 +90,7 @@ export class AccountbanksComponent implements CanComponentDeactivate {
 
   // Inject of new way for Angular 18
   private administrationService = inject(AdministrationService);
+  private readonly cdr = inject(ChangeDetectorRef);
   private incomesAndExpensesService = inject(IncomesAndExpensesService);
   private modalServiceTable = inject(ModalService);
   private imageHandlerService = inject(ImageHandlerService);
@@ -662,7 +663,8 @@ export class AccountbanksComponent implements CanComponentDeactivate {
         'error'
       );
     }
-  }
+  
+    this.cdr.detectChanges();}
 
   async deleteEntry() {
     const selectedNodes = this.gridApi.getSelectedNodes();
@@ -742,7 +744,8 @@ export class AccountbanksComponent implements CanComponentDeactivate {
         this.selectedRowData = null;
         this.obtenerDatos();
       });
-  }
+  
+    this.cdr.detectChanges();}
 
   revert() {
     this.obtenerDatos();
@@ -974,7 +977,8 @@ export class AccountbanksComponent implements CanComponentDeactivate {
     } finally {
       this.isGeneratingSaldosReport = false;
     }
-  }
+  
+    this.cdr.detectChanges();}
 
   // ==================== AJUSTE DE SALDO ====================
 
@@ -1097,7 +1101,8 @@ export class AccountbanksComponent implements CanComponentDeactivate {
     } finally {
       this.isSavingAjuste = false;
     }
-  }
+  
+    this.cdr.detectChanges();}
 
   // ==================== GUARD ALERT UNSAVED CHANGES ====================
 
@@ -1113,5 +1118,6 @@ export class AccountbanksComponent implements CanComponentDeactivate {
       'Sí, salir'
     );
     return result.isConfirmed;
-  }
+  
+    this.cdr.detectChanges();}
 }

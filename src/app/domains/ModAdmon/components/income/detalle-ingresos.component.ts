@@ -1,4 +1,4 @@
-import { Component, OnInit, inject, OnDestroy } from '@angular/core';
+import { Component, OnInit, inject, OnDestroy, ChangeDetectorRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { AgGridModule } from 'ag-grid-angular';
@@ -22,7 +22,7 @@ import * as pdfFonts from 'pdfmake/build/vfs_fonts';
 @Component({
   selector: 'app-detalle-ingresos',
   standalone: true,
-  imports: [CommonModule, FormsModule, AgGridModule, MultiLineEditorComponent],
+  imports: [CommonModule, FormsModule, AgGridModule],
   template: `
     <!-- Concepts Grid View -->
     <div class="detail-grid-container" *ngIf="detailType === 'concepts'">
@@ -115,6 +115,7 @@ export class DetalleIngresosComponent implements OnInit, OnDestroy {
   private incomesAndExpensesService = inject(IncomesAndExpensesService);
   private administrationService = inject(AdministrationService);
   private catalogsService = inject(CatalogsService);
+  private readonly cdr = inject(ChangeDetectorRef);
   private rootService = inject(RootService);
   private base64EncodeService = inject(Base64EncodeService);
 
@@ -169,6 +170,7 @@ export class DetalleIngresosComponent implements OnInit, OnDestroy {
     } else if (this.detailType === 'report') {
       this.loadConceptsDataForReport();
     }
+    this.cdr.detectChanges();
   }
 
   async loadMeasures() {
@@ -245,7 +247,8 @@ export class DetalleIngresosComponent implements OnInit, OnDestroy {
     } catch (error) {
       console.error('Error loading data for report:', error);
     }
-  }
+  
+    this.cdr.detectChanges();}
 
   async loadSetupManagementInfo() {
     if (!this.idRoot) return;
@@ -255,7 +258,8 @@ export class DetalleIngresosComponent implements OnInit, OnDestroy {
     } catch (error) {
       console.error('Error loading setup management:', error);
     }
-  }
+  
+    this.cdr.detectChanges();}
 
   async loadLogo() {
     if (!this.idRoot) return;
@@ -275,7 +279,8 @@ export class DetalleIngresosComponent implements OnInit, OnDestroy {
     } catch (error) {
       console.error('Error loading logo:', error);
     }
-  }
+  
+    this.cdr.detectChanges();}
 
   calculateTotals() {
     this.subtotal = this.rowData.reduce((acc, row) => acc + (Number(row.total) || 0), 0);
@@ -434,7 +439,8 @@ export class DetalleIngresosComponent implements OnInit, OnDestroy {
       event.data.unit = event.oldValue || '';
       this.gridApi?.applyTransactionAsync({ update: [event.data] });
     }
-  }
+  
+    this.cdr.detectChanges();}
 
   addConcept() {
     const incomeId = this.params.data.id;
@@ -526,7 +532,8 @@ export class DetalleIngresosComponent implements OnInit, OnDestroy {
       console.error('Error saving concepts:', error);
       alerts.basicAlert('Error', 'Error al guardar los conceptos.', 'error');
     }
-  }
+  
+    this.cdr.detectChanges();}
 
   deleteSelectedConcept() {
     const selectedNodes = this.gridApi?.getSelectedNodes();

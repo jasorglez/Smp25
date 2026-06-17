@@ -1,4 +1,4 @@
-import { Component, effect, HostListener, inject, OnInit } from '@angular/core';
+import { Component, ChangeDetectorRef, effect, HostListener, inject, OnInit } from '@angular/core';
 import { RouterModule, ActivatedRoute } from '@angular/router';
 import { DomainsModule } from 'app/domains/domainsmodule';
 import { CellDoubleClickedEvent, ColDef, GridApi, GridReadyEvent, ICellRendererParams } from 'ag-grid-enterprise';
@@ -30,6 +30,7 @@ export default class DiscrepanciesComponent implements OnInit {
   private clockService = inject(ClockService);
   private trackingService = inject(TrackingService);
   authService = inject(AuthService);
+  private readonly cdr = inject(ChangeDetectorRef);
 
   ngOnInit() {
     this.idBranch = this.signalsService.getBranchSelectedBySidebar()();
@@ -280,9 +281,8 @@ export default class DiscrepanciesComponent implements OnInit {
 
   obtenerDatos() {
     this.clockService.getHourDiscrepancies(this.idBranch).subscribe((data: any) => {
-      this.rowData = [];
-      
       this.rowData = data;
+      this.cdr.detectChanges();
       this.trackingService.addLog(this.trackingService.getnameComp(),'Get Registro en Diferencias de Checador', 'Menu Recursos Humanos Diferencias de Checador',  this.trackingService.getEmail());
       // Esperar a que el grid se actualice y luego ajustar las columnas
       setTimeout(() => {

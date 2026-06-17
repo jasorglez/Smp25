@@ -4,8 +4,7 @@ import {
   HostListener,
   inject,
   Renderer2,
-  RendererFactory2,
-} from '@angular/core';
+  RendererFactory2, ChangeDetectorRef} from '@angular/core';
 import { SignalsService } from 'app/services/signals.service';
 import { AgGridModule, ICellRendererAngularComp } from 'ag-grid-angular';
 import { FormsModule } from '@angular/forms';
@@ -66,6 +65,7 @@ import { PdfMaterialsDistributionComponent } from './pdf-materials-distribution.
   `]
 })
 export class CustomGroupRendererComponent implements ICellRendererAngularComp {
+  private readonly cdr = inject(ChangeDetectorRef);
   params: any;
   displayText: string = '';
 
@@ -79,7 +79,8 @@ export class CustomGroupRendererComponent implements ICellRendererAngularComp {
     } else {
       this.displayText = params.value;
     }
-  }
+  
+    this.cdr.detectChanges();}
 
   onToggleExpand(): void {
     this.params.node.setExpanded(!this.params.node.expanded);
@@ -94,7 +95,7 @@ export class CustomGroupRendererComponent implements ICellRendererAngularComp {
 @Component({
   selector: 'storeComponent',
   standalone: true,
-  imports: [CommonModule, FormsModule, AgGridModule, CustomGroupRendererComponent, SelectWithTooltipEditorV2Component, MaterialDetailRendererComponent, PdfMaterialsDistributionComponent],
+  imports: [CommonModule, FormsModule, AgGridModule, PdfMaterialsDistributionComponent],
   templateUrl: './materials.component.html',
   styles: `
     ::ng-deep .small-text-ag-grid {
@@ -134,6 +135,7 @@ export class MaterialsComponent implements CanComponentDeactivate {
   private gridApi: GridApi;
   private tempIdCounter: number = 0;
   private signalsService = inject(SignalsService);
+  private readonly cdr = inject(ChangeDetectorRef);
   private trackingService = inject(TrackingService);
   private materialsService = inject(MaterialsService);
   private catalogsService = inject(CatalogsService);
@@ -460,7 +462,8 @@ export class MaterialsComponent implements CanComponentDeactivate {
       await this.resetGridSize();
       this.isOpen = false;
     }
-  }
+  
+    this.cdr.detectChanges();}
 
   async activateSavingsTab() {
     if (!this.isOpen || this.showLoansTab) {
@@ -472,7 +475,8 @@ export class MaterialsComponent implements CanComponentDeactivate {
       await this.resetGridSize();
       this.isOpen = false;
     }
-  }
+  
+    this.cdr.detectChanges();}
 
   async adjustGridSize() {
     this.gridHeight = '20vh'; // Adjust as needed
@@ -929,7 +933,8 @@ export class MaterialsComponent implements CanComponentDeactivate {
         'error'
       );
     }
-  }
+  
+    this.cdr.detectChanges();}
 
   deleteMasterEntry() {
     const selectedNodes = this.gridApi.getSelectedNodes();
@@ -1310,7 +1315,8 @@ export class MaterialsComponent implements CanComponentDeactivate {
         'error'
       );
     }
-  }
+  
+    this.cdr.detectChanges();}
 
   onFamilyCreated(familyData: { id: number; description: string }) {
     // Agregar inmediatamente al catálogo local para que cellRenderer lo encuentre
@@ -1395,7 +1401,8 @@ export class MaterialsComponent implements CanComponentDeactivate {
         'error'
       );
     }
-  }
+  
+    this.cdr.detectChanges();}
 
   onSubfamilyCreated(subfamilyData: { id: number; description: string; parentId: number }) {
     // Agregar inmediatamente al catálogo local para que cellRenderer lo encuentre
@@ -1471,7 +1478,8 @@ export class MaterialsComponent implements CanComponentDeactivate {
         'error'
       );
     }
-  }
+  
+    this.cdr.detectChanges();}
 
   onMeasureCreated(measureData: { id: number; description: string }) {
     // Agregar inmediatamente al catálogo local para que cellRenderer lo encuentre

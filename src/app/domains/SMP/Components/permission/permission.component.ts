@@ -1,4 +1,4 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, OnInit, inject, ChangeDetectorRef} from '@angular/core';
 import { AgGridAngular } from 'ag-grid-angular';
 import { ColDef, GridApi, GridReadyEvent, ICellRendererParams } from 'ag-grid-enterprise';
 import { Observable, firstValueFrom } from 'rxjs';
@@ -17,10 +17,7 @@ import { MaterialIconPickerCellEditorComponent } from './material-icon-picker-ce
   standalone: true,
   imports: [
     CommonModule,
-    AgGridAngular,
-    DetailedPermissionsComponent,
-    MaterialIconPickerCellEditorComponent,
-  ],
+    AgGridAngular],
   templateUrl: './permission.component.html',
   styles: `
     ::ng-deep .small-text-ag-grid {
@@ -36,6 +33,7 @@ import { MaterialIconPickerCellEditorComponent } from './material-icon-picker-ce
 })
 
 export class PermissionComponent implements OnInit {
+  private readonly cdr = inject(ChangeDetectorRef);
 
   public rowData$!: Observable<any[]>;
   public gridApi!: GridApi;
@@ -299,7 +297,8 @@ export class PermissionComponent implements OnInit {
         alerts.basicAlert('Error', 'No se pudo eliminar', 'error');
       }
     }
-  }
+  
+    this.cdr.detectChanges();}
 
   async saveMaster() {
     const newRows: any[] = [];
@@ -360,6 +359,7 @@ export class PermissionComponent implements OnInit {
       console.error(error);
       alerts.basicAlert('Error', 'Error al guardar cambios', 'error');
     }
-  }
+  
+    this.cdr.detectChanges();}
 
 }

@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, effect, inject } from '@angular/core';
+import { ChangeDetectionStrategy, Component, effect, inject, ChangeDetectorRef} from '@angular/core';
 import { SignalsService } from 'app/services/signals.service';
 import { AdministrationService } from 'app/services/administration.service';
 import { CommonModule } from '@angular/common';
@@ -31,6 +31,7 @@ export class ModalBonusComponent {
     };
 
   private signalsService = inject(SignalsService);
+  private readonly cdr = inject(ChangeDetectorRef);
   private administrationService = inject(AdministrationService);
   private employeeService = inject(EmployeesService);
   private catalogsService = inject(CatalogsService);
@@ -353,7 +354,8 @@ const addObservables = newRows.map((row) => {
         'error'
       );
     }
-  }
+  
+    this.cdr.detectChanges();}
   revertMasterData() {
     this.obtenerBonos();
     this.notSavedChanges = false;

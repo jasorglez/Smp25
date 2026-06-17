@@ -1,4 +1,4 @@
-import { Component } from '@angular/core';
+import { inject, Component, ChangeDetectorRef} from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ICellEditorAngularComp } from 'ag-grid-angular';
@@ -39,6 +39,7 @@ import { ICellEditorParams } from 'ag-grid-enterprise';
   `
 })
 export class IconPickerCellEditorComponent implements ICellEditorAngularComp {
+  private readonly cdr = inject(ChangeDetectorRef);
   value: string = '';
   filter: string = '';
   hovered: string | null = null;
@@ -68,7 +69,8 @@ export class IconPickerCellEditorComponent implements ICellEditorAngularComp {
   agInit(params: ICellEditorParams): void {
     this.params = params;
     this.value = params.value || '';
-  }
+  
+    this.cdr.detectChanges();}
 
   getValue(): string {
     return this.value;

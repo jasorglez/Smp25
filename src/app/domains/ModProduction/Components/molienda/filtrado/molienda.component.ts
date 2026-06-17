@@ -1,4 +1,4 @@
-import { Component, inject, effect } from '@angular/core';
+import { Component, inject, effect, ChangeDetectorRef} from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { AgGridAngular } from 'ag-grid-angular';
 import { ColDef, GridApi, GridReadyEvent } from 'ag-grid-enterprise';
@@ -19,7 +19,7 @@ import { SalidaLotesModalComponent } from './salida-lotes-modal.component';
 @Component({
   selector: 'app-molienda-filtrado',
   standalone: true,
-  imports: [CommonModule, AgGridAngular, DetallesEntradasMoliendaComponent, SelectWithTooltipEditorV2Component, DetailRouterFiltradoComponent, SalidaLotesModalComponent],
+  imports: [CommonModule, AgGridAngular, SalidaLotesModalComponent],
   template: `
     <div class="col-12">
       <div class="row g-2">
@@ -79,6 +79,7 @@ export class MoliendaComponent {
   // Estado del modal de salida por lote (lo dispara el Nivel 3 vía context).
   salidaModal: { articuloOptions: any[]; idSucursal: number; idArticuloActual: number | null; salidasPrevias: { [idDatoExterno: number]: number }; empleadoActual?: string | null; onResolve: (r: any) => void } | null = null;
   private signalService = inject(SignalsService);
+  private readonly cdr = inject(ChangeDetectorRef);
   private branchsService = inject(BranchsService);
   private productionService = inject(ProductionService);
   private mxmService = inject(MaterialXModuloService);
@@ -359,7 +360,8 @@ export class MoliendaComponent {
     } catch (e) {
       console.error('Error cargando datos iniciales:', e);
     }
-  }
+  
+    this.cdr.detectChanges();}
 
   async loadData() {
     if (!this.idCompany) return;
@@ -390,7 +392,8 @@ export class MoliendaComponent {
     } catch (e) {
       console.error('Error cargando molienda:', e);
     }
-  }
+  
+    this.cdr.detectChanges();}
 
   private mapRow(i: any, almExact?: Map<string, any>, almByMat?: Map<number, any>, matDetailCounts?: Record<number, number>): any {
     const almRecord = almExact?.get(`${i.idSucursal}_${i.idMatPrima}`) ?? almByMat?.get(i.idMatPrima);
@@ -604,7 +607,8 @@ export class MoliendaComponent {
       console.error('Error guardando molienda:', e);
       alerts.reqErrorToast('Error al guardar');
     }
-  }
+  
+    this.cdr.detectChanges();}
 
   revert() {
     this.rowData = JSON.parse(JSON.stringify(this.originalRowData));
@@ -673,5 +677,6 @@ export class MoliendaComponent {
       console.error('Error eliminando:', e);
       alerts.reqErrorToast('Error al eliminar');
     }
-  }
+  
+    this.cdr.detectChanges();}
 }

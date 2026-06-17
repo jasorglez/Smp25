@@ -1,4 +1,4 @@
-import { Component, effect, HostListener, inject } from '@angular/core';
+import { Component, effect, HostListener, inject, ChangeDetectorRef} from '@angular/core';
 import { RouterModule, ActivatedRoute } from '@angular/router';
 import { DomainsModule } from 'app/domains/domainsmodule';
 import { AG_GRID_LOCALE_ES } from 'assets/i18n/ag-grid.locale.es';
@@ -65,20 +65,14 @@ import { TrackingService } from 'app/services/tracking.service';
     RouterModule,
     DomainsModule,
     AgGridModule,
-    MultiLineEditorComponent,
-    ProvidersPaymentsComponent,
-    DetailCellRendererComponentContact,
-    DetallesBancosxproveedorComponent,
-    DetailCellRendererComponentCuentas,
-    DetallesTiposProveedorComponent,
-    DetallesMaterialexprovComponent
-  ],
+    MultiLineEditorComponent],
   templateUrl: './providers.component.html',
   styleUrls: ['./providers.component.scss'],
 })
 export class ProvidersComponent implements CanComponentDeactivate {
 
   private trackingService = inject(TrackingService);
+  private readonly cdr = inject(ChangeDetectorRef);
   private customerService = inject(CustomersService);
   private providersService = inject(ProvidersService);
   private materialsService = inject(MaterialsService);
@@ -995,6 +989,7 @@ export class ProvidersComponent implements CanComponentDeactivate {
             });
 
             this.rowData = merged;
+            this.cdr.detectChanges();
             this.updateContactFilterList();
             setTimeout(() => {
               try {
@@ -1009,6 +1004,8 @@ export class ProvidersComponent implements CanComponentDeactivate {
           },
           error: (error) => {
             console.error('Error obteniendo datos:', error);
+            this.rowData = [];
+            this.cdr.detectChanges();
             resolve(false);
           },
         });
@@ -1057,7 +1054,8 @@ export class ProvidersComponent implements CanComponentDeactivate {
     } catch (err) {
       console.warn('Error cargando conteos de detalles:', err);
     }
-  }
+  
+    this.cdr.detectChanges();}
 
   obtenerBranchs() {
     this.trackingService.addLog(this.trackingService.getnameComp(), `Mostrar Listado de Sucursales`, 'Menu Administracion Proveedores ',
@@ -1066,6 +1064,7 @@ export class ProvidersComponent implements CanComponentDeactivate {
     this.branchesService.getBrancheswoa(this.idRoot).subscribe(
       (data: any) => {
         this.branchs = data;
+        this.cdr.detectChanges();
       },
       (error) => console.error('Error fetching data:', error)
     );
@@ -1102,6 +1101,7 @@ export class ProvidersComponent implements CanComponentDeactivate {
         .subscribe({
           next: (data: any) => {
             this.contactoCatalog = data;
+            this.cdr.detectChanges();
           },
           error: (error) => {
             console.error('Error obteniendo datos:', error);
@@ -1204,7 +1204,8 @@ export class ProvidersComponent implements CanComponentDeactivate {
       }
       return null;
     }
-  }
+  
+    this.cdr.detectChanges();}
 
   onGridReady(params: GridReadyEvent) {
     this.gridApi = params.api;
@@ -1493,7 +1494,8 @@ export class ProvidersComponent implements CanComponentDeactivate {
         'error'
       );
     }
-  }
+  
+    this.cdr.detectChanges();}
 
   private selectRowById(id: number | string) {
 
@@ -1580,7 +1582,8 @@ export class ProvidersComponent implements CanComponentDeactivate {
         }
       }
     }
-  }
+  
+    this.cdr.detectChanges();}
 
   async deleteEntry() {
     this.trackingService.addLog(this.trackingService.getnameComp(), `Eliminar Proveedores`, 'Menu Administracion Proveedores ',
@@ -1646,7 +1649,8 @@ export class ProvidersComponent implements CanComponentDeactivate {
         'error'
       );
     }
-  }
+  
+    this.cdr.detectChanges();}
 
   revert() {
     this.obtenerDatos();
@@ -1717,7 +1721,8 @@ export class ProvidersComponent implements CanComponentDeactivate {
       this.resetGridSize();
       this.isOpen = false;
     }
-  }
+  
+    this.cdr.detectChanges();}
 
   resetGridSize() {
     this.gridHeight = '80vh'; // Reset to default height
@@ -1799,7 +1804,8 @@ export class ProvidersComponent implements CanComponentDeactivate {
         );
       }
     }
-  }
+  
+    this.cdr.detectChanges();}
 
   async saveProviderDetailsById(providerId: number, data: any[], type: string) {
     const newDetails = data.filter((row: any) => row.__isNew);
@@ -1848,7 +1854,8 @@ export class ProvidersComponent implements CanComponentDeactivate {
         'error'
       );
     }
-  }
+  
+    this.cdr.detectChanges();}
 
   async saveProviderXTableChanges() {
     const allDetailChanges = [];
@@ -1906,7 +1913,8 @@ export class ProvidersComponent implements CanComponentDeactivate {
         'error'
       );
     }
-  }
+  
+    this.cdr.detectChanges();}
 
   updateCantidad(id) {
     // alert('Actualizar cantidad de contactos para proveedor ID:' + id);

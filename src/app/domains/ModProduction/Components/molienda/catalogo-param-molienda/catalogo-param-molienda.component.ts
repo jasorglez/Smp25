@@ -190,7 +190,8 @@ export class CatalogoParamMoliendaComponent implements OnInit {
         .sort((a, b) => a.name.localeCompare(b.name, 'es', { sensitivity: 'base' }));
     }
     await this.loadParams();
-  }
+  
+    this.cdr.detectChanges();}
 
   // ── Parámetros CRUD ───────────────────────────────────────────────────────
 
@@ -205,7 +206,8 @@ export class CatalogoParamMoliendaComponent implements OnInit {
       this.paramRows = mapped;
       if (this.paramGridApi) this.paramGridApi.setGridOption('rowData', mapped);
     } catch (e) { console.error('Error cargando parámetros:', e); }
-  }
+  
+    this.cdr.detectChanges();}
 
   onParamGridReady(e: GridReadyEvent) {
     this.paramGridApi = e.api;
@@ -247,7 +249,8 @@ export class CatalogoParamMoliendaComponent implements OnInit {
       // Recargar del servidor para que los IDs reales no generen duplicados en AG Grid
       await this.loadParams();
     } catch (e) { alerts.reqErrorToast('Error al guardar parámetros'); }
-  }
+  
+    this.cdr.detectChanges();}
 
   revertParams() {
     this.paramRows = JSON.parse(JSON.stringify(this.paramOriginal));
@@ -273,7 +276,8 @@ export class CatalogoParamMoliendaComponent implements OnInit {
       this.selectedParam = null; this.configRows = [];
       if (this.paramGridApi) this.paramGridApi.setGridOption('rowData', this.paramRows);
     } catch (e) { alerts.reqErrorToast('Error al eliminar'); }
-  }
+  
+    this.cdr.detectChanges();}
 
   // ── Config CRUD ───────────────────────────────────────────────────────────
 
@@ -305,7 +309,8 @@ export class CatalogoParamMoliendaComponent implements OnInit {
       this.configLoading = false;
       this.cdr.detectChanges();
     }
-  }
+  
+    this.cdr.detectChanges();}
 
   onConfigGridReady(e: GridReadyEvent) {
     this.configGridApi = e.api;
@@ -335,5 +340,6 @@ export class CatalogoParamMoliendaComponent implements OnInit {
       }
       this.configHasChanges = false;
     } catch (e) { alerts.reqErrorToast('Error al guardar configuración'); }
-  }
+  
+    this.cdr.detectChanges();}
 }

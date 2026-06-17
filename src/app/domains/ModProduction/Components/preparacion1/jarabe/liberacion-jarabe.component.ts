@@ -1,4 +1,4 @@
-import { Component, OnInit, OnChanges, SimpleChanges, Input, inject } from '@angular/core';
+import { Component, OnInit, OnChanges, SimpleChanges, Input, inject, ChangeDetectorRef} from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { AgGridModule } from 'ag-grid-angular';
@@ -57,6 +57,7 @@ import { lastValueFrom } from 'rxjs';
 })
 export class LiberacionJarabeComponent implements OnInit, OnChanges {
   private productionService = inject(ProductionService);
+  private readonly cdr = inject(ChangeDetectorRef);
 
   @Input() params: any;
   private internalParams: any;
@@ -97,7 +98,8 @@ export class LiberacionJarabeComponent implements OnInit, OnChanges {
     this.internalParams = params;
     this.personalCalidad = params?.context?.componentParent?.personalCalidad ?? [];
     if (this.gridApi) this.loadData();
-  }
+  
+    this.cdr.detectChanges();}
 
   public gridOptions: any = {
     rowSelection: 'single',
@@ -185,7 +187,8 @@ export class LiberacionJarabeComponent implements OnInit, OnChanges {
     } catch {
       this.rowData = [];
     }
-  }
+  
+    this.cdr.detectChanges();}
 
   private mapItem(d: any): any {
     return {
@@ -227,7 +230,8 @@ export class LiberacionJarabeComponent implements OnInit, OnChanges {
         active: true
       }));
     } catch { /* silently fail, user can retry */ }
-  }
+  
+    this.cdr.detectChanges();}
 
   async saveAll() {
     const newItems = this.rowData.filter(r => r.__isNew);
@@ -252,7 +256,8 @@ export class LiberacionJarabeComponent implements OnInit, OnChanges {
       this.hasUnsavedChanges = false;
       this.gridApi.redrawRows();
     } catch { alerts.basicAlert('Error', 'Error al guardar liberación.', 'error'); }
-  }
+  
+    this.cdr.detectChanges();}
 
   async deleteSelectedItem() {
     const selected = this.gridApi.getSelectedNodes();
@@ -270,7 +275,8 @@ export class LiberacionJarabeComponent implements OnInit, OnChanges {
       this.rowData = this.rowData.filter(r => r.id !== item.id);
       this.gridApi.setGridOption('rowData', this.rowData);
     } catch { alerts.basicAlert('Error', 'Error al eliminar.', 'error'); }
-  }
+  
+    this.cdr.detectChanges();}
 
   discardChanges() { this.loadData(); this.hasUnsavedChanges = false; }
   onCellValueChanged(e: any) { e.data.__modified = true; this.hasUnsavedChanges = true; }

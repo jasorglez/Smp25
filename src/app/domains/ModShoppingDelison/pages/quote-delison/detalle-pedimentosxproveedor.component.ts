@@ -1,4 +1,4 @@
-import { Component, HostListener, inject, OnInit, OnDestroy } from '@angular/core';
+import { Component, HostListener, inject, OnInit, OnDestroy, ChangeDetectorRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { AgGridModule } from 'ag-grid-angular';
 import { ColDef, ICellRendererParams, GridApi } from 'ag-grid-enterprise';
@@ -43,7 +43,7 @@ const MAX_PROVIDER_SLOTS = 26;
 @Component({
   selector: 'app-detail-cell-renderer-pedimentos',
   standalone: true,
-  imports: [CommonModule, AgGridModule, ButtonCellRendererComponent, CotizProvButtonCellRendererComponent, PdfButtonCellRendererPedimentosComponent, DetalleItemsPedimentosComponent, DetalleItemsProveedorComponent, DetailCellRendererPedimentoReportComponent, DetalleProvidersListComponent],
+  imports: [CommonModule, AgGridModule],
   template: `
     <div class="detail-grid-container">
       <!-- Grid con tamaño completo -->
@@ -82,6 +82,7 @@ export class DetailCellRendererPedimentosComponent implements OnInit, OnDestroy 
   private gridApi!: GridApi;
   private context: any;
   private pedimentoModificationService = inject(PedimentoModificationService);
+  private readonly cdr = inject(ChangeDetectorRef);
   private comparacionOverlayService = inject(ComparacionOverlayService);
   private proveedorItemsOverlayService = inject(ProveedorItemsOverlayService);
   private ocAndReqsService = inject(OcAndReqsService);
@@ -106,6 +107,8 @@ export class DetailCellRendererPedimentosComponent implements OnInit, OnDestroy 
     this.context = params.context;
     this.buildRowData();
     this.loadPedimentosWithOc();
+
+    this.cdr.detectChanges();
   }
 
   private loadPedimentosWithOc(): void {
@@ -118,7 +121,7 @@ export class DetailCellRendererPedimentosComponent implements OnInit, OnDestroy 
           this.gridApi.refreshCells({ columns: ['pedimento'], force: true });
         }
       },
-      error: () => {}
+      error: () => { }
     });
   }
 
@@ -556,6 +559,8 @@ export class DetailCellRendererPedimentosComponent implements OnInit, OnDestroy 
     const allowed = await this.unsavedTracker.confirmExitIfAny();
     if (allowed) this.unsavedTracker.clearAll();
     return allowed;
+
+    this.cdr.detectChanges();
   }
 
   async toggleArticulosCascade(node: any) {
@@ -610,6 +615,8 @@ export class DetailCellRendererPedimentosComponent implements OnInit, OnDestroy 
         node.setExpanded(true);
       }, 0);
     }
+
+    this.cdr.detectChanges();
   }
 
   /**
@@ -658,6 +665,8 @@ export class DetailCellRendererPedimentosComponent implements OnInit, OnDestroy 
       ),
       onSlotSaved: (savedSlot: ProviderSlotInfo) => this.onSlotSaved(node, savedSlot)
     });
+
+    this.cdr.detectChanges();
   }
 
   /**
@@ -712,6 +721,8 @@ export class DetailCellRendererPedimentosComponent implements OnInit, OnDestroy 
         node.setExpanded(true);
       }, wasSameRowExpanded ? 50 : 0);
     }
+
+    this.cdr.detectChanges();
   }
 
   /**
@@ -763,6 +774,8 @@ export class DetailCellRendererPedimentosComponent implements OnInit, OnDestroy 
 
     // Abrir cascada para el nuevo slot (pasar node, ya que es el actual)
     await this.toggleProviderCascade(node, newSlot);
+
+    this.cdr.detectChanges();
   }
 
   async toggleReportCascade(node: any) {
@@ -824,6 +837,8 @@ export class DetailCellRendererPedimentosComponent implements OnInit, OnDestroy 
         node.setExpanded(true);
       }, 0);
     }
+
+    this.cdr.detectChanges();
   }
 
   async toggleComparacionCascade(nodeOrId: any) {
@@ -860,6 +875,8 @@ export class DetailCellRendererPedimentosComponent implements OnInit, OnDestroy 
       departmentName: this.params.data.department || '',
       deptPrefijoFromReq: this.params.data.deptPrefijo || ''
     });
+
+    this.cdr.detectChanges();
   }
 
   collapseReportDetail() {

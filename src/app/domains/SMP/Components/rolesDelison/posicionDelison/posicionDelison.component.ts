@@ -1,4 +1,4 @@
-import { AfterViewInit, Component, ElementRef, inject, ViewChild } from '@angular/core';
+import { AfterViewInit, Component, ElementRef, inject, ViewChild, ChangeDetectorRef} from '@angular/core';
 import { ICellRendererAngularComp } from 'ag-grid-angular';
 import { ICellRendererParams } from 'ag-grid-enterprise';
 import { AgGridModule } from 'ag-grid-angular';
@@ -17,7 +17,7 @@ import { ModalService } from 'app/services/permissions-modal.service';
   selector: 'app-posicion-delison',
   standalone: true,
   providers: [CurrencyPipe],
-  imports: [AgGridModule, CommonModule, RolesDetailedDelisonComponent, PermissionsViewByUserComponent],
+  imports: [AgGridModule, CommonModule],
   styles: [`
     ::ng-deep .ag-cell-inline-editing {
       background-color: #fff3cd !important;
@@ -190,6 +190,7 @@ export class PosicionDelisonComponent implements ICellRendererAngularComp, After
   isAdvanced: boolean = false;
 
   private modalService = inject(ModalService);
+  private readonly cdr = inject(ChangeDetectorRef);
   
   private editableColumnOrder = ['description'];
   private enterPressed = false;
@@ -292,7 +293,8 @@ export class PosicionDelisonComponent implements ICellRendererAngularComp, After
     this.idUser = this.signalsService.getIdUSer()();
     this.isAdvanced = this.signalsService.getIsAdvanced();
     this.loadPosicionData();
-  }
+  
+    this.cdr.detectChanges();}
 
   ngAfterViewInit(): void {
     // Se elimina la llamada a focus() para evitar el parpadeo/redimensionamiento del grid al abrir el detalle.
@@ -410,7 +412,8 @@ export class PosicionDelisonComponent implements ICellRendererAngularComp, After
       alerts.basicAlert('Error', 'No se pudieron guardar las posiciones', 'error');
       console.error(error);
     }
-  }
+  
+    this.cdr.detectChanges();}
 
   async deleteSelectedPosicion() {
     if (!this.selectedPosicion) return;
@@ -440,7 +443,8 @@ export class PosicionDelisonComponent implements ICellRendererAngularComp, After
       alerts.basicAlert('Error', 'No se pudo eliminar la posición', 'error');
       console.error(error);
     }
-  }
+  
+    this.cdr.detectChanges();}
 
   private cleanData(data: any): any {
     const cleanedData = { ...data };

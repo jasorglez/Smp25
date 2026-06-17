@@ -1,4 +1,4 @@
-import { Component, Input, inject, OnInit } from '@angular/core';
+import { Component, Input, inject, OnInit, ChangeDetectorRef} from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { DomSanitizer, SafeResourceUrl } from '@angular/platform-browser';
 import { ICellRendererParams } from 'ag-grid-enterprise';
@@ -140,6 +140,7 @@ export class PdfDetailComponent implements OnInit, ICellRendererAngularComp {
   @Input() context: any;
 
   private logbookService      = inject(LogbookService);
+  private readonly cdr = inject(ChangeDetectorRef);
   private rootService         = inject(RootService);
   private base64Service       = inject(Base64EncodeService);
   private signalsService      = inject(SignalsService);
@@ -156,7 +157,8 @@ export class PdfDetailComponent implements OnInit, ICellRendererAngularComp {
   agInit(params: ICellRendererParams): void {
     this.data    = params.data;
     this.context = params.context;
-  }
+  
+    this.cdr.detectChanges();}
 
   refresh(params: ICellRendererParams): boolean {
     this.data = params.data;
@@ -755,14 +757,16 @@ export class PdfDetailComponent implements OnInit, ICellRendererAngularComp {
       console.error('Error generando PDF:', err);
       this.isLoading = false;
     }
-  }
+  
+    this.cdr.detectChanges();}
 
   // ── Helpers privados ────────────────────────────────────────────────────────
   private async tryB64(url: string): Promise<string | null> {
     if (!url) return null;
     try { return await this.base64Service.convertImageToBase64(url); }
     catch { return null; }
-  }
+  
+    this.cdr.detectChanges();}
 
   private fmtCurrency(val: number | null | undefined): string {
     if (val == null) return '$0.00';

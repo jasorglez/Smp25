@@ -1,4 +1,4 @@
-import { Component, inject, OnDestroy } from '@angular/core';
+import { Component, inject, OnDestroy, ChangeDetectorRef} from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { AgGridAngular } from 'ag-grid-angular';
 import { ColDef, GridApi, GridReadyEvent } from 'ag-grid-enterprise';
@@ -43,6 +43,7 @@ import { alerts } from 'app/helpers/alerts';
 })
 export class DetallesArticuloFiltradoComponent implements OnDestroy {
   private productionService = inject(ProductionService);
+  private readonly cdr = inject(ChangeDetectorRef);
   private salidasService = inject(SalidasMpService);
 
   private internalParams: any;
@@ -116,7 +117,8 @@ export class DetallesArticuloFiltradoComponent implements OnDestroy {
       empleadoActual: row.__empleadoSalida ?? this.rowData.find(r => r !== row && r.__empleadoSalida)?.__empleadoSalida ?? null,
       onResolve: (res: { idArticulo: number; cantidad: number; empleado: string; lotes: any[] }) => this.aplicarSalida(row, res),
     });
-  }
+  
+    this.cdr.detectChanges();}
 
   /** Pega artículo + cantidad (espejo) y guarda el reparto por lote para persistir en salidas_mp. */
   private aplicarSalida(row: any, res: { idArticulo: number; cantidad: number; empleado: string; lotes: any[] }) {
@@ -165,7 +167,8 @@ export class DetallesArticuloFiltradoComponent implements OnDestroy {
     }
 
     this.registerOnRow(params);
-  }
+  
+    this.cdr.detectChanges();}
 
   private registerOnRow(params: any) {
     if (!params?.data) return;
@@ -305,7 +308,8 @@ export class DetallesArticuloFiltradoComponent implements OnDestroy {
     } catch (e) {
       console.error('Error cargando artículos de mat detalle:', e);
     }
-  }
+  
+    this.cdr.detectChanges();}
 
   private addAutoRow(focusNew = true) {
     // Don't add if there's already an unfilled new row
@@ -380,7 +384,8 @@ export class DetallesArticuloFiltradoComponent implements OnDestroy {
       console.error('Error guardando artículos:', e);
       alerts.reqErrorToast('Error al guardar');
     }
-  }
+  
+    this.cdr.detectChanges();}
 
   /** Persiste el reparto por lote en salidas_mp (reemplaza las previas de este artículo-molienda). */
   private async persistSalidas(row: any) {
@@ -402,7 +407,8 @@ export class DetallesArticuloFiltradoComponent implements OnDestroy {
     } catch (e) {
       console.error('Error guardando salidas MP:', e);
     }
-  }
+  
+    this.cdr.detectChanges();}
 
   revert() {
     this.rowData = JSON.parse(JSON.stringify(this.originalRowData));
@@ -435,7 +441,8 @@ export class DetallesArticuloFiltradoComponent implements OnDestroy {
       console.error('Error eliminando artículo:', e);
       alerts.reqErrorToast('Error al eliminar');
     }
-  }
+  
+    this.cdr.detectChanges();}
 
   private sortRows() {
     this.rowData.sort((a: any, b: any) => {

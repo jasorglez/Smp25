@@ -1,4 +1,4 @@
-import { Component, HostListener, effect, inject } from '@angular/core';
+import { Component, HostListener, effect, inject, ChangeDetectorRef} from '@angular/core';
 import { ColDef, GridApi, GridReadyEvent } from 'ag-grid-enterprise';
 import { alerts } from 'app/helpers/alerts';
 import { AgGridModule } from 'ag-grid-angular';
@@ -36,6 +36,7 @@ export class RootComponent {
 
 
   private rootService = inject(RootService);
+  private readonly cdr = inject(ChangeDetectorRef);
   private inegiService = inject(InegiService);
   private imageHandlerService = inject(ImageHandlerService);
   private branchesService = inject(BranchsService);
@@ -696,7 +697,8 @@ public gridOptions: any = {
       console.error(error);
       alerts.basicAlert('Error', 'Ocurrió un error al actualizar los datos. Por favor, intente nuevamente.', 'error');
     }
-  }
+  
+    this.cdr.detectChanges();}
 
   private logPeriferico(accion: string, empresa: string) {
     this.peripheralCurrentStep++;
@@ -1004,7 +1006,8 @@ public gridOptions: any = {
     } finally {
       this.endPeripheralProgress();
     }
-  }
+  
+    this.cdr.detectChanges();}
 
   // Verifica y crea entidades por defecto que faltan en una empresa existente.
   // Cada paso es independiente: un fallo no detiene los demás.
@@ -1325,7 +1328,8 @@ public gridOptions: any = {
     } catch (e) { console.error('ensure paso 15 (equipos):', e); }
 
     this.endPeripheralProgress();
-  }
+  
+    this.cdr.detectChanges();}
 
   revert() {
     this.obtenerDatos();

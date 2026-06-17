@@ -1,4 +1,4 @@
-import { Component, effect, inject } from '@angular/core';
+import { Component, effect, inject, ChangeDetectorRef} from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { AgGridModule } from 'ag-grid-angular';
@@ -15,6 +15,7 @@ import { alerts } from 'app/helpers/alerts';
 })
 export class HerramientasComponent {
   private signalsService     = inject(SignalsService);
+  private readonly cdr = inject(ChangeDetectorRef);
   private herramientaService = inject(HerramientaService);
 
   rowData: any[]      = [];
@@ -163,7 +164,8 @@ export class HerramientasComponent {
     } catch (e) {
       alerts.basicAlert('Error', 'No se pudieron guardar los cambios', 'error');
     }
-  }
+  
+    this.cdr.detectChanges();}
 
   revertChanges() {
     this.rowData    = JSON.parse(JSON.stringify(this.originalData));
@@ -194,7 +196,8 @@ export class HerramientasComponent {
     } catch (e) {
       alerts.basicAlert('Error', 'No se pudo eliminar', 'error');
     }
-  }
+  
+    this.cdr.detectChanges();}
 
   private cleanRow(row: any) {
     const clean = { ...row };

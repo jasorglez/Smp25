@@ -243,7 +243,8 @@ export class WorkprogramDistributionFullComponent implements OnChanges {
       this.isLoading = false;
       this.cdr.detectChanges();
     }
-  }
+  
+    this.cdr.detectChanges();}
 
   // ── Build column definitions ─────────────────────────────────────────
   private buildColDefs(): void {
@@ -493,5 +494,6 @@ export class WorkprogramDistributionFullComponent implements OnChanges {
       console.error(err);
       alerts.basicAlert('Error', 'Error al guardar las distribuciones.', 'error');
     }
-  }
+  
+    this.cdr.detectChanges();}
 }

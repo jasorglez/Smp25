@@ -1,4 +1,4 @@
-import { Component, inject } from '@angular/core';
+import { Component, inject, ChangeDetectorRef} from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { AgGridModule } from 'ag-grid-angular';
@@ -238,6 +238,7 @@ const GRAY  = '#555555';
 })
 export class DetalleItemsCotizacionComponent implements ICellRendererAngularComp {
   private svc        = inject(CotizacionesService);
+  private readonly cdr = inject(ChangeDetectorRef);
   private matSvc     = inject(MaterialsService);
   private rootSvc    = inject(RootService);
   private b64Svc     = inject(Base64EncodeService);
@@ -345,7 +346,8 @@ export class DetalleItemsCotizacionComponent implements ICellRendererAngularComp
       this.cargarMateriales();
       this.cargarItems();
     }
-  }
+  
+    this.cdr.detectChanges();}
 
   // CRÍTICO: retornar true para que AG Grid NO destruya/recree el componente
   // cada vez que el padre actualiza rowData (p.ej. suscripción Firestore)
@@ -390,7 +392,8 @@ export class DetalleItemsCotizacionComponent implements ICellRendererAngularComp
     this.rowData      = data;
     this.originalData = JSON.parse(JSON.stringify(data));
     this.hasChanges   = false;
-  }
+  
+    this.cdr.detectChanges();}
 
   onCellEditingStopped(event: any) {
     if (event.column.getColId() === 'cantidad' || event.column.getColId() === 'precio') {
@@ -436,7 +439,8 @@ export class DetalleItemsCotizacionComponent implements ICellRendererAngularComp
       console.error('[Cotizaciones] Error guardando items:', e);
       Swal.fire('Error', e?.message ?? 'No se pudo guardar.', 'error');
     }
-  }
+  
+    this.cdr.detectChanges();}
 
   revert() {
     this.rowData = JSON.parse(JSON.stringify(this.originalData));
@@ -461,7 +465,8 @@ export class DetalleItemsCotizacionComponent implements ICellRendererAngularComp
         this.params.api?.refreshCells({ rowNodes: [this.params.node], columns: ['estado'], force: true });
       }
     } catch { }
-  }
+  
+    this.cdr.detectChanges();}
 
   // ── PDF ───────────────────────────────────────────────────────────────────
 
@@ -481,7 +486,8 @@ export class DetalleItemsCotizacionComponent implements ICellRendererAngularComp
     this.sugerenciasPara = [];
     this.sugerenciasCc   = [];
     this.showEmailModal  = true;
-  }
+  
+    this.cdr.detectChanges();}
 
   cerrarModalCorreo() {
     this.showEmailModal = false;
@@ -677,7 +683,8 @@ export class DetalleItemsCotizacionComponent implements ICellRendererAngularComp
     } finally {
       this.isSendingEmail = false;
     }
-  }
+  
+    this.cdr.detectChanges();}
 
   async generarPdf() {
     if (!this.cotizacion?.id) return;
@@ -846,7 +853,8 @@ export class DetalleItemsCotizacionComponent implements ICellRendererAngularComp
       console.error('Error generando PDF', e);
       this.isLoadingPdf = false;
     }
-  }
+  
+    this.cdr.detectChanges();}
 
   // ── Helpers ───────────────────────────────────────────────────────────────
 

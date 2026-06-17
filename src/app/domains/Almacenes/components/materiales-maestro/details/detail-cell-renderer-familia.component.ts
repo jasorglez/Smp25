@@ -1,4 +1,4 @@
-import { Component } from '@angular/core';
+import { inject, Component, ChangeDetectorRef} from '@angular/core';
 import { ICellRendererAngularComp } from 'ag-grid-angular';
 import { ICellRendererParams } from 'ag-grid-enterprise';
 import { AgGridModule } from 'ag-grid-angular';
@@ -45,6 +45,7 @@ import { runAutosizeAllColumns } from 'app/helpers/ag-grid-autosize.helper';
   `
 })
 export class DetailCellRendererFamiliaComponent implements ICellRendererAngularComp {
+  private readonly cdr = inject(ChangeDetectorRef);
 
   params: any;
   materialId: number;
@@ -105,7 +106,8 @@ export class DetailCellRendererFamiliaComponent implements ICellRendererAngularC
 
     // Cargar datos de familia desde los datos del material
     this.familiaRowData = params.data.familiaData || [];
-  }
+  
+    this.cdr.detectChanges();}
 
   refresh(): boolean {
     return false;
@@ -151,7 +153,8 @@ export class DetailCellRendererFamiliaComponent implements ICellRendererAngularC
       // TODO: Implementar eliminación de la subfamilia
       alerts.basicAlert('Funcionalidad no implementada', 'Eliminar subfamilia próximamente', 'info');
     }
-  }
+  
+    this.cdr.detectChanges();}
 
   onCellClicked(event: any): void {
     const colId = event.column.getColId();

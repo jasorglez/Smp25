@@ -1,5 +1,5 @@
 import { CommonModule } from '@angular/common';
-import { Component, effect, inject } from '@angular/core';
+import { Component, effect, inject, ChangeDetectorRef} from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { IncomesAndExpensesService } from 'app/services/incomes-and-expenses.service';
 import { SignalsService } from 'app/services/signals.service';
@@ -57,6 +57,7 @@ export interface AportacionSocio {
 })
 export class ReporteOperativoSinIvaComponent {
   private incomesAndExpensesService = inject(IncomesAndExpensesService);
+  private readonly cdr = inject(ChangeDetectorRef);
   private projectsService = inject(ProjectsService);
   private signalsService = inject(SignalsService);
   private rootService = inject(RootService);
@@ -216,7 +217,8 @@ export class ReporteOperativoSinIvaComponent {
     } finally {
       this.isLoading = false;
     }
-  }
+  
+    this.cdr.detectChanges();}
 
   private async loadTransferenciasCorporativo(): Promise<void> {
     // Transferencias RECIBIDAS: DEPOSITOs en la empresa actual que tienen idTransferRef (vienen de otra empresa)
@@ -271,7 +273,8 @@ export class ReporteOperativoSinIvaComponent {
         // Ignorar errores de empresas individuales
       }
     }
-  }
+  
+    this.cdr.detectChanges();}
 
   private processData(): void {
     this.processProyectosReporte();
@@ -654,7 +657,8 @@ export class ReporteOperativoSinIvaComponent {
     } finally {
       this.isExportingPdf = false;
     }
-  }
+  
+    this.cdr.detectChanges();}
 
   private buildPdfHeader(logoBase64: string | null): any {
     const logoCell = logoBase64
@@ -986,5 +990,6 @@ export class ReporteOperativoSinIvaComponent {
     } finally {
       this.isExportingXlsx = false;
     }
-  }
+  
+    this.cdr.detectChanges();}
 }

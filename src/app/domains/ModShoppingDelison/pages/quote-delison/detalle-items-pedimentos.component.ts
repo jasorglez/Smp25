@@ -1,4 +1,4 @@
-import { Component, HostListener, inject, OnDestroy } from '@angular/core';
+import { Component, HostListener, inject, OnDestroy, ChangeDetectorRef} from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ICellRendererAngularComp, AgGridModule } from 'ag-grid-angular';
 import { ColDef, GridApi, GridReadyEvent, ICellRendererParams } from 'ag-grid-enterprise';
@@ -14,7 +14,7 @@ import { ItemCommentsService } from 'app/services/item-comments.service';
 @Component({
   selector: 'app-detalle-items-pedimentos',
   standalone: true,
-  imports: [CommonModule, AgGridModule, ItemCommentsCellRendererComponent],
+  imports: [CommonModule, AgGridModule],
   template: `
     <div class="detail-grid-container">
       <div *ngIf="articulosLocked"
@@ -79,6 +79,7 @@ export class DetalleItemsPedimentosComponent implements ICellRendererAngularComp
   private context: any;
   private gridApi!: GridApi;
   private ocAndReqsService = inject(OcAndReqsService);
+  private readonly cdr = inject(ChangeDetectorRef);
   private signalsService = inject(SignalsService);
   private pedimentoModificationService = inject(PedimentoModificationService);
   private itemCommentsService = inject(ItemCommentsService);
@@ -132,7 +133,8 @@ export class DetalleItemsPedimentosComponent implements ICellRendererAngularComp
         this.pedimentoModificationService.pedimentoModified$.next(this.cotizacionId);
       }
     });
-  }
+  
+    this.cdr.detectChanges();}
 
   ngOnDestroy(): void {
     this.commentSub?.unsubscribe();
@@ -170,7 +172,8 @@ export class DetalleItemsPedimentosComponent implements ICellRendererAngularComp
     } catch (e) {
       console.warn('hydrateArticulosLockIfNeeded', e);
     }
-  }
+  
+    this.cdr.detectChanges();}
 
   refresh(params?: ICellRendererParams): boolean {
     if (params) {
@@ -279,7 +282,8 @@ export class DetalleItemsPedimentosComponent implements ICellRendererAngularComp
     } catch (e) {
       console.warn('refreshArticulosFromServer', e);
     }
-  }
+  
+    this.cdr.detectChanges();}
 
   buildRowData() {
     const articulos = (this.params.data.articulos || []).filter(
@@ -420,7 +424,8 @@ export class DetalleItemsPedimentosComponent implements ICellRendererAngularComp
       console.error('❌ Error al guardar cambios:', error);
       alerts.basicAlert('Error', 'Ocurrió un error al guardar los cambios', 'error');
     }
-  }
+  
+    this.cdr.detectChanges();}
 
   revert() {
     if (this.articulosLocked) return;
@@ -552,7 +557,8 @@ export class DetalleItemsPedimentosComponent implements ICellRendererAngularComp
     } catch (error) {
       console.error('❌ Error al actualizar pedimentoNum en requisición:', error);
     }
-  }
+  
+    this.cdr.detectChanges();}
 
   get colDefs(): ColDef[] {
     if (this._colDefs) {

@@ -1,5 +1,5 @@
 import { CommonModule } from '@angular/common';
-import { Component, ViewChild } from '@angular/core';
+import { inject, Component, ViewChild, ChangeDetectorRef} from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { ICellEditorAngularComp } from 'ag-grid-angular';
 
@@ -49,6 +49,7 @@ import { ICellEditorAngularComp } from 'ag-grid-angular';
   styleUrl: './autocomplete-editor.component.scss'
 })
 export class AutocompleteEditorComponent implements ICellEditorAngularComp {
+  private readonly cdr = inject(ChangeDetectorRef);
   private params: any;
   public value: any;
   public filteredList: string[] = [];
@@ -60,7 +61,8 @@ export class AutocompleteEditorComponent implements ICellEditorAngularComp {
   agInit(params: any): void {
     this.params = params;
     this.value = params.value;
-  }
+  
+    this.cdr.detectChanges();}
 
   filterValues(searchTerm: string) {
     // Convertir a mayúsculas mientras escribe si toUpperCase está habilitado

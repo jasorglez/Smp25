@@ -1,4 +1,4 @@
-import { Component, effect, HostListener, inject } from '@angular/core';
+import { Component, effect, HostListener, inject, ChangeDetectorRef} from '@angular/core';
 import { AgGridModule } from 'ag-grid-angular';
 import { ColDef, GridApi, GridReadyEvent, CellDoubleClickedEvent,} from 'ag-grid-enterprise';
 import { CommonModule } from '@angular/common';
@@ -13,12 +13,13 @@ import { DetailFamilySubFamilyComponent } from './DetailFamilySubFamily/DetailFa
 @Component({
   selector: 'app-family-sub-family',
   standalone: true,
-  imports: [AgGridModule, CommonModule , DetailFamilySubFamilyComponent,],
+  imports: [AgGridModule, CommonModule ],
   templateUrl: './FamilySubFamily.component.html',
 })
 export class FamilySubFamilyComponent { 
 
   private familySubFamily = inject(FamilySubFamily);
+  private readonly cdr = inject(ChangeDetectorRef);
   private signalsService = inject(SignalsService);
   private catalogsService = inject(CatalogsService);
 
@@ -183,6 +184,7 @@ private cleanDataForServer(data: any): any {
     this.familySubFamily.getMasterFamily(this.idRoot).subscribe(
       (data: any) => {
         this.rowData = data;
+        this.cdr.detectChanges();
       },
       (error) => console.error('Error fetching data:', error)
     );
@@ -192,6 +194,7 @@ private cleanDataForServer(data: any): any {
     this.familySubFamily.getCatalogsFamily(this.idRoot).subscribe(
       (data: any) => {
         this.families = data;
+        this.cdr.detectChanges();
       },
       (error) => console.error('Error fetching data:', error)
     );
@@ -200,6 +203,7 @@ private cleanDataForServer(data: any): any {
     this.catalogsService.getCatalogsVigente(this.idRoot, 'FAM-CAT').subscribe(
       (data: any) => {
         this.familiasVigente = data;
+        this.cdr.detectChanges();
       },
       (error) => console.error('Error fetching data:', error)
     );
@@ -410,7 +414,8 @@ private cleanDataForServer(data: any): any {
               'error'
             );
           }
-    }
+    
+      this.cdr.detectChanges();}
 
     onSelectionChanged(event: any): void {
       const selectedRows = event.api.getSelectedRows();
@@ -450,7 +455,8 @@ private cleanDataForServer(data: any): any {
       }
     }
       
-    }
+    
+      this.cdr.detectChanges();}
         togglePermissions() {
         if (!this.gridApi) {
           console.warn('Grid API not ready yet in togglePermissions()');

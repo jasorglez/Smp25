@@ -1,4 +1,4 @@
-import { Component, ViewChild, ElementRef, AfterViewInit } from '@angular/core';
+import { inject, Component, ViewChild, ElementRef, AfterViewInit, ChangeDetectorRef} from '@angular/core';
 
 @Component({
   selector: 'app-fecha-editor',
@@ -16,6 +16,7 @@ import { Component, ViewChild, ElementRef, AfterViewInit } from '@angular/core';
   `
 })
 export class FechaEditorComponent implements AfterViewInit {
+  private readonly cdr = inject(ChangeDetectorRef);
   @ViewChild('inputFecha') inputFecha!: ElementRef;
 
   private dia: number = 1;
@@ -39,7 +40,8 @@ export class FechaEditorComponent implements AfterViewInit {
         this.anio = date.getFullYear();
       }
     }
-  }
+  
+    this.cdr.detectChanges();}
 
   ngAfterViewInit(): void {
     setTimeout(() => {

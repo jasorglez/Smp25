@@ -1,4 +1,4 @@
-import { Component, inject, OnDestroy, Renderer2, RendererFactory2 } from '@angular/core';
+import { Component, inject, OnDestroy, Renderer2, RendererFactory2, ChangeDetectorRef} from '@angular/core';
 import { Subscription } from 'rxjs';
 import { ICellRendererAngularComp } from 'ag-grid-angular';
 import { ColDef, ICellRendererParams } from 'ag-grid-enterprise';
@@ -29,7 +29,7 @@ import { PrecioMonedaEditorComponent, MonedaOpt } from '../editors/precio-moneda
   selector: 'app-detalle-asignproveeds-matmaestro',
   standalone: true,
   providers: [CurrencyPipe],
-  imports: [AgGridModule, CommonModule, AutocompleteEditorComponent, PrecioMonedaEditorComponent],
+  imports: [AgGridModule, CommonModule],
   template: `
     <div
       style="padding: 10px; background-color: #e3f2fd; height: 100%; display: flex; flex-direction: column;">
@@ -92,6 +92,7 @@ import { PrecioMonedaEditorComponent, MonedaOpt } from '../editors/precio-moneda
 export class DetalleAsignProveedsMaestroComponent implements ICellRendererAngularComp, OnDestroy {
 
   private customersService = inject(CustomersService);
+  private readonly cdr = inject(ChangeDetectorRef);
   private branchsService = inject(BranchsService);
   private signalsService = inject(SignalsService);
   private providersService = inject(ProvidersService);
@@ -730,7 +731,8 @@ export class DetalleAsignProveedsMaestroComponent implements ICellRendererAngula
       providers: this.providers, // Pasar lista de proveedores para resolver nombres en detalles-sucursalesproveedor
       filteredProviders: this.filteredProviders // Pasar proveedores filtrados también
     };
-  }
+  
+    this.cdr.detectChanges();}
 
   /** Carga el catálogo de monedas (type='CURRENCY') y resuelve la moneda default (MXN). */
   private loadMonedas(): void {
@@ -959,7 +961,8 @@ export class DetalleAsignProveedsMaestroComponent implements ICellRendererAngula
       this.providers = [];
       this.filteredProviders = [];
     }
-  }
+  
+    this.cdr.detectChanges();}
 
   loadBranches() {
     this.branchsService.getBranches2fields(this.idRoot).subscribe({
@@ -1078,7 +1081,8 @@ export class DetalleAsignProveedsMaestroComponent implements ICellRendererAngula
         this.proveedorGridApi.refreshCells({ force: true });
       }
     }
-  }
+  
+    this.cdr.detectChanges();}
 
   private autosizeProveedorColumns(): void {
     if (!this.proveedorGridApi) return;
@@ -1104,7 +1108,8 @@ export class DetalleAsignProveedsMaestroComponent implements ICellRendererAngula
     if (this.proveedorGridApi) {
       this.proveedorGridApi.refreshCells({ force: true });
     }
-  }
+  
+    this.cdr.detectChanges();}
 
   private sortProveedorRowData() {
     if (!this.providers?.length && !this.filteredProviders?.length) return;
@@ -1379,7 +1384,8 @@ export class DetalleAsignProveedsMaestroComponent implements ICellRendererAngula
         console.error('❌ Error al guardar proveedores:', error);
       }
     }
-  }
+  
+    this.cdr.detectChanges();}
 
   // Método para actualizar el contador de proveedores en el grid padre
   updateProviderCountInParent(): void {
@@ -1462,7 +1468,8 @@ export class DetalleAsignProveedsMaestroComponent implements ICellRendererAngula
         }
       );
     }
-  }
+  
+    this.cdr.detectChanges();}
 
   private generateFakeSucursalData(): any[] {
     const sucursalNombres = ['BODEGAS', 'DELI', 'TIENDA 1'];

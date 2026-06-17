@@ -1,4 +1,4 @@
-import { Component } from '@angular/core';
+import { inject, Component, ChangeDetectorRef} from '@angular/core';
 import { ICellRendererAngularComp } from 'ag-grid-angular';
 import { ICellRendererParams, IRowNode } from 'ag-grid-community';
 import { CommonModule } from '@angular/common';
@@ -29,6 +29,7 @@ export interface IDeleteButtonCellRendererParams extends ICellRendererParams {
   `
 })
 export class DeleteButtonCellRendererComponent implements ICellRendererAngularComp {
+  private readonly cdr = inject(ChangeDetectorRef);
   public params!: IDeleteButtonCellRendererParams;
   public iconClass: string = 'bi bi-trash';
   public iconColor: string = '#dc3545';
@@ -43,7 +44,8 @@ export class DeleteButtonCellRendererComponent implements ICellRendererAngularCo
     this.title = this.params.title || 'Eliminar registro';
     this.disabledTitle = this.params.disabledTitle || 'No se puede eliminar, tiene detalles';
     this.updateDisabledState();
-  }
+  
+    this.cdr.detectChanges();}
 
   refresh(params: IDeleteButtonCellRendererParams): boolean {
     this.params = params;

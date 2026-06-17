@@ -1,4 +1,4 @@
-import { Component, OnInit, inject, effect } from '@angular/core';
+import { Component, OnInit, inject, effect, ChangeDetectorRef} from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { AgGridModule } from 'ag-grid-angular';
@@ -179,6 +179,7 @@ import Swal from 'sweetalert2';
 })
 export class MisCursosComponent implements OnInit {
   private svc        = inject(CursosService);
+  private readonly cdr = inject(ChangeDetectorRef);
   private signalsSvc = inject(SignalsService);
   private rootSvc    = inject(RootService);
 
@@ -274,7 +275,8 @@ export class MisCursosComponent implements OnInit {
       } catch {}
     }
     this.showModal = true;
-  }
+  
+    this.cdr.detectChanges();}
 
   cerrarModal() { this.showModal = false; }
 
@@ -296,7 +298,8 @@ export class MisCursosComponent implements OnInit {
       Swal.fire({ icon: 'success', title: 'Guardado', timer: 1300, showConfirmButton: false });
     } catch { Swal.fire('Error', 'No se pudo guardar.', 'error'); }
     finally   { this.guardando = false; }
-  }
+  
+    this.cdr.detectChanges();}
 
   async expandirCupo() {
     if (!this.selectedItem) return;
@@ -309,7 +312,8 @@ export class MisCursosComponent implements OnInit {
     if (!value) return;
     await this.svc.expandirCupo(this.selectedItem.id!, Number(value));
     Swal.fire({ icon: 'success', title: 'Cupo actualizado', timer: 1300, showConfirmButton: false });
-  }
+  
+    this.cdr.detectChanges();}
 
   async eliminar() {
     if (!this.selectedItem) return;
@@ -321,7 +325,8 @@ export class MisCursosComponent implements OnInit {
     if (!res.isConfirmed) return;
     await this.svc.actualizarCurso(this.selectedItem.id!, { activo: false });
     this.selectedItem = null;
-  }
+  
+    this.cdr.detectChanges();}
 
   getLinkCompartir(slug: string) { return `${window.location.origin}/registrocursos?c=${slug}`; }
 

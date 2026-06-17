@@ -1,4 +1,4 @@
-import { Component, HostListener, inject } from '@angular/core';
+import { Component, HostListener, inject, ChangeDetectorRef} from '@angular/core';
 import { ColDef, GridApi, GridReadyEvent } from 'ag-grid-enterprise';
 import { alerts } from 'app/helpers/alerts';
 import { AgGridModule } from 'ag-grid-angular';
@@ -18,6 +18,7 @@ import { ImageHandlerService } from 'app/services/image-handler.service';
 export class CorporativosComponent {
 
   private rootService = inject(RootService);
+  private readonly cdr = inject(ChangeDetectorRef);
   private imageHandlerService = inject(ImageHandlerService);
 
   notSavedChanges: boolean = false;
@@ -288,7 +289,8 @@ export class CorporativosComponent {
         'error'
       );
     }
-  }
+  
+    this.cdr.detectChanges();}
 
   revert() {
     this.obtenerDatos();

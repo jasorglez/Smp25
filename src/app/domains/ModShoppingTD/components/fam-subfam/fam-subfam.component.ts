@@ -1,4 +1,4 @@
-import { Component, effect, inject } from '@angular/core';
+import { Component, effect, inject, ChangeDetectorRef} from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { AgGridModule } from 'ag-grid-angular';
@@ -73,6 +73,7 @@ import { TrackingService } from 'app/services/tracking.service';
 })
 export class SubfamilyDetailComponent {
   private catalogsService = inject(CatalogsService);
+  private readonly cdr = inject(ChangeDetectorRef);
   private trackingService = inject(TrackingService);
 
   params!: IDetailCellRendererParams;
@@ -104,7 +105,8 @@ export class SubfamilyDetailComponent {
     this.params = params;
     this.parentFamily = params.data;
     this.loadSubfamilies();
-  }
+  
+    this.cdr.detectChanges();}
 
   async loadSubfamilies() {
     const context = this.params.context;
@@ -193,7 +195,8 @@ export class SubfamilyDetailComponent {
     } catch (error: any) {
       alerts.basicAlert('Error', `Error al guardar: ${error?.error?.message || error?.message || 'Error desconocido'}`, 'error');
     }
-  }
+  
+    this.cdr.detectChanges();}
 
   revertSubfamilies() {
     this.subfamiliesData = JSON.parse(JSON.stringify(this.originalData));
@@ -233,7 +236,8 @@ export class SubfamilyDetailComponent {
         alerts.basicAlert('Error', `Error al eliminar: ${error?.error?.message || error?.message || 'Error desconocido'}`, 'error');
       }
     }
-  }
+  
+    this.cdr.detectChanges();}
 
   private cleanDataForSave(data: any): any {
     const cleaned = { ...data };
@@ -250,7 +254,7 @@ export class SubfamilyDetailComponent {
 @Component({
   selector: 'app-fam-subfam',
   standalone: true,
-  imports: [CommonModule, FormsModule, AgGridModule, SubfamilyDetailComponent],
+  imports: [CommonModule, FormsModule, AgGridModule],
   template: `
     <div class="container-fluid p-3">
       <div class="card">
@@ -314,6 +318,7 @@ export class SubfamilyDetailComponent {
 })
 export class FamSubfamComponent {
   private signalsService = inject(SignalsService);
+  private readonly cdr = inject(ChangeDetectorRef);
   private catalogsService = inject(CatalogsService);
   private trackingService = inject(TrackingService);
 
@@ -391,7 +396,8 @@ export class FamSubfamComponent {
       console.error('Error loading families:', error);
       alerts.basicAlert('Error', 'Error al cargar las familias.', 'error');
     }
-  }
+  
+    this.cdr.detectChanges();}
 
   async loadAllSubfamilies() {
     try {
@@ -402,7 +408,8 @@ export class FamSubfamComponent {
     } catch (error) {
       console.error('Error loading subfamilies:', error);
     }
-  }
+  
+    this.cdr.detectChanges();}
 
   onFamilySelectionChanged() {
     const selectedNodes = this.familyGridApi?.getSelectedNodes();
@@ -472,7 +479,8 @@ export class FamSubfamComponent {
     } catch (error: any) {
       alerts.basicAlert('Error', `Error al guardar: ${error?.error?.message || error?.message || 'Error desconocido'}`, 'error');
     }
-  }
+  
+    this.cdr.detectChanges();}
 
   revertFamilies() {
     this.familiesData = JSON.parse(JSON.stringify(this.originalFamiliesData));
@@ -518,7 +526,8 @@ export class FamSubfamComponent {
         alerts.basicAlert('Error', `Error al eliminar: ${error?.error?.message || error?.message || 'Error desconocido'}`, 'error');
       }
     }
-  }
+  
+    this.cdr.detectChanges();}
 
   private cleanDataForSave(data: any): any {
     const cleaned = { ...data };

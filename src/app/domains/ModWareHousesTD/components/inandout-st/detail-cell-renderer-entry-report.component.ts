@@ -1,4 +1,4 @@
-import { Component, OnInit, inject } from '@angular/core';
+import { Component, OnInit, inject, ChangeDetectorRef} from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { DomSanitizer, SafeResourceUrl } from '@angular/platform-browser';
 import { ICellRendererParams, ICellRendererComp } from 'ag-grid-enterprise';
@@ -50,6 +50,7 @@ export class DetailCellRendererEntryReportComponent implements OnInit, ICellRend
   private params!: ICellRendererParams;
   private context: any;
   private sanitizer = inject(DomSanitizer);
+  private readonly cdr = inject(ChangeDetectorRef);
 
   entryData: any = null;
   pdfUrl: SafeResourceUrl | null = null;
@@ -65,7 +66,8 @@ export class DetailCellRendererEntryReportComponent implements OnInit, ICellRend
     this.context = params.context;
     this.entryData = params.data;
     this.generateReport();
-  }
+  
+    this.cdr.detectChanges();}
 
   private async generateReport() {
     if (!this.entryData) return;

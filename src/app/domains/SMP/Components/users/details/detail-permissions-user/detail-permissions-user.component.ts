@@ -1,4 +1,4 @@
-import { Component, HostListener, inject } from '@angular/core';
+import { Component, HostListener, inject, ChangeDetectorRef} from '@angular/core';
 import { RouterModule, ActivatedRoute } from '@angular/router';
 import { DomainsModule } from 'app/domains/domainsmodule';
 import {
@@ -26,11 +26,12 @@ import { AuthService } from 'app/services/auth.service';
 @Component({
   selector: 'app-detail-permissions-user',
   standalone: true,
-  imports: [RouterModule, DomainsModule, AgGridModule, TimeEditorComponent],
+  imports: [RouterModule, DomainsModule, AgGridModule],
   templateUrl: './detail-permissions-user.component.html',
 })
 export class DetailPermissionsUserComponent implements ICellRendererAngularComp {
   private rolesService = inject(RolesService);
+  private readonly cdr = inject(ChangeDetectorRef);
   private clockService = inject(ClockService);
   private timeService = inject(TimeService);
   private signalsService = inject(SignalsService);
@@ -196,7 +197,8 @@ export class DetailPermissionsUserComponent implements ICellRendererAngularComp 
     this.idPosicion = params.idPosicion; // El ID de la posición de la fila maestra
     this.idEmpresa = this.signalsService.getRootSelectedBySidebar()();
     this.obtenerDatos(this.idUser,this.idBranch,this.idRole, this.idPosicion);
-  }
+  
+    this.cdr.detectChanges();}
 
   refresh(params: ICellRendererParams): boolean {
     return false;
@@ -261,7 +263,8 @@ export class DetailPermissionsUserComponent implements ICellRendererAngularComp 
       this.resetGridSize();
       this.isOpen = false;
     }
-  }
+  
+    this.cdr.detectChanges();}
 
   resetGridSize() {
     this.gridHeight = '80vh'; // Reset to default height
@@ -352,7 +355,8 @@ export class DetailPermissionsUserComponent implements ICellRendererAngularComp 
         'error'
       );
     }
-  }
+  
+    this.cdr.detectChanges();}
 
   revertDetailData() {
     this.obtenerDatos(this.idUser,this.idBranch,this.idRole, this.idPosicion);

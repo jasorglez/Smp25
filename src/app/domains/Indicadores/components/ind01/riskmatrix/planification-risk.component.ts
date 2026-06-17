@@ -1,5 +1,5 @@
 import { CommonModule } from '@angular/common';
-import { Component, effect, HostListener, inject } from '@angular/core';
+import { Component, effect, HostListener, inject, ChangeDetectorRef} from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { AgGridModule } from 'ag-grid-angular';
 import { GridApi, ColDef, GridReadyEvent, CellDoubleClickedEvent, ICellRendererParams } from 'ag-grid-enterprise';
@@ -21,6 +21,7 @@ export class PlanificationRiskComponent {
 
 
   private riskMatrixService = inject(RiskmatrixService);
+  private readonly cdr = inject(ChangeDetectorRef);
   private signalsService = inject(SignalsService);
   private modalServiceTable = inject(ModalService);
 
@@ -302,7 +303,8 @@ export class PlanificationRiskComponent {
         'error'
       );
     }
-  }
+  
+    this.cdr.detectChanges();}
 
   async deleteEntry() {
     const selectedNodes = this.gridApi.getSelectedNodes();

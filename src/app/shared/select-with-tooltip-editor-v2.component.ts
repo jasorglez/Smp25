@@ -1,4 +1,4 @@
-import { Component } from '@angular/core';
+import { inject, Component, ChangeDetectorRef} from '@angular/core';
 import { ICellEditorAngularComp } from 'ag-grid-angular';
 import { SelectDropdownService, SelectOption } from './select-dropdown.service';
 
@@ -13,6 +13,7 @@ export interface SelectWithTooltipParams {
   styles: []
 })
 export class SelectWithTooltipEditorV2Component implements ICellEditorAngularComp {
+  private readonly cdr = inject(ChangeDetectorRef);
   private params: any;
   private selectedValue: any = null;
   private shouldCloseOnDestroy = false;
@@ -71,7 +72,8 @@ export class SelectWithTooltipEditorV2Component implements ICellEditorAngularCom
       // El dropdown se cerrará solo cuando el usuario seleccione una opción o haga click fuera
       this.shouldCloseOnDestroy = false;
     }
-  }
+  
+    this.cdr.detectChanges();}
 
   getValue(): any {
     return this.selectedValue;

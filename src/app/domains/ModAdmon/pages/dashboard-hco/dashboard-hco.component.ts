@@ -1,5 +1,5 @@
 import { CommonModule } from '@angular/common';
-import { Component, ElementRef, ViewChild, effect, inject } from '@angular/core';
+import { Component, ElementRef, ViewChild, effect, inject, ChangeDetectorRef} from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { alerts } from 'app/helpers/alerts';
 import { IncomesAndExpensesService } from 'app/services/incomes-and-expenses.service';
@@ -88,6 +88,7 @@ export class DashboardHcoComponent {
   @ViewChild('dashboardExportRef') private dashboardExportRef?: ElementRef<HTMLElement>;
 
   private incomesAndExpensesService = inject(IncomesAndExpensesService);
+  private readonly cdr = inject(ChangeDetectorRef);
   private cuentasContablesService = inject(CuentasContablesService);
   private signalsService = inject(SignalsService);
 
@@ -193,7 +194,8 @@ export class DashboardHcoComponent {
     } finally {
       this.isExportingPdf = false;
     }
-  }
+  
+    this.cdr.detectChanges();}
 
   private buildStructuredPdfContent(images: {
     pieChart: string | null;
@@ -390,7 +392,8 @@ export class DashboardHcoComponent {
     } finally {
       this.isExportingXlsx = false;
     }
-  }
+  
+    this.cdr.detectChanges();}
 
   private buildEditableDashboardWorksheet(worksheet: any): number {
     worksheet.views = [{ showGridLines: false }];
@@ -613,7 +616,8 @@ export class DashboardHcoComponent {
         ext: { width: 1230, height: 300 }
       });
     }
-  }
+  
+    this.cdr.detectChanges();}
 
   private async captureElementAsBase64(selector: string): Promise<string | null> {
     const rootElement = this.dashboardExportRef?.nativeElement;
@@ -637,7 +641,8 @@ export class DashboardHcoComponent {
     });
 
     return canvas.toDataURL('image/png');
-  }
+  
+    this.cdr.detectChanges();}
 
   private getFilterPeriodLabel(): string {
     const start = this.startDate || 'sin fecha inicial';

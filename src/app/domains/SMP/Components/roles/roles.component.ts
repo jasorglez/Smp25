@@ -1,5 +1,5 @@
 import { CommonModule } from '@angular/common';
-import { Component, computed, effect, HostListener, inject, Injectable } from '@angular/core';
+import { Component, computed, effect, HostListener, inject, Injectable, ChangeDetectorRef} from '@angular/core';
 import { AgGridModule } from 'ag-grid-angular';
 import { ColDef, GridApi, GridReadyEvent } from 'ag-grid-community';
 import { UsersService } from 'app/services/users.service';
@@ -64,6 +64,7 @@ export class RolesComponent {
   private permissionType: string = 'root';
 
   private usersService        = inject(UsersService);
+  private readonly cdr = inject(ChangeDetectorRef);
 
   private catalogService = inject(CatalogsService);
   private signalsService = inject(SignalsService);
@@ -387,7 +388,8 @@ constructor() {
         'error'
       );
     }
-  }
+  
+    this.cdr.detectChanges();}
 
   async deleteRol() {
     const selectedNodes = this.gridApi.getSelectedNodes();

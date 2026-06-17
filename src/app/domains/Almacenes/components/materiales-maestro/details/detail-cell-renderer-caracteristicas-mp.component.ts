@@ -1,4 +1,4 @@
-import { Component, inject, OnDestroy, signal } from '@angular/core';
+import { Component, inject, OnDestroy, signal, ChangeDetectorRef} from '@angular/core';
 import { ICellRendererAngularComp } from 'ag-grid-angular';
 import { AgGridModule } from 'ag-grid-angular';
 import { CommonModule } from '@angular/common';
@@ -49,6 +49,7 @@ import { CaracteristicasMateriaPrimaService, CaracteristicaMateriaPrima } from '
 })
 export class DetailCellRendererCaracteristicasMpComponent implements ICellRendererAngularComp, OnDestroy {
   private service = inject(CaracteristicasMateriaPrimaService);
+  private readonly cdr = inject(ChangeDetectorRef);
   private pendingChangesService = inject(PendingChangesService);
   private saverId = '';
 
@@ -122,7 +123,8 @@ export class DetailCellRendererCaracteristicasMpComponent implements ICellRender
     });
 
     this.loadData();
-  }
+  
+    this.cdr.detectChanges();}
 
   ngOnDestroy(): void {
     if (this.saverId) this.pendingChangesService.unregister(this.saverId);
@@ -212,7 +214,8 @@ export class DetailCellRendererCaracteristicasMpComponent implements ICellRender
       console.error('Error guardando características MP:', e);
       if (!idMap) alerts.basicAlert('Error', 'No se pudieron guardar las características.', 'error');
     }
-  }
+  
+    this.cdr.detectChanges();}
 
   deleteSelected() {
     if (!this.gridApi) { alerts.basicAlert('Error', 'Grid no inicializado.', 'error'); return; }

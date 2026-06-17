@@ -1,4 +1,4 @@
-import { Component, inject, OnInit } from '@angular/core';
+import { Component, inject, OnInit, ChangeDetectorRef} from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { AgGridModule } from 'ag-grid-angular';
 import { ColDef, GridApi, GridReadyEvent } from 'ag-grid-enterprise';
@@ -62,6 +62,7 @@ export class DescripcionEmpaqueComponent implements OnInit {
   public gridApi!: GridApi;
 
   private svc     = inject(DescripcionEmpaqueService);
+  private readonly cdr = inject(ChangeDetectorRef);
   private signals = inject(SignalsService);
 
   rowData: EmpaqueRow[] = [];
@@ -190,7 +191,8 @@ export class DescripcionEmpaqueComponent implements OnInit {
     } finally {
       this.saving = false;
     }
-  }
+  
+    this.cdr.detectChanges();}
 
   revert() {
     this.rowData = JSON.parse(JSON.stringify(this.originalRowData));
@@ -218,5 +220,6 @@ export class DescripcionEmpaqueComponent implements OnInit {
     } catch {
       alerts.basicAlert('Error', 'No se pudo eliminar el registro.', 'error');
     }
-  }
+  
+    this.cdr.detectChanges();}
 }

@@ -1,4 +1,4 @@
-import { Component, OnInit, inject, effect, ViewChild } from '@angular/core';
+import { Component, OnInit, inject, effect, ViewChild, ChangeDetectorRef} from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { AgGridModule } from 'ag-grid-angular';
@@ -27,18 +27,14 @@ import { BitacoraWrapperComponent }   from './bitacora-wrapper.component';
   selector: 'app-sistema',
   standalone: true,
   imports: [
-    CommonModule, FormsModule, AgGridModule,
-    ButtonCellRendererExpenditureComponent,
-    PdfButtonCellRendererComponent, PdfDetailComponent,
-    BitacoraPersonalComponent, BitacoraMaterialComponent, BitacoraEquiposComponent,
-    BitacoraWrapperComponent,
-  ],
+    CommonModule, FormsModule, AgGridModule],
   templateUrl: './sistema.component.html',
   styleUrl: './sistema.component.scss'
 })
 export class SistemaComponent implements OnInit {
 
   private dailyReportService = inject(DailyReportService);
+  private readonly cdr = inject(ChangeDetectorRef);
   private logbookService = inject(LogbookService);
   private signalsService    = inject(SignalsService);
   private conventionsService = inject(ConventionsService);
@@ -551,7 +547,8 @@ export class SistemaComponent implements OnInit {
       console.error('Error al guardar:', error);
       alerts.basicAlert('Error', error?.message || 'Error al guardar los cambios', 'error');
     }
-  }
+  
+    this.cdr.detectChanges();}
 
   revertChanges(): void {
     this.rowData = JSON.parse(JSON.stringify(this.originalRowData));
@@ -576,7 +573,8 @@ export class SistemaComponent implements OnInit {
       next: () => { alerts.basicAlert('Eliminado', 'Reporte eliminado', 'success'); this.loadReports(); },
       error: () => alerts.basicAlert('Error', 'No se pudo eliminar el reporte', 'error'),
     });
-  }
+  
+    this.cdr.detectChanges();}
 
   onRowSelected(event: any): void {
     if (event.node?.isSelected()) {
@@ -860,7 +858,8 @@ export class SistemaComponent implements OnInit {
       console.error('Error al copiar del día anterior:', e);
       alerts.basicAlert('Error', e?.message || 'No se pudo copiar del día anterior', 'error');
     }
-  }
+  
+    this.cdr.detectChanges();}
 
   private typeLabel(typeNote: string): string {
     const labels: Record<string, string> = {

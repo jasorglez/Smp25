@@ -1,4 +1,4 @@
-import { Component } from '@angular/core';
+import { inject, Component, ChangeDetectorRef} from '@angular/core';
 import { ICellRendererAngularComp } from 'ag-grid-angular';
 import { ICellRendererParams } from 'ag-grid-enterprise';
 import { CommonModule } from '@angular/common';
@@ -218,6 +218,7 @@ import { CommonModule } from '@angular/common';
   `]
 })
 export class CatalogTooltipCellComponent implements ICellRendererAngularComp {
+  private readonly cdr = inject(ChangeDetectorRef);
   showTooltip = false;
   isExpanded = false;
   hasChildren = false;
@@ -270,7 +271,8 @@ export class CatalogTooltipCellComponent implements ICellRendererAngularComp {
         this.displayText = this.itemName;
       }
     }
-  }
+  
+    this.cdr.detectChanges();}
 
   private shouldRenderInColumn(): boolean {
     // Categorías solo en columna categoryDisplay

@@ -1,4 +1,4 @@
-import { Component, OnInit, inject, effect, Input } from '@angular/core';
+import { Component, OnInit, inject, effect, Input, ChangeDetectorRef} from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { AgGridModule } from 'ag-grid-angular';
@@ -22,13 +22,14 @@ import { UsersService } from 'app/services/users.service';
 @Component({
   selector: 'app-inandout-st',
   standalone: true,
-  imports: [CommonModule, FormsModule, AgGridModule, DetailCellRendererEntryItemsComponent, PdfButtonCellRendererComponent],
+  imports: [CommonModule, FormsModule, AgGridModule],
   templateUrl: './inandout-st.component.html',
 })
 export class InandoutStComponent implements OnInit {
 
   private gridApi!: GridApi;
   private signalsService = inject(SignalsService);
+  private readonly cdr = inject(ChangeDetectorRef);
   private permitionsService = inject(PermitionsService);
   private trackingService = inject(TrackingService);
   private inandoutService = inject(InandoutService);
@@ -561,7 +562,8 @@ export class InandoutStComponent implements OnInit {
       );
       console.error('Error generando reporte:', error);
     }
-  }
+  
+    this.cdr.detectChanges();}
 
   collapseReportDetail(entryId: number) {
     if (this.gridApi) {
@@ -751,7 +753,8 @@ export class InandoutStComponent implements OnInit {
         alerts.basicAlert('Error', `No se pudo eliminar la entrada: ${errorMsg}`, 'error');
       }
     }
-  }
+  
+    this.cdr.detectChanges();}
 
   async saveChanges(): Promise<void> {
     if (!this.hasUnsavedChanges) {
@@ -788,7 +791,8 @@ export class InandoutStComponent implements OnInit {
       const errorMsg = error?.error?.message || error?.message || 'Error desconocido';
       alerts.basicAlert('Error', `No se pudieron guardar los cambios: ${errorMsg}`, 'error');
     }
-  }
+  
+    this.cdr.detectChanges();}
 
   private prepareEntryData(row: any): any {
     return {
@@ -881,7 +885,8 @@ export class InandoutStComponent implements OnInit {
         'error'
       );
     }
-  }
+  
+    this.cdr.detectChanges();}
 
   async deleteDetailRow(params: any, successCallback: () => void, type: string) {
     const entryId = params.data.idInandout;
@@ -908,7 +913,8 @@ export class InandoutStComponent implements OnInit {
         );
       }
     }
-  }
+  
+    this.cdr.detectChanges();}
 
   private cleanItemData(data: any): any {
     const cleanedData = { ...data };

@@ -1,4 +1,4 @@
-import { Component, OnInit, OnDestroy, inject, effect, signal, Input, Output, EventEmitter } from '@angular/core';
+import { Component, OnInit, OnDestroy, inject, effect, Input, Output, EventEmitter, ChangeDetectorRef } from '@angular/core';
 import { ActivatedRoute } from '@angular/router';
 import { AG_GRID_LOCALE_ES } from 'assets/i18n/ag-grid.locale.es';
 import { ColDef, GridApi, GridReadyEvent } from 'ag-grid-enterprise';
@@ -38,21 +38,7 @@ import { PendingChangesService } from 'app/services/pending-changes.service';
   imports: [
     CommonModule,
     FormsModule,
-    AgGridModule,
-    DetalleAsignProveedsMaestroComponent,
-    DetailCellRendererFamiliaComponent,
-    DetailCellRendererSucursalComponent,
-    DetallesCostosxmaterialesComponent,
-    DetailCellRendererSubfamiliaComponent,
-    DetallesSucursalesProveedorComponent,
-    DetailCellRendererParametrosComponent,
-    DetailCellRendererCaracteristicasMpComponent,
-    DetailCellRendererHistoricoComponent,
-    DetailCellRendererJarabeComponent,
-    SelectWithTooltipEditorV2Component,
-    ImageCellRendererComponent,
-    AutocompleteEditorComponent
-  ],
+    AgGridModule],
   templateUrl: './materiales-maestro.component.html',
   styleUrl: './materiales-maestro.component.scss'
 })
@@ -66,6 +52,7 @@ export class MaterialesMaestroComponent implements OnInit, OnDestroy {
 
   private gridApi!: GridApi;
   private materialsService = inject(MaterialsService);
+  private readonly cdr = inject(ChangeDetectorRef);
   private signalsService = inject(SignalsService);
   private catalogsService = inject(CatalogsService);
   private providersService = inject(ProvidersService);
@@ -87,10 +74,7 @@ export class MaterialesMaestroComponent implements OnInit, OnDestroy {
   // 'MATERIAL' (Materia Prima), 'BIENESYSERVICIOS', 'ARTICULOSNUEVOS'.
   private sectionBitFilter: string = 'MATERIAL';
 
-  // Signal: en Angular 21 la detección de cambios exhaustiva lanza NG0100 si un binding
-  // ([rowData]="rowData()") muta de null→array de forma asíncrona como propiedad plana.
-  // Como signal, el cambio se rastrea y la pasada de verificación lee el valor comprometido.
-  rowData = signal<any[] | null>(null);
+  rowData: any[] | null = null;
   allMaterialsData: MaterialsResponse[] = []; // Guarda todos los datos
   gridHeight: string = '80vh';
   selectedMaterial: MaterialsResponse | null = null;
@@ -106,7 +90,7 @@ export class MaterialesMaestroComponent implements OnInit, OnDestroy {
   categories: any[] = [];
   families: any[] = [];
   subfamilies: any[] = [];
-  idSelect:number = 0;
+  idSelect: number = 0;
 
   // Modal de subfamilias
   private modalSubscription?: Subscription;
@@ -215,11 +199,13 @@ export class MaterialesMaestroComponent implements OnInit, OnDestroy {
     } catch (error) {
       console.error('Error loading catalogs:', error);
     }
+
+    this.cdr.detectChanges();
   }
-  
+
   // Obtener familias de una categoría específica
   getFamiliesByCategory(categoryId: number): any[] {
-    return this.families.filter(f => f.parentId === categoryId );
+    return this.families.filter(f => f.parentId === categoryId);
   }
 
   // Obtener subfamilias de una familia específica
@@ -234,35 +220,39 @@ export class MaterialesMaestroComponent implements OnInit, OnDestroy {
       return;
     }
 
-    this.rowData.set(null);
+    this.rowData = null;
 
     // Cargar los catálogos (filtrados por el bit de la sección) antes de
     // filtrar la tabla: un material solo se muestra si su categoría, familia
     // y subfamilia están las 3 marcadas con el bit de la sección actual.
     await this.loadCatalogs();
 
-        this.materialsService.getMaterialsxview(this.idRoot).subscribe({
-          next: (data) => {
-            this.allMaterialsData = data; // snapshot del estado original en BD
-            this.rowData.set(this.filterMaterialsByCatalogBit(data)
-              .slice()
-              .sort((a, b) => {
-                const activeA = a.active ? 1 : 0;
-                const activeB = b.active ? 1 : 0;
-                return activeB - activeA;
-              })
-              .map(material => ({
-                ...material,
-              })));
-            if (this.pendingScrollTarget) {
-              setTimeout(() => this.scrollToTarget(), 150);
-            }
-          },
-          error: (error) => {
-            console.error('Error loading materials:', error);
-            alerts.basicAlert('Error', 'Error al cargar materiales', 'error');
-          }
-        });
+    this.materialsService.getMaterialsxview(this.idRoot).subscribe({
+      next: (data) => {
+        this.allMaterialsData = data; // snapshot del estado original en BD
+        this.rowData = this.filterMaterialsByCatalogBit(data)
+          .slice()
+          .sort((a, b) => {
+            const activeA = a.active ? 1 : 0;
+            const activeB = b.active ? 1 : 0;
+            return activeB - activeA;
+          })
+          .map(material => ({
+            ...material,
+          }));
+        if (this.pendingScrollTarget) {
+          setTimeout(() => this.scrollToTarget(), 150);
+        }
+        this.cdr.detectChanges();
+      },
+      error: (error) => {
+        console.error('Error loading materials:', error);
+        this.rowData = [];
+        this.cdr.detectChanges();
+        alerts.basicAlert('Error', 'Error al cargar materiales', 'error');
+      }
+    });
+
   }
 
   // Filtra materiales: solo los que tienen su categoría, familia y subfamilia
@@ -301,18 +291,20 @@ export class MaterialesMaestroComponent implements OnInit, OnDestroy {
       });
 
       if (filteredMaterial) {
-        this.rowData.set([{
+        this.rowData = [{
           ...filteredMaterial,
-        }]);
+        }];
       } else {
         console.warn('⚠️ No se encontró material con ID:', this.filterMaterialId);
         console.warn('   IDs disponibles (primeros 10):', allMaterials.slice(0, 10).map(m => m.id));
-        this.rowData.set([]);
+        this.rowData = [];
       }
     } catch (error) {
       console.error('❌ Error cargando material filtrado:', error);
       alerts.basicAlert('Error', 'Error al cargar el material', 'error');
     }
+
+    this.cdr.detectChanges();
   }
 
 
@@ -495,7 +487,7 @@ export class MaterialesMaestroComponent implements OnInit, OnDestroy {
         editable: true,
         cellEditor: 'autocompleteEditor',
         cellEditorParams: () => ({
-          filterList: (this.rowData() || [])
+          filterList: this.rowData
             .filter((row: any) => !row.__isNew)
             .map((row: any) => (row.articulo || '').toUpperCase())
             .filter((v: string) => v.length > 0),
@@ -506,7 +498,7 @@ export class MaterialesMaestroComponent implements OnInit, OnDestroy {
           const newValue = (params.newValue || '').toUpperCase().trim();
           if (!newValue) return false;
 
-          const duplicate = (this.rowData() || []).some((row: any, idx: number) =>
+          const duplicate = this.rowData.some((row: any, idx: number) =>
             !row.__isNew &&
             (row.articulo || '').toUpperCase().trim() === newValue
           );
@@ -540,7 +532,7 @@ export class MaterialesMaestroComponent implements OnInit, OnDestroy {
         valueSetter: (params: any) => {
           const newValue = (params.newValue ?? '').toString().toUpperCase().trim();
           if (newValue) {
-            const duplicate = (this.rowData() || []).some((row: any) =>
+            const duplicate = (this.rowData || []).some((row: any) =>
               row !== params.data &&
               (row.prefijo ?? '').toString().toUpperCase().trim() === newValue
             );
@@ -587,7 +579,7 @@ export class MaterialesMaestroComponent implements OnInit, OnDestroy {
           this.hasUnsavedChanges = true;
           // Refrescar la fila para actualizar el combo de familia usando setTimeout
           //setTimeout(() => {
-            params.api.refreshCells({ rowNodes: [params.node], force: true });
+          params.api.refreshCells({ rowNodes: [params.node], force: true });
           //}, 0);
         }
       },
@@ -622,7 +614,7 @@ export class MaterialesMaestroComponent implements OnInit, OnDestroy {
           params.data.subfamilia = '';
           this.hasUnsavedChanges = true;
           //setTimeout(() => {
-            params.api.refreshCells({ rowNodes: [params.node], force: true });
+          params.api.refreshCells({ rowNodes: [params.node], force: true });
           //}, 0);
         },
         cellStyle: (params: any) => {
@@ -666,7 +658,7 @@ export class MaterialesMaestroComponent implements OnInit, OnDestroy {
         onCellValueChanged: (params: any) => {
           this.hasUnsavedChanges = true;
           //setTimeout(() => {
-            params.api.refreshCells({ rowNodes: [params.node], force: true });
+          params.api.refreshCells({ rowNodes: [params.node], force: true });
           //}, 0);
         },
         cellStyle: (params: any) => {
@@ -742,7 +734,7 @@ export class MaterialesMaestroComponent implements OnInit, OnDestroy {
 
 
 
-     {
+      {
         field: 'historico',
         headerName: 'Historico',
         width: 150,
@@ -888,7 +880,7 @@ export class MaterialesMaestroComponent implements OnInit, OnDestroy {
           return;
         }
       }
-      
+
       // Marcar que se está abriendo un detalle para evitar re-renders
       this._isOpeningDetail = true;
 
@@ -1022,7 +1014,7 @@ export class MaterialesMaestroComponent implements OnInit, OnDestroy {
       try {
         const localStorageKey = this.getColumnStateKey();
         localStorage.removeItem(localStorageKey);
-      } catch (e) {}
+      } catch (e) { }
     }
   }
 
@@ -1060,11 +1052,11 @@ export class MaterialesMaestroComponent implements OnInit, OnDestroy {
       this.gridApi.setGridOption('detailCellRendererParams', this._detailParams);
     } else {
       // Solo actualizar si hay cambios reales
-      const hasChanges = 
+      const hasChanges =
         this._detailParams.context.idRoot !== this.idRoot ||
         this._detailParams.context.select !== this.idSelect ||
         this._detailParams.context.data !== this.data;
-      
+
       if (hasChanges) {
         this._detailParams.context.idRoot = this.idRoot;
         this._detailParams.context.data = this.data;
@@ -1170,10 +1162,10 @@ export class MaterialesMaestroComponent implements OnInit, OnDestroy {
       __isNew: true,
     };
 
-    this.rowData.set([newItem, ...(this.rowData() || [])]);
+    this.rowData = [newItem, ...this.rowData];
     this.newlyAddedRows.push(tempId);
     this.hasUnsavedChanges = true;
-    this.gridApi.setGridOption('rowData', this.rowData());
+    this.gridApi.setGridOption('rowData', this.rowData);
 
     setTimeout(() => {
       const firstRowIndex = 0;
@@ -1257,6 +1249,8 @@ export class MaterialesMaestroComponent implements OnInit, OnDestroy {
         alerts.basicAlert('Error', `No se pudo eliminar el material: ${errorMsg}`, 'error');
       }
     }
+
+    this.cdr.detectChanges();
   }
 
   /** Wrapper del botón Guardar: bloquea re-entradas (doble click) mientras corre el guardado. */
@@ -1295,8 +1289,8 @@ export class MaterialesMaestroComponent implements OnInit, OnDestroy {
     }
 
     // Buscar filas nuevas y modificadas
-    const newRows = (this.rowData() || []).filter((row: any) => row.__isNew);
-    const modifiedRows = (this.rowData() || []).filter((row: any) => row.__modified && !row.__isNew);
+    const newRows = this.rowData.filter((row: any) => row.__isNew);
+    const modifiedRows = this.rowData.filter((row: any) => row.__modified && !row.__isNew);
 
     if (newRows.length === 0 && modifiedRows.length === 0) {
       // Nivel 1 no tiene cambios reales, pero podría haber cambios en hijos.
@@ -1321,8 +1315,8 @@ export class MaterialesMaestroComponent implements OnInit, OnDestroy {
     // Validar campos requeridos en filas nuevas
     for (const row of newRows) {
       const faltantes: string[] = [];
-      if (!row.idCategory)   faltantes.push('Categoría');
-      if (!row.idFamilia)    faltantes.push('Familia');
+      if (!row.idCategory) faltantes.push('Categoría');
+      if (!row.idFamilia) faltantes.push('Familia');
       if (!row.idSubfamilia) faltantes.push('Subfamilia');
 
       if (faltantes.length > 0) {
@@ -1434,7 +1428,7 @@ export class MaterialesMaestroComponent implements OnInit, OnDestroy {
             if (newInsumo) {
               modifiedRow.insumo = newInsumo;
               // Reflejar el cambio inmediatamente en el grid
-              const gridRow = (this.rowData() || []).find((r: any) => r.id === modifiedRow.id);
+              const gridRow = this.rowData.find((r: any) => r.id === modifiedRow.id);
               if (gridRow) {
                 gridRow.insumo = newInsumo;
               }
@@ -1500,6 +1494,8 @@ export class MaterialesMaestroComponent implements OnInit, OnDestroy {
       const errorMsg = error?.error?.message || error?.message || 'Error desconocido';
       alerts.basicAlert('Error', `No se pudieron guardar los cambios: ${errorMsg}`, 'error');
     }
+
+    this.cdr.detectChanges();
   }
 
   /**
@@ -1527,7 +1523,7 @@ export class MaterialesMaestroComponent implements OnInit, OnDestroy {
     for (const id of matIds) {
       await lastValueFrom(this.materialsService.updateMaterial(String(id), { fecha: nowIso }))
         .catch(e => console.warn(`No se pudo actualizar Fecha Cambio del material ${id}:`, e));
-      const gridRow = (this.rowData() || []).find((r: any) => Number(r.id) === id);
+      const gridRow = this.rowData.find((r: any) => Number(r.id) === id);
       if (gridRow) gridRow.fecha = nowIso;
     }
     // Forzar el re-render de la columna para que el cambio se vea al instante,
@@ -1535,6 +1531,8 @@ export class MaterialesMaestroComponent implements OnInit, OnDestroy {
     if (this.gridApi) {
       this.gridApi.refreshCells({ force: true, columns: ['fecha'] });
     }
+
+    this.cdr.detectChanges();
   }
 
   private prepareMaterialData(row: any): any {
@@ -1672,6 +1670,8 @@ export class MaterialesMaestroComponent implements OnInit, OnDestroy {
       );
     }
     return newIdMap;
+
+    this.cdr.detectChanges();
   }
 
   async deleteDetailRow(params: any, successCallback: () => void, type: string) {
@@ -1700,6 +1700,8 @@ export class MaterialesMaestroComponent implements OnInit, OnDestroy {
         );
       }
     }
+
+    this.cdr.detectChanges();
   }
 
   private cleanDataForServer(data: any): any {
@@ -1836,6 +1838,8 @@ export class MaterialesMaestroComponent implements OnInit, OnDestroy {
       const errorMsg = error?.error?.message || error?.message || 'Error desconocido';
       alerts.basicAlert('Error', `No se pudo guardar el material: ${errorMsg}`, 'error');
     }
+
+    this.cdr.detectChanges();
   }
 
   closeMaterialModal() {
@@ -1998,6 +2002,8 @@ export class MaterialesMaestroComponent implements OnInit, OnDestroy {
         }
       }
     }
+
+    this.cdr.detectChanges();
   }
 
   /**

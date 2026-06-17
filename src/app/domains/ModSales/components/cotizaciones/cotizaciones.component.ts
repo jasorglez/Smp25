@@ -1,4 +1,4 @@
-import { Component, effect, inject, OnInit, OnDestroy } from '@angular/core';
+import { Component, effect, inject, OnInit, OnDestroy, ChangeDetectorRef} from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { AgGridModule } from 'ag-grid-angular';
@@ -16,12 +16,13 @@ import Swal from 'sweetalert2';
 @Component({
   selector: 'app-cotizaciones',
   standalone: true,
-  imports: [CommonModule, FormsModule, AgGridModule, ButtonCellRendererIncomeComponent, DetalleItemsCotizacionComponent, ConfigCotizacionesComponent],
+  imports: [CommonModule, FormsModule, AgGridModule, ConfigCotizacionesComponent],
   templateUrl: './cotizaciones.component.html',
   styleUrl: './cotizaciones.component.scss',
 })
 export class CotizacionesComponent implements OnInit, OnDestroy {
   private svc           = inject(CotizacionesService);
+  private readonly cdr = inject(ChangeDetectorRef);
   private prospectosSvc = inject(ProspectosService);
   private signalsSvc    = inject(SignalsService);
 
@@ -258,7 +259,8 @@ export class CotizacionesComponent implements OnInit, OnDestroy {
       this.gridApi.setGridOption('rowData', this.rowData);
       this.gridApi.startEditingCell({ rowIndex: 0, colKey: 'numCotizacion' });
     }, 50);
-  }
+  
+    this.cdr.detectChanges();}
 
   async saveChanges() {
     const toSave = this.rowData.filter(c => c.__isNew || c.__modified);
@@ -280,7 +282,8 @@ export class CotizacionesComponent implements OnInit, OnDestroy {
     }
     if (errores.length) Swal.fire('Atención', errores.join('\n'), 'warning');
     else Swal.fire({ icon: 'success', title: 'Guardado', timer: 1200, showConfirmButton: false });
-  }
+  
+    this.cdr.detectChanges();}
 
   revertChanges() {
     this.rowData = JSON.parse(JSON.stringify(this.originalData));
@@ -308,7 +311,8 @@ export class CotizacionesComponent implements OnInit, OnDestroy {
       this.selectedItem = null;
       Swal.fire({ icon: 'success', title: 'Eliminado', timer: 1200, showConfirmButton: false });
     } catch { Swal.fire('Error', 'No se pudo eliminar.', 'error'); }
-  }
+  
+    this.cdr.detectChanges();}
 
   // ── Helpers ───────────────────────────────────────────────────────────────
 

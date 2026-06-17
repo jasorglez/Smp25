@@ -1,4 +1,4 @@
-import { Component, inject } from '@angular/core';
+import { Component, inject, ChangeDetectorRef} from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ICellRendererAngularComp, AgGridModule } from 'ag-grid-angular';
 import { ColDef, GridApi, GridReadyEvent, ICellRendererParams } from 'ag-grid-enterprise';
@@ -70,6 +70,7 @@ export class DetallesPedimentosItemsComponent implements ICellRendererAngularCom
   private context: any;
   private gridApi!: GridApi;
   private ocAndReqsService = inject(OcAndReqsService);
+  private readonly cdr = inject(ChangeDetectorRef);
   private signalsService = inject(SignalsService);
 
   // Cache para evitar re-renderizado
@@ -93,7 +94,8 @@ export class DetallesPedimentosItemsComponent implements ICellRendererAngularCom
     this.requisitionId = params.data.requisitionId || 0;
     this.numeroPedimentoRaw = params.data.numeroPedimentoRaw || 0;
     this.buildRowData();
-  }
+  
+    this.cdr.detectChanges();}
 
   refresh(): boolean {
     return false;
@@ -249,7 +251,8 @@ export class DetallesPedimentosItemsComponent implements ICellRendererAngularCom
     } catch {
       alerts.basicAlert('Error', 'Ocurrió un error al guardar los cambios', 'error');
     }
-  }
+  
+    this.cdr.detectChanges();}
 
   revert() {
     this.rowData = JSON.parse(JSON.stringify(this.originalRowData));
@@ -357,7 +360,8 @@ export class DetallesPedimentosItemsComponent implements ICellRendererAngularCom
       );
 
     } catch { /* silencioso */ }
-  }
+  
+    this.cdr.detectChanges();}
 
   get colDefs(): ColDef[] {
     if (this._colDefs) {

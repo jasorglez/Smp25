@@ -1,4 +1,4 @@
-import { Component, effect, HostListener, inject, OnInit } from '@angular/core';
+import { Component, effect, HostListener, inject, OnInit, ChangeDetectorRef} from '@angular/core';
 import { RouterModule, ActivatedRoute } from '@angular/router';
 import { DomainsModule } from 'app/domains/domainsmodule';
 import {
@@ -26,12 +26,13 @@ import { AuthService } from 'app/services/auth.service';
 @Component({
   selector: 'app-roles-detailed',
   standalone: true,
-  imports: [RouterModule, DomainsModule, AgGridModule, TimeEditorComponent],
+  imports: [RouterModule, DomainsModule, AgGridModule],
   templateUrl: './rolesDelison-detailed.component.html',
   styleUrl: './rolesDelison-detailed.component.scss'
 })
 export class RolesDetailedDelisonComponent implements OnInit {
   private rolesService = inject(RolesService);
+  private readonly cdr = inject(ChangeDetectorRef);
   private signalsService = inject(SignalsService);
   private clockService = inject(ClockService);
   private timeService = inject(TimeService);
@@ -345,7 +346,8 @@ export class RolesDetailedDelisonComponent implements OnInit {
       this.resetGridSize();
       this.isOpen = false;
     }
-  }
+  
+    this.cdr.detectChanges();}
 
   resetGridSize() {
     this.gridHeight = '80vh'; // Reset to default height
@@ -423,7 +425,8 @@ export class RolesDetailedDelisonComponent implements OnInit {
         'error'
       );
     }
-  }
+  
+    this.cdr.detectChanges();}
 
   revertDetailData() {
     this.obtenerDatos(this.idRole, this.idPosicion);

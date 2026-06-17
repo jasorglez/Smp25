@@ -12,7 +12,7 @@ import { lastValueFrom } from 'rxjs';
 @Component({
   selector: 'app-mano-obra-detail-renderer',
   standalone: true,
-  imports: [CommonModule, FormsModule, AgGridModule, SelectWithTooltipEditorV2Component],
+  imports: [CommonModule, FormsModule, AgGridModule],
   template: `
     <div *ngIf="detailType === 'distribution'"
          style="padding: 12px; background: #f8f9fa; height: 100%; box-sizing: border-box;">
@@ -144,7 +144,8 @@ export class ManoObraDetailRendererComponent implements ICellRendererAngularComp
     this.idCompany    = (params as any).context?.idCompany ?? data?.idCompany;
     this.manoObraData = data;
     if (this.detailType === 'distribution') this.loadDistribution();
-  }
+  
+    this.cdr.detectChanges();}
 
   refresh(_params: ICellRendererParams): boolean { return false; }
   ngOnInit(): void {}
@@ -297,7 +298,8 @@ export class ManoObraDetailRendererComponent implements ICellRendererAngularComp
       console.error(err);
       alerts.basicAlert('Error', 'Error al guardar la distribución.', 'error');
     }
-  }
+  
+    this.cdr.detectChanges();}
 
   revert(): void {
     this.gridApi?.stopEditing();

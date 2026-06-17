@@ -1,4 +1,4 @@
-import { Component, inject, Input, OnChanges, OnInit, SimpleChanges } from '@angular/core';
+import { Component, inject, Input, OnChanges, OnInit, SimpleChanges, ChangeDetectorRef} from '@angular/core';
 import { takeUntilDestroyed, toObservable } from '@angular/core/rxjs-interop';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
@@ -58,6 +58,7 @@ type PermissionsScope = 'userSystem' | 'position';
 })
 export class PermissionsViewByUserComponent implements OnInit, OnChanges {
   private rolesService = inject(RolesService);
+  private readonly cdr = inject(ChangeDetectorRef);
   private permitionsService = inject(PermitionsService);
   private systemPermissionsService = inject(MasterPermissions2Service);
   private signalsService = inject(SignalsService);
@@ -1217,7 +1218,8 @@ export class PermissionsViewByUserComponent implements OnInit, OnChanges {
     this.idPosicion = params.idPosicion;
     this.idCompany = idCompany;
     this.obtenerDatos(this.idCompany, this.userId, this.branchId, this.idRole, this.idPosicion);
-  }
+  
+    this.cdr.detectChanges();}
 
   obtenerDatos(
     idCompany: number,
@@ -3018,7 +3020,8 @@ export class PermissionsViewByUserComponent implements OnInit, OnChanges {
       console.error('Error al guardar los permisos:', error);
       alerts.userSaveErrorToast('Error', 'Ocurrió un error al guardar los datos.');
     }
-  }
+  
+    this.cdr.detectChanges();}
 
   private untransformData(data: MasterPermission[]): any[] {
     const modifiedList = [];

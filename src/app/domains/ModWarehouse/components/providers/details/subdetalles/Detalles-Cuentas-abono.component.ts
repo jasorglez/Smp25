@@ -1,4 +1,4 @@
-import { Component ,inject} from '@angular/core';
+import { Component ,inject, ChangeDetectorRef} from '@angular/core';
 import { ICellRendererAngularComp } from 'ag-grid-angular';
 import { ICellRendererParams } from 'ag-grid-enterprise';
 import { AgGridModule } from 'ag-grid-angular';
@@ -14,7 +14,7 @@ import { ProvidersService } from 'app/services/providers.service';
 @Component({
   selector: 'app-detalles-cuentas',
   standalone: true,
-  imports: [AgGridModule, CommonModule, CurrencyPipe],
+  imports: [AgGridModule, CommonModule],
   template: `
     <div 
       style="padding: 10px; background-color: #e9ecef; height: 100%; display: flex; flex-direction: column;"
@@ -63,6 +63,7 @@ import { ProvidersService } from 'app/services/providers.service';
 })
 export class DetallesComponentCuentasAbono implements ICellRendererAngularComp {
   private customerService = inject(CustomersService);
+  private readonly cdr = inject(ChangeDetectorRef);
   private signalsService = inject(SignalsService);
   private providersService = inject(ProvidersService);
   authService = inject(AuthService);
@@ -201,7 +202,8 @@ export class DetallesComponentCuentasAbono implements ICellRendererAngularComp {
     this.proveedor = params.data.idTabla;
     this.maximo = params.data.campo6;
     this.loadDetallesCuentasData();
-  }
+  
+    this.cdr.detectChanges();}
 
   refresh(): boolean {
     return false;
@@ -301,7 +303,8 @@ export class DetallesComponentCuentasAbono implements ICellRendererAngularComp {
       console.error('Error al guardar los abonos:', error);
       alerts.basicAlert('Error', 'Ocurrió un error al guardar los abonos.', 'error');
     }
-  }
+  
+    this.cdr.detectChanges();}
 
   async deleteSelectedDetallesCuentas() {
     if (!this.selectedDetallesCuentas) {
@@ -333,6 +336,7 @@ export class DetallesComponentCuentasAbono implements ICellRendererAngularComp {
       console.error('Error al eliminar el abono:', err);
       alerts.basicAlert('Error', 'No se pudo eliminar el abono. Revisa la consola para más detalles.', 'error');
     }
-  }
+  
+    this.cdr.detectChanges();}
 
 }

@@ -1,4 +1,4 @@
-import { Component, HostListener, inject } from '@angular/core';
+import { Component, HostListener, inject, ChangeDetectorRef} from '@angular/core';
 import { RouterModule } from '@angular/router';
 import { DomainsModule } from 'app/domains/domainsmodule';
 import { TrackingService } from 'app/services/tracking.service';
@@ -43,15 +43,14 @@ interface ICatalogTree {
     RouterModule,
     DomainsModule,
     AgGridModule,
-    MultiLineEditorComponent,
-    ReactiveFormsModule,
-  ],
+    ReactiveFormsModule],
   templateUrl: './cat-egresos-palacio.component.html',
   styleUrl: './cat-egresos-palacio.component.scss',
 })
 export class CatEgresosPalacioComponent {
   authService = inject(AuthService);
   private signalsService = inject(SignalsService);
+  private readonly cdr = inject(ChangeDetectorRef);
   private catalogadmonService = inject(CatalogadmonService);
   private fb = inject(FormBuilder);
   private trackingService = inject(TrackingService);
@@ -479,7 +478,8 @@ export class CatEgresosPalacioComponent {
     } finally {
       this.saving = false;
     }
-  }
+  
+    this.cdr.detectChanges();}
 
   async deleteEntry() {
     const selectedNodes = this.gridApi.getSelectedNodes();
@@ -588,7 +588,8 @@ export class CatEgresosPalacioComponent {
         'error'
       );
     }
-  }
+  
+    this.cdr.detectChanges();}
 
   async onRowDragEnd(event: any): Promise<void> {
     const draggedNode = event.node;
@@ -678,7 +679,8 @@ export class CatEgresosPalacioComponent {
         'error'
       );
     }
-  }
+  
+    this.cdr.detectChanges();}
 
   // Método auxiliar para verificar si targetId es descendiente de itemId
   private isDescendantOf(targetId: number, itemId: number): boolean {

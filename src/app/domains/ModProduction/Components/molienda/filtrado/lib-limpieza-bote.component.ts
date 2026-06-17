@@ -1,4 +1,4 @@
-import { Component, Input, inject } from '@angular/core';
+import { Component, Input, inject, ChangeDetectorRef} from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { AgGridAngular } from 'ag-grid-angular';
 import { ColDef, GridApi, GridReadyEvent } from 'ag-grid-enterprise';
@@ -17,7 +17,7 @@ import { TimeEditorComponent } from 'app/domains/Indicadores/components/ind01/ti
 @Component({
   selector: 'app-lib-limpieza-bote',
   standalone: true,
-  imports: [CommonModule, AgGridAngular, SelectWithTooltipEditorV2Component, MultiSelectEmployeeEditorComponent, MultiSelectActividadEditorComponent, TimeEditorComponent],
+  imports: [CommonModule, AgGridAngular],
   styles: [':host { display: block; height: 100%; overflow: hidden; }'],
   template: `
     <div style="height:100%;display:flex;flex-direction:column;background:#f0fff4;border-top:2px solid #c3e6cb;">
@@ -70,6 +70,7 @@ import { TimeEditorComponent } from 'app/domains/Indicadores/components/ind01/ti
 })
 export class LibLimpiezaBoteComponent {
   private productionService = inject(ProductionService);
+  private readonly cdr = inject(ChangeDetectorRef);
   private employeesService  = inject(EmployeesService);
   private usersService      = inject(UsersService);
   private signalsService    = inject(SignalsService);
@@ -137,7 +138,8 @@ export class LibLimpiezaBoteComponent {
     if (p) this.initFromParams(p);
   }
 
-  agInit(p: any): void { this.initFromParams(p); }
+  agInit(p: any): void { this.initFromParams(p); 
+ this.cdr.detectChanges();}
   refresh(): boolean { return false; }
 
   private async initFromParams(params: any) {
@@ -153,7 +155,8 @@ export class LibLimpiezaBoteComponent {
     await this.loadCatalogs(idCompany);
     this.buildColDefs();
     if (this.idParams) await this.loadData();
-  }
+  
+    this.cdr.detectChanges();}
 
   private async loadCatalogs(idCompany: number | null) {
     try {
@@ -186,7 +189,8 @@ export class LibLimpiezaBoteComponent {
       this.employeeOptions = [];
       this.userOptions     = [];
     }
-  }
+  
+    this.cdr.detectChanges();}
 
   private buildColDefs() {
     this.colDefs = [
@@ -312,7 +316,8 @@ export class LibLimpiezaBoteComponent {
     } finally {
       this.loading = false;
     }
-  }
+  
+    this.cdr.detectChanges();}
 
   onGridReady(e: GridReadyEvent) {
     this.gridApi = e.api;
@@ -380,7 +385,8 @@ export class LibLimpiezaBoteComponent {
     } catch (e) {
       alerts.basicAlert('Error', 'No se pudieron guardar los cambios.', 'error');
     }
-  }
+  
+    this.cdr.detectChanges();}
 
   revert() {
     this.rowData = JSON.parse(JSON.stringify(this.originalRowData));
@@ -401,5 +407,6 @@ export class LibLimpiezaBoteComponent {
     }
     this.selectedRow = null;
     if (this.gridApi) this.gridApi.setGridOption('rowData', this.rowData);
-  }
+  
+    this.cdr.detectChanges();}
 }

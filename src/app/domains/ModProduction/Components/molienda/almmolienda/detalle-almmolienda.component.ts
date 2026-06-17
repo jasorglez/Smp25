@@ -1,4 +1,4 @@
-import { Component, inject } from '@angular/core';
+import { Component, inject, ChangeDetectorRef} from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { AgGridAngular } from 'ag-grid-angular';
 import { ColDef, GridApi, GridReadyEvent } from 'ag-grid-enterprise';
@@ -41,7 +41,7 @@ interface ReqOption {
 @Component({
   selector: 'app-detalle-almmolienda',
   standalone: true,
-  imports: [CommonModule, FormsModule, AgGridAngular, DetailEntradaDocumentsComponent, CustomOcTooltipComponent],
+  imports: [CommonModule, FormsModule, AgGridAngular],
   template: `
     <div style="padding: 6px; height: 100%; display: flex; flex-direction: column; box-sizing: border-box; overflow: hidden;"
          [style.backgroundColor]="detailType === 'entradas' ? '#e8f5e9' : '#fce4ec'">
@@ -252,6 +252,7 @@ interface ReqOption {
 })
 export class DetalleMoliendaComponent {
   private moliendaService = inject(MoliendaService);
+  private readonly cdr = inject(ChangeDetectorRef);
   private ocAndReqsService = inject(OcAndReqsService);
   private customersService = inject(CustomersService);
   private signalsService = inject(SignalsService);
@@ -1381,7 +1382,8 @@ export class DetalleMoliendaComponent {
   };
 
   // ── Lifecycle ─────────────────────────────────────────────────────
-  async agInit(params: any) { await this.init(params); }
+  async agInit(params: any) { await this.init(params); 
+    this.cdr.detectChanges();}
   refresh(params: any): boolean { this.internalParams = params; return true; }
 
   private async init(params: any) {
@@ -1523,7 +1525,8 @@ export class DetalleMoliendaComponent {
     }
     this.initCompleted = true;
     if (this.gridApi && !this.gridApi.isDestroyed()) this.loadData();
-  }
+  
+    this.cdr.detectChanges();}
 
   private async loadReqOptions() {
     const idBranch = this.internalParams?.data?.sucursal;
@@ -1537,7 +1540,8 @@ export class DetalleMoliendaComponent {
       console.error('Error cargando requisiciones:', err);
       this.reqOptions = [];
     }
-  }
+  
+    this.cdr.detectChanges();}
 
   onGridReady(params: GridReadyEvent) {
     this.gridApi = params.api;
@@ -1627,7 +1631,8 @@ export class DetalleMoliendaComponent {
       console.error('Error cargando características de materia prima:', e);
       this.cascadeMpCaractData = [];
     }
-  }
+  
+    this.cdr.detectChanges();}
 
   /** Empleados del depto Extracción y Fermentación (sucursal del Nivel 1) para el dropdown revisor. */
   private async loadRevisorOptions(): Promise<void> {
@@ -1641,7 +1646,8 @@ export class DetalleMoliendaComponent {
         .map((e: any) => ({ id: e.id, name: (e.name ?? e.fullName ?? `Empleado ${e.id}`).toString() }))
         .sort((a: any, b: any) => a.name.localeCompare(b.name, 'es', { sensitivity: 'base' }));
     } catch { this.revisorOptions = []; }
-  }
+  
+    this.cdr.detectChanges();}
 
   /** Persiste la revisión de características de materia prima de la entrada abierta. */
   private async saveMpRevision(idEntrada: number): Promise<void> {
@@ -1662,7 +1668,8 @@ export class DetalleMoliendaComponent {
       }
     }
     await Promise.all(ops);
-  }
+  
+    this.cdr.detectChanges();}
 
   // ── Nivel 5 "Datos externos" (versión gasto) ──────────────────────
   onDatosExternosGridReady(params: GridReadyEvent) {
@@ -1777,7 +1784,8 @@ export class DetalleMoliendaComponent {
         this.datosExternosGridApi.setGridOption('rowData', this.cascadeDatosData);
       }
     }
-  }
+  
+    this.cdr.detectChanges();}
 
   onFirstDataRenderedReq(params: any) {
     if (this.gridApi && !this.gridApi.isDestroyed()) {
@@ -1898,7 +1906,8 @@ export class DetalleMoliendaComponent {
       this.nivel4GridApi.setGridOption('rowData', []);
 
     await this.loadEntradasForOc(row);
-  }
+  
+    this.cdr.detectChanges();}
 
   /** Número efectivo de entregas de una OC (Nivel 3). SIN LÍMITE/COMPRA INMEDIATA → entradas reales;
    *  multi-entrega → entregas reales o el planeado (diasCondicionCompra). */
@@ -2036,7 +2045,8 @@ export class DetalleMoliendaComponent {
     } catch (err) {
       console.error('Error cargando entradas:', err);
     }
-  }
+  
+    this.cdr.detectChanges();}
 
   /**
    * Posiciona el cursor y deja en edición la celda "Fecha recepción" de la fila auto-generada.
@@ -2191,7 +2201,8 @@ export class DetalleMoliendaComponent {
     } catch (err) {
       console.error('Error cargando entradas por entrega:', err);
     }
-  }
+  
+    this.cdr.detectChanges();}
 
   private clearOcSelection(): void {
     this.selectedOcRow = null;
@@ -2259,7 +2270,8 @@ export class DetalleMoliendaComponent {
     this.resetNivel5Panels();
     this.selectedOcRow = this.selectedOcMultiRow;
     await this.loadEntradasForEntrega(row, this.selectedOcMultiRow);
-  }
+  
+    this.cdr.detectChanges();}
 
   private loadMultiEntregas(ocRow: any): void {
     this.multiEntregasData = [];
@@ -2541,7 +2553,8 @@ export class DetalleMoliendaComponent {
     } catch (error) {
       console.error('Error loading details molienda:', error);
     }
-  }
+  
+    this.cdr.detectChanges();}
 
   private buildSalidasColDefs(usuarioHeader: string = 'Quien utilizó'): ColDef[] {
     return [
@@ -2673,7 +2686,8 @@ export class DetalleMoliendaComponent {
       if (this.gridApi && !this.gridApi.isDestroyed())
         this.gridApi.setGridOption('rowData', []);
     }
-  }
+  
+    this.cdr.detectChanges();}
 
   private async loadSalidasData() {
     const idMaterial = this.internalParams?.data?.idMaterial;
@@ -2701,7 +2715,8 @@ export class DetalleMoliendaComponent {
     } catch (error) {
       console.error('Error loading salidas MP:', error);
     }
-  }
+  
+    this.cdr.detectChanges();}
 
   /** Fase 1: agrega filas de Compra Rápida (del material+sucursal) al nivel 2, junto a las OCs.
    *  Cada fila CR agrupa los items de compra rápida de una requisición para ese material. */
@@ -2750,7 +2765,8 @@ export class DetalleMoliendaComponent {
     } catch (err) {
       console.error('Error cargando compras rápidas:', err);
     }
-  }
+  
+    this.cdr.detectChanges();}
 
   async onCellClicked(event: any) {
     if (event.column?.getColId() !== 'folio') return;
@@ -2812,7 +2828,8 @@ export class DetalleMoliendaComponent {
     if (this.cascadeOcGridApi && !this.cascadeOcGridApi.isDestroyed())
       this.cascadeOcGridApi.setGridOption('rowData', this.cascadeOcData);
     if (this.gridApi) this.gridApi.refreshCells({ force: true });
-  }
+  
+    this.cdr.detectChanges();}
 
   private async enrichOcsWithResta(ocs: any[], idMaterial: number | null | undefined): Promise<any[]> {
     if (!Array.isArray(ocs) || ocs.length === 0) return [];
@@ -2846,7 +2863,8 @@ export class DetalleMoliendaComponent {
         }
       })
     );
-  }
+  
+    this.cdr.detectChanges();}
 
   private async loadOcEntregasSums(idMaterial: number | null | undefined): Promise<void> {
     if (!idMaterial || !this.cascadeOcData.length) return;
@@ -2878,7 +2896,8 @@ export class DetalleMoliendaComponent {
     }));
     if (this.cascadeOcGridApi && !this.cascadeOcGridApi.isDestroyed())
       this.cascadeOcGridApi.refreshCells({ columns: ['cantidad', 'entregasCount'], force: true });
-  }
+  
+    this.cdr.detectChanges();}
 
   private async loadReqEntregasSums(): Promise<void> {
     const idMaterial = Number(this.internalParams?.data?.idMaterial ?? 0);
@@ -2910,7 +2929,8 @@ export class DetalleMoliendaComponent {
     }));
     if (this.gridApi && !this.gridApi.isDestroyed())
       this.gridApi.refreshCells({ columns: ['cantidadReq'], force: true });
-  }
+  
+    this.cdr.detectChanges();}
 
   private async enrichReqRowsWithResta(rows: any[]): Promise<any[]> {
     if (!Array.isArray(rows) || rows.length === 0) return [];
@@ -2944,7 +2964,8 @@ export class DetalleMoliendaComponent {
         }
       })
     );
-  }
+  
+    this.cdr.detectChanges();}
 
   private updateParentCount() {
     if (!this.internalParams?.node) return;
@@ -3183,7 +3204,8 @@ export class DetalleMoliendaComponent {
       console.error('Error guardando entradas:', err);
       await alerts.basicAlert('Error', 'No se pudieron guardar los cambios.', 'error');
     }
-  }
+  
+    this.cdr.detectChanges();}
 
   revertEntradas() {
     // Compra Rápida y multi-entrega (Nivel 5, 1 recepción por entrega): "Deshacer" NO revierte ni
@@ -3251,7 +3273,8 @@ export class DetalleMoliendaComponent {
       console.error('Error eliminando entrada:', err);
       await alerts.basicAlert('Error', 'No se pudo eliminar la entrada.', 'error');
     }
-  }
+  
+    this.cdr.detectChanges();}
 
   private onEntradaCellValueChanged(event: any) {
     const row = event.data;
@@ -3443,7 +3466,8 @@ export class DetalleMoliendaComponent {
       params.api.refreshCells({ rowNodes: [params.node], columns: ['close'], force: true });
       alerts.reqErrorToast('Error', 'No se pudo cerrar la entrega.');
     }
-  }
+  
+    this.cdr.detectChanges();}
 
   private refreshOcLockIcon(): void {
     if (!this.selectedOcMultiRow || !this.cascadeOcGridApi || this.cascadeOcGridApi.isDestroyed()) return;
@@ -3539,7 +3563,8 @@ export class DetalleMoliendaComponent {
       if (!silent) await alerts.basicAlert('Error', 'No se pudieron guardar las características.', 'error');
       throw err;
     }
-  }
+  
+    this.cdr.detectChanges();}
 
   private toggleDetailColumn(params: any, _detailType: string): void {
     // Cierra el panel de Características si está abierto

@@ -1,4 +1,4 @@
-import { Component, NgZone } from '@angular/core';
+import { inject, Component, NgZone, ChangeDetectorRef} from '@angular/core';
 import { ICellRendererAngularComp } from 'ag-grid-angular';
 import { ICellRendererParams } from 'ag-grid-enterprise';
 
@@ -8,6 +8,7 @@ import { ICellRendererParams } from 'ag-grid-enterprise';
   template: `<a href="#" (click)="expand($event)" style="color: blue; text-decoration: none;">{{ value }} <i class="bi bi-folder"></i></a>`,
 })
 export class HyperlinkCellRendererComponent implements ICellRendererAngularComp {
+  private readonly cdr = inject(ChangeDetectorRef);
   value: any;
   private params!: ICellRendererParams;
 
@@ -16,7 +17,8 @@ export class HyperlinkCellRendererComponent implements ICellRendererAngularComp 
   agInit(params: ICellRendererParams): void {
     this.params = params;
     this.value = params.value;
-  }
+  
+    this.cdr.detectChanges();}
 
   refresh(params: ICellRendererParams): boolean {
     this.params = params;

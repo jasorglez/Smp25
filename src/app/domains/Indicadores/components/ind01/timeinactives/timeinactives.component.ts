@@ -1,5 +1,5 @@
 import { CommonModule, DatePipe } from '@angular/common';
-import { Component, effect, HostListener, inject } from '@angular/core';
+import { Component, effect, HostListener, inject, ChangeDetectorRef} from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { AgGridModule } from 'ag-grid-angular';
 import { CellDoubleClickedEvent, ColDef, GridApi, GridReadyEvent, ICellRendererParams } from 'ag-grid-enterprise';
@@ -26,13 +26,14 @@ interface Catalog {
 @Component({
   selector: 'app-timeinactives',
   standalone: true,
-  imports: [CommonModule, FormsModule, AgGridModule, MultiLineEditorComponent, TimeEditorComponent],
+  imports: [CommonModule, FormsModule, AgGridModule, MultiLineEditorComponent],
   templateUrl: './timeinactives.component.html',
   styleUrl: './timeinactives.component.scss',
   providers: [DatePipe]
 })
 export class TimeinactivesComponent {
   private timeinactivesService = inject(TimeinactivesService);
+  private readonly cdr = inject(ChangeDetectorRef);
   private workprogramsService = inject(WorkprogramsService);
   private signalsService = inject(SignalsService);
   private modalServiceTable = inject(ModalService);
@@ -382,7 +383,8 @@ export class TimeinactivesComponent {
         'error'
       );
     }
-  }
+  
+    this.cdr.detectChanges();}
 
   async deleteEntry() {
     const selectedNodes = this.gridApi.getSelectedNodes();

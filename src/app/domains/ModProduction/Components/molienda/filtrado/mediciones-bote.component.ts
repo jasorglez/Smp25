@@ -1,4 +1,4 @@
-import { Component, Input, inject } from '@angular/core';
+import { Component, Input, inject, ChangeDetectorRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { AgGridAngular } from 'ag-grid-angular';
 import { ColDef, GridApi, GridReadyEvent } from 'ag-grid-enterprise';
@@ -23,7 +23,7 @@ interface ParamCatalog {
 @Component({
   selector: 'app-mediciones-bote',
   standalone: true,
-  imports: [CommonModule, AgGridAngular, ItemCommentsCellRendererComponent, MedicionMatPrimaComponent, SelectWithTooltipEditorV2Component, TimeEditorComponent],
+  imports: [CommonModule, AgGridAngular],
   styles: [':host { display: block; height: 100%; overflow: hidden; }'],
   template: `
     <div style="height:100%;display:flex;flex-direction:column;background:#fff8e1;border-top:2px solid #ffe0b2;">
@@ -89,6 +89,7 @@ interface ParamCatalog {
 export class MedicionesBoteComponent implements ICellRendererAngularComp {
   private productionService = inject(ProductionService);
   private signalsService = inject(SignalsService);
+  private readonly cdr = inject(ChangeDetectorRef);
 
   loading = false;
   folioLabel = '';
@@ -161,6 +162,7 @@ export class MedicionesBoteComponent implements ICellRendererAngularComp {
     };
 
     if (this.idMoliendaParams) this.loadAll();
+    this.cdr.detectChanges();
   }
 
   refresh(): boolean { return false; }
@@ -196,7 +198,8 @@ export class MedicionesBoteComponent implements ICellRendererAngularComp {
     } finally {
       this.loading = false;
     }
-  }
+  
+    this.cdr.detectChanges();}
 
   private buildColDefs() {
     const fixed: ColDef[] = [
@@ -435,7 +438,8 @@ export class MedicionesBoteComponent implements ICellRendererAngularComp {
       console.error('Error cerrando entrada:', e);
       alerts.reqErrorToast('Error al cerrar entrada');
     }
-  }
+  
+    this.cdr.detectChanges();}
 
   hasChildChanges(): boolean {
     return this.rowData.some(r => r.__matPrimaHasChanges?.() || !!r.__matPrimaHasDirty);
@@ -475,7 +479,8 @@ export class MedicionesBoteComponent implements ICellRendererAngularComp {
       console.error('Error guardando mediciones:', e);
       alerts.reqErrorToast('Error al guardar');
     }
-  }
+  
+    this.cdr.detectChanges();}
 
   revert() {
     this.rowData = JSON.parse(JSON.stringify(this.originalRowData));
@@ -505,5 +510,6 @@ export class MedicionesBoteComponent implements ICellRendererAngularComp {
       console.error('Error eliminando medición:', e);
       alerts.reqErrorToast('Error al eliminar');
     }
-  }
+  
+    this.cdr.detectChanges();}
 }

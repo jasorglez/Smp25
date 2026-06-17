@@ -1,4 +1,4 @@
-import { Component } from '@angular/core';
+import { inject, Component, ChangeDetectorRef} from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { AgGridModule } from 'ag-grid-angular';
@@ -70,6 +70,7 @@ import { AG_GRID_LOCALE_ES } from 'assets/i18n/ag-grid.locale.es';
   `]
 })
 export class DetailCellRendererProveedorQuoteComponent {
+  private readonly cdr = inject(ChangeDetectorRef);
   private params!: ICellRendererParams;
   providers: any[] = [];
   selectedProviderId: number;
@@ -93,7 +94,8 @@ export class DetailCellRendererProveedorQuoteComponent {
     this.selectedProviderId = this.params.context?.selectedProviderIndex !== undefined ?
       (this.params.context.selectedProviderIndex + 1) : 1;
     this.updateRowData();
-  }
+  
+    this.cdr.detectChanges();}
 
   onProviderChange() {
     this.updateRowData();

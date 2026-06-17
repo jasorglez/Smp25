@@ -1,5 +1,5 @@
 import { CommonModule } from '@angular/common';
-import { Component, inject } from '@angular/core';
+import { Component, inject, ChangeDetectorRef} from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { AgGridModule } from 'ag-grid-angular';
 import { ColDef, GridApi, GridReadyEvent } from 'ag-grid-enterprise';
@@ -56,6 +56,7 @@ import { catchError, concat, EMPTY, lastValueFrom, toArray } from 'rxjs';
 })
 export class DetailSavingsWithdrawalsComponent {
   private employeesxloansService = inject(EmployeesxloansService);
+  private readonly cdr = inject(ChangeDetectorRef);
   private timeService = inject(TimeService);
   private signalsService = inject(SignalsService);
   authService = inject(AuthService);
@@ -117,7 +118,8 @@ export class DetailSavingsWithdrawalsComponent {
     if (params.context?.getSeccion) this.seccion = params.context.getSeccion();
     if (params.context?.getSubSeccion) this.subSeccion = params.context.getSubSeccion();
     this.loadDetailedData();
-  }
+  
+    this.cdr.detectChanges();}
 
   onDetalleGridReady(params: GridReadyEvent) {
     this.detalleGridApi = params.api;
@@ -149,7 +151,8 @@ export class DetailSavingsWithdrawalsComponent {
   private async getTime(): Promise<Date> {
     const time = await lastValueFrom(this.timeService.getTime());
     return new Date(time.localTime);
-  }
+  
+    this.cdr.detectChanges();}
 
   async addRow() {
     const date = await this.getTime();
@@ -172,7 +175,8 @@ export class DetailSavingsWithdrawalsComponent {
         this.detalleGridApi.startEditingCell({ rowIndex: 0, colKey: 'total' });
       }
     });
-  }
+  
+    this.cdr.detectChanges();}
 
   async saveDetailChanges() {
     const isValid = this.detalleRowData.every((item) => item.total);
@@ -203,7 +207,8 @@ export class DetailSavingsWithdrawalsComponent {
       }
       console.error(error);
     }
-  }
+  
+    this.cdr.detectChanges();}
 
   revertDetailData() {
     this.loadDetailedData();

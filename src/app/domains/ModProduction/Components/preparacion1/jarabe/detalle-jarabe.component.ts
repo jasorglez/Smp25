@@ -1,4 +1,4 @@
-import { Component, OnInit, OnChanges, SimpleChanges, Input, inject } from '@angular/core';
+import { Component, OnInit, OnChanges, SimpleChanges, Input, inject, ChangeDetectorRef} from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { AgGridModule } from 'ag-grid-angular';
@@ -15,7 +15,7 @@ import { lastValueFrom } from 'rxjs';
 @Component({
   selector: 'app-detalle-jarabe',
   standalone: true,
-  imports: [CommonModule, FormsModule, AgGridModule, ParametrosComponent, SelectWithTooltipEditorV2Component],
+  imports: [CommonModule, FormsModule, AgGridModule],
   template: `
     <div style="padding: 5px; background-color: #e3f2fd; height: 100%; display: flex; flex-direction: column; box-sizing: border-box; overflow: hidden;">
       
@@ -69,6 +69,7 @@ import { lastValueFrom } from 'rxjs';
 })
 export class DetalleJarabeComponent implements OnInit, OnChanges {
   private preparacionService = inject(ProductionService);
+  private readonly cdr = inject(ChangeDetectorRef);
   private materialsService = inject(MaterialsService);
   private signalsService = inject(SignalsService);
 
@@ -124,7 +125,8 @@ export class DetalleJarabeComponent implements OnInit, OnChanges {
 
   agInit(params: any): void {
     this.internalParams = params;
-  }
+  
+    this.cdr.detectChanges();}
 
   loadData(): void {
     if (!this.internalParams) return;
@@ -365,7 +367,8 @@ export class DetalleJarabeComponent implements OnInit, OnChanges {
       // Show minimal toast error notification
       alerts.preparacionErrorToast(errorMessage);
     }
-  }
+  
+    this.cdr.detectChanges();}
 
   async saveChanges() {
     const newItems = this.rowData.filter(item => item.__isNew);
@@ -431,7 +434,8 @@ export class DetalleJarabeComponent implements OnInit, OnChanges {
     } catch (error) {
       alerts.basicAlert('Error', 'Ocurrió un error al guardar los cambios.', 'error');
     }
-  }
+  
+    this.cdr.detectChanges();}
 
   private updateParentCount() {
     if (this.internalParams?.node) {
@@ -483,7 +487,8 @@ export class DetalleJarabeComponent implements OnInit, OnChanges {
     } catch (error) {
       console.error('[reloadFromServer] Error:', error);
     }
-  }
+  
+    this.cdr.detectChanges();}
 
   discardChanges() {
     if (this.hasUnsavedChanges) {

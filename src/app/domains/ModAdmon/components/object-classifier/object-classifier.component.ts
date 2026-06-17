@@ -1,4 +1,4 @@
-import { Component, OnInit, inject, effect, HostListener } from '@angular/core';
+import { Component, OnInit, inject, effect, HostListener, ChangeDetectorRef} from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule, ReactiveFormsModule, FormBuilder, FormGroup, Validators } from '@angular/forms';
 import { AgGridModule } from 'ag-grid-angular';
@@ -38,6 +38,7 @@ export class ObjectClassifierComponent implements OnInit {
   }
 
   private adminService = inject(AdministrationService);
+  private readonly cdr = inject(ChangeDetectorRef);
   private signalsService = inject(SignalsService);
   private trackingService = inject(TrackingService);
   authService = inject(AuthService);
@@ -421,7 +422,8 @@ export class ObjectClassifierComponent implements OnInit {
         'error'
       );
     }
-  }
+  
+    this.cdr.detectChanges();}
 
   loadData(): void {
     this.loading = true;
@@ -658,7 +660,8 @@ export class ObjectClassifierComponent implements OnInit {
         );
       }
     }
-  }
+  
+    this.cdr.detectChanges();}
 
   openCreateModal(parent?: IObjectClassifierTree): void {
     const nivelPadre = parent ? parent.nivel : 0;
@@ -848,7 +851,8 @@ export class ObjectClassifierComponent implements OnInit {
     } finally {
       this.saving = false;
     }
-  }
+  
+    this.cdr.detectChanges();}
 
   getNombreNivel(nivel: number): string {
     switch (nivel) {

@@ -1,4 +1,4 @@
-import { Component, inject } from '@angular/core';
+import { Component, inject, ChangeDetectorRef} from '@angular/core';
 import { ICellRendererAngularComp } from 'ag-grid-angular';
 import { ICellRendererParams } from 'ag-grid-enterprise';
 import { AgGridModule } from 'ag-grid-angular';
@@ -22,7 +22,7 @@ import { environment } from '@env/environment';
 @Component({
   selector: 'app-detail-permisos-x-deptos',
   standalone: true,
-  imports: [AgGridModule, CommonModule, DetailPermissionsUserComponent, PermissionsViewByUserComponent],
+  imports: [AgGridModule, CommonModule],
   template: `
     <div style="padding: 10px; background-color: #f8f9fa; height: 100%; display: flex; flex-direction: column; box-sizing: border-box;">
       <div style="margin-bottom: 10px; display: flex; justify-content: space-between; align-items: center; flex-shrink: 0;">
@@ -79,6 +79,7 @@ import { environment } from '@env/environment';
 })
 export class DetailPermisosXDeptosComponent implements ICellRendererAngularComp {
   private signalsService = inject(SignalsService);
+  private readonly cdr = inject(ChangeDetectorRef);
   private usersxpermissionsService = inject(UsersxpermissionsService);
   private warehousesService = inject(WarehousesService);
   private trackingService = inject(TrackingService);
@@ -547,7 +548,8 @@ export class DetailPermisosXDeptosComponent implements ICellRendererAngularComp 
     this.getGeneralPosicion();
     this.getRoles();
     this.obternerDatos();
-  }
+  
+    this.cdr.detectChanges();}
 
   refresh(): boolean {
     return false;
@@ -992,7 +994,8 @@ export class DetailPermisosXDeptosComponent implements ICellRendererAngularComp 
       console.error(error);
       alerts.basicAlert('Error', 'Ocurrió un error al actualizar los datos. Por favor, intente nuevamente.', 'error');
     }
-  }
+  
+    this.cdr.detectChanges();}
 
   deleteSelectedWarehouse() {
     if (!this.selectedWarehouse) {

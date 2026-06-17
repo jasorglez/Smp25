@@ -12,7 +12,7 @@ import { lastValueFrom } from 'rxjs';
 @Component({
   selector: 'app-equipment-detail-renderer',
   standalone: true,
-  imports: [CommonModule, FormsModule, AgGridModule, SelectWithTooltipEditorV2Component],
+  imports: [CommonModule, FormsModule, AgGridModule],
   template: `
 
     <!-- ── DISTRIBUCIÓN ─────────────────────────────────────────────── -->
@@ -151,7 +151,8 @@ export class EquipmentDetailRendererComponent implements ICellRendererAngularCom
     this.idCompany     = (params as any).context?.idCompany ?? data?.idCompany;
     this.equipmentData = data;
     if (this.detailType === 'distribution') this.loadDistribution();
-  }
+  
+    this.cdr.detectChanges();}
 
   refresh(_params: ICellRendererParams): boolean { return false; }
   ngOnInit(): void {}
@@ -350,7 +351,8 @@ export class EquipmentDetailRendererComponent implements ICellRendererAngularCom
       console.error(err);
       alerts.basicAlert('Error', 'Error al guardar la distribución.', 'error');
     }
-  }
+  
+    this.cdr.detectChanges();}
 
   revert(): void {
     this.gridApi?.stopEditing();

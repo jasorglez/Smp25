@@ -1,4 +1,4 @@
-import { Component } from '@angular/core';
+import { inject, Component, ChangeDetectorRef} from '@angular/core';
 import { ITooltipAngularComp } from 'ag-grid-angular';
 import { ITooltipParams } from 'ag-grid-community';
 import { CommonModule } from '@angular/common';
@@ -53,9 +53,11 @@ import { CommonModule } from '@angular/common';
   `]
 })
 export class CustomOcTooltipComponent implements ITooltipAngularComp {
+  private readonly cdr = inject(ChangeDetectorRef);
   public ocs: any[] = [];
   agInit(params: ITooltipParams): void {
     // El valor devuelto por tooltipValueGetter llega aquí en params.value
     this.ocs = params.value || [];
-  }
+  
+    this.cdr.detectChanges();}
 }

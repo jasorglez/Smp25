@@ -1,4 +1,4 @@
-import { Component, ElementRef, OnInit, ViewChild } from '@angular/core';
+import { inject, Component, ElementRef, OnInit, ViewChild, ChangeDetectorRef} from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ICellEditorAngularComp } from 'ag-grid-angular';
@@ -94,6 +94,7 @@ function daysUntil(date: Date): number {
   `]
 })
 export class MultiSelectActividadEditorComponent implements ICellEditorAngularComp, OnInit {
+  private readonly cdr = inject(ChangeDetectorRef);
   private params: any;
   options: ActividadOption[] = [];
   title = 'Actividades realizadas';
@@ -109,7 +110,8 @@ export class MultiSelectActividadEditorComponent implements ICellEditorAngularCo
     this.nextAvailableDates = params.nextAvailableDates ?? null;
     const raw: string = params.value ?? '[]';
     try { (JSON.parse(raw) as number[]).forEach(id => this.selected.add(id)); } catch { /* empty */ }
-  }
+  
+    this.cdr.detectChanges();}
 
   isBlocked(id: number): boolean {
     if (!this.availableIds) return false;

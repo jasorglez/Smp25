@@ -1,4 +1,4 @@
-import { Component, OnDestroy, AfterViewInit, Renderer2 } from '@angular/core';
+import { inject, Component, OnDestroy, AfterViewInit, Renderer2, ChangeDetectorRef} from '@angular/core';
 import { ICellEditorAngularComp } from 'ag-grid-angular';
 import { ICellEditorParams } from 'ag-grid-enterprise';
 import { CommonModule } from '@angular/common';
@@ -217,6 +217,7 @@ export interface SelectWithTooltipParams extends ICellEditorParams {
   `]
 })
 export class SelectWithTooltipEditorComponent implements ICellEditorAngularComp, AfterViewInit, OnDestroy {
+  private readonly cdr = inject(ChangeDetectorRef);
   options: SelectOption[] = [];
   filteredOptions: SelectOption[] = [];
   selectedValue: any = null;
@@ -247,7 +248,8 @@ export class SelectWithTooltipEditorComponent implements ICellEditorAngularComp,
         this.setupDocumentClickListener();
       }, 300);
     }, 0);
-  }
+  
+    this.cdr.detectChanges();}
 
   ngAfterViewInit(): void {
   }

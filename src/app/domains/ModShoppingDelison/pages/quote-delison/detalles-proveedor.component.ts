@@ -1,5 +1,5 @@
 
-import { Component, inject } from '@angular/core';
+import { Component, inject, ChangeDetectorRef} from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { AgGridModule } from 'ag-grid-angular';
@@ -126,6 +126,7 @@ pdfMake.vfs = pdfFonts.vfs;
 })
 export class DetallesProveedorComponent {
   private customersService = inject(CustomersService);
+  private readonly cdr = inject(ChangeDetectorRef);
   private signalsService = inject(SignalsService);
   private ocAndReqsService = inject(OcAndReqsService);
 
@@ -171,7 +172,8 @@ export class DetallesProveedorComponent {
 
     this.loadProviders();
     this.loadExistingCotproOrBuildFromArticulos();
-  }
+  
+    this.cdr.detectChanges();}
 
   onGridReady(params: any) {
     this.gridApi = params.api;
@@ -197,7 +199,8 @@ export class DetallesProveedorComponent {
     } catch {
       this.providers = [];
     }
-  }
+  
+    this.cdr.detectChanges();}
 
   async loadExistingCotproOrBuildFromArticulos() {
     if (!this.cotizacionId || !this.selectedProviderId) {
@@ -228,7 +231,8 @@ export class DetallesProveedorComponent {
     } catch {
       this.buildRowData();
     }
-  }
+  
+    this.cdr.detectChanges();}
 
   async loadCotproItems() {
     if (!this.cotproId) return;
@@ -259,7 +263,8 @@ export class DetallesProveedorComponent {
     } catch {
       this.buildRowData();
     }
-  }
+  
+    this.cdr.detectChanges();}
 
   buildRowData() {
     const articulos = (this.params.data.articulos || []).filter(
@@ -420,7 +425,8 @@ export class DetallesProveedorComponent {
     } catch (error) {
       alerts.basicAlert('Error', 'No se pudo guardar la cotización del proveedor.', 'error');
     }
-  }
+  
+    this.cdr.detectChanges();}
 
   generatePlaceholderPdf() {
     const docDefinition: any = {

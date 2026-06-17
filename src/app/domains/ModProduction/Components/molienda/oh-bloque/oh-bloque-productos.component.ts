@@ -1,4 +1,4 @@
-import { Component } from '@angular/core';
+import { inject, Component, ChangeDetectorRef} from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { AgGridAngular } from 'ag-grid-angular';
 import { ColDef, GridApi, GridReadyEvent, IDetailCellRendererParams } from 'ag-grid-enterprise';
@@ -27,6 +27,7 @@ import { ColDef, GridApi, GridReadyEvent, IDetailCellRendererParams } from 'ag-g
   `,
 })
 export class OhBloqueProductosComponent {
+  private readonly cdr = inject(ChangeDetectorRef);
   private params: IDetailCellRendererParams & { context: any } = {} as any;
   rows: any[] = [];
   private gridApi!: GridApi;
@@ -75,7 +76,8 @@ export class OhBloqueProductosComponent {
       cantidad: savedMap.get(p.id) ?? null,
       cantidadProducida: producidaMap.get(p.id) ?? null,
     }));
-  }
+  
+    this.cdr.detectChanges();}
 
   onGridReady(e: GridReadyEvent) {
     this.gridApi = e.api;

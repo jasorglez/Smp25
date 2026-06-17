@@ -1,4 +1,4 @@
-import { Component, OnInit, inject } from '@angular/core';
+import { Component, OnInit, inject, ChangeDetectorRef} from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { AgGridModule } from 'ag-grid-angular';
@@ -13,7 +13,7 @@ import { PdfReportsService } from 'app/services/pdf-reports.service';
 @Component({
   selector: 'app-detail-cell-renderer-entry-items',
   standalone: true,
-  imports: [CommonModule, FormsModule, AgGridModule, SelectWithTooltipEditorV2Component, SelectMaterialEditorComponent],
+  imports: [CommonModule, FormsModule, AgGridModule],
   template: `
     <!-- Items Grid View -->
     <div class="detail-grid-container" *ngIf="detailType === 'items'">
@@ -86,6 +86,7 @@ export class DetailCellRendererEntryItemsComponent implements OnInit {
   private gridApi!: GridApi;
   private context: any;
   private sanitizer = inject(DomSanitizer);
+  private readonly cdr = inject(ChangeDetectorRef);
   private pdfReportsService = inject(PdfReportsService);
 
   rowData: any[] = [];
@@ -119,7 +120,8 @@ export class DetailCellRendererEntryItemsComponent implements OnInit {
       // Load data first, then generate report
       this.loadDataForReport();
     }
-  }
+  
+    this.cdr.detectChanges();}
 
   loadData() {
     if (this.context && this.context.ITEMS && this.context.ITEMS.load) {
@@ -528,7 +530,8 @@ export class DetailCellRendererEntryItemsComponent implements OnInit {
     } catch (error) {
       console.error('Error generating report PDF:', error);
     }
-  }
+  
+    this.cdr.detectChanges();}
 
   ngOnDestroy() {
     // Clean up blob URL when component is destroyed

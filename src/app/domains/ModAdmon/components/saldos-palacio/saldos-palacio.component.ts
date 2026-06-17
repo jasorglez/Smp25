@@ -1,4 +1,4 @@
-import { Component, inject } from '@angular/core';
+import { Component, inject, ChangeDetectorRef} from '@angular/core';
 import { RouterModule } from '@angular/router';
 import { DomainsModule } from 'app/domains/domainsmodule';
 import { TrackingService } from 'app/services/tracking.service';
@@ -43,6 +43,7 @@ export class SaldosPalacioComponent {
   }
 
   private trackingService = inject(TrackingService);
+  private readonly cdr = inject(ChangeDetectorRef);
   private administrationService = inject(AdministrationService);
   private rootService = inject(RootService);
   private base64EncodeService = inject(Base64EncodeService);
@@ -551,7 +552,8 @@ export class SaldosPalacioComponent {
     } finally {
       this.isGeneratingReport = false;
     }
-  }
+  
+    this.cdr.detectChanges();}
 
   private async generatePDF(data: any[]) {
     // Importar pdfMake dinámicamente
@@ -840,7 +842,8 @@ export class SaldosPalacioComponent {
       'El estado de cuenta se ha generado correctamente',
       'success'
     );
-  }
+  
+    this.cdr.detectChanges();}
 
   private formatCurrencyNumber(amount: number): string {
     return `$${amount.toLocaleString('es-MX', {

@@ -1,4 +1,4 @@
-import { Component, effect, inject, OnDestroy, signal } from '@angular/core';
+import { Component, effect, inject, OnDestroy, signal, ChangeDetectorRef} from '@angular/core';
 import { ICellRendererAngularComp } from 'ag-grid-angular';
 import { ICellRendererParams } from 'ag-grid-enterprise';
 import { AgGridModule } from 'ag-grid-angular';
@@ -14,7 +14,7 @@ import { PendingChangesService } from 'app/services/pending-changes.service';
 @Component({
   selector: 'app-detail-cell-renderer-parametros',
   standalone: true,
-  imports: [AgGridModule, CommonModule, SelectWithTooltipEditorV2Component],
+  imports: [AgGridModule, CommonModule],
   template: `
     <div
       style="padding: 10px; background-color: #e9ecef; height: 100%; display: flex; flex-direction: column;"
@@ -63,6 +63,7 @@ import { PendingChangesService } from 'app/services/pending-changes.service';
 })
 export class DetailCellRendererParametrosComponent implements ICellRendererAngularComp, OnDestroy {
   private parameterByMaterialDescriptionService = inject(ParameterByMaterialDescriptionService);
+  private readonly cdr = inject(ChangeDetectorRef);
   private pendingChangesService = inject(PendingChangesService);
   private saverId: string = '';
 
@@ -252,7 +253,8 @@ export class DetailCellRendererParametrosComponent implements ICellRendererAngul
     this.parameterVigentes();
     this.parameters();
     this.loadParametrosData();
-  }
+  
+    this.cdr.detectChanges();}
 
   ngOnDestroy(): void {
     if (this.saverId) {
@@ -447,7 +449,8 @@ export class DetailCellRendererParametrosComponent implements ICellRendererAngul
           'error'
         );
       }
-  }
+  
+    this.cdr.detectChanges();}
 
   deleteSelectedParametro() {
     if (!this.parametrosGridApi) {

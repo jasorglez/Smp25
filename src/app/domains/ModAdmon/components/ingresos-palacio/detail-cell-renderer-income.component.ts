@@ -1,4 +1,4 @@
-import { Component, OnInit, inject, OnDestroy } from '@angular/core';
+import { Component, OnInit, inject, OnDestroy, ChangeDetectorRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { AgGridModule } from 'ag-grid-angular';
@@ -19,7 +19,7 @@ import { lastValueFrom } from 'rxjs';
 @Component({
   selector: 'app-detail-cell-renderer-income',
   standalone: true,
-  imports: [CommonModule, FormsModule, AgGridModule, MultiLineEditorComponent, SearchableSelectComponent, SelectWithTooltipEditorV2Component],
+  imports: [CommonModule, FormsModule, AgGridModule],
   template: `
     <!-- Concepts Grid View -->
     <div class="detail-grid-container" *ngIf="detailType === 'concepts'">
@@ -137,6 +137,7 @@ export class DetailCellRendererIncomeComponent implements OnInit, OnDestroy {
   private sanitizer = inject(DomSanitizer);
   private signalsService = inject(SignalsService);
   private contribuyenteModalService = inject(ContribuyenteModalService);
+  private readonly cdr = inject(ChangeDetectorRef);
 
   rowData: any[] = [];
   hasUnsavedChanges: boolean = false;
@@ -190,6 +191,7 @@ export class DetailCellRendererIncomeComponent implements OnInit, OnDestroy {
       this.loadContribuyentes();
       this.loadConceptsDataForReport();
     }
+    this.cdr.detectChanges();
   }
 
   loadConceptsData() {
@@ -229,7 +231,8 @@ export class DetailCellRendererIncomeComponent implements OnInit, OnDestroy {
       // If no data loader available, show empty state
       this.generateReport();
     }
-  }
+  
+    this.cdr.detectChanges();}
 
   async loadSetupManagementInfo() {
     if (this.context?.administrationService && this.context?.idRoot) {
@@ -246,7 +249,8 @@ export class DetailCellRendererIncomeComponent implements OnInit, OnDestroy {
         this.setupManagementInfo = null;
       }
     }
-  }
+  
+    this.cdr.detectChanges();}
 
   loadMeasures() {
     if (this.context && this.context.catalogsService && this.context.idRoot) {
@@ -1067,7 +1071,8 @@ export class DetailCellRendererIncomeComponent implements OnInit, OnDestroy {
       this.pdfUrl = null;
       alerts.basicAlert('Error', 'No se pudo generar el reporte PDF', 'error');
     }
-  }
+  
+    this.cdr.detectChanges();}
 
   private formatDate(dateString: string | null | undefined): string {
     if (!dateString) {

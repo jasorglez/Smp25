@@ -1,4 +1,4 @@
-import { Component, OnInit, OnChanges, SimpleChanges, Input, inject } from '@angular/core';
+import { Component, OnInit, OnChanges, SimpleChanges, Input, inject, ChangeDetectorRef} from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { AgGridModule } from 'ag-grid-angular';
@@ -65,6 +65,7 @@ import { lastValueFrom } from 'rxjs';
 })
 export class HistorialJarabeComponent implements OnInit, OnChanges {
   private preparacionService = inject(ProductionService);
+  private readonly cdr = inject(ChangeDetectorRef);
 
   @Input() params: any;
   private internalParams: any;
@@ -99,7 +100,8 @@ export class HistorialJarabeComponent implements OnInit, OnChanges {
 
   agInit(params: any): void {
     this.internalParams = params;
-  }
+  
+    this.cdr.detectChanges();}
 
   loadData(): void {
     if (!this.internalParams) return;
@@ -139,7 +141,8 @@ export class HistorialJarabeComponent implements OnInit, OnChanges {
       console.error('Error loading historial:', error);
       this.dataLoaded = true;
     }
-  }
+  
+    this.cdr.detectChanges();}
 
   onGridReady(params: GridReadyEvent): void {
     this.gridApi = params.api;
@@ -391,7 +394,8 @@ export class HistorialJarabeComponent implements OnInit, OnChanges {
       // Show minimal toast error notification
       alerts.preparacionErrorToast(errorMessage);
     }
-  }
+  
+    this.cdr.detectChanges();}
 
   async saveChanges() {
     const newItems = this.rowData.filter(item => item.__isNew);
@@ -458,7 +462,8 @@ export class HistorialJarabeComponent implements OnInit, OnChanges {
     } catch (error) {
       alerts.basicAlert('Error', 'Ocurrió un error al guardar los cambios.', 'error');
     }
-  }
+  
+    this.cdr.detectChanges();}
 
   private updateParentCount() {
     if (this.internalParams?.node) {
@@ -498,7 +503,8 @@ export class HistorialJarabeComponent implements OnInit, OnChanges {
     } catch (error) {
       console.error('Error reloading historial:', error);
     }
-  }
+  
+    this.cdr.detectChanges();}
 
   discardChanges() {
     if (this.hasUnsavedChanges) {

@@ -1,4 +1,4 @@
-import { Component, inject } from '@angular/core';
+import { Component, inject, ChangeDetectorRef} from '@angular/core';
 import { ICellRendererAngularComp } from 'ag-grid-angular';
 import { ICellRendererParams, ColDef } from 'ag-grid-enterprise';
 import { AgGridModule } from 'ag-grid-angular';
@@ -70,6 +70,7 @@ import { lastValueFrom, concat, toArray } from 'rxjs';
 })
 export class DetailCellRendererProyectosComponent implements ICellRendererAngularComp {
   private projectsService = inject(ProjectsService);
+  private readonly cdr = inject(ChangeDetectorRef);
   private oilfieldService = inject(OilfieldService);
   private followprojectsService = inject(FollowprojectsService);
   authService = inject(AuthService);
@@ -414,7 +415,8 @@ export class DetailCellRendererProyectosComponent implements ICellRendererAngula
     this.loadOilfields();
     // Load projects for this contract
     this.loadProjectData();
-  }
+  
+    this.cdr.detectChanges();}
 
   refresh(): boolean {
     return false;
@@ -580,7 +582,8 @@ export class DetailCellRendererProyectosComponent implements ICellRendererAngula
         'error'
       );
     }
-  }
+  
+    this.cdr.detectChanges();}
 
   async deleteSelectedProject() {
     if (!this.selectedProject) {
@@ -634,7 +637,8 @@ export class DetailCellRendererProyectosComponent implements ICellRendererAngula
         );
       }
     }
-  }
+  
+    this.cdr.detectChanges();}
 
   private cleanDataForServer(data: any): any {
     const cleanedData = { ...data };
@@ -681,5 +685,6 @@ export class DetailCellRendererProyectosComponent implements ICellRendererAngula
     } catch (error) {
       console.error('Error updating project count:', error);
     }
-  }
+  
+    this.cdr.detectChanges();}
 }

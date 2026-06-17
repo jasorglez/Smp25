@@ -1,4 +1,4 @@
-import { Component, effect, HostListener, inject, NgZone } from '@angular/core';
+import { Component, effect, HostListener, inject, NgZone, ChangeDetectorRef} from '@angular/core';
 import { alerts } from 'app/helpers/alerts';
 import { WorkprogramsService } from 'app/services/workprograms.service';
 import { WorkprogramApuService } from 'app/services/workprogram-apu.service';
@@ -38,6 +38,7 @@ export class WorkprogramsComponent {
   }
 
   private workprogramsService = inject(WorkprogramsService);
+  private readonly cdr = inject(ChangeDetectorRef);
   private apuService          = inject(WorkprogramApuService);
   private catalogsService = inject(CatalogsService);
   private signalsService = inject(SignalsService);
@@ -127,7 +128,8 @@ export class WorkprogramsComponent {
   private async loadVigenteAndInit(): Promise<void> {
     this.taskCount = 0;
     await this.initializeWorkprograms();
-  }
+  
+    this.cdr.detectChanges();}
 
   private async initializeWorkprograms(): Promise<void> {
     try {
@@ -154,7 +156,8 @@ export class WorkprogramsComponent {
       console.error('Error initializing workprograms component:', error);
       // Handle the error appropriately, e.g., show an error message to the user
     }
-  }
+  
+    this.cdr.detectChanges();}
 
   configGantt() {
     gantt.config.date_format = "%Y-%m-%d %H:%i";
@@ -1110,7 +1113,8 @@ export class WorkprogramsComponent {
     this.calcProgress = 0;
     this.notSavedChanges = true;
     alerts.basicAlert('Ponderado calculado', `Total del contrato: $${grandTotal.toFixed(2)} — ${total} conceptos actualizados`, 'success');
-  }
+  
+    this.cdr.detectChanges();}
 
   async getMeasures() {
     try {
@@ -1122,7 +1126,8 @@ export class WorkprogramsComponent {
     } catch (error) {
       // silencioso
     }
-  }
+  
+    this.cdr.detectChanges();}
 
   async getPhases() {
     try {
@@ -1134,7 +1139,8 @@ export class WorkprogramsComponent {
     } catch (error) {
       // silencioso
     }
-  }
+  
+    this.cdr.detectChanges();}
 
   // New method to indent selected tasks
   indentSelectedTasks() {
@@ -1259,7 +1265,8 @@ export class WorkprogramsComponent {
       console.error('Error al crear medida:', error);
       alerts.basicAlert('Error', 'No se pudo crear la medida', 'error');
     }
-  }
+  
+    this.cdr.detectChanges();}
 
   // ── Modal Nueva Fase ────────────────────────────────────────────────────────
 
@@ -1322,5 +1329,6 @@ export class WorkprogramsComponent {
       console.error('Error al crear fase:', error);
       alerts.basicAlert('Error', 'No se pudo crear la fase', 'error');
     }
-  }
+  
+    this.cdr.detectChanges();}
 }

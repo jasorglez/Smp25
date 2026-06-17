@@ -1,4 +1,4 @@
-import { Component, inject, OnInit } from '@angular/core';
+import { Component, inject, OnInit, ChangeDetectorRef} from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { AgGridModule } from 'ag-grid-angular';
@@ -105,6 +105,7 @@ import Swal from 'sweetalert2';
 })
 export class DetalleInteraccionesComponent implements OnInit {
   private svc        = inject(ProspectosService);
+  private readonly cdr = inject(ChangeDetectorRef);
   private signalsSvc = inject(SignalsService);
 
   private params!: ICellRendererParams;
@@ -165,7 +166,8 @@ export class DetalleInteraccionesComponent implements OnInit {
     this.params    = params;
     this.prospecto = params.data;
     this.cargarInteracciones();
-  }
+  
+    this.cdr.detectChanges();}
 
   private updateCountInParent() {
     if (this.params?.node) {
@@ -184,7 +186,8 @@ export class DetalleInteraccionesComponent implements OnInit {
     const data = await this.svc.getInteracciones(this.prospecto.id);
     this.rowData = data;
     this.updateCountInParent();
-  }
+  
+    this.cdr.detectChanges();}
 
   async guardarInteraccion() {
     if (!this.intDescripcion.trim()) {
@@ -205,7 +208,8 @@ export class DetalleInteraccionesComponent implements OnInit {
     } catch {
       Swal.fire('Error', 'No se pudo registrar.', 'error');
     }
-  }
+  
+    this.cdr.detectChanges();}
 
   async cambiarEstado(nuevoEstado: string) {
     try {
@@ -219,7 +223,8 @@ export class DetalleInteraccionesComponent implements OnInit {
     } catch {
       Swal.fire('Error', 'No se pudo cambiar el estado.', 'error');
     }
-  }
+  
+    this.cdr.detectChanges();}
 
   // ── Helpers ───────────────────────────────────────────────────────────────
 

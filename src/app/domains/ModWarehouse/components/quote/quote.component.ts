@@ -1,4 +1,4 @@
-import { Component, effect, HostListener, inject } from '@angular/core';
+import { Component, effect, HostListener, inject, ChangeDetectorRef} from '@angular/core';
 import {
   CellDoubleClickedEvent,
   ColDef,
@@ -43,13 +43,14 @@ interface Provider {
 @Component({
   selector: 'app-quote',
   standalone: true,
-  imports: [CommonModule, FormsModule, AgGridModule, MultiLineEditorComponent, ProviderDetailCellRendererComponent, ProviderQuoteDetailComponent],
+  imports: [CommonModule, FormsModule, AgGridModule, MultiLineEditorComponent],
   templateUrl: './quote.component.html',
   styleUrl: './quote.component.scss'
 })
 export class QuoteComponent implements CanComponentDeactivate {
   // Inject of new way for Angular 18
 private quotesService = inject(OcAndReqsService);
+  private readonly cdr = inject(ChangeDetectorRef);
   private customersService = inject(CustomersService);
   private catalogsService = inject(CatalogsService);
   private departmentsService = inject(DepartmentsService);
@@ -535,7 +536,8 @@ public gridOptions: any = {
       console.error('Error loading comparison items:', error);
       alerts.basicAlert('Error', 'No se pudieron cargar los items para comparación', 'error');
     }
-  }
+  
+    this.cdr.detectChanges();}
 
   closeComparisonModal() {
     this.showComparisonModal = false;
@@ -1011,7 +1013,8 @@ obtenerProveedores() {
     // Initialize empty cascades for new record
     this.requisitionItems = [];
     this.initializeProviderCascades();
-  }
+  
+    this.cdr.detectChanges();}
 
   async saveMasterChanges() {
     const isValid = this.masterRowData.every((item) => item.folio);
@@ -1079,7 +1082,8 @@ obtenerProveedores() {
         'error'
       );
     }
-  }
+  
+    this.cdr.detectChanges();}
 
   deleteMasterEntry() {
     const selectedNodes = this.masterGridApi.getSelectedNodes();
@@ -1287,7 +1291,8 @@ createQuote(idQuote: number, action: string) {
       console.error('Error creating COTIZ:', error);
       alerts.basicAlert('Error', 'No se pudo crear la cotización del proveedor.', 'error');
     }
-  }
+  
+    this.cdr.detectChanges();}
 
   cancelProviderSelection(): void {
     this.showProviderModal = false;
@@ -1481,7 +1486,8 @@ createQuote(idQuote: number, action: string) {
       this.masterGridApi.redrawRows();
 
     }
-  }
+  
+    this.cdr.detectChanges();}
 
   resetCotizSlots(): void {
     this.cotizSlots = [
@@ -1608,7 +1614,8 @@ createQuote(idQuote: number, action: string) {
       console.error('Error loading pedimentos:', error);
       alerts.basicAlert('Error', 'No se pudieron cargar los pedimentos.', 'error');
     }
-  }
+  
+    this.cdr.detectChanges();}
 
   // ==================== UTILITY METHODS ====================
 

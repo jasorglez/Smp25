@@ -1,4 +1,4 @@
-import { Component, inject, signal, effect } from '@angular/core';
+import { Component, inject, signal, effect, ChangeDetectorRef} from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { AgGridModule } from 'ag-grid-angular';
 import { ColDef, GridApi, GridReadyEvent } from 'ag-grid-enterprise';
@@ -13,7 +13,7 @@ import { lastValueFrom } from 'rxjs';
 @Component({
   selector: 'app-configuracion-page',
   standalone: true,
-  imports: [CommonModule, AgGridModule, SelectWithTooltipEditorV2Component],
+  imports: [CommonModule, AgGridModule],
   template: `
     <div class="container-fluid p-3" style="height: calc(100vh - 80px); display: flex; flex-direction: column;">
       <div class="d-flex align-items-center gap-2 mb-2">
@@ -53,6 +53,7 @@ import { lastValueFrom } from 'rxjs';
 })
 export class ConfiguracionPageComponent {
   private signalsService   = inject(SignalsService);
+  private readonly cdr = inject(ChangeDetectorRef);
   private materialsService = inject(MaterialsService);
   private jarabeService    = inject(MaterialJarabeService);
 
@@ -217,7 +218,8 @@ export class ConfiguracionPageComponent {
     } catch (error) {
       console.error('Error loading jarabe materials:', error);
     }
-  }
+  
+    this.cdr.detectChanges();}
 
   add() {
     const newRow = {
@@ -261,7 +263,8 @@ export class ConfiguracionPageComponent {
     } catch (error) {
       alerts.basicAlert('Error', 'No se pudo guardar', 'error');
     }
-  }
+  
+    this.cdr.detectChanges();}
 
   revertChanges() {
     this.rowData.set(JSON.parse(JSON.stringify(this.originalRowData)));
@@ -304,5 +307,6 @@ export class ConfiguracionPageComponent {
     } catch (error) {
       alerts.basicAlert('Error', 'No se pudo actualizar', 'error');
     }
-  }
+  
+    this.cdr.detectChanges();}
 }

@@ -1,4 +1,4 @@
-import { Component, OnInit, OnChanges, SimpleChanges, Input, inject } from '@angular/core';
+import { Component, OnInit, OnChanges, SimpleChanges, Input, inject, ChangeDetectorRef} from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { AgGridModule } from 'ag-grid-angular';
@@ -12,7 +12,7 @@ import { lastValueFrom } from 'rxjs';
 @Component({
   selector: 'app-limpieza-jarabe',
   standalone: true,
-  imports: [CommonModule, FormsModule, AgGridModule, PartesLimpiezaComponent],
+  imports: [CommonModule, FormsModule, AgGridModule],
   template: `
     <div style="padding: 5px; background-color: #e3f2fd; height: 100%; display: flex; flex-direction: column; box-sizing: border-box; overflow: hidden;">
       <div style="margin-bottom: 5px; display: flex; justify-content: space-between; align-items: center; flex-shrink: 0;">
@@ -102,6 +102,7 @@ import { lastValueFrom } from 'rxjs';
 })
 export class LimpiezaJarabeComponent implements OnInit, OnChanges {
   private productionService = inject(ProductionService);
+  private readonly cdr = inject(ChangeDetectorRef);
 
   @Input() params: any;
   private internalParams: any;
@@ -141,7 +142,8 @@ export class LimpiezaJarabeComponent implements OnInit, OnChanges {
     this.internalParams = params;
     this.personalPrep1 = params?.context?.componentParent?.personalPrep1 ?? [];
     if (this.gridApi) this.loadData();
-  }
+  
+    this.cdr.detectChanges();}
 
   expandedPartesRowId: string | null = null;
 
@@ -319,7 +321,8 @@ export class LimpiezaJarabeComponent implements OnInit, OnChanges {
       this.hasUnsavedChanges = false;
       this.gridApi.redrawRows();
     } catch { alerts.basicAlert('Error', 'Error al guardar limpieza.', 'error'); }
-  }
+  
+    this.cdr.detectChanges();}
 
   async deleteSelectedItem() {
     const selected = this.gridApi.getSelectedNodes();
@@ -337,7 +340,8 @@ export class LimpiezaJarabeComponent implements OnInit, OnChanges {
       this.rowData = this.rowData.filter(r => r.id !== item.id);
       this.gridApi.setGridOption('rowData', this.rowData);
     } catch { alerts.basicAlert('Error', 'Error al eliminar.', 'error'); }
-  }
+  
+    this.cdr.detectChanges();}
 
   openObsModal(row: any) {
     this.obsModalRow = row;

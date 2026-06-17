@@ -1,4 +1,4 @@
-import { Component } from '@angular/core';
+import { inject, Component, ChangeDetectorRef} from '@angular/core';
 import { ICellRendererAngularComp } from 'ag-grid-angular';
 import { ICellRendererParams } from 'ag-grid-enterprise';
 import { CommonModule } from '@angular/common';
@@ -116,6 +116,7 @@ import { AttachHandlerService } from 'app/services/attach-handler.service';
   `]
 })
 export class ImageCellRendererComponent implements ICellRendererAngularComp {
+  private readonly cdr = inject(ChangeDetectorRef);
   imageUrl: string = '';
   private params!: ICellRendererParams;
 
@@ -124,7 +125,8 @@ export class ImageCellRendererComponent implements ICellRendererAngularComp {
   agInit(params: ICellRendererParams): void {
     this.params = params;
     this.imageUrl = params.value || '';
-  }
+  
+    this.cdr.detectChanges();}
 
   refresh(params: ICellRendererParams): boolean {
     this.params = params;
@@ -156,7 +158,8 @@ export class ImageCellRendererComponent implements ICellRendererAngularComp {
     } catch (error) {
       console.error('Error uploading image:', error);
     }
-  }
+  
+    this.cdr.detectChanges();}
 
   deleteImage(event: Event): void {
     event.stopPropagation();

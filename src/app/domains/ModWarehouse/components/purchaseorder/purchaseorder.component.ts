@@ -19,12 +19,7 @@ import { alerts } from 'app/helpers/alerts';
   selector: 'app-purchaseorder',
   standalone: true,
   imports: [
-    CommonModule, FormsModule, AgGridModule,
-    ButtonCellRendererComponent,
-    PdfButtonCellRendererPurchaseOrderComponent,
-    DetailCellRendererPurchaseOrderItemsComponent,
-    DetailCellRendererPurchaseOrderReportComponent
-  ],
+    CommonModule, FormsModule, AgGridModule],
   templateUrl: './purchaseorder.component.html',
   styleUrl: './purchaseorder.component.scss',
   styles: [`

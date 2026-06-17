@@ -1,4 +1,4 @@
-import { Component, Input } from '@angular/core';
+import { inject, Component, Input, ChangeDetectorRef} from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ICellRendererAngularComp } from 'ag-grid-angular';
 import { MedicionesBoteComponent } from './mediciones-bote.component';
@@ -15,13 +15,15 @@ import { LibLimpiezaBoteComponent } from './lib-limpieza-bote.component';
   `,
 })
 export class ParamsDetailRendererComponent implements ICellRendererAngularComp {
+  private readonly cdr = inject(ChangeDetectorRef);
   mode: 'mediciones' | 'liberacion' = 'mediciones';
   gridParams: any = null;
 
   agInit(params: any): void {
     this.gridParams = params;
     this.mode = params.data?.__detailMode ?? 'mediciones';
-  }
+  
+    this.cdr.detectChanges();}
 
   refresh(): boolean { return false; }
 }

@@ -1,4 +1,4 @@
-import { Component, OnInit, inject } from '@angular/core';
+import { Component, OnInit, inject, ChangeDetectorRef} from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { AgGridModule } from 'ag-grid-angular';
@@ -56,6 +56,7 @@ export class DetailCellRendererRequisitionsPurchasesComponent implements OnInit 
   private gridApi!: GridApi;
   private context: any;
   private ocAndReqsService = inject(OcAndReqsService);
+  private readonly cdr = inject(ChangeDetectorRef);
 
   rowData: any[] = [];
   originalRowData: any[] = []; // Para poder deshacer cambios
@@ -73,7 +74,8 @@ export class DetailCellRendererRequisitionsPurchasesComponent implements OnInit 
     this.params = params;
     this.context = params.context;
     this.loadData();
-  }
+  
+    this.cdr.detectChanges();}
 
   loadData() {
     if (!this.params || !this.params.data) {
@@ -325,7 +327,8 @@ export class DetailCellRendererRequisitionsPurchasesComponent implements OnInit 
       console.error('❌ Error al eliminar item:', error);
       alerts.reqErrorToast('Error', 'No se pudo eliminar el item');
     }
-  }
+  
+    this.cdr.detectChanges();}
 
   async saveChanges() {
     if (!this.hasUnsavedChanges) {
@@ -390,7 +393,8 @@ export class DetailCellRendererRequisitionsPurchasesComponent implements OnInit 
       console.error('❌ Error al guardar cambios:', error);
       alerts.reqErrorToast('Error', 'No se pudieron guardar los cambios');
     }
-  }
+  
+    this.cdr.detectChanges();}
 
   discardChanges() {
     if (!this.hasUnsavedChanges) {

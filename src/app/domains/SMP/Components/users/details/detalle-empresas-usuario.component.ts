@@ -1,4 +1,4 @@
-import { Component, Input, Output, EventEmitter, OnInit, inject } from '@angular/core';
+import { Component, Input, Output, EventEmitter, OnInit, inject, ChangeDetectorRef} from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { AgGridModule } from 'ag-grid-angular';
@@ -73,6 +73,7 @@ import { ButtonCellRendererExpenditureComponent } from 'app/domains/ModAdmon/com
 })
 export class ProyectosDetailRendererComponent implements ICellRendererAngularComp {
   private projectsService          = inject(ProjectsService);
+  private readonly cdr = inject(ChangeDetectorRef);
   private usersxpermissionsService = inject(UsersxpermissionsService);
 
   projects: any[] = [];
@@ -101,7 +102,8 @@ export class ProyectosDetailRendererComponent implements ICellRendererAngularCom
     if (this.userId && this.contractId) {
       this.loadData();
     }
-  }
+  
+    this.cdr.detectChanges();}
 
   private loadData(): void {
     forkJoin({
@@ -329,7 +331,7 @@ export class AlmacenesDetailRendererComponent implements ICellRendererAngularCom
 @Component({
   selector: 'app-contratos-detail-renderer',
   standalone: true,
-  imports: [AgGridModule, CommonModule, FormsModule, ProyectosDetailRendererComponent, ButtonCellRendererExpenditureComponent],
+  imports: [AgGridModule, CommonModule, FormsModule],
   template: `
     <div style="padding:8px;background:#fff8e1;height:100%;display:flex;flex-direction:column;">
 
@@ -556,7 +558,7 @@ export class ContratosDetailRendererComponent implements ICellRendererAngularCom
 @Component({
   selector: 'app-sucursales-detail-renderer',
   standalone: true,
-  imports: [AgGridModule, CommonModule, FormsModule, ContratosDetailRendererComponent, AlmacenesDetailRendererComponent, ButtonCellRendererExpenditureComponent],
+  imports: [AgGridModule, CommonModule, FormsModule],
   template: `
     <div style="padding:8px;background:#f0fff4;height:100%;display:flex;flex-direction:column;">
 
@@ -824,7 +826,7 @@ export class SucursalesDetailRendererComponent implements ICellRendererAngularCo
 @Component({
   selector: 'app-detalle-empresas-usuario',
   standalone: true,
-  imports: [AgGridModule, CommonModule, FormsModule, SucursalesDetailRendererComponent, ButtonCellRendererExpenditureComponent],
+  imports: [AgGridModule, CommonModule, FormsModule],
   template: `
     <div style="padding:10px;background:#f0f4ff;height:100%;display:flex;flex-direction:column;">
 
