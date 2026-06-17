@@ -44,7 +44,7 @@
           style="width: 100%"
           class="ag-theme-quartz small-text-ag-grid"
           [ngStyle]="{ height: gridHeight }"
-          [rowData]="rowData"
+          [rowData]="rowData()"
           [columnDefs]="colMaster"
           [gridOptions]="gridOptions"
           (gridReady)="onGridReady($event)"

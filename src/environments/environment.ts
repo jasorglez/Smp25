@@ -73,5 +73,5 @@ export const environment = {
 
   urlRefreshToken: 'https://securetoken.googleapis.com/v1/token?key=AIzaSyDxCBGKk8nT09hdW85-PyOkhw5_JPZLF1A',
 
-  version: '2.52.515 (17 Junio 2026) - Prep1 Catalogos: # en grid izq, busqueda MP, filtros columna, 1 decimal, grid mas alto'
+  version: '2.52.528 (17 Junio 2026) - Fix NG0100 (Angular 21): rowData de materiales-maestro convertido a signal para binding reactivo en CD exhaustiva'
 };

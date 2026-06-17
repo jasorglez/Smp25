@@ -192,7 +192,8 @@ export class AppComponent implements OnInit, OnDestroy {
           }
           this.authService.applyEffectivePermissionsTree(tree);
           this.lastLoadedBranchId = branchSnapshot;
-          this.signalsService.bumpGuardRefreshTick();
+          // Defer to next macrotask so the signal update doesn't fire mid-CD cycle (NG0100)
+          setTimeout(() => this.signalsService.bumpGuardRefreshTick());
         },
         error: (error) => console.error('Error fetching permissions:', error),
       });

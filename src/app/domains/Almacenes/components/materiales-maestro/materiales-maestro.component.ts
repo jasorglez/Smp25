@@ -1,4 +1,4 @@
-import { Component, OnInit, OnDestroy, inject, effect, Input, Output, EventEmitter } from '@angular/core';
+import { Component, OnInit, OnDestroy, inject, effect, signal, Input, Output, EventEmitter } from '@angular/core';
 import { ActivatedRoute } from '@angular/router';
 import { AG_GRID_LOCALE_ES } from 'assets/i18n/ag-grid.locale.es';
 import { ColDef, GridApi, GridReadyEvent } from 'ag-grid-enterprise';
@@ -87,7 +87,10 @@ export class MaterialesMaestroComponent implements OnInit, OnDestroy {
   // 'MATERIAL' (Materia Prima), 'BIENESYSERVICIOS', 'ARTICULOSNUEVOS'.
   private sectionBitFilter: string = 'MATERIAL';
 
-  rowData: any[] | null = null;
+  // Signal: en Angular 21 la detección de cambios exhaustiva lanza NG0100 si un binding
+  // ([rowData]="rowData()") muta de null→array de forma asíncrona como propiedad plana.
+  // Como signal, el cambio se rastrea y la pasada de verificación lee el valor comprometido.
+  rowData = signal<any[] | null>(null);
   allMaterialsData: MaterialsResponse[] = []; // Guarda todos los datos
   gridHeight: string = '80vh';
   selectedMaterial: MaterialsResponse | null = null;
@@ -231,7 +234,7 @@ export class MaterialesMaestroComponent implements OnInit, OnDestroy {
       return;
     }
 
-    this.rowData = null;
+    this.rowData.set(null);
 
     // Cargar los catálogos (filtrados por el bit de la sección) antes de
     // filtrar la tabla: un material solo se muestra si su categoría, familia
@@ -241,7 +244,7 @@ export class MaterialesMaestroComponent implements OnInit, OnDestroy {
         this.materialsService.getMaterialsxview(this.idRoot).subscribe({
           next: (data) => {
             this.allMaterialsData = data; // snapshot del estado original en BD
-            this.rowData = this.filterMaterialsByCatalogBit(data)
+            this.rowData.set(this.filterMaterialsByCatalogBit(data)
               .slice()
               .sort((a, b) => {
                 const activeA = a.active ? 1 : 0;
@@ -250,7 +253,7 @@ export class MaterialesMaestroComponent implements OnInit, OnDestroy {
               })
               .map(material => ({
                 ...material,
-              }));
+              })));
             if (this.pendingScrollTarget) {
               setTimeout(() => this.scrollToTarget(), 150);
             }
@@ -298,13 +301,13 @@ export class MaterialesMaestroComponent implements OnInit, OnDestroy {
       });
 
       if (filteredMaterial) {
-        this.rowData = [{
+        this.rowData.set([{
           ...filteredMaterial,
-        }];
+        }]);
       } else {
         console.warn('⚠️ No se encontró material con ID:', this.filterMaterialId);
         console.warn('   IDs disponibles (primeros 10):', allMaterials.slice(0, 10).map(m => m.id));
-        this.rowData = [];
+        this.rowData.set([]);
       }
     } catch (error) {
       console.error('❌ Error cargando material filtrado:', error);
@@ -492,7 +495,7 @@ export class MaterialesMaestroComponent implements OnInit, OnDestroy {
         editable: true,
         cellEditor: 'autocompleteEditor',
         cellEditorParams: () => ({
-          filterList: this.rowData
+          filterList: (this.rowData() || [])
             .filter((row: any) => !row.__isNew)
             .map((row: any) => (row.articulo || '').toUpperCase())
             .filter((v: string) => v.length > 0),
@@ -503,7 +506,7 @@ export class MaterialesMaestroComponent implements OnInit, OnDestroy {
           const newValue = (params.newValue || '').toUpperCase().trim();
           if (!newValue) return false;
 
-          const duplicate = this.rowData.some((row: any, idx: number) =>
+          const duplicate = (this.rowData() || []).some((row: any, idx: number) =>
             !row.__isNew &&
             (row.articulo || '').toUpperCase().trim() === newValue
           );
@@ -537,7 +540,7 @@ export class MaterialesMaestroComponent implements OnInit, OnDestroy {
         valueSetter: (params: any) => {
           const newValue = (params.newValue ?? '').toString().toUpperCase().trim();
           if (newValue) {
-            const duplicate = (this.rowData || []).some((row: any) =>
+            const duplicate = (this.rowData() || []).some((row: any) =>
               row !== params.data &&
               (row.prefijo ?? '').toString().toUpperCase().trim() === newValue
             );
@@ -1167,10 +1170,10 @@ export class MaterialesMaestroComponent implements OnInit, OnDestroy {
       __isNew: true,
     };
 
-    this.rowData = [newItem, ...this.rowData];
+    this.rowData.set([newItem, ...(this.rowData() || [])]);
     this.newlyAddedRows.push(tempId);
     this.hasUnsavedChanges = true;
-    this.gridApi.setGridOption('rowData', this.rowData);
+    this.gridApi.setGridOption('rowData', this.rowData());
 
     setTimeout(() => {
       const firstRowIndex = 0;
@@ -1292,8 +1295,8 @@ export class MaterialesMaestroComponent implements OnInit, OnDestroy {
     }
 
     // Buscar filas nuevas y modificadas
-    const newRows = this.rowData.filter((row: any) => row.__isNew);
-    const modifiedRows = this.rowData.filter((row: any) => row.__modified && !row.__isNew);
+    const newRows = (this.rowData() || []).filter((row: any) => row.__isNew);
+    const modifiedRows = (this.rowData() || []).filter((row: any) => row.__modified && !row.__isNew);
 
     if (newRows.length === 0 && modifiedRows.length === 0) {
       // Nivel 1 no tiene cambios reales, pero podría haber cambios en hijos.
@@ -1431,7 +1434,7 @@ export class MaterialesMaestroComponent implements OnInit, OnDestroy {
             if (newInsumo) {
               modifiedRow.insumo = newInsumo;
               // Reflejar el cambio inmediatamente en el grid
-              const gridRow = this.rowData.find((r: any) => r.id === modifiedRow.id);
+              const gridRow = (this.rowData() || []).find((r: any) => r.id === modifiedRow.id);
               if (gridRow) {
                 gridRow.insumo = newInsumo;
               }
@@ -1524,7 +1527,7 @@ export class MaterialesMaestroComponent implements OnInit, OnDestroy {
     for (const id of matIds) {
       await lastValueFrom(this.materialsService.updateMaterial(String(id), { fecha: nowIso }))
         .catch(e => console.warn(`No se pudo actualizar Fecha Cambio del material ${id}:`, e));
-      const gridRow = this.rowData.find((r: any) => Number(r.id) === id);
+      const gridRow = (this.rowData() || []).find((r: any) => Number(r.id) === id);
       if (gridRow) gridRow.fecha = nowIso;
     }
     // Forzar el re-render de la columna para que el cambio se vea al instante,
