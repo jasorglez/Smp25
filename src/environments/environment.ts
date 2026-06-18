@@ -86,5 +86,5 @@ export const environment = {
     // publicKey: 'TEST-4399133a-4676-42a2-ab85-d946370bf96a',
   },
 
-  version: '5.62 (18 Junio 2026) fix(chatbot): saldos usa AccountBanks con nameAccount y saldo',
+  version: '5.63 (18 Junio 2026) fix(chatbot): scroll manual sin temblor, quita AfterViewChecked',
 }; 
