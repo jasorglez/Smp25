@@ -3,7 +3,7 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { lastValueFrom } from 'rxjs';
 import { IncomesAndExpensesService } from 'app/services/incomes-and-expenses.service';
-import { CashRegistersService } from 'app/services/cash-registers.service';
+import { AdministrationService } from 'app/services/administration.service';
 import { AgendaService } from 'app/services/agenda.service';
 
 interface ChatMessage {
@@ -21,7 +21,7 @@ interface ChatMessage {
 })
 export class ChatbotComponent implements AfterViewChecked {
   private incomesService = inject(IncomesAndExpensesService);
-  private cashService    = inject(CashRegistersService);
+  private adminService   = inject(AdministrationService);
   private agendaService  = inject(AgendaService);
 
   @ViewChild('messagesContainer') private messagesContainer!: ElementRef;
@@ -108,15 +108,15 @@ export class ChatbotComponent implements AfterViewChecked {
 
   private async getSaldos(): Promise<string> {
     try {
-      const data = await lastValueFrom(this.cashService.getCashRegisterByCompany(this.idCompany));
+      const data = await lastValueFrom(this.adminService.getAccountBanks(this.idCompany));
       const arr: any[] = Array.isArray(data) ? data : (data?.data ?? []);
-      if (!arr.length) return 'No hay cajas registradas para esta empresa.';
-      const fmt = (n: number) => n.toLocaleString('es-MX', { minimumFractionDigits: 2 });
-      const total = arr.reduce((s, c) => s + (c.balance ?? c.saldo ?? 0), 0);
+      if (!arr.length) return 'No hay cuentas bancarias registradas.';
+      const fmt = (n: number) => Number(n || 0).toLocaleString('es-MX', { minimumFractionDigits: 2 });
+      const total = arr.reduce((s, c) => s + (Number(c.saldo) || 0), 0);
       const lines = arr
-        .map(c => `  • ${c.name ?? c.nombre ?? 'Caja'}: $${fmt(c.balance ?? c.saldo ?? 0)}`)
+        .map(c => `  • ${c.nameAccount ?? c.numberAccount ?? 'Cuenta'}: $${fmt(c.saldo)}`)
         .join('\n');
-      return `Saldos de cajas:\n${lines}\n\nTotal: $${fmt(total)}`;
+      return `Saldos bancarios:\n${lines}\n\nTotal: $${fmt(total)}`;
     } catch {
       return 'Error al obtener saldos. Verifica tu conexión.';
     }
