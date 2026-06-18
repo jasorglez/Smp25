@@ -63,11 +63,10 @@ interface ModalEntry {
           (gridReady)="onGridReady($event)"
           style="width: 100%; height: 100%; position: absolute; top: 0; left: 0; right: 0; bottom: 0;">
         </ag-grid-angular>
-      </div>
 
-      <!-- Modal de asignación -->
-      <div *ngIf="modalOpen"
-           style="position:absolute;inset:0;z-index:100;display:flex;flex-direction:column;background:#fff;border-radius:8px;overflow:hidden;">
+        <!-- Modal de asignación — dentro del área de la grid para no tapar el header -->
+        <div *ngIf="modalOpen"
+             style="position:absolute;inset:0;z-index:100;display:flex;flex-direction:column;background:#fff;border-radius:8px;overflow:hidden;">
         <div style="display:flex;flex-direction:column;height:100%;overflow:hidden;">
 
           <!-- Header -->
@@ -308,8 +307,9 @@ interface ModalEntry {
           </div>
 
         </div>
-      </div>
-    </div>
+        </div><!-- /modal -->
+      </div><!-- /flex-grid-area -->
+    </div><!-- /root -->
   `,
   styles: [`
     :host { display: block; height: 100%; overflow: hidden; }
@@ -800,6 +800,7 @@ export class DetallesBoteFiltradoComponent {
       this.modalEntries = this.modalEntries.filter(e => e.asignacion !== null && (e.asignacion.cantidad ?? 0) > 0);
     }
     this.modalOpen = true;
+    this.cdr.detectChanges();
   }
 
   async onLockCheckboxClick(event: Event) {

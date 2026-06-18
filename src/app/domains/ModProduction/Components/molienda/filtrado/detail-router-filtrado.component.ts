@@ -24,22 +24,26 @@ export class DetailRouterFiltradoComponent implements AfterViewInit {
   @ViewChild('inventario') inventarioRef?: DetallesInventarioMoliendaComponent;
   @ViewChild('parametros') parametrosRef?: DetallesParametrosFiltradoComponent;
 
-  detailType = 'inventario';
+  detailType: string | null = null;
   private params: any;
 
   agInit(params: any) {
-    this.params = params;
+    this.params     = params;
     this.detailType = params.data?.__detailType ?? 'inventario';
-  
-    this.cdr.detectChanges();}
+    this.cdr.detectChanges();
+
+    setTimeout(() => {
+      const child =
+        this.detailType === 'matprima'   ? this.matprimaRef   :
+        this.detailType === 'bote'       ? this.boteRef        :
+        this.detailType === 'parametros' ? this.parametrosRef  :
+        this.inventarioRef;
+      child?.agInit(this.params);
+    }, 0);
+  }
 
   ngAfterViewInit() {
-    const child =
-      this.detailType === 'matprima'   ? this.matprimaRef   :
-      this.detailType === 'bote'       ? this.boteRef        :
-      this.detailType === 'parametros' ? this.parametrosRef  :
-      this.inventarioRef;
-    child?.agInit(this.params);
+    // child init handled in agInit via setTimeout after detectChanges updates *ngIf
   }
 
   refresh(): boolean { return false; }
