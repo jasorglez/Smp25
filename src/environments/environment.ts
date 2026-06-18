@@ -86,7 +86,7 @@ export const environment = {
     // publicKey: 'TEST-4399133a-4676-42a2-ab85-d946370bf96a',
   },
 
-  geminiApiKey: '', // Obtener en https://aistudio.google.com/app/apikey
+  geminiApiKey: 'AQ.Ab8RN6KY-xZ0uGINalAH5mN0V4AddWq2mgqsPzYFDWI5JAHMgA',
 
-  version: '5.64 (18 Junio 2026) feat(chatbot): integración Gemini 2.0 Flash con contexto de datos',
+  version: '5.65 (18 Junio 2026) feat(chatbot): Gemini API key configurada',
 }; 
