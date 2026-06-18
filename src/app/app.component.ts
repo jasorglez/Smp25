@@ -2,13 +2,14 @@ import { Component, effect, inject, OnInit } from '@angular/core';
 import { RouterOutlet } from '@angular/router';
 import {AuthService} from "./services/auth.service";
 import { SignalsService } from './services/signals.service';
+import { ChatbotComponent } from './shared/chatbot/chatbot.component';
 
 
 @Component({
   selector: 'app-root',
   standalone: true,
-  imports: [RouterOutlet],
-  template: '<router-outlet></router-outlet>',
+  imports: [RouterOutlet, ChatbotComponent],
+  template: '<router-outlet></router-outlet><app-chatbot></app-chatbot>',
 })
 export class AppComponent implements OnInit {
   title = 'bi-aug-24';
