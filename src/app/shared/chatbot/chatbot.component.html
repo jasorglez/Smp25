@@ -1,0 +1,46 @@
+<div class="chatbot-container" *ngIf="isLoggedIn">
+
+  <!-- Panel de chat -->
+  <div class="chatbot-panel" *ngIf="isOpen">
+    <div class="chatbot-header">
+      <i class="bi bi-robot me-2"></i>
+      <span>Asistente BI</span>
+    </div>
+
+    <div class="chatbot-messages" #messagesContainer>
+      <div *ngFor="let msg of messages"
+           class="message"
+           [class.user]="msg.role === 'user'"
+           [class.bot]="msg.role === 'bot'">
+
+        <div class="bubble" *ngIf="!msg.loading">{{ msg.text }}</div>
+
+        <div class="bubble loading" *ngIf="msg.loading">
+          <span class="dot"></span>
+          <span class="dot"></span>
+          <span class="dot"></span>
+        </div>
+      </div>
+    </div>
+
+    <div class="chatbot-input">
+      <input
+        type="text"
+        [(ngModel)]="inputText"
+        (keydown)="onKeyDown($event)"
+        placeholder="Escribe tu consulta..."
+        class="form-control form-control-sm"
+        autofocus
+      />
+      <button class="btn btn-sm btn-primary ms-1" (click)="send()">
+        <i class="bi bi-send-fill"></i>
+      </button>
+    </div>
+  </div>
+
+  <!-- Botón flotante -->
+  <button class="chatbot-toggle" (click)="toggleOpen()" [class.active]="isOpen" title="Asistente BI">
+    <i class="bi" [class.bi-chat-dots-fill]="!isOpen" [class.bi-x-lg]="isOpen"></i>
+  </button>
+
+</div>
