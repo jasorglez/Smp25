@@ -1,4 +1,4 @@
-import { AfterViewChecked, Component, ElementRef, inject, ViewChild } from '@angular/core';
+import { Component, ElementRef, inject, ViewChild } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { lastValueFrom } from 'rxjs';
@@ -19,7 +19,7 @@ interface ChatMessage {
   templateUrl: './chatbot.component.html',
   styleUrl: './chatbot.component.scss',
 })
-export class ChatbotComponent implements AfterViewChecked {
+export class ChatbotComponent {
   private incomesService = inject(IncomesAndExpensesService);
   private adminService   = inject(AdministrationService);
   private agendaService  = inject(AgendaService);
@@ -40,21 +40,24 @@ export class ChatbotComponent implements AfterViewChecked {
     return Number(localStorage.getItem('company') || 0);
   }
 
-  toggleOpen(): void {
-    this.isOpen = !this.isOpen;
-  }
-
-  ngAfterViewChecked(): void {
-    this.scrollToBottom();
+  private isUserScrolledUp(): boolean {
+    const el = this.messagesContainer?.nativeElement;
+    if (!el) return false;
+    return el.scrollHeight - el.scrollTop - el.clientHeight > 60;
   }
 
   private scrollToBottom(): void {
-    try {
-      if (this.messagesContainer) {
-        this.messagesContainer.nativeElement.scrollTop =
-          this.messagesContainer.nativeElement.scrollHeight;
-      }
-    } catch {}
+    setTimeout(() => {
+      try {
+        const el = this.messagesContainer?.nativeElement;
+        if (el) el.scrollTop = el.scrollHeight;
+      } catch {}
+    }, 30);
+  }
+
+  toggleOpen(): void {
+    this.isOpen = !this.isOpen;
+    if (this.isOpen) this.scrollToBottom();
   }
 
   onKeyDown(event: KeyboardEvent): void {
@@ -67,6 +70,7 @@ export class ChatbotComponent implements AfterViewChecked {
 
     this.messages.push({ role: 'user', text });
     this.inputText = '';
+    this.scrollToBottom(); // siempre scroll al enviar
 
     const loadingMsg: ChatMessage = { role: 'bot', text: '', loading: true };
     this.messages.push(loadingMsg);
@@ -75,6 +79,9 @@ export class ChatbotComponent implements AfterViewChecked {
 
     const idx = this.messages.indexOf(loadingMsg);
     if (idx !== -1) this.messages[idx] = { role: 'bot', text: response };
+
+    // scroll al recibir respuesta solo si el usuario no subió a leer historial
+    if (!this.isUserScrolledUp()) this.scrollToBottom();
   }
 
   private async processCommand(text: string): Promise<string> {
