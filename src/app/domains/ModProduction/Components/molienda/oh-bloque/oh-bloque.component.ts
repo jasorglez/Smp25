@@ -109,7 +109,7 @@ export class OhBloqueComponent {
     stopEditingWhenCellsLoseFocus: true,
     rowClassRules: { 'inactive-row': (p: any) => p.data?.active === false },
     masterDetail: true,
-    detailRowHeight: 200,
+    detailRowHeight: Math.max(150, window.innerHeight * 0.8 - 60),
     isRowMaster: () => true,
     isExternalFilterPresent: () => this.activeExpandedNodeId !== null,
     doesExternalFilterPass: (node: any) => node.id === this.activeExpandedNodeId,
