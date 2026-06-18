@@ -942,13 +942,80 @@ export class CatalogosProduccionComponent {
   bloquesEFSelectedRow: any = null;
   bloquesEFGridApi!: GridApi;
   private bloquesEFProductOptions: { id: number; producto: string; categoria: string }[] = [];
+  bloquesEFMatPrimaOptions: { id: number; description: string }[] = [];
 
   get bloquesEFColDefs(): ColDef[] {
     return [
       {
-        field: 'bloque', headerName: 'Bloque', flex: 1, editable: true,
-        cellEditor: 'agTextCellEditor',
-        valueSetter: (p: any) => { p.data.bloque = String(p.newValue ?? '').trim(); p.data.__modified = true; return true; },
+        field: 'idBranch', headerName: 'Sucursal', width: 170, editable: true,
+        cellEditor: SelectWithTooltipEditorV2Component,
+        cellEditorParams: () => ({
+          options: [
+            { id: null, description: '— Sin sucursal —' },
+            ...this.branchOptions.map(b => ({ id: b.id, description: b.name })),
+          ],
+        }),
+        valueFormatter: (p: any) => {
+          if (p.value == null) return '';
+          return this.branchOptions.find(b => b.id === p.value)?.name ?? String(p.value);
+        },
+        valueSetter: (p: any) => {
+          p.data.idBranch = p.newValue ?? null;
+          p.data.__modified = true;
+          return true;
+        },
+      },
+      {
+        field: 'bloque', headerName: 'Bloque', width: 100, editable: true,
+        type: 'numericColumn',
+        cellEditor: 'agNumberCellEditor',
+        valueParser: (p: any) => {
+          const n = parseInt(p.newValue, 10);
+          return isNaN(n) ? null : n;
+        },
+        valueSetter: (p: any) => {
+          const n = parseInt(p.newValue, 10);
+          p.data.bloque = isNaN(n) ? null : n;
+          p.data.__modified = true;
+          return true;
+        },
+      },
+      {
+        field: 'idMatPrima', headerName: 'Materia Prima', flex: 1, editable: true,
+        cellEditor: SelectWithTooltipEditorV2Component,
+        cellEditorParams: () => ({
+          options: [
+            { id: null, description: '— Sin materia prima —' },
+            ...this.bloquesEFMatPrimaOptions.map(o => ({ id: o.id, description: o.description })),
+          ],
+        }),
+        valueFormatter: (p: any) => {
+          if (p.value == null) return '';
+          return this.bloquesEFMatPrimaOptions.find(o => o.id === p.value)?.description ?? String(p.value);
+        },
+        valueSetter: (p: any) => { p.data.idMatPrima = p.newValue ?? null; p.data.__modified = true; return true; },
+      },
+      {
+        field: 'ohMin', headerName: 'OH Mínimo', width: 110, editable: true,
+        type: 'numericColumn',
+        cellEditor: 'agNumberCellEditor',
+        cellEditorParams: { precision: 2 },
+        valueFormatter: (p: any) => p.value != null ? Number(p.value).toFixed(2) : '',
+        valueSetter: (p: any) => {
+          p.data.ohMin = p.newValue != null && p.newValue !== '' ? Math.round(Number(p.newValue) * 100) / 100 : null;
+          p.data.__modified = true; return true;
+        },
+      },
+      {
+        field: 'ohMax', headerName: 'OH Máximo', width: 110, editable: true,
+        type: 'numericColumn',
+        cellEditor: 'agNumberCellEditor',
+        cellEditorParams: { precision: 2 },
+        valueFormatter: (p: any) => p.value != null ? Number(p.value).toFixed(2) : '',
+        valueSetter: (p: any) => {
+          p.data.ohMax = p.newValue != null && p.newValue !== '' ? Math.round(Number(p.newValue) * 100) / 100 : null;
+          p.data.__modified = true; return true;
+        },
       },
       {
         field: 'productoIds', headerName: 'Producto', flex: 2, editable: true,
@@ -1567,6 +1634,14 @@ export class CatalogosProduccionComponent {
             description: this.materialesIdToDesc.get(m.idArticulo) ?? String(m.idArticulo),
             prefijo: m.prefijo ?? '',
             idPrefijoFase: m.idPrefijoFase ?? (m.molienda === true ? moFaseId : null),
+          }))
+          .sort((a, b) => a.description.localeCompare(b.description, 'es', { sensitivity: 'base' }));
+
+        this.bloquesEFMatPrimaOptions = mxmList
+          .filter((m: any) => m.active !== false && m.idArticulo != null && m.molienda === true)
+          .map((m: any) => ({
+            id: m.idArticulo,
+            description: this.materialesIdToDesc.get(m.idArticulo) ?? String(m.idArticulo),
           }))
           .sort((a, b) => a.description.localeCompare(b.description, 'es', { sensitivity: 'base' }));
 
@@ -2640,12 +2715,24 @@ export class CatalogosProduccionComponent {
       this.isFasesFEMode      = false;
       this.isActividadesMode  = false;
       this.isBloquesEFMode    = true;
-      if (this.idRoot) {
-        this.productionService.getProductosTerminadosEF(this.idRoot).subscribe(items => {
-          this.bloquesEFProductOptions = items ?? [];
-        });
-      }
-      this.loadBloquesEFData(item.id);
+      forkJoin({
+        productos: this.idRoot ? this.productionService.getProductosTerminadosEF(this.idRoot) : of([]),
+        bloques:   this.productionService.getMoliendaBloqueEFByCatalog(item.id),
+      }).subscribe(({ productos, bloques }: any) => {
+        this.bloquesEFProductOptions = productos ?? [];
+        const rows = ((bloques as any[]) ?? []).map((i: any) => ({
+          id: i.id, bloque: i.bloque ?? null, productoIds: i.productoIds ?? null,
+          active: i.active, ohMin: i.ohMin ?? null, ohMax: i.ohMax ?? null,
+          idMatPrima: i.idMatPrima ?? null, idBranch: i.idBranch ?? null,
+          __isNew: false, __modified: false,
+        }));
+        this.bloquesEFOriginal = JSON.parse(JSON.stringify(rows));
+        this.bloquesEFRows = [...rows];
+        if (this.bloquesEFGridApi && !this.bloquesEFGridApi.isDestroyed()) {
+          this.bloquesEFGridApi.setGridOption('rowData', this.bloquesEFRows);
+          setTimeout(() => this.bloquesEFGridApi?.autoSizeAllColumns(), 0);
+        }
+      });
     } else {
       this.isBloquesEFMode    = false;
       this.showHierarchicalTable = false;
@@ -3416,19 +3503,31 @@ export class CatalogosProduccionComponent {
   onBloquesEFCellValueChanged(e: any) {
     if (!e.data.__isNew) e.data.__modified = true;
     this.bloquesEFHasChanges = true;
+
+    if (e.colDef?.field === 'idBranch' && e.newValue != null) {
+      const maxBloque = this.bloquesEFRows
+        .filter(r => r !== e.data && r.idBranch === e.newValue)
+        .reduce((max: number, r: any) => Math.max(max, Number(r.bloque) || 0), 0);
+      e.data.bloque = maxBloque + 1;
+      this.bloquesEFGridApi?.refreshCells({ rowNodes: [e.node], columns: ['bloque'], force: true });
+    }
   }
 
   private loadBloquesEFData(idCatalog: number) {
     this.productionService.getMoliendaBloqueEFByCatalog(idCatalog).subscribe({
       next: (items) => {
         const rows = (items ?? []).map((i: any) => ({
-          id: i.id, bloque: i.bloque ?? '', productoIds: i.productoIds ?? null,
-          active: i.active, __isNew: false, __modified: false,
+          id: i.id, bloque: i.bloque ?? null, productoIds: i.productoIds ?? null,
+          active: i.active, ohMin: i.ohMin ?? null, ohMax: i.ohMax ?? null,
+          idMatPrima: i.idMatPrima ?? null, idBranch: i.idBranch ?? null,
+          __isNew: false, __modified: false,
         }));
         this.bloquesEFOriginal = JSON.parse(JSON.stringify(rows));
         this.bloquesEFRows = [...rows];
-        if (this.bloquesEFGridApi && !this.bloquesEFGridApi.isDestroyed())
+        if (this.bloquesEFGridApi && !this.bloquesEFGridApi.isDestroyed()) {
           this.bloquesEFGridApi.setGridOption('rowData', this.bloquesEFRows);
+          setTimeout(() => this.bloquesEFGridApi?.autoSizeAllColumns(), 0);
+        }
       },
       error: () => { this.bloquesEFRows = []; }
     });
@@ -3437,13 +3536,13 @@ export class CatalogosProduccionComponent {
   addBloqueEF() {
     const newRow: any = {
       id: null, __tempId: `new_${Date.now()}`, __isNew: true, __modified: false,
-      bloque: '', productoIds: null, active: true,
+      bloque: null, productoIds: null, active: true, ohMin: null, ohMax: null, idMatPrima: null, idBranch: null,
     };
     this.bloquesEFRows = [newRow, ...this.bloquesEFRows];
     this.bloquesEFHasChanges = true;
     if (this.bloquesEFGridApi) {
       this.bloquesEFGridApi.setGridOption('rowData', this.bloquesEFRows);
-      setTimeout(() => this.bloquesEFGridApi.startEditingCell({ rowIndex: 0, colKey: 'bloque' }), 50);
+      setTimeout(() => this.bloquesEFGridApi.startEditingCell({ rowIndex: 0, colKey: 'idBranch' }), 50);
     }
   }
 
@@ -3455,12 +3554,16 @@ export class CatalogosProduccionComponent {
       for (const r of newRows) {
         await lastValueFrom(this.productionService.createMoliendaBloqueEF({
           idCatalog: this.selectedCatalogSidebarId, idCompany: this.idRoot,
-          bloque: r.bloque, productoIds: r.productoIds ?? null, active: r.active,
+          bloque: r.bloque ?? null, productoIds: r.productoIds ?? null, active: r.active,
+          ohMin: r.ohMin ?? null, ohMax: r.ohMax ?? null, idMatPrima: r.idMatPrima ?? null,
+          idBranch: r.idBranch ?? null,
         }));
       }
       for (const r of modRows) {
         await lastValueFrom(this.productionService.updateMoliendaBloqueEF(r.id, {
-          bloque: r.bloque, productoIds: r.productoIds ?? null, active: r.active,
+          bloque: r.bloque ?? null, productoIds: r.productoIds ?? null, active: r.active,
+          ohMin: r.ohMin ?? null, ohMax: r.ohMax ?? null, idMatPrima: r.idMatPrima ?? null,
+          idBranch: r.idBranch ?? null,
         }));
       }
       this.bloquesEFHasChanges = false;
