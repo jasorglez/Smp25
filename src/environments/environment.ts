@@ -73,5 +73,5 @@ export const environment = {
 
   urlRefreshToken: 'https://securetoken.googleapis.com/v1/token?key=AIzaSyDxCBGKk8nT09hdW85-PyOkhw5_JPZLF1A',
 
-  version: '2.52.525 (18 Junio 2026) - Fix warnings AG Grid Compras: detailRowHeight ya no se actualiza en caliente (initial prop) en quote/requisitions, showLoadingOverlay→loading en purchaseorder, suppressPropertyNamesCheck en grids con detailCellRendererSelector, guards liveGrid en callbacks async de quote-delison'
+  version: '2.52.519 (17 Junio 2026) - Bloques EF: Reestructura de Bloques OH'
 };

@@ -398,6 +398,18 @@ export class ProductionService {
     return this.http.get<any[]>(`${environment.urlProduction}/OhBloqueProducto/by-oh-bloque/${idOhBloque}`, { headers: this.trackingService.getHeaders() });
   }
 
+  getOhBloqueProductoTotalsByCompany(idCompany: number): Observable<{ idBloqueEf: number; cantidadTotal: number }[]> {
+    return this.http.get<any[]>(`${environment.urlProduction}/OhBloqueProducto/totals-by-bloque-ef/${idCompany}`, { headers: this.trackingService.getHeaders() });
+  }
+
+  getOhBloqueProductosByBloqueEf(idBloqueEf: number): Observable<any[]> {
+    return this.http.get<any[]>(`${environment.urlProduction}/OhBloqueProducto/by-bloque-ef/${idBloqueEf}`, { headers: this.trackingService.getHeaders() });
+  }
+
+  saveCatalogBatchByBloqueEf(idBloqueEf: number, items: any[]): Observable<void> {
+    return this.http.post<void>(`${environment.urlProduction}/OhBloqueProducto/catalog-batch/${idBloqueEf}`, items, { headers: this.trackingService.getHeaders() });
+  }
+
   saveOhBloqueProductosBatch(idOhBloque: number, items: any[]): Observable<void> {
     return this.http.post<void>(`${environment.urlProduction}/OhBloqueProducto/batch/${idOhBloque}`, items, { headers: this.trackingService.getHeaders() });
   }
