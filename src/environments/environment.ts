@@ -86,7 +86,7 @@ export const environment = {
     // publicKey: 'TEST-4399133a-4676-42a2-ab85-d946370bf96a',
   },
 
-  geminiApiKey: 'AQ.Ab8RN6KY-xZ0uGINalAH5mN0V4AddWq2mgqsPzYFDWI5JAHMgA',
+  geminiApiKey: 'AQ.Ab8RN6KY-xZ0uGINalAHSmN0V4AddWq2mgqsPzYFDWI5JAHMgA',
 
-  version: '5.65 (18 Junio 2026) feat(chatbot): Gemini API key configurada',
+  version: '5.66 (18 Junio 2026) fix(chatbot): corrige API key Gemini',
 }; 
