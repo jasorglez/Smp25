@@ -235,7 +235,7 @@ export class PurchaseOrderDelisonComponent implements OnInit, OnDestroy {
       return;
     }
     this.rowData = null;
-    if (this.gridApi) this.gridApi.showLoadingOverlay();
+    if (this.gridApi) this.gridApi.setGridOption('loading', true);
 
     if (this.idBranch < 0) {
       this.loadFromAllBranches();
@@ -286,7 +286,7 @@ export class PurchaseOrderDelisonComponent implements OnInit, OnDestroy {
     if (!this.branches || this.branches.length === 0) {
       this.fullRowData = [];
       this.rowData = [];
-      if (this.gridApi) { this.gridApi.setGridOption('rowData', []); }
+      if (this.gridApi) { this.gridApi.setGridOption('rowData', []); this.gridApi.setGridOption('loading', false); }
       return;
     }
 
@@ -312,9 +312,10 @@ export class PurchaseOrderDelisonComponent implements OnInit, OnDestroy {
     this.rowData = [...this.fullRowData];
     if (this.gridApi) {
       this.gridApi.setGridOption('rowData', this.rowData);
+      this.gridApi.setGridOption('loading', false);
       this.gridApi.refreshCells({ force: true });
     }
-  
+
     this.cdr.detectChanges();}
 
   private async loadFromSingleBranch(branchId: number) {
@@ -332,12 +333,14 @@ export class PurchaseOrderDelisonComponent implements OnInit, OnDestroy {
       this.rowData = [...this.fullRowData];
       if (this.gridApi) {
         this.gridApi.setGridOption('rowData', this.rowData);
+        this.gridApi.setGridOption('loading', false);
         this.gridApi.refreshCells({ force: true });
       }
     } catch {
       alerts.basicAlert('Error', 'No se pudieron cargar las órdenes de compra', 'error');
       this.fullRowData = [];
       this.rowData = [];
+      this.gridApi?.setGridOption('loading', false);
     }
   
     this.cdr.detectChanges();}
@@ -359,6 +362,9 @@ export class PurchaseOrderDelisonComponent implements OnInit, OnDestroy {
     rowHeight: 35,
     animateRows: true,
     masterDetail: true,
+    // AG Grid 32 no valida 'detailCellRendererSelector' (sí lo resuelve en runtime por la
+    // convención '<comp>Selector'). Silencia la advertencia "invalid gridOptions property".
+    suppressPropertyNamesCheck: true,
     detailRowHeight: 1200,
     isRowMaster: () => true,
     detailCellRendererSelector: (params: any) => {
@@ -513,6 +519,9 @@ export class PurchaseOrderDelisonComponent implements OnInit, OnDestroy {
     rowHeight: 35,
     animateRows: true,
     masterDetail: true,
+    // AG Grid 32 no valida 'detailCellRendererSelector' (sí lo resuelve en runtime por la
+    // convención '<comp>Selector'). Silencia la advertencia "invalid gridOptions property".
+    suppressPropertyNamesCheck: true,
     isRowMaster: (data: any) => Array.isArray(data?.items) && data.items.length > 0,
     onFirstDataRendered: (params: any) => params.api.autoSizeAllColumns(),
     detailCellRendererSelector: () => ({ component: CompraRapidaDetalleComponent }),
@@ -650,7 +659,7 @@ export class PurchaseOrderDelisonComponent implements OnInit, OnDestroy {
     this.gridApi.setGridOption('context', this.gridContext);
 
     // Si rowData aún es null cuando el grid está listo, mostrar overlay de carga
-    if (this.rowData === null) this.gridApi.showLoadingOverlay();
+    if (this.rowData === null) this.gridApi.setGridOption('loading', true);
 
     this.gridApi.setGridOption('detailCellRendererParams', {
       // El detalle lo carga el cell renderer con ITEMS.load (no el sub-grid por defecto).

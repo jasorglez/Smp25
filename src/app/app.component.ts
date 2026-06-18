@@ -1,4 +1,4 @@
-import { Component, effect, inject, OnDestroy, OnInit, ChangeDetectorRef } from '@angular/core';
+import { Component, effect, inject, OnDestroy, OnInit, ChangeDetectorRef, signal } from '@angular/core';
 import { Router, RouterOutlet } from '@angular/router';
 import { CommonModule } from '@angular/common';
 import { forkJoin, of, Subscription } from 'rxjs';
@@ -24,21 +24,21 @@ import { DetailEntradaDocumentsComponent } from './domains/ModProduction/Compone
     <app-item-chat-overlay></app-item-chat-overlay>
 
     <!-- Modal Comparación de Precios — nivel raíz para evitar el transform de AG Grid -->
-    <div *ngIf="comparacionData"
+    <div *ngIf="comparacionData() as cd"
          style="position:fixed; inset:0; background:rgba(0,0,0,0.55); z-index:10000; display:flex; align-items:center; justify-content:center; padding:16px;"
          (click)="closeComparacion()">
       <div style="background:#fff; border-radius:10px; width:82vw; max-width:100%; height:95vh; display:flex; flex-direction:column; box-shadow:0 8px 40px rgba(0,0,0,0.3); overflow:hidden;"
            (click)="$event.stopPropagation()">
         <app-comparacion-precios
-          [cotizacionId]="comparacionData.cotizacionId"
-          [cotizacionFolio]="comparacionData.cotizacionFolio"
-          [requisitionId]="comparacionData.requisitionId"
-          [requisitionFolio]="comparacionData.requisitionFolio"
-          [selectedProviderIds]="comparacionData.selectedProviderIds"
-          [idBranchFromReq]="comparacionData.idBranchFromReq"
-          [idDepartamentFromReq]="comparacionData.idDepartamentFromReq"
-          [departmentName]="comparacionData.departmentName"
-          [deptPrefijoFromReq]="comparacionData.deptPrefijoFromReq || ''"
+          [cotizacionId]="cd.cotizacionId"
+          [cotizacionFolio]="cd.cotizacionFolio"
+          [requisitionId]="cd.requisitionId"
+          [requisitionFolio]="cd.requisitionFolio"
+          [selectedProviderIds]="cd.selectedProviderIds"
+          [idBranchFromReq]="cd.idBranchFromReq"
+          [idDepartamentFromReq]="cd.idDepartamentFromReq"
+          [departmentName]="cd.departmentName"
+          [deptPrefijoFromReq]="cd.deptPrefijoFromReq || ''"
           (closed)="closeComparacion()"
           style="display:flex; flex-direction:column; height:100%;">
         </app-comparacion-precios>
@@ -46,7 +46,7 @@ import { DetailEntradaDocumentsComponent } from './domains/ModProduction/Compone
     </div>
 
     <!-- Modal Documentos de Entrada — nivel raíz para evitar el transform de AG Grid -->
-    <div *ngIf="entradaDocumentsData"
+    <div *ngIf="entradaDocumentsData() as ed"
          style="position:fixed; inset:0; background:rgba(0,0,0,0.55); z-index:10000; display:flex; align-items:center; justify-content:center; padding:16px;"
          (click)="closeEntradaDocuments()">
       <div style="background:#fff; border-radius:10px; width:90vw; max-width:100%; height:92vh; display:flex; flex-direction:column; box-shadow:0 8px 40px rgba(0,0,0,0.3); overflow:hidden;"
@@ -54,31 +54,31 @@ import { DetailEntradaDocumentsComponent } from './domains/ModProduction/Compone
         <div style="display:flex; justify-content:space-between; align-items:center; padding:10px 16px; background:#1e3a5f; flex-shrink:0; border-radius:10px 10px 0 0;">
           <span style="font-weight:600; color:#fff; font-size:0.95rem;">
             <i class="bi bi-file-earmark-text" style="margin-right:8px;"></i>
-            Documentos — Entrada #{{ entradaDocumentsData.idEntrada }}
+            Documentos — Entrada #{{ ed.idEntrada }}
           </span>
           <button type="button" class="btn-close btn-close-white" (click)="closeEntradaDocuments()"></button>
         </div>
         <app-detail-entrada-documents
-          [docType]="entradaDocumentsData.docType || 'entrega'"
-          [idEntradaInput]="entradaDocumentsData.idEntrada"
-          [readOnly]="entradaDocumentsData.readOnly ?? false"
+          [docType]="ed.docType || 'entrega'"
+          [idEntradaInput]="ed.idEntrada"
+          [readOnly]="ed.readOnly ?? false"
           style="display:flex; flex-direction:column; flex:1 1 auto; min-height:0;">
         </app-detail-entrada-documents>
       </div>
     </div>
 
     <!-- Modal Items por Proveedor — nivel raíz para evitar el transform de AG Grid -->
-    <div *ngIf="proveedorData"
+    <div *ngIf="proveedorData() as pd"
          style="position:fixed; inset:0; background:rgba(0,0,0,0.55); z-index:10000; display:flex; align-items:center; justify-content:center; padding:16px;"
          (click)="closeProveedor()">
       <div style="background:#fff; border-radius:10px; width:88vw; max-width:100%; height:88vh; display:flex; flex-direction:column; box-shadow:0 8px 40px rgba(0,0,0,0.3); overflow:hidden;"
            (click)="$event.stopPropagation()">
         <div style="display:flex; justify-content:space-between; align-items:center; padding:8px 14px; background:#e3f2fd; border-bottom:1px solid #90caf9; flex-shrink:0;">
-          <span style="font-weight:600; color:#0d47a1;">{{ proveedorData.headerTitle || proveedorData.providerLabel }}</span>
+          <span style="font-weight:600; color:#0d47a1;">{{ pd.headerTitle || pd.providerLabel }}</span>
           <button type="button" class="btn-close" aria-label="Cerrar" (click)="closeProveedor()"></button>
         </div>
         <app-detalle-items-proveedor
-          [modalInit]="proveedorData"
+          [modalInit]="pd"
           style="display:flex; flex-direction:column; flex:1 1 auto; min-height:0;">
         </app-detalle-items-proveedor>
       </div>
@@ -93,9 +93,9 @@ export class AppComponent implements OnInit, OnDestroy {
   private proveedorSub?: Subscription;
   private entradaDocumentsSub?: Subscription;
 
-  comparacionData: ComparacionOverlayData | null = null;
-  proveedorData: ProveedorItemsOverlayData | null = null;
-  entradaDocumentsData: EntradaDocumentsOverlayData | null = null;
+  comparacionData = signal<ComparacionOverlayData | null>(null);
+  proveedorData = signal<ProveedorItemsOverlayData | null>(null);
+  entradaDocumentsData = signal<EntradaDocumentsOverlayData | null>(null);
 
   private authService = inject(AuthService);
   private readonly cdr = inject(ChangeDetectorRef);
@@ -126,25 +126,25 @@ export class AppComponent implements OnInit, OnDestroy {
       this.authService.startSessionTimers();
     }
     this.comparacionSub = this.comparacionOverlayService.open$.subscribe(data => {
-      this.comparacionData = data;
+      this.comparacionData.set(data);
     });
     this.proveedorSub = this.proveedorItemsOverlayService.open$.subscribe(data => {
       // ✅ Forzar recreación del componente: null → cambio detección → nuevo data
-      this.proveedorData = null;
-      setTimeout(() => { this.proveedorData = data; }, 0);
+      this.proveedorData.set(null);
+      setTimeout(() => { this.proveedorData.set(data); }, 0);
     });
     this.entradaDocumentsSub = this.entradaDocumentsOverlayService.open$.subscribe(data => {
-      this.entradaDocumentsData = null;
-      setTimeout(() => { this.entradaDocumentsData = data; }, 0);
+      this.entradaDocumentsData.set(null);
+      setTimeout(() => { this.entradaDocumentsData.set(data); }, 0);
     });
   }
 
   closeComparacion() {
-    this.comparacionData = null;
+    this.comparacionData.set(null);
   }
 
   closeEntradaDocuments() {
-    this.entradaDocumentsData = null;
+    this.entradaDocumentsData.set(null);
   }
 
   async closeProveedor() {
@@ -155,7 +155,7 @@ export class AppComponent implements OnInit, OnDestroy {
       if (!allowed) return;
       this.unsavedTracker.clearAll();
     }
-    this.proveedorData = null;
+    this.proveedorData.set(null);
 
     this.cdr.detectChanges();
   }

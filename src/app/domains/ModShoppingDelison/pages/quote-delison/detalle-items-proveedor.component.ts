@@ -1,4 +1,4 @@
-﻿import { Component, inject, Renderer2, RendererFactory2, OnDestroy, HostListener, Input, ViewChild, ElementRef, ChangeDetectorRef} from '@angular/core';
+﻿import { Component, inject, Renderer2, RendererFactory2, OnDestroy, HostListener, Input, ViewChild, ElementRef, ChangeDetectorRef, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { AgGridModule } from 'ag-grid-angular';
@@ -111,7 +111,7 @@ import { PrecioMonedaEditorComponent } from 'app/domains/Almacenes/components/ma
                   [(ngModel)]="idCondicionPago" [disabled]="ocGenerated"
                   (ngModelChange)="onHeaderFieldChanged()">
             <option [ngValue]="null">-- seleccione --</option>
-            <option *ngFor="let opt of condicionesPagoOpts" [ngValue]="opt.id">
+            <option *ngFor="let opt of condicionesPagoOpts()" [ngValue]="opt.id">
               {{ opt.descripcion }} - {{ opt.cantidad }}
             </option>
           </select>
@@ -193,10 +193,15 @@ export class DetalleItemsProveedorComponent {
   private defaultCurrencyId: number | null = null;
   private ivaPercent: number = 0;
   private ivaConfigurado: boolean = false;
-  condicionesPagoOpts: CondicionPagoDto[] = [];
+  condicionesPagoOpts = signal<CondicionPagoDto[]>([]);
 
   private params!: ICellRendererParams;
   private gridApi!: GridApi;
+  /** Devuelve gridApi sólo si está vivo. Evita warnings al llamar la API de un grid
+   *  destruido desde callbacks async (HTTP/await) tras cerrar/recrear el modal. */
+  private get liveGrid(): GridApi | null {
+    return (this.gridApi && !this.gridApi.isDestroyed()) ? this.gridApi : null;
+  }
   @ViewChild('gridWrapper') private gridWrapper!: ElementRef;
   private renderer: Renderer2;
   private newProviderOverlayEl: HTMLElement | null = null;
@@ -302,6 +307,10 @@ export class DetalleItemsProveedorComponent {
    */
   @Input() set modalInit(data: ProveedorItemsOverlayData | null) {
     if (!data) return;
+    // Limpiar referencia al grid anterior (puede ser un grid destruido si el componente
+    // fue CellRenderer en una instancia previa). Las suscripciones HTTP que arrancan en
+    // agInit() llamarían sobre ese grid muerto y generarían warnings + lentitud.
+    this.gridApi = null!;
     const fakeParams: any = {
       data: data.pedimentoData,
       node: { data: data.pedimentoData },
@@ -315,7 +324,7 @@ export class DetalleItemsProveedorComponent {
       onSlotSaved: data.onSlotSaved
     };
     this.agInit(fakeParams);
-  
+
     this.cdr.detectChanges();}
 
   /** Fase 2: carga catálogo de monedas (type=CURRENCY) y resuelve la default (MXN). */
@@ -337,7 +346,7 @@ export class DetalleItemsProveedorComponent {
           if (mxnId === null && (abrev.toUpperCase() === 'MXN' || /peso|mexic/i.test(nombre))) mxnId = id;
         });
         this.defaultCurrencyId = mxnId ?? (list?.[0]?.id != null ? Number(list[0].id) : null);
-        this.gridApi?.refreshCells({ columns: ['costoUnitario', 'costoTotal'], force: true });
+        if (this.gridApi && !this.gridApi.isDestroyed()) this.gridApi.refreshCells({ columns: ['costoUnitario', 'costoTotal'], force: true });
       },
       error: () => { this.monedasMap = new Map(); this.defaultCurrencyId = null; }
     });
@@ -380,7 +389,7 @@ export class DetalleItemsProveedorComponent {
     this.catalogadmonService.getCatalogs(9, 'TYPEOC').subscribe({
       next: (items: any[]) => {
         this.typeocValues = items.filter(i => i.active).map(i => i.description as string);
-        if (this.gridApi) {
+        if (this.gridApi && !this.gridApi.isDestroyed()) {
           this.gridApi.setGridOption('columnDefs', this.colDefs);
         }
       },
@@ -404,9 +413,9 @@ export class DetalleItemsProveedorComponent {
     if (idCompany) {
       this.condicionesPagoService.getByCompany(idCompany).subscribe({
         next: (data) => {
-          this.condicionesPagoOpts = (data || []).filter(c => c.active);
+          this.condicionesPagoOpts.set((data || []).filter(c => c.active));
         },
-        error: () => { this.condicionesPagoOpts = []; }
+        error: () => { this.condicionesPagoOpts.set([]); }
       });
     }
     this.loadProviders().then(() => {
@@ -566,8 +575,8 @@ export class DetalleItemsProveedorComponent {
         }
       });
       // Re-set rowData para que AG Grid re-evalúe isRowMaster (oculta la cascada)
-      if (cambios && this.gridApi) {
-        this.gridApi.setGridOption('rowData', this.rowData);
+      if (cambios) {
+        this.liveGrid?.setGridOption('rowData', this.rowData);
       }
     } catch (e) {
       console.error('Error refrescando numArticulo desde BD', e);
@@ -598,8 +607,8 @@ export class DetalleItemsProveedorComponent {
         console.error('Error reclasificando material', row.idSupplie, e);
       }
     }
-    if (rows.length > 0 && this.gridApi) {
-      this.gridApi.refreshCells({ force: true, columns: ['numArticulo'] });
+    if (rows.length > 0) {
+      this.liveGrid?.refreshCells({ force: true, columns: ['numArticulo'] });
     }
   
     this.cdr.detectChanges();}
@@ -656,7 +665,7 @@ export class DetalleItemsProveedorComponent {
           this.selectedProviderId = null;
           this.selectedProviderObj = null;
           this.rowData.forEach(row => { row.codigoExterno = ''; row.proveedorXTablaId = 0; });
-          this.gridApi?.setGridOption('rowData', this.rowData);
+          this.liveGrid?.setGridOption('rowData', this.rowData);
           this.refreshFilteredProviders();
           return;
         }
@@ -685,7 +694,7 @@ export class DetalleItemsProveedorComponent {
         if (result.isConfirmed) await this.registerMissingBranchAssignments(unauthorizedForBranch);
       }
 
-      this.gridApi?.setGridOption('rowData', this.rowData);
+      this.liveGrid?.setGridOption('rowData', this.rowData);
     } catch (error) { console.error('Error en onProviderChange', error); }
   
     this.cdr.detectChanges();}
@@ -846,7 +855,7 @@ export class DetalleItemsProveedorComponent {
     const providerName = this.getSelectedProviderName();
     const dateCreate = new Date().toISOString().split('T')[0];
     // Derivar el string de condiciones desde el DTO seleccionado (backward compat).
-    const selectedCond = this.condicionesPagoOpts.find(o => o.id === this.idCondicionPago);
+    const selectedCond = this.condicionesPagoOpts().find(o => o.id === this.idCondicionPago);
     const condicionesPagoStr = selectedCond
       ? `${selectedCond.descripcion} - ${selectedCond.cantidad}`
       : '';
@@ -979,7 +988,7 @@ export class DetalleItemsProveedorComponent {
           row.proveedorXTablaObj = match;
         }
       });
-      if (this.gridApi) this.gridApi.setGridOption('rowData', this.rowData);
+      this.liveGrid?.setGridOption('rowData', this.rowData);
     } catch (e) {
       console.warn('⚠️ syncProveedorXTablaFields: Error cargando proveedorxtablas', e);
     }
@@ -1087,8 +1096,8 @@ export class DetalleItemsProveedorComponent {
       this.rowData = mappedData;
       console.log('📊 loadSavedItems: rowData asignado:', this.rowData);
 
-      if (this.gridApi) {
-        this.gridApi.setGridOption('rowData', this.rowData);
+      if (this.liveGrid) {
+        this.liveGrid.setGridOption('rowData', this.rowData);
         console.log('✅ loadSavedItems: Grid actualizado');
       } else {
         console.warn('⚠️ loadSavedItems: gridApi no disponible');

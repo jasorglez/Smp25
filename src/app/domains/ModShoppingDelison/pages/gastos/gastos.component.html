@@ -28,24 +28,24 @@
       </div>
     </div>
 
-    <div class="state-block" *ngIf="capturaLoading">
+    <div class="state-block" *ngIf="capturaLoading()">
       <div class="spinner-border text-success" role="status"></div>
       <p>Cargando pendientes…</p>
     </div>
 
-    <div class="state-block error" *ngIf="!capturaLoading && capturaError">
+    <div class="state-block error" *ngIf="!capturaLoading() && capturaError()">
       <i class="bi bi-exclamation-triangle"></i>
-      <p>{{ capturaError }}</p>
+      <p>{{ capturaError() }}</p>
     </div>
 
-    <div class="state-block empty" *ngIf="!capturaLoading && !capturaError && capturaRows.length === 0">
+    <div class="state-block empty" *ngIf="!capturaLoading() && !capturaError() && capturaRows().length === 0">
       <i class="bi bi-inbox"></i>
       <p>No hay entradas pendientes de pago.</p>
     </div>
 
     <!-- Leyenda de colores: Anticipo / Crédito / Contado -->
     <div class="d-flex gap-3 mb-2 align-items-center flex-wrap"
-         *ngIf="!capturaLoading && !capturaError && capturaRows.length > 0">
+         *ngIf="!capturaLoading() && !capturaError() && capturaRows().length > 0">
       <div class="d-flex align-items-center gap-1">
         <div style="width:14px; height:14px; border-radius:3px; background:#90CAF9; border:1px solid #1976d2; flex-shrink:0;"></div>
         <span style="font-size:11px; color:#555;">ANTICIPO</span>
@@ -61,9 +61,9 @@
     </div>
 
     <ag-grid-angular
-      *ngIf="!capturaLoading && capturaRows.length > 0"
+      *ngIf="!capturaLoading() && capturaRows().length > 0"
       class="ag-theme-quartz captura-grid"
-      [rowData]="capturaRows"
+      [rowData]="capturaRows()"
       [columnDefs]="capturaColDefs"
       [gridOptions]="capturaGridOptions"
       (gridReady)="onCapturaGridReady($event)">
@@ -120,17 +120,17 @@
       </div>
     </div>
 
-    <div class="state-block" *ngIf="histLoading">
+    <div class="state-block" *ngIf="histLoading()">
       <div class="spinner-border text-success" role="status"></div>
       <p>Cargando histórico…</p>
     </div>
-    <div class="state-block error" *ngIf="!histLoading && histError"><i class="bi bi-exclamation-triangle"></i><p>{{ histError }}</p></div>
-    <div class="state-block empty" *ngIf="!histLoading && !histError && historicoRows.length === 0"><i class="bi bi-inbox"></i><p>Aún no hay pagos registrados.</p></div>
+    <div class="state-block error" *ngIf="!histLoading() && histError()"><i class="bi bi-exclamation-triangle"></i><p>{{ histError() }}</p></div>
+    <div class="state-block empty" *ngIf="!histLoading() && !histError() && historicoRows().length === 0"><i class="bi bi-inbox"></i><p>Aún no hay pagos registrados.</p></div>
 
     <ag-grid-angular
-      *ngIf="!histLoading && historicoRows.length > 0"
+      *ngIf="!histLoading() && historicoRows().length > 0"
       class="ag-theme-quartz hist-grid"
-      [rowData]="historicoRows"
+      [rowData]="historicoRows()"
       [columnDefs]="historicoColDefs"
       [gridOptions]="historicoGridOptions"
       [quickFilterText]="histSearch"
@@ -177,7 +177,7 @@
     </div>
 
     <!-- KPIs -->
-    <div class="kpi-row" *ngIf="!loading && report">
+    <div class="kpi-row" *ngIf="!loading() && report">
       <div class="kpi-card total">
         <span class="kpi-label">Total {{ lens === 'PAGADO' ? 'pagado' : 'comprometido' }}</span>
         <span class="kpi-value">{{ money(grandTotal) }}</span>
@@ -198,23 +198,23 @@
       </div>
     </div>
 
-    <div class="state-block" *ngIf="loading">
+    <div class="state-block" *ngIf="loading()">
       <div class="spinner-border text-success" role="status"></div>
       <p>Cargando reporte…</p>
     </div>
 
-    <div class="state-block error" *ngIf="!loading && errorMsg">
+    <div class="state-block error" *ngIf="!loading() && errorMsg()">
       <i class="bi bi-exclamation-triangle"></i>
-      <p>{{ errorMsg }}</p>
+      <p>{{ errorMsg() }}</p>
     </div>
 
-    <div class="state-block empty" *ngIf="!loading && !errorMsg && report && branches.length === 0">
+    <div class="state-block empty" *ngIf="!loading() && !errorMsg() && report && branches.length === 0">
       <i class="bi bi-inbox"></i>
       <p>Sin gastos en el periodo seleccionado.</p>
     </div>
 
     <!-- Matriz pivote Sucursal × Departamento -->
-    <div class="matrix-wrap" *ngIf="!loading && branches.length > 0">
+    <div class="matrix-wrap" *ngIf="!loading() && branches.length > 0">
       <table class="pivot-table">
         <thead>
           <tr>
