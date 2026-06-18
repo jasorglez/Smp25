@@ -86,5 +86,7 @@ export const environment = {
     // publicKey: 'TEST-4399133a-4676-42a2-ab85-d946370bf96a',
   },
 
-  version: '5.63 (18 Junio 2026) fix(chatbot): scroll manual sin temblor, quita AfterViewChecked',
+  geminiApiKey: '', // Obtener en https://aistudio.google.com/app/apikey
+
+  version: '5.64 (18 Junio 2026) feat(chatbot): integración Gemini 2.0 Flash con contexto de datos',
 }; 
