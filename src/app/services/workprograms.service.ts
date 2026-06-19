@@ -98,4 +98,8 @@ export class WorkprogramsService {
     );
   }
 
+  getDelayedActivities(idCompany: number): Observable<any> {
+    return this.http.get(`${environment.urlSmp}/Workprogram/delayed?idCompany=${idCompany}`, { headers: this.trackingService.getHeaders() });
+  }
+
 }
