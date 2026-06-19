@@ -88,5 +88,5 @@ export const environment = {
 
   geminiApiKey: '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',
 
-  version: '5.71 (18 Junio 2026) feat(chatbot): Groq Llama 3.3 activo',
+  version: '5.72 (19 Junio 2026) feat(chatbot): proyectos activos en agente',
 }; 

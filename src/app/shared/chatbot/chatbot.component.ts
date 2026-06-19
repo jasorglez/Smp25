@@ -5,6 +5,7 @@ import { lastValueFrom } from 'rxjs';
 import { IncomesAndExpensesService } from 'app/services/incomes-and-expenses.service';
 import { AdministrationService } from 'app/services/administration.service';
 import { AgendaService } from 'app/services/agenda.service';
+import { ProjectsService } from 'app/services/projects.service';
 import { environment } from '@env/environment';
 
 interface ChatMessage {
@@ -21,9 +22,10 @@ interface ChatMessage {
   styleUrl: './chatbot.component.scss',
 })
 export class ChatbotComponent {
-  private incomesService = inject(IncomesAndExpensesService);
-  private adminService   = inject(AdministrationService);
-  private agendaService  = inject(AgendaService);
+  private incomesService  = inject(IncomesAndExpensesService);
+  private adminService    = inject(AdministrationService);
+  private agendaService   = inject(AgendaService);
+  private projectsService = inject(ProjectsService);
 
   @ViewChild('messagesContainer') private messagesContainer!: ElementRef;
 
@@ -117,6 +119,10 @@ export class ChatbotComponent {
       fetch(
         this.matchesAny(text, ['cita', 'agenda', 'reunion', 'visita', 'llamada', 'demo', 'semana', 'hoy', 'mañana']),
         'AGENDA SEMANA', () => this.getCitasRaw()
+      ),
+      fetch(
+        this.matchesAny(text, ['proyecto', 'obra', 'contrato', 'cuantos proyecto', 'mis proyecto', 'proyectos activos']),
+        'PROYECTOS', () => this.getProyectosRaw()
       ),
     ]);
 
@@ -216,5 +222,18 @@ export class ChatbotComponent {
     return data.slice(0, 8)
       .map((c: any) => `${c.titulo ?? 'Cita'} — ${c.fechaHora ? fmt(c.fechaHora) : ''} (${c.tipo ?? ''})`)
       .join('\n');
+  }
+
+  private async getProyectosRaw(): Promise<string> {
+    const data = await lastValueFrom(this.projectsService.getProjectListByCompany(this.idCompany));
+    const arr: any[] = Array.isArray(data) ? data : ((data as any)?.data ?? []);
+    if (!arr.length) return '';
+
+    const activos   = arr.filter(p => p.active === 1 || p.active === true);
+    const ejecucion = activos.filter(p => (p.state ?? '').toLowerCase().includes('ejecucion'));
+    const nombres   = ejecucion.slice(0, 10).map(p => `• ${p.name ?? p.number ?? 'Sin nombre'}`).join('\n');
+    const resto     = ejecucion.length > 10 ? `\n...y ${ejecucion.length - 10} más` : '';
+
+    return `Total proyectos activos: ${activos.length}\nEn ejecución: ${ejecucion.length}\n${nombres}${resto}`;
   }
 }
