@@ -7,6 +7,7 @@ import { AdministrationService } from 'app/services/administration.service';
 import { AgendaService } from 'app/services/agenda.service';
 import { ProjectsService } from 'app/services/projects.service';
 import { WorkprogramsService } from 'app/services/workprograms.service';
+import { FollowprojectsService } from 'app/services/followprojects.service';
 import { environment } from '@env/environment';
 
 interface ChatMessage {
@@ -27,7 +28,8 @@ export class ChatbotComponent {
   private adminService    = inject(AdministrationService);
   private agendaService   = inject(AgendaService);
   private projectsService    = inject(ProjectsService);
-  private workprogramService = inject(WorkprogramsService);
+  private workprogramService    = inject(WorkprogramsService);
+  private followprojectsService = inject(FollowprojectsService);
 
   @ViewChild('messagesContainer') private messagesContainer!: ElementRef;
 
@@ -129,6 +131,14 @@ export class ChatbotComponent {
       fetch(
         this.matchesAny(text, ['atrasad', 'retraso', 'vencid', 'pendiente', 'actividad', 'actividades']),
         'ACTIVIDADES ATRASADAS', () => this.getActividadesAtrasadasRaw()
+      ),
+      fetch(
+        this.matchesAny(text, ['avance', 'progreso', 'porcentaje', 'adelantado', 'cumplimiento', 'avanzado']),
+        'AVANCE PROYECTOS', () => this.getAvanceProyectosRaw()
+      ),
+      fetch(
+        this.matchesAny(text, ['contrato', 'cartera', 'monto', 'importe contrato', 'contratos activos']),
+        'CONTRATOS', () => this.getContratosRaw()
       ),
     ]);
 
@@ -242,6 +252,37 @@ export class ChatbotComponent {
     ).join('\n');
     const resto = total > 10 ? `\n...y ${total - 10} más` : '';
     return `Total atrasadas: ${total}\n${lines}${resto}`;
+  }
+
+  private async getAvanceProyectosRaw(): Promise<string> {
+    const data = await lastValueFrom(this.workprogramService.getAvanceProyectos(this.idCompany));
+    const promedio: number    = data?.promedioGlobal ?? data?.PromedioGlobal ?? 0;
+    const total: number       = data?.totalProyectos ?? data?.TotalProyectos ?? 0;
+    const atrasados: any[]    = data?.masAtrasados   ?? data?.MasAtrasados   ?? [];
+    const avanzados: any[]    = data?.masAvanzados   ?? data?.MasAvanzados   ?? [];
+    if (!total) return '';
+
+    const fmtProy = (p: any) => `  • ${p.projectName ?? p.ProjectName} — ${p.avancePct ?? p.AvancePct}% (${p.totalActividades ?? p.TotalActividades} activ.)`;
+    const bloqAtras  = atrasados.length ? `\nMenos avanzados:\n${atrasados.map(fmtProy).join('\n')}` : '';
+    const bloqAvanz  = avanzados.length ? `\nMás avanzados:\n${avanzados.map(fmtProy).join('\n')}` : '';
+    return `Avance global: ${promedio}% (${total} proyectos)${bloqAtras}${bloqAvanz}`;
+  }
+
+  private async getContratosRaw(): Promise<string> {
+    const data = await lastValueFrom(this.followprojectsService.getContract(-this.idCompany));
+    const arr: any[] = Array.isArray(data) ? data : ((data as any)?.data ?? []);
+    if (!arr.length) return '';
+
+    const activos   = arr.filter(c => c.active === 1 || c.active === true);
+    const ejecucion = activos.filter(c => (c.statecontract ?? '').toLowerCase().includes('ejecuci'));
+    const fmtMx = (n: number) => n ? `$${Number(n).toLocaleString('es-MX', { minimumFractionDigits: 0 })}` : '';
+    const totalMx   = activos.reduce((s, c) => s + (Number(c.amountmx) || 0), 0);
+    const totalDll  = activos.reduce((s, c) => s + (Number(c.amountdll) || 0), 0);
+    const lista     = ejecucion.slice(0, 8).map(c =>
+      `• ${c.descripsmall ?? c.description ?? c.contract} — ${c.statecontract} ${c.amountmx ? '(' + fmtMx(c.amountmx) + ' MXN)' : ''}`
+    ).join('\n');
+    const resto = ejecucion.length > 8 ? `\n...y ${ejecucion.length - 8} más` : '';
+    return `Total contratos activos: ${activos.length}\nEn ejecución: ${ejecucion.length}\nCartera MXN: ${fmtMx(totalMx)}${totalDll ? ' | USD: $' + Number(totalDll).toLocaleString('es-MX') : ''}\n${lista}${resto}`;
   }
 
   private async getProyectosRaw(): Promise<string> {
