@@ -637,41 +637,28 @@ export class DetalleItemsCotizacionComponent implements ICellRendererAngularComp
                 margin: [0, 0, 0, 10],
               };
               const clausulas = [cfg.clausula1, cfg.clausula2, cfg.clausula3].filter(Boolean);
-              const textoInferior: any = {
-                stack: [
-                  { text: 'CON LAS SIGUIENTES CLÁUSULAS', fontSize: 6.5, bold: true, color: NAVY, margin: [0,0,0,3] },
-                  { ul: clausulas.map(c => ({ text: c, fontSize: 6, color: GRAY, margin: [0,0,0,2] })), margin: [0,0,0,3] },
-                  { text: cfg.textoAclaracion, fontSize: 6, color: GRAY, alignment: 'justify', margin: [0,0,0,2] },
-                  { text: cfg.textoDespedida,  fontSize: 6, color: GRAY, alignment: 'justify', margin: [0,0,0,2] },
-                  { text: cfg.textoIva,        fontSize: 6.5, bold: true, color: NAVY, margin: [0,0,0,4], keepWithNext: true },
-                ],
-              };
               const firmaStack1: any[] = [];
               if (signatureB64) {
                 firmaStack1.push({ image: signatureB64, width: 120, alignment: 'center', margin: [0,0,0,4] });
               }
               firmaStack1.push({ canvas: [{ type: 'line', x1: 0, y1: 0, x2: 160, y2: 0, lineWidth: 1, lineColor: NAVY }] });
               firmaStack1.push({ text: cot.nombreVendedor ?? '', fontSize: 7, bold: true, alignment: 'center', margin: [0,4,0,0] });
-              firmaStack1.push({ text: 'VENDEDOR', fontSize: 6, color: GRAY, alignment: 'center', margin: [0,0,0, signatureB64 ? 15 : 55] });
-              const firma: any = {
-                columns: [
-                  { text: '', width: '*' },
-                  { stack: firmaStack1, width: 160 },
-                  { text: '', width: '*' },
-                ],
-              };
-              const footerContent: any = {
+              firmaStack1.push({ text: 'VENDEDOR', fontSize: 6, color: GRAY, alignment: 'center', margin: [0,0,0, signatureB64 ? 15 : 20] });
+              const bloqueInferiorEmail: any = {
                 stack: [
-                  { canvas: [{ type: 'line', x1: 0, y1: 0, x2: 515, y2: 0, lineWidth: 0.5, lineColor: BLUE }], margin: [0,0,0,4] },
+                  { text: 'CON LAS SIGUIENTES CLÁUSULAS', fontSize: 6.5, bold: true, color: NAVY, margin: [0,0,0,3] },
+                  { ul: clausulas.map(c => ({ text: c, fontSize: 6, color: GRAY, margin: [0,0,0,2] })), margin: [0,0,0,3] },
+                  { text: cfg.textoAclaracion, fontSize: 6, color: GRAY, alignment: 'justify', margin: [0,0,0,2] },
+                  { text: cfg.textoDespedida,  fontSize: 6, color: GRAY, alignment: 'justify', margin: [0,0,0,2] },
+                  { text: cfg.textoIva,        fontSize: 6.5, bold: true, color: NAVY, margin: [0,0,0,8] },
                   {
                     columns: [
-                      { text: rootData?.email ?? '', fontSize: 6, color: GRAY },
-                      { text: rootData?.web   ?? '', fontSize: 6, color: GRAY, alignment: 'center' },
-                      { text: companyName,           fontSize: 6, color: GRAY, alignment: 'right' },
+                      { text: '', width: '*' },
+                      { stack: firmaStack1, width: 160 },
+                      { text: '', width: '*' },
                     ],
                   },
                 ],
-                margin: [40, 0, 40, 0],
               };
               const textoSuperior: any = {
                 stack: [
@@ -682,8 +669,20 @@ export class DetalleItemsCotizacionComponent implements ICellRendererAngularComp
               const docDef: any = {
                 pageSize: 'LETTER',
                 pageMargins: [40, 40, 40, 60],
-                footer: () => footerContent,
-                content: [header, destinatario, { text: 'ASUNTO: COTIZACIÓN', fontSize: 8, bold: true, color: NAVY, margin: [0,0,0,8] }, textoSuperior, tabla, textoInferior, firma],
+                footer: () => ({
+                  stack: [
+                    { canvas: [{ type: 'line', x1: 0, y1: 0, x2: 515, y2: 0, lineWidth: 0.5, lineColor: BLUE }], margin: [0,0,0,4] },
+                    {
+                      columns: [
+                        { text: rootData?.email ?? '', fontSize: 6, color: GRAY },
+                        { text: rootData?.web   ?? '', fontSize: 6, color: GRAY, alignment: 'center' },
+                        { text: companyName,           fontSize: 6, color: GRAY, alignment: 'right' },
+                      ],
+                    },
+                  ],
+                  margin: [40, 0, 40, 0],
+                }),
+                content: [header, destinatario, { text: 'ASUNTO: COTIZACIÓN', fontSize: 8, bold: true, color: NAVY, margin: [0,0,0,8] }, textoSuperior, tabla, bloqueInferiorEmail],
                 styles: { thCell: { fontSize: 7, bold: true } },
                 defaultStyle: { font: 'Roboto' },
               };
@@ -895,7 +894,16 @@ export class DetalleItemsCotizacionComponent implements ICellRendererAngularComp
 
       const clausulas = [cfg.clausula1, cfg.clausula2, cfg.clausula3].filter(Boolean);
 
-      const textoInferior: any = {
+      const firmaStack2: any[] = [];
+      if (signatureB64) {
+        firmaStack2.push({ image: signatureB64, width: 120, alignment: 'center', margin: [0, 0, 0, 4] });
+      }
+      firmaStack2.push({ canvas: [{ type: 'line', x1: 0, y1: 0, x2: 160, y2: 0, lineWidth: 1, lineColor: NAVY }] });
+      firmaStack2.push({ text: cot.nombreVendedor ?? '', fontSize: 7, bold: true, alignment: 'center', margin: [0, 4, 0, 0] });
+      firmaStack2.push({ text: 'VENDEDOR', fontSize: 6, color: GRAY, alignment: 'center', margin: [0, 0, 0, signatureB64 ? 15 : 20] });
+
+      // Cláusulas + firma en un bloque único para que nunca se separen entre páginas
+      const bloqueInferior: any = {
         stack: [
           { text: 'CON LAS SIGUIENTES CLÁUSULAS', fontSize: 6.5, bold: true, color: NAVY, margin: [0,0,0,3] },
           {
@@ -904,26 +912,19 @@ export class DetalleItemsCotizacionComponent implements ICellRendererAngularComp
           },
           { text: cfg.textoAclaracion, fontSize: 6, color: GRAY, alignment: 'justify', margin: [0,0,0,2] },
           { text: cfg.textoDespedida,  fontSize: 6, color: GRAY, alignment: 'justify', margin: [0,0,0,2] },
-          { text: cfg.textoIva,        fontSize: 6.5, bold: true, color: NAVY, margin: [0,0,0,4], keepWithNext: true },
+          { text: cfg.textoIva,        fontSize: 6.5, bold: true, color: NAVY, margin: [0,0,0,8] },
+          {
+            columns: [
+              { text: '', width: '*' },
+              { stack: firmaStack2, width: 160 },
+              { text: '', width: '*' },
+            ],
+          },
         ],
       };
 
-      const firmaStack2: any[] = [];
-      if (signatureB64) {
-        firmaStack2.push({ image: signatureB64, width: 120, alignment: 'center', margin: [0, 0, 0, 4] });
-      }
-      firmaStack2.push({ canvas: [{ type: 'line', x1: 0, y1: 0, x2: 160, y2: 0, lineWidth: 1, lineColor: NAVY }] });
-      firmaStack2.push({ text: cot.nombreVendedor ?? '', fontSize: 7, bold: true, alignment: 'center', margin: [0, 4, 0, 0] });
-      firmaStack2.push({ text: 'VENDEDOR', fontSize: 6, color: GRAY, alignment: 'center', margin: [0, 0, 0, signatureB64 ? 15 : 55] });
-      const firma: any = {
-        columns: [
-          { text: '', width: '*' },
-          { stack: firmaStack2, width: 160 },
-          { text: '', width: '*' },
-        ],
-      };
-
-      const footerContent: any = {
+      // Footer como función que retorna objeto nuevo cada vez (fix multi-página)
+      const makeFooter = () => ({
         stack: [
           { canvas: [{ type: 'line', x1: 0, y1: 0, x2: 515, y2: 0, lineWidth: 0.5, lineColor: BLUE }], margin: [0,0,0,4] },
           {
@@ -935,13 +936,13 @@ export class DetalleItemsCotizacionComponent implements ICellRendererAngularComp
           },
         ],
         margin: [40, 0, 40, 0],
-      };
+      });
 
       const docDef: any = {
         pageSize: 'LETTER',
         pageMargins: [40, 40, 40, 60],
-        footer: () => footerContent,
-        content: [header, destinatario, { text: 'ASUNTO: COTIZACIÓN', fontSize: 8, bold: true, color: NAVY, margin: [0,0,0,8] }, textoSuperior, tabla, textoInferior, firma],
+        footer: makeFooter,
+        content: [header, destinatario, { text: 'ASUNTO: COTIZACIÓN', fontSize: 8, bold: true, color: NAVY, margin: [0,0,0,8] }, textoSuperior, tabla, bloqueInferior],
         styles: { thCell: { fontSize: 7, bold: true } },
         defaultStyle: { font: 'Roboto' },
       };
