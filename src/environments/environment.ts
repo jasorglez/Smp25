@@ -88,5 +88,5 @@ export const environment = {
 
   geminiApiKey: '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',
 
-  version: '5.77 (19 Junio 2026) fix(cotizaciones): footer multi-pagina y firma no se separa',
+  version: '5.78 (19 Junio 2026) fix(cotizaciones): reusar blob renderizado — no re-renderizar docDef mutado',
 }; 
