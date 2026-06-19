@@ -86,7 +86,7 @@ export const environment = {
     // publicKey: 'TEST-4399133a-4676-42a2-ab85-d946370bf96a',
   },
 
-  geminiApiKey: '', // Groq API key — obtener en https://console.groq.com (gsk_...)
+  geminiApiKey: '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',
 
-  version: '5.70 (18 Junio 2026) feat(chatbot): migra a Groq (Llama 3.3) API key AQ. invalida',
+  version: '5.71 (18 Junio 2026) feat(chatbot): Groq Llama 3.3 activo',
 }; 
