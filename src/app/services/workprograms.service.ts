@@ -102,4 +102,8 @@ export class WorkprogramsService {
     return this.http.get(`${environment.urlSmp}/Workprogram/delayed?idCompany=${idCompany}`, { headers: this.trackingService.getHeaders() });
   }
 
+  getAvanceProyectos(idCompany: number): Observable<any> {
+    return this.http.get(`${environment.urlSmp}/Workprogram/avance?idCompany=${idCompany}`, { headers: this.trackingService.getHeaders() });
+  }
+
 }
