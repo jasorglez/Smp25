@@ -88,5 +88,5 @@ export const environment = {
 
   geminiApiKey: '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',
 
-  version: '5.74 (19 Junio 2026) feat(chatbot): avance proyectos y contratos en agente',
+  version: '5.75 (19 Junio 2026) feat(chatbot): reporte diario de campo en agente',
 }; 
