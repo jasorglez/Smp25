@@ -6,6 +6,7 @@ import { IncomesAndExpensesService } from 'app/services/incomes-and-expenses.ser
 import { AdministrationService } from 'app/services/administration.service';
 import { AgendaService } from 'app/services/agenda.service';
 import { ProjectsService } from 'app/services/projects.service';
+import { WorkprogramsService } from 'app/services/workprograms.service';
 import { environment } from '@env/environment';
 
 interface ChatMessage {
@@ -25,7 +26,8 @@ export class ChatbotComponent {
   private incomesService  = inject(IncomesAndExpensesService);
   private adminService    = inject(AdministrationService);
   private agendaService   = inject(AgendaService);
-  private projectsService = inject(ProjectsService);
+  private projectsService    = inject(ProjectsService);
+  private workprogramService = inject(WorkprogramsService);
 
   @ViewChild('messagesContainer') private messagesContainer!: ElementRef;
 
@@ -123,6 +125,10 @@ export class ChatbotComponent {
       fetch(
         this.matchesAny(text, ['proyecto', 'obra', 'contrato', 'cuantos proyecto', 'mis proyecto', 'proyectos activos']),
         'PROYECTOS', () => this.getProyectosRaw()
+      ),
+      fetch(
+        this.matchesAny(text, ['atrasad', 'retraso', 'vencid', 'pendiente', 'actividad', 'actividades']),
+        'ACTIVIDADES ATRASADAS', () => this.getActividadesAtrasadasRaw()
       ),
     ]);
 
@@ -222,6 +228,20 @@ export class ChatbotComponent {
     return data.slice(0, 8)
       .map((c: any) => `${c.titulo ?? 'Cita'} — ${c.fechaHora ? fmt(c.fechaHora) : ''} (${c.tipo ?? ''})`)
       .join('\n');
+  }
+
+  private async getActividadesAtrasadasRaw(): Promise<string> {
+    const data = await lastValueFrom(this.workprogramService.getDelayedActivities(this.idCompany));
+    const total: number = data?.total ?? data?.Total ?? 0;
+    const lista: any[]  = data?.actividades ?? data?.Actividades ?? [];
+    if (!total) return 'No hay actividades atrasadas.';
+
+    const fmt = (iso: string) => iso ? new Date(iso).toLocaleDateString('es-MX', { day: '2-digit', month: 'short', year: 'numeric' }) : '';
+    const lines = lista.slice(0, 10).map((a: any) =>
+      `• [${a.daysLate ?? a.DaysLate ?? 0} días] ${a.projectName ?? a.ProjectName} — ${a.description ?? a.Description} (fin: ${fmt(a.endDate ?? a.EndDate)})`
+    ).join('\n');
+    const resto = total > 10 ? `\n...y ${total - 10} más` : '';
+    return `Total atrasadas: ${total}\n${lines}${resto}`;
   }
 
   private async getProyectosRaw(): Promise<string> {
