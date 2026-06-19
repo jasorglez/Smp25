@@ -9,6 +9,7 @@ import { ProjectsService } from 'app/services/projects.service';
 import { WorkprogramsService } from 'app/services/workprograms.service';
 import { FollowprojectsService } from 'app/services/followprojects.service';
 import { DailyReportService } from 'app/services/daily-report.service';
+import { OtService } from 'app/services/ot.service';
 import { environment } from '@env/environment';
 
 interface ChatMessage {
@@ -32,6 +33,7 @@ export class ChatbotComponent {
   private workprogramService    = inject(WorkprogramsService);
   private followprojectsService = inject(FollowprojectsService);
   private dailyReportService    = inject(DailyReportService);
+  private otService             = inject(OtService);
 
   @ViewChild('messagesContainer') private messagesContainer!: ElementRef;
 
@@ -146,6 +148,10 @@ export class ChatbotComponent {
         this.matchesAny(text, ['campo', 'reporte', 'ayer', 'hoy se hizo', 'reportó', 'reportado', 'diario', 'semana']),
         'REPORTE CAMPO', () => this.getReporteCampoRaw()
       ),
+      fetch(
+        this.matchesAny(text, ['ot', 'orden de trabajo', 'ordenes', 'folio', 'reconexion', 'servicio']),
+        'ÓRDENES DE TRABAJO (OTs)', () => this.getOTsRaw()
+      ),
     ]);
 
     return parts.join('\n\n');
@@ -258,6 +264,40 @@ export class ChatbotComponent {
     ).join('\n');
     const resto = total > 10 ? `\n...y ${total - 10} más` : '';
     return `Total atrasadas: ${total}\n${lines}${resto}`;
+  }
+
+  private async getOTsRaw(): Promise<string> {
+    const data = await lastValueFrom(this.otService.getOtAllt(this.idCompany));
+    const arr: any[] = Array.isArray(data) ? data : ((data as any)?.data ?? []);
+    if (!arr.length) return '';
+
+    const abiertas  = arr.filter(o => !o.closed && !o.closedApp && !o.Closed && !o.ClosedApp);
+    const cerradas  = arr.filter(o =>  o.closed  ||  o.closedApp ||  o.Closed ||  o.ClosedApp);
+
+    const hoy   = new Date(); hoy.setHours(0,0,0,0);
+    const ayer  = new Date(hoy); ayer.setDate(ayer.getDate() - 1);
+    const recientes = arr
+      .filter(o => { const d = new Date(o.date ?? o.Date ?? 0); return d >= ayer; })
+      .slice(0, 8);
+
+    const porArea: Record<string, number> = arr.reduce((acc: Record<string, number>, o) => {
+      const a: string = o.area ?? o.Area ?? 'Sin área';
+      acc[a] = (acc[a] ?? 0) + 1;
+      return acc;
+    }, {} as Record<string, number>);
+    const topAreas = (Object.entries(porArea) as [string, number][])
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 5)
+      .map(([area, cnt]) => `  ${area}: ${cnt}`)
+      .join('\n');
+
+    const recientesStr = recientes.length
+      ? '\nRecientes (hoy/ayer):\n' + recientes.map(o =>
+          `  • OT ${o.otNumber ?? o.OtNumber ?? o.ot_number ?? ''} — ${o.area ?? o.Area ?? ''} | ${o.description ?? o.Description ?? ''}`
+        ).join('\n')
+      : '';
+
+    return `OTs totales: ${arr.length} | Abiertas: ${abiertas.length} | Cerradas: ${cerradas.length}\nPor tipo:\n${topAreas}${recientesStr}`;
   }
 
   private async getReporteCampoRaw(): Promise<string> {
