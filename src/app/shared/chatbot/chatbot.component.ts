@@ -1,8 +1,7 @@
 import { Component, ElementRef, inject, ViewChild } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { HttpClient } from '@angular/common/http';
-import { firstValueFrom, lastValueFrom } from 'rxjs';
+import { lastValueFrom } from 'rxjs';
 import { IncomesAndExpensesService } from 'app/services/incomes-and-expenses.service';
 import { AdministrationService } from 'app/services/administration.service';
 import { AgendaService } from 'app/services/agenda.service';
@@ -22,7 +21,6 @@ interface ChatMessage {
   styleUrl: './chatbot.component.scss',
 })
 export class ChatbotComponent {
-  private http           = inject(HttpClient);
   private incomesService = inject(IncomesAndExpensesService);
   private adminService   = inject(AdministrationService);
   private agendaService  = inject(AgendaService);
@@ -158,17 +156,25 @@ export class ChatbotComponent {
       contents: this.geminiHistory,
     };
 
-    const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent`;
-    const headers = { 'Content-Type': 'application/json', 'x-goog-api-key': apiKey };
+    const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`;
 
     try {
-      const res = await firstValueFrom(this.http.post<any>(url, body, { headers }));
-      const text: string = res?.candidates?.[0]?.content?.parts?.[0]?.text ?? 'Sin respuesta de Gemini.';
+      // fetch() nativo para saltarse interceptores de Angular que agregan token Firebase
+      const res = await fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        const msg = data?.error?.message ?? `HTTP ${res.status}`;
+        return `Error Gemini: ${msg}`;
+      }
+      const text: string = data?.candidates?.[0]?.content?.parts?.[0]?.text ?? 'Sin respuesta de Gemini.';
       this.geminiHistory.push({ role: 'model', parts: [{ text }] });
       return text;
     } catch (err: any) {
-      const msg = err?.error?.error?.message ?? err?.message ?? 'Error al conectar con Gemini.';
-      return `Error Gemini: ${msg}`;
+      return `Error Gemini: ${err?.message ?? 'Sin conexión.'}`;
     }
   }
 

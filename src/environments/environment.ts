@@ -86,7 +86,7 @@ export const environment = {
     // publicKey: 'TEST-4399133a-4676-42a2-ab85-d946370bf96a',
   },
 
-  geminiApiKey: 'AQ.Ab8RN6KY-xZ0uGINalAHSmN0V4AddWq2mgqsPzYFDWI5JAHMgA',
+  geminiApiKey: 'AQ.AbBRN6KXHGUmP8VxoJWtqwyaxM8anzRxsIQoL9B-R80Q4FXInig',
 
-  version: '5.68 (18 Junio 2026) fix(chatbot): usa header x-goog-api-key para key AQ.',
+  version: '5.69 (18 Junio 2026) fix(chatbot): fetch() nativo para saltarse interceptor Firebase',
 }; 
