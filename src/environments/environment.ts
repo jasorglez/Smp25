@@ -88,5 +88,5 @@ export const environment = {
 
   geminiApiKey: 'AQ.Ab8RN6KY-xZ0uGINalAHSmN0V4AddWq2mgqsPzYFDWI5JAHMgA',
 
-  version: '5.66 (18 Junio 2026) fix(chatbot): corrige API key Gemini',
+  version: '5.67 (18 Junio 2026) fix(chatbot): cambia modelo a gemini-1.5-flash (free tier)',
 }; 
