@@ -8,6 +8,7 @@ import { AgendaService } from 'app/services/agenda.service';
 import { ProjectsService } from 'app/services/projects.service';
 import { WorkprogramsService } from 'app/services/workprograms.service';
 import { FollowprojectsService } from 'app/services/followprojects.service';
+import { DailyReportService } from 'app/services/daily-report.service';
 import { environment } from '@env/environment';
 
 interface ChatMessage {
@@ -30,6 +31,7 @@ export class ChatbotComponent {
   private projectsService    = inject(ProjectsService);
   private workprogramService    = inject(WorkprogramsService);
   private followprojectsService = inject(FollowprojectsService);
+  private dailyReportService    = inject(DailyReportService);
 
   @ViewChild('messagesContainer') private messagesContainer!: ElementRef;
 
@@ -139,6 +141,10 @@ export class ChatbotComponent {
       fetch(
         this.matchesAny(text, ['contrato', 'cartera', 'monto', 'importe contrato', 'contratos activos']),
         'CONTRATOS', () => this.getContratosRaw()
+      ),
+      fetch(
+        this.matchesAny(text, ['campo', 'reporte', 'ayer', 'hoy se hizo', 'reportó', 'reportado', 'diario', 'semana']),
+        'REPORTE CAMPO', () => this.getReporteCampoRaw()
       ),
     ]);
 
@@ -252,6 +258,24 @@ export class ChatbotComponent {
     ).join('\n');
     const resto = total > 10 ? `\n...y ${total - 10} más` : '';
     return `Total atrasadas: ${total}\n${lines}${resto}`;
+  }
+
+  private async getReporteCampoRaw(): Promise<string> {
+    const dias = 7;
+    const data = await lastValueFrom(this.dailyReportService.getResumenCampo(this.idCompany, dias));
+    const total: number    = data?.totalReportes ?? data?.TotalReportes ?? 0;
+    const porDia: any[]    = data?.porDia        ?? data?.PorDia        ?? [];
+    if (!total) return 'Sin reportes de campo en los últimos 7 días.';
+
+    const fmtFecha = (iso: string) => new Date(iso + 'T00:00:00').toLocaleDateString('es-MX', { weekday: 'short', day: '2-digit', month: 'short' });
+    const fmtMx   = (n: number)   => `$${Number(n).toLocaleString('es-MX', { minimumFractionDigits: 2 })}`;
+
+    const lineas = porDia.slice(0, 7).map((d: any) => {
+      const proyectos = (d.proyectos ?? d.Proyectos ?? []).join(', ');
+      return `• ${fmtFecha(d.fecha ?? d.Fecha)}: ${d.reportes ?? d.Reportes} reportes | ${fmtMx(d.totalPay ?? d.TotalPay)} | Proyectos: ${proyectos || 'N/D'}`;
+    }).join('\n');
+
+    return `Reportes de campo (últimos ${dias} días): ${total} en total\n${lineas}`;
   }
 
   private async getAvanceProyectosRaw(): Promise<string> {

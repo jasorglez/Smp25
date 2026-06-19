@@ -120,6 +120,10 @@ SumaReporte(
 
 
 
+  getResumenCampo(idCompany: number, dias: number = 7): Observable<any> {
+    return this.http.get(`${environment.urlSmp}/DailyReport/resumen-campo?idCompany=${idCompany}&dias=${dias}`, { headers: this.trackingService.getHeaders() });
+  }
+
   // Exportar múltiples reportes a PDF
   exportReportsToPdf(reportIds: number[]): Observable<any> {
     return this.http.post(`${environment.urlSmp}/DailyReport/export/pdf`, 
