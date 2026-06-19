@@ -100,7 +100,7 @@ const GRAY  = '#555555';
             <!-- Descargar (funciona en tablets donde el iframe no carga) -->
             <button class="btn btn-sm btn-success"
                     (click)="descargarPdf()"
-                    [disabled]="isLoadingPdf || !_lastDocDef"
+                    [disabled]="isLoadingPdf || !_pdfBlob"
                     title="Descargar PDF — recomendado en tablets">
               <i class="bi bi-download me-1"></i> Descargar
             </button>
@@ -116,7 +116,7 @@ const GRAY  = '#555555';
 
             <button class="btn btn-sm btn-outline-success"
                     (click)="abrirModalWhatsapp()"
-                    [disabled]="isLoadingPdf || isSendingWhatsapp || !_lastDocDef">
+                    [disabled]="isLoadingPdf || isSendingWhatsapp || !_pdfBlob">
               <span *ngIf="isSendingWhatsapp" class="spinner-border spinner-border-sm me-1"></span>
               <i *ngIf="!isSendingWhatsapp" class="bi bi-whatsapp me-1"></i>
               {{ isSendingWhatsapp ? 'Preparando...' : 'Enviar por WhatsApp' }}
@@ -207,7 +207,8 @@ export class DetalleItemsCotizacionComponent implements ICellRendererAngularComp
   isSendingEmail = false;
   isSendingWhatsapp = false;
   private originalPdfUrl: string | null = null;
-  _lastDocDef: any = null;   // ← guarda el docDef para download en tablet
+  _lastDocDef: any = null;
+  _pdfBlob: Blob | null = null;   // blob renderizado — se reutiliza para download/WhatsApp
 
   // ── Modal correo ──────────────────────────────────────────────────────────
   showEmailModal  = false;
@@ -947,12 +948,12 @@ export class DetalleItemsCotizacionComponent implements ICellRendererAngularComp
         defaultStyle: { font: 'Roboto' },
       };
 
-      this._lastDocDef = docDef;     // ← guardar para download en tablet
+      this._lastDocDef = docDef;
 
       pdfMake.createPdf(docDef).getBlob((blob: Blob) => {
+        this._pdfBlob = blob;   // guardar blob ya renderizado para download/WhatsApp
         if (this.originalPdfUrl) URL.revokeObjectURL(this.originalPdfUrl);
         this.originalPdfUrl = URL.createObjectURL(blob);
-        // #zoom=90 abre el PDF al 90% en el visor del navegador (Chrome/Edge)
         this.pdfUrl = this.sanitizer.bypassSecurityTrustResourceUrl(this.originalPdfUrl + '#zoom=90');
         this.isLoadingPdf = false;
       });
@@ -964,20 +965,27 @@ export class DetalleItemsCotizacionComponent implements ICellRendererAngularComp
   }
 
   descargarPdf() {
-    if (!this._lastDocDef) return;
+    if (!this._pdfBlob) return;
     const nombre = `${this.cotizacion?.numCotizacion ?? 'Cotizacion'}.pdf`;
-    pdfMake.createPdf(this._lastDocDef).download(nombre);
+    const url = URL.createObjectURL(this._pdfBlob);
+    const a   = document.createElement('a');
+    a.href     = url;
+    a.download = nombre;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
   }
 
   // ── Helpers ───────────────────────────────────────────────────────────────
 
   private getPdfBlob(): Promise<Blob> {
     return new Promise((resolve, reject) => {
-      if (!this._lastDocDef) {
+      if (!this._pdfBlob) {
         reject(new Error('No hay PDF generado'));
         return;
       }
-      pdfMake.createPdf(this._lastDocDef).getBlob((blob: Blob) => resolve(blob));
+      resolve(this._pdfBlob);
     });
   }
 
