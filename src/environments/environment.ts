@@ -86,7 +86,7 @@ export const environment = {
     // publicKey: 'TEST-4399133a-4676-42a2-ab85-d946370bf96a',
   },
 
-  geminiApiKey: 'AQ.AbBRN6KXHGUmP8VxoJWtqwyaxM8anzRxsIQoL9B-R80Q4FXInig',
+  geminiApiKey: '', // Groq API key — obtener en https://console.groq.com (gsk_...)
 
-  version: '5.69 (18 Junio 2026) fix(chatbot): fetch() nativo para saltarse interceptor Firebase',
+  version: '5.70 (18 Junio 2026) feat(chatbot): migra a Groq (Llama 3.3) API key AQ. invalida',
 }; 

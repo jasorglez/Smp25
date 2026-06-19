@@ -134,47 +134,46 @@ export class ChatbotComponent {
       weekday: 'long', year: 'numeric', month: 'long', day: 'numeric',
     });
     let prompt = `Eres el asistente BI de la empresa. Hoy es ${fecha}. Responde siempre en español, de forma concisa, amigable y profesional. Máximo 4 líneas salvo que el usuario pida detalle.`;
-
     if (dataContext) {
-      prompt += `\n\nDatos actuales de la empresa para responder:\n\n${dataContext}\n\nUsa estos datos para responder con precisión.`;
-    } else {
-      prompt += '\nSi el usuario pide datos de la empresa y no hay datos disponibles, indícalo amablemente.';
+      prompt += `\n\nDatos actuales de la empresa:\n\n${dataContext}\n\nUsa estos datos para responder con precisión.`;
     }
-
     return prompt;
   }
 
   private async callGemini(userMessage: string, dataContext: string): Promise<string> {
     const apiKey = (environment as any).geminiApiKey;
-    if (!apiKey) return 'Falta configurar geminiApiKey en environment.ts.\nObtén tu clave gratuita en: https://aistudio.google.com/app/apikey';
+    if (!apiKey) return 'Falta configurar geminiApiKey en environment.ts.\nObtén tu clave en: https://console.groq.com';
 
+    // Historial en formato OpenAI (compatible con Groq)
     this.geminiHistory.push({ role: 'user', parts: [{ text: userMessage }] });
     if (this.geminiHistory.length > 20) this.geminiHistory = this.geminiHistory.slice(-20);
 
-    const body = {
-      system_instruction: { parts: [{ text: this.buildSystemPrompt(dataContext) }] },
-      contents: this.geminiHistory,
-    };
+    const messages = [
+      { role: 'system', content: this.buildSystemPrompt(dataContext) },
+      ...this.geminiHistory.map(m => ({
+        role: m.role === 'model' ? 'assistant' : m.role,
+        content: m.parts[0]?.text ?? '',
+      })),
+    ];
 
-    const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`;
+    const body = { model: 'llama-3.3-70b-versatile', messages, temperature: 0.7 };
 
     try {
-      // fetch() nativo para saltarse interceptores de Angular que agregan token Firebase
-      const res = await fetch(url, {
+      const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${apiKey}` },
         body: JSON.stringify(body),
       });
       const data = await res.json();
       if (!res.ok) {
         const msg = data?.error?.message ?? `HTTP ${res.status}`;
-        return `Error Gemini: ${msg}`;
+        return `Error: ${msg}`;
       }
-      const text: string = data?.candidates?.[0]?.content?.parts?.[0]?.text ?? 'Sin respuesta de Gemini.';
+      const text: string = data?.choices?.[0]?.message?.content ?? 'Sin respuesta.';
       this.geminiHistory.push({ role: 'model', parts: [{ text }] });
       return text;
     } catch (err: any) {
-      return `Error Gemini: ${err?.message ?? 'Sin conexión.'}`;
+      return `Error: ${err?.message ?? 'Sin conexión.'}`;
     }
   }
 
