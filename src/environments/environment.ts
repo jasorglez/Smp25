@@ -88,5 +88,5 @@ export const environment = {
 
   geminiApiKey: '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',
 
-  version: '5.83 (20 Junio 2026) feat(chatbot): toggle modo negocio/libre para conocimiento general',
+  version: '5.84 (20 Junio 2026) fix(chatbot): modo libre desbloquea conocimiento general sin restriccion de negocio',
 }; 
