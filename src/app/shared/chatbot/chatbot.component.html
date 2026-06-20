@@ -5,6 +5,13 @@
     <div class="chatbot-header">
       <i class="bi bi-robot me-2"></i>
       <span>Asistente BI</span>
+      <button class="btn btn-xs ms-auto mode-toggle"
+              [class.mode-libre]="generalMode"
+              (click)="toggleGeneralMode()"
+              [title]="generalMode ? 'Modo libre — clic para cambiar a negocio' : 'Modo negocio — clic para modo libre'">
+        <i class="bi" [class.bi-briefcase-fill]="!generalMode" [class.bi-globe2]="generalMode"></i>
+        {{ generalMode ? 'Libre' : 'Negocio' }}
+      </button>
     </div>
 
     <div class="chatbot-messages" #messagesContainer>
