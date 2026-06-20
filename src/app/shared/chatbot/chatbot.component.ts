@@ -191,10 +191,12 @@ export class ChatbotComponent {
   // ── Llamada a Gemini API ────────────────────────────────────────────────
 
   private buildSystemPrompt(dataContext: string): string {
-    const fecha = new Date().toLocaleDateString('es-MX', {
+    const ahora = new Date();
+    const fecha = ahora.toLocaleDateString('es-MX', {
       weekday: 'long', year: 'numeric', month: 'long', day: 'numeric',
     });
-    let prompt = `Eres el asistente BI de la empresa. Hoy es ${fecha}. Responde siempre en español, de forma concisa, amigable y profesional. Máximo 4 líneas salvo que el usuario pida detalle.
+    const hora = ahora.toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit', hour12: false });
+    let prompt = `Eres el asistente BI de la empresa. Hoy es ${fecha}, son las ${hora} (hora local). Usa la hora real para saludar: buenos días (6-12h), buenas tardes (12-19h), buenas noches (19-6h). Responde siempre en español, de forma concisa, amigable y profesional. Máximo 4 líneas salvo que el usuario pida detalle.
 
 REGLAS CRÍTICAS — NO NEGOCIABLES:
 1. NUNCA inventes datos, proyectos, nombres, cantidades ni fechas. Si no tienes datos reales, di "No tengo esa información disponible en este momento."
