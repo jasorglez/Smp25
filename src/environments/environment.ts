@@ -88,5 +88,5 @@ export const environment = {
 
   geminiApiKey: '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',
 
-  version: '5.80 (20 Junio 2026) feat(chatbot): contexto sidebar — contratos/proyectos/convenio filtrados por seleccion actual',
+  version: '5.81 (20 Junio 2026) fix(chatbot): saludo por hora real — buenos dias/tardes/noches segun reloj',
 }; 
