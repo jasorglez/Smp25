@@ -10,6 +10,8 @@ import { WorkprogramsService } from 'app/services/workprograms.service';
 import { FollowprojectsService } from 'app/services/followprojects.service';
 import { DailyReportService } from 'app/services/daily-report.service';
 import { OtService } from 'app/services/ot.service';
+import { SignalsService } from 'app/services/signals.service';
+import { ContractsService } from 'app/services/contracts.service';
 import { environment } from '@env/environment';
 
 interface ChatMessage {
@@ -26,14 +28,16 @@ interface ChatMessage {
   styleUrl: './chatbot.component.scss',
 })
 export class ChatbotComponent {
-  private incomesService  = inject(IncomesAndExpensesService);
-  private adminService    = inject(AdministrationService);
-  private agendaService   = inject(AgendaService);
-  private projectsService    = inject(ProjectsService);
+  private incomesService        = inject(IncomesAndExpensesService);
+  private adminService          = inject(AdministrationService);
+  private agendaService         = inject(AgendaService);
+  private projectsService       = inject(ProjectsService);
   private workprogramService    = inject(WorkprogramsService);
   private followprojectsService = inject(FollowprojectsService);
   private dailyReportService    = inject(DailyReportService);
   private otService             = inject(OtService);
+  private signalsService        = inject(SignalsService);
+  private contractService       = inject(ContractsService);
 
   @ViewChild('messagesContainer') private messagesContainer!: ElementRef;
 
@@ -116,6 +120,11 @@ export class ChatbotComponent {
       }
     };
 
+    const isSidebarQuery = this.matchesAny(text, [
+      'proyecto', 'obra', 'contrato', 'convenio', 'convencion', 'sucursal',
+      'cuantos proyecto', 'mis proyecto', 'proyectos activos', 'contratos activos',
+    ]);
+
     await Promise.all([
       fetch(
         this.matchesAny(text, ['saldo', 'banco', 'cuenta', 'efectivo', 'caja', 'dinero']),
@@ -134,10 +143,6 @@ export class ChatbotComponent {
         'AGENDA SEMANA', () => this.getCitasRaw()
       ),
       fetch(
-        this.matchesAny(text, ['proyecto', 'obra', 'contrato', 'cuantos proyecto', 'mis proyecto', 'proyectos activos']),
-        'PROYECTOS', () => this.getProyectosRaw()
-      ),
-      fetch(
         this.matchesAny(text, ['atrasad', 'retraso', 'vencid', 'pendiente', 'actividad', 'actividades']),
         'ACTIVIDADES ATRASADAS', () => this.getActividadesAtrasadasRaw()
       ),
@@ -146,16 +151,33 @@ export class ChatbotComponent {
         'AVANCE PROYECTOS', () => this.getAvanceProyectosRaw()
       ),
       fetch(
-        this.matchesAny(text, ['contrato', 'cartera', 'monto', 'importe contrato', 'contratos activos']),
-        'CONTRATOS', () => this.getContratosRaw()
-      ),
-      fetch(
         this.matchesAny(text, ['campo', 'reporte', 'ayer', 'hoy se hizo', 'reportó', 'reportado', 'diario', 'semana']),
         'REPORTE CAMPO', () => this.getReporteCampoRaw()
       ),
       fetch(
         this.matchesAny(text, ['ot', 'orden de trabajo', 'ordenes', 'folio', 'reconexion', 'servicio']),
         'ÓRDENES DE TRABAJO (OTs)', () => this.getOTsRaw()
+      ),
+      // Contexto sidebar — snapshot sin llamada a DB
+      fetch(
+        isSidebarQuery,
+        'CONTEXTO ACTUAL (Empresa → Sucursal → Contrato → Proyecto → Convenio)',
+        async () => this.getSidebarCtxText()
+      ),
+      // Contratos de la sucursal seleccionada
+      fetch(
+        this.matchesAny(text, ['contrato', 'cartera', 'monto', 'importe contrato', 'contratos activos']),
+        'CONTRATOS DE LA SUCURSAL', () => this.getContratosxSucursalRaw()
+      ),
+      // Proyectos del contrato seleccionado
+      fetch(
+        this.matchesAny(text, ['proyecto', 'obra', 'cuantos proyecto', 'mis proyecto', 'proyectos activos']),
+        'PROYECTOS DEL CONTRATO', () => this.getProyectosxContratoRaw()
+      ),
+      // Convenio vigente del contrato seleccionado
+      fetch(
+        this.matchesAny(text, ['convenio', 'convencion', 'vigente', 'vigor']),
+        'CONVENIO VIGENTE', async () => this.getConvenioRaw()
       ),
     ]);
 
@@ -344,33 +366,64 @@ REGLAS CRÍTICAS — NO NEGOCIABLES:
     return `Avance global: ${promedio}% (${total} proyectos)${bloqAtras}${bloqAvanz}`;
   }
 
-  private async getContratosRaw(): Promise<string> {
-    const data = await lastValueFrom(this.followprojectsService.getContract(-this.idCompany));
-    const arr: any[] = Array.isArray(data) ? data : ((data as any)?.data ?? []);
-    if (!arr.length) return '';
+  // ── Sidebar context (snapshot de signals, sin llamada a DB) ───────────────
 
-    const activos   = arr.filter(c => c.active === 1 || c.active === true);
-    const ejecucion = activos.filter(c => (c.statecontract ?? '').toLowerCase().includes('ejecuci'));
-    const fmtMx = (n: number) => n ? `$${Number(n).toLocaleString('es-MX', { minimumFractionDigits: 0 })}` : '';
-    const totalMx   = activos.reduce((s, c) => s + (Number(c.amountmx) || 0), 0);
-    const totalDll  = activos.reduce((s, c) => s + (Number(c.amountdll) || 0), 0);
-    const lista     = ejecucion.slice(0, 8).map(c =>
-      `• ${c.descripsmall ?? c.description ?? c.contract} — ${c.statecontract} ${c.amountmx ? '(' + fmtMx(c.amountmx) + ' MXN)' : ''}`
-    ).join('\n');
-    const resto = ejecucion.length > 8 ? `\n...y ${ejecucion.length - 8} más` : '';
-    return `Total contratos activos: ${activos.length}\nEn ejecución: ${ejecucion.length}\nCartera MXN: ${fmtMx(totalMx)}${totalDll ? ' | USD: $' + Number(totalDll).toLocaleString('es-MX') : ''}\n${lista}${resto}`;
+  private getSidebarCtxText(): string {
+    const empresa   = this.signalsService.getCompanyName()() ?? '';
+    const sucursal  = this.signalsService.getBranchNameSelectedBySidebar()() ?? '';
+    const contratoId = this.signalsService.getContractSelectedBySidebar()();
+    const contratoNombre = this.signalsService.nameContract() ?? '';
+    const proyecto  = this.signalsService.getProjectNameBySidebar()() ?? '';
+    const convenio  = this.signalsService.getConventionVigente()();
+    return [
+      empresa         ? `Empresa: ${empresa}`                                        : '',
+      sucursal        ? `Sucursal: ${sucursal}`                                      : '',
+      contratoId      ? `Contrato: ${contratoNombre || '—'} (ID: ${contratoId})`     : 'Sin contrato seleccionado',
+      proyecto        ? `Proyecto: ${proyecto}`                                       : 'Sin proyecto seleccionado',
+      convenio?.name  ? `Convenio vigente: ${convenio.name}`                         : 'Sin convenio vigente',
+    ].filter(Boolean).join('\n');
   }
 
-  private async getProyectosRaw(): Promise<string> {
-    const data = await lastValueFrom(this.projectsService.getProjectListByCompany(this.idCompany));
+  private getConvenioRaw(): string {
+    const v = this.signalsService.getConventionVigente()();
+    return v?.name
+      ? `Convenio vigente: ${v.name}`
+      : 'No hay convenio vigente para el contrato seleccionado.';
+  }
+
+  // ── Contratos de la sucursal actual ────────────────────────────────────────
+
+  private async getContratosxSucursalRaw(): Promise<string> {
+    const branchId = this.signalsService.getBranchSelectedBySidebar()();
+    if (!branchId || branchId < 0) return 'No hay sucursal seleccionada.';
+    const data = await lastValueFrom(
+      this.contractService.getContractsByBranch(this.signalsService.idUser(), branchId)
+    );
     const arr: any[] = Array.isArray(data) ? data : ((data as any)?.data ?? []);
-    if (!arr.length) return '';
+    if (!arr.length) return 'Sin contratos para esta sucursal.';
+    const sucursal = this.signalsService.getBranchNameSelectedBySidebar()() ?? 'sucursal';
+    const lines = arr.slice(0, 10)
+      .map(c => `• ${c.contract ?? c.description ?? 'Contrato'} — ${c.statecontract ?? c.state ?? ''}`)
+      .join('\n');
+    const resto = arr.length > 10 ? `\n...y ${arr.length - 10} más` : '';
+    return `Contratos en ${sucursal} (${arr.length}):\n${lines}${resto}`;
+  }
 
-    const activos   = arr.filter(p => p.active === 1 || p.active === true);
-    const ejecucion = activos.filter(p => (p.state ?? '').toLowerCase().includes('ejecucion'));
-    const nombres   = ejecucion.slice(0, 10).map(p => `• ${p.name ?? p.number ?? 'Sin nombre'}`).join('\n');
-    const resto     = ejecucion.length > 10 ? `\n...y ${ejecucion.length - 10} más` : '';
+  // ── Proyectos del contrato actual ──────────────────────────────────────────
 
-    return `Total proyectos activos: ${activos.length}\nEn ejecución: ${ejecucion.length}\n${nombres}${resto}`;
+  private async getProyectosxContratoRaw(): Promise<string> {
+    const contractId = this.signalsService.getContractSelectedBySidebar()();
+    if (!contractId) return 'No hay contrato seleccionado.';
+    const data = await lastValueFrom(
+      this.projectsService.getProjectsByContract(this.signalsService.idUser(), contractId)
+    );
+    const arr: any[] = Array.isArray(data) ? data : ((data as any)?.data ?? []);
+    if (!arr.length) return 'Sin proyectos para este contrato.';
+    const contrato = this.signalsService.nameContract() ?? `contrato ${contractId}`;
+    const lines = arr.slice(0, 10)
+      .map(p => `• ${p.projectName ?? p.name ?? p.number ?? 'Proyecto'}`)
+      .join('\n');
+    const resto = arr.length > 10 ? `\n...y ${arr.length - 10} más` : '';
+    return `Proyectos del ${contrato} (${arr.length}):\n${lines}${resto}`;
   }
 }
