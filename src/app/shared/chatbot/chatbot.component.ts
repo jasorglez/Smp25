@@ -189,6 +189,11 @@ export class ChatbotComponent {
         this.matchesAny(text, ['convenio', 'convencion', 'vigente', 'vigor']),
         'CONVENIO VIGENTE', async () => this.getConvenioRaw()
       ),
+      // Noticias en tiempo real via GNews
+      fetch(
+        this.matchesAny(text, ['noticia', 'noticias', 'news', 'última hora', 'que paso', 'qué pasó']),
+        'NOTICIAS', () => this.getNoticiasRaw(text)
+      ),
     ]);
 
     return parts.join('\n\n');
@@ -442,5 +447,43 @@ ${reglasNegocio}${reglaModo}`;
       .join('\n');
     const resto = arr.length > 10 ? `\n...y ${arr.length - 10} más` : '';
     return `Proyectos del ${contrato} (${arr.length}):\n${lines}${resto}`;
+  }
+
+  // ── Noticias en tiempo real (GNews API) ────────────────────────────────────
+
+  private extractNewsTopic(text: string): string {
+    const patterns = [
+      /noticias?\s+(?:de|sobre|en|del?)\s+(.+?)(?:\s+(?:hoy|del?\s+d[ií]a|recientes?))?$/,
+      /(?:qu[eé]\s+(?:pas[oó]|pasa|hay)\s+en)\s+(.+?)(?:\s+hoy)?$/,
+    ];
+    for (const p of patterns) {
+      const m = text.match(p);
+      if (m) return m[1].trim();
+    }
+    return 'México';
+  }
+
+  private async getNoticiasRaw(text: string): Promise<string> {
+    const apiKey = (environment as any).gnewsApiKey;
+    if (!apiKey) return 'Configura gnewsApiKey en environment.ts (regístrate gratis en gnews.io).';
+
+    const topic = this.extractNewsTopic(text);
+    const url = `https://gnews.io/api/v4/search?q=${encodeURIComponent(topic)}&lang=es&country=mx&max=5&apikey=${apiKey}`;
+
+    const res = await globalThis.fetch(url);
+    if (!res.ok) return `Error al obtener noticias: HTTP ${res.status}`;
+
+    const data = await res.json();
+    const articles: any[] = data?.articles ?? [];
+    if (!articles.length) return `Sin noticias encontradas para "${topic}".`;
+
+    const fmt = (iso: string) => iso
+      ? new Date(iso).toLocaleDateString('es-MX', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })
+      : '';
+
+    return `Noticias sobre "${topic}" (${articles.length} resultados):\n\n` +
+      articles.map((a: any, i: number) =>
+        `${i + 1}. ${a.title}\n   ${a.description ?? ''}\n   ${a.source?.name ?? ''} — ${fmt(a.publishedAt)}`
+      ).join('\n\n');
   }
 }
