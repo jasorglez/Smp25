@@ -88,5 +88,5 @@ export const environment = {
 
   geminiApiKey: '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',
 
-  version: '5.78 (19 Junio 2026) fix(cotizaciones): reusar blob renderizado — no re-renderizar docDef mutado',
+  version: '5.79 (19 Junio 2026) fix(chatbot): anti-alucinacion — temperatura 0.1 + contexto siempre presente',
 }; 

@@ -108,7 +108,12 @@ export class ChatbotComponent {
     const parts: string[] = [];
     const fetch = async (condition: boolean, label: string, fn: () => Promise<string>) => {
       if (!condition) return;
-      try { const d = await fn(); if (d) parts.push(`${label}:\n${d}`); } catch {}
+      try {
+        const d = await fn();
+        parts.push(`${label}:\n${d || 'Sin datos disponibles'}`);
+      } catch {
+        parts.push(`${label}:\nError al obtener datos — no disponible`);
+      }
     };
 
     await Promise.all([
@@ -167,9 +172,16 @@ export class ChatbotComponent {
     const fecha = new Date().toLocaleDateString('es-MX', {
       weekday: 'long', year: 'numeric', month: 'long', day: 'numeric',
     });
-    let prompt = `Eres el asistente BI de la empresa. Hoy es ${fecha}. Responde siempre en español, de forma concisa, amigable y profesional. Máximo 4 líneas salvo que el usuario pida detalle.`;
+    let prompt = `Eres el asistente BI de la empresa. Hoy es ${fecha}. Responde siempre en español, de forma concisa, amigable y profesional. Máximo 4 líneas salvo que el usuario pida detalle.
+
+REGLAS CRÍTICAS — NO NEGOCIABLES:
+1. NUNCA inventes datos, proyectos, nombres, cantidades ni fechas. Si no tienes datos reales, di "No tengo esa información disponible en este momento."
+2. Si el contexto dice "Sin reportes", "Sin datos" o "Error al obtener", responde exactamente eso — no rellenes con ejemplos ni suposiciones.
+3. Solo reporta lo que está explícitamente en los datos del contexto.`;
     if (dataContext) {
-      prompt += `\n\nDatos actuales de la empresa:\n\n${dataContext}\n\nUsa estos datos para responder con precisión.`;
+      prompt += `\n\nDatos actuales del sistema (ÚSALOS TAL CUAL, sin modificar ni completar):\n\n${dataContext}`;
+    } else {
+      prompt += `\n\nNo hay datos de contexto disponibles. Responde solo con información que el usuario te haya dado directamente en la conversación.`;
     }
     return prompt;
   }
@@ -190,7 +202,7 @@ export class ChatbotComponent {
       })),
     ];
 
-    const body = { model: 'llama-3.3-70b-versatile', messages, temperature: 0.7 };
+    const body = { model: 'llama-3.3-70b-versatile', messages, temperature: 0.1 };
 
     try {
       const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
