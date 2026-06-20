@@ -88,5 +88,5 @@ export const environment = {
 
   geminiApiKey: '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',
 
-  version: '5.82 (20 Junio 2026) fix(chatbot): rechaza preguntas fuera del contexto de negocio',
+  version: '5.83 (20 Junio 2026) feat(chatbot): toggle modo negocio/libre para conocimiento general',
 }; 
