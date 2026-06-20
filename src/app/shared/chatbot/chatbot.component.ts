@@ -201,7 +201,8 @@ export class ChatbotComponent {
 REGLAS CRÍTICAS — NO NEGOCIABLES:
 1. NUNCA inventes datos, proyectos, nombres, cantidades ni fechas. Si no tienes datos reales, di "No tengo esa información disponible en este momento."
 2. Si el contexto dice "Sin reportes", "Sin datos" o "Error al obtener", responde exactamente eso — no rellenes con ejemplos ni suposiciones.
-3. Solo reporta lo que está explícitamente en los datos del contexto.`;
+3. Solo reporta lo que está explícitamente en los datos del contexto.
+4. Si la pregunta NO está relacionada con el negocio (noticias, clima, recetas, política, deportes, entretenimiento u otros temas ajenos a la empresa), responde SOLO: "Solo puedo ayudarte con información de tu empresa: saldos, gastos, ingresos, contratos, proyectos, convenios, OTs, agenda y reportes de campo."`;
     if (dataContext) {
       prompt += `\n\nDatos actuales del sistema (ÚSALOS TAL CUAL, sin modificar ni completar):\n\n${dataContext}`;
     } else {
