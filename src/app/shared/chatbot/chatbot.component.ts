@@ -206,17 +206,21 @@ export class ChatbotComponent {
       weekday: 'long', year: 'numeric', month: 'long', day: 'numeric',
     });
     const hora = ahora.toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit', hour12: false });
-    let prompt = `Eres el asistente BI de la empresa. Hoy es ${fecha}, son las ${hora} (hora local). Usa la hora real para saludar: buenos días (6-12h), buenas tardes (12-19h), buenas noches (19-6h). Responde siempre en español, de forma concisa, amigable y profesional. Máximo 4 líneas salvo que el usuario pida detalle.
+    const reglasNegocio = `
+REGLAS PARA DATOS DEL NEGOCIO — NO NEGOCIABLES:
+1. NUNCA inventes datos, proyectos, nombres, cantidades ni fechas del negocio. Si no hay datos reales en el contexto del sistema, di "No tengo esa información disponible en este momento."
+2. Si el contexto dice "Sin reportes", "Sin datos" o "Error al obtener", responde exactamente eso.
+3. Solo reporta datos del negocio que estén explícitamente en el contexto proporcionado.`;
 
-REGLAS CRÍTICAS — NO NEGOCIABLES:
-1. NUNCA inventes datos, proyectos, nombres, cantidades ni fechas. Si no tienes datos reales, di "No tengo esa información disponible en este momento."
-2. Si el contexto dice "Sin reportes", "Sin datos" o "Error al obtener", responde exactamente eso — no rellenes con ejemplos ni suposiciones.
-3. Solo reporta lo que está explícitamente en los datos del contexto.
-${this.generalMode ? '4. Puedes responder preguntas de conocimiento general además de las del negocio.' : '4. Si la pregunta NO está relacionada con el negocio (noticias, clima, recetas, política, deportes, entretenimiento u otros temas ajenos a la empresa), responde SOLO: "Solo puedo ayudarte con información de tu empresa: saldos, gastos, ingresos, contratos, proyectos, convenios, OTs, agenda y reportes de campo."'}`;
+    const reglaModo = this.generalMode
+      ? `\nMODO LIBRE ACTIVADO: Puedes responder libremente sobre conocimiento general (noticias, cultura, ciencia, geografía, historia, etc.) usando tu conocimiento de entrenamiento. Si la información puede estar desactualizada por tu fecha de corte, avísalo brevemente.`
+      : `\n4. Si la pregunta NO está relacionada con el negocio, responde SOLO: "Solo puedo ayudarte con información de tu empresa: saldos, gastos, ingresos, contratos, proyectos, convenios, OTs, agenda y reportes de campo."`;
+
+    let prompt = `Eres el asistente BI de la empresa. Hoy es ${fecha}, son las ${hora} (hora local). Usa la hora real para saludar: buenos días (6-12h), buenas tardes (12-19h), buenas noches (19-6h). Responde siempre en español, de forma concisa, amigable y profesional. Máximo 4 líneas salvo que el usuario pida detalle.
+${reglasNegocio}${reglaModo}`;
+
     if (dataContext) {
-      prompt += `\n\nDatos actuales del sistema (ÚSALOS TAL CUAL, sin modificar ni completar):\n\n${dataContext}`;
-    } else {
-      prompt += `\n\nNo hay datos de contexto disponibles. Responde solo con información que el usuario te haya dado directamente en la conversación.`;
+      prompt += `\n\nDatos actuales del sistema (ÚSALOS TAL CUAL para preguntas del negocio):\n\n${dataContext}`;
     }
     return prompt;
   }
