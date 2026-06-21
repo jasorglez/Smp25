@@ -466,22 +466,29 @@ ${reglasNegocio}${reglaModo}`;
   }
 
   private async getNoticiasRaw(text: string): Promise<string> {
-    const topic = this.extractNewsTopic(text);
+    const apiKey = (environment as any).gnewsApiKey;
+    const topic  = this.extractNewsTopic(text);
 
-    // Google News RSS vía rss2json (CORS-friendly, sin key)
-    const rssUrl = `https://news.google.com/rss/search?q=${encodeURIComponent(topic)}&hl=es-419&gl=MX&ceid=MX:es`;
-    const apiUrl = `https://api.rss2json.com/v1/api.json?rss_url=${encodeURIComponent(rssUrl)}&count=5`;
+    try {
+      const params = { q: topic, lang: 'es', country: 'mx', max: '5', apikey: apiKey };
+      const data   = await lastValueFrom(
+        this.http.get<any>('https://gnews.io/api/v4/search', { params })
+      );
+      const articles: any[] = data?.articles ?? [];
+      if (!articles.length) return `Sin noticias para "${topic}".`;
 
-    const data = await lastValueFrom(this.http.get<any>(apiUrl));
-    const items: any[] = data?.items ?? [];
-    if (!items.length) return `Sin noticias encontradas para "${topic}".`;
+      const fmt = (iso: string) => iso
+        ? new Date(iso).toLocaleDateString('es-MX', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })
+        : '';
+      return `Noticias sobre "${topic}" (${articles.length}):\n\n` +
+        articles.map((a: any, i: number) =>
+          `${i + 1}. ${a.title}\n   ${a.description ?? ''}\n   ${a.source?.name ?? ''} — ${fmt(a.publishedAt)}`
+        ).join('\n\n');
 
-    const stripHtml = (s: string) => (s ?? '').replace(/<[^>]*>/g, '').substring(0, 120);
-    const fmt = (d: string) => d ? new Date(d).toLocaleDateString('es-MX', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' }) : '';
-
-    return `Noticias sobre "${topic}" (${items.length} resultados):\n\n` +
-      items.map((item: any, i: number) =>
-        `${i + 1}. ${item.title}\n   ${stripHtml(item.description)}\n   ${item.author || item.source || ''} — ${fmt(item.pubDate)}`
-      ).join('\n\n');
+    } catch (err: any) {
+      const status = err?.status ?? '?';
+      const detail = err?.error?.errors?.[0] ?? err?.error?.message ?? err?.message ?? 'sin detalle';
+      return `Error GNews [HTTP ${status}]: ${detail}`;
+    }
   }
 }
