@@ -457,10 +457,11 @@ ${reglasNegocio}${reglaModo}`;
     const patterns = [
       /noticias?\s+(?:de|sobre|en|del?)\s+(.+?)(?:\s+(?:hoy|del?\s+d[ií]a|recientes?))?$/,
       /(?:qu[eé]\s+(?:pas[oó]|pasa|hay)\s+en)\s+(.+?)(?:\s+hoy)?$/,
+      /noticias?\s+([a-záéíóúüñ][a-záéíóúüñ\s]{1,40})$/,
     ];
     for (const p of patterns) {
       const m = text.match(p);
-      if (m) return m[1].trim();
+      if (m?.[1]?.trim().length > 1) return m[1].trim();
     }
     return 'México';
   }
