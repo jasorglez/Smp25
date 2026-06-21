@@ -89,5 +89,5 @@ export const environment = {
   geminiApiKey: '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',
   gnewsApiKey: '94ccc596b4dfebc3f72683b6e81d81bc',
 
-  version: '5.86 (21 Junio 2026) fix(chatbot): GNews via HttpClient en lugar de globalThis.fetch',
+  version: '5.87 (21 Junio 2026) fix(chatbot): noticias via Google News RSS+rss2json — CORS resuelto',
 }; 
