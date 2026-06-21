@@ -1,6 +1,7 @@
 import { Component, ElementRef, inject, ViewChild } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
+import { HttpClient } from '@angular/common/http';
 import { lastValueFrom } from 'rxjs';
 import { IncomesAndExpensesService } from 'app/services/incomes-and-expenses.service';
 import { AdministrationService } from 'app/services/administration.service';
@@ -38,6 +39,7 @@ export class ChatbotComponent {
   private otService             = inject(OtService);
   private signalsService        = inject(SignalsService);
   private contractService       = inject(ContractsService);
+  private http                  = inject(HttpClient);
 
   @ViewChild('messagesContainer') private messagesContainer!: ElementRef;
 
@@ -468,12 +470,12 @@ ${reglasNegocio}${reglaModo}`;
     if (!apiKey) return 'Configura gnewsApiKey en environment.ts (regístrate gratis en gnews.io).';
 
     const topic = this.extractNewsTopic(text);
-    const url = `https://gnews.io/api/v4/search?q=${encodeURIComponent(topic)}&lang=es&country=mx&max=5&apikey=${apiKey}`;
+    const params = { q: topic, lang: 'es', country: 'mx', max: '5', apikey: apiKey };
 
-    const res = await globalThis.fetch(url);
-    if (!res.ok) return `Error al obtener noticias: HTTP ${res.status}`;
+    const data = await lastValueFrom(
+      this.http.get<any>('https://gnews.io/api/v4/search', { params })
+    );
 
-    const data = await res.json();
     const articles: any[] = data?.articles ?? [];
     if (!articles.length) return `Sin noticias encontradas para "${topic}".`;
 
