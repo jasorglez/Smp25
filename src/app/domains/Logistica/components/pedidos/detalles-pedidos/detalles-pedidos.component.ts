@@ -721,6 +721,9 @@ get colDefs(): ColDef[] {
       await lastValueFrom(this.pedidosService.deleteDetalle(selectedItem.id));
       this.rowData = this.rowData.filter(item => item !== selectedItem);
       this.gridApi.setGridOption('rowData', this.rowData);
+      if (this.context?.CONCEPTS?.removeFromCache) {
+        this.context.CONCEPTS.removeFromCache(this.params.data.id, selectedItem.id);
+      }
       this.notifyTotalVentaToParent();
       if (this.context?.CONCEPTS?.updateCount) {
         this.context.CONCEPTS.updateCount(this.params.data.id, this.rowData.length);
