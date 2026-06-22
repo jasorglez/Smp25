@@ -89,5 +89,5 @@ export const environment = {
   geminiApiKey: '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',
   gnewsApiKey: '94ccc596b4dfebc3f72683b6e81d81bc',
 
-  version: '5.89 (21 Junio 2026) fix(chatbot): extractor de tema acepta noticias sin conector de/sobre',
+  version: '5.90 (22 Junio 2026) fix(logistica): articulos actualiza tras eliminar detalle — ChangeDetectorRef + removeFromCache',
 }; 

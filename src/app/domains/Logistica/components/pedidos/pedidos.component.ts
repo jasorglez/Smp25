@@ -374,6 +374,12 @@ export class PedidosLogisticaComponent implements CanComponentDeactivate {
           },
           updateTotalVenta: (idPedido: number, totalVenta: number) => {
             this.updatePedidoTotalVenta(idPedido, totalVenta);
+          },
+          removeFromCache: (idPedido: number, idDetalle: number) => {
+            const cached = this.detallesByPedidoCache.get(idPedido);
+            if (cached) {
+              this.detallesByPedidoCache.set(idPedido, cached.filter((d: any) => d.id !== idDetalle));
+            }
           }
         }
       }

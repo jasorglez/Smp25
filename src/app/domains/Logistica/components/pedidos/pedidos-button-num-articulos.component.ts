@@ -1,4 +1,4 @@
-import { Component } from '@angular/core';
+import { Component, ChangeDetectorRef, inject } from '@angular/core';
 import { ICellRendererAngularComp } from 'ag-grid-angular';
 import { ICellRendererParams, IRowNode } from 'ag-grid-community';
 import { CommonModule } from '@angular/common';
@@ -22,6 +22,7 @@ export interface INumArticulosRendererParams extends ICellRendererParams {
   `
 })
 export class NumArticulosRendererComponent implements ICellRendererAngularComp {
+  private cdr = inject(ChangeDetectorRef);
   public params!: INumArticulosRendererParams;
   public value: string | number;
 
@@ -33,6 +34,7 @@ export class NumArticulosRendererComponent implements ICellRendererAngularComp {
   refresh(params: INumArticulosRendererParams): boolean {
     this.params = params;
     this.value = this.params.value || 0;
+    this.cdr.detectChanges();
     return true;
   }
 
