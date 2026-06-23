@@ -41,6 +41,7 @@ export class DetallesPedidosComponent implements OnInit, OnDestroy {
   rowData: any[] = [];
   selectedRow: any = null;
   hasUnsavedChanges: boolean = false;
+  private _colDefs: ColDef[] = [];
   tempIdCounter: number = 0;
   clientes: any[] = [];
   productos: any[] = [];
@@ -211,9 +212,6 @@ export class DetallesPedidosComponent implements OnInit, OnDestroy {
               this.gridApi.setGridOption('rowData', this.rowData);
             }
           }
-          if (this.gridApi) {
-            this.gridApi.setGridOption('columnDefs', this.colDefs);
-          }
         },
         error: (error) => {
           console.error('Error loading clientes:', error);
@@ -229,9 +227,6 @@ export class DetallesPedidosComponent implements OnInit, OnDestroy {
       this.materialsService.getMaterials2Fields(idCompany).subscribe({
         next: (data: any) => {
           this.productos = data?.data || data || [];
-          if (this.gridApi) {
-            this.gridApi.setGridOption('columnDefs', this.colDefs);
-          }
         },
         error: (error) => {
           console.error('Error loading productos:', error);
@@ -247,9 +242,6 @@ export class DetallesPedidosComponent implements OnInit, OnDestroy {
       this.catalogadmonService.getCatalogsByType(idRoot, 'PLATAFORMA').subscribe({
         next: (data: any) => {
           this.plataformas = data?.data || data || [];
-          if (this.gridApi) {
-            this.gridApi.setGridOption('columnDefs', this.colDefs);
-          }
         },
         error: (error) => {
           console.error('Error loading plataformas:', error);
@@ -301,7 +293,8 @@ export class DetallesPedidosComponent implements OnInit, OnDestroy {
   }
 
 get colDefs(): ColDef[] {
-    return [
+    if (this._colDefs.length > 0) return this._colDefs;
+    this._colDefs = [
       {
         headerName: '#',
         width: 50,
@@ -552,6 +545,7 @@ get colDefs(): ColDef[] {
         }
       },
     ];
+    return this._colDefs;
   }
 
   public gridOptions: any = {
