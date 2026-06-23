@@ -89,5 +89,5 @@ export const environment = {
   geminiApiKey: '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',
   gnewsApiKey: '94ccc596b4dfebc3f72683b6e81d81bc',
 
-  version: '5.92 (22 Junio 2026) fix(logistica): colDefs cacheado — elimina re-render del grid al cargar datos',
+  version: '5.93 (23 Junio 2026) feat(bot-rest): junto/separado en cobro de mesa',
 }; 
