@@ -89,5 +89,5 @@ export const environment = {
   geminiApiKey: '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',
   gnewsApiKey: '94ccc596b4dfebc3f72683b6e81d81bc',
 
-  version: '5.90 (22 Junio 2026) fix(logistica): articulos actualiza tras eliminar detalle — ChangeDetectorRef + removeFromCache',
+  version: '5.91 (22 Junio 2026) fix(logistica): seleccion de producto en autocomplete — stopEditing + capture mousedown',
 }; 

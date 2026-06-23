@@ -233,12 +233,20 @@ export class ProductoAutocompleteEditorComponent
   }
 
   selectItem(item: string): void {
-    this.zone.run(() => {
-      this.value = item;
-      this.showDropdown = false;
-      this.filtered = [];
-      this.removeOverlay();
-    });
+    this.value = item;
+    this.showDropdown = false;
+    this.filtered = [];
+    this.removeOverlay();
+    // Commit value and advance to cantidad (same behavior as pressing Enter)
+    const rowIndex = this.params.node.rowIndex;
+    const api = this.params.api;
+    this.params.stopEditing();
+    setTimeout(() => {
+      if (rowIndex != null) {
+        api.setFocusedCell(rowIndex, 'cantidad');
+        api.startEditingCell({ rowIndex, colKey: 'cantidad' });
+      }
+    }, 80);
   }
 
   private renderOrUpdateOverlay(): void {
@@ -259,14 +267,20 @@ export class ProductoAutocompleteEditorComponent
     this.renderer.setAttribute(root, 'class', 'producto-autocomplete-overlay');
 
     this.filtered.forEach((item, i) => {
-      const row = this.renderer.createElement('div');
+      const row: HTMLElement = this.renderer.createElement('div');
       this.renderer.setStyle(row, 'padding', '6px 10px');
       this.renderer.setStyle(row, 'cursor', 'pointer');
       this.renderer.setStyle(row, 'white-space', 'nowrap');
-      this.renderer.listen(row, 'mousedown', (e: MouseEvent) => {
+      this.renderer.setAttribute(row, 'tabindex', '-1');
+      // Capture phase: fires antes que handlers de AG Grid en el mismo nivel
+      row.addEventListener('mousedown', (e: MouseEvent) => {
         e.preventDefault();
         e.stopPropagation();
-        this.selectItem(item);
+        this.zone.run(() => this.selectItem(item));
+      }, { capture: true });
+      this.renderer.listen(row, 'mouseenter', () => {
+        this.activeIndex = i;
+        this.highlightActiveInOverlay();
       });
       const text = this.renderer.createText(item);
       this.renderer.appendChild(row, text);
