@@ -497,10 +497,12 @@ export class UsersComponent implements OnDestroy {
         onCellClicked: (params) => {
           const newVal = !(params.data.telegramOnline === true || params.data.telegramOnline === 1);
           params.data.telegramOnline = newVal;
-          const payload = this.cleanDataForServer({ ...params.data });
-          this.usersService.updateUser(params.data.id, payload).subscribe({
-            next: () => this.gridApi.refreshCells({ rowNodes: [params.node], columns: ['telegramOnline'], force: true }),
-            error: () => { params.data.telegramOnline = !newVal; this.gridApi.refreshCells({ rowNodes: [params.node], columns: ['telegramOnline'], force: true }); }
+          this.gridApi.refreshCells({ rowNodes: [params.node], columns: ['telegramOnline'], force: true });
+          this.usersService.setTelegramOnline(params.data.id, newVal).subscribe({
+            error: () => {
+              params.data.telegramOnline = !newVal;
+              this.gridApi.refreshCells({ rowNodes: [params.node], columns: ['telegramOnline'], force: true });
+            }
           });
         }
       },
