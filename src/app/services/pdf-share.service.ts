@@ -22,7 +22,8 @@ export interface PdfWhatsAppOptions {
 }
 
 export interface PdfTelegramOptions {
-  phone: string;
+  email?: string;   // preferred: looks up idtelegram in security DB
+  phone?: string;   // fallback: looks up in conversationStates
   pdfBlob: Blob;
   fileName: string;
   caption?: string;
@@ -74,6 +75,7 @@ export class PdfShareService {
       this.http.post<{ status: string; chatId: string }>(
         `${environment.urlChatBot}/telegram/send-pdf`,
         {
+          email:     opts.email,
           phone:     opts.phone,
           pdfBase64,
           fileName:  opts.fileName,

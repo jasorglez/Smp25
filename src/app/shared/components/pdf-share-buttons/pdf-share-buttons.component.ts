@@ -101,29 +101,27 @@ export class PdfShareButtonsComponent {
   }
 
   async onTelegram(): Promise<void> {
-    const { value: phone, isConfirmed } = await Swal.fire({
+    const { value: email, isConfirmed } = await Swal.fire({
       title: 'Enviar por Telegram',
-      input: 'text',
-      inputLabel: 'Número de teléfono registrado en Telegram',
-      inputPlaceholder: 'Ej. 5512345678',
+      input: 'email',
+      inputLabel: 'Correo registrado en el sistema',
+      inputPlaceholder: 'usuario@empresa.com',
       showCancelButton: true,
       confirmButtonText: 'Enviar',
       cancelButtonText: 'Cancelar',
-      footer: 'El número debe estar vinculado a Telegram.',
+      footer: 'El destinatario debe haber iniciado sesión en el bot de Telegram al menos una vez.',
       inputValidator: (v) => {
-        const d = v.replace(/\D/g, '');
-        if (!d || (d.length !== 10 && (d.length < 11 || d.length > 15)))
-          return 'Número inválido.';
+        if (!v || !v.includes('@')) return 'Correo inválido.';
         return null;
       },
     });
-    if (!isConfirmed || !phone) return;
+    if (!isConfirmed || !email) return;
 
     this.busy = true;
     Swal.fire({ title: 'Enviando por Telegram...', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
     try {
       const blob = await this.getPdfBlob();
-      await this.svc.sendByTelegram({ phone, pdfBlob: blob, fileName: this.fileName, caption: this.subject });
+      await this.svc.sendByTelegram({ email, pdfBlob: blob, fileName: this.fileName, caption: this.subject });
       Swal.fire({ icon: 'success', title: 'Enviado por Telegram', timer: 2000, showConfirmButton: false });
     } catch (err: any) {
       const msg = err?.error?.error ?? 'No se pudo enviar por Telegram.';

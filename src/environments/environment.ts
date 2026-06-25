@@ -89,5 +89,5 @@ export const environment = {
   geminiApiKey: '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',
   gnewsApiKey: '94ccc596b4dfebc3f72683b6e81d81bc',
 
-  version: '5.98 (25 Junio 2026) revert: Angular 21.2 — fix datos en grids',
+  version: '5.99 (25 Junio 2026) fix: send-pdf Telegram usa email en lugar de teléfono',
 }; 
