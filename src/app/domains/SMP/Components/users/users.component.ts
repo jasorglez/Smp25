@@ -84,7 +84,7 @@ export class UsersComponent implements OnDestroy {
   private editableColumnOrder = ['displayName', 'email', 'password', 'isRoot'];
   private enterPressed: boolean = false;
 
-  private usersService        = inject(UsersService);
+  usersService                = inject(UsersService);
   private imageHandlerService = inject(ImageHandlerService);
   private usersxrootService   = inject(UsersxpermissionsService);
   private trackingService     = inject(TrackingService);
@@ -485,15 +485,24 @@ export class UsersComponent implements OnDestroy {
       {
         field: 'telegramOnline',
         headerName: 'Telegram',
-        width: 100,
+        width: 110,
         editable: false,
         cellRenderer: (params) => {
           const online = params.value === true || params.value === 1;
           return online
-            ? `<span class="badge bg-success" style="font-size:11px">🟢 Online</span>`
-            : `<span class="badge bg-secondary" style="font-size:11px">⚫ Offline</span>`;
+            ? `<span class="badge bg-success" style="font-size:11px;cursor:pointer" title="Clic para desactivar">🟢 Online</span>`
+            : `<span class="badge bg-secondary" style="font-size:11px;cursor:pointer" title="Clic para activar">⚫ Offline</span>`;
         },
-        cellStyle: { display: 'flex', alignItems: 'center', justifyContent: 'center' }
+        cellStyle: { display: 'flex', alignItems: 'center', justifyContent: 'center' },
+        onCellClicked: (params) => {
+          const newVal = !(params.data.telegramOnline === true || params.data.telegramOnline === 1);
+          params.data.telegramOnline = newVal;
+          const payload = this.cleanDataForServer({ ...params.data });
+          this.usersService.updateUser(params.data.id, payload).subscribe({
+            next: () => this.gridApi.refreshCells({ rowNodes: [params.node], columns: ['telegramOnline'], force: true }),
+            error: () => { params.data.telegramOnline = !newVal; this.gridApi.refreshCells({ rowNodes: [params.node], columns: ['telegramOnline'], force: true }); }
+          });
+        }
       },
       {
         field: 'idRol',
