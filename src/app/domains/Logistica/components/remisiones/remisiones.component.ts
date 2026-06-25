@@ -716,11 +716,6 @@ export class RemisionesComponent {
       }),
       content: [
         {
-          text: 'Maestro',
-          style: 'sectionTitle',
-          margin: [0, 0, 0, 6],
-        },
-        {
           table: {
             widths: ['*', '*', '*', '*'],
             body: [
