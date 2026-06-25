@@ -1,4 +1,4 @@
-import { Component, effect, inject } from '@angular/core';
+import { Component, inject } from '@angular/core';
 import { RouterModule } from '@angular/router';
 import { DomainsModule } from 'app/domains/domainsmodule';
 import { SignalsService } from 'app/services/signals.service';
@@ -17,20 +17,25 @@ export class ProcmenuconfiguracionComponent {
   private signalsService = inject(SignalsService);
   authService = inject(AuthService);
 
-  isRoot: boolean = false;
-  canSeeBranches: boolean = false;
-  canSeeUsers: boolean = false;
-  canSeeTelegramMonitor: boolean = false;
-
   private readonly TELEGRAM_ADMIN_EMAILS = ['root@bi2.mx', 'asoriano@bi2.mx'];
 
-  constructor() {
-    effect(() => {
-      const email = (this.signalsService.getemailChoose() || '').toLowerCase();
-      this.isRoot = email === environment.root.toLowerCase();
-      this.canSeeTelegramMonitor = this.TELEGRAM_ADMIN_EMAILS.includes(email);
-      this.canSeeBranches = this.isRoot || this.authService.hasDetailedPermission('setup', 'branches');
-      this.canSeeUsers = this.authService.hasDetailedPermission('setup', 'users');
-    });
+  get email(): string {
+    return (this.signalsService.getemailChoose() || '').toLowerCase();
+  }
+
+  get isRoot(): boolean {
+    return this.email === environment.root.toLowerCase();
+  }
+
+  get canSeeBranches(): boolean {
+    return this.isRoot || this.authService.hasDetailedPermission('setup', 'branches');
+  }
+
+  get canSeeUsers(): boolean {
+    return this.authService.hasDetailedPermission('setup', 'users');
+  }
+
+  get canSeeTelegramMonitor(): boolean {
+    return this.TELEGRAM_ADMIN_EMAILS.includes(this.email);
   }
 }
