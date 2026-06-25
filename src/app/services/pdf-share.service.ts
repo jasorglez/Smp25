@@ -3,7 +3,6 @@ import { HttpClient } from '@angular/common/http';
 import { Firestore, collection, addDoc } from '@angular/fire/firestore';
 import { StoragesService } from './storages.service';
 import { environment } from '@env/environment';
-import { lastValueFrom } from 'rxjs';
 
 export interface PdfEmailOptions {
   to: string;
@@ -22,8 +21,6 @@ export interface PdfWhatsAppOptions {
 }
 
 export interface PdfTelegramOptions {
-  email?: string;   // preferred: looks up idtelegram in security DB
-  phone?: string;   // fallback: looks up in conversationStates
   pdfBlob: Blob;
   fileName: string;
   caption?: string;
@@ -63,28 +60,11 @@ export class PdfShareService {
   }
 
   // ── Telegram ───────────────────────────────────────────────────────────────
-  async sendByTelegram(opts: PdfTelegramOptions): Promise<{ chatId: string }> {
-    const pdfBase64 = await this.blobToBase64(opts.pdfBlob);
-    const file      = new File([opts.pdfBlob], opts.fileName, { type: 'application/pdf' });
-    let cloudUrl: string | undefined;
-    try {
-      cloudUrl = await this.storages.uploadFile(file, `pdf/share/${Date.now()}_${opts.fileName}`);
-    } catch { /* no bloquear si falla el upload */ }
-
-    const res = await lastValueFrom(
-      this.http.post<{ status: string; chatId: string }>(
-        `${environment.urlChatBot}/telegram/send-pdf`,
-        {
-          email:     opts.email,
-          phone:     opts.phone,
-          pdfBase64,
-          fileName:  opts.fileName,
-          caption:   opts.caption ?? opts.fileName,
-          cloudUrl,
-        }
-      )
-    );
-    return res;
+  async sendByTelegram(opts: PdfTelegramOptions): Promise<void> {
+    const file = new File([opts.pdfBlob], opts.fileName, { type: 'application/pdf' });
+    const url  = await this.storages.uploadFile(file, `pdf/share/${Date.now()}_${opts.fileName}`);
+    const text = opts.caption ? `${opts.caption}\n\n📎 ${url}` : url;
+    window.open(`https://t.me/share/url?url=${encodeURIComponent(url)}&text=${encodeURIComponent(opts.caption ?? opts.fileName)}`, '_blank', 'noopener,noreferrer');
   }
 
   // ── Helpers ────────────────────────────────────────────────────────────────
