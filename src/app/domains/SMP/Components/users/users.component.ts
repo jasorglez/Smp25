@@ -485,11 +485,22 @@ export class UsersComponent implements OnDestroy {
       {
         field: 'telegramOnline',
         headerName: 'Telegram',
-        width: 100,
-        editable: true,
-        cellRenderer: 'agCheckboxCellRenderer',
-        cellEditor: 'agCheckboxCellEditor',
-        cellStyle: { display: 'flex', alignItems: 'center', justifyContent: 'center' },
+        width: 115,
+        editable: false,
+        cellStyle: { display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' },
+        cellRenderer: (params) => {
+          const online = params.value === true || params.value === 1;
+          return online
+            ? `<span class="badge bg-success" style="font-size:.78rem;padding:4px 10px;border-radius:12px;">🟢 Online</span>`
+            : `<span class="badge bg-secondary" style="font-size:.78rem;padding:4px 10px;border-radius:12px;">⚫ Offline</span>`;
+        },
+        onCellClicked: (params) => {
+          const current = params.data.telegramOnline === true || params.data.telegramOnline === 1;
+          params.data.telegramOnline = !current;
+          if (!params.data.__isNew) params.data.__modified = true;
+          this.notSavedChanges = true;
+          this.gridApi.refreshCells({ rowNodes: [params.node], columns: ['telegramOnline'] });
+        }
       },
       {
         field: 'idRol',
@@ -501,8 +512,22 @@ export class UsersComponent implements OnDestroy {
       {
         field: 'isRoot',
         headerName: 'Root',
-        editable: () => true,
-        width: 90,
+        width: 100,
+        editable: false,
+        cellStyle: { display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' },
+        cellRenderer: (params) => {
+          const isRoot = params.value === 1 || params.value === true;
+          return isRoot
+            ? `<span class="badge bg-warning text-dark" style="font-size:.78rem;padding:4px 10px;border-radius:12px;">⭐ Root</span>`
+            : `<span class="badge bg-light text-muted border" style="font-size:.78rem;padding:4px 10px;border-radius:12px;">— Normal</span>`;
+        },
+        onCellClicked: (params) => {
+          const current = params.data.isRoot === 1 || params.data.isRoot === true;
+          params.data.isRoot = current ? 0 : 1;
+          if (!params.data.__isNew) params.data.__modified = true;
+          this.notSavedChanges = true;
+          this.gridApi.refreshCells({ rowNodes: [params.node], columns: ['isRoot'] });
+        }
       },
       {
         field: 'picture',
