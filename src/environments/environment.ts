@@ -89,5 +89,5 @@ export const environment = {
   geminiApiKey: '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',
   gnewsApiKey: '94ccc596b4dfebc3f72683b6e81d81bc',
 
-  version: '5.97 (25 Junio 2026) feat: botones Correo/WhatsApp/Telegram en PDFs (8 módulos)',
+  version: '5.98 (25 Junio 2026) revert: Angular 21.2 — fix datos en grids',
 }; 
