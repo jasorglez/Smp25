@@ -38,6 +38,11 @@
                  <i class="bi bi-box-arrow-in-right"></i><span>Login</span>
                </a>
             </li>
+            <li class="nav-item" *ngIf="isRoot">
+               <a class="nav-link green-tab" routerLink="telegram-monitor" routerLinkActive="active">
+                 <i class="bi bi-telegram"></i><span>Telegram</span>
+               </a>
+            </li>
             <li class="nav-item" *ngIf="authService.hasDetailedPermission('setup', 'log')">
                <a class="nav-link green-tab" routerLink="logs" routerLinkActive="active">
                  <i class="bi bi-archive-fill"></i><span>{{ 'log' | translate}}</span>

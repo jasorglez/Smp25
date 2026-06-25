@@ -851,6 +851,15 @@ export const routes: Routes = [
             }
           },
           {
+            path: 'telegram-monitor',
+            loadComponent: () =>
+              import('./domains/SMP/Components/telegram-monitor/telegram-monitor.component').then(
+                (m) => m.TelegramMonitorComponent
+              ),
+            canActivate: [RootOnlyGuard, TrackingGuard],
+            data: { tracking: { logMessage: 'Click Monitor Telegram', category: 'Setup' } }
+          },
+          {
             path: 'corporativos',
             loadComponent: () =>
               import('./domains/SMP/Components/corporativos/corporativos.component').then(
