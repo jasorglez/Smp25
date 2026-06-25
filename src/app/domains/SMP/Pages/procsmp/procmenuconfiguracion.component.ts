@@ -22,11 +22,14 @@ export class ProcmenuconfiguracionComponent {
   isRoot: boolean = false;
   canSeeBranches: boolean = false;
   canSeeUsers: boolean = false;
+  canSeeTelegramMonitor: boolean = false;
+
+  private readonly TELEGRAM_ADMIN_EMAILS = ['root@bi2.mx', 'asoriano@bi2.mx'];
 
   ngOnInit() {
-    const emailIsRoot = this.signalsService.getemailChoose() === environment.root;
-    const roleIsRoot  = this.signalsService.getIdRole()() === 1; // DEVELOPER
-    this.isRoot = emailIsRoot || roleIsRoot;
+    const email = (this.signalsService.getemailChoose() || '').toLowerCase();
+    this.isRoot = email === environment.root.toLowerCase();
+    this.canSeeTelegramMonitor = this.TELEGRAM_ADMIN_EMAILS.includes(email);
 
     this.canSeeBranches = this.isRoot || this.authService.hasDetailedPermission('setup', 'branches');
     this.canSeeUsers = this.authService.hasDetailedPermission('setup', 'users');
