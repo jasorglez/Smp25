@@ -679,8 +679,9 @@ export class RemisionesComponent {
       `Cliente ${remision?.idCliente ?? '-'}`;
     const logoBase64 = await this.getCompanyLogoBase64();
     const logoCell = logoBase64
-      ? { image: logoBase64, width: 60, alignment: 'left' as const }
+      ? { image: logoBase64, fit: [60, 45] as [number, number], alignment: 'left' as const }
       : { text: '', width: 60 };
+    const hideEmail = (val: string) => (val && val.includes('@')) ? '-' : (val || '-');
 
     const total = rows.reduce((acc: number, row: any) => {
       const subtotal = (Number(row.cantidadRemitida) || 0) * (Number(row.venta) || 0);
@@ -690,7 +691,7 @@ export class RemisionesComponent {
     const docDefinition: any = {
       pageOrientation: 'portrait',
       pageSize: 'A4',
-      pageMargins: [30, 60, 30, 35],
+      pageMargins: [30, 75, 30, 35],
       header: () => ({
         margin: [30, 10, 30, 0],
         table: {
@@ -732,8 +733,8 @@ export class RemisionesComponent {
               [
                 { text: `Creacion: ${this.formatDateTime(remision?.fechaCreacion) || '-'}`, fontSize: 9 },
                 { text: `Cierre: ${this.formatDateTime(remision?.fechaCierre) || '-'}`, fontSize: 9 },
-                { text: `Creada por: ${remision?.createdBy || '-'}`, fontSize: 9 },
-                { text: `Cerrada por: ${remision?.closedBy || '-'}`, fontSize: 9 },
+                { text: `Creada por: ${hideEmail(remision?.createdBy)}`, fontSize: 9 },
+                { text: `Cerrada por: ${hideEmail(remision?.closedBy)}`, fontSize: 9 },
               ],
             ],
           },
