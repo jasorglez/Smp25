@@ -1,5 +1,6 @@
 import { Component, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { PdfShareButtonsComponent } from 'app/shared/components/pdf-share-buttons/pdf-share-buttons.component';
 import { ICellRendererParams } from 'ag-grid-enterprise';
 import { DomSanitizer, SafeResourceUrl } from '@angular/platform-browser';
 import { SignalsService } from 'app/services/signals.service';
@@ -15,7 +16,7 @@ pdfMake.vfs = pdfFonts.vfs;
 @Component({
   selector: 'app-detail-cell-renderer-pedimento-report',
   standalone: true,
-  imports: [CommonModule],
+  imports: [CommonModule, PdfShareButtonsComponent],
   template: `
     <div class="report-detail-container">
       <div class="report-header d-flex justify-content-between align-items-center mb-3">
@@ -23,9 +24,16 @@ pdfMake.vfs = pdfFonts.vfs;
           <i class="bi bi-file-earmark-pdf text-danger me-2"></i>
           Reporte: {{ pedimentoData?.pedimento || 'Sin Número' }}
         </h5>
-        <button type="button" class="btn btn-outline-secondary btn-sm" (click)="closeReport()">
-          <i class="bi bi-x-lg"></i> Cerrar
-        </button>
+        <div class="d-flex align-items-center gap-2">
+          <app-pdf-share-buttons
+            [getPdfBlob]="getPdfBlobFn"
+            [fileName]="'Pedimento_' + (pedimentoData?.pedimento || pedimentoData?.id) + '.pdf'"
+            [subject]="'Pedimento ' + (pedimentoData?.pedimento || pedimentoData?.id)">
+          </app-pdf-share-buttons>
+          <button type="button" class="btn btn-outline-secondary btn-sm" (click)="closeReport()">
+            <i class="bi bi-x-lg"></i> Cerrar
+          </button>
+        </div>
       </div>
       <div class="report-content" style="height: 450px; border: 1px solid #dee2e6; border-radius: 0.375rem;">
         <div *ngIf="isLoading" class="d-flex justify-content-center align-items-center h-100">
@@ -74,6 +82,10 @@ export class DetailCellRendererPedimentoReportComponent {
   providerField: string = '';
   pdfUrl: SafeResourceUrl | null = null;
   isLoading: boolean = true;
+  private _pdfBlob: Blob | null = null;
+
+  getPdfBlobFn = (): Promise<Blob> =>
+    this._pdfBlob ? Promise.resolve(this._pdfBlob) : Promise.reject('PDF no generado aún');
 
   agInit(params: ICellRendererParams): void {
     this.params = params;
@@ -128,6 +140,7 @@ export class DetailCellRendererPedimentoReportComponent {
 
       const pdfDocGenerator = pdfMake.createPdf(docDefinition as any);
       pdfDocGenerator.getBlob((blob: Blob) => {
+        this._pdfBlob = blob;
         const url = URL.createObjectURL(blob);
         this.pdfUrl = this.sanitizer.bypassSecurityTrustResourceUrl(url);
         this.isLoading = false;

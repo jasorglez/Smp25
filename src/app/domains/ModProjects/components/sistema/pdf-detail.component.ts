@@ -1,5 +1,6 @@
 import { Component, Input, inject, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { PdfShareButtonsComponent } from 'app/shared/components/pdf-share-buttons/pdf-share-buttons.component';
 import { DomSanitizer, SafeResourceUrl } from '@angular/platform-browser';
 import { ICellRendererParams } from 'ag-grid-enterprise';
 import { ICellRendererAngularComp } from 'ag-grid-angular';
@@ -89,7 +90,7 @@ const mkSubTitle = (txt: string): any => ({
 @Component({
   selector: 'app-pdf-detail',
   standalone: true,
-  imports: [CommonModule],
+  imports: [CommonModule, PdfShareButtonsComponent],
   template: `
 <div style="padding:10px; background:#f8f9fa; border-radius:6px;">
 
@@ -102,10 +103,15 @@ const mkSubTitle = (txt: string): any => ({
         <span class="text-muted ms-2" style="font-size:.8rem;">{{ fmtDate(reportData?.date) }}</span>
       </div>
     </div>
-    <div class="d-flex gap-1">
+    <div class="d-flex gap-1 align-items-center">
       <button class="btn btn-sm btn-success" (click)="downloadPdf()" [disabled]="isLoading || !pdfBlob">
         <i class="bi bi-download me-1"></i>Descargar
       </button>
+      <app-pdf-share-buttons
+        [getPdfBlob]="getPdfBlobFn"
+        [fileName]="'ReporteDiario_' + (reportData?.date || reportData?.id) + '.pdf'"
+        [subject]="'Reporte Diario ' + fmtDate(reportData?.date)">
+      </app-pdf-share-buttons>
       <button class="btn btn-sm btn-outline-secondary" (click)="closeDetail()">
         <i class="bi bi-x-lg"></i>
       </button>
@@ -149,6 +155,9 @@ export class PdfDetailComponent implements OnInit, ICellRendererAngularComp {
   pdfUrl: SafeResourceUrl | null = null;
   pdfBlob: Blob | null = null;
   isLoading  = false;
+
+  getPdfBlobFn = (): Promise<Blob> =>
+    this.pdfBlob ? Promise.resolve(this.pdfBlob) : Promise.reject('PDF no generado aún');
   loadingMsg = 'Generando PDF...';
   reportData: any = null;
 

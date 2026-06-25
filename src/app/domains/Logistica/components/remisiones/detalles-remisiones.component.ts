@@ -4,11 +4,12 @@ import { FormsModule } from '@angular/forms';
 import { ICellRendererAngularComp } from 'ag-grid-angular';
 import { ICellRendererParams } from 'ag-grid-community';
 import { DomSanitizer, SafeResourceUrl } from '@angular/platform-browser';
+import { PdfShareButtonsComponent } from 'app/shared/components/pdf-share-buttons/pdf-share-buttons.component';
 
 @Component({
   selector: 'app-detalles-remisiones',
   standalone: true,
-  imports: [CommonModule, FormsModule],
+  imports: [CommonModule, FormsModule, PdfShareButtonsComponent],
   template: `
     <div class="p-2" *ngIf="detailType === 'detalle'">
       <div class="d-flex justify-content-end mb-2">
@@ -98,9 +99,16 @@ import { DomSanitizer, SafeResourceUrl } from '@angular/platform-browser';
     <div class="p-2" *ngIf="detailType === 'pdf'">
       <div class="d-flex justify-content-between align-items-center mb-2">
         <div class="fw-semibold text-secondary">Vista previa PDF - Remisión {{ remision?.folio || remision?.id }}</div>
-        <button class="btn btn-sm btn-outline-secondary" type="button" (click)="closePdfView()">
-          <i class="bi bi-x-lg me-1"></i> Cerrar
-        </button>
+        <div class="d-flex align-items-center gap-2">
+          <app-pdf-share-buttons
+            [getPdfBlob]="getPdfBlobFn"
+            [fileName]="'Remision_' + (remision?.folio || remision?.id) + '.pdf'"
+            [subject]="'Remisión ' + (remision?.folio || remision?.id)">
+          </app-pdf-share-buttons>
+          <button class="btn btn-sm btn-outline-secondary" type="button" (click)="closePdfView()">
+            <i class="bi bi-x-lg me-1"></i> Cerrar
+          </button>
+        </div>
       </div>
       <div style="height: 560px; border: 1px solid #dee2e6; border-radius: 0.375rem; overflow: hidden;">
         <iframe *ngIf="pdfUrl" [src]="pdfUrl" style="width: 100%; height: 100%; border: none;"></iframe>
@@ -123,6 +131,12 @@ export class DetallesRemisionesComponent implements ICellRendererAngularComp {
   pdfUrl: SafeResourceUrl | null = null;
   loadingPdf = false;
   private busyMap: Record<string, boolean> = {};
+
+  getPdfBlobFn = (): Promise<Blob> => {
+    const url = this.remision?.detailPdfUrl;
+    if (!url) return Promise.reject('No hay PDF generado');
+    return fetch(url).then(r => r.blob());
+  };
 
   agInit(params: ICellRendererParams): void {
     this.params = params;
