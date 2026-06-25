@@ -1,5 +1,6 @@
 import { Component, Input, Output, EventEmitter, inject, OnInit, ChangeDetectorRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { PdfShareButtonsComponent } from 'app/shared/components/pdf-share-buttons/pdf-share-buttons.component';
 import { DomSanitizer, SafeResourceUrl } from '@angular/platform-browser';
 import { RootService }         from 'app/services/root.service';
 import { Base64EncodeService } from 'app/services/base64encode.service';
@@ -49,7 +50,7 @@ const totalCell = (txt: string, align: 'left'|'center'|'right' = 'right'): any =
 @Component({
   selector: 'app-pdf-mano-obra',
   standalone: true,
-  imports: [CommonModule],
+  imports: [CommonModule, PdfShareButtonsComponent],
   template: `
 <div *ngIf="mode === 'embed'" style="padding:10px; background:#f8f9fa; border-radius:6px;">
   <div class="d-flex justify-content-between align-items-center mb-2">
@@ -61,6 +62,11 @@ const totalCell = (txt: string, align: 'left'|'center'|'right' = 'right'): any =
       <button class="btn btn-sm btn-success" (click)="downloadPdf()" [disabled]="isLoading || !pdfBlob">
         <i class="bi bi-download me-1"></i>Descargar
       </button>
+      <app-pdf-share-buttons
+        [getPdfBlob]="getPdfBlobFn"
+        fileName="ManoObra_reporte.pdf"
+        subject="Distribución Mano de Obra">
+      </app-pdf-share-buttons>
       <button class="btn btn-sm btn-outline-secondary" (click)="onClose()">
         <i class="bi bi-x-lg"></i>
       </button>
@@ -125,6 +131,9 @@ export class PdfManoObraComponent implements OnInit {
   pdfUrl:    SafeResourceUrl | null = null;
   pdfBlob:   Blob | null = null;
   isLoading       = false;
+
+  getPdfBlobFn = (): Promise<Blob> =>
+    this.pdfBlob ? Promise.resolve(this.pdfBlob) : Promise.reject('PDF no generado aún');
   loadingMsg      = 'Generando PDF...';
   loadingProgress = 0;
 
