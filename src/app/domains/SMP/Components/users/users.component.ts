@@ -485,26 +485,11 @@ export class UsersComponent implements OnDestroy {
       {
         field: 'telegramOnline',
         headerName: 'Telegram',
-        width: 110,
-        editable: false,
-        cellRenderer: (params) => {
-          const online = params.value === true || params.value === 1;
-          return online
-            ? `<span class="badge bg-success" style="font-size:11px;cursor:pointer" title="Clic para desactivar">🟢 Online</span>`
-            : `<span class="badge bg-secondary" style="font-size:11px;cursor:pointer" title="Clic para activar">⚫ Offline</span>`;
-        },
+        width: 100,
+        editable: true,
+        cellRenderer: 'agCheckboxCellRenderer',
+        cellEditor: 'agCheckboxCellEditor',
         cellStyle: { display: 'flex', alignItems: 'center', justifyContent: 'center' },
-        onCellClicked: (params) => {
-          const newVal = !(params.data.telegramOnline === true || params.data.telegramOnline === 1);
-          params.data.telegramOnline = newVal;
-          this.gridApi.refreshCells({ rowNodes: [params.node], columns: ['telegramOnline'], force: true });
-          this.usersService.setTelegramOnline(params.data.id, newVal).subscribe({
-            error: () => {
-              params.data.telegramOnline = !newVal;
-              this.gridApi.refreshCells({ rowNodes: [params.node], columns: ['telegramOnline'], force: true });
-            }
-          });
-        }
       },
       {
         field: 'idRol',
