@@ -24,12 +24,9 @@ export class ProcmenuconfiguracionComponent {
   canSeeUsers: boolean = false;
 
   ngOnInit() {
-    if (this.signalsService.getemailChoose() === environment.root) {
-      this.isRoot = true;
-    }
-    else {
-      this.isRoot = false;
-    }
+    const emailIsRoot = this.signalsService.getemailChoose() === environment.root;
+    const roleIsRoot  = this.signalsService.getIdRole()() === 1; // DEVELOPER
+    this.isRoot = emailIsRoot || roleIsRoot;
 
     this.canSeeBranches = this.isRoot || this.authService.hasDetailedPermission('setup', 'branches');
     this.canSeeUsers = this.authService.hasDetailedPermission('setup', 'users');
