@@ -3,6 +3,7 @@ import { MainPageComponent } from './pages/main-page/main-page.component';
 import { SharedModule } from './shared/shared.module';
 import { MasterPermissionsGuard } from './guards/master-permissions.guard';
 import { RootOnlyGuard } from './guards/root-only.guard';
+import { TelegramAdminGuard } from './guards/telegram-admin.guard';
 import { UnsavedChangesGuard } from './guards/unsaved-changes.guard';
 import { HistoryPayrollComponent } from './domains/ModReshumans/components/payroll/history-payroll/history-payroll.component';
 import { TrackingGuard } from './guards/tracking.guard';
@@ -856,7 +857,7 @@ export const routes: Routes = [
               import('./domains/SMP/Components/telegram-monitor/telegram-monitor.component').then(
                 (m) => m.TelegramMonitorComponent
               ),
-            canActivate: [RootOnlyGuard, TrackingGuard],
+            canActivate: [TelegramAdminGuard, TrackingGuard],
             data: { tracking: { logMessage: 'Click Monitor Telegram', category: 'Setup' } }
           },
           {
