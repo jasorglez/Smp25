@@ -59,6 +59,10 @@ export class UsersService {
     return this.http.put(`${environment.urlSecurity}/User/${id}`, data, { headers: this.trackingService.getHeaders() });
   }
 
+  setTelegramOnline(userId: number, online: boolean): Observable<any> {
+    return this.http.put(`${environment.urlChatBot}/user/${userId}/telegramOnline`, online, { headers: this.trackingService.getHeaders() });
+  }
+
   deleteUser(id: number, data: any): Observable<any> {
     return this.http.put(`${environment.urlSecurity}/User/${id}`, data, { headers: this.trackingService.getHeaders() });
 
