@@ -89,5 +89,5 @@ export const environment = {
   geminiApiKey: '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',
   gnewsApiKey: '94ccc596b4dfebc3f72683b6e81d81bc',
 
-  version: '6.09 (25 Junio 2026) fix: telegramOnline via Security API directo',
+  version: '6.10 (25 Junio 2026) fix: telegramOnline checkbox editable en grid Usuarios',
 }; 
