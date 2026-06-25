@@ -483,6 +483,19 @@ export class UsersComponent implements OnDestroy {
         editable: () => true,
       },
       {
+        field: 'telegramOnline',
+        headerName: 'Telegram',
+        width: 100,
+        editable: false,
+        cellRenderer: (params) => {
+          const online = params.value === true || params.value === 1;
+          return online
+            ? `<span class="badge bg-success" style="font-size:11px">🟢 Online</span>`
+            : `<span class="badge bg-secondary" style="font-size:11px">⚫ Offline</span>`;
+        },
+        cellStyle: { display: 'flex', alignItems: 'center', justifyContent: 'center' }
+      },
+      {
         field: 'idRol',
         headerName: 'Security',
         hide: !this.isAdvanced && this.idUser !== 42,
