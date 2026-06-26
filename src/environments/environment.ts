@@ -89,5 +89,5 @@ export const environment = {
   geminiApiKey: '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',
   gnewsApiKey: '94ccc596b4dfebc3f72683b6e81d81bc',
 
-  version: '4.29 (26 Junio 2026) fix: Auxiliares colDefs estables - elimina temblor y activa combos',
+  version: '4.30 (26 Junio 2026) feat: Precios Unitarios agrega Clave y Clave Usuario',
 }; 
