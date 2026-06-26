@@ -85,7 +85,7 @@ export class AuxiliaresComponent {
   // ── ColDefs master grid ──────────────────────────────────────────────────
   readonly mainColDefs: ColDef[] = [
     { headerName: '#', width: 40, editable: false, valueGetter: (p) => (p.node?.rowIndex ?? 0) + 1, cellStyle: { textAlign: 'center', color: '#888' } },
-    { field: 'clave', headerName: 'Clave', width: 65, editable: true, type: 'numericColumn',
+    { field: 'clave', headerName: 'Clave', width: 75, editable: true,
       cellStyle: { fontWeight: '700', textAlign: 'center', color: '#333' } },
     { field: 'claveUsuario', headerName: 'Cl. Usuario', width: 100, editable: true,
       cellStyle: { fontStyle: 'italic', color: '#555' } },
