@@ -513,8 +513,10 @@ export class AuxiliaresComponent {
 
   async loadFactors() {
     const idContract = this.signalsService.getIdContract()();
+    const idCompany  = this.idCompany;
     if (!idContract) { this.configFactors = []; return; }
-    const all = ((await this.factorService.getByContract(idContract).toPromise()) ?? []) as any[];
+    const all = ((await this.factorService.getByContract(idContract, idCompany).toPromise()) ?? []) as any[];
+    // ya no hay duplicados en BD, pero por si acaso deduplicar en front
     const seen = new Set<number>();
     this.configFactors = all
       .sort((a, b) => (a.sort_order - b.sort_order) || (a.id - b.id))
@@ -549,9 +551,12 @@ export class AuxiliaresComponent {
     try {
       for (const f of modified) {
         await this.factorService.update(f.id, {
-          name: f.name, percentage: f.percentage,
-          sort_order: f.sort_order,
-          id_contract: f.id_contract ?? f.idContract,
+          name:        f.name,
+          percentage:  f.percentage,
+          sort_order:  f.sort_order,
+          id_company:  this.idCompany,
+          id_contract: f.idContract ?? f.id_contract,
+          active:      true,
         }).toPromise();
         f.__modified = false;
       }
@@ -569,7 +574,7 @@ export class AuxiliaresComponent {
     const idContract = this.signalsService.getIdContract()();
     let factors: any[] = [];
     if (idContract) {
-      try { factors = (await this.factorService.getByContract(idContract).toPromise()) ?? []; }
+      try { factors = (await this.factorService.getByContract(idContract, this.idCompany).toPromise()) ?? []; }
       catch { factors = []; }
     }
     await this.pdfApuService.openApuPdf({
