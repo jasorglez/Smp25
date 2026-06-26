@@ -1,4 +1,4 @@
-import { Component, effect, inject } from '@angular/core';
+import { Component, effect, inject, HostListener } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { AgGridModule } from 'ag-grid-angular';
@@ -63,7 +63,37 @@ export class AuxiliaresCatComponent {
 
   // ── UI state ─────────────────────────────────────────────────────────────
   activeTab: 'personal' | 'material' | 'herramienta' | 'equipo' = 'personal';
-  private enterPressed = false;
+  private enterPressed      = false;
+
+  // ── Resizable splitter ────────────────────────────────────────────────────
+  private readonly SPLIT_KEY   = 'auxiliares-cat-split';
+  leftWidth                    = +(localStorage.getItem(this.SPLIT_KEY) ?? '460');
+  isSplitterDragging           = false;
+  private isDragging           = false;
+  private dragStartX           = 0;
+  private dragStartWidth       = 0;
+
+  onSplitterMouseDown(e: MouseEvent) {
+    this.isDragging         = true;
+    this.isSplitterDragging = true;
+    this.dragStartX         = e.clientX;
+    this.dragStartWidth     = this.leftWidth;
+    e.preventDefault();
+  }
+
+  @HostListener('document:mousemove', ['$event'])
+  onMouseMove(e: MouseEvent) {
+    if (!this.isDragging) return;
+    const delta    = e.clientX - this.dragStartX;
+    this.leftWidth = Math.max(220, Math.min(900, this.dragStartWidth + delta));
+  }
+
+  @HostListener('document:mouseup')
+  onMouseUp() {
+    if (this.isDragging) localStorage.setItem(this.SPLIT_KEY, String(this.leftWidth));
+    this.isDragging         = false;
+    this.isSplitterDragging = false;
+  }
 
   readonly rowClassRules = { 'new-row-highlight': (p: any) => !!p.data?.__isNew };
 
