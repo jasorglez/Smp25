@@ -9,6 +9,13 @@ export class AuxiliarService {
   private http            = inject(HttpClient);
   private trackingService = inject(TrackingService);
 
+  getCatalog(idCompany: number): Observable<any[]> {
+    return this.http.get<any[]>(
+      `${environment.urlSmp}/Auxiliar/catalog/${idCompany}`,
+      { headers: this.trackingService.getHeaders() }
+    );
+  }
+
   getByCompany(idCompany: number): Observable<any[]> {
     return this.http.get<any[]>(
       `${environment.urlSmp}/Auxiliar/company/${idCompany}`,
