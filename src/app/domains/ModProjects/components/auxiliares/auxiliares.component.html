@@ -111,6 +111,14 @@
               <i class="bi bi-truck text-danger me-1"></i> Equipo
             </label>
           </div>
+          <button
+            class="btn btn-sm ms-auto"
+            [class.btn-outline-secondary]="!showConfig"
+            [class.btn-dark]="showConfig"
+            (click)="toggleConfig()"
+          >
+            <i class="bi bi-gear-fill me-1"></i> Configuración
+          </button>
         </div>
 
         <ng-container *ngIf="selectedAuxiliar.hasPersonal">
@@ -310,6 +318,84 @@
               <strong class="text-danger">
                 ${{ equipoTotal.toLocaleString('es-MX', { minimumFractionDigits: 2 }) }}
               </strong>
+            </div>
+          </div>
+        </ng-container>
+
+        <!-- ── Configuración de Factores ─────────────────────────────────── -->
+        <ng-container *ngIf="showConfig">
+          <div class="section-card border-dark">
+            <div class="d-flex align-items-center justify-content-between mb-2">
+              <h6 class="mb-0 compact-title">
+                <i class="bi bi-gear-fill me-1"></i> Factores del Contrato
+              </h6>
+              <button
+                class="btn btn-sm btn-primary"
+                (click)="saveFactors()"
+                [disabled]="!hasFactorChanges"
+              >
+                <i class="bi bi-floppy me-1"></i> Guardar Factores
+                <span *ngIf="hasFactorChanges" class="badge bg-danger ms-1">
+                  <i class="bi bi-asterisk"></i>
+                </span>
+              </button>
+            </div>
+
+            <table class="table table-sm table-bordered mb-0" style="font-size: 0.8rem">
+              <thead class="table-secondary">
+                <tr>
+                  <th>Factor</th>
+                  <th class="text-center" style="width: 100px">%</th>
+                  <th class="text-end" style="width: 120px">Importe</th>
+                  <th class="text-end" style="width: 130px">Subtotal</th>
+                </tr>
+              </thead>
+              <tbody>
+                <!-- Costo Directo -->
+                <tr class="table-light">
+                  <td><strong>Costo Directo</strong></td>
+                  <td></td>
+                  <td></td>
+                  <td class="text-end fw-bold text-primary">
+                    ${{ costoTotal.toLocaleString('es-MX', { minimumFractionDigits: 2 }) }}
+                  </td>
+                </tr>
+                <!-- Un renglón por factor -->
+                <ng-container *ngFor="let f of configFactors; let i = index">
+                  <tr>
+                    <td>{{ f.name }}</td>
+                    <td>
+                      <input
+                        type="number"
+                        class="form-control form-control-sm text-end"
+                        style="width: 80px"
+                        [(ngModel)]="f.percentage"
+                        (ngModelChange)="onFactorPctChange(f)"
+                        step="0.01"
+                        min="0"
+                      />
+                    </td>
+                    <td class="text-end text-success">
+                      ${{ getFactorAdd(i).toLocaleString('es-MX', { minimumFractionDigits: 2 }) }}
+                    </td>
+                    <td class="text-end text-muted">
+                      ${{ getFactorSubtotal(i).toLocaleString('es-MX', { minimumFractionDigits: 2 }) }}
+                    </td>
+                  </tr>
+                </ng-container>
+                <!-- Precio Unitario -->
+                <tr class="table-primary">
+                  <td colspan="3" class="fw-bold">Precio Unitario</td>
+                  <td class="text-end fw-bold">
+                    ${{ precioUnitario.toLocaleString('es-MX', { minimumFractionDigits: 2 }) }}
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+
+            <div *ngIf="!configFactors.length" class="text-center text-muted py-3">
+              <i class="bi bi-exclamation-triangle me-1"></i>
+              No hay factores configurados para este contrato
             </div>
           </div>
         </ng-container>

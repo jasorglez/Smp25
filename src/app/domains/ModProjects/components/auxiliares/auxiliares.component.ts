@@ -501,6 +501,65 @@ export class AuxiliaresComponent {
 
   get hasDetailChanges(): boolean { return this.hasItemChanges || this.hasCuadrillaChanges || this.hasMainChanges; }
 
+  // ── Configuración de factores por contrato ───────────────────────────────
+  showConfig        = false;
+  configFactors: any[] = [];
+  hasFactorChanges  = false;
+
+  async toggleConfig() {
+    this.showConfig = !this.showConfig;
+    if (this.showConfig && !this.configFactors.length) await this.loadFactors();
+  }
+
+  async loadFactors() {
+    const idContract = this.signalsService.getIdContract()();
+    if (!idContract) { this.configFactors = []; return; }
+    const all = ((await this.factorService.getByContract(idContract).toPromise()) ?? []) as any[];
+    const seen = new Set<number>();
+    this.configFactors = all
+      .sort((a, b) => (a.sort_order - b.sort_order) || (a.id - b.id))
+      .filter(f => { const so = f.sort_order; if (seen.has(so)) return false; seen.add(so); return true; })
+      .map(f => ({ ...f, percentage: Number(f.percentage), __modified: false }));
+    this.hasFactorChanges = false;
+  }
+
+  onFactorPctChange(f: any) { f.__modified = true; this.hasFactorChanges = true; }
+
+  getFactorAdd(i: number): number {
+    let r = this.costoTotal;
+    for (let k = 0; k < i; k++) r += r * (Number(this.configFactors[k]?.percentage) || 0) / 100;
+    return r * (Number(this.configFactors[i]?.percentage) || 0) / 100;
+  }
+
+  getFactorSubtotal(i: number): number {
+    let r = this.costoTotal;
+    for (let k = 0; k <= i; k++) r += r * (Number(this.configFactors[k]?.percentage) || 0) / 100;
+    return r;
+  }
+
+  get precioUnitario(): number {
+    let r = this.costoTotal;
+    for (const f of this.configFactors) r += r * (Number(f.percentage) || 0) / 100;
+    return r;
+  }
+
+  async saveFactors() {
+    const modified = this.configFactors.filter(f => f.__modified);
+    if (!modified.length) return;
+    try {
+      for (const f of modified) {
+        await this.factorService.update(f.id, {
+          name: f.name, percentage: f.percentage,
+          sort_order: f.sort_order,
+          id_contract: f.id_contract ?? f.idContract,
+        }).toPromise();
+        f.__modified = false;
+      }
+      this.hasFactorChanges = false;
+      alerts.basicAlert('OK', 'Factores actualizados', 'success');
+    } catch { alerts.basicAlert('Error', 'No se pudieron guardar los factores', 'error'); }
+  }
+
   // ── PDF APU ──────────────────────────────────────────────────────────────
   async printPdf() {
     if (!this.selectedAuxiliar) {
