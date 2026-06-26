@@ -212,6 +212,12 @@ export class AuxiliaresComponent {
       this.loadData();
       this.loadCatalogs();
     });
+    // Auto-carga factores cuando cambia empresa o contrato
+    effect(() => {
+      this.signalsService.getRootSelectedBySidebar()();
+      this.signalsService.getIdContract()();
+      void this.loadFactors();
+    });
   }
 
   loadData() {
@@ -507,7 +513,7 @@ export class AuxiliaresComponent {
   get hasDetailChanges(): boolean { return this.hasItemChanges || this.hasCuadrillaChanges || this.hasMainChanges; }
 
   // ── Configuración de factores por contrato ───────────────────────────────
-  showConfig           = false;
+  showConfigModal      = false;
   configFactors: any[] = [];
   hasFactorChanges     = false;
   selectedConfigRow: any = null;
@@ -520,10 +526,8 @@ export class AuxiliaresComponent {
       valueFormatter: (p) => p.value != null ? Number(p.value).toFixed(2) + ' %' : '' },
   ];
 
-  async toggleConfig() {
-    this.showConfig = !this.showConfig;
-    if (this.showConfig) await this.loadFactors();
-  }
+  openConfigModal()  { this.showConfigModal = true; this.configGridApi?.setGridOption('rowData', this.configFactors); }
+  closeConfigModal() { this.showConfigModal = false; }
 
   async loadFactors() {
     const idContract = this.signalsService.getIdContract()();
