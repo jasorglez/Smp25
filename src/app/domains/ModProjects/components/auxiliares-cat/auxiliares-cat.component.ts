@@ -136,98 +136,118 @@ export class AuxiliaresCatComponent {
     rowClassRules: { 'new-row-highlight': (p: any) => !!p.data?.__isNew },
   };
 
-  // ── Sub-grid ColDefs ──────────────────────────────────────────────────────
-  getItemColDefs(type: 'MATERIAL' | 'EQUIPO'): ColDef[] {
-    const catalog = type === 'MATERIAL' ? this.catalogMaterial : this.catalogEquipo;
-    return [
-      { headerName: '#', width: 40, editable: false, valueGetter: (p) => (p.node?.rowIndex ?? 0) + 1 },
-      {
-        field: 'description', headerName: type === 'MATERIAL' ? 'Material' : 'Equipo', flex: 2, editable: true,
-        cellEditor: 'agSelectCellEditor',
-        cellEditorParams: () => ({ values: catalog.map((i) => i.description) }),
-        valueSetter: (p: any) => {
-          const item = catalog.find((i) => i.description === p.newValue);
-          if (item) { p.data.idReference = item.id; p.data.unit = item.unit ?? ''; p.data.unitCost = item.cost ?? 0; }
-          p.data.description = p.newValue; return true;
-        },
-        cellStyle: (p) => p.data?.__isNew ? { background: '#fffde7' } : {},
+  // ── Sub-grid ColDefs (STABLE — readonly, never re-created per cycle) ──────
+  readonly materialColDefs: ColDef[] = [
+    { headerName: '#', width: 40, editable: false, valueGetter: (p) => (p.node?.rowIndex ?? 0) + 1 },
+    {
+      field: 'description', headerName: 'Material', flex: 2, editable: true,
+      cellEditor: 'agSelectCellEditor',
+      cellEditorParams: () => ({ values: this.catalogMaterial.map((i) => i.description) }),
+      valueSetter: (p: any) => {
+        const item = this.catalogMaterial.find((i) => i.description === p.newValue);
+        if (item) { p.data.idReference = item.id; p.data.unit = item.unit ?? ''; p.data.unitCost = item.cost ?? 0; }
+        p.data.description = p.newValue; return true;
       },
-      { field: 'unit', headerName: 'Unidad', width: 80, editable: true },
-      { field: 'quantity', headerName: 'Cant.', width: 90, editable: true, type: 'numericColumn',
-        valueFormatter: (p) => p.value != null ? Number(p.value).toFixed(4) : '' },
-      { field: 'unitCost', headerName: 'P.Unit.', width: 105, editable: true, type: 'numericColumn',
-        valueFormatter: (p) => p.value != null ? '$' + Number(p.value).toLocaleString('es-MX', { minimumFractionDigits: 2 }) : '' },
-      {
-        headerName: 'Total', width: 115, editable: false, type: 'numericColumn',
-        valueGetter: (p) => (Number(p.data?.quantity) || 0) * (Number(p.data?.unitCost) || 0),
-        valueFormatter: (p) => '$' + Number(p.value).toLocaleString('es-MX', { minimumFractionDigits: 2 }),
-        cellStyle: { fontWeight: '600', color: '#0e4491' },
-      },
-    ];
-  }
+      cellStyle: (p) => p.data?.__isNew ? { background: '#fffde7' } : {},
+    },
+    { field: 'unit', headerName: 'Unidad', width: 80, editable: true },
+    { field: 'quantity', headerName: 'Cant.', width: 90, editable: true, type: 'numericColumn',
+      valueFormatter: (p) => p.value != null ? Number(p.value).toFixed(4) : '' },
+    { field: 'unitCost', headerName: 'P.Unit.', width: 105, editable: true, type: 'numericColumn',
+      valueFormatter: (p) => p.value != null ? '$' + Number(p.value).toLocaleString('es-MX', { minimumFractionDigits: 2 }) : '' },
+    {
+      headerName: 'Total', width: 115, editable: false, type: 'numericColumn',
+      valueGetter: (p) => (Number(p.data?.quantity) || 0) * (Number(p.data?.unitCost) || 0),
+      valueFormatter: (p) => '$' + Number(p.value).toLocaleString('es-MX', { minimumFractionDigits: 2 }),
+      cellStyle: { fontWeight: '600', color: '#0e4491' },
+    },
+  ];
 
-  get herramientaItemColDefs(): ColDef[] {
-    return [
-      { headerName: '#', width: 40, editable: false, valueGetter: (p) => (p.node?.rowIndex ?? 0) + 1 },
-      {
-        field: 'description', headerName: 'Herramienta', flex: 2, editable: true,
-        cellEditor: 'agSelectCellEditor',
-        cellEditorParams: () => ({ values: this.catalogHerramienta.map((h) => h.description) }),
-        valueSetter: (p: any) => {
-          const item = this.catalogHerramienta.find((h) => h.description === p.newValue);
-          if (item) { p.data.idReference = item.id; p.data.unit = '(%)mo'; }
-          p.data.description = p.newValue; return true;
-        },
-        cellStyle: (p) => p.data?.__isNew ? { background: '#fffde7' } : {},
+  readonly herramientaColDefs: ColDef[] = [
+    { headerName: '#', width: 40, editable: false, valueGetter: (p) => (p.node?.rowIndex ?? 0) + 1 },
+    {
+      field: 'description', headerName: 'Herramienta', flex: 2, editable: true,
+      cellEditor: 'agSelectCellEditor',
+      cellEditorParams: () => ({ values: this.catalogHerramienta.map((h) => h.description) }),
+      valueSetter: (p: any) => {
+        const item = this.catalogHerramienta.find((h) => h.description === p.newValue);
+        if (item) { p.data.idReference = item.id; p.data.unit = '(%)mo'; }
+        p.data.description = p.newValue; return true;
       },
-      { field: 'quantity', headerName: '% MO', width: 100, editable: true, type: 'numericColumn',
-        valueFormatter: (p) => p.value != null ? (Number(p.value) * 100).toFixed(2) + '%' : '' },
-      { headerName: 'Base MO', width: 110, editable: false, type: 'numericColumn',
-        valueGetter: () => this.totalPersonal,
-        valueFormatter: (p) => '$' + Number(p.value).toLocaleString('es-MX', { minimumFractionDigits: 2 }),
-        cellStyle: { color: '#666' } },
-      {
-        headerName: 'Total', width: 115, editable: false, type: 'numericColumn',
-        valueGetter: (p) => (Number(p.data?.quantity) || 0) * this.totalPersonal,
-        valueFormatter: (p) => '$' + Number(p.value).toLocaleString('es-MX', { minimumFractionDigits: 2 }),
-        cellStyle: { fontWeight: '600', color: '#0e4491' },
-      },
-    ];
-  }
+      cellStyle: (p) => p.data?.__isNew ? { background: '#fffde7' } : {},
+    },
+    { field: 'quantity', headerName: '% MO', width: 100, editable: true, type: 'numericColumn',
+      valueFormatter: (p) => p.value != null ? (Number(p.value) * 100).toFixed(2) + '%' : '' },
+    { headerName: 'Base MO', width: 110, editable: false, type: 'numericColumn',
+      valueGetter: () => this.totalPersonal,
+      valueFormatter: (p) => '$' + Number(p.value).toLocaleString('es-MX', { minimumFractionDigits: 2 }),
+      cellStyle: { color: '#666' } },
+    {
+      headerName: 'Total', width: 115, editable: false, type: 'numericColumn',
+      valueGetter: (p) => (Number(p.data?.quantity) || 0) * this.totalPersonal,
+      valueFormatter: (p) => '$' + Number(p.value).toLocaleString('es-MX', { minimumFractionDigits: 2 }),
+      cellStyle: { fontWeight: '600', color: '#0e4491' },
+    },
+  ];
 
-  get cuadrillaItemColDefs(): ColDef[] {
-    return [
-      { headerName: '#', width: 40, editable: false, valueGetter: (p) => (p.node?.rowIndex ?? 0) + 1 },
-      {
-        field: 'description', headerName: 'Trabajador', flex: 2, editable: true,
-        cellEditor: 'agSelectCellEditor',
-        cellEditorParams: () => ({ values: this.catalogPersonal.map((i) => i.description) }),
-        valueSetter: (p: any) => {
-          const item = this.catalogPersonal.find((i) => i.description === p.newValue);
-          if (item) { p.data.idReference = item.id; p.data.unit = 'JORNADA'; p.data.unitCost = item.cost ?? 0; }
-          p.data.description = p.newValue; return true;
-        },
-        cellStyle: (p) => p.data?.__isNew ? { background: '#fffde7' } : {},
+  readonly equipoColDefs: ColDef[] = [
+    { headerName: '#', width: 40, editable: false, valueGetter: (p) => (p.node?.rowIndex ?? 0) + 1 },
+    {
+      field: 'description', headerName: 'Equipo', flex: 2, editable: true,
+      cellEditor: 'agSelectCellEditor',
+      cellEditorParams: () => ({ values: this.catalogEquipo.map((i) => i.description) }),
+      valueSetter: (p: any) => {
+        const item = this.catalogEquipo.find((i) => i.description === p.newValue);
+        if (item) { p.data.idReference = item.id; p.data.unit = item.unit ?? ''; p.data.unitCost = item.cost ?? 0; }
+        p.data.description = p.newValue; return true;
       },
-      { field: 'unit', headerName: 'Unidad', width: 80, editable: true },
-      { field: 'quantity', headerName: 'Cant.', width: 90, editable: true, type: 'numericColumn',
-        valueFormatter: (p) => p.value != null ? Number(p.value).toFixed(4) : '' },
-      { field: 'unitCost', headerName: 'Costo', width: 105, editable: true, type: 'numericColumn',
-        valueFormatter: (p) => p.value != null ? '$' + Number(p.value).toLocaleString('es-MX', { minimumFractionDigits: 2 }) : '' },
-      {
-        headerName: 'Total', width: 115, editable: false, type: 'numericColumn',
-        valueGetter: (p) => (Number(p.data?.quantity) || 0) * (Number(p.data?.unitCost) || 0),
-        valueFormatter: (p) => '$' + Number(p.value).toLocaleString('es-MX', { minimumFractionDigits: 2 }),
-        cellStyle: { fontWeight: '600', color: '#0e4491' },
+      cellStyle: (p) => p.data?.__isNew ? { background: '#fffde7' } : {},
+    },
+    { field: 'unit', headerName: 'Unidad', width: 80, editable: true },
+    { field: 'quantity', headerName: 'Cant.', width: 90, editable: true, type: 'numericColumn',
+      valueFormatter: (p) => p.value != null ? Number(p.value).toFixed(4) : '' },
+    { field: 'unitCost', headerName: 'P.Unit.', width: 105, editable: true, type: 'numericColumn',
+      valueFormatter: (p) => p.value != null ? '$' + Number(p.value).toLocaleString('es-MX', { minimumFractionDigits: 2 }) : '' },
+    {
+      headerName: 'Total', width: 115, editable: false, type: 'numericColumn',
+      valueGetter: (p) => (Number(p.data?.quantity) || 0) * (Number(p.data?.unitCost) || 0),
+      valueFormatter: (p) => '$' + Number(p.value).toLocaleString('es-MX', { minimumFractionDigits: 2 }),
+      cellStyle: { fontWeight: '600', color: '#0e4491' },
+    },
+  ];
+
+  readonly cuadrillaItemColDefs: ColDef[] = [
+    { headerName: '#', width: 40, editable: false, valueGetter: (p) => (p.node?.rowIndex ?? 0) + 1 },
+    {
+      field: 'description', headerName: 'Trabajador', flex: 2, editable: true,
+      cellEditor: 'agSelectCellEditor',
+      cellEditorParams: () => ({ values: this.catalogPersonal.map((i) => i.description) }),
+      valueSetter: (p: any) => {
+        const item = this.catalogPersonal.find((i) => i.description === p.newValue);
+        if (item) { p.data.idReference = item.id; p.data.unit = 'JORNADA'; p.data.unitCost = item.cost ?? 0; }
+        p.data.description = p.newValue; return true;
       },
-    ];
-  }
+      cellStyle: (p) => p.data?.__isNew ? { background: '#fffde7' } : {},
+    },
+    { field: 'unit', headerName: 'Unidad', width: 80, editable: true },
+    { field: 'quantity', headerName: 'Cant.', width: 90, editable: true, type: 'numericColumn',
+      valueFormatter: (p) => p.value != null ? Number(p.value).toFixed(4) : '' },
+    { field: 'unitCost', headerName: 'Costo', width: 105, editable: true, type: 'numericColumn',
+      valueFormatter: (p) => p.value != null ? '$' + Number(p.value).toLocaleString('es-MX', { minimumFractionDigits: 2 }) : '' },
+    {
+      headerName: 'Total', width: 115, editable: false, type: 'numericColumn',
+      valueGetter: (p) => (Number(p.data?.quantity) || 0) * (Number(p.data?.unitCost) || 0),
+      valueFormatter: (p) => '$' + Number(p.value).toLocaleString('es-MX', { minimumFractionDigits: 2 }),
+      cellStyle: { fontWeight: '600', color: '#0e4491' },
+    },
+  ];
+
+  // ── Stable row arrays for sub-grids (updated only in refreshSubGrids) ────
+  materialItemRows:    any[] = [];
+  herramientaItemRows: any[] = [];
+  equipoItemRows:      any[] = [];
 
   // ── Computed totals ───────────────────────────────────────────────────────
-  get materialItems():    any[] { return this.allItems.filter((i) => i.type === 'MATERIAL'); }
-  get herramientaItems(): any[] { return this.allItems.filter((i) => i.type === 'HERR'); }
-  get equipoItems():      any[] { return this.allItems.filter((i) => i.type === 'EQUIPO'); }
-
   getCuadrillaSubtotal(c: any): number {
     return (c.items ?? []).reduce((sum: number, i: any) => {
       return sum + (Number(i.quantity ?? 0) || 0) * (Number(i.unitCost ?? i.unit_cost ?? 0) || 0);
@@ -235,9 +255,9 @@ export class AuxiliaresCatComponent {
   }
 
   get totalPersonal():    number { return this.cuadrillas.reduce((s, c) => s + this.getCuadrillaSubtotal(c) * (Number(c.cantidad) || 1), 0); }
-  get materialTotal():    number { return this.materialItems.reduce((s, i) => s + (Number(i.quantity) || 0) * (Number(i.unitCost ?? i.unit_cost) || 0), 0); }
-  get herramientaTotal(): number { return this.herramientaItems.reduce((s, i) => s + (Number(i.quantity) || 0) * this.totalPersonal, 0); }
-  get equipoTotal():      number { return this.equipoItems.reduce((s, i) => s + (Number(i.quantity) || 0) * (Number(i.unitCost ?? i.unit_cost) || 0), 0); }
+  get materialTotal():    number { return this.materialItemRows.reduce((s, i) => s + (Number(i.quantity) || 0) * (Number(i.unitCost ?? i.unit_cost) || 0), 0); }
+  get herramientaTotal(): number { return this.herramientaItemRows.reduce((s, i) => s + (Number(i.quantity) || 0) * this.totalPersonal, 0); }
+  get equipoTotal():      number { return this.equipoItemRows.reduce((s, i) => s + (Number(i.quantity) || 0) * (Number(i.unitCost ?? i.unit_cost) || 0), 0); }
   get costoTotal():       number { return this.totalPersonal + this.materialTotal + this.herramientaTotal + this.equipoTotal; }
   get hasDetailChanges(): boolean { return this.hasItemChanges || this.hasCuadrillaChanges; }
 
@@ -310,6 +330,7 @@ export class AuxiliaresCatComponent {
 
   clearDetail() {
     this.allItems = []; this.cuadrillas = [];
+    this.materialItemRows = []; this.herramientaItemRows = []; this.equipoItemRows = [];
     this.selectedCuadrilla = null; this.cuadrillaItemRows = [];
     this.hasItemChanges = false; this.hasCuadrillaChanges = false;
   }
@@ -531,9 +552,12 @@ export class AuxiliaresCatComponent {
   onCuadrillaGridReady(e: GridReadyEvent)   { this.cuadrillaGridApi   = e.api; }
 
   refreshSubGrids() {
-    this.materialGridApi?.setGridOption('rowData',    this.materialItems);
-    this.herramientaGridApi?.setGridOption('rowData', this.herramientaItems);
-    this.equipoGridApi?.setGridOption('rowData',      this.equipoItems);
+    this.materialItemRows    = this.allItems.filter((i) => i.type === 'MATERIAL');
+    this.herramientaItemRows = this.allItems.filter((i) => i.type === 'HERR');
+    this.equipoItemRows      = this.allItems.filter((i) => i.type === 'EQUIPO');
+    this.materialGridApi?.setGridOption('rowData',    this.materialItemRows);
+    this.herramientaGridApi?.setGridOption('rowData', this.herramientaItemRows);
+    this.equipoGridApi?.setGridOption('rowData',      this.equipoItemRows);
   }
 
   private cleanRow(row: any) {
