@@ -9,11 +9,11 @@ export class WorkprogramApuFactorService {
   private http            = inject(HttpClient);
   private trackingService = inject(TrackingService);
 
-  getByContract(idContract: number): Observable<any[]> {
-    return this.http.get<any[]>(
-      `${environment.urlSmp}/WorkprogramApuFactor?idContract=${idContract}`,
-      { headers: this.trackingService.getHeaders() }
-    );
+  /** GET /WorkprogramApuFactor?idContract=X&idCompany=Y */
+  getByContract(idContract: number, idCompany?: number): Observable<any[]> {
+    let url = `${environment.urlSmp}/WorkprogramApuFactor?idContract=${idContract}`;
+    if (idCompany) url += `&idCompany=${idCompany}`;
+    return this.http.get<any[]>(url, { headers: this.trackingService.getHeaders() });
   }
 
   add(data: any): Observable<any> {
@@ -35,6 +35,15 @@ export class WorkprogramApuFactorService {
   delete(id: number): Observable<any> {
     return this.http.delete<any>(
       `${environment.urlSmp}/WorkprogramApuFactor/${id}`,
+      { headers: this.trackingService.getHeaders() }
+    );
+  }
+
+  /** POST /WorkprogramApuFactor/bulk?idContract=X&idCompany=Y */
+  bulkSave(idContract: number, idCompany: number, factors: any[]): Observable<any[]> {
+    return this.http.post<any[]>(
+      `${environment.urlSmp}/WorkprogramApuFactor/bulk?idContract=${idContract}&idCompany=${idCompany}`,
+      factors,
       { headers: this.trackingService.getHeaders() }
     );
   }
