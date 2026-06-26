@@ -1,0 +1,47 @@
+<div class="container-fluid mt-3">
+
+  <!-- Header -->
+  <div class="d-flex align-items-center justify-content-between mb-3">
+    <h5 class="mb-0"><i class="bi bi-layers me-2 text-primary"></i>Catálogo de Auxiliares</h5>
+    <small class="text-muted">Subanálisis reutilizables · {{ rowData.length }} registros</small>
+  </div>
+
+  <!-- Botones CRUD -->
+  <div class="d-flex gap-2 mb-2">
+    <button class="btn btn-sm btn-success" (click)="addRow()" [disabled]="!gridApi">
+      <i class="bi bi-plus-lg"></i> Agregar
+    </button>
+
+    <button class="btn btn-sm btn-primary position-relative" (click)="saveChanges()" [disabled]="!hasChanges">
+      <i class="bi bi-floppy"></i> Guardar
+      <span class="position-absolute top-0 start-100 translate-middle p-2 bg-danger border border-light rounded-circle"
+            *ngIf="hasChanges">
+        <span class="visually-hidden">Cambios sin guardar</span>
+      </span>
+    </button>
+
+    <button class="btn btn-sm btn-warning" (click)="revertChanges()" [disabled]="!hasChanges">
+      <i class="bi bi-arrow-clockwise"></i> Deshacer
+    </button>
+
+    <button class="btn btn-sm btn-danger" (click)="deleteRow()" [disabled]="!selectedRow">
+      <i class="bi bi-trash"></i> Borrar
+    </button>
+  </div>
+
+  <!-- Grid -->
+  <ag-grid-angular
+    class="ag-theme-quartz small-text-ag-grid"
+    style="height: 650px; width: 100%;"
+    [rowData]="rowData"
+    [columnDefs]="colDefs"
+    [gridOptions]="gridOptions"
+    [rowSelection]="'single'"
+    [animateRows]="true"
+    (gridReady)="onGridReady($event)"
+    (selectionChanged)="onSelectionChanged()"
+    (cellValueChanged)="onCellValueChanged($event)"
+    (cellEditingStopped)="onCellEditingStopped($event)">
+  </ag-grid-angular>
+
+</div>
