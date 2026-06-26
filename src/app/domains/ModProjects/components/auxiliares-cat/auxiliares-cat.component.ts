@@ -258,8 +258,11 @@ export class AuxiliaresCatComponent {
         this.rowData        = data;
         this.originalData   = JSON.parse(JSON.stringify(data));
         this.hasMainChanges = false;
-        this.selectedAuxiliar = null;
-        this.clearDetail();
+        // No resetear la selección activa — si el auxiliar ya no existe en los nuevos datos, sí limpiarlo
+        if (this.selectedAuxiliar) {
+          const still = data.find((r: any) => r.id === this.selectedAuxiliar.id);
+          if (!still) { this.selectedAuxiliar = null; this.clearDetail(); }
+        }
       },
       error: (e) => console.error('Error cargando auxiliares', e),
     });
@@ -346,7 +349,10 @@ export class AuxiliaresCatComponent {
     };
     this.rowData = [newRow, ...this.rowData];
     this.hasMainChanges = true;
-    setTimeout(() => this.gridApi?.startEditingCell({ rowIndex: 0, colKey: 'description' }), 100);
+    setTimeout(() => {
+      this.gridApi?.getDisplayedRowAtIndex(0)?.setSelected(true, true);
+      this.gridApi?.startEditingCell({ rowIndex: 0, colKey: 'description' });
+    }, 100);
   }
 
   async saveChanges() {

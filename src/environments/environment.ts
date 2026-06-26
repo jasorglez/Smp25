@@ -89,5 +89,5 @@ export const environment = {
   geminiApiKey: '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',
   gnewsApiKey: '94ccc596b4dfebc3f72683b6e81d81bc',
 
-  version: '4.27 (26 Junio 2026) feat: Auxiliares split resizable persistido en localStorage',
+  version: '4.28 (26 Junio 2026) fix: Auxiliares detalle race-condition + grids height ajustado',
 }; 

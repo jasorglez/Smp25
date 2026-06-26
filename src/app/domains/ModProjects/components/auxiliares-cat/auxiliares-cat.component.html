@@ -156,7 +156,7 @@
         </ul>
 
         <!-- Tab content -->
-        <div class="flex-fill d-flex flex-column" style="min-height: 0; padding-top: 8px; overflow: hidden;">
+        <div style="padding-top: 8px; overflow-y: auto; flex: 1; min-height: 0;">
 
           <!-- TAB: PERSONAL / CUADRILLA -->
           <ng-container *ngIf="activeTab === 'personal'">
@@ -198,7 +198,7 @@
                 </div>
                 <ag-grid-angular
                   class="ag-theme-quartz small-text-ag-grid flex-fill"
-                  style="width: 100%; min-height: 120px;"
+                  style="width: 100%; height: calc(100vh - 460px);"
                   [rowData]="cuadrillaItemRows"
                   [columnDefs]="cuadrillaItemColDefs"
                   [rowClassRules]="rowClassRules"
@@ -236,7 +236,7 @@
               </div>
               <ag-grid-angular
                 class="ag-theme-quartz small-text-ag-grid flex-fill"
-                style="width: 100%; min-height: 120px;"
+                style="width: 100%; height: calc(100vh - 460px);"
                 [rowData]="materialItems"
                 [columnDefs]="getItemColDefs('MATERIAL')"
                 [rowClassRules]="rowClassRules"
@@ -266,7 +266,7 @@
               </div>
               <ag-grid-angular
                 class="ag-theme-quartz small-text-ag-grid flex-fill"
-                style="width: 100%; min-height: 120px;"
+                style="width: 100%; height: calc(100vh - 460px);"
                 [rowData]="herramientaItems"
                 [columnDefs]="herramientaItemColDefs"
                 [rowClassRules]="rowClassRules"
@@ -295,7 +295,7 @@
               </div>
               <ag-grid-angular
                 class="ag-theme-quartz small-text-ag-grid flex-fill"
-                style="width: 100%; min-height: 120px;"
+                style="width: 100%; height: calc(100vh - 460px);"
                 [rowData]="equipoItems"
                 [columnDefs]="getItemColDefs('EQUIPO')"
                 [rowClassRules]="rowClassRules"
