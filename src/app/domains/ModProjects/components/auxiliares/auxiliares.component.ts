@@ -11,6 +11,8 @@ import { EquipmentService } from 'app/services/equipment.service';
 import { HerramientaService } from 'app/services/herramienta.service';
 import { PosicionesService } from 'app/services/posiciones.service';
 import { alerts } from 'app/helpers/alerts';
+import { PdfApuService } from 'app/services/pdf-apu.service';
+import { WorkprogramApuFactorService } from 'app/services/workprogram-apu-factor.service';
 
 @Component({
   selector: 'app-auxiliares',
@@ -27,6 +29,8 @@ export class AuxiliaresComponent {
   private equipService         = inject(EquipmentService);
   private herramientaService   = inject(HerramientaService);
   private posService           = inject(PosicionesService);
+  private pdfApuService        = inject(PdfApuService);
+  private factorService        = inject(WorkprogramApuFactorService);
 
   // ── Master list ──────────────────────────────────────────────────────────
   rowData: any[]       = [];
@@ -496,4 +500,32 @@ export class AuxiliaresComponent {
   }
 
   get hasDetailChanges(): boolean { return this.hasItemChanges || this.hasCuadrillaChanges || this.hasMainChanges; }
+
+  // ── PDF APU ──────────────────────────────────────────────────────────────
+  async printPdf() {
+    if (!this.selectedAuxiliar) {
+      alerts.basicAlert('Sin selección', 'Selecciona un auxiliar primero', 'warning');
+      return;
+    }
+    const idContract = this.signalsService.getIdContract()();
+    let factors: any[] = [];
+    if (idContract) {
+      try { factors = (await this.factorService.getByContract(idContract).toPromise()) ?? []; }
+      catch { factors = []; }
+    }
+    await this.pdfApuService.openApuPdf({
+      auxiliar:        this.selectedAuxiliar,
+      cuadrillas:      this.cuadrillas,
+      materialItems:   this.materialItems,
+      herramientaItems: this.herramientaItems,
+      equipoItems:     this.equipoItems,
+      factors,
+      totalPersonal:    this.totalPersonal,
+      materialTotal:    this.materialTotal,
+      herramientaTotal: this.herramientaTotal,
+      equipoTotal:      this.equipoTotal,
+      costoTotal:       this.costoTotal,
+      contractNumber:   idContract ? String(idContract) : '',
+    });
+  }
 }

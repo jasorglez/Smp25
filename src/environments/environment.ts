@@ -89,5 +89,5 @@ export const environment = {
   geminiApiKey: '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',
   gnewsApiKey: '94ccc596b4dfebc3f72683b6e81d81bc',
 
-  version: '6.11 (25 Junio 2026) feat: badges Online/Offline y Root/Normal en grid Usuarios',
+  version: '6.13 (25 Junio 2026) feat: PDF fichas APU formato PEMEX ANEXO H',
 }; 
