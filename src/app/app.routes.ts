@@ -547,14 +547,14 @@ export const routes: Routes = [
               ).then((c) => c.HerramientasComponent),
           },
           {
-            path: 'precios-unitarios',
+            path: 'auxiliares',
             loadComponent: () =>
               import(
                 './domains/ModProjects/components/auxiliares/auxiliares.component'
               ).then((c) => c.AuxiliaresComponent),
           },
           {
-            path: 'auxiliares',
+            path: 'auxiliares-cat',
             loadComponent: () =>
               import(
                 './domains/ModProjects/components/auxiliares-cat/auxiliares-cat.component'
