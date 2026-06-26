@@ -520,8 +520,8 @@ export class AuxiliaresComponent {
   private configGridApi!: GridApi;
 
   readonly configColDefs: ColDef[] = [
-    { field: 'sort_order', headerName: '#',   width: 60,  editable: false, type: 'numericColumn', cellStyle: { textAlign: 'center', color: '#888' } },
-    { field: 'name',       headerName: 'Factor',           editable: true,  flex: 2 },
+    { field: 'sortOrder', headerName: '#',   width: 60,  editable: false, type: 'numericColumn', cellStyle: { textAlign: 'center', color: '#888' } },
+    { field: 'name',      headerName: 'Factor',           editable: true,  flex: 2 },
     { field: 'percentage', headerName: '% Aplicar', width: 120, editable: true, type: 'numericColumn',
       valueFormatter: (p) => p.value != null ? Number(p.value).toFixed(2) + ' %' : '' },
   ];
@@ -534,11 +534,22 @@ export class AuxiliaresComponent {
     const idCompany  = this.idCompany;
     if (!idContract) { this.configFactors = []; return; }
     const all = ((await this.factorService.getByContract(idContract, idCompany).toPromise()) ?? []) as any[];
+    // API retorna sortOrder (camelCase), no sort_order — deduplicar por sortOrder
     const seen = new Set<number>();
     this.configFactors = all
-      .sort((a, b) => (a.sort_order - b.sort_order) || (a.id - b.id))
-      .filter(f => { const so = f.sort_order; if (seen.has(so)) return false; seen.add(so); return true; })
-      .map(f => ({ ...f, percentage: Number(f.percentage), __modified: false }));
+      .sort((a, b) => (a.sortOrder ?? a.sort_order ?? 0) - (b.sortOrder ?? b.sort_order ?? 0))
+      .filter(f => {
+        const so = Number(f.sortOrder ?? f.sort_order ?? 0);
+        if (seen.has(so)) return false;
+        seen.add(so);
+        return true;
+      })
+      .map(f => ({
+        ...f,
+        sortOrder:  f.sortOrder ?? f.sort_order ?? 0,
+        percentage: Number(f.percentage),
+        __modified: false,
+      }));
     this.hasFactorChanges = false;
     this.selectedConfigRow = null;
     this.configGridApi?.setGridOption('rowData', this.configFactors);
@@ -556,10 +567,10 @@ export class AuxiliaresComponent {
 
   addConfigFactor() {
     const idContract = this.signalsService.getIdContract()();
-    const maxSo = this.configFactors.reduce((m, f) => Math.max(m, Number(f.sort_order) || 0), 0);
+    const maxSo = this.configFactors.reduce((m, f) => Math.max(m, Number(f.sortOrder) || 0), 0);
     const newRow = {
       id: null, name: 'Nuevo Factor', percentage: 0,
-      sort_order: maxSo + 10,
+      sortOrder: maxSo + 10,
       id_contract: idContract, id_company: this.idCompany,
       active: true, __isNew: true, __modified: false,
     };
@@ -611,7 +622,7 @@ export class AuxiliaresComponent {
     try {
       for (const f of toSave) {
         const payload = {
-          name: f.name, percentage: f.percentage, sort_order: f.sort_order,
+          name: f.name, percentage: f.percentage, sortOrder: f.sortOrder,
           id_company: this.idCompany, id_contract: idContract, active: true,
         };
         if (f.__isNew) {
