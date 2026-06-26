@@ -64,7 +64,7 @@ export class AuxiliaresCatComponent {
 
   loadData() {
     if (!this.idCompany) return;
-    this.auxiliarService.getCatalog(this.idCompany).subscribe({
+    this.auxiliarService.getByCompany(this.idCompany).subscribe({
       next: (data) => {
         this.rowData      = data;
         this.originalData = JSON.parse(JSON.stringify(data));
