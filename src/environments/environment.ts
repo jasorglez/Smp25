@@ -89,5 +89,5 @@ export const environment = {
   geminiApiKey: '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',
   gnewsApiKey: '94ccc596b4dfebc3f72683b6e81d81bc',
 
-  version: '6.19 (25 Junio 2026) feat: APU factores auto-carga + cascada en resumen + modal config AG Grid',
+  version: '6.20 (25 Junio 2026) fix: sortOrder camelCase en factores APU - deduplicacion y PDF correctos',
 }; 

@@ -318,12 +318,12 @@ export class PdfApuService {
   private calcFactors(cd: number, factors: any[]): Array<{ label: string; total: number; isFinal: boolean }> {
     const rows: any[] = [{ label: 'Costo Directo', total: cd, isFinal: false }];
     let running = cd;
-    // deduplicate by sort_order — DB may have repeated rows from multiple inserts
+    // API retorna sortOrder (camelCase) — nunca sort_order (snake_case)
     const seen = new Set<number>();
     const sorted = [...factors]
-      .sort((a, b) => (a.sort_order || 0) - (b.sort_order || 0))
+      .sort((a, b) => (a.sortOrder ?? a.sort_order ?? 0) - (b.sortOrder ?? b.sort_order ?? 0))
       .filter(f => {
-        const so = Number(f.sort_order) || 0;
+        const so = Number(f.sortOrder ?? f.sort_order ?? 0);
         if (seen.has(so)) return false;
         seen.add(so);
         return true;
