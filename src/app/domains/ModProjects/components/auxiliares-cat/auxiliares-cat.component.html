@@ -136,21 +136,21 @@
             <a class="nav-link py-1 px-3" [class.active]="activeTab === 'material'"
                (click)="activeTab='material'" href="javascript:void(0)">
               <i class="bi bi-box-seam me-1" style="color:#fd7e14;"></i>Material
-              <span class="badge rounded-pill ms-1 text-dark" style="font-size: 0.65rem; background:#fd7e14;">{{ materialItems.length }}</span>
+              <span class="badge rounded-pill ms-1 text-dark" style="font-size: 0.65rem; background:#fd7e14;">{{ materialItemRows.length }}</span>
             </a>
           </li>
           <li class="nav-item">
             <a class="nav-link py-1 px-3" [class.active]="activeTab === 'herramienta'"
                (click)="activeTab='herramienta'" href="javascript:void(0)">
               <i class="bi bi-wrench-adjustable text-info me-1"></i>Herramienta
-              <span class="badge rounded-pill bg-info text-dark ms-1" style="font-size: 0.65rem;">{{ herramientaItems.length }}</span>
+              <span class="badge rounded-pill bg-info text-dark ms-1" style="font-size: 0.65rem;">{{ herramientaItemRows.length }}</span>
             </a>
           </li>
           <li class="nav-item">
             <a class="nav-link py-1 px-3" [class.active]="activeTab === 'equipo'"
                (click)="activeTab='equipo'" href="javascript:void(0)">
               <i class="bi bi-truck text-danger me-1"></i>Equipo
-              <span class="badge rounded-pill bg-danger ms-1" style="font-size: 0.65rem;">{{ equipoItems.length }}</span>
+              <span class="badge rounded-pill bg-danger ms-1" style="font-size: 0.65rem;">{{ equipoItemRows.length }}</span>
             </a>
           </li>
         </ul>
@@ -237,8 +237,8 @@
               <ag-grid-angular
                 class="ag-theme-quartz small-text-ag-grid flex-fill"
                 style="width: 100%; height: calc(100vh - 460px);"
-                [rowData]="materialItems"
-                [columnDefs]="getItemColDefs('MATERIAL')"
+                [rowData]="materialItemRows"
+                [columnDefs]="materialColDefs"
                 [rowClassRules]="rowClassRules"
                 rowSelection="single"
                 (gridReady)="onMaterialGridReady($event)"
@@ -267,8 +267,8 @@
               <ag-grid-angular
                 class="ag-theme-quartz small-text-ag-grid flex-fill"
                 style="width: 100%; height: calc(100vh - 460px);"
-                [rowData]="herramientaItems"
-                [columnDefs]="herramientaItemColDefs"
+                [rowData]="herramientaItemRows"
+                [columnDefs]="herramientaColDefs"
                 [rowClassRules]="rowClassRules"
                 rowSelection="single"
                 (gridReady)="onHerramientaGridReady($event)"
@@ -296,8 +296,8 @@
               <ag-grid-angular
                 class="ag-theme-quartz small-text-ag-grid flex-fill"
                 style="width: 100%; height: calc(100vh - 460px);"
-                [rowData]="equipoItems"
-                [columnDefs]="getItemColDefs('EQUIPO')"
+                [rowData]="equipoItemRows"
+                [columnDefs]="equipoColDefs"
                 [rowClassRules]="rowClassRules"
                 rowSelection="single"
                 (gridReady)="onEquipoGridReady($event)"
