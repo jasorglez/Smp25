@@ -84,11 +84,14 @@ export class AuxiliaresComponent {
   readonly mainColDefs: ColDef[] = [
     { headerName: '#', width: 45, editable: false, valueGetter: (p) => (p.node?.rowIndex ?? 0) + 1, cellStyle: { textAlign: 'center', color: '#888' } },
     { field: 'description', headerName: 'Descripción del Auxiliar', editable: true, flex: 3 },
-    { field: 'unit', headerName: 'Unidad', editable: true, width: 120,
+    { field: 'unit', headerName: 'Unidad', editable: true, width: 100,
       cellEditor: 'agSelectCellEditor', cellEditorParams: () => ({ values: this.allUnits }) },
-    { field: 'costMN', headerName: 'Costo Calc.', editable: false, width: 140, type: 'numericColumn',
+    { field: 'costMN', headerName: 'Costo Directo', editable: false, width: 130, type: 'numericColumn',
       cellStyle: { fontWeight: '600', color: '#0e4491' },
       valueFormatter: (p) => p.value != null ? new Intl.NumberFormat('es-MX', { style: 'currency', currency: 'MXN' }).format(p.value) : '$0.00' },
+    { field: 'precioUnitario', headerName: 'Precio Unitario', editable: false, width: 140, type: 'numericColumn',
+      cellStyle: { fontWeight: '700', color: '#155724', background: '#d4edda' },
+      valueFormatter: (p) => p.value ? new Intl.NumberFormat('es-MX', { style: 'currency', currency: 'MXN' }).format(p.value) : '-' },
   ];
 
   // ── ColDefs Material / Equipo ────────────────────────────────────────────
@@ -294,7 +297,9 @@ export class AuxiliaresComponent {
 
   // ── Main CRUD ────────────────────────────────────────────────────────────
   addRow() {
-    const newRow = { id: `temp_${++this.tempCounter}`, idCompany: this.idCompany, description: '', unit: 'M2', costMN: 0,
+    const idContract = this.signalsService.getIdContract()();
+    const newRow = { id: `temp_${++this.tempCounter}`, idCompany: this.idCompany, idContract: idContract ?? null,
+      description: '', unit: 'M2', costMN: 0, precioUnitario: 0,
       hasPersonal: false, hasMaterial: false, hasHerramienta: false, hasEquipo: false, __isNew: true };
     this.rowData = [newRow, ...this.rowData];
     this.hasMainChanges = true;
@@ -502,13 +507,22 @@ export class AuxiliaresComponent {
   get hasDetailChanges(): boolean { return this.hasItemChanges || this.hasCuadrillaChanges || this.hasMainChanges; }
 
   // ── Configuración de factores por contrato ───────────────────────────────
-  showConfig        = false;
+  showConfig           = false;
   configFactors: any[] = [];
-  hasFactorChanges  = false;
+  hasFactorChanges     = false;
+  selectedConfigRow: any = null;
+  private configGridApi!: GridApi;
+
+  readonly configColDefs: ColDef[] = [
+    { field: 'sort_order', headerName: '#',   width: 60,  editable: false, type: 'numericColumn', cellStyle: { textAlign: 'center', color: '#888' } },
+    { field: 'name',       headerName: 'Factor',           editable: true,  flex: 2 },
+    { field: 'percentage', headerName: '% Aplicar', width: 120, editable: true, type: 'numericColumn',
+      valueFormatter: (p) => p.value != null ? Number(p.value).toFixed(2) + ' %' : '' },
+  ];
 
   async toggleConfig() {
     this.showConfig = !this.showConfig;
-    if (this.showConfig && !this.configFactors.length) await this.loadFactors();
+    if (this.showConfig) await this.loadFactors();
   }
 
   async loadFactors() {
@@ -516,16 +530,57 @@ export class AuxiliaresComponent {
     const idCompany  = this.idCompany;
     if (!idContract) { this.configFactors = []; return; }
     const all = ((await this.factorService.getByContract(idContract, idCompany).toPromise()) ?? []) as any[];
-    // ya no hay duplicados en BD, pero por si acaso deduplicar en front
     const seen = new Set<number>();
     this.configFactors = all
       .sort((a, b) => (a.sort_order - b.sort_order) || (a.id - b.id))
       .filter(f => { const so = f.sort_order; if (seen.has(so)) return false; seen.add(so); return true; })
       .map(f => ({ ...f, percentage: Number(f.percentage), __modified: false }));
     this.hasFactorChanges = false;
+    this.selectedConfigRow = null;
+    this.configGridApi?.setGridOption('rowData', this.configFactors);
   }
 
-  onFactorPctChange(f: any) { f.__modified = true; this.hasFactorChanges = true; }
+  onConfigGridReady(e: GridReadyEvent) { this.configGridApi = e.api; }
+  onConfigSelectionChanged() {
+    const r = this.configGridApi?.getSelectedRows();
+    this.selectedConfigRow = r?.length ? r[0] : null;
+  }
+  onConfigCellValueChanged(event: any) {
+    if (!event.data.__isNew) event.data.__modified = true;
+    this.hasFactorChanges = true;
+  }
+
+  addConfigFactor() {
+    const idContract = this.signalsService.getIdContract()();
+    const maxSo = this.configFactors.reduce((m, f) => Math.max(m, Number(f.sort_order) || 0), 0);
+    const newRow = {
+      id: null, name: 'Nuevo Factor', percentage: 0,
+      sort_order: maxSo + 10,
+      id_contract: idContract, id_company: this.idCompany,
+      active: true, __isNew: true, __modified: false,
+    };
+    this.configFactors = [...this.configFactors, newRow];
+    this.hasFactorChanges = true;
+    this.configGridApi?.setGridOption('rowData', this.configFactors);
+    setTimeout(() => {
+      this.configGridApi?.startEditingCell({ rowIndex: this.configFactors.length - 1, colKey: 'name' });
+    }, 100);
+  }
+
+  async deleteConfigFactor() {
+    if (!this.selectedConfigRow) return;
+    const r = await alerts.confirmAlert('¿Eliminar?', `¿Eliminar factor "${this.selectedConfigRow.name}"?`, 'warning', 'Sí');
+    if (!r.isConfirmed) return;
+    if (this.selectedConfigRow.id) {
+      try { await this.factorService.delete(this.selectedConfigRow.id).toPromise(); }
+      catch { alerts.basicAlert('Error', 'No se pudo eliminar', 'error'); return; }
+    }
+    this.configFactors = this.configFactors.filter(f => f !== this.selectedConfigRow);
+    this.selectedConfigRow = null;
+    this.configGridApi?.setGridOption('rowData', this.configFactors);
+  }
+
+  async revertFactors() { await this.loadFactors(); }
 
   getFactorAdd(i: number): number {
     let r = this.costoTotal;
@@ -546,23 +601,55 @@ export class AuxiliaresComponent {
   }
 
   async saveFactors() {
-    const modified = this.configFactors.filter(f => f.__modified);
-    if (!modified.length) return;
+    const toSave = this.configFactors.filter(f => f.__isNew || f.__modified);
+    if (!toSave.length) return;
+    const idContract = this.signalsService.getIdContract()();
     try {
-      for (const f of modified) {
-        await this.factorService.update(f.id, {
-          name:        f.name,
-          percentage:  f.percentage,
-          sort_order:  f.sort_order,
-          id_company:  this.idCompany,
-          id_contract: f.idContract ?? f.id_contract,
-          active:      true,
-        }).toPromise();
-        f.__modified = false;
+      for (const f of toSave) {
+        const payload = {
+          name: f.name, percentage: f.percentage, sort_order: f.sort_order,
+          id_company: this.idCompany, id_contract: idContract, active: true,
+        };
+        if (f.__isNew) {
+          const saved: any = await this.factorService.add(payload).toPromise();
+          f.id = saved.id ?? saved.Id; f.__isNew = false;
+        } else {
+          await this.factorService.update(f.id, payload).toPromise();
+          f.__modified = false;
+        }
       }
       this.hasFactorChanges = false;
       alerts.basicAlert('OK', 'Factores actualizados', 'success');
     } catch { alerts.basicAlert('Error', 'No se pudieron guardar los factores', 'error'); }
+  }
+
+  async recalcularPrecios() {
+    if (!this.configFactors.length) {
+      alerts.basicAlert('Sin factores', 'Carga la configuración primero (botón Configuración)', 'warning');
+      return;
+    }
+    const idContract = this.signalsService.getIdContract()();
+    if (!idContract) { alerts.basicAlert('Sin contrato', 'No hay contrato seleccionado', 'warning'); return; }
+
+    const precios = this.rowData
+      .filter(r => r.id && !String(r.id).startsWith('temp_') && Number(r.costMN) > 0)
+      .map(r => {
+        let running = Number(r.costMN) || 0;
+        for (const f of this.configFactors) running += running * (Number(f.percentage) || 0) / 100;
+        return { id: r.id, precioUnitario: Math.round(running * 100) / 100 };
+      });
+
+    if (!precios.length) { alerts.basicAlert('Sin datos', 'No hay auxiliares con costo calculado', 'warning'); return; }
+
+    try {
+      await this.auxiliarService.recalcularPrecios(idContract, this.idCompany, precios).toPromise();
+      precios.forEach(p => {
+        const row = this.rowData.find((r: any) => r.id === p.id);
+        if (row) row.precioUnitario = p.precioUnitario;
+      });
+      this.mainGridApi?.refreshCells({ force: true });
+      alerts.basicAlert('OK', `${precios.length} precios unitarios recalculados`, 'success');
+    } catch { alerts.basicAlert('Error', 'No se pudo recalcular', 'error'); }
   }
 
   // ── PDF APU ──────────────────────────────────────────────────────────────

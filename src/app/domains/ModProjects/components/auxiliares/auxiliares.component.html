@@ -325,73 +325,74 @@
         <!-- ── Configuración de Factores ─────────────────────────────────── -->
         <ng-container *ngIf="showConfig">
           <div class="section-card border-dark">
-            <div class="d-flex align-items-center justify-content-between mb-2">
-              <h6 class="mb-0 compact-title">
+            <div class="d-flex align-items-center flex-wrap gap-2 mb-2">
+              <h6 class="mb-0 compact-title me-auto">
                 <i class="bi bi-gear-fill me-1"></i> Factores del Contrato
               </h6>
-              <button
-                class="btn btn-sm btn-primary"
-                (click)="saveFactors()"
-                [disabled]="!hasFactorChanges"
-              >
-                <i class="bi bi-floppy me-1"></i> Guardar Factores
-                <span *ngIf="hasFactorChanges" class="badge bg-danger ms-1">
-                  <i class="bi bi-asterisk"></i>
-                </span>
+              <button class="btn btn-sm btn-success" (click)="addConfigFactor()">
+                <i class="bi bi-plus-lg"></i> Agregar
+              </button>
+              <button class="btn btn-sm btn-primary position-relative" (click)="saveFactors()" [disabled]="!hasFactorChanges">
+                <i class="bi bi-floppy"></i> Guardar
+                <span *ngIf="hasFactorChanges" class="position-absolute top-0 start-100 translate-middle p-2 bg-danger border border-light rounded-circle"></span>
+              </button>
+              <button class="btn btn-sm btn-warning" (click)="revertFactors()">
+                <i class="bi bi-arrow-clockwise"></i> Deshacer
+              </button>
+              <button class="btn btn-sm btn-danger" (click)="deleteConfigFactor()" [disabled]="!selectedConfigRow">
+                <i class="bi bi-trash"></i>
+              </button>
+              <button class="btn btn-sm btn-dark ms-2" (click)="recalcularPrecios()" title="Aplica los factores a todos los APUs del contrato">
+                <i class="bi bi-calculator-fill me-1"></i> Recalcular Precios
               </button>
             </div>
 
-            <table class="table table-sm table-bordered mb-0" style="font-size: 0.8rem">
-              <thead class="table-secondary">
-                <tr>
-                  <th>Factor</th>
-                  <th class="text-center" style="width: 100px">%</th>
-                  <th class="text-end" style="width: 120px">Importe</th>
-                  <th class="text-end" style="width: 130px">Subtotal</th>
-                </tr>
-              </thead>
-              <tbody>
-                <!-- Costo Directo -->
-                <tr class="table-light">
-                  <td><strong>Costo Directo</strong></td>
-                  <td></td>
-                  <td></td>
-                  <td class="text-end fw-bold text-primary">
-                    ${{ costoTotal.toLocaleString('es-MX', { minimumFractionDigits: 2 }) }}
-                  </td>
-                </tr>
-                <!-- Un renglón por factor -->
-                <ng-container *ngFor="let f of configFactors; let i = index">
+            <ag-grid-angular
+              class="ag-theme-quartz small-text-ag-grid"
+              style="height: 180px; width: 100%"
+              [rowData]="configFactors"
+              [columnDefs]="configColDefs"
+              [defaultColDef]="defaultColDef"
+              [rowClassRules]="rowClassRules"
+              rowSelection="single"
+              (gridReady)="onConfigGridReady($event)"
+              (selectionChanged)="onConfigSelectionChanged()"
+              (cellValueChanged)="onConfigCellValueChanged($event)"
+            ></ag-grid-angular>
+
+            <!-- Cascada de precios en vivo con el APU seleccionado -->
+            <div *ngIf="configFactors.length > 0 && costoTotal > 0" class="mt-2 d-flex justify-content-end">
+              <table class="table table-sm table-borderless mb-0" style="width: 380px; font-size: 0.78rem">
+                <tbody>
                   <tr>
-                    <td>{{ f.name }}</td>
-                    <td>
-                      <input
-                        type="number"
-                        class="form-control form-control-sm text-end"
-                        style="width: 80px"
-                        [(ngModel)]="f.percentage"
-                        (ngModelChange)="onFactorPctChange(f)"
-                        step="0.01"
-                        min="0"
-                      />
-                    </td>
-                    <td class="text-end text-success">
-                      ${{ getFactorAdd(i).toLocaleString('es-MX', { minimumFractionDigits: 2 }) }}
-                    </td>
-                    <td class="text-end text-muted">
-                      ${{ getFactorSubtotal(i).toLocaleString('es-MX', { minimumFractionDigits: 2 }) }}
+                    <td class="text-end fw-semibold">Costo Directo</td>
+                    <td class="text-end fw-bold text-primary" style="width: 120px">
+                      ${{ costoTotal.toLocaleString('es-MX', { minimumFractionDigits: 2 }) }}
                     </td>
                   </tr>
-                </ng-container>
-                <!-- Precio Unitario -->
-                <tr class="table-primary">
-                  <td colspan="3" class="fw-bold">Precio Unitario</td>
-                  <td class="text-end fw-bold">
-                    ${{ precioUnitario.toLocaleString('es-MX', { minimumFractionDigits: 2 }) }}
-                  </td>
-                </tr>
-              </tbody>
-            </table>
+                  <ng-container *ngFor="let f of configFactors; let i = index">
+                    <tr>
+                      <td class="text-end text-muted">{{ f.name }} ( {{ f.percentage | number:'1.2-2' }}%)</td>
+                      <td class="text-end text-success">
+                        ${{ getFactorAdd(i).toLocaleString('es-MX', { minimumFractionDigits: 2 }) }}
+                      </td>
+                    </tr>
+                    <tr *ngIf="i < configFactors.length - 1">
+                      <td class="text-end text-muted fst-italic small">Subtotal</td>
+                      <td class="text-end text-muted small">
+                        ${{ getFactorSubtotal(i).toLocaleString('es-MX', { minimumFractionDigits: 2 }) }}
+                      </td>
+                    </tr>
+                  </ng-container>
+                  <tr class="border-top">
+                    <td class="text-end fw-bold fs-6">Precio Unitario</td>
+                    <td class="text-end fw-bold fs-6 text-dark">
+                      ${{ precioUnitario.toLocaleString('es-MX', { minimumFractionDigits: 2 }) }}
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
 
             <div *ngIf="!configFactors.length" class="text-center text-muted py-3">
               <i class="bi bi-exclamation-triangle me-1"></i>
@@ -429,11 +430,33 @@
                 </td>
               </tr>
               <tr class="border-top">
-                <td class="fw-bold ps-2">COSTO TOTAL</td>
+                <td class="fw-bold ps-2">COSTO DIRECTO</td>
                 <td class="text-end fw-bold text-primary summary-total">
                   ${{ costoTotal.toLocaleString('es-MX', { minimumFractionDigits: 2 }) }}
                 </td>
               </tr>
+              <ng-container *ngIf="configFactors.length > 0 && costoTotal > 0">
+                <ng-container *ngFor="let f of configFactors; let i = index">
+                  <tr>
+                    <td class="text-muted ps-2 small">{{ f.name }} ({{ f.percentage | number:'1.2-2' }}%)</td>
+                    <td class="text-end text-success small">
+                      ${{ getFactorAdd(i).toLocaleString('es-MX', { minimumFractionDigits: 2 }) }}
+                    </td>
+                  </tr>
+                  <tr *ngIf="i < configFactors.length - 1">
+                    <td class="text-muted ps-2 small fst-italic">Subtotal</td>
+                    <td class="text-end text-muted small">
+                      ${{ getFactorSubtotal(i).toLocaleString('es-MX', { minimumFractionDigits: 2 }) }}
+                    </td>
+                  </tr>
+                </ng-container>
+                <tr class="border-top">
+                  <td class="fw-bold ps-2 text-success">PRECIO UNITARIO</td>
+                  <td class="text-end fw-bold text-success summary-total">
+                    ${{ precioUnitario.toLocaleString('es-MX', { minimumFractionDigits: 2 }) }}
+                  </td>
+                </tr>
+              </ng-container>
               <tr>
                 <td class="text-muted ps-2 small">Unidad del auxiliar</td>
                 <td class="text-end text-muted small">{{ selectedAuxiliar.unit }}</td>

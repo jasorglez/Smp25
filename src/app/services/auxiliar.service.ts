@@ -36,4 +36,19 @@ export class AuxiliarService {
       { headers: this.trackingService.getHeaders() }
     );
   }
+
+  getByContract(idContract: number, idCompany: number): Observable<any[]> {
+    return this.http.get<any[]>(
+      `${environment.urlSmp}/Auxiliar/contract/${idContract}/company/${idCompany}`,
+      { headers: this.trackingService.getHeaders() }
+    );
+  }
+
+  recalcularPrecios(idContract: number, idCompany: number, items: Array<{ id: number; precioUnitario: number }>): Observable<any> {
+    return this.http.put<any>(
+      `${environment.urlSmp}/Auxiliar/recalcular?idContract=${idContract}&idCompany=${idCompany}`,
+      items,
+      { headers: this.trackingService.getHeaders() }
+    );
+  }
 }
