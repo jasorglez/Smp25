@@ -89,5 +89,5 @@ export const environment = {
   geminiApiKey: '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',
   gnewsApiKey: '94ccc596b4dfebc3f72683b6e81d81bc',
 
-  version: '4.20 (25 Junio 2026) fix: sortOrder camelCase en factores APU - deduplicacion y PDF correctos',
+  version: '4.21 (25 Junio 2026) feat: encabezado PDF APU configurable por contrato (tabla pu.apu_config)',
 }; 

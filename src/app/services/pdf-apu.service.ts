@@ -8,10 +8,14 @@ import { SignalsService } from './signals.service';
 (pdfMake as any).vfs = (pdfFonts as any).pdfMake?.vfs || (pdfFonts as any).default?.pdfMake?.vfs;
 
 export interface ApuPdfData {
-  companyName?: string;
-  projectTitle?: string;
-  contractNumber?: string;
-  fecha?: string;
+  // Textos del encabezado (configurables por contrato)
+  companyName?:   string;   // "PEMEX EXPLORACION Y PRODUCCION"
+  subdirection?:  string;   // "SUBDIRECCION DE LA COORDINACION..."
+  anexoLabel?:    string;   // 'ANEXO "H"'
+  analysisTitle?: string;   // "ANALISIS DE PRECIOS UNITARIOS"
+  licitacionNo?:  string;   // "18575108-002-07"
+  projectTitle?:  string;   // Título del proyecto/obra
+  fecha?:         string;   // Auto-generada si no se provee
   auxiliar: any;
   cuadrillas: any[];
   materialItems: any[];
@@ -47,10 +51,13 @@ export class PdfApuService {
     const {
       auxiliar, cuadrillas, materialItems, herramientaItems, equipoItems,
       factors, totalPersonal, materialTotal, herramientaTotal, equipoTotal, costoTotal,
-      companyName    = 'PEMEX EXPLORACION Y PRODUCCION',
-      projectTitle   = '',
-      contractNumber = '',
-      fecha          = this.fechaStr(),
+      companyName   = 'PEMEX EXPLORACION Y PRODUCCION',
+      subdirection  = 'SUBDIRECCION DE LA COORDINACION DE SERVICIOS MARINOS',
+      anexoLabel    = 'ANEXO "H"',
+      analysisTitle = 'ANALISIS DE PRECIOS UNITARIOS',
+      licitacionNo  = '',
+      projectTitle  = '',
+      fecha         = this.fechaStr(),
     } = data;
 
     const clv      = this.extractClv(auxiliar?.description ?? '');
@@ -189,18 +196,18 @@ export class PdfApuService {
             {
               width: '*',
               stack: [
-                { text: companyName, fontSize: 9, bold: true, alignment: 'center' },
-                { text: 'SUBDIRECCION DE LA COORDINACION DE SERVICIOS MARINOS', fontSize: 7, alignment: 'center' },
+                { text: companyName,  fontSize: 9, bold: true, alignment: 'center' },
+                { text: subdirection, fontSize: 7,             alignment: 'center' },
               ],
               margin: [0, 4, 0, 0],
             },
             {
               width: 'auto',
               stack: [
-                { text: 'ANEXO "H"',                       fontSize: 8, bold: true, alignment: 'right' },
-                { text: 'ANALISIS DE PRECIOS UNITARIOS',   fontSize: 7, alignment: 'right' },
-                contractNumber
-                  ? { text: `LICITACION No. ${contractNumber}`, fontSize: 7, alignment: 'right' }
+                { text: anexoLabel,    fontSize: 8, bold: true, alignment: 'right' },
+                { text: analysisTitle, fontSize: 7,             alignment: 'right' },
+                licitacionNo
+                  ? { text: `LICITACION No. ${licitacionNo}`, fontSize: 7, alignment: 'right' }
                   : { text: '' },
                 { text: fecha, fontSize: 7, alignment: 'right' },
               ],
