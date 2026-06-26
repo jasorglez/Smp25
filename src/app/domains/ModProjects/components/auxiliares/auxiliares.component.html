@@ -411,7 +411,68 @@
       </div>
 
       <div class="modal-body">
-        <!-- Barra de acciones -->
+
+        <!-- ── Encabezado PDF ──────────────────────────────────────────── -->
+        <div class="card border-0 bg-light mb-3">
+          <div class="card-header py-1 px-3 d-flex align-items-center justify-content-between">
+            <small class="fw-semibold text-secondary">
+              <i class="bi bi-file-earmark-text me-1"></i> Encabezado del PDF
+            </small>
+            <button class="btn btn-sm btn-primary py-0 px-2" (click)="saveApuConfig()" [disabled]="!hasConfigChanges">
+              <i class="bi bi-floppy me-1"></i> Guardar encabezado
+              <span *ngIf="hasConfigChanges"
+                    class="ms-1 badge bg-danger"><i class="bi bi-asterisk"></i></span>
+            </button>
+          </div>
+          <div class="card-body py-2 px-3">
+            <div class="row g-2" style="font-size: 0.82rem">
+              <div class="col-md-6">
+                <label class="form-label mb-0 text-muted">Nombre empresa / cliente</label>
+                <input type="text" class="form-control form-control-sm"
+                       [(ngModel)]="apuConfig.companyName"
+                       (ngModelChange)="hasConfigChanges = true"
+                       placeholder="PEMEX EXPLORACION Y PRODUCCION" />
+              </div>
+              <div class="col-md-6">
+                <label class="form-label mb-0 text-muted">Subdirección / Dependencia</label>
+                <input type="text" class="form-control form-control-sm"
+                       [(ngModel)]="apuConfig.subdirection"
+                       (ngModelChange)="hasConfigChanges = true"
+                       placeholder="SUBDIRECCION DE LA COORDINACION..." />
+              </div>
+              <div class="col-md-3">
+                <label class="form-label mb-0 text-muted">Etiqueta Anexo</label>
+                <input type="text" class="form-control form-control-sm"
+                       [(ngModel)]="apuConfig.anexoLabel"
+                       (ngModelChange)="hasConfigChanges = true"
+                       placeholder='ANEXO "H"' />
+              </div>
+              <div class="col-md-5">
+                <label class="form-label mb-0 text-muted">Título del Análisis</label>
+                <input type="text" class="form-control form-control-sm"
+                       [(ngModel)]="apuConfig.analysisTitle"
+                       (ngModelChange)="hasConfigChanges = true"
+                       placeholder="ANALISIS DE PRECIOS UNITARIOS" />
+              </div>
+              <div class="col-md-4">
+                <label class="form-label mb-0 text-muted">No. Licitación</label>
+                <input type="text" class="form-control form-control-sm"
+                       [(ngModel)]="apuConfig.licitacionNo"
+                       (ngModelChange)="hasConfigChanges = true"
+                       placeholder="18575108-002-07" />
+              </div>
+              <div class="col-12">
+                <label class="form-label mb-0 text-muted">Título del proyecto / obra</label>
+                <input type="text" class="form-control form-control-sm"
+                       [(ngModel)]="apuConfig.projectTitle"
+                       (ngModelChange)="hasConfigChanges = true"
+                       placeholder="REHABILITACION DE CUARTOS DE CONTROL..." />
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- ── Factores de precio ──────────────────────────────────────── -->
         <div class="d-flex gap-2 mb-2 flex-wrap">
           <button class="btn btn-sm btn-success" (click)="addConfigFactor()">
             <i class="bi bi-plus-lg"></i> Agregar

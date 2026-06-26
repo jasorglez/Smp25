@@ -13,6 +13,7 @@ import { PosicionesService } from 'app/services/posiciones.service';
 import { alerts } from 'app/helpers/alerts';
 import { PdfApuService } from 'app/services/pdf-apu.service';
 import { WorkprogramApuFactorService } from 'app/services/workprogram-apu-factor.service';
+import { ApuConfigService, ApuConfig, APU_CONFIG_DEFAULTS } from 'app/services/apu-config.service';
 
 @Component({
   selector: 'app-auxiliares',
@@ -31,6 +32,7 @@ export class AuxiliaresComponent {
   private posService           = inject(PosicionesService);
   private pdfApuService        = inject(PdfApuService);
   private factorService        = inject(WorkprogramApuFactorService);
+  private apuConfigService     = inject(ApuConfigService);
 
   // ── Master list ──────────────────────────────────────────────────────────
   rowData: any[]       = [];
@@ -212,11 +214,12 @@ export class AuxiliaresComponent {
       this.loadData();
       this.loadCatalogs();
     });
-    // Auto-carga factores cuando cambia empresa o contrato
+    // Auto-carga factores y config encabezado cuando cambia empresa o contrato
     effect(() => {
       this.signalsService.getRootSelectedBySidebar()();
       this.signalsService.getIdContract()();
       void this.loadFactors();
+      void this.loadApuConfig();
     });
   }
 
@@ -512,6 +515,33 @@ export class AuxiliaresComponent {
 
   get hasDetailChanges(): boolean { return this.hasItemChanges || this.hasCuadrillaChanges || this.hasMainChanges; }
 
+  // ── Config encabezado PDF por contrato ───────────────────────────────────
+  apuConfig: ApuConfig = { ...APU_CONFIG_DEFAULTS };
+  hasConfigChanges     = false;
+
+  async loadApuConfig() {
+    const idContract = this.signalsService.getIdContract()();
+    if (!idContract || !this.idCompany) { this.apuConfig = { ...APU_CONFIG_DEFAULTS }; return; }
+    try {
+      const cfg = await this.apuConfigService.get(idContract, this.idCompany).toPromise();
+      this.apuConfig = cfg ?? { ...APU_CONFIG_DEFAULTS, idCompany: this.idCompany, idContract };
+    } catch { this.apuConfig = { ...APU_CONFIG_DEFAULTS, idCompany: this.idCompany, idContract }; }
+    this.hasConfigChanges = false;
+  }
+
+  async saveApuConfig() {
+    const idContract = this.signalsService.getIdContract()();
+    if (!idContract) return;
+    try {
+      const saved = await this.apuConfigService.save({
+        ...this.apuConfig, idCompany: this.idCompany, idContract, active: true,
+      }).toPromise();
+      this.apuConfig = saved!;
+      this.hasConfigChanges = false;
+      alerts.basicAlert('OK', 'Encabezado guardado', 'success');
+    } catch { alerts.basicAlert('Error', 'No se pudo guardar el encabezado', 'error'); }
+  }
+
   // ── Configuración de factores por contrato ───────────────────────────────
   showConfigModal      = false;
   configFactors: any[] = [];
@@ -691,7 +721,13 @@ export class AuxiliaresComponent {
       herramientaTotal: this.herramientaTotal,
       equipoTotal:      this.equipoTotal,
       costoTotal:       this.costoTotal,
-      contractNumber:   idContract ? String(idContract) : '',
+      // Textos configurables del encabezado
+      companyName:    this.apuConfig.companyName,
+      subdirection:   this.apuConfig.subdirection,
+      anexoLabel:     this.apuConfig.anexoLabel,
+      analysisTitle:  this.apuConfig.analysisTitle,
+      licitacionNo:   this.apuConfig.licitacionNo,
+      projectTitle:   this.apuConfig.projectTitle,
     });
   }
 }
