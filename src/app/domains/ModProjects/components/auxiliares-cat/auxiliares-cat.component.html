@@ -155,12 +155,12 @@
           </li>
         </ul>
 
-        <!-- Tab content — flex-fill, grids usan position:absolute para llenar 100% -->
-        <div class="flex-fill d-flex flex-column" style="min-height: 0; padding-top: 8px;">
+        <!-- Tab content -->
+        <div style="padding-top: 8px; overflow-y: auto; flex: 1; min-height: 0;">
 
           <!-- TAB: PERSONAL / CUADRILLA -->
           <ng-container *ngIf="activeTab === 'personal'">
-            <div class="d-flex flex-column" style="flex: 1; min-height: 0; gap: 6px;">
+            <div class="d-flex flex-column h-100" style="gap: 6px;">
               <!-- Cuadrilla chips -->
               <div class="d-flex align-items-center gap-2 flex-wrap flex-shrink-0">
                 <button class="btn btn-sm btn-outline-success" (click)="addCuadrilla()">
@@ -196,20 +196,17 @@
                     <i class="bi bi-trash"></i>
                   </button>
                 </div>
-                <!-- wrapper con posición relativa para que el grid ocupe todo -->
-                <div style="flex: 1; min-height: 0; position: relative;">
-                  <ag-grid-angular
-                    class="ag-theme-quartz small-text-ag-grid"
-                    style="position: absolute; inset: 0; height: 100%; width: 100%;"
-                    [rowData]="cuadrillaItemRows"
-                    [columnDefs]="cuadrillaItemColDefs"
-                    [rowClassRules]="rowClassRules"
-                    rowSelection="single"
-                    (gridReady)="onCuadrillaGridReady($event)"
-                    (selectionChanged)="onCuadrillaItemSelectionChanged()"
-                    (cellValueChanged)="onCuadrillaItemValueChanged($event)">
-                  </ag-grid-angular>
-                </div>
+                <ag-grid-angular
+                  class="ag-theme-quartz small-text-ag-grid flex-fill"
+                  style="width: 100%; height: calc(100vh - 460px);"
+                  [rowData]="cuadrillaItemRows"
+                  [columnDefs]="cuadrillaItemColDefs"
+                  [rowClassRules]="rowClassRules"
+                  rowSelection="single"
+                  (gridReady)="onCuadrillaGridReady($event)"
+                  (selectionChanged)="onCuadrillaItemSelectionChanged()"
+                  (cellValueChanged)="onCuadrillaItemValueChanged($event)">
+                </ag-grid-angular>
                 <div class="text-end flex-shrink-0" style="font-size:0.82rem;">
                   <span class="text-muted">Subtotal MO:</span>
                   <strong class="text-success ms-2">${{ totalPersonal | number:'1.2-2' }}</strong>
@@ -228,7 +225,7 @@
 
           <!-- TAB: MATERIAL -->
           <ng-container *ngIf="activeTab === 'material'">
-            <div class="d-flex flex-column" style="flex: 1; min-height: 0; gap: 6px;">
+            <div class="d-flex flex-column h-100" style="gap: 6px;">
               <div class="d-flex gap-2 flex-shrink-0">
                 <button class="btn btn-sm btn-outline-warning" (click)="addItem('MATERIAL')">
                   <i class="bi bi-plus-lg"></i> Material
@@ -237,19 +234,17 @@
                   <i class="bi bi-trash"></i>
                 </button>
               </div>
-              <div style="flex: 1; min-height: 0; position: relative;">
-                <ag-grid-angular
-                  class="ag-theme-quartz small-text-ag-grid"
-                  style="position: absolute; inset: 0; height: 100%; width: 100%;"
-                  [rowData]="materialItems"
-                  [columnDefs]="getItemColDefs('MATERIAL')"
-                  [rowClassRules]="rowClassRules"
-                  rowSelection="single"
-                  (gridReady)="onMaterialGridReady($event)"
-                  (selectionChanged)="onMaterialSelectionChanged()"
-                  (cellValueChanged)="onItemValueChanged($event)">
-                </ag-grid-angular>
-              </div>
+              <ag-grid-angular
+                class="ag-theme-quartz small-text-ag-grid flex-fill"
+                style="width: 100%; height: calc(100vh - 460px);"
+                [rowData]="materialItems"
+                [columnDefs]="getItemColDefs('MATERIAL')"
+                [rowClassRules]="rowClassRules"
+                rowSelection="single"
+                (gridReady)="onMaterialGridReady($event)"
+                (selectionChanged)="onMaterialSelectionChanged()"
+                (cellValueChanged)="onItemValueChanged($event)">
+              </ag-grid-angular>
               <div class="text-end flex-shrink-0" style="font-size:0.82rem;">
                 <span class="text-muted">Subtotal Material:</span>
                 <strong style="color:#e65100;" class="ms-2">${{ materialTotal | number:'1.2-2' }}</strong>
@@ -259,7 +254,7 @@
 
           <!-- TAB: HERRAMIENTA -->
           <ng-container *ngIf="activeTab === 'herramienta'">
-            <div class="d-flex flex-column" style="flex: 1; min-height: 0; gap: 6px;">
+            <div class="d-flex flex-column h-100" style="gap: 6px;">
               <div class="d-flex gap-2 flex-shrink-0">
                 <button class="btn btn-sm btn-outline-info" (click)="addItem('HERR')">
                   <i class="bi bi-plus-lg"></i> Herramienta
@@ -269,19 +264,17 @@
                 </button>
                 <small class="text-muted ms-auto align-self-center">% sobre MO = ${{ totalPersonal | number:'1.2-2' }}</small>
               </div>
-              <div style="flex: 1; min-height: 0; position: relative;">
-                <ag-grid-angular
-                  class="ag-theme-quartz small-text-ag-grid"
-                  style="position: absolute; inset: 0; height: 100%; width: 100%;"
-                  [rowData]="herramientaItems"
-                  [columnDefs]="herramientaItemColDefs"
-                  [rowClassRules]="rowClassRules"
-                  rowSelection="single"
-                  (gridReady)="onHerramientaGridReady($event)"
-                  (selectionChanged)="onHerramientaSelectionChanged()"
-                  (cellValueChanged)="onItemValueChanged($event)">
-                </ag-grid-angular>
-              </div>
+              <ag-grid-angular
+                class="ag-theme-quartz small-text-ag-grid flex-fill"
+                style="width: 100%; height: calc(100vh - 460px);"
+                [rowData]="herramientaItems"
+                [columnDefs]="herramientaItemColDefs"
+                [rowClassRules]="rowClassRules"
+                rowSelection="single"
+                (gridReady)="onHerramientaGridReady($event)"
+                (selectionChanged)="onHerramientaSelectionChanged()"
+                (cellValueChanged)="onItemValueChanged($event)">
+              </ag-grid-angular>
               <div class="text-end flex-shrink-0" style="font-size:0.82rem;">
                 <span class="text-muted">Subtotal Herramienta:</span>
                 <strong style="color:#00838f;" class="ms-2">${{ herramientaTotal | number:'1.2-2' }}</strong>
@@ -291,7 +284,7 @@
 
           <!-- TAB: EQUIPO -->
           <ng-container *ngIf="activeTab === 'equipo'">
-            <div class="d-flex flex-column" style="flex: 1; min-height: 0; gap: 6px;">
+            <div class="d-flex flex-column h-100" style="gap: 6px;">
               <div class="d-flex gap-2 flex-shrink-0">
                 <button class="btn btn-sm btn-outline-danger" (click)="addItem('EQUIPO')">
                   <i class="bi bi-plus-lg"></i> Equipo
@@ -300,19 +293,17 @@
                   <i class="bi bi-trash"></i>
                 </button>
               </div>
-              <div style="flex: 1; min-height: 0; position: relative;">
-                <ag-grid-angular
-                  class="ag-theme-quartz small-text-ag-grid"
-                  style="position: absolute; inset: 0; height: 100%; width: 100%;"
-                  [rowData]="equipoItems"
-                  [columnDefs]="getItemColDefs('EQUIPO')"
-                  [rowClassRules]="rowClassRules"
-                  rowSelection="single"
-                  (gridReady)="onEquipoGridReady($event)"
-                  (selectionChanged)="onEquipoSelectionChanged()"
-                  (cellValueChanged)="onItemValueChanged($event)">
-                </ag-grid-angular>
-              </div>
+              <ag-grid-angular
+                class="ag-theme-quartz small-text-ag-grid flex-fill"
+                style="width: 100%; height: calc(100vh - 460px);"
+                [rowData]="equipoItems"
+                [columnDefs]="getItemColDefs('EQUIPO')"
+                [rowClassRules]="rowClassRules"
+                rowSelection="single"
+                (gridReady)="onEquipoGridReady($event)"
+                (selectionChanged)="onEquipoSelectionChanged()"
+                (cellValueChanged)="onItemValueChanged($event)">
+              </ag-grid-angular>
               <div class="text-end flex-shrink-0" style="font-size:0.82rem;">
                 <span class="text-muted">Subtotal Equipo:</span>
                 <strong class="text-danger ms-2">${{ equipoTotal | number:'1.2-2' }}</strong>
