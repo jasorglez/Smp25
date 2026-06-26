@@ -20,10 +20,10 @@
   </div>
 
   <!-- ── Split layout: LIST | DETAIL ────────────────────────────────────── -->
-  <div class="d-flex gap-2 flex-fill" style="min-height: 0; overflow: hidden;">
+  <div class="d-flex flex-fill" [class.is-dragging]="isSplitterDragging" style="min-height: 0; overflow: hidden;">
 
     <!-- LEFT: master list -->
-    <div class="d-flex flex-column flex-shrink-0" style="width: 370px; min-height: 0;">
+    <div class="d-flex flex-column flex-shrink-0" [style.width.px]="leftWidth" style="min-height: 0;">
       <ag-grid-angular
         class="ag-theme-quartz small-text-ag-grid"
         style="height: 100%; width: 100%;"
@@ -37,6 +37,12 @@
         (cellValueChanged)="onCellValueChanged($event)"
         (cellEditingStopped)="onCellEditingStopped($event)">
       </ag-grid-angular>
+    </div>
+
+    <!-- SPLITTER -->
+    <div class="split-handle" [class.dragging]="isSplitterDragging"
+         (mousedown)="onSplitterMouseDown($event)">
+      <div class="split-handle-grip">⋮</div>
     </div>
 
     <!-- RIGHT: detail panel -->
