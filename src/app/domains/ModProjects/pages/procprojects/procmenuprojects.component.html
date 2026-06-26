@@ -55,6 +55,13 @@
              </li>
 
              <li class="nav-item" *ngIf="authService.hasDetailedPermission('projects', 'auxiliares')">
+                <a class="nav-link modern-tab" routerLink="precios-unitarios" routerLinkActive="active">
+                  <i class="bi bi-currency-dollar"></i>
+                  <span>Precios Unitarios</span>
+                </a>
+             </li>
+
+             <li class="nav-item" *ngIf="authService.hasDetailedPermission('projects', 'auxiliares')">
                 <a class="nav-link modern-tab" routerLink="auxiliares" routerLinkActive="active">
                   <i class="bi bi-layers"></i>
                   <span>Auxiliares</span>
