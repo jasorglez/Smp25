@@ -1,6 +1,9 @@
-import { Injectable } from '@angular/core';
+import { Injectable, inject } from '@angular/core';
 import pdfMake from 'pdfmake/build/pdfmake';
 import * as pdfFonts from 'pdfmake/build/vfs_fonts';
+import { lastValueFrom } from 'rxjs';
+import { RootService } from './root.service';
+import { SignalsService } from './signals.service';
 
 (pdfMake as any).vfs = (pdfFonts as any).pdfMake?.vfs || (pdfFonts as any).default?.pdfMake?.vfs;
 
@@ -24,15 +27,17 @@ export interface ApuPdfData {
 
 @Injectable({ providedIn: 'root' })
 export class PdfApuService {
+  private rootService    = inject(RootService);
+  private signalsService = inject(SignalsService);
 
   // ── Entry points ──────────────────────────────────────────────────────────
   async openApuPdf(data: ApuPdfData): Promise<void> {
-    const logo = await this.loadLogo();
+    const logo = await this.loadCompanyLogo();
     pdfMake.createPdf(this.buildDocDef(data, logo)).open();
   }
 
   async downloadApuPdf(data: ApuPdfData): Promise<void> {
-    const logo = await this.loadLogo();
+    const logo = await this.loadCompanyLogo();
     const clv  = this.extractClv(data.auxiliar?.description ?? '');
     pdfMake.createPdf(this.buildDocDef(data, logo)).download(`APU_${clv || data.auxiliar?.id}.pdf`);
   }
@@ -397,19 +402,30 @@ export class PdfApuService {
     return mw + (n % 1000000 ? ' ' + this.int2w(n % 1000000, apocopar) : '');
   }
 
-  // ── Logo loader ───────────────────────────────────────────────────────────
-  private loadLogo(): Promise<string> {
+  // ── Logo de la empresa desde root ────────────────────────────────────────
+  private async loadCompanyLogo(): Promise<string> {
+    const idRoot = this.signalsService.getRootSelectedBySidebar()();
+    if (!idRoot) return '';
+    try {
+      const company: any = await lastValueFrom(this.rootService.getRootbyId(idRoot));
+      if (company?.picture) return await this.convertImageToBase64(company.picture);
+    } catch {}
+    return '';
+  }
+
+  private convertImageToBase64(imageUrl: string): Promise<string> {
     return new Promise((resolve) => {
-      const xhr = new XMLHttpRequest();
-      xhr.onload = () => {
-        const r = new FileReader();
-        r.onloadend = () => resolve(r.result as string);
-        r.readAsDataURL(xhr.response);
+      const img = new Image();
+      img.crossOrigin = 'anonymous';
+      img.onload = () => {
+        const canvas = document.createElement('canvas');
+        const ctx    = canvas.getContext('2d');
+        canvas.width = img.width; canvas.height = img.height;
+        ctx?.drawImage(img, 0, 0);
+        resolve(canvas.toDataURL('image/png'));
       };
-      xhr.onerror = () => resolve('');
-      xhr.open('GET', 'assets/img/template/bi.png');
-      xhr.responseType = 'blob';
-      xhr.send();
+      img.onerror = () => resolve('');
+      img.src = imageUrl;
     });
   }
 }
