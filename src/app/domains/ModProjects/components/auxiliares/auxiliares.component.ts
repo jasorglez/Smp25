@@ -84,8 +84,12 @@ export class AuxiliaresComponent {
 
   // ── ColDefs master grid ──────────────────────────────────────────────────
   readonly mainColDefs: ColDef[] = [
-    { headerName: '#', width: 45, editable: false, valueGetter: (p) => (p.node?.rowIndex ?? 0) + 1, cellStyle: { textAlign: 'center', color: '#888' } },
-    { field: 'description', headerName: 'Descripción del Auxiliar', editable: true, flex: 3 },
+    { headerName: '#', width: 40, editable: false, valueGetter: (p) => (p.node?.rowIndex ?? 0) + 1, cellStyle: { textAlign: 'center', color: '#888' } },
+    { field: 'clave', headerName: 'Clave', width: 65, editable: true, type: 'numericColumn',
+      cellStyle: { fontWeight: '700', textAlign: 'center', color: '#333' } },
+    { field: 'claveUsuario', headerName: 'Cl. Usuario', width: 100, editable: true,
+      cellStyle: { fontStyle: 'italic', color: '#555' } },
+    { field: 'description', headerName: 'Descripción del Precio Unitario', editable: true, flex: 3 },
     { field: 'unit', headerName: 'Unidad', editable: true, width: 100,
       cellEditor: 'agSelectCellEditor', cellEditorParams: () => ({ values: this.allUnits }) },
     { field: 'costMN', headerName: 'Costo Directo', editable: false, width: 130, type: 'numericColumn',
@@ -308,6 +312,7 @@ export class AuxiliaresComponent {
   addRow() {
     const idContract = this.signalsService.getIdContract()();
     const newRow = { id: `temp_${++this.tempCounter}`, idCompany: this.idCompany, idContract: idContract ?? null,
+      clave: null, claveUsuario: '',
       description: '', unit: 'M2', costMN: 0, precioUnitario: 0,
       hasPersonal: false, hasMaterial: false, hasHerramienta: false, hasEquipo: false, __isNew: true };
     this.rowData = [newRow, ...this.rowData];

@@ -43,12 +43,31 @@
 
   <ng-container *ngIf="selectedAuxiliar; else noSelection">
     <div class="card border-0 shadow-sm flex-fill overflow-auto">
-      <div class="card-header bg-light py-2 px-3 d-flex align-items-center justify-content-between">
-        <span class="fw-semibold text-secondary compact-title">
-          <i class="bi bi-clipboard-data me-1"></i>
-          Componentes de: <strong class="text-dark">{{ selectedAuxiliar.description }}</strong>
-        </span>
-        <div class="d-flex gap-2">
+      <div class="card-header bg-light py-2 px-3 d-flex align-items-center gap-3 flex-wrap justify-content-between">
+        <!-- Identificación: Clave + Clave Usuario + Descripción -->
+        <div class="d-flex align-items-center gap-2 flex-fill" style="min-width: 0;">
+          <div class="d-flex flex-column align-items-center flex-shrink-0">
+            <label class="text-muted" style="font-size: 0.6rem; font-weight:700; text-transform:uppercase; letter-spacing:.04em;">Clave</label>
+            <input type="number" class="form-control form-control-sm text-center fw-bold"
+                   style="width: 58px; font-size: 0.85rem;"
+                   [(ngModel)]="selectedAuxiliar.clave"
+                   (change)="onFlagChange()"
+                   placeholder="—" />
+          </div>
+          <div class="d-flex flex-column align-items-center flex-shrink-0">
+            <label class="text-muted" style="font-size: 0.6rem; font-weight:700; text-transform:uppercase; letter-spacing:.04em;">Cl. Usuario</label>
+            <input type="text" class="form-control form-control-sm text-center"
+                   style="width: 90px; font-size: 0.82rem; font-style: italic;"
+                   [(ngModel)]="selectedAuxiliar.claveUsuario"
+                   (change)="onFlagChange()"
+                   placeholder="código" />
+          </div>
+          <span class="fw-semibold text-secondary compact-title text-truncate">
+            <i class="bi bi-clipboard-data me-1"></i>
+            <strong class="text-dark">{{ selectedAuxiliar.description }}</strong>
+          </span>
+        </div>
+        <div class="d-flex gap-2 flex-shrink-0">
           <button class="btn btn-sm btn-danger" (click)="printPdf()" title="Ficha APU en PDF">
             <i class="bi bi-file-earmark-pdf-fill me-1"></i> PDF
           </button>
