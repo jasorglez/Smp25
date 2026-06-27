@@ -43,11 +43,16 @@
             <mat-icon>paid</mat-icon><span>{{ 'expend' | translate }}</span>
           </a>
         </li>
-        <li class="nav-item" *ngIf="authService.hasDetailedPermission('administration', 'expend-rapido')">
-          <a class="nav-link green-tab" routerLink="expend-rapido" routerLinkActive="active">
-            <mat-icon>bolt</mat-icon><span>Egreso Rápido</span>
-          </a>
-        </li>
+      <li class="nav-item" *ngIf="authService.hasDetailedPermission('administration', 'expend-rapido')">
+        <a class="nav-link green-tab" routerLink="expend-rapido" routerLinkActive="active">
+          <mat-icon>bolt</mat-icon><span>Egreso Rápido</span>
+        </a>
+      </li>
+      <li class="nav-item" *ngIf="authService.hasDetailedPermission('administration', 'expend-rapido')">
+        <a class="nav-link green-tab" routerLink="control-diario-ia" routerLinkActive="active">
+          <mat-icon>smart_toy</mat-icon><span>Control Diario IA</span>
+        </a>
+      </li>
         <li class="nav-item" *ngIf="authService.hasDetailedPermission('administration', 'stakeholder-expend')">
           <a class="nav-link green-tab" routerLink="stakeholder-expend" routerLinkActive="active">
             <mat-icon>group_remove</mat-icon><span>Retiro Socios</span>
