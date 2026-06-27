@@ -9,7 +9,7 @@ import { RestaurantMesasService } from 'app/services/restaurant-mesas.service';
 import Swal from 'sweetalert2';
 import pdfMake from 'pdfmake/build/pdfmake';
 import pdfFonts from 'pdfmake/build/vfs_fonts';
-(pdfMake as any).vfs = (pdfFonts as any).pdfMake?.vfs ?? pdfFonts;
+pdfMake.vfs = (pdfFonts as any).vfs;
 
 @Component({
   selector: 'app-restaurant-mesas',
@@ -98,7 +98,7 @@ export class RestaurantMesasComponent implements OnInit {
     },
     {
       field: 'tieneCuentaAbierta', headerName: 'Estado', width: 120, editable: false,
-      cellRenderer: (p: any) => p.value ? '🔴 Ocupada' : '🟢 Libre',
+      cellRenderer: (p: any) => (p.value && (p.data?.totalActual ?? 0) > 0) ? '🔴 Ocupada' : '🟢 Libre',
     },
     {
       field: 'totalActual', headerName: 'Total Actual', width: 130, editable: false,
