@@ -42,8 +42,8 @@ export class PdfApuService {
 
   async downloadApuPdf(data: ApuPdfData): Promise<void> {
     const logo = await this.loadCompanyLogo();
-    const clv  = this.extractClv(data.auxiliar?.description ?? '');
-    pdfMake.createPdf(this.buildDocDef(data, logo)).download(`APU_${clv || data.auxiliar?.id}.pdf`);
+    const clv  = data.auxiliar?.clave ?? data.auxiliar?.claveUsuario ?? data.auxiliar?.id;
+    pdfMake.createPdf(this.buildDocDef(data, logo)).download(`APU_${clv}.pdf`);
   }
 
   // ── Build doc definition ──────────────────────────────────────────────────
@@ -60,8 +60,8 @@ export class PdfApuService {
       fecha         = this.fechaStr(),
     } = data;
 
-    const clv      = this.extractClv(auxiliar?.description ?? '');
-    const fullDesc = clv ? (auxiliar.description ?? '').substring(clv.length).trim() : (auxiliar.description ?? '');
+    const clv      = auxiliar?.claveUsuario ?? auxiliar?.clave_usuario ?? '';
+    const fullDesc = auxiliar?.description ?? '';
     const factRows = this.calcFactors(costoTotal, factors);
     const pu       = factRows[factRows.length - 1].total;
 
@@ -227,8 +227,8 @@ export class PdfApuService {
               [{ text: 'Descripción', bold: true, fontSize: 8, fillColor: '#e8e8e8', margin: [3, 2, 3, 2] }],
               [{
                 stack: [
-                  { text: `Clave: ${auxiliar.id ?? ''}`,  fontSize: 7 },
-                  { text: `Clv. Usuario: ${clv}`,          fontSize: 7, margin: [0, 1, 0, 1] },
+                  { text: `Clave: ${auxiliar.clave ?? auxiliar.id ?? ''}`,  fontSize: 7 },
+                  { text: `Clv. Usuario: ${clv}`,                          fontSize: 7, margin: [0, 1, 0, 1] },
                   {
                     columns: [
                       { text: fullDesc, fontSize: 7.5, width: '*' },
