@@ -89,5 +89,5 @@ export const environment = {
   geminiApiKey: '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',
   gnewsApiKey: '94ccc596b4dfebc3f72683b6e81d81bc',
 
-  version: '4.36 (27 Junio 2026) Auxiliares Cat — 4 tabs Personal/Mat/Herr/Equipo',
+  version: '4.37 (27 Junio 2026) Auxiliares Cat — auxiliar_cuadrilla por empresa',
 }; 
