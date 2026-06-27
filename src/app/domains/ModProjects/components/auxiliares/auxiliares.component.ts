@@ -243,7 +243,9 @@ export class AuxiliaresComponent {
   loadCatalogs() {
     if (!this.idCompany) return;
     this.materialService.getMaterialsForApu(this.idCompany).subscribe({
-      next: (d) => this.catalogMaterial = d.map((i) => ({ id: i.id, description: i.description ?? '', unit: i.measure ?? '', cost: i.costoMN ?? 0 })),
+      next: (d) => this.catalogMaterial = d
+        .filter((i: any) => i.familia === 'PEMEX')
+        .map((i: any) => ({ id: i.id, description: i.description ?? '', unit: i.measure ?? '', cost: i.costoMN ?? 0 })),
     });
     this.equipService.getEquipment(this.idCompany).subscribe({
       next: (d: any[]) => this.catalogEquipo = d.map((i) => ({ id: i.Id ?? i.id, description: i.description ?? '', unit: i.measure ?? 'HR', cost: i.costMN ?? 0 })),
