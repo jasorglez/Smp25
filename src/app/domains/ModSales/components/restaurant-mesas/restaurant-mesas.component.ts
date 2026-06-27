@@ -413,7 +413,7 @@ export class RestaurantMesasComponent implements OnInit {
   reporteColDefs: ColDef[] = [
     { field: 'orden',          headerName: '#',       width: 45, editable: false,
       cellStyle: { textAlign: 'center', fontWeight: 'bold' } },
-    { field: 'nombreMesa',     headerName: 'Mesa',    flex: 1,   editable: false },
+    { field: 'nombreMesa',     headerName: 'Mesa',    flex: 2,   editable: false },
     { field: 'abiertaAt',      headerName: 'Apertura',width: 75, editable: false,
       valueFormatter: (p: any) => p.value ? new Date(p.value).toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit' }) : '' },
     { field: 'cerradaAt',      headerName: 'Cobrada', width: 75, editable: false,
@@ -421,8 +421,6 @@ export class RestaurantMesasComponent implements OnInit {
     { field: 'minutosAtencion',headerName: 'Tiempo',  width: 80, editable: false,
       valueFormatter: (p: any) => { const m = p.value ?? 0; return m >= 60 ? `${Math.floor(m/60)}h ${m%60}min` : `${m}min`; },
       cellStyle: (p: any) => p.value > 90 ? { color: '#c0392b', fontWeight: 'bold' } : {} },
-    { field: 'notas', headerName: 'Notas', flex: 1, editable: false,
-      cellStyle: { color: '#777', fontStyle: 'italic' } },
     { field: 'total', headerName: 'Total', width: 100, editable: false,
       valueFormatter: (p: any) => p.value != null ? `$${Number(p.value).toFixed(2)}` : '',
       cellStyle: { textAlign: 'right', fontWeight: 'bold', color: '#1a6b2b' } },
