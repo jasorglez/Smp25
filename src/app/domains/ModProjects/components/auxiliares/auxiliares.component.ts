@@ -85,11 +85,12 @@ export class AuxiliaresComponent {
   // ── ColDefs master grid ──────────────────────────────────────────────────
   readonly mainColDefs: ColDef[] = [
     { headerName: '#', width: 40, editable: false, valueGetter: (p) => (p.node?.rowIndex ?? 0) + 1, cellStyle: { textAlign: 'center', color: '#888' } },
-    { field: 'clave', headerName: 'Clave', width: 75, editable: true,
+    { field: 'clave', headerName: 'Clave', width: 75, editable: true, sort: 'asc',
+      comparator: (a: any, b: any) => (parseInt(a) || 0) - (parseInt(b) || 0),
       cellStyle: { fontWeight: '700', textAlign: 'center', color: '#333' } },
     { field: 'claveUsuario', headerName: 'Cl. Usuario', width: 100, editable: true,
       cellStyle: { fontStyle: 'italic', color: '#555' } },
-    { field: 'description', headerName: 'Descripción del Precio Unitario', editable: true, flex: 3 },
+    { field: 'description', headerName: 'Descripción del Precio Unitario', editable: true, flex: 3, wrapText: true, autoHeight: true },
     { field: 'unit', headerName: 'Unidad', editable: true, width: 100,
       cellEditor: 'agSelectCellEditor', cellEditorParams: () => ({ values: this.allUnits }) },
     { field: 'costMN', headerName: 'Costo Directo', editable: false, width: 130, type: 'numericColumn',
