@@ -4,8 +4,8 @@ import { FormsModule } from '@angular/forms';
 import { AgGridModule } from 'ag-grid-angular';
 import { ColDef, GridApi, GridReadyEvent } from 'ag-grid-enterprise';
 import { SignalsService } from 'app/services/signals.service';
+import { AuxiliarService } from 'app/services/auxiliar.service';
 import { AuxiliarItemsService } from 'app/services/auxiliar-items.service';
-import { PosicionesService } from 'app/services/posiciones.service';
 import { alerts } from 'app/helpers/alerts';
 
 @Component({
@@ -17,31 +17,62 @@ import { alerts } from 'app/helpers/alerts';
 })
 export class AuxiliaresCatComponent {
   private signalsService       = inject(SignalsService);
+  private auxiliarService      = inject(AuxiliarService);
   private auxiliarItemsService = inject(AuxiliarItemsService);
-  private posService           = inject(PosicionesService);
 
-  // ── Master ──────────────────────────────────────────────────────────────
+  // ── Master (izquierda) ──────────────────────────────────────────────────
   rowData: any[]        = [];
   originalData: any[]   = [];
   selectedAuxiliar: any = null;
   hasMainChanges        = false;
   gridApi!: GridApi;
   idCompany             = 0;
-  private tempCounter   = 0;
 
-  // ── Catálogo personal ─────────────────────────────────────────────────
-  catalogPersonal: any[] = [];
+  // ── Detail state (derecha) ─────────────────────────────────────────────
+  activeTab: 'personal' | 'material' | 'herramienta' | 'equipo' = 'personal';
+  hasDetailChanges = false;
 
-  // ── Items del Auxiliar seleccionado ──────────────────────────────────
-  itemRows: any[]            = [];
-  hasItemChanges             = false;
-  selectedItem: any          = null;
-  private itemGridApi!: GridApi;
+  // Personal / Cuadrilla
+  cuadrillas: any[]          = [];
+  selectedCuadrilla: any     = null;
+  cuadrillaItemRows: any[]   = [];
+  selectedCuadrillaItem: any = null;
+  cuadrillaGridApi!: GridApi;
 
-  // ── UI ────────────────────────────────────────────────────────────────
-  private enterPressed = false;
+  // Items por tipo
+  materialItemRows: any[]     = [];
+  selectedMaterialRow: any    = null;
+  herramientaItemRows: any[]  = [];
+  selectedHerramientaRow: any = null;
+  equipoItemRows: any[]       = [];
+  selectedEquipoRow: any      = null;
 
-  // ── Resizable splitter ────────────────────────────────────────────────
+  materialGridApi!:     GridApi;
+  herramientaGridApi!:  GridApi;
+  equipoGridApi!:       GridApi;
+
+  // ── Totales ────────────────────────────────────────────────────────────
+  get totalPersonal(): number {
+    return this.cuadrillas.reduce((s, c) => {
+      const sub = c.items?.reduce((ss: number, i: any) =>
+        ss + (Number(i.quantity) || 0) * (Number(i.unitCost) || 0), 0) ?? 0;
+      return s + sub * (Number(c.cantidad) || 1);
+    }, 0);
+  }
+  get materialTotal(): number    { return this.sumRows(this.materialItemRows); }
+  get herramientaTotal(): number { return this.sumRows(this.herramientaItemRows); }
+  get equipoTotal(): number      { return this.sumRows(this.equipoItemRows); }
+  get costoTotal(): number       { return this.totalPersonal + this.materialTotal + this.herramientaTotal + this.equipoTotal; }
+  private sumRows(rows: any[]): number {
+    return rows.reduce((s, i) => s + (Number(i.quantity) || 0) * (Number(i.unitCost) || 0), 0);
+  }
+  getCuadrillaSubtotal(c: any): number {
+    const sub = (c.items ?? []).reduce((s: number, i: any) =>
+      s + (Number(i.quantity) || 0) * (Number(i.unitCost) || 0), 0);
+    return sub * (Number(c.cantidad) || 1);
+  }
+
+  // ── Resizable splitter ──────────────────────────────────────────────────
   private readonly SPLIT_KEY = 'auxiliares-cat-split';
   leftWidth                  = +(localStorage.getItem(this.SPLIT_KEY) ?? '460');
   isSplitterDragging         = false;
@@ -67,13 +98,12 @@ export class AuxiliaresCatComponent {
 
   readonly rowClassRules = { 'new-row-highlight': (p: any) => !!p.data?.__isNew };
 
-  // ── ColDefs master (Auxiliares catálogo) ──────────────────────────────
+  // ── ColDefs master ────────────────────────────────────────────────────
   readonly colDefs: ColDef[] = [
-    { headerName: '#', width: 45, editable: false, valueGetter: (p) => (p.node?.rowIndex ?? 0) + 1, cellStyle: { textAlign: 'center', color: '#888' } },
-    { field: 'name', headerName: 'Nombre del Auxiliar', flex: 1, editable: true,
+    { field: 'clave',       headerName: 'Clave',   width: 90, editable: true },
+    { field: 'description', headerName: 'Auxiliar', flex: 1,  editable: true,
       cellStyle: (p) => p.data?.__isNew ? { background: '#fffde7' } : {} },
-    { field: 'cantidad', headerName: 'Cant.', width: 80, editable: true, type: 'numericColumn',
-      valueFormatter: (p) => p.value != null ? Number(p.value).toFixed(4) : '' },
+    { field: 'unit',        headerName: 'Unidad',  width: 75, editable: true },
   ];
 
   readonly gridOptions = {
@@ -81,7 +111,6 @@ export class AuxiliaresCatComponent {
       resizable: true, sortable: true, minWidth: 60,
       suppressKeyboardEvent: (params: any) => {
         if (params.event.key === 'Enter' && params.editing) {
-          this.enterPressed = true;
           setTimeout(() => { if (this.gridApi) this.gridApi.stopEditing(); }, 0);
           return true;
         }
@@ -91,21 +120,27 @@ export class AuxiliaresCatComponent {
     rowClassRules: { 'new-row-highlight': (p: any) => !!p.data?.__isNew },
   };
 
-  // ── ColDefs items del Auxiliar (personal) ────────────────────────────
-  readonly itemColDefs: ColDef[] = [
-    { headerName: '#', width: 40, editable: false, valueGetter: (p) => (p.node?.rowIndex ?? 0) + 1 },
-    { field: 'description', headerName: 'Trabajador / Categoría', flex: 2, editable: true,
-      cellEditor: 'agSelectCellEditor',
-      cellEditorParams: () => ({ values: this.catalogPersonal.map((i) => i.description) }),
-      valueSetter: (p: any) => {
-        const item = this.catalogPersonal.find((i) => i.description === p.newValue);
-        if (item) { p.data.idReference = item.id; p.data.unitCost = item.cost ?? 0; }
-        p.data.description = p.newValue; return true;
-      },
-      cellStyle: (p) => p.data?.__isNew ? { background: '#fffde7' } : {},
-    },
-    { field: 'unit', headerName: 'Unidad', width: 90, editable: true },
+  // ── ColDefs cuadrilla items (workers) ─────────────────────────────────
+  readonly cuadrillaItemColDefs: ColDef[] = [
+    { field: 'description', headerName: 'Personal / Categoría', flex: 2, editable: true,
+      cellStyle: (p) => p.data?.__isNew ? { background: '#fffde7' } : {} },
+    { field: 'unit',     headerName: 'Unidad',   width: 90,  editable: true },
     { field: 'quantity', headerName: 'Cantidad', width: 100, editable: true, type: 'numericColumn',
+      valueFormatter: (p) => p.value != null ? Number(p.value).toFixed(4) : '' },
+    { field: 'unitCost', headerName: 'Costo Unit.', width: 120, editable: true, type: 'numericColumn',
+      valueFormatter: (p) => p.value != null ? '$' + Number(p.value).toLocaleString('es-MX', { minimumFractionDigits: 2 }) : '' },
+    { headerName: 'Total', width: 120, editable: false, type: 'numericColumn',
+      valueGetter: (p) => (Number(p.data?.quantity) || 0) * (Number(p.data?.unitCost) || 0),
+      valueFormatter: (p) => '$' + Number(p.value).toLocaleString('es-MX', { minimumFractionDigits: 2 }),
+      cellStyle: { fontWeight: '600', color: '#2e7d32' } },
+  ];
+
+  // ── ColDefs material / herramienta / equipo ───────────────────────────
+  readonly itemColDefs: ColDef[] = [
+    { field: 'description', headerName: 'Descripción', flex: 2, editable: true,
+      cellStyle: (p) => p.data?.__isNew ? { background: '#fffde7' } : {} },
+    { field: 'unit',     headerName: 'Unidad',      width: 90,  editable: true },
+    { field: 'quantity', headerName: 'Cantidad',    width: 100, editable: true, type: 'numericColumn',
       valueFormatter: (p) => p.value != null ? Number(p.value).toFixed(4) : '' },
     { field: 'unitCost', headerName: 'Costo Unit.', width: 120, editable: true, type: 'numericColumn',
       valueFormatter: (p) => p.value != null ? '$' + Number(p.value).toLocaleString('es-MX', { minimumFractionDigits: 2 }) : '' },
@@ -115,72 +150,64 @@ export class AuxiliaresCatComponent {
       cellStyle: { fontWeight: '600', color: '#0e4491' } },
   ];
 
-  get subtotal(): number {
-    return this.itemRows.reduce((s, i) => s + (Number(i.quantity) || 0) * (Number(i.unitCost) || 0), 0);
-  }
-
   // ── Init ──────────────────────────────────────────────────────────────
   constructor() {
     effect(() => {
       this.idCompany = this.signalsService.getRootSelectedBySidebar()();
       this.loadData();
-      this.loadCatalogs();
     });
   }
 
   loadData() {
     if (!this.idCompany) return;
-    this.auxiliarItemsService.getCatalogByCompany(this.idCompany).subscribe({
+    this.auxiliarService.getCatalog(this.idCompany).subscribe({
       next: (data) => {
         this.rowData      = data;
         this.originalData = JSON.parse(JSON.stringify(data));
         this.hasMainChanges = false;
-        if (this.selectedAuxiliar) {
-          const still = data.find((r: any) => r.id === this.selectedAuxiliar.id);
-          if (!still) { this.selectedAuxiliar = null; this.clearItems(); }
-        }
       },
-      error: (e) => console.error('Error cargando auxiliares', e),
+      error: (e) => console.error('Error cargando catálogo de auxiliares', e),
     });
   }
 
-  loadCatalogs() {
-    if (!this.idCompany) return;
-    this.posService.getPositionsByCompany(this.idCompany).subscribe({
-      next: (d: any[]) => this.catalogPersonal = d
-        .filter((i) => i.active !== false)
-        .map((i) => ({ id: i.Id ?? i.id, description: i.description, unit: 'JORNADA', cost: 0 })),
-    });
-  }
+  loadDetalle(id: number) {
+    this.auxiliarItemsService.getDetalle(id).subscribe({
+      next: (res: any) => {
+        this.cuadrillas       = (res.cuadrillas ?? []).map((c: any) => ({ ...c, __modified: false }));
+        this.selectedCuadrilla = this.cuadrillas.length ? this.cuadrillas[0] : null;
+        this.cuadrillaItemRows = this.selectedCuadrilla?.items ?? [];
 
-  loadItems(idCuadrilla: number) {
-    this.auxiliarItemsService.getCatalogItems(idCuadrilla).subscribe({
-      next: (data) => {
-        this.itemRows = data.map((i: any) => ({
-          ...i, unitCost: i.unitCost ?? i.unit_cost ?? 0, __isNew: false, __modified: false,
-        }));
-        this.itemGridApi?.setGridOption('rowData', this.itemRows);
-        this.hasItemChanges = false;
+        const items: any[] = res.items ?? [];
+        this.materialItemRows    = items.filter((i: any) => i.type === 'MATERIAL').map((i: any) => ({ ...i, __isNew: false, __modified: false }));
+        this.herramientaItemRows = items.filter((i: any) => i.type === 'HERR').map((i: any) => ({ ...i, __isNew: false, __modified: false }));
+        this.equipoItemRows      = items.filter((i: any) => i.type === 'EQUIPO').map((i: any) => ({ ...i, __isNew: false, __modified: false }));
+
+        this.selectedMaterialRow = null; this.selectedHerramientaRow = null; this.selectedEquipoRow = null;
+        this.hasDetailChanges = false;
       },
     });
   }
 
-  clearItems() {
-    this.itemRows = []; this.hasItemChanges = false; this.selectedItem = null;
-    this.itemGridApi?.setGridOption('rowData', []);
+  clearDetalle() {
+    this.cuadrillas = []; this.selectedCuadrilla = null; this.cuadrillaItemRows = [];
+    this.materialItemRows = []; this.herramientaItemRows = []; this.equipoItemRows = [];
+    this.hasDetailChanges = false;
   }
 
   // ── Grid events ───────────────────────────────────────────────────────
-  onGridReady(e: GridReadyEvent) { this.gridApi = e.api; }
-  onItemGridReady(e: GridReadyEvent) { this.itemGridApi = e.api; }
+  onGridReady(e: GridReadyEvent)            { this.gridApi = e.api; }
+  onCuadrillaGridReady(e: GridReadyEvent)   { this.cuadrillaGridApi = e.api; }
+  onMaterialGridReady(e: GridReadyEvent)    { this.materialGridApi = e.api; }
+  onHerramientaGridReady(e: GridReadyEvent) { this.herramientaGridApi = e.api; }
+  onEquipoGridReady(e: GridReadyEvent)      { this.equipoGridApi = e.api; }
 
   onSelectionChanged() {
     const rows = this.gridApi.getSelectedRows();
     this.selectedAuxiliar = rows.length ? rows[0] : null;
-    if (this.selectedAuxiliar?.id && !String(this.selectedAuxiliar.id).startsWith('temp_')) {
-      this.loadItems(this.selectedAuxiliar.id);
+    if (this.selectedAuxiliar?.id) {
+      this.loadDetalle(this.selectedAuxiliar.id);
     } else {
-      this.clearItems();
+      this.clearDetalle();
     }
   }
 
@@ -188,29 +215,143 @@ export class AuxiliaresCatComponent {
     if (!event.data.__isNew) event.data.__modified = true;
     this.hasMainChanges = true;
   }
-  onCellEditingStopped(_: any) { this.enterPressed = false; }
+  onCellEditingStopped(_: any) {}
 
+  onCuadrillaItemSelectionChanged() {
+    const r = this.cuadrillaGridApi?.getSelectedRows();
+    this.selectedCuadrillaItem = r?.length ? r[0] : null;
+  }
+  onCuadrillaItemValueChanged(event: any) {
+    if (!event.data.__isNew) event.data.__modified = true;
+    this.hasDetailChanges = true;
+  }
+  onMaterialSelectionChanged()    { const r = this.materialGridApi?.getSelectedRows();    this.selectedMaterialRow    = r?.length ? r[0] : null; }
+  onHerramientaSelectionChanged() { const r = this.herramientaGridApi?.getSelectedRows(); this.selectedHerramientaRow = r?.length ? r[0] : null; }
+  onEquipoSelectionChanged()      { const r = this.equipoGridApi?.getSelectedRows();      this.selectedEquipoRow      = r?.length ? r[0] : null; }
   onItemValueChanged(event: any) {
     if (!event.data.__isNew) event.data.__modified = true;
-    this.hasItemChanges = true;
+    this.hasDetailChanges = true;
   }
-  onItemSelectionChanged() {
-    const r = this.itemGridApi?.getSelectedRows();
-    this.selectedItem = r?.length ? r[0] : null;
+
+  // ── Cuadrilla helpers ─────────────────────────────────────────────────
+  selectCuadrilla(c: any) {
+    this.selectedCuadrilla = c;
+    this.cuadrillaItemRows = c.items ?? [];
+    this.cuadrillaGridApi?.setGridOption('rowData', this.cuadrillaItemRows);
+  }
+  onCuadrillaChange(c: any) { c.__modified = true; this.hasDetailChanges = true; }
+
+  addCuadrilla() {
+    if (!this.selectedAuxiliar) return;
+    const c = { id: null, idAuxiliar: this.selectedAuxiliar.id, name: 'CUADRILLA', cantidad: 1, sortOrder: this.cuadrillas.length + 1, active: true, __isNew: true, items: [] };
+    this.cuadrillas = [...this.cuadrillas, c];
+    this.selectCuadrilla(c);
+    this.hasDetailChanges = true;
+  }
+
+  async deleteCuadrilla() {
+    if (!this.selectedCuadrilla) return;
+    const r = await alerts.confirmAlert('¿Eliminar cuadrilla?', `"${this.selectedCuadrilla.name}"`, 'warning', 'Sí');
+    if (!r.isConfirmed) return;
+    if (this.selectedCuadrilla.id) await this.auxiliarItemsService.deleteCuadrilla(this.selectedCuadrilla.id).toPromise();
+    this.cuadrillas = this.cuadrillas.filter((x) => x !== this.selectedCuadrilla);
+    this.selectedCuadrilla = this.cuadrillas.length ? this.cuadrillas[0] : null;
+    this.cuadrillaItemRows = this.selectedCuadrilla?.items ?? [];
+  }
+
+  addCuadrillaItem() {
+    if (!this.selectedCuadrilla) return;
+    const item = { id: null, idCuadrilla: this.selectedCuadrilla.id, description: '', unit: 'JORNADA', quantity: 1, unitCost: 0, active: true, __isNew: true };
+    this.cuadrillaItemRows = [item, ...this.cuadrillaItemRows];
+    if (!this.selectedCuadrilla.items) this.selectedCuadrilla.items = [];
+    this.selectedCuadrilla.items = this.cuadrillaItemRows;
+    this.cuadrillaGridApi?.setGridOption('rowData', this.cuadrillaItemRows);
+    this.hasDetailChanges = true;
+    setTimeout(() => this.cuadrillaGridApi?.startEditingCell({ rowIndex: 0, colKey: 'description' }), 100);
+  }
+
+  async deleteCuadrillaItem() {
+    if (!this.selectedCuadrillaItem) return;
+    const r = await alerts.confirmAlert('¿Eliminar trabajador?', `"${this.selectedCuadrillaItem.description}"`, 'warning', 'Sí');
+    if (!r.isConfirmed) return;
+    if (this.selectedCuadrillaItem.id) await this.auxiliarItemsService.deleteCuadrillaItem(this.selectedCuadrillaItem.id).toPromise();
+    this.cuadrillaItemRows = this.cuadrillaItemRows.filter((x) => x !== this.selectedCuadrillaItem);
+    this.selectedCuadrilla.items = this.cuadrillaItemRows;
+    this.cuadrillaGridApi?.setGridOption('rowData', this.cuadrillaItemRows);
+    this.selectedCuadrillaItem = null;
+  }
+
+  // ── Items (Material / Herr / Equipo) ──────────────────────────────────
+  addItem(type: 'MATERIAL' | 'HERR' | 'EQUIPO') {
+    if (!this.selectedAuxiliar) return;
+    const item = { id: null, idAuxiliar: this.selectedAuxiliar.id, type, description: '', unit: 'PZA', quantity: 1, unitCost: 0, active: true, __isNew: true };
+    if (type === 'MATERIAL')    { this.materialItemRows    = [item, ...this.materialItemRows];    this.materialGridApi?.setGridOption('rowData',    this.materialItemRows);    setTimeout(() => this.materialGridApi?.startEditingCell({    rowIndex: 0, colKey: 'description' }), 100); }
+    if (type === 'HERR')        { this.herramientaItemRows = [item, ...this.herramientaItemRows]; this.herramientaGridApi?.setGridOption('rowData', this.herramientaItemRows); setTimeout(() => this.herramientaGridApi?.startEditingCell({ rowIndex: 0, colKey: 'description' }), 100); }
+    if (type === 'EQUIPO')      { this.equipoItemRows      = [item, ...this.equipoItemRows];      this.equipoGridApi?.setGridOption('rowData',      this.equipoItemRows);      setTimeout(() => this.equipoGridApi?.startEditingCell({      rowIndex: 0, colKey: 'description' }), 100); }
+    this.hasDetailChanges = true;
+  }
+
+  async deleteItem(row: any) {
+    if (!row) return;
+    const r = await alerts.confirmAlert('¿Eliminar?', `"${row.description}"`, 'warning', 'Sí');
+    if (!r.isConfirmed) return;
+    if (row.id) await this.auxiliarItemsService.deleteItem(row.id).toPromise();
+    this.materialItemRows    = this.materialItemRows.filter((x) => x !== row);
+    this.herramientaItemRows = this.herramientaItemRows.filter((x) => x !== row);
+    this.equipoItemRows      = this.equipoItemRows.filter((x) => x !== row);
+    this.materialGridApi?.setGridOption('rowData', this.materialItemRows);
+    this.herramientaGridApi?.setGridOption('rowData', this.herramientaItemRows);
+    this.equipoGridApi?.setGridOption('rowData', this.equipoItemRows);
+  }
+
+  // ── Flag toggles ──────────────────────────────────────────────────────
+  onFlagChange() {
+    if (!this.selectedAuxiliar) return;
+    this.selectedAuxiliar.__modified = true;
+    this.hasMainChanges = true;
+  }
+
+  // ── Save detalle ──────────────────────────────────────────────────────
+  async saveDetalle() {
+    if (!this.selectedAuxiliar) return;
+    try {
+      // Cuadrillas
+      for (const c of this.cuadrillas) {
+        const payload = { idAuxiliar: this.selectedAuxiliar.id, name: c.name, cantidad: Number(c.cantidad), sortOrder: c.sortOrder ?? 1, active: true };
+        if (c.__isNew) { const saved = await this.auxiliarItemsService.saveCuadrilla(payload).toPromise(); c.id = saved.id; c.__isNew = false; }
+        else if (c.__modified) { await this.auxiliarItemsService.updateCuadrilla(c.id, payload).toPromise(); c.__modified = false; }
+        // Items de cuadrilla
+        for (const wi of (c.items ?? [])) {
+          const wp = { idCuadrilla: c.id, description: wi.description?.trim() ?? '', unit: wi.unit ?? 'JORNADA', quantity: Number(wi.quantity) || 0, unitCost: Number(wi.unitCost) || 0, active: true };
+          if (wi.__isNew) { const s = await this.auxiliarItemsService.saveCuadrillaItem(wp).toPromise(); wi.id = s.id; wi.__isNew = false; }
+          else if (wi.__modified) { await this.auxiliarItemsService.updateCuadrillaItem(wi.id, wp).toPromise(); wi.__modified = false; }
+        }
+      }
+      // Items (Material / Herr / Equipo)
+      for (const item of [...this.materialItemRows, ...this.herramientaItemRows, ...this.equipoItemRows]) {
+        const ip = { idAuxiliar: this.selectedAuxiliar.id, type: item.type, description: item.description?.trim() ?? '', unit: item.unit ?? 'PZA', quantity: Number(item.quantity) || 0, unitCost: Number(item.unitCost) || 0, active: true };
+        if (item.__isNew) { const s = await this.auxiliarItemsService.saveItem(ip).toPromise(); item.id = s.id; item.__isNew = false; }
+        else if (item.__modified) { await this.auxiliarItemsService.updateItem(item.id, ip).toPromise(); item.__modified = false; }
+      }
+      // Actualizar flags en el Auxiliar si cambió
+      if (this.selectedAuxiliar.__modified) {
+        await this.auxiliarService.update(this.selectedAuxiliar.id, this.selectedAuxiliar).toPromise();
+        this.selectedAuxiliar.__modified = false;
+        this.hasMainChanges = false;
+      }
+      this.hasDetailChanges = false;
+      alerts.basicAlert('Guardado', 'Detalle guardado correctamente', 'success');
+    } catch { alerts.basicAlert('Error', 'No se pudo guardar el detalle', 'error'); }
   }
 
   // ── Master CRUD ───────────────────────────────────────────────────────
   addRow() {
-    const newRow = {
-      id: `temp_${++this.tempCounter}`, idCompany: this.idCompany, idAuxiliar: null,
-      name: '', cantidad: 1, sortOrder: this.rowData.length + 1,
-      active: true, __isNew: true,
-    };
+    const newRow = { id: null, idCompany: this.idCompany, idContract: null, description: '', unit: 'M2', clave: '', hasPersonal: false, hasMaterial: false, hasHerramienta: false, hasEquipo: false, active: true, __isNew: true };
     this.rowData = [newRow, ...this.rowData];
     this.hasMainChanges = true;
     setTimeout(() => {
       this.gridApi?.getDisplayedRowAtIndex(0)?.setSelected(true, true);
-      this.gridApi?.startEditingCell({ rowIndex: 0, colKey: 'name' });
+      this.gridApi?.startEditingCell({ rowIndex: 0, colKey: 'description' });
     }, 100);
   }
 
@@ -219,12 +360,12 @@ export class AuxiliaresCatComponent {
     if (!toSave.length) return;
     try {
       for (const row of toSave) {
-        const payload = this.cleanRow(row);
+        const payload = { ...row }; delete payload.__isNew; delete payload.__modified;
         if (row.__isNew) {
-          const saved = await this.auxiliarItemsService.saveCuadrilla(payload).toPromise();
-          row.id = saved.id; row.__isNew = false;
+          const saved = await this.auxiliarService.add(payload).toPromise();
+          row.id = saved.id ?? saved.Id; row.__isNew = false;
         } else {
-          await this.auxiliarItemsService.updateCuadrilla(row.id, payload).toPromise();
+          await this.auxiliarService.update(row.id, payload).toPromise();
           row.__modified = false;
         }
       }
@@ -232,85 +373,25 @@ export class AuxiliaresCatComponent {
       this.originalData = JSON.parse(JSON.stringify(this.rowData));
       this.gridApi?.refreshCells({ force: true });
       alerts.basicAlert('Guardado', `${toSave.length} auxiliar(es) guardados`, 'success');
-    } catch { alerts.basicAlert('Error', 'No se pudieron guardar', 'error'); }
+    } catch { alerts.basicAlert('Error', 'No se pudo guardar', 'error'); }
   }
 
   revertChanges() {
     this.rowData = JSON.parse(JSON.stringify(this.originalData));
     this.hasMainChanges = false;
     this.selectedAuxiliar = null;
-    this.clearItems();
+    this.clearDetalle();
   }
 
   async deleteRow() {
     if (!this.selectedAuxiliar) return;
-    const r = await alerts.confirmAlert('¿Eliminar?', `¿Eliminar "${this.selectedAuxiliar.name}"?`, 'warning', 'Sí, eliminar');
+    const r = await alerts.confirmAlert('¿Eliminar?', `"${this.selectedAuxiliar.description}"`, 'warning', 'Sí, eliminar');
     if (!r.isConfirmed) return;
-    if (typeof this.selectedAuxiliar.id === 'string') {
-      this.rowData = this.rowData.filter((x) => x !== this.selectedAuxiliar);
-      this.selectedAuxiliar = null; return;
+    if (this.selectedAuxiliar.id) {
+      try { await this.auxiliarService.delete(this.selectedAuxiliar.id).toPromise(); }
+      catch { alerts.basicAlert('Error', 'No se pudo eliminar', 'error'); return; }
     }
-    try {
-      await this.auxiliarItemsService.deleteCuadrilla(this.selectedAuxiliar.id).toPromise();
-      this.rowData = this.rowData.filter((x) => x !== this.selectedAuxiliar);
-      this.selectedAuxiliar = null; this.clearItems();
-    } catch { alerts.basicAlert('Error', 'No se pudo eliminar', 'error'); }
-  }
-
-  // ── Items CRUD ────────────────────────────────────────────────────────
-  addItem() {
-    if (!this.selectedAuxiliar) return;
-    const newItem = {
-      id: null, idCuadrilla: this.selectedAuxiliar.id,
-      idReference: null, description: '', unit: 'JORNADA',
-      quantity: 1, unitCost: 0, active: true, __isNew: true, __modified: false,
-    };
-    this.itemRows = [newItem, ...this.itemRows];
-    this.hasItemChanges = true;
-    this.itemGridApi?.setGridOption('rowData', this.itemRows);
-    setTimeout(() => this.itemGridApi?.startEditingCell({ rowIndex: 0, colKey: 'description' }), 100);
-  }
-
-  async deleteItem() {
-    if (!this.selectedItem) return;
-    const r = await alerts.confirmAlert('¿Eliminar?', `¿Eliminar "${this.selectedItem.description}"?`, 'warning', 'Sí');
-    if (!r.isConfirmed) return;
-    if (this.selectedItem.id) await this.auxiliarItemsService.deleteCuadrillaItem(this.selectedItem.id).toPromise();
-    this.itemRows = this.itemRows.filter((x) => x !== this.selectedItem);
-    this.selectedItem = null;
-    this.itemGridApi?.setGridOption('rowData', this.itemRows);
-  }
-
-  async saveItems() {
-    if (!this.selectedAuxiliar) return;
-    const toSave = this.itemRows.filter((i) => i.__isNew || i.__modified);
-    if (!toSave.length) return;
-    try {
-      for (const item of toSave) {
-        const payload = {
-          idCuadrilla: this.selectedAuxiliar.id, idReference: item.idReference ?? null,
-          description: item.description?.trim() ?? '', unit: item.unit ?? 'JORNADA',
-          quantity: Number(item.quantity) || 0, unitCost: Number(item.unitCost) || 0, active: true,
-        };
-        if (item.__isNew) {
-          const saved = await this.auxiliarItemsService.saveCuadrillaItem(payload).toPromise();
-          item.id = saved.id; item.__isNew = false;
-        } else {
-          await this.auxiliarItemsService.updateCuadrillaItem(item.id, payload).toPromise();
-          item.__modified = false;
-        }
-      }
-      this.hasItemChanges = false;
-      alerts.basicAlert('Guardado', 'Items guardados', 'success');
-    } catch { alerts.basicAlert('Error', 'Error al guardar items', 'error'); }
-  }
-
-  get hasDetailChanges(): boolean { return this.hasItemChanges; }
-
-  private cleanRow(row: any) {
-    const clean = { ...row };
-    delete clean.__isNew; delete clean.__modified;
-    if (typeof clean.id === 'string' && clean.id.startsWith('temp_')) delete clean.id;
-    return clean;
+    this.rowData = this.rowData.filter((x) => x !== this.selectedAuxiliar);
+    this.selectedAuxiliar = null; this.clearDetalle();
   }
 }
