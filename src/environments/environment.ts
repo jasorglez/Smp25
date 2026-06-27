@@ -89,5 +89,5 @@ export const environment = {
   geminiApiKey: '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',
   gnewsApiKey: '94ccc596b4dfebc3f72683b6e81d81bc',
 
-  version: '4.38 (27 Junio 2026) Mesas — roja solo si total>0, PDF fix vfs',
+  version: '4.39 (27 Junio 2026) Mesas — logo root en PDF Resumen y Detalle',
 }; 
