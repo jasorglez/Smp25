@@ -1285,6 +1285,21 @@ export const routes: Routes = [
           },
 
           {
+            path: 'control-diario-ia',
+            loadComponent: () =>
+              import(
+                './domains/ModAdmon/components/control-diario-ia/control-diario-ia.component'
+              ).then((c) => c.ControlDiarioIaComponent),
+            canActivate: [TrackingGuard],
+            data: {
+              tracking: {
+                logMessage: 'Click en Control Diario IA',
+                category: 'Administration'
+              }
+            }
+          },
+
+          {
             path: 'stakeholder-expend',
             loadComponent: () =>
               import(

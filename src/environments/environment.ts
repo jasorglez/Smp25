@@ -89,5 +89,5 @@ export const environment = {
   geminiApiKey: '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',
   gnewsApiKey: '94ccc596b4dfebc3f72683b6e81d81bc',
 
-  version: '4.32 (26 Junio 2026) fix: descripcion APU completa varchar(1000)',
+  version: '4.33 (26 Junio 2026) Control Diario IA Telegram',
 }; 

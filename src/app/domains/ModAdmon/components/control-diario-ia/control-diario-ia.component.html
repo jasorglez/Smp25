@@ -1,0 +1,101 @@
+<section class="control-shell">
+  <header class="hero">
+    <div>
+      <span class="eyebrow">Telegram para pequeños negocios</span>
+      <h1>Control Diario IA</h1>
+      <p>Genera el código que vincula una sucursal con el celular del cliente.</p>
+    </div>
+    <div class="status-pill"><i class="bi bi-shield-check"></i> Sin contraseña en Telegram</div>
+  </header>
+
+  <div class="workspace">
+    <article class="activation-card">
+      <div class="card-title">
+        <span class="step">1</span>
+        <div><h2>Crear activación</h2><p>El código es de un solo uso.</p></div>
+      </div>
+
+      <label for="branch">Sucursal</label>
+      <select id="branch" class="form-select" [(ngModel)]="idBranch" (change)="onBranchChange()">
+        <option *ngFor="let branch of branches" [ngValue]="branch.id">{{ branch.name }}</option>
+      </select>
+
+      <label for="expiration">Vigencia</label>
+      <select id="expiration" class="form-select" [(ngModel)]="expiresInHours">
+        <option [ngValue]="24">24 horas</option>
+        <option [ngValue]="48">48 horas</option>
+        <option [ngValue]="72">72 horas</option>
+        <option [ngValue]="168">7 días</option>
+      </select>
+
+      <button class="generate-button" (click)="generateCode()" [disabled]="!idBranch || generating">
+        <span *ngIf="!generating"><i class="bi bi-stars"></i> Generar código</span>
+        <span *ngIf="generating" class="spinner-border spinner-border-sm"></span>
+      </button>
+
+      <div class="generated" *ngIf="generatedCode">
+        <small>Código listo para enviar</small>
+        <div class="code-row">
+          <strong>{{ generatedCode.code }}</strong>
+          <button type="button" title="Copiar" (click)="copyCode()"><i class="bi bi-copy"></i></button>
+        </div>
+        <p>Vence: {{ generatedCode.expiresAt | date:'dd/MM/yyyy HH:mm' }}</p>
+      </div>
+    </article>
+
+    <article class="instructions-card">
+      <div class="card-title">
+        <span class="step">2</span>
+        <div><h2>Activar en Telegram</h2><p>Comparte estas instrucciones con el cliente.</p></div>
+      </div>
+      <div class="phone-copy">
+        <div class="bubble">Escribe <b>/start</b> en BI2 Assistant.</div>
+        <div class="bubble">Envía el código de activación.</div>
+        <div class="bubble success"><i class="bi bi-check-circle-fill"></i> El negocio queda listo para operar.</div>
+      </div>
+      <div class="security-note">
+        El código se muestra completo una sola vez. En el sistema queda guardada únicamente su huella de seguridad.
+      </div>
+    </article>
+  </div>
+
+  <div class="data-grid" *ngIf="!loading; else loadingBlock">
+    <article class="data-card">
+      <div class="data-heading"><div><h2>Códigos recientes</h2><p>Historial de la sucursal seleccionada.</p></div><span>{{ codes.length }}</span></div>
+      <div class="table-responsive">
+        <table class="table align-middle">
+          <thead><tr><th>Código</th><th>Estado</th><th>Vence</th></tr></thead>
+          <tbody>
+            <tr *ngFor="let code of codes">
+              <td class="mono">{{ code.codeHint }}</td>
+              <td><span class="badge-state" [class.used]="code.isUsed" [class.expired]="!code.isUsed && isExpired(code.expiresAt)">
+                {{ code.isUsed ? 'Usado' : (isExpired(code.expiresAt) ? 'Vencido' : 'Disponible') }}
+              </span></td>
+              <td>{{ code.expiresAt | date:'dd/MM/yyyy HH:mm' }}</td>
+            </tr>
+            <tr *ngIf="!codes.length"><td colspan="3" class="empty">Aún no hay códigos.</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </article>
+
+    <article class="data-card">
+      <div class="data-heading"><div><h2>Celulares vinculados</h2><p>Accesos activos de Telegram.</p></div><span>{{ linkedUsers.length }}</span></div>
+      <div class="table-responsive">
+        <table class="table align-middle">
+          <thead><tr><th>Telegram</th><th>Activado</th><th></th></tr></thead>
+          <tbody>
+            <tr *ngFor="let user of linkedUsers">
+              <td><b>{{ user.displayName || 'Usuario Telegram' }}</b><small>{{ user.telegramChatId }}</small></td>
+              <td>{{ user.activatedAt | date:'dd/MM/yyyy HH:mm' }}</td>
+              <td class="text-end"><button class="unlink" *ngIf="user.isActive" (click)="unlink(user)">Desvincular</button></td>
+            </tr>
+            <tr *ngIf="!linkedUsers.length"><td colspan="3" class="empty">No hay celulares vinculados.</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </article>
+  </div>
+
+  <ng-template #loadingBlock><div class="loading"><span class="spinner-border"></span> Cargando Control Diario IA...</div></ng-template>
+</section>
