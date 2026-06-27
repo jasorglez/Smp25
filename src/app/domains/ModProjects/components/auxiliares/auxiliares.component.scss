@@ -77,12 +77,14 @@
 }
 
 .crew-card {
-  min-width: 180px;
+  min-width: 340px;
+  max-width: 480px;
   cursor: pointer;
 }
 
 .crew-card input.form-control-sm {
   font-size: 0.76rem;
+  width: 100%;
 }
 
 .summary-total {
