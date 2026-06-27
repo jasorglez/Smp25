@@ -1290,8 +1290,9 @@ export const routes: Routes = [
               import(
                 './domains/ModAdmon/components/control-diario-ia/control-diario-ia.component'
               ).then((c) => c.ControlDiarioIaComponent),
-            canActivate: [TrackingGuard],
+            canActivate: [MasterPermissionsGuard, TrackingGuard],
             data: {
+              permissions: { master: 'administration', detailed: 'control-diario-ia' },
               tracking: {
                 logMessage: 'Click en Control Diario IA',
                 category: 'Administration'
