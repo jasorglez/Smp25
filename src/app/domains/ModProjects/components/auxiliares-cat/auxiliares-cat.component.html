@@ -16,7 +16,7 @@
     <button class="btn btn-sm btn-danger" (click)="deleteRow()" [disabled]="!selectedAuxiliar">
       <i class="bi bi-trash"></i>
     </button>
-    <small class="text-muted ms-auto">{{ rowData.length }} registros</small>
+    <small class="text-muted ms-auto">{{ rowData.length }} auxiliares</small>
   </div>
 
   <!-- ── Split layout: LIST | DETAIL ────────────────────────────────────── -->
@@ -48,7 +48,7 @@
     <!-- RIGHT: detail panel -->
     <div class="flex-fill d-flex flex-column" style="min-width: 0; min-height: 0; overflow: hidden;">
 
-      <!-- placeholder when nothing selected -->
+      <!-- placeholder cuando no hay selección -->
       <ng-container *ngIf="!selectedAuxiliar; else detailTpl">
         <div class="d-flex align-items-center justify-content-center flex-fill text-muted">
           <div class="text-center">
@@ -58,261 +58,47 @@
         </div>
       </ng-container>
 
-      <!-- ── Detail ──────────────────────────────────────────────────────── -->
+      <!-- ── Detalle del Auxiliar ──────────────────────────────────────── -->
       <ng-template #detailTpl>
-
-        <!-- Info bar: name + flags + save button -->
-        <div class="d-flex align-items-center gap-2 mb-2 flex-shrink-0 flex-wrap">
-          <div class="flex-fill" style="min-width: 0;">
-            <div class="fw-semibold text-truncate" style="font-size: 0.9rem;">{{ selectedAuxiliar.description }}</div>
-            <div class="d-flex gap-1 mt-1">
-              <span class="badge bg-secondary" style="font-size: 0.68rem;">{{ selectedAuxiliar.unit }}</span>
-              <span *ngIf="selectedAuxiliar.hasPersonal"    class="badge bg-success" style="font-size: 0.68rem;">MO</span>
-              <span *ngIf="selectedAuxiliar.hasMaterial"    class="badge" style="font-size: 0.68rem; background:#fd7e14;">MAT</span>
-              <span *ngIf="selectedAuxiliar.hasHerramienta" class="badge bg-info text-dark" style="font-size: 0.68rem;">HERR</span>
-              <span *ngIf="selectedAuxiliar.hasEquipo"      class="badge bg-danger" style="font-size: 0.68rem;">EQP</span>
-            </div>
-          </div>
-          <!-- flag toggles -->
-          <div class="d-flex gap-2 align-items-center flex-shrink-0">
-            <div class="d-flex align-items-center gap-1">
-              <input type="checkbox" class="form-check-input mt-0" id="fP" [(ngModel)]="selectedAuxiliar.hasPersonal" (change)="onFlagChange()">
-              <label class="form-check-label small text-success fw-semibold" for="fP"><i class="bi bi-people-fill"></i></label>
-            </div>
-            <div class="d-flex align-items-center gap-1">
-              <input type="checkbox" class="form-check-input mt-0" id="fM" [(ngModel)]="selectedAuxiliar.hasMaterial" (change)="onFlagChange()">
-              <label class="form-check-label small fw-semibold" style="color:#fd7e14;" for="fM"><i class="bi bi-box-seam"></i></label>
-            </div>
-            <div class="d-flex align-items-center gap-1">
-              <input type="checkbox" class="form-check-input mt-0" id="fH" [(ngModel)]="selectedAuxiliar.hasHerramienta" (change)="onFlagChange()">
-              <label class="form-check-label small text-info fw-semibold" for="fH"><i class="bi bi-wrench-adjustable"></i></label>
-            </div>
-            <div class="d-flex align-items-center gap-1">
-              <input type="checkbox" class="form-check-input mt-0" id="fE" [(ngModel)]="selectedAuxiliar.hasEquipo" (change)="onFlagChange()">
-              <label class="form-check-label small text-danger fw-semibold" for="fE"><i class="bi bi-truck"></i></label>
-            </div>
-          </div>
-          <button class="btn btn-sm btn-primary position-relative flex-shrink-0" (click)="saveDetalle()" [disabled]="!hasDetailChanges">
-            <i class="bi bi-floppy-fill"></i> Guardar
-            <span *ngIf="hasDetailChanges"
-                  class="position-absolute top-0 start-100 translate-middle p-2 bg-danger border border-light rounded-circle"></span>
-          </button>
-        </div>
-
-        <!-- Cost summary cards -->
-        <div class="d-flex gap-2 mb-2 flex-shrink-0">
-          <div class="cost-card" style="--cc-bg:#e8f5e9; --cc-color:#2e7d32;">
-            <div class="cost-card-value">${{ totalPersonal | number:'1.2-2' }}</div>
-            <div class="cost-card-label"><i class="bi bi-people-fill me-1"></i>MO</div>
-          </div>
-          <div class="cost-card" style="--cc-bg:#fff3e0; --cc-color:#e65100;">
-            <div class="cost-card-value">${{ materialTotal | number:'1.2-2' }}</div>
-            <div class="cost-card-label"><i class="bi bi-box-seam me-1"></i>Material</div>
-          </div>
-          <div class="cost-card" style="--cc-bg:#e0f7fa; --cc-color:#00838f;">
-            <div class="cost-card-value">${{ herramientaTotal | number:'1.2-2' }}</div>
-            <div class="cost-card-label"><i class="bi bi-wrench-adjustable me-1"></i>Herr.</div>
-          </div>
-          <div class="cost-card" style="--cc-bg:#fce4ec; --cc-color:#c62828;">
-            <div class="cost-card-value">${{ equipoTotal | number:'1.2-2' }}</div>
-            <div class="cost-card-label"><i class="bi bi-truck me-1"></i>Equipo</div>
-          </div>
-          <div class="cost-card cost-card-total" style="--cc-bg:#e3f2fd; --cc-color:#0d47a1;">
-            <div class="cost-card-value" style="font-size: 1rem;">${{ costoTotal | number:'1.2-2' }}</div>
-            <div class="cost-card-label" style="font-weight: 700;">COSTO DIRECTO</div>
+        <!-- Barra de detalle -->
+        <div class="d-flex align-items-center gap-2 mb-2 flex-shrink-0">
+          <span class="fw-semibold text-truncate" style="font-size: 0.9rem;">
+            <i class="bi bi-people-fill text-success me-1"></i>{{ selectedAuxiliar.name || '—' }}
+          </span>
+          <div class="ms-auto d-flex gap-1">
+            <button class="btn btn-sm btn-outline-success" (click)="addItem()" [disabled]="!selectedAuxiliar?.id">
+              <i class="bi bi-plus-lg"></i>
+            </button>
+            <button class="btn btn-sm btn-primary position-relative" (click)="saveItems()" [disabled]="!hasItemChanges">
+              <i class="bi bi-floppy"></i>
+              <span *ngIf="hasItemChanges"
+                    class="position-absolute top-0 start-100 translate-middle p-2 bg-danger border border-light rounded-circle"></span>
+            </button>
+            <button class="btn btn-sm btn-danger" (click)="deleteItem()" [disabled]="!selectedItem">
+              <i class="bi bi-trash"></i>
+            </button>
           </div>
         </div>
 
-        <!-- Tab nav -->
-        <ul class="nav nav-tabs flex-shrink-0" style="font-size: 0.8rem;">
-          <li class="nav-item">
-            <a class="nav-link py-1 px-3" [class.active]="activeTab === 'personal'"
-               (click)="activeTab='personal'" href="javascript:void(0)">
-              <i class="bi bi-people-fill text-success me-1"></i>Cuadrilla
-              <span class="badge rounded-pill bg-success ms-1" style="font-size: 0.65rem;">{{ cuadrillas.length }}</span>
-            </a>
-          </li>
-          <li class="nav-item">
-            <a class="nav-link py-1 px-3" [class.active]="activeTab === 'material'"
-               (click)="activeTab='material'" href="javascript:void(0)">
-              <i class="bi bi-box-seam me-1" style="color:#fd7e14;"></i>Material
-              <span class="badge rounded-pill ms-1 text-dark" style="font-size: 0.65rem; background:#fd7e14;">{{ materialItemRows.length }}</span>
-            </a>
-          </li>
-          <li class="nav-item">
-            <a class="nav-link py-1 px-3" [class.active]="activeTab === 'herramienta'"
-               (click)="activeTab='herramienta'" href="javascript:void(0)">
-              <i class="bi bi-wrench-adjustable text-info me-1"></i>Herramienta
-              <span class="badge rounded-pill bg-info text-dark ms-1" style="font-size: 0.65rem;">{{ herramientaItemRows.length }}</span>
-            </a>
-          </li>
-          <li class="nav-item">
-            <a class="nav-link py-1 px-3" [class.active]="activeTab === 'equipo'"
-               (click)="activeTab='equipo'" href="javascript:void(0)">
-              <i class="bi bi-truck text-danger me-1"></i>Equipo
-              <span class="badge rounded-pill bg-danger ms-1" style="font-size: 0.65rem;">{{ equipoItemRows.length }}</span>
-            </a>
-          </li>
-        </ul>
+        <!-- Grid de workers/personal -->
+        <ag-grid-angular
+          class="ag-theme-quartz small-text-ag-grid flex-fill"
+          style="width: 100%; height: calc(100vh - 200px);"
+          [rowData]="itemRows"
+          [columnDefs]="itemColDefs"
+          [rowClassRules]="rowClassRules"
+          rowSelection="single"
+          (gridReady)="onItemGridReady($event)"
+          (selectionChanged)="onItemSelectionChanged()"
+          (cellValueChanged)="onItemValueChanged($event)">
+        </ag-grid-angular>
 
-        <!-- Tab content -->
-        <div style="padding-top: 8px; overflow-y: auto; flex: 1; min-height: 0;">
-
-          <!-- TAB: PERSONAL / CUADRILLA -->
-          <ng-container *ngIf="activeTab === 'personal'">
-            <div class="d-flex flex-column h-100" style="gap: 6px;">
-              <!-- Cuadrilla chips -->
-              <div class="d-flex align-items-center gap-2 flex-wrap flex-shrink-0">
-                <button class="btn btn-sm btn-outline-success" (click)="addCuadrilla()">
-                  <i class="bi bi-plus-lg"></i> Cuadrilla
-                </button>
-                <button class="btn btn-sm btn-outline-danger" (click)="deleteCuadrilla()" [disabled]="!selectedCuadrilla">
-                  <i class="bi bi-trash"></i>
-                </button>
-                <div *ngFor="let c of cuadrillas"
-                     class="cuadrilla-chip"
-                     [class.selected]="selectedCuadrilla === c"
-                     (click)="selectCuadrilla(c)">
-                  <i class="bi bi-people-fill me-1"></i>
-                  <input class="chip-name-input" type="text" [(ngModel)]="c.name"
-                         (change)="onCuadrillaChange(c)" (click)="$event.stopPropagation()" placeholder="Nombre" />
-                  <span class="chip-qty">×<input type="number" [(ngModel)]="c.cantidad"
-                               (change)="onCuadrillaChange(c)" (click)="$event.stopPropagation()"
-                               min="1" step="1" class="chip-qty-input" /></span>
-                  <span class="chip-total">${{ getCuadrillaSubtotal(c) | number:'1.0-0' }}</span>
-                </div>
-              </div>
-              <!-- Workers grid -->
-              <ng-container *ngIf="selectedCuadrilla; else noCuadrilla">
-                <div class="d-flex align-items-center gap-2 flex-shrink-0">
-                  <small class="text-muted">
-                    <i class="bi bi-chevron-right me-1"></i>
-                    <strong>{{ selectedCuadrilla.name || '—' }}</strong>
-                  </small>
-                  <button class="btn btn-sm btn-outline-success ms-auto" (click)="addCuadrillaItem()">
-                    <i class="bi bi-plus-lg"></i>
-                  </button>
-                  <button class="btn btn-sm btn-outline-danger" (click)="deleteCuadrillaItem()" [disabled]="!selectedCuadrillaItem">
-                    <i class="bi bi-trash"></i>
-                  </button>
-                </div>
-                <ag-grid-angular
-                  class="ag-theme-quartz small-text-ag-grid flex-fill"
-                  style="width: 100%; height: calc(100vh - 460px);"
-                  [rowData]="cuadrillaItemRows"
-                  [columnDefs]="cuadrillaItemColDefs"
-                  [rowClassRules]="rowClassRules"
-                  rowSelection="single"
-                  (gridReady)="onCuadrillaGridReady($event)"
-                  (selectionChanged)="onCuadrillaItemSelectionChanged()"
-                  (cellValueChanged)="onCuadrillaItemValueChanged($event)">
-                </ag-grid-angular>
-                <div class="text-end flex-shrink-0" style="font-size:0.82rem;">
-                  <span class="text-muted">Subtotal MO:</span>
-                  <strong class="text-success ms-2">${{ totalPersonal | number:'1.2-2' }}</strong>
-                </div>
-              </ng-container>
-              <ng-template #noCuadrilla>
-                <div class="d-flex align-items-center justify-content-center flex-fill text-muted">
-                  <div class="text-center">
-                    <i class="bi bi-people d-block opacity-25" style="font-size:2rem;"></i>
-                    <small>Agrega una cuadrilla</small>
-                  </div>
-                </div>
-              </ng-template>
-            </div>
-          </ng-container>
-
-          <!-- TAB: MATERIAL -->
-          <ng-container *ngIf="activeTab === 'material'">
-            <div class="d-flex flex-column h-100" style="gap: 6px;">
-              <div class="d-flex gap-2 flex-shrink-0">
-                <button class="btn btn-sm btn-outline-warning" (click)="addItem('MATERIAL')">
-                  <i class="bi bi-plus-lg"></i> Material
-                </button>
-                <button class="btn btn-sm btn-outline-danger" (click)="deleteItem(selectedMaterialRow)" [disabled]="!selectedMaterialRow">
-                  <i class="bi bi-trash"></i>
-                </button>
-              </div>
-              <ag-grid-angular
-                class="ag-theme-quartz small-text-ag-grid flex-fill"
-                style="width: 100%; height: calc(100vh - 460px);"
-                [rowData]="materialItemRows"
-                [columnDefs]="materialColDefs"
-                [rowClassRules]="rowClassRules"
-                rowSelection="single"
-                (gridReady)="onMaterialGridReady($event)"
-                (selectionChanged)="onMaterialSelectionChanged()"
-                (cellValueChanged)="onItemValueChanged($event)">
-              </ag-grid-angular>
-              <div class="text-end flex-shrink-0" style="font-size:0.82rem;">
-                <span class="text-muted">Subtotal Material:</span>
-                <strong style="color:#e65100;" class="ms-2">${{ materialTotal | number:'1.2-2' }}</strong>
-              </div>
-            </div>
-          </ng-container>
-
-          <!-- TAB: HERRAMIENTA -->
-          <ng-container *ngIf="activeTab === 'herramienta'">
-            <div class="d-flex flex-column h-100" style="gap: 6px;">
-              <div class="d-flex gap-2 flex-shrink-0">
-                <button class="btn btn-sm btn-outline-info" (click)="addItem('HERR')">
-                  <i class="bi bi-plus-lg"></i> Herramienta
-                </button>
-                <button class="btn btn-sm btn-outline-danger" (click)="deleteItem(selectedHerramientaRow)" [disabled]="!selectedHerramientaRow">
-                  <i class="bi bi-trash"></i>
-                </button>
-                <small class="text-muted ms-auto align-self-center">% sobre MO = ${{ totalPersonal | number:'1.2-2' }}</small>
-              </div>
-              <ag-grid-angular
-                class="ag-theme-quartz small-text-ag-grid flex-fill"
-                style="width: 100%; height: calc(100vh - 460px);"
-                [rowData]="herramientaItemRows"
-                [columnDefs]="herramientaColDefs"
-                [rowClassRules]="rowClassRules"
-                rowSelection="single"
-                (gridReady)="onHerramientaGridReady($event)"
-                (selectionChanged)="onHerramientaSelectionChanged()"
-                (cellValueChanged)="onItemValueChanged($event)">
-              </ag-grid-angular>
-              <div class="text-end flex-shrink-0" style="font-size:0.82rem;">
-                <span class="text-muted">Subtotal Herramienta:</span>
-                <strong style="color:#00838f;" class="ms-2">${{ herramientaTotal | number:'1.2-2' }}</strong>
-              </div>
-            </div>
-          </ng-container>
-
-          <!-- TAB: EQUIPO -->
-          <ng-container *ngIf="activeTab === 'equipo'">
-            <div class="d-flex flex-column h-100" style="gap: 6px;">
-              <div class="d-flex gap-2 flex-shrink-0">
-                <button class="btn btn-sm btn-outline-danger" (click)="addItem('EQUIPO')">
-                  <i class="bi bi-plus-lg"></i> Equipo
-                </button>
-                <button class="btn btn-sm btn-outline-danger" (click)="deleteItem(selectedEquipoRow)" [disabled]="!selectedEquipoRow">
-                  <i class="bi bi-trash"></i>
-                </button>
-              </div>
-              <ag-grid-angular
-                class="ag-theme-quartz small-text-ag-grid flex-fill"
-                style="width: 100%; height: calc(100vh - 460px);"
-                [rowData]="equipoItemRows"
-                [columnDefs]="equipoColDefs"
-                [rowClassRules]="rowClassRules"
-                rowSelection="single"
-                (gridReady)="onEquipoGridReady($event)"
-                (selectionChanged)="onEquipoSelectionChanged()"
-                (cellValueChanged)="onItemValueChanged($event)">
-              </ag-grid-angular>
-              <div class="text-end flex-shrink-0" style="font-size:0.82rem;">
-                <span class="text-muted">Subtotal Equipo:</span>
-                <strong class="text-danger ms-2">${{ equipoTotal | number:'1.2-2' }}</strong>
-              </div>
-            </div>
-          </ng-container>
-
-        </div><!-- /tab content -->
-      </ng-template><!-- /detailTpl -->
-    </div><!-- /right panel -->
+        <!-- Subtotal footer -->
+        <div class="d-flex justify-content-end align-items-center mt-1 flex-shrink-0" style="font-size: 0.82rem;">
+          <span class="text-muted me-2">{{ itemRows.length }} registros — Subtotal MO:</span>
+          <strong class="text-success">${{ subtotal | number:'1.2-2' }}</strong>
+        </div>
+      </ng-template>
+    </div><!-- /right -->
   </div><!-- /split -->
 </div>

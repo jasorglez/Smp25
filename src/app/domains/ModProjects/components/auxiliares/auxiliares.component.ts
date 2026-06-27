@@ -216,10 +216,10 @@ export class AuxiliaresComponent {
   constructor() {
     effect(() => {
       this.idCompany = this.signalsService.getRootSelectedBySidebar()();
+      this.signalsService.getIdContract()();
       this.loadData();
       this.loadCatalogs();
     });
-    // Auto-carga factores y config encabezado cuando cambia empresa o contrato
     effect(() => {
       this.signalsService.getRootSelectedBySidebar()();
       this.signalsService.getIdContract()();
@@ -229,14 +229,15 @@ export class AuxiliaresComponent {
   }
 
   loadData() {
-    if (!this.idCompany) return;
-    this.auxiliarService.getByCompany(this.idCompany).subscribe({
+    const idContract = this.signalsService.getIdContract()();
+    if (!this.idCompany || !idContract) { this.rowData = []; this.originalData = []; return; }
+    this.auxiliarService.getByContract(idContract, this.idCompany).subscribe({
       next: (data) => {
         this.rowData      = data;
         this.originalData = JSON.parse(JSON.stringify(data));
         this.hasMainChanges = false;
       },
-      error: (e) => console.error('Error cargando auxiliares', e),
+      error: (e) => console.error('Error cargando precios unitarios', e),
     });
   }
 
