@@ -6,6 +6,9 @@ import { ColDef, GridApi, GridReadyEvent } from 'ag-grid-enterprise';
 import { AG_GRID_LOCALE_ES } from 'assets/i18n/ag-grid.locale.es';
 import { SignalsService } from 'app/services/signals.service';
 import { RestaurantMesasService } from 'app/services/restaurant-mesas.service';
+import { RootService } from 'app/services/root.service';
+import { Base64EncodeService } from 'app/services/base64encode.service';
+import { lastValueFrom } from 'rxjs';
 import Swal from 'sweetalert2';
 import pdfMake from 'pdfmake/build/pdfmake';
 import pdfFonts from 'pdfmake/build/vfs_fonts';
@@ -19,8 +22,10 @@ pdfMake.vfs = (pdfFonts as any).vfs;
   styleUrl: './restaurant-mesas.component.scss',
 })
 export class RestaurantMesasComponent implements OnInit {
-  private signalsService    = inject(SignalsService);
-  private restaurantService = inject(RestaurantMesasService);
+  private signalsService      = inject(SignalsService);
+  private restaurantService   = inject(RestaurantMesasService);
+  private rootService         = inject(RootService);
+  private base64EncodeService = inject(Base64EncodeService);
 
   AG_GRID_LOCALE_ES = AG_GRID_LOCALE_ES;
   idCompany  = 0;
@@ -512,8 +517,20 @@ export class RestaurantMesasComponent implements OnInit {
     });
   }
 
-  exportPdfReporte() {
+  private async getLogoBase64(): Promise<string | null> {
+    try {
+      const rootData: any = await lastValueFrom(this.rootService.getRootbyId(this.idCompany));
+      if (rootData?.picture) {
+        return await this.base64EncodeService.convertImageToBase64(rootData.picture);
+      }
+    } catch {}
+    return null;
+  }
+
+  async exportPdfReporte() {
     if (!this.reporteRowData.length) return;
+
+    const logoData = await this.getLogoBase64();
 
     const fechaLabel = new Date(this.reporteFecha + 'T12:00:00').toLocaleDateString('es-MX', {
       weekday: 'long', year: 'numeric', month: 'long', day: 'numeric'
@@ -546,9 +563,16 @@ export class RestaurantMesasComponent implements OnInit {
       pageOrientation: 'landscape',
       pageMargins: [30, 50, 30, 50],
       content: [
-        { text: 'REPORTE DE MESAS', style: 'titulo' },
-        { text: fechaLabel, style: 'subtitulo' },
-        { text: ' ', margin: [0, 6, 0, 0] },
+        {
+          columns: [
+            logoData ? { image: logoData, width: 60, margin: [0, 0, 12, 0] } : { text: '', width: 60 },
+            { stack: [
+              { text: 'REPORTE DE MESAS', style: 'titulo' },
+              { text: fechaLabel, style: 'subtitulo' },
+            ]},
+          ],
+          margin: [0, 0, 0, 8],
+        },
         {
           table: {
             headerRows: 1,
@@ -599,16 +623,26 @@ export class RestaurantMesasComponent implements OnInit {
     pdfMake.createPdf(docDef).download(`reporte-mesas-${fechaFile}.pdf`);
   }
 
-  exportPdfDetalle() {
+  async exportPdfDetalle() {
     if (!this.reporteRowData.length) return;
+
+    const logoData = await this.getLogoBase64();
 
     const fechaLabel = new Date(this.reporteFecha + 'T12:00:00').toLocaleDateString('es-MX', {
       weekday: 'long', year: 'numeric', month: 'long', day: 'numeric'
     });
 
     const content: any[] = [
-      { text: 'DETALLE DE CONSUMO POR MESA', style: 'titulo' },
-      { text: fechaLabel, style: 'subtitulo' },
+      {
+        columns: [
+          logoData ? { image: logoData, width: 55, margin: [0, 0, 12, 0] } : { text: '', width: 55 },
+          { stack: [
+            { text: 'DETALLE DE CONSUMO POR MESA', style: 'titulo' },
+            { text: fechaLabel, style: 'subtitulo' },
+          ]},
+        ],
+        margin: [0, 0, 0, 8],
+      },
     ];
 
     for (const mesa of this.reporteRowData) {
