@@ -527,6 +527,7 @@ export class DashAdmonComponent implements OnInit {
   ngOnInit(): void {
     const token = localStorage.getItem('token') || '';
     this.signalrService.startAdmonConnection(token);
+    this.signalrService.startTelegramConnection();
 
     this.signalrService.admonUpdate$.pipe(
       filter(data => data !== null),
