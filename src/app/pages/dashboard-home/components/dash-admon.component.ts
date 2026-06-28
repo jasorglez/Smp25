@@ -543,6 +543,21 @@ export class DashAdmonComponent implements OnInit {
         }
       });
     });
+
+    // Egresos desde bot Telegram → recargar cuentas y gráfica de egresos
+    this.signalrService.egresoUpdate$.pipe(
+      filter(data => data !== null),
+      debounceTime(800),
+      takeUntilDestroyed(this.destroyRef)
+    ).subscribe(() => {
+      this.zone.run(() => {
+        const rootId = this.signalsService.getRootSelectedBySidebar()();
+        if (!rootId) return;
+        this.loadEgresos(rootId);
+        if (this.isRootUser) this.loadCuentasBanco(rootId);
+        this.cdr.markForCheck();
+      });
+    });
   }
 
   onClientDateChange(): void {
