@@ -41,4 +41,24 @@ export class StoresService {
     return this.http.delete<any>(`${environment.urlAdministration}/Stores/${idStore}`, { headers: this.trackingService.getHeaders() });
   }
 
+  addCashRegister(cashRegister: any): Observable<any> {
+    return this.http.post<any>(`${environment.urlAdministration}/CashRegisters`, cashRegister, { headers: this.trackingService.getHeaders() });
+  }
+
+  getCashRegisters(idStore: number): Observable<any> {
+    return this.http.get<any>(`${environment.urlAdministration}/CashRegisters/store/${idStore}`, { headers: this.trackingService.getHeaders() });
+  }
+
+  getCashRegister(idCashRegister: number): Observable<any> {
+    return this.http.get<any>(`${environment.urlAdministration}/CashRegisters/${idCashRegister}`, { headers: this.trackingService.getHeaders() });
+  }
+
+  updateCashRegister(idCashRegister: number, cashRegister: any): Observable<any> {
+    return this.http.put<any>(`${environment.urlAdministration}/CashRegisters/${idCashRegister}`, cashRegister, { headers: this.trackingService.getHeaders() });
+  }
+
+  deleteCashRegister(idCashRegister: number): Observable<any> {
+    return this.http.delete<any>(`${environment.urlAdministration}/CashRegisters/${idCashRegister}`, { headers: this.trackingService.getHeaders() });
+  }
+
 }
