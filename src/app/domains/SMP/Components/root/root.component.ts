@@ -184,7 +184,7 @@ export class RootComponent {
   // Orden de columnas para navegación con Enter
   private editableColumnOrder = [
     'orden', 'name', 'nameSmall', 'formatRep', 'email', 'web', 'personType', 'phone',
-    'address', 'city', 'state', 'country', 'rfc', 'cp', 'idCorporativo', 'advanced'
+    'address', 'city', 'state', 'country', 'rfc', 'cp', 'idCorporativo', 'advanced', 'esRestaurante'
   ];
 
   // Flags de validación y navegación
@@ -525,6 +525,15 @@ public gridOptions: any = {
         flex: 1
       },
       {
+        field: 'esRestaurante',
+        headerName: 'Es Restaurante',
+        editable: true,
+        cellDataType: 'boolean',
+        cellEditor: 'agCheckboxCellEditor',
+        width: 130,
+        cellStyle: { textAlign: 'center' }
+      },
+      {
         field: 'licenseStart',
         headerName: 'Inicio Licencia',
         editable: true,
@@ -673,6 +682,7 @@ public gridOptions: any = {
       formatRep: 'NA',
       city: '',
       advanced: false,
+      esRestaurante: false,
       state: '',
       country: 'MEXICO',
       rfc: '',
