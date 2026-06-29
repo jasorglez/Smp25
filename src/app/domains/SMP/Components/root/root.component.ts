@@ -25,6 +25,7 @@ import { EquipmentService } from 'app/services/equipment.service';
 import { TrackingService } from 'app/services/tracking.service';
 import { ConventionsService } from 'app/services/conventions.service';
 import { WorkprogramsService } from 'app/services/workprograms.service';
+import { StoresService } from 'app/services/stores.service';
 
 @Component({
   selector: 'app-root',
@@ -55,6 +56,7 @@ export class RootComponent {
   private trackingService = inject(TrackingService);
   private conventionsService = inject(ConventionsService);
   private workprogramsService = inject(WorkprogramsService);
+  private storesService = inject(StoresService);
 
   private signalsService = inject(SignalsService);
 
@@ -674,6 +676,8 @@ public gridOptions: any = {
       web: '',
       email: '',
       nameSmall: '',
+      nameContact: 'PUBLICO EN GENERAL',
+      company: 'PUBLICO EN GENERAL',
       picture: '',
       picture2: '',
       picture3: '',
@@ -908,11 +912,32 @@ public gridOptions: any = {
     // ── 7. Cliente ────────────────────────────────────────────────────────────
     try {
       await lastValueFrom(this.customersService.addCustomer({
-        company: rootName.toUpperCase(), nameContact: rootName, idBranch: branchId,
+        company: 'PUBLICO EN GENERAL', nameContact: 'PUBLICO EN GENERAL', idBranch: branchId,
         idRoot: rootId, idTypecop: tipoClienteId, type: 'CUSTOMERS', vigente: true, active: true
       }));
-      this.logPeriferico('7-Cliente creado', rootName);
+      this.logPeriferico('7-Cliente PUBLICO EN GENERAL creado', rootName);
     } catch (e) { console.error('paso 7 (cliente):', e); }
+
+    // ── 7a. Tienda PRINCIPAL ───────────────────────────────────────────────────
+    let storeId = 0;
+    try {
+      const store: any = await lastValueFrom(this.storesService.addStore({
+        id_branch: branchId, description: `${rootName.substring(0, 38)} - Tienda`, address: 'N/A',
+        city: '', state: '', cp: '', phone: '', active: true
+      }));
+      storeId = getId(store);
+      this.logPeriferico('7a-Tienda creada', rootName);
+    } catch (e) { console.error('paso 7a (tienda):', e); }
+
+    // ── 7b. Caja CAJA 1 ────────────────────────────────────────────────────────
+    try {
+      if (storeId) {
+        await lastValueFrom(this.storesService.addCashRegister({
+          id_store: storeId, description: 'CAJA 1', comment: 'Caja principal', active: true
+        }));
+        this.logPeriferico('7b-Caja creada', rootName);
+      }
+    } catch (e) { console.error('paso 7b (caja):', e); }
 
     // ── 8. Proveedor ──────────────────────────────────────────────────────────
     try {
