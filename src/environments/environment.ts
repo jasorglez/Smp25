@@ -89,5 +89,5 @@ export const environment = {
   geminiApiKey: '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',
   gnewsApiKey: '94ccc596b4dfebc3f72683b6e81d81bc',
 
-  version: '4.45 (27 Junio 2026) Fix saldos — Accounts() usa conceptos Quantity*Price+Iva2 sin depender de ie.total',
+  version: '4.46 (28 Junio 2026) Agregar checkbox esRestaurante en Root para filtrar empresas restaurante',
 }; 
