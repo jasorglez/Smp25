@@ -922,7 +922,7 @@ public gridOptions: any = {
     let storeId = 0;
     try {
       const store: any = await lastValueFrom(this.storesService.addStore({
-        id_branch: branchId, description: `${rootName.substring(0, 38)} - Tienda`, address: 'N/A',
+        idBranch: branchId, description: `${rootName.substring(0, 38)} - Tienda`, address: 'N/A',
         city: '', state: '', cp: '', phone: '', active: true
       }));
       storeId = getId(store);
@@ -933,7 +933,7 @@ public gridOptions: any = {
     try {
       if (storeId) {
         await lastValueFrom(this.storesService.addCashRegister({
-          id_store: storeId, description: 'CAJA 1', comment: 'Caja principal', active: true
+          idStore: storeId, description: 'CAJA 1', comment: 'Caja principal', active: true
         }));
         this.logPeriferico('7b-Caja creada', rootName);
       }
