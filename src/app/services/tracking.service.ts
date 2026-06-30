@@ -622,6 +622,27 @@ if (!user) user = this.getEmail();
     this.sessionModules = [];
   }
 
+  // ── Payload sincrónico para sendBeacon (cierre de browser) ──────────────
+  getSessionEndPayload(): object | null {
+    if (!this.sessionStart) return null;
+    const ms  = new Date().getTime() - this.sessionStart.getTime();
+    const min = Math.floor(ms / 60000);
+    const sec = Math.floor((ms % 60000) / 1000);
+    return {
+      email      : this.getEmail(),
+      modules    : [...this.sessionModules],
+      durationMin: min,
+      durationSec: sec,
+      temperatura: this.classifyTemp(min, this.sessionModules, 0),
+    };
+  }
+
+  clearSession(): void {
+    this.sessionKey     = null;
+    this.sessionStart   = null;
+    this.sessionModules = [];
+  }
+
   private countryFlag(code: string): string {
     if (!code || code.length !== 2) return '📍';
     const o = 127397;
