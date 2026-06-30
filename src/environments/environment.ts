@@ -89,5 +89,5 @@ export const environment = {
   geminiApiKey: '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',
   gnewsApiKey: '94ccc596b4dfebc3f72683b6e81d81bc',
 
-  version: '4.51 (30 Junio 2026) fix: Telegram via backend C# evita CORS + session-end endpoint',
+  version: '4.52 (30 Junio 2026) fix: sendBeacon para session-end al cerrar browser',
 }; 

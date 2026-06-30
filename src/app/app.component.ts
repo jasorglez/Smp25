@@ -4,6 +4,7 @@ import {AuthService} from "./services/auth.service";
 import { SignalsService } from './services/signals.service';
 import { ChatbotComponent } from './shared/chatbot/chatbot.component';
 import { TrackingService } from './services/tracking.service';
+import { environment } from '@env/environment';
 
 
 @Component({
@@ -22,7 +23,15 @@ export class AppComponent implements OnInit {
 
   @HostListener('window:beforeunload')
   onBeforeUnload(): void {
-    this.trackingService.endSession();
+    const payload = this.trackingService.getSessionEndPayload();
+    if (payload) {
+      // sendBeacon garantiza el envío aunque el browser se cierre
+      navigator.sendBeacon(
+        `${environment.urlChatBot}/LoginNotification/session-end`,
+        new Blob([JSON.stringify(payload)], { type: 'application/json' })
+      );
+    }
+    this.trackingService.clearSession();
   }
 
   constructor() {
