@@ -14,6 +14,7 @@ import pdfMake from 'pdfmake/build/pdfmake';
 import * as pdfFonts from 'pdfmake/build/vfs_fonts';
 import { SignalsService } from 'app/services/signals.service';
 import { lastValueFrom } from 'rxjs';
+import { TrackingService } from 'app/services/tracking.service';
 (pdfMake as any).vfs = (pdfFonts as any).pdfMake?.vfs || (pdfFonts as any).default?.pdfMake?.vfs;
 
 @Component({
@@ -130,6 +131,7 @@ import { lastValueFrom } from 'rxjs';
   `]
 })
 export class DetailCellRendererIncomeComponent implements OnInit, OnDestroy {
+  private trackingService = inject(TrackingService);
 
   private params!: ICellRendererParams;
   private gridApi!: GridApi;
@@ -678,6 +680,7 @@ export class DetailCellRendererIncomeComponent implements OnInit, OnDestroy {
   }
 
   saveChanges() {
+    this.trackingService.addLog(this.trackingService.getnameComp(), 'Guardó cambios en detail cell renderer income', 'Admon', this.trackingService.getEmail());
     if (!this.hasUnsavedChanges) {
       alerts.basicAlert('Sin cambios', 'No hay cambios pendientes por guardar', 'info');
       return;

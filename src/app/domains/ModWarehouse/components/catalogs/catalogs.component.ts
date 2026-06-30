@@ -23,6 +23,7 @@ import { alerts } from '../../../../helpers/alerts';
 import { SharedModule } from 'app/shared/shared.module';
 import { CanComponentDeactivate } from 'app/guards/unsaved-changes.guard';
 import { confirmExitIfUnsaved } from 'app/helpers/can-deactivate.helper';
+import { TrackingService } from 'app/services/tracking.service';
 
 //soriano
 @Component({
@@ -39,6 +40,7 @@ import { confirmExitIfUnsaved } from 'app/helpers/can-deactivate.helper';
   styleUrl: './catalogs.component.scss',
 })
 export class SubatalogsComponent implements CanComponentDeactivate {
+  private trackingService = inject(TrackingService);
   public AG_GRID_LOCALE_ES = AG_GRID_LOCALE_ES;
   notSavedChanges: boolean = false;
   rowData: any;
@@ -356,6 +358,7 @@ export class SubatalogsComponent implements CanComponentDeactivate {
 
   ///OPERATIONS DE LOS GRABADOS
   addRow() {
+    this.trackingService.addLog(this.trackingService.getnameComp(), 'Agregó nuevo catalogs', 'Almacenes', this.trackingService.getEmail());
     const tempId = `temp_${this.tempIdCounter++}`;
     const newItem = {
       id: tempId,
@@ -385,6 +388,7 @@ export class SubatalogsComponent implements CanComponentDeactivate {
   }
 
   async saveChanges() {
+    this.trackingService.addLog(this.trackingService.getnameComp(), 'Guardó cambios en catalogs', 'Almacenes', this.trackingService.getEmail());
     const isValid = this.rowData.every((item) => item.description);
     if (!isValid) {
       alerts.basicAlert(
@@ -440,6 +444,7 @@ export class SubatalogsComponent implements CanComponentDeactivate {
   }
 
   revert() {
+    this.trackingService.addLog(this.trackingService.getnameComp(), 'Deshizo cambios en catalogs', 'Almacenes', this.trackingService.getEmail());
     //this.obtenerTables();
     this.obtenerDatos();
     this.notSavedChanges = false;

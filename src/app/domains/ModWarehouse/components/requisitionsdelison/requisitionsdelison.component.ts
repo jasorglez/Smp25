@@ -19,6 +19,7 @@ import { RolesService } from 'app/services/roles.service';
 import { alerts } from 'app/helpers/alerts';
 import { catchError, EMPTY } from 'rxjs';
 import { AuthService } from 'app/services/auth.service';
+import { TrackingService } from 'app/services/tracking.service';
 
 interface Catalog {
   id: number;
@@ -40,6 +41,7 @@ interface Catalog {
   `]
 })
 export class RequisitionsDelisonComponent implements OnInit {
+  private trackingService = inject(TrackingService);
 
   // Inject services
   private departmentsService = inject(DepartmentsService);
@@ -1427,6 +1429,7 @@ export class RequisitionsDelisonComponent implements OnInit {
   }
 
   async saveChanges(): Promise<void> {
+    this.trackingService.addLog(this.trackingService.getnameComp(), 'Guardó cambios en requisitionsdelison', 'Almacenes', this.trackingService.getEmail());
     // Filtrar las filas nuevas o modificadas
     const itemsToSave = this.rowData.filter(row => row.__isNew || row.__modified);
 

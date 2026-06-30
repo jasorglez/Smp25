@@ -8,6 +8,7 @@ import { catchError, concat, EMPTY, lastValueFrom, toArray } from 'rxjs';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { States } from 'app/interface/states';
+import { TrackingService } from 'app/services/tracking.service';
 
 @Component({
   selector: 'app-oilfields',
@@ -16,6 +17,7 @@ import { States } from 'app/interface/states';
   templateUrl: './oilfields.component.html'
 })
 export class OilfieldsComponent {
+  private trackingService = inject(TrackingService);
 
   private estados: string[] = [];
 
@@ -171,6 +173,7 @@ public gridOptions: any = {
   }
 
   addRow() {
+    this.trackingService.addLog(this.trackingService.getnameComp(), 'Agregó nuevo oilfields', 'Proyectos', this.trackingService.getEmail());
     const tempId = `temp_${this.tempIdCounter++}`;
     const newItem = {
       id: tempId,
@@ -205,6 +208,7 @@ public gridOptions: any = {
   }
 
   async saveChanges() {
+    this.trackingService.addLog(this.trackingService.getnameComp(), 'Guardó cambios en oilfields', 'Proyectos', this.trackingService.getEmail());
     const isValid = this.rowData.every((item) => item.name && item.direccion);
     if (!isValid) {
       alerts.basicAlert(
@@ -254,6 +258,7 @@ public gridOptions: any = {
   }
 
   async deleteEntry() {
+    this.trackingService.addLog(this.trackingService.getnameComp(), 'Eliminó oilfields', 'Proyectos', this.trackingService.getEmail());
     const selectedNodes = this.gridApi.getSelectedNodes();
     if (selectedNodes.length === 0) {
       alerts.basicAlert(
@@ -299,6 +304,7 @@ public gridOptions: any = {
   }
 
   revert() {
+    this.trackingService.addLog(this.trackingService.getnameComp(), 'Deshizo cambios en oilfields', 'Proyectos', this.trackingService.getEmail());
     this.obtenerDatos();
     this.notSavedChanges = false;
   }

@@ -33,6 +33,7 @@ import { PriceProductsPresentationsComponent } from './components/price-products
 import { DetailCellRendererHistoricoComponent } from './details/detail-cell-renderer-historico.component';
 import { DetailCellRendererMaterialesComponent } from './details/detail-cell-renderer-materiales.component';
 import { DetailCellRendererParametrosComponent } from './details/detail-cell-renderer-parametros.component';
+import { TrackingService } from 'app/services/tracking.service';
 
 declare const bootstrap: any; // Añadir declaración para Bootstrap
 
@@ -52,6 +53,7 @@ declare const bootstrap: any; // Añadir declaración para Bootstrap
   styleUrl: './materials.component.scss',
 })
 export class MaterialsComponent implements CanComponentDeactivate, OnInit {
+  private trackingService = inject(TrackingService);
   typeMaterial = input<string>('');
   idRootInput = input<number>(0);
   
@@ -1773,6 +1775,7 @@ export class MaterialsComponent implements CanComponentDeactivate, OnInit {
   }
 
   addRow() {
+    this.trackingService.addLog(this.trackingService.getnameComp(), 'Agregó nuevo materials', 'Almacenes', this.trackingService.getEmail());
     const tempId = `temp_${this.tempIdCounter++}`;
     const newItem = {
       id: tempId,
@@ -1817,6 +1820,7 @@ export class MaterialsComponent implements CanComponentDeactivate, OnInit {
   }
 
   async saveChanges() {
+    this.trackingService.addLog(this.trackingService.getnameComp(), 'Guardó cambios en materials', 'Almacenes', this.trackingService.getEmail());
     /*const isValid = this.rowData.every(
       (item) => item.insumo && item.description
     );
@@ -1868,6 +1872,7 @@ export class MaterialsComponent implements CanComponentDeactivate, OnInit {
   }
 
   async deleteEntry() {
+    this.trackingService.addLog(this.trackingService.getnameComp(), 'Eliminó materials', 'Almacenes', this.trackingService.getEmail());
     const selectedNodes = this.gridApi.getSelectedNodes();
     if (selectedNodes.length === 0) {
       alerts.basicAlert(
@@ -1913,6 +1918,7 @@ export class MaterialsComponent implements CanComponentDeactivate, OnInit {
   }
 
   revert() {
+    this.trackingService.addLog(this.trackingService.getnameComp(), 'Deshizo cambios en materials', 'Almacenes', this.trackingService.getEmail());
     this.obtenerDatos();
     this.notSavedChanges = false;
   }

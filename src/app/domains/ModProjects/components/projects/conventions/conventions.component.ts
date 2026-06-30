@@ -18,6 +18,7 @@ import { ModalService } from 'app/services/modal.service';
 import { AG_GRID_LOCALE_ES } from 'assets/i18n/ag-grid.locale.es';
 import { conventionDetailsComponent } from "./convention-details/convention-details.component";
 import { DetalleButtonRendererComponent } from "./detalle-button-renderer.component";
+import { TrackingService } from 'app/services/tracking.service';
 
 @Component({
   selector: 'app-conventions',
@@ -27,6 +28,7 @@ import { DetalleButtonRendererComponent } from "./detalle-button-renderer.compon
   styleUrl: './conventions.component.scss'
 })
 export class ConventionsComponent {
+  private trackingService = inject(TrackingService);
   @ViewChild('content') content!: TemplateRef<any>;
 
   private conventionsService = inject(ConventionsService);
@@ -394,6 +396,7 @@ export class ConventionsComponent {
   }
 
   addRow() {
+    this.trackingService.addLog(this.trackingService.getnameComp(), 'Agregó nuevo conventions', 'Proyectos', this.trackingService.getEmail());
     const tempId = `temp_${this.tempIdCounter++}`;
     const today = new Date();
     const startOfYear = new Date(today.getFullYear(), 0, 1);
@@ -557,6 +560,7 @@ export class ConventionsComponent {
   }
 
   deleteEntry() {
+    this.trackingService.addLog(this.trackingService.getnameComp(), 'Eliminó conventions', 'Proyectos', this.trackingService.getEmail());
     if (!this.selectedRowData) {
       alerts.basicAlert(
         'Eliminar convenio',
@@ -594,11 +598,13 @@ export class ConventionsComponent {
   }
 
   revert() {
+    this.trackingService.addLog(this.trackingService.getnameComp(), 'Deshizo cambios en conventions', 'Proyectos', this.trackingService.getEmail());
     this.obtenerDatos();
     this.notSavedChanges = false;
   }
 
   async saveChanges() {
+    this.trackingService.addLog(this.trackingService.getnameComp(), 'Guardó cambios en conventions', 'Proyectos', this.trackingService.getEmail());
     this.enforceSingleVigente(true);
 
     const isValid = this.rowData.every((item) =>

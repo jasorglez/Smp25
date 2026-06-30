@@ -14,6 +14,7 @@ import { ProjectsService } from 'app/services/projects.service';
 import { OilfieldService } from 'app/services/oilfield.service';
 import { SignalsService } from 'app/services/signals.service';
 import { PersonalByProyectService } from 'app/services/personalByProyect.service';
+import { TrackingService } from 'app/services/tracking.service';
 
 
 // Esta funcion valida que programStart sea siempre menor a programEnd
@@ -57,6 +58,7 @@ export function noDefaultValueValidator(): ValidatorFn {
   styleUrl: './projects.component.scss'
 })
 export class ProjectsComponent {
+  private trackingService = inject(TrackingService);
   constructor() {
 
     this.initForm();
@@ -376,6 +378,7 @@ export class ProjectsComponent {
   };
 
   addRow() {
+    this.trackingService.addLog(this.trackingService.getnameComp(), 'Agregó nuevo projects', 'Proyectos', this.trackingService.getEmail());
     this.isEditing = false;
     this.initForm();
     this.openModal();

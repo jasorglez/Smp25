@@ -5,6 +5,7 @@ import { CommonModule } from '@angular/common';
 import { HRService } from 'app/services/hr.service';
 import { AuthService } from 'app/services/auth.service';
 import { ReactiveFormsModule, FormBuilder, FormGroup, Validators, FormControl } from '@angular/forms';
+import { TrackingService } from 'app/services/tracking.service';
 
 @Component({
   selector: 'app-employees',
@@ -19,6 +20,7 @@ export class EmployeesComponent {
   authService = inject(AuthService);
 
   formBuilder = inject(FormBuilder);
+  private trackingService = inject(TrackingService);
   idBranch: number;
   hrData: any = {};
   newData: boolean;
@@ -117,6 +119,7 @@ export class EmployeesComponent {
 
 
     revertChanges() {
+      this.trackingService.addLog(this.trackingService.getnameComp(), 'Deshizo cambios en employees', 'RRHH', this.trackingService.getEmail());
       this.getData(); // Refrescar datos
     }
 

@@ -6,6 +6,7 @@ import { AG_GRID_LOCALE_ES } from 'assets/i18n/ag-grid.locale.es';
 import { OcAndReqsService } from 'app/services/ocandreqs.service';
 import { firstValueFrom } from 'rxjs';
 import { alerts } from 'app/helpers/alerts';
+import { TrackingService } from 'app/services/tracking.service';
 
 @Component({
   selector: 'app-detail-cell-renderer-pedimentos-items',
@@ -65,6 +66,7 @@ import { alerts } from 'app/helpers/alerts';
   `]
 })
 export class DetailCellRendererPedimentosItemsComponent implements ICellRendererAngularComp {
+  private trackingService = inject(TrackingService);
   private params!: ICellRendererParams;
   private context: any;
   private gridApi!: GridApi;
@@ -139,6 +141,7 @@ export class DetailCellRendererPedimentosItemsComponent implements ICellRenderer
   }
 
   delete() {
+    this.trackingService.addLog(this.trackingService.getnameComp(), 'Eliminó detail cell renderer pedimentos items', 'ModShoppingDelison', this.trackingService.getEmail());
     if (this.selectedRow) {
       this.rowData = this.rowData.filter(item => item !== this.selectedRow);
       this.selectedRow = null;
@@ -147,6 +150,7 @@ export class DetailCellRendererPedimentosItemsComponent implements ICellRenderer
   }
 
   async save() {
+    this.trackingService.addLog(this.trackingService.getnameComp(), 'Guardó cambios en detail cell renderer pedimentos items', 'ModShoppingDelison', this.trackingService.getEmail());
     const changedItems = this.rowData.filter(item => item.__modified);
     if (changedItems.length === 0) {
       alerts.basicAlert('Sin cambios', 'No hay cambios pendientes por guardar', 'info');
@@ -215,6 +219,7 @@ export class DetailCellRendererPedimentosItemsComponent implements ICellRenderer
   }
 
   revert() {
+    this.trackingService.addLog(this.trackingService.getnameComp(), 'Deshizo cambios en detail cell renderer pedimentos items', 'ModShoppingDelison', this.trackingService.getEmail());
     this.rowData = JSON.parse(JSON.stringify(this.originalRowData));
     this.hasUnsavedChanges = false;
     if (this.gridApi) {

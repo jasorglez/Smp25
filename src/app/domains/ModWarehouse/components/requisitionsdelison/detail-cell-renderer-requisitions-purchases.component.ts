@@ -6,6 +6,7 @@ import { ColDef, GridApi, GridReadyEvent } from 'ag-grid-enterprise';
 import { AG_GRID_LOCALE_ES } from 'assets/i18n/ag-grid.locale.es';
 import { OcAndReqsService } from 'app/services/ocandreqs.service';
 import { alerts } from 'app/helpers/alerts';
+import { TrackingService } from 'app/services/tracking.service';
 
 @Component({
   selector: 'app-detail-cell-renderer-requisitions-purchases',
@@ -51,6 +52,7 @@ import { alerts } from 'app/helpers/alerts';
   `]
 })
 export class DetailCellRendererRequisitionsPurchasesComponent implements OnInit {
+  private trackingService = inject(TrackingService);
 
   private params!: any;
   private gridApi!: GridApi;
@@ -306,6 +308,7 @@ export class DetailCellRendererRequisitionsPurchasesComponent implements OnInit 
   }
 
   async deleteSelectedItem() {
+    this.trackingService.addLog(this.trackingService.getnameComp(), 'Eliminó detail cell renderer requisitions purchases', 'Almacenes', this.trackingService.getEmail());
     const selectedRows = this.gridApi.getSelectedRows();
     if (selectedRows.length === 0) {
       alerts.basicAlert('Selección requerida', 'Por favor seleccione un item para eliminar', 'warning');
@@ -335,6 +338,7 @@ export class DetailCellRendererRequisitionsPurchasesComponent implements OnInit 
   }
 
   async saveChanges() {
+    this.trackingService.addLog(this.trackingService.getnameComp(), 'Guardó cambios en detail cell renderer requisitions purchases', 'Almacenes', this.trackingService.getEmail());
     if (!this.hasUnsavedChanges) {
       alerts.basicAlert('Sin cambios', 'No hay cambios pendientes por guardar', 'info');
       return;

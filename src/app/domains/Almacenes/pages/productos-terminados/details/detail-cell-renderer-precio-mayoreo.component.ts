@@ -4,6 +4,7 @@ import { ICellRendererParams } from 'ag-grid-enterprise';
 import { AgGridModule } from 'ag-grid-angular';
 import { CommonModule } from '@angular/common';
 import { SignalsService } from 'app/services/signals.service';
+import { TrackingService } from 'app/services/tracking.service';
 
 @Component({
   selector: 'app-detail-cell-renderer-precio-mayoreo',
@@ -60,6 +61,7 @@ import { SignalsService } from 'app/services/signals.service';
   `
 })
 export class DetailCellRendererPrecioMayoreoComponent implements ICellRendererAngularComp {
+  private trackingService = inject(TrackingService);
 
   private signalsService = inject(SignalsService);
 
@@ -184,6 +186,7 @@ export class DetailCellRendererPrecioMayoreoComponent implements ICellRendererAn
   }
 
   revertChanges() {
+    this.trackingService.addLog(this.trackingService.getnameComp(), 'Deshizo cambios en detail cell renderer precio mayoreo', 'Almacenes', this.trackingService.getEmail());
     this.loadDescuentoData();
     this.hasDescuentoChanges = false;
     this.selectedDescuento = null;

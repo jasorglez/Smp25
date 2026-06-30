@@ -12,6 +12,7 @@ import { FollowprojectsService } from 'app/services/followprojects.service';
 import { AttachHandlerService } from 'app/services/attach-handler.service';
 import { SafePipe } from 'app/shared/pipes/safe.pipe';
 import { ConventionsService } from 'app/services/conventions.service';
+import { TrackingService } from 'app/services/tracking.service';
 
 @Component({
   selector: 'app-convention-details',
@@ -21,6 +22,7 @@ import { ConventionsService } from 'app/services/conventions.service';
   styleUrl: './convention-details.component.scss'
 })
 export class conventionDetailsComponent {
+  private trackingService = inject(TrackingService);
   private employeesxloansService = inject(EmployeesxloansService);
   private signalsService = inject(SignalsService);
   private timeService = inject(TimeService);
@@ -203,6 +205,7 @@ export class conventionDetailsComponent {
   }
 
   async addRow(type: string) {
+    this.trackingService.addLog(this.trackingService.getnameComp(), 'Agregó nuevo convention details', 'Proyectos', this.trackingService.getEmail());
     const tempId = `temp_${this.tempIdCounter++}`;
     const timeData = await this.getTime();
 

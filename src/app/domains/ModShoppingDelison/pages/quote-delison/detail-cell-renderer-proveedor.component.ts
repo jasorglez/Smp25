@@ -10,6 +10,7 @@ import { SignalsService } from 'app/services/signals.service';
 import { NgSelectModule } from '@ng-select/ng-select';
 import pdfMake from 'pdfmake/build/pdfmake';
 import pdfFonts from 'pdfmake/build/vfs_fonts';
+import { TrackingService } from 'app/services/tracking.service';
 
 pdfMake.vfs = pdfFonts.vfs;
 
@@ -110,6 +111,7 @@ pdfMake.vfs = pdfFonts.vfs;
   `]
 })
 export class DetailCellRendererProveedorComponent {
+  private trackingService = inject(TrackingService);
   private customersService = inject(CustomersService);
   private signalsService = inject(SignalsService);
 
@@ -337,6 +339,7 @@ export class DetailCellRendererProveedorComponent {
   }
 
   saveChanges() {
+    this.trackingService.addLog(this.trackingService.getnameComp(), 'Guardó cambios en detail cell renderer proveedor', 'ModShoppingDelison', this.trackingService.getEmail());
     // TODO: Implementar guardado en backend cuando esté disponible
     console.log('💾 Guardando cambios (frontend only)...');
     console.log('Provider:', this.selectedProviderId);
@@ -348,6 +351,7 @@ export class DetailCellRendererProveedorComponent {
   }
 
   revertChanges() {
+    this.trackingService.addLog(this.trackingService.getnameComp(), 'Deshizo cambios en detail cell renderer proveedor', 'ModShoppingDelison', this.trackingService.getEmail());
     this.buildRowData();
     this.hasUnsavedChanges = false;
     this.gridApi?.setGridOption('rowData', this.rowData);

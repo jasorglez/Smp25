@@ -5,6 +5,7 @@ import { AgendaService, AgendaCliente, TIPOS_AGENDA } from 'app/services/agenda.
 import { SignalsService } from 'app/services/signals.service';
 import { Subscription } from 'rxjs';
 import Swal from 'sweetalert2';
+import { TrackingService } from 'app/services/tracking.service';
 
 @Component({
   selector: 'app-prospectos-agenda',
@@ -140,6 +141,7 @@ import Swal from 'sweetalert2';
   `],
 })
 export class ProspectosAgendaComponent implements OnChanges, OnDestroy {
+  private trackingService = inject(TrackingService);
   private agendaSvc  = inject(AgendaService);
   private signalsSvc = inject(SignalsService);
 
@@ -246,6 +248,7 @@ export class ProspectosAgendaComponent implements OnChanges, OnDestroy {
   }
 
   async deleteSelected() {
+    this.trackingService.addLog(this.trackingService.getnameComp(), 'Eliminó prospectos agenda', 'Ventas', this.trackingService.getEmail());
     if (!this.selectedItem) return;
     const res = await Swal.fire({
       title: '¿Eliminar cita?',

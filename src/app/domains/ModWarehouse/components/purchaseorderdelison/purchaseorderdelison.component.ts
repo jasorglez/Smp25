@@ -26,6 +26,7 @@ import { MaterialsService } from 'app/services/materials.service';
 import { SetupService } from 'app/services/setup.service';
 import { CanComponentDeactivate } from 'app/guards/unsaved-changes.guard';
 import { confirmExitIfUnsaved } from 'app/helpers/can-deactivate.helper';
+import { TrackingService } from 'app/services/tracking.service';
 
 interface Catalog {
   id: number;
@@ -45,6 +46,7 @@ interface Provider {
   styleUrl: './purchaseorderdelison.component.scss',
 })
 export class PurchaseOrderDelisonComponent implements CanComponentDeactivate {
+  private trackingService = inject(TrackingService);
   // Inject of new way for Angular 18
   private requisitionsService = inject(OcAndReqsService);
   private providersService = inject(ProvidersService);
@@ -489,11 +491,13 @@ export class PurchaseOrderDelisonComponent implements CanComponentDeactivate {
 
   // Guardar cambios
   async saveChanges() {
+    this.trackingService.addLog(this.trackingService.getnameComp(), 'Guardó cambios en purchaseorderdelison', 'Almacenes', this.trackingService.getEmail());
     alerts.basicAlert('Información', 'Funcionalidad de guardado pendiente de implementar.', 'info');
   }
 
   // Revertir cambios
   revertChanges() {
+    this.trackingService.addLog(this.trackingService.getnameComp(), 'Deshizo cambios en purchaseorderdelison', 'Almacenes', this.trackingService.getEmail());
     this.loadHierarchicalData();
     this.notSavedChanges = false;
     this.newlyAddedRows = [];
@@ -504,6 +508,7 @@ export class PurchaseOrderDelisonComponent implements CanComponentDeactivate {
 
   // Eliminar elemento seleccionado
   async deleteSelectedItem() {
+    this.trackingService.addLog(this.trackingService.getnameComp(), 'Eliminó purchaseorderdelison', 'Almacenes', this.trackingService.getEmail());
     if (!this.selectedRowData) {
       alerts.basicAlert(
         'Error',

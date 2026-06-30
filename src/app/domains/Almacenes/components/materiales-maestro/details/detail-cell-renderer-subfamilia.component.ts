@@ -9,6 +9,7 @@ import { MaterialsService } from 'app/services/materials.service';
 import { lastValueFrom, Subscription } from 'rxjs';
 import { AG_GRID_LOCALE_ES } from 'assets/i18n/ag-grid.locale.es';
 import { SubfamiliaModalService } from '../services/subfamilia-modal.service';
+import { TrackingService } from 'app/services/tracking.service';
 
 @Component({
   selector: 'app-detail-cell-renderer-subfamilia',
@@ -58,6 +59,7 @@ import { SubfamiliaModalService } from '../services/subfamilia-modal.service';
 `]
 })
 export class DetailCellRendererSubfamiliaComponent implements ICellRendererAngularComp, OnDestroy {
+  private trackingService = inject(TrackingService);
 
   private materialsService = inject(MaterialsService);
   private modalService = inject(SubfamiliaModalService);
@@ -366,6 +368,7 @@ export class DetailCellRendererSubfamiliaComponent implements ICellRendererAngul
   // Modal handlers removed - not used in flat structure
 
   async saveChanges() {
+    this.trackingService.addLog(this.trackingService.getnameComp(), 'Guardó cambios en detail cell renderer subfamilia', 'Almacenes', this.trackingService.getEmail());
     if (!this.hasUnsavedChanges) {
       alerts.basicAlert('Info', 'No hay cambios sin guardar.', 'info');
       return;
@@ -428,6 +431,7 @@ export class DetailCellRendererSubfamiliaComponent implements ICellRendererAngul
   }
 
   revertChanges() {
+    this.trackingService.addLog(this.trackingService.getnameComp(), 'Deshizo cambios en detail cell renderer subfamilia', 'Almacenes', this.trackingService.getEmail());
     if (!this.hasUnsavedChanges) {
       alerts.basicAlert('Info', 'No hay cambios para revertir.', 'info');
       return;

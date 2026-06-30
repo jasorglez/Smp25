@@ -1,10 +1,11 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, OnInit, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { AgGridModule } from 'ag-grid-angular';
 import { ColDef, GridApi, GridReadyEvent, ICellRendererParams } from 'ag-grid-enterprise';
 import { AG_GRID_LOCALE_ES } from 'assets/i18n/ag-grid.locale.es';
 import { alerts } from 'app/helpers/alerts';
+import { TrackingService } from 'app/services/tracking.service';
 
 @Component({
   selector: 'app-detail-cell-renderer-purchase-order-items',
@@ -57,6 +58,7 @@ import { alerts } from 'app/helpers/alerts';
   `]
 })
 export class DetailCellRendererPurchaseOrderItemsComponent implements OnInit {
+  private trackingService = inject(TrackingService);
 
   private params!: ICellRendererParams;
   private gridApi!: GridApi;
@@ -306,6 +308,7 @@ export class DetailCellRendererPurchaseOrderItemsComponent implements OnInit {
   }
 
   deleteSelectedItem() {
+    this.trackingService.addLog(this.trackingService.getnameComp(), 'Eliminó detail cell renderer purchase order items', 'Almacenes', this.trackingService.getEmail());
     const selectedRows = this.gridApi.getSelectedRows();
     if (selectedRows.length === 0) {
       alerts.basicAlert('Selección requerida', 'Por favor seleccione un item para eliminar', 'warning');
@@ -328,6 +331,7 @@ export class DetailCellRendererPurchaseOrderItemsComponent implements OnInit {
   }
 
   saveChanges() {
+    this.trackingService.addLog(this.trackingService.getnameComp(), 'Guardó cambios en detail cell renderer purchase order items', 'Almacenes', this.trackingService.getEmail());
     if (!this.hasUnsavedChanges) {
       alerts.basicAlert('Sin cambios', 'No hay cambios pendientes por guardar', 'info');
       return;

@@ -11,6 +11,7 @@ import { FormsModule } from '@angular/forms';
 import { FollowprojectsService } from 'app/services/followprojects.service';
 import { AttachHandlerService } from 'app/services/attach-handler.service';
 import { SafePipe } from 'app/shared/pipes/safe.pipe';
+import { TrackingService } from 'app/services/tracking.service';
 
 @Component({
   selector: 'app-contract-details',
@@ -20,6 +21,7 @@ import { SafePipe } from 'app/shared/pipes/safe.pipe';
   styleUrl: './contract-details.component.scss'
 })
 export class ContractDetailsComponent {
+  private trackingService = inject(TrackingService);
   private employeesxloansService = inject(EmployeesxloansService);
   private signalsService = inject(SignalsService);
   private timeService = inject(TimeService);
@@ -176,6 +178,7 @@ export class ContractDetailsComponent {
   }
 
   async addRow(type: string) {
+    this.trackingService.addLog(this.trackingService.getnameComp(), 'Agregó nuevo contract details', 'Proyectos', this.trackingService.getEmail());
     const tempId = `temp_${this.tempIdCounter++}`;
     const timeData = await this.getTime();
 

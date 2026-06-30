@@ -8,6 +8,7 @@ import { alerts } from '../../../../helpers/alerts';
  
 import { AgGridModule } from 'ag-grid-angular';
 import { concat, lastValueFrom, toArray } from 'rxjs';
+import { TrackingService } from 'app/services/tracking.service';
 
 @Component({
   selector: 'app-detailsprocess',
@@ -17,6 +18,7 @@ import { concat, lastValueFrom, toArray } from 'rxjs';
   styleUrl: './detailsprocess.component.scss'
 })
 export class DetailsprocessComponent {
+  private trackingService = inject(TrackingService);
 
   private catalogService = inject(CatalogsService);
   private signalsService = inject(SignalsService);
@@ -158,6 +160,7 @@ export class DetailsprocessComponent {
     
   // Operacioneas de los botones
     async saveChanges() {
+      this.trackingService.addLog(this.trackingService.getnameComp(), 'Guardó cambios en detailsprocess', 'Almacenes', this.trackingService.getEmail());
           const isValid = this.rowData.every((item) => item.description);
               if (!isValid) {
                 alerts.basicAlert(
@@ -204,6 +207,7 @@ export class DetailsprocessComponent {
   
 
     revert(){
+      this.trackingService.addLog(this.trackingService.getnameComp(), 'Deshizo cambios en detailsprocess', 'Almacenes', this.trackingService.getEmail());
       this.getPermission();
       this.notSavedChanges = false;
     }

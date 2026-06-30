@@ -17,6 +17,7 @@ import { ProductoAutocompleteEditorComponent } from './producto-autocomplete-edi
 import pdfMake from 'pdfmake/build/pdfmake';
 import * as pdfFonts from 'pdfmake/build/vfs_fonts';
 import Swal from 'sweetalert2';
+import { TrackingService } from 'app/services/tracking.service';
 (pdfMake as any).vfs = (pdfFonts as any).pdfMake?.vfs || (pdfFonts as any).default?.pdfMake?.vfs;
 
 @Component({
@@ -27,6 +28,7 @@ import Swal from 'sweetalert2';
   styleUrls: ['./detalles-pedidos.component.scss']
 })
 export class DetallesPedidosComponent implements OnInit, OnDestroy {
+  private trackingService = inject(TrackingService);
   private params!: ICellRendererParams;
   private gridApi!: GridApi;
   private context: any;
@@ -679,6 +681,7 @@ get colDefs(): ColDef[] {
   }
 
   async deleteSelectedItem() {
+    this.trackingService.addLog(this.trackingService.getnameComp(), 'Eliminó detalles pedidos', 'Logística', this.trackingService.getEmail());
     if (this.isLocked) {
       alerts.basicAlert('Pedido bloqueado', 'No se pueden eliminar items. Este pedido está en proceso.', 'warning');
       return;
@@ -730,6 +733,7 @@ get colDefs(): ColDef[] {
   }
 
   async saveChanges() {
+    this.trackingService.addLog(this.trackingService.getnameComp(), 'Guardó cambios en detalles pedidos', 'Logística', this.trackingService.getEmail());
     if (this.isLocked) {
       alerts.basicAlert('Pedido bloqueado', 'No se pueden guardar cambios. Este pedido está en proceso.', 'warning');
       return;

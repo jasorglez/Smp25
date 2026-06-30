@@ -6,6 +6,7 @@ import { ColDef, GridApi, GridReadyEvent } from 'ag-grid-enterprise';
 import { SignalsService } from 'app/services/signals.service';
 import { HerramientaService } from 'app/services/herramienta.service';
 import { alerts } from 'app/helpers/alerts';
+import { TrackingService } from 'app/services/tracking.service';
 
 @Component({
   selector: 'app-herramientas',
@@ -14,6 +15,7 @@ import { alerts } from 'app/helpers/alerts';
   templateUrl: './herramientas.component.html',
 })
 export class HerramientasComponent {
+  private trackingService = inject(TrackingService);
   private signalsService     = inject(SignalsService);
   private herramientaService = inject(HerramientaService);
 
@@ -130,6 +132,7 @@ export class HerramientasComponent {
   }
 
   addRow() {
+    this.trackingService.addLog(this.trackingService.getnameComp(), 'Agregó nuevo herramientas', 'Proyectos', this.trackingService.getEmail());
     const newRow = {
       id: `temp_${++this.tempCounter}`,
       idCompany: this.idCompany,
@@ -146,6 +149,7 @@ export class HerramientasComponent {
   }
 
   async saveChanges() {
+    this.trackingService.addLog(this.trackingService.getnameComp(), 'Guardó cambios en herramientas', 'Proyectos', this.trackingService.getEmail());
     const toSave = this.rowData.filter((r) => r.__isNew || r.__modified);
     if (!toSave.length) return;
 
@@ -166,12 +170,14 @@ export class HerramientasComponent {
   }
 
   revertChanges() {
+    this.trackingService.addLog(this.trackingService.getnameComp(), 'Deshizo cambios en herramientas', 'Proyectos', this.trackingService.getEmail());
     this.rowData    = JSON.parse(JSON.stringify(this.originalData));
     this.hasChanges = false;
     this.selectedRow = null;
   }
 
   async deleteSelected() {
+    this.trackingService.addLog(this.trackingService.getnameComp(), 'Eliminó herramientas', 'Proyectos', this.trackingService.getEmail());
     if (!this.selectedRow) return;
     const result = await alerts.confirmAlert(
       '¿Eliminar?',

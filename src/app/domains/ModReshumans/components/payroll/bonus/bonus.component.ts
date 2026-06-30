@@ -46,6 +46,7 @@ import { environment } from '@env/environment';
 import { BranchsService } from 'app/services/branchs.service';
 import { CanComponentDeactivate } from 'app/guards/unsaved-changes.guard';
 import { confirmExitIfUnsaved } from 'app/helpers/can-deactivate.helper';
+import { TrackingService } from 'app/services/tracking.service';
 
 @Component({
   selector: 'app-bonus',
@@ -65,6 +66,7 @@ export class BonusComponent implements CanComponentDeactivate {
   private administrationService = inject(AdministrationService);
   private employeeService = inject(EmployeesService);
   authService = inject(AuthService);
+  private trackingService = inject(TrackingService);
   private branchesService = inject(BranchsService);
   private gridApi: GridApi;
   private hrService = inject(HRService);
@@ -527,6 +529,7 @@ export class BonusComponent implements CanComponentDeactivate {
   }
 
   addRow() {
+    this.trackingService.addLog(this.trackingService.getnameComp(), 'Agregó nuevo bonus', 'RRHH', this.trackingService.getEmail());
     const newItem = {
       active: true,
       idBranch: this.idBranch > 0 ? this.idBranch : null,
@@ -555,6 +558,7 @@ export class BonusComponent implements CanComponentDeactivate {
 
 
   async saveChanges() {
+    this.trackingService.addLog(this.trackingService.getnameComp(), 'Guardó cambios en bonus', 'RRHH', this.trackingService.getEmail());
     console.log('---- salvando cambios ', this.rowData);
     const isValid = this.rowData.every((item) => item.employeeName && item.incidenceDate && item.idBonus);
     if (!isValid) {
@@ -731,11 +735,13 @@ export class BonusComponent implements CanComponentDeactivate {
   }
 
   revert() {
+    this.trackingService.addLog(this.trackingService.getnameComp(), 'Deshizo cambios en bonus', 'RRHH', this.trackingService.getEmail());
     this.obtenerBonosEmpleados();
     this.notSavedChanges = false;
   }
 
   deleteEntry() {
+    this.trackingService.addLog(this.trackingService.getnameComp(), 'Eliminó bonus', 'RRHH', this.trackingService.getEmail());
     const selectedRows = this.gridApi.getSelectedRows(); // Obtener los datos de la fila seleccionada
     console.log(
       '---- este es el registro seleccionado para eliminar: ',

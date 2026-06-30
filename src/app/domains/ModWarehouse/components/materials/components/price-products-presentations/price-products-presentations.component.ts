@@ -27,6 +27,7 @@ import { SignalsService } from 'app/services/signals.service';
 import { PriceXProductsPresentationService } from 'app/services/priceXProductsPresentation.service';
 import { concat, lastValueFrom, toArray } from 'rxjs';
 import { CatalogsService } from 'app/services/catalogs.service';
+import { TrackingService } from 'app/services/tracking.service';
 declare const bootstrap: any;
 
 @Component({
@@ -46,6 +47,7 @@ export class PriceProductsPresentationsComponent implements OnInit {
   priceXproductService = inject(PriceXProductsPresentationService);
 
   catalogsService = inject(CatalogsService);
+  private trackingService = inject(TrackingService);
 
   private signalsService = inject(SignalsService);
 
@@ -402,17 +404,20 @@ export class PriceProductsPresentationsComponent implements OnInit {
   // TODO Check to delete measure
 
   deleteEntry() {
+    this.trackingService.addLog(this.trackingService.getnameComp(), 'Eliminó price products presentations', 'Almacenes', this.trackingService.getEmail());
     throw new Error('Method not implemented.');
   }
 
   // TODO revert changes
   revert() {
+    this.trackingService.addLog(this.trackingService.getnameComp(), 'Deshizo cambios en price products presentations', 'Almacenes', this.trackingService.getEmail());
     this.notSavedChanges.set(false);
 
     throw new Error('Method not implemented.');
   }
 
   addRow() {
+    this.trackingService.addLog(this.trackingService.getnameComp(), 'Agregó nuevo price products presentations', 'Almacenes', this.trackingService.getEmail());
     const tempId = this.tempIdCounter++;
     const newItem = {
       id: tempId,
@@ -431,6 +436,7 @@ export class PriceProductsPresentationsComponent implements OnInit {
   }
 
   async saveChanges() {
+    this.trackingService.addLog(this.trackingService.getnameComp(), 'Guardó cambios en price products presentations', 'Almacenes', this.trackingService.getEmail());
     const isValid = this.rowData().every(
       (item) => item.description && item.price
     );

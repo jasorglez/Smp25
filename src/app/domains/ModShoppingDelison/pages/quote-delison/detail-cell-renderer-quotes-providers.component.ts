@@ -1,9 +1,10 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, OnInit, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { AgGridModule } from 'ag-grid-angular';
 import { ColDef, GridApi, GridReadyEvent } from 'ag-grid-enterprise';
 import { AG_GRID_LOCALE_ES } from 'assets/i18n/ag-grid.locale.es';
+import { TrackingService } from 'app/services/tracking.service';
 
 @Component({
   selector: 'app-detail-cell-renderer-quotes-providers',
@@ -44,6 +45,7 @@ import { AG_GRID_LOCALE_ES } from 'assets/i18n/ag-grid.locale.es';
   `]
 })
 export class DetailCellRendererQuotesProvidersComponent implements OnInit {
+  private trackingService = inject(TrackingService);
 
   private params!: any;
   private gridApi!: GridApi;
@@ -211,6 +213,7 @@ export class DetailCellRendererQuotesProvidersComponent implements OnInit {
   }
 
   saveChanges() {
+    this.trackingService.addLog(this.trackingService.getnameComp(), 'Guardó cambios en detail cell renderer quotes providers', 'ModShoppingDelison', this.trackingService.getEmail());
     // Save logic here
     this.hasUnsavedChanges = false;
     console.log('Providers saved:', this.rowData);

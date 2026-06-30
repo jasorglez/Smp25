@@ -10,6 +10,7 @@ import { DetailCellRendererPedimentosComponent } from './detail-cell-renderer-pe
 import { SignalsService } from 'app/services/signals.service';
 import { OcAndReqsService } from 'app/services/ocandreqs.service';
 import { BranchsService } from 'app/services/branchs.service';
+import { TrackingService } from 'app/services/tracking.service';
 
 @Component({
   selector: 'app-quote-delison',
@@ -19,6 +20,7 @@ import { BranchsService } from 'app/services/branchs.service';
   styleUrl: './quote-delison.component.scss'
 })
 export class QuoteDelisonComponent implements OnInit {
+  private trackingService = inject(TrackingService);
 
   // Inject services
   private signalsService = inject(SignalsService);
@@ -543,6 +545,7 @@ export class QuoteDelisonComponent implements OnInit {
   }
 
   saveChanges() {
+    this.trackingService.addLog(this.trackingService.getnameComp(), 'Guardó cambios en quote delison', 'ModShoppingDelison', this.trackingService.getEmail());
     alerts.basicAlert('Función no implementada', 'La lógica para guardar cambios en las cotizaciones aún no se ha implementado.', 'info');
   }
 }

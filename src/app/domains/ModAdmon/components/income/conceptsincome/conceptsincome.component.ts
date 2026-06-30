@@ -13,6 +13,7 @@ import { tap, lastValueFrom, concat, toArray, catchError, EMPTY } from 'rxjs';
 import { Icatalog } from 'app/interface/icatalog';
 import { CatalogsService } from 'app/services/catalogs.service';
 import { ActivatedRoute } from '@angular/router';
+import { TrackingService } from 'app/services/tracking.service';
 
 @Component({
   selector: 'app-conceptsincome',
@@ -22,6 +23,7 @@ import { ActivatedRoute } from '@angular/router';
   styleUrl: './conceptsincome.component.scss'
 })
 export class ConceptsincomeComponent {
+  private trackingService = inject(TrackingService);
 
     private incomesAndExpensesService = inject(IncomesAndExpensesService);
   private signalsService = inject(SignalsService);
@@ -406,6 +408,7 @@ export class ConceptsincomeComponent {
   }
 
   addRow() {
+    this.trackingService.addLog(this.trackingService.getnameComp(), 'Agregó nuevo conceptsincome', 'Admon', this.trackingService.getEmail());
     if (!this.idIncExp) {
       alerts.basicAlert(
         'Añadir concepto',
@@ -459,6 +462,7 @@ export class ConceptsincomeComponent {
   }
 
   async saveChanges() {
+    this.trackingService.addLog(this.trackingService.getnameComp(), 'Guardó cambios en conceptsincome', 'Admon', this.trackingService.getEmail());
     if (!this.idIncExp) {
       alerts.basicAlert(
         'Guardar cambios',
@@ -554,6 +558,7 @@ export class ConceptsincomeComponent {
   }
 
   async deleteEntry() {
+    this.trackingService.addLog(this.trackingService.getnameComp(), 'Eliminó conceptsincome', 'Admon', this.trackingService.getEmail());
     if (!this.idIncExp) {
       alerts.basicAlert(
         'Eliminar entrada',
@@ -601,6 +606,7 @@ export class ConceptsincomeComponent {
   }
 
   revert() {
+    this.trackingService.addLog(this.trackingService.getnameComp(), 'Deshizo cambios en conceptsincome', 'Admon', this.trackingService.getEmail());
     this.getData();
     this.notSavedChanges = false;
   }

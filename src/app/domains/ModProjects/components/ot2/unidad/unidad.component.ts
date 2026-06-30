@@ -1,8 +1,9 @@
-import { Component } from '@angular/core';
+import { Component, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { TranslateModule } from '@ngx-translate/core';
 import { AgGridModule } from 'ag-grid-angular';
 import { ColDef, GridApi, GridReadyEvent } from 'ag-grid-enterprise';
+import { TrackingService } from 'app/services/tracking.service';
 
 interface UnidadData {
   unidad: string;
@@ -18,6 +19,7 @@ interface UnidadData {
   styleUrl: './unidad.component.scss'
 })
 export class UnidadComponent {
+  private trackingService = inject(TrackingService);
   
   // Variables de control
   public notSavedChanges: boolean = false;
@@ -126,6 +128,7 @@ export class UnidadComponent {
 
   // Métodos CRUD
   addRow() {
+    this.trackingService.addLog(this.trackingService.getnameComp(), 'Agregó nuevo unidad', 'Proyectos', this.trackingService.getEmail());
     const tempId = `temp_${this.tempIdCounter++}`;
     const newItem: UnidadData = {
       unidad: '',
@@ -150,6 +153,7 @@ export class UnidadComponent {
   }
 
   saveChanges() {
+    this.trackingService.addLog(this.trackingService.getnameComp(), 'Guardó cambios en unidad', 'Proyectos', this.trackingService.getEmail());
     // Validar datos requeridos
     const invalidRows = this.rowData.filter(row => 
       !row.unidad?.trim() || !row.empleado?.trim() || !row.fecha?.trim()
@@ -177,6 +181,7 @@ export class UnidadComponent {
   }
 
   revert() {
+    this.trackingService.addLog(this.trackingService.getnameComp(), 'Deshizo cambios en unidad', 'Proyectos', this.trackingService.getEmail());
     // Restaurar datos originales (simular recarga desde API)
     this.rowData = [
       { unidad: 'CORTES Y RECONEXION', empleado: 'JUAN DE JESUS', fecha: '29/05/2025 00:00' },
@@ -192,6 +197,7 @@ export class UnidadComponent {
   }
 
   deleteEntry() {
+    this.trackingService.addLog(this.trackingService.getnameComp(), 'Eliminó unidad', 'Proyectos', this.trackingService.getEmail());
     const selectedNodes = this.gridApi.getSelectedNodes();
     
     if (selectedNodes.length === 0) {

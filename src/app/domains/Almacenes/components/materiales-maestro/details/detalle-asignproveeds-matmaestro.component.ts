@@ -14,6 +14,7 @@ import { SelectWithTooltipEditorV2Component } from 'app/shared/select-with-toolt
 import { DetallesSucursalesProveedorComponent } from './detalles-sucursalesproveedor.component';
 import { SucursalByMaterialProveedorService } from 'app/services/sucursalByMaterialProveedor.service';
 import { firstValueFrom } from 'rxjs';
+import { TrackingService } from 'app/services/tracking.service';
 
 @Component({
   selector: 'app-detalle-asignproveeds-matmaestro',
@@ -73,6 +74,7 @@ import { firstValueFrom } from 'rxjs';
   `
 })
 export class DetalleAsignProveedsMaestroComponent implements ICellRendererAngularComp, OnDestroy {
+  private trackingService = inject(TrackingService);
 
   private customersService = inject(CustomersService);
   private branchsService = inject(BranchsService);
@@ -743,6 +745,7 @@ export class DetalleAsignProveedsMaestroComponent implements ICellRendererAngula
   }
 
   revertChanges() {
+    this.trackingService.addLog(this.trackingService.getnameComp(), 'Deshizo cambios en detalle asignproveeds matmaestro', 'Almacenes', this.trackingService.getEmail());
     this.loadProveedorData();
     this.hasProveedorChanges = false;
     this.selectedProveedor = null;

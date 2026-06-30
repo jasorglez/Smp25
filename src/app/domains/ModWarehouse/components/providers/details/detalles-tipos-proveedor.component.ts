@@ -9,6 +9,7 @@ import { ProvidersService } from 'app/services/providers.service';
 import { CustomersService } from 'app/services/customers.service';
 import { alerts } from 'app/helpers/alerts';
 import { SelectWithTooltipEditorV2Component } from 'app/shared/select-with-tooltip-editor-v2.component';
+import { TrackingService } from 'app/services/tracking.service';
 
 @Component({
   selector: 'app-detalles-tipos-proveedor',
@@ -87,6 +88,7 @@ import { SelectWithTooltipEditorV2Component } from 'app/shared/select-with-toolt
   `]
 })
 export class DetallesTiposProveedorComponent implements ICellRendererAngularComp {
+  private trackingService = inject(TrackingService);
 
   private catalogsService = inject(CatalogsService);
   private signalsService = inject(SignalsService);
@@ -623,6 +625,7 @@ export class DetallesTiposProveedorComponent implements ICellRendererAngularComp
   }
 
   addRow(): void {
+    this.trackingService.addLog(this.trackingService.getnameComp(), 'Agregó nuevo detalles tipos proveedor', 'Almacenes', this.trackingService.getEmail());
     if (!this.gridApi) {
       return;
     }
@@ -658,6 +661,7 @@ export class DetallesTiposProveedorComponent implements ICellRendererAngularComp
   }
 
   async deleteSelected(): Promise<void> {
+    this.trackingService.addLog(this.trackingService.getnameComp(), 'Eliminó detalles tipos proveedor', 'Almacenes', this.trackingService.getEmail());
     if (!this.selectedRow) {
       return;
     }
@@ -749,6 +753,7 @@ export class DetallesTiposProveedorComponent implements ICellRendererAngularComp
   }
 
   async saveChanges(): Promise<void> {
+    this.trackingService.addLog(this.trackingService.getnameComp(), 'Guardó cambios en detalles tipos proveedor', 'Almacenes', this.trackingService.getEmail());
     // Validar que todas las filas tengan las 3 columnas llenas
     const incompleteRows = this.rowData.filter(
       row => !row.categoria || !row.familia || !row.subfamilia
@@ -1102,6 +1107,7 @@ export class DetallesTiposProveedorComponent implements ICellRendererAngularComp
   }
 
   async revertChanges(): Promise<void> {
+    this.trackingService.addLog(this.trackingService.getnameComp(), 'Deshizo cambios en detalles tipos proveedor', 'Almacenes', this.trackingService.getEmail());
     // Recargar datos desde el endpoint
     await this.loadData();
     this.hasChanges = false;

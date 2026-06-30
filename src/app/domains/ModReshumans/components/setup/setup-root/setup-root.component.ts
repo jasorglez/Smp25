@@ -4,6 +4,7 @@ import { FormsModule } from '@angular/forms';
 import { alerts } from 'app/helpers/alerts';
 import { HRService } from 'app/services/hr.service';
 import { SignalsService } from 'app/services/signals.service';
+import { TrackingService } from 'app/services/tracking.service';
 
 interface Bank {
   id: number; 
@@ -22,6 +23,7 @@ interface Bank {
 })
 
 export class SetupRootComponent {
+  private trackingService = inject(TrackingService);
   private signalsService = inject(SignalsService);
   private hrService = inject(HRService);
   isLoading: boolean = false;
@@ -68,6 +70,7 @@ export class SetupRootComponent {
   }
 
   saveChanges() {
+    this.trackingService.addLog(this.trackingService.getnameComp(), 'Guardó cambios en setup root', 'RRHH', this.trackingService.getEmail());
     if (this.newData) {
       // Si no hay datos, hacer POST
       this.hrData.idRoot = this.idRoot; // Agregar idRoot al objeto
@@ -99,6 +102,7 @@ export class SetupRootComponent {
   }
 
   revertChanges() {
+    this.trackingService.addLog(this.trackingService.getnameComp(), 'Deshizo cambios en setup root', 'RRHH', this.trackingService.getEmail());
     this.getData(); // Refrescar datos
   }
 

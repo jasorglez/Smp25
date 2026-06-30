@@ -10,6 +10,7 @@ import { forkJoin, lastValueFrom } from 'rxjs';
 import { alerts } from 'app/helpers/alerts';
 import { RemisionesService } from 'app/services/remisiones.service';
 import Swal from 'sweetalert2';
+import { TrackingService } from 'app/services/tracking.service';
 
 @Component({
   selector: 'storeComponent',
@@ -19,6 +20,7 @@ import Swal from 'sweetalert2';
   styleUrls: ['./productos.component.scss'],
 })
 export class MaterialsComponent {
+  private trackingService = inject(TrackingService);
   public AG_GRID_LOCALE_ES = AG_GRID_LOCALE_ES;
   private readonly ESTADO_ENTREGADO = 'ENTREGADO';
   private readonly ESTADO_REMISION = 'REMISION';
@@ -319,6 +321,7 @@ export class MaterialsComponent {
   }
 
   async saveChanges(): Promise<void> {
+    this.trackingService.addLog(this.trackingService.getnameComp(), 'Guardó cambios en productos', 'Logística', this.trackingService.getEmail());
     const newRows      = this.allData.filter(r => r.__isNew);
     const modifiedRows = this.allData.filter(r => r.__modified && !r.__isNew);
     if (newRows.length === 0 && modifiedRows.length === 0) {
@@ -452,6 +455,7 @@ export class MaterialsComponent {
   }
 
   revertChanges(): void {
+    this.trackingService.addLog(this.trackingService.getnameComp(), 'Deshizo cambios en productos', 'Logística', this.trackingService.getEmail());
     if (!this.hasUnsavedChanges) {
       alerts.basicAlert('Sin cambios', 'No hay cambios pendientes por deshacer', 'info');
       return;

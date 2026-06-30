@@ -12,6 +12,7 @@ import { PosicionesService }    from 'app/services/posiciones.service';
 import { EquipmentService }     from 'app/services/equipment.service';
 import { MaterialsService }     from 'app/services/materials.service';
 import { SignalsService }       from 'app/services/signals.service';
+import { TrackingService } from 'app/services/tracking.service';
 
 interface RecursoRow {
   id:           number;   // 0 = nuevo, >0 = existe en BD
@@ -57,6 +58,7 @@ interface ImportPreviewRow {
   templateUrl: './pmo-recursos.component.html',
 })
 export class PmoRecursosComponent implements OnInit {
+  private trackingService = inject(TrackingService);
 
   @ViewChild('fileInput') fileInputRef!: ElementRef<HTMLInputElement>;
   private _projectsService     = inject(ProjectsService);
@@ -422,6 +424,7 @@ export class PmoRecursosComponent implements OnInit {
   onGridReady(e: GridReadyEvent): void { this.gridApi = e.api; }
 
   addRow(): void {
+    this.trackingService.addLog(this.trackingService.getnameComp(), 'Agregó nuevo pmo recursos', 'ModPMO', this.trackingService.getEmail());
     if (!this.selectedActivity) return;
     const newRow: RecursoRow = {
       id: 0,
@@ -441,6 +444,7 @@ export class PmoRecursosComponent implements OnInit {
   }
 
   async saveChanges(): Promise<void> {
+    this.trackingService.addLog(this.trackingService.getnameComp(), 'Guardó cambios en pmo recursos', 'ModPMO', this.trackingService.getEmail());
     if (!this.selectedActivity) return;
     const dirty = this.rowData.filter(r => r.__isNew || r.__modified);
     if (!dirty.length) { this.showMsg('No hay cambios que guardar', 'error'); return; }
@@ -459,6 +463,7 @@ export class PmoRecursosComponent implements OnInit {
   }
 
   async deleteSelected(): Promise<void> {
+    this.trackingService.addLog(this.trackingService.getnameComp(), 'Eliminó pmo recursos', 'ModPMO', this.trackingService.getEmail());
     const selected = this.gridApi?.getSelectedRows() ?? [];
     if (!selected.length) return;
     const row: RecursoRow = selected[0];
@@ -477,6 +482,7 @@ export class PmoRecursosComponent implements OnInit {
   }
 
   revertChanges(): void {
+    this.trackingService.addLog(this.trackingService.getnameComp(), 'Deshizo cambios en pmo recursos', 'ModPMO', this.trackingService.getEmail());
     this.rowData = JSON.parse(JSON.stringify(this.originalRowData));
     this.hasUnsavedChanges = false;
     this.setRowData(this.rowData);

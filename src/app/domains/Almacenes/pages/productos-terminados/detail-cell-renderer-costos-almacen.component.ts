@@ -1,8 +1,9 @@
-import { Component } from '@angular/core';
+import { Component, inject } from '@angular/core';
 import { ICellRendererAngularComp } from 'ag-grid-angular';
 import { ICellRendererParams } from 'ag-grid-enterprise';
 import { AgGridModule } from 'ag-grid-angular';
 import { CommonModule } from '@angular/common';
+import { TrackingService } from 'app/services/tracking.service';
 
 @Component({
   selector: 'app-detail-cell-renderer-costos-almacen',
@@ -59,6 +60,7 @@ import { CommonModule } from '@angular/common';
   `
 })
 export class DetailCellRendererCostosAlmacenComponent implements ICellRendererAngularComp {
+  private trackingService = inject(TrackingService);
 
   params: any;
   productoName: string;
@@ -117,6 +119,7 @@ export class DetailCellRendererCostosAlmacenComponent implements ICellRendererAn
   saveItems() { /* Lógica para guardar */ }
   revertChanges() { this.loadData(); this.hasChanges = false; }
   deleteSelected(): void {
+    this.trackingService.addLog(this.trackingService.getnameComp(), 'Eliminó detail cell renderer costos almacen', 'Almacenes', this.trackingService.getEmail());
     if (!this.selectedRow) return;
     this.rowData = this.rowData.filter(row => row.id !== this.selectedRow.id);
     this.selectedRow = null;

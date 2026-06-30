@@ -6,6 +6,7 @@ import { ColDef, GridApi, GridReadyEvent } from 'ag-grid-enterprise';
 import { SignalsService } from 'app/services/signals.service';
 import { AuxiliarItemsService } from 'app/services/auxiliar-items.service';
 import { alerts } from 'app/helpers/alerts';
+import { TrackingService } from 'app/services/tracking.service';
 
 @Component({
   selector: 'app-auxiliares-cat',
@@ -15,6 +16,7 @@ import { alerts } from 'app/helpers/alerts';
   styleUrl: './auxiliares-cat.component.scss',
 })
 export class AuxiliaresCatComponent {
+  private trackingService = inject(TrackingService);
   private signalsService       = inject(SignalsService);
   private auxiliarItemsService = inject(AuxiliarItemsService);
 
@@ -195,6 +197,7 @@ export class AuxiliaresCatComponent {
   private tempId = 0;
 
   addRow() {
+    this.trackingService.addLog(this.trackingService.getnameComp(), 'Agregó nuevo auxiliares cat', 'Proyectos', this.trackingService.getEmail());
     const row = { id: `temp_${++this.tempId}`, idCompany: this.idCompany, idAuxiliar: null, name: '', cantidad: 1, sortOrder: this.rowData.length + 1, active: true, __isNew: true };
     this.rowData = [row, ...this.rowData];
     this.hasMainChanges = true;
@@ -205,6 +208,7 @@ export class AuxiliaresCatComponent {
   }
 
   async saveChanges() {
+    this.trackingService.addLog(this.trackingService.getnameComp(), 'Guardó cambios en auxiliares cat', 'Proyectos', this.trackingService.getEmail());
     const toSave = this.rowData.filter((r) => r.__isNew || r.__modified);
     if (!toSave.length) return;
     try {
@@ -228,6 +232,7 @@ export class AuxiliaresCatComponent {
   }
 
   revertChanges() {
+    this.trackingService.addLog(this.trackingService.getnameComp(), 'Deshizo cambios en auxiliares cat', 'Proyectos', this.trackingService.getEmail());
     this.rowData = JSON.parse(JSON.stringify(this.originalData));
     this.hasMainChanges = false; this.selectedRow = null; this.clearDetail();
   }

@@ -34,6 +34,7 @@ import { BranchsService } from 'app/services/branchs.service';
 import { FormBuilder, FormGroup, Validators } from '@angular/forms';
 import { HRService } from 'app/services/hr.service';
 import { IdBlockPeriodsService } from 'app/services/IdBlockPeriods.service';
+import { TrackingService } from 'app/services/tracking.service';
 
 @Component({
   selector: 'app-master-payroll',
@@ -207,6 +208,7 @@ export class MasterPayrollComponent implements OnInit {
 
   private signalsService = inject(SignalsService);
   authService = inject(AuthService);
+  private trackingService = inject(TrackingService);
   private branchesService = inject(BranchsService);
   private administrationService = inject(AdministrationService);
   private payrollService = inject(PayrollService);
@@ -913,6 +915,7 @@ export class MasterPayrollComponent implements OnInit {
 
 
   addRow() {
+    this.trackingService.addLog(this.trackingService.getnameComp(), 'Agregó nuevo masterpayroll', 'RRHH', this.trackingService.getEmail());
   const selectedBranchId = this.idBranch > 0 ? this.idBranch : null;
 
   // Buscar si hay un bloque asociado a la sucursal
@@ -962,6 +965,7 @@ formatDate(dateStr: string): string {
 
 
   async saveChanges() {
+    this.trackingService.addLog(this.trackingService.getnameComp(), 'Guardó cambios en masterpayroll', 'RRHH', this.trackingService.getEmail());
     let hasErrors = false; // 🔴 Controla si hubo errores en alguna petición
   const isValid = this.rowData.every(
     (item) => item.startDate && item.endDate && item.idBranch && item.startDate <= item.endDate
@@ -1235,6 +1239,7 @@ formatDate(dateStr: string): string {
   }
 
   deleteEntry() {
+    this.trackingService.addLog(this.trackingService.getnameComp(), 'Eliminó masterpayroll', 'RRHH', this.trackingService.getEmail());
     const selectedNodes = this.gridApi.getSelectedNodes();
     if (selectedNodes.length === 0) {
       alerts.basicAlert(

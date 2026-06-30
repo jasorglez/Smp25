@@ -10,6 +10,7 @@ import { SignalsService } from 'app/services/signals.service';
 import { CustomersService } from 'app/services/customers.service';
 import { AdministrationService } from 'app/services/administration.service';
 import { FacturacionService } from 'app/services/facturacion.service';
+import { TrackingService } from 'app/services/tracking.service';
 
 @Component({
   selector: 'app-customers-billing',
@@ -19,6 +20,7 @@ import { FacturacionService } from 'app/services/facturacion.service';
   styleUrl: './customers.component.scss'
 })
 export class CustomersBillingComponent {
+  private trackingService = inject(TrackingService);
 
   ngOnInit() {
     this.obtenerDatos();
@@ -253,6 +255,7 @@ invited: boolean = false;
   }
 
   addRow() {
+    this.trackingService.addLog(this.trackingService.getnameComp(), 'Agregó nuevo customers billing', 'Admon', this.trackingService.getEmail());
     if (!this.idCustomer) {
       alerts.basicAlert(
         'Error',
@@ -282,6 +285,7 @@ invited: boolean = false;
   }
 
   async saveChanges() {
+    this.trackingService.addLog(this.trackingService.getnameComp(), 'Guardó cambios en customers billing', 'Admon', this.trackingService.getEmail());
     const isValid = this.rowData.every((item) =>
       item.rfc && item.nombreFiscal && item.codigoPostal && item.regimenFiscal && item.usoCfdi
     );
@@ -328,6 +332,7 @@ invited: boolean = false;
   }
 
   async deleteEntry() {
+    this.trackingService.addLog(this.trackingService.getnameComp(), 'Eliminó customers billing', 'Admon', this.trackingService.getEmail());
     const selectedNodes = this.gridApi.getSelectedNodes();
     if (selectedNodes.length === 0) {
       alerts.basicAlert(
@@ -362,6 +367,7 @@ invited: boolean = false;
   }
 
   revert() {
+    this.trackingService.addLog(this.trackingService.getnameComp(), 'Deshizo cambios en customers billing', 'Admon', this.trackingService.getEmail());
     this.obtenerDatos();
     this.notSavedChanges = false;
   }

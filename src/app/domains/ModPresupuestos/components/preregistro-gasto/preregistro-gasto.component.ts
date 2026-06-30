@@ -140,6 +140,7 @@ export class PreregistroGastoComponent implements OnInit {
   }
 
   addRow(): void {
+    this.trackingService.addLog(this.trackingService.getnameComp(), 'Agregó nuevo preregistro gasto', 'ModPresupuestos', this.trackingService.getEmail());
     const today = new Date().toISOString().split('T')[0];
     const newRow: any = {
       id: `temp_${this.tempCounter++}`,
@@ -159,6 +160,7 @@ export class PreregistroGastoComponent implements OnInit {
   }
 
   async saveChanges(): Promise<void> {
+    this.trackingService.addLog(this.trackingService.getnameComp(), 'Guardó cambios en preregistro gasto', 'ModPresupuestos', this.trackingService.getEmail());
     const nuevas = this.rowData.filter(r => (r as any).__isNew && r.id_cuenta && r.concepto && r.monto);
     const modificadas = this.rowData.filter(r => (r as any).__modified && !(r as any).__isNew);
 
@@ -192,6 +194,7 @@ export class PreregistroGastoComponent implements OnInit {
   }
 
   revert(): void {
+    this.trackingService.addLog(this.trackingService.getnameComp(), 'Deshizo cambios en preregistro gasto', 'ModPresupuestos', this.trackingService.getEmail());
     this.loadData();
   }
 

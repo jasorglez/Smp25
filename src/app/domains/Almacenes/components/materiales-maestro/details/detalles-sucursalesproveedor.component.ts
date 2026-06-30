@@ -9,6 +9,7 @@ import { SelectWithTooltipEditorV2Component } from 'app/shared/select-with-toolt
 import { BranchsService } from 'app/services/branchs.service';
 import { SignalsService } from 'app/services/signals.service';
 import { SucursalByMaterialProveedorService } from 'app/services/sucursalByMaterialProveedor.service';
+import { TrackingService } from 'app/services/tracking.service';
 
 @Component({
   selector: 'app-detalles-sucursalesproveedor',
@@ -52,6 +53,7 @@ import { SucursalByMaterialProveedorService } from 'app/services/sucursalByMater
   `,
 })
 export class DetallesSucursalesProveedorComponent implements ICellRendererAngularComp {
+  private trackingService = inject(TrackingService);
   private branchsService = inject(BranchsService);
   private signalsService = inject(SignalsService);
   private sucursalByMaterialProveedorService = inject(SucursalByMaterialProveedorService);
@@ -279,6 +281,7 @@ export class DetallesSucursalesProveedorComponent implements ICellRendererAngula
   }
 
   revertChanges() {
+    this.trackingService.addLog(this.trackingService.getnameComp(), 'Deshizo cambios en detalles sucursalesproveedor', 'Almacenes', this.trackingService.getEmail());
     if (!this.hasChanges) {
       alerts.basicAlert('Sin cambios', 'No hay cambios que revertir.', 'info');
       return;

@@ -19,6 +19,7 @@ import { RolesService } from 'app/services/roles.service';
 import pdfMake from 'pdfmake/build/pdfmake';
 import * as pdfFonts from 'pdfmake/build/vfs_fonts';
 import { lastValueFrom } from 'rxjs';
+import { TrackingService } from 'app/services/tracking.service';
 (pdfMake as any).vfs = (pdfFonts as any).pdfMake?.vfs || (pdfFonts as any).default?.pdfMake?.vfs;
 
 @Component({
@@ -228,6 +229,7 @@ import { lastValueFrom } from 'rxjs';
   styleUrl: './detalles-expenditure.component.scss'
 })
 export class DetallesExpenditureComponent implements OnInit, OnDestroy {
+  private trackingService = inject(TrackingService);
 
   private params!: ICellRendererParams;
   private gridApi!: GridApi;
@@ -981,6 +983,7 @@ export class DetallesExpenditureComponent implements OnInit, OnDestroy {
   }
 
   async saveChanges() {
+    this.trackingService.addLog(this.trackingService.getnameComp(), 'Guardó cambios en detalles expenditure', 'Admon', this.trackingService.getEmail());
     if (!this.hasUnsavedChanges) {
       alerts.basicAlert('Sin cambios', 'No hay cambios pendientes por guardar', 'info');
       return;

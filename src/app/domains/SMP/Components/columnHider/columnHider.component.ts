@@ -48,6 +48,7 @@ import { CanComponentDeactivate } from 'app/guards/unsaved-changes.guard';
 import { confirmExitIfUnsaved } from 'app/helpers/can-deactivate.helper';
 import { RootService } from 'app/services/root.service';
 import { MenuService } from 'app/services/menu.service';
+import { TrackingService } from 'app/services/tracking.service';
 
 @Component({
   selector: 'app-menu',
@@ -67,6 +68,7 @@ export class columnHiderComponent {
   private administrationService = inject(AdministrationService);
   private employeeService = inject(EmployeesService);
   authService = inject(AuthService);
+  private trackingService = inject(TrackingService);
   private branchesService = inject(BranchsService);
   private gridApi: GridApi;
   private hrService = inject(HRService);
@@ -241,6 +243,7 @@ export class columnHiderComponent {
   }
 
   addRow() {
+    this.trackingService.addLog(this.trackingService.getnameComp(), 'Agregó nuevo columnHider', 'Sistema', this.trackingService.getEmail());
     const newItem = {
       active: true,
       idBranch: this.idBranch > 0 ? this.idBranch : null,
@@ -314,6 +317,7 @@ export class columnHiderComponent {
   }
 
   revert() {
+    this.trackingService.addLog(this.trackingService.getnameComp(), 'Deshizo cambios en columnHider', 'Sistema', this.trackingService.getEmail());
     this.notSavedChanges = false;
   }
 

@@ -10,6 +10,7 @@ import { alerts } from 'app/helpers/alerts';
 import { lastValueFrom, concat, toArray } from 'rxjs';
 import { CatalogsService } from 'app/services/catalogs.service';
 import { Icatalog } from 'app/interface/icatalog';
+import { TrackingService } from 'app/services/tracking.service';
 
 @Component({
   selector: 'app-additional-info',
@@ -19,6 +20,7 @@ import { Icatalog } from 'app/interface/icatalog';
   styleUrl: './additional-info.component.scss'
 })
 export class AdditionalInfoComponent {
+  private trackingService = inject(TrackingService);
 
   private administrationService = inject(AdministrationService);
   private signalsService = inject(SignalsService);
@@ -135,6 +137,7 @@ export class AdditionalInfoComponent {
   }
 
   addRow() {
+    this.trackingService.addLog(this.trackingService.getnameComp(), 'Agregó nuevo additional info', 'Admon', this.trackingService.getEmail());
     const newRow = {
       idIncorexp: this.idInAndExp,
       orderNumber: 'S/O',
@@ -189,6 +192,7 @@ export class AdditionalInfoComponent {
   }
 
   async saveChanges() {
+    this.trackingService.addLog(this.trackingService.getnameComp(), 'Guardó cambios en additional info', 'Admon', this.trackingService.getEmail());
     const isValid = this.rowData.every((item) => item.orderNumber);
     if (!isValid) {
       alerts.basicAlert(
@@ -237,6 +241,7 @@ export class AdditionalInfoComponent {
   }
 
   revert() {
+    this.trackingService.addLog(this.trackingService.getnameComp(), 'Deshizo cambios en additional info', 'Admon', this.trackingService.getEmail());
     this.getAdditionalInfo();
     this.notSavedChanges = false;
   }

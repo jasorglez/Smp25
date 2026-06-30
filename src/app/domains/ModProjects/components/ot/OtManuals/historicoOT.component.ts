@@ -10,6 +10,7 @@ import { AuthService } from 'app/services/auth.service';
 import { CatalogsService } from 'app/services/catalogs.service';
 import { alerts } from 'app/helpers/alerts';
 import { environment } from '@env/environment';
+import { TrackingService } from 'app/services/tracking.service';
 
 // Interface para los datos históricos de OT
 interface HistoricoOTData {
@@ -36,6 +37,7 @@ interface HistoricoOTData {
   styleUrl: './historicoOT.component.scss'
 })
 export class HistoricoOTComponent implements OnInit {
+  private trackingService = inject(TrackingService);
 
   // Servicios
   private otService = inject(OtService);
@@ -377,6 +379,7 @@ this.otService.getOtListByProject(idProject, true).subscribe({
 
   // Métodos CRUD
   addRow(): void {
+    this.trackingService.addLog(this.trackingService.getnameComp(), 'Agregó nuevo historicoOT', 'Proyectos', this.trackingService.getEmail());
     const tempId = `temp_${this.tempIdCounter++}`;
     const currentProject = this.signalsService.getProjectSelectedBySidebar()();
     const currentProjectData = this.projectsList.find(p => p.id === currentProject);
@@ -419,6 +422,7 @@ this.otService.getOtListByProject(idProject, true).subscribe({
   }
 
   saveChanges(): void {
+    this.trackingService.addLog(this.trackingService.getnameComp(), 'Guardó cambios en historicoOT', 'Proyectos', this.trackingService.getEmail());
     const newRows = this.rowData.filter(row => row.__isNew);
     const modifiedRows = this.rowData.filter(row => row.__modified && !row.__isNew);
 
@@ -544,6 +548,7 @@ this.otService.getOtListByProject(idProject, true).subscribe({
   }
 
   revert(): void {
+    this.trackingService.addLog(this.trackingService.getnameComp(), 'Deshizo cambios en historicoOT', 'Proyectos', this.trackingService.getEmail());
     const currentProject = this.signalsService.getProjectSelectedBySidebar()();
     if (currentProject) {
       this.loadData(currentProject);
@@ -555,6 +560,7 @@ this.otService.getOtListByProject(idProject, true).subscribe({
   }
 
   deleteEntry(): void {
+    this.trackingService.addLog(this.trackingService.getnameComp(), 'Eliminó historicoOT', 'Proyectos', this.trackingService.getEmail());
     const selectedNodes = this.gridApi.getSelectedNodes();
     
     if (selectedNodes.length === 0) {

@@ -1,10 +1,11 @@
-import { Component, Input, OnInit } from '@angular/core';
+import { Component, Input, OnInit, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { AgGridModule } from 'ag-grid-angular';
 import { ColDef, GridApi, GridReadyEvent, ICellRendererParams } from 'ag-grid-enterprise';
 import { AG_GRID_LOCALE_ES } from 'assets/i18n/ag-grid.locale.es';
 import { alerts } from 'app/helpers/alerts';
+import { TrackingService } from 'app/services/tracking.service';
 
 @Component({
   selector: 'app-sub-detail-cell-renderer-quote-items',
@@ -43,6 +44,7 @@ import { alerts } from 'app/helpers/alerts';
   `]
 })
 export class SubDetailCellRendererQuoteItemsComponent implements OnInit {
+  private trackingService = inject(TrackingService);
 
   @Input() params: any;
   private gridApi!: GridApi;
@@ -132,10 +134,12 @@ export class SubDetailCellRendererQuoteItemsComponent implements OnInit {
   }
 
   deleteSelectedItem() {
+    this.trackingService.addLog(this.trackingService.getnameComp(), 'Eliminó sub detail cell renderer quote items', 'ModShoppingDelison', this.trackingService.getEmail());
     alerts.basicAlert('Función no implementada', 'La lógica para eliminar un item aún no se ha implementado.', 'info');
   }
 
   saveChanges() {
+    this.trackingService.addLog(this.trackingService.getnameComp(), 'Guardó cambios en sub detail cell renderer quote items', 'ModShoppingDelison', this.trackingService.getEmail());
     alerts.basicAlert('Función no implementada', 'La lógica para guardar cambios en los items aún no se ha implementado.', 'info');
   }
 

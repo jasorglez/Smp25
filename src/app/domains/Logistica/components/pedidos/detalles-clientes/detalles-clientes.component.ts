@@ -1,4 +1,4 @@
-import { Component } from '@angular/core';
+import { Component, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { AgGridModule } from 'ag-grid-angular';
 import { ColDef, GridApi, GridReadyEvent, ICellRendererParams } from 'ag-grid-enterprise';
@@ -6,6 +6,7 @@ import { ICellRendererAngularComp } from 'ag-grid-angular';
 import { AG_GRID_LOCALE_ES } from 'assets/i18n/ag-grid.locale.es';
 import { alerts } from 'app/helpers/alerts';
 import { lastValueFrom } from 'rxjs';
+import { TrackingService } from 'app/services/tracking.service';
 
 @Component({
   selector: 'app-detalles-clientes',
@@ -45,6 +46,7 @@ import { lastValueFrom } from 'rxjs';
   `
 })
 export class DetallesClientesComponent implements ICellRendererAngularComp {
+  private trackingService = inject(TrackingService);
   private readonly MANUAL_ESTADOS = ['RECIBIDO', 'CANCELADO', 'ALMACENADO', 'REVENDIDO', 'SOLICITADO'];
   private params!: ICellRendererParams;
   private gridApi!: GridApi;
@@ -244,6 +246,7 @@ export class DetallesClientesComponent implements ICellRendererAngularComp {
   }
 
   async deleteSelectedItem(): Promise<void> {
+    this.trackingService.addLog(this.trackingService.getnameComp(), 'Eliminó detalles clientes', 'Logística', this.trackingService.getEmail());
     if (!this.selectedRow || !this.selectedRow.id) return;
 
     const confirm = await alerts.confirmAlert(
@@ -270,6 +273,7 @@ export class DetallesClientesComponent implements ICellRendererAngularComp {
   }
 
   async saveChanges(): Promise<void> {
+    this.trackingService.addLog(this.trackingService.getnameComp(), 'Guardó cambios en detalles clientes', 'Logística', this.trackingService.getEmail());
     if (!this.hasUnsavedChanges) return;
     if (!this.context?.pedidosService?.updateDetalle) return;
 

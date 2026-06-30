@@ -7,6 +7,7 @@ import { SignalsService } from 'app/services/signals.service';
 import { BranchsService } from 'app/services/branchs.service';
 import { ProjectsService } from 'app/services/projects.service';
 import { PrefixSetupService, PrefixSetup } from 'app/services/prefix-setup.service';
+import { TrackingService } from 'app/services/tracking.service';
 
 @Component({
   selector: 'app-setupwarehouse',
@@ -16,6 +17,7 @@ import { PrefixSetupService, PrefixSetup } from 'app/services/prefix-setup.servi
   styleUrl: './setupwarehouse.component.scss'
 })
 export class SetupwarehouseComponent {
+  private trackingService = inject(TrackingService);
   private setupService = inject(SetupService);
   private signalsService = inject(SignalsService);
   private branchsService = inject(BranchsService);
@@ -173,6 +175,7 @@ export class SetupwarehouseComponent {
   }
 
   revertChanges() {
+    this.trackingService.addLog(this.trackingService.getnameComp(), 'Deshizo cambios en setupwarehouse', 'Almacenes', this.trackingService.getEmail());
     this.getData();
   }
 

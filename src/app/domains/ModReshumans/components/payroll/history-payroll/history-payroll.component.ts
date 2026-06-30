@@ -15,6 +15,7 @@ import { FormsModule } from '@angular/forms';
 import { RouterModule } from '@angular/router';
 import { ShowEmployeesTableComponent } from './employees-table/employees-table.component';
 import { DigitalPayrollDetailsTableComponent } from './digital-payroll-details-table/digital-payroll-details-table.component';
+import { TrackingService } from 'app/services/tracking.service';
 
 @Component({
   selector: 'app-history-payroll',
@@ -30,6 +31,7 @@ import { DigitalPayrollDetailsTableComponent } from './digital-payroll-details-t
   templateUrl: './history-payroll.component.html',
 })
 export class HistoryPayrollComponent {
+  private trackingService = inject(TrackingService);
   //MIO
   private historyPayrollService = inject(HistoryPayrollService);
 
@@ -133,6 +135,7 @@ export class HistoryPayrollComponent {
 
   // ESTA SI ME SIRVE
   deleteEntry() {
+    this.trackingService.addLog(this.trackingService.getnameComp(), 'Eliminó history payroll', 'RRHH', this.trackingService.getEmail());
     const selectedNodes = this.gridApi.getSelectedNodes();
     if (selectedNodes.length === 0) {
       alerts.basicAlert(

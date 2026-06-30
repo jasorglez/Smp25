@@ -8,6 +8,7 @@ import { DistributionService } from 'app/services/distribution.service';
 import { SelectWithTooltipEditorV2Component } from 'app/shared/select-with-tooltip-editor-v2.component';
 import { alerts } from 'app/helpers/alerts';
 import { lastValueFrom } from 'rxjs';
+import { TrackingService } from 'app/services/tracking.service';
 
 @Component({
   selector: 'app-material-detail-renderer',
@@ -104,6 +105,7 @@ import { lastValueFrom } from 'rxjs';
   `,
 })
 export class MaterialDetailRendererComponent implements ICellRendererAngularComp, OnInit {
+  private trackingService = inject(TrackingService);
 
   params: any;
   detailType: string = '';
@@ -293,6 +295,7 @@ export class MaterialDetailRendererComponent implements ICellRendererAngularComp
 
   // ── CRUD ───────────────────────────────────────────────────────────────
   addRow(): void {
+    this.trackingService.addLog(this.trackingService.getnameComp(), 'Agregó nuevo material detail renderer', 'Logística', this.trackingService.getEmail());
     this.gridApi?.stopEditing();
     const tempId = `dist_${this.tempCounter++}`;
     const { year, month } = this.nextYearMonth();
@@ -313,6 +316,7 @@ export class MaterialDetailRendererComponent implements ICellRendererAngularComp
   }
 
   async save(): Promise<void> {
+    this.trackingService.addLog(this.trackingService.getnameComp(), 'Guardó cambios en material detail renderer', 'Logística', this.trackingService.getEmail());
     const newRows      = this.distributionRows.filter(r => r.__isNew);
     const modifiedRows = this.distributionRows.filter(r => r.__modified && !r.__isNew);
     if (!newRows.length && !modifiedRows.length) {
@@ -336,6 +340,7 @@ export class MaterialDetailRendererComponent implements ICellRendererAngularComp
   }
 
   revert(): void {
+    this.trackingService.addLog(this.trackingService.getnameComp(), 'Deshizo cambios en material detail renderer', 'Logística', this.trackingService.getEmail());
     this.gridApi?.stopEditing();
     this.notSaved = false;
     this.distributionRows = [...this.serverSnapshotRows];

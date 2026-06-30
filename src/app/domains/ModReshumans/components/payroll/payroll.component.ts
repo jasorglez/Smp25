@@ -27,6 +27,7 @@ import {
   ICellRendererParams,
 } from 'ag-grid-enterprise';
 import { AuthService } from 'app/services/auth.service';
+import { TrackingService } from 'app/services/tracking.service';
 
 @Component({
   selector: 'app-payroll',
@@ -38,6 +39,7 @@ import { AuthService } from 'app/services/auth.service';
 export class PayrollComponent {
 
   authService = inject(AuthService);
+  private trackingService = inject(TrackingService);
   
   ngOnInit() {
     this.idBranch = this.signalsService.getBranchSelectedBySidebar()();
@@ -439,6 +441,7 @@ export class PayrollComponent {
   */
 
   addRow() {
+    this.trackingService.addLog(this.trackingService.getnameComp(), 'Agregó nuevo payroll', 'RRHH', this.trackingService.getEmail());
     console.log('---------------------- entrando a alta de nomina');
     console.log('......... esto contiene rowdata: ', this.rowData);
     //const tempId = `temp_${this.tempIdCounter++}`;
@@ -459,6 +462,7 @@ export class PayrollComponent {
   }
 
   async saveChanges() {
+    this.trackingService.addLog(this.trackingService.getnameComp(), 'Guardó cambios en payroll', 'RRHH', this.trackingService.getEmail());
     console.log(
       '----------------------------------- ENTRANDO A SALVAR CAMBIOS'
     );
