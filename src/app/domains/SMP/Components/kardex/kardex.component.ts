@@ -39,11 +39,11 @@ export class KardexComponent {
       headerName: '#', width: 80,
     },
     { field: "company", filter: true },
-    { field: "datetime", filter: true },
+    { field: "datetime", filter: true, sort: 'desc' },
     { field: "description", filter: true, width: 400 },
     { field: "origin", filter: true },
     { field: "user", filter: true },
-    { field: "idn" }
+    { field: "idn", hide: true }
   ];
 
 
