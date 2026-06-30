@@ -9,6 +9,7 @@ import { ProvidersService } from 'app/services/providers.service';
 import { OcAndReqsService } from 'app/services/ocandreqs.service';
 import { MaterialsService } from 'app/services/materials.service';
 import { Base64EncodeService } from 'app/services/base64encode.service';
+import { TrackingService } from 'app/services/tracking.service';
 import { lastValueFrom } from 'rxjs';
 import pdfMake from 'pdfmake/build/pdfmake';
 import pdfFonts from 'pdfmake/build/vfs_fonts';
@@ -79,6 +80,7 @@ export class DetailCellRendererPurchaseOrderReportComponent {
   private requisitionsService = inject(OcAndReqsService);
   private materialsService = inject(MaterialsService);
   private base64EncodeService = inject(Base64EncodeService);
+  private trackingService = inject(TrackingService);
 
   private params!: ICellRendererParams;
   purchaseOrderData: any;
@@ -161,6 +163,7 @@ export class DetailCellRendererPurchaseOrderReportComponent {
       // Generar el PDF
       const docDefinition = this.buildDocDefinition(companyData, logoBase64, logo2Base64, watermarkBase64, providerData, articulos);
 
+      this.trackingService.addLog(this.trackingService.getnameComp(), 'Imprimió/abrió PDF orden de compra', 'Almacén / Órdenes de Compra', this.trackingService.getEmail());
       const pdfDocGenerator = pdfMake.createPdf(docDefinition as any);
       pdfDocGenerator.getBlob((blob: Blob) => {
         this._pdfBlob = blob;

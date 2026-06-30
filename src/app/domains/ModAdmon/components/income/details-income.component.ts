@@ -775,6 +775,7 @@ export class DetailsIncomeComponent implements OnInit, OnDestroy {
       };
 
       // Generar el PDF
+      this.trackingService.addLog(this.trackingService.getnameComp(), 'Imprimió/abrió PDF detalle de ingreso', 'Admon / Ingresos', this.trackingService.getEmail());
       pdfMake.createPdf(docDefinition).getBlob((blob: Blob) => {
         if (this.originalPdfUrl) {
           URL.revokeObjectURL(this.originalPdfUrl);

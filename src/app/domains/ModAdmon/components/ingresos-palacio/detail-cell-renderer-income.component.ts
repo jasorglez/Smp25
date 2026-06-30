@@ -1077,6 +1077,7 @@ export class DetailCellRendererIncomeComponent implements OnInit, OnDestroy {
       };
 
       // Generar el PDF
+      this.trackingService.addLog(this.trackingService.getnameComp(), 'Imprimió/abrió PDF detalle ingreso palacio', 'Admon / Ingresos Palacio', this.trackingService.getEmail());
       const pdfDocGenerator = pdfMake.createPdf(docDefinition);
 
       pdfDocGenerator.getBlob((blob: Blob) => {

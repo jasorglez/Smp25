@@ -5,6 +5,7 @@ import { alerts } from 'app/helpers/alerts';
 import { IncomesAndExpensesService } from 'app/services/incomes-and-expenses.service';
 import { SignalsService } from 'app/services/signals.service';
 import { CuentasContablesService } from 'app/services/cuentas-contables.service';
+import { TrackingService } from 'app/services/tracking.service';
 import { ICuentaContable } from 'app/interface/icuentas-contables';
 import { NgApexchartsModule } from 'ng-apexcharts';
 import html2canvas from 'html2canvas';
@@ -90,6 +91,7 @@ export class DashboardHcoComponent {
   private incomesAndExpensesService = inject(IncomesAndExpensesService);
   private cuentasContablesService = inject(CuentasContablesService);
   private signalsService = inject(SignalsService);
+  private trackingService = inject(TrackingService);
 
   // Estado del componente
   public rootId: number;
@@ -186,6 +188,7 @@ export class DashboardHcoComponent {
         },
       };
 
+      this.trackingService.addLog(this.trackingService.getnameComp(), 'Descargó PDF dashboard HCO', 'Admon / Dashboard HCO', this.trackingService.getEmail());
       (pdfMake as any).createPdf(documentDefinition).download(this.getExportFileName('pdf'));
     } catch (error) {
       console.error('Error exportando dashboard a PDF:', error);

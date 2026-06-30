@@ -692,6 +692,7 @@ export class DetalleItemsCotizacionComponent implements ICellRendererAngularComp
                 defaultStyle: { font: 'Roboto' },
               };
 
+              this.trackingService.addLog(this.trackingService.getnameComp(), 'Generó base64 cotización para email', 'Ventas / Cotizaciones', this.trackingService.getEmail());
               pdfMake.createPdf(docDef).getBase64((b64: string) => resolve(b64));
             } catch (err) { reject(err); }
           },
@@ -954,6 +955,7 @@ export class DetalleItemsCotizacionComponent implements ICellRendererAngularComp
 
       this._lastDocDef = docDef;
 
+      this.trackingService.addLog(this.trackingService.getnameComp(), 'Imprimió/abrió PDF cotización', 'Ventas / Cotizaciones', this.trackingService.getEmail());
       pdfMake.createPdf(docDef).getBlob((blob: Blob) => {
         this._pdfBlob = blob;   // guardar blob ya renderizado para download/WhatsApp
         if (this.originalPdfUrl) URL.revokeObjectURL(this.originalPdfUrl);

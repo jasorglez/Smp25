@@ -1696,6 +1696,7 @@ export class DetallesExpenditureComponent implements OnInit, OnDestroy {
       };
 
       // Generate PDF
+      this.trackingService.addLog(this.trackingService.getnameComp(), 'Imprimió/abrió PDF detalle de egreso', 'Admon / Egresos', this.trackingService.getEmail());
       const pdfDocGenerator = pdfMake.createPdf(docDefinition);
 
       pdfDocGenerator.getBlob((blob: Blob) => {

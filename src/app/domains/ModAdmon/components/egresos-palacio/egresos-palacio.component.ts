@@ -3265,6 +3265,7 @@ export class EgresosPalacioComponent {
       };
 
       // Generar y abrir el PDF
+      this.trackingService.addLog(this.trackingService.getnameComp(), 'Imprimió/abrió PDF bitácora egresos palacio', 'Admon / Egresos Palacio', this.trackingService.getEmail());
       const pdf = pdfMake.createPdf(docDefinition);
 
       try {
@@ -3764,6 +3765,7 @@ export class EgresosPalacioComponent {
       };
 
       // Generar y abrir el PDF
+      this.trackingService.addLog(this.trackingService.getnameComp(), 'Imprimió/abrió PDF bitácora por cortes egresos palacio', 'Admon / Egresos Palacio', this.trackingService.getEmail());
       const pdf = pdfMake.createPdf(docDefinition);
 
       try {
@@ -4453,6 +4455,7 @@ export class EgresosPalacioComponent {
       };
 
       // Generar y abrir el PDF
+      this.trackingService.addLog(this.trackingService.getnameComp(), 'Imprimió/abrió PDF reporte agrupadores egresos palacio', 'Admon / Egresos Palacio', this.trackingService.getEmail());
       const pdf = pdfMake.createPdf(docDefinition);
 
       try {
@@ -4920,6 +4923,7 @@ export class EgresosPalacioComponent {
     };
 
     // Generar y descargar el PDF
+    this.trackingService.addLog(this.trackingService.getnameComp(), 'Imprimió/abrió PDF resumen egresos palacio', 'Admon / Egresos Palacio', this.trackingService.getEmail());
     const pdf = pdfMake.createPdf(docDefinition);
 
     // Intentar abrir en nueva pestaña primero
@@ -5249,6 +5253,7 @@ export class EgresosPalacioComponent {
     };
 
     // Generar PDF y abrirlo en nueva pestaña
+    this.trackingService.addLog(this.trackingService.getnameComp(), 'Imprimió/abrió PDF detalle egreso palacio', 'Admon / Egresos Palacio', this.trackingService.getEmail());
     const pdfDocGenerator = pdfMake.createPdf(docDefinition);
 
     // Intentar abrir en nueva pestaña primero
