@@ -12,6 +12,7 @@ import { ButtonCellRendererIncomeComponent } from 'app/domains/ModAdmon/componen
 import { DetalleItemsCotizacionComponent } from './detalle-items-cotizacion.component';
 import { ConfigCotizacionesComponent } from './config-cotizaciones.component';
 import { combineLatest, Subscription } from 'rxjs';
+import { TrackingService } from 'app/services/tracking.service';
 import Swal from 'sweetalert2';
 
 @Component({
@@ -22,10 +23,11 @@ import Swal from 'sweetalert2';
   styleUrl: './cotizaciones.component.scss',
 })
 export class CotizacionesComponent implements OnInit, OnDestroy {
-  private svc           = inject(CotizacionesService);
-  private prospectosSvc = inject(ProspectosService);
-  private signalsSvc    = inject(SignalsService);
-  private catalogsSvc   = inject(CatalogsService);
+  private svc             = inject(CotizacionesService);
+  private prospectosSvc   = inject(ProspectosService);
+  private signalsSvc      = inject(SignalsService);
+  private catalogsSvc     = inject(CatalogsService);
+  private trackingService = inject(TrackingService);
 
   gridApi!: GridApi;
   AG_GRID_LOCALE_ES = AG_GRID_LOCALE_ES;
@@ -280,6 +282,7 @@ export class CotizacionesComponent implements OnInit, OnDestroy {
   // ── CRUD ──────────────────────────────────────────────────────────────────
 
   async add() {
+    this.trackingService.addLog(this.trackingService.getnameComp(), 'Agregó nueva cotización', 'Ventas', this.trackingService.getEmail());
     const numCotizacion = await this.svc.getNextNumero(this.root);
     const nuevo: any = {
       numCotizacion,
@@ -312,6 +315,10 @@ export class CotizacionesComponent implements OnInit, OnDestroy {
   async saveChanges() {
     const toSave = this.rowData.filter(c => c.__isNew || c.__modified);
     if (!toSave.length) return;
+    const newCount  = toSave.filter(c => c.__isNew).length;
+    const editCount = toSave.filter(c => !c.__isNew && c.__modified).length;
+    const desc = [newCount  ? `Creó ${newCount} cotización(es)` : '', editCount ? `Editó ${editCount} cotización(es)` : ''].filter(Boolean).join(' | ');
+    this.trackingService.addLog(this.trackingService.getnameComp(), desc, 'Ventas', this.trackingService.getEmail());
     const errores: string[] = [];
     for (const c of toSave) {
       if (!c.nombreProspecto?.trim()) { errores.push('Sin prospecto asignado'); continue; }
@@ -346,6 +353,7 @@ export class CotizacionesComponent implements OnInit, OnDestroy {
       confirmButtonColor: '#dc3545', confirmButtonText: 'Sí, eliminar', cancelButtonText: 'Cancelar',
     });
     if (!res.isConfirmed) return;
+    this.trackingService.addLog(this.trackingService.getnameComp(), `Eliminó cotización #${this.selectedItem.numCotizacion} — ${this.selectedItem.nombreProspecto}`, 'Ventas', this.trackingService.getEmail());
     if (this.selectedItem.__isNew) {
       this.rowData = this.rowData.filter(c => c !== this.selectedItem);
       this.gridApi.setGridOption('rowData', this.rowData);
