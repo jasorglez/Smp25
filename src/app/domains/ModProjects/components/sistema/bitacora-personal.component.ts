@@ -8,7 +8,6 @@ import { CatalogadmonService } from 'app/services/catalogadmon.service';
 import { EmployeesService } from 'app/services/employees.service';
 import { RootService } from 'app/services/root.service';
 import { Base64EncodeService } from 'app/services/base64encode.service';
-import { TrackingService } from 'app/services/tracking.service';
 import { lastValueFrom } from 'rxjs';
 import pdfMake from 'pdfmake/build/pdfmake';
 import * as pdfFonts from 'pdfmake/build/vfs_fonts';
@@ -83,8 +82,6 @@ export class BitacoraPersonalComponent extends BitacoraBaseComponent {
   private employeesService    = inject(EmployeesService);
   private rootService         = inject(RootService);
   private base64Service       = inject(Base64EncodeService);
-  private trackingService     = inject(TrackingService);
-
   readonly bitacoraType  = 'personal';
   readonly typeNoteValue = 'PERSONAL';
   readonly editableCols  = ['position', 'empleado', 'quantity', 'start', 'end', 'asistencia', 'description'];
