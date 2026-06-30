@@ -12,6 +12,7 @@ import { PosService } from 'app/services/pos.service';
 import { MaterialsService } from 'app/services/materials.service';
 import { CustomersService } from 'app/services/customers.service';
 import { SignalsService } from 'app/services/signals.service';
+import { TrackingService } from 'app/services/tracking.service';
 import { alerts } from 'app/helpers/alerts';
 import { firstValueFrom } from 'rxjs';
 
@@ -31,6 +32,7 @@ export class PosComponent implements OnInit {
   private customersService = inject(CustomersService);
   private router = inject(Router);
   private signalsService = inject(SignalsService);
+  private trackingService = inject(TrackingService);
 
   session: PosSession | null = null;
   pendingCount = 0;
@@ -404,6 +406,13 @@ export class PosComponent implements OnInit {
     });
 
     await this.posDb.savePendingSale(sale, concepts);
+
+    this.trackingService.addLog(
+      this.trackingService.getnameComp(),
+      `Imprimió nota de venta ${numbernote} — $${this._total.toFixed(2)} — ${this.paymentType}`,
+      'Ventas / POS',
+      this.trackingService.getEmail()
+    );
 
     const client = this.selectedClient;
     const clientName = client?.company ?? `Cliente ${this.idCustomer}`;
