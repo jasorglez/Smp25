@@ -549,17 +549,17 @@ if (!user) user = this.getEmail();
       this.sessionKey = res?.name ?? null;
     } catch {}
 
-    const flag      = this.countryFlag(ipInfo.countryCode);
-    const outsideMX = ipInfo.countryCode && ipInfo.countryCode !== 'MX';
-    const geoAlert  = outsideMX ? '🌍 USUARIO FUERA DE MÉXICO\n' : '';
-    const returnAlert = priorVisits > 0 ? `🔄 VISITA DE RETORNO (visita #${priorVisits + 1})\n` : '';
-    const time = this.sessionStart.toLocaleString('es-MX', {
-      day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit',
-    });
-
-    await this.sendTelegramMsg(
-      `${geoAlert}${returnAlert}🟢 ${email} se conectó\n📧 ${email}\n🏢 Empresa: ${idCompany} | Sucursal: ${idBranch}\n${flag} ${ipInfo.city}, ${ipInfo.country}\n🕐 ${time}`
-    );
+    // Notificar via backend C# (evita CORS de Telegram directo)
+    try {
+      await this.http.post(`${environment.urlChatBot}/LoginNotification`, {
+        idUser    : this.getId(),
+        displayName: this.getnameUser() || email,
+        email,
+        idCompany,
+        branch    : `Sucursal ${idBranch}${priorVisits > 0 ? ` | 🔄 Visita #${priorVisits + 1}` : ''}`,
+        ipAddress : ipInfo.ip,
+      }).toPromise();
+    } catch {}
   }
 
   // ── Registrar módulo visitado (llamar desde TrackingGuard) ─────────────────
@@ -606,26 +606,20 @@ if (!user) user = this.getEmail();
     const timeStr   = `${min}:${String(sec).padStart(2, '0')} min`;
     const emoji     = temp.startsWith('CALIENTE') ? '🚨 PROSPECTO CALIENTE — dar seguimiento hoy' :
                       temp.startsWith('TIBIO')    ? '⚡ Prospecto tibio — enviar info' : '';
-    const followUp  = emoji ? `\n\n${emoji}` : '';
-
-    await this.sendTelegramMsg(
-      `📊 Sesión terminada: ${this.getEmail()}\n${lines}\n⏱ Tiempo conectado: ${timeStr}\n🌡️ Temperatura: ${temp}${followUp}`
-    );
+    // Notificar via backend C# (evita CORS de Telegram directo)
+    try {
+      await this.http.post(`${environment.urlChatBot}/LoginNotification/session-end`, {
+        email      : this.getEmail(),
+        modules    : this.sessionModules,
+        durationMin: min,
+        durationSec: sec,
+        temperatura: temp,
+      }).toPromise();
+    } catch {}
 
     this.sessionKey     = null;
     this.sessionStart   = null;
     this.sessionModules = [];
-  }
-
-  // ── Enviar mensaje Telegram directo ───────────────────────────────────────
-  async sendTelegramMsg(text: string): Promise<void> {
-    try {
-      await this.http
-        .post(`https://api.telegram.org/bot${this.TG_BOT}/sendMessage`, { chat_id: this.TG_CHAT, text })
-        .toPromise();
-    } catch (err) {
-      console.error('Telegram send error:', err);
-    }
   }
 
   private countryFlag(code: string): string {
