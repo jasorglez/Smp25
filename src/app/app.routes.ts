@@ -1889,230 +1889,178 @@ export const routes: Routes = [
           {
             path: 'pos-dashboard',
             loadComponent: () =>
-              import(
-                './domains/ModSales/components/pos-dashboard/pos-dashboard.component'
-              ).then((s) => s.PosDashboardComponent),
-            canActivate: [MasterPermissionsGuard],
-            data: { permissions: { master: 'sales', detailed: 'dashboard' } },
+              import('./domains/ModSales/components/pos-dashboard/pos-dashboard.component').then((s) => s.PosDashboardComponent),
+            canActivate: [MasterPermissionsGuard, TrackingGuard],
+            data: { permissions: { master: 'sales', detailed: 'dashboard' }, tracking: { logMessage: 'Abrió POS Dashboard', category: 'Ventas' } },
           },
           {
             path: 'crm-dashboard',
             loadComponent: () =>
-              import(
-                './domains/ModSales/components/crm-dashboard/crm-dashboard.component'
-              ).then((m) => m.CrmDashboardComponent),
-            canActivate: [MasterPermissionsGuard],
-            data: { permissions: { master: 'sales', detailed: 'dashboard' } },
+              import('./domains/ModSales/components/crm-dashboard/crm-dashboard.component').then((m) => m.CrmDashboardComponent),
+            canActivate: [MasterPermissionsGuard, TrackingGuard],
+            data: { permissions: { master: 'sales', detailed: 'dashboard' }, tracking: { logMessage: 'Abrió CRM Dashboard', category: 'Ventas' } },
           },
           {
             path: 'kanban',
             loadComponent: () =>
-              import(
-                './domains/ModSales/components/kanban-prospectos/kanban-prospectos.component'
-              ).then((m) => m.KanbanProspectosComponent),
-            canActivate: [MasterPermissionsGuard],
-            data: { permissions: { master: 'sales', detailed: 'prospectos' } },
+              import('./domains/ModSales/components/kanban-prospectos/kanban-prospectos.component').then((m) => m.KanbanProspectosComponent),
+            canActivate: [MasterPermissionsGuard, TrackingGuard],
+            data: { permissions: { master: 'sales', detailed: 'prospectos' }, tracking: { logMessage: 'Abrió Kanban Prospectos', category: 'Ventas' } },
           },
           {
             path: 'mis-tareas',
             loadComponent: () =>
-              import(
-                './domains/ModSales/components/mis-tareas/mis-tareas.component'
-              ).then((m) => m.MisTareasComponent),
-            canActivate: [MasterPermissionsGuard],
-            data: { permissions: { master: 'sales', detailed: 'prospectos' } },
+              import('./domains/ModSales/components/mis-tareas/mis-tareas.component').then((m) => m.MisTareasComponent),
+            canActivate: [MasterPermissionsGuard, TrackingGuard],
+            data: { permissions: { master: 'sales', detailed: 'prospectos' }, tracking: { logMessage: 'Abrió Mis Tareas', category: 'Ventas' } },
           },
           {
             path: 'setup-sales',
             loadComponent: () =>
-              import(
-                './domains/ModSales/components/setup/setup.component'
-              ).then((s) => s.PosSetupComponent),
-            canActivate: [MasterPermissionsGuard],
-            data: { permissions: { master: 'sales', detailed: 'setup' } },
+              import('./domains/ModSales/components/setup/setup.component').then((s) => s.PosSetupComponent),
+            canActivate: [MasterPermissionsGuard, TrackingGuard],
+            data: { permissions: { master: 'sales', detailed: 'setup' }, tracking: { logMessage: 'Abrió Setup de Ventas', category: 'Ventas' } },
           },
           {
             path: 'cash-register',
             loadComponent: () =>
-              import(
-                './domains/SMP/Components/cashRegisters/cashRegisters.component'
-              ).then((s) => s.CashRegistersComponent),
-            canActivate: [MasterPermissionsGuard],
-            data: {
-              permissions: { master: 'sales', detailed: 'cash-register' },
-            },
+              import('./domains/SMP/Components/cashRegisters/cashRegisters.component').then((s) => s.CashRegistersComponent),
+            canActivate: [MasterPermissionsGuard, TrackingGuard],
+            data: { permissions: { master: 'sales', detailed: 'cash-register' }, tracking: { logMessage: 'Abrió Caja Registradora', category: 'Ventas' } },
           },
           {
             path: 'before-pos',
             loadComponent: () =>
-              import(
-                './domains/ModSales/components/before-pos/before-pos.component'
-              ).then((s) => s.BeforePosComponent),
-            canActivate: [MasterPermissionsGuard],
-            data: { permissions: { master: 'sales', detailed: 'pos' } },
+              import('./domains/ModSales/components/before-pos/before-pos.component').then((s) => s.BeforePosComponent),
+            canActivate: [MasterPermissionsGuard, TrackingGuard],
+            data: { permissions: { master: 'sales', detailed: 'pos' }, tracking: { logMessage: 'Abrió Pre-POS (selección tienda/caja)', category: 'Ventas' } },
           },
           {
             path: 'pos',
             loadComponent: () =>
-              import('./domains/ModSales/components/pos/pos.component').then(
-                (s) => s.PosComponent
-              ),
-            canActivate: [MasterPermissionsGuard],
-            data: { permissions: { master: 'sales', detailed: 'pos' } },
+              import('./domains/ModSales/components/pos/pos.component').then((s) => s.PosComponent),
+            canActivate: [MasterPermissionsGuard, TrackingGuard],
+            data: { permissions: { master: 'sales', detailed: 'pos' }, tracking: { logMessage: 'Abrió Punto de Venta POS', category: 'Ventas' } },
             // canDeactivate: [UnsavedChangesGuard],
           },
           {
             path: 'cash-closing',
             loadComponent: () =>
-              import(
-                './domains/ModSales/components/cash-closing/cash-closing.component'
-              ).then((s) => s.CashClosingComponent),
-            canActivate: [MasterPermissionsGuard],
-            data: { permissions: { master: 'sales', detailed: 'closebox' } },
+              import('./domains/ModSales/components/cash-closing/cash-closing.component').then((s) => s.CashClosingComponent),
+            canActivate: [MasterPermissionsGuard, TrackingGuard],
+            data: { permissions: { master: 'sales', detailed: 'closebox' }, tracking: { logMessage: 'Abrió Cierre de Caja', category: 'Ventas' } },
           },
           {
             path: 'returns',
             loadComponent: () =>
-              import(
-                './domains/ModSales/components/returns/returns.component'
-              ).then((s) => s.ReturnsComponent),
-            canActivate: [MasterPermissionsGuard],
-            data: { permissions: { master: 'sales', detailed: 'returns' } },
+              import('./domains/ModSales/components/returns/returns.component').then((s) => s.ReturnsComponent),
+            canActivate: [MasterPermissionsGuard, TrackingGuard],
+            data: { permissions: { master: 'sales', detailed: 'returns' }, tracking: { logMessage: 'Abrió Devoluciones', category: 'Ventas' } },
           },
           {
             path: 'entrances',
             loadComponent: () =>
-              import(
-                './domains/ModSales/components/entrances2/entrances2.component'
-              ).then((s) => s.Entrances2Component),
-            canActivate: [MasterPermissionsGuard],
-            data: { permissions: { master: 'sales', detailed: 'entrances' } },
+              import('./domains/ModSales/components/entrances2/entrances2.component').then((s) => s.Entrances2Component),
+            canActivate: [MasterPermissionsGuard, TrackingGuard],
+            data: { permissions: { master: 'sales', detailed: 'entrances' }, tracking: { logMessage: 'Abrió Entradas de Inventario', category: 'Ventas' } },
           },
           {
             path: 'inventory',
             loadComponent: () =>
-              import(
-                './domains/ModSales/components/inventory2/inventory2.component'
-              ).then((s) => s.Inventory2Component),
-            canActivate: [MasterPermissionsGuard],
-            data: { permissions: { master: 'sales', detailed: 'inventory' } },
+              import('./domains/ModSales/components/inventory2/inventory2.component').then((s) => s.Inventory2Component),
+            canActivate: [MasterPermissionsGuard, TrackingGuard],
+            data: { permissions: { master: 'sales', detailed: 'inventory' }, tracking: { logMessage: 'Abrió Inventario', category: 'Ventas' } },
           },
           {
             path: 'products',
             loadComponent: () =>
-              import(
-                './domains/ModProjects/components/materials/materials.component'
-              ).then((m) => m.MaterialsComponent),
-            canActivate: [MasterPermissionsGuard],
-            data: { permissions: { master: 'sales', detailed: 'products' }, type: 'PRODSALES' },
+              import('./domains/ModProjects/components/materials/materials.component').then((m) => m.MaterialsComponent),
+            canActivate: [MasterPermissionsGuard, TrackingGuard],
+            data: { permissions: { master: 'sales', detailed: 'products' }, type: 'PRODSALES', tracking: { logMessage: 'Abrió Catálogo de Productos', category: 'Ventas' } },
           },
           {
             path: 'reports',
             loadComponent: () =>
-              import(
-                './domains/ModSales/components/sales-reports/sales-reports.component'
-              ).then((s) => s.SalesReportsComponent),
-            canActivate: [MasterPermissionsGuard],
-            data: { permissions: { master: 'sales', detailed: 'reports' } },
+              import('./domains/ModSales/components/sales-reports/sales-reports.component').then((s) => s.SalesReportsComponent),
+            canActivate: [MasterPermissionsGuard, TrackingGuard],
+            data: { permissions: { master: 'sales', detailed: 'reports' }, tracking: { logMessage: 'Abrió Reportes de Ventas', category: 'Ventas' } },
           },
           {
             path: 'out-pos',
             loadComponent: () =>
-              import(
-                './domains/ModSales/components/out-pos/out-pos.component'
-              ).then((s) => s.OutPosComponent),
-            canActivate: [MasterPermissionsGuard],
-            data: { permissions: { master: 'sales', detailed: 'out-pos' } },
+              import('./domains/ModSales/components/out-pos/out-pos.component').then((s) => s.OutPosComponent),
+            canActivate: [MasterPermissionsGuard, TrackingGuard],
+            data: { permissions: { master: 'sales', detailed: 'out-pos' }, tracking: { logMessage: 'Abrió Salida del POS', category: 'Ventas' } },
           },
           {
             path: 'stores',
             loadComponent: () =>
-              import(
-                './domains/ModSales/components/stores/stores.component'
-              ).then((s) => s.StoresComponent),
-            canActivate: [MasterPermissionsGuard],
-            data: { permissions: { master: 'sales', detailed: 'stores' } },
+              import('./domains/ModSales/components/stores/stores.component').then((s) => s.StoresComponent),
+            canActivate: [MasterPermissionsGuard, TrackingGuard],
+            data: { permissions: { master: 'sales', detailed: 'stores' }, tracking: { logMessage: 'Abrió Tiendas', category: 'Ventas' } },
             canDeactivate: [UnsavedChangesGuard],
           },
           {
             path: 'ProductFinished',
             loadComponent: () =>
-              import(
-                './domains/ModProjects/components/materials/materials.component'
-              ).then((m) => m.MaterialsComponent),
+              import('./domains/ModProjects/components/materials/materials.component').then((m) => m.MaterialsComponent),
             data: { type: 'PRODSALES' },
           },
           {
             path: 'prospectos',
             loadComponent: () =>
-              import(
-                './domains/ModSales/components/prospectos/prospectos.component'
-              ).then((p) => p.ProspectosComponent),
-            canActivate: [MasterPermissionsGuard],
-            data: { permissions: { master: 'sales', detailed: 'prospectos' } },
+              import('./domains/ModSales/components/prospectos/prospectos.component').then((p) => p.ProspectosComponent),
+            canActivate: [MasterPermissionsGuard, TrackingGuard],
+            data: { permissions: { master: 'sales', detailed: 'prospectos' }, tracking: { logMessage: 'Abrió Prospectos / CRM', category: 'Ventas' } },
           },
           {
             path: 'cotizaciones',
             loadComponent: () =>
-              import(
-                './domains/ModSales/components/cotizaciones/cotizaciones.component'
-              ).then((c) => c.CotizacionesComponent),
-            canActivate: [MasterPermissionsGuard],
-            data: { permissions: { master: 'sales', detailed: 'cotizaciones' } },
+              import('./domains/ModSales/components/cotizaciones/cotizaciones.component').then((c) => c.CotizacionesComponent),
+            canActivate: [MasterPermissionsGuard, TrackingGuard],
+            data: { permissions: { master: 'sales', detailed: 'cotizaciones' }, tracking: { logMessage: 'Abrió Cotizaciones', category: 'Ventas' } },
           },
           {
             path: 'cursos',
             loadComponent: () =>
-              import(
-                './domains/ModSales/components/cursos/cursos.component'
-              ).then((c) => c.CursosComponent),
-            canActivate: [MasterPermissionsGuard],
-            data: { permissions: { master: 'sales', detailed: 'cursos' } },
+              import('./domains/ModSales/components/cursos/cursos.component').then((c) => c.CursosComponent),
+            canActivate: [MasterPermissionsGuard, TrackingGuard],
+            data: { permissions: { master: 'sales', detailed: 'cursos' }, tracking: { logMessage: 'Abrió Cursos', category: 'Ventas' } },
           },
           {
             path: 'demos',
             loadComponent: () =>
-              import(
-                './domains/ModSales/components/demos/demos.component'
-              ).then((d) => d.DemosComponent),
-            canActivate: [MasterPermissionsGuard],
-            data: { permissions: { master: 'sales', detailed: 'demos' } },
+              import('./domains/ModSales/components/demos/demos.component').then((d) => d.DemosComponent),
+            canActivate: [MasterPermissionsGuard, TrackingGuard],
+            data: { permissions: { master: 'sales', detailed: 'demos' }, tracking: { logMessage: 'Abrió módulo Demos', category: 'Ventas' } },
           },
           {
             path: 'loyalty',
             loadComponent: () =>
-              import(
-                './domains/ModSales/components/loyalty/loyalty.component'
-              ).then((l) => l.LoyaltyComponent),
-            canActivate: [MasterPermissionsGuard],
-            data: { permissions: { master: 'sales', detailed: 'loyalty' } },
+              import('./domains/ModSales/components/loyalty/loyalty.component').then((l) => l.LoyaltyComponent),
+            canActivate: [MasterPermissionsGuard, TrackingGuard],
+            data: { permissions: { master: 'sales', detailed: 'loyalty' }, tracking: { logMessage: 'Abrió Programa de Lealtad', category: 'Ventas' } },
           },
           {
             path: 'egresos',
             loadComponent: () =>
-              import(
-                './domains/ModAdmon/components/expenditure/egreso-shell.component'
-              ).then((e) => e.EgresoShellComponent),
-            canActivate: [MasterPermissionsGuard],
-            data: { permissions: { master: 'sales', detailed: 'egresos' } },
+              import('./domains/ModAdmon/components/expenditure/egreso-shell.component').then((e) => e.EgresoShellComponent),
+            canActivate: [MasterPermissionsGuard, TrackingGuard],
+            data: { permissions: { master: 'sales', detailed: 'egresos' }, tracking: { logMessage: 'Abrió Egresos (Ventas)', category: 'Ventas' } },
           },
           {
             path: 'restaurant-mesas',
             loadComponent: () =>
-              import(
-                './domains/ModSales/components/restaurant-mesas/restaurant-mesas.component'
-              ).then((r) => r.RestaurantMesasComponent),
-            canActivate: [MasterPermissionsGuard],
-            data: { permissions: { master: 'sales', detailed: 'mesas' } },
+              import('./domains/ModSales/components/restaurant-mesas/restaurant-mesas.component').then((r) => r.RestaurantMesasComponent),
+            canActivate: [MasterPermissionsGuard, TrackingGuard],
+            data: { permissions: { master: 'sales', detailed: 'mesas' }, tracking: { logMessage: 'Abrió Restaurant Mesas', category: 'Ventas' } },
           },
           {
             path: 'fam-subfam',
             loadComponent: () =>
-              import(
-                './domains/ModShoppingTD/components/fam-subfam/fam-subfam.component'
-              ).then((c) => c.FamSubfamComponent),
-            canActivate: [MasterPermissionsGuard],
-            data: { permissions: { master: 'sales', detailed: 'fam-subfam' } },
+              import('./domains/ModShoppingTD/components/fam-subfam/fam-subfam.component').then((c) => c.FamSubfamComponent),
+            canActivate: [MasterPermissionsGuard, TrackingGuard],
+            data: { permissions: { master: 'sales', detailed: 'fam-subfam' }, tracking: { logMessage: 'Abrió Familias y Subfamilias', category: 'Ventas' } },
           },
         ],
       },
