@@ -850,6 +850,7 @@ export class DetallesStakeholderExpendComponent implements OnInit, OnDestroy {
         }
       };
 
+      this.trackingService.addLog(this.trackingService.getnameComp(), 'Imprimió/abrió PDF detalle stakeholder expend', 'Admon / Stakeholder', this.trackingService.getEmail());
       const pdfDocGenerator = pdfMake.createPdf(docDefinition);
 
       pdfDocGenerator.getBlob((blob: Blob) => {

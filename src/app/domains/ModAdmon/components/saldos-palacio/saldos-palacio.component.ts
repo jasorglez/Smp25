@@ -833,6 +833,7 @@ export class SaldosPalacioComponent {
     };
 
     // Generar y abrir el PDF
+    this.trackingService.addLog(this.trackingService.getnameComp(), 'Imprimió/abrió PDF estado de cuenta saldos palacio', 'Admon / Saldos Palacio', this.trackingService.getEmail());
     const pdf = pdfMake.createPdf(docDefinition);
     pdf.open();
 

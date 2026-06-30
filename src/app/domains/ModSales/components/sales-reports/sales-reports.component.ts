@@ -288,6 +288,7 @@ export class SalesReportsComponent implements OnInit {
       defaultStyle: { fontSize: 9 },
     };
 
+    this.trackingService.addLog(this.trackingService.getnameComp(), 'Imprimió/abrió PDF reporte de ventas hoy', 'Ventas / Reportes', this.trackingService.getEmail());
     pdfMake.createPdf(docDef).open();
   }
 
@@ -368,6 +369,7 @@ export class SalesReportsComponent implements OnInit {
       },
       defaultStyle: { fontSize: 8 },
     };
+    this.trackingService.addLog(this.trackingService.getnameComp(), 'Imprimió/abrió PDF reporte celular', 'Ventas / Reportes', this.trackingService.getEmail());
     pdfMake.createPdf(docDef).open();
   }
 
@@ -432,6 +434,7 @@ export class SalesReportsComponent implements OnInit {
       },
       defaultStyle: { fontSize: 8 },
     };
+    this.trackingService.addLog(this.trackingService.getnameComp(), 'Imprimió/abrió PDF reporte todos celulares', 'Ventas / Reportes', this.trackingService.getEmail());
     pdfMake.createPdf(docDef).open();
   }
 

@@ -9,6 +9,7 @@ import { IncomesAndExpensesService } from 'app/services/incomes-and-expenses.ser
 import { alerts } from 'app/helpers/alerts';
 import { RootService } from 'app/services/root.service';
 import { Base64EncodeService } from 'app/services/base64encode.service';
+import { TrackingService } from 'app/services/tracking.service';
 import { FormsModule } from '@angular/forms';
 import { CommonModule } from '@angular/common';
 import {
@@ -82,6 +83,7 @@ export class DastotPalComponent implements OnInit {
   private incomesExpensesService = inject(IncomesAndExpensesService);
   private rootService = inject(RootService);
   private base64EncodeService = inject(Base64EncodeService);
+  private trackingService = inject(TrackingService);
 
   // Grid variables
   gridApi!: GridApi;
@@ -672,6 +674,7 @@ export class DastotPalComponent implements OnInit {
         },
       };
 
+      this.trackingService.addLog(this.trackingService.getnameComp(), 'Imprimió/abrió PDF reporte totales palacio', 'Admon / Palacio Municipal', this.trackingService.getEmail());
       pdfMake.createPdf(docDefinition).open();
     } catch (error) {
       console.error('Error al generar PDF:', error);
@@ -854,6 +857,7 @@ export class DastotPalComponent implements OnInit {
       }
 
       this.setPdfProgress(85, 'Generando PDF...');
+      this.trackingService.addLog(this.trackingService.getnameComp(), 'Imprimió/abrió PDF vista actual palacio', 'Admon / Palacio Municipal', this.trackingService.getEmail());
       pdfMake.createPdf({
         pageSize: 'LETTER',
         pageMargins: [20, 80, 20, 28],

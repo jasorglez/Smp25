@@ -744,6 +744,7 @@ export class ProviderQuoteDetailComponent implements OnInit {
         }
       };
 
+      this.trackingService.addLog(this.trackingService.getnameComp(), 'Imprimió/abrió PDF cotización proveedor', 'Almacén / Cotización', this.trackingService.getEmail());
       pdfMake.createPdf(docDefinition).open();
 
     } catch (error) {

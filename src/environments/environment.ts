@@ -89,5 +89,5 @@ export const environment = {
   geminiApiKey: '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',
   gnewsApiKey: '94ccc596b4dfebc3f72683b6e81d81bc',
 
-  version: '4.60 (30 Junio 2026) feat: addLog en todos los PDF/impresiones del sistema',
+  version: '4.61 (30 Junio 2026) feat: addLog completo en todos los PDF/impresiones — cobertura total',
 }; 

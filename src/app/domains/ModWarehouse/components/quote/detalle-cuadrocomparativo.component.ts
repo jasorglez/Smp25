@@ -7,6 +7,7 @@ import { OcAndReqsService } from 'app/services/ocandreqs.service';
 import { RootService } from 'app/services/root.service';
 import { SignalsService } from 'app/services/signals.service';
 import { Base64EncodeService } from 'app/services/base64encode.service';
+import { TrackingService } from 'app/services/tracking.service';
 import { lastValueFrom } from 'rxjs';
 import pdfMake from 'pdfmake/build/pdfmake';
 import pdfFonts from 'pdfmake/build/vfs_fonts';
@@ -73,6 +74,7 @@ export class DetalleCuadroComparativoComponent implements ICellRendererAngularCo
   private rootService     = inject(RootService);
   private signalsService  = inject(SignalsService);
   private b64Service      = inject(Base64EncodeService);
+  private trackingService = inject(TrackingService);
 
   private params: any;
   private quoteRow: any;
@@ -404,6 +406,7 @@ export class DetalleCuadroComparativoComponent implements ICellRendererAngularCo
       defaultStyle: { font: 'Roboto' },
     };
 
+    this.trackingService.addLog(this.trackingService.getnameComp(), 'Descargó PDF cuadro comparativo', 'Almacén / Cotización', this.trackingService.getEmail());
     pdfMake.createPdf(docDef).download('cuadro-comparativo.pdf');
   }
 }

@@ -2266,6 +2266,7 @@ export class DetallesEgresospalaciosComponent implements OnInit, OnDestroy {
       };
 
       // Generar el PDF
+      this.trackingService.addLog(this.trackingService.getnameComp(), 'Imprimió/abrió PDF detalle egreso palacio', 'Admon / Egresos Palacio', this.trackingService.getEmail());
       const pdfDocGenerator = pdfMake.createPdf(docDefinition);
 
       pdfDocGenerator.getBlob((blob: Blob) => {
@@ -2898,6 +2899,7 @@ export class DetallesEgresospalaciosComponent implements OnInit, OnDestroy {
       alerts.closeLoading();
 
       // Manejar popup blocker
+      this.trackingService.addLog(this.trackingService.getnameComp(), 'Imprimió/abrió PDF reporte fotográfico egreso palacio', 'Admon / Egresos Palacio', this.trackingService.getEmail());
       const pdf = pdfMake.createPdf(docDefinition);
       try {
         pdf.open();
