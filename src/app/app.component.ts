@@ -1,8 +1,9 @@
-import { Component, effect, inject, OnInit } from '@angular/core';
+import { Component, effect, HostListener, inject, OnInit } from '@angular/core';
 import { RouterOutlet } from '@angular/router';
 import {AuthService} from "./services/auth.service";
 import { SignalsService } from './services/signals.service';
 import { ChatbotComponent } from './shared/chatbot/chatbot.component';
+import { TrackingService } from './services/tracking.service';
 
 
 @Component({
@@ -15,8 +16,14 @@ export class AppComponent implements OnInit {
   title = 'bi-aug-24';
   private lastLoadedBranchId: number | null = null; // Variable para rastrear la última sucursal cargada
 
-  private authService = inject(AuthService);
+  private authService    = inject(AuthService);
   private signalsService = inject(SignalsService);
+  private trackingService = inject(TrackingService);
+
+  @HostListener('window:beforeunload')
+  onBeforeUnload(): void {
+    this.trackingService.endSession();
+  }
 
   constructor() {
     effect(() => {

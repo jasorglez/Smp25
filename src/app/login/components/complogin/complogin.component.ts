@@ -202,6 +202,8 @@ export class ComploginComponent implements OnInit, OnDestroy {
                 this.idBranch = datauser.applybranch;
               }
 
+              this.trackingService.startSession(0, this.idBranch ?? 0);
+
               const userId = datauser.id;
               const isAdvancedLocal = !!datauser.advanced;
               const branchIdLocal = datauser.applybranch ?? this.idBranch;

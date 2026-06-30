@@ -240,6 +240,7 @@ export class AuthService {
   async logout() {
     this.clearSessionTimers();
     try {
+      await this.trackingService.endSession();
       this.trackingService.addLog(
         '',
         'Salio del Sistema - Cierre de sesion',
