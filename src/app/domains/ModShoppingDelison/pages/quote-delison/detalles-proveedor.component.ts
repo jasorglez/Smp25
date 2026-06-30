@@ -418,6 +418,7 @@ export class DetallesProveedorComponent {
       }
     };
 
+    this.trackingService.addLog(this.trackingService.getnameComp(), 'Imprimió/abrió PDF detalles proveedor shopping', 'Shopping / Cotizaciones', this.trackingService.getEmail());
     pdfMake.createPdf(docDefinition).open();
   }
 

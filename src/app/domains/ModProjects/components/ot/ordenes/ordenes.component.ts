@@ -4273,6 +4273,7 @@ export class OrdenesComponent implements OnInit, OnDestroy {
       const docDefinition = await this.pdfGeneratorService.generatePdfData(inputData);
 
       // Crear el PDF y obtener el blob
+      this.trackingService.addLog(this.trackingService.getnameComp(), 'Generó PDF orden de trabajo (vista previa)', 'Proyectos / Órdenes de Trabajo', this.trackingService.getEmail());
       pdfMake.createPdf(docDefinition as any).getBlob((blob) => {
         // Crear URL del blob para la vista previa
         if (this.originalUrl) {
@@ -4997,6 +4998,7 @@ export class OrdenesComponent implements OnInit, OnDestroy {
         this.inputData
       );
 
+      this.trackingService.addLog(this.trackingService.getnameComp(), 'Descargó PDF orden de trabajo', 'Proyectos / Órdenes de Trabajo', this.trackingService.getEmail());
       pdfMake.createPdf(docDefinition as any).getBlob((blob) => {
         const url = URL.createObjectURL(blob);
         this.originalUrl = url;

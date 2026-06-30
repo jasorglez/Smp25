@@ -4,6 +4,7 @@ import { DomSanitizer, SafeResourceUrl } from '@angular/platform-browser';
 import { ICellRendererParams, ICellRendererComp } from 'ag-grid-enterprise';
 import pdfMake from 'pdfmake/build/pdfmake';
 import * as pdfFonts from 'pdfmake/build/vfs_fonts';
+import { TrackingService } from 'app/services/tracking.service';
 (pdfMake as any).vfs = pdfFonts.pdfMake.vfs;
 
 @Component({
@@ -50,6 +51,7 @@ export class DetailCellRendererEntryReportComponent implements OnInit, ICellRend
   private params!: ICellRendererParams;
   private context: any;
   private sanitizer = inject(DomSanitizer);
+  private trackingService = inject(TrackingService);
 
   entryData: any = null;
   pdfUrl: SafeResourceUrl | null = null;
@@ -221,6 +223,7 @@ export class DetailCellRendererEntryReportComponent implements OnInit, ICellRend
       };
 
       // Generate PDF and create preview URL
+      this.trackingService.addLog(this.trackingService.getnameComp(), 'Generó PDF reporte entrada almacén TD', 'Almacén TD / Entradas', this.trackingService.getEmail());
       pdfMake.createPdf(docDefinition as any).getBlob((blob) => {
         // Clean up previous URL
         if (this.originalPdfUrl) {

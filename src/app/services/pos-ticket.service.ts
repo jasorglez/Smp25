@@ -1,6 +1,7 @@
 import { inject, Injectable } from '@angular/core';
 import { RootService } from 'app/services/root.service';
 import { Base64EncodeService } from 'app/services/base64encode.service';
+import { TrackingService } from 'app/services/tracking.service';
 import { lastValueFrom } from 'rxjs';
 import pdfMake from 'pdfmake/build/pdfmake';
 import * as pdfFonts from 'pdfmake/build/vfs_fonts';
@@ -14,6 +15,7 @@ const TICKET_WIDTH = 226.77; // 80 mm en puntos
 export class PosTicketService {
   private rootService = inject(RootService);
   private base64EncodeService = inject(Base64EncodeService);
+  private trackingService = inject(TrackingService);
 
   async print(
     sale: {
@@ -149,6 +151,7 @@ export class PosTicketService {
       ],
     };
 
+    this.trackingService.addLog(this.trackingService.getnameComp(), 'Imprimió ticket POS venta', 'Ventas / POS', this.trackingService.getEmail());
     pdfMake.createPdf(docDef).open();
   }
 
@@ -235,6 +238,7 @@ export class PosTicketService {
       ],
     };
 
+    this.trackingService.addLog(this.trackingService.getnameComp(), 'Imprimió ticket POS devolución', 'Ventas / POS', this.trackingService.getEmail());
     pdfMake.createPdf(docDef).open();
   }
 }

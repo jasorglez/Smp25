@@ -828,6 +828,7 @@ export class ReportesComponent implements OnInit {
       defaultStyle: { fontSize: 9 }
     };
 
+    this.trackingService.addLog(this.trackingService.getnameComp(), 'Descargó PDF reporte mantenimiento', 'Mantenimiento / Reportes', this.trackingService.getEmail());
     pdfMake.createPdf(docDefinition).download(fileName);
   }
 
