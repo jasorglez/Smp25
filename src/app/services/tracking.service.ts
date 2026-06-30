@@ -386,8 +386,8 @@ if (!user) user = this.getEmail();
         .post(`${environment.urlFirebase}tracking.json`, data)
         .toPromise();
 
-      // Notificar acción CRUD via Telegram si hay sesión activa
-      if (this.sessionKey) {
+      // Notificar acción CRUD via Telegram si el usuario está logueado
+      if (this.getEmail()) {
         try {
           await this.http.post(`${environment.urlChatBot}/LoginNotification/crud-action`, {
             email: user,
@@ -557,17 +557,6 @@ if (!user) user = this.getEmail();
       this.sessionKey = res?.name ?? null;
     } catch {}
 
-    // Notificar via backend C# (evita CORS de Telegram directo)
-    try {
-      await this.http.post(`${environment.urlChatBot}/LoginNotification`, {
-        idUser    : this.getId(),
-        displayName: this.getnameUser() || email,
-        email,
-        idCompany,
-        branch    : `Sucursal ${idBranch}${priorVisits > 0 ? ` | 🔄 Visita #${priorVisits + 1}` : ''}`,
-        ipAddress : ipInfo.ip,
-      }).toPromise();
-    } catch {}
   }
 
   // ── Registrar módulo visitado (llamar desde TrackingGuard) ─────────────────
