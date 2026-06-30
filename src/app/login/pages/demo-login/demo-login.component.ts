@@ -69,10 +69,12 @@ export class DemoLoginComponent implements OnInit {
               : this.auth.fetchUserPermissions(datauser.id);
 
             permObs.subscribe({
-              next: (permissionsData: any) => {
+              next: async (permissionsData: any) => {
                 if (permissionsData?.permissions) {
                   this.auth.setUserPermissions(permissionsData.permissions);
                 }
+                this.trackingService.setEmail(email);
+                await this.trackingService.startSession(0, datauser.applybranch ?? 0);
                 this.navigateHome();
               },
               error: () => this.navigateHome()
