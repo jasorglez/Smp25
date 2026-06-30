@@ -1227,6 +1227,7 @@ export class PedidosLogisticaComponent implements CanComponentDeactivate {
         })
       };
 
+      this.trackingService.addLog(this.trackingService.getnameComp(), 'Imprimió/abrió PDF pedido', 'Logística / Pedidos', this.trackingService.getEmail());
       const pdf = pdfMake.createPdf(docDefinition);
       try { pdf.open(); } catch { pdf.download(`Pedido_${pedido.numero || pedido.id}.pdf`); }
 
@@ -1414,6 +1415,7 @@ export class PedidosLogisticaComponent implements CanComponentDeactivate {
         })
       };
 
+      this.trackingService.addLog(this.trackingService.getnameComp(), 'Imprimió/abrió ticket pedido', 'Logística / Pedidos', this.trackingService.getEmail());
       const pdf = pdfMake.createPdf(docDef);
       try { pdf.open(); } catch { pdf.download(`Ticket_${pedido.numero || pedido.id}.pdf`); }
 
@@ -1611,6 +1613,7 @@ export class PedidosLogisticaComponent implements CanComponentDeactivate {
         })
       };
 
+      this.trackingService.addLog(this.trackingService.getnameComp(), 'Imprimió/abrió ticket pedido por cliente', 'Logística / Pedidos', this.trackingService.getEmail());
       const pdf = pdfMake.createPdf(docDef);
       try { pdf.open(); } catch {
         pdf.download(`Ticket_${pedido.numero || pedido.id}_${cliente.name}.pdf`);
@@ -1827,6 +1830,7 @@ export class PedidosLogisticaComponent implements CanComponentDeactivate {
       };
 
       alerts.closeLoading();
+      this.trackingService.addLog(this.trackingService.getnameComp(), 'Imprimió/abrió PDF consolidado pedidos', 'Logística / Pedidos', this.trackingService.getEmail());
       const pdf = pdfMake.createPdf(docDef);
       try {
         pdf.open();
@@ -2066,6 +2070,7 @@ export class PedidosLogisticaComponent implements CanComponentDeactivate {
         })
       };
 
+      this.trackingService.addLog(this.trackingService.getnameComp(), 'Imprimió/abrió ticket general cliente', 'Logística / Pedidos', this.trackingService.getEmail());
       const pdf = pdfMake.createPdf(docDef);
       try { pdf.open(); } catch {
         pdf.download(`Ticket_General_${cliente.nameContact || cliente.company}.pdf`);

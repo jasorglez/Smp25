@@ -7,6 +7,7 @@ import { SignalsService } from 'app/services/signals.service';
 import { RootService } from 'app/services/root.service';
 import { CustomersService } from 'app/services/customers.service';
 import { Base64EncodeService } from 'app/services/base64encode.service';
+import { TrackingService } from 'app/services/tracking.service';
 import { lastValueFrom } from 'rxjs';
 import pdfMake from 'pdfmake/build/pdfmake';
 import pdfFonts from 'pdfmake/build/vfs_fonts';
@@ -75,6 +76,7 @@ export class DetailCellRendererPedimentoReportComponent {
   private rootService = inject(RootService);
   private customersService = inject(CustomersService);
   private base64EncodeService = inject(Base64EncodeService);
+  private trackingService = inject(TrackingService);
 
   private params!: ICellRendererParams;
   pedimentoData: any;
@@ -138,6 +140,7 @@ export class DetailCellRendererPedimentoReportComponent {
       // Generar el PDF
       const docDefinition = this.buildDocDefinition(companyData, logoBase64, logo2Base64, watermarkBase64, providerName, articulos);
 
+      this.trackingService.addLog(this.trackingService.getnameComp(), 'Generó PDF reporte pedimento', 'Shopping / Pedimentos', this.trackingService.getEmail());
       const pdfDocGenerator = pdfMake.createPdf(docDefinition as any);
       pdfDocGenerator.getBlob((blob: Blob) => {
         this._pdfBlob = blob;

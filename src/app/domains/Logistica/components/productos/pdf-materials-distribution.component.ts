@@ -6,6 +6,7 @@ import { ICellRendererAngularComp } from 'ag-grid-angular';
 import { ICellRendererParams }      from 'ag-grid-enterprise';
 import { RootService }         from 'app/services/root.service';
 import { Base64EncodeService } from 'app/services/base64encode.service';
+import { TrackingService } from 'app/services/tracking.service';
 import { DistributionService } from 'app/services/distribution.service';
 import { MaterialsService }    from 'app/services/materials.service';
 import { SignalsService }      from 'app/services/signals.service';
@@ -138,6 +139,7 @@ export class PdfMaterialsDistributionComponent implements OnInit, ICellRendererA
   private signalsService      = inject(SignalsService);
   private sanitizer           = inject(DomSanitizer);
   private cdr                 = inject(ChangeDetectorRef);
+  private trackingService     = inject(TrackingService);
 
   pdfUrl:    SafeResourceUrl | null = null;
   pdfBlob:   Blob | null = null;
@@ -368,6 +370,7 @@ export class PdfMaterialsDistributionComponent implements OnInit, ICellRendererA
 
       this.loadingMsg = 'Generando PDF...';
       this.loadingProgress = 95;
+      this.trackingService.addLog(this.trackingService.getnameComp(), 'Generó PDF distribución de materiales', 'Logística / Productos', this.trackingService.getEmail());
       const doc = pdfMake.createPdf(docDef);
 
       if (this.mode === 'newTab') {

@@ -8,6 +8,7 @@ import { forkJoin, lastValueFrom } from 'rxjs';
 import { AG_GRID_LOCALE_ES } from 'assets/i18n/ag-grid.locale.es';
 import { alerts } from 'app/helpers/alerts';
 import { Base64EncodeService } from 'app/services/base64encode.service';
+import { TrackingService } from 'app/services/tracking.service';
 import { CustomersService } from 'app/services/customers.service';
 import { RemisionesService } from 'app/services/remisiones.service';
 import { RootService } from 'app/services/root.service';
@@ -28,6 +29,7 @@ export class RemisionesComponent {
   private customersService = inject(CustomersService);
   private rootService = inject(RootService);
   private base64EncodeService = inject(Base64EncodeService);
+  private trackingService = inject(TrackingService);
 
   public AG_GRID_LOCALE_ES = AG_GRID_LOCALE_ES;
 
@@ -801,6 +803,7 @@ export class RemisionesComponent {
       ? `Ticket_Pedido_${pedidoId}_Remision_${remision?.folio || remision?.id || 'NA'}.pdf`
       : `Ticket_Remision_${remision?.folio || remision?.id || 'NA'}.pdf`;
 
+    this.trackingService.addLog(this.trackingService.getnameComp(), 'Generó PDF remisión logística', 'Logística / Remisiones', this.trackingService.getEmail());
     const pdf = pdfMake.createPdf(docDefinition);
     if (mode === 'blob') {
       return await new Promise<string>((resolve) => {

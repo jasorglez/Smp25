@@ -9,6 +9,7 @@ import { PedidosService } from 'app/services/pedidos.service';
 import { CustomersService } from 'app/services/customers.service';
 import { RootService } from 'app/services/root.service';
 import { Base64EncodeService } from 'app/services/base64encode.service';
+import { TrackingService } from 'app/services/tracking.service';
 import { forkJoin, lastValueFrom } from 'rxjs';
 import { alerts } from 'app/helpers/alerts';
 import { DetallesEntregadosClienteComponent } from './detalles-entregados-cliente.component';
@@ -30,6 +31,7 @@ export class PedidosEntregadosComponent {
   private customersService = inject(CustomersService);
   private rootService = inject(RootService);
   private base64EncodeService = inject(Base64EncodeService);
+  private trackingService = inject(TrackingService);
   private router = inject(Router);
   private route = inject(ActivatedRoute);
 
@@ -419,6 +421,7 @@ export class PedidosEntregadosComponent {
         })
       };
 
+      this.trackingService.addLog(this.trackingService.getnameComp(), 'Imprimió/abrió ticket pedido entregado', 'Logística / Pedidos Entregados', this.trackingService.getEmail());
       const pdf = pdfMake.createPdf(docDef);
       try {
         pdf.open();

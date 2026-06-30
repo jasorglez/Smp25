@@ -329,6 +329,7 @@ export class DetailCellRendererProveedorComponent {
       }
     };
 
+    this.trackingService.addLog(this.trackingService.getnameComp(), 'Imprimió/abrió PDF cotización proveedor shopping', 'Shopping / Cotizaciones', this.trackingService.getEmail());
     pdfMake.createPdf(docDefinition).open();
   }
 
