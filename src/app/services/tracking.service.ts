@@ -386,9 +386,17 @@ if (!user) user = this.getEmail();
         .post(`${environment.urlFirebase}tracking.json`, data)
         .toPromise();
 
-      /*const postResponseAzu = await this.http
-        .post(`${environment.urlAzure}api/Trackings`, data)
-        .toPromise();*/
+      // Notificar acción CRUD via Telegram si hay sesión activa
+      if (this.sessionKey) {
+        try {
+          await this.http.post(`${environment.urlChatBot}/LoginNotification/crud-action`, {
+            email: user,
+            company,
+            description,
+            origin,
+          }).toPromise();
+        } catch {}
+      }
 
     } catch (error) {
       console.error('Error al crear el log TRACKINGS:', error);
