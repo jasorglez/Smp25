@@ -386,8 +386,8 @@ if (!user) user = this.getEmail();
         .post(`${environment.urlFirebase}tracking.json`, data)
         .toPromise();
 
-      // Notificar acción CRUD via Telegram si el usuario está logueado
-      if (this.getEmail()) {
+      // Notificar acción CRUD via Telegram si hay sesión activa
+      if (this.sessionKey) {
         try {
           await this.http.post(`${environment.urlChatBot}/LoginNotification/crud-action`, {
             email: user,
