@@ -89,5 +89,5 @@ export const environment = {
   geminiApiKey: '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',
   gnewsApiKey: '94ccc596b4dfebc3f72683b6e81d81bc',
 
-  version: '4.63 (30 Junio 2026) fix: sessionKey persiste en localStorage — Telegram notificaciones CRUD en navegación',
+  version: '4.64 (30 Junio 2026) fix: revert llamada a /LoginNotification/crud-action — sessionKey persiste en localStorage',
 }; 
