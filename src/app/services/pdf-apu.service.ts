@@ -4,6 +4,7 @@ import * as pdfFonts from 'pdfmake/build/vfs_fonts';
 import { lastValueFrom } from 'rxjs';
 import { RootService } from './root.service';
 import { SignalsService } from './signals.service';
+import { TrackingService } from './tracking.service';
 
 (pdfMake as any).vfs = (pdfFonts as any).pdfMake?.vfs || (pdfFonts as any).default?.pdfMake?.vfs;
 
@@ -31,18 +32,21 @@ export interface ApuPdfData {
 
 @Injectable({ providedIn: 'root' })
 export class PdfApuService {
-  private rootService    = inject(RootService);
-  private signalsService = inject(SignalsService);
+  private rootService     = inject(RootService);
+  private signalsService  = inject(SignalsService);
+  private trackingService = inject(TrackingService);
 
   // ── Entry points ──────────────────────────────────────────────────────────
   async openApuPdf(data: ApuPdfData): Promise<void> {
+    this.trackingService.addLog(this.trackingService.getnameComp(), `Abrió APU PDF: ${data.auxiliar?.clave ?? data.auxiliar?.id}`, 'Proyectos / APU', this.trackingService.getEmail());
     const logo = await this.loadCompanyLogo();
     pdfMake.createPdf(this.buildDocDef(data, logo)).open();
   }
 
   async downloadApuPdf(data: ApuPdfData): Promise<void> {
-    const logo = await this.loadCompanyLogo();
     const clv  = data.auxiliar?.clave ?? data.auxiliar?.claveUsuario ?? data.auxiliar?.id;
+    this.trackingService.addLog(this.trackingService.getnameComp(), `Descargó APU PDF: ${clv}`, 'Proyectos / APU', this.trackingService.getEmail());
+    const logo = await this.loadCompanyLogo();
     pdfMake.createPdf(this.buildDocDef(data, logo)).download(`APU_${clv}.pdf`);
   }
 

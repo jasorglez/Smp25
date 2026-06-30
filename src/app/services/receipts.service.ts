@@ -10,6 +10,7 @@ import { UsersService } from './users.service';
 import { Base64EncodeService } from './base64encode.service';
 import { ProvidersService } from './providers.service';
 import { InandoutService } from './inandout.service';
+import { TrackingService } from './tracking.service';
 
 (pdfMake as any).vfs = (pdfFonts as any).pdfMake?.vfs || (pdfFonts as any).default?.pdfMake?.vfs;
 
@@ -77,12 +78,13 @@ interface UserResponse {
 })
 export class ReceiptsService {
   private requisitionsService = inject(OcAndReqsService);
-  private rootService = inject(RootService);
-  private projectsService = inject(ProjectsService);
-  private usersService = inject(UsersService);
+  private rootService         = inject(RootService);
+  private projectsService     = inject(ProjectsService);
+  private usersService        = inject(UsersService);
   private base64EncodeService = inject(Base64EncodeService);
-  private providerService = inject(ProvidersService);
-  private inAndOutService = inject(InandoutService);
+  private providerService     = inject(ProvidersService);
+  private inAndOutService     = inject(InandoutService);
+  private trackingService     = inject(TrackingService);
 
   private reqItems: any[] = [];
   private inOutItems: any;
@@ -113,6 +115,7 @@ export class ReceiptsService {
       await this.getRequisitionData(id);
       this.headerTitle = this.getHeaderTitle();
       const docDefinition = await this.generateDocDefinition();
+      this.trackingService.addLog(this.trackingService.getnameComp(), `Imprimió OC #${id} — acción: ${action}`, 'Almacenes / Proyectos', this.trackingService.getEmail());
       switch (action) {
         case 'print':
           pdfMake.createPdf(docDefinition).print();
@@ -135,6 +138,7 @@ export class ReceiptsService {
       this.headerTitle = this.getHeaderTitle();
 
       const docDefinition = await this.generateDocDefinition();
+      this.trackingService.addLog(this.trackingService.getnameComp(), `Imprimió Entrada/Salida #${id} — acción: ${action}`, 'Almacenes / Proyectos', this.trackingService.getEmail());
       switch (action) {
         case 'print':
           pdfMake.createPdf(docDefinition).print();

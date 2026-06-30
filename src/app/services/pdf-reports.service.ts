@@ -3,13 +3,15 @@ import pdfMake from 'pdfmake/build/pdfmake';
 import * as pdfFonts from 'pdfmake/build/vfs_fonts';
 (pdfMake as any).vfs = (pdfFonts as any).pdfMake?.vfs || (pdfFonts as any).default?.pdfMake?.vfs;
 import { RootService } from './root.service';
+import { TrackingService } from './tracking.service';
 import { lastValueFrom } from 'rxjs';
 
 @Injectable({
   providedIn: 'root'
 })
 export class PdfReportsService {
-  private rootService = inject(RootService);
+  private rootService      = inject(RootService);
+  private trackingService  = inject(TrackingService);
 
   constructor() {
     pdfMake.fonts = {
@@ -296,6 +298,7 @@ export class PdfReportsService {
         });
       });
 
+      this.trackingService.addLog(this.trackingService.getnameComp(), 'Generó reporte de entrada PDF', 'Almacenes / Proyectos', this.trackingService.getEmail());
     } catch (error) {
       console.error('Error generating entry report PDF:', error);
       throw error;
@@ -487,6 +490,7 @@ export class PdfReportsService {
 
     const safeTitle = title.replace(/\s+/g, '_');
     const fileName = `${safeTitle}_${reportType}_${startDate}_${endDate}.pdf`;
+    this.trackingService.addLog(this.trackingService.getnameComp(), `Descargó reporte financiero PDF: ${title}`, 'Administración', this.trackingService.getEmail());
     pdfMake.createPdf(docDef).download(fileName);
   }
 
@@ -608,6 +612,7 @@ export class PdfReportsService {
         });
       });
 
+      this.trackingService.addLog(this.trackingService.getnameComp(), `Generó reporte PDF: ${title}`, 'Proyectos', this.trackingService.getEmail());
     } catch (error) {
       console.error('Error generating report PDF:', error);
       throw error;
