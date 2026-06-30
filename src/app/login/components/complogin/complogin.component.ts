@@ -183,7 +183,7 @@ export class ComploginComponent implements OnInit, OnDestroy {
         this.auth.startSessionTimers();
 
         this.userService.findEmail(this.emailcapt).subscribe({
-          next: (datauser: any) => {
+          next: async (datauser: any) => {
             if (datauser) {
               this.trackingService.setnameUser(datauser.displayName);
               this.trackingService.setpictureUser(datauser.picture);
@@ -202,7 +202,7 @@ export class ComploginComponent implements OnInit, OnDestroy {
                 this.idBranch = datauser.applybranch;
               }
 
-              this.trackingService.startSession(0, this.idBranch ?? 0);
+              await this.trackingService.startSession(0, this.idBranch ?? 0);
 
               const userId = datauser.id;
               const isAdvancedLocal = !!datauser.advanced;
