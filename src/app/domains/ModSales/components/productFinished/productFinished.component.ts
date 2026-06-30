@@ -19,6 +19,7 @@ import { MaterialsService } from 'app/services/materials.service';
 import { CatalogsService } from 'app/services/catalogs.service';
 import { ImageHandlerService } from 'app/services/image-handler.service';
 import { SignalsService } from 'app/services/signals.service';
+import { TrackingService } from 'app/services/tracking.service';
 import { ActivatedRoute, Router } from '@angular/router';
 import { Icatalog } from 'app/interface/icatalog';
 import { AutocompleteEditorComponent } from 'app/shared/autocomplete-editor/autocomplete-editor.component';
@@ -116,12 +117,13 @@ export class ProductFinishedComponent implements CanComponentDeactivate {
   };
 
   // Inject of new way for Angular 18
-  private materialsService = inject(MaterialsService);
-  private catalogsService = inject(CatalogsService);
-  private modalServiceTable = inject(ModalService);
+  private materialsService    = inject(MaterialsService);
+  private catalogsService     = inject(CatalogsService);
+  private modalServiceTable   = inject(ModalService);
   private imageHandlerService = inject(ImageHandlerService);
-  private signalsService = inject(SignalsService);
-  private route = inject(ActivatedRoute);
+  private signalsService      = inject(SignalsService);
+  private trackingService     = inject(TrackingService);
+  private route               = inject(ActivatedRoute);
 
   // Column Definitions: Defines the columns to be displayed.
   public gridOptions: any = {
@@ -642,6 +644,7 @@ export class ProductFinishedComponent implements CanComponentDeactivate {
   }
 
   addRow() {
+    this.trackingService.addLog(this.trackingService.getnameComp(), 'Agregó nuevo producto terminado', 'Ventas', this.trackingService.getEmail());
     const tempId = `temp_${this.tempIdCounter++}`;
     const newItem = {
       id: tempId,
@@ -673,6 +676,7 @@ export class ProductFinishedComponent implements CanComponentDeactivate {
   }
 
   async saveChanges() {
+    this.trackingService.addLog(this.trackingService.getnameComp(), 'Guardó cambios en productos terminados', 'Ventas', this.trackingService.getEmail());
     const isValid = this.rowData.every(
       (item) => item.insumo && item.description
     );

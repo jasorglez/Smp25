@@ -16,6 +16,7 @@ import { ProspectosDetailWrapperComponent } from './prospectos-detail-wrapper.co
 import { ButtonCellRendererIncomeComponent } from 'app/domains/ModAdmon/components/income/button-cell-renderer-income.component';
 import { StoragesService } from 'app/services/storages.service';
 import { ESTADOS_MEXICO, getMunicipiosByEstado, normalizeEstadoMexicoName, normalizeMunicipioMexicoName } from 'app/shared/catalogs/municipios-mexico';
+import { TrackingService } from 'app/services/tracking.service';
 import Swal from 'sweetalert2';
 
 @Component({
@@ -31,8 +32,9 @@ export class ProspectosComponent implements OnInit {
   private signalsSvc = inject(SignalsService);
   private usersSvc   = inject(UsersService);
   private storageSvc = inject(StoragesService);
-  private inegiSvc   = inject(InegiService);
-  private firestore  = inject(Firestore);
+  private inegiSvc       = inject(InegiService);
+  private trackingService = inject(TrackingService);
+  private firestore      = inject(Firestore);
   private route      = inject(ActivatedRoute);
   private _colDefs: ColDef[] = [];
 
@@ -676,6 +678,7 @@ export class ProspectosComponent implements OnInit {
   // ── CRUD ──────────────────────────────────────────────────────────────────
 
   add() {
+    this.trackingService.addLog(this.trackingService.getnameComp(), 'Agregó nuevo prospecto en CRM', 'Ventas', this.trackingService.getEmail());
     const nuevo: any = {
       nombre: '', telefono: 'SIN NUMERO', empresa: '', puesto: 'GERENTE', domicilio: 'SIN DOMICILIO', estado: 'prospecto',
       idVendedorActual: this.idVendedor, nombreVendedorActual: this.nombreVendedor,
@@ -699,6 +702,12 @@ export class ProspectosComponent implements OnInit {
     this.gridApi?.stopEditing();
 
     const toSave = this.rowData.filter(p => p.__isNew || p.__modified);
+    if (toSave.length) {
+      const newCount  = toSave.filter(p => p.__isNew).length;
+      const editCount = toSave.filter(p => !p.__isNew && p.__modified).length;
+      const desc = [newCount  ? `Creó ${newCount} prospecto(s)`  : '', editCount ? `Editó ${editCount} prospecto(s)` : ''].filter(Boolean).join(' | ');
+      this.trackingService.addLog(this.trackingService.getnameComp(), desc, 'Ventas', this.trackingService.getEmail());
+    }
     if (!toSave.length) return;
 
     const nuevos: any[] = [];
@@ -796,6 +805,7 @@ export class ProspectosComponent implements OnInit {
       confirmButtonText: 'Sí, eliminar', cancelButtonText: 'Cancelar',
     });
     if (!res.isConfirmed) return;
+    this.trackingService.addLog(this.trackingService.getnameComp(), `Eliminó prospecto: ${this.selectedItem.empresa || this.selectedItem.nombre}`, 'Ventas', this.trackingService.getEmail());
 
     if (this.selectedItem.__isNew) {
       this.rowData = this.rowData.filter(p => p !== this.selectedItem);

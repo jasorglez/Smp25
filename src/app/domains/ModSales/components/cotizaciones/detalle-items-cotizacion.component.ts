@@ -13,6 +13,7 @@ import { RootService } from 'app/services/root.service';
 import { Base64EncodeService } from 'app/services/base64encode.service';
 import { StoragesService } from 'app/services/storages.service';
 import { lastValueFrom } from 'rxjs';
+import { TrackingService } from 'app/services/tracking.service';
 import Swal from 'sweetalert2';
 import pdfMake from 'pdfmake/build/pdfmake';
 import * as pdfFonts from 'pdfmake/build/vfs_fonts';
@@ -180,13 +181,14 @@ const GRAY  = '#555555';
   `]
 })
 export class DetalleItemsCotizacionComponent implements ICellRendererAngularComp {
-  private svc        = inject(CotizacionesService);
-  private matSvc     = inject(MaterialsService);
-  private rootSvc    = inject(RootService);
-  private b64Svc     = inject(Base64EncodeService);
-  private storageSvc = inject(StoragesService);
-  private sanitizer  = inject(DomSanitizer);
-  private signalsSvc = inject(SignalsService);
+  private svc             = inject(CotizacionesService);
+  private matSvc          = inject(MaterialsService);
+  private rootSvc         = inject(RootService);
+  private b64Svc          = inject(Base64EncodeService);
+  private storageSvc      = inject(StoragesService);
+  private sanitizer       = inject(DomSanitizer);
+  private signalsSvc      = inject(SignalsService);
+  private trackingService = inject(TrackingService);
 
   private params!: ICellRendererParams;
   private context: any;
@@ -374,6 +376,7 @@ export class DetalleItemsCotizacionComponent implements ICellRendererAngularComp
   // ── CRUD ──────────────────────────────────────────────────────────────────
 
   add() {
+    this.trackingService.addLog(this.trackingService.getnameComp(), `Agregó ítem a cotización`, 'Ventas', this.trackingService.getEmail());
     const nuevo: CotizacionItem = {
       idMaterial: 0, nombreMaterial: '', unidad: '',
       cantidad: 1, precio: 0, subtotal: 0, __isNew: true,
@@ -388,6 +391,7 @@ export class DetalleItemsCotizacionComponent implements ICellRendererAngularComp
 
   async save() {
     if (!this.cotizacion?.id) return;
+    this.trackingService.addLog(this.trackingService.getnameComp(), `Guardó ítems de cotización`, 'Ventas', this.trackingService.getEmail());
     try {
       await this.svc.guardarItems(this.cotizacion.id, this.rowData);
       this.originalData = JSON.parse(JSON.stringify(this.rowData));

@@ -17,6 +17,7 @@ import { catchError, concat, EMPTY, lastValueFrom, toArray } from 'rxjs';
 import { ModalService } from 'app/services/modal.service';
 import { MultiLineEditorComponent } from 'app/shared/multi-line/multi-line-editor.component';
 import { SignalsService } from 'app/services/signals.service';
+import { TrackingService } from 'app/services/tracking.service';
 import { CanComponentDeactivate } from 'app/guards/unsaved-changes.guard';
 import { confirmExitIfUnsaved } from 'app/helpers/can-deactivate.helper';
 
@@ -28,10 +29,11 @@ import { confirmExitIfUnsaved } from 'app/helpers/can-deactivate.helper';
   styleUrl: './stores.component.scss',
 })
 export class StoresComponent implements CanComponentDeactivate {
-  private storesService = inject(StoresService);
-  private inegiService = inject(InegiService);
+  private storesService   = inject(StoresService);
+  private inegiService    = inject(InegiService);
   private modalServiceTable = inject(ModalService);
-  private signalsService = inject(SignalsService);
+  private signalsService  = inject(SignalsService);
+  private trackingService = inject(TrackingService);
 
   id: number;
   idBranch: number;
@@ -102,6 +104,7 @@ export class StoresComponent implements CanComponentDeactivate {
   }
 
   addRow() {
+    this.trackingService.addLog(this.trackingService.getnameComp(), 'Agregó nueva tienda/sucursal', 'Ventas', this.trackingService.getEmail());
     const tempId = `temp_${this.tempIdCounter++}`;
     const newItem = {
       id: tempId,
@@ -157,6 +160,7 @@ export class StoresComponent implements CanComponentDeactivate {
         })
       )
       .subscribe(() => {
+        this.trackingService.addLog(this.trackingService.getnameComp(), 'Eliminó tienda/sucursal', 'Ventas', this.trackingService.getEmail());
         alerts.basicAlert(
           'Eliminar entrada',
           'Entrada eliminada satisfactoriamente.',
@@ -180,6 +184,7 @@ export class StoresComponent implements CanComponentDeactivate {
   }
 
   async saveChanges() {
+    this.trackingService.addLog(this.trackingService.getnameComp(), 'Guardó cambios en tiendas/sucursales', 'Ventas', this.trackingService.getEmail());
     const isValid = this.rowData.every((item) => item.description);
     if (!isValid) {
       alerts.basicAlert(
