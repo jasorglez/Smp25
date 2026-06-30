@@ -46,6 +46,14 @@ export class TrackingService {
   private bandformEO      : string = '';
   private idUser          : number = 0;
 
+  // ── Session tracking ──────────────────────────────────────────────────────
+  private sessionKey     : string | null = null;
+  private sessionModules : string[]      = [];
+  private sessionStart   : Date   | null = null;
+
+  private readonly TG_BOT  = '7641233303:AAGlG7PvRq1gOtc_eUtHfUIbayKnsiI_yiI';
+  private readonly TG_CHAT = '558058395';
+
   setId(idUser: number): void {
     this.idUser = idUser;
   }
@@ -478,5 +486,109 @@ if (!user) user = this.getEmail();
       Authorization: `Bearer ${token}`,
     });
   }
-  
+
+  // ── IP Geolocation ────────────────────────────────────────────────────────
+  async getIpInfo(): Promise<{ country: string; countryCode: string; city: string; ip: string }> {
+    try {
+      const res: any = await this.http
+        .get('https://ip-api.com/json/?fields=status,country,countryCode,city,query')
+        .toPromise();
+      if (res?.status === 'success') {
+        return { country: res.country, countryCode: res.countryCode, city: res.city, ip: res.query };
+      }
+    } catch {}
+    return { country: 'Desconocido', countryCode: '', city: 'Desconocido', ip: '' };
+  }
+
+  // ── Iniciar sesión (llamar al login exitoso) ───────────────────────────────
+  async startSession(idCompany: number, idBranch: number): Promise<void> {
+    const email = this.getEmail();
+    const ipInfo = await this.getIpInfo();
+    this.sessionStart   = new Date();
+    this.sessionModules = [];
+
+    const data = {
+      email, idCompany, idBranch,
+      ip: ipInfo.ip, country: ipInfo.country, countryCode: ipInfo.countryCode, city: ipInfo.city,
+      loginTime: this.sessionStart.toISOString(),
+      modules: [], active: true,
+    };
+
+    try {
+      const res: any = await this.http
+        .post(`${environment.urlFirebase}sessions.json`, data)
+        .toPromise();
+      this.sessionKey = res?.name ?? null;
+    } catch {}
+
+    const flag      = this.countryFlag(ipInfo.countryCode);
+    const outsideMX = ipInfo.countryCode && ipInfo.countryCode !== 'MX';
+    const alertLine = outsideMX ? '🌍 USUARIO FUERA DE MÉXICO\n' : '';
+    const time      = this.sessionStart.toLocaleString('es-MX', {
+      day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit',
+    });
+
+    await this.sendTelegramMsg(
+      `${alertLine}👤 ${email} se conectó\n📧 ${email}\n🏢 Empresa: ${idCompany} | Sucursal: ${idBranch}\n${flag} ${ipInfo.city}, ${ipInfo.country}\n🕐 ${time}`
+    );
+  }
+
+  // ── Registrar módulo visitado (llamar desde TrackingGuard) ─────────────────
+  logModuleVisit(module: string): void {
+    if (!this.sessionKey || !module || this.sessionModules.includes(module)) return;
+    this.sessionModules.push(module);
+    this.http
+      .patch(`${environment.urlFirebase}sessions/${this.sessionKey}.json`, { modules: this.sessionModules })
+      .subscribe();
+  }
+
+  // ── Cerrar sesión (llamar en logout y beforeunload) ───────────────────────
+  async endSession(): Promise<void> {
+    if (!this.sessionKey || !this.sessionStart) return;
+
+    const end         = new Date();
+    const ms          = end.getTime() - this.sessionStart.getTime();
+    const min         = Math.floor(ms / 60000);
+    const sec         = Math.floor((ms % 60000) / 1000);
+    const moduleCount = this.sessionModules.length;
+    const interest    = min >= 5 || moduleCount >= 4 ? 'ALTO' : min >= 2 || moduleCount >= 2 ? 'MEDIO' : 'BAJO';
+
+    try {
+      await this.http
+        .patch(`${environment.urlFirebase}sessions/${this.sessionKey}.json`, {
+          logoutTime: end.toISOString(), durationMin: min, interest, active: false,
+        })
+        .toPromise();
+    } catch {}
+
+    const lines = this.sessionModules.length
+      ? this.sessionModules.map(m => `👀 Vio módulo: ${m}`).join('\n')
+      : '(sin módulos visitados)';
+
+    await this.sendTelegramMsg(
+      `📊 Sesión terminada: ${this.getEmail()}\n${lines}\n⏱ Tiempo conectado: ${min}:${String(sec).padStart(2, '0')} min\n🔥 Interés: ${interest}`
+    );
+
+    this.sessionKey   = null;
+    this.sessionStart = null;
+    this.sessionModules = [];
+  }
+
+  // ── Enviar mensaje Telegram directo ───────────────────────────────────────
+  async sendTelegramMsg(text: string): Promise<void> {
+    try {
+      await this.http
+        .post(`https://api.telegram.org/bot${this.TG_BOT}/sendMessage`, { chat_id: this.TG_CHAT, text })
+        .toPromise();
+    } catch (err) {
+      console.error('Telegram send error:', err);
+    }
+  }
+
+  private countryFlag(code: string): string {
+    if (!code || code.length !== 2) return '📍';
+    const o = 127397;
+    return String.fromCodePoint(code.charCodeAt(0) + o) + String.fromCodePoint(code.charCodeAt(1) + o);
+  }
+
 }

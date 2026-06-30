@@ -17,7 +17,10 @@ export class TrackingGuard implements CanActivate {
         trackingData.category,
         this.trackingService.getEmail()
       );
+      if (trackingData.category) {
+        this.trackingService.logModuleVisit(trackingData.category);
+      }
     }
-    return true; // Permite la navegación
+    return true;
   }
 }
