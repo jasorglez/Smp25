@@ -390,10 +390,19 @@ if (!user) user = this.getEmail();
       // Asignar el valor de "id" del último registro al nuevo registro
       data['idn'] = lastLog ? lastLog.idn + 1 : 1;
 
-      const postResponse = await this.http
+      await this.http
         .post(`${environment.urlFirebase}tracking.json`, data)
         .toPromise();
 
+      // Notificar acción via Telegram si hay sesión activa
+      if (this.getSessionKey()) {
+        this.http.post(`${environment.urlChatBot}/LoginNotification/crud-action`, {
+          email: user,
+          company,
+          description,
+          origin,
+        }).subscribe({ error: () => {} });
+      }
 
     } catch (error) {
       console.error('Error al crear el log TRACKINGS:', error);
