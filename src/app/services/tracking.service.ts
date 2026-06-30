@@ -394,18 +394,6 @@ if (!user) user = this.getEmail();
         .post(`${environment.urlFirebase}tracking.json`, data)
         .toPromise();
 
-      // Notificar acción CRUD via Telegram si hay sesión activa
-      const sessionKey = this.getSessionKey();
-      if (sessionKey) {
-        try {
-          await this.http.post(`${environment.urlChatBot}/LoginNotification/crud-action`, {
-            email: user,
-            company,
-            description,
-            origin,
-          }).toPromise();
-        } catch {}
-      }
 
     } catch (error) {
       console.error('Error al crear el log TRACKINGS:', error);
