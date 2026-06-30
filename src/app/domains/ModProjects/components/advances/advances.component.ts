@@ -19,6 +19,7 @@ import {
 } from 'ng-apexcharts';
 import { ChartComponent } from 'ng-apexcharts';
 import * as XLSX from 'xlsx';
+import { TrackingService } from 'app/services/tracking.service';
 
 export type ChartOptions = {
   series: ApexAxisChartSeries; chart: ApexChart; xaxis: ApexXAxis;
@@ -60,6 +61,7 @@ interface DailyRow {
   styleUrl: './advances.component.scss'
 })
 export class AdvancesComponent implements OnInit, OnChanges {
+  private trackingService = inject(TrackingService);
 
   readonly Math = Math;
 
@@ -319,6 +321,7 @@ export class AdvancesComponent implements OnInit, OnChanges {
 
   // ─── CRUD Curva S ────────────────────────────────────────────────────────────
   addRow(): void {
+    this.trackingService.addLog(this.trackingService.getnameComp(), 'Agregó nuevo advances', 'Proyectos', this.trackingService.getEmail());
     const tempId  = `temp_${this.tempIdCounter++}`;
     const isPmo   = this.isPmoScope;
     const newItem: ContractAdvance = {
@@ -336,6 +339,7 @@ export class AdvancesComponent implements OnInit, OnChanges {
   }
 
   async deleteEntry(): Promise<void> {
+    this.trackingService.addLog(this.trackingService.getnameComp(), 'Eliminó advances', 'Proyectos', this.trackingService.getEmail());
     if (!this.selectedRowData) {
       alerts.basicAlert('Sin selección', 'Haz clic en una fila para seleccionarla.', 'warning'); return;
     }
@@ -359,6 +363,7 @@ export class AdvancesComponent implements OnInit, OnChanges {
   }
 
   async saveChanges(): Promise<void> {
+    this.trackingService.addLog(this.trackingService.getnameComp(), 'Guardó cambios en advances', 'Proyectos', this.trackingService.getEmail());
     const valid = this.rowData.every(r => r.date && !isNaN(Number(r.programAdvanced)) && !isNaN(Number(r.physicalAdvanced)));
     if (!valid) { alerts.basicAlert('Campos incompletos', 'Verifica fecha y valores.', 'error'); return; }
     const newRows = this.rowData.filter(r => r.__isNew);

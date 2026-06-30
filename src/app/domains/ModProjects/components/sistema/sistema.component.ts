@@ -25,6 +25,7 @@ import { BitacoraConceptosComponent } from './bitacora-conceptos.component';
 import { BitacoraNotasComponent }     from './bitacora-notas.component';
 import { BitacoraWrapperComponent }   from './bitacora-wrapper.component';
 import { BitacoraAvanceComponent }    from './bitacora-avance.component';
+import { TrackingService } from 'app/services/tracking.service';
 
 @Component({
   selector: 'app-sistema',
@@ -40,6 +41,7 @@ import { BitacoraAvanceComponent }    from './bitacora-avance.component';
   styleUrl: './sistema.component.scss'
 })
 export class SistemaComponent implements OnInit, OnDestroy {
+  private trackingService = inject(TrackingService);
 
   private dailyReportService = inject(DailyReportService);
   private logbookService     = inject(LogbookService);
@@ -493,6 +495,7 @@ export class SistemaComponent implements OnInit, OnDestroy {
   }
 
   add(): void {
+    this.trackingService.addLog(this.trackingService.getnameComp(), 'Agregó nuevo sistema', 'Proyectos', this.trackingService.getEmail());
     if (!this.idProject) {
       alerts.basicAlert('Aviso', 'Selecciona un Proyecto antes de agregar un reporte', 'warning');
       return;
@@ -537,6 +540,7 @@ export class SistemaComponent implements OnInit, OnDestroy {
   }
 
   async saveChanges(): Promise<void> {
+    this.trackingService.addLog(this.trackingService.getnameComp(), 'Guardó cambios en sistema', 'Proyectos', this.trackingService.getEmail());
     const newItems      = this.rowData.filter(r => r.__isNew);
     const modifiedItems = this.rowData.filter(r => r.__modified && !r.__isNew);
     
@@ -605,12 +609,14 @@ export class SistemaComponent implements OnInit, OnDestroy {
   }
 
   revertChanges(): void {
+    this.trackingService.addLog(this.trackingService.getnameComp(), 'Deshizo cambios en sistema', 'Proyectos', this.trackingService.getEmail());
     this.rowData = JSON.parse(JSON.stringify(this.originalRowData));
     this.hasUnsavedChanges = false;
     this.gridApi?.setGridOption('rowData', this.rowData);
   }
 
   async delete(): Promise<void> {
+    this.trackingService.addLog(this.trackingService.getnameComp(), 'Eliminó sistema', 'Proyectos', this.trackingService.getEmail());
     if (!this.selectedRow) return;
     if (this.selectedRow.__isNew) {
       this.rowData = this.rowData.filter(r => r !== this.selectedRow);

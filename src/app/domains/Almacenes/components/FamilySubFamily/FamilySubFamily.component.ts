@@ -9,6 +9,7 @@ import { alerts } from 'app/helpers/alerts';
 import { CatalogsService } from 'app/services/catalogs.service';
 import { catchError, concat, EMPTY, lastValueFrom, toArray } from 'rxjs';
 import { DetailFamilySubFamilyComponent } from './DetailFamilySubFamily/DetailFamilySubFamily.component';
+import { TrackingService } from 'app/services/tracking.service';
 
 @Component({
   selector: 'app-family-sub-family',
@@ -17,6 +18,7 @@ import { DetailFamilySubFamilyComponent } from './DetailFamilySubFamily/DetailFa
   templateUrl: './FamilySubFamily.component.html',
 })
 export class FamilySubFamilyComponent { 
+  private trackingService = inject(TrackingService);
 
   private familySubFamily = inject(FamilySubFamily);
   private signalsService = inject(SignalsService);
@@ -229,6 +231,7 @@ private cleanDataForServer(data: any): any {
 
 
   revert(){
+    this.trackingService.addLog(this.trackingService.getnameComp(), 'Deshizo cambios en FamilySubFamily', 'Almacenes', this.trackingService.getEmail());
     this.notSavedChanges = false
     this.loadCatalogData();
     this.familias();
@@ -331,6 +334,7 @@ private cleanDataForServer(data: any): any {
     }
 
     add(){
+      this.trackingService.addLog(this.trackingService.getnameComp(), 'Agregó nuevo FamilySubFamily', 'Almacenes', this.trackingService.getEmail());
     const newItem = {
       idCompany: this.idRoot,
       vigente: true,
@@ -342,6 +346,7 @@ private cleanDataForServer(data: any): any {
     }
 
    async save(){
+     this.trackingService.addLog(this.trackingService.getnameComp(), 'Guardó cambios en FamilySubFamily', 'Almacenes', this.trackingService.getEmail());
       const isValid = this.rowData.every(
             (item) =>
               item.masterFamily

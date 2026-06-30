@@ -16,6 +16,7 @@ import { AuthService } from 'app/services/auth.service';
 import { DomSanitizer, SafeResourceUrl } from '@angular/platform-browser';
 import { ReceiptsDelisonService } from 'app/services/receipts-delison.service';
 import { TypexPrefixesService } from 'app/services/typexprefixes.service';
+import { TrackingService } from 'app/services/tracking.service';
 
 @Component({
   selector: 'app-detalles-requisicion-delison',
@@ -172,6 +173,7 @@ export class DetallesRequisicionDelisonComponent implements OnInit, OnDestroy {
   private receiptsDelisonService = inject(ReceiptsDelisonService);
   private typexPrefixesService = inject(TypexPrefixesService);
   authService = inject(AuthService);
+  private trackingService = inject(TrackingService);
   // Tooltip
   private renderer: Renderer2;
   private tooltipElement: HTMLElement | null = null;
@@ -906,6 +908,7 @@ export class DetallesRequisicionDelisonComponent implements OnInit, OnDestroy {
   }
 
   async deleteSelectedItem() {
+    this.trackingService.addLog(this.trackingService.getnameComp(), 'Eliminó detalles requisicion delison', 'Almacenes', this.trackingService.getEmail());
     const selectedRows = this.gridApi.getSelectedRows();
     if (selectedRows.length === 0) {
       alerts.basicAlert('Selección requerida', 'Por favor seleccione un item para eliminar', 'warning');
@@ -959,6 +962,7 @@ export class DetallesRequisicionDelisonComponent implements OnInit, OnDestroy {
   }
 
   saveChanges() {
+    this.trackingService.addLog(this.trackingService.getnameComp(), 'Guardó cambios en detalles requisicion delison', 'Almacenes', this.trackingService.getEmail());
     if (!this.isAddingNewItem) {
       alerts.basicAlert('Sin cambios', 'No hay cambios pendientes por guardar', 'info');
       return;

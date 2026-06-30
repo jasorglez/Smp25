@@ -9,6 +9,7 @@ import { MultiLineEditorComponent } from 'app/shared/multi-line/multi-line-edito
 import { SignalsService } from 'app/services/signals.service';
 import { CustomersService } from 'app/services/customers.service';
 import { PosService } from 'app/services/pos.service';
+import { TrackingService } from 'app/services/tracking.service';
 
 
 @Component({
@@ -19,6 +20,7 @@ import { PosService } from 'app/services/pos.service';
   styleUrl: './providers.component.scss'
 })
 export class ProvidersSalesComponent {
+  private trackingService = inject(TrackingService);
 
 
   ngOnInit() {
@@ -154,6 +156,7 @@ public gridOptions: any = {
   }
 
   addRow() {
+    this.trackingService.addLog(this.trackingService.getnameComp(), 'Agregó nuevo providers sales', 'Almacenes', this.trackingService.getEmail());
     const tempId = `temp_${this.tempIdCounter++}`;
     const newItem = {
       id: tempId,
@@ -172,6 +175,7 @@ public gridOptions: any = {
   }
 
   async saveChanges() {
+    this.trackingService.addLog(this.trackingService.getnameComp(), 'Guardó cambios en providers sales', 'Almacenes', this.trackingService.getEmail());
     const isValid = this.rowData.every((item) => item.numberNote && item.date && item.dateP && item.quantity && item.total);
     if (!isValid) {
       alerts.basicAlert(
@@ -221,6 +225,7 @@ public gridOptions: any = {
   }
 
   async deleteEntry() {
+    this.trackingService.addLog(this.trackingService.getnameComp(), 'Eliminó providers sales', 'Almacenes', this.trackingService.getEmail());
     const selectedNodes = this.gridApi.getSelectedNodes();
     if (selectedNodes.length === 0) {
       alerts.basicAlert(
@@ -266,6 +271,7 @@ public gridOptions: any = {
   }
 
   revert() {
+    this.trackingService.addLog(this.trackingService.getnameComp(), 'Deshizo cambios en providers sales', 'Almacenes', this.trackingService.getEmail());
     this.obtenerDatos();
     this.notSavedChanges = false;
   }

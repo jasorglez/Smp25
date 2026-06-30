@@ -9,6 +9,7 @@ import { MultiLineEditorComponent } from 'app/shared/multi-line/multi-line-edito
 import { AutocompleteEditorComponent } from 'app/shared/autocomplete-editor/autocomplete-editor.component';
 import { retry } from 'rxjs';
 import { catchError, concat, EMPTY, lastValueFrom, toArray, tap } from 'rxjs';
+import { TrackingService } from 'app/services/tracking.service';
 
 @Component({
   selector: 'app-bonus-catalog',
@@ -17,6 +18,7 @@ import { catchError, concat, EMPTY, lastValueFrom, toArray, tap } from 'rxjs';
   templateUrl: './bonusCatalog.component.html',
 })
 export class BonusCatalogComponent { 
+  private trackingService = inject(TrackingService);
   private signalsService = inject(SignalsService);
   private catalogsService = inject(CatalogsService);
   private gridApi: GridApi;
@@ -243,6 +245,7 @@ export class BonusCatalogComponent {
   ]}
 
   addRow(){
+    this.trackingService.addLog(this.trackingService.getnameComp(), 'Agregó nuevo bonusCatalog', 'RRHH', this.trackingService.getEmail());
     const tempId = `temp_${this.tempIdCounter++}`;
     const newItem = {
       id: tempId,
@@ -278,6 +281,7 @@ export class BonusCatalogComponent {
     }, 100);
   }
   async saveChanges(){
+    this.trackingService.addLog(this.trackingService.getnameComp(), 'Guardó cambios en bonusCatalog', 'RRHH', this.trackingService.getEmail());
     const isValid = this.rowData.every((item) => item.description && item.valueAddition);
         if (!isValid) {
           alerts.basicAlert(
@@ -357,10 +361,12 @@ export class BonusCatalogComponent {
   }
 
   revert(){
+    this.trackingService.addLog(this.trackingService.getnameComp(), 'Deshizo cambios en bonusCatalog', 'RRHH', this.trackingService.getEmail());
     this.obtenerDatos();
     this.notSavedChanges = false;
   }
   deleteEntry(){
+    this.trackingService.addLog(this.trackingService.getnameComp(), 'Eliminó bonusCatalog', 'RRHH', this.trackingService.getEmail());
     const selectedNodes = this.gridApi.getSelectedNodes();
     if (selectedNodes.length === 0) {
       alerts.basicAlert(

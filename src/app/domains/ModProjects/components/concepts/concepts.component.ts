@@ -16,6 +16,7 @@ import { toArray } from 'rxjs/operators';
 import { CommonModule } from '@angular/common';
 import { TranslateModule } from '@ngx-translate/core';
 import { SignalsService } from 'app/services/signals.service';
+import { TrackingService } from 'app/services/tracking.service';
 
 @Component({
   selector: 'app-concepts',
@@ -29,6 +30,7 @@ import { SignalsService } from 'app/services/signals.service';
   styleUrl: './concepts.component.scss',
 })
 export class ConceptsComponent implements OnInit, CanComponentDeactivate {
+  private trackingService = inject(TrackingService);
   public AG_GRID_LOCALE_ES = AG_GRID_LOCALE_ES;
   notSavedChanges: boolean = false;
   rowData: any[] = [];
@@ -267,6 +269,7 @@ export class ConceptsComponent implements OnInit, CanComponentDeactivate {
   }
 
   addRow(): void {
+    this.trackingService.addLog(this.trackingService.getnameComp(), 'Agregó nuevo concepts', 'Proyectos', this.trackingService.getEmail());
     const tempId = `temp_${this.tempIdCounter++}`;
     const newItem = {
       id: tempId,
@@ -301,6 +304,7 @@ export class ConceptsComponent implements OnInit, CanComponentDeactivate {
   }
 
   async saveChanges(): Promise<void> {
+    this.trackingService.addLog(this.trackingService.getnameComp(), 'Guardó cambios en concepts', 'Proyectos', this.trackingService.getEmail());
     const isValid = this.rowData.every((item) => item.description);
     if (!isValid) {
       alerts.basicAlert(
@@ -349,11 +353,13 @@ export class ConceptsComponent implements OnInit, CanComponentDeactivate {
   }
 
   revert(): void {
+    this.trackingService.addLog(this.trackingService.getnameComp(), 'Deshizo cambios en concepts', 'Proyectos', this.trackingService.getEmail());
     this.loadData();
     this.notSavedChanges = false;
   }
 
   async deleteEntry(): Promise<void> {
+    this.trackingService.addLog(this.trackingService.getnameComp(), 'Eliminó concepts', 'Proyectos', this.trackingService.getEmail());
     if (!this.selectedRowData) {
       alerts.basicAlert(
         'Seleccione un registro',

@@ -7,6 +7,7 @@ import { OcAndReqsService } from 'app/services/ocandreqs.service';
 import { SignalsService } from 'app/services/signals.service';
 import { firstValueFrom } from 'rxjs';
 import { alerts } from 'app/helpers/alerts';
+import { TrackingService } from 'app/services/tracking.service';
 
 @Component({
   selector: 'app-detalles-pedimentos-items',
@@ -66,6 +67,7 @@ import { alerts } from 'app/helpers/alerts';
   `]
 })
 export class DetallesPedimentosItemsComponent implements ICellRendererAngularComp {
+  private trackingService = inject(TrackingService);
   private params!: ICellRendererParams;
   private context: any;
   private gridApi!: GridApi;
@@ -140,6 +142,7 @@ export class DetallesPedimentosItemsComponent implements ICellRendererAngularCom
   }
 
   delete() {
+    this.trackingService.addLog(this.trackingService.getnameComp(), 'Eliminó detalles pedimentos items', 'ModShoppingDelison', this.trackingService.getEmail());
     if (this.selectedRow) {
       this.rowData = this.rowData.filter(item => item !== this.selectedRow);
       this.selectedRow = null;
@@ -148,6 +151,7 @@ export class DetallesPedimentosItemsComponent implements ICellRendererAngularCom
   }
 
   async save() {
+    this.trackingService.addLog(this.trackingService.getnameComp(), 'Guardó cambios en detalles pedimentos items', 'ModShoppingDelison', this.trackingService.getEmail());
     const changedItems = this.rowData.filter(item => item.__modified);
     if (changedItems.length === 0) {
       alerts.basicAlert('Sin cambios', 'No hay cambios pendientes por guardar', 'info');
@@ -252,6 +256,7 @@ export class DetallesPedimentosItemsComponent implements ICellRendererAngularCom
   }
 
   revert() {
+    this.trackingService.addLog(this.trackingService.getnameComp(), 'Deshizo cambios en detalles pedimentos items', 'ModShoppingDelison', this.trackingService.getEmail());
     this.rowData = JSON.parse(JSON.stringify(this.originalRowData));
     this.hasUnsavedChanges = false;
     if (this.gridApi) {

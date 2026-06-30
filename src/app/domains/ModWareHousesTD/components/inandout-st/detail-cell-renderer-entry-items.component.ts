@@ -9,6 +9,7 @@ import { SelectWithTooltipEditorV2Component } from 'app/shared/select-with-toolt
 import { SelectMaterialEditorComponent } from './select-material-editor.component';
 import { DomSanitizer, SafeResourceUrl } from '@angular/platform-browser';
 import { PdfReportsService } from 'app/services/pdf-reports.service';
+import { TrackingService } from 'app/services/tracking.service';
 
 @Component({
   selector: 'app-detail-cell-renderer-entry-items',
@@ -85,6 +86,7 @@ import { PdfReportsService } from 'app/services/pdf-reports.service';
   `]
 })
 export class DetailCellRendererEntryItemsComponent implements OnInit {
+  private trackingService = inject(TrackingService);
 
   private params!: ICellRendererParams;
   private gridApi!: GridApi;
@@ -384,6 +386,7 @@ export class DetailCellRendererEntryItemsComponent implements OnInit {
   }
 
   deleteSelectedItem() {
+    this.trackingService.addLog(this.trackingService.getnameComp(), 'Eliminó detail cell renderer entry items', 'ModWareHousesTD', this.trackingService.getEmail());
     const selectedRows = this.gridApi.getSelectedRows();
     if (selectedRows.length === 0) {
       alerts.basicAlert('Selección requerida', 'Por favor seleccione un item para eliminar', 'warning');
@@ -406,6 +409,7 @@ export class DetailCellRendererEntryItemsComponent implements OnInit {
   }
 
   saveChanges() {
+    this.trackingService.addLog(this.trackingService.getnameComp(), 'Guardó cambios en detail cell renderer entry items', 'ModWareHousesTD', this.trackingService.getEmail());
     if (!this.hasUnsavedChanges) {
       alerts.basicAlert('Sin cambios', 'No hay cambios pendientes por guardar', 'info');
       return;

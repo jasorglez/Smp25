@@ -12,6 +12,7 @@ import { MaterialsService } from 'app/services/materials.service';
 import { ModalService } from 'app/services/modal.service';
 import { ReceiptsService } from 'app/services/receipts.service';
 import { ReqInfoComponent } from "../req-info/req-info.component";
+import { TrackingService } from 'app/services/tracking.service';
 
 interface Catalog {
   id: number;
@@ -26,6 +27,7 @@ interface Catalog {
   styleUrl: './details.component.scss'
 })
 export class RequisitionsDetailsComponent {
+  private trackingService = inject(TrackingService);
 
 
   constructor() {
@@ -216,6 +218,7 @@ public gridOptions: any = {
   }
 
   addRow() {
+    this.trackingService.addLog(this.trackingService.getnameComp(), 'Agregó nuevo details', 'Almacenes', this.trackingService.getEmail());
     const tempId = `temp_${this.tempIdCounter++}`;
     const newItem = {
       id: tempId,
@@ -237,6 +240,7 @@ public gridOptions: any = {
   }
 
   async saveChanges() {
+    this.trackingService.addLog(this.trackingService.getnameComp(), 'Guardó cambios en details', 'Almacenes', this.trackingService.getEmail());
     const isValid = this.rowData.every((item) => item.idSupplie && item.comment && item.dateuse);
     if (!isValid) {
       alerts.basicAlert(
@@ -287,6 +291,7 @@ public gridOptions: any = {
   }
 
   async deleteEntry() {
+    this.trackingService.addLog(this.trackingService.getnameComp(), 'Eliminó details', 'Almacenes', this.trackingService.getEmail());
     const selectedNodes = this.gridApi.getSelectedNodes();
     if (selectedNodes.length === 0) {
       alerts.basicAlert(
@@ -332,6 +337,7 @@ public gridOptions: any = {
   }
 
   revert() {
+    this.trackingService.addLog(this.trackingService.getnameComp(), 'Deshizo cambios en details', 'Almacenes', this.trackingService.getEmail());
     this.obtenerDatos();
     this.notSavedChanges = false;
   }

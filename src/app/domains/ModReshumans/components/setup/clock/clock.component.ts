@@ -5,6 +5,7 @@ import { CommonModule } from '@angular/common';
 import { HRService } from 'app/services/hr.service';
 import { AuthService } from 'app/services/auth.service';
 import { ReactiveFormsModule, FormBuilder, FormGroup, Validators, FormControl } from '@angular/forms';
+import { TrackingService } from 'app/services/tracking.service';
 
 
 @Component({
@@ -18,6 +19,7 @@ export class ClockComponent {
   private hrService = inject(HRService);
   formBuilder = inject(FormBuilder);
   authService = inject(AuthService);
+  private trackingService = inject(TrackingService);
   idBranch: number;
   hrData: any = {};
   newData: boolean;
@@ -123,6 +125,7 @@ export class ClockComponent {
   }
 
   revertChanges() {
+    this.trackingService.addLog(this.trackingService.getnameComp(), 'Deshizo cambios en clock', 'RRHH', this.trackingService.getEmail());
     this.getData(); // Refrescar datos
   }
 }

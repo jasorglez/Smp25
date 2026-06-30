@@ -9,6 +9,7 @@ import { PosicionesService } from 'app/services/posiciones.service';
 import { alerts } from 'app/helpers/alerts';
 import { ManoObraDetailRendererComponent } from './mano-obra-detail-renderer.component';
 import { PdfManoObraComponent } from './pdf-mano-obra.component';
+import { TrackingService } from 'app/services/tracking.service';
 
 @Component({
   selector: 'app-mano-obra',
@@ -17,6 +18,7 @@ import { PdfManoObraComponent } from './pdf-mano-obra.component';
   templateUrl: './mano-obra.component.html',
 })
 export class ManoObraComponent {
+  private trackingService = inject(TrackingService);
   private signalsService    = inject(SignalsService);
   private manoObraService   = inject(ManoObraService);
   private posicionesService = inject(PosicionesService);
@@ -214,6 +216,7 @@ export class ManoObraComponent {
   }
 
   addRow() {
+    this.trackingService.addLog(this.trackingService.getnameComp(), 'Agregó nuevo mano obra', 'Proyectos', this.trackingService.getEmail());
     if (this.savedRowData) {
       this.rowData     = [...this.savedRowData];
       this.savedRowData = null;
@@ -238,6 +241,7 @@ export class ManoObraComponent {
   }
 
   async saveChanges() {
+    this.trackingService.addLog(this.trackingService.getnameComp(), 'Guardó cambios en mano obra', 'Proyectos', this.trackingService.getEmail());
     const toSave = this.rowData.filter((r) => r.__isNew || r.__modified);
     if (!toSave.length) return;
 
@@ -258,12 +262,14 @@ export class ManoObraComponent {
   }
 
   revertChanges() {
+    this.trackingService.addLog(this.trackingService.getnameComp(), 'Deshizo cambios en mano obra', 'Proyectos', this.trackingService.getEmail());
     this.rowData     = JSON.parse(JSON.stringify(this.originalData));
     this.hasChanges  = false;
     this.selectedRow = null;
   }
 
   async deleteSelected() {
+    this.trackingService.addLog(this.trackingService.getnameComp(), 'Eliminó mano obra', 'Proyectos', this.trackingService.getEmail());
     if (!this.selectedRow) return;
     const result = await alerts.confirmAlert(
       '¿Eliminar?',

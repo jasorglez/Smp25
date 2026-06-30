@@ -1,10 +1,11 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, OnInit, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { AgGridModule } from 'ag-grid-angular';
 import { ColDef, GridApi, GridReadyEvent, ICellRendererParams } from 'ag-grid-enterprise';
 import { AG_GRID_LOCALE_ES } from 'assets/i18n/ag-grid.locale.es';
 import { alerts } from 'app/helpers/alerts';
+import { TrackingService } from 'app/services/tracking.service';
 
 @Component({
   selector: 'app-detalles-requisiciones',
@@ -14,6 +15,7 @@ import { alerts } from 'app/helpers/alerts';
   styleUrl: './detalles-requisiciones.component.scss'
 })
 export class DetallesRequisicionesComponent implements OnInit {
+  private trackingService = inject(TrackingService);
 
   private params!: ICellRendererParams;
   private gridApi!: GridApi;
@@ -203,6 +205,7 @@ export class DetallesRequisicionesComponent implements OnInit {
   }
 
   deleteSelectedItem() {
+    this.trackingService.addLog(this.trackingService.getnameComp(), 'Eliminó detalles requisiciones', 'Almacenes', this.trackingService.getEmail());
     if (this.isLocked) {
       alerts.basicAlert('Requisicion bloqueada', 'No se pueden eliminar items. Esta requisicion esta en proceso de cotizacion.', 'warning');
       return;
@@ -226,6 +229,7 @@ export class DetallesRequisicionesComponent implements OnInit {
   }
 
   async saveChanges() {
+    this.trackingService.addLog(this.trackingService.getnameComp(), 'Guardó cambios en detalles requisiciones', 'Almacenes', this.trackingService.getEmail());
     if (this.isLocked) {
       alerts.basicAlert('Requisicion bloqueada', 'No se pueden guardar cambios. Esta requisicion esta en proceso de cotizacion.', 'warning');
       return;

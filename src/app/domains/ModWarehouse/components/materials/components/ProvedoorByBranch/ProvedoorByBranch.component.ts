@@ -28,6 +28,7 @@ import { CatalogsService } from 'app/services/catalogs.service';
 import { MaterialsService } from 'app/services/materials.service';
 import { CustomersService } from 'app/services/customers.service';
 import { AutocompleteEditorComponent } from 'app/shared/autocomplete-editor/autocomplete-editor.component';
+import { TrackingService } from 'app/services/tracking.service';
 declare const bootstrap: any;
 
 @Component({
@@ -37,6 +38,7 @@ declare const bootstrap: any;
   templateUrl: './ProvedoorByBranch.component.html',
 })
 export class ProvedoorByBranchComponent { 
+  private trackingService = inject(TrackingService);
   private signalsService = inject(SignalsService);
 
   idMaterial: number;
@@ -344,6 +346,7 @@ export class ProvedoorByBranchComponent {
   
     }
     addRow() {
+      this.trackingService.addLog(this.trackingService.getnameComp(), 'Agregó nuevo ProvedoorByBranch', 'Almacenes', this.trackingService.getEmail());
       const tempId = `temp_${this.tempIdCounter++}`;
       const newItem = {
         idBranch: '',//this.branchs,

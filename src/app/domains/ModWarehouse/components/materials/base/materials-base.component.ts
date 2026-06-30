@@ -33,11 +33,13 @@ import { PriceProductsPresentationsComponent } from '../components/price-product
 import { DetailCellRendererHistoricoComponent } from '../details/detail-cell-renderer-historico.component';
 import { DetailCellRendererMaterialesComponent } from '../details/detail-cell-renderer-materiales.component';
 import { DetailCellRendererParametrosComponent } from '../details/detail-cell-renderer-parametros.component';
+import { TrackingService } from 'app/services/tracking.service';
 
 declare const bootstrap: any;
 
 @Directive()
 export abstract class MaterialsBaseComponent implements CanComponentDeactivate {
+  private trackingService = inject(TrackingService);
   // Abstract methods to be implemented by child components
   abstract getColumnDefs(): ColDef[];
   abstract getGridOptions(): any;
@@ -344,6 +346,7 @@ export abstract class MaterialsBaseComponent implements CanComponentDeactivate {
   }
 
   addRow() {
+    this.trackingService.addLog(this.trackingService.getnameComp(), 'Agregó nuevo materials base', 'Almacenes', this.trackingService.getEmail());
     const tempId = `temp_${this.tempIdCounter++}`;
     const newItem = {
       id: tempId,
@@ -385,6 +388,7 @@ export abstract class MaterialsBaseComponent implements CanComponentDeactivate {
   }
 
   async saveChanges() {
+    this.trackingService.addLog(this.trackingService.getnameComp(), 'Guardó cambios en materials base', 'Almacenes', this.trackingService.getEmail());
     const newRows = this.rowData.filter((row) => row.__isNew);
     const modifiedRows = this.rowData.filter(
       (row) => row.__modified && !row.__isNew
@@ -423,6 +427,7 @@ export abstract class MaterialsBaseComponent implements CanComponentDeactivate {
   }
 
   async deleteEntry() {
+    this.trackingService.addLog(this.trackingService.getnameComp(), 'Eliminó materials base', 'Almacenes', this.trackingService.getEmail());
     const selectedNodes = this.gridApi.getSelectedNodes();
     if (selectedNodes.length === 0) {
       alerts.basicAlert(
@@ -462,6 +467,7 @@ export abstract class MaterialsBaseComponent implements CanComponentDeactivate {
   }
 
   revert() {
+    this.trackingService.addLog(this.trackingService.getnameComp(), 'Deshizo cambios en materials base', 'Almacenes', this.trackingService.getEmail());
     this.obtenerDatos();
     this.notSavedChanges = false;
   }

@@ -14,6 +14,7 @@ import { alerts } from 'app/helpers/alerts';
 import { PdfApuService } from 'app/services/pdf-apu.service';
 import { WorkprogramApuFactorService } from 'app/services/workprogram-apu-factor.service';
 import { ApuConfigService, ApuConfig, APU_CONFIG_DEFAULTS } from 'app/services/apu-config.service';
+import { TrackingService } from 'app/services/tracking.service';
 
 @Component({
   selector: 'app-auxiliares',
@@ -23,6 +24,7 @@ import { ApuConfigService, ApuConfig, APU_CONFIG_DEFAULTS } from 'app/services/a
   styleUrl: './auxiliares.component.scss',
 })
 export class AuxiliaresComponent {
+  private trackingService = inject(TrackingService);
   private signalsService       = inject(SignalsService);
   private auxiliarService      = inject(AuxiliarService);
   private auxiliarItemsService = inject(AuxiliarItemsService);
@@ -314,6 +316,7 @@ export class AuxiliaresComponent {
 
   // ── Main CRUD ────────────────────────────────────────────────────────────
   addRow() {
+    this.trackingService.addLog(this.trackingService.getnameComp(), 'Agregó nuevo auxiliares', 'Proyectos', this.trackingService.getEmail());
     const idContract = this.signalsService.getIdContract()();
     const newRow = { id: `temp_${++this.tempCounter}`, idCompany: this.idCompany, idContract: idContract ?? null,
       clave: null, claveUsuario: '',

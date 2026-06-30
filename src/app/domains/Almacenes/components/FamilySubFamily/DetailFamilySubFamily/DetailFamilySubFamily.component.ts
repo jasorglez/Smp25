@@ -7,6 +7,7 @@ import { SignalsService } from 'app/services/signals.service';
 import { alerts } from 'app/helpers/alerts';
 import { CatalogsService } from 'app/services/catalogs.service';
 import { catchError, concat, EMPTY, lastValueFrom, toArray, map } from 'rxjs';
+import { TrackingService } from 'app/services/tracking.service';
 
 @Component({
   selector: 'app-Detail-family-sub-family',
@@ -15,6 +16,7 @@ import { catchError, concat, EMPTY, lastValueFrom, toArray, map } from 'rxjs';
   templateUrl: './DetailFamilySubFamily.component.html',
 })
 export class DetailFamilySubFamilyComponent implements OnInit { 
+  private trackingService = inject(TrackingService);
 
   private familySubFamily = inject(FamilySubFamily);
   private signalsService = inject(SignalsService);
@@ -145,6 +147,7 @@ export class DetailFamilySubFamilyComponent implements OnInit {
 
 
   revert(){
+    this.trackingService.addLog(this.trackingService.getnameComp(), 'Deshizo cambios en DetailFamilySubFamily', 'Almacenes', this.trackingService.getEmail());
     this.notSavedChanges = false
     this.loadCatalogData();
   }
@@ -170,6 +173,7 @@ export class DetailFamilySubFamilyComponent implements OnInit {
     }
 
     add(){
+      this.trackingService.addLog(this.trackingService.getnameComp(), 'Agregó nuevo DetailFamilySubFamily', 'Almacenes', this.trackingService.getEmail());
     const newItem = {
       idCompany: this.idRoot,
       vigente: true,
@@ -181,6 +185,7 @@ export class DetailFamilySubFamilyComponent implements OnInit {
     }
 
     async save(){
+      this.trackingService.addLog(this.trackingService.getnameComp(), 'Guardó cambios en DetailFamilySubFamily', 'Almacenes', this.trackingService.getEmail());
           const newRows = this.rowData.filter((row) => row.__isNew);
           const modifiedRows = this.rowData.filter(
             (row) => row.__modified && !row.__isNew

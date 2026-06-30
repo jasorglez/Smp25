@@ -16,6 +16,7 @@ import { Base64EncodeService } from 'app/services/base64encode.service';
 import { lastValueFrom } from 'rxjs';
 import pdfMake from 'pdfmake/build/pdfmake';
 import * as pdfFonts from 'pdfmake/build/vfs_fonts';
+import { TrackingService } from 'app/services/tracking.service';
 
 (pdfMake as any).vfs = (pdfFonts as any).pdfMake?.vfs || (pdfFonts as any).default?.pdfMake?.vfs;
 
@@ -106,6 +107,7 @@ import * as pdfFonts from 'pdfmake/build/vfs_fonts';
   `]
 })
 export class DetailsIncomeComponent implements OnInit, OnDestroy {
+  private trackingService = inject(TrackingService);
 
   private params!: ICellRendererParams;
   private gridApi!: GridApi;
@@ -472,6 +474,7 @@ export class DetailsIncomeComponent implements OnInit, OnDestroy {
   }
 
   async saveChanges() {
+    this.trackingService.addLog(this.trackingService.getnameComp(), 'Guardó cambios en details income', 'Admon', this.trackingService.getEmail());
     const incomeId = this.params.data.id;
     if (!incomeId || incomeId.toString().startsWith('temp_')) {
       alerts.basicAlert('Error', 'El ingreso debe estar guardado antes de guardar conceptos.', 'error');

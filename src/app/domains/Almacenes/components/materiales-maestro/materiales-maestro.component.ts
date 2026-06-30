@@ -26,6 +26,7 @@ import { BranchsService } from 'app/services/branchs.service';
 import { lastValueFrom, Subscription } from 'rxjs';
 import { SubfamiliaModalService, ModalData } from './services/subfamilia-modal.service';
 import { NgbActiveModal } from '@ng-bootstrap/ng-bootstrap';
+import { TrackingService } from 'app/services/tracking.service';
 
 @Component({
   selector: 'app-materiales-maestro',
@@ -50,6 +51,7 @@ import { NgbActiveModal } from '@ng-bootstrap/ng-bootstrap';
   styleUrl: './materiales-maestro.component.scss'
 })
 export class MaterialesMaestroComponent implements OnInit, OnDestroy {
+  private trackingService = inject(TrackingService);
 
   // ========== INPUTS/OUTPUTS PARA MODO MODAL ==========
   @Input() isModalMode: boolean = false;
@@ -1071,6 +1073,7 @@ export class MaterialesMaestroComponent implements OnInit, OnDestroy {
   }
 
   async saveChanges(): Promise<void> {
+    this.trackingService.addLog(this.trackingService.getnameComp(), 'Guardó cambios en materiales maestro', 'Almacenes', this.trackingService.getEmail());
     if (!this.hasUnsavedChanges) {
       alerts.basicAlert('Sin cambios', 'No hay cambios pendientes por guardar', 'info');
       return;

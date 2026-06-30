@@ -15,6 +15,7 @@ import { PosicionesService }   from 'app/services/posiciones.service';
 import { EquipmentService }    from 'app/services/equipment.service';
 import { MaterialsService }    from 'app/services/materials.service';
 import { SignalsService }      from 'app/services/signals.service';
+import { TrackingService } from 'app/services/tracking.service';
 
 // ── Layout constants ──────────────────────────────────────────────────────────
 const ROW_H      = 44;
@@ -173,6 +174,7 @@ interface MonthLabel {
   `]
 })
 export class PmoActividadesComponent implements OnInit {
+  private trackingService = inject(TrackingService);
 
   @ViewChild('ganttWrapper')   wrapperRef!:   ElementRef<HTMLDivElement>;
   @ViewChild('xlsImportInput') xlsImportRef!: ElementRef<HTMLInputElement>;
@@ -997,6 +999,7 @@ export class PmoActividadesComponent implements OnInit {
 
   // ── CRUD actividades ────────────────────────────────────────────────────────
   addRow(): void {
+    this.trackingService.addLog(this.trackingService.getnameComp(), 'Agregó nuevo pmo actividades', 'ModPMO', this.trackingService.getEmail());
     if (!this.selectedProject) return;
     const newRow: ActividadRow = {
       id: 0,
@@ -1035,6 +1038,7 @@ export class PmoActividadesComponent implements OnInit {
   }
 
   async saveChanges(): Promise<void> {
+    this.trackingService.addLog(this.trackingService.getnameComp(), 'Guardó cambios en pmo actividades', 'ModPMO', this.trackingService.getEmail());
     const dirty = this.rowData.filter(r => r.__isNew || r.__modified);
     if (!dirty.length) { this.showMsg('No hay cambios que guardar', 'error'); return; }
     this.isSaving = true;
@@ -1064,6 +1068,7 @@ export class PmoActividadesComponent implements OnInit {
   }
 
   async deleteSelected(): Promise<void> {
+    this.trackingService.addLog(this.trackingService.getnameComp(), 'Eliminó pmo actividades', 'ModPMO', this.trackingService.getEmail());
     if (this.viewMode === 'gantt') {
       this.showMsg('Para eliminar usa la vista Tabla, selecciona la fila y pulsa Borrar', 'error');
       return;
@@ -1085,6 +1090,7 @@ export class PmoActividadesComponent implements OnInit {
   }
 
   revertChanges(): void {
+    this.trackingService.addLog(this.trackingService.getnameComp(), 'Deshizo cambios en pmo actividades', 'ModPMO', this.trackingService.getEmail());
     this.rowData = JSON.parse(JSON.stringify(this.originalRowData));
     this.hasUnsavedChanges = false;
     this.setRowData(this.rowData);

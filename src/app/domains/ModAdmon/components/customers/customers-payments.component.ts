@@ -16,6 +16,7 @@ import { CustomersService } from 'app/services/customers.service';
 import { AccountbanksComponent } from '../accountbanks/accountbanks.component';
 import { TimeService } from 'app/services/time.service';
 import { AG_GRID_LOCALE_ES } from 'assets/i18n/ag-grid.locale.es';
+import { TrackingService } from 'app/services/tracking.service';
 
 @Component({
   selector: 'app-customers-payments',
@@ -25,6 +26,7 @@ import { AG_GRID_LOCALE_ES } from 'assets/i18n/ag-grid.locale.es';
   styleUrl: './customers-payments.component.scss',
 })
 export class CustomersPaymentsComponent {
+  private trackingService = inject(TrackingService);
   @HostListener('window:beforeunload', ['$event'])
   unloadNotification($event: any): void {
     if (this.masterNotSavedChanges || this.detailNotSavedChanges) {
@@ -337,6 +339,7 @@ export class CustomersPaymentsComponent {
   }
 
   async addRow(type: string) {
+    this.trackingService.addLog(this.trackingService.getnameComp(), 'Agregó nuevo customers payments', 'Admon', this.trackingService.getEmail());
     const tempId = `temp_${this.tempIdCounter++}`;
     const timeData = await this.getTime();
 

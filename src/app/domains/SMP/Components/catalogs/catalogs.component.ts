@@ -28,6 +28,7 @@ import { SharedModule } from 'app/shared/shared.module';
 import { CanComponentDeactivate } from 'app/guards/unsaved-changes.guard';
 import { confirmExitIfUnsaved } from 'app/helpers/can-deactivate.helper';
 import { SubatalogsComponent } from "../../../ModWarehouse/components/catalogs/catalogs.component";
+import { TrackingService } from 'app/services/tracking.service';
 
 //soriano
 @Component({
@@ -47,6 +48,7 @@ import { SubatalogsComponent } from "../../../ModWarehouse/components/catalogs/c
 })
 export class CatalogsComponent implements CanComponentDeactivate {
   authService = inject(AuthService);
+  private trackingService = inject(TrackingService);
   public AG_GRID_LOCALE_ES = AG_GRID_LOCALE_ES;
   notSavedChanges: boolean = false;
   saving: boolean = false;
@@ -511,6 +513,7 @@ export class CatalogsComponent implements CanComponentDeactivate {
 
   ///OPERATIONS DE LOS GRABADOS
   addRow() {
+    this.trackingService.addLog(this.trackingService.getnameComp(), 'Agregó nuevo catalogs', 'Sistema', this.trackingService.getEmail());
     const tempId = `temp_${this.tempIdCounter++}`;
     const newItem = {
       id: tempId,
@@ -539,6 +542,7 @@ export class CatalogsComponent implements CanComponentDeactivate {
   }
 
   async saveChanges() {
+    this.trackingService.addLog(this.trackingService.getnameComp(), 'Guardó cambios en catalogs', 'Sistema', this.trackingService.getEmail());
     if (this.saving) return;
     const isValid = this.rowData.every((item) => item.description);
     if (!isValid) {
@@ -588,6 +592,7 @@ export class CatalogsComponent implements CanComponentDeactivate {
   }
 
   revert() {
+    this.trackingService.addLog(this.trackingService.getnameComp(), 'Deshizo cambios en catalogs', 'Sistema', this.trackingService.getEmail());
     this.obtenerTables();
     this.obtenerDatos();
     this.notSavedChanges = false;

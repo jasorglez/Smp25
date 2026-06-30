@@ -16,6 +16,7 @@ import { TimeService } from 'app/services/time.service';
 import { AdministrationService } from 'app/services/administration.service';
 import { EmployeesService } from 'app/services/employees.service';
 import { AuthService } from 'app/services/auth.service';
+import { TrackingService } from 'app/services/tracking.service';
 
 @Component({
   selector: 'app-employeesxsavings',
@@ -31,6 +32,7 @@ export class EmployeesxSavingsComponent {
   private timeService = inject(TimeService);
   private employeeService = inject(EmployeesService);
   authService = inject(AuthService);
+  private trackingService = inject(TrackingService);
 
   defaultColDef = {
     flex: 1,
@@ -394,6 +396,7 @@ export class EmployeesxSavingsComponent {
   }
 
   async addRow(type: string) {
+    this.trackingService.addLog(this.trackingService.getnameComp(), 'Agregó nuevo savings', 'RRHH', this.trackingService.getEmail());
     const tempId = `temp_${this.tempIdCounter++}`;
     const timeData = await this.getTime();
 

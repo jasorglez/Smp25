@@ -7,6 +7,7 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { RootService } from 'app/services/root.service';
 import { ImageHandlerService } from 'app/services/image-handler.service';
+import { TrackingService } from 'app/services/tracking.service';
 
 @Component({
   selector: 'app-corporativos',
@@ -16,6 +17,7 @@ import { ImageHandlerService } from 'app/services/image-handler.service';
   styleUrls: ['./corporativos.component.css']
 })
 export class CorporativosComponent {
+  private trackingService = inject(TrackingService);
 
   private rootService = inject(RootService);
   private imageHandlerService = inject(ImageHandlerService);
@@ -215,6 +217,7 @@ export class CorporativosComponent {
   }
 
   addRow() {
+    this.trackingService.addLog(this.trackingService.getnameComp(), 'Agregó nuevo corporativos', 'Sistema', this.trackingService.getEmail());
     const tempId = `temp_${this.tempIdCounter++}`;
 
     const newItem = {
@@ -247,6 +250,7 @@ export class CorporativosComponent {
   }
 
   async saveChanges() {
+    this.trackingService.addLog(this.trackingService.getnameComp(), 'Guardó cambios en corporativos', 'Sistema', this.trackingService.getEmail());
     const isValid = this.rowData.every((item) => item.name);
     if (!isValid) {
       alerts.basicAlert(
@@ -293,6 +297,7 @@ export class CorporativosComponent {
   }
 
   revert() {
+    this.trackingService.addLog(this.trackingService.getnameComp(), 'Deshizo cambios en corporativos', 'Sistema', this.trackingService.getEmail());
     this.obtenerDatos();
     this.notSavedChanges = false;
   }

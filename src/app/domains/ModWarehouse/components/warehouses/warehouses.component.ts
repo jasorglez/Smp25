@@ -21,6 +21,7 @@ import { ModalService } from 'app/services/modal.service';
 import { SignalsService } from 'app/services/signals.service';
 import { CanComponentDeactivate } from 'app/guards/unsaved-changes.guard';
 import { confirmExitIfUnsaved } from 'app/helpers/can-deactivate.helper';
+import { TrackingService } from 'app/services/tracking.service';
 
 interface Branch {
   id: number;
@@ -35,6 +36,7 @@ interface Branch {
   styleUrl: './warehouses.component.scss',
 })
 export class WarehousesComponent implements CanComponentDeactivate {
+  private trackingService = inject(TrackingService);
   selectedRoot: string = '';
 
   ngOnInit() {
@@ -271,6 +273,7 @@ export class WarehousesComponent implements CanComponentDeactivate {
   }
 
   addRow() {
+    this.trackingService.addLog(this.trackingService.getnameComp(), 'Agregó nuevo warehouses', 'Almacenes', this.trackingService.getEmail());
     if (!this.idBranch) {
       alerts.basicAlert('Error', 'Debe seleccionar una sucursal primero.', 'error');
       return;
@@ -299,6 +302,7 @@ export class WarehousesComponent implements CanComponentDeactivate {
   }
 
   async saveChanges() {
+    this.trackingService.addLog(this.trackingService.getnameComp(), 'Guardó cambios en warehouses', 'Almacenes', this.trackingService.getEmail());
     const isValid = this.rowData.every((item) => item.name && item.address);
     if (!isValid) {
       alerts.basicAlert(
@@ -392,6 +396,7 @@ export class WarehousesComponent implements CanComponentDeactivate {
   }
 
   revert() {
+    this.trackingService.addLog(this.trackingService.getnameComp(), 'Deshizo cambios en warehouses', 'Almacenes', this.trackingService.getEmail());
     this.obtenerDatos();
     this.notSavedChanges = false;
   }

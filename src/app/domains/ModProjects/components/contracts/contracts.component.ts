@@ -588,6 +588,7 @@ export class ContractsComponent {
   };
 
   addRow() {
+    this.trackingService.addLog(this.trackingService.getnameComp(), 'Agregó nuevo contracts', 'Proyectos', this.trackingService.getEmail());
     const tempId = `temp_${this.tempIdCounter++}`;
     const today = new Date();
     const nextMonth = new Date(today);
@@ -637,6 +638,7 @@ export class ContractsComponent {
   }
 
   async saveChanges() {
+    this.trackingService.addLog(this.trackingService.getnameComp(), 'Guardó cambios en contracts', 'Proyectos', this.trackingService.getEmail());
     const invalidItems = this.contract.filter((item) => {
       return !item.numberContract || 
              !item.description || 
@@ -815,6 +817,7 @@ export class ContractsComponent {
   }
 
   revertChanges() {
+    this.trackingService.addLog(this.trackingService.getnameComp(), 'Deshizo cambios en contracts', 'Proyectos', this.trackingService.getEmail());
     this.getContracts();
     this.selectedRowData = null;
     this.notSavedChanges = false;

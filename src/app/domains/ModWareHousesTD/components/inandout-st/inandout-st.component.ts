@@ -774,6 +774,7 @@ export class InandoutStComponent implements OnInit {
   }
 
   async deleteEntry(): Promise<void> {
+    this.trackingService.addLog(this.trackingService.getnameComp(), 'Eliminó inandout st', 'ModWareHousesTD', this.trackingService.getEmail());
     if (!this.selectedEntry) {
       alerts.basicAlert('Selección requerida', 'Por favor seleccione una entrada para eliminar', 'warning');
       return;
@@ -803,6 +804,7 @@ export class InandoutStComponent implements OnInit {
   }
 
   async saveChanges(): Promise<void> {
+    this.trackingService.addLog(this.trackingService.getnameComp(), 'Guardó cambios en inandout st', 'ModWareHousesTD', this.trackingService.getEmail());
     if (!this.hasUnsavedChanges) {
       alerts.basicAlert('Sin cambios', 'No hay cambios pendientes por guardar', 'info');
       return;

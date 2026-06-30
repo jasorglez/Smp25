@@ -12,6 +12,7 @@ import { MatSelectModule } from '@angular/material/select';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { MatSnackBar } from '@angular/material/snack-bar';
+import { TrackingService } from 'app/services/tracking.service';
 
 interface ServicioData {
   codigo: string;
@@ -41,6 +42,7 @@ interface ServicioData {
   styleUrl: './servicio.component.scss'
 })
 export class ServicioComponent implements OnInit {
+  private trackingService = inject(TrackingService);
   
   // Servicios inyectados
   private snackBar = inject(MatSnackBar);
@@ -443,6 +445,7 @@ export class ServicioComponent implements OnInit {
 
   // Métodos CRUD
   addRow() {
+    this.trackingService.addLog(this.trackingService.getnameComp(), 'Agregó nuevo servicio', 'Proyectos', this.trackingService.getEmail());
     const tempId = `temp_${this.tempIdCounter++}`;
     const newItem: ServicioData = {
       codigo: '',
@@ -470,6 +473,7 @@ export class ServicioComponent implements OnInit {
   }
 
   saveChanges() {
+    this.trackingService.addLog(this.trackingService.getnameComp(), 'Guardó cambios en servicio', 'Proyectos', this.trackingService.getEmail());
     const invalidRows = this.rowData.filter(row => 
       !row.codigo?.trim() || !row.descripcion?.trim() || !row.plazo?.trim() || 
       !row.origen?.trim() || !row.prioridad?.trim()
@@ -507,6 +511,7 @@ export class ServicioComponent implements OnInit {
   }
 
   revert() {
+    this.trackingService.addLog(this.trackingService.getnameComp(), 'Deshizo cambios en servicio', 'Proyectos', this.trackingService.getEmail());
     if (!this.notSavedChanges) {
       this.showSnackBar('No hay cambios para revertir', 'info');
       return;
@@ -527,6 +532,7 @@ export class ServicioComponent implements OnInit {
   }
 
   deleteEntry() {
+    this.trackingService.addLog(this.trackingService.getnameComp(), 'Eliminó servicio', 'Proyectos', this.trackingService.getEmail());
     const selectedNodes = this.gridApi?.getSelectedNodes();
     
     if (!selectedNodes || selectedNodes.length === 0) {

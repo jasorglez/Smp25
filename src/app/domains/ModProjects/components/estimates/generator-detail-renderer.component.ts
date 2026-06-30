@@ -9,6 +9,7 @@ import { DailyReportService } from 'app/services/daily-report.service';
 import { lastValueFrom } from 'rxjs';
 import { alerts } from 'app/helpers/alerts';
 import Swal from 'sweetalert2';
+import { TrackingService } from 'app/services/tracking.service';
 
 @Component({
   selector: 'app-generator-detail-renderer',
@@ -66,6 +67,7 @@ import Swal from 'sweetalert2';
   `,
 })
 export class GeneratorDetailRendererComponent implements ICellRendererAngularComp {
+  private trackingService = inject(TrackingService);
 
   private generatorsSvc  = inject(GeneratorsService);
   private dailyReportSvc = inject(DailyReportService);
@@ -178,6 +180,7 @@ export class GeneratorDetailRendererComponent implements ICellRendererAngularCom
   }
 
   addRow(event?: Event) {
+    this.trackingService.addLog(this.trackingService.getnameComp(), 'Agregó nuevo generator detail renderer', 'Proyectos', this.trackingService.getEmail());
     event?.stopPropagation();
     const tempId = `temp_${this.tempCtr++}`;
     const newItem = {
@@ -232,6 +235,7 @@ export class GeneratorDetailRendererComponent implements ICellRendererAngularCom
   }
 
   async saveChanges(event?: Event) {
+    this.trackingService.addLog(this.trackingService.getnameComp(), 'Guardó cambios en generator detail renderer', 'Proyectos', this.trackingService.getEmail());
     event?.stopPropagation();
     if (!this.hasChanges) return;
 
@@ -258,6 +262,7 @@ export class GeneratorDetailRendererComponent implements ICellRendererAngularCom
   }
 
   revertChanges(event?: Event) {
+    this.trackingService.addLog(this.trackingService.getnameComp(), 'Deshizo cambios en generator detail renderer', 'Proyectos', this.trackingService.getEmail());
     event?.stopPropagation();
     this.loadItems();
     this.hasChanges = false;

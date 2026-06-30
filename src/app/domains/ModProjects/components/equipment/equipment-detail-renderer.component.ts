@@ -8,6 +8,7 @@ import { DistributionService } from 'app/services/distribution.service';
 import { SelectWithTooltipEditorV2Component } from 'app/shared/select-with-tooltip-editor-v2.component';
 import { alerts } from 'app/helpers/alerts';
 import { lastValueFrom } from 'rxjs';
+import { TrackingService } from 'app/services/tracking.service';
 
 @Component({
   selector: 'app-equipment-detail-renderer',
@@ -86,6 +87,7 @@ import { lastValueFrom } from 'rxjs';
   `,
 })
 export class EquipmentDetailRendererComponent implements ICellRendererAngularComp, OnInit {
+  private trackingService = inject(TrackingService);
 
   params: any;
   detailType: string = '';
@@ -307,6 +309,7 @@ export class EquipmentDetailRendererComponent implements ICellRendererAngularCom
 
   // ── CRUD ───────────────────────────────────────────────────────────────
   addRow(): void {
+    this.trackingService.addLog(this.trackingService.getnameComp(), 'Agregó nuevo equipment detail renderer', 'Proyectos', this.trackingService.getEmail());
     this.gridApi?.stopEditing();
     const tempId = `dist_${this.tempCounter++}`;
     const { year, month } = this.nextYearMonth();
@@ -327,6 +330,7 @@ export class EquipmentDetailRendererComponent implements ICellRendererAngularCom
   }
 
   async save(): Promise<void> {
+    this.trackingService.addLog(this.trackingService.getnameComp(), 'Guardó cambios en equipment detail renderer', 'Proyectos', this.trackingService.getEmail());
     const newRows      = this.distributionRows.filter(r => r.__isNew);
     const modifiedRows = this.distributionRows.filter(r => r.__modified && !r.__isNew);
     if (!newRows.length && !modifiedRows.length) {
@@ -353,6 +357,7 @@ export class EquipmentDetailRendererComponent implements ICellRendererAngularCom
   }
 
   revert(): void {
+    this.trackingService.addLog(this.trackingService.getnameComp(), 'Deshizo cambios en equipment detail renderer', 'Proyectos', this.trackingService.getEmail());
     this.gridApi?.stopEditing();
     this.notSaved = false;
     this.distributionRows = [...this.serverSnapshotRows];

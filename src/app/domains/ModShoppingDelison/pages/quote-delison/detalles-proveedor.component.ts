@@ -13,6 +13,7 @@ import { firstValueFrom } from 'rxjs';
 import { alerts } from 'app/helpers/alerts';
 import pdfMake from 'pdfmake/build/pdfmake';
 import pdfFonts from 'pdfmake/build/vfs_fonts';
+import { TrackingService } from 'app/services/tracking.service';
 
 pdfMake.vfs = pdfFonts.vfs;
 
@@ -113,6 +114,7 @@ pdfMake.vfs = pdfFonts.vfs;
   `]
 })
 export class DetallesProveedorComponent {
+  private trackingService = inject(TrackingService);
   private customersService = inject(CustomersService);
   private signalsService = inject(SignalsService);
   private ocAndReqsService = inject(OcAndReqsService);
@@ -283,6 +285,7 @@ export class DetallesProveedorComponent {
   }
 
   async saveChanges() {
+    this.trackingService.addLog(this.trackingService.getnameComp(), 'Guardó cambios en detalles proveedor', 'ModShoppingDelison', this.trackingService.getEmail());
     if (!this.selectedProviderId) {
       alerts.basicAlert('Atención', 'Seleccione un proveedor antes de guardar.', 'warning');
       return;
@@ -425,6 +428,7 @@ export class DetallesProveedorComponent {
   }
 
   revertChanges() {
+    this.trackingService.addLog(this.trackingService.getnameComp(), 'Deshizo cambios en detalles proveedor', 'ModShoppingDelison', this.trackingService.getEmail());
     this.cotproId = null;
     this.existingItemIds = new Map();
     this.loadExistingCotproOrBuildFromArticulos().then(() => {

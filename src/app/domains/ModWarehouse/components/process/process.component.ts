@@ -12,6 +12,7 @@ import { Router } from '@angular/router';
 import { CatalogsService } from 'app/services/catalogs.service';
 import { SignalsService } from 'app/services/signals.service';
 import { DetailsprocessComponent } from "../detailsprocess/detailsprocess.component";
+import { TrackingService } from 'app/services/tracking.service';
 
 
 @Component({
@@ -22,6 +23,7 @@ import { DetailsprocessComponent } from "../detailsprocess/detailsprocess.compon
   styleUrl: './process.component.scss'
 })
 export class ProcessComponent {
+  private trackingService = inject(TrackingService);
 
 ngOnInit() {
     this.idRoot = this.signalsService.getRootSelectedBySidebar()();
@@ -170,6 +172,7 @@ public gridOptions: any = {
 
   ///OPERATIONS DE LOS GRABADOS
   addRow() {
+    this.trackingService.addLog(this.trackingService.getnameComp(), 'Agregó nuevo process', 'Almacenes', this.trackingService.getEmail());
     const tempId = `temp_${this.tempIdCounter++}`;
     const newItem = {
       id: tempId,
@@ -191,6 +194,7 @@ public gridOptions: any = {
   
 
   async saveChanges() {
+    this.trackingService.addLog(this.trackingService.getnameComp(), 'Guardó cambios en process', 'Almacenes', this.trackingService.getEmail());
     const isValid = this.rowData.every((item) => item.description);
     if (!isValid) {
       alerts.basicAlert(
@@ -246,10 +250,12 @@ public gridOptions: any = {
 
 
   revert(){
+    this.trackingService.addLog(this.trackingService.getnameComp(), 'Deshizo cambios en process', 'Almacenes', this.trackingService.getEmail());
 
   }
 
   deleteEntry() {  
+    this.trackingService.addLog(this.trackingService.getnameComp(), 'Eliminó process', 'Almacenes', this.trackingService.getEmail());
   
   }
 

@@ -5,6 +5,7 @@ import { ColDef, GridApi, GridReadyEvent } from 'ag-grid-community';
 import { ImageHandlerService } from 'app/services/image-handler.service';
 import { LoginImageService } from 'app/services/login-image.service';
 import { alerts } from 'app/helpers/alerts';
+import { TrackingService } from 'app/services/tracking.service';
 
 @Component({
   selector: 'app-login-setup',
@@ -14,6 +15,7 @@ import { alerts } from 'app/helpers/alerts';
   styleUrl: './login-setup.component.scss'
 })
 export class LoginSetupComponent {
+  private trackingService = inject(TrackingService);
   @ViewChild('fileInput') fileInput: ElementRef<HTMLInputElement>;
 
   private imageHandlerService = inject(ImageHandlerService);
@@ -120,6 +122,7 @@ export class LoginSetupComponent {
   }
 
   addRow(): void {
+    this.trackingService.addLog(this.trackingService.getnameComp(), 'Agregó nuevo login setup', 'Sistema', this.trackingService.getEmail());
     if (this.fileInput?.nativeElement) {
       this.fileInput.nativeElement.value = '';
       this.fileInput.nativeElement.click();
@@ -196,6 +199,7 @@ export class LoginSetupComponent {
   }
 
   async saveChanges(): Promise<void> {
+    this.trackingService.addLog(this.trackingService.getnameComp(), 'Guardó cambios en login setup', 'Sistema', this.trackingService.getEmail());
     try {
       alerts.showLoading('Guardando', 'Subiendo imágenes y guardando cambios...');
 
@@ -256,6 +260,7 @@ export class LoginSetupComponent {
   }
 
   revertChanges(): void {
+    this.trackingService.addLog(this.trackingService.getnameComp(), 'Deshizo cambios en login setup', 'Sistema', this.trackingService.getEmail());
     this.rowData = JSON.parse(JSON.stringify(this.originalRowData));
     this.hasUnsavedChanges = false;
     if (this.gridApi) {

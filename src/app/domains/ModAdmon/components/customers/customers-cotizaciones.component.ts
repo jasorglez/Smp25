@@ -16,6 +16,7 @@ import { DetalleItemsCotizacionComponent } from 'app/domains/ModSales/components
 import { ButtonCellRendererIncomeComponent } from 'app/domains/ModAdmon/components/income/button-cell-renderer-income.component';
 import { Subscription } from 'rxjs';
 import Swal from 'sweetalert2';
+import { TrackingService } from 'app/services/tracking.service';
 
 @Component({
   selector: 'app-customers-cotizaciones',
@@ -79,6 +80,7 @@ import Swal from 'sweetalert2';
   `],
 })
 export class CustomersCotizacionesComponent implements ICellRendererAngularComp, OnChanges {
+  private trackingService = inject(TrackingService);
   /** Permite usar el componente desde un template con @Input en lugar de como detail cell renderer */
   @Input() inputCustomer:  any;
   @Input() inputIdCompany: number = 0;
@@ -349,6 +351,7 @@ export class CustomersCotizacionesComponent implements ICellRendererAngularComp,
   // ── CRUD ──────────────────────────────────────────────────────────────────
 
   async add() {
+    this.trackingService.addLog(this.trackingService.getnameComp(), 'Agregó nuevo customers cotizaciones', 'Admon', this.trackingService.getEmail());
     if (!this.idCompany || !this.customer?.id) return;
 
     const numCotizacion = await this.svc.getNextNumero(this.idCompany);
@@ -372,6 +375,7 @@ export class CustomersCotizacionesComponent implements ICellRendererAngularComp,
   }
 
   async deleteSelected() {
+    this.trackingService.addLog(this.trackingService.getnameComp(), 'Eliminó customers cotizaciones', 'Admon', this.trackingService.getEmail());
     if (!this.selectedItem) return;
     const res = await Swal.fire({
       title: '¿Eliminar cotización?',

@@ -14,6 +14,7 @@ import { Base64EncodeService } from 'app/services/base64encode.service';
 import { PrefixSetupService } from 'app/services/prefix-setup.service';
 import pdfMake from 'pdfmake/build/pdfmake';
 import * as pdfFonts from 'pdfmake/build/vfs_fonts';
+import { TrackingService } from 'app/services/tracking.service';
 (pdfMake as any).vfs = (pdfFonts as any).pdfMake?.vfs || (pdfFonts as any).default?.pdfMake?.vfs;
 
 @Component({
@@ -60,6 +61,7 @@ import * as pdfFonts from 'pdfmake/build/vfs_fonts';
   `]
 })
 export class ProviderQuoteDetailComponent implements OnInit {
+  private trackingService = inject(TrackingService);
 
   private params!: ICellRendererParams;
   private gridApi!: GridApi;
@@ -335,6 +337,7 @@ export class ProviderQuoteDetailComponent implements OnInit {
 
   // Save changes to DB
   async saveChanges() {
+    this.trackingService.addLog(this.trackingService.getnameComp(), 'Guardó cambios en provider quote detail', 'Almacenes', this.trackingService.getEmail());
     if (!this.hasUnsavedChanges) {
       alerts.basicAlert('Sin cambios', 'No hay cambios pendientes por guardar', 'info');
       return;
@@ -401,6 +404,7 @@ export class ProviderQuoteDetailComponent implements OnInit {
   }
 
   deleteSelectedItem() {
+    this.trackingService.addLog(this.trackingService.getnameComp(), 'Eliminó provider quote detail', 'Almacenes', this.trackingService.getEmail());
     const selectedNodes = this.gridApi.getSelectedNodes();
     if (selectedNodes.length === 0) {
       alerts.basicAlert('Selección requerida', 'Por favor seleccione un item para eliminar', 'warning');
@@ -435,6 +439,7 @@ export class ProviderQuoteDetailComponent implements OnInit {
   }
 
   revertChanges() {
+    this.trackingService.addLog(this.trackingService.getnameComp(), 'Deshizo cambios en provider quote detail', 'Almacenes', this.trackingService.getEmail());
     if (!this.hasUnsavedChanges) {
       alerts.basicAlert('Sin cambios', 'No hay cambios pendientes por descartar', 'info');
       return;
