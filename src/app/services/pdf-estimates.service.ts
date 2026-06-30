@@ -43,11 +43,13 @@ export class PdfEstimatesService {
   constructor() {}
 
   generateEstimatePdf(data: EstimateData): void {
+    this.trackingService.addLog(this.trackingService.getnameComp(), `Abrió estimación PDF: ${data.estimacion} — ${data.proyecto}`, 'Proyectos / Estimaciones', this.trackingService.getEmail());
     const docDefinition = this.createDocDefinition(data);
     pdfMake.createPdf(docDefinition).open();
   }
 
   downloadEstimatePdf(data: EstimateData, filename?: string): void {
+    this.trackingService.addLog(this.trackingService.getnameComp(), `Descargó estimación PDF: ${data.estimacion} — ${data.proyecto}`, 'Proyectos / Estimaciones', this.trackingService.getEmail());
     const docDefinition = this.createDocDefinition(data);
     const fileName = filename || `Estimacion_${data.estimacion}_${data.proyecto.replace(/\s+/g, '_')}.pdf`;
     pdfMake.createPdf(docDefinition).download(fileName);

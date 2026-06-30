@@ -9,6 +9,7 @@ import { RootService }         from 'app/services/root.service';
 import { Base64EncodeService } from 'app/services/base64encode.service';
 import { SignalsService }      from 'app/services/signals.service';
 import { WorkprogramsService } from 'app/services/workprograms.service';
+import { TrackingService }    from 'app/services/tracking.service';
 import { lastValueFrom }       from 'rxjs';
 import pdfMake   from 'pdfmake/build/pdfmake';
 import * as pdfFonts from 'pdfmake/build/vfs_fonts';
@@ -150,6 +151,7 @@ export class PdfDetailComponent implements OnInit, ICellRendererAngularComp {
   private base64Service       = inject(Base64EncodeService);
   private signalsService      = inject(SignalsService);
   private workprogramsService = inject(WorkprogramsService);
+  private trackingService     = inject(TrackingService);
   private sanitizer           = inject(DomSanitizer);
 
   pdfUrl: SafeResourceUrl | null = null;
@@ -764,6 +766,7 @@ export class PdfDetailComponent implements OnInit, ICellRendererAngularComp {
         defaultStyle: { font: 'Roboto', fontSize: 9 },
       };
 
+      this.trackingService.addLog(this.trackingService.getnameComp(), 'Generó PDF detalle bitácora OT', 'Proyectos / Sistema', this.trackingService.getEmail());
       pdfMake.createPdf(docDef).getBlob((blob: Blob) => {
         this.pdfBlob = blob;
         const url = URL.createObjectURL(blob);

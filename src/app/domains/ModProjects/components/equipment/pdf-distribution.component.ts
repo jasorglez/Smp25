@@ -9,6 +9,7 @@ import { Base64EncodeService } from 'app/services/base64encode.service';
 import { DistributionService } from 'app/services/distribution.service';
 import { EquipmentService }    from 'app/services/equipment.service';
 import { SignalsService }      from 'app/services/signals.service';
+import { TrackingService }    from 'app/services/tracking.service';
 import { lastValueFrom }       from 'rxjs';
 import pdfMake   from 'pdfmake/build/pdfmake';
 import * as pdfFonts from 'pdfmake/build/vfs_fonts';
@@ -137,6 +138,7 @@ export class PdfDistributionComponent implements OnInit, ICellRendererAngularCom
   private distributionService = inject(DistributionService);
   private equipmentService    = inject(EquipmentService);
   private signalsService      = inject(SignalsService);
+  private trackingService     = inject(TrackingService);
   private sanitizer           = inject(DomSanitizer);
   private cdr                 = inject(ChangeDetectorRef);
 
@@ -361,6 +363,7 @@ export class PdfDistributionComponent implements OnInit, ICellRendererAngularCom
 
       this.loadingMsg = 'Generando PDF...';
       this.loadingProgress = 95;
+      this.trackingService.addLog(this.trackingService.getnameComp(), 'Generó PDF distribución equipo', 'Proyectos / Equipo', this.trackingService.getEmail());
       const doc = pdfMake.createPdf(docDef);
 
       if (this.mode === 'newTab') {

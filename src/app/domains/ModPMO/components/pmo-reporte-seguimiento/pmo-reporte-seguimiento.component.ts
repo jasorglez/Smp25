@@ -4,6 +4,7 @@ import { FormsModule }         from '@angular/forms';
 import { NgApexchartsModule, ChartComponent } from 'ng-apexcharts';
 import { lastValueFrom }       from 'rxjs';
 import { SignalsService }      from 'app/services/signals.service';
+import { TrackingService }    from 'app/services/tracking.service';
 import { ProjectsService }     from 'app/services/projects.service';
 import { WorkprogramsService } from 'app/services/workprograms.service';
 import { AdvanceService }      from 'app/services/advance.service';
@@ -80,7 +81,8 @@ export class PmoReporteSeguimientoComponent {
   @ViewChild('sCurveChart') sCurveChart?: ChartComponent;
   @ViewChild('barChart')    barChart?:    ChartComponent;
 
-  private _signals      = inject(SignalsService);
+  private _signals        = inject(SignalsService);
+  private trackingService = inject(TrackingService);
   private _projects     = inject(ProjectsService);
   private _wp           = inject(WorkprogramsService);
   private _adv          = inject(AdvanceService);
@@ -499,7 +501,10 @@ export class PmoReporteSeguimientoComponent {
   }
 
   // ── Print ────────────────────────────────────────────────────────────────────
-  printReport(): void { window.print(); }
+  printReport(): void {
+    this.trackingService.addLog(this.trackingService.getnameComp(), 'Imprimió reporte PMO seguimiento', 'PMO / Reporte Seguimiento', this.trackingService.getEmail());
+    window.print();
+  }
 
   // ── Helpers HTML ─────────────────────────────────────────────────────────────
   spiColor(spi: number): string {

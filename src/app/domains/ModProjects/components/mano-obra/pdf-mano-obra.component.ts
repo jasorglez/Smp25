@@ -7,6 +7,7 @@ import { Base64EncodeService } from 'app/services/base64encode.service';
 import { DistributionService } from 'app/services/distribution.service';
 import { ManoObraService }     from 'app/services/mano-obra.service';
 import { SignalsService }      from 'app/services/signals.service';
+import { TrackingService }    from 'app/services/tracking.service';
 import { lastValueFrom }       from 'rxjs';
 import pdfMake   from 'pdfmake/build/pdfmake';
 import * as pdfFonts from 'pdfmake/build/vfs_fonts';
@@ -125,6 +126,7 @@ export class PdfManoObraComponent implements OnInit {
   private distributionService = inject(DistributionService);
   private manoObraService     = inject(ManoObraService);
   private signalsService      = inject(SignalsService);
+  private trackingService     = inject(TrackingService);
   private sanitizer           = inject(DomSanitizer);
   private cdr                 = inject(ChangeDetectorRef);
 
@@ -318,6 +320,7 @@ export class PdfManoObraComponent implements OnInit {
 
       this.loadingMsg = 'Generando PDF...';
       this.loadingProgress = 95;
+      this.trackingService.addLog(this.trackingService.getnameComp(), 'Generó PDF distribución mano de obra', 'Proyectos / Mano de Obra', this.trackingService.getEmail());
       const doc = pdfMake.createPdf(docDef);
 
       if (this.mode === 'newTab') {
