@@ -487,6 +487,9 @@ if (!user) user = this.getEmail();
     });
   }
 
+  // Módulos de alto valor comercial — cuentan doble para temperatura
+  private readonly HOT_MODULES = ['Dashboard', 'Ventas', 'Inventario', 'Reportes', 'Precios', 'Admon', 'RRHH', 'BPI'];
+
   // ── IP Geolocation ────────────────────────────────────────────────────────
   async getIpInfo(): Promise<{ country: string; countryCode: string; city: string; ip: string }> {
     try {
@@ -500,10 +503,34 @@ if (!user) user = this.getEmail();
     return { country: 'Desconocido', countryCode: '', city: 'Desconocido', ip: '' };
   }
 
+  // ── Contar visitas previas del mismo email ────────────────────────────────
+  private async countPriorSessions(email: string): Promise<number> {
+    try {
+      const url = `${environment.urlFirebase}sessions.json?orderBy="email"&equalTo="${email}"`;
+      const res: any = await this.http.get(url).toPromise();
+      return res ? Object.keys(res).length : 0;
+    } catch {
+      return 0;
+    }
+  }
+
+  // ── Clasificar temperatura del prospecto ─────────────────────────────────
+  private classifyTemp(min: number, modules: string[], priorVisits: number): string {
+    const hotCount = modules.filter(m => this.HOT_MODULES.some(h => m.toLowerCase().includes(h.toLowerCase()))).length;
+    const score    = min + hotCount * 2 + priorVisits * 3;
+    if (score >= 10 || min >= 5) return 'CALIENTE 🔥';
+    if (score >= 4  || min >= 2) return 'TIBIO 🌡️';
+    return 'FRÍO 🧊';
+  }
+
   // ── Iniciar sesión (llamar al login exitoso) ───────────────────────────────
   async startSession(idCompany: number, idBranch: number): Promise<void> {
     const email = this.getEmail();
-    const ipInfo = await this.getIpInfo();
+    const [ipInfo, priorVisits] = await Promise.all([
+      this.getIpInfo(),
+      this.countPriorSessions(email),
+    ]);
+
     this.sessionStart   = new Date();
     this.sessionModules = [];
 
@@ -511,6 +538,7 @@ if (!user) user = this.getEmail();
       email, idCompany, idBranch,
       ip: ipInfo.ip, country: ipInfo.country, countryCode: ipInfo.countryCode, city: ipInfo.city,
       loginTime: this.sessionStart.toISOString(),
+      priorVisits,
       modules: [], active: true,
     };
 
@@ -523,13 +551,14 @@ if (!user) user = this.getEmail();
 
     const flag      = this.countryFlag(ipInfo.countryCode);
     const outsideMX = ipInfo.countryCode && ipInfo.countryCode !== 'MX';
-    const alertLine = outsideMX ? '🌍 USUARIO FUERA DE MÉXICO\n' : '';
-    const time      = this.sessionStart.toLocaleString('es-MX', {
+    const geoAlert  = outsideMX ? '🌍 USUARIO FUERA DE MÉXICO\n' : '';
+    const returnAlert = priorVisits > 0 ? `🔄 VISITA DE RETORNO (visita #${priorVisits + 1})\n` : '';
+    const time = this.sessionStart.toLocaleString('es-MX', {
       day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit',
     });
 
     await this.sendTelegramMsg(
-      `${alertLine}👤 ${email} se conectó\n📧 ${email}\n🏢 Empresa: ${idCompany} | Sucursal: ${idBranch}\n${flag} ${ipInfo.city}, ${ipInfo.country}\n🕐 ${time}`
+      `${geoAlert}${returnAlert}🟢 ${email} se conectó\n📧 ${email}\n🏢 Empresa: ${idCompany} | Sucursal: ${idBranch}\n${flag} ${ipInfo.city}, ${ipInfo.country}\n🕐 ${time}`
     );
   }
 
@@ -546,31 +575,45 @@ if (!user) user = this.getEmail();
   async endSession(): Promise<void> {
     if (!this.sessionKey || !this.sessionStart) return;
 
-    const end         = new Date();
-    const ms          = end.getTime() - this.sessionStart.getTime();
-    const min         = Math.floor(ms / 60000);
-    const sec         = Math.floor((ms % 60000) / 1000);
-    const moduleCount = this.sessionModules.length;
-    const interest    = min >= 5 || moduleCount >= 4 ? 'ALTO' : min >= 2 || moduleCount >= 2 ? 'MEDIO' : 'BAJO';
+    const end      = new Date();
+    const ms       = end.getTime() - this.sessionStart.getTime();
+    const min      = Math.floor(ms / 60000);
+    const sec      = Math.floor((ms % 60000) / 1000);
+    const priorKey = this.sessionKey; // guardar antes de limpiar
+
+    // Leer priorVisits del registro actual
+    let priorVisits = 0;
+    try {
+      const rec: any = await this.http
+        .get(`${environment.urlFirebase}sessions/${priorKey}.json`)
+        .toPromise();
+      priorVisits = rec?.priorVisits ?? 0;
+    } catch {}
+
+    const temp = this.classifyTemp(min, this.sessionModules, priorVisits);
 
     try {
       await this.http
-        .patch(`${environment.urlFirebase}sessions/${this.sessionKey}.json`, {
-          logoutTime: end.toISOString(), durationMin: min, interest, active: false,
+        .patch(`${environment.urlFirebase}sessions/${priorKey}.json`, {
+          logoutTime: end.toISOString(), durationMin: min, temperatura: temp, active: false,
         })
         .toPromise();
     } catch {}
 
-    const lines = this.sessionModules.length
+    const lines     = this.sessionModules.length
       ? this.sessionModules.map(m => `👀 Vio módulo: ${m}`).join('\n')
-      : '(sin módulos visitados)';
+      : '(no navegó módulos)';
+    const timeStr   = `${min}:${String(sec).padStart(2, '0')} min`;
+    const emoji     = temp.startsWith('CALIENTE') ? '🚨 PROSPECTO CALIENTE — dar seguimiento hoy' :
+                      temp.startsWith('TIBIO')    ? '⚡ Prospecto tibio — enviar info' : '';
+    const followUp  = emoji ? `\n\n${emoji}` : '';
 
     await this.sendTelegramMsg(
-      `📊 Sesión terminada: ${this.getEmail()}\n${lines}\n⏱ Tiempo conectado: ${min}:${String(sec).padStart(2, '0')} min\n🔥 Interés: ${interest}`
+      `📊 Sesión terminada: ${this.getEmail()}\n${lines}\n⏱ Tiempo conectado: ${timeStr}\n🌡️ Temperatura: ${temp}${followUp}`
     );
 
-    this.sessionKey   = null;
-    this.sessionStart = null;
+    this.sessionKey     = null;
+    this.sessionStart   = null;
     this.sessionModules = [];
   }
 
