@@ -775,6 +775,35 @@ public gridOptions: any = {
         await lastValueFrom(this.rootService.updateRoot(row.id, cleanedData));
       }
 
+      // Log CRUD por empresa guardada
+      for (const row of newRows) {
+        this.trackingService.addLog(
+          this.trackingService.getnameComp(),
+          `Agregó empresa: ${row.name}${row.esProspecto ? ' — 🎯 PROSPECTO' : ''}`,
+          'SMP / Empresas',
+          this.trackingService.getEmail()
+        );
+      }
+      for (const row of modifiedRows) {
+        this.trackingService.addLog(
+          this.trackingService.getnameComp(),
+          `Actualizó empresa: ${row.name}${row.esProspecto ? ' — 🎯 PROSPECTO' : ''}`,
+          'SMP / Empresas',
+          this.trackingService.getEmail()
+        );
+      }
+
+      // Notificación dedicada por cada prospecto guardado
+      const savedProspects = [...newRows, ...modifiedRows].filter(r => r.esProspecto);
+      for (const p of savedProspects) {
+        this.trackingService.addLog(
+          this.trackingService.getnameComp(),
+          `🎯 Prospecto para seguimiento: ${p.name} | ${p.email || p.phone || 'sin contacto'} | ${p.city || ''} ${p.state || ''}`.trim(),
+          'SMP / Seguimiento Comercial',
+          this.trackingService.getEmail()
+        );
+      }
+
       alerts.basicAlert('Datos actualizados', 'Se han actualizado los datos correctamente.', 'success');
       this.notSavedChanges = false;
       this.newlyAddedRows = [];
