@@ -54,6 +54,14 @@ export class TrackingService {
   private readonly TG_BOT  = '7641233303:AAGlG7PvRq1gOtc_eUtHfUIbayKnsiI_yiI';
   private readonly TG_CHAT = '558058395';
 
+  // Getter para recuperar sessionKey de localStorage si no está en memoria
+  private getSessionKey(): string | null {
+    if (this.sessionKey) return this.sessionKey;
+    const stored = localStorage.getItem('sessionKey');
+    if (stored) this.sessionKey = stored;
+    return this.sessionKey;
+  }
+
   setId(idUser: number): void {
     this.idUser = idUser;
   }
@@ -387,7 +395,8 @@ if (!user) user = this.getEmail();
         .toPromise();
 
       // Notificar acción CRUD via Telegram si hay sesión activa
-      if (this.sessionKey) {
+      const sessionKey = this.getSessionKey();
+      if (sessionKey) {
         try {
           await this.http.post(`${environment.urlChatBot}/LoginNotification/crud-action`, {
             email: user,
@@ -555,28 +564,35 @@ if (!user) user = this.getEmail();
         .post(`${environment.urlFirebase}sessions.json`, data)
         .toPromise();
       this.sessionKey = res?.name ?? null;
+      if (this.sessionKey) {
+        localStorage.setItem('sessionKey', this.sessionKey);
+        localStorage.setItem('sessionStart', this.sessionStart.toISOString());
+      }
     } catch {}
 
   }
 
   // ── Registrar módulo visitado (llamar desde TrackingGuard) ─────────────────
   logModuleVisit(module: string): void {
-    if (!this.sessionKey || !module || this.sessionModules.includes(module)) return;
+    const sessionKey = this.getSessionKey();
+    if (!sessionKey || !module || this.sessionModules.includes(module)) return;
     this.sessionModules.push(module);
     this.http
-      .patch(`${environment.urlFirebase}sessions/${this.sessionKey}.json`, { modules: this.sessionModules })
+      .patch(`${environment.urlFirebase}sessions/${sessionKey}.json`, { modules: this.sessionModules })
       .subscribe();
   }
 
   // ── Cerrar sesión (llamar en logout y beforeunload) ───────────────────────
   async endSession(): Promise<void> {
-    if (!this.sessionKey || !this.sessionStart) return;
+    const sessionKey = this.getSessionKey();
+    const sessionStart = this.sessionStart || (localStorage.getItem('sessionStart') ? new Date(localStorage.getItem('sessionStart')!) : null);
+    if (!sessionKey || !sessionStart) return;
 
     const end      = new Date();
-    const ms       = end.getTime() - this.sessionStart.getTime();
+    const ms       = end.getTime() - sessionStart.getTime();
     const min      = Math.floor(ms / 60000);
     const sec      = Math.floor((ms % 60000) / 1000);
-    const priorKey = this.sessionKey; // guardar antes de limpiar
+    const priorKey = sessionKey; // guardar antes de limpiar
 
     // Leer priorVisits del registro actual
     let priorVisits = 0;
@@ -617,6 +633,8 @@ if (!user) user = this.getEmail();
     this.sessionKey     = null;
     this.sessionStart   = null;
     this.sessionModules = [];
+    localStorage.removeItem('sessionKey');
+    localStorage.removeItem('sessionStart');
   }
 
   // ── Payload sincrónico para sendBeacon (cierre de browser) ──────────────
@@ -638,6 +656,8 @@ if (!user) user = this.getEmail();
     this.sessionKey     = null;
     this.sessionStart   = null;
     this.sessionModules = [];
+    localStorage.removeItem('sessionKey');
+    localStorage.removeItem('sessionStart');
   }
 
   private countryFlag(code: string): string {
