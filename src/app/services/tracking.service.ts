@@ -577,6 +577,13 @@ if (!user) user = this.getEmail();
     this.http
       .patch(`${environment.urlFirebase}sessions/${sessionKey}.json`, { modules: this.sessionModules })
       .subscribe();
+    // Notificar navegación a Telegram
+    this.http.post(`${environment.urlChatBot}/LoginNotification/crud-action`, {
+      email      : this.getEmail(),
+      company    : this.getnameComp() || this.getCompany(),
+      description: `Navegó a: ${module}`,
+      origin     : 'Sidebar / Navegación',
+    }).subscribe({ error: () => {} });
   }
 
   // ── Cerrar sesión (llamar en logout y beforeunload) ───────────────────────
