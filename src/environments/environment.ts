@@ -89,5 +89,5 @@ export const environment = {
   geminiApiKey: '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',
   gnewsApiKey: '94ccc596b4dfebc3f72683b6e81d81bc',
 
-  version: '4.70 (30 Junio 2026) feat: logModuleVisit notifica navegacion a Telegram',
+  version: '4.71 (30 Junio 2026) feat: MainPage escucha Router.events — toda navegacion a Telegram',
 }; 

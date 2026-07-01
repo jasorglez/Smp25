@@ -1,10 +1,12 @@
-import { Component, OnInit, effect, inject, computed } from '@angular/core';
+import { Component, OnInit, OnDestroy, effect, inject, computed } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { Router, RouterOutlet } from '@angular/router';
+import { NavigationEnd, Router, RouterOutlet } from '@angular/router';
+import { filter, Subscription } from 'rxjs';
 import { SideBarComponent } from 'app/shared/side-bar/side-bar.component';
 import { FooterComponent } from 'app/shared/footer/footer.component';
 import { SignalsService } from '../../services/signals.service';
 import { AuthService } from '../../services/auth.service';
+import { TrackingService } from '../../services/tracking.service';
 import { environment } from '@env/environment';
 
 @Component({
@@ -14,10 +16,29 @@ import { environment } from '@env/environment';
   templateUrl: './main-page.component.html',
   styleUrls: ['./main-page.component.scss'],
 })
-export class MainPageComponent implements OnInit {
-  private signalsService = inject(SignalsService);
-  private router = inject(Router);
-  private auth = inject(AuthService);
+export class MainPageComponent implements OnInit, OnDestroy {
+  private signalsService   = inject(SignalsService);
+  private router           = inject(Router);
+  private auth             = inject(AuthService);
+  private trackingService  = inject(TrackingService);
+
+  private routerSub?: Subscription;
+
+  private readonly MODULE_MAP: Record<string, string> = {
+    'dashboard'          : 'Dashboard',
+    'publicidad'         : 'Inicio',
+    'procsales'          : 'Ventas',
+    'procmodadmon'       : 'Administracion',
+    'smp'                : 'Setup',
+    'projects'           : 'Proyectos',
+    'procmodmaintenance' : 'Mantenimiento',
+    'almacenes'          : 'Almacenes',
+    'proceswar'          : 'Almacen',
+    'dashboardgrales'    : 'Dashboards',
+    'logistica'          : 'Logistica',
+    'presupuestos'       : 'Presupuestos',
+    'pmo'                : 'PMO',
+  };
 
   private initialBranchId: number;
   isSidebarCollapsed: boolean = false;
@@ -46,8 +67,21 @@ export class MainPageComponent implements OnInit {
     });
   }
 
+  ngOnDestroy(): void {
+    this.routerSub?.unsubscribe();
+  }
+
   ngOnInit(): void {
     this.initialBranchId = this.signalsService.getBranchSelectedBySidebar()();
+
+    // Escuchar TODAS las navegaciones y reportar módulo a Telegram
+    this.routerSub = this.router.events.pipe(
+      filter(e => e instanceof NavigationEnd)
+    ).subscribe((e: any) => {
+      const segment = (e.urlAfterRedirects || e.url).split('/')[1]?.split('?')[0] || '';
+      const module  = this.MODULE_MAP[segment] || segment;
+      if (module) this.trackingService.logModuleVisit(module);
+    });
 
     // Cargar estado inicial del sidebar
     const savedState = localStorage.getItem('sidebarCollapsed');
