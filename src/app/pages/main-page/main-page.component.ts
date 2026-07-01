@@ -7,6 +7,7 @@ import { FooterComponent } from 'app/shared/footer/footer.component';
 import { SignalsService } from '../../services/signals.service';
 import { AuthService } from '../../services/auth.service';
 import { TrackingService } from '../../services/tracking.service';
+import { RootService } from '../../services/root.service';
 import { environment } from '@env/environment';
 
 @Component({
@@ -21,6 +22,7 @@ export class MainPageComponent implements OnInit, OnDestroy {
   private router           = inject(Router);
   private auth             = inject(AuthService);
   private trackingService  = inject(TrackingService);
+  private rootService      = inject(RootService);
 
   private routerSub?: Subscription;
 
@@ -63,6 +65,21 @@ export class MainPageComponent implements OnInit, OnDestroy {
       if (this.initialBranchId !== undefined && this.initialBranchId !== newBranchId && isAdvanced) {
         const target = this.auth.hasMasterPermission('dashboard') ? '/dashboard' : '/publicidad';
         this.router.navigateByUrl(target);
+      }
+    });
+
+    // Detecta qué empresa seleccionó el usuario y activa el gate de Telegram
+    effect(() => {
+      const rootId = this.signalsService.getRootSelectedBySidebar()();
+      if (rootId) {
+        this.rootService.getRootbyId(rootId).subscribe({
+          next: (data: any) => {
+            this.trackingService.setEsProspecto(!!data?.esProspecto);
+          },
+          error: () => this.trackingService.setEsProspecto(false),
+        });
+      } else {
+        this.trackingService.setEsProspecto(false);
       }
     });
   }

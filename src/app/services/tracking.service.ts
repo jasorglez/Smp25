@@ -51,6 +51,12 @@ export class TrackingService {
   private sessionModules : string[]      = [];
   private sessionStart   : Date   | null = null;
 
+  // ── Prospect gate — Telegram solo dispara si la empresa es prospecto ───────
+  private esProspecto    : boolean       = false;
+
+  setEsProspecto(v: boolean): void { this.esProspecto = v; }
+  getEsProspecto(): boolean         { return this.esProspecto; }
+
   private readonly TG_BOT  = '7641233303:AAGlG7PvRq1gOtc_eUtHfUIbayKnsiI_yiI';
   private readonly TG_CHAT = '558058395';
 
@@ -394,8 +400,8 @@ if (!user) user = this.getEmail();
         .post(`${environment.urlFirebase}tracking.json`, data)
         .toPromise();
 
-      // Notificar acción via Telegram si hay sesión activa
-      if (this.getSessionKey()) {
+      // Notificar acción via Telegram solo si empresa es prospecto
+      if (this.getSessionKey() && this.esProspecto) {
         this.http.post(`${environment.urlChatBot}/LoginNotification/crud-action`, {
           email: user,
           company,
@@ -577,13 +583,15 @@ if (!user) user = this.getEmail();
     this.http
       .patch(`${environment.urlFirebase}sessions/${sessionKey}.json`, { modules: this.sessionModules })
       .subscribe();
-    // Notificar navegación a Telegram
-    this.http.post(`${environment.urlChatBot}/LoginNotification/crud-action`, {
-      email      : this.getEmail(),
-      company    : this.getnameComp() || this.getCompany(),
-      description: `Navegó a: ${module}`,
-      origin     : 'Sidebar / Navegación',
-    }).subscribe({ error: () => {} });
+    // Notificar navegación a Telegram solo si empresa es prospecto
+    if (this.esProspecto) {
+      this.http.post(`${environment.urlChatBot}/LoginNotification/crud-action`, {
+        email      : this.getEmail(),
+        company    : this.getnameComp() || this.getCompany(),
+        description: `Navegó a: ${module}`,
+        origin     : 'Sidebar / Navegación',
+      }).subscribe({ error: () => {} });
+    }
   }
 
   // ── Cerrar sesión (llamar en logout y beforeunload) ───────────────────────
