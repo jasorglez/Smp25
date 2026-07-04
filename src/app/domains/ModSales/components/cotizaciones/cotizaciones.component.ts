@@ -156,8 +156,18 @@ export class CotizacionesComponent implements OnInit, OnDestroy {
     },
     {
       field: 'nombreProspecto', headerName: 'Prospecto', flex: 1, editable: true,
-      cellEditor: 'agSelectCellEditor',
-      cellEditorParams: () => ({ values: this.prospectos.map(p => p.nombre) }),
+      cellEditor: 'agRichSelectCellEditor',
+      cellEditorPopup: true,
+      cellEditorParams: () => ({
+        values: this.prospectos
+          .map(p => p.nombre)
+          .sort((a, b) => (a ?? '').localeCompare(b ?? '', 'es', { sensitivity: 'base' })),
+        allowTyping: true,
+        filterList: true,
+        searchType: 'match',
+        highlightMatch: true,
+        valueListMaxHeight: 260,
+      }),
       valueSetter: (params) => {
         const p = this.prospectos.find(x => x.nombre === params.newValue);
         if (p) {
