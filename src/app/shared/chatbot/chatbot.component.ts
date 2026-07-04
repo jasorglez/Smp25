@@ -220,7 +220,7 @@ REGLAS PARA DATOS DEL NEGOCIO — NO NEGOCIABLES:
 3. Solo reporta datos del negocio que estén explícitamente en el contexto proporcionado.`;
 
     const reglaModo = this.generalMode
-      ? `\nMODO LIBRE ACTIVADO: Puedes responder libremente sobre conocimiento general (noticias, cultura, ciencia, geografía, historia, etc.) usando tu conocimiento de entrenamiento. Si la información puede estar desactualizada por tu fecha de corte, avísalo brevemente.`
+      ? `\nMODO LIBRE ACTIVADO: Puedes responder libremente sobre conocimiento general (noticias, cultura, ciencia, geografía, historia, etc.) usando tu conocimiento de entrenamiento. Si la información puede estar desactualizada por tu fecha de corte, avísalo brevemente. IMPORTANTE: las reglas #1-#3 (no inventar / "No tengo esa información") aplican SOLO a datos internos del negocio; para preguntas de conocimiento general NUNCA te niegues por ellas. Si el contexto trae un error del servicio de noticias en vivo, ignóralo y responde con tu propio conocimiento.`
       : `\n4. Si la pregunta NO está relacionada con el negocio, responde SOLO: "Solo puedo ayudarte con información de tu empresa: saldos, gastos, ingresos, contratos, proyectos, convenios, OTs, agenda y reportes de campo."`;
 
     let prompt = `Eres el asistente BI de la empresa. Hoy es ${fecha}, son las ${hora} (hora local). Usa la hora real para saludar: buenos días (6-12h), buenas tardes (12-19h), buenas noches (19-6h). Responde siempre en español, de forma concisa, amigable y profesional. Máximo 4 líneas salvo que el usuario pida detalle.
@@ -489,6 +489,13 @@ ${reglasNegocio}${reglaModo}`;
     } catch (err: any) {
       const status = err?.status ?? '?';
       const detail = err?.error?.errors?.[0] ?? err?.error?.message ?? err?.message ?? 'sin detalle';
+      // En Modo Libre no bloqueamos: instruimos al modelo a responder con su conocimiento
+      // de entrenamiento en vez de propagar el error (que provocaría una negativa).
+      if (this.generalMode) {
+        return `No se pudo consultar el servicio de noticias en vivo (HTTP ${status}). ` +
+          `Responde sobre "${topic}" con tu conocimiento general de entrenamiento y aclara ` +
+          `brevemente que la información puede estar desactualizada por tu fecha de corte.`;
+      }
       return `Error GNews [HTTP ${status}]: ${detail}`;
     }
   }
