@@ -89,5 +89,5 @@ export const environment = {
   geminiApiKey: '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',
   gnewsApiKey: '94ccc596b4dfebc3f72683b6e81d81bc',
 
-  version: '4.76 (04 Julio 2026) feat: tipos de interaccion CRM editables por empresa (Firestore) — agregar desde el combo',
+  version: '4.77 (04 Julio 2026) feat: dropdown Tipo inline en el grid de interacciones con opcion Agregar nuevo (Firestore por empresa)',
 }; 

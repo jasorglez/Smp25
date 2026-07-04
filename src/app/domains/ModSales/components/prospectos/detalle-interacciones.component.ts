@@ -105,10 +105,8 @@ import Swal from 'sweetalert2';
         <div class="border border-primary rounded p-2 mb-2 bg-white" *ngIf="showForm">
           <div class="row g-1">
             <div class="col-md-3">
-              <select class="form-select form-select-sm" [(ngModel)]="intTipo"
-                      (ngModelChange)="onTipoChange($event)">
+              <select class="form-select form-select-sm" [(ngModel)]="intTipo">
                 <option *ngFor="let t of tiposInteraccion" [value]="t">{{ t }}</option>
-                <option [value]="ADD_TIPO_SENTINEL">➕ Agregar nuevo tipo…</option>
               </select>
             </div>
             <div class="col-md-2">
@@ -291,7 +289,7 @@ export class DetalleInteraccionesComponent implements OnInit {
   // Catálogo dinámico (Firestore por empresa). Se siembra con los defaults y el
   // usuario puede agregar más desde el combo con la opción "➕ Agregar nuevo tipo…".
   tiposInteraccion: string[] = [...TIPOS_INTERACCION_DEFAULT];
-  readonly ADD_TIPO_SENTINEL = '__add_tipo__';
+  readonly ADD_TIPO_LABEL = '➕ Agregar nuevo…';
 
   // ── Tareas + Timeline ─────────────────────────────────────────────────────
   detalleTab: 'interacciones' | 'tareas' | 'timeline' = 'interacciones';
@@ -355,10 +353,13 @@ export class DetalleInteraccionesComponent implements OnInit {
         onCellDoubleClicked: (p: any) => this.editarFechaInteraccion(p.data),
       },
       {
-        field: 'tipo', headerName: 'Tipo', width: 110,
+        field: 'tipo', headerName: 'Tipo', width: 130,
+        editable: true,
+        cellEditor: 'agSelectCellEditor',
+        cellEditorParams: () => ({ values: [...this.tiposInteraccion, this.ADD_TIPO_LABEL] }),
         cellStyle: { cursor: 'pointer', backgroundColor: '#eefaf0' },
-        tooltipValueGetter: () => 'Doble clic para editar tipo',
-        onCellDoubleClicked: (p: any) => this.editarTipoInteraccion(p.data),
+        tooltipValueGetter: () => 'Clic para elegir tipo o agregar uno nuevo',
+        onCellValueChanged: (p: any) => this.onTipoCellChanged(p),
       },
       {
         field: 'descripcion', headerName: 'Descripcion', flex: 1,
@@ -410,10 +411,32 @@ export class DetalleInteraccionesComponent implements OnInit {
     }
   }
 
-  async onTipoChange(value: string) {
-    if (value !== this.ADD_TIPO_SENTINEL) return;
+  // Editor inline del grid (columna Tipo). Si eligen "➕ Agregar nuevo…" se pide
+  // el nombre, se guarda en el catálogo de la empresa y se asigna a la fila.
+  async onTipoCellChanged(p: any) {
+    const nuevo    = p.newValue;
+    const anterior = p.oldValue;
+    if (nuevo === anterior) return;
 
-    const prev = this.tiposInteraccion[0] ?? 'contacto';
+    if (nuevo === this.ADD_TIPO_LABEL) {
+      // No dejamos el label como valor real: revertimos y pedimos el nombre.
+      p.node.setDataValue('tipo', anterior);
+      const agregado = await this.promptAgregarTipo();
+      if (agregado) {
+        p.node.setDataValue('tipo', agregado);   // dispara de nuevo onTipoCellChanged -> persiste
+      }
+      return;
+    }
+
+    await this.persistTipo(p.data);
+  }
+
+  private async promptAgregarTipo(): Promise<string | null> {
+    const idCompany = this.idCompany;
+    if (!idCompany) {
+      Swal.fire('Atención', 'No se pudo determinar la empresa.', 'warning');
+      return null;
+    }
     const { value: nuevo } = await Swal.fire({
       title: 'Nuevo tipo de interacción',
       input: 'text',
@@ -423,28 +446,25 @@ export class DetalleInteraccionesComponent implements OnInit {
       cancelButtonText: 'Cancelar',
       inputValidator: (v) => (!v || !v.trim()) ? 'Escribe un nombre' : null,
     });
-
-    if (!nuevo || !nuevo.trim()) {
-      this.intTipo = prev;   // revierte la selección del sentinel
-      return;
-    }
-
-    const idCompany = this.idCompany;
-    if (!idCompany) {
-      Swal.fire('Atención', 'No se pudo determinar la empresa.', 'warning');
-      this.intTipo = prev;
-      return;
-    }
+    if (!nuevo || !nuevo.trim()) return null;
 
     try {
       this.tiposInteraccion = await this.svc.addTipoInteraccion(idCompany, nuevo);
-      // Selecciona el tipo recién agregado (respeta el nombre normalizado guardado)
-      const guardado = this.tiposInteraccion.find(t => t.toLowerCase() === nuevo.trim().toLowerCase());
-      this.intTipo = guardado ?? prev;
       Swal.fire({ toast: true, position: 'top-end', icon: 'success', title: 'Tipo agregado', showConfirmButton: false, timer: 1500 });
+      return this.tiposInteraccion.find(t => t.toLowerCase() === nuevo.trim().toLowerCase()) ?? nuevo.trim();
     } catch {
-      this.intTipo = prev;
       Swal.fire('Error', 'No se pudo guardar el nuevo tipo.', 'error');
+      return null;
+    }
+  }
+
+  private async persistTipo(interaccion: any) {
+    if (!this.prospecto?.id || !interaccion?.id) return;
+    try {
+      await this.svc.actualizarInteraccion(this.prospecto.id, interaccion.id, { tipo: interaccion.tipo });
+      this.rowData = [...this.rowData];
+    } catch {
+      Swal.fire('Error', 'No se pudo actualizar el tipo.', 'error');
     }
   }
 
@@ -552,38 +572,6 @@ export class DetalleInteraccionesComponent implements OnInit {
       Swal.fire({ toast: true, position: 'top-end', icon: 'success', title: 'Fecha actualizada', showConfirmButton: false, timer: 2000, timerProgressBar: true });
     } catch {
       Swal.fire('Error', 'No se pudo actualizar la fecha.', 'error');
-    }
-  }
-
-  async editarTipoInteraccion(interaccion: any) {
-    if (!this.prospecto?.id || !interaccion?.id) return;
-
-    const opciones = this.tiposInteraccion.reduce((acc: Record<string, string>, tipo) => {
-      acc[tipo] = tipo;
-      return acc;
-    }, {});
-
-    const { value: nuevoTipo } = await Swal.fire({
-      title: 'Editar tipo',
-      input: 'select',
-      inputOptions: opciones,
-      inputValue: interaccion.tipo ?? this.tiposInteraccion[0],
-      showCancelButton: true,
-      confirmButtonText: 'Guardar',
-      cancelButtonText: 'Cancelar',
-      inputValidator: (value) => !value ? 'Selecciona un tipo.' : null,
-    });
-
-    if (!nuevoTipo) return;
-
-    try {
-      await this.svc.actualizarInteraccion(this.prospecto.id, interaccion.id, { tipo: nuevoTipo });
-      interaccion.tipo = nuevoTipo;
-      this.rowData = [...this.rowData];
-      this.gridApi.setGridOption('rowData', this.rowData);
-      Swal.fire({ toast: true, position: 'top-end', icon: 'success', title: 'Tipo actualizado', showConfirmButton: false, timer: 2000, timerProgressBar: true });
-    } catch {
-      Swal.fire('Error', 'No se pudo actualizar el tipo.', 'error');
     }
   }
 
