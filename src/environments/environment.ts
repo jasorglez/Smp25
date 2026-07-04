@@ -89,5 +89,5 @@ export const environment = {
   geminiApiKey: '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',
   gnewsApiKey: '94ccc596b4dfebc3f72683b6e81d81bc',
 
-  version: '4.72 (30 Junio 2026) feat: Telegram solo dispara si esProspecto=true en Root',
+  version: '4.73 (04 Julio 2026) feat: combo Prospecto en Cotizaciones ordenado + busqueda por letra (RichSelect)',
 }; 

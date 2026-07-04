@@ -178,7 +178,9 @@
       "PowerShell(powershell.exe -NonInteractive -File \"C:\\\\Temp\\\\update_pmo.ps1\")",
       "PowerShell(powershell.exe -NonInteractive -File \"C:\\\\Temp\\\\update_pmo2.ps1\" 2>&1)",
       "PowerShell(powershell.exe -NonInteractive -File \"C:\\\\Temp\\\\update_pmo3.ps1\" 2>&1)",
-      "PowerShell(Get-ChildItem \"C:\\\\Users\\\\hco-c\\\\.claude\\\\projects\\\\\" | Select-Object -First 20 | ForEach-Object { $_.Name })"
+      "PowerShell(Get-ChildItem \"C:\\\\Users\\\\hco-c\\\\.claude\\\\projects\\\\\" | Select-Object -First 20 | ForEach-Object { $_.Name })",
+      "WebFetch(domain:ipquery.io)",
+      "WebFetch(domain:api.ipquery.io)"
     ],
     "deny": [],
     "ask": [],
