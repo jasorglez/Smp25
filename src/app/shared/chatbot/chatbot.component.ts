@@ -13,6 +13,7 @@ import { DailyReportService } from 'app/services/daily-report.service';
 import { OtService } from 'app/services/ot.service';
 import { SignalsService } from 'app/services/signals.service';
 import { ContractsService } from 'app/services/contracts.service';
+import { TrackingService } from 'app/services/tracking.service';
 import { environment } from '@env/environment';
 
 interface ChatMessage {
@@ -39,6 +40,7 @@ export class ChatbotComponent {
   private otService             = inject(OtService);
   private signalsService        = inject(SignalsService);
   private contractService       = inject(ContractsService);
+  private trackingService       = inject(TrackingService);
   private http                  = inject(HttpClient);
 
   @ViewChild('messagesContainer') private messagesContainer!: ElementRef;
@@ -467,13 +469,17 @@ ${reglasNegocio}${reglaModo}`;
   }
 
   private async getNoticiasRaw(text: string): Promise<string> {
-    const apiKey = (environment as any).gnewsApiKey;
-    const topic  = this.extractNewsTopic(text);
+    const topic = this.extractNewsTopic(text);
 
     try {
-      const params = { q: topic, lang: 'es', country: 'mx', max: '5', apikey: apiKey };
+      // Proxy server-side en el backend BPI: GNews (plan gratis) no envía CORS,
+      // por eso el navegador no puede llamarlo directo (HTTP 0). El backend sí.
+      const params = { topic, lang: 'es', country: 'mx', max: '5' };
       const data   = await lastValueFrom(
-        this.http.get<any>('https://gnews.io/api/v4/search', { params })
+        this.http.get<any>(`${environment.urlBpi}/news`, {
+          params,
+          headers: this.trackingService.getHeaders(),
+        })
       );
       const articles: any[] = data?.articles ?? [];
       if (!articles.length) return `Sin noticias para "${topic}".`;
@@ -481,7 +487,7 @@ ${reglasNegocio}${reglaModo}`;
       const fmt = (iso: string) => iso
         ? new Date(iso).toLocaleDateString('es-MX', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })
         : '';
-      return `Noticias sobre "${topic}" (${articles.length}):\n\n` +
+      return `Noticias ACTUALES sobre "${topic}" (${articles.length}, fuente: GNews en vivo — usa estos datos reales, NO tu conocimiento de entrenamiento):\n\n` +
         articles.map((a: any, i: number) =>
           `${i + 1}. ${a.title}\n   ${a.description ?? ''}\n   ${a.source?.name ?? ''} — ${fmt(a.publishedAt)}`
         ).join('\n\n');
@@ -496,7 +502,7 @@ ${reglasNegocio}${reglaModo}`;
           `Responde sobre "${topic}" con tu conocimiento general de entrenamiento y aclara ` +
           `brevemente que la información puede estar desactualizada por tu fecha de corte.`;
       }
-      return `Error GNews [HTTP ${status}]: ${detail}`;
+      return `Error noticias [HTTP ${status}]: ${detail}`;
     }
   }
 }
