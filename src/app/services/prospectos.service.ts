@@ -109,6 +109,10 @@ export interface Tarea {
 
 export const TIPOS_TAREA = ['llamada', 'reunión', 'email', 'seguimiento', 'visita', 'demo', 'cotizar', 'otro'];
 
+// Tipos de interacción por defecto — se siembran en Firestore por empresa la
+// primera vez y luego el usuario puede agregar más desde el combo.
+export const TIPOS_INTERACCION_DEFAULT = ['contacto', 'llamada', 'reunión', 'email', 'whatsapp', 'visita'];
+
 // ── Score CRM ─────────────────────────────────────────────────────────────────
 export function calcularScore(p: Prospecto): number {
   if (!p || p.activo === false) return 0;
@@ -345,6 +349,43 @@ export class ProspectosService {
 
   async savePlantillas(idCompany: number, plantillas: Record<string, string>): Promise<void> {
     await setDoc(doc(this.firestore, 'whatsapp-plantillas', String(idCompany)), plantillas);
+  }
+
+  // ── Catálogo de tipos de interacción por empresa (editable) ──────────────
+  // Doc: tipos-interaccion-crm/{idCompany} -> { tipos: string[] }
+  // Si no existe, se siembra con TIPOS_INTERACCION_DEFAULT.
+
+  async getTiposInteraccion(idCompany: number): Promise<string[]> {
+    const snap = await runInInjectionContext(this.injector, () =>
+      getDoc(doc(this.firestore, 'tipos-interaccion-crm', String(idCompany)))
+    );
+    const tipos = snap.exists() ? ((snap.data() as any)?.tipos as string[]) : null;
+    return Array.isArray(tipos) && tipos.length ? tipos : [...TIPOS_INTERACCION_DEFAULT];
+  }
+
+  async saveTiposInteraccion(idCompany: number, tipos: string[]): Promise<void> {
+    // Normaliza: recorta, quita vacíos y duplicados (case-insensitive), conserva orden.
+    const seen = new Set<string>();
+    const limpio = (tipos ?? [])
+      .map(t => (t ?? '').trim())
+      .filter(t => {
+        if (!t) return false;
+        const k = t.toLowerCase();
+        if (seen.has(k)) return false;
+        seen.add(k);
+        return true;
+      });
+    await setDoc(doc(this.firestore, 'tipos-interaccion-crm', String(idCompany)), { tipos: limpio });
+  }
+
+  async addTipoInteraccion(idCompany: number, tipo: string): Promise<string[]> {
+    const actuales = await this.getTiposInteraccion(idCompany);
+    const nuevo = (tipo ?? '').trim();
+    if (nuevo && !actuales.some(t => t.toLowerCase() === nuevo.toLowerCase())) {
+      actuales.push(nuevo);
+      await this.saveTiposInteraccion(idCompany, actuales);
+    }
+    return actuales;
   }
 
   // ── Tareas CRM ────────────────────────────────────────────────────────────

@@ -4,7 +4,7 @@ import { FormsModule } from '@angular/forms';
 import { AgGridModule } from 'ag-grid-angular';
 import { ColDef, GridApi, GridReadyEvent, ICellRendererParams } from 'ag-grid-enterprise';
 import { AG_GRID_LOCALE_ES } from 'assets/i18n/ag-grid.locale.es';
-import { ProspectosService, Interaccion, ESTADOS_PROSPECTO, Tarea, TIPOS_TAREA } from 'app/services/prospectos.service';
+import { ProspectosService, Interaccion, ESTADOS_PROSPECTO, Tarea, TIPOS_TAREA, TIPOS_INTERACCION_DEFAULT } from 'app/services/prospectos.service';
 import { CotizacionesService } from 'app/services/cotizaciones.service';
 import { SignalsService } from 'app/services/signals.service';
 import { Timestamp } from '@angular/fire/firestore';
@@ -105,8 +105,10 @@ import Swal from 'sweetalert2';
         <div class="border border-primary rounded p-2 mb-2 bg-white" *ngIf="showForm">
           <div class="row g-1">
             <div class="col-md-3">
-              <select class="form-select form-select-sm" [(ngModel)]="intTipo">
+              <select class="form-select form-select-sm" [(ngModel)]="intTipo"
+                      (ngModelChange)="onTipoChange($event)">
                 <option *ngFor="let t of tiposInteraccion" [value]="t">{{ t }}</option>
+                <option [value]="ADD_TIPO_SENTINEL">➕ Agregar nuevo tipo…</option>
               </select>
             </div>
             <div class="col-md-2">
@@ -286,7 +288,10 @@ export class DetalleInteraccionesComponent implements OnInit {
   intDescripcion = '';
 
   estados          = ESTADOS_PROSPECTO;
-  tiposInteraccion = ['contacto', 'llamada', 'reunión', 'email', 'whatsapp', 'visita'];
+  // Catálogo dinámico (Firestore por empresa). Se siembra con los defaults y el
+  // usuario puede agregar más desde el combo con la opción "➕ Agregar nuevo tipo…".
+  tiposInteraccion: string[] = [...TIPOS_INTERACCION_DEFAULT];
+  readonly ADD_TIPO_SENTINEL = '__add_tipo__';
 
   // ── Tareas + Timeline ─────────────────────────────────────────────────────
   detalleTab: 'interacciones' | 'tareas' | 'timeline' = 'interacciones';
@@ -321,6 +326,9 @@ export class DetalleInteraccionesComponent implements OnInit {
 
   get idVendedor()     { return this.signalsSvc.idUser(); }
   get nombreVendedor() { return this.signalsSvc.getDisplayName()(); }
+  get idCompany(): number {
+    return this.prospecto?.idCompany ?? this.signalsSvc.getRootSelectedBySidebar()();
+  }
 
   // ── AG Grid ──────────────────────────────────────────────────────────────
 
@@ -380,9 +388,63 @@ export class DetalleInteraccionesComponent implements OnInit {
     this.params    = params;
     this.prospecto = params.data;
     this.cargarInteracciones();
+    this.loadTiposInteraccion();
     if (this.prospecto?.id) {
       this.cotSvc.getCotizacionesByProspecto(this.prospecto.id)
         .then(c => this.countCotizaciones = c.length);
+    }
+  }
+
+  // ── Catálogo de tipos de interacción (editable por empresa) ────────────────
+
+  private async loadTiposInteraccion() {
+    const idCompany = this.idCompany;
+    if (!idCompany) return;
+    try {
+      this.tiposInteraccion = await this.svc.getTiposInteraccion(idCompany);
+      if (!this.tiposInteraccion.includes(this.intTipo)) {
+        this.intTipo = this.tiposInteraccion[0] ?? 'contacto';
+      }
+    } catch {
+      this.tiposInteraccion = [...TIPOS_INTERACCION_DEFAULT];
+    }
+  }
+
+  async onTipoChange(value: string) {
+    if (value !== this.ADD_TIPO_SENTINEL) return;
+
+    const prev = this.tiposInteraccion[0] ?? 'contacto';
+    const { value: nuevo } = await Swal.fire({
+      title: 'Nuevo tipo de interacción',
+      input: 'text',
+      inputPlaceholder: 'Ej. videollamada, referido, evento…',
+      showCancelButton: true,
+      confirmButtonText: 'Agregar',
+      cancelButtonText: 'Cancelar',
+      inputValidator: (v) => (!v || !v.trim()) ? 'Escribe un nombre' : null,
+    });
+
+    if (!nuevo || !nuevo.trim()) {
+      this.intTipo = prev;   // revierte la selección del sentinel
+      return;
+    }
+
+    const idCompany = this.idCompany;
+    if (!idCompany) {
+      Swal.fire('Atención', 'No se pudo determinar la empresa.', 'warning');
+      this.intTipo = prev;
+      return;
+    }
+
+    try {
+      this.tiposInteraccion = await this.svc.addTipoInteraccion(idCompany, nuevo);
+      // Selecciona el tipo recién agregado (respeta el nombre normalizado guardado)
+      const guardado = this.tiposInteraccion.find(t => t.toLowerCase() === nuevo.trim().toLowerCase());
+      this.intTipo = guardado ?? prev;
+      Swal.fire({ toast: true, position: 'top-end', icon: 'success', title: 'Tipo agregado', showConfirmButton: false, timer: 1500 });
+    } catch {
+      this.intTipo = prev;
+      Swal.fire('Error', 'No se pudo guardar el nuevo tipo.', 'error');
     }
   }
 
