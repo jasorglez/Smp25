@@ -1,16 +1,26 @@
 import { Component } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { CostosProductoTerminadoComponent } from './costos-producto-terminado/costos-producto-terminado.component';
 
 @Component({
   selector: 'app-confcatalogos',
   standalone: true,
-  imports: [CommonModule],
+  imports: [CommonModule, CostosProductoTerminadoComponent],
   template: `
-    <div class="d-flex flex-column align-items-center justify-content-center" style="min-height: 300px;">
-      <i class="bi bi-boxes text-secondary" style="font-size: 3rem;"></i>
-      <h4 class="mt-3 text-secondary">En construcción</h4>
-      <p class="text-muted">Este módulo estará disponible próximamente.</p>
+    <div class="p-2">
+      <!-- Pestañas de catálogos (extensible) -->
+      <ul class="nav nav-tabs mb-2">
+        <li class="nav-item">
+          <a class="nav-link" [class.active]="tab === 'costos'" (click)="tab = 'costos'" role="button">
+            Costos y Mapeo de Producto Terminado
+          </a>
+        </li>
+      </ul>
+
+      <app-costos-producto-terminado *ngIf="tab === 'costos'"></app-costos-producto-terminado>
     </div>
   `
 })
-export class ConfcatalogosComponent {}
+export class ConfcatalogosComponent {
+  tab: 'costos' = 'costos';
+}

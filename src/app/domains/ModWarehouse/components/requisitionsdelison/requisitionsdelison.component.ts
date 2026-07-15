@@ -751,14 +751,11 @@ export class RequisitionsDelisonComponent implements OnInit {
     const rowPx = Number(this.gridOptions?.rowHeight ?? 0);
     const paddingPx = 18;
 
-    // Cuando expandes, el detalle debería ocupar casi todo el alto del grid
+    // Cuando expandes, el detalle debería ocupar casi todo el alto del grid.
+    // 'detailRowHeight' es una propiedad INITIAL en AG Grid 32: se aplica al crear el grid
+    // (desde gridOptions) y NO puede actualizarse vía setGridOption en caliente (lanza warning).
     const desired = Math.max(320, gridHeightPx - headerPx - rowPx - paddingPx);
     this.gridOptions.detailRowHeight = desired;
-
-    const apiAny = this.gridApi as any;
-    if (typeof apiAny.setGridOption === 'function') {
-      apiAny.setGridOption('detailRowHeight', desired);
-    }
   }
 
   get colMaster(): ColDef[] {

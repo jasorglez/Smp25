@@ -1,3 +1,5 @@
+@use 'sass:color';
+
 // Variables de colores
 $primary: #4361ee;
 $success: #2ec4b6;
@@ -60,22 +62,22 @@ $shadow-hover: 0 8px 30px rgba(0, 0, 0, 0.12);
   }
 
   &.primary {
-    &::before { background: linear-gradient(180deg, $primary, darken($primary, 10%)); }
+    &::before { background: linear-gradient(180deg, $primary, color.adjust($primary, $lightness: -10%)); }
     .kpi-icon-wrapper { background: rgba($primary, 0.1); color: $primary; }
   }
 
   &.success {
-    &::before { background: linear-gradient(180deg, $success, darken($success, 10%)); }
+    &::before { background: linear-gradient(180deg, $success, color.adjust($success, $lightness: -10%)); }
     .kpi-icon-wrapper { background: rgba($success, 0.1); color: $success; }
   }
 
   &.info {
-    &::before { background: linear-gradient(180deg, $info, darken($info, 10%)); }
+    &::before { background: linear-gradient(180deg, $info, color.adjust($info, $lightness: -10%)); }
     .kpi-icon-wrapper { background: rgba($info, 0.1); color: $info; }
   }
 
   &.warning {
-    &::before { background: linear-gradient(180deg, $warning, darken($warning, 10%)); }
+    &::before { background: linear-gradient(180deg, $warning, color.adjust($warning, $lightness: -10%)); }
     .kpi-icon-wrapper { background: rgba($warning, 0.1); color: $warning; }
   }
 
@@ -142,7 +144,7 @@ $shadow-hover: 0 8px 30px rgba(0, 0, 0, 0.12);
     }
 
     &.active {
-      background: linear-gradient(135deg, $primary, darken($primary, 10%));
+      background: linear-gradient(135deg, $primary, color.adjust($primary, $lightness: -10%));
       color: #fff;
       box-shadow: 0 4px 12px rgba($primary, 0.3);
     }
@@ -279,7 +281,7 @@ $shadow-hover: 0 8px 30px rgba(0, 0, 0, 0.12);
 
     &.top-three {
       .client-rank {
-        background: linear-gradient(135deg, $warning, darken($warning, 10%));
+        background: linear-gradient(135deg, $warning, color.adjust($warning, $lightness: -10%));
         color: #fff;
         font-weight: 700;
       }

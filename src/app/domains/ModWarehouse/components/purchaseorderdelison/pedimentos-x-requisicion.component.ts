@@ -159,6 +159,9 @@ export class PedimentosXRequisicionComponent {
     rowHeight: 28,
     animateRows: true,
     masterDetail: true,
+    // AG Grid 32 no valida 'detailCellRendererSelector' (sí lo resuelve en runtime por la
+    // convención '<comp>Selector'). Silencia la advertencia "invalid gridOptions property".
+    suppressPropertyNamesCheck: true,
     detailRowHeight: 700,
     isRowMaster: () => true,
     detailCellRendererSelector: () => ({ component: OrdenesydetallesOcComponent }),

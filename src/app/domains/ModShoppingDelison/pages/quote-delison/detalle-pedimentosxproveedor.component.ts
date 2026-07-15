@@ -461,6 +461,10 @@ export class DetailCellRendererPedimentosComponent implements OnInit, OnDestroy 
     rowHeight: 35,
     animateRows: true,
     masterDetail: true,
+    // AG Grid 32 no incluye 'detailCellRendererSelector' en su lista de propiedades validadas
+    // (sí lo resuelve en runtime por la convención '<comp>Selector'). Silencia esa advertencia
+    // cosmética de "invalid gridOptions property" sin afectar la cascada.
+    suppressPropertyNamesCheck: true,
     detailRowHeight: 460,
     autoSizeStrategy: {
       type: 'fitCellContents',

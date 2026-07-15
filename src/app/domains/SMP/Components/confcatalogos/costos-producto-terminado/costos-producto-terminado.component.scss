@@ -1,0 +1,37 @@
+.costos-pt {
+  .total-badge {
+    background: #e8f5e9;
+    border: 1px solid #a5d6a7;
+    border-radius: 6px;
+    padding: 4px 12px;
+    font-weight: 600;
+    color: #2e7d32;
+
+    span { font-size: 1.05rem; }
+  }
+}
+
+:host ::ng-deep .new-row-highlight {
+  background-color: #fff9c4 !important;
+}
+
+.cost-controls {
+  background: #f1f8e9;
+  border: 1px solid #dcedc8;
+  border-radius: 6px;
+  padding: 6px 10px;
+}
+
+.modal-backdrop-custom {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.45);
+  z-index: 1040;
+}
+
+.modal.d-block { z-index: 1050; }
+
+.list-group-item.active-opt {
+  background: #e8f5e9;
+  border-color: #a5d6a7;
+}

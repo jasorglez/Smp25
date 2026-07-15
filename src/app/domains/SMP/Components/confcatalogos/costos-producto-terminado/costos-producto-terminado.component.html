@@ -1,0 +1,141 @@
+<div class="costos-pt p-2">
+
+  <!-- Barra superior: selector de producto + total -->
+  <div class="d-flex align-items-center flex-wrap gap-2 mb-2">
+    <label class="fw-semibold mb-0 me-1">Producto Terminado:</label>
+    <select class="form-select form-select-sm" style="max-width: 380px;"
+            [(ngModel)]="selectedProductId" (ngModelChange)="onProductChange()">
+      <option [ngValue]="null">— Selecciona —</option>
+      <option *ngFor="let p of finalProducts" [ngValue]="p.id">{{ p.label }}</option>
+    </select>
+
+    <div class="ms-auto total-badge" *ngIf="selectedProductId">
+      Costo del producto:
+      <span>{{ productoTotal | currency:'MXN':'symbol':'1.2-2' }}</span>
+    </div>
+  </div>
+
+  <!-- Botonera CRUD estándar -->
+  <div class="d-flex gap-2 mb-2" *ngIf="selectedProductId">
+    <button class="btn btn-sm btn-success" (click)="add()">
+      <i class="bi bi-plus-lg"></i> Agregar componente
+    </button>
+    <button class="btn btn-sm btn-primary position-relative" (click)="saveChanges()" [disabled]="!hasUnsavedChanges">
+      <i class="bi bi-floppy"></i> Guardar
+      <span *ngIf="hasUnsavedChanges"
+            class="position-absolute top-0 start-100 translate-middle p-2 bg-danger border border-light rounded-circle"></span>
+    </button>
+    <button class="btn btn-sm btn-warning" (click)="revertChanges()" [disabled]="!hasUnsavedChanges">
+      <i class="bi bi-arrow-clockwise"></i> Deshacer
+    </button>
+    <button class="btn btn-sm btn-danger" (click)="deleteSelected()" [disabled]="!selectedRow">
+      <i class="bi bi-trash"></i> Borrar
+    </button>
+    <small class="text-muted align-self-center ms-2">
+      Selecciona una fila y "Agregar componente" para anidar bajo ella.
+    </small>
+  </div>
+
+  <!-- Base de costo de los básicos: global + simulación -->
+  <div class="d-flex align-items-center flex-wrap gap-2 mb-2 cost-controls" *ngIf="selectedProductId">
+    <span class="fw-semibold me-1"><i class="bi bi-sliders"></i> Calcular básicos con:</span>
+    <div class="btn-group btn-group-sm" role="group">
+      <button *ngFor="let m of modos" type="button"
+              class="btn btn-outline-success"
+              (click)="applyGlobalModo(m.v)">{{ m.label }}</button>
+    </div>
+
+    <span class="ms-3 me-1 text-muted">Simular (sin guardar):</span>
+    <div class="btn-group btn-group-sm" role="group">
+      <button *ngFor="let m of modos" type="button"
+              class="btn"
+              [class.btn-warning]="simulModo === m.v"
+              [class.btn-outline-warning]="simulModo !== m.v"
+              (click)="simular(m.v)">{{ m.label }}</button>
+    </div>
+    <button *ngIf="simulModo" type="button" class="btn btn-sm btn-link text-danger" (click)="clearSimular()">
+      <i class="bi bi-x-circle"></i> Quitar simulación
+    </button>
+    <span *ngIf="simulModo" class="badge bg-warning text-dark ms-1">
+      Simulando: vista temporal, no se guarda
+    </span>
+  </div>
+
+  <!-- Grid Tree Data -->
+  <ag-grid-angular
+    *ngIf="selectedProductId"
+    style="width: 100%; height: 70vh;"
+    class="ag-theme-quartz"
+    [rowData]="rowData()"
+    [columnDefs]="columnDefs"
+    [autoGroupColumnDef]="autoGroupColumnDef"
+    [defaultColDef]="defaultColDef"
+    [gridOptions]="gridOptions"
+    [rowSelection]="'single'"
+    (gridReady)="onGridReady($event)"
+    (selectionChanged)="onSelectionChanged()">
+  </ag-grid-angular>
+
+  <div *ngIf="!selectedProductId" class="text-center text-muted py-5">
+    <i class="bi bi-diagram-3" style="font-size: 2.5rem;"></i>
+    <p class="mt-2">Selecciona un producto terminado para definir su receta y costos.</p>
+  </div>
+</div>
+
+<!-- Modal: base de costo por fila (básico) -->
+<div class="modal-backdrop-custom" *ngIf="showCostoModal" (click)="closeCostoModal()"></div>
+<div class="modal d-block" tabindex="-1" *ngIf="showCostoModal">
+  <div class="modal-dialog modal-dialog-centered modal-lg">
+    <div class="modal-content">
+      <div class="modal-header bg-success text-white py-2">
+        <h6 class="modal-title mb-0">
+          <i class="bi bi-cash-coin me-1"></i>
+          Base de costo — {{ modalRow?.nombre }}
+        </h6>
+        <button type="button" class="btn-close btn-close-white" (click)="closeCostoModal()"></button>
+      </div>
+      <div class="modal-body">
+        <p class="text-muted small mb-2" *ngIf="modalCosto && !modalCosto.sinDatos">
+          Ventana de {{ modalCosto.ventanaMeses }} meses.
+          <span *ngIf="modalCosto.parcial" class="badge bg-warning text-dark">historial parcial</span>
+        </p>
+        <p class="text-muted small mb-2" *ngIf="!modalCosto || modalCosto.sinDatos">
+          No hay compras pagadas en la ventana; se usará el costo de respaldo.
+        </p>
+
+        <!-- Opciones -->
+        <div class="list-group mb-3">
+          <label class="list-group-item d-flex align-items-center" *ngFor="let m of modos"
+                 [class.active-opt]="modalModo === m.v">
+            <input class="form-check-input me-2 mt-0" type="radio" name="modoCosto"
+                   [value]="m.v" [(ngModel)]="modalModo">
+            <span class="flex-grow-1">{{ m.label }}</span>
+            <span class="fw-bold">{{ valorModal(m.v) | currency:'MXN':'symbol':'1.2-4' }}</span>
+          </label>
+        </div>
+
+        <!-- Desglose por proveedor -->
+        <div *ngIf="modalCosto && modalCosto.desglose?.length">
+          <div class="fw-semibold small mb-1">Desglose por proveedor</div>
+          <table class="table table-sm table-bordered mb-0">
+            <thead class="table-light">
+              <tr><th>Proveedor</th><th class="text-end">Cantidad</th><th class="text-end">Total</th><th class="text-end">$/u</th></tr>
+            </thead>
+            <tbody>
+              <tr *ngFor="let d of modalCosto.desglose">
+                <td>{{ d.proveedor }}</td>
+                <td class="text-end">{{ d.cantidad | number:'1.0-2' }}</td>
+                <td class="text-end">{{ d.totalPagado | currency:'MXN':'symbol':'1.2-2' }}</td>
+                <td class="text-end">{{ d.precioUnitario | currency:'MXN':'symbol':'1.2-4' }}</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+      <div class="modal-footer py-2">
+        <button class="btn btn-sm btn-secondary" (click)="closeCostoModal()">Cancelar</button>
+        <button class="btn btn-sm btn-success" (click)="confirmCostoModal()">Aplicar a esta fila</button>
+      </div>
+    </div>
+  </div>
+</div>

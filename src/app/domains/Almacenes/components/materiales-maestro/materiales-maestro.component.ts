@@ -17,6 +17,7 @@ import { DetailCellRendererParametrosComponent } from './details/detail-cell-ren
 import { DetailCellRendererCaracteristicasMpComponent } from './details/detail-cell-renderer-caracteristicas-mp.component';
 import { DetailCellRendererHistoricoComponent } from './details/detail-cell-renderer-historico.component';
 import { DetailCellRendererJarabeComponent } from './details/detail-cell-renderer-jarabe.component';
+import { DetalleCostosPonderadosComponent } from './details/detalle-costos-ponderados.component';
 import { SelectWithTooltipEditorV2Component } from 'app/shared/select-with-tooltip-editor-v2.component';
 import { AutocompleteEditorComponent } from 'app/shared/autocomplete-editor/autocomplete-editor.component';
 import { ImageCellRendererComponent } from './renderers/image-cell-renderer.component';
@@ -31,6 +32,7 @@ import { lastValueFrom, Subscription } from 'rxjs';
 import { SubfamiliaModalService, ModalData } from './services/subfamilia-modal.service';
 import { NgbActiveModal } from '@ng-bootstrap/ng-bootstrap';
 import { PendingChangesService } from 'app/services/pending-changes.service';
+import { CostosPonderadosService, CostoPonderado } from 'app/services/costos-ponderados.service';
 
 @Component({
   selector: 'app-materiales-maestro',
@@ -64,6 +66,11 @@ export class MaterialesMaestroComponent implements OnInit, OnDestroy {
   /** Bus central de cambios pendientes para Niveles 2 (proveedores) y 3 (sucursales).
    *  El botón Guardar único persiste también esos cambios además de los del Nivel 1. */
   public pendingChangesService = inject(PendingChangesService);
+  private costosPonderadosService = inject(CostosPonderadosService);
+
+  // Promedio ponderado precargado por material básico (para la celda colapsada de la
+  // columna "Costos Ponderados"). Se llena en batch tras cargar los materiales.
+  public costosPonderadosMap = new Map<number, CostoPonderado>();
 
   // ✅ Cuando la ruta lo indica (secciones "Bienes y servicios no productivos" y
   // "Articulos y servicios nuevos"), se ocultan columnas: Merma, Fecha Cambio,
@@ -244,6 +251,8 @@ export class MaterialesMaestroComponent implements OnInit, OnDestroy {
           setTimeout(() => this.scrollToTarget(), 150);
         }
         this.cdr.detectChanges();
+        // Precargar el promedio ponderado de los básicos para la celda colapsada.
+        this.loadCostosPonderados();
       },
       error: (error) => {
         console.error('Error loading materials:', error);
@@ -319,7 +328,8 @@ export class MaterialesMaestroComponent implements OnInit, OnDestroy {
     detailCellRendererParametros: DetailCellRendererParametrosComponent,
     detailCellRendererCaracteristicasMp: DetailCellRendererCaracteristicasMpComponent,
     detailCellRendererHistorico: DetailCellRendererHistoricoComponent,
-    detailCellRendererJarabe: DetailCellRendererJarabeComponent
+    detailCellRendererJarabe: DetailCellRendererJarabeComponent,
+    detalleCostosPonderados: DetalleCostosPonderadosComponent
   };
 
   public get gridOptions(): any {
@@ -356,6 +366,8 @@ export class MaterialesMaestroComponent implements OnInit, OnDestroy {
           return { component: 'detailCellRendererCaracteristicasMp' };
         } else if (params.data.detailType === 'historico') {
           return { component: 'detailCellRendererHistorico' };
+        } else if (params.data.detailType === 'costosPonderados') {
+          return { component: 'detalleCostosPonderados' };
         }
         return undefined;
       },
@@ -678,6 +690,31 @@ export class MaterialesMaestroComponent implements OnInit, OnDestroy {
         headerTooltip: 'Si está activo, la requisición valida que la cantidad sea combinación de presentaciones (además del mínimo de compra).',
       },
       {
+        // VERDE: costo de compra del material BÁSICO (promedio ponderado de recepciones pagadas).
+        // Colapsada muestra el Promedio Ponderado; click abre desglose por proveedor + 3 KPIs.
+        // En blanco para semi-elaborados (su costo viene de la formulación, no de compras).
+        field: 'costosPonderados',
+        headerName: 'Costos Ponderados',
+        width: 150,
+        valueGetter: (params: any) => {
+          if (!this.esBasico(params.data)) return null;
+          const c = this.costosPonderadosMap.get(params.data?.id);
+          return c && !c.sinDatos ? c.promedioPonderado : null;
+        },
+        cellRenderer: (params: any) => {
+          if (!this.esBasico(params.data)) return '';
+          const c = this.costosPonderadosMap.get(params.data?.id);
+          if (!c || c.sinDatos) return '<span style="color:#aaa;">—</span>';
+          return '$' + (c.promedioPonderado ?? 0).toLocaleString('es-MX', { minimumFractionDigits: 2, maximumFractionDigits: 4 });
+        },
+        cellStyle: (params: any) => {
+          if (!this.esBasico(params.data)) {
+            return { backgroundColor: '#f0f0f0', color: '#bbb', cursor: 'default' };
+          }
+          return { backgroundColor: '#c8e6c9', cursor: 'pointer', textDecoration: 'underline' };
+        }
+      },
+      {
         field: 'providerCount',
         headerName: 'Proveedor',
         width: 120,
@@ -828,8 +865,38 @@ export class MaterialesMaestroComponent implements OnInit, OnDestroy {
     if (colId === 'parametros') return 'parametros';
     if (colId === 'caracteristicas') return 'caracteristicas';
     if (colId === 'costo') return 'costos';
+    if (colId === 'costosPonderados') return 'costosPonderados';
     if (colId === 'historico') return 'historico';
     return null;
+  }
+
+  // Un material es BÁSICO si su familia se llama "...BASICA...". El costo de los básicos
+  // viene del promedio ponderado de compras; los semi-elaborados, de su formulación.
+  esBasico(data: any): boolean {
+    if (!data) return false;
+    const familia = this.families?.find((f: any) => f.id === data.idFamilia);
+    const familiaDesc = (familia?.description || data.familia || '').toUpperCase();
+    return familiaDesc.includes('BASICA');
+  }
+
+  // Batch: trae el promedio ponderado de todos los materiales BÁSICOS visibles y refresca
+  // la columna colapsada "Costos Ponderados".
+  private loadCostosPonderados(): void {
+    if (!this.idRoot) return;
+    const rows = this.rowData() || [];
+    const ids = rows.filter(r => this.esBasico(r) && r?.id > 0).map(r => r.id);
+    if (ids.length === 0) return;
+    this.costosPonderadosService.getBatch(this.idRoot, ids).subscribe({
+      next: (list) => {
+        this.costosPonderadosMap.clear();
+        (list || []).forEach(c => this.costosPonderadosMap.set(c.idMaterial, c));
+        if (this.gridApi) {
+          this.gridApi.refreshCells({ columns: ['costosPonderados'], force: true });
+        }
+        this.cdr.detectChanges();
+      },
+      error: (e) => console.warn('No se pudieron cargar costos ponderados', e)
+    });
   }
 
   createDetailToggleCellRenderer(detailType: string): (params: any) => HTMLElement {
@@ -865,7 +932,7 @@ export class MaterialesMaestroComponent implements OnInit, OnDestroy {
     this.idSelect = event.data.id; // Asignar el ID seleccionado
 
     const colId = event.column.getColId();
-    const isDetailColumn = colId === 'providerCount' || colId === 'subfamilyCount' || colId === 'parametros' || colId === 'caracteristicas' || colId === 'costo' || colId === 'historico';
+    const isDetailColumn = colId === 'providerCount' || colId === 'subfamilyCount' || colId === 'parametros' || colId === 'caracteristicas' || colId === 'costo' || colId === 'costosPonderados' || colId === 'historico';
 
     if (isDetailColumn) {
       // Bloqueo previo por `__isNew` removido: con el Guardar centralizado del Nivel 1
@@ -879,6 +946,11 @@ export class MaterialesMaestroComponent implements OnInit, OnDestroy {
         if (familiaDesc.toUpperCase().includes('BASICA')) {
           return;
         }
+      }
+
+      // "Costos Ponderados" solo aplica a básicos (costo de compras). Para semi-elaborados no abre.
+      if (colId === 'costosPonderados' && !this.esBasico(event.data)) {
+        return;
       }
 
       // Marcar que se está abriendo un detalle para evitar re-renders

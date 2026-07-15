@@ -1,5 +1,5 @@
 import { CommonModule } from '@angular/common';
-import { Component, effect, inject, ChangeDetectorRef} from '@angular/core';
+import { Component, effect, inject, ChangeDetectorRef, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import Swal from 'sweetalert2';
 import { AgGridModule } from 'ag-grid-angular';
@@ -83,8 +83,8 @@ export class GastosComponent {
   endDate: string = this.toIso(new Date());
 
   // Estado
-  loading = false;
-  errorMsg = '';
+  loading = signal(false);
+  errorMsg = signal('');
   report: ExpenseReport | null = null;
 
   // Pivote calculado
@@ -98,9 +98,9 @@ export class GastosComponent {
   maxCellValue = 0; // para el heatmap
 
   // ─── Captura (Parte A) ─────────────────────────────────────
-  capturaLoading = false;
-  capturaError = '';
-  capturaRows: PendingPayment[] = [];
+  capturaLoading = signal(false);
+  capturaError = signal('');
+  capturaRows = signal<PendingPayment[]>([]);
   hasUnsavedCaptura = false;
   private capturaGridApi?: GridApi;
 
@@ -399,9 +399,9 @@ export class GastosComponent {
   }
 
   // ─── Histórico de Pagos (Parte C) ──────────────────────────
-  histLoading = false;
-  histError = '';
-  historicoRows: PendingPayment[] = [];
+  histLoading = signal(false);
+  histError = signal('');
+  historicoRows = signal<PendingPayment[]>([]);
   private histGridApi?: GridApi;
 
   // Buscador / filtros
@@ -498,21 +498,21 @@ export class GastosComponent {
       this.histStart = this.toIso(monday);
       this.histEnd = this.toIso(today);
     }
-    this.histLoading = true;
-    this.histError = '';
+    this.histLoading.set(true);
+    this.histError.set('');
     this.gastosService.getPaidPayments(this.idCompany).subscribe({
       next: (rows) => {
-        this.historicoRows = rows ?? [];
-        this.histProveedores = [...new Set(this.historicoRows.map(r => r.proveedor || '').filter(Boolean))].sort();
-        this.histSucursales = [...new Set(this.historicoRows.map(r => r.branchName || '').filter(Boolean))].sort();
-        this.histLoading = false;
+        this.historicoRows.set(rows ?? []);
+        this.histProveedores = [...new Set(this.historicoRows().map(r => r.proveedor || '').filter(Boolean))].sort();
+        this.histSucursales = [...new Set(this.historicoRows().map(r => r.branchName || '').filter(Boolean))].sort();
+        this.histLoading.set(false);
         setTimeout(() => { this.histGridApi?.autoSizeAllColumns(); this.applyHistFilters(); this.recomputeHistTotals(); }, 0);
       },
       error: (err) => {
         console.error('Error cargando histórico de pagos:', err);
-        this.histError = 'No se pudo cargar el histórico de pagos.';
-        this.historicoRows = [];
-        this.histLoading = false;
+        this.histError.set('No se pudo cargar el histórico de pagos.');
+        this.historicoRows.set([]);
+        this.histLoading.set(false);
       }
     });
   }
@@ -721,8 +721,8 @@ export class GastosComponent {
 
   loadPending(): void {
     if (!this.idCompany) return;
-    this.capturaLoading = true;
-    this.capturaError = '';
+    this.capturaLoading.set(true);
+    this.capturaError.set('');
     this.gastosService.getPendingPayments(this.idCompany).subscribe({
       next: async (rows) => {
         const hoy = this.toIso(new Date());
@@ -738,17 +738,17 @@ export class GastosComponent {
           r.__precioBase = Number(r.precioUnitario) || 0;
           this.recalcRowIva(r);
         });
-        this.capturaRows = list;
-        this.capturaLoading = false;
+        this.capturaRows.set(list);
+        this.capturaLoading.set(false);
         // Re-autoajustar columnas tras recargar (onFirstDataRendered solo dispara la 1ª vez).
         // Si el usuario tiene estado guardado, NO se reajusta (respeta sus anchos).
         setTimeout(() => { if (!this.capturaHasSavedState) this.capturaGridApi?.autoSizeAllColumns(); }, 0);
       },
       error: (err) => {
         console.error('Error cargando pendientes de pago:', err);
-        this.capturaError = 'No se pudieron cargar las entradas pendientes de pago.';
-        this.capturaRows = [];
-        this.capturaLoading = false;
+        this.capturaError.set('No se pudieron cargar las entradas pendientes de pago.');
+        this.capturaRows.set([]);
+        this.capturaLoading.set(false);
       }
     });
   }
@@ -774,7 +774,7 @@ export class GastosComponent {
     try {
       const fechaPago = row.fechaPago ?? this.toIso(new Date());
       await lastValueFrom(this.gastosService.confirmAnticipo(row.idGastoGeneral, fechaPago, row.notaFactura ?? null, fx.tipoCambio, fx.moneda, fx.fuenteTc));
-      this.capturaRows = this.capturaRows.filter(r => r.idGastoGeneral !== row.idGastoGeneral);
+      this.capturaRows.set(this.capturaRows().filter(r => r.idGastoGeneral !== row.idGastoGeneral));
       alerts.reqSuccessToast('Anticipo pagado', `${row.folio}: anticipo registrado como pagado.`);
       this.loadReport();
     } catch (err) {
@@ -914,7 +914,7 @@ export class GastosComponent {
     }
     try {
       await lastValueFrom(this.gastosService.confirmPayment(payload));
-      this.capturaRows = this.capturaRows.filter(r => r.idEntrada !== row.idEntrada);
+      this.capturaRows.set(this.capturaRows().filter(r => r.idEntrada !== row.idEntrada));
       // Placeholder almacén global: aún no persiste inventario, solo confirma que el flujo corre.
       alerts.reqSuccessToast('Insertado en almacén', `${row.folio} — material ingresado (placeholder almacén global).`);
       if (anticipoAplicado > 0) {
@@ -1037,7 +1037,7 @@ export class GastosComponent {
 
   /** Guarda los campos editables modificados SIN concluir el pago (no libera). */
   async saveCaptura(): Promise<void> {
-    const modificadas = this.capturaRows.filter(r => (r as any).__modified);
+    const modificadas = this.capturaRows().filter(r => (r as any).__modified);
     if (modificadas.length === 0) {
       alerts.basicAlert('Sin cambios', 'No hay cambios por guardar.', 'info');
       return;
@@ -1255,7 +1255,7 @@ export class GastosComponent {
     const n    = Number(match[2]);
     if (n <= 1) return false; // E1 nunca se bloquea por secuencia
     // Buscar en capturaRows si hay alguna entrada con mismo base + mismo artículo + número menor
-    return this.capturaRows.some(r => {
+    return this.capturaRows().some(r => {
       if (r === row || !r.folio || !r.articulo) return false;
       if (r.articulo !== row.articulo) return false;
       const m = String(r.folio).match(/^(.+)-E(\d+)$/i);
@@ -1377,21 +1377,21 @@ export class GastosComponent {
 
   loadReport(): void {
     if (!this.idCompany) return;
-    this.loading = true;
-    this.errorMsg = '';
+    this.loading.set(true);
+    this.errorMsg.set('');
 
     this.gastosService.getExpenseReport(this.idCompany, this.startDate, this.endDate, this.lens).subscribe({
       next: (res) => {
         this.report = res;
         this.buildPivot(res);
-        this.loading = false;
+        this.loading.set(false);
       },
       error: (err) => {
         console.error('Error cargando reporte de gastos:', err);
-        this.errorMsg = 'No se pudo cargar el reporte de gastos.';
+        this.errorMsg.set('No se pudo cargar el reporte de gastos.');
         this.report = null;
         this.resetPivot();
-        this.loading = false;
+        this.loading.set(false);
       }
     });
   }

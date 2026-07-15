@@ -39,6 +39,11 @@ export class QuoteDelisonComponent implements OnInit, OnDestroy, CanComponentDea
   gridHeightPx = 600;
   detailRowHeightPx = 520;
   private gridApi: GridApi;
+  /** Devuelve gridApi sólo si está vivo. Evita warnings al llamar la API de un grid
+   *  destruido desde callbacks async (HTTP/await/setTimeout) tras navegar fuera. */
+  private get liveGrid(): GridApi | null {
+    return (this.gridApi && !(this.gridApi as any).isDestroyed?.()) ? this.gridApi : null;
+  }
   private isInitialized: boolean = false; // Flag para saber si ya se inicializó el componente
   private expandedRequisitionId: number | null = null; // Almacenar ID de la requisición expandida
   private editingRequisitionId: number | null = null; // ID de requisición en edición (filtro)
@@ -61,6 +66,21 @@ export class QuoteDelisonComponent implements OnInit, OnDestroy, CanComponentDea
 
   constructor() {
     this.updateGridHeight();
+
+    // ✅ Inicializa en cuanto el signal idRoot (empresa) esté disponible. Reacciona al signal
+    //    en lugar de hacer polling con setTimeout/reintentos (que producía el warning de "idRoot
+    //    no disponible todavía"). Se ejecuta una sola vez gracias al guard isInitialized.
+    effect(() => {
+      const idRoot = this.signalsService.getRootSelectedBySidebar()();
+      const idUser = this.signalsService.getIdUSer()();
+      if (!idRoot || this.isInitialized) return;
+      this.idRoot = idRoot;
+      this.idUser = idUser;
+      this.loadBranches();
+      this.loadDepartments();
+      this.isInitialized = true;
+    });
+
     // ✅ Usar effect para reaccionar a cambios en el signal de sucursal
     effect(() => {
       const newIdBranch = this.signalsService.getBranchSelectedBySidebar()();
@@ -81,9 +101,7 @@ export class QuoteDelisonComponent implements OnInit, OnDestroy, CanComponentDea
         this.fullRowData = [];
         this.rowData = [];
 
-        if (this.gridApi) {
-          this.gridApi.setGridOption('rowData', []);
-        }
+        this.liveGrid?.setGridOption('rowData', []);
 
         console.warn('⚠️ No hay sucursal seleccionada');
         alerts.basicAlert(
@@ -128,30 +146,8 @@ export class QuoteDelisonComponent implements OnInit, OnDestroy, CanComponentDea
       this.reorderRequisitions(cotizacionId);
     });
 
-    // ✅ Esperar a que los signals se establezcan antes de inicializar
-    setTimeout(() => {
-      this.idRoot = this.signalsService.getRootSelectedBySidebar()();
-      this.idUser = this.signalsService.getIdUSer()();
-
-      // ✅ Solo cargar si idRoot es válido
-      if (this.idRoot) {
-        this.loadBranches();
-        this.loadDepartments();
-      } else {
-        console.warn('⚠️ idRoot no está disponible todavía, reintentando...');
-        // Reintentar después de un delay adicional
-        setTimeout(() => {
-          this.idRoot = this.signalsService.getRootSelectedBySidebar()();
-          if (this.idRoot) {
-            this.loadBranches();
-            this.loadDepartments();
-          }
-        }, 300);
-      }
-
-      // ✅ Marcar como inicializado
-      this.isInitialized = true;
-    }, 200);
+    // La inicialización (idRoot/idUser → loadBranches/loadDepartments) se dispara desde el
+    // effect del constructor en cuanto el signal idRoot esté disponible.
   }
 
   ngOnDestroy() {
@@ -322,11 +318,9 @@ export class QuoteDelisonComponent implements OnInit, OnDestroy, CanComponentDea
     const rowPx = Number(this.gridOptions?.rowHeight ?? 0);
     const paddingPx = 20;
     this.detailRowHeightPx = Math.max(260, this.gridHeightPx - headerPx - rowPx - paddingPx);
+    // 'detailRowHeight' es una propiedad INITIAL en AG Grid 32: se toma al crear el grid
+    // (desde gridOptions) y NO puede actualizarse vía setGridOption en caliente (lanza warning).
     this.gridOptions.detailRowHeight = this.detailRowHeightPx;
-    if (this.gridApi) {
-      // Aplicar en caliente si el grid ya está listo
-      (this.gridApi as any).setGridOption?.('detailRowHeight', this.detailRowHeightPx);
-    }
   }
 
   loadQuotes() {
@@ -370,9 +364,7 @@ export class QuoteDelisonComponent implements OnInit, OnDestroy, CanComponentDea
       console.warn('⚠️ No hay sucursales disponibles en el catálogo');
       this.fullRowData = [];
       this.rowData = [];
-      if (this.gridApi) {
-        this.gridApi.setGridOption('rowData', []);
-      }
+      this.liveGrid?.setGridOption('rowData', []);
       return;
     }
 
@@ -548,14 +540,14 @@ export class QuoteDelisonComponent implements OnInit, OnDestroy, CanComponentDea
     this.preloadRolesForQuotes();
 
     // Refrescar el grid
-    if (this.gridApi) {
-      this.gridApi.setGridOption('rowData', this.rowData);
-      this.gridApi.refreshCells({ force: true });
+    if (this.liveGrid) {
+      this.liveGrid.setGridOption('rowData', this.rowData);
+      this.liveGrid.refreshCells({ force: true });
 
       // ✅ Re-expandir la requisición que estaba expandida
       if (this.expandedRequisitionId !== null) {
         setTimeout(() => {
-          this.gridApi.forEachNode((node: any) => {
+          this.liveGrid?.forEachNode((node: any) => {
             if (node.data?.id === this.expandedRequisitionId) {
               node.setExpanded(true);
             }
@@ -723,14 +715,14 @@ export class QuoteDelisonComponent implements OnInit, OnDestroy, CanComponentDea
         this.preloadRolesForQuotes();
 
         // Refrescar el grid si ya existe
-        if (this.gridApi) {
-          this.gridApi.setGridOption('rowData', this.rowData);
-          this.gridApi.refreshCells({ force: true });
+        if (this.liveGrid) {
+          this.liveGrid.setGridOption('rowData', this.rowData);
+          this.liveGrid.refreshCells({ force: true });
 
           // ✅ Re-expandir la requisición que estaba expandida
           if (this.expandedRequisitionId !== null) {
             setTimeout(() => {
-              this.gridApi.forEachNode((node: any) => {
+              this.liveGrid?.forEachNode((node: any) => {
                 if (node.data?.id === this.expandedRequisitionId) {
                   node.setExpanded(true);
                 }
@@ -911,9 +903,7 @@ export class QuoteDelisonComponent implements OnInit, OnDestroy, CanComponentDea
               description: r.description,
               name: r.description
             })));
-            if (this.gridApi) {
-              this.gridApi.refreshCells({ force: true });
-            }
+            this.liveGrid?.refreshCells({ force: true });
           },
           error: () => {}
         });
