@@ -89,5 +89,5 @@ export const environment = {
   geminiApiKey: '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',
   gnewsApiKey: '94ccc596b4dfebc3f72683b6e81d81bc',
 
-  version: '4.80 (25 Julio 2026) chore: parches de seguridad brace-expansion/uuid (cadena exceljs); 25 a 8 vulnerabilidades npm audit',
+  version: '4.81 (25 Julio 2026) chore: parches @hono/node-server y webpack-dev-server (dev tooling); 8 a 3 vulnerabilidades npm audit',
 }; 
