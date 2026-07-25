@@ -89,5 +89,5 @@ export const environment = {
   geminiApiKey: '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',
   gnewsApiKey: '94ccc596b4dfebc3f72683b6e81d81bc',
 
-  version: '4.77 (04 Julio 2026) feat: dropdown Tipo inline en el grid de interacciones con opcion Agregar nuevo (Firestore por empresa)',
+  version: '4.78 (24 Julio 2026) fix: scroll interno en detalle de remisiones (Logistica) para ver todas las filas + columna # de renglon; fix build Mac pdfMake.vfs',
 }; 

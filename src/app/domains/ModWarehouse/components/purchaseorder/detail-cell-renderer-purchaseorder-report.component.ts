@@ -14,7 +14,7 @@ import { lastValueFrom } from 'rxjs';
 import pdfMake from 'pdfmake/build/pdfmake';
 import pdfFonts from 'pdfmake/build/vfs_fonts';
 
-pdfMake.vfs = pdfFonts.vfs;
+pdfMake.vfs = pdfFonts;
 
 @Component({
   selector: 'app-detail-cell-renderer-purchaseorder-report',

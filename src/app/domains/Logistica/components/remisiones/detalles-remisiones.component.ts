@@ -21,10 +21,11 @@ import { PdfShareButtonsComponent } from 'app/shared/components/pdf-share-button
         </button>
       </div>
 
-      <div class="table-responsive">
+      <div class="table-responsive" style="max-height: 520px; overflow-y: auto;">
         <table class="table table-sm table-striped table-bordered align-middle mb-0">
-          <thead class="table-light">
+          <thead class="table-light" style="position: sticky; top: 0; z-index: 1;">
             <tr>
+              <th class="text-center" style="width: 40px;">#</th>
               <th class="text-center" style="width: 56px;">PDF</th>
               <th>Pedido</th>
               <th>Detalle</th>
@@ -39,7 +40,8 @@ import { PdfShareButtonsComponent } from 'app/shared/components/pdf-share-button
             </tr>
           </thead>
           <tbody>
-            <tr *ngFor="let row of rows">
+            <tr *ngFor="let row of rows; let i = index">
+              <td class="text-center">{{ i + 1 }}</td>
               <td class="text-center">
                 <i
                   class="bi bi-file-earmark-pdf-fill text-danger"
@@ -89,7 +91,7 @@ import { PdfShareButtonsComponent } from 'app/shared/components/pdf-share-button
               <td>{{ row.estado }}</td>
             </tr>
             <tr *ngIf="rows.length === 0">
-              <td colspan="11" class="text-center text-muted">Sin renglones en esta remisión.</td>
+              <td colspan="12" class="text-center text-muted">Sin renglones en esta remisión.</td>
             </tr>
           </tbody>
         </table>

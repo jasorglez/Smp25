@@ -10,7 +10,7 @@ import { Base64EncodeService } from 'app/services/base64encode.service';
 import { firstValueFrom, lastValueFrom } from 'rxjs';
 import pdfMake from 'pdfmake/build/pdfmake';
 import pdfFonts from 'pdfmake/build/vfs_fonts';
-(pdfMake as any).vfs = pdfFonts.vfs;
+(pdfMake as any).vfs = pdfFonts;
 
 export interface PhoneRow {
   phone: string;
