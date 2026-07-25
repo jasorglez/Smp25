@@ -89,5 +89,5 @@ export const environment = {
   geminiApiKey: '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',
   gnewsApiKey: '94ccc596b4dfebc3f72683b6e81d81bc',
 
-  version: '4.79 (24 Julio 2026) chore: parches de seguridad npm (postcss, tar, webpack-dev-server) sin tocar exceljs/xlsx/expr-eval',
+  version: '4.80 (25 Julio 2026) chore: parches de seguridad brace-expansion/uuid (cadena exceljs); 25 a 8 vulnerabilidades npm audit',
 }; 
