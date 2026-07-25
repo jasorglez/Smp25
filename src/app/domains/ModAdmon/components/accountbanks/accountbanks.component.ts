@@ -878,7 +878,7 @@ export class AccountbanksComponent implements CanComponentDeactivate, OnDestroy 
 
       const pdfMake = (await import('pdfmake/build/pdfmake')).default;
       const pdfFonts = (await import('pdfmake/build/vfs_fonts')).default;
-      pdfMake.vfs = pdfFonts.vfs;
+      pdfMake.vfs = pdfFonts;
 
       const period = `Del ${this.reportSaldosStartDate} al ${this.reportSaldosEndDate}`;
 

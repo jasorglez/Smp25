@@ -12,7 +12,7 @@ import { lastValueFrom } from 'rxjs';
 import pdfMake from 'pdfmake/build/pdfmake';
 import pdfFonts from 'pdfmake/build/vfs_fonts';
 
-pdfMake.vfs = pdfFonts.vfs;
+pdfMake.vfs = pdfFonts;
 
 const NAVY  = '#003366';
 const BLUE  = '#1a5a9a';
