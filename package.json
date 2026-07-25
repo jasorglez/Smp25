@@ -37,7 +37,7 @@
     "bootstrap": "^5.3.3",
     "bootstrap-icons": "^1.11.3",
     "dhtmlx-gantt": "^8.0.10",
-    "echarts": "^5.5.1",
+    "echarts": "^6.1.0",
     "exceljs": "^4.4.0",
     "expr-eval": "npm:expr-eval-fork@^3.0.3",
     "firebase": "^12.7.0",
