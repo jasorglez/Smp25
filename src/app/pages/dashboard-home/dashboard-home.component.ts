@@ -2,11 +2,14 @@ import { Component } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterLink } from '@angular/router';
 import { DashAdmonComponent } from './components/dash-admon.component';
+import { DashProjectsComponent } from './components/dash-projects.component';
+import { DashWarehouseComponent } from './components/dash-warehouse.component';
+import { CrmDashboardComponent } from 'app/domains/ModSales/components/crm-dashboard/crm-dashboard.component';
 
 @Component({
   selector: 'app-dashboard-home',
   standalone: true,
-  imports: [CommonModule, RouterLink, DashAdmonComponent],
+  imports: [CommonModule, RouterLink, DashAdmonComponent, DashProjectsComponent, DashWarehouseComponent, CrmDashboardComponent],
   template: `
     <div class="dashboard-wrapper">
       <div class="dashboard-body">
@@ -40,13 +43,13 @@ import { DashAdmonComponent } from './components/dash-admon.component';
           <app-dash-admon />
         </ng-container>
         <ng-container *ngIf="activeTab === 'proyectos'">
-          <div class="p-4 text-muted">Dashboard Proyectos — próximamente.</div>
+          <app-dash-projects />
         </ng-container>
         <ng-container *ngIf="activeTab === 'almacenes'">
-          <div class="p-4 text-muted">Dashboard Almacenes — próximamente.</div>
+          <app-dash-warehouse />
         </ng-container>
         <ng-container *ngIf="activeTab === 'ventas'">
-          <div class="p-4 text-muted">Dashboard Ventas — próximamente.</div>
+          <app-crm-dashboard />
         </ng-container>
       </div>
       </div>

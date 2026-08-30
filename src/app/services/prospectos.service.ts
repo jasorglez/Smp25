@@ -3,7 +3,6 @@ import {
   Firestore,
   collection,
   addDoc,
-  collectionData,
   query,
   where,
   doc,
@@ -17,7 +16,7 @@ import {
   getDoc,
   setDoc,
 } from '@angular/fire/firestore';
-import { Observable, from, of, switchMap } from 'rxjs';
+import { Observable, from, map, switchMap } from 'rxjs';
 import { SignalsService } from './signals.service';
 
 export interface Prospecto {
@@ -162,22 +161,19 @@ export class ProspectosService {
   private readonly COL = 'prospectos';
   private readonly TAREAS_COL = 'tareas-crm';
 
-  // Consulta simple: primero por vendedor; si no hay resultados, cae a la empresa
+  // Grid principal: la empresa seleccionada tiene prioridad. Consultar primero por
+  // vendedor ocultaba al resto de los prospectos cuando el usuario tenía al menos uno.
   getProspectos(idVendedor: number): Observable<Prospecto[]> {
     const ref = collection(this.firestore, this.COL);
     const currentRoot = this.signalsSvc.getRootSelectedBySidebar()();
-    const byVendor$ = runInInjectionContext(this.injector, () =>
-      collectionData(query(ref, where('idVendedorActual', '==', idVendedor)), { idField: 'id' }) as Observable<Prospecto[]>
+    const prospectosQuery = currentRoot
+      ? query(ref, where('idCompany', '==', currentRoot))
+      : query(ref, where('idVendedorActual', '==', idVendedor));
+    const source$ = from(runInInjectionContext(this.injector, () => getDocs(prospectosQuery))).pipe(
+      map(snapshot => snapshot.docs.map(item => ({ id: item.id, ...item.data() }) as Prospecto)),
     );
 
-    const byCompany$ = currentRoot
-      ? runInInjectionContext(this.injector, () =>
-          collectionData(query(ref, where('idCompany', '==', currentRoot)), { idField: 'id' }) as Observable<Prospecto[]>
-        )
-      : of([]);
-
-    return byVendor$.pipe(
-      switchMap((prospectos) => prospectos.length > 0 ? of(prospectos) : byCompany$),
+    return source$.pipe(
       switchMap((prospectos) => from(this.syncProspectosWithInteracciones(prospectos))),
     );
   }
@@ -185,8 +181,9 @@ export class ProspectosService {
   // Consulta por empresa para Kanban y Dashboard
   getProspectosByCompany(idCompany: number): Observable<Prospecto[]> {
     const ref = collection(this.firestore, this.COL);
-    return runInInjectionContext(this.injector, () =>
-      collectionData(query(ref, where('idCompany', '==', idCompany), where('activo', '==', true)), { idField: 'id' }) as Observable<Prospecto[]>
+    const prospectosQuery = query(ref, where('idCompany', '==', idCompany), where('activo', '==', true));
+    return from(runInInjectionContext(this.injector, () => getDocs(prospectosQuery))).pipe(
+      map(snapshot => snapshot.docs.map(item => ({ id: item.id, ...item.data() }) as Prospecto)),
     );
   }
 

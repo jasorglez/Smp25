@@ -237,11 +237,11 @@ export class ControlFacturacionIngresosComponent {
         fechaPago,
         factura,
         oc: ingreso.oc || '',
-        importeFactura: Number(ingreso.total) || 0,
+        importeFactura: Number(ingreso.totalMxn ?? ingreso.total) || 0,
         importeDescuento: 0, // Campo para notas de crédito/descuentos
         subtotal: Number(ingreso.subtotal) || 0,
         iva: Number(ingreso.tax) || 0,
-        total: Number(ingreso.total) || 0,
+        total: Number(ingreso.totalMxn ?? ingreso.total) || 0,
         estatus: ingreso.status || '',
         estatusPago: ingreso.formaPago || '',
         dias,

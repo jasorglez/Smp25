@@ -37,6 +37,7 @@ export class ProspectosComponent implements OnInit {
   private firestore      = inject(Firestore);
   private route      = inject(ActivatedRoute);
   private _colDefs: ColDef[] = [];
+  private prospectosRootLoaded: number | null = null;
 
   notifConfig: NotificationConfig | null = null;
 
@@ -63,6 +64,10 @@ export class ProspectosComponent implements OnInit {
     effect(() => {
       const idRoot = this.signalsSvc.getRootSelectedBySidebar()();
       if (idRoot) {
+        if (this.prospectosRootLoaded !== idRoot) {
+          this.prospectosRootLoaded = idRoot;
+          this.cargarProspectos();
+        }
         this.usersSvc.get2fieldsUsers(idRoot).subscribe({
           next: (res: any) => {
             const data: any[] = res?.data ?? res ?? [];
@@ -608,7 +613,6 @@ export class ProspectosComponent implements OnInit {
   // ── Lifecycle ─────────────────────────────────────────────────────────────
 
   ngOnInit() {
-    this.cargarProspectos();
     this.cargarPlantillas();
     this.cargarNotifConfig();
     this.detectarCallbackGoogle();
@@ -1297,6 +1301,5 @@ export class ProspectosComponent implements OnInit {
     return digits;
   }
 }
-
 
 

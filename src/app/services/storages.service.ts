@@ -17,11 +17,10 @@ export class StoragesService {
   async uploadFile(file: File, path: string): Promise<string> {
     const imgRef = ref(this.storage2, path);
     try {
-      const response = await uploadBytes(imgRef, file);
-      const url = await getDownloadURL(imgRef);
-      return url;
+      await uploadBytes(imgRef, file);
+      return await getDownloadURL(imgRef);
     } catch (error) {
-      console.log("Error uploading file", error);
+      console.log('Error uploading file', error);
       throw error;
     }
   }
@@ -35,10 +34,9 @@ export class StoragesService {
       task.snapshotChanges()
         .pipe(
           finalize(() => {
-            fileRef.getDownloadURL().subscribe(downloadUrl => {
-              resolve(downloadUrl);
-            }, error => {
-              reject(error);
+            fileRef.getDownloadURL().subscribe({
+              next: downloadUrl => resolve(downloadUrl),
+              error: error => reject(error),
             });
           })
         )

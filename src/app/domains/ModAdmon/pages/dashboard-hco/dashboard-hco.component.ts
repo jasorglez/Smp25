@@ -820,7 +820,9 @@ export class DashboardHcoComponent {
   }
 
   private getMonto(item: any): number {
-    const value = Number(item?.total);
+    // totalMxn es el equivalente en pesos (ya convertido si el movimiento fue en USD);
+    // se usa total como respaldo para registros históricos sin moneda/tipo de cambio.
+    const value = Number(item?.totalMxn ?? item?.total);
     return Number.isFinite(value) ? value : 0;
   }
 

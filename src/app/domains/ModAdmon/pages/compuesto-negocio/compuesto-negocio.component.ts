@@ -155,7 +155,7 @@ export class CompuestoNegocioComponent {
       const key = `${anio}-${trimestre}`;
 
       const current = datosPorTrimestreAnio.get(key) || { egreso: 0, ingreso: 0 };
-      current.ingreso += Number(ingreso.subtotal) || Number(ingreso.total) || 0;
+      current.ingreso += Number(ingreso.subtotal) || Number(ingreso.totalMxn ?? ingreso.total) || 0;
       datosPorTrimestreAnio.set(key, current);
     });
 
@@ -174,7 +174,7 @@ export class CompuestoNegocioComponent {
       const key = `${anio}-${trimestre}`;
 
       const current = datosPorTrimestreAnio.get(key) || { egreso: 0, ingreso: 0 };
-      current.egreso += Number(egreso.subtotal) || Number(egreso.total) || 0;
+      current.egreso += Number(egreso.subtotal) || Number(egreso.totalMxn ?? egreso.total) || 0;
       datosPorTrimestreAnio.set(key, current);
     });
 

@@ -102,6 +102,22 @@
           </div>
         </div>
 
+        <!-- Moneda -->
+        <div class="col-md-2">
+          <label class="form-label fw-bold small">Moneda</label>
+          <select class="form-select form-select-sm" [(ngModel)]="moneda" (ngModelChange)="onMonedaChange()">
+            <option value="MXN">MXN</option>
+            <option value="USD">USD</option>
+          </select>
+        </div>
+
+        <!-- Tipo de Cambio -->
+        <div class="col-md-2" *ngIf="moneda === 'USD'">
+          <label class="form-label fw-bold small">Tipo de Cambio</label>
+          <input type="number" class="form-control form-control-sm" [(ngModel)]="tipoCambio"
+                 placeholder="0.0000" min="0.0001" step="0.0001">
+        </div>
+
         <!-- Fecha -->
         <div class="col-md-2">
           <label class="form-label fw-bold small">Fecha</label>
@@ -119,7 +135,7 @@
         <div class="col-md-2 d-flex align-items-end">
           <button class="btn btn-success btn-sm w-100"
                   (click)="aportar()"
-                  [disabled]="isAportando || !socioSeleccionado || !idEmpresaDestino || !idCuentaDestino || !monto || monto <= 0">
+                  [disabled]="isAportando || !socioSeleccionado || !idEmpresaDestino || !idCuentaDestino || !monto || monto <= 0 || (moneda === 'USD' && (!tipoCambio || tipoCambio <= 0))">
             <i class="bi bi-person-check me-1"></i>Aportar
           </button>
         </div>

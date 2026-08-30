@@ -225,7 +225,7 @@ export class ConcentradoEgresosComponent {
       const subtotal = Number(egreso.subtotal) || 0;
       const iva = Number(egreso.tax) || 0;
       const otrosImpuestos = Number(egreso.otherTaxes) || 0;
-      const total = Number(egreso.total) || 0;
+      const total = Number(egreso.totalMxn ?? egreso.total) || 0;
 
       return {
         id: egreso.id,

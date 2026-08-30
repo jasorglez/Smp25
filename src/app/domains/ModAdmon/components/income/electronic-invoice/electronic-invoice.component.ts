@@ -117,6 +117,12 @@ export class ElectronicInvoiceComponent implements OnInit {
     this.setDefaultValues();
   }
 
+  get monedaDisplay(): string {
+    return this.electronicInvoice.moneda === 'USD'
+      ? 'USD - Dólar Americano'
+      : 'MXN - Peso Mexicano';
+  }
+
   setDefaultValues(): void {
     // Establecer fecha y hora actual
     const today = new Date();
@@ -212,6 +218,10 @@ export class ElectronicInvoiceComponent implements OnInit {
         this.electronicInvoice.subtotal = this.incomeData.subtotal || 0;
         this.electronicInvoice.totalImpuestosTrasladados = this.incomeData.tax || 0;
         this.electronicInvoice.total = this.incomeData.total || 0;
+
+        // Moneda/tipo de cambio se definen al capturar el ingreso, no aquí
+        this.electronicInvoice.moneda = this.incomeData.moneda || 'MXN';
+        this.electronicInvoice.tipoCambio = this.incomeData.tipoCambio || 1;
 
         // Si ya tiene UUID, está timbrada
         if (this.incomeData.uuid && this.incomeData.uuid !== 'NA') {

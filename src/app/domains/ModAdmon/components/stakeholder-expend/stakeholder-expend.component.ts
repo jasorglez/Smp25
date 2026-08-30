@@ -516,7 +516,7 @@ export class StakeholderExpendComponent {
         type: 'number',
         editable: false,
         width: 120,
-        valueFormatter: params => params.value?.toLocaleString('es-MX', { style: 'currency', currency: 'MXN' }),
+        valueFormatter: params => params.value?.toLocaleString('es-MX', { style: 'currency', currency: params.data?.moneda === 'USD' ? 'USD' : 'MXN' }),
         cellStyle: { backgroundColor: '#f5f5f5' }
       },
       {
@@ -525,7 +525,7 @@ export class StakeholderExpendComponent {
         type: 'number',
         editable: false,
         width: 100,
-        valueFormatter: params => params.value?.toLocaleString('es-MX', { style: 'currency', currency: 'MXN' }),
+        valueFormatter: params => params.value?.toLocaleString('es-MX', { style: 'currency', currency: params.data?.moneda === 'USD' ? 'USD' : 'MXN' }),
         cellStyle: { backgroundColor: '#f5f5f5' }
       },
       {
@@ -539,8 +539,27 @@ export class StakeholderExpendComponent {
           const tax = params.data?.tax || 0;
           return subtotal + tax;
         },
-        valueFormatter: params => params.value?.toLocaleString('es-MX', { style: 'currency', currency: 'MXN' }),
+        valueFormatter: params => params.value?.toLocaleString('es-MX', { style: 'currency', currency: params.data?.moneda === 'USD' ? 'USD' : 'MXN' }),
         cellStyle: { fontWeight: 'bold', backgroundColor: '#e8f5e9' }
+      },
+      {
+        field: 'moneda',
+        headerName: 'Moneda',
+        editable: true,
+        width: 100,
+        cellEditor: 'agSelectCellEditor',
+        cellEditorParams: {
+          values: ['MXN', 'USD']
+        }
+      },
+      {
+        field: 'tipoCambio',
+        headerName: 'Tipo de Cambio',
+        type: 'number',
+        width: 130,
+        editable: (params) => params.data?.moneda === 'USD',
+        cellStyle: (params) => params.data?.moneda === 'USD' ? null : { backgroundColor: '#e9ecef', color: '#6c757d' },
+        valueFormatter: (params) => params.data?.moneda === 'USD' && params.value ? Number(params.value).toFixed(4) : ''
       },
       {
         field: 'paymentMonth',
@@ -632,6 +651,20 @@ export class StakeholderExpendComponent {
       this.gridApi.refreshCells({ rowNodes: [event.node], columns: ['total'] });
     }
 
+    // Si se cambia la moneda a USD y no hay tipo de cambio capturado, sugerir el del día (Banxico)
+    if (event.colDef.field === 'moneda' && event.newValue === 'USD' && !event.data.tipoCambio) {
+      this.administrationService.getTodayExchangeRate().subscribe({
+        next: (result: any) => {
+          if (result?.rate) {
+            event.node.setDataValue('tipoCambio', result.rate);
+          }
+        },
+        error: () => {
+          // Sin conexión con Banxico: se deja el campo vacío para captura manual
+        }
+      });
+    }
+
     if (!event.data.__isNew) {
       event.data.modifiedBy = this.currentUser;
       event.data.modifiedAt = new Date().toISOString();
@@ -720,6 +753,8 @@ export class StakeholderExpendComponent {
       subtotal: 0,
       tax: 0,
       total: 0,
+      moneda: 'MXN',
+      tipoCambio: null,
       countItems: 0,
       countitems: 0,
       paymentMonth: '',
@@ -761,6 +796,19 @@ export class StakeholderExpendComponent {
           return;
         }
       }
+    }
+
+    // Si la moneda es USD, el tipo de cambio es obligatorio
+    const filaSinTipoCambio = this.expenses.find(
+      (row) => row.moneda === 'USD' && (!row.tipoCambio || row.tipoCambio <= 0)
+    );
+    if (filaSinTipoCambio) {
+      alerts.basicAlert(
+        'Tipo de cambio requerido',
+        `El registro "${filaSinTipoCambio.description || filaSinTipoCambio.numberDocument}" está en USD pero no tiene tipo de cambio capturado.`,
+        'error'
+      );
+      return;
     }
 
     const newRows = this.expenses.filter((row) => row.__isNew);

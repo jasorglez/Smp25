@@ -250,7 +250,7 @@ ${reglasNegocio}${reglaModo}`;
       })),
     ];
 
-    const body = { model: 'llama-3.3-70b-versatile', messages, temperature: 0.1 };
+    const body = { model: 'openai/gpt-oss-120b', messages, temperature: 0.1 };
 
     try {
       const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {

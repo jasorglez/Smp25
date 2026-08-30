@@ -55,6 +55,8 @@ export class TransferenciasComponent {
   idCuentaOrigen: number = null;
   idCuentaDestino: number = null;
   monto: number = null;
+  moneda: string = 'MXN';
+  tipoCambio: number = null;
   descripcion: string = '';
   fecha: string = new Date().toISOString().split('T')[0];
   isTransferring: boolean = false;
@@ -92,8 +94,9 @@ export class TransferenciasComponent {
       },
       {
         field: 'total', headerName: 'Monto', width: 130,
-        valueFormatter: params => params.value?.toLocaleString('es-MX', { style: 'currency', currency: 'MXN' })
+        valueFormatter: params => params.value?.toLocaleString('es-MX', { style: 'currency', currency: params.data?.moneda === 'USD' ? 'USD' : 'MXN' })
       },
+      { field: 'moneda', headerName: 'Moneda', width: 90 },
       { field: 'description', headerName: 'Descripcion', width: 300, filter: true },
       { field: 'status', headerName: 'Estatus', width: 110 },
       { field: 'type', headerName: 'Tipo', width: 100 },
@@ -193,6 +196,21 @@ export class TransferenciasComponent {
     });
   }
 
+  onMonedaChange() {
+    if (this.moneda === 'USD' && !this.tipoCambio) {
+      this.administrationService.getTodayExchangeRate().subscribe({
+        next: (result: any) => {
+          if (result?.rate) {
+            this.tipoCambio = result.rate;
+          }
+        },
+        error: () => {
+          // Sin conexión con Banxico: se deja el campo vacío para captura manual
+        }
+      });
+    }
+  }
+
   async transferir() {
     // Validations
     if (!this.idEmpresaDestino) {
@@ -211,11 +229,15 @@ export class TransferenciasComponent {
       alerts.basicAlert('Transferencia', 'Ingrese un monto valido.', 'error');
       return;
     }
+    if (this.moneda === 'USD' && (!this.tipoCambio || this.tipoCambio <= 0)) {
+      alerts.basicAlert('Transferencia', 'Ingrese el tipo de cambio.', 'error');
+      return;
+    }
 
     // Confirm
     const result = await alerts.confirmAlert(
       'Confirmar Transferencia',
-      `Se transferiran ${this.monto.toLocaleString('es-MX', { style: 'currency', currency: 'MXN' })} de ${this.empresaOrigen?.nameSmall || 'Origen'} a ${this.empresasDestino.find(e => e.id === this.idEmpresaDestino)?.nameSmall || 'Destino'}`,
+      `Se transferiran ${this.monto.toLocaleString('es-MX', { style: 'currency', currency: this.moneda === 'USD' ? 'USD' : 'MXN' })} de ${this.empresaOrigen?.nameSmall || 'Origen'} a ${this.empresasDestino.find(e => e.id === this.idEmpresaDestino)?.nameSmall || 'Destino'}`,
       'question',
       'Transferir'
     );
@@ -247,6 +269,8 @@ export class TransferenciasComponent {
         total: this.monto,
         subtotal: this.monto,
         tax: 0,
+        moneda: this.moneda,
+        tipoCambio: this.moneda === 'USD' ? this.tipoCambio : null,
         status: 'Pagada',
         active: true,
         createdBy: this.trackingService.getEmail() || 'Sistema',
@@ -280,6 +304,8 @@ export class TransferenciasComponent {
         total: this.monto,
         subtotal: this.monto,
         tax: 0,
+        moneda: this.moneda,
+        tipoCambio: this.moneda === 'USD' ? this.tipoCambio : null,
         status: 'Pagada',
         active: true,
         idTransferRef: gastoId,
@@ -307,7 +333,7 @@ export class TransferenciasComponent {
 
       alerts.closeLoading();
       alerts.basicAlert('Transferencia Exitosa',
-        `Se ha transferido ${this.monto.toLocaleString('es-MX', { style: 'currency', currency: 'MXN' })} de ${nombreOrigen} a ${nombreDestino}.`,
+        `Se ha transferido ${this.monto.toLocaleString('es-MX', { style: 'currency', currency: this.moneda === 'USD' ? 'USD' : 'MXN' })} de ${nombreOrigen} a ${nombreDestino}.`,
         'success'
       );
 
@@ -320,6 +346,8 @@ export class TransferenciasComponent {
 
       // Reset form
       this.monto = null;
+      this.moneda = 'MXN';
+      this.tipoCambio = null;
       this.descripcion = '';
       this.fecha = new Date().toISOString().split('T')[0];
 

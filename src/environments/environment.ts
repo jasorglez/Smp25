@@ -22,12 +22,6 @@ export const environment = {
 
   urlAzure: 'https://bi24.azurewebsites.net/',
 
-  // urlSecurity   : 'https://bi2.centralus.cloudapp.azure.com/api',
-  // urlSmp        : 'https://bi2.centralus.cloudapp.azure.com/smp/api',
-  // urlBpi        : 'https://bi2.centralus.cloudapp.azure.com/bpi/api',
-  // urlWarehouse  : 'https://bi2.centralus.cloudapp.azure.com/warehouse/api',
-
-
   urlSecurity: 'https://endpoints.biapp.com.mx/api', // 5003
   //urlSecurity     : 'http://localhost:5260/api',
 
@@ -89,5 +83,5 @@ export const environment = {
   geminiApiKey: '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',
   gnewsApiKey: '94ccc596b4dfebc3f72683b6e81d81bc',
 
-  version: '4.83 (25 Julio 2026) chore: echarts 5 a 6.1.0, 0 vulnerabilidades en npm audit',
-}; 
+  version: '4.97 (29 Agosto 2026 23:10) deploy: dashboards y almacenamiento en Firebase Storage',
+};

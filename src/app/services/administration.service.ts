@@ -13,6 +13,11 @@ export class AdministrationService {
   private http = inject(HttpClient);
   private trackingService = inject(TrackingService);
 
+  // Tipo de cambio del día (Banxico FIX USD/MXN)
+  getTodayExchangeRate(): Observable<any> {
+    return this.http.get(`${environment.urlAdministration}/ExchangeRate/today`, { headers: this.trackingService.getHeaders() });
+  }
+
   // Bancos
   getBanks() {
      //const apiUrl = `${environment.urlAdministration}/Bank`;

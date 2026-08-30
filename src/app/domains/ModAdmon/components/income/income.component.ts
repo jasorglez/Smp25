@@ -543,7 +543,7 @@ export class IncomeComponent {
         filter: 'agNumberColumnFilter',
         editable: false,
         width: 120,
-        valueFormatter: params => params.value?.toLocaleString('es-MX', { style: 'currency', currency: 'MXN' })
+        valueFormatter: params => params.value?.toLocaleString('es-MX', { style: 'currency', currency: params.data?.moneda === 'USD' ? 'USD' : 'MXN' })
       },
       {
         field: 'tax',
@@ -551,7 +551,7 @@ export class IncomeComponent {
         filter: 'agNumberColumnFilter',
         editable: false,
         width: 100,
-        valueFormatter: params => params.value?.toLocaleString('es-MX', { style: 'currency', currency: 'MXN' })
+        valueFormatter: params => params.value?.toLocaleString('es-MX', { style: 'currency', currency: params.data?.moneda === 'USD' ? 'USD' : 'MXN' })
       },
       {
         field: 'total',
@@ -559,7 +559,26 @@ export class IncomeComponent {
         filter: 'agNumberColumnFilter',
         editable: false,
         width: 120,
-        valueFormatter: params => params.value?.toLocaleString('es-MX', { style: 'currency', currency: 'MXN' })
+        valueFormatter: params => params.value?.toLocaleString('es-MX', { style: 'currency', currency: params.data?.moneda === 'USD' ? 'USD' : 'MXN' })
+      },
+      {
+        field: 'moneda',
+        headerName: 'Moneda',
+        editable: true,
+        width: 100,
+        cellEditor: 'agSelectCellEditor',
+        cellEditorParams: {
+          values: ['MXN', 'USD']
+        }
+      },
+      {
+        field: 'tipoCambio',
+        headerName: 'Tipo de Cambio',
+        filter: 'agNumberColumnFilter',
+        width: 130,
+        editable: (params) => params.data?.moneda === 'USD',
+        cellStyle: (params) => params.data?.moneda === 'USD' ? null : { backgroundColor: '#e9ecef', color: '#6c757d' },
+        valueFormatter: (params) => params.data?.moneda === 'USD' && params.value ? Number(params.value).toFixed(4) : ''
       },
 
        {
@@ -748,6 +767,20 @@ onSelectionChanged(event: any) {
       return;
     }
 
+    // Si se cambia la moneda a USD y no hay tipo de cambio capturado, sugerir el del día (Banxico)
+    if (event.column.getColId() === 'moneda' && event.newValue === 'USD' && !event.data.tipoCambio) {
+      this.administrationService.getTodayExchangeRate().subscribe({
+        next: (result: any) => {
+          if (result?.rate) {
+            event.node.setDataValue('tipoCambio', result.rate);
+          }
+        },
+        error: () => {
+          // Sin conexión con Banxico: se deja el campo vacío para captura manual
+        }
+      });
+    }
+
     // Actualizar campos de modificación solo para filas existentes
     if (!event.data.__isNew) {
       event.data.modifiedBy = this.currentUser;
@@ -807,6 +840,8 @@ onSelectionChanged(event: any) {
       subtotal: 0,
       tax: 0,
       total: 0,
+      moneda: 'MXN',
+      tipoCambio: null,
       // Campos de facturación electrónica
       formaPago: '01', // 01 = Efectivo (valor por defecto)
       metodoPago: 'PUE', // PUE = Pago en una sola exhibición
@@ -861,6 +896,19 @@ async saveChanges() {
         return;
       }
     }
+  }
+
+  // Si la moneda es USD, el tipo de cambio es obligatorio
+  const filaSinTipoCambio = this.incomes.find(
+    (row) => row.moneda === 'USD' && (!row.tipoCambio || row.tipoCambio <= 0)
+  );
+  if (filaSinTipoCambio) {
+    alerts.basicAlert(
+      'Tipo de cambio requerido',
+      `El registro "${filaSinTipoCambio.description || filaSinTipoCambio.numberDocument}" está en USD pero no tiene tipo de cambio capturado.`,
+      'error'
+    );
+    return;
   }
 
   // Validar que la cuenta bancaria tenga Máscaras y Consecutivos configurados

@@ -183,7 +183,7 @@ export class ReporteFacturacionAnualComponent {
       if (anio < this.anioInicio || anio > this.anioFin) return;
 
       const current = datosPorAnio.get(anio)!;
-      const subtotal = Number(ingreso.subtotal) || Number(ingreso.total) || 0;
+      const subtotal = Number(ingreso.subtotal) || Number(ingreso.totalMxn ?? ingreso.total) || 0;
 
       // Monto total facturado: todos los ingresos
       current.montoTotalFacturado += subtotal;
@@ -214,7 +214,7 @@ export class ReporteFacturacionAnualComponent {
       if (anio < this.anioInicio || anio > this.anioFin) return;
 
       const current = datosPorAnio.get(anio)!;
-      const subtotal = Number(egreso.subtotal) || Number(egreso.total) || 0;
+      const subtotal = Number(egreso.subtotal) || Number(egreso.totalMxn ?? egreso.total) || 0;
       const tipo = String(egreso.type || '').toUpperCase();
 
       // Clasificar por tipo

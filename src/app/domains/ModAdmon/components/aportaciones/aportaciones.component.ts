@@ -51,6 +51,8 @@ export class AportacionesComponent {
   idEmpresaDestino: number = null;
   idCuentaDestino: number = null;
   monto: number = null;
+  moneda: string = 'MXN';
+  tipoCambio: number = null;
   descripcion: string = '';
   fecha: string = new Date().toISOString().split('T')[0];
   isAportando: boolean = false;
@@ -89,8 +91,9 @@ export class AportacionesComponent {
       {
         field: 'total', headerName: 'Monto', width: 130,
         valueFormatter: params =>
-          params.value?.toLocaleString('es-MX', { style: 'currency', currency: 'MXN' })
+          params.value?.toLocaleString('es-MX', { style: 'currency', currency: params.data?.moneda === 'USD' ? 'USD' : 'MXN' })
       },
+      { field: 'moneda', headerName: 'Moneda', width: 90 },
       { field: 'description', headerName: 'Descripcion', flex: 1, filter: true },
     ];
   }
@@ -175,6 +178,21 @@ export class AportacionesComponent {
     }
   }
 
+  onMonedaChange() {
+    if (this.moneda === 'USD' && !this.tipoCambio) {
+      this.administrationService.getTodayExchangeRate().subscribe({
+        next: (result: any) => {
+          if (result?.rate) {
+            this.tipoCambio = result.rate;
+          }
+        },
+        error: () => {
+          // Sin conexión con Banxico: se deja el campo vacío para captura manual
+        }
+      });
+    }
+  }
+
   async aportar() {
     if (!this.socioSeleccionado) {
       alerts.basicAlert('Aportación', 'Seleccione el socio que realiza la aportación.', 'error');
@@ -192,13 +210,17 @@ export class AportacionesComponent {
       alerts.basicAlert('Aportación', 'Ingrese un monto válido.', 'error');
       return;
     }
+    if (this.moneda === 'USD' && (!this.tipoCambio || this.tipoCambio <= 0)) {
+      alerts.basicAlert('Aportación', 'Ingrese el tipo de cambio.', 'error');
+      return;
+    }
 
     const empresaDestinoObj = this.empresasDestino.find(e => e.id === this.idEmpresaDestino);
     const nombreDestino = empresaDestinoObj?.nameSmall || empresaDestinoObj?.name || 'Destino';
 
     const result = await alerts.confirmAlert(
       'Confirmar Aportación',
-      `${this.socioSeleccionado} aportará ${this.monto.toLocaleString('es-MX', { style: 'currency', currency: 'MXN' })} a ${nombreDestino}`,
+      `${this.socioSeleccionado} aportará ${this.monto.toLocaleString('es-MX', { style: 'currency', currency: this.moneda === 'USD' ? 'USD' : 'MXN' })} a ${nombreDestino}`,
       'question',
       'Aportar'
     );
@@ -221,6 +243,8 @@ export class AportacionesComponent {
         total: this.monto,
         subtotal: this.monto,
         tax: 0,
+        moneda: this.moneda,
+        tipoCambio: this.moneda === 'USD' ? this.tipoCambio : null,
         status: 'Pagada',
         active: true,
         createdBy: this.trackingService.getEmail() || 'Sistema',
@@ -233,7 +257,7 @@ export class AportacionesComponent {
       alerts.closeLoading();
       alerts.basicAlert(
         'Aportación',
-        `La aportación ya quedó registrada por ${this.monto.toLocaleString('es-MX', { style: 'currency', currency: 'MXN' })}.`,
+        `La aportación ya quedó registrada por ${this.monto.toLocaleString('es-MX', { style: 'currency', currency: this.moneda === 'USD' ? 'USD' : 'MXN' })}.`,
         'success'
       );
 
@@ -245,6 +269,8 @@ export class AportacionesComponent {
       );
 
       this.monto = null;
+      this.moneda = 'MXN';
+      this.tipoCambio = null;
       this.descripcion = '';
       this.fecha = new Date().toISOString().split('T')[0];
 

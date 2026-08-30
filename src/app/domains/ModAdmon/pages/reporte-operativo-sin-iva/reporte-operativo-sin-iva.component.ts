@@ -509,7 +509,7 @@ export class ReporteOperativoSinIvaComponent {
         retornoInversion: 0
       };
 
-      const monto = Number(trans.subtotal) || Number(trans.total) || 0;
+      const monto = Number(trans.subtotal) || Number(trans.totalMxn ?? trans.total) || 0;
       const formaPago = String(trans.formaPago || '').toLowerCase();
 
       // Clasificar por forma de pago: 03 = transferencia (banco), 01 = efectivo
@@ -536,7 +536,7 @@ export class ReporteOperativoSinIvaComponent {
         retornoInversion: 0
       };
 
-      const monto = Number(trans.subtotal) || Number(trans.total) || 0;
+      const monto = Number(trans.subtotal) || Number(trans.totalMxn ?? trans.total) || 0;
       current.retornoInversion += monto;
 
       sociosMap.set(idSocio, current);

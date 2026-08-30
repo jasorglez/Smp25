@@ -1,6 +1,7 @@
 //soriano develop
 
 import { Component, OnInit, inject, OnDestroy, HostListener } from '@angular/core';
+import { StoragesService } from 'app/services/storages.service';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { AgGridModule } from 'ag-grid-angular';
@@ -247,6 +248,7 @@ import { TrackingService } from 'app/services/tracking.service';
   `]
 })
 export class DetallesEgresospalaciosComponent implements OnInit, OnDestroy {
+  private storagesService = inject(StoragesService);
   private trackingService = inject(TrackingService);
 
   private params!: ICellRendererParams;
@@ -2933,7 +2935,7 @@ export class DetallesEgresospalaciosComponent implements OnInit, OnDestroy {
   getFileNameFromUrl(url: string): string {
     if (!url) return 'Sin archivo';
     try {
-      // Extraer el nombre del archivo de la URL de Firebase
+      // Extraer el nombre del archivo de la URL del proveedor
       // Ejemplo: "images%2Fcl8oc%20delphi.png" -> "delphi.png"
       const match = url.match(/([^\/]+)\?alt=media/);
       if (match) {
@@ -3030,8 +3032,8 @@ export class DetallesEgresospalaciosComponent implements OnInit, OnDestroy {
         this.uploadProgress = 0;
         alerts.basicAlert('Subiendo archivo...', 'Por favor espere', 'info');
 
-        // Subir archivo a Firebase
-        const downloadURL = await this.uploadFileToFirebase(file, tipoDoc);
+        // Subir archivo mediante el backend
+        const downloadURL = await this.uploadDocument(file, tipoDoc);
 
         // Actualizar la fila con la URL
         params.data.nombreArchivo = downloadURL;
@@ -3067,13 +3069,7 @@ export class DetallesEgresospalaciosComponent implements OnInit, OnDestroy {
     input.click();
   }
 
-  async uploadFileToFirebase(file: File, tipoDoc: string): Promise<string> {
-    // Importar Firebase Storage y la app inicializada
-    const { getStorage, ref, uploadBytesResumable, getDownloadURL } = await import('firebase/storage');
-    const { app } = await import('app/firebase.config');
-
-    const storage = getStorage(app);
-
+  async uploadDocument(file: File, tipoDoc: string): Promise<string> {
     // Determinar la carpeta según el tipo de documento
     let folder = 'documents';
     if (tipoDoc === 'JPG') {
@@ -3087,36 +3083,12 @@ export class DetallesEgresospalaciosComponent implements OnInit, OnDestroy {
     // Generar nombre único para el archivo
     const timestamp = Date.now();
     const fileName = `${timestamp}_${file.name}`;
-    const storageRef = ref(storage, `${folder}/${fileName}`);
-
-    // Subir archivo con progreso
-    const uploadTask = uploadBytesResumable(storageRef, file);
-
-    return new Promise((resolve, reject) => {
-      uploadTask.on('state_changed',
-        (snapshot) => {
-          // Calcular y actualizar progreso
-          this.uploadProgress = (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
-        },
-        (error) => {
-          // Error
-          this.isUploading = false;
-          this.uploadProgress = 0;
-          reject(error);
-        },
-        async () => {
-          // Éxito
-          this.isUploading = false;
-          this.uploadProgress = 0;
-          try {
-            const downloadURL = await getDownloadURL(uploadTask.snapshot.ref);
-            resolve(downloadURL);
-          } catch (error) {
-            reject(error);
-          }
-        }
-      );
-    });
+    try {
+      return await this.storagesService.uploadFile(file, `${folder}/${fileName}`);
+    } finally {
+      this.isUploading = false;
+      this.uploadProgress = 0;
+    }
   }
 
   openPreviewModal(params: any) {

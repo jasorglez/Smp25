@@ -3,7 +3,7 @@ import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { CommonModule, DecimalPipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { NgApexchartsModule } from 'ng-apexcharts';
-import { debounceTime, filter } from 'rxjs';
+import { debounceTime, filter, forkJoin } from 'rxjs';
 import { IncomesAndExpensesService } from 'app/services/incomes-and-expenses.service';
 import { AdministrationService } from 'app/services/administration.service';
 import { SignalsService } from 'app/services/signals.service';
@@ -23,9 +23,14 @@ import { SignalrService } from 'app/services/signalr.service';
         <!-- Col 1: Top Clientes -->
         <div class="col-12 col-xl-3">
           <div class="chart-card h-100 d-flex flex-column">
-            <div class="chart-header">
-              <i class="bi bi-people-fill me-2 text-primary"></i>
-              <span>Top Clientes</span>
+            <div class="chart-header d-flex justify-content-between align-items-center gap-2">
+              <span><i class="bi bi-people-fill me-2 text-primary"></i>Top Clientes</span>
+              <div class="currency-switch" role="group" aria-label="Moneda de Top Clientes">
+                <button type="button" [class.active]="clientCurrency === 'MXN'"
+                        (click)="setClientCurrency('MXN')">MN</button>
+                <button type="button" [class.active]="clientCurrency === 'USD'"
+                        (click)="setClientCurrency('USD')">USD</button>
+              </div>
             </div>
             <div class="date-range-bar">
               <input type="date" class="date-input" [(ngModel)]="clientStartDate" (change)="onClientDateChange()">
@@ -44,12 +49,12 @@ import { SignalrService } from 'app/services/signalr.service';
                     <div class="client-bar" [style.width.%]="(c.total / clientList[0].total) * 100"></div>
                   </div>
                 </div>
-                <span class="client-total">\${{ c.total | number:'1.0-0' }}</span>
+                <span class="client-total">{{ clientCurrencySymbol }}{{ c.total | number:'1.0-0' }} {{ clientCurrency }}</span>
               </div>
             </div>
             <div class="list-footer" *ngIf="clientListTotal">
               <span class="footer-label"><i class="bi bi-calendar3 me-1"></i>{{ clientListLabel }}</span>
-              <span class="footer-total">\${{ clientListTotal | number:'1.0-0' }}</span>
+              <span class="footer-total">{{ clientCurrencySymbol }}{{ clientListTotal | number:'1.0-0' }} {{ clientCurrency }}</span>
             </div>
           </div>
         </div>
@@ -250,6 +255,27 @@ import { SignalrService } from 'app/services/signalr.service';
     .chart-body {
       padding: 10px;
     }
+    .currency-switch {
+      display: inline-flex;
+      padding: 2px;
+      border: 1px solid #cbd5e1;
+      border-radius: 6px;
+      background: #fff;
+    }
+    .currency-switch button {
+      border: 0;
+      border-radius: 4px;
+      padding: 2px 7px;
+      background: transparent;
+      color: #64748b;
+      font-size: 10px;
+      font-weight: 700;
+      line-height: 1.4;
+    }
+    .currency-switch button.active {
+      background: #2563eb;
+      color: #fff;
+    }
     .client-list-body {
       overflow-y: auto;
       max-height: 270px;
@@ -448,7 +474,13 @@ export class DashAdmonComponent implements OnInit {
   clientListLabel: string = '';
   clientStartDate: string = '';
   clientEndDate: string   = '';
+  clientCurrency: 'MXN' | 'USD' = 'MXN';
+  clientExchangeRate: number = 1;
   private allIngresosData: any[] = [];
+
+  get clientCurrencySymbol(): string {
+    return this.clientCurrency === 'USD' ? 'US$' : '$';
+  }
 
   // ── Pie Ingresos ──
   ingPieSeries:      number[] = [];
@@ -529,6 +561,21 @@ export class DashAdmonComponent implements OnInit {
     this.signalrService.startAdmonConnection(token);
     this.signalrService.startTelegramConnection();
 
+    this.adminService.getTodayExchangeRate().pipe(
+      takeUntilDestroyed(this.destroyRef)
+    ).subscribe({
+      next: (result: any) => {
+        const rate = Number(result?.rate);
+        if (rate > 0) {
+          this.clientExchangeRate = rate;
+          if (this.clientCurrency === 'USD' && this.allIngresosData.length)
+            this.buildClientList(this.allIngresosData);
+          this.cdr.markForCheck();
+        }
+      },
+      error: () => {}
+    });
+
     this.signalrService.admonUpdate$.pipe(
       filter(data => data !== null),
       debounceTime(800),
@@ -566,6 +613,13 @@ export class DashAdmonComponent implements OnInit {
       this.buildClientList(this.allIngresosData);
   }
 
+  setClientCurrency(currency: 'MXN' | 'USD'): void {
+    if (this.clientCurrency === currency) return;
+    this.clientCurrency = currency;
+    this.buildClientList(this.allIngresosData);
+    this.cdr.markForCheck();
+  }
+
   onProvDateChange(): void {
     if (this.provStartDate && this.provEndDate)
       this.buildTopEntityList(this.allEgresosData);
@@ -591,8 +645,24 @@ export class DashAdmonComponent implements OnInit {
 
   private loadIngresos(rootId: number): void {
     this.allIngresosData = [];
-    this.incomesService.getIncomesxroot(rootId).subscribe((data: any[]) => {
-      if (!data?.length) return;
+    forkJoin({
+      concepts: this.incomesService.getIncomesxroot(rootId),
+      incomes: this.incomesService.getIncomesAndExpenses(rootId)
+    }).subscribe(({ concepts, incomes }: { concepts: any[]; incomes: any[] }) => {
+      if (!concepts?.length) return;
+
+      const incomeById = new Map<number, any>();
+      (incomes || []).forEach(income => incomeById.set(Number(income.id), income));
+      const data = concepts.map(concept => {
+        const incomeId = Number(
+          concept.id_incorexp ?? concept.idIncorExp ?? concept.idIncomeAndExpense ?? concept.idIncome ?? concept.idincorexp
+        );
+        const parent = incomeById.get(incomeId);
+        return parent
+          ? { ...concept, moneda: parent.moneda || 'MXN', tipoCambio: parent.tipoCambio }
+          : concept;
+      });
+
       this.allIngresosData = data;
       this.buildIngresosChart(data);
       this.buildClientList(data);
@@ -613,7 +683,7 @@ export class DashAdmonComponent implements OnInit {
     const byClient: { [key: string]: number } = {};
     filtered.forEach(s => {
       const name = (s.company || 'Sin cliente').trim().replace(/\s+/g, ' ').toUpperCase();
-      byClient[name] = (byClient[name] || 0) + (Number(s.totalconcepto) || 0);
+      byClient[name] = (byClient[name] || 0) + this.getIncomeAmount(s, this.clientCurrency);
     });
     this.clientList = Object.entries(byClient)
       .map(([name, total]) => ({ name, total }))
@@ -674,6 +744,18 @@ export class DashAdmonComponent implements OnInit {
     this.topEntityLabel = (from && to)
       ? `${fmt(this.provStartDate)} – ${fmt(this.provEndDate)}`
       : 'Todo el período';
+  }
+
+  private getIncomeAmount(income: any, currency: 'MXN' | 'USD'): number {
+    const amount = Number(income.totalconcepto) || 0;
+    const sourceCurrency = String(income.moneda || 'MXN').toUpperCase();
+    const capturedRate = Number(income.tipoCambio);
+    const exchangeRate = capturedRate > 0 ? capturedRate : this.clientExchangeRate;
+
+    if (sourceCurrency === currency) return amount;
+    if (sourceCurrency === 'USD' && currency === 'MXN') return amount * exchangeRate;
+    if (sourceCurrency !== 'USD' && currency === 'USD' && exchangeRate > 0) return amount / exchangeRate;
+    return amount;
   }
 
   private loadCuentasBanco(rootId: number): void {
