@@ -15,6 +15,7 @@ import { EquipmentService } from 'app/services/equipment.service';
 import { EmployeesService } from 'app/services/employees.service';
 import { SignalsService } from 'app/services/signals.service';
 import { PosicionesService } from 'app/services/posiciones.service';
+import { BranchsService } from 'app/services/branchs.service';
 
 // ── Tipos locales ─────────────────────────────────────────────────────────────
 interface TaskDraft {
@@ -80,6 +81,8 @@ export class PmoImportComponent implements OnInit, OnChanges {
   private _employeesService = inject(EmployeesService);
   private _signalsService = inject(SignalsService);
   private _positionsService = inject(PosicionesService);
+  private _branchService = inject(BranchsService);
+  private autoBranchId = 0;
 
   // ── Convenios ────────────────────────────────────────────────────────────
   conventions:       any[]  = [];
@@ -123,7 +126,15 @@ export class PmoImportComponent implements OnInit, OnChanges {
   readonly fields = PMO_FIELDS;
 
   ngOnInit(): void {
+    this.resolveSingleBranch();
     if (this.idContrato) this.loadConventions();
+  }
+
+  private async resolveSingleBranch(): Promise<void> {
+    if (this._signalsService.getBranchSelectedBySidebar()()) return;
+    const raw:any = await lastValueFrom(this._branchService.getBranches(this.idCompany)).catch(() => []);
+    const branches:any[] = Array.isArray(raw) ? raw : [];
+    if (branches.length === 1) this.autoBranchId = Number(branches[0]?.id ?? branches[0]?.Id ?? 0);
   }
 
   ngOnChanges(changes: SimpleChanges): void {
@@ -267,7 +278,7 @@ export class PmoImportComponent implements OnInit, OnChanges {
         const auxId = Number(current?.id ?? current?.Id ?? current?.idAuxiliar ?? current?.IdAuxiliar ?? 0); if (!auxId) continue;
         if (r.tipo === 'PERSONAL') {
           try {
-            const branchId = Number(this._signalsService.getBranchSelectedBySidebar()() || 0); if (!branchId) throw new Error('No hay sucursal seleccionada');
+            const branchId = Number(this._signalsService.getBranchSelectedBySidebar()() || this.autoBranchId || 0); if (!branchId) throw new Error('No hay sucursal seleccionada');
             const positionsRaw:any = await lastValueFrom(this._positionsService.getPositionsByCompany(this.idCompany)).catch(() => []);
             const positions:any[] = Array.isArray(positionsRaw) ? positionsRaw : [];
             let position = positions.find(p => String(p.description ?? '').trim().toLowerCase() === r.descripcion.toLowerCase());
