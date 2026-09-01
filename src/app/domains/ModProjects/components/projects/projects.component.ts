@@ -94,6 +94,7 @@ export class ProjectsComponent {
   showBudgetDashboard = false;
   budgetDashboard: any = null;
   specialtyDraft = 'Civil';
+  resourceTypeFilter = 'Todos';
   resourceDraft: any = { tipo: 'Material', descripcion: '', unidad: 'pieza', cantPlan: 1, costoUnitPlan: 0 };
 
   // Inject of new way for Angular 18

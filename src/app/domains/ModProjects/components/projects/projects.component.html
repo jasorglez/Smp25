@@ -60,9 +60,15 @@
           <div class="col-md-3"><div class="p-2 bg-light rounded"><small>Programa de trabajo</small><div class="fw-bold">{{ d.programCost | currency:'MXN' }}</div></div></div>
           <div class="col-md-3"><div class="p-2 rounded" [class.bg-danger-subtle]="d.total > d.projectLimit" [class.bg-success-subtle]="d.total <= d.projectLimit"><small>Total comprometido</small><div class="fw-bold">{{ d.total | currency:'MXN' }}</div><small>{{ d.total > d.projectLimit ? 'Excede el límite' : 'Dentro del límite' }}</small></div></div>
         </div>
+        <div class="d-flex gap-2 align-items-center mb-2">
+          <span class="small fw-semibold">Ver recursos:</span>
+          <select class="form-select form-select-sm w-auto" [(ngModel)]="resourceTypeFilter">
+            <option>Todos</option><option>Material</option><option>Personal</option><option>Equipo</option><option>Herramienta</option><option>Auxiliar</option>
+          </select>
+        </div>
         <div class="table-responsive">
           <table class="table table-sm align-middle mb-0"><thead><tr><th>Recurso</th><th class="text-end">Costo planeado</th></tr></thead><tbody>
-            <tr *ngFor="let item of (d.byType | keyvalue)"><td>{{ item.key }}</td><td class="text-end">{{ item.value | currency:'MXN' }}</td></tr>
+            <tr *ngFor="let item of (d.byType | keyvalue)" [hidden]="resourceTypeFilter !== 'Todos' && !item.key.endsWith('· ' + resourceTypeFilter)"><td>{{ item.key }}</td><td class="text-end">{{ item.value | currency:'MXN' }}</td></tr>
             <tr *ngIf="!d.resourceCost"><td colspan="2" class="text-muted">Aún no hay recursos PMO registrados.</td></tr>
           </tbody></table>
         </div>
