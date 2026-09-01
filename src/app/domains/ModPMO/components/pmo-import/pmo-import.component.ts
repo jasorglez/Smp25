@@ -242,7 +242,7 @@ export class PmoImportComponent implements OnInit, OnChanges {
         const itemType = r.tipo === 'HERRAMIENTA' ? 'HERR' : r.tipo;
         const auxId = Number(current?.id ?? current?.Id ?? current?.idAuxiliar ?? current?.IdAuxiliar ?? 0); if (!auxId) continue;
         if (r.tipo === 'PERSONAL') { try { await lastValueFrom(this._auxItemsService.saveCuadrilla({ idAuxiliar: auxId, idCompany: this.idCompany, name: r.descripcion, cantidad: r.cantidad || 1, sortOrder: linked, active: true })); linked++; } catch (error) { this.importNotices.push(`Personal omitido: ${r.descripcion}.`); } continue; }
-        if (!['MATERIAL', 'EQUIPO', 'HERR'].includes(itemType)) continue;
+        if (!['MATERIAL', 'EQUIPO', 'HERR'].includes(itemType)) { this.importNotices.push(`Tipo no compatible omitido: ${r.descripcion}.`); continue; }
         let ref: any = null;
         if (r.tipo === 'MATERIAL') ref = find(mats, r) || await lastValueFrom(this._materialsService.addMaterial({ idCompany: this.idCompany, insumo: r.clave || null, description: r.descripcion, quantity: 0, costoMN: r.unitCost, ventaMN: r.unitCost, active: true, vigente: true, typematerial: 'CONSUMIBLE' }));
         else if (r.tipo === 'EQUIPO') ref = find(eqs, r) || await lastValueFrom(this._equipmentService.addEquipment({ idCompany: this.idCompany, description: r.descripcion, measure: r.unidad || 'DIA', quantity: 1, idTypeEquipment: defaultTypeEquipment, costMN: r.unitCost, priceMN: r.unitCost, active: true }));
