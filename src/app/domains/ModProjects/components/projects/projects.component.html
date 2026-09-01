@@ -1,5 +1,14 @@
 <div class="row p-3">
   <div class="col-12">
+    <div class="d-flex align-items-center justify-content-between mb-3 p-3 rounded border bg-light">
+      <div>
+        <div class="fw-semibold"><i class="bi bi-speedometer2 text-primary me-2"></i>Control presupuestal por especialidad</div>
+        <small class="text-muted">Selecciona un proyecto y consulta Civil, Mecánica, Eléctrica, recursos y programa de trabajo.</small>
+      </div>
+      <button type="button" class="btn btn-primary" [disabled]="!selectedRowData" (click)="openBudgetDashboard()">
+        <i class="bi bi-bar-chart-line me-1"></i> Abrir control PMO
+      </button>
+    </div>
     <div class="row">
       <!-- Columna de botones verticales -->
       <div class="col-auto d-flex flex-column align-items-start justify-content-start me-3">
