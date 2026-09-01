@@ -83,5 +83,5 @@ export const environment = {
   geminiApiKey: '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',
   gnewsApiKey: '94ccc596b4dfebc3f72683b6e81d81bc',
 
-  version: '4.97 (29 Agosto 2026 23:10) deploy: dashboards y almacenamiento en Firebase Storage',
+  version: '4.98 (01 Septiembre 2026) feat: importar explosión de insumos con upsert',
 };

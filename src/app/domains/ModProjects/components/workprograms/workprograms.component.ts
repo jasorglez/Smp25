@@ -15,6 +15,10 @@ import { FormsModule } from '@angular/forms';
 import { CatalogsService } from 'app/services/catalogs.service';
 import { SignalsService } from 'app/services/signals.service';
 import { TrackingService } from 'app/services/tracking.service';
+import { AuxiliarService } from 'app/services/auxiliar.service';
+import { AuxiliarItemsService } from 'app/services/auxiliar-items.service';
+import { MaterialsService } from 'app/services/materials.service';
+import { EquipmentService } from 'app/services/equipment.service';
 
 type ImportFieldKey =
   | 'wbs'
@@ -84,6 +88,19 @@ interface ImportAnalysisResult {
   structureMode: boolean;
 }
 
+interface ExplosionRowDraft {
+  sourceRow: number;
+  clave: string;
+  descripcion: string;
+  unidad: string;
+  cantidad: number;
+  unitCost: number;
+  importe: number;
+  familia: string;
+  tipo: 'AUXILIAR' | 'MATERIAL' | 'PERSONAL' | 'EQUIPO' | 'HERRAMIENTA' | 'CONCEPTO';
+  confidence: 'alta' | 'media' | 'baja';
+}
+
 @Component({
   selector: 'app-workprograms',
   standalone: true,
@@ -105,6 +122,9 @@ export class WorkprogramsComponent {
   importDetectedColumns: ImportColumnMatch[] = [];
   importPreviewRows: ImportedPreviewRow[] = [];
   importedTasksDraft: ImportedTaskDraft[] = [];
+  importKind: 'program' | 'explosion' = 'program';
+  explosionRowsDraft: ExplosionRowDraft[] = [];
+  isApplyingExplosion = false;
 
   phases: { key: any; label: any; }[];
 
@@ -122,6 +142,10 @@ export class WorkprogramsComponent {
   private catalogsService = inject(CatalogsService);
   private signalsService = inject(SignalsService);
   private trackingService = inject(TrackingService);
+  private auxiliarService = inject(AuxiliarService);
+  private auxiliarItemsService = inject(AuxiliarItemsService);
+  private materialsService = inject(MaterialsService);
+  private equipmentService = inject(EquipmentService);
   private ngZone = inject(NgZone);
 
   readonly projectName = this.signalsService.getProjectNameBySidebar();
@@ -142,6 +166,10 @@ export class WorkprogramsComponent {
   notSavedChanges: boolean = false;
   isSaving: boolean = false;
   idcompany: number = null;
+
+  get selectedCompanyId(): number {
+    return Number(this.signalsService.getRootSelectedBySidebar()() || 0);
+  }
 
   taskCount: number = 0;
 
@@ -258,6 +286,8 @@ export class WorkprogramsComponent {
     this.importApplyProgress = 0;
     this.importApplyStatus = '';
     this.importFiles = [];
+    this.importKind = 'program';
+    this.explosionRowsDraft = [];
   }
 
   closeImportPmoModal(): void {
@@ -277,6 +307,7 @@ export class WorkprogramsComponent {
     this.importedTasksDraft = [];
     this.importApplyProgress = 0;
     this.importApplyStatus = '';
+    this.explosionRowsDraft = [];
   }
 
   async analyzeImportFiles(): Promise<void> {
@@ -293,6 +324,11 @@ export class WorkprogramsComponent {
     this.importApplyProgress = 0;
     this.importApplyStatus = '';
     this.importSummary = '';
+
+    if (this.importKind === 'explosion') {
+      await this.analyzeExplosionFiles();
+      return;
+    }
 
     try {
       const analysis = await this.buildImportAnalysis(this.importFiles);
@@ -313,6 +349,112 @@ export class WorkprogramsComponent {
     } finally {
       this.isAnalyzingImport = false;
     }
+  }
+
+  private async analyzeExplosionFiles(): Promise<void> {
+    this.isAnalyzingImport = true;
+    try {
+      const rows: ExplosionRowDraft[] = [];
+      const warnings: string[] = [];
+      for (const file of this.importFiles) {
+        const workbook = await this.readWorkbook(file);
+        const sheet = workbook.Sheets[workbook.SheetNames[0]];
+        const rawRows = XLSX.utils.sheet_to_json<Record<string, any>>(sheet, { defval: '', raw: false });
+        if (!rawRows.length) { warnings.push(`${file.name}: sin filas.`); continue; }
+        rawRows.forEach((raw, index) => {
+          const values = Object.entries(raw).reduce((acc, [key, value]) => { acc[this.normalizeExplosionHeader(key)] = value; return acc; }, {} as Record<string, any>);
+          const clave = String(values['clave'] ?? '').trim();
+          const descripcion = String(values['descripcion'] ?? '').trim();
+          if (!clave && !descripcion) return;
+          if (/total|gran total/i.test(descripcion) && !clave) return;
+          const classified = this.classifyExplosionRow({ clave, descripcion, unidad: String(values['unidad'] ?? ''), familia: String(values['familia'] ?? ''), tipo: String(values['tipo'] ?? '') });
+          rows.push({ sourceRow: index + 2, clave, descripcion, unidad: String(values['unidad'] ?? ''), cantidad: this.parseLocaleNumber(values['cantidad']), unitCost: this.parseLocaleNumber(values['p.u.'] ?? values['pu'] ?? values['precio unitario']), importe: this.parseLocaleNumber(values['importe']), familia: String(values['familia'] ?? ''), ...classified });
+        });
+      }
+      this.explosionRowsDraft = rows;
+      this.importWarnings = warnings;
+      const counts = rows.reduce((m, row) => { m[row.tipo] = (m[row.tipo] || 0) + 1; return m; }, {} as Record<string, number>);
+      this.importSummary = `${rows.length} filas detectadas. ` + Object.entries(counts).map(([type, count]) => `${type}: ${count}`).join(' · ');
+      if (!rows.length) alerts.basicAlert('Aviso', 'No se encontraron filas de explosión válidas.', 'warning');
+    } catch (error: any) {
+      alerts.basicAlert('Error', error?.message || 'No fue posible analizar la explosión de insumos.', 'error');
+    } finally { this.isAnalyzingImport = false; }
+  }
+
+  private normalizeExplosionHeader(value: string): string { return String(value).normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().trim(); }
+  private parseLocaleNumber(value: any): number { const text = String(value ?? '').replace(/[$%\s]/g, '').trim(); if (!text) return 0; const normalized = text.includes(',') && text.includes('.') ? text.replace(/\./g, '').replace(',', '.') : text.replace(',', '.'); return Number(normalized) || 0; }
+  private classifyExplosionRow(row: { clave: string; descripcion: string; unidad: string; familia: string; tipo: string }): { tipo: ExplosionRowDraft['tipo']; confidence: ExplosionRowDraft['confidence'] } {
+    const text = `${row.clave} ${row.descripcion} ${row.unidad} ${row.familia} ${row.tipo}`.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+    if (/personal|mano de obra|peon|ayudante|albanil|cadenero|velador|carpintero|colocador|fierrero|topografo|jor(nada)?/.test(text)) return { tipo: 'PERSONAL', confidence: row.tipo ? 'alta' : 'media' };
+    if (/equipo|revolvedora|vibrador|estacion total|demoledor|karcher|renta|maquina|\b(hr|hora)\b/.test(text)) return { tipo: 'EQUIPO', confidence: row.tipo ? 'alta' : 'media' };
+    if (/herr|herramienta|pala|espatula|barreta|rodillo|casco|guante|arnes|plomada|linea de vida/.test(text)) return { tipo: 'HERRAMIENTA', confidence: row.tipo ? 'alta' : 'media' };
+    if (/auxiliar|preliminar|drenaje|electrific|alumbrado|planta de tratamiento|agua potable|pavimento|carpeta asfaltica|banqueta|fibra optica|cortes y rellenos|tanque elevado/.test(text)) return { tipo: 'AUXILIAR', confidence: 'media' };
+    if (row.tipo.toLowerCase().includes('material') || row.tipo.toLowerCase().includes('insumo') || /cemento|arena|grava|varilla|acero|mortero|concreto|polietileno|madera|clavo|pintura|sanitario/.test(text)) return { tipo: 'MATERIAL', confidence: row.tipo ? 'alta' : 'media' };
+    return { tipo: 'CONCEPTO', confidence: 'baja' };
+  }
+
+  async saveExplosionImport(): Promise<void> {
+    if (!this.explosionRowsDraft.length || this.isApplyingExplosion) return;
+    const idCompany = Number(this.signalsService.getRootSelectedBySidebar()() || 0);
+    if (!idCompany) { alerts.basicAlert('Empresa requerida', 'Selecciona una empresa antes de importar.', 'warning'); return; }
+    const confirm = await alerts.confirmAlert('¿Guardar explosión de insumos?', `Se buscarán y crearán recursos en la empresa seleccionada (${idCompany}).`, 'question', 'Guardar');
+    if (!confirm.isConfirmed) return;
+    this.isApplyingExplosion = true;
+    try {
+      const [auxiliares, materiales, equipos] = await Promise.all([
+        lastValueFrom(this.auxiliarService.getByCompany(idCompany)).catch(() => []),
+        lastValueFrom(this.materialsService.getMaterials(idCompany, 'MATERIAL')).catch(() => []),
+        lastValueFrom(this.equipmentService.getEquipment(idCompany)).catch(() => [])
+      ]);
+      let currentAux: any = null;
+      let created = 0, reused = 0, linked = 0;
+      for (const row of this.explosionRowsDraft) {
+        if (row.tipo === 'AUXILIAR') {
+          currentAux = this.findCatalogRecord(auxiliares, row);
+          if (!currentAux) {
+            currentAux = await lastValueFrom(this.auxiliarService.add({ idCompany, idContract: null, description: row.descripcion, unit: row.unidad || 'M2', costMN: row.unitCost, precioUnitario: row.unitCost, hasPersonal: false, hasMaterial: false, hasHerramienta: false, hasEquipo: false, active: true, clave: row.clave || null, claveUsuario: row.clave || null }));
+            currentAux = currentAux?.auxiliar || currentAux;
+            created++;
+          } else reused++;
+          continue;
+        }
+        if (!currentAux) {
+          currentAux = this.findCatalogRecord(auxiliares, { descripcion: 'Explosión de insumos importada' });
+          if (!currentAux) {
+            currentAux = await lastValueFrom(this.auxiliarService.add({ idCompany, idContract: null, description: 'Explosión de insumos importada', unit: 'M2', costMN: 0, precioUnitario: 0, active: true }));
+            currentAux = currentAux?.auxiliar || currentAux; created++;
+          }
+        }
+        let resourceId: number | null = null;
+        if (row.tipo === 'MATERIAL') {
+          let resource = this.findCatalogRecord(materiales, row, 'insumo');
+          if (!resource) {
+            resource = await lastValueFrom(this.materialsService.addMaterial({ idCompany, insumo: row.clave || null, description: row.descripcion, quantity: 0, costoMN: row.unitCost, ventaMN: row.unitCost, active: true, vigente: true, typematerial: 'CONSUMIBLE' })); created++;
+          } else reused++;
+          resourceId = Number(resource?.id || 0) || null;
+        } else if (row.tipo === 'EQUIPO') {
+          let resource = this.findCatalogRecord(equipos, row);
+          if (!resource) {
+            resource = await lastValueFrom(this.equipmentService.addEquipment({ idCompany, description: row.descripcion, measure: row.unidad || 'DIA', quantity: 1, costMN: row.unitCost, priceMN: row.unitCost, active: true, print: true, charged: true })); created++;
+          } else reused++;
+          resourceId = Number(resource?.id || 0) || null;
+        }
+        await lastValueFrom(this.auxiliarItemsService.saveItem({ idAuxiliar: Number(currentAux.id), type: row.tipo === 'HERRAMIENTA' ? 'HERR' : row.tipo, idReference: resourceId, description: row.descripcion, unit: row.unidad || null, quantity: row.cantidad, unitCost: row.unitCost, active: true }));
+        linked++;
+      }
+      alerts.basicAlert('Importación completada', `${created} registros creados, ${reused} reutilizados y ${linked} componentes asociados en la empresa ${idCompany}.`, 'success');
+      this.showImportPmoModal = false;
+    } catch (error: any) {
+      console.error('Error guardando explosión:', error);
+      alerts.basicAlert('Error', error?.message || 'No fue posible guardar la explosión.', 'error');
+    } finally { this.isApplyingExplosion = false; }
+  }
+
+  private findCatalogRecord(records: any[], row: { clave?: string; descripcion: string }, keyField = 'clave'): any {
+    const key = String(row.clave || '').trim().toLowerCase();
+    const description = String(row.descripcion || '').trim().toLowerCase();
+    return (records || []).find(record => key && String(record[keyField] ?? record.insumo ?? '').trim().toLowerCase() === key)
+      || (records || []).find(record => description && String(record.description || '').trim().toLowerCase() === description);
   }
 
   async applyImportToGantt(): Promise<void> {

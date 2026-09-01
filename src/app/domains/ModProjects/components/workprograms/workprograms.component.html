@@ -75,12 +75,19 @@
           <i class="bi bi-magic me-2"></i>Importación PMO asistida
         </h6>
         <button type="button" class="btn-close btn-close-white btn-sm" (click)="closeImportPmoModal()"
-                [disabled]="isAnalyzingImport || isApplyingImport"></button>
+                [disabled]="isAnalyzingImport || isApplyingImport || isApplyingExplosion"></button>
       </div>
       <div class="modal-body">
         <div class="row g-3">
+          <div class="col-12">
+            <label class="form-label fw-semibold">Tipo de importación</label>
+            <div class="d-flex flex-wrap gap-3 border rounded px-3 py-2">
+              <label class="form-check"><input class="form-check-input" type="radio" name="importKind" [(ngModel)]="importKind" value="program"> Programa de trabajo (Gantt)</label>
+              <label class="form-check"><input class="form-check-input" type="radio" name="importKind" [(ngModel)]="importKind" value="explosion"> Explosión de insumos</label>
+            </div>
+          </div>
           <div class="col-lg-6">
-            <label class="form-label fw-semibold">Archivos de planeación</label>
+            <label class="form-label fw-semibold">{{ importKind === 'explosion' ? 'Archivo de explosión de insumos' : 'Archivos de planeación' }}</label>
             <input type="file"
                    class="form-control"
                    accept=".xlsx,.xls,.csv,.xml,.xer"
@@ -91,7 +98,7 @@
               o <strong>Primavera P6 XER (.xer)</strong>.
             </small>
           </div>
-          <div class="col-lg-6">
+          <div class="col-lg-6" *ngIf="importKind === 'program'">
             <label class="form-label fw-semibold">Modo de carga</label>
             <div class="d-flex flex-wrap gap-3 border rounded px-3 py-2">
               <div class="form-check">
@@ -116,9 +123,9 @@
         </div>
 
         <div class="mt-3 d-flex align-items-center gap-2">
-          <button type="button" class="btn btn-dark"
+        <button type="button" class="btn btn-dark"
                   (click)="analyzeImportFiles()"
-                  [disabled]="!importFiles.length || isAnalyzingImport || isApplyingImport">
+                  [disabled]="!importFiles.length || isAnalyzingImport || isApplyingImport || isApplyingExplosion">
             <span *ngIf="isAnalyzingImport" class="spinner-border spinner-border-sm me-2" role="status"></span>
             <i *ngIf="!isAnalyzingImport" class="bi bi-search me-2"></i>Analizar archivos
           </button>
@@ -129,6 +136,16 @@
 
         <div *ngIf="importSummary" class="alert alert-info mt-3 mb-0 py-2">
           <i class="bi bi-info-circle me-2"></i>{{ importSummary }}
+        </div>
+
+        <div *ngIf="importKind === 'explosion' && explosionRowsDraft.length" class="card mt-3">
+          <div class="card-header py-2 fw-semibold"><i class="bi bi-tags me-1"></i>Clasificación automática</div>
+          <div class="table-responsive" style="max-height:430px">
+            <table class="table table-sm table-hover mb-0 align-middle">
+              <thead><tr><th>Fila</th><th>Clave</th><th>Descripción</th><th>Unidad</th><th>Cantidad</th><th>P.U.</th><th>Tipo detectado</th><th>Confianza</th></tr></thead>
+              <tbody><tr *ngFor="let row of explosionRowsDraft"><td>{{ row.sourceRow }}</td><td>{{ row.clave }}</td><td>{{ row.descripcion }}</td><td>{{ row.unidad }}</td><td>{{ row.cantidad | number:'1.0-4' }}</td><td>{{ row.unitCost | currency:'MXN':'symbol':'1.0-2' }}</td><td><select class="form-select form-select-sm" [(ngModel)]="row.tipo"><option value="AUXILIAR">AUXILIAR</option><option value="MATERIAL">MATERIAL</option><option value="PERSONAL">PERSONAL</option><option value="EQUIPO">EQUIPO</option><option value="HERRAMIENTA">HERRAMIENTA</option><option value="CONCEPTO">CONCEPTO</option></select></td><td><span class="badge" [ngClass]="row.confidence === 'alta' ? 'bg-success' : row.confidence === 'media' ? 'bg-warning text-dark' : 'bg-secondary'">{{ row.confidence }}</span></td></tr></tbody>
+            </table>
+          </div>
         </div>
 
         <div *ngIf="isApplyingImport" class="mt-3">
@@ -234,10 +251,19 @@
           Cancelar
         </button>
         <button type="button" class="btn btn-success"
+                *ngIf="importKind === 'program'"
                 (click)="applyImportToGantt()"
                 [disabled]="!importedTasksDraft.length || isAnalyzingImport || isApplyingImport">
           <span *ngIf="isApplyingImport" class="spinner-border spinner-border-sm me-2" role="status"></span>
           <i *ngIf="!isApplyingImport" class="bi bi-download me-2"></i>Cargar al Gantt
+        </button>
+        <span *ngIf="importKind === 'explosion' && explosionRowsDraft.length" class="text-muted small me-auto">
+          Empresa destino: {{ selectedCompanyId }}
+        </span>
+        <button type="button" class="btn btn-success" *ngIf="importKind === 'explosion'"
+                (click)="saveExplosionImport()" [disabled]="!explosionRowsDraft.length || isAnalyzingImport || isApplyingExplosion">
+          <span *ngIf="isApplyingExplosion" class="spinner-border spinner-border-sm me-2"></span>
+          <i *ngIf="!isApplyingExplosion" class="bi bi-database-add me-2"></i>Guardar explosión
         </button>
       </div>
     </div>
