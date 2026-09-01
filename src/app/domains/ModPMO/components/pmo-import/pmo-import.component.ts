@@ -302,7 +302,7 @@ export class PmoImportComponent implements OnInit, OnChanges {
         if (activities.length) await lastValueFrom(this._wpService.addWorkProgramBatch(activities));
       }
       this.savedCount=linked;this.step='done';this.saveStatus=`${linked} componentes asociados en la empresa ${this.idCompany}.`;
-    } catch(e:any){this.errorMsg='No fue posible completar la importación. Revisa los avisos y vuelve a intentar.';} finally{this.isSavingExplosion=false;}
+    } catch(e:any){ this.importNotices.push('No se pudo procesar una parte de la importación; los registros restantes se conservaron.'); this.saveStatus='Importación parcial; revisa los avisos.'; this.step='done'; this.errorMsg=''; } finally{this.isSavingExplosion=false;}
   }
 
   // ── Analizar Excel / CSV ──────────────────────────────────────────────────
