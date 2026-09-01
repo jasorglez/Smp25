@@ -249,6 +249,12 @@ export class PmoImportComponent implements OnInit, OnChanges {
         await lastValueFrom(this._auxItemsService.saveItem({ idAuxiliar: auxId, type: itemType, idReference: Number(ref?.id ?? ref?.Id) || null, description: r.descripcion, unit: r.unidad, quantity: r.cantidad, unitCost: r.unitCost, active: true })); linked++;
         } catch (error) { this.importNotices.push(`Registro omitido: ${r.descripcion}. La importación continúa.`); }
       }
+      if (this.idProject && this.explosionRows.length) {
+        const existing:any[] = await lastValueFrom(this._wpService.getWorkPrograms(this.idProject, this.typeWP)).catch(() => []);
+        const known = new Set((existing || []).map(x => String(x.activity ?? x.text ?? x.description ?? '').trim().toLowerCase()));
+        const activities = this.explosionRows.filter(r => r.descripcion && !known.has(r.descripcion.toLowerCase())).map((r, i) => ({ idProject: this.idProject, idConvention: this.selectedConvention?.id ?? null, activity: r.clave || `EXP-${i + 1}`, text: r.descripcion, description: r.descripcion, quantity: r.cantidad || 0, costMX: r.unitCost || 0, progress: 0, parent: 0, sortorder: i, active: 1, type: this.typeWP, typeActivity: 'Activity', measure: r.unidad || null }));
+        if (activities.length) await lastValueFrom(this._wpService.addWorkProgramBatch(activities));
+      }
       this.savedCount=linked;this.step='done';this.saveStatus=`${linked} componentes asociados en la empresa ${this.idCompany}.`;
     } catch(e:any){this.errorMsg='No fue posible completar la importación. Revisa los avisos y vuelve a intentar.';} finally{this.isSavingExplosion=false;}
   }
