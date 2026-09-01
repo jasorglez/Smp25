@@ -429,6 +429,11 @@
 
         <!-- Done -->
         <ng-container *ngIf="step==='done'">
+          <div class="p-4 text-start">
+            <div class="alert alert-success"><i class="bi bi-check-circle me-1"></i>Importación finalizada. {{ saveStatus }}</div>
+            <div *ngIf="importNotices.length" class="alert alert-warning small"><strong>Errores y omisiones detectados:</strong><ul class="mb-0"><li *ngFor="let notice of importNotices">{{ notice }}</li></ul></div>
+            <div *ngIf="!importNotices.length" class="alert alert-info small">No se detectaron errores en los registros procesados.</div>
+          </div>
           <button class="btn btn-primary" (click)="close()">
             <i class="bi bi-check2 me-1"></i> Cerrar y actualizar
           </button>

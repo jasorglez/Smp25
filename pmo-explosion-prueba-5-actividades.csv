@@ -1,0 +1,6 @@
+CLAVE;DESCRIPCION;UNIDAD;CANTIDAD;P.U.;IMPORTE;%;FAMILIA;tipo
+ACT-001;Trazo y nivelación;M2;120;35,50;4260;10;Obra civil;material
+ACT-002;Excavación de cepas;M3;45;180,00;8100;20;Obra civil;material
+ACT-003;Cuadrilla de albañilería;JOR;5;650,00;3250;15;Mano de obra;personal
+ACT-004;Renta de revolvedora;DIA;2;950,00;1900;10;Equipo;equipo
+ACT-005;Material sin clave para provocar aviso;PZA;10;0,00;0;5;;material
