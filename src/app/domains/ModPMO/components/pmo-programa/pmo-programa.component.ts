@@ -304,6 +304,16 @@ export class PmoProgramaComponent implements OnInit {
     if (count > 0) await this.loadProgram();
   }
 
+  async createExampleProgram(): Promise<void> {
+    if (!this.selectedProject) return;
+    const idProject = this.selectedProject.id ?? this.selectedProject.idProject;
+    const existing:any[] = await lastValueFrom(this._workprogramsService.getWorkPrograms(idProject, 'Project')).catch(() => []);
+    if (existing?.length) { await this.loadProgram(); return; }
+    const names = ['Inicio y preparación', 'Trazo y nivelación', 'Ejecución de trabajos', 'Control de calidad', 'Cierre y entrega'];
+    for (let i = 0; i < names.length; i++) await lastValueFrom(this._workprogramsService.addWorkProgram({ idProject, idConvention: null, activity: `EJ-${i + 1}`, text: names[i], description: names[i], startDate: new Date().toISOString().substring(0, 10), endDate: new Date(Date.now() + (i + 1) * 86400000 * 7).toISOString().substring(0, 10), progress: 0, parent: 0, sortorder: i, active: 1, type: 'Project', typeActivity: 'Activity', measure: null }));
+    await this.loadProgram();
+  }
+
   get progressColor(): string {
     return this.pctGeneral >= 80 ? '#27ae60'
          : this.pctGeneral >= 40 ? '#f39c12'
