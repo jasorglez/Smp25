@@ -260,7 +260,7 @@ export class PmoImportComponent implements OnInit, OnChanges {
         const created:any = await lastValueFrom(this._catService.addCatalogToSmp({ idCompany: this.idCompany, description: 'Equipo importado', type: 'TYPEEQUIPMENT', active: 1, vigente: true }));
         defaultTypeEquipment=Number(created?.id??created?.Id??created?.catalog?.id??0)||null;
       }
-      if (!defaultTypeEquipment) throw new Error('No fue posible crear el tipo de equipo para la empresa.');
+      if (!defaultTypeEquipment) this.importNotices.push('No se pudo crear el tipo de equipo; las filas de equipo se omitirán y el resto continuará.');
       let current:any=null, linked=0;
       const find=(a:any[],r:any)=>a.find(x=>(r.clave&&(x.clave||x.insumo||'').toLowerCase()===r.clave.toLowerCase())||(x.description||'').toLowerCase()===(r.descripcion||'').toLowerCase());
       // Primero garantiza el programa de trabajo; los recursos no deben bloquearlo.
@@ -268,7 +268,7 @@ export class PmoImportComponent implements OnInit, OnChanges {
         const existing:any[] = await lastValueFrom(this._wpService.getWorkPrograms(this.idProject, this.typeWP)).catch(() => []);
         const known = new Set((existing || []).map(x => String(x.activity ?? x.text ?? x.description ?? '').trim().toLowerCase()));
         const activities = this.explosionRows.filter(r => r.descripcion && !known.has(r.descripcion.toLowerCase())).map((r, i) => ({ idProject: this.idProject, idConvention: this.selectedConvention?.id ?? null, activity: r.clave || `EXP-${i + 1}`, text: r.descripcion, description: r.descripcion, quantity: r.cantidad || 0, costMX: r.unitCost || 0, progress: 0, parent: 0, sortorder: i, active: 1, type: this.typeWP, typeActivity: 'Activity', measure: r.unidad || null }));
-        if (activities.length) await lastValueFrom(this._wpService.addWorkProgramBatch(activities));
+        for (const activity of activities) { try { await lastValueFrom(this._wpService.addWorkProgram(activity)); } catch (error) { this.importNotices.push(`Actividad no registrada: ${activity.text}.`); } }
       }
       for (const r of this.explosionRows) {
         try {
@@ -291,7 +291,8 @@ export class PmoImportComponent implements OnInit, OnChanges {
         if (!['MATERIAL', 'EQUIPO', 'HERR'].includes(itemType)) { this.importNotices.push(`No se pudo asignar un catálogo a: ${r.descripcion}. Tipo detectado: ${r.tipo}.`); continue; }
         let ref: any = null;
         if (r.tipo === 'MATERIAL') { ref = find(mats, r); if (ref) { if (!ref.idCategory || !ref.idFamilia || !ref.idSubfamilia) await lastValueFrom(this._materialsService.updateMaterial(String(ref.id), {...ref, ...catalogIds})); } else ref = await lastValueFrom(this._materialsService.addMaterial({ idCompany: this.idCompany, insumo: r.clave || null, description: r.descripcion, ...catalogIds, quantity: 0, costoMN: r.unitCost, ventaMN: r.unitCost, active: true, vigente: true, typematerial: 'CONSUMIBLE' })); }
-        else if (r.tipo === 'EQUIPO') ref = find(eqs, r) || await lastValueFrom(this._equipmentService.addEquipment({ idCompany: this.idCompany, description: r.descripcion, measure: r.unidad || 'DIA', quantity: 1, idTypeEquipment: defaultTypeEquipment, costMN: r.unitCost, priceMN: r.unitCost, active: true }));
+        else if (r.tipo === 'EQUIPO' && defaultTypeEquipment) ref = find(eqs, r) || await lastValueFrom(this._equipmentService.addEquipment({ idCompany: this.idCompany, description: r.descripcion, measure: r.unidad || 'DIA', quantity: 1, idTypeEquipment: defaultTypeEquipment, costMN: r.unitCost, priceMN: r.unitCost, active: true }));
+        else if (r.tipo === 'EQUIPO') { this.importNotices.push(`Equipo omitido: ${r.descripcion}.`); continue; }
         await lastValueFrom(this._auxItemsService.saveItem({ idAuxiliar: auxId, type: itemType, idReference: Number(ref?.id ?? ref?.Id) || null, description: r.descripcion, unit: r.unidad, quantity: r.cantidad, unitCost: r.unitCost, active: true })); linked++;
         } catch (error) { this.importNotices.push(`Registro omitido: ${r.descripcion}. La importación continúa.`); }
       }
