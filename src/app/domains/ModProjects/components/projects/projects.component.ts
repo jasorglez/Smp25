@@ -405,6 +405,10 @@ export class ProjectsComponent {
     await this.openBudgetDashboard();
   }
 
+  resourceMatches(key: string | number | symbol): boolean {
+    return this.resourceTypeFilter === 'Todos' || String(key).endsWith(`· ${this.resourceTypeFilter}`);
+  }
+
   onGridReady(params: GridReadyEvent): void {
     this.gridApi = params.api;
   }
