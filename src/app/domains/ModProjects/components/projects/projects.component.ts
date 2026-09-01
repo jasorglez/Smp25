@@ -15,6 +15,7 @@ import { OilfieldService } from 'app/services/oilfield.service';
 import { SignalsService } from 'app/services/signals.service';
 import { PersonalByProyectService } from 'app/services/personalByProyect.service';
 import { TrackingService } from 'app/services/tracking.service';
+import { WorkprogramsService } from 'app/services/workprograms.service';
 
 
 // Esta funcion valida que programStart sea siempre menor a programEnd
@@ -89,6 +90,8 @@ export class ProjectsComponent {
 
   screenSizeSM = false;
   notSavedChanges: boolean = false;
+  showBudgetDashboard = false;
+  budgetDashboard: any = null;
 
   // Inject of new way for Angular 18
   private modalService = inject(NgbModal);
@@ -97,6 +100,7 @@ export class ProjectsComponent {
   private oilfieldsService = inject(OilfieldService);
   private signalsService = inject(SignalsService);
   private personalByProyectService = inject(PersonalByProyectService);
+  private workprogramsService = inject(WorkprogramsService);
 
   public project: Iproject[] = [];
   private gridApi!: GridApi<Iproject>;
@@ -350,9 +354,35 @@ export class ProjectsComponent {
     const selectedNodes = this.gridApi.getSelectedNodes();
     if (selectedNodes.length > 0) {
       this.selectedRowData = selectedNodes[0].data;
+      this.showBudgetDashboard = false;
+      this.budgetDashboard = null;
     } else {
       this.selectedRowData = null;
     }
+  }
+
+  async openBudgetDashboard(): Promise<void> {
+    if (!this.selectedRowData?.id) return;
+    const project: any = this.selectedRowData;
+    const contract: any = (this.contracts ?? []).find((c: any) =>
+      Number(c.idContrato ?? c.id) === Number(project.idContrato)
+    ) ?? await new Promise(resolve => this.followprojectsService.getContractById(Number(project.idContrato)).subscribe({ next: resolve, error: () => resolve(null) }));
+    const [program, resources] = await Promise.all([
+      new Promise<any[]>(resolve => this.workprogramsService.getWorkPrograms(Number(project.id), 'Project').subscribe({ next: v => resolve(v ?? []), error: () => resolve([]) })),
+      new Promise<any[]>(resolve => this.projectsService.getPmoRecursosByProject(Number(project.id)).subscribe({ next: v => resolve(Array.isArray(v) ? v : []), error: () => resolve([]) }))
+    ]);
+    const byType: any = {};
+    for (const r of resources) {
+      const tipo = String(r.tipo ?? r.type ?? 'Otros').trim() || 'Otros';
+      const planned = Number(r.cantPlan ?? r.quantity ?? 0) * Number(r.costoUnitPlan ?? r.unitCost ?? 0);
+      byType[tipo] = (byType[tipo] ?? 0) + planned;
+    }
+    const programCost = program.reduce((sum, row) => sum + Number(row.quantity ?? 0) * Number(row.costMX ?? 0), 0);
+    const contractLimit = Number(contract?.amountMx ?? contract?.amountMX ?? contract?.amount ?? 0);
+    const projectLimit = Number(project.budgetManagement ?? project.budget ?? project.amount ?? 0) || (contractLimit / Math.max(1, (this.project ?? []).filter(p => Number(p.idContrato) === Number(project.idContrato)).length));
+    const resourceCost = Object.values(byType).reduce((sum: number, v: any) => sum + Number(v), 0);
+    this.budgetDashboard = { project, contract, contractLimit, projectLimit, programCost, resourceCost, total: programCost + resourceCost, byType };
+    this.showBudgetDashboard = true;
   }
 
   onGridReady(params: GridReadyEvent): void {

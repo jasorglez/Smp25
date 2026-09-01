@@ -6,6 +6,9 @@
         <button type="button" class="btn btn-primary mb-2" (click)="addRow()"><i class="bi bi-plus-lg"></i></button>
         <button type="button" class="btn btn-warning mb-2" (click)="editRow()"><i class="bi bi-pencil-square"></i></button>
         <button type="button" class="btn btn-danger" (click)="deleteProject()"><i class="bi bi-trash"></i></button>
+        <button type="button" class="btn btn-info text-white mt-2" [disabled]="!selectedRowData" (click)="openBudgetDashboard()" title="Control presupuestal PMO">
+          <i class="bi bi-bar-chart-line"></i>
+        </button>
       </div>
       <!-- Columna del ag-grid -->
       <div class="col">
@@ -20,6 +23,32 @@
           [paginationPageSizeSelector]="paginationPageSizeSelector"
           (cellDoubleClicked)="onCellDoubleClicked($event)" [components]="components" [stopEditingWhenCellsLoseFocus]="true" [context]="{ componentParent: this }">
         </ag-grid-angular>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="row px-3 pb-3" *ngIf="showBudgetDashboard && budgetDashboard as d">
+  <div class="col-12">
+    <div class="card border-0 shadow-sm">
+      <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
+        <span><i class="bi bi-speedometer2 me-2"></i>Control presupuestal PMO — {{ d.project.name }}</span>
+        <button class="btn btn-sm btn-light" (click)="showBudgetDashboard=false">Cerrar</button>
+      </div>
+      <div class="card-body">
+        <div class="row g-2 mb-3">
+          <div class="col-md-3"><div class="p-2 bg-light rounded"><small>Contrato</small><div class="fw-bold">{{ d.contractLimit | currency:'MXN' }}</div></div></div>
+          <div class="col-md-3"><div class="p-2 bg-light rounded"><small>Límite del proyecto</small><div class="fw-bold">{{ d.projectLimit | currency:'MXN' }}</div></div></div>
+          <div class="col-md-3"><div class="p-2 bg-light rounded"><small>Programa de trabajo</small><div class="fw-bold">{{ d.programCost | currency:'MXN' }}</div></div></div>
+          <div class="col-md-3"><div class="p-2 rounded" [class.bg-danger-subtle]="d.total > d.projectLimit" [class.bg-success-subtle]="d.total <= d.projectLimit"><small>Total comprometido</small><div class="fw-bold">{{ d.total | currency:'MXN' }}</div><small>{{ d.total > d.projectLimit ? 'Excede el límite' : 'Dentro del límite' }}</small></div></div>
+        </div>
+        <div class="table-responsive">
+          <table class="table table-sm align-middle mb-0"><thead><tr><th>Recurso</th><th class="text-end">Costo planeado</th></tr></thead><tbody>
+            <tr *ngFor="let item of (d.byType | keyvalue)"><td>{{ item.key }}</td><td class="text-end">{{ item.value | currency:'MXN' }}</td></tr>
+            <tr *ngIf="!d.resourceCost"><td colspan="2" class="text-muted">Aún no hay recursos PMO registrados.</td></tr>
+          </tbody></table>
+        </div>
+        <small class="text-muted">El límite se toma del presupuesto del proyecto; si no existe, se distribuye el monto del contrato entre sus proyectos.</small>
       </div>
     </div>
   </div>
