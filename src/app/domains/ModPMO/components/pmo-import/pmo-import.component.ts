@@ -224,9 +224,23 @@ export class PmoImportComponent implements OnInit, OnChanges {
       const aux:any[]=await lastValueFrom(this._auxService.getByCompany(this.idCompany)).catch(()=>[]);
       const mats:any[]=await lastValueFrom(this._materialsService.getMaterials(this.idCompany,'MATERIAL')).catch(()=>[]);
       const eqs:any[]=await lastValueFrom(this._equipmentService.getEquipment(this.idCompany)).catch(()=>[]);
+      const types:any[]=await lastValueFrom(this._catService.getTypeEquipment(this.idCompany,'TYPEEQUIPMENT')).catch(()=>[]);
+      const defaultTypeEquipment=Number(types?.[0]?.id??types?.[0]?.Id??0)||null;
+      if (!defaultTypeEquipment) throw new Error('La empresa no tiene un tipo de equipo configurado. Registra uno en el catálogo de equipos e inténtalo de nuevo.');
       let current:any=null, linked=0;
       const find=(a:any[],r:any)=>a.find(x=>(r.clave&&(x.clave||x.insumo||'').toLowerCase()===r.clave.toLowerCase())||(x.description||'').toLowerCase()===(r.descripcion||'').toLowerCase());
-      for(const r of this.explosionRows){ if(r.tipo==='AUXILIAR'){current=find(aux,r)||await lastValueFrom(this._auxService.add({idCompany:this.idCompany,description:r.descripcion,unit:r.unidad||'M2',costMN:r.unitCost,precioUnitario:r.unitCost,active:true,clave:r.clave||null}));current=current?.auxiliar||current;continue;} if(!current)current=find(aux,{descripcion:'Explosión de insumos importada'})||await lastValueFrom(this._auxService.add({idCompany:this.idCompany,description:'Explosión de insumos importada',unit:'M2',active:true})); const itemType=r.tipo==='HERRAMIENTA'?'HERR':r.tipo; if(!['MATERIAL','EQUIPO','HERR'].includes(itemType)) continue; const auxId=Number(current?.id??current?.Id??0); if(!auxId) continue; let ref:any=null;if(r.tipo==='MATERIAL')ref=find(mats,r)||await lastValueFrom(this._materialsService.addMaterial({idCompany:this.idCompany,insumo:r.clave||null,description:r.descripcion,quantity:0,costoMN:r.unitCost,ventaMN:r.unitCost,active:true,vigente:true,typematerial:'CONSUMIBLE'}));else if(r.tipo==='EQUIPO')ref=find(eqs,r)||await lastValueFrom(this._equipmentService.addEquipment({idCompany:this.idCompany,description:r.descripcion,measure:r.unidad||'DIA',quantity:1,costMN:r.unitCost,priceMN:r.unitCost,active:true}));await lastValueFrom(this._auxItemsService.saveItem({idAuxiliar:auxId,type:itemType,idReference:Number(ref?.id??ref?.Id)||null,description:r.descripcion,unit:r.unidad,quantity:r.cantidad,unitCost:r.unitCost,active:true}));linked++;}
+      for (const r of this.explosionRows) {
+        if (r.tipo === 'AUXILIAR') { current = find(aux, r) || await lastValueFrom(this._auxService.add({ idCompany: this.idCompany, description: r.descripcion, unit: r.unidad || 'M2', costMN: r.unitCost, precioUnitario: r.unitCost, active: true, clave: r.clave || null })); current = current?.auxiliar || current; continue; }
+        if (!current) current = find(aux, { descripcion: 'Explosión de insumos importada' }) || await lastValueFrom(this._auxService.add({ idCompany: this.idCompany, description: 'Explosión de insumos importada', unit: 'M2', active: true }));
+        const itemType = r.tipo === 'HERRAMIENTA' ? 'HERR' : r.tipo;
+        const auxId = Number(current?.id ?? current?.Id ?? 0); if (!auxId) continue;
+        if (r.tipo === 'PERSONAL') { await lastValueFrom(this._auxItemsService.saveCuadrilla({ idAuxiliar: auxId, name: r.descripcion, cantidad: r.cantidad || 1, active: true })); linked++; continue; }
+        if (!['MATERIAL', 'EQUIPO', 'HERR'].includes(itemType)) continue;
+        let ref: any = null;
+        if (r.tipo === 'MATERIAL') ref = find(mats, r) || await lastValueFrom(this._materialsService.addMaterial({ idCompany: this.idCompany, insumo: r.clave || null, description: r.descripcion, quantity: 0, costoMN: r.unitCost, ventaMN: r.unitCost, active: true, vigente: true, typematerial: 'CONSUMIBLE' }));
+        else if (r.tipo === 'EQUIPO') ref = find(eqs, r) || await lastValueFrom(this._equipmentService.addEquipment({ idCompany: this.idCompany, description: r.descripcion, measure: r.unidad || 'DIA', quantity: 1, idTypeEquipment: defaultTypeEquipment, costMN: r.unitCost, priceMN: r.unitCost, active: true }));
+        await lastValueFrom(this._auxItemsService.saveItem({ idAuxiliar: auxId, type: itemType, idReference: Number(ref?.id ?? ref?.Id) || null, description: r.descripcion, unit: r.unidad, quantity: r.cantidad, unitCost: r.unitCost, active: true })); linked++;
+      }
       this.savedCount=linked;this.step='done';this.saveStatus=`${linked} componentes asociados en la empresa ${this.idCompany}.`;
     } catch(e:any){this.errorMsg=e?.message||'No fue posible guardar la explosión.';} finally{this.isSavingExplosion=false;}
   }
