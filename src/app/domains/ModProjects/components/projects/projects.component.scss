@@ -2,3 +2,8 @@ ag-grid-angular {
     width: 100%;
     height: 63vh;
   }
+.pmo-budget-panel {
+  position: sticky;
+  top: 0.5rem;
+  z-index: 20;
+}
