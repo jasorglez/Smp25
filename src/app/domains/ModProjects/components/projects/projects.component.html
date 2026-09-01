@@ -36,6 +36,15 @@
         <button class="btn btn-sm btn-light" (click)="showBudgetDashboard=false">Cerrar</button>
       </div>
       <div class="card-body">
+        <div class="row g-2 align-items-end mb-3 border-bottom pb-3">
+          <div class="col-md-2"><label class="form-label small">Especialidad</label><select class="form-select form-select-sm" [(ngModel)]="specialtyDraft"><option>Civil</option><option>Mecánica</option><option>Eléctrica</option><option>Hidráulica</option><option>General</option></select></div>
+          <div class="col-md-2"><label class="form-label small">Tipo</label><select class="form-select form-select-sm" [(ngModel)]="resourceDraft.tipo"><option>Personal</option><option>Material</option><option>Equipo</option><option>Herramienta</option><option>Auxiliar</option></select></div>
+          <div class="col-md-3"><label class="form-label small">Descripción</label><input class="form-control form-control-sm" [(ngModel)]="resourceDraft.descripcion" placeholder="Recurso"></div>
+          <div class="col-md-1"><label class="form-label small">Unidad</label><input class="form-control form-control-sm" [(ngModel)]="resourceDraft.unidad"></div>
+          <div class="col-md-1"><label class="form-label small">Cantidad</label><input type="number" class="form-control form-control-sm" [(ngModel)]="resourceDraft.cantPlan"></div>
+          <div class="col-md-2"><label class="form-label small">Costo unitario</label><input type="number" class="form-control form-control-sm" [(ngModel)]="resourceDraft.costoUnitPlan"></div>
+          <div class="col-md-1"><button class="btn btn-sm btn-success w-100" (click)="addBudgetResource()" [disabled]="!resourceDraft.descripcion"><i class="bi bi-plus-lg"></i></button></div>
+        </div>
         <div class="row g-2 mb-3">
           <div class="col-md-3"><div class="p-2 bg-light rounded"><small>Contrato</small><div class="fw-bold">{{ d.contractLimit | currency:'MXN' }}</div></div></div>
           <div class="col-md-3"><div class="p-2 bg-light rounded"><small>Límite del proyecto</small><div class="fw-bold">{{ d.projectLimit | currency:'MXN' }}</div></div></div>

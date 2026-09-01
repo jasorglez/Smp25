@@ -92,6 +92,8 @@ export class ProjectsComponent {
   notSavedChanges: boolean = false;
   showBudgetDashboard = false;
   budgetDashboard: any = null;
+  specialtyDraft = 'Civil';
+  resourceDraft: any = { tipo: 'Material', descripcion: '', unidad: 'pieza', cantPlan: 1, costoUnitPlan: 0 };
 
   // Inject of new way for Angular 18
   private modalService = inject(NgbModal);
@@ -373,9 +375,11 @@ export class ProjectsComponent {
     ]);
     const byType: any = {};
     for (const r of resources) {
+      const especialidad = String(r.especialidad ?? r.specialty ?? 'General').trim() || 'General';
       const tipo = String(r.tipo ?? r.type ?? 'Otros').trim() || 'Otros';
       const planned = Number(r.cantPlan ?? r.quantity ?? 0) * Number(r.costoUnitPlan ?? r.unitCost ?? 0);
-      byType[tipo] = (byType[tipo] ?? 0) + planned;
+      const key = `${especialidad} · ${tipo}`;
+      byType[key] = (byType[key] ?? 0) + planned;
     }
     const programCost = program.reduce((sum, row) => sum + Number(row.quantity ?? 0) * Number(row.costMX ?? 0), 0);
     const contractLimit = Number(contract?.amountMx ?? contract?.amountMX ?? contract?.amount ?? 0);
@@ -383,6 +387,20 @@ export class ProjectsComponent {
     const resourceCost = Object.values(byType).reduce((sum: number, v: any) => sum + Number(v), 0);
     this.budgetDashboard = { project, contract, contractLimit, projectLimit, programCost, resourceCost, total: programCost + resourceCost, byType };
     this.showBudgetDashboard = true;
+  }
+
+  async addBudgetResource(): Promise<void> {
+    if (!this.selectedRowData?.id || !this.resourceDraft.descripcion?.trim()) return;
+    const resource = {
+      idProject: Number(this.selectedRowData.id), idCompany: Number(this.idCompany), idActivity: null,
+      tipo: this.resourceDraft.tipo, especialidad: this.specialtyDraft || 'General',
+      descripcion: this.resourceDraft.descripcion.trim(), unidad: this.resourceDraft.unidad || 'pieza', periodo: '',
+      cantPlan: Number(this.resourceDraft.cantPlan) || 0, cantReal: 0,
+      costoUnitPlan: Number(this.resourceDraft.costoUnitPlan) || 0, costoUnitReal: 0, active: 1
+    };
+    await new Promise<void>(resolve => this.projectsService.savePmoRecursosBatch([resource]).subscribe({ next: () => resolve(), error: e => { console.error('Error guardando recurso PMO', e); resolve(); } }));
+    this.resourceDraft = { tipo: this.resourceDraft.tipo, descripcion: '', unidad: this.resourceDraft.unidad, cantPlan: 1, costoUnitPlan: 0 };
+    await this.openBudgetDashboard();
   }
 
   onGridReady(params: GridReadyEvent): void {
