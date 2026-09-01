@@ -34,6 +34,10 @@
 
         <!-- ══ PASO 1: SUBIR ARCHIVO ═════════════════════════════════════════ -->
         <div *ngIf="step==='upload'" class="p-4">
+          <div class="d-flex gap-4 mb-3 small">
+            <label class="form-check"><input class="form-check-input" type="radio" [(ngModel)]="importKind" value="program"> Programa de trabajo</label>
+            <label class="form-check"><input class="form-check-input" type="radio" [(ngModel)]="importKind" value="explosion"> Explosión de insumos</label>
+          </div>
 
           <!-- Banner descarga plantilla -->
           <div class="alert alert-primary d-flex align-items-center gap-3 py-2 mb-4">
@@ -253,6 +257,7 @@
 
         <!-- ══ PASO 3: VISTA PREVIA ═══════════════════════════════════════════ -->
         <div *ngIf="step==='preview'" class="p-4">
+          <div *ngIf="importKind==='explosion'" class="table-responsive" style="max-height:430px"><table class="table table-sm table-hover"><thead><tr><th>Clave</th><th>Descripción</th><th>Unidad</th><th>Cantidad</th><th>P.U.</th><th>Tipo</th></tr></thead><tbody><tr *ngFor="let r of explosionRows"><td>{{r.clave}}</td><td>{{r.descripcion}}</td><td>{{r.unidad}}</td><td>{{r.cantidad}}</td><td>{{r.unitCost | currency:'MXN'}}</td><td><select class="form-select form-select-sm" [(ngModel)]="r.tipo"><option>MATERIAL</option><option>PERSONAL</option><option>EQUIPO</option><option>HERRAMIENTA</option><option>AUXILIAR</option><option>CONCEPTO</option></select></td></tr></tbody></table></div>
 
           <!-- KPIs -->
           <div class="row g-2 mb-3">
@@ -414,10 +419,11 @@
               </span>
             </span>
           </div>
-          <button class="btn btn-success" [disabled]="okCount===0" (click)="saveToDatabase()">
+          <button *ngIf="importKind==='program'" class="btn btn-success" [disabled]="okCount===0" (click)="saveToDatabase()">
             <i class="bi bi-cloud-upload me-1"></i>
             Importar {{ okCount }} tarea{{ okCount !== 1 ? 's' : '' }}
           </button>
+          <button *ngIf="importKind==='explosion'" class="btn btn-success" [disabled]="!explosionRows.length || isSavingExplosion" (click)="saveExplosion()"><span *ngIf="isSavingExplosion" class="spinner-border spinner-border-sm me-1"></span>Guardar explosión</button>
         </ng-container>
 
         <!-- Done -->

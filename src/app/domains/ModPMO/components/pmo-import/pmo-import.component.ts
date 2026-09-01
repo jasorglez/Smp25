@@ -8,6 +8,10 @@ import { lastValueFrom }       from 'rxjs';
 import { WorkprogramsService } from 'app/services/workprograms.service';
 import { CatalogsService }     from 'app/services/catalogs.service';
 import { ConventionsService }  from 'app/services/conventions.service';
+import { AuxiliarService } from 'app/services/auxiliar.service';
+import { AuxiliarItemsService } from 'app/services/auxiliar-items.service';
+import { MaterialsService } from 'app/services/materials.service';
+import { EquipmentService } from 'app/services/equipment.service';
 
 // ── Tipos locales ─────────────────────────────────────────────────────────────
 interface TaskDraft {
@@ -30,6 +34,7 @@ interface TaskDraft {
 }
 
 interface ColMatch { field: string; column: string; }
+interface ExplosionDraft { clave:string; descripcion:string; unidad:string; cantidad:number; unitCost:number; tipo:string; }
 
 // ── Campos PMO con sinónimos ──────────────────────────────────────────────────
 const PMO_FIELDS: { key: keyof TaskDraft; label: string; required: boolean; synonyms: string[] }[] = [
@@ -65,6 +70,10 @@ export class PmoImportComponent implements OnInit, OnChanges {
   private _wpService   = inject(WorkprogramsService);
   private _catService  = inject(CatalogsService);
   private _convService = inject(ConventionsService);
+  private _auxService = inject(AuxiliarService);
+  private _auxItemsService = inject(AuxiliarItemsService);
+  private _materialsService = inject(MaterialsService);
+  private _equipmentService = inject(EquipmentService);
 
   // ── Convenios ────────────────────────────────────────────────────────────
   conventions:       any[]  = [];
@@ -74,6 +83,9 @@ export class PmoImportComponent implements OnInit, OnChanges {
   // ── Estado general ───────────────────────────────────────────────────────
   step: 'upload' | 'map' | 'preview' | 'saving' | 'done' = 'upload';
   importMode: 'replace' | 'merge' = 'replace';
+  importKind: 'program' | 'explosion' = 'program';
+  explosionRows: ExplosionDraft[] = [];
+  isSavingExplosion = false;
   isDragging   = false;
   isAnalyzing  = false;
   isSaving     = false;
@@ -185,6 +197,7 @@ export class PmoImportComponent implements OnInit, OnChanges {
     this.isAnalyzing = true;
     this.errorMsg    = '';
     try {
+      if (this.importKind === 'explosion') { await this.analyzeExplosion(this.selectedFile); return; }
       if (this.fileType === 'xml')   await this.analyzeXML(this.selectedFile);
       else if (this.fileType === 'xer') await this.analyzeXER(this.selectedFile);
       else                           await this.analyzeExcel(this.selectedFile);
@@ -193,6 +206,29 @@ export class PmoImportComponent implements OnInit, OnChanges {
     } finally {
       this.isAnalyzing = false;
     }
+  }
+
+  private async analyzeExplosion(file: File): Promise<void> {
+    const wb=await this.readWorkbook(file), ws=wb.Sheets[wb.SheetNames[0]];
+    const norm=(v:any)=>String(v??'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().trim();
+    const num=(v:any)=>{const s=String(v??'').replace(/[$%\s]/g,'');return Number(s.includes(',')&&s.includes('.')?s.replace(/\./g,'').replace(',','.'):s.replace(',','.'))||0;};
+    const raw=XLSX.utils.sheet_to_json<any>(ws,{defval:'',raw:false});
+    this.explosionRows=raw.map((x:any)=>{const v:any={};Object.entries(x).forEach(([k,val])=>v[norm(k)]=val);const d=String(v.descripcion||'').trim();if(!d&&!v.clave)return null;const t=norm(`${v.clave} ${d} ${v.unidad} ${v.familia} ${v.tipo}`);let tipo='CONCEPTO';if(/personal|mano de obra|peon|ayudante|albanil|cadenero|velador|carpintero|fierrero|topografo|jor\b/.test(t))tipo='PERSONAL';else if(/equipo|revolvedora|vibrador|estacion total|demoledor|karcher|renta|maquina|\b(hr|hora)\b/.test(t))tipo='EQUIPO';else if(/herr|herramienta|pala|espatula|barreta|rodillo|casco|guante|arnes|plomada/.test(t))tipo='HERRAMIENTA';else if(/auxiliar|preliminar|drenaje|electrific|alumbrado|planta de tratamiento|agua potable|pavimento|carpeta asfaltica|banqueta|fibra optica|tanque elevado/.test(t))tipo='AUXILIAR';else if(/material|insumo|cemento|arena|grava|varilla|acero|mortero|concreto|polietileno|madera|pintura|sanitario/.test(t))tipo='MATERIAL';return {clave:String(v.clave||''),descripcion:d,unidad:String(v.unidad||''),cantidad:num(v.cantidad),unitCost:num(v['p.u.']||v.pu||v['precio unitario']),tipo};}).filter(Boolean);
+    this.step='preview';
+  }
+
+  async saveExplosion(): Promise<void> {
+    if (!this.explosionRows.length || this.isSavingExplosion) return;
+    this.isSavingExplosion=true;
+    try {
+      const aux:any[]=await lastValueFrom(this._auxService.getByCompany(this.idCompany)).catch(()=>[]);
+      const mats:any[]=await lastValueFrom(this._materialsService.getMaterials(this.idCompany,'MATERIAL')).catch(()=>[]);
+      const eqs:any[]=await lastValueFrom(this._equipmentService.getEquipment(this.idCompany)).catch(()=>[]);
+      let current:any=null, linked=0;
+      const find=(a:any[],r:any)=>a.find(x=>(r.clave&&(x.clave||x.insumo||'').toLowerCase()===r.clave.toLowerCase())||(x.description||'').toLowerCase()===(r.descripcion||'').toLowerCase());
+      for(const r of this.explosionRows){ if(r.tipo==='AUXILIAR'){current=find(aux,r)||await lastValueFrom(this._auxService.add({idCompany:this.idCompany,description:r.descripcion,unit:r.unidad||'M2',costMN:r.unitCost,precioUnitario:r.unitCost,active:true,clave:r.clave||null}));current=current?.auxiliar||current;continue;} if(!current)current=find(aux,{descripcion:'Explosión de insumos importada'})||await lastValueFrom(this._auxService.add({idCompany:this.idCompany,description:'Explosión de insumos importada',unit:'M2',active:true}));let ref:any=null;if(r.tipo==='MATERIAL')ref=find(mats,r)||await lastValueFrom(this._materialsService.addMaterial({idCompany:this.idCompany,insumo:r.clave||null,description:r.descripcion,quantity:0,costoMN:r.unitCost,ventaMN:r.unitCost,active:true,vigente:true,typematerial:'CONSUMIBLE'}));else if(r.tipo==='EQUIPO')ref=find(eqs,r)||await lastValueFrom(this._equipmentService.addEquipment({idCompany:this.idCompany,description:r.descripcion,measure:r.unidad||'DIA',quantity:1,costMN:r.unitCost,priceMN:r.unitCost,active:true}));await lastValueFrom(this._auxItemsService.saveItem({idAuxiliar:Number(current.id),type:r.tipo==='HERRAMIENTA'?'HERR':r.tipo,idReference:Number(ref?.id)||null,description:r.descripcion,unit:r.unidad,quantity:r.cantidad,unitCost:r.unitCost,active:true}));linked++;}
+      this.savedCount=linked;this.step='done';this.saveStatus=`${linked} componentes asociados en la empresa ${this.idCompany}.`;
+    } catch(e:any){this.errorMsg=e?.message||'No fue posible guardar la explosión.';} finally{this.isSavingExplosion=false;}
   }
 
   // ── Analizar Excel / CSV ──────────────────────────────────────────────────
