@@ -40,17 +40,17 @@
       </select>
     </div>
 
-    <div class="col-md-3 d-flex gap-2 justify-content-end" *ngIf="allRows.length">
-      <button class="btn btn-sm btn-outline-secondary" (click)="expandAll()" title="Expandir todo">
+    <div class="col-md-3 d-flex gap-2 justify-content-end">
+      <button *ngIf="allRows.length" class="btn btn-sm btn-outline-secondary" (click)="expandAll()" title="Expandir todo">
         <i class="bi bi-arrows-expand"></i>
       </button>
-      <button class="btn btn-sm btn-outline-secondary" (click)="collapseAll()" title="Colapsar todo">
+      <button *ngIf="allRows.length" class="btn btn-sm btn-outline-secondary" (click)="collapseAll()" title="Colapsar todo">
         <i class="bi bi-arrows-collapse"></i>
       </button>
-      <button class="btn btn-sm btn-outline-primary" (click)="loadProgram()" title="Actualizar">
+      <button *ngIf="allRows.length" class="btn btn-sm btn-outline-primary" (click)="loadProgram()" title="Actualizar">
         <i class="bi bi-arrow-clockwise"></i>
       </button>
-      <button class="btn btn-sm btn-outline-success" (click)="exportXLS()" title="Exportar Excel">
+      <button *ngIf="allRows.length" class="btn btn-sm btn-outline-success" (click)="exportXLS()" title="Exportar Excel">
         <i class="bi bi-file-earmark-excel"></i>
       </button>
       <button class="btn btn-sm btn-warning text-dark" (click)="openImport()" title="Importar programa"
@@ -181,6 +181,9 @@
     <p class="small mb-3">Crea las actividades manualmente o importa desde Excel, MS Project o Primavera P6.</p>
     <button class="btn btn-warning text-dark" (click)="openImport()">
       <i class="bi bi-cloud-upload me-1"></i> Importar programa de trabajo
+    </button>
+    <button class="btn btn-success ms-2" (click)="createExampleProgram()">
+      <i class="bi bi-magic me-1"></i> Crear programa de ejemplo (5 actividades)
     </button>
   </div>
 
