@@ -1,6 +1,7 @@
 
 import { Component, effect, inject, TemplateRef, ViewChild } from '@angular/core';
 import { RouterOutlet } from '@angular/router';
+import { FormsModule } from '@angular/forms';
 import { NgbModal, NgbModalOptions } from '@ng-bootstrap/ng-bootstrap';
 import { DomainsModule } from 'app/domains/domainsmodule';
 import { FollowprojectsService } from '../../../../services/followprojects.service';
@@ -54,7 +55,7 @@ export function noDefaultValueValidator(): ValidatorFn {
 @Component({
   selector: 'app-projects',
   standalone: true,
-  imports: [DomainsModule],
+  imports: [DomainsModule, FormsModule],
   templateUrl: './projects.component.html',
   styleUrl: './projects.component.scss'
 })
