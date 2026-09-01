@@ -237,7 +237,7 @@ export class PmoImportComponent implements OnInit, OnChanges {
         if (r.tipo === 'AUXILIAR') { current = find(aux, r) || await lastValueFrom(this._auxService.add({ idCompany: this.idCompany, description: r.descripcion, unit: r.unidad || 'M2', costMN: r.unitCost, precioUnitario: r.unitCost, active: true, clave: r.clave || null })); current = current?.auxiliar || current; continue; }
         if (!current) current = find(aux, { descripcion: 'Explosión de insumos importada' }) || await lastValueFrom(this._auxService.add({ idCompany: this.idCompany, description: 'Explosión de insumos importada', unit: 'M2', active: true }));
         const itemType = r.tipo === 'HERRAMIENTA' ? 'HERR' : r.tipo;
-        const auxId = Number(current?.id ?? current?.Id ?? 0); if (!auxId) continue;
+        const auxId = Number(current?.id ?? current?.Id ?? current?.idAuxiliar ?? current?.IdAuxiliar ?? 0); if (!auxId) continue;
         if (r.tipo === 'PERSONAL') { await lastValueFrom(this._auxItemsService.saveCuadrilla({ idAuxiliar: auxId, idCompany: this.idCompany, name: r.descripcion, cantidad: r.cantidad || 1, sortOrder: linked, active: true })); linked++; continue; }
         if (!['MATERIAL', 'EQUIPO', 'HERR'].includes(itemType)) continue;
         let ref: any = null;
