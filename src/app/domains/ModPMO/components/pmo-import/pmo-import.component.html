@@ -257,6 +257,7 @@
 
         <!-- ══ PASO 3: VISTA PREVIA ═══════════════════════════════════════════ -->
         <div *ngIf="step==='preview'" class="p-4">
+          <div *ngIf="importNotices.length" class="alert alert-warning small"><strong>Importación parcial:</strong><ul class="mb-0"><li *ngFor="let notice of importNotices">{{ notice }}</li></ul></div>
           <div *ngIf="importKind==='explosion'" class="table-responsive" style="max-height:430px"><table class="table table-sm table-hover"><thead><tr><th>Clave</th><th>Descripción</th><th>Unidad</th><th>Cantidad</th><th>P.U.</th><th>Tipo</th></tr></thead><tbody><tr *ngFor="let r of explosionRows"><td>{{r.clave}}</td><td>{{r.descripcion}}</td><td>{{r.unidad}}</td><td>{{r.cantidad}}</td><td>{{r.unitCost | currency:'MXN'}}</td><td><select class="form-select form-select-sm" [(ngModel)]="r.tipo"><option>MATERIAL</option><option>PERSONAL</option><option>EQUIPO</option><option>HERRAMIENTA</option><option>AUXILIAR</option><option>CONCEPTO</option></select></td></tr></tbody></table></div>
 
           <!-- KPIs -->

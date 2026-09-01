@@ -112,6 +112,7 @@ export class PmoImportComponent implements OnInit, OnChanges {
   saveStatus   = '';
   savedCount   = 0;
   saveErrors:  string[] = [];
+  importNotices: string[] = [];
 
   readonly fields = PMO_FIELDS;
 
@@ -196,6 +197,7 @@ export class PmoImportComponent implements OnInit, OnChanges {
     if (!this.selectedFile) return;
     this.isAnalyzing = true;
     this.errorMsg    = '';
+    this.importNotices = [];
     try {
       if (this.importKind === 'explosion') { await this.analyzeExplosion(this.selectedFile); return; }
       if (this.fileType === 'xml')   await this.analyzeXML(this.selectedFile);
@@ -239,16 +241,16 @@ export class PmoImportComponent implements OnInit, OnChanges {
         if (!current) current = find(aux, { descripcion: 'Explosión de insumos importada' }) || await lastValueFrom(this._auxService.add({ idCompany: this.idCompany, description: 'Explosión de insumos importada', unit: 'M2', active: true }));
         const itemType = r.tipo === 'HERRAMIENTA' ? 'HERR' : r.tipo;
         const auxId = Number(current?.id ?? current?.Id ?? current?.idAuxiliar ?? current?.IdAuxiliar ?? 0); if (!auxId) continue;
-        if (r.tipo === 'PERSONAL') { try { await lastValueFrom(this._auxItemsService.saveCuadrilla({ idAuxiliar: auxId, idCompany: this.idCompany, name: r.descripcion, cantidad: r.cantidad || 1, sortOrder: linked, active: true })); linked++; } catch (error) { console.warn('Personal omitido durante importación:', r.descripcion, error); } continue; }
+        if (r.tipo === 'PERSONAL') { try { await lastValueFrom(this._auxItemsService.saveCuadrilla({ idAuxiliar: auxId, idCompany: this.idCompany, name: r.descripcion, cantidad: r.cantidad || 1, sortOrder: linked, active: true })); linked++; } catch (error) { this.importNotices.push(`Personal omitido: ${r.descripcion}.`); } continue; }
         if (!['MATERIAL', 'EQUIPO', 'HERR'].includes(itemType)) continue;
         let ref: any = null;
         if (r.tipo === 'MATERIAL') ref = find(mats, r) || await lastValueFrom(this._materialsService.addMaterial({ idCompany: this.idCompany, insumo: r.clave || null, description: r.descripcion, quantity: 0, costoMN: r.unitCost, ventaMN: r.unitCost, active: true, vigente: true, typematerial: 'CONSUMIBLE' }));
         else if (r.tipo === 'EQUIPO') ref = find(eqs, r) || await lastValueFrom(this._equipmentService.addEquipment({ idCompany: this.idCompany, description: r.descripcion, measure: r.unidad || 'DIA', quantity: 1, idTypeEquipment: defaultTypeEquipment, costMN: r.unitCost, priceMN: r.unitCost, active: true }));
         await lastValueFrom(this._auxItemsService.saveItem({ idAuxiliar: auxId, type: itemType, idReference: Number(ref?.id ?? ref?.Id) || null, description: r.descripcion, unit: r.unidad, quantity: r.cantidad, unitCost: r.unitCost, active: true })); linked++;
-        } catch (error) { console.warn('Registro omitido durante importación:', r.descripcion, error); }
+        } catch (error) { this.importNotices.push(`Registro omitido: ${r.descripcion}. La importación continúa.`); }
       }
       this.savedCount=linked;this.step='done';this.saveStatus=`${linked} componentes asociados en la empresa ${this.idCompany}.`;
-    } catch(e:any){this.errorMsg=e?.message||'No fue posible guardar la explosión.';} finally{this.isSavingExplosion=false;}
+    } catch(e:any){this.errorMsg='No fue posible completar la importación. Revisa los avisos y vuelve a intentar.';} finally{this.isSavingExplosion=false;}
   }
 
   // ── Analizar Excel / CSV ──────────────────────────────────────────────────
