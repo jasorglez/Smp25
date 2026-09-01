@@ -225,8 +225,12 @@ export class PmoImportComponent implements OnInit, OnChanges {
       const mats:any[]=await lastValueFrom(this._materialsService.getMaterials(this.idCompany,'MATERIAL')).catch(()=>[]);
       const eqs:any[]=await lastValueFrom(this._equipmentService.getEquipment(this.idCompany)).catch(()=>[]);
       const types:any[]=await lastValueFrom(this._catService.getTypeEquipment(this.idCompany,'TYPEEQUIPMENT')).catch(()=>[]);
-      const defaultTypeEquipment=Number(types?.[0]?.id??types?.[0]?.Id??0)||null;
-      if (!defaultTypeEquipment) throw new Error('La empresa no tiene un tipo de equipo configurado. Registra uno en el catálogo de equipos e inténtalo de nuevo.');
+      let defaultTypeEquipment=Number(types?.[0]?.id??types?.[0]?.Id??0)||null;
+      if (!defaultTypeEquipment) {
+        const created:any = await lastValueFrom(this._catService.addCatalogToSmp({ idCompany: this.idCompany, description: 'Equipo importado', type: 'TYPEEQUIPMENT', active: 1, vigente: true }));
+        defaultTypeEquipment=Number(created?.id??created?.Id??created?.catalog?.id??0)||null;
+      }
+      if (!defaultTypeEquipment) throw new Error('No fue posible crear el tipo de equipo para la empresa.');
       let current:any=null, linked=0;
       const find=(a:any[],r:any)=>a.find(x=>(r.clave&&(x.clave||x.insumo||'').toLowerCase()===r.clave.toLowerCase())||(x.description||'').toLowerCase()===(r.descripcion||'').toLowerCase());
       for (const r of this.explosionRows) {
