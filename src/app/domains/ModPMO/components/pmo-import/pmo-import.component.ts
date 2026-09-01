@@ -12,6 +12,7 @@ import { AuxiliarService } from 'app/services/auxiliar.service';
 import { AuxiliarItemsService } from 'app/services/auxiliar-items.service';
 import { MaterialsService } from 'app/services/materials.service';
 import { EquipmentService } from 'app/services/equipment.service';
+import { EmployeesService } from 'app/services/employees.service';
 
 // ── Tipos locales ─────────────────────────────────────────────────────────────
 interface TaskDraft {
@@ -74,6 +75,7 @@ export class PmoImportComponent implements OnInit, OnChanges {
   private _auxItemsService = inject(AuxiliarItemsService);
   private _materialsService = inject(MaterialsService);
   private _equipmentService = inject(EquipmentService);
+  private _employeesService = inject(EmployeesService);
 
   // ── Convenios ────────────────────────────────────────────────────────────
   conventions:       any[]  = [];
@@ -241,7 +243,7 @@ export class PmoImportComponent implements OnInit, OnChanges {
         if (!current) current = find(aux, { descripcion: 'Explosión de insumos importada' }) || await lastValueFrom(this._auxService.add({ idCompany: this.idCompany, description: 'Explosión de insumos importada', unit: 'M2', active: true }));
         const itemType = r.tipo === 'HERRAMIENTA' ? 'HERR' : r.tipo;
         const auxId = Number(current?.id ?? current?.Id ?? current?.idAuxiliar ?? current?.IdAuxiliar ?? 0); if (!auxId) continue;
-        if (r.tipo === 'PERSONAL') { try { await lastValueFrom(this._auxItemsService.saveCuadrilla({ idAuxiliar: auxId, idCompany: this.idCompany, name: r.descripcion, cantidad: r.cantidad || 1, sortOrder: linked, active: true })); linked++; } catch (error) { try { await lastValueFrom(this._auxItemsService.saveItem({ idAuxiliar: auxId, type: 'PERSONAL', idReference: null, description: r.descripcion, unit: r.unidad || 'JOR', quantity: r.cantidad || 1, unitCost: r.unitCost, active: true })); linked++; } catch (fallbackError) { this.importNotices.push(`Personal no registrado: ${r.descripcion}.`); } } continue; }
+        if (r.tipo === 'PERSONAL') { try { const raw:any = await lastValueFrom(this._employeesService.getEmployees(-Math.abs(this.idCompany))).catch(() => []); const employees:any[] = Array.isArray(raw) ? raw : []; const employee = employees.find(e => String(e.name ?? '').trim().toLowerCase() === r.descripcion.toLowerCase()) || await lastValueFrom(this._employeesService.addEmployee({ name: r.descripcion, employeeCode: `EXP${Date.now().toString().slice(-7)}`, idBranch: -Math.abs(this.idCompany), idDepto: 0, idPosition: null, idBank: null, priceXHour: 0, vigente: true, active: true, ingressDate: new Date().toISOString().substring(0, 10) })); if (employee) linked++; } catch (error) { this.importNotices.push(`Personal no registrado: ${r.descripcion}.`); } continue; }
         if (!['MATERIAL', 'EQUIPO', 'HERR'].includes(itemType)) { this.importNotices.push(`No se pudo asignar un catálogo a: ${r.descripcion}. Tipo detectado: ${r.tipo}.`); continue; }
         let ref: any = null;
         if (r.tipo === 'MATERIAL') ref = find(mats, r) || await lastValueFrom(this._materialsService.addMaterial({ idCompany: this.idCompany, insumo: r.clave || null, description: r.descripcion, quantity: 0, costoMN: r.unitCost, ventaMN: r.unitCost, active: true, vigente: true, typematerial: 'CONSUMIBLE' }));
