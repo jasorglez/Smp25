@@ -232,13 +232,14 @@ export class PmoImportComponent implements OnInit, OnChanges {
       const categories:any[]=await lastValueFrom(this._catService.getCatalogs(this.idCompany,'Category')).catch(()=>[]);
       const families:any[]=await lastValueFrom(this._catService.getCatalogs(this.idCompany,'Family')).catch(()=>[]);
       const subfamilies:any[]=await lastValueFrom(this._catService.getCatalogs(this.idCompany,'Subfamily')).catch(()=>[]);
+      const catalogId=(x:any)=>Number(x?.id??x?.Id??x?.data?.id??x?.catalog?.id??0)||0;
       let category=categories.find(x=>String(x.description||'').toLowerCase()==='importado')||categories[0];
       if(!category) category=await lastValueFrom(this._catService.addCatalog({idCompany:this.idCompany,description:'Importado',type:'Category',active:1,vigente:true}));
       let family=families.find(x=>String(x.description||'').toLowerCase()==='explosion de insumos')||families[0];
       if(!family) family=await lastValueFrom(this._catService.addCatalog({idCompany:this.idCompany,description:'Explosión de insumos',type:'Family',parentId:category?.id||category?.Id||null,active:1,vigente:true}));
       let subfamily=subfamilies.find(x=>String(x.description||'').toLowerCase()==='generico importado')||subfamilies[0];
       if(!subfamily) subfamily=await lastValueFrom(this._catService.addCatalog({idCompany:this.idCompany,description:'Genérico importado',type:'Subfamily',parentId:family?.id||family?.Id||null,active:1,vigente:true}));
-      const catalogIds={idCategory:Number(category?.id??category?.Id??0),idFamilia:Number(family?.id??family?.Id??0),idSubfamilia:Number(subfamily?.id??subfamily?.Id??0)};
+      const catalogIds={idCategory:catalogId(category),idFamilia:catalogId(family),idSubfamilia:catalogId(subfamily)};
       const eqs:any[]=await lastValueFrom(this._equipmentService.getEquipment(this.idCompany)).catch(()=>[]);
       const types:any[]=await lastValueFrom(this._catService.getTypeEquipment(this.idCompany,'TYPEEQUIPMENT')).catch(()=>[]);
       let defaultTypeEquipment=Number(types?.[0]?.id??types?.[0]?.Id??0)||null;
@@ -249,6 +250,13 @@ export class PmoImportComponent implements OnInit, OnChanges {
       if (!defaultTypeEquipment) throw new Error('No fue posible crear el tipo de equipo para la empresa.');
       let current:any=null, linked=0;
       const find=(a:any[],r:any)=>a.find(x=>(r.clave&&(x.clave||x.insumo||'').toLowerCase()===r.clave.toLowerCase())||(x.description||'').toLowerCase()===(r.descripcion||'').toLowerCase());
+      // Primero garantiza el programa de trabajo; los recursos no deben bloquearlo.
+      if (this.idProject && this.explosionRows.length) {
+        const existing:any[] = await lastValueFrom(this._wpService.getWorkPrograms(this.idProject, this.typeWP)).catch(() => []);
+        const known = new Set((existing || []).map(x => String(x.activity ?? x.text ?? x.description ?? '').trim().toLowerCase()));
+        const activities = this.explosionRows.filter(r => r.descripcion && !known.has(r.descripcion.toLowerCase())).map((r, i) => ({ idProject: this.idProject, idConvention: this.selectedConvention?.id ?? null, activity: r.clave || `EXP-${i + 1}`, text: r.descripcion, description: r.descripcion, quantity: r.cantidad || 0, costMX: r.unitCost || 0, progress: 0, parent: 0, sortorder: i, active: 1, type: this.typeWP, typeActivity: 'Activity', measure: r.unidad || null }));
+        if (activities.length) await lastValueFrom(this._wpService.addWorkProgramBatch(activities));
+      }
       for (const r of this.explosionRows) {
         try {
         if (r.tipo === 'AUXILIAR') { current = find(aux, r) || await lastValueFrom(this._auxService.add({ idCompany: this.idCompany, description: r.descripcion, unit: r.unidad || 'M2', costMN: r.unitCost, precioUnitario: r.unitCost, active: true, clave: r.clave || null })); current = current?.auxiliar || current; continue; }
