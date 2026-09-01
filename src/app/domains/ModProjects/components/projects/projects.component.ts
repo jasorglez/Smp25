@@ -387,7 +387,7 @@ export class ProjectsComponent {
     const contractLimit = Number(contract?.amountMx ?? contract?.amountMX ?? contract?.amount ?? 0);
     const projectLimit = Number(project.budgetManagement ?? project.budget ?? project.amount ?? 0) || (contractLimit / Math.max(1, (this.project ?? []).filter(p => Number(p.idContrato) === Number(project.idContrato)).length));
     const resourceCost = Object.values(byType).reduce((sum: number, v: any) => sum + Number(v), 0);
-    this.budgetDashboard = { project, contract, contractLimit, projectLimit, programCost, resourceCost, total: programCost + resourceCost, byType };
+    this.budgetDashboard = { project, contract, contractLimit, projectLimit, programCost, resourceCost, total: programCost + resourceCost, byType, resources };
     this.showBudgetDashboard = true;
   }
 
@@ -407,6 +407,10 @@ export class ProjectsComponent {
 
   resourceMatches(key: string | number | symbol): boolean {
     return this.resourceTypeFilter === 'Todos' || String(key).endsWith(`· ${this.resourceTypeFilter}`);
+  }
+
+  resourceRowMatches(row: any): boolean {
+    return this.resourceTypeFilter === 'Todos' || String(row?.tipo ?? row?.type ?? '').toLowerCase() === this.resourceTypeFilter.toLowerCase();
   }
 
   onGridReady(params: GridReadyEvent): void {

@@ -67,9 +67,9 @@
           </select>
         </div>
         <div class="table-responsive">
-          <table class="table table-sm align-middle mb-0"><thead><tr><th>Recurso</th><th class="text-end">Costo planeado</th></tr></thead><tbody>
-            <tr *ngFor="let item of (d.byType | keyvalue)" [hidden]="!resourceMatches(item.key)"><td>{{ item.key }}</td><td class="text-end">{{ item.value | currency:'MXN' }}</td></tr>
-            <tr *ngIf="!d.resourceCost"><td colspan="2" class="text-muted">Aún no hay recursos PMO registrados.</td></tr>
+          <table class="table table-sm align-middle mb-0"><thead><tr><th>Especialidad</th><th>Tipo</th><th>Recurso</th><th class="text-end">Cantidad</th><th class="text-end">Costo planeado</th></tr></thead><tbody>
+            <tr *ngFor="let r of d.resources" [hidden]="!resourceRowMatches(r)"><td>{{ r.especialidad || 'General' }}</td><td>{{ r.tipo }}</td><td>{{ r.descripcion }}</td><td class="text-end">{{ r.cantPlan }}</td><td class="text-end">{{ (r.cantPlan * r.costoUnitPlan) | currency:'MXN' }}</td></tr>
+            <tr *ngIf="!d.resources?.length"><td colspan="5" class="text-muted">Aún no hay recursos PMO registrados.</td></tr>
           </tbody></table>
         </div>
         <small class="text-muted">El límite se toma del presupuesto del proyecto; si no existe, se distribuye el monto del contrato entre sus proyectos.</small>
