@@ -14,6 +14,7 @@ import { MaterialsService } from 'app/services/materials.service';
 import { EquipmentService } from 'app/services/equipment.service';
 import { EmployeesService } from 'app/services/employees.service';
 import { SignalsService } from 'app/services/signals.service';
+import { PosicionesService } from 'app/services/posiciones.service';
 
 // ── Tipos locales ─────────────────────────────────────────────────────────────
 interface TaskDraft {
@@ -78,6 +79,7 @@ export class PmoImportComponent implements OnInit, OnChanges {
   private _equipmentService = inject(EquipmentService);
   private _employeesService = inject(EmployeesService);
   private _signalsService = inject(SignalsService);
+  private _positionsService = inject(PosicionesService);
 
   // ── Convenios ────────────────────────────────────────────────────────────
   conventions:       any[]  = [];
@@ -263,7 +265,18 @@ export class PmoImportComponent implements OnInit, OnChanges {
         if (!current) current = find(aux, { descripcion: 'Explosión de insumos importada' }) || await lastValueFrom(this._auxService.add({ idCompany: this.idCompany, description: 'Explosión de insumos importada', unit: 'M2', active: true }));
         const itemType = r.tipo === 'HERRAMIENTA' ? 'HERR' : r.tipo;
         const auxId = Number(current?.id ?? current?.Id ?? current?.idAuxiliar ?? current?.IdAuxiliar ?? 0); if (!auxId) continue;
-        if (r.tipo === 'PERSONAL') { try { const branchId = Number(this._signalsService.getBranchSelectedBySidebar()() || 0); if (!branchId) throw new Error('No hay sucursal seleccionada'); const raw:any = await lastValueFrom(this._employeesService.getEmployees(branchId)).catch(() => []); const employees:any[] = Array.isArray(raw) ? raw : []; const employee = employees.find(e => String(e.name ?? '').trim().toLowerCase() === r.descripcion.toLowerCase()) || await lastValueFrom(this._employeesService.addEmployee({ name: r.descripcion, employeeCode: `EXP${Date.now().toString().slice(-7)}`, idBranch: branchId, idDepto: 0, idPosition: null, idBank: null, priceXHour: 0, vigente: true, active: true, ingressDate: new Date().toISOString().substring(0, 10) })); if (employee) linked++; } catch (error) { this.importNotices.push(`Personal no registrado: ${r.descripcion}. Selecciona una sucursal válida.`); } continue; }
+        if (r.tipo === 'PERSONAL') {
+          try {
+            const branchId = Number(this._signalsService.getBranchSelectedBySidebar()() || 0); if (!branchId) throw new Error('No hay sucursal seleccionada');
+            const positionsRaw:any = await lastValueFrom(this._positionsService.getPositionsByCompany(this.idCompany)).catch(() => []);
+            const positions:any[] = Array.isArray(positionsRaw) ? positionsRaw : [];
+            let position = positions.find(p => String(p.description ?? '').trim().toLowerCase() === r.descripcion.toLowerCase());
+            if (!position) position = await lastValueFrom(this._positionsService.addPosition({ idCompany: this.idCompany, idRoles: null, description: r.descripcion, active: true }));
+            const positionId = Number(position?.id ?? position?.Id ?? 0) || null; if (!positionId) throw new Error('No se pudo crear la posición');
+            const raw:any = await lastValueFrom(this._employeesService.getEmployees(branchId)).catch(() => []); const employees:any[] = Array.isArray(raw) ? raw : [];
+            const employee = employees.find(e => String(e.name ?? '').trim().toLowerCase() === r.descripcion.toLowerCase()) || await lastValueFrom(this._employeesService.addEmployee({ name: r.descripcion, employeeCode: `EXP${Date.now().toString().slice(-7)}`, idBranch: branchId, idDepto: null, idPosition: positionId, idBank: null, priceXHour: 0, vigente: true, active: true, ingressDate: new Date().toISOString().substring(0, 10) })); if (employee) linked++;
+          } catch (error) { this.importNotices.push(`Personal no registrado: ${r.descripcion}.`); } continue;
+        }
         if (!['MATERIAL', 'EQUIPO', 'HERR'].includes(itemType)) { this.importNotices.push(`No se pudo asignar un catálogo a: ${r.descripcion}. Tipo detectado: ${r.tipo}.`); continue; }
         let ref: any = null;
         if (r.tipo === 'MATERIAL') { ref = find(mats, r); if (ref) { if (!ref.idCategory || !ref.idFamilia || !ref.idSubfamilia) await lastValueFrom(this._materialsService.updateMaterial(String(ref.id), {...ref, ...catalogIds})); } else ref = await lastValueFrom(this._materialsService.addMaterial({ idCompany: this.idCompany, insumo: r.clave || null, description: r.descripcion, ...catalogIds, quantity: 0, costoMN: r.unitCost, ventaMN: r.unitCost, active: true, vigente: true, typematerial: 'CONSUMIBLE' })); }
