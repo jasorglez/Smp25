@@ -227,6 +227,16 @@ export class PmoImportComponent implements OnInit, OnChanges {
     try {
       const aux:any[]=await lastValueFrom(this._auxService.getByCompany(this.idCompany)).catch(()=>[]);
       const mats:any[]=await lastValueFrom(this._materialsService.getMaterials(this.idCompany,'MATERIAL')).catch(()=>[]);
+      const categories:any[]=await lastValueFrom(this._catService.getCatalogs(this.idCompany,'Category')).catch(()=>[]);
+      const families:any[]=await lastValueFrom(this._catService.getCatalogs(this.idCompany,'Family')).catch(()=>[]);
+      const subfamilies:any[]=await lastValueFrom(this._catService.getCatalogs(this.idCompany,'Subfamily')).catch(()=>[]);
+      let category=categories.find(x=>String(x.description||'').toLowerCase()==='importado')||categories[0];
+      if(!category) category=await lastValueFrom(this._catService.addCatalog({idCompany:this.idCompany,description:'Importado',type:'Category',active:1,vigente:true}));
+      let family=families.find(x=>String(x.description||'').toLowerCase()==='explosion de insumos')||families[0];
+      if(!family) family=await lastValueFrom(this._catService.addCatalog({idCompany:this.idCompany,description:'Explosión de insumos',type:'Family',parentId:category?.id||category?.Id||null,active:1,vigente:true}));
+      let subfamily=subfamilies.find(x=>String(x.description||'').toLowerCase()==='generico importado')||subfamilies[0];
+      if(!subfamily) subfamily=await lastValueFrom(this._catService.addCatalog({idCompany:this.idCompany,description:'Genérico importado',type:'Subfamily',parentId:family?.id||family?.Id||null,active:1,vigente:true}));
+      const catalogIds={idCategory:Number(category?.id??category?.Id??0),idFamilia:Number(family?.id??family?.Id??0),idSubfamilia:Number(subfamily?.id??subfamily?.Id??0)};
       const eqs:any[]=await lastValueFrom(this._equipmentService.getEquipment(this.idCompany)).catch(()=>[]);
       const types:any[]=await lastValueFrom(this._catService.getTypeEquipment(this.idCompany,'TYPEEQUIPMENT')).catch(()=>[]);
       let defaultTypeEquipment=Number(types?.[0]?.id??types?.[0]?.Id??0)||null;
@@ -246,7 +256,7 @@ export class PmoImportComponent implements OnInit, OnChanges {
         if (r.tipo === 'PERSONAL') { try { const raw:any = await lastValueFrom(this._employeesService.getEmployees(-Math.abs(this.idCompany))).catch(() => []); const employees:any[] = Array.isArray(raw) ? raw : []; const employee = employees.find(e => String(e.name ?? '').trim().toLowerCase() === r.descripcion.toLowerCase()) || await lastValueFrom(this._employeesService.addEmployee({ name: r.descripcion, employeeCode: `EXP${Date.now().toString().slice(-7)}`, idBranch: -Math.abs(this.idCompany), idDepto: 0, idPosition: null, idBank: null, priceXHour: 0, vigente: true, active: true, ingressDate: new Date().toISOString().substring(0, 10) })); if (employee) linked++; } catch (error) { this.importNotices.push(`Personal no registrado: ${r.descripcion}.`); } continue; }
         if (!['MATERIAL', 'EQUIPO', 'HERR'].includes(itemType)) { this.importNotices.push(`No se pudo asignar un catálogo a: ${r.descripcion}. Tipo detectado: ${r.tipo}.`); continue; }
         let ref: any = null;
-        if (r.tipo === 'MATERIAL') ref = find(mats, r) || await lastValueFrom(this._materialsService.addMaterial({ idCompany: this.idCompany, insumo: r.clave || null, description: r.descripcion, quantity: 0, costoMN: r.unitCost, ventaMN: r.unitCost, active: true, vigente: true, typematerial: 'CONSUMIBLE' }));
+        if (r.tipo === 'MATERIAL') { ref = find(mats, r); if (ref) { if (!ref.idCategory || !ref.idFamilia || !ref.idSubfamilia) await lastValueFrom(this._materialsService.updateMaterial(String(ref.id), {...ref, ...catalogIds})); } else ref = await lastValueFrom(this._materialsService.addMaterial({ idCompany: this.idCompany, insumo: r.clave || null, description: r.descripcion, ...catalogIds, quantity: 0, costoMN: r.unitCost, ventaMN: r.unitCost, active: true, vigente: true, typematerial: 'CONSUMIBLE' })); }
         else if (r.tipo === 'EQUIPO') ref = find(eqs, r) || await lastValueFrom(this._equipmentService.addEquipment({ idCompany: this.idCompany, description: r.descripcion, measure: r.unidad || 'DIA', quantity: 1, idTypeEquipment: defaultTypeEquipment, costMN: r.unitCost, priceMN: r.unitCost, active: true }));
         await lastValueFrom(this._auxItemsService.saveItem({ idAuxiliar: auxId, type: itemType, idReference: Number(ref?.id ?? ref?.Id) || null, description: r.descripcion, unit: r.unidad, quantity: r.cantidad, unitCost: r.unitCost, active: true })); linked++;
         } catch (error) { this.importNotices.push(`Registro omitido: ${r.descripcion}. La importación continúa.`); }
