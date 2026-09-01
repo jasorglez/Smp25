@@ -310,7 +310,36 @@ export class PmoProgramaComponent implements OnInit {
     const existing:any[] = await lastValueFrom(this._workprogramsService.getWorkPrograms(idProject, 'Project')).catch(() => []);
     if (existing?.length) { await this.loadProgram(); return; }
     const names = ['Inicio y preparación', 'Trazo y nivelación', 'Ejecución de trabajos', 'Control de calidad', 'Cierre y entrega'];
-    for (let i = 0; i < names.length; i++) await lastValueFrom(this._workprogramsService.addWorkProgram({ idProject, idConvention: null, activity: `EJ-${i + 1}`, text: names[i], description: names[i], startDate: new Date().toISOString().substring(0, 10), endDate: new Date(Date.now() + (i + 1) * 86400000 * 7).toISOString().substring(0, 10), progress: 0, parent: 0, sortorder: i, active: 1, type: 'Project', typeActivity: 'Activity', measure: null }));
+    for (let i = 0; i < names.length; i++) {
+      const payload = {
+        idContract: 0,
+        idProject,
+        idConvention: null,
+        idTask: 0,
+        type: 'Project',
+        criticroute: 'No',
+        parent: 0,
+        progress: 0,
+        activity: `EJ-${i + 1}`,
+        typeActivity: 'Activity',
+        text: names[i],
+        startDate: new Date().toISOString().substring(0, 10),
+        endDate: new Date(Date.now() + (i + 1) * 86400000 * 7).toISOString().substring(0, 10),
+        distribution: 0,
+        ponderado: 0,
+        measure: null,
+        predecesor: 0,
+        quantity: 0,
+        active: 1,
+        sortorder: i,
+      };
+      try {
+        await lastValueFrom(this._workprogramsService.addWorkProgram(payload));
+      } catch (error) {
+        console.error('Error creando programa de ejemplo', error, payload);
+        return;
+      }
+    }
     await this.loadProgram();
   }
 
