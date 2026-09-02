@@ -87,12 +87,17 @@
               <section class="phase-block" *ngFor="let phase of d.contractPhases">
                 <div class="phase-title"><i class="bi bi-layers me-2"></i>{{ phase.name }}</div>
                 <ng-container *ngFor="let activity of phase.activities">
-                  <label class="activity-row" *ngIf="contractActivityMatches(activity)" [class.activity-linked]="d.linkedSourceIds.has(activity.id)">
-                    <input type="checkbox" class="form-check-input" [checked]="selectedContractActivityIds.has(activity.id)" [disabled]="d.linkedSourceIds.has(activity.id)" (change)="toggleContractActivity(activity)">
-                    <span class="activity-code">{{ activity.activity || '—' }}</span>
-                    <span class="activity-description">{{ activity.text }}</span>
-                    <span class="activity-quantity">{{ activity.quantity | number:'1.0-2' }} {{ activity.measure }}</span>
-                    <span class="badge text-bg-success" *ngIf="d.linkedSourceIds.has(activity.id)">Asignada</span>
+                  <label class="project-activity contract-project-activity" *ngIf="contractActivityMatches(activity)" [class.activity-linked]="d.linkedSourceIds.has(activity.id)">
+                    <input type="checkbox" class="form-check-input mt-1" [checked]="selectedContractActivityIds.has(activity.id)" [disabled]="d.linkedSourceIds.has(activity.id)" (change)="toggleContractActivity(activity)">
+                    <span class="flex-grow-1">
+                      <span class="d-flex justify-content-between gap-2">
+                        <strong>{{ activity.activity || 'Actividad' }}</strong>
+                        <span class="activity-quantity">{{ activity.quantity | number:'1.0-2' }} {{ activity.measure }}</span>
+                      </span>
+                      <span class="d-block">{{ activity.text }}</span>
+                      <small class="text-muted">Actividad del contrato</small>
+                    </span>
+                    <span class="badge text-bg-success align-self-start" *ngIf="d.linkedSourceIds.has(activity.id)">Asignada</span>
                   </label>
                 </ng-container>
               </section>

@@ -81,6 +81,14 @@ ag-grid-angular {
   border-radius: .45rem;
   font-size: .82rem;
 }
+.contract-project-activity {
+  display: flex;
+  align-items: flex-start;
+  gap: .65rem;
+  cursor: pointer;
+}
+.contract-project-activity:hover { background: #f8fafc; }
+.contract-project-activity.activity-linked { cursor: default; background: #f0fdf4; }
 .empty-state { padding: 2rem 1rem; text-align: center; color: #64748b; }
 
 @media (max-width: 1199px) {
