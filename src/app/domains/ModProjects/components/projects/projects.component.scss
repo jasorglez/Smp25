@@ -9,9 +9,26 @@ ag-grid-angular {
 }
 
 .pmo-budget-panel {
-  position: sticky;
-  top: 0.5rem;
-  z-index: 20;
+  position: fixed;
+  top: 6rem;
+  right: 1rem;
+  width: min(42vw, 680px);
+  max-height: calc(100vh - 7rem);
+  overflow-y: auto;
+  z-index: 1030;
+  background: #fff;
+  border-radius: .5rem;
+}
+
+@media (max-width: 992px) {
+  .pmo-budget-panel {
+    position: relative;
+    top: auto;
+    right: auto;
+    width: auto;
+    max-height: none;
+    margin: 0 1rem;
+  }
 }
 
 .pmo-specialty-title {
