@@ -66,12 +66,21 @@
             <option>Todos</option><option>Material</option><option>Personal</option><option>Equipo</option><option>Herramienta</option><option>Auxiliar</option>
           </select>
         </div>
-        <div class="table-responsive">
-          <table class="table table-sm align-middle mb-0"><thead><tr><th>Especialidad</th><th>Tipo</th><th>Recurso</th><th class="text-end">Cantidad</th><th class="text-end">Costo planeado</th></tr></thead><tbody>
-            <tr *ngFor="let r of d.resources" [hidden]="!resourceRowMatches(r)"><td>{{ r.especialidad || 'General' }}</td><td>{{ r.tipo }}</td><td>{{ r.descripcion }}</td><td class="text-end">{{ r.cantPlan }}</td><td class="text-end">{{ (r.cantPlan * r.costoUnitPlan) | currency:'MXN' }}</td></tr>
-            <tr *ngIf="!d.resources?.length"><td colspan="5" class="text-muted">Aún no hay recursos PMO registrados.</td></tr>
-          </tbody></table>
+        <div class="pmo-resource-tree" *ngIf="d.resources?.length; else noPmoResources">
+          <section class="mb-2" *ngFor="let specialty of d.specialtyGroups">
+            <div class="pmo-specialty-title"><i class="bi bi-diagram-3 me-2"></i>{{ specialty.name }}</div>
+            <div class="ms-3" *ngFor="let section of specialty.sections">
+              <div class="pmo-type-title" *ngIf="resourceTypeFilter === 'Todos' || section.name.toLowerCase() === resourceTypeFilter.toLowerCase()">
+                <i class="bi bi-folder2-open me-2"></i>{{ section.name }}
+              </div>
+              <table class="table table-sm align-middle mb-2 ms-3" *ngIf="resourceTypeFilter === 'Todos' || section.name.toLowerCase() === resourceTypeFilter.toLowerCase()">
+                <thead><tr><th>Recurso</th><th>Unidad</th><th class="text-end">Cantidad</th><th class="text-end">Costo planeado</th></tr></thead>
+                <tbody><tr *ngFor="let r of section.rows"><td>{{ r.descripcion }}</td><td>{{ r.unidad }}</td><td class="text-end">{{ r.cantPlan }}</td><td class="text-end">{{ (r.cantPlan * r.costoUnitPlan) | currency:'MXN' }}</td></tr></tbody>
+              </table>
+            </div>
+          </section>
         </div>
+        <ng-template #noPmoResources><div class="text-muted py-3">Aún no hay recursos PMO registrados.</div></ng-template>
         <small class="text-muted">El límite se toma del presupuesto del proyecto; si no existe, se distribuye el monto del contrato entre sus proyectos.</small>
       </div>
     </div>

@@ -387,7 +387,18 @@ export class ProjectsComponent {
     const contractLimit = Number(contract?.amountMx ?? contract?.amountMX ?? contract?.amount ?? 0);
     const projectLimit = Number(project.budgetManagement ?? project.budget ?? project.amount ?? 0) || (contractLimit / Math.max(1, (this.project ?? []).filter(p => Number(p.idContrato) === Number(project.idContrato)).length));
     const resourceCost = Object.values(byType).reduce((sum: number, v: any) => sum + Number(v), 0);
-    this.budgetDashboard = { project, contract, contractLimit, projectLimit, programCost, resourceCost, total: programCost + resourceCost, byType, resources };
+    const specialtyGroups: any[] = [];
+    const specialtyMap = new Map<string, any>();
+    for (const resource of resources) {
+      const specialty = String(resource.especialidad ?? resource.specialty ?? 'General').trim() || 'General';
+      const type = String(resource.tipo ?? resource.type ?? 'Otros').trim() || 'Otros';
+      let group = specialtyMap.get(specialty);
+      if (!group) { group = { name: specialty, sections: [] }; specialtyMap.set(specialty, group); specialtyGroups.push(group); }
+      let section = group.sections.find((s: any) => s.name.toLowerCase() === type.toLowerCase());
+      if (!section) { section = { name: type, rows: [] }; group.sections.push(section); }
+      section.rows.push(resource);
+    }
+    this.budgetDashboard = { project, contract, contractLimit, projectLimit, programCost, resourceCost, total: programCost + resourceCost, byType, resources, specialtyGroups };
     this.showBudgetDashboard = true;
   }
 

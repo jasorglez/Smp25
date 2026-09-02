@@ -13,3 +13,19 @@ ag-grid-angular {
   top: 0.5rem;
   z-index: 20;
 }
+
+.pmo-specialty-title {
+  background: #e8f1ff;
+  border-left: 4px solid #0d6efd;
+  border-radius: 4px;
+  padding: .55rem .75rem;
+  font-weight: 700;
+  color: #174a8b;
+}
+.pmo-type-title {
+  padding: .4rem .6rem;
+  font-weight: 600;
+  color: #495057;
+  border-bottom: 1px solid #e9ecef;
+}
+.pmo-resource-tree table { font-size: .86rem; }
