@@ -67,7 +67,7 @@ export class ProjectsComponent {
 
     effect(() => {
       this.idCompany = this.signalsService.getRootSelectedBySidebar()();
-      this.getProjects();
+      if (this.idCompany && Number(this.idCompany) > 0) this.getProjects();
     })
   }
 
@@ -313,6 +313,10 @@ export class ProjectsComponent {
   }
 
   getProjects() {
+    if (!this.idCompany || Number(this.idCompany) <= 0) {
+      this.project = [];
+      return;
+    }
     this.projectsService.getProjectListByCompany(this.idCompany).subscribe(
       (resp: any) => {
         this.project = this.mapProject(resp);
