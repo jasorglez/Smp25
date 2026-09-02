@@ -735,11 +735,10 @@ error: (error) => {
   }
 
   private loadVigentePresupuesto(idCompany: number, idProject: number) {
-    if (!idCompany || !idProject) { this.presupuestoVigenteNombre = ''; return; }
-    this.presupuestoService.getVigente(idCompany, idProject).subscribe({
-      next: (p) => { this.presupuestoVigenteNombre = p ? p.nombre : ''; },
-      error: () => { this.presupuestoVigenteNombre = ''; }
-    });
+    // El endpoint de presupuesto vigente aún no está disponible en el servicio
+    // publicado. No realizar la llamada evita 404 repetidos en cada cambio del
+    // sidebar; cuando exista se habilita nuevamente aquí.
+    this.presupuestoVigenteNombre = '';
   }
 
   private loadPermissions() {
