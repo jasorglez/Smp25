@@ -90,6 +90,16 @@ ag-grid-angular {
 .contract-project-activity:hover { background: #f8fafc; }
 .contract-project-activity.activity-linked { cursor: default; background: #f0fdf4; }
 .empty-state { padding: 2rem 1rem; text-align: center; color: #64748b; }
+.unclassified-title {
+  padding: .5rem .65rem;
+  border-left: 4px solid #f59e0b;
+  border-radius: .35rem;
+  background: #fffbeb;
+  color: #92400e;
+  font-weight: 700;
+}
+.activity-actions, .quantity-editor { display: flex; align-items: end; gap: .4rem; flex-wrap: wrap; }
+.quantity-editor input { width: 130px; }
 
 @media (max-width: 1199px) {
   ag-grid-angular { height: 48vh; }

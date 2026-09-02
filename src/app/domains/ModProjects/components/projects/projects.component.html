@@ -98,8 +98,31 @@
                       <small class="text-muted">Actividad del contrato</small>
                     </span>
                     <span class="badge text-bg-success align-self-start" *ngIf="d.linkedSourceIds.has(activity.id)">Asignada</span>
+                    <button type="button" class="btn btn-sm btn-outline-success align-self-start" *ngIf="!d.linkedSourceIds.has(activity.id)" (click)="$event.preventDefault(); $event.stopPropagation(); addContractActivity(activity)" [disabled]="addingContractActivityId !== null">
+                      <span class="spinner-border spinner-border-sm" *ngIf="addingContractActivityId === activity.id"></span>
+                      <i class="bi bi-plus-lg" *ngIf="addingContractActivityId !== activity.id"></i> Agregar
+                    </button>
                   </label>
                 </ng-container>
+              </section>
+              <section class="phase-block" *ngIf="d.contractActivitiesWithoutValidPhase.length">
+                <div class="unclassified-title"><i class="bi bi-exclamation-triangle me-2"></i>Actividades pendientes de clasificar</div>
+                <label class="project-activity contract-project-activity" *ngFor="let activity of d.contractActivitiesWithoutValidPhase" [class.activity-linked]="d.linkedSourceIds.has(activity.id)">
+                  <input type="checkbox" class="form-check-input mt-1" [checked]="selectedContractActivityIds.has(activity.id)" [disabled]="d.linkedSourceIds.has(activity.id)" (change)="toggleContractActivity(activity)">
+                  <span class="flex-grow-1">
+                    <span class="d-flex justify-content-between gap-2">
+                      <strong>{{ activity.activity || 'Actividad' }}</strong>
+                      <span class="activity-quantity">{{ activity.quantity | number:'1.0-2' }} {{ activity.measure }}</span>
+                    </span>
+                    <span class="d-block">{{ activity.text }}</span>
+                    <small class="text-danger">Fase guardada: {{ activity.phase || 'Sin fase' }} — requiere asignar ELECTRICO o ARRANQUE</small>
+                  </span>
+                  <span class="badge text-bg-success align-self-start" *ngIf="d.linkedSourceIds.has(activity.id)">Asignada</span>
+                  <button type="button" class="btn btn-sm btn-outline-success align-self-start" *ngIf="!d.linkedSourceIds.has(activity.id)" (click)="$event.preventDefault(); $event.stopPropagation(); addContractActivity(activity)" [disabled]="addingContractActivityId !== null">
+                    <span class="spinner-border spinner-border-sm" *ngIf="addingContractActivityId === activity.id"></span>
+                    <i class="bi bi-plus-lg" *ngIf="addingContractActivityId !== activity.id"></i> Agregar
+                  </button>
+                </label>
               </section>
               <div class="empty-state" *ngIf="!d.contractActivities.length">El contrato todavía no tiene actividades en su programa de trabajo.</div>
             </div>
@@ -116,9 +139,39 @@
                   <div class="d-flex justify-content-between gap-2"><strong>{{ activity.activity || 'Actividad' }}</strong><span>{{ activity.quantity | number:'1.0-2' }} {{ activity.measure }}</span></div>
                   <div>{{ activity.text }}</div>
                   <small class="text-muted">{{ activity.idSourceWorkprogram ? 'Vinculada al contrato #' + activity.idSourceWorkprogram : 'Creada directamente en el proyecto' }}</small>
+                  <div class="activity-actions mt-2" *ngIf="editingProjectActivityId !== activity.id">
+                    <button class="btn btn-sm btn-outline-primary" (click)="startProjectQuantityEdit(activity)"><i class="bi bi-pencil"></i> Editar cantidad</button>
+                    <button class="btn btn-sm btn-outline-danger" (click)="removeProjectActivity(activity)" [disabled]="removingProjectActivityId !== null">
+                      <span class="spinner-border spinner-border-sm" *ngIf="removingProjectActivityId === activity.id"></span><i class="bi bi-trash" *ngIf="removingProjectActivityId !== activity.id"></i> Quitar
+                    </button>
+                  </div>
+                  <div class="quantity-editor mt-2" *ngIf="editingProjectActivityId === activity.id">
+                    <label class="small fw-semibold">Cantidad del proyecto</label>
+                    <input type="number" min="0" step="0.01" class="form-control form-control-sm" [(ngModel)]="projectActivityQuantityDraft">
+                    <button class="btn btn-sm btn-primary" (click)="saveProjectQuantity(activity)"><i class="bi bi-floppy"></i> Guardar</button>
+                    <button class="btn btn-sm btn-outline-secondary" (click)="cancelProjectQuantityEdit()">Cancelar</button>
+                  </div>
                   <div class="d-flex flex-wrap gap-1 mt-1" *ngIf="activity.resources?.length || activity.crews?.length">
                     <span class="badge text-bg-light" *ngFor="let resource of activity.resources">{{ resource.type }}: {{ resource.description }}</span>
                     <span class="badge text-bg-warning" *ngFor="let crew of activity.crews">Cuadrilla: {{ crew.name }}</span>
+                  </div>
+                </div>
+              </section>
+              <section class="phase-block" *ngIf="d.projectActivitiesWithoutValidPhase.length">
+                <div class="unclassified-title"><i class="bi bi-exclamation-triangle me-2"></i>Actividades pendientes de clasificar</div>
+                <div class="project-activity" *ngFor="let activity of d.projectActivitiesWithoutValidPhase">
+                  <div class="d-flex justify-content-between gap-2"><strong>{{ activity.activity || 'Actividad' }}</strong><span>{{ activity.quantity | number:'1.0-2' }} {{ activity.measure }}</span></div>
+                  <div>{{ activity.text }}</div>
+                  <small class="text-danger">Fase guardada: {{ activity.phase || 'Sin fase' }}</small>
+                  <div class="activity-actions mt-2" *ngIf="editingProjectActivityId !== activity.id">
+                    <button class="btn btn-sm btn-outline-primary" (click)="startProjectQuantityEdit(activity)"><i class="bi bi-pencil"></i> Editar cantidad</button>
+                    <button class="btn btn-sm btn-outline-danger" (click)="removeProjectActivity(activity)" [disabled]="removingProjectActivityId !== null"><i class="bi bi-trash"></i> Quitar</button>
+                  </div>
+                  <div class="quantity-editor mt-2" *ngIf="editingProjectActivityId === activity.id">
+                    <label class="small fw-semibold">Cantidad del proyecto</label>
+                    <input type="number" min="0" step="0.01" class="form-control form-control-sm" [(ngModel)]="projectActivityQuantityDraft">
+                    <button class="btn btn-sm btn-primary" (click)="saveProjectQuantity(activity)"><i class="bi bi-floppy"></i> Guardar</button>
+                    <button class="btn btn-sm btn-outline-secondary" (click)="cancelProjectQuantityEdit()">Cancelar</button>
                   </div>
                 </div>
               </section>

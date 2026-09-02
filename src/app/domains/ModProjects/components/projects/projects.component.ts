@@ -103,6 +103,10 @@ export class ProjectsComponent {
   contractActivitySearch = '';
   activeProgramTab: 'contract' | 'project' = 'contract';
   selectedContractActivityIds = new Set<number>();
+  addingContractActivityId: number | null = null;
+  editingProjectActivityId: number | null = null;
+  projectActivityQuantityDraft = 0;
+  removingProjectActivityId: number | null = null;
 
   // Inject of new way for Angular 18
   private modalService = inject(NgbModal);
@@ -500,10 +504,86 @@ export class ProjectsComponent {
       await this.openBudgetDashboard();
     } catch (error: any) {
       console.error('Error copiando actividades del contrato', error);
-      alerts.basicAlert('Programa del proyecto', error?.error ?? 'No fue posible agregar las actividades.', 'error');
+      alerts.basicAlert('Programa del proyecto', this.apiErrorMessage(error), 'error');
     } finally {
       this.isCopyingActivities = false;
     }
+  }
+
+  async addContractActivity(activity: any): Promise<void> {
+    if (!this.selectedRowData?.id || !activity?.id || this.addingContractActivityId) return;
+    this.addingContractActivityId = Number(activity.id);
+    try {
+      const response = await lastValueFrom(this.workprogramsService.copyContractActivitiesToProject(
+        Number(this.selectedRowData.idContrato),
+        Number(this.selectedRowData.id),
+        [Number(activity.id)]
+      ));
+      if (response.copied <= 0) {
+        alerts.basicAlert('Programa del proyecto', 'La actividad ya estaba asignada al proyecto.', 'info');
+      } else {
+        alerts.basicAlert('Programa del proyecto', 'Actividad agregada correctamente.', 'success');
+      }
+      await this.openBudgetDashboard();
+      this.activeProgramTab = 'project';
+    } catch (error: any) {
+      console.error('Error agregando actividad al proyecto', error);
+      alerts.basicAlert('Programa del proyecto', this.apiErrorMessage(error), 'error');
+    } finally {
+      this.addingContractActivityId = null;
+    }
+  }
+
+  startProjectQuantityEdit(activity: any): void {
+    this.editingProjectActivityId = Number(activity.id);
+    this.projectActivityQuantityDraft = Number(activity.quantity || 0);
+  }
+
+  cancelProjectQuantityEdit(): void {
+    this.editingProjectActivityId = null;
+  }
+
+  async saveProjectQuantity(activity: any): Promise<void> {
+    const quantity = Number(this.projectActivityQuantityDraft);
+    if (!Number.isFinite(quantity) || quantity < 0) {
+      alerts.basicAlert('Cantidad', 'Captura una cantidad válida mayor o igual a cero.', 'warning');
+      return;
+    }
+    try {
+      await lastValueFrom(this.workprogramsService.updateWorkProgram(Number(activity.id), {
+        ...activity,
+        quantity,
+        idSourceWorkprogram: activity.idSourceWorkprogram ?? null
+      }));
+      this.editingProjectActivityId = null;
+      alerts.basicAlert('Programa del proyecto', 'Cantidad actualizada.', 'success');
+      await this.openBudgetDashboard();
+      this.activeProgramTab = 'project';
+    } catch (error: any) {
+      console.error('Error actualizando cantidad del proyecto', error);
+      alerts.basicAlert('Programa del proyecto', this.apiErrorMessage(error), 'error');
+    }
+  }
+
+  async removeProjectActivity(activity: any): Promise<void> {
+    if (!activity?.id || this.removingProjectActivityId) return;
+    this.removingProjectActivityId = Number(activity.id);
+    try {
+      await lastValueFrom(this.workprogramsService.deleteWorkProgram(Number(activity.id)));
+      alerts.basicAlert('Programa del proyecto', 'Actividad quitada del proyecto. El contrato no fue modificado.', 'success');
+      await this.openBudgetDashboard();
+      this.activeProgramTab = 'project';
+    } catch (error: any) {
+      console.error('Error quitando actividad del proyecto', error);
+      alerts.basicAlert('Programa del proyecto', this.apiErrorMessage(error), 'error');
+    } finally {
+      this.removingProjectActivityId = null;
+    }
+  }
+
+  private apiErrorMessage(error: any): string {
+    if (typeof error?.error === 'string' && error.error.trim()) return error.error;
+    return error?.error?.message || error?.message || 'No fue posible completar la operación.';
   }
 
   onGridReady(params: GridReadyEvent): void {
