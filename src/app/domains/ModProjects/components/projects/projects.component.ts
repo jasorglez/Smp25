@@ -361,6 +361,7 @@ export class ProjectsComponent {
       this.selectedRowData = selectedNodes[0].data;
       this.showBudgetDashboard = false;
       this.budgetDashboard = null;
+      this.openBudgetDashboard();
     } else {
       this.selectedRowData = null;
     }
