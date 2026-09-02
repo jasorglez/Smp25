@@ -19,6 +19,7 @@ import { TrackingService } from 'app/services/tracking.service';
 import { WorkprogramsService } from 'app/services/workprograms.service';
 import { WorkprogramApuService } from 'app/services/workprogram-apu.service';
 import { WorkprogramApuCuadrillaService } from 'app/services/workprogram-apu-cuadrilla.service';
+import { CatalogsService } from 'app/services/catalogs.service';
 
 
 // Esta funcion valida que programStart sea siempre menor a programEnd
@@ -113,6 +114,7 @@ export class ProjectsComponent {
   private workprogramsService = inject(WorkprogramsService);
   private workprogramApuService = inject(WorkprogramApuService);
   private workprogramApuCuadrillaService = inject(WorkprogramApuCuadrillaService);
+  private catalogsService = inject(CatalogsService);
 
   public project: Iproject[] = [];
   private gridApi!: GridApi<Iproject>;
@@ -394,9 +396,10 @@ export class ProjectsComponent {
       const contract = await lastValueFrom(
         this.followprojectsService.getContractById(idContract).pipe(catchError(() => of(null)))
       );
-      const [contractProgram, projectProgram] = await Promise.all([
+      const [contractProgram, projectProgram, phaseCatalog] = await Promise.all([
         lastValueFrom(this.workprogramsService.getWorkPrograms(idContract, 'Contract').pipe(catchError(() => of([])))),
-        lastValueFrom(this.workprogramsService.getWorkPrograms(Number(project.id), 'Project').pipe(catchError(() => of([]))))
+        lastValueFrom(this.workprogramsService.getWorkPrograms(Number(project.id), 'Project').pipe(catchError(() => of([])))),
+        lastValueFrom(this.catalogsService.getPhases(Number(this.idCompany)).pipe(catchError(() => of([]))))
       ]);
       const contractProjects = (this.project ?? []).filter(p => Number(p.idContrato) === idContract);
       const allProjectPrograms = await Promise.all(contractProjects.map(p =>
@@ -427,14 +430,22 @@ export class ProjectsComponent {
       const contractLimit = Number(contract?.amountMx ?? contract?.amountMX ?? contract?.amount ?? 0);
       const contractProgramCost = this.programCost(contractActivities);
       const projectProgramCost = this.programCost(projectActivities);
+      const configuredPhases = (phaseCatalog ?? [])
+        .map((phase: any) => String(phase.description ?? '').trim())
+        .filter((phase: string) => !!phase);
+      const contractPhaseResult = this.groupByConfiguredPhase(contractActivities, configuredPhases);
+      const projectPhaseResult = this.groupByConfiguredPhase(projectActivities, configuredPhases);
       const allocatedCost = allProjectPrograms.reduce((sum, rows) =>
         sum + this.programCost((rows ?? []).filter((row: any) => this.isProgramActivity(row))), 0);
       this.budgetDashboard = {
         project, contract, contractLimit, contractProgramCost, projectProgramCost,
         allocatedCost, availableCost: contractLimit - allocatedCost,
         contractActivities, projectActivities, linkedSourceIds,
-        contractPhases: this.groupByPhase(contractActivities),
-        projectPhases: this.groupByPhase(projectActivities),
+        configuredPhases,
+        contractPhases: contractPhaseResult.groups,
+        projectPhases: projectPhaseResult.groups,
+        contractActivitiesWithoutValidPhase: contractPhaseResult.unmatched,
+        projectActivitiesWithoutValidPhase: projectPhaseResult.unmatched,
         resourceSummary, crewCount
       };
     } finally {
@@ -450,13 +461,17 @@ export class ProjectsComponent {
     return (rows ?? []).reduce((sum, row) => sum + Number(row.total ?? (Number(row.quantity || 0) * Number(row.costMX || 0))), 0);
   }
 
-  private groupByPhase(rows: any[]): any[] {
-    const groups = new Map<string, any[]>();
-    for (const row of rows ?? []) {
-      const phase = String(row.phase || 'Sin fase').trim() || 'Sin fase';
-      groups.set(phase, [...(groups.get(phase) ?? []), row]);
-    }
-    return Array.from(groups, ([name, activities]) => ({ name, activities }));
+  private groupByConfiguredPhase(rows: any[], configuredPhases: string[]): { groups: any[]; unmatched: any[] } {
+    const normalized = (value: any) => String(value ?? '').trim().toLocaleLowerCase('es');
+    const phaseNames = configuredPhases;
+    const validNames = new Set(phaseNames.map(normalized));
+    return {
+      groups: phaseNames.map(name => ({
+        name,
+        activities: (rows ?? []).filter(row => normalized(row.phase) === normalized(name))
+      })),
+      unmatched: (rows ?? []).filter(row => !validNames.has(normalized(row.phase)))
+    };
   }
 
   contractActivityMatches(activity: any): boolean {

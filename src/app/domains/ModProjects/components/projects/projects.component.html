@@ -80,6 +80,9 @@
                 <i class="bi bi-arrow-right-circle" *ngIf="!isCopyingActivities"></i> Agregar ({{ selectedContractActivityIds.size }})
               </button>
             </div>
+            <div class="alert alert-warning py-2 small" *ngIf="d.contractActivitiesWithoutValidPhase.length">
+              <i class="bi bi-exclamation-triangle me-1"></i>{{ d.contractActivitiesWithoutValidPhase.length }} actividad(es) no tienen una de las {{ d.configuredPhases.length }} fases configuradas y no se muestran como una fase adicional.
+            </div>
             <div class="program-scroll">
               <section class="phase-block" *ngFor="let phase of d.contractPhases">
                 <div class="phase-title"><i class="bi bi-layers me-2"></i>{{ phase.name }}</div>
@@ -98,6 +101,9 @@
           </div>
 
           <div *ngIf="activeProgramTab === 'project'">
+            <div class="alert alert-warning py-2 small" *ngIf="d.projectActivitiesWithoutValidPhase.length">
+              <i class="bi bi-exclamation-triangle me-1"></i>{{ d.projectActivitiesWithoutValidPhase.length }} actividad(es) requieren corregir su fase en Programa de trabajo.
+            </div>
             <div class="program-scroll">
               <section class="phase-block" *ngFor="let phase of d.projectPhases">
                 <div class="phase-title"><i class="bi bi-layers me-2"></i>{{ phase.name }}</div>
