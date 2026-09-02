@@ -98,6 +98,18 @@ export class WorkprogramsService {
     );
   }
 
+  copyContractActivitiesToProject(
+    idContract: number,
+    idProject: number,
+    sourceWorkprogramIds: number[]
+  ): Observable<{ copied: number; message: string }> {
+    return this.http.post<{ copied: number; message: string }>(
+      `${environment.urlSmp}/Workprogram/copy-contract-to-project`,
+      { idContract, idProject, sourceWorkprogramIds },
+      { headers: this.trackingService.getHeaders() }
+    );
+  }
+
   getDelayedActivities(idCompany: number): Observable<any> {
     return this.http.get(`${environment.urlSmp}/Workprogram/delayed?idCompany=${idCompany}`, { headers: this.trackingService.getHeaders() });
   }

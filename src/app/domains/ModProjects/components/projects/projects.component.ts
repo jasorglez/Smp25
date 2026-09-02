@@ -8,7 +8,7 @@ import { FollowprojectsService } from '../../../../services/followprojects.servi
 import { ColDef, GridApi, GridReadyEvent, CellDoubleClickedEvent} from 'ag-grid-enterprise';
 import { AbstractControl, FormControl, FormGroup, ValidationErrors, ValidatorFn, Validators } from '@angular/forms';
 import { alerts } from 'app/helpers/alerts';
-import { catchError, EMPTY, forkJoin } from 'rxjs';
+import { catchError, EMPTY, forkJoin, lastValueFrom, of } from 'rxjs';
 import { DetailPersonalByProyectComponent } from './personal/detail-personal-by-proyect.component';
 import { Iproject } from 'app/interface/iproject';
 import { ProjectsService } from 'app/services/projects.service';
@@ -17,6 +17,8 @@ import { SignalsService } from 'app/services/signals.service';
 import { PersonalByProyectService } from 'app/services/personalByProyect.service';
 import { TrackingService } from 'app/services/tracking.service';
 import { WorkprogramsService } from 'app/services/workprograms.service';
+import { WorkprogramApuService } from 'app/services/workprogram-apu.service';
+import { WorkprogramApuCuadrillaService } from 'app/services/workprogram-apu-cuadrilla.service';
 
 
 // Esta funcion valida que programStart sea siempre menor a programEnd
@@ -95,10 +97,11 @@ export class ProjectsComponent {
   notSavedChanges: boolean = false;
   showBudgetDashboard = false;
   budgetDashboard: any = null;
-  specialtyDraft = 'Civil';
-  resourceTypeFilter = 'Todos';
-  resourceSearch = '';
-  resourceDraft: any = { tipo: 'Material', descripcion: '', unidad: 'pieza', cantPlan: 1, costoUnitPlan: 0 };
+  isBudgetLoading = false;
+  isCopyingActivities = false;
+  contractActivitySearch = '';
+  activeProgramTab: 'contract' | 'project' = 'contract';
+  selectedContractActivityIds = new Set<number>();
 
   // Inject of new way for Angular 18
   private modalService = inject(NgbModal);
@@ -108,6 +111,8 @@ export class ProjectsComponent {
   private signalsService = inject(SignalsService);
   private personalByProyectService = inject(PersonalByProyectService);
   private workprogramsService = inject(WorkprogramsService);
+  private workprogramApuService = inject(WorkprogramApuService);
+  private workprogramApuCuadrillaService = inject(WorkprogramApuCuadrillaService);
 
   public project: Iproject[] = [];
   private gridApi!: GridApi<Iproject>;
@@ -379,72 +384,111 @@ export class ProjectsComponent {
 
   async openBudgetDashboard(): Promise<void> {
     if (!this.selectedRowData?.id) return;
-    const project: any = this.selectedRowData;
-    const contract: any = (this.contracts ?? []).find((c: any) =>
-      Number(c.idContrato ?? c.id) === Number(project.idContrato)
-    ) ?? await new Promise(resolve => this.followprojectsService.getContractById(Number(project.idContrato)).subscribe({ next: resolve, error: () => resolve(null) }));
-    const [program, resources] = await Promise.all([
-      new Promise<any[]>(resolve => this.workprogramsService.getWorkPrograms(Number(project.id), 'Project').subscribe({ next: v => resolve(v ?? []), error: () => resolve([]) })),
-      new Promise<any[]>(resolve => this.projectsService.getPmoRecursosByProject(Number(project.id)).subscribe({ next: v => resolve(Array.isArray(v) ? v : []), error: () => resolve([]) }))
-    ]);
-    const byType: any = {};
-    for (const r of resources) {
-      const especialidad = String(r.especialidad ?? r.specialty ?? 'General').trim() || 'General';
-      const tipo = String(r.tipo ?? r.type ?? 'Otros').trim() || 'Otros';
-      const planned = Number(r.cantPlan ?? r.quantity ?? 0) * Number(r.costoUnitPlan ?? r.unitCost ?? 0);
-      const key = `${especialidad} · ${tipo}`;
-      byType[key] = (byType[key] ?? 0) + planned;
-    }
-    const programCost = program.reduce((sum, row) => sum + Number(row.quantity ?? 0) * Number(row.costMX ?? 0), 0);
-    const contractLimit = Number(contract?.amountMx ?? contract?.amountMX ?? contract?.amount ?? 0);
-    const projectLimit = Number(project.budgetManagement ?? project.budget ?? project.amount ?? 0) || (contractLimit / Math.max(1, (this.project ?? []).filter(p => Number(p.idContrato) === Number(project.idContrato)).length));
-    const resourceCost = Object.values(byType).reduce((sum: number, v: any) => sum + Number(v), 0);
-    const specialtyGroups: any[] = [];
-    const specialtyMap = new Map<string, any>();
-    for (const resource of resources) {
-      const specialty = String(resource.especialidad ?? resource.specialty ?? 'General').trim() || 'General';
-      const type = String(resource.tipo ?? resource.type ?? 'Otros').trim() || 'Otros';
-      let group = specialtyMap.get(specialty);
-      if (!group) { group = { name: specialty, sections: [] }; specialtyMap.set(specialty, group); specialtyGroups.push(group); }
-      let section = group.sections.find((s: any) => s.name.toLowerCase() === type.toLowerCase());
-      if (!section) { section = { name: type, rows: [] }; group.sections.push(section); }
-      section.rows.push(resource);
-    }
-    this.budgetDashboard = { project, contract, contractLimit, projectLimit, programCost, resourceCost, total: programCost + resourceCost, byType, resources, specialtyGroups };
+    this.isBudgetLoading = true;
     this.showBudgetDashboard = true;
+    this.selectedContractActivityIds.clear();
+    this.activeProgramTab = 'contract';
+    const project: any = this.selectedRowData;
+    const idContract = Number(project.idContrato || 0);
+    try {
+      const contract = await lastValueFrom(
+        this.followprojectsService.getContractById(idContract).pipe(catchError(() => of(null)))
+      );
+      const [contractProgram, projectProgram] = await Promise.all([
+        lastValueFrom(this.workprogramsService.getWorkPrograms(idContract, 'Contract').pipe(catchError(() => of([])))),
+        lastValueFrom(this.workprogramsService.getWorkPrograms(Number(project.id), 'Project').pipe(catchError(() => of([]))))
+      ]);
+      const contractProjects = (this.project ?? []).filter(p => Number(p.idContrato) === idContract);
+      const allProjectPrograms = await Promise.all(contractProjects.map(p =>
+        lastValueFrom(this.workprogramsService.getWorkPrograms(Number(p.id), 'Project').pipe(catchError(() => of([]))))
+      ));
+      const linkedSourceIds = new Set(projectProgram
+        .map((row: any) => Number(row.idSourceWorkprogram || 0))
+        .filter((id: number) => id > 0));
+      const contractActivities = contractProgram.filter((row: any) => this.isProgramActivity(row));
+      const projectActivities = projectProgram.filter((row: any) => this.isProgramActivity(row));
+      const apuRows = (await Promise.all(projectActivities.map(async (activity: any) => {
+        const [resources, crews] = await Promise.all([
+          lastValueFrom(this.workprogramApuService.getByWorkprogram(Number(activity.id)).pipe(catchError(() => of([])))),
+          lastValueFrom(this.workprogramApuCuadrillaService.getByWorkprogram(Number(activity.id)).pipe(catchError(() => of([]))))
+        ]);
+        activity.resources = resources;
+        activity.crews = crews;
+        return resources;
+      }))).flat();
+      const resourceSummary = ['MATERIAL', 'PERSONAL', 'EQUIPO'].map(type => ({
+        type,
+        count: apuRows.filter((row: any) => String(row.type || '').toUpperCase() === type).length,
+        total: apuRows
+          .filter((row: any) => String(row.type || '').toUpperCase() === type)
+          .reduce((sum: number, row: any) => sum + Number(row.total ?? (Number(row.quantity || 0) * Number(row.unitCost || 0))), 0)
+      }));
+      const crewCount = projectActivities.reduce((sum: number, row: any) => sum + (row.crews?.length || 0), 0);
+      const contractLimit = Number(contract?.amountMx ?? contract?.amountMX ?? contract?.amount ?? 0);
+      const contractProgramCost = this.programCost(contractActivities);
+      const projectProgramCost = this.programCost(projectActivities);
+      const allocatedCost = allProjectPrograms.reduce((sum, rows) =>
+        sum + this.programCost((rows ?? []).filter((row: any) => this.isProgramActivity(row))), 0);
+      this.budgetDashboard = {
+        project, contract, contractLimit, contractProgramCost, projectProgramCost,
+        allocatedCost, availableCost: contractLimit - allocatedCost,
+        contractActivities, projectActivities, linkedSourceIds,
+        contractPhases: this.groupByPhase(contractActivities),
+        projectPhases: this.groupByPhase(projectActivities),
+        resourceSummary, crewCount
+      };
+    } finally {
+      this.isBudgetLoading = false;
+    }
   }
 
-  async addBudgetResource(): Promise<void> {
-    if (!this.selectedRowData?.id || !this.resourceDraft.descripcion?.trim()) return;
-    const resource = {
-      idProject: Number(this.selectedRowData.id), idCompany: Number(this.idCompany), idActivity: null,
-      tipo: this.resourceDraft.tipo, especialidad: this.specialtyDraft || 'General',
-      descripcion: this.resourceDraft.descripcion.trim(), unidad: this.resourceDraft.unidad || 'pieza', periodo: '',
-      cantPlan: Number(this.resourceDraft.cantPlan) || 0, cantReal: 0,
-      costoUnitPlan: Number(this.resourceDraft.costoUnitPlan) || 0, costoUnitReal: 0, active: 1
-    };
-    await new Promise<void>(resolve => this.projectsService.savePmoRecursosBatch([resource]).subscribe({ next: () => resolve(), error: e => { console.error('Error guardando recurso PMO', e); resolve(); } }));
-    this.resourceDraft = { tipo: this.resourceDraft.tipo, descripcion: '', unidad: this.resourceDraft.unidad, cantPlan: 1, costoUnitPlan: 0 };
-    await this.openBudgetDashboard();
+  private isProgramActivity(row: any): boolean {
+    return Number(row?.active ?? 1) === 1 && !!String(row?.text ?? row?.activity ?? '').trim();
   }
 
-  resourceMatches(key: string | number | symbol): boolean {
-    return this.resourceTypeFilter === 'Todos' || String(key).endsWith(`· ${this.resourceTypeFilter}`);
+  private programCost(rows: any[]): number {
+    return (rows ?? []).reduce((sum, row) => sum + Number(row.total ?? (Number(row.quantity || 0) * Number(row.costMX || 0))), 0);
   }
 
-  resourceRowMatches(row: any): boolean {
-    const typeOk = this.resourceTypeFilter === 'Todos' || String(row?.tipo ?? row?.type ?? '').toLowerCase() === this.resourceTypeFilter.toLowerCase();
-    const query = this.resourceSearch.trim().toLowerCase();
-    const text = `${row?.descripcion ?? ''} ${row?.especialidad ?? ''} ${row?.tipo ?? ''}`.toLowerCase();
-    return typeOk && (!query || text.includes(query));
+  private groupByPhase(rows: any[]): any[] {
+    const groups = new Map<string, any[]>();
+    for (const row of rows ?? []) {
+      const phase = String(row.phase || 'Sin fase').trim() || 'Sin fase';
+      groups.set(phase, [...(groups.get(phase) ?? []), row]);
+    }
+    return Array.from(groups, ([name, activities]) => ({ name, activities }));
   }
 
-  sectionHasRows(section: any): boolean {
-    return section?.rows?.some((row: any) => this.resourceRowMatches(row));
+  contractActivityMatches(activity: any): boolean {
+    const query = this.contractActivitySearch.trim().toLocaleLowerCase('es');
+    return !query || `${activity.activity ?? ''} ${activity.text ?? ''} ${activity.phase ?? ''}`
+      .toLocaleLowerCase('es').includes(query);
   }
 
-  specialtyHasRows(specialty: any): boolean {
-    return specialty?.sections?.some((section: any) => this.sectionHasRows(section));
+  toggleContractActivity(activity: any): void {
+    const id = Number(activity.id);
+    if (!id || this.budgetDashboard?.linkedSourceIds?.has(id)) return;
+    if (this.selectedContractActivityIds.has(id)) this.selectedContractActivityIds.delete(id);
+    else this.selectedContractActivityIds.add(id);
+  }
+
+  async copySelectedContractActivities(): Promise<void> {
+    if (!this.selectedRowData?.id || !this.selectedContractActivityIds.size) return;
+    this.isCopyingActivities = true;
+    try {
+      const response = await lastValueFrom(this.workprogramsService.copyContractActivitiesToProject(
+        Number(this.selectedRowData.idContrato),
+        Number(this.selectedRowData.id),
+        Array.from(this.selectedContractActivityIds)
+      ));
+      alerts.basicAlert('Programa del proyecto', response.message, 'success');
+      await this.openBudgetDashboard();
+    } catch (error: any) {
+      console.error('Error copiando actividades del contrato', error);
+      alerts.basicAlert('Programa del proyecto', error?.error ?? 'No fue posible agregar las actividades.', 'error');
+    } finally {
+      this.isCopyingActivities = false;
+    }
   }
 
   onGridReady(params: GridReadyEvent): void {

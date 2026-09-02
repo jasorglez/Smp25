@@ -1,15 +1,16 @@
-<div class="row p-3">
-  <div class="col-12">
+<div class="container-fluid p-3">
+  <div class="row g-3">
+  <div [class.col-xl-7]="showBudgetDashboard" [class.col-12]="!showBudgetDashboard">
     <div class="d-flex align-items-center justify-content-between mb-3 p-3 rounded border bg-light pmo-budget-launcher">
       <div>
-        <div class="fw-semibold"><i class="bi bi-speedometer2 text-primary me-2"></i>Control presupuestal por especialidad</div>
-        <small class="text-muted">Selecciona un proyecto y consulta Civil, Mecánica, Eléctrica, recursos y programa de trabajo.</small>
+        <div class="fw-semibold"><i class="bi bi-speedometer2 text-primary me-2"></i>Control del programa por proyecto</div>
+        <small class="text-muted">Distribuye actividades del contrato por fase y controla sus materiales, personal, equipos y cuadrillas.</small>
       </div>
       <button type="button" class="btn btn-primary" [disabled]="!selectedRowData" (click)="openBudgetDashboard()">
         <i class="bi bi-bar-chart-line me-1"></i> Abrir control PMO
       </button>
     </div>
-    <div class="row">
+    <div class="row g-2">
       <!-- Columna de botones verticales -->
       <div class="col-auto d-flex flex-column align-items-start justify-content-start me-3">
         <button type="button" class="btn btn-primary mb-2" (click)="addRow()"><i class="bi bi-plus-lg"></i></button>
@@ -20,7 +21,7 @@
         </button>
       </div>
       <!-- Columna del ag-grid -->
-      <div class="col">
+      <div class="col project-grid-column">
         <ag-grid-angular [columnDefs]="colMaster" [defaultColDef]="defaultColDef" [rowSelection]="rowSelection"
           [rowData]="project" 
           (selectionChanged)="onSelectionChanged($event)" 
@@ -35,60 +36,88 @@
       </div>
     </div>
   </div>
-</div>
 
-<div class="row px-3 pb-3 pmo-budget-panel" *ngIf="showBudgetDashboard && budgetDashboard as d">
-  <div class="col-12">
-    <div class="card border-0 shadow-sm">
+  <aside class="col-xl-5" *ngIf="showBudgetDashboard">
+    <div class="card border-0 shadow-sm pmo-control-card">
       <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
-        <span><i class="bi bi-speedometer2 me-2"></i>Control presupuestal PMO — {{ d.project.name }}</span>
-        <button class="btn btn-sm btn-light" (click)="showBudgetDashboard=false">Cerrar</button>
+        <div><i class="bi bi-kanban me-2"></i><strong>Programa y recursos</strong><div class="small opacity-75">{{ selectedRowData?.name }}</div></div>
+        <button class="btn btn-sm btn-light" (click)="showBudgetDashboard=false" aria-label="Cerrar">×</button>
       </div>
-      <div class="card-body">
-        <div class="row g-2 align-items-end mb-3 border-bottom pb-3">
-          <div class="col-md-2"><label class="form-label small">Especialidad</label><select class="form-select form-select-sm" [(ngModel)]="specialtyDraft"><option>Civil</option><option>Mecánica</option><option>Eléctrica</option><option>Hidráulica</option><option>General</option></select></div>
-          <div class="col-md-2"><label class="form-label small">Tipo</label><select class="form-select form-select-sm" [(ngModel)]="resourceDraft.tipo"><option>Personal</option><option>Material</option><option>Equipo</option><option>Herramienta</option><option>Auxiliar</option></select></div>
-          <div class="col-md-3"><label class="form-label small">Descripción</label><input class="form-control form-control-sm" [(ngModel)]="resourceDraft.descripcion" placeholder="Recurso"></div>
-          <div class="col-md-1"><label class="form-label small">Unidad</label><input class="form-control form-control-sm" [(ngModel)]="resourceDraft.unidad"></div>
-          <div class="col-md-1"><label class="form-label small">Cantidad</label><input type="number" class="form-control form-control-sm" [(ngModel)]="resourceDraft.cantPlan"></div>
-          <div class="col-md-2"><label class="form-label small">Costo unitario</label><input type="number" class="form-control form-control-sm" [(ngModel)]="resourceDraft.costoUnitPlan"></div>
-          <div class="col-md-1"><button class="btn btn-sm btn-success w-100" (click)="addBudgetResource()" [disabled]="!resourceDraft.descripcion"><i class="bi bi-plus-lg"></i></button></div>
-        </div>
+
+      <div class="card-body" *ngIf="isBudgetLoading">
+        <div class="d-flex align-items-center gap-2 py-5 justify-content-center text-muted"><span class="spinner-border spinner-border-sm"></span> Cargando programa real…</div>
+      </div>
+
+      <div class="card-body pmo-control-body" *ngIf="!isBudgetLoading && budgetDashboard as d">
         <div class="row g-2 mb-3">
-          <div class="col-md-3"><div class="p-2 bg-light rounded"><small>Contrato</small><div class="fw-bold">{{ d.contractLimit | currency:'MXN' }}</div></div></div>
-          <div class="col-md-3"><div class="p-2 bg-light rounded"><small>Límite del proyecto</small><div class="fw-bold">{{ d.projectLimit | currency:'MXN' }}</div></div></div>
-          <div class="col-md-3"><div class="p-2 bg-light rounded"><small>Programa de trabajo</small><div class="fw-bold">{{ d.programCost | currency:'MXN' }}</div></div></div>
-          <div class="col-md-3"><div class="p-2 rounded" [class.bg-danger-subtle]="d.total > d.projectLimit" [class.bg-success-subtle]="d.total <= d.projectLimit"><small>Total comprometido</small><div class="fw-bold">{{ d.total | currency:'MXN' }}</div><small>{{ d.total > d.projectLimit ? 'Excede el límite' : 'Dentro del límite' }}</small></div></div>
+          <div class="col-6"><div class="pmo-kpi"><small>Monto del contrato</small><strong>{{ d.contractLimit | currency:'MXN':'symbol':'1.0-0' }}</strong></div></div>
+          <div class="col-6"><div class="pmo-kpi"><small>Programado en proyectos</small><strong>{{ d.allocatedCost | currency:'MXN':'symbol':'1.0-0' }}</strong></div></div>
+          <div class="col-6"><div class="pmo-kpi"><small>Este proyecto</small><strong>{{ d.projectProgramCost | currency:'MXN':'symbol':'1.0-0' }}</strong></div></div>
+          <div class="col-6"><div class="pmo-kpi" [class.pmo-kpi-danger]="d.availableCost < 0"><small>Disponible del contrato</small><strong>{{ d.availableCost | currency:'MXN':'symbol':'1.0-0' }}</strong></div></div>
         </div>
-        <div class="d-flex gap-2 align-items-center mb-2">
-          <span class="small fw-semibold">Ver recursos:</span>
-          <select class="form-select form-select-sm w-auto" [(ngModel)]="resourceTypeFilter">
-            <option>Todos</option><option>Material</option><option>Personal</option><option>Equipo</option><option>Herramienta</option><option>Auxiliar</option>
-          </select>
-          <div class="input-group input-group-sm" style="max-width:360px">
-            <span class="input-group-text"><i class="bi bi-search"></i></span>
-            <input class="form-control" [(ngModel)]="resourceSearch" placeholder="Buscar material, personal o equipo...">
-            <button *ngIf="resourceSearch" class="btn btn-outline-secondary" type="button" (click)="resourceSearch=''">×</button>
+
+        <div class="resource-summary mb-3">
+          <div *ngFor="let summary of d.resourceSummary"><span>{{ summary.type }}</span><strong>{{ summary.count }}</strong><small>{{ summary.total | currency:'MXN':'symbol':'1.0-0' }}</small></div>
+          <div><span>CUADRILLAS</span><strong>{{ d.crewCount }}</strong><small>del proyecto</small></div>
+        </div>
+
+        <ul class="nav nav-tabs nav-fill mb-3" role="tablist">
+          <li class="nav-item"><button class="nav-link" [class.active]="activeProgramTab === 'contract'" (click)="activeProgramTab='contract'" type="button">Contrato <span class="badge text-bg-secondary">{{ d.contractActivities.length }}</span></button></li>
+          <li class="nav-item"><button class="nav-link" [class.active]="activeProgramTab === 'project'" (click)="activeProgramTab='project'" type="button">Proyecto <span class="badge text-bg-primary">{{ d.projectActivities.length }}</span></button></li>
+        </ul>
+
+        <div class="tab-content">
+          <div *ngIf="activeProgramTab === 'contract'">
+            <div class="input-group input-group-sm mb-2">
+              <span class="input-group-text"><i class="bi bi-search"></i></span>
+              <input class="form-control" [(ngModel)]="contractActivitySearch" placeholder="Buscar actividad o fase…">
+              <button class="btn btn-outline-secondary" *ngIf="contractActivitySearch" (click)="contractActivitySearch=''">×</button>
+            </div>
+            <div class="d-flex justify-content-between align-items-center mb-2">
+              <small class="text-muted">Selecciona actividades para asignarlas al proyecto con sus APU.</small>
+              <button class="btn btn-sm btn-success" (click)="copySelectedContractActivities()" [disabled]="!selectedContractActivityIds.size || isCopyingActivities">
+                <span class="spinner-border spinner-border-sm" *ngIf="isCopyingActivities"></span>
+                <i class="bi bi-arrow-right-circle" *ngIf="!isCopyingActivities"></i> Agregar ({{ selectedContractActivityIds.size }})
+              </button>
+            </div>
+            <div class="program-scroll">
+              <section class="phase-block" *ngFor="let phase of d.contractPhases">
+                <div class="phase-title"><i class="bi bi-layers me-2"></i>{{ phase.name }}</div>
+                <ng-container *ngFor="let activity of phase.activities">
+                  <label class="activity-row" *ngIf="contractActivityMatches(activity)" [class.activity-linked]="d.linkedSourceIds.has(activity.id)">
+                    <input type="checkbox" class="form-check-input" [checked]="selectedContractActivityIds.has(activity.id)" [disabled]="d.linkedSourceIds.has(activity.id)" (change)="toggleContractActivity(activity)">
+                    <span class="activity-code">{{ activity.activity || '—' }}</span>
+                    <span class="activity-description">{{ activity.text }}</span>
+                    <span class="activity-quantity">{{ activity.quantity | number:'1.0-2' }} {{ activity.measure }}</span>
+                    <span class="badge text-bg-success" *ngIf="d.linkedSourceIds.has(activity.id)">Asignada</span>
+                  </label>
+                </ng-container>
+              </section>
+              <div class="empty-state" *ngIf="!d.contractActivities.length">El contrato todavía no tiene actividades en su programa de trabajo.</div>
+            </div>
+          </div>
+
+          <div *ngIf="activeProgramTab === 'project'">
+            <div class="program-scroll">
+              <section class="phase-block" *ngFor="let phase of d.projectPhases">
+                <div class="phase-title"><i class="bi bi-layers me-2"></i>{{ phase.name }}</div>
+                <div class="project-activity" *ngFor="let activity of phase.activities">
+                  <div class="d-flex justify-content-between gap-2"><strong>{{ activity.activity || 'Actividad' }}</strong><span>{{ activity.quantity | number:'1.0-2' }} {{ activity.measure }}</span></div>
+                  <div>{{ activity.text }}</div>
+                  <small class="text-muted">{{ activity.idSourceWorkprogram ? 'Vinculada al contrato #' + activity.idSourceWorkprogram : 'Creada directamente en el proyecto' }}</small>
+                  <div class="d-flex flex-wrap gap-1 mt-1" *ngIf="activity.resources?.length || activity.crews?.length">
+                    <span class="badge text-bg-light" *ngFor="let resource of activity.resources">{{ resource.type }}: {{ resource.description }}</span>
+                    <span class="badge text-bg-warning" *ngFor="let crew of activity.crews">Cuadrilla: {{ crew.name }}</span>
+                  </div>
+                </div>
+              </section>
+              <div class="empty-state" *ngIf="!d.projectActivities.length">Este proyecto todavía no tiene actividades. Agrégalas desde la pestaña Contrato o créalas en Programa de trabajo.</div>
+            </div>
           </div>
         </div>
-        <div class="pmo-resource-tree" *ngIf="d.resources?.length; else noPmoResources">
-          <section class="mb-2" *ngFor="let specialty of d.specialtyGroups">
-            <div class="pmo-specialty-title" *ngIf="specialtyHasRows(specialty)"><i class="bi bi-diagram-3 me-2"></i>{{ specialty.name }}</div>
-            <div class="ms-3" *ngFor="let section of specialty.sections">
-              <div class="pmo-type-title" *ngIf="sectionHasRows(section)">
-                <i class="bi bi-folder2-open me-2"></i>{{ section.name }}
-              </div>
-              <table class="table table-sm align-middle mb-2 ms-3" *ngIf="sectionHasRows(section)">
-                <thead><tr><th>Recurso</th><th>Unidad</th><th class="text-end">Cantidad</th><th class="text-end">Costo planeado</th></tr></thead>
-                <tbody><tr *ngFor="let r of section.rows" [hidden]="!resourceRowMatches(r)"><td>{{ r.descripcion }}</td><td>{{ r.unidad }}</td><td class="text-end">{{ r.cantPlan }}</td><td class="text-end">{{ (r.cantPlan * r.costoUnitPlan) | currency:'MXN' }}</td></tr></tbody>
-              </table>
-            </div>
-          </section>
-        </div>
-        <ng-template #noPmoResources><div class="text-muted py-3">Aún no hay recursos PMO registrados.</div></ng-template>
-        <small class="text-muted">El límite se toma del presupuesto del proyecto; si no existe, se distribuye el monto del contrato entre sus proyectos.</small>
       </div>
     </div>
+  </aside>
   </div>
 </div>
 

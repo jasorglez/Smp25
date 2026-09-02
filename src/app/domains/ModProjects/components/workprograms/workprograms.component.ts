@@ -1646,6 +1646,7 @@ export class WorkprogramsComponent {
 
     return {
       id: task.idEntry,
+      idSourceWorkprogram: task['idSourceWorkprogram'] ?? null,
       // Number() garantiza que idTask sea número en JSON (gantt puede retornar task.id como string)
       idTask: Number(task.id) || 0,
       text: task.text || '',                                   // NOT NULL en C#
@@ -1754,6 +1755,7 @@ export class WorkprogramsComponent {
         phase: item.phase,
         // Scope: contrato y convenio (necesarios para el save)
         idContract: item.idContract,
+        idSourceWorkprogram: item.idSourceWorkprogram ?? null,
         idConvention: item.idConvention,
         type: item.type,
         ponderado: item.ponderado,
