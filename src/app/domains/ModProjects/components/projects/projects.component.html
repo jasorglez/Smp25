@@ -65,17 +65,22 @@
           <select class="form-select form-select-sm w-auto" [(ngModel)]="resourceTypeFilter">
             <option>Todos</option><option>Material</option><option>Personal</option><option>Equipo</option><option>Herramienta</option><option>Auxiliar</option>
           </select>
+          <div class="input-group input-group-sm" style="max-width:360px">
+            <span class="input-group-text"><i class="bi bi-search"></i></span>
+            <input class="form-control" [(ngModel)]="resourceSearch" placeholder="Buscar material, personal o equipo...">
+            <button *ngIf="resourceSearch" class="btn btn-outline-secondary" type="button" (click)="resourceSearch=''">×</button>
+          </div>
         </div>
         <div class="pmo-resource-tree" *ngIf="d.resources?.length; else noPmoResources">
           <section class="mb-2" *ngFor="let specialty of d.specialtyGroups">
-            <div class="pmo-specialty-title"><i class="bi bi-diagram-3 me-2"></i>{{ specialty.name }}</div>
+            <div class="pmo-specialty-title" *ngIf="specialtyHasRows(specialty)"><i class="bi bi-diagram-3 me-2"></i>{{ specialty.name }}</div>
             <div class="ms-3" *ngFor="let section of specialty.sections">
-              <div class="pmo-type-title" *ngIf="resourceTypeFilter === 'Todos' || section.name.toLowerCase() === resourceTypeFilter.toLowerCase()">
+              <div class="pmo-type-title" *ngIf="sectionHasRows(section)">
                 <i class="bi bi-folder2-open me-2"></i>{{ section.name }}
               </div>
-              <table class="table table-sm align-middle mb-2 ms-3" *ngIf="resourceTypeFilter === 'Todos' || section.name.toLowerCase() === resourceTypeFilter.toLowerCase()">
+              <table class="table table-sm align-middle mb-2 ms-3" *ngIf="sectionHasRows(section)">
                 <thead><tr><th>Recurso</th><th>Unidad</th><th class="text-end">Cantidad</th><th class="text-end">Costo planeado</th></tr></thead>
-                <tbody><tr *ngFor="let r of section.rows"><td>{{ r.descripcion }}</td><td>{{ r.unidad }}</td><td class="text-end">{{ r.cantPlan }}</td><td class="text-end">{{ (r.cantPlan * r.costoUnitPlan) | currency:'MXN' }}</td></tr></tbody>
+                <tbody><tr *ngFor="let r of section.rows" [hidden]="!resourceRowMatches(r)"><td>{{ r.descripcion }}</td><td>{{ r.unidad }}</td><td class="text-end">{{ r.cantPlan }}</td><td class="text-end">{{ (r.cantPlan * r.costoUnitPlan) | currency:'MXN' }}</td></tr></tbody>
               </table>
             </div>
           </section>

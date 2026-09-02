@@ -95,6 +95,7 @@ export class ProjectsComponent {
   budgetDashboard: any = null;
   specialtyDraft = 'Civil';
   resourceTypeFilter = 'Todos';
+  resourceSearch = '';
   resourceDraft: any = { tipo: 'Material', descripcion: '', unidad: 'pieza', cantPlan: 1, costoUnitPlan: 0 };
 
   // Inject of new way for Angular 18
@@ -421,7 +422,18 @@ export class ProjectsComponent {
   }
 
   resourceRowMatches(row: any): boolean {
-    return this.resourceTypeFilter === 'Todos' || String(row?.tipo ?? row?.type ?? '').toLowerCase() === this.resourceTypeFilter.toLowerCase();
+    const typeOk = this.resourceTypeFilter === 'Todos' || String(row?.tipo ?? row?.type ?? '').toLowerCase() === this.resourceTypeFilter.toLowerCase();
+    const query = this.resourceSearch.trim().toLowerCase();
+    const text = `${row?.descripcion ?? ''} ${row?.especialidad ?? ''} ${row?.tipo ?? ''}`.toLowerCase();
+    return typeOk && (!query || text.includes(query));
+  }
+
+  sectionHasRows(section: any): boolean {
+    return section?.rows?.some((row: any) => this.resourceRowMatches(row));
+  }
+
+  specialtyHasRows(specialty: any): boolean {
+    return specialty?.sections?.some((section: any) => this.sectionHasRows(section));
   }
 
   onGridReady(params: GridReadyEvent): void {
