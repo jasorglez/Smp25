@@ -67,6 +67,8 @@ export class ProjectsComponent {
 
     effect(() => {
       this.idCompany = this.signalsService.getRootSelectedBySidebar()();
+      this.signalsService.getBranchSelectedBySidebar()();
+      this.signalsService.getProjectSelectedBySidebar()();
       if (this.idCompany && Number(this.idCompany) > 0) this.getProjects();
     })
   }
@@ -320,6 +322,10 @@ export class ProjectsComponent {
     this.projectsService.getProjectListByCompany(this.idCompany).subscribe(
       (resp: any) => {
         this.project = this.mapProject(resp);
+        const sidebarProjectId = Number(this.signalsService.getProjectSelectedBySidebar()() || 0);
+        if (sidebarProjectId > 0) {
+          this.selectedRowData = this.project.find(p => Number(p.id) === sidebarProjectId) ?? null;
+        }
         console.log('Projects loaded:', this.project);
       },
       (error) => {
