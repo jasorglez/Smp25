@@ -387,18 +387,61 @@
 <div class="modal-backdrop fade show" *ngIf="showConfigModal" style="z-index: 19999;"></div>
 
 <!-- Controles de Zoom -->
+<div class="card border-0 shadow-sm mb-3">
+  <div class="card-body py-3">
+    <div class="d-flex flex-wrap justify-content-between align-items-center gap-3">
+      <div>
+        <div class="text-uppercase text-muted small fw-semibold">Programa de trabajo</div>
+        <h5 class="mb-0">
+          <i class="bi" [ngClass]="typeWorkProgram === 'Contract' ? 'bi-file-earmark-text' : 'bi-building'"></i>
+          {{ typeWorkProgram === 'Contract' ? 'Programa del contrato' : 'Programa del proyecto' }}
+        </h5>
+        <small class="text-muted">
+          {{ typeWorkProgram === 'Contract'
+            ? 'Programa maestro que distribuye actividades y cantidades entre proyectos.'
+            : 'Programa operativo exclusivo del proyecto seleccionado.' }}
+        </small>
+      </div>
+      <div class="btn-group" role="group" aria-label="Alcance del programa de trabajo">
+        <button type="button" class="btn"
+                [ngClass]="typeWorkProgram === 'Contract' ? 'btn-primary' : 'btn-outline-primary'"
+                (click)="selectWorkProgramScope('Contract')">
+          <i class="bi bi-file-earmark-text me-1"></i>Contrato
+          <span class="badge ms-1" [ngClass]="typeWorkProgram === 'Contract' ? 'text-bg-light' : 'text-bg-secondary'">{{ idContract || '—' }}</span>
+        </button>
+        <button type="button" class="btn"
+                [ngClass]="typeWorkProgram === 'Project' ? 'btn-success' : 'btn-outline-success'"
+                (click)="selectWorkProgramScope('Project')"
+                [disabled]="!idProject">
+          <i class="bi bi-building me-1"></i>Proyecto
+          <span class="badge ms-1" [ngClass]="typeWorkProgram === 'Project' ? 'text-bg-light' : 'text-bg-secondary'">{{ idProject || '—' }}</span>
+        </button>
+      </div>
+    </div>
+    <div class="alert alert-warning py-2 mb-0 mt-3" *ngIf="typeWorkProgram === 'Contract' && !idContract">
+      <i class="bi bi-exclamation-triangle me-1"></i>Selecciona un contrato en el sidebar.
+    </div>
+    <div class="alert alert-warning py-2 mb-0 mt-3" *ngIf="typeWorkProgram === 'Project' && !idProject">
+      <i class="bi bi-exclamation-triangle me-1"></i>Selecciona un proyecto en el sidebar.
+    </div>
+  </div>
+</div>
+
 <div class="row mb-3">
     <div class="col text-right d-flex align-items-center justify-content-end gap-3">
       <!-- Convenio vigente -->
-      <span class="text-muted small fw-semibold">Convenio Vigente:</span>
-      <span *ngIf="conventionName" class="badge bg-success px-3 py-2">
+      <span class="text-muted small fw-semibold" *ngIf="typeWorkProgram === 'Project'">Convenio Vigente:</span>
+      <span *ngIf="typeWorkProgram === 'Project' && conventionName" class="badge bg-success px-3 py-2">
         <i class="bi bi-bookmark-check-fill me-1"></i>{{ conventionName }}
       </span>
-      <span *ngIf="!conventionName" class="badge bg-secondary px-3 py-2">
+      <span *ngIf="typeWorkProgram === 'Project' && !conventionName" class="badge bg-secondary px-3 py-2">
         <i class="bi bi-bookmark-x me-1"></i>Sin convenio vigente
       </span>
+      <span *ngIf="typeWorkProgram === 'Contract'" class="badge bg-primary px-3 py-2">
+        <i class="bi bi-file-earmark-text me-1"></i>Contrato {{ idContract || 'sin seleccionar' }}
+      </span>
       <!-- OT activa -->
-      <span *ngIf="projectName()" class="badge bg-primary px-3 py-2">
+      <span *ngIf="typeWorkProgram === 'Project' && projectName()" class="badge bg-success px-3 py-2">
         <i class="bi bi-folder2-open me-1"></i>{{ projectName() }}
       </span>
       <!-- Número de tareas -->

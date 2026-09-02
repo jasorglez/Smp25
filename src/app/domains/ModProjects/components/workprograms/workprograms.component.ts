@@ -157,7 +157,7 @@ export class WorkprogramsComponent {
   idContract: number = null;
   idConvention: number = null;
   conventionName: string = '';
-  typeWorkProgram: string = 'Project';
+  typeWorkProgram: 'Contract' | 'Project' = 'Contract';
 
   /** Valores derivados de los datos cargados (fallback cuando el signal está null) */
   private idContractFallback: number | null = null;
@@ -238,9 +238,45 @@ export class WorkprogramsComponent {
       const vigente   = this.signalsService.getConventionVigente()(); // trackear vigente
       this.idConvention   = vigente?.id   ?? null;
       this.conventionName = vigente?.name ?? '';
-      this.typeWorkProgram = this.idProject == null ? 'Contract' : 'Project';
+      // El alcance lo elige el usuario. Nunca inferir Proyecto sólo porque exista
+      // uno seleccionado en el sidebar: eso mezclaba los programas.
+      if (this.typeWorkProgram === 'Project' && !this.idProject) {
+        this.typeWorkProgram = 'Contract';
+      }
       this.loadVigenteAndInit();
     });
+  }
+
+  async selectWorkProgramScope(scope: 'Contract' | 'Project'): Promise<void> {
+    if (scope === this.typeWorkProgram) return;
+
+    if (scope === 'Project' && !this.idProject) {
+      alerts.basicAlert('Selecciona un proyecto', 'Elige un proyecto en el sidebar para abrir su programa de trabajo.', 'warning');
+      return;
+    }
+
+    if (this.notSavedChanges) {
+      const discard = await alerts.confirmAlert(
+        'Cambios sin guardar',
+        'Al cambiar de programa se descartarán los cambios pendientes.',
+        'warning',
+        'Cambiar de programa'
+      );
+      if (!discard.isConfirmed) return;
+    }
+
+    this.typeWorkProgram = scope;
+    this.notSavedChanges = false;
+    this.deletedTasks.clear();
+    this.idContractFallback = null;
+    this.idConventionFallback = null;
+    this.taskCount = 0;
+    gantt.clearAll();
+    this.loadDataFromAPI();
+  }
+
+  get activeScopeId(): number {
+    return Number(this.typeWorkProgram === 'Contract' ? this.idContract : this.idProject) || 0;
   }
 
   private async loadVigenteAndInit(): Promise<void> {
@@ -1629,7 +1665,9 @@ export class WorkprogramsComponent {
     const idContract = this.idContract || task['idContract'] || this.idContractFallback || 0;
 
     // idConvention: vigente del sidebar → señal local → tarea existente (DB) → fallback datos cargados
-    const idConvention = vigente?.id ?? this.idConvention ?? task['idConvention'] ?? this.idConventionFallback ?? null;
+    const idConvention = this.typeWorkProgram === 'Contract'
+      ? null
+      : (vigente?.id ?? this.idConvention ?? task['idConvention'] ?? this.idConventionFallback ?? null);
 
     // Fechas: manejar tanto Date objects como strings de gantt ("%Y-%m-%d %H:%i")
     const startDate = this.toIsoString(task.start_date);
@@ -1651,7 +1689,7 @@ export class WorkprogramsComponent {
       idTask: Number(task.id) || 0,
       text: task.text || '',                                   // NOT NULL en C#
       idContract,                                              // int NOT NULL
-      idProject: this.idProject ?? 0,                          // int NOT NULL
+      idProject: this.typeWorkProgram === 'Contract' ? 0 : (this.idProject ?? 0), // int NOT NULL
       idConvention,                                            // convenio vigente
       startDate,
       endDate,
@@ -1661,7 +1699,7 @@ export class WorkprogramsComponent {
       measure: this.trunc(task.measure, 10),                   // nullable
       criticRoute: this.truncReq(task.criticRoute, 2, 'No'),   // NOT NULL en C#
       activity: this.truncReq(task.activity, 20, ''),          // NOT NULL en C#
-      type: this.trunc(task.type, 10),                         // nullable — Project | Contract
+      type: this.typeWorkProgram,                              // alcance explícito
       typeActivity: 'Activity',
       especification: this.trunc(task.especification, 20),     // nullable
       distribution: task.distribution ?? 0,
@@ -1680,8 +1718,15 @@ export class WorkprogramsComponent {
   loadDataFromAPI() {
     const id = this.typeWorkProgram === 'Project' ? this.idProject : this.idContract;
 
-    // Cuando hay convenio vigente, cargar por convenio; si está vacío, fallback por proyecto
-    const byConvention$ = this.idConvention
+    if (!id) {
+      this.taskCount = 0;
+      gantt.clearAll();
+      return;
+    }
+
+    // Los convenios sólo aplican al programa del proyecto. El contrato siempre
+    // se consulta por idContract + tipo Contract.
+    const byConvention$ = this.typeWorkProgram === 'Project' && this.idConvention
       ? this.workprogramsService.getByConvention(this.idConvention, this.idProject ?? undefined)
       : null;
 
@@ -1770,13 +1815,17 @@ export class WorkprogramsComponent {
 
   // Funcion para guardar los cambios en la API
   save() {
-    if (!this.idProject && !this.idContract) {
-      alerts.basicAlert('Aviso', 'Debes seleccionar un Proyecto o Contrato desde el sidebar antes de guardar.', 'warning');
+    if (this.typeWorkProgram === 'Contract' && !this.idContract) {
+      alerts.basicAlert('Selecciona un contrato', 'Debes seleccionar un contrato desde el sidebar antes de guardar.', 'warning');
+      return;
+    }
+    if (this.typeWorkProgram === 'Project' && !this.idProject) {
+      alerts.basicAlert('Selecciona un proyecto', 'Debes seleccionar un proyecto desde el sidebar antes de guardar.', 'warning');
       return;
     }
 
     const vigente = this.signalsService.getConventionVigente()();
-    if (!vigente) {
+    if (this.typeWorkProgram === 'Project' && !vigente) {
       alerts.basicAlert('Sin Convenio Vigente', 'No hay un convenio vigente asignado. Las tareas se guardarán sin convenio.', 'warning');
     }
 

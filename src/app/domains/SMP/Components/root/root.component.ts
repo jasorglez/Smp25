@@ -910,18 +910,8 @@ public gridOptions: any = {
       this.logPeriferico('4-Proyecto creado', rootName);
     } catch (e) { console.error('paso 4 (proyecto):', e); }
 
-    // ── 5. Programa de trabajo (3 tareas) ────────────────────────────────────
-    try {
-      const wpBase = {
-        idContract: contractId, idProject: projectId, idConvention: conventionId,
-        startDate: today, endDate: endDate, costMX: 0, ponderado: 33, progress: 0,
-        criticRoute: 'No', measure: 'HRS', phase: 'Fase 1', active: 1, activity: '', typeActivity: 'task'
-      };
-      await lastValueFrom(this.workprogramsService.addWorkProgram({ ...wpBase, idTask: 1, parent: 0, text: 'INICIO' }));
-      await lastValueFrom(this.workprogramsService.addWorkProgram({ ...wpBase, idTask: 2, parent: 0, text: 'DESARROLLO' }));
-      await lastValueFrom(this.workprogramsService.addWorkProgram({ ...wpBase, idTask: 3, parent: 0, text: 'CIERRE' }));
-      this.logPeriferico('5-Programa de Trabajo creado', rootName);
-    } catch (e) { console.error('paso 5 (workprogram):', e); }
+    // El programa de trabajo se captura o importa explícitamente. No crear
+    // actividades ficticias al dar de alta una empresa.
 
     // ── 6. TIPO-CLIENTE (SMP catalog) ────────────────────────────────────────
     try {
@@ -1197,24 +1187,8 @@ public gridOptions: any = {
       }
     } catch (e) { console.error('ensure paso 4 (proyecto):', e); }
 
-    // ── 5. Programa de Trabajo ────────────────────────────────────────────────
-    try {
-      if (conventionId) {
-        const existingWP: any[] = await lastValueFrom(this.workprogramsService.getByConvention(conventionId)).catch(() => []);
-        if (!existingWP?.length) {
-          const wpBase = {
-            idContract: contractId, idProject: projectId, idConvention: conventionId,
-            startDate: today, endDate: endDate, costMX: 0,
-            ponderado: 33, progress: 0, criticRoute: 'No', measure: 'HRS', phase: 'Fase 1',
-            active: 1, activity: '', typeActivity: 'task'
-          };
-          await lastValueFrom(this.workprogramsService.addWorkProgram({ ...wpBase, idTask: 1, parent: 0, text: 'INICIO' }));
-          await lastValueFrom(this.workprogramsService.addWorkProgram({ ...wpBase, idTask: 2, parent: 0, text: 'DESARROLLO' }));
-          await lastValueFrom(this.workprogramsService.addWorkProgram({ ...wpBase, idTask: 3, parent: 0, text: 'CIERRE' }));
-          this.logPeriferico('5-Programa de Trabajo creado (3 tareas)', rootName);
-        }
-      }
-    } catch (e) { console.error('ensure paso 5 (workprogram):', e); }
+    // El programa de trabajo se captura o importa explícitamente. La reparación
+    // de periféricos tampoco debe sembrar actividades de ejemplo.
 
     // ── 6. TIPO-CLIENTE ──────────────────────────────────────────────────────
     let tipoClienteId = 0;
