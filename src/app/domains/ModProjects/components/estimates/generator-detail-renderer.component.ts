@@ -221,11 +221,18 @@ export class GeneratorDetailRendererComponent implements ICellRendererAngularCom
       this.rowData = this.rowData.filter(r => r !== this.selectedRow);
     } else {
       try {
-        await lastValueFrom(this.generatorsSvc.deleteItemGenerador(id));
+        await lastValueFrom(this.generatorsSvc.deleteItemGenerador(id, 'GENERADOR'));
         this.rowData = this.rowData.filter(r => r !== this.selectedRow);
         alerts.basicAlert('Eliminado', 'Ítem eliminado correctamente.', 'success');
-      } catch {
-        alerts.basicAlert('Error', 'No se pudo eliminar el ítem.', 'error');
+      } catch (error: any) {
+        const serverMessage = typeof error?.error === 'string'
+          ? error.error
+          : error?.error?.message || error?.error?.title;
+        alerts.basicAlert(
+          'No se pudo eliminar el ítem',
+          serverMessage || 'El servidor rechazó el borrado del ítem del generador.',
+          'error'
+        );
         return;
       }
     }

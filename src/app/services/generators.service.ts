@@ -46,7 +46,10 @@ export class GeneratorsService {
     return this.http.put(`${environment.urlSmp}/ItemsGeneradoresEstimates/${id}`, data, { headers: this.trackingService.getHeaders() });
   }
 
-  deleteItemGenerador(id: number): Observable<any> {
-    return this.http.delete(`${environment.urlSmp}/ItemsGeneradoresEstimates/${id}`, { headers: this.trackingService.getHeaders() });
+  deleteItemGenerador(id: number, type: 'GENERADOR' | 'ESTIMACION' = 'GENERADOR'): Observable<any> {
+    return this.http.delete(`${environment.urlSmp}/ItemsGeneradoresEstimates/${id}`, {
+      headers: this.trackingService.getHeaders(),
+      params: { Type: type },
+    });
   }
 }

@@ -212,6 +212,10 @@ export class DetailCellRendererRequisitionReportComponent {
     const fechaRequisicion = this.requisitionData.dateCreate ? this.formatDate(this.requisitionData.dateCreate) : '';
     const requisicionNumero = this.requisitionData.folio || 'N/A';
     const solicitante = this.requisitionData.solicit || 'N/A';
+    const proyecto = this.requisitionData.projectName
+      || this.requisitionData.nameProject
+      || this.signalsService.getProjectNameBySidebar()()
+      || 'N/A';
     const prioridad = this.requisitionData.priority || 'Normal';
     const tiempoEntrega = this.requisitionData.deliveryTime || 'N/A';
 
@@ -311,6 +315,10 @@ export class DetailCellRendererRequisitionReportComponent {
           table: {
             widths: ['25%', '75%'],
             body: [
+              [
+                { text: 'PROYECTO:', style: 'masterLabel' },
+                { text: proyecto, style: 'masterValue' }
+              ],
               [
                 { text: 'SOLICITANTE:', style: 'masterLabel' },
                 { text: solicitante, style: 'masterValue' }
