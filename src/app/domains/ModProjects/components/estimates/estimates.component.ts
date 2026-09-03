@@ -383,6 +383,7 @@ export class EstimatesComponent {
       proyecto:      this.signalsService.getProjectNameBySidebar()() || 'PROYECTO',
       obra:          contractData?.description || contractData?.descripSmall || 'N/A',
       contrato:      contractData?.numberContract || contractData?.contract || String(estimateData.idContract || 'N/A'),
+      moneda:        estimateData.typeMoney || 'MX',
       estimacion:    estimateData.number,
       fechaInicio:   this.formatDateForPdf(estimateData.dateStart),
       fechaFin:      this.formatDateForPdf(estimateData.dateEnd),

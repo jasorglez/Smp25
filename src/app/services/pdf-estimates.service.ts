@@ -26,6 +26,7 @@ export interface EstimateData {
   proyecto: string;
   obra?: string;
   contrato?: string;
+  moneda?: string;
   estimacion: string;
   fechaInicio: string;
   fechaFin: string;
@@ -122,6 +123,12 @@ export class PdfEstimatesService {
         },
         centerAlign: {
           alignment: 'center'
+        },
+        signatureLabel: {
+          fontSize: 9,
+          bold: true,
+          alignment: 'center',
+          margin: [0, 5, 0, 0]
         }
       },
       header: {
@@ -147,6 +154,17 @@ export class PdfEstimatesService {
         },
         
         // Información del proyecto y fechas
+        {
+          table: {
+            widths: ['*', '*'],
+            body: [[
+              { text: `ESTIMACIÓN No. ${data.estimacion || 'N/A'}`, style: 'tableHeader' },
+              { text: `MONEDA: ${this.currencyLabel(data.moneda)}`, style: 'tableHeader' }
+            ]]
+          },
+          margin: [0, 0, 0, 8]
+        },
+
         {
           table: {
             widths: ['70%', '*'],
@@ -211,6 +229,23 @@ export class PdfEstimatesService {
               return null;
             }
           }
+        },
+        {
+          table: {
+            widths: ['*', '*'],
+            body: [
+              [
+                { text: '________________________________', style: 'signatureLabel', border: [false, false, false, false] },
+                { text: '________________________________', style: 'signatureLabel', border: [false, false, false, false] }
+              ],
+              [
+                { text: 'REALIZÓ', style: 'signatureLabel', border: [false, false, false, false] },
+                { text: 'AUTORIZÓ', style: 'signatureLabel', border: [false, false, false, false] }
+              ]
+            ]
+          },
+          layout: 'noBorders',
+          margin: [80, 25, 80, 0]
         }
       ],
       images: {
@@ -252,10 +287,10 @@ export class PdfEstimatesService {
     body.push([
       { text: '', style: 'categoryHeader', border: [false, false, false, false] },
       { text: data.proyecto.toUpperCase(), style: 'categoryHeader', colSpan: 4, border: [false, false, false, false] }, {}, {}, {},
-      { text: this.formatCurrency(data.totalGeneral), style: ['categoryHeader', 'rightAlign'], border: [false, false, false, false] },
+      { text: this.formatCurrency(data.totalGeneral, data.moneda), style: ['categoryHeader', 'rightAlign'], border: [false, false, false, false] },
       { text: '', style: 'categoryHeader' },
       { text: '', style: 'categoryHeader' },
-      { text: this.formatCurrency(data.totalEjecutado), style: ['categoryHeader', 'rightAlign'] }
+      { text: this.formatCurrency(data.totalEjecutado, data.moneda), style: ['categoryHeader', 'rightAlign'] }
     ]);
 
     // Categories and items
@@ -264,7 +299,7 @@ export class PdfEstimatesService {
       body.push([
         { text: '', style: 'categoryHeader', border: [false, false, false, false] },
         { text: category.nombre.toUpperCase(), style: 'categoryHeader', colSpan: 4, border: [false, false, false, false] }, {}, {}, {},
-        { text: this.formatCurrency(category.total), style: ['categoryHeader', 'rightAlign'], border: [false, false, false, false] },
+        { text: this.formatCurrency(category.total, data.moneda), style: ['categoryHeader', 'rightAlign'], border: [false, false, false, false] },
         { text: '', style: 'categoryHeader' },
         { text: '', style: 'categoryHeader' },
         { text: '', style: 'categoryHeader' }
@@ -277,11 +312,11 @@ export class PdfEstimatesService {
           { text: item.concepto, style: 'tableContent', border: [false, false, false, false] },
           { text: item.unidad, style: ['tableContent', 'centerAlign'], border: [false, false, false, false] },
           { text: this.formatNumber(item.cantidad || 0), style: ['tableContent', 'rightAlign'], border: [false, false, false, false] },
-          { text: this.formatCurrency(item.precioUnitario), style: ['tableContent', 'rightAlign'], border: [false, false, false, false] },
-          { text: this.formatCurrency(item.importe), style: ['tableContent', 'rightAlign'], border: [false, false, false, false] },
-          { text: this.formatCurrency(item.precioUnitario || 0), style: ['tableContent', 'rightAlign'] },
+          { text: this.formatCurrency(item.precioUnitario, data.moneda), style: ['tableContent', 'rightAlign'], border: [false, false, false, false] },
+          { text: this.formatCurrency(item.importe, data.moneda), style: ['tableContent', 'rightAlign'], border: [false, false, false, false] },
+          { text: this.formatCurrency(item.precioUnitario || 0, data.moneda), style: ['tableContent', 'rightAlign'] },
           { text: this.formatNumber(item.cantidadEjecutada || 0), style: ['tableContent', 'rightAlign'] },
-          { text: this.formatCurrency((item.precioUnitario || 0) * (item.cantidadEjecutada || 0)), style: ['tableContent', 'rightAlign'] }
+          { text: this.formatCurrency((item.precioUnitario || 0) * (item.cantidadEjecutada || 0), data.moneda), style: ['tableContent', 'rightAlign'] }
         ]);
       });
     });
@@ -289,7 +324,7 @@ export class PdfEstimatesService {
     // First total row - for general total
     body.push([
       { text: 'TOTAL', style: ['totalRow', 'centerAlign'], colSpan: 5 }, {}, {}, {}, {},
-      { text: this.formatCurrency(data.totalGeneral), style: ['totalRow', 'rightAlign'] },
+      { text: this.formatCurrency(data.totalGeneral, data.moneda), style: ['totalRow', 'rightAlign'] },
       { text: '', style: 'totalRow' },
       { text: '', style: 'totalRow' },
       { text: '', style: 'totalRow' }
@@ -301,16 +336,20 @@ export class PdfEstimatesService {
       { text: '', style: 'totalRow' },
       { text: '', style: 'totalRow' },
       { text: '', style: 'totalRow' },
-      { text: this.formatCurrency(data.totalEjecutado), style: ['totalRow', 'rightAlign'] }
+      { text: this.formatCurrency(data.totalEjecutado, data.moneda), style: ['totalRow', 'rightAlign'] }
     ]);
 
     return body;
   }
 
-  private formatCurrency(amount: number): string {
+  private currencyLabel(moneda?: string): string {
+    return String(moneda || 'MX').toUpperCase() === 'USD' ? 'USD' : 'MXN';
+  }
+
+  private formatCurrency(amount: number, moneda?: string): string {
     return new Intl.NumberFormat('es-MX', {
       style: 'currency',
-      currency: 'MXN',
+      currency: this.currencyLabel(moneda),
       minimumFractionDigits: 2
     }).format(amount);
   }
@@ -326,6 +365,7 @@ export class PdfEstimatesService {
   createSampleEstimate(): EstimateData {
     return {
       proyecto: 'PROYECTO DE EJEMPLO',
+      moneda: 'MX',
       estimacion: '1',
       fechaInicio: '1 de enero de 2024',
       fechaFin: '31 de enero de 2024',
