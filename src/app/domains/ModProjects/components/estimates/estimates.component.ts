@@ -12,6 +12,7 @@ import { TrackingService } from 'app/services/tracking.service';
 import { WorkprogramsService } from 'app/services/workprograms.service';
 import { GeneratorsService } from 'app/services/generators.service';
 import { ContractsService } from 'app/services/contracts.service';
+import { ProjectsService } from 'app/services/projects.service';
 import { EstimateDetailRendererComponent } from './estimate-detail-renderer.component';
 
 @Component({
@@ -29,6 +30,7 @@ export class EstimatesComponent {
   private workprogramsService  = inject(WorkprogramsService);
   private generatorsService    = inject(GeneratorsService);
   private contractsService     = inject(ContractsService);
+  private projectsService      = inject(ProjectsService);
 
   @HostListener('window:beforeunload', ['$event'])
   unloadNotification($event: any): void {
@@ -339,6 +341,10 @@ export class EstimatesComponent {
       const contractData = await lastValueFrom(
         this.contractsService.getContractById(Number(estimateData.idContract)).pipe(catchError(() => of(null)))
       );
+      const projectResponse = await lastValueFrom(
+        this.projectsService.getProjectsById(Number(this.signalsService.getProjectSelectedBySidebar()())).pipe(catchError(() => of(null)))
+      );
+      const projectData = Array.isArray(projectResponse) ? projectResponse[0] : projectResponse;
       const generators = await lastValueFrom(this.generatorsService.getGenerators(estimateId));
       const generatorItems = await Promise.all(
         generators.map(generator => lastValueFrom(this.generatorsService.getItemsGeneradores(generator.id)))
@@ -347,7 +353,7 @@ export class EstimatesComponent {
       const conceptsRes   = await Promise.all(
         estimateItems.map(item => lastValueFrom(this.workprogramsService.getWorkProgramsWithoutType(item.idResource)))
       );
-      const pdfData = await this.createEstimateDataFromServices(estimateData, contractData, estimateItems, conceptsRes);
+      const pdfData = await this.createEstimateDataFromServices(estimateData, contractData, projectData, estimateItems, conceptsRes);
       if (download) {
         this.pdfEstimatesService.downloadEstimatePdf(pdfData, `Estimacion_${estimateData.number}.pdf`);
       } else {
@@ -359,7 +365,7 @@ export class EstimatesComponent {
     }
   }
 
-  private async createEstimateDataFromServices(estimateData: any, contractData: any, estimateItems: any[], conceptsResults: any[][]) {
+  private async createEstimateDataFromServices(estimateData: any, contractData: any, projectData: any, estimateItems: any[], conceptsResults: any[][]) {
     const items = estimateItems.map((item, i) => {
       const concept = conceptsResults[i]?.[0] ?? null;
       return {
@@ -380,7 +386,7 @@ export class EstimatesComponent {
       s + c.items.reduce((cs: number, it: any) => cs + (it.importeEjecutado || 0), 0), 0);
 
     return {
-      proyecto:      this.signalsService.getProjectNameBySidebar()() || 'PROYECTO',
+      proyecto:      this.buildProjectLabel(projectData),
       obra:          contractData?.description || contractData?.descripSmall || 'N/A',
       contrato:      contractData?.numberContract || contractData?.contract || String(estimateData.idContract || 'N/A'),
       moneda:        estimateData.typeMoney || 'MX',
@@ -391,6 +397,12 @@ export class EstimatesComponent {
       fechaFin:      this.formatDateForPdf(estimateData.dateEnd),
       totalGeneral, totalEjecutado, pagina: 1, totalPaginas: 1, categorias,
     };
+  }
+
+  private buildProjectLabel(projectData: any): string {
+    const name = projectData?.name || this.signalsService.getProjectNameBySidebar()() || 'PROYECTO';
+    const description = String(projectData?.description || '').trim();
+    return description && description !== name ? `${name} — ${description}` : name;
   }
 
   private groupItemsByCategory(items: any[], conceptsResults: any[][]) {

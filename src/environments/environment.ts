@@ -83,5 +83,5 @@ export const environment = {
   geminiApiKey: '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',
   gnewsApiKey: '94ccc596b4dfebc3f72683b6e81d81bc',
 
-  version: '4.99.15 (03 Septiembre 2026) fix: ajustar logo PDF estimaciones',
+  version: '4.99.16 (03 Septiembre 2026) fix: mostrar proyecto en PDF estimaciones',
 };

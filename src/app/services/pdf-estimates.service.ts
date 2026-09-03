@@ -152,7 +152,7 @@ export class PdfEstimatesService {
           {
             stack: [
               { text: `OBRA: ${data.obra || data.proyecto || 'N/A'}`, style: 'header' },
-              { text: `CONTRATO: ${data.contrato || 'N/A'}`, style: 'headerSub' }
+              { text: `PROYECTO: ${data.proyecto || 'N/A'}`, style: 'headerSub' }
             ],
             width: '*',
             margin: [0, 7, 0, 0]
