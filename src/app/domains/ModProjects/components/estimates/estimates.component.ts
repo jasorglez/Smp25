@@ -326,12 +326,12 @@ export class EstimatesComponent {
       alerts.basicAlert('Generar PDF', 'Por favor, seleccione una estimación.', 'warning');
       return;
     }
-    this.generatePdfWithRealData(this.selectedEstimate.id, false);
+    this.generatePdfWithRealData(this.selectedEstimate, false);
   }
 
-  private async generatePdfWithRealData(estimateId: number, download: boolean) {
+  private async generatePdfWithRealData(estimateData: any, download: boolean) {
     try {
-      const estimateData  = await lastValueFrom(this.estimatesService.getEstimateById(estimateId));
+      const estimateId = Number(estimateData.id);
       const estimateItems = await lastValueFrom(this.estimatesService.getItemsFromEstimate(estimateId));
       const conceptsRes   = await Promise.all(
         estimateItems.map(item => lastValueFrom(this.workprogramsService.getWorkProgramsWithoutType(item.idResource)))
