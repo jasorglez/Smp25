@@ -243,6 +243,10 @@ import { TrackingService } from 'app/services/tracking.service';
               <label for="copyConceptPrice" class="form-label">Precio <span class="text-danger">*</span></label>
               <input id="copyConceptPrice" type="number" min="0" step="0.01" class="form-control" [(ngModel)]="copyPrice" name="copyConceptPrice">
             </div>
+            <div class="mt-3">
+              <label for="copyConceptDescription" class="form-label">Concepto adicional</label>
+              <textarea id="copyConceptDescription" class="form-control" rows="2" maxlength="500" [(ngModel)]="copyDescription" name="copyDescription"></textarea>
+            </div>
           </div>
           <div class="modal-footer">
             <button type="button" class="btn btn-secondary" (click)="closeCopyModal()">Cancelar</button>
@@ -312,6 +316,7 @@ export class DetallesExpenditureComponent implements OnInit, OnDestroy {
   copySourceConcept: any = null;
   copyDate: string = '';
   copyPrice: number | null = null;
+  copyDescription = '';
   copySaving: boolean = false;
   newProvider: any = {
     idRoot: 0,
@@ -1014,6 +1019,7 @@ export class DetallesExpenditureComponent implements OnInit, OnDestroy {
     this.copySourceConcept = concept;
     this.copyDate = concept.dateExpend ? String(concept.dateExpend).substring(0, 10) : this.getTodayDateForInput();
     this.copyPrice = Number(concept.price) || 0;
+    this.copyDescription = this.rowData.find(row => String(row.description || '').trim())?.description || concept.description || '';
     this.copySaving = false;
     this.showCopyModal = true;
     document.body.classList.add('modal-open');
@@ -1022,6 +1028,7 @@ export class DetallesExpenditureComponent implements OnInit, OnDestroy {
   closeCopyModal(): void {
     this.showCopyModal = false;
     this.copySourceConcept = null;
+    this.copyDescription = '';
     this.copySaving = false;
     document.body.classList.remove('modal-open');
   }
@@ -1039,6 +1046,7 @@ export class DetallesExpenditureComponent implements OnInit, OnDestroy {
       id: `temp_concept_${this.tempIdCounter++}`,
       idIncorExp: this.params.data.id,
       dateExpend: this.copyDate,
+      description: this.copyDescription.trim(),
       price,
       total: quantity * price,
       iva2: source.iva ? quantity * price * (this.ivaPercent / 100) : 0,
