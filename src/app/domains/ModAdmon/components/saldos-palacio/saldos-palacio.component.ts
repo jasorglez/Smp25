@@ -574,9 +574,19 @@ export class SaldosPalacioComponent {
       ? await this.base64EncodeService.convertImageToBase64(rootResponse.picture3)
       : null;
 
-    const setupManagementInfo: any = await lastValueFrom(
-      this.administrationService.getSetupManagementInfo(companyId)
-    );
+    // La configuración de firmas es opcional; algunas empresas aún no tienen
+    // registro en SetupManagement y el endpoint responde 404. Eso no debe
+    // impedir generar el estado de cuenta.
+    let setupManagementInfo: any = null;
+    try {
+      setupManagementInfo = await lastValueFrom(
+        this.administrationService.getSetupManagementInfo(companyId)
+      );
+    } catch (error: any) {
+      if (error?.status !== 404) {
+        console.warn('No se pudo cargar la configuración de firmas:', error);
+      }
+    }
     const firmas = Array.isArray(setupManagementInfo) && setupManagementInfo.length > 0
       ? setupManagementInfo[0]
       : null;
