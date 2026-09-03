@@ -27,6 +27,22 @@ export class PositionsComponent {
   fiscalRegimes: any = [];
   newData: boolean;
 
+  private getDefaultSetupData(): any {
+    return {
+      directorName: '',
+      directorTitle: 'DIRECTOR',
+      gerencyName: '',
+      gerencyTitle: 'GERENCIA',
+      administratorName: '',
+      administratorTitle: 'ADMINISTRACION',
+      operatorName: '',
+      operatorTitle: 'OPERACION',
+      consecutiveReceipt: 1,
+      consecutiveCreditNote: 1,
+      iva: 0
+    };
+  }
+
   ngOnInit() {
     this.idRoot = this.signalsService.getRootSelectedBySidebar()();
     this.getSetupManagementData();
@@ -44,13 +60,13 @@ export class PositionsComponent {
       .getSetupManagementInfo(this.idRoot)
       .subscribe({
         next: (data: any) => {
-          this.setupData = data[0] || {};
+          this.setupData = { ...this.getDefaultSetupData(), ...(data[0] || {}) };
           this.newData = false;
           this.trackingService.addLog(this.trackingService.getnameComp(),'Get Registro en Posiciones', 'Menu Administracion Posiciones',  this.trackingService.getEmail());
         },
         error: (err) => {
           if (err.status === 404) {
-            this.setupData = {}; // Inicializar objeto vacío si no hay datos
+            this.setupData = this.getDefaultSetupData();
             this.newData = true;
           }
         }
