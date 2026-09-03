@@ -119,8 +119,11 @@ export class DetailCellRendererRequisitionReportComponent {
       const departmentId = this.requisitionData.idDepartament;
       if (departmentId && departmentId > 0) {
         try {
-          const departments: any = await lastValueFrom(this.departmentsService.getDepartments(idRoot));
-          const dept = departments.find((d: any) => d.id === departmentId);
+          const departmentsResponse: any = await lastValueFrom(this.departmentsService.getDepartments(idRoot));
+          const departments = Array.isArray(departmentsResponse)
+            ? departmentsResponse
+            : departmentsResponse?.data ?? [];
+          const dept = departments.find((d: any) => Number(d.id) === Number(departmentId));
           departmentName = dept?.description || 'Sin nombre';
         } catch (error) {
           console.warn('No se pudo cargar el departamento:', error);

@@ -17,3 +17,24 @@
 ::ng-deep .ag-theme-quartz .locked-row .ag-cell {
   color: #856404 !important;
 }
+
+.required-fields-legend {
+  color: #6c757d;
+  font-size: 0.78rem;
+}
+
+.required-mark {
+  color: #dc3545;
+  font-weight: 700;
+}
+
+::ng-deep .ag-theme-quartz .required-column-header .ag-header-cell-text::after {
+  color: #dc3545;
+  content: ' *';
+  font-weight: 700;
+}
+
+::ng-deep .ag-theme-quartz .required-cell-missing {
+  background-color: #fff1f2 !important;
+  box-shadow: inset 0 0 0 1px #dc3545;
+}

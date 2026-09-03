@@ -78,6 +78,10 @@ export class DetallesRequisicionesComponent implements OnInit {
       {
         field: 'idSupplie',
         headerName: 'Producto',
+        headerClass: 'required-column-header',
+        cellClassRules: {
+          'required-cell-missing': (params) => !this.isPositiveNumber(params.value),
+        },
         editable: () => !this.isLocked,
         width: 300,
         cellEditor: 'agRichSelectCellEditor',
@@ -109,6 +113,10 @@ export class DetallesRequisicionesComponent implements OnInit {
       {
         field: 'quantity',
         headerName: 'Cantidad',
+        headerClass: 'required-column-header',
+        cellClassRules: {
+          'required-cell-missing': (params) => !this.isPositiveNumber(params.value),
+        },
         editable: () => !this.isLocked,
         width: 100,
         type: 'numericColumn',
@@ -120,6 +128,10 @@ export class DetallesRequisicionesComponent implements OnInit {
       {
         field: 'dateuse',
         headerName: 'Fecha de uso',
+        headerClass: 'required-column-header',
+        cellClassRules: {
+          'required-cell-missing': (params) => this.isBlank(params.value),
+        },
         editable: () => !this.isLocked,
         width: 150,
         cellDataType: 'dateString',
@@ -239,10 +251,7 @@ export class DetallesRequisicionesComponent implements OnInit {
       return;
     }
 
-    // Validar que todos los items tengan producto y fecha
-    const isValid = this.rowData.every(item => item.idSupplie && item.dateuse);
-    if (!isValid) {
-      alerts.basicAlert('Validación', 'Todos los items deben tener producto y fecha de uso', 'warning');
+    if (!this.validateRows()) {
       return;
     }
 
@@ -250,7 +259,10 @@ export class DetallesRequisicionesComponent implements OnInit {
       const requisitionId = this.params.data.id;
       
       // Guardar y esperar a que termine
-      await this.context.ITEMS.save(requisitionId, this.rowData);
+      const saved = await this.context.ITEMS.save(requisitionId, this.rowData);
+      if (saved === false) {
+        return;
+      }
       this.hasUnsavedChanges = false;
       
       // Recargar los datos del servidor para tener los IDs actualizados y el contador actualizado
@@ -287,6 +299,49 @@ export class DetallesRequisicionesComponent implements OnInit {
       item.idSupplie === materialId && 
       item.id !== this.params.data?.id
     );
+  }
+
+  private validateRows(): boolean {
+    const requiredFields = [
+      { field: 'idSupplie', label: 'Producto', invalid: (value: any) => !this.isPositiveNumber(value) },
+      { field: 'quantity', label: 'Cantidad (debe ser mayor que cero)', invalid: (value: any) => !this.isPositiveNumber(value) },
+      { field: 'dateuse', label: 'Fecha de uso', invalid: (value: any) => this.isBlank(value) },
+    ];
+
+    this.gridApi?.stopEditing();
+
+    for (let rowIndex = 0; rowIndex < this.rowData.length; rowIndex++) {
+      const row = this.rowData[rowIndex];
+      const missingFields = requiredFields.filter((required) => required.invalid(row[required.field]));
+      if (missingFields.length === 0) {
+        continue;
+      }
+
+      this.gridApi?.refreshCells({ force: true });
+      this.gridApi?.ensureIndexVisible(rowIndex, 'middle');
+      this.gridApi?.setFocusedCell(rowIndex, missingFields[0].field);
+      setTimeout(() => {
+        this.gridApi?.startEditingCell({ rowIndex, colKey: missingFields[0].field });
+      }, 0);
+
+      alerts.basicAlert(
+        'Faltan campos obligatorios',
+        `En la partida ${rowIndex + 1} completa: ${missingFields.map((required) => required.label).join(', ')}. Los campos están marcados en rojo.`,
+        'warning'
+      );
+      return false;
+    }
+
+    return true;
+  }
+
+  private isBlank(value: any): boolean {
+    return value === null || value === undefined || String(value).trim() === '';
+  }
+
+  private isPositiveNumber(value: any): boolean {
+    const numericValue = Number(value);
+    return Number.isFinite(numericValue) && numericValue > 0;
   }
 
   private showDuplicateMaterialAlert(existingItem: any, params: any): void {

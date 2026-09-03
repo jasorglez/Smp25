@@ -306,6 +306,10 @@ export class RequisitionsComponent implements CanComponentDeactivate {
       {
         field: 'folio',
         headerName: 'Número Doc',
+        headerClass: 'required-column-header',
+        cellClassRules: {
+          'required-cell-missing': (params) => this.isBlank(params.value),
+        },
         editable: (params) => !params.data?.locked,
         filter: true,
         width: 150,
@@ -313,6 +317,10 @@ export class RequisitionsComponent implements CanComponentDeactivate {
       {
         field: 'dateCreate',
         headerName: 'Fecha Solicitud',
+        headerClass: 'required-column-header',
+        cellClassRules: {
+          'required-cell-missing': (params) => this.isBlank(params.value),
+        },
         editable: (params) => !params.data?.locked,
         width: 150,
         cellDataType: 'dateString',
@@ -326,7 +334,11 @@ export class RequisitionsComponent implements CanComponentDeactivate {
 
       {
         field: 'idDepartament',
-        headerName: 'Departamento Solicita1',
+        headerName: 'Departamento solicitante',
+        headerClass: 'required-column-header',
+        cellClassRules: {
+          'required-cell-missing': (params) => !this.isPositiveNumber(params.value),
+        },
         editable: (params) => !params.data?.locked,
         width: 190,
         cellEditor: 'agSelectCellEditor',
@@ -345,12 +357,20 @@ export class RequisitionsComponent implements CanComponentDeactivate {
       {
         field: 'solicit',
         headerName: 'Solicitante',
+        headerClass: 'required-column-header',
+        cellClassRules: {
+          'required-cell-missing': (params) => this.isBlank(params.value),
+        },
         editable: (params) => !params.data?.locked,
         width: 190,
       },
       {
         field: 'deliveryTime',
         headerName: 'Tiempo Entrega',
+        headerClass: 'required-column-header',
+        cellClassRules: {
+          'required-cell-missing': (params) => this.isBlank(params.value),
+        },
         editable: (params) => !params.data?.locked,
         filter: true,
         width: 200,
@@ -359,6 +379,10 @@ export class RequisitionsComponent implements CanComponentDeactivate {
       {
         field: 'priority',
         headerName: 'Prioridad',
+        headerClass: 'required-column-header',
+        cellClassRules: {
+          'required-cell-missing': (params) => this.isBlank(params.value),
+        },
         editable: (params) => !params.data?.locked,
         width: 160,
       },
@@ -639,13 +663,13 @@ export class RequisitionsComponent implements CanComponentDeactivate {
       idProveedor: 0,
       idDepartament: 0,
       delivery: 'A',
-      deliveryTime: '',
+      deliveryTime: '1 DÍA',
       dateSupply: '',
       idPayment: 0,
       idCurrency: 0,
       conditions: '',
       IdAuthorize: 0,
-      priority: '',
+      priority: 'NORMAL',
       solicit: this.signalsService.getDisplayName()(),
       type: 'REQUIS',
       comments: '',
@@ -673,20 +697,20 @@ export class RequisitionsComponent implements CanComponentDeactivate {
   }
 
   async saveMasterChanges() {
-    const isValid = this.masterRowData.every((item) => item.folio);
-    if (!isValid) {
-      alerts.basicAlert(
-        'Añadir entrada',
-        'Debe llenar todos los campos antes de guardar.',
-        'error'
-      );
-      return;
-    }
-
     const newRows = this.masterRowData.filter((row) => row.__isNew);
     const modifiedRows = this.masterRowData.filter(
       (row) => row.__modified && !row.__isNew
     );
+    const rowsToSave = [...newRows, ...modifiedRows];
+
+    if (!this.validateMasterRows(rowsToSave)) {
+      return;
+    }
+
+    if (rowsToSave.length === 0) {
+      alerts.basicAlert('Sin cambios', 'No hay cambios pendientes por guardar.', 'info');
+      return;
+    }
 
     const addObservables = newRows.map((row) => {
       const cleanedData = this.cleanDataForServer(row);
@@ -716,8 +740,8 @@ export class RequisitionsComponent implements CanComponentDeactivate {
     } catch (error) {
       console.error(error);
       alerts.basicAlert(
-        'Error',
-        'Ocurrió un error al actualizar los datos. Por favor, intente nuevamente.',
+        'No se pudo guardar la requisición',
+        this.getApiErrorMessage(error, 'El servidor rechazó la requisición. Revisa los campos marcados e inténtalo nuevamente.'),
         'error'
       );
     }
@@ -856,7 +880,7 @@ export class RequisitionsComponent implements CanComponentDeactivate {
               this.loadRequisitionItems(requisitionId, callback);
             },
             save: (requisitionId: number, data: any[]) => {
-              this.saveRequisitionItemsById(requisitionId, data);
+              return this.saveRequisitionItemsById(requisitionId, data);
             },
             delete: (params: any, callback: () => void) => {
               this.deleteDetailRow(params, callback);
@@ -1183,7 +1207,7 @@ export class RequisitionsComponent implements CanComponentDeactivate {
     });
   }
 
-  async saveRequisitionItemsById(requisitionId: number, data: any[]) {
+  async saveRequisitionItemsById(requisitionId: number, data: any[]): Promise<boolean> {
     const newItems = data.filter((row: any) => row.__isNew);
     const modifiedItems = data.filter((row: any) => row.__modified && !row.__isNew);
 
@@ -1231,14 +1255,15 @@ export class RequisitionsComponent implements CanComponentDeactivate {
           delete row.__modified;
         });
       }
-
+      return true;
     } catch (error) {
       console.error('Error saving requisition items:', error);
       alerts.basicAlert(
-        'Error',
-        'Error al guardar los items.',
+        'No se pudieron guardar las partidas',
+        this.getApiErrorMessage(error, 'El servidor rechazó una partida. Revisa los campos marcados e inténtalo nuevamente.'),
         'error'
       );
+      return false;
     }
   }
 
@@ -1307,6 +1332,75 @@ export class RequisitionsComponent implements CanComponentDeactivate {
       cleanedData.dateSupply = cleanedData.dateCreate;
     }
     return cleanedData;
+  }
+
+  private validateMasterRows(rows: any[]): boolean {
+    const requiredFields = [
+      { field: 'folio', label: 'Número de documento', invalid: (value: any) => this.isBlank(value) },
+      { field: 'dateCreate', label: 'Fecha de solicitud', invalid: (value: any) => this.isBlank(value) },
+      { field: 'idDepartament', label: 'Departamento solicitante', invalid: (value: any) => !this.isPositiveNumber(value) },
+      { field: 'solicit', label: 'Solicitante', invalid: (value: any) => this.isBlank(value) },
+      { field: 'deliveryTime', label: 'Tiempo de entrega', invalid: (value: any) => this.isBlank(value) },
+      { field: 'priority', label: 'Prioridad', invalid: (value: any) => this.isBlank(value) },
+    ];
+
+    this.masterGridApi?.stopEditing();
+
+    for (const row of rows) {
+      const missingFields = requiredFields.filter((required) => required.invalid(row[required.field]));
+      if (missingFields.length === 0) {
+        continue;
+      }
+
+      const rowIndex = this.masterRowData.findIndex((item) => item.id === row.id);
+      const requisitionName = this.isBlank(row.folio) ? `fila ${rowIndex + 1}` : `requisición ${row.folio}`;
+      this.masterGridApi?.refreshCells({ force: true });
+
+      if (rowIndex >= 0) {
+        this.masterGridApi?.ensureIndexVisible(rowIndex, 'middle');
+        this.masterGridApi?.setFocusedCell(rowIndex, missingFields[0].field);
+        setTimeout(() => {
+          this.masterGridApi?.startEditingCell({ rowIndex, colKey: missingFields[0].field });
+        }, 0);
+      }
+
+      alerts.basicAlert(
+        'Faltan campos obligatorios',
+        `En la ${requisitionName} completa: ${missingFields.map((required) => required.label).join(', ')}. Los campos están marcados en rojo.`,
+        'warning'
+      );
+      return false;
+    }
+
+    return true;
+  }
+
+  private isBlank(value: any): boolean {
+    return value === null || value === undefined || String(value).trim() === '';
+  }
+
+  private isPositiveNumber(value: any): boolean {
+    const numericValue = Number(value);
+    return Number.isFinite(numericValue) && numericValue > 0;
+  }
+
+  private getApiErrorMessage(error: any, fallback: string): string {
+    const validationErrors = error?.error?.errors;
+    if (validationErrors && typeof validationErrors === 'object') {
+      const messages = Object.entries(validationErrors)
+        .flatMap(([field, value]) => {
+          const details = Array.isArray(value) ? value : [value];
+          return details.filter(Boolean).map((detail) => `${field}: ${detail}`);
+        });
+      if (messages.length > 0) {
+        return messages.join(' | ');
+      }
+    }
+
+    const serverMessage = typeof error?.error === 'string'
+      ? error.error
+      : error?.error?.message || error?.error?.title || error?.message;
+    return serverMessage || fallback;
   }
 
   // ==================== GUARD ALERT UNSAVED CHANGES ====================

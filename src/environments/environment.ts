@@ -83,5 +83,5 @@ export const environment = {
   geminiApiKey: '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',
   gnewsApiKey: '94ccc596b4dfebc3f72683b6e81d81bc',
 
-  version: '4.99.6 (03 Septiembre 2026) feat: recursos APU y contexto de contrato/proyecto',
+  version: '4.99.7 (03 Septiembre 2026) fix: validación y PDF de requisiciones',
 };
