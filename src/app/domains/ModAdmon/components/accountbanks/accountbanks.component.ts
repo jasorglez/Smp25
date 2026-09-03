@@ -523,23 +523,19 @@ export class AccountbanksComponent implements CanComponentDeactivate, OnDestroy 
 
     this.lastSelectedId = id;
     this.rowDetails = [];
-    this.isLoading = true;
 
     this.administrationService.getBalance(parseInt(id)).subscribe({
       next: (response: any) => {
         if (response.success && response.hasData) {
           this.rowDetails = response.data;
         } else {
+          // Una cuenta puede no tener movimientos todavía; esto no impide editarla.
           this.rowDetails = [];
-          alerts.basicAlert('Aviso', 'No hay datos disponibles', 'info');
         }
       },
       error: () => {
         this.rowDetails = [];
         alerts.basicAlert('Error', 'Error al cargar los datos', 'error');
-      },
-      complete: () => {
-        this.isLoading = false;
       },
     });
   }
