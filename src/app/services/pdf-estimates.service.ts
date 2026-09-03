@@ -218,7 +218,7 @@ export class PdfEstimatesService {
         {
           table: {
             headerRows: 2,
-            widths: ['auto', '*', 'auto', 'auto', 'auto', 'auto', 'auto', 'auto', 'auto', 'auto'],
+            widths: ['*', 'auto', 'auto', 'auto', 'auto', 'auto', 'auto', 'auto', 'auto'],
             body: tableBody
           },
           layout: {
@@ -275,7 +275,6 @@ export class PdfEstimatesService {
     
     // First header row with merged cells
     body.push([
-      { text: 'CLAVE', style: 'tableHeader', rowSpan: 2 },
       { text: 'CONCEPTO', style: 'tableHeader', rowSpan: 2 },
       { text: 'U.M.', style: 'tableHeader', rowSpan: 2 },
       { text: 'CANT.', style: 'tableHeader', rowSpan: 2 },
@@ -294,7 +293,6 @@ export class PdfEstimatesService {
       {},
       {},
       {},
-      {},
       { text: 'P.U.', style: 'tableHeader' },
       { text: 'CANT', style: 'tableHeader' },
       { text: '%', style: 'tableHeader' },
@@ -303,7 +301,6 @@ export class PdfEstimatesService {
 
     // Project total row
     body.push([
-      { text: '', style: 'categoryHeader', border: [false, false, false, false] },
       { text: data.proyecto.toUpperCase(), style: 'categoryHeader', colSpan: 4, border: [false, false, false, false] }, {}, {}, {},
       { text: this.formatCurrency(data.totalGeneral, data.moneda), style: ['categoryHeader', 'rightAlign'], border: [false, false, false, false] },
       { text: '', style: 'categoryHeader' },
@@ -316,7 +313,6 @@ export class PdfEstimatesService {
     data.categorias.forEach(category => {
       // Category header
       body.push([
-        { text: '', style: 'categoryHeader', border: [false, false, false, false] },
         { text: category.nombre.toUpperCase(), style: 'categoryHeader', colSpan: 4, border: [false, false, false, false] }, {}, {}, {},
         { text: this.formatCurrency(category.total, data.moneda), style: ['categoryHeader', 'rightAlign'], border: [false, false, false, false] },
         { text: '', style: 'categoryHeader' },
@@ -328,7 +324,6 @@ export class PdfEstimatesService {
       // Category items
       category.items.forEach(item => {
         body.push([
-          { text: item.clave, style: 'tableContent', border: [false, false, false, false] },
           { text: item.concepto, style: 'tableContent', border: [false, false, false, false] },
           { text: item.unidad, style: ['tableContent', 'centerAlign'], border: [false, false, false, false] },
           { text: this.formatNumber(item.cantidad || 0), style: ['tableContent', 'rightAlign'], border: [false, false, false, false] },
@@ -344,7 +339,7 @@ export class PdfEstimatesService {
 
     // First total row - for general total
     body.push([
-      { text: 'TOTAL', style: ['totalRow', 'centerAlign'], colSpan: 5 }, {}, {}, {}, {},
+      { text: 'TOTAL', style: ['totalRow', 'centerAlign'], colSpan: 4 }, {}, {}, {},
       { text: this.formatCurrency(data.totalGeneral, data.moneda), style: ['totalRow', 'rightAlign'] },
       { text: '', style: 'totalRow' },
       { text: '', style: 'totalRow' },
@@ -354,7 +349,7 @@ export class PdfEstimatesService {
 
     // Second total row - for executed total
     body.push([
-      { text: 'TOTAL', style: ['totalRow', 'centerAlign'], colSpan: 5 }, {}, {}, {}, {},
+      { text: 'TOTAL', style: ['totalRow', 'centerAlign'], colSpan: 4 }, {}, {}, {},
       { text: '', style: 'totalRow' },
       { text: '', style: 'totalRow' },
       { text: '', style: 'totalRow' },
