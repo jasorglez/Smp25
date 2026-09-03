@@ -60,7 +60,7 @@ export class CatalogsService {
   }
 
   getPhases(id: number): Observable<any[]> {
-    return this.http.get<any[]>(`${environment.urlWarehouse}/Catalog/getCatalogs?idCompany=${id}&type=Fase`, { headers: this.trackingService.getHeaders() });
+    return this.http.get<any[]>(`${environment.urlSmp}/Catalog/getCatalogs?idCompany=${id}&type=Fase`, { headers: this.trackingService.getHeaders() });
   }
 
   getFamilies(): Observable<any[]> {

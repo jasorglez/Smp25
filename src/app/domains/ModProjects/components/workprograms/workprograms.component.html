@@ -417,6 +417,10 @@
           <span class="badge ms-1" [ngClass]="typeWorkProgram === 'Project' ? 'text-bg-light' : 'text-bg-secondary'">{{ idProject || '—' }}</span>
         </button>
       </div>
+      <button *ngIf="typeWorkProgram === 'Project'" type="button" class="btn btn-primary"
+              (click)="openContractAllocation()" [disabled]="!idContract || !idProject || !idConvention">
+        <i class="bi bi-node-plus me-1"></i>Agregar del contrato
+      </button>
     </div>
     <div class="alert alert-warning py-2 mb-0 mt-3" *ngIf="typeWorkProgram === 'Contract' && !idContract">
       <i class="bi bi-exclamation-triangle me-1"></i>Selecciona un contrato en el sidebar.
@@ -427,18 +431,112 @@
   </div>
 </div>
 
+<!-- Distribución de actividades y conceptos del contrato al proyecto -->
+<div class="modal fade" [class.show]="showContractAllocationModal"
+     [style.display]="showContractAllocationModal ? 'block' : 'none'"
+     tabindex="-1" role="dialog" aria-modal="true" style="z-index: 20000;">
+  <div class="modal-dialog modal-xl modal-dialog-scrollable" role="document">
+    <div class="modal-content">
+      <div class="modal-header bg-primary text-white">
+        <div>
+          <h5 class="modal-title mb-0"><i class="bi bi-diagram-3 me-2"></i>Distribuir contrato al proyecto</h5>
+          <small class="text-white-50">{{ contractShortName || contractNumber }} → {{ projectName() }} · {{ conventionName }}</small>
+        </div>
+        <button type="button" class="btn-close btn-close-white" (click)="closeContractAllocation()"></button>
+      </div>
+
+      <div class="modal-body">
+        <div class="alert alert-info py-2">
+          Selecciona actividades y conceptos del contrato. La cantidad asignada al conjunto de proyectos nunca podrá exceder la cantidad contractual.
+        </div>
+
+        <div class="card mb-3">
+          <div class="card-body py-2">
+            <div class="small fw-semibold mb-2">Copiar integración del concepto</div>
+            <div class="d-flex flex-wrap gap-3">
+              <label *ngFor="let section of resourceSections.slice(1)" class="form-check mb-0">
+                <input class="form-check-input" type="checkbox" [(ngModel)]="allocationResourceTypes[section.type]">
+                <span class="form-check-label"><i class="bi me-1" [ngClass]="section.icon"></i>{{ section.label }}</span>
+              </label>
+            </div>
+          </div>
+        </div>
+
+        <div *ngIf="isLoadingContractAllocation" class="text-center py-5">
+          <div class="spinner-border text-primary"></div><div class="mt-2">Cargando programa contractual...</div>
+        </div>
+
+        <div *ngIf="!isLoadingContractAllocation" class="table-responsive border rounded" style="max-height: 55vh;">
+          <table class="table table-hover align-middle mb-0">
+            <thead class="table-light sticky-top">
+              <tr><th style="width:48px"></th><th>Fase / actividad / concepto</th><th>Tipo</th><th class="text-end">Contrato</th><th class="text-end">Distribuido</th><th class="text-end">Disponible</th><th style="width:180px">Cantidad a proyecto</th><th>Estado</th></tr>
+            </thead>
+            <tbody>
+              <tr *ngFor="let row of contractProgramOptions" [class.table-primary]="row.selected" [class.text-muted]="row.alreadyCopied">
+                <td>
+                  <input class="form-check-input" type="checkbox" [checked]="row.selected || row.alreadyCopied"
+                         [disabled]="row.alreadyCopied" (change)="toggleContractAllocation(row)">
+                </td>
+                <td>
+                  <div [style.padding-left.px]="row.depth * 22">
+                    <i class="bi me-2" [ngClass]="row.typeActivity === 'Concept' ? 'bi-box' : row.depth === 0 ? 'bi-folder2-open' : 'bi-list-task'"></i>
+                    <span class="fw-semibold">{{ row.text }}</span>
+                    <div class="small text-muted" *ngIf="row.activity">{{ row.activity }}</div>
+                  </div>
+                </td>
+                <td><span class="badge bg-light text-dark border">{{ row.typeActivity || 'Actividad' }}</span></td>
+                <td class="text-end">{{ (row.quantity || 0) | number:'1.0-4' }} {{ row.measure || '' }}</td>
+                <td class="text-end">
+                  <strong>{{ (row.allocatedQuantity || 0) | number:'1.0-4' }}</strong>
+                  <details *ngIf="row.projectAllocations?.length" class="small text-start">
+                    <summary class="text-primary">{{ row.projectAllocations.length }} proyecto(s)</summary>
+                    <div *ngFor="let allocation of row.projectAllocations" class="border-top py-1">
+                      <div class="d-flex justify-content-between gap-2 text-nowrap"><strong>{{ allocation.projectName }}</strong><span>{{ allocation.quantity | number:'1.0-4' }}</span></div>
+                      <div class="text-muted text-nowrap">Gen. {{ (allocation.generatedQuantity || 0) | number:'1.0-4' }} · Aut. {{ (allocation.authorizedQuantity || 0) | number:'1.0-4' }} · Est. {{ (allocation.estimatedQuantity || 0) | number:'1.0-4' }}</div>
+                    </div>
+                  </details>
+                </td>
+                <td class="text-end"><span class="badge" [ngClass]="row.availableQuantity > 0 ? 'bg-success' : 'bg-secondary'">{{ (row.availableQuantity || 0) | number:'1.0-4' }}</span></td>
+                <td>
+                  <input type="number" min="0" [max]="row.availableQuantity || 0" step="0.0001"
+                         class="form-control form-control-sm text-end" [(ngModel)]="row.allocationQuantity"
+                         [disabled]="row.alreadyCopied || !row.selected">
+                </td>
+                <td>
+                  <span *ngIf="row.alreadyCopied" class="badge bg-success"><i class="bi bi-check2 me-1"></i>Ya agregado</span>
+                  <span *ngIf="!row.alreadyCopied && row.selected" class="badge bg-primary">Por agregar</span>
+                </td>
+              </tr>
+              <tr *ngIf="!contractProgramOptions.length"><td colspan="8" class="text-center text-muted py-5">Este convenio todavía no tiene actividades en el programa del contrato.</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="modal-footer">
+        <button type="button" class="btn btn-outline-secondary" (click)="closeContractAllocation()" [disabled]="isCopyingContractAllocation">Cancelar</button>
+        <button type="button" class="btn btn-primary" (click)="copySelectedContractAllocation()" [disabled]="isCopyingContractAllocation || isLoadingContractAllocation">
+          <span *ngIf="isCopyingContractAllocation" class="spinner-border spinner-border-sm me-2"></span>
+          <i *ngIf="!isCopyingContractAllocation" class="bi bi-check2-circle me-2"></i>Agregar al proyecto
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+<div class="modal-backdrop fade show" *ngIf="showContractAllocationModal" style="z-index: 19999;"></div>
+
 <div class="row mb-3">
     <div class="col text-right d-flex align-items-center justify-content-end gap-3">
       <!-- Convenio vigente -->
-      <span class="text-muted small fw-semibold" *ngIf="typeWorkProgram === 'Project'">Convenio Vigente:</span>
-      <span *ngIf="typeWorkProgram === 'Project' && conventionName" class="badge bg-success px-3 py-2">
+      <span class="text-muted small fw-semibold">Convenio:</span>
+      <span *ngIf="conventionName" class="badge bg-success px-3 py-2">
         <i class="bi bi-bookmark-check-fill me-1"></i>{{ conventionName }}
       </span>
-      <span *ngIf="typeWorkProgram === 'Project' && !conventionName" class="badge bg-secondary px-3 py-2">
-        <i class="bi bi-bookmark-x me-1"></i>Sin convenio vigente
+      <span *ngIf="!conventionName" class="badge bg-danger px-3 py-2">
+        <i class="bi bi-bookmark-x me-1"></i>Selecciona un convenio
       </span>
       <span *ngIf="typeWorkProgram === 'Contract'" class="badge bg-primary px-3 py-2">
-        <i class="bi bi-file-earmark-text me-1"></i>Contrato {{ idContract || 'sin seleccionar' }}
+        <i class="bi bi-file-earmark-text me-1"></i>{{ contractShortName || contractNumber || ('Contrato ' + (idContract || 'sin seleccionar')) }}
       </span>
       <!-- OT activa -->
       <span *ngIf="typeWorkProgram === 'Project' && projectName()" class="badge bg-success px-3 py-2">
@@ -532,7 +630,7 @@
         </div>
     </div>
     <!-- Diagrama de Gantt a la DERECHA, en la MISMA fila -->
-    <div class="col-11">
+    <div class="col">
         <!-- Barra de progreso al calcular ponderado -->
         <div *ngIf="isCalculating" class="mb-2">
             <div class="d-flex align-items-center gap-2 mb-1">
@@ -553,31 +651,113 @@
         </div>
         <div id="gantt_here" style="width: 100%; height: 65vh;"></div>
     </div>
-</div>
+    <div class="col-12 col-xxl-4 mt-3 mt-xxl-0">
+      <div class="card border-0 shadow-sm h-100" style="max-height: 65vh; overflow: hidden;">
+        <div class="card-header bg-dark text-white py-3">
+          <div class="d-flex justify-content-between align-items-start gap-2">
+            <div class="min-w-0">
+              <div class="small text-white-50">Detalle de actividad / concepto</div>
+              <div class="fw-semibold text-truncate">{{ selectedProgramTask?.text || 'Selecciona una fila del programa' }}</div>
+            </div>
+            <span *ngIf="selectedProgramTask" class="badge text-bg-light">{{ selectedProgramTask.typeActivity || 'Actividad' }}</span>
+          </div>
+        </div>
 
-<div class="row mt-3">
-    <div class="col-12">
-        <ul class="nav nav-pills" id="myWorkprogram" role="tablist">
-            <li class="nav-item" role="presentation">
-                <button class="nav-link active" id="personal-tab" data-bs-toggle="pill"
-                    data-bs-target="#personal-tab-pane" type="button" role="tab" aria-controls="personal-tab-pane"
-                    aria-selected="true">Personal</button>
-            </li>
-            <li class="nav-item" role="presentation">
-                <button class="nav-link" id="equipment-tab" data-bs-toggle="pill" data-bs-target="#equipment-tab-pane"
-                    type="button" role="tab" aria-controls="equipment-tab-pane" aria-selected="false">Equipo</button>
-            </li>
-            <li class="nav-item" role="presentation">
-                <button class="nav-link" id="materials-tab" data-bs-toggle="pill" data-bs-target="#materials-tab-pane"
-                    type="button" role="tab" aria-controls="materials-tab-pane"
-                    aria-selected="false">Materiales</button>
-            </li>
-            <li class="nav-item" role="presentation">
-                <button class="nav-link" id="auxiliaries-tab" data-bs-toggle="pill"
-                    data-bs-target="#auxiliaries-tab-pane" type="button" role="tab" aria-controls="auxiliaries-tab-pane"
-                    aria-selected="false">Auxiliares</button>
-            </li>
-        </ul>
-      
+        <div class="card-body overflow-auto p-3">
+          <ng-container *ngIf="selectedProgramTask; else selectTaskHelp">
+            <div class="row g-2 mb-3">
+              <div class="col-6">
+                <div class="border rounded p-2 h-100">
+                  <small class="text-muted d-block">Cantidad</small>
+                  <strong>{{ (selectedProgramTask.quantity || 0) | number:'1.0-4' }} {{ selectedProgramTask.measure || '' }}</strong>
+                </div>
+              </div>
+              <div class="col-6">
+                <div class="border rounded p-2 h-100">
+                  <small class="text-muted d-block">Importe programado</small>
+                  <strong>{{ ((selectedProgramTask.total || selectedProgramTask.costMX || 0)) | currency:'MXN':'symbol':'1.0-2' }}</strong>
+                </div>
+              </div>
+              <div class="col-12">
+                <div class="d-flex justify-content-between small mb-1">
+                  <span>Avance</span><strong>{{ ((selectedProgramTask.progress || 0) * 100) | number:'1.0-1' }}%</strong>
+                </div>
+                <div class="progress" style="height: 8px;">
+                  <div class="progress-bar bg-success" [style.width.%]="(selectedProgramTask.progress || 0) * 100"></div>
+                </div>
+              </div>
+            </div>
+
+            <div class="d-flex flex-wrap gap-1 mb-3">
+              <button *ngFor="let section of resourceSections" type="button" class="btn btn-sm"
+                      [ngClass]="selectedResourceSection === section.type ? 'btn-primary' : 'btn-outline-secondary'"
+                      (click)="selectedResourceSection = section.type">
+                <i class="bi me-1" [ngClass]="section.icon"></i>{{ section.label }}
+                <span class="badge ms-1" [ngClass]="selectedResourceSection === section.type ? 'text-bg-light' : 'text-bg-secondary'">
+                  {{ resourceCount(section.type) }}
+                </span>
+              </button>
+            </div>
+
+            <div *ngIf="isTaskDetailLoading" class="text-center py-4">
+              <div class="spinner-border spinner-border-sm text-primary me-2"></div>Cargando desglose...
+            </div>
+
+            <ng-container *ngIf="!isTaskDetailLoading">
+              <div *ngFor="let resource of filteredSelectedTaskResources" class="border rounded p-2 mb-2">
+                <div class="d-flex justify-content-between gap-2">
+                  <div class="min-w-0">
+                    <span class="badge bg-light text-dark border mb-1">{{ normalizeResourceType(resource.type) }}</span>
+                    <div class="fw-semibold">{{ resource.description || resource.name || resource.text || ('Recurso ' + resource.idReference) }}</div>
+                    <small class="text-muted">{{ resource.code || resource.clave || '' }}</small>
+                  </div>
+                  <div class="text-end text-nowrap">
+                    <div>{{ (resource.quantity || 0) | number:'1.0-4' }} {{ resource.measure || resource.unit || '' }}</div>
+                    <strong>{{ ((resource.total ?? ((resource.quantity || 0) * (resource.unitCost || 0)))) | currency:'MXN':'symbol':'1.0-2' }}</strong>
+                  </div>
+                </div>
+
+                <details *ngIf="resource.auxiliaryDetail" class="mt-2">
+                  <summary class="small fw-semibold text-primary">Ver integración del auxiliar</summary>
+                  <div class="ps-2 pt-2 small">
+                    <div *ngFor="let child of resource.auxiliaryDetail.items" class="d-flex justify-content-between border-top py-1 gap-2">
+                      <span>{{ child.description || child.name || child.text || ('Recurso ' + child.idReference) }}</span>
+                      <span class="text-nowrap">{{ (child.quantity || child.cantidad || 0) | number:'1.0-4' }}</span>
+                    </div>
+                    <div *ngFor="let crew of resource.auxiliaryDetail.cuadrillas" class="border-top py-1">
+                      <i class="bi bi-people me-1"></i>{{ crew.name || crew.description || 'Cuadrilla' }}
+                    </div>
+                  </div>
+                </details>
+              </div>
+
+              <div *ngIf="(selectedResourceSection === 'TODOS' || selectedResourceSection === 'PERSONAL') && selectedTaskCrews.length">
+                <div *ngFor="let crew of selectedTaskCrews" class="border rounded p-2 mb-2 bg-light">
+                  <div class="d-flex justify-content-between gap-2">
+                    <div><span class="badge bg-info text-dark mb-1">CUADRILLA</span><div class="fw-semibold">{{ crew.name || crew.description || 'Cuadrilla de personal' }}</div></div>
+                    <strong>{{ (crew.total || 0) | currency:'MXN':'symbol':'1.0-2' }}</strong>
+                  </div>
+                </div>
+              </div>
+
+              <div *ngIf="!filteredSelectedTaskResources.length && !(selectedResourceSection === 'TODOS' || selectedResourceSection === 'PERSONAL') || (!filteredSelectedTaskResources.length && !selectedTaskCrews.length)" class="text-center text-muted py-4">
+                <i class="bi bi-inbox fs-3 d-block mb-2"></i>No hay recursos en esta sección.
+              </div>
+            </ng-container>
+          </ng-container>
+
+          <ng-template #selectTaskHelp>
+            <div class="text-center text-muted py-5">
+              <i class="bi bi-cursor fs-2 d-block mb-2"></i>
+              Selecciona una fase, actividad o concepto en el Gantt para consultar su desglose.
+            </div>
+          </ng-template>
+        </div>
+
+        <div class="card-footer d-flex justify-content-between align-items-center" *ngIf="selectedProgramTask">
+          <span class="text-muted small">Costo APU</span>
+          <strong>{{ selectedTaskResourceTotal | currency:'MXN':'symbol':'1.0-2' }}</strong>
+        </div>
+      </div>
     </div>
 </div>

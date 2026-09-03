@@ -101,11 +101,21 @@ export class WorkprogramsService {
   copyContractActivitiesToProject(
     idContract: number,
     idProject: number,
-    sourceWorkprogramIds: number[]
+    sourceWorkprogramIds: number[],
+    idConvention?: number | null,
+    items?: { sourceWorkprogramId: number; quantity: number }[],
+    resourceTypes?: string[]
   ): Observable<{ copied: number; message: string }> {
     return this.http.post<{ copied: number; message: string }>(
       `${environment.urlSmp}/Workprogram/copy-contract-to-project`,
-      { idContract, idProject, sourceWorkprogramIds },
+      { idContract, idProject, idConvention: idConvention ?? null, sourceWorkprogramIds, items: items ?? [], resourceTypes: resourceTypes ?? null },
+      { headers: this.trackingService.getHeaders() }
+    );
+  }
+
+  getContractAllocation(idContract: number, idConvention: number): Observable<any[]> {
+    return this.http.get<any[]>(
+      `${environment.urlSmp}/Workprogram/contract-allocation?idContract=${idContract}&idConvention=${idConvention}`,
       { headers: this.trackingService.getHeaders() }
     );
   }

@@ -72,6 +72,7 @@ export class ProjectsComponent {
       this.idCompany = this.signalsService.getRootSelectedBySidebar()();
       this.signalsService.getBranchSelectedBySidebar()();
       this.signalsService.getProjectSelectedBySidebar()();
+      this.idConvention = this.signalsService.getConventionVigente()()?.id ?? null;
       if (this.idCompany && Number(this.idCompany) > 0) this.getProjects();
     })
   }
@@ -93,6 +94,7 @@ export class ProjectsComponent {
   isDelete = false;
   isPrint = false;
   idCompany: number = null;
+  idConvention: number = null;
 
   screenSizeSM = false;
   notSavedChanges: boolean = false;
@@ -389,7 +391,10 @@ export class ProjectsComponent {
   }
 
   async openBudgetDashboard(): Promise<void> {
-    if (!this.selectedRowData?.id) return;
+    if (!this.selectedRowData?.id || !this.idConvention) {
+      alerts.basicAlert('Selecciona un convenio', 'Selecciona el convenio vigente en el sidebar para consultar y distribuir el programa.', 'warning');
+      return;
+    }
     this.isBudgetLoading = true;
     this.showBudgetDashboard = true;
     this.selectedContractActivityIds.clear();
@@ -409,11 +414,13 @@ export class ProjectsComponent {
       const allProjectPrograms = await Promise.all(contractProjects.map(p =>
         lastValueFrom(this.workprogramsService.getWorkPrograms(Number(p.id), 'Project').pipe(catchError(() => of([]))))
       ));
+      const belongsToConvention = (row: any) => Number(row?.idConvention || 0) === Number(this.idConvention);
       const linkedSourceIds = new Set(projectProgram
+        .filter(belongsToConvention)
         .map((row: any) => Number(row.idSourceWorkprogram || 0))
         .filter((id: number) => id > 0));
-      const contractActivities = contractProgram.filter((row: any) => this.isProgramActivity(row));
-      const projectActivities = projectProgram.filter((row: any) => this.isProgramActivity(row));
+      const contractActivities = contractProgram.filter((row: any) => belongsToConvention(row) && this.isProgramActivity(row));
+      const projectActivities = projectProgram.filter((row: any) => belongsToConvention(row) && this.isProgramActivity(row));
       const apuRows = (await Promise.all(projectActivities.map(async (activity: any) => {
         const [resources, crews] = await Promise.all([
           lastValueFrom(this.workprogramApuService.getByWorkprogram(Number(activity.id)).pipe(catchError(() => of([])))),
@@ -423,7 +430,7 @@ export class ProjectsComponent {
         activity.crews = crews;
         return resources;
       }))).flat();
-      const resourceSummary = ['MATERIAL', 'PERSONAL', 'EQUIPO'].map(type => ({
+      const resourceSummary = ['MATERIAL', 'PERSONAL', 'EQUIPO', 'HERRAMIENTA', 'AUXILIAR'].map(type => ({
         type,
         count: apuRows.filter((row: any) => String(row.type || '').toUpperCase() === type).length,
         total: apuRows
@@ -440,7 +447,7 @@ export class ProjectsComponent {
       const contractPhaseResult = this.groupByConfiguredPhase(contractActivities, configuredPhases);
       const projectPhaseResult = this.groupByConfiguredPhase(projectActivities, configuredPhases);
       const allocatedCost = allProjectPrograms.reduce((sum, rows) =>
-        sum + this.programCost((rows ?? []).filter((row: any) => this.isProgramActivity(row))), 0);
+        sum + this.programCost((rows ?? []).filter((row: any) => belongsToConvention(row) && this.isProgramActivity(row))), 0);
       this.budgetDashboard = {
         project, contract, contractLimit, contractProgramCost, projectProgramCost,
         allocatedCost, availableCost: contractLimit - allocatedCost,
@@ -498,7 +505,8 @@ export class ProjectsComponent {
       const response = await lastValueFrom(this.workprogramsService.copyContractActivitiesToProject(
         Number(this.selectedRowData.idContrato),
         Number(this.selectedRowData.id),
-        Array.from(this.selectedContractActivityIds)
+        Array.from(this.selectedContractActivityIds),
+        this.idConvention
       ));
       alerts.basicAlert('Programa del proyecto', response.message, 'success');
       await this.openBudgetDashboard();
@@ -517,7 +525,8 @@ export class ProjectsComponent {
       const response = await lastValueFrom(this.workprogramsService.copyContractActivitiesToProject(
         Number(this.selectedRowData.idContrato),
         Number(this.selectedRowData.id),
-        [Number(activity.id)]
+        [Number(activity.id)],
+        this.idConvention
       ));
       if (response.copied <= 0) {
         alerts.basicAlert('Programa del proyecto', 'La actividad ya estaba asignada al proyecto.', 'info');

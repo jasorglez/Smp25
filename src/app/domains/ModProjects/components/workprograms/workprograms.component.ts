@@ -19,6 +19,8 @@ import { AuxiliarService } from 'app/services/auxiliar.service';
 import { AuxiliarItemsService } from 'app/services/auxiliar-items.service';
 import { MaterialsService } from 'app/services/materials.service';
 import { EquipmentService } from 'app/services/equipment.service';
+import { FollowprojectsService } from 'app/services/followprojects.service';
+import { WorkprogramApuCuadrillaService } from 'app/services/workprogram-apu-cuadrilla.service';
 
 type ImportFieldKey =
   | 'wbs'
@@ -146,6 +148,8 @@ export class WorkprogramsComponent {
   private auxiliarItemsService = inject(AuxiliarItemsService);
   private materialsService = inject(MaterialsService);
   private equipmentService = inject(EquipmentService);
+  private followprojectsService = inject(FollowprojectsService);
+  private workprogramApuCuadrillaService = inject(WorkprogramApuCuadrillaService);
   private ngZone = inject(NgZone);
 
   readonly projectName = this.signalsService.getProjectNameBySidebar();
@@ -158,6 +162,35 @@ export class WorkprogramsComponent {
   idConvention: number = null;
   conventionName: string = '';
   typeWorkProgram: 'Contract' | 'Project' = 'Contract';
+  contractShortName = '';
+  contractNumber = '';
+
+  selectedProgramTask: any = null;
+  selectedTaskResources: any[] = [];
+  selectedTaskCrews: any[] = [];
+  selectedResourceSection: 'TODOS' | 'MATERIAL' | 'PERSONAL' | 'EQUIPO' | 'HERRAMIENTA' | 'AUXILIAR' = 'TODOS';
+  isTaskDetailLoading = false;
+  private taskSelectionEventId: string | null = null;
+  showContractAllocationModal = false;
+  isLoadingContractAllocation = false;
+  isCopyingContractAllocation = false;
+  contractProgramOptions: any[] = [];
+  allocationResourceTypes: Record<string, boolean> = {
+    MATERIAL: true,
+    PERSONAL: true,
+    EQUIPO: true,
+    HERRAMIENTA: true,
+    AUXILIAR: true
+  };
+
+  readonly resourceSections = [
+    { type: 'TODOS', label: 'Todo', icon: 'bi-grid' },
+    { type: 'MATERIAL', label: 'Materiales', icon: 'bi-box-seam' },
+    { type: 'PERSONAL', label: 'Personal', icon: 'bi-people' },
+    { type: 'EQUIPO', label: 'Equipos', icon: 'bi-truck' },
+    { type: 'HERRAMIENTA', label: 'Herramientas', icon: 'bi-tools' },
+    { type: 'AUXILIAR', label: 'Auxiliares', icon: 'bi-diagram-2' }
+  ] as const;
 
   /** Valores derivados de los datos cargados (fallback cuando el signal está null) */
   private idContractFallback: number | null = null;
@@ -243,6 +276,7 @@ export class WorkprogramsComponent {
       if (this.typeWorkProgram === 'Project' && !this.idProject) {
         this.typeWorkProgram = 'Contract';
       }
+      this.loadContractHeader();
       this.loadVigenteAndInit();
     });
   }
@@ -271,12 +305,231 @@ export class WorkprogramsComponent {
     this.idContractFallback = null;
     this.idConventionFallback = null;
     this.taskCount = 0;
+    this.selectedProgramTask = null;
+    this.selectedTaskResources = [];
+    this.selectedTaskCrews = [];
     gantt.clearAll();
     this.loadDataFromAPI();
   }
 
   get activeScopeId(): number {
     return Number(this.typeWorkProgram === 'Contract' ? this.idContract : this.idProject) || 0;
+  }
+
+  get filteredSelectedTaskResources(): any[] {
+    if (this.selectedResourceSection === 'TODOS') return this.selectedTaskResources;
+    return this.selectedTaskResources.filter(item => this.normalizeResourceType(item.type) === this.selectedResourceSection);
+  }
+
+  get selectedTaskResourceTotal(): number {
+    return this.selectedTaskResources.reduce((sum, item) =>
+      sum + Number(item.total ?? (Number(item.quantity || 0) * Number(item.unitCost || 0))), 0);
+  }
+
+  resourceCount(type: string): number {
+    if (type === 'TODOS') return this.selectedTaskResources.length + this.selectedTaskCrews.length;
+    if (type === 'PERSONAL') {
+      return this.selectedTaskResources.filter(item => this.normalizeResourceType(item.type) === type).length + this.selectedTaskCrews.length;
+    }
+    return this.selectedTaskResources.filter(item => this.normalizeResourceType(item.type) === type).length;
+  }
+
+  normalizeResourceType(type: any): string {
+    const value = String(type || '').trim().toUpperCase();
+    if (value === 'MATERIALES') return 'MATERIAL';
+    if (value === 'EQUIPOS') return 'EQUIPO';
+    if (value === 'HERRAMIENTAS') return 'HERRAMIENTA';
+    if (value === 'AUXILIARES') return 'AUXILIAR';
+    return value;
+  }
+
+  private apiErrorMessage(error: any, fallback: string): string {
+    if (typeof error?.error === 'string' && error.error.trim()) return error.error;
+    return error?.error?.message || error?.error?.Message || error?.message || fallback;
+  }
+
+  private loadContractHeader(): void {
+    if (!this.idContract) {
+      this.contractShortName = '';
+      this.contractNumber = '';
+      return;
+    }
+    this.followprojectsService.getContractById(this.idContract).pipe(catchError(() => of(null))).subscribe(contract => {
+      this.contractShortName = String(contract?.descripSmall || contract?.description || '').trim();
+      this.contractNumber = String(contract?.numberContract || '').trim();
+    });
+  }
+
+  private async loadSelectedTaskDetails(task: any): Promise<void> {
+    this.selectedProgramTask = task ? { ...task } : null;
+    this.selectedTaskResources = [];
+    this.selectedTaskCrews = [];
+    this.selectedResourceSection = 'TODOS';
+    const idWorkprogram = Number(task?.idEntry || 0);
+    if (!idWorkprogram) return;
+
+    this.isTaskDetailLoading = true;
+    try {
+      const [resources, crews] = await Promise.all([
+        lastValueFrom(this.apuService.getByWorkprogram(idWorkprogram).pipe(catchError(() => of([])))),
+        lastValueFrom(this.workprogramApuCuadrillaService.getByWorkprogram(idWorkprogram).pipe(catchError(() => of([]))))
+      ]);
+      this.selectedTaskCrews = crews ?? [];
+      this.selectedTaskResources = await Promise.all((resources ?? []).map(async resource => {
+        if (this.normalizeResourceType(resource.type) !== 'AUXILIAR' || !resource.idReference) return resource;
+        const detail = await lastValueFrom(
+          this.auxiliarItemsService.getDetalle(Number(resource.idReference)).pipe(catchError(() => of(null)))
+        );
+        return { ...resource, auxiliaryDetail: detail };
+      }));
+    } finally {
+      this.isTaskDetailLoading = false;
+    }
+  }
+
+  async openContractAllocation(): Promise<void> {
+    if (!this.idContract || !this.idProject || !this.idConvention) {
+      alerts.basicAlert('Falta selección', 'Selecciona contrato, proyecto y convenio en el sidebar.', 'warning');
+      return;
+    }
+
+    this.showContractAllocationModal = true;
+    this.isLoadingContractAllocation = true;
+    try {
+      const [rows, allocationRows] = await Promise.all([
+        lastValueFrom(this.workprogramsService.getWorkPrograms(this.idContract, 'Contract').pipe(catchError(() => of([])))),
+        lastValueFrom(this.workprogramsService.getContractAllocation(this.idContract, this.idConvention).pipe(catchError(() => of([]))))
+      ]);
+      const existingSources = new Set<number>();
+      gantt.eachTask(task => {
+        const sourceId = Number(task['idSourceWorkprogram'] || 0);
+        if (sourceId) existingSources.add(sourceId);
+      });
+
+      const scopedRows = (rows ?? []).filter(row =>
+        Number(row.idConvention || 0) === Number(this.idConvention) && Number(row.active ?? 1) === 1
+      );
+      const allocationBySource = new Map((allocationRows ?? []).map(item => [Number(item.sourceWorkprogramId), item]));
+      const rowById = new Map(scopedRows.map(row => [Number(row.id), row]));
+      const rowByTaskId = new Map(scopedRows.map(row => [Number(row.idTask), row]));
+      const depthOf = (row: any): number => {
+        let depth = 0;
+        let parent = Number(row.parent || 0);
+        const visited = new Set<number>();
+        while (parent && !visited.has(parent) && depth < 8) {
+          const parentRow: any = rowById.get(parent) ?? rowByTaskId.get(parent);
+          if (!parentRow) break;
+          visited.add(parent);
+          depth++;
+          parent = Number(parentRow.parent || 0);
+        }
+        return depth;
+      };
+
+      this.contractProgramOptions = scopedRows.map(row => {
+        const allocation: any = allocationBySource.get(Number(row.id));
+        const availableQuantity = Number(allocation?.availableQuantity ?? row.quantity ?? 0);
+        return {
+          ...row,
+          selected: false,
+          alreadyCopied: existingSources.has(Number(row.id)),
+          allocationQuantity: availableQuantity,
+          allocatedQuantity: Number(allocation?.allocatedQuantity || 0),
+          availableQuantity,
+          generatedQuantity: Number(allocation?.generatedQuantity || 0),
+          authorizedQuantity: Number(allocation?.authorizedQuantity || 0),
+          estimatedQuantity: Number(allocation?.estimatedQuantity || 0),
+          projectAllocations: allocation?.projects ?? [],
+          depth: depthOf(row)
+        };
+      });
+    } finally {
+      this.isLoadingContractAllocation = false;
+    }
+  }
+
+  closeContractAllocation(): void {
+    if (!this.isCopyingContractAllocation) this.showContractAllocationModal = false;
+  }
+
+  toggleContractAllocation(row: any): void {
+    if (row.alreadyCopied) return;
+    row.selected = !row.selected;
+    this.contractProgramOptions.forEach(candidate => {
+      let parentId = Number(candidate.parent || 0);
+      const visited = new Set<number>();
+      while (parentId && !visited.has(parentId)) {
+        visited.add(parentId);
+        const parent = this.contractProgramOptions.find(item => Number(item.id) === parentId || Number(item.idTask) === parentId);
+        if (!parent) break;
+        if (Number(parent.id) === Number(row.id)) {
+          candidate.selected = row.selected && !candidate.alreadyCopied;
+          break;
+        }
+        parentId = Number(parent.parent || 0);
+      }
+      if (Number(candidate.id) === Number(row.id)) {
+        candidate.selected = row.selected && !candidate.alreadyCopied;
+      }
+    });
+  }
+
+  async copySelectedContractAllocation(): Promise<void> {
+    const selected = this.contractProgramOptions.filter(row => row.selected && !row.alreadyCopied);
+    if (!selected.length) {
+      alerts.basicAlert('Selecciona conceptos', 'Marca al menos una actividad o concepto del contrato.', 'warning');
+      return;
+    }
+    const invalidQuantity = selected.find(row =>
+      Number(row.allocationQuantity || 0) < 0 || Number(row.allocationQuantity || 0) > Number(row.availableQuantity || 0)
+    );
+    if (invalidQuantity) {
+      alerts.basicAlert(
+        'Cantidad fuera del contrato',
+        `${invalidQuantity.text}: máximo disponible ${Number(invalidQuantity.availableQuantity || 0).toLocaleString('es-MX')}.`,
+        'warning'
+      );
+      return;
+    }
+
+    const ids = new Set<number>(selected.map(row => Number(row.id)));
+    const byId = new Map(this.contractProgramOptions.map(row => [Number(row.id), row]));
+    const byTaskId = new Map(this.contractProgramOptions.map(row => [Number(row.idTask), row]));
+    selected.forEach(row => {
+      let parentId = Number(row.parent || 0);
+      const visited = new Set<number>();
+      while (parentId && !visited.has(parentId)) {
+        const parent: any = byId.get(parentId) ?? byTaskId.get(parentId);
+        if (!parent) break;
+        visited.add(parentId);
+        ids.add(Number(parent.id));
+        parentId = Number(parent.parent || 0);
+      }
+    });
+
+    const items = this.contractProgramOptions
+      .filter(row => ids.has(Number(row.id)))
+      .map(row => ({ sourceWorkprogramId: Number(row.id), quantity: Number(row.allocationQuantity || 0) }));
+    const resourceTypes = Object.keys(this.allocationResourceTypes).filter(type => this.allocationResourceTypes[type]);
+
+    this.isCopyingContractAllocation = true;
+    try {
+      const response = await lastValueFrom(this.workprogramsService.copyContractActivitiesToProject(
+        this.idContract,
+        this.idProject,
+        Array.from(ids),
+        this.idConvention,
+        items,
+        resourceTypes
+      ));
+      this.showContractAllocationModal = false;
+      alerts.basicAlert('Programa actualizado', response?.message || `Se agregaron ${response?.copied || 0} registros del contrato.`, 'success');
+      this.loadDataFromAPI();
+    } catch (error: any) {
+      alerts.basicAlert('No se pudo distribuir', this.apiErrorMessage(error, 'No fue posible agregar los conceptos.'), 'error');
+    } finally {
+      this.isCopyingContractAllocation = false;
+    }
   }
 
   private async loadVigenteAndInit(): Promise<void> {
@@ -1304,24 +1557,25 @@ export class WorkprogramsComponent {
             </select>
           </div>
           <div style="flex:1;">
-            <div style="font-size:11px; color:#888; margin-bottom:2px;">Tipo</div>
-            <select id="type_select" style="width:100%; height:24px; border:1px solid #ced4da; border-radius:3px; padding:0 4px; font-size:12px;">
-              <option value="Project">Project</option>
-              <option value="Contract">Contract</option>
+            <div style="font-size:11px; color:#888; margin-bottom:2px;">Nivel</div>
+            <select id="type_activity_select" style="width:100%; height:24px; border:1px solid #ced4da; border-radius:3px; padding:0 4px; font-size:12px;">
+              <option value="Phase">Fase</option>
+              <option value="Activity">Actividad</option>
+              <option value="Concept">Concepto</option>
             </select>
           </div>
         </div>`;
       },
       set_value: function (node, value, task, section) {
         const rc   = node.querySelector('#critic_route_select') as HTMLSelectElement;
-        const type = node.querySelector('#type_select')         as HTMLSelectElement;
+        const typeActivity = node.querySelector('#type_activity_select') as HTMLSelectElement;
         if (rc)   rc.value   = task['criticRoute'] || 'No';
-        if (type) type.value = task['type']        || 'Project';
+        if (typeActivity) typeActivity.value = task['typeActivity'] || 'Activity';
       },
       get_value: function (node, task, section) {
         const rc   = node.querySelector('#critic_route_select') as HTMLSelectElement;
-        const type = node.querySelector('#type_select')         as HTMLSelectElement;
-        task['type'] = type ? type.value : 'Project';
+        const typeActivity = node.querySelector('#type_activity_select') as HTMLSelectElement;
+        task['typeActivity'] = typeActivity ? typeActivity.value : 'Activity';
         return rc ? rc.value : 'No';
       },
       focus: function (node) {
@@ -1521,7 +1775,7 @@ export class WorkprogramsComponent {
     gantt.locale.labels['section_priority'] = "Prioridad";
     gantt.locale.labels['section_color'] = "Color";
     gantt.locale.labels['section_qty_ponderado'] = "Cantidad / Ponderado";
-    gantt.locale.labels['section_route_type'] = "Ruta Crítica / Tipo";
+    gantt.locale.labels['section_route_type'] = "Ruta Crítica / Nivel";
     gantt.locale.labels['section_measure_phase']  = 'Unidad / Fase';
     gantt.locale.labels['section_activity_color'] = 'Actividad / Color';
     gantt.locale.labels['section_costs'] = 'MXN $ / Total / USD $';
@@ -1665,9 +1919,11 @@ export class WorkprogramsComponent {
     const idContract = this.idContract || task['idContract'] || this.idContractFallback || 0;
 
     // idConvention: vigente del sidebar → señal local → tarea existente (DB) → fallback datos cargados
-    const idConvention = this.typeWorkProgram === 'Contract'
-      ? null
-      : (vigente?.id ?? this.idConvention ?? task['idConvention'] ?? this.idConventionFallback ?? null);
+    const idConvention = vigente?.id
+      ?? this.idConvention
+      ?? task['idConvention']
+      ?? this.idConventionFallback
+      ?? null;
 
     // Fechas: manejar tanto Date objects como strings de gantt ("%Y-%m-%d %H:%i")
     const startDate = this.toIsoString(task.start_date);
@@ -1700,7 +1956,7 @@ export class WorkprogramsComponent {
       criticRoute: this.truncReq(task.criticRoute, 2, 'No'),   // NOT NULL en C#
       activity: this.truncReq(task.activity, 20, ''),          // NOT NULL en C#
       type: this.typeWorkProgram,                              // alcance explícito
-      typeActivity: 'Activity',
+      typeActivity: this.truncReq(task.typeActivity, 10, 'Activity'),
       especification: this.trunc(task.especification, 20),     // nullable
       distribution: task.distribution ?? 0,
       costMX: task.costMX ?? 0,
@@ -1718,19 +1974,25 @@ export class WorkprogramsComponent {
   loadDataFromAPI() {
     const id = this.typeWorkProgram === 'Project' ? this.idProject : this.idContract;
 
-    if (!id) {
+    if (!id || !this.idConvention) {
       this.taskCount = 0;
+      this.selectedProgramTask = null;
+      this.selectedTaskResources = [];
+      this.selectedTaskCrews = [];
       gantt.clearAll();
       return;
     }
 
-    // Los convenios sólo aplican al programa del proyecto. El contrato siempre
-    // se consulta por idContract + tipo Contract.
+    // El convenio seleccionado delimita tanto el programa contractual como el del proyecto.
     const byConvention$ = this.typeWorkProgram === 'Project' && this.idConvention
       ? this.workprogramsService.getByConvention(this.idConvention, this.idProject ?? undefined)
       : null;
 
-    const byProject$ = this.workprogramsService.getWorkPrograms(id, this.typeWorkProgram);
+    const byProject$ = this.workprogramsService.getWorkPrograms(id, this.typeWorkProgram).pipe(
+      map(rows => this.typeWorkProgram === 'Contract'
+        ? (rows ?? []).filter(row => Number(row.idConvention || 0) === Number(this.idConvention))
+        : (rows ?? []))
+    );
 
     const source$ = byConvention$
       ? byConvention$.pipe(
@@ -1825,8 +2087,9 @@ export class WorkprogramsComponent {
     }
 
     const vigente = this.signalsService.getConventionVigente()();
-    if (this.typeWorkProgram === 'Project' && !vigente) {
-      alerts.basicAlert('Sin Convenio Vigente', 'No hay un convenio vigente asignado. Las tareas se guardarán sin convenio.', 'warning');
+    if (!vigente?.id) {
+      alerts.basicAlert('Selecciona un convenio', 'Debes seleccionar un convenio en el sidebar antes de guardar el programa.', 'warning');
+      return;
     }
 
     if (this.isSaving) {
@@ -1899,7 +2162,7 @@ export class WorkprogramsComponent {
         this.notSavedChanges = false;
       },
       error: (error) => {
-        const detail = error?.error?.message || error?.message || JSON.stringify(error?.error) || 'Sin detalle';
+        const detail = this.apiErrorMessage(error, 'No fue posible guardar el programa.');
         console.error('Error al guardar los cambios:', error);
         console.error('Detalle HTTP:', error?.status, detail);
         alerts.basicAlert('Error', `Error al guardar (${error?.status ?? '?'}): ${detail}`, 'error');
@@ -1910,6 +2173,14 @@ export class WorkprogramsComponent {
 
   // Funcion para configurar los eventos de las tareas
   configureTaskEvents() {
+    if (!this.taskSelectionEventId) {
+      this.taskSelectionEventId = gantt.attachEvent('onTaskSelected', id => {
+        const task = gantt.getTask(id);
+        this.ngZone.run(() => this.loadSelectedTaskDetails(task));
+        return true;
+      });
+    }
+
     gantt.attachEvent("onBeforeTaskDelete", (id, task) => {
       this.markTaskAndChildrenForDeletion(task);
       return true; // Permitir la eliminación
@@ -2613,9 +2884,10 @@ ${taskXML}
       gantt.updateTask(task.id);
       this.scheduleParentUpdate(task.parent);
       this.notSavedChanges = true;
+      this.workprogramsService.updateWorkProgram(this.apuIdWorkprogram, this.transformTaskForSave(task)).subscribe({
+        error: error => alerts.basicAlert('No se pudo actualizar el costo', this.apiErrorMessage(error, 'Revisa el concepto e inténtalo nuevamente.'), 'error')
+      });
     }
-    // Persiste en BD
-    this.workprogramsService.updateWorkProgram(this.apuIdWorkprogram, { costMX: newCost }).subscribe();
     this.showApuModal = false;
   }
 
