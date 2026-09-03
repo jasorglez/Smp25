@@ -19,6 +19,7 @@ import { SignalsService } from 'app/services/signals.service';
 import { ModalService } from 'app/services/modal.service';
 import { ImageHandlerService } from 'app/services/image-handler.service';
 import { AutocompleteEditorComponent } from 'app/shared/autocomplete-editor/autocomplete-editor.component';
+import { SelectWithTooltipEditorV2Component } from 'app/shared/select-with-tooltip-editor-v2.component';
 import { States } from 'app/interface/states';
 import { EmployeesxLoansComponent } from '../loans/loans.component';
 import { AdministrationService } from 'app/services/administration.service';
@@ -90,6 +91,7 @@ export class EmployeesTableComponent implements CanComponentDeactivate {
   newCatalogDescription = '';
   newPositionDepartmentId: number | null = null;
   savingCatalog = false;
+  private catalogTargetRow: any = null;
 
   // Variables de control del grid
   valorsenal: string = 'administrador';
@@ -128,6 +130,7 @@ export class EmployeesTableComponent implements CanComponentDeactivate {
   components = {
     multiLineEditor: MultiLineEditorComponent,
     autocompleteEditor: AutocompleteEditorComponent,
+    selectWithTooltipEditorV2: SelectWithTooltipEditorV2Component,
   };
 
   constructor() {
@@ -580,7 +583,7 @@ export class EmployeesTableComponent implements CanComponentDeactivate {
           //excelMode: 'mac',
         },
         width: 190,
-        cellEditor: 'agSelectCellEditor',
+        cellEditor: 'selectWithTooltipEditorV2',
         onCellValueChanged: (params) => {
           const newRolId = params.newValue;
           if (newRolId && newRolId !== params.oldValue) {
@@ -588,13 +591,14 @@ export class EmployeesTableComponent implements CanComponentDeactivate {
             this.getPoscionesbyRole(newRolId);
           }
         },
-        cellEditorParams: (params) => {
-          return {
-            values: this.catalogRoles 
-              ? this.catalogRoles.map(item => item.id)
-              : []
-          };
-        },
+        cellEditorParams: (params) => ({
+          options: [
+            ...this.catalogRoles.map(item => ({ id: item.id, description: item.description, valueAddition: String(item.id), valueAddition2: item.description })),
+            { id: -999, description: '＋ Agregar departamento…', valueAddition: '-999', valueAddition2: '＋ Agregar departamento…' }
+          ],
+          specialValues: [-999],
+          onSpecialValue: () => this.openCatalogModal('department', params.data)
+        }),
         valueFormatter: (params) => {
           if (!params.value) return '';
           const found = this.catalogRoles?.find(item => item.id === params.value);
@@ -602,6 +606,7 @@ export class EmployeesTableComponent implements CanComponentDeactivate {
         },
         valueSetter: (params) => {
           const newDeptId = params.newValue;
+          if (newDeptId === -999) return false;
 
           if (params.data.idDepto === newDeptId) return false;
 
@@ -663,14 +668,15 @@ export class EmployeesTableComponent implements CanComponentDeactivate {
         },
         filter: true, // Opcional: Ocultar el botón de filtro si no es para el usuario
         flex: 0,
-        cellEditor: 'agSelectCellEditor',
-        cellEditorParams: (params) => {
-          return {
-            values: this.catalogPosiciones
-              ? this.catalogPosiciones.map(item => item.description)
-              : []
-          };
-        },
+        cellEditor: 'selectWithTooltipEditorV2',
+        cellEditorParams: (params) => ({
+          options: [
+            ...(this.catalogPosiciones || []).map(item => ({ id: item.id, description: item.description, valueAddition: String(item.id), valueAddition2: item.description })),
+            { id: -999, description: '＋ Agregar posición…', valueAddition: '-999', valueAddition2: '＋ Agregar posición…' }
+          ],
+          specialValues: [-999],
+          onSpecialValue: () => this.openCatalogModal('position', params.data)
+        }),
         valueFormatter: (params) => {
           if (!params.value) return '';
             const found = this.catalogGeneralPosiciones?.find(item => item.id == params.value);
@@ -678,9 +684,9 @@ export class EmployeesTableComponent implements CanComponentDeactivate {
 
         },
         valueSetter: (params) => {
-          const selectedDesc = params.newValue;
-          let found = this.catalogPosiciones?.find(p => p.description === selectedDesc);
-          if (!found) found = this.catalogGeneralPosiciones?.find(p => p.description === selectedDesc);
+          if (params.newValue === -999) return false;
+          let found = this.catalogPosiciones?.find(p => p.id === params.newValue);
+          if (!found) found = this.catalogGeneralPosiciones?.find(p => p.id === params.newValue);
           if (!found) return false;
           params.data.idPosition = found.id;
           return true;
@@ -1384,20 +1390,19 @@ export class EmployeesTableComponent implements CanComponentDeactivate {
           defaultToNothingSelected: true,
         },
         width: 190,
-        cellEditor: 'agSelectCellEditor',
+        cellEditor: 'selectWithTooltipEditorV2',
         onCellValueChanged: (params) => {
           const newRolId = params.newValue;
           if (newRolId && newRolId !== params.oldValue) {
             this.getPoscionesbyRole(newRolId);
           }
         },
-        cellEditorParams: (params) => {
-          return {
-            values: this.catalogRoles
-              ? this.catalogRoles.map(item => item.id)
-              : []
-          };
-        },
+        cellEditorParams: (params) => ({
+          options: [
+            ...this.catalogRoles.map(item => ({ id: item.id, description: item.description, valueAddition: String(item.id), valueAddition2: item.description })),
+            { id: -999, description: '＋ Agregar departamento…', valueAddition: '-999', valueAddition2: '＋ Agregar departamento…' }
+          ], specialValues: [-999], onSpecialValue: () => this.openCatalogModal('department', params.data)
+        }),
         valueFormatter: (params) => {
           if (!params.value) return '';
           const found = this.catalogRoles?.find(item => item.id === params.value);
@@ -1405,6 +1410,7 @@ export class EmployeesTableComponent implements CanComponentDeactivate {
         },
         valueSetter: (params) => {
           const newDeptId = params.newValue;
+          if (newDeptId === -999) return false;
 
           if (params.data.idDepto === newDeptId) return false;
 
@@ -1456,14 +1462,13 @@ export class EmployeesTableComponent implements CanComponentDeactivate {
         },
         filter: true,
         flex: 0,
-        cellEditor: 'agSelectCellEditor',
-        cellEditorParams: (params) => {
-          return {
-            values: this.catalogPosiciones
-              ? this.catalogPosiciones.map(item => item.description)
-              : []
-          };
-        },
+        cellEditor: 'selectWithTooltipEditorV2',
+        cellEditorParams: (params) => ({
+          options: [
+            ...(this.catalogPosiciones || []).map(item => ({ id: item.id, description: item.description, valueAddition: String(item.id), valueAddition2: item.description })),
+            { id: -999, description: '＋ Agregar posición…', valueAddition: '-999', valueAddition2: '＋ Agregar posición…' }
+          ], specialValues: [-999], onSpecialValue: () => this.openCatalogModal('position', params.data)
+        }),
         valueFormatter: (params) => {
           if (!params.value) return '';
             const found = this.catalogGeneralPosiciones?.find(item => item.id == params.value);
@@ -1471,9 +1476,9 @@ export class EmployeesTableComponent implements CanComponentDeactivate {
 
         },
         valueSetter: (params) => {
-          const selectedDesc = params.newValue;
-          let found = this.catalogPosiciones?.find(p => p.description === selectedDesc);
-          if (!found) found = this.catalogGeneralPosiciones?.find(p => p.description === selectedDesc);
+          if (params.newValue === -999) return false;
+          let found = this.catalogPosiciones?.find(p => p.id === params.newValue);
+          if (!found) found = this.catalogGeneralPosiciones?.find(p => p.id === params.newValue);
           if (!found) return false;
           params.data.idPosition = found.id;
           return true;
@@ -1953,10 +1958,11 @@ export class EmployeesTableComponent implements CanComponentDeactivate {
     );
   }
 
-  openCatalogModal(type: 'department' | 'position'): void {
+  openCatalogModal(type: 'department' | 'position', targetRow: any = null): void {
     this.catalogModalType = type;
+    this.catalogTargetRow = targetRow;
     this.newCatalogDescription = '';
-    this.newPositionDepartmentId = this.catalogRoles.length === 1 ? this.catalogRoles[0].id : null;
+    this.newPositionDepartmentId = targetRow?.idDepto || (this.catalogRoles.length === 1 ? this.catalogRoles[0].id : null);
     this.showCatalogModal = true;
   }
 
@@ -1984,7 +1990,17 @@ export class EmployeesTableComponent implements CanComponentDeactivate {
           comment: '',
           active: true
         }));
-        this.getRoles();
+        const created: any = await lastValueFrom(this.rolesService.getRoles(this.idRoot));
+        this.catalogRoles = Array.isArray(created) ? created : this.catalogRoles;
+        const added = this.catalogRoles.find((item: any) => item.description?.toLowerCase() === description.toLowerCase());
+        if (added && this.catalogTargetRow) {
+          this.catalogTargetRow.idDepto = added.id;
+          this.catalogTargetRow.idPosition = null;
+          this.catalogTargetRow.__modified = true;
+          this.catalogPosiciones = await this.getPoscionesbyRole(added.id);
+          this.gridApi?.refreshCells({ force: true });
+          this.notSavedChanges = true;
+        }
       } else {
         await lastValueFrom(this.posicionesService.addPosition({
           idCompany: this.idRoot,
@@ -1994,8 +2010,18 @@ export class EmployeesTableComponent implements CanComponentDeactivate {
         }));
         this.catalogPosiciones = await this.getPoscionesbyRole(this.newPositionDepartmentId!);
         this.getGeneralPosicion();
+        const createdPosition: any = await lastValueFrom(this.posicionesService.getPositionsByRole(this.idRoot, this.newPositionDepartmentId!));
+        const added = (Array.isArray(createdPosition) ? createdPosition : []).find((item: any) => item.description?.toLowerCase() === description.toLowerCase());
+        if (added && this.catalogTargetRow) {
+          this.catalogTargetRow.idDepto = this.newPositionDepartmentId;
+          this.catalogTargetRow.idPosition = added.id;
+          this.catalogTargetRow.__modified = true;
+          this.gridApi?.refreshCells({ force: true });
+          this.notSavedChanges = true;
+        }
       }
       this.showCatalogModal = false;
+      this.catalogTargetRow = null;
       alerts.basicAlert('Catálogo actualizado', `${this.catalogModalType === 'department' ? 'Departamento' : 'Posición'} agregado correctamente.`, 'success');
     } catch (error) {
       console.error('Error agregando catálogo de empleados:', error);
@@ -2022,6 +2048,12 @@ export class EmployeesTableComponent implements CanComponentDeactivate {
     console.log('Dato cambiado:', event.data);
     event.data.__modified = true;
     this.notSavedChanges = true;
+    if (event.colDef.field === 'name' && event.data.__usernameAuto !== false) {
+      event.data.employeeCode = this.generateUsername(event.data.name);
+      this.gridApi.refreshCells({ rowNodes: [event.node], columns: ['employeeCode'], force: true });
+    } else if (event.colDef.field === 'employeeCode') {
+      event.data.__usernameAuto = false;
+    }
     // Si el campo cambiado es el código postal
     if (event.colDef.field === 'cp') {
       // Limpiar el neighborhood cuando cambia el CP
@@ -2059,13 +2091,14 @@ export class EmployeesTableComponent implements CanComponentDeactivate {
       address: '',
       cp: '',
       employeeCode: '',
+      __usernameAuto: true,
       city: '',
       neighborhood: '',
       rfc: '',
       state: '',
       phone: '',
       baseHours: 0,
-      priceXHour: 0,
+      priceXHour: 80,
       ingressDate: timeData.dateObj, // Guardar como objeto Date
       position: '',
       email: '',
@@ -2294,10 +2327,26 @@ export class EmployeesTableComponent implements CanComponentDeactivate {
     const cleanedData = { ...data };
     delete cleanedData.__isNew;
     delete cleanedData.__modified;
+    delete cleanedData.__usernameAuto;
     if (cleanedData.id && cleanedData.id.toString().startsWith('temp_')) {
       delete cleanedData.id;
     }
     return cleanedData;
+  }
+
+  private generateUsername(name: string): string {
+    const words = String(name || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+      .toLowerCase().replace(/[^a-z0-9\s]/g, ' ').trim().split(/\s+/).filter(Boolean);
+    if (!words.length) return '';
+    const base = words.length === 1 ? words[0] : words.length === 2
+      ? `${words[0].charAt(0)}${words[1]}`
+      : words.map(word => word.substring(0, 2)).join('');
+    let username = base;
+    let suffix = 2;
+    while (this.rowData.some(row => row.employeeCode?.toLowerCase() === username && row.name !== name)) {
+      username = `${base}${suffix++}`;
+    }
+    return username;
   }
 
   private generateUniqueClockPassword(): string {
