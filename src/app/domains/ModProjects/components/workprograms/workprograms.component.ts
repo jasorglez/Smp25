@@ -21,6 +21,8 @@ import { MaterialsService } from 'app/services/materials.service';
 import { EquipmentService } from 'app/services/equipment.service';
 import { FollowprojectsService } from 'app/services/followprojects.service';
 import { WorkprogramApuCuadrillaService } from 'app/services/workprogram-apu-cuadrilla.service';
+import { ManoObraService } from 'app/services/mano-obra.service';
+import { HerramientaService } from 'app/services/herramienta.service';
 
 type ImportFieldKey =
   | 'wbs'
@@ -150,6 +152,8 @@ export class WorkprogramsComponent {
   private equipmentService = inject(EquipmentService);
   private followprojectsService = inject(FollowprojectsService);
   private workprogramApuCuadrillaService = inject(WorkprogramApuCuadrillaService);
+  private manoObraService = inject(ManoObraService);
+  private herramientaService = inject(HerramientaService);
   private ngZone = inject(NgZone);
 
   readonly projectName = this.signalsService.getProjectNameBySidebar();
@@ -224,6 +228,13 @@ export class WorkprogramsComponent {
   showApuModal    = false;
   apuIdWorkprogram: number | null = null;
   apuTaskName     = '';
+  apuItems: any[] = [];
+  apuCatalog: any[] = [];
+  apuCatalogLoading = false;
+  apuSaving = false;
+  apuResourceType: 'MATERIAL' | 'PERSONAL' | 'EQUIPO' | 'HERRAMIENTA' | 'AUXILIAR' = 'MATERIAL';
+  apuSearch = '';
+  apuDraft: any = { idReference: null, description: '', unit: '', quantity: 1, unitCost: 0, applyToCost: true };
 
   // Distribución modal
   showDistModal        = false;
@@ -246,11 +257,7 @@ export class WorkprogramsComponent {
       this.ngZone.run(() => { this.showNewFaseModal = true; });
     };
     (window as any).__openApuModal = (idEntry: number, taskName: string) => {
-      this.ngZone.run(() => {
-        this.apuIdWorkprogram = idEntry;
-        this.apuTaskName      = taskName;
-        this.showApuModal     = true;
-      });
+      this.ngZone.run(() => this.openApuEditor(idEntry, taskName));
     };
     (window as any).__openNewMedidaModal = () => {
       this.ngZone.run(() => { this.showNewMedidaModal = true; });
@@ -2874,7 +2881,134 @@ ${taskXML}
 
   // ── Modal APU ───────────────────────────────────────────────────────────────
 
-  onApuCostUpdated(newCost: number): void {
+  get filteredApuCatalog(): any[] {
+    const query = this.apuSearch.trim().toLocaleLowerCase('es');
+    if (!query) return this.apuCatalog.slice(0, 100);
+    return this.apuCatalog.filter(item => this.apuCatalogText(item).toLocaleLowerCase('es').includes(query)).slice(0, 100);
+  }
+
+  async openApuEditor(idWorkprogram: number, taskName: string): Promise<void> {
+    this.apuIdWorkprogram = idWorkprogram;
+    this.apuTaskName = taskName;
+    this.showApuModal = true;
+    this.apuResourceType = 'MATERIAL';
+    this.apuSearch = '';
+    this.resetApuDraft();
+    await Promise.all([this.loadApuItems(), this.loadApuCatalog()]);
+  }
+
+  closeApuEditor(): void {
+    this.showApuModal = false;
+    this.apuCatalog = [];
+    this.apuItems = [];
+    this.apuSearch = '';
+  }
+
+  async changeApuResourceType(type: 'MATERIAL' | 'PERSONAL' | 'EQUIPO' | 'HERRAMIENTA' | 'AUXILIAR'): Promise<void> {
+    this.apuResourceType = type;
+    this.apuSearch = '';
+    this.resetApuDraft();
+    await this.loadApuCatalog();
+  }
+
+  private async loadApuItems(): Promise<void> {
+    if (!this.apuIdWorkprogram) return;
+    this.apuItems = await lastValueFrom(this.apuService.getByWorkprogram(this.apuIdWorkprogram).pipe(catchError(() => of([]))));
+  }
+
+  private async loadApuCatalog(): Promise<void> {
+    if (!this.idcompany) return;
+    this.apuCatalogLoading = true;
+    try {
+      let request$: Observable<any>;
+      switch (this.apuResourceType) {
+        case 'PERSONAL': request$ = this.manoObraService.getByCompany(this.idcompany); break;
+        case 'EQUIPO': request$ = this.equipmentService.getEquipment(this.idcompany); break;
+        case 'HERRAMIENTA': request$ = this.herramientaService.getByCompany(this.idcompany); break;
+        case 'AUXILIAR': request$ = this.auxiliarService.getByCompany(this.idcompany); break;
+        default: request$ = this.materialsService.getMaterialsForApu(this.idcompany); break;
+      }
+      const response = await lastValueFrom(request$.pipe(catchError(() => of([]))));
+      this.apuCatalog = Array.isArray(response) ? response : (response?.data ?? response?.items ?? []);
+    } finally {
+      this.apuCatalogLoading = false;
+    }
+  }
+
+  apuCatalogText(item: any): string {
+    return String(item?.description ?? item?.name ?? item?.insumo ?? item?.articulo ?? item?.clave ?? item?.id ?? '');
+  }
+
+  selectApuCatalogItem(item: any): void {
+    this.apuDraft = {
+      idReference: Number(item?.id ?? item?.Id) || null,
+      description: this.apuCatalogText(item),
+      unit: String(item?.unit ?? item?.measure ?? item?.unidad ?? ''),
+      quantity: 1,
+      unitCost: Number(item?.unitCost ?? item?.unitPrice ?? item?.costMN ?? item?.costoMN ?? item?.costo ?? item?.precioUnitario ?? item?.priceMN ?? item?.price ?? 0),
+      applyToCost: true
+    };
+  }
+
+  resetApuDraft(): void {
+    this.apuDraft = { idReference: null, description: '', unit: '', quantity: 1, unitCost: 0, applyToCost: true };
+  }
+
+  async saveApuResource(): Promise<void> {
+    if (!this.apuIdWorkprogram || !String(this.apuDraft.description || '').trim()) {
+      alerts.basicAlert('Recurso requerido', 'Selecciona un recurso del catálogo o captura su descripción.', 'warning');
+      return;
+    }
+    if (Number(this.apuDraft.quantity) <= 0 || Number(this.apuDraft.unitCost) < 0) {
+      alerts.basicAlert('Datos incorrectos', 'La cantidad debe ser mayor a cero y el costo no puede ser negativo.', 'warning');
+      return;
+    }
+    this.apuSaving = true;
+    try {
+      await lastValueFrom(this.apuService.add({
+        idWorkprogram: this.apuIdWorkprogram,
+        type: this.apuResourceType,
+        idReference: this.apuDraft.idReference,
+        description: String(this.apuDraft.description).trim(),
+        unit: String(this.apuDraft.unit || '').trim() || null,
+        quantity: Number(this.apuDraft.quantity),
+        unitCost: Number(this.apuDraft.unitCost),
+        unitCostDll: 0,
+        applyToCost: !!this.apuDraft.applyToCost,
+        active: true
+      }));
+      await this.refreshApuAfterChange();
+      this.resetApuDraft();
+    } catch (error: any) {
+      alerts.basicAlert('No se pudo agregar', this.apiErrorMessage(error, 'No fue posible guardar el recurso.'), 'error');
+    } finally {
+      this.apuSaving = false;
+    }
+  }
+
+  async deleteApuResource(item: any): Promise<void> {
+    if (!item?.id) return;
+    try {
+      await lastValueFrom(this.apuService.delete(Number(item.id)));
+      await this.refreshApuAfterChange();
+    } catch (error: any) {
+      alerts.basicAlert('No se pudo eliminar', this.apiErrorMessage(error, 'El recurso no pudo eliminarse.'), 'error');
+    }
+  }
+
+  private async refreshApuAfterChange(): Promise<void> {
+    await this.loadApuItems();
+    const total = this.apuItems
+      .filter(item => item.applyToCost)
+      .reduce((sum, item) => sum + Number(item.total ?? (Number(item.quantity || 0) * Number(item.unitCost || 0))), 0);
+    this.onApuCostUpdated(total, false);
+    const selected = this.selectedProgramTask;
+    if (selected && Number(selected.idEntry) === Number(this.apuIdWorkprogram)) {
+      await this.loadSelectedTaskDetails(selected);
+    }
+  }
+
+  onApuCostUpdated(newCost: number, closeModal = true): void {
     if (!this.apuIdWorkprogram) return;
     // Actualiza costMX en el registro del Gantt que corresponde al idEntry
     const tasks = gantt.getTaskByTime();
@@ -2888,7 +3022,7 @@ ${taskXML}
         error: error => alerts.basicAlert('No se pudo actualizar el costo', this.apiErrorMessage(error, 'Revisa el concepto e inténtalo nuevamente.'), 'error')
       });
     }
-    this.showApuModal = false;
+    if (closeModal) this.showApuModal = false;
   }
 
   // ── Modal Configuración ─────────────────────────────────────────────────────

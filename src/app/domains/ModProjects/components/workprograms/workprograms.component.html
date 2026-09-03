@@ -386,6 +386,119 @@
 </div>
 <div class="modal-backdrop fade show" *ngIf="showConfigModal" style="z-index: 19999;"></div>
 
+<!-- Editor de recursos APU para contrato y proyecto -->
+<div class="modal fade" [class.show]="showApuModal" [style.display]="showApuModal ? 'block' : 'none'"
+     tabindex="-1" role="dialog" aria-modal="true" style="z-index: 20000;">
+  <div class="modal-dialog modal-xl modal-dialog-scrollable" role="document">
+    <div class="modal-content">
+      <div class="modal-header bg-dark text-white py-2">
+        <div>
+          <div class="small text-white-50">Recursos del {{ typeWorkProgram === 'Contract' ? 'contrato' : 'proyecto' }}</div>
+          <h6 class="modal-title mb-0"><i class="bi bi-boxes me-2"></i>{{ apuTaskName }}</h6>
+        </div>
+        <button type="button" class="btn-close btn-close-white" (click)="closeApuEditor()"></button>
+      </div>
+      <div class="modal-body p-0">
+        <div class="row g-0">
+          <div class="col-lg-5 border-end p-3">
+            <div class="btn-group btn-group-sm d-flex flex-wrap mb-3" role="group">
+              <button *ngFor="let section of resourceSections.slice(1)" type="button" class="btn"
+                      [ngClass]="apuResourceType === section.type ? 'btn-primary' : 'btn-outline-secondary'"
+                      (click)="changeApuResourceType($any(section.type))">
+                <i class="bi me-1" [ngClass]="section.icon"></i>{{ section.label }}
+              </button>
+            </div>
+
+            <label class="form-label small fw-semibold">Buscar en el catálogo</label>
+            <div class="input-group input-group-sm mb-2">
+              <span class="input-group-text"><i class="bi bi-search"></i></span>
+              <input class="form-control" [(ngModel)]="apuSearch" placeholder="Nombre, clave o descripción">
+            </div>
+            <div class="border rounded overflow-auto" style="height: 330px;">
+              <div *ngIf="apuCatalogLoading" class="text-center text-muted py-5">
+                <span class="spinner-border spinner-border-sm me-2"></span>Cargando catálogo...
+              </div>
+              <button *ngFor="let item of filteredApuCatalog" type="button"
+                      class="list-group-item list-group-item-action border-0 border-bottom w-100 text-start py-2"
+                      [class.active]="apuDraft.idReference === (item.id || item.Id)"
+                      (click)="selectApuCatalogItem(item)">
+                <div class="fw-semibold text-truncate">{{ apuCatalogText(item) }}</div>
+                <small [class.text-white-50]="apuDraft.idReference === (item.id || item.Id)" class="text-muted">
+                  {{ item.insumo || item.clave || item.unit || item.measure || '' }}
+                </small>
+              </button>
+              <div *ngIf="!apuCatalogLoading && !filteredApuCatalog.length" class="text-center text-muted py-5">
+                <i class="bi bi-search fs-3 d-block mb-2"></i>No se encontraron registros. Puedes capturarlo manualmente.
+              </div>
+            </div>
+          </div>
+
+          <div class="col-lg-7 p-3">
+            <h6 class="mb-3">Agregar {{ apuResourceType | titlecase }}</h6>
+            <div class="row g-2 align-items-end">
+              <div class="col-12">
+                <label class="form-label small mb-1">Descripción</label>
+                <input class="form-control form-control-sm" [(ngModel)]="apuDraft.description" maxlength="180"
+                       placeholder="Selecciona del catálogo o captura el recurso">
+              </div>
+              <div class="col-sm-3">
+                <label class="form-label small mb-1">Unidad</label>
+                <input class="form-control form-control-sm" [(ngModel)]="apuDraft.unit" maxlength="20" placeholder="PZA">
+              </div>
+              <div class="col-sm-3">
+                <label class="form-label small mb-1">Cantidad</label>
+                <input type="number" min="0.0001" step="0.0001" class="form-control form-control-sm" [(ngModel)]="apuDraft.quantity">
+              </div>
+              <div class="col-sm-3">
+                <label class="form-label small mb-1">Costo unitario</label>
+                <input type="number" min="0" step="0.01" class="form-control form-control-sm" [(ngModel)]="apuDraft.unitCost">
+              </div>
+              <div class="col-sm-3">
+                <button type="button" class="btn btn-success btn-sm w-100" (click)="saveApuResource()" [disabled]="apuSaving">
+                  <span *ngIf="apuSaving" class="spinner-border spinner-border-sm me-1"></span>
+                  <i *ngIf="!apuSaving" class="bi bi-plus-lg me-1"></i>Agregar
+                </button>
+              </div>
+              <div class="col-12">
+                <label class="form-check small">
+                  <input class="form-check-input" type="checkbox" [(ngModel)]="apuDraft.applyToCost">
+                  <span class="form-check-label">Incluir en el costo del concepto</span>
+                </label>
+              </div>
+            </div>
+
+            <div class="d-flex justify-content-between align-items-center mt-4 mb-2">
+              <h6 class="mb-0">Recursos agregados</h6>
+              <span class="badge bg-secondary">{{ apuItems.length }}</span>
+            </div>
+            <div class="table-responsive border rounded" style="max-height: 300px;">
+              <table class="table table-sm table-hover align-middle mb-0">
+                <thead class="table-light sticky-top"><tr><th>Tipo</th><th>Recurso</th><th class="text-end">Cant.</th><th class="text-end">P.U.</th><th class="text-end">Importe</th><th></th></tr></thead>
+                <tbody>
+                  <tr *ngFor="let item of apuItems">
+                    <td><span class="badge bg-light text-dark border">{{ item.type }}</span></td>
+                    <td><div class="fw-semibold">{{ item.description }}</div><small class="text-muted">{{ item.unit }}</small></td>
+                    <td class="text-end">{{ item.quantity | number:'1.0-4' }}</td>
+                    <td class="text-end">{{ item.unitCost | currency:'MXN':'symbol':'1.0-2' }}</td>
+                    <td class="text-end fw-semibold">{{ (item.total ?? (item.quantity * item.unitCost)) | currency:'MXN':'symbol':'1.0-2' }}</td>
+                    <td class="text-end"><button type="button" class="btn btn-outline-danger btn-sm" title="Quitar recurso" (click)="deleteApuResource(item)"><i class="bi bi-trash"></i></button></td>
+                  </tr>
+                  <tr *ngIf="!apuItems.length"><td colspan="6" class="text-center text-muted py-4">Aún no hay recursos en esta actividad.</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer py-2">
+        <span class="me-auto text-muted small">Los recursos del contrato se copian al proyecto al usar “Agregar del contrato”.</span>
+        <button type="button" class="btn btn-secondary btn-sm" (click)="closeApuEditor()">Cerrar</button>
+      </div>
+    </div>
+  </div>
+</div>
+<div class="modal-backdrop fade show" *ngIf="showApuModal" style="z-index: 19999;"></div>
+
 <!-- Controles de Zoom -->
 <div class="card border-0 shadow-sm mb-3">
   <div class="card-body py-3">
@@ -535,12 +648,15 @@
       <span *ngIf="!conventionName" class="badge bg-danger px-3 py-2">
         <i class="bi bi-bookmark-x me-1"></i>Selecciona un convenio
       </span>
-      <span *ngIf="typeWorkProgram === 'Contract'" class="badge bg-primary px-3 py-2">
-        <i class="bi bi-file-earmark-text me-1"></i>{{ contractShortName || contractNumber || ('Contrato ' + (idContract || 'sin seleccionar')) }}
+      <span *ngIf="idContract" class="badge bg-primary px-3 py-2">
+        <i class="bi bi-file-earmark-text me-1"></i>Contrato: {{ contractShortName || contractNumber || idContract }}
       </span>
-      <!-- OT activa -->
-      <span *ngIf="typeWorkProgram === 'Project' && projectName()" class="badge bg-success px-3 py-2">
-        <i class="bi bi-folder2-open me-1"></i>{{ projectName() }}
+      <span *ngIf="idProject" class="badge bg-success px-3 py-2">
+        <i class="bi bi-folder2-open me-1"></i>Proyecto: {{ projectName() || idProject }}
+      </span>
+      <span class="badge bg-dark px-3 py-2">
+        <i class="bi me-1" [ngClass]="typeWorkProgram === 'Contract' ? 'bi-file-earmark-text' : 'bi-folder2-open'"></i>
+        Vista: {{ typeWorkProgram === 'Contract' ? 'Contrato' : 'Proyecto' }}
       </span>
       <!-- Número de tareas -->
       <span *ngIf="taskCount > 0" class="badge bg-info text-dark px-3 py-2">
@@ -755,8 +871,14 @@
         </div>
 
         <div class="card-footer d-flex justify-content-between align-items-center" *ngIf="selectedProgramTask">
-          <span class="text-muted small">Costo APU</span>
-          <strong>{{ selectedTaskResourceTotal | currency:'MXN':'symbol':'1.0-2' }}</strong>
+          <div>
+            <span class="text-muted small d-block">Costo APU</span>
+            <strong>{{ selectedTaskResourceTotal | currency:'MXN':'symbol':'1.0-2' }}</strong>
+          </div>
+          <button type="button" class="btn btn-primary btn-sm" *ngIf="selectedProgramTask.idEntry"
+                  (click)="openApuEditor(selectedProgramTask.idEntry, selectedProgramTask.text)">
+            <i class="bi bi-pencil-square me-1"></i>Administrar recursos
+          </button>
         </div>
       </div>
     </div>
