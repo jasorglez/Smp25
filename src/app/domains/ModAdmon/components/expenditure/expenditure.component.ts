@@ -1,4 +1,5 @@
 import { Component, effect, inject, Input, OnChanges, OnDestroy, SimpleChanges } from '@angular/core';
+import { Router } from '@angular/router';
 import { Subscription } from 'rxjs';
 import { SignalrService } from 'app/services/signalr.service';
 import { CellDoubleClickedEvent, ColDef, GridApi, GridReadyEvent, ICellRendererParams } from 'ag-grid-enterprise';
@@ -62,6 +63,7 @@ export class ExpenditureComponent implements OnDestroy, OnChanges {
   authService = inject(AuthService);
   public trackingService = inject(TrackingService);
   private signalRService = inject(SignalrService);
+  private router = inject(Router);
 
   private signalRSub!: Subscription;
   private reloadTimeout: any = null;
@@ -178,6 +180,10 @@ export class ExpenditureComponent implements OnDestroy, OnChanges {
 
   // Propiedades para datos pendientes y control
   private pendingMasterUpdate: any = null;
+
+  openCuentasContables(): void {
+    void this.router.navigate(['/procmodadmon/cuentas-contables']);
+  }
   private isGeneratingReport: boolean = false;
 
   /** Si true, oculta la columna Proyecto (usado desde POS/Ventas) */

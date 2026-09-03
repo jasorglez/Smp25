@@ -225,6 +225,35 @@ import { TrackingService } from 'app/services/tracking.service';
     <!-- Backdrop del modal -->
     <div class="modal-backdrop fade" [class.show]="showProviderModal" [style.display]="showProviderModal ? 'block' : 'none'" 
          (click)="closeProviderModal()"></div>
+
+    <div class="modal fade" [class.show]="showCopyModal" [style.display]="showCopyModal ? 'block' : 'none'" tabindex="-1" role="dialog">
+      <div class="modal-dialog modal-dialog-centered" role="document">
+        <div class="modal-content">
+          <div class="modal-header bg-primary text-white">
+            <h5 class="modal-title"><i class="bi bi-copy me-2"></i>Copiar registro</h5>
+            <button type="button" class="btn-close btn-close-white" (click)="closeCopyModal()" aria-label="Cerrar"></button>
+          </div>
+          <div class="modal-body">
+            <p class="text-muted small">Se conservarán los datos del registro original. Indica únicamente la nueva fecha y precio.</p>
+            <div class="mb-3">
+              <label for="copyConceptDate" class="form-label">Fecha <span class="text-danger">*</span></label>
+              <input id="copyConceptDate" type="date" class="form-control" [(ngModel)]="copyDate" name="copyConceptDate">
+            </div>
+            <div>
+              <label for="copyConceptPrice" class="form-label">Precio <span class="text-danger">*</span></label>
+              <input id="copyConceptPrice" type="number" min="0" step="0.01" class="form-control" [(ngModel)]="copyPrice" name="copyConceptPrice">
+            </div>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" (click)="closeCopyModal()">Cancelar</button>
+            <button type="button" class="btn btn-primary" (click)="confirmCopyConcept()" [disabled]="copySaving || !copyDate || copyPrice === null || copyPrice === undefined">
+              <i class="bi bi-copy me-1"></i>Copiar
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="modal-backdrop fade" [class.show]="showCopyModal" [style.display]="showCopyModal ? 'block' : 'none'" (click)="closeCopyModal()"></div>
   `,
   styleUrl: './detalles-expenditure.component.scss'
 })
@@ -279,6 +308,11 @@ export class DetallesExpenditureComponent implements OnInit, OnDestroy {
 
   // Provider Modal properties
   showProviderModal: boolean = false;
+  showCopyModal: boolean = false;
+  copySourceConcept: any = null;
+  copyDate: string = '';
+  copyPrice: number | null = null;
+  copySaving: boolean = false;
   newProvider: any = {
     idRoot: 0,
     idBranch: 0,
@@ -527,6 +561,29 @@ export class DetallesExpenditureComponent implements OnInit, OnDestroy {
     // Initialize once
     this._colDefs = [
       {
+        headerName: '',
+        colId: 'copy',
+        width: 52,
+        pinned: 'left',
+        editable: false,
+        sortable: false,
+        filter: false,
+        suppressMenu: true,
+        cellRenderer: (params: ICellRendererParams) => {
+          if (params.node?.group || params.node?.footer) return '';
+          const button = document.createElement('button');
+          button.type = 'button';
+          button.className = 'btn btn-sm btn-outline-primary py-0 px-1';
+          button.title = 'Copiar registro';
+          button.innerHTML = '<i class="bi bi-copy"></i>';
+          button.addEventListener('click', (event) => {
+            event.stopPropagation();
+            this.openCopyConceptModal(params.data);
+          });
+          return button;
+        }
+      },
+      {
         field: 'dateExpend',
         headerName: 'Fecha',
         editable: true,
@@ -733,7 +790,7 @@ export class DetallesExpenditureComponent implements OnInit, OnDestroy {
         headerName: 'Detalle Cuenta Contable',
         editable: true,
         width: 200,
-        cellEditor: 'agSelectCellEditor',
+        cellEditor: 'selectWithTooltipEditorV2',
         cellEditorParams: () => {
           // Filtrar cuentas nivel 3 por el padre (idExpend del maestro)
           const idPadre = this.expenditureData?.idExpend;
@@ -741,8 +798,22 @@ export class DetallesExpenditureComponent implements OnInit, OnDestroy {
           const filtradas = idPadre
             ? cuentasNivel3.filter((c: any) => c.idPadre === idPadre)
             : cuentasNivel3;
+          const options = filtradas.map((c: any) => ({
+            id: c.id,
+            description: `${c.codigo} - ${c.nombre}`,
+            valueAddition: String(c.id),
+            valueAddition2: `${c.codigo} - ${c.nombre}`
+          }));
+          options.push({
+            id: -999,
+            description: '＋ Agregar cuenta contable…',
+            valueAddition: '-999',
+            valueAddition2: '＋ Agregar cuenta contable…'
+          });
           return {
-            values: filtradas.map((c: any) => c.id)
+            options,
+            specialValues: [-999],
+            onSpecialValue: () => this.context?.componentParent?.openCuentasContables()
           };
         },
         valueFormatter: (params) => {
@@ -909,6 +980,15 @@ export class DetallesExpenditureComponent implements OnInit, OnDestroy {
       __modified: false
     };
 
+    const idPadre = this.expenditureData?.idExpend;
+    const cuentasNivel3 = this._cuentasContablesNivel3;
+    const cuentasDisponibles = idPadre
+      ? cuentasNivel3.filter((c: any) => c.idPadre === idPadre)
+      : cuentasNivel3;
+    if (cuentasDisponibles.length === 1) {
+      newConcept.idContribuyente = cuentasDisponibles[0].id;
+    }
+
     // Add to beginning of array
     this.rowData = [newConcept, ...this.rowData];
     this.hasUnsavedChanges = true;
@@ -927,6 +1007,52 @@ export class DetallesExpenditureComponent implements OnInit, OnDestroy {
         colKey: 'typeExpense'
       });
     }, 100);
+  }
+
+  openCopyConceptModal(concept: any): void {
+    if (!concept) return;
+    this.copySourceConcept = concept;
+    this.copyDate = concept.dateExpend ? String(concept.dateExpend).substring(0, 10) : this.getTodayDateForInput();
+    this.copyPrice = Number(concept.price) || 0;
+    this.copySaving = false;
+    this.showCopyModal = true;
+    document.body.classList.add('modal-open');
+  }
+
+  closeCopyModal(): void {
+    this.showCopyModal = false;
+    this.copySourceConcept = null;
+    this.copySaving = false;
+    document.body.classList.remove('modal-open');
+  }
+
+  confirmCopyConcept(): void {
+    const price = Number(this.copyPrice);
+    if (!this.copySourceConcept || !this.copyDate || !Number.isFinite(price) || price < 0) {
+      alerts.basicAlert('Datos incompletos', 'Indica una fecha y un precio válidos.', 'warning');
+      return;
+    }
+    const source = this.copySourceConcept;
+    const quantity = Number(source.quantity) || 0;
+    const copiedConcept = {
+      ...source,
+      id: `temp_concept_${this.tempIdCounter++}`,
+      idIncorExp: this.params.data.id,
+      dateExpend: this.copyDate,
+      price,
+      total: quantity * price,
+      iva2: source.iva ? quantity * price * (this.ivaPercent / 100) : 0,
+      totalFinal: source.iva ? quantity * price * (1 + this.ivaPercent / 100) : quantity * price,
+      __isNew: true,
+      __modified: false
+    };
+    this.rowData = [copiedConcept, ...this.rowData];
+    this.hasUnsavedChanges = true;
+    this.gridApi.setGridOption('rowData', this.rowData);
+    this.recalculateTotals();
+    this.context?.CONCEPTS?.updateCount?.(this.params.data.id, this.rowData.length);
+    this.closeCopyModal();
+    alerts.basicAlert('Registro copiado', 'El registro se agregó. Guarda los cambios para confirmarlo.', 'success');
   }
 
   private getTodayDateForInput(): string {
