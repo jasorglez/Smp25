@@ -27,6 +27,8 @@ export interface EstimateData {
   obra?: string;
   contrato?: string;
   moneda?: string;
+  tipo?: string;
+  dias?: number | string;
   estimacion: string;
   fechaInicio: string;
   fechaFin: string;
@@ -108,6 +110,14 @@ export class PdfEstimatesService {
           fillColor: '#D0D0D0',
           margin: [1, 1, 1, 1]
         },
+        summaryCell: {
+          fontSize: 10,
+          bold: true,
+          color: '#FFFFFF',
+          alignment: 'center',
+          fillColor: '#1F4E78',
+          margin: [6, 7, 6, 7]
+        },
         tableContent: {
           fontSize: 9,
           margin: [1, 1, 1, 1]
@@ -156,10 +166,12 @@ export class PdfEstimatesService {
         // Información del proyecto y fechas
         {
           table: {
-            widths: ['*', '*'],
+            widths: ['*', '*', '*', '*'],
             body: [[
-              { text: `ESTIMACIÓN No. ${data.estimacion || 'N/A'}`, style: 'tableHeader' },
-              { text: `MONEDA: ${this.currencyLabel(data.moneda)}`, style: 'tableHeader' }
+              { text: `ESTIMACIÓN No. ${data.estimacion || 'N/A'}`, style: 'summaryCell' },
+              { text: `TIPO: ${data.tipo || 'N/A'}`, style: 'summaryCell' },
+              { text: `MONEDA: ${this.currencyLabel(data.moneda)}`, style: 'summaryCell' },
+              { text: `DÍAS: ${data.dias ?? 'N/A'}`, style: 'summaryCell' }
             ]]
           },
           margin: [0, 0, 0, 8]

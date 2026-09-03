@@ -384,6 +384,8 @@ export class EstimatesComponent {
       obra:          contractData?.description || contractData?.descripSmall || 'N/A',
       contrato:      contractData?.numberContract || contractData?.contract || String(estimateData.idContract || 'N/A'),
       moneda:        estimateData.typeMoney || 'MX',
+      tipo:          estimateData.type || 'N/A',
+      dias:          estimateData.dias ?? 'N/A',
       estimacion:    estimateData.number,
       fechaInicio:   this.formatDateForPdf(estimateData.dateStart),
       fechaFin:      this.formatDateForPdf(estimateData.dateEnd),
