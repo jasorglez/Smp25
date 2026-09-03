@@ -142,11 +142,23 @@ export class PdfEstimatesService {
         }
       },
       header: {
-        stack: [
-          { text: `OBRA: ${data.obra || data.proyecto || 'N/A'}`, style: 'header' },
-          { text: `CONTRATO: ${data.contrato || 'N/A'}`, style: 'headerSub' }
+        columns: [
+          {
+            image: 'header',
+            fit: [150, 70],
+            alignment: 'left',
+            margin: [0, 0, 20, 0]
+          },
+          {
+            stack: [
+              { text: `OBRA: ${data.obra || data.proyecto || 'N/A'}`, style: 'header' },
+              { text: `CONTRATO: ${data.contrato || 'N/A'}`, style: 'headerSub' }
+            ],
+            width: '*',
+            margin: [0, 12, 0, 0]
+          }
         ],
-        margin: [40, 20, 40, 0]
+        margin: [40, 12, 40, 8]
       },
       footer: (currentPage: number, pageCount: number) => ({
         text: `HOJA ${currentPage} DE ${pageCount}`,
@@ -155,14 +167,6 @@ export class PdfEstimatesService {
         margin: [0, 10, 0, 20]
       }),
       content: [
-        // Logo en la esquina superior derecha
-        {
-          image: 'header',
-          fit: [80, 40],
-          alignment: 'right',
-          margin: [0, 0, 0, 10]
-        },
-        
         // Información del proyecto y fechas
         {
           table: {
@@ -214,7 +218,7 @@ export class PdfEstimatesService {
         {
           table: {
             headerRows: 2,
-            widths: ['auto', '*', 'auto', 'auto', 'auto', 'auto', 'auto', 'auto', 'auto'],
+            widths: ['auto', '*', 'auto', 'auto', 'auto', 'auto', 'auto', 'auto', 'auto', 'auto'],
             body: tableBody
           },
           layout: {
@@ -277,7 +281,8 @@ export class PdfEstimatesService {
       { text: 'CANT.', style: 'tableHeader', rowSpan: 2 },
       { text: 'P.U', style: 'tableHeader', rowSpan: 2 },
       { text: 'IMPORTE', style: 'tableHeader', rowSpan: 2 },
-      { text: `Estimación ${data.estimacion}`, style: 'tableHeader', colSpan: 3 },
+      { text: `Estimación ${data.estimacion}`, style: 'tableHeader', colSpan: 4 },
+      {},
       {},
       {}
     ]);
@@ -292,6 +297,7 @@ export class PdfEstimatesService {
       {},
       { text: 'P.U.', style: 'tableHeader' },
       { text: 'CANT', style: 'tableHeader' },
+      { text: '%', style: 'tableHeader' },
       { text: 'IMPORTE', style: 'tableHeader' }
     ]);
 
@@ -300,6 +306,7 @@ export class PdfEstimatesService {
       { text: '', style: 'categoryHeader', border: [false, false, false, false] },
       { text: data.proyecto.toUpperCase(), style: 'categoryHeader', colSpan: 4, border: [false, false, false, false] }, {}, {}, {},
       { text: this.formatCurrency(data.totalGeneral, data.moneda), style: ['categoryHeader', 'rightAlign'], border: [false, false, false, false] },
+      { text: '', style: 'categoryHeader' },
       { text: '', style: 'categoryHeader' },
       { text: '', style: 'categoryHeader' },
       { text: this.formatCurrency(data.totalEjecutado, data.moneda), style: ['categoryHeader', 'rightAlign'] }
@@ -313,8 +320,9 @@ export class PdfEstimatesService {
         { text: category.nombre.toUpperCase(), style: 'categoryHeader', colSpan: 4, border: [false, false, false, false] }, {}, {}, {},
         { text: this.formatCurrency(category.total, data.moneda), style: ['categoryHeader', 'rightAlign'], border: [false, false, false, false] },
         { text: '', style: 'categoryHeader' },
-        { text: '', style: 'categoryHeader' },
-        { text: '', style: 'categoryHeader' }
+      { text: '', style: 'categoryHeader' },
+      { text: '', style: 'categoryHeader' },
+      { text: '', style: 'categoryHeader' }
       ]);
 
       // Category items
@@ -328,6 +336,7 @@ export class PdfEstimatesService {
           { text: this.formatCurrency(item.importe, data.moneda), style: ['tableContent', 'rightAlign'], border: [false, false, false, false] },
           { text: this.formatCurrency(item.precioUnitario || 0, data.moneda), style: ['tableContent', 'rightAlign'] },
           { text: this.formatNumber(item.cantidadEjecutada || 0), style: ['tableContent', 'rightAlign'] },
+          { text: this.formatPercentage(item.cantidad, item.cantidadEjecutada), style: ['tableContent', 'rightAlign'] },
           { text: this.formatCurrency((item.precioUnitario || 0) * (item.cantidadEjecutada || 0), data.moneda), style: ['tableContent', 'rightAlign'] }
         ]);
       });
@@ -339,12 +348,14 @@ export class PdfEstimatesService {
       { text: this.formatCurrency(data.totalGeneral, data.moneda), style: ['totalRow', 'rightAlign'] },
       { text: '', style: 'totalRow' },
       { text: '', style: 'totalRow' },
+      { text: '', style: 'totalRow' },
       { text: '', style: 'totalRow' }
     ]);
 
     // Second total row - for executed total
     body.push([
       { text: 'TOTAL', style: ['totalRow', 'centerAlign'], colSpan: 5 }, {}, {}, {}, {},
+      { text: '', style: 'totalRow' },
       { text: '', style: 'totalRow' },
       { text: '', style: 'totalRow' },
       { text: '', style: 'totalRow' },
@@ -371,6 +382,12 @@ export class PdfEstimatesService {
       minimumFractionDigits: 2,
       maximumFractionDigits: 2
     }).format(num);
+  }
+
+  private formatPercentage(total: number, executed: number): string {
+    const denominator = Number(total) || 0;
+    const percentage = denominator > 0 ? ((Number(executed) || 0) / denominator) * 100 : 0;
+    return `${percentage.toFixed(2)}%`;
   }
 
   // Method to create sample data for testing
