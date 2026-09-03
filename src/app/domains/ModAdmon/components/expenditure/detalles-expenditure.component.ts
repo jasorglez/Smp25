@@ -1050,9 +1050,13 @@ export class DetallesExpenditureComponent implements OnInit, OnDestroy {
       const presupuesto = saldoCuenta + totalActualEsteEgreso;
       if (this.total > presupuesto) {
         const fmt = (n: number) => n.toLocaleString('es-MX', { style: 'currency', currency: 'MXN' });
+        const ingresosPendientes = Number(this.context?.componentParent?.ingresosPendientesCuenta) || 0;
+        const detallePendientes = ingresosPendientes > 0
+          ? ` El saldo sólo considera ingresos Pagados; hay ${fmt(ingresosPendientes)} en ingresos pendientes de pago.`
+          : '';
         alerts.basicAlert(
           'Saldo insuficiente',
-          `El total del egreso (${fmt(this.total)}) excede el saldo de la cuenta (${fmt(saldoCuenta)}).`,
+          `El total del egreso (${fmt(this.total)}) excede el saldo disponible de la cuenta (${fmt(saldoCuenta)}).${detallePendientes}`,
           'warning'
         );
         return;

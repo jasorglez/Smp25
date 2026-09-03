@@ -224,6 +224,7 @@ export class ExpenditureComponent implements OnDestroy, OnChanges {
   prefixAndConsecutive: any[] = [];
   saldoCuenta: number | null = null;
   saldoDisponible: number | null = null;
+  ingresosPendientesCuenta = 0;
 
   private _idAccount: number;
 
@@ -348,6 +349,12 @@ export class ExpenditureComponent implements OnDestroy, OnChanges {
     return new Promise<void>((resolve) => {
       this.incomesAndExpensesService.getIncomesAndExpenses(this.idRoot).subscribe({
         next: (incomes) => {
+          this.ingresosPendientesCuenta = (incomes || [])
+            .filter(income => income.idAccount === this.idAccount
+              && ['DEPOSITO', 'APORTACION', 'PRESTAMO'].includes(String(income.type || '').toUpperCase())
+              && String(income.status || '').toLowerCase() !== 'pagada'
+              && String(income.status || '').toLowerCase() !== 'cancelada')
+            .reduce((sum, income) => sum + (Number(income.total) || 0), 0);
           const filtered = incomes?.filter(income => {
             return income.type === "GASTO" && income.idAccount === this.idAccount
           }) || [];
@@ -371,6 +378,7 @@ export class ExpenditureComponent implements OnDestroy, OnChanges {
         error: (err) => {
           console.error('Error obteniendo egresos. Código:', err.status, 'Detalles:', err);
           this.incomes = [];
+          this.ingresosPendientesCuenta = 0;
           resolve();
         }
       });
