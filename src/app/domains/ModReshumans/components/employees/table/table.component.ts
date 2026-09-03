@@ -27,6 +27,7 @@ import { TimeService } from 'app/services/time.service';
 import { CatalogsService } from 'app/services/catalogs.service';
 import { BranchsService } from 'app/services/branchs.service';
 import { RolesService } from 'app/services/roles.service';
+import { PosicionesService } from 'app/services/posiciones.service';
 import { AuthService } from 'app/services/auth.service';
 import { environment } from '@env/environment';
 import { CanComponentDeactivate } from 'app/guards/unsaved-changes.guard';
@@ -60,6 +61,7 @@ export class EmployeesTableComponent implements CanComponentDeactivate {
   private branchesService = inject(BranchsService);
   authService = inject(AuthService);
   private rolesService = inject(RolesService);
+  private posicionesService = inject(PosicionesService);
   public AG_GRID_LOCALE_ES = AG_GRID_LOCALE_ES;
 
   id: number;
@@ -83,6 +85,11 @@ export class EmployeesTableComponent implements CanComponentDeactivate {
   position: any[] = [];
   branchs: any[] = [];
   catalogRoles: any[] = []
+  showCatalogModal = false;
+  catalogModalType: 'department' | 'position' = 'department';
+  newCatalogDescription = '';
+  newPositionDepartmentId: number | null = null;
+  savingCatalog = false;
 
   // Variables de control del grid
   valorsenal: string = 'administrador';
@@ -1944,6 +1951,58 @@ export class EmployeesTableComponent implements CanComponentDeactivate {
         console.error('Error fetching data:', error);
       }
     );
+  }
+
+  openCatalogModal(type: 'department' | 'position'): void {
+    this.catalogModalType = type;
+    this.newCatalogDescription = '';
+    this.newPositionDepartmentId = this.catalogRoles.length === 1 ? this.catalogRoles[0].id : null;
+    this.showCatalogModal = true;
+  }
+
+  closeCatalogModal(): void {
+    if (this.savingCatalog) return;
+    this.showCatalogModal = false;
+  }
+
+  async saveCatalogEntry(): Promise<void> {
+    const description = this.newCatalogDescription.trim();
+    if (!description) {
+      alerts.basicAlert('Dato requerido', 'Escribe el nombre.', 'warning');
+      return;
+    }
+    if (this.catalogModalType === 'position' && !this.newPositionDepartmentId) {
+      alerts.basicAlert('Departamento requerido', 'Selecciona el departamento de la posición.', 'warning');
+      return;
+    }
+    this.savingCatalog = true;
+    try {
+      if (this.catalogModalType === 'department') {
+        await lastValueFrom(this.rolesService.addRoles({
+          idCompany: this.idRoot,
+          description,
+          comment: '',
+          active: true
+        }));
+        this.getRoles();
+      } else {
+        await lastValueFrom(this.posicionesService.addPosition({
+          idCompany: this.idRoot,
+          idRoles: this.newPositionDepartmentId,
+          description,
+          active: true
+        }));
+        this.catalogPosiciones = await this.getPoscionesbyRole(this.newPositionDepartmentId!);
+        this.getGeneralPosicion();
+      }
+      this.showCatalogModal = false;
+      alerts.basicAlert('Catálogo actualizado', `${this.catalogModalType === 'department' ? 'Departamento' : 'Posición'} agregado correctamente.`, 'success');
+    } catch (error) {
+      console.error('Error agregando catálogo de empleados:', error);
+      alerts.basicAlert('Error', 'No se pudo agregar el registro.', 'error');
+    } finally {
+      this.savingCatalog = false;
+    }
   }
 
   onMasterSelectionChanged(event: any) {

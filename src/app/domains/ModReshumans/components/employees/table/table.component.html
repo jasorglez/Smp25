@@ -42,6 +42,12 @@
         >
           <i class="bi bi-trash"></i>
         </button>
+        <button type="button" class="btn btn-outline-primary ms-1 me-1" (click)="openCatalogModal('department')" title="Agregar departamento">
+          <i class="bi bi-diagram-3"></i>
+        </button>
+        <button type="button" class="btn btn-outline-info ms-1 me-1" (click)="openCatalogModal('position')" title="Agregar posición">
+          <i class="bi bi-person-badge"></i>
+        </button>
       </div>
     </div>
     <div class="col">
@@ -67,6 +73,39 @@
     </div>
   </div>
 </div>
+
+<div class="modal fade" [class.show]="showCatalogModal" [style.display]="showCatalogModal ? 'block' : 'none'" tabindex="-1" role="dialog">
+  <div class="modal-dialog modal-dialog-centered" role="document">
+    <div class="modal-content">
+      <div class="modal-header bg-primary text-white">
+        <h5 class="modal-title">
+          <i class="bi me-2" [ngClass]="catalogModalType === 'department' ? 'bi-diagram-3' : 'bi-person-badge'"></i>
+          Agregar {{ catalogModalType === 'department' ? 'departamento' : 'posición' }}
+        </h5>
+        <button type="button" class="btn-close btn-close-white" (click)="closeCatalogModal()" aria-label="Cerrar"></button>
+      </div>
+      <div class="modal-body">
+        <label class="form-label">Nombre <span class="text-danger">*</span></label>
+        <input type="text" class="form-control mb-3" [(ngModel)]="newCatalogDescription" name="newCatalogDescription" maxlength="150" autofocus>
+        <ng-container *ngIf="catalogModalType === 'position'">
+          <label class="form-label">Departamento <span class="text-danger">*</span></label>
+          <select class="form-select" [(ngModel)]="newPositionDepartmentId" name="newPositionDepartmentId">
+            <option [ngValue]="null">Selecciona un departamento</option>
+            <option *ngFor="let dept of catalogRoles" [ngValue]="dept.id">{{ dept.description }}</option>
+          </select>
+          <div class="form-text">La posición quedará ligada al departamento seleccionado.</div>
+        </ng-container>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" (click)="closeCatalogModal()">Cancelar</button>
+        <button type="button" class="btn btn-primary" (click)="saveCatalogEntry()" [disabled]="savingCatalog">
+          <span *ngIf="savingCatalog" class="spinner-border spinner-border-sm me-1"></span>Guardar
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+<div class="modal-backdrop fade" [class.show]="showCatalogModal" [style.display]="showCatalogModal ? 'block' : 'none'"></div>
 
 <div class="row" *ngIf="idEmployee != null">
   <div class="col-12">
