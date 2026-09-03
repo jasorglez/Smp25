@@ -145,9 +145,9 @@ export class PdfEstimatesService {
         columns: [
           {
             image: 'header',
-            fit: [150, 70],
+            fit: [95, 45],
             alignment: 'left',
-            margin: [0, 0, 20, 0]
+            margin: [0, 0, 28, 0]
           },
           {
             stack: [
@@ -155,10 +155,10 @@ export class PdfEstimatesService {
               { text: `CONTRATO: ${data.contrato || 'N/A'}`, style: 'headerSub' }
             ],
             width: '*',
-            margin: [0, 12, 0, 0]
+            margin: [0, 7, 0, 0]
           }
         ],
-        margin: [40, 12, 40, 8]
+        margin: [40, 8, 40, 8]
       },
       footer: (currentPage: number, pageCount: number) => ({
         text: `HOJA ${currentPage} DE ${pageCount}`,
