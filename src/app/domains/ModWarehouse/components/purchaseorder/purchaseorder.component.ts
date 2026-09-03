@@ -193,7 +193,10 @@ export class PurchaseOrderComponent implements CanComponentDeactivate {
       if (params.data.detailType === 'report') {
         return {
           component: DetailCellRendererPurchaseOrderReportComponent,
-          params: {}
+          params: {
+            proveedores: this.proveedores,
+            usuarios: this.usuarios
+          }
         };
       }
       // Por defecto, mostrar items
@@ -401,7 +404,8 @@ export class PurchaseOrderComponent implements CanComponentDeactivate {
         headerName: 'Proveedor',
         editable: true,
         filter: true,
-        width: 150,
+        width: 300,
+        minWidth: 240,
         cellEditor: 'agSelectCellEditor',
         cellEditorParams: () => ({
           values: [...(this.proveedores ? this.proveedores.map((item) => item.id) : []), '__ADD_NEW__'],

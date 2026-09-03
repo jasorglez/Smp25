@@ -5,7 +5,7 @@ import { ICellRendererParams } from 'ag-grid-enterprise';
 import { DomSanitizer, SafeResourceUrl } from '@angular/platform-browser';
 import { SignalsService } from 'app/services/signals.service';
 import { RootService } from 'app/services/root.service';
-import { ProvidersService } from 'app/services/providers.service';
+import { CustomersService } from 'app/services/customers.service';
 import { OcAndReqsService } from 'app/services/ocandreqs.service';
 import { MaterialsService } from 'app/services/materials.service';
 import { Base64EncodeService } from 'app/services/base64encode.service';
@@ -76,7 +76,7 @@ export class DetailCellRendererPurchaseOrderReportComponent {
   private sanitizer = inject(DomSanitizer);
   private signalsService = inject(SignalsService);
   private rootService = inject(RootService);
-  private providersService = inject(ProvidersService);
+  private customersService = inject(CustomersService);
   private requisitionsService = inject(OcAndReqsService);
   private materialsService = inject(MaterialsService);
   private base64EncodeService = inject(Base64EncodeService);
@@ -115,11 +115,18 @@ export class DetailCellRendererPurchaseOrderReportComponent {
       }
 
       // Obtener datos del proveedor
-      let providerData: any = null;
-      const providerId = this.purchaseOrderData.idProvider;
+      const providers = ((this.params as any)?.proveedores || paramsContext(this.params)?.proveedores || []) as any[];
+      const providerId = this.purchaseOrderData.idProvider ?? this.purchaseOrderData.idProveedor;
+      const providerFromGrid = providers.find((provider: any) =>
+        String(provider.id) === String(providerId)
+      );
+      let providerData: any = providerFromGrid
+        ? { ...providerFromGrid, company: providerFromGrid.company || providerFromGrid.name }
+        : null;
       if (providerId && providerId > 0) {
         try {
-          providerData = await lastValueFrom(this.providersService.getProviderById(providerId));
+          const providerResponse = await lastValueFrom(this.customersService.getCustomerById(Number(providerId)));
+          providerData = { ...providerData, ...providerResponse };
         } catch (error) {
           console.warn('No se pudo cargar el proveedor:', error);
         }
@@ -214,7 +221,14 @@ export class DetailCellRendererPurchaseOrderReportComponent {
     const fechaOC = this.purchaseOrderData.dateCreate ? this.formatDate(this.purchaseOrderData.dateCreate) : '';
     const fechaEntrega = this.purchaseOrderData.dateSupply ? this.formatDate(this.purchaseOrderData.dateSupply) : '';
     const ocNumero = this.purchaseOrderData.folio || 'N/A';
-    const solicitante = this.purchaseOrderData.solicit || 'N/A';
+    const usuarios = ((this.params as any)?.usuarios || paramsContext(this.params)?.usuarios || []) as any[];
+    const solicitanteSeleccionado = usuarios.find((usuario: any) =>
+      String(usuario.id) === String(this.purchaseOrderData.idSolicit)
+    );
+    const solicitante = solicitanteSeleccionado?.displayName
+      || solicitanteSeleccionado?.name
+      || this.purchaseOrderData.solicit
+      || 'N/A';
     const comentarios = this.purchaseOrderData.comments || '';
 
     // Calcular totales
@@ -327,7 +341,7 @@ export class DetailCellRendererPurchaseOrderReportComponent {
               width: '50%',
               stack: [
                 { text: 'PROVEEDOR:', bold: true, fontSize: 10, margin: [0, 0, 0, 5] },
-                { text: providerData?.name || 'Sin proveedor', fontSize: 9 },
+                { text: providerData?.company || providerData?.nameContact || providerData?.namecontact || providerData?.name || 'Sin proveedor', fontSize: 9 },
                 { text: providerData?.address || '', fontSize: 9 },
                 { text: providerData?.rfc || '', fontSize: 9 },
                 { text: `${providerData?.city || ''}, ${providerData?.state || ''}, ${providerData?.country || ''}`, fontSize: 9 },
@@ -550,4 +564,8 @@ export class DetailCellRendererPurchaseOrderReportComponent {
       this.params.context.componentParent.collapseReportDetail();
     }
   }
+}
+
+function paramsContext(params: ICellRendererParams): any {
+  return (params as any)?.context || (params as any)?.api?.getGridOption?.('context') || {};
 }

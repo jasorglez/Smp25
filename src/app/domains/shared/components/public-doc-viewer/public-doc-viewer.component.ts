@@ -268,7 +268,7 @@ export class PublicDocViewerComponent implements OnInit {
               width: '50%',
               stack: [
                 { text: 'PROVEEDOR:', bold: true, fontSize: 10, margin: [0, 0, 0, 5] },
-                { text: providerData?.name || 'Sin proveedor', fontSize: 9 },
+                { text: providerData?.company || providerData?.nameContact || providerData?.namecontact || providerData?.name || 'Sin proveedor', fontSize: 9 },
                 { text: providerData?.address || '', fontSize: 9 },
                 { text: providerData?.rfc || '', fontSize: 9 },
                 { text: `${providerData?.city || ''}, ${providerData?.state || ''}, ${providerData?.country || ''}`, fontSize: 9 },
