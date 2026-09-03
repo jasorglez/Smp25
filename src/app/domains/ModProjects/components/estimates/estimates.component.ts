@@ -2,7 +2,7 @@ import { Component, effect, HostListener, inject } from '@angular/core';
 import { ColDef, GridApi, GridReadyEvent } from 'ag-grid-enterprise';
 import { alerts } from 'app/helpers/alerts';
 import { AgGridModule } from 'ag-grid-angular';
-import { catchError, concat, EMPTY, lastValueFrom, toArray } from 'rxjs';
+import { catchError, concat, EMPTY, lastValueFrom, of, toArray } from 'rxjs';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { EstimatesService } from 'app/services/estimates.service';
@@ -11,6 +11,7 @@ import { PdfEstimatesService } from 'app/services/pdf-estimates.service';
 import { TrackingService } from 'app/services/tracking.service';
 import { WorkprogramsService } from 'app/services/workprograms.service';
 import { GeneratorsService } from 'app/services/generators.service';
+import { ContractsService } from 'app/services/contracts.service';
 import { EstimateDetailRendererComponent } from './estimate-detail-renderer.component';
 
 @Component({
@@ -27,6 +28,7 @@ export class EstimatesComponent {
   private trackingService      = inject(TrackingService);
   private workprogramsService  = inject(WorkprogramsService);
   private generatorsService    = inject(GeneratorsService);
+  private contractsService     = inject(ContractsService);
 
   @HostListener('window:beforeunload', ['$event'])
   unloadNotification($event: any): void {
@@ -334,6 +336,9 @@ export class EstimatesComponent {
   private async generatePdfWithRealData(estimateData: any, download: boolean) {
     try {
       const estimateId = Number(estimateData.id);
+      const contractData = await lastValueFrom(
+        this.contractsService.getContractById(Number(estimateData.idContract)).pipe(catchError(() => of(null)))
+      );
       const generators = await lastValueFrom(this.generatorsService.getGenerators(estimateId));
       const generatorItems = await Promise.all(
         generators.map(generator => lastValueFrom(this.generatorsService.getItemsGeneradores(generator.id)))
@@ -342,7 +347,7 @@ export class EstimatesComponent {
       const conceptsRes   = await Promise.all(
         estimateItems.map(item => lastValueFrom(this.workprogramsService.getWorkProgramsWithoutType(item.idResource)))
       );
-      const pdfData = await this.createEstimateDataFromServices(estimateData, estimateItems, conceptsRes);
+      const pdfData = await this.createEstimateDataFromServices(estimateData, contractData, estimateItems, conceptsRes);
       if (download) {
         this.pdfEstimatesService.downloadEstimatePdf(pdfData, `Estimacion_${estimateData.number}.pdf`);
       } else {
@@ -354,7 +359,7 @@ export class EstimatesComponent {
     }
   }
 
-  private async createEstimateDataFromServices(estimateData: any, estimateItems: any[], conceptsResults: any[][]) {
+  private async createEstimateDataFromServices(estimateData: any, contractData: any, estimateItems: any[], conceptsResults: any[][]) {
     const items = estimateItems.map((item, i) => {
       const concept = conceptsResults[i]?.[0] ?? null;
       return {
@@ -376,6 +381,8 @@ export class EstimatesComponent {
 
     return {
       proyecto:      this.signalsService.getProjectNameBySidebar()() || 'PROYECTO',
+      obra:          contractData?.description || contractData?.descripSmall || 'N/A',
+      contrato:      contractData?.numberContract || contractData?.contract || String(estimateData.idContract || 'N/A'),
       estimacion:    estimateData.number,
       fechaInicio:   this.formatDateForPdf(estimateData.dateStart),
       fechaFin:      this.formatDateForPdf(estimateData.dateEnd),

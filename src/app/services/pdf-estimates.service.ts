@@ -24,6 +24,8 @@ export interface EstimateCategory {
 
 export interface EstimateData {
   proyecto: string;
+  obra?: string;
+  contrato?: string;
   estimacion: string;
   fechaInicio: string;
   fechaFin: string;
@@ -83,6 +85,11 @@ export class PdfEstimatesService {
           alignment: 'center',
           margin: [0, 0, 0, 10]
         },
+        headerSub: {
+          fontSize: 10,
+          alignment: 'center',
+          margin: [0, 0, 0, 10]
+        },
         projectInfo: {
           fontSize: 9,
           margin: [0, 0, 0, 5]
@@ -118,8 +125,10 @@ export class PdfEstimatesService {
         }
       },
       header: {
-        text: 'PLAZA CORALA',
-        style: 'header',
+        stack: [
+          { text: `OBRA: ${data.obra || data.proyecto || 'N/A'}`, style: 'header' },
+          { text: `CONTRATO: ${data.contrato || 'N/A'}`, style: 'headerSub' }
+        ],
         margin: [40, 20, 40, 0]
       },
       footer: (currentPage: number, pageCount: number) => ({
