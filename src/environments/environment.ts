@@ -83,5 +83,5 @@ export const environment = {
   geminiApiKey: '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',
   gnewsApiKey: '94ccc596b4dfebc3f72683b6e81d81bc',
 
-  version: '4.99.9 (03 Septiembre 2026) fix: impresión PDF de estimaciones',
+  version: '4.99.10 (03 Septiembre 2026) fix: partidas en PDF de estimaciones',
 };

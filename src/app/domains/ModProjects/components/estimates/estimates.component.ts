@@ -10,6 +10,7 @@ import { SignalsService } from 'app/services/signals.service';
 import { PdfEstimatesService } from 'app/services/pdf-estimates.service';
 import { TrackingService } from 'app/services/tracking.service';
 import { WorkprogramsService } from 'app/services/workprograms.service';
+import { GeneratorsService } from 'app/services/generators.service';
 import { EstimateDetailRendererComponent } from './estimate-detail-renderer.component';
 
 @Component({
@@ -25,6 +26,7 @@ export class EstimatesComponent {
   private pdfEstimatesService  = inject(PdfEstimatesService);
   private trackingService      = inject(TrackingService);
   private workprogramsService  = inject(WorkprogramsService);
+  private generatorsService    = inject(GeneratorsService);
 
   @HostListener('window:beforeunload', ['$event'])
   unloadNotification($event: any): void {
@@ -332,7 +334,11 @@ export class EstimatesComponent {
   private async generatePdfWithRealData(estimateData: any, download: boolean) {
     try {
       const estimateId = Number(estimateData.id);
-      const estimateItems = await lastValueFrom(this.estimatesService.getItemsFromEstimate(estimateId));
+      const generators = await lastValueFrom(this.generatorsService.getGenerators(estimateId));
+      const generatorItems = await Promise.all(
+        generators.map(generator => lastValueFrom(this.generatorsService.getItemsGeneradores(generator.id)))
+      );
+      const estimateItems = generatorItems.flat();
       const conceptsRes   = await Promise.all(
         estimateItems.map(item => lastValueFrom(this.workprogramsService.getWorkProgramsWithoutType(item.idResource)))
       );
@@ -369,7 +375,7 @@ export class EstimatesComponent {
       s + c.items.reduce((cs: number, it: any) => cs + (it.importeEjecutado || 0), 0), 0);
 
     return {
-      proyecto:      conceptsResults[0]?.[0]?.text || 'PROYECTO',
+      proyecto:      this.signalsService.getProjectNameBySidebar()() || 'PROYECTO',
       estimacion:    estimateData.number,
       fechaInicio:   this.formatDateForPdf(estimateData.dateStart),
       fechaFin:      this.formatDateForPdf(estimateData.dateEnd),
@@ -389,13 +395,11 @@ export class EstimatesComponent {
     items.forEach((item, i) => {
       const concept = conceptsResults[i]?.[0] ?? null;
       if (concept?.typeActivity === 'Parent') return;
-      const name = concept?.phase;
-      if (name) {
-        if (!map.has(name)) map.set(name, { nombre: name, total: 0, items: [] });
-        const cat = map.get(name);
-        cat.items.push(item);
-        cat.total += item.importe;
-      }
+      const name = concept?.phase || 'CONCEPTOS';
+      if (!map.has(name)) map.set(name, { nombre: name, total: 0, items: [] });
+      const cat = map.get(name);
+      cat.items.push(item);
+      cat.total += item.importe;
     });
     return Array.from(map.values());
   }

@@ -242,8 +242,10 @@ export class GeneratorsComponent implements OnChanges {
 
   loadFases() {
     if (!this.project) return;
-    this.workprogramsService.getFathers(this.project).subscribe(
-      (fases: any[]) => { this.fases = fases; },
+    this.workprogramsService.getWorkPrograms(this.project, 'Project').subscribe(
+      (workPrograms: any[]) => {
+        this.fases = workPrograms.filter(item => item.typeActivity === 'Parent' && Number(item.parent) !== 0);
+      },
       (error) => { console.error('Error al cargar fases:', error); this.fases = []; }
     );
   }
