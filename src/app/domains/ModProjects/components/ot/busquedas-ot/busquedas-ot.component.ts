@@ -2,7 +2,7 @@ import { CommonModule } from '@angular/common';
 import { Component, inject } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { AgGridModule } from 'ag-grid-angular';
-import { ColDef, GridApi, GridReadyEvent } from 'ag-grid-enterprise';
+import { ColDef, GridApi, GridReadyEvent, SelectionChangedEvent } from 'ag-grid-enterprise';
 import { alerts } from 'app/helpers/alerts';
 import { OtService } from 'app/services/ot.service';
 
@@ -23,6 +23,7 @@ export class BusquedasOtComponent {
   rowData: any[] = [];
   loading = false;
   searched = false;
+  selectedOt: any = null;
 
   defaultColDef: ColDef = {
     sortable: true,
@@ -50,15 +51,18 @@ export class BusquedasOtComponent {
       width: 145,
       valueGetter: ({ data }) => data?.active === false ? 'Sí' : 'No'
     },
-    { field: 'cdc', headerName: 'CDC', width: 130, pinned: 'left' },
-    { field: 'otNumber', headerName: 'Número OT', width: 150, pinned: 'left' },
-    { field: 'area', headerName: 'Área', width: 140 },
     {
       field: 'cuadrilla',
       headerName: 'Cuadrilla asignada',
-      minWidth: 190,
+      minWidth: 180,
+      pinned: 'left',
       valueFormatter: ({ value }) => value || 'Sin asignar'
     },
+    { field: 'closed', headerName: 'Cierre Web', width: 115, valueFormatter: ({ value }) => value ? 'Sí' : 'No' },
+    { field: 'closedApp', headerName: 'Cierre App', width: 115, valueFormatter: ({ value }) => value ? 'Sí' : 'No' },
+    { field: 'cdc', headerName: 'CDC', width: 130, pinned: 'left' },
+    { field: 'otNumber', headerName: 'Número OT', width: 150, pinned: 'left' },
+    { field: 'area', headerName: 'Área', width: 140 },
     { field: 'idProject', headerName: 'ID Proyecto', width: 125 },
     { field: 'cuentaHoja', headerName: 'Hoja', width: 100 },
     { field: 'description', headerName: 'Descripción', minWidth: 260, flex: 1 },
@@ -75,8 +79,6 @@ export class BusquedasOtComponent {
     { field: 'period', headerName: 'Periodo', width: 120 },
     { field: 'observations', headerName: 'Observaciones', minWidth: 240 },
     { field: 'results', headerName: 'Resultados', minWidth: 240 },
-    { field: 'closed', headerName: 'Cerrada', width: 110, valueFormatter: ({ value }) => value ? 'Sí' : 'No' },
-    { field: 'closedApp', headerName: 'Cerrada App', width: 125, valueFormatter: ({ value }) => value ? 'Sí' : 'No' },
     { field: 'registerDate', headerName: 'Fecha de registro', minWidth: 175, valueFormatter: ({ value }) => this.formatDate(value) },
     { field: 'closedAt', headerName: 'Fecha de cierre', minWidth: 175, valueFormatter: ({ value }) => this.formatDate(value) }
   ];
@@ -86,6 +88,7 @@ export class BusquedasOtComponent {
     paginationPageSize: 50,
     paginationPageSizeSelector: [25, 50, 100, 500],
     animateRows: true,
+    rowSelection: 'single' as const,
     rowClassRules: {
       'deleted-row': ({ data }) => data?.active === false
     }
@@ -97,6 +100,7 @@ export class BusquedasOtComponent {
     this.otService.searchOt(this.cdc, this.otNumber, this.area).subscribe({
       next: (data) => {
         this.rowData = Array.isArray(data) ? data : [];
+        this.selectedOt = this.rowData.length === 1 ? this.rowData[0] : null;
         this.searched = true;
         this.loading = false;
         if (!this.rowData.length) {
@@ -120,11 +124,16 @@ export class BusquedasOtComponent {
     this.otNumber = '';
     this.area = '';
     this.rowData = [];
+    this.selectedOt = null;
     this.searched = false;
   }
 
   onGridReady(event: GridReadyEvent): void {
     this.gridApi = event.api;
+  }
+
+  onSelectionChanged(event: SelectionChangedEvent): void {
+    this.selectedOt = event.api.getSelectedRows()[0] || null;
   }
 
   private formatDate(value: any): string {

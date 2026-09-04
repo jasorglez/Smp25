@@ -33,8 +33,26 @@
       </form>
 
       <div class="d-flex justify-content-between align-items-center mb-2">
-        <small class="text-muted">Los filtros se pueden combinar. Una búsqueda vacía muestra todas las OT.</small>
+        <small class="text-muted">Búsqueda global, independiente de la selección del sidebar. Seleccione una OT para consultar su cuadrilla.</small>
         <span *ngIf="searched" class="badge bg-secondary">{{ rowData.length }} resultado(s)</span>
+      </div>
+
+      <div *ngIf="selectedOt" class="assignment-summary mb-2" role="status">
+        <div>
+          <span class="summary-label">OT</span>
+          <strong>{{ selectedOt.otNumber || 'Sin número' }}</strong>
+        </div>
+        <div>
+          <span class="summary-label">CDC</span>
+          <strong>{{ selectedOt.cdc || 'Sin CDC' }}</strong>
+        </div>
+        <div class="crew-summary">
+          <span class="summary-label">Cuadrilla a la que pertenece</span>
+          <strong>{{ selectedOt.cuadrilla || 'Sin asignar' }}</strong>
+        </div>
+        <span class="badge" [ngClass]="selectedOt.active === false ? 'bg-danger' : 'bg-success'">
+          {{ selectedOt.active === false ? 'BORRADA' : 'ACTIVA' }}
+        </span>
       </div>
 
       <ag-grid-angular
@@ -44,7 +62,8 @@
         [defaultColDef]="defaultColDef"
         [gridOptions]="gridOptions"
         [loading]="loading"
-        (gridReady)="onGridReady($event)">
+        (gridReady)="onGridReady($event)"
+        (selectionChanged)="onSelectionChanged($event)">
       </ag-grid-angular>
     </div>
   </div>
