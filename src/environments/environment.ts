@@ -83,5 +83,5 @@ export const environment = {
   geminiApiKey: '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',
   gnewsApiKey: '94ccc596b4dfebc3f72683b6e81d81bc',
 
-  version: '4.99.38 (04 Septiembre 2026) feat: combos de área y cuadrilla en búsqueda de OT',
+  version: '4.99.39 (04 Septiembre 2026) feat: normalización de cuadrillas en búsqueda de OT',
 };

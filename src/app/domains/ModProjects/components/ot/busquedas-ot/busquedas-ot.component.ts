@@ -75,7 +75,7 @@ export class BusquedasOtComponent implements OnInit {
       headerName: 'Cuadrilla asignada',
       minWidth: 180,
       pinned: 'left',
-      valueFormatter: ({ value }) => value || 'Sin asignar'
+      valueFormatter: ({ value }) => this.normalizeCuadrillaLabel(value) || 'Sin asignar'
     },
     {
       field: 'closed',
@@ -199,12 +199,20 @@ export class BusquedasOtComponent implements OnInit {
       next: (data) => {
         const response = data as OtSearchResponse | any[];
         if (Array.isArray(response)) {
-          this.rowData = response;
+          this.rowData = response.map((row: any) => ({
+            ...row,
+            cuadrilla: this.normalizeCuadrillaLabel(row?.cuadrilla)
+          }));
           this.totalRecords = response.length;
           this.totalPages = response.length > 0 ? 1 : 0;
           this.currentPage = response.length > 0 ? 1 : 0;
         } else {
-          this.rowData = Array.isArray(response?.data) ? response.data : [];
+          this.rowData = Array.isArray(response?.data)
+            ? response.data.map((row: any) => ({
+              ...row,
+              cuadrilla: this.normalizeCuadrillaLabel(row?.cuadrilla)
+            }))
+            : [];
           this.totalRecords = Number(response?.total) || 0;
           this.totalPages = Number(response?.totalPages) || 0;
           this.currentPage = Number(response?.page) || this.currentPage;
@@ -296,7 +304,9 @@ export class BusquedasOtComponent implements OnInit {
     this.otService.getOtSearchOptions().subscribe({
       next: (response) => {
         this.areaOptions = Array.isArray(response?.areas) ? response.areas : [];
-        this.cuadrillaOptions = Array.isArray(response?.cuadrillas) ? response.cuadrillas : [];
+        this.cuadrillaOptions = Array.isArray(response?.cuadrillas)
+          ? response.cuadrillas.map((option: string) => this.normalizeCuadrillaLabel(option))
+          : [];
         this.loadingOptions = false;
       },
       error: () => {
@@ -409,5 +419,19 @@ export class BusquedasOtComponent implements OnInit {
   formatContentCount(value: any): string {
     const count = Number(value) || 0;
     return count > 0 ? `Sí (${count})` : 'No';
+  }
+
+  private normalizeCuadrillaLabel(value: any): string {
+    if (value === null || value === undefined) {
+      return '';
+    }
+
+    const cleaned = String(value).trim().toUpperCase();
+    const match = cleaned.match(/^(?:CUADRILLA|CUADR|CU)[\s-]*0*(\d+)$/);
+    if (match) {
+      return `CUADR-${Number(match[1])}`;
+    }
+
+    return cleaned;
   }
 }
