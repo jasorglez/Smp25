@@ -216,16 +216,18 @@
         </span>
       </div>
 
-      <ag-grid-angular
-        class="ag-theme-quartz search-grid"
-        [rowData]="rowData"
-        [columnDefs]="columnDefs"
-        [defaultColDef]="defaultColDef"
-        [gridOptions]="gridOptions"
-        [loading]="loading"
-        (gridReady)="onGridReady($event)"
-        (selectionChanged)="onSelectionChanged($event)">
-      </ag-grid-angular>
+      <div class="grid-shell">
+        <ag-grid-angular
+          class="ag-theme-quartz search-grid"
+          [rowData]="rowData"
+          [columnDefs]="columnDefs"
+          [defaultColDef]="defaultColDef"
+          [gridOptions]="gridOptions"
+          [loading]="loading"
+          (gridReady)="onGridReady($event)"
+          (selectionChanged)="onSelectionChanged($event)">
+        </ag-grid-angular>
+      </div>
 
       <div class="pager-bar mt-3">
         <div class="d-flex align-items-center gap-2">
@@ -301,9 +303,14 @@
         <ng-container *ngIf="!contentModalLoading">
           <ng-container [ngSwitch]="contentModalTab">
             <div *ngSwitchCase="'photos'" class="content-photo-grid">
-              <article class="content-photo-card" *ngFor="let item of getContentItems('photos')">
-                <div class="content-photo-preview">
-                  <img *ngIf="resolveContentImage(item); else noPhoto" [src]="resolveContentImage(item)" [alt]="contentEntryTitle(item)">
+                  <article class="content-photo-card" *ngFor="let item of getContentItems('photos')">
+                    <div class="content-photo-preview">
+                  <img *ngIf="resolveContentImage(item); else noPhoto"
+                       [src]="resolveContentImage(item)"
+                       [alt]="contentEntryTitle(item)"
+                       (click)="openImageInNewTab(item)"
+                       title="Abrir imagen"
+                       style="cursor:pointer;">
                   <ng-template #noPhoto>
                     <div class="no-photo-box">
                       <i class="bi bi-image"></i>

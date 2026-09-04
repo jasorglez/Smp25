@@ -543,7 +543,7 @@ export class BusquedasOtComponent implements OnInit {
   }
 
   resolveContentImage(item: any): string {
-    return item?.imageAzure || item?.imageUrl || '';
+    return this.normalizeImageSource(item?.imageUrl) || this.normalizeImageSource(item?.imageAzure) || '';
   }
 
   contentEntryTitle(item: any): string {
@@ -567,5 +567,36 @@ export class BusquedasOtComponent implements OnInit {
       item?.validado ? `Validado ${item.validado}` : ''
     ].filter(Boolean);
     return parts.join(' • ');
+  }
+
+  openImageInNewTab(item: any): void {
+    const source = this.resolveContentImage(item);
+    if (!source) {
+      return;
+    }
+
+    window.open(source, '_blank', 'noopener,noreferrer');
+  }
+
+  private normalizeImageSource(value: any): string {
+    if (value === null || value === undefined) {
+      return '';
+    }
+
+    const source = String(value).trim();
+    if (!source) {
+      return '';
+    }
+
+    const upper = source.toUpperCase();
+    if (upper === 'NO FILE' || upper === 'SIN FOTO' || upper === 'NULL' || upper === 'UNDEFINED') {
+      return '';
+    }
+
+    if (/^(https?:)?\/\//i.test(source) || /^data:/i.test(source) || /^blob:/i.test(source)) {
+      return source;
+    }
+
+    return source;
   }
 }

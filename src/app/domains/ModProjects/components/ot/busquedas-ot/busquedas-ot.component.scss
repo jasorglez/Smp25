@@ -1,16 +1,28 @@
 .search-card {
   height: calc(100vh - 180px);
   min-height: 620px;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
 }
 
 .card-body {
+  flex: 1 1 auto;
   min-height: 0;
+  overflow: hidden;
+}
+
+.grid-shell {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
 }
 
 .search-grid {
   width: 100%;
   flex: 1 1 auto;
-  min-height: 360px;
+  height: 100%;
+  min-height: 0;
 }
 
 .assignment-summary {
