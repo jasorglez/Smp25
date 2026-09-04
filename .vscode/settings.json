@@ -5,5 +5,25 @@
             "skipStyle": true
         }
     },
-    "CodeGPT.apiKey": "Ollama"
+    "CodeGPT.apiKey": "Ollama",
+    "sqltools.connections": [
+        {
+            "connectionTimeout": 15,
+            "mssqlOptions": {
+                "appName": "SQLTools",
+                "useUTC": true,
+                "encrypt": true,
+                "trustServerCertificate": true
+            },
+            "ssh": "Disabled",
+            "previewLimit": 50,
+            "server": "66.179.240.10",
+            "port": 56969,
+            "driver": "MSSQL",
+            "name": "sorianoserver",
+            "database": "administration",
+            "username": "sa",
+            "password": "ER#U^LoW5ZGs"
+        }
+    ]
 }

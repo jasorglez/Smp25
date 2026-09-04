@@ -1,5 +1,6 @@
 import { Component, inject, OnInit, effect } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { FormsModule } from '@angular/forms';
 import { TranslateModule } from '@ngx-translate/core';
 import { AgGridModule } from 'ag-grid-angular';
 import { ColDef, GridApi, GridReadyEvent } from 'ag-grid-enterprise';
@@ -32,7 +33,7 @@ interface HistoricoOTData {
 @Component({
   selector: 'app-historico-ot',
   standalone: true,
-  imports: [CommonModule, TranslateModule, AgGridModule],
+  imports: [CommonModule, FormsModule, TranslateModule, AgGridModule],
   templateUrl: './historicoOT.component.html',
   styleUrl: './historicoOT.component.scss'
 })
@@ -51,6 +52,7 @@ export class HistoricoOTComponent implements OnInit {
   public rowData: HistoricoOTData[] = [];
   public projectsList: any[] = [];
   public catalogArea: any[] = []; // Catálogo de áreas (fases)
+  public showOpenOnly = false;
 
   // Variables de control CRUD
   public notSavedChanges: boolean = false;
@@ -58,6 +60,13 @@ export class HistoricoOTComponent implements OnInit {
   private idcompany: number;
 
   // Configuración del grid
+  public defaultColDef: ColDef = {
+    sortable: true,
+    filter: true,
+    resizable: true,
+    minWidth: 110
+  };
+
   public gridOptions: any = {
     headerHeight: 40,
     rowHeight: 35,
@@ -246,11 +255,14 @@ export class HistoricoOTComponent implements OnInit {
     // Si no hay proyecto seleccionado, limpiar datos
     if (!idProject) {
       this.rowData = [];
+      this.autoSizeColumns();
       return;
     }
 
+    const showClosed = !this.showOpenOnly;
+
    // Cargar OTs del proyecto seleccionado
-this.otService.getOtListByProject(idProject, true).subscribe({
+this.otService.getOtListByProject(idProject, showClosed).subscribe({
   next: (data: any) => {
     console.log('OTs cargadas para proyecto', idProject, ':', data);
     
@@ -263,8 +275,9 @@ this.otService.getOtListByProject(idProject, true).subscribe({
     
     // Verificar si hay datos
     if (otsArray.length === 0) {
-      console.log('No se encontraron OTs cerradas para el proyecto', idProject);
+      console.log(`No se encontraron OTs ${showClosed ? 'cerradas' : 'abiertas'} para el proyecto`, idProject);
       this.rowData = [];
+      this.autoSizeColumns();
       // Opcional: mostrar mensaje informativo en lugar de error
       // alerts.basicAlert('Información', 'No se encontraron OTs cerradas para este proyecto', 'info');
       return;
@@ -284,7 +297,8 @@ this.otService.getOtListByProject(idProject, true).subscribe({
       closedApp: ot.closedApp || false
     }));
     
-    console.log(`Se cargaron ${this.rowData.length} OTs cerradas para el proyecto ${projectName}`);
+    console.log(`Se cargaron ${this.rowData.length} OTs ${showClosed ? 'cerradas' : 'abiertas'} para el proyecto ${projectName}`);
+    this.autoSizeColumns();
   },
   error: (error) => {
     console.error('Error al cargar OTs:', error);
@@ -292,32 +306,51 @@ this.otService.getOtListByProject(idProject, true).subscribe({
     // Manejo más específico de errores
     if (error.status === 404) {
       // El controlador anterior devolvía 404, pero el nuevo no debería
-      console.log('No se encontraron OTs cerradas (404)');
+      console.log(`No se encontraron OTs ${showClosed ? 'cerradas' : 'abiertas'} (404)`);
       this.rowData = [];
+      this.autoSizeColumns();
       // Opcional: mostrar mensaje informativo
       // alerts.basicAlert('Información', 'No se encontraron OTs cerradas para este proyecto', 'info');
     } else if (error.status === 500) {
       console.error('Error interno del servidor:', error.error);
       alerts.basicAlert('Error', 'Error interno del servidor al cargar las OTs', 'error');
       this.rowData = [];
+      this.autoSizeColumns();
     } else if (error.status === 0) {
       console.error('Error de conexión');
       alerts.basicAlert('Error', 'Error de conexión. Verifique su red.', 'error');
       this.rowData = [];
+      this.autoSizeColumns();
     } else {
       console.error('Error desconocido:', error);
       alerts.basicAlert('Error', 'No se pudieron cargar las OTs del proyecto', 'error');
       this.rowData = [];
+      this.autoSizeColumns();
     }
   }
-});
+  });
+  }
+
+  onOpenOnlyChange(): void {
+    const currentProject = this.signalsService.getProjectSelectedBySidebar()();
+    if (currentProject) {
+      this.loadData(currentProject);
+    }
+  }
+
+  private autoSizeColumns(): void {
+    setTimeout(() => {
+      if (this.gridApi) {
+        this.gridApi.sizeColumnsToFit();
+      }
+    }, 0);
   }
 
 
   // Métodos del grid
   onGridReady(params: GridReadyEvent): void {
     this.gridApi = params.api;
-    params.api.sizeColumnsToFit();
+    this.autoSizeColumns();
   }
 
   onSelectionChanged(event: any): void {
