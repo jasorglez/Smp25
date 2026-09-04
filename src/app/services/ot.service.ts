@@ -41,6 +41,25 @@ export interface LogbookQueryResponse {
   message?: string;
 }
 
+export interface LogbookPresentationResponse {
+  success?: boolean;
+  data?: Array<{
+    id: number;
+    idOt?: number | null;
+    idProject?: number | null;
+    typeNote?: string | null;
+    date?: string | null;
+    description?: string | null;
+    resourceName?: string | null;
+    imageUrl?: string | null;
+    quantity?: number | null;
+    supervisor?: string | null;
+    cuadrilla?: string | null;
+    validated?: string | null;
+  }>;
+  message?: string;
+}
+
 @Injectable({
   providedIn: 'root'
 })
@@ -100,6 +119,19 @@ export class OtService {
     }
 
     return this.http.get<LogbookQueryResponse>(`${environment.urlSmp}/Logbook/ots/${otId}`, {
+      headers: this.trackingService.getHeaders(),
+      params
+    });
+  }
+
+  getLogbooksPresentationByOt(otId: number, typeNote?: string): Observable<LogbookPresentationResponse> {
+    const params: Record<string, string> = {};
+
+    if (typeNote && typeNote.trim()) {
+      params['typeNote'] = typeNote.trim();
+    }
+
+    return this.http.get<LogbookPresentationResponse>(`${environment.urlSmp}/Logbook/ots/${otId}/presentation`, {
       headers: this.trackingService.getHeaders(),
       params
     });

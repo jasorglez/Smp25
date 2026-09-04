@@ -6,7 +6,12 @@ import { AgGridModule } from 'ag-grid-angular';
 import { ColDef, GridApi, GridReadyEvent, SelectionChangedEvent } from 'ag-grid-enterprise';
 import { catchError, forkJoin, map, of } from 'rxjs';
 import { alerts } from 'app/helpers/alerts';
-import { LogbookQueryResponse, OtSearchRequest, OtSearchResponse, OtService } from 'app/services/ot.service';
+import {
+  LogbookPresentationResponse,
+  OtSearchRequest,
+  OtSearchResponse,
+  OtService
+} from 'app/services/ot.service';
 
 type ContentTab = 'photos' | 'personal' | 'material' | 'equipment';
 const CONTENT_TYPES: Record<ContentTab, string> = {
@@ -533,8 +538,8 @@ export class BusquedasOtComponent implements OnInit {
 
   private loadContentCategory(otId: number, tab: ContentTab) {
     const typeNote = CONTENT_TYPES[tab];
-    return this.otService.getLogbooksByOt(otId, typeNote).pipe(
-      map((response: LogbookQueryResponse) => Array.isArray(response?.data) ? response.data : []),
+    return this.otService.getLogbooksPresentationByOt(otId, typeNote).pipe(
+      map((response: LogbookPresentationResponse) => Array.isArray(response?.data) ? response.data : []),
       catchError(() => {
         this.contentModalError = this.contentModalError || 'Una o más categorías no pudieron cargarse.';
         return of([]);
@@ -543,11 +548,11 @@ export class BusquedasOtComponent implements OnInit {
   }
 
   resolveContentImage(item: any): string {
-    return this.normalizeImageSource(item?.imageUrl) || this.normalizeImageSource(item?.imageAzure) || '';
+    return this.normalizeImageSource(item?.imageUrl) || '';
   }
 
   contentEntryTitle(item: any): string {
-    return item?.descriptionconcept || item?.description || item?.position || 'Sin descripción';
+    return item?.resourceName || item?.displayDescription || item?.description || item?.position || 'Sin descripción';
   }
 
   contentEntrySubtitle(item: any): string {
@@ -561,9 +566,8 @@ export class BusquedasOtComponent implements OnInit {
 
   contentEntryDetail(item: any): string {
     const parts = [
+      item?.description && item.description !== item?.resourceName ? item.description : '',
       item?.quantity !== null && item?.quantity !== undefined && item?.quantity !== '' ? `Cant. ${item.quantity}` : '',
-      item?.position ? `Pos. ${item.position}` : '',
-      item?.idResource ? `Recurso ${item.idResource}` : '',
       item?.validado ? `Validado ${item.validado}` : ''
     ].filter(Boolean);
     return parts.join(' • ');
