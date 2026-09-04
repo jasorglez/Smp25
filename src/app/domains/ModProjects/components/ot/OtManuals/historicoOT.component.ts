@@ -427,14 +427,23 @@ this.otService.getOtListByProject(idProject, true).subscribe({
     const modifiedRows = this.rowData.filter(row => row.__modified && !row.__isNew);
 
     // Validar filas nuevas - campos requeridos y proyecto válido
-    const invalidNewRows = newRows.filter(item => 
+    const invalidNewRows = newRows.filter(item =>
       !item.otNumber?.trim() || !item.cdc?.trim() || !item.description?.trim() || !item.idProject
     );
-    
+
     if (invalidNewRows.length > 0) {
+      const missingFields = invalidNewRows.map((item, index) => {
+        const fields: string[] = [];
+        if (!item.otNumber?.trim()) fields.push('Número OT');
+        if (!item.cdc?.trim()) fields.push('CDC');
+        if (!item.description?.trim()) fields.push('Descripción');
+        if (!item.idProject) fields.push('Proyecto');
+        return `${index + 1}) Faltan: ${fields.join(', ')}`;
+      }).join(' | ');
+
       alerts.basicAlert(
         'Validación', 
-        'Complete los campos: Número OT, CDC, Descripción y asegúrese de tener un proyecto seleccionado.', 
+        `Complete los campos obligatorios antes de guardar. ${missingFields}`, 
         'warning'
       );
       return;
@@ -483,11 +492,13 @@ this.otService.getOtListByProject(idProject, true).subscribe({
           row.id = response.id || response;
           delete row.__isNew;
           delete (row as any).tempId;
+
+          alerts.basicAlert('Guardado', `Se guardó correctamente la OT manual ${row.otNumber}.`, 'success');
           
           completedOperations++;
           if (completedOperations === totalOperations) {
             this.updateNotSavedChangesStatus();
-            alerts.basicAlert('Éxito', 'Cambios guardados exitosamente', 'success');
+            alerts.basicAlert('Éxito', 'Registro(s) guardado(s) correctamente.', 'success');
             // Recargar datos después de guardar exitosamente
             const currentProject = this.signalsService.getProjectSelectedBySidebar()();
             if (currentProject) {
@@ -499,7 +510,7 @@ this.otService.getOtListByProject(idProject, true).subscribe({
           console.error('Error al crear OT:', error);
           console.error('Detalles del error:', error.error);
           console.error('Estado HTTP:', error.status);
-          alerts.basicAlert('Error', `Error al crear OT: ${error.error?.message || error.message}`, 'error');
+          alerts.basicAlert('Error', `No se pudo guardar la OT manual ${row.otNumber}. ${error.error?.message || error.message || 'Verifique los datos e intente nuevamente.'}`, 'error');
         }
       });
     });
@@ -527,11 +538,13 @@ this.otService.getOtListByProject(idProject, true).subscribe({
         next: (response: any) => {
           console.log('OT actualizada exitosamente:', response);
           delete row.__modified;
+
+          alerts.basicAlert('Guardado', `Se actualizó correctamente la OT manual ${row.otNumber}.`, 'success');
           
           completedOperations++;
           if (completedOperations === totalOperations) {
             this.updateNotSavedChangesStatus();
-            alerts.basicAlert('Éxito', 'Cambios guardados exitosamente', 'success');
+            alerts.basicAlert('Éxito', 'Registro(s) guardado(s) correctamente.', 'success');
             // Recargar datos después de guardar exitosamente
             const currentProject = this.signalsService.getProjectSelectedBySidebar()();
             if (currentProject) {
@@ -541,7 +554,7 @@ this.otService.getOtListByProject(idProject, true).subscribe({
         },
         error: (error) => {
           console.error('Error al actualizar OT:', error);
-          alerts.basicAlert('Error', 'Error al actualizar una de las OTs', 'error');
+          alerts.basicAlert('Error', `No se pudo actualizar la OT manual ${row.otNumber}. ${error.error?.message || error.message || 'Verifique los datos e intente nuevamente.'}`, 'error');
         }
       });
     });
