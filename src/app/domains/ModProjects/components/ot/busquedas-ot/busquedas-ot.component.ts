@@ -4,8 +4,17 @@ import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
 import { AgGridModule } from 'ag-grid-angular';
 import { ColDef, GridApi, GridReadyEvent, SelectionChangedEvent } from 'ag-grid-enterprise';
+import { catchError, forkJoin, map, of } from 'rxjs';
 import { alerts } from 'app/helpers/alerts';
-import { OtSearchRequest, OtSearchResponse, OtService } from 'app/services/ot.service';
+import { LogbookQueryResponse, OtSearchRequest, OtSearchResponse, OtService } from 'app/services/ot.service';
+
+type ContentTab = 'photos' | 'personal' | 'material' | 'equipment';
+const CONTENT_TYPES: Record<ContentTab, string> = {
+  photos: 'Photo',
+  personal: 'PERSONAL',
+  material: 'MATERIAL',
+  equipment: 'EQUIPMENT'
+};
 
 @Component({
   selector: 'app-busquedas-ot',
@@ -43,6 +52,18 @@ export class BusquedasOtComponent implements OnInit {
   loadingOptions = false;
   searched = false;
   selectedOt: any = null;
+  contentModalOpen = false;
+  contentModalLoading = false;
+  contentModalError = '';
+  contentModalTab: ContentTab = 'photos';
+  contentModalOt: any = null;
+  contentModalData: Record<ContentTab, any[]> = {
+    photos: [],
+    personal: [],
+    material: [],
+    equipment: []
+  };
+  contentModalLoadedOtId: number | null = null;
 
   defaultColDef: ColDef = {
     sortable: false,
@@ -224,6 +245,7 @@ export class BusquedasOtComponent implements OnInit {
         this.gridApi?.hideOverlay();
         if (!this.rowData.length) {
           this.gridApi?.showNoRowsOverlay();
+          this.closeContentModal();
         }
       },
       error: (error) => {
@@ -294,6 +316,9 @@ export class BusquedasOtComponent implements OnInit {
     this.totalPages = 0;
     this.rowData = [];
     this.selectedOt = null;
+    this.closeContentModal();
+    this.contentModalLoadedOtId = null;
+    this.contentModalError = '';
     this.searched = false;
     this.gridApi?.hideOverlay();
     this.gridApi?.showNoRowsOverlay();
@@ -410,7 +435,7 @@ export class BusquedasOtComponent implements OnInit {
     return Number(value) > 0 ? 'semaphore-good' : 'semaphore-bad';
   }
 
-  private formatDate(value: any): string {
+  formatDate(value: any): string {
     if (!value) return '';
     const date = new Date(value);
     return Number.isNaN(date.getTime()) ? String(value) : date.toLocaleString('es-MX');
@@ -421,7 +446,50 @@ export class BusquedasOtComponent implements OnInit {
     return count > 0 ? `Sí (${count})` : 'No';
   }
 
-  private normalizeCuadrillaLabel(value: any): string {
+  openContentModal(tab: ContentTab): void {
+    if (!this.selectedOt?.id) {
+      alerts.basicAlert('Sin selección', 'Selecciona una OT para ver su contenido.', 'warning');
+      return;
+    }
+
+    this.contentModalOpen = true;
+    this.contentModalTab = tab;
+    this.contentModalOt = this.selectedOt;
+    this.contentModalError = '';
+
+    if (this.contentModalLoadedOtId === this.selectedOt.id) {
+      return;
+    }
+
+    this.loadContentDetails(this.selectedOt.id);
+  }
+
+  closeContentModal(): void {
+    this.contentModalOpen = false;
+  }
+
+  setContentModalTab(tab: ContentTab): void {
+    this.contentModalTab = tab;
+  }
+
+  getContentItems(tab: ContentTab): any[] {
+    return this.contentModalData[tab] || [];
+  }
+
+  contentTabCount(tab: ContentTab): number {
+    return this.getContentItems(tab).length;
+  }
+
+  contentBadgeClass(tab: ContentTab): string {
+    const count = this.contentTabCount(tab);
+    return count > 0 ? 'has-content' : 'no-content';
+  }
+
+  isActiveContentTab(tab: ContentTab): boolean {
+    return this.contentModalTab === tab;
+  }
+
+  normalizeCuadrillaLabel(value: any): string {
     if (value === null || value === undefined) {
       return '';
     }
@@ -433,5 +501,71 @@ export class BusquedasOtComponent implements OnInit {
     }
 
     return cleaned;
+  }
+
+  private loadContentDetails(otId: number): void {
+    this.contentModalLoading = true;
+
+    forkJoin({
+      photos: this.loadContentCategory(otId, 'photos'),
+      personal: this.loadContentCategory(otId, 'personal'),
+      material: this.loadContentCategory(otId, 'material'),
+      equipment: this.loadContentCategory(otId, 'equipment')
+    }).subscribe({
+      next: (result) => {
+        this.contentModalData = result;
+        this.contentModalLoadedOtId = otId;
+        this.contentModalLoading = false;
+      },
+      error: () => {
+        this.contentModalData = {
+          photos: [],
+          personal: [],
+          material: [],
+          equipment: []
+        };
+        this.contentModalLoadedOtId = null;
+        this.contentModalLoading = false;
+        this.contentModalError = 'No fue posible cargar el detalle de contenido de esta OT.';
+      }
+    });
+  }
+
+  private loadContentCategory(otId: number, tab: ContentTab) {
+    const typeNote = CONTENT_TYPES[tab];
+    return this.otService.getLogbooksByOt(otId, typeNote).pipe(
+      map((response: LogbookQueryResponse) => Array.isArray(response?.data) ? response.data : []),
+      catchError(() => {
+        this.contentModalError = this.contentModalError || 'Una o más categorías no pudieron cargarse.';
+        return of([]);
+      })
+    );
+  }
+
+  resolveContentImage(item: any): string {
+    return item?.imageAzure || item?.imageUrl || '';
+  }
+
+  contentEntryTitle(item: any): string {
+    return item?.descriptionconcept || item?.description || item?.position || 'Sin descripción';
+  }
+
+  contentEntrySubtitle(item: any): string {
+    const parts = [
+      item?.date ? this.formatDate(item.date) : '',
+      item?.supervisor ? `Sup. ${item.supervisor}` : '',
+      item?.cuadrilla ? `Cuadrilla ${this.normalizeCuadrillaLabel(item.cuadrilla)}` : ''
+    ].filter(Boolean);
+    return parts.join(' • ');
+  }
+
+  contentEntryDetail(item: any): string {
+    const parts = [
+      item?.quantity !== null && item?.quantity !== undefined && item?.quantity !== '' ? `Cant. ${item.quantity}` : '',
+      item?.position ? `Pos. ${item.position}` : '',
+      item?.idResource ? `Recurso ${item.idResource}` : '',
+      item?.validado ? `Validado ${item.validado}` : ''
+    ].filter(Boolean);
+    return parts.join(' • ');
   }
 }

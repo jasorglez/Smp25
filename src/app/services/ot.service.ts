@@ -35,6 +35,12 @@ export interface OtSearchOptionsResponse {
   cuadrillas: string[];
 }
 
+export interface LogbookQueryResponse {
+  success?: boolean;
+  data?: any[];
+  message?: string;
+}
+
 @Injectable({
   providedIn: 'root'
 })
@@ -84,6 +90,19 @@ export class OtService {
 
   getOtDetails(idOt: number): Observable<any> {
     return this.http.get(`${environment.urlSmp}/OT/${idOt}`, { headers: this.trackingService.getHeaders() });
+  }
+
+  getLogbooksByOt(otId: number, typeNote?: string): Observable<LogbookQueryResponse> {
+    const params: Record<string, string> = {};
+
+    if (typeNote && typeNote.trim()) {
+      params['typeNote'] = typeNote.trim();
+    }
+
+    return this.http.get<LogbookQueryResponse>(`${environment.urlSmp}/Logbook/ots/${otId}`, {
+      headers: this.trackingService.getHeaders(),
+      params
+    });
   }
 
   addOt(data: any): Observable<any> {
