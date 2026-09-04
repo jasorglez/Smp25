@@ -4,6 +4,37 @@ import { environment } from '@env/environment';
 import { Observable } from 'rxjs';
 import { TrackingService } from './tracking.service';
 
+export interface OtSearchRequest {
+  cdc?: string;
+  otNumber?: string;
+  area?: string;
+  cuadrilla?: string;
+  status?: string;
+  closedWeb?: string;
+  closedApp?: string;
+  hasPhotos?: string;
+  hasPersonal?: string;
+  hasMaterial?: string;
+  hasEquipment?: string;
+  dateFrom?: string;
+  dateTo?: string;
+  page?: number;
+  pageSize?: number;
+}
+
+export interface OtSearchResponse {
+  data: any[];
+  total: number;
+  page: number;
+  pageSize: number;
+  totalPages: number;
+}
+
+export interface OtSearchOptionsResponse {
+  areas: string[];
+  cuadrillas: string[];
+}
+
 @Injectable({
   providedIn: 'root'
 })
@@ -18,15 +49,24 @@ export class OtService {
     return this.http.get(`${environment.urlSmp}/OT`, { headers: this.trackingService.getHeaders() });
   }
 
-  searchOt(cdc = '', otNumber = '', area = ''): Observable<any[]> {
-    const params = {
-      cdc: cdc.trim(),
-      otNumber: otNumber.trim(),
-      area: area.trim()
-    };
-    return this.http.get<any[]>(`${environment.urlSmp}/OT/search`, {
+  searchOt(request: OtSearchRequest): Observable<OtSearchResponse | any[]> {
+    const params: Record<string, string | number> = {};
+
+    Object.entries(request).forEach(([key, value]) => {
+      if (value !== undefined && value !== null && value !== '') {
+        params[key] = typeof value === 'string' ? value.trim() : value;
+      }
+    });
+
+    return this.http.get<OtSearchResponse | any[]>(`${environment.urlSmp}/OT/search`, {
       headers: this.trackingService.getHeaders(),
       params
+    });
+  }
+
+  getOtSearchOptions(): Observable<OtSearchOptionsResponse> {
+    return this.http.get<OtSearchOptionsResponse>(`${environment.urlSmp}/OT/search-options`, {
+      headers: this.trackingService.getHeaders()
     });
   }
 

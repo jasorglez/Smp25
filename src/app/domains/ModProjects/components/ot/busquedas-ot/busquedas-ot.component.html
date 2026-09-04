@@ -1,25 +1,124 @@
 <div class="container-fluid p-2">
   <div class="card search-card">
     <div class="card-header bg-white">
-      <h5 class="mb-0"><i class="bi bi-search me-2"></i>Búsquedas OT</h5>
+      <div class="d-flex flex-wrap justify-content-between align-items-center gap-2">
+        <div>
+          <h5 class="mb-0"><i class="bi bi-search me-2"></i>Búsquedas OT</h5>
+          <small class="text-muted">Consulta global de OT por CDC, OT, área y cuadrilla, independiente del sidebar.</small>
+        </div>
+        <div class="d-flex gap-2">
+          <button type="button" class="btn btn-outline-primary btn-sm" (click)="refresh()" [disabled]="loading || !searched">
+            <i class="bi bi-arrow-clockwise me-1"></i>Actualizar
+          </button>
+          <button type="button" class="btn btn-outline-success btn-sm" (click)="exportPage()" [disabled]="!rowData.length">
+            <i class="bi bi-download me-1"></i>Exportar página
+          </button>
+          <button type="button" class="btn btn-primary btn-sm" (click)="openSelectedOt()" [disabled]="!selectedOt">
+            <i class="bi bi-box-arrow-up-right me-1"></i>Abrir detalle
+          </button>
+        </div>
+      </div>
     </div>
 
     <div class="card-body d-flex flex-column">
-      <form class="row g-3 align-items-end mb-3" (ngSubmit)="search()">
+      <form class="row g-3 align-items-end mb-3" (ngSubmit)="search(1)">
         <div class="col-sm-6 col-lg-3">
           <label for="searchCdc" class="form-label">CDC</label>
           <input id="searchCdc" name="cdc" type="text" class="form-control"
-                 [(ngModel)]="cdc" placeholder="Buscar por CDC">
+                 [ngModel]="cdc" (ngModelChange)="onPrimarySearchChanged('cdc', $event)"
+                 placeholder="Buscar por CDC">
         </div>
         <div class="col-sm-6 col-lg-3">
           <label for="searchOtNumber" class="form-label">Número OT</label>
           <input id="searchOtNumber" name="otNumber" type="text" class="form-control"
-                 [(ngModel)]="otNumber" placeholder="Buscar por número de OT">
+                 [ngModel]="otNumber" (ngModelChange)="onPrimarySearchChanged('otNumber', $event)"
+                 placeholder="Buscar por número de OT">
         </div>
         <div class="col-sm-6 col-lg-3">
           <label for="searchArea" class="form-label">Área</label>
-          <input id="searchArea" name="area" type="text" class="form-control"
-                 [(ngModel)]="area" placeholder="Buscar por área">
+          <select id="searchArea" name="area" class="form-select"
+                  [ngModel]="area" (ngModelChange)="onPrimarySearchChanged('area', $event)">
+            <option value="">Todas</option>
+            <option *ngIf="loadingOptions" value="" disabled>Cargando áreas...</option>
+            <option *ngFor="let option of areaOptions" [value]="option">{{ option }}</option>
+          </select>
+        </div>
+        <div class="col-sm-6 col-lg-3">
+          <label for="searchCuadrilla" class="form-label">Cuadrilla</label>
+          <select id="searchCuadrilla" name="cuadrilla" class="form-select"
+                  [ngModel]="cuadrilla" (ngModelChange)="onCuadrillaChanged($event)">
+            <option value="">Todas</option>
+            <option *ngIf="loadingOptions" value="" disabled>Cargando cuadrillas...</option>
+            <option *ngFor="let option of cuadrillaOptions" [value]="option">{{ option }}</option>
+          </select>
+        </div>
+        <div class="col-sm-6 col-lg-2">
+          <label for="searchStatus" class="form-label">Estado</label>
+          <select id="searchStatus" name="status" class="form-select" [(ngModel)]="status">
+            <option value="">Todas</option>
+            <option value="active">Activas</option>
+            <option value="deleted">Borradas</option>
+          </select>
+        </div>
+        <div class="col-sm-6 col-lg-2">
+          <label for="searchClosedWeb" class="form-label">Cierre Web</label>
+          <select id="searchClosedWeb" name="closedWeb" class="form-select" [(ngModel)]="closedWeb">
+            <option value="">Todos</option>
+            <option value="true">Sí</option>
+            <option value="false">No</option>
+          </select>
+        </div>
+        <div class="col-sm-6 col-lg-2">
+          <label for="searchClosedApp" class="form-label">Cierre App</label>
+          <select id="searchClosedApp" name="closedApp" class="form-select" [(ngModel)]="closedApp">
+            <option value="">Todos</option>
+            <option value="true">Sí</option>
+            <option value="false">No</option>
+          </select>
+        </div>
+        <div class="col-sm-6 col-lg-2">
+          <label for="searchDateFrom" class="form-label">Desde</label>
+          <input id="searchDateFrom" name="dateFrom" type="date" class="form-control" [(ngModel)]="dateFrom">
+        </div>
+        <div class="col-sm-6 col-lg-2">
+          <label for="searchDateTo" class="form-label">Hasta</label>
+          <input id="searchDateTo" name="dateTo" type="date" class="form-control" [(ngModel)]="dateTo">
+        </div>
+        <div class="col-12">
+          <div class="content-toggle-row">
+            <label class="toggle-option">
+              <span>Fotos</span>
+              <select name="hasPhotos" class="form-select form-select-sm" [(ngModel)]="hasPhotos">
+                <option value="">Todos</option>
+                <option value="true">Con fotos</option>
+                <option value="false">Sin fotos</option>
+              </select>
+            </label>
+            <label class="toggle-option">
+              <span>Personal</span>
+              <select name="hasPersonal" class="form-select form-select-sm" [(ngModel)]="hasPersonal">
+                <option value="">Todos</option>
+                <option value="true">Con personal</option>
+                <option value="false">Sin personal</option>
+              </select>
+            </label>
+            <label class="toggle-option">
+              <span>Material</span>
+              <select name="hasMaterial" class="form-select form-select-sm" [(ngModel)]="hasMaterial">
+                <option value="">Todos</option>
+                <option value="true">Con material</option>
+                <option value="false">Sin material</option>
+              </select>
+            </label>
+            <label class="toggle-option">
+              <span>Equipos</span>
+              <select name="hasEquipment" class="form-select form-select-sm" [(ngModel)]="hasEquipment">
+                <option value="">Todos</option>
+                <option value="true">Con equipos</option>
+                <option value="false">Sin equipos</option>
+              </select>
+            </label>
+          </div>
         </div>
         <div class="col-sm-6 col-lg-3 d-flex gap-2">
           <button type="submit" class="btn btn-primary" [disabled]="loading">
@@ -30,11 +129,28 @@
             <i class="bi bi-eraser me-1"></i>Limpiar
           </button>
         </div>
+        <div class="col-12">
+          <small class="text-muted">Usa un criterio principal a la vez. Los filtros avanzados de abajo refinan el resultado sin mezclar CDC, OT y Área.</small>
+        </div>
       </form>
 
-      <div class="d-flex justify-content-between align-items-center mb-2">
-        <small class="text-muted">Búsqueda global, independiente de la selección del sidebar. Seleccione una OT para consultar su cuadrilla.</small>
-        <span *ngIf="searched" class="badge bg-secondary">{{ rowData.length }} resultado(s)</span>
+      <div class="search-meta mb-2">
+        <div class="meta-card">
+          <span class="meta-label">Resultados</span>
+          <strong>{{ totalRecords || rowData.length || 0 }}</strong>
+        </div>
+        <div class="meta-card">
+          <span class="meta-label">Página</span>
+          <strong>{{ currentPage || 0 }} / {{ totalPages || 0 }}</strong>
+        </div>
+        <div class="meta-card">
+          <span class="meta-label">Rango visible</span>
+          <strong>{{ pageStart }} - {{ pageEnd }}</strong>
+        </div>
+        <div class="meta-card flex-grow-1">
+          <span class="meta-label">Contenido faltante</span>
+          <strong>{{ missingContentLabel }}</strong>
+        </div>
       </div>
 
       <div *ngIf="selectedOt" class="assignment-summary mb-2" role="status">
@@ -69,6 +185,37 @@
         </div>
       </div>
 
+      <div *ngIf="selectedOt" class="semaphore-strip mb-3">
+        <span class="semaphore-pill" [ngClass]="semaphoreStatusClass(selectedOt.active)">
+          <i class="bi bi-circle-fill"></i>
+          {{ selectedOt.active === false ? 'Borrada' : 'Activa' }}
+        </span>
+        <span class="semaphore-pill" [ngClass]="semaphoreClosureClass(selectedOt.closed)">
+          <i class="bi bi-circle-fill"></i>
+          Cierre Web: {{ selectedOt.closed ? 'Sí' : 'No' }}
+        </span>
+        <span class="semaphore-pill" [ngClass]="semaphoreClosureClass(selectedOt.closedApp)">
+          <i class="bi bi-circle-fill"></i>
+          Cierre App: {{ selectedOt.closedApp ? 'Sí' : 'No' }}
+        </span>
+        <span class="semaphore-pill" [ngClass]="semaphoreContentClass(selectedOt.photoCount)">
+          <i class="bi bi-circle-fill"></i>
+          Fotos: {{ selectedOt.photoCount || 0 }}
+        </span>
+        <span class="semaphore-pill" [ngClass]="semaphoreContentClass(selectedOt.personalCount)">
+          <i class="bi bi-circle-fill"></i>
+          Personal: {{ selectedOt.personalCount || 0 }}
+        </span>
+        <span class="semaphore-pill" [ngClass]="semaphoreContentClass(selectedOt.materialCount)">
+          <i class="bi bi-circle-fill"></i>
+          Material: {{ selectedOt.materialCount || 0 }}
+        </span>
+        <span class="semaphore-pill" [ngClass]="semaphoreContentClass(selectedOt.equipmentCount)">
+          <i class="bi bi-circle-fill"></i>
+          Equipos: {{ selectedOt.equipmentCount || 0 }}
+        </span>
+      </div>
+
       <ag-grid-angular
         class="ag-theme-quartz search-grid"
         [rowData]="rowData"
@@ -79,6 +226,27 @@
         (gridReady)="onGridReady($event)"
         (selectionChanged)="onSelectionChanged($event)">
       </ag-grid-angular>
+
+      <div class="pager-bar mt-3">
+        <div class="d-flex align-items-center gap-2">
+          <span class="text-muted small">Tamaño de página</span>
+          <select class="form-select form-select-sm page-size-select" [(ngModel)]="pageSize" name="pageSize" (change)="search(1)">
+            <option [ngValue]="25">25</option>
+            <option [ngValue]="50">50</option>
+            <option [ngValue]="100">100</option>
+            <option [ngValue]="200">200</option>
+          </select>
+        </div>
+        <div class="d-flex align-items-center gap-2 ms-auto">
+          <button type="button" class="btn btn-outline-secondary btn-sm" (click)="previousPage()" [disabled]="loading || currentPage <= 1">
+            <i class="bi bi-chevron-left"></i>
+          </button>
+          <span class="page-indicator">Página {{ currentPage || 0 }} de {{ totalPages || 0 }}</span>
+          <button type="button" class="btn btn-outline-secondary btn-sm" (click)="nextPage()" [disabled]="loading || currentPage >= totalPages">
+            <i class="bi bi-chevron-right"></i>
+          </button>
+        </div>
+      </div>
     </div>
   </div>
 </div>
