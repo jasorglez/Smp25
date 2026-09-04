@@ -53,6 +53,20 @@
         <span class="badge" [ngClass]="selectedOt.active === false ? 'bg-danger' : 'bg-success'">
           {{ selectedOt.active === false ? 'BORRADA' : 'ACTIVA' }}
         </span>
+        <div class="content-summary ms-auto">
+          <span class="content-badge" [class.has-content]="selectedOt.photoCount > 0">
+            <i class="bi bi-camera me-1"></i>Fotos: {{ formatContentCount(selectedOt.photoCount) }}
+          </span>
+          <span class="content-badge" [class.has-content]="selectedOt.personalCount > 0">
+            <i class="bi bi-people me-1"></i>Personal: {{ formatContentCount(selectedOt.personalCount) }}
+          </span>
+          <span class="content-badge" [class.has-content]="selectedOt.materialCount > 0">
+            <i class="bi bi-box-seam me-1"></i>Material: {{ formatContentCount(selectedOt.materialCount) }}
+          </span>
+          <span class="content-badge" [class.has-content]="selectedOt.equipmentCount > 0">
+            <i class="bi bi-tools me-1"></i>Equipos: {{ formatContentCount(selectedOt.equipmentCount) }}
+          </span>
+        </div>
       </div>
 
       <ag-grid-angular

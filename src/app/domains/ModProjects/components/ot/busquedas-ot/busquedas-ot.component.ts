@@ -60,6 +60,10 @@ export class BusquedasOtComponent {
     },
     { field: 'closed', headerName: 'Cierre Web', width: 115, valueFormatter: ({ value }) => value ? 'Sí' : 'No' },
     { field: 'closedApp', headerName: 'Cierre App', width: 115, valueFormatter: ({ value }) => value ? 'Sí' : 'No' },
+    { field: 'photoCount', headerName: 'Fotos', width: 105, valueFormatter: ({ value }) => this.formatContentCount(value) },
+    { field: 'personalCount', headerName: 'Personal', width: 110, valueFormatter: ({ value }) => this.formatContentCount(value) },
+    { field: 'materialCount', headerName: 'Material', width: 110, valueFormatter: ({ value }) => this.formatContentCount(value) },
+    { field: 'equipmentCount', headerName: 'Equipos', width: 110, valueFormatter: ({ value }) => this.formatContentCount(value) },
     { field: 'cdc', headerName: 'CDC', width: 130, pinned: 'left' },
     { field: 'otNumber', headerName: 'Número OT', width: 150, pinned: 'left' },
     { field: 'area', headerName: 'Área', width: 140 },
@@ -140,5 +144,10 @@ export class BusquedasOtComponent {
     if (!value) return '';
     const date = new Date(value);
     return Number.isNaN(date.getTime()) ? String(value) : date.toLocaleString('es-MX');
+  }
+
+  formatContentCount(value: any): string {
+    const count = Number(value) || 0;
+    return count > 0 ? `Sí (${count})` : 'No';
   }
 }

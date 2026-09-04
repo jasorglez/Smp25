@@ -42,6 +42,28 @@
   font-size: 1rem;
 }
 
+.content-summary {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+}
+
+.content-badge {
+  padding: 0.3rem 0.5rem;
+  border: 1px solid #ced4da;
+  border-radius: 999px;
+  background: #fff;
+  color: #6c757d;
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+
+.content-badge.has-content {
+  border-color: #75b798;
+  background: #d1e7dd;
+  color: #0f5132;
+}
+
 :host ::ng-deep .search-grid .ag-header-cell-text {
   font-size: 0.7rem;
   line-height: 1.05;
