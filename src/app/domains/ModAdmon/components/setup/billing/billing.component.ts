@@ -30,6 +30,24 @@ export class BillingComponent {
   keyFile: File | null = null;
   certificateStatus: any = {};
 
+  private readonly requiredFields = [
+    { key: 'fiscalYear', label: 'Año Fiscal' },
+    { key: 'fiscalRegime', label: 'Régimen Fiscal' },
+    { key: 'prefix', label: 'Prefijo y delimitador' },
+    { key: 'consecutive', label: 'Consecutivo' },
+    { key: 'iIva', label: 'IVA' },
+    { key: 'iIeps', label: 'IEPS' },
+    { key: 'iI3', label: 'I3' },
+    { key: 'rIva', label: 'IVA Retenido' },
+    { key: 'rIeps', label: 'IEPS Retenido' },
+    { key: 'emisorRfc', label: 'RFC del Emisor' },
+    { key: 'emisorNombre', label: 'Nombre del Emisor' },
+    { key: 'emisorCp', label: 'Código Postal del Emisor' },
+    { key: 'efirmaPass', label: 'Contraseña eFirma' },
+    { key: 'dateStart', label: 'Desde' },
+    { key: 'dateEnd', label: 'Hasta' }
+  ];
+
   ngOnInit() {
     this.idRoot = this.signalsService.getRootSelectedBySidebar()();
     console.log('ngOnInit - idRoot:', this.idRoot);
@@ -152,6 +170,10 @@ export class BillingComponent {
 // En billing.component.ts - Modifica el método saveChanges()
 
 saveChanges() {
+  if (!this.validateBeforeSave()) {
+    return;
+  }
+
   console.log('Saving changes, cerFile:', this.cerFile, 'keyFile:', this.keyFile);
   
   // Si hay archivos para subir/actualizar
@@ -181,7 +203,7 @@ saveChanges() {
         },
         error: (err) => {
           console.log('Certificate operation error:', err);
-          const errorMessage = err.error?.message || "Error al procesar los certificados.";
+          const errorMessage = this.getErrorMessage(err, 'Error al procesar los certificados.');
           alerts.basicAlert("Error", errorMessage, "error");
         }
       });
@@ -318,7 +340,7 @@ onKeyFileSelected(event: any) {
             this.trackingService.addLog(this.trackingService.getnameComp(),'Add Registro en Facturación', 'Menu Administracion Facturación',  this.trackingService.getEmail());
           },
           error: (err) => {
-            alerts.basicAlert("Error", "Error al actualizar los datos.", "error");
+            alerts.basicAlert('No fue posible guardar', this.getErrorMessage(err), 'error');
           }
         });
     } else {
@@ -335,10 +357,65 @@ onKeyFileSelected(event: any) {
             this.trackingService.addLog(this.trackingService.getnameComp(),'Update Registro en Facturación', 'Menu Administracion Facturación',  this.trackingService.getEmail());
           },
           error: (err) => {
-            alerts.basicAlert("Error", "Error al actualizar los datos.", "error");
+            alerts.basicAlert('No fue posible guardar', this.getErrorMessage(err), 'error');
           }
         });
     }
+  }
+
+  private validateBeforeSave(): boolean {
+    if (!this.idRoot) {
+      alerts.basicAlert('No fue posible guardar', 'Seleccione una empresa antes de guardar la configuración.', 'warning');
+      return false;
+    }
+
+    const missingFields = this.requiredFields.filter(({ key }) => {
+      const value = this.billingData[key];
+      return value === null || value === undefined || (typeof value === 'string' && !value.trim());
+    });
+
+    if (!this.certificateStatus.certificateConfigured && !this.cerFile) {
+      missingFields.push({ key: 'pathCer', label: 'Certificado .cer' });
+    }
+    if (!this.certificateStatus.keyConfigured && !this.keyFile) {
+      missingFields.push({ key: 'pathKey', label: 'Llave .key' });
+    }
+
+    if (missingFields.length) {
+      alerts.basicAlert(
+        'Campos obligatorios pendientes',
+        `Complete los siguientes campos: ${missingFields.map(({ label }) => label).join(', ')}.`,
+        'warning'
+      );
+      document.getElementById(missingFields[0].key)?.focus();
+      return false;
+    }
+
+    return this.validateRfc();
+  }
+
+  private getErrorMessage(err: any, fallback = 'Ocurrió un problema inesperado al guardar. Intente nuevamente.'): string {
+    const validationErrors = err?.error?.errors;
+    if (validationErrors && typeof validationErrors === 'object') {
+      const details = Object.entries(validationErrors).map(([field, messages]: [string, any]) => {
+        const text = Array.isArray(messages) ? messages.join(', ') : String(messages);
+        return `${this.getFieldLabel(field)}: ${text}`;
+      });
+      if (details.length) {
+        return details.join(' | ');
+      }
+    }
+
+    return err?.error?.message
+      || err?.error?.error
+      || (typeof err?.error === 'string' ? err.error : null)
+      || err?.message
+      || fallback;
+  }
+
+  private getFieldLabel(field: string): string {
+    const normalizedField = field.split('.').pop()?.toLowerCase();
+    return this.requiredFields.find(({ key }) => key.toLowerCase() === normalizedField)?.label || field;
   }
 
   revertChanges() {

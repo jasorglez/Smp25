@@ -1,0 +1,35 @@
+.search-card {
+  height: calc(100vh - 180px);
+  min-height: 520px;
+}
+
+.card-body {
+  min-height: 0;
+}
+
+.search-grid {
+  width: 100%;
+  flex: 1 1 auto;
+  min-height: 360px;
+}
+
+:host ::ng-deep .deleted-row {
+  background-color: #fff1f2;
+  color: #842029;
+}
+
+:host ::ng-deep .status-deleted {
+  color: #b02a37;
+  font-weight: 700;
+}
+
+:host ::ng-deep .status-active {
+  color: #146c43;
+  font-weight: 700;
+}
+
+@media (max-width: 768px) {
+  .search-card {
+    height: calc(100vh - 150px);
+  }
+}

@@ -662,6 +662,13 @@ export const routes: Routes = [
               { path: '', redirectTo: 'ordenes', pathMatch: 'full' },
               ...SharedModule.getRoutes(),
               {
+                path: 'busquedas-ot',
+                loadComponent: () =>
+                  import(
+                    './domains/ModProjects/components/ot/busquedas-ot/busquedas-ot.component'
+                  ).then((b) => b.BusquedasOtComponent),
+              },
+              {
                 path: 'ordenes',
                 loadComponent: () =>
                   import(

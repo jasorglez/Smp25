@@ -27,6 +27,20 @@ export class PositionsComponent {
   fiscalRegimes: any = [];
   newData: boolean;
 
+  private readonly requiredFields = [
+    { key: 'directorName', label: 'Nombre de dirección' },
+    { key: 'directorTitle', label: 'Título de dirección' },
+    { key: 'gerencyName', label: 'Nombre de gerencia' },
+    { key: 'gerencyTitle', label: 'Título de gerencia' },
+    { key: 'administratorName', label: 'Nombre de administración' },
+    { key: 'administratorTitle', label: 'Título de administración' },
+    { key: 'operatorName', label: 'Nombre de operación' },
+    { key: 'operatorTitle', label: 'Título de operación' },
+    { key: 'consecutiveReceipt', label: 'Consecutivo Recibo' },
+    { key: 'consecutiveCreditNote', label: 'Consecutivo Nota de Crédito' },
+    { key: 'iva', label: 'IVA' }
+  ];
+
   private getDefaultSetupData(): any {
     return {
       directorName: '',
@@ -74,6 +88,10 @@ export class PositionsComponent {
   }
 
   saveChanges() {
+    if (!this.validateRequiredFields()) {
+      return;
+    }
+
     if (this.newData) {
       // Si no hay datos, hacer POST
       this.setupData.idRoot = this.idRoot; // Agregar idRoot al objeto
@@ -87,7 +105,7 @@ export class PositionsComponent {
             this.newData = false;
           },
           error: (err) => {
-            alerts.basicAlert("Error", "Error al actualizar los datos.", "error");
+            alerts.basicAlert('No fue posible guardar', this.getErrorMessage(err), 'error');
           }
         });
     } else {
@@ -100,10 +118,60 @@ export class PositionsComponent {
             this.getSetupManagementData(); // Refrescar datos
           },
           error: (err) => {
-            alerts.basicAlert("Error", "Error al actualizar los datos.", "error");
+            alerts.basicAlert('No fue posible guardar', this.getErrorMessage(err), 'error');
           }
         });
     }
+  }
+
+  private validateRequiredFields(): boolean {
+    const missingFields = this.requiredFields.filter(({ key }) => {
+      const value = this.setupData[key];
+      return value === null || value === undefined || (typeof value === 'string' && !value.trim());
+    });
+
+    if (!this.idRoot) {
+      alerts.basicAlert('No fue posible guardar', 'Seleccione una empresa antes de guardar la configuración.', 'warning');
+      return false;
+    }
+
+    if (missingFields.length === 0) {
+      return true;
+    }
+
+    const fieldNames = missingFields.map(({ label }) => label).join(', ');
+    alerts.basicAlert(
+      'Campos obligatorios pendientes',
+      `Complete los siguientes campos: ${fieldNames}.`,
+      'warning'
+    );
+    document.getElementById(missingFields[0].key)?.focus();
+    return false;
+  }
+
+  private getErrorMessage(err: any): string {
+    const validationErrors = err?.error?.errors;
+    if (validationErrors && typeof validationErrors === 'object') {
+      const details = Object.entries(validationErrors)
+        .flatMap(([field, messages]: [string, any]) => {
+          const text = Array.isArray(messages) ? messages.join(', ') : String(messages);
+          return `${this.getFieldLabel(field)}: ${text}`;
+        });
+      if (details.length) {
+        return details.join(' | ');
+      }
+    }
+
+    return err?.error?.message
+      || err?.error?.error
+      || (typeof err?.error === 'string' ? err.error : null)
+      || err?.message
+      || 'Ocurrió un problema inesperado al guardar. Intente nuevamente.';
+  }
+
+  private getFieldLabel(field: string): string {
+    const normalizedField = field.split('.').pop()?.toLowerCase();
+    return this.requiredFields.find(({ key }) => key.toLowerCase() === normalizedField)?.label || field;
   }
 
   revertChanges() {

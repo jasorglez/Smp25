@@ -18,6 +18,18 @@ export class OtService {
     return this.http.get(`${environment.urlSmp}/OT`, { headers: this.trackingService.getHeaders() });
   }
 
+  searchOt(cdc = '', otNumber = '', area = ''): Observable<any[]> {
+    const params = {
+      cdc: cdc.trim(),
+      otNumber: otNumber.trim(),
+      area: area.trim()
+    };
+    return this.http.get<any[]>(`${environment.urlSmp}/OT/search`, {
+      headers: this.trackingService.getHeaders(),
+      params
+    });
+  }
+
   get2fieldsByPect(idProject: number): Observable<any> {
     return this.http.get(`${environment.urlSmp}/OT/2fields?idProject=${idProject}`, { headers: this.trackingService.getHeaders() });
   }
