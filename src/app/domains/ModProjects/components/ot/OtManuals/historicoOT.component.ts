@@ -328,7 +328,7 @@ this.otService.getOtListByProject(idProject, showClosed).subscribe({
       cuentaHoja: ot.cuentaHoja ?? ot.CuentaHoja ?? '',
       otNumber: ot.otNumber || ot.number || ot.codigo || 'N/A',
       cdc: ot.cdc || ot.costCenter || 'N/A',
-      package: ot.package || '',
+      package: ot.package ?? ot.Package ?? '',
       description: ot.description || ot.descripcion || ot.name || 'Sin descripción',
       observations: ot.observations || ot.observaciones || '',
       area: ot.area || '',
@@ -448,6 +448,9 @@ this.otService.getOtListByProject(idProject, showClosed).subscribe({
 
   onCellEditingStopped(event: any): void {
     console.log('Edición finalizada en celda:', event.colDef.field);
+    if (event?.colDef?.field === 'package') {
+      this.lastManualPackage = this.normalizeText(event.data?.package);
+    }
     // Verificar si hay cambios pendientes después de cada edición
     this.updateNotSavedChangesStatus();
 
@@ -531,7 +534,13 @@ this.otService.getOtListByProject(idProject, showClosed).subscribe({
 
     this.lastManualDescription = this.normalizeText(latestRow.description) || this.lastManualDescription;
     this.lastManualArea = this.normalizeText(latestRow.area) || this.lastManualArea;
-    this.lastManualPackage = this.normalizeText(latestRow.package) || this.lastManualPackage;
+    this.lastManualPackage = this.getLastCapturedPackage() || this.lastManualPackage;
+  }
+
+  private getLastCapturedPackage(): string {
+    return this.rowData
+      .map(row => this.normalizeText(row.package))
+      .find(Boolean) || '';
   }
 
   private getNextCuentaHoja(): string {
@@ -599,7 +608,7 @@ this.otService.getOtListByProject(idProject, showClosed).subscribe({
       cuentaHoja: this.getNextCuentaHoja(),
       otNumber: '',
       cdc: '',
-      package: this.lastManualPackage,
+      package: this.lastManualPackage || this.getLastCapturedPackage(),
       description: defaultDescription,
       observations: '',
       area: this.lastManualArea,
