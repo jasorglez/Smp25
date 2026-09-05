@@ -260,7 +260,6 @@ export class HistoricoOTComponent implements OnInit {
       next: (data: any) => {
         this.catalogArea = data;
         console.log('Catálogo de áreas cargado:', this.catalogArea);
-        this.applyDefaultAreasForRows();
       },
       error: (error) => {
         console.error('Error al cargar catálogo de áreas:', error);
@@ -314,7 +313,7 @@ this.otService.getOtListByProject(idProject, showClosed).subscribe({
       cdc: ot.cdc || ot.costCenter || 'N/A',
       description: ot.description || ot.descripcion || ot.name || 'Sin descripción',
       observations: ot.observations || ot.observaciones || '',
-      area: ot.area || this.suggestAreaFromDescription(ot.description || ot.descripcion || ot.name || ''),
+      area: ot.area || '',
       closed: ot.closed || false,
       closedApp: ot.closedApp || false
     }));
@@ -393,11 +392,6 @@ this.otService.getOtListByProject(idProject, showClosed).subscribe({
         const normalizedDescription = this.normalizeText(newValue);
         if (normalizedDescription) {
           this.lastManualDescription = normalizedDescription;
-        }
-        const suggestedArea = this.suggestAreaFromDescription(newValue);
-        if (suggestedArea && !data.area) {
-          data.area = suggestedArea;
-          this.gridApi?.refreshCells({ rowNodes: [event.node], columns: ['area'], force: true });
         }
       }
 
@@ -496,56 +490,10 @@ this.otService.getOtListByProject(idProject, showClosed).subscribe({
     }
   }
 
-  private applyDefaultAreasForRows(): void {
-    let updated = false;
-
-    for (const row of this.rowData) {
-      if (!row.area) {
-        const suggestedArea = this.suggestAreaFromDescription(row.description);
-        if (suggestedArea) {
-          row.area = suggestedArea;
-          updated = true;
-        }
-      }
-    }
-
-    if (updated) {
-      this.gridApi?.refreshCells({ force: true });
-    }
-  }
-
   private getAreaOptions(): string[] {
     return this.catalogArea
       .map(area => this.normalizeText(area?.description))
       .filter((value, index, values) => Boolean(value) && values.indexOf(value) === index);
-  }
-
-  private getCatalogArea(description: string): string {
-    const normalized = this.normalizeText(description).toUpperCase();
-    return this.catalogArea
-      .map(area => this.normalizeText(area?.description))
-      .find(area => area.toUpperCase() === normalized) || '';
-  }
-
-  private suggestAreaFromDescription(description: string | null | undefined): string {
-    const normalizedDescription = this.normalizeText(description).toUpperCase();
-    if (!normalizedDescription) {
-      return '';
-    }
-
-    if (normalizedDescription.includes('RECONEXION DE MEDIDOR') || normalizedDescription.includes('RECONEXIÓN DE MEDIDOR')) {
-      return this.getCatalogArea('RECONEXION');
-    }
-
-    if (normalizedDescription.includes('CAMBIO DE MEDIDOR')) {
-      return this.getCatalogArea('MEDIDORES');
-    }
-
-    if (normalizedDescription.includes('RECONEXION') || normalizedDescription.includes('RECONEXIÓN')) {
-      return this.getCatalogArea('RECONEXION');
-    }
-
-    return '';
   }
 
   private compareOtsNewestFirst(left: any, right: any): number {
@@ -607,7 +555,7 @@ this.otService.getOtListByProject(idProject, showClosed).subscribe({
       cdc: '',
       description: defaultDescription,
       observations: '',
-      area: this.suggestAreaFromDescription(defaultDescription),
+      area: '',
       closed: false,
       closedApp: false
     };
