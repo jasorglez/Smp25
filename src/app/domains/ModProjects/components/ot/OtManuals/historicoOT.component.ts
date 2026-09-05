@@ -84,7 +84,7 @@ export class HistoricoOTComponent implements OnInit {
     suppressHorizontalScroll: false,
     animateRows: true,
     pagination: true,
-    paginationPageSize: 15
+    paginationPageSize: 50
   };
 
   // Definición de columnas
