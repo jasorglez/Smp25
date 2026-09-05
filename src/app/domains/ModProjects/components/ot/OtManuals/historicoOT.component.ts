@@ -556,28 +556,26 @@ this.otService.getOtListByProject(idProject, showClosed).subscribe({
   }
 
   private rememberLastManualValues(): void {
-    const latestRow = this.rowData[0];
+    const latestRow = this.getLatestPersistedRow();
     if (!latestRow) {
       return;
     }
 
     this.lastManualDescription = this.normalizeText(latestRow.description) || this.lastManualDescription;
     this.lastManualArea = this.normalizeText(latestRow.area) || this.lastManualArea;
-    this.lastManualPackage = this.getLastCapturedPackage() || this.lastManualPackage;
+    this.lastManualPackage = this.normalizeText(latestRow.package) || this.lastManualPackage;
   }
 
-  private getLastCapturedPackage(): string {
+  private getLatestPersistedRow(): HistoricoOTData | undefined {
     return this.rowData
-      .map(row => this.normalizeText(row.package))
-      .find(Boolean) || '';
+      .filter(row => !row.__isNew)
+      .sort((left, right) => Number(right.id ?? 0) - Number(left.id ?? 0))[0];
   }
 
   private getNextCuentaHoja(): string {
-    const lastSheet = this.rowData
-      .map(row => this.normalizeText(row.cuentaHoja?.toString()))
-      .find(value => /^\d+$/.test(value));
+    const lastSheet = this.normalizeText(this.getLatestPersistedRow()?.cuentaHoja?.toString());
 
-    return lastSheet ? (Number(lastSheet) + 1).toString() : '';
+    return /^\d+$/.test(lastSheet) ? (Number(lastSheet) + 1).toString() : '';
   }
 
   private compareOtsNewestFirst(left: any, right: any): number {
@@ -637,7 +635,7 @@ this.otService.getOtListByProject(idProject, showClosed).subscribe({
       cuentaHoja: this.getNextCuentaHoja(),
       otNumber: '',
       cdc: '',
-      package: this.lastManualPackage || this.getLastCapturedPackage(),
+      package: this.lastManualPackage,
       description: defaultDescription,
       observations: '',
       area: this.lastManualArea,
