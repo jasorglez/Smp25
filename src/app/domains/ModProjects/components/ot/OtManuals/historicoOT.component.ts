@@ -151,8 +151,8 @@ export class HistoricoOTComponent implements OnInit {
         editable: true,
         cellEditor: 'agSelectCellEditor',
         cellEditorPopup: true,
-        cellEditorParams: (params: any) => ({
-          values: this.getAreaOptions(params?.value),
+        cellEditorParams: () => ({
+          values: this.getAreaOptions(),
           formatValue: (value: any) => value || 'Seleccione área'
         })
       },
@@ -514,14 +514,10 @@ this.otService.getOtListByProject(idProject, showClosed).subscribe({
     }
   }
 
-  private getAreaOptions(currentValue: string | null | undefined): string[] {
-    const catalogOptions = this.catalogArea
+  private getAreaOptions(): string[] {
+    return this.catalogArea
       .map(area => this.normalizeText(area?.description))
-      .filter(Boolean);
-    const options = [this.normalizeText(currentValue), ...catalogOptions]
-      .filter((value, index, values) => value && values.indexOf(value) === index);
-
-    return [''].concat(options);
+      .filter((value, index, values) => Boolean(value) && values.indexOf(value) === index);
   }
 
   private getCatalogArea(description: string): string {
