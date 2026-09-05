@@ -30,10 +30,16 @@
               <input type="month" class="form-control" [(ngModel)]="mesSeleccionado">
             </div>
             <div class="col-md-6" *ngIf="tipoReporte === 'personalizado'">
-              <label class="form-label">Fechas:</label>
+              <label class="form-label">Rango de fechas:</label>
               <div class="d-flex gap-2">
-                <input type="date" class="form-control" [(ngModel)]="fechaSeleccionada">
-                <input type="date" class="form-control" [(ngModel)]="fechaSeleccionada">
+                <div class="flex-fill">
+                  <label class="form-label small mb-1">Desde</label>
+                  <input type="date" class="form-control" [(ngModel)]="fechaDesde">
+                </div>
+                <div class="flex-fill">
+                  <label class="form-label small mb-1">Hasta</label>
+                  <input type="date" class="form-control" [(ngModel)]="fechaHasta">
+                </div>
               </div>
             </div>
             <!--<div class="col-md-2">
@@ -205,26 +211,61 @@
           </div>
 
           <!-- Vista Gráficos -->
-          <div *ngIf="activeTab === 'graficos'">
-            <div class="row">
-              <div class="col-12 text-center">
-                <div class="card">
-                  <div class="card-body">
-                    <i class="bi bi-bar-chart" style="font-size: 4rem; color: #6c757d;"></i>
-                    <h5 class="mt-3">Gráficos Próximamente</h5>
-                    <p class="text-muted">
-                      En esta sección podrás visualizar gráficos de:
-                    </p>
-                    <ul class="list-unstyled text-muted">
-                      <li><i class="bi bi-chevron-right"></i> Progreso {{ tipoReporte }} por área</li>
-                      <li><i class="bi bi-chevron-right"></i> Comparativo de eficiencia</li>
-                      <li><i class="bi bi-chevron-right"></i> Tendencias de productividad</li>
-                      <li><i class="bi bi-chevron-right"></i> Distribución de recursos</li>
-                    </ul>
-                  </div>
+          <div *ngIf="activeTab === 'graficos'" class="print-chart-section">
+            <div class="d-flex flex-wrap align-items-end justify-content-between gap-3 mb-3 no-print">
+              <div class="d-flex flex-wrap gap-3">
+                <div>
+                  <label class="form-label">Tipo de gráfica</label>
+                  <select class="form-select" [(ngModel)]="chartStyle" (ngModelChange)="onChartOptionsChanged()">
+                    <option value="bar">Barras comparativas</option>
+                    <option value="pie">Pastel</option>
+                    <option value="donut">Dona</option>
+                  </select>
+                </div>
+                <div *ngIf="chartStyle !== 'bar'">
+                  <label class="form-label">Datos a mostrar</label>
+                  <select class="form-select" [(ngModel)]="chartMetric" (ngModelChange)="onChartOptionsChanged()">
+                    <option value="total">Registradas + cerradas</option>
+                    <option value="registered">Sólo registradas</option>
+                    <option value="closed">Sólo cerradas</option>
+                  </select>
                 </div>
               </div>
+              <button class="btn btn-outline-primary" (click)="printCharts()" [disabled]="!crewChartOptions">
+                <i class="bi bi-printer"></i> Imprimir gráfica
+              </button>
             </div>
+
+            <div class="card shadow-sm" *ngIf="crewChartOptions; else noChartData">
+              <div class="card-body">
+                <div class="d-flex align-items-center gap-2 mb-2">
+                  <i class="bi bi-bar-chart-line-fill text-primary fs-4"></i>
+                  <div>
+                    <h5 class="mb-0">Eficiencia por cuadrilla</h5>
+                    <small class="text-muted">Compara OT registradas y cerradas en el período seleccionado.</small>
+                  </div>
+                </div>
+                <apx-chart
+                  [series]="crewChartOptions.series"
+                  [chart]="crewChartOptions.chart"
+                  [labels]="crewChartOptions.labels"
+                  [title]="crewChartOptions.title"
+                  [xaxis]="crewChartOptions.xaxis"
+                  [yaxis]="crewChartOptions.yaxis"
+                  [plotOptions]="crewChartOptions.plotOptions"
+                  [dataLabels]="crewChartOptions.dataLabels"
+                  [colors]="crewChartOptions.colors"
+                  [legend]="crewChartOptions.legend"
+                  [tooltip]="crewChartOptions.tooltip"
+                  [responsive]="crewChartOptions.responsive">
+                </apx-chart>
+              </div>
+            </div>
+            <ng-template #noChartData>
+              <div class="alert alert-light border mb-0">
+                <i class="bi bi-info-circle me-2"></i>Genera la consulta del período para visualizar la productividad por cuadrilla.
+              </div>
+            </ng-template>
           </div>
         </div>
       </div>

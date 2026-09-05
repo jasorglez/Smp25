@@ -35,6 +35,12 @@ export interface OtSearchOptionsResponse {
   cuadrillas: string[];
 }
 
+export interface OtCrewEfficiencyRow {
+  crew: string;
+  registered: number;
+  closed: number;
+}
+
 export interface LogbookQueryResponse {
   success?: boolean;
   data?: any[];
@@ -92,6 +98,13 @@ export class OtService {
   getOtSearchOptions(): Observable<OtSearchOptionsResponse> {
     return this.http.get<OtSearchOptionsResponse>(`${environment.urlSmp}/OT/search-options`, {
       headers: this.trackingService.getHeaders()
+    });
+  }
+
+  getCrewEfficiency(from: string, to: string): Observable<OtCrewEfficiencyRow[]> {
+    return this.http.get<OtCrewEfficiencyRow[]>(`${environment.urlSmp}/OT/crew-efficiency`, {
+      headers: this.trackingService.getHeaders(),
+      params: { from, to }
     });
   }
 

@@ -151,3 +151,24 @@
     color: #6c757d !important;
   }
 }
+
+@media print {
+  :host ::ng-deep body * {
+    visibility: hidden;
+  }
+
+  :host ::ng-deep .print-chart-section,
+  :host ::ng-deep .print-chart-section * {
+    visibility: visible;
+  }
+
+  :host ::ng-deep .print-chart-section {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+  }
+
+  .no-print {
+    display: none !important;
+  }
+}

@@ -3,6 +3,7 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { AgGridModule } from 'ag-grid-angular';
 import { ColDef, GridApi, GridReadyEvent } from 'ag-grid-enterprise';
+import { NgApexchartsModule } from 'ng-apexcharts';
 import { EstimatesService } from 'app/services/estimates.service';
 import { GeneratorsService } from 'app/services/generators.service';
 import { EmployeesService } from 'app/services/employees.service';
@@ -10,12 +11,14 @@ import { DailyReportService } from 'app/services/daily-report.service';
 import { SignalsService } from 'app/services/signals.service';
 import { TrackingService } from 'app/services/tracking.service';
 import { CatalogsService } from 'app/services/catalogs.service';
+import { DatosXFechasService } from 'app/services/OtDatosXFechas.service';
+import { OtService } from 'app/services/ot.service';
 import { alerts } from 'app/helpers/alerts';
 
 @Component({
   selector: 'app-diarios-semanales',
   standalone: true,
-  imports: [CommonModule, FormsModule, AgGridModule],
+  imports: [CommonModule, FormsModule, AgGridModule, NgApexchartsModule],
   templateUrl: './diarios-semanales.component.html',
   styleUrl: './diarios-semanales.component.scss'
 })
@@ -28,10 +31,14 @@ export class DiariosSemánalesComponent {
   private signalsService = inject(SignalsService);
   private trackingService = inject(TrackingService);
   private catalogService = inject(CatalogsService);
+  private datosXFechasService = inject(DatosXFechasService);
+  private otService = inject(OtService);
 
   // Variables del componente
   tipoReporte: string = 'diario';
   fechaSeleccionada: string = '';
+  fechaDesde: string = '';
+  fechaHasta: string = '';
   semanaSeleccionada: string = '';
   mesSeleccionado: string = '';
   estimacionSeleccionada: string = '';
@@ -39,6 +46,10 @@ export class DiariosSemánalesComponent {
   estadoFiltro: string = '';
   empleadoFiltro: string = '';
   activeTab: string = 'resumen';
+  chartStyle: 'bar' | 'pie' | 'donut' = 'bar';
+  chartMetric: 'registered' | 'closed' | 'total' = 'total';
+  crewChartOptions: any = null;
+  crewEfficiencyData: Array<{ crew: string; registered: number; closed: number }> = [];
   idcompany: number = 0;
   estimaciones: any[] = [];
   empleados: any[] = [];
@@ -203,6 +214,8 @@ export class DiariosSemánalesComponent {
     // Inicializar fechas por defecto
     const hoy = new Date();
     this.fechaSeleccionada = hoy.toISOString().split('T')[0];
+    this.fechaDesde = this.fechaSeleccionada;
+    this.fechaHasta = this.fechaSeleccionada;
     
     // Semana actual
     const inicioSemana = new Date(hoy);
@@ -310,94 +323,217 @@ export class DiariosSemánalesComponent {
       this.trackingService.getEmail()
     );
 
-    // Validar que se haya seleccionado una fecha/período
-    if (this.tipoReporte === 'diario' && !this.fechaSeleccionada) {
-      alerts.basicAlert('Error', 'Debe seleccionar una fecha', 'error');
-      return;
-    }
-    if (this.tipoReporte === 'semanal' && !this.semanaSeleccionada) {
-      alerts.basicAlert('Error', 'Debe seleccionar una semana', 'error');
-      return;
-    }
-    if (this.tipoReporte === 'mensual' && !this.mesSeleccionado) {
-      alerts.basicAlert('Error', 'Debe seleccionar un mes', 'error');
-      return;
-    }
+    const range = this.getSelectedDateRange();
+    if (!range) return;
 
-    // Simular datos para demostración
-    this.generarDatosMockup();
+    // El endpoint compara la fecha final de forma inclusiva. Se solicita un día
+    // adicional y se recorta localmente para incluir todas las horas del último día.
+    const endForApi = new Date(`${range.to}T00:00:00`);
+    endForApi.setDate(endForApi.getDate() + 1);
+
+    this.datosXFechasService.getDailyReports(
+      this.idcompany,
+      new Date(`${range.from}T00:00:00`),
+      endForApi
+    ).subscribe({
+      next: (response: any) => this.loadReportData(response, range.from, range.to),
+      error: (error) => {
+        console.error('Error al consultar reportes por rango:', error);
+        this.resumenData = [];
+        this.detalladoData = [];
+        this.resetMetrics();
+        alerts.basicAlert('Error', 'No fue posible consultar los reportes para el rango seleccionado.', 'error');
+      }
+    });
   }
 
-  private generarDatosMockup() {
-    // Datos de ejemplo para el resumen
-    this.resumenData = [
-      {
-        fecha: this.obtenerFechaPeriodo(),
-        area: 'SUSPENSION',
-        generadoresActivos: 5,
-        itemsCompletados: 23,
-        horasTrabajadas: 42.5,
-        eficiencia: 87.3,
-        observaciones: 'Buen progreso general'
-      },
-      {
-        fecha: this.obtenerFechaPeriodo(),
-        area: 'HUNDIMIENTO',
-        generadoresActivos: 3,
-        itemsCompletados: 15,
-        horasTrabajadas: 28.0,
-        eficiencia: 92.1,
-        observaciones: 'Excelente rendimiento'
-      },
-      {
-        fecha: this.obtenerFechaPeriodo(),
-        area: 'MANTENIMIENTO',
-        generadoresActivos: 2,
-        itemsCompletados: 8,
-        horasTrabajadas: 16.5,
-        eficiencia: 68.7,
-        observaciones: 'Requiere atención'
-      }
-    ];
+  private getSelectedDateRange(): { from: string; to: string } | null {
+    if (this.tipoReporte === 'diario') {
+      return this.fechaSeleccionada ? { from: this.fechaSeleccionada, to: this.fechaSeleccionada } : null;
+    }
 
-    // Datos de ejemplo para vista detallada
-    this.detalladoData = [
-      {
-        generador: 'GEN-001',
-        fecha: this.fechaSeleccionada || new Date().toISOString().split('T')[0],
-        empleado: 'Juan Pérez',
-        horaInicio: '08:00',
-        horaFin: '17:00',
-        horasTrabajadas: 8.0,
-        progreso: 75.0,
-        estado: 'en_progreso',
-        comentarios: 'Avance según programación',
-        orgHierarchy: ['GEN-001']
-      },
-      {
-        generador: 'Item #1',
-        fecha: this.fechaSeleccionada || new Date().toISOString().split('T')[0],
-        empleado: 'Juan Pérez',
-        horaInicio: '08:00',
-        horaFin: '12:00',
-        horasTrabajadas: 4.0,
-        progreso: 100.0,
-        estado: 'completado',
-        comentarios: 'Item completado exitosamente',
-        orgHierarchy: ['GEN-001', 'Item #1']
+    if (this.tipoReporte === 'personalizado') {
+      if (!this.fechaDesde || !this.fechaHasta) {
+        alerts.basicAlert('Error', 'Seleccione la fecha inicial y final.', 'error');
+        return null;
       }
-    ];
+      if (this.fechaDesde > this.fechaHasta) {
+        alerts.basicAlert('Error', 'La fecha inicial no puede ser mayor que la fecha final.', 'error');
+        return null;
+      }
+      return { from: this.fechaDesde, to: this.fechaHasta };
+    }
 
-    // Calcular métricas
+    if (this.tipoReporte === 'semanal') {
+      if (!this.semanaSeleccionada) return null;
+      const [year, week] = this.semanaSeleccionada.split('-W').map(Number);
+      const januaryFourth = new Date(year, 0, 4);
+      const monday = new Date(januaryFourth);
+      monday.setDate(januaryFourth.getDate() - ((januaryFourth.getDay() + 6) % 7) + ((week - 1) * 7));
+      const sunday = new Date(monday);
+      sunday.setDate(monday.getDate() + 6);
+      return { from: this.toDateInputValue(monday), to: this.toDateInputValue(sunday) };
+    }
+
+    if (this.tipoReporte === 'mensual') {
+      if (!this.mesSeleccionado) return null;
+      const [year, month] = this.mesSeleccionado.split('-').map(Number);
+      return {
+        from: `${this.mesSeleccionado}-01`,
+        to: this.toDateInputValue(new Date(year, month, 0))
+      };
+    }
+
+    return null;
+  }
+
+  private loadReportData(response: any, from: string, to: string): void {
+    const reports = (Array.isArray(response) ? response : response?.data || [])
+      .filter((item: any) => {
+        const date = this.getDateKey(item?.date ?? item?.Date);
+        const area = String(item?.area ?? item?.Area ?? item?.fase ?? item?.Fase ?? '');
+        const status = String(item?.validado ?? item?.Validado ?? item?.close ?? item?.Close ?? '');
+        return date >= from && date <= to
+          && (!this.areaFiltro || area === this.areaFiltro)
+          && (!this.estadoFiltro || status === this.estadoFiltro);
+      });
+
+    this.detalladoData = reports.map((item: any, index: number) => {
+      const generador = item?.nombreConcepto ?? item?.NombreConcepto ?? item?.nombreMaterial
+        ?? item?.NombreMaterial ?? item?.nombreEquipo ?? item?.NombreEquipo ?? item?.otNumber ?? item?.OtNumber ?? 'Sin concepto';
+      const date = this.getDateKey(item?.date ?? item?.Date);
+      return {
+        generador,
+        fecha: date,
+        empleado: item?.nombreEmpleado ?? item?.NombreEmpleado ?? item?.nameCuadrilla ?? item?.NameCuadrilla ?? '',
+        horaInicio: item?.start ?? item?.Start ?? '',
+        horaFin: item?.end ?? item?.End ?? '',
+        horasTrabajadas: Number(item?.quantity ?? item?.Quantity ?? 0),
+        progreso: 0,
+        estado: item?.validado ?? item?.Validado ?? item?.close ?? item?.Close ?? 'pendiente',
+        comentarios: item?.description ?? item?.Description ?? '',
+        area: item?.area ?? item?.Area ?? item?.fase ?? item?.Fase ?? 'Sin área',
+        orgHierarchy: [String(item?.otNumber ?? item?.OtNumber ?? 'OT'), `${generador}-${index}`]
+      };
+    });
+
+    const summary = new Map<string, any>();
+    this.detalladoData.forEach((item: any) => {
+      const area = item.area;
+      const key = `${item.fecha}|${area}`;
+      const row = summary.get(key) ?? { fecha: item.fecha, area, generadores: new Set<string>(), itemsCompletados: 0, horasTrabajadas: 0, observaciones: '' };
+      row.generadores.add(item.generador);
+      row.itemsCompletados++;
+      row.horasTrabajadas += item.horasTrabajadas;
+      summary.set(key, row);
+    });
+
+    this.resumenData = Array.from(summary.values()).map(row => ({
+      fecha: row.fecha,
+      area: row.area,
+      generadoresActivos: row.generadores.size,
+      itemsCompletados: row.itemsCompletados,
+      horasTrabajadas: row.horasTrabajadas,
+      eficiencia: 0,
+      observaciones: row.observaciones
+    }));
+
     this.metricas = {
-      totalGeneradores: this.resumenData.reduce((sum, item) => sum + item.generadoresActivos, 0),
-      totalItems: this.resumenData.reduce((sum, item) => sum + item.itemsCompletados, 0),
-      horasTrabajadasTotal: this.resumenData.reduce((sum, item) => sum + item.horasTrabajadas, 0),
-      eficienciaPromedio: this.resumenData.reduce((sum, item) => sum + item.eficiencia, 0) / this.resumenData.length
+      totalGeneradores: new Set(this.detalladoData.map(item => item.generador)).size,
+      totalItems: this.detalladoData.length,
+      horasTrabajadasTotal: this.detalladoData.reduce((sum, item) => sum + item.horasTrabajadas, 0),
+      eficienciaPromedio: 0
     };
 
-    alerts.basicAlert('Reporte Generado', 
-      `Reporte ${this.tipoReporte} generado exitosamente`, 'success');
+    this.loadCrewEfficiency(from, to);
+
+    if (!reports.length) alerts.basicAlert('Sin resultados', 'No hay reportes para el rango seleccionado.', 'info');
+  }
+
+  private getDateKey(value: any): string {
+    return value ? String(value).slice(0, 10) : '';
+  }
+
+  private toDateInputValue(date: Date): string {
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  }
+
+  private resetMetrics(): void {
+    this.metricas = { totalGeneradores: 0, totalItems: 0, horasTrabajadasTotal: 0, eficienciaPromedio: 0 };
+  }
+
+  onChartOptionsChanged(): void {
+    this.buildCrewChart();
+  }
+
+  printCharts(): void {
+    window.print();
+  }
+
+  private loadCrewEfficiency(from: string, to: string): void {
+    this.otService.getCrewEfficiency(from, to).subscribe({
+      next: (data) => {
+        this.crewEfficiencyData = (data || []).map(item => ({
+          crew: item.crew || 'SIN ASIGNAR',
+          registered: Number(item.registered) || 0,
+          closed: Number(item.closed) || 0
+        }));
+        this.buildCrewChart();
+      },
+      error: (error) => {
+        console.error('Error al obtener eficiencia por cuadrilla:', error);
+        this.crewEfficiencyData = [];
+        this.crewChartOptions = null;
+      }
+    });
+  }
+
+  private buildCrewChart(): void {
+    if (!this.crewEfficiencyData.length) {
+      this.crewChartOptions = null;
+      return;
+    }
+
+    const labels = this.crewEfficiencyData.map(item => item.crew);
+    const period = this.getSelectedDateRange();
+    const title = `Productividad por cuadrilla${period ? ` · ${period.from} al ${period.to}` : ''}`;
+
+    if (this.chartStyle === 'bar') {
+      this.crewChartOptions = {
+        series: [
+          { name: 'OT registradas', data: this.crewEfficiencyData.map(item => item.registered) },
+          { name: 'OT cerradas', data: this.crewEfficiencyData.map(item => item.closed) }
+        ],
+        chart: { type: 'bar', height: 420, toolbar: { show: true } },
+        title: { text: title, align: 'left' },
+        xaxis: { categories: labels, title: { text: 'Cuadrilla' } },
+        yaxis: { title: { text: 'OT' }, min: 0, forceNiceScale: true },
+        plotOptions: { bar: { horizontal: false, columnWidth: '58%', borderRadius: 4 } },
+        dataLabels: { enabled: true },
+        colors: ['#2563eb', '#16a34a'],
+        legend: { position: 'top' },
+        tooltip: { shared: true, intersect: false }
+      };
+      return;
+    }
+
+    const metricLabels = { registered: 'OT registradas', closed: 'OT cerradas', total: 'OT atendidas (registradas + cerradas)' };
+    const series = this.crewEfficiencyData.map(item => this.chartMetric === 'registered'
+      ? item.registered
+      : this.chartMetric === 'closed' ? item.closed : item.registered + item.closed);
+    this.crewChartOptions = {
+      series,
+      chart: { type: this.chartStyle, height: 420, toolbar: { show: true } },
+      labels,
+      title: { text: `${metricLabels[this.chartMetric]} · ${title}`, align: 'left' },
+      dataLabels: { enabled: true, formatter: (value: number) => `${value.toFixed(1)}%` },
+      legend: { position: 'bottom' },
+      tooltip: { y: { formatter: (value: number) => `${value} OT` } },
+      responsive: [{ breakpoint: 768, options: { chart: { height: 350 }, legend: { position: 'bottom' } } }]
+    };
   }
 
   private obtenerFechaPeriodo(): string {
