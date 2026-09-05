@@ -83,5 +83,5 @@ export const environment = {
   geminiApiKey: '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',
   gnewsApiKey: '94ccc596b4dfebc3f72683b6e81d81bc',
 
-  version: '4.99.47 (05 Septiembre 2026) repetir Área y consecutivo Hoja OT manual',
+  version: '4.99.48 (05 Septiembre 2026) columna Paquete OT manual',
 };

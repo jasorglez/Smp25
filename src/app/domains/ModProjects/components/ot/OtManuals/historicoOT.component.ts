@@ -21,6 +21,7 @@ interface HistoricoOTData {
   cuentaHoja?: number | string;
   otNumber: string;
   cdc: string;
+  package?: string;
   description: string;
   observations: string;
   area?: string; // Campo texto del área
@@ -140,6 +141,20 @@ export class HistoricoOTComponent implements OnInit {
         resizable: true,
         flex: 2,
         editable: true
+      },
+      {
+        field: 'package',
+        headerName: 'Paquete',
+        sortable: true,
+        filter: true,
+        resizable: true,
+        flex: 2,
+        editable: true,
+        cellEditor: 'agLargeTextCellEditor',
+        cellEditorParams: {
+          maxLength: 500,
+          rows: 3
+        }
       },
       {
         field: 'area',
@@ -312,6 +327,7 @@ this.otService.getOtListByProject(idProject, showClosed).subscribe({
       cuentaHoja: ot.cuentaHoja ?? ot.CuentaHoja ?? '',
       otNumber: ot.otNumber || ot.number || ot.codigo || 'N/A',
       cdc: ot.cdc || ot.costCenter || 'N/A',
+      package: ot.package || '',
       description: ot.description || ot.descripcion || ot.name || 'Sin descripción',
       observations: ot.observations || ot.observaciones || '',
       area: ot.area || '',
@@ -577,6 +593,7 @@ this.otService.getOtListByProject(idProject, showClosed).subscribe({
       cuentaHoja: this.getNextCuentaHoja(),
       otNumber: '',
       cdc: '',
+      package: '',
       description: defaultDescription,
       observations: '',
       area: this.lastManualArea,
@@ -658,6 +675,7 @@ this.otService.getOtListByProject(idProject, showClosed).subscribe({
         cuentaHoja: this.toNumberOrNull(row.cuentaHoja),
         otNumber: row.otNumber,
         cdc: row.cdc,
+        package: row.package || '',
         description: row.description,
         observations: row.observations,
         area: row.area || '',
@@ -713,6 +731,7 @@ this.otService.getOtListByProject(idProject, showClosed).subscribe({
         cuentaHoja: this.toNumberOrNull(row.cuentaHoja),
         otNumber: row.otNumber,
         cdc: row.cdc,
+        package: row.package || '',
         description: row.description,
         observations: row.observations,
         area: row.area || '',
