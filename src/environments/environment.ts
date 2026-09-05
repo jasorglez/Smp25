@@ -83,5 +83,5 @@ export const environment = {
   geminiApiKey: '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',
   gnewsApiKey: '94ccc596b4dfebc3f72683b6e81d81bc',
 
-  version: '4.99.54 (05 Septiembre 2026) OT manual toma último ID real',
+  version: '4.99.55 (05 Septiembre 2026) acceso OT Manuales para usuarios',
 };
