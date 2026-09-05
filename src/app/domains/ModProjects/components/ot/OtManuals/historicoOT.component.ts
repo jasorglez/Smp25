@@ -46,6 +46,7 @@ export class HistoricoOTComponent implements OnInit {
     'MEDIDORES',
     'SIN AREA'
   ];
+  private lastManualDescription = 'RECONEXION DE MEDIDOR';
 
   private trackingService = inject(TrackingService);
 
@@ -395,8 +396,12 @@ this.otService.getOtListByProject(idProject, showClosed).subscribe({
 
     console.log(`onCellValueChanged - Campo: ${field}, Valor anterior: ${oldValue}, Valor nuevo: ${newValue}`);
 
-    if (newValue !== oldValue) {
+      if (newValue !== oldValue) {
       if (field === 'description') {
+        const normalizedDescription = this.normalizeText(newValue);
+        if (normalizedDescription) {
+          this.lastManualDescription = normalizedDescription;
+        }
         const suggestedArea = this.suggestAreaFromDescription(newValue);
         if (suggestedArea && !data.area) {
           data.area = suggestedArea;
@@ -580,7 +585,7 @@ this.otService.getOtListByProject(idProject, showClosed).subscribe({
     const tempId = `temp_${this.tempIdCounter++}`;
     const currentProject = this.signalsService.getProjectSelectedBySidebar()();
     const currentProjectData = this.projectsList.find(p => p.id === currentProject);
-    const defaultDescription = 'RECONEXION DE MEDIDOR';
+    const defaultDescription = this.normalizeText(this.lastManualDescription) || 'RECONEXION DE MEDIDOR';
     
     // Validar que hay un proyecto seleccionado
     if (!currentProject) {
@@ -691,6 +696,7 @@ this.otService.getOtListByProject(idProject, showClosed).subscribe({
           console.log('OT creada exitosamente:', response);
           // Actualizar el ID de la fila con el ID devuelto por el servidor
           row.id = response.id || response;
+          this.lastManualDescription = this.normalizeText(row.description) || this.lastManualDescription;
           delete row.__isNew;
           delete (row as any).tempId;
 
@@ -739,6 +745,7 @@ this.otService.getOtListByProject(idProject, showClosed).subscribe({
       this.otService.updateOt(row.id, updateOtData).subscribe({
         next: (response: any) => {
           console.log('OT actualizada exitosamente:', response);
+          this.lastManualDescription = this.normalizeText(row.description) || this.lastManualDescription;
           delete row.__modified;
 
           alerts.basicAlert('Guardado', `Se actualizó correctamente la OT manual ${row.otNumber}.`, 'success');
