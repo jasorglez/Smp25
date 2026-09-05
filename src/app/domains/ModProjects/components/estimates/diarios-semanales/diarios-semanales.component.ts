@@ -48,6 +48,7 @@ export class DiariosSemánalesComponent {
   activeTab: string = 'resumen';
   chartStyle: 'bar' | 'pie' | 'donut' = 'bar';
   chartMetric: 'registered' | 'closed' | 'total' = 'total';
+  useWebClosure = false;
   crewChartOptions: any = null;
   crewEfficiencyData: Array<{ crew: string; registered: number; closed: number }> = [];
   idcompany: number = 0;
@@ -469,12 +470,17 @@ export class DiariosSemánalesComponent {
     this.buildCrewChart();
   }
 
+  onClosureSourceChanged(): void {
+    const range = this.getSelectedDateRange();
+    if (range) this.loadCrewEfficiency(range.from, range.to);
+  }
+
   printCharts(): void {
     window.print();
   }
 
   private loadCrewEfficiency(from: string, to: string): void {
-    this.otService.getCrewEfficiency(from, to).subscribe({
+    this.otService.getCrewEfficiency(from, to, this.useWebClosure).subscribe({
       next: (data) => {
         this.crewEfficiencyData = (data || []).map(item => ({
           crew: item.crew || 'SIN ASIGNAR',
@@ -505,7 +511,7 @@ export class DiariosSemánalesComponent {
       this.crewChartOptions = {
         series: [
           { name: 'OT registradas', data: this.crewEfficiencyData.map(item => item.registered) },
-          { name: 'OT cerradas', data: this.crewEfficiencyData.map(item => item.closed) }
+          { name: this.useWebClosure ? 'OT cerradas Web' : 'OT cerradas App', data: this.crewEfficiencyData.map(item => item.closed) }
         ],
         chart: { type: 'bar', height: 420, toolbar: { show: true } },
         title: { text: title, align: 'left' },
@@ -520,7 +526,8 @@ export class DiariosSemánalesComponent {
       return;
     }
 
-    const metricLabels = { registered: 'OT registradas', closed: 'OT cerradas', total: 'OT atendidas (registradas + cerradas)' };
+    const closureLabel = this.useWebClosure ? 'OT cerradas Web' : 'OT cerradas App';
+    const metricLabels = { registered: 'OT registradas', closed: closureLabel, total: `OT atendidas (registradas + ${closureLabel.toLowerCase()})` };
     const series = this.crewEfficiencyData.map(item => this.chartMetric === 'registered'
       ? item.registered
       : this.chartMetric === 'closed' ? item.closed : item.registered + item.closed);

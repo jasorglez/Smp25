@@ -101,10 +101,10 @@ export class OtService {
     });
   }
 
-  getCrewEfficiency(from: string, to: string): Observable<OtCrewEfficiencyRow[]> {
+  getCrewEfficiency(from: string, to: string, useWebClosure = false): Observable<OtCrewEfficiencyRow[]> {
     return this.http.get<OtCrewEfficiencyRow[]>(`${environment.urlSmp}/OT/crew-efficiency`, {
       headers: this.trackingService.getHeaders(),
-      params: { from, to }
+      params: { from, to, useWebClosure }
     });
   }
 

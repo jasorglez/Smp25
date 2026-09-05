@@ -83,5 +83,5 @@ export const environment = {
   geminiApiKey: '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',
   gnewsApiKey: '94ccc596b4dfebc3f72683b6e81d81bc',
 
-  version: '4.99.56 (05 Septiembre 2026) reportes por rango y gráficas de cuadrillas',
+  version: '4.99.57 (05 Septiembre 2026) gráficas de cierres App y Web',
 };
