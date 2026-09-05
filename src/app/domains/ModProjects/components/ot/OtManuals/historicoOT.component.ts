@@ -18,6 +18,7 @@ interface HistoricoOTData {
   id?: number;
   idProject: number;
   projectName?: string; // Nombre del proyecto para mostrar
+  cuentaHoja?: number | string;
   otNumber: string;
   cdc: string;
   description: string;
@@ -38,6 +39,14 @@ interface HistoricoOTData {
   styleUrl: './historicoOT.component.scss'
 })
 export class HistoricoOTComponent implements OnInit {
+  private readonly manualAreaOptions = [
+    'RECONEXION',
+    'CORTES',
+    'INSPECCIONES',
+    'MEDIDORES',
+    'SIN AREA'
+  ];
+
   private trackingService = inject(TrackingService);
 
   // Servicios
@@ -107,6 +116,20 @@ export class HistoricoOTComponent implements OnInit {
         }
       },
       {
+        field: 'cuentaHoja',
+        headerName: 'Nº Hoja',
+        sortable: true,
+        filter: true,
+        resizable: true,
+        width: 110,
+        editable: true,
+        cellEditor: 'agTextCellEditor',
+        cellEditorParams: {
+          maxLength: 20
+        },
+        valueParser: (params: any) => this.normalizeText(params.newValue)
+      },
+      {
         field: 'otNumber',
         headerName: 'Número OT',
         sortable: true,
@@ -133,8 +156,10 @@ export class HistoricoOTComponent implements OnInit {
         flex: 2,
         editable: true,
         cellEditor: 'agSelectCellEditor',
+        cellEditorPopup: true,
         cellEditorParams: (params: any) => ({
-          values: this.catalogArea?.map((item) => item.description) || [],
+          values: [''].concat(this.manualAreaOptions),
+          formatValue: (value: any) => value || 'Seleccione área'
         })
       },
       {
@@ -242,6 +267,7 @@ export class HistoricoOTComponent implements OnInit {
       next: (data: any) => {
         this.catalogArea = data;
         console.log('Catálogo de áreas cargado:', this.catalogArea);
+        this.applyDefaultAreasForRows();
       },
       error: (error) => {
         console.error('Error al cargar catálogo de áreas:', error);
@@ -283,16 +309,19 @@ this.otService.getOtListByProject(idProject, showClosed).subscribe({
       return;
     }
     
+    const orderedOtsArray = [...otsArray].sort((left: any, right: any) => this.compareOtsNewestFirst(left, right));
+
     // Mapear los datos del endpoint a nuestro formato
-    this.rowData = otsArray.map((ot: any, index: number) => ({
+    this.rowData = orderedOtsArray.map((ot: any, index: number) => ({
       id: ot.id || index + 1,
       idProject: idProject, // ID del proyecto
       projectName: projectName, // Nombre del proyecto para mostrar
+      cuentaHoja: ot.cuentaHoja ?? ot.CuentaHoja ?? '',
       otNumber: ot.otNumber || ot.number || ot.codigo || 'N/A',
       cdc: ot.cdc || ot.costCenter || 'N/A',
       description: ot.description || ot.descripcion || ot.name || 'Sin descripción',
       observations: ot.observations || ot.observaciones || '',
-      area: ot.area || '',
+      area: ot.area || this.suggestAreaFromDescription(ot.description || ot.descripcion || ot.name || ''),
       closed: ot.closed || false,
       closedApp: ot.closedApp || false
     }));
@@ -367,6 +396,14 @@ this.otService.getOtListByProject(idProject, showClosed).subscribe({
     console.log(`onCellValueChanged - Campo: ${field}, Valor anterior: ${oldValue}, Valor nuevo: ${newValue}`);
 
     if (newValue !== oldValue) {
+      if (field === 'description') {
+        const suggestedArea = this.suggestAreaFromDescription(newValue);
+        if (suggestedArea && !data.area) {
+          data.area = suggestedArea;
+          this.gridApi?.refreshCells({ rowNodes: [event.node], columns: ['area'], force: true });
+        }
+      }
+
       if (data.__isNew) {
         // Para filas nuevas, solo marcar que hay cambios
         this.notSavedChanges = true;
@@ -395,6 +432,58 @@ this.otService.getOtListByProject(idProject, showClosed).subscribe({
     console.log('Edición finalizada en celda:', event.colDef.field);
     // Verificar si hay cambios pendientes después de cada edición
     this.updateNotSavedChangesStatus();
+
+    if (event?.colDef?.field === 'cuentaHoja' && this.gridApi) {
+      setTimeout(() => {
+        const rowIndex = event?.rowIndex ?? 0;
+        this.gridApi.setFocusedCell(rowIndex, 'otNumber');
+        this.gridApi.startEditingCell({ rowIndex, colKey: 'otNumber' });
+      }, 0);
+    }
+
+    if (event?.colDef?.field === 'otNumber' && this.gridApi) {
+      setTimeout(() => {
+        const rowIndex = event?.rowIndex ?? 0;
+        this.gridApi.setFocusedCell(rowIndex, 'cdc');
+        this.gridApi.startEditingCell({ rowIndex, colKey: 'cdc' });
+      }, 0);
+    }
+
+    if (event?.colDef?.field === 'cdc' && this.gridApi) {
+      setTimeout(() => {
+        const rowIndex = event?.rowIndex ?? 0;
+        this.gridApi.setFocusedCell(rowIndex, 'observations');
+        this.gridApi.startEditingCell({ rowIndex, colKey: 'observations' });
+      }, 0);
+    }
+  }
+
+  onCellKeyDown(event: any): void {
+    if (event?.event?.key !== 'Enter') {
+      return;
+    }
+
+    const field = event?.colDef?.field;
+    if (field === 'cuentaHoja' && this.gridApi) {
+      event.event.preventDefault();
+      event.event.stopPropagation();
+      setTimeout(() => {
+        const rowIndex = event?.rowIndex ?? 0;
+        this.gridApi.setFocusedCell(rowIndex, 'otNumber');
+        this.gridApi.startEditingCell({ rowIndex, colKey: 'otNumber' });
+      }, 0);
+      return;
+    }
+
+    if (field === 'cdc' && this.gridApi) {
+      event.event.preventDefault();
+      event.event.stopPropagation();
+      setTimeout(() => {
+        const rowIndex = event?.rowIndex ?? 0;
+        this.gridApi.setFocusedCell(rowIndex, 'observations');
+        this.gridApi.startEditingCell({ rowIndex, colKey: 'observations' });
+      }, 0);
+    }
   }
 
   // Método para actualizar el estado de cambios no guardados
@@ -410,12 +499,88 @@ this.otService.getOtListByProject(idProject, showClosed).subscribe({
     }
   }
 
+  private applyDefaultAreasForRows(): void {
+    let updated = false;
+
+    for (const row of this.rowData) {
+      if (!row.area) {
+        const suggestedArea = this.suggestAreaFromDescription(row.description);
+        if (suggestedArea) {
+          row.area = suggestedArea;
+          updated = true;
+        }
+      }
+    }
+
+    if (updated) {
+      this.gridApi?.refreshCells({ force: true });
+    }
+  }
+
+  private suggestAreaFromDescription(description: string | null | undefined): string {
+    const normalizedDescription = this.normalizeText(description).toUpperCase();
+    if (!normalizedDescription) {
+      return '';
+    }
+
+    if (normalizedDescription.includes('RECONEXION DE MEDIDOR') || normalizedDescription.includes('RECONEXIÓN DE MEDIDOR')) {
+      return 'RECONEXION';
+    }
+
+    if (normalizedDescription.includes('CAMBIO DE MEDIDOR')) {
+      return 'MEDIDORES';
+    }
+
+    if (normalizedDescription.includes('RECONEXION') || normalizedDescription.includes('RECONEXIÓN')) {
+      return 'RECONEXION';
+    }
+
+    return '';
+  }
+
+  private compareOtsNewestFirst(left: any, right: any): number {
+    const leftDate = this.parseOtDate(left);
+    const rightDate = this.parseOtDate(right);
+
+    if (leftDate && rightDate && leftDate.getTime() !== rightDate.getTime()) {
+      return rightDate.getTime() - leftDate.getTime();
+    }
+
+    const leftId = Number(left?.id ?? 0);
+    const rightId = Number(right?.id ?? 0);
+    return rightId - leftId;
+  }
+
+  private parseOtDate(ot: any): Date | null {
+    const rawDate = ot?.registerDate ?? ot?.RegisterDate ?? ot?.date ?? ot?.Date ?? ot?.createdAt ?? ot?.CreatedAt;
+    if (!rawDate) {
+      return null;
+    }
+
+    const parsed = new Date(rawDate);
+    return Number.isNaN(parsed.getTime()) ? null : parsed;
+  }
+
+  private normalizeText(value: string | null | undefined): string {
+    return (value ?? '').toString().trim().replace(/\s+/g, ' ');
+  }
+
+  private toNumberOrNull(value: string | number | null | undefined): number | null {
+    if (value === null || value === undefined || value === '') {
+      return null;
+    }
+
+    const parsed = Number(value);
+    return Number.isFinite(parsed) ? parsed : null;
+  }
+
   // Métodos CRUD
   addRow(): void {
     this.trackingService.addLog(this.trackingService.getnameComp(), 'Agregó nuevo historicoOT', 'Proyectos', this.trackingService.getEmail());
     const tempId = `temp_${this.tempIdCounter++}`;
     const currentProject = this.signalsService.getProjectSelectedBySidebar()();
     const currentProjectData = this.projectsList.find(p => p.id === currentProject);
+    const defaultDescription = 'RECONEXION DE MEDIDOR';
     
     // Validar que hay un proyecto seleccionado
     if (!currentProject) {
@@ -427,11 +592,12 @@ this.otService.getOtListByProject(idProject, showClosed).subscribe({
       id: undefined,
       idProject: currentProject,
       projectName: currentProjectData ? currentProjectData.name : 'Sin proyecto',
+      cuentaHoja: '',
       otNumber: '',
       cdc: '',
-      description: '',
+      description: defaultDescription,
       observations: '',
-      area: '',
+      area: this.suggestAreaFromDescription(defaultDescription),
       closed: false,
       closedApp: false
     };
@@ -448,14 +614,15 @@ this.otService.getOtListByProject(idProject, showClosed).subscribe({
     // Enfocar en la primera celda editable (otNumber en lugar de idProject)
     setTimeout(() => {
       if (this.gridApi) {
-        this.gridApi.setFocusedCell(0, 'otNumber');
-        this.gridApi.startEditingCell({ rowIndex: 0, colKey: 'otNumber' });
+        this.gridApi.setFocusedCell(0, 'cuentaHoja');
+        this.gridApi.startEditingCell({ rowIndex: 0, colKey: 'cuentaHoja' });
       }
     }, 100);
   }
 
   saveChanges(): void {
     this.trackingService.addLog(this.trackingService.getnameComp(), 'Guardó cambios en historicoOT', 'Proyectos', this.trackingService.getEmail());
+    this.gridApi?.stopEditing();
     const newRows = this.rowData.filter(row => row.__isNew);
     const modifiedRows = this.rowData.filter(row => row.__modified && !row.__isNew);
 
@@ -506,6 +673,7 @@ this.otService.getOtListByProject(idProject, showClosed).subscribe({
     newRows.forEach(row => {
       const newOtData = {
         idProject: row.idProject,
+        cuentaHoja: this.toNumberOrNull(row.cuentaHoja),
         otNumber: row.otNumber,
         cdc: row.cdc,
         description: row.description,
@@ -558,6 +726,7 @@ this.otService.getOtListByProject(idProject, showClosed).subscribe({
       const updateOtData = {
         id: row.id,
         idProject: row.idProject,
+        cuentaHoja: this.toNumberOrNull(row.cuentaHoja),
         otNumber: row.otNumber,
         cdc: row.cdc,
         description: row.description,
