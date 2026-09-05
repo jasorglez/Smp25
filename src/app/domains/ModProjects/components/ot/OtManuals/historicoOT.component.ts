@@ -80,7 +80,8 @@ export class HistoricoOTComponent implements OnInit {
     suppressHorizontalScroll: false,
     animateRows: true,
     pagination: true,
-    paginationPageSize: 50
+    paginationPageSize: 50,
+    postSortRows: (params: any) => this.moveNewRowsToTop(params.nodes)
   };
 
   // Definición estable: no se reconstruye al editar otra celda y conserva el ancho del editor Área.
@@ -397,6 +398,20 @@ this.otService.getOtListByProject(idProject, showClosed).subscribe({
       });
       this.gridApi?.paginationGoToFirstPage();
     });
+  }
+
+  private moveNewRowsToTop(rowNodes: any[]): void {
+    let insertAt = 0;
+
+    for (let index = 0; index < rowNodes.length; index++) {
+      if (!rowNodes[index]?.data?.__isNew) {
+        continue;
+      }
+
+      const [newRow] = rowNodes.splice(index, 1);
+      rowNodes.splice(insertAt, 0, newRow);
+      insertAt++;
+    }
   }
 
 
