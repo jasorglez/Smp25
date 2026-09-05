@@ -40,6 +40,7 @@ interface HistoricoOTData {
 })
 export class HistoricoOTComponent implements OnInit {
   private lastManualDescription = 'RECONEXION DE MEDIDOR';
+  private lastManualArea = '';
 
   private trackingService = inject(TrackingService);
 
@@ -317,6 +318,7 @@ this.otService.getOtListByProject(idProject, showClosed).subscribe({
       closed: ot.closed || false,
       closedApp: ot.closedApp || false
     }));
+    this.rememberLastManualValues();
     
     console.log(`Se cargaron ${this.rowData.length} OTs ${showClosed ? 'cerradas' : 'abiertas'} para el proyecto ${projectName}`);
     this.autoSizeColumns();
@@ -393,6 +395,10 @@ this.otService.getOtListByProject(idProject, showClosed).subscribe({
         if (normalizedDescription) {
           this.lastManualDescription = normalizedDescription;
         }
+      }
+
+      if (field === 'area') {
+        this.lastManualArea = this.normalizeText(newValue);
       }
 
       if (data.__isNew) {
@@ -496,6 +502,24 @@ this.otService.getOtListByProject(idProject, showClosed).subscribe({
       .filter((value, index, values) => Boolean(value) && values.indexOf(value) === index);
   }
 
+  private rememberLastManualValues(): void {
+    const latestRow = this.rowData[0];
+    if (!latestRow) {
+      return;
+    }
+
+    this.lastManualDescription = this.normalizeText(latestRow.description) || this.lastManualDescription;
+    this.lastManualArea = this.normalizeText(latestRow.area) || this.lastManualArea;
+  }
+
+  private getNextCuentaHoja(): string {
+    const lastSheet = this.rowData
+      .map(row => this.normalizeText(row.cuentaHoja?.toString()))
+      .find(value => /^\d+$/.test(value));
+
+    return lastSheet ? (Number(lastSheet) + 1).toString() : '';
+  }
+
   private compareOtsNewestFirst(left: any, right: any): number {
     const leftDate = this.parseOtDate(left);
     const rightDate = this.parseOtDate(right);
@@ -550,12 +574,12 @@ this.otService.getOtListByProject(idProject, showClosed).subscribe({
       id: undefined,
       idProject: currentProject,
       projectName: currentProjectData ? currentProjectData.name : 'Sin proyecto',
-      cuentaHoja: '',
+      cuentaHoja: this.getNextCuentaHoja(),
       otNumber: '',
       cdc: '',
       description: defaultDescription,
       observations: '',
-      area: '',
+      area: this.lastManualArea,
       closed: false,
       closedApp: false
     };
@@ -650,6 +674,7 @@ this.otService.getOtListByProject(idProject, showClosed).subscribe({
           // Actualizar el ID de la fila con el ID devuelto por el servidor
           row.id = response.id || response;
           this.lastManualDescription = this.normalizeText(row.description) || this.lastManualDescription;
+          this.lastManualArea = this.normalizeText(row.area) || this.lastManualArea;
           delete row.__isNew;
           delete (row as any).tempId;
 
@@ -699,6 +724,7 @@ this.otService.getOtListByProject(idProject, showClosed).subscribe({
         next: (response: any) => {
           console.log('OT actualizada exitosamente:', response);
           this.lastManualDescription = this.normalizeText(row.description) || this.lastManualDescription;
+          this.lastManualArea = this.normalizeText(row.area) || this.lastManualArea;
           delete row.__modified;
 
           alerts.basicAlert('Guardado', `Se actualizó correctamente la OT manual ${row.otNumber}.`, 'success');
