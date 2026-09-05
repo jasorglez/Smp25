@@ -87,9 +87,8 @@ export class HistoricoOTComponent implements OnInit {
     paginationPageSize: 50
   };
 
-  // Definición de columnas
-  public get columnDefs(): ColDef[] {
-    return [
+  // Definición estable: no se reconstruye al editar otra celda y conserva el ancho del editor Área.
+  public readonly columnDefs: ColDef[] = [
       {
         field: 'id',
         headerName: 'ID',
@@ -214,8 +213,7 @@ export class HistoricoOTComponent implements OnInit {
         cellRenderer: 'agCheckboxCellRenderer',
         cellEditor: 'agCheckboxCellEditor'
       }
-    ];
-  }
+  ];
 
   constructor() {
     // Escuchar cambios en el proyecto seleccionado del sidebar usando effects
