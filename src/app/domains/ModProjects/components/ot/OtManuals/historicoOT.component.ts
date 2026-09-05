@@ -42,6 +42,7 @@ interface HistoricoOTData {
 export class HistoricoOTComponent implements OnInit {
   private lastManualDescription = 'RECONEXION DE MEDIDOR';
   private lastManualArea = '';
+  private lastManualPackage = '';
 
   private trackingService = inject(TrackingService);
 
@@ -417,6 +418,10 @@ this.otService.getOtListByProject(idProject, showClosed).subscribe({
         this.lastManualArea = this.normalizeText(newValue);
       }
 
+      if (field === 'package') {
+        this.lastManualPackage = this.normalizeText(newValue);
+      }
+
       if (data.__isNew) {
         // Para filas nuevas, solo marcar que hay cambios
         this.notSavedChanges = true;
@@ -526,6 +531,7 @@ this.otService.getOtListByProject(idProject, showClosed).subscribe({
 
     this.lastManualDescription = this.normalizeText(latestRow.description) || this.lastManualDescription;
     this.lastManualArea = this.normalizeText(latestRow.area) || this.lastManualArea;
+    this.lastManualPackage = this.normalizeText(latestRow.package) || this.lastManualPackage;
   }
 
   private getNextCuentaHoja(): string {
@@ -593,7 +599,7 @@ this.otService.getOtListByProject(idProject, showClosed).subscribe({
       cuentaHoja: this.getNextCuentaHoja(),
       otNumber: '',
       cdc: '',
-      package: '',
+      package: this.lastManualPackage,
       description: defaultDescription,
       observations: '',
       area: this.lastManualArea,
@@ -693,6 +699,7 @@ this.otService.getOtListByProject(idProject, showClosed).subscribe({
           row.id = response.id || response;
           this.lastManualDescription = this.normalizeText(row.description) || this.lastManualDescription;
           this.lastManualArea = this.normalizeText(row.area) || this.lastManualArea;
+          this.lastManualPackage = this.normalizeText(row.package) || this.lastManualPackage;
           delete row.__isNew;
           delete (row as any).tempId;
 
@@ -744,6 +751,7 @@ this.otService.getOtListByProject(idProject, showClosed).subscribe({
           console.log('OT actualizada exitosamente:', response);
           this.lastManualDescription = this.normalizeText(row.description) || this.lastManualDescription;
           this.lastManualArea = this.normalizeText(row.area) || this.lastManualArea;
+          this.lastManualPackage = this.normalizeText(row.package) || this.lastManualPackage;
           delete row.__modified;
 
           alerts.basicAlert('Guardado', `Se actualizó correctamente la OT manual ${row.otNumber}.`, 'success');
