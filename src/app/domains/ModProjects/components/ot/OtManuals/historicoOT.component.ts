@@ -92,6 +92,8 @@ export class HistoricoOTComponent implements OnInit {
         filter: true,
         resizable: true,
         width: 100,
+        sort: 'desc',
+        sortIndex: 0,
         editable: false
       },
       {
@@ -336,6 +338,7 @@ this.otService.getOtListByProject(idProject, showClosed).subscribe({
       closedApp: ot.closedApp || false
     }));
     this.rememberLastManualValues();
+    this.showNewestRowsFirst();
     
     console.log(`Se cargaron ${this.rowData.length} OTs ${showClosed ? 'cerradas' : 'abiertas'} para el proyecto ${projectName}`);
     this.autoSizeColumns();
@@ -386,10 +389,21 @@ this.otService.getOtListByProject(idProject, showClosed).subscribe({
     }, 0);
   }
 
+  private showNewestRowsFirst(): void {
+    setTimeout(() => {
+      this.gridApi?.applyColumnState({
+        state: [{ colId: 'id', sort: 'desc', sortIndex: 0 }],
+        defaultState: { sort: null }
+      });
+      this.gridApi?.paginationGoToFirstPage();
+    });
+  }
+
 
   // Métodos del grid
   onGridReady(params: GridReadyEvent): void {
     this.gridApi = params.api;
+    this.showNewestRowsFirst();
     this.autoSizeColumns();
   }
 
