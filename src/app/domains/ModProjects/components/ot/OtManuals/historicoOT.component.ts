@@ -39,13 +39,6 @@ interface HistoricoOTData {
   styleUrl: './historicoOT.component.scss'
 })
 export class HistoricoOTComponent implements OnInit {
-  private readonly manualAreaOptions = [
-    'RECONEXION',
-    'CORTES',
-    'INSPECCIONES',
-    'MEDIDORES',
-    'SIN AREA'
-  ];
   private lastManualDescription = 'RECONEXION DE MEDIDOR';
 
   private trackingService = inject(TrackingService);
@@ -159,7 +152,7 @@ export class HistoricoOTComponent implements OnInit {
         cellEditor: 'agSelectCellEditor',
         cellEditorPopup: true,
         cellEditorParams: (params: any) => ({
-          values: [''].concat(this.manualAreaOptions),
+          values: this.getAreaOptions(params?.value),
           formatValue: (value: any) => value || 'Seleccione área'
         })
       },
@@ -521,6 +514,23 @@ this.otService.getOtListByProject(idProject, showClosed).subscribe({
     }
   }
 
+  private getAreaOptions(currentValue: string | null | undefined): string[] {
+    const catalogOptions = this.catalogArea
+      .map(area => this.normalizeText(area?.description))
+      .filter(Boolean);
+    const options = [this.normalizeText(currentValue), ...catalogOptions]
+      .filter((value, index, values) => value && values.indexOf(value) === index);
+
+    return [''].concat(options);
+  }
+
+  private getCatalogArea(description: string): string {
+    const normalized = this.normalizeText(description).toUpperCase();
+    return this.catalogArea
+      .map(area => this.normalizeText(area?.description))
+      .find(area => area.toUpperCase() === normalized) || '';
+  }
+
   private suggestAreaFromDescription(description: string | null | undefined): string {
     const normalizedDescription = this.normalizeText(description).toUpperCase();
     if (!normalizedDescription) {
@@ -528,15 +538,15 @@ this.otService.getOtListByProject(idProject, showClosed).subscribe({
     }
 
     if (normalizedDescription.includes('RECONEXION DE MEDIDOR') || normalizedDescription.includes('RECONEXIÓN DE MEDIDOR')) {
-      return 'RECONEXION';
+      return this.getCatalogArea('RECONEXION');
     }
 
     if (normalizedDescription.includes('CAMBIO DE MEDIDOR')) {
-      return 'MEDIDORES';
+      return this.getCatalogArea('MEDIDORES');
     }
 
     if (normalizedDescription.includes('RECONEXION') || normalizedDescription.includes('RECONEXIÓN')) {
-      return 'RECONEXION';
+      return this.getCatalogArea('RECONEXION');
     }
 
     return '';
