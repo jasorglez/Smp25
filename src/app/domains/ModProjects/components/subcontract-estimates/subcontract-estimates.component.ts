@@ -12,6 +12,10 @@ import { alerts } from 'app/helpers/alerts';
 import { SignalsService } from 'app/services/signals.service';
 import { SubcontractProgramService } from 'app/services/subcontract-program.service';
 import { SubcontractorContextService } from 'app/services/subcontractor-context.service';
+import { EstimatesService } from 'app/services/estimates.service';
+import { CustomersService } from 'app/services/customers.service';
+import { TrackingService } from 'app/services/tracking.service';
+import { Base64EncodeService } from 'app/services/base64encode.service';
 
 (pdfMake as any).vfs = (pdfFonts as any).pdfMake?.vfs || (pdfFonts as any).default?.pdfMake?.vfs;
 
@@ -26,19 +30,27 @@ export class SubcontractEstimatesComponent implements OnDestroy {
   private programsService = inject(SubcontractProgramService);
   private signals = inject(SignalsService);
   private sanitizer = inject(DomSanitizer);
+  private estimatesService = inject(EstimatesService);
+  private customersService = inject(CustomersService);
+  private trackingService = inject(TrackingService);
+  private base64Service = inject(Base64EncodeService);
   readonly context = inject(SubcontractorContextService);
 
   readonly AG_GRID_LOCALE_ES = AG_GRID_LOCALE_ES;
   programs: any[] = [];
+  savedEstimates: any[] = [];
   rows: any[] = [];
   selectedProgramId = 0;
+  selectedEstimateId = 0;
   idRoot = 0;
   loading = false;
+  saving = false;
   allowUnreported = false;
   estimateNumber = 1;
   dateStart = this.isoDate(new Date());
   dateEnd = this.isoDate(new Date());
   program: any = null;
+  providerImage = '';
   showPdfPreview = false;
   pdfPreviewUrl: SafeResourceUrl | null = null;
   private pdfObjectUrl = '';
@@ -110,7 +122,12 @@ export class SubcontractEstimatesComponent implements OnDestroy {
       this.rows = [];
       this.program = null;
       this.selectedProgramId = 0;
-      if (idRoot && providerId) this.loadPrograms(providerId);
+      this.selectedEstimateId = 0;
+      this.providerImage = '';
+      if (idRoot && providerId) {
+        this.loadProvider(providerId);
+        this.loadPrograms(providerId);
+      }
     });
   }
 
@@ -140,30 +157,138 @@ export class SubcontractEstimatesComponent implements OnDestroy {
     this.selectedProgramId = Number(id) || 0;
     this.rows = [];
     this.program = null;
+    this.savedEstimates = [];
+    this.selectedEstimateId = 0;
     if (!this.selectedProgramId) return;
     this.loading = true;
     this.programsService.getById(this.selectedProgramId).subscribe({
       next: (data: any) => {
         this.program = data?.program || null;
-        this.rows = (data?.items || []).map((item: any) => ({
-          idProgramItem: item.id,
-          phase: item.phase || 'SIN FASE',
-          subphase: item.subphase || '',
-          concept: item.concept || '',
-          unit: item.unit || '',
-          contractQuantity: this.number(item.quantity),
-          unitPrice: this.number(item.unitPrice),
-          previousQuantity: 0,
-          reportedQuantity: 0,
-          estimateQuantity: 0
-        }));
-        this.loading = false;
+        this.loadSavedEstimates();
       },
       error: () => {
         this.loading = false;
         alerts.basicAlert('Estimaciones', 'No fue posible cargar los conceptos del programa.', 'error');
       }
     });
+  }
+
+  private loadProvider(idProvider: number) {
+    this.customersService.getCustomerById(idProvider).subscribe({
+      next: (provider: any) => this.providerImage = provider?.imageUrl || '',
+      error: () => this.providerImage = ''
+    });
+  }
+
+  private loadSavedEstimates() {
+    const providerId = Number(this.context.selected()?.id) || 0;
+    this.estimatesService.getSubcontractEstimates(this.idRoot, providerId, this.selectedProgramId).subscribe({
+      next: data => {
+        this.savedEstimates = data || [];
+        this.newEstimate();
+      },
+      error: () => {
+        this.savedEstimates = [];
+        this.newEstimate();
+      }
+    });
+  }
+
+  newEstimate() {
+    if (!this.selectedProgramId) return;
+    this.selectedEstimateId = 0;
+    const numbers = this.savedEstimates.map(item => Number(item.number)).filter(Number.isFinite);
+    this.estimateNumber = numbers.length ? Math.max(...numbers) + 1 : 1;
+    this.loading = true;
+    const providerId = Number(this.context.selected()?.id) || 0;
+    this.estimatesService.getSubcontractProgress(this.idRoot, providerId, this.selectedProgramId).subscribe({
+      next: data => {
+        this.rows = (data || []).map(item => this.normalizeEstimateItem(item));
+        this.loading = false;
+      },
+      error: () => {
+        this.rows = [];
+        this.loading = false;
+        alerts.basicAlert('Estimación', 'No fue posible preparar una nueva estimación.', 'error');
+      }
+    });
+  }
+
+  openEstimate(id: number) {
+    this.selectedEstimateId = Number(id) || 0;
+    if (!this.selectedEstimateId) { this.newEstimate(); return; }
+    this.loading = true;
+    this.estimatesService.getSubcontractEstimate(this.selectedEstimateId).subscribe({
+      next: data => {
+        const estimate = data?.estimate || {};
+        this.program = data?.program || this.program;
+        this.estimateNumber = Number(estimate.number) || 1;
+        this.dateStart = String(estimate.dateStart || '').substring(0, 10);
+        this.dateEnd = String(estimate.dateEnd || '').substring(0, 10);
+        this.providerImage = estimate.providerImage || this.providerImage;
+        this.rows = (data?.items || []).map((item: any) => this.normalizeEstimateItem(item));
+        this.loading = false;
+      },
+      error: () => {
+        this.loading = false;
+        alerts.basicAlert('Estimación', 'No fue posible abrir la estimación guardada.', 'error');
+      }
+    });
+  }
+
+  saveEstimate() {
+    if (!this.validateEstimate()) return;
+    const provider = this.context.selected()!;
+    this.saving = true;
+    const payload = {
+      id: this.selectedEstimateId,
+      idRoot: this.idRoot,
+      idProvider: provider.id,
+      idSubcontractProgram: this.selectedProgramId,
+      providerName: provider.name,
+      providerImage: this.providerImage || null,
+      number: String(this.estimateNumber),
+      dateStart: this.dateStart,
+      dateEnd: this.dateEnd,
+      authorizeUser: this.trackingService.getEmail(),
+      comment: 'Estimación de subcontratista',
+      items: this.rows.map(row => ({ idProgramItem: row.idProgramItem, estimateQuantity: this.number(row.estimateQuantity) }))
+    };
+    this.estimatesService.saveSubcontractEstimate(payload).subscribe({
+      next: data => {
+        this.selectedEstimateId = Number(data?.estimate?.id || data?.id) || 0;
+        this.rows = (data?.items || this.rows).map((item: any) => this.normalizeEstimateItem(item));
+        this.saving = false;
+        this.refreshSavedEstimates();
+        alerts.basicAlert('Estimación guardada', 'Los valores fueron guardados en la estimación general y ligados al subcontratista.', 'success');
+      },
+      error: () => {
+        this.saving = false;
+        alerts.basicAlert('Estimación', 'No fue posible guardar la estimación.', 'error');
+      }
+    });
+  }
+
+  private refreshSavedEstimates() {
+    const providerId = Number(this.context.selected()?.id) || 0;
+    this.estimatesService.getSubcontractEstimates(this.idRoot, providerId, this.selectedProgramId).subscribe({
+      next: data => this.savedEstimates = data || []
+    });
+  }
+
+  private normalizeEstimateItem(item: any): any {
+    return {
+      idProgramItem: item.idProgramItem || item.id,
+      phase: item.phase || 'SIN FASE',
+      subphase: item.subphase || '',
+      concept: item.concept || '',
+      unit: item.unit || '',
+      contractQuantity: this.number(item.contractQuantity ?? item.quantity),
+      unitPrice: this.number(item.unitPrice),
+      previousQuantity: this.number(item.previousQuantity),
+      reportedQuantity: this.number(item.reportedQuantity),
+      estimateQuantity: this.number(item.estimateQuantity)
+    };
   }
 
   onGridReady(event: GridReadyEvent) { this.gridApi = event.api; }
@@ -189,10 +314,14 @@ export class SubcontractEstimatesComponent implements OnDestroy {
   get balanceTotal(): number { return this.contractTotal - this.accumulatedTotal; }
   get progress(): number { return this.contractTotal ? this.accumulatedTotal / this.contractTotal : 0; }
 
-  previewPdf() {
+  async previewPdf() {
     if (!this.validateEstimate()) return;
     this.releasePdfPreview();
-    this.pdfDefinition = this.buildPdfDefinition();
+    let logo = '';
+    if (this.providerImage) {
+      try { logo = await this.base64Service.convertImageToBase64(this.providerImage); } catch { logo = ''; }
+    }
+    this.pdfDefinition = this.buildPdfDefinition(logo);
     pdfMake.createPdf(this.pdfDefinition).getBlob((blob: Blob) => {
       this.pdfObjectUrl = URL.createObjectURL(blob);
       this.pdfPreviewUrl = this.sanitizer.bypassSecurityTrustResourceUrl(this.pdfObjectUrl);
@@ -212,7 +341,7 @@ export class SubcontractEstimatesComponent implements OnDestroy {
     this.releasePdfPreview();
   }
 
-  private buildPdfDefinition(): any {
+  private buildPdfDefinition(logo = ''): any {
     const provider = this.context.selected()?.name || 'SUBCONTRATISTA';
     const tower = this.towerName();
     const detailBody: any[] = [[
@@ -260,8 +389,13 @@ export class SubcontractEstimatesComponent implements OnDestroy {
       header: (currentPage: number) => currentPage > 1 ? { text: `${provider} · ${tower} · Estimación ${this.estimateNumber}`, alignment: 'right', margin: [0, 12, 28, 0], fontSize: 7, color: '#6d7f8b' } : null,
       footer: (currentPage: number, pageCount: number) => ({ text: `Página ${currentPage} de ${pageCount}`, alignment: 'center', margin: [0, 8, 0, 0], fontSize: 7, color: '#7a8993' }),
       content: [
-        { text: 'ESTIMACIÓN DE SUBCONTRATISTA', style: 'title' },
-        { text: provider, style: 'contractor' },
+        {
+          columns: [
+            logo ? { image: logo, width: 90, height: 55, fit: [90, 55] } : { text: '' },
+            { stack: [{ text: 'ESTIMACIÓN DE SUBCONTRATISTA', style: 'title' }, { text: provider, style: 'contractor' }], width: '*' },
+            { text: '' , width: 90 }
+          ]
+        },
         {
           columns: [
             { stack: [{ text: 'PROGRAMA / TORRE', style: 'label' }, { text: this.program?.projectName || tower, style: 'value' }] },

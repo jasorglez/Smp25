@@ -20,7 +20,8 @@ import {
   toArray,
   throwError,
   map,
-  Observable
+  Observable,
+  forkJoin
 } from 'rxjs';
 import { AgGridModule } from 'ag-grid-angular';
 import { ModalService } from 'app/services/modal.service';
@@ -51,6 +52,7 @@ import { CommonModule, CurrencyPipe } from '@angular/common';
 import { CanComponentDeactivate } from 'app/guards/unsaved-changes.guard';
 import { confirmExitIfUnsaved } from 'app/helpers/can-deactivate.helper';
 import { TrackingService } from 'app/services/tracking.service';
+import { ImageHandlerService } from 'app/services/image-handler.service';
 //import { DetailCellRendererComponent_1 as DetailCellRendererComponent } from "./details/detail-cell-renderer-contact.component";  
 
 @Component({
@@ -86,6 +88,7 @@ export class ProvidersComponent implements CanComponentDeactivate {
   private branchesService = inject(BranchsService);
   authService = inject(AuthService);
   private catalogsService = inject(CatalogsService);
+  private imageHandlerService = inject(ImageHandlerService);
 
   invited: boolean = false;
 
@@ -476,6 +479,21 @@ export class ProvidersComponent implements CanComponentDeactivate {
       },
 
       {
+        field: 'imageUrl',
+        headerName: 'Logo',
+        editable: false,
+        width: 90,
+        minWidth: 90,
+        maxWidth: 90,
+        cellRenderer: (params: ICellRendererParams) => this.imageHandlerService.imageCellRenderer(params),
+        cellRendererParams: {
+          field: 'imageUrl',
+          clicked: (params: ICellRendererParams) => this.imageHandlerService.onImageCellClicked(params)
+        },
+        tooltipValueGetter: () => 'Doble clic para seleccionar el logo del proveedor'
+      },
+
+      {
         field: 'nameContact',
         headerName: 'Contacto principal *',
         editable: true,
@@ -794,10 +812,14 @@ export class ProvidersComponent implements CanComponentDeactivate {
       this.trackingService.getEmail());
 
     return new Promise((resolve) => {
-      this.materialsService
-        .getProvidersxmaterials(this.idRoot)
+      forkJoin({
+        providers: this.materialsService.getProvidersxmaterials(this.idRoot),
+        customers: this.customerService.getProviders(this.idRoot, 'PROVIDERS').pipe(catchError(() => []))
+      })
         .subscribe({
-          next: (data: any) => {
+          next: ({ providers, customers }: any) => {
+            const images = new Map<number, string>((customers || []).map((customer: any) => [Number(customer.id), customer.imageUrl || '']));
+            const data = (providers || []).map((provider: any) => ({ ...provider, imageUrl: images.get(Number(provider.id)) || '' }));
             // Limpiar emails basura que vienen de la BD (como '*', caracteres sueltos)
             if (Array.isArray(data)) {
               data.forEach(row => {
@@ -1096,6 +1118,7 @@ export class ProvidersComponent implements CanComponentDeactivate {
       city: '',
       mobile: '',
       email: '',
+      imageUrl: '',
       address: '',
       addressfiscal: '',
       state: '',

@@ -35,4 +35,26 @@ export class EstimatesService {
   getItemsFromEstimate(idEstimate: number): Observable<any[]> {
     return this.http.get<any[]>(`${environment.urlSmp}/ItemsGeneradoresEstimates?idType=${idEstimate}&Type=ESTIMACION`, { headers: this.trackingService.getHeaders() });
   }
+
+  getSubcontractEstimates(idRoot: number, idProvider: number, idProgram: number): Observable<any[]> {
+    return this.http.get<any[]>(`${environment.urlSmp}/Estimates/subcontract`, {
+      params: { idRoot, idProvider, idProgram },
+      headers: this.trackingService.getHeaders()
+    });
+  }
+
+  getSubcontractEstimate(id: number): Observable<any> {
+    return this.http.get<any>(`${environment.urlSmp}/Estimates/subcontract/${id}`, { headers: this.trackingService.getHeaders() });
+  }
+
+  getSubcontractProgress(idRoot: number, idProvider: number, idProgram: number): Observable<any[]> {
+    return this.http.get<any[]>(`${environment.urlSmp}/Estimates/subcontract-progress`, {
+      params: { idRoot, idProvider, idProgram },
+      headers: this.trackingService.getHeaders()
+    });
+  }
+
+  saveSubcontractEstimate(data: any): Observable<any> {
+    return this.http.post<any>(`${environment.urlSmp}/Estimates/subcontract`, data, { headers: this.trackingService.getHeaders() });
+  }
 }

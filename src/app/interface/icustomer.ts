@@ -10,6 +10,7 @@ export interface ICustomer {
   city: string;
   mobile: string;
   email: string;
+  imageUrl?: string;
   address: string;
   addressFiscal: string;
   state: string;
