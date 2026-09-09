@@ -38,6 +38,12 @@
                   <span>{{ 'program' | translate}} {{ 'work' | translate}}</span>
                 </a>               
              </li> 
+             <li class="nav-item" *ngIf="authService.hasDetailedPermission('projects', 'workprograms')">
+                <a class="nav-link modern-tab" routerLink="subcontract-programs" routerLinkActive="active">
+                  <i class="bi bi-people-fill"></i>
+                  <span>Programas x Subcontratistas</span>
+                </a>
+             </li>
 
 
              <li class="nav-item" *ngIf="authService.hasDetailedPermission('projects', 'materials')">

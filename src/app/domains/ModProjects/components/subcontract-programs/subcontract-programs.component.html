@@ -1,0 +1,21 @@
+<div class="container-fluid subcontract-programs">
+  <div class="card shadow-sm">
+    <div class="card-header d-flex flex-wrap justify-content-between align-items-center gap-2">
+      <div><h5 class="mb-0"><i class="bi bi-diagram-3-fill me-2"></i>Programas x Subcontratistas</h5><small>Un programa independiente por proveedor y torre.</small></div>
+      <div class="d-flex gap-2"><button class="btn btn-sm btn-outline-secondary" (click)="newProgram()"><i class="bi bi-plus-lg"></i> Nuevo</button><button class="btn btn-sm btn-primary" [disabled]="loading" (click)="save()"><i class="bi bi-floppy"></i> Guardar</button><button class="btn btn-sm btn-danger" [disabled]="!items.length" (click)="downloadPdf()"><i class="bi bi-file-earmark-pdf"></i> PDF</button></div>
+    </div>
+    <div class="card-body">
+      <div class="row g-2 mb-3">
+        <div class="col-md-3"><label class="form-label">Programa guardado</label><select class="form-select" [ngModel]="selectedProgramId" (ngModelChange)="openProgram($event)"><option [ngValue]="0">Nuevo programa</option><option *ngFor="let p of programs" [ngValue]="p.id">{{p.projectName}} — {{p.providerName}}</option></select></div>
+        <div class="col-md-3"><label class="form-label">Subcontratista</label><select class="form-select" [(ngModel)]="program.idProvider"><option [ngValue]="null">Selecciona proveedor</option><option *ngFor="let p of providers" [ngValue]="p.id">{{p.name}}</option></select><small class="text-muted">DJLL se registra desde Subcontratistas si aún no aparece.</small></div>
+        <div class="col-md-3"><label class="form-label">Torre / proyecto</label><input class="form-control" [(ngModel)]="program.projectName" placeholder="Ej. EST. TORRE L-3"></div>
+        <div class="col-md-3"><label class="form-label">Nombre del programa</label><input class="form-control" [(ngModel)]="program.name"></div>
+        <div class="col-md-3"><label class="form-label">Inicio</label><input class="form-control" type="date" [(ngModel)]="program.startDate"></div><div class="col-md-3"><label class="form-label">Fin</label><input class="form-control" type="date" [(ngModel)]="program.endDate"></div>
+        <div class="col-md-6"><label class="form-label">Importar presupuesto / programa Excel</label><input class="form-control" type="file" accept=".xlsx,.xls" (change)="onExcelSelected($event)"><select *ngIf="sheets.length" class="form-select mt-1" (change)="importSheet($any($event.target).value)"><option *ngFor="let sheet of sheets" [value]="sheet">{{sheet}}</option></select></div>
+      </div>
+      <div class="alert alert-info py-2"><i class="bi bi-info-circle me-1"></i>Los precios y cantidades importados son el presupuesto base. Los Reportes Diarios y las Estimaciones usarán este programa del subcontratista.</div>
+      <div class="table-responsive"><table class="table table-sm table-hover align-middle"><thead><tr><th>Fase</th><th>Subfase</th><th>Concepto</th><th>Unidad</th><th class="number">Cantidad</th><th class="number">P.U.</th><th class="number">Importe</th><th></th></tr></thead><tbody><tr *ngFor="let item of items; let i=index"><td><input [(ngModel)]="item.phase" class="form-control form-control-sm"></td><td><input [(ngModel)]="item.subphase" class="form-control form-control-sm"></td><td><textarea [(ngModel)]="item.concept" class="form-control form-control-sm" rows="2"></textarea></td><td><input [(ngModel)]="item.unit" class="form-control form-control-sm"></td><td><input [(ngModel)]="item.quantity" type="number" class="form-control form-control-sm number"></td><td><input [(ngModel)]="item.unitPrice" type="number" class="form-control form-control-sm number"></td><td class="number fw-semibold">{{(item.quantity * item.unitPrice) | currency:'MXN':'symbol-narrow':'1.2-2'}}</td><td><button class="btn btn-sm btn-outline-danger" (click)="removeItem(i)"><i class="bi bi-trash"></i></button></td></tr></tbody><tfoot><tr><td colspan="6" class="text-end fw-bold">TOTAL DEL PROGRAMA</td><td class="number fw-bold">{{total | currency:'MXN':'symbol-narrow':'1.2-2'}}</td><td></td></tr></tfoot></table></div>
+      <button class="btn btn-sm btn-outline-primary" (click)="addItem()"><i class="bi bi-plus-lg"></i> Agregar concepto</button>
+    </div>
+  </div>
+</div>

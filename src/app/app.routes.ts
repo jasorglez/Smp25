@@ -645,6 +645,12 @@ export const routes: Routes = [
               ).then((w) => w.WorkprogramsComponent),
           },
           {
+            path: 'subcontract-programs',
+            loadComponent: () =>
+              import('./domains/ModProjects/components/subcontract-programs/subcontract-programs.component')
+                .then((s) => s.SubcontractProgramsComponent),
+          },
+          {
             path: 'ot',
             loadComponent: () =>
               import(
