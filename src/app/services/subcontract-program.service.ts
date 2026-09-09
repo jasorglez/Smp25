@@ -7,7 +7,7 @@ import { TrackingService } from './tracking.service';
 export class SubcontractProgramService {
   private http = inject(HttpClient);
   private tracking = inject(TrackingService);
-  private readonly url = `${environment.urlSmp}/SubcontractProgram`;
+  private readonly url = `${environment.urlSmp}/Project/subcontract-programs`;
 
   get(idRoot: number, idProvider?: number, idProject?: number) {
     const params: any = { idRoot };
