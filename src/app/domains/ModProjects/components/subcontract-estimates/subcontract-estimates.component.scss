@@ -10,5 +10,10 @@
 .summary-grid .current { background: #edf9f2; border-color: #bcdcca; }
 .summary-grid .current strong { color: #176a43; }
 :host ::ng-deep .estimate-grid .ag-row-group { color: #173f67; font-weight: 700; }
+.pdf-preview-backdrop { position: fixed; inset: 0; z-index: 1060; background: rgba(10, 28, 42, .78); padding: 2vh 2vw; }
+.pdf-preview-window { width: 100%; height: 96vh; background: #fff; border-radius: .6rem; overflow: hidden; box-shadow: 0 1rem 3rem rgba(0, 0, 0, .35); display: flex; flex-direction: column; }
+.pdf-preview-window header { background: #173f67; color: #fff; padding: .7rem 1rem; }
+.pdf-preview-window header small { color: #d8ecfb; }
+.pdf-preview-window iframe { width: 100%; flex: 1; border: 0; background: #525659; }
 @media (max-width: 1100px) { .summary-grid { grid-template-columns: repeat(3, 1fr); } }
 @media (max-width: 650px) { .summary-grid { grid-template-columns: repeat(2, 1fr); } }

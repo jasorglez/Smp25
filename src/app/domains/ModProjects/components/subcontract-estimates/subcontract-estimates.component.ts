@@ -1,14 +1,19 @@
 import { CommonModule, CurrencyPipe } from '@angular/common';
-import { Component, effect, inject } from '@angular/core';
+import { Component, effect, inject, OnDestroy } from '@angular/core';
+import { DomSanitizer, SafeResourceUrl } from '@angular/platform-browser';
 import { FormsModule } from '@angular/forms';
 import { AgGridModule } from 'ag-grid-angular';
 import { CellValueChangedEvent, ColDef, GridApi, GridReadyEvent } from 'ag-grid-enterprise';
 import * as XLSX from 'xlsx';
+import pdfMake from 'pdfmake/build/pdfmake';
+import pdfFonts from 'pdfmake/build/vfs_fonts';
 import { AG_GRID_LOCALE_ES } from 'assets/i18n/ag-grid.locale.es';
 import { alerts } from 'app/helpers/alerts';
 import { SignalsService } from 'app/services/signals.service';
 import { SubcontractProgramService } from 'app/services/subcontract-program.service';
 import { SubcontractorContextService } from 'app/services/subcontractor-context.service';
+
+(pdfMake as any).vfs = (pdfFonts as any).pdfMake?.vfs || (pdfFonts as any).default?.pdfMake?.vfs;
 
 @Component({
   selector: 'app-subcontract-estimates',
@@ -17,9 +22,10 @@ import { SubcontractorContextService } from 'app/services/subcontractor-context.
   templateUrl: './subcontract-estimates.component.html',
   styleUrl: './subcontract-estimates.component.scss'
 })
-export class SubcontractEstimatesComponent {
+export class SubcontractEstimatesComponent implements OnDestroy {
   private programsService = inject(SubcontractProgramService);
   private signals = inject(SignalsService);
+  private sanitizer = inject(DomSanitizer);
   readonly context = inject(SubcontractorContextService);
 
   readonly AG_GRID_LOCALE_ES = AG_GRID_LOCALE_ES;
@@ -33,6 +39,10 @@ export class SubcontractEstimatesComponent {
   dateStart = this.isoDate(new Date());
   dateEnd = this.isoDate(new Date());
   program: any = null;
+  showPdfPreview = false;
+  pdfPreviewUrl: SafeResourceUrl | null = null;
+  private pdfObjectUrl = '';
+  private pdfDefinition: any = null;
   private gridApi?: GridApi;
   private selectedProviderId = 0;
 
@@ -103,6 +113,8 @@ export class SubcontractEstimatesComponent {
       if (idRoot && providerId) this.loadPrograms(providerId);
     });
   }
+
+  ngOnDestroy() { this.releasePdfPreview(); }
 
   loadPrograms(providerId: number) {
     this.loading = true;
@@ -176,6 +188,170 @@ export class SubcontractEstimatesComponent {
   get accumulatedTotal(): number { return this.previousTotal + this.estimateTotal; }
   get balanceTotal(): number { return this.contractTotal - this.accumulatedTotal; }
   get progress(): number { return this.contractTotal ? this.accumulatedTotal / this.contractTotal : 0; }
+
+  previewPdf() {
+    if (!this.validateEstimate()) return;
+    this.releasePdfPreview();
+    this.pdfDefinition = this.buildPdfDefinition();
+    pdfMake.createPdf(this.pdfDefinition).getBlob((blob: Blob) => {
+      this.pdfObjectUrl = URL.createObjectURL(blob);
+      this.pdfPreviewUrl = this.sanitizer.bypassSecurityTrustResourceUrl(this.pdfObjectUrl);
+      this.showPdfPreview = true;
+    });
+  }
+
+  downloadPdf() {
+    if (!this.pdfDefinition) this.pdfDefinition = this.buildPdfDefinition();
+    const provider = this.context.selected()?.name || 'Subcontratista';
+    const tower = this.towerName();
+    pdfMake.createPdf(this.pdfDefinition).download(`Estimacion_${this.safeName(provider)}_${this.safeName(tower)}_${this.estimateNumber}.pdf`);
+  }
+
+  closePdfPreview() {
+    this.showPdfPreview = false;
+    this.releasePdfPreview();
+  }
+
+  private buildPdfDefinition(): any {
+    const provider = this.context.selected()?.name || 'SUBCONTRATISTA';
+    const tower = this.towerName();
+    const detailBody: any[] = [[
+      { text: 'SUBFASE', style: 'tableHeader' },
+      { text: 'CONCEPTO', style: 'tableHeader' },
+      { text: 'UNIDAD', style: 'tableHeader' },
+      { text: 'CONTRATADO', style: 'tableHeader' },
+      { text: 'ACUM. ANT.', style: 'tableHeader' },
+      { text: 'ESTA EST.', style: 'tableHeader' },
+      { text: 'P.U.', style: 'tableHeader' },
+      { text: 'IMPORTE', style: 'tableHeader' }
+    ]];
+    const phases = new Map<string, any[]>();
+    this.rows.forEach(row => {
+      const phase = String(row.phase || 'SIN FASE').trim().toUpperCase();
+      if (!phases.has(phase)) phases.set(phase, []);
+      phases.get(phase)!.push(row);
+    });
+    phases.forEach((items, phase) => {
+      detailBody.push([
+        { text: `FASE: ${phase} (${items.length} conceptos)`, colSpan: 8, style: 'phase' },
+        {}, {}, {}, {}, {}, {}, {}
+      ]);
+      items.forEach(item => detailBody.push([
+        item.subphase || '',
+        item.concept || '',
+        item.unit || '',
+        { text: this.quantity(item.contractQuantity), alignment: 'right' },
+        { text: this.quantity(item.previousQuantity), alignment: 'right' },
+        { text: this.quantity(item.estimateQuantity), alignment: 'right', bold: true },
+        { text: this.currency(item.unitPrice), alignment: 'right' },
+        { text: this.currency(this.number(item.estimateQuantity) * this.number(item.unitPrice)), alignment: 'right', bold: true }
+      ]));
+    });
+    detailBody.push([
+      { text: 'TOTAL DE ESTA ESTIMACIÓN', colSpan: 7, alignment: 'right', bold: true, fillColor: '#e8f4ed', margin: [2, 4] },
+      {}, {}, {}, {}, {}, {},
+      { text: this.currency(this.estimateTotal), alignment: 'right', bold: true, color: '#176a43', fillColor: '#e8f4ed', margin: [2, 4] }
+    ]);
+
+    return {
+      pageSize: 'LETTER',
+      pageOrientation: 'landscape',
+      pageMargins: [28, 30, 28, 30],
+      header: (currentPage: number) => currentPage > 1 ? { text: `${provider} · ${tower} · Estimación ${this.estimateNumber}`, alignment: 'right', margin: [0, 12, 28, 0], fontSize: 7, color: '#6d7f8b' } : null,
+      footer: (currentPage: number, pageCount: number) => ({ text: `Página ${currentPage} de ${pageCount}`, alignment: 'center', margin: [0, 8, 0, 0], fontSize: 7, color: '#7a8993' }),
+      content: [
+        { text: 'ESTIMACIÓN DE SUBCONTRATISTA', style: 'title' },
+        { text: provider, style: 'contractor' },
+        {
+          columns: [
+            { stack: [{ text: 'PROGRAMA / TORRE', style: 'label' }, { text: this.program?.projectName || tower, style: 'value' }] },
+            { stack: [{ text: 'ESTIMACIÓN', style: 'label' }, { text: String(this.estimateNumber), style: 'value' }], alignment: 'center' },
+            { stack: [{ text: 'PERIODO', style: 'label' }, { text: `${this.displayDate(this.dateStart)} al ${this.displayDate(this.dateEnd)}`, style: 'value' }], alignment: 'right' }
+          ],
+          margin: [0, 16, 0, 18]
+        },
+        {
+          table: {
+            widths: ['*', '*', '*'],
+            body: [
+              [this.summaryCell('IMPORTE DEL PROGRAMA', this.contractTotal), this.summaryCell('ACUMULADO ANTERIOR', this.previousTotal), this.summaryCell('ESTA ESTIMACIÓN', this.estimateTotal, true)],
+              [this.summaryCell('ACUMULADO TOTAL', this.accumulatedTotal), this.summaryCell('SALDO POR EJERCER', this.balanceTotal), this.summaryCell('AVANCE TOTAL', this.progress, false, true)]
+            ]
+          },
+          layout: { hLineColor: '#cbd8e0', vLineColor: '#cbd8e0', paddingLeft: () => 12, paddingRight: () => 12, paddingTop: () => 10, paddingBottom: () => 10 }
+        },
+        { text: 'RESUMEN DE ESTIMACIÓN', style: 'section', margin: [0, 20, 0, 8] },
+        {
+          table: {
+            widths: ['*', 130],
+            body: [
+              [{ text: 'Importe bruto', bold: true }, { text: this.currency(this.estimateTotal), alignment: 'right' }],
+              [{ text: 'Importe neto de esta estimación', bold: true, fillColor: '#e8f4ed' }, { text: this.currency(this.estimateTotal), alignment: 'right', bold: true, color: '#176a43', fillColor: '#e8f4ed' }]
+            ]
+          },
+          layout: 'lightHorizontalLines'
+        },
+        { text: 'DETALLE DE CONCEPTOS', style: 'section', pageBreak: 'before', margin: [0, 0, 0, 8] },
+        { text: `CONTRATISTA: ${provider}`, style: 'providerGroup' },
+        {
+          table: { headerRows: 1, widths: [70, '*', 38, 54, 54, 54, 62, 68], body: detailBody },
+          layout: { hLineColor: '#d7e0e6', vLineColor: '#d7e0e6', paddingLeft: () => 3, paddingRight: () => 3, paddingTop: () => 3, paddingBottom: () => 3 },
+          fontSize: 6.8
+        }
+      ],
+      styles: {
+        title: { fontSize: 18, bold: true, alignment: 'center', color: '#173f67', margin: [0, 8, 0, 5] },
+        contractor: { fontSize: 13, bold: true, alignment: 'center', color: '#176a43' },
+        label: { fontSize: 7, bold: true, color: '#6d7f8b' },
+        value: { fontSize: 10, bold: true, color: '#173f67', margin: [0, 3, 0, 0] },
+        section: { fontSize: 10, bold: true, color: '#173f67' },
+        providerGroup: { fontSize: 9, bold: true, color: '#ffffff', fillColor: '#173f67', margin: [6, 5, 6, 5] },
+        phase: { fontSize: 7.5, bold: true, color: '#173f67', fillColor: '#dcebf5', margin: [5, 3, 2, 3] },
+        tableHeader: { fontSize: 6.5, bold: true, color: '#ffffff', fillColor: '#246b9b', alignment: 'center', margin: [1, 3] }
+      },
+      defaultStyle: { fontSize: 8 }
+    };
+  }
+
+  private summaryCell(label: string, value: number, highlight = false, percent = false): any {
+    return {
+      stack: [
+        { text: label, fontSize: 7, bold: true, color: '#6d7f8b' },
+        { text: percent ? `${(value * 100).toFixed(2)}%` : this.currency(value), fontSize: 12, bold: true, color: highlight ? '#176a43' : '#173f67', margin: [0, 4, 0, 0] }
+      ],
+      fillColor: highlight ? '#e8f4ed' : '#f7fafc'
+    };
+  }
+
+  private validateEstimate(): boolean {
+    if (!this.context.selected() || !this.program || !this.rows.length) {
+      alerts.basicAlert('Estimación', 'Selecciona un programa con conceptos.', 'warning');
+      return false;
+    }
+    if (!this.dateStart || !this.dateEnd || this.dateStart > this.dateEnd) {
+      alerts.basicAlert('Periodo', 'Captura un rango de fechas válido.', 'warning');
+      return false;
+    }
+    return true;
+  }
+
+  private releasePdfPreview() {
+    if (this.pdfObjectUrl) URL.revokeObjectURL(this.pdfObjectUrl);
+    this.pdfObjectUrl = '';
+    this.pdfPreviewUrl = null;
+  }
+
+  private towerName(): string {
+    return String(this.program?.projectName || 'PROYECTO').replace(/^EST\.\s*TORRE\s*/i, '');
+  }
+
+  private displayDate(value: string): string {
+    if (!value) return '';
+    const [year, month, day] = value.split('-');
+    return `${day}/${month}/${year}`;
+  }
+
+  private safeName(value: string): string { return value.replace(/[^a-zA-Z0-9_-]+/g, '_'); }
 
   exportExcel() {
     const provider = this.context.selected();
