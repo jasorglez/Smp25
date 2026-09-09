@@ -52,7 +52,10 @@ export class SubcontractProgramsComponent {
       this.programsService.get(this.idRoot, providerId).subscribe({
         next: (data: any) => {
           this.programs = Array.isArray(data) ? data : (data?.data || []);
-          if (this.programs.length && !this.selectedProgramId) this.openProgram(this.programs[0].id);
+          if (this.programs.length) {
+            this.selectedProgramId = Number(this.programs[0].id);
+            this.openProgram(this.selectedProgramId);
+          }
         },
         error: () => this.programs = []
       });
