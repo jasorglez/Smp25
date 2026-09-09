@@ -48,16 +48,27 @@ export class SubcontractProgramsComponent {
   }
   loadPrograms() {
     const providerId = Number(this.context.selected()?.id || this.program.idProvider) || undefined;
+    console.log('[Programas x Subcontratista] Consultando programas', {
+      idRoot: this.idRoot,
+      idProvider: providerId,
+      proveedor: this.context.selected()
+    });
     if (this.idRoot && providerId) {
       this.programsService.get(this.idRoot, providerId).subscribe({
         next: (data: any) => {
+          console.log('[Programas x Subcontratista] Respuesta de programas', data);
           this.programs = Array.isArray(data) ? data : (data?.data || []);
+          console.log('[Programas x Subcontratista] Programas normalizados', this.programs);
           if (this.programs.length) {
             this.selectedProgramId = Number(this.programs[0].id);
+            console.log('[Programas x Subcontratista] Abriendo programa', this.selectedProgramId);
             this.openProgram(this.selectedProgramId);
           }
         },
-        error: () => this.programs = []
+        error: error => {
+          console.error('[Programas x Subcontratista] Error al consultar programas', error);
+          this.programs = [];
+        }
       });
     } else {
       this.programs = [];
@@ -65,7 +76,19 @@ export class SubcontractProgramsComponent {
   }
   newProgram() { this.selectedProgramId = 0; this.program = this.emptyProgram(); this.items = []; }
   openProgram(id: number) {
-    this.programsService.getById(id).subscribe({ next: data => { this.selectedProgramId = id; this.program = data.program; this.items = data.items || []; }, error: () => alerts.basicAlert('Programa', 'No fue posible abrir el programa.', 'error') });
+    this.programsService.getById(id).subscribe({
+      next: data => {
+        console.log('[Programas x Subcontratista] Respuesta del programa y conceptos', data);
+        this.selectedProgramId = id;
+        this.program = data.program;
+        this.items = data.items || [];
+        console.log('[Programas x Subcontratista] Conceptos enviados al grid', this.items);
+      },
+      error: error => {
+        console.error('[Programas x Subcontratista] Error al abrir el programa', { id, error });
+        alerts.basicAlert('Programa', 'No fue posible abrir el programa.', 'error');
+      }
+    });
   }
   addItem() { this.items.push({ phase: 'SIN FASE', subphase: '', concept: '', unit: '', quantity: 0, unitPrice: 0 }); }
   selectProvider(id: number) {
