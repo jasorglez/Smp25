@@ -5,9 +5,10 @@ import * as XLSX from 'xlsx';
 import pdfMake from 'pdfmake/build/pdfmake';
 import pdfFonts from 'pdfmake/build/vfs_fonts';
 import { alerts } from 'app/helpers/alerts';
-import { CustomersService } from 'app/services/customers.service';
+import { MaterialsService } from 'app/services/materials.service';
 import { SignalsService } from 'app/services/signals.service';
 import { SubcontractProgramService } from 'app/services/subcontract-program.service';
+import { SubcontractorContextService } from 'app/services/subcontractor-context.service';
 
 (pdfMake as any).vfs = (pdfFonts as any).pdfMake?.vfs || (pdfFonts as any).default?.pdfMake?.vfs;
 
@@ -18,8 +19,9 @@ import { SubcontractProgramService } from 'app/services/subcontract-program.serv
 })
 export class SubcontractProgramsComponent {
   private programsService = inject(SubcontractProgramService);
-  private customersService = inject(CustomersService);
+  private materialsService = inject(MaterialsService);
   private signals = inject(SignalsService);
+  context = inject(SubcontractorContextService);
   providers: any[] = [];
   programs: any[] = [];
   items: any[] = [];
@@ -27,21 +29,21 @@ export class SubcontractProgramsComponent {
   workbook: XLSX.WorkBook | null = null;
   selectedProgramId = 0;
   idRoot = 0;
-  idBranch = 0;
   loading = false;
   program: any = this.emptyProgram();
 
   constructor() {
     effect(() => {
       this.idRoot = Number(this.signals.getRootSelectedBySidebar()()) || 0;
-      this.idBranch = Number(this.signals.getBranchSelectedBySidebar()()) || 0;
       if (this.idRoot) this.loadCatalogs();
+      const provider = this.context.selected();
+      if (provider && !this.program.id) { this.program.idProvider = provider.id; this.program.providerName = provider.name; }
     });
   }
 
   emptyProgram() { return { id: 0, idRoot: this.idRoot, idProvider: null, providerName: '', idProject: null, projectName: '', name: 'Programa de trabajo por subcontratista', startDate: null, endDate: null }; }
   loadCatalogs() {
-    if (this.idBranch) this.customersService.getCustomers(this.idBranch, 'PROVIDERS').subscribe({ next: (data: any) => this.providers = data || [], error: () => this.providers = [] });
+    this.materialsService.getProvidersxmaterials(this.idRoot).subscribe({ next: (data: any) => this.providers = data || [], error: () => this.providers = [] });
     this.loadPrograms();
   }
   loadPrograms() { if (this.idRoot) this.programsService.get(this.idRoot).subscribe({ next: data => this.programs = data || [], error: () => this.programs = [] }); }

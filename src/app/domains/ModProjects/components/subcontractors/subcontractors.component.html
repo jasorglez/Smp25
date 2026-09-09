@@ -1,0 +1,20 @@
+<div class="subcontractor-home container-fluid py-3">
+  <div class="card shadow-sm mx-auto">
+    <div class="card-header"><i class="bi bi-people-fill me-2"></i>Subcontratistas</div>
+    <div class="card-body">
+      <h5>¿Con qué subcontratista deseas trabajar?</h5>
+      <p class="text-muted mb-3">Selecciona primero el proveedor. Esta elección controla sus programas, reportes diarios y estimaciones.</p>
+      <label class="form-label fw-bold">Proveedor / Subcontratista</label>
+      <select class="form-select form-select-lg" [ngModel]="selectedId" (ngModelChange)="selectProvider($event)">
+        <option [ngValue]="null">Selecciona un proveedor de ShoppingTD</option>
+        <option *ngFor="let provider of providers" [ngValue]="provider.id">{{provider.name || provider.company}}</option>
+      </select>
+      <div *ngIf="context.selected() as provider" class="selected-provider mt-3"><i class="bi bi-check-circle-fill"></i> Trabajando con: <strong>{{provider.name}}</strong></div>
+      <div class="row g-3 mt-2" *ngIf="context.selected()">
+        <div class="col-md-4"><a routerLink="../subcontract-programs" class="choice-card"><i class="bi bi-diagram-3-fill"></i><span>Programa de Trabajo</span><small>Fases, conceptos, cantidades y precios</small></a></div>
+        <div class="col-md-4"><a routerLink="../subcontract-reports" class="choice-card"><i class="bi bi-clipboard-data-fill"></i><span>Reportes Diarios</span><small>Avances del proveedor seleccionado</small></a></div>
+        <div class="col-md-4"><a routerLink="../subcontract-estimates" class="choice-card"><i class="bi bi-calculator-fill"></i><span>Estimaciones</span><small>Generadores y estimaciones del proveedor</small></a></div>
+      </div>
+    </div>
+  </div>
+</div>
