@@ -377,6 +377,8 @@ export class SistemaComponent implements OnInit, OnDestroy {
           error: () => this.subcontractPrograms = []
         });
       }
+      // La pantalla siempre refleja exclusivamente al proveedor seleccionado.
+      if (this.idProject) this.loadReports();
     });
 
     // Tiempo real: recargar cuando el bot guarda nota, foto o crea reporte nuevo

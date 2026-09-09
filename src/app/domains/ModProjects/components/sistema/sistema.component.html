@@ -2,8 +2,14 @@
   <div class="col-12 mb-1">
     <div class="d-flex align-items-center gap-1">
       <small class="text-muted fw-bold me-1">
-        <i class="bi bi-calendar-check me-1"></i>Reportes Diarios
+        <i class="bi bi-calendar-check me-1"></i>Reportes Diarios x Subcontratista
       </small>
+      <span class="badge text-bg-primary" *ngIf="subcontractorContext.selected() as provider">
+        Subcontratista seleccionado: {{ provider.name }}
+      </span>
+      <span class="badge text-bg-warning" *ngIf="!subcontractorContext.selected()">
+        Selecciona primero un subcontratista
+      </span>
 
       <select class="form-select form-select-sm w-auto" [(ngModel)]="selectedSubcontractProgramId"
               (ngModelChange)="onSubcontractProgramChange()"
@@ -14,10 +20,10 @@
         </option>
       </select>
 
-      <button type="button" class="btn btn-success btn-sm" (click)="add()">
+      <button type="button" class="btn btn-success btn-sm" (click)="add()" [disabled]="!subcontractorContext.selected()">
         <i class="bi bi-plus-lg"></i>
       </button>
-      <button type="button" class="btn btn-primary btn-sm position-relative" (click)="saveChanges()">
+      <button type="button" class="btn btn-primary btn-sm position-relative" (click)="saveChanges()" [disabled]="!subcontractorContext.selected()">
         <i class="bi bi-floppy"></i>
         <span class="position-absolute top-0 start-100 translate-middle p-2 bg-danger border border-light rounded-circle"
               *ngIf="hasUnsavedChanges">
@@ -37,6 +43,10 @@
   </div>
 
   <div class="col-12">
+    <div class="alert alert-info py-1 mb-1" *ngIf="subcontractorContext.selected() as provider">
+      Esta pantalla está ligada exclusivamente a <strong>{{ provider.name }}</strong>;
+      no consulta ni captura información de otro proveedor.
+    </div>
     <ag-grid-angular
       class="ag-theme-quartz small-text-ag-grid"
       style="width:100%; height:85vh;"
