@@ -240,7 +240,8 @@ export class ProvidersComponent implements CanComponentDeactivate {
 
   public gridOptions: any = {
     headerHeight: 25,
-    rowHeight: 20,
+    // Altura suficiente para que el logo del proveedor sea legible.
+    rowHeight: 48,
     rowBuffer: 20,
     masterDetail: true,
     isRowMaster: (dataItem) => {
@@ -482,9 +483,9 @@ export class ProvidersComponent implements CanComponentDeactivate {
         field: 'imageUrl',
         headerName: 'Logo',
         editable: false,
-        width: 90,
-        minWidth: 90,
-        maxWidth: 90,
+        width: 72,
+        minWidth: 72,
+        maxWidth: 72,
         cellRenderer: (params: ICellRendererParams) => this.imageHandlerService.imageCellRenderer(params),
         cellRendererParams: {
           field: 'imageUrl',

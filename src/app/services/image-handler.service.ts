@@ -57,6 +57,8 @@ export class ImageHandlerService {
     this.storagesService.uploadFile(file, path)
       .then(url => {
         params.node.setDataValue(field, url);
+        // Asegura que el formulario de proveedores envíe también la URL nueva.
+        if (params.data) params.data.__modified = true;
         alerts.basicAlert('Subir imagen', 'Imagen subida exitosamente.', 'success');
       })
       .catch(error => {
