@@ -655,6 +655,16 @@ export const routes: Routes = [
             loadComponent: () => import('./domains/ModProjects/components/subcontractors/subcontractors.component').then((s) => s.SubcontractorsComponent),
           },
           {
+            path: 'subcontract-estimates',
+            loadComponent: () => import('./domains/ModProjects/components/subcontractors/subcontractor-workflow.component').then((s) => s.SubcontractorWorkflowComponent),
+            data: { title: 'Estimaciones x Subcontratista', icon: 'bi-calculator-fill' },
+          },
+          {
+            path: 'subcontract-reports',
+            loadComponent: () => import('./domains/ModProjects/components/subcontractors/subcontractor-workflow.component').then((s) => s.SubcontractorWorkflowComponent),
+            data: { title: 'Reportes Diarios x Subcontratista', icon: 'bi-clipboard-data-fill' },
+          },
+          {
             path: 'ot',
             loadComponent: () =>
               import(
