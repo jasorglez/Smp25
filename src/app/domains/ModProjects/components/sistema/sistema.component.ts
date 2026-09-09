@@ -373,10 +373,12 @@ export class SistemaComponent implements OnInit, OnDestroy {
     effect(() => {
       if (!this.subcontractMode) return;
       const provider = this.subcontractorContext.selected();
+      const rootId = this.signalsService.getRootSelectedBySidebar()();
+      this.idRoot = rootId || this.idRoot;
       this.selectedSubcontractProgramId = 0;
       this.subcontractPrograms = [];
-      if (provider?.id && this.idRoot) {
-        this.programsService.get(this.idRoot, provider.id, this.idProject || undefined).subscribe({
+      if (provider?.id && rootId) {
+        this.programsService.get(rootId, provider.id, this.idProject || undefined).subscribe({
           next: programs => this.subcontractPrograms = programs || [],
           error: () => this.subcontractPrograms = []
         });

@@ -14,9 +14,9 @@
       <select class="form-select form-select-sm w-auto" [(ngModel)]="selectedSubcontractProgramId"
               (ngModelChange)="onSubcontractProgramChange()"
               title="Programa del subcontratista" *ngIf="subcontractMode && subcontractorContext.selected() && subcontractPrograms.length">
-        <option [ngValue]="0">Todos los programas</option>
+        <option [ngValue]="0">Programa: todos</option>
         <option *ngFor="let program of subcontractPrograms" [ngValue]="program.id">
-          {{ program.projectName }} — {{ program.name }}
+          #{{ program.id }} · {{ program.projectName }} — {{ program.name }}
         </option>
       </select>
 
