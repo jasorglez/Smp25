@@ -72,3 +72,9 @@ router-outlet + * {
   from { opacity: 0; transform: translateY(6px); }
   to   { opacity: 1; transform: translateY(0); }
 }
+.project-menu { position: relative; }
+.project-menu-toggle { border: 0; background: transparent; }
+.project-menu-dropdown { position: absolute; z-index: 1050; top: calc(100% + .35rem); left: 0; min-width: 245px; padding: .4rem; border-radius: .5rem; background: #fff; box-shadow: 0 .5rem 1rem rgba(0,0,0,.18); }
+.project-menu-dropdown a { display: block; padding: .55rem .7rem; color: #28465e; text-decoration: none; border-radius: .35rem; white-space: nowrap; }
+.project-menu-dropdown a:hover { background: #edf5fa; color: #0b6395; }
+.project-menu-dropdown i { width: 1.4rem; }

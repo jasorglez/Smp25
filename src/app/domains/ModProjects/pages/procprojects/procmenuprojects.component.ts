@@ -13,12 +13,21 @@ import { SignalsService } from 'app/services/signals.service';
 })
 export class ProcmenuprojectsComponent {
   authService = inject(AuthService);
+  projectMenuOpen = false;
 
   public signalsService = inject(SignalsService);
 
     ngOnInit() {
       this.signalsService.setCatalogSelected('PROJECTS');
     }
+
+  toggleProjectMenu() {
+    this.projectMenuOpen = !this.projectMenuOpen;
+  }
+
+  closeProjectMenu() {
+    this.projectMenuOpen = false;
+  }
 
 
 }

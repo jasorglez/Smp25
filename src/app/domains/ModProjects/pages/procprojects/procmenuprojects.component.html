@@ -38,14 +38,6 @@
                   <span>{{ 'program' | translate}} {{ 'work' | translate}}</span>
                 </a>               
              </li> 
-             <li class="nav-item" *ngIf="authService.hasDetailedPermission('projects', 'workprograms')">
-                <a class="nav-link modern-tab" routerLink="subcontract-programs" routerLinkActive="active">
-                  <i class="bi bi-people-fill"></i>
-                  <span>Programas x Subcontratistas</span>
-                </a>
-             </li>
-
-
              <li class="nav-item" *ngIf="authService.hasDetailedPermission('projects', 'materials')">
                 <a class="nav-link modern-tab" routerLink="materials" routerLinkActive="active">
                   <i class="bi bi-box-seam"></i>
@@ -95,11 +87,19 @@
                 </a>
              </li>        
        
-             <li class="nav-item" *ngIf="authService.hasDetailedPermission('projects', 'projects')">
-                <a class="nav-link modern-tab" routerLink="projects" routerLinkActive="active">
+             <li class="nav-item project-menu" *ngIf="authService.hasDetailedPermission('projects', 'projects') || authService.hasDetailedPermission('projects', 'workprograms')">
+                <button type="button" class="nav-link modern-tab project-menu-toggle" (click)="toggleProjectMenu()">
                   <i class="bi bi-building"></i>
                   <span>{{ 'projects' | translate}}</span>
-                </a>
+                  <i class="bi bi-chevron-down ms-1 small"></i>
+                </button>
+                <div class="project-menu-dropdown" *ngIf="projectMenuOpen">
+                  <a routerLink="projects" (click)="closeProjectMenu()"><i class="bi bi-buildings"></i> Proyectos</a>
+                  <a routerLink="providers" (click)="closeProjectMenu()"><i class="bi bi-people"></i> SubContratistas</a>
+                  <a routerLink="estimates" (click)="closeProjectMenu()"><i class="bi bi-calculator"></i> SubContratista Estimaciones</a>
+                  <a routerLink="sistema" (click)="closeProjectMenu()"><i class="bi bi-clipboard-data"></i> RD Subcontratistas</a>
+                  <a routerLink="subcontract-programs" (click)="closeProjectMenu()"><i class="bi bi-diagram-3-fill"></i> Programas x Subcontratistas</a>
+                </div>
              </li>
 
              <li class="nav-item" style="display: none;">
