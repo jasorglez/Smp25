@@ -1,0 +1,8 @@
+{
+  "/smp": {
+    "target": "https://endpoints.biapp.com.mx",
+    "secure": true,
+    "changeOrigin": true,
+    "logLevel": "warn"
+  }
+}

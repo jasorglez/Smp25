@@ -110,8 +110,11 @@
           },
           "defaultConfiguration": "production"
         },
-        "serve": {
+          "serve": {
           "builder": "@angular-devkit/build-angular:dev-server",
+          "options": {
+            "proxyConfig": "proxy.conf.json"
+          },
           "configurations": {
             "production": {
               "buildTarget": "bi-aug-24:build:production"
