@@ -4,6 +4,7 @@ import { AgGridModule } from 'ag-grid-angular';
 import { ColDef } from 'ag-grid-enterprise';
 import { BitacoraBaseComponent, BITACORA_TEMPLATE, BITACORA_STYLES } from './bitacora-base.component';
 import { WorkprogramsService } from 'app/services/workprograms.service';
+import { SubcontractProgramService } from 'app/services/subcontract-program.service';
 
 @Component({
   selector: 'app-bitacora-conceptos',
@@ -18,6 +19,7 @@ export class BitacoraConceptosComponent extends BitacoraBaseComponent {
   readonly editableCols = ['startTime', 'endTime', 'descriptionconcept', 'detail', 'quantity'];
   
   private workprogramsService = inject(WorkprogramsService);
+  private subcontractProgramService = inject(SubcontractProgramService);
   private subpartidasMap = new Map<string, { code: string; text: string; id: number }>();
   private subpartidaIdMap = new Map<string, number>();
   private subpartidaIdToCodeMap = new Map<number, string>();
@@ -31,7 +33,33 @@ export class BitacoraConceptosComponent extends BitacoraBaseComponent {
 
   override ngOnInit(): void {
     super.ngOnInit();
-    this.loadSubpartidas();
+    const parent = this.context?.componentParent;
+    if (parent?.subcontractMode && parent.selectedSubcontractProgramId) {
+      this.loadSubcontractItems(parent.selectedSubcontractProgramId);
+    } else {
+      this.loadSubpartidas();
+    }
+  }
+
+  private loadSubcontractItems(idProgram: number): void {
+    this.subcontractProgramService.getById(Number(idProgram)).subscribe({
+      next: (data: any) => {
+        this.subpartidasMap.clear(); this.conceptOptions = []; this.conceptBySubpartida.clear();
+        for (const item of data?.items || []) {
+          const code = String(item.subphase || item.phase || '').trim();
+          const text = String(item.concept || '').trim();
+          const label = text || code;
+          this.conceptOptions.push(label);
+          if (code && !this.subpartidasMap.has(code)) {
+            this.subpartidasMap.set(code, { code, text: String(item.phase || code), id: Number(item.id) || 0 });
+          }
+          const list = this.conceptBySubpartida.get(code) || [];
+          if (!list.includes(label)) list.push(label);
+          this.conceptBySubpartida.set(code, list);
+        }
+        this.gridApi?.refreshCells({ force: true });
+      }, error: () => {}
+    });
   }
 
   override addRow(): void {
