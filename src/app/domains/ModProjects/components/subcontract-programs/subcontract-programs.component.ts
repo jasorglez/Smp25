@@ -180,8 +180,33 @@ export class SubcontractProgramsComponent {
   }
   downloadPdf() {
     const provider = this.program.providerName || this.providers.find(x => x.id === Number(this.program.idProvider))?.name || 'SUBCONTRATISTA';
-    const body: any[] = [[{ text: 'FASE', bold: true }, { text: 'CONCEPTO', bold: true }, { text: 'UNIDAD', bold: true }, { text: 'CANT.', bold: true }, { text: 'P.U.', bold: true }, { text: 'IMPORTE', bold: true }]];
-    this.items.forEach(x => body.push([x.phase, x.concept, x.unit || '', this.number(x.quantity).toLocaleString('es-MX'), this.number(x.unitPrice).toLocaleString('es-MX', { style: 'currency', currency: 'MXN' }), (this.number(x.quantity) * this.number(x.unitPrice)).toLocaleString('es-MX', { style: 'currency', currency: 'MXN' })]));
+    const body: any[] = [[{ text: 'SUBFASE', bold: true }, { text: 'CONCEPTO', bold: true }, { text: 'UNIDAD', bold: true }, { text: 'CANT.', bold: true }, { text: 'P.U.', bold: true }, { text: 'IMPORTE', bold: true }]];
+    body.push([
+      { text: `CONTRATISTA: ${provider}`, colSpan: 6, bold: true, color: '#ffffff', fillColor: '#173f67', margin: [4, 4, 4, 4] },
+      {}, {}, {}, {}, {}
+    ]);
+
+    const phases = new Map<string, any[]>();
+    this.items.forEach(item => {
+      const phase = String(item.phase || 'SIN FASE').trim().toUpperCase();
+      if (!phases.has(phase)) phases.set(phase, []);
+      phases.get(phase)!.push(item);
+    });
+
+    phases.forEach((phaseItems, phase) => {
+      body.push([
+        { text: `FASE: ${phase} (${phaseItems.length} conceptos)`, colSpan: 6, bold: true, color: '#173f67', fillColor: '#dcebf5', margin: [8, 3, 4, 3] },
+        {}, {}, {}, {}, {}
+      ]);
+      phaseItems.forEach(item => body.push([
+        item.subphase || '',
+        item.concept,
+        item.unit || '',
+        this.number(item.quantity).toLocaleString('es-MX'),
+        this.currency(item.unitPrice),
+        this.currency(this.number(item.quantity) * this.number(item.unitPrice))
+      ]));
+    });
     body.push([{ text: 'TOTAL', colSpan: 5, alignment: 'right', bold: true }, {}, {}, {}, {}, { text: this.total.toLocaleString('es-MX', { style: 'currency', currency: 'MXN' }), bold: true }]);
     pdfMake.createPdf({ pageOrientation: 'landscape', pageMargins: [24, 28, 24, 28], content: [{ text: 'PROGRAMA DE TRABAJO POR SUBCONTRATISTA', style: 'title' }, { columns: [{ text: `PROYECTO / TORRE: ${this.program.projectName}` }, { text: `SUBCONTRATISTA: ${provider}`, alignment: 'right' }] }, { text: `PROGRAMA: ${this.program.name}`, margin: [0, 4, 0, 12] }, { table: { headerRows: 1, widths: [72, '*', 42, 45, 62, 68], body }, layout: 'lightHorizontalLines', fontSize: 7 }], styles: { title: { bold: true, fontSize: 14, alignment: 'center', margin: [0, 0, 0, 12] } }, defaultStyle: { fontSize: 9 } } as any).download(`Programa_${this.program.projectName || 'Subcontratista'}.pdf`);
   }
