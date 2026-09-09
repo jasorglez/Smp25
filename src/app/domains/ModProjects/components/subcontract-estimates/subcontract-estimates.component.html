@@ -1,0 +1,78 @@
+<div class="container-fluid subcontract-estimates py-3" *ngIf="context.selected() as provider; else noProvider">
+  <div class="card shadow-sm">
+    <div class="card-header d-flex flex-wrap justify-content-between align-items-center gap-2">
+      <div>
+        <h5 class="mb-0"><i class="bi bi-calculator-fill me-2"></i>Estimaciones x Subcontratista</h5>
+        <small>Proveedor: <strong>{{provider.name}}</strong></small>
+      </div>
+      <button class="btn btn-sm btn-success" [disabled]="!rows.length" (click)="exportExcel()">
+        <i class="bi bi-file-earmark-excel me-1"></i>Generar Excel
+      </button>
+    </div>
+
+    <div class="card-body">
+      <div class="row g-2 align-items-end mb-3">
+        <div class="col-lg-4">
+          <label class="form-label">Programa / torre</label>
+          <select class="form-select" [(ngModel)]="selectedProgramId" (ngModelChange)="selectProgram($event)">
+            <option [ngValue]="0">Selecciona programa</option>
+            <option *ngFor="let item of programs" [ngValue]="item.id">{{item.projectName}} — {{item.name}}</option>
+          </select>
+        </div>
+        <div class="col-md-2">
+          <label class="form-label">No. estimación</label>
+          <input class="form-control" type="number" min="1" [(ngModel)]="estimateNumber">
+        </div>
+        <div class="col-md-2">
+          <label class="form-label">Fecha inicial</label>
+          <input class="form-control" type="date" [(ngModel)]="dateStart">
+        </div>
+        <div class="col-md-2">
+          <label class="form-label">Fecha final</label>
+          <input class="form-control" type="date" [(ngModel)]="dateEnd">
+        </div>
+        <div class="col-md-2">
+          <div class="form-check form-switch manual-switch">
+            <input class="form-check-input" type="checkbox" id="allowUnreported" [(ngModel)]="allowUnreported" (ngModelChange)="onManualModeChanged()">
+            <label class="form-check-label" for="allowUnreported">Permitir sin reporte</label>
+          </div>
+        </div>
+      </div>
+
+      <div class="alert alert-info py-2" *ngIf="!allowUnreported">
+        <i class="bi bi-lock-fill me-1"></i>La cantidad de esta estimación toma lo reportado. Activa <strong>Permitir sin reporte</strong> para capturarla manualmente.
+      </div>
+      <div class="alert alert-warning py-2" *ngIf="allowUnreported">
+        <i class="bi bi-pencil-square me-1"></i>Captura manual habilitada. Las celdas amarillas aceptan cantidades aunque todavía no exista reporte diario.
+      </div>
+
+      <div class="summary-grid mb-3">
+        <div><span>Programa contratado</span><strong>{{contractTotal | currency:'MXN':'symbol-narrow':'1.2-2'}}</strong></div>
+        <div><span>Acumulado anterior</span><strong>{{previousTotal | currency:'MXN':'symbol-narrow':'1.2-2'}}</strong></div>
+        <div class="current"><span>Esta estimación</span><strong>{{estimateTotal | currency:'MXN':'symbol-narrow':'1.2-2'}}</strong></div>
+        <div><span>Acumulado total</span><strong>{{accumulatedTotal | currency:'MXN':'symbol-narrow':'1.2-2'}}</strong></div>
+        <div><span>Saldo por ejercer</span><strong>{{balanceTotal | currency:'MXN':'symbol-narrow':'1.2-2'}}</strong></div>
+        <div><span>Avance</span><strong>{{progress | percent:'1.2-2'}}</strong></div>
+      </div>
+
+      <div class="text-center py-5 text-muted" *ngIf="loading"><span class="spinner-border spinner-border-sm me-2"></span>Cargando programa...</div>
+      <ag-grid-angular
+        *ngIf="!loading && rows.length"
+        class="ag-theme-quartz estimate-grid"
+        [rowData]="rows"
+        [columnDefs]="columnDefs"
+        [defaultColDef]="defaultColDef"
+        [autoGroupColumnDef]="autoGroupColumnDef"
+        [gridOptions]="gridOptions"
+        [localeText]="AG_GRID_LOCALE_ES"
+        (gridReady)="onGridReady($event)"
+        (cellValueChanged)="onCellValueChanged($event)">
+      </ag-grid-angular>
+      <div class="alert alert-secondary" *ngIf="!loading && !programs.length">Este proveedor todavía no tiene Programas de Trabajo.</div>
+    </div>
+  </div>
+</div>
+
+<ng-template #noProvider>
+  <div class="container-fluid py-3"><div class="alert alert-warning">Primero selecciona el proveedor en Subcontratistas.</div></div>
+</ng-template>

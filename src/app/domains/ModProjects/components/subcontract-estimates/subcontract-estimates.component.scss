@@ -1,0 +1,14 @@
+.subcontract-estimates .card-header { background: linear-gradient(120deg, #173f67, #246b9b); color: #fff; }
+.subcontract-estimates .card-header small { color: #d8ecfb; }
+.form-label { color: #36536e; font-size: .78rem; font-weight: 700; margin-bottom: .2rem; }
+.manual-switch { min-height: 38px; display: flex; align-items: center; gap: .35rem; padding-left: 2.8rem; }
+.estimate-grid { width: 100%; height: 570px; }
+.summary-grid { display: grid; grid-template-columns: repeat(6, minmax(145px, 1fr)); gap: .55rem; }
+.summary-grid > div { border: 1px solid #d8e3ea; border-radius: .45rem; padding: .65rem .75rem; background: #f8fafb; display: flex; flex-direction: column; }
+.summary-grid span { color: #667c8b; font-size: .72rem; text-transform: uppercase; font-weight: 700; }
+.summary-grid strong { color: #173f67; font-size: 1rem; }
+.summary-grid .current { background: #edf9f2; border-color: #bcdcca; }
+.summary-grid .current strong { color: #176a43; }
+:host ::ng-deep .estimate-grid .ag-row-group { color: #173f67; font-weight: 700; }
+@media (max-width: 1100px) { .summary-grid { grid-template-columns: repeat(3, 1fr); } }
+@media (max-width: 650px) { .summary-grid { grid-template-columns: repeat(2, 1fr); } }
