@@ -46,7 +46,17 @@ export class SubcontractProgramsComponent {
     this.materialsService.getProvidersxmaterials(this.idRoot).subscribe({ next: (data: any) => this.providers = data || [], error: () => this.providers = [] });
     this.loadPrograms();
   }
-  loadPrograms() { if (this.idRoot) this.programsService.get(this.idRoot).subscribe({ next: data => this.programs = data || [], error: () => this.programs = [] }); }
+  loadPrograms() {
+    const providerId = Number(this.context.selected()?.id || this.program.idProvider) || undefined;
+    if (this.idRoot && providerId) {
+      this.programsService.get(this.idRoot, providerId).subscribe({
+        next: data => this.programs = data || [],
+        error: () => this.programs = []
+      });
+    } else {
+      this.programs = [];
+    }
+  }
   newProgram() { this.selectedProgramId = 0; this.program = this.emptyProgram(); this.items = []; }
   openProgram(id: number) {
     this.programsService.getById(id).subscribe({ next: data => { this.selectedProgramId = id; this.program = data.program; this.items = data.items || []; }, error: () => alerts.basicAlert('Programa', 'No fue posible abrir el programa.', 'error') });
