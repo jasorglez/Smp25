@@ -14,8 +14,22 @@
         <div class="col-md-6"><label class="form-label">Importar presupuesto / programa Excel</label><input class="form-control" type="file" accept=".xlsx,.xls" (change)="onExcelSelected($event)"><select *ngIf="sheets.length" class="form-select mt-1" (change)="importSheet($any($event.target).value)"><option *ngFor="let sheet of sheets" [value]="sheet">{{sheet}}</option></select></div>
       </div>
       <div class="alert alert-info py-2"><i class="bi bi-info-circle me-1"></i>Los precios y cantidades importados son el presupuesto base. Los Reportes Diarios y las Estimaciones usarán este programa del subcontratista.</div>
-      <div class="table-responsive"><table class="table table-sm table-hover align-middle"><thead><tr><th>Fase</th><th>Subfase</th><th>Concepto</th><th>Unidad</th><th class="number">Cantidad</th><th class="number">P.U.</th><th class="number">Importe</th><th></th></tr></thead><tbody><tr *ngFor="let item of items; let i=index"><td><input [(ngModel)]="item.phase" class="form-control form-control-sm"></td><td><input [(ngModel)]="item.subphase" class="form-control form-control-sm"></td><td><textarea [(ngModel)]="item.concept" class="form-control form-control-sm" rows="2"></textarea></td><td><input [(ngModel)]="item.unit" class="form-control form-control-sm"></td><td><input [(ngModel)]="item.quantity" type="number" class="form-control form-control-sm number"></td><td><input [(ngModel)]="item.unitPrice" type="number" class="form-control form-control-sm number"></td><td class="number fw-semibold">{{(item.quantity * item.unitPrice) | currency:'MXN':'symbol-narrow':'1.2-2'}}</td><td><button class="btn btn-sm btn-outline-danger" (click)="removeItem(i)"><i class="bi bi-trash"></i></button></td></tr></tbody><tfoot><tr><td colspan="6" class="text-end fw-bold">TOTAL DEL PROGRAMA</td><td class="number fw-bold">{{total | currency:'MXN':'symbol-narrow':'1.2-2'}}</td><td></td></tr></tfoot></table></div>
-      <button class="btn btn-sm btn-outline-primary" (click)="addItem()"><i class="bi bi-plus-lg"></i> Agregar concepto</button>
+      <ag-grid-angular
+        class="ag-theme-quartz subcontract-program-grid"
+        [rowData]="items"
+        [columnDefs]="columnDefs"
+        [defaultColDef]="defaultColDef"
+        [autoGroupColumnDef]="autoGroupColumnDef"
+        [gridOptions]="gridOptions"
+        [localeText]="AG_GRID_LOCALE_ES"
+        (gridReady)="onGridReady($event)"
+        (cellClicked)="onCellClicked($event)"
+        (cellValueChanged)="onCellValueChanged()">
+      </ag-grid-angular>
+      <div class="program-grid-footer d-flex justify-content-between align-items-center mt-2">
+        <button class="btn btn-sm btn-outline-primary" (click)="addItem()"><i class="bi bi-plus-lg"></i> Agregar concepto</button>
+        <div><span class="text-muted me-2">TOTAL DEL PROGRAMA</span><strong>{{total | currency:'MXN':'symbol-narrow':'1.2-2'}}</strong></div>
+      </div>
     </div>
   </div>
 </div>

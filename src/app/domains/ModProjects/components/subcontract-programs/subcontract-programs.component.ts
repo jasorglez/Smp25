@@ -1,9 +1,12 @@
 import { CommonModule, CurrencyPipe } from '@angular/common';
 import { Component, effect, inject } from '@angular/core';
 import { FormsModule } from '@angular/forms';
+import { AgGridModule } from 'ag-grid-angular';
+import { CellClickedEvent, ColDef, GridApi } from 'ag-grid-enterprise';
 import * as XLSX from 'xlsx';
 import pdfMake from 'pdfmake/build/pdfmake';
 import pdfFonts from 'pdfmake/build/vfs_fonts';
+import { AG_GRID_LOCALE_ES } from 'assets/i18n/ag-grid.locale.es';
 import { alerts } from 'app/helpers/alerts';
 import { MaterialsService } from 'app/services/materials.service';
 import { SignalsService } from 'app/services/signals.service';
@@ -14,7 +17,7 @@ import { SubcontractorContextService } from 'app/services/subcontractor-context.
 
 @Component({
   selector: 'app-subcontract-programs', standalone: true,
-  imports: [CommonModule, FormsModule, CurrencyPipe],
+  imports: [CommonModule, FormsModule, CurrencyPipe, AgGridModule],
   templateUrl: './subcontract-programs.component.html', styleUrl: './subcontract-programs.component.scss'
 })
 export class SubcontractProgramsComponent {
@@ -31,6 +34,39 @@ export class SubcontractProgramsComponent {
   idRoot = 0;
   loading = false;
   program: any = this.emptyProgram();
+  private gridApi?: GridApi;
+  readonly AG_GRID_LOCALE_ES = AG_GRID_LOCALE_ES;
+  readonly defaultColDef: ColDef = {
+    sortable: true,
+    filter: true,
+    resizable: true,
+    flex: 1,
+    minWidth: 110
+  };
+  readonly autoGroupColumnDef: ColDef = {
+    headerName: 'FASE',
+    minWidth: 240,
+    flex: 1.2,
+    cellRendererParams: { suppressCount: false }
+  };
+  readonly gridOptions: any = {
+    animateRows: true,
+    groupDefaultExpanded: 1,
+    groupDisplayType: 'singleColumn',
+    headerHeight: 38,
+    rowHeight: 38,
+    stopEditingWhenCellsLoseFocus: true
+  };
+  readonly columnDefs: ColDef[] = [
+    { field: 'phase', headerName: 'Fase', rowGroup: true, hide: true, editable: true },
+    { field: 'subphase', headerName: 'Subfase', editable: true, minWidth: 150 },
+    { field: 'concept', headerName: 'Concepto', editable: true, minWidth: 330, flex: 2.5, cellEditor: 'agLargeTextCellEditor', cellEditorPopup: true },
+    { field: 'unit', headerName: 'Unidad', editable: true, width: 95, maxWidth: 110, flex: 0 },
+    { field: 'quantity', headerName: 'Cantidad', editable: true, width: 120, flex: 0, type: 'numericColumn', valueParser: params => this.number(params.newValue) },
+    { field: 'unitPrice', headerName: 'P.U.', editable: true, width: 135, flex: 0, type: 'numericColumn', valueParser: params => this.number(params.newValue), valueFormatter: params => this.currency(params.value) },
+    { colId: 'amount', headerName: 'Importe', width: 145, flex: 0, type: 'numericColumn', valueGetter: params => this.number(params.data?.quantity) * this.number(params.data?.unitPrice), valueFormatter: params => this.currency(params.value) },
+    { colId: 'delete', headerName: '', width: 58, maxWidth: 58, flex: 0, sortable: false, filter: false, editable: false, cellRenderer: () => '<button class="btn btn-sm btn-outline-danger" title="Borrar concepto"><i class="bi bi-trash"></i></button>' }
+  ];
 
   constructor() {
     effect(() => {
@@ -90,12 +126,23 @@ export class SubcontractProgramsComponent {
       }
     });
   }
-  addItem() { this.items.push({ phase: 'SIN FASE', subphase: '', concept: '', unit: '', quantity: 0, unitPrice: 0 }); }
+  addItem() {
+    this.items = [...this.items, { phase: 'SIN FASE', subphase: '', concept: '', unit: '', quantity: 0, unitPrice: 0 }];
+  }
   selectProvider(id: number) {
     this.program.idProvider = id;
     this.program.providerName = this.providers.find(x => Number(x.id) === Number(id))?.name || '';
   }
-  removeItem(index: number) { this.items.splice(index, 1); }
+  removeItem(index: number) { this.items = this.items.filter((_, itemIndex) => itemIndex !== index); }
+  onGridReady(event: any) { this.gridApi = event.api; }
+  onCellClicked(event: CellClickedEvent) {
+    if (event.column.getColId() !== 'delete' || !event.data) return;
+    this.items = this.items.filter(item => item !== event.data);
+  }
+  onCellValueChanged() { this.gridApi?.refreshCells({ columns: ['amount'], force: true }); }
+  currency(value: any): string {
+    return this.number(value).toLocaleString('es-MX', { style: 'currency', currency: 'MXN' });
+  }
   get total() { return this.items.reduce((sum, row) => sum + (Number(row.quantity) || 0) * (Number(row.unitPrice) || 0), 0); }
   async onExcelSelected(event: Event) {
     const file = (event.target as HTMLInputElement).files?.[0]; if (!file) return;

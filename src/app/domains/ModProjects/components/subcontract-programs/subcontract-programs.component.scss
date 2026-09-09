@@ -3,7 +3,6 @@
 .card-header small { color: #d8ecfb; }
 .form-label { font-size: .78rem; font-weight: 700; margin-bottom: .2rem; color: #36536e; }
 .number { text-align: right; white-space: nowrap; }
-th { background: #edf4f9; color: #1a4b70; font-size: .78rem; }
-td { min-width: 90px; }
-textarea.form-control { min-width: 260px; }
-tfoot { background: #eef7f2; }
+.subcontract-program-grid { width: 100%; height: 560px; }
+.program-grid-footer { background: #eef7f2; border: 1px solid #d5e6dc; border-radius: .375rem; padding: .65rem .8rem; }
+:host ::ng-deep .subcontract-program-grid .ag-row-group { font-weight: 700; color: #173f67; }
