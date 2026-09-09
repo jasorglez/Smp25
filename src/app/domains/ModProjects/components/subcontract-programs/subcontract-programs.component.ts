@@ -73,8 +73,9 @@ export class SubcontractProgramsComponent {
       const cells = row.map(x => String(x ?? '').trim());
       const first = cells[0] || ''; const concept = cells[1] || '';
       const unit = cells[2] || ''; const qty = this.number(cells[3]); const price = this.number(cells[4]);
-      if (first && !concept && !unit && !qty && !price && index > 3) { phase = first.toUpperCase(); return; }
-      if (concept && index > 3 && !/CONCEPTO|DESCRIPCI/i.test(concept)) imported.push({ phase, subphase: first && first !== phase ? first : '', concept, unit, quantity: qty, unitPrice: price });
+      if (first && index > 3) phase = first.toUpperCase();
+      if (first && !concept && !unit && !qty && !price && index > 3) return;
+      if (concept && index > 3 && !/CONCEPTO|DESCRIPCI/i.test(concept)) imported.push({ phase, subphase: '', concept, unit, quantity: qty, unitPrice: price });
     });
     if (!imported.length) { alerts.basicAlert('Archivo', 'No se localizaron conceptos en esa hoja.', 'warning'); return; }
     this.items = imported;
