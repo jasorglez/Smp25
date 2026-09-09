@@ -50,7 +50,10 @@ export class SubcontractProgramsComponent {
     const providerId = Number(this.context.selected()?.id || this.program.idProvider) || undefined;
     if (this.idRoot && providerId) {
       this.programsService.get(this.idRoot, providerId).subscribe({
-        next: data => this.programs = data || [],
+        next: (data: any) => {
+          this.programs = Array.isArray(data) ? data : (data?.data || []);
+          if (this.programs.length && !this.selectedProgramId) this.openProgram(this.programs[0].id);
+        },
         error: () => this.programs = []
       });
     } else {
