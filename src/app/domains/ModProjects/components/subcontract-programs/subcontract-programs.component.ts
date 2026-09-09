@@ -5,7 +5,7 @@ import * as XLSX from 'xlsx';
 import pdfMake from 'pdfmake/build/pdfmake';
 import pdfFonts from 'pdfmake/build/vfs_fonts';
 import { alerts } from 'app/helpers/alerts';
-import { ProvidersService } from 'app/services/providers.service';
+import { CustomersService } from 'app/services/customers.service';
 import { SignalsService } from 'app/services/signals.service';
 import { SubcontractProgramService } from 'app/services/subcontract-program.service';
 
@@ -18,7 +18,7 @@ import { SubcontractProgramService } from 'app/services/subcontract-program.serv
 })
 export class SubcontractProgramsComponent {
   private programsService = inject(SubcontractProgramService);
-  private providersService = inject(ProvidersService);
+  private customersService = inject(CustomersService);
   private signals = inject(SignalsService);
   providers: any[] = [];
   programs: any[] = [];
@@ -27,19 +27,21 @@ export class SubcontractProgramsComponent {
   workbook: XLSX.WorkBook | null = null;
   selectedProgramId = 0;
   idRoot = 0;
+  idBranch = 0;
   loading = false;
   program: any = this.emptyProgram();
 
   constructor() {
     effect(() => {
       this.idRoot = Number(this.signals.getRootSelectedBySidebar()()) || 0;
+      this.idBranch = Number(this.signals.getBranchSelectedBySidebar()()) || 0;
       if (this.idRoot) this.loadCatalogs();
     });
   }
 
-  emptyProgram() { return { id: 0, idRoot: this.idRoot, idProvider: null, idProject: null, projectName: '', name: 'Programa de trabajo por subcontratista', startDate: null, endDate: null }; }
+  emptyProgram() { return { id: 0, idRoot: this.idRoot, idProvider: null, providerName: '', idProject: null, projectName: '', name: 'Programa de trabajo por subcontratista', startDate: null, endDate: null }; }
   loadCatalogs() {
-    this.providersService.getProviders(this.idRoot).subscribe({ next: (data: any) => this.providers = data || [], error: () => this.providers = [] });
+    if (this.idBranch) this.customersService.getCustomers(this.idBranch, 'PROVIDERS').subscribe({ next: (data: any) => this.providers = data || [], error: () => this.providers = [] });
     this.loadPrograms();
   }
   loadPrograms() { if (this.idRoot) this.programsService.get(this.idRoot).subscribe({ next: data => this.programs = data || [], error: () => this.programs = [] }); }
@@ -48,6 +50,10 @@ export class SubcontractProgramsComponent {
     this.programsService.getById(id).subscribe({ next: data => { this.selectedProgramId = id; this.program = data.program; this.items = data.items || []; }, error: () => alerts.basicAlert('Programa', 'No fue posible abrir el programa.', 'error') });
   }
   addItem() { this.items.push({ phase: 'SIN FASE', subphase: '', concept: '', unit: '', quantity: 0, unitPrice: 0 }); }
+  selectProvider(id: number) {
+    this.program.idProvider = id;
+    this.program.providerName = this.providers.find(x => Number(x.id) === Number(id))?.name || '';
+  }
   removeItem(index: number) { this.items.splice(index, 1); }
   get total() { return this.items.reduce((sum, row) => sum + (Number(row.quantity) || 0) * (Number(row.unitPrice) || 0), 0); }
   async onExcelSelected(event: Event) {
@@ -84,7 +90,7 @@ export class SubcontractProgramsComponent {
     }, error: () => { this.loading = false; alerts.basicAlert('Error', 'No se guardó el encabezado del programa.', 'error'); } });
   }
   downloadPdf() {
-    const provider = this.providers.find(x => x.id === Number(this.program.idProvider))?.name || 'SUBCONTRATISTA';
+    const provider = this.program.providerName || this.providers.find(x => x.id === Number(this.program.idProvider))?.name || 'SUBCONTRATISTA';
     const body: any[] = [[{ text: 'FASE', bold: true }, { text: 'CONCEPTO', bold: true }, { text: 'UNIDAD', bold: true }, { text: 'CANT.', bold: true }, { text: 'P.U.', bold: true }, { text: 'IMPORTE', bold: true }]];
     this.items.forEach(x => body.push([x.phase, x.concept, x.unit || '', this.number(x.quantity).toLocaleString('es-MX'), this.number(x.unitPrice).toLocaleString('es-MX', { style: 'currency', currency: 'MXN' }), (this.number(x.quantity) * this.number(x.unitPrice)).toLocaleString('es-MX', { style: 'currency', currency: 'MXN' })]));
     body.push([{ text: 'TOTAL', colSpan: 5, alignment: 'right', bold: true }, {}, {}, {}, {}, { text: this.total.toLocaleString('es-MX', { style: 'currency', currency: 'MXN' }), bold: true }]);
