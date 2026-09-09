@@ -76,7 +76,7 @@
       <div class="text-center py-5 text-muted" *ngIf="loading"><span class="spinner-border spinner-border-sm me-2"></span>Cargando programa...</div>
       <ag-grid-angular
         *ngIf="!loading && rows.length"
-        class="ag-theme-quartz estimate-grid"
+        class="ag-theme-quartz small-text-ag-grid estimate-grid"
         [rowData]="rows"
         [columnDefs]="columnDefs"
         [defaultColDef]="defaultColDef"
