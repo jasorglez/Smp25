@@ -2,6 +2,9 @@ export interface IDailyReport {
   id?:               number;
   idOt?:             number | null;
   idProject?:        number | null;
+  idProvider?:       number | null;
+  idSubcontractProgram?: number | null;
+  providerName?:      string | null;
   date?:             string;
   startTime?:        string;
   endTime?:          string;

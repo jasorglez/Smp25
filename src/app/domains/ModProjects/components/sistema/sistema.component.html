@@ -5,6 +5,15 @@
         <i class="bi bi-calendar-check me-1"></i>Reportes Diarios
       </small>
 
+      <select class="form-select form-select-sm w-auto" [(ngModel)]="selectedSubcontractProgramId"
+              (ngModelChange)="onSubcontractProgramChange()"
+              title="Programa del subcontratista" *ngIf="subcontractorContext.selected() && subcontractPrograms.length">
+        <option [ngValue]="0">Todos los programas</option>
+        <option *ngFor="let program of subcontractPrograms" [ngValue]="program.id">
+          {{ program.projectName }} — {{ program.name }}
+        </option>
+      </select>
+
       <button type="button" class="btn btn-success btn-sm" (click)="add()">
         <i class="bi bi-plus-lg"></i>
       </button>

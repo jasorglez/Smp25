@@ -26,6 +26,8 @@ import { BitacoraNotasComponent }     from './bitacora-notas.component';
 import { BitacoraWrapperComponent }   from './bitacora-wrapper.component';
 import { BitacoraAvanceComponent }    from './bitacora-avance.component';
 import { TrackingService } from 'app/services/tracking.service';
+import { SubcontractProgramService } from 'app/services/subcontract-program.service';
+import { SubcontractorContextService } from 'app/services/subcontractor-context.service';
 
 @Component({
   selector: 'app-sistema',
@@ -50,6 +52,8 @@ export class SistemaComponent implements OnInit, OnDestroy {
   private conventionsService = inject(ConventionsService);
   private projectsService    = inject(ProjectsService);
   private oilfieldService    = inject(OilfieldService);
+  private programsService    = inject(SubcontractProgramService);
+  readonly subcontractorContext = inject(SubcontractorContextService);
 
   private signalRSub!: Subscription;
   private reloadTimeout: any = null;
@@ -65,6 +69,8 @@ export class SistemaComponent implements OnInit, OnDestroy {
   private idRoot: number    = 0;
   private oilfields: any[]  = [];
   private projectOilfieldName: string = '';
+  public subcontractPrograms: any[] = [];
+  public selectedSubcontractProgramId = 0;
   
   externalFilterActive: boolean = false;
   
@@ -361,6 +367,18 @@ export class SistemaComponent implements OnInit, OnDestroy {
       this.idRoot = this.signalsService.getRootSelectedBySidebar()();
     });
 
+    effect(() => {
+      const provider = this.subcontractorContext.selected();
+      this.selectedSubcontractProgramId = 0;
+      this.subcontractPrograms = [];
+      if (provider?.id && this.idRoot) {
+        this.programsService.get(this.idRoot, provider.id, this.idProject || undefined).subscribe({
+          next: programs => this.subcontractPrograms = programs || [],
+          error: () => this.subcontractPrograms = []
+        });
+      }
+    });
+
     // Tiempo real: recargar cuando el bot guarda nota, foto o crea reporte nuevo
     const handler = (data: any) => {
       const projectId = data?.IdProject ?? data?.idProject;
@@ -480,7 +498,13 @@ export class SistemaComponent implements OnInit, OnDestroy {
     this.dailyReportService.getDailyReportsByProject(this.idProject).subscribe({
       next: (resp: any) => {
         // Agregar propiedades para master-detail
-        this.rowData = (resp.data || []).map((report: any) => ({
+        const providerId = this.subcontractorContext.selected()?.id;
+        const reports = (resp.data || []).filter((report: any) =>
+          !providerId || Number(report.idProvider) === Number(providerId)
+        ).filter((report: any) =>
+          !this.selectedSubcontractProgramId || Number(report.idSubcontractProgram) === Number(this.selectedSubcontractProgramId)
+        );
+        this.rowData = reports.map((report: any) => ({
           ...report,
           detailType: null,
           detailData: [],
@@ -492,6 +516,10 @@ export class SistemaComponent implements OnInit, OnDestroy {
       },
       error: () => alerts.basicAlert('Error', 'No se pudieron cargar los reportes diarios', 'error'),
     });
+  }
+
+  onSubcontractProgramChange(): void {
+    this.loadReports();
   }
 
   add(): void {
@@ -513,6 +541,9 @@ export class SistemaComponent implements OnInit, OnDestroy {
       type: 'CORTE',
       description: '',
       idConvention: this.signalsService.getConventionVigente()()?.id ?? null,
+      idProvider: this.subcontractorContext.selected()?.id ?? null,
+      idSubcontractProgram: this.selectedSubcontractProgramId || null,
+      providerName: this.subcontractorContext.selected()?.name || null,
       numReporte,
       condition: 'Dia Soleado',
       ubication: this.projectOilfieldName,
