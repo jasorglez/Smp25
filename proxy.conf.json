@@ -4,11 +4,5 @@
     "secure": true,
     "changeOrigin": true,
     "logLevel": "warn"
-  },
-  "/warehouse": {
-    "target": "https://endpoints.biapp.com.mx",
-    "secure": true,
-    "changeOrigin": true,
-    "logLevel": "warn"
   }
 }

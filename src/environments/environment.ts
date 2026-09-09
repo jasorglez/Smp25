@@ -30,9 +30,7 @@ export const environment = {
 
   urlBpi: 'https://endpoints.biapp.com.mx/bpi/api', // 5005
 
-  urlWarehouse: typeof window !== 'undefined' && window.location.hostname === 'localhost'
-    ? '/warehouse/api'
-    : 'https://endpoints.biapp.com.mx/warehouse/api', // 5007
+  urlWarehouse: 'https://endpoints.biapp.com.mx/warehouse/api', // 5007
   //urlWarehouse: 'http://localhost:5199/api',
 
   urlAdministration: 'https://endpoints.biapp.com.mx/administration/api', // 5006
