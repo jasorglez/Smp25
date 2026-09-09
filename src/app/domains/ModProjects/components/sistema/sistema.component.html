@@ -2,28 +2,28 @@
   <div class="col-12 mb-1">
     <div class="d-flex align-items-center gap-1">
       <small class="text-muted fw-bold me-1">
-        <i class="bi bi-calendar-check me-1"></i>Reportes Diarios x Subcontratista
+        <i class="bi bi-calendar-check me-1"></i>{{ subcontractMode ? 'Reportes Diarios x Subcontratista' : 'Reportes Diarios' }}
       </small>
-      <span class="badge text-bg-primary" *ngIf="subcontractorContext.selected() as provider">
+      <span class="badge text-bg-primary" *ngIf="subcontractMode && subcontractorContext.selected() as provider">
         Subcontratista seleccionado: {{ provider.name }}
       </span>
-      <span class="badge text-bg-warning" *ngIf="!subcontractorContext.selected()">
+      <span class="badge text-bg-warning" *ngIf="subcontractMode && !subcontractorContext.selected()">
         Selecciona primero un subcontratista
       </span>
 
       <select class="form-select form-select-sm w-auto" [(ngModel)]="selectedSubcontractProgramId"
               (ngModelChange)="onSubcontractProgramChange()"
-              title="Programa del subcontratista" *ngIf="subcontractorContext.selected() && subcontractPrograms.length">
+              title="Programa del subcontratista" *ngIf="subcontractMode && subcontractorContext.selected() && subcontractPrograms.length">
         <option [ngValue]="0">Todos los programas</option>
         <option *ngFor="let program of subcontractPrograms" [ngValue]="program.id">
           {{ program.projectName }} — {{ program.name }}
         </option>
       </select>
 
-      <button type="button" class="btn btn-success btn-sm" (click)="add()" [disabled]="!subcontractorContext.selected()">
+      <button type="button" class="btn btn-success btn-sm" (click)="add()" [disabled]="subcontractMode && !subcontractorContext.selected()">
         <i class="bi bi-plus-lg"></i>
       </button>
-      <button type="button" class="btn btn-primary btn-sm position-relative" (click)="saveChanges()" [disabled]="!subcontractorContext.selected()">
+      <button type="button" class="btn btn-primary btn-sm position-relative" (click)="saveChanges()" [disabled]="subcontractMode && !subcontractorContext.selected()">
         <i class="bi bi-floppy"></i>
         <span class="position-absolute top-0 start-100 translate-middle p-2 bg-danger border border-light rounded-circle"
               *ngIf="hasUnsavedChanges">
@@ -43,7 +43,7 @@
   </div>
 
   <div class="col-12">
-    <div class="alert alert-info py-1 mb-1" *ngIf="subcontractorContext.selected() as provider">
+    <div class="alert alert-info py-1 mb-1" *ngIf="subcontractMode && subcontractorContext.selected() as provider">
       Esta pantalla está ligada exclusivamente a <strong>{{ provider.name }}</strong>;
       no consulta ni captura información de otro proveedor.
     </div>

@@ -661,7 +661,7 @@ export const routes: Routes = [
           },
           {
             path: 'subcontract-reports',
-            loadComponent: () => import('./domains/ModProjects/components/subcontractors/subcontractor-workflow.component').then((s) => s.SubcontractorWorkflowComponent),
+            loadComponent: () => import('./domains/ModProjects/components/sistema/sistema.component').then((s) => s.SistemaComponent),
             data: { title: 'Reportes Diarios x Subcontratista', icon: 'bi-clipboard-data-fill' },
           },
           {

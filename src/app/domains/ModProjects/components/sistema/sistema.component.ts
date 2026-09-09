@@ -28,6 +28,7 @@ import { BitacoraAvanceComponent }    from './bitacora-avance.component';
 import { TrackingService } from 'app/services/tracking.service';
 import { SubcontractProgramService } from 'app/services/subcontract-program.service';
 import { SubcontractorContextService } from 'app/services/subcontractor-context.service';
+import { ActivatedRoute } from '@angular/router';
 
 @Component({
   selector: 'app-sistema',
@@ -52,6 +53,7 @@ export class SistemaComponent implements OnInit, OnDestroy {
   private conventionsService = inject(ConventionsService);
   private projectsService    = inject(ProjectsService);
   private oilfieldService    = inject(OilfieldService);
+  private route = inject(ActivatedRoute);
   private programsService    = inject(SubcontractProgramService);
   readonly subcontractorContext = inject(SubcontractorContextService);
 
@@ -71,6 +73,7 @@ export class SistemaComponent implements OnInit, OnDestroy {
   private projectOilfieldName: string = '';
   public subcontractPrograms: any[] = [];
   public selectedSubcontractProgramId = 0;
+  public readonly subcontractMode = this.route.snapshot.routeConfig?.path === 'subcontract-reports';
   
   externalFilterActive: boolean = false;
   
@@ -368,6 +371,7 @@ export class SistemaComponent implements OnInit, OnDestroy {
     });
 
     effect(() => {
+      if (!this.subcontractMode) return;
       const provider = this.subcontractorContext.selected();
       this.selectedSubcontractProgramId = 0;
       this.subcontractPrograms = [];
@@ -378,7 +382,7 @@ export class SistemaComponent implements OnInit, OnDestroy {
         });
       }
       // La pantalla siempre refleja exclusivamente al proveedor seleccionado.
-      if (this.idProject) this.loadReports();
+      if (this.subcontractMode && this.idProject) this.loadReports();
     });
 
     // Tiempo real: recargar cuando el bot guarda nota, foto o crea reporte nuevo
@@ -500,7 +504,7 @@ export class SistemaComponent implements OnInit, OnDestroy {
     this.dailyReportService.getDailyReportsByProject(this.idProject).subscribe({
       next: (resp: any) => {
         // Agregar propiedades para master-detail
-        const providerId = this.subcontractorContext.selected()?.id;
+        const providerId = this.subcontractMode ? this.subcontractorContext.selected()?.id : null;
         const reports = (resp.data || []).filter((report: any) =>
           !providerId || Number(report.idProvider) === Number(providerId)
         ).filter((report: any) =>
@@ -543,9 +547,9 @@ export class SistemaComponent implements OnInit, OnDestroy {
       type: 'CORTE',
       description: '',
       idConvention: this.signalsService.getConventionVigente()()?.id ?? null,
-      idProvider: this.subcontractorContext.selected()?.id ?? null,
-      idSubcontractProgram: this.selectedSubcontractProgramId || null,
-      providerName: this.subcontractorContext.selected()?.name || null,
+      idProvider: this.subcontractMode ? (this.subcontractorContext.selected()?.id ?? null) : null,
+      idSubcontractProgram: this.subcontractMode ? (this.selectedSubcontractProgramId || null) : null,
+      providerName: this.subcontractMode ? (this.subcontractorContext.selected()?.name || null) : null,
       numReporte,
       condition: 'Dia Soleado',
       ubication: this.projectOilfieldName,
