@@ -71,6 +71,8 @@ export class ContractsComponent {
   public contract: Icontract[] = [];
   branchs: any[] = [];
   providers: any[] = [];
+  executingBranches: any[] = [];
+  selectedExecutingBranchId: number | null = null;
   private gridApi!: GridApi<Icontract>;
 
   // Opciones para combos
@@ -177,6 +179,7 @@ export class ContractsComponent {
   };
 
   async activateDetailsTab() {
+    this.loadExecutingBranches();
     if (!this.isOpen) {
       await this.adjustGridSize();
       this.showDetailsTab = true;
@@ -195,6 +198,8 @@ export class ContractsComponent {
     this.gridHeight = '80vh';
     this.idContract = null;
     this.showDetailsTab = false;
+    this.executingBranches = [];
+    this.selectedExecutingBranchId = null;
     if (this.gridApi) {
       this.gridApi.setFilterModel(null);
       this.gridApi.onFilterChanged();
@@ -273,7 +278,7 @@ export class ContractsComponent {
     },
     {
       field: 'idBranch',
-      headerName: 'Sucursal',
+      headerName: 'Sucursal administrativa',
       editable: true,
       filter: true,
       minWidth: 100,
@@ -517,6 +522,49 @@ export class ContractsComponent {
         console.error('Error fetching contracts', error);
       }
     );
+  }
+
+  get executingBranchOptions(): any[] {
+    const relatedIds = new Set(this.executingBranches.map(item => item.idBranch));
+    return this.branchs
+      .filter(branch => !relatedIds.has(branch.id) && branch.id !== this.selectedRowData?.idBranch)
+      .sort((a, b) => (a.name || '').localeCompare(b.name || ''));
+  }
+
+  loadExecutingBranches() {
+    if (!this.idContract || typeof this.idContract !== 'number') return;
+    this.followprojectsService.getContractExecutingBranches(this.idContract).subscribe({
+      next: data => this.executingBranches = data || [],
+      error: error => {
+        console.error('Error obteniendo sucursales ejecutoras:', error);
+        this.executingBranches = [];
+      }
+    });
+  }
+
+  addExecutingBranch() {
+    if (!this.idContract || !this.selectedExecutingBranchId) return;
+    this.followprojectsService.addContractExecutingBranch(this.idContract, this.selectedExecutingBranchId).subscribe({
+      next: () => {
+        this.selectedExecutingBranchId = null;
+        this.loadExecutingBranches();
+      },
+      error: error => {
+        console.error('Error agregando sucursal ejecutora:', error);
+        alerts.basicAlert('Sucursales ejecutoras', 'No fue posible agregar la sucursal.', 'error');
+      }
+    });
+  }
+
+  removeExecutingBranch(item: any) {
+    if (!this.idContract) return;
+    this.followprojectsService.removeContractExecutingBranch(this.idContract, item.idBranch).subscribe({
+      next: () => this.loadExecutingBranches(),
+      error: error => {
+        console.error('Error removiendo sucursal ejecutora:', error);
+        alerts.basicAlert('Sucursales ejecutoras', 'No fue posible retirar la sucursal.', 'error');
+      }
+    });
   }
 
   mapContract(data: any[]): Icontract[] {

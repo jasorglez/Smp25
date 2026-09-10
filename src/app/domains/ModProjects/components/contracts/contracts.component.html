@@ -78,6 +78,32 @@
 <div class="row" *ngIf="idContract != null">
   <div class="col-12">
     <ul class="nav nav-tabs" id="myTab" role="tablist"></ul>
+    <div class="card shadow-sm mb-3">
+      <div class="card-header d-flex align-items-center justify-content-between">
+        <div>
+          <strong>Sucursales ejecutoras</strong>
+          <small class="text-muted ms-2">La sucursal del contrato se conserva como administrativa.</small>
+        </div>
+        <div class="d-flex gap-2">
+          <select class="form-select form-select-sm" style="min-width: 250px" [(ngModel)]="selectedExecutingBranchId">
+            <option [ngValue]="null">Seleccione sucursal</option>
+            <option *ngFor="let branch of executingBranchOptions" [ngValue]="branch.id">{{ branch.name }}</option>
+          </select>
+          <button class="btn btn-sm btn-success" (click)="addExecutingBranch()" [disabled]="!selectedExecutingBranchId">
+            <i class="bi bi-plus-lg"></i> Agregar
+          </button>
+        </div>
+      </div>
+      <div class="card-body py-2">
+        <div class="text-muted small" *ngIf="!executingBranches.length">Aún no hay sucursales ejecutoras asignadas.</div>
+        <div class="d-flex flex-wrap gap-2" *ngIf="executingBranches.length">
+          <span class="badge text-bg-primary d-flex align-items-center gap-2 p-2" *ngFor="let branch of executingBranches">
+            {{ branch.name }}
+            <button type="button" class="btn-close btn-close-white" aria-label="Quitar" (click)="removeExecutingBranch(branch)"></button>
+          </span>
+        </div>
+      </div>
+    </div>
     <app-contract-details></app-contract-details>
   </div>
 </div>

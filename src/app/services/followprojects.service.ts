@@ -55,4 +55,16 @@ export class FollowprojectsService {
   deleteContract(id: number): Observable<any> {
     return this.http.delete(`${environment.urlSmp}/Contract/${id}`, { headers: this.trackingService.getHeaders() });
   }
+
+  getContractExecutingBranches(idContract: number): Observable<any[]> {
+    return this.http.get<any[]>(`${environment.urlSmp}/Contract/${idContract}/executing-branches`, { headers: this.trackingService.getHeaders() });
+  }
+
+  addContractExecutingBranch(idContract: number, idBranch: number): Observable<any> {
+    return this.http.post(`${environment.urlSmp}/Contract/${idContract}/executing-branches`, { idBranch }, { headers: this.trackingService.getHeaders() });
+  }
+
+  removeContractExecutingBranch(idContract: number, idBranch: number): Observable<any> {
+    return this.http.delete(`${environment.urlSmp}/Contract/${idContract}/executing-branches/${idBranch}`, { headers: this.trackingService.getHeaders() });
+  }
 }
