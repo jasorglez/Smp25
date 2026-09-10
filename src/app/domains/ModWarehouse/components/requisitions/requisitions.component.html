@@ -17,6 +17,16 @@
 
   <!-- Botones y grid principal con master-detail -->
   <div class="row mb-3" *ngIf="idReference">
+    <div class="col-12 mb-2">
+      <div class="d-flex align-items-center gap-2">
+        <label class="fw-semibold">Almacén destino:</label>
+        <select class="form-select form-select-sm" style="max-width:280px" [(ngModel)]="selectedWarehouseId">
+          <option [ngValue]="null">Seleccione un almacén</option>
+          <option *ngFor="let warehouse of almacenes" [ngValue]="warehouse.id">{{ warehouse.name }}</option>
+        </select>
+        <small class="text-muted">Se asigna a las nuevas requisiciones.</small>
+      </div>
+    </div>
     <div class="col-auto">
       <div class="d-flex flex-column gap-1">
         <button type="button" class="btn btn-primary" (click)="addMasterRow()" title="Agregar nueva requisición">

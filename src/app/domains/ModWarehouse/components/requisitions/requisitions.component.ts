@@ -95,6 +95,7 @@ export class RequisitionsComponent implements CanComponentDeactivate {
   requisiciones: any[] = [];
   proveedores: any[] = [];
   almacenes: any[] = [];
+  selectedWarehouseId: number | null = null;
   departamentos: any[] = [];
   ubicaciones: any[] = [];
   monedas: any[] = [];
@@ -275,9 +276,16 @@ export class RequisitionsComponent implements CanComponentDeactivate {
     const email = this.trackingService.getEmail();
     if (!email) return;
     this.permitionsService.getPermisionswarehousexEmail(email).subscribe({
-      next: (data: any) => { this.almacenes = Array.isArray(data) ? data : []; this.masterGridApi?.refreshHeader(); },
+      next: (data: any) => {
+        this.almacenes = (Array.isArray(data) ? data : []).map((warehouse: any) => ({ id: warehouse.idAlmacen ?? warehouse.idWarehouse ?? warehouse.id, name: warehouse.nombreAlmacen ?? warehouse.nameWarehouse ?? warehouse.name ?? warehouse.description })).filter((warehouse: any) => warehouse.id != null);
+        this.masterGridApi?.refreshCells({ force: true });
+      },
       error: () => { this.almacenes = []; }
     });
+  }
+
+  warehouseName(id: number | null): string {
+    return this.almacenes.find((warehouse: any) => Number(warehouse.id) === Number(id))?.name || '';
   }
 
   get colMaster(): ColDef[] {
@@ -320,10 +328,8 @@ export class RequisitionsComponent implements CanComponentDeactivate {
       },
       {
         field: 'idWarehouse', headerName: 'Almacén destino', width: 190,
-        editable: (params) => !params.data?.locked,
-        cellEditor: 'agSelectCellEditor',
-        cellEditorParams: () => ({ values: this.almacenes.map((w: any) => w.idAlmacen) }),
-        valueFormatter: (params) => this.almacenes.find((w: any) => Number(w.idAlmacen) === Number(params.value))?.nombreAlmacen || params.value || ''
+        editable: false,
+        valueFormatter: (params) => this.warehouseName(params.value)
       },
       {
         field: 'folio',
@@ -683,7 +689,7 @@ export class RequisitionsComponent implements CanComponentDeactivate {
       idReference: this.idReference,
       dateCreate: new Date().toISOString(),
       idProveedor: 0,
-      idWarehouse: 0,
+      idWarehouse: this.selectedWarehouseId,
       idDepartament: 0,
       delivery: 'A',
       deliveryTime: '1 DÍA',

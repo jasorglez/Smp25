@@ -184,7 +184,10 @@ export class PurchaseOrderComponent implements CanComponentDeactivate {
     const email = this.trackingService.getEmail();
     if (!email) return;
     this.permitionsService.getPermisionswarehousexEmail(email).subscribe({
-      next: (data: any) => { this.almacenes = Array.isArray(data) ? data : []; this.masterGridApi?.refreshHeader(); },
+      next: (data: any) => {
+        this.almacenes = (Array.isArray(data) ? data : []).map((warehouse: any) => ({ id: warehouse.idAlmacen ?? warehouse.idWarehouse ?? warehouse.id, name: warehouse.nombreAlmacen ?? warehouse.nameWarehouse ?? warehouse.name ?? warehouse.description })).filter((warehouse: any) => warehouse.id != null);
+        this.masterGridApi?.refreshCells({ force: true });
+      },
       error: () => { this.almacenes = []; }
     });
   }
@@ -420,7 +423,7 @@ export class PurchaseOrderComponent implements CanComponentDeactivate {
       },
       {
         field: 'idWarehouse', headerName: 'Almacén destino', width: 190, editable: false,
-        valueFormatter: (params) => this.almacenes.find((w: any) => Number(w.idAlmacen) === Number(params.value))?.nombreAlmacen || params.value || ''
+        valueFormatter: (params) => this.almacenes.find((warehouse: any) => Number(warehouse.id) === Number(params.value))?.name || ''
       },
       {
         field: 'idProvider',
