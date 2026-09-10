@@ -7,11 +7,13 @@
                         <h5>Directorio de usuarios</h5>
                         <p>Seleccione un usuario para administrar sus accesos</p>
                     </div>
-                    <div class="d-flex justify-content-end gap-2">
-                    <button type="button" class="btn btn-primary user-action" (click)="addRow()" title="Agregar usuario">
+                </div>
+                <div class="row g-0 users-list-content">
+                    <nav class="col-auto d-flex flex-column align-items-center users-action-rail">
+                    <button type="button" class="btn btn-primary user-action" (click)="addRow()" title="Agregar usuario" aria-label="Agregar usuario">
                         <i class="bi bi-plus-lg"></i>
                     </button>
-                    <button type="button" class="btn btn-success user-action position-relative" (click)="saveChanges()" title="Guardar cambios">
+                    <button type="button" class="btn btn-success user-action position-relative" (click)="saveChanges()" title="Guardar cambios" aria-label="Guardar cambios">
                         <i class="bi bi-floppy"></i>
                         <span
                             class="position-absolute top-0 start-100 translate-middle p-2 bg-danger border border-light rounded-circle"
@@ -19,15 +21,14 @@
                             <span class="visually-hidden">Hay cambios sin guardar</span>
                         </span>
                     </button>
-                    <button type="button" class="btn btn-warning user-action" (click)="revert()" title="Deshacer cambios">
+                    <button type="button" class="btn btn-warning user-action" (click)="revert()" title="Deshacer cambios" aria-label="Deshacer cambios">
                         <i class="bi bi-arrow-clockwise"></i>
                     </button>
-                    <button type="button" class="btn btn-danger user-action" (click)="deleteUser()" title="Borrar usuario">
+                    <button type="button" class="btn btn-danger user-action" (click)="deleteUser()" title="Borrar usuario" aria-label="Borrar usuario">
                         <i class="bi bi-trash"></i>
                     </button>
-                    </div>
-                </div>
-                <div class="row users-list-grid">
+                    </nav>
+                <div class="col users-list-grid">
                     <ag-grid-angular style="width: 100%;"
                     [ngStyle]="{'height': gridHeight}"
                     class="ag-theme-quartz small-text-ag-grid"
@@ -47,6 +48,7 @@
                     [gridOptions]="gridOptions"
                     [stopEditingWhenCellsLoseFocus]="true">
                 </ag-grid-angular>
+                </div>
                 </div>
             </div>
         </div>
