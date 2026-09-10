@@ -34,6 +34,7 @@ import { PdfButtonCellRendererRequisitionsComponent } from './pdf-button-cell-re
 import { DetallesRequisicionesComponent } from './detalles-requisiciones.component';
 import { DetailCellRendererRequisitionReportComponent } from './detail-cell-renderer-requisition-report.component';
 import { ContractsService } from 'app/services/contracts.service';
+import { ProjectsService } from 'app/services/projects.service';
 
 interface Catalog {
   id: number;
@@ -69,6 +70,7 @@ export class RequisitionsComponent implements CanComponentDeactivate {
   private permitionsService = inject(PermitionsService);
   private trackingService = inject(TrackingService);
   private contractsService = inject(ContractsService);
+  private projectsService = inject(ProjectsService);
 
   // Variables compartidas
   masterNotSavedChanges: boolean = false;
@@ -294,7 +296,27 @@ export class RequisitionsComponent implements CanComponentDeactivate {
   }
 
   obtenerContratos(): void {
-    this.contractsService.getContracts(-this.idRoot).subscribe({ next: (data: any) => this.contracts = Array.isArray(data) ? data : [], error: () => this.contracts = [] });
+    // La requisición conserva el proyecto elegido en el sidebar. De él se obtiene
+    // el contrato, aun si la sucursal activa es "Todas las sucursales".
+    if (!this.projectOrBranch || !this.idProject) {
+      this.contracts = [];
+      return;
+    }
+    this.projectsService.getProjectsById(this.idProject).subscribe({
+      next: (project: any) => {
+        const idContract = Number(project?.idContrato ?? project?.idContract ?? 0);
+        if (!idContract) { this.contracts = []; return; }
+        this.contractsService.getContractById(idContract).subscribe({
+          next: (contract: any) => this.contracts = [{
+            idContrato: contract.id ?? idContract,
+            numberContract: contract.numberContract,
+            description: contract.description
+          }],
+          error: () => this.contracts = []
+        });
+      },
+      error: () => this.contracts = []
+    });
   }
 
   onContractChange(): void {
