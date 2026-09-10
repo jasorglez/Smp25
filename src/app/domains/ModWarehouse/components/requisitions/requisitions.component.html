@@ -20,7 +20,7 @@
     <div class="col-12 mb-2">
       <div class="d-flex align-items-center gap-2">
         <label class="fw-semibold">Almacén destino:</label>
-        <select class="form-select form-select-sm" style="max-width:280px" [(ngModel)]="selectedWarehouseId">
+        <select class="form-select form-select-sm" style="max-width:280px" [(ngModel)]="selectedWarehouseId" (ngModelChange)="onWarehouseChange()">
           <option [ngValue]="null">Seleccione un almacén</option>
           <option *ngFor="let warehouse of almacenes" [ngValue]="warehouse.id">{{ warehouse.name }}</option>
         </select>

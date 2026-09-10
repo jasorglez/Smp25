@@ -288,6 +288,13 @@ export class RequisitionsComponent implements CanComponentDeactivate {
     return this.almacenes.find((warehouse: any) => Number(warehouse.id) === Number(id))?.name || '';
   }
 
+  onWarehouseChange(): void {
+    if (!this.masterGridApi) return;
+    this.masterGridApi.setFilterModel(this.selectedWarehouseId == null
+      ? {}
+      : { idWarehouse: { filterType: 'number', type: 'equals', filter: Number(this.selectedWarehouseId) } });
+  }
+
   get colMaster(): ColDef[] {
     return [
       {
@@ -326,11 +333,7 @@ export class RequisitionsComponent implements CanComponentDeactivate {
           return params.value || this.signalsService.getBranchNameSelectedBySidebar()();
         }
       },
-      {
-        field: 'idWarehouse', headerName: 'Almacén destino', width: 190,
-        editable: false,
-        valueFormatter: (params) => this.warehouseName(params.value)
-      },
+      { field: 'idWarehouse', hide: true, filter: 'agNumberColumnFilter' },
       {
         field: 'folio',
         headerName: 'Número Doc',
@@ -669,6 +672,7 @@ export class RequisitionsComponent implements CanComponentDeactivate {
 
     // Configurar el context inicial
     this.updateDetailContext();
+    this.onWarehouseChange();
   }
 
   onMasterRowSelected(event: any) {
