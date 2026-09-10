@@ -9,6 +9,8 @@ import { InventarioWarehouseService } from 'app/services/inventario-warehouse.se
 import { PermitionsService } from 'app/services/permitions.service';
 import { TrackingService } from 'app/services/tracking.service';
 import { alerts } from 'app/helpers/alerts';
+import { MaterialsService } from 'app/services/materials.service';
+import { catchError, map, of, switchMap } from 'rxjs';
 
 @Component({
   selector: 'app-inventario',
@@ -84,6 +86,7 @@ export class InventarioComponent {
   private inventarioService  = inject(InventarioWarehouseService);
   private permitionsService  = inject(PermitionsService);
   private trackingService    = inject(TrackingService);
+  private materialsService   = inject(MaterialsService);
 
   rowData:           any[]   = [];
   warehouses:        any[]   = [];
@@ -199,8 +202,16 @@ export class InventarioComponent {
   loadData() {
     if (!this.idCompany) return;
     this.loading = true;
-    this.inventarioService.getInventario(this.idCompany).subscribe({
-      next: data => { this.rowData = Array.isArray(data) ? data : []; this.loading = false; },
+    this.inventarioService.getInventario(this.idCompany).pipe(
+      catchError(() => of([])),
+      switchMap((data: any[]) => this.materialsService.getMaterials2Fields(this.idCompany).pipe(catchError(() => of([])), map((materials: any[]) => ({ data: Array.isArray(data) ? data : [], materials: Array.isArray(materials) ? materials : [] }))))
+    ).subscribe({
+      next: result => {
+        const existing = new Map(result.data.map((r: any) => [+r.id, r]));
+        this.rowData = result.materials.map((m: any) => existing.get(+m.id) || { id: m.id, insumo: m.insumo || m.barcode || '', description: m.description || m.materialName || '', entrada: 0, salida: 0, existencia: 0, stockMin: m.stockmin || 0, stockMax: m.stockmax || 0, ventaMN: m.ventaMN || 0, total: 0, estadoStock: 'CRÍTICO' });
+        result.data.filter((r: any) => !existing.has(+r.id)).forEach((r: any) => this.rowData.push(r));
+        this.loading = false;
+      },
       error: ()   => { this.loading = false; },
     });
   }
