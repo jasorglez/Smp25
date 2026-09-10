@@ -5,7 +5,7 @@
       <h5>¿Con qué subcontratista deseas trabajar?</h5>
       <p class="text-muted mb-3">Selecciona primero el proveedor. Esta elección controla sus programas, reportes diarios y estimaciones.</p>
       <label class="form-label fw-bold">Proveedor / Subcontratista</label>
-      <select class="form-select form-select-lg" [ngModel]="selectedId" (ngModelChange)="selectProvider($event)">
+      <select class="form-select form-select-sm" [ngModel]="selectedId" (ngModelChange)="selectProvider($event)">
         <option [ngValue]="null">Selecciona un proveedor de ShoppingTD</option>
         <option *ngFor="let provider of providers" [ngValue]="provider.id">{{provider.name || provider.company}}</option>
       </select>
