@@ -121,8 +121,8 @@ export class InandoutStComponent implements OnInit {
       next: (data) => {
         this.warehouses = data;
         if (this.warehouses.length > 0) {
-          this.selectedWarehouse = this.warehouses[0];
-          this.loadEntries();
+          this.selectedWarehouse = null;
+          this.rowData = [];
         }
         this.refreshColumns();
       },
@@ -131,6 +131,12 @@ export class InandoutStComponent implements OnInit {
         alerts.basicAlert('Error', 'Error al cargar almacenes', 'error');
       }
     });
+  }
+
+  onWarehouseChange(id: number | string): void {
+    this.selectedWarehouse = this.warehouses.find(w => String(w.idAlmacen) === String(id)) || null;
+    this.rowData = [];
+    if (this.selectedWarehouse) this.loadEntries();
   }
 
   loadCatalogs() {

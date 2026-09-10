@@ -1,8 +1,16 @@
 <div class="container-fluid mt-2">
+  <div class="d-flex align-items-center gap-2 mb-2 px-1">
+    <label class="form-label mb-0 fw-semibold">Almacén:</label>
+    <select class="form-select form-select-sm" style="max-width:280px" [ngModel]="selectedWarehouse?.idAlmacen || ''" (ngModelChange)="onWarehouseChange($event)">
+      <option value="">Seleccione un almacén</option>
+      <option *ngFor="let warehouse of warehouses" [value]="warehouse.idAlmacen">{{ warehouse.nombreAlmacen || warehouse.name || warehouse.description }}</option>
+    </select>
+    <small class="text-muted" *ngIf="!warehouses.length">No tienes almacenes autorizados.</small>
+  </div>
   <div class="row">
     <!-- Left Panel: CRUD Buttons -->
     <nav class="col-auto d-flex flex-column align-items-start">
-      <button type="button" class="btn btn-primary me-1 mb-2" (click)="addEntry()">
+      <button type="button" class="btn btn-primary me-1 mb-2" (click)="addEntry()" [disabled]="!selectedWarehouse">
         <i class="bi bi-plus-lg" style="font-size: 1rem;"></i>
       </button>
 
