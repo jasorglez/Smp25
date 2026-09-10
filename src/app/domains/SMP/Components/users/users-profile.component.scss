@@ -1,0 +1,87 @@
+.profile-summary {
+  padding: 6px;
+  color: #334155;
+}
+
+.profile-avatar-wrap {
+  position: relative;
+  width: 78px;
+  height: 78px;
+  margin: 4px auto 11px;
+}
+
+.profile-avatar {
+  width: 78px;
+  height: 78px;
+  border: 3px solid #fff;
+  border-radius: 50%;
+  object-fit: cover;
+  box-shadow: 0 3px 12px rgba(15, 23, 42, 0.16);
+}
+
+.status-dot {
+  position: absolute;
+  right: 3px;
+  bottom: 4px;
+  width: 13px;
+  height: 13px;
+  border: 2px solid #fff;
+  border-radius: 50%;
+  background: #22c55e;
+}
+
+h6 {
+  margin: 0;
+  color: #17365d;
+  font-size: 0.84rem;
+  font-weight: 700;
+}
+
+.profile-email {
+  overflow: hidden;
+  margin: 3px 0 9px;
+  color: #64748b;
+  font-size: 0.67rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.profile-role {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 4px 8px;
+  border-radius: 999px;
+  color: #1e40af;
+  background: #dbeafe;
+  font-size: 0.67rem;
+}
+
+.profile-context {
+  margin-top: 13px;
+  padding-top: 10px;
+  border-top: 1px solid #e2e8f0;
+  text-align: left;
+}
+
+.profile-context div + div {
+  margin-top: 9px;
+}
+
+.profile-context small,
+.profile-context strong {
+  display: block;
+}
+
+.profile-context small {
+  color: #94a3b8;
+  font-size: 0.61rem;
+}
+
+.profile-context strong {
+  overflow: hidden;
+  margin-top: 1px;
+  color: #475569;
+  font-size: 0.68rem;
+  text-overflow: ellipsis;
+}

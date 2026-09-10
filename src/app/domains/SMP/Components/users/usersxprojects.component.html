@@ -1,23 +1,64 @@
-<div class="row p-3">
+<div class="row p-3 users-projects-page">
     <div [ngClass]="profile().emailUser() ? 'col-lg-10 col-md-9 col-sm-9 col-9' : 'col-12'">
-        <div class="mb-3">
-            <div class="form-check mb-2" *ngIf="idContract != null">
-                    <input type="checkbox" name="contractChecked" id="contractChecked" class="form-check-input"
-                        [checked]="contractChecked()()" (change)="onCheckboxChange($event)">
-                    <label for="contractChecked" class="form-check-label">Filtrar por contrato</label>
+        <section class="assignment-panel">
+            <header class="assignment-header">
+                <div class="assignment-title">
+                    <span class="title-icon"><i class="bi bi-diagram-3"></i></span>
+                    <div>
+                        <h5>Asignación de proyectos</h5>
+                        <p *ngIf="profile().nameUser()">Permisos de {{ profile().nameUser() }}</p>
+                    </div>
+                </div>
+                <div class="context-badges">
+                    <span class="context-badge">
+                        <i class="bi bi-building"></i>
+                        <span><small>Empresa</small>{{ companyName() }}</span>
+                    </span>
+                    <span class="context-badge" *ngIf="contractChecked()()">
+                        <i class="bi bi-file-earmark-text"></i>
+                        <span><small>Contrato</small>{{ contractName() }}</span>
+                    </span>
+                </div>
+            </header>
+
+            <div class="assignment-toolbar">
+                <div class="summary-list" aria-label="Resumen de proyectos">
+                    <span class="summary-item summary-available"><strong>{{ availableProjectCount }}</strong> disponibles</span>
+                    <span class="summary-item summary-assigned"><strong>{{ assignedProjectCount }}</strong> asignados</span>
+                    <span class="summary-item summary-pending"><strong>{{ pendingProjectCount }}</strong> pendientes</span>
+                </div>
+                <div class="toolbar-controls">
+                    <div class="form-check form-switch mb-0" *ngIf="idContract != null">
+                        <input type="checkbox" name="contractChecked" id="contractChecked" class="form-check-input"
+                            [checked]="contractChecked()()" (change)="onCheckboxChange($event)">
+                        <label for="contractChecked" class="form-check-label">Filtrar por contrato</label>
+                    </div>
+                    <div class="search-box">
+                        <i class="bi bi-search"></i>
+                        <input type="search" class="form-control form-control-sm" placeholder="Buscar proyecto"
+                            [ngModel]="searchTerm" (ngModelChange)="onQuickFilterChanged($event)"
+                            aria-label="Buscar proyecto">
+                        <button *ngIf="searchTerm" type="button" class="btn-clear-search" (click)="clearSearch()"
+                            title="Limpiar búsqueda" aria-label="Limpiar búsqueda">
+                            <i class="bi bi-x-lg"></i>
+                        </button>
+                    </div>
+                </div>
             </div>
-            <div class="row">
-                <nav class="col-auto d-flex flex-column align-items-start">
-                    <button type="button" class="btn btn-primary ms-1 me-1 mb-2" (click)="addRow()"
+
+            <div class="row g-0 assignment-content">
+                <nav class="col-auto d-flex flex-column align-items-center action-rail">
+                    <button type="button" class="btn btn-primary action-button" (click)="addRow()"
                         title="Agregar proyecto" aria-label="Agregar proyecto">
                         <i class="bi bi-plus-lg"></i>
                     </button>
-                    <button type="button" class="btn btn-info ms-1 me-1 mb-2" (click)="addAllProjects()"
-                        [disabled]="bulkAssigning" title="Agregar todos los proyectos disponibles"
+                    <button type="button" class="btn btn-info action-button" (click)="addAllProjects()"
+                        [disabled]="bulkAssigning || pendingProjectCount === 0" title="Agregar todos los proyectos pendientes"
                         aria-label="Agregar todos los proyectos disponibles">
                         <i class="bi" [ngClass]="bulkAssigning ? 'bi-hourglass-split' : 'bi-plus-square'"></i>
                     </button>
-                    <button type="button" class="btn btn-success ms-1 me-1 position-relative mb-2"
+                    <div class="action-divider"></div>
+                    <button type="button" class="btn btn-success action-button position-relative"
                         (click)="saveChanges()" [disabled]="!notSavedChanges" title="Guardar cambios"
                         aria-label="Guardar cambios">
                         <i class="bi bi-floppy"></i>
@@ -26,11 +67,11 @@
                             *ngIf="notSavedChanges"><span class="visually-hidden">Hay cambios sin guardar</span>
                         </span>
                     </button>
-                    <button type="button" class="btn btn-warning ms-1 me-1 mb-2" (click)="revert()"
+                    <button type="button" class="btn btn-warning action-button" (click)="revert()"
                         title="Deshacer cambios" aria-label="Deshacer cambios">
                         <i class="bi bi-arrow-clockwise"></i>
                     </button>
-                    <button type="button" class="btn btn-danger ms-1 me-1 mb-2" (click)="deleteEntry()"
+                    <button type="button" class="btn btn-danger action-button" (click)="deleteEntry()"
                         [disabled]="!selectedRowData" title="Borrar proyecto" aria-label="Borrar proyecto">
                         <i class="bi bi-trash"></i>
                     </button>
@@ -43,10 +84,10 @@
                     </ag-grid-angular>
                 </div>
             </div>
-        </div>
+        </section>
     </div>
     <div class="col-lg-2 col-md-3 col-sm-3 col-3" *ngIf="profile().emailUser()">
-        <div class="card text-center">
+        <div class="card text-center profile-card">
             <app-users-profile></app-users-profile>
         </div>
     </div>

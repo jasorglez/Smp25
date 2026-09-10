@@ -1,0 +1,198 @@
+.users-projects-page {
+  --panel-border: #e2e8f0;
+  --panel-muted: #64748b;
+  --panel-navy: #17365d;
+}
+
+.assignment-panel,
+.profile-card {
+  background: #fff;
+  border: 1px solid var(--panel-border);
+  border-radius: 12px;
+  box-shadow: 0 4px 16px rgba(15, 23, 42, 0.06);
+  overflow: hidden;
+}
+
+.assignment-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 16px 18px;
+  border-bottom: 1px solid var(--panel-border);
+  background: linear-gradient(135deg, #f8fafc 0%, #fff 72%);
+}
+
+.assignment-title {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.assignment-title h5,
+.assignment-title p {
+  margin: 0;
+}
+
+.assignment-title h5 {
+  color: var(--panel-navy);
+  font-weight: 700;
+}
+
+.assignment-title p {
+  margin-top: 2px;
+  color: var(--panel-muted);
+  font-size: 0.78rem;
+}
+
+.title-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 38px;
+  height: 38px;
+  border-radius: 10px;
+  color: #fff;
+  background: var(--panel-navy);
+  font-size: 1.05rem;
+}
+
+.context-badges,
+.summary-list,
+.toolbar-controls {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.context-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 150px;
+  padding: 7px 10px;
+  border: 1px solid #dbe4ee;
+  border-radius: 9px;
+  color: #334155;
+  background: #fff;
+  font-size: 0.76rem;
+}
+
+.context-badge i {
+  color: #2563eb;
+  font-size: 1rem;
+}
+
+.context-badge small {
+  display: block;
+  color: var(--panel-muted);
+  font-size: 0.65rem;
+  line-height: 1.1;
+}
+
+.assignment-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 14px;
+  border-bottom: 1px solid var(--panel-border);
+}
+
+.summary-item {
+  padding: 5px 9px;
+  border-radius: 999px;
+  font-size: 0.72rem;
+  white-space: nowrap;
+}
+
+.summary-item strong {
+  margin-right: 3px;
+}
+
+.summary-available { color: #1e40af; background: #dbeafe; }
+.summary-assigned { color: #166534; background: #dcfce7; }
+.summary-pending { color: #92400e; background: #fef3c7; }
+
+.form-switch {
+  font-size: 0.78rem;
+  color: #475569;
+}
+
+.search-box {
+  position: relative;
+  min-width: 220px;
+}
+
+.search-box > i {
+  position: absolute;
+  left: 10px;
+  top: 50%;
+  z-index: 2;
+  color: #94a3b8;
+  transform: translateY(-50%);
+}
+
+.search-box input {
+  padding-left: 31px;
+  padding-right: 30px;
+  border-color: #cbd5e1;
+}
+
+.btn-clear-search {
+  position: absolute;
+  right: 5px;
+  top: 50%;
+  border: 0;
+  color: #64748b;
+  background: transparent;
+  transform: translateY(-50%);
+}
+
+.action-rail {
+  width: 62px;
+  gap: 8px;
+  padding: 12px 10px;
+  border-right: 1px solid var(--panel-border);
+  background: #f8fafc;
+}
+
+.action-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 38px;
+  height: 34px;
+  padding: 0;
+  border-radius: 7px;
+}
+
+.action-divider {
+  width: 32px;
+  height: 1px;
+  margin: 2px 0;
+  background: #d7e0ea;
+}
+
+.grid-wrapper {
+  min-width: 0;
+  padding: 12px;
+}
+
+.profile-card {
+  padding: 12px;
+}
+
+@media (max-width: 900px) {
+  .assignment-header,
+  .assignment-toolbar {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .toolbar-controls,
+  .search-box {
+    width: 100%;
+  }
+}

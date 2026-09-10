@@ -1,0 +1,141 @@
+.users-module-shell {
+  overflow: hidden;
+  border: 1px solid #e2e8f0;
+  border-radius: 14px;
+  background: #f8fafc;
+  box-shadow: 0 8px 24px rgba(15, 23, 42, 0.07);
+}
+
+.users-module-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 18px 22px;
+  color: #fff;
+  background: linear-gradient(120deg, #17365d, #24558b);
+}
+
+.module-heading {
+  display: flex;
+  align-items: center;
+  gap: 13px;
+}
+
+.module-heading h4,
+.module-heading p {
+  margin: 0;
+}
+
+.module-heading h4 {
+  font-size: 1.1rem;
+  font-weight: 700;
+}
+
+.module-heading p {
+  margin-top: 2px;
+  color: rgba(255, 255, 255, 0.72);
+  font-size: 0.76rem;
+}
+
+.module-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 42px;
+  height: 42px;
+  border: 1px solid rgba(255, 255, 255, 0.24);
+  border-radius: 11px;
+  background: rgba(255, 255, 255, 0.12);
+  font-size: 1.2rem;
+}
+
+.selected-user {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  max-width: 310px;
+  padding: 7px 11px;
+  border: 1px solid rgba(255, 255, 255, 0.22);
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.selected-user img {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  object-fit: cover;
+}
+
+.selected-user span,
+.selected-user small,
+.selected-user strong {
+  display: block;
+  min-width: 0;
+}
+
+.selected-user small {
+  color: rgba(255, 255, 255, 0.7);
+  font-size: 0.63rem;
+}
+
+.selected-user strong {
+  overflow: hidden;
+  font-size: 0.78rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.users-navigation {
+  overflow-x: auto;
+  padding: 10px 14px 0;
+  border-bottom: 1px solid #e2e8f0;
+  background: #fff;
+}
+
+.users-tabs {
+  flex-wrap: nowrap;
+  gap: 4px;
+  min-width: max-content;
+}
+
+.users-tabs .nav-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 12px;
+  border-radius: 8px 8px 0 0;
+  color: #64748b;
+  font-size: 0.76rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.users-tabs .nav-link:hover {
+  color: #17365d;
+  background: #f1f5f9;
+}
+
+.users-tabs .nav-link.active {
+  color: #fff;
+  background: #17365d;
+  box-shadow: 0 3px 8px rgba(23, 54, 93, 0.2);
+}
+
+.users-tab-content {
+  min-height: 580px;
+  background: #f8fafc;
+}
+
+@media (max-width: 768px) {
+  .users-module-header {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .selected-user {
+    width: 100%;
+    max-width: none;
+  }
+}

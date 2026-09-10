@@ -1,7 +1,15 @@
-<div class="row p-3">
+<div class="row p-3 master-permissions-page">
   <div [ngClass]="profile().emailUser() != null ? 'col-lg-10 col-md-9 col-sm-9 col-9' : 'col-12'">
-    <div class="row">
-      <div class="col-lg-3 col-sm-6 col-12" *ngFor="let master of masterPermissions">
+    <section class="permissions-panel">
+      <header class="permissions-header">
+        <span class="permissions-icon"><i class="bi bi-shield-check"></i></span>
+        <div>
+          <h5>Permisos maestros</h5>
+          <p>Configure los accesos de {{ profile().nameUser() || profile().emailUser() }}</p>
+        </div>
+      </header>
+    <div class="row g-3 permissions-grid">
+      <div class="col-xl-3 col-lg-4 col-sm-6 col-12" *ngFor="let master of masterPermissions">
         <div class="accordion" id="permissionsAccordion{{ master.id }}">
           <div class="accordion-item">
             <h2 class="accordion-header" id="heading{{ master.id }}">
@@ -25,13 +33,13 @@
               <div class="accordion-body">
                 <!-- Botones masivos -->
                 <div class="d-flex gap-1 align-items-center mb-2 pb-2 border-bottom">
-                  <button class="btn btn-success btn-sm py-0 px-2" style="font-size:11px"
-                    (click)="enableAllInMaster(master)">
-                    ✅ Todos ON
+                  <button class="btn btn-outline-success btn-sm permission-action"
+                    (click)="enableAllInMaster(master)" title="Activar todos">
+                    <i class="bi bi-check2-all"></i> Activar todos
                   </button>
-                  <button class="btn btn-danger btn-sm py-0 px-2" style="font-size:11px"
-                    (click)="disableAllInMaster(master)">
-                    ❌ Todos OFF
+                  <button class="btn btn-outline-danger btn-sm permission-action"
+                    (click)="disableAllInMaster(master)" title="Desactivar todos">
+                    <i class="bi bi-x-circle"></i> Desactivar todos
                   </button>
                 </div>
                 <!-- Switches individuales -->
@@ -47,9 +55,10 @@
         </div>
       </div>
     </div>
+    </section>
   </div>
   <div class="col-lg-2 col-md-3 col-sm-3 col-3" *ngIf="profile().emailUser()">
-    <div class="card text-center">
+    <div class="card text-center profile-card">
       <app-users-profile></app-users-profile>
     </div>
   </div>

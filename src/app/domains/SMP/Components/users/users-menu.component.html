@@ -1,13 +1,31 @@
 <div class="container-fluid mt-3">
-  <div class="col-12">
-    <ul class="nav nav-pills">
+  <section class="users-module-shell">
+    <header class="users-module-header">
+      <div class="module-heading">
+        <span class="module-icon"><i class="bi bi-people"></i></span>
+        <div>
+          <h4>Administración de usuarios</h4>
+          <p>Usuarios, accesos y asignaciones operativas</p>
+        </div>
+      </div>
+      <div class="selected-user" *ngIf="profile().emailUser()">
+        <img *ngIf="profile().profilePicUser()" [src]="profile().profilePicUser()" alt="">
+        <span>
+          <small>Usuario seleccionado</small>
+          <strong>{{ profile().nameUser() || profile().emailUser() }}</strong>
+        </span>
+      </div>
+    </header>
+
+    <div class="users-navigation">
+    <ul class="nav nav-pills users-tabs">
       <li class="nav-item">
         <a
           class="nav-link"
           [class.active]="selectedTab === 'users'"
           data-toggle="tab"
           (click)="onUsersSelected('users')"
-          >Selección de usuarios</a
+          ><i class="bi bi-person-check"></i> Usuarios</a
         >
       </li>
 
@@ -26,7 +44,7 @@
           [class.active]="selectedTab === 'usersxmasterpermissions'"
           data-toggle="tab"
           (click)="onUsersSelected('usersxmasterpermissions')"
-          >Permisos maestros</a
+          ><i class="bi bi-shield-check"></i> Permisos maestros</a
         >
       </li>
 
@@ -45,7 +63,7 @@
           [class.active]="selectedTab === 'usersxroot'"
           data-toggle="tab"
           (click)="onUsersSelected('usersxroot')"
-          >Empresas</a
+          ><i class="bi bi-building"></i> Empresas</a
         >
       </li>
 
@@ -64,7 +82,7 @@
           [class.active]="selectedTab === 'usersxbranches'"
           data-toggle="tab"
           (click)="onUsersSelected('usersxbranches')"
-          >Sucursales</a
+          ><i class="bi bi-geo-alt"></i> Sucursales</a
         >
       </li>
 
@@ -84,7 +102,7 @@
           [class.active]="selectedTab === 'usersxcontracts'"
           data-toggle="tab"
           (click)="onUsersSelected('usersxcontracts')"
-          >Contratos</a
+          ><i class="bi bi-file-earmark-text"></i> Contratos</a
         >
       </li>  
 
@@ -104,14 +122,14 @@
           [class.active]="selectedTab === 'usersxprojects'"
           data-toggle="tab"
           (click)="onUsersSelected('usersxprojects')"
-          >Proyectos</a
+          ><i class="bi bi-diagram-3"></i> Proyectos</a
         >
       </li>
 
 
         <li class="nav-item" *ngIf="profile().emailUser()">
         <a class="nav-link" [class.active]="selectedTab === 'usersxwarehouses'" data-toggle="tab"
-          (click)="onUsersSelected('usersxwarehouses')">Almacenes</a>
+          (click)="onUsersSelected('usersxwarehouses')"><i class="bi bi-box-seam"></i> Almacenes</a>
       </li> 
 
       <!--  <li class="nav-item" *ngIf="profile().emailUser()">
@@ -124,6 +142,9 @@
           (click)="onUsersSelected('usersxcashregisters')">Cajas</a>
       </li> -->
     </ul>
+    </div>
+
+    <div class="users-tab-content">
 
     <div
       class="tab-pane"
@@ -202,5 +223,6 @@
     >
       <app-usersxcashregisters></app-usersxcashregisters>
     </div>
-  </div>
+    </div>
+  </section>
 </div>

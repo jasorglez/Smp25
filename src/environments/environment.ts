@@ -83,5 +83,5 @@ export const environment = {
   geminiApiKey: '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',
   gnewsApiKey: '94ccc596b4dfebc3f72683b6e81d81bc',
 
-  version: '4.99.85 (10 Septiembre 2026) barra lateral y alcance de proyectos por usuario',
+  version: '4.99.86 (10 Septiembre 2026) experiencia de asignación de proyectos por usuario',
 };

@@ -1,12 +1,17 @@
-<div class="row p-3">
+<div class="row p-3 users-list-page">
     <div class="col-12">
-        <div class="row mb-3">
+        <div class="row mb-3 users-grid-panel">
             <div class="col">
-                <div class="d-flex justify-content-end mb-2">
-                    <button type="button" class="btn btn-primary ms-1" (click)="addRow()">
+                <div class="users-list-header">
+                    <div>
+                        <h5>Directorio de usuarios</h5>
+                        <p>Seleccione un usuario para administrar sus accesos</p>
+                    </div>
+                    <div class="d-flex justify-content-end gap-2">
+                    <button type="button" class="btn btn-primary user-action" (click)="addRow()" title="Agregar usuario">
                         <i class="bi bi-plus-lg"></i>
                     </button>
-                    <button type="button" class="btn btn-success ms-1 position-relative" (click)="saveChanges()">
+                    <button type="button" class="btn btn-success user-action position-relative" (click)="saveChanges()" title="Guardar cambios">
                         <i class="bi bi-floppy"></i>
                         <span
                             class="position-absolute top-0 start-100 translate-middle p-2 bg-danger border border-light rounded-circle"
@@ -14,14 +19,15 @@
                             <span class="visually-hidden">Hay cambios sin guardar</span>
                         </span>
                     </button>
-                    <button type="button" class="btn btn-warning ms-1" (click)="revert()">
+                    <button type="button" class="btn btn-warning user-action" (click)="revert()" title="Deshacer cambios">
                         <i class="bi bi-arrow-clockwise"></i>
                     </button>
-                    <button type="button" class="btn btn-danger ms-1" (click)="deleteUser()">
+                    <button type="button" class="btn btn-danger user-action" (click)="deleteUser()" title="Borrar usuario">
                         <i class="bi bi-trash"></i>
                     </button>
+                    </div>
                 </div>
-                <div class="row">
+                <div class="row users-list-grid">
                     <ag-grid-angular style="width: 100%;"
                     [ngStyle]="{'height': gridHeight}"
                     class="ag-theme-quartz small-text-ag-grid"

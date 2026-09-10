@@ -15,7 +15,8 @@ import { TrackingService } from 'app/services/tracking.service';
   selector: 'app-usersxroot',
   standalone: true,
   imports: [CommonModule, FormsModule, AgGridModule, UsersProfileComponent],
-  templateUrl: './usersxpermissions.component.html'
+  templateUrl: './usersxpermissions.component.html',
+  styleUrl: './usersxpermissions.component.scss'
 })
 export class UsersxrootComponent {
 

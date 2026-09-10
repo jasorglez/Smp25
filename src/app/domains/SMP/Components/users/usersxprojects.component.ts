@@ -15,7 +15,8 @@ import { TrackingService } from 'app/services/tracking.service';
   selector: 'app-usersxprojects',
   standalone: true,
   imports: [CommonModule, FormsModule, AgGridModule, UsersProfileComponent],
-  templateUrl: './usersxprojects.component.html'
+  templateUrl: './usersxprojects.component.html',
+  styleUrl: './usersxprojects.component.scss'
 })
 export class UsersxprojectsComponent {
 
@@ -53,6 +54,32 @@ export class UsersxprojectsComponent {
   private tempIdCounter: number = 0;
   private permissionType: string = 'project';
   bulkAssigning: boolean = false;
+  searchTerm: string = '';
+
+  companyName = computed(() => this.signalsService.nameCompany() || 'Empresa seleccionada');
+  contractName = computed(() => this.signalsService.nameContract() || 'Contrato seleccionado');
+
+  get availableProjectCount(): number {
+    return Object.keys(this.projects).length;
+  }
+
+  get assignedProjectCount(): number {
+    return new Set(
+      this.rowData
+        .map(row => Number(row.idProject ?? row.idPermission))
+        .filter(id => id > 0)
+    ).size;
+  }
+
+  get pendingProjectCount(): number {
+    const availableIds = new Set(Object.keys(this.projects).map(Number));
+    const assignedAvailable = new Set(
+      this.rowData
+        .map(row => Number(row.idProject ?? row.idPermission))
+        .filter(id => availableIds.has(id))
+    );
+    return Math.max(availableIds.size - assignedAvailable.size, 0);
+  }
 
   constructor() {
     // Effect para detectar cambios en el usuario seleccionado
@@ -266,13 +293,37 @@ public gridOptions: any = {
 
   onGridReady(params: GridReadyEvent) {
     this.gridApi = params.api;
+    this.gridApi.setGridOption('quickFilterText', this.searchTerm);
+  }
+
+  onQuickFilterChanged(value: string): void {
+    this.searchTerm = value ?? '';
+    this.gridApi?.setGridOption('quickFilterText', this.searchTerm);
+  }
+
+  clearSearch(): void {
+    this.onQuickFilterChanged('');
   }
 
   addRow() {
+    const currentIdUser = this.profile().idUser();
+    if (!currentIdUser) {
+      alerts.basicAlert('Proyectos', 'Seleccione un usuario antes de agregar proyectos.', 'info');
+      return;
+    }
+    if (this.availableProjectCount === 0) {
+      alerts.basicAlert('Proyectos', 'No hay proyectos disponibles en la selección actual.', 'info');
+      return;
+    }
+    if (this.rowData.some(row => row.__isNew && !Number(row.idProject))) {
+      alerts.basicAlert('Proyectos', 'Primero seleccione el proyecto de la fila nueva.', 'info');
+      return;
+    }
+
     const tempId = `temp_${this.tempIdCounter++}`;
     const newItem = {
       id: tempId,
-      idUser: this.idUser,
+      idUser: currentIdUser,
       idProject: 0,
       __isNew: true,
     };
@@ -296,6 +347,11 @@ public gridOptions: any = {
 
   async addAllProjects() {
     if (this.bulkAssigning) {
+      return;
+    }
+
+    if (this.notSavedChanges) {
+      alerts.basicAlert('Proyectos', 'Guarde o deshaga los cambios pendientes antes de agregar todos.', 'info');
       return;
     }
 
@@ -361,16 +417,28 @@ public gridOptions: any = {
   }
 
   async saveChanges() {
-/*     const isValid = this.rowData.every((item) => item.idPermission);
+    const changedRows = this.rowData.filter(row => row.__isNew || row.__modified);
+    if (changedRows.length === 0) {
+      return;
+    }
 
-    if (!isValid) {
+    const hasEmptyProject = changedRows.some(row => !Number(row.idProject ?? row.idPermission));
+    if (hasEmptyProject) {
       alerts.basicAlert(
-        'Añadir entrada',
+        'Proyectos',
         'Debe seleccionar un proyecto antes de guardar.',
         'error'
       );
       return;
-    } */
+    }
+
+    const projectIds = this.rowData
+      .map(row => Number(row.idProject ?? row.idPermission))
+      .filter(id => id > 0);
+    if (new Set(projectIds).size !== projectIds.length) {
+      alerts.basicAlert('Proyectos', 'No puede asignar dos veces el mismo proyecto al usuario.', 'error');
+      return;
+    }
 
     const newRows = this.rowData.filter((row) => row.__isNew);
     const modifiedRows = this.rowData.filter(
@@ -425,6 +493,15 @@ public gridOptions: any = {
 
     const selectedData = selectedNodes[0].data;
     const id = selectedData.id;
+
+    if (selectedData.__isNew || String(id).startsWith('temp_')) {
+      this.rowData = this.rowData.filter(row => row !== selectedData);
+      this.newlyAddedRows = this.newlyAddedRows.filter(rowId => rowId !== id);
+      this.notSavedChanges = this.rowData.some(row => row.__isNew || row.__modified);
+      this.updateGridData(this.rowData);
+      return;
+    }
+
     selectedData.active = 0;
     
     this.usersxprojectsService.deleteUserxPermission(id).pipe(

@@ -7,7 +7,8 @@ import { UsersxpermissionsService } from 'app/services/usersxpermissions.service
   selector: 'app-users-profile',
   standalone: true,
   imports: [CommonModule],
-  templateUrl: './users-profile.component.html'
+  templateUrl: './users-profile.component.html',
+  styleUrl: './users-profile.component.scss'
 })
 export class UsersProfileComponent {
 

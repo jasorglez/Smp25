@@ -1,25 +1,34 @@
-<div class="row p-3">
+<div class="row p-3 user-assignment-page">
     <div [ngClass]="profile().emailUser() ? 'col-lg-10 col-md-9 col-sm-9 col-9' : 'col-12'">
-        <div class="row mb-3">
-            <nav class="col-auto d-flex flex-column align-items-start">
-                <button type="button" class="btn btn-primary ms-1 me-1 mb-2" (click)="addRow()">
+        <section class="user-assignment-panel">
+            <header class="user-assignment-header">
+                <span class="assignment-icon"><i class="bi bi-person-gear"></i></span>
+                <div>
+                    <h5>Asignación de {{ columnDefs[1]?.headerName || 'permisos' }}</h5>
+                    <p>{{ profile().nameUser() || profile().emailUser() }}</p>
+                </div>
+                <span class="assignment-count">{{ rowData?.length || 0 }} asignados</span>
+            </header>
+            <div class="row g-0">
+            <nav class="col-auto d-flex flex-column align-items-center action-rail">
+                <button type="button" class="btn btn-primary action-button" (click)="addRow()" title="Agregar" aria-label="Agregar">
                     <i class="bi bi-plus-lg"></i>
                 </button>
-                <button type="button" class="btn btn-success ms-1 me-1 position-relative mb-2" (click)="saveChanges()">
+                <button type="button" class="btn btn-success action-button position-relative" (click)="saveChanges()" title="Guardar" aria-label="Guardar">
                     <i class="bi bi-floppy"></i>
                     <span
                         class="position-absolute top-0 start-100 translate-middle p-2 bg-danger border border-light rounded-circle"
                         *ngIf="notSavedChanges"><span class="visually-hidden">Hay cambios sin guardar</span>
                     </span>
                 </button>
-                <button type="button" class="btn btn-warning ms-1 me-1 mb-2" (click)="revert()">
+                <button type="button" class="btn btn-warning action-button" (click)="revert()" title="Deshacer" aria-label="Deshacer">
                     <i class="bi bi-arrow-clockwise"></i>
                 </button>
-                <button type="button" class="btn btn-danger ms-1 me-1 mb-2" (click)="deleteEntry()">
+                <button type="button" class="btn btn-danger action-button" (click)="deleteEntry()" [disabled]="!selectedRowData" title="Borrar" aria-label="Borrar">
                     <i class="bi bi-trash"></i>
                 </button>
             </nav>
-            <div class="col">
+            <div class="col grid-area">
                 <div class="row">
                     <ag-grid-angular style="width: 100%; height: 500px" 
                        class="ag-theme-quartz small-text-ag-grid" 
@@ -35,9 +44,10 @@
                 </div>
             </div>
         </div>
+        </section>
     </div>
     <div class="col-lg-2 col-md-3 col-sm-3 col-3" *ngIf="profile().emailUser()">
-        <div class="card text-center">
+        <div class="card text-center profile-card">
             <app-users-profile></app-users-profile>
         </div>
     </div>

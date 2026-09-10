@@ -1,37 +1,26 @@
-<div class="row">
-    <div class="col mb-2">
-        <img [src]="profile.profilePicUser()" alt="Imagen de perfil de {{profile.nameUser()}}"
-            class="img-fluid rounded" style="width:100%;">
+<div class="profile-summary">
+    <div class="profile-avatar-wrap">
+        <img [src]="profile.profilePicUser()" alt="Imagen de perfil de {{ profile.nameUser() }}"
+            class="profile-avatar">
+        <span class="status-dot" title="Usuario seleccionado"></span>
     </div>
-</div>
-<div class="row">
-    <div class="col">
-        <p><strong>Nombre</strong></p>
-        <p>{{profile.nameUser()}}</p>
-    </div>
-</div>
-<div class="row">
-    <div class="col">
-        <p><strong>Correo electrónico</strong></p>
-        <p>{{profile.emailUser()}}</p>
-    </div>
-</div>
 
-<div class="row">
-    <div class="col">
-        <p><strong>Rol</strong></p>
-        <p>{{profile.organizationUser()}}</p>
+    <h6>{{ profile.nameUser() }}</h6>
+    <p class="profile-email" [title]="profile.emailUser()">{{ profile.emailUser() }}</p>
+
+    <div class="profile-role" *ngIf="profile.organizationUser()">
+        <i class="bi bi-person-badge"></i>
+        <span>{{ profile.organizationUser() }}</span>
     </div>
-</div>
-<div class="row" *ngIf="nameCompany != null">
-    <div class="col">
-        <p><strong>Proveedor seleccionado</strong></p>
-        <p>{{nameCompany}}</p>
-    </div>
-</div>
-<div class="row" *ngIf="nameContract != null">
-    <div class="col">
-        <p><strong>Contrato seleccionado</strong></p>
-        <p>{{nameContract}}</p>
+
+    <div class="profile-context" *ngIf="nameCompany != null || nameContract != null">
+        <div *ngIf="nameCompany != null">
+            <small>Empresa seleccionada</small>
+            <strong>{{ nameCompany }}</strong>
+        </div>
+        <div *ngIf="nameContract != null">
+            <small>Contrato seleccionado</small>
+            <strong>{{ nameContract }}</strong>
+        </div>
     </div>
 </div>

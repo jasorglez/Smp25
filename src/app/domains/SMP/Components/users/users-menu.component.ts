@@ -23,7 +23,8 @@ import { AuthService } from 'app/services/auth.service';
     UsersxcompanysComponent, UsersxprojectsComponent, UsersxcontractsComponent,
     UsersxrootComponent, UsersxwarehousesComponent, UsersxbranchesComponent,
     UsersxMasterPermissions2Component, UsersXStoresComponent, UsersXCashRegistersComponent],
-  templateUrl: './users-menu.component.html'
+  templateUrl: './users-menu.component.html',
+  styleUrl: './users-menu.component.scss'
 })
 export class UsersMenuComponent {
   private trackingService = inject(TrackingService);

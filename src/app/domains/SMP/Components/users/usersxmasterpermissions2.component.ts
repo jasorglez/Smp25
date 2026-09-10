@@ -14,6 +14,7 @@ import { TrackingService } from 'app/services/tracking.service';
   standalone: true,
   imports: [CommonModule, FormsModule, AgGridModule, UsersProfileComponent],
   templateUrl: './usersxmasterpermissions2.component.html',
+  styleUrl: './usersxmasterpermissions2.component.scss',
   styles: [
     `.small-text {
       font-size: 12px;

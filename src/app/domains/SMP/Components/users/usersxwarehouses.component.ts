@@ -15,7 +15,8 @@ import { TrackingService } from 'app/services/tracking.service';
   selector: 'app-usersxwarehouses',
   standalone: true,
   imports: [CommonModule, FormsModule, AgGridModule, UsersProfileComponent],
-  templateUrl: './usersxpermissions.component.html'
+  templateUrl: './usersxpermissions.component.html',
+  styleUrl: './usersxpermissions.component.scss'
 })
 export class UsersxwarehousesComponent {
 
