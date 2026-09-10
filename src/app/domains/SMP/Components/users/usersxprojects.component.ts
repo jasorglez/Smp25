@@ -57,8 +57,10 @@ export class UsersxprojectsComponent {
     // Effect para detectar cambios en el usuario seleccionado
     effect(() => {
       const selectedUserId = this.profile().idUser();
+      this.signalsService.idContract();
+      this.signalsService.getRootSelectedBySidebar()();
       
-      if (selectedUserId && selectedUserId !== this.idUser) {
+      if (selectedUserId) {
         this.idUser = selectedUserId;
         this.filteredData();
       } else if (!selectedUserId) {
@@ -170,9 +172,14 @@ export class UsersxprojectsComponent {
       });
     }
     else {
-      this.projectsService.getProjects().subscribe((data: any[]) => {
+      const idCompany = Number(this.signalsService.getRootSelectedBySidebar()() || 0);
+      if (!idCompany) {
+        this.projects = {};
+        return;
+      }
+      this.projectsService.getProjectListByCompany(idCompany).subscribe((data: any[]) => {
         this.projects = data.reduce((acc, dep) => {
-          acc[dep.id] = dep.idConsecutivo + ' - ' + dep.name;
+          acc[dep.id] = (dep.idConsecutivo ? dep.idConsecutivo + ' - ' : '') + dep.name;
           return acc;
         }, {});
       }, error => {
@@ -288,6 +295,36 @@ public gridOptions: any = {
     this.trackingService.addLog(this.trackingService.getnameComp(),'Add Registro en Usuarios por Proyecto', 'Menu Administracion Usuarios por Proyecto',  this.trackingService.getEmail());
     this.newlyAddedRows.push(tempId);
     this.notSavedChanges = true;
+  }
+
+  async addAllProjects() {
+    const currentIdUser = this.profile().idUser();
+    const projectIds = Object.keys(this.projects).map(Number);
+    if (!currentIdUser || projectIds.length === 0) {
+      alerts.basicAlert('Proyectos', 'No hay proyectos disponibles para agregar.', 'info');
+      return;
+    }
+
+    const assigned = new Set((this.rowData || []).map(row => Number(row.idProject)));
+    const pending = projectIds.filter(id => !assigned.has(id));
+    if (pending.length === 0) {
+      alerts.basicAlert('Proyectos', 'El usuario ya tiene asignados todos los proyectos disponibles.', 'info');
+      return;
+    }
+
+    try {
+      await lastValueFrom(forkJoin(pending.map(idProject => this.usersxprojectsService.addUserxPermission({
+        idUser: currentIdUser,
+        idPermission: idProject,
+        type: this.permissionType,
+        active: 1
+      }))));
+      alerts.basicAlert('Proyectos', `${pending.length} proyecto(s) asignado(s).`, 'success');
+      this.filteredData();
+    } catch (error) {
+      console.error('Error agregando todos los proyectos:', error);
+      alerts.basicAlert('Proyectos', 'No fue posible asignar todos los proyectos.', 'error');
+    }
   }
 
   async saveChanges() {
