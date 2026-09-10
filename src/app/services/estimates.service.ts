@@ -54,6 +54,12 @@ export class EstimatesService {
     });
   }
 
+  getSubcontractCross(idRoot: number, idProvider: number): Observable<any> {
+    return this.http.get<any>(`${environment.urlSmp}/Estimates/subcontract-cross`, {
+      params: { idRoot, idProvider }, headers: this.trackingService.getHeaders()
+    });
+  }
+
   saveSubcontractEstimate(data: any): Observable<any> {
     return this.http.post<any>(`${environment.urlSmp}/Estimates/subcontract`, data, { headers: this.trackingService.getHeaders() });
   }

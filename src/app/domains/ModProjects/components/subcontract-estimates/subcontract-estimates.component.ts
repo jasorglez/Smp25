@@ -51,6 +51,9 @@ export class SubcontractEstimatesComponent implements OnDestroy {
   dateEnd = this.isoDate(new Date());
   program: any = null;
   providerImage = '';
+  showCrossReport = false;
+  crossRows: any[] = [];
+  crossColumnDefs: ColDef[] = [];
   showPdfPreview = false;
   pdfPreviewUrl: SafeResourceUrl | null = null;
   private pdfObjectUrl = '';
@@ -552,6 +555,36 @@ export class SubcontractEstimatesComponent implements OnDestroy {
     XLSX.utils.book_append_sheet(workbook, cover, `CARÁTULA ${tower}`.substring(0, 31));
     XLSX.utils.book_append_sheet(workbook, detail, `EST. ${tower}`.substring(0, 31));
     XLSX.writeFile(workbook, `Estimacion_${provider.name}_${tower}_${this.estimateNumber}.xlsx`);
+  }
+
+  openCrossReport() {
+    const providerId = Number(this.context.selected()?.id) || 0;
+    if (!providerId) return;
+    this.estimatesService.getSubcontractCross(this.idRoot, providerId).subscribe({
+      next: (data: any) => {
+        const estimates = data?.estimates || [];
+        this.crossColumnDefs = [
+          { field: 'program', headerName: 'Programa', minWidth: 170, pinned: 'left' },
+          { field: 'phase', headerName: 'Fase', minWidth: 130 },
+          { field: 'concept', headerName: 'Concepto', minWidth: 260, flex: 1 },
+          { field: 'unit', headerName: 'Unidad', width: 90 },
+          { field: 'contractQuantity', headerName: 'Contratado', width: 110, type: 'numericColumn' },
+          ...estimates.map((e: any) => ({ field: `est_${e.id}`, headerName: `Est. ${e.number}`, width: 105, type: 'numericColumn' })),
+          { field: 'accumulated', headerName: 'Acumulado', width: 110, type: 'numericColumn' },
+          { field: 'balance', headerName: 'Saldo', width: 110, type: 'numericColumn' },
+        ];
+        this.crossRows = (data?.rows || []).map((row: any) => {
+          const values: any = { program: (data?.programs || []).find((p: any) => p.id === row.programId)?.name || `Programa #${row.programId}`, phase: row.phase, concept: row.concept, unit: row.unit, contractQuantity: Number(row.contractQuantity || 0) };
+          let accumulated = 0;
+          for (const e of row.estimates || []) { values[`est_${e.id}`] = Number(e.quantity || 0); accumulated += values[`est_${e.id}`]; }
+          values.accumulated = accumulated;
+          values.balance = Math.max(0, values.contractQuantity - accumulated);
+          return values;
+        });
+        this.showCrossReport = true;
+      },
+      error: () => alerts.basicAlert('Reporte cruzado', 'No fue posible cargar las estimaciones del proveedor.', 'error')
+    });
   }
 
   private applyFormats(sheet: XLSX.WorkSheet, cells: string[]) {
