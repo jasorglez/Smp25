@@ -33,8 +33,6 @@ import { DeleteButtonCellRendererComponent } from './delete-button-cell-renderer
 import { PdfButtonCellRendererRequisitionsComponent } from './pdf-button-cell-renderer-requisitions.component';
 import { DetallesRequisicionesComponent } from './detalles-requisiciones.component';
 import { DetailCellRendererRequisitionReportComponent } from './detail-cell-renderer-requisition-report.component';
-import { ContractsService } from 'app/services/contracts.service';
-import { ProjectsService } from 'app/services/projects.service';
 
 interface Catalog {
   id: number;
@@ -69,8 +67,6 @@ export class RequisitionsComponent implements CanComponentDeactivate {
   private prefixSetupService = inject(PrefixSetupService);
   private permitionsService = inject(PermitionsService);
   private trackingService = inject(TrackingService);
-  private contractsService = inject(ContractsService);
-  private projectsService = inject(ProjectsService);
 
   // Variables compartidas
   masterNotSavedChanges: boolean = false;
@@ -102,8 +98,6 @@ export class RequisitionsComponent implements CanComponentDeactivate {
   selectedWarehouseId: number | null = null;
   selectedContractId: number | null = null;
   selectedExecutionBranchId: number | null = null;
-  contracts: any[] = [];
-  executionBranches: any[] = [];
   private permittedWarehouseIds = new Set<number>();
   departamentos: any[] = [];
   ubicaciones: any[] = [];
@@ -131,6 +125,7 @@ export class RequisitionsComponent implements CanComponentDeactivate {
       const currentRoot = this.signalsService.getRootSelectedBySidebar()();
       const currentProject = this.signalsService.getProjectSelectedBySidebar()();
       const currentBranch = this.signalsService.getBranchSelectedBySidebar()();
+      const currentContract = this.signalsService.getContractSelectedBySidebar()();
       const currentRequisition = this.signalsService.getIdRequisition()();
 
       // Si cambió el root, limpiar datos
@@ -153,6 +148,8 @@ export class RequisitionsComponent implements CanComponentDeactivate {
       this.idRoot = currentRoot;
       this.idProject = currentProject;
       this.idBranch = currentBranch;
+      this.selectedContractId = Number(currentContract) || null;
+      this.selectedExecutionBranchId = Number(currentBranch) > 0 ? Number(currentBranch) : null;
       this.idRequisition = currentRequisition;
 
       // Actualizar el estado procesado después de la lógica
@@ -173,7 +170,6 @@ export class RequisitionsComponent implements CanComponentDeactivate {
             this.obtenerTipoPago();
             this.obtenerProductos();
             this.obtenerAlmacenes();
-            this.obtenerContratos();
           }
 
           // Cargar detalles independientemente si hay requisición
@@ -289,45 +285,14 @@ export class RequisitionsComponent implements CanComponentDeactivate {
       next: (data: any) => {
         this.permittedWarehouseIds = new Set((Array.isArray(data) ? data : []).map((warehouse: any) => Number(warehouse.idAlmacen ?? warehouse.idWarehouse ?? warehouse.id)));
         this.almacenes = (Array.isArray(data) ? data : []).map((warehouse: any) => ({ id: warehouse.idAlmacen ?? warehouse.idWarehouse ?? warehouse.id, name: warehouse.nombreAlmacen ?? warehouse.nameWarehouse ?? warehouse.name ?? warehouse.description })).filter((warehouse: any) => warehouse.id != null);
+        if (this.selectedExecutionBranchId) this.loadExecutionBranchWarehouses();
         this.masterGridApi?.refreshCells({ force: true });
       },
       error: () => { this.almacenes = []; }
     });
   }
 
-  obtenerContratos(): void {
-    // La requisición conserva el proyecto elegido en el sidebar. De él se obtiene
-    // el contrato, aun si la sucursal activa es "Todas las sucursales".
-    if (!this.projectOrBranch || !this.idProject) {
-      this.contracts = [];
-      return;
-    }
-    this.projectsService.getProjectsById(this.idProject).subscribe({
-      next: (project: any) => {
-        const idContract = Number(project?.idContrato ?? project?.idContract ?? 0);
-        if (!idContract) { this.contracts = []; return; }
-        this.contractsService.getContractById(idContract).subscribe({
-          next: (contract: any) => this.contracts = [{
-            idContrato: contract.id ?? idContract,
-            numberContract: contract.numberContract,
-            description: contract.description
-          }],
-          error: () => this.contracts = []
-        });
-      },
-      error: () => this.contracts = []
-    });
-  }
-
-  onContractChange(): void {
-    this.selectedExecutionBranchId = null; this.selectedWarehouseId = null; this.executionBranches = [];
-    if (!this.selectedContractId) return;
-    this.contractsService.getExecutingBranches(this.selectedContractId).subscribe({ next: data => this.executionBranches = data || [], error: () => this.executionBranches = [] });
-  }
-
-  onExecutionBranchChange(): void {
-    this.selectedWarehouseId = null;
-    if (!this.selectedExecutionBranchId) { this.almacenes = []; return; }
+  private loadExecutionBranchWarehouses(): void {
     this.setupService.getWarehousesByBranch(this.selectedExecutionBranchId).subscribe({
       next: (data: any[]) => this.almacenes = (data || []).map((w: any) => ({ id: w.id ?? w.idWarehouse, name: w.name ?? w.nameWarehouse ?? w.description })).filter((w: any) => w.id != null && this.permittedWarehouseIds.has(Number(w.id))),
       error: () => this.almacenes = []

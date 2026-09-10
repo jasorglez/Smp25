@@ -19,22 +19,12 @@
   <div class="row mb-3" *ngIf="idReference">
     <div class="col-12 mb-2">
       <div class="d-flex align-items-center gap-2">
-        <label class="fw-semibold">Contrato:</label>
-        <select class="form-select form-select-sm" style="max-width:260px" [(ngModel)]="selectedContractId" (ngModelChange)="onContractChange()">
-          <option [ngValue]="null">Seleccione contrato</option>
-          <option *ngFor="let contract of contracts" [ngValue]="contract.idContrato">{{ contract.numberContract }} - {{ contract.description }}</option>
-        </select>
-        <label class="fw-semibold">Sucursal ejecutora:</label>
-        <select class="form-select form-select-sm" style="max-width:220px" [(ngModel)]="selectedExecutionBranchId" (ngModelChange)="onExecutionBranchChange()" [disabled]="!selectedContractId">
-          <option [ngValue]="null">Seleccione sucursal</option>
-          <option *ngFor="let branch of executionBranches" [ngValue]="branch.idBranch">{{ branch.name }}</option>
-        </select>
         <label class="fw-semibold">Almacén destino:</label>
         <select class="form-select form-select-sm" style="max-width:280px" [(ngModel)]="selectedWarehouseId" (ngModelChange)="onWarehouseChange()">
           <option [ngValue]="null">Seleccione un almacén</option>
           <option *ngFor="let warehouse of almacenes" [ngValue]="warehouse.id">{{ warehouse.name }}</option>
         </select>
-        <small class="text-muted">El destino se define por contrato, no por el sidebar.</small>
+        <small class="text-muted">Contrato y sucursal se toman del sidebar.</small>
       </div>
     </div>
     <div class="col-auto">
