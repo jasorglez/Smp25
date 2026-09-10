@@ -9,6 +9,8 @@ import { InventarioWarehouseService } from 'app/services/inventario-warehouse.se
 import { PermitionsService } from 'app/services/permitions.service';
 import { TrackingService } from 'app/services/tracking.service';
 import { alerts } from 'app/helpers/alerts';
+import { MaterialsService } from 'app/services/materials.service';
+import { catchError, forkJoin, map, of, switchMap } from 'rxjs';
 
 @Component({
   selector: 'app-inventario',
@@ -22,9 +24,9 @@ import { alerts } from 'app/helpers/alerts';
       <div class="d-flex align-items-center gap-1">
         <small class="text-muted fw-semibold">Almacén:</small>
         <select class="form-select form-select-sm" style="min-width:180px; max-width:240px"
-                [(ngModel)]="selectedWarehouse">
-          <option [value]="0">— Todos —</option>
-          <option *ngFor="let w of warehouses" [value]="w.idAlmacen">{{ w.nombreAlmacen || w.name }}</option>
+                [(ngModel)]="selectedWarehouse" (ngModelChange)="loadData()">
+          <option [ngValue]="0" disabled>— Seleccione —</option>
+          <option *ngFor="let w of warehouses" [ngValue]="warehouseId(w)">{{ warehouseName(w) }}</option>
         </select>
       </div>
 
@@ -84,12 +86,15 @@ export class InventarioComponent {
   private inventarioService  = inject(InventarioWarehouseService);
   private permitionsService  = inject(PermitionsService);
   private trackingService    = inject(TrackingService);
+  private materialsService   = inject(MaterialsService);
 
   rowData:           any[]   = [];
   warehouses:        any[]   = [];
   selectedWarehouse: number  = 0;
   loading:           boolean = false;
   idCompany:         number  = 0;
+  projectId:         number  = 0;
+  private loadedCompany: number = 0;
   private gridApi!: GridApi;
 
   // ── Chips ──────────────────────────────────────────────────────
@@ -98,7 +103,7 @@ export class InventarioComponent {
   get bajos()           { return this.rowData.filter(r => r.estadoStock === 'BAJO').length; }
   get optimos()         { return this.rowData.filter(r => r.estadoStock === 'ÓPTIMO').length; }
   get altos()           { return this.rowData.filter(r => r.estadoStock === 'ALTO').length; }
-  get valorTotal()      { return this.rowData.reduce((s, r) => s + (r.total || 0), 0); }
+  get valorTotal()      { return this.rowData.reduce((s, r) => s + this.toNumber(r.total), 0); }
 
   // ── Grid colors ────────────────────────────────────────────────
   rowClassRules = {
@@ -120,6 +125,7 @@ export class InventarioComponent {
     },
     { field: 'insumo',      headerName: 'Código',       width: 100, filter: 'agTextColumnFilter' },
     { field: 'description', headerName: 'Descripción',  flex: 2, minWidth: 160, filter: 'agTextColumnFilter' },
+    { field: 'measure',     headerName: 'Unidad',       width: 90, filter: 'agTextColumnFilter' },
     {
       field: 'entrada', headerName: 'Entradas', width: 90, type: 'numericColumn',
       cellStyle: { color: '#198754', fontWeight: '600' },
@@ -147,15 +153,21 @@ export class InventarioComponent {
       cellStyle: { color: '#aaa', fontSize: '0.8rem' },
     },
     {
-      field: 'ventaMN', headerName: 'P. Venta', width: 110, type: 'numericColumn',
-      valueFormatter: p => p.value != null
-        ? new Intl.NumberFormat('es-MX', { style: 'currency', currency: 'MXN' }).format(p.value) : '',
+      field: 'costoMN', headerName: 'Costo Unit.', width: 115, type: 'numericColumn',
+      valueFormatter: p => this.formatCurrency(p.value),
     },
     {
-      field: 'total', headerName: 'Valor Total', flex: 1, minWidth: 120, type: 'numericColumn',
+      field: 'total', headerName: 'Valor Inventario', flex: 1, minWidth: 135, type: 'numericColumn',
       cellStyle: { fontWeight: '600', color: '#0e4491' },
-      valueFormatter: p => p.value != null
-        ? new Intl.NumberFormat('es-MX', { style: 'currency', currency: 'MXN' }).format(p.value) : '',
+      valueFormatter: p => this.formatCurrency(p.value),
+    },
+    {
+      field: 'ventaMN', headerName: 'P. Venta', width: 110, type: 'numericColumn',
+      valueFormatter: p => this.formatCurrency(p.value),
+    },
+    {
+      field: 'ventaTotal', headerName: 'Valor Venta', flex: 1, minWidth: 120, type: 'numericColumn',
+      valueFormatter: p => this.formatCurrency(p.value),
     },
     {
       field: 'estadoStock', headerName: 'Estado', width: 90,
@@ -177,9 +189,18 @@ export class InventarioComponent {
 
   constructor() {
     effect(() => {
-      this.idCompany = this.signalsService.getRootSelectedBySidebar()();
-      this.loadWarehouses();
-      this.loadData();
+      const company = Number(this.signalsService.getRootSelectedBySidebar()() || 0);
+      this.projectId = Number(this.signalsService.getProjectSelectedBySidebar()() || 0);
+      const companyChanged = company !== this.loadedCompany;
+      this.idCompany = company;
+
+      if (companyChanged) {
+        this.loadedCompany = company;
+        this.selectedWarehouse = 0;
+        this.loadWarehouses();
+      } else if (this.selectedWarehouse) {
+        this.loadData();
+      }
     });
   }
 
@@ -191,53 +212,125 @@ export class InventarioComponent {
     this.permitionsService.getPermisionswarehousexEmail(email).subscribe({
       next: (data: any[]) => {
         this.warehouses = Array.isArray(data) ? data : [];
-        if (this.warehouses.length && !this.selectedWarehouse)
-          this.selectedWarehouse = this.warehouses[0].idAlmacen;
+        const stillAvailable = this.warehouses.some(w => this.warehouseId(w) === Number(this.selectedWarehouse));
+        if (!stillAvailable) this.selectedWarehouse = this.warehouses.length ? this.warehouseId(this.warehouses[0]) : 0;
+        this.loadData();
       },
-      error: () => {},
+      error: () => {
+        this.warehouses = [];
+        this.selectedWarehouse = 0;
+        this.rowData = [];
+      },
     });
   }
 
   loadData() {
-    if (!this.idCompany) return;
+    if (!this.idCompany || !this.selectedWarehouse) {
+      this.rowData = [];
+      return;
+    }
+
     this.loading = true;
-    this.inventarioService.getInventario(this.idCompany).subscribe({
-      next: data => {
-        this.rowData = (Array.isArray(data) ? data : [])
-          .map((row: any) => this.normalizeInventoryRow(row))
-          .filter((row: any) => row.entrada !== 0 || row.salida !== 0);
+    const movementRequests = (['IN', 'OUT'] as const).map(type =>
+      this.inventarioService.getWarehouseMovements(this.selectedWarehouse, type).pipe(
+        catchError(() => of([])),
+        switchMap((warehouseRows: any[]) => {
+          // Compatibilidad mientras se actualiza el contenedor: las versiones
+          // anteriores exigían idProject, aunque Inventario es por almacén.
+          if (this.asArray(warehouseRows).length || !this.projectId) return of(warehouseRows);
+          return this.inventarioService.getMovements(this.projectId, this.selectedWarehouse, type).pipe(catchError(() => of([])));
+        }),
+        switchMap((masters: any[]) => {
+          const movementMasters = this.asArray(masters);
+          if (!movementMasters.length) return of({ type, details: [] as any[] });
+
+          return forkJoin(
+            movementMasters.map(master =>
+              this.inventarioService.getMovementItems(Number(master.id ?? master.Id)).pipe(
+                catchError(() => of([])),
+                map(details => this.asArray(details))
+              )
+            )
+          ).pipe(map(detailGroups => ({ type, details: detailGroups.flat() })));
+        })
+      )
+    );
+
+    forkJoin({
+      materials: this.materialsService.getMaterialsForPosCache(this.idCompany).pipe(catchError(() => of([]))),
+      movements: forkJoin(movementRequests),
+    }).subscribe({
+      next: result => {
+        this.rowData = this.buildInventoryRows(result.materials as any[], result.movements);
         this.loading = false;
       },
       error: error => {
         console.error('Error loading inventory:', error);
         this.rowData = [];
         this.loading = false;
-        alerts.basicAlert('Error', 'No fue posible cargar el inventario.', 'error');
       },
     });
   }
 
-  private normalizeInventoryRow(row: any): any {
-    const entrada = this.toNumber(row.entrada ?? row.Entrada);
-    const salida = this.toNumber(row.salida ?? row.Salida);
-    const existencia = this.toNumber(row.existencia ?? row.Existencia);
-    const ventaMN = this.toNumber(row.ventaMN ?? row.VentaMN);
-    const backendTotal = row.total ?? row.Total;
+  private buildInventoryRows(materials: any[], movements: Array<{ type: 'IN' | 'OUT'; details: any[] }>): any[] {
+    const materialMap = new Map<number, any>();
+    this.asArray(materials).forEach(material => materialMap.set(Number(material.id ?? material.Id), material));
+    const rows = new Map<number, any>();
 
-    return {
-      ...row,
-      id: this.toNumber(row.id ?? row.Id),
-      insumo: row.insumo ?? row.Insumo ?? '',
-      description: row.description ?? row.Description ?? '',
-      stockMin: this.toNumber(row.stockMin ?? row.StockMin ?? row.stockmin),
-      stockMax: this.toNumber(row.stockMax ?? row.StockMax ?? row.stockmax),
-      entrada,
-      salida,
-      existencia,
-      ventaMN,
-      total: backendTotal == null ? existencia * ventaMN : this.toNumber(backendTotal),
-      estadoStock: row.estadoStock ?? row.EstadoStock ?? row.estado_stock ?? '',
-    };
+    movements.forEach(group => {
+      group.details.forEach(detail => {
+        const idMaterial = Number(detail.idProduct ?? detail.IdProduct);
+        if (!idMaterial) return;
+        const material = materialMap.get(idMaterial) || {};
+        const quantity = this.toNumber(detail.quantity ?? detail.Quantity ?? detail.total ?? detail.Total);
+        const current = rows.get(idMaterial) || {
+          id: idMaterial,
+          insumo: detail.code ?? detail.Code ?? material.insumo ?? material.barCode ?? '',
+          description: detail.description ?? detail.Description ?? material.description ?? `Material #${idMaterial}`,
+          measure: detail.measure ?? detail.Measure ?? material.measure ?? '',
+          entrada: 0,
+          salida: 0,
+          stockMin: this.toNumber(material.stockMin ?? material.stockmin),
+          stockMax: this.toNumber(material.stockMax ?? material.stockmax),
+          costoMN: this.toNumber(material.costoMN ?? material.CostoMN),
+          ventaMN: this.toNumber(material.ventaMN ?? material.VentaMN ?? material.sellingprice),
+        };
+
+        if (group.type === 'IN') current.entrada += quantity;
+        else current.salida += quantity;
+        rows.set(idMaterial, current);
+      });
+    });
+
+    return [...rows.values()].map(row => {
+      const existencia = row.entrada - row.salida;
+      return {
+        ...row,
+        existencia,
+        total: existencia * row.costoMN,
+        ventaTotal: existencia * row.ventaMN,
+        estadoStock: this.stockStatus(existencia, row.stockMin, row.stockMax),
+      };
+    }).sort((a, b) => String(a.description).localeCompare(String(b.description), 'es'));
+  }
+
+  private stockStatus(existence: number, minimum: number, maximum: number): string {
+    if (existence <= 0) return 'CRÍTICO';
+    if (minimum > 0 && existence <= minimum) return 'BAJO';
+    if (maximum > 0 && existence > maximum) return 'ALTO';
+    return 'ÓPTIMO';
+  }
+
+  private asArray(value: any): any[] {
+    return Array.isArray(value) ? value : (value?.data || value?.result || value?.items || []);
+  }
+
+  warehouseId(warehouse: any): number {
+    return Number(warehouse?.idAlmacen ?? warehouse?.idWarehouse ?? warehouse?.id ?? 0);
+  }
+
+  warehouseName(warehouse: any): string {
+    return warehouse?.nombreAlmacen ?? warehouse?.nameWarehouse ?? warehouse?.name ?? warehouse?.description ?? `Almacén #${this.warehouseId(warehouse)}`;
   }
 
   private toNumber(value: unknown): number {
@@ -247,6 +340,10 @@ export class InventarioComponent {
 
   private formatQuantity(value: unknown): string {
     return new Intl.NumberFormat('es-MX', { maximumFractionDigits: 3 }).format(this.toNumber(value));
+  }
+
+  private formatCurrency(value: unknown): string {
+    return new Intl.NumberFormat('es-MX', { style: 'currency', currency: 'MXN' }).format(this.toNumber(value));
   }
 
   async openAjuste(row: any): Promise<void> {

@@ -24,6 +24,27 @@ export class InventarioWarehouseService {
     );
   }
 
+  getMovements(idProject: number, idWarehouse: number, type: 'IN' | 'OUT'): Observable<any[]> {
+    return this.http.get<any[]>(
+      `${environment.urlWarehouse}/Inandout?idProject=${idProject}&idWarehouse=${idWarehouse}&type=${type}`,
+      { headers: this.trackingService.getHeaders() }
+    );
+  }
+
+  getWarehouseMovements(idWarehouse: number, type: 'IN' | 'OUT'): Observable<any[]> {
+    return this.http.get<any[]>(
+      `${environment.urlWarehouse}/Inandout?idWarehouse=${idWarehouse}&type=${type}`,
+      { headers: this.trackingService.getHeaders() }
+    );
+  }
+
+  getMovementItems(idMovement: number): Observable<any[]> {
+    return this.http.get<any[]>(
+      `${environment.urlWarehouse}/Detailsinandout/${idMovement}`,
+      { headers: this.trackingService.getHeaders() }
+    );
+  }
+
   ajustar(data: AjusteDto): Observable<any> {
     return this.http.post<any>(
       `${environment.urlWarehouse}/inventario/ajuste`,

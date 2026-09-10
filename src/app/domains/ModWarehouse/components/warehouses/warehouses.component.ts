@@ -11,7 +11,7 @@ import { alerts } from '../../../../helpers/alerts';
 import { States } from 'app/interface/states';
 import { InegiService } from '../../../../services/inegi.service';
 import { WarehousesService } from 'app/services/warehouses.service';
-import { catchError, concat, EMPTY, lastValueFrom, toArray } from 'rxjs';
+import { catchError, concat, EMPTY, forkJoin, lastValueFrom, map, of, switchMap, toArray } from 'rxjs';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { AgGridModule } from 'ag-grid-angular';
@@ -47,6 +47,7 @@ export class WarehousesComponent implements CanComponentDeactivate {
   constructor() {
     effect(() => {
       this.idBranch = this.signalsService.getBranchSelectedBySidebar()();
+      this._colMaster = [];
       this.obtenerDatos();
     });
   }
@@ -125,6 +126,14 @@ export class WarehousesComponent implements CanComponentDeactivate {
     }
 
     this._colMaster = [
+      {
+        field: 'branchName',
+        headerName: 'Sucursal',
+        editable: false,
+        filter: true,
+        width: 180,
+        hide: !this.isAllBranches,
+      },
       {
         field: 'name',
         headerName: 'Nombre',
@@ -205,6 +214,42 @@ export class WarehousesComponent implements CanComponentDeactivate {
   }
 
   obtenerDatos() {
+    if (!this.idBranch) {
+      this.rowData = [];
+      return;
+    }
+
+    if (this.isAllBranches) {
+      const idCompany = Math.abs(this.idBranch);
+      this.branchesService.getBranches2fields(idCompany).pipe(
+        switchMap((branches: Branch[]) => {
+          const availableBranches = Array.isArray(branches) ? branches : [];
+          if (!availableBranches.length) return of([]);
+
+          return forkJoin(
+            availableBranches.map(branch =>
+              this.warehouseService.getWarehouses(branch.id).pipe(
+                catchError(error => error?.status === 404 ? of([]) : of([])),
+                map((warehouses: any) => (Array.isArray(warehouses) ? warehouses : []).map(warehouse => ({
+                  ...warehouse,
+                  branchName: branch.name,
+                })))
+              )
+            )
+          ).pipe(map(groups => groups.flat()));
+        })
+      ).subscribe({
+        next: data => {
+          this.rowData = data;
+        },
+        error: error => {
+          console.error('Error loading warehouses for all branches:', error);
+          this.rowData = [];
+        },
+      });
+      return;
+    }
+
     this.warehouseService.getWarehouses(this.idBranch).subscribe({
       next: (data: any) => {
         this.rowData = data;
@@ -215,6 +260,10 @@ export class WarehousesComponent implements CanComponentDeactivate {
         }
       },
     });
+  }
+
+  get isAllBranches(): boolean {
+    return Number(this.idBranch) < 0;
   }
 
   obtenerStates() {
@@ -254,9 +303,9 @@ export class WarehousesComponent implements CanComponentDeactivate {
 
   onCellValueChanged(event: any) {
     if (event.colDef.field === 'principal' && event.newValue === true) {
-      // Ensure only one warehouse is principal
+      // Cada sucursal puede tener su propio almacén principal.
       this.rowData.forEach(row => {
-        if (row.id !== event.data.id) {
+        if (row.id !== event.data.id && Number(row.idBranch) === Number(event.data.idBranch)) {
           row.principal = false;
           row.__modified = true; // Mark others as modified too
         }
@@ -274,8 +323,8 @@ export class WarehousesComponent implements CanComponentDeactivate {
 
   addRow() {
     this.trackingService.addLog(this.trackingService.getnameComp(), 'Agregó nuevo warehouses', 'Almacenes', this.trackingService.getEmail());
-    if (!this.idBranch) {
-      alerts.basicAlert('Error', 'Debe seleccionar una sucursal primero.', 'error');
+    if (!this.idBranch || this.isAllBranches) {
+      alerts.basicAlert('Sucursal requerida', 'Seleccione una sucursal específica para agregar un almacén.', 'warning');
       return;
     }
 
