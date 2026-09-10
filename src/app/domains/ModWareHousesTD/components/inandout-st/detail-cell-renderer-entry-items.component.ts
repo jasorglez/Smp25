@@ -251,7 +251,7 @@ export class DetailCellRendererEntryItemsComponent implements OnInit {
               params.data.materialName = selectedMaterial.description;
               params.data.description = selectedMaterial.description;
               params.data.code = selectedMaterial.code || '';
-              params.data.measure = selectedMaterial.measure || '';
+              params.data.measure = selectedMaterial.measure || selectedMaterial.unit || selectedMaterial.unidad || '';
             }
             return true;
           }
@@ -263,7 +263,7 @@ export class DetailCellRendererEntryItemsComponent implements OnInit {
             params.data.materialName = selectedMaterial.description;
             params.data.description = selectedMaterial.description;
             params.data.code = selectedMaterial.code || '';
-            params.data.measure = selectedMaterial.measure || '';
+            params.data.measure = selectedMaterial.measure || selectedMaterial.unit || selectedMaterial.unidad || '';
           }
 
           return true;
@@ -487,7 +487,7 @@ export class DetailCellRendererEntryItemsComponent implements OnInit {
       idInandout: this.params.data.id,
       idProduct: material.id,
       description: material.description,
-      measure: material.measure,
+      measure: material.measure || material.unit || material.unidad || '',
       quantity: 1,
       pending: 0,
       total: 1,
