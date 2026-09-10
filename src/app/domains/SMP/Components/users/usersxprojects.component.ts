@@ -52,12 +52,13 @@ export class UsersxprojectsComponent {
   private gridApi: GridApi;
   private tempIdCounter: number = 0;
   private permissionType: string = 'project';
+  bulkAssigning: boolean = false;
 
   constructor() {
     // Effect para detectar cambios en el usuario seleccionado
     effect(() => {
       const selectedUserId = this.profile().idUser();
-      this.signalsService.idContract();
+      this.idContract = this.signalsService.idContract();
       this.signalsService.getRootSelectedBySidebar()();
       
       if (selectedUserId) {
@@ -88,14 +89,14 @@ export class UsersxprojectsComponent {
     this.idUser = currentIdUser;
 
     if (this.contractChecked()() === true) {
-      
-      this.projectsService.getProjectsByContract(this.idUser, this.idContract).subscribe((data: any[]) => {
-        this.rowData = Array.isArray(data) ? data : [];
-        
-        // Forzar actualización de ag-grid si existe
-        if (this.gridApi) {
-          this.gridApi.setGridOption('rowData', this.rowData);
-        }
+      const currentIdContract = Number(this.signalsService.idContract() || 0);
+      if (!currentIdContract) {
+        this.updateGridData([]);
+        return;
+      }
+
+      this.projectsService.getProjectsByContract(this.idUser, currentIdContract).subscribe((data: any[]) => {
+        this.updateGridData(this.asArray(data));
         
         this.trackingService.addLog(
           this.trackingService.getnameComp(),
@@ -104,23 +105,26 @@ export class UsersxprojectsComponent {
           this.trackingService.getEmail()
         );
       }, error => {
-        if (error.status == 404) {
-          this.rowData = [];
-        } else {
-          this.rowData = [];
-        }
-        if (this.gridApi) {
-          this.gridApi.setGridOption('rowData', this.rowData);
-        }
+        this.updateGridData([]);
       });
     } else {
-      this.projectsService.getProjectsByContract(this.idUser).subscribe((data: any[]) => {
-        this.rowData = Array.isArray(data) ? data : [];
-        
-        // Forzar actualización de ag-grid si existe
-        if (this.gridApi) {
-          this.gridApi.setGridOption('rowData', this.rowData);
-        }
+      const idCompany = Number(this.signalsService.getRootSelectedBySidebar()() || 0);
+      if (!idCompany) {
+        this.updateGridData([]);
+        return;
+      }
+
+      forkJoin({
+        assignedProjects: this.projectsService.getProjectsByContract(this.idUser),
+        companyProjects: this.projectsService.getProjectListByCompany(idCompany)
+      }).subscribe(({ assignedProjects, companyProjects }: any) => {
+        const companyProjectIds = new Set(
+          this.asArray(companyProjects).map((project: any) => Number(project.id))
+        );
+        const companyAssignments = this.asArray(assignedProjects).filter((assignment: any) =>
+          companyProjectIds.has(Number(assignment.idProject ?? assignment.idPermission))
+        );
+        this.updateGridData(companyAssignments);
         
         this.trackingService.addLog(
           this.trackingService.getnameComp(),
@@ -129,14 +133,7 @@ export class UsersxprojectsComponent {
           this.trackingService.getEmail()
         );
       }, error => {
-        if (error.status == 404) {
-          this.rowData = [];
-        } else {
-          this.rowData = [];
-        }
-        if (this.gridApi) {
-          this.gridApi.setGridOption('rowData', this.rowData);
-        }
+        this.updateGridData([]);
       });
     }
   }
@@ -298,6 +295,10 @@ public gridOptions: any = {
   }
 
   async addAllProjects() {
+    if (this.bulkAssigning) {
+      return;
+    }
+
     const currentIdUser = this.profile().idUser();
     const idContract = Number(this.signalsService.idContract() || 0);
     const idCompany = Number(this.signalsService.getRootSelectedBySidebar()() || 0);
@@ -311,14 +312,18 @@ public gridOptions: any = {
       ? this.projectsService.getProjectListByContract(idContract)
       : this.projectsService.getProjectListByCompany(idCompany);
 
-    forkJoin({ projects: availableProjects$, permissions: this.usersxprojectsService.getDataUsersxPermissions(this.permissionType) }).subscribe({
+    this.bulkAssigning = true;
+    forkJoin({
+      projects: availableProjects$,
+      permissions: this.usersxprojectsService.getUsersxPermissionsGeneral(this.permissionType, currentIdUser)
+    }).subscribe({
       next: async ({ projects, permissions }: any) => {
-        const projectIds = (Array.isArray(projects) ? projects : []).map(project => Number(project.id));
-        const assigned = new Set((Array.isArray(permissions) ? permissions : Object.values(permissions))
-          .filter((permission: any) => Number(permission.idUser) === Number(currentIdUser))
+        const projectIds = this.asArray(projects).map(project => Number(project.id));
+        const assigned = new Set(this.asArray(permissions)
           .map((permission: any) => Number(permission.idPermission ?? permission.idProject)));
         const missing = projectIds.filter(id => id > 0 && !assigned.has(id));
         if (missing.length === 0) {
+          this.bulkAssigning = false;
           alerts.basicAlert('Proyectos', 'El usuario ya tiene asignados todos los proyectos de esta selección.', 'info');
           return;
         }
@@ -329,10 +334,30 @@ public gridOptions: any = {
         } catch (error) {
           console.error('Error agregando proyectos:', error);
           alerts.basicAlert('Proyectos', 'No fue posible asignar todos los proyectos.', 'error');
+        } finally {
+          this.bulkAssigning = false;
         }
       },
-      error: () => alerts.basicAlert('Proyectos', 'No fue posible consultar los proyectos disponibles.', 'error')
+      error: () => {
+        this.bulkAssigning = false;
+        alerts.basicAlert('Proyectos', 'No fue posible consultar los proyectos disponibles.', 'error');
+      }
     });
+  }
+
+  private asArray(data: any): any[] {
+    if (Array.isArray(data)) {
+      return data;
+    }
+    return data && typeof data === 'object' ? Object.values(data) : [];
+  }
+
+  private updateGridData(data: any[]): void {
+    this.rowData = data;
+    this.selectedRowData = null;
+    if (this.gridApi) {
+      this.gridApi.setGridOption('rowData', this.rowData);
+    }
   }
 
   async saveChanges() {

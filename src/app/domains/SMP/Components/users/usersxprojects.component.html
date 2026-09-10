@@ -1,38 +1,47 @@
 <div class="row p-3">
     <div [ngClass]="profile().emailUser() ? 'col-lg-10 col-md-9 col-sm-9 col-9' : 'col-12'">
         <div class="mb-3">
-            <div class="d-flex align-items-center flex-wrap gap-2 mb-2">
-                <div class="form-check me-2" *ngIf="idContract != null">
+            <div class="form-check mb-2" *ngIf="idContract != null">
                     <input type="checkbox" name="contractChecked" id="contractChecked" class="form-check-input"
                         [checked]="contractChecked()()" (change)="onCheckboxChange($event)">
                     <label for="contractChecked" class="form-check-label">Filtrar por contrato</label>
-                </div>
-                <button type="button" class="btn btn-sm btn-success" (click)="addRow()" title="Agregar proyecto">
-                    <i class="bi bi-plus-lg"></i> Agregar
-                </button>
-                <button type="button" class="btn btn-sm btn-outline-success" (click)="addAllProjects()" title="Agregar todos los proyectos disponibles">
-                    <i class="bi bi-plus-square"></i> Agregar todos
-                </button>
-                <button type="button" class="btn btn-sm btn-primary position-relative" (click)="saveChanges()" [disabled]="!notSavedChanges" title="Guardar cambios">
-                    <i class="bi bi-floppy"></i> Guardar
-                    <span
-                        class="position-absolute top-0 start-100 translate-middle p-2 bg-danger border border-light rounded-circle"
-                        *ngIf="notSavedChanges"><span class="visually-hidden">Hay cambios sin guardar</span>
-                    </span>
-                </button>
-                <button type="button" class="btn btn-sm btn-warning" (click)="revert()" title="Deshacer cambios">
-                    <i class="bi bi-arrow-clockwise"></i> Deshacer
-                </button>
-                <button type="button" class="btn btn-sm btn-danger" (click)="deleteEntry()" [disabled]="!selectedRowData" title="Borrar proyecto">
-                    <i class="bi bi-trash"></i> Borrar
-                </button>
             </div>
-            <div>
+            <div class="row">
+                <nav class="col-auto d-flex flex-column align-items-start">
+                    <button type="button" class="btn btn-primary ms-1 me-1 mb-2" (click)="addRow()"
+                        title="Agregar proyecto" aria-label="Agregar proyecto">
+                        <i class="bi bi-plus-lg"></i>
+                    </button>
+                    <button type="button" class="btn btn-info ms-1 me-1 mb-2" (click)="addAllProjects()"
+                        [disabled]="bulkAssigning" title="Agregar todos los proyectos disponibles"
+                        aria-label="Agregar todos los proyectos disponibles">
+                        <i class="bi" [ngClass]="bulkAssigning ? 'bi-hourglass-split' : 'bi-plus-square'"></i>
+                    </button>
+                    <button type="button" class="btn btn-success ms-1 me-1 position-relative mb-2"
+                        (click)="saveChanges()" [disabled]="!notSavedChanges" title="Guardar cambios"
+                        aria-label="Guardar cambios">
+                        <i class="bi bi-floppy"></i>
+                        <span
+                            class="position-absolute top-0 start-100 translate-middle p-2 bg-danger border border-light rounded-circle"
+                            *ngIf="notSavedChanges"><span class="visually-hidden">Hay cambios sin guardar</span>
+                        </span>
+                    </button>
+                    <button type="button" class="btn btn-warning ms-1 me-1 mb-2" (click)="revert()"
+                        title="Deshacer cambios" aria-label="Deshacer cambios">
+                        <i class="bi bi-arrow-clockwise"></i>
+                    </button>
+                    <button type="button" class="btn btn-danger ms-1 me-1 mb-2" (click)="deleteEntry()"
+                        [disabled]="!selectedRowData" title="Borrar proyecto" aria-label="Borrar proyecto">
+                        <i class="bi bi-trash"></i>
+                    </button>
+                </nav>
+                <div class="col">
                     <ag-grid-angular style="width: 100%; height: 500px" class="ag-theme-quartz small-text-ag-grid" [rowData]="rowData"
                         [columnDefs]="columnDefs" (selectionChanged)="onSelectionChanged($event)"
                         (cellValueChanged)="onCellValueChanged($event)" (rowSelected)="onSelectedRow($event)"
                         (gridReady)="onGridReady($event)" rowSelection="single" [gridOptions]="gridOptions" [stopEditingWhenCellsLoseFocus]="true">
                     </ag-grid-angular>
+                </div>
             </div>
         </div>
     </div>
