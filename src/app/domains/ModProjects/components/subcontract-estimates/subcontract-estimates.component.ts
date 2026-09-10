@@ -562,7 +562,10 @@ export class SubcontractEstimatesComponent implements OnDestroy {
     if (!providerId) return;
     this.estimatesService.getSubcontractCross(this.idRoot, providerId).subscribe({
       next: (data: any) => {
-        const estimates = data?.estimates || [];
+        const report = data?.data || data || {};
+        const estimates = this.arrayValue(report.estimates ?? report.Estimates);
+        const programs = this.arrayValue(report.programs ?? report.Programs);
+        const rows = this.arrayValue(report.rows ?? report.Rows);
         this.crossColumnDefs = [
           { field: 'program', headerName: 'Programa', minWidth: 170, pinned: 'left' },
           { field: 'phase', headerName: 'Fase', minWidth: 130 },
@@ -573,10 +576,23 @@ export class SubcontractEstimatesComponent implements OnDestroy {
           { field: 'accumulated', headerName: 'Acumulado', width: 110, type: 'numericColumn' },
           { field: 'balance', headerName: 'Saldo', width: 110, type: 'numericColumn' },
         ];
-        this.crossRows = (data?.rows || []).map((row: any) => {
-          const values: any = { program: (data?.programs || []).find((p: any) => p.id === row.programId)?.name || `Programa #${row.programId}`, phase: row.phase, concept: row.concept, unit: row.unit, contractQuantity: Number(row.contractQuantity || 0) };
+        this.crossRows = rows.map((row: any) => {
+          const programId = this.number(row.programId ?? row.ProgramId ?? row.idProgram ?? row.IdProgram);
+          const program = programs.find((p: any) => this.number(p.id ?? p.Id) === programId);
+          const values: any = {
+            program: program?.name ?? program?.Name ?? `Programa #${programId}`,
+            phase: row.phase ?? row.Phase ?? '',
+            concept: row.concept ?? row.Concept ?? '',
+            unit: row.unit ?? row.Unit ?? '',
+            contractQuantity: this.number(row.contractQuantity ?? row.ContractQuantity ?? row.quantity ?? row.Quantity)
+          };
           let accumulated = 0;
-          for (const e of row.estimates || []) { values[`est_${e.id}`] = Number(e.quantity || 0); accumulated += values[`est_${e.id}`]; }
+          for (const e of this.arrayValue(row.estimates ?? row.Estimates)) {
+            const estimateId = this.number(e.id ?? e.Id);
+            const quantity = this.number(e.quantity ?? e.Quantity ?? e.estimateQuantity ?? e.EstimateQuantity ?? e.value ?? e.Value);
+            values[`est_${estimateId}`] = quantity;
+            accumulated += quantity;
+          }
           values.accumulated = accumulated;
           values.balance = Math.max(0, values.contractQuantity - accumulated);
           return values;
@@ -593,6 +609,9 @@ export class SubcontractEstimatesComponent implements OnDestroy {
   private number(value: any): number {
     const clean = String(value ?? '').replace(/[$,\s]/g, '').replace(/[^0-9.-]/g, '');
     return Number(clean) || 0;
+  }
+  private arrayValue(value: any): any[] {
+    return Array.isArray(value) ? value : (value?.data || value?.items || value?.result || []);
   }
   private quantity(value: any): string { return this.number(value).toLocaleString('es-MX', { maximumFractionDigits: 4 }); }
   private currency(value: any): string { return this.number(value).toLocaleString('es-MX', { style: 'currency', currency: 'MXN' }); }
