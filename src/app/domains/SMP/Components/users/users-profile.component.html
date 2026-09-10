@@ -24,6 +24,25 @@
         </div>
     </div>
 
+    <div class="access-summary" *ngIf="showAllAccess; else currentSection">
+        <div class="access-section" *ngFor="let section of visibleAccessSections">
+            <div class="assignment-summary-title">
+                <span><i class="bi" [ngClass]="section.icon"></i> {{ section.title }}</span>
+                <span class="assignment-total">{{ section.items.length }}</span>
+            </div>
+            <div class="assignment-items" *ngIf="section.items.length; else noSectionAssignments">
+                <div class="assignment-item" *ngFor="let item of section.items">
+                    <i class="bi bi-check-circle-fill"></i>
+                    <span>{{ item }}</span>
+                </div>
+            </div>
+            <ng-template #noSectionAssignments>
+                <p class="empty-assignments">Sin asignaciones</p>
+            </ng-template>
+        </div>
+    </div>
+
+    <ng-template #currentSection>
     <div class="assignment-summary" *ngIf="sectionTitle">
         <div class="assignment-summary-title">
             <span><i class="bi" [ngClass]="sectionIcon"></i> {{ sectionTitle }}</span>
@@ -39,4 +58,5 @@
             <p class="empty-assignments">Sin asignaciones</p>
         </ng-template>
     </div>
+    </ng-template>
 </div>

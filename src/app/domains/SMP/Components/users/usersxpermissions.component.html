@@ -48,7 +48,8 @@
     </div>
     <div class="col-lg-2 col-md-3 col-sm-3 col-3" *ngIf="profile().emailUser()">
         <div class="card text-center profile-card">
-            <app-users-profile [sectionTitle]="profileSectionTitle" [assignedItems]="profileItems"></app-users-profile>
+            <app-users-profile [sectionTitle]="profileSectionTitle" [assignedItems]="profileItems"
+                [showAllAccess]="true"></app-users-profile>
         </div>
     </div>
 </div>

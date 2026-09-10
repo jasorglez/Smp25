@@ -93,6 +93,22 @@ h6 {
   text-align: left;
 }
 
+.access-summary {
+  margin-top: 13px;
+  padding-top: 2px;
+  border-top: 1px solid #e2e8f0;
+  text-align: left;
+}
+
+.access-section {
+  padding: 10px 0;
+  border-bottom: 1px solid #e2e8f0;
+}
+
+.access-section:last-child {
+  border-bottom: 0;
+}
+
 .assignment-summary-title {
   display: flex;
   align-items: center;
