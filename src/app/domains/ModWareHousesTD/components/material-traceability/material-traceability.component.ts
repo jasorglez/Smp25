@@ -52,14 +52,11 @@ export class MaterialTraceabilityComponent {
   readonly columnDefs: ColDef[] = [
     { field: 'material', headerName: 'Material', minWidth: 280, flex: 2 },
     { field: 'unidad', headerName: 'Unidad', maxWidth: 110 },
-    { field: 'tipo', headerName: 'Movimiento', maxWidth: 140 },
-    { field: 'folio', headerName: 'Folio', maxWidth: 150 },
-    { field: 'documento', headerName: 'Documento', maxWidth: 150 },
-    { field: 'fecha', headerName: 'Fecha', maxWidth: 130 },
-    { field: 'cantidad', headerName: 'Cantidad', type: 'numericColumn', maxWidth: 120 },
-    { field: 'almacen', headerName: 'Almacén', minWidth: 160 },
-    { field: 'proveedor', headerName: 'Proveedor', minWidth: 180 },
-    { field: 'estado', headerName: 'Estado', maxWidth: 130 }
+    { field: 'requisicion', headerName: 'Requisición', minWidth: 150 },
+    { field: 'oc', headerName: 'OC', minWidth: 150 },
+    { field: 'entrada', headerName: 'Entrada', type: 'numericColumn', maxWidth: 110 },
+    { field: 'salida', headerName: 'Salida', type: 'numericColumn', maxWidth: 110 },
+    { field: 'movimientos', headerName: 'Movimientos', minWidth: 180 }
   ];
 
   constructor() {
@@ -89,7 +86,7 @@ export class MaterialTraceabilityComponent {
         return rows.length ? forkJoin(rows.map(m => this.movements.getInAndOutItems(+m.id).pipe(catchError(() => of([])), map(details => ({ m, details: this.asArray(details) }))))).pipe(map(details => ({ w, type, items: details, materialMap }))) : of({ w, type, items: [], materialMap });
       }))));
       return forkJoin({ documents: documents$.length ? forkJoin(documents$) : of([]), movements: movement$.length ? forkJoin(movement$) : of([]) });
-    })).subscribe({ next: result => { this.rowData = [...this.flattenDocuments(result.documents), ...this.flattenMovements(result.movements)]; this.loading = false; }, error: () => { this.rowData = []; this.loading = false; } });
+    })).subscribe({ next: result => { this.rowData = this.groupByMaterial([...this.flattenDocuments(result.documents), ...this.flattenMovements(result.movements)]); this.loading = false; }, error: () => { this.rowData = []; this.loading = false; } });
   }
 
   private flattenDocuments(groups: any[]): any[] {
@@ -100,21 +97,43 @@ export class MaterialTraceabilityComponent {
   }
   private asArray(value: any): any[] { return Array.isArray(value) ? value : (value?.data || value?.result || value?.items || []); }
 
+  private groupByMaterial(rows: any[]): any[] {
+    const grouped = new Map<string, any>();
+    rows.forEach(r => {
+      const key = String(r.material || '').trim().toUpperCase();
+      if (!key) return;
+      const current = grouped.get(key) || { material: r.material, unidad: r.unidad, requisicion: '', oc: '', entrada: 0, salida: 0, movimientos: '' };
+      const folio = r.folio || r.documento || '';
+      if (r.tipo === 'Requisición') current.requisicion = this.joinUnique(current.requisicion, folio);
+      else if (r.tipo === 'Orden de compra') current.oc = this.joinUnique(current.oc, folio);
+      else if (r.tipo === 'Entrada') current.entrada += Number(r.cantidad || 0);
+      else if (r.tipo === 'Salida') current.salida += Number(r.cantidad || 0);
+      if (r.tipo === 'Entrada' || r.tipo === 'Salida') current.movimientos = this.joinUnique(current.movimientos, `${r.tipo}: ${folio}`);
+      grouped.set(key, current);
+    });
+    return [...grouped.values()];
+  }
+
+  private joinUnique(existing: string, value: string): string {
+    if (!value) return existing || '';
+    return existing ? (existing.split(', ').includes(value) ? existing : `${existing}, ${value}`) : value;
+  }
+
   printPdf(): void {
     const body: any[] = [[
       { text: 'Material', bold: true, color: '#fff' }, { text: 'Unidad', bold: true, color: '#fff' },
-      { text: 'Movimiento', bold: true, color: '#fff' }, { text: 'Folio', bold: true, color: '#fff' },
-      { text: 'Fecha', bold: true, color: '#fff' }, { text: 'Cantidad', bold: true, color: '#fff' },
-      { text: 'Almacén / Proveedor', bold: true, color: '#fff' }
+      { text: 'Requisición', bold: true, color: '#fff' }, { text: 'OC', bold: true, color: '#fff' },
+      { text: 'Entrada', bold: true, color: '#fff' }, { text: 'Salida', bold: true, color: '#fff' },
+      { text: 'Movimientos', bold: true, color: '#fff' }
     ]];
     this.rowData.forEach((r, i) => body.push([
-      r.material || '', r.unidad || '', r.tipo || '', r.folio || r.documento || '',
-      r.fecha ? new Date(r.fecha).toLocaleDateString('es-MX') : '', r.cantidad == null ? '' : String(r.cantidad), r.almacen || r.proveedor || ''
+      r.material || '', r.unidad || '', r.requisicion || '', r.oc || '',
+      r.entrada || 0, r.salida || 0, r.movimientos || ''
     ].map((text: any) => ({ text, fontSize: 7, fillColor: i % 2 ? '#f4f7fb' : '#fff' }))));
     const doc: any = {
       pageOrientation: 'landscape', pageSize: 'LETTER', pageMargins: [24, 60, 24, 35],
       header: () => ({ margin: [24, 18, 24, 0], columns: [{ text: 'AZTECA', color: '#003366', bold: true, fontSize: 16 }, { text: 'TRAZABILIDAD DE MATERIALES', alignment: 'right', color: '#1a5a9a', bold: true, fontSize: 12 }] }),
-      content: [{ text: `Proyecto: ${this.projectId || 'Todos'}   |   Generado: ${new Date().toLocaleString('es-MX')}`, fontSize: 8, color: '#555', margin: [0, 0, 0, 10] }, { table: { headerRows: 1, widths: ['*', 55, 85, 75, 65, 55, 150], body }, layout: { fillColor: (row: number) => row === 0 ? '#1a5a9a' : null, hLineColor: () => '#d5dbe3', vLineColor: () => '#d5dbe3', paddingLeft: () => 4, paddingRight: () => 4, paddingTop: () => 3, paddingBottom: () => 3 } }],
+      content: [{ text: `Proyecto: ${this.projectId || 'Todos'}   |   Generado: ${new Date().toLocaleString('es-MX')}`, fontSize: 8, color: '#555', margin: [0, 0, 0, 10] }, { table: { headerRows: 1, widths: ['*', 55, 130, 100, 65, 65, 170], body }, layout: { fillColor: (row: number) => row === 0 ? '#1a5a9a' : null, hLineColor: () => '#d5dbe3', vLineColor: () => '#d5dbe3', paddingLeft: () => 4, paddingRight: () => 4, paddingTop: () => 3, paddingBottom: () => 3 } }],
       footer: (current: number, total: number) => ({ text: `Trazabilidad de materiales · Página ${current} de ${total}`, alignment: 'center', fontSize: 8, color: '#777' })
     };
     pdfMake.createPdf(doc).print();
