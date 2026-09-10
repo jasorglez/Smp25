@@ -464,7 +464,7 @@ export class BranchesComponent implements CanComponentDeactivate {
       idEstado: null,
       name: '',
       description: '',
-      address: '',
+      address: '*',
       orden: 0,
       active: true,
       __isNew: true,
@@ -582,13 +582,18 @@ export class BranchesComponent implements CanComponentDeactivate {
   }
 
   async saveMasterChanges() {
-    const isValid = this.masterRowData.every(
-      (item) => item.name && item.description && item.address
-    );
-    if (!isValid) {
+    const rowsToValidate = this.masterRowData.filter((item) => item.__isNew || item.__modified);
+    const missingByRow = rowsToValidate.map((item) => {
+      const missing: string[] = [];
+      if (!String(item.name || '').trim()) missing.push('Nombre');
+      if (!String(item.description || '').trim()) missing.push('Descripción');
+      if (!String(item.address || '').trim()) missing.push('Dirección');
+      return missing.length ? `Sucursal ${item.name || '(nueva)'}: ${missing.join(', ')}` : '';
+    }).filter(Boolean);
+    if (missingByRow.length) {
       alerts.basicAlert(
-        'Añadir entrada',
-        'Debe llenar todos los campos antes de guardar.',
+        'Campos requeridos',
+        `Complete: ${missingByRow.join('. ')}`,
         'error'
       );
       return;
@@ -791,7 +796,7 @@ export class BranchesComponent implements CanComponentDeactivate {
       idEstado: new FormControl('', [Validators.required]),
       name: new FormControl('', [Validators.required]),
       description: new FormControl('', [Validators.required]),
-      address: new FormControl('', [Validators.required]),
+      address: new FormControl('*', [Validators.required]),
       orden: new FormControl(0),
       vigente: new FormControl(true)
     });
