@@ -133,12 +133,6 @@ export class InandoutStComponent implements OnInit {
     });
   }
 
-  onWarehouseChange(id: number | string): void {
-    this.selectedWarehouse = this.warehouses.find(w => String(w.idAlmacen) === String(id)) || null;
-    this.rowData = [];
-    if (this.selectedWarehouse) this.loadEntries();
-  }
-
   loadCatalogs() {
     if (!this.idRoot) return;
     this.catalogsService.getCatalogs(this.idRoot, this.movementType).subscribe({
@@ -228,8 +222,12 @@ export class InandoutStComponent implements OnInit {
     }
   }
 
-  onWarehouseChange() {
-    this.loadEntries();
+  onWarehouseChange(id?: number | string) {
+    if (id !== undefined) {
+      this.selectedWarehouse = this.warehouses.find(w => String(w.idAlmacen) === String(id)) || null;
+      this.rowData = [];
+    }
+    if (this.selectedWarehouse) this.loadEntries();
   }
 
   async onCatalogChange(): Promise<void> {
