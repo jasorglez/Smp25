@@ -9,7 +9,7 @@ import { TrackingService } from 'app/services/tracking.service';
 import { MaterialsService } from 'app/services/materials.service';
 import { OcAndReqsService } from 'app/services/ocandreqs.service';
 import { InandoutService } from 'app/services/inandout.service';
-import { WarehousesService } from 'app/services/warehouses.service';
+import { PermitionsService } from 'app/services/permitions.service';
 import pdfMake from 'pdfmake/build/pdfmake';
 import pdfFonts from 'pdfmake/build/vfs_fonts';
 
@@ -41,7 +41,7 @@ export class MaterialTraceabilityComponent {
   private materials = inject(MaterialsService);
   private docs = inject(OcAndReqsService);
   private movements = inject(InandoutService);
-  private warehouses = inject(WarehousesService);
+  private permissions = inject(PermitionsService);
   idRoot: number | null = null;
   projectId: number | null = null;
   rowData: any[] = [];
@@ -76,9 +76,9 @@ export class MaterialTraceabilityComponent {
     const reference = this.projectId || this.idRoot;
     forkJoin({
       materialList: this.materials.getMaterials2Fields(this.idRoot).pipe(catchError(() => of([]))),
-      requisitions: this.docs.getOcAndReqs('project', reference, 'REQ').pipe(catchError(() => of([]))),
+      requisitions: this.docs.getOcAndReqs('project', reference, 'REQUIS').pipe(catchError(() => of([]))),
       orders: this.docs.getOcAndReqs('project', reference, 'OC').pipe(catchError(() => of([]))),
-      warehouses: this.warehouses.getWarehouses(this.idRoot).pipe(catchError(() => of([])))
+      warehouses: this.permissions.getPermisionswarehousexEmail(this.tracking.getEmail()).pipe(catchError(() => of([])))
     }).pipe(switchMap(base => {
       const materialMap = new Map((this.asArray(base.materialList)).map((m: any) => [+m.id, m]));
       const reqs = this.asArray(base.requisitions); const orders = this.asArray(base.orders);
