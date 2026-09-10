@@ -290,9 +290,13 @@ export class RequisitionsComponent implements CanComponentDeactivate {
 
   onWarehouseChange(): void {
     if (!this.masterGridApi) return;
-    this.masterGridApi.setFilterModel(this.selectedWarehouseId == null
-      ? {}
-      : { idWarehouse: { filterType: 'number', type: 'equals', filter: Number(this.selectedWarehouseId) } });
+    this.masterGridApi.setFilterModel({
+      idWarehouse: {
+        filterType: 'number',
+        type: 'equals',
+        filter: this.selectedWarehouseId == null ? -1 : Number(this.selectedWarehouseId)
+      }
+    });
   }
 
   get colMaster(): ColDef[] {
