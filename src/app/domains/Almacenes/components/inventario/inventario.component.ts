@@ -9,8 +9,6 @@ import { InventarioWarehouseService } from 'app/services/inventario-warehouse.se
 import { PermitionsService } from 'app/services/permitions.service';
 import { TrackingService } from 'app/services/tracking.service';
 import { alerts } from 'app/helpers/alerts';
-import { MaterialsService } from 'app/services/materials.service';
-import { catchError, map, of, switchMap } from 'rxjs';
 
 @Component({
   selector: 'app-inventario',
@@ -86,7 +84,6 @@ export class InventarioComponent {
   private inventarioService  = inject(InventarioWarehouseService);
   private permitionsService  = inject(PermitionsService);
   private trackingService    = inject(TrackingService);
-  private materialsService   = inject(MaterialsService);
 
   rowData:           any[]   = [];
   warehouses:        any[]   = [];
@@ -126,17 +123,19 @@ export class InventarioComponent {
     {
       field: 'entrada', headerName: 'Entradas', width: 90, type: 'numericColumn',
       cellStyle: { color: '#198754', fontWeight: '600' },
+      valueFormatter: p => this.formatQuantity(p.value),
     },
     {
       field: 'salida', headerName: 'Salidas', width: 90, type: 'numericColumn',
       cellStyle: { color: '#dc3545', fontWeight: '600' },
+      valueFormatter: p => this.formatQuantity(p.value),
     },
     {
       field: 'existencia', headerName: 'Existencia', width: 100, type: 'numericColumn',
       cellRenderer: (p: any) => {
         const c: any = { 'CRÍTICO': '#dc3545', 'BAJO': '#fd7e14', 'ÓPTIMO': '#198754', 'ALTO': '#0d6efd' };
         const color  = c[p.data?.estadoStock] || '#333';
-        return `<strong style="color:${color}; font-size:1rem">${p.value ?? 0}</strong>`;
+        return `<strong style="color:${color}; font-size:1rem">${this.formatQuantity(p.value)}</strong>`;
       },
     },
     {
@@ -202,18 +201,52 @@ export class InventarioComponent {
   loadData() {
     if (!this.idCompany) return;
     this.loading = true;
-    this.inventarioService.getInventario(this.idCompany).pipe(
-      catchError(() => of([])),
-      switchMap((data: any[]) => this.materialsService.getMaterials2Fields(this.idCompany).pipe(catchError(() => of([])), map((materials: any[]) => ({ data: Array.isArray(data) ? data : [], materials: Array.isArray(materials) ? materials : [] }))))
-    ).subscribe({
-      next: result => {
-        const existing = new Map(result.data.map((r: any) => [+r.id, r]));
-        this.rowData = result.materials.map((m: any) => existing.get(+m.id) || { id: m.id, insumo: m.insumo || m.barcode || '', description: m.description || m.materialName || '', entrada: 0, salida: 0, existencia: 0, stockMin: m.stockmin || 0, stockMax: m.stockmax || 0, ventaMN: m.ventaMN || 0, total: 0, estadoStock: 'CRÍTICO' });
-        result.data.filter((r: any) => !existing.has(+r.id)).forEach((r: any) => this.rowData.push(r));
+    this.inventarioService.getInventario(this.idCompany).subscribe({
+      next: data => {
+        this.rowData = (Array.isArray(data) ? data : [])
+          .map((row: any) => this.normalizeInventoryRow(row))
+          .filter((row: any) => row.entrada !== 0 || row.salida !== 0);
         this.loading = false;
       },
-      error: ()   => { this.loading = false; },
+      error: error => {
+        console.error('Error loading inventory:', error);
+        this.rowData = [];
+        this.loading = false;
+        alerts.basicAlert('Error', 'No fue posible cargar el inventario.', 'error');
+      },
     });
+  }
+
+  private normalizeInventoryRow(row: any): any {
+    const entrada = this.toNumber(row.entrada ?? row.Entrada);
+    const salida = this.toNumber(row.salida ?? row.Salida);
+    const existencia = this.toNumber(row.existencia ?? row.Existencia);
+    const ventaMN = this.toNumber(row.ventaMN ?? row.VentaMN);
+    const backendTotal = row.total ?? row.Total;
+
+    return {
+      ...row,
+      id: this.toNumber(row.id ?? row.Id),
+      insumo: row.insumo ?? row.Insumo ?? '',
+      description: row.description ?? row.Description ?? '',
+      stockMin: this.toNumber(row.stockMin ?? row.StockMin ?? row.stockmin),
+      stockMax: this.toNumber(row.stockMax ?? row.StockMax ?? row.stockmax),
+      entrada,
+      salida,
+      existencia,
+      ventaMN,
+      total: backendTotal == null ? existencia * ventaMN : this.toNumber(backendTotal),
+      estadoStock: row.estadoStock ?? row.EstadoStock ?? row.estado_stock ?? '',
+    };
+  }
+
+  private toNumber(value: unknown): number {
+    const numberValue = Number(value);
+    return Number.isFinite(numberValue) ? numberValue : 0;
+  }
+
+  private formatQuantity(value: unknown): string {
+    return new Intl.NumberFormat('es-MX', { maximumFractionDigits: 3 }).format(this.toNumber(value));
   }
 
   async openAjuste(row: any): Promise<void> {
