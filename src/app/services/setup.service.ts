@@ -30,6 +30,9 @@ export class SetupService {
     getWarehouseSetup(idCompany: number): Observable<any> {
       return this.http.get<any[]>(`${environment.urlWarehouse}/Setup/company/${idCompany}`, { headers: this.trackingService.getHeaders() });
     }
+    getWarehousesByBranch(idBranch: number): Observable<any[]> {
+      return this.http.get<any[]>(`${environment.urlWarehouse}/Warehouse?idBranch=${idBranch}`, { headers: this.trackingService.getHeaders() });
+    }
 
     addWarehouseSetup(data: any): Observable<any> {
       return this.http.post(`${environment.urlWarehouse}/Setup`, data, { headers: this.trackingService.getHeaders() });

@@ -33,6 +33,7 @@ import { DeleteButtonCellRendererComponent } from './delete-button-cell-renderer
 import { PdfButtonCellRendererRequisitionsComponent } from './pdf-button-cell-renderer-requisitions.component';
 import { DetallesRequisicionesComponent } from './detalles-requisiciones.component';
 import { DetailCellRendererRequisitionReportComponent } from './detail-cell-renderer-requisition-report.component';
+import { ContractsService } from 'app/services/contracts.service';
 
 interface Catalog {
   id: number;
@@ -67,6 +68,7 @@ export class RequisitionsComponent implements CanComponentDeactivate {
   private prefixSetupService = inject(PrefixSetupService);
   private permitionsService = inject(PermitionsService);
   private trackingService = inject(TrackingService);
+  private contractsService = inject(ContractsService);
 
   // Variables compartidas
   masterNotSavedChanges: boolean = false;
@@ -96,6 +98,11 @@ export class RequisitionsComponent implements CanComponentDeactivate {
   proveedores: any[] = [];
   almacenes: any[] = [];
   selectedWarehouseId: number | null = null;
+  selectedContractId: number | null = null;
+  selectedExecutionBranchId: number | null = null;
+  contracts: any[] = [];
+  executionBranches: any[] = [];
+  private permittedWarehouseIds = new Set<number>();
   departamentos: any[] = [];
   ubicaciones: any[] = [];
   monedas: any[] = [];
@@ -164,6 +171,7 @@ export class RequisitionsComponent implements CanComponentDeactivate {
             this.obtenerTipoPago();
             this.obtenerProductos();
             this.obtenerAlmacenes();
+            this.obtenerContratos();
           }
 
           // Cargar detalles independientemente si hay requisición
@@ -277,10 +285,30 @@ export class RequisitionsComponent implements CanComponentDeactivate {
     if (!email) return;
     this.permitionsService.getPermisionswarehousexEmail(email).subscribe({
       next: (data: any) => {
+        this.permittedWarehouseIds = new Set((Array.isArray(data) ? data : []).map((warehouse: any) => Number(warehouse.idAlmacen ?? warehouse.idWarehouse ?? warehouse.id)));
         this.almacenes = (Array.isArray(data) ? data : []).map((warehouse: any) => ({ id: warehouse.idAlmacen ?? warehouse.idWarehouse ?? warehouse.id, name: warehouse.nombreAlmacen ?? warehouse.nameWarehouse ?? warehouse.name ?? warehouse.description })).filter((warehouse: any) => warehouse.id != null);
         this.masterGridApi?.refreshCells({ force: true });
       },
       error: () => { this.almacenes = []; }
+    });
+  }
+
+  obtenerContratos(): void {
+    this.contractsService.getContracts(-this.idRoot).subscribe({ next: (data: any) => this.contracts = Array.isArray(data) ? data : [], error: () => this.contracts = [] });
+  }
+
+  onContractChange(): void {
+    this.selectedExecutionBranchId = null; this.selectedWarehouseId = null; this.executionBranches = [];
+    if (!this.selectedContractId) return;
+    this.contractsService.getExecutingBranches(this.selectedContractId).subscribe({ next: data => this.executionBranches = data || [], error: () => this.executionBranches = [] });
+  }
+
+  onExecutionBranchChange(): void {
+    this.selectedWarehouseId = null;
+    if (!this.selectedExecutionBranchId) { this.almacenes = []; return; }
+    this.setupService.getWarehousesByBranch(this.selectedExecutionBranchId).subscribe({
+      next: (data: any[]) => this.almacenes = (data || []).map((w: any) => ({ id: w.id ?? w.idWarehouse, name: w.name ?? w.nameWarehouse ?? w.description })).filter((w: any) => w.id != null && this.permittedWarehouseIds.has(Number(w.id))),
+      error: () => this.almacenes = []
     });
   }
 
@@ -684,6 +712,9 @@ export class RequisitionsComponent implements CanComponentDeactivate {
   }
 
   async addMasterRow() {
+    if (!this.selectedContractId || !this.selectedExecutionBranchId) {
+      alerts.basicAlert('Contrato requerido', 'Selecciona contrato y sucursal ejecutora.', 'warning'); return;
+    }
     if (!this.selectedWarehouseId) {
       alerts.basicAlert('Almacén requerido', 'Selecciona un almacén antes de crear la requisición.', 'warning');
       return;
@@ -702,6 +733,8 @@ export class RequisitionsComponent implements CanComponentDeactivate {
       dateCreate: new Date().toISOString(),
       idProveedor: 0,
       idWarehouse: this.selectedWarehouseId,
+      idContract: this.selectedContractId,
+      idBranchExecution: this.selectedExecutionBranchId,
       idDepartament: 0,
       delivery: 'A',
       deliveryTime: '1 DÍA',

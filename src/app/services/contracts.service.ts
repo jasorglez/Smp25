@@ -25,6 +25,9 @@ export class ContractsService {
   getContractById(id: number) {
     return this.http.get(`${environment.urlSmp}/Contract/${id}`, { headers: this.trackingService.getHeaders() });
   }
+  getExecutingBranches(idContract: number): Observable<any[]> {
+    return this.http.get<any[]>(`${environment.urlSmp}/Contract/${idContract}/executing-branches`, { headers: this.trackingService.getHeaders() });
+  }
       
     //return this.http.get(`${environment.urlSmp}/SmpandSecurity/contract?idUser=${idUser}&idBussines=${idBussines}`, { headers: this.trackingService.getHeaders() });    
 
