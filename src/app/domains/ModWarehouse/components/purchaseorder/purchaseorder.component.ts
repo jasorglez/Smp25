@@ -28,6 +28,8 @@ import { MaterialsService } from 'app/services/materials.service';
 import { SetupService } from 'app/services/setup.service';
 import { PrefixSetupService } from 'app/services/prefix-setup.service';
 import { NotificationsTelegramService } from 'app/services/notifications-telegram.service';
+import { PermitionsService } from 'app/services/permitions.service';
+import { TrackingService } from 'app/services/tracking.service';
 import { CanComponentDeactivate } from 'app/guards/unsaved-changes.guard';
 import { confirmExitIfUnsaved } from 'app/helpers/can-deactivate.helper';
 import { ButtonCellRendererComponent } from './button-cell-renderer.component';
@@ -68,6 +70,8 @@ export class PurchaseOrderComponent implements CanComponentDeactivate {
   private setupService = inject(SetupService);
   private prefixSetupService = inject(PrefixSetupService);
   private notificationsService = inject(NotificationsTelegramService);
+  private permitionsService = inject(PermitionsService);
+  private trackingService = inject(TrackingService);
 
   // Variables compartidas
 
@@ -95,6 +99,7 @@ export class PurchaseOrderComponent implements CanComponentDeactivate {
 
   // Catálogos Master
   requisiciones: any[] = [];
+  almacenes: any[] = [];
   proveedores: any[] = [];
   departamentos: any[] = [];
   ubicaciones: any[] = [];
@@ -143,6 +148,7 @@ export class PurchaseOrderComponent implements CanComponentDeactivate {
             this.obtenerDatos();
             this.obtenerRequisiciones();
             this.obtenerProductos();
+            this.obtenerAlmacenes();
             if (this.idRequisition != null) {
               this.obtenerDetalles();
             }
@@ -171,6 +177,15 @@ export class PurchaseOrderComponent implements CanComponentDeactivate {
       this.obtenerProveedores();
       this.obtenerTipoPago();
       this.obtenerProductos();
+    });
+  }
+
+  obtenerAlmacenes(): void {
+    const email = this.trackingService.getEmail();
+    if (!email) return;
+    this.permitionsService.getPermisionswarehousexEmail(email).subscribe({
+      next: (data: any) => { this.almacenes = Array.isArray(data) ? data : []; this.masterGridApi?.refreshHeader(); },
+      error: () => { this.almacenes = []; }
     });
   }
 
@@ -230,6 +245,10 @@ export class PurchaseOrderComponent implements CanComponentDeactivate {
       }
     },
     onCellValueChanged: (event: any) => {
+      if (event.colDef.field === 'idReq') {
+        const requisicion = this.requisiciones.find((r: any) => Number(r.id) === Number(event.data.idReq));
+        if (requisicion) event.data.idWarehouse = requisicion.idWarehouse || null;
+      }
       event.data.__modified = true;
       this.masterNotSavedChanges = true;
       setTimeout(() => {
@@ -398,6 +417,10 @@ export class PurchaseOrderComponent implements CanComponentDeactivate {
             : null;
           return foundItem ? `${foundItem.folio}` : params.value;
         },
+      },
+      {
+        field: 'idWarehouse', headerName: 'Almacén destino', width: 190, editable: false,
+        valueFormatter: (params) => this.almacenes.find((w: any) => Number(w.idAlmacen) === Number(params.value))?.nombreAlmacen || params.value || ''
       },
       {
         field: 'idProvider',
@@ -1062,6 +1085,7 @@ export class PurchaseOrderComponent implements CanComponentDeactivate {
       idReference: this.idReference,
       dateCreate: new Date().toISOString(),
       idProvider: 0,
+      idWarehouse: null,
       idDepartament: 0,
       delivery: '1 dia',
       deliveryTime: '1',

@@ -24,6 +24,8 @@ import { UsersService } from 'app/services/users.service';
 import { MaterialsService } from 'app/services/materials.service';
 import { SetupService } from 'app/services/setup.service';
 import { PrefixSetupService } from 'app/services/prefix-setup.service';
+import { PermitionsService } from 'app/services/permitions.service';
+import { TrackingService } from 'app/services/tracking.service';
 import { CanComponentDeactivate } from 'app/guards/unsaved-changes.guard';
 import { confirmExitIfUnsaved } from 'app/helpers/can-deactivate.helper';
 import { ButtonCellRendererComponent } from './button-cell-renderer.component';
@@ -63,6 +65,8 @@ export class RequisitionsComponent implements CanComponentDeactivate {
   private materialsService = inject(MaterialsService);
   private setupService = inject(SetupService);
   private prefixSetupService = inject(PrefixSetupService);
+  private permitionsService = inject(PermitionsService);
+  private trackingService = inject(TrackingService);
 
   // Variables compartidas
   masterNotSavedChanges: boolean = false;
@@ -90,6 +94,7 @@ export class RequisitionsComponent implements CanComponentDeactivate {
   // Catálogos Master
   requisiciones: any[] = [];
   proveedores: any[] = [];
+  almacenes: any[] = [];
   departamentos: any[] = [];
   ubicaciones: any[] = [];
   monedas: any[] = [];
@@ -157,6 +162,7 @@ export class RequisitionsComponent implements CanComponentDeactivate {
             this.obtenerProveedores();
             this.obtenerTipoPago();
             this.obtenerProductos();
+            this.obtenerAlmacenes();
           }
 
           // Cargar detalles independientemente si hay requisición
@@ -265,6 +271,15 @@ export class RequisitionsComponent implements CanComponentDeactivate {
     });
   }
 
+  obtenerAlmacenes(): void {
+    const email = this.trackingService.getEmail();
+    if (!email) return;
+    this.permitionsService.getPermisionswarehousexEmail(email).subscribe({
+      next: (data: any) => { this.almacenes = Array.isArray(data) ? data : []; this.masterGridApi?.refreshHeader(); },
+      error: () => { this.almacenes = []; }
+    });
+  }
+
   get colMaster(): ColDef[] {
     return [
       {
@@ -302,6 +317,13 @@ export class RequisitionsComponent implements CanComponentDeactivate {
         valueFormatter: (params) => {
           return params.value || this.signalsService.getBranchNameSelectedBySidebar()();
         }
+      },
+      {
+        field: 'idWarehouse', headerName: 'Almacén destino', width: 190,
+        editable: (params) => !params.data?.locked,
+        cellEditor: 'agSelectCellEditor',
+        cellEditorParams: () => ({ values: this.almacenes.map((w: any) => w.idAlmacen) }),
+        valueFormatter: (params) => this.almacenes.find((w: any) => Number(w.idAlmacen) === Number(params.value))?.nombreAlmacen || params.value || ''
       },
       {
         field: 'folio',
@@ -661,6 +683,7 @@ export class RequisitionsComponent implements CanComponentDeactivate {
       idReference: this.idReference,
       dateCreate: new Date().toISOString(),
       idProveedor: 0,
+      idWarehouse: 0,
       idDepartament: 0,
       delivery: 'A',
       deliveryTime: '1 DÍA',
