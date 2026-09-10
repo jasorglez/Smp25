@@ -1,0 +1,94 @@
+import { CommonModule } from '@angular/common';
+import { Component, effect, inject } from '@angular/core';
+import { AgGridModule } from 'ag-grid-angular';
+import { ColDef, GridApi, GridReadyEvent } from 'ag-grid-enterprise';
+import { catchError, forkJoin, map, of, switchMap } from 'rxjs';
+import { AG_GRID_LOCALE_ES } from 'assets/i18n/ag-grid.locale.es';
+import { SignalsService } from 'app/services/signals.service';
+import { TrackingService } from 'app/services/tracking.service';
+import { MaterialsService } from 'app/services/materials.service';
+import { OcAndReqsService } from 'app/services/ocandreqs.service';
+import { InandoutService } from 'app/services/inandout.service';
+import { WarehousesService } from 'app/services/warehouses.service';
+
+@Component({
+  selector: 'app-material-traceability',
+  standalone: true,
+  imports: [CommonModule, AgGridModule],
+  template: `
+    <div class="p-3">
+      <div class="d-flex align-items-center justify-content-between mb-2">
+        <div><h5 class="mb-0"><i class="bi bi-diagram-3 me-2"></i>Trazabilidad de materiales</h5>
+          <small class="text-muted">Requisiciones, órdenes de compra, entradas y salidas</small></div>
+        <button class="btn btn-sm btn-outline-primary" (click)="load()" [disabled]="loading"><i class="bi bi-arrow-clockwise"></i> Actualizar</button>
+      </div>
+      <div class="alert alert-info py-2" *ngIf="!projectId">Selecciona un proyecto para consultar sus movimientos.</div>
+      <div class="text-muted py-4 text-center" *ngIf="loading"><span class="spinner-border spinner-border-sm me-2"></span>Preparando trazabilidad...</div>
+      <ag-grid-angular *ngIf="!loading" class="ag-theme-quartz small-text-ag-grid" style="width:100%;height:78vh"
+        [rowData]="rowData" [columnDefs]="columnDefs" [defaultColDef]="defaultColDef"
+        [pagination]="true" [paginationPageSize]="25" [localeText]="AG_GRID_LOCALE_ES"
+        (gridReady)="gridApi = $event.api"></ag-grid-angular>
+    </div>`
+})
+export class MaterialTraceabilityComponent {
+  private signals = inject(SignalsService);
+  private tracking = inject(TrackingService);
+  private materials = inject(MaterialsService);
+  private docs = inject(OcAndReqsService);
+  private movements = inject(InandoutService);
+  private warehouses = inject(WarehousesService);
+  idRoot: number | null = null;
+  projectId: number | null = null;
+  rowData: any[] = [];
+  loading = false;
+  gridApi!: GridApi;
+  readonly AG_GRID_LOCALE_ES = AG_GRID_LOCALE_ES;
+  readonly defaultColDef: ColDef = { sortable: true, filter: true, resizable: true, flex: 1, minWidth: 110 };
+  readonly columnDefs: ColDef[] = [
+    { field: 'material', headerName: 'Material', minWidth: 280, flex: 2 },
+    { field: 'unidad', headerName: 'Unidad', maxWidth: 110 },
+    { field: 'tipo', headerName: 'Movimiento', maxWidth: 140 },
+    { field: 'folio', headerName: 'Folio', maxWidth: 150 },
+    { field: 'documento', headerName: 'Documento', maxWidth: 150 },
+    { field: 'fecha', headerName: 'Fecha', maxWidth: 130 },
+    { field: 'cantidad', headerName: 'Cantidad', type: 'numericColumn', maxWidth: 120 },
+    { field: 'almacen', headerName: 'Almacén', minWidth: 160 },
+    { field: 'proveedor', headerName: 'Proveedor', minWidth: 180 },
+    { field: 'estado', headerName: 'Estado', maxWidth: 130 }
+  ];
+
+  constructor() {
+    effect(() => {
+      this.idRoot = this.signals.getRootSelectedBySidebar()();
+      this.projectId = this.signals.getProjectSelectedBySidebar()();
+      if (this.idRoot && this.tracking.getEmail()) this.load();
+    });
+  }
+
+  load(): void {
+    if (!this.idRoot) return;
+    this.loading = true;
+    const reference = this.projectId || this.idRoot;
+    forkJoin({
+      materialList: this.materials.getMaterials2Fields(this.idRoot).pipe(catchError(() => of([]))),
+      requisitions: this.docs.getOcAndReqs('project', reference, 'REQ').pipe(catchError(() => of([]))),
+      orders: this.docs.getOcAndReqs('project', reference, 'OC').pipe(catchError(() => of([]))),
+      warehouses: this.warehouses.getWarehouses(this.idRoot).pipe(catchError(() => of([])))
+    }).pipe(switchMap(base => {
+      const materialMap = new Map((this.asArray(base.materialList)).map((m: any) => [+m.id, m]));
+      const reqs = this.asArray(base.requisitions); const orders = this.asArray(base.orders);
+      const documents$ = [...reqs, ...orders].map(d => this.docs.getReqItems(+d.id).pipe(catchError(() => of([])), map(items => ({ d, items: this.asArray(items), materialMap }))));
+      const whs = this.asArray(base.warehouses);
+      const movement$ = whs.flatMap(w => ['IN', 'OUT'].map(type => this.movements.getInAndOuts(reference, +(w.id || w.idWarehouse || w.idAlmacen), type).pipe(catchError(() => of([])), map(items => ({ w, type, items: this.asArray(items), materialMap })))));
+      return forkJoin({ documents: documents$.length ? forkJoin(documents$) : of([]), movements: movement$.length ? forkJoin(movement$) : of([]) });
+    })).subscribe({ next: result => { this.rowData = [...this.flattenDocuments(result.documents), ...this.flattenMovements(result.movements)]; this.loading = false; }, error: () => { this.rowData = []; this.loading = false; } });
+  }
+
+  private flattenDocuments(groups: any[]): any[] {
+    return groups.flatMap(g => g.items.map((i: any) => ({ material: i.nameArticle || i.materialName || i.description || g.materialMap.get(+i.idSupplie)?.description || `Material #${i.idSupplie}`, unidad: i.measure || i.unit || g.materialMap.get(+i.idSupplie)?.measure || '', tipo: String(g.d.type || '').toUpperCase() === 'OC' ? 'Orden de compra' : 'Requisición', folio: g.d.folio, documento: g.d.id, fecha: g.d.dateCreate || g.d.datecreate, cantidad: i.quantity, proveedor: g.d.nameProvider || i.nameProvider || '', estado: g.d.close ? 'Cerrado' : 'Abierto' })));
+  }
+  private flattenMovements(groups: any[]): any[] {
+    return groups.flatMap(g => g.items.flatMap((m: any) => (m.details || m.items || []).map((i: any) => ({ material: i.materialName || i.description || g.materialMap.get(+i.idProduct)?.description || `Material #${i.idProduct}`, unidad: i.measure || i.unit || g.materialMap.get(+i.idProduct)?.measure || '', tipo: g.type === 'IN' ? 'Entrada' : 'Salida', folio: m.folio, documento: m.id, fecha: m.date || m.deliveryDate, cantidad: i.quantity || i.total, almacen: g.w.name || g.w.description || g.w.nameWarehouse || '', estado: m.active === false ? 'Inactivo' : 'Activo' }))));
+  }
+  private asArray(value: any): any[] { return Array.isArray(value) ? value : (value?.data || value?.result || value?.items || []); }
+}

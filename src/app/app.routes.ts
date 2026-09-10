@@ -2399,7 +2399,6 @@ export const routes: Routes = [
             path: 'materials-st',
             loadComponent: () => import('./domains/ModProjects/components/materials/materials.component').then((c) => c.MaterialsComponent),
           },
-
           {
             path: 'requisitions-st',
             loadComponent: () => import('./domains/ModWarehouse/components/requisitions/requisitions.component').then((r) => r.RequisitionsComponent),
@@ -2468,6 +2467,10 @@ export const routes: Routes = [
           {
             path: 'materials-st',
             loadComponent: () => import('./domains/ModProjects/components/materials/materials.component').then((c) => c.MaterialsComponent),
+          },
+          {
+            path: 'material-traceability',
+            loadComponent: () => import('./domains/ModWareHousesTD/components/material-traceability/material-traceability.component').then((c) => c.MaterialTraceabilityComponent),
           },
           {
             path: 'providers-st', loadComponent: () => import('./domains/ModWarehouse/components/providers/providers.component').then((e) => e.ProvidersComponent),

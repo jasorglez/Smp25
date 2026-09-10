@@ -8,10 +8,14 @@
                      <i class="bi bi-houses"></i><span>Almacenes</span>
                   </a>
                </li>
-               <li class="nav-item">
-                  <a class="nav-link green-tab" routerLink="materials-st" routerLinkActive="active">
+               <li class="nav-item dropdown">
+                  <a class="nav-link green-tab dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">
                      <i class="bi bi-box-seam"></i><span>Materiales</span>
                   </a>
+                  <ul class="dropdown-menu">
+                     <li><a class="dropdown-item" routerLink="materials-st" routerLinkActive="active">Materiales</a></li>
+                     <li><a class="dropdown-item" routerLink="material-traceability" routerLinkActive="active">Trazabilidad</a></li>
+                  </ul>
                </li>
                <li class="nav-item">
                   <a class="nav-link green-tab" routerLink="providers-st" routerLinkActive="active">
