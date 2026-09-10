@@ -30,7 +30,7 @@ import pdfFonts from 'pdfmake/build/vfs_fonts';
       <div class="alert alert-info py-2" *ngIf="!projectId">Selecciona un proyecto para consultar sus movimientos.</div>
       <div class="text-muted py-4 text-center" *ngIf="loading"><span class="spinner-border spinner-border-sm me-2"></span>Preparando trazabilidad...</div>
       <ag-grid-angular *ngIf="!loading" class="ag-theme-quartz small-text-ag-grid" style="width:100%;height:78vh"
-        [rowData]="rowData" [columnDefs]="columnDefs" [defaultColDef]="defaultColDef"
+        [rowData]="rowData" [columnDefs]="columnDefs" [defaultColDef]="defaultColDef" [autoGroupColumnDef]="autoGroupColumnDef"
         [pagination]="true" [paginationPageSize]="25" [localeText]="AG_GRID_LOCALE_ES"
         (gridReady)="gridApi = $event.api"></ag-grid-angular>
     </div>`
@@ -49,8 +49,10 @@ export class MaterialTraceabilityComponent {
   gridApi!: GridApi;
   readonly AG_GRID_LOCALE_ES = AG_GRID_LOCALE_ES;
   readonly defaultColDef: ColDef = { sortable: true, filter: true, resizable: true, flex: 1, minWidth: 110 };
+  readonly autoGroupColumnDef: ColDef = { headerName: 'Almacén / Material', minWidth: 300, flex: 2 };
   readonly columnDefs: ColDef[] = [
     { field: 'material', headerName: 'Material', minWidth: 280, flex: 2 },
+    { field: 'almacen', headerName: 'Almacén', rowGroup: true, hide: true },
     { field: 'unidad', headerName: 'Unidad', maxWidth: 110 },
     { field: 'requisicion', headerName: 'Requisición (cantidad)', minWidth: 180 },
     { field: 'oc', headerName: 'OC (cantidad)', minWidth: 170 },
@@ -101,9 +103,10 @@ export class MaterialTraceabilityComponent {
   private groupByMaterial(rows: any[]): any[] {
     const grouped = new Map<string, any>();
     rows.forEach(r => {
-      const key = String(r.material || '').trim().toUpperCase();
+      const warehouse = String(r.almacen || 'General').trim();
+      const key = `${warehouse}|${String(r.material || '').trim().toUpperCase()}`;
       if (!key) return;
-      const current = grouped.get(key) || { material: r.material, unidad: r.unidad, requisicion: '', oc: '', entrada: 0, salida: 0, inventario: 0, movimientos: '' };
+      const current = grouped.get(key) || { material: r.material, almacen: warehouse, unidad: r.unidad, requisicion: '', oc: '', entrada: 0, salida: 0, inventario: 0, movimientos: '' };
       const folio = r.folio || r.documento || '';
       const documentWithQuantity = `${folio} (${Number(r.cantidad || 0)})`;
       if (r.tipo === 'Requisición') current.requisicion = this.joinUnique(current.requisicion, documentWithQuantity);
@@ -130,7 +133,7 @@ export class MaterialTraceabilityComponent {
       { text: 'Inventario', bold: true, color: '#fff' }, { text: 'Movimientos', bold: true, color: '#fff' }
     ]];
     this.rowData.forEach((r, i) => body.push([
-      r.material || '', r.unidad || '', r.requisicion || '', r.oc || '',
+      `${r.almacen || 'General'} / ${r.material || ''}`, r.unidad || '', r.requisicion || '', r.oc || '',
       r.entrada || 0, r.salida || 0, r.inventario || 0, r.movimientos || ''
     ].map((text: any) => ({ text, fontSize: 7, fillColor: i % 2 ? '#f4f7fb' : '#fff' }))));
     const doc: any = {
