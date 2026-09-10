@@ -46,6 +46,7 @@ export class MaterialTraceabilityComponent {
   projectId: number | null = null;
   rowData: any[] = [];
   loading = false;
+  private defaultWarehouseName = '';
   gridApi!: GridApi;
   readonly AG_GRID_LOCALE_ES = AG_GRID_LOCALE_ES;
   readonly defaultColDef: ColDef = { sortable: true, filter: true, resizable: true, flex: 1, minWidth: 110 };
@@ -84,6 +85,7 @@ export class MaterialTraceabilityComponent {
       const reqs = this.asArray(base.requisitions); const orders = this.asArray(base.orders);
       const documents$ = [...reqs, ...orders].map(d => this.docs.getReqItems(+d.id).pipe(catchError(() => of([])), map(items => ({ d, items: this.asArray(items), materialMap }))));
       const whs = this.asArray(base.warehouses);
+      this.defaultWarehouseName = whs[0]?.nombreAlmacen || whs[0]?.name || whs[0]?.description || '';
       const movement$ = whs.flatMap(w => ['IN', 'OUT'].map(type => this.movements.getInAndOuts(reference, +(w.id || w.idWarehouse || w.idAlmacen), type).pipe(catchError(() => of([])), switchMap((masters: any) => {
         const rows = this.asArray(masters);
         return rows.length ? forkJoin(rows.map(m => this.movements.getInAndOutItems(+m.id).pipe(catchError(() => of([])), map(details => ({ m, details: this.asArray(details) }))))).pipe(map(details => ({ w, type, items: details, materialMap }))) : of({ w, type, items: [], materialMap });
@@ -93,10 +95,10 @@ export class MaterialTraceabilityComponent {
   }
 
   private flattenDocuments(groups: any[]): any[] {
-    return groups.flatMap(g => g.items.map((i: any) => ({ material: i.nameArticle || i.materialName || i.description || g.materialMap.get(+i.idSupplie)?.description || `Material #${i.idSupplie}`, unidad: i.measure || i.unit || g.materialMap.get(+i.idSupplie)?.measure || '', tipo: String(g.d.type || '').toUpperCase() === 'OC' ? 'Orden de compra' : 'Requisición', folio: g.d.folio, documento: g.d.id, fecha: g.d.dateCreate || g.d.datecreate, cantidad: i.quantity, proveedor: g.d.nameProvider || i.nameProvider || '', estado: g.d.close ? 'Cerrado' : 'Abierto' })));
+    return groups.flatMap(g => g.items.map((i: any) => ({ material: i.nameArticle || i.materialName || i.description || g.materialMap.get(+i.idSupplie)?.description || `Material #${i.idSupplie}`, unidad: i.measure || i.unit || g.materialMap.get(+i.idSupplie)?.measure || '', almacen: this.defaultWarehouseName || 'OAXACA', tipo: String(g.d.type || '').toUpperCase() === 'OC' ? 'Orden de compra' : 'Requisición', folio: g.d.folio, documento: g.d.id, fecha: g.d.dateCreate || g.d.datecreate, cantidad: i.quantity, proveedor: g.d.nameProvider || i.nameProvider || '', estado: g.d.close ? 'Cerrado' : 'Abierto' })));
   }
   private flattenMovements(groups: any[]): any[] {
-    return groups.flatMap(g => g.items.flatMap((entry: any) => entry.details.map((i: any) => ({ material: i.materialName || i.description || g.materialMap.get(+i.idProduct)?.description || `Material #${i.idProduct}`, unidad: i.measure || i.unit || g.materialMap.get(+i.idProduct)?.measure || '', tipo: g.type === 'IN' ? 'Entrada' : 'Salida', folio: entry.m.folio, documento: entry.m.id, fecha: entry.m.date || entry.m.deliveryDate, cantidad: i.quantity || i.total, almacen: g.w.name || g.w.description || g.w.nameWarehouse || '', estado: entry.m.active === false ? 'Inactivo' : 'Activo' }))));
+    return groups.flatMap(g => g.items.flatMap((entry: any) => entry.details.map((i: any) => ({ material: i.materialName || i.description || g.materialMap.get(+i.idProduct)?.description || `Material #${i.idProduct}`, unidad: i.measure || i.unit || g.materialMap.get(+i.idProduct)?.measure || '', tipo: g.type === 'IN' ? 'Entrada' : 'Salida', folio: entry.m.folio, documento: entry.m.id, fecha: entry.m.date || entry.m.deliveryDate, cantidad: i.quantity || i.total, almacen: g.w.nombreAlmacen || g.w.name || g.w.description || g.w.nameWarehouse || this.defaultWarehouseName, estado: entry.m.active === false ? 'Inactivo' : 'Activo' }))));
   }
   private asArray(value: any): any[] { return Array.isArray(value) ? value : (value?.data || value?.result || value?.items || []); }
 
