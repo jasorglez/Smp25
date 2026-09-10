@@ -52,8 +52,8 @@ export class MaterialTraceabilityComponent {
   readonly columnDefs: ColDef[] = [
     { field: 'material', headerName: 'Material', minWidth: 280, flex: 2 },
     { field: 'unidad', headerName: 'Unidad', maxWidth: 110 },
-    { field: 'requisicion', headerName: 'Requisición', minWidth: 150 },
-    { field: 'oc', headerName: 'OC', minWidth: 150 },
+    { field: 'requisicion', headerName: 'Requisición (cantidad)', minWidth: 180 },
+    { field: 'oc', headerName: 'OC (cantidad)', minWidth: 170 },
     { field: 'entrada', headerName: 'Entrada', type: 'numericColumn', maxWidth: 110 },
     { field: 'salida', headerName: 'Salida', type: 'numericColumn', maxWidth: 110 },
     { field: 'inventario', headerName: 'Inventario', type: 'numericColumn', maxWidth: 120 },
@@ -103,10 +103,11 @@ export class MaterialTraceabilityComponent {
     rows.forEach(r => {
       const key = String(r.material || '').trim().toUpperCase();
       if (!key) return;
-      const current = grouped.get(key) || { material: r.material, unidad: r.unidad, requisicion: 0, oc: 0, entrada: 0, salida: 0, inventario: 0, movimientos: '' };
+      const current = grouped.get(key) || { material: r.material, unidad: r.unidad, requisicion: '', oc: '', entrada: 0, salida: 0, inventario: 0, movimientos: '' };
       const folio = r.folio || r.documento || '';
-      if (r.tipo === 'Requisición') current.requisicion += Number(r.cantidad || 0);
-      else if (r.tipo === 'Orden de compra') current.oc += Number(r.cantidad || 0);
+      const documentWithQuantity = `${folio} (${Number(r.cantidad || 0)})`;
+      if (r.tipo === 'Requisición') current.requisicion = this.joinUnique(current.requisicion, documentWithQuantity);
+      else if (r.tipo === 'Orden de compra') current.oc = this.joinUnique(current.oc, documentWithQuantity);
       else if (r.tipo === 'Entrada') current.entrada += Number(r.cantidad || 0);
       else if (r.tipo === 'Salida') current.salida += Number(r.cantidad || 0);
       current.inventario = current.entrada - current.salida;
@@ -124,7 +125,7 @@ export class MaterialTraceabilityComponent {
   printPdf(): void {
     const body: any[] = [[
       { text: 'Material', bold: true, color: '#fff' }, { text: 'Unidad', bold: true, color: '#fff' },
-      { text: 'Requisición', bold: true, color: '#fff' }, { text: 'OC', bold: true, color: '#fff' },
+      { text: 'Requisición (cantidad)', bold: true, color: '#fff' }, { text: 'OC (cantidad)', bold: true, color: '#fff' },
       { text: 'Entrada', bold: true, color: '#fff' }, { text: 'Salida', bold: true, color: '#fff' },
       { text: 'Inventario', bold: true, color: '#fff' }, { text: 'Movimientos', bold: true, color: '#fff' }
     ]];
