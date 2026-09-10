@@ -299,32 +299,40 @@ public gridOptions: any = {
 
   async addAllProjects() {
     const currentIdUser = this.profile().idUser();
-    const projectIds = Object.keys(this.projects).map(Number);
-    if (!currentIdUser || projectIds.length === 0) {
-      alerts.basicAlert('Proyectos', 'No hay proyectos disponibles para agregar.', 'info');
+    const idContract = Number(this.signalsService.idContract() || 0);
+    const idCompany = Number(this.signalsService.getRootSelectedBySidebar()() || 0);
+    if (!currentIdUser || (!this.contractChecked()() && !idCompany) || (this.contractChecked()() && !idContract)) {
+      alerts.basicAlert('Proyectos', 'Seleccione la empresa o el contrato antes de agregar proyectos.', 'info');
       return;
     }
 
-    const assigned = new Set((this.rowData || []).map(row => Number(row.idProject)));
-    const pending = projectIds.filter(id => !assigned.has(id));
-    if (pending.length === 0) {
-      alerts.basicAlert('Proyectos', 'El usuario ya tiene asignados todos los proyectos disponibles.', 'info');
-      return;
-    }
+    // No se usa el grid: se consultan de nuevo los proyectos y permisos reales.
+    const availableProjects$ = this.contractChecked()()
+      ? this.projectsService.getProjectListByContract(idContract)
+      : this.projectsService.getProjectListByCompany(idCompany);
 
-    try {
-      await lastValueFrom(forkJoin(pending.map(idProject => this.usersxprojectsService.addUserxPermission({
-        idUser: currentIdUser,
-        idPermission: idProject,
-        type: this.permissionType,
-        active: 1
-      }))));
-      alerts.basicAlert('Proyectos', `${pending.length} proyecto(s) asignado(s).`, 'success');
-      this.filteredData();
-    } catch (error) {
-      console.error('Error agregando todos los proyectos:', error);
-      alerts.basicAlert('Proyectos', 'No fue posible asignar todos los proyectos.', 'error');
-    }
+    forkJoin({ projects: availableProjects$, permissions: this.usersxprojectsService.getDataUsersxPermissions(this.permissionType) }).subscribe({
+      next: async ({ projects, permissions }: any) => {
+        const projectIds = (Array.isArray(projects) ? projects : []).map(project => Number(project.id));
+        const assigned = new Set((Array.isArray(permissions) ? permissions : Object.values(permissions))
+          .filter((permission: any) => Number(permission.idUser) === Number(currentIdUser))
+          .map((permission: any) => Number(permission.idPermission ?? permission.idProject)));
+        const missing = projectIds.filter(id => id > 0 && !assigned.has(id));
+        if (missing.length === 0) {
+          alerts.basicAlert('Proyectos', 'El usuario ya tiene asignados todos los proyectos de esta selección.', 'info');
+          return;
+        }
+        try {
+          await lastValueFrom(forkJoin(missing.map(idProject => this.usersxprojectsService.addUserxPermission({ idUser: currentIdUser, idPermission: idProject, type: this.permissionType, active: 1 }))));
+          alerts.basicAlert('Proyectos', `${missing.length} proyecto(s) asignado(s).`, 'success');
+          this.filteredData();
+        } catch (error) {
+          console.error('Error agregando proyectos:', error);
+          alerts.basicAlert('Proyectos', 'No fue posible asignar todos los proyectos.', 'error');
+        }
+      },
+      error: () => alerts.basicAlert('Proyectos', 'No fue posible consultar los proyectos disponibles.', 'error')
+    });
   }
 
   async saveChanges() {

@@ -83,5 +83,5 @@ export const environment = {
   geminiApiKey: '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',
   gnewsApiKey: '94ccc596b4dfebc3f72683b6e81d81bc',
 
-  version: '4.99.82 (10 Septiembre 2026) botón visible de asignación masiva',
+  version: '4.99.83 (10 Septiembre 2026) asignación masiva de proyectos uniforme',
 };
