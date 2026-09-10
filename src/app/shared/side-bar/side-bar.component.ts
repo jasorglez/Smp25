@@ -400,6 +400,35 @@ error: (error) => {
   }
 
   async getpermissionxContracts() {
+    // "Todas las sucursales" se representa con el id negativo de la empresa.
+    // El servicio de seguridad filtra por una sucursal real; para este caso se
+    // consulta SMP, que devuelve todos los contratos de las sucursales activas.
+    if (Number(this.selectedBranchId) < 0) {
+      this.contractData = [];
+      this.projectData = [];
+      this.contractService.getContracts(Number(this.selectedBranchId)).subscribe({
+        next: async (data: any) => {
+          this.contractData = (Array.isArray(data) ? data : []).map((contract: any) => ({
+            contractId: contract.idContrato,
+            contract: contract.numberContract,
+          }));
+          this.cdr.markForCheck();
+          if (this.contractData.length > 0) {
+            this.selectedContractId = String(this.contractData[0].contractId);
+            this.signalsService.setContractSelectedBySidebar(Number(this.selectedContractId));
+            this.signalsService.contractSignal(Number(this.selectedContractId), this.contractData[0].contract ?? '');
+            await this.getpermissionxProjects(Number(this.selectedContractId));
+          }
+        },
+        error: () => {
+          this.contractData = [];
+          this.projectData = [];
+          this.cdr.markForCheck();
+        }
+      });
+      return;
+    }
+
     // Aquí consulto la tabla donde está el idUser correspondiente a company
     this.contractService
       .getContractsByBranch(
@@ -452,6 +481,27 @@ error: (error) => {
 
   async getpermissionxProjects(idContract: number) {
     this.projectData = []; // Siempre vaciamos el array de proyectos
+    if (Number(this.selectedBranchId) < 0) {
+      this.projectService.getProjectListByContract(idContract).subscribe({
+        next: (data: any) => {
+          this.projectData = (Array.isArray(data) ? data : []).map((project: any) => ({
+            idProject: project.id,
+            projectName: project.name,
+          }));
+          this.cdr.markForCheck();
+          if (this.projectData.length > 0) {
+            this.selectedProjectId = String(this.projectData[0].idProject);
+            this.trackingService.setProject(this.selectedProjectId);
+            this.signalsService.setProjectSelectedBySidebar(Number(this.selectedProjectId));
+            this.signalsService.setSidebarProjectId(Number(this.selectedProjectId));
+            this.signalsService.setProjectNameBySidebar(this.projectData[0].projectName ?? '');
+            this.loadVigentePresupuesto(Number(this.selectedRoot()), Number(this.selectedProjectId));
+          }
+        },
+        error: () => { this.projectData = []; this.selectedProjectId = ''; this.cdr.markForCheck(); }
+      });
+      return;
+    }
     this.projectService
       .getProjectsByContract(this.signalsService.idUser(), idContract)
       .subscribe({
