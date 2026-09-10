@@ -49,6 +49,12 @@ export class UsersxoilfieldsComponent {
   private gridApi: GridApi;
   private tempIdCounter: number = 0;
   private permissionType: string = 'oilfield';
+  profileSectionTitle: string = 'Campos petroleros';
+
+  get profileItems(): string[] {
+    return (Array.isArray(this.rowData) ? this.rowData : [])
+      .map((row: any) => this.oilfields[row.idPermission] || row.name || `Campo ${row.idPermission}`);
+  }
 
   obtenerDatos() {
     this.usersxoilfieldsService

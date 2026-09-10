@@ -49,6 +49,12 @@ export class UsersxwarehousesComponent {
   private gridApi: GridApi;
   private tempIdCounter: number = 0;
   private permissionType: string = 'warehouse';
+  profileSectionTitle: string = 'Almacenes';
+
+  get profileItems(): string[] {
+    return (Array.isArray(this.rowData) ? this.rowData : [])
+      .map((row: any) => this.warehouses[row.idPermission] || row.name || `Almacén ${row.idPermission}`);
+  }
 
   /**
    * Getter que implementa la lógica de priorización para obtener el idBranch:
@@ -205,7 +211,7 @@ public gridOptions: any = {
       },
       {
         field: 'idPermission',
-        headerName: 'Almacénq',
+        headerName: 'Almacén',
         cellEditor: 'agRichSelectCellEditor',
         cellEditorParams: {
           values: Object.keys(this.warehouses).sort((a, b) => this.warehouses[a].localeCompare(this.warehouses[b])),

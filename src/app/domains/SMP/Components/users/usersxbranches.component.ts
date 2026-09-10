@@ -41,6 +41,14 @@ export class UsersxbranchesComponent {
     private gridApi        : GridApi;
     private tempIdCounter  : number = 0;
     private permissionType : string = 'branch';
+    profileSectionTitle: string = 'Sucursales';
+
+    get profileItems(): string[] {
+      return (Array.isArray(this.rowData) ? this.rowData : []).map((row: any) => {
+        const branch = this.branchs.find(item => Number(item.id) === Number(row.idPermission));
+        return row.name || branch?.name || `Sucursal ${row.idPermission}`;
+      });
+    }
 
   constructor() {
     effect(async () => {

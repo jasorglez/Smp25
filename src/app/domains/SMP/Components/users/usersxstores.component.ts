@@ -65,6 +65,12 @@ export class UsersXStoresComponent {
   private gridApi: GridApi;
   private tempIdCounter: number = 0;
   private permissionType: string = 'store';
+  profileSectionTitle: string = 'Tiendas';
+
+  get profileItems(): string[] {
+    return (Array.isArray(this.rowData) ? this.rowData : [])
+      .map((row: any) => this.warehouses[row.idPermission] || row.name || `Tienda ${row.idPermission}`);
+  }
 
   obtenerDatos() {
     forkJoin({

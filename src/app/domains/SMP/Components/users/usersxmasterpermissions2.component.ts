@@ -27,6 +27,15 @@ export class UsersxMasterPermissions2Component {
   userPermissions: number[] = []; // Almacena los IDs de los permisos del usuario
   selectedUserId: number; // Cambia esto según el usuario seleccionado
   idEmpresa: number;
+  profileSectionTitle: string = 'Permisos activos';
+
+  get profileItems(): string[] {
+    return (this.masterPermissions ?? []).flatMap((master: any) =>
+      (master.detailedPermissions ?? [])
+        .filter((detail: any) => this.isPermissionChecked(detail.id))
+        .map((detail: any) => `${master.permissionName}: ${detail.permissionName}`)
+    );
+  }
 
   private permissionService = inject(MasterPermissions2Service);
   private signalsService = inject(SignalsService);

@@ -88,7 +88,8 @@
     </div>
     <div class="col-lg-2 col-md-3 col-sm-3 col-3" *ngIf="profile().emailUser()">
         <div class="card text-center profile-card">
-            <app-users-profile></app-users-profile>
+            <app-users-profile [sectionTitle]="profileSectionTitle" sectionIcon="bi-diagram-3"
+                [assignedItems]="profileItems"></app-users-profile>
         </div>
     </div>
 </div>

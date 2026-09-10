@@ -85,3 +85,61 @@ h6 {
   font-size: 0.68rem;
   text-overflow: ellipsis;
 }
+
+.assignment-summary {
+  margin-top: 13px;
+  padding-top: 11px;
+  border-top: 1px solid #e2e8f0;
+  text-align: left;
+}
+
+.assignment-summary-title {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  color: #17365d;
+  font-size: 0.7rem;
+  font-weight: 700;
+}
+
+.assignment-total {
+  min-width: 22px;
+  padding: 2px 6px;
+  border-radius: 999px;
+  color: #1e40af;
+  background: #dbeafe;
+  text-align: center;
+}
+
+.assignment-items {
+  margin-top: 8px;
+}
+
+.assignment-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+  padding: 5px 0;
+  border-bottom: 1px dashed #e2e8f0;
+  color: #475569;
+  font-size: 0.66rem;
+  line-height: 1.25;
+}
+
+.assignment-item:last-child {
+  border-bottom: 0;
+}
+
+.assignment-item i {
+  margin-top: 1px;
+  color: #22c55e;
+  font-size: 0.64rem;
+}
+
+.empty-assignments {
+  margin: 8px 0 0;
+  color: #94a3b8;
+  font-size: 0.65rem;
+  text-align: center;
+}

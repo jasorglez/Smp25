@@ -84,6 +84,12 @@ export class UsersxcontractsComponent {
   private gridApi: GridApi;
   private tempIdCounter: number = 0;
   private permissionType: string = 'contract';
+  profileSectionTitle: string = 'Contratos';
+
+  get profileItems(): string[] {
+    return (Array.isArray(this.rowData) ? this.rowData : [])
+      .map((row: any) => this.contracts[row.idPermission] || row.name || `Contrato ${row.idPermission}`);
+  }
 
   obtenerDatos() {
     forkJoin({

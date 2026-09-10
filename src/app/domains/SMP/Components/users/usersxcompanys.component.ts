@@ -64,6 +64,12 @@ export class UsersxcompanysComponent {
   private gridApi: GridApi;
   private tempIdCounter: number = 0;
   private permissionType: string = 'comp-prov';
+  profileSectionTitle: string = 'Contratistas';
+
+  get profileItems(): string[] {
+    return (Array.isArray(this.rowData) ? this.rowData : [])
+      .map((row: any) => this.companys[row.idPermission] || row.name || `Contratista ${row.idPermission}`);
+  }
 
   obtenerDatos() {
     console.log('📊 Loading user permissions data for user:', this.idUser);

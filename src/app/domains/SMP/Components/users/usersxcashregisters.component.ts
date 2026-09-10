@@ -66,6 +66,12 @@ export class UsersXCashRegistersComponent {
   private gridApi: GridApi;
   private tempIdCounter: number = 0;
   private permissionType: string = 'cash-register';
+  profileSectionTitle: string = 'Cajas registradoras';
+
+  get profileItems(): string[] {
+    return (Array.isArray(this.rowData) ? this.rowData : [])
+      .map((row: any) => this.warehouses[row.idPermission] || row.name || `Caja ${row.idPermission}`);
+  }
 
   obtenerDatos() {
     forkJoin({

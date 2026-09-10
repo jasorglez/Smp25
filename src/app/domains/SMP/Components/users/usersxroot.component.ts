@@ -57,6 +57,12 @@ export class UsersxrootComponent {
   private gridApi: GridApi;
   private tempIdCounter: number = 0;
   private permissionType: string = 'root';
+  profileSectionTitle: string = 'Empresas';
+
+  get profileItems(): string[] {
+    return (Array.isArray(this.rowData) ? this.rowData : [])
+      .map((row: any) => this.root[row.idPermission] || row.name || `Empresa ${row.idPermission}`);
+  }
 
   obtenerDatos() {
     this.usersxrootService

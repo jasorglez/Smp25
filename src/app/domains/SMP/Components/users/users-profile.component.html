@@ -23,4 +23,20 @@
             <strong>{{ nameContract }}</strong>
         </div>
     </div>
+
+    <div class="assignment-summary" *ngIf="sectionTitle">
+        <div class="assignment-summary-title">
+            <span><i class="bi" [ngClass]="sectionIcon"></i> {{ sectionTitle }}</span>
+            <span class="assignment-total">{{ visibleAssignedItems.length }}</span>
+        </div>
+        <div class="assignment-items" *ngIf="visibleAssignedItems.length; else noAssignments">
+            <div class="assignment-item" *ngFor="let item of visibleAssignedItems">
+                <i class="bi bi-check-circle-fill"></i>
+                <span>{{ item }}</span>
+            </div>
+        </div>
+        <ng-template #noAssignments>
+            <p class="empty-assignments">Sin asignaciones</p>
+        </ng-template>
+    </div>
 </div>

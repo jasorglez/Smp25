@@ -55,6 +55,13 @@ export class UsersxprojectsComponent {
   private permissionType: string = 'project';
   bulkAssigning: boolean = false;
   searchTerm: string = '';
+  profileSectionTitle: string = 'Proyectos';
+
+  get profileItems(): string[] {
+    return (Array.isArray(this.rowData) ? this.rowData : [])
+      .map((row: any) => this.projects[row.idProject ?? row.idPermission] || row.name || `Proyecto ${row.idProject ?? row.idPermission}`)
+      .filter((item: string) => !!item);
+  }
 
   companyName = computed(() => this.signalsService.nameCompany() || 'Empresa seleccionada');
   contractName = computed(() => this.signalsService.nameContract() || 'Contrato seleccionado');
