@@ -10,6 +10,10 @@ import { MaterialsService } from 'app/services/materials.service';
 import { OcAndReqsService } from 'app/services/ocandreqs.service';
 import { InandoutService } from 'app/services/inandout.service';
 import { WarehousesService } from 'app/services/warehouses.service';
+import pdfMake from 'pdfmake/build/pdfmake';
+import pdfFonts from 'pdfmake/build/vfs_fonts';
+
+(pdfMake as any).vfs = (pdfFonts as any).pdfMake?.vfs || (pdfFonts as any).default?.pdfMake?.vfs;
 
 @Component({
   selector: 'app-material-traceability',
@@ -20,7 +24,8 @@ import { WarehousesService } from 'app/services/warehouses.service';
       <div class="d-flex align-items-center justify-content-between mb-2">
         <div><h5 class="mb-0"><i class="bi bi-diagram-3 me-2"></i>Trazabilidad de materiales</h5>
           <small class="text-muted">Requisiciones, órdenes de compra, entradas y salidas</small></div>
-        <button class="btn btn-sm btn-outline-primary" (click)="load()" [disabled]="loading"><i class="bi bi-arrow-clockwise"></i> Actualizar</button>
+        <div class="d-flex gap-2"><button class="btn btn-sm btn-outline-primary" (click)="load()" [disabled]="loading"><i class="bi bi-arrow-clockwise"></i> Actualizar</button>
+        <button class="btn btn-sm btn-danger" (click)="printPdf()" [disabled]="loading || !rowData.length"><i class="bi bi-file-earmark-pdf"></i> PDF</button></div>
       </div>
       <div class="alert alert-info py-2" *ngIf="!projectId">Selecciona un proyecto para consultar sus movimientos.</div>
       <div class="text-muted py-4 text-center" *ngIf="loading"><span class="spinner-border spinner-border-sm me-2"></span>Preparando trazabilidad...</div>
@@ -91,4 +96,24 @@ export class MaterialTraceabilityComponent {
     return groups.flatMap(g => g.items.flatMap((m: any) => (m.details || m.items || []).map((i: any) => ({ material: i.materialName || i.description || g.materialMap.get(+i.idProduct)?.description || `Material #${i.idProduct}`, unidad: i.measure || i.unit || g.materialMap.get(+i.idProduct)?.measure || '', tipo: g.type === 'IN' ? 'Entrada' : 'Salida', folio: m.folio, documento: m.id, fecha: m.date || m.deliveryDate, cantidad: i.quantity || i.total, almacen: g.w.name || g.w.description || g.w.nameWarehouse || '', estado: m.active === false ? 'Inactivo' : 'Activo' }))));
   }
   private asArray(value: any): any[] { return Array.isArray(value) ? value : (value?.data || value?.result || value?.items || []); }
+
+  printPdf(): void {
+    const body: any[] = [[
+      { text: 'Material', bold: true, color: '#fff' }, { text: 'Unidad', bold: true, color: '#fff' },
+      { text: 'Movimiento', bold: true, color: '#fff' }, { text: 'Folio', bold: true, color: '#fff' },
+      { text: 'Fecha', bold: true, color: '#fff' }, { text: 'Cantidad', bold: true, color: '#fff' },
+      { text: 'Almacén / Proveedor', bold: true, color: '#fff' }
+    ]];
+    this.rowData.forEach((r, i) => body.push([
+      r.material || '', r.unidad || '', r.tipo || '', r.folio || r.documento || '',
+      r.fecha ? new Date(r.fecha).toLocaleDateString('es-MX') : '', r.cantidad == null ? '' : String(r.cantidad), r.almacen || r.proveedor || ''
+    ].map((text: any) => ({ text, fontSize: 7, fillColor: i % 2 ? '#f4f7fb' : '#fff' }))));
+    const doc: any = {
+      pageOrientation: 'landscape', pageSize: 'LETTER', pageMargins: [24, 60, 24, 35],
+      header: () => ({ margin: [24, 18, 24, 0], columns: [{ text: 'AZTECA', color: '#003366', bold: true, fontSize: 16 }, { text: 'TRAZABILIDAD DE MATERIALES', alignment: 'right', color: '#1a5a9a', bold: true, fontSize: 12 }] }),
+      content: [{ text: `Proyecto: ${this.projectId || 'Todos'}   |   Generado: ${new Date().toLocaleString('es-MX')}`, fontSize: 8, color: '#555', margin: [0, 0, 0, 10] }, { table: { headerRows: 1, widths: ['*', 55, 85, 75, 65, 55, 150], body }, layout: { fillColor: (row: number) => row === 0 ? '#1a5a9a' : null, hLineColor: () => '#d5dbe3', vLineColor: () => '#d5dbe3', paddingLeft: () => 4, paddingRight: () => 4, paddingTop: () => 3, paddingBottom: () => 3 } }],
+      footer: (current: number, total: number) => ({ text: `Trazabilidad de materiales · Página ${current} de ${total}`, alignment: 'center', fontSize: 8, color: '#777' })
+    };
+    pdfMake.createPdf(doc).print();
+  }
 }
