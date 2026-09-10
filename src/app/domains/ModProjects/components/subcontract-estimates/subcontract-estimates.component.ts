@@ -596,7 +596,7 @@ export class SubcontractEstimatesComponent implements OnDestroy {
           values.accumulated = accumulated;
           values.balance = Math.max(0, values.contractQuantity - accumulated);
           return values;
-        });
+        }).filter((row: any) => row.accumulated > 0);
         this.showCrossReport = true;
       },
       error: () => alerts.basicAlert('Reporte cruzado', 'No fue posible cargar las estimaciones del proveedor.', 'error')
