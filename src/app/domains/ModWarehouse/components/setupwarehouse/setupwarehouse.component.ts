@@ -45,6 +45,10 @@ export class SetupwarehouseComponent {
   consecutiveCotiz: number = 0;
   prefixOc: string = '';
   consecutiveOc: number = 0;
+  prefixEntry: string = '';
+  consecutiveEntry: number = 0;
+  prefixOut: string = '';
+  consecutiveOut: number = 0;
 
   ngOnInit() {
     this.idCompany = this.signalsService.getRootSelectedBySidebar()();
@@ -137,6 +141,10 @@ export class SetupwarehouseComponent {
       consecutiveCotiz: this.consecutiveCotiz || 0,
       prefixOc: this.prefixOc || null,
       consecutiveOc: this.consecutiveOc || 0,
+      prefixEntry: this.prefixEntry || null,
+      consecutiveEntry: this.consecutiveEntry || 0,
+      prefixOut: this.prefixOut || null,
+      consecutiveOut: this.consecutiveOut || 0,
       active: true
     };
 
@@ -213,6 +221,10 @@ export class SetupwarehouseComponent {
         this.consecutiveCotiz = data.consecutiveCotiz || 0;
         this.prefixOc = data.prefixOc || '';
         this.consecutiveOc = data.consecutiveOc || 0;
+        this.prefixEntry = data.prefixEntry || '';
+        this.consecutiveEntry = data.consecutiveEntry || 0;
+        this.prefixOut = data.prefixOut || '';
+        this.consecutiveOut = data.consecutiveOut || 0;
         this.hasPrefixData = true;
       },
       error: (err) => {
@@ -231,6 +243,10 @@ export class SetupwarehouseComponent {
     this.consecutiveCotiz = 0;
     this.prefixOc = '';
     this.consecutiveOc = 0;
+    this.prefixEntry = '';
+    this.consecutiveEntry = 0;
+    this.prefixOut = '';
+    this.consecutiveOut = 0;
     this.hasPrefixData = false;
   }
 

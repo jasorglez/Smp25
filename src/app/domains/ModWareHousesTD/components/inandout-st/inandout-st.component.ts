@@ -20,6 +20,7 @@ import { PdfButtonCellRendererComponent } from '../../../ModAdmon/components/egr
 import { catchError, forkJoin, lastValueFrom, of } from 'rxjs';
 import { ActivatedRoute } from '@angular/router';
 import { UsersService } from 'app/services/users.service';
+import { PrefixSetupService } from 'app/services/prefix-setup.service';
 
 @Component({
   selector: 'app-inandout-st',
@@ -41,6 +42,7 @@ export class InandoutStComponent implements OnInit {
   private projectsService = inject(ProjectsService);
   private route = inject(ActivatedRoute);
   private usersService = inject(UsersService);
+  private prefixSetupService = inject(PrefixSetupService);
 
   private isGeneratingReport: boolean = false;
   rowData: any[] = [];
@@ -826,6 +828,17 @@ export class InandoutStComponent implements OnInit {
     try {
       for (const newRow of newRows) {
         const entryData = this.prepareEntryData(newRow);
+        if (!entryData.folio) {
+          const ownerId = this.idBranch && this.idBranch > 0 ? this.idBranch : this.projectId;
+          const ownerType = this.idBranch && this.idBranch > 0 ? 'branch' : 'project';
+          if (ownerId) {
+            entryData.folio = await this.prefixSetupService.getNextFolio(
+              ownerType,
+              ownerId,
+              this.movementType === 'IN' ? 'entry' : 'out'
+            ) || '';
+          }
+        }
         await lastValueFrom(this.inandoutService.addInAndOut(entryData));
       }
       for (const modifiedRow of modifiedRows) {

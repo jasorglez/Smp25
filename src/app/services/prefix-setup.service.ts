@@ -4,7 +4,7 @@ import { Observable, firstValueFrom } from 'rxjs';
 import { environment } from '@env/environment';
 import { TrackingService } from './tracking.service';
 
-export type DocumentType = 'req' | 'cotiz' | 'oc';
+export type DocumentType = 'req' | 'cotiz' | 'oc' | 'entry' | 'out';
 
 export interface PrefixSetup {
   id?: number;
@@ -16,6 +16,10 @@ export interface PrefixSetup {
   consecutiveCotiz?: number;
   prefixOc?: string;
   consecutiveOc?: number;
+  prefixEntry?: string;
+  consecutiveEntry?: number;
+  prefixOut?: string;
+  consecutiveOut?: number;
   active?: boolean;
 }
 
@@ -95,7 +99,7 @@ export class PrefixSetupService {
    * Genera el siguiente folio para un tipo de documento y actualiza el consecutivo
    * @param type 'project' o 'branch'
    * @param idProjectOrBranch ID del proyecto o sucursal
-   * @param documentType 'req' | 'cotiz' | 'oc'
+   * @param documentType tipo de documento configurado
    * @returns Promise con el folio generado o null si no hay configuración
    */
   async getNextFolio(type: 'project' | 'branch', idProjectOrBranch: number, documentType: DocumentType): Promise<string | null> {
@@ -125,6 +129,16 @@ export class PrefixSetupService {
           prefix = prefixSetup.prefixOc || '';
           consecutive = (prefixSetup.consecutiveOc || 0) + 1;
           prefixSetup.consecutiveOc = consecutive;
+          break;
+        case 'entry':
+          prefix = prefixSetup.prefixEntry || '';
+          consecutive = (prefixSetup.consecutiveEntry || 0) + 1;
+          prefixSetup.consecutiveEntry = consecutive;
+          break;
+        case 'out':
+          prefix = prefixSetup.prefixOut || '';
+          consecutive = (prefixSetup.consecutiveOut || 0) + 1;
+          prefixSetup.consecutiveOut = consecutive;
           break;
       }
 

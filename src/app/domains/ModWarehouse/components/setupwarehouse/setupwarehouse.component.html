@@ -58,6 +58,16 @@
                                 </div>
                             </div>
                             <div class="row mb-2">
+                                <div class="col-md-2"><label>Entradas:</label></div>
+                                <div class="col-md-2"><input type="text" [(ngModel)]="prefixEntry" class="form-control form-control-sm" placeholder="Prefijo" maxlength="10"></div>
+                                <div class="col-md-2"><input type="number" [(ngModel)]="consecutiveEntry" class="form-control form-control-sm" placeholder="Consecutivo" min="0"></div>
+                            </div>
+                            <div class="row mb-2">
+                                <div class="col-md-2"><label>Salidas:</label></div>
+                                <div class="col-md-2"><input type="text" [(ngModel)]="prefixOut" class="form-control form-control-sm" placeholder="Prefijo" maxlength="10"></div>
+                                <div class="col-md-2"><input type="number" [(ngModel)]="consecutiveOut" class="form-control form-control-sm" placeholder="Consecutivo" min="0"></div>
+                            </div>
+                            <div class="row mb-2">
                                 <div class="col-md-2"><label>Órdenes de Compra:</label></div>
                                 <div class="col-md-2">
                                     <input type="text" [(ngModel)]="prefixOc" class="form-control form-control-sm" placeholder="Prefijo" maxlength="7">
@@ -109,6 +119,16 @@
                                 <div class="col-md-2">
                                     <input type="number" [(ngModel)]="consecutiveOc" class="form-control form-control-sm" placeholder="Consecutivo" min="0">
                                 </div>
+                            </div>
+                            <div class="row mb-2">
+                                <div class="col-md-2"><label>Entradas:</label></div>
+                                <div class="col-md-2"><input type="text" [(ngModel)]="prefixEntry" class="form-control form-control-sm" placeholder="Prefijo" maxlength="10"></div>
+                                <div class="col-md-2"><input type="number" [(ngModel)]="consecutiveEntry" class="form-control form-control-sm" placeholder="Consecutivo" min="0"></div>
+                            </div>
+                            <div class="row mb-2">
+                                <div class="col-md-2"><label>Salidas:</label></div>
+                                <div class="col-md-2"><input type="text" [(ngModel)]="prefixOut" class="form-control form-control-sm" placeholder="Prefijo" maxlength="10"></div>
+                                <div class="col-md-2"><input type="number" [(ngModel)]="consecutiveOut" class="form-control form-control-sm" placeholder="Consecutivo" min="0"></div>
                             </div>
                         </div>
                     </div>
@@ -162,4 +182,3 @@
             </div>
         </div>
 </div>
-
