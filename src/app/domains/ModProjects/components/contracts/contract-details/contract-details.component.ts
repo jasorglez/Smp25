@@ -12,6 +12,7 @@ import { FollowprojectsService } from 'app/services/followprojects.service';
 import { AttachHandlerService } from 'app/services/attach-handler.service';
 import { SafePipe } from 'app/shared/pipes/safe.pipe';
 import { TrackingService } from 'app/services/tracking.service';
+import { BranchsService } from 'app/services/branchs.service';
 
 @Component({
   selector: 'app-contract-details',
@@ -27,6 +28,7 @@ export class ContractDetailsComponent {
   private timeService = inject(TimeService);
   private followProjectsService = inject(FollowprojectsService);
   private attachHandlerService = inject(AttachHandlerService);
+  private branchsService = inject(BranchsService);
 
   defaultColDef = {
     flex: 1,
@@ -57,14 +59,18 @@ export class ContractDetailsComponent {
   detailedNewlyAddedRows: string[] = [];
   private selectedLoanIdBeforeRefresh: number;
   selectedDocumentUrl: string = null;
+  executingBranches: any[] = [];
+  branchs: any[] = [];
+  selectedExecutingBranchId: number | null = null;
 
   ngOnInit() { }
 
   constructor() {
     effect(() => {
       this.idContract = this.signalsService.getIdContract()();
-      console.log(this.idContract);
       this.loadData();
+      this.loadExecutingBranches();
+      this.loadBranches();
     });
   }
 
@@ -131,6 +137,61 @@ export class ContractDetailsComponent {
           console.error('Error loading loans data:', error);
         }
       );
+  }
+
+  loadBranches() {
+    const idRoot = this.signalsService.getRootSelectedBySidebar()();
+    if (!idRoot) return;
+    this.branchsService.getBrancheswoa(idRoot).subscribe({
+      next: data => this.branchs = data || [],
+      error: error => console.error('Error obteniendo sucursales:', error)
+    });
+  }
+
+  get executingBranchOptions(): any[] {
+    const relatedIds = new Set(this.executingBranches.map(item => item.idBranch));
+    return this.branchs
+      .filter(branch => !relatedIds.has(branch.id))
+      .sort((a, b) => (a.name || '').localeCompare(b.name || ''));
+  }
+
+  loadExecutingBranches() {
+    if (!this.idContract || typeof this.idContract !== 'number') {
+      this.executingBranches = [];
+      return;
+    }
+    this.followProjectsService.getContractExecutingBranches(this.idContract).subscribe({
+      next: data => this.executingBranches = data || [],
+      error: error => {
+        console.error('Error obteniendo sucursales ejecutoras:', error);
+        this.executingBranches = [];
+      }
+    });
+  }
+
+  addExecutingBranch() {
+    if (!this.idContract || !this.selectedExecutingBranchId) return;
+    this.followProjectsService.addContractExecutingBranch(this.idContract, this.selectedExecutingBranchId).subscribe({
+      next: () => {
+        this.selectedExecutingBranchId = null;
+        this.loadExecutingBranches();
+      },
+      error: error => {
+        console.error('Error agregando sucursal ejecutora:', error);
+        alerts.basicAlert('Sucursales ejecutoras', 'No fue posible agregar la sucursal.', 'error');
+      }
+    });
+  }
+
+  removeExecutingBranch(item: any) {
+    if (!this.idContract) return;
+    this.followProjectsService.removeContractExecutingBranch(this.idContract, item.idBranch).subscribe({
+      next: () => this.loadExecutingBranches(),
+      error: error => {
+        console.error('Error removiendo sucursal ejecutora:', error);
+        alerts.basicAlert('Sucursales ejecutoras', 'No fue posible retirar la sucursal.', 'error');
+      }
+    });
   }
 
 
