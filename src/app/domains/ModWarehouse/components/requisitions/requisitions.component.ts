@@ -33,6 +33,7 @@ import { DeleteButtonCellRendererComponent } from './delete-button-cell-renderer
 import { PdfButtonCellRendererRequisitionsComponent } from './pdf-button-cell-renderer-requisitions.component';
 import { DetallesRequisicionesComponent } from './detalles-requisiciones.component';
 import { DetailCellRendererRequisitionReportComponent } from './detail-cell-renderer-requisition-report.component';
+import { BranchsService } from 'app/services/branchs.service';
 
 interface Catalog {
   id: number;
@@ -67,6 +68,7 @@ export class RequisitionsComponent implements CanComponentDeactivate {
   private prefixSetupService = inject(PrefixSetupService);
   private permitionsService = inject(PermitionsService);
   private trackingService = inject(TrackingService);
+  private branchsService = inject(BranchsService);
 
   // Variables compartidas
   masterNotSavedChanges: boolean = false;
@@ -95,6 +97,7 @@ export class RequisitionsComponent implements CanComponentDeactivate {
   requisiciones: any[] = [];
   proveedores: any[] = [];
   almacenes: any[] = [];
+  sucursales: any[] = [];
   selectedWarehouseId: number | null = null;
   selectedContractId: number | null = null;
   selectedExecutionBranchId: number | null = null;
@@ -170,6 +173,7 @@ export class RequisitionsComponent implements CanComponentDeactivate {
             this.obtenerTipoPago();
             this.obtenerProductos();
             this.obtenerAlmacenes();
+            this.obtenerSucursales();
           }
 
           // Cargar detalles independientemente si hay requisición
@@ -292,6 +296,13 @@ export class RequisitionsComponent implements CanComponentDeactivate {
     });
   }
 
+  obtenerSucursales(): void {
+    this.branchsService.getBrancheswoa(this.idRoot).subscribe({
+      next: data => this.sucursales = data || [],
+      error: () => this.sucursales = []
+    });
+  }
+
   private loadExecutionBranchWarehouses(): void {
     this.setupService.getWarehousesByBranch(this.selectedExecutionBranchId).subscribe({
       next: (data: any[]) => this.almacenes = (data || []).map((w: any) => ({ id: w.id ?? w.idWarehouse, name: w.name ?? w.nameWarehouse ?? w.description })).filter((w: any) => w.id != null && this.permittedWarehouseIds.has(Number(w.id))),
@@ -348,8 +359,9 @@ export class RequisitionsComponent implements CanComponentDeactivate {
         editable: false,
         filter: true,
         width: 180,
-        valueFormatter: (params) => {
-          return params.value || this.signalsService.getBranchNameSelectedBySidebar()();
+        valueGetter: (params) => {
+          const idBranch = Number(params.data?.idBranchExecution || 0);
+          return this.sucursales.find(branch => Number(branch.id) === idBranch)?.name || 'Sin sucursal asignada';
         }
       },
       { field: 'idWarehouse', hide: true, filter: 'agNumberColumnFilter' },
