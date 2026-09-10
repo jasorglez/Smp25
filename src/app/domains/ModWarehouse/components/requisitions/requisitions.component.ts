@@ -680,6 +680,10 @@ export class RequisitionsComponent implements CanComponentDeactivate {
   }
 
   async addMasterRow() {
+    if (!this.selectedWarehouseId) {
+      alerts.basicAlert('Almacén requerido', 'Selecciona un almacén antes de crear la requisición.', 'warning');
+      return;
+    }
     const tempId = `temp_${this.tempIdCounter++}`;
 
     // Generar folio automáticamente desde PrefixSetup
@@ -769,7 +773,9 @@ export class RequisitionsComponent implements CanComponentDeactivate {
       );
       this.masterNotSavedChanges = false;
       this.newlyAddedMasterRows = [];
+      this.masterRowData = [];
       this.obtenerDatos(); // Refrescar los datos
+      setTimeout(() => this.onWarehouseChange(), 0);
     } catch (error) {
       console.error(error);
       alerts.basicAlert(
