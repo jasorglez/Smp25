@@ -50,7 +50,13 @@
           class="workspace-tab"
           *ngFor="let tab of workspaceTabs.tabs()"
           [class.active]="tab.url === workspaceTabs.activeUrl()"
+          [class.dragging]="tab.url === draggingTabUrl"
+          draggable="true"
           (click)="activateTab(tab)"
+          (dragstart)="onTabDragStart($event, tab)"
+          (dragover)="onTabDragOver($event)"
+          (drop)="onTabDrop($event, tab)"
+          (dragend)="onTabDragEnd()"
           [title]="tab.title"
         >
           <i class="bi bi-window-stack"></i>

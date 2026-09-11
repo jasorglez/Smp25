@@ -27,6 +27,7 @@ export class MainPageComponent implements OnInit, OnDestroy {
   readonly workspaceTabs   = inject(WorkspaceTabsService);
 
   private routerSub?: Subscription;
+  draggingTabUrl = '';
 
   private readonly MODULE_MAP: Record<string, string> = {
     'dashboard'          : 'Dashboard',
@@ -146,6 +147,28 @@ export class MainPageComponent implements OnInit, OnDestroy {
     event.stopPropagation();
     const nextTab = this.workspaceTabs.close(tab.url);
     if (nextTab) this.router.navigateByUrl(nextTab.url);
+  }
+
+  onTabDragStart(event: DragEvent, tab: WorkspaceTab): void {
+    this.draggingTabUrl = tab.url;
+    event.dataTransfer?.setData('text/plain', tab.url);
+    if (event.dataTransfer) event.dataTransfer.effectAllowed = 'move';
+  }
+
+  onTabDragOver(event: DragEvent): void {
+    event.preventDefault();
+    if (event.dataTransfer) event.dataTransfer.dropEffect = 'move';
+  }
+
+  onTabDrop(event: DragEvent, targetTab: WorkspaceTab): void {
+    event.preventDefault();
+    const sourceUrl = this.draggingTabUrl || event.dataTransfer?.getData('text/plain');
+    if (sourceUrl) this.workspaceTabs.move(sourceUrl, targetTab.url);
+    this.draggingTabUrl = '';
+  }
+
+  onTabDragEnd(): void {
+    this.draggingTabUrl = '';
   }
 
   private registerWorkspaceRoute(url: string): void {

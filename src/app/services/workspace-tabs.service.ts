@@ -69,6 +69,23 @@ export class WorkspaceTabsService {
     this.persist();
   }
 
+  move(sourceUrl: string, targetUrl: string): void {
+    const source = this.normalizeUrl(sourceUrl);
+    const target = this.normalizeUrl(targetUrl);
+    if (source === target) return;
+
+    const currentTabs = [...this.tabs()];
+    const sourceIndex = currentTabs.findIndex(tab => tab.url === source);
+    const targetIndex = currentTabs.findIndex(tab => tab.url === target);
+    if (sourceIndex < 0 || targetIndex < 0) return;
+
+    const [tab] = currentTabs.splice(sourceIndex, 1);
+    const insertAt = sourceIndex < targetIndex ? targetIndex - 1 : targetIndex;
+    currentTabs.splice(insertAt, 0, tab);
+    this.tabs.set(currentTabs);
+    this.persist();
+  }
+
   private normalizeUrl(url: string): string {
     const withoutFragment = url.split('#')[0];
     return withoutFragment.length > 1 && withoutFragment.endsWith('/')

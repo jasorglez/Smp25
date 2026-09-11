@@ -47,6 +47,7 @@
   border: 1px solid #c7d0d8;
   border-bottom: 0;
   border-radius: 5px 5px 0 0;
+  cursor: grab;
   transition: background-color .15s ease, color .15s ease;
 }
 
@@ -62,6 +63,11 @@
   font-weight: 600;
   background: #fff;
   border-color: #cbd5df;
+}
+
+.workspace-tab.dragging {
+  opacity: .45;
+  cursor: grabbing;
 }
 
 .workspace-tab-title {

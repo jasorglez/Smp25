@@ -124,7 +124,10 @@ export class WelcomeComponent implements OnInit, OnDestroy {
   }
 
   private applyImageNames(names: string[]): void {
-    const trimmed = names.map((n) => n.trim()).filter(Boolean);
+    // Los nombres provenientes de macOS pueden traer acentos descompuestos
+    // (NFD), mientras que nginx publica los archivos con UTF-8 normal (NFC).
+    // Se normalizan antes de codificar la URL para no generar 404 invisibles.
+    const trimmed = names.map((n) => n.trim().normalize('NFC')).filter(Boolean);
     this.imageUrls = trimmed.map(
       (name) => `${PUBLICIDAD_BASE}${encodeURIComponent(name)}`,
     );
