@@ -25,7 +25,7 @@ import { TrackingService } from 'app/services/tracking.service';
             class="btn btn-sm btn-success"
             (click)="addRow()"
             [disabled]="!gridApi">
-            <i class="bi bi-plus-lg"></i> Agregar
+            <i class="bi bi-plus-lg"></i> Agregar Registro
           </button>
           <button
             class="btn btn-sm btn-primary position-relative"
@@ -473,6 +473,24 @@ export class DetallesTiposProveedorComponent implements ICellRendererAngularComp
       this.categorias = categorias || [];
       this.familias = familias || [];
       this.subfamilias = subfamilias || [];
+
+      // “Subcontratista” es una categoría válida para proveedores. Si la
+      // empresa aún no la tiene en el catálogo, se crea y queda disponible en
+      // el combo para este proveedor.
+      if (!this.categorias.some((c: any) => String(c.description || '').trim().toUpperCase() === 'SUBCONTRATISTA')) {
+        try {
+          await this.catalogsService.addCatalog({
+            description: 'Subcontratista',
+            type: 'CATEGORY',
+            idCompany: this.idRoot,
+            active: 1,
+            vigente: true
+          }).toPromise();
+          this.categorias = [...this.categorias, { description: 'Subcontratista' }];
+        } catch (error) {
+          console.warn('No fue posible agregar la categoría Subcontratista', error);
+        }
+      }
 
       console.log('Catálogos cargados:', {
         categorias: this.categorias.length,

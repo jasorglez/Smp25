@@ -89,6 +89,8 @@ export class InandoutStComponent implements OnInit {
       this.idBranch = this.signalsService.getBranchSelectedBySidebar()();
       if (this.idBranch) {
         this.loadOcList();
+        const email = this.trackingService.getEmail();
+        if (email) this.loadWarehouses(email);
       }
     });
 
@@ -121,7 +123,22 @@ export class InandoutStComponent implements OnInit {
   loadWarehouses(email: string) {
     this.permitionsService.getPermisionswarehousexEmail(email).subscribe({
       next: (data) => {
-        this.warehouses = data;
+        const available = Array.isArray(data) ? data : [];
+        // El sidebar usa un id negativo para “Todas las sucursales”. En ese
+        // caso no se filtra y se muestran todos los almacenes permitidos.
+        // Para una sucursal concreta se filtra únicamente si la respuesta
+        // incluye el identificador de sucursal; así no se rompen permisos
+        // antiguos que solo devuelven el almacén.
+        if (this.idBranch !== null && this.idBranch > 0) {
+          const withBranch = available.filter((w: any) =>
+            w.idBranch != null || w.branchId != null || w.idSucursal != null || w.sucursalId != null
+          );
+          this.warehouses = withBranch.length > 0
+            ? withBranch.filter((w: any) => Number(w.idBranch ?? w.branchId ?? w.idSucursal ?? w.sucursalId) === this.idBranch)
+            : available;
+        } else {
+          this.warehouses = available;
+        }
         if (this.warehouses.length > 0) {
           this.selectedWarehouse = null;
           this.rowData = [];
@@ -742,7 +759,7 @@ export class InandoutStComponent implements OnInit {
     }
   }
 
-  addEntry(): void {
+  async addEntry(): Promise<void> {
     const tempId = `temp_${this.tempIdCounter++}`;
     const newItem = {
       id: tempId,
@@ -767,6 +784,25 @@ export class InandoutStComponent implements OnInit {
       detailData: [],
       __isNew: true,
     };
+
+    // Obtener el folio desde la configuración en el momento de agregar la
+    // fila, para que el usuario lo vea inmediatamente (entradas y salidas).
+    const documentType = this.movementType === 'IN' ? 'entry' : 'out';
+    const owners: Array<{ type: 'branch' | 'project'; id: number | null }> = [
+      { type: 'branch', id: this.idBranch },
+      { type: 'project', id: this.projectId }
+    ];
+    for (const owner of owners) {
+      if (newItem.folio || !owner.id) continue;
+      newItem.folio = await this.prefixSetupService.getNextFolio(owner.type, owner.id, documentType) || '';
+    }
+    if (!newItem.folio) {
+      console.warn('No se encontró configuración de folio para el movimiento', {
+        movementType: this.movementType,
+        idBranch: this.idBranch,
+        projectId: this.projectId
+      });
+    }
 
     this.rowData = [newItem, ...this.rowData];
     this.newlyAddedRows.push(tempId);
@@ -829,14 +865,24 @@ export class InandoutStComponent implements OnInit {
       for (const newRow of newRows) {
         const entryData = this.prepareEntryData(newRow);
         if (!entryData.folio) {
-          const ownerId = this.idBranch && this.idBranch > 0 ? this.idBranch : this.projectId;
-          const ownerType = this.idBranch && this.idBranch > 0 ? 'branch' : 'project';
-          if (ownerId) {
+          // La configuración puede estar capturada por sucursal o por proyecto.
+          // Se intenta primero la sucursal seleccionada y, si no existe allí,
+          // se hereda la configuración del proyecto del sidebar.
+          const documentType = this.movementType === 'IN' ? 'entry' : 'out';
+          const owners: Array<{ type: 'branch' | 'project'; id: number | null }> = [
+            { type: 'branch', id: this.idBranch },
+            { type: 'project', id: this.projectId }
+          ];
+          for (const owner of owners) {
+            if (!owner.id || entryData.folio) continue;
             entryData.folio = await this.prefixSetupService.getNextFolio(
-              ownerType,
-              ownerId,
-              this.movementType === 'IN' ? 'entry' : 'out'
+              owner.type,
+              owner.id,
+              documentType
             ) || '';
+          }
+          if (!entryData.folio) {
+            console.warn('No se encontró configuración de folio para la entrada/salida', owners);
           }
         }
         await lastValueFrom(this.inandoutService.addInAndOut(entryData));

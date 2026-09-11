@@ -596,7 +596,7 @@ export class ProvidersComponent implements CanComponentDeactivate {
         editable: true,
         cellEditor: 'agSelectCellEditor',
         cellEditorParams: {
-          values: ['Interno', 'Externo']
+          values: ['Interno', 'Externo', 'Subcontratista', 'Agregar Registro']
         },
       },
 

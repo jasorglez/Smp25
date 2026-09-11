@@ -15,6 +15,7 @@ import { FormsModule } from '@angular/forms';
       (blur)="onBlur()"
       style="width: 100%; border: none; outline: none; background: transparent;">
       <option value="">Seleccionar material...</option>
+      <option value="__ADD_MATERIAL__">+ Agregar material...</option>
       <option *ngFor="let option of options" [value]="option.id">
         {{ option.description }}
       </option>
@@ -63,7 +64,10 @@ export class SelectMaterialEditorComponent implements ICellEditorAngularComp, On
   }
 
   onChange(event: any) {
-    // Optional: could trigger immediate update
+    if (this.selectedValue === '__ADD_MATERIAL__') {
+      this.params.onAddMaterial?.();
+      this.params.api?.stopEditing(true);
+    }
   }
 
   onBlur() {

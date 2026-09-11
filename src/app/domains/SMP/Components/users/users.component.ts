@@ -456,6 +456,7 @@ export class UsersComponent implements OnDestroy {
               return false;
             }
             params.data[params.colDef.field] = params.newValue;
+            this.assignUsernameFromEmail(params.data, params.newValue);
             return true;
           } else {
             alerts.basicAlert('Editar usuario', 'Correo electrónico no válido.', 'error');
@@ -676,6 +677,9 @@ export class UsersComponent implements OnDestroy {
     if (!event.data.__isNew) {
       event.data.__modified = true;
     }
+    if (event.colDef.field === 'email') {
+      this.assignUsernameFromEmail(event.data, event.newValue);
+    }
     if (event.colDef.field === 'displayName') {
       const selectedName = event.newValue?.toUpperCase();
       const empleadoInfo = this.empleadoCatalgos?.find(
@@ -684,6 +688,7 @@ export class UsersComponent implements OnDestroy {
       if (empleadoInfo) {
         event.data.idEmployee = empleadoInfo.id;
         event.data.email = empleadoInfo.email;
+        this.assignUsernameFromEmail(event.data, empleadoInfo.email);
       } else {
         event.data.idEmployee = null;
         event.data.idBranch = null;
@@ -692,6 +697,22 @@ export class UsersComponent implements OnDestroy {
         this.enviarSignal();
       }
     }
+  }
+
+  /** Deriva el username inicial del correo sin sobrescribir uno personalizado. */
+  private assignUsernameFromEmail(user: any, email: string): void {
+    const value = String(email || '').trim().toLowerCase();
+    const current = String(user?.usersmall || '').trim();
+    if (!value.includes('@') || (current && current.toUpperCase() !== 'SINUSER')) return;
+    const base = value.split('@', 1)[0];
+    const used = new Set(this.rowData
+      .filter((row: any) => row !== user)
+      .map((row: any) => String(row.usersmall || '').trim().toLowerCase())
+      .filter(Boolean));
+    let username = base;
+    let suffix = 2;
+    while (used.has(username)) username = `${base}${suffix++}`;
+    user.usersmall = username;
   }
 
   addRow() {

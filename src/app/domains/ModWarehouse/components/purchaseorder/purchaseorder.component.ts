@@ -30,6 +30,8 @@ import { PrefixSetupService } from 'app/services/prefix-setup.service';
 import { NotificationsTelegramService } from 'app/services/notifications-telegram.service';
 import { PermitionsService } from 'app/services/permitions.service';
 import { TrackingService } from 'app/services/tracking.service';
+import { IncomesAndExpensesService } from 'app/services/incomes-and-expenses.service';
+import { AdministrationService } from 'app/services/administration.service';
 import { CanComponentDeactivate } from 'app/guards/unsaved-changes.guard';
 import { confirmExitIfUnsaved } from 'app/helpers/can-deactivate.helper';
 import { ButtonCellRendererComponent } from './button-cell-renderer.component';
@@ -72,6 +74,8 @@ export class PurchaseOrderComponent implements CanComponentDeactivate {
   private notificationsService = inject(NotificationsTelegramService);
   private permitionsService = inject(PermitionsService);
   private trackingService = inject(TrackingService);
+  private incomesAndExpensesService = inject(IncomesAndExpensesService);
+  private administrationService = inject(AdministrationService);
 
   // Variables compartidas
 
@@ -106,6 +110,9 @@ export class PurchaseOrderComponent implements CanComponentDeactivate {
   monedas: any[] = [];
   usuarios: any[] = [];
   tipoPago: any[] = [];
+  private defaultsEnsured = false;
+  private currenciesLoaded = false;
+  private paymentsLoaded = false;
 
   // Variables Details
   detailsRowData: any[] = [];
@@ -422,7 +429,10 @@ export class PurchaseOrderComponent implements CanComponentDeactivate {
         },
       },
       {
-        field: 'idWarehouse', headerName: 'Almacén destino', width: 190, editable: false,
+        field: 'idWarehouse', headerName: 'Almacén destino', width: 190,
+        editable: (params) => !params.data?.idRequisition,
+        cellEditor: 'agSelectCellEditor',
+        cellEditorParams: () => ({ values: this.almacenes.map((warehouse: any) => warehouse.id) }),
         valueFormatter: (params) => this.almacenes.find((warehouse: any) => Number(warehouse.id) === Number(params.value))?.name || ''
       },
       {
@@ -481,10 +491,18 @@ export class PurchaseOrderComponent implements CanComponentDeactivate {
         width: 150,
       },
       {
+        field: 'iva',
+        headerName: 'IVA',
+        editable: false,
+        width: 110,
+        type: 'numericColumn',
+      },
+      {
         field: 'ivaRetention',
-        headerName: 'Retención IVA',
-        editable: true,
+        headerName: 'Retención',
+        editable: false,
         width: 150,
+        type: 'numericColumn',
       },
        {
         field: 'delivery',
@@ -810,8 +828,8 @@ export class PurchaseOrderComponent implements CanComponentDeactivate {
     }
     this.customersService.getCustomersByCompany(this.idRoot, 'PROVIDERS').subscribe({
       next: (data: any) => {
-        const arr = Array.isArray(data) ? data : [];
-        this.proveedores = arr.map((p: any) => ({ id: p.id, name: p.company || p.namecontact || '' }));
+        const arr = Array.isArray(data) ? data : (Array.isArray(data?.data) ? data.data : []);
+        this.proveedores = arr.map((p: any) => ({ id: p.id, name: p.company || p.nameContact || p.namecontact || p.name || '' }));
         console.log('✅ Proveedores cargados:', this.proveedores.length);
         this.updateDetailContext();
       },
@@ -849,16 +867,47 @@ export class PurchaseOrderComponent implements CanComponentDeactivate {
 
   obtenerMonedas() {
     this.currencyService.getCurrencies(this.idRoot).subscribe({
-      next: (data: any) => { this.monedas = Array.isArray(data) ? data : []; },
+      next: (data: any) => {
+        this.monedas = Array.isArray(data) ? data : [];
+        this.currenciesLoaded = true;
+        this.ensurePurchaseOrderDefaults();
+      },
       error: () => { this.monedas = []; },
     });
   }
 
   obtenerTipoPago() {
     this.currencyService.getPaymentTypes(this.idRoot).subscribe({
-      next: (data: any) => { this.tipoPago = Array.isArray(data) ? data : []; },
+      next: (data: any) => {
+        this.tipoPago = Array.isArray(data) ? data : [];
+        this.paymentsLoaded = true;
+        this.ensurePurchaseOrderDefaults();
+      },
       error: () => { this.tipoPago = []; },
     });
+  }
+
+  private async ensurePurchaseOrderDefaults(): Promise<void> {
+    if (this.defaultsEnsured || !this.idRoot || !this.currenciesLoaded || !this.paymentsLoaded) return;
+    const mx = this.monedas.find((item: any) => String(item.description || '').trim().toUpperCase() === 'MXN');
+    const transfer = this.tipoPago.find((item: any) => String(item.description || '').trim().toUpperCase() === 'TRANSFERENCIA');
+    if (mx && transfer) {
+      this.defaultsEnsured = true;
+      return;
+    }
+    try {
+      if (!mx) {
+        await lastValueFrom(this.catalogsService.addCatalog({ description: 'MXN', type: 'Currency', idCompany: this.idRoot, active: 1, vigente: true }));
+      }
+      if (!transfer) {
+        await lastValueFrom(this.catalogsService.addCatalog({ description: 'TRANSFERENCIA', type: 'TYPECURRENCY', idCompany: this.idRoot, active: 1, vigente: true }));
+      }
+      this.defaultsEnsured = true;
+      this.obtenerMonedas();
+      this.obtenerTipoPago();
+    } catch (error) {
+      console.warn('No fue posible crear los catálogos predeterminados de OC', error);
+    }
   }
 
   async openAddProveedorDialog(): Promise<number | null> {
@@ -877,6 +926,13 @@ export class PurchaseOrderComponent implements CanComponentDeactivate {
         const name = (document.getElementById('prov-name') as HTMLInputElement).value.trim();
         const rfc  = (document.getElementById('prov-rfc')  as HTMLInputElement).value.trim();
         if (!name) { Swal.showValidationMessage('El nombre es requerido'); return null; }
+        const duplicate = this.proveedores.some((provider: any) =>
+          String(provider.name || '').trim().toLowerCase() === name.toLowerCase()
+        );
+        if (duplicate) {
+          Swal.showValidationMessage('No puedo agregarlo: ya existe un proveedor con ese nombre.');
+          return null;
+        }
         return { name, rfc };
       },
     });
@@ -884,10 +940,18 @@ export class PurchaseOrderComponent implements CanComponentDeactivate {
     try {
       const created: any = await lastValueFrom(
         this.customersService.addCustomer({
+          idRoot:      this.idRoot,
           namecontact: result.value.name,
+          nameContact: result.value.name,
           company:     result.value.name,
+          position:    'GERENCIA',
+          phone:       '',
           rfc:         result.value.rfc || 'SIN RFC',
-          id_root:     this.idRoot,
+          city:        '',
+          state:       '',
+          country:     '',
+          email:       '',
+          address:     '',
           type:        'PROVIDERS',
           active:      true,
           vigente:     true,
@@ -896,15 +960,15 @@ export class PurchaseOrderComponent implements CanComponentDeactivate {
       await new Promise<void>((resolve) =>
         this.customersService.getCustomersByCompany(this.idRoot, 'PROVIDERS').subscribe({
           next: (data: any) => {
-            const arr = Array.isArray(data) ? data : [];
-            this.proveedores = arr.map((p: any) => ({ id: p.id, name: p.company || p.namecontact || '' }));
+            const arr = Array.isArray(data) ? data : (Array.isArray(data?.data) ? data.data : []);
+            this.proveedores = arr.map((p: any) => ({ id: p.id, name: p.company || p.nameContact || p.namecontact || p.name || '' }));
             resolve();
           },
           error: () => resolve(),
         })
       );
       this.updateDetailContext();
-      return created?.id ?? null;
+      return created?.id ?? created?.data?.id ?? null;
     } catch {
       alerts.basicAlert('Error', 'No se pudo agregar el proveedor.', 'error');
       return null;
@@ -1075,10 +1139,14 @@ export class PurchaseOrderComponent implements CanComponentDeactivate {
 
   async addMasterRow() {
     const tempId = `temp_${this.tempIdCounter++}`;
+    const shippingDate = new Date();
+    shippingDate.setDate(shippingDate.getDate() + 2);
 
     // Generar folio automáticamente desde PrefixSetup
     const type: 'project' | 'branch' = this.projectOrBranch ? 'project' : 'branch';
     const folio = await this.prefixSetupService.getNextFolio(type, this.idReference, 'oc');
+    const defaultCurrency = this.monedas.find((item: any) => String(item.description || '').trim().toUpperCase() === 'MXN');
+    const defaultPayment = this.tipoPago.find((item: any) => String(item.description || '').trim().toUpperCase() === 'TRANSFERENCIA');
 
     const newItem = {
       id: tempId,
@@ -1092,9 +1160,9 @@ export class PurchaseOrderComponent implements CanComponentDeactivate {
       idDepartament: 0,
       delivery: '1 dia',
       deliveryTime: '1',
-      dateSupply: '',
-      idPayment: 0,
-      idCurrency: 0,
+      dateSupply: shippingDate.toISOString(),
+      idPayment: defaultPayment?.id ?? 0,
+      idCurrency: defaultCurrency?.id ?? 0,
       conditions: 'Ninguna',
       IdAuthorize: 0,
       priority: '',
@@ -1108,6 +1176,7 @@ export class PurchaseOrderComponent implements CanComponentDeactivate {
       city: 'NA',
       phone: 'NA',
       ivaRetention: 0,
+      iva: 0,
       discount: 0,
       active: true,
       __isNew: true,
@@ -1339,6 +1408,7 @@ export class PurchaseOrderComponent implements CanComponentDeactivate {
           idReference: this.idReference,
           productos: this.productos,
           proveedores: this.proveedores,
+          materialsService: this.materialsService,
           componentParent: this,
           gridApi: this.masterGridApi,
           ITEMS: {
@@ -1346,7 +1416,7 @@ export class PurchaseOrderComponent implements CanComponentDeactivate {
               this.loadPurchaseOrderItems(purchaseOrderId, callback);
             },
             save: (purchaseOrderId: number, data: any[]) => {
-              this.savePurchaseOrderItemsById(purchaseOrderId, data);
+              return this.savePurchaseOrderItemsById(purchaseOrderId, data);
             },
             delete: (params: any, callback: () => void) => {
               this.deleteDetailRow(params, callback);
@@ -1546,6 +1616,9 @@ export class PurchaseOrderComponent implements CanComponentDeactivate {
 
   private cleanDataForServer(data: any): any {
     const cleanedData = { ...data };
+    if (cleanedData.idWarehouse !== null && cleanedData.idWarehouse !== undefined && cleanedData.idWarehouse !== '') {
+      cleanedData.idWarehouse = Number(cleanedData.idWarehouse);
+    }
     delete cleanedData.__isNew;
     delete cleanedData.__modified;
     if (cleanedData.id && cleanedData.id.toString().startsWith('temp_')) {
@@ -1724,6 +1797,13 @@ export class PurchaseOrderComponent implements CanComponentDeactivate {
       }
 
       if (newItems.length > 0 || modifiedItems.length > 0) {
+        await this.syncPurchaseOrderTaxes(purchaseOrderId, data);
+        // Una OC genera un único maestro de Gasto y cada partida nueva se
+        // registra como concepto. Después de generarse, el gasto queda
+        // independiente: no se actualiza por modificaciones posteriores.
+        if (newItems.length > 0) {
+          await this.createExpenseFromPurchaseOrder(purchaseOrderId, data);
+        }
         alerts.basicAlert(
           'Detalles guardados',
           'Se han guardado los items correctamente.',
@@ -1747,6 +1827,75 @@ export class PurchaseOrderComponent implements CanComponentDeactivate {
         'Error al guardar los items.',
         'error'
       );
+    }
+  }
+
+  private async createExpenseFromPurchaseOrder(purchaseOrderId: number, items: any[]): Promise<void> {
+    const oc = this.masterRowData.find((row: any) => Number(row.id) === Number(purchaseOrderId));
+    if (!oc || !this.idRoot) return;
+    try {
+      const expensesResponse: any = await lastValueFrom(this.incomesAndExpensesService.getExpensesxroot(this.idRoot));
+      const expenses = Array.isArray(expensesResponse) ? expensesResponse : Object.values(expensesResponse || {});
+      let expense = expenses.find((row: any) => String(row.oc || '') === String(purchaseOrderId));
+      if (!expense) {
+        const accountsResponse: any = await lastValueFrom(this.administrationService.getAccountBanks(this.idRoot));
+        const accounts = Array.isArray(accountsResponse) ? accountsResponse : Object.values(accountsResponse || {});
+        const subtotal = items.reduce((sum: number, item: any) => sum + (Number(item.quantity) || 0) * (Number(item.price) || 0), 0);
+        const tax = Number(oc.iva || 0);
+        const retention = Number(oc.ivaRetention || 0);
+        expense = await lastValueFrom(this.incomesAndExpensesService.addIncomesAndExpenses({
+          idAccount: accounts[0]?.id || null,
+          numberDocument: oc.folio || `OC-${purchaseOrderId}`,
+          oc: String(purchaseOrderId),
+          idBusinnes: this.idRoot,
+          idBranch: this.idBranch > 0 ? this.idBranch : null,
+          idProject: oc.idProject || this.idProject || null,
+          idCustomer: oc.idProvider || 0,
+          date: oc.dateCreate || new Date().toISOString(),
+          description: `Gasto generado desde OC ${oc.folio || purchaseOrderId}`,
+          type: 'GASTO',
+          subtotal,
+          tax,
+          isr: retention,
+          total: subtotal + tax - retention,
+          moneda: 'MXN',
+          status: 'Pendiente',
+          active: true,
+          createdBy: this.trackingService.getEmail(),
+          createdAt: new Date().toISOString(),
+          countItems: 0,
+          countitems: 0
+        }));
+      }
+      if (!expense?.id) return;
+      const existingResponse: any = await lastValueFrom(this.incomesAndExpensesService.getConceptsFromIncomesAndExpenses(expense.id));
+      const existing = Array.isArray(existingResponse) ? existingResponse : [];
+      for (const item of items) {
+        const reference = `OC:${purchaseOrderId}:ITEM:${item.id}`;
+        if (existing.some((concept: any) => concept.numeroIdentificacion === reference)) continue;
+        const material = this.productos.find((product: any) => Number(product.id) === Number(item.idSupplie));
+        await lastValueFrom(this.incomesAndExpensesService.addConceptFromIncomesAndExpenses({
+          idIncorExp: expense.id,
+          typeExpense: 'PROVEEDORES',
+          idExpense: oc.idProvider || 0,
+          idContribuyente: 0,
+          dateExpend: oc.dateCreate || new Date().toISOString(),
+          description: material?.description || `Material ${item.idSupplie}`,
+          quantity: Number(item.quantity) || 0,
+          unit: material?.measure || '',
+          price: Number(item.price) || 0,
+          iva: false,
+          iva2: 0,
+          aplicaIsr: false,
+          isr: 0,
+          numeroIdentificacion: reference,
+          comment: `OC ${oc.folio || purchaseOrderId}`,
+          active: true,
+          graficar: true
+        }));
+      }
+    } catch (error) {
+      console.error('No fue posible generar el gasto desde la OC:', error);
     }
   }
 
@@ -1791,6 +1940,24 @@ export class PurchaseOrderComponent implements CanComponentDeactivate {
         }
       });
     }
+  }
+
+  private async syncPurchaseOrderTaxes(purchaseOrderId: number, items: any[]): Promise<void> {
+    const purchaseOrder = this.masterRowData.find((row: any) => Number(row.id) === Number(purchaseOrderId));
+    if (!purchaseOrder) return;
+
+    purchaseOrder.iva = items.reduce((total: number, item: any) => total + (Number(item.iva) || 0), 0);
+    purchaseOrder.ivaRetention = items.reduce((total: number, item: any) => total + (Number(item.retention) || 0), 0);
+    delete purchaseOrder.isrRetention;
+
+    await lastValueFrom(
+      this.requisitionsService.updateOcAndReq(purchaseOrderId, this.cleanDataForServer(purchaseOrder))
+    );
+
+    this.masterGridApi?.refreshCells({
+      columns: ['iva', 'ivaRetention'],
+      force: true
+    });
   }
 
   // ==================== GUARD ALERT UNSAVED CHANGES ====================

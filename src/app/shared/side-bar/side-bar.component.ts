@@ -11,7 +11,7 @@ import { RootService } from 'app/services/root.service';
 import { UsersService } from 'app/services/users.service';
 import { SharedModule } from '../shared.module';
 import { FormsModule } from '@angular/forms';
-import { EMPTY, map, tap } from 'rxjs';
+import { EMPTY } from 'rxjs';
 import { environment } from '@env/environment';
 import { ConventionsService } from 'app/services/conventions.service';
 import { PresupuestoService } from 'app/services/presupuesto.service';
@@ -293,8 +293,10 @@ error: (error) => {
           });
           this.cdr.markForCheck();
 
-          // branchData[0] = "Todas las sucursales" (ID negativo) → seleccionar la primera real (índice 1)
-          const defaultBranch = this.branchData.length > 1 ? this.branchData[1] : this.branchData[0];
+          // Para usuarios con acceso global se inicia en “Todas las
+          // sucursales”; getpermissionxContracts selecciona el primer
+          // contrato y su primer proyecto.
+          const defaultBranch = this.branchData[0];
           if (defaultBranch) {
             this.selectedBranchId = String(defaultBranch.id);
 
@@ -414,9 +416,17 @@ error: (error) => {
           }));
           this.cdr.markForCheck();
           if (this.contractData.length > 0) {
+            // Mostrar todos los contratos, pero seleccionar el primero y
+            // cargar automáticamente su primer proyecto en el sidebar.
             this.selectedContractId = String(this.contractData[0].contractId);
             this.signalsService.setContractSelectedBySidebar(Number(this.selectedContractId));
             this.signalsService.contractSignal(Number(this.selectedContractId), this.contractData[0].contract ?? '');
+            this.trackingService.setContract(this.selectedContractId);
+            this.loadVigenteConvention(Number(this.selectedContractId));
+            setTimeout(() => {
+              const sel = document.getElementById('contracts') as HTMLSelectElement;
+              if (sel) sel.value = this.selectedContractId;
+            });
             await this.getpermissionxProjects(Number(this.selectedContractId));
           }
         },
@@ -484,9 +494,12 @@ error: (error) => {
     if (Number(this.selectedBranchId) < 0) {
       this.projectService.getProjectListByContract(idContract).subscribe({
         next: (data: any) => {
-          this.projectData = (Array.isArray(data) ? data : []).map((project: any) => ({
-            idProject: project.id,
-            projectName: project.name,
+          // El endpoint puede devolver arreglo u objeto indexado; ambos
+          // formatos deben alimentar el combo de proyectos.
+          const projects = Array.isArray(data) ? data : Object.values(data || {});
+          this.projectData = projects.map((project: any) => ({
+            idProject: project.id ?? project.idProject,
+            projectName: project.name ?? project.projectName,
           }));
           this.cdr.markForCheck();
           if (this.projectData.length > 0) {
@@ -496,6 +509,10 @@ error: (error) => {
             this.signalsService.setSidebarProjectId(Number(this.selectedProjectId));
             this.signalsService.setProjectNameBySidebar(this.projectData[0].projectName ?? '');
             this.loadVigentePresupuesto(Number(this.selectedRoot()), Number(this.selectedProjectId));
+            setTimeout(() => {
+              const sel = document.getElementById('project') as HTMLSelectElement;
+              if (sel) sel.value = this.selectedProjectId;
+            });
           }
         },
         error: () => { this.projectData = []; this.selectedProjectId = ''; this.cdr.markForCheck(); }

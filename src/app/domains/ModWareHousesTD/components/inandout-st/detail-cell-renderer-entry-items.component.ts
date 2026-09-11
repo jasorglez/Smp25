@@ -10,6 +10,7 @@ import { SelectMaterialEditorComponent } from './select-material-editor.componen
 import { DomSanitizer, SafeResourceUrl } from '@angular/platform-browser';
 import { PdfReportsService } from 'app/services/pdf-reports.service';
 import { TrackingService } from 'app/services/tracking.service';
+import { lastValueFrom } from 'rxjs';
 
 @Component({
   selector: 'app-detail-cell-renderer-entry-items',
@@ -232,6 +233,8 @@ export class DetailCellRendererEntryItemsComponent implements OnInit {
             options: (this.materials || [])
               .filter(m => m.active)
               .map(m => ({ id: m.id, description: m.description }))
+              .concat([{ id: '__ADD_MATERIAL__', description: '+ Agregar material...' }]),
+            onAddMaterial: () => this.quickAddMaterial()
           };
         },
         valueFormatter: (params: any) => {
@@ -476,6 +479,30 @@ export class DetailCellRendererEntryItemsComponent implements OnInit {
       });
     } else {
       this.materials = [];
+    }
+  }
+
+  private async quickAddMaterial(): Promise<void> {
+    const service = this.context?.materialsService;
+    const idRoot = this.context?.idRoot;
+    if (!service || !idRoot) return;
+    const ask = async (title: string, placeholder: string) => {
+      const result = await alerts.inputAlert(title, '', 'text', '', { inputAttributes: { placeholder } });
+      return result.isConfirmed ? String(result.value || '').trim() : '';
+    };
+    const description = await ask('Nuevo material', 'Descripción');
+    if (!description) return;
+    const code = await ask('Código del material', 'Código (opcional)');
+    const measure = await ask('Unidad de medida', 'Ej: PZA, KG, M');
+    const family = await ask('Familia', 'Familia (opcional)');
+    const subfamily = await ask('Subfamilia', 'Subfamilia (opcional)');
+    try {
+      await lastValueFrom(service.addMaterial({ idRoot, description, code, measure, family, subfamily, active: true, vigente: true }));
+      this.loadMaterials();
+      alerts.basicAlert('Material agregado', 'El material ya está disponible en el combo.', 'success');
+    } catch (error) {
+      console.error('Error al agregar material rápido:', error);
+      alerts.basicAlert('Error', 'No fue posible agregar el material.', 'error');
     }
   }
 
