@@ -435,41 +435,56 @@ export class DetailCellRendererPurchaseOrderItemsComponent implements OnInit {
         active: true,
         vigente: true
       }));
-      const material = created?.data || created;
-      if (material?.id) {
-        this.productos = [...this.productos, material];
-        if (params?.data) {
-          params.data.idSupplie = material.id;
-          params.data.price = form.costoMN;
-          params.data.costoMN = form.costoMN;
-          params.data.ventaMN = form.ventaMN;
-        } else {
-          const tempId = `temp_item_${this.tempIdCounter++}`;
-          this.rowData = [...this.rowData, {
-            id: tempId,
-            idMovement: this.params.data.id,
-            idSupplie: material.id,
-            idProvider: 0,
-            quantity: 1,
-            price: form.costoMN,
-            costoMN: form.costoMN,
-            ventaMN: form.ventaMN,
-            iva: 0,
-            retention: 0,
-            total: form.costoMN,
-            type: 'OC',
-            comment: 'NINGUNO.',
-            dateuse: new Date().toISOString(),
-            active: true,
-            __isNew: true,
-            __modified: false
-          }];
-          this.hasUnsavedChanges = true;
-          this.gridApi?.setGridOption('rowData', this.rowData);
-          this.context?.ITEMS?.updateCount?.(this.params.data.id, this.rowData.length);
-        }
+      const material = created?.data || created?.material || created;
+      const materialId = Number(
+        material?.id ?? material?.Id ?? created?.id ?? created?.Id ?? 0
+      );
+      if (!materialId) {
+        throw new Error('El material fue creado, pero el servidor no devolvió su identificador para agregarlo a la OC.');
       }
-      alerts.basicAlert('Material agregado', 'Ya está disponible en el combo.', 'success');
+
+      const materialForGrid = { ...material, id: materialId };
+      // Conserva la misma referencia que recibió el renderer desde el padre;
+      // así el material queda disponible inmediatamente en todos los combos.
+      if (!this.productos.some((item: any) => Number(item.id) === materialId)) {
+        this.productos.push(materialForGrid);
+      }
+
+      if (params?.data) {
+        params.data.idSupplie = materialId;
+        params.data.price = form.costoMN;
+        params.data.costoMN = form.costoMN;
+        params.data.ventaMN = form.ventaMN;
+        params.data.__modified = true;
+        this.hasUnsavedChanges = true;
+        this.gridApi?.refreshCells({ rowNodes: params.node ? [params.node] : undefined, force: true });
+      } else {
+        const tempId = `temp_item_${this.tempIdCounter++}`;
+        this.rowData = [...this.rowData, {
+          id: tempId,
+          idMovement: this.params.data.id,
+          idSupplie: materialId,
+          idProvider: 0,
+          quantity: 1,
+          price: form.costoMN,
+          costoMN: form.costoMN,
+          ventaMN: form.ventaMN,
+          iva: 0,
+          retention: 0,
+          total: form.costoMN,
+          type: 'OC',
+          comment: 'NINGUNO.',
+          dateuse: new Date().toISOString(),
+          active: true,
+          __isNew: true,
+          __modified: false
+        }];
+        this.hasUnsavedChanges = true;
+        this.gridApi?.setGridOption('rowData', this.rowData);
+        this.context?.ITEMS?.updateCount?.(this.params.data.id, this.rowData.length);
+      }
+      this.gridApi?.refreshCells({ columns: ['idSupplie'], force: true });
+      alerts.toastAlert('Material creado y agregado a la OC', 'success');
       this.gridApi?.setGridOption('columnDefs', this.colDefs);
     } catch (error) {
       console.error('Error al agregar material en OC:', error);
