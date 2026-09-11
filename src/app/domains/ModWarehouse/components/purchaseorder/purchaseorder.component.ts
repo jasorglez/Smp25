@@ -897,8 +897,18 @@ export class PurchaseOrderComponent implements CanComponentDeactivate {
 
   obtenerMonedas() {
     this.currencyService.getCurrencies(this.idRoot).subscribe({
-      next: (data: any) => {
+      next: async (data: any) => {
         this.monedas = Array.isArray(data) ? data : [];
+        const monedaMx = this.monedas.find((item: any) => String(item.description || '').trim().toUpperCase() === 'MX');
+        const monedaMxn = this.monedas.find((item: any) => String(item.description || '').trim().toUpperCase() === 'MXN');
+        if (monedaMx && !monedaMxn) {
+          try {
+            await lastValueFrom(this.catalogsService.updateCatalog(monedaMx.id, { ...monedaMx, description: 'MXN' }));
+            monedaMx.description = 'MXN';
+          } catch (error) {
+            console.error('No fue posible corregir MX a MXN:', error);
+          }
+        }
         this.currenciesLoaded = true;
         this.ensurePurchaseOrderDefaults();
       },
