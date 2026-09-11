@@ -124,6 +124,140 @@ body {
   font-size: 11px !important;
 }
 
+/* Alta rápida de proveedor desde Órdenes de Compra */
+.swal2-popup.oc-provider-dialog-popup {
+  overflow: hidden;
+  border-radius: 14px;
+  box-shadow: 0 20px 55px rgba(18, 63, 99, .22);
+}
+
+.oc-provider-dialog-container {
+  width: 100% !important;
+  margin: 0 !important;
+  padding: 0 !important;
+}
+
+.oc-provider-dialog {
+  text-align: left;
+}
+
+.oc-provider-dialog__header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 20px 24px 17px;
+  color: #fff;
+  background: linear-gradient(135deg, #0e4491, #1669b5);
+}
+
+.oc-provider-dialog__icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 42px;
+  width: 42px;
+  height: 42px;
+  font-size: 1.25rem;
+  background: rgba(255, 255, 255, .18);
+  border: 1px solid rgba(255, 255, 255, .28);
+  border-radius: 11px;
+}
+
+.oc-provider-dialog__header h2 {
+  margin: 0 0 3px;
+  font-size: 1.05rem;
+  font-weight: 700;
+}
+
+.oc-provider-dialog__header p {
+  margin: 0;
+  font-size: .76rem;
+  line-height: 1.35;
+  color: rgba(255, 255, 255, .82);
+}
+
+.oc-provider-dialog__body {
+  padding: 22px 24px 10px;
+}
+
+.oc-provider-dialog__label {
+  display: block;
+  margin-bottom: 6px;
+  color: #263b50;
+  font-size: .78rem;
+  font-weight: 700;
+}
+
+.oc-provider-dialog__label span {
+  color: #d9534f;
+}
+
+.oc-provider-dialog__label em {
+  margin-left: 4px;
+  color: #7b8794;
+  font-size: .7rem;
+  font-style: normal;
+  font-weight: 400;
+}
+
+.oc-provider-dialog__input {
+  width: 100%;
+  height: 38px;
+  padding: 8px 10px;
+  color: #263b50;
+  font-size: .82rem;
+  background: #fff;
+  border: 1px solid #cfd8e2;
+  border-radius: 6px;
+  outline: 0;
+  transition: border-color .15s ease, box-shadow .15s ease;
+}
+
+.oc-provider-dialog__input:focus {
+  border-color: #2875bd;
+  box-shadow: 0 0 0 3px rgba(40, 117, 189, .14);
+}
+
+.oc-provider-dialog__body small {
+  display: block;
+  margin-top: 5px;
+  color: #7b8794;
+  font-size: .69rem;
+}
+
+.oc-provider-dialog-actions {
+  width: 100%;
+  gap: 8px;
+  margin: 12px 0 0 !important;
+  padding: 14px 24px 18px;
+  border-top: 1px solid #e8edf2;
+}
+
+.oc-provider-dialog-confirm,
+.oc-provider-dialog-cancel {
+  min-height: 34px;
+  padding: 7px 12px;
+  font-size: .78rem;
+  font-weight: 600;
+  border-radius: 5px;
+}
+
+.oc-provider-dialog-confirm {
+  color: #fff;
+  background: #1669b5;
+  border: 1px solid #1669b5;
+}
+
+.oc-provider-dialog-confirm:hover {
+  background: #0e5598;
+}
+
+.oc-provider-dialog-cancel {
+  color: #566675;
+  background: #fff;
+  border: 1px solid #cfd8e2;
+}
+
 // DHTMLX Gantt CSS
 @import "dhtmlx-gantt/codebase/dhtmlxgantt.css";
 

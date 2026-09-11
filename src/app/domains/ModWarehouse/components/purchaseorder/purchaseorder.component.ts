@@ -962,18 +962,73 @@ export class PurchaseOrderComponent implements CanComponentDeactivate {
     }
   }
 
+  private async getTransferPaymentDefault(): Promise<any | null> {
+    const isTransfer = (item: any) =>
+      String(item?.description ?? item?.Description ?? '').trim().toUpperCase() === 'TRANSFERENCIA';
+
+    let transfer = this.tipoPago.find(isTransfer);
+    if (transfer) return transfer;
+
+    try {
+      const created: any = await lastValueFrom(
+        this.catalogsService.addCatalog({
+          description: 'TRANSFERENCIA',
+          type: 'TYPECURRENCY',
+          idCompany: this.idRoot,
+          active: 1,
+          vigente: true,
+        })
+      );
+      const saved = created?.data ?? created;
+      transfer = {
+        id: saved?.id ?? saved?.Id,
+        description: saved?.description ?? saved?.Description ?? 'TRANSFERENCIA',
+      };
+      if (transfer.id != null) this.tipoPago = [...this.tipoPago, transfer];
+    } catch (error) {
+      console.error('No fue posible preparar TRANSFERENCIA como forma de pago predeterminada.', error);
+    }
+
+    return transfer?.id != null ? transfer : null;
+  }
+
   async openAddProveedorDialog(): Promise<number | null> {
     const result = await Swal.fire({
-      title: 'Nuevo Proveedor',
       html: `
-        <input id="prov-name" class="swal2-input" placeholder="Nombre / Empresa">
-        <input id="prov-rfc"  class="swal2-input" placeholder="RFC (opcional)">
+        <section class="oc-provider-dialog">
+          <header class="oc-provider-dialog__header">
+            <span class="oc-provider-dialog__icon"><i class="bi bi-building-add"></i></span>
+            <div>
+              <h2>Nuevo proveedor</h2>
+              <p>Alta rápida para usarlo de inmediato en esta orden de compra.</p>
+            </div>
+          </header>
+          <div class="oc-provider-dialog__body">
+            <label class="oc-provider-dialog__label" for="prov-name">Nombre o razón social <span>*</span></label>
+            <input id="prov-name" class="oc-provider-dialog__input" placeholder="Ej. Constructora del Sureste">
+            <small>Es el nombre que se mostrará en el campo Proveedor de la OC.</small>
+
+            <label class="oc-provider-dialog__label mt-3" for="prov-rfc">RFC <em>opcional</em></label>
+            <input id="prov-rfc" class="oc-provider-dialog__input" placeholder="Ej. COS010101AB1" maxlength="20">
+          </div>
+        </section>
       `,
       showCancelButton: true,
-      confirmButtonText: 'Agregar',
+      confirmButtonText: '<i class="bi bi-check-lg me-1"></i> Agregar proveedor',
       cancelButtonText: 'Cancelar',
       allowOutsideClick: false,
       focusConfirm: false,
+      width: 460,
+      padding: 0,
+      buttonsStyling: false,
+      customClass: {
+        popup: 'oc-provider-dialog-popup',
+        htmlContainer: 'oc-provider-dialog-container',
+        actions: 'oc-provider-dialog-actions',
+        confirmButton: 'oc-provider-dialog-confirm',
+        cancelButton: 'oc-provider-dialog-cancel',
+      },
+      didOpen: () => { document.getElementById('prov-name')?.focus(); },
       preConfirm: (): { name: string; rfc: string } | null => {
         const name = (document.getElementById('prov-name') as HTMLInputElement).value.trim();
         const rfc  = (document.getElementById('prov-rfc')  as HTMLInputElement).value.trim();
@@ -1198,7 +1253,7 @@ export class PurchaseOrderComponent implements CanComponentDeactivate {
     const type: 'project' | 'branch' = this.projectOrBranch ? 'project' : 'branch';
     const folio = await this.prefixSetupService.getNextFolio(type, this.idReference, 'oc');
     const defaultCurrency = this.monedas.find((item: any) => String(item.description || '').trim().toUpperCase() === 'MXN');
-    const defaultPayment = this.tipoPago.find((item: any) => String(item.description || '').trim().toUpperCase() === 'TRANSFERENCIA');
+    const defaultPayment = await this.getTransferPaymentDefault();
 
     const newItem = {
       id: tempId,
