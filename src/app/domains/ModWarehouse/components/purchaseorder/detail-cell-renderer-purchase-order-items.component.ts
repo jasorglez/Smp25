@@ -484,7 +484,7 @@ export class DetailCellRendererPurchaseOrderItemsComponent implements OnInit {
         this.context?.ITEMS?.updateCount?.(this.params.data.id, this.rowData.length);
       }
       this.gridApi?.refreshCells({ columns: ['idSupplie'], force: true });
-      alerts.toastAlert('Material creado y agregado a la OC', 'success');
+      alerts.basicAlert('Material creado y agregado a la OC', '', 'success');
       this.gridApi?.setGridOption('columnDefs', this.colDefs);
     } catch (error) {
       console.error('Error al agregar material en OC:', error);

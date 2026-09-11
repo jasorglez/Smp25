@@ -1266,8 +1266,9 @@ export class ProvidersComponent implements CanComponentDeactivate {
 
       await this.obtenerDatos();
 
-      alerts.toastAlert(
+      alerts.basicAlert(
         modifiedRows.length > 0 ? 'Registro actualizado' : 'Proveedor registrado',
+        '',
         'success'
       );
 
