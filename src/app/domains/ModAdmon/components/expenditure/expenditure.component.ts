@@ -659,7 +659,7 @@ export class ExpenditureComponent implements OnDestroy, OnChanges {
       },
       {
         field: 'acceptsOc',
-        headerName: 'Acepta OC',
+        headerName: 'OC',
         editable: true,
         width: 105,
         cellEditor: 'agCheckboxCellEditor',
