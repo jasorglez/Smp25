@@ -171,9 +171,11 @@ export class DetailCellRendererPurchaseOrderItemsComponent implements OnInit {
           params.data.idSupplie = params.newValue;
           const product = this.productos.find((item: any) => Number(item.id) === Number(params.newValue));
           if (product) {
-            params.data.costoMN = Number(product.costoMN ?? product.price ?? 0);
-            params.data.ventaMN = Number(product.ventaMN ?? product.price ?? 0);
-            params.data.price = Number(product.costoMN ?? product.price ?? 0);
+            params.data.costoMN = Number(product.costoMN ?? product.CostoMN ?? 0);
+            params.data.ventaMN = Number(product.ventaMN ?? product.VentaMN ?? product.price ?? 0);
+            // En una OC el precio que se propone al elegir un material es su
+            // precio de venta; el costo queda únicamente como dato interno.
+            params.data.price = Number(product.ventaMN ?? product.VentaMN ?? product.price ?? 0);
             this.updateTotal(params.data);
           }
           return true;
@@ -489,7 +491,7 @@ export class DetailCellRendererPurchaseOrderItemsComponent implements OnInit {
 
       if (params?.data) {
         params.data.idSupplie = materialId;
-        params.data.price = form.costoMN;
+        params.data.price = form.ventaMN;
         params.data.costoMN = form.costoMN;
         params.data.ventaMN = form.ventaMN;
         params.data.__modified = true;
@@ -503,13 +505,13 @@ export class DetailCellRendererPurchaseOrderItemsComponent implements OnInit {
           idSupplie: materialId,
           idProvider: 0,
           quantity: 1,
-          price: form.costoMN,
+          price: form.ventaMN,
           costoMN: form.costoMN,
           ventaMN: form.ventaMN,
           appliesIva: false,
           iva: 0,
           retention: 0,
-          total: form.costoMN,
+          total: form.ventaMN,
           type: 'OC',
           comment: 'NINGUNO.',
           dateuse: new Date().toISOString(),
