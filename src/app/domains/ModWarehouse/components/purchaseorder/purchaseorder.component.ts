@@ -1836,7 +1836,9 @@ export class PurchaseOrderComponent implements CanComponentDeactivate {
       for (const item of newItems) {
         const cleaned = this.cleanDataForServer(item);
         const saved: any = await lastValueFrom(this.requisitionsService.addReqItem(cleaned));
-        item.id = saved?.id ?? saved?.data?.id ?? item.id;
+        const savedId = Number(saved?.id ?? saved?.data?.id ?? 0);
+        if (!savedId) throw new Error('La partida de OC no devolvió su identificador.');
+        item.id = savedId;
       }
 
       for (const item of modifiedItems) {
@@ -1888,6 +1890,7 @@ export class PurchaseOrderComponent implements CanComponentDeactivate {
         const material = this.productos.find((product: any) => Number(product.id) === Number(item.idSupplie));
         const concept = {
           idIncorExp: expenseId,
+          idOcItem: Number(item.id),
           typeExpense: 'PROVEEDORES',
           idExpense: Number(oc.idProvider) || 0,
           idContribuyente: 0,
@@ -1905,7 +1908,9 @@ export class PurchaseOrderComponent implements CanComponentDeactivate {
           active: true,
           graficar: true
         };
-        const existingConcept = existing.find((row: any) => row.numeroIdentificacion === reference);
+        const existingConcept = existing.find((row: any) =>
+          Number(row.idOcItem) === Number(item.id) || row.numeroIdentificacion === reference
+        );
         if (existingConcept?.id) {
           await lastValueFrom(this.incomesAndExpensesService.updateConceptFromIncomesAndExpenses(existingConcept.id, { ...existingConcept, ...concept, id: existingConcept.id }));
         } else {
