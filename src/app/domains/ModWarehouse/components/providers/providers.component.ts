@@ -1281,9 +1281,13 @@ export class ProvidersComponent implements CanComponentDeactivate {
       }
     } catch (error) {
       console.error('Error en saveChanges:', error);
+      const httpError = error as any;
+      const responseMessage = typeof httpError?.error === 'string'
+        ? httpError.error
+        : httpError?.error?.message || httpError?.error?.title;
       alerts.basicAlert(
-        'Error',
-        'Ocurrió un error al actualizar los datos. Por favor, intente nuevamente.',
+        'No se guardó el proveedor',
+        responseMessage || 'El servidor no devolvió el detalle. Revise la consola para identificar el campo rechazado.',
         'error'
       );
     }
