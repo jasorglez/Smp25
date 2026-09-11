@@ -1662,6 +1662,7 @@ export class PurchaseOrderComponent implements CanComponentDeactivate {
     }
     delete cleanedData.__isNew;
     delete cleanedData.__modified;
+    delete cleanedData.appliesIva;
     if (cleanedData.id && cleanedData.id.toString().startsWith('temp_')) {
       delete cleanedData.id;
     }

@@ -97,6 +97,7 @@ export class DetailCellRendererPurchaseOrderItemsComponent implements OnInit {
       this.context.ITEMS.load(purchaseOrderId, (data: any[]) => {
         this.rowData = data.map(item => ({
           ...item,
+          appliesIva: Number(item.iva || 0) > 0,
           __isNew: false,
           __modified: false
         }));
@@ -134,6 +135,10 @@ export class DetailCellRendererPurchaseOrderItemsComponent implements OnInit {
         cellEditorParams: {
           values: [...this.productos.map((item) => item.id), '__ADD_MATERIAL__'],
           valueListMaxHeight: 220,
+          allowTyping: true,
+          filterList: true,
+          searchType: 'match',
+          highlightMatch: true,
           formatValue: (value: any) => {
             if (value === '__ADD_MATERIAL__') return '+ Agregar material...';
             const foundItem = this.productos.find((item) => item.id === value);
@@ -168,6 +173,8 @@ export class DetailCellRendererPurchaseOrderItemsComponent implements OnInit {
           if (product) {
             params.data.costoMN = Number(product.costoMN ?? product.price ?? 0);
             params.data.ventaMN = Number(product.ventaMN ?? product.price ?? 0);
+            params.data.price = Number(product.costoMN ?? product.price ?? 0);
+            this.updateTotal(params.data);
           }
           return true;
         }
@@ -237,16 +244,26 @@ export class DetailCellRendererPurchaseOrderItemsComponent implements OnInit {
         }
       },
       {
-        field: 'iva',
-        headerName: 'IVA',
+        field: 'appliesIva',
+        headerName: 'IVA 16%',
         editable: true,
+        width: 88,
+        cellRenderer: 'agCheckboxCellRenderer',
+        cellEditor: 'agCheckboxCellEditor',
+        valueSetter: (params: any) => {
+          params.data.appliesIva = params.newValue === true || params.newValue === 'true' || params.newValue === 1;
+          this.updateTotal(params.data);
+          return true;
+        }
+      },
+      {
+        field: 'iva',
+        headerName: 'IVA $',
+        editable: false,
         width: 95,
         type: 'numericColumn',
         valueFormatter: (params) => `$${Number(params.value || 0).toFixed(2)}`,
-        valueSetter: (params: any) => {
-          params.data.iva = Number(params.newValue) || 0;
-          return true;
-        }
+        cellStyle: { backgroundColor: '#f8f9fa' }
       },
       {
         field: 'retention',
@@ -257,6 +274,7 @@ export class DetailCellRendererPurchaseOrderItemsComponent implements OnInit {
         valueFormatter: (params) => `$${Number(params.value || 0).toFixed(2)}`,
         valueSetter: (params: any) => {
           params.data.retention = Number(params.newValue) || 0;
+          this.updateTotal(params.data);
           return true;
         }
       },
@@ -305,11 +323,10 @@ export class DetailCellRendererPurchaseOrderItemsComponent implements OnInit {
   };
 
   updateTotal(data: any) {
-    if (data.quantity && data.price) {
-      data.total = data.quantity * data.price;
-    } else {
-      data.total = 0;
-    }
+    const subtotal = (Number(data.quantity) || 0) * (Number(data.price) || 0);
+    const appliesIva = data.appliesIva === true || data.appliesIva === 'true' || data.appliesIva === 1;
+    data.iva = appliesIva ? Number((subtotal * 0.16).toFixed(2)) : 0;
+    data.total = Number((subtotal + Number(data.iva || 0) - (Number(data.retention) || 0)).toFixed(2));
   }
 
   addItem() {
@@ -323,6 +340,7 @@ export class DetailCellRendererPurchaseOrderItemsComponent implements OnInit {
       price: 0,
       costoMN: 0,
       ventaMN: 0,
+      appliesIva: false,
       iva: 0,
       retention: 0,
       total: 0,
@@ -469,6 +487,7 @@ export class DetailCellRendererPurchaseOrderItemsComponent implements OnInit {
           price: form.costoMN,
           costoMN: form.costoMN,
           ventaMN: form.ventaMN,
+          appliesIva: false,
           iva: 0,
           retention: 0,
           total: form.costoMN,
@@ -550,9 +569,9 @@ export class DetailCellRendererPurchaseOrderItemsComponent implements OnInit {
   }
 
   onCellValueChanged(event: any) {
-    if (event.colDef.field === 'quantity' || event.colDef.field === 'price') {
+    if (['quantity', 'price', 'appliesIva', 'retention'].includes(event.colDef.field)) {
       this.updateTotal(event.data);
-      this.gridApi.refreshCells({ rowNodes: [event.node], columns: ['total'] });
+      this.gridApi.refreshCells({ rowNodes: [event.node], columns: ['iva', 'total'] });
     }
 
     event.data.__modified = true;
