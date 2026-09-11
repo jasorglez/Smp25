@@ -1889,7 +1889,7 @@ export class PurchaseOrderComponent implements CanComponentDeactivate {
         const concept = {
           idIncorExp: expenseId,
           typeExpense: 'PROVEEDORES',
-          idExpense: 0,
+          idExpense: Number(oc.idProvider) || 0,
           idContribuyente: 0,
           dateExpend: oc.dateCreate || new Date().toISOString(),
           description: material?.description || `Material ${item.idSupplie}`,
