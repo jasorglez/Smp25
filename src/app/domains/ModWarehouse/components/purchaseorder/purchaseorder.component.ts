@@ -526,10 +526,22 @@ export class PurchaseOrderComponent implements CanComponentDeactivate {
       },
       {
         field: 'deliveryTime',
-        headerName: 'Tiempo de entrega',
+        headerName: 'Tipo',
         editable: true,
         filter: true,
         width: 150,
+        cellEditor: 'agSelectCellEditor',
+        cellEditorParams: {
+          values: [
+            'Materiales',
+            'Indirectos',
+            'Proyectos',
+            'Personal',
+            'Equipos',
+            'Herramientas',
+            'Directos',
+          ],
+        },
       },
       {
         field: 'conditions',
@@ -1200,7 +1212,7 @@ export class PurchaseOrderComponent implements CanComponentDeactivate {
       idWarehouse: null,
       idDepartament: 0,
       delivery: '1 dia',
-      deliveryTime: '1',
+      deliveryTime: 'Materiales',
       dateSupply: shippingDate.toISOString(),
       idPayment: defaultPayment?.id ?? 0,
       idCurrency: defaultCurrency?.id ?? 0,
