@@ -383,7 +383,16 @@ export class DetailCellRendererPurchaseOrderItemsComponent implements OnInit {
     const measureList: any[] = Array.isArray(measures) ? measures : [];
     const familyList: any[] = Array.isArray(families) ? families : [];
     const subfamilyList: any[] = Array.isArray(subfamilies) ? subfamilies : [];
-    const options = (items: any[], empty: string) => `<option value="">${empty}</option>${items.map(item => `<option value="${item.id}">${item.description}</option>`).join('')}`;
+    const pza = measureList.find(item => String(item.description || '').trim().toUpperCase() === 'PZA') || measureList[0];
+    const generalFamily = familyList.find(item => String(item.description || '').trim().toUpperCase() === 'GENERAL') || familyList[0];
+    const subfamiliesByFamily = (familyId: any) =>
+      subfamilyList.filter(item => Number(item.parentId) === Number(familyId));
+    const options = (items: any[], empty: string, selectedId?: any) =>
+      `<option value="">${empty}</option>${items.map(item =>
+        `<option value="${item.id}"${Number(item.id) === Number(selectedId) ? ' selected' : ''}>${item.description}</option>`
+      ).join('')}`;
+    const initialSubfamilies = subfamiliesByFamily(generalFamily?.id);
+    const consumables = initialSubfamilies.find(item => String(item.description || '').trim().toUpperCase() === 'CONSUMIBLES') || initialSubfamilies[0];
     const result = await Swal.fire({
       title: 'Nuevo material',
       width: 760,
@@ -391,11 +400,11 @@ export class DetailCellRendererPurchaseOrderItemsComponent implements OnInit {
         <div class="row g-2 text-start">
           <div class="col-md-12"><label class="form-label">Descripción *</label><textarea id="mat-description" class="form-control" rows="3" autofocus></textarea></div>
           <div class="col-md-4"><label class="form-label">Código</label><input id="mat-code" class="form-control" maxlength="35"></div>
-          <div class="col-md-4"><label class="form-label">Unidad *</label><select id="mat-measure" class="form-select">${options(measureList, 'Seleccione unidad')}<option value="__NEW__">+ Nueva unidad</option></select><input id="mat-measure-new" class="form-control mt-1 d-none" placeholder="Ej: PZA, KG, M"></div>
+          <div class="col-md-4"><label class="form-label">Unidad *</label><select id="mat-measure" class="form-select">${options(measureList, 'Seleccione unidad', pza?.id)}<option value="__NEW__">+ Nueva unidad</option></select><input id="mat-measure-new" class="form-control mt-1 d-none" placeholder="Ej: PZA, KG, M"></div>
           <div class="col-md-4"><label class="form-label">Costo *</label><input id="mat-cost" type="number" min="0" step="0.01" value="0" class="form-control"></div>
           <div class="col-md-4"><label class="form-label">Precio venta *</label><input id="mat-sale" type="number" min="0" step="0.01" value="0" class="form-control"></div>
-          <div class="col-md-6"><label class="form-label">Familia *</label><select id="mat-family" class="form-select">${options(familyList, 'Seleccione familia')}<option value="__NEW__">+ Agregar familia</option></select><input id="mat-family-new" class="form-control mt-1 d-none" placeholder="Nueva familia"></div>
-          <div class="col-md-6"><label class="form-label">Subfamilia *</label><select id="mat-subfamily" class="form-select"><option value="">Seleccione primero familia</option><option value="__NEW__">+ Agregar subfamilia</option></select><input id="mat-subfamily-new" class="form-control mt-1 d-none" placeholder="Nueva subfamilia"></div>
+          <div class="col-md-6"><label class="form-label">Familia *</label><select id="mat-family" class="form-select">${options(familyList, 'Seleccione familia', generalFamily?.id)}<option value="__NEW__">+ Agregar familia</option></select><input id="mat-family-new" class="form-control mt-1 d-none" placeholder="Nueva familia"></div>
+          <div class="col-md-6"><label class="form-label">Subfamilia *</label><select id="mat-subfamily" class="form-select">${options(initialSubfamilies, 'Seleccione subfamilia', consumables?.id)}<option value="__NEW__">+ Agregar subfamilia</option></select><input id="mat-subfamily-new" class="form-control mt-1 d-none" placeholder="Nueva subfamilia"></div>
         </div>`,
       showCancelButton: true, confirmButtonText: 'Guardar material', cancelButtonText: 'Cancelar',
       didOpen: () => {
@@ -403,9 +412,8 @@ export class DetailCellRendererPurchaseOrderItemsComponent implements OnInit {
         const measure = get('mat-measure'); const family = get('mat-family'); const subfamily = get('mat-subfamily');
         measure.onchange = () => (document.getElementById('mat-measure-new') as HTMLElement).classList.toggle('d-none', measure.value !== '__NEW__');
         family.onchange = () => {
-          subfamily.innerHTML = '<option value="">Seleccione primero familia</option><option value="__NEW__">+ Agregar subfamilia</option>';
           (document.getElementById('mat-family-new') as HTMLElement).classList.toggle('d-none', family.value !== '__NEW__');
-          const list = subfamilyList.filter(s => String(s.parentId) === family.value);
+          const list = subfamiliesByFamily(family.value);
           subfamily.innerHTML = options(list, 'Seleccione subfamilia') + '<option value="__NEW__">+ Agregar subfamilia</option>';
         };
         subfamily.onchange = () => (document.getElementById('mat-subfamily-new') as HTMLElement).classList.toggle('d-none', subfamily.value !== '__NEW__');
@@ -423,13 +431,24 @@ export class DetailCellRendererPurchaseOrderItemsComponent implements OnInit {
     if (!result.isConfirmed || !result.value) return;
     const form: any = result.value;
     try {
+      const catalogId = (response: any): number => Number(
+        response?.id ?? response?.Id ?? response?.catalog?.id ?? response?.Catalog?.id ?? 0
+      );
       let measureId = form.measureId;
-      if (measureId === '__NEW__') measureId = (await lastValueFrom(this.catalogsService.addCatalog({ description: form.measureNew, type: 'MEASURE', idCompany: idRoot, active: 1, vigente: true })))?.id;
+      if (measureId === '__NEW__') {
+        measureId = catalogId(await lastValueFrom(this.catalogsService.addCatalog({ description: form.measureNew, type: 'MEASURE', idCompany: idRoot, active: 1, vigente: true })));
+      }
       let familyId = form.familyId;
-      if (familyId === '__NEW__') familyId = (await lastValueFrom(this.catalogsService.addCatalog({ description: form.familyNew, type: 'FAMILY', idCompany: idRoot, active: 1, vigente: true })))?.id;
+      if (familyId === '__NEW__') {
+        familyId = catalogId(await lastValueFrom(this.catalogsService.addCatalog({ description: form.familyNew, type: 'FAMILY', idCompany: idRoot, active: 1, vigente: true })));
+      }
       let subfamilyId = form.subfamilyId;
-      if (subfamilyId === '__NEW__') subfamilyId = (await lastValueFrom(this.catalogsService.addCatalog({ description: form.subfamilyNew, type: 'SUBFAMILY', idCompany: idRoot, parentId: Number(familyId), active: 1, vigente: true })))?.id;
-      if (!familyId || !subfamilyId) throw new Error('Debe seleccionar o agregar familia y subfamilia.');
+      if (subfamilyId === '__NEW__') {
+        subfamilyId = catalogId(await lastValueFrom(this.catalogsService.addCatalog({ description: form.subfamilyNew, type: 'SUBFAMILY', idCompany: idRoot, parentId: Number(familyId), active: 1, vigente: true })));
+      }
+      if (!Number(measureId)) throw new Error('No fue posible obtener el identificador de la unidad seleccionada.');
+      if (!Number(familyId)) throw new Error('No fue posible obtener el identificador de la familia seleccionada.');
+      if (!Number(subfamilyId)) throw new Error('No fue posible obtener el identificador de la subfamilia seleccionada.');
       const created: any = await lastValueFrom(service.addMaterial({
         idCompany: idRoot,
         insumo: String(form.code || '').slice(0, 35),
@@ -507,7 +526,7 @@ export class DetailCellRendererPurchaseOrderItemsComponent implements OnInit {
       this.gridApi?.setGridOption('columnDefs', this.colDefs);
     } catch (error) {
       console.error('Error al agregar material en OC:', error);
-      const detail = (error as any)?.error?.title || (error as any)?.error?.message || (error as any)?.error || 'Revise familia, subfamilia y unidad seleccionadas.';
+      const detail = (error as any)?.error?.title || (error as any)?.error?.message || (error as any)?.message || 'No se recibió el detalle del servidor.';
       alerts.basicAlert('Material', `No fue posible guardar: ${detail}`, 'error');
     }
   }
