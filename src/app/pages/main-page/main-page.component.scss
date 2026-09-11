@@ -21,6 +21,70 @@
   width: calc(100vw - 70px);
 }
 
+.workspace-tabs {
+  display: flex;
+  align-items: flex-end;
+  gap: 2px;
+  min-height: 35px;
+  padding: 3px 8px 0;
+  overflow-x: auto;
+  background: #edf1f5;
+  border-bottom: 1px solid #cbd5df;
+}
+
+.workspace-tab {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  max-width: 245px;
+  min-height: 31px;
+  padding: 6px 8px 6px 10px;
+  color: #52616f;
+  font-size: 0.78rem;
+  line-height: 1;
+  white-space: nowrap;
+  background: #dfe6ec;
+  border: 1px solid #c7d0d8;
+  border-bottom: 0;
+  border-radius: 5px 5px 0 0;
+  transition: background-color .15s ease, color .15s ease;
+}
+
+.workspace-tab:hover {
+  background: #e9eef2;
+  color: #1f3d55;
+}
+
+.workspace-tab.active {
+  position: relative;
+  z-index: 1;
+  color: #123f63;
+  font-weight: 600;
+  background: #fff;
+  border-color: #cbd5df;
+}
+
+.workspace-tab-title {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.workspace-tab-close {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 17px;
+  height: 17px;
+  margin-left: 2px;
+  color: #71808c;
+  border-radius: 50%;
+}
+
+.workspace-tab-close:hover {
+  color: #fff;
+  background: #d9534f;
+}
+
 .license-expired-overlay {
   position: fixed;
   inset: 0;

@@ -44,6 +44,28 @@
     </div>
 
     <div class="flex-grow-1 pt-2 ps-0 pe-2" [class.d-none]="licenseStatus() === 'expired' && !isRootUser()">
+      <nav class="workspace-tabs" aria-label="Pantallas abiertas" *ngIf="workspaceTabs.tabs().length">
+        <button
+          type="button"
+          class="workspace-tab"
+          *ngFor="let tab of workspaceTabs.tabs()"
+          [class.active]="tab.url === workspaceTabs.activeUrl()"
+          (click)="activateTab(tab)"
+          [title]="tab.title"
+        >
+          <i class="bi bi-window-stack"></i>
+          <span class="workspace-tab-title">{{ tab.title }}</span>
+          <span
+            class="workspace-tab-close"
+            *ngIf="workspaceTabs.tabs().length > 1"
+            (click)="closeTab($event, tab)"
+            title="Cerrar pestaña"
+            aria-label="Cerrar {{ tab.title }}"
+          >
+            <i class="bi bi-x-lg"></i>
+          </span>
+        </button>
+      </nav>
       <router-outlet></router-outlet>
     </div>
     <app-footer></app-footer>
