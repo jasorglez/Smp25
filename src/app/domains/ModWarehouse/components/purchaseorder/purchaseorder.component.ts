@@ -1895,7 +1895,9 @@ export class PurchaseOrderComponent implements CanComponentDeactivate {
           typeExpense: 'PROVEEDORES',
           idExpense: Number(oc.idProvider) || 0,
           idContribuyente: 0,
-          dateExpend: oc.dateCreate || new Date().toISOString(),
+          // El gasto conserva la fecha capturada en la partida de la OC.
+          // Solo las partidas antiguas sin fecha usan la del encabezado.
+          dateExpend: item.dateuse || oc.dateCreate || new Date().toISOString(),
           description: material?.description || `Material ${item.idSupplie}`,
           quantity: Number(item.quantity) || 0,
           unit: material?.measure || '',
