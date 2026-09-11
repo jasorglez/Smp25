@@ -83,5 +83,5 @@ export const environment = {
   geminiApiKey: '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',
   gnewsApiKey: '94ccc596b4dfebc3f72683b6e81d81bc',
 
-  version: '5.00.34 (11 Septiembre 2026) fecha de partida OC en gasto',
+  version: '5.00.35 (11 Septiembre 2026) cuenta contable en partidas OC',
 };

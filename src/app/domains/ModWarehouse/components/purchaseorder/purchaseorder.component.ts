@@ -1886,15 +1886,28 @@ export class PurchaseOrderComponent implements CanComponentDeactivate {
     try {
       const existingResponse: any = await lastValueFrom(this.incomesAndExpensesService.getConceptsFromIncomesAndExpenses(expenseId));
       const existing = Array.isArray(existingResponse) ? existingResponse : [];
+      // La cuenta contable se captura en el detalle del Gasto. Para una
+      // partida nueva de OC reutilizamos la última cuenta válida del mismo
+      // gasto; una cuenta que el usuario ya corrigió nunca se sobrescribe.
+      let lastAccountId = Number(
+        [...existing]
+          .sort((a: any, b: any) => Number(b.id || 0) - Number(a.id || 0))
+          .find((row: any) => Number(row.idContribuyente || 0) > 0)
+          ?.idContribuyente || 0
+      );
       for (const item of items) {
         const reference = `OC:${purchaseOrderId}:ITEM:${item.id}`;
         const material = this.productos.find((product: any) => Number(product.id) === Number(item.idSupplie));
+        const existingConcept = existing.find((row: any) =>
+          Number(row.idOcItem) === Number(item.id) || row.numeroIdentificacion === reference
+        );
+        const idContribuyente = Number(existingConcept?.idContribuyente || 0) || lastAccountId;
         const concept = {
           idIncorExp: expenseId,
           idOcItem: Number(item.id),
           typeExpense: 'PROVEEDORES',
           idExpense: Number(oc.idProvider) || 0,
-          idContribuyente: 0,
+          idContribuyente,
           // El gasto conserva la fecha capturada en la partida de la OC.
           // Solo las partidas antiguas sin fecha usan la del encabezado.
           dateExpend: item.dateuse || oc.dateCreate || new Date().toISOString(),
@@ -1911,14 +1924,12 @@ export class PurchaseOrderComponent implements CanComponentDeactivate {
           active: true,
           graficar: true
         };
-        const existingConcept = existing.find((row: any) =>
-          Number(row.idOcItem) === Number(item.id) || row.numeroIdentificacion === reference
-        );
         if (existingConcept?.id) {
           await lastValueFrom(this.incomesAndExpensesService.updateConceptFromIncomesAndExpenses(existingConcept.id, { ...existingConcept, ...concept, id: existingConcept.id }));
         } else {
           await lastValueFrom(this.incomesAndExpensesService.addConceptFromIncomesAndExpenses(concept));
         }
+        if (idContribuyente) lastAccountId = idContribuyente;
       }
       const allConceptsResponse: any = await lastValueFrom(this.incomesAndExpensesService.getConceptsFromIncomesAndExpenses(expenseId));
       const allConcepts = Array.isArray(allConceptsResponse) ? allConceptsResponse : [];
