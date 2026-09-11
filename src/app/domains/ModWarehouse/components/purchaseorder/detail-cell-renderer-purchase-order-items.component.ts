@@ -46,7 +46,7 @@ import Swal from 'sweetalert2';
         [localeText]="AG_GRID_LOCALE_ES"
         (gridReady)="onGridReady($event)"
         (cellValueChanged)="onCellValueChanged($event)"
-        style="height: 300px; width: 100%;">
+        style="height: 1320px; width: 100%;">
       </ag-grid-angular>
     </div>
   `,
