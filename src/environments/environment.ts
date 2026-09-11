@@ -83,5 +83,5 @@ export const environment = {
   geminiApiKey: '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',
   gnewsApiKey: '94ccc596b4dfebc3f72683b6e81d81bc',
 
-  version: '5.00.44 (11 Septiembre 2026) precio de venta en OC',
+  version: '5.00.45 (11 Septiembre 2026) valida material duplicado en OC',
 };

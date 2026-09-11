@@ -424,6 +424,18 @@ export class DetailCellRendererPurchaseOrderItemsComponent implements OnInit {
         const value = (id: string) => (document.getElementById(id) as HTMLInputElement).value.trim();
         const description = value('mat-description'); const measureId = value('mat-measure'); const familyId = value('mat-family'); const subfamilyId = value('mat-subfamily');
         if (!description || !measureId || !familyId || !subfamilyId) { Swal.showValidationMessage('Descripción, unidad, familia y subfamilia son obligatorias.'); return false; }
+        const normalizeDescription = (text: string) => text
+          .normalize('NFD')
+          .replace(/[\u0300-\u036f]/g, '')
+          .replace(/\s+/g, ' ')
+          .trim()
+          .toUpperCase();
+        const duplicate = this.productos.find((item: any) =>
+          normalizeDescription(String(item?.description ?? '')) === normalizeDescription(description));
+        if (duplicate) {
+          Swal.showValidationMessage(`El material \"${duplicate.description}\" ya existe.`);
+          return false;
+        }
         if (measureId === '__NEW__' && !value('mat-measure-new')) { Swal.showValidationMessage('Capture la nueva unidad.'); return false; }
         if (familyId === '__NEW__' && !value('mat-family-new')) { Swal.showValidationMessage('Capture la nueva familia.'); return false; }
         if (subfamilyId === '__NEW__' && !value('mat-subfamily-new')) { Swal.showValidationMessage('Capture la nueva subfamilia.'); return false; }
