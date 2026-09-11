@@ -83,5 +83,5 @@ export const environment = {
   geminiApiKey: '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',
   gnewsApiKey: '94ccc596b4dfebc3f72683b6e81d81bc',
 
-  version: '5.00.29 (10 Septiembre 2026) tipo Subcontratista en proveedores',
+  version: '5.00.30 (10 Septiembre 2026) confirmación de proveedores',
 };

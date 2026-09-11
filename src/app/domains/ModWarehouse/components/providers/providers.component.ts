@@ -1266,6 +1266,11 @@ export class ProvidersComponent implements CanComponentDeactivate {
 
       await this.obtenerDatos();
 
+      alerts.toastAlert(
+        modifiedRows.length > 0 ? 'Registro actualizado' : 'Proveedor registrado',
+        'success'
+      );
+
       // Seleccionar la fila apropiada después de recargar
       if (this.lastEditedRowId) {
         if (this.lastEditedRowId === 'SELECT_MAX_ID') {
