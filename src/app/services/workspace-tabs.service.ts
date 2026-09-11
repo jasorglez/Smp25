@@ -13,6 +13,11 @@ export interface WorkspaceTab {
 @Injectable({ providedIn: 'root' })
 export class WorkspaceTabsService {
   private readonly storageKey = 'bi-workspace-tabs';
+  private readonly menuContainers = new Set([
+    'almacenes', 'dashboardgrales', 'logistica', 'pmo', 'presupuestos',
+    'procmodadmon', 'procmodmaintenance', 'proceswar', 'procreshuman',
+    'projects', 'shoppingDelison', 'shoppingTD', 'smp', 'warehousesTD',
+  ]);
 
   readonly tabs = signal<WorkspaceTab[]>(this.readTabs());
   readonly activeUrl = signal<string>('');
@@ -54,6 +59,16 @@ export class WorkspaceTabsService {
     return undefined;
   }
 
+  remove(url: string): void {
+    const normalizedUrl = this.normalizeUrl(url);
+    const nextTabs = this.tabs().filter(tab => tab.url !== normalizedUrl);
+    if (nextTabs.length === this.tabs().length) return;
+
+    this.tabs.set(nextTabs);
+    if (this.activeUrl() === normalizedUrl) this.activeUrl.set('');
+    this.persist();
+  }
+
   private normalizeUrl(url: string): string {
     const withoutFragment = url.split('#')[0];
     return withoutFragment.length > 1 && withoutFragment.endsWith('/')
@@ -66,7 +81,11 @@ export class WorkspaceTabsService {
       const saved = sessionStorage.getItem(this.storageKey);
       const parsed = saved ? JSON.parse(saved) : [];
       return Array.isArray(parsed)
-        ? parsed.filter(tab => typeof tab?.url === 'string' && typeof tab?.title === 'string')
+        ? parsed.filter(tab =>
+          typeof tab?.url === 'string' &&
+          typeof tab?.title === 'string' &&
+          !this.isGeneralMenu(tab.url)
+        )
         : [];
     } catch {
       return [];
@@ -79,5 +98,11 @@ export class WorkspaceTabsService {
     } catch {
       // La navegación no depende de que el navegador permita almacenamiento.
     }
+  }
+
+  isGeneralMenu(url: string): boolean {
+    const path = this.normalizeUrl(url).split('?')[0];
+    const segments = path.split('/').filter(Boolean);
+    return segments.length === 1 && this.menuContainers.has(segments[0]);
   }
 }

@@ -101,13 +101,13 @@ export class MainPageComponent implements OnInit, OnDestroy {
       const segment = url.split('/')[1]?.split('?')[0] || '';
       const module  = this.MODULE_MAP[segment] || segment;
       if (module) this.trackingService.logModuleVisit(module);
-      this.workspaceTabs.register(url, this.getRouteTitle());
+      this.registerWorkspaceRoute(url);
     });
 
     // Cubre la primera pantalla cuando Angular ya terminó de navegar antes de
     // que este componente alcance a suscribirse al evento NavigationEnd.
     if (this.router.url && this.router.url !== '/') {
-      this.workspaceTabs.register(this.router.url, this.getRouteTitle());
+      this.registerWorkspaceRoute(this.router.url);
     }
 
     // Cargar estado inicial del sidebar
@@ -146,6 +146,15 @@ export class MainPageComponent implements OnInit, OnDestroy {
     event.stopPropagation();
     const nextTab = this.workspaceTabs.close(tab.url);
     if (nextTab) this.router.navigateByUrl(nextTab.url);
+  }
+
+  private registerWorkspaceRoute(url: string): void {
+    if (this.workspaceTabs.isGeneralMenu(url)) {
+      this.workspaceTabs.remove(url);
+      return;
+    }
+
+    this.workspaceTabs.register(url, this.getRouteTitle());
   }
 
   private getRouteTitle(): string {
