@@ -31,7 +31,6 @@ import { NotificationsTelegramService } from 'app/services/notifications-telegra
 import { PermitionsService } from 'app/services/permitions.service';
 import { TrackingService } from 'app/services/tracking.service';
 import { IncomesAndExpensesService } from 'app/services/incomes-and-expenses.service';
-import { AdministrationService } from 'app/services/administration.service';
 import { CanComponentDeactivate } from 'app/guards/unsaved-changes.guard';
 import { confirmExitIfUnsaved } from 'app/helpers/can-deactivate.helper';
 import { ButtonCellRendererComponent } from './button-cell-renderer.component';
@@ -75,7 +74,6 @@ export class PurchaseOrderComponent implements CanComponentDeactivate {
   private permitionsService = inject(PermitionsService);
   private trackingService = inject(TrackingService);
   private incomesAndExpensesService = inject(IncomesAndExpensesService);
-  private administrationService = inject(AdministrationService);
 
   // Variables compartidas
 
@@ -121,6 +119,7 @@ export class PurchaseOrderComponent implements CanComponentDeactivate {
 
   // Catálogos Details
   productos: any[] = [];
+  gastosAceptanOc: any[] = [];
 
   // Configuración Grid
   public rowSelection: 'single' | 'multiple' = 'single';
@@ -156,6 +155,7 @@ export class PurchaseOrderComponent implements CanComponentDeactivate {
             this.obtenerRequisiciones();
             this.obtenerProductos();
             this.obtenerAlmacenes();
+            this.obtenerGastosAceptanOc();
             if (this.idRequisition != null) {
               this.obtenerDetalles();
             }
@@ -184,6 +184,7 @@ export class PurchaseOrderComponent implements CanComponentDeactivate {
       this.obtenerProveedores();
       this.obtenerTipoPago();
       this.obtenerProductos();
+      this.obtenerGastosAceptanOc();
     });
   }
 
@@ -452,6 +453,18 @@ export class PurchaseOrderComponent implements CanComponentDeactivate {
           return foundItem ? `${foundItem.name}` : params.value;
         },
       },     
+      {
+        field: 'idIncorExp',
+        headerName: 'Gasto destino',
+        editable: true,
+        width: 270,
+        cellEditor: 'agSelectCellEditor',
+        cellEditorParams: () => ({ values: this.gastosAceptanOc.map((item: any) => item.id) }),
+        valueFormatter: (params) => {
+          const gasto = this.gastosAceptanOc.find((item: any) => Number(item.id) === Number(params.value));
+          return gasto ? `${gasto.numberDocument || `Gasto ${gasto.id}`} - ${gasto.description || ''}` : '';
+        }
+      },
       {
         field: 'idCurrency',
         headerName: 'Moneda',
@@ -801,6 +814,23 @@ export class PurchaseOrderComponent implements CanComponentDeactivate {
         },
         (error) => console.error('Error fetching data:', error)
       );
+  }
+
+  obtenerGastosAceptanOc(): void {
+    if (!this.idRoot) return;
+    this.incomesAndExpensesService.getIncomesAndExpenses(this.idRoot).subscribe({
+      next: (data: any) => {
+        const rows = Array.isArray(data) ? data : [];
+        this.gastosAceptanOc = rows.filter((row: any) =>
+          String(row.type || '').toUpperCase() === 'GASTO' && row.acceptsOc === true && row.active !== false
+        );
+        this.masterGridApi?.refreshCells({ columns: ['idIncorExp'], force: true });
+      },
+      error: (error) => {
+        console.error('No fue posible cargar los gastos que aceptan OC:', error);
+        this.gastosAceptanOc = [];
+      }
+    });
   }
 
   obtenerRequisiciones() {
@@ -1156,6 +1186,7 @@ export class PurchaseOrderComponent implements CanComponentDeactivate {
       idReference: this.idReference,
       dateCreate: new Date().toISOString(),
       idProvider: 0,
+      idIncorExp: null,
       idWarehouse: null,
       idDepartament: 0,
       delivery: '1 dia',
@@ -1784,11 +1815,18 @@ export class PurchaseOrderComponent implements CanComponentDeactivate {
   async savePurchaseOrderItemsById(purchaseOrderId: number, data: any[]) {
     const newItems = data.filter((row: any) => row.__isNew);
     const modifiedItems = data.filter((row: any) => row.__modified && !row.__isNew);
+    const purchaseOrder = this.masterRowData.find((row: any) => Number(row.id) === Number(purchaseOrderId));
+
+    if (!purchaseOrder?.idIncorExp) {
+      alerts.basicAlert('Gasto destino', 'Seleccione el gasto que acepta esta OC antes de guardar sus partidas.', 'warning');
+      return;
+    }
 
     try {
       for (const item of newItems) {
         const cleaned = this.cleanDataForServer(item);
-        await lastValueFrom(this.requisitionsService.addReqItem(cleaned));
+        const saved: any = await lastValueFrom(this.requisitionsService.addReqItem(cleaned));
+        item.id = saved?.id ?? saved?.data?.id ?? item.id;
       }
 
       for (const item of modifiedItems) {
@@ -1796,14 +1834,10 @@ export class PurchaseOrderComponent implements CanComponentDeactivate {
         await lastValueFrom(this.requisitionsService.updateReqItem(item.id, cleaned));
       }
 
+      await this.syncPurchaseOrderTaxes(purchaseOrderId, data);
+      await this.syncExpenseDetailsFromPurchaseOrder(purchaseOrderId, data);
+
       if (newItems.length > 0 || modifiedItems.length > 0) {
-        await this.syncPurchaseOrderTaxes(purchaseOrderId, data);
-        // Una OC genera un único maestro de Gasto y cada partida nueva se
-        // registra como concepto. Después de generarse, el gasto queda
-        // independiente: no se actualiza por modificaciones posteriores.
-        if (newItems.length > 0) {
-          await this.createExpenseFromPurchaseOrder(purchaseOrderId, data);
-        }
         alerts.basicAlert(
           'Detalles guardados',
           'Se han guardado los items correctamente.',
@@ -1818,6 +1852,8 @@ export class PurchaseOrderComponent implements CanComponentDeactivate {
           delete row.__isNew;
           delete row.__modified;
         });
+      } else {
+        alerts.basicAlert('Partidas vinculadas', 'Las partidas existentes se guardaron en el detalle del gasto seleccionado.', 'success');
       }
 
     } catch (error) {
@@ -1830,72 +1866,56 @@ export class PurchaseOrderComponent implements CanComponentDeactivate {
     }
   }
 
-  private async createExpenseFromPurchaseOrder(purchaseOrderId: number, items: any[]): Promise<void> {
+  private async syncExpenseDetailsFromPurchaseOrder(purchaseOrderId: number, items: any[]): Promise<void> {
     const oc = this.masterRowData.find((row: any) => Number(row.id) === Number(purchaseOrderId));
-    if (!oc || !this.idRoot) return;
+    const expenseId = Number(oc?.idIncorExp || 0);
+    if (!oc || !expenseId) return;
     try {
-      const expensesResponse: any = await lastValueFrom(this.incomesAndExpensesService.getExpensesxroot(this.idRoot));
-      const expenses = Array.isArray(expensesResponse) ? expensesResponse : Object.values(expensesResponse || {});
-      let expense = expenses.find((row: any) => String(row.oc || '') === String(purchaseOrderId));
-      if (!expense) {
-        const accountsResponse: any = await lastValueFrom(this.administrationService.getAccountBanks(this.idRoot));
-        const accounts = Array.isArray(accountsResponse) ? accountsResponse : Object.values(accountsResponse || {});
-        const subtotal = items.reduce((sum: number, item: any) => sum + (Number(item.quantity) || 0) * (Number(item.price) || 0), 0);
-        const tax = Number(oc.iva || 0);
-        const retention = Number(oc.ivaRetention || 0);
-        expense = await lastValueFrom(this.incomesAndExpensesService.addIncomesAndExpenses({
-          idAccount: accounts[0]?.id || null,
-          numberDocument: oc.folio || `OC-${purchaseOrderId}`,
-          oc: String(purchaseOrderId),
-          idBusinnes: this.idRoot,
-          idBranch: this.idBranch > 0 ? this.idBranch : null,
-          idProject: oc.idProject || this.idProject || null,
-          idCustomer: oc.idProvider || 0,
-          date: oc.dateCreate || new Date().toISOString(),
-          description: `Gasto generado desde OC ${oc.folio || purchaseOrderId}`,
-          type: 'GASTO',
-          subtotal,
-          tax,
-          isr: retention,
-          total: subtotal + tax - retention,
-          moneda: 'MXN',
-          status: 'Pendiente',
-          active: true,
-          createdBy: this.trackingService.getEmail(),
-          createdAt: new Date().toISOString(),
-          countItems: 0,
-          countitems: 0
-        }));
-      }
-      if (!expense?.id) return;
-      const existingResponse: any = await lastValueFrom(this.incomesAndExpensesService.getConceptsFromIncomesAndExpenses(expense.id));
+      const existingResponse: any = await lastValueFrom(this.incomesAndExpensesService.getConceptsFromIncomesAndExpenses(expenseId));
       const existing = Array.isArray(existingResponse) ? existingResponse : [];
       for (const item of items) {
         const reference = `OC:${purchaseOrderId}:ITEM:${item.id}`;
-        if (existing.some((concept: any) => concept.numeroIdentificacion === reference)) continue;
         const material = this.productos.find((product: any) => Number(product.id) === Number(item.idSupplie));
-        await lastValueFrom(this.incomesAndExpensesService.addConceptFromIncomesAndExpenses({
-          idIncorExp: expense.id,
+        const concept = {
+          idIncorExp: expenseId,
           typeExpense: 'PROVEEDORES',
-          idExpense: oc.idProvider || 0,
+          idExpense: 0,
           idContribuyente: 0,
           dateExpend: oc.dateCreate || new Date().toISOString(),
           description: material?.description || `Material ${item.idSupplie}`,
           quantity: Number(item.quantity) || 0,
           unit: material?.measure || '',
           price: Number(item.price) || 0,
-          iva: false,
-          iva2: 0,
-          aplicaIsr: false,
-          isr: 0,
+          iva: Number(item.iva) > 0,
+          iva2: Number(item.iva) || 0,
+          aplicaIsr: Number(item.retention) > 0,
+          isr: Number(item.retention) || 0,
           numeroIdentificacion: reference,
           comment: `OC ${oc.folio || purchaseOrderId}`,
           active: true,
           graficar: true
-        }));
+        };
+        const existingConcept = existing.find((row: any) => row.numeroIdentificacion === reference);
+        if (existingConcept?.id) {
+          await lastValueFrom(this.incomesAndExpensesService.updateConceptFromIncomesAndExpenses(existingConcept.id, { ...existingConcept, ...concept, id: existingConcept.id }));
+        } else {
+          await lastValueFrom(this.incomesAndExpensesService.addConceptFromIncomesAndExpenses(concept));
+        }
       }
+      const allConceptsResponse: any = await lastValueFrom(this.incomesAndExpensesService.getConceptsFromIncomesAndExpenses(expenseId));
+      const allConcepts = Array.isArray(allConceptsResponse) ? allConceptsResponse : [];
+      const subtotal = allConcepts.reduce((sum: number, item: any) => sum + (Number(item.quantity) || 0) * (Number(item.price) || 0), 0);
+      const iva = allConcepts.reduce((sum: number, item: any) => sum + (Number(item.iva2) || 0), 0);
+      const retention = allConcepts.reduce((sum: number, item: any) => sum + (Number(item.isr) || 0), 0);
+      await lastValueFrom(this.incomesAndExpensesService.updateTotal(expenseId, {
+        subtotal,
+        tax: iva,
+        total: subtotal + iva - retention,
+        modifiedBy: this.trackingService.getEmail()
+      }));
     } catch (error) {
-      console.error('No fue posible generar el gasto desde la OC:', error);
+      console.error('No fue posible guardar las partidas de OC en el gasto seleccionado:', error);
+      throw error;
     }
   }
 

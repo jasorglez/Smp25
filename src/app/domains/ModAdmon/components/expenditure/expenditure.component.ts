@@ -658,6 +658,14 @@ export class ExpenditureComponent implements OnDestroy, OnChanges {
         field: 'numberDocument', headerName: '# Documento', editable: true, filter: true, width: 130
       },
       {
+        field: 'acceptsOc',
+        headerName: 'Acepta OC',
+        editable: true,
+        width: 105,
+        cellEditor: 'agCheckboxCellEditor',
+        valueFormatter: (params) => params.value ? 'Sí' : 'No'
+      },
+      {
         field: 'idBranch',
         headerName: 'Nombre sucursal',
         headerClass: 'required-header',
@@ -1106,6 +1114,7 @@ export class ExpenditureComponent implements OnDestroy, OnChanges {
       subtotal: 0,
       tax: 0,
       total: 0,
+      acceptsOc: false,
       moneda: 'MXN',
       tipoCambio: null,
       countItems: 0,

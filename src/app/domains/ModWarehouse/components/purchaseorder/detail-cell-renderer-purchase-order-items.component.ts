@@ -504,7 +504,9 @@ export class DetailCellRendererPurchaseOrderItemsComponent implements OnInit {
   async saveChanges() {
     this.trackingService.addLog(this.trackingService.getnameComp(), 'Guardó cambios en detail cell renderer purchase order items', 'Almacenes', this.trackingService.getEmail());
     if (!this.hasUnsavedChanges) {
-      alerts.basicAlert('Sin cambios', 'No hay cambios pendientes por guardar', 'info');
+      // También permite vincular partidas ya guardadas cuando se eligió un
+      // gasto destino posteriormente en el maestro de la OC.
+      await this.context?.ITEMS?.save?.(this.params.data.id, this.rowData);
       return;
     }
 
