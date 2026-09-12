@@ -534,8 +534,9 @@ export class PurchaseOrderComponent implements CanComponentDeactivate {
         cellEditorParams: {
           values: [
             'Materiales',
-            'Indirectos',
-            'Proyectos',
+            'Indirecto',
+            'Proyecto',
+            'Preliminar',
             'Personal',
             'Equipos',
             'Herramientas',
