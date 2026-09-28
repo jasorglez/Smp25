@@ -5,7 +5,6 @@
   "compilerOptions": {
     "outDir": "./dist/out-tsc",
     "strict": false,
-    "ignoreDeprecations": "6.0",
     "noImplicitOverride": true,
     "noPropertyAccessFromIndexSignature": true,
     "noImplicitReturns": true,
@@ -24,9 +23,10 @@
       "ES2022",
       "dom"
     ],
-    "baseUrl": "./src",  // Configura el baseUrl
     "paths": {
-      "@env/*": ["environments/*"]  // Configura alias para ambientes
+      "@env/*": ["./src/environments/*"],
+      "app/*": ["./src/app/*"],
+      "assets/*": ["./src/assets/*"]
     }
   },
   "angularCompilerOptions": {
