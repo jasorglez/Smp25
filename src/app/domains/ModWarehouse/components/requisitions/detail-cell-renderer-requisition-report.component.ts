@@ -1,4 +1,4 @@
-import { Component, inject } from '@angular/core';
+import { Component, OnDestroy, inject } from '@angular/core';
 import { PdfShareButtonsComponent } from 'app/shared/components/pdf-share-buttons/pdf-share-buttons.component';
 import { CommonModule } from '@angular/common';
 import { ICellRendererParams } from 'ag-grid-enterprise';
@@ -22,12 +22,20 @@ pdfMake.vfs = pdfFonts as unknown as Record<string, string>;
   imports: [CommonModule, PdfShareButtonsComponent],
   template: `
     <div class="report-detail-container">
-      <div class="report-header d-flex justify-content-between align-items-center mb-3">
+      <div class="report-header d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
         <h5 class="mb-0">
           <i class="bi bi-file-earmark-pdf text-danger me-2"></i>
           Reporte: {{ requisitionData?.folio || 'Sin Número' }}
         </h5>
-        <div class="d-flex align-items-center gap-2">
+        <div class="d-flex flex-wrap align-items-center gap-2">
+          <a *ngIf="pdfObjectUrl && !isLoading" class="btn btn-outline-primary btn-sm"
+             [href]="pdfObjectUrl" target="_blank" rel="noopener noreferrer">
+            <i class="bi bi-box-arrow-up-right"></i> Abrir PDF
+          </a>
+          <a *ngIf="pdfObjectUrl && !isLoading" class="btn btn-outline-primary btn-sm"
+             [href]="pdfObjectUrl" [attr.download]="'Requisicion_' + (requisitionData?.folio || requisitionData?.id) + '.pdf'">
+            <i class="bi bi-download"></i> Descargar
+          </a>
           <app-pdf-share-buttons
             [getPdfBlob]="getPdfBlobFn"
             [fileName]="'Requisicion_' + (requisitionData?.folio || requisitionData?.id) + '.pdf'"
@@ -38,7 +46,8 @@ pdfMake.vfs = pdfFonts as unknown as Record<string, string>;
           </button>
         </div>
       </div>
-      <div class="report-content" style="height: 1200px; border: 1px solid #dee2e6; border-radius: 0.375rem;">
+      <div class="report-content" [style.height.px]="isTouchDevice ? 260 : 1200"
+           style="border: 1px solid #dee2e6; border-radius: 0.375rem;">
         <div *ngIf="isLoading" class="d-flex justify-content-center align-items-center h-100">
           <div class="spinner-border text-primary" role="status">
             <span class="visually-hidden">Cargando...</span>
@@ -46,10 +55,16 @@ pdfMake.vfs = pdfFonts as unknown as Record<string, string>;
           <span class="ms-2">Generando reporte...</span>
         </div>
         <iframe
-          *ngIf="pdfUrl && !isLoading"
+          *ngIf="pdfUrl && !isLoading && !isTouchDevice"
           [src]="pdfUrl"
           style="width: 100%; height: 100%; border: none; border-radius: 0.375rem;">
         </iframe>
+        <div *ngIf="pdfObjectUrl && !isLoading && isTouchDevice" class="p-3 text-center">
+          <p>El PDF está listo. Usa <strong>Abrir PDF</strong> para verlo en el visor de tu tableta.</p>
+          <a class="btn btn-primary" [href]="pdfObjectUrl" target="_blank" rel="noopener noreferrer">
+            <i class="bi bi-box-arrow-up-right me-1"></i> Abrir PDF
+          </a>
+        </div>
         <div *ngIf="!pdfUrl && !isLoading" class="d-flex justify-content-center align-items-center h-100">
           <div class="text-center">
             <div class="alert alert-warning">
@@ -72,7 +87,7 @@ pdfMake.vfs = pdfFonts as unknown as Record<string, string>;
     }
   `]
 })
-export class DetailCellRendererRequisitionReportComponent {
+export class DetailCellRendererRequisitionReportComponent implements OnDestroy {
   private sanitizer = inject(DomSanitizer);
   private signalsService = inject(SignalsService);
   private rootService = inject(RootService);
@@ -85,6 +100,8 @@ export class DetailCellRendererRequisitionReportComponent {
   private params!: ICellRendererParams;
   requisitionData: any;
   pdfUrl: SafeResourceUrl | null = null;
+  pdfObjectUrl: string | null = null;
+  readonly isTouchDevice = typeof window !== 'undefined' && window.matchMedia('(pointer: coarse)').matches;
   isLoading: boolean = true;
   private productos: any[] = [];
   private _pdfBlob: Blob | null = null;
@@ -172,7 +189,9 @@ export class DetailCellRendererRequisitionReportComponent {
       const pdfDocGenerator = pdfMake.createPdf(docDefinition as any);
       pdfDocGenerator.getBlob((blob: Blob) => {
         this._pdfBlob = blob;
+        if (this.pdfObjectUrl) URL.revokeObjectURL(this.pdfObjectUrl);
         const url = URL.createObjectURL(blob);
+        this.pdfObjectUrl = url;
         this.pdfUrl = this.sanitizer.bypassSecurityTrustResourceUrl(url);
         this.isLoading = false;
       });
@@ -182,6 +201,10 @@ export class DetailCellRendererRequisitionReportComponent {
       this.isLoading = false;
       this.pdfUrl = null;
     }
+  }
+
+  ngOnDestroy(): void {
+    if (this.pdfObjectUrl) URL.revokeObjectURL(this.pdfObjectUrl);
   }
 
   private formatDate(value: string | Date | null | undefined): string {
