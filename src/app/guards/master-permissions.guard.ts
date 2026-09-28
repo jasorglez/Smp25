@@ -7,7 +7,7 @@ import {
 } from '@angular/router';
 import { AuthService } from '../services/auth.service';
 import { Observable, of } from 'rxjs';
-import { map, switchMap } from 'rxjs/operators';
+import { catchError, map, switchMap } from 'rxjs/operators';
 import { SignalsService } from 'app/services/signals.service';
 
 @Injectable({
@@ -40,17 +40,22 @@ export class MasterPermissionsGuard implements CanActivate {
     const idBranch = this.signalsService.getBranchSelectedBySidebar()();
 
     // Si es avanzado pero aún no se selecciona una sucursal, no podemos verificar permisos avanzados.
-    if (isAdvanced && !idBranch) {
-      // Podrías redirigir o simplemente denegar el acceso hasta que se seleccione una sucursal.
-      // Por ahora, lo trataremos como si no tuviera permisos.
-      this.router.navigate(['/unauthorized']);
-      return of(false);
-    }
+    // Sin una sucursal real se consultan los permisos básicos del usuario.
 
     return this.permissionService.getUserId(email).pipe(
-      switchMap((userId) => isAdvanced
-                    ? this.permissionService.fetchUserPermissionsAdvanced(userId, idBranch)
-                    : this.permissionService.fetchUserPermissions(userId)),
+      switchMap((userId) => {
+        const basicPermissions = () => this.permissionService.fetchUserPermissions(userId);
+        if (!isAdvanced || !idBranch || idBranch <= 0) {
+          return basicPermissions();
+        }
+
+        return this.permissionService.fetchUserPermissionsAdvanced(userId, idBranch).pipe(
+          switchMap((data: any) => data?.permissions && Object.keys(data.permissions).length > 0
+            ? of(data)
+            : basicPermissions()),
+          catchError(() => basicPermissions())
+        );
+      }),
       map((permissions) => {
         this.permissionService.setUserPermissions(permissions.permissions);
         const hasMasterPermission = this.permissionService.hasMasterPermission(
