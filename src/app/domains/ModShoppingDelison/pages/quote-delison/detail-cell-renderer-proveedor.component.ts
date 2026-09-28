@@ -12,7 +12,7 @@ import pdfMake from 'pdfmake/build/pdfmake';
 import pdfFonts from 'pdfmake/build/vfs_fonts';
 import { TrackingService } from 'app/services/tracking.service';
 
-pdfMake.vfs = pdfFonts;
+pdfMake.vfs = pdfFonts as unknown as Record<string, string>;
 
 @Component({
   selector: 'app-detail-cell-renderer-proveedor',

@@ -1628,7 +1628,7 @@ private async updateAccountBankConsecutive(account: any, newConsecutive: number)
 
       const pdfMake = (await import('pdfmake/build/pdfmake')).default;
       const pdfFonts = (await import('pdfmake/build/vfs_fonts')).default;
-      pdfMake.vfs = pdfFonts;
+      pdfMake.vfs = pdfFonts as unknown as Record<string, string>;
 
       const period = `Del ${this.reportStartDate} al ${this.reportEndDate}`;
 

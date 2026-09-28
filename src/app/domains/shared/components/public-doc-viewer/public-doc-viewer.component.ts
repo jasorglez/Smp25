@@ -7,7 +7,7 @@ import { Base64EncodeService } from '../../../../services/base64encode.service';
 import pdfMake from 'pdfmake/build/pdfmake';
 import pdfFonts from 'pdfmake/build/vfs_fonts';
 
-pdfMake.vfs = pdfFonts;
+pdfMake.vfs = pdfFonts as unknown as Record<string, string>;
 
 @Component({
   selector: 'app-public-doc-viewer',

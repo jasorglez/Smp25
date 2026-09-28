@@ -175,6 +175,7 @@ export class ProviderQuoteDetailComponent implements OnInit {
             comment: item.comment || '',
             dateuse: item.dateuse,
             providerNumber: this.providerNumber,
+            __original: item,
             __isNew: false,
             __modified: false
           };
@@ -337,6 +338,7 @@ export class ProviderQuoteDetailComponent implements OnInit {
 
   // Save changes to DB
   async saveChanges() {
+    this.gridApi?.stopEditing();
     this.trackingService.addLog(this.trackingService.getnameComp(), 'Guardó cambios en provider quote detail', 'Almacenes', this.trackingService.getEmail());
     if (!this.hasUnsavedChanges) {
       alerts.basicAlert('Sin cambios', 'No hay cambios pendientes por guardar', 'info');
@@ -352,21 +354,25 @@ export class ProviderQuoteDetailComponent implements OnInit {
       const modifiedItems = this.rowData.filter(item => item.__modified && !item.__isNew);
       const newItems = this.rowData.filter(item => item.__isNew);
 
-      // Update existing items - do NOT send id field to avoid EF tracking issues
+      // The API replaces the whole record on PUT, so keep fields outside this grid.
       for (const item of modifiedItems) {
         const updateData: any = {
+          ...item.__original,
           idMovement: this.cotizId,
           idSupplie: item.idSupplie,
           idProvider: this.idProvider,
           quantity: item.quantity,
           price: item.price,
-          type: 'COTIZ',
           comment: item.comment || '',
           active: true
         };
-        // Explicitly ensure no id fields are sent (causes EF key modification error)
+        // The route identifies the record; computed/read-only fields are not updated.
         delete updateData.id;
         delete updateData.Id;
+        delete updateData.total;
+        delete updateData.code;
+        delete updateData.description;
+        delete updateData.measure;
         console.log('📤 UPDATE item.id:', item.id, 'updateData:', JSON.stringify(updateData));
         await lastValueFrom(this.ocAndReqsService.updateReqItem(item.id.toString(), updateData));
       }

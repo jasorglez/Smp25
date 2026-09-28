@@ -12,7 +12,7 @@ import { lastValueFrom } from 'rxjs';
 import pdfMake from 'pdfmake/build/pdfmake';
 import pdfFonts from 'pdfmake/build/vfs_fonts';
 
-pdfMake.vfs = pdfFonts;
+pdfMake.vfs = pdfFonts as unknown as Record<string, string>;
 
 @Component({
   selector: 'app-detail-cell-renderer-pedimento-report',
