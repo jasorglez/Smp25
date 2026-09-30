@@ -13,6 +13,13 @@
           <button type="button" class="btn btn-outline-success btn-sm" (click)="exportPage()" [disabled]="!rowData.length">
             <i class="bi bi-download me-1"></i>Exportar página
           </button>
+          <button type="submit" form="ot-search-form" class="btn btn-primary btn-sm" [disabled]="loading">
+            <span *ngIf="loading" class="spinner-border spinner-border-sm me-1"></span>
+            <i *ngIf="!loading" class="bi bi-search me-1"></i>Buscar
+          </button>
+          <button type="button" class="btn btn-outline-secondary btn-sm" (click)="clear()" [disabled]="loading">
+            <i class="bi bi-eraser me-1"></i>Limpiar
+          </button>
           <button type="button" class="btn btn-primary btn-sm" (click)="openSelectedOt()" [disabled]="!selectedOt">
             <i class="bi bi-box-arrow-up-right me-1"></i>Abrir detalle
           </button>
@@ -21,7 +28,7 @@
     </div>
 
     <div class="card-body d-flex flex-column">
-      <form class="row g-3 align-items-end mb-3" (ngSubmit)="search(1)">
+      <form id="ot-search-form" class="row g-3 align-items-end mb-3" (ngSubmit)="search(1)">
         <div class="col-sm-6 col-lg-3">
           <label for="searchCdc" class="form-label">CDC</label>
           <input id="searchCdc" name="cdc" type="text" class="form-control"
@@ -119,15 +126,6 @@
               </select>
             </label>
           </div>
-        </div>
-        <div class="col-sm-6 col-lg-3 d-flex gap-2">
-          <button type="submit" class="btn btn-primary" [disabled]="loading">
-            <span *ngIf="loading" class="spinner-border spinner-border-sm me-1"></span>
-            <i *ngIf="!loading" class="bi bi-search me-1"></i>Buscar
-          </button>
-          <button type="button" class="btn btn-outline-secondary" (click)="clear()" [disabled]="loading">
-            <i class="bi bi-eraser me-1"></i>Limpiar
-          </button>
         </div>
         <div class="col-12">
           <small class="text-muted">Usa un criterio principal a la vez. Los filtros avanzados de abajo refinan el resultado sin mezclar CDC, OT y Área.</small>
