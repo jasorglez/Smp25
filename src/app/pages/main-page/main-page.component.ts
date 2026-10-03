@@ -10,6 +10,7 @@ import { TrackingService } from '../../services/tracking.service';
 import { RootService } from '../../services/root.service';
 import { environment } from '@env/environment';
 import { WorkspaceTab, WorkspaceTabsService } from 'app/services/workspace-tabs.service';
+import { QuickActionsService } from 'app/services/quick-actions.service';
 
 @Component({
   selector: 'app-main-page',
@@ -25,6 +26,7 @@ export class MainPageComponent implements OnInit, OnDestroy {
   private trackingService  = inject(TrackingService);
   private rootService      = inject(RootService);
   readonly workspaceTabs   = inject(WorkspaceTabsService);
+  private quickActions     = inject(QuickActionsService);
 
   private routerSub?: Subscription;
   draggingTabUrl = '';
@@ -102,12 +104,14 @@ export class MainPageComponent implements OnInit, OnDestroy {
       const segment = url.split('/')[1]?.split('?')[0] || '';
       const module  = this.MODULE_MAP[segment] || segment;
       if (module) this.trackingService.logModuleVisit(module);
+      this.quickActions.recordRoute(url);
       this.registerWorkspaceRoute(url);
     });
 
     // Cubre la primera pantalla cuando Angular ya terminó de navegar antes de
     // que este componente alcance a suscribirse al evento NavigationEnd.
     if (this.router.url && this.router.url !== '/') {
+      this.quickActions.recordRoute(this.router.url);
       this.registerWorkspaceRoute(this.router.url);
     }
 

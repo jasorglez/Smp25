@@ -83,5 +83,5 @@ export const environment = {
   geminiApiKey: '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',
   gnewsApiKey: '94ccc596b4dfebc3f72683b6e81d81bc',
 
-  version: '5.00.54 (29 Septiembre 2026) acciones de búsqueda en barra superior',
+  version: '5.00.55 (3 Octubre 2026) centro de herramientas rápidas',
 };
