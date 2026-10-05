@@ -17,4 +17,13 @@ export class DepartmentsService {
 
      //return this.http.get(`${environment.urlWarehouse}/Catalog/getCatalogs?idCompany=${idCompany}&type=DEPARTAMENT`, { headers: this.trackingService.getHeaders() });
   }
+
+  createDepartment(idCompany: number, description: string) {
+    return this.http.post(`${environment.urlSecurity}/Roles`, {
+      idCompany,
+      description,
+      comment: '',
+      active: true,
+    }, { headers: this.trackingService.getHeaders() });
+  }
 }

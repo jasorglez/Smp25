@@ -103,6 +103,7 @@ export class RequisitionsComponent implements CanComponentDeactivate {
   selectedExecutionBranchId: number | null = null;
   private permittedWarehouseIds = new Set<number>();
   departamentos: any[] = [];
+  private defaultDepartmentId: number | null = null;
   ubicaciones: any[] = [];
   monedas: any[] = [];
   usuarios: any[] = [];
@@ -250,6 +251,11 @@ export class RequisitionsComponent implements CanComponentDeactivate {
       }
     },
     onCellValueChanged: (event: any) => {
+      if (event.colDef?.field === 'idDepartament' && Number(event.newValue) === -1) {
+        event.data.idDepartament = event.oldValue ?? null;
+        this.addDepartmentFromGrid(event);
+        return;
+      }
       event.data.__modified = true;
       this.masterNotSavedChanges = true;
       setTimeout(() => {
@@ -405,14 +411,13 @@ export class RequisitionsComponent implements CanComponentDeactivate {
         width: 190,
         cellEditor: 'agSelectCellEditor',
         cellEditorParams: {
-          values: this.departamentos
-            ? this.departamentos.map((item) => item.id)
-            : [],
+          values: [...(this.departamentos ?? []).map((item) => item.id), -1],
         },
         valueFormatter: (params) => {
           const foundItem = this.departamentos
             ? this.departamentos.find((item) => item.id === params.value)
             : null;
+          if (Number(params.value) === -1) return '＋ Agregar nuevo...';
           return foundItem ? `${foundItem.description}` : params.value;
         },
       },
@@ -607,10 +612,48 @@ export class RequisitionsComponent implements CanComponentDeactivate {
     this.departmentsService.getDepartments(this.idRoot).subscribe(
       (data: any) => {
         this.departamentos = data?.data ?? data ?? [];
+        this.defaultDepartmentId ??= this.departamentos.reduce((latest: number, item: any) => Math.max(latest, Number(item.id) || 0), 0) || null;
         console.log(this.departamentos);
       },
       (error) => console.error('Error fetching departments:', error)
     );
+  }
+
+  private async addDepartmentFromGrid(event: any) {
+    const result = await alerts.inputAlert(
+      'Nuevo departamento',
+      'Escribe el nombre del departamento para esta empresa.',
+      'text',
+      '',
+      { confirmButtonText: 'Agregar', inputAttributes: { maxlength: 80 } }
+    );
+    const description = result.value?.trim();
+    if (!result.isConfirmed || !description) {
+      event.api.refreshCells({ rowNodes: [event.node], force: true });
+      return;
+    }
+
+    this.departmentsService.createDepartment(this.idRoot, description).subscribe({
+      next: (response: any) => {
+        const created = response?.data ?? response;
+        if (!created?.id) {
+          alerts.basicAlert('Departamento', response?.message || 'No se pudo crear el departamento.', 'error');
+          return;
+        }
+        this.departamentos = [...(this.departamentos ?? []), created];
+        this.defaultDepartmentId = Number(created.id);
+        event.data.idDepartament = created.id;
+        event.data.__modified = true;
+        this.masterNotSavedChanges = true;
+        event.api.refreshCells({ rowNodes: [event.node], force: true });
+        alerts.basicAlert('Departamento agregado', `${created.description} quedó disponible para esta empresa.`, 'success');
+      },
+      error: (error) => {
+        console.error('Error al crear departamento:', error);
+        alerts.basicAlert('Departamento', 'No se pudo crear el departamento.', 'error');
+        event.api.refreshCells({ rowNodes: [event.node], force: true });
+      }
+    });
   }
 
   obtenerUbicaciones() {
@@ -734,7 +777,7 @@ export class RequisitionsComponent implements CanComponentDeactivate {
       idWarehouse: this.selectedWarehouseId,
       idContract: this.selectedContractId,
       idBranchExecution: this.selectedExecutionBranchId,
-      idDepartament: 0,
+      idDepartament: this.defaultDepartmentId ?? (Number(this.departamentos[0]?.id) || 0),
       delivery: 'A',
       deliveryTime: '1 DÍA',
       dateSupply: '',

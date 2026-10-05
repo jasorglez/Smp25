@@ -104,6 +104,7 @@ export class PurchaseOrderComponent implements CanComponentDeactivate {
   almacenes: any[] = [];
   proveedores: any[] = [];
   departamentos: any[] = [];
+  private defaultDepartmentId: number | null = null;
   ubicaciones: any[] = [];
   monedas: any[] = [];
   usuarios: any[] = [];
@@ -439,6 +440,13 @@ export class PurchaseOrderComponent implements CanComponentDeactivate {
         cellEditor: 'agSelectCellEditor',
         cellEditorParams: () => ({ values: this.almacenes.map((warehouse: any) => warehouse.id) }),
         valueFormatter: (params) => this.almacenes.find((warehouse: any) => Number(warehouse.id) === Number(params.value))?.name || ''
+      },
+      {
+        field: 'idDepartament', headerName: 'Departamento solicita', width: 190, editable: true,
+        cellEditor: 'agSelectCellEditor',
+        cellEditorParams: () => ({ values: [...(this.departamentos ?? []).map((item: any) => item.id), -1] }),
+        valueFormatter: (params) => Number(params.value) === -1 ? '＋ Agregar nuevo...' :
+          (this.departamentos ?? []).find((item: any) => Number(item.id) === Number(params.value))?.description || '',
       },
       {
         field: 'idProvider',
@@ -895,12 +903,38 @@ export class PurchaseOrderComponent implements CanComponentDeactivate {
 
   obtenerDepartamentos() {
     this.departmentsService.getDepartments(this.idRoot).subscribe(
-      (data: Provider[]) => {
-        this.departamentos = data;
+      (response: any) => {
+        this.departamentos = response?.data ?? response ?? [];
+        this.defaultDepartmentId ??= this.departamentos.reduce((latest: number, item: any) => Math.max(latest, Number(item.id) || 0), 0) || null;
         console.log(this.departamentos);
       },
       (error) => console.error('Error fetching departments:', error)
     );
+  }
+
+  private async openAddDepartmentDialog(): Promise<number | null> {
+    const result = await alerts.inputAlert('Nuevo departamento', 'Escribe el nombre del departamento para esta empresa.', 'text', '', {
+      confirmButtonText: 'Agregar', inputAttributes: { maxlength: 80 }
+    });
+    const description = result.value?.trim();
+    if (!result.isConfirmed || !description) return null;
+    try {
+      const response: any = await lastValueFrom(this.departmentsService.createDepartment(this.idRoot, description));
+      const created = response?.data ?? response;
+      const id = Number(created?.id);
+      if (!id) {
+        alerts.basicAlert('Departamento', response?.message || 'No se pudo crear el departamento.', 'error');
+        return null;
+      }
+      this.departamentos = [...(this.departamentos ?? []), created];
+      this.defaultDepartmentId = id;
+      alerts.basicAlert('Departamento agregado', `${created.description} quedó seleccionado y disponible para las próximas OC.`, 'success');
+      return id;
+    } catch (error) {
+      console.error('Error al crear departamento:', error);
+      alerts.basicAlert('Departamento', 'No se pudo crear el departamento.', 'error');
+      return null;
+    }
   }
 
   obtenerUbicaciones() {
@@ -1191,6 +1225,7 @@ export class PurchaseOrderComponent implements CanComponentDeactivate {
         idProvider: () => this.openAddProveedorDialog(),
         idCurrency: () => this.openAddMonedaDialog(),
         idPayment:  () => this.openAddTipoPagoDialog(),
+        idDepartament: () => this.openAddDepartmentDialog(),
       };
       const openDialog = dialogMap[colId];
       if (openDialog) {
@@ -1277,7 +1312,7 @@ export class PurchaseOrderComponent implements CanComponentDeactivate {
       idProvider: 0,
       idIncorExp: null,
       idWarehouse: null,
-      idDepartament: 0,
+      idDepartament: this.defaultDepartmentId ?? (Number(this.departamentos[0]?.id) || 0),
       delivery: '1 dia',
       deliveryTime: 'Materiales',
       dateSupply: shippingDate.toISOString(),
