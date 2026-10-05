@@ -15,6 +15,7 @@ import { BehaviorSubject, catchError, firstValueFrom, map, Observable, throwErro
 import { environment } from '../../environments/environment';
 import { Ilogin } from 'app/interface/ilogin';
 import { SignalsService } from './signals.service';
+import { WorkspaceTabsService } from './workspace-tabs.service';
 import { SafeUserData, ApiResponse, sanitizeUserData } from 'app/interface/safe-user.interface';
 import Swal from 'sweetalert2';
 
@@ -44,6 +45,7 @@ export class AuthService {
   private auth = inject(Auth);
   private http = inject(HttpClient);
   private signalsService = inject(SignalsService);
+  private workspaceTabs = inject(WorkspaceTabsService);
   private ngZone = inject(NgZone);
 
   idBranch: number;
@@ -239,6 +241,7 @@ export class AuthService {
 
   async logout() {
     this.clearSessionTimers();
+    this.workspaceTabs.closeAll();
     try {
       await this.trackingService.endSession();
       this.trackingService.addLog(

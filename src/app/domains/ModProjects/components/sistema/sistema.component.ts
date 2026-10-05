@@ -29,6 +29,7 @@ import { TrackingService } from 'app/services/tracking.service';
 import { SubcontractProgramService } from 'app/services/subcontract-program.service';
 import { SubcontractorContextService } from 'app/services/subcontractor-context.service';
 import { ActivatedRoute } from '@angular/router';
+import { OutingsDailyReportSyncService } from 'app/services/outings-daily-report-sync.service';
 
 @Component({
   selector: 'app-sistema',
@@ -55,10 +56,13 @@ export class SistemaComponent implements OnInit, OnDestroy {
   private oilfieldService    = inject(OilfieldService);
   private route = inject(ActivatedRoute);
   private programsService    = inject(SubcontractProgramService);
+  private outingsDailyReportSync = inject(OutingsDailyReportSyncService);
   readonly subcontractorContext = inject(SubcontractorContextService);
 
   private signalRSub!: Subscription;
   private reloadTimeout: any = null;
+  private outingSyncInFlight = '';
+  private outingSyncCompleted = '';
 
   public rowData: IDailyReport[]       = [];
   public conventionsList: any[] = [];
@@ -360,6 +364,7 @@ export class SistemaComponent implements OnInit, OnDestroy {
         this.selectedRow = null;
         this.loadReports();
         this.resolveProjectData(projectId);
+        void this.syncExistingOutings(projectId);
       } else if (!projectId) {
         this.signalsService.setProjectNumberBySidebar('');
         this.projectOilfieldName = '';
@@ -368,6 +373,7 @@ export class SistemaComponent implements OnInit, OnDestroy {
 
     effect(() => {
       this.idRoot = this.signalsService.getRootSelectedBySidebar()();
+      if (this.idRoot && this.idProject) void this.syncExistingOutings(this.idProject);
     });
 
     effect(() => {
@@ -410,6 +416,35 @@ export class SistemaComponent implements OnInit, OnDestroy {
   private scheduleReload(): void {
     if (this.reloadTimeout) clearTimeout(this.reloadTimeout);
     this.reloadTimeout = setTimeout(() => this.loadReports(), 800);
+  }
+
+  private async syncExistingOutings(projectId: number): Promise<void> {
+    if (this.subcontractMode || !this.idRoot || !projectId) return;
+    const key = `${this.idRoot}:${projectId}`;
+    if (this.outingSyncCompleted === key || this.outingSyncInFlight === key) return;
+    this.outingSyncInFlight = key;
+
+    try {
+      const result = await this.outingsDailyReportSync.syncProjectOutings(this.idRoot, projectId);
+      if (this.idProject !== projectId || this.idRoot !== Number(key.split(':')[0])) return;
+      this.outingSyncCompleted = key;
+      if (result.materials > 0) {
+        alerts.toastAlert(
+          `${result.materials} material(es) de salidas integrados; ${result.reportsCreated} reporte(s) diario(s) nuevo(s).`,
+          'success'
+        );
+        this.loadReports();
+      }
+    } catch (error: any) {
+      console.error('No se pudieron sincronizar las salidas con el Reporte diario:', error);
+      alerts.basicAlert(
+        'No se sincronizaron las salidas',
+        error?.error?.message || error?.message || 'Vuelve a entrar al Reporte diario para reintentar.',
+        'warning'
+      );
+    } finally {
+      if (this.outingSyncInFlight === key) this.outingSyncInFlight = '';
+    }
   }
 
   ngOnInit(): void {

@@ -63,13 +63,20 @@
           <span class="workspace-tab-title">{{ tab.title }}</span>
           <span
             class="workspace-tab-close"
-            *ngIf="workspaceTabs.tabs().length > 1"
             (click)="closeTab($event, tab)"
             title="Cerrar pestaña"
             aria-label="Cerrar {{ tab.title }}"
           >
             <i class="bi bi-x-lg"></i>
           </span>
+        </button>
+        <button
+          type="button"
+          class="workspace-tabs-close-all"
+          (click)="closeAllTabs()"
+          title="Cerrar todas las pestañas"
+        >
+          <i class="bi bi-x-circle me-1"></i>Cerrar todas
         </button>
       </nav>
       <router-outlet></router-outlet>

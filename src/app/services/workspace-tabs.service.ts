@@ -44,7 +44,14 @@ export class WorkspaceTabsService {
     const normalizedUrl = this.normalizeUrl(url);
     const currentTabs = this.tabs();
     const index = currentTabs.findIndex(tab => tab.url === normalizedUrl);
-    if (index < 0 || currentTabs.length === 1) return undefined;
+    if (index < 0) return undefined;
+
+    if (currentTabs.length === 1) {
+      this.tabs.set([]);
+      this.activeUrl.set('');
+      this.persist();
+      return { url: '/publicidad', title: 'Inicio' };
+    }
 
     const nextTabs = currentTabs.filter(tab => tab.url !== normalizedUrl);
     const nextActive = nextTabs[Math.max(0, index - 1)];
@@ -57,6 +64,12 @@ export class WorkspaceTabsService {
     }
 
     return undefined;
+  }
+
+  closeAll(): void {
+    this.tabs.set([]);
+    this.activeUrl.set('');
+    this.persist();
   }
 
   remove(url: string): void {

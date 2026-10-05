@@ -91,6 +91,25 @@
   background: #d9534f;
 }
 
+.workspace-tabs-close-all {
+  flex: 0 0 auto;
+  align-self: center;
+  margin: 0 2px 3px auto;
+  padding: 4px 8px;
+  color: #687784;
+  font-size: 0.72rem;
+  white-space: nowrap;
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 4px;
+}
+
+.workspace-tabs-close-all:hover {
+  color: #a63232;
+  background: #fff;
+  border-color: #d8bcbc;
+}
+
 .license-expired-overlay {
   position: fixed;
   inset: 0;

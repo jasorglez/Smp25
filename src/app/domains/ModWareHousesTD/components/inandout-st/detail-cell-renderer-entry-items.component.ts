@@ -19,6 +19,10 @@ import { lastValueFrom } from 'rxjs';
   template: `
     <!-- Items Grid View -->
     <div class="detail-grid-container" *ngIf="detailType === 'items'">
+      <div *ngIf="context?.movementType === 'IN' && entryData?.idOc > 0" class="alert alert-info py-1 px-2 mb-2 small">
+        <i class="bi bi-info-circle me-1"></i>
+        Las partidas de la OC se cargan al abrir el detalle. Captura la cantidad recibida y guarda.
+      </div>
       <div class="detail-actions d-flex justify-content-end mb-2">
         <button class="btn btn-primary btn-sm me-2" (click)="addItem()">
           <i class="bi bi-plus-lg"></i> Agregar
@@ -91,7 +95,7 @@ export class DetailCellRendererEntryItemsComponent implements OnInit {
 
   private params!: ICellRendererParams;
   private gridApi!: GridApi;
-  private context: any;
+  public context: any;
   private sanitizer = inject(DomSanitizer);
   private pdfReportsService = inject(PdfReportsService);
 
@@ -138,6 +142,9 @@ export class DetailCellRendererEntryItemsComponent implements OnInit {
             if (this.gridApi) this.gridApi.setGridOption('rowData', this.rowData);
             if (ocItems.length > 0) this.hasUnsavedChanges = true;
             if (this.context.ITEMS.updateCount) this.context.ITEMS.updateCount(entryId, this.rowData.length);
+            if (ocItems.length > 0 && this.context.movementType === 'IN') {
+              alerts.toastAlert(`${ocItems.length} partida(s) de la OC cargada(s); captura lo recibido y guarda.`, 'info');
+            }
           });
           return;
         }
@@ -164,17 +171,29 @@ export class DetailCellRendererEntryItemsComponent implements OnInit {
       return;
     }
     const entryId = this.params.data.id;
-    this.context.ITEMS.importFromOC(idOc, entryId, (ocItems: any[]) => {
+    const loadItems = () => this.context.ITEMS.importFromOC(idOc, entryId, (ocItems: any[]) => {
       if (!ocItems || ocItems.length === 0) {
         alerts.basicAlert('Sin artículos', 'La OC no tiene artículos activos para importar', 'info');
         return;
       }
-      this.rowData = ocItems;
+      const existingProducts = new Set(this.rowData.map(item => String(item.idProduct || '')).filter(Boolean));
+      const missingItems = ocItems.filter(item => {
+        const productId = String(item.idProduct || '');
+        if (!productId || existingProducts.has(productId)) return false;
+        existingProducts.add(productId);
+        return true;
+      });
+      if (missingItems.length === 0) {
+        alerts.basicAlert('Sin partidas nuevas', 'Los artículos de la OC ya están en el detalle.', 'info');
+        return;
+      }
+      this.rowData = [...this.rowData, ...missingItems];
       if (this.gridApi) this.gridApi.setGridOption('rowData', this.rowData);
       this.hasUnsavedChanges = true;
       if (this.context.ITEMS.updateCount) this.context.ITEMS.updateCount(entryId, this.rowData.length);
-      alerts.toastAlert(`${ocItems.length} artículo(s) importados de la OC`, 'success');
+      alerts.toastAlert(`${missingItems.length} partida(s) nueva(s) agregada(s) desde la OC`, 'success');
     });
+    loadItems();
   }
 
   loadDataForReport() {
@@ -300,9 +319,17 @@ export class DetailCellRendererEntryItemsComponent implements OnInit {
         editable: true,
         type: 'numericColumn',
         valueSetter: (params: any) => {
-          const newValue = params.newValue;
+          const newValue = Number(params.newValue);
+          if (!Number.isFinite(newValue) || newValue < 0) {
+            alerts.basicAlert('Cantidad inválida', 'La cantidad debe ser un número igual o mayor a cero.', 'warning');
+            return false;
+          }
           if (this.context.movementType === 'OUT' && newValue > params.data.pending) {
             alerts.basicAlert('Cantidad excedida', `La cantidad no puede ser mayor al total de entradas disponibles (${params.data.pending})`, 'warning');
+            return false;
+          }
+          if (this.context.movementType === 'IN' && this.entryData?.idOc > 0 && newValue > Number(params.data.pending || 0)) {
+            alerts.basicAlert('Cantidad excedida', `La cantidad recibida no puede superar la cantidad de la OC (${params.data.pending}).`, 'warning');
             return false;
           }
           params.data.quantity = newValue;
@@ -312,9 +339,11 @@ export class DetailCellRendererEntryItemsComponent implements OnInit {
       },
       {
         field: 'pending',
-        headerName: this.context.movementType === 'OUT' ? 'Total Entradas' : 'Pendiente',
+        headerName: this.context.movementType === 'OUT'
+          ? 'Total Entradas'
+          : (this.entryData?.idOc > 0 ? 'Cantidad OC' : 'Pendiente'),
         width: 100,
-        editable: true,
+        editable: false,
         type: 'numericColumn'
       },
       {
@@ -324,6 +353,16 @@ export class DetailCellRendererEntryItemsComponent implements OnInit {
         editable: true,
         type: 'numericColumn'
       },
+      ...(this.context?.movementType === 'OUT' ? [{
+        field: 'addToDailyReport',
+        headerName: 'R. diario',
+        width: 100,
+        editable: true,
+        cellRenderer: 'agCheckboxCellRenderer',
+        cellEditor: 'agCheckboxCellEditor',
+        headerTooltip: 'Agregar este material al Reporte diario al guardar la salida',
+        tooltipValueGetter: () => 'Al guardar se pedirá confirmación y se creará el Reporte diario si aún no existe.'
+      }] : []),
       {
         field: 'active',
         headerName: 'Activo',
@@ -364,6 +403,7 @@ export class DetailCellRendererEntryItemsComponent implements OnInit {
       quantity: 1,
       pending: 0,
       total: 1,
+      addToDailyReport: false,
       active: true,
       __isNew: true,
       __modified: false
@@ -411,7 +451,7 @@ export class DetailCellRendererEntryItemsComponent implements OnInit {
     }
   }
 
-  saveChanges() {
+  async saveChanges() {
     this.trackingService.addLog(this.trackingService.getnameComp(), 'Guardó cambios en detail cell renderer entry items', 'ModWareHousesTD', this.trackingService.getEmail());
     if (!this.hasUnsavedChanges) {
       alerts.basicAlert('Sin cambios', 'No hay cambios pendientes por guardar', 'info');
@@ -420,8 +460,8 @@ export class DetailCellRendererEntryItemsComponent implements OnInit {
 
     if (this.context && this.context.ITEMS && this.context.ITEMS.save) {
       const entryId = this.params.data.id;
-      this.context.ITEMS.save(entryId, this.rowData);
-      this.hasUnsavedChanges = false;
+      await this.context.ITEMS.save(entryId, this.rowData);
+      this.hasUnsavedChanges = this.rowData.some(item => item.__isNew || item.__modified || item.addToDailyReport);
     }
   }
 
@@ -518,6 +558,7 @@ export class DetailCellRendererEntryItemsComponent implements OnInit {
       quantity: 1,
       pending: 0,
       total: 1,
+      addToDailyReport: false,
       active: true,
       __isNew: true,
       __modified: false

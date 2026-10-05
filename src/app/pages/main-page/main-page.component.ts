@@ -153,6 +153,16 @@ export class MainPageComponent implements OnInit, OnDestroy {
     if (nextTab) this.router.navigateByUrl(nextTab.url);
   }
 
+  closeAllTabs(): void {
+    this.workspaceTabs.closeAll();
+    const homeUrl = '/publicidad';
+    if (this.router.url.split('?')[0] !== homeUrl) {
+      this.router.navigateByUrl(homeUrl);
+    } else {
+      this.workspaceTabs.register(homeUrl, 'Inicio');
+    }
+  }
+
   onTabDragStart(event: DragEvent, tab: WorkspaceTab): void {
     this.draggingTabUrl = tab.url;
     event.dataTransfer?.setData('text/plain', tab.url);

@@ -17,10 +17,14 @@ import { DetailCellRendererEntryItemsComponent } from './detail-cell-renderer-en
 import { alerts } from 'app/helpers/alerts';
 import { ButtonCellRendererComponent } from './button-cell-renderer.component';
 import { PdfButtonCellRendererComponent } from '../../../ModAdmon/components/egresos-palacio/pdf-button-cell-renderer.component';
-import { catchError, forkJoin, lastValueFrom, of } from 'rxjs';
+import { catchError, forkJoin, lastValueFrom, map, of, switchMap } from 'rxjs';
 import { ActivatedRoute } from '@angular/router';
 import { UsersService } from 'app/services/users.service';
 import { PrefixSetupService } from 'app/services/prefix-setup.service';
+import { DailyReportService } from 'app/services/daily-report.service';
+import { LogbookService } from 'app/services/logbook.service';
+import { BranchsService } from 'app/services/branchs.service';
+import { WarehousesService } from 'app/services/warehouses.service';
 
 @Component({
   selector: 'app-inandout-st',
@@ -43,8 +47,13 @@ export class InandoutStComponent implements OnInit {
   private route = inject(ActivatedRoute);
   private usersService = inject(UsersService);
   private prefixSetupService = inject(PrefixSetupService);
+  private dailyReportService = inject(DailyReportService);
+  private logbookService = inject(LogbookService);
+  private branchesService = inject(BranchsService);
+  private warehousesService = inject(WarehousesService);
 
   private isGeneratingReport: boolean = false;
+  private warehouseLoadRequest = 0;
   rowData: any[] = [];
   selectedWarehouse: any = null;
   warehouses: any[] = [];
@@ -76,18 +85,34 @@ export class InandoutStComponent implements OnInit {
 
   constructor() {
     effect(() => {
-      this.idRoot = this.signalsService.getRootSelectedBySidebar()();
+      const selectedRoot = this.signalsService.getRootSelectedBySidebar()();
+      const rootChanged = Number(selectedRoot || 0) !== Number(this.idRoot || 0);
+      this.idRoot = selectedRoot;
+      if (rootChanged) {
+        this.warehouses = [];
+        this.selectedWarehouse = null;
+        this.rowData = [];
+        this.selectedEntry = null;
+        this.projectId = null;
+        this.warehouseLoadRequest++;
+      }
       const email = this.trackingService.getEmail();
       if (this.idRoot && email) {
         this.loadCatalogs();
         this.loadUsers();
         this.loadProjectList();
+        if (rootChanged) this.loadWarehouses(email);
       }
     });
 
     effect(() => {
       this.idBranch = this.signalsService.getBranchSelectedBySidebar()();
-      if (this.idBranch) {
+      this.warehouses = [];
+      this.selectedWarehouse = null;
+      this.rowData = [];
+      this.selectedEntry = null;
+      this.warehouseLoadRequest++;
+      if (this.idBranch != null) {
         this.loadOcList();
         const email = this.trackingService.getEmail();
         if (email) this.loadWarehouses(email);
@@ -101,6 +126,9 @@ export class InandoutStComponent implements OnInit {
         this.loadWarehouses(email);
         this.loadOts();
         this.loadOcList();
+      } else {
+        this.rowData = [];
+        this.selectedEntry = null;
       }
     });
   }
@@ -121,32 +149,76 @@ export class InandoutStComponent implements OnInit {
   }
 
   loadWarehouses(email: string) {
-    this.permitionsService.getPermisionswarehousexEmail(email).subscribe({
-      next: (data) => {
-        const available = Array.isArray(data) ? data : [];
-        // El sidebar usa un id negativo para “Todas las sucursales”. En ese
-        // caso no se filtra y se muestran todos los almacenes permitidos.
-        // Para una sucursal concreta se filtra únicamente si la respuesta
-        // incluye el identificador de sucursal; así no se rompen permisos
-        // antiguos que solo devuelven el almacén.
-        if (this.idBranch !== null && this.idBranch > 0) {
-          const withBranch = available.filter((w: any) =>
-            w.idBranch != null || w.branchId != null || w.idSucursal != null || w.sucursalId != null
-          );
-          this.warehouses = withBranch.length > 0
-            ? withBranch.filter((w: any) => Number(w.idBranch ?? w.branchId ?? w.idSucursal ?? w.sucursalId) === this.idBranch)
-            : available;
-        } else {
-          this.warehouses = available;
-        }
-        if (this.warehouses.length > 0) {
-          this.selectedWarehouse = null;
-          this.rowData = [];
-        }
+    const idRoot = Number(this.idRoot || 0);
+    const idBranch = Number(this.idBranch || 0);
+    const requestId = ++this.warehouseLoadRequest;
+    if (!idRoot || !idBranch) {
+      this.warehouses = [];
+      this.selectedWarehouse = null;
+      this.rowData = [];
+      return;
+    }
+
+    this.warehouses = [];
+    this.selectedWarehouse = null;
+    this.rowData = [];
+    forkJoin({
+      permitted: this.permitionsService.getPermisionswarehousexEmail(email).pipe(catchError(() => of([]))),
+      branches: this.branchesService.getBranches2fields(idRoot).pipe(catchError(() => of([]))),
+    }).pipe(
+      switchMap(({ permitted, branches }: any) => {
+        const branchList: any[] = Array.isArray(branches) ? branches : [];
+        const selectedBranches = idBranch < 0
+          ? branchList
+          : branchList.filter(branch => Number(branch.id) === idBranch);
+        if (!selectedBranches.length) return of({ permitted, warehouses: [] });
+
+        return forkJoin(selectedBranches.map(branch =>
+          this.warehousesService.getWarehouses(Number(branch.id)).pipe(
+            catchError(() => of([])),
+            map((result: any) => Array.isArray(result) ? result : [])
+          )
+        )).pipe(map((groups: any[][]) => ({ permitted, warehouses: groups.flat() })));
+      })
+    ).subscribe({
+      next: ({ permitted, warehouses }: any) => {
+        // Ignora respuestas tardías si el usuario cambió de empresa, sucursal
+        // o proyecto mientras las consultas seguían en curso.
+        if (requestId !== this.warehouseLoadRequest ||
+            Number(this.signalsService.getRootSelectedBySidebar()() || 0) !== idRoot ||
+            Number(this.signalsService.getBranchSelectedBySidebar()() || 0) !== idBranch) return;
+
+        const permittedRows: any[] = Array.isArray(permitted) ? permitted : [];
+        const getWarehouseId = (warehouse: any): number => Number(
+          warehouse?.idAlmacen ?? warehouse?.idWarehouse ?? warehouse?.warehouseId ?? warehouse?.id ?? 0
+        );
+        const permittedIds = new Set(permittedRows.map(getWarehouseId).filter(id => id > 0));
+        const seen = new Set<number>();
+        this.warehouses = (warehouses as any[]).map(warehouse => {
+          const id = getWarehouseId(warehouse);
+          if (!id) return null;
+          return {
+            ...warehouse,
+            idAlmacen: id,
+            nombreAlmacen: warehouse?.nombreAlmacen ?? warehouse?.nameWarehouse ?? warehouse?.name ?? warehouse?.description ?? `Almacén #${id}`,
+          };
+        }).filter((warehouse: any) => {
+          const id = Number(warehouse?.idAlmacen);
+          if (!id || seen.has(id) || !permittedIds.has(id)) return false;
+          seen.add(id);
+          return true;
+        });
+        this.selectedWarehouse = null;
+        this.rowData = [];
+        this.selectedEntry = null;
         this.refreshColumns();
       },
       error: (error) => {
+        if (requestId !== this.warehouseLoadRequest) return;
         console.error('Error loading warehouses:', error);
+        this.warehouses = [];
+        this.selectedWarehouse = null;
+        this.rowData = [];
         alerts.basicAlert('Error', 'Error al cargar almacenes', 'error');
       }
     });
@@ -245,6 +317,7 @@ export class InandoutStComponent implements OnInit {
     if (id !== undefined) {
       this.selectedWarehouse = this.warehouses.find(w => String(w.idAlmacen) === String(id)) || null;
       this.rowData = [];
+      this.selectedEntry = null;
     }
     if (this.selectedWarehouse) this.loadEntries();
   }
@@ -303,8 +376,23 @@ export class InandoutStComponent implements OnInit {
 
   loadEntries() {
     if (!this.selectedWarehouse || !this.projectId) return;
-    this.inandoutService.getInAndOuts(this.projectId, this.selectedWarehouse.idAlmacen, this.movementType).subscribe({
+    const requestProjectId = Number(this.projectId);
+    const requestWarehouseId = Number(this.selectedWarehouse.idAlmacen);
+    const requestRootId = Number(this.idRoot);
+    if (!requestProjectId || !requestWarehouseId || !requestRootId) {
+      this.rowData = [];
+      console.error('No se pueden cargar entradas con el contexto actual:', {
+        idRoot: requestRootId,
+        idProject: requestProjectId,
+        idWarehouse: requestWarehouseId,
+      });
+      return;
+    }
+    this.inandoutService.getInAndOuts(requestProjectId, requestWarehouseId, this.movementType).subscribe({
       next: (data: any[]) => {
+        if (requestProjectId !== Number(this.projectId) ||
+            requestWarehouseId !== Number(this.selectedWarehouse?.idAlmacen) ||
+            requestRootId !== Number(this.idRoot)) return;
         this.rowData = data.map(entry => ({
           ...entry,
           countrow: entry.countRow || 0,
@@ -313,8 +401,12 @@ export class InandoutStComponent implements OnInit {
         }));
       },
       error: (error) => {
+        if (requestProjectId !== Number(this.projectId) ||
+            requestWarehouseId !== Number(this.selectedWarehouse?.idAlmacen) ||
+            requestRootId !== Number(this.idRoot)) return;
         console.error(`Error loading entries:`, error);
-        alerts.basicAlert('Error', `Error al cargar ${this.movementType === 'IN' ? 'entradas' : 'salidas'}`, 'error');
+        const message = error?.error?.message || error?.error?.title || error?.message || 'Error desconocido';
+        alerts.basicAlert('Error', `Error al cargar ${this.movementType === 'IN' ? 'entradas' : 'salidas'}: ${message}`, 'error');
       }
     });
   }
@@ -973,6 +1065,31 @@ export class InandoutStComponent implements OnInit {
   async saveEntryItemsById(entryId: number, data: any[]) {
     const newItems = data.filter((row: any) => row.__isNew);
     const modifiedItems = data.filter((row: any) => row.__modified && !row.__isNew);
+    const dailyReportItems = this.movementType === 'OUT'
+      ? data.filter((row: any) => row.addToDailyReport === true)
+      : [];
+
+    if (dailyReportItems.some((item: any) => Number(item.quantity) <= 0)) {
+      alerts.basicAlert(
+        'Cantidad requerida',
+        'Los artículos marcados para Reporte diario deben tener una cantidad mayor a cero.',
+        'warning'
+      );
+      return;
+    }
+
+    let shouldAddToDailyReport = false;
+    if (dailyReportItems.length > 0) {
+      const entry = this.rowData.find(item => String(item.id) === String(entryId));
+      const date = this.formatDateForDisplay(entry?.date);
+      const confirmation = await alerts.confirmAlert(
+        'Agregar materiales al Reporte diario',
+        `Se agregarán ${dailyReportItems.length} artículo(s) al reporte del ${date}. Si no existe para este proyecto, se creará automáticamente.`,
+        'question',
+        'Sí, agregar'
+      );
+      shouldAddToDailyReport = confirmation.isConfirmed;
+    }
 
     try {
       for (const item of newItems) {
@@ -982,15 +1099,46 @@ export class InandoutStComponent implements OnInit {
         await lastValueFrom(this.inandoutService.updateInAndOutItem(item.id, this.cleanItemData(item)));
       }
 
-      if (newItems.length > 0 || modifiedItems.length > 0) {
-        alerts.basicAlert('Detalles guardados', 'Se han guardado los items correctamente.', 'success');
+      if (newItems.length > 0 || modifiedItems.length > 0 || shouldAddToDailyReport) {
         this.updateEntryItemsCount(entryId, data.length);
         const masterEntry = this.rowData.find(entry => entry.id === entryId);
         if (masterEntry) {
           masterEntry.countrow = data.length;
           await lastValueFrom(this.inandoutService.updateInAndOut(String(entryId), this.prepareEntryData(masterEntry)));
         }
-        data.forEach(row => { delete row.__isNew; delete row.__modified; });
+
+        let addedToDailyReport = 0;
+        let dailyReportFailed = false;
+        if (shouldAddToDailyReport) {
+          try {
+            addedToDailyReport = await this.addItemsToDailyReport(entryId, dailyReportItems);
+            dailyReportItems.forEach((item: any) => delete item.addToDailyReport);
+          } catch (error) {
+            console.error('Error adding outgoing items to daily report:', error);
+            // Conserva la selección para que el usuario pueda volver a intentar
+            // sin tener que marcar los artículos otra vez.
+            dailyReportFailed = true;
+          }
+        } else {
+          dailyReportItems.forEach((item: any) => delete item.addToDailyReport);
+        }
+
+        data.forEach(row => {
+          delete row.__isNew;
+          delete row.__modified;
+        });
+        if (dailyReportFailed) {
+          alerts.basicAlert(
+            'Artículos guardados',
+            'La salida se guardó, pero no fue posible agregarla al Reporte diario. La selección quedó marcada para reintentar.',
+            'warning'
+          );
+          return;
+        }
+        alerts.basicAlert('Detalles guardados', 'Se han guardado los items correctamente.', 'success');
+        if (addedToDailyReport > 0) {
+          alerts.toastAlert(`${addedToDailyReport} material(es) agregado(s) al Reporte diario`, 'success');
+        }
       }
     } catch (error) {
       console.error('Error saving entry items:', error);
@@ -1026,6 +1174,7 @@ export class InandoutStComponent implements OnInit {
     delete cleanedData.__modified;
     delete cleanedData.material;
     delete cleanedData.materialName;
+    delete cleanedData.addToDailyReport;
     if (cleanedData.id && cleanedData.id.toString().startsWith('temp_item_')) {
       delete cleanedData.id;
     }
@@ -1041,5 +1190,133 @@ export class InandoutStComponent implements OnInit {
         }
       });
     }
+  }
+
+  /**
+   * Envía los artículos seleccionados de una salida al reporte diario del mismo
+   * proyecto y fecha. El reporte se crea sólo cuando aún no existe y los
+   * materiales iguales se acumulan en una sola línea de bitácora.
+   */
+  private async addItemsToDailyReport(entryId: number, items: any[]): Promise<number> {
+    const entry = this.rowData.find(item => String(item.id) === String(entryId));
+    const idProject = Number(entry?.idProject || this.projectId);
+    if (!idProject) {
+      throw new Error('La salida debe tener un proyecto para agregar materiales al Reporte diario.');
+    }
+
+    const reportDate = this.toDateOnly(entry?.date);
+    const report = await this.findOrCreateDailyReport(idProject, reportDate, entry);
+    const reportId = Number(report?.id);
+    if (!reportId) {
+      throw new Error('No fue posible obtener el reporte diario creado.');
+    }
+
+    const response = await lastValueFrom(this.logbookService.getInfoByReporte(reportId, 'MATERIAL'));
+    const logbookItems: any[] = response?.success === false ? [] : (response?.data || []);
+    const groupedItems = new Map<string, { item: any; quantity: number }>();
+    items.forEach(item => {
+      const key = String(item.idProduct || item.description || item.materialName || '').trim();
+      if (!key) return;
+      const current = groupedItems.get(key);
+      if (current) current.quantity += Number(item.quantity || 0);
+      else groupedItems.set(key, { item, quantity: Number(item.quantity || 0) });
+    });
+
+    const reference = `Salida ${entry?.folio || `#${entryId}`}`;
+    let insertedOrUpdated = 0;
+    for (const { item, quantity } of groupedItems.values()) {
+      const existing = logbookItems.find((row: any) =>
+        item.idProduct && Number(row.idResource) === Number(item.idProduct)
+      );
+      // Hace el reintento idempotente: si una petición anterior alcanzó a
+      // registrar este material de la misma salida, no se vuelve a sumar.
+      if (existing && String(existing.supervisor || '').includes(reference)) continue;
+      const note = this.appendDailyReportReference(existing?.supervisor, reference);
+      const payload = {
+        idReporte: reportId,
+        idProject,
+        typeNote: 'MATERIAL',
+        date: reportDate,
+        orden: existing?.orden || logbookItems.length + 1,
+        quantity: Number(existing?.quantity || 0) + quantity,
+        description: existing?.description || item.description || item.materialName || null,
+        supervisor: note,
+        position: existing?.position || item.measure || null,
+        idResource: item.idProduct || null,
+      };
+
+      if (existing?.id) {
+        await lastValueFrom(this.logbookService.updateDataForOt(existing.id, payload));
+      } else {
+        const created = await lastValueFrom(this.logbookService.addDataForOt(payload));
+        logbookItems.push({ ...payload, id: created?.id || `new_${logbookItems.length}` });
+      }
+      insertedOrUpdated++;
+    }
+
+    await lastValueFrom(this.dailyReportService.updateBitacoraCount(reportId, 'MATERIAL', logbookItems.length));
+    this.trackingService.addLog(
+      this.trackingService.getnameComp(),
+      `Agregó ${groupedItems.size} material(es) de salida ${entry?.folio || entryId} al Reporte diario ${reportId}`,
+      'Almacenes / Reporte diario',
+      this.trackingService.getEmail()
+    );
+    return insertedOrUpdated;
+  }
+
+  private async findOrCreateDailyReport(idProject: number, date: string, entry: any): Promise<any> {
+    const response = await lastValueFrom(this.dailyReportService.getDailyReportsByProject(idProject));
+    const reports = response?.data || response || [];
+    const existing = reports.find((report: any) =>
+      report?.active !== false && this.toDateOnly(report.date) === date
+    );
+    if (existing) return existing;
+
+    const created = await lastValueFrom(this.dailyReportService.addDailyReport({
+      idOt: entry?.idOt || null,
+      idProject,
+      date,
+      startTime: '07:52:00',
+      endTime: '17:02:00',
+      type: 'CORTE',
+      description: `Creado automáticamente desde la salida ${entry?.folio || ''}`.trim(),
+      totalPay: 0,
+      close: false,
+      paid: true,
+      tiempos: 0,
+      personal: 0,
+      fotos: 0,
+      videos: 0,
+      material: 0,
+      equipos: 0,
+      conceptos: 0,
+      notas: 0,
+      active: true,
+    }));
+    const report = created?.data || created;
+    if (report?.id) return report;
+
+    // Algunos servicios responden sin el objeto creado; se vuelve a consultar
+    // para recuperar el registro recién generado.
+    const refreshed = await lastValueFrom(this.dailyReportService.getDailyReportsByProject(idProject));
+    return (refreshed?.data || refreshed || []).find((item: any) => this.toDateOnly(item.date) === date);
+  }
+
+  private toDateOnly(value: any): string {
+    const raw = String(value || '').trim();
+    if (/^\d{4}-\d{2}-\d{2}/.test(raw)) return raw.substring(0, 10);
+    const parsed = new Date(value || Date.now());
+    return isNaN(parsed.getTime()) ? new Date().toISOString().substring(0, 10) : parsed.toISOString().substring(0, 10);
+  }
+
+  private formatDateForDisplay(value: any): string {
+    const [year, month, day] = this.toDateOnly(value).split('-');
+    return `${day}/${month}/${year}`;
+  }
+
+  private appendDailyReportReference(note: any, reference: string): string {
+    const current = String(note || '').trim();
+    if (!current) return reference;
+    return current.includes(reference) ? current : `${current} | ${reference}`;
   }
 }
