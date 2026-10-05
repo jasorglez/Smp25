@@ -79,6 +79,99 @@
   font-size: 0.85rem;
 }
 
+// ── Contexto de empresa y sucursal ────────────────────────────────────────────
+.sidebar-company-header {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  min-height: 68px;
+  padding: 9px 10px;
+  background: rgba(0,0,0,.11);
+}
+.sidebar-company-header .sidebar-logo {
+  width: 44px;
+  height: 44px;
+  flex: 0 0 44px;
+  object-fit: contain;
+  padding: 3px;
+  background: rgba(255,255,255,.1);
+  border: 1px solid rgba(255,255,255,.16);
+  border-radius: 9px;
+}
+.sidebar-company-copy { min-width: 0; }
+.sidebar-company-copy strong,
+.sidebar-company-copy span {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.sidebar-company-copy strong { color: var(--sb-text); font-size: .7rem; }
+.sidebar-company-copy span { margin-top: 3px; color: var(--sb-text-dim); font-size: .58rem; }
+.sidebar-company-copy i { color: var(--sb-icon); }
+
+// ── Favoritos personalizados ──────────────────────────────────────────────────
+.sidebar-favorites {
+  padding: 7px 2px 8px;
+  margin: 2px 0 7px;
+  border-bottom: 1px solid var(--sb-border);
+}
+.sidebar-favorites-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 3px;
+}
+.sidebar-section-label {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  padding: 0 5px 5px;
+  color: var(--sb-text-dim);
+  font-size: .56rem;
+  font-weight: 700;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+}
+.sidebar-section-label i { color: var(--sb-icon); }
+.sidebar-favorites-toggle {
+  width: 100%;
+  justify-content: space-between;
+  border: 0;
+  background: transparent;
+  text-align: left;
+}
+.sidebar-favorites-toggle span { display: flex; align-items: center; gap: 5px; }
+.sidebar-favorites-toggle small { color: var(--sb-text-dim); font-size: .55rem; }
+.sidebar-favorites-restore,
+.sidebar-favorite-remove {
+  border: 0;
+  background: transparent;
+  color: var(--sb-text-dim);
+  border-radius: 4px;
+}
+.sidebar-favorites-restore { padding: 2px 4px; font-size: .7rem; }
+.sidebar-favorites-restore:hover,
+.sidebar-favorite-remove:hover { color: #fff; background: rgba(255,255,255,.15); }
+.sidebar-favorite-item { display: flex; align-items: center; gap: 2px; }
+.sidebar-favorite-link {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding: 5px 6px;
+  margin-bottom: 2px;
+  color: var(--sb-text);
+  font-size: .66rem;
+  text-decoration: none;
+  border-radius: 6px;
+  transition: background-color .18s ease, transform .18s ease;
+}
+.sidebar-favorite-link > i:first-child { width: 15px; color: var(--sb-icon); font-size: .85rem; text-align: center; }
+.sidebar-favorite-link:hover { color: var(--sb-text); background: rgba(255,255,255,.11); transform: translateX(2px); }
+.sidebar-favorite-remove { flex: 0 0 auto; padding: 4px 5px; font-size: .58rem; }
+.sidebar-favorites-empty { display: block; padding: 3px 6px; color: var(--sb-text-dim); font-size: .6rem; }
+
 // ── Links de navegación ────────────────────────────────────────────────────────
 .sidebarback .nav-link {
   color: var(--sb-text);

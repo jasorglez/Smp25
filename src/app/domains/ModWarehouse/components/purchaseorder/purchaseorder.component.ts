@@ -258,7 +258,11 @@ export class PurchaseOrderComponent implements CanComponentDeactivate {
     onCellValueChanged: (event: any) => {
       if (event.colDef.field === 'idReq') {
         const requisicion = this.requisiciones.find((r: any) => Number(r.id) === Number(event.data.idReq));
-        if (requisicion) event.data.idWarehouse = requisicion.idWarehouse || null;
+        if (requisicion) {
+          event.data.idWarehouse = requisicion.idWarehouse || null;
+          // La importación se realiza después de guardar la OC y contar con su id real.
+          event.data.__pendingRequisitionItemImport = requisicion.id;
+        }
       }
       event.data.__modified = true;
       this.masterNotSavedChanges = true;
@@ -1206,6 +1210,13 @@ export class PurchaseOrderComponent implements CanComponentDeactivate {
     if (event.newValue === '__ADD_NEW__') return;
     const updatedData = { ...event.data };
 
+    if (event.colDef.field === 'idReq') {
+      const requisitionId = Number(updatedData.idReq);
+      if (requisitionId > 0) {
+        updatedData.__pendingRequisitionItemImport = requisitionId;
+      }
+    }
+
     // Preservar el estado temporal y la selección
     if (this.newlyAddedMasterRows.includes(updatedData.id)) {
       updatedData.__isNew = true;
@@ -1340,10 +1351,38 @@ export class PurchaseOrderComponent implements CanComponentDeactivate {
       const responses = await lastValueFrom(
         concat(...addObservables, ...updateObservables).pipe(toArray())
       );
+      const savedRows = [...newRows, ...modifiedRows];
+      let importedItems = 0;
+      const importErrors: string[] = [];
+
+      for (let index = 0; index < savedRows.length; index++) {
+        const row = savedRows[index];
+        const requisitionId = Number(row.__pendingRequisitionItemImport || 0);
+        if (!requisitionId) continue;
+
+        const response: any = responses[index];
+        const purchaseOrderId = Number(response?.id ?? response?.data?.id ?? row.id);
+        if (!purchaseOrderId || String(purchaseOrderId).startsWith('temp_')) {
+          importErrors.push(`No se obtuvo el id de la OC ${row.folio || ''}.`);
+          continue;
+        }
+
+        try {
+          importedItems += await this.importRequisitionItemsToPurchaseOrder(purchaseOrderId, requisitionId);
+        } catch (error) {
+          console.error(`Error importando requisición ${requisitionId} a OC ${purchaseOrderId}:`, error);
+          importErrors.push(`No se pudieron importar las partidas de la requisición ${requisitionId}.`);
+        }
+      }
+
       alerts.basicAlert(
         'Datos actualizados',
-        'Se han actualizado los datos correctamente.',
-        'success'
+        importErrors.length
+          ? `La OC se guardó, pero ${importErrors.join(' ')}`
+          : importedItems > 0
+            ? `La OC se guardó con ${importedItems} partida(s) importada(s) de la requisición.`
+            : 'Se han actualizado los datos correctamente.',
+        importErrors.length ? 'warning' : 'success'
       );
 
       // Enviar notificación Telegram para OCs nuevas
@@ -1401,7 +1440,7 @@ export class PurchaseOrderComponent implements CanComponentDeactivate {
     });
   }
 
-  deleteMasterEntry() {
+  async deleteMasterEntry() {
     const selectedNodes = this.masterGridApi.getSelectedNodes();
     if (selectedNodes.length === 0) {
       alerts.basicAlert(
@@ -1414,6 +1453,15 @@ export class PurchaseOrderComponent implements CanComponentDeactivate {
 
     const selectedData = selectedNodes[0].data;
     const id = selectedData.id;
+    const confirmation = await alerts.confirmAlert(
+      'Eliminar orden de compra',
+      `¿Deseas eliminar la OC "${selectedData.folio || id}"? Esta acción no se puede deshacer.`,
+      'warning',
+      'Sí, eliminar'
+    );
+
+    if (!confirmation.isConfirmed) return;
+
     selectedData.active = 0;
     this.requisitionsService
       .deleteOcAndReq(id)
@@ -1723,6 +1771,46 @@ export class PurchaseOrderComponent implements CanComponentDeactivate {
     this.activateOc = true;
   }
 
+  /**
+   * Copia las partidas de una requisición recién vinculada a la OC guardada.
+   * Solo se invoca desde la marca temporal creada al cambiar el campo idReq,
+   * por lo que guardar nuevamente la misma OC no duplica sus partidas.
+   */
+  private async importRequisitionItemsToPurchaseOrder(purchaseOrderId: number, requisitionId: number): Promise<number> {
+    const requisitionItems: any = await lastValueFrom(this.requisitionsService.getReqItems(requisitionId));
+    const activeItems = (Array.isArray(requisitionItems) ? requisitionItems : [])
+      .filter((item: any) => item.active !== false && item.active !== 0);
+
+    for (const requisitionItem of activeItems) {
+      const quantity = Number(requisitionItem.quantity) || 0;
+      const price = Number(requisitionItem.price) || 0;
+      const iva = Number(requisitionItem.iva) || 0;
+      const retention = Number(requisitionItem.retention) || 0;
+      const total = Number(requisitionItem.total) || (quantity * price) + iva - retention;
+      const purchaseOrderItem = {
+        idMovement: purchaseOrderId,
+        idSupplie: Number(requisitionItem.idSupplie) || 0,
+        idProvider: Number(requisitionItem.idProvider) || 0,
+        quantity,
+        price,
+        costoMN: Number(requisitionItem.costoMN) || 0,
+        ventaMN: Number(requisitionItem.ventaMN) || 0,
+        iva,
+        retention,
+        total,
+        type: 'OC',
+        comment: requisitionItem.comment || 'NINGUNO.',
+        dateuse: requisitionItem.dateuse || new Date().toISOString(),
+        active: true,
+      };
+
+      await lastValueFrom(this.requisitionsService.addReqItem(purchaseOrderItem));
+    }
+
+    this.updatePurchaseOrderItemsCount(purchaseOrderId, activeItems.length);
+    return activeItems.length;
+  }
+
   private cleanDataForServer(data: any): any {
     const cleanedData = { ...data };
     if (cleanedData.idWarehouse !== null && cleanedData.idWarehouse !== undefined && cleanedData.idWarehouse !== '') {
@@ -1730,6 +1818,7 @@ export class PurchaseOrderComponent implements CanComponentDeactivate {
     }
     delete cleanedData.__isNew;
     delete cleanedData.__modified;
+    delete cleanedData.__pendingRequisitionItemImport;
     delete cleanedData.appliesIva;
     if (cleanedData.id && cleanedData.id.toString().startsWith('temp_')) {
       delete cleanedData.id;

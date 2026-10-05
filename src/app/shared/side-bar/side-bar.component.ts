@@ -17,6 +17,7 @@ import { ConventionsService } from 'app/services/conventions.service';
 import { PresupuestoService } from 'app/services/presupuesto.service';
 import { alerts } from 'app/helpers/alerts';
 import { UserPreferencesService } from 'app/services/user-preferences.service';
+import { QuickActionsService } from 'app/services/quick-actions.service';
 
 @Component({
   selector: 'app-side-bar',
@@ -29,6 +30,7 @@ import { UserPreferencesService } from 'app/services/user-preferences.service';
 export class SideBarComponent {
   isSidebarCollapsed = false;
   isTemporarilyExpanded = false;
+  favoriteGroupCollapsed = true;
   currentTheme = 'blue';
   showThemePicker = false;
 
@@ -105,6 +107,7 @@ export class SideBarComponent {
   userRoot: number = 0;
   conventionVigenteNombre: string = '';
   presupuestoVigenteNombre: string = '';
+  readonly branchName = this.signalsService.getBranchNameSelectedBySidebar();
 
   usersData: any[];
 
@@ -124,7 +127,8 @@ export class SideBarComponent {
     private conventionsService: ConventionsService,
     private presupuestoService: PresupuestoService,
     private cdr: ChangeDetectorRef,
-    public prefsSvc: UserPreferencesService
+    public prefsSvc: UserPreferencesService,
+    private quickActionsService: QuickActionsService
   ) {
     effect(async () => {
       const shouldUpdate = this.signalsService.getUpdateBranchList()();
@@ -159,11 +163,44 @@ export class SideBarComponent {
     });
   }
 
+  get favoriteActions() {
+    return this.quickActionsService.getTopActions();
+  }
+
+  get hasDismissedFavoriteActions(): boolean {
+    return this.quickActionsService.hasDismissedActions();
+  }
+
+  toggleFavoriteGroup(): void {
+    this.favoriteGroupCollapsed = !this.favoriteGroupCollapsed;
+    localStorage.setItem(this.favoriteGroupStorageKey, String(this.favoriteGroupCollapsed));
+  }
+
+  removeFavorite(event: MouseEvent, actionId: string): void {
+    event.preventDefault();
+    event.stopPropagation();
+    this.quickActionsService.dismissAction(actionId);
+    this.cdr.markForCheck();
+  }
+
+  restoreFavorites(event: MouseEvent): void {
+    event.preventDefault();
+    event.stopPropagation();
+    this.quickActionsService.restoreDismissedActions();
+    this.favoriteGroupCollapsed = false;
+    localStorage.setItem(this.favoriteGroupStorageKey, 'false');
+    this.cdr.markForCheck();
+  }
+
   async ngOnInit() {
     // Cargar preferencia de sidebar colapsado
     const savedCollapsedState = localStorage.getItem('sidebarCollapsed');
     if (savedCollapsedState !== null) {
       this.isSidebarCollapsed = savedCollapsedState === 'true';
+    }
+    const savedFavoritesState = localStorage.getItem(this.favoriteGroupStorageKey);
+    if (savedFavoritesState !== null) {
+      this.favoriteGroupCollapsed = savedFavoritesState === 'true';
     }
     this.userRoot = this.signalsService.getUserRoot()();
     if (this.signalsService.isidUserEmpty()) {
@@ -208,6 +245,11 @@ export class SideBarComponent {
         this.loadPermissions();
       }
     });
+  }
+
+  private get favoriteGroupStorageKey(): string {
+    const user = (localStorage.getItem('mail') || 'anonymous').toLowerCase();
+    return `sidebar-favorites-collapsed:${user}`;
   }
 
   onRootsSelected(event: Event): void {

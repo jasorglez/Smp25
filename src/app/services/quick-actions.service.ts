@@ -37,14 +37,29 @@ export class QuickActionsService {
 
   getTopActions(limit = 3): QuickAction[] {
     const usage = this.getUsage();
+    const dismissed = this.getDismissed();
     return [...this.actions]
-      .filter(action => (usage[action.id]?.count ?? 0) > 0)
+      .filter(action => (usage[action.id]?.count ?? 0) > 0 && !dismissed[action.id])
       .sort((a, b) => {
         const aUsage = usage[a.id] ?? { count: 0, lastUsedAt: 0 };
         const bUsage = usage[b.id] ?? { count: 0, lastUsedAt: 0 };
         return bUsage.count - aUsage.count || bUsage.lastUsedAt - aUsage.lastUsedAt;
       })
       .slice(0, limit);
+  }
+
+  dismissAction(actionId: string): void {
+    const dismissed = this.getDismissed();
+    dismissed[actionId] = true;
+    this.saveDismissed(dismissed);
+  }
+
+  hasDismissedActions(): boolean {
+    return Object.keys(this.getDismissed()).length > 0;
+  }
+
+  restoreDismissedActions(): void {
+    localStorage.removeItem(this.dismissedStorageKey);
   }
 
   private getUsage(): Record<string, ActionUsage> {
@@ -59,8 +74,25 @@ export class QuickActionsService {
     localStorage.setItem(this.storageKey, JSON.stringify(usage));
   }
 
+  private getDismissed(): Record<string, boolean> {
+    try {
+      return JSON.parse(localStorage.getItem(this.dismissedStorageKey) || '{}');
+    } catch {
+      return {};
+    }
+  }
+
+  private saveDismissed(dismissed: Record<string, boolean>): void {
+    localStorage.setItem(this.dismissedStorageKey, JSON.stringify(dismissed));
+  }
+
   private get storageKey(): string {
     const user = (localStorage.getItem('mail') || 'anonymous').toLowerCase();
     return `quick-actions:${user}`;
+  }
+
+  private get dismissedStorageKey(): string {
+    const user = (localStorage.getItem('mail') || 'anonymous').toLowerCase();
+    return `quick-actions-dismissed:${user}`;
   }
 }

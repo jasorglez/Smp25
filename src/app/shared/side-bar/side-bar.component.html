@@ -7,13 +7,16 @@
     'temp-expanded': isTemporarilyExpanded
   }"
 >
-  <div class="d-flex flex-column align-items-center p-2 border-bottom" *ngIf="!isSidebarCollapsed || isTemporarilyExpanded">
-    <!-- Logo -->
+  <div class="sidebar-company-header border-bottom" *ngIf="!isSidebarCollapsed || isTemporarilyExpanded">
     <img
       [src]="trackingService.getpictureComp()"
       alt="BI Company"
-      class="img-fluid sidebar-logo"
+      class="sidebar-logo"
     />
+    <div class="sidebar-company-copy">
+      <strong>{{ trackingService.getnameComp() || 'Business Intelligence' }}</strong>
+      <span><i class="bi bi-geo-alt-fill"></i> {{ branchName() || 'Selecciona una sucursal' }}</span>
+    </div>
   </div>
 
   <div class="flex-grow-1 overflow-auto p-2">
@@ -116,6 +119,36 @@
       </div>
 
     </span>
+
+    <section class="sidebar-favorites" *ngIf="(favoriteActions.length || hasDismissedFavoriteActions) && (!isSidebarCollapsed || isTemporarilyExpanded)">
+      <div class="sidebar-favorites-header">
+        <button type="button" class="sidebar-section-label sidebar-favorites-toggle" (click)="toggleFavoriteGroup()"
+                [attr.aria-expanded]="!favoriteGroupCollapsed">
+          <span><i class="bi bi-stars"></i> Tus favoritos <small *ngIf="favoriteActions.length">({{ favoriteActions.length }})</small></span>
+          <i class="bi" [ngClass]="favoriteGroupCollapsed ? 'bi-chevron-down' : 'bi-chevron-up'"></i>
+        </button>
+        <button *ngIf="hasDismissedFavoriteActions" type="button" class="sidebar-favorites-restore"
+                (click)="restoreFavorites($event)" title="Restaurar favoritos ocultos">
+          <i class="bi bi-arrow-counterclockwise"></i>
+        </button>
+      </div>
+      <div *ngIf="!favoriteGroupCollapsed" class="sidebar-favorites-list">
+        <div *ngFor="let action of favoriteActions" class="sidebar-favorite-item">
+          <a class="sidebar-favorite-link"
+             [routerLink]="action.route"
+             [matTooltip]="action.label"
+             matTooltipPosition="right">
+            <i class="bi" [ngClass]="action.icon"></i>
+            <span>{{ action.label }}</span>
+          </a>
+          <button type="button" class="sidebar-favorite-remove" (click)="removeFavorite($event, action.id)"
+                  [attr.aria-label]="'Quitar ' + action.label" title="Quitar de favoritos">
+            <i class="bi bi-x-lg"></i>
+          </button>
+        </div>
+        <small *ngIf="!favoriteActions.length" class="sidebar-favorites-empty">No tienes favoritos visibles.</small>
+      </div>
+    </section>
 
     <ul class="nav flex-column">
       <li class="nav-item" *ngIf="authService.hasMasterPermission('dashboard')">
