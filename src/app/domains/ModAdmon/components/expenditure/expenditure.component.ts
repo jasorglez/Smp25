@@ -194,7 +194,7 @@ export class ExpenditureComponent implements OnDestroy, OnChanges {
   reportEgresoStartDate: string = '';
   reportEgresoEndDate: string = '';
   isGeneratingEgresoReport: boolean = false;
-  reportEgresoType: string = 'listado'; // 'listado' | 'saldos'
+  reportEgresoType: string = 'listado'; // 'listado' | 'saldos' | 'proveedor'
 
   // Propiedades para el modal Nuevo Tipo de Gasto
   showNuevoTipoGastoModal: boolean = false;
@@ -1798,6 +1798,11 @@ export class ExpenditureComponent implements OnDestroy, OnChanges {
       return;
     }
 
+    if (this.reportEgresoType === 'proveedor') {
+      await this.generateProviderGroupedEgresoReport();
+      return;
+    }
+
     const [sy, sm, sd] = this.reportEgresoStartDate.split('-');
     const [ey, em, ed] = this.reportEgresoEndDate.split('-');
     const startDate = new Date(+sy, +sm - 1, +sd);
@@ -2010,6 +2015,258 @@ export class ExpenditureComponent implements OnDestroy, OnChanges {
     } catch (error) {
       console.error('Error generando reporte de egresos:', error);
       alerts.basicAlert('Error', 'Error al generar el reporte PDF', 'error');
+    } finally {
+      this.isGeneratingEgresoReport = false;
+    }
+  }
+
+  // ==================== REPORTE AGRUPADO POR PROVEEDOR ====================
+
+  private async generateProviderGroupedEgresoReport() {
+    const startDate = new Date(`${this.reportEgresoStartDate}T00:00:00`);
+    const endDate = new Date(`${this.reportEgresoEndDate}T00:00:00`);
+
+    if (Number.isNaN(startDate.getTime()) || Number.isNaN(endDate.getTime()) || startDate > endDate) {
+      alerts.basicAlert('Error', 'El rango de fechas seleccionado no es válido', 'error');
+      return;
+    }
+
+    const expenditures = this.incomes.filter((income: any) => {
+      if (!income.date) return false;
+      const date = new Date(income.date);
+      const dateText = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+      return dateText >= this.reportEgresoStartDate && dateText <= this.reportEgresoEndDate;
+    });
+
+    if (!expenditures.length) {
+      alerts.basicAlert('Sin datos', 'No se encontraron egresos en el rango de fechas seleccionado', 'warning');
+      return;
+    }
+
+    this.isGeneratingEgresoReport = true;
+
+    try {
+      // El proveedor se guarda en el concepto, por ello se consultan los conceptos de cada egreso.
+      const expendituresWithConcepts = await Promise.all(expenditures.map(async (expenditure: any) => {
+        try {
+          const concepts: any = await lastValueFrom(
+            this.incomesAndExpensesService.getConceptsFromIncomesAndExpenses(expenditure.id)
+          );
+          return { expenditure, concepts: Array.isArray(concepts) ? concepts : [] };
+        } catch (error) {
+          console.error(`Error cargando conceptos del egreso ${expenditure.id}:`, error);
+          return { expenditure, concepts: [] };
+        }
+      }));
+
+      const groups = new Map<string, {
+        name: string;
+        details: any[];
+        subtotal: number;
+        iva: number;
+        total: number;
+      }>();
+
+      expendituresWithConcepts.forEach(({ expenditure, concepts }) => {
+        concepts
+          .filter((concept: any) => String(concept.typeExpense || '').trim().toUpperCase() === 'PROVEEDORES')
+          .forEach((concept: any) => {
+            const providerId = concept.idExpense;
+            const provider = this.providers.find((item: any) => String(item.id) === String(providerId));
+            const providerName = provider?.name || `Proveedor no registrado (${providerId || 'sin asignar'})`;
+            const groupKey = String(providerId || providerName);
+            const subtotal = (Number(concept.quantity) || 0) * (Number(concept.price) || 0);
+            const iva = concept.iva ? subtotal * 0.16 : 0;
+            const total = subtotal + iva;
+
+            if (!groups.has(groupKey)) {
+              groups.set(groupKey, { name: providerName, details: [], subtotal: 0, iva: 0, total: 0 });
+            }
+
+            const group = groups.get(groupKey)!;
+            group.details.push({
+              date: concept.dateExpend || expenditure.date,
+              document: expenditure.numberDocument || '',
+              invoice: expenditure.uuid && expenditure.uuid !== 'NA' ? expenditure.uuid : '',
+              project: this.projects.find((project: any) => project.id === expenditure.idProject)?.name || '',
+              description: concept.description || expenditure.description || '',
+              subtotal,
+              iva,
+              total
+            });
+            group.subtotal += subtotal;
+            group.iva += iva;
+            group.total += total;
+          });
+      });
+
+      const providerGroups = Array.from(groups.values())
+        .sort((a, b) => a.name.localeCompare(b.name, 'es', { sensitivity: 'base' }));
+
+      if (!providerGroups.length) {
+        alerts.basicAlert('Sin datos', 'No hay conceptos asignados a proveedores en el rango seleccionado', 'info');
+        return;
+      }
+
+      const pdfMake = (await import('pdfmake/build/pdfmake')).default;
+      const pdfFonts = (await import('pdfmake/build/vfs_fonts')).default;
+      (pdfMake as any).vfs = (pdfFonts as any).pdfMake?.vfs || (pdfFonts as any).default?.pdfMake?.vfs;
+
+      const rootResponse: any = await lastValueFrom(this.rootService.getRootbyId(this.idRoot));
+      const companyName = rootResponse?.name || rootResponse?.nameCompany || 'Empresa';
+      const logoBase64 = rootResponse?.picture
+        ? await this.base64EncodeService.convertImageToBase64(rootResponse.picture)
+        : null;
+      const selectedAccount = this.bankAccounts.find((account: any) => account.id === this._idAccount);
+      const accountName = selectedAccount ? `${selectedAccount.nameAccount} - ${selectedAccount.bankName}` : 'Cuenta bancaria';
+      const periodText = `${this.formatDate(this.reportEgresoStartDate)} al ${this.formatDate(this.reportEgresoEndDate)}`;
+
+      const detailBody: any[] = [[
+        { text: 'FECHA', style: 'th', alignment: 'center' },
+        { text: '# DOCUMENTO', style: 'th', alignment: 'center' },
+        { text: 'PROYECTO', style: 'th', alignment: 'left' },
+        { text: '# FACTURA', style: 'th', alignment: 'left' },
+        { text: 'CONCEPTO', style: 'th', alignment: 'left' },
+        { text: 'IMP. S/IVA', style: 'th', alignment: 'right' },
+        { text: 'IVA', style: 'th', alignment: 'right' },
+        { text: 'IMPORTE TOTAL', style: 'th', alignment: 'right' }
+      ]];
+
+      providerGroups.forEach((group) => {
+        detailBody.push([
+          { text: `PROVEEDOR: ${group.name}`, colSpan: 8, style: 'providerGroup' },
+          {}, {}, {}, {}, {}, {}, {}
+        ]);
+
+        group.details
+          .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())
+          .forEach((detail) => detailBody.push([
+            { text: this.formatDate(detail.date), style: 'td', alignment: 'center' },
+            { text: detail.document, style: 'td', alignment: 'center' },
+            { text: detail.project, style: 'td' },
+            { text: detail.invoice, style: 'td' },
+            { text: detail.description, style: 'td' },
+            { text: `$${this.formatCurrencyE(detail.subtotal)}`, style: 'td', alignment: 'right' },
+            { text: `$${this.formatCurrencyE(detail.iva)}`, style: 'td', alignment: 'right' },
+            { text: `$${this.formatCurrencyE(detail.total)}`, style: 'td', alignment: 'right' }
+          ]));
+
+        detailBody.push([
+          { text: `Subtotal ${group.name}`, colSpan: 5, style: 'subtotalLabel', alignment: 'right' },
+          {}, {}, {}, {},
+          { text: `$${this.formatCurrencyE(group.subtotal)}`, style: 'subtotalValue', alignment: 'right' },
+          { text: `$${this.formatCurrencyE(group.iva)}`, style: 'subtotalValue', alignment: 'right' },
+          { text: `$${this.formatCurrencyE(group.total)}`, style: 'subtotalValue', alignment: 'right' }
+        ]);
+      });
+
+      const summaryBody: any[] = [[
+        { text: 'PROVEEDOR', style: 'th', alignment: 'left' },
+        { text: 'IMP. S/IVA', style: 'th', alignment: 'right' },
+        { text: 'IVA', style: 'th', alignment: 'right' },
+        { text: 'IMPORTE TOTAL', style: 'th', alignment: 'right' }
+      ]];
+      const reportTotals = providerGroups.reduce((totals, group) => {
+        summaryBody.push([
+          { text: group.name, style: 'td' },
+          { text: `$${this.formatCurrencyE(group.subtotal)}`, style: 'td', alignment: 'right' },
+          { text: `$${this.formatCurrencyE(group.iva)}`, style: 'td', alignment: 'right' },
+          { text: `$${this.formatCurrencyE(group.total)}`, style: 'td', alignment: 'right' }
+        ]);
+        totals.subtotal += group.subtotal;
+        totals.iva += group.iva;
+        totals.total += group.total;
+        return totals;
+      }, { subtotal: 0, iva: 0, total: 0 });
+
+      summaryBody.push([
+        { text: 'TOTAL GENERAL', style: 'subtotalLabel', alignment: 'right' },
+        { text: `$${this.formatCurrencyE(reportTotals.subtotal)}`, style: 'subtotalValue', alignment: 'right' },
+        { text: `$${this.formatCurrencyE(reportTotals.iva)}`, style: 'subtotalValue', alignment: 'right' },
+        { text: `$${this.formatCurrencyE(reportTotals.total)}`, style: 'subtotalValue', alignment: 'right' }
+      ]);
+
+      const logoCell = logoBase64
+        ? { image: logoBase64, width: 55, alignment: 'left' }
+        : { text: companyName, bold: true, fontSize: 10, alignment: 'left' };
+      const docDefinition: any = {
+        pageSize: 'A4',
+        pageOrientation: 'landscape',
+        pageMargins: [25, 60, 25, 40],
+        header: () => ({
+          margin: [25, 8, 25, 0],
+          table: {
+            widths: ['16%', '*', '25%'],
+            body: [[
+              logoCell,
+              {
+                stack: [
+                  { text: 'Concentrado de Egresos por Proveedor', style: 'reportTitle', alignment: 'center' },
+                  { text: companyName, fontSize: 8, alignment: 'center' },
+                  { text: `Periodo: ${periodText}`, fontSize: 7, alignment: 'center', color: '#555' }
+                ]
+              },
+              { text: `Cuenta: ${accountName}`, fontSize: 7, alignment: 'right' }
+            ]]
+          },
+          layout: 'noBorders'
+        }),
+        footer: (currentPage: number, pageCount: number) => ({
+          text: `Página ${currentPage} / ${pageCount}`,
+          alignment: 'center',
+          fontSize: 7,
+          margin: [0, 10, 0, 0]
+        }),
+        content: [
+          {
+            table: { headerRows: 1, widths: [48, 58, 100, 85, '*', 62, 52, 68], body: detailBody },
+            layout: {
+              hLineWidth: (index: number) => index === 0 || index === 1 ? 1 : 0.3,
+              vLineWidth: () => 0.3,
+              hLineColor: () => '#b7c6d1',
+              vLineColor: () => '#d3dce3',
+              fillColor: (rowIndex: number) => rowIndex === 0 ? '#1a5276' : null
+            }
+          },
+          {
+            text: 'Totalizado por Proveedor',
+            style: 'summaryTitle',
+            pageBreak: 'before'
+          },
+          {
+            table: { headerRows: 1, widths: ['*', 100, 80, 110], body: summaryBody },
+            layout: 'lightHorizontalLines'
+          }
+        ],
+        styles: {
+          reportTitle: { fontSize: 12, bold: true, color: '#1a5276' },
+          summaryTitle: { fontSize: 14, bold: true, color: '#1a5276', margin: [0, 0, 0, 12] },
+          th: { fontSize: 7, bold: true, color: '#ffffff', margin: [2, 3, 2, 3] },
+          td: { fontSize: 7, color: '#222', margin: [2, 2, 2, 2] },
+          providerGroup: { fontSize: 8, bold: true, color: '#1a5276', fillColor: '#d9edf7', margin: [3, 3, 3, 3] },
+          subtotalLabel: { fontSize: 8, bold: true, color: '#1a5276', margin: [2, 3, 2, 3] },
+          subtotalValue: { fontSize: 8, bold: true, color: '#1a5276', margin: [2, 3, 2, 3] }
+        }
+      };
+
+      const pdf = pdfMake.createPdf(docDefinition);
+      try {
+        pdf.open();
+      } catch {
+        pdf.download(`egresos-por-proveedor-${this.reportEgresoStartDate}-al-${this.reportEgresoEndDate}.pdf`);
+        alerts.toastAlert('Reporte descargado automáticamente', 'info');
+      }
+
+      this.closeEgresoReportModal();
+      this.trackingService.addLog(
+        this.trackingService.getnameComp(),
+        `Reporte agrupado por proveedor generado: ${this.reportEgresoStartDate} al ${this.reportEgresoEndDate}`,
+        'Egresos - Reporte por proveedor',
+        this.trackingService.getEmail()
+      );
+    } catch (error) {
+      console.error('Error generando reporte de egresos por proveedor:', error);
+      alerts.basicAlert('Error', 'Error al generar el reporte PDF por proveedor', 'error');
     } finally {
       this.isGeneratingEgresoReport = false;
     }

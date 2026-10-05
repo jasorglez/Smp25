@@ -51,7 +51,7 @@
       <ag-grid-angular
         *ngIf="!isLoading"
         class="ag-theme-quartz small-text-ag-grid master-grid"
-        style="width: 100%; height: 300px;"
+        style="width: 100%;"
         [rowData]="rowMaster"
         [columnDefs]="colMaster"
         [gridOptions]="gridOptions"
@@ -64,14 +64,62 @@
         [stopEditingWhenCellsLoseFocus]="true">
       </ag-grid-angular>
 
+      <section *ngIf="selectedRowData" class="account-summary" aria-live="polite">
+        <div class="account-summary__metrics">
+          <div class="summary-metric summary-metric--balance">
+            <span>Saldo actual</span>
+            <strong>${{ formatCurrencySaldos(currentAccountBalance) }}</strong>
+          </div>
+          <div class="summary-metric summary-metric--income">
+            <span>Ingresos del filtro</span>
+            <strong>${{ formatCurrencySaldos(movementSummary.deposits) }}</strong>
+          </div>
+          <div class="summary-metric summary-metric--expense">
+            <span>Egresos del filtro</span>
+            <strong>${{ formatCurrencySaldos(movementSummary.expenses) }}</strong>
+          </div>
+          <div class="summary-metric">
+            <span>Flujo neto · {{ movementSummary.count }} movimientos</span>
+            <strong>${{ formatCurrencySaldos(movementSummary.deposits - movementSummary.expenses) }}</strong>
+          </div>
+        </div>
+      </section>
+
+      <section *ngIf="selectedRowData" class="movement-filters">
+        <div class="movement-filters__title">
+          <i class="bi bi-funnel me-1"></i>
+          <strong>Movimientos</strong>
+        </div>
+        <div class="movement-filters__controls">
+          <input type="search" class="form-control form-control-sm" placeholder="Buscar documento, descripción o tipo"
+                 [(ngModel)]="movementSearch" (ngModelChange)="applyMovementFilters()" aria-label="Buscar movimientos">
+          <input type="date" class="form-control form-control-sm" [(ngModel)]="movementStartDate"
+                 (ngModelChange)="applyMovementFilters()" aria-label="Fecha inicial">
+          <input type="date" class="form-control form-control-sm" [(ngModel)]="movementEndDate"
+                 (ngModelChange)="applyMovementFilters()" aria-label="Fecha final">
+          <select class="form-select form-select-sm" [(ngModel)]="movementType" (ngModelChange)="applyMovementFilters()"
+                  aria-label="Tipo de movimiento">
+            <option value="all">Todos</option>
+            <option value="depositos">Ingresos</option>
+            <option value="gastos">Egresos</option>
+            <option value="ajustes">Ajustes</option>
+          </select>
+          <button type="button" class="btn btn-sm btn-outline-primary" (click)="setCurrentMonthFilter()">Este mes</button>
+          <button type="button" class="btn btn-sm btn-outline-secondary" (click)="clearMovementFilters()" title="Limpiar filtros">
+            <i class="bi bi-x-lg"></i>
+          </button>
+        </div>
+      </section>
+
       <!-- Grid Detalle -->
       <ag-grid-angular
         *ngIf="!isLoading"
         class="ag-theme-quartz small-text-ag-grid detail-grid"
-        style="width: 100%; height: 400px;"
-        [rowData]="rowDetails"
+        style="width: 100%;"
+        [rowData]="filteredRowDetails"
         [columnDefs]="colDetails"
         (gridReady)="onDetailGridReady($event)"
+        (cellClicked)="onDetailCellClicked($event)"
         [rowSelection]="'single'"
         [pivotPanelShow]="pivotPanelShow">
       </ag-grid-angular>

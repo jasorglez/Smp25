@@ -1,15 +1,114 @@
 .master-grid {
-      height: 200px;
+      // 30% menos que los 300px originales; prioriza el estado de cuenta.
+      height: 210px;
       margin-bottom: 20px;
     }
-         
-    .detail-grid {
-      height: 300px;
+
+    .account-summary {
+      border: 1px solid #d9e4ec;
+      border-left: 4px solid #0d6efd;
+      border-radius: 0.5rem;
+      background: linear-gradient(105deg, #f8fbff, #ffffff);
+      display: flex;
+      align-items: center;
+      justify-content: flex-end;
+      padding: 0.25rem 0.45rem;
     }
+
+    .account-summary__metrics,
+    .movement-filters,
+    .movement-filters__controls {
+      display: flex;
+      align-items: center;
+    }
+
+    .account-summary__metrics {
+      flex: 1;
+      justify-content: flex-end;
+      gap: 0.35rem;
+      flex-wrap: nowrap;
+    }
+
+    .summary-metric {
+      min-width: 105px;
+      padding: 0.15rem 0.35rem;
+      border-radius: 0.35rem;
+      background: #f3f6f8;
+    }
+
+    .summary-metric span {
+      display: block;
+      color: #607080;
+      font-size: 0.55rem;
+      text-transform: uppercase;
+    }
+
+    .summary-metric strong {
+      color: #263747;
+      font-size: 0.74rem;
+    }
+
+    .summary-metric--balance { background: #e8f2ff; }
+    .summary-metric--income { background: #eaf8ef; }
+    .summary-metric--income strong { color: #117a37; }
+    .summary-metric--expense { background: #fff0f0; }
+    .summary-metric--expense strong { color: #b42318; }
+
+    .movement-filters {
+      justify-content: space-between;
+      gap: 1rem;
+      padding: 0.6rem 0.75rem;
+      border: 1px solid #e2e8ee;
+      border-radius: 0.4rem;
+      background: #fff;
+    }
+
+    .movement-filters__controls {
+      flex: 1;
+      justify-content: flex-end;
+      gap: 0.4rem;
+    }
+
+    .movement-filters__controls input[type='search'] { max-width: 270px; }
+    .movement-filters__controls input[type='date'] { max-width: 145px; }
+    .movement-filters__controls select { max-width: 115px; }
+
+    .detail-grid {
+      // 30% más que los 400px originales para mostrar más movimientos.
+      height: 520px;
+      // Recupera el espacio de la barra de acciones, que termina antes del detalle.
+      width: calc(100% + 72px) !important;
+      margin-left: -72px;
+      --ag-font-size: 11px;
+      --ag-header-font-size: 10px;
+    }
+
+    .detail-grid .ag-header-cell-label { justify-content: center; }
+    .detail-grid .ag-header-cell-text { font-size: 10px; }
+    .detail-grid .ag-cell { font-size: 11px; }
 
     @media (max-width: 768px) {
       .master-grid,
       .detail-grid {
         height: 250px !important;
+      }
+
+      .detail-grid {
+        width: 100% !important;
+        margin-left: 0;
+      }
+
+      .movement-filters,
+      .movement-filters__controls {
+        align-items: stretch;
+        flex-direction: column;
+      }
+
+      .account-summary__metrics { flex-wrap: wrap; justify-content: flex-start; }
+
+      .movement-filters__controls input[type='search'],
+      .movement-filters__controls input[type='date'],
+      .movement-filters__controls select {
+        max-width: none;
       }
     }

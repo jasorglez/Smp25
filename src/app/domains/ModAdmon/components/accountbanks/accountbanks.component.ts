@@ -72,8 +72,13 @@ export class AccountbanksComponent implements CanComponentDeactivate, OnDestroy 
 
   private lastSelectedId: string | null = null;
   notSavedChanges: boolean = false;
-  rowMaster: any;
-  rowDetails: any;
+  rowMaster: any[] = [];
+  rowDetails: any[] = [];
+  filteredRowDetails: any[] = [];
+  movementSearch: string = '';
+  movementStartDate: string = '';
+  movementEndDate: string = '';
+  movementType: 'all' | 'depositos' | 'gastos' | 'ajustes' = 'all';
   accounts: { [key: string]: string } = {};
   errorMessage: string = '';
   isLoading: boolean = false;
@@ -172,14 +177,14 @@ export class AccountbanksComponent implements CanComponentDeactivate, OnDestroy 
         },
         width: 150,
         cellEditor: 'agSelectCellEditor',
-        cellEditorParams: {
-          values: this.banks ? this.banks.map((item) => item.id) : [],
-        },
+        cellEditorParams: () => ({
+          values: this.banks ? this.banks.map((item: any) => item.id) : [],
+        }),
         valueFormatter: (params) => {
           const foundItem = this.banks
-            ? this.banks.find((item) => item.id === params.value)
+            ? this.banks.find((item: any) => String(item.id) === String(params.value))
             : null;
-          return foundItem ? `${foundItem.name}` : params.value;
+          return foundItem ? `${foundItem.name}` : (params.value ? 'Banco no encontrado' : '');
         },
       },
       {
@@ -360,7 +365,7 @@ export class AccountbanksComponent implements CanComponentDeactivate, OnDestroy 
         headerName: 'Numero Documento',
         editable: false,
         filter: true,
-        width: 200,
+        width: 110,
         cellStyle: (params) => {
           const deposito =
             typeof params.data.deposito === 'string'
@@ -377,29 +382,40 @@ export class AccountbanksComponent implements CanComponentDeactivate, OnDestroy 
         },
       },
       {
+        colId: 'conciliacion',
+        headerName: 'Conciliación',
+        editable: false,
+        width: 110,
+        valueGetter: (params) => this.isMovementReconciled(params.data) ? 'Conciliado' : 'Pendiente',
+        cellStyle: (params) => this.isMovementReconciled(params.data)
+          ? { color: '#117a37', backgroundColor: '#eaf8ef', fontWeight: 'bold', cursor: 'pointer' }
+          : { color: '#9a6700', backgroundColor: '#fff8db', fontWeight: 'bold', cursor: 'pointer' },
+        tooltipValueGetter: () => 'Clic para cambiar el estado de conciliación local',
+      },
+      {
         field: 'fecha',
         headerName: 'Fecha',
         editable: false,
-        width: 200,
+        width: 90,
         filter: true,
       },
       {
         field: 'descripcion',
         headerName: 'Descripcion',
         editable: false,
-        width: 285,
+        width: 250,
       },
       {
         field: 'tipo',
         headerName: 'Tipo',
         editable: false,
-        width: 160,
+        width: 90,
       },
       {
         field: 'deposito',
         headerName: 'Deposito',
         editable: false,
-        width: 160,
+        width: 110,
         valueFormatter: (params) => {
           const value = params.value || 0;
           return `$ ${value.toLocaleString('es-MX', {
@@ -423,7 +439,7 @@ export class AccountbanksComponent implements CanComponentDeactivate, OnDestroy 
         field: 'gasto',
         headerName: 'Gasto',
         editable: false,
-        width: 160,
+        width: 110,
         valueFormatter: (params) => {
           const value = params.value || 0;
           return `$ ${value.toLocaleString('es-MX', {
@@ -447,7 +463,7 @@ export class AccountbanksComponent implements CanComponentDeactivate, OnDestroy 
         field: 'saldo',
         headerName: 'SALDO',
         editable: false,
-        width: 160,
+        width: 110,
         valueFormatter: (params) => {
           const value = params.value || 0;
           return `$ ${value.toLocaleString('es-MX', {
@@ -455,9 +471,13 @@ export class AccountbanksComponent implements CanComponentDeactivate, OnDestroy 
             maximumFractionDigits: 2,
           })}`;
         },
-        cellStyle: {
-          color: '#000080',
-          fontWeight: 'bold',
+        cellStyle: (params) => {
+          const saldo = Number(params.value) || 0;
+          return {
+            color: saldo >= 0 ? '#000080' : '#b42318',
+            backgroundColor: saldo < 0 ? '#fff1f0' : undefined,
+            fontWeight: 'bold',
+          };
         },
       },
     ];
@@ -469,10 +489,12 @@ export class AccountbanksComponent implements CanComponentDeactivate, OnDestroy 
     this.administrationService.get2fieldsBanks().subscribe({
       next: (data: any) => {
         this.banks = data;
+        this.refreshMasterBankColumn();
       },
       error: (error) => {
         console.error('Error al cargar bancos:', error);
         this.banks = [];
+        this.refreshMasterBankColumn();
         alerts.basicAlert('Error', 'Error al cargar el catálogo de bancos', 'error');
       }
     });
@@ -523,6 +545,7 @@ export class AccountbanksComponent implements CanComponentDeactivate, OnDestroy 
 
     this.lastSelectedId = id;
     this.rowDetails = [];
+    this.applyMovementFilters();
 
     this.administrationService.getBalance(parseInt(id)).subscribe({
       next: (response: any) => {
@@ -532,9 +555,11 @@ export class AccountbanksComponent implements CanComponentDeactivate, OnDestroy 
           // Una cuenta puede no tener movimientos todavía; esto no impide editarla.
           this.rowDetails = [];
         }
+        this.applyMovementFilters();
       },
       error: () => {
         this.rowDetails = [];
+        this.applyMovementFilters();
         alerts.basicAlert('Error', 'Error al cargar los datos', 'error');
       },
     });
@@ -552,10 +577,12 @@ export class AccountbanksComponent implements CanComponentDeactivate, OnDestroy 
       } else {
         // Limpiar detalles para filas nuevas
         this.rowDetails = [];
+        this.applyMovementFilters();
       }
     } else {
       this.selectedRowData = null;
       this.rowDetails = [];
+      this.applyMovementFilters();
     }
   }
 
@@ -567,10 +594,110 @@ export class AccountbanksComponent implements CanComponentDeactivate, OnDestroy 
 
   onMasterGridReady(params: GridReadyEvent) {
     this.gridApi = params.api;
+    this.refreshMasterBankColumn();
+  }
+
+  private refreshMasterBankColumn() {
+    if (!this.gridApi) return;
+    this._colMaster = [];
+    this.gridApi.setGridOption('columnDefs', this.colMaster);
+    this.gridApi.refreshCells({ columns: ['idBanco'], force: true });
   }
 
   onDetailGridReady(params: GridReadyEvent) {
     this.detailsGridApi = params.api;
+  }
+
+  onDetailCellClicked(event: any) {
+    if (event.colDef?.colId !== 'conciliacion' || !event.data) return;
+
+    const key = this.getMovementReconciliationKey(event.data);
+    try {
+      const isReconciled = localStorage.getItem(key) === 'true';
+      localStorage.setItem(key, String(!isReconciled));
+      this.detailsGridApi?.refreshCells({ rowNodes: [event.node], columns: ['conciliacion'], force: true });
+    } catch (error) {
+      console.error('No se pudo actualizar el estado local de conciliación:', error);
+      alerts.toastAlert('No se pudo guardar el estado de conciliación en este navegador', 'warning');
+    }
+  }
+
+  get movementSummary(): { deposits: number; expenses: number; count: number } {
+    return this.filteredRowDetails.reduce((summary, item) => {
+      summary.deposits += Number(item.deposito) || 0;
+      summary.expenses += Number(item.gasto) || 0;
+      summary.count += 1;
+      return summary;
+    }, { deposits: 0, expenses: 0, count: 0 });
+  }
+
+  get currentAccountBalance(): number {
+    if (!this.rowDetails.length) return Number(this.selectedRowData?.saldo) || 0;
+
+    const latestMovement = [...this.rowDetails].sort((a, b) =>
+      this.getMovementDateKey(b.fecha).localeCompare(this.getMovementDateKey(a.fecha))
+    )[0];
+    return Number(latestMovement?.saldo) || Number(this.selectedRowData?.saldo) || 0;
+  }
+
+  applyMovementFilters() {
+    const search = this.movementSearch.trim().toLocaleLowerCase('es-MX');
+    this.filteredRowDetails = this.rowDetails.filter((item: any) => {
+      const date = this.getMovementDateKey(item.fecha);
+      const isDeposit = (Number(item.deposito) || 0) > 0;
+      const isExpense = (Number(item.gasto) || 0) > 0;
+      const isAdjustment = String(item.tipo || '').toUpperCase().includes('AJUSTE');
+      const matchesType = this.movementType === 'all'
+        || (this.movementType === 'depositos' && isDeposit)
+        || (this.movementType === 'gastos' && isExpense)
+        || (this.movementType === 'ajustes' && isAdjustment);
+      const searchableText = [item.numeroDocumento, item.descripcion, item.tipo]
+        .filter(Boolean)
+        .join(' ')
+        .toLocaleLowerCase('es-MX');
+
+      return matchesType
+        && (!this.movementStartDate || date >= this.movementStartDate)
+        && (!this.movementEndDate || date <= this.movementEndDate)
+        && (!search || searchableText.includes(search));
+    });
+  }
+
+  clearMovementFilters() {
+    this.movementSearch = '';
+    this.movementStartDate = '';
+    this.movementEndDate = '';
+    this.movementType = 'all';
+    this.applyMovementFilters();
+  }
+
+  setCurrentMonthFilter() {
+    const now = new Date();
+    this.movementStartDate = this.formatDateSaldos(new Date(now.getFullYear(), now.getMonth(), 1));
+    this.movementEndDate = this.formatDateSaldos(new Date(now.getFullYear(), now.getMonth() + 1, 0));
+    this.applyMovementFilters();
+  }
+
+  private getMovementDateKey(value: any): string {
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) return '';
+    return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+  }
+
+  private isMovementReconciled(movement: any): boolean {
+    try {
+      return localStorage.getItem(this.getMovementReconciliationKey(movement)) === 'true';
+    } catch {
+      return false;
+    }
+  }
+
+  private getMovementReconciliationKey(movement: any): string {
+    const identity = movement.id
+      ?? movement.idIncomeAndExpense
+      ?? movement.idIncomesAndExpenses
+      ?? [movement.numeroDocumento, movement.fecha, movement.tipo, movement.deposito, movement.gasto].join('|');
+    return `account-bank-reconciliation:${this.selectedRowData?.id || 'unknown'}:${identity}`;
   }
 
   addRow() {
@@ -765,6 +892,7 @@ export class AccountbanksComponent implements CanComponentDeactivate, OnDestroy 
     this.obtenerDatos();
     if (prevSelected) {
       this.rowDetails = [];
+      this.applyMovementFilters();
       this.loadBalanceData(prevSelected);
     }
   }
