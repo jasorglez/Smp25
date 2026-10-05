@@ -1,5 +1,5 @@
 <div class="row p-3 user-assignment-page">
-    <div [ngClass]="profile().emailUser() ? 'col-lg-10 col-md-9 col-sm-9 col-9' : 'col-12'">
+    <div [ngClass]="profile().emailUser() ? 'col-lg-9 col-md-8 col-sm-12 col-12' : 'col-12'">
         <section class="user-assignment-panel">
             <header class="user-assignment-header">
                 <span class="assignment-icon"><i class="bi bi-person-gear"></i></span>
@@ -46,7 +46,7 @@
         </div>
         </section>
     </div>
-    <div class="col-lg-2 col-md-3 col-sm-3 col-3" *ngIf="profile().emailUser()">
+    <div class="col-lg-3 col-md-4 col-sm-12 col-12" *ngIf="profile().emailUser()">
         <div class="card text-center profile-card">
             <app-users-profile [sectionTitle]="profileSectionTitle" [assignedItems]="profileItems"
                 [showAllAccess]="true"></app-users-profile>

@@ -1,6 +1,7 @@
 .profile-summary {
   padding: 6px;
   color: #334155;
+  user-select: text;
 }
 
 .profile-avatar-wrap {
@@ -30,20 +31,48 @@
   background: #22c55e;
 }
 
+.profile-copy-row {
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  gap: 5px;
+  min-width: 0;
+}
+
+.profile-name-row {
+  align-items: center;
+}
+
 h6 {
   margin: 0;
   color: #17365d;
   font-size: 0.84rem;
   font-weight: 700;
+  overflow-wrap: anywhere;
 }
 
 .profile-email {
-  overflow: hidden;
+  min-width: 0;
   margin: 3px 0 9px;
   color: #64748b;
   font-size: 0.67rem;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  overflow-wrap: anywhere;
+  text-align: left;
+}
+
+.copy-profile-button {
+  flex: 0 0 auto;
+  padding: 1px 3px;
+  color: #64748b;
+  background: transparent;
+  border: 0;
+  border-radius: 4px;
+  font-size: 0.68rem;
+}
+
+.copy-profile-button:hover {
+  color: #1d4ed8;
+  background: #dbeafe;
 }
 
 .profile-role {
@@ -107,6 +136,94 @@ h6 {
 
 .access-section:last-child {
   border-bottom: 0;
+}
+
+.company-access {
+  padding: 9px 0;
+  border-bottom: 1px solid #dbe3ed;
+}
+
+.company-access-title,
+.branch-access-title,
+.nested-access-item,
+.project-access {
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+  min-width: 0;
+  line-height: 1.3;
+  overflow-wrap: anywhere;
+}
+
+.company-access-title {
+  color: #17365d;
+  font-size: 0.7rem;
+  font-weight: 700;
+}
+
+.company-access-title i {
+  flex: 0 0 auto;
+  color: #2563eb;
+}
+
+.branch-access {
+  margin: 7px 0 0 7px;
+  padding-left: 8px;
+  border-left: 2px solid #dbeafe;
+}
+
+.branch-access-title {
+  color: #334155;
+  font-size: 0.66rem;
+  font-weight: 700;
+}
+
+.branch-access-title small {
+  color: #94a3b8;
+  font-size: 0.56rem;
+  font-weight: 400;
+}
+
+.nested-access {
+  margin: 4px 0 2px 8px;
+  padding-left: 8px;
+  border-left: 1px solid #e2e8f0;
+}
+
+.nested-access-group {
+  margin-top: 6px;
+}
+
+.nested-access-group > small {
+  display: block;
+  margin-bottom: 3px;
+  color: #94a3b8;
+  font-size: 0.57rem;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+.nested-access-item,
+.project-access {
+  padding: 3px 0;
+  color: #475569;
+  font-size: 0.62rem;
+}
+
+.nested-access-item > i,
+.project-access > i {
+  flex: 0 0 auto;
+  margin-top: 1px;
+  color: #64748b;
+}
+
+.project-access {
+  margin-left: 13px;
+  color: #64748b;
+}
+
+.company-direct-access {
+  margin: 6px 0 0 14px;
 }
 
 .assignment-summary-title {

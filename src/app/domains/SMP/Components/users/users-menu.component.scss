@@ -61,6 +61,43 @@
   background: rgba(255, 255, 255, 0.1);
 }
 
+.selected-company-context {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  max-width: min(42vw, 420px);
+  padding: 7px 11px;
+  color: #fff;
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.16);
+}
+
+.selected-company-context > i {
+  flex: 0 0 auto;
+  font-size: 1rem;
+}
+
+.selected-company-context span,
+.selected-company-context small,
+.selected-company-context strong {
+  display: block;
+  min-width: 0;
+}
+
+.selected-company-context small {
+  color: rgba(255, 255, 255, 0.78);
+  font-size: 0.63rem;
+}
+
+.selected-company-context strong {
+  overflow: hidden;
+  color: #fff;
+  font-size: 0.78rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .selected-user img {
   width: 32px;
   height: 32px;
@@ -135,6 +172,11 @@
   }
 
   .selected-user {
+    width: 100%;
+    max-width: none;
+  }
+
+  .selected-company-context {
     width: 100%;
     max-width: none;
   }

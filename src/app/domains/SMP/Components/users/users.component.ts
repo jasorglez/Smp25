@@ -108,7 +108,7 @@ export class UsersComponent implements OnDestroy {
       departmentName,
       this.selectedRowData.position
     );
-    this.signalsService.nameCompany.set(null);
+    this.signalsService.setCompanyFromPermissions(null);
   }
 
   @HostListener('window:beforeunload', ['$event'])

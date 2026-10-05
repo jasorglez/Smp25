@@ -5,15 +5,23 @@
         <span class="status-dot" title="Usuario seleccionado"></span>
     </div>
 
-    <h6>{{ profile.nameUser() }}</h6>
-    <p class="profile-email" [title]="profile.emailUser()">{{ profile.emailUser() }}</p>
+    <div class="profile-copy-row profile-name-row">
+        <h6>{{ profile.nameUser() }}</h6>
+        <button type="button" class="copy-profile-button" (click)="copyProfileValue(profile.nameUser())"
+            title="Copiar nombre" aria-label="Copiar nombre"><i class="bi bi-copy"></i></button>
+    </div>
+    <div class="profile-copy-row">
+        <p class="profile-email" [title]="profile.emailUser()">{{ profile.emailUser() }}</p>
+        <button type="button" class="copy-profile-button" (click)="copyProfileValue(profile.emailUser())"
+            title="Copiar correo" aria-label="Copiar correo"><i class="bi bi-copy"></i></button>
+    </div>
 
     <div class="profile-role" *ngIf="profile.organizationUser()">
         <i class="bi bi-person-badge"></i>
         <span>{{ profile.organizationUser() }}</span>
     </div>
 
-    <div class="profile-context" *ngIf="nameCompany != null || nameContract != null">
+    <div class="profile-context" *ngIf="!showAllAccess && (nameCompany != null || nameContract != null)">
         <div *ngIf="nameCompany != null">
             <small>Empresa seleccionada</small>
             <strong>{{ nameCompany }}</strong>
@@ -25,20 +33,47 @@
     </div>
 
     <div class="access-summary" *ngIf="showAllAccess; else currentSection">
-        <div class="access-section" *ngFor="let section of visibleAccessSections">
-            <div class="assignment-summary-title">
-                <span><i class="bi" [ngClass]="section.icon"></i> {{ section.title }}</span>
-                <span class="assignment-total">{{ section.items.length }}</span>
-            </div>
-            <div class="assignment-items" *ngIf="section.items.length; else noSectionAssignments">
-                <div class="assignment-item" *ngFor="let item of section.items">
-                    <i class="bi bi-check-circle-fill"></i>
-                    <span>{{ item }}</span>
+        <div class="company-access" *ngFor="let company of companyGroups">
+            <div class="company-access-title"><i class="bi bi-building"></i><span>{{ company.name }}</span></div>
+
+            <div class="branch-access" *ngFor="let branch of company.branches">
+                <div class="branch-access-title">
+                    <i class="bi bi-geo-alt"></i><span>{{ branch.name }}</span>
+                    <small *ngIf="!branch.assigned">contexto</small>
+                </div>
+                <div class="nested-access" *ngIf="branch.contracts.length || branch.warehouses.length || branch.projects.length">
+                    <div class="nested-access-group" *ngIf="branch.contracts.length">
+                        <small>Contratos</small>
+                        <div class="nested-access-item" *ngFor="let contract of branch.contracts">
+                            <i class="bi bi-file-earmark-text"></i><span>{{ contract.name }}</span>
+                            <div class="project-access" *ngFor="let project of contract.projects">
+                                <i class="bi bi-diagram-3"></i><span>{{ project }}</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="nested-access-group" *ngIf="branch.projects.length">
+                        <small>Proyectos</small><div class="nested-access-item" *ngFor="let project of branch.projects"><i class="bi bi-diagram-3"></i><span>{{ project }}</span></div>
+                    </div>
+                    <div class="nested-access-group" *ngIf="branch.warehouses.length">
+                        <small>Almacenes</small><div class="nested-access-item" *ngFor="let warehouse of branch.warehouses"><i class="bi bi-box-seam"></i><span>{{ warehouse }}</span></div>
+                    </div>
                 </div>
             </div>
-            <ng-template #noSectionAssignments>
-                <p class="empty-assignments">Sin asignaciones</p>
-            </ng-template>
+
+            <div class="company-direct-access" *ngIf="company.contracts.length || company.projects.length || company.warehouses.length">
+                <div class="nested-access-item" *ngFor="let contract of company.contracts">
+                    <i class="bi bi-file-earmark-text"></i><span>{{ contract.name }}</span>
+                    <div class="project-access" *ngFor="let project of contract.projects"><i class="bi bi-diagram-3"></i><span>{{ project }}</span></div>
+                </div>
+                <div class="nested-access-item" *ngFor="let project of company.projects"><i class="bi bi-diagram-3"></i><span>{{ project }}</span></div>
+                <div class="nested-access-item" *ngFor="let warehouse of company.warehouses"><i class="bi bi-box-seam"></i><span>{{ warehouse }}</span></div>
+            </div>
+            <p class="empty-assignments" *ngIf="!company.branches.length && !company.contracts.length && !company.projects.length && !company.warehouses.length">Sin asignaciones operativas</p>
+        </div>
+
+        <div class="access-section" *ngFor="let section of visibleAccessSections">
+            <div class="assignment-summary-title"><span><i class="bi" [ngClass]="section.icon"></i> {{ section.title }}</span></div>
+            <div class="assignment-items"><div class="assignment-item" *ngFor="let item of section.items"><i class="bi bi-exclamation-circle"></i><span>{{ item }}</span></div></div>
         </div>
     </div>
 

@@ -15,6 +15,14 @@
           <strong>{{ profile().nameUser() || profile().emailUser() }}</strong>
         </span>
       </div>
+      <div class="selected-company-context"
+        *ngIf="['usersxroot', 'usersxbranches', 'usersxcontracts', 'usersxprojects'].includes(selectedTab)">
+        <i class="bi bi-building-check"></i>
+        <span>
+          <small>Empresa para asignación</small>
+          <strong>{{ selectedCompany() || 'Selecciona una empresa en la pestaña Empresas' }}</strong>
+        </span>
+      </div>
     </header>
 
     <div class="users-navigation">

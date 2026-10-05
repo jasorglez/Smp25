@@ -147,9 +147,11 @@ public gridOptions: any = {
     const selectedNodes = event.api.getSelectedNodes();
     if (selectedNodes.length > 0) {
       this.selectedRowData = selectedNodes[0].data;
-      this.signalsService.setCompanyFromPermissions(this.selectedRowData.idPermission);
+      const companyId = Number(this.selectedRowData.idPermission);
+      this.signalsService.setCompanyFromPermissions(companyId, this.root[companyId] || `Empresa ${companyId}`);
     } else {
       this.selectedRowData = null;
+      this.signalsService.setCompanyFromPermissions(null);
     }
   }
 

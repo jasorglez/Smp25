@@ -34,6 +34,7 @@ export class UsersMenuComponent {
   showRoot : boolean = false ;
   
   profile = computed(() => this.signalsService.profile);
+  selectedCompany = computed(() => this.signalsService.nameCompany());
 
   idRoot: number = 0 ;
   correoglobal: string = ''; // Asegúrate de que esta variable tenga el valor correcto

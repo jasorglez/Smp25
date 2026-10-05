@@ -9,6 +9,20 @@ import { SignalsService } from 'app/services/signals.service';
 import { UsersxpermissionsService } from 'app/services/usersxpermissions.service';
 import { WarehousesService } from 'app/services/warehouses.service';
 
+interface ProfileCompanyGroup {
+  name: string;
+  branches: Array<{
+    name: string;
+    assigned: boolean;
+    contracts: Array<{ name: string; projects: string[] }>;
+    warehouses: string[];
+    projects: string[];
+  }>;
+  contracts: Array<{ name: string; projects: string[] }>;
+  projects: string[];
+  warehouses: string[];
+}
+
 @Component({
   selector: 'app-users-profile',
   standalone: true,
@@ -35,7 +49,8 @@ export class UsersProfileComponent {
 
   nameCompany = this.signalsService.nameCompany();
   nameContract = this.signalsService.nameContract();
-  accessSections: Array<{ title: string; icon: string; items: string[] }> = [];
+  companyGroups: ProfileCompanyGroup[] = [];
+  unlinkedAccessSections: Array<{ title: string; icon: string; items: string[] }> = [];
 
   constructor() {
     effect(() => {
@@ -43,7 +58,8 @@ export class UsersProfileComponent {
       if (idUser) {
         this.loadAccessSummary(idUser);
       } else {
-        this.accessSections = [];
+        this.companyGroups = [];
+        this.unlinkedAccessSections = [];
       }
     });
   }
@@ -53,12 +69,23 @@ export class UsersProfileComponent {
   }
 
   get visibleAccessSections(): Array<{ title: string; icon: string; items: string[] }> {
-    return this.accessSections.map(section => ({
-      ...section,
-      items: section.title === this.sectionTitle && this.visibleAssignedItems.length
-        ? this.visibleAssignedItems
-        : section.items
-    }));
+    return this.unlinkedAccessSections.map(section => ({ ...section }));
+  }
+
+  async copyProfileValue(value: string | null | undefined): Promise<void> {
+    if (!value) return;
+    try {
+      await navigator.clipboard.writeText(value);
+    } catch (error) {
+      const input = document.createElement('textarea');
+      input.value = value;
+      input.style.position = 'fixed';
+      input.style.opacity = '0';
+      document.body.appendChild(input);
+      input.select();
+      document.execCommand('copy');
+      input.remove();
+    }
   }
 
   private loadAccessSummary(idUser: number): void {
@@ -104,45 +131,115 @@ export class UsersProfileComponent {
 
         const contracts = this.asArray(catalogs.contractCatalog).flatMap(item => this.asArrayOrSingle(item));
         const projects = this.asArray(catalogs.projectCatalog).flatMap(item => this.asArrayOrSingle(item));
-        const warehouses = this.asArray(catalogs.warehouseCatalog).flatMap(item => this.asArray(item));
+        const warehousesByBranch = new Map<number, any[]>();
+        branchIds.forEach((branchId, index) => {
+          warehousesByBranch.set(branchId, this.asArray(catalogs.warehouseCatalog[index]));
+        });
+        const companyByBranch = new Map<number, number>();
+        branches.forEach(branch => {
+          const companyId = Number(branch?.idCompany ?? branch?.idRoot ?? 0);
+          if (companyId) companyByBranch.set(Number(branch.id), companyId);
+        });
 
-        this.accessSections = [
-          {
-            title: 'Empresas',
-            icon: 'bi-building',
-            items: companyIds.map(id => this.findName(companies, id, ['name', 'nombre'], `Empresa ${id}`))
-          },
-          {
-            title: 'Sucursales',
-            icon: 'bi-geo-alt',
-            items: branchIds.map(id => this.findName(branches, id, ['name', 'nombre'], `Sucursal ${id}`))
-          },
-          {
-            title: 'Contratos',
-            icon: 'bi-file-earmark-text',
-            items: contractIds.map(id => {
-              const contract = this.findById(contracts, id);
-              return contract
-                ? [contract.numberContract, contract.descripSmall].filter(Boolean).join(' - ')
-                : `Contrato ${id}`;
-            })
-          },
-          {
-            title: 'Proyectos',
-            icon: 'bi-diagram-3',
-            items: projectIds.map(id => {
-              const project = this.findById(projects, id);
-              return project
-                ? [project.idConsecutivo, project.name ?? project.nombre].filter(Boolean).join(' - ')
-                : `Proyecto ${id}`;
-            })
-          },
-          {
-            title: 'Almacenes',
-            icon: 'bi-box-seam',
-            items: warehouseIds.map(id => this.findName(warehouses, id, ['name', 'nombre'], `Almacén ${id}`))
+        const groups = new Map<number, ProfileCompanyGroup>();
+        companyIds.forEach(id => groups.set(id, {
+          name: this.findName(companies, id, ['name', 'nombre'], `Empresa ${id}`),
+          branches: [], contracts: [], projects: [], warehouses: []
+        }));
+        const branchNodes = new Map<number, ProfileCompanyGroup['branches'][number]>();
+        const getBranchNode = (branchId: number, assigned = false) => {
+          let node = branchNodes.get(branchId);
+          if (!node) {
+            node = {
+              name: this.findName(branches, branchId, ['name', 'nombre'], `Sucursal ${branchId}`),
+              assigned, contracts: [], warehouses: [], projects: []
+            };
+            branchNodes.set(branchId, node);
+            const companyId = companyByBranch.get(branchId);
+            const company = companyId ? groups.get(companyId) : undefined;
+            if (company) company.branches.push(node);
+          } else if (assigned) {
+            node.assigned = true;
           }
-        ];
+          return node;
+        };
+
+        branchIds.forEach(id => getBranchNode(id, true));
+        const contractAssignments = new Map<number, { name: string; projects: string[]; branch?: ProfileCompanyGroup['branches'][number]; company?: ProfileCompanyGroup; linked: boolean }>();
+        const unlinkedContractNames: string[] = [];
+        contractIds.forEach(id => {
+          const contract = this.findById(contracts, id);
+          const name = contract
+            ? [contract.numberContract, contract.descripSmall].filter(Boolean).join(' - ')
+            : `Contrato ${id}`;
+          const branchId = Number(contract?.idBranch ?? 0);
+          const branch = branchId ? getBranchNode(branchId) : undefined;
+          const companyId = branchId ? companyByBranch.get(branchId) : undefined;
+          const company = companyId ? groups.get(companyId) : undefined;
+          const item = { name, projects: [] as string[] };
+          if (branch && company) branch.contracts.push(item);
+          else if (company) company.contracts.push(item);
+          else unlinkedContractNames.push(name);
+          contractAssignments.set(id, { ...item, branch, company, linked: !!company });
+        });
+
+        projectIds.forEach(id => {
+          const project = this.findById(projects, id);
+          const name = project
+            ? [project.idConsecutivo, project.name ?? project.nombre].filter(Boolean).join(' - ')
+            : `Proyecto ${id}`;
+          const contractId = Number(project?.idContract ?? project?.idContrato ?? 0);
+          const contract = contractAssignments.get(contractId);
+          if (contract?.linked) {
+            contract.projects.push(name);
+          } else {
+            const companyId = Number(project?.idCompany ?? project?.idRoot ?? 0);
+            const company = groups.get(companyId);
+            if (company) company.projects.push(name);
+          }
+        });
+
+        const assignedWarehouseIds = new Set(warehouseIds);
+        warehousesByBranch.forEach((warehouseList, branchId) => {
+          const branch = getBranchNode(branchId);
+          const companyId = companyByBranch.get(branchId);
+          const company = companyId ? groups.get(companyId) : undefined;
+          warehouseList.forEach(warehouse => {
+            const warehouseId = Number(warehouse?.id ?? warehouse?.idWarehouse ?? warehouse?.idAlmacen ?? 0);
+            if (!warehouseId || !assignedWarehouseIds.has(warehouseId)) return;
+            const name = this.findName([warehouse], warehouseId, ['name', 'nombre', 'description'], `Almacén ${warehouseId}`);
+            if (branch && company) branch.warehouses.push(name);
+            else if (company) company.warehouses.push(name);
+          });
+        });
+
+        this.companyGroups = [...groups.values()].map(group => ({
+          ...group,
+          branches: group.branches.sort((a, b) => a.name.localeCompare(b.name))
+        }));
+
+        const linkedCompanyBranchIds = new Set([...branchNodes.keys()].filter(id => groups.has(companyByBranch.get(id) ?? -1)));
+        const linkedProjectNames = new Set([...groups.values()].flatMap(group => [
+          ...group.projects,
+          ...group.branches.flatMap(branch => [
+            ...branch.projects,
+            ...branch.contracts.flatMap(contract => contract.projects)
+          ]),
+          ...group.contracts.flatMap(contract => contract.projects)
+        ]));
+        this.unlinkedAccessSections = [
+          { title: 'Sucursales sin empresa asignada', icon: 'bi-geo-alt', items: branchIds.filter(id => !linkedCompanyBranchIds.has(id)).map(id => this.findName(branches, id, ['name', 'nombre'], `Sucursal ${id}`)) },
+          { title: 'Contratos sin empresa/sucursal asignada', icon: 'bi-file-earmark-text', items: unlinkedContractNames },
+          { title: 'Proyectos sin empresa o contrato vinculado', icon: 'bi-diagram-3', items: projectIds.map(id => {
+            const project = this.findById(projects, id);
+            const name = project ? [project.idConsecutivo, project.name ?? project.nombre].filter(Boolean).join(' - ') : `Proyecto ${id}`;
+            return linkedProjectNames.has(name) ? '' : name;
+          }).filter(Boolean) },
+          { title: 'Almacenes sin sucursal/empresa asignada', icon: 'bi-box-seam', items: warehouseIds.filter(id => {
+            const owner = [...warehousesByBranch.entries()].find(([, list]) => list.some(warehouse => Number(warehouse?.id ?? warehouse?.idWarehouse ?? warehouse?.idAlmacen) === id));
+            return !owner || !groups.has(companyByBranch.get(owner[0]) ?? -1);
+          }).map(id => `Almacén ${id}`) }
+        ].filter(section => section.items.length);
       });
     });
   }
@@ -163,7 +260,7 @@ export class UsersProfileComponent {
   }
 
   private findById(catalog: any[], id: number): any {
-    return catalog.find(item => Number(item?.id ?? item?.idContrato) === Number(id));
+    return catalog.find(item => Number(item?.id ?? item?.idContrato ?? item?.idProject ?? item?.idProyecto) === Number(id));
   }
 
   private findName(catalog: any[], id: number, fields: string[], fallback: string): string {

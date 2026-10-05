@@ -374,8 +374,9 @@ getMasterUpdateTrigger() {
     this.nameContract.set(name);
   }
 
-  setCompanyFromPermissions(id: number) {
+  setCompanyFromPermissions(id: number | null, name: string | null = null) {
     this.idRoot.set(id);
+    this.nameCompany.set(name);
   }
 
   getCompanyFromPermissions() {
