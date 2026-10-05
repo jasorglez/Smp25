@@ -415,7 +415,7 @@ export class RequisitionsComponent implements CanComponentDeactivate {
         },
         valueFormatter: (params) => {
           const foundItem = this.departamentos
-            ? this.departamentos.find((item) => item.id === params.value)
+            ? this.departamentos.find((item) => Number(item.id) === Number(params.value))
             : null;
           if (Number(params.value) === -1) return '＋ Agregar nuevo...';
           return foundItem ? `${foundItem.description}` : params.value;
@@ -636,17 +636,21 @@ export class RequisitionsComponent implements CanComponentDeactivate {
     this.departmentsService.createDepartment(this.idRoot, description).subscribe({
       next: (response: any) => {
         const created = response?.data ?? response;
-        if (!created?.id) {
+        const departmentId = Number(created?.id ?? created?.Id);
+        if (!departmentId) {
           alerts.basicAlert('Departamento', response?.message || 'No se pudo crear el departamento.', 'error');
           return;
         }
-        this.departamentos = [...(this.departamentos ?? []), created];
-        this.defaultDepartmentId = Number(created.id);
-        event.data.idDepartament = created.id;
-        event.data.__modified = true;
+        const department = { ...created, id: departmentId, description: created.description ?? created.Description ?? description };
+        this.departamentos = [...(this.departamentos ?? []).filter(item => Number(item.id) !== departmentId), department];
+        this.defaultDepartmentId = departmentId;
+        const updatedRow = { ...event.node.data, idDepartament: departmentId, __modified: true };
+        event.node.setData(updatedRow);
+        this.masterRowData = this.masterRowData.map(row => row.id === updatedRow.id ? updatedRow : row);
+        if (this.masterSelectedRowData?.id === updatedRow.id) this.masterSelectedRowData = updatedRow;
         this.masterNotSavedChanges = true;
-        event.api.refreshCells({ rowNodes: [event.node], force: true });
-        alerts.basicAlert('Departamento agregado', `${created.description} quedó disponible para esta empresa.`, 'success');
+        event.api.refreshCells({ rowNodes: [event.node], columns: ['idDepartament'], force: true });
+        alerts.basicAlert('Departamento agregado', `${department.description} quedó seleccionado para esta requisición.`, 'success');
       },
       error: (error) => {
         console.error('Error al crear departamento:', error);

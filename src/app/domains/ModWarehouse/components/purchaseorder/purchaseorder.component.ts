@@ -444,8 +444,8 @@ export class PurchaseOrderComponent implements CanComponentDeactivate {
       {
         field: 'idDepartament', headerName: 'Departamento solicita', width: 190, editable: true,
         cellEditor: 'agSelectCellEditor',
-        cellEditorParams: () => ({ values: [...(this.departamentos ?? []).map((item: any) => item.id), -1] }),
-        valueFormatter: (params) => Number(params.value) === -1 ? '＋ Agregar nuevo...' :
+        cellEditorParams: () => ({ values: [...(this.departamentos ?? []).map((item: any) => item.id), '__ADD_NEW__'] }),
+        valueFormatter: (params) => params.value === '__ADD_NEW__' ? '＋ Agregar nuevo...' :
           (this.departamentos ?? []).find((item: any) => Number(item.id) === Number(params.value))?.description || '',
       },
       {
@@ -921,14 +921,18 @@ export class PurchaseOrderComponent implements CanComponentDeactivate {
     try {
       const response: any = await lastValueFrom(this.departmentsService.createDepartment(this.idRoot, description));
       const created = response?.data ?? response;
-      const id = Number(created?.id);
+      const id = Number(created?.id ?? created?.Id);
       if (!id) {
         alerts.basicAlert('Departamento', response?.message || 'No se pudo crear el departamento.', 'error');
         return null;
       }
-      this.departamentos = [...(this.departamentos ?? []), created];
+      this.departamentos = [...(this.departamentos ?? []).filter(item => Number(item.id) !== id), {
+        ...created,
+        id,
+        description: created.description ?? created.Description ?? description,
+      }];
       this.defaultDepartmentId = id;
-      alerts.basicAlert('Departamento agregado', `${created.description} quedó seleccionado y disponible para las próximas OC.`, 'success');
+      alerts.basicAlert('Departamento agregado', `${created.description ?? created.Description ?? description} quedó seleccionado y disponible para las próximas OC.`, 'success');
       return id;
     } catch (error) {
       console.error('Error al crear departamento:', error);
@@ -1231,10 +1235,12 @@ export class PurchaseOrderComponent implements CanComponentDeactivate {
       if (openDialog) {
         openDialog().then(newId => {
           if (newId) {
-            node.data[colId] = newId;
-            node.data.__modified = true;
+            const updatedData = { ...node.data, [colId]: Number(newId), __modified: true };
+            node.setData(updatedData);
+            this.masterRowData = this.masterRowData.map(row => row.id === updatedData.id ? updatedData : row);
+            if (this.masterSelectedRowData?.id === updatedData.id) this.masterSelectedRowData = updatedData;
             this.masterNotSavedChanges = true;
-            this.masterGridApi?.refreshCells({ rowNodes: [node], force: true });
+            this.masterGridApi?.refreshCells({ rowNodes: [node], columns: [colId], force: true });
           }
         });
       }
