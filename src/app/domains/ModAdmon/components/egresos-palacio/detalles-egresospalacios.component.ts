@@ -77,17 +77,17 @@ import { TrackingService } from 'app/services/tracking.service';
 
     <!-- PDF Report View -->
     <div class="report-detail-container" *ngIf="detailType === 'report'">
-      <div class="report-header d-flex justify-content-between align-items-center mb-3">
+      <div class="report-header d-flex justify-content-between align-items-center">
         <h5 class="mb-0">Vista Previa del Recibo - Documento: {{ expenditureData?.numberDocument || 'Sin Número' }}</h5>
         <button type="button" class="btn btn-outline-secondary btn-sm" (click)="closeReport()">
           <i class="bi bi-x-lg"></i> Cerrar
         </button>
       </div>
-      <div class="report-content" style="height: 480px; border: 1px solid #dee2e6; border-radius: 0.375rem;">
+      <div class="report-content">
         <iframe
           *ngIf="pdfUrl"
           [src]="pdfUrl"
-          style="width: 100%; height: 100%; border: none; border-radius: 0.375rem;">
+          title="Vista previa del reporte de egreso">
         </iframe>
         <div *ngIf="!pdfUrl" class="d-flex justify-content-center align-items-center h-100">
           <div class="text-center">
@@ -104,17 +104,17 @@ import { TrackingService } from 'app/services/tracking.service';
 
     <!-- Catalog PDF Report View -->
     <div class="report-detail-container" *ngIf="detailType === 'catalogReport'">
-      <div class="report-header d-flex justify-content-between align-items-center mb-3">
+      <div class="report-header d-flex justify-content-between align-items-center">
         <h5 class="mb-0">Catálogo de Gasto - Documento: {{ expenditureData?.numberDocument || 'Sin Número' }}</h5>
         <button type="button" class="btn btn-outline-secondary btn-sm" (click)="closeReport()">
           <i class="bi bi-x-lg"></i> Cerrar
         </button>
       </div>
-      <div class="report-content" style="height: 480px; border: 1px solid #dee2e6; border-radius: 0.375rem;">
+      <div class="report-content">
         <iframe
           *ngIf="pdfUrl"
           [src]="pdfUrl"
-          style="width: 100%; height: 100%; border: none; border-radius: 0.375rem;">
+          title="Vista previa del reporte de egreso">
         </iframe>
         <div *ngIf="!pdfUrl" class="d-flex justify-content-center align-items-center h-100">
           <div class="text-center">
@@ -233,6 +233,11 @@ import { TrackingService } from 'app/services/tracking.service';
     </div>
   `,
   styles: [`
+    :host {
+      display: block;
+      width: 100%;
+      min-width: 0;
+    }
     .detail-grid-container {
       padding: 15px;
       background-color: #f8f9fa;
@@ -242,8 +247,38 @@ import { TrackingService } from 'app/services/tracking.service';
       font-size: 0.95rem;
     }
     .report-detail-container {
-      padding: 15px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      height: max(320px, calc(67vh - 80px));
+      box-sizing: border-box;
+      padding: 8px;
       background-color: #ffffff;
+    }
+    .report-header {
+      flex: 0 0 auto;
+      gap: 12px;
+    }
+    .report-header h5 {
+      font-size: 1rem;
+      white-space: normal;
+      overflow-wrap: anywhere;
+    }
+    .report-header button {
+      flex-shrink: 0;
+    }
+    .report-content {
+      flex: 1 1 auto;
+      min-height: 0;
+      overflow: hidden;
+      border: 1px solid #dee2e6;
+      border-radius: 0.375rem;
+    }
+    .report-content iframe {
+      display: block;
+      width: 100%;
+      height: 100%;
+      border: 0;
     }
   `]
 })

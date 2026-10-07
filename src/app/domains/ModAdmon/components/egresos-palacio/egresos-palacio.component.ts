@@ -266,7 +266,7 @@ export class EgresosPalacioComponent {
     rowHeight: 24,
     animateRows: true,
     masterDetail: true,
-    detailRowHeight: 840,
+    detailRowAutoHeight: true,
     detailCellRenderer: DetallesEgresospalaciosComponent,
     suppressMenuHide: false,
     popupParent: document.body,
@@ -279,6 +279,7 @@ export class EgresosPalacioComponent {
     tooltipShowDelay: 500,
     tooltipHideDelay: 10000,
     getRowClass: (params) => {
+      if (params.node.detail) return '';
       // Verificar si la fila está seleccionada
       if (params.node.isSelected()) {
         return 'selected-row';
@@ -286,6 +287,10 @@ export class EgresosPalacioComponent {
       return '';
     },
     getRowStyle: (params) => {
+      if (params.node.detail) {
+        return { backgroundColor: '#ffffff', color: '#000000', fontWeight: 'normal' };
+      }
+
       // Prioridad 1: Fila seleccionada (rojo claro)
       if (params.node.isSelected()) {
         return { backgroundColor: '#ffe6e6', color: '#000000', fontWeight: 'bold' };
