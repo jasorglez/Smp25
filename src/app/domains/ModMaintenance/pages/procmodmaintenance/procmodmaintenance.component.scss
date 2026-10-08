@@ -106,9 +106,9 @@
 
 /* Navigation Menu */
 .navigation-menu {
-  background: linear-gradient(135deg, #ffffff 0%, #f8fafc 100%);
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
-  border-bottom: 1px solid #e2e8f0;
+  background: #f8f9fa;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.07);
+  border-bottom: 1px solid #dee2e6;
   position: sticky;
   top: 0;
   z-index: 100;
@@ -117,18 +117,12 @@
 .nav-container {
   max-width: 1400px;
   margin: 0 auto;
-  padding: 0 2rem;
+  padding: 0.5rem 0.75rem;
   display: flex;
-  justify-content: center;
+  justify-content: flex-start;
   align-items: center;
-  gap: 0;
-  overflow-x: auto;
-  scrollbar-width: none;
-  -ms-overflow-style: none;
-}
-
-.nav-container::-webkit-scrollbar {
-  display: none;
+  flex-wrap: wrap;
+  gap: 4px;
 }
 
 .nav-item {
@@ -136,56 +130,49 @@
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  padding: 1rem 1.5rem;
+  width: 76px;
+  min-width: 76px;
+  padding: 6px 4px 5px;
+  border-radius: 10px;
+  font-weight: 500;
+  text-align: center;
+  color: #fff;
+  background-color: #5a8fc5;
+  border: 1px solid #4a7db5;
+  transition: background-color 0.15s ease, transform 0.1s ease;
   text-decoration: none;
-  color: #64748b;
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-  border-bottom: 3px solid transparent;
   position: relative;
-  min-width: 120px;
-  white-space: nowrap;
+  white-space: normal;
 }
 
 .nav-item:hover {
-  color: #3b82f6;
-  background: linear-gradient(135deg, rgba(59, 130, 246, 0.05) 0%, rgba(59, 130, 246, 0.02) 100%);
-  transform: translateY(-2px);
+  background-color: #4a7db5;
+  transform: translateY(-1px);
+  color: #fff;
 }
 
 .nav-item.active {
-  color: #3b82f6;
-  border-bottom-color: #3b82f6;
-  background: linear-gradient(135deg, rgba(59, 130, 246, 0.08) 0%, rgba(59, 130, 246, 0.04) 100%);
-}
-
-.nav-item.active::before {
-  content: '';
-  position: absolute;
-  top: 0;
-  left: 50%;
-  transform: translateX(-50%);
-  width: 6px;
-  height: 6px;
-  background: #3b82f6;
-  border-radius: 50%;
-  box-shadow: 0 2px 8px rgba(59, 130, 246, 0.4);
+  color: #fff;
+  background-color: #099728;
+  border-color: #077a20;
 }
 
 .nav-icon {
-  font-size: 1.5rem;
-  margin-bottom: 0.5rem;
-  transition: transform 0.3s ease;
+  font-size: 1.25rem;
+  margin: 0 0 3px 0;
+  display: block;
+  transition: transform 0.15s ease;
 }
 
 .nav-item:hover .nav-icon {
-  transform: scale(1.1);
+  transform: translateY(-1px);
 }
 
 .nav-text {
-  font-size: 0.85rem;
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
+  font-size: 0.60rem;
+  line-height: 1.15;
+  display: block;
+  overflow-wrap: anywhere;
 }
 
 /* Main Content */
