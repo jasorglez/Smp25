@@ -6,6 +6,7 @@ import { AuthService } from 'app/services/auth.service';
 import { CommonModule } from '@angular/common';
 import { alerts } from 'app/helpers/alerts';
 import { ProjectsService } from 'app/services/projects.service';
+import { ProjectOrdersDetailComponent } from './project-orders-detail.component';
 import { OilfieldService } from 'app/services/oilfield.service';
 import { FollowprojectsService } from 'app/services/followprojects.service';
 import { lastValueFrom, concat, toArray } from 'rxjs';
@@ -13,7 +14,7 @@ import { lastValueFrom, concat, toArray } from 'rxjs';
 @Component({
   selector: 'app-detail-cell-renderer-proyectos',
   standalone: true,
-  imports: [AgGridModule, CommonModule],
+  imports: [AgGridModule, CommonModule, ProjectOrdersDetailComponent],
   template: `
     <div
       style="padding: 10px; background-color: #e9ecef; height: 100%; display: flex; flex-direction: column;"
@@ -98,6 +99,11 @@ export class DetailCellRendererProyectosComponent implements ICellRendererAngula
     rowHeight: 20,
     suppressEnterWhenEditing: false,
     rowSelection: 'single',
+    masterDetail: true,
+    isRowMaster: (project: any) => !!project?.id && !project.__isNew,
+    detailCellRenderer: 'projectOrdersDetail',
+    detailRowHeight: 260,
+    components: { projectOrdersDetail: ProjectOrdersDetailComponent },
     onFirstDataRendered: (params) => {
       const allColumnIds: string[] = [];
       params.api.getColumns()?.forEach((column: any) => {
@@ -166,6 +172,22 @@ export class DetailCellRendererProyectosComponent implements ICellRendererAngula
   };
 
   projectColumnDefs: ColDef[] = [
+    {
+      colId: 'projectOrdersExpand',
+      valueGetter: () => '',
+      headerName: '',
+      width: 42,
+      minWidth: 42,
+      maxWidth: 42,
+      pinned: 'left',
+      editable: false,
+      sortable: false,
+      filter: false,
+      resizable: false,
+      cellRenderer: 'agGroupCellRenderer',
+      cellRendererParams: { suppressCount: true },
+      valueFormatter: () => ''
+    },
     {
       headerName: '#',
       valueGetter: 'node.rowIndex + 1',
