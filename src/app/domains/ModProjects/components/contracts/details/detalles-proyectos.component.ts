@@ -9,14 +9,13 @@ import { ProjectsService } from 'app/services/projects.service';
 import { OilfieldService } from 'app/services/oilfield.service';
 import { FollowprojectsService } from 'app/services/followprojects.service';
 import { OtService } from 'app/services/ot.service';
-import { Router } from '@angular/router';
-import { SignalsService } from 'app/services/signals.service';
+import { ProjectOrdersDetailComponent } from './project-orders-detail.component';
 import { catchError, concat, forkJoin, lastValueFrom, of, toArray } from 'rxjs';
 
 @Component({
   selector: 'app-detail-cell-renderer-proyectos',
   standalone: true,
-  imports: [AgGridModule, CommonModule],
+  imports: [AgGridModule, CommonModule, ProjectOrdersDetailComponent],
   template: `
     <div
       style="padding: 10px; background-color: #e9ecef; height: 100%; display: flex; flex-direction: column;"
@@ -74,8 +73,6 @@ import { catchError, concat, forkJoin, lastValueFrom, of, toArray } from 'rxjs';
 export class DetailCellRendererProyectosComponent implements ICellRendererAngularComp {
   private projectsService = inject(ProjectsService);
   private otService = inject(OtService);
-  private router = inject(Router);
-  private signalsService = inject(SignalsService);
   private oilfieldService = inject(OilfieldService);
   private followprojectsService = inject(FollowprojectsService);
   authService = inject(AuthService);
@@ -104,6 +101,11 @@ export class DetailCellRendererProyectosComponent implements ICellRendererAngula
     rowHeight: 20,
     suppressEnterWhenEditing: false,
     rowSelection: 'single',
+    masterDetail: true,
+    isRowMaster: (project: any) => !!project?.id && !project.__isNew,
+    detailCellRenderer: 'projectOrdersDetail',
+    detailRowHeight: 170,
+    components: { projectOrdersDetail: ProjectOrdersDetailComponent },
     onFirstDataRendered: (params) => {
       const allColumnIds: string[] = [];
       params.api.getColumns()?.forEach((column: any) => {
@@ -229,9 +231,10 @@ export class DetailCellRendererProyectosComponent implements ICellRendererAngula
     {
       field: 'ordersCount',
       headerName: 'Órdenes',
-      width: 82,
-      minWidth: 82,
-      maxWidth: 100,
+      width: 110,
+      minWidth: 105,
+      maxWidth: 120,
+      pinned: 'left',
       editable: false,
       sortable: true,
       filter: 'agNumberColumnFilter',
@@ -243,8 +246,13 @@ export class DetailCellRendererProyectosComponent implements ICellRendererAngula
         textDecoration: 'underline',
         color: '#1976d2'
       },
-      cellRenderer: (params: any) => `<span title="Abrir órdenes de este proyecto" style="display:flex; align-items:center; justify-content:center; gap:5px; color:#1976d2; text-decoration:underline; cursor:pointer;"><i class="bi bi-list-ul"></i><span>${params.value ?? '…'}</span></span>`,
-      onCellClicked: (params: any) => this.openProjectOrders(params.data)
+      cellRenderer: (params: any) => `<span title="Mostrar órdenes de este proyecto" style="display:flex; align-items:center; justify-content:center; gap:5px; color:#1976d2; text-decoration:underline; cursor:pointer;"><i class="bi bi-list-ul"></i><span>${params.value ?? '…'}</span></span>`,
+      onCellClicked: (params: any) => {
+        params.api.forEachNode((node: any) => {
+          if (node.expanded && node !== params.node) node.setExpanded(false);
+        });
+        params.node.setExpanded(!params.node.expanded);
+      }
     },
     {
       field: 'name',
@@ -547,14 +555,6 @@ export class DetailCellRendererProyectosComponent implements ICellRendererAngula
     if (Array.isArray(response?.data)) return response.data;
     if (Array.isArray(response?.ots)) return response.ots;
     return [];
-  }
-
-  private openProjectOrders(project: any): void {
-    const projectId = Number(project?.id);
-    if (!projectId) return;
-
-    this.signalsService.setProjectSelectedBySidebar(projectId);
-    this.router.navigate(['/projects/ot/ordenes']);
   }
 
   refreshProjects() {
