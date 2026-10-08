@@ -22,6 +22,8 @@ import { catchError, forkJoin, of } from 'rxjs';
         *ngIf="!loading && orders.length > 0"
         class="ag-theme-quartz small-text-ag-grid"
         style="width: 100%; height: 126px"
+        [rowHeight]="20"
+        [headerHeight]="25"
         [columnDefs]="columnDefs"
         [defaultColDef]="defaultColDef"
         [rowData]="orders">
