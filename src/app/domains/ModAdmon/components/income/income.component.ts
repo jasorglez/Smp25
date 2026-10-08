@@ -1,4 +1,6 @@
-import { Component, effect, inject } from '@angular/core';
+import { WorkspaceDraftDirective } from 'app/shared/workspace/workspace-draft.directive';
+import { WorkspaceDraftsService } from 'app/services/workspace-drafts.service';
+import { Component, ViewChild, effect, inject } from '@angular/core';
 import { CellDoubleClickedEvent, ColDef, GridApi, GridReadyEvent, ICellRendererParams } from 'ag-grid-enterprise';
 import { IncomesAndExpensesService } from 'app/services/incomes-and-expenses.service';
 import { ModalService } from 'app/services/modal.service';
@@ -30,13 +32,21 @@ import { ProjectsService } from 'app/services/projects.service';
 @Component({
   selector: 'app-income',
   standalone: true,
-  imports: [AgGridModule, MultiLineEditorComponent, CommonModule,
+  imports: [WorkspaceDraftDirective, AgGridModule, MultiLineEditorComponent, CommonModule,
              FormsModule, SelectWithTooltipEditorV2Component, ButtonCellRendererIncomeComponent,
              PdfButtonCellRendererIncomeComponent, DetailsIncomeComponent],
   templateUrl: './income.component.html',
   styleUrl: './income.component.scss'
 })
 export class IncomeComponent {
+  @ViewChild(WorkspaceDraftDirective) workspaceDraft?: WorkspaceDraftDirective;
+  workspaceLoaded = false;
+  private workspaceStore = inject(WorkspaceDraftsService);
+  private workspaceRequest = 0;
+  private get workspaceAccountKey(): string {
+    return this.workspaceStore.key('income-account:' + this.root);
+  }
+
   private incomesAndExpensesService = inject(IncomesAndExpensesService);
   private modalServiceTable = inject(ModalService);
   private administrationService = inject(AdministrationService);
@@ -147,7 +157,12 @@ export class IncomeComponent {
   
   set idAccount(value: number) {
     if (this._idAccount !== value) {
+      this.workspaceDraft?.capture(true);
+      this.workspaceLoaded = false;
+      this.incomes = [];
+      this.notSavedChanges = false;
       this._idAccount = value;
+      if (value) this.workspaceStore.write(this.workspaceAccountKey, value);
     
      // Agregar log cuando se selecciona una cuenta
     if (value) {
@@ -247,13 +262,26 @@ export class IncomeComponent {
     searchableSelect: SearchableSelectComponent
   };
 
+  private shouldPreserveWorkspace(): boolean {
+    if (!this.workspaceLoaded) return false;
+    let hasExpandedDetail = false;
+    this.gridApi?.forEachNode(node => { if (node.expanded) hasExpandedDetail = true; });
+    return this.notSavedChanges || hasExpandedDetail || !!this.gridApi?.getEditingCells().length;
+  }
+
   async getIncomes() {
+    const request = ++this.workspaceRequest;
+    const accountId = this.idAccount;
+
 
     this.trackingService.addLog(this.trackingService.getnameComp(), `Mostrar Listado de Ingresos`, 'Menu Administracion Ingresos',
           this.trackingService.getEmail() );
 
     this.incomesAndExpensesService.getIncomesAndExpenses(this.root).subscribe({
       next: (incomes) => {
+          if (request !== this.workspaceRequest || accountId !== this.idAccount || this.shouldPreserveWorkspace()) return;
+          this.workspaceLoaded = true;
+
         // Filtrado y manejo de caso sin datos
 
         const filtered = incomes?.filter(income => {
@@ -878,6 +906,8 @@ onSelectionChanged(event: any) {
   }
 
 async saveChanges() {
+    if (this.workspaceDraft && !await this.workspaceDraft.canSave(() => lastValueFrom(this.incomesAndExpensesService.getIncomesAndExpenses(this.root)))) return;
+
   // Campos requeridos (idProject NO es requerido - puede ir vacío)
   const requiredFields = [
     { field: 'description',  label: 'Descripción',  check: (v: any) => !!v },
@@ -977,6 +1007,7 @@ async saveChanges() {
       alerts.toastAlert('Datos actualizados', 'success');
     }
 
+    this.workspaceDraft?.clear();
     this.notSavedChanges = false;
     this.newlyAddedRows = [];
     await this.getIncomes(); // Refrescar los datos
@@ -1101,6 +1132,7 @@ private async updateAccountBankConsecutive(account: any, newConsecutive: number)
   }
 
   revert() {
+    this.workspaceDraft?.clear();
     this.getIncomes();
     this.notSavedChanges = false;
     this.trackingService.addLog(this.trackingService.getnameComp(),'Cancelar Salvar Registro Ingresos', 'Menu Administracion Ingresos',  this.trackingService.getEmail());
@@ -1125,7 +1157,10 @@ private async updateAccountBankConsecutive(account: any, newConsecutive: number)
       this.administrationService.getAccountBanks(this.root).subscribe({
         next: (data: any) => {
           this.bankAccounts = data || [];
-          if (this.bankAccounts.length === 1) {
+          const savedAccount = this.workspaceStore.read<number>(this.workspaceAccountKey);
+          if (!this.idAccount && this.bankAccounts.some(account => account.id === savedAccount)) this.idAccount = savedAccount;
+
+          if (!this.idAccount && this.bankAccounts.length === 1) {
             this.idAccount = this.bankAccounts[0].id;
           }
           resolve();

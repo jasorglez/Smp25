@@ -1,7 +1,9 @@
+import { WorkspaceDraftDirective } from 'app/shared/workspace/workspace-draft.directive';
+import { WorkspaceDraftsService } from 'app/services/workspace-drafts.service';
 
 //soriano develop
 
-import { Component, effect, inject, HostListener } from '@angular/core';
+import { Component, ViewChild, effect, inject, HostListener } from '@angular/core';
 import { CellDoubleClickedEvent, ColDef, GridApi, GridReadyEvent, ICellRendererParams } from 'ag-grid-enterprise';
 import { IncomesAndExpensesService } from 'app/services/incomes-and-expenses.service';
 import { ModalService } from 'app/services/modal.service';
@@ -39,13 +41,21 @@ declare var bootstrap: any;
 @Component({
   selector: 'app-egresos-palacio',
   standalone: true,
-  imports: [NgSelectModule, NgSelectComponent, AgGridModule, MultiLineEditorComponent, CommonModule,
+  imports: [WorkspaceDraftDirective, NgSelectModule, NgSelectComponent, AgGridModule, MultiLineEditorComponent, CommonModule,
     FormsModule, ButtonCellRendererExpenditureComponent, DetallesEgresospalaciosComponent,
     PdfButtonCellRendererComponent, SelectWithTooltipEditorV2Component, DatePipe, ReactiveFormsModule],
   templateUrl: './egresos-palacio.component.html',
   styleUrl: './egresos-palacio.component.scss'
 })
 export class EgresosPalacioComponent {
+  @ViewChild(WorkspaceDraftDirective) workspaceDraft?: WorkspaceDraftDirective;
+  workspaceLoaded = false;
+  private workspaceStore = inject(WorkspaceDraftsService);
+  private workspaceRequest = 0;
+  private get workspaceAccountKey(): string {
+    return this.workspaceStore.key('palacio-expense-account:' + this.idRoot);
+  }
+
 
   private incomesAndExpensesService = inject(IncomesAndExpensesService);
   private modalServiceTable = inject(ModalService);
@@ -217,7 +227,12 @@ export class EgresosPalacioComponent {
   // Añadir setter para idAccount con lógica de actualización
   set idAccount(value: number) {
     if (this._idAccount !== value) {
+      this.workspaceDraft?.capture(true);
+      this.workspaceLoaded = false;
+      this.incomes = [];
+      this.notSavedChanges = false;
       this._idAccount = value;
+      if (value) this.workspaceStore.write(this.workspaceAccountKey, value);
 
       // Agregar log cuando se selecciona una cuenta
       if (value) {
@@ -430,12 +445,26 @@ export class EgresosPalacioComponent {
     searchableSelect: SearchableSelectComponent
   };
 
+  private shouldPreserveWorkspace(): boolean {
+    if (!this.workspaceLoaded) return false;
+    let hasExpandedDetail = false;
+    this.gridApi?.forEachNode(node => { if (node.expanded) hasExpandedDetail = true; });
+    return this.notSavedChanges || hasExpandedDetail || !!this.gridApi?.getEditingCells().length;
+  }
+
   async getExpenditure() {
+    const request = ++this.workspaceRequest;
+    const accountId = this.idAccount;
+
     this.trackingService.addLog(this.trackingService.getnameComp(), `Mostrar Listado de Egresos`, 'Palacio Municipal - Egresos',
       this.trackingService.getEmail());
     return new Promise<void>((resolve) => {
       this.incomesAndExpensesService.getIncomesAndExpenses(this.idRoot).subscribe({
         next: (incomes) => {
+          if (request !== this.workspaceRequest || accountId !== this.idAccount) { resolve(); return; }
+          if (this.shouldPreserveWorkspace()) { resolve(); return; }
+          this.workspaceLoaded = true;
+
           // Filtrado y manejo de caso sin datos
 
           const filtered = incomes?.filter(income => {
@@ -1162,6 +1191,7 @@ export class EgresosPalacioComponent {
         typeComps: this.typeComps,
         expensesCatalogLevel3: this.expensesCatalogLevel3, // Catálogo EXPENSE nivel 3 para el detalle
         CONCEPTS: {
+          loadFresh: (expenditureId: number) => lastValueFrom(this.incomesAndExpensesService.getConceptsFromIncomesAndExpenses(expenditureId)),
           load: (expenditureId: number, callback: (data: any[]) => void) => {
             this.loadConceptsData(expenditureId, callback);
           },
@@ -1288,6 +1318,8 @@ export class EgresosPalacioComponent {
   }
 
   async saveChanges() {
+    if (this.workspaceDraft && !await this.workspaceDraft.canSave(() => lastValueFrom(this.incomesAndExpensesService.getIncomesAndExpenses(this.idRoot)))) return;
+
     const isValid = this.incomes.every((item) => item.description);
     if (!isValid) {
       alerts.basicAlert(
@@ -1377,6 +1409,7 @@ export class EgresosPalacioComponent {
       this.trackingService.addLog(this.trackingService.getnameComp(), `Salvar Egresos`, 'Palacio Municipal - Egresos',
         this.trackingService.getEmail());
 
+      this.workspaceDraft?.clear();
       this.notSavedChanges = false;
       this.newlyAddedRows = [];
 
@@ -1490,6 +1523,7 @@ export class EgresosPalacioComponent {
   }
 
   revert() {
+    this.workspaceDraft?.clear();
     this.getExpenditure();
     this.notSavedChanges = false;
   }
@@ -1565,6 +1599,9 @@ export class EgresosPalacioComponent {
       this.administrationService.getAccountBanks(this.idRoot).subscribe(
         (data: any) => {
           this.bankAccounts = data;
+          const savedAccount = this.workspaceStore.read<number>(this.workspaceAccountKey);
+          if (!this.idAccount && this.bankAccounts.some(account => account.id === savedAccount)) this.idAccount = savedAccount;
+
           this.tipos = this.bankAccounts.map(acc => {
             const [nombre, tipo] = acc.nameAccount.split('-');
             return {

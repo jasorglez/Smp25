@@ -1,6 +1,7 @@
+import { WorkspaceDraftDirective } from 'app/shared/workspace/workspace-draft.directive';
 //soriano develop
 
-import { Component, OnInit, inject, OnDestroy, HostListener } from '@angular/core';
+import { Component, ViewChild, OnInit, inject, OnDestroy, HostListener } from '@angular/core';
 import { StoragesService } from 'app/services/storages.service';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
@@ -25,7 +26,7 @@ import { TrackingService } from 'app/services/tracking.service';
 @Component({
   selector: 'app-detalles-egresospalacios',
   standalone: true,
-  imports: [CommonModule, FormsModule, AgGridModule, MultiLineEditorComponent, SearchableSelectComponent, SelectWithTooltipEditorV2Component],
+  imports: [WorkspaceDraftDirective, CommonModule, FormsModule, AgGridModule, MultiLineEditorComponent, SearchableSelectComponent, SelectWithTooltipEditorV2Component],
   template: `
     <!-- Concepts Grid View -->
     <div class="detail-grid-container" *ngIf="detailType === 'concepts'">
@@ -62,6 +63,8 @@ import { TrackingService } from 'app/services/tracking.service';
         </div>
       </div>
       <ag-grid-angular
+        [workspaceDraft]="workspaceScope" [draftOwner]="this" [draftReady]="workspaceLoaded"
+        draftRows="rowData" draftDirty="hasUnsavedChanges"
         #agGrid
         class="ag-theme-quartz small-text-ag-grid"
         [rowData]="rowData"
@@ -283,6 +286,10 @@ import { TrackingService } from 'app/services/tracking.service';
   `]
 })
 export class DetallesEgresospalaciosComponent implements OnInit, OnDestroy {
+  @ViewChild(WorkspaceDraftDirective) workspaceDraft?: WorkspaceDraftDirective;
+  workspaceLoaded = false;
+  get workspaceScope(): string { return 'palacio-expense-detail:' + (this.context?.idRoot || this.params?.data?.idBusinnes) + ':' + this.params?.data?.id; }
+
   private storagesService = inject(StoragesService);
   private trackingService = inject(TrackingService);
 
@@ -388,6 +395,7 @@ export class DetallesEgresospalaciosComponent implements OnInit, OnDestroy {
       console.log('🔵 DETALLE: Cargando conceptos para egreso ID:', expenditureId);
       this.context.CONCEPTS.load(expenditureId, (data: any[]) => {
         console.log(`📊 DETALLE: Conceptos recibidos para ID ${expenditureId}:`, data.length);
+        this.workspaceLoaded = true;
         this.rowData = data.map(concept => ({
           ...concept,
           __isNew: false,
@@ -1205,6 +1213,11 @@ export class DetallesEgresospalaciosComponent implements OnInit, OnDestroy {
   }
 
   async saveChanges() {
+    this.workspaceDraft?.capture(true);
+    if (this.workspaceDraft && this.hasUnsavedChanges) {
+      const loadFresh = this.context?.CONCEPTS?.loadFresh;
+      if (!loadFresh || !await this.workspaceDraft.canSave(() => loadFresh(this.params.data.id))) return;
+    }
     this.trackingService.addLog(this.trackingService.getnameComp(), 'Guardó cambios en detalles egresospalacios', 'Admon', this.trackingService.getEmail());
     if (!this.hasUnsavedChanges) {
       alerts.basicAlert('Sin cambios', 'No hay cambios pendientes por guardar', 'info');
@@ -1322,7 +1335,8 @@ export class DetallesEgresospalaciosComponent implements OnInit, OnDestroy {
         // El padre (egresos-palacio) actualizará el maestro después de guardar exitosamente
         await this.context.CONCEPTS.save(expenditureId, dataToSave);
         console.log('✅ Guardado exitoso. El maestro ya fue actualizado por el componente padre.');
-        this.hasUnsavedChanges = false;
+        this.workspaceDraft?.clear();
+      this.hasUnsavedChanges = false;
 
         // CERRAR el detalle y REFRESCAR el grid maestro (igual que ingresos)
         console.log('🔄 DETALLE: Cerrando detalle y refrescando grid maestro...');
@@ -1352,7 +1366,8 @@ export class DetallesEgresospalaciosComponent implements OnInit, OnDestroy {
     }
 
     this.loadConceptsData();
-    this.hasUnsavedChanges = false;
+    this.workspaceDraft?.clear();
+      this.hasUnsavedChanges = false;
   }
 
   onCellValueChanged(event: any) {

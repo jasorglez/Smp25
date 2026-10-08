@@ -1,4 +1,6 @@
-import { Component, effect, inject, Input, OnChanges, OnDestroy, SimpleChanges } from '@angular/core';
+import { WorkspaceDraftDirective } from 'app/shared/workspace/workspace-draft.directive';
+import { WorkspaceDraftsService } from 'app/services/workspace-drafts.service';
+import { Component, ViewChild, effect, inject, Input, OnChanges, OnDestroy, SimpleChanges } from '@angular/core';
 import { Router } from '@angular/router';
 import { Subscription } from 'rxjs';
 import { SignalrService } from 'app/services/signalr.service';
@@ -37,13 +39,21 @@ import { SelectWithTooltipEditorV2Component } from 'app/shared/select-with-toolt
 @Component({
   selector: 'app-expenditure',
   standalone: true,
-  imports: [AgGridModule, MultiLineEditorComponent, CommonModule,
+  imports: [WorkspaceDraftDirective, AgGridModule, MultiLineEditorComponent, CommonModule,
     FormsModule, ButtonCellRendererExpenditure2Component, PdfButtonCellRendererExpenditure2Component,
     DetallesExpenditureComponent, SelectWithTooltipEditorV2Component],
   templateUrl: './expenditure.component.html',
   styleUrl: './expenditure.component.scss'
 })
 export class ExpenditureComponent implements OnDestroy, OnChanges {
+  @ViewChild(WorkspaceDraftDirective) workspaceDraft?: WorkspaceDraftDirective;
+  workspaceLoaded = false;
+  private workspaceStore = inject(WorkspaceDraftsService);
+  private workspaceRequest = 0;
+  private get workspaceAccountKey(): string {
+    return this.workspaceStore.key('expense-account:' + this.idRoot);
+  }
+
 
   private incomesAndExpensesService = inject(IncomesAndExpensesService);
   public modalServiceTable = inject(ModalService);
@@ -156,7 +166,12 @@ export class ExpenditureComponent implements OnDestroy, OnChanges {
       const idCompany = data?.idCompany ?? data?.IdCompany;
       if (idCompany && +idCompany === +this.idRoot) {
         if (this.reloadTimeout) clearTimeout(this.reloadTimeout);
-        this.reloadTimeout = setTimeout(() => this.getExpenditure(), 800);
+        this.reloadTimeout = setTimeout(() => {
+          let detailOpen = false;
+          this.gridApi?.forEachNode(node => { if (node.expanded) detailOpen = true; });
+          if (this.notSavedChanges || detailOpen || this.gridApi?.getEditingCells().length) return;
+          this.getExpenditure();
+        }, 800);
       }
     });
 
@@ -236,7 +251,12 @@ export class ExpenditureComponent implements OnDestroy, OnChanges {
 
   set idAccount(value: number) {
     if (this._idAccount !== value) {
+      this.workspaceDraft?.capture(true);
+      this.workspaceLoaded = false;
+      this.incomes = [];
+      this.notSavedChanges = false;
       this._idAccount = value;
+      if (value) this.workspaceStore.write(this.workspaceAccountKey, value);
 
       if (value) {
         const selectedAccount = this.bankAccounts.find(account => account.id === value);
@@ -351,10 +371,24 @@ export class ExpenditureComponent implements OnDestroy, OnChanges {
     selectWithTooltipEditorV2: SelectWithTooltipEditorV2Component
   };
 
+  private shouldPreserveWorkspace(): boolean {
+    if (!this.workspaceLoaded) return false;
+    let hasExpandedDetail = false;
+    this.gridApi?.forEachNode(node => { if (node.expanded) hasExpandedDetail = true; });
+    return this.notSavedChanges || hasExpandedDetail || !!this.gridApi?.getEditingCells().length;
+  }
+
   async getExpenditure() {
+    const request = ++this.workspaceRequest;
+    const accountId = this.idAccount;
+
     return new Promise<void>((resolve) => {
       this.incomesAndExpensesService.getIncomesAndExpenses(this.idRoot).subscribe({
         next: (incomes) => {
+          if (request !== this.workspaceRequest || accountId !== this.idAccount) { resolve(); return; }
+          if (this.shouldPreserveWorkspace()) { resolve(); return; }
+          this.workspaceLoaded = true;
+
           this.ingresosPendientesCuenta = (incomes || [])
             .filter(income => income.idAccount === this.idAccount
               && ['DEPOSITO', 'APORTACION', 'PRESTAMO'].includes(String(income.type || '').toUpperCase())
@@ -942,6 +976,7 @@ export class ExpenditureComponent implements OnDestroy, OnChanges {
           cuentasContablesNivel3: this.cuentasContablesNivel3,
           modalServiceTable: this.modalServiceTable,
           CONCEPTS: {
+            loadFresh: (expenditureId: number) => lastValueFrom(this.incomesAndExpensesService.getConceptsFromIncomesAndExpenses(expenditureId)),
             load: (expenditureId: number, callback: (data: any[]) => void) => {
               this.loadConceptsData(expenditureId, callback);
             },
@@ -1150,6 +1185,8 @@ export class ExpenditureComponent implements OnDestroy, OnChanges {
   }
 
   async saveChanges() {
+    if (this.workspaceDraft && !await this.workspaceDraft.canSave(() => lastValueFrom(this.incomesAndExpensesService.getIncomesAndExpenses(this.idRoot)))) return;
+
     // Campos requeridos (idProject NO es requerido - puede ir vacío)
     const requiredFields = [
       { field: 'description', label: 'Descripción',  check: (v: any) => !!v },
@@ -1212,6 +1249,7 @@ export class ExpenditureComponent implements OnDestroy, OnChanges {
       this.trackingService.addLog(this.trackingService.getnameComp(), `Salvar Egresos`, 'Egresos ',
         this.trackingService.getEmail());
 
+      this.workspaceDraft?.clear();
       this.notSavedChanges = false;
       this.newlyAddedRows = [];
       await this.getExpenditure();
@@ -1274,6 +1312,7 @@ export class ExpenditureComponent implements OnDestroy, OnChanges {
   }
 
   revert() {
+    this.workspaceDraft?.clear();
     this.getExpenditure();
     this.notSavedChanges = false;
   }
@@ -1307,7 +1346,10 @@ export class ExpenditureComponent implements OnDestroy, OnChanges {
       this.administrationService.getAccountBanks(this.idRoot).subscribe(
         (data: any) => {
           this.bankAccounts = data || [];
-          if (this.bankAccounts.length === 1) {
+          const savedAccount = this.workspaceStore.read<number>(this.workspaceAccountKey);
+          if (!this.idAccount && this.bankAccounts.some(account => account.id === savedAccount)) this.idAccount = savedAccount;
+
+          if (!this.idAccount && this.bankAccounts.length === 1) {
             this.idAccount = this.bankAccounts[0].id;
           }
           resolve();

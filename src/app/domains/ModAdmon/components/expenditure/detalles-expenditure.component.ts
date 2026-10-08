@@ -1,3 +1,4 @@
+import { WorkspaceDraftDirective } from 'app/shared/workspace/workspace-draft.directive';
 import { Component, OnInit, inject, OnDestroy, HostListener, ElementRef, ViewChild } from '@angular/core';
 import Swal from 'sweetalert2';
 import { CommonModule } from '@angular/common';
@@ -25,7 +26,7 @@ import { TrackingService } from 'app/services/tracking.service';
 @Component({
   selector: 'app-detalles-expenditure',
   standalone: true,
-  imports: [CommonModule, FormsModule, AgGridModule, MultiLineEditorComponent, SearchableSelectComponent, SelectWithTooltipEditorV2Component],
+  imports: [WorkspaceDraftDirective, CommonModule, FormsModule, AgGridModule, MultiLineEditorComponent, SearchableSelectComponent, SelectWithTooltipEditorV2Component],
   template: `
     <!-- Concepts Grid View -->
     <div class="detail-grid-container" *ngIf="detailType === 'concepts'"
@@ -76,6 +77,8 @@ import { TrackingService } from 'app/services/tracking.service';
       <input #comprobanteInput type="file" accept="image/*" class="d-none" (change)="onComprobanteSelected($event)">
       <input #comprobantePdfInput type="file" accept=".pdf,application/pdf" class="d-none" (change)="onComprobantePdfSelected($event)">
       <ag-grid-angular
+        [workspaceDraft]="workspaceScope" [draftOwner]="this" [draftReady]="workspaceLoaded"
+        draftRows="rowData" draftDirty="hasUnsavedChanges"
         #agGrid
         class="ag-theme-quartz small-text-ag-grid"
         [rowData]="rowData"
@@ -262,6 +265,10 @@ import { TrackingService } from 'app/services/tracking.service';
   styleUrl: './detalles-expenditure.component.scss'
 })
 export class DetallesExpenditureComponent implements OnInit, OnDestroy {
+  @ViewChild(WorkspaceDraftDirective) workspaceDraft?: WorkspaceDraftDirective;
+  workspaceLoaded = false;
+  get workspaceScope(): string { return 'expense-detail:' + (this.context?.idRoot || this.params?.data?.idBusinnes) + ':' + this.params?.data?.id; }
+
   private trackingService = inject(TrackingService);
 
   private params!: ICellRendererParams;
@@ -414,6 +421,7 @@ export class DetallesExpenditureComponent implements OnInit, OnDestroy {
     if (this.context && this.context.CONCEPTS && this.context.CONCEPTS.load) {
       const expenditureId = this.params.data.id;
       this.context.CONCEPTS.load(expenditureId, (data: any[]) => {
+        this.workspaceLoaded = true;
         const incomingData = Array.isArray(data) ? data : [];
         const incomingFingerprint = this.buildConceptsFingerprint(incomingData);
 
@@ -426,6 +434,7 @@ export class DetallesExpenditureComponent implements OnInit, OnDestroy {
         const providers = this._providers;
         const cuentasContables = this._cuentasContables;
 
+        this.workspaceLoaded = true;
         this.rowData = incomingData.map(concept => {
           const type = concept.typeExpense?.trim().toUpperCase();
           let selectedEntity = null;
@@ -1117,6 +1126,11 @@ export class DetallesExpenditureComponent implements OnInit, OnDestroy {
   }
 
   async saveChanges() {
+    this.workspaceDraft?.capture(true);
+    if (this.workspaceDraft && this.hasUnsavedChanges) {
+      const loadFresh = this.context?.CONCEPTS?.loadFresh;
+      if (!loadFresh || !await this.workspaceDraft.canSave(() => loadFresh(this.params.data.id))) return;
+    }
     this.trackingService.addLog(this.trackingService.getnameComp(), 'Guardó cambios en detalles expenditure', 'Admon', this.trackingService.getEmail());
     if (!this.hasUnsavedChanges) {
       alerts.basicAlert('Sin cambios', 'No hay cambios pendientes por guardar', 'info');
@@ -1210,7 +1224,8 @@ export class DetallesExpenditureComponent implements OnInit, OnDestroy {
 
       try {
         await this.context.CONCEPTS.save(expenditureId, dataToSave);
-        this.hasUnsavedChanges = false;
+        this.workspaceDraft?.clear();
+      this.hasUnsavedChanges = false;
         this.lastServerFingerprint = this.buildConceptsFingerprint(this.rowData);
 
         // Refresh master grid (detail stays open for user to close manually)
@@ -1229,7 +1244,8 @@ export class DetallesExpenditureComponent implements OnInit, OnDestroy {
     }
 
     this.loadConceptsData();
-    this.hasUnsavedChanges = false;
+    this.workspaceDraft?.clear();
+      this.hasUnsavedChanges = false;
   }
 
   onCellValueChanged(event: any) {

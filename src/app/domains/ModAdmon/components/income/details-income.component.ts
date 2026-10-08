@@ -1,4 +1,5 @@
-import { Component, OnInit, inject, OnDestroy } from '@angular/core';
+import { WorkspaceDraftDirective } from 'app/shared/workspace/workspace-draft.directive';
+import { Component, ViewChild, OnInit, inject, OnDestroy } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { AgGridModule } from 'ag-grid-angular';
@@ -23,7 +24,7 @@ import { TrackingService } from 'app/services/tracking.service';
 @Component({
   selector: 'app-details-income',
   standalone: true,
-  imports: [CommonModule, FormsModule, AgGridModule, MultiLineEditorComponent],
+  imports: [WorkspaceDraftDirective, CommonModule, FormsModule, AgGridModule, MultiLineEditorComponent],
   template: `
     <!-- Concepts Grid View -->
     <div class="detail-grid-container" *ngIf="detailType === 'concepts'">
@@ -53,6 +54,8 @@ import { TrackingService } from 'app/services/tracking.service';
         </div>
       </div>
       <ag-grid-angular
+        [workspaceDraft]="workspaceScope" [draftOwner]="this" [draftReady]="workspaceLoaded"
+        draftRows="rowData" draftDirty="hasUnsavedChanges"
         #agGrid
         class="ag-theme-quartz small-text-ag-grid"
         [rowData]="rowData"
@@ -107,6 +110,10 @@ import { TrackingService } from 'app/services/tracking.service';
   `]
 })
 export class DetailsIncomeComponent implements OnInit, OnDestroy {
+  @ViewChild(WorkspaceDraftDirective) workspaceDraft?: WorkspaceDraftDirective;
+  workspaceLoaded = false;
+  get workspaceScope(): string { return 'income-detail:' + (this.context?.idRoot || this.params?.data?.idBusinnes) + ':' + this.params?.data?.id; }
+
   private trackingService = inject(TrackingService);
 
   private params!: ICellRendererParams;
@@ -205,12 +212,14 @@ export class DetailsIncomeComponent implements OnInit, OnDestroy {
   loadConceptsData() {
     const incomeId = this.params.data.id;
     if (!incomeId || incomeId.toString().startsWith('temp_')) {
-      this.rowData = [];
+      this.workspaceLoaded = true;
+        this.rowData = [];
       return;
     }
 
     this.incomesAndExpensesService.getConceptsFromIncomesAndExpenses(incomeId).subscribe({
       next: (data: any) => {
+        this.workspaceLoaded = true;
         this.rowData = data || [];
         this.calculateTotals();
       },
@@ -489,6 +498,10 @@ export class DetailsIncomeComponent implements OnInit, OnDestroy {
   }
 
   async saveChanges() {
+    this.workspaceDraft?.capture(true);
+    if (this.workspaceDraft && this.hasUnsavedChanges && !await this.workspaceDraft.canSave(
+      () => lastValueFrom(this.incomesAndExpensesService.getConceptsFromIncomesAndExpenses(this.params.data.id))
+    )) return;
     this.trackingService.addLog(this.trackingService.getnameComp(), 'Guardó cambios en details income', 'Admon', this.trackingService.getEmail());
     const incomeId = this.params.data.id;
     if (!incomeId || incomeId.toString().startsWith('temp_')) {
@@ -537,6 +550,7 @@ export class DetailsIncomeComponent implements OnInit, OnDestroy {
       }
 
       alerts.toastAlert('Datos guardados correctamente', 'success');
+      this.workspaceDraft?.clear();
       this.hasUnsavedChanges = false;
       this.loadConceptsData();
     } catch (error) {
@@ -608,7 +622,8 @@ export class DetailsIncomeComponent implements OnInit, OnDestroy {
 
   discardChanges() {
     this.loadConceptsData();
-    this.hasUnsavedChanges = false;
+    this.workspaceDraft?.clear();
+      this.hasUnsavedChanges = false;
   }
 
   private cleanDataForServer(data: any): any {

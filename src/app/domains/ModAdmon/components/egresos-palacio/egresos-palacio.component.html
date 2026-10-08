@@ -111,6 +111,8 @@
     <!-- El componente AG Grid -->
     <div class="col">
       <ag-grid-angular
+        [workspaceDraft]="'palacio-expense:' + idRoot + ':' + idBranch + ':' + idAccount"
+        [draftOwner]="this" [draftReady]="workspaceLoaded"
         style="width: 100%; height: 67vh"
         class="ag-theme-quartz small-text-ag-grid"
         [gridOptions]="gridOptions"
