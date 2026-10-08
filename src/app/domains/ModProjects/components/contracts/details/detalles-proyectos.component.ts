@@ -9,6 +9,8 @@ import { ProjectsService } from 'app/services/projects.service';
 import { OilfieldService } from 'app/services/oilfield.service';
 import { FollowprojectsService } from 'app/services/followprojects.service';
 import { OtService } from 'app/services/ot.service';
+import { Router } from '@angular/router';
+import { SignalsService } from 'app/services/signals.service';
 import { catchError, concat, forkJoin, lastValueFrom, of, toArray } from 'rxjs';
 
 @Component({
@@ -72,6 +74,8 @@ import { catchError, concat, forkJoin, lastValueFrom, of, toArray } from 'rxjs';
 export class DetailCellRendererProyectosComponent implements ICellRendererAngularComp {
   private projectsService = inject(ProjectsService);
   private otService = inject(OtService);
+  private router = inject(Router);
+  private signalsService = inject(SignalsService);
   private oilfieldService = inject(OilfieldService);
   private followprojectsService = inject(FollowprojectsService);
   authService = inject(AuthService);
@@ -231,8 +235,16 @@ export class DetailCellRendererProyectosComponent implements ICellRendererAngula
       editable: false,
       sortable: true,
       filter: 'agNumberColumnFilter',
-      cellStyle: { textAlign: 'center', fontWeight: '600' },
-      valueFormatter: (params) => params.value ?? '—'
+      cellStyle: {
+        textAlign: 'center',
+        fontWeight: '600',
+        backgroundColor: '#d4edda',
+        cursor: 'pointer',
+        textDecoration: 'underline',
+        color: '#1976d2'
+      },
+      cellRenderer: (params: any) => `<span title="Abrir órdenes de este proyecto" style="display:flex; align-items:center; justify-content:center; gap:5px; color:#1976d2; text-decoration:underline; cursor:pointer;"><i class="bi bi-list-ul"></i><span>${params.value ?? '…'}</span></span>`,
+      onCellClicked: (params: any) => this.openProjectOrders(params.data)
     },
     {
       field: 'name',
@@ -535,6 +547,14 @@ export class DetailCellRendererProyectosComponent implements ICellRendererAngula
     if (Array.isArray(response?.data)) return response.data;
     if (Array.isArray(response?.ots)) return response.ots;
     return [];
+  }
+
+  private openProjectOrders(project: any): void {
+    const projectId = Number(project?.id);
+    if (!projectId) return;
+
+    this.signalsService.setProjectSelectedBySidebar(projectId);
+    this.router.navigate(['/projects/ot/ordenes']);
   }
 
   refreshProjects() {
