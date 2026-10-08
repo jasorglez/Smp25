@@ -443,32 +443,47 @@ export class DetailsIncomeComponent implements OnInit, OnDestroy {
       return;
     }
 
+    this.gridApi?.stopEditing();
+    // Los borradores se insertan al principio; los guardados se identifican por su ID.
+    const lastItem = this.rowData.find(row => row.__isNew)
+      ?? this.rowData.reduce((last, row) => !last || Number(row.id) > Number(last.id) ? row : last, null);
+    const today = new Date();
+    const todayDate = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
     const tempId = `temp_${this.tempIdCounter++}`;
+    const quantity = Number(lastItem?.quantity ?? 1);
+    const price = Number(lastItem?.price ?? 0);
     const newItem = {
       id: tempId,
       idIncorExp: incomeId,
-      typeExpense: 'NA',
-      idExpense: 0,
-      dateExpend: new Date(),
-      description: '',
-      quantity: 1,
-      unit: '',
-      price: 0,
-      total: 0,
-      iva: false,
-      iva2: 0,
-      comment: '',
+      typeExpense: lastItem?.typeExpense ?? 'NA',
+      idExpense: lastItem?.idExpense ?? 0,
+      dateExpend: lastItem?.dateExpend instanceof Date
+        ? new Date(lastItem.dateExpend.getTime())
+        : (lastItem?.dateExpend ?? todayDate),
+      description: lastItem?.description ?? '',
+      quantity,
+      unit: lastItem?.unit ?? '',
+      price,
+      total: quantity * price,
+      iva: lastItem?.iva ?? false,
+      iva2: Number(lastItem?.iva2 ?? 0),
+      comment: lastItem?.comment ?? '',
+      graficar: lastItem?.graficar ?? true,
       active: true,
-      __isNew: true
+      __isNew: true,
+      __modified: false
     };
 
     this.rowData = [newItem, ...this.rowData];
     this.hasUnsavedChanges = true;
+    this.calculateTotals();
+    this.context?.CONCEPTS?.updateCount?.(incomeId, this.rowData.length);
 
     setTimeout(() => {
-      this.gridApi?.startEditingCell({
-        rowIndex: 0,
-        colKey: 'description'
+      this.gridApi?.forEachNode(node => {
+        if (node.data?.id !== tempId || node.rowIndex == null) return;
+        this.gridApi.ensureIndexVisible(node.rowIndex);
+        this.gridApi.startEditingCell({ rowIndex: node.rowIndex, colKey: 'description' });
       });
     }, 50);
   }
