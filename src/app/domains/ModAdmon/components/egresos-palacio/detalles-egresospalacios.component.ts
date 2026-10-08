@@ -679,7 +679,7 @@ export class DetallesEgresospalaciosComponent implements OnInit, OnDestroy {
             // Mapear los proveedores solo con name (company)
             this.providers = (data || []).map(provider => ({
               id: provider.id,
-              displayText: provider.name || 'Sin nombre'
+              displayText: provider.company || 'Sin nombre'
             }));
 
             console.log('✅ DETALLE: Proveedores cargados:', this.providers.length);
