@@ -6,15 +6,15 @@ import { AuthService } from 'app/services/auth.service';
 import { CommonModule } from '@angular/common';
 import { alerts } from 'app/helpers/alerts';
 import { ProjectsService } from 'app/services/projects.service';
-import { ProjectOrdersDetailComponent } from './project-orders-detail.component';
 import { OilfieldService } from 'app/services/oilfield.service';
 import { FollowprojectsService } from 'app/services/followprojects.service';
-import { lastValueFrom, concat, toArray } from 'rxjs';
+import { OtService } from 'app/services/ot.service';
+import { catchError, concat, forkJoin, lastValueFrom, of, toArray } from 'rxjs';
 
 @Component({
   selector: 'app-detail-cell-renderer-proyectos',
   standalone: true,
-  imports: [AgGridModule, CommonModule, ProjectOrdersDetailComponent],
+  imports: [AgGridModule, CommonModule],
   template: `
     <div
       style="padding: 10px; background-color: #e9ecef; height: 100%; display: flex; flex-direction: column;"
@@ -71,6 +71,7 @@ import { lastValueFrom, concat, toArray } from 'rxjs';
 })
 export class DetailCellRendererProyectosComponent implements ICellRendererAngularComp {
   private projectsService = inject(ProjectsService);
+  private otService = inject(OtService);
   private oilfieldService = inject(OilfieldService);
   private followprojectsService = inject(FollowprojectsService);
   authService = inject(AuthService);
@@ -99,11 +100,6 @@ export class DetailCellRendererProyectosComponent implements ICellRendererAngula
     rowHeight: 20,
     suppressEnterWhenEditing: false,
     rowSelection: 'single',
-    masterDetail: true,
-    isRowMaster: (project: any) => !!project?.id && !project.__isNew,
-    detailCellRenderer: 'projectOrdersDetail',
-    detailRowHeight: 260,
-    components: { projectOrdersDetail: ProjectOrdersDetailComponent },
     onFirstDataRendered: (params) => {
       const allColumnIds: string[] = [];
       params.api.getColumns()?.forEach((column: any) => {
@@ -225,6 +221,18 @@ export class DetailCellRendererProyectosComponent implements ICellRendererAngula
         this.hasProjectChanges = true;
         return true;
       }
+    },
+    {
+      field: 'ordersCount',
+      headerName: 'Órdenes',
+      width: 82,
+      minWidth: 82,
+      maxWidth: 100,
+      editable: false,
+      sortable: true,
+      filter: 'agNumberColumnFilter',
+      cellStyle: { textAlign: 'center', fontWeight: '600' },
+      valueFormatter: (params) => params.value ?? '—'
     },
     {
       field: 'name',
@@ -473,11 +481,7 @@ export class DetailCellRendererProyectosComponent implements ICellRendererAngula
     return new Promise((resolve) => {
       this.projectsService.getProjectListByContract(this.contractId).subscribe({
         next: (data: any) => {
-          this.projectRowData = data || [];
-          if (this.projectGridApi) {
-            this.projectGridApi.setGridOption('rowData', this.projectRowData);
-          }
-          resolve();
+          this.loadProjectOrderCounts(data || []).then(() => resolve());
         },
         error: (error) => {
           console.error('Error loading projects:', error);
@@ -486,6 +490,51 @@ export class DetailCellRendererProyectosComponent implements ICellRendererAngula
         }
       });
     });
+  }
+
+  private async loadProjectOrderCounts(projects: any[]): Promise<void> {
+    const validProjects = projects.filter(project => Number(project?.id) > 0);
+    this.projectRowData = projects.map(project => ({
+      ...project,
+      ordersCount: Number(project?.id) > 0 ? '…' : 0
+    }));
+    this.projectGridApi?.setGridOption('rowData', this.projectRowData);
+
+    if (validProjects.length === 0) {
+      this.projectRowData = projects.map(project => ({ ...project, ordersCount: 0 }));
+      this.projectGridApi?.setGridOption('rowData', this.projectRowData);
+      return;
+    }
+
+    const counts = await lastValueFrom(forkJoin(validProjects.map(project => forkJoin({
+      open: this.otService.getOtListByProject(Number(project.id), false).pipe(catchError(() => of([]))),
+      closed: this.otService.getOtListByProject(Number(project.id), true).pipe(catchError(() => of([])))
+    }))));
+
+    const countsByProject = new Map<number, number>();
+    validProjects.forEach((project, index) => {
+      const openOrders = this.toOrdersArray(counts[index].open);
+      const closedOrders = this.toOrdersArray(counts[index].closed);
+      const uniqueOrders = new Map<string, any>();
+      [...openOrders, ...closedOrders].forEach((order, orderIndex) => {
+        const key = String(order?.id ?? order?.otNumber ?? `${index}-${orderIndex}`);
+        uniqueOrders.set(key, order);
+      });
+      countsByProject.set(Number(project.id), uniqueOrders.size);
+    });
+
+    this.projectRowData = projects.map(project => ({
+      ...project,
+      ordersCount: countsByProject.get(Number(project?.id)) ?? 0
+    }));
+    this.projectGridApi?.setGridOption('rowData', this.projectRowData);
+  }
+
+  private toOrdersArray(response: any): any[] {
+    if (Array.isArray(response)) return response;
+    if (Array.isArray(response?.data)) return response.data;
+    if (Array.isArray(response?.ots)) return response.ots;
+    return [];
   }
 
   refreshProjects() {
