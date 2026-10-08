@@ -7,6 +7,7 @@ import { debounceTime, filter, forkJoin } from 'rxjs';
 import { IncomesAndExpensesService } from 'app/services/incomes-and-expenses.service';
 import { AdministrationService } from 'app/services/administration.service';
 import { SignalsService } from 'app/services/signals.service';
+import { convertDashboardAmount, getDashboardBalanceMxn } from './dashboard-currency';
 import { SignalrService } from 'app/services/signalr.service';
 
 @Component({
@@ -16,6 +17,8 @@ import { SignalrService } from 'app/services/signalr.service';
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <div class="p-2">
+      <div class="small text-muted mb-2">Gráficas expresadas en pesos mexicanos (MXN).</div>
+      <div *ngIf="currencyNotice" class="alert alert-warning py-2" role="status">{{ currencyNotice }}</div>
 
       <!-- ── FILA INGRESOS: Top | Barras | Pie ── -->
       <div class="row g-3 mb-3">
@@ -64,7 +67,7 @@ import { SignalrService } from 'app/services/signalr.service';
           <div class="chart-card h-100">
             <div class="chart-header">
               <i class="bi bi-graph-up-arrow me-2 text-success"></i>
-              <span>Tendencia de Ingresos por Año</span>
+              <span>Tendencia de Ingresos por Año (MXN)</span>
             </div>
             <div class="chart-body">
               <apx-chart *ngIf="ingresosSeries?.length"
@@ -92,7 +95,7 @@ import { SignalrService } from 'app/services/signalr.service';
           <div class="chart-card h-100">
             <div class="chart-header">
               <i class="bi bi-pie-chart-fill me-2 text-primary"></i>
-              <span>Distribución Clientes</span>
+              <span>Distribución Clientes (MXN)</span>
             </div>
             <div class="chart-body">
               <apx-chart *ngIf="ingPieSeries?.length"
@@ -118,15 +121,17 @@ import { SignalrService } from 'app/services/signalr.service';
       <div class="row g-2 mb-2" *ngIf="isRootUser && cuentasBanco.length">
         <div class="col-12">
           <div class="saldo-row-wrap">
-            <span class="saldo-row-label"><i class="bi bi-bank2 me-1"></i>Saldo {{ hoyLabel }}</span>
+            <span class="saldo-row-label"><i class="bi bi-bank2 me-1"></i>Saldo MXN {{ hoyLabel }}</span>
             <span class="saldo-row-sep">|</span>
             <ng-container *ngFor="let c of cuentasBanco; let last = last">
               <span class="saldo-row-cuenta">{{ c.nameAccount }}</span>
-              <span class="saldo-row-monto">\${{ c.saldo | number:'1.2-2' }}</span>
+              <span class="saldo-row-monto" *ngIf="c.saldoMxn !== null; else saldoSinConversion">\${{ c.saldoMxn | number:'1.2-2' }} MXN</span>
+              <ng-template #saldoSinConversion><span class="text-warning">Sin conversión disponible</span></ng-template>
               <span class="saldo-row-sep" *ngIf="!last || cuentasBanco.length > 0">|</span>
             </ng-container>
             <span class="saldo-row-total-label">TOTAL {{ cuentasBanco.length }} cta{{ cuentasBanco.length !== 1 ? 's' : '' }}</span>
-            <span class="saldo-row-total">\${{ saldoTotal | number:'1.2-2' }}</span>
+            <span class="saldo-row-total" *ngIf="saldoTotal !== null; else totalSinConversion">\${{ saldoTotal | number:'1.2-2' }} MXN</span>
+            <ng-template #totalSinConversion><span class="text-warning">Total pendiente de conversión</span></ng-template>
           </div>
         </div>
       </div>
@@ -213,7 +218,7 @@ import { SignalrService } from 'app/services/signalr.service';
           <div class="chart-card h-100">
             <div class="chart-header">
               <i class="bi bi-pie-chart-fill me-2 text-danger"></i>
-              <span>Distribución Egresos</span>
+              <span>Distribución Egresos (MXN)</span>
             </div>
             <div class="chart-body">
               <apx-chart *ngIf="egrPieSeries?.length"
@@ -465,7 +470,8 @@ export class DashAdmonComponent implements OnInit {
   // ── Saldo Bancario (solo Root) ──
   isRootUser:   boolean = false;
   cuentasBanco: any[]   = [];
-  saldoTotal:   number  = 0;
+  saldoTotal: number | null = 0;
+  private allCuentasBanco: any[] = [];
   hoyLabel:     string  = new Date().toLocaleDateString('es-MX', { weekday: 'long', day: '2-digit', month: 'long', year: 'numeric' });
 
   // ── Clientes ──
@@ -475,7 +481,7 @@ export class DashAdmonComponent implements OnInit {
   clientStartDate: string = '';
   clientEndDate: string   = '';
   clientCurrency: 'MXN' | 'USD' = 'MXN';
-  clientExchangeRate: number = 1;
+  clientExchangeRate: number | null = null;
   private allIngresosData: any[] = [];
 
   get clientCurrencySymbol(): string {
@@ -565,11 +571,14 @@ export class DashAdmonComponent implements OnInit {
       takeUntilDestroyed(this.destroyRef)
     ).subscribe({
       next: (result: any) => {
-        const rate = Number(result?.rate);
-        if (rate > 0) {
+        const rate = Number(result?.rate ?? result?.value ?? result);
+        if (Number.isFinite(rate) && rate > 0) {
           this.clientExchangeRate = rate;
-          if (this.clientCurrency === 'USD' && this.allIngresosData.length)
-            this.buildClientList(this.allIngresosData);
+          this.buildIngresosChart(this.allIngresosData);
+          this.buildClientList(this.allIngresosData);
+          this.buildEgresosChart(this.allEgresosData);
+          this.buildTopEntityList(this.allEgresosData);
+          this.buildBankBalances();
           this.cdr.markForCheck();
         }
       },
@@ -649,17 +658,17 @@ export class DashAdmonComponent implements OnInit {
       concepts: this.incomesService.getIncomesxroot(rootId),
       incomes: this.incomesService.getIncomesAndExpenses(rootId)
     }).subscribe(({ concepts, incomes }: { concepts: any[]; incomes: any[] }) => {
-      if (!concepts?.length) return;
+
 
       const incomeById = new Map<number, any>();
       (incomes || []).forEach(income => incomeById.set(Number(income.id), income));
-      const data = concepts.map(concept => {
+      const data = (concepts || []).map(concept => {
         const incomeId = Number(
           concept.id_incorexp ?? concept.idIncorExp ?? concept.idIncomeAndExpense ?? concept.idIncome ?? concept.idincorexp
         );
         const parent = incomeById.get(incomeId);
         return parent
-          ? { ...concept, moneda: parent.moneda || 'MXN', tipoCambio: parent.tipoCambio }
+          ? { ...concept, moneda: parent.moneda || concept.moneda || 'MXN', tipoCambio: parent.tipoCambio ?? concept.tipoCambio }
           : concept;
       });
 
@@ -690,8 +699,15 @@ export class DashAdmonComponent implements OnInit {
       .sort((a, b) => b.total - a.total);
     this.clientListTotal = this.clientList.reduce((s, c) => s + c.total, 0);
 
-    const topN = this.clientList.slice(0, 8);
-    const resto = this.clientListTotal - topN.reduce((s, c) => s + c.total, 0);
+    // Las gráficas siempre usan MXN, independientemente del selector de la lista.
+    const pieTotals = new Map<string, number>();
+    filtered.forEach(income => {
+      const name = (income.company || 'Sin cliente').trim().replace(/\s+/g, ' ').toUpperCase();
+      pieTotals.set(name, (pieTotals.get(name) || 0) + this.getIncomeAmount(income, 'MXN'));
+    });
+    const pieClients = [...pieTotals].map(([name, total]) => ({ name, total })).sort((a, b) => b.total - a.total);
+    const topN = pieClients.slice(0, 8);
+    const resto = pieClients.slice(8).reduce((sum, client) => sum + client.total, 0);
     this.ingPieLabels = [...topN.map(c => c.name.length > 18 ? c.name.substring(0, 18) + '…' : c.name), ...(resto > 0 ? ['Otros'] : [])];
     this.ingPieSeries = [...topN.map(c => c.total), ...(resto > 0 ? [resto] : [])];
 
@@ -706,7 +722,7 @@ export class DashAdmonComponent implements OnInit {
   private loadEgresos(rootId: number): void {
     this.allEgresosData = [];
     this.incomesService.getConceptsDailyByRoot(rootId).subscribe((data: any[]) => {
-      if (!data?.length) return;
+      data = data || [];
       this.allEgresosData = data;
       this.buildEgresosChart(data);
       this.buildTopEntityList(data);
@@ -726,7 +742,7 @@ export class DashAdmonComponent implements OnInit {
       const type = e.entityType || 'OTRO';
       const key  = `${type}||${name}`;
       if (!byEntity[key]) byEntity[key] = { total: 0, type };
-      byEntity[key].total += Number(e.totalFinal) || 0;
+      byEntity[key].total += this.getExpenseAmount(e);
     });
 
     this.topEntityList = Object.entries(byEntity)
@@ -746,23 +762,43 @@ export class DashAdmonComponent implements OnInit {
       : 'Todo el período';
   }
 
-  private getIncomeAmount(income: any, currency: 'MXN' | 'USD'): number {
-    const amount = Number(income.totalconcepto) || 0;
-    const sourceCurrency = String(income.moneda || 'MXN').toUpperCase();
-    const capturedRate = Number(income.tipoCambio);
-    const exchangeRate = capturedRate > 0 ? capturedRate : this.clientExchangeRate;
+  get currencyNotice(): string {
+    if (this.isRootUser && this.cuentasBanco.some(account => account.saldoMxn === null)) {
+      return 'No se puede calcular el saldo total en MXN: falta el desglose de monedas o un tipo de cambio válido en alguna cuenta.';
+    }
+    const bankMovements = this.isRootUser ? this.allCuentasBanco.flatMap(account => account.saldosPorMoneda || []) : [];
+    const movements = [...this.allIngresosData, ...this.allEgresosData, ...bankMovements];
+    const missing = movements.some(row => convertDashboardAmount(1, row.moneda, row.tipoCambio, 'MXN', this.clientExchangeRate) === null);
+    const missingUsd = this.clientCurrency === 'USD' && this.allIngresosData.some(row =>
+      convertDashboardAmount(1, row.moneda, row.tipoCambio, 'USD', this.clientExchangeRate) === null);
+    if (missing || missingUsd) return 'Totales incompletos: hay movimientos sin tipo de cambio válido o con moneda no compatible. Esos importes no se suman hasta poder convertirlos.';
+    const usesReference = movements.some(row => String(row.moneda || '').trim().toUpperCase() === 'USD'
+      && !(Number.isFinite(Number(row.tipoCambio)) && Number(row.tipoCambio) > 0));
+    return usesReference ? 'Los movimientos en USD sin tipo de cambio capturado se convierten con la referencia del día.' : '';
+  }
 
-    if (sourceCurrency === currency) return amount;
-    if (sourceCurrency === 'USD' && currency === 'MXN') return amount * exchangeRate;
-    if (sourceCurrency !== 'USD' && currency === 'USD' && exchangeRate > 0) return amount / exchangeRate;
-    return amount;
+  private getIncomeAmount(income: any, currency: 'MXN' | 'USD'): number {
+    return convertDashboardAmount(income.totalconcepto, income.moneda, income.tipoCambio, currency, this.clientExchangeRate) ?? 0;
+  }
+
+  private getExpenseAmount(expense: any): number {
+    return convertDashboardAmount(expense.totalFinal, expense.moneda, expense.tipoCambio, 'MXN', this.clientExchangeRate) ?? 0;
+  }
+
+  private buildBankBalances(): void {
+    this.cuentasBanco = this.allCuentasBanco
+      .map(account => ({ ...account, saldoMxn: getDashboardBalanceMxn(account, this.clientExchangeRate) }))
+      .filter(account => account.saldoMxn === null || account.saldoMxn !== 0);
+    this.saldoTotal = this.cuentasBanco.some(account => account.saldoMxn === null)
+      ? null
+      : this.cuentasBanco.reduce((sum, account) => sum + account.saldoMxn, 0);
   }
 
   private loadCuentasBanco(rootId: number): void {
     this.adminService.getAccountBanks(rootId).subscribe({
       next: (data: any[]) => {
-        this.cuentasBanco = (data || []).filter(c => (Number(c.saldo) || 0) > 0);
-        this.saldoTotal   = this.cuentasBanco.reduce((s, c) => s + (Number(c.saldo) || 0), 0);
+        this.allCuentasBanco = data || [];
+        this.buildBankBalances();
         this.cdr.markForCheck();
       },
       error: () => {},
@@ -782,7 +818,7 @@ export class DashAdmonComponent implements OnInit {
       const d = new Date(s.fechaingreso);
       const key = `${d.getFullYear()}-${String(d.getMonth()).padStart(2,'0')}`;
       if (!byYearMonth[key]) byYearMonth[key] = { year: d.getFullYear(), month: d.getMonth(), total: 0 };
-      byYearMonth[key].total += s.totalconcepto;
+      byYearMonth[key].total += this.getIncomeAmount(s, 'MXN');
     });
 
     const sortedKeys   = Object.keys(byYearMonth).sort();
@@ -803,8 +839,8 @@ export class DashAdmonComponent implements OnInit {
     const sumY  = allTotals.reduce((a,b) => a + b, 0);
     const sumXY = allTotals.reduce((a,b,i) => a + i*b, 0);
     const sumX2 = allTotals.reduce((a,_,i) => a + i*i, 0);
-    const slope = (n*sumXY - sumX*sumY) / (n*sumX2 - sumX*sumX);
-    const intercept = (sumY - slope*sumX) / n;
+    const slope = n > 1 ? (n*sumXY - sumX*sumY) / (n*sumX2 - sumX*sumX) : 0;
+    const intercept = n ? (sumY - slope*sumX) / n : 0;
     const trendData = allTotals.map((_,i) => Math.max(0, Math.round(intercept + slope*i)));
 
     this.ingresosColors  = [...uniqueYears.map(y => YEAR_COLORS[y] || '#64748b'), '#ff6b6b'];
@@ -850,7 +886,7 @@ export class DashAdmonComponent implements OnInit {
         ? String(d.getDate())
         : `${String(d.getDate()).padStart(2,'0')}/${String(d.getMonth()+1).padStart(2,'0')}`;
       const entity = (e.entityName || 'Sin nombre').toString().trim();
-      const amount = Number(e.totalFinal) || 0;
+      const amount = this.getExpenseAmount(e);
 
       if (!dayEntityMap.has(dayKey)) dayEntityMap.set(dayKey, new Map());
       const em = dayEntityMap.get(dayKey)!;
@@ -859,7 +895,7 @@ export class DashAdmonComponent implements OnInit {
     });
 
     // ── Total del período ────────────────────────────────────────────────────
-    this.egresosTotal = filtered.reduce((sum, e) => sum + (Number(e.totalFinal) || 0), 0);
+    this.egresosTotal = filtered.reduce((sum, e) => sum + this.getExpenseAmount(e), 0);
 
     // ── Ordenar días ────────────────────────────────────────────────────────
     let sortedDays: string[];
