@@ -1,10 +1,11 @@
 import { HttpClient } from '@angular/common/http';
 import { inject, Injectable } from '@angular/core';
 import { environment } from '@env/environment';
-import { Observable } from 'rxjs';
+import { EMPTY, Observable, expand, map, reduce, throwError } from 'rxjs';
 import { TrackingService } from './tracking.service';
 
 export interface OtSearchRequest {
+  idProject?: number;
   cdc?: string;
   otNumber?: string;
   area?: string;
@@ -99,6 +100,25 @@ export class OtService {
     return this.http.get<OtSearchOptionsResponse>(`${environment.urlSmp}/OT/search-options`, {
       headers: this.trackingService.getHeaders()
     });
+  }
+
+  getProjectOrdersWithContent(idProject: number): Observable<any[]> {
+    if (!Number.isInteger(idProject) || idProject <= 0) {
+      return throwError(() => new Error('Proyecto inválido'));
+    }
+    const getPage = (page: number) => this.searchOt({ idProject, status: 'active', page, pageSize: 200 }).pipe(
+      map(response => {
+        if (Array.isArray(response) || !Array.isArray(response?.data) ||
+            response.data.some(order => Number(order.idProject) !== idProject)) {
+          throw new Error('La consulta no devolvió las órdenes del proyecto solicitado');
+        }
+        return response;
+      })
+    );
+    return getPage(1).pipe(
+      expand(response => response.page < response.totalPages ? getPage(response.page + 1) : EMPTY),
+      reduce((orders, response) => orders.concat(response.data), [] as any[])
+    );
   }
 
   getCrewEfficiency(from: string, to: string, useWebClosure = false): Observable<OtCrewEfficiencyRow[]> {

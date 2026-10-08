@@ -103,7 +103,7 @@ export class DetailCellRendererPurchaseOrderReportComponent implements OnDestroy
   pdfObjectUrl: string | null = null;
   readonly isTouchDevice = typeof window !== 'undefined' && window.matchMedia('(pointer: coarse)').matches;
   isLoading: boolean = true;
-  private productos: any[] = [];
+  private destroyed = false;
   private _pdfBlob: Blob | null = null;
 
   getPdfBlobFn = (): Promise<Blob> =>
@@ -120,69 +120,68 @@ export class DetailCellRendererPurchaseOrderReportComponent implements OnDestroy
     try {
       const idRoot = this.signalsService.getRootSelectedBySidebar()();
 
-      // Obtener datos de la empresa
-      const companyData: any = await lastValueFrom(this.rootService.getRootbyId(idRoot));
+      // Las consultas independientes no deben esperar al catálogo ni a los logos.
+      // Los artículos se consultan siempre para reflejar los últimos cambios guardados.
+      const companyPromise = lastValueFrom(this.rootService.getRootbyId(idRoot));
+      const companyWithImagesPromise = companyPromise.then(async (companyData: any) => {
+        const images = new Map<string, Promise<string>>();
+        const loadImage = (url: string): Promise<string> => {
+          if (!url) return Promise.resolve('');
+          if (!images.has(url)) {
+            images.set(url, this.base64EncodeService.convertImageToBase64(url));
+          }
+          return images.get(url)!;
+        };
+        const [logoBase64, logo2Base64, watermarkBase64] = await Promise.all([
+          loadImage(companyData?.picture),
+          loadImage(companyData?.picture2 || companyData?.picture),
+          loadImage(companyData?.picture3)
+        ]);
+        return { companyData, logoBase64, logo2Base64, watermarkBase64 };
+      });
 
-      // Obtener productos para mapear descripciones
-      try {
-        this.productos = await lastValueFrom(this.materialsService.getMaterials2Fields(idRoot)) as any[];
-      } catch (error) {
-        console.warn('No se pudieron cargar los productos:', error);
-        this.productos = [];
-      }
+      const context = paramsContext(this.params);
+      const loadedProducts = ((this.params as any)?.productos || context?.productos || []) as any[];
+      const productsPromise: Promise<any[]> = loadedProducts.length > 0
+        ? Promise.resolve(loadedProducts)
+        : lastValueFrom(this.materialsService.getMaterials2Fields(idRoot)) as Promise<any[]>;
 
-      // Obtener datos del proveedor
-      const providers = ((this.params as any)?.proveedores || paramsContext(this.params)?.proveedores || []) as any[];
+      const providers = ((this.params as any)?.proveedores || context?.proveedores || []) as any[];
       const providerId = this.purchaseOrderData.idProvider ?? this.purchaseOrderData.idProveedor;
       const providerFromGrid = providers.find((provider: any) =>
         String(provider.id) === String(providerId)
       );
-      let providerData: any = providerFromGrid
+      const providerFallback = providerFromGrid
         ? { ...providerFromGrid, company: providerFromGrid.company || providerFromGrid.name }
         : null;
-      if (providerId && providerId > 0) {
-        try {
-          const providerResponse = await lastValueFrom(this.customersService.getCustomerById(Number(providerId)));
-          providerData = { ...providerData, ...providerResponse };
-        } catch (error) {
-          console.warn('No se pudo cargar el proveedor:', error);
-        }
-      }
+      const providerPromise = providerId && Number(providerId) > 0
+        ? lastValueFrom(this.customersService.getCustomerById(Number(providerId)))
+            .then(provider => ({ ...providerFallback, ...provider }))
+            .catch(error => {
+              console.warn('No se pudo cargar el proveedor:', error);
+              return providerFallback;
+            })
+        : Promise.resolve(providerFallback);
 
-      // Convertir logo principal (picture) a base64
-      const logoBase64 = companyData?.picture
-        ? await this.base64EncodeService.convertImageToBase64(companyData.picture)
-        : '';
-
-      // Convertir segundo logo (picture2) a base64
-      const logo2Base64 = companyData?.picture2
-        ? await this.base64EncodeService.convertImageToBase64(companyData.picture2)
-        : logoBase64;
-
-      // Convertir marca de agua (picture3) a base64
-      const watermarkBase64 = companyData?.picture3
-        ? await this.base64EncodeService.convertImageToBase64(companyData.picture3)
-        : null;
-
-      // Obtener artículos de la orden de compra directamente del servicio
-      let articulos: any[] = [];
       const purchaseOrderId = this.purchaseOrderData.id;
-      if (purchaseOrderId && !purchaseOrderId.toString().startsWith('temp_')) {
-        try {
-          const items: any = await lastValueFrom(this.requisitionsService.getReqItems(purchaseOrderId));
-          // Mapear los items con los nombres de productos
-          articulos = items.map((item: any) => {
-            const producto = this.productos.find((p: any) => p.id === item.idSupplie);
-            return {
-              ...item,
-              article: producto?.description || 'Sin descripción',
-              numArticle: producto?.code || item.idSupplie || ''
-            };
-          });
-        } catch (error) {
-          console.warn('No se pudieron cargar los items:', error);
-        }
-      }
+      const itemsPromise: Promise<any[]> = purchaseOrderId && !String(purchaseOrderId).startsWith('temp_')
+        ? lastValueFrom(this.requisitionsService.getReqItems(purchaseOrderId))
+        : Promise.resolve([]);
+      const [company, products, providerData, items] = await Promise.all([
+        companyWithImagesPromise, productsPromise, providerPromise, itemsPromise
+      ]);
+      if (this.destroyed) return;
+
+      const { companyData, logoBase64, logo2Base64, watermarkBase64 } = company;
+      const productsById = new Map(products.map(product => [String(product.id), product]));
+      const articulos = items.map(item => {
+        const product = productsById.get(String(item.idSupplie));
+        return {
+          ...item,
+          article: product?.description || 'Sin descripción',
+          numArticle: product?.code || item.idSupplie || ''
+        };
+      });
 
       // Generar el PDF
       const docDefinition = this.buildDocDefinition(companyData, logoBase64, logo2Base64, watermarkBase64, providerData, articulos);
@@ -190,6 +189,7 @@ export class DetailCellRendererPurchaseOrderReportComponent implements OnDestroy
       this.trackingService.addLog(this.trackingService.getnameComp(), 'Imprimió/abrió PDF orden de compra', 'Almacén / Órdenes de Compra', this.trackingService.getEmail());
       const pdfDocGenerator = pdfMake.createPdf(docDefinition as any);
       pdfDocGenerator.getBlob((blob: Blob) => {
+        if (this.destroyed) return;
         this._pdfBlob = blob;
         if (this.pdfObjectUrl) URL.revokeObjectURL(this.pdfObjectUrl);
         const url = URL.createObjectURL(blob);
@@ -206,6 +206,7 @@ export class DetailCellRendererPurchaseOrderReportComponent implements OnDestroy
   }
 
   ngOnDestroy(): void {
+    this.destroyed = true;
     if (this.pdfObjectUrl) URL.revokeObjectURL(this.pdfObjectUrl);
   }
 

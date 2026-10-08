@@ -222,7 +222,8 @@ export class PurchaseOrderComponent implements CanComponentDeactivate {
           component: DetailCellRendererPurchaseOrderReportComponent,
           params: {
             proveedores: this.proveedores,
-            usuarios: this.usuarios
+            usuarios: this.usuarios,
+            productos: this.productos
           }
         };
       }

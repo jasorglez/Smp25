@@ -21,7 +21,7 @@ import { catchError, concat, forkJoin, lastValueFrom, of, toArray } from 'rxjs';
       style="padding: 10px; background-color: #e9ecef; height: 100%; display: flex; flex-direction: column;"
       (mouseenter)="params.onMouseEnter && params.onMouseEnter()"
       (mouseleave)="params.onMouseLeave && params.onMouseLeave()">
-      <div style="margin-bottom: 15px; flex-grow: 1; display: flex; flex-direction: column;">
+      <div style="min-height: 0; flex: 1; display: flex; flex-direction: column;">
         <div style="margin-bottom: 10px; display: flex; justify-content: space-between; align-items: center;">
           <strong>Proyectos del Contrato: {{ contractNumber }}</strong>
           <div>
@@ -57,7 +57,7 @@ import { catchError, concat, forkJoin, lastValueFrom, of, toArray } from 'rxjs';
         </div>
         <ag-grid-angular
           class="ag-theme-quartz small-text-ag-grid"
-          style="width: 100%; flex-grow: 1;"
+          style="width: 100%; flex: 1; min-height: 0;"
           [columnDefs]="projectColumnDefs"
           [rowData]="projectRowData"
           [gridOptions]="projectGridOptions"
@@ -68,7 +68,8 @@ import { catchError, concat, forkJoin, lastValueFrom, of, toArray } from 'rxjs';
         </ag-grid-angular>
       </div>
     </div>
-  `
+  `,
+  styles: [`:host { display: block; height: 100%; min-height: 0; }`]
 })
 export class DetailCellRendererProyectosComponent implements ICellRendererAngularComp {
   private projectsService = inject(ProjectsService);
@@ -88,6 +89,7 @@ export class DetailCellRendererProyectosComponent implements ICellRendererAngula
   oilfields: any[] = [];
 
   private tempIdCounter: number = 0;
+  private expandedProjectNode: any = null;
 
   defaultColDef: ColDef = {
     sortable: true,
@@ -104,7 +106,37 @@ export class DetailCellRendererProyectosComponent implements ICellRendererAngula
     masterDetail: true,
     isRowMaster: (project: any) => !!project?.id && !project.__isNew,
     detailCellRenderer: 'projectOrdersDetail',
-    detailRowHeight: 170,
+    getRowHeight: (params: any) => {
+      if (!params.node.detail) return 20;
+      const viewport = params.api.getVerticalPixelRange();
+      return Math.max(170, viewport.bottom - viewport.top - 22);
+    },
+    onGridSizeChanged: (event: any) => event.api.resetRowHeights(),
+    isExternalFilterPresent: () => this.expandedProjectNode !== null,
+    doesExternalFilterPass: (node: any) => node === this.expandedProjectNode,
+    onRowGroupOpened: (event: any) => {
+      if (event.node.expanded) {
+        this.expandedProjectNode = event.node;
+        event.api.forEachNode((node: any) => {
+          if (node !== event.node && node.expanded) node.setExpanded(false);
+        });
+      } else if (this.expandedProjectNode === event.node) {
+        this.expandedProjectNode = null;
+      }
+      event.api.onFilterChanged();
+      if (event.node.expanded) event.api.ensureNodeVisible(event.node, 'top');
+    },
+    onRowDataUpdated: (event: any) => {
+      if (!this.expandedProjectNode) return;
+      let stillExpanded = false;
+      event.api.forEachNode((node: any) => {
+        if (node === this.expandedProjectNode && node.expanded) stillExpanded = true;
+      });
+      if (!stillExpanded) {
+        this.expandedProjectNode = null;
+        event.api.onFilterChanged();
+      }
+    },
     components: { projectOrdersDetail: ProjectOrdersDetailComponent },
     onFirstDataRendered: (params) => {
       const allColumnIds: string[] = [];
@@ -248,9 +280,6 @@ export class DetailCellRendererProyectosComponent implements ICellRendererAngula
       },
       cellRenderer: (params: any) => `<span title="Mostrar órdenes de este proyecto" style="display:flex; align-items:center; justify-content:center; gap:5px; color:#1976d2; text-decoration:underline; cursor:pointer;"><i class="bi bi-list-ul"></i><span>${params.value ?? '…'}</span></span>`,
       onCellClicked: (params: any) => {
-        params.api.forEachNode((node: any) => {
-          if (node.expanded && node !== params.node) node.setExpanded(false);
-        });
         params.node.setExpanded(!params.node.expanded);
       }
     },
@@ -518,11 +547,10 @@ export class DetailCellRendererProyectosComponent implements ICellRendererAngula
       ...project,
       ordersCount: Number(project?.id) > 0 ? '…' : 0
     }));
+    const loadedRows = this.projectRowData;
     this.projectGridApi?.setGridOption('rowData', this.projectRowData);
 
     if (validProjects.length === 0) {
-      this.projectRowData = projects.map(project => ({ ...project, ordersCount: 0 }));
-      this.projectGridApi?.setGridOption('rowData', this.projectRowData);
       return;
     }
 
@@ -543,11 +571,13 @@ export class DetailCellRendererProyectosComponent implements ICellRendererAngula
       countsByProject.set(Number(project.id), uniqueOrders.size);
     });
 
-    this.projectRowData = projects.map(project => ({
-      ...project,
-      ordersCount: countsByProject.get(Number(project?.id)) ?? 0
-    }));
-    this.projectGridApi?.setGridOption('rowData', this.projectRowData);
+    // Una respuesta anterior no debe reemplazar proyectos recargados o editados.
+    // Conservar los nodos mantiene la subconsulta abierta y los demás ocultos.
+    if (this.projectRowData !== loadedRows) return;
+    loadedRows.forEach(project => {
+      project.ordersCount = countsByProject.get(Number(project?.id)) ?? 0;
+    });
+    this.projectGridApi?.refreshCells({ columns: ['ordersCount'], force: true });
   }
 
   private toOrdersArray(response: any): any[] {

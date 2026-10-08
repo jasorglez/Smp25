@@ -89,7 +89,12 @@ export class ContractsComponent {
     masterDetail: true,
     isRowMaster: (dataItem) => true,
     detailCellRenderer: 'detailCellRendererProyectos',
-    detailRowHeight: 600,
+    getRowHeight: (params: any) => {
+      if (!params.node.detail) return 20;
+      const viewport = params.api.getVerticalPixelRange();
+      return Math.max(250, viewport.bottom - viewport.top - 22);
+    },
+    onGridSizeChanged: (event: any) => event.api.resetRowHeights(),
     getRowClass: (params) => {
       if (params.node.isSelected()) {
         return 'selected-row';
