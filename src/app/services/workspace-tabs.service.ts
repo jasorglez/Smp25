@@ -5,24 +5,29 @@ export interface WorkspaceTab {
   title: string;
 }
 
-/**
- * Mantiene las pantallas abiertas del área de trabajo.  Las pestañas son de
- * navegación: la ruta sigue siendo la fuente de verdad y por eso los enlaces,
- * el botón Atrás y las ligas directas continúan funcionando igual.
- */
+/** Mantiene las pantallas de trabajo abiertas y las restaura por usuario. */
 @Injectable({ providedIn: 'root' })
 export class WorkspaceTabsService {
-  private readonly storageKey = 'bi-workspace-tabs';
+  private readonly storagePrefix = 'bi-workspace-v2:';
+  private readonly legacyStorageKey = 'bi-workspace-tabs';
   private readonly menuContainers = new Set([
     'almacenes', 'dashboardgrales', 'logistica', 'pmo', 'presupuestos',
     'procmodadmon', 'procmodmaintenance', 'proceswar', 'procreshuman',
     'projects', 'shoppingDelison', 'shoppingTD', 'smp', 'warehousesTD',
   ]);
 
-  readonly tabs = signal<WorkspaceTab[]>(this.readTabs());
+  readonly tabs = signal<WorkspaceTab[]>([]);
   readonly activeUrl = signal<string>('');
+  private loadedUser = '';
+
+  /** Lee la sesión de trabajo del usuario autenticado sin alterar su URL activa. */
+  restoreForCurrentUser(): string | null {
+    this.ensureUserLoaded();
+    return this.activeUrl() || null;
+  }
 
   register(url: string, title: string): void {
+    this.ensureUserLoaded();
     const normalizedUrl = this.normalizeUrl(url);
     const currentTabs = this.tabs();
     const existing = currentTabs.find(tab => tab.url === normalizedUrl);
@@ -30,14 +35,13 @@ export class WorkspaceTabsService {
     if (existing) {
       if (existing.title !== title) {
         this.tabs.set(currentTabs.map(tab => tab.url === normalizedUrl ? { ...tab, title } : tab));
-        this.persist();
       }
     } else {
       this.tabs.set([...currentTabs, { url: normalizedUrl, title }]);
-      this.persist();
     }
 
     this.activeUrl.set(normalizedUrl);
+    this.persist();
   }
 
   close(url: string): WorkspaceTab | undefined {
@@ -55,27 +59,32 @@ export class WorkspaceTabsService {
 
     const nextTabs = currentTabs.filter(tab => tab.url !== normalizedUrl);
     const nextActive = nextTabs[Math.max(0, index - 1)];
+    const wasActive = this.activeUrl() === normalizedUrl;
     this.tabs.set(nextTabs);
+    if (wasActive) this.activeUrl.set(nextActive.url);
     this.persist();
-
-    if (this.activeUrl() === normalizedUrl) {
-      this.activeUrl.set(nextActive.url);
-      return nextActive;
-    }
-
-    return undefined;
+    return wasActive ? nextActive : undefined;
   }
 
+  /** Cierra todas las pestañas por solicitud explícita del usuario. */
   closeAll(): void {
     this.tabs.set([]);
     this.activeUrl.set('');
     this.persist();
   }
 
+  /** Limpia solo el estado en memoria al salir; conserva pestañas y borradores. */
+  preserveForLogout(): void {
+    this.tabs.set([]);
+    this.activeUrl.set('');
+    this.loadedUser = '';
+  }
+
   remove(url: string): void {
     const normalizedUrl = this.normalizeUrl(url);
-    const nextTabs = this.tabs().filter(tab => tab.url !== normalizedUrl);
-    if (nextTabs.length === this.tabs().length) return;
+    const currentTabs = this.tabs();
+    const nextTabs = currentTabs.filter(tab => tab.url !== normalizedUrl);
+    if (nextTabs.length === currentTabs.length) return;
 
     this.tabs.set(nextTabs);
     if (this.activeUrl() === normalizedUrl) this.activeUrl.set('');
@@ -99,6 +108,39 @@ export class WorkspaceTabsService {
     this.persist();
   }
 
+  private ensureUserLoaded(): void {
+    let user = '';
+    try { user = localStorage.getItem('mail') || ''; } catch { return; }
+    if (!user || user === this.loadedUser) return;
+
+    const storageKey = this.storageKey(user);
+    let saved: any = null;
+    try {
+      const encoded = localStorage.getItem(storageKey);
+      if (encoded) saved = JSON.parse(encoded);
+      if (!saved) {
+        const legacy = sessionStorage.getItem(this.legacyStorageKey);
+        if (legacy) {
+          saved = { tabs: JSON.parse(legacy), activeUrl: '' };
+          localStorage.setItem(storageKey, JSON.stringify(saved));
+          sessionStorage.removeItem(this.legacyStorageKey);
+        }
+      }
+    } catch { saved = null; }
+
+    const tabs = Array.isArray(saved?.tabs) ? saved.tabs.filter((tab: any) =>
+      typeof tab?.url === 'string' && typeof tab?.title === 'string' && !this.isGeneralMenu(tab.url)
+    ).map((tab: WorkspaceTab) => ({ ...tab, url: this.normalizeUrl(tab.url) })) : [];
+    this.tabs.set(tabs);
+    const active = typeof saved?.activeUrl === 'string' ? this.normalizeUrl(saved.activeUrl) : '';
+    this.activeUrl.set(tabs.some(tab => tab.url === active) ? active : (tabs.at(-1)?.url || ''));
+    this.loadedUser = user;
+  }
+
+  private storageKey(user: string): string {
+    return `${this.storagePrefix}${encodeURIComponent(user)}`;
+  }
+
   private normalizeUrl(url: string): string {
     const withoutFragment = url.split('#')[0];
     return withoutFragment.length > 1 && withoutFragment.endsWith('/')
@@ -106,27 +148,14 @@ export class WorkspaceTabsService {
       : withoutFragment;
   }
 
-  private readTabs(): WorkspaceTab[] {
-    try {
-      const saved = sessionStorage.getItem(this.storageKey);
-      const parsed = saved ? JSON.parse(saved) : [];
-      return Array.isArray(parsed)
-        ? parsed.filter(tab =>
-          typeof tab?.url === 'string' &&
-          typeof tab?.title === 'string' &&
-          !this.isGeneralMenu(tab.url)
-        )
-        : [];
-    } catch {
-      return [];
-    }
-  }
-
   private persist(): void {
+    let user = '';
+    try { user = localStorage.getItem('mail') || ''; } catch { return; }
+    if (!user) return;
     try {
-      sessionStorage.setItem(this.storageKey, JSON.stringify(this.tabs()));
+      localStorage.setItem(this.storageKey(user), JSON.stringify({ tabs: this.tabs(), activeUrl: this.activeUrl() }));
     } catch {
-      // La navegación no depende de que el navegador permita almacenamiento.
+      // La navegación sigue funcionando si el navegador no permite almacenamiento.
     }
   }
 

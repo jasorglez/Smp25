@@ -241,7 +241,7 @@ export class AuthService {
 
   async logout() {
     this.clearSessionTimers();
-    this.workspaceTabs.closeAll();
+    this.workspaceTabs.preserveForLogout();
     try {
       await this.trackingService.endSession();
       this.trackingService.addLog(

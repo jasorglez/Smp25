@@ -30,6 +30,7 @@ export class MainPageComponent implements OnInit, OnDestroy {
 
   private routerSub?: Subscription;
   draggingTabUrl = '';
+  private restoringWorkspaceUrl = '';
 
   private readonly MODULE_MAP: Record<string, string> = {
     'dashboard'          : 'Dashboard',
@@ -101,6 +102,10 @@ export class MainPageComponent implements OnInit, OnDestroy {
       filter(e => e instanceof NavigationEnd)
     ).subscribe((e: any) => {
       const url = e.urlAfterRedirects || e.url;
+      if (this.restoringWorkspaceUrl) {
+        if (url.split('?')[0] !== this.restoringWorkspaceUrl.split('?')[0]) return;
+        this.restoringWorkspaceUrl = '';
+      }
       const segment = url.split('/')[1]?.split('?')[0] || '';
       const module  = this.MODULE_MAP[segment] || segment;
       if (module) this.trackingService.logModuleVisit(module);
@@ -111,8 +116,19 @@ export class MainPageComponent implements OnInit, OnDestroy {
     // Cubre la primera pantalla cuando Angular ya terminó de navegar antes de
     // que este componente alcance a suscribirse al evento NavigationEnd.
     if (this.router.url && this.router.url !== '/') {
-      this.quickActions.recordRoute(this.router.url);
-      this.registerWorkspaceRoute(this.router.url);
+      const restoredUrl = this.workspaceTabs.restoreForCurrentUser();
+      if (restoredUrl && restoredUrl !== this.router.url.split('?')[0]) {
+        this.restoringWorkspaceUrl = restoredUrl;
+        void this.router.navigateByUrl(restoredUrl).then(() => {
+          if (this.restoringWorkspaceUrl) {
+            this.restoringWorkspaceUrl = '';
+            this.registerWorkspaceRoute(this.router.url);
+          }
+        });
+      } else {
+        this.quickActions.recordRoute(this.router.url);
+        this.registerWorkspaceRoute(this.router.url);
+      }
     }
 
     // Cargar estado inicial del sidebar

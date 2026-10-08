@@ -45,7 +45,9 @@ export class WorkspaceDraftDirective implements OnInit, OnChanges, OnDestroy {
 
   private syncKey(): void {
     const next = this.store.key(this.workspaceDraft);
-    if (next === this.key) return;
+    // Al salir, conserva la clave del usuario anterior para poder persistir los
+    // últimos caracteres cuando Angular destruya la ruta almacenada.
+    if (!next || next === this.key) return;
     this.key = next;
     this.originals.clear();
     this.snapshot = this.store.read<GridDraft>(next) ?? undefined;
