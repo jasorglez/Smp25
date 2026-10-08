@@ -1,7 +1,7 @@
 import { HttpClient, HttpParams } from '@angular/common/http';
 import { inject, Injectable } from '@angular/core';
 import { environment } from '@env/environment';
-import { Observable, tap } from 'rxjs';
+import { Observable, map, tap } from 'rxjs';
 import { TrackingService } from './tracking.service';
 
 @Injectable({
@@ -44,10 +44,11 @@ export class AdministrationService {
   }
 
   // Cuentas Bancos
-  getAccountBanks(idRoot: number): Observable<any> {
-    //const apiUrl = `${environment.urlAdministration}/AccountBanks/Bussines/${idRoot}`;
-   // alert(apiUrl)
-    return this.http.get(`${environment.urlAdministration}/AccountBanks/Bussines/${idRoot}`, { headers: this.trackingService.getHeaders() });
+  getAccountBanks(idRoot: number, includeInactive = false): Observable<any> {
+    const params = new HttpParams().set('includeInactive', String(includeInactive));
+    return this.http.get<any[]>(`${environment.urlAdministration}/AccountBanks/Bussines/${idRoot}`, {
+      headers: this.trackingService.getHeaders(), params
+    }).pipe(map(accounts => (accounts || []).filter(account => includeInactive || !account.isInactive)));
   }
 
   addAccountBanks(data: any): Observable<any> {

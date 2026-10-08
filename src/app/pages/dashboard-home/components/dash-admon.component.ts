@@ -797,7 +797,7 @@ export class DashAdmonComponent implements OnInit {
   private loadCuentasBanco(rootId: number): void {
     this.adminService.getAccountBanks(rootId).subscribe({
       next: (data: any[]) => {
-        this.allCuentasBanco = data || [];
+        this.allCuentasBanco = (data || []).filter(account => !account.isInactive);
         this.buildBankBalances();
         this.cdr.markForCheck();
       },

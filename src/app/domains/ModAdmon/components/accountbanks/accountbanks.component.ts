@@ -167,6 +167,20 @@ export class AccountbanksComponent implements CanComponentDeactivate, OnDestroy 
 
     this._colMaster = [
       {
+        field: 'isInactive',
+        headerName: 'Estado',
+        editable: true,
+        width: 130,
+        pinned: 'left',
+        cellDataType: false,
+        cellEditor: 'agSelectCellEditor',
+        cellEditorParams: { values: [false, true] },
+        valueFormatter: params => params.value ? 'Inactiva' : 'Activa',
+        filter: true,
+        cellStyle: params => ({ color: params.value ? '#92400e' : '#166534', fontWeight: 'bold' }),
+        tooltipValueGetter: () => 'Inactiva: conserva sus movimientos y deja de estar disponible para operar. Guarda para aplicar.',
+      },
+      {
         field: 'idBanco',
         headerName: 'Banco',
         editable: (params) => {
@@ -512,7 +526,7 @@ export class AccountbanksComponent implements CanComponentDeactivate, OnDestroy 
     }
 
     this.administrationService
-      .getAccountBanks(companyId)
+      .getAccountBanks(companyId, true)
       .subscribe({
         next: (response: any) => {
           if (response && response.length > 0) {
@@ -727,6 +741,7 @@ export class AccountbanksComponent implements CanComponentDeactivate, OnDestroy 
       consecex: 0,
       eAplicaFiscal: 'Si',
       active: true,
+      isInactive: false,
       __isNew: true,
     };
     this.rowMaster = [newItem, ...this.rowMaster];
@@ -745,6 +760,7 @@ export class AccountbanksComponent implements CanComponentDeactivate, OnDestroy 
   }
 
   async saveChanges() {
+    this.gridApi?.stopEditing();
     //console.log('RowData', this.rowData)
 
     const isValid = this.rowMaster.every(
@@ -914,7 +930,9 @@ export class AccountbanksComponent implements CanComponentDeactivate, OnDestroy 
       consecin: data.consecin || 0,
       maskex: data.maskex || '',
       consecex: data.consecex || 0,
-      eAplicaFiscal: data.eAplicaFiscal || 'Si'
+      eAplicaFiscal: data.eAplicaFiscal || 'Si',
+      active: data.active ?? true,
+      isInactive: data.isInactive ?? false
     };
 
     // Solo incluir ID si no es temporal (para updates)
@@ -1128,6 +1146,10 @@ export class AccountbanksComponent implements CanComponentDeactivate, OnDestroy 
   // ==================== AJUSTE DE SALDO ====================
 
   openAjusteModal() {
+    if (this.selectedRowData?.isInactive) {
+      alerts.basicAlert('Cuenta inactiva', 'Reactiva y guarda la cuenta antes de registrar movimientos.', 'warning');
+      return;
+    }
     if (!this.selectedRowData) {
       alerts.basicAlert('Aviso', 'Seleccione una cuenta bancaria primero.', 'warning');
       return;
@@ -1176,6 +1198,10 @@ export class AccountbanksComponent implements CanComponentDeactivate, OnDestroy 
   }
 
   async saveAjuste() {
+    if (this.selectedRowData?.isInactive) {
+      alerts.basicAlert('Cuenta inactiva', 'Reactiva y guarda la cuenta antes de registrar movimientos.', 'warning');
+      return;
+    }
     if (!this.ajusteDescripcion.trim()) {
       alerts.basicAlert('Error', 'La descripción es obligatoria.', 'error');
       return;

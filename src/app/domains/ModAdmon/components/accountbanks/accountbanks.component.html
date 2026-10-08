@@ -26,7 +26,7 @@
           <i class="bi bi-file-earmark-pdf"></i>
         </button>
         <button type="button" class="btn btn-secondary" (click)="openAjusteModal()"
-                [disabled]="!selectedRowData"
+                [disabled]="!selectedRowData || selectedRowData.isInactive"
                 title="Ajustar Saldo">
           <i class="bi bi-sliders"></i>
         </button>
@@ -47,6 +47,7 @@
         <p class="mt-2">Cargando datos...</p>
       </div>
 
+      <p class="small text-muted mb-0">Cambia Estado a Inactiva y pulsa Guardar para congelar la cuenta. Sus movimientos se conservan; puedes consultarlos y reactivar la cuenta aquí.</p>
       <!-- Grid Maestro -->
       <ag-grid-angular
         *ngIf="!isLoading"
