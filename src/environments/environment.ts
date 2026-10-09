@@ -83,5 +83,5 @@ export const environment = {
   geminiApiKey: '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',
   gnewsApiKey: '94ccc596b4dfebc3f72683b6e81d81bc',
 
-  version: '5.00.101 (8 Octubre 2026) corregir falsos conflictos al guardar egresos',
+  version: '5.00.102 (9 Octubre 2026) actualizar ingresos y compactar cuentas contables',
 };

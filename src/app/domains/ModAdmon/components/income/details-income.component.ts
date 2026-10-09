@@ -292,6 +292,7 @@ export class DetailsIncomeComponent implements OnInit, OnDestroy {
     this.subtotal = this.rowData.reduce((acc, row) => acc + (Number(row.total) || 0), 0);
     this.iva2 = this.rowData.reduce((acc, row) => acc + (Number(row.iva2) || 0), 0);
     this.total = this.subtotal + this.iva2;
+    this.context?.CONCEPTS?.updateTotals?.(this.params?.data?.id, this.subtotal, this.iva2, this.total);
   }
 
   // Column definitions

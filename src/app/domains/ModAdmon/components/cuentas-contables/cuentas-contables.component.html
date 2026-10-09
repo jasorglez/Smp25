@@ -1,107 +1,56 @@
-<div class="container-fluid p-4">
-  <!-- Header -->
-  <div class="row mb-4">
-    <div class="col-12">
-      <div class="d-flex justify-content-between align-items-center">
-        <div class="flex-grow-1">
-          <h3 class="mb-1">
-            <i class="bi bi-diagram-3-fill text-primary me-2"></i>
-            Catálogo de Cuentas Contables
-            <button class="btn btn-sm btn-outline-info ms-2" type="button" data-bs-toggle="collapse" data-bs-target="#helpCollapse" title="Ver atajos de teclado">
-              <i class="bi bi-keyboard"></i>
-            </button>
-          </h3>
-          <p class="text-muted mb-0">Gestión de cuentas de ingresos y egresos</p>
+<div class="container-fluid p-2">
+  <div class="accounts-toolbar mb-2" [formGroup]="filterForm">
+    <button class="btn btn-sm btn-outline-info" type="button" data-bs-toggle="collapse" data-bs-target="#helpCollapse" title="Ver atajos de teclado">
+      <i class="bi bi-keyboard"></i>
+    </button>
 
-          <!-- Ayuda de atajos -->
-          <div class="collapse mt-2" id="helpCollapse">
-            <div class="alert alert-info alert-dismissible fade show py-2" role="alert">
-              <small>
-                <strong>Atajos de teclado:</strong>
-                <kbd>Ctrl+N</kbd> Nueva cuenta |
-                <kbd>Ctrl+F</kbd> Buscar |
-                <kbd>Enter</kbd> Expandir/Colapsar |
-                <kbd>Del</kbd> Eliminar
-              </small>
-              <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-            </div>
-          </div>
+    <div class="input-group input-group-sm accounts-search">
+      <span class="input-group-text"><i class="bi bi-search"></i></span>
+      <input #searchInput type="text" class="form-control"
+        placeholder="Buscar por código, nombre o descripción... (Ctrl+F)" formControlName="searchTerm" />
+      <button class="btn btn-outline-secondary" (click)="filterForm.get('searchTerm')?.reset()"
+        *ngIf="filterForm.get('searchTerm')?.value" title="Limpiar búsqueda">
+        <i class="bi bi-x-lg"></i>
+      </button>
+    </div>
 
-          <!-- Breadcrumbs para cuenta seleccionada -->
-          <nav *ngIf="selectedCuenta" aria-label="breadcrumb" class="mt-2">
-            <ol class="breadcrumb mb-0">
-              <li class="breadcrumb-item active">
-                <small>
-                  <i class="bi bi-arrow-right-short"></i>
-                  <strong>{{ selectedCuenta.codigo }}</strong> - {{ selectedCuenta.nombre }}
-                  <span class="badge bg-secondary ms-2" style="font-size: 0.7rem;">Nivel {{ selectedCuenta.nivel }}</span>
-                </small>
-              </li>
-            </ol>
-          </nav>
-        </div>
-        <div>
-          <button class="btn btn-success me-2" (click)="openCreateModal()" [disabled]="loading" title="Ctrl + N">
-            <i class="bi bi-plus-circle me-1"></i> Nueva Cuenta <small class="text-white-50">(Ctrl+N)</small>
-          </button>
-          <button class="btn btn-outline-secondary" (click)="exportToExcel()" [disabled]="loading">
-            <i class="bi bi-file-earmark-excel me-1"></i> Exportar
-          </button>
-        </div>
-      </div>
+    <select class="form-select form-select-sm accounts-level" formControlName="filterNivel" title="Filtrar por nivel">
+      <option [ngValue]="null">Todos</option>
+      <option [ngValue]="1">Nivel 1</option>
+      <option [ngValue]="2">Nivel 2</option>
+      <option [ngValue]="3">Nivel 3</option>
+    </select>
+
+    <div class="btn-group btn-group-sm" role="group" aria-label="Modo de vista">
+      <button type="button" class="btn btn-outline-primary" [class.active]="viewMode === 'tree'" (click)="viewMode = 'tree'">
+        <i class="bi bi-diagram-3 me-1"></i>Árbol
+      </button>
+      <button type="button" class="btn btn-outline-primary" [class.active]="viewMode === 'list'" (click)="viewMode = 'list'">
+        <i class="bi bi-list-ul me-1"></i>Lista
+      </button>
+    </div>
+
+    <button class="btn btn-sm btn-success text-nowrap" (click)="openCreateModal()" [disabled]="loading" title="Ctrl + N">
+      <i class="bi bi-plus-circle me-1"></i>Nueva Cuenta
+    </button>
+    <button class="btn btn-sm btn-outline-secondary text-nowrap" (click)="exportToExcel()" [disabled]="loading">
+      <i class="bi bi-file-earmark-excel me-1"></i>Exportar
+    </button>
+  </div>
+
+  <div class="collapse mb-2" id="helpCollapse">
+    <div class="alert alert-info py-1 px-2 mb-0" role="alert">
+      <small><strong>Atajos:</strong> <kbd>Ctrl+N</kbd> Nueva cuenta | <kbd>Ctrl+F</kbd> Buscar | <kbd>Enter</kbd> Expandir/Colapsar | <kbd>Del</kbd> Eliminar</small>
     </div>
   </div>
 
-  <!-- Filtros y Controles -->
-  <div class="row mb-3" [formGroup]="filterForm">
-    <div class="col-md-5">
-      <div class="input-group">
-        <span class="input-group-text">
-          <i class="bi bi-search"></i>
-        </span>
-        <input
-          #searchInput
-          type="text"
-          class="form-control"
-          placeholder="Buscar por código, nombre o descripción... (Ctrl+F)"
-          formControlName="searchTerm"
-        />
-        <button class="btn btn-outline-secondary" (click)="filterForm.get('searchTerm')?.reset()" *ngIf="filterForm.get('searchTerm')?.value">
-          <i class="bi bi-x-lg"></i>
-        </button>
-      </div>
-    </div>
-
-    <div class="col-md-1">
-      <select class="form-select form-select-sm" formControlName="filterNivel" title="Filtrar por nivel">
-        <option [ngValue]="null">Todos</option>
-        <option [ngValue]="1">Nivel 1</option>
-        <option [ngValue]="2">Nivel 2</option>
-        <option [ngValue]="3">Nivel 3</option>
-      </select>
-    </div>
-
-    <div class="col-md-6">
-      <div class="btn-group float-end" role="group">
-        <button
-          type="button"
-          class="btn btn-outline-primary"
-          [class.active]="viewMode === 'tree'"
-          (click)="viewMode = 'tree'"
-        >
-          <i class="bi bi-diagram-3 me-1"></i> Vista Árbol
-        </button>
-        <button
-          type="button"
-          class="btn btn-outline-primary"
-          [class.active]="viewMode === 'list'"
-          (click)="viewMode = 'list'"
-        >
-          <i class="bi bi-list-ul me-1"></i> Vista Lista
-        </button>
-      </div>
-    </div>
-  </div>
+  <nav *ngIf="selectedCuenta" aria-label="breadcrumb" class="mb-2">
+    <ol class="breadcrumb mb-0">
+      <li class="breadcrumb-item active"><small><i class="bi bi-arrow-right-short"></i>
+        <strong>{{ selectedCuenta.codigo }}</strong> - {{ selectedCuenta.nombre }}
+        <span class="badge bg-secondary ms-2">Nivel {{ selectedCuenta.nivel }}</span></small></li>
+    </ol>
+  </nav>
 
   <!-- Vista de Árbol -->
   <div *ngIf="viewMode === 'tree'" class="row">
@@ -164,6 +113,8 @@
             [localeText]="AG_GRID_LOCALE_ES"
             [animateRows]="true"
             [rowSelection]="'single'"
+            [rowHeight]="26"
+            [headerHeight]="28"
             [groupDefaultExpanded]="1"
             (gridReady)="onGridReady($event)"
             (selectionChanged)="onSelectionChanged($event)"
@@ -221,6 +172,8 @@
             [paginationPageSizeSelector]="[10, 20, 50, 100]"
             [animateRows]="true"
             [rowSelection]="'single'"
+            [rowHeight]="26"
+            [headerHeight]="28"
             (gridReady)="onGridReady($event)"
             (selectionChanged)="onSelectionChanged($event)"
             (cellValueChanged)="onCellValueChanged($event)"

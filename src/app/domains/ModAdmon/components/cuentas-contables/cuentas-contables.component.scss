@@ -1,17 +1,56 @@
-/* En tu archivo cuentas-contables.component.scss */
-:host ::ng-deep .ag-theme-alpine {
-  --ag-header-height: 40px;
-  --ag-row-height: 45px;
+.accounts-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: nowrap;
+}
+
+.accounts-search {
+  flex: 1 1 280px;
+  min-width: 180px;
+}
+
+.accounts-level {
+  width: 105px;
+  flex: 0 0 105px;
+}
+
+.accounts-toolbar > .btn,
+.accounts-toolbar .btn-group > .btn,
+.accounts-toolbar .accounts-level,
+.accounts-toolbar .input-group-text,
+.accounts-toolbar .form-control {
+  min-height: 31px;
+}
+
+@media (max-width: 1100px) {
+  .accounts-toolbar {
+    flex-wrap: wrap;
+  }
+
+  .accounts-search {
+    order: 2;
+    flex-basis: 100%;
+  }
+}
+
+:host ::ng-deep .ag-theme-quartz {
+  --ag-header-height: 28px;
+  --ag-row-height: 26px;
+  --ag-font-size: 11px;
   --ag-header-background-color: #f8f9fa;
   --ag-odd-row-background-color: #fcfcfc;
 }
 
-:host ::ng-deep .ag-theme-alpine .ag-root-wrapper {
+:host ::ng-deep .ag-theme-quartz .ag-root-wrapper {
   border: none;
 }
 
-:host ::ng-deep .small-text-ag-grid .ag-cell {
-  font-size: 0.875rem;
+:host ::ng-deep .ag-theme-quartz .ag-header-cell,
+:host ::ng-deep .ag-theme-quartz .ag-cell {
+  font-size: 11px;
+  padding-left: 4px;
+  padding-right: 4px;
 }
 
 /* Estilos para el árbol HTML */

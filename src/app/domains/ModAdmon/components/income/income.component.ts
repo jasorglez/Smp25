@@ -841,6 +841,9 @@ onSelectionChanged(event: any) {
           },
           updateCount: (incomeId: number, count: number) => {
             this.updateIncomeCountItems(incomeId, count);
+          },
+          updateTotals: (incomeId: number, subtotal: number, tax: number, total: number) => {
+            this.updateIncomeTotals(incomeId, subtotal, tax, total);
           }
         }
       }
@@ -1307,6 +1310,16 @@ private async updateAccountBankConsecutive(account: any, newConsecutive: number)
     if (rowNode) {
       rowNode.setDataValue('countItems', count);
     }
+  }
+
+  updateIncomeTotals(incomeId: number, subtotal: number, tax: number, total: number) {
+    const row = this.incomes.find(income => String(income.id) === String(incomeId));
+    if (!row) return;
+
+    row.subtotal = subtotal;
+    row.tax = tax;
+    row.total = total;
+    this.gridApi?.refreshCells({ columns: ['subtotal', 'tax', 'total'], force: true });
   }
 
   collapseCurrentRow(node: any) {
