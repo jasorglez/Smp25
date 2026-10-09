@@ -91,7 +91,7 @@ import { TrackingService } from 'app/services/tracking.service';
         (cellEditingStarted)="onCellEditingStarted()"
         (cellEditingStopped)="onCellEditingStopped()"
         [components]="components"
-        style="height: 480px; width: 100%;">
+        style="height: 624px; width: 100%;">
       </ag-grid-angular>
       <div class="mt-3" *ngIf="comprobantePreviewUrl">
         <div class="card border-0 shadow-sm">
@@ -151,21 +151,33 @@ import { TrackingService } from 'app/services/tracking.service';
 
     <!-- Modal para agregar nuevo proveedor -->
     <div class="modal fade" [class.show]="showProviderModal" [style.display]="showProviderModal ? 'block' : 'none'" tabindex="-1" role="dialog" aria-labelledby="providerModalLabel" aria-hidden="true">
-      <div class="modal-dialog modal-dialog-centered modal-lg" role="document">
-        <div class="modal-content">
+      <div class="modal-dialog modal-lg provider-modal-dialog" role="document">
+        <div class="modal-content provider-modal-content">
           <div class="modal-header bg-success text-white">
             <h5 class="modal-title" id="providerModalLabel">
               <i class="bi bi-plus-circle me-2"></i>Agregar Nuevo Proveedor
             </h5>
             <button type="button" class="btn-close btn-close-white" (click)="closeProviderModal()" aria-label="Close"></button>
           </div>
-          <div class="modal-body">
+          <div class="modal-body provider-modal-body">
             <form>
               <div class="row">
                 <div class="col-md-6">
-                  <div class="mb-3">
+                  <div class="mb-3 position-relative">
                     <label for="providerCompany" class="form-label">Compañía <span class="text-danger">*</span></label>
-                    <input type="text" class="form-control" id="providerCompany" [(ngModel)]="newProvider.company" name="providerCompany" required>
+                    <input type="text" class="form-control" id="providerCompany" [(ngModel)]="newProvider.company" name="providerCompany" autocomplete="off" (focus)="providerCompanyFocused = true" (blur)="onProviderCompanyBlur()" required>
+                    <div class="list-group provider-company-suggestions" *ngIf="matchingProviders.length">
+                      <button type="button" class="list-group-item list-group-item-action py-2"
+                              *ngFor="let provider of matchingProviders"
+                              (mousedown)="$event.preventDefault()"
+                              (click)="useExistingProvider(provider)">
+                        <span class="fw-semibold">{{ getProviderDisplayName(provider) }}</span>
+                        <small class="d-block text-muted">Proveedor ya registrado · seleccionar para usarlo</small>
+                      </button>
+                    </div>
+                    <div class="form-text text-danger" *ngIf="hasExactProviderMatch">
+                      Ya existe un proveedor con ese nombre. Selecciónalo de la lista para evitar duplicarlo.
+                    </div>
                   </div>
                 </div>
                 <div class="col-md-6">
@@ -218,7 +230,7 @@ import { TrackingService } from 'app/services/tracking.service';
             <button type="button" class="btn btn-secondary" (click)="closeProviderModal()">
               <i class="bi bi-x-circle me-1"></i>Cancelar
             </button>
-            <button type="button" class="btn btn-success" (click)="saveNewProvider()" [disabled]="!newProvider.company || !newProvider.nameContact">
+            <button type="button" class="btn btn-success" (click)="saveNewProvider()" [disabled]="!newProvider.company || !newProvider.nameContact || hasExactProviderMatch">
               <i class="bi bi-floppy me-1"></i>Guardar
             </button>
           </div>
@@ -321,6 +333,7 @@ export class DetallesExpenditureComponent implements OnInit, OnDestroy {
 
   // Provider Modal properties
   showProviderModal: boolean = false;
+  providerCompanyFocused: boolean = false;
   showCopyModal: boolean = false;
   copySourceConcept: any = null;
   copyDate: string = '';
@@ -364,6 +377,27 @@ export class DetallesExpenditureComponent implements OnInit, OnDestroy {
   // Leer siempre del componentParent (referencia viva) para evitar contexto stale
   private get _employees(): any[] {
     return this.context?.componentParent?.employees || this.context?.employees || this.employees || [];
+  }
+
+  get matchingProviders(): any[] {
+    const term = this.normalizeProviderName(this.newProvider?.company);
+    if (!this.providerCompanyFocused) return [];
+    const providers = this._providers || [];
+    return (term
+      ? providers.filter(provider => this.normalizeProviderName(this.getProviderDisplayName(provider)).includes(term))
+      : providers
+    ).slice(0, 20);
+  }
+
+  get hasExactProviderMatch(): boolean {
+    const company = this.normalizeProviderName(this.newProvider?.company);
+    return !!company && this._providers.some(provider =>
+      this.normalizeProviderName(provider?.company || provider?.name || provider?.nameContact) === company
+    );
+  }
+
+  private normalizeProviderName(value: any): string {
+    return String(value ?? '').trim().replace(/\s+/g, ' ').toLocaleUpperCase();
   }
   private get _providers(): any[] {
     return this.context?.componentParent?.providers || this.context?.providers || this.providers || [];
@@ -1397,7 +1431,7 @@ export class DetallesExpenditureComponent implements OnInit, OnDestroy {
     return employee?.name || employee?.fullName || employee?.nameEmployee || 'Sin nombre';
   }
 
-  private getProviderDisplayName(provider: any): string {
+  getProviderDisplayName(provider: any): string {
     return provider?.name || provider?.company || provider?.nameContact || 'Sin nombre';
   }
 
@@ -1454,7 +1488,20 @@ export class DetallesExpenditureComponent implements OnInit, OnDestroy {
 
   closeProviderModal() {
     this.showProviderModal = false;
+    this.providerCompanyFocused = false;
     document.body.classList.remove('modal-open');
+  }
+
+  onProviderCompanyBlur(): void {
+    setTimeout(() => this.providerCompanyFocused = false, 150);
+  }
+
+  useExistingProvider(provider: any): void {
+    if (!provider?.id) return;
+    const existing = { id: Number(provider.id), name: this.getProviderDisplayName(provider) };
+    this.closeProviderModal();
+    this.onProviderCreated(existing);
+    alerts.toastAlert(`Se usará el proveedor existente: ${existing.name}`, 'info');
   }
 
   async saveNewProvider() {
@@ -1475,18 +1522,22 @@ export class DetallesExpenditureComponent implements OnInit, OnDestroy {
       alerts.toastAlert('Proveedor creado correctamente', 'success');
 
       // Actualizar la lista de proveedores en el contexto
+      const providerId = Number(typeof result === 'number' ? result : (result?.id ?? result?.Id));
+      if (!Number.isFinite(providerId) || providerId <= 0) {
+        throw new Error('El servidor guardó el proveedor pero no devolvió un identificador válido.');
+      }
       const newProvider = {
-        id: result.id,
+        id: providerId,
         name: this.newProvider.company
       };
 
-      // Actualizar la lista viva en componentParent y fallbacks
-      if (this.context?.componentParent?.providers) {
-        this.context.componentParent.providers.push(newProvider);
-      } else if (this.context?.providers) {
-        this.context.providers.push(newProvider);
+      // Actualizar el catálogo vivo sin duplicados y notificar a las pantallas de ingreso/egreso.
+      const lists = [this.context?.componentParent?.providers, this.context?.providers, this.providers]
+        .filter((list): list is any[] => Array.isArray(list));
+      for (const list of lists) {
+        if (!list.some(item => Number(item.id) === providerId)) list.push(newProvider);
       }
-      this.providers.push(newProvider);
+      this.customersService.notifyCatalogSaved(this.context?.idRoot || 0, 'PROVIDERS');
 
       this.closeProviderModal();
 

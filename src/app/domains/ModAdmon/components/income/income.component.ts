@@ -1,6 +1,7 @@
 import { WorkspaceDraftDirective } from 'app/shared/workspace/workspace-draft.directive';
 import { WorkspaceDraftsService } from 'app/services/workspace-drafts.service';
-import { Component, ViewChild, effect, inject } from '@angular/core';
+import { Component, ViewChild, effect, inject, OnDestroy } from '@angular/core';
+import { Subscription } from 'rxjs';
 import { CellDoubleClickedEvent, ColDef, GridApi, GridReadyEvent, ICellRendererParams } from 'ag-grid-enterprise';
 import { IncomesAndExpensesService } from 'app/services/incomes-and-expenses.service';
 import { ModalService } from 'app/services/modal.service';
@@ -38,7 +39,7 @@ import { ProjectsService } from 'app/services/projects.service';
   templateUrl: './income.component.html',
   styleUrl: './income.component.scss'
 })
-export class IncomeComponent {
+export class IncomeComponent implements OnDestroy {
   @ViewChild(WorkspaceDraftDirective) workspaceDraft?: WorkspaceDraftDirective;
   workspaceLoaded = false;
   private workspaceStore = inject(WorkspaceDraftsService);
@@ -61,6 +62,7 @@ export class IncomeComponent {
   private rootService = inject(RootService);
   private base64EncodeService = inject(Base64EncodeService);
   private projectsService = inject(ProjectsService);
+  private catalogSavedSub?: Subscription;
   authService = inject(AuthService);
 
   private isGeneratingReport: boolean = false;
@@ -74,7 +76,14 @@ export class IncomeComponent {
 
 
   ngOnInit() {
+    this.catalogSavedSub = this.customersService.catalogSaved$.subscribe(({ idRoot, type }) => {
+      if (Number(idRoot) !== Number(this.root) || type !== 'CUSTOMERS') return;
+      void this.getCustomers();
+    });
+  }
 
+  ngOnDestroy(): void {
+    this.catalogSavedSub?.unsubscribe();
   }
 
   constructor() {
@@ -1825,33 +1834,23 @@ private async updateAccountBankConsecutive(account: any, newConsecutive: number)
     };
 
     this.customersService.addCustomer(customerData).subscribe({
-      next: (response: any) => {
-        const newCustomerId = response.id;
+      next: async (response: any) => {
+        const newCustomerId = Number(response?.id ?? response?.Id ?? response);
 
         alerts.toastAlert('Cliente guardado correctamente', 'success');
         this.closeCustomerModal();
 
-        // Recargar la lista de clientes
-        this.getCustomers();
+        // Esperar a que el catálogo se actualice antes de refrescar la celda.
+        await this.getCustomers();
 
         // Asignar automáticamente el nuevo cliente a la fila que se estaba editando
         if (this.currentEditingNode && newCustomerId) {
           const nodeToUpdate = this.currentEditingNode;
-          setTimeout(() => {
-            nodeToUpdate.setDataValue('idCustomer', newCustomerId);
-            nodeToUpdate.data.__modified = true;
-            this.notSavedChanges = true;
-
-            // Refrescar la celda para mostrar el nombre
-            if (this.gridApi) {
-              this.gridApi.refreshCells({
-                rowNodes: [nodeToUpdate],
-                columns: ['idCustomer'],
-                force: true
-              });
-            }
-            this.currentEditingNode = null;
-          }, 300);
+          nodeToUpdate.setDataValue('idCustomer', newCustomerId);
+          nodeToUpdate.data.__modified = true;
+          this.notSavedChanges = true;
+          this.gridApi?.refreshCells({ rowNodes: [nodeToUpdate], columns: ['idCustomer'], force: true });
+          this.currentEditingNode = null;
         }
       },
       error: (err) => {

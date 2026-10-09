@@ -1261,6 +1261,10 @@ export class ProvidersComponent implements CanComponentDeactivate {
       // Guardar también los cambios de ProviderXTable
       await this.saveProviderXTableChanges();
 
+      if (newRows.length > 0) {
+        this.customerService.notifyCatalogSaved(this.idRoot, this.type);
+      }
+
       this.notSavedChanges = false;
       this.newlyAddedRows = [];
 

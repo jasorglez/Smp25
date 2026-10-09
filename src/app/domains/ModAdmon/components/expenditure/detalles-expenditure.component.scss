@@ -13,6 +13,27 @@
   background-color: #ffffff;
 }
 
+.provider-company-suggestions {
+  position: relative;
+  z-index: 1060;
+  max-height: min(36vh, 420px);
+  overflow-y: auto;
+  box-shadow: 0 0.25rem 0.75rem rgba(0, 0, 0, 0.15);
+  margin-top: 0.25rem;
+}
+
+.provider-modal-dialog {
+  margin: 3vh auto;
+}
+
+.provider-modal-content {
+  max-height: 94vh;
+}
+
+.provider-modal-body {
+  overflow-y: auto;
+}
+
 // Estilos para descripciones largas con word-wrap
 .ag-theme-quartz {
   .ag-cell {

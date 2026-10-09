@@ -76,11 +76,16 @@ export class ExpenditureComponent implements OnDestroy, OnChanges {
   private router = inject(Router);
 
   private signalRSub!: Subscription;
+  private catalogSavedSub?: Subscription;
   private reloadTimeout: any = null;
 
   public isIncomeMode: boolean = false;
 
   async ngOnInit() {
+    this.catalogSavedSub = this.customersService.catalogSaved$.subscribe(({ idRoot, type }) => {
+      if (Number(idRoot) !== Number(this.idRoot) || type !== 'PROVIDERS') return;
+      void this.loadProviders();
+    });
   }
 
   constructor() {
@@ -190,6 +195,7 @@ export class ExpenditureComponent implements OnDestroy, OnChanges {
 
   ngOnDestroy(): void {
     this.signalRSub?.unsubscribe();
+    this.catalogSavedSub?.unsubscribe();
     if (this.reloadTimeout) clearTimeout(this.reloadTimeout);
   }
 
@@ -311,7 +317,7 @@ export class ExpenditureComponent implements OnDestroy, OnChanges {
     animateRows: true,
     enableBrowserTooltips: true,
     masterDetail: true,
-    detailRowHeight: 600,
+    detailRowHeight: 780,
     detailCellRenderer: DetallesExpenditureComponent,
     isExternalFilterPresent: () => {
       return this.externalFilterActive;

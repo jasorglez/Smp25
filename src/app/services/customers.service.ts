@@ -2,13 +2,20 @@ import { HttpClient } from '@angular/common/http';
 import { inject, Injectable } from '@angular/core';
 import { TrackingService } from './tracking.service';
 import { environment } from '@env/environment';
-import { Observable } from 'rxjs';
+import { Observable, Subject } from 'rxjs';
 import { ICustomer } from 'app/interface/icustomer';
 
 @Injectable({
   providedIn: 'root'
 })
 export class CustomersService {
+
+  private readonly catalogSavedSubject = new Subject<{ idRoot: number; type: string }>();
+  readonly catalogSaved$ = this.catalogSavedSubject.asObservable();
+
+  notifyCatalogSaved(idRoot: number, type: string): void {
+    this.catalogSavedSubject.next({ idRoot, type: (type || '').toUpperCase() });
+  }
 
   constructor() { }
 
