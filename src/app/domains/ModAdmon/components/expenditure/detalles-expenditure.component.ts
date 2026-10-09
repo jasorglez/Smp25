@@ -78,6 +78,7 @@ import { TrackingService } from 'app/services/tracking.service';
       <input #comprobantePdfInput type="file" accept=".pdf,application/pdf" class="d-none" (change)="onComprobantePdfSelected($event)">
       <ag-grid-angular
         [workspaceDraft]="workspaceScope" [draftOwner]="this" [draftReady]="workspaceLoaded"
+        [draftServerRows]="workspaceServerRows"
         draftRows="rowData" draftDirty="hasUnsavedChanges"
         #agGrid
         class="ag-theme-quartz small-text-ag-grid"
@@ -267,6 +268,7 @@ import { TrackingService } from 'app/services/tracking.service';
 export class DetallesExpenditureComponent implements OnInit, OnDestroy {
   @ViewChild(WorkspaceDraftDirective) workspaceDraft?: WorkspaceDraftDirective;
   workspaceLoaded = false;
+  workspaceServerRows: any[] = [];
   get workspaceScope(): string { return 'expense-detail:' + (this.context?.idRoot || this.params?.data?.idBusinnes) + ':' + this.params?.data?.id; }
 
   private trackingService = inject(TrackingService);
@@ -425,7 +427,7 @@ export class DetallesExpenditureComponent implements OnInit, OnDestroy {
         const incomingData = Array.isArray(data) ? data : [];
         const incomingFingerprint = this.buildConceptsFingerprint(incomingData);
 
-        if (this.hasUnsavedChanges && this.lastServerFingerprint && incomingFingerprint !== this.lastServerFingerprint) {
+        if (this.hasUnsavedChanges) {
           return;
         }
 
@@ -435,6 +437,7 @@ export class DetallesExpenditureComponent implements OnInit, OnDestroy {
         const cuentasContables = this._cuentasContables;
 
         this.workspaceLoaded = true;
+        this.workspaceServerRows = incomingData;
         this.rowData = incomingData.map(concept => {
           const type = concept.typeExpense?.trim().toUpperCase();
           let selectedEntity = null;
@@ -1225,8 +1228,8 @@ export class DetallesExpenditureComponent implements OnInit, OnDestroy {
       try {
         await this.context.CONCEPTS.save(expenditureId, dataToSave);
         this.workspaceDraft?.clear();
-      this.hasUnsavedChanges = false;
-        this.lastServerFingerprint = this.buildConceptsFingerprint(this.rowData);
+        this.hasUnsavedChanges = false;
+        this.loadConceptsData();
 
         // Refresh master grid (detail stays open for user to close manually)
         if (this.context?.componentParent?.gridApi) {
@@ -1243,9 +1246,9 @@ export class DetallesExpenditureComponent implements OnInit, OnDestroy {
       return;
     }
 
-    this.loadConceptsData();
     this.workspaceDraft?.clear();
-      this.hasUnsavedChanges = false;
+    this.hasUnsavedChanges = false;
+    this.loadConceptsData();
   }
 
   onCellValueChanged(event: any) {

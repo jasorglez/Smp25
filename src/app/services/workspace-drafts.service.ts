@@ -8,12 +8,14 @@ export interface GridDraft {
 }
 
 // Only business fields participate in conflict detection; display metadata is excluded.
-const VIEW_FIELDS = new Set(['detailType', 'detailData', 'visible', 'selectedEntity', 'countItems', 'countitems', 'countDocomps']);
+const VIEW_FIELDS = new Set(['detailType', 'detailData', 'visible', 'selectedEntity', 'groupEntity', 'totalFinal', 'ivaManuallyEdited', 'expenseTypeText', 'countItems', 'countitems', 'countDocomps']);
 export function businessRow(row: any): any {
   return Object.fromEntries(Object.entries(row || {}).filter(([key]) => !key.startsWith('__') && !VIEW_FIELDS.has(key)));
 }
 export function changedOnServer(original: any, current: any, _draft?: any): boolean {
   if (!original || !current) return true;
+  original = businessRow(original);
+  current = businessRow(current);
   return Object.keys(original).some(key => !sameValue(original[key], current[key], key));
 }
 

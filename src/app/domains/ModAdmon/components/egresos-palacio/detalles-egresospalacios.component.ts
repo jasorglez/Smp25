@@ -64,6 +64,7 @@ import { TrackingService } from 'app/services/tracking.service';
       </div>
       <ag-grid-angular
         [workspaceDraft]="workspaceScope" [draftOwner]="this" [draftReady]="workspaceLoaded"
+        [draftServerRows]="workspaceServerRows"
         draftRows="rowData" draftDirty="hasUnsavedChanges"
         #agGrid
         class="ag-theme-quartz small-text-ag-grid"
@@ -288,6 +289,7 @@ import { TrackingService } from 'app/services/tracking.service';
 export class DetallesEgresospalaciosComponent implements OnInit, OnDestroy {
   @ViewChild(WorkspaceDraftDirective) workspaceDraft?: WorkspaceDraftDirective;
   workspaceLoaded = false;
+  workspaceServerRows: any[] = [];
   get workspaceScope(): string { return 'palacio-expense-detail:' + (this.context?.idRoot || this.params?.data?.idBusinnes) + ':' + this.params?.data?.id; }
 
   private storagesService = inject(StoragesService);
@@ -396,6 +398,7 @@ export class DetallesEgresospalaciosComponent implements OnInit, OnDestroy {
       this.context.CONCEPTS.load(expenditureId, (data: any[]) => {
         console.log(`📊 DETALLE: Conceptos recibidos para ID ${expenditureId}:`, data.length);
         this.workspaceLoaded = true;
+        this.workspaceServerRows = data;
         this.rowData = data.map(concept => ({
           ...concept,
           __isNew: false,

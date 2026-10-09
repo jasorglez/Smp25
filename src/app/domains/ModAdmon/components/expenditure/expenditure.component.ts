@@ -378,7 +378,7 @@ export class ExpenditureComponent implements OnDestroy, OnChanges {
     return this.notSavedChanges || hasExpandedDetail || !!this.gridApi?.getEditingCells().length;
   }
 
-  async getExpenditure() {
+  async getExpenditure(forceReload = false) {
     const request = ++this.workspaceRequest;
     const accountId = this.idAccount;
 
@@ -386,7 +386,7 @@ export class ExpenditureComponent implements OnDestroy, OnChanges {
       this.incomesAndExpensesService.getIncomesAndExpenses(this.idRoot).subscribe({
         next: (incomes) => {
           if (request !== this.workspaceRequest || accountId !== this.idAccount) { resolve(); return; }
-          if (this.shouldPreserveWorkspace()) { resolve(); return; }
+          if (!forceReload && this.shouldPreserveWorkspace()) { resolve(); return; }
           this.workspaceLoaded = true;
 
           this.ingresosPendientesCuenta = (incomes || [])
@@ -1252,7 +1252,7 @@ export class ExpenditureComponent implements OnDestroy, OnChanges {
       this.workspaceDraft?.clear();
       this.notSavedChanges = false;
       this.newlyAddedRows = [];
-      await this.getExpenditure();
+      await this.getExpenditure(true);
       await this.getBankAccounts();
     } catch (error) {
       console.error(error);
@@ -1313,7 +1313,7 @@ export class ExpenditureComponent implements OnDestroy, OnChanges {
 
   revert() {
     this.workspaceDraft?.clear();
-    this.getExpenditure();
+    this.getExpenditure(true);
     this.notSavedChanges = false;
   }
 
@@ -1626,9 +1626,16 @@ export class ExpenditureComponent implements OnDestroy, OnChanges {
         idProject: currentIdProject
       };
 
-      await lastValueFrom(
+      const savedDocument: any = await lastValueFrom(
         this.incomesAndExpensesService.updateIncomesAndExpenses(expenditureId, updatedDocument)
       );
+      const masterRow = this.incomes.find(row => String(row.id) === String(expenditureId));
+      if (masterRow && !masterRow.__modified && savedDocument) {
+        // Conservar la versión confirmada por el servidor, incluida modifiedAt.
+        for (const key of Object.keys(masterRow)) {
+          if (Object.prototype.hasOwnProperty.call(savedDocument, key)) masterRow[key] = savedDocument[key];
+        }
+      }
 
       if (newConcepts.length > 0 || modifiedConcepts.length > 0) {
         alerts.toastAlert('Conceptos guardados', 'success');
@@ -1662,6 +1669,7 @@ export class ExpenditureComponent implements OnDestroy, OnChanges {
         'Error al guardar los conceptos.',
         'error'
       );
+      throw error;
     }
   }
 

@@ -452,7 +452,7 @@ export class EgresosPalacioComponent {
     return this.notSavedChanges || hasExpandedDetail || !!this.gridApi?.getEditingCells().length;
   }
 
-  async getExpenditure() {
+  async getExpenditure(forceReload = false) {
     const request = ++this.workspaceRequest;
     const accountId = this.idAccount;
 
@@ -462,7 +462,7 @@ export class EgresosPalacioComponent {
       this.incomesAndExpensesService.getIncomesAndExpenses(this.idRoot).subscribe({
         next: (incomes) => {
           if (request !== this.workspaceRequest || accountId !== this.idAccount) { resolve(); return; }
-          if (this.shouldPreserveWorkspace()) { resolve(); return; }
+          if (!forceReload && this.shouldPreserveWorkspace()) { resolve(); return; }
           this.workspaceLoaded = true;
 
           // Filtrado y manejo de caso sin datos
@@ -1414,7 +1414,7 @@ export class EgresosPalacioComponent {
       this.newlyAddedRows = [];
 
       // Refrescar los datos
-      await this.getExpenditure();
+      await this.getExpenditure(true);
 
       // Después de recargar, seleccionar y hacer scroll al primer registro guardado
       setTimeout(() => {
@@ -1524,7 +1524,7 @@ export class EgresosPalacioComponent {
 
   revert() {
     this.workspaceDraft?.clear();
-    this.getExpenditure();
+    this.getExpenditure(true);
     this.notSavedChanges = false;
   }
 
@@ -2092,9 +2092,16 @@ export class EgresosPalacioComponent {
         total: total
       };
 
-      await lastValueFrom(
+      const savedDocument: any = await lastValueFrom(
         this.incomesAndExpensesService.updateIncomesAndExpenses(expenditureId, updatedDocument)
       );
+      const masterRow = this.incomes.find(row => String(row.id) === String(expenditureId));
+      if (masterRow && !masterRow.__modified && savedDocument) {
+        // Conservar la versión confirmada por el servidor, incluida modifiedAt.
+        for (const key of Object.keys(masterRow)) {
+          if (Object.prototype.hasOwnProperty.call(savedDocument, key)) masterRow[key] = savedDocument[key];
+        }
+      }
 
       // Mostrar mensaje de éxito solo si hubo cambios
       if (newConcepts.length > 0 || modifiedConcepts.length > 0) {
@@ -2127,6 +2134,7 @@ export class EgresosPalacioComponent {
         'Error al guardar los conceptos.',
         'error'
       );
+      throw error;
     }
   }
 

@@ -12,6 +12,7 @@ export class WorkspaceDraftDirective implements OnInit, OnChanges, OnDestroy {
   @Input() draftRows = 'incomes';
   @Input() draftDirty = 'notSavedChanges';
   @Input() draftReady = false;
+  @Input() draftServerRows?: any[];
   private grid = inject(AgGridAngular);
   private store = inject(WorkspaceDraftsService);
   private api?: GridApi;
@@ -57,11 +58,14 @@ export class WorkspaceDraftDirective implements OnInit, OnChanges, OnDestroy {
     if (this.restoring || !this.api || this.api.isDestroyed() || !this.draftReady) return;
     this.syncKey();
     if (!this.key) return;
-    if (this.restoredKey === this.key) { this.schedule(); return; }
     const rows = this.draftOwner?.[this.draftRows] || [];
+    const serverRows = new Map((this.draftServerRows || []).map(row => [String(row.id), row]));
     for (const row of rows) {
-      if (!row.__isNew && !row.__modified) this.originals.set(String(row.id), businessRow(row));
+      if (!row.__isNew && !row.__modified) {
+        this.originals.set(String(row.id), businessRow(serverRows.get(String(row.id)) ?? row));
+      }
     }
+    if (this.restoredKey === this.key) { this.schedule(); return; }
     const saved = this.snapshot;
     this.restoredKey = this.key;
     if (!saved) { this.schedule(); return; }
