@@ -556,6 +556,41 @@ export class IncomeComponent {
       },
 
       {
+        field: 'idCustomer', headerName: 'Cliente', editable: true, width: 160,
+        cellEditor: SelectWithTooltipEditorV2Component,
+        cellEditorParams: () => ({
+          options: [
+            ...this.customers.map(obj => ({
+              id: obj.id,
+              description: obj.description,
+              valueAddition: obj.id || '',
+              valueAddition2: obj.description || ''
+            })),
+            {
+              id: 'NEW_CUSTOMER',
+              description: '➕ Nuevo Registro',
+              valueAddition: 'Agregar nuevo cliente',
+              valueAddition2: 'Clic para crear'
+            }
+          ],
+          specialValues: ['NEW_CUSTOMER'],
+          onSpecialValue: (value: string, params: any) => {
+            if (value === 'NEW_CUSTOMER') {
+              this.currentEditingNode = params.node;
+              this.openCustomerModal();
+            }
+          }
+        }),
+        valueFormatter: (params) => {
+          if (params.value === 'NEW_CUSTOMER') return '';
+          const foundItem = this.customers
+            ? this.customers.find((item) => item.id === params.value)
+            : null;
+          return foundItem ? `${foundItem.description}` : params.value;
+        },
+      },
+
+      {
         field: 'dateStamped', headerName: 'Fecha Factura', editable: true, cellDataType: 'date', width: 120,
         valueFormatter: (params) => this.formatDate(params.value)
       },
@@ -607,45 +642,6 @@ export class IncomeComponent {
         editable: (params) => params.data?.moneda === 'USD',
         cellStyle: (params) => params.data?.moneda === 'USD' ? null : { backgroundColor: '#e9ecef', color: '#6c757d' },
         valueFormatter: (params) => params.data?.moneda === 'USD' && params.value ? Number(params.value).toFixed(4) : ''
-      },
-
-       {
-        field: 'idCustomer', headerName: 'Cliente', editable: true, width: 160,
-        cellEditor: SelectWithTooltipEditorV2Component,
-        cellEditorParams: () => ({
-          options: [
-            ...this.customers.map(obj => ({
-              id: obj.id,
-              description: obj.description,
-              valueAddition: obj.id || '',
-              valueAddition2: obj.description || ''
-            })),
-            // Opción especial para agregar nuevo cliente
-            {
-              id: 'NEW_CUSTOMER',
-              description: '➕ Nuevo Registro',
-              valueAddition: 'Agregar nuevo cliente',
-              valueAddition2: 'Clic para crear'
-            }
-          ],
-          // Valores especiales que disparan callback
-          specialValues: ['NEW_CUSTOMER'],
-          // Callback cuando se selecciona un valor especial
-          onSpecialValue: (value: string, params: any) => {
-            if (value === 'NEW_CUSTOMER') {
-              // Guardar referencia al nodo actual para asignar el cliente después
-              this.currentEditingNode = params.node;
-              this.openCustomerModal();
-            }
-          }
-        }),
-        valueFormatter: (params) => {
-          if (params.value === 'NEW_CUSTOMER') return '';
-          const foundItem = this.customers
-            ? this.customers.find((item) => item.id === params.value)
-            : null;
-          return foundItem ? `${foundItem.description}` : params.value;
-        },
       },
 
       {
