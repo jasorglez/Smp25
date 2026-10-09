@@ -14,6 +14,7 @@ import { SignalrService } from 'app/services/signalr.service';
 import { TrackingService } from 'app/services/tracking.service';
 import { PdfGeneratorService } from 'app/services/pdf-generator.service';
 import { EmployeesService } from 'app/services/employees.service';
+import { RolesService } from 'app/services/roles.service';
 import { alerts } from 'app/helpers/alerts';
 import { DomSanitizer, SafeResourceUrl } from '@angular/platform-browser';
 import { Pipe, PipeTransform } from '@angular/core';
@@ -160,6 +161,7 @@ export class OrdenesComponent implements OnInit, OnDestroy {
   private sanitizer = inject(DomSanitizer);
   private pdfGeneratorService = inject(PdfGeneratorService);
   private employeesService = inject(EmployeesService);
+  private rolesService = inject(RolesService);
   private catalogService = inject(CatalogsService);
   private materialsService = inject(MaterialsService);
   private projectsService = inject(ProjectsService);
@@ -179,7 +181,7 @@ export class OrdenesComponent implements OnInit, OnDestroy {
 
   private catalogMateriales: any[] = [];
   public catalogEquipos: any[] = [];
-  private catalogDepartamentos: any[] = [];
+  private employeePositions: any[] = [];
   private catalogConcepto: any[] = [];
   private unitsCatalog: any[] = [];
   private typeNotesCatalog: any[] = [];
@@ -1098,10 +1100,8 @@ export class OrdenesComponent implements OnInit, OnDestroy {
 
             // Establecer el ID del empleado
             params.data[params.colDef.field] = employee.id.toString();
-            const depto = this.catalogDepartamentos.find(d => d.id === +employee.idPosition);
-
-            // Establecer automáticamente la posición
-            params.data['position'] = depto ? depto.description : '';
+            params.data.position = this.resolvePersonnelPosition(employee.id);
+            params.api.refreshCells({ rowNodes: [params.node], columns: ['position'], force: true });
 
             return true;
           }
@@ -1115,14 +1115,7 @@ export class OrdenesComponent implements OnInit, OnDestroy {
       flex: 1,
       editable: false,
       valueFormatter: (params: any) => {
-        if (params.data?.idResource) {
-          const employee = this.employees.find(emp => emp.id.toString() === params.data.idResource.toString());
-          if (employee) {
-            const depto = this.catalogDepartamentos.find(d => d.id === +employee.idPosition);
-            return depto ? depto.description : '';
-          }
-        }
-        return params.value || '';
+        return this.resolvePersonnelPosition(params.data?.idResource, params.value);
       }
     },
 
@@ -2531,7 +2524,7 @@ export class OrdenesComponent implements OnInit, OnDestroy {
           this.catalogoEquipo();
           this.obtenerTypeNotes();
           this.loadEmployees();
-          this.getDeptoandPosition();
+          this.loadEmployeePositions();
           this.obtenerUnidades();
           this.obtenerArea();
         }
@@ -2678,6 +2671,7 @@ export class OrdenesComponent implements OnInit, OnDestroy {
         } else {
           this.employees = [];
         }
+        this.refreshPersonnelPositions();
       },
       error: (error) => {
         console.error('Error al cargar empleados:', error);
@@ -4118,7 +4112,7 @@ export class OrdenesComponent implements OnInit, OnDestroy {
               idOt: item.idOt,
               idReporte: item.idReporte,
               idResource: item.idResource ? item.idResource.toString() : '',
-              position: item.position || '',
+              position: this.resolvePersonnelPosition(item.idResource, item.position),
               quantity: item.quantity || 1,
               start: item.start || '08:00',
               end: item.end || '17:00',
@@ -4229,8 +4223,7 @@ export class OrdenesComponent implements OnInit, OnDestroy {
             processedPerson.employeeName = employee.name;
 
             // Resolver cargo del empleado
-            const depto = this.catalogDepartamentos.find(d => d.id === +employee.idPosition);
-            processedPerson.position = depto ? depto.description : '';
+            processedPerson.position = this.resolvePersonnelPosition(person.idResource, person.position);
           }
         }
 
@@ -5055,6 +5048,7 @@ export class OrdenesComponent implements OnInit, OnDestroy {
         // Procesar los datos del servidor para evitar duplicaciones
         this.personal = data.data.map((persona: any, index: number) => ({
           ...persona,
+          position: this.resolvePersonnelPosition(persona.idResource, persona.position),
           // Generar ID único si viene con 0 o no tiene ID válido
           id: persona.id && persona.id !== 0 ? persona.id : `server_personal_${selectedReporteId}_${index}_${Date.now()}`,
           // Marcar como existente del servidor (no nuevo)
@@ -5165,13 +5159,30 @@ export class OrdenesComponent implements OnInit, OnDestroy {
     );
   }
 
-  getDeptoandPosition() {
-    this.catalogService.getCatalogsVigente(this.idcompany, 'POSITION').subscribe(
+  private resolvePersonnelPosition(employeeId: any, fallback: string = ''): string {
+    const employee = this.employees.find(item => String(item.id) === String(employeeId));
+    const position = employee?.idPosition == null ? null : this.employeePositions.find(
+      item => String(item.id) === String(employee.idPosition)
+    );
+    return position?.description || fallback || '';
+  }
+
+  private refreshPersonnelPositions(): void {
+    this.personal.forEach(person => {
+      person.position = this.resolvePersonnelPosition(person.idResource, person.position);
+    });
+    this.personalGridApi?.refreshCells({ columns: ['idResource', 'position'], force: true });
+  }
+
+  loadEmployeePositions() {
+    this.rolesService.getGeneralPosicion(this.idcompany).subscribe(
       (data: any) => {
-        this.catalogDepartamentos = data;
+        this.employeePositions = Array.isArray(data) ? data : [];
+        this.refreshPersonnelPositions();
       },
       (error) => {
-        if (error.status == 404) this.catalogDepartamentos = [];
+        this.employeePositions = [];
+        this.refreshPersonnelPositions();
         console.error('Error fetching data:', error);
       }
     );
