@@ -86,7 +86,7 @@ import { SignalsService } from 'app/services/signals.service';
       <!-- Contenido -->
       <div class="tab-content p-2">
         <ng-container *ngIf="activeTab === 'admon'">
-          <app-dash-admon />
+          <app-dash-admon [dashboardExchangeRate]="exchangeRate" />
         </ng-container>
         <ng-container *ngIf="activeTab === 'proyectos'">
           <app-dash-projects />

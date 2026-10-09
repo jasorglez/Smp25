@@ -1,4 +1,4 @@
-import { Component, DestroyRef, effect, inject, NgZone, OnInit, ChangeDetectionStrategy, ChangeDetectorRef } from '@angular/core';
+import { Component, DestroyRef, effect, inject, NgZone, OnInit, ChangeDetectionStrategy, ChangeDetectorRef, Input } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { CommonModule, DecimalPipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
@@ -125,12 +125,12 @@ import { SignalrService } from 'app/services/signalr.service';
             <span class="saldo-row-sep">|</span>
             <ng-container *ngFor="let c of cuentasBanco; let last = last">
               <span class="saldo-row-cuenta">{{ c.nameAccount }}</span>
-              <span class="saldo-row-monto" *ngIf="c.saldoMxn !== null; else saldoSinConversion">\${{ c.saldoMxn | number:'1.2-2' }} MXN</span>
+              <span class="saldo-row-monto" *ngIf="c.saldoMxn !== null; else saldoSinConversion">\${{ c.saldoMxn | number:'1.2-2' }} MXN<span *ngIf="c.saldoUsd !== null"> (DLS $ {{ c.saldoUsd | number:'1.2-2' }})</span></span>
               <ng-template #saldoSinConversion><span class="text-warning">Sin conversión disponible</span></ng-template>
               <span class="saldo-row-sep" *ngIf="!last || cuentasBanco.length > 0">|</span>
             </ng-container>
             <span class="saldo-row-total-label">TOTAL {{ cuentasBanco.length }} cta{{ cuentasBanco.length !== 1 ? 's' : '' }}</span>
-            <span class="saldo-row-total" *ngIf="saldoTotal !== null; else totalSinConversion">\${{ saldoTotal | number:'1.2-2' }} MXN</span>
+            <span class="saldo-row-total" *ngIf="saldoTotal !== null; else totalSinConversion">\${{ saldoTotal | number:'1.2-2' }} MXN<span *ngIf="saldoTotalUsd !== null"> (DLS $ {{ saldoTotalUsd | number:'1.2-2' }})</span></span>
             <ng-template #totalSinConversion><span class="text-warning">Total pendiente de conversión</span></ng-template>
           </div>
         </div>
@@ -471,6 +471,14 @@ export class DashAdmonComponent implements OnInit {
   isRootUser:   boolean = false;
   cuentasBanco: any[]   = [];
   saldoTotal: number | null = 0;
+  saldoTotalUsd: number | null = null;
+  private dashboardRate: number | null = null;
+  @Input() set dashboardExchangeRate(value: number | null) {
+    const rate = Number(value);
+    this.dashboardRate = Number.isFinite(rate) && rate > 0 ? rate : null;
+    this.buildBankBalances();
+    this.cdr.markForCheck();
+  }
   private allCuentasBanco: any[] = [];
   hoyLabel:     string  = new Date().toLocaleDateString('es-MX', { weekday: 'long', day: '2-digit', month: 'long', year: 'numeric' });
 
@@ -786,12 +794,22 @@ export class DashAdmonComponent implements OnInit {
   }
 
   private buildBankBalances(): void {
+    const exchangeRate = this.dashboardRate ?? this.clientExchangeRate;
     this.cuentasBanco = this.allCuentasBanco
-      .map(account => ({ ...account, saldoMxn: getDashboardBalanceMxn(account, this.clientExchangeRate) }))
+      .map(account => {
+        const saldoMxn = getDashboardBalanceMxn(account, exchangeRate);
+        const saldoUsd = saldoMxn === null
+          ? null
+          : convertDashboardAmount(saldoMxn, 'MXN', null, 'USD', exchangeRate);
+        return { ...account, saldoMxn, saldoUsd };
+      })
       .filter(account => account.saldoMxn === null || account.saldoMxn !== 0);
     this.saldoTotal = this.cuentasBanco.some(account => account.saldoMxn === null)
       ? null
       : this.cuentasBanco.reduce((sum, account) => sum + account.saldoMxn, 0);
+    this.saldoTotalUsd = this.saldoTotal === null
+      ? null
+      : convertDashboardAmount(this.saldoTotal, 'MXN', null, 'USD', exchangeRate);
   }
 
   private loadCuentasBanco(rootId: number): void {
