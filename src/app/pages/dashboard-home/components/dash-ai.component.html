@@ -1,0 +1,109 @@
+<section class="ai-workspace" aria-labelledby="ai-title">
+  <header class="ai-heading">
+    <div>
+      <span class="eyebrow"><i class="bi bi-stars" aria-hidden="true"></i> INTELIGENCIA DEL NEGOCIO</span>
+      <h2 id="ai-title">Tus datos, nuevas perspectivas</h2>
+      <p>Describe lo que necesitas analizar y diseña tu próximo dashboard.</p>
+    </div>
+    <span class="connection-state"><i class="bi bi-stars" aria-hidden="true"></i> Generación con IA</span>
+  </header>
+
+  <div class="context-bar">
+    <div><span>Sucursal activa</span><strong>{{ branchName() || 'Todas las sucursales' }}</strong></div>
+    <div><span>Proyecto activo</span><strong>{{ projectName() || 'Sin proyecto seleccionado' }}</strong></div>
+    <div class="period-filter">
+      <label for="ai-period">Periodo solicitado</label>
+      <select id="ai-period" class="form-select form-select-sm" [(ngModel)]="period" (ngModelChange)="invalidate()">
+        <option value="month">Este mes</option>
+        <option value="previous-month">Mes anterior</option>
+        <option value="quarter">Este trimestre</option>
+        <option value="year">Este año</option>
+      </select>
+    </div>
+  </div>
+
+  <div class="saved-designs" *ngIf="saved.length">
+    <strong>Mis dashboards</strong>
+    <button type="button" class="btn btn-sm btn-outline-secondary" *ngFor="let item of saved; let i = index" (click)="openSaved(i)" [disabled]="loading">{{ item.name }}</button>
+    <small>Diseños guardados en este navegador</small>
+  </div>
+  <div class="workspace-columns" [attr.aria-busy]="loading">
+    <div class="dashboard-canvas">
+      <div class="section-heading"><h3>Empieza con una plantilla</h3><span>Estructuras sugeridas</span></div>
+      <div class="template-grid">
+        <button type="button" class="template-card" *ngFor="let template of templates"
+          [class.selected]="selectedTemplate === template" [attr.aria-pressed]="selectedTemplate === template"
+          (click)="selectTemplate(template)">
+          <i class="bi template-icon" [ngClass]="template.icon" aria-hidden="true"></i>
+          <strong>{{ template.name }}</strong><span>{{ template.description }}</span>
+        </button>
+      </div>
+
+      <section class="generated-dashboard" *ngIf="plan && generatedAt" aria-label="Dashboard generado">
+        <div class="section-heading">
+          <div><h3>{{ plan.title }}</h3><span class="small text-muted">Consulta: {{ generatedAt }}</span></div>
+          <div class="d-flex gap-2"><button type="button" class="btn btn-sm btn-outline-primary" (click)="refresh()" [disabled]="loading">Actualizar datos</button><button type="button" class="btn btn-sm btn-primary" (click)="save()" [disabled]="loading || !plan.widgets.length">Guardar diseño</button></div>
+        </div>
+        <div class="alert alert-info py-2 small" *ngFor="let limitation of plan.limitations">{{ limitation }}</div>
+        <div class="result-grid">
+          <article class="result-card" *ngFor="let result of results; let i = index" [class.wide]="result.widget.view !== 'kpi'">
+            <header><h4>{{ result.widget.title }}</h4>
+              <select class="form-select form-select-sm" aria-label="Tipo de visualización" [ngModel]="result.widget.view" (ngModelChange)="changeView(i, $event)">
+                <option value="kpi">Indicador</option><option value="bar">Barras</option><option value="line">Línea</option><option value="table">Tabla</option>
+              </select>
+            </header>
+            <small class="source-label">{{ catalog[result.widget.source].label }}</small>
+            <div class="alert alert-warning small my-2" *ngIf="result.error">{{ result.error }}</div>
+            <ng-container *ngIf="!result.error">
+              <div class="real-value" *ngIf="result.widget.view === 'kpi'">{{ result.value === null ? '—' : (result.value | number:'1.0-2') }} <small>{{ result.unit }}</small></div>
+              <p class="small py-3" *ngIf="!result.rows.length">Sin registros para los filtros seleccionados.</p>
+              <apx-chart *ngIf="result.rows.length && (result.widget.view === 'bar' || result.widget.view === 'line')" [series]="result.series" [chart]="result.chart" [xaxis]="result.xaxis" [colors]="colors" [dataLabels]="dataLabels"></apx-chart>
+              <div class="table-responsive" *ngIf="result.widget.view === 'table' && result.rows.length">
+                <table class="table table-sm"><thead><tr><th>Registro</th><th>Estado</th><th>Mes</th><th>Valor ({{ result.unit }})</th></tr></thead><tbody>
+                  <tr *ngFor="let row of result.rows | slice:0:100"><td>{{ row.name }}</td><td>{{ row.state }}</td><td>{{ row.month || 'Actual' }}</td><td>{{ result.widget.metric === 'count' ? 1 : row[result.widget.metric] === null || row[result.widget.metric] === undefined ? '—' : (row[result.widget.metric] | number:'1.0-2') }}</td></tr>
+                </tbody></table><small>Mostrando {{ result.rows.length > 100 ? 100 : result.rows.length }} de {{ result.rows.length }} registros. Los indicadores incluyen todos.</small>
+              </div>
+            </ng-container>
+            <details><summary>Ver parámetros y cálculo</summary>
+              <p>{{ catalog[result.widget.source].note }}</p>
+              <p>Operación: {{ result.widget.metric === 'count' ? 'Conteo de registros' : result.widget.metric === 'amount' ? 'Suma de importes en MXN' : 'Promedio de porcentajes por proyecto' }}. Agrupación: {{ result.widget.groupBy === 'name' ? 'nombre' : result.widget.groupBy === 'state' ? 'estado' : 'mes' }}.</p>
+              <p *ngIf="result.widget.search">Filtro de texto: {{ result.widget.search }}</p>
+              <p *ngFor="let note of result.notes">{{ note }}</p>
+            </details>
+          </article>
+        </div>
+      </section>
+      <section class="preview" *ngIf="!generatedAt" aria-label="Vista previa de la plantilla">
+        <div class="section-heading"><h3>{{ selectedTemplate?.name || 'Tu próximo dashboard' }}</h3><span>Vista previa · Sin datos</span></div>
+        <ng-container *ngIf="selectedTemplate; else emptyCanvas">
+          <p class="preview-note">Esta estructura pertenece a la plantilla seleccionada. Genera con IA para interpretar tu solicitud o consulta la plantilla con datos reales.</p>
+          <div class="indicator-grid">
+            <article class="indicator" *ngFor="let indicator of selectedTemplate.indicators">
+              <span>{{ indicator }}</span><strong>—</strong><small>Pendiente de datos</small>
+            </article>
+          </div>
+          <div class="chart-placeholder"><i class="bi bi-bar-chart-line" aria-hidden="true"></i><strong>{{ selectedTemplate.chart }}</strong><span>La gráfica aparecerá al conectar los datos del ERP.</span></div>
+          <div class="detail-placeholder"><i class="bi bi-table" aria-hidden="true"></i><div><strong>{{ selectedTemplate.detail }}</strong><span>Aquí podrás consultar los registros que respaldan el análisis.</span></div></div>
+        </ng-container>
+        <ng-template #emptyCanvas>
+          <div class="empty-canvas"><i class="bi bi-grid-1x2" aria-hidden="true"></i><h4>Un dashboard para cada pregunta</h4><p>Selecciona una plantilla para explorar su estructura o escribe qué necesitas en el asistente.</p><span>Indicadores · Gráficas · Tablas</span></div>
+        </ng-template>
+      </section>
+    </div>
+
+    <aside class="assistant-panel" aria-labelledby="assistant-title">
+      <div class="assistant-heading"><i class="bi bi-stars" aria-hidden="true"></i><div><h3 id="assistant-title">Asistente IA</h3><span>Diseña tu análisis</span></div></div>
+      <p>¿Qué quieres conocer de tu operación? Indica los valores, comparaciones y avances que necesitas ver.</p>
+      <form (ngSubmit)="prepareRequest()">
+        <label for="ai-prompt">{{ plan ? 'Describe un ajuste o un nuevo dashboard' : 'Describe tu dashboard' }}</label>
+        <textarea id="ai-prompt" name="prompt" class="form-control" rows="7" maxlength="4000" [(ngModel)]="prompt" (ngModelChange)="status = ''" placeholder="Ejemplo: quiero comparar el avance y el costo de los proyectos de esta sucursal."></textarea>
+        <button type="submit" class="btn btn-primary w-100 mt-3" [disabled]="!prompt.trim() || loading"><i class="bi bi-stars me-1" aria-hidden="true"></i> {{ loading ? 'Procesando…' : 'Generar con IA' }}</button>
+      </form>
+      <button type="button" *ngIf="selectedTemplate" class="btn btn-outline-secondary w-100 mt-2" (click)="loadTemplate()" [disabled]="loading">Consultar plantilla con datos</button>
+      <p class="connection-note">La IA diseña la vista. Los valores se calculan con los registros del ERP y los permisos de tu sesión.</p>
+      <div class="alert alert-danger small mt-3" role="alert" *ngIf="error">{{ error }}</div>
+      <div class="request-status" role="status" *ngIf="status">{{ status }}</div>
+      <div class="assistant-help"><strong>Una buena solicitud incluye</strong><ul><li>Qué área o proyecto quieres analizar.</li><li>Qué indicadores necesitas comparar.</li><li>Qué periodo quieres consultar.</li></ul></div>
+    </aside>
+  </div>
+</section>

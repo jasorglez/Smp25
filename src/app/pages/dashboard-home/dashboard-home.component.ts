@@ -9,11 +9,12 @@ import { CrmDashboardComponent } from 'app/domains/ModSales/components/crm-dashb
 import { AdministrationService } from 'app/services/administration.service';
 import { QuickActionsService } from 'app/services/quick-actions.service';
 import { SignalsService } from 'app/services/signals.service';
+import { DashAiComponent } from './components/dash-ai.component';
 
 @Component({
   selector: 'app-dashboard-home',
   standalone: true,
-  imports: [CommonModule, RouterLink, DashAdmonComponent, DashProjectsComponent, DashWarehouseComponent, CrmDashboardComponent],
+  imports: [CommonModule, RouterLink, DashAdmonComponent, DashProjectsComponent, DashWarehouseComponent, CrmDashboardComponent, DashAiComponent],
   template: `
     <div class="dashboard-wrapper">
       <div class="dashboard-body">
@@ -60,6 +61,11 @@ import { SignalsService } from 'app/services/signals.service';
             <i class="bi bi-cart3 me-1"></i> Ventas
           </button>
         </li>
+        <li class="nav-item">
+          <button class="nav-link" [class.active]="activeTab === 'ia'" (click)="activeTab = 'ia'">
+            <i class="bi bi-stars me-1"></i> Inteligencia IA
+          </button>
+        </li>
       </ul>
 
       <section class="dashboard-quick-tools" aria-label="Herramientas rápidas">
@@ -85,6 +91,9 @@ import { SignalsService } from 'app/services/signals.service';
 
       <!-- Contenido -->
       <div class="tab-content p-2">
+        <div [hidden]="activeTab !== 'ia'">
+          <app-dash-ai />
+        </div>
         <ng-container *ngIf="activeTab === 'admon'">
           <app-dash-admon [dashboardExchangeRate]="exchangeRate" />
         </ng-container>
