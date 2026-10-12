@@ -8,7 +8,7 @@ const file = path.resolve(__dirname, '../src/app/services/dashboard-ai.model.ts'
 const compiled = ts.transpileModule(fs.readFileSync(file, 'utf8'), { compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 } });
 const loaded = new Module(file, module);
 loaded._compile(compiled.outputText, file);
-const { validateDashboardPlan, numericValue, dateRange, inDashboardPeriod, aggregateDashboard } = loaded.exports;
+const { validateDashboardPlan, numericValue, dateRange, inDashboardPeriod, aggregateDashboard, validateDashboardPeriod, purchaseSubtotal, filterPurchaseOrders } = loaded.exports;
 const widget = { title: 'Gastos', source: 'expenses', metric: 'amount', view: 'bar', groupBy: 'month', search: '' };
 const plan = { title: 'Finanzas', widgets: [widget], limitations: [] };
 assert.equal(validateDashboardPlan(plan).widgets.length, 1);
@@ -42,3 +42,26 @@ assert.equal(aggregateDashboard({ ...widget, metric: 'count' }, { rows: [], note
 assert.equal(aggregateDashboard({ ...widget, metric: 'count' }, { rows: [], notes: [] }).value, 0);
 assert.equal(aggregateDashboard(widget, { rows: [], notes: [] }).value, null);
 console.log('Dashboard AI: validation, periods, filtering and aggregation checks passed.');
+
+assert.deepEqual(validateDashboardPeriod({ from: '2026-01-01', to: '2026-12-31' }), { from: '2026-01-01', to: '2026-12-31' });
+assert.throws(() => validateDashboardPeriod({ from: '2026-02-30', to: '2026-12-31' }));
+assert.throws(() => validateDashboardPeriod({ from: '2026-12-31', to: '2026-01-01' }));
+assert.equal(purchaseSubtotal([{ quantity: 2, price: 50 }, { quantity: 3, price: 20 }, { quantity: 1, price: 900, active: false }]), 160);
+assert.equal(purchaseSubtotal([{ quantity: 2, price: null }]), null);
+assert.equal(purchaseSubtotal([{ quantity: 0.5, price: 0.25, total: 0.13 }]), 0.13);
+assert.equal(purchaseSubtotal([]), null);
+const orderWidget = { ...widget, source: 'orders', groupBy: 'month' };
+const purchases = [{ ...rows[0], currency: 'MXN', provider: 'Proveedor A' }, { ...rows[1], amount: 20, currency: 'USD', provider: 'Proveedor B' }];
+result = aggregateDashboard(orderWidget, { rows: purchases, notes: [] });
+assert.equal(result.value, null, 'Never sum MXN and USD');
+assert.deepEqual(result.currencyTotals, [{ name: 'MXN', value: 100 }, { name: 'USD', value: 20 }]);
+assert.equal(result.currencySeries.length, 2);
+assert.equal(aggregateDashboard({ ...orderWidget, search: 'Proveedor B' }, { rows: purchases, notes: [] }).value, 20);
+assert.equal(aggregateDashboard(orderWidget, { rows: [{ ...purchases[0], currency: 'Sin moneda' }], notes: [] }).value, null);
+const purchaseContext = { company: 55, branch: 2, project: 8, user: 1, from: '2026-01-01', to: '2026-12-31' };
+const order = { id: 1, idRoot: 55, type: 'OC', typeReference: 'project', idReference: 8, dateCreate: '2026-01-01' };
+assert.equal(filterPurchaseOrders([order, { ...order, idRoot: 66 }, { ...order, idReference: 9 }, { ...order, dateCreate: '2025-12-31' }], purchaseContext).length, 1);
+assert.equal(filterPurchaseOrders([{ ...order, typeReference: 'branch', idReference: 2 }], purchaseContext).length, 0, 'Do not attribute branch-only purchases to a project');
+assert.equal(filterPurchaseOrders([{ ...order, idBranchExecution: 2 }], { ...purchaseContext, project: 0 }).length, 1);
+assert.equal(validateDashboardPlan({ ...plan, widgets: [orderWidget], period: { from: '2026-01-01', to: '2026-12-31' } }).period.from, '2026-01-01');
+console.log('Purchases: annual range, tenant/context filters, subtotals and currency separation checks passed.');

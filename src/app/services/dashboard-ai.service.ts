@@ -8,10 +8,11 @@ import { InventarioWarehouseService } from './inventario-warehouse.service';
 import { OcAndReqsService } from './ocandreqs.service';
 import { ProjectsService } from './projects.service';
 import { SignalsService } from './signals.service';
-import { SetupService } from './setup.service';
+import { CurrencyService } from './currency.service';
+import { ProvidersService } from './providers.service';
 import { WorkprogramsService } from './workprograms.service';
 import { convertDashboardAmount } from 'app/pages/dashboard-home/components/dashboard-currency';
-import { DASHBOARD_CATALOG, DashboardContext, DashboardDataset, DashboardPlan, DashboardResult, DashboardSource, aggregateDashboard, inDashboardPeriod, numericValue, validateDashboardPlan } from './dashboard-ai.model';
+import { DASHBOARD_CATALOG, DashboardContext, DashboardDataset, DashboardPlan, DashboardResult, DashboardSource, aggregateDashboard, filterPurchaseOrders, purchaseSubtotal, inDashboardPeriod, numericValue, validateDashboardPlan } from './dashboard-ai.model';
 
 @Injectable({ providedIn: 'root' })
 export class DashboardAiService {
@@ -23,15 +24,18 @@ export class DashboardAiService {
   private readonly finances = inject(IncomesAndExpensesService);
   private readonly inventory = inject(InventarioWarehouseService);
   private readonly orders = inject(OcAndReqsService);
-  private readonly setup = inject(SetupService);
+  private readonly currencies = inject(CurrencyService);
+  private readonly providers = inject(ProvidersService);
 
-  async createPlan(prompt: string, previous: DashboardPlan | null, signal: AbortSignal): Promise<DashboardPlan> {
+  async createPlan(prompt: string, previous: DashboardPlan | null, signal: AbortSignal, currentPeriod?: { from: string; to: string }): Promise<DashboardPlan> {
+    const now = new Date();
+    const today = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
     let response: Response;
     try {
       response = await fetch(`${environment.urlChatBot}/DashboardAi/plan`, {
         method: 'POST', signal,
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${localStorage.getItem('token') || ''}` },
-        body: JSON.stringify({ prompt: prompt.slice(0, 4000), previous }),
+        body: JSON.stringify({ prompt: prompt.slice(0, 4000), previous, currentPeriod, today }),
       });
     } catch (error: any) {
       if (signal.aborted) throw error;
@@ -130,15 +134,34 @@ export class DashboardAiService {
   }
 
   private async loadOrders(context: DashboardContext): Promise<DashboardDataset> {
-    const setup = this.array(await this.read(this.setup.getWarehouseSetup(context.company)))[0];
-    if (!setup) throw new Error('No hay configuración de almacenes para la empresa.');
-    const byProject = [true, 1, '1', 'true'].includes(setup.projectOrBranch);
-    const reference = byProject ? context.project : context.branch;
-    if (!reference) throw new Error(`Selecciona ${byProject ? 'un proyecto' : 'una sucursal'} para consultar las órdenes de compra.`);
-    if (!byProject && context.project) throw new Error('Las compras están configuradas por sucursal; quita el filtro de proyecto para consultar esta fuente.');
-    const records = this.array(await this.read(this.orders.getOcAndReqs(byProject ? 'project' : 'branch', reference, 'OC')))
-      .filter(row => Number(row.idRoot) === context.company && Number(row.idReference) === reference && row.typeReference === (byProject ? 'project' : 'branch') && inDashboardPeriod(row.dateCreate, context));
-    return { rows: records.map(row => ({ id: row.id, name: row.folio || `OC ${row.id}`, state: row.close === true ? 'Cerrada' : row.close === false ? 'Abierta' : 'Sin estado', month: String(row.dateCreate).slice(0, 7) })), notes: [`Órdenes creadas entre ${context.from} y ${context.to}. Abierta/cerrada corresponde al campo de cierre, no a la fecha de entrega.`] };
+    const [orders, currencies, providers] = await Promise.all([
+      this.read(this.orders.getCompanyOrders(context.company)),
+      this.read(this.currencies.getCurrencies(context.company)),
+      this.read(this.providers.getProviders(context.company)),
+    ]);
+    const currencyMap = new Map(this.array(currencies).map(row => [Number(row.id), String(row.description || '').trim().toUpperCase()]));
+    const providerMap = new Map(this.array(providers).map(row => [Number(row.id), row.company || row.name || row.nameContact]));
+    const records = filterPurchaseOrders(this.array(orders), context);
+    const unique = [...new Map(records.map(row => [row.id, row])).values()];
+    const rows: DashboardDataset['rows'] = [];
+    let failedDetails = 0;
+    for (let index = 0; index < unique.length; index += 5) {
+      await Promise.all(unique.slice(index, index + 5).map(async row => {
+        let amount: number | null = null;
+        try { amount = purchaseSubtotal(this.array(await this.read(this.orders.getReqItems(Number(row.id))))); }
+        catch { failedDetails++; }
+        const originalCurrency = currencyMap.get(Number(row.idCurrency)) || 'Sin moneda';
+        const currency = ['MX', 'MN', 'MXN', 'PESO MEXICANO', 'PESOS MEXICANOS'].includes(originalCurrency) ? 'MXN' : originalCurrency;
+        rows.push({ id: row.id, name: row.folio || `OC ${row.id}`, provider: providerMap.get(Number(row.idProvider)) || `Proveedor ${row.idProvider || 'sin asignar'}`, currency,
+          state: row.close === true ? 'Cerrada' : row.close === false ? 'Abierta' : 'Sin estado', date: String(row.dateCreate).slice(0, 10), month: String(row.dateCreate).slice(0, 7), amount });
+      }));
+    }
+    rows.sort((a, b) => (b.date || '').localeCompare(a.date || '') || b.id - a.id);
+    return { rows, notes: [
+      `Compras: órdenes de compra creadas entre ${context.from} y ${context.to}, dentro del contexto seleccionado.`,
+      'Subtotal = suma de cantidad × precio de partidas activas; antes de descuentos, IVA y retenciones. No representa compras pagadas ni recibidas.',
+      ...(failedDetails ? [`No se pudieron consultar las partidas de ${failedDetails} órdenes; sus importes permanecen sin dato.`] : []),
+    ] };
   }
 
   private async loadInventory(context: DashboardContext): Promise<DashboardDataset> {

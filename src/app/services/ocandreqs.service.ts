@@ -16,6 +16,10 @@ export class OcAndReqsService {
     return this.http.get(`${environment.urlWarehouse}/Ocandreq?typeReference=${typeReference}&idReference=${idReference}&type=${type}`, { headers: this.trackingService.getHeaders() });
   }
 
+  getCompanyOrders(idCompany: number) {
+    return this.http.get(`${environment.urlWarehouse}/Ocandreq/${idCompany}/OC`, { headers: this.trackingService.getHeaders() });
+  }
+
   getDetailedReq(id: number) {
     return this.http.get(`${environment.urlWarehouse}/Ocandreq/${id}`, { headers: this.trackingService.getHeaders() });
   }

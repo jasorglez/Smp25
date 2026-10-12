@@ -4,7 +4,7 @@ import { FormsModule } from '@angular/forms';
 import { SignalsService } from 'app/services/signals.service';
 import { NgApexchartsModule } from 'ng-apexcharts';
 import { DashboardAiService } from 'app/services/dashboard-ai.service';
-import { DASHBOARD_CATALOG, DashboardPlan, DashboardResult, DashboardSource, DashboardView, dateRange, validateDashboardPlan } from 'app/services/dashboard-ai.model';
+import { DASHBOARD_CATALOG, DashboardPlan, DashboardResult, DashboardSource, DashboardView, dateRange, validateDashboardPeriod, validateDashboardPlan } from 'app/services/dashboard-ai.model';
 
 interface DashboardTemplate {
   name: string;
@@ -45,9 +45,9 @@ export class DashAiComponent implements OnDestroy {
       chart: 'Ingresos y egresos por periodo', detail: 'Documentos registrados',
     },
     {
-      name: 'Compras y almacenes', sources: ['orders', 'inventory'], icon: 'bi-box-seam',
-      description: 'Órdenes abiertas y valor del inventario actual.',
-      prompt: 'Crea un dashboard de compras con órdenes abiertas y cerradas por mes, e inventario actual por estado de stock si el contexto lo permite.',
+      name: 'Compras', sources: ['orders'], icon: 'bi-box-seam',
+      description: 'Importes por moneda, proveedores y órdenes.',
+      prompt: 'Dame las compras de todo este año, con importes por moneda, gráfica mensual y detalle por proveedor.',
       indicators: ['Órdenes', 'Abiertas / cerradas', 'Materiales', 'Valor de inventario'],
       chart: 'Órdenes por mes y estado de stock', detail: 'Órdenes e inventario actual',
     },
@@ -62,6 +62,7 @@ export class DashAiComponent implements OnDestroy {
   selectedTemplate: DashboardTemplate | null = null;
   prompt = '';
   period = 'month';
+  requestedRange = dateRange('month');
   status = '';
   loading = false;
   error = '';
@@ -70,7 +71,7 @@ export class DashAiComponent implements OnDestroy {
   generatedAt = '';
   saved: { name: string; plan: DashboardPlan }[] = [];
   readonly catalog = DASHBOARD_CATALOG;
-  readonly colors = ['#176d96'];
+  readonly colors = ['#176d96', '#e2982d', '#27a277', '#8257bd'];
   readonly dataLabels = { enabled: false };
   private controller?: AbortController;
   private requestId = 0;
@@ -106,6 +107,12 @@ export class DashAiComponent implements OnDestroy {
     this.loading = false;
   }
 
+  changePeriod(): void {
+    if (this.period !== 'custom') this.requestedRange = dateRange(this.period);
+    if (this.plan) this.plan.period = { ...this.requestedRange };
+    this.invalidate();
+  }
+
   selectTemplate(template: DashboardTemplate): void {
     this.invalidate();
     this.plan = null;
@@ -124,7 +131,7 @@ export class DashAiComponent implements OnDestroy {
       title: this.selectedTemplate.name,
       limitations: ['Plantilla predefinida: no interpreta la solicitud escrita. Usa Generar con IA para personalizarla.'],
       widgets: this.selectedTemplate.sources.flatMap(source => {
-        const metric = source === 'projects' ? 'progress' : source === 'orders' ? 'count' : 'amount';
+        const metric = source === 'projects' ? 'progress' : 'amount';
         return [
           { title: this.catalog[source].label, source, metric, view: 'kpi', groupBy: 'name', search: '' },
           { title: this.catalog[source].label, source, metric, view: 'bar', groupBy: source === 'projects' ? 'name' : source === 'inventory' ? 'state' : 'month', search: '' },
@@ -147,16 +154,25 @@ export class DashAiComponent implements OnDestroy {
       company: Number(this.signalsService.getRootSelectedBySidebar()() || 0),
       branch: Number(this.signalsService.getBranchSelectedBySidebar()() || 0),
       project: Number(this.signalsService.getProjectSelectedBySidebar()() || 0),
-      user: Number(this.signalsService.idUser() || 0), ...dateRange(this.period),
+      user: Number(this.signalsService.idUser() || 0), ...this.requestedRange,
     };
     this.loading = true;
     this.status = generate ? 'La IA está diseñando tu dashboard…' : 'Consultando datos del ERP…';
     try {
       if (!context.company || !context.user) throw new Error('Selecciona una empresa y verifica tu sesión antes de generar el dashboard.');
-      const plan = generate ? await this.ai.createPlan(this.prompt, previous, controller.signal) : previous!;
+      validateDashboardPeriod(context);
+      const plan = generate ? await this.ai.createPlan(this.prompt, previous, controller.signal, this.requestedRange) : previous!;
       clearTimeout(deadline);
       if (requestId !== this.requestId) return;
-      this.plan = plan;
+      if (plan.period) {
+        this.requestedRange = validateDashboardPeriod(plan.period);
+        Object.assign(context, this.requestedRange);
+        this.period = ['month', 'previous-month', 'quarter', 'year'].find(period => {
+          const range = dateRange(period);
+          return range.from === this.requestedRange.from && range.to === this.requestedRange.to;
+        }) || 'custom';
+      }
+      this.plan = { ...plan, period: { ...this.requestedRange } };
       this.status = 'Consultando datos del ERP…';
       const results = plan.widgets.length ? await this.ai.load(plan, context) : [];
       if (requestId !== this.requestId) return;
@@ -177,7 +193,7 @@ export class DashAiComponent implements OnDestroy {
   private toChart(result: DashboardResult) {
     return {
       ...result,
-      series: [{ name: `${result.widget.metric === 'count' ? 'Registros' : result.widget.metric === 'amount' ? 'Importe' : 'Avance'} (${result.unit})`, data: result.groups.map(group => group.value === null ? null : Math.round(group.value * 100) / 100) }],
+      series: result.currencySeries.length ? result.currencySeries : [{ name: `${result.widget.metric === 'count' ? 'Registros' : result.widget.metric === 'amount' ? 'Importe' : 'Avance'} (${result.unit})`, data: result.groups.map(group => group.value === null ? null : Math.round(group.value * 100) / 100) }],
       chart: { type: result.widget.view === 'line' ? 'line' : 'bar', height: 280, toolbar: { show: false }, animations: { enabled: false } },
       xaxis: { categories: result.groups.map(group => group.name), labels: { trim: true, rotate: -35 } },
     };

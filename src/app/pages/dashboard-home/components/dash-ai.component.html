@@ -13,13 +13,17 @@
     <div><span>Proyecto activo</span><strong>{{ projectName() || 'Sin proyecto seleccionado' }}</strong></div>
     <div class="period-filter">
       <label for="ai-period">Periodo solicitado</label>
-      <select id="ai-period" class="form-select form-select-sm" [(ngModel)]="period" (ngModelChange)="invalidate()">
+      <select id="ai-period" class="form-select form-select-sm" [(ngModel)]="period" (ngModelChange)="changePeriod()">
         <option value="month">Este mes</option>
         <option value="previous-month">Mes anterior</option>
         <option value="quarter">Este trimestre</option>
         <option value="year">Este año</option>
+        <option value="custom">Rango personalizado</option>
       </select>
     </div>
+    <div><span>Periodo aplicado</span><strong>{{ requestedRange.from }} — {{ requestedRange.to }}</strong></div>
+    <div *ngIf="period === 'custom'"><label for="ai-from">Desde</label><input id="ai-from" type="date" class="form-control form-control-sm" [(ngModel)]="requestedRange.from" (ngModelChange)="changePeriod()"></div>
+    <div *ngIf="period === 'custom'"><label for="ai-to">Hasta</label><input id="ai-to" type="date" class="form-control form-control-sm" [(ngModel)]="requestedRange.to" (ngModelChange)="changePeriod()"></div>
   </div>
 
   <div class="saved-designs" *ngIf="saved.length">
@@ -55,18 +59,19 @@
             <small class="source-label">{{ catalog[result.widget.source].label }}</small>
             <div class="alert alert-warning small my-2" *ngIf="result.error">{{ result.error }}</div>
             <ng-container *ngIf="!result.error">
-              <div class="real-value" *ngIf="result.widget.view === 'kpi'">{{ result.value === null ? '—' : (result.value | number:'1.0-2') }} <small>{{ result.unit }}</small></div>
+              <div class="real-value" *ngIf="result.widget.view === 'kpi' && !result.currencyTotals.length">{{ result.value === null ? '—' : (result.value | number:'1.0-2') }} <small>{{ result.unit }}</small></div>
+              <div *ngIf="result.widget.view === 'kpi' && result.currencyTotals.length"><div class="real-value" *ngFor="let total of result.currencyTotals">{{ total.value === null ? '—' : (total.value | number:'1.0-2') }} <small>{{ total.name }} · subtotal</small></div></div>
               <p class="small py-3" *ngIf="!result.rows.length">Sin registros para los filtros seleccionados.</p>
               <apx-chart *ngIf="result.rows.length && (result.widget.view === 'bar' || result.widget.view === 'line')" [series]="result.series" [chart]="result.chart" [xaxis]="result.xaxis" [colors]="colors" [dataLabels]="dataLabels"></apx-chart>
               <div class="table-responsive" *ngIf="result.widget.view === 'table' && result.rows.length">
-                <table class="table table-sm"><thead><tr><th>Registro</th><th>Estado</th><th>Mes</th><th>Valor ({{ result.unit }})</th></tr></thead><tbody>
-                  <tr *ngFor="let row of result.rows | slice:0:100"><td>{{ row.name }}</td><td>{{ row.state }}</td><td>{{ row.month || 'Actual' }}</td><td>{{ result.widget.metric === 'count' ? 1 : row[result.widget.metric] === null || row[result.widget.metric] === undefined ? '—' : (row[result.widget.metric] | number:'1.0-2') }}</td></tr>
+                <table class="table table-sm"><thead><tr><th>Registro</th><th>Estado</th><th>Fecha / mes</th><th *ngIf="result.widget.source === 'orders'">Proveedor</th><th *ngIf="result.widget.source === 'orders'">Moneda</th><th>{{ result.widget.source === 'orders' && result.widget.metric === 'amount' ? 'Subtotal' : 'Valor' }} ({{ result.unit }})</th></tr></thead><tbody>
+                  <tr *ngFor="let row of result.rows | slice:0:100"><td>{{ row.name }}</td><td>{{ row.state }}</td><td>{{ row.date || row.month || 'Actual' }}</td><td *ngIf="result.widget.source === 'orders'">{{ row.provider }}</td><td *ngIf="result.widget.source === 'orders'">{{ row.currency }}</td><td>{{ result.widget.metric === 'count' ? 1 : row[result.widget.metric] === null || row[result.widget.metric] === undefined ? '—' : (row[result.widget.metric] | number:'1.0-2') }}</td></tr>
                 </tbody></table><small>Mostrando {{ result.rows.length > 100 ? 100 : result.rows.length }} de {{ result.rows.length }} registros. Los indicadores incluyen todos.</small>
               </div>
             </ng-container>
             <details><summary>Ver parámetros y cálculo</summary>
               <p>{{ catalog[result.widget.source].note }}</p>
-              <p>Operación: {{ result.widget.metric === 'count' ? 'Conteo de registros' : result.widget.metric === 'amount' ? 'Suma de importes en MXN' : 'Promedio de porcentajes por proyecto' }}. Agrupación: {{ result.widget.groupBy === 'name' ? 'nombre' : result.widget.groupBy === 'state' ? 'estado' : 'mes' }}.</p>
+              <p>Operación: {{ result.widget.metric === 'count' ? 'Conteo de registros' : result.widget.metric === 'amount' ? (result.widget.source === 'orders' ? 'Suma de subtotales por moneda' : 'Suma de importes en MXN') : 'Promedio de porcentajes por proyecto' }}. Agrupación: {{ result.widget.groupBy === 'name' ? 'nombre' : result.widget.groupBy === 'state' ? 'estado' : result.widget.groupBy === 'provider' ? 'proveedor' : result.widget.groupBy === 'currency' ? 'moneda' : 'mes' }}.</p>
               <p *ngIf="result.widget.search">Filtro de texto: {{ result.widget.search }}</p>
               <p *ngFor="let note of result.notes">{{ note }}</p>
             </details>
@@ -96,7 +101,7 @@
       <p>¿Qué quieres conocer de tu operación? Indica los valores, comparaciones y avances que necesitas ver.</p>
       <form (ngSubmit)="prepareRequest()">
         <label for="ai-prompt">{{ plan ? 'Describe un ajuste o un nuevo dashboard' : 'Describe tu dashboard' }}</label>
-        <textarea id="ai-prompt" name="prompt" class="form-control" rows="7" maxlength="4000" [(ngModel)]="prompt" (ngModelChange)="status = ''" placeholder="Ejemplo: quiero comparar el avance y el costo de los proyectos de esta sucursal."></textarea>
+        <textarea id="ai-prompt" name="prompt" class="form-control" rows="7" maxlength="4000" [(ngModel)]="prompt" (ngModelChange)="status = ''" placeholder="Ejemplo: dame las compras de todo este año."></textarea>
         <button type="submit" class="btn btn-primary w-100 mt-3" [disabled]="!prompt.trim() || loading"><i class="bi bi-stars me-1" aria-hidden="true"></i> {{ loading ? 'Procesando…' : 'Generar con IA' }}</button>
       </form>
       <button type="button" *ngIf="selectedTemplate" class="btn btn-outline-secondary w-100 mt-2" (click)="loadTemplate()" [disabled]="loading">Consultar plantilla con datos</button>
