@@ -11,6 +11,14 @@
   <div class="context-bar">
     <div><span>Sucursal activa</span><strong>{{ branchName() || 'Todas las sucursales' }}</strong></div>
     <div><span>Proyecto activo</span><strong>{{ projectName() || 'Sin proyecto seleccionado' }}</strong></div>
+    <div>
+      <label for="ai-financial-scope">Alcance de ingresos y gastos</label>
+      <select id="ai-financial-scope" class="form-select form-select-sm" [(ngModel)]="financialScope" (ngModelChange)="changeFinancialScope()" [disabled]="loading">
+        <option value="company">Empresa activa: todas las sucursales y proyectos</option>
+        <option value="branch">Sucursal seleccionada: todos los proyectos</option>
+        <option value="selected">Sucursal y proyecto seleccionados</option>
+      </select>
+    </div>
     <div class="period-filter">
       <label for="ai-period">Periodo solicitado</label>
       <select id="ai-period" class="form-select form-select-sm" [(ngModel)]="period" (ngModelChange)="changePeriod()">
@@ -26,6 +34,7 @@
     <div *ngIf="period === 'custom'"><label for="ai-to">Hasta</label><input id="ai-to" type="date" class="form-control form-control-sm" [(ngModel)]="requestedRange.to" (ngModelChange)="changePeriod()"></div>
   </div>
 
+  <p *ngIf="plan?.financialScope === 'company'" class="text-muted">Ingresos y gastos: todas las cuentas, sucursales y proyectos de la empresa activa.</p>
   <p *ngIf="plan?.financialScope === 'branch'" class="text-muted">Ingresos y gastos: todas las cuentas de la sucursal seleccionada, sin filtro de proyecto.</p>
 
   <div class="saved-designs" *ngIf="saved.length">

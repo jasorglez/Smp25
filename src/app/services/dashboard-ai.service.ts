@@ -92,7 +92,7 @@ export class DashboardAiService {
     return { rows: unique.map(row => ({
       id: row.id, name: row.description || row.numberDocument || `Documento ${row.id}`, state: row.status || 'Sin estado', month: String(row.date).slice(0, 7),
       amount: numericValue(row.totalMxn) ?? (numericValue(row.total) === null || !row.moneda ? null : convertDashboardAmount(row.total, row.moneda, row.tipoCambio)),
-    })), notes: [`Fuente: documentos ${type}. Empresa ${context.company}. Sucursal: ${context.branch || 'todas'}. ${scope === 'branch' ? 'Todas las cuentas, sin filtro de proyecto.' : 'Proyecto: ' + (context.project || 'todos') + '.'} Periodo ${context.from} a ${context.to}. Importes convertidos con el tipo de cambio capturado; sin tasa de cambio estimada.`] };
+    })), notes: [`Fuente: documentos ${type}. Empresa ${context.company}. Sucursal: ${scope === 'company' ? 'todas' : context.branch || 'todas'}. ${scope === 'company' ? 'Todas las cuentas y todos los proyectos.' : scope === 'branch' ? 'Todas las cuentas, sin filtro de proyecto.' : 'Proyecto: ' + (context.project || 'todos') + '.'} Periodo ${context.from} a ${context.to}. Importes convertidos con el tipo de cambio capturado; sin tasa de cambio estimada.`] };
   }
 
   private async loadProjects(context: DashboardContext): Promise<DashboardDataset> {

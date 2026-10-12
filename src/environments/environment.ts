@@ -83,5 +83,5 @@ export const environment = {
   geminiApiKey: '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',
   gnewsApiKey: '94ccc596b4dfebc3f72683b6e81d81bc',
 
-  version: '5.00.114 (12 Octubre 2026) ingresos de todas las cuentas por sucursal',
+  version: '5.00.115 (12 Octubre 2026) finanzas de toda la empresa',
 };

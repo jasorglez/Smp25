@@ -62,6 +62,7 @@ export class DashAiComponent implements OnDestroy {
   selectedTemplate: DashboardTemplate | null = null;
   prompt = '';
   period = 'month';
+  financialScope: DashboardPlan['financialScope'] = 'company';
   requestedRange = dateRange('month');
   status = '';
   loading = false;
@@ -105,6 +106,11 @@ export class DashAiComponent implements OnDestroy {
     this.error = '';
     this.status = '';
     this.loading = false;
+  }
+
+  changeFinancialScope(): void {
+    if (this.plan) this.plan.financialScope = this.financialScope;
+    this.invalidate();
   }
 
   changePeriod(): void {
@@ -162,6 +168,8 @@ export class DashAiComponent implements OnDestroy {
       if (!context.company || !context.user) throw new Error('Selecciona una empresa y verifica tu sesión antes de generar el dashboard.');
       validateDashboardPeriod(context);
       const plan = generate ? await this.ai.createPlan(this.prompt, previous, controller.signal, this.requestedRange) : previous!;
+      // El alcance elegido es explícito y funciona también con versiones anteriores del planificador.
+      plan.financialScope = this.financialScope;
       clearTimeout(deadline);
       if (requestId !== this.requestId) return;
       if (plan.period) {
@@ -216,6 +224,7 @@ export class DashAiComponent implements OnDestroy {
   async openSaved(index: number): Promise<void> {
     if (this.loading) return;
     this.plan = validateDashboardPlan(this.saved[index].plan);
+    this.financialScope = this.plan.financialScope || 'company';
     this.prompt = `Actualiza el dashboard ${this.plan.title}`;
     await this.run(false);
   }

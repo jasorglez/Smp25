@@ -17,7 +17,7 @@ export interface DashboardWidget {
   search: string;
 }
 export interface DashboardPeriod { from: string; to: string; }
-export interface DashboardPlan { title: string; widgets: DashboardWidget[]; limitations: string[]; period?: DashboardPeriod | null; financialScope?: 'selected' | 'branch'; }
+export interface DashboardPlan { title: string; widgets: DashboardWidget[]; limitations: string[]; period?: DashboardPeriod | null; financialScope?: 'selected' | 'branch' | 'company'; }
 export interface DashboardRow {
   id: number;
   name: string;
@@ -48,7 +48,7 @@ export function validateDashboardPlan(value: any): DashboardPlan {
   if (!value || typeof value.title !== 'string' || !Array.isArray(value.widgets) || value.widgets.length > 12 || !Array.isArray(value.limitations)) {
     throw new Error('La IA devolvió una estructura inválida. Intenta describir el dashboard de otra forma.');
   }
-  if (value.financialScope != null && !['selected', 'branch'].includes(value.financialScope)) throw new Error('El alcance financiero no es válido.');
+  if (value.financialScope != null && !['selected', 'branch', 'company'].includes(value.financialScope)) throw new Error('El alcance financiero no es válido.');
   const widgets: DashboardWidget[] = value.widgets.map((widget: any) => {
     if (!widget || !Object.prototype.hasOwnProperty.call(DASHBOARD_CATALOG, widget.source)) throw new Error('La IA solicitó una fuente no permitida.');
     const source = DASHBOARD_CATALOG[widget.source as DashboardSource];
@@ -70,8 +70,8 @@ export function validateDashboardPeriod(value: any): DashboardPeriod {
 export function filterFinancialRecords(data: any[], source: 'incomes' | 'expenses', context: DashboardContext, scope: DashboardPlan['financialScope'] = 'selected'): any[] {
   const type = source === 'incomes' ? 'DEPOSITO' : 'GASTO';
   return data.filter(row => Number(row.idBusinnes) === context.company && row.type === type && row.active !== false && row.active !== 0 &&
-    (scope === 'branch' || !context.project || Number(row.idProject) === context.project) &&
-    (!context.branch || Number(row.idBranch) === context.branch) && inDashboardPeriod(row.date, context));
+    (scope === 'company' || scope === 'branch' || !context.project || Number(row.idProject) === context.project) &&
+    (scope === 'company' || !context.branch || Number(row.idBranch) === context.branch) && inDashboardPeriod(row.date, context));
 }
 
 export function purchaseSubtotal(items: any[]): number | null {

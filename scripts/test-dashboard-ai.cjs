@@ -73,5 +73,15 @@ const records = [income, { ...income, id: 2, idProject: 9, idAccount: 2 }, { ...
 assert.deepEqual(filterFinancialRecords(records, 'incomes', financeContext, 'branch').map(r => r.id), [1, 2]);
 assert.deepEqual(filterFinancialRecords(records, 'incomes', financeContext).map(r => r.id), [1]);
 assert.equal(validateDashboardPlan({ ...plan, financialScope: 'branch' }).financialScope, 'branch');
-assert.throws(() => validateDashboardPlan({ ...plan, financialScope: 'company' }));
+assert.throws(() => validateDashboardPlan({ ...plan, financialScope: 'other-company' }));
 console.log('All accounts: selected company, branch, dates and active income documents verified.');
+
+assert.deepEqual(filterFinancialRecords(records, 'incomes', financeContext, 'company').map(r => r.id), [1, 2, 3]);
+assert.equal(validateDashboardPlan({ ...plan, financialScope: 'company' }).financialScope, 'company');
+const fiveYears = { ...financeContext, from: '2022-01-01', to: '2026-12-31' };
+assert.deepEqual(filterFinancialRecords([
+  { ...income, id: 10, date: '2022-01-01', idProject: 99, idBranch: 99 },
+  { ...income, id: 11, date: '2021-12-31' },
+  { ...income, id: 12, date: '2026-12-31', idBusinnes: 11 }
+], 'incomes', fiveYears, 'company').map(r => r.id), [10]);
+console.log('Company-wide financial scope includes all branches/projects, never another company.');
