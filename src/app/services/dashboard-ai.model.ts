@@ -17,7 +17,7 @@ export interface DashboardWidget {
   search: string;
 }
 export interface DashboardPeriod { from: string; to: string; }
-export interface DashboardPlan { title: string; widgets: DashboardWidget[]; limitations: string[]; period?: DashboardPeriod | null; }
+export interface DashboardPlan { title: string; widgets: DashboardWidget[]; limitations: string[]; period?: DashboardPeriod | null; financialScope?: 'selected' | 'branch'; }
 export interface DashboardRow {
   id: number;
   name: string;
@@ -48,6 +48,7 @@ export function validateDashboardPlan(value: any): DashboardPlan {
   if (!value || typeof value.title !== 'string' || !Array.isArray(value.widgets) || value.widgets.length > 12 || !Array.isArray(value.limitations)) {
     throw new Error('La IA devolvió una estructura inválida. Intenta describir el dashboard de otra forma.');
   }
+  if (value.financialScope != null && !['selected', 'branch'].includes(value.financialScope)) throw new Error('El alcance financiero no es válido.');
   const widgets: DashboardWidget[] = value.widgets.map((widget: any) => {
     if (!widget || !Object.prototype.hasOwnProperty.call(DASHBOARD_CATALOG, widget.source)) throw new Error('La IA solicitó una fuente no permitida.');
     const source = DASHBOARD_CATALOG[widget.source as DashboardSource];
@@ -57,13 +58,20 @@ export function validateDashboardPlan(value: any): DashboardPlan {
     }
     return { title: widget.title.slice(0, 120), source: widget.source, metric: widget.metric, view: widget.view, groupBy: widget.groupBy, search: widget.search.slice(0, 100) };
   });
-  return { title: value.title.slice(0, 160), widgets, period: value.period == null ? null : validateDashboardPeriod(value.period), limitations: value.limitations.filter((item: unknown) => typeof item === 'string').slice(0, 12).map((item: string) => item.slice(0, 400)) };
+  return { title: value.title.slice(0, 160), widgets, financialScope: value.financialScope || 'selected', period: value.period == null ? null : validateDashboardPeriod(value.period), limitations: value.limitations.filter((item: unknown) => typeof item === 'string').slice(0, 12).map((item: string) => item.slice(0, 400)) };
 }
 
 export function validateDashboardPeriod(value: any): DashboardPeriod {
   const validDate = (text: unknown) => typeof text === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(text) && Number.isFinite(Date.parse(text)) && new Date(text).toISOString().slice(0, 10) === text;
   if (!value || !validDate(value.from) || !validDate(value.to) || value.from > value.to) throw new Error('El periodo solicitado no es válido.');
   return { from: value.from, to: value.to };
+}
+
+export function filterFinancialRecords(data: any[], source: 'incomes' | 'expenses', context: DashboardContext, scope: DashboardPlan['financialScope'] = 'selected'): any[] {
+  const type = source === 'incomes' ? 'DEPOSITO' : 'GASTO';
+  return data.filter(row => Number(row.idBusinnes) === context.company && row.type === type && row.active !== false && row.active !== 0 &&
+    (scope === 'branch' || !context.project || Number(row.idProject) === context.project) &&
+    (!context.branch || Number(row.idBranch) === context.branch) && inDashboardPeriod(row.date, context));
 }
 
 export function purchaseSubtotal(items: any[]): number | null {

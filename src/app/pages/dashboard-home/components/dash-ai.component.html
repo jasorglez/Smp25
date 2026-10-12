@@ -26,6 +26,8 @@
     <div *ngIf="period === 'custom'"><label for="ai-to">Hasta</label><input id="ai-to" type="date" class="form-control form-control-sm" [(ngModel)]="requestedRange.to" (ngModelChange)="changePeriod()"></div>
   </div>
 
+  <p *ngIf="plan?.financialScope === 'branch'" class="text-muted">Ingresos y gastos: todas las cuentas de la sucursal seleccionada, sin filtro de proyecto.</p>
+
   <div class="saved-designs" *ngIf="saved.length">
     <strong>Mis dashboards</strong>
     <button type="button" class="btn btn-sm btn-outline-secondary" *ngFor="let item of saved; let i = index" (click)="openSaved(i)" [disabled]="loading">{{ item.name }}</button>

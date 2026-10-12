@@ -65,3 +65,13 @@ assert.equal(filterPurchaseOrders([{ ...order, typeReference: 'branch', idRefere
 assert.equal(filterPurchaseOrders([{ ...order, idBranchExecution: 2 }], { ...purchaseContext, project: 0 }).length, 1);
 assert.equal(validateDashboardPlan({ ...plan, widgets: [orderWidget], period: { from: '2026-01-01', to: '2026-12-31' } }).period.from, '2026-01-01');
 console.log('Purchases: annual range, tenant/context filters, subtotals and currency separation checks passed.');
+
+const { filterFinancialRecords } = loaded.exports;
+const financeContext = { company: 10, branch: 2, project: 8, user: 1, from: '2026-01-01', to: '2026-12-31' };
+const income = { id: 1, idBusinnes: 10, idBranch: 2, idProject: 8, idAccount: 1, type: 'DEPOSITO', active: true, date: '2026-01-01' };
+const records = [income, { ...income, id: 2, idProject: 9, idAccount: 2 }, { ...income, id: 3, idBranch: 3 }, { ...income, id: 4, idBusinnes: 11 }, { ...income, id: 5, date: '2027-01-01' }, { ...income, id: 6, active: false }, { ...income, id: 7, type: 'GASTO' }];
+assert.deepEqual(filterFinancialRecords(records, 'incomes', financeContext, 'branch').map(r => r.id), [1, 2]);
+assert.deepEqual(filterFinancialRecords(records, 'incomes', financeContext).map(r => r.id), [1]);
+assert.equal(validateDashboardPlan({ ...plan, financialScope: 'branch' }).financialScope, 'branch');
+assert.throws(() => validateDashboardPlan({ ...plan, financialScope: 'company' }));
+console.log('All accounts: selected company, branch, dates and active income documents verified.');

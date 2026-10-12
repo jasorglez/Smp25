@@ -12,7 +12,7 @@ import { CurrencyService } from './currency.service';
 import { ProvidersService } from './providers.service';
 import { WorkprogramsService } from './workprograms.service';
 import { convertDashboardAmount } from 'app/pages/dashboard-home/components/dashboard-currency';
-import { DASHBOARD_CATALOG, DashboardContext, DashboardDataset, DashboardPlan, DashboardResult, DashboardSource, aggregateDashboard, filterPurchaseOrders, purchaseSubtotal, inDashboardPeriod, numericValue, validateDashboardPlan } from './dashboard-ai.model';
+import { DASHBOARD_CATALOG, DashboardContext, DashboardDataset, DashboardPlan, DashboardResult, DashboardSource, aggregateDashboard, filterPurchaseOrders, filterFinancialRecords, purchaseSubtotal, inDashboardPeriod, numericValue, validateDashboardPlan } from './dashboard-ai.model';
 
 @Injectable({ providedIn: 'root' })
 export class DashboardAiService {
@@ -73,7 +73,7 @@ export class DashboardAiService {
         else {
           const result = await financialData;
           if (result.error) throw result.error;
-          dataset = this.loadFinances(source, this.array(result.data), context);
+          dataset = this.loadFinances(source, this.array(result.data), context, plan.financialScope);
         }
         datasets.set(source, dataset);
       } catch (error: any) {
@@ -84,16 +84,15 @@ export class DashboardAiService {
     return plan.widgets.map(widget => aggregateDashboard(widget, datasets.get(widget.source)!));
   }
 
-  private loadFinances(source: 'incomes' | 'expenses', data: any[], context: DashboardContext): DashboardDataset {
+  private loadFinances(source: 'incomes' | 'expenses', data: any[], context: DashboardContext, scope: DashboardPlan['financialScope']): DashboardDataset {
     const type = source === 'incomes' ? 'DEPOSITO' : 'GASTO';
-    const records = data.filter(row => Number(row.idBusinnes) === context.company && row.type === type && row.active !== false &&
-      (!context.project || Number(row.idProject) === context.project) && (!context.branch || Number(row.idBranch) === context.branch) && inDashboardPeriod(row.date, context));
+    const records = filterFinancialRecords(data, source, context, scope);
     // La fuente son documentos padre, no conceptos: evita duplicar el importe.
     const unique = [...new Map(records.map(row => [row.id, row])).values()];
     return { rows: unique.map(row => ({
       id: row.id, name: row.description || row.numberDocument || `Documento ${row.id}`, state: row.status || 'Sin estado', month: String(row.date).slice(0, 7),
       amount: numericValue(row.totalMxn) ?? (numericValue(row.total) === null || !row.moneda ? null : convertDashboardAmount(row.total, row.moneda, row.tipoCambio)),
-    })), notes: [`Fuente: documentos ${type}. Periodo ${context.from} a ${context.to}. Importes convertidos con el tipo de cambio capturado; sin tasa de cambio estimada.`] };
+    })), notes: [`Fuente: documentos ${type}. Empresa ${context.company}. Sucursal: ${context.branch || 'todas'}. ${scope === 'branch' ? 'Todas las cuentas, sin filtro de proyecto.' : 'Proyecto: ' + (context.project || 'todos') + '.'} Periodo ${context.from} a ${context.to}. Importes convertidos con el tipo de cambio capturado; sin tasa de cambio estimada.`] };
   }
 
   private async loadProjects(context: DashboardContext): Promise<DashboardDataset> {
