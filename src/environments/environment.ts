@@ -83,5 +83,5 @@ export const environment = {
   geminiApiKey: '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',
   gnewsApiKey: '94ccc596b4dfebc3f72683b6e81d81bc',
 
-  version: '5.00.115 (12 Octubre 2026) finanzas de toda la empresa',
+  version: '5.00.116 (13 Octubre 2026) corrige conflicto visual en egresos',
 };
