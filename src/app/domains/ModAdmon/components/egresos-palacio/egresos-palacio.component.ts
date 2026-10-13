@@ -670,7 +670,7 @@ export class EgresosPalacioComponent {
         cellStyle: { backgroundColor: '#f8f9fa', fontWeight: 'bold' }
       },
       {
-        field: 'count',
+        field: 'countItems',
         headerName: 'Items',
         width: 80,
         cellRenderer: ButtonCellRendererExpenditureComponent,
@@ -2017,32 +2017,18 @@ export class EgresosPalacioComponent {
   }
 
   updateExpenditureCountItems(expenditureId: number, count: number) {
-    if (this.gridApi) {
-      this.gridApi.forEachNode((node) => {
-        if (node.data && node.data.id === expenditureId) {
-          node.data.countItems = count;
-          this.gridApi.refreshCells({
-            rowNodes: [node],
-            columns: ['countItems'],
-            force: true
-          });
-
-          if (this.selectedIncomes && this.selectedIncomes.id === expenditureId) {
-            this.selectedIncomes.countItems = count;
-          }
-
-          const dataToSave = {
-            countItems: count,
-            countDocomps: node.data.countDocomps || 0,
-            modifiedBy: this.currentUser
-          };
-          this.administrationService.updateRowsIncorExp(expenditureId, dataToSave).subscribe({
-            next: () => { },
-            error: () => { }
-          });
-        }
-      });
-    }
+    // El contador visual puede incluir borradores. La API calcula el persistido
+    // desde los conceptos activos; abrir el detalle no debe escribir en el maestro.
+    const matches = (row: any) => row && String(row.id) === String(expenditureId);
+    const row = this.incomes.find(matches);
+    if (row) row.countItems = count;
+    if (matches(this.selectedIncomes)) this.selectedIncomes.countItems = count;
+    this.gridApi?.forEachNode(node => {
+      if (matches(node.data)) {
+        node.data.countItems = count;
+        this.gridApi.refreshCells({ rowNodes: [node], columns: ['countItems'], force: true });
+      }
+    });
   }
 
   loadConceptsData(expenditureId: number, successCallback: any) {
