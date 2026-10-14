@@ -72,7 +72,14 @@ export class ImageHandlerService {
   // NUEVO MÉTODO para subir videos a Firebase
   uploadFileToFirebase(file: File, folder: string = 'videos'): Promise<string> {
     return new Promise((resolve, reject) => {
-      const path = `${folder}/${this.storagesService.generateRandom()}${file.name}`;
+      // Mantener corto el nombre del objeto: las URLs de descarga también se
+      // guardan en columnas varchar(320) de la bitácora. El nombre original
+      // de fotos y videos de teléfonos puede ser muy largo.
+      const extension = file.name.match(/\.[a-z0-9]{1,10}$/i)?.[0]?.toLowerCase() ?? '';
+      const uniqueName = typeof crypto !== 'undefined' && 'randomUUID' in crypto
+        ? crypto.randomUUID()
+        : `${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
+      const path = `${folder}/${uniqueName}${extension}`;
       
       this.storagesService.uploadFile(file, path)
         .then(url => {
