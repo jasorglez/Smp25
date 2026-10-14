@@ -313,6 +313,12 @@ export class InandoutStComponent implements OnInit {
     }
   }
 
+  private isTransferType(idType: any): boolean {
+    if (this.movementType !== 'IN') return false;
+    const description = this.catalogs.find(catalog => Number(catalog.id) === Number(idType))?.description ?? '';
+    return String(description).normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim().toUpperCase() === 'TRASPASO';
+  }
+
   onWarehouseChange(id?: number | string) {
     if (id !== undefined) {
       this.selectedWarehouse = this.warehouses.find(w => String(w.idAlmacen) === String(id)) || null;
@@ -443,6 +449,10 @@ export class InandoutStComponent implements OnInit {
       }
       event.data.__modified = true;
       this.hasUnsavedChanges = true;
+      if (event.colDef.field === 'idType') {
+        this.selectedEntry = event.data;
+        this.refreshColumns();
+      }
       setTimeout(() => {
         this.gridApi.refreshCells({ rowNodes: [event.node], force: true });
       }, 0);
@@ -560,6 +570,7 @@ export class InandoutStComponent implements OnInit {
         field: 'idOc',
         headerName: 'Orden de Compra',
         width: 160,
+        hide: this.movementType === 'IN',
         editable: true,
         cellEditor: 'agRichSelectCellEditor',
         cellEditorParams: () => ({
@@ -603,10 +614,36 @@ export class InandoutStComponent implements OnInit {
         }
       },
       {
+        field: 'idWarehouseOrigin',
+        headerName: 'Almacén de Origen',
+        width: 190,
+        hide: !this.isTransferType(this.selectedEntry?.idType),
+        editable: (params: any) => this.isTransferType(params.data?.idType),
+        cellEditor: 'agRichSelectCellEditor',
+        cellEditorParams: (params: any) => {
+          const destinationId = Number(params.data?.idWarehouse || this.selectedWarehouse?.idAlmacen || 0);
+          const available = this.warehouses.filter(warehouse => Number(warehouse.idAlmacen) !== destinationId);
+          return {
+            values: available.map(warehouse => warehouse.idAlmacen),
+            valueListMaxHeight: 220,
+            formatValue: (value: any) => {
+              const warehouse = available.find(item => Number(item.idAlmacen) === Number(value));
+              return warehouse ? (warehouse.nombreAlmacen || warehouse.name || warehouse.description) : (value || '');
+            }
+          };
+        },
+        valueFormatter: (params: any) => {
+          if (!params.value) return '';
+          const warehouse = this.warehouses.find(item => Number(item.idAlmacen) === Number(params.value));
+          return warehouse ? (warehouse.nombreAlmacen || warehouse.name || warehouse.description) : `Almacén #${params.value}`;
+        }
+      },
+      {
         field: 'numBill',
         headerName: 'Factura',
         width: 120,
-        editable: true,
+        hide: this.isTransferType(this.selectedEntry?.idType),
+        editable: (params: any) => !this.isTransferType(params.data?.idType),
         valueSetter: (params: any) => {
           params.data.numBill = params.newValue ? params.newValue.toUpperCase() : '';
           return true;
@@ -796,6 +833,7 @@ export class InandoutStComponent implements OnInit {
   onSelectionChanged(event: any): void {
     const selectedRows = event.api.getSelectedRows();
     this.selectedEntry = selectedRows.length > 0 ? selectedRows[0] : null;
+    this.refreshColumns();
   }
 
   onCellValueChanged(event: any): void {
@@ -803,6 +841,10 @@ export class InandoutStComponent implements OnInit {
       this.isDirectEntryMode = event.newValue;
     }
     this.hasUnsavedChanges = true;
+    if (event.colDef.field === 'idType') {
+      this.selectedEntry = event.data;
+      this.refreshColumns();
+    }
   }
 
   isDirectEntryMode: boolean = false;
@@ -817,6 +859,10 @@ export class InandoutStComponent implements OnInit {
     }
     if (event.colDef.field === 'directEntry') {
       this.isDirectEntryMode = event.newValue;
+    }
+    if (event.colDef.field === 'idType') {
+      this.selectedEntry = event.data;
+      this.refreshColumns();
     }
   }
 
@@ -837,6 +883,8 @@ export class InandoutStComponent implements OnInit {
         node.data.idType = newId;
         node.data.__modified = true;
         this.hasUnsavedChanges = true;
+        this.selectedEntry = node.data;
+        this.refreshColumns();
         this.gridApi.refreshCells({ rowNodes: [node], force: true });
       }
     }
@@ -858,6 +906,7 @@ export class InandoutStComponent implements OnInit {
       idBranch: this.idBranch,
       idProject: this.projectId,
       idWarehouse: this.selectedWarehouse?.idAlmacen || 0,
+      idWarehouseOrigin: null,
       idType: this.selectedCatalog?.id || 0,
       idOt: this.selectedOt?.id || 0,
       idOc: 0,
@@ -953,6 +1002,15 @@ export class InandoutStComponent implements OnInit {
       return;
     }
 
+    const invalidTransfer = [...newRows, ...modifiedRows].find((row: any) =>
+      this.isTransferType(row.idType) &&
+      (!Number(row.idWarehouseOrigin) || Number(row.idWarehouseOrigin) === Number(row.idWarehouse || this.selectedWarehouse?.idAlmacen))
+    );
+    if (invalidTransfer) {
+      alerts.basicAlert('Almacén de origen requerido', 'Selecciona un almacén de origen distinto al almacén de destino para guardar el traspaso.', 'warning');
+      return;
+    }
+
     try {
       for (const newRow of newRows) {
         const entryData = this.prepareEntryData(newRow);
@@ -997,13 +1055,14 @@ export class InandoutStComponent implements OnInit {
       idBranch: this.idBranch,
       idProject: row.idProject || this.projectId,
       idWarehouse: row.idWarehouse || this.selectedWarehouse?.idAlmacen || 0,
+      idWarehouseOrigin: this.isTransferType(row.idType) ? (row.idWarehouseOrigin || null) : null,
       idType: row.idType || 0,
       idOt: row.idOt || 0,
       idOc: row.idOc || 0,
       folio: row.folio || '',
       date: row.date || new Date().toISOString(),
       deliveryDate: row.deliveryDate || new Date().toISOString(),
-      numBill: row.numBill || '',
+      numBill: this.isTransferType(row.idType) ? null : (row.numBill || ''),
       deliverName: row.deliverName || '',
       idAutoriza: row.idAutoriza || 0,
       comment: row.comment || '',
