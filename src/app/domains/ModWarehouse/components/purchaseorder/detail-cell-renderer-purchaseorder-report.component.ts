@@ -6,6 +6,7 @@ import { DomSanitizer, SafeResourceUrl } from '@angular/platform-browser';
 import { SignalsService } from 'app/services/signals.service';
 import { RootService } from 'app/services/root.service';
 import { CustomersService } from 'app/services/customers.service';
+import { UsersService } from 'app/services/users.service';
 import { OcAndReqsService } from 'app/services/ocandreqs.service';
 import { MaterialsService } from 'app/services/materials.service';
 import { Base64EncodeService } from 'app/services/base64encode.service';
@@ -92,6 +93,7 @@ export class DetailCellRendererPurchaseOrderReportComponent implements OnDestroy
   private signalsService = inject(SignalsService);
   private rootService = inject(RootService);
   private customersService = inject(CustomersService);
+  private usersService = inject(UsersService);
   private requisitionsService = inject(OcAndReqsService);
   private materialsService = inject(MaterialsService);
   private base64EncodeService = inject(Base64EncodeService);
@@ -167,10 +169,27 @@ export class DetailCellRendererPurchaseOrderReportComponent implements OnDestroy
       const itemsPromise: Promise<any[]> = purchaseOrderId && !String(purchaseOrderId).startsWith('temp_')
         ? lastValueFrom(this.requisitionsService.getReqItems(purchaseOrderId))
         : Promise.resolve([]);
-      const [company, products, providerData, items] = await Promise.all([
-        companyWithImagesPromise, productsPromise, providerPromise, itemsPromise
+      const authorizerId = Number(this.purchaseOrderData.idAuthorize || 0);
+      const authorizerPromise: Promise<any> = authorizerId > 0
+        ? lastValueFrom(this.usersService.getUserById(authorizerId)).catch(error => {
+            console.warn('No se pudo cargar el usuario autorizador:', error);
+            return null;
+          })
+        : Promise.resolve(null);
+      const [company, products, providerData, items, authorizerResponse] = await Promise.all([
+        companyWithImagesPromise, productsPromise, providerPromise, itemsPromise, authorizerPromise
       ]);
       if (this.destroyed) return;
+
+      const authorizer = authorizerResponse?.data ?? authorizerResponse;
+      const signatureUrl = authorizer?.signature || authorizer?.Signature || '';
+      const convertedSignature = signatureUrl
+        ? await this.base64EncodeService.convertImageToBase64(signatureUrl).catch(error => {
+            console.warn('No se pudo cargar la firma del usuario autorizador:', error);
+            return null;
+          })
+        : null;
+      const authorizerSignature = convertedSignature?.startsWith('data:image/') ? convertedSignature : null;
 
       const { companyData, logoBase64, logo2Base64, watermarkBase64 } = company;
       const productsById = new Map(products.map(product => [String(product.id), product]));
@@ -184,7 +203,10 @@ export class DetailCellRendererPurchaseOrderReportComponent implements OnDestroy
       });
 
       // Generar el PDF
-      const docDefinition = this.buildDocDefinition(companyData, logoBase64, logo2Base64, watermarkBase64, providerData, articulos);
+      const docDefinition = this.buildDocDefinition(
+        companyData, logoBase64, logo2Base64, watermarkBase64, providerData, articulos,
+        authorizer, authorizerSignature
+      );
 
       this.trackingService.addLog(this.trackingService.getnameComp(), 'Imprimió/abrió PDF orden de compra', 'Almacén / Órdenes de Compra', this.trackingService.getEmail());
       const pdfDocGenerator = pdfMake.createPdf(docDefinition as any);
@@ -241,7 +263,16 @@ export class DetailCellRendererPurchaseOrderReportComponent implements OnDestroy
     }).format(value || 0);
   }
 
-  private buildDocDefinition(companyData: any, logoBase64: string, logo2Base64: string, watermarkBase64: string | null, providerData: any, articulos: any[]): any {
+  private buildDocDefinition(
+    companyData: any,
+    logoBase64: string,
+    logo2Base64: string,
+    watermarkBase64: string | null,
+    providerData: any,
+    articulos: any[],
+    authorizer: any,
+    authorizerSignature: string | null
+  ): any {
     const fechaOC = this.purchaseOrderData.dateCreate ? this.formatDate(this.purchaseOrderData.dateCreate) : '';
     const fechaEntrega = this.purchaseOrderData.dateSupply ? this.formatDate(this.purchaseOrderData.dateSupply) : '';
     const ocNumero = this.purchaseOrderData.folio || 'N/A';
@@ -252,6 +283,15 @@ export class DetailCellRendererPurchaseOrderReportComponent implements OnDestroy
     const solicitante = solicitanteSeleccionado?.displayName
       || solicitanteSeleccionado?.name
       || this.purchaseOrderData.solicit
+      || 'N/A';
+    const autorizadorSeleccionado = usuarios.find((usuario: any) =>
+      String(usuario.id) === String(this.purchaseOrderData.idAuthorize)
+    );
+    const autorizador = authorizer?.displayName
+      || authorizer?.name
+      || autorizadorSeleccionado?.displayName
+      || autorizadorSeleccionado?.name
+      || this.purchaseOrderData.authorize
       || 'N/A';
     const comentarios = this.purchaseOrderData.comments || '';
 
@@ -515,9 +555,10 @@ export class DetailCellRendererPurchaseOrderReportComponent implements OnDestroy
             {
               width: '50%',
               stack: [
-                { text: 'Autoriza:', bold: true, fontSize: 9, margin: [0, 0, 0, 25] },
+                { text: 'Autoriza:', bold: true, fontSize: 9, margin: [0, 0, 0, authorizerSignature ? 4 : 25] },
+                ...(authorizerSignature ? [{ image: authorizerSignature, width: 120, alignment: 'center', margin: [0, 0, 0, 4] }] : []),
                 { canvas: [{ type: 'line', x1: 0, y1: 0, x2: 180, y2: 0, lineWidth: 1 }] },
-                { text: 'Nombre y Firma', fontSize: 8, color: '#666', margin: [0, 3, 0, 0] }
+                { text: autorizador, fontSize: 8, color: '#666', alignment: 'center', margin: [0, 3, 0, 0] }
               ]
             }
           ]
