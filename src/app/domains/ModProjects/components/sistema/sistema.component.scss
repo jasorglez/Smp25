@@ -1,5 +1,9 @@
 // Estilos para celdas en edición - fondo amarillo completo
 :host ::ng-deep {
+  .daily-report-grid {
+    --ag-font-size: 9.57px;
+  }
+
   .ag-cell-editing {
     background-color: #fff3cd !important;
     border: 2px solid #ffc107 !important;

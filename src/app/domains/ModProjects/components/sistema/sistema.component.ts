@@ -82,8 +82,8 @@ export class SistemaComponent implements OnInit, OnDestroy {
   externalFilterActive: boolean = false;
   
   public gridOptions: any = {
-    headerHeight: 35,
-    rowHeight: 28,
+    headerHeight: 30.45,
+    rowHeight: 24.36,
     suppressDragLeaveHidesColumns: true,
     animateRows: true,
     pagination: true,

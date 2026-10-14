@@ -83,5 +83,5 @@ export const environment = {
   geminiApiKey: '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',
   gnewsApiKey: '94ccc596b4dfebc3f72683b6e81d81bc',
 
-  version: '5.00.130 (14 Octubre 2026 03:45) corrige catalogos RH y seleccion de sucursal unica',
+  version: '5.00.131 (14 Octubre 2026) reduce grid de reportes diarios 13%',
 };
