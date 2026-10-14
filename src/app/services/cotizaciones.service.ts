@@ -1,6 +1,6 @@
-import { inject, Injectable } from '@angular/core';
+import { inject, Injectable, Injector, runInInjectionContext } from '@angular/core';
 import {
-  Firestore, collection, addDoc, collectionData, query,
+  Firestore, collection, addDoc, onSnapshot, query, Query,
   where, doc, updateDoc, Timestamp, getDocs, deleteDoc,
   getDoc, setDoc,
 } from '@angular/fire/firestore';
@@ -8,6 +8,7 @@ import { Observable } from 'rxjs';
 
 export interface Cotizacion {
   id?: string;
+  tipoDestinatario?: 'prospecto' | 'cliente';
   numCotizacion: string;
   idProspecto: string;
   nombreProspecto: string;
@@ -18,13 +19,14 @@ export interface Cotizacion {
   familia?: string;
   idVendedor: number;
   nombreVendedor: string;
-  /** ID del cliente (módulo Administración → Clientes) — null en cotizaciones de prospectos */
+  /** ID del catálogo de clientes — null en cotizaciones de prospectos */
   idCliente?: number | null;
   idCompany: number;
   fecha: Timestamp;
   estado: string;
   notas: string;
   total: number;
+  totalDolares?: number;
   countItems: number;
   activo: boolean;
   __isNew?: boolean;
@@ -39,6 +41,7 @@ export interface CotizacionItem {
   cantidad: number;
   precio: number;
   subtotal: number;
+  dolares?: number;
   __isNew?: boolean;
 }
 
@@ -81,19 +84,38 @@ export const ESTADOS_COTIZACION = [
 @Injectable({ providedIn: 'root' })
 export class CotizacionesService {
   private firestore = inject(Firestore);
+  private injector = inject(Injector);
   private readonly COL        = 'cotizaciones';
   private readonly CONFIG_COL = 'cotizacionesConfig';
 
-  getCotizaciones(idVendedor: number): Observable<Cotizacion[]> {
-    const ref = collection(this.firestore, this.COL);
-    const q = query(ref, where('idVendedor', '==', idVendedor));
-    return collectionData(q, { idField: 'id' }) as Observable<Cotizacion[]>;
+  getCotizaciones(idVendedor: number, idCompany?: number): Observable<Cotizacion[]> {
+    return runInInjectionContext(this.injector, () => {
+      const ref = collection(this.firestore, this.COL);
+      const q = idCompany
+        ? query(ref, where('idCompany', '==', idCompany), where('idVendedor', '==', idVendedor))
+        : query(ref, where('idVendedor', '==', idVendedor));
+      return this.observarCotizaciones(q);
+    });
+  }
+
+  private observarCotizaciones(q: Query): Observable<Cotizacion[]> {
+    // Usar el listener del mismo SDK que construye la consulta. RxFire puede
+    // resolver otra instalación de Firebase y rechazar esta referencia.
+    return new Observable<Cotizacion[]>(subscriber =>
+      runInInjectionContext(this.injector, () => onSnapshot(q, {
+        next: snapshot => subscriber.next(
+          snapshot.docs.map(item => ({ ...item.data(), id: item.id }) as Cotizacion),
+        ),
+        error: error => subscriber.error(error),
+      })),
+    );
   }
 
   async crearCotizacion(c: Partial<Cotizacion>): Promise<string> {
     const ref = collection(this.firestore, this.COL);
     const docRef = await addDoc(ref, {
       numCotizacion:    c.numCotizacion    ?? '',
+      tipoDestinatario: c.idCliente ? 'cliente' : 'prospecto',
       idProspecto:      c.idProspecto      ?? '',
       nombreProspecto:  c.nombreProspecto  ?? '',
       empresaProspecto: c.empresaProspecto ?? '',
@@ -108,6 +130,7 @@ export class CotizacionesService {
       estado:           'borrador',
       notas:            c.notas            ?? '',
       total:            0,
+      totalDolares:     0,
       countItems:       0,
       activo:           true,
     });
@@ -132,7 +155,7 @@ export class CotizacionesService {
   getCotizacionesByCliente(idCliente: number, idCompany: number): Observable<Cotizacion[]> {
     const ref = collection(this.firestore, this.COL);
     const q = query(ref, where('idCliente', '==', idCliente), where('idCompany', '==', idCompany));
-    return collectionData(q, { idField: 'id' }) as Observable<Cotizacion[]>;
+    return this.observarCotizaciones(q);
   }
 
   async actualizarCotizacion(id: string, campos: Partial<Cotizacion>): Promise<void> {
@@ -245,12 +268,14 @@ export class CotizacionesService {
       cantidad:       Number(item.cantidad)        || 0,
       precio:         Number(item.precio)          || 0,
       subtotal:       Number(item.subtotal)        || 0,
+      dolares:        Number.isFinite(Number(item.dolares)) ? Math.round(Number(item.dolares) * 100) / 100 : 0,
     });
     const total = items.reduce((s, i) => s + (Number(i.subtotal) || 0), 0);
+    const totalDolares = items.reduce((sum, item) => sum + Math.round(sanitize(item).dolares * 100), 0) / 100;
     await Promise.all(items.map(({ __isNew, id, ...item }) =>
       addDoc(colRef, sanitize(item))
     ));
 
-    await updateDoc(docRef, { total, countItems: items.length });
+    await updateDoc(docRef, { total, totalDolares, countItems: items.length });
   }
 }

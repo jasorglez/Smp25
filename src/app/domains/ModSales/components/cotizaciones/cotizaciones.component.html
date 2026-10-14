@@ -2,7 +2,7 @@
   <div class="sales-mod-body">
     <aside class="sales-mod-aside sales-mod-reveal-delay">
       <div class="sales-mod-aside-inner">
-        <button type="button" class="btn btn-success" (click)="add()" [disabled]="!gridApi" title="Nueva cotización">
+        <button type="button" class="btn btn-success" (click)="add()" [disabled]="!gridApi || !root || loading || (tipoDestinatario === 'cliente' && loadingClientes)" title="Nueva cotización">
           <i class="bi bi-plus-lg"></i>
         </button>
 
@@ -32,6 +32,22 @@
     </aside>
 
     <div class="sales-mod-main">
+      <div class="sales-mod-card p-3 mb-2 d-flex align-items-center gap-2 flex-wrap">
+        <label for="tipo-destinatario-cotizacion" class="form-label mb-0">Cotizar a:</label>
+        <select id="tipo-destinatario-cotizacion" class="form-select form-select-sm w-auto"
+                [(ngModel)]="tipoDestinatario" (ngModelChange)="onTipoDestinatarioChange()">
+          <option value="prospecto">Prospecto</option>
+          <option value="cliente">Cliente</option>
+        </select>
+        <span class="small text-muted">Mostrando cotizaciones para {{ tipoDestinatario === 'cliente' ? 'clientes' : 'prospectos' }}. Elige el tipo antes de agregar.</span>
+        <span *ngIf="loadingClientes" class="small text-muted" role="status">Cargando clientes...</span>
+        <span *ngIf="root && tipoDestinatario === 'cliente' && !loadingClientes && !clientesError && !clientes.length"
+              class="small text-muted">No hay clientes activos en esta empresa.</span>
+        <div *ngIf="clientesError" class="text-danger small" role="alert">
+          {{ clientesError }}
+          <button type="button" class="btn btn-sm btn-outline-danger" (click)="cargarClientes()">Reintentar</button>
+        </div>
+      </div>
       <div class="sales-mod-reveal-delay mb-2" *ngIf="showConfig && root">
         <div class="sales-mod-card p-3">
           <app-config-cotizaciones [idCompany]="root"></app-config-cotizaciones>
@@ -39,6 +55,10 @@
       </div>
 
       <div class="sales-mod-reveal-delay-2">
+        <div class="alert alert-danger d-flex align-items-center gap-2" *ngIf="loadError" role="alert">
+          <span>{{ loadError }}</span>
+          <button type="button" class="btn btn-sm btn-outline-danger" (click)="cargarDatos()">Reintentar</button>
+        </div>
         <div class="text-center py-5" *ngIf="loading">
           <div class="spinner-border spinner-border-sm text-primary"></div>
           <span class="ms-2 text-muted small">Cargando cotizaciones...</span>

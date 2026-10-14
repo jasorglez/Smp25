@@ -7,11 +7,13 @@ import { AG_GRID_LOCALE_ES } from 'assets/i18n/ag-grid.locale.es';
 import { CotizacionesService, ESTADOS_COTIZACION, CotizacionConfig, CONFIG_DEFAULT } from 'app/services/cotizaciones.service';
 import { ProspectosService, Prospecto } from 'app/services/prospectos.service';
 import { SignalsService } from 'app/services/signals.service';
+import { CustomersService } from 'app/services/customers.service';
+import { ICustomer } from 'app/interface/icustomer';
 import { CatalogsService } from 'app/services/catalogs.service';
 import { ButtonCellRendererIncomeComponent } from 'app/domains/ModAdmon/components/income/button-cell-renderer-income.component';
 import { DetalleItemsCotizacionComponent } from './detalle-items-cotizacion.component';
 import { ConfigCotizacionesComponent } from './config-cotizaciones.component';
-import { combineLatest, Subscription } from 'rxjs';
+import { combineLatest, firstValueFrom, Subscription } from 'rxjs';
 import { TrackingService } from 'app/services/tracking.service';
 import Swal from 'sweetalert2';
 
@@ -27,17 +29,28 @@ export class CotizacionesComponent implements OnInit, OnDestroy {
   private prospectosSvc   = inject(ProspectosService);
   private signalsSvc      = inject(SignalsService);
   private catalogsSvc     = inject(CatalogsService);
+  private customersSvc    = inject(CustomersService);
   private trackingService = inject(TrackingService);
 
   gridApi!: GridApi;
   AG_GRID_LOCALE_ES = AG_GRID_LOCALE_ES;
 
   rowData:          any[] = [];
+  private allRowData: any[] = [];
   originalData:     any[] = [];
   selectedItem:     any   = null;
   hasUnsavedChanges = false;
   loading           = false;
+  loadError         = '';
   showConfig        = false;
+
+  tipoDestinatario: 'prospecto' | 'cliente' = 'prospecto';
+  clientes: ICustomer[] = [];
+  loadingClientes = false;
+  clientesError = '';
+  private clientesLoaded = false;
+  private clientesRequest?: Promise<boolean>;
+  private clientesGeneration = 0;
 
   prospectos: Prospecto[] = [];
   familias:   string[]    = [];   // familias disponibles para el selector
@@ -46,6 +59,7 @@ export class CotizacionesComponent implements OnInit, OnDestroy {
 
   root: number = null;
   private sub?: Subscription;
+  private loadedSeller: number = null;
 
   get idVendedor()     { return this.signalsSvc.idUser(); }
   get idCompany()      { return this.root; }
@@ -53,8 +67,29 @@ export class CotizacionesComponent implements OnInit, OnDestroy {
 
   constructor() {
     effect(() => {
-      this.root = this.signalsSvc.getRootSelectedBySidebar()();
-      if (this.root) {
+      const root = this.signalsSvc.getRootSelectedBySidebar()();
+      const seller = this.idVendedor;
+      const rootChanged = this.root !== root;
+      const sellerChanged = this.loadedSeller !== seller;
+      if (rootChanged || sellerChanged) {
+        this.sub?.unsubscribe();
+        this.allRowData = [];
+        this.rowData = [];
+        this.originalData = [];
+        this.hasUnsavedChanges = false;
+      }
+      if (rootChanged) {
+        this.clientesGeneration++;
+        this.clientes = [];
+        this.clientesLoaded = false;
+        this.clientesRequest = undefined;
+        this.loadingClientes = false;
+        this.clientesError = '';
+        this.tipoDestinatario = 'prospecto';
+      }
+      this.root = root;
+      if (this.root && (rootChanged || sellerChanged)) {
+        this.loadedSeller = seller;
         this.sub?.unsubscribe();
         this.cargarDatos();
         this.actualizarContextoDetalle();
@@ -63,7 +98,7 @@ export class CotizacionesComponent implements OnInit, OnDestroy {
   }
 
   // ── Enter-key navigation ─────────────────────────────────────────────────
-  private editableColumnOrder = ['numCotizacion', 'nombreProspecto', 'lugar', 'familia', 'notas'];
+  private editableColumnOrder = ['numCotizacion', 'destinatario', 'lugar', 'familia', 'notas'];
   private enterPressed = false;
 
   defaultColDef: ColDef = {
@@ -155,31 +190,28 @@ export class CotizacionesComponent implements OnInit, OnDestroy {
       field: 'numCotizacion', headerName: 'No. Docto', width: 130, editable: true,
     },
     {
-      field: 'nombreProspecto', headerName: 'Prospecto', flex: 1, editable: true,
+      colId: 'tipoDestinatario', headerName: 'Tipo', width: 115,
+      valueGetter: p => this.esCliente(p.data) ? 'Cliente' : 'Prospecto',
+    },
+    {
+      colId: 'destinatario', headerName: 'Prospecto / Cliente', minWidth: 230, flex: 1, editable: true,
+      valueGetter: p => this.esCliente(p.data) ? String(p.data.idCliente ?? '') : (p.data?.idProspecto ?? ''),
+      valueFormatter: p => p.data?.nombreProspecto || p.data?.empresaProspecto || '',
       cellEditor: 'agRichSelectCellEditor',
       cellEditorPopup: true,
-      cellEditorParams: () => ({
-        values: this.prospectos
-          .map(p => p.nombre)
-          .sort((a, b) => (a ?? '').localeCompare(b ?? '', 'es', { sensitivity: 'base' })),
+      cellEditorParams: (params: any) => ({
+        values: this.esCliente(params.data)
+          ? () => this.cargarClientes().then(ok => ok ? this.clientes.map(c => String(c.id)) : [])
+          : this.prospectos.filter(p => p.activo !== false)
+              .sort((a, b) => (a.nombre || '').localeCompare(b.nombre || '', 'es')).map(p => p.id),
+        formatValue: (id: string) => this.nombreDestinatario(params.data, id),
         allowTyping: true,
         filterList: true,
         searchType: 'match',
         highlightMatch: true,
         valueListMaxHeight: 260,
       }),
-      valueSetter: (params) => {
-        const p = this.prospectos.find(x => x.nombre === params.newValue);
-        if (p) {
-          params.data.nombreProspecto  = p.nombre;
-          params.data.idProspecto      = p.id ?? '';
-          params.data.empresaProspecto = (p as any).empresa ?? '';
-          params.data.puestoProspecto  = (p as any).puesto  ?? '';
-        } else {
-          params.data.nombreProspecto = params.newValue;
-        }
-        return true;
-      },
+      valueSetter: params => this.asignarDestinatario(params.data, params.newValue),
     },
     { field: 'lugar', headerName: 'Lugar', width: 160, editable: true },
     {
@@ -199,8 +231,13 @@ export class CotizacionesComponent implements OnInit, OnDestroy {
       },
     },
     {
-      field: 'total', headerName: 'Total', width: 120, editable: false, type: 'numericColumn',
+      field: 'total', headerName: 'Total MXN', width: 120, editable: false, type: 'numericColumn',
       valueFormatter: (p) => p.value != null ? `$${Number(p.value).toFixed(2)}` : '$0.00',
+      cellStyle: { fontWeight: 'bold' },
+    },
+    {
+      field: 'totalDolares', headerName: 'Total USD', width: 130, editable: false, type: 'numericColumn',
+      valueFormatter: (p) => `US$${Number(p.value ?? 0).toFixed(2)}`,
       cellStyle: { fontWeight: 'bold' },
     },
     {
@@ -247,12 +284,19 @@ export class CotizacionesComponent implements OnInit, OnDestroy {
   // ── Lifecycle ─────────────────────────────────────────────────────────────
 
   ngOnInit() {}
-  ngOnDestroy() { this.sub?.unsubscribe(); }
+  ngOnDestroy() { this.sub?.unsubscribe(); this.clientesGeneration++; }
 
   cargarDatos() {
+    this.sub?.unsubscribe();
     this.loading = true;
+    this.loadError = '';
+    this.selectedItem = null;
     this.svc.getConfig(this.root).then(cfg => {
       this.config = cfg;
+      this.actualizarContextoDetalle();
+    }).catch(error => {
+      console.error('Error al cargar la configuración de cotizaciones:', error);
+      this.config = { ...CONFIG_DEFAULT };
       this.actualizarContextoDetalle();
     });
     // Cargar familias del catálogo (type=FAMILY)
@@ -264,38 +308,60 @@ export class CotizacionesComponent implements OnInit, OnDestroy {
     });
     this.sub = combineLatest([
       this.prospectosSvc.getProspectos(this.idVendedor),
-      this.svc.getCotizaciones(this.idVendedor),
+      this.svc.getCotizaciones(this.idVendedor, this.root),
     ]).subscribe({
       next: ([prospectos, data]) => {
         this.prospectos = prospectos;
-        this.rowData = data
+        const remoteRows = data
           .filter(c => (c as any).activo !== false)
           .sort((a: any, b: any) => (b.fecha?.toMillis?.() ?? 0) - (a.fecha?.toMillis?.() ?? 0))
           .map(c => {
             const p = prospectos.find(x => x.id === (c as any).idProspecto);
             return {
               ...c,
+              tipoDestinatario: c.idCliente ? 'cliente' : 'prospecto',
               puestoProspecto: (c as any).puestoProspecto || p?.puesto || '',
               countItems: (c as any).countItems ?? 0,
               total: (c as any).total ?? 0,
+              totalDolares: c.totalDolares ?? 0,
               __isNew: false, __modified: false,
             };
           });
-        this.originalData = JSON.parse(JSON.stringify(this.rowData));
-        this.hasUnsavedChanges = false;
+        const pendingRows = this.allRowData.filter(row =>
+          (row.__isNew || row.__modified) && !remoteRows.some(remote => remote.id && remote.id === row.id),
+        );
+        this.allRowData = [...remoteRows, ...pendingRows];
+        this.originalData = JSON.parse(JSON.stringify(remoteRows));
+        this.actualizarVistaCotizaciones();
+        this.hasUnsavedChanges = this.allRowData.some(row => row.__isNew || row.__modified);
         this.loading = false;
       },
-      error: () => { this.loading = false; },
+      error: (error) => {
+        console.error('Error al cargar cotizaciones:', error);
+        this.rowData = [];
+        this.originalData = [];
+        this.loading = false;
+        this.loadError = 'No se pudieron cargar las cotizaciones de Firebase. Intenta nuevamente.';
+      },
     });
   }
 
   // ── CRUD ──────────────────────────────────────────────────────────────────
 
   async add() {
+    if (!this.root || !this.idVendedor || this.loading) return;
+    const root = this.root;
+    const idVendedor = this.idVendedor;
+    const tipoDestinatario = this.tipoDestinatario;
+    if (tipoDestinatario === 'cliente' && !await this.cargarClientes()) return;
+    if (root !== this.root || idVendedor !== this.idVendedor) return;
     this.trackingService.addLog(this.trackingService.getnameComp(), 'Agregó nueva cotización', 'Ventas', this.trackingService.getEmail());
     const numCotizacion = await this.svc.getNextNumero(this.root);
+    if (root !== this.root || idVendedor !== this.idVendedor) return;
     const nuevo: any = {
       numCotizacion,
+      tipoDestinatario,
+      idCliente: null,
       idProspecto:     '',
       nombreProspecto: '',
       empresaProspecto: '',
@@ -309,12 +375,14 @@ export class CotizacionesComponent implements OnInit, OnDestroy {
       estado:          'borrador',
       notas:           '',
       total:           0,
+      totalDolares:    0,
       countItems:      0,
       activo:          true,
       __isNew:         true,
       __modified:      false,
     };
-    this.rowData = [nuevo, ...this.rowData];
+    this.allRowData = [nuevo, ...this.allRowData];
+    this.actualizarVistaCotizaciones();
     this.hasUnsavedChanges = true;
     setTimeout(() => {
       this.gridApi.setGridOption('rowData', this.rowData);
@@ -323,6 +391,7 @@ export class CotizacionesComponent implements OnInit, OnDestroy {
   }
 
   async saveChanges() {
+    this.gridApi?.stopEditing();
     const toSave = this.rowData.filter(c => c.__isNew || c.__modified);
     if (!toSave.length) return;
     const newCount  = toSave.filter(c => c.__isNew).length;
@@ -331,18 +400,29 @@ export class CotizacionesComponent implements OnInit, OnDestroy {
     this.trackingService.addLog(this.trackingService.getnameComp(), desc, 'Ventas', this.trackingService.getEmail());
     const errores: string[] = [];
     for (const c of toSave) {
-      if (!c.nombreProspecto?.trim()) { errores.push('Sin prospecto asignado'); continue; }
+      if (!c.nombreProspecto?.trim() || (this.esCliente(c) ? !c.idCliente : (c.__isNew && !c.idProspecto))) {
+        errores.push(`Selecciona un ${this.esCliente(c) ? 'cliente' : 'prospecto'} para ${c.numCotizacion}.`);
+        continue;
+      }
       try {
         if (c.__isNew) {
           await this.svc.crearCotizacion(c);
         } else {
           await this.svc.actualizarCotizacion(c.id!, {
+            tipoDestinatario: this.esCliente(c) ? 'cliente' : 'prospecto',
+            idCliente: this.esCliente(c) ? c.idCliente : null,
+            idProspecto: this.esCliente(c) ? '' : (c.idProspecto ?? ''),
+            nombreProspecto: c.nombreProspecto ?? '',
+            empresaProspecto: c.empresaProspecto ?? '',
+            puestoProspecto: c.puestoProspecto ?? '',
             numCotizacion: c.numCotizacion ?? '',
             lugar:         c.lugar         ?? '',
             familia:       c.familia        ?? '',
             notas:         c.notas         ?? '',
           });
         }
+        c.__isNew = false;
+        c.__modified = false;
       } catch { errores.push(`Error al guardar: ${c.nombreProspecto}`); }
     }
     if (errores.length) Swal.fire('Atención', errores.join('\n'), 'warning');
@@ -350,24 +430,24 @@ export class CotizacionesComponent implements OnInit, OnDestroy {
   }
 
   revertChanges() {
-    this.rowData = JSON.parse(JSON.stringify(this.originalData));
+    this.allRowData = JSON.parse(JSON.stringify(this.originalData));
     this.hasUnsavedChanges = false;
-    this.gridApi.setGridOption('rowData', this.rowData);
+    this.actualizarVistaCotizaciones();
   }
 
   async deleteSelected() {
     if (!this.selectedItem) return;
     const res = await Swal.fire({
-      title: '¿Eliminar cotización?', text: `Prospecto: ${this.selectedItem.nombreProspecto}`,
+      title: '¿Eliminar cotización?', text: `${this.esCliente(this.selectedItem) ? 'Cliente' : 'Prospecto'}: ${this.selectedItem.nombreProspecto}`,
       icon: 'warning', showCancelButton: true,
       confirmButtonColor: '#dc3545', confirmButtonText: 'Sí, eliminar', cancelButtonText: 'Cancelar',
     });
     if (!res.isConfirmed) return;
     this.trackingService.addLog(this.trackingService.getnameComp(), `Eliminó cotización #${this.selectedItem.numCotizacion} — ${this.selectedItem.nombreProspecto}`, 'Ventas', this.trackingService.getEmail());
     if (this.selectedItem.__isNew) {
-      this.rowData = this.rowData.filter(c => c !== this.selectedItem);
-      this.gridApi.setGridOption('rowData', this.rowData);
-      if (!this.rowData.some(c => c.__isNew || c.__modified)) this.hasUnsavedChanges = false;
+      this.allRowData = this.allRowData.filter(c => c !== this.selectedItem);
+      this.actualizarVistaCotizaciones();
+      this.hasUnsavedChanges = this.allRowData.some(c => c.__isNew || c.__modified);
       this.selectedItem = null;
       return;
     }
@@ -459,6 +539,87 @@ export class CotizacionesComponent implements OnInit, OnDestroy {
     } catch {
       Swal.fire('Error', 'No se pudo actualizar el prospecto.', 'error');
     }
+  }
+
+  esCliente(cotizacion: any): boolean {
+    return !!cotizacion?.idCliente || cotizacion?.tipoDestinatario === 'cliente';
+  }
+
+  onTipoDestinatarioChange() {
+    this.actualizarVistaCotizaciones();
+    if (this.tipoDestinatario === 'cliente') void this.cargarClientes();
+  }
+
+  private actualizarVistaCotizaciones(): void {
+    this.rowData = this.allRowData.filter(row =>
+      this.esCliente(row) === (this.tipoDestinatario === 'cliente'),
+    );
+    this.selectedItem = null;
+    if (this.gridApi && !this.gridApi.isDestroyed()) {
+      this.gridApi.setGridOption('rowData', this.rowData);
+    }
+  }
+
+  cargarClientes(): Promise<boolean> {
+    if (!this.root) return Promise.resolve(false);
+    if (this.clientesLoaded) return Promise.resolve(true);
+    if (this.clientesRequest) return this.clientesRequest;
+    const generation = this.clientesGeneration;
+    this.loadingClientes = true;
+    this.clientesError = '';
+    this.clientesRequest = firstValueFrom(this.customersSvc.getCustomersByCompany(this.root)).then((response: any) => {
+      if (generation !== this.clientesGeneration) return false;
+      const data = response?.data ?? response;
+      if (!Array.isArray(data)) throw new Error('Respuesta de clientes inválida');
+      this.clientes = data.filter(c => c.id && c.active !== false && c.active !== 0)
+        .sort((a, b) => (a.nameContact || a.company || '').localeCompare(b.nameContact || b.company || '', 'es'));
+      this.clientesLoaded = true;
+      return true;
+    }).catch(error => {
+      if (generation === this.clientesGeneration) {
+        console.error('Error al cargar clientes para cotizaciones:', error);
+        this.clientesError = 'No se pudieron cargar los clientes de la empresa. Intenta nuevamente.';
+      }
+      return false;
+    }).finally(() => {
+      if (generation === this.clientesGeneration) {
+        this.loadingClientes = false;
+        this.clientesRequest = undefined;
+      }
+    });
+    return this.clientesRequest;
+  }
+
+  private nombreDestinatario(cotizacion: any, id: string): string {
+    if (this.esCliente(cotizacion)) {
+      const cliente = this.clientes.find(c => String(c.id) === String(id));
+      return cliente ? `${cliente.nameContact || cliente.company} — ${cliente.company || ''} (#${cliente.id})`
+        : (cotizacion.nombreProspecto || '');
+    }
+    const prospecto = this.prospectos.find(p => p.id === id);
+    return prospecto ? [prospecto.nombre, prospecto.empresa, prospecto.telefono].filter(Boolean).join(' — ')
+      : (cotizacion.nombreProspecto || '');
+  }
+
+  private asignarDestinatario(cotizacion: any, id: string): boolean {
+    if (this.esCliente(cotizacion)) {
+      const cliente = this.clientes.find(c => String(c.id) === String(id));
+      if (!cliente) return false;
+      Object.assign(cotizacion, {
+        tipoDestinatario: 'cliente', idCliente: Number(cliente.id), idProspecto: '',
+        nombreProspecto: cliente.nameContact || cliente.company || '',
+        empresaProspecto: cliente.company || '', puestoProspecto: cliente.position || '',
+      });
+    } else {
+      const prospecto = this.prospectos.find(p => p.id === id);
+      if (!prospecto) return false;
+      Object.assign(cotizacion, {
+        tipoDestinatario: 'prospecto', idCliente: null, idProspecto: prospecto.id,
+        nombreProspecto: prospecto.nombre || '', empresaProspecto: prospecto.empresa || '',
+        puestoProspecto: prospecto.puesto || '',
+      });
+    }
+    return true;
   }
 
   // ── Helpers ───────────────────────────────────────────────────────────────

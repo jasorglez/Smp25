@@ -170,9 +170,14 @@ export class CustomersCotizacionesComponent implements ICellRendererAngularComp,
       },
     },
     {
-      field: 'total', headerName: 'Total', width: 120, editable: false, type: 'numericColumn',
+      field: 'total', headerName: 'Total MXN', width: 120, editable: false, type: 'numericColumn',
       valueFormatter: (p: any) =>
         p.value != null ? `$${Number(p.value).toFixed(2)}` : '$0.00',
+      cellStyle: { fontWeight: 'bold' },
+    },
+    {
+      field: 'totalDolares', headerName: 'Total USD', width: 130, editable: false, type: 'numericColumn',
+      valueFormatter: (p) => `US$${Number(p.value ?? 0).toFixed(2)}`,
       cellStyle: { fontWeight: 'bold' },
     },
     {

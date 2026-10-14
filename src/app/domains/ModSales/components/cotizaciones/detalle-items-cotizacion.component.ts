@@ -14,6 +14,7 @@ import { Base64EncodeService } from 'app/services/base64encode.service';
 import { StoragesService } from 'app/services/storages.service';
 import { lastValueFrom } from 'rxjs';
 import { TrackingService } from 'app/services/tracking.service';
+import { PdfShareService } from 'app/services/pdf-share.service';
 import Swal from 'sweetalert2';
 import pdfMake from 'pdfmake/build/pdfmake';
 import * as pdfFonts from 'pdfmake/build/vfs_fonts';
@@ -41,7 +42,10 @@ const GRAY  = '#555555';
             {{ estadoLabel(cotizacion?.estado) }}
           </span>
           <span class="badge bg-dark ms-1">
-            Total: {{ total | currency:'MXN':'symbol':'1.2-2' }}
+            Total MXN: {{ total | currency:'MXN':'symbol':'1.2-2' }}
+          </span>
+          <span class="badge bg-primary ms-1">
+            Total USD: {{ totalDolares | currency:'USD':'symbol':'1.2-2' }}
           </span>
 
           <div class="ms-auto d-flex gap-1">
@@ -97,7 +101,7 @@ const GRAY  = '#555555';
           </span>
           <div *ngIf="isLoadingPdf" class="spinner-border spinner-border-sm text-danger ms-2"></div>
 
-          <div class="ms-auto d-flex gap-2 align-items-center">
+          <div class="ms-auto d-flex gap-2 align-items-center flex-wrap">
             <!-- Descargar (funciona en tablets donde el iframe no carga) -->
             <button class="btn btn-sm btn-success"
                     (click)="descargarPdf()"
@@ -113,6 +117,14 @@ const GRAY  = '#555555';
               <span *ngIf="isSendingEmail" class="spinner-border spinner-border-sm me-1"></span>
               <i *ngIf="!isSendingEmail" class="bi bi-envelope me-1"></i>
               {{ isSendingEmail ? 'Enviando...' : 'Enviar por correo' }}
+            </button>
+
+            <button class="btn btn-sm btn-outline-info"
+                    (click)="enviarPorTelegram()"
+                    [disabled]="isLoadingPdf || isSendingTelegram || !_pdfBlob">
+              <span *ngIf="isSendingTelegram" class="spinner-border spinner-border-sm me-1"></span>
+              <i *ngIf="!isSendingTelegram" class="bi bi-telegram me-1"></i>
+              {{ isSendingTelegram ? 'Preparando...' : 'Enviar por Telegram' }}
             </button>
 
             <button class="btn btn-sm btn-outline-success"
@@ -189,6 +201,7 @@ export class DetalleItemsCotizacionComponent implements ICellRendererAngularComp
   private sanitizer       = inject(DomSanitizer);
   private signalsSvc      = inject(SignalsService);
   private trackingService = inject(TrackingService);
+  private pdfShareSvc     = inject(PdfShareService);
 
   private params!: ICellRendererParams;
   private context: any;
@@ -207,6 +220,7 @@ export class DetalleItemsCotizacionComponent implements ICellRendererAngularComp
   pdfUrl: SafeResourceUrl | null = null;
   isLoadingPdf   = false;
   isSendingEmail = false;
+  isSendingTelegram = false;
   isSendingWhatsapp = false;
   private originalPdfUrl: string | null = null;
   _lastDocDef: any = null;
@@ -221,9 +235,12 @@ export class DetalleItemsCotizacionComponent implements ICellRendererAngularComp
   sugerenciasCc:   string[] = [];
 
   get total() { return this.rowData.reduce((s, i) => s + (i.subtotal ?? 0), 0); }
+  get totalDolares() {
+    return this.rowData.reduce((sum, item) => sum + Math.round((Number(item.dolares) || 0) * 100), 0) / 100;
+  }
 
   // ── Enter-nav ─────────────────────────────────────────────────────────────
-  private editableColumnOrder = ['nombreMaterial', 'unidad', 'cantidad', 'precio'];
+  private editableColumnOrder = ['nombreMaterial', 'unidad', 'cantidad', 'precio', 'dolares'];
   private enterPressed = false;
 
   defaultColDef: ColDef = {
@@ -270,6 +287,18 @@ export class DetalleItemsCotizacionComponent implements ICellRendererAngularComp
       field: 'subtotal', headerName: 'Subtotal', width: 120, editable: false, type: 'numericColumn',
       valueFormatter: (p) => p.value != null ? `$${Number(p.value).toFixed(2)}` : '',
       cellStyle: { fontWeight: 'bold', backgroundColor: '#e8f5e9' },
+    },
+    {
+      field: 'dolares', headerName: 'Dólares (USD)', width: 145, editable: true, type: 'numericColumn',
+      cellDataType: 'number',
+      cellEditor: 'agNumberCellEditor',
+      cellEditorParams: { precision: 2 },
+      valueParser: (p) => {
+        const value = Number(p.newValue);
+        return Number.isFinite(value) ? Math.round(value * 100) / 100 : (p.oldValue ?? 0);
+      },
+      valueFormatter: (p) => `US$${Number(p.value ?? 0).toFixed(2)}`,
+      headerTooltip: 'Importe en dólares del renglón; se suma directamente al total USD',
     },
   ];
 
@@ -348,8 +377,8 @@ export class DetalleItemsCotizacionComponent implements ICellRendererAngularComp
   async cargarItems() {
     if (!this.cotizacion?.id) { this.rowData = []; return; }
     const data = await this.svc.getItems(this.cotizacion.id);
-    this.rowData      = data;
-    this.originalData = JSON.parse(JSON.stringify(data));
+    this.rowData      = data.map(item => ({ ...item, dolares: item.dolares ?? 0 }));
+    this.originalData = JSON.parse(JSON.stringify(this.rowData));
     this.hasChanges   = false;
   }
 
@@ -379,7 +408,7 @@ export class DetalleItemsCotizacionComponent implements ICellRendererAngularComp
     this.trackingService.addLog(this.trackingService.getnameComp(), `Agregó ítem a cotización`, 'Ventas', this.trackingService.getEmail());
     const nuevo: CotizacionItem = {
       idMaterial: 0, nombreMaterial: '', unidad: '',
-      cantidad: 1, precio: 0, subtotal: 0, __isNew: true,
+      cantidad: 1, precio: 0, subtotal: 0, dolares: 0, __isNew: true,
     };
     this.rowData = [...this.rowData, nuevo];
     this.hasChanges = true;
@@ -391,6 +420,7 @@ export class DetalleItemsCotizacionComponent implements ICellRendererAngularComp
 
   async save() {
     if (!this.cotizacion?.id) return;
+    this.gridApi?.stopEditing();
     this.trackingService.addLog(this.trackingService.getnameComp(), `Guardó ítems de cotización`, 'Ventas', this.trackingService.getEmail());
     try {
       await this.svc.guardarItems(this.cotizacion.id, this.rowData);
@@ -450,6 +480,23 @@ export class DetalleItemsCotizacionComponent implements ICellRendererAngularComp
   }
 
   // ── Modal correo — renderizado en document.body para escapar transform de AG Grid ──
+  async enviarPorTelegram(): Promise<void> {
+    if (!this._pdfBlob || this.isLoadingPdf || this.isSendingTelegram) return;
+    this.isSendingTelegram = true;
+    try {
+      await this.pdfShareSvc.sendByTelegram({
+        pdfBlob: this._pdfBlob,
+        fileName: `${this.cotizacion?.numCotizacion || 'cotizacion'}.pdf`,
+        caption: `Cotización ${this.cotizacion?.numCotizacion ?? ''} — ${this.cotizacion?.empresaProspecto || this.cotizacion?.nombreProspecto || ''}`,
+      });
+    } catch (error) {
+      console.error('Error al preparar la cotización para Telegram:', error);
+      Swal.fire('Error', 'No se pudo preparar el PDF para Telegram. Intenta nuevamente.', 'error');
+    } finally {
+      this.isSendingTelegram = false;
+    }
+  }
+
   private emailModalEl: HTMLElement | null = null;
 
   async abrirModalCorreo() {
@@ -621,8 +668,9 @@ export class DetalleItemsCotizacionComponent implements ICellRendererAngularComp
                 { text: 'DESCRIPCIÓN / CONCEPTO', style: 'thCell', fillColor: NAVY, color: '#fff', alignment: 'left' },
                 { text: 'CANT',    style: 'thCell', fillColor: NAVY, color: '#fff', alignment: 'center' },
                 { text: 'UNIDAD',  style: 'thCell', fillColor: NAVY, color: '#fff', alignment: 'center' },
-                { text: 'PRECIO',  style: 'thCell', fillColor: NAVY, color: '#fff', alignment: 'right'  },
-                { text: 'IMPORTE', style: 'thCell', fillColor: NAVY, color: '#fff', alignment: 'right'  },
+                { text: 'PRECIO MXN',  style: 'thCell', fillColor: NAVY, color: '#fff', alignment: 'right'  },
+                { text: 'IMPORTE MXN', style: 'thCell', fillColor: NAVY, color: '#fff', alignment: 'right'  },
+                { text: 'DÓLARES USD', style: 'thCell', fillColor: NAVY, color: '#fff', alignment: 'right' },
               ];
               const tableRows = items.map((item, idx) => [
                 { text: item.nombreMaterial ?? '', fontSize: 7, fillColor: idx % 2 === 1 ? LBLUE : null },
@@ -630,14 +678,16 @@ export class DetalleItemsCotizacionComponent implements ICellRendererAngularComp
                 { text: item.unidad ?? '', fontSize: 7, alignment: 'center', fillColor: idx % 2 === 1 ? LBLUE : null },
                 { text: `$${Number(item.precio ?? 0).toLocaleString('es-MX', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`, fontSize: 7, alignment: 'right', fillColor: idx % 2 === 1 ? LBLUE : null },
                 { text: `$${Number(item.subtotal ?? 0).toLocaleString('es-MX', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`, fontSize: 7, alignment: 'right', fillColor: idx % 2 === 1 ? LBLUE : null },
+                { text: `US$${Number(item.dolares ?? 0).toLocaleString('es-MX', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`, fontSize: 7, alignment: 'right', fillColor: idx % 2 === 1 ? LBLUE : null },
               ]);
               const totalRow = [
                 { text: '', colSpan: 3, border: [false,false,false,false] }, {}, {},
                 { text: 'TOTAL:', fontSize: 8, bold: true, alignment: 'right', fillColor: NAVY, color: '#fff' },
                 { text: `$${Number(cot.total ?? 0).toLocaleString('es-MX', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`, fontSize: 8, bold: true, alignment: 'right', fillColor: NAVY, color: '#fff' },
+                { text: `US$${(items.reduce((sum, item) => sum + Math.round((Number(item.dolares) || 0) * 100), 0) / 100).toLocaleString('es-MX', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`, fontSize: 8, bold: true, alignment: 'right', fillColor: NAVY, color: '#fff' },
               ];
               const tabla: any = {
-                table: { headerRows: 1, widths: ['*', 28, 35, 55, 58], body: [tableHeader, ...tableRows, totalRow] },
+                table: { headerRows: 1, widths: ['*', 28, 35, 50, 55, 58], body: [tableHeader, ...tableRows, totalRow] },
                 layout: { hLineWidth: () => 0.5, vLineWidth: () => 0.5, hLineColor: () => '#cccccc', vLineColor: () => '#cccccc' },
                 margin: [0, 0, 0, 10],
               };
@@ -870,8 +920,9 @@ export class DetalleItemsCotizacionComponent implements ICellRendererAngularComp
         { text: 'DESCRIPCIÓN / CONCEPTO', style: 'thCell', fillColor: NAVY, color: '#fff', alignment: 'left' },
         { text: 'CANT',    style: 'thCell', fillColor: NAVY, color: '#fff', alignment: 'center' },
         { text: 'UNIDAD',  style: 'thCell', fillColor: NAVY, color: '#fff', alignment: 'center' },
-        { text: 'PRECIO',  style: 'thCell', fillColor: NAVY, color: '#fff', alignment: 'right'  },
-        { text: 'IMPORTE', style: 'thCell', fillColor: NAVY, color: '#fff', alignment: 'right'  },
+        { text: 'PRECIO MXN',  style: 'thCell', fillColor: NAVY, color: '#fff', alignment: 'right'  },
+        { text: 'IMPORTE MXN', style: 'thCell', fillColor: NAVY, color: '#fff', alignment: 'right'  },
+        { text: 'DÓLARES USD', style: 'thCell', fillColor: NAVY, color: '#fff', alignment: 'right' },
       ];
 
       const tableRows = items.map((item, idx) => [
@@ -880,18 +931,20 @@ export class DetalleItemsCotizacionComponent implements ICellRendererAngularComp
         { text: item.unidad ?? '', fontSize: 7, alignment: 'center', fillColor: idx % 2 === 1 ? LBLUE : null },
         { text: `$${Number(item.precio ?? 0).toLocaleString('es-MX', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`, fontSize: 7, alignment: 'right', fillColor: idx % 2 === 1 ? LBLUE : null },
         { text: `$${Number(item.subtotal ?? 0).toLocaleString('es-MX', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`, fontSize: 7, alignment: 'right', fillColor: idx % 2 === 1 ? LBLUE : null },
+        { text: `US$${Number(item.dolares ?? 0).toLocaleString('es-MX', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`, fontSize: 7, alignment: 'right', fillColor: idx % 2 === 1 ? LBLUE : null },
       ]);
 
       const totalRow = [
         { text: '', colSpan: 3, border: [false,false,false,false] }, {}, {},
         { text: 'TOTAL:', fontSize: 8, bold: true, alignment: 'right', fillColor: NAVY, color: '#fff' },
         { text: `$${Number(cot.total ?? 0).toLocaleString('es-MX', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`, fontSize: 8, bold: true, alignment: 'right', fillColor: NAVY, color: '#fff' },
+        { text: `US$${(items.reduce((sum, item) => sum + Math.round((Number(item.dolares) || 0) * 100), 0) / 100).toLocaleString('es-MX', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`, fontSize: 8, bold: true, alignment: 'right', fillColor: NAVY, color: '#fff' },
       ];
 
       const tabla: any = {
         table: {
           headerRows: 1,
-          widths: ['*', 28, 35, 55, 58],
+          widths: ['*', 28, 35, 50, 55, 58],
           body: [tableHeader, ...tableRows, totalRow],
         },
         layout: { hLineWidth: () => 0.5, vLineWidth: () => 0.5, hLineColor: () => '#cccccc', vLineColor: () => '#cccccc' },
@@ -1007,6 +1060,7 @@ export class DetalleItemsCotizacionComponent implements ICellRendererAngularComp
     if (this.params?.node && this.params?.api && !this.params.api.isDestroyed()) {
       this.params.node.data.countItems = this.rowData.length;
       this.params.node.data.total      = this.total;
+      this.params.node.data.totalDolares = this.totalDolares;
       this.params.api.refreshCells({ rowNodes: [this.params.node], force: true });
     }
   }
