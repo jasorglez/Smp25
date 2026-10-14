@@ -1100,10 +1100,12 @@ export class InandoutStComponent implements OnInit {
       }
 
       if (newItems.length > 0 || modifiedItems.length > 0 || shouldAddToDailyReport) {
-        this.updateEntryItemsCount(entryId, data.length);
+        const persistedItems = await lastValueFrom(this.inandoutService.getInAndOutItems(entryId));
+        const persistedCount = Array.isArray(persistedItems) ? persistedItems.length : data.length;
+        this.updateEntryItemsCount(entryId, persistedCount);
         const masterEntry = this.rowData.find(entry => entry.id === entryId);
         if (masterEntry) {
-          masterEntry.countrow = data.length;
+          masterEntry.countrow = persistedCount;
           await lastValueFrom(this.inandoutService.updateInAndOut(String(entryId), this.prepareEntryData(masterEntry)));
         }
 

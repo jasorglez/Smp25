@@ -60,6 +60,18 @@ export class MaterialsService {
     );
   }
 
+  getMaterialComponents(idCompany: number, idMaterial: number): Observable<any[]> {
+    return this.http.get<any[]>(`${environment.urlWarehouse}/Material/${idMaterial}/components?idCompany=${idCompany}`, {
+      headers: this.trackingService.getHeaders(),
+    });
+  }
+
+  saveMaterialComponents(idCompany: number, idMaterial: number, components: { idComponentMaterial: number; quantity: number }[]): Observable<any> {
+    return this.http.put(`${environment.urlWarehouse}/Material/${idMaterial}/components`, { idCompany, components }, {
+      headers: this.trackingService.getHeaders(),
+    });
+  }
+
   deleteMaterial(id: number): Observable<any> {
     return this.http.delete<any[]>(
       `${environment.urlWarehouse}/Material/${id}`,

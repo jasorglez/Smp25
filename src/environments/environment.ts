@@ -83,5 +83,5 @@ export const environment = {
   geminiApiKey: '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',
   gnewsApiKey: '94ccc596b4dfebc3f72683b6e81d81bc',
 
-  version: '5.00.117 (13 Octubre 2026) corrige contador de items en egresos',
+  version: '5.00.123 (13 Octubre 2026) desglose de materiales compuestos en entradas',
 };

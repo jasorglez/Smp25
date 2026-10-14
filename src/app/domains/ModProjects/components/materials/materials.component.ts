@@ -119,8 +119,13 @@ export class MaterialsComponent implements CanComponentDeactivate {
   idUser: number = null;
   notSavedChanges: boolean = false;
   saving: boolean = false;          // previene doble clic en guardar
+  readonly Number = Number;
   showLoansTab: boolean = false;
   selectedRowData: any = null;
+  showComponentsModal = false;
+  loadingComponents = false;
+  savingComponents = false;
+  materialComponents: Array<{ idComponentMaterial: number; quantity: number; name?: string; measure?: string }> = [];
   showSavingsTab: boolean = false;
   authorizedPass: boolean = false;
   private lastEditedRowId: number | string | null = null;
@@ -414,8 +419,64 @@ export class MaterialsComponent implements CanComponentDeactivate {
   }
 
   onMasterRowSelected(event: any) {
-    if (event.data && event.data.id) {
+    if (event.node?.isSelected() && event.data && event.data.id) {
       this.id = event.data.id;
+      this.selectedRowData = event.data;
+    }
+  }
+
+  async openComponentsModal(): Promise<void> {
+    const parent = this.selectedRowData;
+    if (!parent || !Number.isInteger(Number(parent.id))) {
+      alerts.basicAlert('Guarde el material', 'Primero guarde el material padre para definir sus componentes.', 'info');
+      return;
+    }
+    if (this.notSavedChanges) {
+      alerts.basicAlert('Cambios sin guardar', 'Guarde los cambios del material antes de editar sus componentes.', 'warning');
+      return;
+    }
+    this.loadingComponents = true;
+    this.materialComponents = [];
+    try {
+      const rows = await lastValueFrom(this.materialsService.getMaterialComponents(this.idcompany, Number(parent.id)));
+      this.materialComponents = rows.map(component => ({ ...component }));
+      this.showComponentsModal = true;
+    } catch (error) {
+      console.error('Error al cargar los componentes del material:', error);
+      alerts.basicAlert('Error', 'No se pudieron cargar los componentes del material.', 'error');
+    } finally {
+      this.loadingComponents = false;
+    }
+  }
+
+  addMaterialComponent(): void {
+    this.materialComponents = [...this.materialComponents, { idComponentMaterial: null, quantity: 1 }];
+  }
+
+  removeMaterialComponent(index: number): void {
+    this.materialComponents = this.materialComponents.filter((_, i) => i !== index);
+  }
+
+  trackByIndex(index: number): number { return index; }
+
+  async saveMaterialComponents(): Promise<void> {
+    const parentId = Number(this.selectedRowData?.id);
+    const ids = this.materialComponents.map(row => Number(row.idComponentMaterial));
+    if (!parentId || this.materialComponents.some(row => !Number.isInteger(Number(row.idComponentMaterial)) || Number(row.idComponentMaterial) <= 0 || !Number.isFinite(Number(row.quantity)) || Number(row.quantity) <= 0) || new Set(ids).size !== ids.length) {
+      alerts.basicAlert('Revisa los componentes', 'Selecciona un componente distinto en cada renglón y captura una cantidad mayor que cero.', 'warning');
+      return;
+    }
+    this.savingComponents = true;
+    try {
+      await lastValueFrom(this.materialsService.saveMaterialComponents(this.idcompany, parentId,
+        this.materialComponents.map(row => ({ idComponentMaterial: Number(row.idComponentMaterial), quantity: Number(row.quantity) }))));
+      this.showComponentsModal = false;
+      alerts.basicAlert('Componentes guardados', 'El desglose se aplicará a las próximas entradas de este material.', 'success');
+    } catch (error: any) {
+      console.error('Error al guardar los componentes del material:', error);
+      alerts.basicAlert('No se pudo guardar', error?.error?.message || 'Revisa que los materiales pertenezcan a la misma empresa y que no formen ciclos.', 'error');
+    } finally {
+      this.savingComponents = false;
     }
   }
 
