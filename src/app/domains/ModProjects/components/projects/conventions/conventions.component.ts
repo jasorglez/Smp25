@@ -235,7 +235,7 @@ export class ConventionsComponent {
         flex: 2,
         cellEditor: 'agPopupTextCellEditor',
         cellEditorParams: {
-          maxLength: 100,
+          maxLength: 50,
           cols: 50,
           rows: 3,
           onKeyDown: (event: KeyboardEvent) => {
@@ -606,6 +606,16 @@ export class ConventionsComponent {
   async saveChanges() {
     this.trackingService.addLog(this.trackingService.getnameComp(), 'Guardó cambios en conventions', 'Proyectos', this.trackingService.getEmail());
     this.enforceSingleVigente(true);
+
+    const overlongDescription = this.rowData.find((item) => String(item.description ?? '').trim().length > 50);
+    if (overlongDescription) {
+      alerts.basicAlert(
+        'Descripción demasiado larga',
+        `La descripción del convenio "${overlongDescription.name || ''}" debe tener máximo 50 caracteres.`,
+        'error'
+      );
+      return;
+    }
 
     const isValid = this.rowData.every((item) =>
       item.name && item.description && item.start && item.end);

@@ -29,6 +29,8 @@ import { CanComponentDeactivate } from 'app/guards/unsaved-changes.guard';
 import { confirmExitIfUnsaved } from 'app/helpers/can-deactivate.helper';
 import { SubatalogsComponent } from "../../../ModWarehouse/components/catalogs/catalogs.component";
 import { TrackingService } from 'app/services/tracking.service';
+import { RolesService } from 'app/services/roles.service';
+import { PosicionesService } from 'app/services/posiciones.service';
 
 //soriano
 @Component({
@@ -93,9 +95,7 @@ export class CatalogsComponent implements CanComponentDeactivate {
       this.signalsService.setCloseCatalog(false);
     }
       this.idRoot = this.signalsService.getRootSelectedBySidebar()();
-      this.route.paramMap.subscribe(params => {
-        this.selectedSection = params.get('section')!;
-      });
+      this.selectedSection = this.signalsService.getSectionSelected();
     this.obtenerTables();
     this.obtenerTablesSecitons();
     this.obtenerDatos();
@@ -111,9 +111,11 @@ export class CatalogsComponent implements CanComponentDeactivate {
   ngOnInit() {
     this.rowData = []
     this.idRoot = this.signalsService.getRootSelectedBySidebar()();
-    this.route.paramMap.subscribe(params => {
-      this.selectedSection = params.get('section')!;
-      this.signalsService.setSectionSelected('')
+    const sectionRoute = this.route.firstChild || this.route;
+    sectionRoute.paramMap.subscribe(params => {
+      const section = params.get('section') || '';
+      this.selectedSection = section;
+      this.signalsService.setSectionSelected(section);
     });
     this.obtenerTables();
     this.obtenerTablesSecitons();
@@ -159,8 +161,11 @@ export class CatalogsComponent implements CanComponentDeactivate {
 
   currentIndex = 0;
   private catalogService = inject(CatalogsService);
+  private rolesService = inject(RolesService);
+  private positionsService = inject(PosicionesService);
   private signalsService = inject(SignalsService);
   private tableService = inject(TablesxmodulesService);
+  private hrRoles: any[] = [];
 
   public rowSelection: 'single' | 'multiple' = 'single';
   public rowGroupPanelShow: 'always' | 'onlyWhenGrouping' | 'never' = 'always';
@@ -216,7 +221,15 @@ export class CatalogsComponent implements CanComponentDeactivate {
       .getTablesxmodules(this.signalsService.getCatalogSelected(), this.signalsService.getSectionSelected())
       .subscribe(
         (data: any) => {
-          this.table = data;
+          this.table = Array.isArray(data) ? data : [];
+          const selected = this.table.find((item) => item.name === this.selectedCatalog) || this.table[0];
+          if (selected) {
+            this.selectedCatalog = selected.name;
+            this.select = selected.name;
+            this.obtenerDatos();
+          } else {
+            this.rowData = [];
+          }
         },
         (error) => {
           if (error.status == 404) this.table = [];
@@ -242,6 +255,32 @@ export class CatalogsComponent implements CanComponentDeactivate {
     const catalogType = this.signalsService.getCatalogSelected();
     this.rowData = [];
     console.log(`Obteniendo datos para tipo: ${catalogType}`);
+
+    if (catalogType === 'RESOURCEHUMAN') {
+      const isDepartmentCatalog = this.selectedCatalog === 'DEPARTAMENT';
+      this.rolesService.getRoles(this.idRoot).subscribe({
+        next: (response: any) => {
+          this.hrRoles = Array.isArray(response) ? response : response?.data || [];
+          if (isDepartmentCatalog) {
+            this.rowData = this.hrRoles;
+            return;
+          }
+          this.positionsService.getPositionsByCompany(this.idRoot).subscribe({
+            next: (positions: any[]) => this.rowData = Array.isArray(positions) ? positions : [],
+            error: (error) => {
+              console.error('Error cargando puestos de Recursos Humanos:', error);
+              this.rowData = [];
+            }
+          });
+        },
+        error: (error) => {
+          console.error('Error cargando departamentos de Recursos Humanos:', error);
+          this.hrRoles = [];
+          this.rowData = [];
+        }
+      });
+      return;
+    }
 
     // Determina qué servicio usar
     const service = this.catalogService;
@@ -338,6 +377,22 @@ export class CatalogsComponent implements CanComponentDeactivate {
         },
       },
       {
+        field: 'idRoles',
+        headerName: 'Departamento',
+        hide: this.typeCatalog !== 'hr' || this.selectedCatalog !== 'POSITION',
+        editable: (params) => params.data.__isNew || this.authService.getCrudPermission(this.typeCatalog, 'catalogs', '', '', '', 'update'),
+        cellEditor: 'agSelectCellEditor',
+        cellEditorParams: () => ({ values: this.hrRoles.map((role) => String(role.id)) }),
+        valueFormatter: (params) => this.hrRoles.find((role) => Number(role.id) === Number(params.value))?.description || '',
+        valueSetter: (params) => {
+          const roleId = Number(params.newValue);
+          if (!this.hrRoles.some((role) => Number(role.id) === roleId)) return false;
+          params.data.idRoles = roleId;
+          return true;
+        },
+        width: 180,
+      },
+      {
         field: 'valueAddition',
         headerName:
           this.selectedCatalog === 'BONUS'
@@ -425,6 +480,12 @@ export class CatalogsComponent implements CanComponentDeactivate {
         },
         hide: this.idRoot == 18, // Solo mostrar si idRoot es 18
         width: 100,
+        valueGetter: (params) => this.typeCatalog === 'hr' ? params.data?.active : params.data?.vigente,
+        valueSetter: (params) => {
+          if (this.typeCatalog === 'hr') params.data.active = Boolean(params.newValue);
+          else params.data.vigente = Boolean(params.newValue);
+          return true;
+        },
       },
     ];
   }
@@ -437,6 +498,11 @@ export class CatalogsComponent implements CanComponentDeactivate {
     if (event.node && event.node.isSelected()) {
       // Verificar si la fila está seleccionada
       const selectedRowData = event.data;
+      if (this.typeCatalog === 'hr') {
+        this.selectedRowData = selectedRowData;
+        this.idCatalog = null;
+        return;
+      }
       const selectedId = selectedRowData?.id;
 
       if (selectedId) {
@@ -518,6 +584,9 @@ export class CatalogsComponent implements CanComponentDeactivate {
     const newItem = {
       id: tempId,
       idCompany: this.idRoot,
+      idRoles: this.typeCatalog === 'hr' && this.selectedCatalog === 'POSITION'
+        ? this.hrRoles[0]?.id ?? null
+        : null,
       description: '',
       valueAddition: '',
       valueAdditionBit: true,
@@ -562,12 +631,46 @@ export class CatalogsComponent implements CanComponentDeactivate {
     const addObservables = newRows.map((row) => {
       const cleanedData = this.cleanDataForServer(row);
       cleanedData.valueAddition = String(cleanedData.valueAddition);
+      if (this.typeCatalog === 'hr' && this.selectedCatalog === 'DEPARTAMENT') {
+        return this.rolesService.addRoles({
+          idCompany: this.idRoot,
+          description: cleanedData.description,
+          comment: cleanedData.comment || '',
+          active: cleanedData.active !== false,
+        });
+      }
+      if (this.typeCatalog === 'hr' && this.selectedCatalog === 'POSITION') {
+        return this.positionsService.addPosition({
+          idCompany: this.idRoot,
+          idRoles: Number(cleanedData.idRoles),
+          description: cleanedData.description,
+          active: cleanedData.active !== false,
+        });
+      }
       return this.catalogService.addCatalog(cleanedData);
     });
 
     const updateObservables = modifiedRows.map((row) => {
       const cleanedData = this.cleanDataForServer(row);
       cleanedData.valueAddition = String(cleanedData.valueAddition);
+      if (this.typeCatalog === 'hr' && this.selectedCatalog === 'DEPARTAMENT') {
+        return this.rolesService.updateRoles(String(row.id), {
+          id: row.id,
+          idCompany: this.idRoot,
+          description: cleanedData.description,
+          comment: cleanedData.comment || '',
+          active: cleanedData.active !== false,
+        });
+      }
+      if (this.typeCatalog === 'hr' && this.selectedCatalog === 'POSITION') {
+        return this.positionsService.updatePosition(String(row.id), {
+          id: row.id,
+          idCompany: this.idRoot,
+          idRoles: Number(cleanedData.idRoles),
+          description: cleanedData.description,
+          active: cleanedData.active !== false,
+        });
+      }
       return this.catalogService.updateCatalog(row.id, cleanedData);
     });
 

@@ -83,5 +83,5 @@ export const environment = {
   geminiApiKey: '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',
   gnewsApiKey: '94ccc596b4dfebc3f72683b6e81d81bc',
 
-  version: '5.00.129 (14 Octubre 2026 02:28) agrega firma del autorizador al PDF de OC',
+  version: '5.00.130 (14 Octubre 2026 03:45) corrige catalogos RH y seleccion de sucursal unica',
 };

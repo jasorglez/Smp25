@@ -324,20 +324,17 @@ error: (error) => {
         async (data) => {
           data.sort((a, b) => a.name.localeCompare(b.name));
 
-          // Crear el array de branches
-          this.branchData = data.map((branch: any) => ({
+          // Si solo existe una sucursal, seleccionarla directamente sin ofrecer "Todas".
+          const branches = data.map((branch: any) => ({
             id: branch.id,
             name: branch.name,
           }));
-          this.branchData.unshift({
-            id: -idRoot, // ID negativo del root
-            name: 'Todas las sucursales',
-          });
+          this.branchData = branches.length === 1
+            ? branches
+            : [{ id: -idRoot, name: 'Todas las sucursales' }, ...branches];
           this.cdr.markForCheck();
 
-          // Para usuarios con acceso global se inicia en “Todas las
-          // sucursales”; getpermissionxContracts selecciona el primer
-          // contrato y su primer proyecto.
+          // Con una sucursal se inicia en ella; con varias, se mantiene la opción global.
           const defaultBranch = this.branchData[0];
           if (defaultBranch) {
             this.selectedBranchId = String(defaultBranch.id);
