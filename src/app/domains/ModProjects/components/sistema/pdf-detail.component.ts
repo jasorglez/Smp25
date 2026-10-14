@@ -93,10 +93,10 @@ const mkSubTitle = (txt: string): any => ({
   standalone: true,
   imports: [CommonModule, PdfShareButtonsComponent],
   template: `
-<div style="padding:10px; background:#f8f9fa; border-radius:6px;">
+<div style="padding:12px 16px 16px; background:#f1f4f8; border-radius:8px;">
 
   <!-- Barra superior -->
-  <div class="d-flex justify-content-between align-items-center mb-2">
+  <div class="d-flex justify-content-between align-items-center mb-3 px-1">
     <div class="d-flex align-items-center gap-2">
       <i class="bi bi-file-earmark-pdf-fill text-danger" style="font-size:1.3rem;"></i>
       <div>
@@ -120,7 +120,7 @@ const mkSubTitle = (txt: string): any => ({
   </div>
 
   <!-- Visor -->
-  <div style="height:560px; border:1px solid #dee2e6; border-radius:6px; background:white; overflow:hidden;">
+  <div style="height:740px; border:1px solid #cbd5e1; border-radius:8px; background:white; overflow:hidden; box-shadow:0 2px 8px rgba(15,23,42,.08);">
 
     <iframe *ngIf="pdfUrl" [src]="pdfUrl"
             style="width:100%; height:100%; border:none;">
