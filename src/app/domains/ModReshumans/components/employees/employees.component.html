@@ -16,6 +16,11 @@
                      class="bi bi-clock"></i>
                   Histórico Préstamos</a>
             </li>
+            <li class="nav-item">
+               <a class="nav-link green-tab" routerLink="departments" routerLinkActive="active"><i
+                     class="bi bi-diagram-3"></i>
+                  Departamentos</a>
+            </li>
             <li class="nav-item" *ngIf="authService.hasSubDetailedPermission('hr', 'employees', 'HisAho_prin')">
                <a class="nav-link green-tab" routerLink="history-savings" routerLinkActive="active"><i
                      class="bi bi-clock-history"></i>

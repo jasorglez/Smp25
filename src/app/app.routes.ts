@@ -2154,6 +2154,20 @@ export const routes: Routes = [
                 },
               },
               {
+                path: 'departments',
+                loadComponent: () =>
+                  import('./domains/SMP/Components/rolesDelison/rolesDelison.component').then(
+                    (r) => r.RolesDelisonComponent
+                  ),
+                canActivate: [TrackingGuard],
+                data: {
+                  tracking: {
+                    logMessage: 'Abrió Departamentos desde Empleados',
+                    category: 'HR'
+                  }
+                }
+              },
+              {
                 path: 'history-savings',
                 loadComponent: () =>
                   import(
