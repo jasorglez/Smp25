@@ -120,7 +120,7 @@ const mkSubTitle = (txt: string): any => ({
   </div>
 
   <!-- Visor -->
-  <div style="height:740px; border:1px solid #cbd5e1; border-radius:8px; background:white; overflow:hidden; box-shadow:0 2px 8px rgba(15,23,42,.08);">
+  <div style="height:920px; border:1px solid #cbd5e1; border-radius:8px; background:white; overflow:hidden; box-shadow:0 2px 8px rgba(15,23,42,.08);">
 
     <iframe *ngIf="pdfUrl" [src]="pdfUrl"
             style="width:100%; height:100%; border:none;">

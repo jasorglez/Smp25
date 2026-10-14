@@ -90,7 +90,7 @@ export class SistemaComponent implements OnInit, OnDestroy {
     paginationPageSize: 25,
     rowSelection: 'single',
     masterDetail: true,
-    detailRowHeight: 800,
+    detailRowHeight: 980,
     detailCellRenderer: BitacoraWrapperComponent,
     suppressMenuHide: false,
     context: {
