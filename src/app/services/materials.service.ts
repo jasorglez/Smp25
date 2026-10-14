@@ -72,6 +72,19 @@ export class MaterialsService {
     });
   }
 
+  getMaterialConversions(idCompany: number, idMaterial?: number): Observable<any[]> {
+    const materialQuery = idMaterial ? `&idMaterial=${idMaterial}` : '';
+    return this.http.get<any[]>(`${environment.urlWarehouse}/Material/conversions?idCompany=${idCompany}${materialQuery}`, {
+      headers: this.trackingService.getHeaders(),
+    });
+  }
+
+  saveMaterialConversions(idCompany: number, idMaterial: number, conversions: { idMeasureFrom: number; idMeasureTo: number; factor: number }[]): Observable<any> {
+    return this.http.put(`${environment.urlWarehouse}/Material/${idMaterial}/conversions`, { idCompany, conversions }, {
+      headers: this.trackingService.getHeaders(),
+    });
+  }
+
   deleteMaterial(id: number): Observable<any> {
     return this.http.delete<any[]>(
       `${environment.urlWarehouse}/Material/${id}`,

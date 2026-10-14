@@ -24,6 +24,11 @@
                 title="Definir componentes del material seleccionado">
           <i class="bi bi-diagram-3"></i>
         </button>
+        <button type="button" class="btn btn-primary ms-1 me-1 mb-2" (click)="openConversionsModal()"
+                [disabled]="!selectedRowData || selectedRowData.__isNew || loadingConversions || saving"
+                title="Configurar conversiones de unidades del material">
+          <i class="bi bi-arrow-left-right"></i>
+        </button>
         <button type="button" class="btn btn-secondary ms-1 me-1 mb-2" (click)="togglePdfReport()"
                 title="Reporte PDF de Distribución (Cantidades)">
           <i class="bi bi-file-earmark-pdf"></i>
@@ -124,6 +129,57 @@
   </div>
 </div>
 <div class="modal-backdrop fade show" *ngIf="showComponentsModal"></div>
+
+<div class="modal fade" [class.show]="showConversionsModal"
+     [style.display]="showConversionsModal ? 'block' : 'none'" tabindex="-1" role="dialog"
+     aria-labelledby="conversionsModalLabel" [attr.aria-hidden]="!showConversionsModal">
+  <div class="modal-dialog modal-dialog-centered modal-lg" role="document">
+    <div class="modal-content">
+      <div class="modal-header bg-primary text-white">
+        <h5 class="modal-title" id="conversionsModalLabel">
+          <i class="bi bi-arrow-left-right me-2"></i>Conversiones de {{ conversionsParentData?.materialDescription || conversionsParentData?.insumo }}
+        </h5>
+        <button type="button" class="btn-close btn-close-white" (click)="showConversionsModal = false" aria-label="Cerrar"></button>
+      </div>
+      <div class="modal-body">
+        <p class="small text-muted">Define cuántas unidades destino equivale una unidad origen. Ejemplo: 1 kg = 5 m se captura como origen <strong>kg</strong>, destino <strong>m</strong>, factor <strong>5</strong>.</p>
+        <div *ngFor="let conversion of materialConversions; let i = index; trackBy: trackByIndex" class="row g-2 align-items-end mb-2">
+          <div class="col-md-4">
+            <label class="form-label small" [for]="'conversion-from-' + i">Unidad origen</label>
+            <select class="form-select" [(ngModel)]="conversion.idMeasureFrom" [name]="'conversion-from-' + i" [id]="'conversion-from-' + i">
+              <option [ngValue]="null">Selecciona...</option>
+              <option *ngFor="let unit of unitsCatalog" [ngValue]="numberValue(unit.id)">{{ unit.description }}</option>
+            </select>
+          </div>
+          <div class="col-md-4">
+            <label class="form-label small" [for]="'conversion-to-' + i">Unidad destino (inventario)</label>
+            <select class="form-select" [(ngModel)]="conversion.idMeasureTo" [name]="'conversion-to-' + i" [id]="'conversion-to-' + i">
+              <option [ngValue]="null">Selecciona...</option>
+              <option *ngFor="let unit of unitsCatalog" [ngValue]="numberValue(unit.id)">{{ unit.description }}</option>
+            </select>
+          </div>
+          <div class="col-md-3">
+            <label class="form-label small" [for]="'conversion-factor-' + i">Factor</label>
+            <input class="form-control" type="number" min="0.000001" step="0.000001" [(ngModel)]="conversion.factor"
+                   [name]="'conversion-factor-' + i" [id]="'conversion-factor-' + i" placeholder="Unidades destino">
+          </div>
+          <div class="col-auto">
+            <button class="btn btn-outline-danger" type="button" (click)="removeMaterialConversion(i)" title="Quitar conversión"><i class="bi bi-trash"></i></button>
+          </div>
+        </div>
+        <button type="button" class="btn btn-sm btn-outline-primary" (click)="addMaterialConversion()"><i class="bi bi-plus-lg me-1"></i>Agregar conversión</button>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" (click)="showConversionsModal = false" [disabled]="savingConversions">Cancelar</button>
+        <button type="button" class="btn btn-primary" (click)="saveMaterialConversions()" [disabled]="savingConversions">
+          <span *ngIf="savingConversions" class="spinner-border spinner-border-sm me-1"></span>
+          <i *ngIf="!savingConversions" class="bi bi-floppy me-1"></i>Guardar conversiones
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+<div class="modal-backdrop fade show" *ngIf="showConversionsModal"></div>
 
 <!-- Modal for image viewing -->
 <div class="modal fade" id="imageModal" tabindex="-1" aria-labelledby="imageModalLabel" aria-hidden="true">

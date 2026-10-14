@@ -126,6 +126,11 @@ export class MaterialsComponent implements CanComponentDeactivate {
   savingComponents = false;
   componentsParentData: any = null;
   materialComponents: Array<{ componentName: string; quantity: number }> = [];
+  showConversionsModal = false;
+  loadingConversions = false;
+  savingConversions = false;
+  conversionsParentData: any = null;
+  materialConversions: Array<{ idMeasureFrom: number | null; idMeasureTo: number | null; factor: number }> = [];
   showSavingsTab: boolean = false;
   authorizedPass: boolean = false;
   private lastEditedRowId: number | string | null = null;
@@ -459,6 +464,7 @@ export class MaterialsComponent implements CanComponentDeactivate {
   }
 
   trackByIndex(index: number): number { return index; }
+  numberValue(value: any): number { return Number(value); }
 
   async saveMaterialComponents(): Promise<void> {
     const parentId = Number(this.componentsParentData?.id);
@@ -478,6 +484,73 @@ export class MaterialsComponent implements CanComponentDeactivate {
       alerts.basicAlert('No se pudo guardar', error?.error?.message || 'Revisa el nombre y la cantidad de cada componente.', 'error');
     } finally {
       this.savingComponents = false;
+    }
+  }
+
+  async openConversionsModal(): Promise<void> {
+    const material = this.selectedRowData;
+    if (!material || !Number.isInteger(Number(material.id))) {
+      alerts.basicAlert('Guarde el material', 'Primero guarde el material para definir sus conversiones.', 'info');
+      return;
+    }
+    if (this.notSavedChanges) {
+      alerts.basicAlert('Cambios sin guardar', 'Guarde los cambios del material antes de editar sus conversiones.', 'warning');
+      return;
+    }
+    this.conversionsParentData = material;
+    this.loadingConversions = true;
+    this.materialConversions = [];
+    try {
+      const rows = await lastValueFrom(this.materialsService.getMaterialConversions(this.idcompany, Number(material.id)));
+      this.materialConversions = rows.map(row => ({
+        idMeasureFrom: Number(row.idMeasureFrom),
+        idMeasureTo: Number(row.idMeasureTo),
+        factor: Number(row.factor),
+      }));
+      this.showConversionsModal = true;
+    } catch (error) {
+      console.error('Error al cargar conversiones del material:', error);
+      alerts.basicAlert('Error', 'No se pudieron cargar las conversiones del material.', 'error');
+    } finally {
+      this.loadingConversions = false;
+    }
+  }
+
+  addMaterialConversion(): void {
+    const usedFrom = new Set(this.materialConversions.map(row => Number(row.idMeasureFrom)));
+    const defaultFrom = this.unitsCatalog.find(unit => !usedFrom.has(Number(unit.id)))?.id
+      ?? this.conversionsParentData?.idMedida ?? null;
+    const defaultTo = this.materialConversions[0]?.idMeasureTo
+      ?? this.unitsCatalog.find(unit => Number(unit.id) !== Number(defaultFrom))?.id ?? null;
+    this.materialConversions = [...this.materialConversions, { idMeasureFrom: defaultFrom, idMeasureTo: defaultTo ? Number(defaultTo) : null, factor: 1 }];
+  }
+
+  removeMaterialConversion(index: number): void {
+    this.materialConversions = this.materialConversions.filter((_, i) => i !== index);
+  }
+
+  async saveMaterialConversions(): Promise<void> {
+    const materialId = Number(this.conversionsParentData?.id);
+    const sourceIds = this.materialConversions.map(row => Number(row.idMeasureFrom));
+    const targetIds = new Set(this.materialConversions.map(row => Number(row.idMeasureTo)));
+    if (!materialId || this.materialConversions.some(row => !row.idMeasureFrom || !row.idMeasureTo
+        || row.idMeasureFrom === row.idMeasureTo || !Number.isFinite(Number(row.factor)) || Number(row.factor) <= 0)
+        || new Set(sourceIds).size !== sourceIds.length || targetIds.size > 1
+        || (this.materialConversions.length > 0 && !sourceIds.includes(Number(this.conversionsParentData?.idMedida)))) {
+      alerts.basicAlert('Revisa las conversiones', 'Cada unidad origen debe aparecer una sola vez, todas deben convertir a la misma unidad destino y debe incluirse la unidad de compra del material.', 'warning');
+      return;
+    }
+    this.savingConversions = true;
+    try {
+      await lastValueFrom(this.materialsService.saveMaterialConversions(this.idcompany, materialId,
+        this.materialConversions.map(row => ({ idMeasureFrom: Number(row.idMeasureFrom), idMeasureTo: Number(row.idMeasureTo), factor: Number(row.factor) }))));
+      this.showConversionsModal = false;
+      alerts.basicAlert('Conversiones guardadas', 'Las entradas convertirán la unidad de origen a la unidad de inventario configurada.', 'success');
+    } catch (error: any) {
+      console.error('Error al guardar conversiones del material:', error);
+      alerts.basicAlert('No se pudieron guardar', error?.error?.message || 'Revisa las unidades y el factor de cada conversión.', 'error');
+    } finally {
+      this.savingConversions = false;
     }
   }
 
@@ -720,21 +793,6 @@ export class MaterialsComponent implements CanComponentDeactivate {
             return true;
           }
           return false;
-        },
-      },
-      {
-        field: 'gramsPerMeter',
-        headerName: 'Gramos / metro',
-        headerTooltip: 'Peso en gramos de un metro. Se usa para convertir entradas capturadas en kilos a metros de inventario.',
-        editable: true,
-        width: 135,
-        type: 'numericColumn',
-        cellEditor: 'agNumberCellEditor',
-        valueSetter: (params: any) => {
-          const value = params.newValue === '' || params.newValue == null ? null : Number(params.newValue);
-          if (value !== null && (!Number.isFinite(value) || value <= 0)) return false;
-          params.data.gramsPerMeter = value;
-          return true;
         },
       },
       {

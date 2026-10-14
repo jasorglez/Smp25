@@ -83,5 +83,5 @@ export const environment = {
   geminiApiKey: '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',
   gnewsApiKey: '94ccc596b4dfebc3f72683b6e81d81bc',
 
-  version: '5.00.124 (14 Octubre 2026) componentes escritos y conversión de kilos a metros',
+  version: '5.00.125 (14 Octubre 2026) conversiones configurables por material',
 };

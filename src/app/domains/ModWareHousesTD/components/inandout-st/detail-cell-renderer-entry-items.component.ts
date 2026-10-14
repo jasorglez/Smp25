@@ -10,7 +10,7 @@ import { SelectMaterialEditorComponent } from './select-material-editor.componen
 import { DomSanitizer, SafeResourceUrl } from '@angular/platform-browser';
 import { PdfReportsService } from 'app/services/pdf-reports.service';
 import { TrackingService } from 'app/services/tracking.service';
-import { lastValueFrom } from 'rxjs';
+import { forkJoin, lastValueFrom } from 'rxjs';
 
 @Component({
   selector: 'app-detail-cell-renderer-entry-items',
@@ -23,9 +23,9 @@ import { lastValueFrom } from 'rxjs';
         <i class="bi bi-info-circle me-1"></i>
         Las partidas de la OC se cargan al abrir el detalle. Captura la cantidad recibida y guarda.
       </div>
-      <div *ngIf="context?.movementType === 'IN' && hasGramsPerMeterMaterials" class="alert alert-info py-1 px-2 mb-2 small">
+      <div *ngIf="context?.movementType === 'IN' && hasConvertedMaterials" class="alert alert-info py-1 px-2 mb-2 small">
         <i class="bi bi-info-circle me-1"></i>
-        Los materiales configurados en gramos por metro se capturan en kilos; el inventario se convierte y conserva en metros.
+        Los materiales con conversión se capturan en su unidad origen; el inventario se guarda en la unidad destino configurada.
       </div>
       <div class="detail-actions d-flex justify-content-end mb-2">
         <button class="btn btn-primary btn-sm me-2" (click)="addItem()">
@@ -108,8 +108,8 @@ export class DetailCellRendererEntryItemsComponent implements OnInit {
   tempIdCounter: number = 0;
   materials: any[] = [];
 
-  get hasGramsPerMeterMaterials(): boolean {
-    return this.materials.some(material => Number(material.gramsPerMeter) > 0);
+  get hasConvertedMaterials(): boolean {
+    return this.materials.some(material => !!material.conversion);
   }
 
   // Report properties
@@ -281,12 +281,14 @@ export class DetailCellRendererEntryItemsComponent implements OnInit {
               params.data.materialName = selectedMaterial.description;
               params.data.description = selectedMaterial.description;
               params.data.code = selectedMaterial.code || '';
-              params.data.gramsPerMeter = Number(selectedMaterial.gramsPerMeter || 0);
-              params.data.measure = params.data.gramsPerMeter > 0
-                ? (this.context.movementType === 'OUT' ? 'm' : (selectedMaterial.measure || 'kg'))
+              params.data.measure = this.context.movementType === 'OUT' && selectedMaterial.conversion
+                ? selectedMaterial.conversion.measureTo
                 : (selectedMaterial.measure || selectedMaterial.unit || selectedMaterial.unidad || '');
-              params.data.sourceMeasure = this.context.movementType === 'IN' && params.data.gramsPerMeter > 0
-                ? (selectedMaterial.measure || 'kg')
+              params.data.sourceMeasure = this.context.movementType === 'IN' && selectedMaterial.conversion
+                ? selectedMaterial.measure
+                : null;
+              params.data.sourceMeasureId = this.context.movementType === 'IN' && selectedMaterial.conversion
+                ? Number(selectedMaterial.idMeasure)
                 : null;
             }
             return true;
@@ -299,12 +301,14 @@ export class DetailCellRendererEntryItemsComponent implements OnInit {
             params.data.materialName = selectedMaterial.description;
             params.data.description = selectedMaterial.description;
             params.data.code = selectedMaterial.code || '';
-            params.data.gramsPerMeter = Number(selectedMaterial.gramsPerMeter || 0);
-            params.data.measure = params.data.gramsPerMeter > 0
-              ? (this.context.movementType === 'OUT' ? 'm' : (selectedMaterial.measure || 'kg'))
+            params.data.measure = this.context.movementType === 'OUT' && selectedMaterial.conversion
+              ? selectedMaterial.conversion.measureTo
               : (selectedMaterial.measure || selectedMaterial.unit || selectedMaterial.unidad || '');
-            params.data.sourceMeasure = this.context.movementType === 'IN' && params.data.gramsPerMeter > 0
-              ? (selectedMaterial.measure || 'kg')
+            params.data.sourceMeasure = this.context.movementType === 'IN' && selectedMaterial.conversion
+              ? selectedMaterial.measure
+              : null;
+            params.data.sourceMeasureId = this.context.movementType === 'IN' && selectedMaterial.conversion
+              ? Number(selectedMaterial.idMeasure)
               : null;
           }
 
@@ -324,10 +328,33 @@ export class DetailCellRendererEntryItemsComponent implements OnInit {
       },
       {
         field: 'measure',
-        headerName: this.context.movementType === 'OUT' ? 'Medida de salida' : 'Medida de compra',
+        headerName: this.context.movementType === 'OUT' ? 'Unidad de salida' : 'Unidad de entrada',
         width: 100,
-        editable: true,
+        editable: (params: any) => {
+          const material = this.materials.find(item => Number(item.id) === Number(params.data?.idProduct));
+          if (!material?.conversions?.length) return true;
+          return this.context.movementType === 'IN';
+        },
+        cellEditorSelector: (params: any) => {
+          const material = this.materials.find(item => Number(item.id) === Number(params.data?.idProduct));
+          if (material?.conversions?.length) {
+            return {
+              component: 'agSelectCellEditor',
+              params: { values: material.conversions.map((conversion: any) => conversion.measureFrom) },
+            };
+          }
+          return { component: 'agTextCellEditor' };
+        },
         valueSetter: (params: any) => {
+          const material = this.materials.find(item => Number(item.id) === Number(params.data?.idProduct));
+          if (this.context.movementType === 'IN' && material?.conversions?.length) {
+            const conversion = material.conversions.find((row: any) => row.measureFrom === params.newValue);
+            if (!conversion) return false;
+            params.data.measure = conversion.measureFrom;
+            params.data.sourceMeasure = conversion.measureFrom;
+            params.data.sourceMeasureId = Number(conversion.idMeasureFrom);
+            return true;
+          }
           params.data.measure = params.newValue ? params.newValue.toUpperCase() : '';
           return true;
         }
@@ -524,9 +551,16 @@ export class DetailCellRendererEntryItemsComponent implements OnInit {
 
   loadMaterials() {
     if (this.context && this.context.materialsService && this.context.idRoot) {
-      this.context.materialsService.getMaterials2Fields(this.context.idRoot).subscribe({
-        next: (data: any[]) => {
-          this.materials = data.filter(mat => mat.active && mat.vigente);
+      forkJoin({
+        materials: this.context.materialsService.getMaterials2Fields(this.context.idRoot),
+        conversions: this.context.materialsService.getMaterialConversions(this.context.idRoot),
+      }).subscribe({
+        next: ({ materials, conversions }: { materials: any[]; conversions: any[] }) => {
+          this.materials = materials.filter(mat => mat.active && mat.vigente).map(mat => {
+            const materialConversions = conversions.filter(row => Number(row.idMaterial) === Number(mat.id));
+            const conversion = materialConversions.find(row => Number(row.idMeasureFrom) === Number(mat.idMeasure));
+            return { ...mat, conversion, conversions: materialConversions };
+          });
           // Update columnDefs to refresh the select values
           if (this.gridApi) {
             this.gridApi.setGridOption('columnDefs', this.colDefs);
@@ -574,7 +608,11 @@ export class DetailCellRendererEntryItemsComponent implements OnInit {
       idInandout: this.params.data.id,
       idProduct: material.id,
       description: material.description,
-      measure: material.measure || material.unit || material.unidad || '',
+      measure: this.context.movementType === 'OUT' && material.conversion
+        ? material.conversion.measureTo
+        : (material.measure || material.unit || material.unidad || ''),
+      sourceMeasure: this.context.movementType === 'IN' && material.conversion ? material.measure : null,
+      sourceMeasureId: this.context.movementType === 'IN' && material.conversion ? Number(material.idMeasure) : null,
       quantity: 1,
       pending: 0,
       total: 1,
