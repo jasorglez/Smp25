@@ -23,6 +23,10 @@ import { lastValueFrom } from 'rxjs';
         <i class="bi bi-info-circle me-1"></i>
         Las partidas de la OC se cargan al abrir el detalle. Captura la cantidad recibida y guarda.
       </div>
+      <div *ngIf="context?.movementType === 'IN' && hasGramsPerMeterMaterials" class="alert alert-info py-1 px-2 mb-2 small">
+        <i class="bi bi-info-circle me-1"></i>
+        Los materiales configurados en gramos por metro se capturan en kilos; el inventario se convierte y conserva en metros.
+      </div>
       <div class="detail-actions d-flex justify-content-end mb-2">
         <button class="btn btn-primary btn-sm me-2" (click)="addItem()">
           <i class="bi bi-plus-lg"></i> Agregar
@@ -103,6 +107,10 @@ export class DetailCellRendererEntryItemsComponent implements OnInit {
   hasUnsavedChanges: boolean = false;
   tempIdCounter: number = 0;
   materials: any[] = [];
+
+  get hasGramsPerMeterMaterials(): boolean {
+    return this.materials.some(material => Number(material.gramsPerMeter) > 0);
+  }
 
   // Report properties
   detailType: string = 'items';
@@ -273,7 +281,13 @@ export class DetailCellRendererEntryItemsComponent implements OnInit {
               params.data.materialName = selectedMaterial.description;
               params.data.description = selectedMaterial.description;
               params.data.code = selectedMaterial.code || '';
-              params.data.measure = selectedMaterial.measure || selectedMaterial.unit || selectedMaterial.unidad || '';
+              params.data.gramsPerMeter = Number(selectedMaterial.gramsPerMeter || 0);
+              params.data.measure = params.data.gramsPerMeter > 0
+                ? (this.context.movementType === 'OUT' ? 'm' : (selectedMaterial.measure || 'kg'))
+                : (selectedMaterial.measure || selectedMaterial.unit || selectedMaterial.unidad || '');
+              params.data.sourceMeasure = this.context.movementType === 'IN' && params.data.gramsPerMeter > 0
+                ? (selectedMaterial.measure || 'kg')
+                : null;
             }
             return true;
           }
@@ -285,7 +299,13 @@ export class DetailCellRendererEntryItemsComponent implements OnInit {
             params.data.materialName = selectedMaterial.description;
             params.data.description = selectedMaterial.description;
             params.data.code = selectedMaterial.code || '';
-            params.data.measure = selectedMaterial.measure || selectedMaterial.unit || selectedMaterial.unidad || '';
+            params.data.gramsPerMeter = Number(selectedMaterial.gramsPerMeter || 0);
+            params.data.measure = params.data.gramsPerMeter > 0
+              ? (this.context.movementType === 'OUT' ? 'm' : (selectedMaterial.measure || 'kg'))
+              : (selectedMaterial.measure || selectedMaterial.unit || selectedMaterial.unidad || '');
+            params.data.sourceMeasure = this.context.movementType === 'IN' && params.data.gramsPerMeter > 0
+              ? (selectedMaterial.measure || 'kg')
+              : null;
           }
 
           return true;
@@ -304,7 +324,7 @@ export class DetailCellRendererEntryItemsComponent implements OnInit {
       },
       {
         field: 'measure',
-        headerName: 'Medida',
+        headerName: this.context.movementType === 'OUT' ? 'Medida de salida' : 'Medida de compra',
         width: 100,
         editable: true,
         valueSetter: (params: any) => {

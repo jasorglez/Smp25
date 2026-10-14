@@ -124,9 +124,8 @@ export class MaterialsComponent implements CanComponentDeactivate {
   showComponentsModal = false;
   loadingComponents = false;
   savingComponents = false;
-  awaitingChildSelection = false;
   componentsParentData: any = null;
-  materialComponents: Array<{ idComponentMaterial: number; quantity: number; name?: string; insumo?: string; measure?: string }> = [];
+  materialComponents: Array<{ componentName: string; quantity: number }> = [];
   showSavingsTab: boolean = false;
   authorizedPass: boolean = false;
   private lastEditedRowId: number | string | null = null;
@@ -211,6 +210,7 @@ export class MaterialsComponent implements CanComponentDeactivate {
     cleanedData.idFamilia = data.idFamilia || null;
     cleanedData.idSubfamilia = data.idSubfamilia || null;
     cleanedData.idMedida = data.idMedida || null;
+    cleanedData.gramsPerMeter = data.gramsPerMeter ? Number(data.gramsPerMeter) : null;
     cleanedData.idCompany = this.idcompany;
 
     return cleanedData;
@@ -421,25 +421,6 @@ export class MaterialsComponent implements CanComponentDeactivate {
 
   onMasterRowSelected(event: any) {
     if (!event.node?.isSelected() || !event.data || !event.data.id) return;
-
-    if (this.awaitingChildSelection) {
-      const childId = Number(event.data.id);
-      const parentId = Number(this.componentsParentData?.id);
-      if (childId === parentId) return;
-      if (this.materialComponents.some(component => Number(component.idComponentMaterial) === childId)) return;
-
-      this.materialComponents = [...this.materialComponents, {
-        idComponentMaterial: childId,
-        quantity: 1,
-        name: event.data.materialDescription || event.data.insumo,
-        measure: event.data.measure,
-      }];
-      this.awaitingChildSelection = false;
-      this.selectedRowData = this.componentsParentData;
-      this.showComponentsModal = true;
-      return;
-    }
-
     this.id = event.data.id;
     this.selectedRowData = event.data;
   }
@@ -455,7 +436,6 @@ export class MaterialsComponent implements CanComponentDeactivate {
       return;
     }
     this.componentsParentData = parent;
-    this.awaitingChildSelection = false;
     this.loadingComponents = true;
     this.materialComponents = [];
     try {
@@ -470,14 +450,8 @@ export class MaterialsComponent implements CanComponentDeactivate {
     }
   }
 
-  beginChildSelection(): void {
-    this.showComponentsModal = false;
-    this.awaitingChildSelection = true;
-  }
-
-  cancelChildSelection(): void {
-    this.awaitingChildSelection = false;
-    this.showComponentsModal = true;
+  addMaterialComponent(): void {
+    this.materialComponents = [...this.materialComponents, { componentName: '', quantity: 1 }];
   }
 
   removeMaterialComponent(index: number): void {
@@ -488,20 +462,20 @@ export class MaterialsComponent implements CanComponentDeactivate {
 
   async saveMaterialComponents(): Promise<void> {
     const parentId = Number(this.componentsParentData?.id);
-    const ids = this.materialComponents.map(row => Number(row.idComponentMaterial));
-    if (!parentId || this.materialComponents.some(row => !Number.isInteger(Number(row.idComponentMaterial)) || Number(row.idComponentMaterial) <= 0 || !Number.isFinite(Number(row.quantity)) || Number(row.quantity) <= 0) || new Set(ids).size !== ids.length) {
-      alerts.basicAlert('Revisa los componentes', 'Selecciona un componente distinto en cada renglón y captura una cantidad mayor que cero.', 'warning');
+    const names = this.materialComponents.map(row => row.componentName.trim().toLocaleLowerCase());
+    if (!parentId || this.materialComponents.some(row => !row.componentName?.trim() || row.componentName.trim().length > 200 || !Number.isFinite(Number(row.quantity)) || Number(row.quantity) <= 0) || new Set(names).size !== names.length) {
+      alerts.basicAlert('Revisa los componentes', 'Escribe un nombre distinto para cada componente y captura una cantidad mayor que cero.', 'warning');
       return;
     }
     this.savingComponents = true;
     try {
       await lastValueFrom(this.materialsService.saveMaterialComponents(this.idcompany, parentId,
-        this.materialComponents.map(row => ({ idComponentMaterial: Number(row.idComponentMaterial), quantity: Number(row.quantity) }))));
+        this.materialComponents.map(row => ({ componentName: row.componentName.trim(), quantity: Number(row.quantity) }))));
       this.showComponentsModal = false;
       alerts.basicAlert('Componentes guardados', 'El desglose se aplicará a las próximas entradas de este material.', 'success');
     } catch (error: any) {
       console.error('Error al guardar los componentes del material:', error);
-      alerts.basicAlert('No se pudo guardar', error?.error?.message || 'Revisa que los materiales pertenezcan a la misma empresa y que no formen ciclos.', 'error');
+      alerts.basicAlert('No se pudo guardar', error?.error?.message || 'Revisa el nombre y la cantidad de cada componente.', 'error');
     } finally {
       this.savingComponents = false;
     }
@@ -749,6 +723,21 @@ export class MaterialsComponent implements CanComponentDeactivate {
         },
       },
       {
+        field: 'gramsPerMeter',
+        headerName: 'Gramos / metro',
+        headerTooltip: 'Peso en gramos de un metro. Se usa para convertir entradas capturadas en kilos a metros de inventario.',
+        editable: true,
+        width: 135,
+        type: 'numericColumn',
+        cellEditor: 'agNumberCellEditor',
+        valueSetter: (params: any) => {
+          const value = params.newValue === '' || params.newValue == null ? null : Number(params.newValue);
+          if (value !== null && (!Number.isFinite(value) || value <= 0)) return false;
+          params.data.gramsPerMeter = value;
+          return true;
+        },
+      },
+      {
         field: 'materialDescription',
         headerName: 'Descripción del Material',
         editable: true,
@@ -895,6 +884,7 @@ export class MaterialsComponent implements CanComponentDeactivate {
       idSubfamilia: defaultSubfamilia?.id || null,
       subfamiliaDescription: defaultSubfamilia?.description || '',
       idMedida: null,
+      gramsPerMeter: null,
       barcode: '',
       picture: '',
       costoMN: 0,

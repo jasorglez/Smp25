@@ -66,7 +66,7 @@ export class MaterialsService {
     });
   }
 
-  saveMaterialComponents(idCompany: number, idMaterial: number, components: { idComponentMaterial: number; quantity: number }[]): Observable<any> {
+  saveMaterialComponents(idCompany: number, idMaterial: number, components: { componentName: string; quantity: number }[]): Observable<any> {
     return this.http.put(`${environment.urlWarehouse}/Material/${idMaterial}/components`, { idCompany, components }, {
       headers: this.trackingService.getHeaders(),
     });

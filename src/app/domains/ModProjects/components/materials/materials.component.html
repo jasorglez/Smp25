@@ -35,10 +35,6 @@
       </nav>
 
     <div class="col">
-      <div class="alert alert-info py-2 d-flex justify-content-between align-items-center" *ngIf="awaitingChildSelection">
-        <span>Selecciona en el grid el material hijo de <strong>{{ componentsParentData?.materialDescription || componentsParentData?.insumo }}</strong>.</span>
-        <button type="button" class="btn btn-sm btn-outline-secondary ms-2" (click)="cancelChildSelection()">Cancelar</button>
-      </div>
       <div class="row">
         <ag-grid-angular
         style="width: 100%;"
@@ -92,12 +88,14 @@
       <div class="modal-body">
         <p class="small text-muted">
           <strong>{{ componentsParentData?.materialDescription || componentsParentData?.insumo }}</strong> es el padre.
-          Selecciona los hijos directamente en el grid; al recibir el padre, sus cantidades se desglosarán automáticamente.
+          Escribe cada componente y su cantidad por pieza; al recibir el padre, el inventario registrará las cantidades desglosadas.
         </p>
         <div *ngFor="let component of materialComponents; let i = index; trackBy: trackByIndex"
              class="row g-2 align-items-center mb-2">
           <div class="col">
-            <span class="form-control bg-light">{{ component.name || component.insumo || ('Material #' + component.idComponentMaterial) }}</span>
+            <input class="form-control" type="text" maxlength="200" required
+                   [(ngModel)]="component.componentName" [name]="'component-name-' + i"
+                   [id]="'component-name-' + i" placeholder="Nombre del componente">
           </div>
           <div class="col-4 col-md-3">
             <label class="visually-hidden" [for]="'component-quantity-' + i">Cantidad por material padre</label>
@@ -111,8 +109,8 @@
             </button>
           </div>
         </div>
-        <button type="button" class="btn btn-sm btn-outline-primary" (click)="beginChildSelection()">
-          <i class="bi bi-plus-lg me-1"></i>Agregar hijo desde el grid
+        <button type="button" class="btn btn-sm btn-outline-primary" (click)="addMaterialComponent()">
+          <i class="bi bi-plus-lg me-1"></i>Agregar componente
         </button>
       </div>
       <div class="modal-footer">
