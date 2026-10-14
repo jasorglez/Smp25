@@ -6,11 +6,10 @@ import { firstValueFrom } from 'rxjs';
 import { InandoutService } from 'app/services/inandout.service';
 import { InventarioWarehouseService } from 'app/services/inventario-warehouse.service';
 import { OcAndReqsService } from 'app/services/ocandreqs.service';
-import { PermitionsService } from 'app/services/permitions.service';
 import { SignalsService } from 'app/services/signals.service';
 import { SetupService } from 'app/services/setup.service';
-import { TrackingService } from 'app/services/tracking.service';
 import { WarehousesService } from 'app/services/warehouses.service';
+import { BranchsService } from 'app/services/branchs.service';
 
 @Component({
   selector: 'app-dash-warehouse',
@@ -149,9 +148,8 @@ export class DashWarehouseComponent {
   private inOutService = inject(InandoutService);
   private inventoryService = inject(InventarioWarehouseService);
   private warehousesService = inject(WarehousesService);
+  private branchesService = inject(BranchsService);
   private setupService = inject(SetupService);
-  private permitionsService = inject(PermitionsService);
-  private trackingService = inject(TrackingService);
 
   requisitions: any[]=[]; purchaseOrders: any[]=[]; entrances: any[]=[]; outings: any[]=[]; inventory: any[]=[]; warehouses: any[]=[];
   movementItems: {type:string;date:any;folio:string;material:string;code:string;quantity:number;existence:number;stockState:string;warehouse:string}[]=[];
@@ -179,14 +177,18 @@ export class DashWarehouseComponent {
     const setup=this.array(await this.safe(()=>this.setupService.getWarehouseSetup(company)));
     const projectOrBranch=setup.length?this.asBoolean(setup[0].projectOrBranch):!!project;
     const reference=projectOrBranch?project:branch;
-    const movementReference=project||branch;
     const typeReference=projectOrBranch?'project':'branch';
     this.contextLabel=projectOrBranch?(project?'Proyecto seleccionado':'Proyecto no seleccionado'):(branch?'Sucursal seleccionada':'Sucursal no seleccionada');
-    const email=this.trackingService.getEmail()||localStorage.getItem('mail')||'';
-    const [inv,req,oc,permittedWarehouses,fallbackWarehouses]=await Promise.all([this.safe(()=>this.inventoryService.getInventario(company)),reference?this.safe(()=>this.ocReqService.getOcAndReqs(typeReference,reference,'REQUIS')):[],reference?this.safe(()=>this.ocReqService.getOcAndReqs(typeReference,reference,'OC')):[],email?this.safe(()=>this.permitionsService.getPermisionswarehousexEmail(email)):[],this.safe(()=>this.warehousesService.getSimpleWarehouses(company))]);
-    this.inventory=this.array(inv);this.requisitions=this.array(req);this.purchaseOrders=this.array(oc);this.warehouses=this.array(permittedWarehouses).length?this.array(permittedWarehouses):this.array(fallbackWarehouses);
+    const [inv,req,oc,branches]=await Promise.all([this.safe(()=>this.inventoryService.getInventario(company)),reference?this.safe(()=>this.ocReqService.getOcAndReqs(typeReference,reference,'REQUIS')):[],reference?this.safe(()=>this.ocReqService.getOcAndReqs(typeReference,reference,'OC')):[],this.safe(()=>this.branchesService.getBranches2fields(company))]);
+    this.inventory=this.array(inv);this.requisitions=this.array(req);this.purchaseOrders=this.array(oc);
+    const branchList=this.array(branches);
+    const warehouseLists=await Promise.all(branchList.map(branch=>this.safe(()=>this.warehousesService.getSimpleWarehouses(Number(branch.id??branch.idBranch)))));
+    this.warehouses=warehouseLists.flatMap(items=>this.array(items));
+    if(!this.warehouses.length)this.warehouses=this.array(await this.safe(()=>this.warehousesService.getSimpleWarehouses(company)));
+    this.warehouses=[...new Map(this.warehouses.map(warehouse=>[this.warehouseId(warehouse),warehouse])).values()];
     if(this.selectedWarehouse&&!this.warehouses.some(w=>this.warehouseId(w)===this.selectedWarehouse))this.selectedWarehouse=0;
-    const movementPairs=movementReference?await Promise.all(this.warehouses.map(w=>Promise.all([this.safe(()=>this.inOutService.getInAndOuts(movementReference,Number(w.id??w.idWarehouse??w.idAlmacen),'IN')),this.safe(()=>this.inOutService.getInAndOuts(movementReference,Number(w.id??w.idWarehouse??w.idAlmacen),'OUT'))]))):[];
+    const movementProject=projectOrBranch&&project>0?project:null;
+    const movementPairs=await Promise.all(this.warehouses.map(w=>Promise.all([this.safe(()=>this.inOutService.getInAndOuts(movementProject,this.warehouseId(w),'IN')),this.safe(()=>this.inOutService.getInAndOuts(movementProject,this.warehouseId(w),'OUT'))])));
     this.entrances=movementPairs.flatMap((x,i)=>this.array(x[0]).map(row=>({...row,__warehouse:this.warehouses[i],__type:'IN'})));this.outings=movementPairs.flatMap((x,i)=>this.array(x[1]).map(row=>({...row,__warehouse:this.warehouses[i],__type:'OUT'})));
     await this.loadMovementItems();this.buildCharts();
   }catch(e){console.error('Error dashboard almacenes:',e);this.errorMessage='No fue posible cargar toda la información de Almacenes.'}finally{this.loading=false}}

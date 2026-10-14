@@ -13,8 +13,9 @@ export class InandoutService {
   private http = inject(HttpClient);
   private trackingService = inject(TrackingService);
 
-  getInAndOuts(idProject: number, idWarehouse: number, type: string) {
-    return this.http.get(`${environment.urlWarehouse}/Inandout?idProject=${idProject}&idWarehouse=${idWarehouse}&type=${type}`, { headers: this.trackingService.getHeaders() });
+  getInAndOuts(idProject: number | null, idWarehouse: number, type: string) {
+    const projectFilter = idProject ? `&idProject=${idProject}` : '';
+    return this.http.get(`${environment.urlWarehouse}/Inandout?idWarehouse=${idWarehouse}&type=${type}${projectFilter}`, { headers: this.trackingService.getHeaders() });
   }
 
   getSumaIn(idProduct: number, idWarehouse: number) {

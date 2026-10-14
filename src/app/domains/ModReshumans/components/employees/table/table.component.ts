@@ -25,7 +25,6 @@ import { EmployeesxLoansComponent } from '../loans/loans.component';
 import { AdministrationService } from 'app/services/administration.service';
 import { EmployeesxSavingsComponent } from '../savings/savings.component';
 import { TimeService } from 'app/services/time.service';
-import { CatalogsService } from 'app/services/catalogs.service';
 import { BranchsService } from 'app/services/branchs.service';
 import { RolesService } from 'app/services/roles.service';
 import { PosicionesService } from 'app/services/posiciones.service';
@@ -57,7 +56,6 @@ export class EmployeesTableComponent implements CanComponentDeactivate {
   private modalServiceTable = inject(ModalService);
   private inegiService = inject(InegiService);
   private administrationService = inject(AdministrationService);
-  private catalogService = inject(CatalogsService);
   private timeService = inject(TimeService);
   private branchesService = inject(BranchsService);
   authService = inject(AuthService);
@@ -81,9 +79,7 @@ export class EmployeesTableComponent implements CanComponentDeactivate {
   rowData: any[] = [];
   banks: any[] = [];
   catalogGeneralPosiciones: any[] = [];
-  depto: any[] = [];
   catalogPosiciones: any[] = [];
-  position: any[] = [];
   branchs: any[] = [];
   catalogRoles: any[] = []
   showCatalogModal = false;
@@ -158,7 +154,6 @@ export class EmployeesTableComponent implements CanComponentDeactivate {
         this.obtenerDatos();
         this.obtenerBranchs();
         this.getBanks();
-        this.getDeptoandPosition();
         this.getStates();
       }
     });
@@ -1861,7 +1856,7 @@ export class EmployeesTableComponent implements CanComponentDeactivate {
     });
   }
     getGeneralPosicion() {
-    this.rolesService.getGeneralPosicion(this.idRoot).subscribe(
+    this.posicionesService.getPositionsByCompany(this.idRoot).subscribe(
       (data: any) => {
         this.catalogGeneralPosiciones = data;
       },      
@@ -1931,28 +1926,6 @@ export class EmployeesTableComponent implements CanComponentDeactivate {
       },      
       (error) => {
         if (error.status == 404) this.banks = [];
-        console.error('Error fetching data:', error);
-      }
-    );
-  }
-
-  getDeptoandPosition() {
-    this.catalogService.getCatalogsVigente(this.idRoot, 'DEPARTAMENT').subscribe(
-      (data: any) => {
-        this.depto = data;
-      },
-      (error) => {
-        if (error.status == 404) this.depto = [];
-        console.error('Error fetching data:', error);
-      }
-    );
-
-    this.catalogService.getCatalogsVigente(this.idRoot, 'POSITION').subscribe(
-      (data: any) => {
-        this.position = data;
-      },
-      (error) => {
-        if (error.status == 404) this.position = [];
         console.error('Error fetching data:', error);
       }
     );

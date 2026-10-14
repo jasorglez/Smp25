@@ -256,7 +256,10 @@ export class CatalogsComponent implements CanComponentDeactivate {
     this.rowData = [];
     console.log(`Obteniendo datos para tipo: ${catalogType}`);
 
-    if (catalogType === 'RESOURCEHUMAN') {
+    const isHrDepartmentCatalog = catalogType === 'RESOURCEHUMAN' && this.selectedCatalog === 'DEPARTAMENT';
+    const isHrPositionCatalog = catalogType === 'RESOURCEHUMAN' && this.selectedCatalog === 'POSITION';
+
+    if (isHrDepartmentCatalog || isHrPositionCatalog) {
       const isDepartmentCatalog = this.selectedCatalog === 'DEPARTAMENT';
       this.rolesService.getRoles(this.idRoot).subscribe({
         next: (response: any) => {
@@ -281,6 +284,8 @@ export class CatalogsComponent implements CanComponentDeactivate {
       });
       return;
     }
+
+    this.hrRoles = [];
 
     // Determina qué servicio usar
     const service = this.catalogService;

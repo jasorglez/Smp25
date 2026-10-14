@@ -1035,7 +1035,9 @@ export class InandoutStComponent implements OnInit {
             console.warn('No se encontró configuración de folio para la entrada/salida', owners);
           }
         }
-        await lastValueFrom(this.inandoutService.addInAndOut(entryData));
+        console.info('[Entradas][POST /Inandout] Enviando encabezado:', entryData);
+        const response = await lastValueFrom(this.inandoutService.addInAndOut(entryData));
+        console.info('[Entradas][POST /Inandout] Respuesta:', response);
       }
       for (const modifiedRow of modifiedRows) {
         const entryData = this.prepareEntryData(modifiedRow);
@@ -1046,6 +1048,12 @@ export class InandoutStComponent implements OnInit {
       this.loadEntries();
     } catch (error: any) {
       const errorMsg = error?.error?.message || error?.message || 'Error desconocido';
+      console.error(`[Entradas][Error al guardar encabezado ${this.movementType}]`, {
+        status: error?.status,
+        message: error?.message,
+        response: error?.error,
+        error
+      });
       alerts.basicAlert('Error', `No se pudieron guardar los cambios: ${errorMsg}`, 'error');
     }
   }
@@ -1084,10 +1092,18 @@ export class InandoutStComponent implements OnInit {
   // ==================== ITEMS DE ENTRADA ====================
 
   loadEntryItemsData(entryId: number, successCallback: any) {
+    console.info(`[Entradas][GET /Detailsinandout/${entryId}] Cargando artículos`);
     this.inandoutService.getInAndOutItems(entryId).subscribe({
-      next: (data: any) => successCallback(data),
+      next: (data: any) => {
+        console.info(`[Entradas][GET /Detailsinandout/${entryId}] Respuesta:`, data);
+        successCallback(data);
+      },
       error: (error) => {
-        console.error('Error loading entry items:', error);
+        console.error(`[Entradas][GET /Detailsinandout/${entryId}] Error`, {
+          status: error?.status,
+          message: error?.message,
+          response: error?.error
+        });
         successCallback([]);
       }
     });
@@ -1150,16 +1166,28 @@ export class InandoutStComponent implements OnInit {
       shouldAddToDailyReport = confirmation.isConfirmed;
     }
 
+    let currentOperation = 'iniciar guardado de artículos';
     try {
       for (const item of newItems) {
-        await lastValueFrom(this.inandoutService.addInAndOutItem(this.cleanItemData(item)));
+        const payload = this.cleanItemData(item);
+        currentOperation = `POST /Detailsinandout artículo ${item.idProduct ?? item.id ?? '(nuevo)'}`;
+        console.info(`[Entradas][${currentOperation}] Payload:`, payload);
+        const response = await lastValueFrom(this.inandoutService.addInAndOutItem(payload));
+        console.info(`[Entradas][${currentOperation}] Respuesta:`, response);
       }
       for (const item of modifiedItems) {
-        await lastValueFrom(this.inandoutService.updateInAndOutItem(item.id, this.cleanItemData(item)));
+        const payload = this.cleanItemData(item);
+        currentOperation = `PUT /Detailsinandout/${item.id}`;
+        console.info(`[Entradas][${currentOperation}] Payload:`, payload);
+        const response = await lastValueFrom(this.inandoutService.updateInAndOutItem(item.id, payload));
+        console.info(`[Entradas][${currentOperation}] Respuesta:`, response);
       }
 
       if (newItems.length > 0 || modifiedItems.length > 0 || shouldAddToDailyReport) {
+        currentOperation = `GET /Detailsinandout/${entryId} después de guardar`;
+        console.info(`[Entradas][${currentOperation}] Consultando artículos guardados`);
         const persistedItems = await lastValueFrom(this.inandoutService.getInAndOutItems(entryId));
+        console.info(`[Entradas][${currentOperation}] Respuesta:`, persistedItems);
         const persistedCount = Array.isArray(persistedItems) ? persistedItems.length : data.length;
         this.updateEntryItemsCount(entryId, persistedCount);
         const masterEntry = this.rowData.find(entry => entry.id === entryId);
@@ -1201,8 +1229,13 @@ export class InandoutStComponent implements OnInit {
           alerts.toastAlert(`${addedToDailyReport} material(es) agregado(s) al Reporte diario`, 'success');
         }
       }
-    } catch (error) {
-      console.error('Error saving entry items:', error);
+    } catch (error: any) {
+      console.error(`[Entradas][Error durante ${currentOperation}]`, {
+        status: error?.status,
+        message: error?.message,
+        response: error?.error,
+        error
+      });
       alerts.basicAlert('Error', 'Error al guardar los items.', 'error');
     }
   }
