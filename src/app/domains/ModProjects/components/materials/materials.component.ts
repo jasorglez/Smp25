@@ -119,13 +119,14 @@ export class MaterialsComponent implements CanComponentDeactivate {
   idUser: number = null;
   notSavedChanges: boolean = false;
   saving: boolean = false;          // previene doble clic en guardar
-  readonly Number = Number;
   showLoansTab: boolean = false;
   selectedRowData: any = null;
   showComponentsModal = false;
   loadingComponents = false;
   savingComponents = false;
-  materialComponents: Array<{ idComponentMaterial: number; quantity: number; name?: string; measure?: string }> = [];
+  awaitingChildSelection = false;
+  componentsParentData: any = null;
+  materialComponents: Array<{ idComponentMaterial: number; quantity: number; name?: string; insumo?: string; measure?: string }> = [];
   showSavingsTab: boolean = false;
   authorizedPass: boolean = false;
   private lastEditedRowId: number | string | null = null;
@@ -419,10 +420,28 @@ export class MaterialsComponent implements CanComponentDeactivate {
   }
 
   onMasterRowSelected(event: any) {
-    if (event.node?.isSelected() && event.data && event.data.id) {
-      this.id = event.data.id;
-      this.selectedRowData = event.data;
+    if (!event.node?.isSelected() || !event.data || !event.data.id) return;
+
+    if (this.awaitingChildSelection) {
+      const childId = Number(event.data.id);
+      const parentId = Number(this.componentsParentData?.id);
+      if (childId === parentId) return;
+      if (this.materialComponents.some(component => Number(component.idComponentMaterial) === childId)) return;
+
+      this.materialComponents = [...this.materialComponents, {
+        idComponentMaterial: childId,
+        quantity: 1,
+        name: event.data.materialDescription || event.data.insumo,
+        measure: event.data.measure,
+      }];
+      this.awaitingChildSelection = false;
+      this.selectedRowData = this.componentsParentData;
+      this.showComponentsModal = true;
+      return;
     }
+
+    this.id = event.data.id;
+    this.selectedRowData = event.data;
   }
 
   async openComponentsModal(): Promise<void> {
@@ -435,6 +454,8 @@ export class MaterialsComponent implements CanComponentDeactivate {
       alerts.basicAlert('Cambios sin guardar', 'Guarde los cambios del material antes de editar sus componentes.', 'warning');
       return;
     }
+    this.componentsParentData = parent;
+    this.awaitingChildSelection = false;
     this.loadingComponents = true;
     this.materialComponents = [];
     try {
@@ -449,8 +470,14 @@ export class MaterialsComponent implements CanComponentDeactivate {
     }
   }
 
-  addMaterialComponent(): void {
-    this.materialComponents = [...this.materialComponents, { idComponentMaterial: null, quantity: 1 }];
+  beginChildSelection(): void {
+    this.showComponentsModal = false;
+    this.awaitingChildSelection = true;
+  }
+
+  cancelChildSelection(): void {
+    this.awaitingChildSelection = false;
+    this.showComponentsModal = true;
   }
 
   removeMaterialComponent(index: number): void {
@@ -460,7 +487,7 @@ export class MaterialsComponent implements CanComponentDeactivate {
   trackByIndex(index: number): number { return index; }
 
   async saveMaterialComponents(): Promise<void> {
-    const parentId = Number(this.selectedRowData?.id);
+    const parentId = Number(this.componentsParentData?.id);
     const ids = this.materialComponents.map(row => Number(row.idComponentMaterial));
     if (!parentId || this.materialComponents.some(row => !Number.isInteger(Number(row.idComponentMaterial)) || Number(row.idComponentMaterial) <= 0 || !Number.isFinite(Number(row.quantity)) || Number(row.quantity) <= 0) || new Set(ids).size !== ids.length) {
       alerts.basicAlert('Revisa los componentes', 'Selecciona un componente distinto en cada renglón y captura una cantidad mayor que cero.', 'warning');
