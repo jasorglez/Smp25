@@ -27,6 +27,7 @@ export interface Cotizacion {
   notas: string;
   total: number;
   totalDolares?: number;
+  hasManualUsd?: boolean;
   /** Tipo de cambio USD/MXN fijado para esta cotización */
   tipoCambio?: number;
   countItems: number;
@@ -44,6 +45,7 @@ export interface CotizacionItem {
   precio: number;
   subtotal: number;
   dolares?: number;
+  dolaresManual?: boolean;
   __isNew?: boolean;
 }
 
@@ -133,6 +135,7 @@ export class CotizacionesService {
       notas:            c.notas            ?? '',
       total:            0,
       totalDolares:     0,
+      hasManualUsd:     false,
       tipoCambio:       Number(c.tipoCambio) || 0,
       countItems:       0,
       activo:           true,
@@ -272,6 +275,7 @@ export class CotizacionesService {
       precio:         Number(item.precio)          || 0,
       subtotal:       Number(item.subtotal)        || 0,
       dolares:        Number.isFinite(Number(item.dolares)) ? Math.round(Number(item.dolares) * 100) / 100 : 0,
+      dolaresManual:  item.dolaresManual === true,
     });
     const total = items.reduce((s, i) => s + (Number(i.subtotal) || 0), 0);
     const totalDolares = items.reduce((sum, item) => sum + Math.round(sanitize(item).dolares * 100), 0) / 100;
@@ -279,6 +283,6 @@ export class CotizacionesService {
       addDoc(colRef, sanitize(item))
     ));
 
-    await updateDoc(docRef, { total, totalDolares, countItems: items.length });
+    await updateDoc(docRef, { total, totalDolares, hasManualUsd: items.some(item => item.dolaresManual === true), countItems: items.length });
   }
 }

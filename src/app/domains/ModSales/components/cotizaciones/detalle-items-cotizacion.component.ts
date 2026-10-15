@@ -248,11 +248,13 @@ export class DetalleItemsCotizacionComponent implements ICellRendererAngularComp
 
   get total() { return this.rowData.reduce((s, i) => s + (i.subtotal ?? 0), 0); }
   get totalDolares(): number | null {
-    return this.tipoCambio > 0 ? Number((this.total / this.tipoCambio).toFixed(2)) : null;
+    return this.tipoCambio > 0
+      ? this.rowData.reduce((sum, item) => sum + Math.round((Number(item.dolares) || 0) * 100), 0) / 100
+      : null;
   }
 
   // ── Enter-nav ─────────────────────────────────────────────────────────────
-  private editableColumnOrder = ['nombreMaterial', 'unidad', 'cantidad', 'precio'];
+  private editableColumnOrder = ['nombreMaterial', 'unidad', 'cantidad', 'precio', 'dolares'];
   private enterPressed = false;
 
   defaultColDef: ColDef = {
@@ -301,19 +303,26 @@ export class DetalleItemsCotizacionComponent implements ICellRendererAngularComp
       cellStyle: { fontWeight: 'bold', backgroundColor: '#e8f5e9' },
     },
     {
-      field: 'dolares', headerName: 'Dólares (USD)', width: 145, editable: false, type: 'numericColumn',
+      field: 'dolares', headerName: 'Dólares (USD)', width: 145, editable: true, type: 'numericColumn',
       cellDataType: 'number',
       cellEditor: 'agNumberCellEditor',
       cellEditorParams: { precision: 2 },
-      valueParser: (p) => {
+      valueGetter: p => p.data?.dolaresManual || this.tipoCambio > 0 ? p.data?.dolares : null,
+      valueSetter: p => {
+        if (p.newValue == null || String(p.newValue).trim() === '') {
+          p.data.dolaresManual = false;
+          this.calcularDolares(p.data);
+          return true;
+        }
         const value = Number(p.newValue);
-        return Number.isFinite(value) ? Math.round(value * 100) / 100 : (p.oldValue ?? 0);
+        if (!Number.isFinite(value) || value < 0) return false;
+        p.data.dolares = Math.round(value * 100) / 100;
+        p.data.dolaresManual = true;
+        return true;
       },
-      valueGetter: p => this.tipoCambio > 0
-        ? Number((Number(p.data?.subtotal ?? 0) / this.tipoCambio).toFixed(2))
-        : null,
       valueFormatter: (p) => p.value == null ? '—' : `US$${Number(p.value).toFixed(2)}`,
-      headerTooltip: 'Importe en dólares calculado como subtotal MXN ÷ tipo de cambio',
+      cellStyle: p => p.data?.dolaresManual ? { backgroundColor: '#fff3cd' } : null,
+      headerTooltip: 'Se calcula con el tipo de cambio. Puedes editarlo; borra la celda para volver al cálculo automático.',
     },
   ];
 
@@ -466,7 +475,7 @@ export class DetalleItemsCotizacionComponent implements ICellRendererAngularComp
   }
 
   private calcularDolares(item: any): void {
-    if (this.tipoCambio > 0) item.dolares = Number((Number(item.subtotal ?? 0) / this.tipoCambio).toFixed(2));
+    if (this.tipoCambio > 0 && !item.dolaresManual) item.dolares = Number((Number(item.subtotal ?? 0) / this.tipoCambio).toFixed(2));
   }
 
   private aplicarConversionDolares(): void {
@@ -934,7 +943,7 @@ export class DetalleItemsCotizacionComponent implements ICellRendererAngularComp
       ]);
       const items = loadedItems.map(item => ({
         ...item,
-        dolares: this.tipoCambio > 0
+        dolares: item.dolaresManual ? Number(item.dolares ?? 0) : this.tipoCambio > 0
           ? Number((Number(item.subtotal ?? (Number(item.cantidad ?? 0) * Number(item.precio ?? 0))) / this.tipoCambio).toFixed(2))
           : Number(item.dolares ?? 0),
       }));
@@ -1149,6 +1158,7 @@ export class DetalleItemsCotizacionComponent implements ICellRendererAngularComp
       this.params.node.data.countItems = this.rowData.length;
       this.params.node.data.total      = this.total;
       this.params.node.data.totalDolares = this.totalDolares;
+      this.params.node.data.hasManualUsd = this.rowData.some(item => item.dolaresManual === true);
       this.params.node.data.tipoCambio = this.tipoCambio;
       this.params.api.refreshCells({ rowNodes: [this.params.node], columns: ['totalDolares'], force: true });
     }

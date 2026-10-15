@@ -239,10 +239,12 @@ export class CotizacionesComponent implements OnInit, OnDestroy {
     {
       field: 'totalDolares', headerName: 'Total USD', width: 130, editable: false, type: 'numericColumn',
       valueGetter: p => Number(p.data?.tipoCambio) > 0
-        ? Number((Number(p.data?.total ?? 0) / Number(p.data.tipoCambio)).toFixed(2))
+        ? (p.data?.hasManualUsd
+          ? Number(p.data?.totalDolares ?? 0)
+          : Number((Number(p.data?.total ?? 0) / Number(p.data.tipoCambio)).toFixed(2)))
         : null,
       valueFormatter: (p) => p.value == null ? '—' : `US$${Number(p.value).toFixed(2)}`,
-      headerTooltip: 'Total MXN convertido a USD con el tipo de cambio guardado en la cotización',
+      headerTooltip: 'Suma de importes USD; admite ajustes manuales en el detalle',
       cellStyle: { fontWeight: 'bold' },
     },
     {
