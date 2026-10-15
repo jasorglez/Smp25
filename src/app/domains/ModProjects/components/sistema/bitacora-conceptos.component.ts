@@ -102,6 +102,22 @@ export class BitacoraConceptosComponent extends BitacoraBaseComponent {
           String(row.typeActivity ?? row.typeactivity ?? '').trim().toLowerCase() === 'concept' &&
           Number(row.idConvention ?? row.id_convention ?? 0) === Number(idConvention ?? 0)
         );
+        console.info('[Reporte diario][conceptos][Workprogram/{id}/Project]', {
+          idProject,
+          idConvention,
+          totalRows: rows?.length ?? 0,
+          conceptRows: (rows ?? [])
+            .filter((row: any) => String(row.typeActivity ?? row.typeactivity ?? '').trim().toLowerCase() === 'concept')
+            .map((row: any) => ({
+              id: row.id,
+              activity: row.activity,
+              typeActivity: row.typeActivity ?? row.typeactivity,
+              measure: row.measure,
+              parent: row.parent,
+              idConvention: row.idConvention ?? row.id_convention,
+            })),
+          selectedConcepts: directConcepts.length,
+        });
         this.directConceptOptions = directConcepts.map((concept: any) => {
           const label = `${String(concept.activity ?? '').trim()} ${String(concept.text ?? '').trim()}`.trim();
           return label;
@@ -114,6 +130,12 @@ export class BitacoraConceptosComponent extends BitacoraBaseComponent {
 
     this.workprogramsService.getConceptsHierarchy(idProject, idConvention).subscribe({
       next: (data: any[]) => {
+        console.info('[Reporte diario][conceptos][concepts-hierarchy]', {
+          idProject,
+          idConvention,
+          systems: data?.length ?? 0,
+          rootConcepts: (data ?? []).flatMap((system: any) => system.conceptos || []),
+        });
         this.subpartidasMap.clear();
         this.conceptOptions = [];
         this.conceptBySubpartida.clear();
@@ -147,7 +169,13 @@ export class BitacoraConceptosComponent extends BitacoraBaseComponent {
         this.mergeDirectConceptOptions();
         this.gridApi?.refreshCells({ force: true });
       },
-      error: () => {}
+      error: (error: any) => console.error('[Reporte diario][conceptos][concepts-hierarchy] Error', {
+        idProject,
+        idConvention,
+        status: error?.status,
+        message: error?.message,
+        response: error?.error,
+      })
     });
   }
 

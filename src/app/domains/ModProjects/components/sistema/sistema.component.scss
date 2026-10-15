@@ -1,3 +1,82 @@
+:host {
+  .daily-report-layout {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 88px;
+    gap: 8px;
+    align-items: start;
+  }
+
+  .daily-report-grid {
+    width: 100%;
+    height: 85vh;
+    min-width: 0;
+  }
+
+  .daily-report-shortcuts {
+    position: sticky;
+    top: 8px;
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 5px;
+    padding: 7px 5px;
+    border: 1px solid #e3e8ef;
+    border-radius: 12px;
+    background: linear-gradient(180deg, #fff 0%, #f7f9fc 100%);
+    box-shadow: 0 4px 14px rgba(31, 49, 78, .09);
+  }
+
+  .shortcuts-title {
+    padding: 0 2px 3px;
+    color: #667085;
+    font-size: 9px;
+    font-weight: 700;
+    letter-spacing: .06em;
+    text-align: center;
+    text-transform: uppercase;
+  }
+
+  .shortcut-button {
+    display: flex;
+    min-height: 45px;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 2px;
+    padding: 4px 2px;
+    border: 1px solid transparent;
+    border-radius: 8px;
+    background: #f3f6fa;
+    color: #334155;
+    font-size: 9px;
+    font-weight: 600;
+    line-height: 1.1;
+    transition: background-color .15s ease, box-shadow .15s ease, transform .15s ease;
+
+    .bi { font-size: 15px; }
+    &:not(:disabled):hover { box-shadow: 0 3px 8px rgba(31, 49, 78, .14); transform: translateY(-1px); }
+    &:disabled { cursor: not-allowed; opacity: .42; }
+    &.shortcut-concepts { color: #087e70; }
+    &.shortcut-times { color: #a35b00; }
+    &.shortcut-personal { color: #2364a8; }
+    &.shortcut-photos { color: #25804b; }
+    &.shortcut-equipment { color: #6550a3; }
+    &.shortcut-videos { color: #087b91; }
+  }
+}
+
+@media (max-width: 800px) {
+  :host .daily-report-layout { grid-template-columns: minmax(0, 1fr); }
+  :host .daily-report-shortcuts {
+    position: static;
+    flex-direction: row;
+    flex-wrap: wrap;
+    justify-content: center;
+  }
+  :host .shortcuts-title { width: 100%; }
+  :host .shortcut-button { width: 66px; }
+}
+
 // Estilos para celdas en edición - fondo amarillo completo
 :host ::ng-deep {
   .daily-report-grid {

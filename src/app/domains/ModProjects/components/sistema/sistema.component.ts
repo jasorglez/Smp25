@@ -79,6 +79,15 @@ export class SistemaComponent implements OnInit, OnDestroy {
   private projectOilfieldName: string = '';
   public subcontractPrograms: any[] = [];
   public selectedSubcontractProgramId = 0;
+  public projectShortName = '';
+  public readonly reportSections = [
+    { key: 'conceptos', label: 'Conceptos', shortLabel: 'Conceptos', icon: 'bi-list-check', className: 'shortcut-concepts' },
+    { key: 'tiempos', label: 'Tiempos inactivos', shortLabel: 'Inactivos', icon: 'bi-clock-history', className: 'shortcut-times' },
+    { key: 'personal', label: 'Personal', shortLabel: 'Personal', icon: 'bi-people', className: 'shortcut-personal' },
+    { key: 'fotos', label: 'Fotos', shortLabel: 'Fotos', icon: 'bi-images', className: 'shortcut-photos' },
+    { key: 'equipos', label: 'Equipos', shortLabel: 'Equipos', icon: 'bi-truck', className: 'shortcut-equipment' },
+    { key: 'videos', label: 'Videos', shortLabel: 'Videos', icon: 'bi-camera-video', className: 'shortcut-videos' },
+  ];
   public readonly subcontractMode = this.route.snapshot.routeConfig?.path === 'subcontract-reports';
   
   externalFilterActive: boolean = false;
@@ -512,13 +521,16 @@ export class SistemaComponent implements OnInit, OnDestroy {
   private resolveProjectData(projectId: number): void {
     this.projectsService.getProjectsById(projectId).subscribe({
       next: (proj: any) => {
-        const num = Array.isArray(proj) ? proj[0]?.number : proj?.number;
-        const idOil = Array.isArray(proj) ? proj[0]?.idOilfield : proj?.idOilfield;
+        const project = Array.isArray(proj) ? proj[0] : proj;
+        const num = project?.number;
+        const idOil = project?.idOilfield;
+        this.projectShortName = String(project?.nameSmall ?? project?.descripsmall ?? project?.name ?? project?.number ?? '').trim();
         this.signalsService.setProjectNumberBySidebar(num ?? '');
         const oil = this.oilfields.find((o: any) => o.id === idOil);
         this.projectOilfieldName = oil ? oil.name : '';
       },
       error: () => {
+        this.projectShortName = '';
         this.signalsService.setProjectNumberBySidebar('');
         this.projectOilfieldName = '';
       }
@@ -753,9 +765,19 @@ export class SistemaComponent implements OnInit, OnDestroy {
   }
 
   onRowSelected(event: any): void {
-    if (event.node?.isSelected()) {
-      this.selectedRow = event.data;
-    }
+    const selectedRows = event.api?.getSelectedRows?.() ?? this.gridApi?.getSelectedRows?.() ?? [];
+    this.selectedRow = selectedRows[0] ?? null;
+  }
+
+  openSelectedBitacora(section: string): void {
+    if (!this.selectedRow || !this.gridApi) return;
+    let selectedNode: any = null;
+    this.gridApi.forEachNode((node: any) => {
+      if (Number(node.data?.id) === Number(this.selectedRow.id)) selectedNode = node;
+    });
+    if (!selectedNode) return;
+    this.gridApi.ensureNodeVisible(selectedNode, 'middle');
+    this.toggleBitacoraDetail(selectedNode, section);
   }
 
   openReportSection(reportId: number, section: 'notas' | 'personal' | 'fotos'): void {
