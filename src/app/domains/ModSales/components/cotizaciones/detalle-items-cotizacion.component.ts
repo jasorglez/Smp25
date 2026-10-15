@@ -50,12 +50,7 @@ const GRAY  = '#555555';
             Total USD: {{ totalDolares | currency:'USD':'symbol':'1.2-2' }}
           </span>
           <span class="badge bg-secondary ms-1" *ngIf="!tipoCambio">Total USD: pendiente de tipo de cambio</span>
-          <label class="d-flex align-items-center gap-1 small text-muted mb-0" title="Se usa MXN ÷ tipo de cambio para obtener USD">
-            <span>Tipo de cambio MXN/USD:</span>
-            <input class="form-control form-control-sm" style="width:105px" type="number" min="0.0001" step="0.0001"
-                   [ngModel]="tipoCambio || null" (ngModelChange)="tipoCambio = $event"
-                   (change)="actualizarTipoCambio(tipoCambio)" aria-label="Tipo de cambio MXN por dólar">
-          </label>
+          <span class="small text-muted">Tipo de cambio: {{ tipoCambio > 0 ? (tipoCambio | number:'1.4-4') : 'captúralo antes de Familia' }} MXN/USD</span>
 
           <div class="ms-auto d-flex gap-1">
             <button class="btn btn-sm btn-success" (click)="add()" [disabled]="!gridApi" title="Agregar item">
@@ -84,6 +79,10 @@ const GRAY  = '#555555';
           </div>
         </div>
 
+        <div class="d-flex align-items-center justify-content-end gap-2 mb-1">
+          <button type="button" class="btn btn-sm btn-outline-secondary" (click)="mostrarColumna('nombreMaterial')">← Material</button>
+          <button type="button" class="btn btn-sm btn-outline-primary" (click)="mostrarColumna('dolares')">Dólares →</button>
+        </div>
         <ag-grid-angular
           class="ag-theme-quartz"
           [rowData]="rowData"
@@ -93,7 +92,7 @@ const GRAY  = '#555555';
           [localeText]="AG_GRID_LOCALE_ES"
           (gridReady)="onGridReady($event)"
           (cellEditingStopped)="onCellEditingStopped($event)"
-          style="height:600px; width:100%">
+          style="height:440px; width:100%">
         </ag-grid-angular>
       </ng-container>
 
@@ -332,17 +331,31 @@ export class DetalleItemsCotizacionComponent implements ICellRendererAngularComp
     rowSelection: 'single',
     tooltipShowDelay: 300,
     tooltipHideDelay: 8000,
+    alwaysShowHorizontalScroll: true,
     rowClassRules: { 'new-row-highlight': (p: any) => !!p.data?.__isNew },
     onRowClicked: (e: any) => { this.selectedRow = e.data; },
   };
 
   onGridReady(e: GridReadyEvent) { this.gridApi = e.api; }
 
+  mostrarColumna(field: string): void {
+    this.gridApi?.ensureColumnVisible(field, field === 'dolares' ? 'end' : 'start');
+  }
+
+  aplicarTipoCambio(rate: number): void {
+    if (!(rate > 0)) return;
+    this.tipoCambio = rate;
+    this.cotizacion.tipoCambio = rate;
+    this.aplicarConversionDolares();
+    this.updateCountInParent();
+  }
+
   // ── ICellRendererAngularComp ───────────────────────────────────────────────
 
   agInit(params: ICellRendererParams): void {
     this.params     = params;
     this.context    = params.context;
+    this.context?.registrarDetalle?.(this);
     this.cotizacion = { ...params.data };
     this.tipoCambio = Number(this.cotizacion.tipoCambio) || 0;
     this.mode       = params.data?.__mode ?? 'items';
@@ -359,12 +372,18 @@ export class DetalleItemsCotizacionComponent implements ICellRendererAngularComp
   // CRÍTICO: retornar true para que AG Grid NO destruya/recree el componente
   // cada vez que el padre actualiza rowData (p.ej. suscripción Firestore)
   refresh(params: ICellRendererParams): boolean {
+    this.params = params;
+    const rate = Number(params.data?.tipoCambio) || 0;
+    if (rate > 0 && rate !== this.tipoCambio) {
+      this.aplicarTipoCambio(rate);
+    }
     const newMode = params.data?.__mode ?? 'items';
     if (newMode !== this.mode) {
+      this.gridApi?.stopEditing();
       this.mode = newMode;
       if (newMode === 'pdf') {
         this.pdfUrl = null;
-        this.generarPdf();
+        void this.generarPdf();
       } else {
         if (!this.materiales.length) this.cargarMateriales();
         if (!this.rowData.length) this.cargarItems();
@@ -443,9 +462,20 @@ export class DetalleItemsCotizacionComponent implements ICellRendererAngularComp
           console.warn('[Cotizaciones] La API no devolvió un tipo de cambio válido:', result);
           return;
         }
+        if (this.tipoCambio > 0) return;
         this.tipoCambio = rate;
         this.cotizacion.tipoCambio = rate;
-        if (this.cotizacion?.id) await this.svc.actualizarCotizacion(this.cotizacion.id, { tipoCambio: rate });
+        if (this.cotizacion?.id) {
+          const items = await this.svc.getItems(this.cotizacion.id);
+          const totalDolares = items.reduce((sum, item) => sum + (item.dolaresManual
+            ? Number(item.dolares ?? 0)
+            : Number((Number(item.subtotal ?? 0) / rate).toFixed(2))), 0);
+          this.cotizacion.totalDolares = Math.round(totalDolares * 100) / 100;
+          await this.svc.actualizarCotizacion(this.cotizacion.id, {
+            tipoCambio: rate,
+            totalDolares: this.cotizacion.totalDolares,
+          });
+        }
         this.aplicarConversionDolares();
         this.gridApi?.refreshCells({ force: true });
         this.updateCountInParent();
@@ -454,24 +484,6 @@ export class DetalleItemsCotizacionComponent implements ICellRendererAngularComp
       }
     })().finally(() => { this.tipoCambioRequest = null; });
     return this.tipoCambioRequest;
-  }
-
-  async actualizarTipoCambio(value: any): Promise<void> {
-    const rate = Number(value);
-    if (!Number.isFinite(rate) || rate <= 0) return;
-    this.tipoCambio = rate;
-    this.cotizacion.tipoCambio = rate;
-    this.aplicarConversionDolares();
-    this.gridApi?.refreshCells({ force: true });
-    this.updateCountInParent();
-    if (this.cotizacion?.id) {
-      try {
-        await this.svc.actualizarCotizacion(this.cotizacion.id, { tipoCambio: rate });
-      } catch (error) {
-        console.error('[Cotizaciones] No se pudo guardar el tipo de cambio:', error);
-        Swal.fire('Error', 'No se pudo guardar el tipo de cambio de la cotización.', 'error');
-      }
-    }
   }
 
   private calcularDolares(item: any): void {
@@ -500,8 +512,8 @@ export class DetalleItemsCotizacionComponent implements ICellRendererAngularComp
     }, 50);
   }
 
-  async save() {
-    if (!this.cotizacion?.id) return;
+  async save(): Promise<boolean> {
+    if (!this.cotizacion?.id) return false;
     this.gridApi?.stopEditing();
     this.trackingService.addLog(this.trackingService.getnameComp(), `Guardó ítems de cotización`, 'Ventas', this.trackingService.getEmail());
     try {
@@ -510,10 +522,17 @@ export class DetalleItemsCotizacionComponent implements ICellRendererAngularComp
       this.hasChanges   = false;
       this.updateCountInParent();
       Swal.fire({ toast: true, position: 'top-end', icon: 'success', title: 'Guardado', showConfirmButton: false, timer: 2000, timerProgressBar: true });
+      return true;
     } catch (e: any) {
       console.error('[Cotizaciones] Error guardando items:', e);
       Swal.fire('Error', e?.message ?? 'No se pudo guardar.', 'error');
+      return false;
     }
+  }
+
+  async guardarCambiosPendientes(): Promise<boolean> {
+    this.gridApi?.stopEditing();
+    return !this.hasChanges || this.save();
   }
 
   revert() {
@@ -683,6 +702,13 @@ export class DetalleItemsCotizacionComponent implements ICellRendererAngularComp
 
   async enviarPorCorreo() {
     if (!this.emailPara?.trim()) return;
+    this.gridApi?.stopEditing();
+    if (this.hasChanges && !(await this.save())) return;
+    await this.cargarTipoCambio();
+    if (!(this.tipoCambio > 0)) {
+      Swal.fire('Tipo de cambio pendiente', 'Captura el tipo de cambio en la columna anterior a Familia.', 'warning');
+      return;
+    }
     this.isSendingEmail = true;
     try {
       const pdfBase64 = await new Promise<string>((resolve, reject) => {
@@ -697,7 +723,12 @@ export class DetalleItemsCotizacionComponent implements ICellRendererAngularComp
               const logo2B64     = rootData?.picture2 ? await tryB64(rootData.picture2) : logoB64;
               const signatureUrl = this.signalsSvc.profile.signatureUser();
               const signatureB64 = signatureUrl ? await tryB64(signatureUrl) : null;
-              const items    = await this.svc.getItems(this.cotizacion.id);
+              const items = (await this.svc.getItems(this.cotizacion.id)).map(item => ({
+                ...item,
+                dolares: item.dolaresManual
+                  ? Number(item.dolares ?? 0)
+                  : Number((Number(item.subtotal ?? 0) / this.tipoCambio).toFixed(2)),
+              }));
 
               const cot      = this.cotizacion;
               const fecha    = cot.fecha?.toDate ? cot.fecha.toDate() : new Date();
@@ -930,10 +961,15 @@ export class DetalleItemsCotizacionComponent implements ICellRendererAngularComp
     if (!this.cotizacion?.id) return;
     this.isLoadingPdf = true;
     try {
+      this.gridApi?.stopEditing();
+      if (this.hasChanges && !(await this.save())) {
+        this.isLoadingPdf = false;
+        return;
+      }
       await this.cargarTipoCambio();
       if (!(this.tipoCambio > 0)) {
         this.isLoadingPdf = false;
-        Swal.fire('Tipo de cambio pendiente', 'Captura el tipo de cambio MXN/USD en el detalle antes de generar el PDF.', 'warning');
+        Swal.fire('Tipo de cambio pendiente', 'Captura el tipo de cambio en la columna anterior a Familia.', 'warning');
         return;
       }
       const idRoot = this.context?.idCompany;
@@ -1154,6 +1190,7 @@ export class DetalleItemsCotizacionComponent implements ICellRendererAngularComp
   }
 
   private updateCountInParent() {
+    if (this.mode === 'pdf') return;
     if (this.params?.node && this.params?.api && !this.params.api.isDestroyed()) {
       this.params.node.data.countItems = this.rowData.length;
       this.params.node.data.total      = this.total;

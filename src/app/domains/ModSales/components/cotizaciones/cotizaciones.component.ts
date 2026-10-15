@@ -98,7 +98,7 @@ export class CotizacionesComponent implements OnInit, OnDestroy {
   }
 
   // ── Enter-key navigation ─────────────────────────────────────────────────
-  private editableColumnOrder = ['numCotizacion', 'destinatario', 'lugar', 'familia', 'notas'];
+  private editableColumnOrder = ['numCotizacion', 'destinatario', 'lugar', 'tipoCambio', 'familia', 'notas'];
   private enterPressed = false;
 
   defaultColDef: ColDef = {
@@ -118,6 +118,9 @@ export class CotizacionesComponent implements OnInit, OnDestroy {
       event.data.__modified = true;
       this.hasUnsavedChanges = true;
     }
+    if (event.column.getColId() === 'tipoCambio' && event.data?.id && Number(event.data.tipoCambio) > 0) {
+      void this.persistirTipoCambio(event.data);
+    }
     if (!this.enterPressed) return;
     this.enterPressed = false;
     const idx = this.editableColumnOrder.indexOf(event.column.getColId());
@@ -134,6 +137,7 @@ export class CotizacionesComponent implements OnInit, OnDestroy {
     headerHeight: 35,
     rowHeight: 28,
     domLayout: 'autoHeight',
+    alwaysShowHorizontalScroll: true,
     suppressDragLeaveHidesColumns: true,
     rowSelection: 'single',
     masterDetail: true,
@@ -216,6 +220,23 @@ export class CotizacionesComponent implements OnInit, OnDestroy {
     },
     { field: 'lugar', headerName: 'Lugar', width: 160, editable: true },
     {
+      field: 'tipoCambio', headerName: 'Tipo de cambio', width: 145, editable: true, type: 'numericColumn',
+      cellEditor: 'agNumberCellEditor', cellEditorParams: { min: 0.0001, precision: 4 },
+      valueSetter: p => {
+        const rate = Number(p.newValue);
+        if (!Number.isFinite(rate) || rate <= 0) return false;
+        p.data.tipoCambio = rate;
+        p.data.totalDolares = null;
+        if (this.detalleActivo?.cotizacion?.id === p.data.id) {
+          this.detalleActivo.aplicarTipoCambio(rate);
+        }
+        this.gridApi?.refreshCells({ rowNodes: [p.node], columns: ['totalDolares'], force: true });
+        return true;
+      },
+      valueFormatter: p => Number(p.value) > 0 ? Number(p.value).toFixed(4) : 'Capturar',
+      headerTooltip: 'Pesos mexicanos por dólar (MXN/USD), aplicable a toda la cotización',
+    },
+    {
       field: 'familia', headerName: 'Familia', width: 150, editable: true,
       cellEditor: 'agSelectCellEditor',
       cellEditorParams: () => ({ values: ['', ...this.familias] }),
@@ -239,8 +260,8 @@ export class CotizacionesComponent implements OnInit, OnDestroy {
     {
       field: 'totalDolares', headerName: 'Total USD', width: 130, editable: false, type: 'numericColumn',
       valueGetter: p => Number(p.data?.tipoCambio) > 0
-        ? (p.data?.hasManualUsd
-          ? Number(p.data?.totalDolares ?? 0)
+        ? (p.data?.totalDolares != null
+          ? Number(p.data.totalDolares)
           : Number((Number(p.data?.total ?? 0) / Number(p.data.tipoCambio)).toFixed(2)))
         : null,
       valueFormatter: (p) => p.value == null ? '—' : `US$${Number(p.value).toFixed(2)}`,
@@ -259,19 +280,56 @@ export class CotizacionesComponent implements OnInit, OnDestroy {
     this.actualizarContextoDetalle();
   }
 
+  mostrarColumna(field: string): void {
+    this.gridApi?.ensureColumnVisible(field, field === 'tipoCambio' ? 'end' : 'start');
+  }
+
+  private detalleActivo: DetalleItemsCotizacionComponent | null = null;
+
+  private async persistirTipoCambio(cotizacion: any): Promise<void> {
+    try {
+      if (this.detalleActivo?.cotizacion?.id === cotizacion.id) {
+        if (!(await this.detalleActivo.guardarCambiosPendientes())) return;
+      }
+      const items = await this.svc.getItems(cotizacion.id);
+      const rate = Number(cotizacion.tipoCambio);
+      const totalDolares = items.reduce((sum, item) => sum + (item.dolaresManual
+        ? Number(item.dolares ?? 0)
+        : Number((Number(item.subtotal ?? 0) / rate).toFixed(2))), 0);
+      cotizacion.totalDolares = Math.round(totalDolares * 100) / 100;
+      await this.svc.actualizarCotizacion(cotizacion.id, {
+        tipoCambio: rate,
+        totalDolares: cotizacion.totalDolares,
+      });
+      this.gridApi?.refreshCells({ columns: ['totalDolares'], force: true });
+    } catch (error) {
+      console.error('[Cotizaciones] Error guardando tipo de cambio:', error);
+      Swal.fire('Error', 'No se pudo guardar el tipo de cambio.', 'error');
+    }
+  }
+
   private actualizarContextoDetalle() {
     if (!this.gridApi) return;
     this.gridApi.setGridOption('detailCellRendererParams', {
-      context: { idCompany: this.root, config: this.config },
+      context: {
+        idCompany: this.root,
+        config: this.config,
+        registrarDetalle: (detalle: DetalleItemsCotizacionComponent) => { this.detalleActivo = detalle; },
+      },
     });
   }
 
   // ── Cascade ───────────────────────────────────────────────────────────────
 
-  toggleCascadeWithMode(node: any, mode: 'items' | 'pdf') {
+  async toggleCascadeWithMode(node: any, mode: 'items' | 'pdf') {
     const api = this.gridApi;
+    api.stopEditing();
     const isExpanded = node.expanded;
     const sameMode = isExpanded && node.data?.__mode === mode;
+
+    if (isExpanded && this.detalleActivo?.cotizacion?.id === node.data?.id) {
+      if (!(await this.detalleActivo.guardarCambiosPendientes())) return;
+    }
 
     if (sameMode) {
       node.setExpanded(false);
@@ -280,6 +338,7 @@ export class CotizacionesComponent implements OnInit, OnDestroy {
       return;
     }
 
+    if (isExpanded) node.setExpanded(false);
     node.data.__mode = mode;
     api.forEachNode((n: any) => { if (n.expanded && n.id !== node.id) n.setExpanded(false); });
     api.forEachNode((n: any) => { if (n.id !== node.id) n.setRowHeight(0); });
@@ -334,10 +393,11 @@ export class CotizacionesComponent implements OnInit, OnDestroy {
               __isNew: false, __modified: false,
             };
           });
-        const pendingRows = this.allRowData.filter(row =>
-          (row.__isNew || row.__modified) && !remoteRows.some(remote => remote.id && remote.id === row.id),
-        );
-        this.allRowData = [...remoteRows, ...pendingRows];
+        const pendingRows = this.allRowData.filter(row => row.__isNew || row.__modified);
+        this.allRowData = [
+          ...remoteRows.map(remote => pendingRows.find(local => local.id && local.id === remote.id) ?? remote),
+          ...pendingRows.filter(local => !local.id || !remoteRows.some(remote => remote.id === local.id)),
+        ];
         this.originalData = JSON.parse(JSON.stringify(remoteRows));
         this.actualizarVistaCotizaciones();
         this.hasUnsavedChanges = this.allRowData.some(row => row.__isNew || row.__modified);
@@ -383,6 +443,7 @@ export class CotizacionesComponent implements OnInit, OnDestroy {
       notas:           '',
       total:           0,
       totalDolares:    0,
+      tipoCambio:      0,
       countItems:      0,
       activo:          true,
       __isNew:         true,
@@ -425,6 +486,7 @@ export class CotizacionesComponent implements OnInit, OnDestroy {
             numCotizacion: c.numCotizacion ?? '',
             lugar:         c.lugar         ?? '',
             familia:       c.familia        ?? '',
+            tipoCambio:    Number(c.tipoCambio) || 0,
             notas:         c.notas         ?? '',
           });
         }
