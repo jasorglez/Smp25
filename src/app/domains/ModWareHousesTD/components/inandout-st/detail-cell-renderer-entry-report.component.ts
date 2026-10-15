@@ -5,6 +5,7 @@ import { ICellRendererParams, ICellRendererComp } from 'ag-grid-enterprise';
 import pdfMake from 'pdfmake/build/pdfmake';
 import * as pdfFonts from 'pdfmake/build/vfs_fonts';
 import { TrackingService } from 'app/services/tracking.service';
+import { pdfPreviewUrl } from 'app/helpers/pdf-viewer';
 (pdfMake as any).vfs = pdfFonts.pdfMake.vfs;
 
 @Component({
@@ -233,7 +234,7 @@ export class DetailCellRendererEntryReportComponent implements OnInit, ICellRend
         // Create new URL for blob
         const url = URL.createObjectURL(blob);
         this.originalPdfUrl = url;
-        this.pdfUrl = this.sanitizer.bypassSecurityTrustResourceUrl(url);
+        this.pdfUrl = this.sanitizer.bypassSecurityTrustResourceUrl(pdfPreviewUrl(url));
       });
 
     } catch (error) {

@@ -1,6 +1,7 @@
 import { Component, Input, inject, OnDestroy, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { PdfShareButtonsComponent } from 'app/shared/components/pdf-share-buttons/pdf-share-buttons.component';
+import { pdfPreviewUrl } from 'app/helpers/pdf-viewer';
 import { DomSanitizer, SafeResourceUrl } from '@angular/platform-browser';
 import { ICellRendererParams } from 'ag-grid-enterprise';
 import { ICellRendererAngularComp } from 'ag-grid-angular';
@@ -823,7 +824,7 @@ export class PdfDetailComponent implements OnInit, OnDestroy, ICellRendererAngul
         this.pdfObjectUrl = URL.createObjectURL(blob);
         // Oculta la barra lateral y la barra del visor nativo para que la
         // vista preliminar muestre únicamente las páginas del reporte.
-        const url = `${this.pdfObjectUrl}#toolbar=0&navpanes=0&pagemode=none`;
+        const url = pdfPreviewUrl(this.pdfObjectUrl);
         this.pdfUrl = this.sanitizer.bypassSecurityTrustResourceUrl(url);
         this.isLoading = false;
       });

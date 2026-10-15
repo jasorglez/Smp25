@@ -3,6 +3,7 @@ import { PdfShareButtonsComponent } from 'app/shared/components/pdf-share-button
 import { CommonModule } from '@angular/common';
 import { ICellRendererParams } from 'ag-grid-enterprise';
 import { DomSanitizer, SafeResourceUrl } from '@angular/platform-browser';
+import { pdfPreviewUrl } from 'app/helpers/pdf-viewer';
 import { SignalsService } from 'app/services/signals.service';
 import { RootService } from 'app/services/root.service';
 import { DepartmentsService } from 'app/services/departments.service';
@@ -29,7 +30,7 @@ pdfMake.vfs = pdfFonts as unknown as Record<string, string>;
         </h5>
         <div class="d-flex flex-wrap align-items-center gap-2">
           <a *ngIf="pdfObjectUrl && !isLoading" class="btn btn-outline-primary btn-sm"
-             [href]="pdfObjectUrl" target="_blank" rel="noopener noreferrer">
+             [href]="pdfViewerHref" target="_blank" rel="noopener noreferrer">
             <i class="bi bi-box-arrow-up-right"></i> Abrir PDF
           </a>
           <a *ngIf="pdfObjectUrl && !isLoading" class="btn btn-outline-primary btn-sm"
@@ -61,7 +62,7 @@ pdfMake.vfs = pdfFonts as unknown as Record<string, string>;
         </iframe>
         <div *ngIf="pdfObjectUrl && !isLoading && isTouchDevice" class="p-3 text-center">
           <p>El PDF está listo. Usa <strong>Abrir PDF</strong> para verlo en el visor de tu tableta.</p>
-          <a class="btn btn-primary" [href]="pdfObjectUrl" target="_blank" rel="noopener noreferrer">
+          <a class="btn btn-primary" [href]="pdfViewerHref" target="_blank" rel="noopener noreferrer">
             <i class="bi bi-box-arrow-up-right me-1"></i> Abrir PDF
           </a>
         </div>
@@ -101,6 +102,7 @@ export class DetailCellRendererRequisitionReportComponent implements OnDestroy {
   requisitionData: any;
   pdfUrl: SafeResourceUrl | null = null;
   pdfObjectUrl: string | null = null;
+  pdfViewerHref: string | null = null;
   readonly isTouchDevice = typeof window !== 'undefined' && window.matchMedia('(pointer: coarse)').matches;
   isLoading: boolean = true;
   private productos: any[] = [];
@@ -192,7 +194,8 @@ export class DetailCellRendererRequisitionReportComponent implements OnDestroy {
         if (this.pdfObjectUrl) URL.revokeObjectURL(this.pdfObjectUrl);
         const url = URL.createObjectURL(blob);
         this.pdfObjectUrl = url;
-        this.pdfUrl = this.sanitizer.bypassSecurityTrustResourceUrl(url);
+        this.pdfViewerHref = pdfPreviewUrl(url);
+        this.pdfUrl = this.sanitizer.bypassSecurityTrustResourceUrl(this.pdfViewerHref);
         this.isLoading = false;
       });
 

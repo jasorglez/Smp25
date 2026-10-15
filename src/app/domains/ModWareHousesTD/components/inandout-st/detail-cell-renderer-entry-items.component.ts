@@ -9,6 +9,7 @@ import { SelectWithTooltipEditorV2Component } from 'app/shared/select-with-toolt
 import { SelectMaterialEditorComponent } from './select-material-editor.component';
 import { DomSanitizer, SafeResourceUrl } from '@angular/platform-browser';
 import { PdfReportsService } from 'app/services/pdf-reports.service';
+import { pdfPreviewUrl } from 'app/helpers/pdf-viewer';
 import { TrackingService } from 'app/services/tracking.service';
 import { forkJoin, lastValueFrom } from 'rxjs';
 
@@ -687,7 +688,7 @@ export class DetailCellRendererEntryItemsComponent implements OnInit {
 
       // Set the new URL
       this.originalPdfUrl = pdfUrl;
-      this.pdfUrl = this.sanitizer.bypassSecurityTrustResourceUrl(pdfUrl);
+      this.pdfUrl = this.sanitizer.bypassSecurityTrustResourceUrl(pdfPreviewUrl(pdfUrl));
 
     } catch (error) {
       console.error('Error generating report PDF:', error);

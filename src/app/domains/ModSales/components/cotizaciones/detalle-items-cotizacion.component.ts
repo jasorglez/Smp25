@@ -5,6 +5,7 @@ import { AgGridModule } from 'ag-grid-angular';
 import { ColDef, GridApi, GridReadyEvent, ICellRendererParams } from 'ag-grid-enterprise';
 import { ICellRendererAngularComp } from 'ag-grid-angular';
 import { DomSanitizer, SafeResourceUrl } from '@angular/platform-browser';
+import { pdfPreviewUrl } from 'app/helpers/pdf-viewer';
 import { AG_GRID_LOCALE_ES } from 'assets/i18n/ag-grid.locale.es';
 import { CotizacionesService, CotizacionItem, ESTADOS_COTIZACION, CotizacionConfig, CONFIG_DEFAULT } from 'app/services/cotizaciones.service';
 import { SignalsService } from 'app/services/signals.service';
@@ -1013,7 +1014,7 @@ export class DetalleItemsCotizacionComponent implements ICellRendererAngularComp
         this._pdfBlob = blob;   // guardar blob ya renderizado para download/WhatsApp
         if (this.originalPdfUrl) URL.revokeObjectURL(this.originalPdfUrl);
         this.originalPdfUrl = URL.createObjectURL(blob);
-        this.pdfUrl = this.sanitizer.bypassSecurityTrustResourceUrl(this.originalPdfUrl + '#zoom=90');
+        this.pdfUrl = this.sanitizer.bypassSecurityTrustResourceUrl(pdfPreviewUrl(this.originalPdfUrl + '#zoom=90'));
         this.isLoadingPdf = false;
       });
 
