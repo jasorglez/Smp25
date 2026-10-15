@@ -741,7 +741,7 @@ export class PdfDetailComponent implements OnInit, OnDestroy, ICellRendererAngul
       this.loadingMsg = 'Compilando PDF...';
       const docDef: any = {
         pageSize: 'LETTER',
-        pageOrientation: 'landscape',
+        pageOrientation: 'portrait',
         pageMargins: [30, 142, 30, 130],
         info: {
           title: `Reporte Diario — ${companyName}`,
