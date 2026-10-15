@@ -83,5 +83,5 @@ export const environment = {
   geminiApiKey: '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',
   gnewsApiKey: '94ccc596b4dfebc3f72683b6e81d81bc',
 
-  version: '5.00.136 (14 Octubre 2026) diagnostico POST articulos de entrada',
+  version: '5.00.137 (14 Octubre 2026) fotos Telegram en tiempo real y vista PDF de reportes',
 };
