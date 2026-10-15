@@ -68,15 +68,20 @@ import { forkJoin, lastValueFrom } from 'rxjs';
     <div class="report-detail-container" *ngIf="detailType === 'report'">
       <div class="report-header d-flex justify-content-between align-items-center mb-3">
         <h5 class="mb-0">Vista Previa del Reporte - Folio: {{ entryData?.folio || 'Sin Folio' }}</h5>
-        <button type="button" class="btn btn-outline-secondary btn-sm" (click)="closeReport()">
-          <i class="bi bi-x-lg"></i> Cerrar
-        </button>
+        <div class="d-flex align-items-center gap-2">
+          <div class="d-flex align-items-center gap-1" aria-label="Zoom del PDF">
+            <button type="button" class="btn btn-outline-secondary btn-sm" (click)="zoomOut()" [disabled]="pdfZoom <= minPdfZoom" title="Reducir zoom"><i class="bi bi-dash-lg"></i></button>
+            <span class="small text-muted" style="min-width:44px;text-align:center">{{ pdfZoom }}%</span>
+            <button type="button" class="btn btn-outline-secondary btn-sm" (click)="zoomIn()" [disabled]="pdfZoom >= maxPdfZoom" title="Aumentar zoom"><i class="bi bi-plus-lg"></i></button>
+          </div>
+          <button type="button" class="btn btn-outline-secondary btn-sm" (click)="closeReport()"><i class="bi bi-x-lg"></i> Cerrar</button>
+        </div>
       </div>
-      <div class="report-content" style="height: 700px; border: 1px solid #dee2e6; border-radius: 0.375rem;">
+      <div class="report-content" style="width:100%; min-width:0; height:920px; border: 1px solid #dee2e6; border-radius: 0.375rem;">
         <iframe
           *ngIf="pdfUrl"
           [src]="pdfUrl"
-          style="width: 100%; height: 100%; border: none; border-radius: 0.375rem; zoom: 80%;">
+          style="display:block; width: 100%; height: 100%; border: none; border-radius: 0.375rem;">
         </iframe>
         <div *ngIf="!pdfUrl" class="d-flex justify-content-center align-items-center h-100">
           <div class="text-center">
@@ -118,6 +123,19 @@ export class DetailCellRendererEntryItemsComponent implements OnInit {
   entryData: any = null;
   pdfUrl: SafeResourceUrl | null = null;
   private originalPdfUrl: string | null = null;
+  pdfZoom = 125;
+  readonly minPdfZoom = 75;
+  readonly maxPdfZoom = 200;
+
+  zoomIn(): void { this.setPdfZoom(this.pdfZoom + 10); }
+  zoomOut(): void { this.setPdfZoom(this.pdfZoom - 10); }
+  private setPdfZoom(value: number): void {
+    this.pdfZoom = Math.max(this.minPdfZoom, Math.min(this.maxPdfZoom, value));
+    if (!this.originalPdfUrl) return;
+    this.pdfUrl = this.sanitizer.bypassSecurityTrustResourceUrl(
+      pdfPreviewUrl(this.originalPdfUrl, this.pdfZoom)
+    );
+  }
 
   public AG_GRID_LOCALE_ES = AG_GRID_LOCALE_ES;
 
@@ -688,7 +706,7 @@ export class DetailCellRendererEntryItemsComponent implements OnInit {
 
       // Set the new URL
       this.originalPdfUrl = pdfUrl;
-      this.pdfUrl = this.sanitizer.bypassSecurityTrustResourceUrl(pdfPreviewUrl(pdfUrl));
+      this.pdfUrl = this.sanitizer.bypassSecurityTrustResourceUrl(pdfPreviewUrl(pdfUrl, this.pdfZoom));
 
     } catch (error) {
       console.error('Error generating report PDF:', error);

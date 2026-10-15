@@ -61,7 +61,8 @@ export class PdfReportsService {
 
       const docDefinition = {
         pageSize: 'LETTER',
-        pageMargins: [40, 100, 40, 60],
+        pageOrientation: 'landscape',
+        pageMargins: [30, 100, 30, 60],
         defaultStyle: {
           fontSize: 8,
           font: 'Montserrat'

@@ -96,7 +96,7 @@ const mkSubTitle = (txt: string): any => ({
   standalone: true,
   imports: [CommonModule, PdfShareButtonsComponent],
   template: `
-<div style="padding:12px 16px 16px; background:#f1f4f8; border-radius:8px;">
+<div style="width:100%; min-width:0; padding:8px 10px 12px; background:#f1f4f8; border-radius:8px; box-sizing:border-box;">
 
   <!-- Barra superior -->
   <div class="d-flex justify-content-between align-items-center mb-3 px-1">
@@ -129,10 +129,22 @@ const mkSubTitle = (txt: string): any => ({
   </div>
 
   <!-- Visor -->
-  <div style="height:920px; border:1px solid #cbd5e1; border-radius:8px; background:white; overflow:hidden; box-shadow:0 2px 8px rgba(15,23,42,.08);">
+  <div class="d-flex justify-content-end align-items-center gap-2 px-2 py-1" style="background:#fff; border:1px solid #cbd5e1; border-bottom:0; border-radius:8px 8px 0 0;">
+    <small class="text-muted">Zoom PDF</small>
+    <button type="button" class="btn btn-sm btn-outline-secondary" (click)="zoomOut()"
+            [disabled]="pdfZoom <= minPdfZoom" title="Reducir zoom" aria-label="Reducir zoom">
+      <i class="bi bi-dash-lg"></i>
+    </button>
+    <span class="small text-muted" style="min-width:44px; text-align:center">{{ pdfZoom }}%</span>
+    <button type="button" class="btn btn-sm btn-outline-secondary" (click)="zoomIn()"
+            [disabled]="pdfZoom >= maxPdfZoom" title="Aumentar zoom" aria-label="Aumentar zoom">
+      <i class="bi bi-plus-lg"></i>
+    </button>
+  </div>
+  <div style="width:100%; height:920px; min-width:0; border:1px solid #cbd5e1; border-radius:0 0 8px 8px; background:white; overflow:hidden; box-shadow:0 2px 8px rgba(15,23,42,.08);">
 
     <iframe *ngIf="pdfUrl" [src]="pdfUrl"
-            style="width:100%; height:100%; border:none;">
+            style="display:block; width:100%; height:100%; border:none;">
     </iframe>
 
     <div *ngIf="!pdfUrl && !isLoading"
@@ -169,12 +181,26 @@ export class PdfDetailComponent implements OnInit, OnDestroy, ICellRendererAngul
 
   pdfUrl: SafeResourceUrl | null = null;
   pdfBlob: Blob | null = null;
+  pdfZoom = 125;
+  readonly minPdfZoom = 75;
+  readonly maxPdfZoom = 200;
   isLoading  = false;
 
   getPdfBlobFn = (): Promise<Blob> =>
     this.pdfBlob ? Promise.resolve(this.pdfBlob) : Promise.reject('PDF no generado aún');
   loadingMsg = 'Generando PDF...';
   reportData: any = null;
+
+  zoomIn(): void { this.setPdfZoom(this.pdfZoom + 10); }
+  zoomOut(): void { this.setPdfZoom(this.pdfZoom - 10); }
+
+  private setPdfZoom(value: number): void {
+    this.pdfZoom = Math.max(this.minPdfZoom, Math.min(this.maxPdfZoom, value));
+    if (!this.pdfObjectUrl) return;
+    this.pdfUrl = this.sanitizer.bypassSecurityTrustResourceUrl(
+      pdfPreviewUrl(this.pdfObjectUrl, this.pdfZoom)
+    );
+  }
 
   // ── AG Grid lifecycle ──────────────────────────────────────────────────────
   agInit(params: ICellRendererParams): void {
@@ -657,8 +683,8 @@ export class PdfDetailComponent implements OnInit, OnDestroy, ICellRendererAngul
       this.loadingMsg = 'Compilando PDF...';
       const docDef: any = {
         pageSize: 'LETTER',
-        pageOrientation: 'portrait',
-        pageMargins: [40, 142, 40, 130],
+        pageOrientation: 'landscape',
+        pageMargins: [30, 142, 30, 130],
         info: {
           title: `Reporte Diario — ${companyName}`,
           author: companyName,
@@ -824,7 +850,7 @@ export class PdfDetailComponent implements OnInit, OnDestroy, ICellRendererAngul
         this.pdfObjectUrl = URL.createObjectURL(blob);
         // Oculta la barra lateral y la barra del visor nativo para que la
         // vista preliminar muestre únicamente las páginas del reporte.
-        const url = pdfPreviewUrl(this.pdfObjectUrl);
+        const url = pdfPreviewUrl(this.pdfObjectUrl, this.pdfZoom);
         this.pdfUrl = this.sanitizer.bypassSecurityTrustResourceUrl(url);
         this.isLoading = false;
       });

@@ -29,6 +29,11 @@ pdfMake.vfs = pdfFonts as unknown as Record<string, string>;
           Reporte: {{ requisitionData?.folio || 'Sin Número' }}
         </h5>
         <div class="d-flex flex-wrap align-items-center gap-2">
+          <div class="d-flex align-items-center gap-1 me-2" aria-label="Zoom del PDF">
+            <button type="button" class="btn btn-outline-secondary btn-sm" (click)="zoomOut()" [disabled]="pdfZoom <= minPdfZoom" title="Reducir zoom"><i class="bi bi-dash-lg"></i></button>
+            <span class="small text-muted" style="min-width:44px;text-align:center">{{ pdfZoom }}%</span>
+            <button type="button" class="btn btn-outline-secondary btn-sm" (click)="zoomIn()" [disabled]="pdfZoom >= maxPdfZoom" title="Aumentar zoom"><i class="bi bi-plus-lg"></i></button>
+          </div>
           <a *ngIf="pdfObjectUrl && !isLoading" class="btn btn-outline-primary btn-sm"
              [href]="pdfViewerHref" target="_blank" rel="noopener noreferrer">
             <i class="bi bi-box-arrow-up-right"></i> Abrir PDF
@@ -79,10 +84,13 @@ pdfMake.vfs = pdfFonts as unknown as Record<string, string>;
   `,
   styles: [`
     .report-detail-container {
-      padding: 15px;
+      padding: 8px;
       background-color: #fff3cd;
       border-radius: 8px;
       height: 100%;
+      width: 100%;
+      min-width: 0;
+      box-sizing: border-box;
       display: flex;
       flex-direction: column;
     }
@@ -104,12 +112,24 @@ export class DetailCellRendererRequisitionReportComponent implements OnDestroy {
   pdfObjectUrl: string | null = null;
   pdfViewerHref: string | null = null;
   readonly isTouchDevice = typeof window !== 'undefined' && window.matchMedia('(pointer: coarse)').matches;
+  pdfZoom = 125;
+  readonly minPdfZoom = 75;
+  readonly maxPdfZoom = 200;
   isLoading: boolean = true;
   private productos: any[] = [];
   private _pdfBlob: Blob | null = null;
 
   getPdfBlobFn = (): Promise<Blob> =>
     this._pdfBlob ? Promise.resolve(this._pdfBlob) : Promise.reject('PDF no generado aún');
+
+  zoomIn(): void { this.setPdfZoom(this.pdfZoom + 10); }
+  zoomOut(): void { this.setPdfZoom(this.pdfZoom - 10); }
+  private setPdfZoom(value: number): void {
+    this.pdfZoom = Math.max(this.minPdfZoom, Math.min(this.maxPdfZoom, value));
+    if (!this.pdfObjectUrl) return;
+    this.pdfViewerHref = pdfPreviewUrl(this.pdfObjectUrl, this.pdfZoom);
+    this.pdfUrl = this.sanitizer.bypassSecurityTrustResourceUrl(this.pdfViewerHref);
+  }
 
   agInit(params: ICellRendererParams): void {
     this.params = params;
@@ -194,7 +214,7 @@ export class DetailCellRendererRequisitionReportComponent implements OnDestroy {
         if (this.pdfObjectUrl) URL.revokeObjectURL(this.pdfObjectUrl);
         const url = URL.createObjectURL(blob);
         this.pdfObjectUrl = url;
-        this.pdfViewerHref = pdfPreviewUrl(url);
+        this.pdfViewerHref = pdfPreviewUrl(url, this.pdfZoom);
         this.pdfUrl = this.sanitizer.bypassSecurityTrustResourceUrl(this.pdfViewerHref);
         this.isLoading = false;
       });
@@ -247,7 +267,8 @@ export class DetailCellRendererRequisitionReportComponent implements OnDestroy {
 
     return {
       pageSize: 'LETTER',
-      pageMargins: [40, 80, 40, 40],
+      pageOrientation: 'landscape',
+      pageMargins: [30, 80, 30, 40],
       defaultStyle: {
         fontSize: 9
       },
