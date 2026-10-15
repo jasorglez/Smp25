@@ -24,6 +24,7 @@ export class BitacoraConceptosComponent extends BitacoraBaseComponent {
   private subpartidaIdMap = new Map<string, number>();
   private subpartidaIdToCodeMap = new Map<number, string>();
   private conceptBySubpartida = new Map<string, string[]>();
+  private directConceptOptions: string[] = [];
   conceptOptions: string[] = [];
   
   readonly requiredFields = [
@@ -90,6 +91,26 @@ export class BitacoraConceptosComponent extends BitacoraBaseComponent {
     const idProject = this.reportData?.idProject;
     if (!idProject) return;
     const idConvention = this.reportData?.idConvention ?? null;
+    this.directConceptOptions = [];
+
+    // Carga también los conceptos marcados directamente en el programa del
+    // proyecto. Estos pueden ser conceptos raíz (parent = 0) y conservar su
+    // unidad real (PIEZA, METRO, etc.); no necesariamente usan una subpartida.
+    this.workprogramsService.getWorkPrograms(idProject, 'Project').subscribe({
+      next: (rows: any[]) => {
+        const directConcepts = (rows ?? []).filter((row: any) =>
+          String(row.typeActivity ?? row.typeactivity ?? '').trim().toLowerCase() === 'concept' &&
+          Number(row.idConvention ?? row.id_convention ?? 0) === Number(idConvention ?? 0)
+        );
+        this.directConceptOptions = directConcepts.map((concept: any) => {
+          const label = `${String(concept.activity ?? '').trim()} ${String(concept.text ?? '').trim()}`.trim();
+          return label;
+        }).filter((label: string) => !!label);
+        this.mergeDirectConceptOptions();
+        this.gridApi?.refreshCells({ force: true });
+      },
+      error: () => {},
+    });
 
     this.workprogramsService.getConceptsHierarchy(idProject, idConvention).subscribe({
       next: (data: any[]) => {
@@ -119,11 +140,17 @@ export class BitacoraConceptosComponent extends BitacoraBaseComponent {
             this.conceptBySubpartida.set(subCode, conceptos);
           }
         }
-        
+        this.mergeDirectConceptOptions();
         this.gridApi?.refreshCells({ force: true });
       },
       error: () => {}
     });
+  }
+
+  private mergeDirectConceptOptions(): void {
+    for (const label of this.directConceptOptions) {
+      if (!this.conceptOptions.includes(label)) this.conceptOptions.push(label);
+    }
   }
 
   get colDefs(): ColDef[] {
