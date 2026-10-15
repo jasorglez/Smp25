@@ -58,11 +58,12 @@ const emptyRow = (cols: number): any[] => [
   ...Array(cols - 1).fill(''),
 ];
 
-const mkSectionTitle = (txt: string, breakBefore = false): any => ({
+const mkSectionTitle = (txt: string, breakBefore = false, destination?: string): any => ({
   table: {
     widths: ['*'],
     body: [[{
       text: txt.toUpperCase(),
+      ...(destination ? { id: destination } : {}),
       color: WHITE, fillColor: NAVY,
       bold: true, fontSize: 10,
       margin: [10, 6, 10, 6],
@@ -106,6 +107,12 @@ const mkSubTitle = (txt: string): any => ({
       </div>
     </div>
     <div class="d-flex gap-1 align-items-center">
+      <button class="btn btn-sm btn-outline-primary" (click)="openReportSection('notas')" title="Abrir y editar las notas del reporte">
+        <i class="bi bi-journal-text me-1"></i>Notas
+      </button>
+      <button class="btn btn-sm btn-outline-primary" (click)="openReportSection('personal')" title="Abrir y editar el personal del reporte">
+        <i class="bi bi-people me-1"></i>Personal
+      </button>
       <button class="btn btn-sm btn-success" (click)="downloadPdf()" [disabled]="isLoading || !pdfBlob">
         <i class="bi bi-download me-1"></i>Descargar
       </button>
@@ -211,6 +218,19 @@ export class PdfDetailComponent implements OnInit, OnDestroy, ICellRendererAngul
 
   closeDetail(): void {
     this.context?.componentParent?.collapsePdfDetail?.(this.reportData?.id);
+  }
+
+  openReportSection(section: 'notas' | 'personal'): void {
+    this.context?.componentParent?.openReportSection?.(this.reportData?.id, section);
+  }
+
+  private getReportSectionUrl(section: 'notas' | 'personal'): string {
+    const url = new URL(window.location.href);
+    url.search = '';
+    url.hash = '';
+    url.searchParams.set('dailyReportId', String(this.reportData?.id ?? ''));
+    url.searchParams.set('dailyReportSection', section);
+    return url.toString();
   }
 
   // ── Fecha util (pública para template) ─────────────────────────────────────
@@ -441,7 +461,7 @@ export class PdfDetailComponent implements OnInit, OnDestroy, ICellRendererAngul
 
       // • Notas (página 4) — tipo como encabezado, contenido a todo el ancho
       const pgNotas: any[] = [
-        mkSectionTitle('Bitácora de Notas', true),
+        mkSectionTitle('Bitácora de Notas', true, 'reporte-notas'),
         ...(notas.length > 0
           ? notas.map((n: any) => ({
               table: {
@@ -452,12 +472,14 @@ export class PdfDetailComponent implements OnInit, OnDestroy, ICellRendererAngul
                     text: (n.supervisor || 'GENERAL').toUpperCase(),
                     fontSize: 8, bold: true,
                     color: NAVY, fillColor: LBLUE,
+                    link: this.getReportSectionUrl('notas'),
                     margin: [6, 4, 6, 4],
                   }],
                   // Renglón: contenido a todo el ancho
                   [{
                     text: n.description || '',
                     fontSize: 8,
+                    link: this.getReportSectionUrl('notas'),
                     margin: [6, 5, 6, 6],
                     lineHeight: 1.3,
                   }],
@@ -490,7 +512,7 @@ export class PdfDetailComponent implements OnInit, OnDestroy, ICellRendererAngul
       ];
 
       const pgPersonalMaterialEquipos: any[] = [
-        mkSectionTitle('Personal · Material · Equipos', true),
+        mkSectionTitle('Personal · Material · Equipos', true, 'reporte-personal'),
         {
           columnGap: 8,
           columns: [
@@ -767,6 +789,16 @@ export class PdfDetailComponent implements OnInit, OnDestroy, ICellRendererAngul
         }] : [],
 
         content: [
+          {
+            text: [
+              { text: 'Ir a: ', bold: true, color: NAVY },
+              { text: 'Notas', color: BLUE, decoration: 'underline', linkToDestination: 'reporte-notas' },
+              { text: '     ' },
+              { text: 'Personal', color: BLUE, decoration: 'underline', linkToDestination: 'reporte-personal' },
+            ],
+            fontSize: 8,
+            margin: [0, 0, 0, 8],
+          },
           ...pgConceptos,
           ...pgNotas,
           ...pgPersonalMaterialEquipos,

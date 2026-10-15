@@ -45,6 +45,10 @@ const dCell = (txt: string, alt: boolean, align: 'left'|'center'|'right' = 'left
     <button class="btn btn-primary btn-sm" (click)="addRow()">
       <i class="bi bi-plus-lg"></i>
     </button>
+    <button class="btn btn-outline-primary btn-sm" (click)="agregarTodosLosPuestos()"
+      [disabled]="!posicionesValues.length" title="Agregar todos los puestos con cantidad 1">
+      <i class="bi bi-people-fill me-1"></i>Agregar todos los puestos
+    </button>
     <button class="btn btn-warning btn-sm" (click)="discardChanges()">
       <i class="bi bi-arrow-counterclockwise"></i>
     </button>
@@ -155,6 +159,43 @@ export class BitacoraPersonalComponent extends BitacoraBaseComponent {
       this.gridApi?.setGridOption('rowData', this.rowData);
       this.gridApi?.startEditingCell({ rowIndex: 0, colKey: this.editableCols[0] });
     }, 50);
+  }
+
+  agregarTodosLosPuestos(): void {
+    const puestosDisponibles = this.posicionesValues.filter((puesto: string) =>
+      puesto && !this.rowData.some(row =>
+        String(row.position ?? '').trim().toLocaleLowerCase() === puesto.trim().toLocaleLowerCase()
+      )
+    );
+
+    if (!puestosDisponibles.length) {
+      alerts.basicAlert('Personal', 'Todos los puestos del catálogo ya están agregados a este reporte.', 'info');
+      return;
+    }
+
+    const fecha = this.reportData?.date
+      ? String(this.reportData.date).substring(0, 10)
+      : new Date().toISOString().split('T')[0];
+    const rows = puestosDisponibles.map((puesto: string) => ({
+      id: `temp_${this.tempIdCounter++}`,
+      idReporte: this.reportData?.id,
+      date: fecha,
+      empleado: null,
+      position: puesto,
+      quantity: 1,
+      start: null,
+      end: null,
+      asistencia: null,
+      description: null,
+      active: true,
+      __isNew: true,
+      __modified: false,
+    }));
+
+    this.rowData = [...rows, ...this.rowData];
+    this.hasUnsavedChanges = true;
+    this.gridApi?.setGridOption('rowData', this.rowData);
+    this.notifyParentCount(this.rowData.length);
   }
 
   override onCellValueChanged(event: any): void {
@@ -292,7 +333,7 @@ export class BitacoraPersonalComponent extends BitacoraBaseComponent {
       start:             item.start        ?? null,
       end:               item.end          ?? null,
       supervisor:        item.asistencia   ?? null,
-      descriptionconcept: item.empleado    ?? null,
+      descriptionconcept: String(item.empleado ?? '').trim(),
       idResource:        item.idResource   ?? null,
     };
   }

@@ -349,10 +349,12 @@ export abstract class BitacoraBaseComponent implements OnInit, ICellRendererAngu
     return {
       idReporte: this.reportData?.id        ?? null,
       idProject: this.reportData?.idProject ?? null,
+      idPadre:   0,
       typeNote:  this.typeNoteValue,
       date:      toIsoDate(item.date ?? this.reportData?.date),
       orden:     idx >= 0 ? idx + 1 : 1,
       quantity:  this.toNum(item.quantity),
+      active:    1,
     };
   }
 }

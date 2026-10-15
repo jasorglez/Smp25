@@ -64,6 +64,7 @@ export class SistemaComponent implements OnInit, OnDestroy {
   private reloadTimeout: any = null;
   private outingSyncInFlight = '';
   private outingSyncCompleted = '';
+  private pendingReportSection: { reportId: number; section: 'notas' | 'personal' } | null = null;
 
   public rowData: IDailyReport[]       = [];
   public conventionsList: any[] = [];
@@ -198,8 +199,12 @@ export class SistemaComponent implements OnInit, OnDestroy {
     { field: 'platicasSeguridad',headerName: 'Plática Seguridad', width: 180, editable: true },
  
     {
+      colId: 'dailyReportPdf',
       headerName: 'PDF',
       width: 100,
+      pinned: 'right',
+      lockPinned: true,
+      suppressMovable: true,
       cellRenderer: PdfButtonCellRendererComponent,
       cellRendererParams: {
         onClick: (node: any) => this.togglePdfDetail(node),
@@ -430,6 +435,14 @@ export class SistemaComponent implements OnInit, OnDestroy {
     this.signalRSub.add(this.signalRService.textUpdate$.subscribe(handler));
     this.signalRSub.add(this.signalRService.photoUpdate$.subscribe(photoHandler));
     this.signalRSub.add(this.signalRService.newDailyReport$.subscribe(handler));
+    this.signalRSub.add(this.route.queryParamMap.subscribe(params => {
+      const reportId = Number(params.get('dailyReportId'));
+      const section = params.get('dailyReportSection');
+      if (reportId > 0 && (section === 'notas' || section === 'personal')) {
+        this.pendingReportSection = { reportId, section };
+        this.openPendingReportSection();
+      }
+    }));
   }
 
   ngOnDestroy(): void {
@@ -540,6 +553,10 @@ export class SistemaComponent implements OnInit, OnDestroy {
     });
 
     this.restoreColState();
+    // La columna del PDF queda fija aunque exista una configuración guardada
+    // anteriormente con todas las columnas sin fijar.
+    this.gridApi.applyColumnState({ state: [{ colId: 'dailyReportPdf', pinned: 'right' }] });
+    this.openPendingReportSection();
 
     if (this.idContract) {
       this.loadConventions(this.idContract);
@@ -581,6 +598,7 @@ export class SistemaComponent implements OnInit, OnDestroy {
         this.originalRowData = JSON.parse(JSON.stringify(this.rowData));
         this.hasUnsavedChanges = false;
         this.selectedRow = null;
+        setTimeout(() => this.openPendingReportSection(), 0);
       },
       error: () => alerts.basicAlert('Error', 'No se pudieron cargar los reportes diarios', 'error'),
     });
@@ -738,6 +756,32 @@ export class SistemaComponent implements OnInit, OnDestroy {
     if (event.node?.isSelected()) {
       this.selectedRow = event.data;
     }
+  }
+
+  openReportSection(reportId: number, section: 'notas' | 'personal'): void {
+    if (!this.gridApi) return;
+    let reportNode: any = null;
+    this.gridApi.forEachNode((node: any) => {
+      if (Number(node.data?.id) === Number(reportId)) reportNode = node;
+    });
+    if (reportNode) this.toggleBitacoraDetail(reportNode, section);
+  }
+
+  private openPendingReportSection(): void {
+    const pending = this.pendingReportSection;
+    if (!pending || !this.gridApi || !this.rowData.length) return;
+
+    let reportNode: any = null;
+    this.gridApi.forEachNode((node: any) => {
+      if (Number(node.data?.id) === pending.reportId) reportNode = node;
+    });
+    if (!reportNode) return;
+
+    this.pendingReportSection = null;
+    this.selectedRow = reportNode.data;
+    reportNode.setSelected(true);
+    this.gridApi.ensureNodeVisible(reportNode, 'middle');
+    this.toggleBitacoraDetail(reportNode, pending.section);
   }
 
   onCellValueChanged(event: any): void {
