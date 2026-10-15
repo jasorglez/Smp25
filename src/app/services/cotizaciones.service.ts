@@ -5,6 +5,7 @@ import {
   getDoc, setDoc,
 } from '@angular/fire/firestore';
 import { Observable } from 'rxjs';
+import { StoragesService } from './storages.service';
 
 export interface Cotizacion {
   id?: string;
@@ -96,6 +97,7 @@ export const ESTADOS_COTIZACION = [
 export class CotizacionesService {
   private firestore = inject(Firestore);
   private injector = inject(Injector);
+  private storages = inject(StoragesService);
   private readonly COL        = 'cotizaciones';
   private readonly CONFIG_COL = 'cotizacionesConfig';
 
@@ -222,7 +224,11 @@ export class CotizacionesService {
     return snap.docs.map(d => ({ id: d.id, ...d.data() }) as CotizacionItem);
   }
 
-  async enviarPorCorreo(destinatario: string, cotizacion: Cotizacion, pdfBase64: string, vendedorEmail?: string, cc?: string): Promise<void> {
+  async enviarPorCorreo(destinatario: string, cotizacion: Cotizacion, pdfBlob: Blob, vendedorEmail?: string, cc?: string): Promise<void> {
+    const fileName = `${String(cotizacion.numCotizacion || 'Cotizacion').replace(/[^a-zA-Z0-9._-]/g, '_')}.pdf`;
+    const file = new File([pdfBlob], fileName, { type: 'application/pdf' });
+    const storagePath = `pdf/cotizaciones/${Date.now()}_${fileName}`;
+    const pdfUrl = await this.storages.uploadFile(file, storagePath);
     const mailRef = collection(this.firestore, 'mail');
     await addDoc(mailRef, {
       to: destinatario,
@@ -239,8 +245,8 @@ export class CotizacionesService {
         `,
         attachments: [{
           filename: `${cotizacion.numCotizacion}.pdf`,
-          content:  pdfBase64,
-          encoding: 'base64',
+          path: pdfUrl,
+          contentType: 'application/pdf',
         }],
       },
     });

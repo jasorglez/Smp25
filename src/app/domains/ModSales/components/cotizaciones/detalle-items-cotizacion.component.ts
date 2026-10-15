@@ -7,7 +7,7 @@ import { ICellRendererAngularComp } from 'ag-grid-angular';
 import { DomSanitizer, SafeResourceUrl } from '@angular/platform-browser';
 import { pdfPreviewUrl } from 'app/helpers/pdf-viewer';
 import { AG_GRID_LOCALE_ES } from 'assets/i18n/ag-grid.locale.es';
-import { CotizacionesService, CotizacionItem, ESTADOS_COTIZACION, CotizacionConfig, familiasDeCotizacion } from 'app/services/cotizaciones.service';
+import { CotizacionesService, CotizacionItem, ESTADOS_COTIZACION, familiasDeCotizacion } from 'app/services/cotizaciones.service';
 import { SignalsService } from 'app/services/signals.service';
 import { MaterialsService } from 'app/services/materials.service';
 import { RootService } from 'app/services/root.service';
@@ -124,7 +124,7 @@ const textoPdf = (value: unknown): string =>
             <!-- Enviar por correo -->
             <button class="btn btn-sm btn-outline-primary"
                     (click)="abrirModalCorreo()"
-                    [disabled]="isLoadingPdf || isSendingEmail">
+                    [disabled]="isLoadingPdf || isSendingEmail || !_pdfBlob">
               <span *ngIf="isSendingEmail" class="spinner-border spinner-border-sm me-1"></span>
               <i *ngIf="!isSendingEmail" class="bi bi-envelope me-1"></i>
               {{ isSendingEmail ? 'Enviando...' : 'Enviar por correo' }}
@@ -613,9 +613,8 @@ export class DetalleItemsCotizacionComponent implements ICellRendererAngularComp
 
   private emailModalEl: HTMLElement | null = null;
 
-  async abrirModalCorreo() {
-    const idCompany = this.context?.idCompany;
-    this.emailHistorial = idCompany ? await this.svc.getEmailHistorial(idCompany) : [];
+  abrirModalCorreo() {
+    if (this.isLoadingPdf || !this._pdfBlob) return;
     this.emailPara      = this.signalsSvc.profile.emailUser() ?? '';
     this.emailCc        = '';
 
@@ -641,15 +640,15 @@ export class DetalleItemsCotizacionComponent implements ICellRendererAngularComp
       <div style="padding:16px;">
         <div style="margin-bottom:12px;">
           <label style="font-size:.8rem;font-weight:600;display:block;margin-bottom:4px;">Para *</label>
-          <input id="em-para" class="form-control form-control-sm" placeholder="destinatario@empresa.com" value="${this.emailPara}" autocomplete="off">
+          <input id="em-para" type="email" required class="form-control form-control-sm" placeholder="destinatario@empresa.com" autocomplete="off">
         </div>
         <div style="margin-bottom:12px;">
           <label style="font-size:.8rem;font-weight:600;display:block;margin-bottom:4px;">CC</label>
-          <input id="em-cc" class="form-control form-control-sm" placeholder="copia@empresa.com (opcional)" autocomplete="off">
+          <input id="em-cc" type="email" class="form-control form-control-sm" placeholder="copia@empresa.com (opcional)" autocomplete="off">
         </div>
         <div style="margin-bottom:4px;">
           <label style="font-size:.8rem;font-weight:600;display:block;margin-bottom:4px;">Asunto</label>
-          <input class="form-control form-control-sm" style="background:#f8f9fa;" readonly value="${asunto}">
+          <input id="em-asunto" class="form-control form-control-sm" style="background:#f8f9fa;" readonly>
         </div>
       </div>
       <div style="padding:10px 16px;background:#f8f9fa;display:flex;justify-content:flex-end;gap:8px;border-top:1px solid #dee2e6;">
@@ -657,6 +656,8 @@ export class DetalleItemsCotizacionComponent implements ICellRendererAngularComp
         <button id="em-send"   class="btn btn-sm btn-primary"><i class="bi bi-send me-1"></i>Enviar</button>
       </div>
     `;
+    (card.querySelector('#em-para') as HTMLInputElement).value = this.emailPara;
+    (card.querySelector('#em-asunto') as HTMLInputElement).value = asunto;
 
     const wrap = document.createElement('div');
     wrap.appendChild(backdrop);
@@ -668,13 +669,22 @@ export class DetalleItemsCotizacionComponent implements ICellRendererAngularComp
     card.querySelector('#em-close')!.addEventListener('click',  () => this.cerrarModalCorreo());
     card.querySelector('#em-cancel')!.addEventListener('click', () => this.cerrarModalCorreo());
     card.querySelector('#em-send')!.addEventListener('click', async () => {
-      const para = (document.getElementById('em-para') as HTMLInputElement)?.value?.trim();
-      const cc   = (document.getElementById('em-cc')   as HTMLInputElement)?.value?.trim() ?? '';
-      if (!para) { alert('El campo "Para" es requerido'); return; }
+      const paraInput = card.querySelector('#em-para') as HTMLInputElement;
+      const ccInput = card.querySelector('#em-cc') as HTMLInputElement;
+      const para = paraInput.value.trim();
+      const cc = ccInput.value.trim();
+      if (!para || !paraInput.checkValidity()) { paraInput.reportValidity(); return; }
+      if (cc && !ccInput.checkValidity()) { ccInput.reportValidity(); return; }
       this.emailPara = para;
       this.emailCc   = cc;
-      this.cerrarModalCorreo();
+      const sendButton = card.querySelector('#em-send') as HTMLButtonElement;
+      sendButton.disabled = true;
+      sendButton.textContent = 'Enviando...';
       await this.enviarPorCorreo();
+      if (this.emailModalEl === wrap) {
+        sendButton.disabled = false;
+        sendButton.textContent = 'Enviar';
+      }
     });
 
     setTimeout(() => (document.getElementById('em-para') as HTMLInputElement)?.focus(), 50);
@@ -713,193 +723,38 @@ export class DetalleItemsCotizacionComponent implements ICellRendererAngularComp
     }, 150);
   }
 
-  async enviarPorCorreo() {
-    if (!this.emailPara?.trim()) return;
-    this.gridApi?.stopEditing();
-    if (this.hasChanges && !(await this.save())) return;
-    await this.cargarTipoCambio();
-    if (!(this.tipoCambio > 0)) {
-      Swal.fire('Tipo de cambio pendiente', 'Captura el tipo de cambio en la columna anterior a Familia.', 'warning');
+  async enviarPorCorreo(): Promise<void> {
+    if (!this.emailPara?.trim() || this.isSendingEmail) return;
+    if (this.isLoadingPdf || !this._pdfBlob) {
+      Swal.fire('PDF pendiente', 'Espera a que termine de generarse la vista previa.', 'warning');
       return;
     }
+
     this.isSendingEmail = true;
     try {
-      const pdfBase64 = await new Promise<string>((resolve, reject) => {
-        const idRoot = this.context?.idCompany;
-        this.rootSvc.getRootbyId(idRoot).subscribe({
-          next: async (rootData: any) => {
-            try {
-              const tryB64 = async (url: string) => {
-                try { return await this.b64Svc.convertImageToBase64(url); } catch { return null; }
-              };
-              const logoB64      = rootData?.picture  ? await tryB64(rootData.picture)  : null;
-              const logo2B64     = rootData?.picture2 ? await tryB64(rootData.picture2) : logoB64;
-              const signatureUrl = this.signalsSvc.profile.signatureUser();
-              const signatureB64 = signatureUrl ? await tryB64(signatureUrl) : null;
-              const items = (await this.svc.getItems(this.cotizacion.id)).map(item => ({
-                ...item,
-                dolares: item.dolaresManual
-                  ? Number(item.dolares ?? 0)
-                  : Number((Number(item.subtotal ?? 0) / this.tipoCambio).toFixed(2)),
-              }));
-
-              const cot      = this.cotizacion;
-              const fecha    = cot.fecha?.toDate ? cot.fecha.toDate() : new Date();
-              const fechaStr = fecha.toLocaleDateString('es-MX', { day: 'numeric', month: 'long', year: 'numeric' }).toUpperCase();
-              const lugarFecha   = `${(cot.lugar ?? '').toUpperCase()}, A ${fechaStr}`;
-              const companyName  = (rootData?.name ?? 'EMPRESA').toUpperCase();
-              const cfg: CotizacionConfig = await this.svc.getConfig(idRoot);
-
-              const header: any = {
-                columns: [
-                  logoB64  ? { image: logoB64,  width: 80 } : { text: '', width: 80 },
-                  {
-                    stack: [
-                      { text: companyName, fontSize: 11, bold: true, color: NAVY, alignment: 'center' },
-                      { text: 'COTIZACIÓN', fontSize: 9, bold: true, color: BLUE, alignment: 'center', margin: [0,2,0,0] },
-                    ],
-                    margin: [8, 0, 8, 0],
-                  },
-                  logo2B64 ? { image: logo2B64, width: 80, alignment: 'right' } : { text: '', width: 80 },
-                ],
-                margin: [0, 0, 0, 10],
-              };
-
-              const destinatario: any = {
-                columns: [
-                  {
-                    stack: [
-                      { text: `ATN: ${(cot.nombreProspecto ?? '').toUpperCase()}`, fontSize: 8, bold: true, color: NAVY },
-                      { text: `EMPRESA: ${(cot.empresaProspecto ?? '').toUpperCase()}`, fontSize: 8, margin: [0,2,0,0] },
-                      { text: (cot.puestoProspecto ?? '').toUpperCase(), fontSize: 8, color: GRAY, margin: [0,2,0,0] },
-                    ],
-                  },
-                  {
-                    stack: [
-                      { text: lugarFecha, fontSize: 7, color: GRAY, alignment: 'right' },
-                      {
-                        text: [
-                          { text: 'No. COTIZACIÓN: ', fontSize: 8, bold: true, color: NAVY },
-                          { text: cot.numCotizacion ?? '', fontSize: 10, bold: true, color: BLUE },
-                        ],
-                        alignment: 'right', margin: [0, 6, 0, 0],
-                      },
-                    ],
-                  },
-                ],
-                margin: [0, 0, 0, 10],
-              };
-
-              const tableHeader = [
-                { text: 'No.', style: 'thCell', fillColor: NAVY, color: '#fff', alignment: 'center' },
-                { text: 'DESCRIPCIÓN / CONCEPTO', style: 'thCell', fillColor: NAVY, color: '#fff', alignment: 'left' },
-                { text: 'CANT',    style: 'thCell', fillColor: NAVY, color: '#fff', alignment: 'center' },
-                { text: 'UNIDAD',  style: 'thCell', fillColor: NAVY, color: '#fff', alignment: 'center' },
-                { text: 'PRECIO MXN',  style: 'thCell', fillColor: NAVY, color: '#fff', alignment: 'right'  },
-                { text: 'IMPORTE MXN', style: 'thCell', fillColor: NAVY, color: '#fff', alignment: 'right'  },
-                { text: 'DÓLARES USD', style: 'thCell', fillColor: NAVY, color: '#fff', alignment: 'right' },
-              ];
-              const tableRows = items.map((item, idx) => [
-                { text: String(idx + 1), fontSize: 7, alignment: 'center', fillColor: idx % 2 === 1 ? LBLUE : null },
-                { text: textoPdf(item.nombreMaterial), fontSize: 7, fillColor: idx % 2 === 1 ? LBLUE : null },
-                { text: String(item.cantidad ?? ''), fontSize: 7, alignment: 'center', fillColor: idx % 2 === 1 ? LBLUE : null },
-                { text: item.unidad ?? '', fontSize: 7, alignment: 'center', fillColor: idx % 2 === 1 ? LBLUE : null },
-                { text: `$${Number(item.precio ?? 0).toLocaleString('es-MX', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`, fontSize: 7, alignment: 'right', fillColor: idx % 2 === 1 ? LBLUE : null },
-                { text: `$${Number(item.subtotal ?? 0).toLocaleString('es-MX', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`, fontSize: 7, alignment: 'right', fillColor: idx % 2 === 1 ? LBLUE : null },
-                { text: `US$${Number(item.dolares ?? 0).toLocaleString('es-MX', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`, fontSize: 7, alignment: 'right', fillColor: idx % 2 === 1 ? LBLUE : null },
-              ]);
-              const totalRow = [
-                { text: '', colSpan: 4, border: [false,false,false,false] }, {}, {}, {},
-                { text: 'TOTAL:', fontSize: 8, bold: true, alignment: 'right', fillColor: NAVY, color: '#fff' },
-                { text: `$${Number(cot.total ?? 0).toLocaleString('es-MX', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`, fontSize: 8, bold: true, alignment: 'right', fillColor: NAVY, color: '#fff' },
-                { text: `US$${(items.reduce((sum, item) => sum + Math.round((Number(item.dolares) || 0) * 100), 0) / 100).toLocaleString('es-MX', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`, fontSize: 8, bold: true, alignment: 'right', fillColor: NAVY, color: '#fff' },
-              ];
-              const tabla: any = {
-                table: { headerRows: 1, widths: [20, '*', 26, 34, 48, 54, 56], body: [tableHeader, ...tableRows, totalRow] },
-                layout: { hLineWidth: () => 0.5, vLineWidth: () => 0.5, hLineColor: () => '#cccccc', vLineColor: () => '#cccccc' },
-                margin: [0, 0, 0, 10],
-              };
-              const clausulas = [cfg.clausula1, cfg.clausula2, cfg.clausula3].filter(Boolean);
-              const firmaStack1: any[] = [];
-              if (signatureB64) {
-                firmaStack1.push({ image: signatureB64, width: 120, alignment: 'center', margin: [0,0,0,4] });
-              }
-              firmaStack1.push({ canvas: [{ type: 'line', x1: 0, y1: 0, x2: 160, y2: 0, lineWidth: 1, lineColor: NAVY }] });
-              firmaStack1.push({ text: cot.nombreVendedor ?? '', fontSize: 7, bold: true, alignment: 'center', margin: [0,4,0,0] });
-              firmaStack1.push({ text: 'VENDEDOR', fontSize: 6, color: GRAY, alignment: 'center', margin: [0,0,0, signatureB64 ? 15 : 20] });
-              const bloqueInferiorEmail: any = {
-                unbreakable: true,
-                stack: [
-                  { text: 'CON LAS SIGUIENTES CLÁUSULAS', fontSize: 6.5, bold: true, color: NAVY, margin: [0,0,0,3] },
-                  { ul: clausulas.map(c => ({ text: textoPdf(c), fontSize: 6, color: GRAY, margin: [0,0,0,2] })), margin: [0,0,0,3] },
-                  { text: textoPdf(cfg.textoAclaracion), fontSize: 6, color: GRAY, alignment: 'left', margin: [0,0,0,2] },
-                  { text: textoPdf(cfg.textoDespedida),  fontSize: 6, color: GRAY, alignment: 'left', margin: [0,0,0,2] },
-                  { text: cfg.textoIva,        fontSize: 6.5, bold: true, color: NAVY, margin: [0,0,0,8] },
-                  {
-                    columns: [
-                      { text: '', width: '*' },
-                      { stack: firmaStack1, width: 160 },
-                      { text: '', width: '*' },
-                    ],
-                  },
-                ],
-              };
-              const textoSuperior: any = {
-                stack: [
-                  { text: textoPdf(cfg.textoPrincipal),  fontSize: 7, color: GRAY, alignment: 'left', margin: [0,0,0,6] },
-                  { text: textoPdf(cfg.textoCompromiso), fontSize: 7, color: GRAY, alignment: 'left', margin: [0,0,0,10] },
-                ],
-              };
-              const docDef: any = {
-                pageSize: 'LETTER',
-                pageOrientation: 'portrait',
-                pageMargins: [40, 40, 40, 60],
-                footer: () => ({
-                  stack: [
-                    { canvas: [{ type: 'line', x1: 0, y1: 0, x2: 515, y2: 0, lineWidth: 0.5, lineColor: BLUE }], margin: [0,0,0,4] },
-                    {
-                      columns: [
-                        { text: rootData?.email ?? '', fontSize: 6, color: GRAY },
-                        { text: rootData?.web   ?? '', fontSize: 6, color: GRAY, alignment: 'center' },
-                        { text: companyName,           fontSize: 6, color: GRAY, alignment: 'right' },
-                      ],
-                    },
-                  ],
-                  margin: [40, 0, 40, 0],
-                }),
-                content: [header, destinatario, { text: 'ASUNTO: COTIZACIÓN', fontSize: 8, bold: true, color: NAVY, margin: [0,0,0,8] }, textoSuperior, tabla, bloqueInferiorEmail],
-                styles: { thCell: { fontSize: 7, bold: true } },
-                defaultStyle: { font: 'Roboto' },
-              };
-
-              this.trackingService.addLog(this.trackingService.getnameComp(), 'Generó base64 cotización para email', 'Ventas / Cotizaciones', this.trackingService.getEmail());
-              pdfMake.createPdf(docDef).getBase64((b64: string) => resolve(b64));
-            } catch (err) { reject(err); }
-          },
-          error: reject,
-        });
-      });
-
       await this.svc.enviarPorCorreo(
         this.emailPara,
         this.cotizacion,
-        pdfBase64,
+        this._pdfBlob,
         this.signalsSvc.profile.emailUser() ?? undefined,
         this.emailCc?.trim() || undefined,
       );
 
-      // Guardar ambos correos en el historial
       const idCompany = this.context?.idCompany;
       if (idCompany) {
-        const nuevos = [this.emailPara, this.emailCc].filter(Boolean);
-        await this.svc.guardarEmailHistorial(idCompany, nuevos);
+        try {
+          const nuevos = [this.emailPara, this.emailCc].filter(Boolean);
+          await this.svc.guardarEmailHistorial(idCompany, nuevos);
+        } catch (error) {
+          console.warn('[Cotizaciones] El correo se puso en cola, pero no se guardó el historial:', error);
+        }
       }
 
       this.cerrarModalCorreo();
-      Swal.fire({ toast: true, position: 'top-end', icon: 'success', title: 'Correo enviado', showConfirmButton: false, timer: 2000, timerProgressBar: true });
-    } catch (e: any) {
-      console.error('[Cotizaciones] Error enviando correo:', e);
-      Swal.fire('Error', 'No se pudo enviar el correo.', 'error');
+      Swal.fire({ toast: true, position: 'top-end', icon: 'success', title: 'Correo preparado para envío', showConfirmButton: false, timer: 2500, timerProgressBar: true });
+    } catch (error: any) {
+      console.error('[Cotizaciones] Error enviando correo:', error);
+      Swal.fire('Error al enviar', error?.message || 'No se pudo preparar el correo. Intenta nuevamente.', 'error');
     } finally {
       this.isSendingEmail = false;
     }
@@ -976,6 +831,13 @@ export class DetalleItemsCotizacionComponent implements ICellRendererAngularComp
   async generarPdf() {
     if (!this.cotizacion?.id) return;
     this.isLoadingPdf = true;
+    this._pdfBlob = null;
+    this._lastDocDef = null;
+    this.pdfUrl = null;
+    if (this.originalPdfUrl) {
+      URL.revokeObjectURL(this.originalPdfUrl);
+      this.originalPdfUrl = null;
+    }
     try {
       this.gridApi?.stopEditing();
       if (this.hasChanges && !(await this.save())) {
@@ -1171,6 +1033,7 @@ export class DetalleItemsCotizacionComponent implements ICellRendererAngularComp
     } catch (e) {
       console.error('Error generando PDF', e);
       this.isLoadingPdf = false;
+      Swal.fire('Error', 'No se pudo generar el PDF de la cotización.', 'error');
     }
   }
 
