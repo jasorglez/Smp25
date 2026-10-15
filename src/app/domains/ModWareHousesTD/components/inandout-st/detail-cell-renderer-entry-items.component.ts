@@ -11,7 +11,7 @@ import { DomSanitizer, SafeResourceUrl } from '@angular/platform-browser';
 import { PdfReportsService } from 'app/services/pdf-reports.service';
 import { pdfPreviewUrl } from 'app/helpers/pdf-viewer';
 import { TrackingService } from 'app/services/tracking.service';
-import { forkJoin, lastValueFrom } from 'rxjs';
+import { catchError, forkJoin, from, lastValueFrom, map, mergeMap, of, toArray } from 'rxjs';
 
 @Component({
   selector: 'app-detail-cell-renderer-entry-items',
@@ -181,6 +181,7 @@ export class DetailCellRendererEntryItemsComponent implements OnInit {
           __isNew: false,
           __modified: false
         }));
+        this.applyTransferStockToRows();
         if (this.gridApi) {
           this.gridApi.setGridOption('rowData', this.rowData);
         }
@@ -309,6 +310,7 @@ export class DetailCellRendererEntryItemsComponent implements OnInit {
               params.data.sourceMeasureId = this.context.movementType === 'IN' && selectedMaterial.conversion
                 ? Number(selectedMaterial.idMeasure)
                 : null;
+              if (this.isTransferEntry()) params.data.pending = Number(selectedMaterial.availableStock || 0);
             }
             return true;
           }
@@ -329,6 +331,7 @@ export class DetailCellRendererEntryItemsComponent implements OnInit {
             params.data.sourceMeasureId = this.context.movementType === 'IN' && selectedMaterial.conversion
               ? Number(selectedMaterial.idMeasure)
               : null;
+            if (this.isTransferEntry()) params.data.pending = Number(selectedMaterial.availableStock || 0);
           }
 
           return true;
@@ -407,7 +410,7 @@ export class DetailCellRendererEntryItemsComponent implements OnInit {
         field: 'pending',
         headerName: this.context.movementType === 'OUT'
           ? 'Total Entradas'
-          : (this.entryData?.idOc > 0 ? 'Cantidad OC' : 'Pendiente'),
+          : (this.isTransferEntry() ? 'Existencia origen' : (this.entryData?.idOc > 0 ? 'Cantidad OC' : 'Pendiente')),
         width: 100,
         editable: false,
         type: 'numericColumn'
@@ -568,6 +571,25 @@ export class DetailCellRendererEntryItemsComponent implements OnInit {
     this.hasUnsavedChanges = true;
   }
 
+  private isTransferEntry(): boolean {
+    return this.context?.movementType === 'IN' && !!this.context?.isTransferType?.(this.entryData?.idType);
+  }
+
+  private getStockValue(response: any): number {
+    const value = response?.data ?? response?.stock ?? response?.quantity ?? response;
+    const stock = Number(value);
+    return Number.isFinite(stock) ? stock : 0;
+  }
+
+  private applyTransferStockToRows(): void {
+    if (!this.isTransferEntry()) return;
+    const stockByMaterial = new Map(this.materials.map(material => [String(material.id), material.availableStock]));
+    this.rowData.forEach(item => {
+      item.pending = Number(stockByMaterial.get(String(item.idProduct)) || 0);
+    });
+    if (this.gridApi) this.gridApi.refreshCells({ force: true });
+  }
+
   loadMaterials() {
     if (this.context && this.context.materialsService && this.context.idRoot) {
       forkJoin({
@@ -575,15 +597,45 @@ export class DetailCellRendererEntryItemsComponent implements OnInit {
         conversions: this.context.materialsService.getMaterialConversions(this.context.idRoot),
       }).subscribe({
         next: ({ materials, conversions }: { materials: any[]; conversions: any[] }) => {
-          this.materials = materials.filter(mat => mat.active && mat.vigente).map(mat => {
+          const activeMaterials = materials.filter(mat => mat.active && mat.vigente).map(mat => {
             const materialConversions = conversions.filter(row => Number(row.idMaterial) === Number(mat.id));
             const conversion = materialConversions.find(row => Number(row.idMeasureFrom) === Number(mat.idMeasure));
             return { ...mat, conversion, conversions: materialConversions };
           });
-          // Update columnDefs to refresh the select values
-          if (this.gridApi) {
-            this.gridApi.setGridOption('columnDefs', this.colDefs);
+          if (!this.isTransferEntry()) {
+            this.materials = activeMaterials;
+            if (this.gridApi) this.gridApi.setGridOption('columnDefs', this.colDefs);
+            return;
           }
+
+          const sourceWarehouseId = Number(this.entryData?.idWarehouse || this.context?.idWarehouse || 0);
+          if (!sourceWarehouseId || !this.context?.inandoutService?.getStock) {
+            this.materials = [];
+            if (this.gridApi) this.gridApi.setGridOption('columnDefs', this.colDefs);
+            return;
+          }
+
+          from(activeMaterials).pipe(
+            mergeMap(material => this.context.inandoutService.getStock(material.id, sourceWarehouseId).pipe(
+              map((response: any) => ({ ...material, availableStock: this.getStockValue(response) })),
+              catchError(() => this.context.inandoutService.getSumaIn(material.id, sourceWarehouseId).pipe(
+                map((response: any) => ({ ...material, availableStock: this.getStockValue(response) })),
+                catchError(() => of({ ...material, availableStock: 0 }))
+              ))
+            ), 8),
+            toArray()
+          ).subscribe({
+            next: (materialsWithStock: any[]) => {
+              this.materials = materialsWithStock.filter(material => material.availableStock > 0);
+              this.applyTransferStockToRows();
+              if (this.gridApi) this.gridApi.setGridOption('columnDefs', this.colDefs);
+            },
+            error: error => {
+              console.error('Error loading transfer stock:', error);
+              this.materials = [];
+              if (this.gridApi) this.gridApi.setGridOption('columnDefs', this.colDefs);
+            }
+          });
         },
         error: (error) => {
           console.error('Error loading materials:', error);

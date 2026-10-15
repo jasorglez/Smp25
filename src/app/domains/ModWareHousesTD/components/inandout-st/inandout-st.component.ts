@@ -401,6 +401,10 @@ export class InandoutStComponent implements OnInit {
             requestRootId !== Number(this.idRoot)) return;
         this.rowData = data.map(entry => ({
           ...entry,
+          ...(this.isTransferType(entry.idType) ? {
+            idWarehouse: entry.idWarehouseOrigin,
+            idWarehouseOrigin: entry.idWarehouse,
+          } : {}),
           countrow: entry.countRow || 0,
           detailType: null,
           detailData: []
@@ -570,7 +574,7 @@ export class InandoutStComponent implements OnInit {
         field: 'idOc',
         headerName: 'Orden de Compra',
         width: 160,
-        hide: this.movementType === 'IN',
+        hide: this.isTransferType(this.selectedEntry?.idType),
         editable: true,
         cellEditor: 'agRichSelectCellEditor',
         cellEditorParams: () => ({
@@ -615,7 +619,7 @@ export class InandoutStComponent implements OnInit {
       },
       {
         field: 'idWarehouseOrigin',
-        headerName: 'Almacén de Origen',
+        headerName: 'Almacén Destino',
         width: 190,
         hide: !this.isTransferType(this.selectedEntry?.idType),
         editable: (params: any) => this.isTransferType(params.data?.idType),
@@ -802,6 +806,7 @@ export class InandoutStComponent implements OnInit {
       },
       context: {
         movementType: this.movementType,
+        isTransferType: (idType: any) => this.isTransferType(idType),
         idRoot: this.idRoot,
         projectId: this.projectId,
         idWarehouse: this.selectedWarehouse?.idAlmacen,
@@ -1007,7 +1012,7 @@ export class InandoutStComponent implements OnInit {
       (!Number(row.idWarehouseOrigin) || Number(row.idWarehouseOrigin) === Number(row.idWarehouse || this.selectedWarehouse?.idAlmacen))
     );
     if (invalidTransfer) {
-      alerts.basicAlert('Almacén de origen requerido', 'Selecciona un almacén de origen distinto al almacén de destino para guardar el traspaso.', 'warning');
+      alerts.basicAlert('Almacén destino requerido', 'Selecciona un almacén destino distinto al almacén de origen elegido en la parte superior.', 'warning');
       return;
     }
 
@@ -1059,11 +1064,16 @@ export class InandoutStComponent implements OnInit {
   }
 
   private prepareEntryData(row: any): any {
+    const isTransfer = this.isTransferType(row.idType);
     return {
       idBranch: this.idBranch,
       idProject: row.idProject || this.projectId,
-      idWarehouse: row.idWarehouse || this.selectedWarehouse?.idAlmacen || 0,
-      idWarehouseOrigin: this.isTransferType(row.idType) ? (row.idWarehouseOrigin || null) : null,
+      idWarehouse: isTransfer
+        ? (row.idWarehouseOrigin || null)
+        : (row.idWarehouse || this.selectedWarehouse?.idAlmacen || 0),
+      idWarehouseOrigin: isTransfer
+        ? (row.idWarehouse || this.selectedWarehouse?.idAlmacen || null)
+        : null,
       idType: row.idType || 0,
       idOt: row.idOt || 0,
       idOc: row.idOc || 0,

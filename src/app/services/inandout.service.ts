@@ -22,6 +22,10 @@ export class InandoutService {
     return this.http.get(`${environment.urlWarehouse}/Detailsinandout/sumentrada/${idProduct}/${idWarehouse}`, { headers: this.trackingService.getHeaders() });
   }
 
+  getStock(idProduct: number, idWarehouse: number) {
+    return this.http.get(`${environment.urlWarehouse}/Detailsinandout/stock/${idProduct}/${idWarehouse}`, { headers: this.trackingService.getHeaders() });
+  }
+
   getDetailedInOut(id: number): Observable<any> {
     return this.http.get(`${environment.urlWarehouse}/Inandout/${id}`, { headers: this.trackingService.getHeaders() });
   }

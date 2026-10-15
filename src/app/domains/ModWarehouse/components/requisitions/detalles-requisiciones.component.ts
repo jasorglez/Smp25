@@ -78,6 +78,7 @@ export class DetallesRequisicionesComponent implements OnInit {
       {
         field: 'idSupplie',
         headerName: 'Producto',
+        headerTooltip: 'Al agregar un producto puedes buscar por su código o descripción.',
         headerClass: 'required-column-header',
         cellClassRules: {
           'required-cell-missing': (params) => !this.isPositiveNumber(params.value),
@@ -88,9 +89,15 @@ export class DetallesRequisicionesComponent implements OnInit {
         cellEditorParams: {
           values: this.productos.map((item) => item.id),
           valueListMaxHeight: 220,
+          allowTyping: true,
+          filterList: true,
+          searchType: 'matchAny',
+          highlightMatch: true,
           formatValue: (value: any) => {
             const foundItem = this.productos.find((item) => item.id === value);
-            return foundItem ? foundItem.description : value;
+            if (!foundItem) return value;
+            const code = foundItem.code || foundItem.insumo;
+            return code ? `${code} - ${foundItem.description}` : foundItem.description;
           }
         },
         valueFormatter: (params) => {

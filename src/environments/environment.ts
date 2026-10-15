@@ -83,5 +83,5 @@ export const environment = {
   geminiApiKey: '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',
   gnewsApiKey: '94ccc596b4dfebc3f72683b6e81d81bc',
 
-  version: '5.00.151 (15 Octubre 2026) columnas PDF fijas en los reportes',
+  version: '5.00.156 (15 Octubre 2026) búsqueda guiada por código o descripción',
 };
