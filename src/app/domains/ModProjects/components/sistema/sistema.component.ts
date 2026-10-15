@@ -64,7 +64,7 @@ export class SistemaComponent implements OnInit, OnDestroy {
   private reloadTimeout: any = null;
   private outingSyncInFlight = '';
   private outingSyncCompleted = '';
-  private pendingReportSection: { reportId: number; section: 'notas' | 'personal' } | null = null;
+  private pendingReportSection: { reportId: number; section: 'notas' | 'personal' | 'fotos' } | null = null;
 
   public rowData: IDailyReport[]       = [];
   public conventionsList: any[] = [];
@@ -438,7 +438,7 @@ export class SistemaComponent implements OnInit, OnDestroy {
     this.signalRSub.add(this.route.queryParamMap.subscribe(params => {
       const reportId = Number(params.get('dailyReportId'));
       const section = params.get('dailyReportSection');
-      if (reportId > 0 && (section === 'notas' || section === 'personal')) {
+      if (reportId > 0 && (section === 'notas' || section === 'personal' || section === 'fotos')) {
         this.pendingReportSection = { reportId, section };
         this.openPendingReportSection();
       }
@@ -758,7 +758,7 @@ export class SistemaComponent implements OnInit, OnDestroy {
     }
   }
 
-  openReportSection(reportId: number, section: 'notas' | 'personal'): void {
+  openReportSection(reportId: number, section: 'notas' | 'personal' | 'fotos'): void {
     if (!this.gridApi) return;
     let reportNode: any = null;
     this.gridApi.forEachNode((node: any) => {

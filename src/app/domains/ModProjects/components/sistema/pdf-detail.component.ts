@@ -10,6 +10,8 @@ import { RootService }         from 'app/services/root.service';
 import { Base64EncodeService } from 'app/services/base64encode.service';
 import { SignalsService }      from 'app/services/signals.service';
 import { WorkprogramsService } from 'app/services/workprograms.service';
+import { TimeInactiveService } from 'app/services/time-inactive.service';
+import { CatalogsService } from 'app/services/catalogs.service';
 import { TrackingService }    from 'app/services/tracking.service';
 import { SignalrService }      from 'app/services/signalr.service';
 import { lastValueFrom, Subscription } from 'rxjs';
@@ -172,6 +174,8 @@ export class PdfDetailComponent implements OnInit, OnDestroy, ICellRendererAngul
   private base64Service       = inject(Base64EncodeService);
   private signalsService      = inject(SignalsService);
   private workprogramsService = inject(WorkprogramsService);
+  private timeInactiveService = inject(TimeInactiveService);
+  private catalogsService = inject(CatalogsService);
   private trackingService     = inject(TrackingService);
   private signalRService     = inject(SignalrService);
   private sanitizer           = inject(DomSanitizer);
@@ -247,11 +251,11 @@ export class PdfDetailComponent implements OnInit, OnDestroy, ICellRendererAngul
     this.context?.componentParent?.collapsePdfDetail?.(this.reportData?.id);
   }
 
-  openReportSection(section: 'notas' | 'personal'): void {
+  openReportSection(section: 'notas' | 'personal' | 'fotos'): void {
     this.context?.componentParent?.openReportSection?.(this.reportData?.id, section);
   }
 
-  private getReportSectionUrl(section: 'notas' | 'personal'): string {
+  private getReportSectionUrl(section: 'notas' | 'personal' | 'fotos'): string {
     const url = new URL(window.location.href);
     url.search = '';
     url.hash = '';
@@ -287,7 +291,7 @@ export class PdfDetailComponent implements OnInit, OnDestroy, ICellRendererAngul
       const projectId    = report?.idProject   ?? null;
       const idConvention = report?.idConvention ?? null;
 
-      const [rootResp, notasR, personalR, materialR, equiposR, fotosR, conceptsR, conceptosBitacoraR, wpFlatR] = await Promise.all([
+      const [rootResp, notasR, personalR, materialR, equiposR, fotosR, conceptsR, conceptosBitacoraR, wpFlatR, tiemposInactivosR, areasR, clasificacionesR] = await Promise.all([
         safe(this.rootService.getRootbyId(idRoot)),
         reportId   ? safe(this.logbookService.getInfoByReporte(reportId, 'NOTE'))      : null,
         reportId   ? safe(this.logbookService.getInfoByReporte(reportId, 'PERSONAL'))  : null,
@@ -297,6 +301,9 @@ export class PdfDetailComponent implements OnInit, OnDestroy, ICellRendererAngul
         projectId  ? safe(this.workprogramsService.getConceptsHierarchy(projectId, idConvention)) : null,
         reportId   ? safe(this.logbookService.getInfoByReporte(reportId, 'CONCEPTO'))  : null,
         projectId  ? safe(this.workprogramsService.getWorkPrograms(projectId, 'Project')) : null,
+        reportId   ? safe(this.timeInactiveService.getByReporte(reportId)) : null,
+        safe(this.catalogsService.getTypeEquipment(idRoot, 'AREAS')),
+        safe(this.catalogsService.getTypeEquipment(idRoot, 'TIME_CLASIF')),
       ]);
 
       const root     = rootResp    as any;
@@ -308,6 +315,18 @@ export class PdfDetailComponent implements OnInit, OnDestroy, ICellRendererAngul
       const conceptsHierarchy = (conceptsR ?? []) as any[];
       const conceptosBitacora = ((conceptosBitacoraR as any)?.data ?? []) as any[];
       const wpFlat        = (wpFlatR ?? []) as any[];
+      const tiemposResponse = tiemposInactivosR as any;
+      const tiemposInactivos = Array.isArray(tiemposResponse)
+        ? tiemposResponse
+        : Array.isArray(tiemposResponse?.data)
+          ? tiemposResponse.data
+          : Array.isArray(tiemposResponse?.Data)
+            ? tiemposResponse.Data
+            : Array.isArray(tiemposResponse?.items)
+              ? tiemposResponse.items
+              : [];
+      const areas = (areasR ?? []) as any[];
+      const clasificaciones = (clasificacionesR ?? []) as any[];
       // Fila CONTRATO: activity='0', measure='CONTRATO'
       const contratoRow   = wpFlat.find((r: any) =>
         String(r.measure ?? r.Measure ?? '').toUpperCase() === 'CONTRATO' &&
@@ -474,6 +493,44 @@ export class PdfDetailComponent implements OnInit, OnDestroy, ICellRendererAngul
           : { text: 'Sin conceptos registrados.', fontSize: 8, color: GRAY, italics: true, margin: [0, 4, 0, 10] },
       ];
 
+      // • Tiempos inactivos — primera sección del cuerpo, debajo del encabezado del día.
+      const catalogDescription = (catalog: any[], id: any): string => {
+        const match = catalog.find(item => Number(item.id ?? item.Id) === Number(id));
+        return String(match?.description ?? match?.Description ?? '');
+      };
+      const inactiveTimeRows: any[][] = [[
+        hCell('ÁREA'), hCell('CLASIFICACIÓN'), hCell('INICIO', 'center'),
+        hCell('TÉRMINO', 'center'), hCell('PERSONAL', 'right'),
+        hCell('CAUSA'), hCell('HH INACTIVAS', 'right'),
+      ]];
+      for (const [index, item] of tiemposInactivos.entries()) {
+        const start = fmtT(item.timeStart ?? item.TimeStart);
+        const end = fmtT(item.timeEnd ?? item.TimeEnd);
+        const people = Number(item.personal ?? item.Personal ?? 1) || 1;
+        const rawServerTotal = item.total ?? item.Total;
+        const serverTotal = Number(rawServerTotal);
+        const [startHour, startMinute] = start.split(':').map(Number);
+        const [endHour, endMinute] = end.split(':').map(Number);
+        const calculatedTotal = Math.max(0, ((endHour * 60 + endMinute) - (startHour * 60 + startMinute)) / 60) * people;
+        const total = rawServerTotal != null && Number.isFinite(serverTotal) ? serverTotal : calculatedTotal;
+        const alt = index % 2 === 0;
+        inactiveTimeRows.push([
+          dCell(catalogDescription(areas, item.idArea ?? item.IdArea) || String(item.idArea ?? item.IdArea ?? ''), alt),
+          dCell(catalogDescription(clasificaciones, item.idClasification ?? item.IdClasification) || String(item.idClasification ?? item.IdClasification ?? ''), alt),
+          dCell(start, alt, 'center'),
+          dCell(end, alt, 'center'),
+          dCell(String(item.personal ?? item.Personal ?? ''), alt, 'right'),
+          dCell(String(item.cause ?? item.Cause ?? ''), alt),
+          dCell(total.toFixed(2), alt, 'right'),
+        ]);
+      }
+      const pgTiemposInactivos: any[] = [
+        mkSectionTitle('Tiempos Inactivos'),
+        tiemposInactivos.length
+          ? { table: { widths: ['14%', '14%', 48, 48, 48, '*', 62], headerRows: 1, body: inactiveTimeRows }, layout: TBL_LAYOUT, margin: [0, 0, 0, 10] }
+          : { text: 'Sin tiempos inactivos registrados para este día.', fontSize: 8, color: GRAY, italics: true, margin: [0, 4, 0, 10] },
+      ];
+
       // ── Determinar SISTEMA primario para Descripción de la OT ─────────────
       const primarySistema   = conceptsHierarchy[0] ?? null;
       const sistemaAct       = String(primarySistema?.activity ?? '').trim();
@@ -625,7 +682,7 @@ export class PdfDetailComponent implements OnInit, OnDestroy, ICellRendererAngul
       // • Fotografías — 4 por hoja (2 columnas × 2 filas)
       const pgFotos: any[] = [];
       if (fotoImgs.length > 0) {
-        pgFotos.push(mkSectionTitle('Registro Fotográfico', true));
+        pgFotos.push(mkSectionTitle('Registro Fotográfico', true, 'reporte-fotos'));
 
         pgFotos.push({
           text: `Total de fotografías: ${fotoImgs.length}`,
@@ -640,7 +697,7 @@ export class PdfDetailComponent implements OnInit, OnDestroy, ICellRendererAngul
             {
               table: {
                 widths: ['*'],
-                body: [[{ image: f.key, fit: [225, 165], alignment: 'center', margin: [0, 4, 0, 4] }]],
+                body: [[{ image: f.key, fit: [225, 165], alignment: 'center', margin: [0, 4, 0, 4], link: this.getReportSectionUrl('fotos') }]],
               },
               layout: {
                 hLineWidth: () => 0.5, vLineWidth: () => 0.5,
@@ -650,6 +707,7 @@ export class PdfDetailComponent implements OnInit, OnDestroy, ICellRendererAngul
             {
               text: f.desc || ' ',
               fontSize: 7, alignment: 'center', color: GRAY, italics: true,
+              link: this.getReportSectionUrl('fotos'),
               margin: [0, 4, 0, 8],
             },
           ],
@@ -816,12 +874,15 @@ export class PdfDetailComponent implements OnInit, OnDestroy, ICellRendererAngul
         }] : [],
 
         content: [
+          ...pgTiemposInactivos,
           {
             text: [
               { text: 'Ir a: ', bold: true, color: NAVY },
               { text: 'Notas', color: BLUE, decoration: 'underline', linkToDestination: 'reporte-notas' },
               { text: '     ' },
               { text: 'Personal', color: BLUE, decoration: 'underline', linkToDestination: 'reporte-personal' },
+              { text: '     ' },
+              { text: 'Fotos', color: BLUE, decoration: 'underline', link: this.getReportSectionUrl('fotos') },
             ],
             fontSize: 8,
             margin: [0, 0, 0, 8],
