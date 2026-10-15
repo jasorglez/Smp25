@@ -46,10 +46,16 @@ const GRAY  = '#555555';
           <span class="badge bg-dark ms-1">
             Total MXN: {{ total | currency:'MXN':'symbol':'1.2-2' }}
           </span>
-          <span class="badge bg-primary ms-1">
+          <span class="badge bg-primary ms-1" *ngIf="tipoCambio > 0">
             Total USD: {{ totalDolares | currency:'USD':'symbol':'1.2-2' }}
           </span>
-          <span class="small text-muted" *ngIf="tipoCambio > 0">Tipo de cambio: {{ tipoCambio | number:'1.2-4' }} MXN/USD</span>
+          <span class="badge bg-secondary ms-1" *ngIf="!tipoCambio">Total USD: pendiente de tipo de cambio</span>
+          <label class="d-flex align-items-center gap-1 small text-muted mb-0" title="Se usa MXN ÷ tipo de cambio para obtener USD">
+            <span>Tipo de cambio MXN/USD:</span>
+            <input class="form-control form-control-sm" style="width:105px" type="number" min="0.0001" step="0.0001"
+                   [ngModel]="tipoCambio || null" (ngModelChange)="tipoCambio = $event"
+                   (change)="actualizarTipoCambio(tipoCambio)" aria-label="Tipo de cambio MXN por dólar">
+          </label>
 
           <div class="ms-auto d-flex gap-1">
             <button class="btn btn-sm btn-success" (click)="add()" [disabled]="!gridApi" title="Agregar item">
@@ -214,6 +220,7 @@ export class DetalleItemsCotizacionComponent implements ICellRendererAngularComp
 
   cotizacion: any  = null;
   tipoCambio = 0;
+  private tipoCambioRequest: Promise<void> | null = null;
   rowData: CotizacionItem[]   = [];
   originalData: CotizacionItem[] = [];
   selectedRow: CotizacionItem | null = null;
@@ -240,10 +247,8 @@ export class DetalleItemsCotizacionComponent implements ICellRendererAngularComp
   sugerenciasCc:   string[] = [];
 
   get total() { return this.rowData.reduce((s, i) => s + (i.subtotal ?? 0), 0); }
-  get totalDolares() {
-    return this.tipoCambio > 0
-      ? Number((this.total / this.tipoCambio).toFixed(2))
-      : this.rowData.reduce((sum, item) => sum + Math.round((Number(item.dolares) || 0) * 100), 0) / 100;
+  get totalDolares(): number | null {
+    return this.tipoCambio > 0 ? Number((this.total / this.tipoCambio).toFixed(2)) : null;
   }
 
   // ── Enter-nav ─────────────────────────────────────────────────────────────
@@ -306,8 +311,8 @@ export class DetalleItemsCotizacionComponent implements ICellRendererAngularComp
       },
       valueGetter: p => this.tipoCambio > 0
         ? Number((Number(p.data?.subtotal ?? 0) / this.tipoCambio).toFixed(2))
-        : Number(p.data?.dolares ?? 0),
-      valueFormatter: (p) => `US$${Number(p.value ?? 0).toFixed(2)}`,
+        : null,
+      valueFormatter: (p) => p.value == null ? '—' : `US$${Number(p.value).toFixed(2)}`,
       headerTooltip: 'Importe en dólares calculado como subtotal MXN ÷ tipo de cambio',
     },
   ];
@@ -404,7 +409,7 @@ export class DetalleItemsCotizacionComponent implements ICellRendererAngularComp
       this.gridApi.refreshCells({ rowNodes: [event.node], columns: ['subtotal', 'dolares'] });
     } else if (colId === 'nombreMaterial') {
       this.calcularDolares(event.data);
-      this.gridApi.refreshCells({ rowNodes: [event.node], columns: ['unidad', 'precio', 'subtotal'] });
+      this.gridApi.refreshCells({ rowNodes: [event.node], columns: ['unidad', 'precio', 'subtotal', 'dolares'] });
     }
     this.hasChanges = true;
 
@@ -418,20 +423,45 @@ export class DetalleItemsCotizacionComponent implements ICellRendererAngularComp
     }
   }
 
-  private async cargarTipoCambio(): Promise<void> {
-    if (this.tipoCambio > 0) return;
-    try {
-      const result: any = await lastValueFrom(this.administrationService.getTodayExchangeRate());
-      const rate = Number(result?.rate ?? result?.tipoCambio ?? result?.exchangeRate);
-      if (!(rate > 0) || !this.cotizacion?.id) return;
-      this.tipoCambio = rate;
-      this.cotizacion.tipoCambio = rate;
-      await this.svc.actualizarCotizacion(this.cotizacion.id, { tipoCambio: rate });
-      this.aplicarConversionDolares();
-      this.gridApi?.refreshCells({ force: true });
-      this.updateCountInParent();
-    } catch (error) {
-      console.warn('[Cotizaciones] No se pudo obtener el tipo de cambio FIX del día:', error);
+  private cargarTipoCambio(): Promise<void> {
+    if (this.tipoCambio > 0) return Promise.resolve();
+    if (this.tipoCambioRequest) return this.tipoCambioRequest;
+    this.tipoCambioRequest = (async () => {
+      try {
+        const result: any = await lastValueFrom(this.administrationService.getTodayExchangeRate());
+        const rate = Number(result?.rate ?? result?.Rate ?? result?.tipoCambio ?? result?.exchangeRate);
+        if (!(rate > 0)) {
+          console.warn('[Cotizaciones] La API no devolvió un tipo de cambio válido:', result);
+          return;
+        }
+        this.tipoCambio = rate;
+        this.cotizacion.tipoCambio = rate;
+        if (this.cotizacion?.id) await this.svc.actualizarCotizacion(this.cotizacion.id, { tipoCambio: rate });
+        this.aplicarConversionDolares();
+        this.gridApi?.refreshCells({ force: true });
+        this.updateCountInParent();
+      } catch (error) {
+        console.error('[Cotizaciones] No se pudo obtener el tipo de cambio FIX del día:', error);
+      }
+    })().finally(() => { this.tipoCambioRequest = null; });
+    return this.tipoCambioRequest;
+  }
+
+  async actualizarTipoCambio(value: any): Promise<void> {
+    const rate = Number(value);
+    if (!Number.isFinite(rate) || rate <= 0) return;
+    this.tipoCambio = rate;
+    this.cotizacion.tipoCambio = rate;
+    this.aplicarConversionDolares();
+    this.gridApi?.refreshCells({ force: true });
+    this.updateCountInParent();
+    if (this.cotizacion?.id) {
+      try {
+        await this.svc.actualizarCotizacion(this.cotizacion.id, { tipoCambio: rate });
+      } catch (error) {
+        console.error('[Cotizaciones] No se pudo guardar el tipo de cambio:', error);
+        Swal.fire('Error', 'No se pudo guardar el tipo de cambio de la cotización.', 'error');
+      }
     }
   }
 
@@ -892,6 +922,11 @@ export class DetalleItemsCotizacionComponent implements ICellRendererAngularComp
     this.isLoadingPdf = true;
     try {
       await this.cargarTipoCambio();
+      if (!(this.tipoCambio > 0)) {
+        this.isLoadingPdf = false;
+        Swal.fire('Tipo de cambio pendiente', 'Captura el tipo de cambio MXN/USD en el detalle antes de generar el PDF.', 'warning');
+        return;
+      }
       const idRoot = this.context?.idCompany;
       const [rootData, loadedItems] = await Promise.all([
         lastValueFrom(this.rootSvc.getRootbyId(idRoot)) as Promise<any>,
