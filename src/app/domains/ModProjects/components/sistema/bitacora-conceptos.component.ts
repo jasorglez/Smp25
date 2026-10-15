@@ -104,7 +104,7 @@ export class BitacoraConceptosComponent extends BitacoraBaseComponent {
     this.workprogramsService.getWorkPrograms(idProject, 'Project').subscribe({
       next: (rows: any[]) => {
         const directConcepts = (rows ?? []).filter((row: any) =>
-          String(row.typeActivity ?? row.typeactivity ?? row.TypeActivity ?? '').trim().toLowerCase() === 'concept' &&
+          String(row.typeActivity ?? row.typeactivity ?? row.TypeActivity ?? '').trim().toUpperCase() === 'CONCEPT' &&
           Number(row.idConvention ?? row.id_convention ?? row.IdConvention ?? 0) === Number(idConvention ?? 0)
         );
         console.log('[REPORTE-CONCEPTOS] Respuesta Workprogram/{id}/Project', {
