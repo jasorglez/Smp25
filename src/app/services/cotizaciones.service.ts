@@ -17,6 +17,8 @@ export interface Cotizacion {
   lugar: string;
   /** Familia de materiales que se muestran en el detalle (vacío = todas) */
   familia?: string;
+  /** Varias familias de materiales; si falta, se usa familia para cotizaciones anteriores */
+  familias?: string[];
   idVendedor: number;
   nombreVendedor: string;
   /** ID del catálogo de clientes — null en cotizaciones de prospectos */
@@ -47,6 +49,11 @@ export interface CotizacionItem {
   dolares?: number;
   dolaresManual?: boolean;
   __isNew?: boolean;
+}
+
+export function familiasDeCotizacion(cotizacion: Pick<Cotizacion, 'familia' | 'familias'>): string[] {
+  if (Array.isArray(cotizacion?.familias)) return cotizacion.familias.filter(Boolean);
+  return cotizacion?.familia ? [cotizacion.familia] : [];
 }
 
 export interface CotizacionConfig {
@@ -126,6 +133,7 @@ export class CotizacionesService {
       puestoProspecto:  c.puestoProspecto  ?? '',
       lugar:            c.lugar            ?? '',
       familia:          c.familia          ?? '',
+      familias:         c.familias         ?? (c.familia ? [c.familia] : []),
       idVendedor:       c.idVendedor       ?? 0,
       nombreVendedor:   c.nombreVendedor   ?? '',
       idCliente:        c.idCliente        ?? null,

@@ -84,3 +84,35 @@
     </div>
   </div>
 </section>
+
+<div class="modal-backdrop fade show" *ngIf="filaFamilias" (click)="cerrarFamilias()"></div>
+<div class="modal d-block" *ngIf="filaFamilias" role="dialog" aria-modal="true" aria-labelledby="familias-cotizacion-title">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="familias-cotizacion-title">Familias de la cotización</h5>
+        <button type="button" class="btn-close" aria-label="Cerrar" (click)="cerrarFamilias()"></button>
+      </div>
+      <div class="modal-body">
+        <p class="small text-muted mb-2">Selecciona una o varias familias. Sin selección se muestran todos los materiales.</p>
+        <div *ngIf="!opcionesFamilia.length" class="small text-muted">No hay familias en el catálogo de esta empresa.</div>
+        <div class="row g-2" style="max-height: 45vh; overflow-y: auto;">
+          <div class="col-12 col-sm-6" *ngFor="let familia of opcionesFamilia">
+            <label class="form-check border rounded p-2 ps-4 mb-0 w-100">
+              <input class="form-check-input" type="checkbox" [checked]="familiasMarcadas.includes(familia)"
+                     (change)="alternarFamilia(familia, $any($event.target).checked)">
+              <span class="form-check-label">{{ familia }}</span>
+            </label>
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-sm btn-outline-secondary" (click)="familiasMarcadas = []">Todas</button>
+        <button type="button" class="btn btn-sm btn-secondary" (click)="cerrarFamilias()">Cancelar</button>
+        <button type="button" class="btn btn-sm btn-primary" [disabled]="guardandoFamilias" (click)="aplicarFamilias()">
+          {{ guardandoFamilias ? 'Guardando...' : 'Guardar selección' }}
+        </button>
+      </div>
+    </div>
+  </div>
+</div>

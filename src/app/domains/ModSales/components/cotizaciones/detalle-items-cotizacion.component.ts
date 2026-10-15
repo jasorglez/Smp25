@@ -7,7 +7,7 @@ import { ICellRendererAngularComp } from 'ag-grid-angular';
 import { DomSanitizer, SafeResourceUrl } from '@angular/platform-browser';
 import { pdfPreviewUrl } from 'app/helpers/pdf-viewer';
 import { AG_GRID_LOCALE_ES } from 'assets/i18n/ag-grid.locale.es';
-import { CotizacionesService, CotizacionItem, ESTADOS_COTIZACION, CotizacionConfig } from 'app/services/cotizaciones.service';
+import { CotizacionesService, CotizacionItem, ESTADOS_COTIZACION, CotizacionConfig, familiasDeCotizacion } from 'app/services/cotizaciones.service';
 import { SignalsService } from 'app/services/signals.service';
 import { MaterialsService } from 'app/services/materials.service';
 import { RootService } from 'app/services/root.service';
@@ -353,6 +353,12 @@ export class DetalleItemsCotizacionComponent implements ICellRendererAngularComp
     this.updateCountInParent();
   }
 
+  actualizarFamilias(familias: string[]): void {
+    this.cotizacion.familias = [...familias];
+    this.cotizacion.familia = familias.length === 1 ? familias[0] : '';
+    if (this.mode === 'items') this.cargarMateriales();
+  }
+
   // ── ICellRendererAngularComp ───────────────────────────────────────────────
 
   agInit(params: ICellRendererParams): void {
@@ -376,6 +382,10 @@ export class DetalleItemsCotizacionComponent implements ICellRendererAngularComp
   // cada vez que el padre actualiza rowData (p.ej. suscripción Firestore)
   refresh(params: ICellRendererParams): boolean {
     this.params = params;
+    const familias = familiasDeCotizacion(params.data);
+    if (familias.join('\u0000') !== familiasDeCotizacion(this.cotizacion).join('\u0000')) {
+      this.actualizarFamilias(familias);
+    }
     const rate = Number(params.data?.tipoCambio) || 0;
     if (rate > 0 && rate !== this.tipoCambio) {
       this.aplicarTipoCambio(rate);
@@ -405,10 +415,10 @@ export class DetalleItemsCotizacionComponent implements ICellRendererAngularComp
     if (!idCompany) return;
     this.matSvc.getMaterialsForApu(idCompany).subscribe({
       next: (data: any[]) => {
-        // Filtrar por la familia definida en esta cotización (vacío = todas)
-        const familiaFiltro: string = this.cotizacion?.familia ?? '';
-        const filtered = familiaFiltro
-          ? data.filter(i => (i.familia ?? '') === familiaFiltro)
+        // Sin familias seleccionadas se muestran todos los materiales.
+        const familias = familiasDeCotizacion(this.cotizacion);
+        const filtered = familias.length
+          ? data.filter(i => familias.includes(i.familia ?? ''))
           : data;
         this.materiales = filtered.map(i => ({
           id:          i.id,

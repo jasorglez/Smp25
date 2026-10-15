@@ -4,7 +4,7 @@ import { FormsModule } from '@angular/forms';
 import { AgGridModule } from 'ag-grid-angular';
 import { ColDef, GridApi, GridReadyEvent } from 'ag-grid-enterprise';
 import { AG_GRID_LOCALE_ES } from 'assets/i18n/ag-grid.locale.es';
-import { CotizacionesService, ESTADOS_COTIZACION, CotizacionConfig, CONFIG_DEFAULT } from 'app/services/cotizaciones.service';
+import { CotizacionesService, ESTADOS_COTIZACION, CotizacionConfig, CONFIG_DEFAULT, familiasDeCotizacion } from 'app/services/cotizaciones.service';
 import { ProspectosService, Prospecto } from 'app/services/prospectos.service';
 import { SignalsService } from 'app/services/signals.service';
 import { CustomersService } from 'app/services/customers.service';
@@ -54,6 +54,10 @@ export class CotizacionesComponent implements OnInit, OnDestroy {
 
   prospectos: Prospecto[] = [];
   familias:   string[]    = [];   // familias disponibles para el selector
+  filaFamilias: any = null;
+  familiasMarcadas: string[] = [];
+  opcionesFamilia: string[] = [];
+  guardandoFamilias = false;
   estados = ESTADOS_COTIZACION;
   config: CotizacionConfig = { ...CONFIG_DEFAULT };
 
@@ -73,6 +77,7 @@ export class CotizacionesComponent implements OnInit, OnDestroy {
       const sellerChanged = this.loadedSeller !== seller;
       if (rootChanged || sellerChanged) {
         this.sub?.unsubscribe();
+        this.filaFamilias = null;
         this.allRowData = [];
         this.rowData = [];
         this.originalData = [];
@@ -98,7 +103,7 @@ export class CotizacionesComponent implements OnInit, OnDestroy {
   }
 
   // ── Enter-key navigation ─────────────────────────────────────────────────
-  private editableColumnOrder = ['numCotizacion', 'destinatario', 'lugar', 'tipoCambio', 'familia', 'notas'];
+  private editableColumnOrder = ['numCotizacion', 'destinatario', 'lugar', 'tipoCambio', 'notas'];
   private enterPressed = false;
 
   defaultColDef: ColDef = {
@@ -237,13 +242,12 @@ export class CotizacionesComponent implements OnInit, OnDestroy {
       headerTooltip: 'Pesos mexicanos por dólar (MXN/USD), aplicable a toda la cotización',
     },
     {
-      field: 'familia', headerName: 'Familia', width: 150, editable: true,
-      cellEditor: 'agSelectCellEditor',
-      cellEditorParams: () => ({ values: ['', ...this.familias] }),
-      cellRenderer: (p: any) => p.value
-        ? `<span class="badge bg-info text-dark">${p.value}</span>`
-        : `<span class="text-muted" style="font-size:.8em">Todas</span>`,
-      tooltipValueGetter: () => 'Familia de materiales que se muestran en el detalle',
+      colId: 'familias', headerName: 'Familias', width: 220, editable: false,
+      valueGetter: p => familiasDeCotizacion(p.data).join(', ') || 'Todas',
+      onCellClicked: p => this.abrirFamilias(p.data),
+      cellStyle: { cursor: 'pointer' },
+      headerTooltip: 'Haz clic en una celda para elegir una o varias familias de materiales',
+      tooltipValueGetter: p => familiasDeCotizacion(p.data).join(', ') || 'Todas las familias',
     },
     {
       field: 'estado', headerName: 'Estado', width: 130, editable: false,
@@ -295,6 +299,48 @@ export class CotizacionesComponent implements OnInit, OnDestroy {
           void this.detalleActivo.generarPdf();
         }
       });
+    }
+  }
+
+  abrirFamilias(cotizacion: any): void {
+    if (!cotizacion) return;
+    this.filaFamilias = cotizacion;
+    this.familiasMarcadas = [...familiasDeCotizacion(cotizacion)];
+    this.opcionesFamilia = [...new Set([...this.familias, ...this.familiasMarcadas])].sort((a, b) => a.localeCompare(b, 'es'));
+  }
+
+  alternarFamilia(familia: string, checked: boolean): void {
+    this.familiasMarcadas = checked
+      ? [...this.familiasMarcadas, familia]
+      : this.familiasMarcadas.filter(item => item !== familia);
+  }
+
+  cerrarFamilias(): void {
+    this.filaFamilias = null;
+  }
+
+  async aplicarFamilias(): Promise<void> {
+    const cotizacion = this.filaFamilias;
+    if (!cotizacion || this.guardandoFamilias) return;
+    const familias = [...this.familiasMarcadas];
+    const familia = familias.length === 1 ? familias[0] : '';
+    this.guardandoFamilias = true;
+    try {
+      if (cotizacion.id && !cotizacion.__isNew) {
+        await this.svc.actualizarCotizacion(cotizacion.id, { familias, familia });
+      }
+      cotizacion.familias = familias;
+      cotizacion.familia = familia;
+      if (this.detalleActivo?.cotizacion?.id === cotizacion.id) {
+        this.detalleActivo.actualizarFamilias(familias);
+      }
+      this.gridApi?.refreshCells({ columns: ['familias'], force: true });
+      this.cerrarFamilias();
+    } catch (error) {
+      console.error('[Cotizaciones] Error al guardar familias:', error);
+      Swal.fire('Error', 'No se pudieron guardar las familias.', 'error');
+    } finally {
+      this.guardandoFamilias = false;
     }
   }
 
@@ -447,6 +493,7 @@ export class CotizacionesComponent implements OnInit, OnDestroy {
       puestoProspecto:  '',
       lugar:           this.config.lugarDefault ?? '',
       familia:         '',
+      familias:        [],
       idVendedor:      this.idVendedor,
       nombreVendedor:  this.nombreVendedor,
       idCompany:       this.idCompany,
@@ -498,6 +545,7 @@ export class CotizacionesComponent implements OnInit, OnDestroy {
             numCotizacion: c.numCotizacion ?? '',
             lugar:         c.lugar         ?? '',
             familia:       c.familia        ?? '',
+            familias:      familiasDeCotizacion(c),
             tipoCambio:    Number(c.tipoCambio) || 0,
             notas:         c.notas         ?? '',
           });
