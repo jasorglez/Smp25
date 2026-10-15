@@ -1,4 +1,4 @@
-import { Component, inject } from '@angular/core';
+import { Component, inject, OnDestroy } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { AgGridModule } from 'ag-grid-angular';
@@ -6,6 +6,8 @@ import { ColDef } from 'ag-grid-enterprise';
 import { BitacoraBaseComponent, BITACORA_STYLES } from './bitacora-base.component';
 import { ImageHandlerService } from 'app/services/image-handler.service';
 import { alerts } from 'app/helpers/alerts';
+import { SignalrService } from 'app/services/signalr.service';
+import { Subscription } from 'rxjs';
 
 @Component({
   selector: 'app-bitacora-fotos',
@@ -160,8 +162,11 @@ import { alerts } from 'app/helpers/alerts';
     @media (max-width:560px) { .photo-toolbar { align-items:flex-start; flex-direction:column; } .photo-toolbar-actions { width:100%; flex-wrap:wrap; } .photo-modal-backdrop { padding:8px; } .photo-modal-header,.photo-modal-body { padding-left:14px; padding-right:14px; } .photo-preview { height:180px; } .photo-modal-footer { align-items:flex-start; flex-direction:column; padding:12px 14px; } .photo-modal-footer > div { width:100%; justify-content:flex-end; } }
   `],
 })
-export class BitacoraFotosComponent extends BitacoraBaseComponent {
+export class BitacoraFotosComponent extends BitacoraBaseComponent implements OnDestroy {
   private imageHandlerService = inject(ImageHandlerService);
+  private signalRService = inject(SignalrService);
+  private photoUpdateSub?: Subscription;
+  private readonly telegramPhotos = new Map<number, any>();
 
   readonly bitacoraType   = 'fotos';
   readonly typeNoteValue  = 'Photo';
@@ -177,6 +182,69 @@ export class BitacoraFotosComponent extends BitacoraBaseComponent {
   draggingFile = false;
   uploadError = '';
   private editingRow: any = null;
+
+  override ngOnInit(): void {
+    super.ngOnInit();
+    this.photoUpdateSub = this.signalRService.photoUpdate$.subscribe(photo => this.addTelegramPhoto(photo));
+  }
+
+  ngOnDestroy(): void {
+    this.photoUpdateSub?.unsubscribe();
+  }
+
+  protected override loadData(): void {
+    if (!this.reportData?.id) return;
+    this.logbookService.getInfoByReporte(this.reportData.id, this.typeNoteValue).subscribe({
+      next: (resp: any) => {
+        const loaded = resp?.success ? (resp.data || []).map((item: any, i: number) => ({
+          ...this.remapFromDb(item),
+          id: item.id || `photo_${Date.now()}_${i}`,
+          imageUrl: item.imageUrl || item.imageAzure || item.ImageUrl || item.ImageAzure || null,
+          __isNew: false,
+          __modified: false,
+        })) : [];
+        const telegramPhotos = [...this.telegramPhotos.values()]
+          .filter(photo => Number(photo.idReporte) === Number(this.reportData.id));
+        this.rowData = [...telegramPhotos, ...loaded.filter((photo: any) =>
+          !telegramPhotos.some((incoming: any) => Number(incoming.id) === Number(photo.id))
+        )];
+        this.gridApi?.setGridOption('rowData', this.rowData);
+        this.notifyParentCount(this.rowData.length);
+      },
+      error: () => (this.rowData = []),
+    });
+  }
+
+  private addTelegramPhoto(data: any): void {
+    if (!data || !this.reportData?.id) return;
+    const reportId = Number(data.IdReporte ?? data.idReporte ?? 0);
+    if (reportId !== Number(this.reportData.id)) return;
+
+    const id = Number(data.Id ?? data.id ?? 0);
+    const imageUrl = data.ImageAzure || data.imageAzure || data.ImageUrl || data.imageUrl;
+    if (!imageUrl) return;
+
+    const photo = {
+      ...data,
+      id: id || `telegram_${Date.now()}`,
+      idReporte: reportId,
+      imageUrl,
+      description: data.Description ?? data.description ?? 'Foto agregada desde Telegram',
+      date: data.Date ?? data.date ?? this.reportData.date,
+      __isNew: false,
+      __modified: false,
+    };
+    if (id) this.telegramPhotos.set(id, photo);
+
+    const exists = this.rowData.some(item =>
+      (id && Number(item.id) === id) || item.imageUrl === imageUrl
+    );
+    if (exists) return;
+
+    this.rowData = [photo, ...this.rowData];
+    this.gridApi?.setGridOption('rowData', this.rowData);
+    this.notifyParentCount(this.rowData.length);
+  }
 
   override readonly gridOptions: any = {
     headerHeight: 30, rowHeight: 60, rowSelection: 'single',

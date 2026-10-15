@@ -1,6 +1,6 @@
 import { Injectable } from '@angular/core';
 import * as signalR from '@microsoft/signalr';
-import { BehaviorSubject } from 'rxjs';
+import { BehaviorSubject, Subject } from 'rxjs';
 import { environment } from '@env/environment';
 
 @Injectable({
@@ -11,7 +11,7 @@ export class SignalrService {
   private connectionState = new BehaviorSubject<string>('Disconnected');
 
   // Observables para los eventos - MANTENIDOS EXACTAMENTE IGUAL
-  private photoUpdateSubject = new BehaviorSubject<any>(null);
+  private photoUpdateSubject = new Subject<any>();
   private textUpdateSubject = new BehaviorSubject<any>(null);
 
   // **NUEVO: Observable para nuevos reportes diarios**

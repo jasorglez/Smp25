@@ -60,6 +60,7 @@ export class SistemaComponent implements OnInit, OnDestroy {
   readonly subcontractorContext = inject(SubcontractorContextService);
 
   private signalRSub!: Subscription;
+  private readonly handledPhotoUpdateIds = new Set<number>();
   private reloadTimeout: any = null;
   private outingSyncInFlight = '';
   private outingSyncCompleted = '';
@@ -401,9 +402,33 @@ export class SistemaComponent implements OnInit, OnDestroy {
       }
     };
 
+    const photoHandler = (data: any) => {
+      const projectId = data?.IdProject ?? data?.idProject;
+      if (!projectId || +projectId !== this.idProject) return;
+
+      const photoId = Number(data?.Id ?? data?.id ?? 0);
+      if (photoId && this.handledPhotoUpdateIds.has(photoId)) return;
+      if (photoId) this.handledPhotoUpdateIds.add(photoId);
+
+      const reportId = Number(data?.IdReporte ?? data?.idReporte ?? 0);
+      if (!reportId || !this.gridApi) return;
+
+      let reportFound = false;
+      this.gridApi.forEachNode(node => {
+        if (Number(node.data?.id) !== reportId) return;
+        reportFound = true;
+        node.data.fotos = Number(node.data.fotos || 0) + (photoId ? 1 : 0);
+        this.gridApi.refreshCells({ rowNodes: [node], columns: ['fotos'], force: true });
+      });
+
+      // Si Telegram acaba de crear el reporte, actualiza la lista; para un
+      // reporte existente dejamos abierto el detalle de fotos.
+      if (!reportFound) this.scheduleReload();
+    };
+
     this.signalRSub = new Subscription();
     this.signalRSub.add(this.signalRService.textUpdate$.subscribe(handler));
-    this.signalRSub.add(this.signalRService.photoUpdate$.subscribe(handler));
+    this.signalRSub.add(this.signalRService.photoUpdate$.subscribe(photoHandler));
     this.signalRSub.add(this.signalRService.newDailyReport$.subscribe(handler));
   }
 

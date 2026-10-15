@@ -1,4 +1,4 @@
-import { Component, Input, inject, OnInit } from '@angular/core';
+import { Component, Input, inject, OnDestroy, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { PdfShareButtonsComponent } from 'app/shared/components/pdf-share-buttons/pdf-share-buttons.component';
 import { DomSanitizer, SafeResourceUrl } from '@angular/platform-browser';
@@ -10,7 +10,8 @@ import { Base64EncodeService } from 'app/services/base64encode.service';
 import { SignalsService }      from 'app/services/signals.service';
 import { WorkprogramsService } from 'app/services/workprograms.service';
 import { TrackingService }    from 'app/services/tracking.service';
-import { lastValueFrom }       from 'rxjs';
+import { SignalrService }      from 'app/services/signalr.service';
+import { lastValueFrom, Subscription } from 'rxjs';
 import pdfMake   from 'pdfmake/build/pdfmake';
 import * as pdfFonts from 'pdfmake/build/vfs_fonts';
 
@@ -142,7 +143,7 @@ const mkSubTitle = (txt: string): any => ({
 </div>
   `,
 })
-export class PdfDetailComponent implements OnInit, ICellRendererAngularComp {
+export class PdfDetailComponent implements OnInit, OnDestroy, ICellRendererAngularComp {
   @Input() data: any;
   @Input() context: any;
 
@@ -152,7 +153,11 @@ export class PdfDetailComponent implements OnInit, ICellRendererAngularComp {
   private signalsService      = inject(SignalsService);
   private workprogramsService = inject(WorkprogramsService);
   private trackingService     = inject(TrackingService);
+  private signalRService     = inject(SignalrService);
   private sanitizer           = inject(DomSanitizer);
+  private photoUpdateSub?: Subscription;
+  private photoRefreshTimeout?: ReturnType<typeof setTimeout>;
+  private pdfObjectUrl?: string;
 
   pdfUrl: SafeResourceUrl | null = null;
   pdfBlob: Blob | null = null;
@@ -178,7 +183,19 @@ export class PdfDetailComponent implements OnInit, ICellRendererAngularComp {
     if (this.data) {
       this.reportData = this.data;
       this.generatePdf();
+      this.photoUpdateSub = this.signalRService.photoUpdate$.subscribe(photo => {
+        const reportId = Number(photo?.IdReporte ?? photo?.idReporte ?? 0);
+        if (reportId !== Number(this.reportData?.id)) return;
+        if (this.photoRefreshTimeout) clearTimeout(this.photoRefreshTimeout);
+        this.photoRefreshTimeout = setTimeout(() => this.generatePdf(), 350);
+      });
     }
+  }
+
+  ngOnDestroy(): void {
+    this.photoUpdateSub?.unsubscribe();
+    if (this.photoRefreshTimeout) clearTimeout(this.photoRefreshTimeout);
+    if (this.pdfObjectUrl) URL.revokeObjectURL(this.pdfObjectUrl);
   }
 
   // ── Acciones ───────────────────────────────────────────────────────────────
@@ -769,7 +786,12 @@ export class PdfDetailComponent implements OnInit, ICellRendererAngularComp {
       this.trackingService.addLog(this.trackingService.getnameComp(), 'Generó PDF detalle bitácora OT', 'Proyectos / Sistema', this.trackingService.getEmail());
       pdfMake.createPdf(docDef).getBlob((blob: Blob) => {
         this.pdfBlob = blob;
-        const url = URL.createObjectURL(blob);
+        // Mantén oculto el panel de miniaturas del visor PDF del navegador.
+        if (this.pdfObjectUrl) URL.revokeObjectURL(this.pdfObjectUrl);
+        this.pdfObjectUrl = URL.createObjectURL(blob);
+        // Oculta la barra lateral y la barra del visor nativo para que la
+        // vista preliminar muestre únicamente las páginas del reporte.
+        const url = `${this.pdfObjectUrl}#toolbar=0&navpanes=0&pagemode=none`;
         this.pdfUrl = this.sanitizer.bypassSecurityTrustResourceUrl(url);
         this.isLoading = false;
       });
