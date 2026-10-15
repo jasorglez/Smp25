@@ -828,6 +828,7 @@ export class DetalleItemsCotizacionComponent implements ICellRendererAngularComp
               firmaStack1.push({ text: cot.nombreVendedor ?? '', fontSize: 7, bold: true, alignment: 'center', margin: [0,4,0,0] });
               firmaStack1.push({ text: 'VENDEDOR', fontSize: 6, color: GRAY, alignment: 'center', margin: [0,0,0, signatureB64 ? 15 : 20] });
               const bloqueInferiorEmail: any = {
+                unbreakable: true,
                 stack: [
                   { text: 'CON LAS SIGUIENTES CLÁUSULAS', fontSize: 6.5, bold: true, color: NAVY, margin: [0,0,0,3] },
                   { ul: clausulas.map(c => ({ text: textoPdf(c), fontSize: 6, color: GRAY, margin: [0,0,0,2] })), margin: [0,0,0,3] },
@@ -1111,6 +1112,7 @@ export class DetalleItemsCotizacionComponent implements ICellRendererAngularComp
 
       // Cláusulas + firma en un bloque único para que nunca se separen entre páginas
       const bloqueInferior: any = {
+        unbreakable: true,
         stack: [
           { text: 'CON LAS SIGUIENTES CLÁUSULAS', fontSize: 6.5, bold: true, color: NAVY, margin: [0,0,0,3] },
           {
