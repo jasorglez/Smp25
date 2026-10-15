@@ -724,6 +724,7 @@ export class DetalleItemsCotizacionComponent implements ICellRendererAngularComp
               };
               const docDef: any = {
                 pageSize: 'LETTER',
+                pageOrientation: 'portrait',
                 pageMargins: [40, 40, 40, 60],
                 footer: () => ({
                   stack: [
@@ -1000,6 +1001,7 @@ export class DetalleItemsCotizacionComponent implements ICellRendererAngularComp
 
       const docDef: any = {
         pageSize: 'LETTER',
+        pageOrientation: 'portrait',
         pageMargins: [40, 40, 40, 60],
         footer: makeFooter,
         content: [header, destinatario, { text: 'ASUNTO: COTIZACIÓN', fontSize: 8, bold: true, color: NAVY, margin: [0,0,0,8] }, textoSuperior, tabla, bloqueInferior],

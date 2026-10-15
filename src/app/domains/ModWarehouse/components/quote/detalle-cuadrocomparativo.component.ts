@@ -388,7 +388,7 @@ export class DetalleCuadroComparativoComponent implements ICellRendererAngularCo
     // ── docDefinition ──
     const docDef: any = {
       pageSize:        'LETTER',
-      pageOrientation: provCols.length >= 3 ? 'landscape' : 'portrait',
+      pageOrientation: 'portrait',
       pageMargins:     [40, 40, 40, 55],
       background: watermarkBase64 ? [{ image: 'watermark', width: 400, opacity: 0.15, absolutePosition: { x: 106, y: 250 } }] : [],
       images: watermarkBase64

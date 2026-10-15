@@ -267,7 +267,7 @@ export class DetailCellRendererRequisitionReportComponent implements OnDestroy {
 
     return {
       pageSize: 'LETTER',
-      pageOrientation: 'landscape',
+      pageOrientation: 'portrait',
       pageMargins: [30, 80, 30, 40],
       defaultStyle: {
         fontSize: 9

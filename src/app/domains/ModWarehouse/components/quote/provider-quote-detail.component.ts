@@ -582,6 +582,7 @@ export class ProviderQuoteDetailComponent implements OnInit {
       // Build PDF
       const docDefinition: any = {
         pageSize: 'LETTER',
+        pageOrientation: 'portrait',
         pageMargins: [40, 40, 40, 60],
         background: watermarkBase64 ? [
           {

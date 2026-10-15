@@ -108,7 +108,7 @@ export class DetailCellRendererEntryReportComponent implements OnInit, ICellRend
       // Create PDF definition
       const docDefinition = {
         pageSize: 'LETTER',
-        pageOrientation: 'landscape',
+        pageOrientation: 'portrait',
         pageMargins: [40, 60, 40, 80], // Increased bottom margin for footer
         defaultStyle: {
           fontSize: 8,
