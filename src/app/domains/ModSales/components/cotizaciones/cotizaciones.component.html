@@ -50,7 +50,7 @@
       </div>
       <div class="sales-mod-reveal-delay mb-2" *ngIf="showConfig && root">
         <div class="sales-mod-card p-3">
-          <app-config-cotizaciones [idCompany]="root"></app-config-cotizaciones>
+          <app-config-cotizaciones [idCompany]="root" (configGuardada)="actualizarConfiguracion($event)"></app-config-cotizaciones>
         </div>
       </div>
 

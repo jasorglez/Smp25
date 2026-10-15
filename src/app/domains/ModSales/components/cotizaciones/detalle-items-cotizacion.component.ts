@@ -7,7 +7,7 @@ import { ICellRendererAngularComp } from 'ag-grid-angular';
 import { DomSanitizer, SafeResourceUrl } from '@angular/platform-browser';
 import { pdfPreviewUrl } from 'app/helpers/pdf-viewer';
 import { AG_GRID_LOCALE_ES } from 'assets/i18n/ag-grid.locale.es';
-import { CotizacionesService, CotizacionItem, ESTADOS_COTIZACION, CotizacionConfig, CONFIG_DEFAULT } from 'app/services/cotizaciones.service';
+import { CotizacionesService, CotizacionItem, ESTADOS_COTIZACION, CotizacionConfig } from 'app/services/cotizaciones.service';
 import { SignalsService } from 'app/services/signals.service';
 import { MaterialsService } from 'app/services/materials.service';
 import { RootService } from 'app/services/root.service';
@@ -738,7 +738,7 @@ export class DetalleItemsCotizacionComponent implements ICellRendererAngularComp
               const fechaStr = fecha.toLocaleDateString('es-MX', { day: 'numeric', month: 'long', year: 'numeric' }).toUpperCase();
               const lugarFecha   = `${(cot.lugar ?? '').toUpperCase()}, A ${fechaStr}`;
               const companyName  = (rootData?.name ?? 'EMPRESA').toUpperCase();
-              const cfg: CotizacionConfig = this.context?.config ?? CONFIG_DEFAULT;
+              const cfg: CotizacionConfig = await this.svc.getConfig(idRoot);
 
               const header: any = {
                 columns: [
@@ -781,6 +781,7 @@ export class DetalleItemsCotizacionComponent implements ICellRendererAngularComp
               };
 
               const tableHeader = [
+                { text: 'No.', style: 'thCell', fillColor: NAVY, color: '#fff', alignment: 'center' },
                 { text: 'DESCRIPCIÓN / CONCEPTO', style: 'thCell', fillColor: NAVY, color: '#fff', alignment: 'left' },
                 { text: 'CANT',    style: 'thCell', fillColor: NAVY, color: '#fff', alignment: 'center' },
                 { text: 'UNIDAD',  style: 'thCell', fillColor: NAVY, color: '#fff', alignment: 'center' },
@@ -789,6 +790,7 @@ export class DetalleItemsCotizacionComponent implements ICellRendererAngularComp
                 { text: 'DÓLARES USD', style: 'thCell', fillColor: NAVY, color: '#fff', alignment: 'right' },
               ];
               const tableRows = items.map((item, idx) => [
+                { text: String(idx + 1), fontSize: 7, alignment: 'center', fillColor: idx % 2 === 1 ? LBLUE : null },
                 { text: textoPdf(item.nombreMaterial), fontSize: 7, fillColor: idx % 2 === 1 ? LBLUE : null },
                 { text: String(item.cantidad ?? ''), fontSize: 7, alignment: 'center', fillColor: idx % 2 === 1 ? LBLUE : null },
                 { text: item.unidad ?? '', fontSize: 7, alignment: 'center', fillColor: idx % 2 === 1 ? LBLUE : null },
@@ -797,13 +799,13 @@ export class DetalleItemsCotizacionComponent implements ICellRendererAngularComp
                 { text: `US$${Number(item.dolares ?? 0).toLocaleString('es-MX', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`, fontSize: 7, alignment: 'right', fillColor: idx % 2 === 1 ? LBLUE : null },
               ]);
               const totalRow = [
-                { text: '', colSpan: 3, border: [false,false,false,false] }, {}, {},
+                { text: '', colSpan: 4, border: [false,false,false,false] }, {}, {}, {},
                 { text: 'TOTAL:', fontSize: 8, bold: true, alignment: 'right', fillColor: NAVY, color: '#fff' },
                 { text: `$${Number(cot.total ?? 0).toLocaleString('es-MX', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`, fontSize: 8, bold: true, alignment: 'right', fillColor: NAVY, color: '#fff' },
                 { text: `US$${(items.reduce((sum, item) => sum + Math.round((Number(item.dolares) || 0) * 100), 0) / 100).toLocaleString('es-MX', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`, fontSize: 8, bold: true, alignment: 'right', fillColor: NAVY, color: '#fff' },
               ];
               const tabla: any = {
-                table: { headerRows: 1, widths: ['*', 28, 35, 50, 55, 58], body: [tableHeader, ...tableRows, totalRow] },
+                table: { headerRows: 1, widths: [20, '*', 26, 34, 48, 54, 56], body: [tableHeader, ...tableRows, totalRow] },
                 layout: { hLineWidth: () => 0.5, vLineWidth: () => 0.5, hLineColor: () => '#cccccc', vLineColor: () => '#cccccc' },
                 margin: [0, 0, 0, 10],
               };
@@ -976,9 +978,10 @@ export class DetalleItemsCotizacionComponent implements ICellRendererAngularComp
         return;
       }
       const idRoot = this.context?.idCompany;
-      const [rootData, loadedItems] = await Promise.all([
+      const [rootData, loadedItems, cfg] = await Promise.all([
         lastValueFrom(this.rootSvc.getRootbyId(idRoot)) as Promise<any>,
         this.svc.getItems(this.cotizacion.id),
+        this.svc.getConfig(idRoot),
       ]);
       const items = loadedItems.map(item => ({
         ...item,
@@ -1042,8 +1045,6 @@ export class DetalleItemsCotizacionComponent implements ICellRendererAngularComp
         margin: [0, 0, 0, 10],
       };
 
-      const cfg: CotizacionConfig = this.context?.config ?? CONFIG_DEFAULT;
-
       const textoSuperior: any = {
         stack: [
           { text: textoPdf(cfg.textoPrincipal),  fontSize: 7, color: GRAY, alignment: 'left', margin: [0,0,0,6] },
@@ -1052,6 +1053,7 @@ export class DetalleItemsCotizacionComponent implements ICellRendererAngularComp
       };
 
       const tableHeader = [
+        { text: 'No.', style: 'thCell', fillColor: NAVY, color: '#fff', alignment: 'center' },
         { text: 'DESCRIPCIÓN / CONCEPTO', style: 'thCell', fillColor: NAVY, color: '#fff', alignment: 'left' },
         { text: 'CANT',    style: 'thCell', fillColor: NAVY, color: '#fff', alignment: 'center' },
         { text: 'UNIDAD',  style: 'thCell', fillColor: NAVY, color: '#fff', alignment: 'center' },
@@ -1061,6 +1063,7 @@ export class DetalleItemsCotizacionComponent implements ICellRendererAngularComp
       ];
 
       const tableRows = items.map((item, idx) => [
+        { text: String(idx + 1), fontSize: 7, alignment: 'center', fillColor: idx % 2 === 1 ? LBLUE : null },
         { text: textoPdf(item.nombreMaterial), fontSize: 7, fillColor: idx % 2 === 1 ? LBLUE : null },
         { text: String(item.cantidad ?? ''), fontSize: 7, alignment: 'center', fillColor: idx % 2 === 1 ? LBLUE : null },
         { text: item.unidad ?? '', fontSize: 7, alignment: 'center', fillColor: idx % 2 === 1 ? LBLUE : null },
@@ -1070,7 +1073,7 @@ export class DetalleItemsCotizacionComponent implements ICellRendererAngularComp
       ]);
 
       const totalRow = [
-        { text: '', colSpan: 3, border: [false,false,false,false] }, {}, {},
+        { text: '', colSpan: 4, border: [false,false,false,false] }, {}, {}, {},
         { text: 'TOTAL:', fontSize: 8, bold: true, alignment: 'right', fillColor: NAVY, color: '#fff' },
         { text: `$${Number(cot.total ?? 0).toLocaleString('es-MX', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`, fontSize: 8, bold: true, alignment: 'right', fillColor: NAVY, color: '#fff' },
         { text: `US$${(items.reduce((sum, item) => sum + Math.round((Number(item.dolares) || 0) * 100), 0) / 100).toLocaleString('es-MX', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`, fontSize: 8, bold: true, alignment: 'right', fillColor: NAVY, color: '#fff' },
@@ -1079,7 +1082,7 @@ export class DetalleItemsCotizacionComponent implements ICellRendererAngularComp
       const tabla: any = {
         table: {
           headerRows: 1,
-          widths: ['*', 28, 35, 50, 55, 58],
+          widths: [20, '*', 26, 34, 48, 54, 56],
           body: [tableHeader, ...tableRows, totalRow],
         },
         layout: { hLineWidth: () => 0.5, vLineWidth: () => 0.5, hLineColor: () => '#cccccc', vLineColor: () => '#cccccc' },

@@ -286,6 +286,18 @@ export class CotizacionesComponent implements OnInit, OnDestroy {
 
   private detalleActivo: DetalleItemsCotizacionComponent | null = null;
 
+  actualizarConfiguracion(config: CotizacionConfig): void {
+    this.config = { ...config };
+    this.actualizarContextoDetalle();
+    if (this.detalleActivo?.mode === 'pdf') {
+      this.gridApi?.forEachNode(node => {
+        if (node.expanded && node.data?.id === this.detalleActivo?.cotizacion?.id) {
+          void this.detalleActivo.generarPdf();
+        }
+      });
+    }
+  }
+
   private async persistirTipoCambio(cotizacion: any): Promise<void> {
     try {
       if (this.detalleActivo?.cotizacion?.id === cotizacion.id) {

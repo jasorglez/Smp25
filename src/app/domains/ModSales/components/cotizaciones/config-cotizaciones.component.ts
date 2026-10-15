@@ -1,4 +1,4 @@
-﻿import { Component, Input, OnInit, inject } from '@angular/core';
+﻿import { Component, EventEmitter, Input, OnInit, Output, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { CotizacionesService, CotizacionConfig, CONFIG_DEFAULT } from 'app/services/cotizaciones.service';
@@ -114,6 +114,7 @@ export class ConfigCotizacionesComponent implements OnInit {
   private svc = inject(CotizacionesService);
 
   @Input() idCompany!: number;
+  @Output() configGuardada = new EventEmitter<CotizacionConfig>();
 
   config: CotizacionConfig = { ...CONFIG_DEFAULT };
   loading = false;
@@ -136,6 +137,7 @@ export class ConfigCotizacionesComponent implements OnInit {
     this.saving = true;
     try {
       await this.svc.saveConfig(this.idCompany, this.config);
+      this.configGuardada.emit({ ...this.config });
       Swal.fire({ toast: true, position: 'top-end', icon: 'success', title: 'Configuración guardada', showConfirmButton: false, timer: 2000, timerProgressBar: true });
     } catch {
       Swal.fire('Error', 'No se pudo guardar la configuración.', 'error');
