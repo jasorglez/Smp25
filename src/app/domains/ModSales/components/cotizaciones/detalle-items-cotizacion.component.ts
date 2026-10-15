@@ -27,6 +27,9 @@ const BLUE  = '#1a5a9a';
 const LBLUE = '#e8f0f8';
 const GRAY  = '#555555';
 
+const textoPdf = (value: unknown): string =>
+  String(value ?? '').replace(/[\s\u200B-\u200D\uFEFF]+/g, ' ').trim();
+
 @Component({
   selector: 'app-detalle-items-cotizacion',
   standalone: true,
@@ -786,7 +789,7 @@ export class DetalleItemsCotizacionComponent implements ICellRendererAngularComp
                 { text: 'DÓLARES USD', style: 'thCell', fillColor: NAVY, color: '#fff', alignment: 'right' },
               ];
               const tableRows = items.map((item, idx) => [
-                { text: item.nombreMaterial ?? '', fontSize: 7, fillColor: idx % 2 === 1 ? LBLUE : null },
+                { text: textoPdf(item.nombreMaterial), fontSize: 7, fillColor: idx % 2 === 1 ? LBLUE : null },
                 { text: String(item.cantidad ?? ''), fontSize: 7, alignment: 'center', fillColor: idx % 2 === 1 ? LBLUE : null },
                 { text: item.unidad ?? '', fontSize: 7, alignment: 'center', fillColor: idx % 2 === 1 ? LBLUE : null },
                 { text: `$${Number(item.precio ?? 0).toLocaleString('es-MX', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`, fontSize: 7, alignment: 'right', fillColor: idx % 2 === 1 ? LBLUE : null },
@@ -815,9 +818,9 @@ export class DetalleItemsCotizacionComponent implements ICellRendererAngularComp
               const bloqueInferiorEmail: any = {
                 stack: [
                   { text: 'CON LAS SIGUIENTES CLÁUSULAS', fontSize: 6.5, bold: true, color: NAVY, margin: [0,0,0,3] },
-                  { ul: clausulas.map(c => ({ text: c, fontSize: 6, color: GRAY, margin: [0,0,0,2] })), margin: [0,0,0,3] },
-                  { text: cfg.textoAclaracion, fontSize: 6, color: GRAY, alignment: 'justify', margin: [0,0,0,2] },
-                  { text: cfg.textoDespedida,  fontSize: 6, color: GRAY, alignment: 'justify', margin: [0,0,0,2] },
+                  { ul: clausulas.map(c => ({ text: textoPdf(c), fontSize: 6, color: GRAY, margin: [0,0,0,2] })), margin: [0,0,0,3] },
+                  { text: textoPdf(cfg.textoAclaracion), fontSize: 6, color: GRAY, alignment: 'left', margin: [0,0,0,2] },
+                  { text: textoPdf(cfg.textoDespedida),  fontSize: 6, color: GRAY, alignment: 'left', margin: [0,0,0,2] },
                   { text: cfg.textoIva,        fontSize: 6.5, bold: true, color: NAVY, margin: [0,0,0,8] },
                   {
                     columns: [
@@ -830,8 +833,8 @@ export class DetalleItemsCotizacionComponent implements ICellRendererAngularComp
               };
               const textoSuperior: any = {
                 stack: [
-                  { text: cfg.textoPrincipal,  fontSize: 7, color: GRAY, alignment: 'justify', margin: [0,0,0,6] },
-                  { text: cfg.textoCompromiso, fontSize: 7, color: GRAY, alignment: 'justify', margin: [0,0,0,10] },
+                  { text: textoPdf(cfg.textoPrincipal),  fontSize: 7, color: GRAY, alignment: 'left', margin: [0,0,0,6] },
+                  { text: textoPdf(cfg.textoCompromiso), fontSize: 7, color: GRAY, alignment: 'left', margin: [0,0,0,10] },
                 ],
               };
               const docDef: any = {
@@ -1043,8 +1046,8 @@ export class DetalleItemsCotizacionComponent implements ICellRendererAngularComp
 
       const textoSuperior: any = {
         stack: [
-          { text: cfg.textoPrincipal,  fontSize: 7, color: GRAY, alignment: 'justify', margin: [0,0,0,6] },
-          { text: cfg.textoCompromiso, fontSize: 7, color: GRAY, alignment: 'justify', margin: [0,0,0,10] },
+          { text: textoPdf(cfg.textoPrincipal),  fontSize: 7, color: GRAY, alignment: 'left', margin: [0,0,0,6] },
+          { text: textoPdf(cfg.textoCompromiso), fontSize: 7, color: GRAY, alignment: 'left', margin: [0,0,0,10] },
         ],
       };
 
@@ -1058,7 +1061,7 @@ export class DetalleItemsCotizacionComponent implements ICellRendererAngularComp
       ];
 
       const tableRows = items.map((item, idx) => [
-        { text: item.nombreMaterial ?? '', fontSize: 7, fillColor: idx % 2 === 1 ? LBLUE : null },
+        { text: textoPdf(item.nombreMaterial), fontSize: 7, fillColor: idx % 2 === 1 ? LBLUE : null },
         { text: String(item.cantidad ?? ''), fontSize: 7, alignment: 'center', fillColor: idx % 2 === 1 ? LBLUE : null },
         { text: item.unidad ?? '', fontSize: 7, alignment: 'center', fillColor: idx % 2 === 1 ? LBLUE : null },
         { text: `$${Number(item.precio ?? 0).toLocaleString('es-MX', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`, fontSize: 7, alignment: 'right', fillColor: idx % 2 === 1 ? LBLUE : null },
@@ -1098,11 +1101,11 @@ export class DetalleItemsCotizacionComponent implements ICellRendererAngularComp
         stack: [
           { text: 'CON LAS SIGUIENTES CLÁUSULAS', fontSize: 6.5, bold: true, color: NAVY, margin: [0,0,0,3] },
           {
-            ul: clausulas.map(c => ({ text: c, fontSize: 6, color: GRAY, margin: [0,0,0,2] })),
+            ul: clausulas.map(c => ({ text: textoPdf(c), fontSize: 6, color: GRAY, margin: [0,0,0,2] })),
             margin: [0,0,0,3],
           },
-          { text: cfg.textoAclaracion, fontSize: 6, color: GRAY, alignment: 'justify', margin: [0,0,0,2] },
-          { text: cfg.textoDespedida,  fontSize: 6, color: GRAY, alignment: 'justify', margin: [0,0,0,2] },
+          { text: textoPdf(cfg.textoAclaracion), fontSize: 6, color: GRAY, alignment: 'left', margin: [0,0,0,2] },
+          { text: textoPdf(cfg.textoDespedida),  fontSize: 6, color: GRAY, alignment: 'left', margin: [0,0,0,2] },
           { text: cfg.textoIva,        fontSize: 6.5, bold: true, color: NAVY, margin: [0,0,0,8] },
           {
             columns: [
