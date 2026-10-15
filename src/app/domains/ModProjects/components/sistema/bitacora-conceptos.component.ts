@@ -88,10 +88,15 @@ export class BitacoraConceptosComponent extends BitacoraBaseComponent {
   }
 
   private loadSubpartidas(): void {
-    const idProject = this.reportData?.idProject;
+    const idProject = this.reportData?.idProject ?? this.reportData?.IdProject;
     if (!idProject) return;
-    const idConvention = this.reportData?.idConvention ?? null;
+    const idConvention = this.reportData?.idConvention ?? this.reportData?.IdConvention ?? null;
     this.directConceptOptions = [];
+    console.log('[REPORTE-CONCEPTOS] Contexto del reporte y solicitudes', {
+      report: this.reportData,
+      idProject,
+      idConvention,
+    });
 
     // Carga también los conceptos marcados directamente en el programa del
     // proyecto. Estos pueden ser conceptos raíz (parent = 0) y conservar su
@@ -99,42 +104,34 @@ export class BitacoraConceptosComponent extends BitacoraBaseComponent {
     this.workprogramsService.getWorkPrograms(idProject, 'Project').subscribe({
       next: (rows: any[]) => {
         const directConcepts = (rows ?? []).filter((row: any) =>
-          String(row.typeActivity ?? row.typeactivity ?? '').trim().toLowerCase() === 'concept' &&
-          Number(row.idConvention ?? row.id_convention ?? 0) === Number(idConvention ?? 0)
+          String(row.typeActivity ?? row.typeactivity ?? row.TypeActivity ?? '').trim().toLowerCase() === 'concept' &&
+          Number(row.idConvention ?? row.id_convention ?? row.IdConvention ?? 0) === Number(idConvention ?? 0)
         );
-        console.info('[Reporte diario][conceptos][Workprogram/{id}/Project]', {
+        console.log('[REPORTE-CONCEPTOS] Respuesta Workprogram/{id}/Project', {
           idProject,
           idConvention,
-          totalRows: rows?.length ?? 0,
-          conceptRows: (rows ?? [])
-            .filter((row: any) => String(row.typeActivity ?? row.typeactivity ?? '').trim().toLowerCase() === 'concept')
-            .map((row: any) => ({
-              id: row.id,
-              activity: row.activity,
-              typeActivity: row.typeActivity ?? row.typeactivity,
-              measure: row.measure,
-              parent: row.parent,
-              idConvention: row.idConvention ?? row.id_convention,
-            })),
+          dataCruda: rows,
           selectedConcepts: directConcepts.length,
         });
         this.directConceptOptions = directConcepts.map((concept: any) => {
-          const label = `${String(concept.activity ?? '').trim()} ${String(concept.text ?? '').trim()}`.trim();
+          const label = `${String(concept.activity ?? concept.Activity ?? '').trim()} ${String(concept.text ?? concept.Text ?? '').trim()}`.trim();
           return label;
         }).filter((label: string) => !!label);
         this.mergeDirectConceptOptions();
         this.gridApi?.refreshCells({ force: true });
       },
-      error: () => {},
+      error: (error: any) => console.error('[REPORTE-CONCEPTOS] Error Workprogram/{id}/Project', {
+        idProject, idConvention, status: error?.status, response: error?.error, message: error?.message,
+      }),
     });
 
+    console.log('[REPORTE-CONCEPTOS] Solicitud concepts-hierarchy', { idProject, idConvention });
     this.workprogramsService.getConceptsHierarchy(idProject, idConvention).subscribe({
       next: (data: any[]) => {
-        console.info('[Reporte diario][conceptos][concepts-hierarchy]', {
+        console.log('[REPORTE-CONCEPTOS] Respuesta concepts-hierarchy', {
           idProject,
           idConvention,
-          systems: data?.length ?? 0,
-          rootConcepts: (data ?? []).flatMap((system: any) => system.conceptos || []),
+          dataCruda: data,
         });
         this.subpartidasMap.clear();
         this.conceptOptions = [];
@@ -142,7 +139,7 @@ export class BitacoraConceptosComponent extends BitacoraBaseComponent {
 
         for (const sistema of data || []) {
           for (const concept of sistema.conceptos || []) {
-            const label = `${String(concept.activity ?? '').trim()} ${String(concept.text ?? '').trim()}`.trim();
+            const label = `${String(concept.activity ?? concept.Activity ?? '').trim()} ${String(concept.text ?? concept.Text ?? '').trim()}`.trim();
             if (label && !this.conceptOptions.includes(label)) this.conceptOptions.push(label);
           }
           const subpartidas = sistema.subpartidas || [];
