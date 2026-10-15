@@ -8,7 +8,7 @@ import { FollowprojectsService } from '../../../../services/followprojects.servi
 import { ColDef, GridApi, GridReadyEvent, CellDoubleClickedEvent} from 'ag-grid-enterprise';
 import { AbstractControl, FormControl, FormGroup, ValidationErrors, ValidatorFn, Validators } from '@angular/forms';
 import { alerts } from 'app/helpers/alerts';
-import { catchError, EMPTY, forkJoin, lastValueFrom, of } from 'rxjs';
+import { catchError, EMPTY, forkJoin, lastValueFrom, map, Observable, of, switchMap } from 'rxjs';
 import { DetailPersonalByProyectComponent } from './personal/detail-personal-by-proyect.component';
 import { Iproject } from 'app/interface/iproject';
 import { ProjectsService } from 'app/services/projects.service';
@@ -20,6 +20,7 @@ import { WorkprogramsService } from 'app/services/workprograms.service';
 import { WorkprogramApuService } from 'app/services/workprogram-apu.service';
 import { WorkprogramApuCuadrillaService } from 'app/services/workprogram-apu-cuadrilla.service';
 import { CatalogsService } from 'app/services/catalogs.service';
+import Swal from 'sweetalert2';
 
 
 // Esta funcion valida que programStart sea siempre menor a programEnd
@@ -85,6 +86,8 @@ export class ProjectsComponent {
   providers: any;
   contracts: any;
   oilfields: any;
+  oilfieldCatalog: any[] = [];
+  locations: any[] = [];
   cantidadPersonal: any;
   selectedRowData: Iproject | null = null;
 
@@ -719,8 +722,13 @@ export class ProjectsComponent {
   openModal() {
     forkJoin({
       contracts: this.followprojectsService.getContract(-this.idCompany), // en negativo para aprovechar que ya tenemos u servicio que hace lo que necesitamos con el id negativo
-      oilfields: this.oilfieldsService.getOilfields()
+      oilfields: this.oilfieldsService.getOilfields(),
+      oilfieldCatalog: this.catalogsService.getTypeEquipment(Number(this.idCompany), 'ESTADOS'),
+      locations: this.catalogsService.getTypeEquipment(Number(this.idCompany), 'UBICACION').pipe(catchError(() => of([])))
     }).pipe(
+      switchMap(result => this.ensureOilfieldsInCatalog((result.oilfields ?? []) as any[], (result.oilfieldCatalog ?? []) as any[]).pipe(
+        map(oilfieldCatalog => ({ ...result, oilfieldCatalog }))
+      )),
       catchError(error => {
         console.error('Error fetching data:', error);
         alerts.basicAlert(
@@ -734,10 +742,14 @@ export class ProjectsComponent {
       next: (result) => {
         this.contracts = result.contracts;
         this.oilfields = result.oilfields;
+        this.oilfieldCatalog = this.sortLocations(result.oilfieldCatalog ?? []);
+        this.locations = this.sortLocations(result.locations ?? []);
 
         const modalOptions: NgbModalOptions = {
           size: 'xl',
-          centered: true
+          centered: true,
+          scrollable: true,
+          windowClass: 'project-editor-modal'
         };
         this.modalService.open(this.content, modalOptions);
       },
@@ -745,6 +757,158 @@ export class ProjectsComponent {
         console.error('Error in subscription:', error);
       }
     });
+  }
+
+  private ensureOilfieldsInCatalog(oilfields: any[], catalog: any[]): Observable<any[]> {
+    const knownIds = new Set(catalog.map(item => Number(item?.valueAddition ?? item?.ValueAddition)).filter(Number.isFinite));
+    const missing = oilfields.filter(item => item?.id != null && !knownIds.has(Number(item.id)));
+    if (!missing.length) return of(catalog);
+
+    return forkJoin(missing.map(oilfield => this.catalogsService.addCatalogToSmp({
+      idCompany: Number(this.idCompany),
+      description: String(oilfield.name ?? oilfield.Name ?? `Ubicación ${oilfield.id}`),
+      valueAddition: String(oilfield.id),
+      type: 'ESTADOS',
+      active: 1,
+    }))).pipe(
+      map((saved: any[]) => [...catalog, ...missing.map((oilfield, index) => ({
+        ...(saved[index] ?? {}),
+        description: saved[index]?.description ?? saved[index]?.Description ?? oilfield.name ?? oilfield.Name,
+        valueAddition: String(oilfield.id),
+        type: 'ESTADOS',
+        active: 1,
+      }))])
+    );
+  }
+
+  addState(): void {
+    Swal.fire({
+      title: 'Agregar estado',
+      text: 'Se guardará en el catálogo de la empresa.',
+      input: 'text',
+      inputLabel: 'Estado de la República Mexicana',
+      inputPlaceholder: 'Escribe el nombre del estado',
+      inputAttributes: { maxlength: '100', autocapitalize: 'words', autocomplete: 'off' },
+      showCancelButton: true,
+      confirmButtonText: 'Agregar estado',
+      cancelButtonText: 'Cancelar',
+      confirmButtonColor: '#0d6efd',
+      inputValidator: value => {
+        const name = String(value ?? '').trim();
+        if (!name) return 'Escribe el nombre del estado';
+        if (this.oilfieldCatalog.some(item => String(item?.description ?? item?.Description ?? '').trim().toLowerCase() === name.toLowerCase())) {
+          return 'Ese estado ya está registrado';
+        }
+        return null;
+      },
+    }).then(result => {
+      if (!result.isConfirmed || !String(result.value ?? '').trim()) return;
+
+      const name = String(result.value).trim();
+      this.oilfieldsService.addOilfield({
+        name,
+        nameState: name,
+        direccion: name,
+        coordinates: '',
+        contractId: 1,
+        active: 1,
+      }).pipe(
+        switchMap(() => this.oilfieldsService.getOilfields().pipe(
+          switchMap((records: any) => {
+            const createdOilfield = (Array.isArray(records) ? records : []).find((item: any) =>
+              String(item?.name ?? item?.Name ?? '').trim().toLowerCase() === name.toLowerCase()
+            );
+            const oilfieldId = Number(createdOilfield?.id ?? createdOilfield?.Id ?? createdOilfield?.idOilfield ?? createdOilfield?.idOilField);
+            if (!Number.isFinite(oilfieldId) || oilfieldId <= 0) {
+              throw new Error('No se encontró el ID del estado recién creado.');
+            }
+            return this.catalogsService.addCatalogToSmp({
+              idCompany: Number(this.idCompany),
+              description: name,
+              valueAddition: String(oilfieldId),
+              type: 'ESTADOS',
+              active: 1,
+            }).pipe(map((savedCatalog: any) => ({
+              ...(savedCatalog ?? {}),
+              description: savedCatalog?.description ?? savedCatalog?.Description ?? name,
+              valueAddition: String(oilfieldId),
+              type: 'ESTADOS',
+              active: 1,
+            })));
+          })
+        ))
+      ).subscribe({
+        next: created => {
+          this.oilfields = [...(this.oilfields ?? []), { id: Number(created.valueAddition), name }];
+          this.oilfieldCatalog = this.sortLocations([...this.oilfieldCatalog, created]);
+          this.addProject.get('idOilfield')?.setValue(String(created.valueAddition));
+          alerts.basicAlert('Estado agregado', `${name} quedó disponible en el catálogo.`, 'success');
+        },
+        error: error => {
+          console.error('Error agregando estado al catálogo:', error);
+          alerts.basicAlert('Error', 'No se pudo agregar el estado. Verifica que el registro de ubicación y el catálogo se hayan guardado.', 'error');
+        },
+      });
+    });
+  }
+
+  addLocation(): void {
+    Swal.fire({
+      title: 'Nueva ubicación',
+      text: 'Se agregará al catálogo de ubicaciones de esta empresa.',
+      input: 'text',
+      inputLabel: 'Nombre',
+      inputPlaceholder: 'Ej. Planta Norte',
+      inputAttributes: { maxlength: '25', autocapitalize: 'words', autocomplete: 'off' },
+      showCancelButton: true,
+      confirmButtonText: '<i class="bi bi-plus-lg"></i> Guardar ubicación',
+      cancelButtonText: 'Cancelar',
+      confirmButtonColor: '#0d6efd',
+      focusConfirm: false,
+      inputValidator: (value) => {
+        const description = String(value ?? '').trim();
+        if (!description) return 'Escribe el nombre de la ubicación';
+        if (description.length > 25) return 'El nombre debe tener máximo 25 caracteres';
+        if (this.locations.some(item => this.locationValue(item).toLowerCase() === description.toLowerCase())) {
+          return 'Esa ubicación ya está registrada';
+        }
+        return null;
+      },
+    }).then(result => {
+      if (!result.isConfirmed || !String(result.value ?? '').trim()) return;
+
+      const description = String(result.value).trim();
+      this.catalogsService.addCatalogToSmp({
+        idCompany: Number(this.idCompany),
+        description,
+        valueAddition: description,
+        type: 'UBICACION',
+        active: 1,
+      }).subscribe({
+        next: (saved: any) => {
+          const created = saved?.id || saved?.Id
+            ? saved
+            : { id: saved?.id ?? saved?.Id, description, valueAddition: description, type: 'UBICACION', active: 1 };
+          this.locations = this.sortLocations([...this.locations, created]);
+          this.addProject.get('typeConstruction')?.setValue(this.locationValue(created));
+          alerts.basicAlert('Ubicación agregada', `${description} quedó disponible en el catálogo.`, 'success');
+        },
+        error: (error) => {
+          console.error('Error agregando ubicación al catálogo:', error);
+          alerts.basicAlert('Error', 'No se pudo guardar la ubicación en el catálogo.', 'error');
+        },
+      });
+    });
+  }
+
+  private locationValue(location: any): string {
+    return String(location?.valueAddition ?? location?.ValueAddition ?? location?.description ?? location?.Description ?? '');
+  }
+
+  private sortLocations(locations: any[]): any[] {
+    return [...locations].sort((a, b) =>
+      String(a?.description ?? a?.Description ?? '').localeCompare(String(b?.description ?? b?.Description ?? ''), 'es')
+    );
   }
 
   deleteProject() {

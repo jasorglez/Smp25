@@ -186,116 +186,54 @@
 </div>
 
 <ng-template #content let-modal>
-  <div class="modal-header">
-    <h3 class="modal-title">{{ isEditing ? 'Editar' : 'Añadir' }} proyecto</h3>
-    <button type="button" class="btn-close" aria-label="Close" (click)="modal.dismiss('Cross click')"></button>
+  <div class="modal-header project-modal-header">
+    <div class="d-flex align-items-center gap-3">
+      <span class="project-modal-icon"><i class="bi bi-kanban"></i></span>
+      <div>
+        <h3 class="modal-title mb-1">{{ isEditing ? 'Editar proyecto' : 'Nuevo proyecto' }}</h3>
+        <div class="project-modal-subtitle">Información general, fechas y ubicación del proyecto</div>
+      </div>
+    </div>
+    <button type="button" class="btn-close btn-close-white" aria-label="Cerrar" (click)="modal.dismiss('Cross click')"></button>
   </div>
-  <div class="modal-body">
+  <div class="modal-body project-modal-body">
     <form [formGroup]="addProject" (ngSubmit)="onSubmit()">
-      <div class="row">
-        <div class="col-6">
-          <div class="mb-2">
-            <input type="number" formControlName="idConsecutivo" id="idConsecutivo" class="form-control"
-              placeholder="IDENT OBRA">
-          </div>
-          <div class="mb-2">
-            <input type="text" formControlName="number" id="number" class="form-control" placeholder="Orden de trabajo">
-          </div>
-          <div class="mb-2">
-            <input type="text" formControlName="name" id="name" class="form-control" placeholder="Nombre del proyecto">
-          </div>
-          <div class="mb-2">
-            <textarea formControlName="description" id="description" class="form-control"
-              placeholder="Descripción del proyecto" rows="4"></textarea>
-          </div>
-          <div class="mb-2">
-            <select formControlName="priority" id="priority" class="form-select">
-              <option value="0" selected>Prioritario</option>
-              <option value="1">Prioridad media</option>
-              <option value="2">Prioridad baja</option>
-            </select>
-          </div>
-          <div class="row mb-2">
-            <div class="col">
-              <label for="programStart" class="form-label">Inicio programado</label>
-              <input type="date" formControlName="programStart" id="programStart" class="form-control"
-                placeholder="Fecha de inicio de proyecto">
-            </div>
-            <div class="col">
-              <label for="programEnd" class="form-label">Fin programado</label>
-              <input type="date" formControlName="programEnd" id="programEnd" class="form-control"
-                placeholder="Fecha de fin de proyecto">
-            </div>
-          </div>
+      <div class="project-form-section">
+        <div class="project-section-heading"><span class="project-section-icon"><i class="bi bi-card-text"></i></span><div><h4>Datos generales</h4><p>Identificación y descripción del proyecto</p></div></div>
+        <div class="row g-3">
+          <div class="col-md-3"><label for="idConsecutivo" class="form-label">Identificador de obra</label><input type="number" formControlName="idConsecutivo" id="idConsecutivo" class="form-control" placeholder="Ej. 1024"></div>
+          <div class="col-md-3"><label for="number" class="form-label">Orden de trabajo</label><input type="text" formControlName="number" id="number" class="form-control" placeholder="Ej. OT-001"></div>
+          <div class="col-md-6"><label for="name" class="form-label">Nombre del proyecto</label><input type="text" formControlName="name" id="name" class="form-control" placeholder="Escribe el nombre del proyecto"></div>
+          <div class="col-md-8"><label for="description" class="form-label">Descripción</label><textarea formControlName="description" id="description" class="form-control" placeholder="Describe brevemente el alcance" rows="3"></textarea></div>
+          <div class="col-md-4"><label for="priority" class="form-label">Prioridad</label><select formControlName="priority" id="priority" class="form-select"><option value="0">Prioritario</option><option value="1">Prioridad media</option><option value="2">Prioridad baja</option></select></div>
         </div>
-        <div class="col-6">
-          <div class="row mb-2">
-            <div class="col">
-              <label for="realPronosticLPO" class="form-label">Pronóstico LPO</label>
-              <input type="date" formControlName="realPronosticLPO" id="realPronosticLPO" class="form-control"
-                placeholder="Fecha de inicio de proyecto">
-            </div>
-            <div class="col">
-              <label for="realPronosticTTT" class="form-label">Pronóstico TTT</label>
-              <input type="date" formControlName="realPronosticTTT" id="realPronosticTTT" class="form-control"
-                placeholder="Fecha de fin de proyecto">
-            </div>
-          </div>
-          <div class="mb-2">
-            <select formControlName="state" id="state" class="form-select">
-              <option value="Ejecucion" selected>Ejecución</option>
-              <option value="Cancelado">Cancelado</option>
-              <option value="Concluido">Concluido</option>
-              <option value="TTT">Todo Trabajo Terminado</option>
-              <option value="Suspendido">Suspendido</option>
-            </select>
-          </div>
-          <div class="mb-2">
-            <select formControlName="typeConstruction" id="typeConstruction" class="form-select">
-              <option selected disabled>Seleccione un tipo de construcción</option>
-              <option value="Grupoo Max">TMDB</option>
-              <option value="Ducto Marino">Ducto Marino</option>
-              <option value="Ducto Terrestre">Ducto Terrestre</option>
-              <option value="Plataforma">Plataforma</option>
-              <option value="Cables Submarinos">Cables Submarinos</option>
-              <option value="Amarre de Pozo">Proyectos Tierra</option>              
-              <option value="OEM">Civil</option>
-              <option value="Pera">Pera</option>
-              <option value="Grupoo Max">Grupo Max</option>
-            </select>
-          </div>
-          <div class="mb-2">
-            <select formControlName="classification" id="classification" class="form-select">
-              <option selected disabled>Seleccione una clasificación</option>
-              <option value="Externa">Externa</option>
-              <option value="Interna">Interna</option>
-              <option value="Marina">Marina</option>
-              <option value="Terrestre">Terrestre</option>
+      </div>
 
-            </select>
-          </div>
-          <div class="mb-2">
-            <select formControlName="idContrato" id="idContrato" class="form-select">
-              <option selected disabled>Seleccione un contrato</option>
-              <option *ngFor="let contract of contracts" [value]="contract.idContrato">
-                {{ contract.numberContract }} - {{ contract.description }}
-              </option>
-            </select>
-          </div>
-          <div class="mb-2">
-            <select formControlName="idOilfield" id="idOilfield" class="form-select">
-              <option selected disabled>Seleccione Ubicacion</option>
-              <option *ngFor="let oilfield of oilfields" [value]="oilfield.id">
-                {{ oilfield.name }}
-              </option>
-            </select>
-          </div>
+      <div class="project-form-section">
+        <div class="project-section-heading"><span class="project-section-icon"><i class="bi bi-calendar-range"></i></span><div><h4>Fechas y seguimiento</h4><p>Programa y pronósticos del proyecto</p></div></div>
+        <div class="row g-3">
+          <div class="col-md-3"><label for="programStart" class="form-label">Inicio programado</label><input type="date" formControlName="programStart" id="programStart" class="form-control"></div>
+          <div class="col-md-3"><label for="programEnd" class="form-label">Fin programado</label><input type="date" formControlName="programEnd" id="programEnd" class="form-control"></div>
+          <div class="col-md-3"><label for="realPronosticLPO" class="form-label">Pronóstico LPO</label><input type="date" formControlName="realPronosticLPO" id="realPronosticLPO" class="form-control"></div>
+          <div class="col-md-3"><label for="realPronosticTTT" class="form-label">Pronóstico TTT</label><input type="date" formControlName="realPronosticTTT" id="realPronosticTTT" class="form-control"></div>
+          <div class="col-md-4"><label for="state" class="form-label">Estado del proyecto</label><select formControlName="state" id="state" class="form-select"><option value="Ejecucion">Ejecución</option><option value="Cancelado">Cancelado</option><option value="Concluido">Concluido</option><option value="TTT">Todo Trabajo Terminado</option><option value="Suspendido">Suspendido</option></select></div>
+          <div class="col-md-4"><label for="classification" class="form-label">Clasificación</label><select formControlName="classification" id="classification" class="form-select"><option value="" disabled>Seleccione una clasificación</option><option value="Externa">Externa</option><option value="Interna">Interna</option><option value="Marina">Marina</option><option value="Terrestre">Terrestre</option></select></div>
+          <div class="col-md-4"><label for="idContrato" class="form-label">Contrato</label><select formControlName="idContrato" id="idContrato" class="form-select"><option value="Seleccione un contrato" disabled>Seleccione un contrato</option><option *ngFor="let contract of contracts" [value]="contract.idContrato">{{ contract.numberContract }} - {{ contract.description }}</option></select></div>
+        </div>
+      </div>
+
+      <div class="project-form-section project-location-section">
+        <div class="project-section-heading"><span class="project-section-icon"><i class="bi bi-geo-alt"></i></span><div><h4>Ubicación</h4><p>Selecciona la ubicación del proyecto y su referencia geográfica</p></div></div>
+        <div class="row g-3">
+          <div class="col-md-6"><label for="typeConstruction" class="form-label">Ubicación del proyecto</label><div class="input-group"><select formControlName="typeConstruction" id="typeConstruction" class="form-select"><option value="Seleccione un tipo de construcción" disabled>Selecciona una ubicación</option><option *ngFor="let location of locations" [ngValue]="location.valueAddition || location.description">{{ location.description }}</option></select><button type="button" class="btn btn-outline-primary" (click)="addLocation()" title="Agregar ubicación"><i class="bi bi-plus-lg me-1"></i>Agregar</button></div><div class="form-text">Catálogo de ubicaciones de la empresa.</div></div>
+          <div class="col-md-6"><label for="idOilfield" class="form-label">Estado de la República Mexicana</label><div class="input-group"><select formControlName="idOilfield" id="idOilfield" class="form-select"><option value="Seleccione Ubicacion" disabled>Seleccione un estado</option><option *ngFor="let oilfield of oilfieldCatalog" [value]="oilfield.valueAddition || oilfield.ValueAddition">{{ oilfield.description || oilfield.Description }}</option></select><button type="button" class="btn btn-outline-primary" (click)="addState()" title="Agregar estado"><i class="bi bi-plus-lg me-1"></i>Agregar</button></div><div class="form-text">Estados guardados en el catálogo de la empresa.</div></div>
         </div>
       </div>
     </form>
   </div>
-  <div class="modal-footer">
-    <button type="submit" class="btn btn-primary" (click)="onSubmit()">Guardar</button>
-    <button type="button" class="btn btn-secondary" (click)="modal.close('Close click')">Cancelar</button>
+  <div class="modal-footer project-modal-footer">
+    <span class="text-muted me-auto"><i class="bi bi-info-circle me-1"></i>Revisa los datos antes de guardar.</span>
+    <button type="button" class="btn btn-light border" (click)="modal.dismiss('Close click')">Cancelar</button>
+    <button type="button" class="btn btn-primary px-4" (click)="onSubmit()"><i class="bi bi-check2-circle me-1"></i>{{ isEditing ? 'Guardar cambios' : 'Crear proyecto' }}</button>
   </div>
 </ng-template>

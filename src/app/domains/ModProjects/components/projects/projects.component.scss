@@ -101,6 +101,55 @@ ag-grid-angular {
 .activity-actions, .quantity-editor { display: flex; align-items: end; gap: .4rem; flex-wrap: wrap; }
 .quantity-editor input { width: 130px; }
 
+.project-modal-header {
+  padding: 1.15rem 1.5rem;
+  border: 0;
+  background: linear-gradient(115deg, #12366b, #1769aa);
+  color: #fff;
+}
+.project-modal-header .modal-title { color: #fff; font-size: 1.2rem; font-weight: 700; }
+.project-modal-subtitle { color: rgba(255, 255, 255, .78); font-size: .82rem; }
+.project-modal-icon {
+  display: grid;
+  width: 2.8rem;
+  height: 2.8rem;
+  place-items: center;
+  border: 1px solid rgba(255, 255, 255, .28);
+  border-radius: .8rem;
+  background: rgba(255, 255, 255, .12);
+  font-size: 1.3rem;
+}
+.project-modal-body { max-height: min(76vh, 850px); overflow-y: auto; padding: 1.25rem 1.5rem; background: #f5f7fb; }
+.project-form-section {
+  margin-bottom: 1rem;
+  padding: 1.15rem;
+  border: 1px solid #e5eaf1;
+  border-radius: .85rem;
+  background: #fff;
+  box-shadow: 0 2px 8px rgba(15, 40, 75, .035);
+}
+.project-section-heading { display: flex; align-items: center; gap: .7rem; margin-bottom: 1rem; }
+.project-section-heading h4 { margin: 0; color: #1e293b; font-size: .95rem; font-weight: 700; }
+.project-section-heading p { margin: .15rem 0 0; color: #718096; font-size: .76rem; }
+.project-section-icon { display: grid; width: 2.2rem; height: 2.2rem; place-items: center; border-radius: .65rem; background: #eaf2ff; color: #1769aa; }
+.project-modal-body .form-label { margin-bottom: .35rem; color: #475569; font-size: .78rem; font-weight: 650; }
+.project-modal-body .form-control, .project-modal-body .form-select { min-height: 2.55rem; border-color: #d9e0ea; border-radius: .5rem; font-size: .875rem; line-height: 1.4; }
+.project-modal-body select.form-select, .project-modal-body select.form-select option { font-size: .75rem !important; }
+.project-modal-body textarea.form-control { min-height: auto; }
+.project-modal-body .form-control:focus, .project-modal-body .form-select:focus { border-color: #7db4f2; box-shadow: 0 0 0 .2rem rgba(13, 110, 253, .12); }
+.project-modal-body .input-group .form-select { border-top-right-radius: 0; border-bottom-right-radius: 0; }
+.project-modal-body .input-group .btn { border-radius: 0 .5rem .5rem 0; }
+.project-modal-body .form-text { color: #8290a3; font-size: .72rem; }
+.project-modal-footer { position: sticky; bottom: 0; z-index: 2; padding: .85rem 1.5rem; border-top: 1px solid #e5eaf1; background: #fff; }
+.project-modal-footer .btn { min-height: 2.45rem; border-radius: .55rem; font-weight: 600; }
+
+@media (max-width: 767px) {
+  .project-modal-body { max-height: 72vh; padding: 1rem; }
+  .project-form-section { padding: .9rem; }
+  .project-modal-footer { padding: .75rem 1rem; flex-wrap: wrap; }
+  .project-modal-footer > span { flex-basis: 100%; }
+}
+
 @media (max-width: 1199px) {
   ag-grid-angular { height: 48vh; }
   .program-scroll { max-height: 55vh; }
