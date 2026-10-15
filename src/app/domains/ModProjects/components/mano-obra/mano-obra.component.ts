@@ -28,6 +28,7 @@ export class ManoObraComponent {
   selectedRow: any     = null;
   hasChanges: boolean  = false;
   posiciones: string[] = [];
+  loadingPosiciones = false;
   showPdfReport      = false;
   showPdfMoneyReport = false;
   private savedRowData: any[] | null = null;
@@ -165,13 +166,21 @@ export class ManoObraComponent {
 
   loadPosiciones() {
     if (!this.idCompany) return;
+    this.loadingPosiciones = true;
     this.posicionesService.getPositionsByCompany(this.idCompany).subscribe({
       next: (data: any[]) => {
         this.posiciones = data
           .filter((d) => d.active !== false)
-          .map((d) => d.description as string);
+          .map((d) => String(d.description ?? '').trim())
+          .filter((description) => !!description)
+          .filter((description, index, all) => all.findIndex((item) => item.toLocaleLowerCase() === description.toLocaleLowerCase()) === index);
+        this.loadingPosiciones = false;
       },
-      error: (e) => console.error('Error cargando posiciones', e),
+      error: (e) => {
+        this.loadingPosiciones = false;
+        console.error('Error cargando posiciones', e);
+        alerts.basicAlert('Error', 'No se pudieron cargar las categorías y roles', 'error');
+      },
     });
   }
 
@@ -238,6 +247,48 @@ export class ManoObraComponent {
     setTimeout(() => {
       this.gridApi.startEditingCell({ rowIndex: 0, colKey: 'description' });
     }, 100);
+  }
+
+  async addAllRoles() {
+    if (!this.posiciones.length || this.loadingPosiciones) return;
+
+    if (this.savedRowData) {
+      this.rowData = [...this.savedRowData];
+      this.savedRowData = null;
+    }
+
+    const existingDescriptions = new Set(
+      this.rowData
+        .filter((row) => !row.__isDistDetail)
+        .map((row) => String(row.description ?? '').trim().toLocaleLowerCase())
+        .filter(Boolean)
+    );
+    const missingRoles = this.posiciones.filter(
+      (description) => !existingDescriptions.has(description.toLocaleLowerCase())
+    );
+
+    if (!missingRoles.length) {
+      alerts.basicAlert('Sin cambios', 'Todos los roles ya están en el catálogo de mano de obra', 'info');
+      return;
+    }
+
+    const newRows = missingRoles.map((description) => ({
+      id: `temp_${++this.tempCounter}`,
+      idCompany: this.idCompany,
+      description,
+      unit: 'JORNADA',
+      unitPrice: 0,
+      costo: 0,
+      quantity: 1,
+      active: true,
+      __isNew: true,
+    }));
+
+    this.trackingService.addLog(this.trackingService.getnameComp(), 'Agregó todos los roles al catálogo de mano de obra', 'Proyectos', this.trackingService.getEmail());
+    this.rowData = [...newRows, ...this.rowData.filter((row) => !row.__isDistDetail)];
+    this.gridApi?.setGridOption('rowData', this.rowData);
+    this.hasChanges = true;
+    await this.saveChanges();
   }
 
   async saveChanges() {

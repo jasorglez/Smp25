@@ -4,6 +4,7 @@ import * as pdfFonts from 'pdfmake/build/vfs_fonts';
 import { TrackingService } from './tracking.service';
 import { auto } from '@popperjs/core';
 
+(pdfMake as any).vfs = (pdfFonts as any).pdfMake?.vfs ?? (pdfFonts as any).default?.pdfMake?.vfs;
 
 export interface EstimateItem {
   clave: string;
@@ -47,31 +48,61 @@ export class PdfEstimatesService {
 
   constructor() {}
 
-  generateEstimatePdf(data: EstimateData): void {
+  async generateEstimatePdf(data: EstimateData): Promise<void> {
     this.trackingService.addLog(this.trackingService.getnameComp(), `Abrió estimación PDF: ${data.estimacion} — ${data.proyecto}`, 'Proyectos / Estimaciones', this.trackingService.getEmail());
-    const docDefinition = this.createDocDefinition(data);
+    const logo = await this.convertLogoToDataUrl(this.trackingService.getPictureComp2());
+    const docDefinition = this.createDocDefinition(data, logo);
+    (pdfMake as any).fonts = {
+      Roboto: {
+        normal: 'Roboto-Regular.ttf',
+        bold: 'Roboto-Medium.ttf',
+        italics: 'Roboto-Italic.ttf',
+        bolditalics: 'Roboto-MediumItalic.ttf',
+      },
+    };
     pdfMake.createPdf(docDefinition).open();
   }
 
-  downloadEstimatePdf(data: EstimateData, filename?: string): void {
+  async downloadEstimatePdf(data: EstimateData, filename?: string): Promise<void> {
     this.trackingService.addLog(this.trackingService.getnameComp(), `Descargó estimación PDF: ${data.estimacion} — ${data.proyecto}`, 'Proyectos / Estimaciones', this.trackingService.getEmail());
-    const docDefinition = this.createDocDefinition(data);
+    const logo = await this.convertLogoToDataUrl(this.trackingService.getPictureComp2());
+    const docDefinition = this.createDocDefinition(data, logo);
     const fileName = filename || `Estimacion_${data.estimacion}_${data.proyecto.replace(/\s+/g, '_')}.pdf`;
+    (pdfMake as any).fonts = {
+      Roboto: {
+        normal: 'Roboto-Regular.ttf',
+        bold: 'Roboto-Medium.ttf',
+        italics: 'Roboto-Italic.ttf',
+        bolditalics: 'Roboto-MediumItalic.ttf',
+      },
+    };
     pdfMake.createPdf(docDefinition).download(fileName);
   }
 
-  private createDocDefinition(data: EstimateData): any {
+  private async convertLogoToDataUrl(source: string): Promise<string> {
+    if (!source) return '';
+    if (source.startsWith('data:image/')) return source;
+    return new Promise(resolve => {
+      const image = new Image();
+      image.crossOrigin = 'anonymous';
+      image.onload = () => {
+        try {
+          const canvas = document.createElement('canvas');
+          canvas.width = image.naturalWidth;
+          canvas.height = image.naturalHeight;
+          canvas.getContext('2d')?.drawImage(image, 0, 0);
+          resolve(canvas.toDataURL('image/png'));
+        } catch {
+          resolve('');
+        }
+      };
+      image.onerror = () => resolve('');
+      image.src = source;
+    });
+  }
+
+  private createDocDefinition(data: EstimateData, logo: string): any {
     const tableBody = this.buildTableBody(data);
-    
-    // Configure fonts
-    pdfMake.fonts = {
-      'Arimo': {
-        normal: 'https://raw.githubusercontent.com/arximboldi/sinusoides/master/resources/static/fonts/Arimo-Regular.ttf',
-        bold: 'https://raw.githubusercontent.com/arximboldi/sinusoides/master/resources/static/fonts/Arimo-Bold.ttf',
-        italics: 'https://raw.githubusercontent.com/arximboldi/sinusoides/master/resources/static/fonts/Arimo-Italic.ttf',
-        bolditalics: 'https://raw.githubusercontent.com/arximboldi/sinusoides/master/resources/static/fonts/Arimo-BoldItalic.ttf'
-      }
-    };
     
     return {
       pageSize: 'LETTER',
@@ -79,7 +110,7 @@ export class PdfEstimatesService {
       pageMargins: [40, 60, 40, 60],
       defaultStyle: {
         fontSize: 10,
-        font: 'Arimo'
+          font: 'Roboto'
       },
       styles: {
         header: {
@@ -144,8 +175,7 @@ export class PdfEstimatesService {
       header: {
         columns: [
           {
-            image: 'header',
-            fit: [95, 45],
+            ...(logo ? { image: 'header', fit: [95, 45] } : { text: '' }),
             alignment: 'left',
             margin: [0, 0, 28, 0]
           },
@@ -264,9 +294,7 @@ export class PdfEstimatesService {
           margin: [80, 25, 80, 0]
         }
       ],
-      images: {
-        header: this.trackingService.getPictureComp2()
-      }
+      ...(logo ? { images: { header: logo } } : {})
     };
   }
 

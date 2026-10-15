@@ -194,7 +194,7 @@ export class CotizacionesComponent implements OnInit, OnDestroy {
       valueGetter: p => this.esCliente(p.data) ? 'Cliente' : 'Prospecto',
     },
     {
-      colId: 'destinatario', headerName: 'Prospecto / Cliente', minWidth: 230, flex: 1, editable: true,
+      colId: 'destinatario', headerName: 'Prospecto / Cliente', minWidth: 360, width: 400, flex: 1, editable: true,
       valueGetter: p => this.esCliente(p.data) ? String(p.data.idCliente ?? '') : (p.data?.idProspecto ?? ''),
       valueFormatter: p => p.data?.nombreProspecto || p.data?.empresaProspecto || '',
       cellEditor: 'agRichSelectCellEditor',
@@ -209,7 +209,8 @@ export class CotizacionesComponent implements OnInit, OnDestroy {
         filterList: true,
         searchType: 'match',
         highlightMatch: true,
-        valueListMaxHeight: 260,
+        valueListMaxHeight: 360,
+        valueListMaxWidth: 520,
       }),
       valueSetter: params => this.asignarDestinatario(params.data, params.newValue),
     },
@@ -237,7 +238,11 @@ export class CotizacionesComponent implements OnInit, OnDestroy {
     },
     {
       field: 'totalDolares', headerName: 'Total USD', width: 130, editable: false, type: 'numericColumn',
+      valueGetter: p => Number(p.data?.tipoCambio) > 0
+        ? Number((Number(p.data?.total ?? 0) / Number(p.data.tipoCambio)).toFixed(2))
+        : Number(p.data?.totalDolares ?? 0),
       valueFormatter: (p) => `US$${Number(p.value ?? 0).toFixed(2)}`,
+      headerTooltip: 'Total MXN convertido a USD con el tipo de cambio guardado en la cotización',
       cellStyle: { fontWeight: 'bold' },
     },
     {
@@ -593,11 +598,15 @@ export class CotizacionesComponent implements OnInit, OnDestroy {
   private nombreDestinatario(cotizacion: any, id: string): string {
     if (this.esCliente(cotizacion)) {
       const cliente = this.clientes.find(c => String(c.id) === String(id));
-      return cliente ? `${cliente.nameContact || cliente.company} — ${cliente.company || ''} (#${cliente.id})`
+      return cliente ? (cliente.company && cliente.nameContact && cliente.company !== cliente.nameContact
+        ? `${cliente.company} · Contacto: ${cliente.nameContact}`
+        : cliente.company || cliente.nameContact || '')
         : (cotizacion.nombreProspecto || '');
     }
     const prospecto = this.prospectos.find(p => p.id === id);
-    return prospecto ? [prospecto.nombre, prospecto.empresa, prospecto.telefono].filter(Boolean).join(' — ')
+    return prospecto ? (prospecto.empresa && prospecto.nombre && prospecto.empresa !== prospecto.nombre
+      ? `${prospecto.nombre} · Empresa: ${prospecto.empresa}`
+      : prospecto.nombre || prospecto.empresa || '')
       : (cotizacion.nombreProspecto || '');
   }
 

@@ -16,6 +16,7 @@ import { StoragesService } from 'app/services/storages.service';
 import { lastValueFrom } from 'rxjs';
 import { TrackingService } from 'app/services/tracking.service';
 import { PdfShareService } from 'app/services/pdf-share.service';
+import { AdministrationService } from 'app/services/administration.service';
 import Swal from 'sweetalert2';
 import pdfMake from 'pdfmake/build/pdfmake';
 import * as pdfFonts from 'pdfmake/build/vfs_fonts';
@@ -48,6 +49,7 @@ const GRAY  = '#555555';
           <span class="badge bg-primary ms-1">
             Total USD: {{ totalDolares | currency:'USD':'symbol':'1.2-2' }}
           </span>
+          <span class="small text-muted" *ngIf="tipoCambio > 0">Tipo de cambio: {{ tipoCambio | number:'1.2-4' }} MXN/USD</span>
 
           <div class="ms-auto d-flex gap-1">
             <button class="btn btn-sm btn-success" (click)="add()" [disabled]="!gridApi" title="Agregar item">
@@ -203,6 +205,7 @@ export class DetalleItemsCotizacionComponent implements ICellRendererAngularComp
   private signalsSvc      = inject(SignalsService);
   private trackingService = inject(TrackingService);
   private pdfShareSvc     = inject(PdfShareService);
+  private administrationService = inject(AdministrationService);
 
   private params!: ICellRendererParams;
   private context: any;
@@ -210,6 +213,7 @@ export class DetalleItemsCotizacionComponent implements ICellRendererAngularComp
   AG_GRID_LOCALE_ES = AG_GRID_LOCALE_ES;
 
   cotizacion: any  = null;
+  tipoCambio = 0;
   rowData: CotizacionItem[]   = [];
   originalData: CotizacionItem[] = [];
   selectedRow: CotizacionItem | null = null;
@@ -237,11 +241,13 @@ export class DetalleItemsCotizacionComponent implements ICellRendererAngularComp
 
   get total() { return this.rowData.reduce((s, i) => s + (i.subtotal ?? 0), 0); }
   get totalDolares() {
-    return this.rowData.reduce((sum, item) => sum + Math.round((Number(item.dolares) || 0) * 100), 0) / 100;
+    return this.tipoCambio > 0
+      ? Number((this.total / this.tipoCambio).toFixed(2))
+      : this.rowData.reduce((sum, item) => sum + Math.round((Number(item.dolares) || 0) * 100), 0) / 100;
   }
 
   // ── Enter-nav ─────────────────────────────────────────────────────────────
-  private editableColumnOrder = ['nombreMaterial', 'unidad', 'cantidad', 'precio', 'dolares'];
+  private editableColumnOrder = ['nombreMaterial', 'unidad', 'cantidad', 'precio'];
   private enterPressed = false;
 
   defaultColDef: ColDef = {
@@ -290,7 +296,7 @@ export class DetalleItemsCotizacionComponent implements ICellRendererAngularComp
       cellStyle: { fontWeight: 'bold', backgroundColor: '#e8f5e9' },
     },
     {
-      field: 'dolares', headerName: 'Dólares (USD)', width: 145, editable: true, type: 'numericColumn',
+      field: 'dolares', headerName: 'Dólares (USD)', width: 145, editable: false, type: 'numericColumn',
       cellDataType: 'number',
       cellEditor: 'agNumberCellEditor',
       cellEditorParams: { precision: 2 },
@@ -298,8 +304,11 @@ export class DetalleItemsCotizacionComponent implements ICellRendererAngularComp
         const value = Number(p.newValue);
         return Number.isFinite(value) ? Math.round(value * 100) / 100 : (p.oldValue ?? 0);
       },
+      valueGetter: p => this.tipoCambio > 0
+        ? Number((Number(p.data?.subtotal ?? 0) / this.tipoCambio).toFixed(2))
+        : Number(p.data?.dolares ?? 0),
       valueFormatter: (p) => `US$${Number(p.value ?? 0).toFixed(2)}`,
-      headerTooltip: 'Importe en dólares del renglón; se suma directamente al total USD',
+      headerTooltip: 'Importe en dólares calculado como subtotal MXN ÷ tipo de cambio',
     },
   ];
 
@@ -321,7 +330,9 @@ export class DetalleItemsCotizacionComponent implements ICellRendererAngularComp
     this.params     = params;
     this.context    = params.context;
     this.cotizacion = { ...params.data };
+    this.tipoCambio = Number(this.cotizacion.tipoCambio) || 0;
     this.mode       = params.data?.__mode ?? 'items';
+    void this.cargarTipoCambio();
 
     if (this.mode === 'pdf') {
       this.generarPdf();
@@ -379,16 +390,20 @@ export class DetalleItemsCotizacionComponent implements ICellRendererAngularComp
     if (!this.cotizacion?.id) { this.rowData = []; return; }
     const data = await this.svc.getItems(this.cotizacion.id);
     this.rowData      = data.map(item => ({ ...item, dolares: item.dolares ?? 0 }));
+    this.aplicarConversionDolares();
     this.originalData = JSON.parse(JSON.stringify(this.rowData));
     this.hasChanges   = false;
+    this.updateCountInParent();
   }
 
   onCellEditingStopped(event: any) {
     const colId = event.column.getColId();
     if (colId === 'cantidad' || colId === 'precio') {
       event.data.subtotal = (event.data.cantidad ?? 0) * (event.data.precio ?? 0);
-      this.gridApi.refreshCells({ rowNodes: [event.node], columns: ['subtotal'] });
+      this.calcularDolares(event.data);
+      this.gridApi.refreshCells({ rowNodes: [event.node], columns: ['subtotal', 'dolares'] });
     } else if (colId === 'nombreMaterial') {
+      this.calcularDolares(event.data);
       this.gridApi.refreshCells({ rowNodes: [event.node], columns: ['unidad', 'precio', 'subtotal'] });
     }
     this.hasChanges = true;
@@ -401,6 +416,33 @@ export class DetalleItemsCotizacionComponent implements ICellRendererAngularComp
         this.gridApi.startEditingCell({ rowIndex: event.rowIndex, colKey: this.editableColumnOrder[idx + 1] });
       }, 100);
     }
+  }
+
+  private async cargarTipoCambio(): Promise<void> {
+    if (this.tipoCambio > 0) return;
+    try {
+      const result: any = await lastValueFrom(this.administrationService.getTodayExchangeRate());
+      const rate = Number(result?.rate ?? result?.tipoCambio ?? result?.exchangeRate);
+      if (!(rate > 0) || !this.cotizacion?.id) return;
+      this.tipoCambio = rate;
+      this.cotizacion.tipoCambio = rate;
+      await this.svc.actualizarCotizacion(this.cotizacion.id, { tipoCambio: rate });
+      this.aplicarConversionDolares();
+      this.gridApi?.refreshCells({ force: true });
+      this.updateCountInParent();
+    } catch (error) {
+      console.warn('[Cotizaciones] No se pudo obtener el tipo de cambio FIX del día:', error);
+    }
+  }
+
+  private calcularDolares(item: any): void {
+    if (this.tipoCambio > 0) item.dolares = Number((Number(item.subtotal ?? 0) / this.tipoCambio).toFixed(2));
+  }
+
+  private aplicarConversionDolares(): void {
+    if (!(this.tipoCambio > 0)) return;
+    this.rowData.forEach(item => this.calcularDolares(item));
+    this.gridApi?.refreshCells({ columns: ['dolares'], force: true });
   }
 
   // ── CRUD ──────────────────────────────────────────────────────────────────
@@ -849,11 +891,18 @@ export class DetalleItemsCotizacionComponent implements ICellRendererAngularComp
     if (!this.cotizacion?.id) return;
     this.isLoadingPdf = true;
     try {
+      await this.cargarTipoCambio();
       const idRoot = this.context?.idCompany;
-      const [rootData, items] = await Promise.all([
+      const [rootData, loadedItems] = await Promise.all([
         lastValueFrom(this.rootSvc.getRootbyId(idRoot)) as Promise<any>,
         this.svc.getItems(this.cotizacion.id),
       ]);
+      const items = loadedItems.map(item => ({
+        ...item,
+        dolares: this.tipoCambio > 0
+          ? Number((Number(item.subtotal ?? (Number(item.cantidad ?? 0) * Number(item.precio ?? 0))) / this.tipoCambio).toFixed(2))
+          : Number(item.dolares ?? 0),
+      }));
 
       const tryB64 = async (url: string) => {
         try { return await this.b64Svc.convertImageToBase64(url); } catch { return null; }
@@ -876,6 +925,7 @@ export class DetalleItemsCotizacionComponent implements ICellRendererAngularComp
             stack: [
               { text: companyName, fontSize: 11, bold: true, color: NAVY, alignment: 'center' },
               { text: 'COTIZACIÓN', fontSize: 9, bold: true, color: BLUE, alignment: 'center', margin: [0,2,0,0] },
+              ...(this.tipoCambio > 0 ? [{ text: `Tipo de cambio FIX: ${this.tipoCambio.toFixed(4)} MXN/USD`, fontSize: 7, color: GRAY, alignment: 'center', margin: [0,2,0,0] }] : []),
             ],
             margin: [8, 0, 8, 0],
           },
@@ -1064,7 +1114,8 @@ export class DetalleItemsCotizacionComponent implements ICellRendererAngularComp
       this.params.node.data.countItems = this.rowData.length;
       this.params.node.data.total      = this.total;
       this.params.node.data.totalDolares = this.totalDolares;
-      this.params.api.refreshCells({ rowNodes: [this.params.node], force: true });
+      this.params.node.data.tipoCambio = this.tipoCambio;
+      this.params.api.refreshCells({ rowNodes: [this.params.node], columns: ['totalDolares'], force: true });
     }
   }
 

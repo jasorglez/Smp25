@@ -125,7 +125,7 @@ export class AuxiliaresComponent {
       } as ColDef] : [{ field: 'unit', headerName: 'Unidad', width: 90, editable: true } as ColDef]),
       { field: 'quantity', headerName: 'Cantidad', width: 100, editable: true, type: 'numericColumn',
         valueFormatter: (p) => p.value != null ? Number(p.value).toFixed(5) : '' },
-      { field: 'unitCost', headerName: 'Costo Unit.', width: 120, editable: true, type: 'numericColumn',
+      { field: 'unitCost', headerName: 'Precio Unitario', width: 140, editable: true, type: 'numericColumn',
         valueFormatter: (p) => p.value != null ? '$' + Number(p.value).toLocaleString('es-MX', { minimumFractionDigits: 2 }) : '' },
       { headerName: 'Total', width: 130, editable: false, type: 'numericColumn',
         valueGetter: (p) => (Number(p.data?.quantity) || 0) * (Number(p.data?.unitCost) || 0),
@@ -178,7 +178,7 @@ export class AuxiliaresComponent {
       { field: 'unit', headerName: 'Unidad', width: 90, editable: true },
       { field: 'quantity', headerName: 'Cantidad', width: 100, editable: true, type: 'numericColumn',
         valueFormatter: (p) => p.value != null ? Number(p.value).toFixed(4) : '' },
-      { field: 'unitCost', headerName: 'Costo Unit.', width: 120, editable: true, type: 'numericColumn',
+      { field: 'unitCost', headerName: 'Precio Unitario', width: 140, editable: true, type: 'numericColumn',
         valueFormatter: (p) => p.value != null ? '$' + Number(p.value).toLocaleString('es-MX', { minimumFractionDigits: 2 }) : '' },
       { headerName: 'Total', width: 130, editable: false, type: 'numericColumn',
         valueGetter: (p) => (Number(p.data?.quantity) || 0) * (Number(p.data?.unitCost) || 0),
@@ -235,8 +235,12 @@ export class AuxiliaresComponent {
     if (!this.idCompany || !idContract) { this.rowData = []; this.originalData = []; return; }
     this.auxiliarService.getByContract(idContract, this.idCompany).subscribe({
       next: (data) => {
-        this.rowData      = data;
-        this.originalData = JSON.parse(JSON.stringify(data));
+        this.rowData = (data ?? []).map((row: any) => ({
+          ...row,
+          costMN: Number(row.costMN ?? row.cost_mn ?? row.CostMN ?? 0) || 0,
+          precioUnitario: Number(row.precioUnitario ?? row.precio_unitario ?? row.PrecioUnitario ?? 0) || 0,
+        }));
+        this.originalData = JSON.parse(JSON.stringify(this.rowData));
         this.hasMainChanges = false;
       },
       error: (e) => console.error('Error cargando precios unitarios', e),
@@ -269,12 +273,16 @@ export class AuxiliaresComponent {
       next: (data) => {
         this.allItems = (data.items ?? []).map((i: any) => ({
           ...i,
-          unitCost: i.unitCost ?? i.unit_cost ?? 0,
+          unitCost: Number(i.unitCost ?? i.unit_cost ?? i.UnitCost ?? i.precioUnitario ?? i.precio_unitario ?? 0) || 0,
           __isNew: false, __modified: false,
         }));
         this.cuadrillas = (data.cuadrillas ?? []).map((c: any) => ({
           ...c,
-          items: (c.items ?? []).map((i: any) => ({ ...i, unitCost: i.unitCost ?? i.unit_cost ?? 0, __isNew: false, __modified: false })),
+          items: (c.items ?? []).map((i: any) => ({
+            ...i,
+            unitCost: Number(i.unitCost ?? i.unit_cost ?? i.UnitCost ?? i.precioUnitario ?? i.precio_unitario ?? 0) || 0,
+            __isNew: false, __modified: false,
+          })),
           __isNew: false, __modified: false,
         }));
         if (this.cuadrillas.length) this.selectCuadrilla(this.cuadrillas[0]);

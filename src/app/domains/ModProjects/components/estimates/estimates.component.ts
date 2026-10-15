@@ -345,23 +345,26 @@ export class EstimatesComponent {
         this.projectsService.getProjectsById(Number(this.signalsService.getProjectSelectedBySidebar()())).pipe(catchError(() => of(null)))
       );
       const projectData = Array.isArray(projectResponse) ? projectResponse[0] : projectResponse;
-      const generators = await lastValueFrom(this.generatorsService.getGenerators(estimateId));
+      const generators = (await lastValueFrom(this.generatorsService.getGenerators(estimateId))) ?? [];
       const generatorItems = await Promise.all(
-        generators.map(generator => lastValueFrom(this.generatorsService.getItemsGeneradores(generator.id)))
+        generators.map(generator => lastValueFrom(this.generatorsService.getItemsGeneradores(generator.id).pipe(catchError(() => of([])))))
       );
       const estimateItems = generatorItems.flat();
       const conceptsRes   = await Promise.all(
-        estimateItems.map(item => lastValueFrom(this.workprogramsService.getWorkProgramsWithoutType(item.idResource)))
+        estimateItems.map(item => Number(item.idResource) > 0
+          ? lastValueFrom(this.workprogramsService.getWorkProgramsWithoutType(Number(item.idResource)).pipe(catchError(() => of([]))))
+          : Promise.resolve([]))
       );
       const pdfData = await this.createEstimateDataFromServices(estimateData, contractData, projectData, estimateItems, conceptsRes);
       if (download) {
-        this.pdfEstimatesService.downloadEstimatePdf(pdfData, `Estimacion_${estimateData.number}.pdf`);
+        await this.pdfEstimatesService.downloadEstimatePdf(pdfData, `Estimacion_${estimateData.number}.pdf`);
       } else {
-        this.pdfEstimatesService.generateEstimatePdf(pdfData);
+        await this.pdfEstimatesService.generateEstimatePdf(pdfData);
       }
     } catch (error) {
       console.error('Error generando PDF:', error);
-      alerts.basicAlert('Error', 'Error al generar el PDF.', 'error');
+      const detail = error?.error?.message || error?.error || error?.message;
+      alerts.basicAlert('Error', detail ? `Error al generar el PDF: ${detail}` : 'Error al generar el PDF.', 'error');
     }
   }
 

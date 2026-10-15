@@ -354,7 +354,7 @@ export class PdfDetailComponent implements OnInit, OnDestroy, ICellRendererAngul
       // ── Resolver cada entrada de bitácora → { subAct, cAct } ─────────────
       // Estrategia 1: id_padre → workprogram.id del SUBPARTIDA
       // Estrategia 2 (fallback): parsear description "1.1 A INGENIERIA..."
-      const resolvedConceptos: Array<{ subAct: string; cAct: string; entry: any }> = [];
+      const resolvedConceptos: Array<{ sysAct: string; subAct: string; cAct: string; root: boolean; entry: any }> = [];
       for (const c of conceptosBitacora) {
         const idPadre = Number(c.idPadre ?? c.id_padre ?? 0);
         let info = idPadre > 0 ? subpartidaById.get(idPadre) : undefined;
@@ -362,10 +362,19 @@ export class PdfDetailComponent implements OnInit, OnDestroy, ICellRendererAngul
           const tok0 = String(c.description ?? c.metadata ?? '').trim().split(/\s+/)[0];
           if (tok0) info = subpartidaByAct.get(tok0);
         }
-        if (!info) continue;
         const descC = String(c.descriptionconcept ?? '').trim();
         const cAct  = descC.split(/\s+/)[0] ?? '';
-        resolvedConceptos.push({ subAct: info.subAct, cAct, entry: c });
+        if (info) {
+          const sys = conceptsHierarchy.find((item: any) => (item.subpartidas ?? []).some((sub: any) => Number(sub.id) === idPadre));
+          resolvedConceptos.push({ sysAct: String(sys?.activity ?? '').trim(), subAct: info.subAct, cAct, root: false, entry: c });
+          continue;
+        }
+        // Los conceptos raíz no tienen subpartida ni idPadre. Relacionarlos
+        // por su clave EDT para que también aparezcan en el PDF.
+        const rootSystem = conceptsHierarchy.find((sys: any) =>
+          (sys.conceptos ?? []).some((concept: any) => String(concept.activity ?? '').trim() === cAct)
+        );
+        if (rootSystem && cAct) resolvedConceptos.push({ sysAct: String(rootSystem.activity ?? '').trim(), subAct: '', cAct, root: true, entry: c });
       }
 
       const companyName = root?.name    || 'EMPRESA';
@@ -418,6 +427,39 @@ export class PdfDetailComponent implements OnInit, OnDestroy, ICellRendererAngul
         const sysAct = String(sys.activity ?? '').trim();
         const sysTxt = String(sys.text     ?? '').trim();
         let sysAdded = false;
+
+        for (const c of sys.conceptos ?? []) {
+          const cAct = String(c.activity ?? '').trim();
+          const cTxt = String(c.text ?? '').trim();
+          const entries = resolvedConceptos.filter(r => r.root && r.sysAct === sysAct && r.cAct === cAct).map(r => r.entry);
+          if (!entries.length) continue;
+          if (!sysAdded) {
+            cRows.push([
+              { text: sysAct, fontSize: 8, bold: true, color: WHITE, fillColor: NAVY },
+              { text: '', fillColor: NAVY }, { text: '', fillColor: NAVY },
+              { text: sysTxt.toUpperCase(), fontSize: 8, bold: true, color: WHITE, fillColor: NAVY },
+              { text: '', fillColor: NAVY },
+            ]);
+            sysAdded = true;
+          }
+          const edtC = `${sysAct}.${cAct}`;
+          cRows.push([
+            { text: edtC, fontSize: 8, bold: true, color: BLUE, fillColor: '#eaf0fb' },
+            { text: '', fillColor: '#eaf0fb' }, { text: '', fillColor: '#eaf0fb' },
+            { text: cTxt.toUpperCase(), fontSize: 8, bold: true, color: BLUE, fillColor: '#eaf0fb' },
+            { text: '', fillColor: '#eaf0fb' },
+          ]);
+          for (let ei = 0; ei < entries.length; ei++) {
+            const e = entries[ei];
+            const alt = ei % 2 === 0;
+            cRows.push([
+              dCell(`${edtC}.${SEQ[ei] ?? String(ei + 1)}`, alt),
+              dCell(fmtT(e.start), alt, 'center'), dCell(fmtT(e.end), alt, 'center'),
+              dCell(String(e.description ?? e.metadata ?? ''), alt),
+              dCell(e.quantity != null ? String(e.quantity) : '', alt, 'right'),
+            ]);
+          }
+        }
 
         for (const sub of sys.subpartidas ?? []) {
           const subAct = String(sub.activity ?? '').trim();

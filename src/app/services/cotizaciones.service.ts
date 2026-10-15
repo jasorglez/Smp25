@@ -27,6 +27,8 @@ export interface Cotizacion {
   notas: string;
   total: number;
   totalDolares?: number;
+  /** Tipo de cambio USD/MXN fijado para esta cotización */
+  tipoCambio?: number;
   countItems: number;
   activo: boolean;
   __isNew?: boolean;
@@ -131,6 +133,7 @@ export class CotizacionesService {
       notas:            c.notas            ?? '',
       total:            0,
       totalDolares:     0,
+      tipoCambio:       Number(c.tipoCambio) || 0,
       countItems:       0,
       activo:           true,
     });

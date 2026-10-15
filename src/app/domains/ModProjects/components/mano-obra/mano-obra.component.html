@@ -8,6 +8,12 @@
         <i class="bi bi-plus-lg"></i> Agregar
       </button>
 
+      <button class="btn btn-sm btn-outline-success" (click)="addAllRoles()"
+              [disabled]="loadingPosiciones || !posiciones.length"
+              title="Agrega al grid todas las categorías y roles activos que aún no estén registrados">
+        <i class="bi bi-people"></i> Agregar todos los roles
+      </button>
+
       <button class="btn btn-sm btn-primary position-relative" (click)="saveChanges()" [disabled]="!hasChanges">
         <i class="bi bi-floppy"></i> Guardar
         <span *ngIf="hasChanges"

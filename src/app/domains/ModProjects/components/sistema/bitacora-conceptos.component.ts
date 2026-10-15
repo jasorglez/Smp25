@@ -16,7 +16,7 @@ import { SubcontractProgramService } from 'app/services/subcontract-program.serv
 export class BitacoraConceptosComponent extends BitacoraBaseComponent {
   readonly bitacoraType = 'conceptos';
   readonly typeNoteValue = 'CONCEPTO';
-  readonly editableCols = ['startTime', 'endTime', 'descriptionconcept', 'detail', 'quantity'];
+  readonly editableCols = ['startTime', 'endTime', 'descriptionconcept', 'detail', 'quantity', 'percentage'];
   
   private workprogramsService = inject(WorkprogramsService);
   private subcontractProgramService = inject(SubcontractProgramService);
@@ -25,6 +25,7 @@ export class BitacoraConceptosComponent extends BitacoraBaseComponent {
   private subpartidaIdToCodeMap = new Map<number, string>();
   private conceptBySubpartida = new Map<string, string[]>();
   private directConceptOptions: string[] = [];
+  private plannedQuantityByConcept = new Map<string, number>();
   conceptOptions: string[] = [];
   
   readonly requiredFields = [
@@ -74,6 +75,7 @@ export class BitacoraConceptosComponent extends BitacoraBaseComponent {
       subpartidaCode: '',
       descriptionconcept: '',
       quantity: 0,
+      percentage: 0,
       detail: '',
       active: true,
       __isNew: true,
@@ -115,6 +117,8 @@ export class BitacoraConceptosComponent extends BitacoraBaseComponent {
         });
         this.directConceptOptions = directConcepts.map((concept: any) => {
           const label = `${String(concept.activity ?? concept.Activity ?? '').trim()} ${String(concept.text ?? concept.Text ?? '').trim()}`.trim();
+          const planned = Number(concept.quantity ?? concept.Quantity ?? concept.amount ?? concept.Amount ?? concept.volume ?? concept.Volume);
+          if (label && Number.isFinite(planned) && planned > 0) this.plannedQuantityByConcept.set(label, planned);
           return label;
         }).filter((label: string) => !!label);
         this.mergeDirectConceptOptions();
@@ -141,6 +145,7 @@ export class BitacoraConceptosComponent extends BitacoraBaseComponent {
           for (const concept of sistema.conceptos || []) {
             const label = `${String(concept.activity ?? concept.Activity ?? '').trim()} ${String(concept.text ?? concept.Text ?? '').trim()}`.trim();
             if (label && !this.conceptOptions.includes(label)) this.conceptOptions.push(label);
+            this.registerPlannedQuantity(label, concept);
           }
           const subpartidas = sistema.subpartidas || [];
           for (const sub of subpartidas) {
@@ -157,6 +162,7 @@ export class BitacoraConceptosComponent extends BitacoraBaseComponent {
               const conceptCode = String(c.activity ?? '').trim();
               const conceptText = String(c.text ?? '').trim();
               const label = `${conceptCode} ${conceptText}`.trim();
+              this.registerPlannedQuantity(label, c);
               this.conceptOptions.push(label);
               conceptos.push(label);
             }
@@ -180,6 +186,21 @@ export class BitacoraConceptosComponent extends BitacoraBaseComponent {
     for (const label of this.directConceptOptions) {
       if (!this.conceptOptions.includes(label)) this.conceptOptions.push(label);
     }
+  }
+
+  private registerPlannedQuantity(label: string, concept: any): void {
+    const planned = Number(concept?.quantity ?? concept?.Quantity ?? concept?.amount ?? concept?.Amount ?? concept?.volume ?? concept?.Volume);
+    if (label && Number.isFinite(planned) && planned > 0) this.plannedQuantityByConcept.set(label, planned);
+  }
+
+  private updatePercentageFromQuantity(row: any): void {
+    const planned = this.plannedQuantityByConcept.get(String(row?.descriptionconcept ?? '').trim());
+    row.percentage = planned ? Number(((Number(row.quantity) || 0) * 100 / planned).toFixed(2)) : null;
+  }
+
+  private updateQuantityFromPercentage(row: any): void {
+    const planned = this.plannedQuantityByConcept.get(String(row?.descriptionconcept ?? '').trim());
+    if (planned) row.quantity = Number((planned * (Number(row.percentage) || 0) / 100).toFixed(4));
   }
 
   get colDefs(): ColDef[] {
@@ -229,6 +250,7 @@ export class BitacoraConceptosComponent extends BitacoraBaseComponent {
           params.data.descriptionconcept = params.newValue;
           const subpartida = params.data.subpartidaCode || '';
           params.data.detail = `${subpartida} ${params.newValue}`.trim();
+          this.updatePercentageFromQuantity(params.data);
           return true;
         },
         valueFormatter: (p) => {
@@ -238,14 +260,15 @@ export class BitacoraConceptosComponent extends BitacoraBaseComponent {
         },
       },
       { field: 'detail', headerName: 'Descripción', editable: true, width: 500 },
-      { field: 'quantity', headerName: 'Cantidad', editable: true, width: 90, type: 'numericColumn' },
+      { field: 'quantity', headerName: 'Cantidad', editable: true, width: 100, type: 'numericColumn', valueSetter: p => { p.data.quantity = Number(p.newValue) || 0; this.updatePercentageFromQuantity(p.data); return true; } },
+      { field: 'percentage', headerName: '% Avance', editable: true, width: 105, type: 'numericColumn', valueSetter: p => { p.data.percentage = Math.min(100, Math.max(0, Number(p.newValue) || 0)); this.updateQuantityFromPercentage(p.data); return true; }, valueFormatter: p => p.value == null ? '' : `${p.value}%` },
     ];
   }
 
   protected override remapFromDb(item: any): any {
     const idPadre = item.idPadre || null;
     const subpartidaCode = idPadre ? (this.subpartidaIdToCodeMap.get(idPadre) || String(idPadre)) : '';
-    return {
+    const row = {
       ...item,
       date: item.date || '',
       startTime: item.start || '',
@@ -254,7 +277,11 @@ export class BitacoraConceptosComponent extends BitacoraBaseComponent {
       subpartidaId: idPadre,
       descriptionconcept: item.descriptionconcept || item.description || '',
       detail: item.metadata ?? '',
+      percentage: null as number | null,
     };
+    const planned = this.plannedQuantityByConcept.get(String(row.descriptionconcept ?? '').trim());
+    row.percentage = planned ? Number(((Number(row.quantity) || 0) * 100 / planned).toFixed(2)) : null;
+    return row;
   }
 
   private formatTime(value: string | null): string | null {
