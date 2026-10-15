@@ -119,6 +119,10 @@ export class BitacoraConceptosComponent extends BitacoraBaseComponent {
         this.conceptBySubpartida.clear();
 
         for (const sistema of data || []) {
+          for (const concept of sistema.conceptos || []) {
+            const label = `${String(concept.activity ?? '').trim()} ${String(concept.text ?? '').trim()}`.trim();
+            if (label && !this.conceptOptions.includes(label)) this.conceptOptions.push(label);
+          }
           const subpartidas = sistema.subpartidas || [];
           for (const sub of subpartidas) {
             const subCode = String(sub.activity ?? '').trim();
@@ -191,8 +195,9 @@ export class BitacoraConceptosComponent extends BitacoraBaseComponent {
           const filteredConcepts = subpartidaCode 
             ? (this.conceptBySubpartida.get(subpartidaCode) || [])
             : this.conceptOptions;
+          const availableConcepts = [...new Set([...filteredConcepts, ...this.directConceptOptions])];
           return {
-            values: filteredConcepts.length > 0 ? filteredConcepts : [],
+            values: availableConcepts,
           };
         },
         valueSetter: (params) => {
