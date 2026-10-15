@@ -520,14 +520,14 @@
                 [ngClass]="typeWorkProgram === 'Contract' ? 'btn-primary' : 'btn-outline-primary'"
                 (click)="selectWorkProgramScope('Contract')">
           <i class="bi bi-file-earmark-text me-1"></i>Contrato
-          <span class="badge ms-1" [ngClass]="typeWorkProgram === 'Contract' ? 'text-bg-light' : 'text-bg-secondary'">{{ idContract || '—' }}</span>
+          <span class="badge ms-1" [ngClass]="typeWorkProgram === 'Contract' ? 'text-bg-light' : 'text-bg-secondary'">{{ contractShortName || '—' }}</span>
         </button>
         <button type="button" class="btn"
                 [ngClass]="typeWorkProgram === 'Project' ? 'btn-success' : 'btn-outline-success'"
                 (click)="selectWorkProgramScope('Project')"
                 [disabled]="!idProject">
           <i class="bi bi-building me-1"></i>Proyecto
-          <span class="badge ms-1" [ngClass]="typeWorkProgram === 'Project' ? 'text-bg-light' : 'text-bg-secondary'">{{ idProject || '—' }}</span>
+          <span class="badge ms-1" [ngClass]="typeWorkProgram === 'Project' ? 'text-bg-light' : 'text-bg-secondary'">{{ projectName() || '—' }}</span>
         </button>
       </div>
       <button *ngIf="typeWorkProgram === 'Project'" type="button" class="btn btn-primary"
@@ -649,10 +649,10 @@
         <i class="bi bi-bookmark-x me-1"></i>Selecciona un convenio
       </span>
       <span *ngIf="idContract" class="badge bg-primary px-3 py-2">
-        <i class="bi bi-file-earmark-text me-1"></i>Contrato: {{ contractShortName || contractNumber || idContract }}
+        <i class="bi bi-file-earmark-text me-1"></i>Contrato: {{ contractShortName || '—' }}
       </span>
       <span *ngIf="idProject" class="badge bg-success px-3 py-2">
-        <i class="bi bi-folder2-open me-1"></i>Proyecto: {{ projectName() || idProject }}
+        <i class="bi bi-folder2-open me-1"></i>Proyecto: {{ projectName() || '—' }}
       </span>
       <span class="badge bg-dark px-3 py-2">
         <i class="bi me-1" [ngClass]="typeWorkProgram === 'Contract' ? 'bi-file-earmark-text' : 'bi-folder2-open'"></i>

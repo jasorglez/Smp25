@@ -2737,13 +2737,25 @@ ${taskXML}
 
   async getPhases() {
     try {
-      const phases = await this.catalogsService.getPhases(this.idcompany).toPromise();
-      this.phases = phases.map(phase => ({
-        key: phase.description.toString(),
-        label: phase.description.toString()
-      }));
+      if (!this.idcompany) {
+        this.phases = [];
+        return;
+      }
+
+      const response: any = await lastValueFrom(this.catalogsService.getPhases(Number(this.idcompany)));
+      const phases = Array.isArray(response) ? response : (response?.data ?? response?.items ?? response?.$values ?? []);
+      this.phases = phases
+        .map((phase: any) => String(phase?.description ?? phase?.Description ?? '').trim())
+        .filter((description: string, index: number, all: string[]) =>
+          !!description && all.findIndex(item => item.toLocaleLowerCase() === description.toLocaleLowerCase()) === index
+        )
+        .map((description: string) => ({ key: description, label: description }));
+
+      const phaseSection = (gantt.config.lightbox.sections as any[])?.find(section => section.name === 'measure_phase');
+      if (phaseSection) phaseSection.phaseOptions = this.phases;
     } catch (error) {
-      // silencioso
+      this.phases = [];
+      console.error('No se pudieron cargar las fases del catálogo SMP:', error);
     }
   }
 
@@ -3045,7 +3057,8 @@ ${taskXML}
     if (!this.newFaseDescription.trim()) return;
 
     try {
-      await lastValueFrom(this.catalogsService.addCatalog({
+      // Las fases se consultan desde SMP; deben guardarse en el mismo catálogo.
+      await lastValueFrom(this.catalogsService.addCatalogToSmp({
         idCompany: this.idcompany,
         description: this.newFaseDescription.trim(),
         valueAddition: 'NA',
