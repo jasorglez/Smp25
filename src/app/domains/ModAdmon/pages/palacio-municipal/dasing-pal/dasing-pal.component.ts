@@ -143,7 +143,7 @@ export class DasingPalComponent implements OnInit {
     },
     {
       headerName: 'PDF',
-      width: 100,
+      width: 100, pinned: 'right', lockPinned: true, suppressMovable: true,
       cellRenderer: () => {
         return '<button class="btn btn-sm btn-outline-danger"><i class="bi bi-file-pdf"></i> PDF</button>';
       },

@@ -422,7 +422,7 @@ export class StakeholderExpendComponent {
       {
         field: 'pdfReport',
         headerName: 'PDF',
-        width: 70,
+        width: 70, pinned: 'right', lockPinned: true, suppressMovable: true,
         cellRenderer: PdfButtonCellRendererStakeholderComponent,
         cellRendererParams: {
           onClick: (node: any) => {

@@ -133,7 +133,7 @@ export class DetailCellRendererPedimentosComponent {
       {
         field: 'pdf',
         headerName: 'PDF',
-        width: 80,
+        width: 80, pinned: 'right', lockPinned: true, suppressMovable: true,
         cellRenderer: PdfButtonCellRendererPedimentosComponent,
         cellRendererParams: {
           onClick: (node: any) => this.toggleReportCascade(node),

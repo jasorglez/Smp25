@@ -83,5 +83,5 @@ export const environment = {
   geminiApiKey: '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',
   gnewsApiKey: '94ccc596b4dfebc3f72683b6e81d81bc',
 
-  version: '5.00.150 (15 Octubre 2026) reportes de almacén y cotizaciones carta vertical',
+  version: '5.00.151 (15 Octubre 2026) columnas PDF fijas en los reportes',
 };

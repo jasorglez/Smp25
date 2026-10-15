@@ -461,6 +461,9 @@ export class PedidosLogisticaComponent implements CanComponentDeactivate {
         headerName: 'PDF',
         editable: false,
         minWidth: 80,
+        pinned: 'right',
+        lockPinned: true,
+        suppressMovable: true,
         cellRenderer: PdfButtonCellRendererComponent,
         cellRendererParams: {
           onClick: (node: any) => this.toggleDetallePdf(node),

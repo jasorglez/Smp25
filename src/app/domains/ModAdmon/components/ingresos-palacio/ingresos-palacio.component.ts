@@ -480,7 +480,7 @@ export class IngresosPalacioComponent implements OnInit {
       {
         field: 'pdfReport',
         headerName: 'PDF',
-        width: 80,
+        width: 80, pinned: 'right', lockPinned: true, suppressMovable: true,
         cellRenderer: PdfButtonCellRendererComponent,
         cellRendererParams: {
           onClick: (node: any) => {

@@ -490,7 +490,7 @@ export class IncomeComponent implements OnDestroy {
       {
         field: 'pdfReport',
         headerName: 'PDF',
-        width: 80,
+        width: 80, pinned: 'right', lockPinned: true, suppressMovable: true,
         cellRenderer: PdfButtonCellRendererIncomeComponent,
         cellRendererParams: {
           onClick: (node: any) => {

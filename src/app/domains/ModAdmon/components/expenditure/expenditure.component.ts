@@ -680,7 +680,7 @@ export class ExpenditureComponent implements OnDestroy, OnChanges {
       {
         field: 'pdfReport',
         headerName: 'PDF',
-        width: 70,
+        width: 70, pinned: 'right', lockPinned: true, suppressMovable: true,
         cellRenderer: PdfButtonCellRendererExpenditure2Component,
         cellRendererParams: {
           onClick: (node: any) => {

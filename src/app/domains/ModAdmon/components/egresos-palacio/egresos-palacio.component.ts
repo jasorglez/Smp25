@@ -684,7 +684,7 @@ export class EgresosPalacioComponent {
       {
         field: 'catalogPdfReport',
         headerName: 'PDF',
-        width: 70,
+        width: 70, pinned: 'right', lockPinned: true, suppressMovable: true,
         cellRenderer: PdfButtonCellRendererComponent,
         cellRendererParams: {
           onClick: (node: any) => {
@@ -700,7 +700,7 @@ export class EgresosPalacioComponent {
       {
         field: 'pdfReport',
         headerName: 'PDF',
-        width: 70,
+        width: 70, pinned: 'right', lockPinned: true, suppressMovable: true,
         cellRenderer: PdfButtonCellRendererComponent,
         cellRendererParams: {
           onClick: (node: any) => {

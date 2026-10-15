@@ -166,7 +166,7 @@ export class CotizacionesComponent implements OnInit, OnDestroy {
       cellStyle: { cursor: 'pointer' },
     },
     {
-      field: 'pdf', headerName: 'PDF', width: 70, editable: false,
+      field: 'pdf', headerName: 'PDF', width: 70, pinned: 'right', lockPinned: true, suppressMovable: true, editable: false,
       cellRenderer: ButtonCellRendererIncomeComponent,
       cellRendererParams: {
         onClick: (node: any) => this.toggleCascadeWithMode(node, 'pdf'),

@@ -348,7 +348,7 @@ export class RequisitionsComponent implements CanComponentDeactivate {
       {
         field: 'pdf',
         headerName: 'PDF',
-        width: 50,
+        width: 50, pinned: 'right', lockPinned: true, suppressMovable: true,
         cellRenderer: PdfButtonCellRendererRequisitionsComponent,
         cellRendererParams: {
           onClick: (node: any) => this.toggleReportCascade(node),

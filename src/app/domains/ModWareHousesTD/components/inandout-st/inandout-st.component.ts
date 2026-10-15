@@ -476,7 +476,7 @@ export class InandoutStComponent implements OnInit {
       {
         field: 'pdfReport',
         headerName: 'PDF',
-        width: 70,
+        width: 70, pinned: 'right', lockPinned: true, suppressMovable: true,
         cellRenderer: PdfButtonCellRendererComponent,
         cellRendererParams: {
           onClick: (node: any) => this.toggleReportDetail(node),
