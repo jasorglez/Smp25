@@ -96,6 +96,7 @@ export class CustomGroupRendererComponent implements ICellRendererAngularComp {
   standalone: true,
   imports: [CommonModule, FormsModule, AgGridModule, CustomGroupRendererComponent, SelectWithTooltipEditorV2Component, MaterialDetailRendererComponent, PdfMaterialsDistributionComponent],
   templateUrl: './materials.component.html',
+  styleUrl: './materials.component.scss',
   styles: `
     ::ng-deep .small-text-ag-grid {
       font-size: 12px;
@@ -140,6 +141,11 @@ export class MaterialsComponent implements CanComponentDeactivate {
   familiasCatalog: any[] = [];
   subfamiliasCatalog: any[] = [];  // Todas las subfamilias
   subfamiliasFiltered: any[] = []; // Subfamilias filtradas por familia seleccionada
+  showMaterialModal = false;
+  savingMaterialModal = false;
+  readingMaterialImage = false;
+  materialDraft: any = {};
+  editingMaterialId: number | null = null;
 
 
   private gridApi: GridApi;
@@ -557,7 +563,7 @@ export class MaterialsComponent implements CanComponentDeactivate {
   async onCellDoubleClicked(event: CellDoubleClickedEvent): Promise<void> {
     const colId = event.column.getColId();
     const selectedRowData = event.data; // Obtener los datos de la fila seleccionada
-    const selectedId = selectedRowData.id; // Obtener el ID del registro
+    if (!selectedRowData || selectedRowData.__isDistDetail) return;
 
     if (colId === 'picture' && selectedRowData.picture) {
       if (this.notSavedChanges) {
@@ -571,11 +577,10 @@ export class MaterialsComponent implements CanComponentDeactivate {
       return;
     }
 
-    this.notSavedChanges = true;
-
-
-    // Puedes agregar lógica adicional aquí si necesitas guardar los datos seleccionados
     this.selectedRowData = selectedRowData;
+    event.api.stopEditing();
+    event.node.setSelected(true);
+    this.openMaterialEdit();
   }
   async activateLoansTab() {
     if (!this.isOpen || this.showSavingsTab) {
@@ -1140,7 +1145,138 @@ export class MaterialsComponent implements CanComponentDeactivate {
   }
 
   onAdd() {
-    this.addMasterRow();
+    if (this.notSavedChanges) {
+      alerts.basicAlert('Cambios sin guardar', 'Guarde o deshaga los cambios del grid antes de agregar un material.', 'warning');
+      return;
+    }
+    this.editingMaterialId = null;
+    this.materialDraft = {
+      insumo: '', materialDescription: '', idFamilia: null, idSubfamilia: null,
+      idMedida: null, barcode: '', quantity: 0, costoMN: 0, ventaMN: 0,
+      stockMin: 1, stockMax: 30, picture: '', gramsPerMeter: null,
+      typeMaterial: 'CONSUMABLE', active: true
+    };
+    this.showMaterialModal = true;
+  }
+
+  openMaterialEdit(): void {
+    const selected = this.gridApi?.getSelectedNodes().find(node => !node.group && node.data)?.data;
+    if (!selected) {
+      alerts.basicAlert('Seleccione un material', 'Seleccione un material del listado para editarlo.', 'info');
+      return;
+    }
+    if (this.notSavedChanges) {
+      alerts.basicAlert('Cambios sin guardar', 'Guarde o deshaga los cambios del grid antes de editar el material.', 'warning');
+      return;
+    }
+    this.editingMaterialId = Number(selected.id);
+    this.materialDraft = { ...selected, idFamilia: Number(selected.idFamilia) || null,
+      idSubfamilia: Number(selected.idSubfamilia) || null, idMedida: Number(selected.idMedida) || null };
+    this.showMaterialModal = true;
+  }
+
+  get materialSubfamilies(): any[] {
+    return this.subfamiliasCatalog.filter(subfamily =>
+      Number(subfamily.parentId) === Number(this.materialDraft.idFamilia));
+  }
+
+  get materialFamilyDescription(): string {
+    return this.familiasCatalog.find(family => Number(family.id) === Number(this.materialDraft.idFamilia))?.description || '';
+  }
+
+  onMaterialFamilyChanged(): void {
+    if (!this.materialSubfamilies.some(subfamily => Number(subfamily.id) === Number(this.materialDraft.idSubfamilia))) {
+      this.materialDraft.idSubfamilia = null;
+    }
+  }
+
+  closeMaterialModal(): void {
+    if (this.savingMaterialModal || this.readingMaterialImage) return;
+    this.showMaterialModal = false;
+  }
+
+  onMaterialImageSelected(event: Event): void {
+    const input = event.target as HTMLInputElement;
+    const file = input.files?.[0];
+    if (!file) return;
+    if (!file.type.startsWith('image/')) {
+      alerts.basicAlert('Archivo no válido', 'Seleccione una imagen.', 'warning');
+      input.value = '';
+      return;
+    }
+    if (file.size > 5 * 1024 * 1024) {
+      alerts.basicAlert('Imagen demasiado grande', 'Seleccione una imagen de hasta 5 MB.', 'warning');
+      input.value = '';
+      return;
+    }
+    this.readingMaterialImage = true;
+    const reader = new FileReader();
+    reader.onload = () => {
+      this.materialDraft.picture = String(reader.result || '');
+      this.readingMaterialImage = false;
+      input.value = '';
+    };
+    reader.onerror = () => {
+      this.readingMaterialImage = false;
+      input.value = '';
+      alerts.basicAlert('Error', 'No se pudo leer la imagen seleccionada.', 'error');
+    };
+    reader.readAsDataURL(file);
+  }
+
+  removeMaterialImage(): void {
+    this.materialDraft.picture = '';
+  }
+
+  async saveMaterialModal(): Promise<void> {
+    if (this.savingMaterialModal || this.readingMaterialImage) return;
+    const draft = this.materialDraft;
+    if (!draft.insumo?.trim() || !draft.materialDescription?.trim() || !draft.idFamilia ||
+        !draft.idSubfamilia || !draft.idMedida ||
+        !this.materialSubfamilies.some(subfamily => Number(subfamily.id) === Number(draft.idSubfamilia))) {
+      alerts.basicAlert('Datos incompletos', 'Capture insumo, descripción, familia, subfamilia y unidad.', 'warning');
+      return;
+    }
+    if (['quantity', 'costoMN', 'ventaMN', 'stockMin', 'stockMax'].some(field =>
+      draft[field] === '' || draft[field] == null || !Number.isFinite(Number(draft[field])) || Number(draft[field]) < 0) ||
+      Number(draft.stockMax) < Number(draft.stockMin)) {
+      alerts.basicAlert('Revise las cantidades', 'Use valores no negativos y un stock máximo mayor o igual al mínimo.', 'warning');
+      return;
+    }
+    const family = this.familiasCatalog.find(item => Number(item.id) === Number(draft.idFamilia));
+    const subfamily = this.materialSubfamilies.find(item => Number(item.id) === Number(draft.idSubfamilia));
+    const data = {
+      ...draft,
+      insumo: draft.insumo.trim(),
+      materialDescription: draft.materialDescription.trim(),
+      familiaDescription: family?.description || '',
+      subfamiliaDescription: subfamily?.description || '',
+      idFamilia: Number(draft.idFamilia),
+      idSubfamilia: Number(draft.idSubfamilia),
+      idMedida: Number(draft.idMedida),
+      quantity: Number(draft.quantity), costoMN: Number(draft.costoMN), ventaMN: Number(draft.ventaMN),
+      stockMin: Number(draft.stockMin), stockMax: Number(draft.stockMax),
+      barcode: draft.barcode?.trim() || '', picture: draft.picture?.trim() || ''
+    };
+    this.savingMaterialModal = true;
+    try {
+      const editing = this.editingMaterialId !== null;
+      const payload = this.cleanDataForServer(data, !editing);
+      if (editing) {
+        await lastValueFrom(this.materialsService.updateMaterial(String(this.editingMaterialId), payload));
+      } else {
+        await lastValueFrom(this.materialsService.addMaterial(payload));
+      }
+      this.showMaterialModal = false;
+      this.obtenerDatos();
+      alerts.basicAlert(editing ? 'Material actualizado' : 'Material creado',
+        editing ? 'Los cambios se guardaron correctamente.' : 'El material se guardó correctamente.', 'success');
+    } catch (error: any) {
+      console.error('Error al guardar material:', error);
+      alerts.basicAlert('No se pudo guardar', error?.error?.message || 'Revise los datos e intente nuevamente.', 'error');
+    } finally {
+      this.savingMaterialModal = false;
+    }
   }
 
   onEdit() {
@@ -1438,6 +1574,13 @@ export class MaterialsComponent implements CanComponentDeactivate {
     this.familiasCatalog = [...this.familiasCatalog, { id: familyData.id, description: familyData.description }];
     this.refreshColumnCache();
 
+    if (this.showMaterialModal) {
+      this.materialDraft.idFamilia = Number(familyData.id);
+      this.materialDraft.idSubfamilia = null;
+      this.obtenerFamilias();
+      return;
+    }
+
     // Asignar a la fila seleccionada
     const selectedNodes = this.gridApi?.getSelectedNodes();
     if (selectedNodes && selectedNodes.length > 0) {
@@ -1524,6 +1667,14 @@ export class MaterialsComponent implements CanComponentDeactivate {
     this.subfamiliasFiltered = [...this.subfamiliasFiltered, { id: subfamilyData.id, description: subfamilyData.description, parentId: subfamilyData.parentId }];
     this.refreshColumnCache();
 
+    if (this.showMaterialModal) {
+      if (Number(this.materialDraft.idFamilia) === Number(subfamilyData.parentId)) {
+        this.materialDraft.idSubfamilia = Number(subfamilyData.id);
+      }
+      this.obtenerSubfamilias();
+      return;
+    }
+
     // Asignar a la fila seleccionada (si coincide la familia)
     const selectedNodes = this.gridApi?.getSelectedNodes();
     if (selectedNodes && selectedNodes.length > 0) {
@@ -1598,6 +1749,12 @@ export class MaterialsComponent implements CanComponentDeactivate {
     // Agregar inmediatamente al catálogo local para que cellRenderer lo encuentre
     this.unitsCatalog = [...this.unitsCatalog, { id: measureData.id, description: measureData.description }];
     this.refreshColumnCache();
+
+    if (this.showMaterialModal) {
+      this.materialDraft.idMedida = Number(measureData.id);
+      this.obtenerUnidades();
+      return;
+    }
 
     // Asignar a la fila seleccionada
     const selectedNodes = this.gridApi?.getSelectedNodes();

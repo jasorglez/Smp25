@@ -3,8 +3,11 @@
     <!-- Botones y grid principal -->
     <div class="row mb-3">
       <nav class="col-auto d-flex flex-column align-items-start">
-        <button type="button" class="btn btn-primary ms-1 me-1 mb-2" (click)="onAdd()">
+        <button type="button" class="btn btn-primary ms-1 me-1 mb-2" (click)="onAdd()" title="Agregar material">
           <i class="bi bi-plus"></i>
+        </button>
+        <button type="button" class="btn btn-outline-primary ms-1 me-1 mb-2" (click)="openMaterialEdit()" title="Editar material seleccionado">
+          <i class="bi bi-pencil-square"></i>
         </button>
         <button type="button" class="btn btn-success ms-1 me-1 position-relative mb-2" (click)="onEdit()" [disabled]="saving">
           <i class="bi bi-floppy"></i>
@@ -78,6 +81,73 @@
     </div>
   </div>
 </div>
+
+<div class="modal fade" [class.show]="showMaterialModal" [style.display]="showMaterialModal ? 'block' : 'none'"
+     tabindex="-1" role="dialog" aria-labelledby="materialModalLabel" [attr.aria-hidden]="!showMaterialModal">
+  <div class="modal-dialog modal-dialog-centered modal-xl material-modal-dialog" role="document">
+    <div class="modal-content">
+      <div class="modal-header material-modal-header">
+        <div class="d-flex align-items-center gap-3">
+          <span class="material-modal-icon"><i class="bi bi-box-seam"></i></span>
+          <div>
+            <h3 class="modal-title mb-1" id="materialModalLabel">{{ editingMaterialId !== null ? 'Editar material' : 'Nuevo material' }}</h3>
+            <div class="material-modal-subtitle">Datos generales, clasificación, inventario y precios</div>
+          </div>
+        </div>
+        <button type="button" class="btn-close btn-close-white" (click)="closeMaterialModal()" aria-label="Cerrar"></button>
+      </div>
+      <div class="modal-body material-modal-body">
+        <form id="materialForm" (ngSubmit)="saveMaterialModal()">
+          <section class="material-form-section">
+            <div class="material-section-heading"><span class="material-section-icon"><i class="bi bi-card-text"></i></span><div><h4>Identificación</h4><p>Nombre y datos para localizar el material</p></div></div>
+            <div class="row g-3">
+              <div class="col-md-6"><label class="form-label" for="material-insumo">Insumo <span class="text-danger">*</span></label><input class="form-control" id="material-insumo" name="insumo" [(ngModel)]="materialDraft.insumo" required placeholder="Clave o nombre corto"></div>
+              <div class="col-md-6"><label class="form-label" for="material-barcode">Código de barras</label><input class="form-control" id="material-barcode" name="barcode" [(ngModel)]="materialDraft.barcode" placeholder="Opcional"></div>
+              <div class="col-12"><label class="form-label" for="material-description">Descripción del material <span class="text-danger">*</span></label><textarea class="form-control material-description-input" id="material-description" name="materialDescription" [(ngModel)]="materialDraft.materialDescription" maxlength="1000" rows="5" required placeholder="Describe el material"></textarea></div>
+              <div class="col-md-6">
+                <label class="form-label" for="material-picture-file">Imagen del material</label>
+                <input #materialImageInput id="material-picture-file" class="visually-hidden" type="file" accept="image/*" (change)="onMaterialImageSelected($event)">
+                <div class="d-flex align-items-center gap-2 flex-wrap">
+                  <button type="button" class="btn btn-outline-primary" (click)="materialImageInput.click()" [disabled]="readingMaterialImage">
+                    <i class="bi bi-image me-1"></i>{{ materialDraft.picture ? 'Cambiar imagen' : 'Elegir imagen' }}
+                  </button>
+                  <button *ngIf="materialDraft.picture" type="button" class="btn btn-outline-danger" (click)="removeMaterialImage()" [disabled]="readingMaterialImage" title="Quitar imagen"><i class="bi bi-trash"></i></button>
+                  <span *ngIf="readingMaterialImage" class="small text-muted">Cargando imagen...</span>
+                </div>
+                <div class="form-text">JPG, PNG u otra imagen de hasta 5 MB.</div>
+                <img *ngIf="materialDraft.picture" [src]="materialDraft.picture" class="material-image-preview mt-2" alt="Vista previa del material">
+              </div>
+            </div>
+          </section>
+          <section class="material-form-section">
+            <div class="material-section-heading"><span class="material-section-icon"><i class="bi bi-diagram-2"></i></span><div><h4>Clasificación</h4><p>La subfamilia depende de la familia seleccionada</p></div></div>
+            <div class="row g-3">
+              <div class="col-md-6"><label class="form-label" for="material-family">Familia <span class="text-danger">*</span></label><div class="input-group"><select class="form-select" id="material-family" name="idFamilia" [(ngModel)]="materialDraft.idFamilia" (ngModelChange)="onMaterialFamilyChanged()" required><option [ngValue]="null">Seleccione una familia</option><option *ngFor="let family of familiasCatalog" [ngValue]="numberValue(family.id)">{{ family.description }}</option></select><button type="button" class="btn btn-outline-primary" (click)="openFamilyModal(idcompany)" title="Agregar familia"><i class="bi bi-plus-lg"></i></button></div></div>
+              <div class="col-md-6"><label class="form-label" for="material-subfamily">Subfamilia <span class="text-danger">*</span></label><div class="input-group"><select class="form-select" id="material-subfamily" name="idSubfamilia" [(ngModel)]="materialDraft.idSubfamilia" [disabled]="!materialDraft.idFamilia" required><option [ngValue]="null">{{ materialDraft.idFamilia ? 'Seleccione una subfamilia' : 'Seleccione primero una familia' }}</option><option *ngFor="let subfamily of materialSubfamilies" [ngValue]="numberValue(subfamily.id)">{{ subfamily.description }}</option></select><button type="button" class="btn btn-outline-primary" (click)="openSubfamilyModal(idcompany, materialDraft.idFamilia, materialFamilyDescription)" [disabled]="!materialDraft.idFamilia" title="Agregar subfamilia"><i class="bi bi-plus-lg"></i></button></div></div>
+              <div class="col-md-6"><label class="form-label" for="material-unit">Unidad <span class="text-danger">*</span></label><div class="input-group"><select class="form-select" id="material-unit" name="idMedida" [(ngModel)]="materialDraft.idMedida" required><option [ngValue]="null">Seleccione una unidad</option><option *ngFor="let unit of unitsCatalog" [ngValue]="numberValue(unit.id)">{{ unit.description }}</option></select><button type="button" class="btn btn-outline-primary" (click)="openMeasureModal(idcompany)" title="Agregar unidad"><i class="bi bi-plus-lg"></i></button></div></div>
+            </div>
+          </section>
+          <section class="material-form-section">
+            <div class="material-section-heading"><span class="material-section-icon"><i class="bi bi-boxes"></i></span><div><h4>Inventario y precios</h4><p>Cantidades, límites de stock y precios en moneda nacional</p></div></div>
+            <div class="row g-3">
+              <div class="col-6 col-md-4"><label class="form-label" for="material-quantity">Cantidad</label><input type="number" class="form-control" id="material-quantity" name="quantity" [(ngModel)]="materialDraft.quantity" min="0" step="0.0001"></div>
+              <div class="col-6 col-md-4"><label class="form-label" for="material-stock-min">Stock mínimo</label><input type="number" class="form-control" id="material-stock-min" name="stockMin" [(ngModel)]="materialDraft.stockMin" min="0" step="0.0001"></div>
+              <div class="col-6 col-md-4"><label class="form-label" for="material-stock-max">Stock máximo</label><input type="number" class="form-control" id="material-stock-max" name="stockMax" [(ngModel)]="materialDraft.stockMax" min="0" step="0.0001"></div>
+              <div class="col-6 col-md-6"><label class="form-label" for="material-cost">Costo MN</label><input type="number" class="form-control" id="material-cost" name="costoMN" [(ngModel)]="materialDraft.costoMN" min="0" step="0.01"></div>
+              <div class="col-6 col-md-6"><label class="form-label" for="material-sale">Venta MN</label><input type="number" class="form-control" id="material-sale" name="ventaMN" [(ngModel)]="materialDraft.ventaMN" min="0" step="0.01"></div>
+            </div>
+          </section>
+        </form>
+      </div>
+      <div class="modal-footer material-modal-footer">
+        <span class="text-muted me-auto"><i class="bi bi-info-circle me-1"></i>Los campos con * son obligatorios.</span>
+        <button type="button" class="btn btn-light border" (click)="closeMaterialModal()" [disabled]="savingMaterialModal">Cancelar</button>
+        <button type="submit" form="materialForm" class="btn btn-primary px-4" [disabled]="savingMaterialModal || readingMaterialImage"><span *ngIf="savingMaterialModal" class="spinner-border spinner-border-sm me-2"></span><i *ngIf="!savingMaterialModal" class="bi bi-check2-circle me-1"></i>{{ editingMaterialId !== null ? 'Guardar cambios' : 'Crear material' }}</button>
+      </div>
+    </div>
+  </div>
+</div>
+<div class="modal-backdrop fade show material-modal-backdrop" *ngIf="showMaterialModal"></div>
 
 <div class="modal fade" [class.show]="showComponentsModal"
      [style.display]="showComponentsModal ? 'block' : 'none'" tabindex="-1" role="dialog"
