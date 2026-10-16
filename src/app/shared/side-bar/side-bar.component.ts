@@ -109,6 +109,7 @@ export class SideBarComponent {
   conventionVigenteNombre: string = '';
   presupuestoVigenteNombre: string = '';
   readonly branchName = this.signalsService.getBranchNameSelectedBySidebar();
+  get isAllBranchesSelected(): boolean { return Number(this.selectedBranchId) < 0; }
 
   usersData: any[];
 
@@ -335,10 +336,12 @@ error: (error) => {
             id: branch.id,
             name: branch.name,
           }));
-          this.branchData = branches;
+          this.branchData = branches.length > 1
+            ? [{ id: -idRoot, name: 'Todas las sucursales' }, ...branches]
+            : branches;
           this.cdr.markForCheck();
 
-          // Con varias sucursales, exigir una elección explícita.
+          // Si hay una sola sucursal, seleccionarla; con varias, esperar elección.
           const defaultBranch = branches.length === 1 ? branches[0] : null;
           this.selectedBranchId = defaultBranch ? String(defaultBranch.id) : '';
           this.autoLoadAssignedBranchContext = !!defaultBranch;
@@ -443,6 +446,13 @@ error: (error) => {
       this.autoLoadAssignedBranchContext = false;
       // Limpiar selects de contracts y projects cuando cambia branch
       this.clearContractsAndProjects();
+
+      if (this.isAllBranchesSelected) {
+        this.signalsService.setBranchSelectedBySidebar(Number(this.selectedBranchId));
+        this.signalsService.setBranchNameSelectedBySidebar('Todas las sucursales');
+        this.trackingService.setContract('');
+        return;
+      }
 
       // Lógica para añadir la signal de branch
       this.signalsService.setBranchSelectedBySidebar(
