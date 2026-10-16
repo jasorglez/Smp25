@@ -536,8 +536,16 @@ export class SaldosPalacioComponent {
         return;
       }
 
+      // Tomar el saldo anterior real del último movimiento previo al período.
+      // rowDetails y el grid están en orden cronológico ascendente.
+      const previousMovements = this.rowDetails.filter(
+        row => String(row.fecha ?? '').slice(0, 10) < this.reportStartDate
+      );
+      const previousMovement = previousMovements[previousMovements.length - 1];
+      const openingBalance = Number(previousMovement?.saldo) || 0;
+
       // Generar PDF
-      await this.generatePDF(filteredData);
+      await this.generatePDF(filteredData, openingBalance);
 
       this.trackingService.addLog(
         this.trackingService.getnameComp(),
@@ -557,7 +565,7 @@ export class SaldosPalacioComponent {
     }
   }
 
-  private async generatePDF(data: any[]) {
+  private async generatePDF(data: any[], openingBalance: number) {
     // Importar pdfMake dinámicamente
     const pdfMake = (await import('pdfmake/build/pdfmake')).default;
     const pdfFonts = (await import('pdfmake/build/vfs_fonts')).default;
@@ -620,6 +628,23 @@ export class SaldosPalacioComponent {
       const parsed = Number(String(value ?? '').replace(/[$,\s]/g, ''));
       return Number.isFinite(parsed) ? parsed : 0;
     };
+
+    tableBody.push([
+      { text: '', style: 'tableCell', alignment: 'left' },
+      { text: '', style: 'tableCell', alignment: 'center' },
+      { text: 'SALDO ANTERIOR', style: 'tableTotalLabel', alignment: 'right', bold: true },
+      { text: '', style: 'tableCell', alignment: 'center' },
+      { text: '', style: 'tableCellAmount', alignment: 'right' },
+      { text: '', style: 'tableCellAmount', alignment: 'right' },
+      {
+        text: this.formatCurrencyNumber(toAmount(openingBalance)),
+        style: 'tableTotalAmount',
+        alignment: 'right',
+        color: openingBalance >= 0 ? '#198754' : '#dc3545',
+        bold: true,
+        fillColor: '#f2f2f2'
+      }
+    ]);
 
     data.forEach(row => {
       // Acumular totales
