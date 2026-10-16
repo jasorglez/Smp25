@@ -91,9 +91,6 @@
           </span>
         </div>
         <div class="d-flex gap-2 flex-shrink-0">
-          <button class="btn btn-sm btn-danger" (click)="printSelectedOrCatalogPdf()" title="Ficha APU en PDF">
-            <i class="bi bi-file-earmark-pdf-fill me-1"></i> PDF
-          </button>
           <button class="btn btn-sm btn-primary" (click)="saveDetalle()" [disabled]="!hasDetailChanges">
             <i class="bi bi-floppy-fill me-1"></i> Guardar Componentes
             <span *ngIf="hasDetailChanges" class="badge bg-danger ms-1">
