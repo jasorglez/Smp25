@@ -2060,7 +2060,6 @@ export class ExpenditureComponent implements OnDestroy, OnChanges {
         alerts.toastAlert('Reporte descargado automáticamente', 'info');
       }
 
-      this.closeEgresoReportModal();
       this.trackingService.addLog(
         this.trackingService.getnameComp(),
         `Reporte de Egresos generado: ${this.reportEgresoStartDate} al ${this.reportEgresoEndDate}`,
@@ -2313,7 +2312,6 @@ export class ExpenditureComponent implements OnDestroy, OnChanges {
         alerts.toastAlert('Reporte descargado automáticamente', 'info');
       }
 
-      this.closeEgresoReportModal();
       this.trackingService.addLog(
         this.trackingService.getnameComp(),
         `Reporte agrupado por proveedor generado: ${this.reportEgresoStartDate} al ${this.reportEgresoEndDate}`,
@@ -2478,7 +2476,6 @@ export class ExpenditureComponent implements OnDestroy, OnChanges {
         pdf.download(`saldos-cuenta-${this.reportEgresoStartDate}-al-${this.reportEgresoEndDate}.pdf`);
         alerts.toastAlert('Reporte descargado automáticamente', 'info');
       }
-      this.closeEgresoReportModal();
       this.trackingService.addLog(
         this.trackingService.getnameComp(),
         `Reporte de Saldos generado: ${this.reportEgresoStartDate} al ${this.reportEgresoEndDate}`,
