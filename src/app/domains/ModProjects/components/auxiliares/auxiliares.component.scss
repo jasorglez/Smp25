@@ -39,6 +39,18 @@
   padding: 0.55rem;
 }
 
+.resource-picker {
+  display: block;
+  width: 100%;
+  font-size: 0.8rem;
+}
+
+.resource-tabs { flex-wrap: nowrap; overflow-x: auto; }
+.resource-tabs .nav-link { flex-shrink: 0; white-space: nowrap; font-size: 0.8rem; font-weight: 600; }
+
+.apu-import-body { max-height: 70vh; overflow-y: auto; }
+.apu-import-preview { max-height: 280px; overflow-y: auto; font-size: 0.78rem; }
+
 .section-card {
   border: 1px solid #d9e2ec;
   border-radius: 0.55rem;

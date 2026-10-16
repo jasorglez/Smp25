@@ -2,7 +2,7 @@
   <div class="row g-2">
     <div class="col-auto">
       <div class="catalog-actions">
-        <button class="btn btn-primary" (click)="addRow()" title="Agregar auxiliar">
+        <button class="btn btn-primary" (click)="addRow()" title="Agregar precio unitario">
           <i class="bi bi-plus-lg"></i>
         </button>
         <button class="btn btn-success position-relative" (click)="saveMain()" [disabled]="!hasMainChanges" title="Guardar cambios">
@@ -15,13 +15,18 @@
         <button class="btn btn-warning" (click)="revertMain()" [disabled]="!hasMainChanges" title="Deshacer cambios">
           <i class="bi bi-arrow-clockwise"></i>
         </button>
-        <button class="btn btn-danger" (click)="deleteMain()" [disabled]="!selectedAuxiliar" title="Borrar auxiliar">
+        <button class="btn btn-danger" (click)="deleteMain()" [disabled]="!selectedAuxiliar" title="Borrar precio unitario">
           <i class="bi bi-trash"></i>
         </button>
       </div>
     </div>
 
     <div class="col">
+      <div class="d-flex justify-content-end mb-2">
+        <button type="button" class="btn btn-sm btn-outline-primary" (click)="openImportModal()">
+          <i class="bi bi-file-earmark-arrow-up me-1"></i> Importar APU
+        </button>
+      </div>
       <div class="catalog-master">
         
         <ag-grid-angular
@@ -88,7 +93,7 @@
               type="checkbox"
               id="chkPersonal"
               [(ngModel)]="selectedAuxiliar.hasPersonal"
-              (change)="onFlagChange()"
+              (change)="onFlagChange('PERSONAL')"
             />
             <label class="form-check-label fw-semibold" for="chkPersonal">
               <i class="bi bi-people-fill text-success me-1"></i> Cuadrillas (MO)
@@ -100,7 +105,7 @@
               type="checkbox"
               id="chkMaterial"
               [(ngModel)]="selectedAuxiliar.hasMaterial"
-              (change)="onFlagChange()"
+              (change)="onFlagChange('MATERIAL')"
             />
             <label class="form-check-label fw-semibold" for="chkMaterial">
               <i class="bi bi-box-seam text-warning me-1"></i> Material
@@ -112,7 +117,7 @@
               type="checkbox"
               id="chkHerramienta"
               [(ngModel)]="selectedAuxiliar.hasHerramienta"
-              (change)="onFlagChange()"
+              (change)="onFlagChange('HERR')"
             />
             <label class="form-check-label fw-semibold" for="chkHerramienta">
               <i class="bi bi-wrench-adjustable text-info me-1"></i> Herramienta
@@ -124,7 +129,7 @@
               type="checkbox"
               id="chkEquipo"
               [(ngModel)]="selectedAuxiliar.hasEquipo"
-              (change)="onFlagChange()"
+              (change)="onFlagChange('EQUIPO')"
             />
             <label class="form-check-label fw-semibold" for="chkEquipo">
               <i class="bi bi-truck text-danger me-1"></i> Equipo
@@ -135,8 +140,24 @@
           </button>
         </div>
 
+        <nav *ngIf="selectedAuxiliar.hasPersonal || selectedAuxiliar.hasMaterial || selectedAuxiliar.hasEquipo || selectedAuxiliar.hasHerramienta"
+             class="resource-tabs nav nav-tabs mb-2" role="tablist" aria-label="Componentes del precio unitario">
+          <button *ngIf="selectedAuxiliar.hasPersonal" type="button" class="nav-link" role="tab"
+                  [class.active]="activeResourceTab === 'PERSONAL'" [attr.aria-selected]="activeResourceTab === 'PERSONAL'"
+                  (click)="activeResourceTab = 'PERSONAL'"><i class="bi bi-people-fill me-1"></i>Personal</button>
+          <button *ngIf="selectedAuxiliar.hasMaterial" type="button" class="nav-link" role="tab"
+                  [class.active]="activeResourceTab === 'MATERIAL'" [attr.aria-selected]="activeResourceTab === 'MATERIAL'"
+                  (click)="activeResourceTab = 'MATERIAL'"><i class="bi bi-box-seam me-1"></i>Materiales</button>
+          <button *ngIf="selectedAuxiliar.hasEquipo" type="button" class="nav-link" role="tab"
+                  [class.active]="activeResourceTab === 'EQUIPO'" [attr.aria-selected]="activeResourceTab === 'EQUIPO'"
+                  (click)="activeResourceTab = 'EQUIPO'"><i class="bi bi-truck me-1"></i>Equipos</button>
+          <button *ngIf="selectedAuxiliar.hasHerramienta" type="button" class="nav-link" role="tab"
+                  [class.active]="activeResourceTab === 'HERR'" [attr.aria-selected]="activeResourceTab === 'HERR'"
+                  (click)="activeResourceTab = 'HERR'"><i class="bi bi-wrench-adjustable me-1"></i>Herramientas</button>
+        </nav>
+
         <ng-container *ngIf="selectedAuxiliar.hasPersonal">
-          <div class="section-card">
+          <div class="section-card" [hidden]="activeResourceTab !== 'PERSONAL'" role="tabpanel">
             <div class="d-flex align-items-center justify-content-between mb-2">
               <h6 class="mb-0 text-success compact-title">
                 <i class="bi bi-people-fill me-1"></i> Cuadrillas de Mano de Obra
@@ -192,7 +213,7 @@
               <div class="d-flex align-items-center justify-content-between mb-1">
                 <small class="text-muted">Trabajadores en: <strong>{{ selectedCuadrilla.name || '(sin nombre)' }}</strong></small>
                 <div class="section-actions">
-                  <button class="btn btn-sm btn-outline-success" (click)="addCuadrillaItem()">
+                  <button class="btn btn-sm btn-outline-success" (click)="addCuadrillaItem()" [disabled]="!selectedPersonalId" title="Agregar trabajador seleccionado">
                     <i class="bi bi-plus-lg"></i>
                   </button>
                   <button class="btn btn-sm btn-outline-danger" (click)="deleteCuadrillaItem()" [disabled]="!selectedCuadrillaItem">
@@ -200,6 +221,10 @@
                   </button>
                 </div>
               </div>
+              <ng-select class="resource-picker mb-2" [items]="catalogPersonal" bindLabel="description" bindValue="id"
+                         [(ngModel)]="selectedPersonalId" [searchable]="true" [clearable]="true" appendTo="body"
+                         placeholder="Buscar trabajador o categoría de mano de obra..."></ng-select>
+              <small *ngIf="!catalogPersonal.length" class="text-muted d-block mb-2">No hay personal disponible en el catálogo de mano de obra.</small>
               <ag-grid-angular
                 class="ag-theme-quartz small-text-ag-grid"
                 style="height: 160px; width: 100%"
@@ -225,13 +250,13 @@
         </ng-container>
 
         <ng-container *ngIf="selectedAuxiliar.hasMaterial">
-          <div class="section-card">
+          <div class="section-card" [hidden]="activeResourceTab !== 'MATERIAL'" role="tabpanel">
             <div class="d-flex align-items-center justify-content-between mb-1">
               <h6 class="mb-0 text-warning compact-title">
                 <i class="bi bi-box-seam me-1"></i> Material
               </h6>
               <div class="section-actions">
-                <button class="btn btn-sm btn-outline-warning" (click)="addItem('MATERIAL')">
+                <button class="btn btn-sm btn-outline-warning" (click)="addItem('MATERIAL')" [disabled]="!selectedMaterialId" title="Agregar material seleccionado">
                   <i class="bi bi-plus-lg"></i>
                 </button>
                 <button class="btn btn-sm btn-outline-danger" (click)="deleteItem(selectedMaterialRow)" [disabled]="!selectedMaterialRow">
@@ -239,6 +264,10 @@
                 </button>
               </div>
             </div>
+            <ng-select class="resource-picker mb-2" [items]="catalogMaterial" bindLabel="description" bindValue="id"
+                       [(ngModel)]="selectedMaterialId" [searchable]="true" [clearable]="true" appendTo="body"
+                       placeholder="Buscar material para agregar..."></ng-select>
+            <small *ngIf="!catalogMaterial.length" class="text-muted d-block mb-2">No hay materiales disponibles en el catálogo.</small>
             <ag-grid-angular
               class="ag-theme-quartz small-text-ag-grid"
               style="height: 160px; width: 100%"
@@ -262,14 +291,14 @@
         </ng-container>
 
         <ng-container *ngIf="selectedAuxiliar.hasHerramienta">
-          <div class="section-card">
+          <div class="section-card" [hidden]="activeResourceTab !== 'HERR'" role="tabpanel">
             <div class="d-flex align-items-center justify-content-between mb-1">
               <h6 class="mb-0 text-info compact-title">
                 <i class="bi bi-wrench-adjustable me-1"></i> Herramienta
                 <small class="text-muted fw-normal">(% de MO)</small>
               </h6>
               <div class="section-actions">
-                <button class="btn btn-sm btn-outline-info" (click)="addItem('HERR')">
+                <button class="btn btn-sm btn-outline-info" (click)="addItem('HERR')" [disabled]="!selectedHerramientaId" title="Agregar herramienta seleccionada">
                   <i class="bi bi-plus-lg"></i>
                 </button>
                 <button class="btn btn-sm btn-outline-danger" (click)="deleteItem(selectedHerramientaRow)" [disabled]="!selectedHerramientaRow">
@@ -277,6 +306,10 @@
                 </button>
               </div>
             </div>
+            <ng-select class="resource-picker mb-2" [items]="catalogHerramienta" bindLabel="description" bindValue="id"
+                       [(ngModel)]="selectedHerramientaId" [searchable]="true" [clearable]="true" appendTo="body"
+                       placeholder="Buscar herramienta para agregar..."></ng-select>
+            <small *ngIf="!catalogHerramienta.length" class="text-muted d-block mb-2">No hay herramientas disponibles en el catálogo.</small>
             <ag-grid-angular
               class="ag-theme-quartz small-text-ag-grid"
               style="height: 160px; width: 100%"
@@ -300,13 +333,13 @@
         </ng-container>
 
         <ng-container *ngIf="selectedAuxiliar.hasEquipo">
-          <div class="section-card">
+          <div class="section-card" [hidden]="activeResourceTab !== 'EQUIPO'" role="tabpanel">
             <div class="d-flex align-items-center justify-content-between mb-1">
               <h6 class="mb-0 text-danger compact-title">
                 <i class="bi bi-truck me-1"></i> Equipo
               </h6>
               <div class="section-actions">
-                <button class="btn btn-sm btn-outline-danger" (click)="addItem('EQUIPO')">
+                <button class="btn btn-sm btn-outline-danger" (click)="addItem('EQUIPO')" [disabled]="!selectedEquipoId" title="Agregar equipo seleccionado">
                   <i class="bi bi-plus-lg"></i>
                 </button>
                 <button class="btn btn-sm btn-outline-danger" (click)="deleteItem(selectedEquipoRow)" [disabled]="!selectedEquipoRow">
@@ -314,6 +347,10 @@
                 </button>
               </div>
             </div>
+            <ng-select class="resource-picker mb-2" [items]="catalogEquipo" bindLabel="description" bindValue="id"
+                       [(ngModel)]="selectedEquipoId" [searchable]="true" [clearable]="true" appendTo="body"
+                       placeholder="Buscar equipo para agregar..."></ng-select>
+            <small *ngIf="!catalogEquipo.length" class="text-muted d-block mb-2">No hay equipos disponibles en el catálogo.</small>
             <ag-grid-angular
               class="ag-theme-quartz small-text-ag-grid"
               style="height: 160px; width: 100%"
@@ -392,7 +429,7 @@
                 </td>
               </tr>
               <tr>
-                <td class="text-muted ps-2 small">Unidad del auxiliar</td>
+                <td class="text-muted ps-2 small">Unidad del precio unitario</td>
                 <td class="text-end text-muted small">{{ selectedAuxiliar.unit }}</td>
               </tr>
             </tbody>
@@ -406,11 +443,74 @@
     <div class="d-flex align-items-center justify-content-center flex-fill text-muted">
       <div class="text-center">
         <i class="bi bi-arrow-up-circle display-4 d-block mb-2 opacity-25"></i>
-        Selecciona un auxiliar para editar sus componentes
+        Selecciona un precio unitario para editar sus componentes
       </div>
     </div>
   </ng-template>
 </div>
+
+<div class="modal fade" [class.show]="showImportModal" [style.display]="showImportModal ? 'block' : 'none'"
+     tabindex="-1" role="dialog" aria-labelledby="apuImportTitle" [attr.aria-hidden]="!showImportModal">
+  <div class="modal-dialog modal-dialog-centered modal-xl" role="document">
+    <div class="modal-content">
+      <div class="modal-header bg-primary text-white">
+        <h5 class="modal-title" id="apuImportTitle"><i class="bi bi-file-earmark-arrow-up me-2"></i>Importar análisis de precio unitario</h5>
+        <button type="button" class="btn-close btn-close-white" (click)="showImportModal = false" aria-label="Cerrar"></button>
+      </div>
+      <div class="modal-body apu-import-body">
+        <p class="text-muted small mb-2">Importa un APU por vez desde Excel o texto. Descarga un ejemplo, cambia los datos y revisa el análisis antes de guardarlo.</p>
+        <button type="button" class="btn btn-sm btn-outline-success mb-3" (click)="downloadApuExample()">
+          <i class="bi bi-file-earmark-excel me-1"></i> Ejemplo Excel
+        </button>
+        <button type="button" class="btn btn-sm btn-outline-primary mb-3 ms-2" (click)="downloadApuTextExample()">
+          <i class="bi bi-file-earmark-text me-1"></i> Ejemplo TXT
+        </button>
+        <label class="form-label fw-semibold" for="apu-import-file">Archivo Excel o texto</label>
+        <input id="apu-import-file" class="form-control" type="file" accept=".xlsx,.xls,.txt,.csv" (change)="onApuImportFileSelected($event)" [disabled]="parsingImport">
+        <div *ngIf="parsingImport" class="small text-primary mt-2"><span class="spinner-border spinner-border-sm me-1"></span>Analizando archivo...</div>
+        <div *ngIf="importFileName && !parsingImport" class="small text-muted mt-2">Archivo: {{ importFileName }}</div>
+
+        <div *ngIf="importErrors.length" class="alert alert-danger mt-3 mb-2" role="alert">
+          <strong>Revisa el archivo:</strong>
+          <ul class="mb-0 ps-3"><li *ngFor="let error of importErrors">{{ error }}</li></ul>
+        </div>
+        <div *ngIf="importWarnings.length" class="alert alert-warning mt-3 mb-2" role="alert">
+          <strong>Recursos para revisar:</strong>
+          <ul class="mb-0 ps-3"><li *ngFor="let warning of importWarnings">{{ warning }}</li></ul>
+        </div>
+
+        <div *ngIf="importPreview as preview" class="mt-3">
+          <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-2">
+            <div><strong>{{ preview.description }}</strong><span class="text-muted ms-2">{{ preview.unit }}</span></div>
+            <span class="badge bg-primary">Costo directo: ${{ preview.directCost | number:'1.2-2' }}</span>
+          </div>
+          <div class="table-responsive apu-import-preview">
+            <table class="table table-sm table-striped align-middle mb-0">
+              <thead><tr><th>Tipo</th><th>Recurso</th><th>Unidad</th><th class="text-end">Cantidad</th><th class="text-end">Costo unitario</th><th>Cuadrilla</th></tr></thead>
+              <tbody>
+                <tr *ngFor="let row of preview.rows">
+                  <td>{{ row.type === 'HERR' ? 'Herramienta' : row.type === 'PERSONAL' ? 'Personal' : row.type === 'EQUIPO' ? 'Equipo' : 'Material' }}</td>
+                  <td>{{ row.description }}</td><td>{{ row.type === 'HERR' ? '% MO' : row.unit }}</td>
+                  <td class="text-end">{{ row.quantity | number:'1.0-4' }}{{ row.type === 'HERR' ? '%' : '' }}</td>
+                  <td class="text-end">{{ row.type === 'HERR' ? '—' : ('$' + (row.unitCost | number:'1.2-2')) }}</td>
+                  <td>{{ row.crewName }}<span *ngIf="row.crewName && row.crewQuantity !== 1"> × {{ row.crewQuantity }}</span></td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <span class="small text-muted me-auto">Al cargarlo, revisa las pestañas y pulsa Guardar Componentes.</span>
+        <button type="button" class="btn btn-light border" (click)="showImportModal = false">Cancelar</button>
+        <button type="button" class="btn btn-primary" (click)="applyApuImport()" [disabled]="!importPreview || parsingImport || importErrors.length > 0">
+          <i class="bi bi-check2-circle me-1"></i>Cargar análisis
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+<div class="modal-backdrop fade show" *ngIf="showImportModal"></div>
 
 <!-- ══════════════════════════════════════════════════════════════════════ -->
 <!-- Modal Configuración de Factores por Contrato                          -->

@@ -547,12 +547,13 @@ export const routes: Routes = [
               ).then((c) => c.HerramientasComponent),
           },
           {
-            path: 'auxiliares',
+            path: 'preciosunitarios',
             loadComponent: () =>
               import(
                 './domains/ModProjects/components/auxiliares/auxiliares.component'
               ).then((c) => c.AuxiliaresComponent),
           },
+          { path: 'auxiliares', redirectTo: 'preciosunitarios', pathMatch: 'full' },
           {
             path: 'auxiliares-cat',
             loadComponent: () =>

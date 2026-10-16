@@ -2,6 +2,8 @@ import { Component, effect, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { AgGridModule } from 'ag-grid-angular';
+import { NgSelectModule } from '@ng-select/ng-select';
+import * as XLSX from 'xlsx';
 import { ColDef, GridApi, GridReadyEvent } from 'ag-grid-enterprise';
 import { SignalsService } from 'app/services/signals.service';
 import { AuxiliarService } from 'app/services/auxiliar.service';
@@ -9,17 +11,39 @@ import { AuxiliarItemsService } from 'app/services/auxiliar-items.service';
 import { MaterialsService } from 'app/services/materials.service';
 import { EquipmentService } from 'app/services/equipment.service';
 import { HerramientaService } from 'app/services/herramienta.service';
-import { PosicionesService } from 'app/services/posiciones.service';
+import { ManoObraService } from 'app/services/mano-obra.service';
 import { alerts } from 'app/helpers/alerts';
 import { PdfApuService } from 'app/services/pdf-apu.service';
 import { WorkprogramApuFactorService } from 'app/services/workprogram-apu-factor.service';
 import { ApuConfigService, ApuConfig, APU_CONFIG_DEFAULTS } from 'app/services/apu-config.service';
 import { TrackingService } from 'app/services/tracking.service';
 
+type ResourceTab = 'PERSONAL' | 'MATERIAL' | 'EQUIPO' | 'HERR';
+
+interface ApuImportRow {
+  type: ResourceTab;
+  idReference: number | null;
+  description: string;
+  unit: string;
+  quantity: number;
+  unitCost: number;
+  crewName: string;
+  crewQuantity: number;
+}
+
+interface ApuImportPreview {
+  clave: number | null;
+  claveUsuario: string;
+  description: string;
+  unit: string;
+  rows: ApuImportRow[];
+  directCost: number;
+}
+
 @Component({
   selector: 'app-auxiliares',
   standalone: true,
-  imports: [CommonModule, FormsModule, AgGridModule],
+  imports: [CommonModule, FormsModule, AgGridModule, NgSelectModule],
   templateUrl: './auxiliares.component.html',
   styleUrl: './auxiliares.component.scss',
 })
@@ -31,7 +55,7 @@ export class AuxiliaresComponent {
   private materialService      = inject(MaterialsService);
   private equipService         = inject(EquipmentService);
   private herramientaService   = inject(HerramientaService);
-  private posService           = inject(PosicionesService);
+  private manoObraService      = inject(ManoObraService);
   private pdfApuService        = inject(PdfApuService);
   private factorService        = inject(WorkprogramApuFactorService);
   private apuConfigService     = inject(ApuConfigService);
@@ -50,6 +74,17 @@ export class AuxiliaresComponent {
   catalogEquipo:      any[] = [];
   catalogHerramienta: any[] = [];
   catalogPersonal:    any[] = [];
+  selectedMaterialId: number | null = null;
+  selectedEquipoId: number | null = null;
+  selectedHerramientaId: number | null = null;
+  selectedPersonalId: number | null = null;
+  activeResourceTab: ResourceTab | null = null;
+  showImportModal = false;
+  parsingImport = false;
+  importFileName = '';
+  importPreview: ApuImportPreview | null = null;
+  importErrors: string[] = [];
+  importWarnings: string[] = [];
 
   // ── Sub-items (MATERIAL, HERR, EQUIPO) ───────────────────────────────────
   allItems: any[]          = [];
@@ -104,15 +139,17 @@ export class AuxiliaresComponent {
   ];
 
   // ── ColDefs Material / Equipo ────────────────────────────────────────────
+  private itemColDefsCache: Partial<Record<'MATERIAL' | 'EQUIPO', ColDef[]>> = {};
   getItemColDefs(type: 'MATERIAL' | 'EQUIPO'): ColDef[] {
-    const catalog = type === 'MATERIAL' ? this.catalogMaterial : this.catalogEquipo;
-    return [
+    if (this.itemColDefsCache[type]) return this.itemColDefsCache[type];
+    const catalog = () => type === 'MATERIAL' ? this.catalogMaterial : this.catalogEquipo;
+    return this.itemColDefsCache[type] = [
       { headerName: '#', width: 45, editable: false, valueGetter: (p) => (p.node?.rowIndex ?? 0) + 1 },
       { field: 'description', headerName: type === 'MATERIAL' ? 'Material' : 'Equipo', flex: 2, editable: true,
         cellEditor: 'agSelectCellEditor',
-        cellEditorParams: () => ({ values: catalog.map((i) => i.description) }),
+        cellEditorParams: () => ({ values: catalog().map((i) => i.description) }),
         valueSetter: (p: any) => {
-          const item = catalog.find((i) => i.description === p.newValue);
+          const item = catalog().find((i) => i.description === p.newValue);
           if (item) { p.data.idReference = item.id; p.data.unit = item.unit ?? ''; p.data.unitCost = item.cost ?? 0; }
           p.data.description = p.newValue; return true;
         },
@@ -135,8 +172,9 @@ export class AuxiliaresComponent {
   }
 
   // ── ColDefs Herramienta (% MO) ───────────────────────────────────────────
+  private herramientaColDefsCache: ColDef[] | null = null;
   get herramientaItemColDefs(): ColDef[] {
-    return [
+    return this.herramientaColDefsCache ??= [
       { headerName: '#', width: 45, editable: false, valueGetter: (p) => (p.node?.rowIndex ?? 0) + 1 },
       { field: 'description', headerName: 'Herramienta', flex: 2, editable: true,
         cellEditor: 'agSelectCellEditor',
@@ -162,8 +200,9 @@ export class AuxiliaresComponent {
   }
 
   // ── ColDefs Cuadrilla items ──────────────────────────────────────────────
+  private cuadrillaColDefsCache: ColDef[] | null = null;
   get cuadrillaItemColDefs(): ColDef[] {
-    return [
+    return this.cuadrillaColDefsCache ??= [
       { headerName: '#', width: 45, editable: false, valueGetter: (p) => (p.node?.rowIndex ?? 0) + 1 },
       { field: 'description', headerName: 'Trabajador', flex: 2, editable: true,
         cellEditor: 'agSelectCellEditor',
@@ -251,18 +290,314 @@ export class AuxiliaresComponent {
     if (!this.idCompany) return;
     this.materialService.getMaterialsForApu(this.idCompany).subscribe({
       next: (d) => this.catalogMaterial = d
-        .filter((i: any) => i.familia === 'PEMEX')
-        .map((i: any) => ({ id: i.id, description: i.description ?? '', unit: i.measure ?? '', cost: i.costoMN ?? 0 })),
+        .map((i: any) => ({ id: Number(i.id ?? i.Id), description: i.description ?? i.materialDescription ?? '',
+          unit: i.measure ?? i.unit ?? '', cost: Number(i.costoMN ?? i.costMN ?? i.unitPrice ?? 0) || 0 }))
+        .filter((i: any) => i.id && i.description),
     });
     this.equipService.getEquipment(this.idCompany).subscribe({
-      next: (d: any[]) => this.catalogEquipo = d.map((i) => ({ id: i.Id ?? i.id, description: i.description ?? '', unit: i.measure ?? 'HR', cost: i.costMN ?? 0 })),
+      next: (d: any[]) => this.catalogEquipo = d.map((i) => ({ id: Number(i.Id ?? i.id), description: i.description ?? '',
+        unit: i.measure ?? i.unit ?? 'HR', cost: Number(i.costMN ?? i.costoMN ?? i.unitPrice ?? 0) || 0 }))
+        .filter((i) => i.id && i.description),
     });
     this.herramientaService.getByCompany(this.idCompany).subscribe({
-      next: (d) => this.catalogHerramienta = d.map((i) => ({ id: i.Id ?? i.id, description: i.description ?? '', unit: i.unit ?? 'HR', cost: i.costMN ?? 0 })),
+      next: (d) => this.catalogHerramienta = d.map((i) => ({ id: Number(i.Id ?? i.id), description: i.description ?? '', unit: i.unit ?? 'HR', cost: i.costMN ?? 0 }))
+        .filter((i) => i.id && i.description),
     });
-    this.posService.getPositionsByCompany(this.idCompany).subscribe({
-      next: (d: any[]) => this.catalogPersonal = d.filter((i) => i.active !== false).map((i) => ({ id: i.Id ?? i.id, description: i.description, unit: 'JORNADA', cost: 0 })),
+    this.manoObraService.getByCompany(this.idCompany).subscribe({
+      next: (d: any[]) => this.catalogPersonal = d.filter((i) => i.active !== false && i.active !== 0)
+        .map((i) => ({ id: Number(i.Id ?? i.id), description: i.description ?? '', unit: i.unit ?? 'JORNADA',
+          cost: Number(i.unitPrice ?? i.costMN ?? i.costo ?? 0) || 0 }))
+        .filter((i) => i.id && i.description),
     });
+  }
+
+  openImportModal(): void {
+    if (!this.idCompany || !this.signalsService.getIdContract()()) {
+      alerts.basicAlert('Seleccione un contrato', 'Seleccione un contrato antes de importar un análisis.', 'warning');
+      return;
+    }
+    if (this.hasMainChanges || this.hasDetailChanges) {
+      alerts.basicAlert('Cambios sin guardar', 'Guarde o deshaga los cambios actuales antes de importar otro análisis.', 'warning');
+      return;
+    }
+    this.importFileName = '';
+    this.importPreview = null;
+    this.importErrors = [];
+    this.importWarnings = [];
+    this.showImportModal = true;
+  }
+
+  downloadApuExample(): void {
+    const workbook = XLSX.utils.book_new();
+    const apu = XLSX.utils.aoa_to_sheet([
+      ['Clave', 'Clave Usuario', 'Descripcion', 'Unidad'],
+      ['', 'APU-EJ-001', 'Suministro e instalación de tubería PVC', 'ML'],
+    ]);
+    const components = XLSX.utils.aoa_to_sheet([
+      ['Tipo', 'Recurso', 'Unidad', 'Cantidad', 'Costo Unitario', 'Cuadrilla', 'Cantidad Cuadrilla'],
+      ['MATERIAL', 'Tubería PVC 4 pulgadas', 'ML', 1, 120, '', ''],
+      ['PERSONAL', 'Oficial plomero', 'JORNADA', 0.2, 500, 'Cuadrilla 1', 1],
+      ['EQUIPO', 'Cortadora', 'HR', 0.1, 150, '', ''],
+      ['HERRAMIENTA', 'Herramienta menor', '% MO', 3, '', '', ''],
+    ]);
+    const instructions = XLSX.utils.aoa_to_sheet([
+      ['Cómo usar el ejemplo'],
+      ['Este archivo importa un análisis de precio unitario por vez.'],
+      ['En APU captura una sola fila con descripción y unidad. La clave es opcional.'],
+      ['En Componentes usa MATERIAL, PERSONAL, EQUIPO o HERRAMIENTA.'],
+      ['Reemplaza los recursos del ejemplo por los de tu catálogo. Si no coinciden, se cargarán como texto sin vínculo al catálogo.'],
+      ['Para PERSONAL indica la cuadrilla; Cantidad Cuadrilla multiplica el subtotal de sus trabajadores.'],
+      ['Para HERRAMIENTA, Cantidad es el porcentaje de mano de obra: escribe 3 para 3%.'],
+      ['Costo Unitario puede quedar vacío si el recurso existe en el catálogo; se tomará su costo actual.'],
+      ['Después de cargar el archivo, revisa las pestañas y pulsa Guardar Componentes.'],
+    ]);
+    apu['!cols'] = [{ wch: 12 }, { wch: 20 }, { wch: 55 }, { wch: 12 }];
+    components['!cols'] = [{ wch: 18 }, { wch: 40 }, { wch: 12 }, { wch: 14 }, { wch: 18 }, { wch: 22 }, { wch: 20 }];
+    instructions['!cols'] = [{ wch: 110 }];
+    XLSX.utils.book_append_sheet(workbook, apu, 'APU');
+    XLSX.utils.book_append_sheet(workbook, components, 'Componentes');
+    XLSX.utils.book_append_sheet(workbook, instructions, 'Instrucciones');
+    XLSX.writeFile(workbook, 'Ejemplo_Analisis_Precio_Unitario.xlsx');
+  }
+
+  downloadApuTextExample(): void {
+    const content = [
+      '[APU]',
+      'Clave;Clave Usuario;Descripcion;Unidad',
+      ';APU-EJ-001;Suministro e instalación de tubería PVC;ML',
+      '',
+      '[Componentes]',
+      'Tipo;Recurso;Unidad;Cantidad;Costo Unitario;Cuadrilla;Cantidad Cuadrilla',
+      'MATERIAL;Tubería PVC 4 pulgadas;ML;1;120;;',
+      'PERSONAL;Oficial plomero;JORNADA;0.2;500;Cuadrilla 1;1',
+      'EQUIPO;Cortadora;HR;0.1;150;;',
+      'HERRAMIENTA;Herramienta menor;% MO;3;;;',
+    ].join('\n');
+    const url = URL.createObjectURL(new Blob(['\uFEFF', content], { type: 'text/plain;charset=utf-8' }));
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = 'Ejemplo_Analisis_Precio_Unitario.txt';
+    link.click();
+    URL.revokeObjectURL(url);
+  }
+
+  async onApuImportFileSelected(event: Event): Promise<void> {
+    const input = event.target as HTMLInputElement;
+    const file = input.files?.[0];
+    this.importPreview = null;
+    this.importErrors = [];
+    this.importWarnings = [];
+    if (!file) return;
+    this.importFileName = file.name;
+    this.parsingImport = true;
+    try {
+      let apuRows: Record<string, any>[];
+      let itemRows: Record<string, any>[];
+      if (/\.(txt|csv)$/i.test(file.name)) {
+        ({ apuRows, itemRows } = this.parseApuText(await file.text()));
+      } else if (/\.(xlsx|xls)$/i.test(file.name)) {
+        const workbook = XLSX.read(await file.arrayBuffer(), { type: 'array' });
+        const apuSheet = workbook.Sheets[workbook.SheetNames.find(name => this.normalizeImportText(name) === 'APU')];
+        const itemsSheet = workbook.Sheets[workbook.SheetNames.find(name => this.normalizeImportText(name) === 'COMPONENTES')];
+        if (!apuSheet || !itemsSheet) throw new Error('El Excel debe tener las hojas APU y Componentes. Descarga el ejemplo para ver el formato.');
+        apuRows = XLSX.utils.sheet_to_json<Record<string, any>>(apuSheet, { defval: '', raw: true });
+        itemRows = XLSX.utils.sheet_to_json<Record<string, any>>(itemsSheet, { defval: '', raw: true });
+      } else {
+        throw new Error('Selecciona un archivo Excel o de texto (.txt o .csv).');
+      }
+      this.parseApuImportRows(apuRows, itemRows);
+    } catch (error: any) {
+      this.importErrors.push(error?.message || 'No se pudo leer el archivo.');
+    } finally {
+      this.parsingImport = false;
+      input.value = '';
+    }
+  }
+
+  private parseApuImportRows(apuRows: Record<string, any>[], itemRows: Record<string, any>[]): void {
+      if (apuRows.length !== 1) throw new Error('La sección APU debe contener exactamente una fila de análisis.');
+      if (!itemRows.length) throw new Error('La sección Componentes no contiene recursos.');
+      const apu = this.normalizeImportRecord(apuRows[0]);
+      const description = String(apu['DESCRIPCION'] ?? '').trim();
+      const unit = String(apu['UNIDAD'] ?? '').trim();
+      const claveRaw = String(apu['CLAVE'] ?? '').trim();
+      const clave = claveRaw ? Number(claveRaw) : null;
+      if (!description || !unit) this.importErrors.push('La hoja APU necesita Descripcion y Unidad.');
+      if (claveRaw && !Number.isInteger(clave)) this.importErrors.push('La Clave del APU debe ser un número entero o quedar vacía.');
+
+      const rows: ApuImportRow[] = [];
+      itemRows.forEach((raw, index) => {
+        const values = this.normalizeImportRecord(raw);
+        const rowNumber = index + 2;
+        const typeText = this.normalizeImportText(values['TIPO']);
+        const type: ResourceTab | null = ['MATERIAL', 'MATERIALES'].includes(typeText) ? 'MATERIAL'
+          : ['PERSONAL', 'MO', 'MANO DE OBRA'].includes(typeText) ? 'PERSONAL'
+          : ['EQUIPO', 'EQUIPOS'].includes(typeText) ? 'EQUIPO'
+          : ['HERRAMIENTA', 'HERRAMIENTAS', 'HERR'].includes(typeText) ? 'HERR' : null;
+        const resource = String(values['RECURSO'] ?? '').trim();
+        const quantity = this.parseImportNumber(values['CANTIDAD']);
+        if (!type || !resource || !Number.isFinite(quantity) || quantity <= 0) {
+          this.importErrors.push(`Componentes, fila ${rowNumber}: indica Tipo, Recurso y Cantidad mayor que cero.`);
+          return;
+        }
+        const catalog = type === 'MATERIAL' ? this.catalogMaterial : type === 'EQUIPO' ? this.catalogEquipo
+          : type === 'HERR' ? this.catalogHerramienta : this.catalogPersonal;
+        const match = catalog.find(item => this.normalizeImportText(item.description) === this.normalizeImportText(resource));
+        if (!match) this.importWarnings.push(`Fila ${rowNumber}: "${resource}" no coincide con el catálogo; quedará como texto.`);
+        const costRaw = String(values['COSTO UNITARIO'] ?? '').trim();
+        const unitCost = type === 'HERR' ? 0 : costRaw ? this.parseImportNumber(values['COSTO UNITARIO']) : Number(match?.cost ?? 0);
+        if (!Number.isFinite(unitCost) || unitCost < 0) {
+          this.importErrors.push(`Componentes, fila ${rowNumber}: Costo Unitario no válido.`);
+          return;
+        }
+        if (type !== 'HERR' && !costRaw && !match) this.importWarnings.push(`Fila ${rowNumber}: sin costo; se cargará en 0 para revisión.`);
+        const crewName = type === 'PERSONAL' ? String(values['CUADRILLA'] ?? '').trim() || 'Cuadrilla 1' : '';
+        const crewQuantityRaw = String(values['CANTIDAD CUADRILLA'] ?? '').trim();
+        const crewQuantity = type === 'PERSONAL' && crewQuantityRaw ? this.parseImportNumber(values['CANTIDAD CUADRILLA']) : 1;
+        if (!Number.isFinite(crewQuantity) || crewQuantity <= 0) {
+          this.importErrors.push(`Componentes, fila ${rowNumber}: Cantidad Cuadrilla debe ser mayor que cero.`);
+          return;
+        }
+        rows.push({ type, idReference: match?.id ?? null, description: resource,
+          unit: type === 'HERR' ? '(%)mo' : String(values['UNIDAD'] ?? '').trim() || match?.unit || '',
+          quantity, unitCost, crewName, crewQuantity });
+      });
+      if (!rows.length) this.importErrors.push('No hay componentes válidos para cargar.');
+      const crews = new Map<string, { quantity: number; subtotal: number }>();
+      rows.filter(row => row.type === 'PERSONAL').forEach(row => {
+        const key = this.normalizeImportText(row.crewName);
+        const crew = crews.get(key);
+        if (crew && crew.quantity !== row.crewQuantity) this.importErrors.push(`La cuadrilla "${row.crewName}" tiene cantidades distintas en el archivo.`);
+        else crews.set(key, { quantity: row.crewQuantity, subtotal: (crew?.subtotal ?? 0) + row.quantity * row.unitCost });
+      });
+      const personalCost = [...crews.values()].reduce((sum, crew) => sum + crew.subtotal * crew.quantity, 0);
+      const directCost = personalCost + rows.filter(row => row.type === 'MATERIAL' || row.type === 'EQUIPO')
+        .reduce((sum, row) => sum + row.quantity * row.unitCost, 0)
+        + rows.filter(row => row.type === 'HERR').reduce((sum, row) => sum + row.quantity / 100 * personalCost, 0);
+      if (!this.importErrors.length) this.importPreview = { clave, claveUsuario: String(apu['CLAVE USUARIO'] ?? '').trim(),
+        description, unit, rows, directCost };
+  }
+
+  private parseApuText(content: string): { apuRows: Record<string, any>[]; itemRows: Record<string, any>[] } {
+    const sections = new Map<string, string[]>();
+    let current = '';
+    for (const rawLine of content.replace(/^\uFEFF/, '').split(/\r?\n/)) {
+      const line = rawLine.trim();
+      if (!line || line.startsWith('#')) continue;
+      const section = /^\[(APU|COMPONENTES)\]$/i.exec(line);
+      if (section) {
+        current = section[1].toUpperCase();
+        sections.set(current, []);
+      } else if (current) {
+        sections.get(current).push(line);
+      }
+    }
+    if (!sections.has('APU') || !sections.has('COMPONENTES')) {
+      throw new Error('El texto debe incluir las secciones [APU] y [Componentes]. Descarga el ejemplo TXT.');
+    }
+    const readRows = (lines: string[], name: string): Record<string, any>[] => {
+      if (lines.length < 2) throw new Error(`La sección ${name} necesita encabezados y datos.`);
+      const header = lines[0];
+      const separator = header.includes('\t') ? '\t' : header.includes(';') ? ';' : ',';
+      const columns = this.splitDelimitedLine(header, separator);
+      return lines.slice(1).map((line, index) => {
+        const values = this.splitDelimitedLine(line, separator);
+        if (values.length !== columns.length) throw new Error(`${name}, fila ${index + 2}: número de columnas incorrecto.`);
+        return Object.fromEntries(columns.map((column, i) => [column, values[i]]));
+      });
+    };
+    return { apuRows: readRows(sections.get('APU'), 'APU'),
+      itemRows: readRows(sections.get('COMPONENTES'), 'Componentes') };
+  }
+
+  private splitDelimitedLine(line: string, separator: string): string[] {
+    const values: string[] = [];
+    let value = '';
+    let quoted = false;
+    for (let i = 0; i < line.length; i++) {
+      const char = line[i];
+      if (char === '"') {
+        if (quoted && line[i + 1] === '"') { value += '"'; i++; }
+        else quoted = !quoted;
+      } else if (char === separator && !quoted) {
+        values.push(value.trim());
+        value = '';
+      } else {
+        value += char;
+      }
+    }
+    values.push(value.trim());
+    return values;
+  }
+
+  private normalizeImportText(value: any): string {
+    return String(value ?? '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/\s+/g, ' ').trim().toUpperCase();
+  }
+
+  private normalizeImportRecord(raw: Record<string, any>): Record<string, any> {
+    return Object.fromEntries(Object.entries(raw).map(([key, value]) => [this.normalizeImportText(key), value]));
+  }
+
+  private parseImportNumber(value: any): number {
+    if (typeof value === 'number') return value;
+    const text = String(value ?? '').replace(/[$%\s]/g, '');
+    if (!text) return NaN;
+    const comma = text.lastIndexOf(',');
+    const dot = text.lastIndexOf('.');
+    const normalized = comma >= 0 && dot >= 0
+      ? comma > dot ? text.replace(/\./g, '').replace(',', '.') : text.replace(/,/g, '')
+      : text.replace(',', '.');
+    return Number(normalized);
+  }
+
+  applyApuImport(): void {
+    const preview = this.importPreview;
+    const idContract = this.signalsService.getIdContract()();
+    if (!preview || !idContract || this.importErrors.length) return;
+    const tempId = `temp_${++this.tempCounter}`;
+    const apu = { id: tempId, idCompany: this.idCompany, idContract,
+      clave: preview.clave, claveUsuario: preview.claveUsuario, description: preview.description,
+      unit: preview.unit, costMN: preview.directCost, precioUnitario: 0,
+      hasPersonal: preview.rows.some(row => row.type === 'PERSONAL'),
+      hasMaterial: preview.rows.some(row => row.type === 'MATERIAL'),
+      hasHerramienta: preview.rows.some(row => row.type === 'HERR'),
+      hasEquipo: preview.rows.some(row => row.type === 'EQUIPO'), __isNew: true };
+    const items = preview.rows.filter(row => row.type !== 'PERSONAL').map(row => ({
+      id: null, idAuxiliar: tempId, type: row.type, idReference: row.idReference,
+      description: row.description, unit: row.unit, quantity: row.type === 'HERR' ? row.quantity / 100 : row.quantity,
+      unitCost: row.unitCost, active: true, __isNew: true, __modified: false,
+    }));
+    const crewMap = new Map<string, any>();
+    preview.rows.filter(row => row.type === 'PERSONAL').forEach(row => {
+      const key = this.normalizeImportText(row.crewName);
+      if (!crewMap.has(key)) crewMap.set(key, { id: null, idAuxiliar: tempId, name: row.crewName,
+        cantidad: row.crewQuantity, sortOrder: crewMap.size + 1, active: true,
+        items: [], __isNew: true, __modified: false });
+      crewMap.get(key).items.push({ id: null, idCuadrilla: null, idReference: row.idReference,
+        description: row.description, unit: row.unit, quantity: row.quantity, unitCost: row.unitCost,
+        active: true, __isNew: true, __modified: false });
+    });
+    const crews = [...crewMap.values()];
+    this.rowData = [apu, ...this.rowData];
+    this.mainGridApi?.setGridOption('rowData', this.rowData);
+    this.showImportModal = false;
+    setTimeout(() => {
+      this.mainGridApi?.forEachNode(node => {
+        if (node.data?.id === tempId) node.setSelected(true);
+      });
+      this.selectedAuxiliar = apu;
+      this.allItems = items;
+      this.cuadrillas = crews;
+      this.selectedCuadrilla = crews[0] ?? null;
+      this.cuadrillaItemRows = this.selectedCuadrilla?.items ?? [];
+      this.activeResourceTab = null;
+      this.selectAvailableResourceTab();
+      this.hasMainChanges = true;
+      this.hasItemChanges = items.length > 0;
+      this.hasCuadrillaChanges = crews.length > 0;
+      this.refreshSubGrids();
+      alerts.basicAlert('Análisis cargado', 'Revisa las pestañas y pulsa Guardar Componentes para guardar el precio unitario.', 'success');
+    }, 0);
   }
 
   loadDetalle(idAuxiliar: number) {
@@ -271,6 +606,7 @@ export class AuxiliaresComponent {
     this.hasItemChanges = false; this.hasCuadrillaChanges = false;
     this.auxiliarItemsService.getDetalle(idAuxiliar).subscribe({
       next: (data) => {
+        if (Number(this.selectedAuxiliar?.id) !== Number(idAuxiliar)) return;
         this.allItems = (data.items ?? []).map((i: any) => ({
           ...i,
           unitCost: Number(i.unitCost ?? i.unit_cost ?? i.UnitCost ?? i.precioUnitario ?? i.precio_unitario ?? 0) || 0,
@@ -278,6 +614,7 @@ export class AuxiliaresComponent {
         }));
         this.cuadrillas = (data.cuadrillas ?? []).map((c: any) => ({
           ...c,
+          sortOrder: Number(c.sortOrder ?? c.sort_order ?? 0),
           items: (c.items ?? []).map((i: any) => ({
             ...i,
             unitCost: Number(i.unitCost ?? i.unit_cost ?? i.UnitCost ?? i.precioUnitario ?? i.precio_unitario ?? 0) || 0,
@@ -296,11 +633,33 @@ export class AuxiliaresComponent {
 
   onMainSelectionChanged() {
     const rows = this.mainGridApi.getSelectedRows();
-    if (!rows.length) { this.selectedAuxiliar = null; return; }
+    if (!rows.length) { this.selectedAuxiliar = null; this.activeResourceTab = null; this.clearDetalle(); return; }
     this.selectedAuxiliar = rows[0];
+    this.clearDetalle();
+    this.activeResourceTab = null;
+    this.selectAvailableResourceTab();
     if (this.selectedAuxiliar.id && !String(this.selectedAuxiliar.id).startsWith('temp_')) {
       this.loadDetalle(this.selectedAuxiliar.id);
     }
+  }
+
+  private clearDetalle(): void {
+    this.allItems = [];
+    this.cuadrillas = [];
+    this.selectedCuadrilla = null;
+    this.cuadrillaItemRows = [];
+    this.selectedMaterialId = null;
+    this.selectedEquipoId = null;
+    this.selectedHerramientaId = null;
+    this.selectedPersonalId = null;
+    this.selectedMaterialRow = null;
+    this.selectedEquipoRow = null;
+    this.selectedHerramientaRow = null;
+    this.selectedCuadrillaItem = null;
+    this.hasItemChanges = false;
+    this.hasCuadrillaChanges = false;
+    this.refreshSubGrids();
+    if (this.cuadrillaGridApi && !this.cuadrillaGridApi.isDestroyed()) this.cuadrillaGridApi.setGridOption('rowData', []);
   }
 
   onMainCellValueChanged(event: any) {
@@ -324,7 +683,7 @@ export class AuxiliaresComponent {
 
   // ── Main CRUD ────────────────────────────────────────────────────────────
   addRow() {
-    this.trackingService.addLog(this.trackingService.getnameComp(), 'Agregó nuevo auxiliares', 'Proyectos', this.trackingService.getEmail());
+    this.trackingService.addLog(this.trackingService.getnameComp(), 'Agregó nuevo precio unitario', 'Proyectos', this.trackingService.getEmail());
     const idContract = this.signalsService.getIdContract()();
     const newRow = { id: `temp_${++this.tempCounter}`, idCompany: this.idCompany, idContract: idContract ?? null,
       clave: null, claveUsuario: '',
@@ -351,7 +710,7 @@ export class AuxiliaresComponent {
       }
       this.hasMainChanges = false;
       this.originalData = JSON.parse(JSON.stringify(this.rowData));
-      alerts.basicAlert('OK', 'Auxiliares guardados', 'success');
+      alerts.basicAlert('OK', 'Precios unitarios guardados', 'success');
     } catch { alerts.basicAlert('Error', 'No se pudieron guardar', 'error'); }
   }
 
@@ -373,23 +732,43 @@ export class AuxiliaresComponent {
   }
 
   // ── Flag checkboxes ──────────────────────────────────────────────────────
-  onFlagChange() {
-    if (this.selectedAuxiliar) { this.selectedAuxiliar.__modified = true; this.hasMainChanges = true; }
+  private selectAvailableResourceTab(preferred?: ResourceTab): void {
+    const selected = this.selectedAuxiliar;
+    const available: ResourceTab[] = [];
+    if (selected?.hasPersonal) available.push('PERSONAL');
+    if (selected?.hasMaterial) available.push('MATERIAL');
+    if (selected?.hasEquipo) available.push('EQUIPO');
+    if (selected?.hasHerramienta) available.push('HERR');
+    if (preferred && available.includes(preferred)) this.activeResourceTab = preferred;
+    else if (!this.activeResourceTab || !available.includes(this.activeResourceTab)) this.activeResourceTab = available[0] ?? null;
+  }
+
+  onFlagChange(tab?: ResourceTab) {
+    if (this.selectedAuxiliar) {
+      this.selectedAuxiliar.__modified = true;
+      this.hasMainChanges = true;
+      if (tab === 'PERSONAL' && this.selectedAuxiliar.hasPersonal && !this.cuadrillas.length) this.addCuadrilla();
+      this.selectAvailableResourceTab(tab);
+    }
   }
 
   // ── Sub-items CRUD ───────────────────────────────────────────────────────
   addItem(type: 'MATERIAL' | 'HERR' | 'EQUIPO') {
     if (!this.selectedAuxiliar) return;
+    const selectedId = type === 'MATERIAL' ? this.selectedMaterialId : type === 'HERR' ? this.selectedHerramientaId : this.selectedEquipoId;
+    const catalog = type === 'MATERIAL' ? this.catalogMaterial : type === 'HERR' ? this.catalogHerramienta : this.catalogEquipo;
+    const selected = catalog.find(item => item.id === Number(selectedId));
+    if (!selected) return;
     const newItem = { id: null, idAuxiliar: this.selectedAuxiliar.id, type,
-      idReference: null, description: '', unit: type === 'HERR' ? '(%)mo' : '',
-      quantity: type === 'HERR' ? 0.03 : 0, unitCost: 0, active: true, __isNew: true, __modified: false };
+      idReference: selected.id, description: selected.description, unit: type === 'HERR' ? '(%)mo' : selected.unit,
+      quantity: type === 'HERR' ? 0.03 : 1, unitCost: type === 'HERR' ? 0 : selected.cost,
+      active: true, __isNew: true, __modified: false };
     this.allItems = [newItem, ...this.allItems];
+    if (type === 'MATERIAL') this.selectedMaterialId = null;
+    else if (type === 'HERR') this.selectedHerramientaId = null;
+    else this.selectedEquipoId = null;
     this.hasItemChanges = true;
     this.refreshSubGrids();
-    setTimeout(() => {
-      const api = type === 'MATERIAL' ? this.materialGridApi : type === 'HERR' ? this.herramientaGridApi : this.equipoGridApi;
-      api?.startEditingCell({ rowIndex: 0, colKey: 'description' });
-    }, 100);
   }
 
   onItemValueChanged(event: any) {
@@ -431,12 +810,12 @@ export class AuxiliaresComponent {
   selectCuadrilla(c: any) {
     this.selectedCuadrilla = c;
     this.cuadrillaItemRows = c?.items ?? [];
-    this.cuadrillaGridApi?.setGridOption('rowData', this.cuadrillaItemRows);
+    if (this.cuadrillaGridApi && !this.cuadrillaGridApi.isDestroyed()) this.cuadrillaGridApi.setGridOption('rowData', this.cuadrillaItemRows);
   }
 
   addCuadrilla() {
-    const newC = { id: null, idAuxiliar: this.selectedAuxiliar?.id, name: '', cantidad: 1,
-      sort_order: this.cuadrillas.length + 1, active: true, items: [], __isNew: true, __modified: false };
+    const newC = { id: null, idAuxiliar: this.selectedAuxiliar?.id, name: `Cuadrilla ${this.cuadrillas.length + 1}`, cantidad: 1,
+      sortOrder: this.cuadrillas.length + 1, active: true, items: [], __isNew: true, __modified: false };
     this.cuadrillas = [...this.cuadrillas, newC];
     this.selectCuadrilla(newC);
     this.hasCuadrillaChanges = true;
@@ -446,12 +825,15 @@ export class AuxiliaresComponent {
 
   addCuadrillaItem() {
     if (!this.selectedCuadrilla) return;
-    const newItem = { id: null, idCuadrilla: this.selectedCuadrilla.id, idReference: null,
-      description: '', unit: 'JORNADA', quantity: 0, unitCost: 0, active: true, __isNew: true, __modified: false };
+    const selected = this.catalogPersonal.find(item => item.id === Number(this.selectedPersonalId));
+    if (!selected) return;
+    const newItem = { id: null, idCuadrilla: this.selectedCuadrilla.id, idReference: selected.id,
+      description: selected.description, unit: selected.unit, quantity: 1, unitCost: selected.cost,
+      active: true, __isNew: true, __modified: false };
     this.selectedCuadrilla.items = [newItem, ...this.selectedCuadrilla.items];
     this.cuadrillaItemRows = [...this.selectedCuadrilla.items];
+    this.selectedPersonalId = null;
     this.hasCuadrillaChanges = true;
-    setTimeout(() => this.cuadrillaGridApi?.startEditingCell({ rowIndex: 0, colKey: 'description' }), 100);
   }
 
   onCuadrillaItemValueChanged(event: any) { if (!event.data.__isNew) event.data.__modified = true; this.hasCuadrillaChanges = true; }
@@ -480,9 +862,15 @@ export class AuxiliaresComponent {
   // ── Guardar todo el detalle ──────────────────────────────────────────────
   async saveDetalle() {
     if (!this.selectedAuxiliar) return;
+    let saving = 'precio unitario';
     try {
+      if (this.selectedAuxiliar.__isNew) {
+        await this.saveMain();
+        if (this.selectedAuxiliar.__isNew) return;
+      }
       // 1. Items (MATERIAL, HERR, EQUIPO)
       for (const item of this.allItems.filter((i) => i.__isNew || i.__modified)) {
+        saving = `componente ${item.type.toLowerCase()}: ${item.description || '(sin descripción)'}`;
         const payload = { idAuxiliar: this.selectedAuxiliar.id, type: item.type,
           idReference: item.idReference ?? null, description: item.description?.trim() ?? '',
           unit: item.unit ?? null, quantity: Number(item.quantity) || 0,
@@ -492,11 +880,14 @@ export class AuxiliaresComponent {
       }
       // 2. Cuadrillas + sus items
       for (const c of this.cuadrillas) {
-        const cPayload = { idAuxiliar: this.selectedAuxiliar.id, name: c.name?.trim() ?? '',
-          cantidad: Number(c.cantidad) || 1, sortOrder: Number(c.sort_order) || 0, active: true };
+        saving = `cuadrilla: ${c.name || '(sin nombre)'}`;
+        const cPayload = { idAuxiliar: this.selectedAuxiliar.id, idCompany: this.idCompany,
+          name: c.name?.trim() ?? '', cantidad: Number(c.cantidad) || 1,
+          sortOrder: Number(c.sortOrder ?? c.sort_order) || 0, active: true };
         if (c.__isNew) { const saved = await this.auxiliarItemsService.saveCuadrilla(cPayload).toPromise(); c.id = saved.id; c.__isNew = false; c.items.forEach((i: any) => i.idCuadrilla = saved.id); }
         else if (c.__modified) { await this.auxiliarItemsService.updateCuadrilla(c.id, cPayload).toPromise(); c.__modified = false; }
         for (const item of (c.items ?? []).filter((i: any) => i.__isNew || i.__modified)) {
+          saving = `trabajador de ${c.name || 'cuadrilla'}: ${item.description || '(sin descripción)'}`;
           const iPayload = { idCuadrilla: c.id, idReference: item.idReference ?? null,
             description: item.description?.trim() ?? '', unit: item.unit ?? null,
             quantity: Number(item.quantity) || 0, unitCost: Number(item.unitCost) || 0, active: true };
@@ -505,13 +896,18 @@ export class AuxiliaresComponent {
         }
       }
       // 3. Actualizar flags y cost_mn en el auxiliar
+      saving = 'costo del precio unitario';
       this.selectedAuxiliar.costMN = this.costoTotal;
       const auxPayload = this.cleanRow(this.selectedAuxiliar);
       await this.auxiliarService.update(this.selectedAuxiliar.id, auxPayload).toPromise();
       this.hasItemChanges = false; this.hasCuadrillaChanges = false; this.hasMainChanges = false;
       this.mainGridApi?.refreshCells({ force: true });
       alerts.basicAlert('Guardado', 'Componentes guardados. Costo: $' + this.costoTotal.toLocaleString('es-MX', { minimumFractionDigits: 2 }), 'success');
-    } catch (e: any) { console.error(e); alerts.basicAlert('Error', 'Error al guardar componentes', 'error'); }
+    } catch (e: any) {
+      console.error(`Error al guardar ${saving}`, e);
+      const detail = typeof e?.error === 'string' ? e.error : e?.error?.title || e?.error?.message || '';
+      alerts.basicAlert('Error al guardar', `${saving}. ${detail || 'Revisa los datos e intenta de nuevo.'}`, 'error');
+    }
   }
 
   // ── Grid ready events ────────────────────────────────────────────────────
@@ -521,9 +917,9 @@ export class AuxiliaresComponent {
   onCuadrillaGridReady(e: GridReadyEvent)   { this.cuadrillaGridApi = e.api; }
 
   refreshSubGrids() {
-    this.materialGridApi?.setGridOption('rowData', this.materialItems);
-    this.herramientaGridApi?.setGridOption('rowData', this.herramientaItems);
-    this.equipoGridApi?.setGridOption('rowData', this.equipoItems);
+    if (this.materialGridApi && !this.materialGridApi.isDestroyed()) this.materialGridApi.setGridOption('rowData', this.materialItems);
+    if (this.herramientaGridApi && !this.herramientaGridApi.isDestroyed()) this.herramientaGridApi.setGridOption('rowData', this.herramientaItems);
+    if (this.equipoGridApi && !this.equipoGridApi.isDestroyed()) this.equipoGridApi.setGridOption('rowData', this.equipoItems);
   }
 
   private cleanRow(row: any) {
@@ -704,7 +1100,7 @@ export class AuxiliaresComponent {
         return { id: r.id, precioUnitario: Math.round(running * 100) / 100 };
       });
 
-    if (!precios.length) { alerts.basicAlert('Sin datos', 'No hay auxiliares con costo calculado', 'warning'); return; }
+    if (!precios.length) { alerts.basicAlert('Sin datos', 'No hay precios unitarios con costo calculado', 'warning'); return; }
 
     try {
       await this.auxiliarService.recalcularPrecios(idContract, this.idCompany, precios).toPromise();
