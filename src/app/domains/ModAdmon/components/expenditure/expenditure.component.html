@@ -140,15 +140,16 @@
 
 <!-- Modal para Reporte Concentrado de Egresos -->
 <div class="modal fade" [class.show]="showEgresoReportModal" [style.display]="showEgresoReportModal ? 'block' : 'none'" tabindex="-1" role="dialog">
-  <div class="modal-dialog modal-dialog-centered" role="document">
-    <div class="modal-content">
+  <div class="modal-dialog modal-xl modal-dialog-centered" role="document" style="max-width: 96vw;">
+    <div class="modal-content" style="height: 90vh;">
       <div class="modal-header bg-info text-white">
         <h5 class="modal-title">
           <i class="bi bi-file-earmark-pdf me-2"></i>Concentrado de Egresos
         </h5>
         <button type="button" class="btn-close btn-close-white" (click)="closeEgresoReportModal()" aria-label="Close"></button>
       </div>
-      <div class="modal-body">
+      <div class="modal-body d-flex flex-column flex-lg-row gap-3 overflow-hidden">
+        <div class="flex-shrink-0 overflow-auto" style="width: 100%; max-width: 360px;">
         <p class="text-muted mb-2">
           <i class="bi bi-info-circle me-1"></i>
           Seleccione el tipo de reporte y el rango de fechas.
@@ -207,6 +208,22 @@
               required>
           </div>
         </form>
+        </div>
+        <div class="flex-grow-1 min-w-0" style="min-height: 320px;">
+          <iframe *ngIf="pdfPreviewUrl; else emptyEgresoPdfPreview"
+                  [src]="pdfPreviewUrl"
+                  title="Vista previa del reporte de egresos"
+                  style="width: 100%; height: 100%; min-height: 320px; border: 1px solid #dee2e6; border-radius: 4px;">
+          </iframe>
+          <ng-template #emptyEgresoPdfPreview>
+            <div class="h-100 d-flex align-items-center justify-content-center text-muted border rounded bg-light">
+              <div class="text-center p-4">
+                <i class="bi bi-file-earmark-pdf" style="font-size: 2rem;"></i>
+                <p class="mb-0 mt-2">El PDF aparecerá aquí al generar el reporte.</p>
+              </div>
+            </div>
+          </ng-template>
+        </div>
       </div>
       <div class="modal-footer">
         <button type="button" class="btn btn-secondary" (click)="closeEgresoReportModal()">

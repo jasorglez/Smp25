@@ -1,6 +1,7 @@
 import { WorkspaceDraftDirective } from 'app/shared/workspace/workspace-draft.directive';
 import { WorkspaceDraftsService } from 'app/services/workspace-drafts.service';
 import { Component, ViewChild, effect, inject, Input, OnChanges, OnDestroy, SimpleChanges } from '@angular/core';
+import { DomSanitizer, SafeResourceUrl } from '@angular/platform-browser';
 import { Router } from '@angular/router';
 import { Subscription } from 'rxjs';
 import { SignalrService } from 'app/services/signalr.service';
@@ -74,6 +75,7 @@ export class ExpenditureComponent implements OnDestroy, OnChanges {
   public trackingService = inject(TrackingService);
   private signalRService = inject(SignalrService);
   private router = inject(Router);
+  private sanitizer = inject(DomSanitizer);
 
   private signalRSub!: Subscription;
   private catalogSavedSub?: Subscription;
@@ -217,6 +219,8 @@ export class ExpenditureComponent implements OnDestroy, OnChanges {
   reportEgresoEndDate: string = '';
   isGeneratingEgresoReport: boolean = false;
   reportEgresoType: string = 'listado'; // 'listado' | 'saldos' | 'proveedor'
+  pdfPreviewUrl: SafeResourceUrl | null = null;
+  private pdfPreviewObjectUrl: string | null = null;
 
   // Propiedades para el modal Nuevo Tipo de Gasto
   showNuevoTipoGastoModal: boolean = false;
@@ -1835,6 +1839,30 @@ export class ExpenditureComponent implements OnDestroy, OnChanges {
     this.showEgresoReportModal = false;
     document.body.classList.remove('modal-open');
     sessionStorage.removeItem(this.egresoReportStorageKey);
+    this.pdfPreviewUrl = null;
+    if (this.pdfPreviewObjectUrl) URL.revokeObjectURL(this.pdfPreviewObjectUrl);
+    this.pdfPreviewObjectUrl = null;
+  }
+
+  private async showPdfPreview(pdf: any): Promise<void> {
+    this.pdfPreviewUrl = null;
+    if (this.pdfPreviewObjectUrl) URL.revokeObjectURL(this.pdfPreviewObjectUrl);
+
+    await new Promise<void>((resolve, reject) => {
+      try {
+        pdf.getBlob((blob: Blob) => {
+          try {
+            this.pdfPreviewObjectUrl = URL.createObjectURL(blob);
+            this.pdfPreviewUrl = this.sanitizer.bypassSecurityTrustResourceUrl(this.pdfPreviewObjectUrl);
+            resolve();
+          } catch (error) {
+            reject(error);
+          }
+        });
+      } catch (error) {
+        reject(error);
+      }
+    });
   }
 
   private get egresoReportStorageKey(): string {
@@ -2093,12 +2121,7 @@ export class ExpenditureComponent implements OnDestroy, OnChanges {
       };
 
       const pdf = pdfMake.createPdf(docDefinition);
-      try {
-        pdf.open();
-      } catch {
-        pdf.download(`reporte-egresos-${this.reportEgresoStartDate}-al-${this.reportEgresoEndDate}.pdf`);
-        alerts.toastAlert('Reporte descargado automáticamente', 'info');
-      }
+      await this.showPdfPreview(pdf);
 
       this.trackingService.addLog(
         this.trackingService.getnameComp(),
@@ -2345,12 +2368,7 @@ export class ExpenditureComponent implements OnDestroy, OnChanges {
       };
 
       const pdf = pdfMake.createPdf(docDefinition);
-      try {
-        pdf.open();
-      } catch {
-        pdf.download(`egresos-por-proveedor-${this.reportEgresoStartDate}-al-${this.reportEgresoEndDate}.pdf`);
-        alerts.toastAlert('Reporte descargado automáticamente', 'info');
-      }
+      await this.showPdfPreview(pdf);
 
       this.trackingService.addLog(
         this.trackingService.getnameComp(),
@@ -2510,12 +2528,7 @@ export class ExpenditureComponent implements OnDestroy, OnChanges {
       };
 
       const pdf = pdfMake.createPdf(docDefinition);
-      try {
-        pdf.open();
-      } catch {
-        pdf.download(`saldos-cuenta-${this.reportEgresoStartDate}-al-${this.reportEgresoEndDate}.pdf`);
-        alerts.toastAlert('Reporte descargado automáticamente', 'info');
-      }
+      await this.showPdfPreview(pdf);
       this.trackingService.addLog(
         this.trackingService.getnameComp(),
         `Reporte de Saldos generado: ${this.reportEgresoStartDate} al ${this.reportEgresoEndDate}`,
