@@ -341,8 +341,8 @@ error: (error) => {
             : branches;
           this.cdr.markForCheck();
 
-          // Si hay una sola sucursal, seleccionarla; con varias, esperar elección.
-          const defaultBranch = branches.length === 1 ? branches[0] : null;
+          // Iniciar en la primera sucursal real; "Todas" queda como opción manual.
+          const defaultBranch = branches[0] ?? null;
           this.selectedBranchId = defaultBranch ? String(defaultBranch.id) : '';
           this.autoLoadAssignedBranchContext = !!defaultBranch;
           this.clearContractsAndProjects();
