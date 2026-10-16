@@ -102,6 +102,7 @@ export class SideBarComponent {
   selectedContractId: string = '';
   selectedProjectId: string = '';
   selectedBranchId: string = '';
+  private autoLoadAssignedBranchContext = false;
   selectedCProcessId: number = 0;
   selectedPlatformId: number = 0;
   userRoot: number = 0;
@@ -340,6 +341,7 @@ error: (error) => {
           // Con varias sucursales, exigir una elección explícita.
           const defaultBranch = branches.length === 1 ? branches[0] : null;
           this.selectedBranchId = defaultBranch ? String(defaultBranch.id) : '';
+          this.autoLoadAssignedBranchContext = !!defaultBranch;
           this.clearContractsAndProjects();
           if (defaultBranch) {
             this.signalsService.setBranchSelectedBySidebar(Number(this.selectedBranchId));
@@ -377,8 +379,9 @@ error: (error) => {
             }));
             this.cdr.markForCheck();
 
-            if (this.branchData.length === 1) {
+            if (this.branchData.length > 0) {
               this.selectedBranchId = String(this.branchData[0].id);
+              this.autoLoadAssignedBranchContext = true;
 
               this.signalsService.setBranchSelectedBySidebar(
                 Number(this.selectedBranchId)
@@ -398,6 +401,7 @@ error: (error) => {
               await this.getpermissionxContracts();
             } else {
               this.selectedBranchId = '';
+              this.autoLoadAssignedBranchContext = false;
               this.clearContractsAndProjects();
               this.signalsService.setBranchSelectedBySidebar(0);
               this.signalsService.setBranchNameSelectedBySidebar('');
@@ -436,6 +440,7 @@ error: (error) => {
     const target = event.target as HTMLSelectElement;
     this.selectedBranchId = target.value;
     if (this.selectedBranchId) {
+      this.autoLoadAssignedBranchContext = false;
       // Limpiar selects de contracts y projects cuando cambia branch
       this.clearContractsAndProjects();
 
@@ -493,28 +498,33 @@ error: (error) => {
         this.projectData = [];
         this.selectedProjectId = '';
         this.cdr.markForCheck();
+        if (this.autoLoadAssignedBranchContext && this.contractData.length > 0) {
+          const firstContract = this.contractData[0];
+          this.selectedContractId = String(firstContract.contractId);
+          this.signalsService.setContractSelectedBySidebar(Number(this.selectedContractId));
+          this.signalsService.contractSignal(Number(this.selectedContractId), firstContract.contract ?? '');
+          this.trackingService.setContract(this.selectedContractId);
+          this.loadVigenteConvention(Number(this.selectedContractId));
+          await this.getpermissionxProjects(Number(this.selectedContractId));
+        }
       });
   } 
 
   async onProjectSelected(event: Event) {
     const target = event.target as HTMLSelectElement;
-    this.selectedProjectId = target.value;
-    if (this.selectedProjectId) {
-      // Lógica para añadir la signal de project
-      this.signalsService.setProjectSelectedBySidebar(
-        Number(this.selectedProjectId)
-      );
+    const found = this.projectData.find(p => String(p.idProject) === target.value);
+    this.selectSidebarProject(found);
+  }
 
-      this.trackingService.setProject(this.selectedProjectId);
-      this.signalsService.setProjectSelectedBySidebar(
-        Number(this.selectedProjectId)
-      );
-      // Signal exclusiva del sidebar (no la toca ordenes)
-      this.signalsService.setSidebarProjectId(Number(this.selectedProjectId));
-      const found = this.projectData.find(p => String(p.idProject) === this.selectedProjectId);
-      this.signalsService.setProjectNameBySidebar(found?.projectName ?? '');
-      this.loadVigentePresupuesto(Number(this.selectedRoot()), Number(this.selectedProjectId));
-    }
+  private selectSidebarProject(project: any) {
+    this.selectedProjectId = project ? String(project.idProject) : '';
+    if (!this.selectedProjectId) return;
+
+    this.signalsService.setProjectSelectedBySidebar(Number(this.selectedProjectId));
+    this.trackingService.setProject(this.selectedProjectId);
+    this.signalsService.setSidebarProjectId(Number(this.selectedProjectId));
+    this.signalsService.setProjectNameBySidebar(project.projectName ?? '');
+    this.loadVigentePresupuesto(Number(this.selectedRoot()), Number(this.selectedProjectId));
   }
 
   async getpermissionxProjects(idContract: number) {
@@ -535,6 +545,9 @@ error: (error) => {
           this.signalsService.setSidebarProjectId(null);
           this.signalsService.setProjectNameBySidebar('');
           this.cdr.markForCheck();
+          if (this.autoLoadAssignedBranchContext && this.projectData.length > 0) {
+            this.selectSidebarProject(this.projectData[0]);
+          }
         },
         error: () => { this.projectData = []; this.selectedProjectId = ''; this.cdr.markForCheck(); }
       });
@@ -551,6 +564,9 @@ error: (error) => {
           this.signalsService.setSidebarProjectId(null);
           this.signalsService.setProjectNameBySidebar('');
           this.cdr.markForCheck();
+          if (this.autoLoadAssignedBranchContext && this.projectData.length > 0) {
+            this.selectSidebarProject(this.projectData[0]);
+          }
         },
         error: (error) => {
           this.selectedProjectId = '';
