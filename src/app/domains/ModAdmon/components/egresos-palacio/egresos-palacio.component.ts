@@ -35,6 +35,7 @@ import { Base64EncodeService } from 'app/services/base64encode.service';
 import { ProviderModalService } from './services/provider-modal.service';
 import { CustomersService } from 'app/services/customers.service';
 import { DatePipe } from '@angular/common';
+import { DomSanitizer, SafeResourceUrl } from '@angular/platform-browser';
 
 declare var bootstrap: any;
 
@@ -73,6 +74,7 @@ export class EgresosPalacioComponent {
   authService = inject(AuthService);
   public trackingService = inject(TrackingService);
   private formBuilder = inject(FormBuilder);
+  private sanitizer = inject(DomSanitizer);
 
   public isIncomeMode: boolean = false;
 
@@ -82,6 +84,8 @@ export class EgresosPalacioComponent {
   reportEndDate: string = '';
   reportType: string = 'consolidado'; // Tipo de reporte: consolidado, agrupado, egresos, bitacora
   isGeneratingConsolidatedReport: boolean = false;
+  reportPdfPreview: SafeResourceUrl | null = null;
+  private reportPdfObjectUrl: string | null = null;
   invited: boolean = false;
 
   // Propiedades para el modal de copiar registro
@@ -2718,6 +2722,26 @@ export class EgresosPalacioComponent {
   closeConsolidatedReportModal() {
     this.showConsolidatedReportModal = false;
     document.body.classList.remove('modal-open');
+    this.clearReportPdfPreview();
+  }
+
+  private clearReportPdfPreview() {
+    if (this.reportPdfObjectUrl) URL.revokeObjectURL(this.reportPdfObjectUrl);
+    this.reportPdfObjectUrl = null;
+    this.reportPdfPreview = null;
+  }
+
+  private async previewReportPdf(pdf: any): Promise<void> {
+    const blob = await new Promise<Blob>((resolve, reject) => {
+      try {
+        pdf.getBlob((result: Blob) => result ? resolve(result) : reject(new Error('No se pudo crear el PDF')));
+      } catch (error) {
+        reject(error);
+      }
+    });
+    if (this.reportPdfObjectUrl) URL.revokeObjectURL(this.reportPdfObjectUrl);
+    this.reportPdfObjectUrl = URL.createObjectURL(blob);
+    this.reportPdfPreview = this.sanitizer.bypassSecurityTrustResourceUrl(this.reportPdfObjectUrl);
   }
 
   private formatDateForInput(date: Date): string {
@@ -2802,9 +2826,6 @@ export class EgresosPalacioComponent {
         'Palacio Municipal - Egresos',
         this.trackingService.getEmail()
       );
-
-      // Cerrar modal
-      this.closeConsolidatedReportModal();
 
     } catch (error) {
       console.error('Error generando reporte:', error);
@@ -3304,21 +3325,7 @@ export class EgresosPalacioComponent {
       this.trackingService.addLog(this.trackingService.getnameComp(), 'Imprimió/abrió PDF bitácora egresos palacio', 'Admon / Egresos Palacio', this.trackingService.getEmail());
       const pdf = pdfMake.createPdf(docDefinition);
 
-      try {
-        pdf.open();
-        alerts.basicAlert(
-          'Bitácora generada',
-          `Se generó la bitácora con ${bitacoraData.length} registros`,
-          'success'
-        );
-      } catch (error) {
-        pdf.download(`Bitacora_Egresos_${new Date().getTime()}.pdf`);
-        alerts.basicAlert(
-          'Bitácora descargada',
-          'El navegador bloqueó la ventana emergente. La bitácora se descargó automáticamente.',
-          'info'
-        );
-      }
+      await this.previewReportPdf(pdf);
 
     } catch (error) {
       console.error('Error generando bitácora:', error);
@@ -3804,21 +3811,7 @@ export class EgresosPalacioComponent {
       this.trackingService.addLog(this.trackingService.getnameComp(), 'Imprimió/abrió PDF bitácora por cortes egresos palacio', 'Admon / Egresos Palacio', this.trackingService.getEmail());
       const pdf = pdfMake.createPdf(docDefinition);
 
-      try {
-        pdf.open();
-        alerts.basicAlert(
-          'Reporte generado',
-          `Se generó la Bitácora por Cortes con ${datosAgrupados.length} códigos y ${totalRegistros} registros`,
-          'success'
-        );
-      } catch (error) {
-        pdf.download(`Bitacora_Por_Cortes_${new Date().getTime()}.pdf`);
-        alerts.basicAlert(
-          'Reporte descargado',
-          'El navegador bloqueó la ventana emergente. El reporte se descargó automáticamente.',
-          'info'
-        );
-      }
+      await this.previewReportPdf(pdf);
 
     } catch (error) {
       console.error('Error generando bitácora por cortes:', error);
@@ -4494,21 +4487,7 @@ export class EgresosPalacioComponent {
       this.trackingService.addLog(this.trackingService.getnameComp(), 'Imprimió/abrió PDF reporte agrupadores egresos palacio', 'Admon / Egresos Palacio', this.trackingService.getEmail());
       const pdf = pdfMake.createPdf(docDefinition);
 
-      try {
-        pdf.open();
-        alerts.basicAlert(
-          'Reporte generado',
-          `Se generó el reporte con ${gruposOrdenados.length} hojas (categorías: ${gruposOrdenados.map(g => g.codigoNivel1).join(', ')}) y ${totalRegistrosGeneral} registros`,
-          'success'
-        );
-      } catch (error) {
-        pdf.download(`Reporte_Agrupadores_x_Hojas_${new Date().getTime()}.pdf`);
-        alerts.basicAlert(
-          'Reporte descargado',
-          'El navegador bloqueó la ventana emergente. El reporte se descargó automáticamente.',
-          'info'
-        );
-      }
+      await this.previewReportPdf(pdf);
 
     } catch (error) {
       console.error('Error generando reporte Agrupadores X Hojas:', error);
@@ -4962,23 +4941,7 @@ export class EgresosPalacioComponent {
     this.trackingService.addLog(this.trackingService.getnameComp(), 'Imprimió/abrió PDF resumen egresos palacio', 'Admon / Egresos Palacio', this.trackingService.getEmail());
     const pdf = pdfMake.createPdf(docDefinition);
 
-    // Intentar abrir en nueva pestaña primero
-    try {
-      pdf.open();
-      alerts.basicAlert(
-        'Reporte generado',
-        'El reporte de egresos se ha generado correctamente',
-        'success'
-      );
-    } catch (error) {
-      // Si falla (bloqueador de popups), descargar automáticamente
-      pdf.download(`Reporte_Egreso_${new Date().getTime()}.pdf`);
-      alerts.basicAlert(
-        'Reporte descargado',
-        'El navegador bloqueó la ventana emergente. El reporte se descargó automáticamente. Si desea permitir ventanas emergentes, configure su navegador.',
-        'info'
-      );
-    }
+    await this.previewReportPdf(pdf);
   }
 
   /**
@@ -5292,24 +5255,7 @@ export class EgresosPalacioComponent {
     this.trackingService.addLog(this.trackingService.getnameComp(), 'Imprimió/abrió PDF detalle egreso palacio', 'Admon / Egresos Palacio', this.trackingService.getEmail());
     const pdfDocGenerator = pdfMake.createPdf(docDefinition);
 
-    // Intentar abrir en nueva pestaña primero
-    try {
-      pdfDocGenerator.open();
-      alerts.basicAlert(
-        'Reporte generado',
-        `Se generó el reporte consolidado con ${groups.reduce((acc, g) => acc + g.expenses.length, 0)} egresos agrupados en ${groups.length} objetos de gasto.`,
-        'success'
-      );
-    } catch (error) {
-      // Si falla (bloqueador de popups), descargar automáticamente
-      const totalEgresos = groups.reduce((acc, g) => acc + g.expenses.length, 0);
-      pdfDocGenerator.download(`Reporte_Consolidado_${totalEgresos}_Egresos_${new Date().getTime()}.pdf`);
-      alerts.basicAlert(
-        'Reporte descargado',
-        'El navegador bloqueó la ventana emergente. El reporte se descargó automáticamente. Si desea permitir ventanas emergentes, configure su navegador.',
-        'info'
-      );
-    }
+    await this.previewReportPdf(pdfDocGenerator);
   }
 
   private buildReportPage(
@@ -6403,16 +6349,7 @@ export class EgresosPalacioComponent {
 
     const pdf = pdfMake.createPdf(docDefinition);
 
-    try {
-      pdf.open();
-    } catch (error) {
-      pdf.download(`Reporte_Catalogo_Egresos_${new Date().getTime()}.pdf`);
-      alerts.basicAlert(
-        'Reporte descargado',
-        'El navegador bloqueó la ventana emergente. El reporte se descargó automáticamente.',
-        'info'
-      );
-    }
+    await this.previewReportPdf(pdf);
 
     // Tracking log
     this.trackingService.addLog(

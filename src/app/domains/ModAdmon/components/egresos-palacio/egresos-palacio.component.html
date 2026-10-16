@@ -184,7 +184,7 @@
 
 <!-- Modal para Reporte Consolidado -->
 <div class="modal fade" [class.show]="showConsolidatedReportModal" [style.display]="showConsolidatedReportModal ? 'block' : 'none'" tabindex="-1" role="dialog">
-  <div class="modal-dialog modal-dialog-centered" role="document">
+  <div class="modal-dialog modal-dialog-centered modal-xl palacio-report-dialog" role="document">
     <div class="modal-content">
       <div class="modal-header bg-info text-white">
         <h5 class="modal-title">
@@ -192,7 +192,8 @@
         </h5>
         <button type="button" class="btn-close btn-close-white" (click)="closeConsolidatedReportModal()" aria-label="Close"></button>
       </div>
-      <div class="modal-body">
+      <div class="modal-body palacio-report-body">
+        <div class="palacio-report-options">
         <p class="text-muted mb-3">
           <i class="bi bi-info-circle me-1"></i>
           Seleccione el rango de fechas y el tipo de reporte que desea generar.
@@ -327,6 +328,14 @@
             </div>
           </div>
         </form>
+        </div>
+        <section class="palacio-report-preview" aria-label="Vista previa del reporte PDF">
+          <iframe *ngIf="reportPdfPreview" [src]="reportPdfPreview" title="Vista previa del reporte PDF"></iframe>
+          <div *ngIf="!reportPdfPreview" class="text-muted text-center p-4">
+            <i class="bi bi-file-earmark-pdf display-4 d-block mb-2"></i>
+            El reporte PDF aparecerá aquí al generarlo.
+          </div>
+        </section>
       </div>
       <div class="modal-footer">
         <button type="button" class="btn btn-secondary" (click)="closeConsolidatedReportModal()" [disabled]="isGeneratingConsolidatedReport">
