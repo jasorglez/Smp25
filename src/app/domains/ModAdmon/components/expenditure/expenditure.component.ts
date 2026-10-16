@@ -82,6 +82,7 @@ export class ExpenditureComponent implements OnDestroy, OnChanges {
   public isIncomeMode: boolean = false;
 
   async ngOnInit() {
+    this.restoreEgresoReportState();
     this.catalogSavedSub = this.customersService.catalogSaved$.subscribe(({ idRoot, type }) => {
       if (Number(idRoot) !== Number(this.idRoot) || type !== 'PROVIDERS') return;
       void this.loadProviders();
@@ -1817,19 +1818,58 @@ export class ExpenditureComponent implements OnDestroy, OnChanges {
   // ==================== MÉTODOS PARA REPORTE DE EGRESOS ====================
 
   openEgresoReportModal() {
-    const now = new Date();
-    const prev = new Date(now.getFullYear(), now.getMonth() - 1, 1);
-    const firstDay = new Date(prev.getFullYear(), prev.getMonth(), 1);
-    const lastDay  = new Date(prev.getFullYear(), prev.getMonth() + 1, 0);
-    this.reportEgresoStartDate = this.formatDateForInputE(firstDay);
-    this.reportEgresoEndDate   = this.formatDateForInputE(lastDay);
+    if (!this.reportEgresoStartDate || !this.reportEgresoEndDate) {
+      const now = new Date();
+      const prev = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+      const firstDay = new Date(prev.getFullYear(), prev.getMonth(), 1);
+      const lastDay  = new Date(prev.getFullYear(), prev.getMonth() + 1, 0);
+      this.reportEgresoStartDate = this.formatDateForInputE(firstDay);
+      this.reportEgresoEndDate   = this.formatDateForInputE(lastDay);
+    }
     this.showEgresoReportModal = true;
     document.body.classList.add('modal-open');
+    this.persistEgresoReportState();
   }
 
   closeEgresoReportModal() {
     this.showEgresoReportModal = false;
     document.body.classList.remove('modal-open');
+    sessionStorage.removeItem(this.egresoReportStorageKey);
+  }
+
+  private get egresoReportStorageKey(): string {
+    return `smp25:egreso-report-modal:${localStorage.getItem('company') || this.idRoot || 'default'}`;
+  }
+
+  persistEgresoReportState(): void {
+    if (!this.showEgresoReportModal) return;
+    try {
+      sessionStorage.setItem(this.egresoReportStorageKey, JSON.stringify({
+        isOpen: true,
+        startDate: this.reportEgresoStartDate,
+        endDate: this.reportEgresoEndDate,
+        reportType: this.reportEgresoType,
+      }));
+    } catch (error) {
+      console.warn('No se pudo guardar el estado del reporte de egresos:', error);
+    }
+  }
+
+  private restoreEgresoReportState(): void {
+    try {
+      const saved = sessionStorage.getItem(this.egresoReportStorageKey);
+      if (!saved) return;
+      const state = JSON.parse(saved);
+      if (typeof state.startDate === 'string') this.reportEgresoStartDate = state.startDate;
+      if (typeof state.endDate === 'string') this.reportEgresoEndDate = state.endDate;
+      if (['listado', 'saldos', 'proveedor'].includes(state.reportType)) {
+        this.reportEgresoType = state.reportType;
+      }
+      this.showEgresoReportModal = state.isOpen === true;
+      if (this.showEgresoReportModal) document.body.classList.add('modal-open');
+    } catch (error) {
+      console.warn('No se pudo restaurar el estado del reporte de egresos:', error);
+    }
   }
 
   private formatDateForInputE(date: Date): string {

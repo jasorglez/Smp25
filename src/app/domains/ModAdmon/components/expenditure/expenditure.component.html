@@ -161,7 +161,7 @@
               <div class="form-check">
                 <input class="form-check-input" type="radio" name="reportEgresoType"
                        id="egresoTypeListado" value="listado"
-                       [(ngModel)]="reportEgresoType">
+                       [(ngModel)]="reportEgresoType" (ngModelChange)="persistEgresoReportState()">
                 <label class="form-check-label" for="egresoTypeListado">
                   <i class="bi bi-list-ul me-1"></i>Listado de Egresos
                 </label>
@@ -169,7 +169,7 @@
               <div class="form-check">
                 <input class="form-check-input" type="radio" name="reportEgresoType"
                        id="egresoTypeSaldos" value="saldos"
-                       [(ngModel)]="reportEgresoType">
+                       [(ngModel)]="reportEgresoType" (ngModelChange)="persistEgresoReportState()">
                 <label class="form-check-label" for="egresoTypeSaldos">
                   <i class="bi bi-bank me-1"></i>Saldos de Cuenta
                 </label>
@@ -177,7 +177,7 @@
               <div class="form-check">
                 <input class="form-check-input" type="radio" name="reportEgresoType"
                        id="egresoTypeProveedor" value="proveedor"
-                       [(ngModel)]="reportEgresoType">
+                       [(ngModel)]="reportEgresoType" (ngModelChange)="persistEgresoReportState()">
                 <label class="form-check-label" for="egresoTypeProveedor">
                   <i class="bi bi-people me-1"></i>Agrupado por Proveedor
                 </label>
@@ -191,6 +191,7 @@
               class="form-control"
               id="egresoReportStartDate"
               [(ngModel)]="reportEgresoStartDate"
+              (ngModelChange)="persistEgresoReportState()"
               name="egresoReportStartDate"
               required>
           </div>
@@ -201,6 +202,7 @@
               class="form-control"
               id="egresoReportEndDate"
               [(ngModel)]="reportEgresoEndDate"
+              (ngModelChange)="persistEgresoReportState()"
               name="egresoReportEndDate"
               required>
           </div>
