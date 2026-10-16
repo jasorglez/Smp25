@@ -45,10 +45,11 @@
       <ag-grid-angular
         *ngIf="!loading"
         class="ag-theme-quartz small-text-ag-grid detail-grid"
-        style="width: 100%; height: 400px; margin-top: 132px;"
+        style="width: 100%; height: 700px;"
         [rowData]="rowDetails"
         [columnDefs]="colDetails"
         (gridReady)="onDetailGridReady($event)"
+        (gridSizeChanged)="onDetailGridSizeChanged()"
         [rowSelection]="'single'">
       </ag-grid-angular>
     </div>

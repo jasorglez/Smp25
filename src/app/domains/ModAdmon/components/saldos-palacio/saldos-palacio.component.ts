@@ -429,6 +429,11 @@ export class SaldosPalacioComponent {
 
   onDetailGridReady(params: GridReadyEvent) {
     this.detailsGridApi = params.api;
+    requestAnimationFrame(() => this.detailsGridApi?.sizeColumnsToFit());
+  }
+
+  onDetailGridSizeChanged() {
+    this.detailsGridApi?.sizeColumnsToFit();
   }
 
   refreshData() {
