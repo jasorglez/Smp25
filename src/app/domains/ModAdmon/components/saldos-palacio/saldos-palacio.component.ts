@@ -407,7 +407,10 @@ export class SaldosPalacioComponent {
     this.administrationService.getBalance(parseInt(id)).subscribe({
       next: (response: any) => {
         if (response.success && response.hasData) {
-          this.rowDetails = response.data;
+          // El endpoint entrega el estado de cuenta del movimiento más
+          // reciente al más antiguo. El grid lo presenta cronológicamente
+          // para que el saldo vaya avanzando hasta el cierre de la cuenta.
+          this.rowDetails = [...response.data].reverse();
         } else {
           this.rowDetails = [];
           alerts.basicAlert('Aviso', 'No hay datos disponibles', 'info');
@@ -650,18 +653,16 @@ export class SaldosPalacioComponent {
       ]);
     });
 
-    // GetBalanceStatement devuelve los movimientos en orden descendente y
-    // cada fila ya trae el saldo acumulado de la cuenta. El primer movimiento
-    // del período es su saldo de cierre; ingresos-egresos solo sería la
-    // variación del período y dejaría fuera el saldo inicial.
-    const saldoFinal = toAmount(data[0]?.saldo);
+    // Usar el saldo acumulado real del último movimiento, igual que en la
+    // última fila cronológica del grid. No reconstruirlo desde los totales.
+    const saldoFinal = toAmount(data[data.length - 1]?.saldo);
 
     // Agregar fila de totales
     tableBody.push([
       { text: '', style: 'tableCell', alignment: 'left' },
       { text: '', style: 'tableCell', alignment: 'center' },
       { text: '', style: 'tableCell', alignment: 'left' },
-      { text: 'TOTALES:', style: 'tableTotalLabel', alignment: 'right', bold: true },
+      { text: 'TOTALES / CIERRE:', style: 'tableTotalLabel', alignment: 'right', bold: true },
       {
         text: this.formatCurrencyNumber(totalIngresos),
         style: 'tableTotalAmount',
