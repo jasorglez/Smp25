@@ -23,6 +23,15 @@
 
     <div class="col">
       <div class="d-flex justify-content-end mb-2">
+        <button type="button" class="btn btn-sm btn-outline-danger me-2" (click)="printCatalogPdf()">
+          <i class="bi bi-file-earmark-pdf me-1"></i> Catálogo de precios
+        </button>
+        <button type="button" class="btn btn-sm btn-outline-danger me-2" (click)="printFullExplosionPdf()">
+          <i class="bi bi-file-earmark-richtext me-1"></i> Explosión completa APU
+        </button>
+        <button type="button" class="btn btn-sm btn-outline-success me-2" (click)="openAnexoHImportModal()">
+          <i class="bi bi-cloud-arrow-up me-1"></i> Cargar Anexo H (97)
+        </button>
         <button type="button" class="btn btn-sm btn-outline-primary" (click)="openImportModal()">
           <i class="bi bi-file-earmark-arrow-up me-1"></i> Importar APU
         </button>
@@ -140,8 +149,7 @@
           </button>
         </div>
 
-        <nav *ngIf="selectedAuxiliar.hasPersonal || selectedAuxiliar.hasMaterial || selectedAuxiliar.hasEquipo || selectedAuxiliar.hasHerramienta"
-             class="resource-tabs nav nav-tabs mb-2" role="tablist" aria-label="Componentes del precio unitario">
+        <nav class="resource-tabs nav nav-tabs mb-2" role="tablist" aria-label="Componentes del precio unitario">
           <button *ngIf="selectedAuxiliar.hasPersonal" type="button" class="nav-link" role="tab"
                   [class.active]="activeResourceTab === 'PERSONAL'" [attr.aria-selected]="activeResourceTab === 'PERSONAL'"
                   (click)="activeResourceTab = 'PERSONAL'"><i class="bi bi-people-fill me-1"></i>Personal</button>
@@ -154,6 +162,9 @@
           <button *ngIf="selectedAuxiliar.hasHerramienta" type="button" class="nav-link" role="tab"
                   [class.active]="activeResourceTab === 'HERR'" [attr.aria-selected]="activeResourceTab === 'HERR'"
                   (click)="activeResourceTab = 'HERR'"><i class="bi bi-wrench-adjustable me-1"></i>Herramientas</button>
+          <button type="button" class="nav-link" role="tab"
+                  [class.active]="activeResourceTab === 'AUXILIAR'" [attr.aria-selected]="activeResourceTab === 'AUXILIAR'"
+                  (click)="activeResourceTab = 'AUXILIAR'"><i class="bi bi-diagram-3 me-1"></i>Auxiliares</button>
         </nav>
 
         <ng-container *ngIf="selectedAuxiliar.hasPersonal">
@@ -374,6 +385,26 @@
         </ng-container>
 
 
+        <div class="section-card" [hidden]="activeResourceTab !== 'AUXILIAR'" role="tabpanel">
+          <div class="d-flex align-items-center justify-content-between mb-1">
+            <h6 class="mb-0 text-primary compact-title"><i class="bi bi-diagram-3 me-1"></i>Análisis auxiliares</h6>
+            <div class="section-actions">
+              <button class="btn btn-sm btn-outline-primary" (click)="addItem('AUXILIAR')" [disabled]="!selectedAuxiliarId" title="Agregar análisis auxiliar seleccionado"><i class="bi bi-plus-lg"></i></button>
+              <button class="btn btn-sm btn-outline-danger" (click)="deleteItem(selectedAuxiliarRow)" [disabled]="!selectedAuxiliarRow"><i class="bi bi-trash"></i></button>
+            </div>
+          </div>
+          <p class="small text-muted mb-2">El costo unitario se toma del costo directo actual del análisis hijo.</p>
+          <ng-select class="resource-picker mb-2" [items]="catalogAuxiliares" bindLabel="description" bindValue="id"
+                     [(ngModel)]="selectedAuxiliarId" [searchable]="true" [clearable]="true" appendTo="body"
+                     placeholder="Buscar análisis auxiliar para agregar..."></ng-select>
+          <ag-grid-angular class="ag-theme-quartz small-text-ag-grid" style="height: 160px; width: 100%"
+            [rowData]="auxiliarItems" [columnDefs]="getItemColDefs('AUXILIAR')" [defaultColDef]="defaultColDef"
+            [rowClassRules]="rowClassRules" rowSelection="single"
+            (gridReady)="onAuxiliarGridReady($event)" (selectionChanged)="onAuxiliarSelectionChanged()"
+            (cellValueChanged)="onItemValueChanged($event)"></ag-grid-angular>
+          <div class="text-end mt-1"><small class="text-muted">Subtotal Auxiliares: </small><strong class="text-primary">${{ auxiliarTotal.toLocaleString('es-MX', { minimumFractionDigits: 2 }) }}</strong></div>
+        </div>
+
         <div class="section-card bg-light">
           <h6 class="text-muted mb-2 compact-title"><i class="bi bi-calculator me-1"></i> Resumen</h6>
           <table class="table table-sm table-borderless mb-0 compact-table">
@@ -401,6 +432,10 @@
                 <td class="text-end fw-semibold text-danger">
                   ${{ equipoTotal.toLocaleString('es-MX', { minimumFractionDigits: 2 }) }}
                 </td>
+              </tr>
+              <tr *ngIf="auxiliarItems.length">
+                <td class="text-muted ps-2">Auxiliares</td>
+                <td class="text-end fw-semibold text-primary">${{ auxiliarTotal.toLocaleString('es-MX', { minimumFractionDigits: 2 }) }}</td>
               </tr>
               <tr class="border-top">
                 <td class="fw-bold ps-2">COSTO DIRECTO</td>
@@ -458,7 +493,7 @@
         <button type="button" class="btn-close btn-close-white" (click)="showImportModal = false" aria-label="Cerrar"></button>
       </div>
       <div class="modal-body apu-import-body">
-        <p class="text-muted small mb-2">Importa un APU por vez desde Excel o texto. Descarga un ejemplo, cambia los datos y revisa el análisis antes de guardarlo.</p>
+        <p class="text-muted small mb-2">Importa un APU por vez desde Excel o texto. Los recursos que coinciden con el catálogo usan su costo vigente; el costo del archivo se usa solo si no hay coincidencia.</p>
         <button type="button" class="btn btn-sm btn-outline-success mb-3" (click)="downloadApuExample()">
           <i class="bi bi-file-earmark-excel me-1"></i> Ejemplo Excel
         </button>
@@ -512,6 +547,78 @@
 </div>
 <div class="modal-backdrop fade show" *ngIf="showImportModal"></div>
 
+<div class="modal fade" [class.show]="showAnexoHImportModal" [style.display]="showAnexoHImportModal ? 'block' : 'none'"
+     tabindex="-1" role="dialog" aria-labelledby="anexoHImportTitle" [attr.aria-hidden]="!showAnexoHImportModal">
+  <div class="modal-dialog modal-dialog-centered modal-lg" role="document">
+    <div class="modal-content">
+      <div class="modal-header bg-success text-white">
+        <h5 class="modal-title" id="anexoHImportTitle"><i class="bi bi-file-earmark-spreadsheet me-2"></i>Importar Anexo H · 97 análisis</h5>
+        <button type="button" class="btn-close btn-close-white" (click)="showAnexoHImportModal = false" [disabled]="importingAnexoH" aria-label="Cerrar"></button>
+      </div>
+      <div class="modal-body">
+        <div *ngIf="loadingAnexoH" class="text-center py-4"><span class="spinner-border spinner-border-sm me-2"></span>Preparando vista previa...</div>
+        <div *ngIf="anexoHImportError" class="alert alert-danger mb-3" role="alert">{{ anexoHImportError }}</div>
+        <ng-container *ngIf="anexoHImportPreview as preview">
+          <div class="alert alert-primary py-2">
+            Destino: <strong>Empresa 10</strong> · <strong>CONTRATO-1003 (ID 178)</strong> · <strong>MONTES PRUEBA PMO (ID 799)</strong>.
+            Se encontraron {{ existingAnexoHKeys }} claves I.* en el contrato; la carga reanuda por Clave Usuario y evita duplicar líneas coincidentes.
+          </div>
+          <div class="row g-2 mb-3">
+            <div class="col-sm-4"><div class="border rounded p-2 h-100"><small class="text-muted d-block">Análisis fuente</small><strong>{{ preview.count }}</strong></div></div>
+            <div class="col-sm-4"><div class="border rounded p-2 h-100"><small class="text-muted d-block">Costo directo acumulado</small><strong>{{ preview.directTotal | currency:'MXN':'symbol':'1.2-2' }}</strong></div></div>
+            <div class="col-sm-4"><div class="border rounded p-2 h-100"><small class="text-muted d-block">Precio unitario acumulado</small><strong>{{ preview.priceTotal | currency:'MXN':'symbol':'1.2-2' }}</strong></div></div>
+          </div>
+          <div class="small mb-3">
+            <strong>Detalle del paquete:</strong>
+            {{ preview.componentCounts.material }} materiales,
+            {{ preview.componentCounts.personal }} trabajadores en cuadrillas,
+            {{ preview.componentCounts.equipo }} equipos,
+            {{ preview.componentCounts.herramienta }} herramientas y
+            {{ preview.auxiliaryFlattened }} auxiliares.
+          </div>
+          <div class="alert alert-warning py-2 mb-2">
+            <strong>Auxiliares:</strong> el PDF contiene desglose anidado que los endpoints actuales no almacenan como árbol. Se conservará el JSON fuente completo en <code>assets/data/anexo-h-apus.json</code> y cada uno de los {{ preview.auxiliaryFlattened }} auxiliares se guardará como renglón subtotal en el APU padre.
+          </div>
+          <div class="alert alert-info py-2 mb-2">
+            <strong>Precisión:</strong> el esquema SQL actualmente admite cuatro decimales en estas cantidades. {{ preview.roundedQuantityRows }} filas del paquete requieren cinco decimales. No se redondearán: el precio del documento se conserva, y la carga queda bloqueada hasta aplicar la migración.
+            <span *ngIf="preview.roundedMoneyRows"> {{ preview.roundedMoneyRows }} líneas tendrían diferencia monetaria por precisión.</span>
+          </div>
+          <div class="alert alert-danger py-2 mb-2" *ngIf="!preview.canPersist">
+            <strong>Migración requerida antes de cargar:</strong>
+            {{ preview.longCrewNames }} nombres de cuadrilla exceden 100 caracteres,
+            {{ preview.longWorkerDescriptions }} descripciones de trabajador exceden 180 y
+            {{ preview.longItemDescriptions }} descripciones de material/equipo/herramienta exceden 500.
+            El esquema actual rechazaría o truncaría estos datos. Aplica la migración SQL y vuelve a abrir esta vista previa.
+          </div>
+          <div class="alert alert-warning py-2 mb-2" *ngIf="preview.factorExceptionCount">
+            La cascada estándar difiere por un centavo en el APU 86. Se conservarán el costo directo y precio final del documento; el catálogo PDF mostrará la diferencia frente al precio recalculado.
+          </div>
+          <div class="small text-muted mb-2">
+            Se aplican los factores fuente: indirectos 22.73%, financiamiento 1.58%, utilidad 10.00% y cargos adicionales 0.96%. Las líneas usan descripciones de texto porque el paquete no incluye IDs de catálogos.
+          </div>
+          <div *ngIf="importingAnexoH" class="mt-3">
+            <div class="d-flex justify-content-between small mb-1"><span>{{ anexoHImportProgress.label }}</span><span>{{ anexoHImportProgress.done }} / {{ anexoHImportProgress.total }}</span></div>
+            <div class="progress" role="progressbar" [attr.aria-valuenow]="anexoHImportProgress.done" [attr.aria-valuemax]="anexoHImportProgress.total">
+              <div class="progress-bar progress-bar-striped progress-bar-animated" [style.width.%]="anexoHImportProgress.total ? anexoHImportProgress.done / anexoHImportProgress.total * 100 : 0"></div>
+            </div>
+            <small class="text-muted">Si la red se interrumpe, vuelve a iniciar para continuar desde los análisis guardados.</small>
+          </div>
+        </ng-container>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-light border" (click)="showAnexoHImportModal = false" [disabled]="importingAnexoH">Cerrar</button>
+        <button type="button" class="btn btn-success" (click)="importAnexoHSequentially()"
+                [disabled]="!anexoHImportPreview || !anexoHImportPreview.canPersist || loadingAnexoH || importingAnexoH">
+          <span *ngIf="importingAnexoH" class="spinner-border spinner-border-sm me-1"></span>
+          <i *ngIf="!importingAnexoH" class="bi bi-cloud-arrow-up me-1"></i>
+          {{ importingAnexoH ? 'Guardando secuencialmente…' : 'Iniciar carga de 97 análisis' }}
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+<div class="modal-backdrop fade show" *ngIf="showAnexoHImportModal"></div>
+
 <!-- ══════════════════════════════════════════════════════════════════════ -->
 <!-- Modal Configuración de Factores por Contrato                          -->
 <!-- ══════════════════════════════════════════════════════════════════════ -->
@@ -550,21 +657,21 @@
                 <input type="text" class="form-control form-control-sm"
                        [(ngModel)]="apuConfig.companyName"
                        (ngModelChange)="hasConfigChanges = true"
-                       placeholder="PEMEX EXPLORACION Y PRODUCCION" />
+                       placeholder="Nombre de la empresa o cliente" />
               </div>
               <div class="col-md-6">
                 <label class="form-label mb-0 text-muted">Subdirección / Dependencia</label>
                 <input type="text" class="form-control form-control-sm"
                        [(ngModel)]="apuConfig.subdirection"
                        (ngModelChange)="hasConfigChanges = true"
-                       placeholder="SUBDIRECCION DE LA COORDINACION..." />
+                       placeholder="Área o dependencia (opcional)" />
               </div>
               <div class="col-md-3">
                 <label class="form-label mb-0 text-muted">Etiqueta Anexo</label>
                 <input type="text" class="form-control form-control-sm"
                        [(ngModel)]="apuConfig.anexoLabel"
                        (ngModelChange)="hasConfigChanges = true"
-                       placeholder='ANEXO "H"' />
+                       placeholder="Anexo (opcional)" />
               </div>
               <div class="col-md-5">
                 <label class="form-label mb-0 text-muted">Título del Análisis</label>
@@ -578,14 +685,14 @@
                 <input type="text" class="form-control form-control-sm"
                        [(ngModel)]="apuConfig.licitacionNo"
                        (ngModelChange)="hasConfigChanges = true"
-                       placeholder="18575108-002-07" />
+                       placeholder="Número de licitación (opcional)" />
               </div>
               <div class="col-12">
                 <label class="form-label mb-0 text-muted">Título del proyecto / obra</label>
                 <input type="text" class="form-control form-control-sm"
                        [(ngModel)]="apuConfig.projectTitle"
                        (ngModelChange)="hasConfigChanges = true"
-                       placeholder="REHABILITACION DE CUARTOS DE CONTROL..." />
+                       placeholder="Nombre del proyecto u obra" />
               </div>
             </div>
           </div>
@@ -595,6 +702,9 @@
         <div class="d-flex gap-2 mb-2 flex-wrap">
           <button class="btn btn-sm btn-success" (click)="addConfigFactor()">
             <i class="bi bi-plus-lg"></i> Agregar
+          </button>
+          <button class="btn btn-sm btn-outline-success" (click)="addStandardFactors()">
+            <i class="bi bi-list-check me-1"></i> Etapas estándar
           </button>
           <button class="btn btn-sm btn-primary position-relative" (click)="saveFactors()" [disabled]="!hasFactorChanges">
             <i class="bi bi-floppy"></i> Guardar

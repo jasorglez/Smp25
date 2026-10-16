@@ -5,16 +5,17 @@ import { lastValueFrom } from 'rxjs';
 import { RootService } from './root.service';
 import { SignalsService } from './signals.service';
 import { TrackingService } from './tracking.service';
+import { apuFactorSteps, apuMoney } from 'app/domains/ModProjects/components/auxiliares/apu-pricing';
 
 (pdfMake as any).vfs = (pdfFonts as any).pdfMake?.vfs || (pdfFonts as any).default?.pdfMake?.vfs;
 
 export interface ApuPdfData {
   // Textos del encabezado (configurables por contrato)
-  companyName?:   string;   // "PEMEX EXPLORACION Y PRODUCCION"
-  subdirection?:  string;   // "SUBDIRECCION DE LA COORDINACION..."
-  anexoLabel?:    string;   // 'ANEXO "H"'
-  analysisTitle?: string;   // "ANALISIS DE PRECIOS UNITARIOS"
-  licitacionNo?:  string;   // "18575108-002-07"
+  companyName?:   string;
+  subdirection?:  string;
+  anexoLabel?:    string;
+  analysisTitle?: string;
+  licitacionNo?:  string;
   projectTitle?:  string;   // Título del proyecto/obra
   fecha?:         string;   // Auto-generada si no se provee
   auxiliar: any;
@@ -22,12 +23,22 @@ export interface ApuPdfData {
   materialItems: any[];
   herramientaItems: any[];
   equipoItems: any[];
+  auxiliarItems: any[];
   factors: Array<{ name: string; percentage: number; sort_order: number }>;
   totalPersonal: number;
   materialTotal: number;
   herramientaTotal: number;
   equipoTotal: number;
+  auxiliarTotal: number;
   costoTotal: number;
+}
+
+export interface ApuCatalogPdfData {
+  companyName?: string;
+  projectTitle?: string;
+  licitacionNo?: string;
+  auxiliars: any[];
+  factors: Array<{ name: string; percentage: number }>;
 }
 
 @Injectable({ providedIn: 'root' })
@@ -39,25 +50,90 @@ export class PdfApuService {
   // ── Entry points ──────────────────────────────────────────────────────────
   async openApuPdf(data: ApuPdfData): Promise<void> {
     this.trackingService.addLog(this.trackingService.getnameComp(), `Abrió APU PDF: ${data.auxiliar?.clave ?? data.auxiliar?.id}`, 'Proyectos / APU', this.trackingService.getEmail());
-    const logo = await this.loadCompanyLogo();
-    pdfMake.createPdf(this.buildDocDef(data, logo)).open();
+    const brand = await this.loadCompanyBrand();
+    pdfMake.createPdf(this.buildDocDef(data, brand)).open();
   }
 
   async downloadApuPdf(data: ApuPdfData): Promise<void> {
     const clv  = data.auxiliar?.clave ?? data.auxiliar?.claveUsuario ?? data.auxiliar?.id;
     this.trackingService.addLog(this.trackingService.getnameComp(), `Descargó APU PDF: ${clv}`, 'Proyectos / APU', this.trackingService.getEmail());
-    const logo = await this.loadCompanyLogo();
-    pdfMake.createPdf(this.buildDocDef(data, logo)).download(`APU_${clv}.pdf`);
+    const brand = await this.loadCompanyBrand();
+    pdfMake.createPdf(this.buildDocDef(data, brand)).download(`APU_${clv}.pdf`);
+  }
+
+  async openApusPdf(data: ApuPdfData[]): Promise<void> {
+    if (!data.length) return;
+    const brand = await this.loadCompanyBrand();
+    const docs = data.map(item => this.buildDocDef(item, brand));
+    const content: any[] = [];
+    docs.forEach((doc, index) => {
+      const section = [...doc.content];
+      if (index && section.length) section[0] = { ...section[0], pageBreak: 'before' };
+      content.push(...section);
+    });
+    pdfMake.createPdf({ ...docs[0], content }).open();
+    this.trackingService.addLog(this.trackingService.getnameComp(), `Abrió explosión PDF de ${data.length} APUs`, 'Proyectos / APU', this.trackingService.getEmail());
+  }
+
+  async openCatalogPdf(data: ApuCatalogPdfData): Promise<void> {
+    const brand = await this.loadCompanyBrand();
+    const body: any[] = [[
+      { text: 'Clave', style: 'th' },
+      { text: 'Descripción', style: 'th' },
+      { text: 'Unidad', style: 'th' },
+      { text: 'Costo directo', style: 'th', alignment: 'right' },
+      { text: 'P.U. calculado', style: 'th', alignment: 'right' },
+      { text: 'P.U. guardado', style: 'th', alignment: 'right' },
+      { text: 'Diferencia', style: 'th', alignment: 'right' },
+    ]];
+    for (const item of data.auxiliars) {
+      const directCost = apuMoney(Number(item.costMN ?? item.cost_mn) || 0);
+      const steps = apuFactorSteps(directCost, data.factors);
+      const price = steps.length ? steps[steps.length - 1].subtotal : directCost;
+      const savedPrice = apuMoney(Number(item.precioUnitario ?? item.precio_unitario) || 0);
+      const difference = apuMoney(savedPrice - price);
+      body.push([
+        String(item.claveUsuario || item.clave || ''),
+        String(item.description || ''),
+        String(item.unit || ''),
+        { text: this.f2(directCost), alignment: 'right' },
+        { text: this.f2(price), alignment: 'right', bold: true },
+        { text: this.f2(savedPrice), alignment: 'right' },
+        { text: this.f2(difference), alignment: 'right', color: difference ? '#b91c1c' : '#15803d' },
+      ]);
+    }
+    const factorText = (data.factors ?? []).map(f => `${f.name}: ${Number(f.percentage || 0).toFixed(2)}%`).join('  ·  ');
+    pdfMake.createPdf({
+      pageSize: 'LETTER', pageOrientation: 'landscape', pageMargins: [35, 75, 35, 40],
+      header: { columns: [
+        brand.logo ? { image: brand.logo, fit: [85, 42], width: 90 } : { text: '', width: 90 },
+        { text: [
+          { text: `${data.companyName || brand.companyName || 'EMPRESA'}\n`, bold: true, fontSize: 11 },
+          { text: data.projectTitle || '', fontSize: 9 },
+        ], alignment: 'center', width: '*' },
+        brand.secondaryLogo ? { image: brand.secondaryLogo, fit: [85, 42], width: 90, alignment: 'right' } : { text: '', width: 90 },
+      ], margin: [35, 20, 35, 0] },
+      content: [
+        { text: 'CATÁLOGO DE PRECIOS UNITARIOS', bold: true, fontSize: 13, margin: [0, 0, 0, 3] },
+        { text: [data.licitacionNo ? `Licitación: ${data.licitacionNo}  ·  ` : '', `Fecha: ${this.fechaStr()}`], fontSize: 8, margin: [0, 0, 0, 4] },
+        { text: factorText || 'Sin factores configurados', fontSize: 8, color: '#475569', margin: [0, 0, 0, 8] },
+        { text: 'Diferencia = P.U. guardado − P.U. calculado', fontSize: 7, color: '#475569', margin: [0, 0, 0, 5] },
+        { table: { headerRows: 1, widths: [65, '*', 48, 75, 75, 75, 65], body }, layout: 'lightHorizontalLines', fontSize: 8 },
+      ],
+      styles: { th: { bold: true, fillColor: '#dbeafe', fontSize: 8 } },
+      footer: (page: number, pages: number) => ({ text: `Página ${page} de ${pages}`, alignment: 'center', fontSize: 7, color: '#64748b' }),
+    } as any).open();
+    this.trackingService.addLog(this.trackingService.getnameComp(), 'Abrió catálogo de precios unitarios PDF', 'Proyectos / APU', this.trackingService.getEmail());
   }
 
   // ── Build doc definition ──────────────────────────────────────────────────
-  private buildDocDef(data: ApuPdfData, logo: string): any {
+  private buildDocDef(data: ApuPdfData, brand: { logo: string; secondaryLogo: string; companyName: string }): any {
     const {
-      auxiliar, cuadrillas, materialItems, herramientaItems, equipoItems,
-      factors, totalPersonal, materialTotal, herramientaTotal, equipoTotal, costoTotal,
-      companyName   = 'PEMEX EXPLORACION Y PRODUCCION',
-      subdirection  = 'SUBDIRECCION DE LA COORDINACION DE SERVICIOS MARINOS',
-      anexoLabel    = 'ANEXO "H"',
+      auxiliar, cuadrillas, materialItems, herramientaItems, equipoItems, auxiliarItems,
+      factors, totalPersonal, materialTotal, herramientaTotal, equipoTotal, auxiliarTotal, costoTotal,
+      companyName   = brand.companyName || 'EMPRESA',
+      subdirection  = '',
+      anexoLabel    = '',
       analysisTitle = 'ANALISIS DE PRECIOS UNITARIOS',
       licitacionNo  = '',
       projectTitle  = '',
@@ -67,6 +143,8 @@ export class PdfApuService {
     const clv      = auxiliar?.claveUsuario ?? auxiliar?.clave_usuario ?? '';
     const fullDesc = auxiliar?.description ?? '';
     const factRows = this.calcFactors(costoTotal, factors);
+    const savedUnitPrice = Number(auxiliar?.precioUnitario ?? auxiliar?.precio_unitario);
+    if (Number.isFinite(savedUnitPrice) && savedUnitPrice > 0) factRows[factRows.length - 1].total = apuMoney(savedUnitPrice);
     const pu       = factRows[factRows.length - 1].total;
 
     // colWidths: C(20) | Descripción(*) | Unidad(55) | Cantidad(62) | Precio U.(68) | Total(72)
@@ -90,7 +168,7 @@ export class PdfApuService {
     if (materialItems.length > 0) {
       body.push(this.secRow('Material'));
       for (const it of materialItems) {
-        const t = (Number(it.quantity) || 0) * (Number(it.unitCost ?? it.unit_cost) || 0);
+        const t = apuMoney((Number(it.quantity) || 0) * (Number(it.unitCost ?? it.unit_cost) || 0));
         body.push([
           { text: 'M', fontSize: 7, alignment: 'center' },
           { text: it.description ?? '', fontSize: 7 },
@@ -108,7 +186,7 @@ export class PdfApuService {
       body.push(this.secRow('Mano de Obra'));
       for (const c of cuadrillas) {
         const subTotal = this.cuadrillaSub(c);
-        const cTotal   = subTotal * (Number(c.cantidad) || 1);
+        const cTotal   = apuMoney(subTotal * (Number(c.cantidad) || 1));
         // cuadrilla header: bullet | description | Jornada | empty | empty | empty
         body.push([
           { text: '•', fontSize: 8, alignment: 'center' },
@@ -120,7 +198,7 @@ export class PdfApuService {
         ]);
         // worker rows (indented)
         for (const mi of (c.items ?? [])) {
-          const t = (Number(mi.quantity) || 0) * (Number(mi.unitCost ?? mi.unit_cost) || 0);
+          const t = apuMoney((Number(mi.quantity) || 0) * (Number(mi.unitCost ?? mi.unit_cost) || 0));
           body.push([
             { text: '' },
             { text: '   ' + (mi.description ?? ''), fontSize: 7 },
@@ -152,7 +230,7 @@ export class PdfApuService {
     if (herramientaItems.length > 0) {
       body.push(this.secRow('Herramienta'));
       for (const it of herramientaItems) {
-        const t = (Number(it.quantity) || 0) * totalPersonal;
+        const t = apuMoney((Number(it.quantity) || 0) * totalPersonal);
         body.push([
           { text: '' },
           { text: it.description ?? '', fontSize: 7 },
@@ -169,7 +247,7 @@ export class PdfApuService {
     if (equipoItems.length > 0) {
       body.push(this.secRow('Equipo'));
       for (const it of equipoItems) {
-        const t = (Number(it.quantity) || 0) * (Number(it.unitCost ?? it.unit_cost) || 0);
+        const t = apuMoney((Number(it.quantity) || 0) * (Number(it.unitCost ?? it.unit_cost) || 0));
         body.push([
           { text: 'H', fontSize: 7, alignment: 'center' },
           { text: it.description ?? '', fontSize: 7 },
@@ -180,6 +258,22 @@ export class PdfApuService {
         ]);
       }
       body.push(this.totRow('Total de Equipo', equipoTotal));
+    }
+
+    if (auxiliarItems?.length > 0) {
+      body.push(this.secRow('Auxiliares'));
+      for (const it of auxiliarItems) {
+        const total = apuMoney((Number(it.quantity) || 0) * (Number(it.unitCost) || 0));
+        body.push([
+          { text: 'A', fontSize: 7, alignment: 'center' },
+          { text: it.description ?? '', fontSize: 7 },
+          { text: it.unit ?? '', fontSize: 7, alignment: 'center' },
+          { text: this.f5(it.quantity), fontSize: 7, alignment: 'right' },
+          { text: this.f2(it.unitCost), fontSize: 7, alignment: 'right' },
+          { text: this.f2(total), fontSize: 7, alignment: 'right' },
+        ]);
+      }
+      body.push(this.totRow('Total de Auxiliares', auxiliarTotal));
     }
 
     return {
@@ -194,20 +288,21 @@ export class PdfApuService {
         // ── cabecera ────────────────────────────────────────────────────────
         {
           columns: [
-            logo
-              ? { image: logo, width: 85, height: 42, margin: [0, 0, 8, 0] }
+            brand.logo
+              ? { image: brand.logo, fit: [85, 42], width: 85, margin: [0, 0, 8, 0] }
               : { width: 85, text: '' },
             {
               width: '*',
               stack: [
-                { text: companyName,  fontSize: 9, bold: true, alignment: 'center' },
+                { text: companyName || brand.companyName || 'EMPRESA', fontSize: 9, bold: true, alignment: 'center' },
                 { text: subdirection, fontSize: 7,             alignment: 'center' },
               ],
               margin: [0, 4, 0, 0],
             },
             {
-              width: 'auto',
+              width: 145,
               stack: [
+                ...(brand.secondaryLogo ? [{ image: brand.secondaryLogo, fit: [90, 34], alignment: 'right', margin: [0, 0, 0, 3] }] : []),
                 { text: anexoLabel,    fontSize: 8, bold: true, alignment: 'right' },
                 { text: analysisTitle, fontSize: 7,             alignment: 'right' },
                 licitacionNo
@@ -262,6 +357,10 @@ export class PdfApuService {
           margin: [0, 6, 0, 0],
         },
       ],
+      footer: (page: number, pages: number) => ({
+        text: `Página ${page} de ${pages}`,
+        alignment: 'center', fontSize: 7, color: '#64748b', margin: [0, 8, 0, 0],
+      }),
     };
   }
 
@@ -321,33 +420,21 @@ export class PdfApuService {
 
   // ── Cuadrilla subtotal ────────────────────────────────────────────────────
   private cuadrillaSub(c: any): number {
-    return (c.items ?? []).reduce((s: number, i: any) =>
-      s + (Number(i.quantity) || 0) * (Number(i.unitCost ?? i.unit_cost) || 0), 0);
+    return apuMoney((c.items ?? []).reduce((s: number, i: any) =>
+      s + apuMoney((Number(i.quantity) || 0) * (Number(i.unitCost ?? i.unit_cost) || 0)), 0));
   }
 
-  // ── Factors cascade (deduplicated by sort_order) ──────────────────────────
+  // ── Misma cascada de factores que la pantalla y el recálculo ──────────────
   private calcFactors(cd: number, factors: any[]): Array<{ label: string; total: number; isFinal: boolean }> {
-    const rows: any[] = [{ label: 'Costo Directo', total: cd, isFinal: false }];
-    let running = cd;
-    // API retorna sortOrder (camelCase) — nunca sort_order (snake_case)
-    const seen = new Set<number>();
-    const sorted = [...factors]
-      .sort((a, b) => (a.sortOrder ?? a.sort_order ?? 0) - (b.sortOrder ?? b.sort_order ?? 0))
-      .filter(f => {
-        const so = Number(f.sortOrder ?? f.sort_order ?? 0);
-        if (seen.has(so)) return false;
-        seen.add(so);
-        return true;
-      });
-    sorted.forEach((f, i) => {
-      const add = running * (Number(f.percentage) / 100);
-      running  += add;
-      rows.push({ label: `${f.name} ( ${Number(f.percentage).toFixed(2)}%)`, total: add, isFinal: false });
-      if (i < sorted.length - 1) {
-        rows.push({ label: 'Subtotal', total: running, isFinal: false });
+    const rows: any[] = [{ label: 'Costo Directo', total: apuMoney(cd), isFinal: false }];
+    const steps = apuFactorSteps(cd, factors);
+    steps.forEach((step, i) => {
+      rows.push({ label: `${step.name} ( ${step.percentage.toFixed(2)}%)`, total: step.amount, isFinal: false });
+      if (i < steps.length - 1) {
+        rows.push({ label: 'Subtotal', total: step.subtotal, isFinal: false });
       }
     });
-    rows.push({ label: 'Precio Unitario', total: running, isFinal: true });
+    rows.push({ label: 'Precio Unitario', total: steps.at(-1)?.subtotal ?? apuMoney(cd), isFinal: true });
     return rows;
   }
 
@@ -414,14 +501,18 @@ export class PdfApuService {
   }
 
   // ── Logo de la empresa desde root ────────────────────────────────────────
-  private async loadCompanyLogo(): Promise<string> {
+  private async loadCompanyBrand(): Promise<{ logo: string; secondaryLogo: string; companyName: string }> {
     const idRoot = this.signalsService.getRootSelectedBySidebar()();
-    if (!idRoot) return '';
+    if (!idRoot) return { logo: '', secondaryLogo: '', companyName: '' };
     try {
       const company: any = await lastValueFrom(this.rootService.getRootbyId(idRoot));
-      if (company?.picture) return await this.convertImageToBase64(company.picture);
+      const [logo, secondaryLogo] = await Promise.all([
+        company?.picture ? this.convertImageToBase64(company.picture) : '',
+        company?.picture2 ? this.convertImageToBase64(company.picture2) : '',
+      ]);
+      return { logo, secondaryLogo, companyName: company?.name ?? '' };
     } catch {}
-    return '';
+    return { logo: '', secondaryLogo: '', companyName: '' };
   }
 
   private convertImageToBase64(imageUrl: string): Promise<string> {

@@ -20,9 +20,9 @@ export interface ApuConfig {
 export const APU_CONFIG_DEFAULTS: ApuConfig = {
   idCompany:     0,
   idContract:    0,
-  companyName:   'PEMEX EXPLORACION Y PRODUCCION',
-  subdirection:  'SUBDIRECCION DE LA COORDINACION DE SERVICIOS MARINOS',
-  anexoLabel:    'ANEXO "H"',
+  companyName:   '',
+  subdirection:  '',
+  anexoLabel:    '',
   analysisTitle: 'ANALISIS DE PRECIOS UNITARIOS',
   licitacionNo:  '',
   projectTitle:  '',

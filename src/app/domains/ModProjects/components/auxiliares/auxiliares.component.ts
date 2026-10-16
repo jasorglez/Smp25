@@ -17,8 +17,13 @@ import { PdfApuService } from 'app/services/pdf-apu.service';
 import { WorkprogramApuFactorService } from 'app/services/workprogram-apu-factor.service';
 import { ApuConfigService, ApuConfig, APU_CONFIG_DEFAULTS } from 'app/services/apu-config.service';
 import { TrackingService } from 'app/services/tracking.service';
+import { RootService } from 'app/services/root.service';
+import { ContractsService } from 'app/services/contracts.service';
+import { ProjectsService } from 'app/services/projects.service';
+import { AnexoHImportService, AnexoHImportPreview, AnexoHApuPackage } from 'app/services/anexo-h-import.service';
+import { apuFactorSteps, apuMoney, apuUnitPrice } from './apu-pricing';
 
-type ResourceTab = 'PERSONAL' | 'MATERIAL' | 'EQUIPO' | 'HERR';
+type ResourceTab = 'PERSONAL' | 'MATERIAL' | 'EQUIPO' | 'HERR' | 'AUXILIAR';
 
 interface ApuImportRow {
   type: ResourceTab;
@@ -49,6 +54,10 @@ interface ApuImportPreview {
 })
 export class AuxiliaresComponent {
   private trackingService = inject(TrackingService);
+  private rootService = inject(RootService);
+  private contractsService = inject(ContractsService);
+  private projectsService = inject(ProjectsService);
+  private anexoHImportService = inject(AnexoHImportService);
   private signalsService       = inject(SignalsService);
   private auxiliarService      = inject(AuxiliarService);
   private auxiliarItemsService = inject(AuxiliarItemsService);
@@ -78,6 +87,7 @@ export class AuxiliaresComponent {
   selectedEquipoId: number | null = null;
   selectedHerramientaId: number | null = null;
   selectedPersonalId: number | null = null;
+  selectedAuxiliarId: number | null = null;
   activeResourceTab: ResourceTab | null = null;
   showImportModal = false;
   parsingImport = false;
@@ -85,6 +95,13 @@ export class AuxiliaresComponent {
   importPreview: ApuImportPreview | null = null;
   importErrors: string[] = [];
   importWarnings: string[] = [];
+  showAnexoHImportModal = false;
+  loadingAnexoH = false;
+  importingAnexoH = false;
+  anexoHImportError = '';
+  anexoHImportPreview: AnexoHImportPreview | null = null;
+  anexoHImportProgress = { done: 0, total: 0, label: '' };
+  private anexoHPackage: AnexoHApuPackage | null = null;
 
   // ── Sub-items (MATERIAL, HERR, EQUIPO) ───────────────────────────────────
   allItems: any[]          = [];
@@ -92,9 +109,11 @@ export class AuxiliaresComponent {
   selectedMaterialRow: any  = null;
   selectedHerramientaRow: any = null;
   selectedEquipoRow: any    = null;
+  selectedAuxiliarRow: any = null;
   private materialGridApi!: GridApi;
   private herramientaGridApi!: GridApi;
   private equipoGridApi!: GridApi;
+  private auxiliarGridApi!: GridApi;
 
   // ── Cuadrillas ───────────────────────────────────────────────────────────
   cuadrillas: any[]         = [];
@@ -139,18 +158,18 @@ export class AuxiliaresComponent {
   ];
 
   // ── ColDefs Material / Equipo ────────────────────────────────────────────
-  private itemColDefsCache: Partial<Record<'MATERIAL' | 'EQUIPO', ColDef[]>> = {};
-  getItemColDefs(type: 'MATERIAL' | 'EQUIPO'): ColDef[] {
+  private itemColDefsCache: Partial<Record<'MATERIAL' | 'EQUIPO' | 'AUXILIAR', ColDef[]>> = {};
+  getItemColDefs(type: 'MATERIAL' | 'EQUIPO' | 'AUXILIAR'): ColDef[] {
     if (this.itemColDefsCache[type]) return this.itemColDefsCache[type];
-    const catalog = () => type === 'MATERIAL' ? this.catalogMaterial : this.catalogEquipo;
+    const catalog = () => type === 'MATERIAL' ? this.catalogMaterial : type === 'EQUIPO' ? this.catalogEquipo : this.catalogAuxiliares;
     return this.itemColDefsCache[type] = [
       { headerName: '#', width: 45, editable: false, valueGetter: (p) => (p.node?.rowIndex ?? 0) + 1 },
-      { field: 'description', headerName: type === 'MATERIAL' ? 'Material' : 'Equipo', flex: 2, editable: true,
+      { field: 'description', headerName: type === 'MATERIAL' ? 'Material' : type === 'EQUIPO' ? 'Equipo' : 'Análisis auxiliar', flex: 2, editable: type !== 'AUXILIAR',
         cellEditor: 'agSelectCellEditor',
         cellEditorParams: () => ({ values: catalog().map((i) => i.description) }),
         valueSetter: (p: any) => {
           const item = catalog().find((i) => i.description === p.newValue);
-          if (item) { p.data.idReference = item.id; p.data.unit = item.unit ?? ''; p.data.unitCost = item.cost ?? 0; }
+          if (item) { p.data.idReference = item.id; p.data.unit = item.unit ?? ''; p.data.unitCost = item.cost ?? item.costMN ?? 0; }
           p.data.description = p.newValue; return true;
         },
         cellStyle: (p) => p.data?.__isNew ? { background: '#fffde7' } : {},
@@ -159,13 +178,14 @@ export class AuxiliaresComponent {
         field: 'unit', headerName: 'Medida', width: 110, editable: true,
         cellEditor: 'agSelectCellEditor',
         cellEditorParams: () => ({ values: this.allEquipoUnits }),
-      } as ColDef] : [{ field: 'unit', headerName: 'Unidad', width: 90, editable: true } as ColDef]),
+      } as ColDef] : [{ field: 'unit', headerName: 'Unidad', width: 90, editable: type !== 'AUXILIAR' } as ColDef]),
       { field: 'quantity', headerName: 'Cantidad', width: 100, editable: true, type: 'numericColumn',
         valueFormatter: (p) => p.value != null ? Number(p.value).toFixed(5) : '' },
-      { field: 'unitCost', headerName: 'Precio Unitario', width: 140, editable: true, type: 'numericColumn',
+      { field: 'unitCost', headerName: type === 'AUXILIAR' ? 'Costo directo hijo' : 'Precio Unitario', width: 140, editable: type !== 'AUXILIAR', type: 'numericColumn',
+        valueGetter: type === 'AUXILIAR' ? (p) => this.getAuxiliarUnitCost(p.data) : undefined,
         valueFormatter: (p) => p.value != null ? '$' + Number(p.value).toLocaleString('es-MX', { minimumFractionDigits: 2 }) : '' },
       { headerName: 'Total', width: 130, editable: false, type: 'numericColumn',
-        valueGetter: (p) => (Number(p.data?.quantity) || 0) * (Number(p.data?.unitCost) || 0),
+        valueGetter: (p) => apuMoney((Number(p.data?.quantity) || 0) * (type === 'AUXILIAR' ? this.getAuxiliarUnitCost(p.data) : (Number(p.data?.unitCost) || 0))),
         valueFormatter: (p) => '$' + Number(p.value).toLocaleString('es-MX', { minimumFractionDigits: 2 }),
         cellStyle: { fontWeight: '600', color: '#0e4491' } },
     ];
@@ -230,50 +250,73 @@ export class AuxiliaresComponent {
   get materialItems(): any[]    { return this.allItems.filter((i) => i.type === 'MATERIAL'); }
   get herramientaItems(): any[] { return this.allItems.filter((i) => i.type === 'HERR'); }
   get equipoItems(): any[]      { return this.allItems.filter((i) => i.type === 'EQUIPO'); }
+  get auxiliarItems(): any[] { return this.allItems.filter((i) => i.type === 'AUXILIAR'); }
+  get catalogAuxiliares(): any[] {
+    return this.rowData.filter((row) => Number(row.id) > 0 && Number(row.id) !== Number(this.selectedAuxiliar?.id))
+      .map((row) => ({ id: Number(row.id), description: `${row.claveUsuario || row.clave || row.id} · ${row.description}`,
+        unit: row.unit, cost: Number(row.costMN) || 0 }));
+  }
+  getAuxiliarUnitCost(item: any): number {
+    const current = this.rowData.find((row) => Number(row.id) === Number(item?.idReference));
+    return Number(current?.costMN ?? item?.unitCost ?? 0) || 0;
+  }
 
   getCuadrillaSubtotal(c: any): number {
-    return (c.items ?? []).reduce((sum: number, i: any) => {
+    return apuMoney((c.items ?? []).reduce((sum: number, i: any) => {
       const qty  = Number(i.quantity ?? i.Quantity ?? 0) || 0;
       const cost = Number(i.unitCost ?? i.unit_cost ?? i.UnitCost ?? 0) || 0;
-      return sum + qty * cost;
-    }, 0);
+      return sum + apuMoney(qty * cost);
+    }, 0));
   }
 
   get totalPersonal(): number {
-    return this.cuadrillas.reduce((sum, c) => sum + this.getCuadrillaSubtotal(c) * (Number(c.cantidad) || 1), 0);
+    return apuMoney(this.cuadrillas.reduce((sum, c) => sum + apuMoney(this.getCuadrillaSubtotal(c) * (Number(c.cantidad) || 1)), 0));
   }
   get materialTotal(): number {
-    return this.materialItems.reduce((sum, i) => sum + (Number(i.quantity) || 0) * (Number(i.unitCost ?? i.unit_cost) || 0), 0);
+    return apuMoney(this.materialItems.reduce((sum, i) => sum + apuMoney((Number(i.quantity) || 0) * (Number(i.unitCost ?? i.unit_cost) || 0)), 0));
   }
   get herramientaTotal(): number {
-    return this.herramientaItems.reduce((sum, i) => sum + (Number(i.quantity) || 0) * this.totalPersonal, 0);
+    return apuMoney(this.herramientaItems.reduce((sum, i) => sum + apuMoney((Number(i.quantity) || 0) * this.totalPersonal), 0));
   }
   get equipoTotal(): number {
-    return this.equipoItems.reduce((sum, i) => sum + (Number(i.quantity) || 0) * (Number(i.unitCost ?? i.unit_cost) || 0), 0);
+    return apuMoney(this.equipoItems.reduce((sum, i) => sum + apuMoney((Number(i.quantity) || 0) * (Number(i.unitCost ?? i.unit_cost) || 0)), 0));
   }
-  get costoTotal(): number { return this.totalPersonal + this.materialTotal + this.herramientaTotal + this.equipoTotal; }
+  get auxiliarTotal(): number {
+    return apuMoney(this.auxiliarItems.reduce((sum, item) => sum + apuMoney((Number(item.quantity) || 0) * this.getAuxiliarUnitCost(item)), 0));
+  }
+  get costoTotal(): number { return apuMoney(this.totalPersonal + this.materialTotal + this.herramientaTotal + this.equipoTotal + this.auxiliarTotal); }
 
   // ── Init ─────────────────────────────────────────────────────────────────
   constructor() {
     effect(() => {
       this.idCompany = this.signalsService.getRootSelectedBySidebar()();
-      this.signalsService.getIdContract()();
+      this.signalsService.getContractSelectedBySidebar()();
       this.loadData();
       this.loadCatalogs();
     });
     effect(() => {
       this.signalsService.getRootSelectedBySidebar()();
-      this.signalsService.getIdContract()();
+      this.signalsService.getContractSelectedBySidebar()();
       void this.loadFactors();
       void this.loadApuConfig();
     });
   }
 
   loadData() {
-    const idContract = this.signalsService.getIdContract()();
-    if (!this.idCompany || !idContract) { this.rowData = []; this.originalData = []; return; }
-    this.auxiliarService.getByContract(idContract, this.idCompany).subscribe({
+    const idContract = this.signalsService.getContractSelectedBySidebar()();
+    const idCompany = this.idCompany;
+    this.rowData = [];
+    this.originalData = [];
+    this.selectedAuxiliar = null;
+    this.allItems = [];
+    this.cuadrillas = [];
+    this.hasMainChanges = false;
+    this.hasItemChanges = false;
+    this.hasCuadrillaChanges = false;
+    if (!idCompany || !idContract) return;
+    this.auxiliarService.getByContract(idContract, idCompany).subscribe({
       next: (data) => {
+        if (this.signalsService.getContractSelectedBySidebar()() !== idContract || this.idCompany !== idCompany) return;
         this.rowData = (data ?? []).map((row: any) => ({
           ...row,
           costMN: Number(row.costMN ?? row.cost_mn ?? row.CostMN ?? 0) || 0,
@@ -312,7 +355,7 @@ export class AuxiliaresComponent {
   }
 
   openImportModal(): void {
-    if (!this.idCompany || !this.signalsService.getIdContract()()) {
+    if (!this.idCompany || !this.signalsService.getContractSelectedBySidebar()()) {
       alerts.basicAlert('Seleccione un contrato', 'Seleccione un contrato antes de importar un análisis.', 'warning');
       return;
     }
@@ -327,6 +370,66 @@ export class AuxiliaresComponent {
     this.showImportModal = true;
   }
 
+  async openAnexoHImportModal(): Promise<void> {
+    const idContract = Number(this.signalsService.getContractSelectedBySidebar()() || 0);
+    const idProject = Number(this.signalsService.getProjectSelectedBySidebar()() || 0);
+    if (Number(this.idCompany) !== this.anexoHImportService.companyId
+        || idContract !== this.anexoHImportService.contractId
+        || idProject !== this.anexoHImportService.projectId) {
+      alerts.basicAlert('Contexto distinto',
+        'Selecciona empresa 10, contrato CONTRATO-1003 (ID 178) y proyecto MONTES PRUEBA PMO (ID 799) para revisar este paquete.', 'warning');
+      return;
+    }
+    if (this.hasDetailChanges) {
+      alerts.basicAlert('Cambios sin guardar', 'Guarda o deshaz los cambios actuales antes de importar el Anexo H.', 'warning');
+      return;
+    }
+    this.anexoHImportError = '';
+    this.anexoHImportPreview = null;
+    this.anexoHImportProgress = { done: 0, total: 0, label: '' };
+    this.showAnexoHImportModal = true;
+    this.loadingAnexoH = true;
+    try {
+      this.anexoHPackage = await this.anexoHImportService.loadPackage();
+      this.anexoHImportPreview = this.anexoHImportService.prepare(this.anexoHPackage);
+    } catch (error: any) {
+      this.anexoHImportError = error?.message || 'No se pudo preparar el paquete Anexo H.';
+    } finally {
+      this.loadingAnexoH = false;
+    }
+  }
+
+  async importAnexoHSequentially(): Promise<void> {
+    if (!this.anexoHImportPreview || !this.anexoHPackage || this.importingAnexoH) return;
+    const idContract = Number(this.signalsService.getContractSelectedBySidebar()() || 0);
+    const idProject = Number(this.signalsService.getProjectSelectedBySidebar()() || 0);
+    if (Number(this.idCompany) !== this.anexoHImportService.companyId
+        || idContract !== this.anexoHImportService.contractId
+        || idProject !== this.anexoHImportService.projectId) {
+      this.anexoHImportError = 'Cambió la empresa, contrato o proyecto seleccionado. Cierra esta ventana y vuelve a abrirla en el contexto destino.';
+      return;
+    }
+    this.importingAnexoH = true;
+    this.anexoHImportError = '';
+    try {
+      await this.anexoHImportService.importSequentially(this.anexoHImportPreview,
+        (done, total, label) => this.anexoHImportProgress = { done, total, label });
+      this.showAnexoHImportModal = false;
+      this.loadData();
+      await this.loadFactors();
+      await this.loadApuConfig();
+      alerts.basicAlert('Anexo H cargado', 'Se revisaron y sincronizaron las 97 claves del paquete en el contrato seleccionado.', 'success');
+    } catch (error: any) {
+      this.anexoHImportError = error?.message || 'La carga se detuvo. Puedes volver a ejecutarla para continuar sin duplicar las claves o componentes ya guardados.';
+    } finally {
+      this.importingAnexoH = false;
+    }
+  }
+
+  get existingAnexoHKeys(): number {
+    return this.rowData.filter((row) => /^I\.\d/.test(String(row.claveUsuario ?? row.clave_usuario ?? ''))).length;
+  }
+
   downloadApuExample(): void {
     const workbook = XLSX.utils.book_new();
     const apu = XLSX.utils.aoa_to_sheet([
@@ -335,9 +438,9 @@ export class AuxiliaresComponent {
     ]);
     const components = XLSX.utils.aoa_to_sheet([
       ['Tipo', 'Recurso', 'Unidad', 'Cantidad', 'Costo Unitario', 'Cuadrilla', 'Cantidad Cuadrilla'],
-      ['MATERIAL', 'Tubería PVC 4 pulgadas', 'ML', 1, 120, '', ''],
-      ['PERSONAL', 'Oficial plomero', 'JORNADA', 0.2, 500, 'Cuadrilla 1', 1],
-      ['EQUIPO', 'Cortadora', 'HR', 0.1, 150, '', ''],
+      ['MATERIAL', 'Tubería PVC 4 pulgadas', 'ML', 1, '', '', ''],
+      ['PERSONAL', 'Oficial plomero', 'JORNADA', 0.2, '', 'Cuadrilla 1', 1],
+      ['EQUIPO', 'Cortadora', 'HR', 0.1, '', '', ''],
       ['HERRAMIENTA', 'Herramienta menor', '% MO', 3, '', '', ''],
     ]);
     const instructions = XLSX.utils.aoa_to_sheet([
@@ -348,7 +451,7 @@ export class AuxiliaresComponent {
       ['Reemplaza los recursos del ejemplo por los de tu catálogo. Si no coinciden, se cargarán como texto sin vínculo al catálogo.'],
       ['Para PERSONAL indica la cuadrilla; Cantidad Cuadrilla multiplica el subtotal de sus trabajadores.'],
       ['Para HERRAMIENTA, Cantidad es el porcentaje de mano de obra: escribe 3 para 3%.'],
-      ['Costo Unitario puede quedar vacío si el recurso existe en el catálogo; se tomará su costo actual.'],
+      ['Si el recurso existe en el catálogo, siempre se toma su costo actual; Costo Unitario es respaldo para recursos sin coincidencia.'],
       ['Después de cargar el archivo, revisa las pestañas y pulsa Guardar Componentes.'],
     ]);
     apu['!cols'] = [{ wch: 12 }, { wch: 20 }, { wch: 55 }, { wch: 12 }];
@@ -368,9 +471,9 @@ export class AuxiliaresComponent {
       '',
       '[Componentes]',
       'Tipo;Recurso;Unidad;Cantidad;Costo Unitario;Cuadrilla;Cantidad Cuadrilla',
-      'MATERIAL;Tubería PVC 4 pulgadas;ML;1;120;;',
-      'PERSONAL;Oficial plomero;JORNADA;0.2;500;Cuadrilla 1;1',
-      'EQUIPO;Cortadora;HR;0.1;150;;',
+      'MATERIAL;Tubería PVC 4 pulgadas;ML;1;;;',
+      'PERSONAL;Oficial plomero;JORNADA;0.2;;Cuadrilla 1;1',
+      'EQUIPO;Cortadora;HR;0.1;;;',
       'HERRAMIENTA;Herramienta menor;% MO;3;;;',
     ].join('\n');
     const url = URL.createObjectURL(new Blob(['\uFEFF', content], { type: 'text/plain;charset=utf-8' }));
@@ -445,11 +548,14 @@ export class AuxiliaresComponent {
         const match = catalog.find(item => this.normalizeImportText(item.description) === this.normalizeImportText(resource));
         if (!match) this.importWarnings.push(`Fila ${rowNumber}: "${resource}" no coincide con el catálogo; quedará como texto.`);
         const costRaw = String(values['COSTO UNITARIO'] ?? '').trim();
-        const unitCost = type === 'HERR' ? 0 : costRaw ? this.parseImportNumber(values['COSTO UNITARIO']) : Number(match?.cost ?? 0);
+        const unitCost = type === 'HERR' ? 0 : match ? Number(match.cost ?? 0)
+          : costRaw ? this.parseImportNumber(values['COSTO UNITARIO']) : 0;
         if (!Number.isFinite(unitCost) || unitCost < 0) {
           this.importErrors.push(`Componentes, fila ${rowNumber}: Costo Unitario no válido.`);
           return;
         }
+        if (type !== 'HERR' && match && costRaw && Math.abs(this.parseImportNumber(values['COSTO UNITARIO']) - unitCost) > 0.005)
+          this.importWarnings.push(`Fila ${rowNumber}: se usará el costo vigente de "${resource}" ($${unitCost.toFixed(2)}) en lugar del archivo.`);
         if (type !== 'HERR' && !costRaw && !match) this.importWarnings.push(`Fila ${rowNumber}: sin costo; se cargará en 0 para revisión.`);
         const crewName = type === 'PERSONAL' ? String(values['CUADRILLA'] ?? '').trim() || 'Cuadrilla 1' : '';
         const crewQuantityRaw = String(values['CANTIDAD CUADRILLA'] ?? '').trim();
@@ -468,12 +574,12 @@ export class AuxiliaresComponent {
         const key = this.normalizeImportText(row.crewName);
         const crew = crews.get(key);
         if (crew && crew.quantity !== row.crewQuantity) this.importErrors.push(`La cuadrilla "${row.crewName}" tiene cantidades distintas en el archivo.`);
-        else crews.set(key, { quantity: row.crewQuantity, subtotal: (crew?.subtotal ?? 0) + row.quantity * row.unitCost });
+        else crews.set(key, { quantity: row.crewQuantity, subtotal: apuMoney((crew?.subtotal ?? 0) + apuMoney(row.quantity * row.unitCost)) });
       });
-      const personalCost = [...crews.values()].reduce((sum, crew) => sum + crew.subtotal * crew.quantity, 0);
-      const directCost = personalCost + rows.filter(row => row.type === 'MATERIAL' || row.type === 'EQUIPO')
-        .reduce((sum, row) => sum + row.quantity * row.unitCost, 0)
-        + rows.filter(row => row.type === 'HERR').reduce((sum, row) => sum + row.quantity / 100 * personalCost, 0);
+      const personalCost = apuMoney([...crews.values()].reduce((sum, crew) => sum + apuMoney(crew.subtotal * crew.quantity), 0));
+      const directCost = apuMoney(personalCost + rows.filter(row => row.type === 'MATERIAL' || row.type === 'EQUIPO')
+        .reduce((sum, row) => sum + apuMoney(row.quantity * row.unitCost), 0)
+        + rows.filter(row => row.type === 'HERR').reduce((sum, row) => sum + apuMoney(row.quantity / 100 * personalCost), 0));
       if (!this.importErrors.length) this.importPreview = { clave, claveUsuario: String(apu['CLAVE USUARIO'] ?? '').trim(),
         description, unit, rows, directCost };
   }
@@ -552,7 +658,7 @@ export class AuxiliaresComponent {
 
   applyApuImport(): void {
     const preview = this.importPreview;
-    const idContract = this.signalsService.getIdContract()();
+    const idContract = this.signalsService.getContractSelectedBySidebar()();
     if (!preview || !idContract || this.importErrors.length) return;
     const tempId = `temp_${++this.tempCounter}`;
     const apu = { id: tempId, idCompany: this.idCompany, idContract,
@@ -652,8 +758,10 @@ export class AuxiliaresComponent {
     this.selectedEquipoId = null;
     this.selectedHerramientaId = null;
     this.selectedPersonalId = null;
+    this.selectedAuxiliarId = null;
     this.selectedMaterialRow = null;
     this.selectedEquipoRow = null;
+    this.selectedAuxiliarRow = null;
     this.selectedHerramientaRow = null;
     this.selectedCuadrillaItem = null;
     this.hasItemChanges = false;
@@ -683,8 +791,12 @@ export class AuxiliaresComponent {
 
   // ── Main CRUD ────────────────────────────────────────────────────────────
   addRow() {
+    const idContract = this.signalsService.getContractSelectedBySidebar()();
+    if (!this.idCompany || !idContract) {
+      alerts.basicAlert('Seleccione un contrato', 'Seleccione empresa y contrato antes de agregar un precio unitario.', 'warning');
+      return;
+    }
     this.trackingService.addLog(this.trackingService.getnameComp(), 'Agregó nuevo precio unitario', 'Proyectos', this.trackingService.getEmail());
-    const idContract = this.signalsService.getIdContract()();
     const newRow = { id: `temp_${++this.tempCounter}`, idCompany: this.idCompany, idContract: idContract ?? null,
       clave: null, claveUsuario: '',
       description: '', unit: 'M2', costMN: 0, precioUnitario: 0,
@@ -739,6 +851,7 @@ export class AuxiliaresComponent {
     if (selected?.hasMaterial) available.push('MATERIAL');
     if (selected?.hasEquipo) available.push('EQUIPO');
     if (selected?.hasHerramienta) available.push('HERR');
+    available.push('AUXILIAR');
     if (preferred && available.includes(preferred)) this.activeResourceTab = preferred;
     else if (!this.activeResourceTab || !available.includes(this.activeResourceTab)) this.activeResourceTab = available[0] ?? null;
   }
@@ -753,10 +866,10 @@ export class AuxiliaresComponent {
   }
 
   // ── Sub-items CRUD ───────────────────────────────────────────────────────
-  addItem(type: 'MATERIAL' | 'HERR' | 'EQUIPO') {
+  addItem(type: 'MATERIAL' | 'HERR' | 'EQUIPO' | 'AUXILIAR') {
     if (!this.selectedAuxiliar) return;
-    const selectedId = type === 'MATERIAL' ? this.selectedMaterialId : type === 'HERR' ? this.selectedHerramientaId : this.selectedEquipoId;
-    const catalog = type === 'MATERIAL' ? this.catalogMaterial : type === 'HERR' ? this.catalogHerramienta : this.catalogEquipo;
+    const selectedId = type === 'MATERIAL' ? this.selectedMaterialId : type === 'HERR' ? this.selectedHerramientaId : type === 'EQUIPO' ? this.selectedEquipoId : this.selectedAuxiliarId;
+    const catalog = type === 'MATERIAL' ? this.catalogMaterial : type === 'HERR' ? this.catalogHerramienta : type === 'EQUIPO' ? this.catalogEquipo : this.catalogAuxiliares;
     const selected = catalog.find(item => item.id === Number(selectedId));
     if (!selected) return;
     const newItem = { id: null, idAuxiliar: this.selectedAuxiliar.id, type,
@@ -766,7 +879,8 @@ export class AuxiliaresComponent {
     this.allItems = [newItem, ...this.allItems];
     if (type === 'MATERIAL') this.selectedMaterialId = null;
     else if (type === 'HERR') this.selectedHerramientaId = null;
-    else this.selectedEquipoId = null;
+    else if (type === 'EQUIPO') this.selectedEquipoId = null;
+    else this.selectedAuxiliarId = null;
     this.hasItemChanges = true;
     this.refreshSubGrids();
   }
@@ -793,6 +907,7 @@ export class AuxiliaresComponent {
   onMaterialSelectionChanged()    { const r = this.materialGridApi?.getSelectedRows(); this.selectedMaterialRow = r?.length ? r[0] : null; }
   onHerramientaSelectionChanged() { const r = this.herramientaGridApi?.getSelectedRows(); this.selectedHerramientaRow = r?.length ? r[0] : null; }
   onEquipoSelectionChanged()      { const r = this.equipoGridApi?.getSelectedRows(); this.selectedEquipoRow = r?.length ? r[0] : null; }
+  onAuxiliarSelectionChanged() { const r = this.auxiliarGridApi?.getSelectedRows(); this.selectedAuxiliarRow = r?.length ? r[0] : null; }
 
   async deleteItem(item: any) {
     if (!item) return;
@@ -802,7 +917,7 @@ export class AuxiliaresComponent {
       await this.auxiliarItemsService.deleteItem(item.id).toPromise();
     }
     this.allItems = this.allItems.filter((x) => x !== item);
-    this.selectedMaterialRow = null; this.selectedHerramientaRow = null; this.selectedEquipoRow = null;
+    this.selectedMaterialRow = null; this.selectedHerramientaRow = null; this.selectedEquipoRow = null; this.selectedAuxiliarRow = null;
     this.refreshSubGrids();
   }
 
@@ -862,6 +977,10 @@ export class AuxiliaresComponent {
   // ── Guardar todo el detalle ──────────────────────────────────────────────
   async saveDetalle() {
     if (!this.selectedAuxiliar) return;
+    if (this.hasFactorChanges) {
+      alerts.basicAlert('Factores sin guardar', 'Guarda los factores del contrato antes de guardar el precio unitario.', 'warning');
+      return;
+    }
     let saving = 'precio unitario';
     try {
       if (this.selectedAuxiliar.__isNew) {
@@ -874,7 +993,7 @@ export class AuxiliaresComponent {
         const payload = { idAuxiliar: this.selectedAuxiliar.id, type: item.type,
           idReference: item.idReference ?? null, description: item.description?.trim() ?? '',
           unit: item.unit ?? null, quantity: Number(item.quantity) || 0,
-          unitCost: item.type === 'HERR' ? this.totalPersonal : (Number(item.unitCost) || 0), active: true };
+          unitCost: item.type === 'HERR' ? this.totalPersonal : item.type === 'AUXILIAR' ? this.getAuxiliarUnitCost(item) : (Number(item.unitCost) || 0), active: true };
         if (item.__isNew) { const saved = await this.auxiliarItemsService.saveItem(payload).toPromise(); item.id = saved.id; item.__isNew = false; }
         else { await this.auxiliarItemsService.updateItem(item.id, payload).toPromise(); item.__modified = false; }
       }
@@ -898,6 +1017,7 @@ export class AuxiliaresComponent {
       // 3. Actualizar flags y cost_mn en el auxiliar
       saving = 'costo del precio unitario';
       this.selectedAuxiliar.costMN = this.costoTotal;
+      this.selectedAuxiliar.precioUnitario = this.precioUnitario;
       const auxPayload = this.cleanRow(this.selectedAuxiliar);
       await this.auxiliarService.update(this.selectedAuxiliar.id, auxPayload).toPromise();
       this.hasItemChanges = false; this.hasCuadrillaChanges = false; this.hasMainChanges = false;
@@ -914,12 +1034,14 @@ export class AuxiliaresComponent {
   onMaterialGridReady(e: GridReadyEvent)    { this.materialGridApi = e.api; }
   onHerramientaGridReady(e: GridReadyEvent) { this.herramientaGridApi = e.api; }
   onEquipoGridReady(e: GridReadyEvent)      { this.equipoGridApi = e.api; }
+  onAuxiliarGridReady(e: GridReadyEvent) { this.auxiliarGridApi = e.api; }
   onCuadrillaGridReady(e: GridReadyEvent)   { this.cuadrillaGridApi = e.api; }
 
   refreshSubGrids() {
     if (this.materialGridApi && !this.materialGridApi.isDestroyed()) this.materialGridApi.setGridOption('rowData', this.materialItems);
     if (this.herramientaGridApi && !this.herramientaGridApi.isDestroyed()) this.herramientaGridApi.setGridOption('rowData', this.herramientaItems);
     if (this.equipoGridApi && !this.equipoGridApi.isDestroyed()) this.equipoGridApi.setGridOption('rowData', this.equipoItems);
+    if (this.auxiliarGridApi && !this.auxiliarGridApi.isDestroyed()) this.auxiliarGridApi.setGridOption('rowData', this.auxiliarItems);
   }
 
   private cleanRow(row: any) {
@@ -936,17 +1058,38 @@ export class AuxiliaresComponent {
   hasConfigChanges     = false;
 
   async loadApuConfig() {
-    const idContract = this.signalsService.getIdContract()();
-    if (!idContract || !this.idCompany) { this.apuConfig = { ...APU_CONFIG_DEFAULTS }; return; }
+    const idContract = this.signalsService.getContractSelectedBySidebar()();
+    const idCompany = this.idCompany;
+    if (!idContract || !idCompany) { this.apuConfig = { ...APU_CONFIG_DEFAULTS }; return; }
+    let cfg: ApuConfig | null = null;
     try {
-      const cfg = await this.apuConfigService.get(idContract, this.idCompany).toPromise();
-      this.apuConfig = cfg ?? { ...APU_CONFIG_DEFAULTS, idCompany: this.idCompany, idContract };
-    } catch { this.apuConfig = { ...APU_CONFIG_DEFAULTS, idCompany: this.idCompany, idContract }; }
+      cfg = await this.apuConfigService.get(idContract, idCompany).toPromise();
+    } catch { /* A contract without a saved header uses its own company and contract. */ }
+    let nextConfig: ApuConfig;
+    if (cfg) {
+      nextConfig = cfg;
+    } else {
+      const idProject = Number(this.signalsService.getProjectSelectedBySidebar()() || 0);
+      const [companyResult, contractResult, projectResult] = await Promise.allSettled([
+        this.rootService.getRootbyId(idCompany).toPromise(),
+        this.contractsService.getContractById(idContract).toPromise(),
+        idProject ? this.projectsService.getProjectsById(idProject).toPromise() : Promise.resolve(null),
+      ]);
+      const company: any = companyResult.status === 'fulfilled' ? companyResult.value : null;
+      const contract: any = contractResult.status === 'fulfilled' ? contractResult.value : null;
+      const projectRaw: any = projectResult.status === 'fulfilled' ? projectResult.value : null;
+      const project: any = Array.isArray(projectRaw) ? projectRaw[0] : projectRaw;
+      nextConfig = { ...APU_CONFIG_DEFAULTS, idCompany, idContract,
+        companyName: company?.name || 'EMPRESA', subdirection: '', anexoLabel: '',
+        projectTitle: project?.name || project?.description || contract?.name || contract?.description || '' };
+    }
+    if (this.signalsService.getContractSelectedBySidebar()() !== idContract || this.idCompany !== idCompany) return;
+    this.apuConfig = nextConfig;
     this.hasConfigChanges = false;
   }
 
   async saveApuConfig() {
-    const idContract = this.signalsService.getIdContract()();
+    const idContract = this.signalsService.getContractSelectedBySidebar()();
     if (!idContract) return;
     try {
       const saved = await this.apuConfigService.save({
@@ -976,10 +1119,11 @@ export class AuxiliaresComponent {
   closeConfigModal() { this.showConfigModal = false; }
 
   async loadFactors() {
-    const idContract = this.signalsService.getIdContract()();
+    const idContract = this.signalsService.getContractSelectedBySidebar()();
     const idCompany  = this.idCompany;
-    if (!idContract) { this.configFactors = []; return; }
+    if (!idContract || !idCompany) { this.configFactors = []; return; }
     const all = ((await this.factorService.getByContract(idContract, idCompany).toPromise()) ?? []) as any[];
+    if (this.signalsService.getContractSelectedBySidebar()() !== idContract || this.idCompany !== idCompany) return;
     // API retorna sortOrder (camelCase), no sort_order — deduplicar por sortOrder
     const seen = new Set<number>();
     this.configFactors = all
@@ -1012,7 +1156,7 @@ export class AuxiliaresComponent {
   }
 
   addConfigFactor() {
-    const idContract = this.signalsService.getIdContract()();
+    const idContract = this.signalsService.getContractSelectedBySidebar()();
     const maxSo = this.configFactors.reduce((m, f) => Math.max(m, Number(f.sortOrder) || 0), 0);
     const newRow = {
       id: null, name: 'Nuevo Factor', percentage: 0,
@@ -1026,6 +1170,22 @@ export class AuxiliaresComponent {
     setTimeout(() => {
       this.configGridApi?.startEditingCell({ rowIndex: this.configFactors.length - 1, colKey: 'name' });
     }, 100);
+  }
+
+  addStandardFactors() {
+    const names = ['Indirectos', 'Financiamiento', 'Utilidad', 'Cargos adicionales'];
+    const existing = new Set(this.configFactors.map(f => String(f.name || '').trim().toLocaleLowerCase('es-MX')));
+    let sortOrder = this.configFactors.reduce((max, f) => Math.max(max, Number(f.sortOrder) || 0), 0);
+    const idContract = this.signalsService.getContractSelectedBySidebar()();
+    const additions = names.filter(name => !existing.has(name.toLocaleLowerCase('es-MX'))).map(name => ({
+      id: null, name, percentage: 0, sortOrder: (sortOrder += 10),
+      id_company: this.idCompany, id_contract: idContract,
+      active: true, __isNew: true, __modified: false,
+    }));
+    if (!additions.length) return;
+    this.configFactors = [...this.configFactors, ...additions];
+    this.hasFactorChanges = true;
+    this.configGridApi?.setGridOption('rowData', this.configFactors);
   }
 
   async deleteConfigFactor() {
@@ -1044,27 +1204,21 @@ export class AuxiliaresComponent {
   async revertFactors() { await this.loadFactors(); }
 
   getFactorAdd(i: number): number {
-    let r = this.costoTotal;
-    for (let k = 0; k < i; k++) r += r * (Number(this.configFactors[k]?.percentage) || 0) / 100;
-    return r * (Number(this.configFactors[i]?.percentage) || 0) / 100;
+    return apuFactorSteps(this.costoTotal, this.configFactors)[i]?.amount ?? 0;
   }
 
   getFactorSubtotal(i: number): number {
-    let r = this.costoTotal;
-    for (let k = 0; k <= i; k++) r += r * (Number(this.configFactors[k]?.percentage) || 0) / 100;
-    return r;
+    return apuFactorSteps(this.costoTotal, this.configFactors)[i]?.subtotal ?? this.costoTotal;
   }
 
   get precioUnitario(): number {
-    let r = this.costoTotal;
-    for (const f of this.configFactors) r += r * (Number(f.percentage) || 0) / 100;
-    return r;
+    return apuUnitPrice(this.costoTotal, this.configFactors);
   }
 
   async saveFactors() {
     const toSave = this.configFactors.filter(f => f.__isNew || f.__modified);
     if (!toSave.length) return;
-    const idContract = this.signalsService.getIdContract()();
+    const idContract = this.signalsService.getContractSelectedBySidebar()();
     try {
       for (const f of toSave) {
         const payload = {
@@ -1085,19 +1239,21 @@ export class AuxiliaresComponent {
   }
 
   async recalcularPrecios() {
+    if (this.hasFactorChanges) {
+      alerts.basicAlert('Factores sin guardar', 'Guarda los factores antes de recalcular precios.', 'warning');
+      return;
+    }
     if (!this.configFactors.length) {
       alerts.basicAlert('Sin factores', 'Carga la configuración primero (botón Configuración)', 'warning');
       return;
     }
-    const idContract = this.signalsService.getIdContract()();
+    const idContract = this.signalsService.getContractSelectedBySidebar()();
     if (!idContract) { alerts.basicAlert('Sin contrato', 'No hay contrato seleccionado', 'warning'); return; }
 
     const precios = this.rowData
       .filter(r => r.id && !String(r.id).startsWith('temp_') && Number(r.costMN) > 0)
       .map(r => {
-        let running = Number(r.costMN) || 0;
-        for (const f of this.configFactors) running += running * (Number(f.percentage) || 0) / 100;
-        return { id: r.id, precioUnitario: Math.round(running * 100) / 100 };
+        return { id: r.id, precioUnitario: apuUnitPrice(Number(r.costMN) || 0, this.configFactors) };
       });
 
     if (!precios.length) { alerts.basicAlert('Sin datos', 'No hay precios unitarios con costo calculado', 'warning'); return; }
@@ -1114,16 +1270,96 @@ export class AuxiliaresComponent {
   }
 
   // ── PDF APU ──────────────────────────────────────────────────────────────
+  async printCatalogPdf() {
+    const auxiliars = this.rowData.filter(row => Number(row.id) > 0);
+    if (!auxiliars.length) {
+      alerts.basicAlert('Sin datos', 'Este contrato no tiene precios unitarios guardados.', 'warning');
+      return;
+    }
+    if (this.hasFactorChanges || this.hasMainChanges) {
+      alerts.basicAlert('Cambios sin guardar', 'Guarda los precios y factores antes de generar el reporte.', 'warning');
+      return;
+    }
+    await this.pdfApuService.openCatalogPdf({
+      companyName: this.apuConfig.companyName,
+      projectTitle: this.apuConfig.projectTitle,
+      licitacionNo: this.apuConfig.licitacionNo,
+      auxiliars,
+      factors: this.configFactors,
+    });
+  }
+
+  async printFullExplosionPdf() {
+    const auxiliars = this.rowData.filter(row => Number(row.id) > 0)
+      .sort((a, b) => String(a.claveUsuario ?? a.clave_usuario ?? a.clave ?? '').localeCompare(String(b.claveUsuario ?? b.clave_usuario ?? b.clave ?? ''), 'es-MX', { numeric: true }));
+    if (!auxiliars.length) {
+      alerts.basicAlert('Sin datos', 'Este contrato no tiene análisis guardados para generar la explosión.', 'warning');
+      return;
+    }
+    if (this.hasDetailChanges || this.hasFactorChanges) {
+      alerts.basicAlert('Cambios sin guardar', 'Guarda los componentes y factores antes de generar la explosión completa.', 'warning');
+      return;
+    }
+    const report: any[] = [];
+    try {
+      for (const auxiliar of auxiliars) {
+        const detail: any = await this.auxiliarItemsService.getDetalle(Number(auxiliar.id)).toPromise();
+        const items = detail?.items ?? detail?.Items ?? [];
+        const cuadrillas = (detail?.cuadrillas ?? detail?.Cuadrillas ?? []).map((crew: any) => ({
+          ...crew,
+          name: crew.name ?? crew.Name ?? '',
+          cantidad: Number(crew.cantidad ?? crew.Cantidad) || 1,
+          items: crew.items ?? crew.Items ?? [],
+        }));
+        const byType = (type: string) => items.filter((item: any) => String(item.type ?? item.Type).toUpperCase() === type)
+          .map((item: any) => ({ ...item, description: item.description ?? item.Description, unit: item.unit ?? item.Unit,
+            quantity: Number(item.quantity ?? item.Quantity) || 0, unitCost: Number(item.unitCost ?? item.UnitCost) || 0 }));
+        const materialItems = byType('MATERIAL');
+        const herramientaItems = byType('HERR');
+        const equipoItems = byType('EQUIPO');
+        const auxiliarItems = byType('AUXILIAR').map((item: any) => ({ ...item, unitCost: this.getAuxiliarUnitCost(item) }));
+        const totalPersonal = apuMoney(cuadrillas.reduce((sum: number, crew: any) => {
+          const crewSubtotal = apuMoney((crew.items ?? []).reduce((crewSum: number, worker: any) =>
+            crewSum + apuMoney((Number(worker.quantity ?? worker.Quantity) || 0) * (Number(worker.unitCost ?? worker.UnitCost) || 0)), 0));
+          return sum + apuMoney(crewSubtotal * crew.cantidad);
+        }, 0));
+        const materialTotal = apuMoney(materialItems.reduce((sum: number, item: any) => sum + apuMoney(item.quantity * item.unitCost), 0));
+        const herramientaTotal = apuMoney(herramientaItems.reduce((sum: number, item: any) => sum + apuMoney(item.quantity * totalPersonal), 0));
+        const equipoTotal = apuMoney(equipoItems.reduce((sum: number, item: any) => sum + apuMoney(item.quantity * item.unitCost), 0));
+        const auxiliarTotal = apuMoney(auxiliarItems.reduce((sum: number, item: any) => sum + apuMoney(item.quantity * item.unitCost), 0));
+        report.push({
+          auxiliar,
+          cuadrillas,
+          materialItems,
+          herramientaItems,
+          equipoItems,
+          auxiliarItems,
+          factors: this.configFactors,
+          totalPersonal,
+          materialTotal,
+          herramientaTotal,
+          equipoTotal,
+          auxiliarTotal,
+          costoTotal: Number(auxiliar.costMN ?? auxiliar.cost_mn) || 0,
+          companyName: this.apuConfig.companyName,
+          subdirection: this.apuConfig.subdirection,
+          anexoLabel: this.apuConfig.anexoLabel,
+          analysisTitle: this.apuConfig.analysisTitle,
+          licitacionNo: this.apuConfig.licitacionNo,
+          projectTitle: this.apuConfig.projectTitle,
+        });
+      }
+      await this.pdfApuService.openApusPdf(report);
+    } catch (error) {
+      console.error('Error generando la explosión APU:', error);
+      alerts.basicAlert('Error', 'No se pudo cargar el detalle completo de todos los análisis para el PDF.', 'error');
+    }
+  }
+
   async printPdf() {
     if (!this.selectedAuxiliar) {
       alerts.basicAlert('Sin selección', 'Selecciona un auxiliar primero', 'warning');
       return;
-    }
-    const idContract = this.signalsService.getIdContract()();
-    let factors: any[] = [];
-    if (idContract) {
-      try { factors = (await this.factorService.getByContract(idContract, this.idCompany).toPromise()) ?? []; }
-      catch { factors = []; }
     }
     await this.pdfApuService.openApuPdf({
       auxiliar:        this.selectedAuxiliar,
@@ -1131,11 +1367,13 @@ export class AuxiliaresComponent {
       materialItems:   this.materialItems,
       herramientaItems: this.herramientaItems,
       equipoItems:     this.equipoItems,
-      factors,
+      auxiliarItems: this.auxiliarItems.map((item) => ({ ...item, unitCost: this.getAuxiliarUnitCost(item) })),
+      factors: this.configFactors,
       totalPersonal:    this.totalPersonal,
       materialTotal:    this.materialTotal,
       herramientaTotal: this.herramientaTotal,
       equipoTotal:      this.equipoTotal,
+      auxiliarTotal: this.auxiliarTotal,
       costoTotal:       this.costoTotal,
       // Textos configurables del encabezado
       companyName:    this.apuConfig.companyName,
