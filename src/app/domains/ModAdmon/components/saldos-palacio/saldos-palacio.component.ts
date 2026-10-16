@@ -246,6 +246,9 @@ export class SaldosPalacioComponent {
         field: 'descripcion',
         headerName: 'Descripción',
         width: 300,
+        valueFormatter: (params) => params.data?.registroInactivo
+          ? `[BAJA LÓGICA] ${params.value || ''}`
+          : params.value,
       },
       {
         field: 'tipo',
@@ -562,7 +565,7 @@ export class SaldosPalacioComponent {
       const openingBalance = Number(previousMovement?.saldo) || 0;
 
       // Generar PDF
-      await this.generatePDF(filteredData, openingBalance);
+      await this.generatePDF(filteredData, openingBalance, previousMovement);
 
       this.trackingService.addLog(
         this.trackingService.getnameComp(),
@@ -582,7 +585,7 @@ export class SaldosPalacioComponent {
     }
   }
 
-  private async generatePDF(data: any[], openingBalance: number) {
+  private async generatePDF(data: any[], openingBalance: number, openingMovement?: any) {
     // Importar pdfMake dinámicamente
     const pdfMake = (await import('pdfmake/build/pdfmake')).default;
     const pdfFonts = (await import('pdfmake/build/vfs_fonts')).default;
@@ -644,8 +647,15 @@ export class SaldosPalacioComponent {
 
     tableBody.push([
       { text: '', style: 'tableCell', alignment: 'left' },
-      { text: '', style: 'tableCell', alignment: 'center' },
-      { text: 'SALDO ANTERIOR', style: 'tableTotalLabel', alignment: 'right', bold: true },
+      { text: openingMovement?.fecha || '', style: 'tableCell', alignment: 'center' },
+      {
+        text: openingMovement
+          ? `SALDO ANTERIOR (CIERRE ${openingMovement.fecha} · ${openingMovement.numeroDocumento || 'SIN DOCUMENTO'})`
+          : 'SALDO ANTERIOR',
+        style: 'tableTotalLabel',
+        alignment: 'right',
+        bold: true
+      },
       { text: '', style: 'tableCell', alignment: 'center' },
       { text: '', style: 'tableCellAmount', alignment: 'right' },
       { text: '', style: 'tableCellAmount', alignment: 'right' },
@@ -667,7 +677,11 @@ export class SaldosPalacioComponent {
       tableBody.push([
         { text: row.numeroDocumento || '', style: 'tableCell', alignment: 'left' },
         { text: row.fecha || '', style: 'tableCell', alignment: 'center' },
-        { text: row.descripcion || '', style: 'tableCell', alignment: 'left' },
+        {
+          text: `${row.registroInactivo ? '[BAJA LÓGICA] ' : ''}${row.descripcion || ''}`,
+          style: 'tableCell',
+          alignment: 'left'
+        },
         { text: row.tipo || '', style: 'tableCell', alignment: 'center' },
         {
           text: this.formatCurrencyNumber(row.deposito || 0),
