@@ -23,8 +23,8 @@
 
     <div class="col">
       <div class="d-flex justify-content-end mb-2">
-        <button type="button" class="btn btn-sm btn-outline-danger me-2" (click)="printCatalogPdf()">
-          <i class="bi bi-file-earmark-pdf me-1"></i> Catálogo de precios
+        <button type="button" class="btn btn-sm btn-outline-danger me-2" (click)="printSelectedOrCatalogPdf()">
+          <i class="bi bi-file-earmark-pdf me-1"></i> {{ selectedAuxiliar ? 'Reporte APU seleccionado' : 'Catálogo de precios' }}
         </button>
         <button type="button" class="btn btn-sm btn-outline-danger me-2" (click)="printFullExplosionPdf()">
           <i class="bi bi-file-earmark-richtext me-1"></i> Explosión completa APU
@@ -35,6 +35,15 @@
         <button type="button" class="btn btn-sm btn-outline-primary" (click)="openImportModal()">
           <i class="bi bi-file-earmark-arrow-up me-1"></i> Importar APU
         </button>
+      </div>
+      <div *ngIf="pdfReportProgress.active" class="d-flex align-items-center gap-2 mb-2 px-1" aria-live="polite">
+        <span class="small text-muted text-nowrap">{{ pdfReportProgress.label }}</span>
+        <div class="progress flex-grow-1" role="progressbar" aria-label="Avance de generación del reporte"
+             [attr.aria-valuenow]="pdfReportProgress.percent" aria-valuemin="0" aria-valuemax="100" style="height: 8px;">
+          <div class="progress-bar progress-bar-striped progress-bar-animated bg-danger"
+               [style.width.%]="pdfReportProgress.percent"></div>
+        </div>
+        <span class="small text-muted">{{ pdfReportProgress.percent }}%</span>
       </div>
       <div class="catalog-master">
         
@@ -82,7 +91,7 @@
           </span>
         </div>
         <div class="d-flex gap-2 flex-shrink-0">
-          <button class="btn btn-sm btn-danger" (click)="printPdf()" title="Ficha APU en PDF">
+          <button class="btn btn-sm btn-danger" (click)="printSelectedOrCatalogPdf()" title="Ficha APU en PDF">
             <i class="bi bi-file-earmark-pdf-fill me-1"></i> PDF
           </button>
           <button class="btn btn-sm btn-primary" (click)="saveDetalle()" [disabled]="!hasDetailChanges">

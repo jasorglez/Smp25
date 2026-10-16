@@ -41,6 +41,8 @@ export interface ApuCatalogPdfData {
   factors: Array<{ name: string; percentage: number }>;
 }
 
+export type PdfGenerationProgress = (percent: number, label: string) => void;
+
 @Injectable({ providedIn: 'root' })
 export class PdfApuService {
   private rootService     = inject(RootService);
@@ -48,10 +50,10 @@ export class PdfApuService {
   private trackingService = inject(TrackingService);
 
   // ── Entry points ──────────────────────────────────────────────────────────
-  async openApuPdf(data: ApuPdfData): Promise<void> {
+  async openApuPdf(data: ApuPdfData, targetWindow?: Window | null, onProgress?: PdfGenerationProgress): Promise<void> {
     this.trackingService.addLog(this.trackingService.getnameComp(), `Abrió APU PDF: ${data.auxiliar?.clave ?? data.auxiliar?.id}`, 'Proyectos / APU', this.trackingService.getEmail());
     const brand = await this.loadCompanyBrand();
-    pdfMake.createPdf(this.buildDocDef(data, brand)).open();
+    await this.openPdfDefinition(this.buildDocDef(data, brand), targetWindow, onProgress);
   }
 
   async downloadApuPdf(data: ApuPdfData): Promise<void> {
@@ -61,7 +63,7 @@ export class PdfApuService {
     pdfMake.createPdf(this.buildDocDef(data, brand)).download(`APU_${clv}.pdf`);
   }
 
-  async openApusPdf(data: ApuPdfData[]): Promise<void> {
+  async openApusPdf(data: ApuPdfData[], targetWindow?: Window | null, onProgress?: PdfGenerationProgress): Promise<void> {
     if (!data.length) return;
     const brand = await this.loadCompanyBrand();
     const docs = data.map(item => this.buildDocDef(item, brand));
@@ -71,11 +73,11 @@ export class PdfApuService {
       if (index && section.length) section[0] = { ...section[0], pageBreak: 'before' };
       content.push(...section);
     });
-    pdfMake.createPdf({ ...docs[0], content }).open();
+    await this.openPdfDefinition({ ...docs[0], content }, targetWindow, onProgress);
     this.trackingService.addLog(this.trackingService.getnameComp(), `Abrió explosión PDF de ${data.length} APUs`, 'Proyectos / APU', this.trackingService.getEmail());
   }
 
-  async openCatalogPdf(data: ApuCatalogPdfData): Promise<void> {
+  async openCatalogPdf(data: ApuCatalogPdfData, targetWindow?: Window | null, onProgress?: PdfGenerationProgress): Promise<void> {
     const brand = await this.loadCompanyBrand();
     const body: any[] = [[
       { text: 'Clave', style: 'th' },
@@ -103,7 +105,7 @@ export class PdfApuService {
       ]);
     }
     const factorText = (data.factors ?? []).map(f => `${f.name}: ${Number(f.percentage || 0).toFixed(2)}%`).join('  ·  ');
-    pdfMake.createPdf({
+    const definition = {
       pageSize: 'LETTER', pageOrientation: 'landscape', pageMargins: [35, 75, 35, 40],
       header: { columns: [
         brand.logo ? { image: brand.logo, fit: [85, 42], width: 90 } : { text: '', width: 90 },
@@ -122,8 +124,34 @@ export class PdfApuService {
       ],
       styles: { th: { bold: true, fillColor: '#dbeafe', fontSize: 8 } },
       footer: (page: number, pages: number) => ({ text: `Página ${page} de ${pages}`, alignment: 'center', fontSize: 7, color: '#64748b' }),
-    } as any).open();
+    } as any;
+    await this.openPdfDefinition(definition, targetWindow, onProgress);
     this.trackingService.addLog(this.trackingService.getnameComp(), 'Abrió catálogo de precios unitarios PDF', 'Proyectos / APU', this.trackingService.getEmail());
+  }
+
+  private openPdfDefinition(definition: any, targetWindow?: Window | null, onProgress?: PdfGenerationProgress): Promise<void> {
+    if (!targetWindow) {
+      onProgress?.(100, 'Reporte listo');
+      pdfMake.createPdf(definition).open();
+      return Promise.resolve();
+    }
+    return new Promise((resolve, reject) => {
+      try {
+        onProgress?.(85, 'Generando PDF…');
+        pdfMake.createPdf(definition).getBlob((blob) => {
+          if (targetWindow.closed) {
+            reject(new Error('La ventana del reporte se cerró antes de terminar.'));
+            return;
+          }
+          const url = URL.createObjectURL(blob);
+          targetWindow.location.href = url;
+          onProgress?.(100, 'PDF listo');
+          resolve();
+        });
+      } catch (error) {
+        reject(error);
+      }
+    });
   }
 
   // ── Build doc definition ──────────────────────────────────────────────────

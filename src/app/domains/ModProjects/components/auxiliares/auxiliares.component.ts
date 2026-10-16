@@ -101,6 +101,7 @@ export class AuxiliaresComponent {
   anexoHImportError = '';
   anexoHImportPreview: AnexoHImportPreview | null = null;
   anexoHImportProgress = { done: 0, total: 0, label: '' };
+  pdfReportProgress = { active: false, percent: 0, label: '' };
   private anexoHPackage: AnexoHApuPackage | null = null;
 
   // ── Sub-items (MATERIAL, HERR, EQUIPO) ───────────────────────────────────
@@ -1270,6 +1271,94 @@ export class AuxiliaresComponent {
   }
 
   // ── PDF APU ──────────────────────────────────────────────────────────────
+  async printSelectedOrCatalogPdf() {
+    if (!this.selectedAuxiliar) {
+      await this.printCatalogPdf();
+      return;
+    }
+
+    const auxiliar = this.selectedAuxiliar;
+    const id = Number(auxiliar.id);
+    if (!id || id < 1) {
+      alerts.basicAlert('Guarda el APU', 'Guarda el precio unitario antes de generar su reporte.', 'warning');
+      return;
+    }
+    if (this.hasDetailChanges || this.hasFactorChanges || this.hasMainChanges) {
+      alerts.basicAlert('Cambios sin guardar', 'Guarda el APU y sus factores antes de generar el reporte.', 'warning');
+      return;
+    }
+
+    const reportWindow = this.startPdfReport('Cargando el APU seleccionado…');
+    if (!reportWindow) return;
+
+    try {
+      const detail: any = await this.auxiliarItemsService.getDetalle(id).toPromise();
+      this.updatePdfReportProgress(45, 'Preparando el análisis y sus recursos…');
+      const items = (detail?.items ?? detail?.Items ?? []).map((item: any) => ({
+        ...item,
+        type: String(item.type ?? item.Type ?? '').toUpperCase(),
+        description: item.description ?? item.Description ?? '',
+        unit: item.unit ?? item.Unit ?? '',
+        quantity: Number(item.quantity ?? item.Quantity) || 0,
+        unitCost: Number(item.unitCost ?? item.unit_cost ?? item.UnitCost) || 0,
+      }));
+      const cuadrillas = (detail?.cuadrillas ?? detail?.Cuadrillas ?? []).map((crew: any) => ({
+        ...crew,
+        name: crew.name ?? crew.Name ?? '',
+        cantidad: Number(crew.cantidad ?? crew.Cantidad) || 1,
+        items: (crew.items ?? crew.Items ?? []).map((worker: any) => ({
+          ...worker,
+          description: worker.description ?? worker.Description ?? '',
+          unit: worker.unit ?? worker.Unit ?? '',
+          quantity: Number(worker.quantity ?? worker.Quantity) || 0,
+          unitCost: Number(worker.unitCost ?? worker.unit_cost ?? worker.UnitCost) || 0,
+        })),
+      }));
+      const materialItems = items.filter((item: any) => item.type === 'MATERIAL');
+      const herramientaItems = items.filter((item: any) => item.type === 'HERR');
+      const equipoItems = items.filter((item: any) => item.type === 'EQUIPO');
+      const auxiliarItems = items.filter((item: any) => item.type === 'AUXILIAR').map((item: any) => ({
+        ...item, unitCost: this.getAuxiliarUnitCost(item),
+      }));
+      const totalPersonal = apuMoney(cuadrillas.reduce((sum: number, crew: any) => {
+        const subtotal = apuMoney(crew.items.reduce((crewSum: number, worker: any) =>
+          crewSum + apuMoney(worker.quantity * worker.unitCost), 0));
+        return sum + apuMoney(subtotal * crew.cantidad);
+      }, 0));
+      const materialTotal = apuMoney(materialItems.reduce((sum: number, item: any) => sum + apuMoney(item.quantity * item.unitCost), 0));
+      const herramientaTotal = apuMoney(herramientaItems.reduce((sum: number, item: any) => sum + apuMoney(item.quantity * totalPersonal), 0));
+      const equipoTotal = apuMoney(equipoItems.reduce((sum: number, item: any) => sum + apuMoney(item.quantity * item.unitCost), 0));
+      const auxiliarTotal = apuMoney(auxiliarItems.reduce((sum: number, item: any) => sum + apuMoney(item.quantity * item.unitCost), 0));
+
+      await this.pdfApuService.openApuPdf({
+        auxiliar,
+        cuadrillas,
+        materialItems,
+        herramientaItems,
+        equipoItems,
+        auxiliarItems,
+        factors: this.configFactors,
+        totalPersonal,
+        materialTotal,
+        herramientaTotal,
+        equipoTotal,
+        auxiliarTotal,
+        costoTotal: Number(auxiliar.costMN ?? auxiliar.cost_mn) || apuMoney(totalPersonal + materialTotal + herramientaTotal + equipoTotal + auxiliarTotal),
+        companyName: this.apuConfig.companyName,
+        subdirection: this.apuConfig.subdirection,
+        anexoLabel: this.apuConfig.anexoLabel,
+        analysisTitle: this.apuConfig.analysisTitle,
+        licitacionNo: this.apuConfig.licitacionNo,
+        projectTitle: this.apuConfig.projectTitle,
+      }, reportWindow, (percent, label) => this.updatePdfReportProgress(percent, label));
+      this.finishPdfReport();
+    } catch (error) {
+      this.abortPdfReport(reportWindow);
+      console.error('Error generando el reporte del APU seleccionado:', error);
+      alerts.basicAlert('Error', 'No se pudo cargar el detalle del precio unitario seleccionado.', 'error');
+    }
+  }
+
   async printCatalogPdf() {
     const auxiliars = this.rowData.filter(row => Number(row.id) > 0);
     if (!auxiliars.length) {
@@ -1280,13 +1369,22 @@ export class AuxiliaresComponent {
       alerts.basicAlert('Cambios sin guardar', 'Guarda los precios y factores antes de generar el reporte.', 'warning');
       return;
     }
-    await this.pdfApuService.openCatalogPdf({
-      companyName: this.apuConfig.companyName,
-      projectTitle: this.apuConfig.projectTitle,
-      licitacionNo: this.apuConfig.licitacionNo,
-      auxiliars,
-      factors: this.configFactors,
-    });
+    const reportWindow = this.startPdfReport('Preparando catálogo de precios…');
+    if (!reportWindow) return;
+    try {
+      await this.pdfApuService.openCatalogPdf({
+        companyName: this.apuConfig.companyName,
+        projectTitle: this.apuConfig.projectTitle,
+        licitacionNo: this.apuConfig.licitacionNo,
+        auxiliars,
+        factors: this.configFactors,
+      }, reportWindow, (percent, label) => this.updatePdfReportProgress(percent, label));
+      this.finishPdfReport();
+    } catch (error) {
+      this.abortPdfReport(reportWindow);
+      console.error('Error generando el catálogo PDF:', error);
+      alerts.basicAlert('Error', 'No se pudo generar el catálogo de precios unitarios.', 'error');
+    }
   }
 
   async printFullExplosionPdf() {
@@ -1300,10 +1398,14 @@ export class AuxiliaresComponent {
       alerts.basicAlert('Cambios sin guardar', 'Guarda los componentes y factores antes de generar la explosión completa.', 'warning');
       return;
     }
+    const reportWindow = this.startPdfReport('Cargando análisis para la explosión completa…');
+    if (!reportWindow) return;
     const report: any[] = [];
     try {
-      for (const auxiliar of auxiliars) {
+      for (const [index, auxiliar] of auxiliars.entries()) {
         const detail: any = await this.auxiliarItemsService.getDetalle(Number(auxiliar.id)).toPromise();
+        this.updatePdfReportProgress(5 + Math.round(((index + 1) / auxiliars.length) * 72),
+          `Preparando APU ${index + 1} de ${auxiliars.length}…`);
         const items = detail?.items ?? detail?.Items ?? [];
         const cuadrillas = (detail?.cuadrillas ?? detail?.Cuadrillas ?? []).map((crew: any) => ({
           ...crew,
@@ -1349,11 +1451,38 @@ export class AuxiliaresComponent {
           projectTitle: this.apuConfig.projectTitle,
         });
       }
-      await this.pdfApuService.openApusPdf(report);
+      await this.pdfApuService.openApusPdf(report, reportWindow,
+        (percent, label) => this.updatePdfReportProgress(percent, label));
+      this.finishPdfReport();
     } catch (error) {
+      this.abortPdfReport(reportWindow);
       console.error('Error generando la explosión APU:', error);
       alerts.basicAlert('Error', 'No se pudo cargar el detalle completo de todos los análisis para el PDF.', 'error');
     }
+  }
+
+  private startPdfReport(label: string): Window | null {
+    const output = window.open('', '_blank');
+    if (!output) {
+      alerts.basicAlert('Permite las ventanas emergentes', 'El navegador bloqueó la ventana donde se abrirá el PDF.', 'warning');
+      return null;
+    }
+    this.pdfReportProgress = { active: true, percent: 3, label };
+    return output;
+  }
+
+  private updatePdfReportProgress(percent: number, label: string): void {
+    this.pdfReportProgress = { active: true, percent: Math.max(0, Math.min(100, percent)), label };
+  }
+
+  private finishPdfReport(): void {
+    this.pdfReportProgress = { active: true, percent: 100, label: 'PDF listo' };
+    setTimeout(() => this.pdfReportProgress = { active: false, percent: 0, label: '' }, 1800);
+  }
+
+  private abortPdfReport(output: Window): void {
+    if (!output.closed) output.close();
+    this.pdfReportProgress = { active: false, percent: 0, label: '' };
   }
 
   async printPdf() {
