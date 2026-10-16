@@ -407,10 +407,9 @@ export class SaldosPalacioComponent {
     this.administrationService.getBalance(parseInt(id)).subscribe({
       next: (response: any) => {
         if (response.success && response.hasData) {
-          // El endpoint entrega el estado de cuenta del movimiento más
-          // reciente al más antiguo. El grid lo presenta cronológicamente
-          // para que el saldo vaya avanzando hasta el cierre de la cuenta.
-          this.rowDetails = [...response.data].reverse();
+          // Recalcular desde los movimientos pagados en orden cronológico.
+          // El mismo saldo fila por fila alimenta el grid y el PDF.
+          this.rowDetails = this.withRunningBalances([...response.data].reverse());
         } else {
           this.rowDetails = [];
           alerts.basicAlert('Aviso', 'No hay datos disponibles', 'info');
@@ -423,6 +422,24 @@ export class SaldosPalacioComponent {
       complete: () => {
         this.loading = false;
       },
+    });
+  }
+
+  private amountInCents(value: any): number {
+    if (typeof value === 'number') {
+      return Number.isFinite(value) ? Math.round(value * 100) : 0;
+    }
+    const parsed = Number(String(value ?? '').replace(/[$,\s]/g, ''));
+    return Number.isFinite(parsed) ? Math.round(parsed * 100) : 0;
+  }
+
+  private withRunningBalances(rows: any[]): any[] {
+    let balanceInCents = 0;
+    return rows.map(row => {
+      const incomeInCents = this.amountInCents(row.deposito);
+      const expenseInCents = this.amountInCents(row.gasto);
+      balanceInCents += incomeInCents - expenseInCents;
+      return { ...row, saldo: balanceInCents / 100 };
     });
   }
 
@@ -623,11 +640,7 @@ export class SaldosPalacioComponent {
     // Agregar filas de datos y calcular totales
     let totalIngresos = 0;
     let totalEgresos = 0;
-    const toAmount = (value: any): number => {
-      if (typeof value === 'number') return Number.isFinite(value) ? value : 0;
-      const parsed = Number(String(value ?? '').replace(/[$,\s]/g, ''));
-      return Number.isFinite(parsed) ? parsed : 0;
-    };
+    const toAmount = (value: any): number => this.amountInCents(value) / 100;
 
     tableBody.push([
       { text: '', style: 'tableCell', alignment: 'left' },
