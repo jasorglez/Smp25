@@ -246,9 +246,6 @@ export class SaldosPalacioComponent {
         field: 'descripcion',
         headerName: 'Descripción',
         width: 300,
-        valueFormatter: (params) => params.data?.registroInactivo
-          ? `[BAJA LÓGICA] ${params.value || ''}`
-          : params.value,
       },
       {
         field: 'tipo',
@@ -677,11 +674,7 @@ export class SaldosPalacioComponent {
       tableBody.push([
         { text: row.numeroDocumento || '', style: 'tableCell', alignment: 'left' },
         { text: row.fecha || '', style: 'tableCell', alignment: 'center' },
-        {
-          text: `${row.registroInactivo ? '[BAJA LÓGICA] ' : ''}${row.descripcion || ''}`,
-          style: 'tableCell',
-          alignment: 'left'
-        },
+        { text: row.descripcion || '', style: 'tableCell', alignment: 'left' },
         { text: row.tipo || '', style: 'tableCell', alignment: 'center' },
         {
           text: this.formatCurrencyNumber(row.deposito || 0),
