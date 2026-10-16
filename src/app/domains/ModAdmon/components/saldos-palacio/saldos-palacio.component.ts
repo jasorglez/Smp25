@@ -516,16 +516,11 @@ export class SaldosPalacioComponent {
     this.isGeneratingReport = true;
 
     try {
-      // Cargar datos del estado de cuenta con las fechas seleccionadas
-      const startDate = new Date(this.reportStartDate);
-      startDate.setHours(0, 0, 0, 0);
-      const endDate = new Date(this.reportEndDate);
-      endDate.setHours(23, 59, 59, 999);
-
-      // Filtrar rowDetails por rango de fechas
+      // Las fechas del estado de cuenta vienen como yyyy-MM-dd. Compararlas
+      // como fechas de calendario evita desfases por UTC/hora local.
       const filteredData = this.rowDetails.filter(row => {
-        const rowDate = new Date(row.fecha);
-        return rowDate >= startDate && rowDate <= endDate;
+        const rowDate = String(row.fecha ?? '').slice(0, 10);
+        return rowDate >= this.reportStartDate && rowDate <= this.reportEndDate;
       });
 
       if (filteredData.length === 0) {
@@ -617,11 +612,16 @@ export class SaldosPalacioComponent {
     // Agregar filas de datos y calcular totales
     let totalIngresos = 0;
     let totalEgresos = 0;
+    const toAmount = (value: any): number => {
+      if (typeof value === 'number') return Number.isFinite(value) ? value : 0;
+      const parsed = Number(String(value ?? '').replace(/[$,\s]/g, ''));
+      return Number.isFinite(parsed) ? parsed : 0;
+    };
 
     data.forEach(row => {
       // Acumular totales
-      totalIngresos += row.deposito || 0;
-      totalEgresos += row.gasto || 0;
+      totalIngresos += toAmount(row.deposito);
+      totalEgresos += toAmount(row.gasto);
 
       tableBody.push([
         { text: row.numeroDocumento || '', style: 'tableCell', alignment: 'left' },
@@ -650,6 +650,12 @@ export class SaldosPalacioComponent {
       ]);
     });
 
+    // GetBalanceStatement devuelve los movimientos en orden descendente y
+    // cada fila ya trae el saldo acumulado de la cuenta. El primer movimiento
+    // del período es su saldo de cierre; ingresos-egresos solo sería la
+    // variación del período y dejaría fuera el saldo inicial.
+    const saldoFinal = toAmount(data[0]?.saldo);
+
     // Agregar fila de totales
     tableBody.push([
       { text: '', style: 'tableCell', alignment: 'left' },
@@ -672,7 +678,14 @@ export class SaldosPalacioComponent {
         bold: true,
         fillColor: '#ffe6e6'
       },
-      { text: '', style: 'tableCell', alignment: 'right' }
+      {
+        text: this.formatCurrencyNumber(Number(saldoFinal) || 0),
+        style: 'tableTotalAmount',
+        alignment: 'right',
+        color: Number(saldoFinal) >= 0 ? '#198754' : '#dc3545',
+        bold: true,
+        fillColor: '#f2f2f2'
+      }
     ]);
 
     // Definición del documento
