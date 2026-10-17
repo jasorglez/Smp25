@@ -2871,7 +2871,13 @@ export class EgresosPalacioComponent {
   // ==================== REPORTE EGRESOS (LISTADO COMPLETO) ====================
   private async generateReporteEgresos(filteredExpenses: any[]) {
     try {
-      // Paso 1: Obtener SALDO INICIAL e INGRESOS DEL MES
+      // El saldo inicial debe coincidir con el cierre que muestra Saldos.
+      const saldoInicial = await this.getOpeningBalanceFromStatement(
+        this.idAccount,
+        this.reportStartDate
+      );
+
+      // Mantener la consulta existente para los ingresos pagados del período.
       const saldoEIngresosResponse: any = await lastValueFrom(
         this.administrationService.getSaldoEIngresosMes(
           this.idAccount,
@@ -2880,7 +2886,6 @@ export class EgresosPalacioComponent {
         )
       );
 
-      const saldoInicial = saldoEIngresosResponse?.data?.saldoInicial || 0;
       const ingresosMes = saldoEIngresosResponse?.data?.ingresosMes || 0;
 
       // Paso 2: Cargar todos los conceptos de los egresos filtrados
@@ -2933,6 +2938,37 @@ export class EgresosPalacioComponent {
       console.error('Error generando reporte de egresos:', error);
       alerts.basicAlert('Error', 'Error al generar el reporte de egresos', 'error');
     }
+  }
+
+  private async getOpeningBalanceFromStatement(idAccount: number, startDate: string): Promise<number> {
+    const response: any = await lastValueFrom(this.administrationService.getBalance(idAccount));
+    const chronologicalMovements = Array.isArray(response?.data)
+      ? [...response.data].reverse()
+      : [];
+
+    let balanceInCents = 0;
+    let openingBalanceInCents = 0;
+
+    for (const movement of chronologicalMovements) {
+      const movementDate = String(movement.fecha ?? '').slice(0, 10);
+      const depositInCents = this.amountInCents(movement.deposito);
+      const expenseInCents = this.amountInCents(movement.gasto);
+      balanceInCents += depositInCents - expenseInCents;
+
+      if (movementDate < startDate) {
+        openingBalanceInCents = balanceInCents;
+      }
+    }
+
+    return openingBalanceInCents / 100;
+  }
+
+  private amountInCents(value: any): number {
+    if (typeof value === 'number') {
+      return Number.isFinite(value) ? Math.round(value * 100) : 0;
+    }
+    const parsed = Number(String(value ?? '').replace(/[$,\s]/g, ''));
+    return Number.isFinite(parsed) ? Math.round(parsed * 100) : 0;
   }
 
   // ==================== REPORTE BITÁCORA (PADRE-HIJO DETALLADO) ====================

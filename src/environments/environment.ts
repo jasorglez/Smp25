@@ -83,5 +83,5 @@ export const environment = {
   geminiApiKey: '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',
   gnewsApiKey: '94ccc596b4dfebc3f72683b6e81d81bc',
 
-  version: '5.00.217 (17 Octubre 2026 09:36) descarga directa en visores PDF',
+  version: '5.00.218 (17 Octubre 2026 09:57) saldo inicial de egresos igual al cierre de saldos',
 };
