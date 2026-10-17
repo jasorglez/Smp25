@@ -1,8 +1,10 @@
-import { PdfPreviewService } from 'app/services/pdf-preview.service';
-import { Component, inject } from '@angular/core';
+import { Component, inject, OnDestroy } from '@angular/core';
 import { RouterModule } from '@angular/router';
 import { DomainsModule } from 'app/domains/domainsmodule';
 import { TrackingService } from 'app/services/tracking.service';
+import { DomSanitizer, SafeResourceUrl } from '@angular/platform-browser';
+import { pdfPreviewUrl } from 'app/helpers/pdf-viewer';
+import { PdfReportViewerComponent } from 'app/shared/pdf-report-viewer/pdf-report-viewer.component';
 
 import {
   ColDef,
@@ -28,13 +30,14 @@ import { SignalsService } from 'app/services/signals.service';
     DomainsModule,
     AgGridModule,
     CommonModule,
-    FormsModule
+    FormsModule,
+    PdfReportViewerComponent
   ],
   templateUrl: './saldos-palacio.component.html',
   styleUrl: './saldos-palacio.component.scss',
 })
-export class SaldosPalacioComponent {
-  private pdfPreview = inject(PdfPreviewService);
+export class SaldosPalacioComponent implements OnDestroy {
+  private sanitizer = inject(DomSanitizer);
   authService = inject(AuthService);
   signalsService = inject(SignalsService);
 
@@ -55,6 +58,8 @@ export class SaldosPalacioComponent {
   reportEndDate: string = '';
   invited: boolean = false;
   isGeneratingReport: boolean = false;
+  reportPdfPreview: SafeResourceUrl | null = null;
+  private reportPdfObjectUrl: string | null = null;
 
   saldoData: any[] = [];
   rowDetails: any[] = [];
@@ -64,6 +69,11 @@ export class SaldosPalacioComponent {
   loading: boolean = false;
   private lastSelectedId: string | null = null;
   banks: any;
+
+  ngOnDestroy(): void {
+    this.releaseReportPdfPreview();
+    document.body.classList.remove('modal-open');
+  }
 
   // Column Definitions: Defines the columns to be displayed.
   public gridOptions: any = {
@@ -500,6 +510,7 @@ export class SaldosPalacioComponent {
 
     this.reportStartDate = this.formatDateForInput(previousMonth);
     this.reportEndDate = this.formatDateForInput(now);
+    this.releaseReportPdfPreview();
 
     this.showReportModal = true;
     document.body.classList.add('modal-open');
@@ -515,6 +526,13 @@ export class SaldosPalacioComponent {
   closeReportModal() {
     this.showReportModal = false;
     document.body.classList.remove('modal-open');
+    this.releaseReportPdfPreview();
+  }
+
+  private releaseReportPdfPreview(): void {
+    if (this.reportPdfObjectUrl) URL.revokeObjectURL(this.reportPdfObjectUrl);
+    this.reportPdfObjectUrl = null;
+    this.reportPdfPreview = null;
   }
 
   private formatDateForInput(date: Date): string {
@@ -572,9 +590,6 @@ export class SaldosPalacioComponent {
         'Palacio Municipal - Saldos',
         this.trackingService.getEmail()
       );
-
-      // Cerrar modal
-      this.closeReportModal();
 
     } catch (error) {
       console.error('Error generando reporte:', error);
@@ -908,9 +923,25 @@ export class SaldosPalacioComponent {
       }
     };
 
-    // Generar y abrir el PDF
+    // Generar el PDF y conservar los filtros visibles junto a la vista previa.
     this.trackingService.addLog(this.trackingService.getnameComp(), 'Imprimió/abrió PDF estado de cuenta saldos palacio', 'Admon / Saldos Palacio', this.trackingService.getEmail());
-    this.pdfPreview.show(pdfMake.createPdf(docDefinition), 'Estado de cuenta de saldos del Palacio Municipal');
+    const pdf = pdfMake.createPdf(docDefinition);
+    const blob = await new Promise<Blob>((resolve, reject) => {
+      try {
+        pdf.getBlob((result: Blob) => {
+          if (result instanceof Blob && result.size > 0) resolve(result);
+          else reject(new Error('El PDF se generó vacío.'));
+        });
+      } catch (error) {
+        reject(error);
+      }
+    });
+
+    if (this.reportPdfObjectUrl) URL.revokeObjectURL(this.reportPdfObjectUrl);
+    this.reportPdfObjectUrl = URL.createObjectURL(blob);
+    this.reportPdfPreview = this.sanitizer.bypassSecurityTrustResourceUrl(
+      pdfPreviewUrl(this.reportPdfObjectUrl)
+    );
 
     alerts.basicAlert(
       'Reporte generado',

@@ -58,50 +58,64 @@
 
 <!-- Modal para Reporte de Estado de Cuenta -->
 <div class="modal fade" [class.show]="showReportModal" [style.display]="showReportModal ? 'block' : 'none'" tabindex="-1" role="dialog">
-  <div class="modal-dialog modal-dialog-centered" role="document">
+  <div class="modal-dialog modal-dialog-centered modal-xl saldos-report-dialog" role="document">
     <div class="modal-content">
       <div class="modal-header bg-danger text-white">
         <h5 class="modal-title">
           <i class="bi bi-file-earmark-pdf me-2"></i>Reporte de Estado de Cuenta
         </h5>
-        <button type="button" class="btn-close btn-close-white" (click)="closeReportModal()" aria-label="Close"></button>
+        <button type="button" class="btn-close btn-close-white" (click)="closeReportModal()" [disabled]="isGeneratingReport" aria-label="Close"></button>
       </div>
-      <div class="modal-body">
-        <p class="text-muted mb-3">
-          <i class="bi bi-info-circle me-1"></i>
-          Seleccione el rango de fechas para generar el estado de cuenta.
-        </p>
-        <form>
-          <div class="mb-3">
-            <label for="reportStartDate" class="form-label">Fecha de Inicio <span class="text-danger">*</span></label>
-            <input
-              type="date"
-              class="form-control"
-              id="reportStartDate"
-              [(ngModel)]="reportStartDate"
-              name="reportStartDate"
-              required>
-          </div>
-          <div class="mb-3">
-            <label for="reportEndDate" class="form-label">Fecha de Término <span class="text-danger">*</span></label>
-            <input
-              type="date"
-              class="form-control"
-              id="reportEndDate"
-              [(ngModel)]="reportEndDate"
-              name="reportEndDate"
-              required>
-          </div>
-
-          <div class="alert alert-warning" *ngIf="isGeneratingReport">
-            <div class="d-flex align-items-center">
-              <div class="spinner-border spinner-border-sm me-2" role="status">
-                <span class="visually-hidden">Generando...</span>
-              </div>
-              <span>Generando reporte... Por favor espere.</span>
+      <div class="modal-body saldos-report-body">
+        <div class="saldos-report-options">
+          <p class="text-muted mb-3">
+            <i class="bi bi-info-circle me-1"></i>
+            Seleccione el rango de fechas para generar el estado de cuenta.
+          </p>
+          <form>
+            <div class="mb-3">
+              <label for="reportStartDate" class="form-label">Fecha de Inicio <span class="text-danger">*</span></label>
+              <input
+                type="date"
+                class="form-control"
+                id="reportStartDate"
+                [(ngModel)]="reportStartDate"
+                name="reportStartDate"
+                required>
             </div>
+            <div class="mb-3">
+              <label for="reportEndDate" class="form-label">Fecha de Término <span class="text-danger">*</span></label>
+              <input
+                type="date"
+                class="form-control"
+                id="reportEndDate"
+                [(ngModel)]="reportEndDate"
+                name="reportEndDate"
+                required>
+            </div>
+
+            <div class="alert alert-warning" *ngIf="isGeneratingReport">
+              <div class="d-flex align-items-center">
+                <div class="spinner-border spinner-border-sm me-2" role="status">
+                  <span class="visually-hidden">Generando...</span>
+                </div>
+                <span>Generando reporte... La vista previa aparecerá aquí.</span>
+              </div>
+            </div>
+          </form>
+        </div>
+        <section class="saldos-report-preview" aria-label="Vista previa del estado de cuenta">
+          <app-pdf-report-viewer
+            *ngIf="reportPdfPreview"
+            [sourceUrl]="reportPdfPreview"
+            title="Estado de cuenta de saldos"
+            fileName="Estado_Cuenta_Saldos.pdf">
+          </app-pdf-report-viewer>
+          <div *ngIf="!reportPdfPreview" class="text-muted text-center p-4">
+            <i class="bi bi-file-earmark-pdf display-4 d-block mb-2"></i>
+            El estado de cuenta aparecerá aquí al generarlo.
           </div>
-        </form>
+        </section>
       </div>
       <div class="modal-footer">
         <button type="button" class="btn btn-secondary" (click)="closeReportModal()" [disabled]="isGeneratingReport">
@@ -112,7 +126,7 @@
           class="btn btn-danger"
           (click)="generateReport()"
           [disabled]="!reportStartDate || !reportEndDate || isGeneratingReport">
-          <i class="bi bi-file-earmark-pdf me-1"></i>Generar PDF
+          <i class="bi bi-file-earmark-pdf me-1"></i>{{ reportPdfPreview ? 'Actualizar Vista Previa' : 'Generar PDF' }}
         </button>
       </div>
     </div>

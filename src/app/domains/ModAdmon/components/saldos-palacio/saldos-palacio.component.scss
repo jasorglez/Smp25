@@ -25,3 +25,53 @@
   width: 3rem;
   height: 3rem;
 }
+
+.saldos-report-dialog {
+  max-width: 96vw;
+}
+
+.saldos-report-body {
+  display: flex;
+  gap: 1rem;
+  height: min(76vh, 820px);
+  min-height: 460px;
+}
+
+.saldos-report-options {
+  flex: 0 0 320px;
+  overflow-y: auto;
+}
+
+.saldos-report-preview {
+  display: flex;
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid #dee2e6;
+  border-radius: .375rem;
+  background: #f8f9fa;
+}
+
+.saldos-report-preview app-pdf-report-viewer {
+  width: 100%;
+  height: 100%;
+}
+
+@media (max-width: 767.98px) {
+  .saldos-report-body {
+    flex-direction: column;
+    height: 78vh;
+    min-height: 0;
+  }
+
+  .saldos-report-options {
+    flex: 0 0 auto;
+  }
+
+  .saldos-report-preview {
+    flex: 1 1 0;
+    min-height: 260px;
+  }
+}
