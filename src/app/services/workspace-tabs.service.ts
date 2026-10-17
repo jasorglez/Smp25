@@ -128,9 +128,14 @@ export class WorkspaceTabsService {
       }
     } catch { saved = null; }
 
-    const tabs = Array.isArray(saved?.tabs) ? saved.tabs.filter((tab: any) =>
+    const restoredTabs = Array.isArray(saved?.tabs) ? saved.tabs.filter((tab: any) =>
       typeof tab?.url === 'string' && typeof tab?.title === 'string' && !this.isGeneralMenu(tab.url)
     ).map((tab: WorkspaceTab) => ({ ...tab, url: this.normalizeUrl(tab.url) })) : [];
+    const tabsByUrl = new Map<string, WorkspaceTab>();
+    restoredTabs.forEach(tab => {
+      if (!tabsByUrl.has(tab.url)) tabsByUrl.set(tab.url, tab);
+    });
+    const tabs = [...tabsByUrl.values()];
     this.tabs.set(tabs);
     const active = typeof saved?.activeUrl === 'string' ? this.normalizeUrl(saved.activeUrl) : '';
     this.activeUrl.set(tabs.some(tab => tab.url === active) ? active : (tabs.at(-1)?.url || ''));
@@ -143,6 +148,9 @@ export class WorkspaceTabsService {
 
   private normalizeUrl(url: string): string {
     const withoutFragment = url.split('#')[0];
+    // Inicio puede llevar query params de UI (p. ej. abrir Actualizaciones),
+    // pero sigue siendo la misma pantalla y no debe crear otra pestaña.
+    if (withoutFragment.split('?')[0].replace(/\/$/, '') === '/publicidad') return '/publicidad';
     return withoutFragment.length > 1 && withoutFragment.endsWith('/')
       ? withoutFragment.slice(0, -1)
       : withoutFragment;

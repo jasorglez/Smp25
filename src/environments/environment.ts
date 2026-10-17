@@ -83,5 +83,5 @@ export const environment = {
   geminiApiKey: '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',
   gnewsApiKey: '94ccc596b4dfebc3f72683b6e81d81bc',
 
-  version: '5.00.221 (17 Octubre 2026 10:39) saldos identifica egresos pagados sin facturar',
+  version: '5.00.222 (17 Octubre 2026 11:53) evita pestañas duplicadas de Inicio',
 };
