@@ -19,19 +19,19 @@ import { TrackingService } from 'app/services/tracking.service';
   imports: [CommonModule, RouterLink, DashAdmonComponent, DashProjectsComponent, DashWarehouseComponent, CrmDashboardComponent, DashAiComponent],
   template: `
     <div class="dashboard-wrapper">
-      <footer class="dashboard-publicidad-footer">
-        <a routerLink="/publicidad" class="dashboard-publicidad-link">
-          <i class="bi bi-megaphone-fill" aria-hidden="true"></i>
-          <span>Publicidad</span>
-          <span class="dashboard-publicidad-hint">Novedades y anuncios de la empresa</span>
-          <i class="bi bi-chevron-right dashboard-publicidad-chevron" aria-hidden="true"></i>
-        </a>
-      </footer>
       <div class="dashboard-body">
       <section class="dashboard-welcome">
         <div class="dashboard-welcome-copy">
           <span class="dashboard-clock"><i class="bi bi-clock"></i> {{ clockText }}</span>
-          <h4>{{ greeting }}, {{ userName }}</h4>
+          <div class="dashboard-greeting-line">
+            <a routerLink="/publicidad" class="dashboard-publicidad-link">
+              <i class="bi bi-megaphone-fill" aria-hidden="true"></i>
+              <span>Publicidad</span>
+              <span class="dashboard-publicidad-hint">Novedades y anuncios de la empresa</span>
+              <i class="bi bi-chevron-right dashboard-publicidad-chevron" aria-hidden="true"></i>
+            </a>
+            <h4>{{ greeting }}, {{ userName }}</h4>
+          </div>
           <p *ngIf="projectName()"><i class="bi bi-kanban me-1"></i>{{ projectName() }}</p>
           <p *ngIf="!projectName()">Aquí tienes el resumen de tu operación.</p>
           <div class="dashboard-holidays" *ngIf="upcomingHolidays.length">
@@ -213,36 +213,33 @@ import { TrackingService } from 'app/services/tracking.service';
       .dashboard-quick-tools { align-items: flex-start; flex-direction: column; }
       .dashboard-quick-actions { justify-content: flex-start; }
     }
-    .dashboard-publicidad-footer {
-      flex-shrink: 0;
-      margin-top: 0;
-      border-bottom: 1px solid #dee2e6;
-      background: #fff;
-    }
+    .dashboard-greeting-line { display: flex; align-items: center; flex-wrap: wrap; gap: .25rem 1rem; }
     .dashboard-publicidad-link {
       display: flex;
       flex-wrap: wrap;
-      align-items: center;
-      justify-content: center;
-      gap: 0.5rem 0.75rem;
-      padding: 12px 18px;
-      color: #0e4491;
-      font-weight: 600;
+      align-items: baseline;
+      gap: .25rem .45rem;
+      padding: 3px 8px;
+      border-radius: 5px;
+      color: #fff;
+      background: rgba(255,255,255,.14);
+      font-size: .78rem;
+      font-weight: 700;
       text-decoration: none;
       transition: background 0.2s ease, color 0.2s ease;
     }
     .dashboard-publicidad-link:hover {
-      background: #eef3fb;
-      color: #0a3570;
+      background: rgba(255,255,255,.25);
+      color: #fff;
     }
     .dashboard-publicidad-hint {
-      font-size: 0.8rem;
+      font-size: 0.68rem;
       font-weight: 500;
-      color: #6c757d;
+      color: rgba(255,255,255,.82);
     }
     .dashboard-publicidad-chevron {
-      font-size: 0.9rem;
-      opacity: 0.7;
+      font-size: 0.72rem;
+      opacity: 0.8;
     }
   `]
 })

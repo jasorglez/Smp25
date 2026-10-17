@@ -94,6 +94,19 @@
   line-height: 1.4;
 }
 
+.announcement-card__link {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  margin-top: 6px;
+  color: #0e5aa7;
+  font-size: 11px;
+  font-weight: 700;
+  text-decoration: none;
+}
+
+.announcement-card__link:hover { color: #093d74; text-decoration: underline; }
+
 @media (max-width: 900px) {
   .welcome__announcements { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }

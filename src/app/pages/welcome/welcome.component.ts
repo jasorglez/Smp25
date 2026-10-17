@@ -47,6 +47,7 @@ export class WelcomeComponent implements OnInit, OnDestroy {
       description: 'Genera y revisa tus reportes sin perder las fechas seleccionadas.',
       icon: 'bi-file-earmark-pdf',
       highlight: true,
+      href: null,
     },
     {
       category: 'Nuevo en tu inicio',
@@ -54,6 +55,7 @@ export class WelcomeComponent implements OnInit, OnDestroy {
       description: 'Consulta también los próximos días festivos de tu país.',
       icon: 'bi-calendar-event',
       highlight: false,
+      href: null,
     },
     {
       category: 'Tutoriales',
@@ -61,6 +63,7 @@ export class WelcomeComponent implements OnInit, OnDestroy {
       description: 'Encuentra demostraciones, consejos y guías para aprovechar el sistema.',
       icon: 'bi-youtube',
       highlight: false,
+      href: 'https://www.youtube.com/@bi2mx',
     },
     {
       category: 'Consejos',
@@ -68,6 +71,7 @@ export class WelcomeComponent implements OnInit, OnDestroy {
       description: 'Revisa esta sección para enterarte de mejoras y formas más rápidas de trabajar.',
       icon: 'bi-lightbulb',
       highlight: false,
+      href: null,
     },
   ];
 

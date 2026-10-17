@@ -7,6 +7,9 @@
           <span class="announcement-card__category">{{ announcement.category }}</span>
           <h2>{{ announcement.title }}</h2>
           <p>{{ announcement.description }}</p>
+          <a *ngIf="announcement.href" class="announcement-card__link" [href]="announcement.href" target="_blank" rel="noopener noreferrer">
+            Visitar canal <i class="bi bi-arrow-up-right" aria-hidden="true"></i>
+          </a>
         </div>
       </article>
     }
