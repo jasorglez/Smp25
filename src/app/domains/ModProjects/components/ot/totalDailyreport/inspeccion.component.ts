@@ -241,7 +241,11 @@ export class InspeccionComponent implements OnInit {
   }
 
   onCaptureOtsChanged(orders: any[]): void {
-    this.allOtsData = Array.isArray(orders) ? orders : [];
+    const availableOrders = Array.isArray(orders) ? orders : [];
+    const selectedProjectId = Number(this.signalsService.getProjectSelectedBySidebar()() || 0);
+    this.allOtsData = selectedProjectId
+      ? availableOrders.filter((ot: any) => Number(ot?.idProject ?? ot?.projectId ?? ot?.idProyecto) === selectedProjectId)
+      : availableOrders;
     if (this.otsGridApi) this.otsGridApi.setGridOption('rowData', this.allOtsData);
   }
 
