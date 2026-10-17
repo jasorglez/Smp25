@@ -10,6 +10,8 @@ import { AdministrationService } from 'app/services/administration.service';
 import { QuickActionsService } from 'app/services/quick-actions.service';
 import { SignalsService } from 'app/services/signals.service';
 import { DashAiComponent } from './components/dash-ai.component';
+import { UsersService } from 'app/services/users.service';
+import { TrackingService } from 'app/services/tracking.service';
 
 @Component({
   selector: 'app-dashboard-home',
@@ -24,6 +26,12 @@ import { DashAiComponent } from './components/dash-ai.component';
           <h4>{{ greeting }}, {{ userName }}</h4>
           <p *ngIf="projectName()"><i class="bi bi-kanban me-1"></i>{{ projectName() }}</p>
           <p *ngIf="!projectName()">Aquí tienes el resumen de tu operación.</p>
+          <div class="dashboard-holidays" *ngIf="upcomingHolidays.length">
+            <span><i class="bi bi-calendar-event me-1"></i>Próximos días festivos en {{ holidayCountryName }}</span>
+            <span *ngFor="let holiday of upcomingHolidays">
+              <strong>{{ holiday.dateLabel }}</strong> · {{ holiday.localName || holiday.name }}
+            </span>
+          </div>
         </div>
         <div class="dashboard-context">
           <div>
@@ -144,6 +152,8 @@ import { DashAiComponent } from './components/dash-ai.component';
     .dashboard-clock { font-size: .72rem; font-weight: 600; letter-spacing: .03em; opacity: .78; }
     .dashboard-welcome h4 { margin: .2rem 0; font-weight: 700; }
     .dashboard-welcome p { margin: 0; font-size: .82rem; opacity: .82; }
+    .dashboard-holidays { display: flex; flex-wrap: wrap; gap: .25rem .9rem; margin-top: .45rem; font-size: .72rem; opacity: .92; }
+    .dashboard-holidays > span:first-child { font-weight: 700; }
     .dashboard-context { display: flex; gap: .6rem; }
     .dashboard-context > div { display: grid; grid-template-columns: auto 1fr; column-gap: .5rem; min-width: 140px; padding: .55rem .7rem; background: rgba(255,255,255,.12); border: 1px solid rgba(255,255,255,.16); border-radius: .45rem; }
     .dashboard-context i { grid-row: span 2; align-self: center; font-size: 1.05rem; opacity: .85; }
@@ -240,6 +250,8 @@ export class DashboardHomeComponent implements OnInit, OnDestroy {
   private administrationService = inject(AdministrationService);
   private http = inject(HttpClient);
   private signalsService = inject(SignalsService);
+  private usersService = inject(UsersService);
+  private trackingService = inject(TrackingService);
   readonly quickActions = inject(QuickActionsService);
   readonly projectName = this.signalsService.getProjectNameBySidebar();
   readonly branchName = this.signalsService.getBranchNameSelectedBySidebar();
@@ -249,12 +261,16 @@ export class DashboardHomeComponent implements OnInit, OnDestroy {
   exchangeRateCheckedAt = '';
   exchangeRateSource = 'FIX Banxico';
   clockText = '';
+  private fullUserName = '';
+  upcomingHolidays: Array<{ date: string; name: string; localName: string; dateLabel: string }> = [];
+  holidayCountryName = '';
   private clockTimer?: ReturnType<typeof setInterval>;
 
   ngOnInit(): void {
     this.updateClock();
     this.clockTimer = setInterval(() => this.updateClock(), 60_000);
     this.loadExchangeRate();
+    this.loadFullUserName();
   }
 
   ngOnDestroy(): void {
@@ -268,8 +284,77 @@ export class DashboardHomeComponent implements OnInit, OnDestroy {
   }
 
   get userName(): string {
+    return this.fullUserName || this.trackingService.getnameUser() || 'bienvenido';
+  }
+
+  private loadFullUserName(): void {
+    this.fullUserName = this.trackingService.getnameUser() || '';
     const email = localStorage.getItem('mail') || '';
-    return email ? email.split('@')[0].replace(/[._-]/g, ' ') : 'bienvenido';
+    if (!email) return;
+
+    this.usersService.findEmail(email).subscribe({
+      next: (user) => {
+        this.fullUserName = user?.displayName?.trim() || this.fullUserName;
+        if (this.fullUserName) this.trackingService.setnameUser(this.fullUserName);
+        this.loadUpcomingHolidays(user?.country || '');
+      },
+      error: (error) => console.error('No se pudo cargar el nombre completo del usuario:', error)
+    });
+  }
+
+  private loadUpcomingHolidays(country: string): void {
+    const countryCode = this.getHolidayCountryCode(country);
+    if (countryCode) {
+      this.fetchUpcomingHolidays(country, countryCode);
+      return;
+    }
+
+    const normalizedCountry = this.normalizeCountry(country);
+    if (!normalizedCountry) return;
+    this.http.get<any[]>('https://date.nager.at/api/v3/AvailableCountries').subscribe({
+      next: (countries) => {
+        const match = (countries || []).find(item => this.normalizeCountry(item.name) === normalizedCountry);
+        if (match?.countryCode) this.fetchUpcomingHolidays(country, match.countryCode);
+      },
+      error: (error) => console.warn('No se pudo identificar el país para consultar días festivos:', error)
+    });
+  }
+
+  private fetchUpcomingHolidays(country: string, countryCode: string): void {
+    this.http.get<any[]>(`https://date.nager.at/api/v3/NextPublicHolidays/${countryCode}`).subscribe({
+      next: (holidays) => {
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        this.upcomingHolidays = (holidays || [])
+          .filter(holiday => holiday.date && new Date(`${holiday.date}T00:00:00`) >= today)
+          .sort((a, b) => a.date.localeCompare(b.date))
+          .slice(0, 3)
+          .map(holiday => ({
+            date: holiday.date,
+            name: holiday.name,
+            localName: holiday.localName,
+            dateLabel: new Date(`${holiday.date}T12:00:00`).toLocaleDateString('es-MX', { day: 'numeric', month: 'short' })
+          }));
+        this.holidayCountryName = country.trim();
+      },
+      error: (error) => console.warn('No se pudieron consultar los días festivos del país del usuario:', error)
+    });
+  }
+
+  private getHolidayCountryCode(country: string): string {
+    const normalized = this.normalizeCountry(country);
+    if (/^[a-z]{2}$/i.test(country.trim())) return country.trim().toUpperCase();
+    const aliases: Record<string, string> = {
+      'mexico': 'MX', 'estados unidos mexicanos': 'MX',
+      'estados unidos': 'US', 'united states': 'US', 'usa': 'US',
+      'canada': 'CA', 'espana': 'ES', 'colombia': 'CO', 'argentina': 'AR',
+      'chile': 'CL', 'peru': 'PE', 'brasil': 'BR', 'brazil': 'BR'
+    };
+    return aliases[normalized] || '';
+  }
+
+  private normalizeCountry(country: string): string {
+    return (country || '').trim().normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
   }
 
   get favoriteActions() {

@@ -125,6 +125,7 @@ export class UsersService {
           applybranch: safeUser.applyBranch,
           applyplatform: safeUser.applyPlatform,
           email: safeUser.email,
+          country: safeUser.country,
           id: safeUser.id,
           signature: safeUser.signature,
           userRoot: safeUser.isRoot

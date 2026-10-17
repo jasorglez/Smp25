@@ -83,5 +83,5 @@ export const environment = {
   geminiApiKey: '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',
   gnewsApiKey: '94ccc596b4dfebc3f72683b6e81d81bc',
 
-  version: '5.00.199 (16 Octubre 2026) visor integrado en egresos Palacio Municipal',
+  version: '5.00.201 (16 Octubre 2026) visor compacto y nombre completo en inicio',
 };

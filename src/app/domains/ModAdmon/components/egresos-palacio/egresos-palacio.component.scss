@@ -13,6 +13,28 @@
 .palacio-report-options {
   flex: 0 0 340px;
   overflow-y: auto;
+  font-size: .82rem;
+}
+
+.palacio-report-options .form-label {
+  margin-bottom: .25rem;
+  font-size: .84rem;
+}
+
+.palacio-report-options .form-check-label {
+  font-size: .82rem;
+  line-height: 1.25;
+}
+
+.palacio-report-options .form-check-label small,
+.palacio-report-options .text-muted {
+  font-size: .72rem;
+}
+
+.palacio-report-options .form-control {
+  min-height: 32px;
+  padding: .3rem .5rem;
+  font-size: .82rem;
 }
 
 .palacio-report-preview {

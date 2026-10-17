@@ -2747,7 +2747,10 @@ export class EgresosPalacioComponent {
     });
     if (this.reportPdfObjectUrl) URL.revokeObjectURL(this.reportPdfObjectUrl);
     this.reportPdfObjectUrl = URL.createObjectURL(blob);
-    this.reportPdfPreview = this.sanitizer.bypassSecurityTrustResourceUrl(this.reportPdfObjectUrl);
+    // Abrir el PDF sin el panel lateral de miniaturas del visor integrado del navegador.
+    this.reportPdfPreview = this.sanitizer.bypassSecurityTrustResourceUrl(
+      `${this.reportPdfObjectUrl}#pagemode=none&navpanes=0`
+    );
   }
 
   private formatDateForInput(date: Date): string {
