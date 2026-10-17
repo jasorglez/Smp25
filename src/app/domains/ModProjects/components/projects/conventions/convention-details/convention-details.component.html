@@ -49,6 +49,9 @@
         <div class="shadow-sm" id="cartPrin">
           <div class="card-header">
             <h3 class="card-title mb-0">Vista previa</h3>
+            <button *ngIf="selectedDocumentUrl" type="button" class="btn btn-sm btn-outline-primary ms-auto" (click)="downloadSelectedDocument()" [disabled]="isDownloadingDocument">
+              <i class="bi bi-download me-1"></i>{{ isDownloadingDocument ? 'Descargando…' : 'Descargar' }}
+            </button>
           </div>
           <div class="card-body p-0" style="height: 55vh;">
             <iframe *ngIf="selectedDocumentUrl" [src]="selectedDocumentUrl | safe" style="width: 100%; height: 100%; border: none;"></iframe>

@@ -59,6 +59,37 @@ export class ContractDetailsComponent {
   detailedNewlyAddedRows: string[] = [];
   private selectedLoanIdBeforeRefresh: number;
   selectedDocumentUrl: string = null;
+  isDownloadingDocument = false;
+
+  async downloadSelectedDocument(): Promise<void> {
+    if (!this.selectedDocumentUrl || this.isDownloadingDocument) return;
+    this.isDownloadingDocument = true;
+    try {
+      const response = await fetch(this.selectedDocumentUrl);
+      if (!response.ok) throw new Error('No se pudo descargar el documento.');
+      const blob = await response.blob();
+      const objectUrl = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = objectUrl;
+      link.download = this.getDocumentFileName();
+      link.click();
+      setTimeout(() => URL.revokeObjectURL(objectUrl), 1000);
+    } catch (error) {
+      console.error('No se pudo descargar el documento:', error);
+      window.open(this.selectedDocumentUrl, '_blank', 'noopener');
+    } finally {
+      this.isDownloadingDocument = false;
+    }
+  }
+
+  private getDocumentFileName(): string {
+    try {
+      const pathname = new URL(this.selectedDocumentUrl, window.location.href).pathname;
+      return decodeURIComponent(pathname.split('/').pop() || 'documento');
+    } catch {
+      return 'documento';
+    }
+  }
   executingBranches: any[] = [];
   branchs: any[] = [];
   selectedExecutingBranchId: number | null = null;

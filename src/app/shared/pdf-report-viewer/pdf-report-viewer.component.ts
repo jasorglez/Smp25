@@ -26,6 +26,10 @@ import { PdfShareButtonsComponent } from 'app/shared/components/pdf-share-button
           [fileName]="fileName"
           [subject]="title">
         </app-pdf-share-buttons>
+        <button type="button" class="btn btn-sm btn-outline-primary" (click)="downloadPdf()" [disabled]="!viewerUrl || isDownloading" title="Descargar PDF" aria-label="Descargar PDF">
+          <span *ngIf="isDownloading" class="spinner-border spinner-border-sm" aria-hidden="true"></span>
+          <i *ngIf="!isDownloading" class="bi bi-download"></i>
+        </button>
       </div>
       <iframe *ngIf="viewerUrl" [src]="viewerUrl" [title]="title"></iframe>
       <div *ngIf="!viewerUrl" class="pdf-viewer-empty">No hay un PDF disponible para mostrar.</div>
@@ -56,6 +60,7 @@ export class PdfReportViewerComponent {
   }
 
   zoom = 100;
+  isDownloading = false;
   viewerUrl: SafeResourceUrl | null = null;
   readonly getPdfBlobFn = (): Promise<Blob> => {
     if (this.getPdfBlob) return this.getPdfBlob();
@@ -69,6 +74,25 @@ export class PdfReportViewerComponent {
   zoomBy(delta: number): void {
     this.zoom = Math.min(200, Math.max(50, this.zoom + delta));
     this.updateViewerUrl();
+  }
+
+  async downloadPdf(): Promise<void> {
+    if (!this.viewerUrl || this.isDownloading) return;
+
+    this.isDownloading = true;
+    try {
+      const blob = await this.getPdfBlobFn();
+      const downloadUrl = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = downloadUrl;
+      link.download = this.fileName || 'reporte.pdf';
+      link.click();
+      setTimeout(() => URL.revokeObjectURL(downloadUrl), 1000);
+    } catch (error) {
+      console.error('No se pudo descargar el PDF:', error);
+    } finally {
+      this.isDownloading = false;
+    }
   }
 
   private updateViewerUrl(): void {
