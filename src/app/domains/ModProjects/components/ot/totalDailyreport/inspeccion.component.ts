@@ -6,6 +6,8 @@ import { ColDef, GridApi, GridReadyEvent } from 'ag-grid-enterprise';
 import { OtService } from 'app/services/ot.service';
 import { SignalsService } from 'app/services/signals.service';
 import { alerts } from 'app/helpers/alerts';
+import { OrdenesComponent } from '../ordenes/ordenes.component';
+import { firstValueFrom } from 'rxjs';
 
 interface ReportData {
   id: number;
@@ -29,7 +31,7 @@ interface ReportData {
 @Component({
   selector: 'app-inspeccion',
   standalone: true,
-  imports: [CommonModule, TranslateModule, AgGridModule],
+  imports: [CommonModule, TranslateModule, AgGridModule, OrdenesComponent],
   templateUrl: './inspeccion.component.html',
   styleUrl: './inspeccion.component.scss'
 })
@@ -44,7 +46,9 @@ export class InspeccionComponent implements OnInit {
   public allReportsData: ReportData[] = [];
   public groupedReportsData: any[] = [];
   public allOtsData: any[] = [];
+  public selectedOt: any = null;
   private idRoot: number = 0;
+  private selectedProjectId: number = 0;
 
   // APIs del grid
   public reportesGridApi!: GridApi;
@@ -58,7 +62,15 @@ export class InspeccionComponent implements OnInit {
     suppressHorizontalScroll: false,
     animateRows: true,
     pagination: true,
-    paginationPageSize: 20
+    paginationPageSize: 20,
+    tooltipShowDelay: 350,
+    tooltipHideDelay: 10000,
+    defaultColDef: {
+      tooltipValueGetter: (params: any) => this.getOtContentTooltip(params.data)
+    },
+    rowClassRules: {
+      'ot-has-content': (params: any) => this.hasOtContent(params.data)
+    }
   };
 
   // Configuración del grid con agrupación
@@ -149,29 +161,12 @@ export class InspeccionComponent implements OnInit {
   // Columnas para todas las OTs
   public otsColumnDefs: ColDef[] = [
     {
-      headerName: '#',
-      width: 50,
-      cellRenderer: (params: any) => {
-        return params.node.rowIndex + 1;
-      },
-      sortable: false,
-      filter: false
-    },
-    {
-      field: 'idOt',
-      headerName: 'ID OT',
-      width: 80,
+      field: 'otNumber',
+      headerName: 'OT',
+      width: 110,
       sortable: true,
       filter: true,
-      sort: 'desc',
-      hide: true
-    },
-    {
-      field: 'otNumber',
-      headerName: 'Número OT',
-      width: 120,
-      sortable: true,
-      filter: true
+      sort: 'desc'
     },
     {
       field: 'cdc',
@@ -181,49 +176,10 @@ export class InspeccionComponent implements OnInit {
       filter: true
     },
     {
-      field: 'area',
-      headerName: 'Área',
-      width: 150,
-      sortable: true,
-      filter: true
-    },
-    {
-      field: 'description',
-      headerName: 'Descripción',
-      flex: 2,
-      minWidth: 200,
-      sortable: true,
-      filter: true
-    },
-    {
-      field: 'observations',
-      headerName: 'Observaciones',
+      field: 'results',
+      headerName: 'Respuesta',
       flex: 1,
-      minWidth: 150,
-      sortable: true,
-      filter: true
-    },
-    {
-      field: 'closed',
-      headerName: 'Cerrado Web',
-      width: 100,
-      cellRenderer: (params) => {
-        return params.value ? 
-          '<i class="bi bi-check-circle-fill text-success"></i>' : 
-          '<i class="bi bi-x-circle-fill text-danger"></i>';
-      },
-      sortable: true,
-      filter: true
-    },
-    {
-      field: 'closedApp',
-      headerName: 'Cerrado App',
-      width: 120,
-      cellRenderer: (params) => {
-        return params.value ? 
-          '<i class="bi bi-check-circle-fill text-success"></i>' : 
-          '<i class="bi bi-x-circle-fill text-danger"></i>';
-      },
+      minWidth: 140,
       sortable: true,
       filter: true
     }
@@ -237,6 +193,11 @@ export class InspeccionComponent implements OnInit {
         this.idRoot = rootId;
         this.loadAllReports();
       }
+      const projectId = Number(this.signalsService.getProjectSelectedBySidebar()() || 0);
+      if (projectId !== this.selectedProjectId) {
+        this.selectedProjectId = projectId;
+        this.loadOtsForSelectedProject();
+      }
     });
   }
 
@@ -246,6 +207,8 @@ export class InspeccionComponent implements OnInit {
       this.idRoot = rootId;
       this.loadAllReports();
     }
+    this.selectedProjectId = Number(this.signalsService.getProjectSelectedBySidebar()() || 0);
+    this.loadOtsForSelectedProject();
   }
 
   // Cargar todos los reportes de la empresa
@@ -268,30 +231,81 @@ export class InspeccionComponent implements OnInit {
     });
   }
 
+  private loadOtsForSelectedProject(): void {
+    const request = this.selectedProjectId
+      ? this.otService.getOtListByProject(this.selectedProjectId, false)
+      : this.otService.getOtList();
+
+    request.subscribe({
+      next: (response: any) => {
+        const rows = Array.isArray(response) ? response : (response?.data || []);
+        this.allOtsData = rows.map((ot: any) => ({
+          ...ot,
+          idOt: ot.idOt ?? ot.id,
+          id: String(ot.id ?? ot.idOt)
+        }));
+        void this.loadOtContentSummary(this.allOtsData);
+        if (this.otsGridApi) this.otsGridApi.setGridOption('rowData', this.allOtsData);
+        this.selectedOt = null;
+      },
+      error: (error) => {
+        console.error('Error al cargar órdenes de trabajo:', error);
+        alerts.basicAlert('Error', 'No se pudieron cargar las órdenes de trabajo de la cuadrilla seleccionada', 'error');
+      }
+    });
+  }
+
+  private async loadOtContentSummary(orders: any[]): Promise<void> {
+    const projectIds = [...new Set(orders.map(ot => Number(ot.idProject)).filter(id => id > 0))];
+    if (!projectIds.length) return;
+
+    const responses = await Promise.all(projectIds.map(async idProject => {
+      try {
+        return await firstValueFrom(this.otService.getProjectOrdersWithContent(idProject, {}));
+      } catch (error) {
+        console.warn(`No se pudo consultar el contenido de las OTs del proyecto ${idProject}.`, error);
+        return [];
+      }
+    }));
+    const summaryById = new Map<string, any>();
+    responses.flat().forEach(summary => {
+      [summary.id, summary.Id, summary.idOt, summary.IdOt, summary.idOT]
+        .filter(value => value !== undefined && value !== null)
+        .forEach(value => summaryById.set(String(value), summary));
+    });
+    this.allOtsData = orders.map(order => {
+      const summary = [order.id, order.idOt, order.idOT].map(value => summaryById.get(String(value))).find(Boolean);
+      return summary ? {
+        ...order,
+        photoCount: Number(summary.photoCount ?? summary.photosCount ?? summary.PhotoCount ?? summary.photos ?? summary.fotos) || 0,
+        personalCount: Number(summary.personalCount ?? summary.PersonalCount ?? summary.personnelCount ?? summary.crewCount ?? summary.personal) || 0,
+        materialCount: Number(summary.materialCount ?? summary.MaterialCount ?? summary.materialsCount ?? summary.materials) || 0,
+        equipmentCount: Number(summary.equipmentCount ?? summary.EquipmentCount ?? summary.equipmentsCount ?? summary.equipment) || 0
+      } : order;
+    });
+    if (this.otsGridApi) this.otsGridApi.setGridOption('rowData', this.allOtsData);
+  }
+
+  private hasOtContent(row: any): boolean {
+    return !!row && [row.photoCount, row.personalCount, row.materialCount, row.equipmentCount]
+      .some(count => Number(count) > 0);
+  }
+
+  private getOtContentTooltip(row: any): string | undefined {
+    if (!this.hasOtContent(row)) return undefined;
+    return [
+      Number(row.personalCount) > 0 ? `Personal: ${row.personalCount}` : '',
+      Number(row.photoCount) > 0 ? `Fotos: ${row.photoCount}` : '',
+      Number(row.materialCount) > 0 ? `Materiales: ${row.materialCount}` : '',
+      Number(row.equipmentCount) > 0 ? `Equipos: ${row.equipmentCount}` : ''
+    ].filter(Boolean).join(' · ');
+  }
+
   // Procesar datos para ambas pestañas
   processDataForTabs(): void {
     // Para la pestaña de reportes agrupados: usar datos tal como vienen
     this.groupedReportsData = [...this.allReportsData];
 
-    // Para la pestaña de OTs: obtener OTs únicas
-    const uniqueOts = new Map();
-    this.allReportsData.forEach(report => {
-      const otKey = report.otNumber;
-      if (!uniqueOts.has(otKey)) {
-        uniqueOts.set(otKey, {
-          idOt: report.idOt,
-          otNumber: report.otNumber,
-          cdc: report.cdc,
-          area: report.area,
-          description: report.description,
-          observations: report.observations,
-          closed: report.closed,
-          closedApp: report.closedApp,
-          projectName: report.projectName
-        });
-      }
-    });
-    this.allOtsData = Array.from(uniqueOts.values());
   }
 
   // Cambiar pestaña activa
@@ -308,6 +322,10 @@ export class InspeccionComponent implements OnInit {
   onOtsGridReady(params: GridReadyEvent): void {
     this.otsGridApi = params.api;
     params.api.sizeColumnsToFit();
+  }
+
+  onOtSelected(event: any): void {
+    this.selectedOt = event?.data || null;
   }
 
 }

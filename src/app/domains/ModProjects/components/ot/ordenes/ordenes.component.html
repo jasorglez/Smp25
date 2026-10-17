@@ -4,10 +4,10 @@
       <div class="card">
         <div class="card-body p-1">
           <!-- SECCIÓN PRINCIPAL: Grid de OTs y Vista previa en columnas -->
-          <div class="row" style="position: relative; min-height: calc(100vh - 200px);">
-            <div class="col-12" style="position: relative; min-height: calc(100vh - 200px); display: flex; flex-direction: column;">
+          <div class="row" [style.min-height]="captureMode ? '0' : 'calc(100vh - 200px)'" style="position: relative;">
+            <div class="col-12" [style.min-height]="captureMode ? '0' : 'calc(100vh - 200px)'" style="position: relative; display: flex; flex-direction: column;">
               <!-- Sección superior: Botones y Lista de OTs lado a lado -->
-              <div class="row mb-1">
+              <div class="row mb-1" *ngIf="!captureMode">
                 <!-- Botones de acciones -->
                 <div class="col-auto">
                   <nav class="d-flex flex-column align-items-start">                  
@@ -64,7 +64,7 @@
                 <div class="col ">
                   <div class="ot-content-legend"><span class="ot-content-legend-swatch"></span> OT con personal, fotos, material o equipos registrados</div>
                   <ag-grid-angular
-                    [ngStyle]="{ height: gridHeight }"
+                    [ngStyle]="{ height: captureMode ? gridHeight : 'calc(100vh - 190px)' }"
                     class="ag-theme-quartz small-text-ag-grid"
                     style="width: 100%"
                     [rowData]="rowData"
@@ -79,7 +79,7 @@
               </div>
 
               <!-- Información detallada con pestañas -->
-              <div style="flex-grow: 1; display: flex; flex-direction: column;">
+              <div *ngIf="captureMode" style="flex-grow: 1; display: flex; flex-direction: column;">
                 <!-- Label con información de la OT seleccionada -->
                 <div class="alert alert-info mb-1 py-1 d-flex flex-wrap align-items-center justify-content-between gap-2" *ngIf="selectedOt">
                   <small>
@@ -102,12 +102,6 @@
                     <span class="d-none d-xl-inline"> · CDC: {{selectedOt.cdc}} - {{selectedOt.description}} · {{selectedReporteFecha | date:'dd-MM-yyyy'}} {{selectedReporteHoraInicio}}-{{selectedReporteHoraTermino}}</span>
                   </button>
                 </div>
-                <div class="alert alert-warning mb-1 py-1" *ngIf="!selectedOt">
-                  <small>
-                    <strong><i class="bi bi-info-circle"></i></strong> Selecciona una OT para ver los detalles del reporte
-                  </small>
-                </div>
-
                 <!-- Pestañas de navegación -->
                 <ul class="nav nav-tabs mb-2" style="flex-wrap: nowrap; overflow-x: auto; white-space: nowrap;">
                   <li class="nav-item" style="flex: 0 0 auto;">

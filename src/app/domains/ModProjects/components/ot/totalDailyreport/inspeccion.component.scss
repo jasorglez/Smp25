@@ -8,3 +8,11 @@
   border-color: #2196f3;
   color: #1976d2;
 }
+
+::ng-deep .ag-theme-quartz .ag-row.ot-has-content .ag-cell {
+  background-color: #a6e6b4 !important;
+}
+
+::ng-deep .ag-theme-quartz .ag-row.ot-has-content .ag-cell:first-child {
+  box-shadow: inset 5px 0 0 #25813d;
+}

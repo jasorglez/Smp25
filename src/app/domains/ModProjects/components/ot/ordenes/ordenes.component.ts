@@ -1,6 +1,6 @@
 import { PdfReportViewerComponent } from 'app/shared/pdf-report-viewer/pdf-report-viewer.component';
 import { pdfPreviewUrl } from 'app/helpers/pdf-viewer';
-import { Component, effect, inject, OnInit, OnDestroy, computed } from '@angular/core';
+import { Component, effect, inject, OnInit, OnDestroy, OnChanges, SimpleChanges, Input, computed } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { TranslateModule } from '@ngx-translate/core';
 import { AgGridModule } from 'ag-grid-angular';
@@ -146,7 +146,10 @@ interface Video {
   templateUrl: './ordenes.component.html',
   styleUrl: './ordenes.component.scss',
 })
-export class OrdenesComponent implements OnInit, OnDestroy {
+export class OrdenesComponent implements OnInit, OnDestroy, OnChanges {
+
+  @Input() captureMode = false;
+  @Input() captureOt: any = null;
 
 
   private otService = inject(OtService);
@@ -2087,6 +2090,11 @@ export class OrdenesComponent implements OnInit, OnDestroy {
     domLayout: 'normal',
     groupDefaultExpanded: 0,
     rowSelection: 'multiple',
+    tooltipShowDelay: 350,
+    tooltipHideDelay: 10000,
+    defaultColDef: {
+      tooltipValueGetter: (params: any) => this.getOtContentTooltip(params.data)
+    },
     rowClassRules: {
       'ot-has-content': (params: any) => {
         const data = params.data;
@@ -2503,6 +2511,7 @@ export class OrdenesComponent implements OnInit, OnDestroy {
 
   // Datos del grid obtenidos del servicio
   public rowData: OrdenesData[] = [];
+  private otConceptSummariesInFlight = new Set<number>();
 
   constructor(private formBuilder: FormBuilder) {
     // Initialize form immediately in constructor
@@ -2605,6 +2614,17 @@ export class OrdenesComponent implements OnInit, OnDestroy {
 
     // Configurar listeners para updates en tiempo real
     this.setupSignalRListeners();
+  }
+
+  ngOnChanges(changes: SimpleChanges): void {
+    if (changes['captureOt'] && this.captureMode && this.captureOt) {
+      const selected = { ...this.captureOt, id: String(this.captureOt.id ?? this.captureOt.idOt) } as OrdenesData;
+      this.selectedOt = selected;
+      this.idProject = Number((selected as any).idProject || 0);
+      this.activeTab = 'reportes';
+      if (this.idProject) this.signalsService.setProjectSelectedBySidebar(this.idProject);
+      this.loadTabDetails(selected);
+    }
   }
 
   filtrarTipoReporte(type: string) {
@@ -2932,6 +2952,7 @@ export class OrdenesComponent implements OnInit, OnDestroy {
   }
 
   private async refreshOtContentSummary(orders: any[]): Promise<void> {
+    void this.loadOtWorkConceptSummaries(orders);
     const projectIds = [...new Set([this.idProject, ...orders.map(order => Number(order.idProject))]
       .filter(id => Number.isInteger(id) && id > 0))];
     if (!projectIds.length || !orders.length) return;
@@ -2981,6 +3002,84 @@ export class OrdenesComponent implements OnInit, OnDestroy {
     } else {
       this.rowData = orders.map(mergeSummary);
     }
+  }
+
+  private getOtContentTooltip(row: any): string | undefined {
+    if (!row) return undefined;
+    const entries: Array<[string, string]> = [
+      ['photoCount', 'Fotos'], ['personalCount', 'Personal'],
+      ['materialCount', 'Materiales'], ['equipmentCount', 'Equipos']
+    ];
+    const aliases: Record<string, string[]> = {
+      photoCount: ['photoCount', 'photosCount', 'PhotoCount', 'photos', 'fotos'],
+      personalCount: ['personalCount', 'PersonalCount', 'personnelCount', 'crewCount', 'personal'],
+      materialCount: ['materialCount', 'MaterialCount', 'materialsCount', 'materials'],
+      equipmentCount: ['equipmentCount', 'EquipmentCount', 'equipmentsCount', 'equipment']
+    };
+    const items = entries.map(([field, label]) => {
+      const count = Number(aliases[field].map(alias => row[alias]).find(value => value !== undefined && value !== null)) || 0;
+      return count > 0 ? `${label}: ${count}` : '';
+    }).filter(Boolean);
+    const workConcepts = Array.isArray(row.workConcepts) ? row.workConcepts.filter(Boolean) : [];
+    if (workConcepts.length) {
+      const shownConcepts = workConcepts.slice(0, 8);
+      items.push(`Trabajos: ${shownConcepts.join('; ')}${workConcepts.length > shownConcepts.length ? `; +${workConcepts.length - shownConcepts.length} más` : ''}`);
+    }
+    return items.length ? items.join(' · ') : undefined;
+  }
+
+  private async loadOtWorkConceptSummaries(orders: any[]): Promise<void> {
+    const pending = orders.filter(order => {
+      const id = Number(order.id ?? order.idOt ?? order.idOT);
+      if (!Number.isInteger(id) || id <= 0 || this.otConceptSummariesInFlight.has(id)) return false;
+      this.otConceptSummariesInFlight.add(id);
+      return true;
+    });
+    if (!pending.length) return;
+
+    const projectIds = [...new Set(pending.map(order => Number(order.idProject)).filter(id => Number.isInteger(id) && id > 0))];
+    const catalogs = new Map<number, Map<number, string>>();
+    await Promise.all(projectIds.map(async idProject => {
+      try {
+        const response: any = await firstValueFrom(this.workprogramsService.getActivities(idProject));
+        const activities: any[] = Array.isArray(response) ? response : response?.data || [];
+        const entries = activities.map((activity: any) => [
+          Number(activity.id), String(activity.actandNom ?? activity.name ?? activity.description ?? '').trim()
+        ] as [number, string]).filter(([id, name]) => id > 0 && !!name);
+        catalogs.set(idProject, new Map<number, string>(entries));
+      } catch { catalogs.set(idProject, new Map<number, string>()); }
+    }));
+
+    for (let index = 0; index < pending.length; index += 6) {
+      const batch = pending.slice(index, index + 6);
+      const results = await Promise.all(batch.map(async order => {
+        const idOt = Number(order.id ?? order.idOt ?? order.idOT);
+        try {
+          const response: any = await firstValueFrom(this.logbookService.getInfoByOt(idOt, 'CONCEPT'));
+          const records: any[] = Array.isArray(response) ? response : response?.data || [];
+          const catalog = catalogs.get(Number(order.idProject)) || new Map<number, string>();
+          const concepts = [...new Set(records.map((record: any) => {
+            const idResource = Number(record.idResource ?? record.IdResource ?? record.idConcept);
+            const catalogName = catalog.get(idResource);
+            const recordName = String(record.conceptName ?? record.actandNom ?? record.name ?? '').trim();
+            return catalogName || (recordName && recordName.toUpperCase() !== 'SIN DESCRIPCIÓN' ? recordName : '') ||
+              (idResource > 0 ? `Trabajo #${idResource}` : '');
+          }).filter(Boolean))];
+          return { idOt, concepts };
+        } catch { return { idOt, concepts: [] as string[] }; }
+      }));
+      results.forEach(result => {
+        this.gridApi?.forEachNode(node => {
+          if (node.data && Number(node.data.id ?? node.data.idOt ?? node.data.idOT) === result.idOt) {
+            node.setData({ ...node.data, workConcepts: result.concepts });
+          }
+        });
+        if (!this.gridApi) this.rowData = this.rowData.map(row =>
+          Number(row.id ?? (row as any).idOt ?? (row as any).idOT) === result.idOt ? { ...row, workConcepts: result.concepts } : row);
+        this.otConceptSummariesInFlight.delete(result.idOt);
+      });
+    }
+    this.gridApi?.redrawRows();
   }
 
   // Métodos del grid

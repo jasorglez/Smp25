@@ -16,7 +16,14 @@
                      (click)="setActiveTab('reportes')" 
                      style="cursor: pointer; padding: 0.4rem 0.6rem; font-size: 0.9rem;">
                     <i class="bi bi-calendar3" style="font-size: 0.9rem;"></i> 
-                    Reportes Diarios
+                    Costos Trabajos Diarios
+                  </a>
+                </li>
+                <li class="nav-item" style="flex: 0 0 auto;">
+                  <a class="nav-link" [class.active]="activeTab === 'ots'" (click)="setActiveTab('ots')"
+                     style="cursor: pointer; padding: 0.4rem 0.6rem; font-size: 0.9rem;">
+                    <i class="bi bi-pencil-square" style="font-size: 0.9rem;"></i>
+                    Capturar Reportes Diarios
                   </a>
                 </li>
                 <li class="nav-item" style="flex: 0 0 auto;">
@@ -65,25 +72,14 @@
                   </div>
                 </div>
 
-                <!-- Pestaña Todas las OT -->
+                <!-- Captura de reportes diarios por OT -->
                 <div class="tab-pane" 
                      [class.show]="activeTab === 'ots'" 
                      [class.active]="activeTab === 'ots'"
                      style="height: 100%;">
                   <div class="h-100">
-                    <div class="alert alert-info mb-2 py-1">
-                      <small>
-                        <i class="bi bi-info-circle"></i>
-                        <strong>Todas las OT:</strong> 
-                        Listado completo de órdenes de trabajo sin distinción de proyecto.
-                        <br>
-                        <span class="float-end">
-                          <strong>Total OT:</strong> {{allOtsData.length}}
-                        </span>
-                      </small>
-                    </div>
-                    
-                    <div style="height: calc(100% - 50px);">
+                    <div class="row g-2" style="height: 100%;">
+                      <div class="col-12 col-xl-4 h-100">
                       <ag-grid-angular 
                         style="height: 100%; width: 100%;"
                         class="ag-theme-quartz small-text-ag-grid"
@@ -91,8 +87,13 @@
                         [columnDefs]="otsColumnDefs"
                         [gridOptions]="gridOptions"
                         (gridReady)="onOtsGridReady($event)"
+                        (rowClicked)="onOtSelected($event)"
                         [rowSelection]="'single'">
                       </ag-grid-angular>
+                      </div>
+                      <div class="col-12 col-xl-8 h-100">
+                        <app-ordenes [captureMode]="true" [captureOt]="selectedOt"></app-ordenes>
+                      </div>
                     </div>
                   </div>
                 </div>

@@ -200,6 +200,7 @@ export class MaterialsComponent implements CanComponentDeactivate {
     lockPosition: false,
     enableRowGroup: true, // Enable row grouping for all columns
     flex: 1,
+    tooltipValueGetter: (params: any) => this.getMovementTooltip(params.data),
   };
   private cleanDataForServer(data: any, isNew: boolean = false): any {
     const cleanedData = { ...data };
@@ -404,6 +405,21 @@ export class MaterialsComponent implements CanComponentDeactivate {
       .some(field => Number(row[field]) > 0);
   }
 
+  private getMovementTooltip(row: any): string | undefined {
+    if (!this.hasMaterialMovements(row)) return undefined;
+    const labels: Array<[string, string]> = [
+      ['requisitionMovementCount', 'Requisiciones'], ['purchaseOrderMovementCount', 'OC'],
+      ['entryMovementCount', 'Entradas'], ['exitMovementCount', 'Salidas']
+    ];
+    return labels.filter(([field]) => Number(row[field]) > 0)
+      .map(([field, label]) => {
+        const references: string[] = Array.isArray(row[`${field}References`]) ? row[`${field}References`] : [];
+        const shown = references.slice(0, 5);
+        const docs = shown.length ? `: ${shown.join(', ')}${references.length > shown.length ? `, +${references.length - shown.length} más` : ''}` : '';
+        return `${label} (${Number(row[field])})${docs}`;
+      }).join(' · ');
+  }
+
   private asArray(value: any): any[] {
     return Array.isArray(value) ? value : value?.data || value?.result || value?.items || [];
   }
@@ -435,14 +451,22 @@ export class MaterialsComponent implements CanComponentDeactivate {
           const raw = d.__movementKind === 'entryMovementCount' || d.__movementKind === 'exitMovementCount'
             ? await firstValueFrom(this.inandoutService.getInAndOutItems(Number(d.id)))
             : await firstValueFrom(this.ocAndReqsService.getReqItems(Number(d.id)));
-          return { kind: d.__movementKind, rows: this.asArray(raw) };
-        } catch { return { kind: d.__movementKind, rows: [] }; }
+          return { kind: d.__movementKind, document: d, rows: this.asArray(raw) };
+        } catch { return { kind: d.__movementKind, document: d, rows: [] }; }
       }));
       detailResults.forEach(result => result.rows.forEach(item => {
         const id = Number(item.idSupplie ?? item.idProduct ?? item.idMaterial ?? item.idInsumo);
         if (!materialIds.has(id)) return;
-        const summary = counts.get(id) || { requisitionMovementCount: 0, purchaseOrderMovementCount: 0, entryMovementCount: 0, exitMovementCount: 0 };
+        const summary = counts.get(id) || {
+          requisitionMovementCount: 0, purchaseOrderMovementCount: 0, entryMovementCount: 0, exitMovementCount: 0,
+          requisitionMovementCountReferences: [], purchaseOrderMovementCountReferences: [],
+          entryMovementCountReferences: [], exitMovementCountReferences: []
+        };
         summary[result.kind]++;
+        const doc = result.document || {};
+        const reference = String(doc.folio ?? doc.number ?? doc.documentNumber ?? doc.id ?? '').trim();
+        const refs = summary[`${result.kind}References`];
+        if (reference && !refs.includes(reference)) refs.push(reference);
         counts.set(id, summary);
       }));
       this.rowData = materials.map(m => ({ ...m, ...(counts.get(Number(m.id)) || {}) }));
@@ -735,17 +759,6 @@ export class MaterialsComponent implements CanComponentDeactivate {
           container.style.cssText = 'width: 100%; height: 100%; display: flex; align-items: center; cursor: pointer;';
           container.textContent = displayText;
 
-          container.addEventListener('mouseenter', (e) => {
-            if (familia) {
-              const rect = (e.target as HTMLElement).getBoundingClientRect();
-              this.showCellTooltip(familia, rect);
-            }
-          });
-
-          container.addEventListener('mouseleave', () => {
-            this.hideCellTooltip();
-          });
-
           return container;
         },
       },
@@ -811,17 +824,6 @@ export class MaterialsComponent implements CanComponentDeactivate {
           const container = document.createElement('div');
           container.style.cssText = 'width: 100%; height: 100%; display: flex; align-items: center; cursor: pointer;';
           container.textContent = displayText;
-
-          container.addEventListener('mouseenter', (e) => {
-            if (subfamilia) {
-              const rect = (e.target as HTMLElement).getBoundingClientRect();
-              this.showCellTooltip(subfamilia, rect);
-            }
-          });
-
-          container.addEventListener('mouseleave', () => {
-            this.hideCellTooltip();
-          });
 
           return container;
         },

@@ -1,4 +1,6 @@
 :host {
+  .daily-report-legend { display: flex; align-items: center; gap: 6px; margin: 0 0 4px; color: #425b48; font-size: 11px; }
+  .daily-report-legend__swatch { width: 12px; height: 12px; border: 1px solid #25813d; border-radius: 2px; background: #8cdda0; }
   .daily-report-layout {
     display: grid;
     grid-template-columns: minmax(0, 1fr) 88px;
@@ -102,3 +104,6 @@
     background-color: #fff3cd !important;
   }
 }
+
+:host ::ng-deep .daily-report-grid .ag-row.daily-report-has-content .ag-cell { background-color: #8cdda0 !important; }
+:host ::ng-deep .daily-report-grid .ag-row.daily-report-has-content .ag-cell:first-child { box-shadow: inset 5px 0 0 #16732e; }

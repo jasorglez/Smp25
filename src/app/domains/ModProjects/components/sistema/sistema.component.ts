@@ -103,6 +103,11 @@ export class SistemaComponent implements OnInit, OnDestroy {
     masterDetail: true,
     detailRowHeight: 980,
     detailCellRenderer: BitacoraWrapperComponent,
+    tooltipShowDelay: 350,
+    tooltipHideDelay: 10000,
+    rowClassRules: {
+      'daily-report-has-content': (params: any) => this.hasDailyReportContent(params.data)
+    },
     suppressMenuHide: false,
     context: {
       componentParent: null
@@ -154,7 +159,23 @@ export class SistemaComponent implements OnInit, OnDestroy {
     filter: true,
     resizable: true,
     minWidth: 80,
+    tooltipValueGetter: (params: any) => this.getDailyReportContentTooltip(params.data),
   };
+
+  private getDailyReportContentTooltip(row: any): string | undefined {
+    if (!this.hasDailyReportContent(row)) return undefined;
+    const entries: Array<[string, string]> = [
+      ['personal', 'Personal'], ['fotos', 'Fotos'], ['videos', 'Videos'],
+      ['material', 'Materiales'], ['equipos', 'Equipos'], ['conceptos', 'Conceptos'], ['notas', 'Notas']
+    ];
+    return entries.filter(([field]) => Number(row[field]) > 0)
+      .map(([field, label]) => `${label}: ${Number(row[field])}`).join(' · ');
+  }
+
+  private hasDailyReportContent(row: any): boolean {
+    return !!row && ['personal', 'fotos', 'videos', 'material', 'equipos', 'conceptos', 'notas']
+      .some(field => Number(row[field]) > 0);
+  }
 
   public colDefs: ColDef[] = [
     { field: 'id', headerName: 'ID', width: 80, editable: false, hide: true },
@@ -432,6 +453,7 @@ export class SistemaComponent implements OnInit, OnDestroy {
         if (Number(node.data?.id) !== reportId) return;
         reportFound = true;
         node.data.fotos = Number(node.data.fotos || 0) + (photoId ? 1 : 0);
+        this.gridApi.redrawRows({ rowNodes: [node] });
         this.gridApi.refreshCells({ rowNodes: [node], columns: ['fotos'], force: true });
       });
 
@@ -879,6 +901,7 @@ export class SistemaComponent implements OnInit, OnDestroy {
     this.gridApi.forEachNode((node) => {
       if (node.data?.id === reportId) {
         node.data[bitacoraType] = count;
+        this.gridApi.redrawRows({ rowNodes: [node] });
         this.gridApi.refreshCells({
           rowNodes: [node],
           columns: [bitacoraType],
