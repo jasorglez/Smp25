@@ -161,7 +161,7 @@ export class MaterialTraceabilityComponent implements OnDestroy {
       r.entrada || 0, r.salida || 0, r.inventario || 0, r.movimientos || ''
     ].map((text: any) => ({ text, fontSize: 7, fillColor: i % 2 ? '#f4f7fb' : '#fff' }))));
     const doc: any = {
-      pageOrientation: 'landscape', pageSize: 'LETTER', pageMargins: [24, 60, 24, 35],
+      pageOrientation: 'landscape', pageSize: 'LEGAL', pageMargins: [24, 60, 24, 35],
       header: () => ({ margin: [24, 18, 24, 0], columns: [{ text: 'AZTECA', color: '#003366', bold: true, fontSize: 16 }, { text: 'TRAZABILIDAD DE MATERIALES', alignment: 'right', color: '#1a5a9a', bold: true, fontSize: 12 }] }),
       content: [{ text: `Proyecto: ${this.projectId || 'Todos'}   |   Generado: ${new Date().toLocaleString('es-MX')}`, fontSize: 8, color: '#555', margin: [0, 0, 0, 10] }, { table: { headerRows: 1, widths: ['*', 55, 130, 100, 65, 65, 75, 170], body }, layout: { fillColor: (row: number) => row === 0 ? '#1a5a9a' : null, hLineColor: () => '#d5dbe3', vLineColor: () => '#d5dbe3', paddingLeft: () => 4, paddingRight: () => 4, paddingTop: () => 3, paddingBottom: () => 3 } }],
       footer: (current: number, total: number) => ({ text: `Trazabilidad de materiales · Página ${current} de ${total}`, alignment: 'center', fontSize: 8, color: '#777' })
