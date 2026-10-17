@@ -83,5 +83,5 @@ export const environment = {
   geminiApiKey: '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',
   gnewsApiKey: '94ccc596b4dfebc3f72683b6e81d81bc',
 
-  version: '5.00.242 (17 Octubre 2026 14:14) agrega trabajos al tooltip de captura',
+  version: '5.00.243 (17 Octubre 2026 14:15) contador OT reinicia por proyecto',
 };

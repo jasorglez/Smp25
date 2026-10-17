@@ -166,7 +166,7 @@ export class InspeccionComponent implements OnInit {
       sortable: false,
       filter: false,
       resizable: false,
-      valueGetter: (params: any) => params.node?.rowIndex == null ? '' : params.node.rowIndex + 1
+      valueGetter: (params: any) => this.getOtRowNumber(params)
     },
     {
       field: 'otNumber',
@@ -252,6 +252,20 @@ export class InspeccionComponent implements OnInit {
   private hasOtContent(row: any): boolean {
     return !!row && [row.photoCount, row.personalCount, row.materialCount, row.equipmentCount]
       .some(count => Number(count) > 0);
+  }
+
+  private getOtRowNumber(params: any): number | string {
+    if (!params?.node || params.node.group) return '';
+    const projectCounters = new Map<string, number>();
+    let projectRowNumber = 0;
+    params.api.forEachNodeAfterFilterAndSort((node: any) => {
+      if (node.group || !node.data) return;
+      const projectId = String(node.data.idProject ?? node.data.projectId ?? node.data.idProyecto ?? 'sin-proyecto');
+      const nextNumber = (projectCounters.get(projectId) || 0) + 1;
+      projectCounters.set(projectId, nextNumber);
+      if (node === params.node) projectRowNumber = nextNumber;
+    });
+    return projectRowNumber || '';
   }
 
   private getOtContentTooltip(row: any): string | undefined {

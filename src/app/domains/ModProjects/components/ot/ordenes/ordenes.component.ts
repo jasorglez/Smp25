@@ -897,14 +897,16 @@ export class OrdenesComponent implements OnInit, OnDestroy, OnChanges {
 
   private getOtRowNumber(params: any): number | string {
     if (!params?.node || params.node.group) return '';
-    let visibleOtNumber = 0;
-    let rowNumber = 0;
+    const projectCounters = new Map<string, number>();
+    let projectRowNumber = 0;
     params.api.forEachNodeAfterFilterAndSort((node: any) => {
-      if (node.group) return;
-      visibleOtNumber += 1;
-      if (node === params.node) rowNumber = visibleOtNumber;
+      if (node.group || !node.data) return;
+      const projectId = String(node.data.idProject ?? node.data.projectId ?? node.data.idProyecto ?? 'sin-proyecto');
+      const nextNumber = (projectCounters.get(projectId) || 0) + 1;
+      projectCounters.set(projectId, nextNumber);
+      if (node === params.node) projectRowNumber = nextNumber;
     });
-    return rowNumber || '';
+    return projectRowNumber || '';
   }
 
   private publishCaptureOts(): void {
