@@ -67,6 +67,18 @@
         <button type="button" class="btn-close btn-close-white" (click)="closeReportModal()" [disabled]="isGeneratingReport" aria-label="Close"></button>
       </div>
       <div class="modal-body saldos-report-body">
+        <div class="report-attention-alert" role="alert">
+          <i class="bi bi-exclamation-triangle-fill" aria-hidden="true"></i>
+          <div>
+            <strong>Atención:</strong> estos son los movimientos de egreso considerados en el saldo del periodo:
+            <ul *ngIf="reportExpenseMovements.length; else noReportExpenseMovements" class="report-attention-list mb-0 mt-1">
+              <li *ngFor="let movement of reportExpenseMovements">
+                {{ movement.fecha }} · Doc. {{ movement.numeroDocumento || 'Sin documento' }} · {{ movement.gasto | currency:'MXN':'symbol':'1.2-2' }}
+              </li>
+            </ul>
+            <ng-template #noReportExpenseMovements><div class="mt-1">No hay egresos registrados en este periodo.</div></ng-template>
+          </div>
+        </div>
         <div class="saldos-report-options">
           <p class="text-muted mb-3">
             <i class="bi bi-info-circle me-1"></i>

@@ -31,27 +31,58 @@
 }
 
 .saldos-report-body {
-  display: flex;
+  display: grid;
+  grid-template-columns: 320px minmax(0, 1fr);
+  grid-template-rows: auto minmax(0, 1fr);
   gap: 1rem;
   height: min(76vh, 820px);
   min-height: 460px;
 }
 
 .saldos-report-options {
-  flex: 0 0 320px;
+  min-height: 0;
   overflow-y: auto;
 }
 
 .saldos-report-preview {
   display: flex;
-  flex: 1 1 auto;
   min-width: 0;
+  min-height: 0;
   overflow: hidden;
   align-items: center;
   justify-content: center;
   border: 1px solid #dee2e6;
   border-radius: .375rem;
   background: #f8f9fa;
+}
+
+.report-attention-alert {
+  grid-column: 1 / -1;
+  display: flex;
+  align-items: center;
+  gap: .65rem;
+  padding: .7rem 1rem;
+  border: 1px solid #d99b00;
+  border-left: 6px solid #dc3545;
+  border-radius: .5rem;
+  color: #4c3500;
+  background: #fff3cd;
+  font-weight: 500;
+  animation: report-notice-flash 1.15s ease-in-out infinite alternate;
+}
+
+.report-attention-alert i { color: #dc3545; font-size: 1.25rem; }
+
+.report-attention-list {
+  max-height: 5.5rem;
+  overflow-y: auto;
+  padding-left: 1.25rem;
+  font-size: .85rem;
+}
+
+@keyframes report-notice-flash {
+  from { box-shadow: 0 0 0 rgba(220, 53, 69, 0); }
+  to { box-shadow: 0 0 14px rgba(220, 53, 69, .55); background: #ffe69c; }
 }
 
 .saldos-report-preview app-pdf-report-viewer {
@@ -61,17 +92,21 @@
 
 @media (max-width: 767.98px) {
   .saldos-report-body {
-    flex-direction: column;
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: auto minmax(0, 45%) minmax(0, 1fr);
     height: 78vh;
     min-height: 0;
   }
 
   .saldos-report-options {
-    flex: 0 0 auto;
+    min-height: 0;
   }
 
   .saldos-report-preview {
-    flex: 1 1 0;
     min-height: 260px;
   }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .report-attention-alert { animation: none; }
 }

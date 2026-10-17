@@ -64,6 +64,13 @@ export class SaldosPalacioComponent implements OnDestroy {
   saldoData: any[] = [];
   rowDetails: any[] = [];
   selectedRowData: any = null;
+  get reportExpenseMovements(): any[] {
+    if (!this.reportStartDate || !this.reportEndDate) return [];
+    return this.rowDetails.filter(row => {
+      const date = String(row.fecha ?? '').slice(0, 10);
+      return date >= this.reportStartDate && date <= this.reportEndDate && this.amountInCents(row.gasto) > 0;
+    });
+  }
   private gridApi: GridApi;
   private detailsGridApi: GridApi;
   loading: boolean = false;
@@ -809,20 +816,6 @@ export class SaldosPalacioComponent implements OnDestroy {
           style: 'reportSubtitle',
           alignment: 'center',
           margin: [0, 0, 0, 15]
-        },
-        {
-          table: {
-            widths: ['*'],
-            body: [[{
-              text: 'Aviso: Este estado de cuenta incluye todos los movimientos pagados, estén facturados o no, para reflejar el saldo acumulado de la cuenta.',
-              fontSize: 8,
-              color: '#664d03',
-              fillColor: '#fff3cd',
-              margin: [6, 4, 6, 4]
-            }]]
-          },
-          layout: 'noBorders',
-          margin: [0, 0, 0, 10]
         },
         // Tabla de movimientos
         {

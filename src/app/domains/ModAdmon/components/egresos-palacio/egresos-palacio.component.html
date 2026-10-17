@@ -193,6 +193,18 @@
         <button type="button" class="btn-close btn-close-white" (click)="closeConsolidatedReportModal()" aria-label="Close"></button>
       </div>
       <div class="modal-body palacio-report-body">
+        <div *ngIf="reportType === 'egresos' && reportStartDate && reportEndDate" class="report-attention-alert" role="alert">
+          <i class="bi bi-exclamation-triangle-fill" aria-hidden="true"></i>
+          <div>
+            <strong>Atención:</strong> estos egresos pagados están pendientes de facturar y se incluyen para cuadrar con Saldos:
+            <ul *ngIf="paidNotInvoicedReportRows.length; else noUninvoicedRows" class="report-attention-list mb-0 mt-1">
+              <li *ngFor="let movement of paidNotInvoicedReportRows">
+                {{ movement.date | date:'dd/MM/yyyy' }} · Doc. {{ movement.numberDocument || 'Sin documento' }} · {{ movement.total | currency:'MXN':'symbol':'1.2-2' }}
+              </li>
+            </ul>
+            <ng-template #noUninvoicedRows><div class="mt-1">No hay movimientos pagados pendientes de facturar en este periodo.</div></ng-template>
+          </div>
+        </div>
         <div class="palacio-report-options">
         <p class="text-muted mb-3">
           <i class="bi bi-info-circle me-1"></i>

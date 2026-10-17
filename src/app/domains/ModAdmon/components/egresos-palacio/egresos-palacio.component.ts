@@ -87,6 +87,16 @@ export class EgresosPalacioComponent {
   isGeneratingConsolidatedReport: boolean = false;
   reportPdfPreview: SafeResourceUrl | null = null;
   private reportPdfObjectUrl: string | null = null;
+  get paidNotInvoicedReportRows(): any[] {
+    if (!this.reportStartDate || !this.reportEndDate) return [];
+    return this.incomes.filter(expense => {
+      if (expense.status !== 'Pagada' || expense.facturado === true || !expense.date) return false;
+      const date = expense.date instanceof Date
+        ? `${expense.date.getFullYear()}-${String(expense.date.getMonth() + 1).padStart(2, '0')}-${String(expense.date.getDate()).padStart(2, '0')}`
+        : String(expense.date).slice(0, 10);
+      return date >= this.reportStartDate && date <= this.reportEndDate;
+    });
+  }
   invited: boolean = false;
 
   // Propiedades para el modal de copiar registro
@@ -2895,8 +2905,6 @@ export class EgresosPalacioComponent {
 
       // Paso 2: Cargar todos los conceptos de los egresos filtrados
       const allConcepts: any[] = [];
-      let paidNotInvoicedCount = 0;
-      let paidNotInvoicedAmountInCents = 0;
       for (const expense of filteredExpenses) {
         const rawConcepts: any[] = await lastValueFrom(
           this.incomesAndExpensesService.getAllConceptsFromIncomesAndExpenses(expense.id)
@@ -2909,14 +2917,6 @@ export class EgresosPalacioComponent {
         concepts.forEach(concept => {
           concept.totalFinal = (concept.total || 0) + (concept.iva2 || 0) - (concept.isr || 0);
         });
-
-        if (expense.facturado !== true) {
-          paidNotInvoicedCount += 1;
-          paidNotInvoicedAmountInCents += concepts.reduce(
-            (sum, concept) => sum + this.amountInCents(concept.total) + this.amountInCents(concept.iva2),
-            0
-          );
-        }
 
         allConcepts.push(...concepts);
       }
@@ -2950,9 +2950,7 @@ export class EgresosPalacioComponent {
       await this.generateEgresosPDF(
         agrupacionPorCategoria,
         saldoInicial,
-        ingresosMes,
-        paidNotInvoicedCount,
-        paidNotInvoicedAmountInCents / 100
+        ingresosMes
       );
 
     } catch (error) {
@@ -4647,9 +4645,7 @@ export class EgresosPalacioComponent {
   private async generateEgresosPDF(
     agrupacion: Map<string, any>,
     saldoInicial: number = 0,
-    ingresosMes: number = 0,
-    paidNotInvoicedCount = 0,
-    paidNotInvoicedAmount = 0
+    ingresosMes: number = 0
   ) {
     // Importar pdfMake dinámicamente
     const pdfMake = (await import('pdfmake/build/pdfmake')).default;
@@ -4882,11 +4878,6 @@ export class EgresosPalacioComponent {
           },
           margin: [0, 0, 0, 18]
         },
-        ...(paidNotInvoicedCount > 0 ? [{
-          text: `Aviso: Se incluyeron ${paidNotInvoicedCount} egreso(s) pagado(s) no facturado(s) por $${this.formatCurrencyNumber(paidNotInvoicedAmount)}. Estos movimientos también aparecen en Saldos y se incluyen para cuadrar el cierre.`,
-          style: 'balanceReconciliationNote',
-          margin: [0, 0, 0, 14]
-        }] : []),
         // Firmas
         {
           columns: [
@@ -4990,12 +4981,6 @@ export class EgresosPalacioComponent {
           fillColor: '#e0e0e0',
           color: '#000000',
           margin: [0, 2, 0, 2]
-        },
-        balanceReconciliationNote: {
-          fontSize: 8,
-          color: '#664d03',
-          fillColor: '#fff3cd',
-          margin: [6, 4, 6, 4]
         },
         resumenLabel: {
           fontSize: 8,
