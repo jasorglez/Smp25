@@ -83,5 +83,5 @@ export const environment = {
   geminiApiKey: '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',
   gnewsApiKey: '94ccc596b4dfebc3f72683b6e81d81bc',
 
-  version: '5.00.233 (17 Octubre 2026 13:50) concentra captura diaria por OT en Inspección',
+  version: '5.00.234 (17 Octubre 2026 13:58) ajusta altura del grid de Órdenes',
 };
