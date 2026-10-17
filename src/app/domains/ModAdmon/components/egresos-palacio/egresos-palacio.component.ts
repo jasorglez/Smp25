@@ -2732,9 +2732,15 @@ export class EgresosPalacioComponent {
   }
 
   private async previewReportPdf(pdf: any): Promise<void> {
+    if (!pdf || typeof pdf.getBlob !== 'function') {
+      throw new Error('El generador no entregó un documento PDF válido.');
+    }
     const blob = await new Promise<Blob>((resolve, reject) => {
       try {
-        pdf.getBlob((result: Blob) => result ? resolve(result) : reject(new Error('No se pudo crear el PDF')));
+        pdf.getBlob((result: Blob) => {
+          if (result instanceof Blob && result.size > 0) resolve(result);
+          else reject(new Error('El PDF se generó vacío.'));
+        });
       } catch (error) {
         reject(error);
       }
@@ -2829,7 +2835,8 @@ export class EgresosPalacioComponent {
 
     } catch (error) {
       console.error('Error generando reporte:', error);
-      alerts.basicAlert('Error', 'Error al generar el reporte', 'error');
+      const detail = error instanceof Error ? error.message : String(error || 'Error desconocido');
+      alerts.basicAlert('Error al generar el reporte', detail, 'error');
     } finally {
       this.isGeneratingConsolidatedReport = false;
     }
