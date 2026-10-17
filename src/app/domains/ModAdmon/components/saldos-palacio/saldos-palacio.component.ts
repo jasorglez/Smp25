@@ -22,6 +22,7 @@ import { RootService } from 'app/services/root.service';
 import { Base64EncodeService } from 'app/services/base64encode.service';
 import { lastValueFrom } from 'rxjs';
 import { SignalsService } from 'app/services/signals.service';
+import { IncomesAndExpensesService } from 'app/services/incomes-and-expenses.service';
 @Component({
   selector: 'app-saldos-palacio',
   standalone: true,
@@ -49,6 +50,7 @@ export class SaldosPalacioComponent implements OnDestroy {
 
   private trackingService = inject(TrackingService);
   private administrationService = inject(AdministrationService);
+  private incomesAndExpensesService = inject(IncomesAndExpensesService);
   private rootService = inject(RootService);
   private base64EncodeService = inject(Base64EncodeService);
 
@@ -63,12 +65,15 @@ export class SaldosPalacioComponent implements OnDestroy {
 
   saldoData: any[] = [];
   rowDetails: any[] = [];
+  private accountExpenseRecords: any[] = [];
   selectedRowData: any = null;
   get reportExpenseMovements(): any[] {
     if (!this.reportStartDate || !this.reportEndDate) return [];
-    return this.rowDetails.filter(row => {
-      const date = String(row.fecha ?? '').slice(0, 10);
-      return date >= this.reportStartDate && date <= this.reportEndDate && this.amountInCents(row.gasto) > 0;
+    return this.accountExpenseRecords.filter(expense => {
+      const rawDate = expense.date instanceof Date ? expense.date : new Date(expense.date);
+      if (Number.isNaN(rawDate.getTime())) return false;
+      const date = `${rawDate.getFullYear()}-${String(rawDate.getMonth() + 1).padStart(2, '0')}-${String(rawDate.getDate()).padStart(2, '0')}`;
+      return expense.status === 'Pagada' && expense.facturado !== true && date >= this.reportStartDate && date <= this.reportEndDate;
     });
   }
   private gridApi: GridApi;
@@ -421,7 +426,23 @@ export class SaldosPalacioComponent implements OnDestroy {
 
     this.lastSelectedId = id;
     this.rowDetails = [];
+    this.accountExpenseRecords = [];
     this.loading = true;
+
+    const companyId = Number(localStorage.getItem('company') || 0);
+    if (companyId) {
+      this.incomesAndExpensesService.getIncomesAndExpenses(companyId).subscribe({
+        next: (records: any[]) => {
+          this.accountExpenseRecords = (Array.isArray(records) ? records : []).filter(expense =>
+            expense.type === 'GASTO' && Number(expense.idAccount) === Number(id)
+          );
+        },
+        error: error => {
+          console.warn('No se pudieron cargar los egresos para el aviso de conciliación:', error);
+          this.accountExpenseRecords = [];
+        }
+      });
+    }
 
     this.administrationService.getBalance(parseInt(id)).subscribe({
       next: (response: any) => {

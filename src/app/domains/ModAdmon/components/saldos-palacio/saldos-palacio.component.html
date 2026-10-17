@@ -70,13 +70,13 @@
         <div class="report-attention-alert" role="alert">
           <i class="bi bi-exclamation-triangle-fill" aria-hidden="true"></i>
           <div>
-            <strong>Atención:</strong> estos son los movimientos de egreso considerados en el saldo del periodo:
+            <strong>Atención:</strong> estos egresos pagados pendientes de facturar explican la diferencia del saldo:
             <ul *ngIf="reportExpenseMovements.length; else noReportExpenseMovements" class="report-attention-list mb-0 mt-1">
               <li *ngFor="let movement of reportExpenseMovements">
-                {{ movement.fecha }} · Doc. {{ movement.numeroDocumento || 'Sin documento' }} · {{ movement.gasto | currency:'MXN':'symbol':'1.2-2' }}
+                {{ movement.date | date:'dd/MM/yyyy' }} · Doc. {{ movement.numberDocument || 'Sin documento' }} · {{ movement.total | currency:'MXN':'symbol':'1.2-2' }}
               </li>
             </ul>
-            <ng-template #noReportExpenseMovements><div class="mt-1">No hay egresos registrados en este periodo.</div></ng-template>
+            <ng-template #noReportExpenseMovements><div class="mt-1">No hay egresos pagados pendientes de facturar en este periodo.</div></ng-template>
           </div>
         </div>
         <div class="saldos-report-options">
