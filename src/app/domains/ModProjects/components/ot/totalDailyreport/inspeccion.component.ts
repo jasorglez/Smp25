@@ -7,7 +7,6 @@ import { OtService } from 'app/services/ot.service';
 import { SignalsService } from 'app/services/signals.service';
 import { alerts } from 'app/helpers/alerts';
 import { OrdenesComponent } from '../ordenes/ordenes.component';
-import { firstValueFrom } from 'rxjs';
 
 interface ReportData {
   id: number;
@@ -49,12 +48,6 @@ export class InspeccionComponent implements OnInit {
   public selectedOt: any = null;
   private idRoot: number = 0;
   private selectedProjectId: number = 0;
-
-  get totalOtsCount(): number {
-    const ids = (this.allOtsData || []).map(ot => ot?.idOt ?? ot?.id ?? ot?.idOT)
-      .filter(id => id !== undefined && id !== null && String(id).trim() !== '');
-    return new Set(ids.map(id => String(id))).size;
-  }
 
   // APIs del grid
   public reportesGridApi!: GridApi;
@@ -167,6 +160,16 @@ export class InspeccionComponent implements OnInit {
   // Columnas para todas las OTs
   public otsColumnDefs: ColDef[] = [
     {
+      colId: 'otRowNumber',
+      headerName: '#',
+      width: 52,
+      pinned: 'left',
+      sortable: false,
+      filter: false,
+      resizable: false,
+      valueGetter: (params: any) => params.node?.rowIndex == null ? '' : params.node.rowIndex + 1
+    },
+    {
       field: 'otNumber',
       headerName: 'OT',
       width: 110,
@@ -202,7 +205,9 @@ export class InspeccionComponent implements OnInit {
       const projectId = Number(this.signalsService.getProjectSelectedBySidebar()() || 0);
       if (projectId !== this.selectedProjectId) {
         this.selectedProjectId = projectId;
-        this.loadOtsForSelectedProject();
+        this.selectedOt = null;
+        this.allOtsData = [];
+        if (this.otsGridApi) this.otsGridApi.setGridOption('rowData', []);
       }
     });
   }
@@ -214,7 +219,6 @@ export class InspeccionComponent implements OnInit {
       this.loadAllReports();
     }
     this.selectedProjectId = Number(this.signalsService.getProjectSelectedBySidebar()() || 0);
-    this.loadOtsForSelectedProject();
   }
 
   // Cargar todos los reportes de la empresa
@@ -237,58 +241,8 @@ export class InspeccionComponent implements OnInit {
     });
   }
 
-  private loadOtsForSelectedProject(): void {
-    const request = this.selectedProjectId
-      ? this.otService.getOtListByProject(this.selectedProjectId, false)
-      : this.otService.getOtList();
-
-    request.subscribe({
-      next: (response: any) => {
-        const rows = Array.isArray(response) ? response : (response?.data || []);
-        this.allOtsData = rows.map((ot: any) => ({
-          ...ot,
-          idOt: ot.idOt ?? ot.id,
-          id: String(ot.id ?? ot.idOt)
-        }));
-        void this.loadOtContentSummary(this.allOtsData);
-        if (this.otsGridApi) this.otsGridApi.setGridOption('rowData', this.allOtsData);
-        this.selectedOt = null;
-      },
-      error: (error) => {
-        console.error('Error al cargar órdenes de trabajo:', error);
-        alerts.basicAlert('Error', 'No se pudieron cargar las órdenes de trabajo de la cuadrilla seleccionada', 'error');
-      }
-    });
-  }
-
-  private async loadOtContentSummary(orders: any[]): Promise<void> {
-    const projectIds = [...new Set(orders.map(ot => Number(ot.idProject)).filter(id => id > 0))];
-    if (!projectIds.length) return;
-
-    const responses = await Promise.all(projectIds.map(async idProject => {
-      try {
-        return await firstValueFrom(this.otService.getProjectOrdersWithContent(idProject, {}));
-      } catch (error) {
-        console.warn(`No se pudo consultar el contenido de las OTs del proyecto ${idProject}.`, error);
-        return [];
-      }
-    }));
-    const summaryById = new Map<string, any>();
-    responses.flat().forEach(summary => {
-      [summary.id, summary.Id, summary.idOt, summary.IdOt, summary.idOT]
-        .filter(value => value !== undefined && value !== null)
-        .forEach(value => summaryById.set(String(value), summary));
-    });
-    this.allOtsData = orders.map(order => {
-      const summary = [order.id, order.idOt, order.idOT].map(value => summaryById.get(String(value))).find(Boolean);
-      return summary ? {
-        ...order,
-        photoCount: Number(summary.photoCount ?? summary.photosCount ?? summary.PhotoCount ?? summary.photos ?? summary.fotos) || 0,
-        personalCount: Number(summary.personalCount ?? summary.PersonalCount ?? summary.personnelCount ?? summary.crewCount ?? summary.personal) || 0,
-        materialCount: Number(summary.materialCount ?? summary.MaterialCount ?? summary.materialsCount ?? summary.materials) || 0,
-        equipmentCount: Number(summary.equipmentCount ?? summary.EquipmentCount ?? summary.equipmentsCount ?? summary.equipment) || 0
-      } : order;
-    });
+  onCaptureOtsChanged(orders: any[]): void {
+    this.allOtsData = Array.isArray(orders) ? orders : [];
     if (this.otsGridApi) this.otsGridApi.setGridOption('rowData', this.allOtsData);
   }
 

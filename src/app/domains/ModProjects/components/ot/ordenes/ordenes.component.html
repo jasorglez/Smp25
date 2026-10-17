@@ -7,9 +7,9 @@
           <div class="row" [style.min-height]="captureMode ? '0' : 'calc(100vh - 200px)'" style="position: relative;">
             <div class="col-12" [style.min-height]="captureMode ? '0' : 'calc(100vh - 200px)'" style="position: relative; display: flex; flex-direction: column;">
               <!-- Sección superior: Botones y Lista de OTs lado a lado -->
-              <div class="row mb-1" *ngIf="!captureMode" [style.margin-top]="'9vh'">
+              <div class="row gx-1 mb-1" *ngIf="!captureMode" [style.margin-top]="'9vh'">
                 <!-- Botones de acciones -->
-                <div class="col-auto">
+                <div class="col-auto pe-1">
                   <nav class="d-flex flex-column align-items-start">                  
                                        
                     <button type="button" class="btn btn-danger ms-1 me-1 mb-2" (click)="delete()">
@@ -55,16 +55,17 @@
                             <img src='./assets/img/excel.png' width="17" height="17">
                        </button>
                     }
+
                    
 
                   </nav>
                 </div>
                 
                 <!-- Lista de OTs -->
-                <div class="col ">
-                  <div class="d-flex align-items-center justify-content-between gap-2 flex-wrap mb-1">
-                    <div class="ot-content-legend mb-0"><span class="ot-content-legend-swatch"></span> OT con personal, fotos, material o equipos registrados</div>
-                    <span class="badge bg-primary">Total OT: {{totalOtsCount}}</span>
+                <div class="col ps-0">
+                  <div class="ot-content-legend mb-1">
+                    <span class="ot-content-legend-swatch"></span>
+                    <span>OT con personal, fotos, material o equipos registrados</span>
                   </div>
                   <ag-grid-angular
                     [ngStyle]="{ height: captureMode ? gridHeight : 'calc(85vh - 190px)' }"

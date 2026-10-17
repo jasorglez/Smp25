@@ -1,6 +1,6 @@
 import { PdfReportViewerComponent } from 'app/shared/pdf-report-viewer/pdf-report-viewer.component';
 import { pdfPreviewUrl } from 'app/helpers/pdf-viewer';
-import { Component, effect, inject, OnInit, OnDestroy, OnChanges, SimpleChanges, Input, computed } from '@angular/core';
+import { Component, effect, inject, OnInit, OnDestroy, OnChanges, SimpleChanges, Input, Output, EventEmitter, computed } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { TranslateModule } from '@ngx-translate/core';
 import { AgGridModule } from 'ag-grid-angular';
@@ -150,6 +150,7 @@ export class OrdenesComponent implements OnInit, OnDestroy, OnChanges {
 
   @Input() captureMode = false;
   @Input() captureOt: any = null;
+  @Output() captureOtsChange = new EventEmitter<any[]>();
 
 
   private otService = inject(OtService);
@@ -704,6 +705,16 @@ export class OrdenesComponent implements OnInit, OnDestroy, OnChanges {
     const hasPermission = this.authService.hasDetailedPermission('projects', 'get-all-ot');
     this._oTcolumnDefs = [
       {
+        colId: 'otRowNumber',
+        headerName: '#',
+        width: 52,
+        pinned: 'left',
+        sortable: false,
+        filter: false,
+        resizable: false,
+        valueGetter: (params: any) => this.getOtRowNumber(params)
+      },
+      {
         field: 'idProject',
         headerName: 'Proyecto',
 
@@ -882,6 +893,22 @@ export class OrdenesComponent implements OnInit, OnDestroy, OnChanges {
 
     // Retornar la instancia inicializada
     return this._oTcolumnDefs;
+  }
+
+  private getOtRowNumber(params: any): number | string {
+    if (!params?.node || params.node.group) return '';
+    let visibleOtNumber = 0;
+    let rowNumber = 0;
+    params.api.forEachNodeAfterFilterAndSort((node: any) => {
+      if (node.group) return;
+      visibleOtNumber += 1;
+      if (node === params.node) rowNumber = visibleOtNumber;
+    });
+    return rowNumber || '';
+  }
+
+  private publishCaptureOts(): void {
+    if (this.captureMode) this.captureOtsChange.emit([...this.rowData]);
   }
 
   public get materialesColumnDefs(): ColDef[] {
@@ -2512,11 +2539,6 @@ export class OrdenesComponent implements OnInit, OnDestroy, OnChanges {
   // Datos del grid obtenidos del servicio
   public rowData: OrdenesData[] = [];
 
-  get totalOtsCount(): number {
-    const ids = (this.rowData || []).map((ot: any) => ot?.id ?? ot?.idOt ?? ot?.idOT)
-      .filter(id => id !== undefined && id !== null && String(id).trim() !== '');
-    return new Set(ids.map(id => String(id))).size;
-  }
   private otConceptSummariesInFlight = new Set<number>();
 
   constructor(private formBuilder: FormBuilder) {
@@ -2838,6 +2860,7 @@ export class OrdenesComponent implements OnInit, OnDestroy, OnChanges {
     this.otService.getOtListByProject(this.idProject, false).subscribe({
       next: (data: any) => {
         this.rowData = Array.isArray(data) ? data : [];
+        this.publishCaptureOts();
         if (this.gridApi) {
           this.gridApi.setGridOption('rowData', this.rowData);
           // Forzar un refresco de las celdas para asegurar que los checkboxes sean editables al inicio.
@@ -2908,6 +2931,7 @@ export class OrdenesComponent implements OnInit, OnDestroy, OnChanges {
           allOTs.push(...projectOTs);
         });
         this.rowData = allOTs;
+        this.publishCaptureOts();
 
         if (this.gridApi) {
           this.gridApi.setGridOption('rowData', this.rowData);
@@ -3006,6 +3030,7 @@ export class OrdenesComponent implements OnInit, OnDestroy, OnChanges {
     } else {
       this.rowData = orders.map(mergeSummary);
     }
+    this.publishCaptureOts();
   }
 
   private getOtContentTooltip(row: any): string | undefined {
@@ -3080,6 +3105,7 @@ export class OrdenesComponent implements OnInit, OnDestroy, OnChanges {
         });
         if (!this.gridApi) this.rowData = this.rowData.map(row =>
           Number(row.id ?? (row as any).idOt ?? (row as any).idOT) === result.idOt ? { ...row, workConcepts: result.concepts } : row);
+        this.publishCaptureOts();
         this.otConceptSummariesInFlight.delete(result.idOt);
       });
     }
