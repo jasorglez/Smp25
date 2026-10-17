@@ -3,6 +3,31 @@
   font-weight: bold;
 }
 
+.ot-content-legend {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  margin: 0 0 0.25rem;
+  color: #52616b;
+  font-size: 0.72rem;
+}
+
+.ot-content-legend-swatch {
+  width: 0.8rem;
+  height: 0.8rem;
+  border: 1px solid #4f9c65;
+  border-radius: 2px;
+  background: #a6e6b4;
+}
+
+::ng-deep .ag-theme-quartz .ag-row.ot-has-content .ag-cell {
+  background-color: #a6e6b4 !important;
+}
+
+::ng-deep .ag-theme-quartz .ag-row.ot-has-content .ag-cell:first-child {
+  box-shadow: inset 5px 0 0 #25813d;
+}
+
 .alert-info {
   background-color: #e3f2fd;
   border-color: #2196f3;

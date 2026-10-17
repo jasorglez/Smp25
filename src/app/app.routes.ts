@@ -2466,7 +2466,11 @@ export const routes: Routes = [
         canActivate: [MasterPermissionsGuard],
         data: { permissions: { master: 'warehousesTD' } },
         children: [
-          { path: '', redirectTo: 'setup-st', pathMatch: 'full' },
+          {
+            path: '',
+            pathMatch: 'full',
+            loadComponent: () => import('./domains/ModWareHousesTD/pages/warehouse-entry-redirect.component').then(c => c.WarehouseEntryRedirectComponent)
+          },
           {
             path: 'setup-st',
             loadComponent: () =>

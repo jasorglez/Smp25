@@ -102,11 +102,14 @@ export class OtService {
     });
   }
 
-  getProjectOrdersWithContent(idProject: number): Observable<any[]> {
+  getProjectOrdersWithContent(
+    idProject: number,
+    filters: Partial<OtSearchRequest> = { status: 'active' }
+  ): Observable<any[]> {
     if (!Number.isInteger(idProject) || idProject <= 0) {
       return throwError(() => new Error('Proyecto inválido'));
     }
-    const getPage = (page: number) => this.searchOt({ idProject, status: 'active', page, pageSize: 200 }).pipe(
+    const getPage = (page: number) => this.searchOt({ idProject, ...filters, page, pageSize: 200 }).pipe(
       map(response => {
         if (Array.isArray(response) || !Array.isArray(response?.data) ||
             response.data.some(order => Number(order.idProject) !== idProject)) {

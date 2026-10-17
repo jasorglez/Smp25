@@ -2087,6 +2087,19 @@ export class OrdenesComponent implements OnInit, OnDestroy {
     domLayout: 'normal',
     groupDefaultExpanded: 0,
     rowSelection: 'multiple',
+    rowClassRules: {
+      'ot-has-content': (params: any) => {
+        const data = params.data;
+        return !!data && [data.photoCount, data.personalCount, data.materialCount, data.equipmentCount]
+          .some(count => Number(count) > 0);
+      }
+    },
+    getRowStyle: (params: any) => {
+      const data = params.data;
+      const hasContent = data && [data.photoCount, data.personalCount, data.materialCount, data.equipmentCount]
+        .some(count => Number(count) > 0);
+      return hasContent ? { backgroundColor: '#e5f4ea' } : undefined;
+    },
     singleClickEdit: true,
     autoGroupColumnDef: {
       headerName: 'Grupo',
@@ -2807,6 +2820,7 @@ export class OrdenesComponent implements OnInit, OnDestroy {
         } else {
           this.rowData = data;
         }
+        void this.refreshOtContentSummary(data);
 
         // Aplicar lógica de agrupación después de cargar datos
         setTimeout(() => {
@@ -2878,6 +2892,7 @@ export class OrdenesComponent implements OnInit, OnDestroy {
         } else {
           this.rowData = allOTs;
         }
+        void this.refreshOtContentSummary(allOTs);
 
         // Aplicar lógica de agrupación después de cargar datos
         setTimeout(() => {
@@ -2913,6 +2928,58 @@ export class OrdenesComponent implements OnInit, OnDestroy {
       console.error('Error al obtener todas las OTs:', error);
       // Fallback al método original
       this.obtenerOTsDelProyectoActual();
+    }
+  }
+
+  private async refreshOtContentSummary(orders: any[]): Promise<void> {
+    const projectIds = [...new Set([this.idProject, ...orders.map(order => Number(order.idProject))]
+      .filter(id => Number.isInteger(id) && id > 0))];
+    if (!projectIds.length || !orders.length) return;
+
+    const summariesByProject = await Promise.all(projectIds.map(async idProject => {
+      try {
+        return await firstValueFrom(this.otService.getProjectOrdersWithContent(idProject, {
+          status: 'active',
+          closedWeb: 'false'
+        }));
+      } catch (error) {
+        console.warn(`No se pudo cargar el contenido asociado de las OTs del proyecto ${idProject}.`, error);
+        return [];
+      }
+    }));
+
+    const summaryByOt = new Map<string, any>();
+    const rowKeys = (row: any): string[] => [
+      row?.id, row?.Id, row?.idOt, row?.IdOt, row?.idOT, row?.otId, row?.otNumber, row?.cdc, row?.CDC
+    ].filter(value => value !== undefined && value !== null && String(value).trim())
+      .map(value => String(value).trim().toLocaleLowerCase());
+    summariesByProject.flat().forEach(summary => {
+      rowKeys(summary).forEach(key => summaryByOt.set(key, summary));
+    });
+
+    const mergeSummary = (order: any) => {
+      const summary = rowKeys(order).map(key => summaryByOt.get(key)).find(Boolean);
+      return summary ? {
+        ...order,
+        photoCount: Number(summary.photoCount ?? summary.photosCount ?? summary.PhotoCount ?? summary.photos ?? summary.fotos) || 0,
+        personalCount: Number(summary.personalCount ?? summary.PersonalCount ?? summary.personnelCount ?? summary.crewCount ?? summary.personal) || 0,
+        materialCount: Number(summary.materialCount ?? summary.MaterialCount ?? summary.materialsCount ?? summary.materials) || 0,
+        equipmentCount: Number(summary.equipmentCount ?? summary.EquipmentCount ?? summary.equipmentsCount ?? summary.equipment) || 0,
+        hasContentSummary: true
+      } : order;
+    };
+
+    if (!summaryByOt.size) return;
+    if (this.gridApi) {
+      this.gridApi.forEachNode(node => {
+        if (node.data && !node.group) {
+          const updated = mergeSummary(node.data);
+          if (updated !== node.data) node.setData(updated);
+        }
+      });
+      this.gridApi.redrawRows();
+    } else {
+      this.rowData = orders.map(mergeSummary);
     }
   }
 

@@ -10,7 +10,7 @@ import { SignalsService } from 'app/services/signals.service';
 import { AgGridModule, ICellRendererAngularComp } from 'ag-grid-angular';
 import { FormsModule } from '@angular/forms';
 import { alerts } from 'app/helpers/alerts';
-import { catchError, concat, EMPTY, lastValueFrom, toArray, tap } from 'rxjs';
+import { catchError, concat, EMPTY, firstValueFrom, lastValueFrom, toArray, tap } from 'rxjs';
 import { AutocompleteEditorComponent } from 'app/shared/autocomplete-editor/autocomplete-editor.component';
 import { MultiLineEditorComponent } from 'app/shared/multi-line/multi-line-editor.component';
 import { SelectWithTooltipEditorV2Component } from 'app/shared/select-with-tooltip-editor-v2.component';
@@ -26,6 +26,9 @@ import { CanComponentDeactivate } from 'app/guards/unsaved-changes.guard';
 import { confirmExitIfUnsaved } from 'app/helpers/can-deactivate.helper';
 import { TrackingService } from 'app/services/tracking.service';
 import { MaterialsService } from 'app/services/materials.service';
+import { OcAndReqsService } from 'app/services/ocandreqs.service';
+import { InandoutService } from 'app/services/inandout.service';
+import { WarehousesService } from 'app/services/warehouses.service';
 import { CatalogsService } from 'app/services/catalogs.service';
 import { CommonModule } from '@angular/common';
 import { FamilyModalService } from './services/family-modal.service';
@@ -153,6 +156,9 @@ export class MaterialsComponent implements CanComponentDeactivate {
   private signalsService = inject(SignalsService);
   private trackingService = inject(TrackingService);
   private materialsService = inject(MaterialsService);
+  private ocAndReqsService = inject(OcAndReqsService);
+  private inandoutService = inject(InandoutService);
+  private warehousesService = inject(WarehousesService);
   private catalogsService = inject(CatalogsService);
   private familyModalService = inject(FamilyModalService);
   private subfamilyModalService = inject(SubfamilyModalService);
@@ -234,12 +240,15 @@ export class MaterialsComponent implements CanComponentDeactivate {
       const currentRoot = this.signalsService.getRootSelectedBySidebar()();
       const currentUser = this.signalsService.getIdUSer()();
       const currentBranch = this.signalsService.getBranchSelectedBySidebar()();
+      const currentProject = this.signalsService.getProjectSelectedBySidebar()();
 
       // Solo recargar si cambió el root (empresa) y tiene valor válido
       const rootChanged = this.idcompany !== currentRoot;
+      const contextChanged = this.idBranch !== currentBranch || this.idProject !== currentProject;
 
       this.idUser = currentUser;
       this.idBranch = currentBranch;
+      this.idProject = currentProject;
 
       if (rootChanged && currentRoot) {
         this.idcompany = currentRoot;
@@ -247,6 +256,8 @@ export class MaterialsComponent implements CanComponentDeactivate {
         this.obtenerUnidades();
         this.obtenerFamilias();
         this.obtenerSubfamilias();
+      } else if (contextChanged && this.rowData.length) {
+        void this.loadMaterialMovementSummary(this.rowData);
       }
     });
 
@@ -280,10 +291,12 @@ export class MaterialsComponent implements CanComponentDeactivate {
       this.onMeasureCreated(measureData);
     });
   }
+  private idProject: number | null = null;
   obtenerDatos(){
     return this.materialsService.getAllMaterialsxFamilyview(this.idcompany).subscribe(
       (data: any) => {
         this.rowData = data;
+        void this.loadMaterialMovementSummary(data);
       },
       (error) => console.error('Error fetching data:', error)
     );
@@ -346,11 +359,8 @@ export class MaterialsComponent implements CanComponentDeactivate {
     getRowHeight: (params: any) => params.node.data?.__isDistDetail ? 420 : 20,
     context: { componentParent: this },
     getRowClass: (params) => {
-      // Verificar si la fila está seleccionada
-      if (params.node.isSelected()) {
-        return 'selected-row';
-      }
-      return '';
+      return [params.node.isSelected() ? 'selected-row' : '',
+        this.hasMaterialMovements(params.data) ? 'material-has-movements' : ''].filter(Boolean).join(' ');
     },
     onRowClicked: (event) => {
       // Seleccionar la fila al hacer clic en cualquier celda
@@ -388,6 +398,59 @@ export class MaterialsComponent implements CanComponentDeactivate {
       }
     },
   };
+
+  private hasMaterialMovements(row: any): boolean {
+    return !!row && ['requisitionMovementCount', 'purchaseOrderMovementCount', 'entryMovementCount', 'exitMovementCount']
+      .some(field => Number(row[field]) > 0);
+  }
+
+  private asArray(value: any): any[] {
+    return Array.isArray(value) ? value : value?.data || value?.result || value?.items || [];
+  }
+
+  private async loadMaterialMovementSummary(materials: any[]): Promise<void> {
+    const branchId = Number(this.idBranch || 0);
+    if (!this.idcompany || !materials?.length || !branchId) return;
+    const projectId = Number(this.idProject || 0);
+    const referenceType = projectId ? 'project' : 'branch';
+    const referenceId = projectId || branchId;
+    try {
+      const [reqRaw, ocRaw, warehousesRaw] = await Promise.all([
+        firstValueFrom(this.ocAndReqsService.getOcAndReqs(referenceType, referenceId, 'REQUIS')),
+        firstValueFrom(this.ocAndReqsService.getOcAndReqs(referenceType, referenceId, 'OC')),
+        firstValueFrom(this.warehousesService.getWarehouses(branchId))
+      ]);
+      const requisitions = this.asArray(reqRaw).map(d => ({ ...d, __movementKind: 'requisitionMovementCount' }));
+      const orders = this.asArray(ocRaw).map(d => ({ ...d, __movementKind: 'purchaseOrderMovementCount' }));
+      const warehouses = this.asArray(warehousesRaw);
+      const headers = await Promise.all(warehouses.flatMap(w => ['IN', 'OUT'].map(async type => {
+        const raw = await firstValueFrom(this.inandoutService.getInAndOuts(projectId || null, Number(w.id || w.idWarehouse || w.idAlmacen), type));
+        return this.asArray(raw).map(d => ({ ...d, __movementKind: type === 'IN' ? 'entryMovementCount' : 'exitMovementCount' }));
+      })));
+      const documents = [...requisitions, ...orders, ...headers.flat()];
+      const counts = new Map<number, any>();
+      const materialIds = new Set(materials.map(m => Number(m.id)).filter(Number.isFinite));
+      const detailResults = await Promise.all(documents.map(async d => {
+        try {
+          const raw = d.__movementKind === 'entryMovementCount' || d.__movementKind === 'exitMovementCount'
+            ? await firstValueFrom(this.inandoutService.getInAndOutItems(Number(d.id)))
+            : await firstValueFrom(this.ocAndReqsService.getReqItems(Number(d.id)));
+          return { kind: d.__movementKind, rows: this.asArray(raw) };
+        } catch { return { kind: d.__movementKind, rows: [] }; }
+      }));
+      detailResults.forEach(result => result.rows.forEach(item => {
+        const id = Number(item.idSupplie ?? item.idProduct ?? item.idMaterial ?? item.idInsumo);
+        if (!materialIds.has(id)) return;
+        const summary = counts.get(id) || { requisitionMovementCount: 0, purchaseOrderMovementCount: 0, entryMovementCount: 0, exitMovementCount: 0 };
+        summary[result.kind]++;
+        counts.set(id, summary);
+      }));
+      this.rowData = materials.map(m => ({ ...m, ...(counts.get(Number(m.id)) || {}) }));
+      this.gridApi?.redrawRows();
+    } catch (error) {
+      console.warn('No se pudieron cargar los movimientos asociados de materiales.', error);
+    }
+  }
   onMasterSelectionChanged(event: any) {}
 
   onMasterCellValueChanged(event: any) {
