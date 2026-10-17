@@ -1,40 +1,59 @@
 import { ChangeDetectorRef, Component, Input, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { FormsModule } from '@angular/forms';
 import { PdfShareService } from 'app/services/pdf-share.service';
-import Swal from 'sweetalert2';
 
 @Component({
   selector: 'app-pdf-share-buttons',
   standalone: true,
-  imports: [CommonModule],
+  imports: [CommonModule, FormsModule],
   template: `
-    <div class="d-flex gap-1 flex-wrap">
-      <button class="btn btn-sm btn-outline-primary" [disabled]="busy" (click)="onEmail()" title="Enviar por Correo">
+    <div class="pdf-share-toolbar">
+      <div class="pdf-share-buttons">
+      <button type="button" class="btn btn-sm btn-outline-primary" [disabled]="busy" (click)="togglePanel('email')" title="Enviar por Correo">
         <i class="bi bi-envelope"></i>
       </button>
-      <button class="btn btn-sm btn-outline-success" [disabled]="busy" (click)="onWhatsApp()" title="Enviar por WhatsApp">
+      <button type="button" class="btn btn-sm btn-outline-success" [disabled]="busy" (click)="togglePanel('whatsapp')" title="Enviar por WhatsApp">
         <i class="bi bi-whatsapp"></i>
       </button>
-      <button class="btn btn-sm btn-outline-info" [disabled]="busy" (click)="onTelegram()" title="Enviar por Telegram">
+      <button type="button" class="btn btn-sm btn-outline-info" [disabled]="busy" (click)="onTelegram()" title="Enviar por Telegram">
         <i class="bi bi-telegram"></i>
       </button>
-    </div>
-    <div *ngIf="busy" class="pdf-share-loading-backdrop" role="status" aria-live="polite">
-      <div class="pdf-share-loading-card">
-        <div class="spinner-border text-primary" aria-hidden="true"></div>
-        <div class="pdf-share-loading-title">{{ busyMessage }}</div>
-        <div class="pdf-share-loading-track"><div class="pdf-share-loading-bar"></div></div>
-        <div class="small text-muted">Espera mientras termina el proceso.</div>
       </div>
-    </div>
+
+      <form *ngIf="activePanel === 'email'" class="pdf-share-inline-form" (submit)="$event.preventDefault(); onEmail()">
+        <input class="form-control form-control-sm email-input" type="email" name="emailTo" [(ngModel)]="emailTo" placeholder="Correo destino" aria-label="Correo destino" [disabled]="busy" required>
+        <input class="form-control form-control-sm cc-input" type="email" name="emailCc" [(ngModel)]="emailCc" placeholder="CC opcional" aria-label="Correo en copia" [disabled]="busy">
+        <button type="submit" class="btn btn-sm btn-primary" [disabled]="busy || !emailTo.trim()"><i class="bi bi-send me-1"></i>Enviar</button>
+        <button type="button" class="btn btn-sm btn-light" [disabled]="busy" (click)="closePanel()" aria-label="Cerrar envío de correo"><i class="bi bi-x-lg"></i></button>
+      </form>
+
+      <form *ngIf="activePanel === 'whatsapp'" class="pdf-share-inline-form" (submit)="$event.preventDefault(); onWhatsApp()">
+        <input class="form-control form-control-sm phone-input" type="tel" name="whatsappPhone" [(ngModel)]="phone" placeholder="WhatsApp (10 dígitos)" aria-label="Número de WhatsApp" [disabled]="busy" required>
+        <button type="submit" class="btn btn-sm btn-success" [disabled]="busy || !phone.trim()"><i class="bi bi-whatsapp me-1"></i>Compartir</button>
+        <button type="button" class="btn btn-sm btn-light" [disabled]="busy" (click)="closePanel()" aria-label="Cerrar envío por WhatsApp"><i class="bi bi-x-lg"></i></button>
+      </form>
+
+      <span *ngIf="busy" class="pdf-share-feedback text-primary" role="status" aria-live="polite">
+        <span class="spinner-border spinner-border-sm" aria-hidden="true"></span> {{ busyMessage }}
+      </span>
+      <span *ngIf="feedback && !busy" class="pdf-share-feedback" [class.text-danger]="feedbackType === 'error'" [class.text-success]="feedbackType === 'success'" [class.text-muted]="feedbackType === 'info'" role="status" aria-live="polite">
+        <i class="bi" [class.bi-exclamation-circle]="feedbackType === 'error'" [class.bi-check-circle]="feedbackType === 'success'" [class.bi-info-circle]="feedbackType === 'info'"></i>
+        {{ feedback }}
+        <a *ngIf="whatsappUrl" class="ms-1" [href]="whatsappUrl" target="_blank" rel="noopener">Abrir WhatsApp</a>
+      </span>
+      </div>
   `,
   styles: [`
-    .pdf-share-loading-backdrop { position: fixed; inset: 0; z-index: 20000; display: grid; place-items: center; background: rgba(0,0,0,.42); }
-    .pdf-share-loading-card { width: min(360px, calc(100vw - 32px)); padding: 28px 24px; border-radius: 12px; background: #fff; box-shadow: 0 12px 40px rgba(0,0,0,.28); text-align: center; }
-    .pdf-share-loading-title { margin: 14px 0 16px; font-size: 1.05rem; font-weight: 600; }
-    .pdf-share-loading-track { height: 7px; margin-bottom: 12px; overflow: hidden; border-radius: 99px; background: #e9ecef; }
-    .pdf-share-loading-bar { width: 40%; height: 100%; border-radius: inherit; background: #0d6efd; animation: pdf-share-progress 1.2s ease-in-out infinite; }
-    @keyframes pdf-share-progress { from { transform: translateX(-110%); } to { transform: translateX(260%); } }
+    .pdf-share-toolbar, .pdf-share-buttons, .pdf-share-inline-form { display: flex; align-items: center; gap: .35rem; }
+    .pdf-share-toolbar { flex-wrap: wrap; }
+    .pdf-share-buttons { flex: 0 0 auto; }
+    .pdf-share-inline-form { flex-wrap: wrap; }
+    .pdf-share-inline-form .email-input { width: 190px; }
+    .pdf-share-inline-form .cc-input { width: 150px; }
+    .pdf-share-inline-form .phone-input { width: 190px; }
+    .pdf-share-feedback { display: inline-flex; align-items: center; gap: .3rem; font-size: .78rem; }
+    @media (max-width: 600px) { .pdf-share-inline-form { flex: 1 1 100%; } }
   `],
 })
 export class PdfShareButtonsComponent {
@@ -45,39 +64,49 @@ export class PdfShareButtonsComponent {
 
   busy = false;
   busyMessage = '';
+  activePanel: 'email' | 'whatsapp' | null = null;
+  emailTo = '';
+  emailCc = '';
+  phone = '';
+  feedback = '';
+  feedbackType: 'success' | 'error' | 'info' = 'info';
+  whatsappUrl = '';
   private svc = inject(PdfShareService);
   private cdr = inject(ChangeDetectorRef);
 
+  togglePanel(panel: 'email' | 'whatsapp'): void {
+    this.activePanel = this.activePanel === panel ? null : panel;
+    this.feedback = '';
+    this.whatsappUrl = '';
+  }
+
+  closePanel(): void {
+    this.activePanel = null;
+    this.feedback = '';
+    this.whatsappUrl = '';
+  }
+
   async onEmail(): Promise<void> {
-    const { value: formValues, isConfirmed } = await Swal.fire({
-      title: 'Enviar por Correo',
-      html: `
-        <input id="swal-email-to" class="swal2-input" placeholder="Para (correo destino)" type="email">
-        <input id="swal-email-cc" class="swal2-input" placeholder="CC (opcional)" type="email">
-      `,
-      focusConfirm: false,
-      showCancelButton: true,
-      confirmButtonText: 'Enviar',
-      cancelButtonText: 'Cancelar',
-      preConfirm: () => {
-        const to = (document.getElementById('swal-email-to') as HTMLInputElement).value.trim();
-        const cc = (document.getElementById('swal-email-cc') as HTMLInputElement).value.trim();
-        if (!to) { Swal.showValidationMessage('El correo destino es requerido'); return false; }
-        const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-        if (!emailPattern.test(to)) { Swal.showValidationMessage('Escribe un correo destino válido'); return false; }
-        if (cc && !emailPattern.test(cc)) { Swal.showValidationMessage('Escribe un correo válido en CC'); return false; }
-        return { to, cc };
-      },
-    });
-    if (!isConfirmed || !formValues) return;
+    const to = this.emailTo.trim();
+    const cc = this.emailCc.trim();
+    const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailPattern.test(to)) {
+      this.setFeedback('Escribe un correo destino válido.', 'error');
+      return;
+    }
+    if (cc && !emailPattern.test(cc)) {
+      this.setFeedback('Escribe un correo válido en CC.', 'error');
+      return;
+    }
 
     this.busy = true;
+    this.feedback = '';
     this.setBusyMessage('Preparando el PDF para correo…');
     try {
       const blob = await this.getPdfBlob();
       const mailId = await this.svc.sendByEmail({
-        to:        formValues.to,
-        cc:        formValues.cc || undefined,
+        to,
+        cc:        cc || undefined,
         subject:   this.subject,
         body:      this.emailBody,
         pdfBlob:   blob,
@@ -87,15 +116,15 @@ export class PdfShareButtonsComponent {
       // The mail extension sends asynchronously; keep the viewer responsive after enqueue.
       const delivery = await this.svc.waitForEmailDelivery(mailId, 3000);
       if (delivery.state === 'SUCCESS') {
-        Swal.fire({ icon: 'success', title: 'Correo enviado', text: `El servidor confirmó la entrega a ${formValues.to}.`, timer: 3000, showConfirmButton: false });
+        this.setFeedback(`El servidor confirmó la entrega a ${to}.`, 'success');
       } else if (delivery.state === 'ERROR') {
-        Swal.fire({ icon: 'error', title: 'Falló el envío del correo', text: delivery.error || 'El servicio de correo rechazó el mensaje.', confirmButtonText: 'Cerrar' });
+        this.setFeedback(delivery.error || 'El servicio de correo rechazó el mensaje.', 'error');
       } else {
-        Swal.fire({ icon: 'info', title: 'Correo en cola', text: `La solicitud para ${formValues.to} quedó registrada. El servicio de correo la procesa en segundo plano.`, confirmButtonText: 'Entendido' });
+        this.setFeedback(`Correo registrado para ${to}; el servicio lo procesa en segundo plano.`, 'info');
       }
     } catch (error) {
       console.error('Error al preparar o enviar el PDF por correo:', error);
-      Swal.fire({ icon: 'error', title: 'No se pudo enviar el correo', text: this.emailErrorMessage(error), confirmButtonText: 'Cerrar' });
+      this.setFeedback(this.emailErrorMessage(error), 'error');
     } finally {
       this.busy = false;
       this.busyMessage = '';
@@ -104,52 +133,32 @@ export class PdfShareButtonsComponent {
   }
 
   async onWhatsApp(): Promise<void> {
-    let whatsappWindow: Window | null = null;
-    const { value: phone, isConfirmed } = await Swal.fire({
-      title: 'Enviar por WhatsApp',
-      input: 'text',
-      inputLabel: 'Número destino',
-      inputPlaceholder: 'Ej. 5512345678 o 525512345678',
-      showCancelButton: true,
-      confirmButtonText: 'Preparar',
-      cancelButtonText: 'Cancelar',
-      footer: 'Si escribes 10 dígitos se agrega +52 (México) automáticamente.',
-      inputValidator: (v) => {
-        const d = v.replace(/\D/g, '');
-        if (!d || (d.length !== 10 && (d.length < 11 || d.length > 15)))
-          return 'Número inválido. Usa 10 dígitos o número completo con código de país.';
-        return null;
-      },
-      preConfirm: (value) => {
-        // Open while the confirmation click still has browser user activation.
-        whatsappWindow = window.open('about:blank', '_blank');
-        return value;
-      },
-    });
-    if (!isConfirmed || !phone) {
-      whatsappWindow?.close();
+    const normalizedPhone = this.phone.replace(/\D/g, '');
+    if (normalizedPhone.length !== 10 && (normalizedPhone.length < 11 || normalizedPhone.length > 15)) {
+      this.setFeedback('Usa 10 dígitos o el número completo con código de país.', 'error');
       return;
     }
 
+    // Open the tab directly from the click so the browser does not block it after upload.
+    const whatsappWindow = window.open('about:blank', '_blank');
     this.busy = true;
+    this.feedback = '';
+    this.whatsappUrl = '';
     this.setBusyMessage('Preparando el PDF para WhatsApp…');
     try {
       const blob = await this.getPdfBlob();
       this.setBusyMessage('Subiendo el PDF…');
-      const whatsappUrl = await this.svc.sendByWhatsApp({ phone, pdfBlob: blob, fileName: this.fileName, message: this.subject });
+      const whatsappUrl = await this.svc.sendByWhatsApp({ phone: this.phone, pdfBlob: blob, fileName: this.fileName, message: this.subject });
       if (whatsappWindow && !whatsappWindow.closed) {
         whatsappWindow.location.href = whatsappUrl;
-        Swal.fire({ icon: 'success', title: 'WhatsApp listo', text: 'El PDF ya está disponible para compartir.', timer: 2200, showConfirmButton: false });
+        this.setFeedback('WhatsApp está listo en la pestaña abierta; confirma el envío ahí.', 'success');
       } else {
-        Swal.fire({
-          icon: 'success', title: 'PDF listo para compartir',
-          html: `<a class="btn btn-success" href="${whatsappUrl}" target="_blank" rel="noopener">Abrir WhatsApp</a>`,
-          confirmButtonText: 'Cerrar',
-        });
+        this.whatsappUrl = whatsappUrl;
+        this.setFeedback('El PDF está listo. Abre WhatsApp para confirmar el envío.', 'info');
       }
     } catch {
       whatsappWindow?.close();
-      Swal.fire('Error', 'No se pudo preparar WhatsApp.', 'error');
+      this.setFeedback('No se pudo preparar el PDF para WhatsApp.', 'error');
     } finally {
       this.busy = false;
       this.busyMessage = '';
@@ -158,15 +167,23 @@ export class PdfShareButtonsComponent {
   }
 
   async onTelegram(): Promise<void> {
+    const telegramWindow = window.open('about:blank', '_blank');
     this.busy = true;
+    this.feedback = '';
     this.setBusyMessage('Preparando el PDF para Telegram…');
     try {
       const blob = await this.getPdfBlob();
       this.setBusyMessage('Subiendo el PDF…');
-      await this.svc.sendByTelegram({ pdfBlob: blob, fileName: this.fileName, caption: this.subject });
-      Swal.close();
+      const telegramUrl = await this.svc.sendByTelegram({ pdfBlob: blob, fileName: this.fileName, caption: this.subject }, false);
+      if (telegramWindow && !telegramWindow.closed) {
+        telegramWindow.location.href = telegramUrl;
+        this.setFeedback('Telegram está listo en la pestaña abierta.', 'success');
+      } else {
+        this.setFeedback('El navegador bloqueó la pestaña de Telegram; vuelve a pulsar el botón.', 'error');
+      }
     } catch (err: any) {
-      Swal.fire('Error', 'No se pudo subir el archivo.', 'error');
+      telegramWindow?.close();
+      this.setFeedback(err?.message || 'No se pudo subir el archivo a Telegram.', 'error');
     } finally {
       this.busy = false;
       this.busyMessage = '';
@@ -176,6 +193,12 @@ export class PdfShareButtonsComponent {
 
   private setBusyMessage(message: string): void {
     this.busyMessage = message;
+    this.cdr.detectChanges();
+  }
+
+  private setFeedback(message: string, type: 'success' | 'error' | 'info'): void {
+    this.feedback = message;
+    this.feedbackType = type;
     this.cdr.detectChanges();
   }
 

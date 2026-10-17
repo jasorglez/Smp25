@@ -96,11 +96,12 @@ export class PdfShareService {
   }
 
   // ── Telegram ───────────────────────────────────────────────────────────────
-  async sendByTelegram(opts: PdfTelegramOptions): Promise<void> {
+  async sendByTelegram(opts: PdfTelegramOptions, openInWindow = true): Promise<string> {
     const file = new File([opts.pdfBlob], opts.fileName, { type: 'application/pdf' });
     const url  = await this.storages.uploadFile(file, `pdf/share/${Date.now()}_${opts.fileName}`);
-    const text = opts.caption ? `${opts.caption}\n\n📎 ${url}` : url;
-    window.open(`https://t.me/share/url?url=${encodeURIComponent(url)}&text=${encodeURIComponent(opts.caption ?? opts.fileName)}`, '_blank', 'noopener,noreferrer');
+    const shareUrl = `https://t.me/share/url?url=${encodeURIComponent(url)}&text=${encodeURIComponent(opts.caption ?? opts.fileName)}`;
+    if (openInWindow) window.open(shareUrl, '_blank', 'noopener,noreferrer');
+    return shareUrl;
   }
 
   // ── Helpers ────────────────────────────────────────────────────────────────
