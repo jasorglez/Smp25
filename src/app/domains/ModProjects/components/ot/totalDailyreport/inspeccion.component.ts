@@ -255,13 +255,19 @@ export class InspeccionComponent implements OnInit {
   }
 
   private getOtContentTooltip(row: any): string | undefined {
-    if (!this.hasOtContent(row)) return undefined;
-    return [
+    if (!row) return undefined;
+    const items = [
       Number(row.personalCount) > 0 ? `Personal: ${row.personalCount}` : '',
       Number(row.photoCount) > 0 ? `Fotos: ${row.photoCount}` : '',
       Number(row.materialCount) > 0 ? `Materiales: ${row.materialCount}` : '',
       Number(row.equipmentCount) > 0 ? `Equipos: ${row.equipmentCount}` : ''
-    ].filter(Boolean).join(' · ');
+    ].filter(Boolean);
+    const workConcepts = Array.isArray(row.workConcepts) ? row.workConcepts.filter(Boolean) : [];
+    if (workConcepts.length) {
+      const shownConcepts = workConcepts.slice(0, 8);
+      items.push(`Trabajos: ${shownConcepts.join('; ')}${workConcepts.length > shownConcepts.length ? `; +${workConcepts.length - shownConcepts.length} más` : ''}`);
+    }
+    return items.length ? items.join(' · ') : undefined;
   }
 
   // Procesar datos para ambas pestañas
