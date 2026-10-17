@@ -19,6 +19,14 @@ import { TrackingService } from 'app/services/tracking.service';
   imports: [CommonModule, RouterLink, DashAdmonComponent, DashProjectsComponent, DashWarehouseComponent, CrmDashboardComponent, DashAiComponent],
   template: `
     <div class="dashboard-wrapper">
+      <footer class="dashboard-publicidad-footer">
+        <a routerLink="/publicidad" class="dashboard-publicidad-link">
+          <i class="bi bi-megaphone-fill" aria-hidden="true"></i>
+          <span>Publicidad</span>
+          <span class="dashboard-publicidad-hint">Novedades y anuncios de la empresa</span>
+          <i class="bi bi-chevron-right dashboard-publicidad-chevron" aria-hidden="true"></i>
+        </a>
+      </footer>
       <div class="dashboard-body">
       <section class="dashboard-welcome">
         <div class="dashboard-welcome-copy">
@@ -117,14 +125,6 @@ import { TrackingService } from 'app/services/tracking.service';
       </div>
       </div>
 
-      <footer class="dashboard-publicidad-footer">
-        <a routerLink="/publicidad" class="dashboard-publicidad-link">
-          <i class="bi bi-megaphone-fill" aria-hidden="true"></i>
-          <span>Publicidad</span>
-          <span class="dashboard-publicidad-hint">Novedades y anuncios de la empresa</span>
-          <i class="bi bi-chevron-right dashboard-publicidad-chevron" aria-hidden="true"></i>
-        </a>
-      </footer>
     </div>
   `,
   styles: [`
@@ -215,8 +215,8 @@ import { TrackingService } from 'app/services/tracking.service';
     }
     .dashboard-publicidad-footer {
       flex-shrink: 0;
-      margin-top: auto;
-      border-top: 1px solid #dee2e6;
+      margin-top: 0;
+      border-bottom: 1px solid #dee2e6;
       background: #fff;
     }
     .dashboard-publicidad-link {
