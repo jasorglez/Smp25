@@ -83,5 +83,5 @@ export const environment = {
   geminiApiKey: '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',
   gnewsApiKey: '94ccc596b4dfebc3f72683b6e81d81bc',
 
-  version: '5.00.224 (17 Octubre 2026 12:18) muestra costos de equipos y mantenimiento',
+  version: '5.00.225 (17 Octubre 2026 13:05) integra nomina y checador al dashboard RH',
 };

@@ -1,0 +1,38 @@
+.hr-dashboard { display: grid; gap: 1rem; padding: .5rem; color: #233044; }
+.hr-dashboard-header, .hr-section-title { display: flex; align-items: center; justify-content: space-between; gap: 1rem; }
+.hr-dashboard-header { padding: 1rem 1.15rem; color: #fff; border-radius: .75rem; background: linear-gradient(115deg, #164e63, #0f766e); }
+.hr-eyebrow { font-size: .68rem; font-weight: 800; letter-spacing: .12em; text-transform: uppercase; opacity: .75; }
+.hr-dashboard-header h2 { margin: .2rem 0; font-size: 1.35rem; font-weight: 750; }
+.hr-dashboard-header p { margin: 0; font-size: .82rem; opacity: .82; }
+.hr-dashboard-header .btn { color: #fff; border-color: rgba(255,255,255,.55); white-space: nowrap; }
+.hr-section { padding: 1rem; border: 1px solid #e2e8f0; border-radius: .75rem; background: #fff; box-shadow: 0 4px 18px rgba(15,23,42,.04); }
+.hr-section-title { margin-bottom: .85rem; }
+.hr-section-title h3 { display: flex; align-items: center; gap: .5rem; margin: 0; color: #163b53; font-size: 1rem; font-weight: 750; }
+.hr-section-title h3 i { color: #0f8a87; }
+.hr-section-title a { color: #087d87; font-size: .78rem; font-weight: 700; text-decoration: none; white-space: nowrap; }
+.hr-kpis { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: .7rem; }
+.hr-attendance-kpis { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+.hr-kpi { display: grid; align-content: center; gap: .25rem; min-width: 0; min-height: 88px; padding: .75rem .85rem; border: 1px solid #e7edf2; border-radius: .6rem; background: #f8fafc; }
+.hr-kpi > span { color: #667789; font-size: .7rem; font-weight: 750; letter-spacing: .03em; text-transform: uppercase; }
+.hr-kpi strong { overflow-wrap: anywhere; color: #123e59; font-size: 1.15rem; font-variant-numeric: tabular-nums; }
+.hr-kpi small { color: #8493a3; font-size: .68rem; }
+.hr-period-list { margin-top: .9rem; }
+.hr-list-heading, .hr-period-row { display: flex; justify-content: space-between; gap: 1rem; padding: .5rem .2rem; border-bottom: 1px solid #edf1f5; font-size: .78rem; }
+.hr-list-heading { color: #748397; font-size: .67rem; font-weight: 800; letter-spacing: .04em; text-transform: uppercase; }
+.hr-period-row strong { color: #176b61; font-variant-numeric: tabular-nums; }
+.hr-notice, .hr-loading { padding: .85rem 1rem; border: 1px solid #bfdbfe; border-radius: .6rem; color: #1e4d78; background: #eff6ff; font-size: .85rem; }
+.hr-notice-warning { margin-bottom: .75rem; border-color: #f3d48b; color: #765517; background: #fff8e6; }
+.hr-loading { display: flex; align-items: center; }
+.hr-empty, .hr-footnote { margin: .75rem 0 0; color: #8593a2; font-size: .73rem; }
+.hr-spin { display: inline-block; animation: hr-spin .8s linear infinite; }
+@keyframes hr-spin { to { transform: rotate(360deg); } }
+@media (max-width: 900px) { .hr-attendance-kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 600px) {
+  .hr-dashboard-header { align-items: flex-start; }
+  .hr-dashboard-header h2 { font-size: 1.1rem; }
+  .hr-kpis { grid-template-columns: 1fr; }
+  .hr-attendance-kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .hr-kpi { min-height: 76px; }
+  .hr-section-title { align-items: flex-start; flex-direction: column; }
+}
+@media (prefers-reduced-motion: reduce) { .hr-spin { animation: none; } }

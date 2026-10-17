@@ -1,0 +1,53 @@
+<section class="hr-dashboard" aria-label="Resumen de Recursos Humanos">
+  <header class="hr-dashboard-header">
+    <div>
+      <span class="hr-eyebrow">Personas y operación</span>
+      <h2>Recursos Humanos</h2>
+      <p>Resumen de nómina y asistencia de la sucursal activa.</p>
+    </div>
+    <button class="btn btn-sm btn-outline-primary" type="button" (click)="loadDashboard()" [disabled]="loading">
+      <i class="bi bi-arrow-clockwise me-1" [class.hr-spin]="loading"></i>Actualizar
+    </button>
+  </header>
+
+  <div *ngIf="!branchId" class="hr-notice"><i class="bi bi-building me-2"></i>Selecciona una sucursal para consultar nómina y checador.</div>
+  <div *ngIf="loading" class="hr-loading"><span class="spinner-border spinner-border-sm me-2" role="status"></span>Cargando resumen de Recursos Humanos…</div>
+
+  <ng-container *ngIf="branchId && !loading">
+    <section *ngIf="canViewPayroll" class="hr-section">
+      <div class="hr-section-title">
+        <h3><i class="bi bi-cash-stack"></i> Nómina</h3>
+        <a routerLink="/procreshuman/payroll">Abrir nómina <i class="bi bi-arrow-up-right"></i></a>
+      </div>
+      <div *ngIf="payrollUnavailable" class="hr-notice hr-notice-warning">No fue posible cargar los datos de nómina.</div>
+      <div class="hr-kpis">
+        <article class="hr-kpi"><span>Periodos registrados</span><strong>{{ payrollCount }}</strong></article>
+        <article class="hr-kpi"><span>Total de la última nómina</span><strong>{{ latestPayroll ? formatCurrency(latestPayroll.total) : '—' }}</strong><small>MXN · datos agregados</small></article>
+        <article class="hr-kpi"><span>Último periodo</span><strong>{{ latestPayroll ? (formatPeriodDate(latestPayroll.startDate) + ' – ' + formatPeriodDate(latestPayroll.endDate)) : 'Sin periodos' }}</strong></article>
+      </div>
+      <div class="hr-period-list" *ngIf="payrollRows.length">
+        <div class="hr-list-heading"><span>Periodos recientes</span><span>Total registrado</span></div>
+        <div class="hr-period-row" *ngFor="let period of payrollRows">
+          <span>{{ formatPeriodDate(period.startDate) }} – {{ formatPeriodDate(period.endDate) }}</span>
+          <strong>{{ formatCurrency(period.total) }}</strong>
+        </div>
+      </div>
+      <p *ngIf="!payrollUnavailable && !payrollRows.length" class="hr-empty">No hay periodos de nómina registrados para esta sucursal.</p>
+    </section>
+
+    <section *ngIf="canViewClock" class="hr-section">
+      <div class="hr-section-title">
+        <h3><i class="bi bi-stopwatch"></i> Checador · mes actual</h3>
+        <a routerLink="/procreshuman/clock/master-clock">Abrir checador <i class="bi bi-arrow-up-right"></i></a>
+      </div>
+      <div *ngIf="clockUnavailable" class="hr-notice hr-notice-warning">No fue posible cargar los registros del checador.</div>
+      <div class="hr-kpis hr-attendance-kpis">
+        <article class="hr-kpi"><span>Personas incluidas</span><strong>{{ attendance.employees }}</strong></article>
+        <article class="hr-kpi"><span>Retardos registrados</span><strong>{{ attendance.delays }}</strong></article>
+        <article class="hr-kpi"><span>Faltas registradas</span><strong>{{ attendance.absences }}</strong></article>
+        <article class="hr-kpi"><span>Salidas pendientes</span><strong>{{ attendance.pendingOuts }}</strong></article>
+      </div>
+      <p class="hr-footnote">Acumulados del periodo del día 1 de este mes a hoy; no identifica personas en este resumen.</p>
+    </section>
+  </ng-container>
+</section>

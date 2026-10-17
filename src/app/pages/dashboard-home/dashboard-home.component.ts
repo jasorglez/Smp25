@@ -13,11 +13,13 @@ import { DashAiComponent } from './components/dash-ai.component';
 import { UsersService } from 'app/services/users.service';
 import { TrackingService } from 'app/services/tracking.service';
 import { DashboardComponent as MaintenanceDashboardComponent } from 'app/domains/ModMaintenance/pages/dashboard/dashboard.component';
+import { AuthService } from 'app/services/auth.service';
+import { DashHumanResourcesComponent } from './components/dash-human-resources.component';
 
 @Component({
   selector: 'app-dashboard-home',
   standalone: true,
-  imports: [CommonModule, RouterLink, DashAdmonComponent, DashProjectsComponent, DashWarehouseComponent, CrmDashboardComponent, DashAiComponent, MaintenanceDashboardComponent],
+  imports: [CommonModule, RouterLink, DashAdmonComponent, DashProjectsComponent, DashWarehouseComponent, CrmDashboardComponent, DashAiComponent, MaintenanceDashboardComponent, DashHumanResourcesComponent],
   template: `
     <div class="dashboard-wrapper">
       <div class="dashboard-body">
@@ -83,6 +85,11 @@ import { DashboardComponent as MaintenanceDashboardComponent } from 'app/domains
             <i class="bi bi-tools me-1"></i> Mantenimiento
           </button>
         </li>
+        <li class="nav-item" *ngIf="canViewHumanResourcesDashboard">
+          <button class="nav-link" [class.active]="activeTab === 'rh'" (click)="activeTab = 'rh'">
+            <i class="bi bi-people me-1"></i> Recursos Humanos
+          </button>
+        </li>
         <li class="nav-item">
           <button class="nav-link" [class.active]="activeTab === 'ia'" (click)="activeTab = 'ia'">
             <i class="bi bi-stars me-1"></i> Inteligencia IA
@@ -130,6 +137,9 @@ import { DashboardComponent as MaintenanceDashboardComponent } from 'app/domains
         </ng-container>
         <ng-container *ngIf="activeTab === 'mantenimiento'">
           <app-dashboard />
+        </ng-container>
+        <ng-container *ngIf="activeTab === 'rh' && canViewHumanResourcesDashboard">
+          <app-dash-human-resources />
         </ng-container>
       </div>
       </div>
@@ -260,6 +270,7 @@ import { DashboardComponent as MaintenanceDashboardComponent } from 'app/domains
   `]
 })
 export class DashboardHomeComponent implements OnInit, OnDestroy {
+  private authService = inject(AuthService);
   private administrationService = inject(AdministrationService);
   private http = inject(HttpClient);
   private signalsService = inject(SignalsService);
@@ -269,6 +280,10 @@ export class DashboardHomeComponent implements OnInit, OnDestroy {
   readonly projectName = this.signalsService.getProjectNameBySidebar();
   readonly branchName = this.signalsService.getBranchNameSelectedBySidebar();
   activeTab: string = 'admon';
+  get canViewHumanResourcesDashboard(): boolean {
+    return this.authService.hasDetailedPermission('hr', 'payroll') ||
+      this.authService.hasDetailedPermission('hr', 'clock');
+  }
   isLoadingExchangeRate = false;
   exchangeRate: number | null = null;
   exchangeRateCheckedAt = '';
