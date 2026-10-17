@@ -42,7 +42,7 @@ export class InspeccionComponent implements OnInit {
   private signalsService = inject(SignalsService);
 
   // Variables de estado
-  public activeTab: string = 'reportes';
+  public activeTab: string = 'ots';
   public allReportsData: ReportData[] = [];
   public groupedReportsData: any[] = [];
   public allOtsData: any[] = [];

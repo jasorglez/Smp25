@@ -12,27 +12,18 @@
               <ul class="nav nav-tabs mb-2" style="flex-wrap: nowrap; overflow-x: auto; white-space: nowrap;">
                 <li class="nav-item" style="flex: 0 0 auto;">
                   <a class="nav-link" 
-                     [class.active]="activeTab === 'reportes'" 
-                     (click)="setActiveTab('reportes')" 
-                     style="cursor: pointer; padding: 0.4rem 0.6rem; font-size: 0.9rem;">
-                    <i class="bi bi-calendar3" style="font-size: 0.9rem;"></i> 
-                    Costos Trabajos Diarios
-                  </a>
-                </li>
-                <li class="nav-item" style="flex: 0 0 auto;">
-                  <a class="nav-link" [class.active]="activeTab === 'ots'" (click)="setActiveTab('ots')"
+                     [class.active]="activeTab === 'ots'"
+                     (click)="setActiveTab('ots')"
                      style="cursor: pointer; padding: 0.4rem 0.6rem; font-size: 0.9rem;">
                     <i class="bi bi-pencil-square" style="font-size: 0.9rem;"></i>
                     Capturar Reportes Diarios
                   </a>
                 </li>
                 <li class="nav-item" style="flex: 0 0 auto;">
-                  <a class="nav-link" 
-                     [class.active]="activeTab === 'ots'" 
-                     (click)="setActiveTab('ots')" 
+                  <a class="nav-link" [class.active]="activeTab === 'reportes'" (click)="setActiveTab('reportes')"
                      style="cursor: pointer; padding: 0.4rem 0.6rem; font-size: 0.9rem;">
-                    <i class="bi bi-list-task" style="font-size: 0.9rem;"></i> 
-                    Todas las OT
+                    <i class="bi bi-calendar3" style="font-size: 0.9rem;"></i>
+                    Costos Trabajos Diarios
                   </a>
                 </li>
               </ul>
