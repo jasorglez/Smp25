@@ -1,4 +1,16 @@
 <div class="welcome">
+  <section class="welcome__announcements" aria-label="Anuncios y novedades">
+    @for (announcement of announcements; track announcement.title) {
+      <article class="announcement-card" [class.announcement-card--highlight]="announcement.highlight">
+        <span class="announcement-card__icon"><i class="bi" [ngClass]="announcement.icon"></i></span>
+        <div>
+          <span class="announcement-card__category">{{ announcement.category }}</span>
+          <h2>{{ announcement.title }}</h2>
+          <p>{{ announcement.description }}</p>
+        </div>
+      </article>
+    }
+  </section>
   <div class="welcome__intro">
     <header class="welcome__header">
       <h1 class="welcome__title">{{ welcomeTitle }}</h1>

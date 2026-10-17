@@ -40,6 +40,36 @@ export class WelcomeComponent implements OnInit, OnDestroy {
   readonly welcomeTitle = 'Bienvenido';
   readonly welcomeSubtitle =
     'Aquí puedes ver novedades y publicidad de la empresa.';
+  readonly announcements = [
+    {
+      category: 'Actualización',
+      title: 'Reportes PDF en la misma ventana',
+      description: 'Genera y revisa tus reportes sin perder las fechas seleccionadas.',
+      icon: 'bi-file-earmark-pdf',
+      highlight: true,
+    },
+    {
+      category: 'Nuevo en tu inicio',
+      title: 'Un saludo más personal',
+      description: 'Consulta también los próximos días festivos de tu país.',
+      icon: 'bi-calendar-event',
+      highlight: false,
+    },
+    {
+      category: 'Tutoriales',
+      title: 'Visita nuestro canal de YouTube',
+      description: 'Encuentra demostraciones, consejos y guías para aprovechar el sistema.',
+      icon: 'bi-youtube',
+      highlight: false,
+    },
+    {
+      category: 'Consejos',
+      title: 'Conoce las nuevas funciones',
+      description: 'Revisa esta sección para enterarte de mejoras y formas más rápidas de trabajar.',
+      icon: 'bi-lightbulb',
+      highlight: false,
+    },
+  ];
 
   imageUrls: string[] = [];
   alts: string[] = [];

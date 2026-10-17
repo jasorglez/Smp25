@@ -33,6 +33,75 @@
   margin: 0;
 }
 
+.welcome__announcements {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+  width: min(1280px, 100%);
+  margin: 18px auto 0;
+  text-align: left;
+}
+
+.announcement-card {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  min-height: 104px;
+  padding: 13px;
+  border: 1px solid #e0e7f0;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, .92);
+  box-shadow: 0 3px 12px rgba(31, 52, 82, .05);
+}
+
+.announcement-card--highlight {
+  border-color: #b9d5f5;
+  background: linear-gradient(140deg, #fff, #edf6ff);
+}
+
+.announcement-card__icon {
+  display: grid;
+  flex: 0 0 32px;
+  width: 32px;
+  height: 32px;
+  place-items: center;
+  border-radius: 9px;
+  background: #e9f2ff;
+  color: #0e5aa7;
+  font-size: 16px;
+}
+
+.announcement-card__category {
+  color: #52708f;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: .04em;
+  text-transform: uppercase;
+}
+
+.announcement-card h2 {
+  margin: 2px 0 4px;
+  color: #183a5b;
+  font-size: 13px;
+  font-weight: 700;
+  line-height: 1.25;
+}
+
+.announcement-card p {
+  margin: 0;
+  color: #66788a;
+  font-size: 11px;
+  line-height: 1.4;
+}
+
+@media (max-width: 900px) {
+  .welcome__announcements { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+
+@media (max-width: 520px) {
+  .welcome__announcements { grid-template-columns: 1fr; margin-top: 14px; }
+}
+
 /* Publicidad: ancho completo del área de contenido, sin tarjeta */
 .welcome__showcase {
   flex: 1;
