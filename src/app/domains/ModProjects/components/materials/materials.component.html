@@ -51,6 +51,7 @@
         class="ag-theme-quartz small-text-ag-grid"
         [rowData]="rowData"
         [columnDefs]="colMaster"
+        [defaultColDef]="defaultColDef"
         (selectionChanged)="onMasterSelectionChanged($event)"
         [gridOptions]="gridOptions"
         (cellValueChanged)="onMasterCellValueChanged($event)"

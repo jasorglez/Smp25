@@ -354,6 +354,8 @@ export class MaterialsComponent implements CanComponentDeactivate {
     suppressDragLeaveHidesColumns: true,
     suppressMakeColumnVisibleAfterUnGroup: true,
     rowBuffer: 20,
+    tooltipShowDelay: 350,
+    tooltipHideDelay: 10000,
     // Full-width row para distribución
     isFullWidthRow: (params: any) => !!params.rowNode.data?.__isDistDetail,
     fullWidthCellRenderer: MaterialDetailRendererComponent,
