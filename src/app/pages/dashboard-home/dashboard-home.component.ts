@@ -12,11 +12,12 @@ import { SignalsService } from 'app/services/signals.service';
 import { DashAiComponent } from './components/dash-ai.component';
 import { UsersService } from 'app/services/users.service';
 import { TrackingService } from 'app/services/tracking.service';
+import { DashboardComponent as MaintenanceDashboardComponent } from 'app/domains/ModMaintenance/pages/dashboard/dashboard.component';
 
 @Component({
   selector: 'app-dashboard-home',
   standalone: true,
-  imports: [CommonModule, RouterLink, DashAdmonComponent, DashProjectsComponent, DashWarehouseComponent, CrmDashboardComponent, DashAiComponent],
+  imports: [CommonModule, RouterLink, DashAdmonComponent, DashProjectsComponent, DashWarehouseComponent, CrmDashboardComponent, DashAiComponent, MaintenanceDashboardComponent],
   template: `
     <div class="dashboard-wrapper">
       <div class="dashboard-body">
@@ -78,6 +79,11 @@ import { TrackingService } from 'app/services/tracking.service';
           </button>
         </li>
         <li class="nav-item">
+          <button class="nav-link" [class.active]="activeTab === 'mantenimiento'" (click)="activeTab = 'mantenimiento'">
+            <i class="bi bi-tools me-1"></i> Mantenimiento
+          </button>
+        </li>
+        <li class="nav-item">
           <button class="nav-link" [class.active]="activeTab === 'ia'" (click)="activeTab = 'ia'">
             <i class="bi bi-stars me-1"></i> Inteligencia IA
           </button>
@@ -121,6 +127,9 @@ import { TrackingService } from 'app/services/tracking.service';
         </ng-container>
         <ng-container *ngIf="activeTab === 'ventas'">
           <app-crm-dashboard />
+        </ng-container>
+        <ng-container *ngIf="activeTab === 'mantenimiento'">
+          <app-dashboard />
         </ng-container>
       </div>
       </div>

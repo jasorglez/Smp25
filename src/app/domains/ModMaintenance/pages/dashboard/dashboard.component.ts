@@ -54,7 +54,7 @@ export class DashboardComponent implements OnInit {
     { label: 'Activos Totales', value: '0', icon: 'box', color: 'blue' },
     { label: 'OT Abiertas', value: '0', icon: 'clipboard-check', color: 'orange' },
     { label: 'Preventivos del Mes', value: '0', icon: 'calendar', color: 'green' },
-    { label: 'Disponibilidad', value: '0.0%', icon: 'graph-up', color: 'purple' }
+    { label: 'Activos habilitados', value: '0', icon: 'check-circle', color: 'purple' }
   ];
 
   recentOrders: WorkOrder[] = [];
@@ -154,7 +154,7 @@ export class DashboardComponent implements OnInit {
       { label: 'Activos Totales', value: String(totalAssets), icon: 'box', color: 'blue' },
       { label: 'OT Abiertas', value: String(openWorkOrders), icon: 'clipboard-list', color: 'orange' },
       { label: 'Preventivos del Mes', value: String(preventiveThisMonth), icon: 'calendar', color: 'green' },
-      { label: 'Disponibilidad', value: `${availability.toFixed(1)}%`, icon: 'chart-line', color: 'purple' }
+      { label: 'Activos habilitados', value: `${activeAssets} (${availability.toFixed(1)}%)`, icon: 'check-circle', color: 'purple' }
     ];
   }
 
