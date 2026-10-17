@@ -810,6 +810,20 @@ export class SaldosPalacioComponent implements OnDestroy {
           alignment: 'center',
           margin: [0, 0, 0, 15]
         },
+        {
+          table: {
+            widths: ['*'],
+            body: [[{
+              text: 'Aviso: Este estado de cuenta incluye todos los movimientos pagados, estén facturados o no, para reflejar el saldo acumulado de la cuenta.',
+              fontSize: 8,
+              color: '#664d03',
+              fillColor: '#fff3cd',
+              margin: [6, 4, 6, 4]
+            }]]
+          },
+          layout: 'noBorders',
+          margin: [0, 0, 0, 10]
+        },
         // Tabla de movimientos
         {
           table: {

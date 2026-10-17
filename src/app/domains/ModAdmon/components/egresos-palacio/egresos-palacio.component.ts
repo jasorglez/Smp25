@@ -2789,7 +2789,12 @@ export class EgresosPalacioComponent {
         const expenseDateObj = new Date(expense.date);
         const expenseDateStr = `${expenseDateObj.getFullYear()}-${String(expenseDateObj.getMonth() + 1).padStart(2, '0')}-${String(expenseDateObj.getDate()).padStart(2, '0')}`;
 
-        return expenseDateStr >= this.reportStartDate && expenseDateStr <= this.reportEndDate && expense.facturado === true;
+        const isInsidePeriod = expenseDateStr >= this.reportStartDate && expenseDateStr <= this.reportEndDate;
+        const matchesReportStatus = this.reportType === 'egresos'
+          ? expense.status === 'Pagada'
+          : expense.facturado === true;
+
+        return isInsidePeriod && matchesReportStatus;
       });
 
       if (filteredExpenses.length === 0) {
@@ -2890,6 +2895,8 @@ export class EgresosPalacioComponent {
 
       // Paso 2: Cargar todos los conceptos de los egresos filtrados
       const allConcepts: any[] = [];
+      let paidNotInvoicedCount = 0;
+      let paidNotInvoicedAmountInCents = 0;
       for (const expense of filteredExpenses) {
         const rawConcepts: any[] = await lastValueFrom(
           this.incomesAndExpensesService.getAllConceptsFromIncomesAndExpenses(expense.id)
@@ -2902,6 +2909,14 @@ export class EgresosPalacioComponent {
         concepts.forEach(concept => {
           concept.totalFinal = (concept.total || 0) + (concept.iva2 || 0) - (concept.isr || 0);
         });
+
+        if (expense.facturado !== true) {
+          paidNotInvoicedCount += 1;
+          paidNotInvoicedAmountInCents += concepts.reduce(
+            (sum, concept) => sum + this.amountInCents(concept.total) + this.amountInCents(concept.iva2),
+            0
+          );
+        }
 
         allConcepts.push(...concepts);
       }
@@ -2932,7 +2947,13 @@ export class EgresosPalacioComponent {
       );
 
       // Paso 5: Generar el PDF con los datos financieros
-      await this.generateEgresosPDF(agrupacionPorCategoria, saldoInicial, ingresosMes);
+      await this.generateEgresosPDF(
+        agrupacionPorCategoria,
+        saldoInicial,
+        ingresosMes,
+        paidNotInvoicedCount,
+        paidNotInvoicedAmountInCents / 100
+      );
 
     } catch (error) {
       console.error('Error generando reporte de egresos:', error);
@@ -4623,7 +4644,13 @@ export class EgresosPalacioComponent {
   /**
    * Genera el PDF del reporte de egresos
    */
-  private async generateEgresosPDF(agrupacion: Map<string, any>, saldoInicial: number = 0, ingresosMes: number = 0) {
+  private async generateEgresosPDF(
+    agrupacion: Map<string, any>,
+    saldoInicial: number = 0,
+    ingresosMes: number = 0,
+    paidNotInvoicedCount = 0,
+    paidNotInvoicedAmount = 0
+  ) {
     // Importar pdfMake dinámicamente
     const pdfMake = (await import('pdfmake/build/pdfmake')).default;
     const pdfFonts = (await import('pdfmake/build/vfs_fonts')).default;
@@ -4855,6 +4882,11 @@ export class EgresosPalacioComponent {
           },
           margin: [0, 0, 0, 18]
         },
+        ...(paidNotInvoicedCount > 0 ? [{
+          text: `Aviso: Se incluyeron ${paidNotInvoicedCount} egreso(s) pagado(s) no facturado(s) por $${this.formatCurrencyNumber(paidNotInvoicedAmount)}. Estos movimientos también aparecen en Saldos y se incluyen para cuadrar el cierre.`,
+          style: 'balanceReconciliationNote',
+          margin: [0, 0, 0, 14]
+        }] : []),
         // Firmas
         {
           columns: [
@@ -4958,6 +4990,12 @@ export class EgresosPalacioComponent {
           fillColor: '#e0e0e0',
           color: '#000000',
           margin: [0, 2, 0, 2]
+        },
+        balanceReconciliationNote: {
+          fontSize: 8,
+          color: '#664d03',
+          fillColor: '#fff3cd',
+          margin: [6, 4, 6, 4]
         },
         resumenLabel: {
           fontSize: 8,

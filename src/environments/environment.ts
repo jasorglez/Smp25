@@ -83,5 +83,5 @@ export const environment = {
   geminiApiKey: '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',
   gnewsApiKey: '94ccc596b4dfebc3f72683b6e81d81bc',
 
-  version: '5.00.218 (17 Octubre 2026 09:57) saldo inicial de egresos igual al cierre de saldos',
+  version: '5.00.219 (17 Octubre 2026 10:13) egresos cuadran con saldos e informan pagos no facturados',
 };
