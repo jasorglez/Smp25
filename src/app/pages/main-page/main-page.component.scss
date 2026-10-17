@@ -56,6 +56,22 @@
   color: #1f3d55;
 }
 
+.workspace-tab--updates {
+  flex: 0 0 auto;
+  margin-right: 7px;
+  color: #fff;
+  font-weight: 700;
+  background: linear-gradient(115deg, #17649c, #2588b5);
+  border-color: #17649c;
+  cursor: pointer;
+  box-shadow: 0 2px 7px rgba(17, 74, 117, .18);
+}
+
+.workspace-tab--updates:hover {
+  color: #fff;
+  background: linear-gradient(115deg, #125482, #1b739c);
+}
+
 .workspace-tab.active {
   position: relative;
   z-index: 1;

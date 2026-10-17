@@ -44,7 +44,11 @@
     </div>
 
     <div class="flex-grow-1 pt-2 ps-0 pe-2" [class.d-none]="licenseStatus() === 'expired' && !isRootUser()">
-      <nav class="workspace-tabs" aria-label="Pantallas abiertas" *ngIf="workspaceTabs.tabs().length">
+      <nav class="workspace-tabs" aria-label="Barra principal">
+        <button type="button" class="workspace-tab workspace-tab--updates" (click)="openUpdates()" title="Ver historial de actualizaciones">
+          <i class="bi bi-stars"></i>
+          <span class="workspace-tab-title">Actualizaciones</span>
+        </button>
         <button
           type="button"
           class="workspace-tab"

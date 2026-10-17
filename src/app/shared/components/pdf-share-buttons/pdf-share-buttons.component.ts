@@ -3,6 +3,7 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { PdfShareService } from 'app/services/pdf-share.service';
 import { SignalsService } from 'app/services/signals.service';
+import { TrackingService } from 'app/services/tracking.service';
 
 @Component({
   selector: 'app-pdf-share-buttons',
@@ -85,12 +86,16 @@ export class PdfShareButtonsComponent {
   printUrl = '';
   private svc = inject(PdfShareService);
   private signals = inject(SignalsService);
+  private tracking = inject(TrackingService);
   private cdr = inject(ChangeDetectorRef);
 
   togglePanel(panel: 'email' | 'whatsapp'): void {
     this.activePanel = this.activePanel === panel ? null : panel;
     if (this.activePanel === 'email' && !this.emailTo.trim()) {
-      this.emailTo = this.signals.profile.emailUser() ?? '';
+      this.emailTo = this.signals.profile.emailUser()?.trim()
+        || this.signals.getemailChoose()?.trim()
+        || this.tracking.getEmail()?.trim()
+        || '';
     }
     this.feedback = '';
     this.whatsappUrl = '';

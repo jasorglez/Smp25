@@ -1,7 +1,11 @@
 import { Component, OnDestroy, OnInit, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { FormsModule } from '@angular/forms';
 import { HttpClient } from '@angular/common/http';
+import { ActivatedRoute, Router } from '@angular/router';
 import { catchError, of } from 'rxjs';
+import { SignalsService } from 'app/services/signals.service';
+import { ProductUpdate, ProductUpdatesService } from 'app/services/product-updates.service';
 
 const PUBLICIDAD_BASE = 'assets/publicidad/';
 const MANIFEST_URL = `${PUBLICIDAD_BASE}manifest.json`;
@@ -30,12 +34,16 @@ const FALLBACK_IMAGE_NAMES: readonly string[] = [
 @Component({
   selector: 'app-welcome',
   standalone: true,
-  imports: [CommonModule],
+  imports: [CommonModule, FormsModule],
   templateUrl: './welcome.component.html',
   styleUrls: ['./welcome.component.scss'],
 })
 export class WelcomeComponent implements OnInit, OnDestroy {
   private readonly http = inject(HttpClient);
+  private readonly updatesService = inject(ProductUpdatesService);
+  private readonly signals = inject(SignalsService);
+  private readonly route = inject(ActivatedRoute);
+  private readonly router = inject(Router);
 
   readonly welcomeTitle = 'Bienvenido';
   readonly welcomeSubtitle =
@@ -66,7 +74,7 @@ export class WelcomeComponent implements OnInit, OnDestroy {
       href: 'https://www.youtube.com/@bi2mx',
     },
     {
-      category: 'Consejos',
+      category: 'Actualizaciones',
       title: 'Conoce las nuevas funciones',
       description: 'Revisa esta sección para enterarte de mejoras y formas más rápidas de trabajar.',
       icon: 'bi-lightbulb',
@@ -79,11 +87,17 @@ export class WelcomeComponent implements OnInit, OnDestroy {
   alts: string[] = [];
   currentIndex = 0;
   loading = true;
+  showUpdates = false;
+  updatesLoading = false;
+  updatesError = '';
+  updates: ProductUpdate[] = [];
+  updateSearch = '';
 
   /** Intervalo entre diapositivas (avance automático). */
   readonly autoplayIntervalMs = 5000;
 
   private autoplayId: ReturnType<typeof setInterval> | null = null;
+  private queryParamsSubscription?: { unsubscribe(): void };
   private onVisibilityChange = (): void => {
     if (typeof document === 'undefined') {
       return;
@@ -96,6 +110,9 @@ export class WelcomeComponent implements OnInit, OnDestroy {
   };
 
   ngOnInit(): void {
+    this.queryParamsSubscription = this.route.queryParamMap.subscribe((params) => {
+      if (params.get('showUpdates') === '1') this.openUpdates();
+    });
     if (typeof document !== 'undefined') {
       document.addEventListener('visibilitychange', this.onVisibilityChange);
     }
@@ -115,6 +132,7 @@ export class WelcomeComponent implements OnInit, OnDestroy {
   }
 
   ngOnDestroy(): void {
+    this.queryParamsSubscription?.unsubscribe();
     if (typeof document !== 'undefined') {
       document.removeEventListener('visibilitychange', this.onVisibilityChange);
     }
@@ -130,6 +148,66 @@ export class WelcomeComponent implements OnInit, OnDestroy {
       return '';
     }
     return `${this.currentIndex + 1} / ${this.imageUrls.length}`;
+  }
+
+  get filteredUpdates(): ProductUpdate[] {
+    const query = this.updateSearch.trim().toLocaleLowerCase('es-MX');
+    if (!query) return this.updates;
+    return this.updates.filter((update) =>
+      [update.title, update.module, update.description, update.userBenefit, update.version]
+        .filter(Boolean)
+        .some((value) => String(value).toLocaleLowerCase('es-MX').includes(query)),
+    );
+  }
+
+  openUpdates(): void {
+    this.showUpdates = true;
+    this.updateSearch = '';
+    this.updatesError = '';
+    const idRoot = Number(this.signals.getRootSelectedBySidebar()() || 0);
+    if (!idRoot) {
+      this.updates = [];
+      this.updatesError = 'Selecciona una empresa para consultar las actualizaciones.';
+      return;
+    }
+
+    this.updatesLoading = true;
+    this.updatesService.getPublished(idRoot).pipe(
+      catchError((error) => {
+        console.error('No se pudieron cargar las actualizaciones:', error);
+        this.updatesError = 'No se pudieron cargar las actualizaciones. Intenta de nuevo.';
+        return of([] as ProductUpdate[]);
+      }),
+    ).subscribe((updates) => {
+      this.updates = updates ?? [];
+      this.updatesLoading = false;
+    });
+  }
+
+  closeUpdates(): void {
+    this.showUpdates = false;
+    if (this.route.snapshot.queryParamMap.has('showUpdates')) {
+      void this.router.navigate([], {
+        relativeTo: this.route,
+        queryParams: { showUpdates: null },
+        queryParamsHandling: 'merge',
+        replaceUrl: true,
+      });
+    }
+  }
+
+  formatUpdateDate(value: string, timeZone?: string | null): string {
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) return '';
+    try {
+      return new Intl.DateTimeFormat('es-MX', {
+        dateStyle: 'medium',
+        timeStyle: 'short',
+        timeZone: timeZone || 'America/Indiana/Indianapolis',
+      }).format(date);
+    } catch {
+      return new Intl.DateTimeFormat('es-MX', { dateStyle: 'medium' }).format(date);
+    }
   }
 
   next(): void {

@@ -179,6 +179,10 @@ export class MainPageComponent implements OnInit, OnDestroy {
     }
   }
 
+  openUpdates(): void {
+    void this.router.navigateByUrl('/publicidad?showUpdates=1');
+  }
+
   onTabDragStart(event: DragEvent, tab: WorkspaceTab): void {
     this.draggingTabUrl = tab.url;
     event.dataTransfer?.setData('text/plain', tab.url);

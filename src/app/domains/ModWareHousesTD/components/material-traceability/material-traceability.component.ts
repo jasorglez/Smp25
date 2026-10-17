@@ -1,5 +1,5 @@
 import { CommonModule } from '@angular/common';
-import { Component, effect, inject } from '@angular/core';
+import { Component, OnDestroy, effect, inject } from '@angular/core';
 import { AgGridModule } from 'ag-grid-angular';
 import { ColDef, GridApi, GridReadyEvent } from 'ag-grid-enterprise';
 import { catchError, forkJoin, map, of, switchMap } from 'rxjs';
@@ -10,6 +10,7 @@ import { MaterialsService } from 'app/services/materials.service';
 import { OcAndReqsService } from 'app/services/ocandreqs.service';
 import { InandoutService } from 'app/services/inandout.service';
 import { PermitionsService } from 'app/services/permitions.service';
+import { PdfReportViewerComponent } from 'app/shared/pdf-report-viewer/pdf-report-viewer.component';
 import pdfMake from 'pdfmake/build/pdfmake';
 import pdfFonts from 'pdfmake/build/vfs_fonts';
 
@@ -18,24 +19,39 @@ import pdfFonts from 'pdfmake/build/vfs_fonts';
 @Component({
   selector: 'app-material-traceability',
   standalone: true,
-  imports: [CommonModule, AgGridModule],
+  imports: [CommonModule, AgGridModule, PdfReportViewerComponent],
   template: `
     <div class="p-3">
       <div class="d-flex align-items-center justify-content-between mb-2">
         <div><h5 class="mb-0"><i class="bi bi-diagram-3 me-2"></i>Trazabilidad de materiales</h5>
           <small class="text-muted">Requisiciones, órdenes de compra, entradas y salidas</small></div>
         <div class="d-flex gap-2"><button class="btn btn-sm btn-outline-primary" (click)="load()" [disabled]="loading"><i class="bi bi-arrow-clockwise"></i> Actualizar</button>
-        <button class="btn btn-sm btn-danger" (click)="printPdf()" [disabled]="loading || !rowData.length"><i class="bi bi-file-earmark-pdf"></i> PDF</button></div>
+        <button class="btn btn-sm btn-danger" (click)="previewPdf()" [disabled]="loading || pdfGenerating || !rowData.length"><i class="bi bi-file-earmark-pdf"></i> {{ pdfGenerating ? 'Preparando…' : 'Ver PDF' }}</button></div>
       </div>
       <div class="alert alert-info py-2" *ngIf="!projectId">Selecciona un proyecto para consultar sus movimientos.</div>
       <div class="text-muted py-4 text-center" *ngIf="loading"><span class="spinner-border spinner-border-sm me-2"></span>Preparando trazabilidad...</div>
-      <ag-grid-angular *ngIf="!loading" class="ag-theme-quartz small-text-ag-grid" style="width:100%;height:78vh"
+      <ag-grid-angular *ngIf="!loading && !pdfPreviewUrl" class="ag-theme-quartz small-text-ag-grid" style="width:100%;height:78vh"
         [rowData]="rowData" [columnDefs]="columnDefs" [defaultColDef]="defaultColDef" [autoGroupColumnDef]="autoGroupColumnDef"
         [pagination]="true" [paginationPageSize]="25" [localeText]="AG_GRID_LOCALE_ES"
         (gridReady)="gridApi = $event.api"></ag-grid-angular>
+      <section *ngIf="pdfPreviewUrl" class="traceability-pdf-preview">
+        <div class="traceability-pdf-preview__heading">
+          <div><i class="bi bi-file-earmark-pdf me-2"></i>Vista previa · Trazabilidad de materiales</div>
+          <button type="button" class="btn btn-sm btn-light" (click)="closePdfPreview()"><i class="bi bi-arrow-left me-1"></i>Volver a la tabla</button>
+        </div>
+        <div class="traceability-pdf-preview__viewer">
+          <app-pdf-report-viewer [sourceUrl]="pdfPreviewUrl" title="Trazabilidad de materiales" fileName="Trazabilidad_Materiales.pdf"></app-pdf-report-viewer>
+        </div>
+      </section>
     </div>`
+  ,
+  styles: [`
+    .traceability-pdf-preview { margin-top: 16px; overflow: hidden; border: 1px solid #d9e2ec; border-radius: 12px; background: #fff; box-shadow: 0 8px 28px rgba(20, 47, 76, .08); }
+    .traceability-pdf-preview__heading { display: flex; align-items: center; justify-content: space-between; padding: 9px 14px; color: #fff; background: linear-gradient(110deg, #173f68, #287aa5); font-size: 13px; font-weight: 700; }
+    .traceability-pdf-preview__viewer { height: min(72vh, 760px); min-height: 360px; padding: 10px; }
+  `]
 })
-export class MaterialTraceabilityComponent {
+export class MaterialTraceabilityComponent implements OnDestroy {
   private signals = inject(SignalsService);
   private tracking = inject(TrackingService);
   private materials = inject(MaterialsService);
@@ -46,6 +62,8 @@ export class MaterialTraceabilityComponent {
   projectId: number | null = null;
   rowData: any[] = [];
   loading = false;
+  pdfGenerating = false;
+  pdfPreviewUrl: string | null = null;
   private defaultWarehouseName = '';
   gridApi!: GridApi;
   readonly AG_GRID_LOCALE_ES = AG_GRID_LOCALE_ES;
@@ -69,6 +87,10 @@ export class MaterialTraceabilityComponent {
       this.projectId = this.signals.getProjectSelectedBySidebar()();
       if (this.idRoot && this.tracking.getEmail()) this.load();
     });
+  }
+
+  ngOnDestroy(): void {
+    this.releasePdfPreview();
   }
 
   load(): void {
@@ -127,7 +149,7 @@ export class MaterialTraceabilityComponent {
     return existing ? (existing.split(', ').includes(value) ? existing : `${existing}, ${value}`) : value;
   }
 
-  printPdf(): void {
+  previewPdf(): void {
     const body: any[] = [[
       { text: 'Material', bold: true, color: '#fff' }, { text: 'Unidad', bold: true, color: '#fff' },
       { text: 'Requisición (cantidad)', bold: true, color: '#fff' }, { text: 'OC (cantidad)', bold: true, color: '#fff' },
@@ -144,6 +166,28 @@ export class MaterialTraceabilityComponent {
       content: [{ text: `Proyecto: ${this.projectId || 'Todos'}   |   Generado: ${new Date().toLocaleString('es-MX')}`, fontSize: 8, color: '#555', margin: [0, 0, 0, 10] }, { table: { headerRows: 1, widths: ['*', 55, 130, 100, 65, 65, 75, 170], body }, layout: { fillColor: (row: number) => row === 0 ? '#1a5a9a' : null, hLineColor: () => '#d5dbe3', vLineColor: () => '#d5dbe3', paddingLeft: () => 4, paddingRight: () => 4, paddingTop: () => 3, paddingBottom: () => 3 } }],
       footer: (current: number, total: number) => ({ text: `Trazabilidad de materiales · Página ${current} de ${total}`, alignment: 'center', fontSize: 8, color: '#777' })
     };
-    pdfMake.createPdf(doc).print();
+    this.pdfGenerating = true;
+    try {
+      pdfMake.createPdf(doc).getBlob((blob: Blob) => {
+        this.releasePdfPreview();
+        this.pdfPreviewUrl = URL.createObjectURL(blob);
+        this.pdfGenerating = false;
+      });
+    } catch (error) {
+      console.error('No se pudo generar el PDF de trazabilidad:', error);
+      this.pdfGenerating = false;
+    }
+  }
+
+  closePdfPreview(): void {
+    this.releasePdfPreview();
+    this.pdfPreviewUrl = null;
+  }
+
+  private releasePdfPreview(): void {
+    if (this.pdfPreviewUrl) {
+      URL.revokeObjectURL(this.pdfPreviewUrl);
+      this.pdfPreviewUrl = null;
+    }
   }
 }

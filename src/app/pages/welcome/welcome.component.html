@@ -10,6 +10,9 @@
           <a *ngIf="announcement.href" class="announcement-card__link" [href]="announcement.href" target="_blank" rel="noopener noreferrer">
             Visitar canal <i class="bi bi-arrow-up-right" aria-hidden="true"></i>
           </a>
+          <button *ngIf="announcement.category === 'Actualizaciones'" type="button" class="announcement-card__link announcement-card__action" (click)="openUpdates()">
+            Ver actualizaciones <i class="bi bi-arrow-right" aria-hidden="true"></i>
+          </button>
         </div>
       </article>
     }
@@ -103,4 +106,59 @@
       </div>
     }
   </section>
+
+  @if (showUpdates) {
+    <div class="updates-backdrop" (click)="closeUpdates()">
+      <section class="updates-dialog" role="dialog" aria-modal="true" aria-labelledby="updates-title" (click)="$event.stopPropagation()">
+        <header class="updates-dialog__header">
+          <div>
+            <span class="updates-dialog__eyebrow"><i class="bi bi-stars me-1"></i>Historial del producto</span>
+            <h2 id="updates-title">Actualizaciones</h2>
+            <p>Mejoras y funciones recientes para trabajar con más claridad y rapidez.</p>
+          </div>
+          <button type="button" class="updates-dialog__close" aria-label="Cerrar actualizaciones" (click)="closeUpdates()">
+            <i class="bi bi-x-lg"></i>
+          </button>
+        </header>
+
+        <div class="updates-dialog__tools">
+          <label class="updates-search">
+            <i class="bi bi-search" aria-hidden="true"></i>
+            <input type="search" [(ngModel)]="updateSearch" placeholder="Buscar por módulo o actualización" aria-label="Buscar actualizaciones">
+          </label>
+          <span class="updates-count">{{ updates.length }} {{ updates.length === 1 ? 'actualización' : 'actualizaciones' }}</span>
+        </div>
+
+        <div class="updates-dialog__content">
+          @if (updatesLoading) {
+            <div class="updates-state"><span class="spinner-border spinner-border-sm" aria-hidden="true"></span> Cargando actualizaciones…</div>
+          } @else if (updatesError) {
+            <div class="updates-state updates-state--error"><i class="bi bi-exclamation-circle me-2"></i>{{ updatesError }}</div>
+          } @else if (!filteredUpdates.length) {
+            <div class="updates-state"><i class="bi bi-inbox me-2"></i>{{ updateSearch ? 'No hay coincidencias con esa búsqueda.' : 'Aún no hay actualizaciones publicadas.' }}</div>
+          } @else {
+            <div class="updates-grid">
+              @for (update of filteredUpdates; track update.id) {
+                <article class="update-card">
+                  <div class="update-card__meta">
+                    <span class="update-card__module"><i class="bi bi-grid-1x2 me-1"></i>{{ update.module }}</span>
+                    <time>{{ formatUpdateDate(update.occurredAtUtc, update.displayTimeZone) }}</time>
+                  </div>
+                  <h3>{{ update.title }}</h3>
+                  <p>{{ update.description }}</p>
+                  @if (update.userBenefit) {
+                    <div class="update-card__benefit"><i class="bi bi-check2-circle"></i><span>{{ update.userBenefit }}</span></div>
+                  }
+                  <div class="update-card__footer">
+                    <span *ngIf="update.version" class="update-card__version">{{ update.version }}</span>
+                    <a *ngIf="update.tutorialUrl" [href]="update.tutorialUrl" target="_blank" rel="noopener noreferrer">Ver tutorial <i class="bi bi-arrow-up-right"></i></a>
+                  </div>
+                </article>
+              }
+            </div>
+          }
+        </div>
+      </section>
+    </div>
+  }
 </div>
