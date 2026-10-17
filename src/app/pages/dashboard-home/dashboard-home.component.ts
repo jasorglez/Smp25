@@ -24,12 +24,6 @@ import { TrackingService } from 'app/services/tracking.service';
         <div class="dashboard-welcome-copy">
           <span class="dashboard-clock"><i class="bi bi-clock"></i> {{ clockText }}</span>
           <div class="dashboard-greeting-line">
-            <a routerLink="/publicidad" class="dashboard-publicidad-link">
-              <i class="bi bi-megaphone-fill" aria-hidden="true"></i>
-              <span>Publicidad</span>
-              <span class="dashboard-publicidad-hint">Novedades y anuncios de la empresa</span>
-              <i class="bi bi-chevron-right dashboard-publicidad-chevron" aria-hidden="true"></i>
-            </a>
             <h4>{{ greeting }}, {{ userName }}</h4>
           </div>
           <p *ngIf="projectName()"><i class="bi bi-kanban me-1"></i>{{ projectName() }}</p>
@@ -41,6 +35,12 @@ import { TrackingService } from 'app/services/tracking.service';
             </span>
           </div>
         </div>
+        <a routerLink="/publicidad" class="dashboard-publicidad-link">
+          <i class="bi bi-megaphone-fill" aria-hidden="true"></i>
+          <span>Publicidad</span>
+          <span class="dashboard-publicidad-hint">Novedades y anuncios de la empresa</span>
+          <i class="bi bi-chevron-right dashboard-publicidad-chevron" aria-hidden="true"></i>
+        </a>
         <div class="dashboard-context">
           <div>
             <i class="bi bi-building"></i>
@@ -141,6 +141,7 @@ import { TrackingService } from 'app/services/tracking.service';
       min-height: 0;
     }
     .dashboard-welcome {
+      position: relative;
       display: flex;
       align-items: center;
       justify-content: space-between;
@@ -208,6 +209,8 @@ import { TrackingService } from 'app/services/tracking.service';
     @keyframes spin { to { transform: rotate(360deg); } }
     @media (max-width: 767px) {
       .dashboard-welcome { align-items: flex-start; flex-direction: column; }
+      .dashboard-publicidad-link { position: static; align-self: flex-start; transform: none; }
+      .dashboard-publicidad-link:hover { transform: none; }
       .dashboard-context { width: 100%; }
       .dashboard-context > div { flex: 1; }
       .dashboard-quick-tools { align-items: flex-start; flex-direction: column; }
@@ -215,6 +218,9 @@ import { TrackingService } from 'app/services/tracking.service';
     }
     .dashboard-greeting-line { display: flex; align-items: center; flex-wrap: wrap; gap: .25rem 1rem; }
     .dashboard-publicidad-link {
+      position: absolute;
+      left: 50%;
+      transform: translateX(-50%);
       display: flex;
       flex-wrap: wrap;
       align-items: baseline;
@@ -231,6 +237,7 @@ import { TrackingService } from 'app/services/tracking.service';
     .dashboard-publicidad-link:hover {
       background: rgba(255,255,255,.25);
       color: #fff;
+      transform: translateX(-50%);
     }
     .dashboard-publicidad-hint {
       font-size: 0.68rem;
