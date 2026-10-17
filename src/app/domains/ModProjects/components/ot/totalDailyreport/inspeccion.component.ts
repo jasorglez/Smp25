@@ -173,8 +173,7 @@ export class InspeccionComponent implements OnInit {
       headerName: 'OT',
       width: 110,
       sortable: true,
-      filter: true,
-      sort: 'desc'
+      filter: true
     },
     {
       field: 'cdc',
