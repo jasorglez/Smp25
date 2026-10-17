@@ -59,6 +59,9 @@ export class DashboardComponent implements OnInit {
 
   recentOrders: WorkOrder[] = [];
   upcomingMaintenance: UpcomingMaintenance[] = [];
+  equipmentCostTotals = { mxn: 0, usd: 0 };
+  workOrderCostTotals = { labor: 0, parts: 0, total: 0 };
+  maintenanceCostByAsset: Array<{ asset: string; total: number; orders: number }> = [];
 
   // Charts
   chartTipo: any = null;
@@ -112,6 +115,7 @@ export class DashboardComponent implements OnInit {
         this.updateStats(assets, workOrders);
         this.recentOrders = this.buildRecentOrders(workOrders);
         this.upcomingMaintenance = this.buildUpcomingMaintenance(workOrders);
+        this.updateCostSummaries(assets, workOrders);
         this.buildCharts(workOrders);
 
         this.loading = false;
@@ -156,6 +160,43 @@ export class DashboardComponent implements OnInit {
       { label: 'Preventivos del Mes', value: String(preventiveThisMonth), icon: 'calendar', color: 'green' },
       { label: 'Activos habilitados', value: `${activeAssets} (${availability.toFixed(1)}%)`, icon: 'check-circle', color: 'purple' }
     ];
+  }
+
+  private updateCostSummaries(assets: any[], workOrders: any[]): void {
+    this.equipmentCostTotals = assets.reduce((sum, asset) => ({
+      mxn: sum.mxn + (Number(asset.costMN) || 0),
+      usd: sum.usd + (Number(asset.costDLL) || 0)
+    }), { mxn: 0, usd: 0 });
+
+    const byAsset = new Map<string, { asset: string; total: number; orders: number }>();
+    this.workOrderCostTotals = workOrders.reduce((sum, order) => {
+      const labor = Number(order.costLabor) || 0;
+      const parts = Number(order.costParts) || 0;
+      const total = labor + parts;
+      const assetKey = String(order.assetId || order.assetName || 'sin-activo');
+      const existing = byAsset.get(assetKey) || {
+        asset: order.assetName || 'Sin activo vinculado',
+        total: 0,
+        orders: 0
+      };
+      existing.total += total;
+      existing.orders += 1;
+      byAsset.set(assetKey, existing);
+      return { labor: sum.labor + labor, parts: sum.parts + parts, total: sum.total + total };
+    }, { labor: 0, parts: 0, total: 0 });
+
+    this.maintenanceCostByAsset = [...byAsset.values()]
+      .filter(item => item.total > 0)
+      .sort((a, b) => b.total - a.total)
+      .slice(0, 5);
+  }
+
+  formatCurrency(amount: number, currency: 'MXN' | 'USD' = 'MXN'): string {
+    return new Intl.NumberFormat('es-MX', {
+      style: 'currency',
+      currency,
+      maximumFractionDigits: 2
+    }).format(Number(amount) || 0);
   }
 
   private buildRecentOrders(workOrders: any[]): WorkOrder[] {

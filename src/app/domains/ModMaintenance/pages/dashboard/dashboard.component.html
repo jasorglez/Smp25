@@ -90,6 +90,49 @@
 
     </div><!-- /dash-grid -->
 
+    <section class="cost-summary" aria-label="Costos de equipos y órdenes de mantenimiento">
+      <article class="cost-summary-card equipment-cost-card">
+        <div class="cost-summary-heading">
+          <span class="cost-summary-icon"><i class="bi bi-currency-exchange" aria-hidden="true"></i></span>
+          <div>
+            <h3>Costos registrados de equipos</h3>
+            <p>Suma de los costos capturados en el catálogo de activos</p>
+          </div>
+        </div>
+        <div class="cost-values">
+          <div><span>MXN</span><strong>{{ formatCurrency(equipmentCostTotals.mxn, 'MXN') }}</strong></div>
+          <div><span>USD</span><strong>{{ formatCurrency(equipmentCostTotals.usd, 'USD') }}</strong></div>
+        </div>
+      </article>
+
+      <article class="cost-summary-card workorder-cost-card">
+        <div class="cost-summary-heading">
+          <span class="cost-summary-icon"><i class="bi bi-wrench-adjustable" aria-hidden="true"></i></span>
+          <div>
+            <h3>Costos capturados en órdenes</h3>
+            <p>Acumulado de OTs abiertas y cerradas · MXN</p>
+          </div>
+        </div>
+        <div class="cost-values cost-values-breakdown">
+          <div><span>Mano de obra</span><strong>{{ formatCurrency(workOrderCostTotals.labor) }}</strong></div>
+          <div><span>Refacciones</span><strong>{{ formatCurrency(workOrderCostTotals.parts) }}</strong></div>
+          <div class="cost-total"><span>Total</span><strong>{{ formatCurrency(workOrderCostTotals.total) }}</strong></div>
+        </div>
+      </article>
+
+      <article class="cost-summary-card cost-ranking-card">
+        <h3><i class="bi bi-trophy me-2" aria-hidden="true"></i>Equipos con mayor costo capturado en OTs</h3>
+        <div class="cost-ranking-list" *ngIf="maintenanceCostByAsset.length; else noMaintenanceCosts">
+          <div class="cost-ranking-item" *ngFor="let item of maintenanceCostByAsset; let i = index">
+            <span class="cost-ranking-position">{{ i + 1 }}</span>
+            <span class="cost-ranking-asset">{{ item.asset }}<small>{{ item.orders }} OT(s)</small></span>
+            <strong>{{ formatCurrency(item.total) }}</strong>
+          </div>
+        </div>
+        <ng-template #noMaintenanceCosts><p class="cost-empty mb-0">Aún no hay costos capturados en las órdenes de esta sucursal.</p></ng-template>
+      </article>
+    </section>
+
     <!-- ════════════════ FILA 3: Próximos (full-width) ════════════════ -->
     <div class="card mt-3">
       <h3 class="card-title"><i class="bi bi-calendar-check icon-title"></i> Próximos Mantenimientos</h3>

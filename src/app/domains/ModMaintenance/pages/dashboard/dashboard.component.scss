@@ -109,6 +109,45 @@
   max-height: 380px;
 }
 
+.cost-summary {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1rem;
+  margin: 1rem 0;
+}
+
+.cost-summary-card {
+  min-width: 0;
+  padding: 1rem 1.15rem;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  background: #fff;
+  box-shadow: 0 4px 16px rgba(15, 23, 42, .045);
+}
+
+.cost-summary-card h3 { margin: 0; color: #1e293b; font-size: .92rem; font-weight: 750; }
+.cost-summary-heading { display: flex; align-items: center; gap: .7rem; }
+.cost-summary-heading p { margin: .2rem 0 0; color: #64748b; font-size: .75rem; }
+.cost-summary-icon { display: grid; flex: 0 0 38px; width: 38px; height: 38px; place-items: center; color: #087f8c; background: #e6f7f7; border-radius: 10px; font-size: 1.15rem; }
+.workorder-cost-card .cost-summary-icon { color: #a45b08; background: #fff4df; }
+.cost-values { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .65rem; margin-top: 1rem; }
+.cost-values > div { display: grid; gap: .15rem; }
+.cost-values span { color: #64748b; font-size: .7rem; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; }
+.cost-values strong { color: #0f3d4d; font-size: 1.05rem; font-variant-numeric: tabular-nums; }
+.cost-values-breakdown { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.cost-values-breakdown strong { font-size: .9rem; }
+.cost-values-breakdown .cost-total strong { color: #13795b; }
+.cost-ranking-card { grid-column: 1 / -1; }
+.cost-ranking-card h3 { margin-bottom: .65rem; }
+.cost-ranking-card h3 i { color: #d58b12; }
+.cost-ranking-list { display: grid; }
+.cost-ranking-item { display: grid; grid-template-columns: 28px minmax(0, 1fr) auto; align-items: center; gap: .65rem; padding: .55rem 0; border-top: 1px solid #edf1f5; }
+.cost-ranking-position { display: grid; width: 24px; height: 24px; place-items: center; border-radius: 50%; color: #176d7a; background: #e6f7f7; font-size: .72rem; font-weight: 800; }
+.cost-ranking-asset { min-width: 0; overflow: hidden; color: #334155; font-size: .83rem; font-weight: 650; text-overflow: ellipsis; white-space: nowrap; }
+.cost-ranking-asset small { display: block; color: #94a3b8; font-size: .69rem; font-weight: 500; }
+.cost-ranking-item > strong { color: #13795b; font-size: .86rem; font-variant-numeric: tabular-nums; }
+.cost-empty { color: #8391a2; font-size: .8rem; }
+
 /* Section label */
 .dash-label {
   font-size: 0.72rem;
@@ -506,4 +545,13 @@
     font-size: 0.7rem;
     padding: 0.4rem 0.8rem;
   }
+}
+
+@media (max-width: 767px) {
+  .cost-summary { grid-template-columns: 1fr; }
+  .cost-ranking-card { grid-column: auto; }
+  .cost-values-breakdown { gap: .4rem; }
+  .cost-values-breakdown strong { font-size: .78rem; }
+  .cost-ranking-item { gap: .4rem; }
+  .cost-ranking-item > strong { font-size: .78rem; }
 }
