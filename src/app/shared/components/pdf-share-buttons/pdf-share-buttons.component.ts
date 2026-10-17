@@ -61,8 +61,12 @@ export class PdfShareButtonsComponent {
       cancelButtonText: 'Cancelar',
       preConfirm: () => {
         const to = (document.getElementById('swal-email-to') as HTMLInputElement).value.trim();
+        const cc = (document.getElementById('swal-email-cc') as HTMLInputElement).value.trim();
         if (!to) { Swal.showValidationMessage('El correo destino es requerido'); return false; }
-        return { to, cc: (document.getElementById('swal-email-cc') as HTMLInputElement).value.trim() };
+        const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        if (!emailPattern.test(to)) { Swal.showValidationMessage('Escribe un correo destino válido'); return false; }
+        if (cc && !emailPattern.test(cc)) { Swal.showValidationMessage('Escribe un correo válido en CC'); return false; }
+        return { to, cc };
       },
     });
     if (!isConfirmed || !formValues) return;
@@ -70,20 +74,28 @@ export class PdfShareButtonsComponent {
     this.busy = true;
     this.setBusyMessage('Preparando el PDF para correo…');
     try {
-      const blob      = await this.getPdfBlob();
-      this.setBusyMessage('Adjuntando PDF y registrando el envío…');
-      const pdfBase64 = await this.blobToBase64(blob);
-      await this.svc.sendByEmail({
+      const blob = await this.getPdfBlob();
+      const mailId = await this.svc.sendByEmail({
         to:        formValues.to,
         cc:        formValues.cc || undefined,
         subject:   this.subject,
         body:      this.emailBody,
-        pdfBase64,
+        pdfBlob:   blob,
         fileName:  this.fileName,
-      });
-      Swal.fire({ icon: 'success', title: 'Solicitud registrada', text: 'El correo quedó en la cola de envío.', timer: 2600, showConfirmButton: false });
-    } catch {
-      Swal.fire('Error', 'No se pudo enviar el correo.', 'error');
+      }, message => this.setBusyMessage(message));
+      this.setBusyMessage('Esperando confirmación del servicio de correo…');
+      // The mail extension sends asynchronously; keep the viewer responsive after enqueue.
+      const delivery = await this.svc.waitForEmailDelivery(mailId, 3000);
+      if (delivery.state === 'SUCCESS') {
+        Swal.fire({ icon: 'success', title: 'Correo enviado', text: `El servidor confirmó la entrega a ${formValues.to}.`, timer: 3000, showConfirmButton: false });
+      } else if (delivery.state === 'ERROR') {
+        Swal.fire({ icon: 'error', title: 'Falló el envío del correo', text: delivery.error || 'El servicio de correo rechazó el mensaje.', confirmButtonText: 'Cerrar' });
+      } else {
+        Swal.fire({ icon: 'info', title: 'Correo en cola', text: `La solicitud para ${formValues.to} quedó registrada. El servicio de correo la procesa en segundo plano.`, confirmButtonText: 'Entendido' });
+      }
+    } catch (error) {
+      console.error('Error al preparar o enviar el PDF por correo:', error);
+      Swal.fire({ icon: 'error', title: 'No se pudo enviar el correo', text: this.emailErrorMessage(error), confirmButtonText: 'Cerrar' });
     } finally {
       this.busy = false;
       this.busyMessage = '';
@@ -167,12 +179,14 @@ export class PdfShareButtonsComponent {
     this.cdr.detectChanges();
   }
 
-  private blobToBase64(blob: Blob): Promise<string> {
-    return new Promise((resolve, reject) => {
-      const r = new FileReader();
-      r.onload  = () => resolve((r.result as string).split(',')[1]);
-      r.onerror = reject;
-      r.readAsDataURL(blob);
-    });
+  private emailErrorMessage(error: any): string {
+    const code = String(error?.code || '').toLowerCase();
+    if (code.includes('storage/unauthorized') || code.includes('permission-denied')) {
+      return 'Firebase rechazó el acceso para subir el PDF o registrar el correo. Revisa las reglas de Storage y Firestore.';
+    }
+    if (code.includes('storage/')) {
+      return `No se pudo subir el PDF a Firebase Storage (${error?.code}). ${error?.message || ''}`.trim();
+    }
+    return error?.message || error?.code || 'Ocurrió un error inesperado al preparar el correo.';
   }
 }

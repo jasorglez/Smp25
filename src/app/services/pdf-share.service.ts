@@ -1,6 +1,6 @@
 import { Injectable, inject } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
-import { Firestore, collection, addDoc } from '@angular/fire/firestore';
+import { Firestore, collection, addDoc, doc, onSnapshot } from '@angular/fire/firestore';
 import { StoragesService } from './storages.service';
 import { environment } from '@env/environment';
 
@@ -9,8 +9,13 @@ export interface PdfEmailOptions {
   cc?: string;
   subject: string;
   body: string;
-  pdfBase64: string;
+  pdfBlob: Blob;
   fileName: string;
+}
+
+export interface PdfEmailDeliveryStatus {
+  state: 'SUCCESS' | 'ERROR' | 'PENDING' | 'PROCESSING' | 'UNKNOWN';
+  error?: string;
 }
 
 export interface PdfWhatsAppOptions {
@@ -33,20 +38,51 @@ export class PdfShareService {
   private storages   = inject(StoragesService);
 
   // ── Email ──────────────────────────────────────────────────────────────────
-  async sendByEmail(opts: PdfEmailOptions): Promise<void> {
+  async sendByEmail(opts: PdfEmailOptions, onProgress?: (message: string) => void): Promise<string> {
+    onProgress?.('Subiendo el PDF…');
+    const safeFileName = opts.fileName.replace(/[\\/:*?"<>|]+/g, '-');
+    const file = new File([opts.pdfBlob], safeFileName, { type: 'application/pdf' });
+    const attachmentUrl = await this.storages.uploadFile(file, `pdf/email/${Date.now()}_${safeFileName}`);
+    onProgress?.('Registrando el correo para envío…');
     const mailRef = collection(this.firestore, 'mail');
-    await addDoc(mailRef, {
-      to: opts.to,
+    const mailDoc = await addDoc(mailRef, {
+      to: [opts.to],
       ...(opts.cc ? { cc: opts.cc } : {}),
       message: {
         subject: opts.subject,
-        html: opts.body,
+        html: `${opts.body}<p>Se adjunta el reporte en PDF. <a href="${attachmentUrl}">Descargar PDF</a></p>`,
+        text: 'Se adjunta el reporte en PDF. Descarga: ' + attachmentUrl,
         attachments: [{
           filename: opts.fileName,
-          content:  opts.pdfBase64,
-          encoding: 'base64',
+          path: attachmentUrl,
+          contentType: 'application/pdf',
         }],
       },
+    });
+    return mailDoc.id;
+  }
+
+  waitForEmailDelivery(mailId: string, timeoutMs = 20000): Promise<PdfEmailDeliveryStatus> {
+    return new Promise(resolve => {
+      let finished = false;
+      let unsubscribe = () => {};
+      const finish = (status: PdfEmailDeliveryStatus) => {
+        if (finished) return;
+        finished = true;
+        clearTimeout(timeout);
+        unsubscribe();
+        resolve(status);
+      };
+      const timeout = setTimeout(() => finish({ state: 'UNKNOWN' }), timeoutMs);
+      const stop = onSnapshot(doc(this.firestore, 'mail', mailId), snapshot => {
+        const delivery = snapshot.data()?.['delivery'] as { state?: string; error?: string } | undefined;
+        const state = delivery?.state?.toUpperCase();
+        if (state === 'SUCCESS' || state === 'ERROR') {
+          finish({ state, error: delivery?.error });
+        }
+      }, () => finish({ state: 'UNKNOWN' }));
+      unsubscribe = stop;
+      if (finished) unsubscribe();
     });
   }
 

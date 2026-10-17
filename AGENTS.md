@@ -216,3 +216,11 @@ version: '2.50.4 (24 Octubre 2025 17:45)'
 - Hot reloading supported in development
 - Comprehensive build optimization for production
 - Domain-specific modules for business functionality
+
+## Registro de actualizaciones para novedades
+- Después de cada cambio funcional o corrección visible para el usuario, agrega una fila a `docs/registro-actualizaciones.md` en la misma tarea.
+- Registra fecha y hora local de `America/Indiana/Indianapolis`, módulo, tipo de cambio, descripción breve, beneficio para el usuario, texto promocional sugerido, estado de validación y estado de publicación.
+- Describe el resultado en lenguaje de usuario; conserva el detalle técnico solo cuando ayude a entender el alcance o una limitación.
+- Usa `Borrador` para publicaciones que aún no se hayan aprobado o colocado en Publicidad. No afirmes que una función está desplegada si solo existe en código local.
+- Agrupa cambios relacionados en una fila por entrega; no registres cambios cosméticos internos que no cambien la experiencia del usuario.
+- No incluyas datos personales, credenciales, nombres de clientes ni información sensible en el texto promocional.
