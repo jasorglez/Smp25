@@ -83,5 +83,5 @@ export const environment = {
   geminiApiKey: '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',
   gnewsApiKey: '94ccc596b4dfebc3f72683b6e81d81bc',
 
-  version: '5.00.239 (17 Octubre 2026 14:10) captura OT de cuadrilla activa',
+  version: '5.00.240 (17 Octubre 2026 14:12) extiende grid de Ordenes',
 };
