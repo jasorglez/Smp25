@@ -264,6 +264,7 @@ export class OrdenesComponent implements OnInit, OnDestroy {
   pdfUrl: SafeResourceUrl | null = null;
   private originalUrl: string | null = null;
   showPdfEmbed: boolean = false;
+  public showPdfPreviewPanel: boolean = false;
   fechaInicio: string = '';
   fechaFin: string = '';
   tipoReporte: string = 'personalizado';
@@ -3054,6 +3055,7 @@ export class OrdenesComponent implements OnInit, OnDestroy {
 
     // Resetear vista previa del PDF
     this.showPdfEmbed = false;
+    this.showPdfPreviewPanel = false;
     this.pdfUrl = null;
     if (this.originalUrl) {
       URL.revokeObjectURL(this.originalUrl);
@@ -3466,6 +3468,7 @@ export class OrdenesComponent implements OnInit, OnDestroy {
    */
   clearPdfPreview() {
     this.showPdfEmbed = false;
+    this.showPdfPreviewPanel = false;
     this.pdfUrl = null;
     if (this.originalUrl) {
       URL.revokeObjectURL(this.originalUrl);
@@ -3547,6 +3550,7 @@ export class OrdenesComponent implements OnInit, OnDestroy {
 
     // Resetear vista previa del PDF cuando se selecciona nueva fecha
     this.showPdfEmbed = false;
+    this.showPdfPreviewPanel = false;
     this.pdfUrl = null;
     if (this.originalUrl) {
       URL.revokeObjectURL(this.originalUrl);
@@ -4209,6 +4213,7 @@ export class OrdenesComponent implements OnInit, OnDestroy {
       return;
     }
 
+    this.showPdfPreviewPanel = true;
     this.isGeneratingPdf = true;
 
     try {
@@ -4999,6 +5004,7 @@ export class OrdenesComponent implements OnInit, OnDestroy {
         this.originalUrl = url;
         this.pdfUrl = this.sanitizer.bypassSecurityTrustResourceUrl(pdfPreviewUrl(url));
         this.showPdfEmbed = true;
+        this.showPdfPreviewPanel = true;
         this.isGeneratingPdfEmbed = false;
       });
     } catch (error) {

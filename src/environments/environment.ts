@@ -83,5 +83,5 @@ export const environment = {
   geminiApiKey: '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',
   gnewsApiKey: '94ccc596b4dfebc3f72683b6e81d81bc',
 
-  version: '5.00.213 (17 Octubre 2026 00:13) PDF de trazabilidad en oficio horizontal',
+  version: '5.00.215 (17 Octubre 2026 09:06) visor flotante de vista previa OT',
 };

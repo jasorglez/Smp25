@@ -4,8 +4,8 @@
       <div class="card">
         <div class="card-body p-1">
           <!-- SECCIÓN PRINCIPAL: Grid de OTs y Vista previa en columnas -->
-          <div class="row" style="position: relative; height: calc(100vh - 200px);">
-            <div class="col-12 col-md-9 border-end" style="position: relative; height: 100%; display: flex; flex-direction: column;">
+          <div class="row" style="position: relative; min-height: calc(100vh - 200px);">
+            <div class="col-12" style="position: relative; min-height: calc(100vh - 200px); display: flex; flex-direction: column;">
               <!-- Sección superior: Botones y Lista de OTs lado a lado -->
               <div class="row mb-1">
                 <!-- Botones de acciones -->
@@ -80,20 +80,26 @@
               <!-- Información detallada con pestañas -->
               <div style="flex-grow: 1; display: flex; flex-direction: column;">
                 <!-- Label con información de la OT seleccionada -->
-                <div class="alert alert-info mb-1 py-1" *ngIf="selectedOt">
+                <div class="alert alert-info mb-1 py-1 d-flex flex-wrap align-items-center justify-content-between gap-2" *ngIf="selectedOt">
                   <small>
                     <strong><i class="bi bi-info-circle"></i> CDC:</strong> {{selectedOt.cdc}} - {{selectedOt.description}}
-                    <span class="float-end">
-                      <span *ngIf="selectedReporteFecha; else soloOT">
-                        <strong>Fecha:</strong> {{selectedReporteFecha | date:'dd-MM-yyyy'}} 
-                        <strong>{{selectedReporteHoraInicio}}-{{selectedReporteHoraTermino}}</strong>
-                        <span class="badge bg-primary">{{selectedReporteTipo}}</span>
-                      </span>
-                      <ng-template #soloOT>
-                        <strong>Registro:</strong> {{selectedOt.registerDate | date:'dd-MM-yyyy'}}
-                      </ng-template>
+                    <span class="ms-2" *ngIf="selectedReporteFecha; else soloOT">
+                      <strong>Fecha:</strong> {{selectedReporteFecha | date:'dd-MM-yyyy'}}
+                      <strong class="ms-1">{{selectedReporteHoraInicio}}-{{selectedReporteHoraTermino}}</strong>
+                      <span class="badge bg-primary ms-1">{{selectedReporteTipo}}</span>
                     </span>
+                    <ng-template #soloOT>
+                      <span class="ms-2"><strong>Registro:</strong> {{selectedOt.registerDate | date:'dd-MM-yyyy'}}</span>
+                    </ng-template>
                   </small>
+                  <button *ngIf="selectedReporteId && selectedReporteFecha" type="button" class="btn btn-primary btn-sm"
+                          (click)="generatePdfPreview()" [disabled]="isGeneratingPdf"
+                          [attr.aria-label]="'Generar vista previa CDC ' + selectedOt.cdc + ', ' + selectedOt.description + ', ' + (selectedReporteFecha | date:'dd-MM-yyyy')">
+                    <i class="bi bi-eye me-1" *ngIf="!isGeneratingPdf"></i>
+                    <span class="spinner-border spinner-border-sm me-1" *ngIf="isGeneratingPdf" aria-hidden="true"></span>
+                    {{ isGeneratingPdf ? 'Generando…' : 'Generar Vista Previa' }}
+                    <span class="d-none d-xl-inline"> · CDC: {{selectedOt.cdc}} - {{selectedOt.description}} · {{selectedReporteFecha | date:'dd-MM-yyyy'}} {{selectedReporteHoraInicio}}-{{selectedReporteHoraTermino}}</span>
+                  </button>
                 </div>
                 <div class="alert alert-warning mb-1 py-1" *ngIf="!selectedOt">
                   <small>
@@ -464,13 +470,14 @@
             </div> <!-- Fin de columna izquierda -->
 
             <!-- COLUMNA 2: Vista previa del reporte PDF -->
-            <div class="col-12 col-md-3" style="position: relative; height: 150%; display: flex; flex-direction: column;">
-              <!-- Resizer drag handle -->
-              <div class="column-resizer" (mousedown)="onResizerMouseDown($event)" [class.resizing]="isResizing" title="Arrastra para redimensionar columnas">
-                <div class="resizer-handle"></div>
+            <div *ngIf="showPdfPreviewPanel" class="pdf-preview-floating">
+              <div class="d-flex align-items-center justify-content-between mb-2">
+                <h6 class="mb-0"><i class="bi bi-file-earmark-pdf"></i> Vista Previa del Reporte</h6>
+                <button type="button" class="btn btn-sm btn-outline-secondary" (click)="clearPdfPreview()" aria-label="Cerrar vista previa" title="Cerrar vista previa">
+                  <i class="bi bi-x-lg"></i>
+                </button>
               </div>
-              <h6><i class="bi bi-file-earmark-pdf"></i> Vista Previa del Reporte</h6>
-              <div class="border rounded p-3 pdf-preview-container" style="height: calc(110vh - 340px); background-color: #f8f9fa;">
+              <div class="border rounded p-2 pdf-preview-container flex-grow-1" style="min-height: 0; background-color: #f8f9fa;">
                 <!-- PDF Embed cuando está generado -->
                 <div *ngIf="showPdfEmbed && pdfUrl" class="h-100">
                   <app-pdf-report-viewer *ngIf="showPdfEmbed && pdfUrl" [sourceUrl]="pdfUrl" title="Orden de trabajo" fileName="Orden_Trabajo.pdf"></app-pdf-report-viewer>
@@ -484,7 +491,7 @@
                   </div>
                 </div>
                 <!-- Estado inicial con OT seleccionada -->
-                <div *ngIf="selectedOt && !showPdfEmbed && !isGeneratingPdf" class="h-100">
+                <div *ngIf="selectedOt && !showPdfEmbed && !isGeneratingPdf" class="h-100 d-flex align-items-center justify-content-center">
                   <div class="text-center mt-5">
                     <i class="bi bi-file-earmark-pdf display-4 text-muted"></i>
                     <h6 class="mt-2">Reporte Diario - CDC: {{selectedOt.cdc}}</h6>
@@ -497,7 +504,7 @@
                           <strong>Horario:</strong> {{selectedReporteHoraInicio}} - {{selectedReporteHoraTermino}}
                         </small>
                       </div>
-                      <button class="btn btn-primary btn-sm" (click)="generatePdfPreview()"><i class="bi bi-eye"></i> Generar Vista Previa</button>
+                      <p class="text-muted small mt-3">Usa el botón de previsualización junto a los datos del reporte para abrir el PDF aquí.</p>
                     </div>
                     <div *ngIf="!selectedReporteId || !selectedReporteFecha" class="mt-4">
                       <p class="text-muted small"><i class="bi bi-arrow-left"></i> Selecciona un reporte diario en la pestaña "Reportes Diarios" para generar el PDF</p>
