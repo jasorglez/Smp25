@@ -83,5 +83,5 @@ export const environment = {
   geminiApiKey: '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',
   gnewsApiKey: '94ccc596b4dfebc3f72683b6e81d81bc',
 
-  version: '5.00.237 (17 Octubre 2026 14:07) numera filas OT y restaura pestaña',
+  version: '5.00.238 (17 Octubre 2026 14:08) sube grid y muestra todas las OT',
 };

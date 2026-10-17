@@ -60,8 +60,7 @@ export class InspeccionComponent implements OnInit {
     suppressDragLeaveHidesColumns: true,
     suppressHorizontalScroll: false,
     animateRows: true,
-    pagination: true,
-    paginationPageSize: 20,
+    pagination: false,
     tooltipShowDelay: 350,
     tooltipHideDelay: 10000,
     defaultColDef: {
