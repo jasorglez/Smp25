@@ -194,12 +194,6 @@ export class MaterialsComponent implements CanComponentDeactivate {
   };
 
   public defaultColDef: ColDef = {
-    sortable: true,
-    filter: false,
-    resizable: true,
-    lockPosition: false,
-    enableRowGroup: true, // Enable row grouping for all columns
-    flex: 1,
     tooltipValueGetter: (params: any) => this.getMovementTooltip(params.data),
   };
   private cleanDataForServer(data: any, isNew: boolean = false): any {

@@ -83,5 +83,5 @@ export const environment = {
   geminiApiKey: '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',
   gnewsApiKey: '94ccc596b4dfebc3f72683b6e81d81bc',
 
-  version: '5.00.245 (17 Octubre 2026 14:18) habilita tooltip de movimientos en materiales',
+  version: '5.00.246 (17 Octubre 2026 14:20) conserva ancho de Descripcion',
 };
