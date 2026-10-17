@@ -1,3 +1,4 @@
+import { PdfPreviewService } from 'app/services/pdf-preview.service';
 import { Component, effect, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { AgGridModule, ICellRendererAngularComp } from 'ag-grid-angular';
@@ -35,6 +36,7 @@ import { PdfButtonCellRendererComponent } from 'app/domains/ModAdmon/components/
   styleUrls: ['./pedidos.component.scss'],
 })
 export class PedidosLogisticaComponent implements CanComponentDeactivate {
+  private pdfPreview = inject(PdfPreviewService);
   private signalsService = inject(SignalsService);
   private pedidosService = inject(PedidosService);
   private router = inject(Router);
@@ -1834,12 +1836,7 @@ export class PedidosLogisticaComponent implements CanComponentDeactivate {
 
       alerts.closeLoading();
       this.trackingService.addLog(this.trackingService.getnameComp(), 'Imprimió/abrió PDF consolidado pedidos', 'Logística / Pedidos', this.trackingService.getEmail());
-      const pdf = pdfMake.createPdf(docDef);
-      try {
-        pdf.open();
-      } catch {
-        pdf.download(`Reporte_General_Pedidos.pdf`);
-      }
+      this.pdfPreview.show(pdfMake.createPdf(docDef), 'Reporte general de pedidos', 'Reporte_General_Pedidos.pdf');
 
     } catch (error) {
       alerts.closeLoading();

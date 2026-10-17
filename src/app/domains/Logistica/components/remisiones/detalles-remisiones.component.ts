@@ -1,3 +1,4 @@
+import { PdfReportViewerComponent } from 'app/shared/pdf-report-viewer/pdf-report-viewer.component';
 import { CommonModule } from '@angular/common';
 import { Component, inject } from '@angular/core';
 import { FormsModule } from '@angular/forms';
@@ -9,7 +10,7 @@ import { PdfShareButtonsComponent } from 'app/shared/components/pdf-share-button
 @Component({
   selector: 'app-detalles-remisiones',
   standalone: true,
-  imports: [CommonModule, FormsModule, PdfShareButtonsComponent],
+  imports: [CommonModule, FormsModule, PdfShareButtonsComponent, PdfReportViewerComponent],
   template: `
     <div class="p-2" *ngIf="detailType === 'detalle'">
       <div class="d-flex justify-content-end mb-2">
@@ -113,7 +114,7 @@ import { PdfShareButtonsComponent } from 'app/shared/components/pdf-share-button
         </div>
       </div>
       <div style="height: 560px; border: 1px solid #dee2e6; border-radius: 0.375rem; overflow: hidden;">
-        <iframe *ngIf="pdfUrl" [src]="pdfUrl" style="width: 100%; height: 100%; border: none;"></iframe>
+        <app-pdf-report-viewer *ngIf="pdfUrl" [sourceUrl]="pdfUrl" title="Remisión" fileName="Remision.pdf" [showShare]="false"></app-pdf-report-viewer>
         <div *ngIf="!pdfUrl && loadingPdf" class="d-flex justify-content-center align-items-center h-100 text-muted">
           Generando vista previa del PDF...
         </div>

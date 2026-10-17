@@ -1,3 +1,5 @@
+import { PdfReportViewerComponent } from 'app/shared/pdf-report-viewer/pdf-report-viewer.component';
+import { pdfPreviewUrl } from 'app/helpers/pdf-viewer';
 import { Component, OnInit, inject, OnDestroy } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
@@ -17,7 +19,7 @@ import { TrackingService } from 'app/services/tracking.service';
 @Component({
   selector: 'app-detalles-stakeholder-expend',
   standalone: true,
-  imports: [CommonModule, FormsModule, AgGridModule, MultiLineEditorComponent],
+  imports: [CommonModule, FormsModule, AgGridModule, MultiLineEditorComponent, PdfReportViewerComponent],
   template: `
     <!-- Concepts Grid View -->
     <div class="detail-grid-container" *ngIf="detailType === 'concepts'">
@@ -72,11 +74,7 @@ import { TrackingService } from 'app/services/tracking.service';
         </button>
       </div>
       <div class="report-content" style="height: 480px; border: 1px solid #dee2e6; border-radius: 0.375rem;">
-        <iframe
-          *ngIf="pdfUrl"
-          [src]="pdfUrl"
-          style="width: 100%; height: 100%; border: none; border-radius: 0.375rem;">
-        </iframe>
+        <app-pdf-report-viewer *ngIf="pdfUrl" [sourceUrl]="pdfUrl" title="Reporte de retiro de socio" fileName="Reporte_Retiro_Socio.pdf"></app-pdf-report-viewer>
         <div *ngIf="!pdfUrl" class="d-flex justify-content-center align-items-center h-100">
           <div class="text-center">
             <div class="spinner-border text-primary mb-3" role="status">
@@ -859,7 +857,7 @@ export class DetallesStakeholderExpendComponent implements OnInit, OnDestroy {
         }
 
         this.originalPdfUrl = URL.createObjectURL(blob);
-        this.pdfUrl = this.sanitizer.bypassSecurityTrustResourceUrl(this.originalPdfUrl);
+        this.pdfUrl = this.sanitizer.bypassSecurityTrustResourceUrl(pdfPreviewUrl(this.originalPdfUrl));
       });
 
     } catch (error) {

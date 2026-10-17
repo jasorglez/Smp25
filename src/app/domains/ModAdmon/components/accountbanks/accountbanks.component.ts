@@ -26,6 +26,7 @@ import { RootService } from 'app/services/root.service';
 import { Base64EncodeService } from 'app/services/base64encode.service';
 import { TrackingService } from 'app/services/tracking.service';
 import { FormsModule } from '@angular/forms';
+import { PdfPreviewService } from 'app/services/pdf-preview.service';
 
 interface Bank {
   id: number;
@@ -46,6 +47,7 @@ interface Bank {
   styleUrl: './accountbanks.component.scss',
 })
 export class AccountbanksComponent implements CanComponentDeactivate, OnDestroy {
+  private pdfPreview = inject(PdfPreviewService);
   authService = inject(AuthService);
   private signalRService = inject(SignalrService);
   private admonSub!: Subscription;
@@ -1121,13 +1123,7 @@ export class AccountbanksComponent implements CanComponentDeactivate, OnDestroy 
         }
       };
 
-      const pdf = pdfMake.createPdf(docDefinition);
-      try {
-        pdf.open();
-      } catch {
-        pdf.download(`saldos-${this.selectedRowData?.nameAccount || 'cuenta'}-${this.reportSaldosStartDate}-al-${this.reportSaldosEndDate}.pdf`);
-        alerts.basicAlert('Reporte descargado', 'El navegador bloqueó la ventana emergente. El reporte se descargó automáticamente.', 'info');
-      }
+      this.pdfPreview.show(pdfMake.createPdf(docDefinition), 'Reporte de saldos de cuenta', `saldos-${this.selectedRowData?.nameAccount || 'cuenta'}-${this.reportSaldosStartDate}-al-${this.reportSaldosEndDate}.pdf`);
       this.closeSaldosModal();
       this.trackingService.addLog(
         'AccountBanks',

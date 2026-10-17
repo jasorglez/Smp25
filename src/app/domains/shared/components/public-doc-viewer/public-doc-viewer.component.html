@@ -33,11 +33,7 @@
 
   <!-- PDF Viewer (desktop) -->
   <div *ngIf="pdfUrl && !loading && !errorMessage && !isMobile" class="container-fluid p-3">
-    <iframe
-      [src]="pdfUrl"
-      class="pdf-container w-100"
-      style="border: none;">
-    </iframe>
+    <app-pdf-report-viewer *ngIf="pdfUrl && !loading && !errorMessage && !isMobile" [sourceUrl]="pdfUrl" title="Documento PDF" fileName="Documento.pdf"></app-pdf-report-viewer>
   </div>
 
   <!-- Mobile: PDF descargado -->

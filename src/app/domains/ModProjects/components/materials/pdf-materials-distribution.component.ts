@@ -1,3 +1,6 @@
+import { PdfReportViewerComponent } from 'app/shared/pdf-report-viewer/pdf-report-viewer.component';
+import { pdfPreviewUrl } from 'app/helpers/pdf-viewer';
+import { PdfPreviewService } from 'app/services/pdf-preview.service';
 import { Component, Input, Output, EventEmitter, inject, OnInit, ChangeDetectorRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { PdfShareButtonsComponent } from 'app/shared/components/pdf-share-buttons/pdf-share-buttons.component';
@@ -56,7 +59,7 @@ const totalCell = (txt: string, align: 'left'|'center'|'right' = 'right'): any =
 @Component({
   selector: 'app-pdf-materials-distribution',
   standalone: true,
-  imports: [CommonModule, PdfShareButtonsComponent],
+  imports: [CommonModule, PdfShareButtonsComponent, PdfReportViewerComponent],
   template: `
 <div *ngIf="mode === 'embed'" style="padding:10px; background:#f8f9fa; border-radius:6px;">
 
@@ -81,7 +84,7 @@ const totalCell = (txt: string, align: 'left'|'center'|'right' = 'right'): any =
   </div>
 
   <div style="height:520px; border:1px solid #dee2e6; border-radius:6px; background:white; overflow:hidden;">
-    <iframe *ngIf="pdfUrl" [src]="pdfUrl" style="width:100%; height:100%; border:none;"></iframe>
+    <app-pdf-report-viewer *ngIf="pdfUrl" [sourceUrl]="pdfUrl" title="Distribución de materiales" fileName="Materiales_reporte.pdf" [showShare]="false"></app-pdf-report-viewer>
     <div *ngIf="!pdfUrl && !isLoading"
          class="d-flex flex-column justify-content-center align-items-center h-100 text-muted">
       <i class="bi bi-file-earmark-pdf" style="font-size:3rem;"></i>
@@ -124,6 +127,7 @@ const totalCell = (txt: string, align: 'left'|'center'|'right' = 'right'): any =
   `,
 })
 export class PdfMaterialsDistributionComponent implements OnInit, ICellRendererAngularComp {
+  private pdfPreview = inject(PdfPreviewService);
   @Input()  idCompany: number;
   @Input()  mode: 'embed' | 'newTab' = 'embed';
   /** 'quantity' = columnas con cantidades distribuidas | 'money' = cantidad × costoMN */
@@ -376,7 +380,7 @@ export class PdfMaterialsDistributionComponent implements OnInit, ICellRendererA
       const doc = pdfMake.createPdf(docDef);
 
       if (this.mode === 'newTab') {
-        doc.open();
+        this.pdfPreview.show(doc, 'Distribución de materiales');
         this.loadingProgress = 100;
         this.isLoading = false;
         this.cdr.detectChanges();
@@ -385,7 +389,7 @@ export class PdfMaterialsDistributionComponent implements OnInit, ICellRendererA
         doc.getBlob((blob: Blob) => {
           this.pdfBlob = blob;
           const url   = URL.createObjectURL(blob);
-          this.pdfUrl = this.sanitizer.bypassSecurityTrustResourceUrl(url);
+          this.pdfUrl = this.sanitizer.bypassSecurityTrustResourceUrl(pdfPreviewUrl(url));
           this.loadingProgress = 100;
           this.isLoading = false;
           this.cdr.detectChanges();

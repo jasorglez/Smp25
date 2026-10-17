@@ -5,6 +5,7 @@ import { lastValueFrom } from 'rxjs';
 import { RootService } from './root.service';
 import { SignalsService } from './signals.service';
 import { TrackingService } from './tracking.service';
+import { PdfPreviewService } from './pdf-preview.service';
 import { apuFactorSteps, apuMoney } from 'app/domains/ModProjects/components/auxiliares/apu-pricing';
 
 (pdfMake as any).vfs = (pdfFonts as any).pdfMake?.vfs || (pdfFonts as any).default?.pdfMake?.vfs;
@@ -48,6 +49,7 @@ export class PdfApuService {
   private rootService     = inject(RootService);
   private signalsService  = inject(SignalsService);
   private trackingService = inject(TrackingService);
+  private pdfPreview = inject(PdfPreviewService);
 
   // ── Entry points ──────────────────────────────────────────────────────────
   async openApuPdf(data: ApuPdfData, targetWindow?: Window | null, onProgress?: PdfGenerationProgress): Promise<void> {
@@ -129,29 +131,10 @@ export class PdfApuService {
     this.trackingService.addLog(this.trackingService.getnameComp(), 'Abrió catálogo de precios unitarios PDF', 'Proyectos / APU', this.trackingService.getEmail());
   }
 
-  private openPdfDefinition(definition: any, targetWindow?: Window | null, onProgress?: PdfGenerationProgress): Promise<void> {
-    if (!targetWindow) {
-      onProgress?.(100, 'Reporte listo');
-      pdfMake.createPdf(definition).open();
-      return Promise.resolve();
-    }
-    return new Promise((resolve, reject) => {
-      try {
-        onProgress?.(85, 'Generando PDF…');
-        pdfMake.createPdf(definition).getBlob((blob) => {
-          if (targetWindow.closed) {
-            reject(new Error('La ventana del reporte se cerró antes de terminar.'));
-            return;
-          }
-          const url = URL.createObjectURL(blob);
-          targetWindow.location.href = url;
-          onProgress?.(100, 'PDF listo');
-          resolve();
-        });
-      } catch (error) {
-        reject(error);
-      }
-    });
+  private async openPdfDefinition(definition: any, targetWindow?: Window | null, onProgress?: PdfGenerationProgress): Promise<void> {
+    onProgress?.(85, 'Generando PDF…');
+    await this.pdfPreview.show(pdfMake.createPdf(definition), 'Reporte de precios unitarios');
+    onProgress?.(100, 'PDF listo');
   }
 
   // ── Build doc definition ──────────────────────────────────────────────────

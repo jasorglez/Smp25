@@ -51,12 +51,12 @@ export class PdfShareService {
   }
 
   // ── WhatsApp ───────────────────────────────────────────────────────────────
-  async sendByWhatsApp(opts: PdfWhatsAppOptions): Promise<void> {
+  async sendByWhatsApp(opts: PdfWhatsAppOptions): Promise<string> {
     const phone = this.normalizePhone(opts.phone);
     const file  = new File([opts.pdfBlob], opts.fileName, { type: 'application/pdf' });
     const url   = await this.storages.uploadFile(file, `pdf/share/${Date.now()}_${opts.fileName}`);
     const text  = `${opts.message}\n\n📎 Descarga aquí: ${url}`;
-    window.open(`https://wa.me/${phone}?text=${encodeURIComponent(text)}`, '_blank', 'noopener,noreferrer');
+    return `https://wa.me/${phone}?text=${encodeURIComponent(text)}`;
   }
 
   // ── Telegram ───────────────────────────────────────────────────────────────

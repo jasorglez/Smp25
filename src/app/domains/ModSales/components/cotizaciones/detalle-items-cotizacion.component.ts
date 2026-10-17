@@ -1,3 +1,4 @@
+import { PdfReportViewerComponent } from 'app/shared/pdf-report-viewer/pdf-report-viewer.component';
 ﻿import { Component, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
@@ -33,7 +34,7 @@ const textoPdf = (value: unknown): string =>
 @Component({
   selector: 'app-detalle-items-cotizacion',
   standalone: true,
-  imports: [CommonModule, FormsModule, AgGridModule],
+  imports: [CommonModule, FormsModule, AgGridModule, PdfReportViewerComponent],
   template: `
     <div class="detail-container">
 
@@ -156,10 +157,7 @@ const textoPdf = (value: unknown): string =>
         </div>
 
         <div class="pdf-frame-wrap">
-          <iframe *ngIf="pdfUrl && !isLoadingPdf"
-                  [src]="pdfUrl"
-                  style="width:100%; height:100%; border:none;">
-          </iframe>
+          <app-pdf-report-viewer *ngIf="pdfUrl && !isLoadingPdf" [sourceUrl]="pdfUrl" title="Cotización" fileName="Cotizacion.pdf"></app-pdf-report-viewer>
           <div *ngIf="isLoadingPdf" class="d-flex justify-content-center align-items-center h-100 text-muted">
             <i class="bi bi-hourglass-split me-2"></i> Generando PDF...
           </div>

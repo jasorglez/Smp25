@@ -1,3 +1,4 @@
+import { PdfReportViewerComponent } from 'app/shared/pdf-report-viewer/pdf-report-viewer.component';
 import { Component, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { PdfShareButtonsComponent } from 'app/shared/components/pdf-share-buttons/pdf-share-buttons.component';
@@ -17,7 +18,7 @@ pdfMake.vfs = pdfFonts as unknown as Record<string, string>;
 @Component({
   selector: 'app-detail-cell-renderer-pedimento-report',
   standalone: true,
-  imports: [CommonModule, PdfShareButtonsComponent],
+  imports: [CommonModule, PdfShareButtonsComponent, PdfReportViewerComponent],
   template: `
     <div class="report-detail-container">
       <div class="report-header d-flex justify-content-between align-items-center mb-3">
@@ -43,11 +44,7 @@ pdfMake.vfs = pdfFonts as unknown as Record<string, string>;
           </div>
           <span class="ms-2">Generando reporte...</span>
         </div>
-        <iframe
-          *ngIf="pdfUrl && !isLoading"
-          [src]="pdfUrl"
-          style="width: 100%; height: 100%; border: none; border-radius: 0.375rem;">
-        </iframe>
+        <app-pdf-report-viewer *ngIf="pdfUrl" [sourceUrl]="pdfUrl" title="Reporte de pedimento" fileName="Pedimento.pdf" [showShare]="false"></app-pdf-report-viewer>
         <div *ngIf="!pdfUrl && !isLoading" class="d-flex justify-content-center align-items-center h-100">
           <div class="text-center">
             <div class="alert alert-warning">

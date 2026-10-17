@@ -1,3 +1,4 @@
+import { PdfPreviewService } from 'app/services/pdf-preview.service';
 import { Component, effect, inject } from '@angular/core';
 import { ColDef, GridApi, GridReadyEvent, CellDoubleClickedEvent, ICellRendererParams } from 'ag-grid-enterprise';
 import { IncomesAndExpensesService } from 'app/services/incomes-and-expenses.service';
@@ -47,6 +48,7 @@ export interface Stakeholder {
   styleUrl: './stakeholder-expend.component.scss'
 })
 export class StakeholderExpendComponent {
+  private pdfPreview = inject(PdfPreviewService);
 
   private incomesAndExpensesService = inject(IncomesAndExpensesService);
   public modalServiceTable = inject(ModalService);
@@ -1149,13 +1151,7 @@ export class StakeholderExpendComponent {
         }
       };
 
-      const pdf = pdfMake.createPdf(docDefinition);
-      try {
-        pdf.open();
-      } catch {
-        pdf.download(`reporte-retiros-socios-${this.reportStartDate}-al-${this.reportEndDate}.pdf`);
-        alerts.basicAlert('Reporte descargado', 'El navegador bloqueó la ventana emergente. El reporte se descargó automáticamente.', 'info');
-      }
+      this.pdfPreview.show(pdfMake.createPdf(docDefinition), 'Reporte de retiros de socios', `reporte-retiros-socios-${this.reportStartDate}-al-${this.reportEndDate}.pdf`);
 
       this.closeReportModal();
       this.trackingService.addLog(

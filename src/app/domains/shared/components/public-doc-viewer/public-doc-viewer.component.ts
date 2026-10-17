@@ -1,3 +1,5 @@
+import { PdfReportViewerComponent } from 'app/shared/pdf-report-viewer/pdf-report-viewer.component';
+import { pdfPreviewUrl } from 'app/helpers/pdf-viewer';
 import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ActivatedRoute } from '@angular/router';
@@ -12,7 +14,7 @@ pdfMake.vfs = pdfFonts as unknown as Record<string, string>;
 @Component({
   selector: 'app-public-doc-viewer',
   standalone: true,
-  imports: [CommonModule],
+  imports: [CommonModule, PdfReportViewerComponent],
   templateUrl: './public-doc-viewer.component.html',
   styles: [`
     .public-doc-container {
@@ -572,7 +574,7 @@ export class PublicDocViewerComponent implements OnInit {
       pdfDocGenerator.getBlob((blob: Blob) => {
         const url = URL.createObjectURL(blob);
         this.pdfBlobUrl = url;
-        this.pdfUrl = this.sanitizer.bypassSecurityTrustResourceUrl(url);
+        this.pdfUrl = this.sanitizer.bypassSecurityTrustResourceUrl(pdfPreviewUrl(url));
         this.loading = false;
         this.pdfGenerated = true;
       });

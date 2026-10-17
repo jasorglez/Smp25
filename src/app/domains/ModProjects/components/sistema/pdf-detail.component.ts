@@ -1,3 +1,4 @@
+import { PdfReportViewerComponent } from 'app/shared/pdf-report-viewer/pdf-report-viewer.component';
 import { Component, Input, inject, OnDestroy, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { PdfShareButtonsComponent } from 'app/shared/components/pdf-share-buttons/pdf-share-buttons.component';
@@ -96,7 +97,7 @@ const mkSubTitle = (txt: string): any => ({
 @Component({
   selector: 'app-pdf-detail',
   standalone: true,
-  imports: [CommonModule, PdfShareButtonsComponent],
+  imports: [CommonModule, PdfShareButtonsComponent, PdfReportViewerComponent],
   template: `
 <div style="width:100%; min-width:0; padding:8px 10px 12px; background:#f1f4f8; border-radius:8px; box-sizing:border-box;">
 
@@ -145,9 +146,7 @@ const mkSubTitle = (txt: string): any => ({
   </div>
   <div style="width:100%; height:920px; min-width:0; border:1px solid #cbd5e1; border-radius:0 0 8px 8px; background:white; overflow:hidden; box-shadow:0 2px 8px rgba(15,23,42,.08);">
 
-    <iframe *ngIf="pdfUrl" [src]="pdfUrl"
-            style="display:block; width:100%; height:100%; border:none;">
-    </iframe>
+    <app-pdf-report-viewer *ngIf="pdfUrl" [sourceUrl]="pdfUrl" title="Reporte diario" fileName="ReporteDiario.pdf" [showShare]="false"></app-pdf-report-viewer>
 
     <div *ngIf="!pdfUrl && !isLoading"
          class="d-flex flex-column justify-content-center align-items-center h-100 text-muted">
@@ -954,7 +953,7 @@ export class PdfDetailComponent implements OnInit, OnDestroy, ICellRendererAngul
         // Oculta la barra lateral y la barra del visor nativo para que la
         // vista preliminar muestre únicamente las páginas del reporte.
         const url = pdfPreviewUrl(this.pdfObjectUrl, this.pdfZoom);
-        this.pdfUrl = this.sanitizer.bypassSecurityTrustResourceUrl(url);
+        this.pdfUrl = this.sanitizer.bypassSecurityTrustResourceUrl(pdfPreviewUrl(url));
         this.isLoading = false;
       });
 

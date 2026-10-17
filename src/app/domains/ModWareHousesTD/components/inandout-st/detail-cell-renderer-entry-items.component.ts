@@ -1,3 +1,4 @@
+import { PdfReportViewerComponent } from 'app/shared/pdf-report-viewer/pdf-report-viewer.component';
 import { Component, OnInit, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
@@ -16,7 +17,7 @@ import { catchError, forkJoin, from, lastValueFrom, map, mergeMap, of, toArray }
 @Component({
   selector: 'app-detail-cell-renderer-entry-items',
   standalone: true,
-  imports: [CommonModule, FormsModule, AgGridModule, SelectWithTooltipEditorV2Component, SelectMaterialEditorComponent],
+  imports: [CommonModule, FormsModule, AgGridModule, SelectWithTooltipEditorV2Component, SelectMaterialEditorComponent, PdfReportViewerComponent],
   template: `
     <!-- Items Grid View -->
     <div class="detail-grid-container" *ngIf="detailType === 'items'">
@@ -69,20 +70,12 @@ import { catchError, forkJoin, from, lastValueFrom, map, mergeMap, of, toArray }
       <div class="report-header d-flex justify-content-between align-items-center mb-3">
         <h5 class="mb-0">Vista Previa del Reporte - Folio: {{ entryData?.folio || 'Sin Folio' }}</h5>
         <div class="d-flex align-items-center gap-2">
-          <div class="d-flex align-items-center gap-1" aria-label="Zoom del PDF">
-            <button type="button" class="btn btn-outline-secondary btn-sm" (click)="zoomOut()" [disabled]="pdfZoom <= minPdfZoom" title="Reducir zoom"><i class="bi bi-dash-lg"></i></button>
-            <span class="small text-muted" style="min-width:44px;text-align:center">{{ pdfZoom }}%</span>
-            <button type="button" class="btn btn-outline-secondary btn-sm" (click)="zoomIn()" [disabled]="pdfZoom >= maxPdfZoom" title="Aumentar zoom"><i class="bi bi-plus-lg"></i></button>
-          </div>
+
           <button type="button" class="btn btn-outline-secondary btn-sm" (click)="closeReport()"><i class="bi bi-x-lg"></i> Cerrar</button>
         </div>
       </div>
       <div class="report-content" style="width:100%; min-width:0; height:920px; border: 1px solid #dee2e6; border-radius: 0.375rem;">
-        <iframe
-          *ngIf="pdfUrl"
-          [src]="pdfUrl"
-          style="display:block; width: 100%; height: 100%; border: none; border-radius: 0.375rem;">
-        </iframe>
+        <app-pdf-report-viewer *ngIf="pdfUrl" [sourceUrl]="pdfUrl" title="Reporte de entrada" fileName="Reporte_Entrada.pdf"></app-pdf-report-viewer>
         <div *ngIf="!pdfUrl" class="d-flex justify-content-center align-items-center h-100">
           <div class="text-center">
             <div class="spinner-border text-primary" role="status">

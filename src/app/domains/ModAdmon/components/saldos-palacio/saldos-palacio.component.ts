@@ -1,3 +1,4 @@
+import { PdfPreviewService } from 'app/services/pdf-preview.service';
 import { Component, inject } from '@angular/core';
 import { RouterModule } from '@angular/router';
 import { DomainsModule } from 'app/domains/domainsmodule';
@@ -33,6 +34,7 @@ import { SignalsService } from 'app/services/signals.service';
   styleUrl: './saldos-palacio.component.scss',
 })
 export class SaldosPalacioComponent {
+  private pdfPreview = inject(PdfPreviewService);
   authService = inject(AuthService);
   signalsService = inject(SignalsService);
 
@@ -908,8 +910,7 @@ export class SaldosPalacioComponent {
 
     // Generar y abrir el PDF
     this.trackingService.addLog(this.trackingService.getnameComp(), 'Imprimió/abrió PDF estado de cuenta saldos palacio', 'Admon / Saldos Palacio', this.trackingService.getEmail());
-    const pdf = pdfMake.createPdf(docDefinition);
-    pdf.open();
+    this.pdfPreview.show(pdfMake.createPdf(docDefinition), 'Estado de cuenta de saldos del Palacio Municipal');
 
     alerts.basicAlert(
       'Reporte generado',

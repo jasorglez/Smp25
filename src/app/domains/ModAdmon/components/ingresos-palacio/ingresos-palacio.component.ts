@@ -1,3 +1,4 @@
+import { PdfPreviewService } from 'app/services/pdf-preview.service';
 import { Component, effect, inject, OnInit } from '@angular/core';
 import { CellDoubleClickedEvent, ColDef, GridApi, GridReadyEvent, ICellRendererParams } from 'ag-grid-enterprise';
 import { IncomesAndExpensesService } from 'app/services/incomes-and-expenses.service';
@@ -48,6 +49,7 @@ declare var bootstrap: any;
   styleUrl: './ingresos-palacio.component.scss'
 })
 export class IngresosPalacioComponent implements OnInit {
+  private pdfPreview = inject(PdfPreviewService);
   private incomesAndExpensesService = inject(IncomesAndExpensesService);
   private modalServiceTable = inject(ModalService);
   private administrationService = inject(AdministrationService);
@@ -1903,7 +1905,7 @@ async saveChanges() {
         }
       };
 
-      pdfMake.createPdf(docDefinition).open();
+      this.pdfPreview.show(pdfMake.createPdf(docDefinition), 'Reporte de ingresos del Palacio Municipal');
 
       // Tracking log
       this.trackingService.addLog(

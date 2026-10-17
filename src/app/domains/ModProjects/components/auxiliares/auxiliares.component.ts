@@ -1289,7 +1289,6 @@ export class AuxiliaresComponent {
     }
 
     const reportWindow = this.startPdfReport('Cargando el APU seleccionado…');
-    if (!reportWindow) return;
 
     try {
       const detail: any = await this.auxiliarItemsService.getDetalle(id).toPromise();
@@ -1370,7 +1369,6 @@ export class AuxiliaresComponent {
       return;
     }
     const reportWindow = this.startPdfReport('Preparando catálogo de precios…');
-    if (!reportWindow) return;
     try {
       await this.pdfApuService.openCatalogPdf({
         companyName: this.apuConfig.companyName,
@@ -1399,7 +1397,6 @@ export class AuxiliaresComponent {
       return;
     }
     const reportWindow = this.startPdfReport('Cargando análisis para la explosión completa…');
-    if (!reportWindow) return;
     const report: any[] = [];
     try {
       for (const [index, auxiliar] of auxiliars.entries()) {
@@ -1462,13 +1459,8 @@ export class AuxiliaresComponent {
   }
 
   private startPdfReport(label: string): Window | null {
-    const output = window.open('', '_blank');
-    if (!output) {
-      alerts.basicAlert('Permite las ventanas emergentes', 'El navegador bloqueó la ventana donde se abrirá el PDF.', 'warning');
-      return null;
-    }
     this.pdfReportProgress = { active: true, percent: 3, label };
-    return output;
+    return null;
   }
 
   private updatePdfReportProgress(percent: number, label: string): void {
@@ -1480,8 +1472,8 @@ export class AuxiliaresComponent {
     setTimeout(() => this.pdfReportProgress = { active: false, percent: 0, label: '' }, 1800);
   }
 
-  private abortPdfReport(output: Window): void {
-    if (!output.closed) output.close();
+  private abortPdfReport(output: Window | null): void {
+    if (output && !output.closed) output.close();
     this.pdfReportProgress = { active: false, percent: 0, label: '' };
   }
 

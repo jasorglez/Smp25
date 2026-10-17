@@ -1,5 +1,6 @@
 import { CommonModule } from '@angular/common';
 import { Component, effect, inject } from '@angular/core';
+import { PdfPreviewService } from 'app/services/pdf-preview.service';
 import { FormsModule } from '@angular/forms';
 import { IncomesAndExpensesService } from 'app/services/incomes-and-expenses.service';
 import { SignalsService } from 'app/services/signals.service';
@@ -42,6 +43,7 @@ export interface FacturacionIngreso {
   styleUrl: './control-facturacion-ingresos.component.scss'
 })
 export class ControlFacturacionIngresosComponent {
+  private pdfPreview = inject(PdfPreviewService);
   private incomesAndExpensesService = inject(IncomesAndExpensesService);
   private signalsService = inject(SignalsService);
   private rootService = inject(RootService);
@@ -364,13 +366,7 @@ export class ControlFacturacionIngresosComponent {
         }
       };
 
-      const pdf = pdfMake.createPdf(docDefinition);
-      try {
-        pdf.open();
-      } catch {
-        pdf.download(`control-facturacion-ingresos-${this.fechaInicio}-al-${this.fechaFin}.pdf`);
-        alerts.basicAlert('Reporte descargado', 'El navegador bloqueó la ventana emergente. El reporte se descargó automáticamente.', 'info');
-      }
+      this.pdfPreview.show(pdfMake.createPdf(docDefinition), 'Control de facturación e ingresos', `control-facturacion-ingresos-${this.fechaInicio}-al-${this.fechaFin}.pdf`);
 
       this.trackingService.addLog(
         this.trackingService.getnameComp(),

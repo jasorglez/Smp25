@@ -12,6 +12,7 @@ import { CuentasContablesService } from 'app/services/cuentas-contables.service'
 import { alerts } from 'app/helpers/alerts';
 import { lastValueFrom } from 'rxjs';
 import { Workbook } from 'exceljs';
+import { PdfPreviewService } from 'app/services/pdf-preview.service';
 
 // Interfaz para los datos del reporte
 export interface ConcentradoEgreso {
@@ -43,6 +44,7 @@ export interface ConcentradoEgreso {
   styleUrl: './concentrado-egresos.component.scss'
 })
 export class ConcentradoEgresosComponent {
+  private pdfPreview = inject(PdfPreviewService);
   private incomesAndExpensesService = inject(IncomesAndExpensesService);
   private signalsService = inject(SignalsService);
   private rootService = inject(RootService);
@@ -343,13 +345,7 @@ export class ConcentradoEgresosComponent {
         }
       };
 
-      const pdf = pdfMake.createPdf(docDefinition);
-      try {
-        pdf.open();
-      } catch {
-        pdf.download(`concentrado-egresos-${this.fechaInicio}-al-${this.fechaFin}.pdf`);
-        alerts.basicAlert('Reporte descargado', 'El navegador bloqueó la ventana emergente. El reporte se descargó automáticamente.', 'info');
-      }
+      this.pdfPreview.show(pdfMake.createPdf(docDefinition), 'Concentrado de egresos', `concentrado-egresos-${this.fechaInicio}-al-${this.fechaFin}.pdf`);
 
       this.trackingService.addLog(
         this.trackingService.getnameComp(),

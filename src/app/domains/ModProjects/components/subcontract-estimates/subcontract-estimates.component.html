@@ -118,7 +118,7 @@
         <button class="btn btn-sm btn-outline-light" (click)="closePdfPreview()"><i class="bi bi-x-lg"></i></button>
       </div>
     </header>
-    <iframe *ngIf="pdfPreviewUrl" [src]="pdfPreviewUrl" title="Vista preliminar PDF de la estimación"></iframe>
+    <app-pdf-report-viewer *ngIf="pdfPreviewUrl" [sourceUrl]="pdfPreviewUrl" title="Estimación de subcontrato" fileName="Estimacion_Subcontrato.pdf"></app-pdf-report-viewer>
   </section>
 </div>
 

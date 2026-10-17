@@ -1,3 +1,4 @@
+import { PdfPreviewService } from 'app/services/pdf-preview.service';
 import { Component, ElementRef, inject, OnInit, ViewChild, effect } from '@angular/core';
 import { RouterModule } from '@angular/router';
 import { DomainsModule } from 'app/domains/domainsmodule';
@@ -73,6 +74,7 @@ interface TotalData {
   styleUrl: './dastot-pal.component.scss',
 })
 export class DastotPalComponent implements OnInit {
+  private pdfPreview = inject(PdfPreviewService);
   @ViewChild('chartIngresos') chartIngresos!: ChartComponent;
   @ViewChild('chartEgresos') chartEgresos!: ChartComponent;
   @ViewChild('chartBar') chartBar!: ChartComponent;
@@ -675,7 +677,7 @@ export class DastotPalComponent implements OnInit {
       };
 
       this.trackingService.addLog(this.trackingService.getnameComp(), 'Imprimió/abrió PDF reporte totales palacio', 'Admon / Palacio Municipal', this.trackingService.getEmail());
-      pdfMake.createPdf(docDefinition).open();
+      this.pdfPreview.show(pdfMake.createPdf(docDefinition), 'Reporte de totales del Palacio Municipal');
     } catch (error) {
       console.error('Error al generar PDF:', error);
       alerts.basicAlert('PDF', 'No se pudo generar el reporte PDF.', 'error');
@@ -858,7 +860,7 @@ export class DastotPalComponent implements OnInit {
 
       this.setPdfProgress(85, 'Generando PDF...');
       this.trackingService.addLog(this.trackingService.getnameComp(), 'Imprimió/abrió PDF vista actual palacio', 'Admon / Palacio Municipal', this.trackingService.getEmail());
-      pdfMake.createPdf({
+      const reportPdf = pdfMake.createPdf({
         pageSize: 'LETTER',
         pageMargins: [20, 80, 20, 28],
         header: {
@@ -898,7 +900,8 @@ export class DastotPalComponent implements OnInit {
           td: { fontSize: 9 },
           tdNum: { fontSize: 9, alignment: 'right' },
         },
-      }).open();
+      });
+      this.pdfPreview.show(reportPdf, 'Reporte de vista actual del Palacio Municipal');
       this.setPdfProgress(100, 'Reporte generado');
     } catch (error) {
       console.error('Error exportando PDF de pantalla:', error);

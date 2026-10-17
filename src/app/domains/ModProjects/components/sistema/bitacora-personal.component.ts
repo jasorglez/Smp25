@@ -1,3 +1,4 @@
+import { PdfPreviewService } from 'app/services/pdf-preview.service';
 import { Component, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { AgGridModule } from 'ag-grid-angular';
@@ -82,6 +83,7 @@ const dCell = (txt: string, alt: boolean, align: 'left'|'center'|'right' = 'left
   styles: BITACORA_STYLES,
 })
 export class BitacoraPersonalComponent extends BitacoraBaseComponent {
+  private pdfPreview = inject(PdfPreviewService);
   private catalogAdmonService = inject(CatalogadmonService);
   private employeesService    = inject(EmployeesService);
   private rootService         = inject(RootService);
@@ -318,7 +320,7 @@ export class BitacoraPersonalComponent extends BitacoraBaseComponent {
     };
 
     this.trackingService.addLog(this.trackingService.getnameComp(), 'Generó PDF bitácora personal', 'Proyectos / Bitácora', this.trackingService.getEmail());
-    pdfMake.createPdf(docDef).open();
+    this.pdfPreview.show(pdfMake.createPdf(docDef), 'Reporte de bitácora de personal');
   }
 
   protected override remapFromDb(item: any): any {

@@ -12,6 +12,7 @@ import { TrackingService } from 'app/services/tracking.service';
 import { alerts } from 'app/helpers/alerts';
 import { lastValueFrom } from 'rxjs';
 import { Workbook } from 'exceljs';
+import { PdfPreviewService } from 'app/services/pdf-preview.service';
 
 // Interfaz para los datos del reporte de proyectos
 export interface ProyectoReporte {
@@ -56,6 +57,7 @@ export interface AportacionSocio {
   styleUrl: './reporte-operativo-sin-iva.component.scss'
 })
 export class ReporteOperativoSinIvaComponent {
+  private pdfPreview = inject(PdfPreviewService);
   private incomesAndExpensesService = inject(IncomesAndExpensesService);
   private projectsService = inject(ProjectsService);
   private signalsService = inject(SignalsService);
@@ -641,13 +643,7 @@ export class ReporteOperativoSinIvaComponent {
         }
       };
 
-      const pdf = pdfMake.createPdf(docDefinition);
-      try {
-        pdf.open();
-      } catch {
-        pdf.download(`reporte-ejecutivo-proyectos-${new Date().toISOString().split('T')[0]}.pdf`);
-        alerts.basicAlert('Reporte descargado', 'El navegador bloqueó la ventana emergente. El reporte se descargó automáticamente.', 'info');
-      }
+      this.pdfPreview.show(pdfMake.createPdf(docDefinition), 'Reporte operativo sin IVA', `reporte-ejecutivo-proyectos-${new Date().toISOString().split('T')[0]}.pdf`);
 
       this.trackingService.addLog(
         this.trackingService.getnameComp(),

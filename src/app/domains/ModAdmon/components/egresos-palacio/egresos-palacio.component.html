@@ -330,7 +330,7 @@
         </form>
         </div>
         <section class="palacio-report-preview" aria-label="Vista previa del reporte PDF">
-          <iframe *ngIf="reportPdfPreview" [src]="reportPdfPreview" title="Vista previa del reporte PDF"></iframe>
+          <app-pdf-report-viewer *ngIf="reportPdfPreview" [sourceUrl]="reportPdfPreview" title="Reporte consolidado de egresos" fileName="Reporte_Egresos.pdf"></app-pdf-report-viewer>
           <div *ngIf="!reportPdfPreview" class="text-muted text-center p-4">
             <i class="bi bi-file-earmark-pdf display-4 d-block mb-2"></i>
             El reporte PDF aparecerá aquí al generarlo.

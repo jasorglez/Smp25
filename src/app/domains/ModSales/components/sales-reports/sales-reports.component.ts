@@ -1,3 +1,4 @@
+import { PdfPreviewService } from 'app/services/pdf-preview.service';
 import { Component, OnInit, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
@@ -48,6 +49,7 @@ export interface ConceptReport {
   styleUrl: './sales-reports.component.scss',
 })
 export class SalesReportsComponent implements OnInit {
+  private pdfPreview = inject(PdfPreviewService);
   private http = inject(HttpClient);
   private trackingService = inject(TrackingService);
   private signalsService = inject(SignalsService);
@@ -289,7 +291,7 @@ export class SalesReportsComponent implements OnInit {
     };
 
     this.trackingService.addLog(this.trackingService.getnameComp(), 'Imprimió/abrió PDF reporte de ventas hoy', 'Ventas / Reportes', this.trackingService.getEmail());
-    pdfMake.createPdf(docDef).open();
+    this.pdfPreview.show(pdfMake.createPdf(docDef), 'Reporte de ventas');
   }
 
   // ---- PDF: Un celular ----
@@ -370,7 +372,7 @@ export class SalesReportsComponent implements OnInit {
       defaultStyle: { fontSize: 8 },
     };
     this.trackingService.addLog(this.trackingService.getnameComp(), 'Imprimió/abrió PDF reporte celular', 'Ventas / Reportes', this.trackingService.getEmail());
-    pdfMake.createPdf(docDef).open();
+    this.pdfPreview.show(pdfMake.createPdf(docDef), 'Reporte de ventas por celular');
   }
 
   // ---- PDF: Todos los celulares ----
@@ -435,7 +437,7 @@ export class SalesReportsComponent implements OnInit {
       defaultStyle: { fontSize: 8 },
     };
     this.trackingService.addLog(this.trackingService.getnameComp(), 'Imprimió/abrió PDF reporte todos celulares', 'Ventas / Reportes', this.trackingService.getEmail());
-    pdfMake.createPdf(docDef).open();
+    this.pdfPreview.show(pdfMake.createPdf(docDef), 'Reporte de ventas de todos los celulares');
   }
 
   private async loadLogo(): Promise<string | null> {

@@ -1,3 +1,5 @@
+import { PdfReportViewerComponent } from 'app/shared/pdf-report-viewer/pdf-report-viewer.component';
+import { pdfPreviewUrl } from 'app/helpers/pdf-viewer';
 import { WorkspaceDraftDirective } from 'app/shared/workspace/workspace-draft.directive';
 //soriano develop
 
@@ -26,7 +28,7 @@ import { TrackingService } from 'app/services/tracking.service';
 @Component({
   selector: 'app-detalles-egresospalacios',
   standalone: true,
-  imports: [WorkspaceDraftDirective, CommonModule, FormsModule, AgGridModule, MultiLineEditorComponent, SearchableSelectComponent, SelectWithTooltipEditorV2Component],
+  imports: [WorkspaceDraftDirective, CommonModule, FormsModule, AgGridModule, MultiLineEditorComponent, SearchableSelectComponent, SelectWithTooltipEditorV2Component, PdfReportViewerComponent],
   template: `
     <!-- Concepts Grid View -->
     <div class="detail-grid-container" *ngIf="detailType === 'concepts'">
@@ -88,11 +90,7 @@ import { TrackingService } from 'app/services/tracking.service';
         </button>
       </div>
       <div class="report-content">
-        <iframe
-          *ngIf="pdfUrl"
-          [src]="pdfUrl"
-          title="Vista previa del reporte de egreso">
-        </iframe>
+        <app-pdf-report-viewer *ngIf="pdfUrl" [sourceUrl]="pdfUrl" title="Reporte de egreso" fileName="Reporte_Egreso.pdf"></app-pdf-report-viewer>
         <div *ngIf="!pdfUrl" class="d-flex justify-content-center align-items-center h-100">
           <div class="text-center">
             <div class="alert alert-info">
@@ -115,11 +113,7 @@ import { TrackingService } from 'app/services/tracking.service';
         </button>
       </div>
       <div class="report-content">
-        <iframe
-          *ngIf="pdfUrl"
-          [src]="pdfUrl"
-          title="Vista previa del reporte de egreso">
-        </iframe>
+        <app-pdf-report-viewer *ngIf="pdfUrl" [sourceUrl]="pdfUrl" title="Reporte de egreso" fileName="Reporte_Egreso.pdf"></app-pdf-report-viewer>
         <div *ngIf="!pdfUrl" class="d-flex justify-content-center align-items-center h-100">
           <div class="text-center">
             <div class="alert alert-info">
@@ -197,10 +191,7 @@ import { TrackingService } from 'app/services/tracking.service';
           </div>
           <div class="modal-body" style="height: 70vh;">
             <!-- PDF Preview -->
-            <iframe *ngIf="previewFileType === 'PDF' && previewFileUrl"
-                    [src]="previewFileUrl"
-                    style="width: 100%; height: 100%; border: none;">
-            </iframe>
+            <app-pdf-report-viewer *ngIf="previewFileType === 'PDF' && previewFileUrl" [sourceUrl]="previewFileUrl" title="Documento PDF" fileName="Documento.pdf"></app-pdf-report-viewer>
 
             <!-- JPG/Image Preview -->
             <div *ngIf="previewFileType === 'JPG' && previewFileUrl"
@@ -2332,7 +2323,7 @@ export class DetallesEgresospalaciosComponent implements OnInit, OnDestroy {
 
         // Crear nueva URL para el blob
         this.originalPdfUrl = URL.createObjectURL(blob);
-        this.pdfUrl = this.sanitizer.bypassSecurityTrustResourceUrl(this.originalPdfUrl);
+        this.pdfUrl = this.sanitizer.bypassSecurityTrustResourceUrl(pdfPreviewUrl(this.originalPdfUrl));
       });
 
     } catch (error) {

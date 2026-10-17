@@ -1,3 +1,4 @@
+import { PdfReportViewerComponent } from 'app/shared/pdf-report-viewer/pdf-report-viewer.component';
 import { WorkspaceDraftDirective } from 'app/shared/workspace/workspace-draft.directive';
 import { WorkspaceDraftsService } from 'app/services/workspace-drafts.service';
 
@@ -44,7 +45,7 @@ declare var bootstrap: any;
   standalone: true,
   imports: [WorkspaceDraftDirective, NgSelectModule, NgSelectComponent, AgGridModule, MultiLineEditorComponent, CommonModule,
     FormsModule, ButtonCellRendererExpenditureComponent, DetallesEgresospalaciosComponent,
-    PdfButtonCellRendererComponent, SelectWithTooltipEditorV2Component, DatePipe, ReactiveFormsModule],
+    PdfButtonCellRendererComponent, SelectWithTooltipEditorV2Component, DatePipe, ReactiveFormsModule, PdfReportViewerComponent],
   templateUrl: './egresos-palacio.component.html',
   styleUrl: './egresos-palacio.component.scss'
 })
@@ -2749,7 +2750,7 @@ export class EgresosPalacioComponent {
     this.reportPdfObjectUrl = URL.createObjectURL(blob);
     // Abrir el PDF sin el panel lateral de miniaturas del visor integrado del navegador.
     this.reportPdfPreview = this.sanitizer.bypassSecurityTrustResourceUrl(
-      `${this.reportPdfObjectUrl}#pagemode=none&navpanes=0`
+      `${this.reportPdfObjectUrl}#toolbar=0&navpanes=0&pagemode=none`
     );
   }
 

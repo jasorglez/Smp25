@@ -9,6 +9,7 @@ import { TrackingService } from 'app/services/tracking.service';
 import { alerts } from 'app/helpers/alerts';
 import { lastValueFrom } from 'rxjs';
 import { Workbook } from 'exceljs';
+import { PdfPreviewService } from 'app/services/pdf-preview.service';
 
 // Interfaz para los datos del reporte por año
 export interface FacturacionAnual {
@@ -33,6 +34,7 @@ export interface FacturacionAnual {
   styleUrl: './reporte-facturacion-anual.component.scss'
 })
 export class ReporteFacturacionAnualComponent {
+  private pdfPreview = inject(PdfPreviewService);
   private incomesAndExpensesService = inject(IncomesAndExpensesService);
   private signalsService = inject(SignalsService);
   private rootService = inject(RootService);
@@ -340,13 +342,7 @@ export class ReporteFacturacionAnualComponent {
         }
       };
 
-      const pdf = pdfMake.createPdf(docDefinition);
-      try {
-        pdf.open();
-      } catch {
-        pdf.download(`reporte-facturacion-anual-${new Date().toISOString().split('T')[0]}.pdf`);
-        alerts.basicAlert('Reporte descargado', 'El navegador bloqueó la ventana emergente. El reporte se descargó automáticamente.', 'info');
-      }
+      this.pdfPreview.show(pdfMake.createPdf(docDefinition), 'Reporte de facturación anual', `reporte-facturacion-anual-${new Date().toISOString().split('T')[0]}.pdf`);
 
       this.trackingService.addLog(
         this.trackingService.getnameComp(),

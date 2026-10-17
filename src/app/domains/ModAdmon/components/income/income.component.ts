@@ -1,6 +1,7 @@
 import { WorkspaceDraftDirective } from 'app/shared/workspace/workspace-draft.directive';
 import { WorkspaceDraftsService } from 'app/services/workspace-drafts.service';
 import { Component, ViewChild, effect, inject, OnDestroy } from '@angular/core';
+import { PdfPreviewService } from 'app/services/pdf-preview.service';
 import { Subscription } from 'rxjs';
 import { CellDoubleClickedEvent, ColDef, GridApi, GridReadyEvent, ICellRendererParams } from 'ag-grid-enterprise';
 import { IncomesAndExpensesService } from 'app/services/incomes-and-expenses.service';
@@ -40,6 +41,7 @@ import { ProjectsService } from 'app/services/projects.service';
   styleUrl: './income.component.scss'
 })
 export class IncomeComponent implements OnDestroy {
+  private pdfPreview = inject(PdfPreviewService);
   @ViewChild(WorkspaceDraftDirective) workspaceDraft?: WorkspaceDraftDirective;
   workspaceLoaded = false;
   private workspaceStore = inject(WorkspaceDraftsService);
@@ -1615,13 +1617,7 @@ private async updateAccountBankConsecutive(account: any, newConsecutive: number)
         }
       };
 
-      const pdf = pdfMake.createPdf(docDefinition);
-      try {
-        pdf.open();
-      } catch {
-        pdf.download(`reporte-ingresos-${this.reportStartDate}-al-${this.reportEndDate}.pdf`);
-        alerts.toastAlert('Reporte descargado automáticamente', 'info');
-      }
+      this.pdfPreview.show(pdfMake.createPdf(docDefinition), 'Reporte de ingresos', `reporte-ingresos-${this.reportStartDate}-al-${this.reportEndDate}.pdf`);
 
       this.closeIngresoReportModal();
       this.trackingService.addLog(
@@ -1782,13 +1778,7 @@ private async updateAccountBankConsecutive(account: any, newConsecutive: number)
         }
       };
 
-      const pdf = pdfMake.createPdf(docDefinition);
-      try {
-        pdf.open();
-      } catch {
-        pdf.download(`saldos-cuenta-${this.reportStartDate}-al-${this.reportEndDate}.pdf`);
-        alerts.toastAlert('Reporte descargado automáticamente', 'info');
-      }
+      this.pdfPreview.show(pdfMake.createPdf(docDefinition), 'Reporte de saldos de cuenta', `saldos-cuenta-${this.reportStartDate}-al-${this.reportEndDate}.pdf`);
       this.closeIngresoReportModal();
       this.trackingService.addLog(
         this.trackingService.getnameComp(),

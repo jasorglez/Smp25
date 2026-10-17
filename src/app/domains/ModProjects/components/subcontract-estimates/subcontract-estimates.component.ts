@@ -1,3 +1,5 @@
+import { PdfReportViewerComponent } from 'app/shared/pdf-report-viewer/pdf-report-viewer.component';
+import { pdfPreviewUrl } from 'app/helpers/pdf-viewer';
 import { CommonModule, CurrencyPipe } from '@angular/common';
 import { Component, effect, inject, OnDestroy } from '@angular/core';
 import { DomSanitizer, SafeResourceUrl } from '@angular/platform-browser';
@@ -22,7 +24,7 @@ import { Base64EncodeService } from 'app/services/base64encode.service';
 @Component({
   selector: 'app-subcontract-estimates',
   standalone: true,
-  imports: [CommonModule, FormsModule, AgGridModule, CurrencyPipe],
+  imports: [CommonModule, FormsModule, AgGridModule, CurrencyPipe, PdfReportViewerComponent],
   templateUrl: './subcontract-estimates.component.html',
   styleUrl: './subcontract-estimates.component.scss'
 })
@@ -327,7 +329,7 @@ export class SubcontractEstimatesComponent implements OnDestroy {
     this.pdfDefinition = this.buildPdfDefinition(logo);
     pdfMake.createPdf(this.pdfDefinition).getBlob((blob: Blob) => {
       this.pdfObjectUrl = URL.createObjectURL(blob);
-      this.pdfPreviewUrl = this.sanitizer.bypassSecurityTrustResourceUrl(this.pdfObjectUrl);
+      this.pdfPreviewUrl = this.sanitizer.bypassSecurityTrustResourceUrl(pdfPreviewUrl(this.pdfObjectUrl));
       this.showPdfPreview = true;
     });
   }

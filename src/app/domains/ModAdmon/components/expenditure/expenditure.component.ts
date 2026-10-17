@@ -1,3 +1,5 @@
+import { pdfPreviewUrl } from 'app/helpers/pdf-viewer';
+import { PdfReportViewerComponent } from 'app/shared/pdf-report-viewer/pdf-report-viewer.component';
 import { WorkspaceDraftDirective } from 'app/shared/workspace/workspace-draft.directive';
 import { WorkspaceDraftsService } from 'app/services/workspace-drafts.service';
 import { Component, ViewChild, effect, inject, Input, OnChanges, OnDestroy, SimpleChanges } from '@angular/core';
@@ -42,7 +44,7 @@ import { SelectWithTooltipEditorV2Component } from 'app/shared/select-with-toolt
   standalone: true,
   imports: [WorkspaceDraftDirective, AgGridModule, MultiLineEditorComponent, CommonModule,
     FormsModule, ButtonCellRendererExpenditure2Component, PdfButtonCellRendererExpenditure2Component,
-    DetallesExpenditureComponent, SelectWithTooltipEditorV2Component],
+    DetallesExpenditureComponent, SelectWithTooltipEditorV2Component, PdfReportViewerComponent],
   templateUrl: './expenditure.component.html',
   styleUrl: './expenditure.component.scss'
 })
@@ -1853,7 +1855,7 @@ export class ExpenditureComponent implements OnDestroy, OnChanges {
         pdf.getBlob((blob: Blob) => {
           try {
             this.pdfPreviewObjectUrl = URL.createObjectURL(blob);
-            this.pdfPreviewUrl = this.sanitizer.bypassSecurityTrustResourceUrl(this.pdfPreviewObjectUrl);
+            this.pdfPreviewUrl = this.sanitizer.bypassSecurityTrustResourceUrl(pdfPreviewUrl(this.pdfPreviewObjectUrl));
             resolve();
           } catch (error) {
             reject(error);

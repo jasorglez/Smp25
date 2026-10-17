@@ -473,7 +473,7 @@
               <div class="border rounded p-3 pdf-preview-container" style="height: calc(110vh - 340px); background-color: #f8f9fa;">
                 <!-- PDF Embed cuando está generado -->
                 <div *ngIf="showPdfEmbed && pdfUrl" class="h-100">
-                  <iframe [src]="pdfUrl" width="100%" height="100%" style="border: none; border-radius: 6px;"></iframe>
+                  <app-pdf-report-viewer *ngIf="showPdfEmbed && pdfUrl" [sourceUrl]="pdfUrl" title="Orden de trabajo" fileName="Orden_Trabajo.pdf"></app-pdf-report-viewer>
                 </div>
                 <!-- Estado generando PDF -->
                 <div *ngIf="isGeneratingPdf" class="h-100 d-flex align-items-center justify-content-center">

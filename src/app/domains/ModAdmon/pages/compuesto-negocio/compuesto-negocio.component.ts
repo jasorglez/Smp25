@@ -1,5 +1,6 @@
 import { CommonModule } from '@angular/common';
 import { Component, effect, inject } from '@angular/core';
+import { PdfPreviewService } from 'app/services/pdf-preview.service';
 import { FormsModule } from '@angular/forms';
 import { IncomesAndExpensesService } from 'app/services/incomes-and-expenses.service';
 import { SignalsService } from 'app/services/signals.service';
@@ -30,6 +31,7 @@ export interface DatosTrimestre {
   styleUrl: './compuesto-negocio.component.scss'
 })
 export class CompuestoNegocioComponent {
+  private pdfPreview = inject(PdfPreviewService);
   private incomesAndExpensesService = inject(IncomesAndExpensesService);
   private signalsService = inject(SignalsService);
   private rootService = inject(RootService);
@@ -302,13 +304,7 @@ export class CompuestoNegocioComponent {
         }
       };
 
-      const pdf = pdfMake.createPdf(docDefinition);
-      try {
-        pdf.open();
-      } catch {
-        pdf.download(`compuesto-negocio-${new Date().toISOString().split('T')[0]}.pdf`);
-        alerts.basicAlert('Reporte descargado', 'El navegador bloqueó la ventana emergente. El reporte se descargó automáticamente.', 'info');
-      }
+      this.pdfPreview.show(pdfMake.createPdf(docDefinition), 'Compuesto de negocio', `compuesto-negocio-${new Date().toISOString().split('T')[0]}.pdf`);
 
       this.trackingService.addLog(
         this.trackingService.getnameComp(),

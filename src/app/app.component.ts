@@ -5,13 +5,14 @@ import { SignalsService } from './services/signals.service';
 import { ChatbotComponent } from './shared/chatbot/chatbot.component';
 import { TrackingService } from './services/tracking.service';
 import { environment } from '@env/environment';
+import { PdfPreviewHostComponent } from './shared/pdf-preview-host/pdf-preview-host.component';
 
 
 @Component({
   selector: 'app-root',
   standalone: true,
-  imports: [RouterOutlet, ChatbotComponent],
-  template: '<router-outlet></router-outlet><app-chatbot></app-chatbot>',
+  imports: [RouterOutlet, ChatbotComponent, PdfPreviewHostComponent],
+  template: '<router-outlet></router-outlet><app-pdf-preview-host></app-pdf-preview-host><app-chatbot></app-chatbot>',
 })
 export class AppComponent implements OnInit {
   title = 'bi-aug-24';

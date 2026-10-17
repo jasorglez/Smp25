@@ -1,3 +1,5 @@
+import { PdfReportViewerComponent } from 'app/shared/pdf-report-viewer/pdf-report-viewer.component';
+import { pdfPreviewUrl } from 'app/helpers/pdf-viewer';
 import { Component, effect, inject, OnInit, OnDestroy, computed } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { TranslateModule } from '@ngx-translate/core';
@@ -140,7 +142,7 @@ interface Video {
 @Component({
   selector: 'app-ordenes',
   standalone: true,
-  imports: [CommonModule, TranslateModule, AgGridModule, ReactiveFormsModule, FormsModule],
+  imports: [CommonModule, TranslateModule, AgGridModule, ReactiveFormsModule, FormsModule, PdfReportViewerComponent],
   templateUrl: './ordenes.component.html',
   styleUrl: './ordenes.component.scss',
 })
@@ -4275,7 +4277,7 @@ export class OrdenesComponent implements OnInit, OnDestroy {
 
         const url = URL.createObjectURL(blob);
         this.originalUrl = url;
-        this.pdfUrl = this.sanitizer.bypassSecurityTrustResourceUrl(url);
+        this.pdfUrl = this.sanitizer.bypassSecurityTrustResourceUrl(pdfPreviewUrl(url));
         this.showPdfEmbed = true;
         this.isGeneratingPdf = false;
 
@@ -4995,7 +4997,7 @@ export class OrdenesComponent implements OnInit, OnDestroy {
       pdfMake.createPdf(docDefinition as any).getBlob((blob) => {
         const url = URL.createObjectURL(blob);
         this.originalUrl = url;
-        this.pdfUrl = this.sanitizer.bypassSecurityTrustResourceUrl(url);
+        this.pdfUrl = this.sanitizer.bypassSecurityTrustResourceUrl(pdfPreviewUrl(url));
         this.showPdfEmbed = true;
         this.isGeneratingPdfEmbed = false;
       });
