@@ -10,6 +10,9 @@ import { PdfShareService } from 'app/services/pdf-share.service';
   template: `
     <div class="pdf-share-toolbar">
       <div class="pdf-share-buttons">
+      <button type="button" class="btn btn-sm btn-outline-secondary" [disabled]="busy" (click)="onPrint()" title="Imprimir PDF">
+        <i class="bi bi-printer"></i>
+      </button>
       <button type="button" class="btn btn-sm btn-outline-primary" [disabled]="busy" (click)="togglePanel('email')" title="Enviar por Correo">
         <i class="bi bi-envelope"></i>
       </button>
@@ -37,10 +40,14 @@ import { PdfShareService } from 'app/services/pdf-share.service';
       <span *ngIf="busy" class="pdf-share-feedback text-primary" role="status" aria-live="polite">
         <span class="spinner-border spinner-border-sm" aria-hidden="true"></span> {{ busyMessage }}
       </span>
+      <div *ngIf="busy" class="pdf-share-progress" role="progressbar" aria-valuemin="0" aria-valuemax="100" [attr.aria-label]="busyMessage">
+        <div class="pdf-share-progress-bar"></div>
+      </div>
       <span *ngIf="feedback && !busy" class="pdf-share-feedback" [class.text-danger]="feedbackType === 'error'" [class.text-success]="feedbackType === 'success'" [class.text-muted]="feedbackType === 'info'" role="status" aria-live="polite">
         <i class="bi" [class.bi-exclamation-circle]="feedbackType === 'error'" [class.bi-check-circle]="feedbackType === 'success'" [class.bi-info-circle]="feedbackType === 'info'"></i>
         {{ feedback }}
         <a *ngIf="whatsappUrl" class="ms-1" [href]="whatsappUrl" target="_blank" rel="noopener">Abrir WhatsApp</a>
+        <a *ngIf="printUrl" class="ms-1" [href]="printUrl" target="_blank" rel="noopener">Abrir PDF para imprimir</a>
       </span>
       </div>
   `,
@@ -53,6 +60,9 @@ import { PdfShareService } from 'app/services/pdf-share.service';
     .pdf-share-inline-form .cc-input { width: 150px; }
     .pdf-share-inline-form .phone-input { width: 190px; }
     .pdf-share-feedback { display: inline-flex; align-items: center; gap: .3rem; font-size: .78rem; }
+    .pdf-share-progress { flex: 0 1 130px; height: 5px; overflow: hidden; border-radius: 99px; background: #dce6f1; }
+    .pdf-share-progress-bar { width: 40%; height: 100%; border-radius: inherit; background: #1680ad; animation: pdf-share-progress 1.2s ease-in-out infinite; }
+    @keyframes pdf-share-progress { from { transform: translateX(-110%); } to { transform: translateX(260%); } }
     @media (max-width: 600px) { .pdf-share-inline-form { flex: 1 1 100%; } }
   `],
 })
@@ -71,6 +81,7 @@ export class PdfShareButtonsComponent {
   feedback = '';
   feedbackType: 'success' | 'error' | 'info' = 'info';
   whatsappUrl = '';
+  printUrl = '';
   private svc = inject(PdfShareService);
   private cdr = inject(ChangeDetectorRef);
 
@@ -78,12 +89,14 @@ export class PdfShareButtonsComponent {
     this.activePanel = this.activePanel === panel ? null : panel;
     this.feedback = '';
     this.whatsappUrl = '';
+    this.printUrl = '';
   }
 
   closePanel(): void {
     this.activePanel = null;
     this.feedback = '';
     this.whatsappUrl = '';
+    this.printUrl = '';
   }
 
   async onEmail(): Promise<void> {
@@ -184,6 +197,39 @@ export class PdfShareButtonsComponent {
     } catch (err: any) {
       telegramWindow?.close();
       this.setFeedback(err?.message || 'No se pudo subir el archivo a Telegram.', 'error');
+    } finally {
+      this.busy = false;
+      this.busyMessage = '';
+      this.cdr.detectChanges();
+    }
+  }
+
+  async onPrint(): Promise<void> {
+    // Reserve the tab on the user click so popup blockers do not prevent printing later.
+    const printWindow = window.open('about:blank', '_blank');
+    this.busy = true;
+    this.feedback = '';
+    this.printUrl = '';
+    this.setBusyMessage('Preparando el PDF para imprimir…');
+    try {
+      const blob = await this.getPdfBlob();
+      const objectUrl = URL.createObjectURL(blob);
+      window.setTimeout(() => URL.revokeObjectURL(objectUrl), 5 * 60 * 1000);
+      if (!printWindow || printWindow.closed) {
+        this.printUrl = objectUrl;
+        this.setFeedback('El PDF está listo; ábrelo para imprimir.', 'info');
+        return;
+      }
+
+      printWindow.location.href = objectUrl;
+      printWindow.addEventListener('load', () => {
+        printWindow.focus();
+        printWindow.print();
+      }, { once: true });
+      this.setFeedback('El PDF está listo; se abrirá el diálogo de impresión.', 'success');
+    } catch (error) {
+      printWindow?.close();
+      this.setFeedback((error as any)?.message || 'No se pudo preparar el PDF para imprimir.', 'error');
     } finally {
       this.busy = false;
       this.busyMessage = '';

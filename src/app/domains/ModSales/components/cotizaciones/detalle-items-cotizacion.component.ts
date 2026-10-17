@@ -1,4 +1,5 @@
 import { PdfReportViewerComponent } from 'app/shared/pdf-report-viewer/pdf-report-viewer.component';
+import { PdfShareButtonsComponent } from 'app/shared/components/pdf-share-buttons/pdf-share-buttons.component';
 ﻿import { Component, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
@@ -34,7 +35,7 @@ const textoPdf = (value: unknown): string =>
 @Component({
   selector: 'app-detalle-items-cotizacion',
   standalone: true,
-  imports: [CommonModule, FormsModule, AgGridModule, PdfReportViewerComponent],
+  imports: [CommonModule, FormsModule, AgGridModule, PdfReportViewerComponent, PdfShareButtonsComponent],
   template: `
     <div class="detail-container">
 
@@ -122,30 +123,12 @@ const textoPdf = (value: unknown): string =>
               <i class="bi bi-download me-1"></i> Descargar
             </button>
 
-            <!-- Enviar por correo -->
-            <button class="btn btn-sm btn-outline-primary"
-                    (click)="abrirModalCorreo()"
-                    [disabled]="isLoadingPdf || isSendingEmail || !_pdfBlob">
-              <span *ngIf="isSendingEmail" class="spinner-border spinner-border-sm me-1"></span>
-              <i *ngIf="!isSendingEmail" class="bi bi-envelope me-1"></i>
-              {{ isSendingEmail ? 'Enviando...' : 'Enviar por correo' }}
-            </button>
-
-            <button class="btn btn-sm btn-outline-info"
-                    (click)="enviarPorTelegram()"
-                    [disabled]="isLoadingPdf || isSendingTelegram || !_pdfBlob">
-              <span *ngIf="isSendingTelegram" class="spinner-border spinner-border-sm me-1"></span>
-              <i *ngIf="!isSendingTelegram" class="bi bi-telegram me-1"></i>
-              {{ isSendingTelegram ? 'Preparando...' : 'Enviar por Telegram' }}
-            </button>
-
-            <button class="btn btn-sm btn-outline-success"
-                    (click)="abrirModalWhatsapp()"
-                    [disabled]="isLoadingPdf || isSendingWhatsapp || !_pdfBlob">
-              <span *ngIf="isSendingWhatsapp" class="spinner-border spinner-border-sm me-1"></span>
-              <i *ngIf="!isSendingWhatsapp" class="bi bi-whatsapp me-1"></i>
-              {{ isSendingWhatsapp ? 'Preparando...' : 'Enviar por WhatsApp' }}
-            </button>
+            <app-pdf-share-buttons
+              *ngIf="_pdfBlob"
+              [getPdfBlob]="getPdfBlobFn"
+              [fileName]="'Cotizacion_' + (cotizacion?.numCotizacion || cotizacion?.id) + '.pdf'"
+              [subject]="'Cotización ' + (cotizacion?.numCotizacion || '') + ' — ' + (cotizacion?.empresaProspecto || cotizacion?.nombreProspecto || '')">
+            </app-pdf-share-buttons>
           </div>
         </div>
 
@@ -157,14 +140,13 @@ const textoPdf = (value: unknown): string =>
         </div>
 
         <div class="pdf-frame-wrap">
-          <app-pdf-report-viewer *ngIf="pdfUrl && !isLoadingPdf" [sourceUrl]="pdfUrl" title="Cotización" fileName="Cotizacion.pdf"></app-pdf-report-viewer>
-          <div *ngIf="isLoadingPdf" class="d-flex justify-content-center align-items-center h-100 text-muted">
-            <i class="bi bi-hourglass-split me-2"></i> Generando PDF...
+          <app-pdf-report-viewer *ngIf="pdfUrl && !isLoadingPdf" [sourceUrl]="pdfUrl" title="Cotización" fileName="Cotizacion.pdf" [showShare]="false"></app-pdf-report-viewer>
+          <div *ngIf="isLoadingPdf" class="pdf-generating-state" role="status" aria-live="polite">
+            <span><i class="bi bi-hourglass-split me-2"></i> Generando PDF...</span>
+            <div class="pdf-generating-progress" aria-hidden="true"><div></div></div>
           </div>
         </div>
       </ng-container>
-
-      <!-- Modal correo se renderiza en document.body via TS (escapa el transform de AG Grid) -->
 
     </div>
   `,
@@ -180,6 +162,10 @@ const textoPdf = (value: unknown): string =>
       border-radius: 4px;
       overflow: hidden;   /* el scroll lo maneja el iframe internamente */
     }
+    .pdf-generating-state { display: flex; height: 100%; align-items: center; justify-content: center; flex-direction: column; gap: 12px; color: #6c757d; }
+    .pdf-generating-progress { width: min(320px, 70%); height: 6px; overflow: hidden; border-radius: 999px; background: #dee2e6; }
+    .pdf-generating-progress > div { width: 40%; height: 100%; border-radius: inherit; background: #0d6efd; animation: pdf-generating-progress 1.2s ease-in-out infinite; }
+    @keyframes pdf-generating-progress { from { transform: translateX(-110%); } to { transform: translateX(260%); } }
     .autocomplete-list {
       position: absolute;
       top: 100%; left: 0; right: 0;
@@ -237,6 +223,7 @@ export class DetalleItemsCotizacionComponent implements ICellRendererAngularComp
   private originalPdfUrl: string | null = null;
   _lastDocDef: any = null;
   _pdfBlob: Blob | null = null;   // blob renderizado — se reutiliza para download/WhatsApp
+  readonly getPdfBlobFn = (): Promise<Blob> => this.getPdfBlob();
 
   // ── Modal correo ──────────────────────────────────────────────────────────
   showEmailModal  = false;
