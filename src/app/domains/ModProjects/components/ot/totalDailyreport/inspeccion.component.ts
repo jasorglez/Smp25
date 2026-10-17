@@ -50,6 +50,12 @@ export class InspeccionComponent implements OnInit {
   private idRoot: number = 0;
   private selectedProjectId: number = 0;
 
+  get totalOtsCount(): number {
+    const ids = (this.allOtsData || []).map(ot => ot?.idOt ?? ot?.id ?? ot?.idOT)
+      .filter(id => id !== undefined && id !== null && String(id).trim() !== '');
+    return new Set(ids.map(id => String(id))).size;
+  }
+
   // APIs del grid
   public reportesGridApi!: GridApi;
   public otsGridApi!: GridApi;

@@ -2511,6 +2511,12 @@ export class OrdenesComponent implements OnInit, OnDestroy, OnChanges {
 
   // Datos del grid obtenidos del servicio
   public rowData: OrdenesData[] = [];
+
+  get totalOtsCount(): number {
+    const ids = (this.rowData || []).map((ot: any) => ot?.id ?? ot?.idOt ?? ot?.idOT)
+      .filter(id => id !== undefined && id !== null && String(id).trim() !== '');
+    return new Set(ids.map(id => String(id))).size;
+  }
   private otConceptSummariesInFlight = new Set<number>();
 
   constructor(private formBuilder: FormBuilder) {
@@ -2831,16 +2837,15 @@ export class OrdenesComponent implements OnInit, OnDestroy, OnChanges {
   obtenerOTsDelProyectoActual() {
     this.otService.getOtListByProject(this.idProject, false).subscribe({
       next: (data: any) => {
+        this.rowData = Array.isArray(data) ? data : [];
         if (this.gridApi) {
-          this.gridApi.setGridOption('rowData', data);
+          this.gridApi.setGridOption('rowData', this.rowData);
           // Forzar un refresco de las celdas para asegurar que los checkboxes sean editables al inicio.
           setTimeout(() => {
             this.gridApi.refreshCells({ force: true });
           }, 100);
-        } else {
-          this.rowData = data;
         }
-        void this.refreshOtContentSummary(data);
+        void this.refreshOtContentSummary(this.rowData);
 
         // Aplicar lógica de agrupación después de cargar datos
         setTimeout(() => {
@@ -2902,17 +2907,16 @@ export class OrdenesComponent implements OnInit, OnDestroy, OnChanges {
         allProjectOTs.forEach(projectOTs => {
           allOTs.push(...projectOTs);
         });
+        this.rowData = allOTs;
 
         if (this.gridApi) {
-          this.gridApi.setGridOption('rowData', allOTs);
+          this.gridApi.setGridOption('rowData', this.rowData);
           // Forzar un refresco de las celdas para asegurar que los checkboxes sean editables al inicio.
           setTimeout(() => {
             this.gridApi.refreshCells({ force: true });
           }, 100);
-        } else {
-          this.rowData = allOTs;
         }
-        void this.refreshOtContentSummary(allOTs);
+        void this.refreshOtContentSummary(this.rowData);
 
         // Aplicar lógica de agrupación después de cargar datos
         setTimeout(() => {

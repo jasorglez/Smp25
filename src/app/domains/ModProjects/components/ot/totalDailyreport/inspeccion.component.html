@@ -70,7 +70,11 @@
                      style="height: 100%;">
                   <div class="h-100">
                     <div class="row g-2" style="height: 100%;">
-                      <div class="col-12 col-xl-4 h-100">
+                      <div class="col-12 col-xl-4 h-100 d-flex flex-column">
+                      <div class="d-flex justify-content-end mb-1 flex-shrink-0">
+                        <span class="badge bg-primary">Total OT: {{totalOtsCount}}</span>
+                      </div>
+                      <div style="flex: 1; min-height: 0;">
                       <ag-grid-angular 
                         style="height: 100%; width: 100%;"
                         class="ag-theme-quartz small-text-ag-grid"
@@ -81,6 +85,7 @@
                         (rowClicked)="onOtSelected($event)"
                         [rowSelection]="'single'">
                       </ag-grid-angular>
+                      </div>
                       </div>
                       <div class="col-12 col-xl-8 h-100">
                         <app-ordenes [captureMode]="true" [captureOt]="selectedOt"></app-ordenes>

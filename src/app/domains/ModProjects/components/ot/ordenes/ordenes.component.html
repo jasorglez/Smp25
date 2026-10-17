@@ -7,7 +7,7 @@
           <div class="row" [style.min-height]="captureMode ? '0' : 'calc(100vh - 200px)'" style="position: relative;">
             <div class="col-12" [style.min-height]="captureMode ? '0' : 'calc(100vh - 200px)'" style="position: relative; display: flex; flex-direction: column;">
               <!-- Sección superior: Botones y Lista de OTs lado a lado -->
-              <div class="row mb-1" *ngIf="!captureMode">
+              <div class="row mb-1" *ngIf="!captureMode" [style.margin-top]="'9vh'">
                 <!-- Botones de acciones -->
                 <div class="col-auto">
                   <nav class="d-flex flex-column align-items-start">                  
@@ -62,7 +62,10 @@
                 
                 <!-- Lista de OTs -->
                 <div class="col ">
-                  <div class="ot-content-legend"><span class="ot-content-legend-swatch"></span> OT con personal, fotos, material o equipos registrados</div>
+                  <div class="d-flex align-items-center justify-content-between gap-2 flex-wrap mb-1">
+                    <div class="ot-content-legend mb-0"><span class="ot-content-legend-swatch"></span> OT con personal, fotos, material o equipos registrados</div>
+                    <span class="badge bg-primary">Total OT: {{totalOtsCount}}</span>
+                  </div>
                   <ag-grid-angular
                     [ngStyle]="{ height: captureMode ? gridHeight : 'calc(85vh - 190px)' }"
                     class="ag-theme-quartz small-text-ag-grid"

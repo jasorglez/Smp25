@@ -83,5 +83,5 @@ export const environment = {
   geminiApiKey: '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',
   gnewsApiKey: '94ccc596b4dfebc3f72683b6e81d81bc',
 
-  version: '5.00.235 (17 Octubre 2026 13:59) prioriza Capturar Reportes Diarios',
+  version: '5.00.236 (17 Octubre 2026 14:00) cuenta OT en captura y listado',
 };
