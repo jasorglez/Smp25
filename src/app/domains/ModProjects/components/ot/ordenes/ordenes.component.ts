@@ -3107,11 +3107,11 @@ export class OrdenesComponent implements OnInit, OnDestroy, OnChanges {
     if (!row) return '';
     const counts = this.getOtContentCounts(row);
     const indicators: Array<{ count: number; icon: string; color: string; label: string }> = [
-      { count: counts.personal, icon: 'bi-people-fill', color: '#16803c', label: 'Personal' },
-      { count: counts.photos, icon: 'bi-images', color: '#7c3aed', label: 'Fotos' },
-      { count: counts.work, icon: 'bi-hammer', color: '#c2410c', label: 'Trabajos' },
-      { count: counts.materials, icon: 'bi-box-seam-fill', color: '#0369a1', label: 'Materiales' },
-      { count: counts.equipment, icon: 'bi-tools', color: '#a16207', label: 'Equipos' }
+      { count: counts['personal'], icon: 'bi-people-fill', color: '#16803c', label: 'Personal' },
+      { count: counts['photos'], icon: 'bi-images', color: '#7c3aed', label: 'Fotos' },
+      { count: counts['work'], icon: 'bi-hammer', color: '#c2410c', label: 'Trabajos' },
+      { count: counts['materials'], icon: 'bi-box-seam-fill', color: '#0369a1', label: 'Materiales' },
+      { count: counts['equipment'], icon: 'bi-tools', color: '#a16207', label: 'Equipos' }
     ];
     return indicators.filter(item => item.count > 0).map(item =>
       `<span title="${item.label}: ${item.count}" aria-label="${item.label}: ${item.count}" style="display:inline-flex;align-items:center;gap:2px;margin-right:9px;color:${item.color};font-size:13px;font-weight:700"><i class="bi ${item.icon}"></i><small>${item.count}</small></span>`

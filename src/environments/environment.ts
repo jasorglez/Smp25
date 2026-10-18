@@ -83,5 +83,5 @@ export const environment = {
   geminiApiKey: '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',
   gnewsApiKey: '94ccc596b4dfebc3f72683b6e81d81bc',
 
-  version: '5.00.262 (18 Octubre 2026 08:35) colores por contenido en ordenes de trabajo',
+  version: '5.00.263 (18 Octubre 2026 08:38) corregir compilacion de colores en ordenes',
 };
