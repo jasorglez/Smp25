@@ -174,13 +174,19 @@ export class MaterialTraceabilityComponent implements OnDestroy {
       `${r.almacen || 'General'} / ${r.material || ''}`, r.unidad || '', r.requisicion || '', r.oc || '',
       r.entrada || 0, r.salida || 0, r.inventario || 0, r.movimientos || ''
     ].map((text: any) => ({ text, fontSize: 7, fillColor: i % 2 ? '#f4f7fb' : '#fff' }))));
-    const headerStack: any[] = [];
-    if (companyLogo) headerStack.push({ image: companyLogo, fit: [100, 38], alignment: 'center', margin: [0, 0, 0, 3] });
-    if (companyName) headerStack.push({ text: companyName, alignment: 'center', color: '#003366', bold: true, fontSize: 13, margin: [0, 0, 0, 2] });
-    headerStack.push({ text: 'TRAZABILIDAD DE MATERIALES', alignment: 'center', color: '#1a5a9a', bold: true, fontSize: 11 });
+    const centeredHeader: any[] = [];
+    if (companyName) centeredHeader.push({ text: companyName, alignment: 'center', color: '#003366', bold: true, fontSize: 13, margin: [0, 0, 0, 2] });
+    centeredHeader.push({ text: 'TRAZABILIDAD DE MATERIALES', alignment: 'center', color: '#1a5a9a', bold: true, fontSize: 11 });
     const doc: any = {
       pageOrientation: 'landscape', pageSize: 'LEGAL', pageMargins: [24, 100, 24, 35],
-      header: () => ({ margin: [24, 10, 24, 0], stack: headerStack }),
+      header: () => ({
+        margin: [24, 10, 24, 0],
+        columns: [
+          companyLogo ? { image: companyLogo, fit: [100, 42], width: 100, alignment: 'left' } : { text: '', width: 100 },
+          { stack: centeredHeader, width: '*', alignment: 'center' },
+          { text: '', width: 100 }
+        ]
+      }),
       content: [{ text: `Proyecto: ${this.projectId || 'Todos'}   |   Generado: ${new Date().toLocaleString('es-MX')}`, fontSize: 8, color: '#555', margin: [0, 0, 0, 10] }, { table: { headerRows: 1, widths: ['*', 55, 130, 100, 65, 65, 75, 170], body }, layout: { fillColor: (row: number) => row === 0 ? '#1a5a9a' : null, hLineColor: () => '#d5dbe3', vLineColor: () => '#d5dbe3', paddingLeft: () => 4, paddingRight: () => 4, paddingTop: () => 3, paddingBottom: () => 3 } }],
       footer: (current: number, total: number) => ({ text: `Trazabilidad de materiales · Página ${current} de ${total}`, alignment: 'center', fontSize: 8, color: '#777' })
     };
