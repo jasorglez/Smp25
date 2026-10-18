@@ -712,12 +712,13 @@ export const routes: Routes = [
               },
 
               {
-                path: 'inspeccion',
+                path: 'reportediario',
                 loadComponent: () =>
                   import(
                     './domains/ModProjects/components/ot/totalDailyreport/inspeccion.component'
                   ).then((i) => i.InspeccionComponent),
               },
+              { path: 'inspeccion', redirectTo: 'reportediario', pathMatch: 'full' },
               {
                 path: 'unidad',
                 loadComponent: () =>
