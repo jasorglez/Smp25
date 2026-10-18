@@ -2138,17 +2138,13 @@ export class OrdenesComponent implements OnInit, OnDestroy, OnChanges {
       tooltipValueGetter: (params: any) => this.getOtContentTooltip(params.data)
     },
     rowClassRules: {
-      'ot-has-content': (params: any) => {
-        const data = params.data;
-        return !!data && ([data.photoCount, data.personalCount, data.materialCount, data.equipmentCount]
-          .some(count => Number(count) > 0) || (Array.isArray(data.workConcepts) && data.workConcepts.length > 0));
-      }
-    },
-    getRowStyle: (params: any) => {
-      const data = params.data;
-      const hasContent = data && ([data.photoCount, data.personalCount, data.materialCount, data.equipmentCount]
-        .some(count => Number(count) > 0) || (Array.isArray(data.workConcepts) && data.workConcepts.length > 0));
-      return hasContent ? { backgroundColor: '#e5f4ea' } : undefined;
+      'ot-content-complete': (params: any) => this.hasAllOtContentTypes(params.data),
+      'ot-content-mixed': (params: any) => this.hasMultipleOtContentTypes(params.data),
+      'ot-content-only-personal': (params: any) => this.hasOnlyOtContentType(params.data, 'personal'),
+      'ot-content-only-photos': (params: any) => this.hasOnlyOtContentType(params.data, 'photos'),
+      'ot-content-only-work': (params: any) => this.hasOnlyOtContentType(params.data, 'work'),
+      'ot-content-only-materials': (params: any) => this.hasOnlyOtContentType(params.data, 'materials'),
+      'ot-content-only-equipment': (params: any) => this.hasOnlyOtContentType(params.data, 'equipment')
     },
     singleClickEdit: true,
     autoGroupColumnDef: {
@@ -3072,15 +3068,50 @@ export class OrdenesComponent implements OnInit, OnDestroy, OnChanges {
     return items.length ? items.join(' · ') : undefined;
   }
 
+  private readonly otContentFields = ['personal', 'photos', 'work', 'materials', 'equipment'];
+
+  private getOtContentCounts(row: any): Record<string, number> {
+    const count = (keys: string[]) => Math.max(0, ...keys.map(key => {
+      const value = Number(row?.[key]);
+      return Number.isFinite(value) ? value : 0;
+    }));
+    return {
+      personal: count(['personalCount', 'PersonalCount', 'personnelCount', 'crewCount', 'personal']),
+      photos: count(['photoCount', 'photosCount', 'PhotoCount', 'photos', 'fotos']),
+      work: Array.isArray(row?.workConcepts) ? row.workConcepts.filter(Boolean).length : 0,
+      materials: count(['materialCount', 'MaterialCount', 'materialsCount', 'materials']),
+      equipment: count(['equipmentCount', 'EquipmentCount', 'equipmentsCount', 'equipment'])
+    };
+  }
+
+  private getPresentOtContentTypes(row: any): string[] {
+    const counts = this.getOtContentCounts(row);
+    return this.otContentFields.filter(field => counts[field] > 0);
+  }
+
+  private hasAllOtContentTypes(row: any): boolean {
+    return this.getPresentOtContentTypes(row).length === this.otContentFields.length;
+  }
+
+  private hasMultipleOtContentTypes(row: any): boolean {
+    const count = this.getPresentOtContentTypes(row).length;
+    return count > 1 && count < this.otContentFields.length;
+  }
+
+  private hasOnlyOtContentType(row: any, field: string): boolean {
+    const types = this.getPresentOtContentTypes(row);
+    return types.length === 1 && types[0] === field;
+  }
+
   private renderOtContentIndicators(row: any): string {
     if (!row) return '';
-    const count = (keys: string[]) => Number(keys.map(key => row[key]).find(value => value !== undefined && value !== null)) || 0;
+    const counts = this.getOtContentCounts(row);
     const indicators: Array<{ count: number; icon: string; color: string; label: string }> = [
-      { count: count(['personalCount', 'PersonalCount', 'personnelCount', 'crewCount', 'personal']), icon: 'bi-people-fill', color: '#16803c', label: 'Personal' },
-      { count: count(['photoCount', 'photosCount', 'PhotoCount', 'photos', 'fotos']), icon: 'bi-images', color: '#7c3aed', label: 'Fotos' },
-      { count: Array.isArray(row.workConcepts) ? row.workConcepts.length : 0, icon: 'bi-hammer', color: '#c2410c', label: 'Trabajos' },
-      { count: count(['materialCount', 'MaterialCount', 'materialsCount', 'materials']), icon: 'bi-box-seam-fill', color: '#0369a1', label: 'Materiales' },
-      { count: count(['equipmentCount', 'EquipmentCount', 'equipmentsCount', 'equipment']), icon: 'bi-tools', color: '#a16207', label: 'Equipos' }
+      { count: counts.personal, icon: 'bi-people-fill', color: '#16803c', label: 'Personal' },
+      { count: counts.photos, icon: 'bi-images', color: '#7c3aed', label: 'Fotos' },
+      { count: counts.work, icon: 'bi-hammer', color: '#c2410c', label: 'Trabajos' },
+      { count: counts.materials, icon: 'bi-box-seam-fill', color: '#0369a1', label: 'Materiales' },
+      { count: counts.equipment, icon: 'bi-tools', color: '#a16207', label: 'Equipos' }
     ];
     return indicators.filter(item => item.count > 0).map(item =>
       `<span title="${item.label}: ${item.count}" aria-label="${item.label}: ${item.count}" style="display:inline-flex;align-items:center;gap:2px;margin-right:9px;color:${item.color};font-size:13px;font-weight:700"><i class="bi ${item.icon}"></i><small>${item.count}</small></span>`

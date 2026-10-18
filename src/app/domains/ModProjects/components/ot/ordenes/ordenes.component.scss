@@ -15,18 +15,22 @@
 .ot-content-legend-swatch {
   width: 0.8rem;
   height: 0.8rem;
-  border: 1px solid #4f9c65;
+  border: 1px solid #4d8b5a;
   border-radius: 2px;
-  background: #a6e6b4;
+  background: #d9f0dd;
 }
 
-::ng-deep .ag-theme-quartz .ag-row.ot-has-content .ag-cell {
-  background-color: #a6e6b4 !important;
-}
+.ot-content-legend-swatch--mixed { border-color: #94a3b8; background: #eef1f5; }
 
-::ng-deep .ag-theme-quartz .ag-row.ot-has-content .ag-cell:first-child {
-  box-shadow: inset 5px 0 0 #25813d;
-}
+::ng-deep .ag-theme-quartz .ag-row.ot-content-complete .ag-cell { background-color: #d9f0dd !important; }
+::ng-deep .ag-theme-quartz .ag-row.ot-content-only-personal .ag-cell { background-color: #e5f3e9 !important; }
+::ng-deep .ag-theme-quartz .ag-row.ot-content-only-photos .ag-cell { background-color: #f0e7fb !important; }
+::ng-deep .ag-theme-quartz .ag-row.ot-content-only-work .ag-cell { background-color: #fbeade !important; }
+::ng-deep .ag-theme-quartz .ag-row.ot-content-only-materials .ag-cell { background-color: #e2f3f7 !important; }
+::ng-deep .ag-theme-quartz .ag-row.ot-content-only-equipment .ag-cell { background-color: #faf2da !important; }
+::ng-deep .ag-theme-quartz .ag-row.ot-content-mixed .ag-cell { background-color: #eef1f5 !important; }
+::ng-deep .ag-theme-quartz .ag-row[class*="ot-content-"] .ag-cell:first-child { box-shadow: inset 5px 0 0 #64748b; }
+::ng-deep .ag-theme-quartz .ag-row.ot-content-complete .ag-cell:first-child { box-shadow: inset 5px 0 0 #4d8b5a; }
 
 .alert-info {
   background-color: #e3f2fd;
