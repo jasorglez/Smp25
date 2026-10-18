@@ -1,4 +1,5 @@
 import { Component, OnInit, inject, effect } from '@angular/core';
+import { ActivatedRoute } from '@angular/router';
 import { CommonModule } from '@angular/common';
 import { TranslateModule } from '@ngx-translate/core';
 import { AgGridModule } from 'ag-grid-angular';
@@ -39,6 +40,7 @@ export class InspeccionComponent implements OnInit {
   // Servicios
   private otService = inject(OtService);
   private signalsService = inject(SignalsService);
+  private route = inject(ActivatedRoute);
 
   // Variables de estado
   public activeTab: string = 'ots';
@@ -48,6 +50,7 @@ export class InspeccionComponent implements OnInit {
   public selectedOt: any = null;
   private idRoot: number = 0;
   private selectedProjectId: number = 0;
+  private pendingOtId: number | null = null;
 
   // APIs del grid
   public reportesGridApi!: GridApi;
@@ -211,6 +214,11 @@ export class InspeccionComponent implements OnInit {
   }
 
   ngOnInit(): void {
+    this.pendingOtId = Number(this.route.snapshot.queryParamMap.get('otId')) || null;
+    const requestedProjectId = Number(this.route.snapshot.queryParamMap.get('projectId')) || 0;
+    if (requestedProjectId && requestedProjectId !== Number(this.signalsService.getProjectSelectedBySidebar()() || 0)) {
+      this.signalsService.setProjectSelectedBySidebar(requestedProjectId);
+    }
     const rootId = this.signalsService.getRootSelectedBySidebar()();
     if (rootId) {
       this.idRoot = rootId;
@@ -246,6 +254,7 @@ export class InspeccionComponent implements OnInit {
       ? availableOrders.filter((ot: any) => Number(ot?.idProject ?? ot?.projectId ?? ot?.idProyecto) === selectedProjectId)
       : availableOrders;
     if (this.otsGridApi) this.otsGridApi.setGridOption('rowData', this.allOtsData);
+    this.openPendingOt();
   }
 
   private hasOtContent(row: any): boolean {
@@ -304,10 +313,23 @@ export class InspeccionComponent implements OnInit {
   onOtsGridReady(params: GridReadyEvent): void {
     this.otsGridApi = params.api;
     params.api.sizeColumnsToFit();
+    this.openPendingOt();
   }
 
   onOtSelected(event: any): void {
     this.selectedOt = event?.data || null;
+  }
+
+  private openPendingOt(): void {
+    if (!this.pendingOtId || !this.otsGridApi || !this.allOtsData.length) return;
+    const row = this.allOtsData.find((ot: any) => Number(ot?.id ?? ot?.idOt ?? ot?.idOT) === this.pendingOtId);
+    if (!row) return;
+    this.activeTab = 'ots';
+    this.selectedOt = row;
+    this.otsGridApi.forEachNode(node => {
+      if (Number(node.data?.id ?? node.data?.idOt ?? node.data?.idOT) === this.pendingOtId) node.setSelected(true);
+    });
+    this.pendingOtId = null;
   }
 
 }
