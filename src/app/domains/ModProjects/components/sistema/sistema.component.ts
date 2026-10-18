@@ -171,13 +171,30 @@ export class SistemaComponent implements OnInit, OnDestroy {
       ['material', 'Materiales'], ['equipos', 'Equipos'], ['tiempos', 'Tiempos inactivos'],
       ['avances', 'Avances'], ['conceptos', 'Conceptos'], ['notas', 'Notas']
     ];
-    return entries.filter(([field]) => Number(row[field]) > 0)
-      .map(([field, label]) => `${label}: ${Number(row[field])}`).join(' · ');
+    return entries.map(([field, label]) => [field, label, this.getDailyReportIndicatorCount(row, field)] as const)
+      .filter(([, , count]) => count > 0)
+      .map(([, label, count]) => `${label}: ${count}`).join(' · ');
   }
 
   private hasDailyReportContent(row: any): boolean {
     return !!row && ['personal', 'fotos', 'videos', 'material', 'equipos', 'tiempos', 'avances', 'conceptos', 'notas']
-      .some(field => Number(row[field]) > 0);
+      .some(field => Number(row[field]) > 0 || this.getDailyReportIndicatorCount(row, field) > 0);
+  }
+
+  private getDailyReportIndicatorCount(row: any, field: string): number {
+    const aliases: Record<string, string[]> = {
+      personal: ['personal', 'personalCount', 'PersonalCount', 'personnelCount', 'crewCount'],
+      fotos: ['fotos', 'photoCount', 'photosCount', 'PhotoCount', 'photos'],
+      material: ['material', 'materialCount', 'MaterialCount', 'materialsCount', 'materials'],
+      equipos: ['equipos', 'equipmentCount', 'EquipmentCount', 'equipmentsCount', 'equipment'],
+      tiempos: ['tiempos', 'inactiveTimeCount', 'timeInactiveCount', 'inactiveTimes'],
+      videos: ['videos', 'videoCount', 'videosCount', 'VideoCount'],
+      avances: ['avances', 'advanceCount', 'advancesCount', 'AdvanceCount']
+    };
+    return Math.max(0, ...(aliases[field] || [field]).map(key => {
+      const value = Number(row?.[key]);
+      return Number.isFinite(value) ? value : 0;
+    }));
   }
 
   private renderDailyReportContentIndicators(row: any): string {
@@ -191,8 +208,9 @@ export class SistemaComponent implements OnInit, OnDestroy {
       { field: 'videos', icon: 'bi-camera-video-fill', color: '#087b91', label: 'Videos' },
       { field: 'avances', icon: 'bi-graph-up-arrow', color: '#be185d', label: 'Avances' }
     ];
-    return indicators.filter(item => Number(row[item.field]) > 0).map(item =>
-      `<span title="${item.label}: ${Number(row[item.field])}" aria-label="${item.label}: ${Number(row[item.field])}" style="display:inline-flex;align-items:center;gap:2px;margin-right:8px;color:${item.color};font-size:13px;font-weight:700"><i class="bi ${item.icon}"></i><small>${Number(row[item.field])}</small></span>`
+    return indicators.map(item => ({ ...item, count: this.getDailyReportIndicatorCount(row, item.field) }))
+      .filter(item => item.count > 0).map(item =>
+      `<span title="${item.label}: ${item.count}" aria-label="${item.label}: ${item.count}" style="display:inline-flex;align-items:center;gap:2px;margin-right:8px;color:${item.color};font-size:13px;font-weight:700"><i class="bi ${item.icon}"></i><small>${item.count}</small></span>`
     ).join('') || '<span style="color:#94a3b8">—</span>';
   }
 
@@ -214,6 +232,10 @@ export class SistemaComponent implements OnInit, OnDestroy {
       headerName: 'Contenido',
       width: 185,
       minWidth: 165,
+      maxWidth: 220,
+      pinned: 'left',
+      lockPinned: true,
+      suppressMovable: true,
       sortable: false,
       filter: false,
       resizable: true,
@@ -622,8 +644,10 @@ export class SistemaComponent implements OnInit, OnDestroy {
     // columnas guardado antes de agregarlos.
     this.gridApi.applyColumnState({ state: [
       { colId: 'dailyReportPdf', pinned: 'right' },
-      { colId: 'dailyReportContentIndicators', hide: false }
+      { colId: 'date', pinned: 'left' },
+      { colId: 'dailyReportContentIndicators', pinned: 'left', hide: false }
     ] });
+    this.gridApi.ensureColumnVisible('dailyReportContentIndicators');
     this.openPendingReportSection();
 
     if (this.idContract) {
