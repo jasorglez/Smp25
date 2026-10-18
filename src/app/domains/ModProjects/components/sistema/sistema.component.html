@@ -44,7 +44,16 @@
   </div>
 
   <div class="col-12">
-    <div class="daily-report-legend"><span class="daily-report-legend__swatch"></span> Reporte con personal, fotos, videos, materiales, equipos, conceptos o notas registradas</div>
+    <div class="daily-report-legend">
+      <span class="daily-report-legend__swatch"></span><span>Reporte con información registrada</span>
+      <span class="daily-report-legend__item daily-report-legend__item--personal"><i class="bi bi-people-fill"></i> Personal</span>
+      <span class="daily-report-legend__item daily-report-legend__item--photos"><i class="bi bi-images"></i> Fotos</span>
+      <span class="daily-report-legend__item daily-report-legend__item--materials"><i class="bi bi-box-seam-fill"></i> Materiales</span>
+      <span class="daily-report-legend__item daily-report-legend__item--equipment"><i class="bi bi-tools"></i> Equipos</span>
+      <span class="daily-report-legend__item daily-report-legend__item--times"><i class="bi bi-clock-history"></i> Tiempos inactivos</span>
+      <span class="daily-report-legend__item daily-report-legend__item--videos"><i class="bi bi-camera-video-fill"></i> Videos</span>
+      <span class="daily-report-legend__item daily-report-legend__item--advances"><i class="bi bi-graph-up-arrow"></i> Avances</span>
+    </div>
     <div class="alert alert-info py-1 mb-1" *ngIf="subcontractMode && subcontractorContext.selected() as provider">
       Esta pantalla está ligada exclusivamente a <strong>{{ provider.name }}</strong>;
       no consulta ni captura información de otro proveedor.

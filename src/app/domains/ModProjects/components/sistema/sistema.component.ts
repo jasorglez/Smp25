@@ -11,7 +11,7 @@ import { SignalsService } from 'app/services/signals.service';
 import { SignalrService } from 'app/services/signalr.service';
 import { ConventionsService } from 'app/services/conventions.service';
 import { alerts } from 'app/helpers/alerts';
-import { Subscription } from 'rxjs';
+import { catchError, of, Subscription } from 'rxjs';
 import { IDailyReport } from 'app/interface/idaily-report';
 import { ButtonCellRendererExpenditureComponent } from '../../../ModAdmon/components/egresos-palacio/button-cell-renderer-expenditure.component';
 import { PdfButtonCellRendererComponent }  from './pdf-button-cell-renderer.component';
@@ -30,6 +30,7 @@ import { SubcontractProgramService } from 'app/services/subcontract-program.serv
 import { SubcontractorContextService } from 'app/services/subcontractor-context.service';
 import { ActivatedRoute } from '@angular/router';
 import { OutingsDailyReportSyncService } from 'app/services/outings-daily-report-sync.service';
+import { AdvanceService } from 'app/services/advance.service';
 
 @Component({
   selector: 'app-sistema',
@@ -57,6 +58,7 @@ export class SistemaComponent implements OnInit, OnDestroy {
   private route = inject(ActivatedRoute);
   private programsService    = inject(SubcontractProgramService);
   private outingsDailyReportSync = inject(OutingsDailyReportSyncService);
+  private advanceService = inject(AdvanceService);
   readonly subcontractorContext = inject(SubcontractorContextService);
 
   private signalRSub!: Subscription;
@@ -166,15 +168,32 @@ export class SistemaComponent implements OnInit, OnDestroy {
     if (!this.hasDailyReportContent(row)) return undefined;
     const entries: Array<[string, string]> = [
       ['personal', 'Personal'], ['fotos', 'Fotos'], ['videos', 'Videos'],
-      ['material', 'Materiales'], ['equipos', 'Equipos'], ['conceptos', 'Conceptos'], ['notas', 'Notas']
+      ['material', 'Materiales'], ['equipos', 'Equipos'], ['tiempos', 'Tiempos inactivos'],
+      ['avances', 'Avances'], ['conceptos', 'Conceptos'], ['notas', 'Notas']
     ];
     return entries.filter(([field]) => Number(row[field]) > 0)
       .map(([field, label]) => `${label}: ${Number(row[field])}`).join(' · ');
   }
 
   private hasDailyReportContent(row: any): boolean {
-    return !!row && ['personal', 'fotos', 'videos', 'material', 'equipos', 'conceptos', 'notas']
+    return !!row && ['personal', 'fotos', 'videos', 'material', 'equipos', 'tiempos', 'avances', 'conceptos', 'notas']
       .some(field => Number(row[field]) > 0);
+  }
+
+  private renderDailyReportContentIndicators(row: any): string {
+    if (!row) return '';
+    const indicators: Array<{ field: string; icon: string; color: string; label: string }> = [
+      { field: 'personal', icon: 'bi-people-fill', color: '#16803c', label: 'Personal' },
+      { field: 'fotos', icon: 'bi-images', color: '#7c3aed', label: 'Fotos' },
+      { field: 'material', icon: 'bi-box-seam-fill', color: '#0369a1', label: 'Materiales' },
+      { field: 'equipos', icon: 'bi-tools', color: '#a16207', label: 'Equipos' },
+      { field: 'tiempos', icon: 'bi-clock-history', color: '#c2410c', label: 'Tiempos inactivos' },
+      { field: 'videos', icon: 'bi-camera-video-fill', color: '#087b91', label: 'Videos' },
+      { field: 'avances', icon: 'bi-graph-up-arrow', color: '#be185d', label: 'Avances' }
+    ];
+    return indicators.filter(item => Number(row[item.field]) > 0).map(item =>
+      `<span title="${item.label}: ${Number(row[item.field])}" aria-label="${item.label}: ${Number(row[item.field])}" style="display:inline-flex;align-items:center;gap:2px;margin-right:8px;color:${item.color};font-size:13px;font-weight:700"><i class="bi ${item.icon}"></i><small>${Number(row[item.field])}</small></span>`
+    ).join('') || '<span style="color:#94a3b8">—</span>';
   }
 
   public colDefs: ColDef[] = [
@@ -189,6 +208,18 @@ export class SistemaComponent implements OnInit, OnDestroy {
         const [y, m, d] = String(p.value).split('-');
         return d && m && y ? `${d}/${m}/${y}` : p.value;
       },
+    },
+    {
+      colId: 'dailyReportContentIndicators',
+      headerName: 'Contenido',
+      width: 185,
+      minWidth: 165,
+      sortable: false,
+      filter: false,
+      resizable: true,
+      cellStyle: { padding: '0 5px' },
+      cellRenderer: (params: any) => this.renderDailyReportContentIndicators(params.data),
+      tooltipValueGetter: (params: any) => this.getDailyReportContentTooltip(params.data) || 'Sin información registrada'
     },
     { field: 'startTime', headerName: 'Inicio', width: 110, editable: true },
     { field: 'endTime', headerName: 'Término', width: 110, editable: true },
@@ -632,6 +663,7 @@ export class SistemaComponent implements OnInit, OnDestroy {
         this.originalRowData = JSON.parse(JSON.stringify(this.rowData));
         this.hasUnsavedChanges = false;
         this.selectedRow = null;
+        this.loadDailyAdvanceCounts(this.idProject);
         setTimeout(() => this.openPendingReportSection(), 0);
       },
       error: () => alerts.basicAlert('Error', 'No se pudieron cargar los reportes diarios', 'error'),
@@ -640,6 +672,26 @@ export class SistemaComponent implements OnInit, OnDestroy {
 
   onSubcontractProgramChange(): void {
     this.loadReports();
+  }
+
+  private loadDailyAdvanceCounts(projectId: number): void {
+    if (!projectId) return;
+    this.advanceService.getAdvancesByProject(projectId, 'Project').pipe(catchError(() => of([]))).subscribe((response: any) => {
+      if (Number(projectId) !== Number(this.idProject)) return;
+      const payload = response?.data ?? response?.items ?? response?.result ?? response;
+      const advanceRows: any[] = Array.isArray(payload) ? payload : [];
+      const countsByDate = new Map<string, number>();
+      advanceRows.filter(item => item?.active !== false && !(item?.active != null && Number(item.active) === 0)).forEach(item => {
+        const date = String(item?.date || '').substring(0, 10);
+        if (date) countsByDate.set(date, (countsByDate.get(date) || 0) + 1);
+      });
+      const countFor = (report: any) => countsByDate.get(String(report?.date || '').substring(0, 10)) || 0;
+      this.rowData = this.rowData.map(report => ({ ...report, avances: countFor(report) }));
+      this.originalRowData = this.originalRowData.map(report => ({ ...report, avances: countFor(report) }));
+      this.gridApi?.setGridOption('rowData', this.rowData);
+      this.gridApi?.refreshCells({ force: true, columns: ['dailyReportContentIndicators'] });
+      this.gridApi?.redrawRows();
+    });
   }
 
   add(): void {
@@ -672,6 +724,7 @@ export class SistemaComponent implements OnInit, OnDestroy {
       close: false,
       paid: true,
       tiempos: 0,
+      avances: 0,
       personal: 0,
       fotos: 0,
       videos: 0,
@@ -836,7 +889,7 @@ export class SistemaComponent implements OnInit, OnDestroy {
   }
 
   private cleanForServer(item: any): any {
-    const { __isNew, __modified, detailType, detailData, visible, ...data } = item;
+    const { __isNew, __modified, detailType, detailData, visible, avances, ...data } = item;
     return data;
   }
 

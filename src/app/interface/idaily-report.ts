@@ -18,6 +18,8 @@ export interface IDailyReport {
   videos?:           number;
   material?:         number;
   equipos?:          number;
+  tiempos?:          number;
+  avances?:          number;  // Indicador local: avances de proyecto asociados a la fecha del reporte
   conceptos?:        number;
   notas?:            number;
 
