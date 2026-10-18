@@ -49,7 +49,12 @@
   .material-modal-footer > span { flex-basis: 100%; }
 }
 
-.material-movement-legend { display: flex; align-items: center; gap: .4rem; margin: 0 0 .25rem; color: #425b48; font-size: .72rem; }
+.material-movement-legend { display: flex; align-items: center; flex-wrap: wrap; gap: .4rem .65rem; margin: 0 0 .25rem; color: #425b48; font-size: .72rem; }
+.material-movement-legend__item { display: inline-flex; align-items: center; gap: .2rem; font-weight: 700; }
+.material-movement-legend__item--req { color: #7c3aed; }
+.material-movement-legend__item--oc { color: #0369a1; }
+.material-movement-legend__item--entry { color: #16803c; }
+.material-movement-legend__item--exit { color: #c2410c; }
 .material-movement-legend__swatch { width: .8rem; height: .8rem; border: 1px solid #25813d; border-radius: 2px; background: #8cdda0; }
 ::ng-deep .ag-theme-quartz .ag-row.material-has-movements .ag-cell { background-color: #8cdda0 !important; }
 ::ng-deep .ag-theme-quartz .ag-row.material-has-movements .ag-cell:first-child { box-shadow: inset 5px 0 0 #16732e; }

@@ -416,6 +416,19 @@ export class MaterialsComponent implements CanComponentDeactivate {
       }).join(' · ');
   }
 
+  private renderMaterialMovementIndicators(row: any): string {
+    if (!row) return '';
+    const indicators: Array<{ field: string; icon: string; color: string; label: string }> = [
+      { field: 'requisitionMovementCount', icon: 'bi-clipboard-check-fill', color: '#7c3aed', label: 'Requisiciones' },
+      { field: 'purchaseOrderMovementCount', icon: 'bi-cart-check-fill', color: '#0369a1', label: 'OC' },
+      { field: 'entryMovementCount', icon: 'bi-box-arrow-in-down', color: '#16803c', label: 'Entradas' },
+      { field: 'exitMovementCount', icon: 'bi-box-arrow-up-right', color: '#c2410c', label: 'Salidas' }
+    ];
+    return indicators.filter(item => Number(row[item.field]) > 0).map(item =>
+      `<span title="${item.label}: ${Number(row[item.field])}" aria-label="${item.label}: ${Number(row[item.field])}" style="display:inline-flex;align-items:center;gap:2px;margin-right:8px;color:${item.color};font-size:13px;font-weight:700"><i class="bi ${item.icon}"></i><small>${Number(row[item.field])}</small></span>`
+    ).join('') || '<span style="color:#94a3b8">—</span>';
+  }
+
   private asArray(value: any): any[] {
     return Array.isArray(value) ? value : value?.data || value?.result || value?.items || [];
   }
@@ -860,6 +873,19 @@ export class MaterialsComponent implements CanComponentDeactivate {
           }
           return false;
         },
+      },
+      {
+        colId: 'materialMovementIndicators',
+        headerName: 'Movimientos',
+        width: 145,
+        minWidth: 130,
+        maxWidth: 160,
+        sortable: false,
+        filter: false,
+        resizable: true,
+        cellStyle: { padding: '0 6px' },
+        cellRenderer: (params: any) => this.renderMaterialMovementIndicators(params.data),
+        tooltipValueGetter: (params: any) => this.getMovementTooltip(params.data) || 'Sin requisiciones, OC, entradas o salidas registradas'
       },
       {
         field: 'materialDescription',

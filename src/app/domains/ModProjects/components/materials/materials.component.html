@@ -44,7 +44,13 @@
 
     <div class="col">
       <div class="row">
-        <div class="material-movement-legend"><span class="material-movement-legend__swatch"></span> Material con requisiciones, OC, entradas o salidas registradas</div>
+        <div class="material-movement-legend">
+          <span class="material-movement-legend__swatch"></span><span>Material con movimientos</span>
+          <span class="material-movement-legend__item material-movement-legend__item--req"><i class="bi bi-clipboard-check-fill"></i> Requisición</span>
+          <span class="material-movement-legend__item material-movement-legend__item--oc"><i class="bi bi-cart-check-fill"></i> OC</span>
+          <span class="material-movement-legend__item material-movement-legend__item--entry"><i class="bi bi-box-arrow-in-down"></i> Entrada</span>
+          <span class="material-movement-legend__item material-movement-legend__item--exit"><i class="bi bi-box-arrow-up-right"></i> Salida</span>
+        </div>
         <ag-grid-angular
         style="width: 100%;"
         [ngStyle]="{'height': gridHeight}"
