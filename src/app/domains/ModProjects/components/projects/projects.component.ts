@@ -20,6 +20,7 @@ import { WorkprogramsService } from 'app/services/workprograms.service';
 import { WorkprogramApuService } from 'app/services/workprogram-apu.service';
 import { WorkprogramApuCuadrillaService } from 'app/services/workprogram-apu-cuadrilla.service';
 import { CatalogsService } from 'app/services/catalogs.service';
+import { DailyReportService } from 'app/services/daily-report.service';
 import Swal from 'sweetalert2';
 
 
@@ -124,6 +125,7 @@ export class ProjectsComponent {
   private workprogramApuService = inject(WorkprogramApuService);
   private workprogramApuCuadrillaService = inject(WorkprogramApuCuadrillaService);
   private catalogsService = inject(CatalogsService);
+  private dailyReportService = inject(DailyReportService);
 
   public project: Iproject[] = [];
   private gridApi!: GridApi<Iproject>;
@@ -239,6 +241,20 @@ export class ProjectsComponent {
         filterParams: {
           filterOptions: ['equals'], // Opciones de filtro
         }},
+    {
+      colId: 'dailyReportPresence',
+      headerName: 'Reportes',
+      width: 82,
+      minWidth: 76,
+      maxWidth: 90,
+      sortable: true,
+      filter: true,
+      valueGetter: (params) => params.data?.hasDailyReports ? 'Sí' : '',
+      cellRenderer: (params) => params.data?.hasDailyReports
+        ? '<i class="bi bi-journal-text text-success" title="Tiene reportes diarios" aria-label="Tiene reportes diarios"></i>'
+        : '',
+      tooltipValueGetter: (params) => params.data?.hasDailyReports ? 'Tiene reportes diarios' : ''
+    },
     { field: 'idConsecutivo', headerName: 'Id Obra', flex: 1 },
     { field: 'number', headerName: 'Formato Reporte', width: 150, flex: 2 },
     { field: 'name', headerName: 'Nombre Proyecto', width: 100, filter: true, flex: 2 },
@@ -338,6 +354,7 @@ export class ProjectsComponent {
     this.projectsService.getProjectListByCompany(this.idCompany).subscribe(
       (resp: any) => {
         this.project = this.mapProject(resp);
+        this.loadDailyReportPresence(this.project);
         const sidebarProjectId = Number(this.signalsService.getProjectSelectedBySidebar()() || 0);
         if (sidebarProjectId > 0) {
           this.selectedRowData = this.project.find(p => Number(p.id) === sidebarProjectId) ?? null;
@@ -348,6 +365,28 @@ export class ProjectsComponent {
         console.error('Error fetching projects', error);
       }
     );
+  }
+
+  private loadDailyReportPresence(projects: Iproject[]): void {
+    if (!projects.length) return;
+    forkJoin(projects.map(project =>
+      this.dailyReportService.getDailyReportsByProject(Number(project.id)).pipe(
+        map((response: any) => {
+          const reports = Array.isArray(response)
+            ? response
+            : response?.data ?? response?.items ?? response?.result ?? [];
+          return Array.isArray(reports) && reports.some((report: any) =>
+            report?.active !== false && !(report?.active != null && Number(report.active) === 0)
+          );
+        }),
+        catchError(() => of(false))
+      )
+    )).subscribe(reportFlags => {
+      projects.forEach((project, index) => {
+        project.hasDailyReports = reportFlags[index];
+      });
+      this.gridApi?.refreshCells({ force: true, columns: ['dailyReportPresence'] });
+    });
   }
 
   mapProject(data: any[]): Iproject[] {

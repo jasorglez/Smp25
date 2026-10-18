@@ -26,4 +26,5 @@ export interface Iproject {
   typeConstruction: string;
   state: string;
   detailType?: string; // Added for master-detail functionality
+  hasDailyReports?: boolean;
 }
