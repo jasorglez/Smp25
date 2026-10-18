@@ -356,8 +356,16 @@ export class MaterialsComponent implements CanComponentDeactivate {
     getRowHeight: (params: any) => params.node.data?.__isDistDetail ? 420 : 20,
     context: { componentParent: this },
     getRowClass: (params) => {
+      const row = params.data;
+      const contentClass = this.hasAllMaterialMovementTypes(row) ? 'material-content-complete'
+        : this.hasMultipleMaterialMovementTypes(row) ? 'material-content-mixed'
+        : this.hasOnlyMaterialMovementType(row, 'requisitionMovementCount') ? 'material-content-only-requisition'
+        : this.hasOnlyMaterialMovementType(row, 'purchaseOrderMovementCount') ? 'material-content-only-order'
+        : this.hasOnlyMaterialMovementType(row, 'entryMovementCount') ? 'material-content-only-entry'
+        : this.hasOnlyMaterialMovementType(row, 'exitMovementCount') ? 'material-content-only-exit'
+        : '';
       return [params.node.isSelected() ? 'selected-row' : '',
-        this.hasMaterialMovements(params.data) ? 'material-has-movements' : ''].filter(Boolean).join(' ');
+        this.hasMaterialMovements(row) ? 'material-has-movements' : '', contentClass].filter(Boolean).join(' ');
     },
     onRowClicked: (event) => {
       // Seleccionar la fila al hacer clic en cualquier celda
@@ -399,6 +407,28 @@ export class MaterialsComponent implements CanComponentDeactivate {
   private hasMaterialMovements(row: any): boolean {
     return !!row && ['requisitionMovementCount', 'purchaseOrderMovementCount', 'entryMovementCount', 'exitMovementCount']
       .some(field => Number(row[field]) > 0);
+  }
+
+  private readonly materialMovementFields = [
+    'requisitionMovementCount', 'purchaseOrderMovementCount', 'entryMovementCount', 'exitMovementCount'
+  ];
+
+  private getPresentMaterialMovementTypes(row: any): string[] {
+    return this.materialMovementFields.filter(field => Number(row?.[field]) > 0);
+  }
+
+  private hasAllMaterialMovementTypes(row: any): boolean {
+    return this.getPresentMaterialMovementTypes(row).length === this.materialMovementFields.length;
+  }
+
+  private hasMultipleMaterialMovementTypes(row: any): boolean {
+    const count = this.getPresentMaterialMovementTypes(row).length;
+    return count > 1 && count < this.materialMovementFields.length;
+  }
+
+  private hasOnlyMaterialMovementType(row: any, field: string): boolean {
+    const types = this.getPresentMaterialMovementTypes(row);
+    return types.length === 1 && types[0] === field;
   }
 
   private getMovementTooltip(row: any): string | undefined {
