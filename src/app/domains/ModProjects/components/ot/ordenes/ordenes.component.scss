@@ -111,7 +111,7 @@ div[class*="col-md-"]:hover .column-resizer .resizer-handle {
   display: flex;
   flex-direction: column;
   width: min(96vw, 1600px);
-  height: 50vh;
+  height: 65vh;
   min-height: 300px;
   max-height: calc(100vh - 24px);
   padding: 10px;
@@ -125,7 +125,7 @@ div[class*="col-md-"]:hover .column-resizer .resizer-handle {
 @media (max-width: 767.98px) {
   .pdf-preview-floating {
     width: calc(100vw - 16px);
-    height: 50vh;
+    height: 65vh;
     min-height: 280px;
     padding: 8px;
   }

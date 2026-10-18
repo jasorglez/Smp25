@@ -618,9 +618,12 @@ export class SistemaComponent implements OnInit, OnDestroy {
     });
 
     this.restoreColState();
-    // La columna del PDF queda fija aunque exista una configuración guardada
-    // anteriormente con todas las columnas sin fijar.
-    this.gridApi.applyColumnState({ state: [{ colId: 'dailyReportPdf', pinned: 'right' }] });
+    // Mantener visibles los indicadores aunque la sesión tenga un estado de
+    // columnas guardado antes de agregarlos.
+    this.gridApi.applyColumnState({ state: [
+      { colId: 'dailyReportPdf', pinned: 'right' },
+      { colId: 'dailyReportContentIndicators', hide: false }
+    ] });
     this.openPendingReportSection();
 
     if (this.idContract) {
