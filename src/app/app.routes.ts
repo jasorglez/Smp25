@@ -550,7 +550,7 @@ export const routes: Routes = [
             path: 'preciosunitarios',
             loadComponent: () =>
               import(
-                './domains/ModProjects/components/auxiliares/auxiliares.component'
+                './domains/ModProjects/components/auxiliares/preciosunitarios.component'
               ).then((c) => c.AuxiliaresComponent),
           },
           { path: 'auxiliares', redirectTo: 'preciosunitarios', pathMatch: 'full' },

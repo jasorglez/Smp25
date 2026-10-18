@@ -46,10 +46,10 @@ interface ApuImportPreview {
 }
 
 @Component({
-  selector: 'app-auxiliares',
+  selector: 'app-preciosunitarios',
   standalone: true,
   imports: [CommonModule, FormsModule, AgGridModule, NgSelectModule],
-  templateUrl: './auxiliares.component.html',
+  templateUrl: './preciosunitarios.component.html',
   styleUrl: './auxiliares.component.scss',
 })
 export class AuxiliaresComponent {

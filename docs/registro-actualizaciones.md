@@ -104,3 +104,4 @@ Para que una actualización se entienda y pueda promocionarse, registra:
 - **Mejoras por módulo:** agrupar las novedades de Proyectos, Administración, Ventas y Almacén.
 - **Actualización de versión:** resumen corto de varias mejoras de una misma entrega, al estilo del historial de Winamp.
 - **Tutorial relacionado:** enlazar la novedad a un video de YouTube cuando exista; mantener separados los anuncios internos de los promocionales.
+| 2026-10-18 09:13 EDT | 5.00.266 · local | Proyectos / Precios unitarios | Ajuste | Los archivos del módulo ahora usan el nombre preciosunitarios y la ruta carga el nuevo nombre del componente. | Facilita ubicar y mantener el código correspondiente a Precios Unitarios. | **Precios Unitarios: archivos con el nombre del módulo para facilitar su mantenimiento.** | Compilación de producción aprobada; despliegue sin confirmar. | PUBLISHED |
