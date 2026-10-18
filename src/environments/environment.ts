@@ -83,5 +83,5 @@ export const environment = {
   geminiApiKey: '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',
   gnewsApiKey: '94ccc596b4dfebc3f72683b6e81d81bc',
 
-  version: '5.00.254 (18 Octubre 2026 08:06) logo a la izquierda en trazabilidad',
+  version: '5.00.255 (18 Octubre 2026 08:11) nombre de pestaña Procsales',
 };

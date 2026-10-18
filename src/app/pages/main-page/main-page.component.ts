@@ -240,6 +240,7 @@ export class MainPageComponent implements OnInit, OnDestroy {
   private readonly routeTitles: Record<string, string> = {
     publicidad: 'Inicio',
     dashboard: 'Dashboard',
+    procsales: 'Ventas',
     expend: 'Egresos',
     incomes: 'Ingresos',
     'shoppingTD/requisitions-st': 'Requisiciones',
