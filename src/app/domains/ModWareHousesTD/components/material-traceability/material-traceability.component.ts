@@ -2,7 +2,7 @@ import { CommonModule } from '@angular/common';
 import { Component, OnDestroy, effect, inject } from '@angular/core';
 import { AgGridModule } from 'ag-grid-angular';
 import { ColDef, GridApi, GridReadyEvent } from 'ag-grid-enterprise';
-import { catchError, forkJoin, map, of, switchMap } from 'rxjs';
+import { catchError, firstValueFrom, forkJoin, map, of, switchMap } from 'rxjs';
 import { AG_GRID_LOCALE_ES } from 'assets/i18n/ag-grid.locale.es';
 import { SignalsService } from 'app/services/signals.service';
 import { TrackingService } from 'app/services/tracking.service';
@@ -10,6 +10,7 @@ import { MaterialsService } from 'app/services/materials.service';
 import { OcAndReqsService } from 'app/services/ocandreqs.service';
 import { InandoutService } from 'app/services/inandout.service';
 import { PermitionsService } from 'app/services/permitions.service';
+import { RootService } from 'app/services/root.service';
 import { PdfReportViewerComponent } from 'app/shared/pdf-report-viewer/pdf-report-viewer.component';
 import pdfMake from 'pdfmake/build/pdfmake';
 import pdfFonts from 'pdfmake/build/vfs_fonts';
@@ -58,6 +59,7 @@ export class MaterialTraceabilityComponent implements OnDestroy {
   private docs = inject(OcAndReqsService);
   private movements = inject(InandoutService);
   private permissions = inject(PermitionsService);
+  private roots = inject(RootService);
   idRoot: number | null = null;
   projectId: number | null = null;
   rowData: any[] = [];
@@ -149,7 +151,19 @@ export class MaterialTraceabilityComponent implements OnDestroy {
     return existing ? (existing.split(', ').includes(value) ? existing : `${existing}, ${value}`) : value;
   }
 
-  previewPdf(): void {
+  async previewPdf(): Promise<void> {
+    this.pdfGenerating = true;
+    let companyName = this.tracking.getnameComp() || this.tracking.getCompany() || '';
+    let companyLogo = '';
+    if (this.idRoot) {
+      try {
+        const company: any = await firstValueFrom(this.roots.getRootbyId(this.idRoot));
+        companyName = company?.name || companyName;
+        if (company?.picture) companyLogo = await this.convertImageToBase64(company.picture);
+      } catch (error) {
+        console.warn('No se pudo cargar el logo o nombre de la empresa para el PDF de trazabilidad.', error);
+      }
+    }
     const body: any[] = [[
       { text: 'Material', bold: true, color: '#fff' }, { text: 'Unidad', bold: true, color: '#fff' },
       { text: 'Requisición (cantidad)', bold: true, color: '#fff' }, { text: 'OC (cantidad)', bold: true, color: '#fff' },
@@ -160,13 +174,16 @@ export class MaterialTraceabilityComponent implements OnDestroy {
       `${r.almacen || 'General'} / ${r.material || ''}`, r.unidad || '', r.requisicion || '', r.oc || '',
       r.entrada || 0, r.salida || 0, r.inventario || 0, r.movimientos || ''
     ].map((text: any) => ({ text, fontSize: 7, fillColor: i % 2 ? '#f4f7fb' : '#fff' }))));
+    const headerStack: any[] = [];
+    if (companyLogo) headerStack.push({ image: companyLogo, fit: [100, 38], alignment: 'center', margin: [0, 0, 0, 3] });
+    if (companyName) headerStack.push({ text: companyName, alignment: 'center', color: '#003366', bold: true, fontSize: 13, margin: [0, 0, 0, 2] });
+    headerStack.push({ text: 'TRAZABILIDAD DE MATERIALES', alignment: 'center', color: '#1a5a9a', bold: true, fontSize: 11 });
     const doc: any = {
-      pageOrientation: 'landscape', pageSize: 'LEGAL', pageMargins: [24, 60, 24, 35],
-      header: () => ({ margin: [24, 18, 24, 0], columns: [{ text: 'AZTECA', color: '#003366', bold: true, fontSize: 16 }, { text: 'TRAZABILIDAD DE MATERIALES', alignment: 'right', color: '#1a5a9a', bold: true, fontSize: 12 }] }),
+      pageOrientation: 'landscape', pageSize: 'LEGAL', pageMargins: [24, 100, 24, 35],
+      header: () => ({ margin: [24, 10, 24, 0], stack: headerStack }),
       content: [{ text: `Proyecto: ${this.projectId || 'Todos'}   |   Generado: ${new Date().toLocaleString('es-MX')}`, fontSize: 8, color: '#555', margin: [0, 0, 0, 10] }, { table: { headerRows: 1, widths: ['*', 55, 130, 100, 65, 65, 75, 170], body }, layout: { fillColor: (row: number) => row === 0 ? '#1a5a9a' : null, hLineColor: () => '#d5dbe3', vLineColor: () => '#d5dbe3', paddingLeft: () => 4, paddingRight: () => 4, paddingTop: () => 3, paddingBottom: () => 3 } }],
       footer: (current: number, total: number) => ({ text: `Trazabilidad de materiales · Página ${current} de ${total}`, alignment: 'center', fontSize: 8, color: '#777' })
     };
-    this.pdfGenerating = true;
     try {
       pdfMake.createPdf(doc).getBlob((blob: Blob) => {
         this.releasePdfPreview();
@@ -177,6 +194,23 @@ export class MaterialTraceabilityComponent implements OnDestroy {
       console.error('No se pudo generar el PDF de trazabilidad:', error);
       this.pdfGenerating = false;
     }
+  }
+
+  private convertImageToBase64(imageUrl: string): Promise<string> {
+    if (imageUrl.startsWith('data:image/')) return Promise.resolve(imageUrl);
+    return new Promise(resolve => {
+      const image = new Image();
+      image.crossOrigin = 'anonymous';
+      image.onload = () => {
+        const canvas = document.createElement('canvas');
+        canvas.width = image.width;
+        canvas.height = image.height;
+        canvas.getContext('2d')?.drawImage(image, 0, 0);
+        resolve(canvas.toDataURL('image/png'));
+      };
+      image.onerror = () => resolve('');
+      image.src = imageUrl;
+    });
   }
 
   closePdfPreview(): void {
