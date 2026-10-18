@@ -108,7 +108,16 @@ export class SistemaComponent implements OnInit, OnDestroy {
     tooltipShowDelay: 350,
     tooltipHideDelay: 10000,
     rowClassRules: {
-      'daily-report-has-content': (params: any) => this.hasDailyReportContent(params.data)
+      'daily-report-complete': (params: any) => this.hasAllDailyReportContent(params.data),
+      'daily-report-mixed': (params: any) => this.hasMultipleDailyReportContentTypes(params.data),
+      'daily-report-only-personal': (params: any) => this.hasOnlyDailyReportContentType(params.data, 'personal'),
+      'daily-report-only-photos': (params: any) => this.hasOnlyDailyReportContentType(params.data, 'fotos'),
+      'daily-report-only-materials': (params: any) => this.hasOnlyDailyReportContentType(params.data, 'material'),
+      'daily-report-only-equipment': (params: any) => this.hasOnlyDailyReportContentType(params.data, 'equipos'),
+      'daily-report-only-times': (params: any) => this.hasOnlyDailyReportContentType(params.data, 'tiempos'),
+      'daily-report-only-videos': (params: any) => this.hasOnlyDailyReportContentType(params.data, 'videos'),
+      'daily-report-only-advances': (params: any) => this.hasOnlyDailyReportContentType(params.data, 'avances'),
+      'daily-report-only-other': (params: any) => this.hasOnlyOtherDailyReportContent(params.data)
     },
     suppressMenuHide: false,
     context: {
@@ -179,6 +188,31 @@ export class SistemaComponent implements OnInit, OnDestroy {
   private hasDailyReportContent(row: any): boolean {
     return !!row && ['personal', 'fotos', 'videos', 'material', 'equipos', 'tiempos', 'avances', 'conceptos', 'notas']
       .some(field => Number(row[field]) > 0 || this.getDailyReportIndicatorCount(row, field) > 0);
+  }
+
+  private readonly dailyReportContentFields = ['personal', 'fotos', 'material', 'equipos', 'tiempos', 'videos', 'avances'];
+
+  private getPresentDailyReportContentTypes(row: any): string[] {
+    return this.dailyReportContentFields.filter(field => this.getDailyReportIndicatorCount(row, field) > 0);
+  }
+
+  private hasAllDailyReportContent(row: any): boolean {
+    return this.getPresentDailyReportContentTypes(row).length === this.dailyReportContentFields.length;
+  }
+
+  private hasMultipleDailyReportContentTypes(row: any): boolean {
+    const count = this.getPresentDailyReportContentTypes(row).length;
+    return count > 1 && count < this.dailyReportContentFields.length;
+  }
+
+  private hasOnlyDailyReportContentType(row: any, field: string): boolean {
+    const types = this.getPresentDailyReportContentTypes(row);
+    return types.length === 1 && types[0] === field;
+  }
+
+  private hasOnlyOtherDailyReportContent(row: any): boolean {
+    return this.getPresentDailyReportContentTypes(row).length === 0 &&
+      ['conceptos', 'notas'].some(field => Number(row?.[field]) > 0);
   }
 
   private getDailyReportIndicatorCount(row: any, field: string): number {

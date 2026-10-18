@@ -8,7 +8,8 @@
   .daily-report-legend__item--times { color: #c2410c; }
   .daily-report-legend__item--videos { color: #087b91; }
   .daily-report-legend__item--advances { color: #be185d; }
-  .daily-report-legend__swatch { width: 12px; height: 12px; border: 1px solid #25813d; border-radius: 2px; background: #8cdda0; }
+  .daily-report-legend__swatch { width: 12px; height: 12px; border: 1px solid #4d8b5a; border-radius: 2px; background: #d9f0dd; }
+  .daily-report-legend__swatch--mixed { border-color: #94a3b8; background: #eef1f5; }
   .daily-report-layout {
     display: grid;
     grid-template-columns: minmax(0, 1fr) 88px;
@@ -113,5 +114,15 @@
   }
 }
 
-:host ::ng-deep .daily-report-grid .ag-row.daily-report-has-content .ag-cell { background-color: #d9f0dd !important; }
-:host ::ng-deep .daily-report-grid .ag-row.daily-report-has-content .ag-cell:first-child { box-shadow: inset 5px 0 0 #4d8b5a; }
+:host ::ng-deep .daily-report-grid .ag-row.daily-report-complete .ag-cell { background-color: #d9f0dd !important; }
+:host ::ng-deep .daily-report-grid .ag-row.daily-report-only-personal .ag-cell { background-color: #e7f0fb !important; }
+:host ::ng-deep .daily-report-grid .ag-row.daily-report-only-photos .ag-cell { background-color: #f0e7fb !important; }
+:host ::ng-deep .daily-report-grid .ag-row.daily-report-only-materials .ag-cell { background-color: #e2f3f7 !important; }
+:host ::ng-deep .daily-report-grid .ag-row.daily-report-only-equipment .ag-cell { background-color: #faf2da !important; }
+:host ::ng-deep .daily-report-grid .ag-row.daily-report-only-times .ag-cell { background-color: #fbeade !important; }
+:host ::ng-deep .daily-report-grid .ag-row.daily-report-only-videos .ag-cell { background-color: #def2f1 !important; }
+:host ::ng-deep .daily-report-grid .ag-row.daily-report-only-advances .ag-cell { background-color: #fae7f0 !important; }
+:host ::ng-deep .daily-report-grid .ag-row.daily-report-mixed .ag-cell { background-color: #eef1f5 !important; }
+:host ::ng-deep .daily-report-grid .ag-row.daily-report-only-other .ag-cell { background-color: #f4f1eb !important; }
+:host ::ng-deep .daily-report-grid .ag-row[class*="daily-report-"] .ag-cell:first-child { box-shadow: inset 5px 0 0 #64748b; }
+:host ::ng-deep .daily-report-grid .ag-row.daily-report-complete .ag-cell:first-child { box-shadow: inset 5px 0 0 #4d8b5a; }
