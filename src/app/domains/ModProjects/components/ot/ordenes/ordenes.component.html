@@ -56,6 +56,15 @@
                        </button>
                     }
 
+                    <button *ngIf="selectedOt" type="button" class="btn btn-primary ms-1 me-1 mb-2"
+                            (click)="generatePdfPreview()"
+                            [disabled]="!selectedReporteId || !selectedReporteFecha || isGeneratingPdf"
+                            title="Ver PDF del reporte diario seleccionado"
+                            aria-label="Ver PDF del reporte diario seleccionado">
+                      <i class="bi bi-eye" *ngIf="!isGeneratingPdf"></i>
+                      <span class="spinner-border spinner-border-sm" *ngIf="isGeneratingPdf" aria-hidden="true"></span>
+                    </button>
+
                    
 
                   </nav>
@@ -71,7 +80,6 @@
                     <span class="ms-2" style="color:#c2410c"><i class="bi bi-hammer"></i> Trabajos</span>
                     <span class="ms-2 text-primary"><i class="bi bi-box-seam-fill"></i> Materiales</span>
                     <span class="ms-2 text-warning-emphasis"><i class="bi bi-tools"></i> Equipos</span>
-                    <span class="ms-2 text-primary"><i class="bi bi-journal-text"></i> Ver reporte diario</span>
                   </div>
                   <ag-grid-angular
                     [ngStyle]="{ height: captureMode ? gridHeight : 'calc(95vh - 190px)' }"
@@ -485,7 +493,7 @@
               <div class="border rounded p-2 pdf-preview-container flex-grow-1" style="min-height: 0; background-color: #f8f9fa;">
                 <!-- PDF Embed cuando está generado -->
                 <div *ngIf="showPdfEmbed && pdfUrl" class="h-100">
-                  <app-pdf-report-viewer *ngIf="showPdfEmbed && pdfUrl" [sourceUrl]="pdfUrl" title="Orden de trabajo" fileName="Orden_Trabajo.pdf"></app-pdf-report-viewer>
+                  <app-pdf-report-viewer *ngIf="showPdfEmbed && pdfUrl" [sourceUrl]="pdfUrl" title="Reporte Diario" fileName="Reporte_Diario.pdf"></app-pdf-report-viewer>
                 </div>
                 <!-- Estado generando PDF -->
                 <div *ngIf="isGeneratingPdf" class="h-100 d-flex align-items-center justify-content-center">

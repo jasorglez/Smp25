@@ -728,18 +728,6 @@ export class OrdenesComponent implements OnInit, OnDestroy, OnChanges {
         tooltipValueGetter: (params: any) => this.getOtContentTooltip(params.data) || 'Sin información registrada'
       },
       {
-        colId: 'viewDailyReports',
-        headerName: 'Diario',
-        width: 58,
-        minWidth: 54,
-        maxWidth: 64,
-        sortable: false,
-        filter: false,
-        resizable: false,
-        cellStyle: { textAlign: 'center', padding: '0 4px' },
-        cellRenderer: () => '<button type="button" class="btn btn-sm btn-outline-primary py-0 px-1" title="Ver reportes diarios de esta OT" aria-label="Ver reportes diarios"><i class="bi bi-journal-text"></i></button>'
-      },
-      {
         field: 'idProject',
         headerName: 'Proyecto',
 
@@ -2182,11 +2170,6 @@ export class OrdenesComponent implements OnInit, OnDestroy, OnChanges {
    * @param event - Parámetros del evento onCellClicked de AG-Grid.
    */
   async onGridCellClicked(event: any) {
-    if (event?.column?.getColId() === 'viewDailyReports') {
-      event.event?.stopPropagation?.();
-      this.openDailyReportsForOt(event.data);
-      return;
-    }
     // La lógica de cierre individual se movió a onSelectionChanged
     // Este método se puede mantener para futuras acciones de clic en celda.
   }
@@ -3102,14 +3085,6 @@ export class OrdenesComponent implements OnInit, OnDestroy, OnChanges {
     return indicators.filter(item => item.count > 0).map(item =>
       `<span title="${item.label}: ${item.count}" aria-label="${item.label}: ${item.count}" style="display:inline-flex;align-items:center;gap:2px;margin-right:9px;color:${item.color};font-size:13px;font-weight:700"><i class="bi ${item.icon}"></i><small>${item.count}</small></span>`
     ).join('') || '<span style="color:#94a3b8">—</span>';
-  }
-
-  private openDailyReportsForOt(row: any): void {
-    const idOt = Number(row?.id ?? row?.idOt ?? row?.idOT);
-    if (!idOt) return;
-    this.router.navigate(['/projects/ot/inspeccion'], {
-      queryParams: { otId: idOt, projectId: Number(row?.idProject ?? row?.projectId ?? 0) || null }
-    });
   }
 
   private async loadOtWorkConceptSummaries(orders: any[]): Promise<void> {
