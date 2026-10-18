@@ -45,6 +45,15 @@
         </div>
         <span class="small text-muted">{{ pdfReportProgress.percent }}%</span>
       </div>
+      <div class="apu-resource-legend">
+        <span class="apu-resource-legend__swatch"></span><span>Completo (4 tipos)</span>
+        <span class="apu-resource-legend__swatch apu-resource-legend__swatch--mixed"></span><span>Varios tipos</span>
+        <span class="ms-1">Un tipo: color de su icono</span>
+        <span class="apu-resource-legend__item apu-resource-legend__item--crew"><i class="bi bi-people-fill"></i> Cuadrillas / Personal</span>
+        <span class="apu-resource-legend__item apu-resource-legend__item--material"><i class="bi bi-box-seam-fill"></i> Materiales</span>
+        <span class="apu-resource-legend__item apu-resource-legend__item--equipment"><i class="bi bi-tools"></i> Equipos</span>
+        <span class="apu-resource-legend__item apu-resource-legend__item--tools"><i class="bi bi-wrench-adjustable"></i> Herramientas</span>
+      </div>
       <div class="catalog-master">
         
         <ag-grid-angular
@@ -53,7 +62,7 @@
           [rowData]="rowData"
           [columnDefs]="mainColDefs"
           [defaultColDef]="defaultColDef"
-          [rowClassRules]="rowClassRules"
+          [rowClassRules]="mainRowClassRules"
           rowSelection="single"
           (gridReady)="onMainGridReady($event)"
           (selectionChanged)="onMainSelectionChanged()"

@@ -35,6 +35,24 @@
   max-width: 1460px;
 }
 
+.apu-resource-legend { display: flex; align-items: center; flex-wrap: wrap; gap: .3rem .6rem; margin: 0 0 .3rem; color: #52616b; font-size: .7rem; }
+.apu-resource-legend__item { display: inline-flex; align-items: center; gap: .2rem; font-weight: 700; }
+.apu-resource-legend__item--crew { color: #16803c; }
+.apu-resource-legend__item--material { color: #0369a1; }
+.apu-resource-legend__item--equipment { color: #a16207; }
+.apu-resource-legend__item--tools { color: #087b91; }
+.apu-resource-legend__swatch { width: .75rem; height: .75rem; border: 1px solid #4d8b5a; border-radius: 2px; background: #d9f0dd; }
+.apu-resource-legend__swatch--mixed { border-color: #94a3b8; background: #eef1f5; }
+
+:host ::ng-deep .catalog-master .ag-row.apu-content-complete .ag-cell { background-color: #d9f0dd !important; }
+:host ::ng-deep .catalog-master .ag-row.apu-content-only-crew .ag-cell { background-color: #e5f3e9 !important; }
+:host ::ng-deep .catalog-master .ag-row.apu-content-only-material .ag-cell { background-color: #e2f3f7 !important; }
+:host ::ng-deep .catalog-master .ag-row.apu-content-only-equipment .ag-cell { background-color: #faf2da !important; }
+:host ::ng-deep .catalog-master .ag-row.apu-content-only-tools .ag-cell { background-color: #def2f1 !important; }
+:host ::ng-deep .catalog-master .ag-row.apu-content-mixed .ag-cell { background-color: #eef1f5 !important; }
+:host ::ng-deep .catalog-master .ag-row[class*="apu-content-"] .ag-cell:first-child { box-shadow: inset 5px 0 0 #64748b; }
+:host ::ng-deep .catalog-master .ag-row.apu-content-complete .ag-cell:first-child { box-shadow: inset 5px 0 0 #4d8b5a; }
+
 .compact-card-body {
   padding: 0.55rem;
 }

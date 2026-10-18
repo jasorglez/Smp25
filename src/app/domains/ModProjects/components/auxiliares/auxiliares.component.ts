@@ -137,6 +137,15 @@ export class AuxiliaresComponent {
 
   // ── ColDefs comunes ──────────────────────────────────────────────────────
   readonly rowClassRules = { 'new-row-highlight': (p: any) => !!p.data?.__isNew };
+  readonly mainRowClassRules = {
+    'new-row-highlight': (p: any) => !!p.data?.__isNew,
+    'apu-content-complete': (p: any) => this.hasAllApuResourceTypes(p.data),
+    'apu-content-mixed': (p: any) => this.hasMultipleApuResourceTypes(p.data),
+    'apu-content-only-crew': (p: any) => this.hasOnlyApuResourceType(p.data, 'crew'),
+    'apu-content-only-material': (p: any) => this.hasOnlyApuResourceType(p.data, 'material'),
+    'apu-content-only-equipment': (p: any) => this.hasOnlyApuResourceType(p.data, 'equipment'),
+    'apu-content-only-tools': (p: any) => this.hasOnlyApuResourceType(p.data, 'tools')
+  };
   readonly defaultColDef: ColDef = { resizable: true, sortable: true, minWidth: 80 };
 
   // ── ColDefs master grid ──────────────────────────────────────────────────
@@ -147,6 +156,10 @@ export class AuxiliaresComponent {
       cellStyle: { fontWeight: '700', textAlign: 'center', color: '#333' } },
     { field: 'claveUsuario', headerName: 'Cl. Usuario', width: 100, editable: true,
       cellStyle: { fontStyle: 'italic', color: '#555' } },
+    { colId: 'apuResourceIndicators', headerName: 'Contenido', width: 185, minWidth: 165, maxWidth: 220,
+      sortable: false, filter: false, resizable: true, cellStyle: { padding: '0 6px' },
+      cellRenderer: (p: any) => this.renderApuResourceIndicators(p.data),
+      tooltipValueGetter: (p: any) => this.getApuResourceTooltip(p.data) || 'Sin componentes registrados' },
     { field: 'description', headerName: 'Descripción del Precio Unitario', editable: true, flex: 3, wrapText: true, autoHeight: true },
     { field: 'unit', headerName: 'Unidad', editable: true, width: 100,
       cellEditor: 'agSelectCellEditor', cellEditorParams: () => ({ values: this.allUnits }) },
@@ -260,6 +273,54 @@ export class AuxiliaresComponent {
   getAuxiliarUnitCost(item: any): number {
     const current = this.rowData.find((row) => Number(row.id) === Number(item?.idReference));
     return Number(current?.costMN ?? item?.unitCost ?? 0) || 0;
+  }
+
+  private readonly apuResourceTypes = ['crew', 'material', 'equipment', 'tools'];
+
+  private readonly apuResourceDefinitions = [
+    { key: 'crew', label: 'Cuadrillas / Personal', icon: 'bi-people-fill', color: '#16803c', aliases: ['hasPersonal', 'HasPersonal', 'hasCuadrilla', 'hasCuadrillas'] },
+    { key: 'material', label: 'Materiales', icon: 'bi-box-seam-fill', color: '#0369a1', aliases: ['hasMaterial', 'HasMaterial', 'hasMaterials', 'hasMateriales'] },
+    { key: 'equipment', label: 'Equipos', icon: 'bi-tools', color: '#a16207', aliases: ['hasEquipo', 'HasEquipo', 'hasEquipment', 'hasEquipos'] },
+    { key: 'tools', label: 'Herramientas', icon: 'bi-wrench-adjustable', color: '#087b91', aliases: ['hasHerramienta', 'HasHerramienta', 'hasTool', 'hasTools'] }
+  ];
+
+  private hasApuResource(row: any, resourceKey: string): boolean {
+    const definition = this.apuResourceDefinitions.find(resource => resource.key === resourceKey);
+    if (!row || !definition) return false;
+    return definition.aliases.some(key => {
+      const value = row[key];
+      return value === true || Number(value) === 1 || ['true', 'yes', 'si', 'sí'].includes(String(value ?? '').trim().toLowerCase());
+    });
+  }
+
+  private getPresentApuResourceTypes(row: any): string[] {
+    return this.apuResourceTypes.filter(key => this.hasApuResource(row, key));
+  }
+
+  private hasAllApuResourceTypes(row: any): boolean {
+    return this.getPresentApuResourceTypes(row).length === this.apuResourceTypes.length;
+  }
+
+  private hasMultipleApuResourceTypes(row: any): boolean {
+    const count = this.getPresentApuResourceTypes(row).length;
+    return count > 1 && count < this.apuResourceTypes.length;
+  }
+
+  private hasOnlyApuResourceType(row: any, resourceKey: string): boolean {
+    const types = this.getPresentApuResourceTypes(row);
+    return types.length === 1 && types[0] === resourceKey;
+  }
+
+  private getApuResourceTooltip(row: any): string | undefined {
+    const resources = this.apuResourceDefinitions.filter(resource => this.hasApuResource(row, resource.key));
+    return resources.length ? resources.map(resource => resource.label).join(' · ') : undefined;
+  }
+
+  private renderApuResourceIndicators(row: any): string {
+    const resources = this.apuResourceDefinitions.filter(resource => this.hasApuResource(row, resource.key));
+    return resources.map(resource =>
+      `<span title="${resource.label}" aria-label="${resource.label}" style="display:inline-flex;align-items:center;margin-right:9px;color:${resource.color};font-size:14px"><i class="bi ${resource.icon}"></i></span>`
+    ).join('') || '<span style="color:#94a3b8">—</span>';
   }
 
   getCuadrillaSubtotal(c: any): number {
