@@ -30,6 +30,7 @@ import { SelectWithTooltipEditorV2Component } from 'app/shared/select-with-toolt
 import { TypeEquipmentModalService } from './services/type-equipment-modal.service';
 import { EquipmentDetailRendererComponent } from './equipment-detail-renderer.component';
 import { PdfDistributionComponent } from './pdf-distribution.component';
+import { DailyReportBitacoraUsageService } from 'app/services/daily-report-bitacora-usage.service';
 
 @Component({
   selector: 'storeComponent',
@@ -76,6 +77,7 @@ export class EquipmentComponent implements CanComponentDeactivate {
   private trackingService       = inject(TrackingService);
   private catalogsService       = inject(CatalogsService);
   private equipmentService      = inject(EquipmentService);
+  private dailyReportUsageService = inject(DailyReportBitacoraUsageService);
   private typeEquipmentModalService = inject(TypeEquipmentModalService);
   private isOpen: boolean = false;
 
@@ -144,6 +146,7 @@ export class EquipmentComponent implements CanComponentDeactivate {
       (data: any) => {
         this.savedRowData = null;
         this.rowData = Array.isArray(data) ? data.sort((a, b) => b.id - a.id) : data;
+        this.loadDailyReportUsage();
       },
       (error) => console.error('Error fetching data:', error)
     );
@@ -298,6 +301,15 @@ export class EquipmentComponent implements CanComponentDeactivate {
   get colMaster(): ColDef[] {
     if (this._colMaster.length > 0) return this._colMaster;
     this._colMaster = [
+      {
+        colId: 'dailyReportUsage', headerName: 'RD', headerTooltip: 'Registrado en bitácora de reporte diario',
+        width: 48, minWidth: 48, maxWidth: 52, editable: false,
+        cellStyle: { textAlign: 'center' },
+        cellRenderer: (params: any) => params.data?.hasDailyReportUsage
+          ? '<i class="bi bi-journal-text text-success" title="Registrado en bitácora de reporte diario" aria-label="Registrado en bitácora de reporte diario"></i>'
+          : '',
+        tooltipValueGetter: (params: any) => params.data?.hasDailyReportUsage ? 'Registrado en bitácora de reporte diario' : ''
+      },
       {
         headerName: '#',
         width: 50,
@@ -496,6 +508,16 @@ export class EquipmentComponent implements CanComponentDeactivate {
      
     ];
     return this._colMaster;
+  }
+
+  private loadDailyReportUsage(): void {
+    if (!this.idcompany || !Array.isArray(this.rowData)) return;
+    this.dailyReportUsageService.getResourceKeys(this.idcompany, 'EQUIPMENT').subscribe(keys => {
+      this.rowData.forEach(row => {
+        row.hasDailyReportUsage = keys.has(`id:${String(row?.id ?? '').trim()}`);
+      });
+      this.gridApi?.refreshCells({ force: true, columns: ['dailyReportUsage'] });
+    });
   }
 
   resetGridSize() {

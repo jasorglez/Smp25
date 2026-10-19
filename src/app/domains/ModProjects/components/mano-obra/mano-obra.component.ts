@@ -10,6 +10,7 @@ import { alerts } from 'app/helpers/alerts';
 import { ManoObraDetailRendererComponent } from './mano-obra-detail-renderer.component';
 import { PdfManoObraComponent } from './pdf-mano-obra.component';
 import { TrackingService } from 'app/services/tracking.service';
+import { DailyReportBitacoraUsageService } from 'app/services/daily-report-bitacora-usage.service';
 
 @Component({
   selector: 'app-mano-obra',
@@ -22,6 +23,7 @@ export class ManoObraComponent {
   private signalsService    = inject(SignalsService);
   private manoObraService   = inject(ManoObraService);
   private posicionesService = inject(PosicionesService);
+  private dailyReportUsageService = inject(DailyReportBitacoraUsageService);
 
   rowData: any[]       = [];
   originalData: any[]  = [];
@@ -75,6 +77,15 @@ export class ManoObraComponent {
   };
 
   public colDefs: ColDef[] = [
+    {
+      colId: 'dailyReportUsage', headerName: 'RD', headerTooltip: 'Puesto registrado en bitácora de reporte diario',
+      width: 48, minWidth: 48, maxWidth: 52, editable: false,
+      cellStyle: { textAlign: 'center' },
+      cellRenderer: (params: any) => params.data?.hasDailyReportUsage
+        ? '<i class="bi bi-journal-text text-success" title="Puesto registrado en bitácora de reporte diario" aria-label="Puesto registrado en bitácora de reporte diario"></i>'
+        : '',
+      tooltipValueGetter: (params: any) => params.data?.hasDailyReportUsage ? 'Puesto registrado en bitácora de reporte diario' : ''
+    },
     {
       headerName: '#',
       width: 55,
@@ -190,11 +201,24 @@ export class ManoObraComponent {
       next: (data) => {
         this.savedRowData = null;
         this.rowData      = data;
+        this.loadDailyReportUsage();
         this.originalData = JSON.parse(JSON.stringify(data));
         this.hasChanges   = false;
         this.selectedRow  = null;
       },
       error: (e) => console.error('Error cargando mano de obra', e),
+    });
+  }
+
+  private loadDailyReportUsage(): void {
+    if (!this.idCompany) return;
+    this.dailyReportUsageService.getResourceKeys(this.idCompany, 'PERSONAL').subscribe(keys => {
+      this.rowData.forEach(row => {
+        const position = String(row?.description ?? '').trim().toLocaleLowerCase()
+          .normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+        row.hasDailyReportUsage = !!position && keys.has(`position:${position}`);
+      });
+      this.gridApi?.refreshCells({ force: true, columns: ['dailyReportUsage'] });
     });
   }
 
