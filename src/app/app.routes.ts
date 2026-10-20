@@ -37,6 +37,57 @@ export const routes: Routes = [
     children: [
       { path: '', redirectTo: '/login', pathMatch: 'full' },
       {
+        path: 'preciosunitarios',
+        loadComponent: () => import('./domains/ModProjects/pages/procpreciosunitarios/procpreciosunitarios.component')
+          .then((m) => m.ProcPreciosUnitariosComponent),
+        canActivate: [MasterPermissionsGuard],
+        data: { permissions: { master: 'preciosunitarios' } },
+        children: [
+          {
+            path: 'catalogo',
+            loadComponent: () => import('./domains/ModProjects/components/auxiliares/preciosunitarios.component')
+              .then((m) => m.AuxiliaresComponent),
+            canActivate: [MasterPermissionsGuard],
+            data: { permissions: { master: 'preciosunitarios', detailed: 'preciosunitarios' } },
+          },
+          {
+            path: 'personal',
+            loadComponent: () => import('./domains/ModProjects/components/mano-obra/mano-obra.component')
+              .then((m) => m.ManoObraComponent),
+            canActivate: [MasterPermissionsGuard],
+            data: { permissions: { master: 'preciosunitarios', detailed: 'personal' } },
+          },
+          {
+            path: 'equipos',
+            loadComponent: () => import('./domains/ModProjects/components/equipment/equipment.component')
+              .then((m) => m.EquipmentComponent),
+            canActivate: [MasterPermissionsGuard],
+            data: { permissions: { master: 'preciosunitarios', detailed: 'equipos' } },
+          },
+          {
+            path: 'materiales',
+            loadComponent: () => import('./domains/ModProjects/components/materials/materials.component')
+              .then((m) => m.MaterialsComponent),
+            canActivate: [MasterPermissionsGuard],
+            data: { permissions: { master: 'preciosunitarios', detailed: 'materiales' } },
+          },
+          {
+            path: 'herramientas',
+            loadComponent: () => import('./domains/ModProjects/components/herramientas/herramientas.component')
+              .then((m) => m.HerramientasComponent),
+            canActivate: [MasterPermissionsGuard],
+            data: { permissions: { master: 'preciosunitarios', detailed: 'herramientas' } },
+          },
+          {
+            path: 'auxiliares',
+            loadComponent: () => import('./domains/ModProjects/components/auxiliares-cat/auxiliares-cat.component')
+              .then((m) => m.AuxiliaresCatComponent),
+            canActivate: [MasterPermissionsGuard],
+            data: { permissions: { master: 'preciosunitarios', detailed: 'auxiliares' } },
+          },
+        ],
+      },
+      {
         path: 'publicidad',
         loadComponent: () =>
           import('./pages/welcome/welcome.component').then(

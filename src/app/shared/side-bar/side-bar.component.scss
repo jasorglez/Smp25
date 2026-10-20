@@ -207,6 +207,39 @@
   transition: color 0.2s ease;
 }
 
+.sidebarback .nav-link.sidebar-price-link .sidebar-price-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: content-box;
+  width: 1.8rem !important;
+  height: 1.8rem !important;
+  padding: 5px;
+  border-radius: 11px;
+  background: linear-gradient(145deg, var(--sb-bg2), var(--sb-accent));
+  border: 1px solid var(--sb-border);
+  color: var(--sb-icon);
+  font-size: 1.8rem !important;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, .24);
+  margin-bottom: 4px;
+  transition: color .2s ease, background-color .2s ease, transform .2s ease;
+}
+
+.sidebarback .nav-link.sidebar-price-link:hover .sidebar-price-icon {
+  color: var(--sb-text);
+  transform: scale(1.06);
+}
+
+.sidebarback .nav-link.sidebar-price-link.active-link .sidebar-price-icon {
+  background: var(--sb-active);
+  color: #fff;
+}
+
+.sidebarback .nav-link.sidebar-price-link span {
+  font-size: .68rem !important;
+  font-weight: 600;
+}
+
 .sidebarback .nav-link span {
   font-size: 0.58rem !important;
   line-height: 1.15;
