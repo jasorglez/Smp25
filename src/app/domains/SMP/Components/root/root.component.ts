@@ -185,7 +185,7 @@ export class RootComponent {
 
   // Orden de columnas para navegación con Enter
   private editableColumnOrder = [
-    'orden', 'name', 'nameSmall', 'formatRep', 'email', 'web', 'personType', 'phone',
+    'orden', 'name', 'nameSmall', 'formatRep', 'email', 'web', 'personType', 'tipoEmpresa', 'phone',
     'address', 'city', 'state', 'country', 'rfc', 'cp', 'idCorporativo', 'advanced', 'esRestaurante', 'esProspecto'
   ];
 
@@ -303,6 +303,7 @@ public gridOptions: any = {
         editable: true,
         minWidth: 70,
         width: 80,
+        pinned: 'left',
         cellEditor: 'agNumberCellEditor',
         cellEditorParams: {
           min: 0,
@@ -316,6 +317,7 @@ public gridOptions: any = {
         headerName: 'Nombre',
         editable: true,
         width: 250,
+        pinned: 'left',
         cellEditor: 'agTextCellEditor',
         valueSetter: (params) => {
           const duplicateExists = this.rowData.some((row, index) =>
@@ -454,6 +456,21 @@ public gridOptions: any = {
         cellEditorParams: {
           values: ['MORAL', 'FISICA']
         }
+      },
+      {
+        field: 'tipoEmpresa',
+        headerName: 'Tipo de empresa',
+        editable: true,
+        flex: 1,
+        minWidth: 160,
+        cellEditor: 'agSelectCellEditor',
+        cellEditorParams: { values: ['', 'CONSTRUCCION', 'CLINICA', 'ESCUELAS', 'RESTAURANTES'] },
+        valueFormatter: (params) => ({
+          CONSTRUCCION: 'Construcción',
+          CLINICA: 'Clínica',
+          ESCUELAS: 'Escuelas',
+          RESTAURANTES: 'Restaurantes'
+        }[params.value] || '')
       },
       {
         field: 'phone',
@@ -697,6 +714,7 @@ public gridOptions: any = {
       advanced: false,
       esRestaurante: false,
       esProspecto: false,
+      tipoEmpresa: '',
       state: '',
       country: 'MEXICO',
       rfc: '',
@@ -726,11 +744,13 @@ public gridOptions: any = {
   }
 
   async saveChanges() {
-    const isValid = this.rowData.every((item) => item.name && item.nameSmall);
+    const isValid = this.rowData.every((item) =>
+      item.name && item.nameSmall && (!item.__isNew || item.tipoEmpresa)
+    );
     if (!isValid) {
       alerts.basicAlert(
         'Añadir entrada',
-        'Debe llenar los campos Nombre y Nombre Corto antes de guardar.',
+        'Debe llenar Nombre, Nombre Corto y Tipo de empresa antes de guardar una empresa nueva.',
         'error'
       );
       return;

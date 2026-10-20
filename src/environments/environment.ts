@@ -83,5 +83,5 @@ export const environment = {
   geminiApiKey: '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',
   gnewsApiKey: '94ccc596b4dfebc3f72683b6e81d81bc',
 
-  version: '5.00.268 (18 Octubre 2026 10:48) bitacoras de recursos en reportes diarios',
+  version: '5.00.271 (20 Octubre 2026 01:13) tipo de empresa y columnas fijas en Root',
 };
