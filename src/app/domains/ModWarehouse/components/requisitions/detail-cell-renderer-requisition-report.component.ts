@@ -265,7 +265,7 @@ export class DetailCellRendererRequisitionReportComponent implements OnDestroy {
       || this.requisitionData.closed === true
       || this.requisitionData.isClosed === true;
     const showUnauthorizedNotice = !Number(this.requisitionData.idAuthorize) && !isClosed;
-    const unauthorizedSignatureSvg = '<svg xmlns="http://www.w3.org/2000/svg" width="180" height="110" viewBox="0 0 180 110"><line x1="0" y1="55" x2="180" y2="55" stroke="#333333" stroke-width="1"/><text x="90" y="61" text-anchor="middle" transform="rotate(-70 90 55)" fill="#b02a37" font-family="Arial, sans-serif" font-size="12" font-weight="700" letter-spacing="0.5">SIN AUTORIZAR</text></svg>';
+    const unauthorizedSignatureSvg = '<svg xmlns="http://www.w3.org/2000/svg" width="180" height="110" viewBox="0 0 180 110"><text x="90" y="61" text-anchor="middle" transform="rotate(-70 90 55)" fill="#b02a37" font-family="Arial, sans-serif" font-size="12" font-weight="700" letter-spacing="0.5">SIN AUTORIZAR</text></svg>';
 
     return {
       pageSize: 'LETTER',
@@ -480,12 +480,10 @@ export class DetailCellRendererRequisitionReportComponent implements OnDestroy {
             {
               width: '50%',
               stack: [
-                { text: 'Autorizó:', bold: true, fontSize: 9, margin: [0, 0, 0, showUnauthorizedNotice ? 0 : 25] },
+                { text: 'Autorizó:', bold: true, fontSize: 9, margin: [0, 0, 0, 25] },
+                { canvas: [{ type: 'line', x1: 0, y1: 0, x2: 180, y2: 0, lineWidth: 1 }] },
                 ...(showUnauthorizedNotice
-                  ? [{ svg: unauthorizedSignatureSvg, width: 160, height: 98, alignment: 'center', margin: [0, 0, 0, 0] }]
-                  : []),
-                ...(!showUnauthorizedNotice
-                  ? [{ canvas: [{ type: 'line', x1: 0, y1: 0, x2: 180, y2: 0, lineWidth: 1 }] }]
+                  ? [{ svg: unauthorizedSignatureSvg, width: 160, height: 98, alignment: 'center', relativePosition: { x: 10, y: -49 }, margin: [0, 0, 0, 0] }]
                   : []),
                 { text: 'Nombre y Firma', fontSize: 8, color: '#666', margin: [0, 3, 0, 0] }
               ]

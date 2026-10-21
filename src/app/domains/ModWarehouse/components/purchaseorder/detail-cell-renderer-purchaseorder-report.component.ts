@@ -314,6 +314,11 @@ export class DetailCellRendererPurchaseOrderReportComponent implements OnDestroy
       || this.purchaseOrderData.authorize
       || 'N/A';
     const comentarios = this.purchaseOrderData.comments || '';
+    const isClosed = this.purchaseOrderData.locked === true
+      || this.purchaseOrderData.closed === true
+      || this.purchaseOrderData.isClosed === true;
+    const showUnauthorizedNotice = !Number(this.purchaseOrderData.idAuthorize) && !isClosed;
+    const unauthorizedSignatureSvg = '<svg xmlns="http://www.w3.org/2000/svg" width="180" height="110" viewBox="0 0 180 110"><text x="90" y="61" text-anchor="middle" transform="rotate(-70 90 55)" fill="#b02a37" font-family="Arial, sans-serif" font-size="12" font-weight="700" letter-spacing="0.5">SIN AUTORIZAR</text></svg>';
 
     // Calcular totales
     const subtotal = articulos.reduce((sum, item) => sum + (item.total || 0), 0);
@@ -579,6 +584,9 @@ export class DetailCellRendererPurchaseOrderReportComponent implements OnDestroy
                 { text: 'Autoriza:', bold: true, fontSize: 9, margin: [0, 0, 0, authorizerSignature ? 4 : 25] },
                 ...(authorizerSignature ? [{ image: authorizerSignature, width: 120, alignment: 'center', margin: [0, 0, 0, 4] }] : []),
                 { canvas: [{ type: 'line', x1: 0, y1: 0, x2: 180, y2: 0, lineWidth: 1 }] },
+                ...(showUnauthorizedNotice
+                  ? [{ svg: unauthorizedSignatureSvg, width: 160, height: 98, alignment: 'center', relativePosition: { x: 10, y: -49 }, margin: [0, 0, 0, 0] }]
+                  : []),
                 { text: autorizador, fontSize: 8, color: '#666', alignment: 'center', margin: [0, 3, 0, 0] }
               ]
             }

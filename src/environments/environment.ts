@@ -83,5 +83,5 @@ export const environment = {
   geminiApiKey: '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',
   gnewsApiKey: '94ccc596b4dfebc3f72683b6e81d81bc',
 
-  version: '5.00.314 (21 Octubre 2026 17:08) sello compacto en firma de requisición',
+  version: '5.00.316 (21 Octubre 2026 17:11) sellos sin desplazar las firmas en PDFs',
 };

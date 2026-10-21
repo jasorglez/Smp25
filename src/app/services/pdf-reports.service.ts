@@ -47,6 +47,9 @@ export class PdfReportsService {
 
   async generateEntryReport(entryData: any, itemsData: any[], idRoot: number, projectName?: string): Promise<string> {
     try {
+      const isClosed = entryData?.locked === true || entryData?.closed === true || entryData?.isClosed === true;
+      const showUnauthorizedNotice = !Number(entryData?.idAutoriza) && !isClosed;
+      const unauthorizedSignatureSvg = '<svg xmlns="http://www.w3.org/2000/svg" width="180" height="110" viewBox="0 0 180 110"><text x="90" y="61" text-anchor="middle" transform="rotate(-70 90 55)" fill="#b02a37" font-family="Arial, sans-serif" font-size="12" font-weight="700" letter-spacing="0.5">SIN AUTORIZAR</text></svg>';
       const rootResponse = await lastValueFrom(this.rootService.getRootbyId(idRoot));
       const companyData: any = rootResponse;
 
@@ -284,10 +287,10 @@ export class PdfReportsService {
                     style: 'signatureLabel',
                     margin: [0, 0, 0, 5]
                   },
-                  {
-                    canvas: [{ type: 'line', x1: 0, y1: 0, x2: 150, y2: 0, lineWidth: 1 }],
-                    margin: [0, 0, 0, 2]
-                  },
+                  { canvas: [{ type: 'line', x1: 0, y1: 0, x2: 150, y2: 0, lineWidth: 1 }], margin: [0, 0, 0, 2] },
+                  ...(showUnauthorizedNotice
+                    ? [{ svg: unauthorizedSignatureSvg, width: 145, height: 89, alignment: 'center', relativePosition: { x: 2, y: -44 }, margin: [0, 0, 0, 0] }]
+                    : []),
                   {
                     text: 'Nombre y Firma',
                     style: 'signatureText',
