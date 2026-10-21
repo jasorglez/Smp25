@@ -83,5 +83,5 @@ export const environment = {
   geminiApiKey: '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',
   gnewsApiKey: '94ccc596b4dfebc3f72683b6e81d81bc',
 
-  version: '5.00.275 (20 Octubre 2026 09:05) módulo independiente de Precios Unitarios',
+  version: '5.00.278 (21 Octubre 2026 09:48) catalogo de marcas y checks por producto',
 };

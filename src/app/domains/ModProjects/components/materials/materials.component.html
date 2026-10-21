@@ -32,6 +32,11 @@
                 title="Configurar conversiones de unidades del material">
           <i class="bi bi-arrow-left-right"></i>
         </button>
+        <button type="button" class="btn btn-outline-info ms-1 me-1 mb-2" (click)="openBrandsModal()"
+                [disabled]="!selectedRowData || selectedRowData.__isNew || notSavedChanges || savingBrands"
+                title="Configurar las marcas permitidas para este material">
+          <i class="bi bi-tags"></i>
+        </button>
         <button type="button" class="btn btn-secondary ms-1 me-1 mb-2" (click)="togglePdfReport()"
                 title="Reporte PDF de Distribución (Cantidades)">
           <i class="bi bi-file-earmark-pdf"></i>
@@ -378,3 +383,40 @@
 
 <!-- Backdrop del modal de unidad -->
 <div class="modal-backdrop fade" [class.show]="showMeasureModal" [style.display]="showMeasureModal ? 'block' : 'none'"></div>
+
+<div class="modal fade" [class.show]="showBrandsModal" [style.display]="showBrandsModal ? 'block' : 'none'"
+     tabindex="-1" role="dialog" aria-labelledby="brandsModalLabel" [attr.aria-hidden]="!showBrandsModal">
+  <div class="modal-dialog modal-dialog-centered" role="document">
+    <div class="modal-content">
+      <div class="modal-header bg-info-subtle">
+        <h5 class="modal-title" id="brandsModalLabel"><i class="bi bi-tags me-2"></i>Marcas del material</h5>
+        <button type="button" class="btn-close" (click)="showBrandsModal = false" aria-label="Cerrar"></button>
+      </div>
+      <div class="modal-body">
+        <p class="small text-muted">{{ brandParent?.materialDescription || brandParent?.insumo }}. Selecciona una o varias marcas del catálogo para controlar cada existencia por separado.</p>
+        <div class="input-group mb-3">
+          <input class="form-control" [(ngModel)]="newBrandName" name="newBrandName" maxlength="100"
+                 placeholder="Nueva marca para el catálogo" (keydown.enter)="$event.preventDefault(); addBrandName()">
+          <button class="btn btn-outline-primary" type="button" (click)="addBrandName()" [disabled]="addingBrand || !newBrandName.trim()">
+            <span *ngIf="addingBrand" class="spinner-border spinner-border-sm me-1"></span><i *ngIf="!addingBrand" class="bi bi-plus-lg me-1"></i>Agregar
+          </button>
+        </div>
+        <div *ngIf="brandCatalog.length; else noBrands" class="border rounded p-2" style="max-height:280px;overflow:auto">
+          <label *ngFor="let brand of brandCatalog" class="form-check d-flex align-items-center gap-2 mb-2">
+            <input class="form-check-input m-0" type="checkbox" [checked]="isBrandSelected(brand.id)"
+                   (change)="toggleBrandSelection(brand.id, $any($event.target).checked)">
+            <span class="form-check-label">{{ brand.description }}</span>
+          </label>
+        </div>
+        <ng-template #noBrands><div class="text-muted small py-2">No hay marcas en el catálogo. Agrega la primera con el campo anterior.</div></ng-template>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-light border" (click)="showBrandsModal = false" [disabled]="savingBrands">Cancelar</button>
+        <button type="button" class="btn btn-primary" (click)="saveBrands()" [disabled]="savingBrands">
+          <span *ngIf="savingBrands" class="spinner-border spinner-border-sm me-2"></span><i *ngIf="!savingBrands" class="bi bi-floppy me-1"></i>Guardar marcas
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+<div class="modal-backdrop fade show" *ngIf="showBrandsModal"></div>

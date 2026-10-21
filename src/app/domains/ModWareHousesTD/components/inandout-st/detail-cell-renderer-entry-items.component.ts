@@ -175,6 +175,7 @@ export class DetailCellRendererEntryItemsComponent implements OnInit {
           __modified: false
         }));
         this.applyTransferStockToRows();
+        this.applyBrandStockToRows();
         if (this.gridApi) {
           this.gridApi.setGridOption('rowData', this.rowData);
         }
@@ -303,7 +304,7 @@ export class DetailCellRendererEntryItemsComponent implements OnInit {
               params.data.sourceMeasureId = this.context.movementType === 'IN' && selectedMaterial.conversion
                 ? Number(selectedMaterial.idMeasure)
                 : null;
-              if (this.isTransferEntry()) params.data.pending = Number(selectedMaterial.availableStock || 0);
+              this.setSelectedMaterialBrand(params.data, selectedMaterial);
             }
             return true;
           }
@@ -324,7 +325,7 @@ export class DetailCellRendererEntryItemsComponent implements OnInit {
             params.data.sourceMeasureId = this.context.movementType === 'IN' && selectedMaterial.conversion
               ? Number(selectedMaterial.idMeasure)
               : null;
-            if (this.isTransferEntry()) params.data.pending = Number(selectedMaterial.availableStock || 0);
+            this.setSelectedMaterialBrand(params.data, selectedMaterial);
           }
 
           return true;
@@ -339,6 +340,49 @@ export class DetailCellRendererEntryItemsComponent implements OnInit {
         filter: true,
         filterParams: {
           defaultToNothingSelected: true
+        }
+      },
+      {
+        field: 'idBrand',
+        headerName: 'Marca',
+        width: 130,
+        editable: (params: any) => (this.materials.find(item => Number(item.id) === Number(params.data?.idProduct))?.brands?.length || 0) > 1,
+        cellEditor: 'agSelectCellEditor',
+        cellEditorParams: (params: any) => {
+          const material = this.materials.find(item => Number(item.id) === Number(params.data?.idProduct));
+          const brandValues = (material?.brands || []).map((brand: any) => String(brand.brand));
+          if (this.context.movementType === 'OUT' || this.isTransferEntry()) brandValues.unshift('Sin marca');
+          return { values: brandValues };
+        },
+        valueGetter: (params: any) => params.data?.idBrand == null
+          ? (params.data?.brandName || '')
+          : (this.materials.find(item => Number(item.id) === Number(params.data?.idProduct))?.brands || [])
+              .find((brand: any) => Number(brand.id) === Number(params.data.idBrand))?.brand || params.data?.brandName || '',
+        valueFormatter: (params: any) => {
+          const material = this.materials.find(item => Number(item.id) === Number(params.data?.idProduct));
+          if (!(material?.brands?.length)) return '—';
+          return params.value || (material.brands.length === 1 ? material.brands[0].brand : 'Seleccionar marca');
+        },
+        valueSetter: (params: any) => {
+          const material = this.materials.find(item => Number(item.id) === Number(params.data?.idProduct));
+          if (!material?.brands?.length) return false;
+          if (String(params.newValue) === 'Sin marca' && (this.context.movementType === 'OUT' || this.isTransferEntry())) {
+            params.data.idBrand = null;
+            params.data.brandName = 'Sin marca';
+          } else {
+            const brand = material.brands.find((item: any) => String(item.brand) === String(params.newValue));
+            if (!brand) return false;
+            params.data.idBrand = Number(brand.id);
+            params.data.brandName = brand.brand;
+          }
+          this.updatePendingForBrand(params.data);
+          return true;
+        },
+        cellStyle: (params: any) => {
+          const material = this.materials.find(item => Number(item.id) === Number(params.data?.idProduct));
+          return (material?.brands?.length || 0) > 1 && params.data?.idBrand == null && params.data?.brandName !== 'Sin marca'
+            ? { backgroundColor: '#fff3cd', color: '#664d03' }
+            : null;
         }
       },
       {
@@ -543,21 +587,7 @@ export class DetailCellRendererEntryItemsComponent implements OnInit {
     }
 
     if (event.colDef.field === 'description' && this.context.movementType === 'OUT' && event.data.idProduct) {
-      const idWarehouse = this.entryData.idWarehouse;
-      console.log('Calling getSumaIn with idProduct:', event.data.idProduct, 'idWarehouse:', idWarehouse);
-      this.context.inandoutService.getSumaIn(event.data.idProduct, idWarehouse).subscribe({
-        next: (data: any) => {
-          console.log('getSumaIn response:', data);
-          event.data.pending = data || 0;
-          if (this.gridApi) {
-            this.gridApi.refreshCells({ rowNodes: [event.node], columns: ['pending'] });
-          }
-        },
-        error: (error) => {
-          console.error('Error in getSumaIn:', error);
-          event.data.pending = 0;
-        }
-      });
+      this.updatePendingForBrand(event.data);
     }
 
     event.data.__modified = true;
@@ -583,20 +613,70 @@ export class DetailCellRendererEntryItemsComponent implements OnInit {
     if (this.gridApi) this.gridApi.refreshCells({ force: true });
   }
 
+  private updatePendingForBrand(row: any): void {
+    const material = this.materials.find(item => Number(item.id) === Number(row?.idProduct));
+    const brandCount = material?.brands?.length || 0;
+    const usesBrandStock = brandCount > 0;
+    const brandId = row?.idBrand == null
+      ? (row?.brandName === 'Sin marca' ? 0 : (brandCount === 1 ? Number(material.brands[0].id) : null))
+      : Number(row.idBrand);
+    if ((this.context?.movementType !== 'OUT' && !this.isTransferEntry()) || !material) return;
+    if (usesBrandStock && brandId == null) {
+      row.pending = 0;
+      this.gridApi?.refreshCells({ force: true, columns: ['pending'] });
+      return;
+    }
+    const warehouseId = Number(this.entryData?.idWarehouse || this.context?.idWarehouse || 0);
+    if (!warehouseId || !this.context?.inandoutService?.getStock) return;
+    this.context.inandoutService.getStock(Number(row.idProduct), warehouseId, usesBrandStock ? brandId : undefined).subscribe({
+      next: (response: any) => {
+        row.pending = this.getStockValue(response);
+        this.gridApi?.refreshCells({ force: true, columns: ['pending'] });
+      },
+      error: () => {
+        row.pending = 0;
+        this.gridApi?.refreshCells({ force: true, columns: ['pending'] });
+      }
+    });
+  }
+
+  private setSelectedMaterialBrand(row: any, material: any): void {
+    const brands = material?.brands || [];
+    if (brands.length === 1) {
+      row.idBrand = Number(brands[0].id);
+      row.brandName = brands[0].brand;
+    } else {
+      row.idBrand = null;
+      row.brandName = '';
+    }
+    this.updatePendingForBrand(row);
+  }
+
+  private applyBrandStockToRows(): void {
+    this.rowData.forEach(row => {
+      const material = this.materials.find(item => Number(item.id) === Number(row.idProduct));
+      if ((material?.brands?.length || 0) > 1 && row.idBrand == null && row.id > 0) row.brandName = 'Sin marca';
+      this.updatePendingForBrand(row);
+    });
+  }
+
   loadMaterials() {
     if (this.context && this.context.materialsService && this.context.idRoot) {
       forkJoin({
         materials: this.context.materialsService.getMaterials2Fields(this.context.idRoot),
         conversions: this.context.materialsService.getMaterialConversions(this.context.idRoot),
+        brands: this.context.materialsService.getMaterialBrands(this.context.idRoot).pipe(catchError(() => of([]))),
       }).subscribe({
-        next: ({ materials, conversions }: { materials: any[]; conversions: any[] }) => {
+        next: ({ materials, conversions, brands }: { materials: any[]; conversions: any[]; brands: any[] }) => {
           const activeMaterials = materials.filter(mat => mat.active && mat.vigente).map(mat => {
             const materialConversions = conversions.filter(row => Number(row.idMaterial) === Number(mat.id));
             const conversion = materialConversions.find(row => Number(row.idMeasureFrom) === Number(mat.idMeasure));
-            return { ...mat, conversion, conversions: materialConversions };
+            const materialBrands = brands.filter(row => Number(row.idMaterial) === Number(mat.id));
+            return { ...mat, conversion, conversions: materialConversions, brands: materialBrands };
           });
           if (!this.isTransferEntry()) {
             this.materials = activeMaterials;
+            this.applyBrandStockToRows();
             if (this.gridApi) this.gridApi.setGridOption('columnDefs', this.colDefs);
             return;
           }
@@ -621,6 +701,7 @@ export class DetailCellRendererEntryItemsComponent implements OnInit {
             next: (materialsWithStock: any[]) => {
               this.materials = materialsWithStock.filter(material => material.availableStock > 0);
               this.applyTransferStockToRows();
+              this.applyBrandStockToRows();
               if (this.gridApi) this.gridApi.setGridOption('columnDefs', this.colDefs);
             },
             error: error => {
@@ -671,6 +752,8 @@ export class DetailCellRendererEntryItemsComponent implements OnInit {
       code: material.code,
       idInandout: this.params.data.id,
       idProduct: material.id,
+      idBrand: material.brands?.length === 1 ? Number(material.brands[0].id) : null,
+      brandName: material.brands?.length === 1 ? material.brands[0].brand : '',
       description: material.description,
       measure: this.context.movementType === 'OUT' && material.conversion
         ? material.conversion.measureTo
@@ -687,6 +770,7 @@ export class DetailCellRendererEntryItemsComponent implements OnInit {
     };
 
     this.rowData = [...this.rowData, newItem];
+    this.updatePendingForBrand(newItem);
     this.hasUnsavedChanges = true;
     this.gridApi.setGridOption('rowData', this.rowData);
 

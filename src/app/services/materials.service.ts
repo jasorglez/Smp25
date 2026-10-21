@@ -42,6 +42,19 @@ export class MaterialsService {
       { headers: this.trackingService.getHeaders() }
     );
   }
+
+  getMaterialBrands(idCompany: number): Observable<any[]> {
+    return this.http.get<any[]>(`${environment.urlWarehouse}/Material/brands/company/${idCompany}`, {
+      headers: this.trackingService.getHeaders(),
+    });
+  }
+
+  saveMaterialBrands(idCompany: number, idMaterial: number, catalogIds: number[]): Observable<void> {
+    return this.http.put<void>(`${environment.urlWarehouse}/Material/${idMaterial}/brands`, {
+      idCompany,
+      catalogIds,
+    }, { headers: this.trackingService.getHeaders() });
+  }
   
 
   addMaterial(data: any): Observable<any> {

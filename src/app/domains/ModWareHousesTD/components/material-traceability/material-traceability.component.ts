@@ -73,6 +73,7 @@ export class MaterialTraceabilityComponent implements OnDestroy {
   readonly autoGroupColumnDef: ColDef = { headerName: 'Almacén / Material', minWidth: 300, flex: 2 };
   readonly columnDefs: ColDef[] = [
     { field: 'material', headerName: 'Material', minWidth: 280, flex: 2 },
+    { field: 'marca', headerName: 'Marca', minWidth: 130 },
     { field: 'almacen', headerName: 'Almacén', rowGroup: true, hide: true },
     { field: 'unidad', headerName: 'Unidad', maxWidth: 110 },
     { field: 'requisicion', headerName: 'Requisición (cantidad)', minWidth: 180 },
@@ -122,7 +123,7 @@ export class MaterialTraceabilityComponent implements OnDestroy {
     return groups.flatMap(g => g.items.map((i: any) => ({ material: i.nameArticle || i.materialName || i.description || g.materialMap.get(+i.idSupplie)?.description || `Material #${i.idSupplie}`, unidad: i.measure || i.unit || g.materialMap.get(+i.idSupplie)?.measure || '', almacen: this.defaultWarehouseName || 'OAXACA', tipo: String(g.d.type || '').toUpperCase() === 'OC' ? 'Orden de compra' : 'Requisición', folio: g.d.folio, documento: g.d.id, fecha: g.d.dateCreate || g.d.datecreate, cantidad: i.quantity, proveedor: g.d.nameProvider || i.nameProvider || '', estado: g.d.close ? 'Cerrado' : 'Abierto' })));
   }
   private flattenMovements(groups: any[]): any[] {
-    return groups.flatMap(g => g.items.flatMap((entry: any) => entry.details.map((i: any) => ({ material: i.materialName || i.description || g.materialMap.get(+i.idProduct)?.description || `Material #${i.idProduct}`, unidad: i.measure || i.unit || g.materialMap.get(+i.idProduct)?.measure || '', tipo: g.type === 'IN' ? 'Entrada' : 'Salida', folio: entry.m.folio, documento: entry.m.id, fecha: entry.m.date || entry.m.deliveryDate, cantidad: i.quantity || i.total, almacen: g.w.nombreAlmacen || g.w.name || g.w.description || g.w.nameWarehouse || this.defaultWarehouseName, estado: entry.m.active === false ? 'Inactivo' : 'Activo' }))));
+    return groups.flatMap(g => g.items.flatMap((entry: any) => entry.details.map((i: any) => ({ material: i.materialName || i.description || g.materialMap.get(+i.idProduct)?.description || `Material #${i.idProduct}`, marca: i.brand || i.brandName || '', unidad: i.measure || i.unit || g.materialMap.get(+i.idProduct)?.measure || '', tipo: g.type === 'IN' ? 'Entrada' : 'Salida', folio: entry.m.folio, documento: entry.m.id, fecha: entry.m.date || entry.m.deliveryDate, cantidad: i.quantity || i.total, almacen: g.w.nombreAlmacen || g.w.name || g.w.description || g.w.nameWarehouse || this.defaultWarehouseName, estado: entry.m.active === false ? 'Inactivo' : 'Activo' }))));
   }
   private asArray(value: any): any[] { return Array.isArray(value) ? value : (value?.data || value?.result || value?.items || []); }
 
@@ -130,9 +131,10 @@ export class MaterialTraceabilityComponent implements OnDestroy {
     const grouped = new Map<string, any>();
     rows.forEach(r => {
       const warehouse = String(r.almacen || 'General').trim();
-      const key = `${warehouse}|${String(r.material || '').trim().toUpperCase()}`;
+      const marca = String(r.marca || '').trim();
+      const key = `${warehouse}|${String(r.material || '').trim().toUpperCase()}|${marca.toUpperCase()}`;
       if (!key) return;
-      const current = grouped.get(key) || { material: r.material, almacen: warehouse, unidad: r.unidad, requisicion: '', oc: '', entrada: 0, salida: 0, inventario: 0, movimientos: '' };
+      const current = grouped.get(key) || { material: r.material, marca, almacen: warehouse, unidad: r.unidad, requisicion: '', oc: '', entrada: 0, salida: 0, inventario: 0, movimientos: '' };
       const folio = r.folio || r.documento || '';
       const documentWithQuantity = `${folio} (${Number(r.cantidad || 0)})`;
       if (r.tipo === 'Requisición') current.requisicion = this.joinUnique(current.requisicion, documentWithQuantity);
@@ -165,13 +167,13 @@ export class MaterialTraceabilityComponent implements OnDestroy {
       }
     }
     const body: any[] = [[
-      { text: 'Material', bold: true, color: '#fff' }, { text: 'Unidad', bold: true, color: '#fff' },
+      { text: 'Material', bold: true, color: '#fff' }, { text: 'Marca', bold: true, color: '#fff' }, { text: 'Unidad', bold: true, color: '#fff' },
       { text: 'Requisición (cantidad)', bold: true, color: '#fff' }, { text: 'OC (cantidad)', bold: true, color: '#fff' },
       { text: 'Entrada', bold: true, color: '#fff' }, { text: 'Salida', bold: true, color: '#fff' },
       { text: 'Inventario', bold: true, color: '#fff' }, { text: 'Movimientos', bold: true, color: '#fff' }
     ]];
     this.rowData.forEach((r, i) => body.push([
-      `${r.almacen || 'General'} / ${r.material || ''}`, r.unidad || '', r.requisicion || '', r.oc || '',
+      `${r.almacen || 'General'} / ${r.material || ''}`, r.marca || '', r.unidad || '', r.requisicion || '', r.oc || '',
       r.entrada || 0, r.salida || 0, r.inventario || 0, r.movimientos || ''
     ].map((text: any) => ({ text, fontSize: 7, fillColor: i % 2 ? '#f4f7fb' : '#fff' }))));
     const centeredHeader: any[] = [];
@@ -187,7 +189,7 @@ export class MaterialTraceabilityComponent implements OnDestroy {
           { text: '', width: 100 }
         ]
       }),
-      content: [{ text: `Proyecto: ${this.projectId || 'Todos'}   |   Generado: ${new Date().toLocaleString('es-MX')}`, fontSize: 8, color: '#555', margin: [0, 0, 0, 10] }, { table: { headerRows: 1, widths: ['*', 55, 130, 100, 65, 65, 75, 170], body }, layout: { fillColor: (row: number) => row === 0 ? '#1a5a9a' : null, hLineColor: () => '#d5dbe3', vLineColor: () => '#d5dbe3', paddingLeft: () => 4, paddingRight: () => 4, paddingTop: () => 3, paddingBottom: () => 3 } }],
+      content: [{ text: `Proyecto: ${this.projectId || 'Todos'}   |   Generado: ${new Date().toLocaleString('es-MX')}`, fontSize: 8, color: '#555', margin: [0, 0, 0, 10] }, { table: { headerRows: 1, widths: ['*', 70, 55, 130, 100, 65, 65, 75, 170], body }, layout: { fillColor: (row: number) => row === 0 ? '#1a5a9a' : null, hLineColor: () => '#d5dbe3', vLineColor: () => '#d5dbe3', paddingLeft: () => 4, paddingRight: () => 4, paddingTop: () => 3, paddingBottom: () => 3 } }],
       footer: (current: number, total: number) => ({ text: `Trazabilidad de materiales · Página ${current} de ${total}`, alignment: 'center', fontSize: 8, color: '#777' })
     };
     try {

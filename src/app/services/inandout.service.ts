@@ -18,12 +18,14 @@ export class InandoutService {
     return this.http.get(`${environment.urlWarehouse}/Inandout?idWarehouse=${idWarehouse}&type=${type}${projectFilter}`, { headers: this.trackingService.getHeaders() });
   }
 
-  getSumaIn(idProduct: number, idWarehouse: number) {
-    return this.http.get(`${environment.urlWarehouse}/Detailsinandout/sumentrada/${idProduct}/${idWarehouse}`, { headers: this.trackingService.getHeaders() });
+  getSumaIn(idProduct: number, idWarehouse: number, brandId?: number) {
+    const brandQuery = brandId === undefined ? '' : `?brandId=${brandId}`;
+    return this.http.get(`${environment.urlWarehouse}/Detailsinandout/sumentrada/${idProduct}/${idWarehouse}${brandQuery}`, { headers: this.trackingService.getHeaders() });
   }
 
-  getStock(idProduct: number, idWarehouse: number) {
-    return this.http.get(`${environment.urlWarehouse}/Detailsinandout/stock/${idProduct}/${idWarehouse}`, { headers: this.trackingService.getHeaders() });
+  getStock(idProduct: number, idWarehouse: number, brandId?: number) {
+    const brandQuery = brandId === undefined ? '' : `?brandId=${brandId}`;
+    return this.http.get(`${environment.urlWarehouse}/Detailsinandout/stock/${idProduct}/${idWarehouse}${brandQuery}`, { headers: this.trackingService.getHeaders() });
   }
 
   getDetailedInOut(id: number): Observable<any> {

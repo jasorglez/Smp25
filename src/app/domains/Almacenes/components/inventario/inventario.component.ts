@@ -145,6 +145,11 @@ export class InventarioComponent {
       },
     },
     {
+      field: 'brandStockSummary', headerName: 'Existencia por marca', width: 250,
+      valueFormatter: p => p.value || '—',
+      cellStyle: { fontSize: '0.78rem', color: '#495057' },
+    },
+    {
       field: 'stockMin', headerName: 'Mín', width: 68, type: 'numericColumn',
       cellStyle: { color: '#aaa', fontSize: '0.8rem' },
     },
@@ -258,10 +263,11 @@ export class InventarioComponent {
 
     forkJoin({
       materials: this.materialsService.getMaterialsForPosCache(this.idCompany).pipe(catchError(() => of([]))),
+      brands: this.materialsService.getMaterialBrands(this.idCompany).pipe(catchError(() => of([]))),
       movements: forkJoin(movementRequests),
     }).subscribe({
       next: result => {
-        this.rowData = this.buildInventoryRows(result.materials as any[], result.movements);
+        this.rowData = this.buildInventoryRows(result.materials as any[], result.movements, result.brands as any[]);
         this.loading = false;
       },
       error: error => {
@@ -272,7 +278,7 @@ export class InventarioComponent {
     });
   }
 
-  private buildInventoryRows(materials: any[], movements: Array<{ type: 'IN' | 'OUT'; details: any[] }>): any[] {
+  private buildInventoryRows(materials: any[], movements: Array<{ type: 'IN' | 'OUT'; details: any[] }>, brands: any[] = []): any[] {
     const materialMap = new Map<number, any>();
     this.asArray(materials).forEach(material => materialMap.set(Number(material.id ?? material.Id), material));
     const rows = new Map<number, any>();
@@ -294,18 +300,51 @@ export class InventarioComponent {
           stockMax: this.toNumber(material.stockMax ?? material.stockmax),
           costoMN: this.toNumber(material.costoMN ?? material.CostoMN),
           ventaMN: this.toNumber(material.ventaMN ?? material.VentaMN ?? material.sellingprice),
+          brandStocks: new Map<number | string, { name: string; quantity: number }>(),
         };
 
         if (group.type === 'IN') current.entrada += quantity;
         else current.salida += quantity;
+        const brandId = detail.idBrand ?? detail.IdBrand;
+        const brandName = detail.brand ?? detail.Brand ?? detail.brandName ?? detail.BrandName;
+        const brandKey: number | string = brandId == null ? 'unbranded' : Number(brandId);
+        const configured = brands.find(item => Number(item.idMaterial ?? item.IdMaterial) === idMaterial && Number(item.id) === Number(brandId));
+        const stockName = brandId == null ? 'Sin marca' : (brandName || configured?.brand || configured?.Brand || `Marca ${brandId}`);
+        const brandStock = current.brandStocks.get(brandKey) || { name: stockName, quantity: 0 };
+        brandStock.quantity += group.type === 'IN' ? quantity : -quantity;
+        current.brandStocks.set(brandKey, brandStock);
         rows.set(idMaterial, current);
       });
     });
 
     return [...rows.values()].map(row => {
       const existencia = row.entrada - row.salida;
+      const materialBrands = brands.filter(item => Number(item.idMaterial ?? item.IdMaterial) === row.id);
+      materialBrands.forEach(brand => {
+        const brandId = Number(brand.id ?? brand.Id);
+        if (!row.brandStocks.has(brandId)) row.brandStocks.set(brandId, { name: brand.brand ?? brand.Brand, quantity: 0 });
+      });
+      const unbranded = row.brandStocks.get('unbranded');
+      if (unbranded && materialBrands.length === 1) {
+        const onlyBrandId = Number(materialBrands[0].id ?? materialBrands[0].Id);
+        const onlyBrand = row.brandStocks.get(onlyBrandId)!;
+        onlyBrand.quantity += unbranded.quantity;
+        row.brandStocks.delete('unbranded');
+      } else if (unbranded && materialBrands.length > 1) {
+        row.brandStocks.set(0, { name: 'Sin marca', quantity: unbranded.quantity });
+        row.brandStocks.delete('unbranded');
+      }
+      if (materialBrands.length > 1 && !row.brandStocks.has(0)) {
+        row.brandStocks.set(0, { name: 'Sin marca', quantity: 0 });
+      }
+      const brandStocks = [...row.brandStocks.entries()].map(([key, value]) => ({ idBrand: key === 'unbranded' ? 0 : Number(key), ...value }));
       return {
         ...row,
+        brands: materialBrands.map(brand => ({ id: Number(brand.id ?? brand.Id), brand: brand.brand ?? brand.Brand })),
+        brandStocks,
+        brandStockSummary: materialBrands.length
+          ? brandStocks.map(stock => `${stock.name}: ${this.formatQuantity(stock.quantity)}`).join(' | ')
+          : '',
         existencia,
         total: existencia * row.costoMN,
         ventaTotal: existencia * row.ventaMN,
@@ -352,6 +391,16 @@ export class InventarioComponent {
       return;
     }
 
+    const brandOptions = row.brands?.length > 1
+      ? `<label class="form-label fw-semibold mb-1" style="font-size:0.85rem">Marca:</label>
+         <select id="aju-brand" class="swal2-select" style="display:block;width:100%;margin:0 0 10px 0">
+           ${row.brandStocks.map((stock: any) => `<option value="${stock.idBrand}">${stock.name} (${this.formatQuantity(stock.quantity)})</option>`).join('')}
+         </select>`
+      : '';
+    const chosenBrand = row.brands?.length === 1 ? row.brands[0] : null;
+    const initialStock = chosenBrand
+      ? Number(row.brandStocks.find((stock: any) => Number(stock.idBrand) === Number(chosenBrand.id))?.quantity || 0)
+      : row.existencia;
     const result = await Swal.fire({
       title:  'Ajuste Físico de Inventario',
       width:  460,
@@ -360,12 +409,14 @@ export class InventarioComponent {
           <div class="mb-1 fw-semibold" style="font-size:0.95rem">${row.description}</div>
           <div class="mb-3 text-muted" style="font-size:0.8rem">
             Código: <code>${row.insumo}</code>
-            &nbsp;|&nbsp; Existencia actual: <strong>${row.existencia}</strong>
+            &nbsp;|&nbsp; Existencia actual: <strong id="aju-current">${this.formatQuantity(initialStock)}</strong>
             &nbsp;|&nbsp; Estado: <strong>${row.estadoStock ?? '—'}</strong>
           </div>
 
+          ${brandOptions}
+
           <label class="form-label fw-semibold mb-1" style="font-size:0.85rem">Cantidad física real:</label>
-          <input id="aju-qty" type="number" min="0" step="1" value="${row.existencia}"
+          <input id="aju-qty" type="number" min="0" step="0.01" value="${initialStock}"
                  class="swal2-input" style="margin:0 0 6px 0; width:100%">
 
           <div id="aju-delta" class="text-center fw-bold mb-2" style="font-size:1.05rem; min-height:1.6rem"></div>
@@ -384,8 +435,13 @@ export class InventarioComponent {
       didOpen: () => {
         const qEl = document.getElementById('aju-qty')   as HTMLInputElement;
         const dEl = document.getElementById('aju-delta') as HTMLElement;
+        const brandEl = document.getElementById('aju-brand') as HTMLSelectElement | null;
+        const currentEl = document.getElementById('aju-current') as HTMLElement;
+        const getCurrent = () => brandEl
+          ? Number(row.brandStocks.find((stock: any) => String(stock.idBrand) === brandEl.value)?.quantity || 0)
+          : initialStock;
         const update = () => {
-          const delta = (parseFloat(qEl.value) || 0) - Number(row.existencia);
+          const delta = (parseFloat(qEl.value) || 0) - getCurrent();
           dEl.innerHTML = delta === 0
             ? `<span class="text-muted small">Sin cambios</span>`
             : delta > 0
@@ -393,16 +449,25 @@ export class InventarioComponent {
               : `<span class="text-danger">▼ ${delta.toFixed(0)} — se generará <em>salida</em></span>`;
         };
         qEl.addEventListener('input', update);
+        brandEl?.addEventListener('change', () => {
+          const current = getCurrent();
+          currentEl.textContent = this.formatQuantity(current);
+          qEl.value = String(current);
+          update();
+        });
         update();
       },
-      preConfirm: (): { qty: number; comment: string } | null => {
+      preConfirm: (): { qty: number; comment: string; idBrand: number | null } | null => {
         const qty = parseFloat((document.getElementById('aju-qty') as HTMLInputElement).value);
         if (isNaN(qty) || qty < 0) {
           Swal.showValidationMessage('Ingresa una cantidad válida (≥ 0)');
           return null;
         }
         const comment = (document.getElementById('aju-comment') as HTMLTextAreaElement).value;
-        return { qty, comment };
+        const selected = row.brands?.length > 1
+          ? Number((document.getElementById('aju-brand') as HTMLSelectElement).value)
+          : (chosenBrand ? Number(chosenBrand.id) : null);
+        return { qty, comment, idBrand: selected };
       },
     });
 
@@ -415,6 +480,7 @@ export class InventarioComponent {
         cantidadFisica: result.value.qty,
         comentario:     result.value.comment,
         idCompany:      this.idCompany,
+        idBrand:        result.value.idBrand,
       }).toPromise();
       alerts.basicAlert('¡Ajuste guardado!', 'El inventario fue actualizado correctamente.', 'success');
       this.loadData();

@@ -10,6 +10,7 @@ export interface AjusteDto {
   cantidadFisica: number;
   comentario:     string;
   idCompany:      number;
+  idBrand?:       number | null;
 }
 
 @Injectable({ providedIn: 'root' })

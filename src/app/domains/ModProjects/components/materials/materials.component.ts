@@ -10,7 +10,7 @@ import { SignalsService } from 'app/services/signals.service';
 import { AgGridModule, ICellRendererAngularComp } from 'ag-grid-angular';
 import { FormsModule } from '@angular/forms';
 import { alerts } from 'app/helpers/alerts';
-import { catchError, concat, EMPTY, firstValueFrom, lastValueFrom, toArray, tap } from 'rxjs';
+import { catchError, concat, EMPTY, firstValueFrom, lastValueFrom, of, toArray, tap } from 'rxjs';
 import { AutocompleteEditorComponent } from 'app/shared/autocomplete-editor/autocomplete-editor.component';
 import { MultiLineEditorComponent } from 'app/shared/multi-line/multi-line-editor.component';
 import { SelectWithTooltipEditorV2Component } from 'app/shared/select-with-tooltip-editor-v2.component';
@@ -135,6 +135,13 @@ export class MaterialsComponent implements CanComponentDeactivate {
   savingConversions = false;
   conversionsParentData: any = null;
   materialConversions: Array<{ idMeasureFrom: number | null; idMeasureTo: number | null; factor: number }> = [];
+  showBrandsModal = false;
+  savingBrands = false;
+  addingBrand = false;
+  brandParent: any = null;
+  brandCatalog: any[] = [];
+  selectedBrandIds: number[] = [];
+  newBrandName = '';
   showSavingsTab: boolean = false;
   authorizedPass: boolean = false;
   private lastEditedRowId: number | string | null = null;
@@ -289,12 +296,112 @@ export class MaterialsComponent implements CanComponentDeactivate {
   private idProject: number | null = null;
   obtenerDatos(){
     return this.materialsService.getAllMaterialsxFamilyview(this.idcompany).subscribe(
-      (data: any) => {
-        this.rowData = data;
-        void this.loadMaterialMovementSummary(data);
+      async (data: any) => {
+        let configuredBrands: any[] = [];
+        try { configuredBrands = await lastValueFrom(this.materialsService.getMaterialBrands(this.idcompany)); } catch { configuredBrands = []; }
+        const brandsByMaterial = new Map<number, any[]>();
+        configuredBrands.forEach((brand: any) => {
+          const idMaterial = Number(brand.idMaterial);
+          brandsByMaterial.set(idMaterial, [...(brandsByMaterial.get(idMaterial) || []), brand]);
+        });
+        this.rowData = data.map((material: any) => {
+          const brands = brandsByMaterial.get(Number(material.id)) || [];
+          return { ...material, brands, brandsText: brands.map(brand => brand.brand).join(', ') };
+        });
+        void this.loadMaterialMovementSummary(this.rowData);
       },
       (error) => console.error('Error fetching data:', error)
     );
+  }
+
+  async openBrandsModal(): Promise<void> {
+    const selected = this.gridApi?.getSelectedNodes().find(node => !node.group && node.data)?.data;
+    if (!selected || !Number(selected.id)) {
+      alerts.basicAlert('Seleccione un material', 'Seleccione primero el material al que desea configurar marcas.', 'info');
+      return;
+    }
+    if (this.notSavedChanges) {
+      alerts.basicAlert('Cambios sin guardar', 'Guarde o deshaga los cambios del grid antes de configurar marcas.', 'warning');
+      return;
+    }
+    this.brandParent = selected;
+    this.selectedBrandIds = (selected.brands || []).map((brand: any) => Number(brand.id)).filter((id: number) => id > 0);
+    this.newBrandName = '';
+    try {
+      this.brandCatalog = await lastValueFrom(this.catalogsService.getCatalogs(this.idcompany, 'BRAND').pipe(catchError(() => of([]))));
+    } catch {
+      this.brandCatalog = [];
+    }
+    this.showBrandsModal = true;
+  }
+
+  isBrandSelected(id: number): boolean {
+    return this.selectedBrandIds.includes(Number(id));
+  }
+
+  toggleBrandSelection(id: number, checked: boolean): void {
+    const brandId = Number(id);
+    this.selectedBrandIds = checked
+      ? [...new Set([...this.selectedBrandIds, brandId])]
+      : this.selectedBrandIds.filter(item => item !== brandId);
+  }
+
+  async addBrandName(): Promise<void> {
+    if (this.addingBrand) return;
+    const name = this.newBrandName.trim();
+    if (!name) return;
+    if (name.length > 100) {
+      alerts.basicAlert('Marca muy larga', 'La marca admite hasta 100 caracteres.', 'warning');
+      return;
+    }
+    const existing = this.brandCatalog.find(brand => String(brand.description || '').trim().toLocaleLowerCase() === name.toLocaleLowerCase());
+    if (existing) {
+      this.toggleBrandSelection(Number(existing.id), true);
+      this.newBrandName = '';
+      alerts.basicAlert('Marca existente', 'La marca ya estaba en el catálogo y quedó seleccionada para este material.', 'info');
+      return;
+    }
+    this.addingBrand = true;
+    try {
+      await lastValueFrom(this.catalogsService.addCatalog({
+        idCompany: this.idcompany,
+        description: name,
+        type: 'BRAND',
+        active: 1,
+        vigente: true,
+        valueAddition: 'NA',
+        valueAddition2: 'NA',
+      }));
+      this.brandCatalog = await lastValueFrom(this.catalogsService.getCatalogs(this.idcompany, 'BRAND').pipe(catchError(() => of([]))));
+      const created = this.brandCatalog.find(brand => String(brand.description || '').trim().toLocaleLowerCase() === name.toLocaleLowerCase());
+      if (created) this.toggleBrandSelection(Number(created.id), true);
+      this.newBrandName = '';
+      alerts.basicAlert('Marca agregada', 'Se agregó al catálogo y quedó seleccionada para este material.', 'success');
+    } catch (error: any) {
+      alerts.basicAlert('No se pudo agregar', error?.error?.message || 'No se pudo guardar la marca en el catálogo.', 'error');
+    } finally {
+      this.addingBrand = false;
+    }
+  }
+
+  async saveBrands(): Promise<void> {
+    if (this.savingBrands || !this.brandParent || !this.idcompany) return;
+    this.savingBrands = true;
+    try {
+      await lastValueFrom(this.materialsService.saveMaterialBrands(this.idcompany, Number(this.brandParent.id), this.selectedBrandIds));
+      const allBrands = await lastValueFrom(this.materialsService.getMaterialBrands(this.idcompany));
+      const brands = allBrands.filter((brand: any) => Number(brand.idMaterial) === Number(this.brandParent.id));
+      this.rowData = this.rowData.map(material => Number(material.id) === Number(this.brandParent.id)
+        ? { ...material, brands, brandsText: brands.map((brand: any) => brand.brand).join(', ') }
+        : material);
+      this.gridApi?.setGridOption('rowData', this.rowData);
+      this.showBrandsModal = false;
+      alerts.basicAlert('Marcas guardadas', 'La configuración de marcas del material se actualizó.', 'success');
+    } catch (error: any) {
+      alerts.basicAlert('No se pudieron guardar', error?.error?.message || 'Revise las marcas e intente nuevamente.', 'error');
+    } finally {
+      this.savingBrands = false;
+    }
   }
 
   obtenerUnidades(){
@@ -872,6 +979,14 @@ export class MaterialsComponent implements CanComponentDeactivate {
         headerName: 'Insumo',
         editable: true,
         width: 150,
+      },
+      {
+        field: 'brandsText',
+        headerName: 'Marcas',
+        editable: false,
+        width: 160,
+        valueFormatter: (params: any) => params.value || '—',
+        tooltipValueGetter: (params: any) => params.value || 'Sin control de marcas',
       },
       {
         field: 'idMedida',
