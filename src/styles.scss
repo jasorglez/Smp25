@@ -449,3 +449,28 @@ body {
   white-space: normal !important;
   word-break: break-word !important;
 }
+// Keep AG Grid dropdowns compact and consistent with the surrounding forms.
+.ag-theme-quartz {
+  .ag-rich-select-list,
+  .ag-rich-select-value,
+  .ag-rich-select-field-input,
+  .ag-select-list,
+  .ag-picker-field-display {
+    font-family: inherit;
+    font-size: 12px;
+    font-weight: 400;
+    line-height: 1.35;
+  }
+
+  .ag-rich-select-row,
+  .ag-select-list-item {
+    font-size: 12px;
+    font-weight: 400;
+    line-height: 1.35;
+  }
+
+  .ag-rich-select-field-input .ag-input-field-input {
+    font: inherit;
+    font-size: 12px;
+  }
+}

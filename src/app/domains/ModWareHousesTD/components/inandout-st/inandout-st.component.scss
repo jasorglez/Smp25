@@ -26,9 +26,11 @@
   outline: 0;
   background: transparent;
   color: #24364b;
-  font-weight: 600;
+  font-size: 13px;
+  font-weight: 500;
   appearance: none;
   cursor: pointer;
 }
+.warehouse-picker option { font-size: 13px; font-weight: 400; }
 
 .warehouse-picker-chevron { color: #7d8da1; font-size: .75rem; pointer-events: none; }
