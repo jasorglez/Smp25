@@ -1,5 +1,5 @@
 .material-modal-header {
-  padding: 1.15rem 1.5rem;
+  padding: .75rem 1.1rem;
   border: 0;
   background: linear-gradient(115deg, #12366b, #1769aa);
   color: #fff;
@@ -18,37 +18,40 @@
   font-size: 1.3rem;
 }
 
-.material-modal-body { max-height: min(76vh, 850px); overflow-y: auto; padding: 1.25rem 1.5rem; background: #f5f7fb; }
+.material-modal-body { max-height: min(63vh, 680px); overflow-y: auto; padding: .75rem 1rem; background: #f5f7fb; }
 .material-form-section {
-  margin-bottom: 1rem;
-  padding: 1.15rem;
+  margin-bottom: .6rem;
+  padding: .7rem .85rem;
   border: 1px solid #e5eaf1;
   border-radius: .85rem;
   background: #fff;
   box-shadow: 0 2px 8px rgba(15, 40, 75, .035);
 }
 .material-form-section:last-child { margin-bottom: 0; }
-.material-section-heading { display: flex; align-items: center; gap: .7rem; margin-bottom: 1rem; }
+.material-section-heading { display: flex; align-items: center; gap: .55rem; margin-bottom: .55rem; }
 .material-section-heading h4 { margin: 0; color: #1e293b; font-size: .95rem; font-weight: 700; }
 .material-section-heading p { margin: .15rem 0 0; color: #718096; font-size: .76rem; }
-.material-section-icon { display: grid; width: 2.2rem; height: 2.2rem; place-items: center; border-radius: .65rem; background: #eaf2ff; color: #1769aa; }
+.material-section-icon { display: grid; width: 1.8rem; height: 1.8rem; place-items: center; border-radius: .55rem; background: #eaf2ff; color: #1769aa; }
 .material-modal-body .form-label { margin-bottom: .35rem; color: #475569; font-size: .78rem; font-weight: 650; }
 .material-modal-body .form-control, .material-modal-body .form-select { min-height: 2.55rem; border-color: #d9e0ea; border-radius: .5rem; font-size: .875rem; }
 .material-modal-body select.form-select, .material-modal-body select.form-select option { font-size: .75rem !important; }
 .material-modal-body textarea.form-control { min-height: auto; }
-.material-modal-body .material-description-input { min-height: 8rem; resize: vertical; }
+.material-modal-body .material-description-input { min-height: 5rem; resize: vertical; }
 .material-brand-select { display: block; min-height: 2.65rem; }
 ::ng-deep .material-brand-select .ng-select-container { min-height: 2.65rem; border-color: #d9e0ea; border-radius: .5rem; }
 ::ng-deep .material-brand-select.ng-select-multiple .ng-value { background: #eaf2ff; color: #12366b; border-radius: .4rem; }
-.material-image-preview { display: block; max-width: 100%; width: 180px; height: 130px; object-fit: contain; border: 1px solid #d9e0ea; border-radius: .5rem; background: #fff; }
+.material-image-row { display: flex; align-items: center; gap: .55rem; flex-wrap: wrap; min-height: 2.8rem; }
+.material-image-preview, .material-image-placeholder { display: inline-flex; width: 2.8rem; height: 2.8rem; flex: 0 0 2.8rem; align-items: center; justify-content: center; object-fit: cover; border: 1px solid #d9e0ea; border-radius: .5rem; background: #fff; color: #94a3b8; }
+.material-image-preview { display: block; }
+.material-image-placeholder { font-size: 1.2rem; }
 .material-modal-body .form-control:focus, .material-modal-body .form-select:focus { border-color: #7db4f2; box-shadow: 0 0 0 .2rem rgba(13, 110, 253, .12); }
-.material-modal-footer { padding: .85rem 1.5rem; border-top: 1px solid #e5eaf1; background: #fff; }
-.material-modal-footer .btn { min-height: 2.45rem; border-radius: .55rem; font-weight: 600; }
+.material-modal-footer { padding: .55rem 1rem; border-top: 1px solid #e5eaf1; background: #fff; }
+.material-modal-footer .btn { min-height: 2.2rem; border-radius: .55rem; font-weight: 600; }
 
 @media (max-width: 767px) {
-  .material-modal-body { max-height: 72vh; padding: 1rem; }
-  .material-form-section { padding: .9rem; }
-  .material-modal-footer { padding: .75rem 1rem; flex-wrap: wrap; }
+  .material-modal-body { max-height: 60vh; padding: .65rem; }
+  .material-form-section { padding: .65rem; }
+  .material-modal-footer { padding: .55rem .65rem; flex-wrap: wrap; }
   .material-modal-footer > span { flex-basis: 100%; }
 }
 

@@ -78,7 +78,7 @@ import { catchError, forkJoin, from, lastValueFrom, map, mergeMap, of, toArray }
           <button type="button" class="btn btn-outline-secondary btn-sm" (click)="closeReport()"><i class="bi bi-x-lg"></i> Cerrar</button>
         </div>
       </div>
-      <div class="report-content" style="width:100%; min-width:0; height:920px; border: 1px solid #dee2e6; border-radius: 0.375rem;">
+      <div class="report-content" style="width:100%; min-width:0; height:920px; margin-top:64px; border: 1px solid #dee2e6; border-radius: 0.375rem;">
         <app-pdf-report-viewer *ngIf="pdfUrl" [sourceUrl]="pdfUrl" title="Reporte de entrada" fileName="Reporte_Entrada.pdf"></app-pdf-report-viewer>
         <div *ngIf="!pdfUrl" class="d-flex justify-content-center align-items-center h-100">
           <div class="text-center">

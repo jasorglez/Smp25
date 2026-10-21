@@ -55,6 +55,7 @@ export class InandoutStComponent implements OnInit {
 
   private isGeneratingReport: boolean = false;
   private warehouseLoadRequest = 0;
+  private otLoadRequest = 0;
   rowData: any[] = [];
   selectedWarehouse: any = null;
   warehouses: any[] = [];
@@ -122,10 +123,10 @@ export class InandoutStComponent implements OnInit {
 
     effect(() => {
       this.projectId = this.signalsService.getProjectSelectedBySidebar()();
+      this.loadOts();
       const email = this.trackingService.getEmail();
       if (this.projectId && email) {
         this.loadWarehouses(email);
-        this.loadOts();
         this.loadOcList();
       } else {
         this.rowData = [];
@@ -244,16 +245,27 @@ export class InandoutStComponent implements OnInit {
   }
 
   loadOts() {
-    if (!this.projectId) return;
-    this.otService.get2fieldsByPect(this.projectId).subscribe({
+    const requestProjectId = Number(this.projectId || 0);
+    const requestId = ++this.otLoadRequest;
+    this.otList = [];
+    this.selectedOt = null;
+    this.refreshColumns();
+    if (!requestProjectId) return;
+
+    this.otService.get2fieldsByPect(requestProjectId).subscribe({
       next: (data) => {
-        this.otList = data;
+        if (requestId !== this.otLoadRequest || Number(this.projectId || 0) !== requestProjectId) return;
+        const results = Array.isArray(data) ? data : (data?.data ?? data?.result ?? []);
+        this.otList = Array.isArray(results) ? results : [];
         if (this.otList.length > 0) this.selectedOt = this.otList[0];
         this.refreshColumns();
       },
       error: (error) => {
+        if (requestId !== this.otLoadRequest || Number(this.projectId || 0) !== requestProjectId) return;
         if (error?.status !== 404) console.error('Error loading OTs:', error);
         this.otList = [];
+        this.selectedOt = null;
+        this.refreshColumns();
       }
     });
   }
@@ -432,6 +444,10 @@ export class InandoutStComponent implements OnInit {
     animateRows: true,
     masterDetail: true,
     detailRowHeight: 700,
+    getRowHeight: (params: any) => {
+      if (!params.node.detail) return undefined;
+      return params.node.parent?.data?.detailType === 'report' ? 1080 : 700;
+    },
     isRowMaster: (dataItem: any) => true,
     detailCellRenderer: DetailCellRendererEntryItemsComponent,
     getRowClass: (params: any) => {
@@ -558,6 +574,7 @@ export class InandoutStComponent implements OnInit {
         field: 'idOt',
         headerName: 'OT',
         width: 160,
+        hide: this.otList.length === 0,
         editable: true,
         cellEditor: 'agRichSelectCellEditor',
         cellEditorParams: () => ({
@@ -774,6 +791,7 @@ export class InandoutStComponent implements OnInit {
       api.onRowHeightChanged();
       await new Promise(resolve => setTimeout(resolve, 1000));
       node.setExpanded(true);
+      api.resetRowHeights();
       clearInterval(progressInterval);
       alerts.updateLoadingProgress('Reporte generado', 'El documento se ha procesado correctamente', 100);
       setTimeout(() => {
