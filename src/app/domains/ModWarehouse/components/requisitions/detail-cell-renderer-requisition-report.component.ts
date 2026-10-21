@@ -481,10 +481,10 @@ export class DetailCellRendererRequisitionReportComponent implements OnDestroy {
               width: '50%',
               stack: [
                 { text: 'Autorizó:', bold: true, fontSize: 9, margin: [0, 0, 0, 25] },
-                { canvas: [{ type: 'line', x1: 0, y1: 0, x2: 180, y2: 0, lineWidth: 1 }] },
                 ...(showUnauthorizedNotice
                   ? [{ svg: unauthorizedSignatureSvg, width: 160, height: 98, alignment: 'center', relativePosition: { x: 10, y: -49 }, margin: [0, 0, 0, 0] }]
                   : []),
+                { canvas: [{ type: 'line', x1: 0, y1: 0, x2: 180, y2: 0, lineWidth: 1 }] },
                 { text: 'Nombre y Firma', fontSize: 8, color: '#666', margin: [0, 3, 0, 0] }
               ]
             }

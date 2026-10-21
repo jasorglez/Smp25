@@ -287,10 +287,10 @@ export class PdfReportsService {
                     style: 'signatureLabel',
                     margin: [0, 0, 0, 5]
                   },
-                  { canvas: [{ type: 'line', x1: 0, y1: 0, x2: 150, y2: 0, lineWidth: 1 }], margin: [0, 0, 0, 2] },
                   ...(showUnauthorizedNotice
                     ? [{ svg: unauthorizedSignatureSvg, width: 145, height: 89, alignment: 'center', relativePosition: { x: 2, y: -44 }, margin: [0, 0, 0, 0] }]
                     : []),
+                  { canvas: [{ type: 'line', x1: 0, y1: 0, x2: 150, y2: 0, lineWidth: 1 }], margin: [0, 0, 0, 2] },
                   {
                     text: 'Nombre y Firma',
                     style: 'signatureText',

@@ -583,10 +583,10 @@ export class DetailCellRendererPurchaseOrderReportComponent implements OnDestroy
               stack: [
                 { text: 'Autoriza:', bold: true, fontSize: 9, margin: [0, 0, 0, authorizerSignature ? 4 : 25] },
                 ...(authorizerSignature ? [{ image: authorizerSignature, width: 120, alignment: 'center', margin: [0, 0, 0, 4] }] : []),
-                { canvas: [{ type: 'line', x1: 0, y1: 0, x2: 180, y2: 0, lineWidth: 1 }] },
                 ...(showUnauthorizedNotice
                   ? [{ svg: unauthorizedSignatureSvg, width: 160, height: 98, alignment: 'center', relativePosition: { x: 10, y: -49 }, margin: [0, 0, 0, 0] }]
                   : []),
+                { canvas: [{ type: 'line', x1: 0, y1: 0, x2: 180, y2: 0, lineWidth: 1 }] },
                 { text: autorizador, fontSize: 8, color: '#666', alignment: 'center', margin: [0, 3, 0, 0] }
               ]
             }
