@@ -37,6 +37,10 @@
 .material-modal-body select.form-select, .material-modal-body select.form-select option { font-size: .75rem !important; }
 .material-modal-body textarea.form-control { min-height: auto; }
 .material-modal-body .material-description-input { min-height: 8rem; resize: vertical; }
+.material-brand-list { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: .5rem 1rem; max-height: 180px; overflow-y: auto; padding: .75rem; border: 1px solid #d9e0ea; border-radius: .5rem; background: #fff; }
+.material-brand-option { display: flex; align-items: center; gap: .5rem; margin: 0; min-width: 0; font-size: .875rem; }
+.material-brand-option .form-check-input { flex: 0 0 auto; margin: 0; }
+.material-brand-option .form-check-label { overflow-wrap: anywhere; }
 .material-image-preview { display: block; max-width: 100%; width: 180px; height: 130px; object-fit: contain; border: 1px solid #d9e0ea; border-radius: .5rem; background: #fff; }
 .material-modal-body .form-control:focus, .material-modal-body .form-select:focus { border-color: #7db4f2; box-shadow: 0 0 0 .2rem rgba(13, 110, 253, .12); }
 .material-modal-footer { padding: .85rem 1.5rem; border-top: 1px solid #e5eaf1; background: #fff; }

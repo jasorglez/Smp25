@@ -135,10 +135,8 @@ export class MaterialsComponent implements CanComponentDeactivate {
   savingConversions = false;
   conversionsParentData: any = null;
   materialConversions: Array<{ idMeasureFrom: number | null; idMeasureTo: number | null; factor: number }> = [];
-  showBrandsModal = false;
-  savingBrands = false;
   addingBrand = false;
-  brandParent: any = null;
+  loadingBrandCatalog = false;
   brandCatalog: any[] = [];
   selectedBrandIds: number[] = [];
   newBrandName = '';
@@ -220,6 +218,8 @@ export class MaterialsComponent implements CanComponentDeactivate {
     delete cleanedData.subfamiliaDescription;
     delete cleanedData.materialDescription;
     delete cleanedData.existencia;
+    delete cleanedData.brands;
+    delete cleanedData.brandsText;
 
     // Mapear campos requeridos por el servidor
     cleanedData.description = data.materialDescription || '';
@@ -314,25 +314,18 @@ export class MaterialsComponent implements CanComponentDeactivate {
     );
   }
 
-  async openBrandsModal(): Promise<void> {
-    const selected = this.gridApi?.getSelectedNodes().find(node => !node.group && node.data)?.data;
-    if (!selected || !Number(selected.id)) {
-      alerts.basicAlert('Seleccione un material', 'Seleccione primero el material al que desea configurar marcas.', 'info');
-      return;
-    }
-    if (this.notSavedChanges) {
-      alerts.basicAlert('Cambios sin guardar', 'Guarde o deshaga los cambios del grid antes de configurar marcas.', 'warning');
-      return;
-    }
-    this.brandParent = selected;
-    this.selectedBrandIds = (selected.brands || []).map((brand: any) => Number(brand.id)).filter((id: number) => id > 0);
-    this.newBrandName = '';
+  private async loadBrandCatalog(): Promise<void> {
+    this.loadingBrandCatalog = true;
     try {
-      this.brandCatalog = await lastValueFrom(this.catalogsService.getCatalogs(this.idcompany, 'BRAND').pipe(catchError(() => of([]))));
-    } catch {
+      this.brandCatalog = await lastValueFrom(this.catalogsService.getCatalogs(this.idcompany, 'BRAND'));
+    } catch (error: any) {
       this.brandCatalog = [];
+      if (error?.status !== 404) {
+        alerts.basicAlert('No se pudieron cargar las marcas', error?.error?.message || 'Vuelve a abrir el formulario e inténtalo de nuevo.', 'error');
+      }
+    } finally {
+      this.loadingBrandCatalog = false;
     }
-    this.showBrandsModal = true;
   }
 
   isBrandSelected(id: number): boolean {
@@ -347,7 +340,7 @@ export class MaterialsComponent implements CanComponentDeactivate {
   }
 
   async addBrandName(): Promise<void> {
-    if (this.addingBrand) return;
+    if (this.addingBrand || this.loadingBrandCatalog || this.savingMaterialModal) return;
     const name = this.newBrandName.trim();
     if (!name) return;
     if (name.length > 100) {
@@ -363,7 +356,7 @@ export class MaterialsComponent implements CanComponentDeactivate {
     }
     this.addingBrand = true;
     try {
-      await lastValueFrom(this.catalogsService.addCatalog({
+      const added = await lastValueFrom(this.catalogsService.addCatalog({
         idCompany: this.idcompany,
         description: name,
         type: 'BRAND',
@@ -372,35 +365,19 @@ export class MaterialsComponent implements CanComponentDeactivate {
         valueAddition: 'NA',
         valueAddition2: 'NA',
       }));
-      this.brandCatalog = await lastValueFrom(this.catalogsService.getCatalogs(this.idcompany, 'BRAND').pipe(catchError(() => of([]))));
-      const created = this.brandCatalog.find(brand => String(brand.description || '').trim().toLocaleLowerCase() === name.toLocaleLowerCase());
-      if (created) this.toggleBrandSelection(Number(created.id), true);
+      const createdId = Number(added?.id ?? added?.Id);
+      if (createdId > 0) this.toggleBrandSelection(createdId, true);
+      try {
+        this.brandCatalog = await lastValueFrom(this.catalogsService.getCatalogs(this.idcompany, 'BRAND'));
+      } catch {
+        if (createdId > 0) this.brandCatalog = [...this.brandCatalog, { id: createdId, description: name }];
+      }
       this.newBrandName = '';
       alerts.basicAlert('Marca agregada', 'Se agregó al catálogo y quedó seleccionada para este material.', 'success');
     } catch (error: any) {
       alerts.basicAlert('No se pudo agregar', error?.error?.message || 'No se pudo guardar la marca en el catálogo.', 'error');
     } finally {
       this.addingBrand = false;
-    }
-  }
-
-  async saveBrands(): Promise<void> {
-    if (this.savingBrands || !this.brandParent || !this.idcompany) return;
-    this.savingBrands = true;
-    try {
-      await lastValueFrom(this.materialsService.saveMaterialBrands(this.idcompany, Number(this.brandParent.id), this.selectedBrandIds));
-      const allBrands = await lastValueFrom(this.materialsService.getMaterialBrands(this.idcompany));
-      const brands = allBrands.filter((brand: any) => Number(brand.idMaterial) === Number(this.brandParent.id));
-      this.rowData = this.rowData.map(material => Number(material.id) === Number(this.brandParent.id)
-        ? { ...material, brands, brandsText: brands.map((brand: any) => brand.brand).join(', ') }
-        : material);
-      this.gridApi?.setGridOption('rowData', this.rowData);
-      this.showBrandsModal = false;
-      alerts.basicAlert('Marcas guardadas', 'La configuración de marcas del material se actualizó.', 'success');
-    } catch (error: any) {
-      alerts.basicAlert('No se pudieron guardar', error?.error?.message || 'Revise las marcas e intente nuevamente.', 'error');
-    } finally {
-      this.savingBrands = false;
     }
   }
 
@@ -1388,7 +1365,11 @@ export class MaterialsComponent implements CanComponentDeactivate {
       stockMin: 1, stockMax: 30, picture: '', gramsPerMeter: null,
       typeMaterial: 'CONSUMABLE', active: true
     };
+    this.brandCatalog = [];
+    this.selectedBrandIds = [];
+    this.newBrandName = '';
     this.showMaterialModal = true;
+    void this.loadBrandCatalog();
   }
 
   openMaterialEdit(): void {
@@ -1404,7 +1385,11 @@ export class MaterialsComponent implements CanComponentDeactivate {
     this.editingMaterialId = Number(selected.id);
     this.materialDraft = { ...selected, idFamilia: Number(selected.idFamilia) || null,
       idSubfamilia: Number(selected.idSubfamilia) || null, idMedida: Number(selected.idMedida) || null };
+    this.brandCatalog = [];
+    this.selectedBrandIds = (selected.brands || []).map((brand: any) => Number(brand.id)).filter((id: number) => id > 0);
+    this.newBrandName = '';
     this.showMaterialModal = true;
+    void this.loadBrandCatalog();
   }
 
   get materialSubfamilies(): any[] {
@@ -1423,7 +1408,7 @@ export class MaterialsComponent implements CanComponentDeactivate {
   }
 
   closeMaterialModal(): void {
-    if (this.savingMaterialModal || this.readingMaterialImage) return;
+    if (this.savingMaterialModal || this.readingMaterialImage || this.addingBrand) return;
     this.showMaterialModal = false;
   }
 
@@ -1461,7 +1446,7 @@ export class MaterialsComponent implements CanComponentDeactivate {
   }
 
   async saveMaterialModal(): Promise<void> {
-    if (this.savingMaterialModal || this.readingMaterialImage) return;
+    if (this.savingMaterialModal || this.readingMaterialImage || this.loadingBrandCatalog || this.addingBrand) return;
     const draft = this.materialDraft;
     if (!draft.insumo?.trim() || !draft.materialDescription?.trim() || !draft.idFamilia ||
         !draft.idSubfamilia || !draft.idMedida ||
@@ -1491,21 +1476,36 @@ export class MaterialsComponent implements CanComponentDeactivate {
       barcode: draft.barcode?.trim() || '', picture: draft.picture?.trim() || ''
     };
     this.savingMaterialModal = true;
+    let materialSaved = false;
     try {
       const editing = this.editingMaterialId !== null;
       const payload = this.cleanDataForServer(data, !editing);
+      let materialId = this.editingMaterialId;
       if (editing) {
         await lastValueFrom(this.materialsService.updateMaterial(String(this.editingMaterialId), payload));
       } else {
-        await lastValueFrom(this.materialsService.addMaterial(payload));
+        const created = await lastValueFrom(this.materialsService.addMaterial(payload));
+        materialId = Number(created?.id ?? created?.Id);
+        if (!materialId) {
+          this.showMaterialModal = false;
+          this.obtenerDatos();
+          alerts.basicAlert('Material creado', 'El servidor no devolvió el identificador para asignar las marcas. Recarga el listado y edita el material para completar la asignación.', 'warning');
+          return;
+        }
+        this.editingMaterialId = materialId;
+      }
+      materialSaved = true;
+      if (editing || this.selectedBrandIds.length) {
+        await lastValueFrom(this.materialsService.saveMaterialBrands(this.idcompany, materialId, this.selectedBrandIds));
       }
       this.showMaterialModal = false;
       this.obtenerDatos();
-      alerts.basicAlert(editing ? 'Material actualizado' : 'Material creado',
-        editing ? 'Los cambios se guardaron correctamente.' : 'El material se guardó correctamente.', 'success');
+      alerts.basicAlert(editing ? 'Material actualizado' : 'Material creado', 'El material y sus marcas se guardaron correctamente.', 'success');
     } catch (error: any) {
       console.error('Error al guardar material:', error);
-      alerts.basicAlert('No se pudo guardar', error?.error?.message || 'Revise los datos e intente nuevamente.', 'error');
+      alerts.basicAlert(materialSaved ? 'Marcas pendientes de guardar' : 'No se pudo guardar',
+        materialSaved ? (error?.error?.message || 'El material sí se guardó. Revisa las marcas e intenta guardar de nuevo.')
+          : (error?.error?.message || error?.message || 'Revise los datos e intente nuevamente.'), 'error');
     } finally {
       this.savingMaterialModal = false;
     }
