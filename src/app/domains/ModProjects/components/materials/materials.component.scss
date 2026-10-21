@@ -35,6 +35,51 @@
 .material-modal-body .form-label { margin-bottom: .35rem; color: #475569; font-size: .78rem; font-weight: 650; }
 .material-modal-body .form-control, .material-modal-body .form-select { min-height: 2.55rem; border-color: #d9e0ea; border-radius: .5rem; font-size: .875rem; }
 .material-modal-body select.form-select, .material-modal-body select.form-select option { font-size: .75rem !important; }
+.material-classification-select-group { flex-wrap: nowrap; }
+.material-classification-select-group > .material-classification-select {
+  flex: 1 1 auto;
+  min-width: 0;
+  width: 1%;
+}
+.material-modal-body ::ng-deep .material-classification-select .ng-select-container {
+  min-height: 2.3rem;
+  border: 1px solid #d9e0ea;
+  border-radius: .5rem;
+  background: #fff;
+  box-shadow: none;
+  color: #334155;
+  font-family: inherit;
+  font-size: .75rem;
+  font-weight: 400;
+}
+.material-modal-body ::ng-deep .material-classification-select .ng-value,
+.material-modal-body ::ng-deep .material-classification-select .ng-placeholder,
+.material-modal-body ::ng-deep .material-classification-select .ng-input > input {
+  color: #334155;
+  font-family: inherit;
+  font-size: .75rem;
+  font-weight: 400;
+}
+.material-modal-body ::ng-deep .material-classification-select .ng-dropdown-panel {
+  border: 1px solid #d9e0ea;
+  background: #fff;
+  box-shadow: 0 8px 22px rgba(30, 64, 110, .14);
+  font-family: inherit;
+  font-size: .75rem;
+}
+.material-modal-body ::ng-deep .material-classification-select .ng-dropdown-panel .ng-option {
+  min-height: 32px;
+  padding: 7px 10px;
+  background: #fff;
+  color: #334155;
+  font-family: inherit;
+  font-size: .75rem;
+  font-weight: 400;
+}
+.material-modal-body ::ng-deep .material-classification-select .ng-dropdown-panel .ng-option.ng-option-marked {
+  background: #eff6ff;
+  color: #1d4f91;
+}
 .material-modal-body textarea.form-control { min-height: auto; }
 .material-modal-body .material-description-input { min-height: 5rem; resize: vertical; }
 .material-brand-select { display: block; min-height: 2.65rem; }

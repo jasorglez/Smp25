@@ -12,6 +12,7 @@ import { catchError, concat, EMPTY, forkJoin, lastValueFrom, toArray } from 'rxj
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { AgGridModule } from 'ag-grid-angular';
+import { NgSelectModule } from '@ng-select/ng-select';
 import { MultiLineEditorComponent } from 'app/shared/multi-line/multi-line-editor.component';
 import { CatalogsService } from 'app/services/catalogs.service';
 import { OcAndReqsService } from 'app/services/ocandreqs.service';
@@ -49,7 +50,7 @@ interface Provider {
 @Component({
   selector: 'app-requisitions',
   standalone: true,
-  imports: [CommonModule, FormsModule, AgGridModule, MultiLineEditorComponent, DeleteButtonCellRendererComponent, PdfButtonCellRendererRequisitionsComponent, DetailCellRendererRequisitionReportComponent],
+  imports: [CommonModule, FormsModule, AgGridModule, NgSelectModule, MultiLineEditorComponent, DeleteButtonCellRendererComponent, PdfButtonCellRendererRequisitionsComponent, DetailCellRendererRequisitionReportComponent],
   templateUrl: './requisitions.component.html',
   styleUrl: './requisitions.component.scss',
 })

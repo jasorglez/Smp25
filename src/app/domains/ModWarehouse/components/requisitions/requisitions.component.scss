@@ -47,7 +47,7 @@
   padding: .35rem .85rem;
   border: 1px solid #d5dfeb;
   border-radius: 12px;
-  background: linear-gradient(135deg, #fff 0%, #f5f9ff 100%);
+  background: #fff;
   box-shadow: 0 3px 12px rgba(30, 64, 110, .08);
   transition: border-color .18s ease, box-shadow .18s ease;
 }
@@ -56,9 +56,49 @@
   box-shadow: 0 0 0 3px rgba(45, 119, 205, .14);
 }
 .warehouse-picker-icon { color: #3478bd; font-size: 1.15rem; }
-.warehouse-picker select {
-  flex: 1; min-width: 0; border: 0; outline: 0; background: transparent;
-  color: #24364b; font-family: inherit; font-size: 11px; font-weight: 400; appearance: none; cursor: pointer;
+.warehouse-picker ::ng-deep .warehouse-select {
+  flex: 1;
+  min-width: 0;
 }
-.warehouse-picker option { font-family: inherit; font-size: 11px; font-weight: 400; }
-.warehouse-picker-chevron { color: #7d8da1; font-size: .75rem; pointer-events: none; }
+.warehouse-picker ::ng-deep .warehouse-select .ng-select-container {
+  min-height: 34px;
+  border: 0;
+  background: #fff;
+  box-shadow: none;
+  color: #24364b;
+  font-family: inherit;
+  font-size: 12px;
+  font-weight: 400;
+}
+.warehouse-picker ::ng-deep .warehouse-select .ng-value,
+.warehouse-picker ::ng-deep .warehouse-select .ng-placeholder,
+.warehouse-picker ::ng-deep .warehouse-select .ng-input > input {
+  color: #24364b;
+  font-family: inherit;
+  font-size: 12px;
+  font-weight: 400;
+}
+.warehouse-picker ::ng-deep .warehouse-select .ng-dropdown-panel {
+  border: 1px solid #d5dfeb;
+  background: #fff;
+  box-shadow: 0 8px 22px rgba(30, 64, 110, .14);
+  font-family: inherit;
+  font-size: 12px;
+}
+.warehouse-picker ::ng-deep .warehouse-select .ng-dropdown-panel .ng-option {
+  min-height: 32px;
+  padding: 7px 10px;
+  background: #fff;
+  color: #334155;
+  font-family: inherit;
+  font-size: 12px;
+  font-weight: 400;
+}
+.warehouse-picker ::ng-deep .warehouse-select .ng-dropdown-panel .ng-option.ng-option-marked {
+  background: #eff6ff;
+  color: #1d4f91;
+}
+.warehouse-picker ::ng-deep .warehouse-select.ng-select-focused .ng-select-container {
+  border: 0;
+  box-shadow: none;
+}
