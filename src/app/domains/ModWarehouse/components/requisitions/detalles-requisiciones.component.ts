@@ -248,7 +248,7 @@ export class DetallesRequisicionesComponent implements OnInit {
       price: 0,
       total: 0,
       type: 'REQUIS',
-      comment: 'NINGUNO.',
+      comment: '',
       dateuse: new Date().toISOString(),
       active: true,
       __isNew: true,

@@ -251,6 +251,11 @@ export class DetailCellRendererRequisitionReportComponent implements OnDestroy {
     }
   }
 
+  private getPrintableComment(value: unknown): string {
+    const comment = String(value ?? '').trim();
+    return /^NINGUNO\.?$/i.test(comment) ? '' : comment;
+  }
+
   private buildDocDefinition(companyData: any, logoBase64: string, logo2Base64: string, watermarkBase64: string | null, departmentName: string, articulos: any[]): any {
     const fechaRequisicion = this.requisitionData.dateCreate ? this.formatDate(this.requisitionData.dateCreate) : '';
     const requisicionNumero = this.requisitionData.folio || 'N/A';
@@ -427,7 +432,7 @@ export class DetailCellRendererRequisitionReportComponent implements OnDestroy {
                     { text: item.article || item.description || '', fontSize: 7 },
                     { text: (item.quantity || 0).toString(), alignment: 'center', fontSize: 7 },
                     { text: item.dateuse ? item.dateuse.split('T')[0] : '', alignment: 'center', fontSize: 7 },
-                    { text: item.comment || '', fontSize: 7 }
+                    { text: this.getPrintableComment(item.comment), fontSize: 7 }
                   ])
                 : [[{ text: 'No hay materiales en esta requisición', colSpan: 6, alignment: 'center', color: '#666', italics: true, fontSize: 7 }, {}, {}, {}, {}, {}]]
               )
