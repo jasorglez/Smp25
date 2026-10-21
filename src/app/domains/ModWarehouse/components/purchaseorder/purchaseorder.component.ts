@@ -1430,6 +1430,32 @@ export class PurchaseOrderComponent implements CanComponentDeactivate {
     this.id = event.data.id;
   }
 
+  private getLastSavedExpenseDestinationId(): number | null {
+    const validExpenseIds = new Set((this.gastosAceptanOc || []).map((gasto: any) => Number(gasto.id)));
+    const lastSavedOrder = (this.masterRowData || [])
+      .filter((order: any) => !order.__isNew && Number(order.id) > 0 && validExpenseIds.has(Number(order.idIncorExp)))
+      .sort((a: any, b: any) => {
+        const dateDifference = new Date(b.dateCreate || 0).getTime() - new Date(a.dateCreate || 0).getTime();
+        return dateDifference || Number(b.id) - Number(a.id);
+      })[0];
+
+    if (lastSavedOrder) return Number(lastSavedOrder.idIncorExp);
+    return this.gastosAceptanOc.length === 1 ? Number(this.gastosAceptanOc[0].id) : null;
+  }
+
+  private getLastSavedWarehouseDestinationId(): number | null {
+    const availableWarehouseIds = new Set((this.almacenes || []).map((warehouse: any) => Number(warehouse.id)));
+    const lastSavedOrder = (this.masterRowData || [])
+      .filter((order: any) => !order.__isNew && Number(order.id) > 0 && availableWarehouseIds.has(Number(order.idWarehouse)))
+      .sort((a: any, b: any) => {
+        const dateDifference = new Date(b.dateCreate || 0).getTime() - new Date(a.dateCreate || 0).getTime();
+        return dateDifference || Number(b.id) - Number(a.id);
+      })[0];
+
+    if (lastSavedOrder) return Number(lastSavedOrder.idWarehouse);
+    return this.almacenes.length === 1 ? Number(this.almacenes[0].id) : null;
+  }
+
   async addMasterRow() {
     const tempId = `temp_${this.tempIdCounter++}`;
     const shippingDate = new Date();
@@ -1449,8 +1475,8 @@ export class PurchaseOrderComponent implements CanComponentDeactivate {
       idReference: this.idReference,
       dateCreate: new Date().toISOString(),
       idProvider: 0,
-      idIncorExp: null,
-      idWarehouse: null,
+      idIncorExp: this.getLastSavedExpenseDestinationId(),
+      idWarehouse: this.getLastSavedWarehouseDestinationId(),
       idDepartament: this.defaultDepartmentId ?? (Number(this.departamentos[0]?.id) || 0),
       delivery: '1 dia',
       deliveryTime: 'Materiales',
@@ -2016,6 +2042,9 @@ export class PurchaseOrderComponent implements CanComponentDeactivate {
     delete cleanedData.__modified;
     delete cleanedData.__pendingRequisitionItemImport;
     delete cleanedData.appliesIva;
+    // La API conserva el importe de IVA existente; la tasa se infiere de ese
+    // importe al recargar para no requerir una columna adicional.
+    delete cleanedData.ivaRate;
     if (cleanedData.id && cleanedData.id.toString().startsWith('temp_')) {
       delete cleanedData.id;
     }

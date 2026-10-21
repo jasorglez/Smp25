@@ -214,8 +214,13 @@ export class DetailCellRendererPurchaseOrderReportComponent implements OnDestroy
       const productsById = new Map(products.map(product => [String(product.id), product]));
       const articulos = items.map(item => {
         const product = productsById.get(String(item.idSupplie));
+        const lineSubtotal = (Number(item.quantity) || 0) * (Number(item.price) || 0);
+        const savedIva = Number(item.iva) || 0;
         return {
           ...item,
+          ivaRate: lineSubtotal > 0 && savedIva > 0
+            ? Number(((savedIva / lineSubtotal) * 100).toFixed(2))
+            : 0,
           article: `${product?.description || 'Sin descripción'}${item.brandName ? ` · Marca: ${item.brandName}` : ''}`,
           numArticle: product?.code || item.idSupplie || ''
         };
@@ -321,10 +326,11 @@ export class DetailCellRendererPurchaseOrderReportComponent implements OnDestroy
     const unauthorizedSignatureSvg = '<svg xmlns="http://www.w3.org/2000/svg" width="180" height="110" viewBox="0 0 180 110"><text x="90" y="61" text-anchor="middle" transform="rotate(-70 90 55)" fill="#b02a37" font-family="Arial, sans-serif" font-size="12" font-weight="700" letter-spacing="0.5">SIN AUTORIZAR</text></svg>';
 
     // Calcular totales
-    const subtotal = articulos.reduce((sum, item) => sum + (item.total || 0), 0);
+    const subtotal = articulos.reduce((sum, item) => sum + (Number(item.quantity) || 0) * (Number(item.price) || 0), 0);
     const descuento = this.purchaseOrderData.discount || 0;
     const subtotalConDescuento = subtotal - descuento;
-    const iva = subtotalConDescuento * 0.16;
+    const discountFactor = subtotal > 0 ? Math.max(0, subtotalConDescuento / subtotal) : 0;
+    const iva = articulos.reduce((sum, item) => sum + (Number(item.iva) || 0), 0) * discountFactor;
     const ivaRetencion = this.purchaseOrderData.ivaRetention || 0;
     const total = subtotalConDescuento + iva - ivaRetencion;
 
@@ -493,7 +499,10 @@ export class DetailCellRendererPurchaseOrderReportComponent implements OnDestroy
                 ? articulos.map((item: any, index: number) => [
                     { text: (index + 1).toString(), alignment: 'center', fontSize: 7 },
                     { text: item.numArticle || item.code || '', alignment: 'center', fontSize: 7 },
-                    { text: item.article || item.description || '', fontSize: 7 },
+                    { text: [
+                      { text: item.article || item.description || '' },
+                      { text: `\nIVA ${Number(item.ivaRate || 0)}%`, fontSize: 6, color: '#666' }
+                    ], fontSize: 7 },
                     { text: (item.quantity || 0).toString(), alignment: 'center', fontSize: 7 },
                     { text: item.measure || '', alignment: 'center', fontSize: 7 },
                     { text: this.formatCurrency(item.price || 0), alignment: 'right', fontSize: 7 },
@@ -537,7 +546,7 @@ export class DetailCellRendererPurchaseOrderReportComponent implements OnDestroy
                     { text: this.formatCurrency(subtotalConDescuento), alignment: 'right', fillColor: '#f8f9fa' }
                   ],
                   [
-                    { text: 'IVA 16%:', alignment: 'right' },
+                    { text: 'IVA por partida:', alignment: 'right' },
                     { text: this.formatCurrency(iva), alignment: 'right' }
                   ],
                   [

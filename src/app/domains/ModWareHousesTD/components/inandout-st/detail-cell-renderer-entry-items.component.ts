@@ -29,7 +29,7 @@ import { catchError, forkJoin, from, lastValueFrom, map, mergeMap, of, toArray }
       </div>
       <div *ngIf="isInitialInventoryEntry()" class="alert alert-info py-1 px-2 mb-2 small">
         <i class="bi bi-info-circle me-1"></i>
-        Los materiales activos se cargan automáticamente. Captura la existencia inicial de cada uno y guarda.
+        Agrega cada material buscando por código o descripción y captura su existencia inicial.
       </div>
       <div *ngIf="isInventoryAdjustmentEntry()" class="alert alert-info py-1 px-2 mb-2 small">
         <i class="bi bi-info-circle me-1"></i>
@@ -123,9 +123,6 @@ export class DetailCellRendererEntryItemsComponent {
   hasUnsavedChanges: boolean = false;
   tempIdCounter: number = 0;
   materials: any[] = [];
-  private itemsLoaded = false;
-  private materialsLoaded = false;
-  private initialInventorySeeded = false;
 
   get masterSaved(): boolean {
     return hasPersistedMasterId(this.params?.data?.id, this.params?.data?.__isNew);
@@ -202,7 +199,6 @@ export class DetailCellRendererEntryItemsComponent {
           });
           return;
         }
-        this.initialInventorySeeded = false;
         this.rowData = data.map(item => {
           const sourceId = this.context?.movementType === 'OUT'
             ? Number(this.entryData?.idEntry || 0)
@@ -219,13 +215,11 @@ export class DetailCellRendererEntryItemsComponent {
             __modified: false
           };
         });
-        this.itemsLoaded = true;
         this.applyTransferStockToRows();
         this.applyBrandStockToRows();
         if (this.gridApi) {
           this.gridApi.setGridOption('rowData', this.rowData);
         }
-        this.seedInitialInventoryRowsIfNeeded();
         if (this.context && this.context.ITEMS && this.context.ITEMS.updateCount) {
           this.context.ITEMS.updateCount(entryId, this.rowData.length);
         }
@@ -594,6 +588,7 @@ export class DetailCellRendererEntryItemsComponent {
 
   addItem() {
     const tempId = `temp_item_${this.tempIdCounter++}`;
+    const startsAtZero = this.isInitialInventoryEntry() || this.isInventoryAdjustmentEntry();
     const newItem = {
       id: tempId,
       code: '',
@@ -602,9 +597,9 @@ export class DetailCellRendererEntryItemsComponent {
       description: '',
       materialName: '',
       measure: '',
-      quantity: 1,
+      quantity: startsAtZero ? 0 : 1,
       pending: 0,
-      total: 1,
+      total: startsAtZero ? 0 : 1,
       addToDailyReport: false,
       active: true,
       __isNew: true,
@@ -775,12 +770,10 @@ export class DetailCellRendererEntryItemsComponent {
             const materialBrands = brands.filter(row => Number(row.idMaterial) === Number(mat.id));
             return { ...mat, conversion, conversions: materialConversions, brands: materialBrands };
           });
-          this.materialsLoaded = true;
           if (!this.isTransferEntry()) {
             this.materials = activeMaterials;
             this.applyBrandStockToRows();
             if (this.gridApi) this.gridApi.setGridOption('columnDefs', this.colDefs);
-            this.seedInitialInventoryRowsIfNeeded();
             return;
           }
 
@@ -835,46 +828,6 @@ export class DetailCellRendererEntryItemsComponent {
   private getMovementTypeName(): string {
     return String(this.context?.getMovementTypeDescription?.(this.entryData?.idType) || '')
       .normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim().replace(/\s+/g, ' ').toUpperCase();
-  }
-
-  private seedInitialInventoryRowsIfNeeded(): void {
-    if (!this.isInitialInventoryEntry() || !this.itemsLoaded || !this.materialsLoaded || this.initialInventorySeeded) return;
-    this.initialInventorySeeded = true;
-    const entryId = this.params?.data?.id;
-    const existingMaterialBrands = new Set(this.rowData.map(item => `${Number(item.idProduct || 0)}|${item.idBrand == null ? 'none' : Number(item.idBrand)}`));
-    const newRows: any[] = [];
-    this.materials.forEach((material: any) => {
-      const brands = material.brands?.length ? material.brands : [null];
-      brands.forEach((brand: any) => {
-        const brandId = brand ? Number(brand.id) : null;
-        const key = `${Number(material.id)}|${brandId == null ? 'none' : brandId}`;
-        if (existingMaterialBrands.has(key)) return;
-        existingMaterialBrands.add(key);
-        newRows.push({
-          id: `temp_item_${this.tempIdCounter++}`,
-          idInandout: entryId,
-          idProduct: Number(material.id),
-          idBrand: brandId,
-          brandName: brand?.brand || '',
-          code: material.code || '',
-          description: material.description || '',
-          materialName: material.description || '',
-          measure: material.measure || material.unit || material.unidad || '',
-          quantity: 0,
-          pending: 0,
-          total: 0,
-          active: true,
-          __isNew: true,
-          __modified: false
-        });
-      });
-    });
-    this.rowData = [...this.rowData, ...newRows];
-    if (newRows.length === 0) return;
-    this.hasUnsavedChanges = this.rowData.length > 0;
-    this.gridApi?.setGridOption('rowData', this.rowData);
-    this.context?.ITEMS?.updateCount?.(entryId, this.rowData.length);
-    alerts.toastAlert(`${newRows.length} partidas cargadas para capturar la existencia inicial.`, 'info');
   }
 
   private async quickAddMaterial(): Promise<void> {

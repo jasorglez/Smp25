@@ -1074,7 +1074,7 @@ export class InandoutStComponent implements OnInit {
             this.loadEntryItemsData(entryId, callback);
           },
           save: (entryId: number, data: any[]) => {
-            this.saveEntryItemsById(entryId, data);
+            return this.saveEntryItemsById(entryId, data);
           },
           delete: (params: any, callback: () => void) => {
             this.deleteDetailRow(params, callback, 'ITEMS');
@@ -1547,6 +1547,7 @@ export class InandoutStComponent implements OnInit {
           delete row.__modified;
         });
         if (dailyReportFailed) {
+          this.keepItemsDetailOpen(entryId);
           alerts.basicAlert(
             'Artículos guardados',
             'La salida se guardó, pero no fue posible agregarla al Reporte diario. La selección quedó marcada para reintentar.',
@@ -1554,6 +1555,7 @@ export class InandoutStComponent implements OnInit {
           );
           return true;
         }
+        this.keepItemsDetailOpen(entryId);
         alerts.basicAlert('Detalles guardados', 'Se han guardado los items correctamente.', 'success');
         if (addedToDailyReport > 0) {
           alerts.toastAlert(`${addedToDailyReport} material(es) agregado(s) al Reporte diario`, 'success');
@@ -1745,5 +1747,13 @@ export class InandoutStComponent implements OnInit {
     const current = String(note || '').trim();
     if (!current) return reference;
     return current.includes(reference) ? current : `${current} | ${reference}`;
+  }
+
+  private keepItemsDetailOpen(entryId: number): void {
+    this.gridApi?.forEachNode((node: any) => {
+      if (Number(node.data?.id) !== Number(entryId)) return;
+      node.data.detailType = 'items';
+      if (!node.expanded) node.setExpanded(true);
+    });
   }
 }
