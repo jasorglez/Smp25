@@ -5,8 +5,9 @@
   color: #fff;
 }
 
-.material-modal-header .modal-title { color: #fff; font-size: 1.2rem; font-weight: 700; }
-.material-modal-subtitle { color: rgba(255, 255, 255, .78); font-size: .82rem; }
+.material-modal-heading { display: flex; align-items: baseline; gap: .65rem; min-width: 0; overflow: hidden; white-space: nowrap; }
+.material-modal-header .modal-title { flex: 0 0 auto; margin: 0; color: #fff; font-size: 1.2rem; font-weight: 700; white-space: nowrap; }
+.material-modal-subtitle { min-width: 0; overflow: hidden; color: rgba(255, 255, 255, .78); font-size: .78rem; text-overflow: ellipsis; white-space: nowrap; }
 .material-modal-icon {
   display: grid;
   width: 2.8rem;
@@ -28,9 +29,10 @@
   box-shadow: 0 2px 8px rgba(15, 40, 75, .035);
 }
 .material-form-section:last-child { margin-bottom: 0; }
-.material-section-heading { display: flex; align-items: center; gap: .55rem; margin-bottom: .55rem; }
-.material-section-heading h4 { margin: 0; color: #1e293b; font-size: .95rem; font-weight: 700; }
-.material-section-heading p { margin: .15rem 0 0; color: #718096; font-size: .76rem; }
+.material-section-heading { display: flex; align-items: center; gap: .55rem; min-width: 0; margin-bottom: .55rem; }
+.material-section-heading > div { display: flex; align-items: baseline; gap: .5rem; min-width: 0; overflow: hidden; }
+.material-section-heading h4 { flex: 0 0 auto; margin: 0; color: #1e293b; font-size: .85rem; font-weight: 700; white-space: nowrap; }
+.material-section-heading p { min-width: 0; margin: 0; overflow: hidden; color: #718096; font-size: .72rem; text-overflow: ellipsis; white-space: nowrap; }
 .material-section-icon { display: grid; width: 1.8rem; height: 1.8rem; place-items: center; border-radius: .55rem; background: #eaf2ff; color: #1769aa; }
 .material-modal-body .form-label { margin-bottom: .35rem; color: #475569; font-size: .78rem; font-weight: 650; }
 .material-modal-body .form-control, .material-modal-body .form-select { min-height: 2.55rem; border-color: #d9e0ea; border-radius: .5rem; font-size: .875rem; }

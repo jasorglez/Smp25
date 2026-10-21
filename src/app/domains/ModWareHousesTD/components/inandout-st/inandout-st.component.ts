@@ -2,6 +2,7 @@ import { Component, OnInit, inject, effect, Input } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { AgGridModule } from 'ag-grid-angular';
+import { NgSelectModule } from '@ng-select/ng-select';
 import { ColDef, GridApi, GridReadyEvent } from 'ag-grid-enterprise';
 import { AG_GRID_LOCALE_ES } from 'assets/i18n/ag-grid.locale.es';
 import { SignalsService } from 'app/services/signals.service';
@@ -30,7 +31,7 @@ import { WarehousesService } from 'app/services/warehouses.service';
 @Component({
   selector: 'app-inandout-st',
   standalone: true,
-  imports: [CommonModule, FormsModule, AgGridModule, DetailCellRendererEntryItemsComponent, PdfButtonCellRendererComponent],
+  imports: [CommonModule, FormsModule, AgGridModule, NgSelectModule, DetailCellRendererEntryItemsComponent, PdfButtonCellRendererComponent],
   templateUrl: './inandout-st.component.html',
   styleUrl: './inandout-st.component.scss',
 })

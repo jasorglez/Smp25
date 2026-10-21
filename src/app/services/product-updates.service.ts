@@ -19,6 +19,13 @@ export interface ProductUpdate {
   tutorialUrl?: string | null;
 }
 
+export interface ProductUpdatesPage {
+  items: ProductUpdate[];
+  totalCount: number;
+  page: number;
+  pageSize: number;
+}
+
 @Injectable({ providedIn: 'root' })
 export class ProductUpdatesService {
   private readonly http = inject(HttpClient);
@@ -30,6 +37,18 @@ export class ProductUpdatesService {
       .set('limit', limit);
     return this.http.get<ProductUpdate[]>(
       `${environment.urlAdministration}/ProductUpdates/publicity`,
+      { params, headers: this.tracking.getHeaders() },
+    );
+  }
+
+  getPublishedPage(idRoot: number, page = 1, pageSize = 20, search = ''): Observable<ProductUpdatesPage> {
+    const params = new HttpParams()
+      .set('idRoot', idRoot)
+      .set('page', page)
+      .set('pageSize', pageSize)
+      .set('search', search.trim());
+    return this.http.get<ProductUpdatesPage>(
+      `${environment.urlAdministration}/ProductUpdates/publicity/page`,
       { params, headers: this.tracking.getHeaders() },
     );
   }

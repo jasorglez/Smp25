@@ -5,7 +5,7 @@ import { HttpClient } from '@angular/common/http';
 import { ActivatedRoute, Router } from '@angular/router';
 import { catchError, of } from 'rxjs';
 import { SignalsService } from 'app/services/signals.service';
-import { ProductUpdate, ProductUpdatesService } from 'app/services/product-updates.service';
+import { ProductUpdate, ProductUpdatesPage, ProductUpdatesService } from 'app/services/product-updates.service';
 
 const PUBLICIDAD_BASE = 'assets/publicidad/';
 const MANIFEST_URL = `${PUBLICIDAD_BASE}manifest.json`;
@@ -92,6 +92,11 @@ export class WelcomeComponent implements OnInit, OnDestroy {
   updatesError = '';
   updates: ProductUpdate[] = [];
   updateSearch = '';
+  updatesTotalCount = 0;
+  updatesPage = 1;
+  readonly updatesPageSize = 20;
+  private updateSearchTimer: ReturnType<typeof setTimeout> | null = null;
+  private updatesRequestId = 0;
 
   /** Intervalo entre diapositivas (avance automático). */
   readonly autoplayIntervalMs = 5000;
@@ -133,6 +138,7 @@ export class WelcomeComponent implements OnInit, OnDestroy {
 
   ngOnDestroy(): void {
     this.queryParamsSubscription?.unsubscribe();
+    if (this.updateSearchTimer) clearTimeout(this.updateSearchTimer);
     if (typeof document !== 'undefined') {
       document.removeEventListener('visibilitychange', this.onVisibilityChange);
     }
@@ -151,35 +157,61 @@ export class WelcomeComponent implements OnInit, OnDestroy {
   }
 
   get filteredUpdates(): ProductUpdate[] {
-    const query = this.updateSearch.trim().toLocaleLowerCase('es-MX');
-    if (!query) return this.updates;
-    return this.updates.filter((update) =>
-      [update.title, update.module, update.description, update.userBenefit, update.version]
-        .filter(Boolean)
-        .some((value) => String(value).toLocaleLowerCase('es-MX').includes(query)),
-    );
+    return this.updates;
+  }
+
+  get updatesPageCount(): number {
+    return Math.max(1, Math.ceil(this.updatesTotalCount / this.updatesPageSize));
   }
 
   openUpdates(): void {
     this.showUpdates = true;
     this.updateSearch = '';
+    this.updatesPage = 1;
     this.updatesError = '';
+    this.loadUpdatesPage();
+  }
+
+  onUpdateSearchChange(): void {
+    if (this.updateSearchTimer) clearTimeout(this.updateSearchTimer);
+    this.updateSearchTimer = setTimeout(() => {
+      this.updatesPage = 1;
+      this.loadUpdatesPage();
+    }, 300);
+  }
+
+  goToUpdatesPage(page: number): void {
+    const nextPage = Math.max(1, Math.min(this.updatesPageCount, Number(page) || 1));
+    if (nextPage === this.updatesPage || this.updatesLoading) return;
+    this.updatesPage = nextPage;
+    this.loadUpdatesPage();
+  }
+
+  private loadUpdatesPage(): void {
     const idRoot = Number(this.signals.getRootSelectedBySidebar()() || 0);
     if (!idRoot) {
       this.updates = [];
+      this.updatesTotalCount = 0;
+      this.updatesLoading = false;
       this.updatesError = 'Selecciona una empresa para consultar las actualizaciones.';
       return;
     }
 
     this.updatesLoading = true;
-    this.updatesService.getPublished(idRoot).pipe(
+    this.updatesError = '';
+    const requestId = ++this.updatesRequestId;
+    this.updatesService.getPublishedPage(idRoot, this.updatesPage, this.updatesPageSize, this.updateSearch).pipe(
       catchError((error) => {
         console.error('No se pudieron cargar las actualizaciones:', error);
-        this.updatesError = 'No se pudieron cargar las actualizaciones. Intenta de nuevo.';
-        return of([] as ProductUpdate[]);
+        if (requestId === this.updatesRequestId) {
+          this.updatesError = 'No se pudieron cargar las actualizaciones. Intenta de nuevo.';
+        }
+        return of({ items: [], totalCount: 0, page: this.updatesPage, pageSize: this.updatesPageSize } as ProductUpdatesPage);
       }),
-    ).subscribe((updates) => {
-      this.updates = updates ?? [];
+    ).subscribe((response) => {
+      if (requestId !== this.updatesRequestId) return;
+      this.updates = response?.items ?? [];
+      this.updatesTotalCount = Number(response?.totalCount || 0);
       this.updatesLoading = false;
     });
   }
