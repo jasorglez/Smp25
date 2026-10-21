@@ -261,6 +261,10 @@ export class DetailCellRendererRequisitionReportComponent implements OnDestroy {
       || 'N/A';
     const prioridad = this.requisitionData.priority || 'Normal';
     const tiempoEntrega = this.requisitionData.deliveryTime || 'N/A';
+    const isClosed = this.requisitionData.locked === true
+      || this.requisitionData.closed === true
+      || this.requisitionData.isClosed === true;
+    const showUnauthorizedNotice = !Number(this.requisitionData.idAuthorize) && !isClosed;
 
     return {
       pageSize: 'LETTER',
@@ -477,7 +481,10 @@ export class DetailCellRendererRequisitionReportComponent implements OnDestroy {
               stack: [
                 { text: 'Autorizó:', bold: true, fontSize: 9, margin: [0, 0, 0, 25] },
                 { canvas: [{ type: 'line', x1: 0, y1: 0, x2: 180, y2: 0, lineWidth: 1 }] },
-                { text: 'Nombre y Firma', fontSize: 8, color: '#666', margin: [0, 3, 0, 0] }
+                { text: 'Nombre y Firma', fontSize: 8, color: '#666', margin: [0, 3, 0, 0] },
+                ...(showUnauthorizedNotice
+                  ? [{ text: 'SIN AUTORIZAR', fontSize: 7, bold: true, color: '#b02a37', alignment: 'center', margin: [0, 3, 0, 0] }]
+                  : [])
               ]
             }
           ]

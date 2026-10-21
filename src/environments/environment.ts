@@ -83,5 +83,5 @@ export const environment = {
   geminiApiKey: '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',
   gnewsApiKey: '94ccc596b4dfebc3f72683b6e81d81bc',
 
-  version: '5.00.310 (21 Octubre 2026 16:49) saldos parciales y vales de entrada en salidas',
+  version: '5.00.311 (21 Octubre 2026 16:54) aviso de autorización en requisición',
 };
