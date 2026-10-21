@@ -218,6 +218,8 @@ export class DetailCellRendererPurchaseOrderReportComponent implements OnDestroy
         const savedIva = Number(item.iva) || 0;
         return {
           ...item,
+          subtotal: Number(lineSubtotal.toFixed(2)),
+          total: Number((lineSubtotal + savedIva).toFixed(2)),
           ivaRate: lineSubtotal > 0 && savedIva > 0
             ? Number(((savedIva / lineSubtotal) * 100).toFixed(2))
             : 0,
@@ -484,7 +486,7 @@ export class DetailCellRendererPurchaseOrderReportComponent implements OnDestroy
         {
           table: {
             headerRows: 1,
-            widths: ['5%', '12%', '33%', '10%', '10%', '15%', '15%'],
+            widths: ['4%', '11%', '29%', '7%', '8%', '12%', '14%', '15%'],
             body: [
               [
                 { text: '#', style: 'tableHeader', alignment: 'center' },
@@ -493,7 +495,8 @@ export class DetailCellRendererPurchaseOrderReportComponent implements OnDestroy
                 { text: 'CANT.', style: 'tableHeader', alignment: 'center' },
                 { text: 'UNIDAD', style: 'tableHeader', alignment: 'center' },
                 { text: 'P. UNIT.', style: 'tableHeader', alignment: 'right' },
-                { text: 'IMPORTE', style: 'tableHeader', alignment: 'right' }
+                { text: 'SUBTOTAL', style: 'tableHeader', alignment: 'right' },
+                { text: 'TOTAL', style: 'tableHeader', alignment: 'right' }
               ],
               ...(articulos.length > 0
                 ? articulos.map((item: any, index: number) => [
@@ -506,9 +509,10 @@ export class DetailCellRendererPurchaseOrderReportComponent implements OnDestroy
                     { text: (item.quantity || 0).toString(), alignment: 'center', fontSize: 7 },
                     { text: item.measure || '', alignment: 'center', fontSize: 7 },
                     { text: this.formatCurrency(item.price || 0), alignment: 'right', fontSize: 7 },
+                    { text: this.formatCurrency(item.subtotal || 0), alignment: 'right', fontSize: 7 },
                     { text: this.formatCurrency(item.total || 0), alignment: 'right', fontSize: 7 }
                   ])
-                : [[{ text: 'No hay artículos en esta orden de compra', colSpan: 7, alignment: 'center', color: '#666', italics: true, fontSize: 7 }, {}, {}, {}, {}, {}, {}]]
+                : [[{ text: 'No hay artículos en esta orden de compra', colSpan: 8, alignment: 'center', color: '#666', italics: true, fontSize: 7 }, {}, {}, {}, {}, {}, {}, {}]]
               )
             ]
           },

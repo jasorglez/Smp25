@@ -118,7 +118,9 @@ export class DetailCellRendererPurchaseOrderItemsComponent implements OnInit {
             : 0;
           return {
             ...item,
+            subtotal: Number(subtotal.toFixed(2)),
             ivaRate,
+            total: Number((subtotal + savedIva).toFixed(2)),
             __isNew: false,
             __modified: false
           };
@@ -317,6 +319,15 @@ export class DetailCellRendererPurchaseOrderItemsComponent implements OnInit {
         }
       },
       {
+        field: 'subtotal',
+        headerName: 'Subtotal',
+        editable: false,
+        width: 120,
+        type: 'numericColumn',
+        valueFormatter: (params) => `$${Number(params.value || 0).toFixed(2)}`,
+        cellStyle: { backgroundColor: '#f8f9fa' }
+      },
+      {
         field: 'total',
         headerName: 'Total',
         editable: false,
@@ -364,8 +375,9 @@ export class DetailCellRendererPurchaseOrderItemsComponent implements OnInit {
     const subtotal = (Number(data.quantity) || 0) * (Number(data.price) || 0);
     const ivaRate = Math.min(100, Math.max(0, Number(data.ivaRate) || 0));
     data.ivaRate = Number(ivaRate.toFixed(2));
+    data.subtotal = Number(subtotal.toFixed(2));
     data.iva = Number((subtotal * ivaRate / 100).toFixed(2));
-    data.total = Number((subtotal + Number(data.iva || 0) - (Number(data.retention) || 0)).toFixed(2));
+    data.total = Number((subtotal + Number(data.iva || 0)).toFixed(2));
   }
 
   addItem() {
@@ -385,6 +397,7 @@ export class DetailCellRendererPurchaseOrderItemsComponent implements OnInit {
       ventaMN: 0,
       ivaRate: 16,
       iva: 0,
+      subtotal: 0,
       retention: 0,
       total: 0,
       type: 'OC',
@@ -564,6 +577,7 @@ export class DetailCellRendererPurchaseOrderItemsComponent implements OnInit {
           ventaMN: form.ventaMN,
           ivaRate: 16,
           iva: 0,
+          subtotal: form.ventaMN,
           retention: 0,
           total: form.ventaMN,
           type: 'OC',
@@ -652,7 +666,7 @@ export class DetailCellRendererPurchaseOrderItemsComponent implements OnInit {
   onCellValueChanged(event: any) {
     if (['quantity', 'price', 'ivaRate', 'retention'].includes(event.colDef.field)) {
       this.updateTotal(event.data);
-      this.gridApi.refreshCells({ rowNodes: [event.node], columns: ['ivaRate', 'iva', 'total'] });
+      this.gridApi.refreshCells({ rowNodes: [event.node], columns: ['ivaRate', 'iva', 'subtotal', 'total'] });
     }
 
     event.data.__modified = true;

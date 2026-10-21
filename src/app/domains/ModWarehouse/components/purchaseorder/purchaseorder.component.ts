@@ -2042,6 +2042,7 @@ export class PurchaseOrderComponent implements CanComponentDeactivate {
     delete cleanedData.__modified;
     delete cleanedData.__pendingRequisitionItemImport;
     delete cleanedData.appliesIva;
+    delete cleanedData.subtotal;
     // La API conserva el importe de IVA existente; la tasa se infiere de ese
     // importe al recargar para no requerir una columna adicional.
     delete cleanedData.ivaRate;
