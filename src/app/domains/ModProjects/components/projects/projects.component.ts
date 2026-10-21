@@ -333,6 +333,9 @@ export class ProjectsComponent {
   }
 
   initForm() {
+    const now = new Date();
+    const monthStart = this.formatDateInputLocal(new Date(now.getFullYear(), now.getMonth(), 1));
+    const monthEnd = this.formatDateInputLocal(new Date(now.getFullYear(), now.getMonth() + 1, 0));
     this.addProject = new FormGroup({
       id: new FormControl(),
       idConsecutivo: new FormControl(null, Validators.required),
@@ -340,8 +343,8 @@ export class ProjectsComponent {
       name: new FormControl('', Validators.required),
       number: new FormControl('S/N'),
       priority: new FormControl(0, Validators.required),
-      programStart: new FormControl('', Validators.required),
-      programEnd: new FormControl('', Validators.required),
+      programStart: new FormControl(monthStart, Validators.required),
+      programEnd: new FormControl(monthEnd, Validators.required),
       realPronosticLPO: new FormControl('', Validators.required),
       realPronosticTTT: new FormControl('', Validators.required),
       state: new FormControl('Ejecucion', [Validators.required]),
@@ -734,6 +737,13 @@ export class ProjectsComponent {
     if (!dateString) return '';
     const date = new Date(dateString);
     return date.toISOString().split('T')[0];
+  }
+
+  private formatDateInputLocal(date: Date): string {
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
   }
 
   async onCellDoubleClicked(event: CellDoubleClickedEvent): Promise<void> {
