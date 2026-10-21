@@ -356,10 +356,14 @@
        </a>
       </li>
       <li class="nav-item" *ngIf="authService.hasMasterPermission('preciosunitarios')">
-        <a class="nav-link d-flex sidebar-price-link" [routerLink]="['/preciosunitarios']"
-          routerLinkActive="active-link" [matTooltip]="isSidebarCollapsed ? 'Precios Unitarios' : ''">
-          <mat-icon class="sidebar-price-icon">price_change</mat-icon>
-          <span>Precios Unitarios</span>
+        <a
+          class="nav-link d-flex align-items-center"
+          [routerLink]="['/preciosunitarios']"
+          routerLinkActive="active-link"
+          [matTooltip]="isSidebarCollapsed ? 'Precios Unitarios' : ''"
+          matTooltipPosition="right"
+        >
+          <mat-icon>price_change</mat-icon> <span>Precios Unitarios</span>
         </a>
       </li>
 

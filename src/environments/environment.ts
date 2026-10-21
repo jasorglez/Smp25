@@ -83,5 +83,5 @@ export const environment = {
   geminiApiKey: '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',
   gnewsApiKey: '94ccc596b4dfebc3f72683b6e81d81bc',
 
-  version: '5.00.318 (21 Octubre 2026 17:26) pone sello de autorización al fondo de la firma',
+  version: '5.00.319 (21 Octubre 2026 17:30) uniforma icono de Precios Unitarios en sidebar',
 };

@@ -207,41 +207,6 @@
   transition: color 0.2s ease;
 }
 
-.sidebarback .nav-link.sidebar-price-link .sidebar-price-icon {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  box-sizing: border-box;
-  width: 2rem !important;
-  height: 2rem !important;
-  padding: 0;
-  margin-inline: auto;
-  flex: 0 0 2rem;
-  border-radius: 11px;
-  background: linear-gradient(145deg, var(--sb-bg2), var(--sb-accent));
-  border: 1px solid var(--sb-border);
-  color: var(--sb-icon);
-  font-size: 1.8rem !important;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, .24);
-  margin-bottom: 4px;
-  transition: color .2s ease, background-color .2s ease, transform .2s ease;
-}
-
-.sidebarback .nav-link.sidebar-price-link:hover .sidebar-price-icon {
-  color: var(--sb-text);
-  transform: scale(1.06);
-}
-
-.sidebarback .nav-link.sidebar-price-link.active-link .sidebar-price-icon {
-  background: var(--sb-active);
-  color: #fff;
-}
-
-.sidebarback .nav-link.sidebar-price-link span {
-  font-size: .68rem !important;
-  font-weight: 600;
-}
-
 .sidebarback .nav-link span {
   font-size: 0.58rem !important;
   line-height: 1.15;
@@ -406,14 +371,6 @@
 .collapsed:not(.temp-expanded) .nav-link mat-icon {
   margin-bottom: 0 !important;
 }
-.collapsed:not(.temp-expanded) .nav-link.sidebar-price-link {
-  justify-content: center !important;
-  align-items: center !important;
-}
-.collapsed:not(.temp-expanded) .nav-link.sidebar-price-link .sidebar-price-icon {
-  margin: 0 auto !important;
-}
-
 .temp-expanded .nav-link {
   flex-direction: row !important;
   align-items: center !important;
