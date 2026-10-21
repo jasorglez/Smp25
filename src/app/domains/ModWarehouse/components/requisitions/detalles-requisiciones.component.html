@@ -2,10 +2,7 @@
   <div class="detail-actions d-flex justify-content-between align-items-center mb-1">
     <div>
       <span class="badge bg-warning text-dark" *ngIf="isLocked">
-        <i class="bi bi-lock-fill me-1"></i> Requisicion en proceso de cotizacion - Solo lectura
-      </span>
-      <span class="badge bg-secondary text-white" *ngIf="isClosed && !isLocked">
-        <i class="bi bi-lock-fill me-1"></i> Requisición cerrada - Solo lectura
+        <i class="bi bi-lock-fill me-1"></i> {{ isAuthorizationLocked ? 'Requisición autorizada' : 'Requisición en proceso de cotización' }} - Solo lectura
       </span>
       <span class="badge bg-info text-dark" *ngIf="!masterSaved && !isReadOnly">
         <i class="bi bi-info-circle me-1"></i> Guarda primero la requisición para habilitar sus partidas

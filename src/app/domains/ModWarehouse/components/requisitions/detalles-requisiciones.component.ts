@@ -30,8 +30,8 @@ export class DetallesRequisicionesComponent implements OnInit {
   codeQuery = '';
   codeMatches: any[] = [];
   isLocked: boolean = false; // True when requisition is assigned to a QUOTE
-  isClosed: boolean = false;
-  get isReadOnly(): boolean { return this.isLocked || this.isClosed; }
+  isAuthorizationLocked: boolean = false;
+  get isReadOnly(): boolean { return this.isLocked; }
 
   get masterSaved(): boolean {
     return hasPersistedMasterId(this.params?.data?.id, this.params?.data?.__isNew);
@@ -50,9 +50,8 @@ export class DetallesRequisicionesComponent implements OnInit {
     this.productos = this.context?.productos || [];
     this.materialBrands = this.context?.materialBrands || [];
     // Check if requisition is locked (assigned to a QUOTE for cotización)
-    this.isLocked = params.data?.locked === true;
-    const closedValue = params.data?.close;
-    this.isClosed = closedValue === true || closedValue === 1 || ['true', '1', 'yes', 'si', 'sí', 's'].includes(String(closedValue ?? '').trim().toLowerCase());
+    this.isAuthorizationLocked = Number(params.data?.idAuthorize) > 0;
+    this.isLocked = params.data?.locked === true || this.isAuthorizationLocked;
     this.loadData();
   }
 
@@ -230,10 +229,6 @@ export class DetallesRequisicionesComponent implements OnInit {
   };
 
   addItem(material?: any) {
-    if (this.isClosed) {
-      alerts.basicAlert('Requisición cerrada', 'No se pueden agregar partidas a una requisición cerrada.', 'warning');
-      return;
-    }
     if (!this.masterSaved) {
       alerts.basicAlert('Guarda primero la requisición', 'Guarda el maestro antes de agregar sus partidas.', 'warning');
       return;

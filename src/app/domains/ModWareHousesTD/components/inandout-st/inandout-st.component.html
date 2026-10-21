@@ -1,10 +1,14 @@
 <div class="container-fluid mt-2">
-  <div class="d-flex align-items-center gap-2 mb-2 px-1">
-    <label class="form-label mb-0 fw-semibold">Almacén:</label>
-    <select class="form-select form-select-sm" style="max-width:280px" [ngModel]="selectedWarehouse?.idAlmacen || ''" (ngModelChange)="onWarehouseChange($event)">
-      <option value="">Seleccione un almacén</option>
-      <option *ngFor="let warehouse of warehouses" [value]="warehouse.idAlmacen">{{ warehouse.nombreAlmacen || warehouse.name || warehouse.description }}</option>
-    </select>
+  <div class="d-flex align-items-center flex-wrap gap-3 mb-3 px-1">
+    <label class="form-label mb-0 fw-semibold">Almacén</label>
+    <div class="warehouse-picker">
+      <span class="warehouse-picker-icon"><i class="bi bi-building-fill-gear"></i></span>
+      <select aria-label="Almacén" [ngModel]="selectedWarehouse?.idAlmacen || ''" (ngModelChange)="onWarehouseChange($event)">
+        <option value="">Selecciona el almacén</option>
+        <option *ngFor="let warehouse of warehouses" [value]="warehouse.idAlmacen">{{ warehouse.nombreAlmacen || warehouse.name || warehouse.description }}</option>
+      </select>
+      <i class="bi bi-chevron-down warehouse-picker-chevron"></i>
+    </div>
     <small class="text-muted" *ngIf="!warehouses.length">No tienes almacenes autorizados.</small>
   </div>
   <div class="row">

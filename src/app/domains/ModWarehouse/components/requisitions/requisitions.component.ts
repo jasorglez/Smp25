@@ -380,7 +380,7 @@ export class RequisitionsComponent implements CanComponentDeactivate {
         cellClassRules: {
           'required-cell-missing': (params) => this.isBlank(params.value),
         },
-        editable: (params) => !params.data?.locked,
+        editable: (params) => this.canEditAuthorizedRow(params.data),
         filter: true,
         width: 150,
       },
@@ -391,7 +391,7 @@ export class RequisitionsComponent implements CanComponentDeactivate {
         cellClassRules: {
           'required-cell-missing': (params) => this.isBlank(params.value),
         },
-        editable: (params) => !params.data?.locked,
+        editable: (params) => this.canEditAuthorizedRow(params.data),
         width: 150,
         cellDataType: 'dateString',
         valueFormatter: (params) => {
@@ -409,11 +409,14 @@ export class RequisitionsComponent implements CanComponentDeactivate {
         cellClassRules: {
           'required-cell-missing': (params) => !this.isPositiveNumber(params.value),
         },
-        editable: (params) => !params.data?.locked,
+        editable: (params) => this.canEditAuthorizedRow(params.data),
         width: 190,
-        cellEditor: 'agSelectCellEditor',
+        cellEditor: 'agRichSelectCellEditor',
         cellEditorParams: {
           values: [...(this.departamentos ?? []).map((item) => item.id), -1],
+          valueListMaxHeight: 240,
+          formatValue: (value: any) => Number(value) === -1 ? '＋ Agregar nuevo...' :
+            this.departamentos.find(item => Number(item.id) === Number(value))?.description || '',
         },
         valueFormatter: (params) => {
           const foundItem = this.departamentos
@@ -430,7 +433,7 @@ export class RequisitionsComponent implements CanComponentDeactivate {
         cellClassRules: {
           'required-cell-missing': (params) => this.isBlank(params.value),
         },
-        editable: (params) => !params.data?.locked,
+        editable: (params) => this.canEditAuthorizedRow(params.data),
         width: 190,
       },
       {
@@ -440,7 +443,7 @@ export class RequisitionsComponent implements CanComponentDeactivate {
         cellClassRules: {
           'required-cell-missing': (params) => this.isBlank(params.value),
         },
-        editable: (params) => !params.data?.locked,
+        editable: (params) => this.canEditAuthorizedRow(params.data),
         filter: true,
         width: 200,
       },
@@ -452,17 +455,34 @@ export class RequisitionsComponent implements CanComponentDeactivate {
         cellClassRules: {
           'required-cell-missing': (params) => this.isBlank(params.value),
         },
-        editable: (params) => !params.data?.locked,
+        editable: (params) => this.canEditAuthorizedRow(params.data),
         width: 160,
       },
 
       {
-        field: 'close',
-        headerName: 'Cerrado',
-        editable: (params) => !params.data?.locked,
-        width: 120,
-        cellRenderer: 'agCheckboxCellRenderer',
-        cellEditor: 'agCheckboxCellEditor',
+        field: 'idAuthorize',
+        headerName: 'Autoriza',
+        editable: (params) => this.canEditAuthorizedRow(params.data),
+        width: 170,
+        cellEditor: 'agRichSelectCellEditor',
+        cellEditorParams: () => ({
+          values: [0, ...this.usersService.filterUsersCanAuthorizeProcesses(this.usuarios).map(user => user.id)],
+          valueListMaxHeight: 240,
+          formatValue: (value: any) => this.usuarios.find(user => Number(user.id) === Number(value))?.displayName || '',
+        }),
+        valueFormatter: (params) => {
+          const user = this.usuarios.find(item => Number(item.id) === Number(params.value));
+          return user?.displayName || '';
+        },
+      },
+      {
+        headerName: 'Acción',
+        colId: 'authorizationAction',
+        width: 145,
+        editable: false,
+        cellRenderer: (params: ICellRendererParams) => Number(params.data?.idAuthorize) > 0
+          ? `<button class="btn btn-sm btn-outline-warning py-0" title="Quitar autorización"><i class="bi bi-unlock"></i> Quitar</button>`
+          : '',
       },
 
       {
@@ -732,15 +752,11 @@ export class RequisitionsComponent implements CanComponentDeactivate {
       row.id === updatedData.id ? updatedData : row
     );
 
-    if (event.colDef?.field === 'close' && this.isClosed(updatedData.close)) {
-      event.node?.setExpanded(false);
-      updatedData.detailType = null;
-    }
-
     // Actualizar la fila en la cuadrícula
     const rowNode = this.masterGridApi.getRowNode(updatedData.id);
     if (rowNode) {
       rowNode.setData(updatedData);
+      this.masterGridApi.refreshCells({ rowNodes: [rowNode], force: true });
       // Mantener la selección si es necesario
       if (
         this.masterSelectedRowData &&
@@ -748,6 +764,32 @@ export class RequisitionsComponent implements CanComponentDeactivate {
       ) {
         rowNode.setSelected(true);
       }
+    }
+  }
+
+  canEditAuthorizedRow(row: any): boolean {
+    return !row?.locked && !Number(row?.idAuthorize);
+  }
+
+  async onMasterCellClicked(event: any): Promise<void> {
+    if (event?.column?.getColId() !== 'authorizationAction') return;
+    const row = event.data;
+    if (!Number(row?.idAuthorize)) return;
+    if (Number(row.idAuthorize) !== Number(this.trackingService.getId())) {
+      alerts.basicAlert('Autorización asignada', 'Solo la persona asignada para autorizar puede quitar esta autorización.', 'warning');
+      return;
+    }
+    const confirmation = await alerts.confirmAlert('Quitar autorización', 'La requisición volverá a quedar editable. ¿Deseas continuar?', 'warning', 'Sí, quitar');
+    if (!confirmation?.isConfirmed) return;
+    try {
+      await lastValueFrom(this.requisitionsService.updateOcAndReq(row.id, this.cleanDataForServer({ ...row, idAuthorize: 0 })));
+      const updated = { ...row, idAuthorize: 0, __modified: false };
+      event.node.setData(updated);
+      this.masterRowData = this.masterRowData.map(item => Number(item.id) === Number(row.id) ? updated : item);
+      this.masterGridApi.refreshCells({ rowNodes: [event.node], force: true });
+      alerts.basicAlert('Autorización retirada', 'La requisición volvió a quedar editable.', 'success');
+    } catch (error) {
+      alerts.basicAlert('No se pudo quitar', this.getApiErrorMessage(error, 'No fue posible retirar la autorización.'), 'error');
     }
   }
 
@@ -908,6 +950,11 @@ export class RequisitionsComponent implements CanComponentDeactivate {
 
     const selectedData = selectedNodes[0].data;
     const id = selectedData.id;
+
+    if (Number(selectedData.idAuthorize) > 0) {
+      alerts.basicAlert('Requisición autorizada', 'Quita la autorización desde la fila antes de eliminar la requisición.', 'warning');
+      return;
+    }
 
     // Verificar si está bloqueada (en proceso de cotización)
     if (selectedData.locked === true) {
@@ -1359,10 +1406,6 @@ export class RequisitionsComponent implements CanComponentDeactivate {
 
   async saveRequisitionItemsById(requisitionId: number, data: any[]): Promise<boolean> {
     const masterRow = this.masterRowData.find((row: any) => String(row.id) === String(requisitionId));
-    if (this.isClosed(masterRow?.close)) {
-      alerts.basicAlert('Requisición cerrada', 'No se pueden guardar partidas porque esta requisición está cerrada.', 'warning');
-      return false;
-    }
     if (!hasPersistedMasterId(requisitionId, masterRow?.__isNew)) {
       alerts.basicAlert('Guarda primero la requisición', 'Guarda el maestro de la requisición antes de guardar sus partidas.', 'warning');
       return false;
@@ -1437,10 +1480,6 @@ export class RequisitionsComponent implements CanComponentDeactivate {
     const requisitionId = params.data.idMovement;
     const detailId = params.data.id;
     const masterRow = this.masterRowData.find((row: any) => String(row.id) === String(requisitionId));
-    if (this.isClosed(masterRow?.close)) {
-      alerts.basicAlert('Requisición cerrada', 'No se pueden eliminar partidas porque esta requisición está cerrada.', 'warning');
-      return;
-    }
 
     if (params.data.__isNew) {
       params.api.applyTransaction({ remove: [params.data] });
@@ -1461,10 +1500,6 @@ export class RequisitionsComponent implements CanComponentDeactivate {
         );
       }
     }
-  }
-
-  private isClosed(value: any): boolean {
-    return value === true || value === 1 || ['true', '1', 'yes', 'si', 'sí', 's'].includes(String(value ?? '').trim().toLowerCase());
   }
 
   // ==================== UTILITY METHODS ====================

@@ -13,6 +13,7 @@ import { DomSanitizer, SafeResourceUrl } from '@angular/platform-browser';
 import { PdfReportsService } from 'app/services/pdf-reports.service';
 import { pdfPreviewUrl } from 'app/helpers/pdf-viewer';
 import { TrackingService } from 'app/services/tracking.service';
+import Swal from 'sweetalert2';
 import { catchError, forkJoin, from, lastValueFrom, map, mergeMap, of, toArray } from 'rxjs';
 
 @Component({
@@ -369,12 +370,16 @@ export class DetailCellRendererEntryItemsComponent implements OnInit {
         headerName: 'Marca',
         width: 130,
         editable: (params: any) => (this.materials.find(item => Number(item.id) === Number(params.data?.idProduct))?.brands?.length || 0) > 1,
-        cellEditor: 'agSelectCellEditor',
+        cellEditor: 'agRichSelectCellEditor',
         cellEditorParams: (params: any) => {
           const material = this.materials.find(item => Number(item.id) === Number(params.data?.idProduct));
           const brandValues = (material?.brands || []).map((brand: any) => String(brand.brand));
           if (this.context.movementType === 'OUT' || this.isTransferEntry()) brandValues.unshift('Sin marca');
-          return { values: brandValues };
+          return {
+            values: brandValues,
+            valueListMaxHeight: 220,
+            formatValue: (value: any) => value || 'Selecciona una marca'
+          };
         },
         valueGetter: (params: any) => params.data?.idBrand == null
           ? (params.data?.brandName || '')
@@ -420,8 +425,13 @@ export class DetailCellRendererEntryItemsComponent implements OnInit {
           const material = this.materials.find(item => Number(item.id) === Number(params.data?.idProduct));
           if (material?.conversions?.length) {
             return {
-              component: 'agSelectCellEditor',
-              params: { values: material.conversions.map((conversion: any) => conversion.measureFrom) },
+              component: 'agRichSelectCellEditor',
+              params: {
+                values: material.conversions.map((conversion: any) => conversion.measureFrom),
+                valueListMaxHeight: 220,
+                allowTyping: true,
+                filterList: true,
+              },
             };
           }
           return { component: 'agTextCellEditor' };
@@ -752,16 +762,41 @@ export class DetailCellRendererEntryItemsComponent implements OnInit {
     const service = this.context?.materialsService;
     const idRoot = this.context?.idRoot;
     if (!service || !idRoot) return;
-    const ask = async (title: string, placeholder: string) => {
-      const result = await alerts.inputAlert(title, '', 'text', '', { inputAttributes: { placeholder } });
-      return result.isConfirmed ? String(result.value || '').trim() : '';
-    };
-    const description = await ask('Nuevo material', 'Descripción');
-    if (!description) return;
-    const code = await ask('Código del material', 'Código (opcional)');
-    const measure = await ask('Unidad de medida', 'Ej: PZA, KG, M');
-    const family = await ask('Familia', 'Familia (opcional)');
-    const subfamily = await ask('Subfamilia', 'Subfamilia (opcional)');
+    const result = await Swal.fire({
+      title: '<span style="font-weight:700;color:#20344b">Agregar material</span>',
+      width: 680,
+      showCancelButton: true,
+      confirmButtonText: '<i class="bi bi-check2-circle me-1"></i> Guardar material',
+      cancelButtonText: 'Cancelar',
+      buttonsStyling: false,
+      customClass: { popup: 'material-quick-create', confirmButton: 'btn btn-primary px-4', cancelButton: 'btn btn-light ms-2 px-4' },
+      html: `
+        <div style="text-align:left;background:#f7f9fc;border:1px solid #e5ebf3;border-radius:16px;padding:18px;margin-top:8px">
+          <div style="color:#73849a;font-size:12px;font-weight:700;letter-spacing:.08em;margin-bottom:12px">DATOS DEL MATERIAL</div>
+          <label class="form-label small fw-semibold mb-1">Descripción *</label>
+          <div class="input-group mb-3"><span class="input-group-text bg-white"><i class="bi bi-box-seam text-primary"></i></span><input id="quick-material-description" class="form-control" placeholder="Nombre o descripción del material" maxlength="200"></div>
+          <div class="row g-3">
+            <div class="col-md-6"><label class="form-label small fw-semibold mb-1">Código</label><div class="input-group"><span class="input-group-text bg-white"><i class="bi bi-upc text-primary"></i></span><input id="quick-material-code" class="form-control" placeholder="Código del material" maxlength="35"></div></div>
+            <div class="col-md-6"><label class="form-label small fw-semibold mb-1">Unidad *</label><div class="input-group"><span class="input-group-text bg-white"><i class="bi bi-rulers text-primary"></i></span><input id="quick-material-measure" class="form-control" placeholder="PZA, KG, M…"></div></div>
+            <div class="col-md-6"><label class="form-label small fw-semibold mb-1">Familia</label><div class="input-group"><span class="input-group-text bg-white"><i class="bi bi-collection text-primary"></i></span><input id="quick-material-family" class="form-control" placeholder="Familia del material"></div></div>
+            <div class="col-md-6"><label class="form-label small fw-semibold mb-1">Subfamilia</label><div class="input-group"><span class="input-group-text bg-white"><i class="bi bi-diagram-2 text-primary"></i></span><input id="quick-material-subfamily" class="form-control" placeholder="Subfamilia"></div></div>
+          </div>
+        </div>`,
+      focusConfirm: false,
+      didOpen: () => (document.getElementById('quick-material-description') as HTMLInputElement)?.focus(),
+      preConfirm: () => {
+        const value = (id: string) => String((document.getElementById(id) as HTMLInputElement)?.value || '').trim();
+        const description = value('quick-material-description');
+        const measure = value('quick-material-measure');
+        if (!description || !measure) {
+          Swal.showValidationMessage('Captura la descripción y la unidad para guardar el material.');
+          return false;
+        }
+        return { description, code: value('quick-material-code'), measure, family: value('quick-material-family'), subfamily: value('quick-material-subfamily') };
+      }
+    });
+    if (!result.isConfirmed || !result.value) return;
+    const { description, code, measure, family, subfamily } = result.value;
     try {
       await lastValueFrom(service.addMaterial({ idRoot, description, code, measure, family, subfamily, active: true, vigente: true }));
       this.loadMaterials();

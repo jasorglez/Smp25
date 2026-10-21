@@ -12,6 +12,7 @@ export interface IDailyReport {
   description?:      string;
   totalPay?:         number;
   close?:            boolean;
+  idAuthorize?:      number | null;
   paid?:             boolean;
   personal?:         number;
   fotos?:            number;

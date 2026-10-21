@@ -31,6 +31,7 @@ import { SubcontractorContextService } from 'app/services/subcontractor-context.
 import { ActivatedRoute } from '@angular/router';
 import { OutingsDailyReportSyncService } from 'app/services/outings-daily-report-sync.service';
 import { AdvanceService } from 'app/services/advance.service';
+import { UsersService } from 'app/services/users.service';
 
 @Component({
   selector: 'app-sistema',
@@ -47,6 +48,8 @@ import { AdvanceService } from 'app/services/advance.service';
 })
 export class SistemaComponent implements OnInit, OnDestroy {
   private trackingService = inject(TrackingService);
+  private usersService = inject(UsersService);
+  public authorizationUsers: any[] = [];
 
   private dailyReportService = inject(DailyReportService);
   private logbookService     = inject(LogbookService);
@@ -251,7 +254,7 @@ export class SistemaComponent implements OnInit, OnDestroy {
   public colDefs: ColDef[] = [
     { field: 'id', headerName: 'ID', width: 80, editable: false, hide: true },
     {
-      field: 'date', headerName: 'Fecha', width: 110, editable: true, pinned: 'left',
+      field: 'date', headerName: 'Fecha', width: 110, editable: (params: any) => this.canEditAuthorizedRow(params.data), pinned: 'left',
       cellEditor: 'agDateCellEditor',
       valueGetter: (p) => p.data?.date ? String(p.data.date).substring(0, 10) : '',
       valueSetter: (p) => { p.data.date = p.newValue; return true; },
@@ -260,6 +263,23 @@ export class SistemaComponent implements OnInit, OnDestroy {
         const [y, m, d] = String(p.value).split('-');
         return d && m && y ? `${d}/${m}/${y}` : p.value;
       },
+    },
+    {
+      field: 'idAuthorize', headerName: 'Autoriza', width: 175,
+      editable: (params: any) => this.canEditAuthorizedRow(params.data),
+      cellEditor: 'agRichSelectCellEditor',
+      cellEditorParams: () => ({
+        values: [0, ...this.authorizationUsers.map(user => user.id)],
+        valueListMaxHeight: 240,
+        formatValue: (value: any) => this.authorizationUsers.find(user => Number(user.id) === Number(value))?.displayName || '',
+      }),
+      valueFormatter: (params: any) => this.authorizationUsers.find(user => Number(user.id) === Number(params.value))?.displayName || '',
+    },
+    {
+      headerName: 'Acción', colId: 'authorizationAction', width: 145, editable: false,
+      cellRenderer: (params: any) => Number(params.data?.idAuthorize) > 0
+        ? '<button class="btn btn-sm btn-outline-warning py-0" title="Quitar autorización"><i class="bi bi-unlock"></i> Quitar</button>'
+        : '',
     },
     {
       colId: 'dailyReportContentIndicators',
@@ -277,8 +297,8 @@ export class SistemaComponent implements OnInit, OnDestroy {
       cellRenderer: (params: any) => this.renderDailyReportContentIndicators(params.data),
       tooltipValueGetter: (params: any) => this.getDailyReportContentTooltip(params.data) || 'Sin información registrada'
     },
-    { field: 'startTime', headerName: 'Inicio', width: 110, editable: true },
-    { field: 'endTime', headerName: 'Término', width: 110, editable: true },
+    { field: 'startTime', headerName: 'Inicio', width: 110, editable: (params: any) => this.canEditAuthorizedRow(params.data) },
+    { field: 'endTime', headerName: 'Término', width: 110, editable: (params: any) => this.canEditAuthorizedRow(params.data) },
  /* { field: 'type', headerName: 'Tipo', width: 100, editable: true },
   { field: 'description',      headerName: 'Descripción',       width: 200, editable: true },
     {
@@ -293,7 +313,7 @@ export class SistemaComponent implements OnInit, OnDestroy {
       field: 'idConvention',
       headerName: 'Convenio',
       width: 180,
-      editable: true,
+      editable: (params: any) => this.canEditAuthorizedRow(params.data),
       cellEditor: 'agSelectCellEditor',
       cellEditorParams: (params: any) => ({
         values: this.conventionsList.map((c: any) => c.description)
@@ -310,10 +330,10 @@ export class SistemaComponent implements OnInit, OnDestroy {
         return true;
       },
     },
-    { field: 'numReporte',       headerName: 'No. Reporte',       width: 200, editable: true },
-    { field: 'ubication',        headerName: 'Ubicación',         width: 130, editable: true },
-    { field: 'condition',        headerName: 'Cond. Meteorológ.', width: 180, editable: true },
-    { field: 'platicasSeguridad',headerName: 'Plática Seguridad', width: 180, editable: true },
+    { field: 'numReporte',       headerName: 'No. Reporte',       width: 200, editable: (params: any) => this.canEditAuthorizedRow(params.data) },
+    { field: 'ubication',        headerName: 'Ubicación',         width: 130, editable: (params: any) => this.canEditAuthorizedRow(params.data) },
+    { field: 'condition',        headerName: 'Cond. Meteorológ.', width: 180, editable: (params: any) => this.canEditAuthorizedRow(params.data) },
+    { field: 'platicasSeguridad',headerName: 'Plática Seguridad', width: 180, editable: (params: any) => this.canEditAuthorizedRow(params.data) },
  
     {
       colId: 'dailyReportPdf',
@@ -450,14 +470,14 @@ export class SistemaComponent implements OnInit, OnDestroy {
     },
 
     {
-      field: 'close', headerName: 'Cerrado', width: 90, editable: true,
+      field: 'close', headerName: 'Cerrado', width: 90, editable: (params: any) => this.canEditAuthorizedRow(params.data),
       cellEditor: 'agCheckboxCellEditor',
       cellRenderer: (p: any) => p.value
         ? '<i class="bi bi-check-circle-fill text-success"></i>'
         : '<i class="bi bi-x-circle-fill text-danger"></i>',
     },
     {
-      field: 'paid', headerName: 'Pagado', width: 90, editable: true,
+      field: 'paid', headerName: 'Pagado', width: 90, editable: (params: any) => this.canEditAuthorizedRow(params.data),
       cellEditor: 'agCheckboxCellEditor',
       cellRenderer: (p: any) => p.value
         ? '<i class="bi bi-check-circle-fill text-success"></i>'
@@ -496,6 +516,12 @@ export class SistemaComponent implements OnInit, OnDestroy {
 
     effect(() => {
       this.idRoot = this.signalsService.getRootSelectedBySidebar()();
+      if (this.idRoot) {
+        this.usersService.getDataUsers(this.idRoot).subscribe({
+          next: (response: any) => this.authorizationUsers = this.usersService.filterUsersCanAuthorizeProcesses(response?.data || response || []),
+          error: () => this.authorizationUsers = []
+        });
+      }
       if (this.idRoot && this.idProject) void this.syncExistingOutings(this.idProject);
     });
 
@@ -783,6 +809,7 @@ export class SistemaComponent implements OnInit, OnDestroy {
       platicasSeguridad: 'Sin Platicas',
       totalPay: 0,
       close: false,
+      idAuthorize: 0,
       paid: true,
       tiempos: 0,
       avances: 0,
@@ -881,6 +908,10 @@ export class SistemaComponent implements OnInit, OnDestroy {
   }
 
   async delete(): Promise<void> {
+    if (Number(this.selectedRow?.idAuthorize) > 0) {
+      alerts.basicAlert('Reporte autorizado', 'Quita la autorización desde la fila antes de eliminar el reporte.', 'warning');
+      return;
+    }
     this.trackingService.addLog(this.trackingService.getnameComp(), 'Eliminó sistema', 'Proyectos', this.trackingService.getEmail());
     if (!this.selectedRow) return;
     if (this.selectedRow.__isNew) {
@@ -947,6 +978,35 @@ export class SistemaComponent implements OnInit, OnDestroy {
       event.data.__modified = true;
     }
     this.hasUnsavedChanges = true;
+    this.gridApi?.refreshCells({ rowNodes: [event.node], force: true });
+  }
+
+  canEditAuthorizedRow(row: any): boolean {
+    return !Number(row?.idAuthorize);
+  }
+
+  async onCellClicked(event: any): Promise<void> {
+    if (event?.column?.getColId() !== 'authorizationAction') return;
+    const row = event.data;
+    if (!Number(row?.idAuthorize)) return;
+    if (Number(row.idAuthorize) !== Number(this.trackingService.getId())) {
+      alerts.basicAlert('Autorización asignada', 'Solo la persona asignada para autorizar puede quitar esta autorización.', 'warning');
+      return;
+    }
+    const confirmation = await alerts.confirmAlert('Quitar autorización', 'El reporte diario volverá a quedar editable. ¿Deseas continuar?', 'warning', 'Sí, quitar');
+    if (!confirmation.isConfirmed) return;
+    try {
+      const updated = { ...row, idAuthorize: 0 };
+      await new Promise((resolve, reject) => this.dailyReportService.updateDailyReport(row.id, this.cleanForServer(updated)).subscribe({ next: resolve, error: reject }));
+      Object.assign(row, updated, { __modified: false });
+      event.node.setData(row);
+      this.gridApi?.refreshCells({ rowNodes: [event.node], force: true });
+      this.originalRowData = this.originalRowData.map(item => Number(item.id) === Number(row.id) ? { ...item, idAuthorize: 0 } : item);
+      alerts.basicAlert('Autorización retirada', 'El reporte diario volvió a quedar editable.', 'success');
+    } catch (error: any) {
+      const message = error?.error?.message || error?.message || 'No fue posible retirar la autorización.';
+      alerts.basicAlert('No se pudo quitar', message, 'error');
+    }
   }
 
   private cleanForServer(item: any): any {
@@ -957,6 +1017,10 @@ export class SistemaComponent implements OnInit, OnDestroy {
   // ==================== MÉTODOS PARA CASCADAS DE BITÁCORAS ====================
 
   toggleBitacoraDetail(node: any, bitacoraType: string) {
+    if (Number(node?.data?.idAuthorize) > 0) {
+      alerts.basicAlert('Reporte autorizado', 'Retira la autorización desde esta fila para poder editar sus bitácoras.', 'warning');
+      return;
+    }
     const api = this.gridApi;
     const isCurrentlyExpanded = node.expanded && node.data.detailType === bitacoraType;
 
@@ -1076,6 +1140,10 @@ export class SistemaComponent implements OnInit, OnDestroy {
   // ==================== COPIAR DEL DÍA ANTERIOR ====================
 
   async copyFromPreviousDay(row: any, types: string[]): Promise<void> {
+    if (Number(row?.idAuthorize) > 0) {
+      alerts.basicAlert('Reporte autorizado', 'Retira la autorización antes de modificar este reporte.', 'warning');
+      return;
+    }
     if (!row.id) {
       alerts.basicAlert('Aviso', 'Guarda el reporte primero antes de copiar datos del día anterior', 'warning');
       return;

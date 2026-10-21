@@ -379,7 +379,7 @@ export class PurchaseOrderComponent implements CanComponentDeactivate {
       {
         field: 'folio',
         headerName: 'Orden de compra',
-        editable: true,
+        editable: (params) => this.canEditAuthorizedRow(params.data),
         filter: true,
         width: 150,
         cellStyle: (params) => {
@@ -395,7 +395,7 @@ export class PurchaseOrderComponent implements CanComponentDeactivate {
       {
         field: 'dateCreate',
         headerName: 'Fecha Solicitud',
-        editable: true,
+        editable: (params) => this.canEditAuthorizedRow(params.data),
         width: 150,
         cellDataType: 'dateString',
         valueFormatter: (params) => {
@@ -408,7 +408,7 @@ export class PurchaseOrderComponent implements CanComponentDeactivate {
       {
         field: 'dateSupply',
         headerName: 'Fecha envío',
-        editable: true,
+        editable: (params) => this.canEditAuthorizedRow(params.data),
         width: 150,
         cellDataType: 'dateString',
         valueFormatter: (params) => {
@@ -421,7 +421,7 @@ export class PurchaseOrderComponent implements CanComponentDeactivate {
       {
         field: 'idReq',
         headerName: 'Requisición',
-        editable: () => this.isPurchaseOrdersLoaded,
+        editable: (params) => this.isPurchaseOrdersLoaded && this.canEditAuthorizedRow(params.data),
         filter: true,
         width: 150,
         cellEditor: 'agSelectCellEditor',
@@ -437,13 +437,13 @@ export class PurchaseOrderComponent implements CanComponentDeactivate {
       },
       {
         field: 'idWarehouse', headerName: 'Almacén destino', width: 190,
-        editable: (params) => !params.data?.idRequisition,
+        editable: (params) => !params.data?.idRequisition && this.canEditAuthorizedRow(params.data),
         cellEditor: 'agSelectCellEditor',
         cellEditorParams: () => ({ values: this.almacenes.map((warehouse: any) => warehouse.id) }),
         valueFormatter: (params) => this.almacenes.find((warehouse: any) => Number(warehouse.id) === Number(params.value))?.name || ''
       },
       {
-        field: 'idDepartament', headerName: 'Departamento solicita', width: 190, editable: true,
+        field: 'idDepartament', headerName: 'Departamento solicita', width: 190, editable: (params) => this.canEditAuthorizedRow(params.data),
         cellEditor: 'agSelectCellEditor',
         cellEditorParams: () => ({ values: [...(this.departamentos ?? []).map((item: any) => item.id), '__ADD_NEW__'] }),
         valueFormatter: (params) => params.value === '__ADD_NEW__' ? '＋ Agregar nuevo...' :
@@ -452,7 +452,7 @@ export class PurchaseOrderComponent implements CanComponentDeactivate {
       {
         field: 'idProvider',
         headerName: 'Proveedor',
-        editable: true,
+        editable: (params) => this.canEditAuthorizedRow(params.data),
         filter: true,
         width: 300,
         minWidth: 240,
@@ -469,7 +469,7 @@ export class PurchaseOrderComponent implements CanComponentDeactivate {
       {
         field: 'idIncorExp',
         headerName: 'Gasto destino',
-        editable: true,
+        editable: (params) => this.canEditAuthorizedRow(params.data),
         width: 270,
         cellEditor: 'agSelectCellEditor',
         cellEditorParams: () => ({ values: this.gastosAceptanOc.map((item: any) => item.id) }),
@@ -481,7 +481,7 @@ export class PurchaseOrderComponent implements CanComponentDeactivate {
       {
         field: 'idCurrency',
         headerName: 'Moneda',
-        editable: true,
+        editable: (params) => this.canEditAuthorizedRow(params.data),
         width: 150,
         cellEditor: 'agSelectCellEditor',
         cellEditorParams: () => ({
@@ -496,7 +496,7 @@ export class PurchaseOrderComponent implements CanComponentDeactivate {
       {
         field: 'idPayment',
         headerName: 'Forma de pago',
-        editable: true,
+        editable: (params) => this.canEditAuthorizedRow(params.data),
         width: 150,
         cellEditor: 'agSelectCellEditor',
         cellEditorParams: () => ({
@@ -513,7 +513,7 @@ export class PurchaseOrderComponent implements CanComponentDeactivate {
       {
         field: 'discount',
         headerName: 'Descuento',
-        editable: true,
+        editable: (params) => this.canEditAuthorizedRow(params.data),
         width: 150,
       },
       {
@@ -533,14 +533,14 @@ export class PurchaseOrderComponent implements CanComponentDeactivate {
        {
         field: 'delivery',
         headerName: 'Entrega',
-        editable: true,
+        editable: (params) => this.canEditAuthorizedRow(params.data),
         filter: true,
         width: 150,
       },
       {
         field: 'deliveryTime',
         headerName: 'Tipo',
-        editable: true,
+        editable: (params) => this.canEditAuthorizedRow(params.data),
         filter: true,
         width: 150,
         cellEditor: 'agSelectCellEditor',
@@ -560,13 +560,13 @@ export class PurchaseOrderComponent implements CanComponentDeactivate {
       {
         field: 'conditions',
         headerName: 'Condición',
-        editable: true,
+        editable: (params) => this.canEditAuthorizedRow(params.data),
         width: 150,
       },     
       {
         field: 'idSolicit',
         headerName: 'Solicita',
-        editable: true,
+        editable: (params) => this.canEditAuthorizedRow(params.data),
         width: 150,
         cellEditor: 'agSelectCellEditor',
         cellEditorParams: {
@@ -582,11 +582,13 @@ export class PurchaseOrderComponent implements CanComponentDeactivate {
       {
         field: 'idAuthorize',
         headerName: 'Autoriza',
-        editable: true,
+        editable: (params) => this.canEditAuthorizedRow(params.data),
         width: 150,
-        cellEditor: 'agSelectCellEditor',
+        cellEditor: 'agRichSelectCellEditor',
         cellEditorParams: {
           values: this.usersService.filterUsersCanAuthorizeProcesses(this.usuarios).map((item) => item.id),
+          valueListMaxHeight: 240,
+          formatValue: (value: any) => this.usuarios.find(item => Number(item.id) === Number(value))?.displayName || '',
         },
         valueFormatter: (params) => {
           const foundItem = this.usuarios
@@ -594,6 +596,15 @@ export class PurchaseOrderComponent implements CanComponentDeactivate {
             : null;
           return foundItem ? `${foundItem.displayName}` : params.value;
         },
+      },
+      {
+        headerName: 'Acción',
+        colId: 'authorizationAction',
+        width: 145,
+        editable: false,
+        cellRenderer: (params: ICellRendererParams) => Number(params.data?.idAuthorize) > 0
+          ? '<button class="btn btn-sm btn-outline-warning py-0" title="Quitar autorización"><i class="bi bi-unlock"></i> Quitar</button>'
+          : '',
       },
        {
         field: 'comments',
@@ -1306,6 +1317,7 @@ export class PurchaseOrderComponent implements CanComponentDeactivate {
     const rowNode = this.masterGridApi.getRowNode(updatedData.id);
     if (rowNode) {
       rowNode.setData(updatedData);
+      this.masterGridApi?.refreshCells({ rowNodes: [rowNode], force: true });
       // Mantener la selección si es necesario
       if (
         this.masterSelectedRowData &&
@@ -1313,6 +1325,32 @@ export class PurchaseOrderComponent implements CanComponentDeactivate {
       ) {
         rowNode.setSelected(true);
       }
+    }
+  }
+
+  canEditAuthorizedRow(row: any): boolean {
+    return !Number(row?.idAuthorize);
+  }
+
+  async onMasterCellClicked(event: any): Promise<void> {
+    if (event?.column?.getColId() !== 'authorizationAction') return;
+    const row = event.data;
+    if (!Number(row?.idAuthorize)) return;
+    if (Number(row.idAuthorize) !== Number(this.trackingService.getId())) {
+      alerts.basicAlert('Autorización asignada', 'Solo la persona asignada para autorizar puede quitar esta autorización.', 'warning');
+      return;
+    }
+    const confirmation = await alerts.confirmAlert('Quitar autorización', 'La orden de compra volverá a quedar editable. ¿Deseas continuar?', 'warning', 'Sí, quitar');
+    if (!confirmation.isConfirmed) return;
+    try {
+      await lastValueFrom(this.requisitionsService.updateOcAndReq(row.id, this.cleanDataForServer({ ...row, idAuthorize: 0 })));
+      const updated = { ...row, idAuthorize: 0, __modified: false };
+      event.node.setData(updated);
+      this.masterRowData = this.masterRowData.map(item => Number(item.id) === Number(row.id) ? updated : item);
+      this.masterGridApi?.refreshCells({ rowNodes: [event.node], force: true });
+      alerts.basicAlert('Autorización retirada', 'La orden de compra volvió a quedar editable.', 'success');
+    } catch (error) {
+      alerts.basicAlert('No se pudo quitar', 'No fue posible retirar la autorización de la orden de compra.', 'error');
     }
   }
 
@@ -1525,6 +1563,10 @@ export class PurchaseOrderComponent implements CanComponentDeactivate {
 
     const selectedData = selectedNodes[0].data;
     const id = selectedData.id;
+    if (Number(selectedData.idAuthorize) > 0) {
+      alerts.basicAlert('Orden autorizada', 'Quita la autorización desde la fila antes de eliminar la orden de compra.', 'warning');
+      return;
+    }
     const confirmation = await alerts.confirmAlert(
       'Eliminar orden de compra',
       `¿Deseas eliminar la OC "${selectedData.folio || id}"? Esta acción no se puede deshacer.`,
@@ -1912,6 +1954,10 @@ export class PurchaseOrderComponent implements CanComponentDeactivate {
   // ==================== MASTER-DETAIL CASCADE METHODS ====================
 
   toggleCascade(node: any) {
+    if (Number(node?.data?.idAuthorize) > 0) {
+      alerts.basicAlert('Orden autorizada', 'Quita la autorización desde la fila para modificar sus partidas.', 'warning');
+      return;
+    }
     const event = {
       node: node,
       api: this.masterGridApi,

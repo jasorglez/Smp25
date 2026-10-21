@@ -32,6 +32,7 @@ import { WarehousesService } from 'app/services/warehouses.service';
   standalone: true,
   imports: [CommonModule, FormsModule, AgGridModule, DetailCellRendererEntryItemsComponent, PdfButtonCellRendererComponent],
   templateUrl: './inandout-st.component.html',
+  styleUrl: './inandout-st.component.scss',
 })
 export class InandoutStComponent implements OnInit {
 
@@ -516,7 +517,7 @@ export class InandoutStComponent implements OnInit {
         field: 'idProject',
         headerName: 'Proyecto',
         width: 160,
-        editable: true,
+        editable: (params: any) => this.canEditAuthorizedRow(params.data),
         cellEditor: 'agRichSelectCellEditor',
         cellEditorParams: () => ({
           values: this.projectList.map(p => p.id),
@@ -535,7 +536,7 @@ export class InandoutStComponent implements OnInit {
         field: 'idWarehouse',
         headerName: 'Almacén',
         width: 140,
-        editable: true,
+        editable: (params: any) => this.canEditAuthorizedRow(params.data),
         cellEditor: 'agRichSelectCellEditor',
         cellEditorParams: () => ({
           values: this.warehouses.map(wh => wh.idAlmacen),
@@ -554,7 +555,7 @@ export class InandoutStComponent implements OnInit {
         field: 'idType',
         headerName: 'Tipo de Movimiento',
         width: 170,
-        editable: true,
+        editable: (params: any) => this.canEditAuthorizedRow(params.data),
         cellEditor: 'agRichSelectCellEditor',
         cellEditorParams: () => ({
           values: [...this.catalogs.map(c => c.id), '__ADD_NEW__'],
@@ -575,7 +576,7 @@ export class InandoutStComponent implements OnInit {
         headerName: 'OT',
         width: 160,
         hide: this.otList.length === 0,
-        editable: true,
+        editable: (params: any) => this.canEditAuthorizedRow(params.data),
         cellEditor: 'agRichSelectCellEditor',
         cellEditorParams: () => ({
           values: [0, ...this.otList.map(ot => ot.id)],
@@ -597,7 +598,7 @@ export class InandoutStComponent implements OnInit {
         headerName: 'Orden de Compra',
         width: 160,
         hide: this.isTransferType(this.selectedEntry?.idType),
-        editable: true,
+        editable: (params: any) => this.canEditAuthorizedRow(params.data),
         cellEditor: 'agRichSelectCellEditor',
         cellEditorParams: () => ({
           values: [0, ...this.ocList.map(oc => oc.id)],
@@ -619,7 +620,7 @@ export class InandoutStComponent implements OnInit {
         headerName: 'Folio',
         width: 110,
         filter: true,
-        editable: true,
+        editable: (params: any) => this.canEditAuthorizedRow(params.data),
         valueSetter: (params: any) => {
           params.data.folio = params.newValue ? params.newValue.toUpperCase() : '';
           return true;
@@ -629,7 +630,7 @@ export class InandoutStComponent implements OnInit {
         field: 'date',
         headerName: 'Fecha',
         width: 110,
-        editable: true,
+        editable: (params: any) => this.canEditAuthorizedRow(params.data),
         valueFormatter: (params: any) => {
           if (!params.value) return '';
           return new Date(params.value).toLocaleDateString();
@@ -644,7 +645,7 @@ export class InandoutStComponent implements OnInit {
         headerName: 'Almacén Destino',
         width: 190,
         hide: !this.isTransferType(this.selectedEntry?.idType),
-        editable: (params: any) => this.isTransferType(params.data?.idType),
+        editable: (params: any) => this.isTransferType(params.data?.idType) && this.canEditAuthorizedRow(params.data),
         cellEditor: 'agRichSelectCellEditor',
         cellEditorParams: (params: any) => {
           const destinationId = Number(params.data?.idWarehouse || this.selectedWarehouse?.idAlmacen || 0);
@@ -669,7 +670,7 @@ export class InandoutStComponent implements OnInit {
         headerName: 'Factura',
         width: 120,
         hide: this.isTransferType(this.selectedEntry?.idType),
-        editable: (params: any) => !this.isTransferType(params.data?.idType),
+        editable: (params: any) => !this.isTransferType(params.data?.idType) && this.canEditAuthorizedRow(params.data),
         valueSetter: (params: any) => {
           params.data.numBill = params.newValue ? params.newValue.toUpperCase() : '';
           return true;
@@ -679,7 +680,7 @@ export class InandoutStComponent implements OnInit {
         field: 'deliverName',
         headerName: 'Entregado Por',
         width: 180,
-        editable: true,
+        editable: (params: any) => this.canEditAuthorizedRow(params.data),
         valueSetter: (params: any) => {
           params.data.deliverName = params.newValue ? params.newValue.toUpperCase() : '';
           return true;
@@ -689,7 +690,7 @@ export class InandoutStComponent implements OnInit {
         field: 'idAutoriza',
         headerName: 'Autorizado Por',
         width: 180,
-        editable: true,
+        editable: (params: any) => this.canEditAuthorizedRow(params.data),
         cellEditor: 'agRichSelectCellEditor',
         cellEditorParams: () => ({
           values: this.usersService.filterUsersCanAuthorizeProcesses(this.users).map(u => u.id),
@@ -708,11 +709,17 @@ export class InandoutStComponent implements OnInit {
         field: 'comment',
         headerName: 'Comentario',
         width: 300,
-        editable: true,
+        editable: (params: any) => this.canEditAuthorizedRow(params.data),
         valueSetter: (params: any) => {
           params.data.comment = params.newValue ? params.newValue.toUpperCase() : '';
           return true;
         }
+      },
+      {
+        headerName: 'Acción', colId: 'authorizationAction', width: 145, editable: false,
+        cellRenderer: (params: any) => Number(params.data?.idAutoriza) > 0
+          ? '<button class="btn btn-sm btn-outline-warning py-0" title="Quitar autorización"><i class="bi bi-unlock"></i> Quitar</button>'
+          : '',
       }
     ];
   }
@@ -721,6 +728,10 @@ export class InandoutStComponent implements OnInit {
     event.node.setSelected(true);
 
     const colId = event.column.getColId();
+    if (colId === 'authorizationAction') {
+      void this.removeAuthorization(event);
+      return;
+    }
     if (colId === 'countrow') {
       const node = event.node;
       const api = event.api;
@@ -745,7 +756,39 @@ export class InandoutStComponent implements OnInit {
     }
   }
 
+  canEditAuthorizedRow(row: any): boolean {
+    return !Number(row?.idAutoriza);
+  }
+
+  private async removeAuthorization(event: any): Promise<void> {
+    const row = event.data;
+    if (!Number(row?.idAutoriza)) return;
+    if (Number(row.idAutoriza) !== Number(this.trackingService.getId())) {
+      alerts.basicAlert('Autorización asignada', 'Solo la persona asignada para autorizar puede quitar esta autorización.', 'warning');
+      return;
+    }
+    const documentLabel = this.movementType === 'IN' ? 'entrada' : 'salida';
+    const confirmation = await alerts.confirmAlert('Quitar autorización', `La ${documentLabel} volverá a quedar editable. ¿Deseas continuar?`, 'warning', 'Sí, quitar');
+    if (!confirmation.isConfirmed) return;
+    try {
+      const updatedRow = { ...row, idAutoriza: 0 };
+      await lastValueFrom(this.inandoutService.updateInAndOut(row.id, this.prepareEntryData(updatedRow)));
+      const persistedRow = { ...updatedRow, __modified: false };
+      event.node.setData(persistedRow);
+      this.rowData = this.rowData.map(item => Number(item.id) === Number(row.id) ? persistedRow : item);
+      this.gridApi.refreshCells({ rowNodes: [event.node], force: true });
+      alerts.basicAlert('Autorización retirada', `La ${documentLabel} volvió a quedar editable.`, 'success');
+    } catch (error: any) {
+      const message = error?.error?.message || error?.message || 'No fue posible retirar la autorización.';
+      alerts.basicAlert('No se pudo quitar', message, 'error');
+    }
+  }
+
   toggleCascade(node: any) {
+    if (Number(node?.data?.idAutoriza) > 0) {
+      alerts.basicAlert('Movimiento autorizado', 'Quita la autorización desde la fila para modificar sus partidas.', 'warning');
+      return;
+    }
     const event = {
       node: node,
       api: this.gridApi,
@@ -869,6 +912,7 @@ export class InandoutStComponent implements OnInit {
       this.isDirectEntryMode = event.newValue;
     }
     this.hasUnsavedChanges = true;
+    this.gridApi?.refreshCells({ rowNodes: [event.node], force: true });
     if (event.colDef.field === 'idType') {
       this.selectedEntry = event.data;
       this.refreshColumns();
@@ -988,6 +1032,10 @@ export class InandoutStComponent implements OnInit {
     this.trackingService.addLog(this.trackingService.getnameComp(), 'Eliminó inandout st', 'ModWareHousesTD', this.trackingService.getEmail());
     if (!this.selectedEntry) {
       alerts.basicAlert('Selección requerida', 'Por favor seleccione una entrada para eliminar', 'warning');
+      return;
+    }
+    if (Number(this.selectedEntry?.idAutoriza) > 0) {
+      alerts.basicAlert('Movimiento autorizado', 'Quita la autorización desde la fila antes de eliminarlo.', 'warning');
       return;
     }
 

@@ -18,7 +18,8 @@ import Swal from 'sweetalert2';
   template: `
     <div class="detail-grid-container">
       <div class="detail-actions d-flex justify-content-end mb-1">
-        <button class="btn btn-primary btn-xs me-1 py-0 px-2" (click)="addItem()" [disabled]="!masterSaved" style="font-size: 0.75rem; line-height: 1.5;">
+        <span *ngIf="isAuthorized" class="badge bg-warning text-dark me-auto">OC autorizada - Solo lectura</span>
+        <button class="btn btn-primary btn-xs me-1 py-0 px-2" (click)="addItem()" [disabled]="!masterSaved || isAuthorized" style="font-size: 0.75rem; line-height: 1.5;">
           <i class="bi bi-plus" style="font-size: 0.75rem;"></i> Agregar
         </button>
         <button class="btn btn-outline-primary btn-xs me-1 py-0 px-2" (click)="quickAddMaterial()" style="font-size: 0.75rem; line-height: 1.5;">
@@ -76,6 +77,7 @@ export class DetailCellRendererPurchaseOrderItemsComponent implements OnInit {
   private context: any;
 
   rowData: any[] = [];
+  get isAuthorized(): boolean { return Number(this.params?.data?.idAuthorize) > 0; }
   hasUnsavedChanges: boolean = false;
   tempIdCounter: number = 0;
   productos: any[] = [];
