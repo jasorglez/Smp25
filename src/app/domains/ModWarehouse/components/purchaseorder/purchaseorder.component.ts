@@ -59,6 +59,7 @@ interface Provider {
 export class PurchaseOrderComponent implements CanComponentDeactivate {
   // Inject of new way for Angular 18
   private requisitionsService = inject(OcAndReqsService);
+  private requisitionBalanceRequest = 0;
   private providersService = inject(ProvidersService);
   private catalogsService = inject(CatalogsService);
   private departmentsService = inject(DepartmentsService);
@@ -849,6 +850,7 @@ export class PurchaseOrderComponent implements CanComponentDeactivate {
             detailData: []
           }));
           this.isPurchaseOrdersLoaded = true;
+          void this.refreshRequisitionBalances();
         },
         (error) => console.error('Error fetching data:', error)
       );
@@ -882,8 +884,8 @@ export class PurchaseOrderComponent implements CanComponentDeactivate {
       .getOcAndReqs(this.typeReference, this.idReference, 'REQUIS')
       .subscribe(
         (data: any) => {
-          this.requisiciones = data;
-          console.log(this.requisiciones);
+          this.requisiciones = Array.isArray(data) ? data : [];
+          void this.refreshRequisitionBalances();
         },
         (error) => console.error('Error fetching requisitions:', error)
       );
@@ -893,18 +895,77 @@ export class PurchaseOrderComponent implements CanComponentDeactivate {
     return (this.requisiciones || [])
       .filter((requisition: any) =>
         Number(requisition.id) === Number(currentPurchaseOrder?.idReq) ||
-        !this.isRequisitionAssigned(Number(requisition.id), currentPurchaseOrder?.id)
+        (requisition.remainingItems || []).some((item: any) => Number(item.remainingQuantity) > 0)
       )
       .map((requisition: any) => Number(requisition.id));
   }
 
-  private isRequisitionAssigned(requisitionId: number, currentPurchaseOrderId: any): boolean {
-    if (!requisitionId) return false;
-    return (this.masterRowData || []).some((purchaseOrder: any) =>
-      String(purchaseOrder.id) !== String(currentPurchaseOrderId) &&
-      Number(purchaseOrder.idReq) === requisitionId &&
-      purchaseOrder.active !== false && Number(purchaseOrder.active) !== 0
+  private async refreshRequisitionBalances(): Promise<void> {
+    const requestId = ++this.requisitionBalanceRequest;
+    const requisitions = Array.isArray(this.requisiciones) ? this.requisiciones : [];
+    const orders = (this.masterRowData || []).filter((order: any) =>
+      order.active !== false && Number(order.active) !== 0 && Number(order.idReq) > 0
     );
+    if (!requisitions.length) return;
+
+    try {
+      const requisitionItems = await Promise.all(requisitions.map((req: any) =>
+        lastValueFrom(this.requisitionsService.getReqItems(Number(req.id)))
+      ));
+      const purchaseOrderItems = await Promise.all(orders.map((order: any) =>
+        lastValueFrom(this.requisitionsService.getReqItems(Number(order.id)))
+      ));
+      if (requestId !== this.requisitionBalanceRequest) return;
+      const purchasedByReq = new Map<number, Map<string, number>>();
+
+      orders.forEach((order: any, index: number) => {
+        const reqId = Number(order.idReq);
+        let totals = purchasedByReq.get(reqId);
+        if (!totals) purchasedByReq.set(reqId, totals = new Map<string, number>());
+        (Array.isArray(purchaseOrderItems[index]) ? purchaseOrderItems[index] : [])
+          .filter((item: any) => item.active !== false && Number(item.active) !== 0)
+          .forEach((item: any) => {
+            const key = this.requisitionMaterialBrandKey(item);
+            if (!key) return;
+            totals!.set(key, (totals!.get(key) || 0) + Math.max(0, Number(item.quantity) || 0));
+          });
+      });
+
+      this.requisiciones = requisitions.map((requisition: any, index: number) => {
+        const requestedByMaterial = new Map<string, { item: any; quantity: number }>();
+        (Array.isArray(requisitionItems[index]) ? requisitionItems[index] : [])
+          .filter((item: any) => item.active !== false && Number(item.active) !== 0)
+          .forEach((item: any) => {
+            const key = this.requisitionMaterialBrandKey(item);
+            if (!key) return;
+            const current = requestedByMaterial.get(key);
+            if (current) current.quantity += Math.max(0, Number(item.quantity) || 0);
+            else requestedByMaterial.set(key, { item, quantity: Math.max(0, Number(item.quantity) || 0) });
+          });
+        const purchased = purchasedByReq.get(Number(requisition.id)) || new Map<string, number>();
+        const remainingItems = Array.from(requestedByMaterial.entries())
+          .map(([key, value]) => ({
+            ...value.item,
+            remainingQuantity: Math.max(0, value.quantity - (purchased.get(key) || 0))
+          }))
+          .filter((item: any) => item.remainingQuantity > 0);
+        return { ...requisition, remainingItems };
+      });
+      this.masterGridApi?.refreshCells({ columns: ['idReq'], force: true });
+    } catch (error) {
+      if (requestId !== this.requisitionBalanceRequest) return;
+      console.error('No fue posible calcular las cantidades pendientes de requisiciones:', error);
+      this.requisiciones = requisitions.map((requisition: any) => ({ ...requisition, remainingItems: [] }));
+    }
+  }
+
+  private requisitionMaterialBrandKey(item: any): string {
+    const materialId = Number(item?.idSupplie || item?.idProduct || 0);
+    if (!materialId) return '';
+    const brand = item?.idBrand != null
+      ? `id:${Number(item.idBrand)}`
+      : `name:${String(item?.brandName || item?.brand || '').trim().toLocaleUpperCase()}`;
+    return `${materialId}|${brand}`;
   }
 
   obtenerProveedores() {
@@ -1284,13 +1345,16 @@ export class PurchaseOrderComponent implements CanComponentDeactivate {
 
     if (event.colDef.field === 'idReq') {
       const requisitionId = Number(updatedData.idReq);
-      if (requisitionId > 0 && this.isRequisitionAssigned(requisitionId, updatedData.id)) {
+      const availableRequisition = (this.requisiciones || []).find((item: any) => Number(item.id) === requisitionId);
+      const hasRemainingQuantity = (availableRequisition?.remainingItems || [])
+        .some((item: any) => Number(item.remainingQuantity) > 0);
+      if (requisitionId > 0 && !hasRemainingQuantity && Number(event.oldValue) !== requisitionId) {
         updatedData.idReq = event.oldValue ?? null;
         delete updatedData.__pendingRequisitionItemImport;
         event.node.setData(updatedData);
         this.masterRowData = this.masterRowData.map((row: any) => String(row.id) === String(updatedData.id) ? updatedData : row);
         this.masterGridApi?.refreshCells({ rowNodes: [event.node], columns: ['idReq'], force: true });
-        alerts.basicAlert('Requisición ya utilizada', 'Esta requisición ya está vinculada a otra orden de compra.', 'warning');
+        alerts.basicAlert('Requisición completa', 'Esta requisición ya no tiene cantidades pendientes por comprar.', 'warning');
         return;
       }
       if (requisitionId > 0) {
@@ -1563,6 +1627,10 @@ export class PurchaseOrderComponent implements CanComponentDeactivate {
 
     const selectedData = selectedNodes[0].data;
     const id = selectedData.id;
+    if (Number(selectedData.countrow || 0) > 0) {
+      alerts.basicAlert('No se puede eliminar', 'La Orden de compra contiene partidas. Elimina primero sus partidas.', 'warning');
+      return;
+    }
     if (Number(selectedData.idAuthorize) > 0) {
       alerts.basicAlert('Orden autorizada', 'Quita la autorización desde la fila antes de eliminar la orden de compra.', 'warning');
       return;
@@ -1900,16 +1968,18 @@ export class PurchaseOrderComponent implements CanComponentDeactivate {
    * por lo que guardar nuevamente la misma OC no duplica sus partidas.
    */
   private async importRequisitionItemsToPurchaseOrder(purchaseOrderId: number, requisitionId: number): Promise<number> {
-    const requisitionItems: any = await lastValueFrom(this.requisitionsService.getReqItems(requisitionId));
-    const activeItems = (Array.isArray(requisitionItems) ? requisitionItems : [])
-      .filter((item: any) => item.active !== false && item.active !== 0);
+    const requisition = (this.requisiciones || []).find((item: any) => Number(item.id) === Number(requisitionId));
+    const activeItems = Array.isArray(requisition?.remainingItems) ? requisition.remainingItems : [];
 
     for (const requisitionItem of activeItems) {
-      const quantity = Number(requisitionItem.quantity) || 0;
+      const quantity = Number(requisitionItem.remainingQuantity) || 0;
+      if (quantity <= 0) continue;
       const price = Number(requisitionItem.price) || 0;
-      const iva = Number(requisitionItem.iva) || 0;
-      const retention = Number(requisitionItem.retention) || 0;
-      const total = Number(requisitionItem.total) || (quantity * price) + iva - retention;
+      const requestedQuantity = Number(requisitionItem.quantity) || 0;
+      const balanceRatio = requestedQuantity > 0 ? quantity / requestedQuantity : 0;
+      const iva = (Number(requisitionItem.iva) || 0) * balanceRatio;
+      const retention = (Number(requisitionItem.retention) || 0) * balanceRatio;
+      const total = (quantity * price) + iva - retention;
       const purchaseOrderItem = {
         idMovement: purchaseOrderId,
         idSupplie: Number(requisitionItem.idSupplie) || 0,
@@ -1933,6 +2003,7 @@ export class PurchaseOrderComponent implements CanComponentDeactivate {
     }
 
     this.updatePurchaseOrderItemsCount(purchaseOrderId, activeItems.length);
+    await this.refreshRequisitionBalances();
     return activeItems.length;
   }
 
@@ -2155,6 +2226,7 @@ export class PurchaseOrderComponent implements CanComponentDeactivate {
           delete row.__isNew;
           delete row.__modified;
         });
+        await this.refreshRequisitionBalances();
       } else {
         alerts.basicAlert('Partidas vinculadas', 'Las partidas existentes se guardaron en el detalle del gasto seleccionado.', 'success');
       }

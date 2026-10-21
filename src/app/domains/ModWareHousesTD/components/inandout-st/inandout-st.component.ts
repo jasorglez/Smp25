@@ -58,6 +58,7 @@ export class InandoutStComponent implements OnInit {
   private isGeneratingReport: boolean = false;
   private warehouseLoadRequest = 0;
   private otLoadRequest = 0;
+  private sourceEntryLoadRequest = 0;
   rowData: any[] = [];
   selectedWarehouse: any = null;
   warehouses: any[] = [];
@@ -76,6 +77,9 @@ export class InandoutStComponent implements OnInit {
   otList: any[] = [];
   selectedOt: any = null;
   ocList: any[] = [];
+  entryList: any[] = [];
+  private ocRemainingItemsById = new Map<number, any[]>();
+  private entryRemainingItemsById = new Map<number, any[]>();
   projectList: any[] = [];
   users: any[] = [];
 
@@ -273,32 +277,184 @@ export class InandoutStComponent implements OnInit {
   }
 
   loadOcList() {
+    if (this.movementType === 'OUT') {
+      this.ocList = [];
+      this.loadAvailableEntrySources();
+      this.refreshColumns();
+      return;
+    }
     // El proyecto seleccionado determina la OC disponible; la sucursal solo
     // aplica cuando el usuario trabaja sin un proyecto seleccionado.
     const typeReference = this.projectId ? 'project' : (this.idBranch ? 'branch' : null);
     const idReference = this.projectId || this.idBranch;
     if (!typeReference || !idReference) {
       this.ocList = [];
+      this.ocRemainingItemsById.clear();
       this.refreshColumns();
       return;
     }
     const requestId = Number(idReference);
+    const requestedWarehouseId = Number(this.selectedWarehouse?.idAlmacen || 0);
 
     this.ocService.getOcAndReqs(typeReference, requestId, 'OC').pipe(catchError(() => of([]))).subscribe({
-      next: (response: any) => {
+      next: async (response: any) => {
         if (typeReference === 'project' && Number(this.projectId) !== requestId) return;
         if (typeReference === 'branch' && (this.projectId || Number(this.idBranch) !== requestId)) return;
+        if (requestedWarehouseId !== Number(this.selectedWarehouse?.idAlmacen || 0)) return;
         const scopedOrders: any[] = Array.isArray(response) ? response : (response?.data ?? response?.result ?? []);
         const seen = new Set<number>();
-        this.ocList = scopedOrders.filter((oc: any) => {
+        const uniqueOrders = scopedOrders.filter((oc: any) => {
           if (!oc?.id || seen.has(oc.id)) return false;
           seen.add(oc.id);
           return true;
         });
-        this.refreshColumns();
+        if (!this.selectedWarehouse) {
+          this.ocList = uniqueOrders;
+          this.refreshColumns();
+          return;
+        }
+        try {
+          const inboundResponse: any = await lastValueFrom(this.inandoutService
+            .getInAndOuts(this.projectId, Number(this.selectedWarehouse.idAlmacen), 'IN')
+            .pipe(catchError(() => of([]))));
+          const inboundEntries = Array.isArray(inboundResponse) ? inboundResponse : [];
+          const receivedItemsByOc = new Map<number, any[]>();
+          await Promise.all(inboundEntries
+            .filter((entry: any) => Number(entry.idOc) > 0 && entry.active !== false && Number(entry.active) !== 0)
+            .map(async (entry: any) => {
+              const details: any = await lastValueFrom(this.inandoutService.getInAndOutItems(Number(entry.id))
+                .pipe(catchError(() => of([]))));
+              const ocId = Number(entry.idOc);
+              const bucket = receivedItemsByOc.get(ocId) || [];
+              bucket.push(...(Array.isArray(details) ? details : []));
+              receivedItemsByOc.set(ocId, bucket);
+            }));
+
+          const remainingByOc = new Map<number, any[]>();
+          await Promise.all(uniqueOrders.map(async (order: any) => {
+            const orderedResponse: any = await lastValueFrom(this.ocService.getReqItems(Number(order.id))
+              .pipe(catchError(() => of([]))));
+            const ordered = (Array.isArray(orderedResponse) ? orderedResponse : [])
+              .filter((item: any) => item.active !== false && Number(item.active) !== 0);
+            const received = receivedItemsByOc.get(Number(order.id)) || [];
+            const receivedByMaterial = new Map<string, number>();
+            received.filter((item: any) => item.active !== false && Number(item.active) !== 0).forEach((item: any) => {
+              const key = this.materialBrandKey(item);
+              if (key) receivedByMaterial.set(key, (receivedByMaterial.get(key) || 0) + this.getMovementQuantity(item));
+            });
+            const orderedByMaterial = new Map<string, { item: any; quantity: number }>();
+            ordered.forEach((item: any) => {
+              const key = this.materialBrandKey(item);
+              if (!key) return;
+              const current = orderedByMaterial.get(key);
+              if (current) current.quantity += Math.max(0, Number(item.quantity) || 0);
+              else orderedByMaterial.set(key, { item, quantity: Math.max(0, Number(item.quantity) || 0) });
+            });
+            const remaining = Array.from(orderedByMaterial.entries()).map(([key, value]) => ({
+              ...value.item,
+              remainingQuantity: Math.max(0, value.quantity - (receivedByMaterial.get(key) || 0))
+            })).filter((item: any) => item.remainingQuantity > 0);
+            remainingByOc.set(Number(order.id), remaining);
+          }));
+          this.ocRemainingItemsById = remainingByOc;
+          const selectedOcId = Number(this.selectedEntry?.idOc || 0);
+          this.ocList = uniqueOrders.filter((order: any) =>
+            (remainingByOc.get(Number(order.id)) || []).length > 0 || Number(order.id) === selectedOcId
+          );
+          this.refreshColumns();
+        } catch (error) {
+          console.error('No fue posible calcular las cantidades pendientes por recibir:', error);
+          this.ocList = [];
+          this.refreshColumns();
+        }
       },
-      error: () => { this.ocList = []; }
+      error: () => { this.ocList = []; this.ocRemainingItemsById.clear(); }
     });
+  }
+
+  private async loadAvailableEntrySources(): Promise<void> {
+    const requestId = ++this.sourceEntryLoadRequest;
+    if (this.movementType !== 'OUT' || !this.selectedWarehouse) {
+      this.entryList = [];
+      this.entryRemainingItemsById.clear();
+      return;
+    }
+    const projectId = Number(this.projectId || 0) || null;
+    const warehouseId = Number(this.selectedWarehouse.idAlmacen);
+    try {
+      const [inResponse, outResponse]: any[] = await Promise.all([
+        lastValueFrom(this.inandoutService.getInAndOuts(projectId, warehouseId, 'IN').pipe(catchError(() => of([])))),
+        lastValueFrom(this.inandoutService.getInAndOuts(projectId, warehouseId, 'OUT').pipe(catchError(() => of([]))))
+      ]);
+      if (requestId !== this.sourceEntryLoadRequest || warehouseId !== Number(this.selectedWarehouse?.idAlmacen || 0) || projectId !== (Number(this.projectId || 0) || null)) return;
+      const entries = (Array.isArray(inResponse) ? inResponse : []).filter((entry: any) =>
+        entry.active !== false && Number(entry.active) !== 0 && !this.isTransferType(entry.idType)
+      );
+      const outs = (Array.isArray(outResponse) ? outResponse : []).filter((out: any) =>
+        Number(out.idEntry) > 0 && out.active !== false && Number(out.active) !== 0
+      );
+      const outDetailsByEntry = new Map<number, any[]>();
+      await Promise.all(outs.map(async (out: any) => {
+        const details: any = await lastValueFrom(this.inandoutService.getInAndOutItems(Number(out.id))
+          .pipe(catchError(() => of([]))));
+        const sourceId = Number(out.idEntry);
+        const bucket = outDetailsByEntry.get(sourceId) || [];
+        bucket.push(...(Array.isArray(details) ? details : []));
+        outDetailsByEntry.set(sourceId, bucket);
+      }));
+      const remainingByEntry = new Map<number, any[]>();
+      const availableEntries: any[] = [];
+      for (const entry of entries) {
+        const sourceResponse: any = await lastValueFrom(this.inandoutService.getInAndOutItems(Number(entry.id))
+          .pipe(catchError(() => of([]))));
+        const sourceItems = (Array.isArray(sourceResponse) ? sourceResponse : [])
+          .filter((item: any) => item.active !== false && Number(item.active) !== 0);
+        const used = new Map<string, number>();
+        (outDetailsByEntry.get(Number(entry.id)) || []).forEach((item: any) => {
+          if (item.active === false || Number(item.active) === 0) return;
+          const key = this.materialBrandKey(item);
+          if (key) used.set(key, (used.get(key) || 0) + this.getMovementQuantity(item));
+        });
+        const totals = new Map<string, { item: any; quantity: number }>();
+        sourceItems.forEach((item: any) => {
+          const key = this.materialBrandKey(item);
+          if (!key) return;
+          const current = totals.get(key);
+          if (current) current.quantity += this.getMovementQuantity(item);
+          else totals.set(key, { item, quantity: this.getMovementQuantity(item) });
+        });
+        const remaining = Array.from(totals.entries()).map(([key, value]) => ({
+          ...value.item,
+          remainingQuantity: Math.max(0, value.quantity - (used.get(key) || 0))
+        })).filter((item: any) => item.remainingQuantity > 0);
+        if (remaining.length || Number(entry.id) === Number(this.selectedEntry?.idEntry)) {
+          availableEntries.push(entry);
+          remainingByEntry.set(Number(entry.id), remaining);
+        }
+      }
+      this.entryList = availableEntries;
+      this.entryRemainingItemsById = remainingByEntry;
+      this.refreshColumns();
+    } catch (error) {
+      if (requestId !== this.sourceEntryLoadRequest) return;
+      console.error('No fue posible calcular el saldo de los vales de entrada:', error);
+      this.entryList = [];
+      this.entryRemainingItemsById.clear();
+      this.refreshColumns();
+    }
+  }
+
+  private materialBrandKey(item: any): string {
+    const productId = Number(item?.idProduct || item?.idSupplie || 0);
+    if (!productId) return '';
+    const brand = item?.idBrand != null
+      ? `id:${Number(item.idBrand)}`
+      : `name:${String(item?.brandName || item?.brand || '').trim().toLocaleUpperCase()}`;
+    return `${productId}|${brand}`;
+  }
+
+  private getMovementQuantity(item: any): number {
+    return Math.max(0, Number(item?.quantity ?? item?.total ?? 0) || 0);
   }
 
   loadProjectList() {
@@ -333,7 +489,6 @@ export class InandoutStComponent implements OnInit {
   }
 
   private isTransferType(idType: any): boolean {
-    if (this.movementType !== 'IN') return false;
     const description = this.catalogs.find(catalog => Number(catalog.id) === Number(idType))?.description ?? '';
     return String(description).normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim().toUpperCase() === 'TRASPASO';
   }
@@ -344,7 +499,10 @@ export class InandoutStComponent implements OnInit {
       this.rowData = [];
       this.selectedEntry = null;
     }
-    if (this.selectedWarehouse) this.loadEntries();
+    if (this.selectedWarehouse) {
+      this.loadEntries();
+      this.loadOcList();
+    }
   }
 
   async onCatalogChange(): Promise<void> {
@@ -598,7 +756,7 @@ export class InandoutStComponent implements OnInit {
         field: 'idOc',
         headerName: 'Orden de Compra',
         width: 160,
-        hide: this.isTransferType(this.selectedEntry?.idType),
+        hide: this.movementType !== 'IN' || this.isTransferType(this.selectedEntry?.idType),
         editable: (params: any) => this.canEditAuthorizedRow(params.data),
         cellEditor: 'agRichSelectCellEditor',
         cellEditorParams: () => ({
@@ -614,6 +772,28 @@ export class InandoutStComponent implements OnInit {
           if (!params.value || params.value === 0) return '(Sin OC)';
           const oc = this.ocList.find(o => o.id === params.value);
           return oc ? (oc.folio || `OC #${oc.id}`) : `OC #${params.value}`;
+        }
+      },
+      {
+        field: 'idEntry',
+        headerName: 'Vale de Entrada',
+        width: 160,
+        hide: this.movementType !== 'OUT' || this.isTransferType(this.selectedEntry?.idType),
+        editable: (params: any) => this.movementType === 'OUT' && this.canEditAuthorizedRow(params.data),
+        cellEditor: 'agRichSelectCellEditor',
+        cellEditorParams: () => ({
+          values: [0, ...this.entryList.map(entry => Number(entry.id))],
+          valueListMaxHeight: 220,
+          formatValue: (value: any) => {
+            if (!value) return '(Sin vale)';
+            const entry = this.entryList.find(item => Number(item.id) === Number(value));
+            return entry ? (entry.folio || `Entrada #${entry.id}`) : `Entrada #${value}`;
+          }
+        }),
+        valueFormatter: (params: any) => {
+          if (!params.value || params.value === 0) return '(Sin vale)';
+          const entry = this.entryList.find(item => Number(item.id) === Number(params.value));
+          return entry ? (entry.folio || `Entrada #${entry.id}`) : `Entrada #${params.value}`;
         }
       },
       {
@@ -880,6 +1060,14 @@ export class InandoutStComponent implements OnInit {
         inandoutService: this.inandoutService,
         componentParent: this,
         gridApi: this.gridApi,
+        getSourceRemainingQuantity: (movementType: 'IN' | 'OUT', sourceId: number, item: any) => {
+          const sourceItems = movementType === 'IN'
+            ? this.ocRemainingItemsById.get(Number(sourceId))
+            : this.entryRemainingItemsById.get(Number(sourceId));
+          const key = this.materialBrandKey(item);
+          const sourceItem = (sourceItems || []).find((candidate: any) => this.materialBrandKey(candidate) === key);
+          return Number(sourceItem?.remainingQuantity || 0);
+        },
         ITEMS: {
           load: (entryId: number, callback: (data: any[]) => void) => {
             this.loadEntryItemsData(entryId, callback);
@@ -895,6 +1083,9 @@ export class InandoutStComponent implements OnInit {
           },
           importFromOC: (idOc: number, entryId: any, callback: (data: any[]) => void) => {
             this.importItemsFromOC(idOc, entryId, callback);
+          },
+          importFromEntry: (sourceEntryId: number, outingId: any, callback: (data: any[]) => void) => {
+            this.importItemsFromEntry(sourceEntryId, outingId, callback);
           }
         },
         materialsService: this.materialsService
@@ -915,6 +1106,10 @@ export class InandoutStComponent implements OnInit {
     this.hasUnsavedChanges = true;
     this.gridApi?.refreshCells({ rowNodes: [event.node], force: true });
     if (event.colDef.field === 'idType') {
+      this.selectedEntry = event.data;
+      this.refreshColumns();
+    }
+    if (event.colDef.field === 'idOc' || event.colDef.field === 'idEntry') {
       this.selectedEntry = event.data;
       this.refreshColumns();
     }
@@ -983,6 +1178,7 @@ export class InandoutStComponent implements OnInit {
       idType: this.selectedCatalog?.id || 0,
       idOt: this.selectedOt?.id || 0,
       idOc: 0,
+      idEntry: 0,
       folio: '',
       date: new Date().toISOString(),
       deliveryDate: new Date().toISOString(),
@@ -1040,6 +1236,24 @@ export class InandoutStComponent implements OnInit {
       return;
     }
 
+    const selectedId = Number(this.selectedEntry?.id || 0);
+    if (selectedId > 0) {
+      try {
+        const details: any = await lastValueFrom(this.inandoutService.getInAndOutItems(selectedId));
+        const activeItems = (Array.isArray(details) ? details : []).filter((item: any) =>
+          item.active !== false && Number(item.active) !== 0
+        );
+        if (activeItems.length) {
+          alerts.basicAlert('No se puede eliminar', `El vale de ${this.movementType === 'IN' ? 'Entrada' : 'Salida'} contiene partidas. Elimina primero sus partidas.`, 'warning');
+          return;
+        }
+      } catch (error) {
+        console.error('No fue posible validar las partidas del movimiento antes de eliminarlo:', error);
+        alerts.basicAlert('No se pudo validar', 'No se eliminó el movimiento porque no fue posible revisar sus partidas.', 'warning');
+        return;
+      }
+    }
+
     const result = await alerts.confirmAlert(
       '¿Eliminar entrada?',
       `¿Está seguro de eliminar la entrada ${this.selectedEntry.folio}?`,
@@ -1049,9 +1263,14 @@ export class InandoutStComponent implements OnInit {
 
     if (result.isConfirmed) {
       try {
-        const entryId = typeof this.selectedEntry.id === 'string'
-          ? parseInt(this.selectedEntry.id.replace('temp_', ''))
-          : this.selectedEntry.id;
+        if (this.selectedEntry.__isNew || String(this.selectedEntry.id).startsWith('temp_')) {
+          this.rowData = this.rowData.filter(entry => entry !== this.selectedEntry);
+          this.gridApi.setGridOption('rowData', this.rowData);
+          this.selectedEntry = null;
+          this.hasUnsavedChanges = this.rowData.some(entry => entry.__isNew || entry.__modified);
+          return;
+        }
+        const entryId = Number(this.selectedEntry.id);
         await lastValueFrom(this.inandoutService.deleteInAndOut(entryId));
         alerts.basicAlert('Eliminado', 'La entrada ha sido eliminada correctamente', 'success');
         this.selectedEntry = null;
@@ -1149,6 +1368,7 @@ export class InandoutStComponent implements OnInit {
       idType: row.idType || 0,
       idOt: row.idOt || 0,
       idOc: row.idOc || 0,
+      idEntry: row.idEntry || 0,
       folio: row.folio || '',
       date: row.date || new Date().toISOString(),
       deliveryDate: row.deliveryDate || new Date().toISOString(),
@@ -1193,12 +1413,11 @@ export class InandoutStComponent implements OnInit {
 
   importItemsFromOC(idOc: number, entryId: any, callback: (data: any[]) => void) {
     if (!idOc || idOc <= 0) { callback([]); return; }
-    this.ocService.getReqItems(idOc).subscribe({
-      next: (items: any[]) => {
-        if (!items || items.length === 0) { callback([]); return; }
-        const activeItems = items.filter((item: any) => item.active !== false && item.active !== 0);
+    const items = this.ocRemainingItemsById.get(Number(idOc)) || [];
+    if (!items.length) { callback([]); return; }
+    {
         let tempCounter = Date.now();
-        const mapped = activeItems.map((item: any) => ({
+        const mapped = items.map((item: any) => ({
           id: `temp_item_${tempCounter++}`,
           idInandout: entryId,
           idProduct: item.idSupplie || item.idProduct || 0,
@@ -1209,16 +1428,37 @@ export class InandoutStComponent implements OnInit {
           materialName: item.description || '',
           measure: item.measure || '',
           quantity: 0,
-          pending: item.quantity || 0,
-          total: item.quantity || 0,
+          pending: item.remainingQuantity || 0,
+          total: item.remainingQuantity || 0,
           active: true,
           __isNew: true,
           __modified: false
         }));
         callback(mapped);
-      },
-      error: () => callback([])
-    });
+    }
+  }
+
+  importItemsFromEntry(sourceEntryId: number, outingId: any, callback: (data: any[]) => void) {
+    if (!sourceEntryId || sourceEntryId <= 0) { callback([]); return; }
+    const items = this.entryRemainingItemsById.get(Number(sourceEntryId)) || [];
+    let tempCounter = Date.now();
+    callback(items.map((item: any) => ({
+      id: `temp_item_${tempCounter++}`,
+      idInandout: outingId,
+      idProduct: Number(item.idProduct || 0),
+      idBrand: item.idBrand ?? null,
+      brandName: item.brandName || '',
+      code: item.code || '',
+      description: item.description || '',
+      materialName: item.description || '',
+      measure: item.measure || '',
+      quantity: 0,
+      pending: Number(item.remainingQuantity) || 0,
+      total: 0,
+      active: true,
+      __isNew: true,
+      __modified: false
+    })));
   }
 
   async saveEntryItemsById(entryId: number, data: any[]): Promise<boolean> {

@@ -190,9 +190,14 @@ export class PdfReportsService {
                   widths: ['40%', '60%'],
                   body: [
                     ['Fecha Entrega', entryData.deliveryDate ? new Date(entryData.deliveryDate).toLocaleDateString('es-MX') : 'N/A'],
-                    ['Tipo Entrada', entryData.directEntry ? 'Directa' : 'Normal'],
+                    ['Tipo Movimiento', entryData.directEntry ? 'Directa' : 'Normal'],
                     ['Factura', entryData.numBill || 'N/A'],
-                    ['OT', entryData.otName || 'N/A']
+                    ...(entryData.type === 'OUT' && entryData.sourceEntryFolio
+                      ? [['Vale de Entrada', entryData.sourceEntryFolio]]
+                      : []),
+                    ...(entryData.otName && entryData.otName !== 'N/A'
+                      ? [['OT', entryData.otName]]
+                      : [])
                   ]
                 },
                 layout: {

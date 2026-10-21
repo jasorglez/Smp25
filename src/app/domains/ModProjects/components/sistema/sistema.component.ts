@@ -927,7 +927,10 @@ export class SistemaComponent implements OnInit, OnDestroy {
     if (!result.isConfirmed) return;
     this.dailyReportService.deleteDailyReport(this.selectedRow.id).subscribe({
       next: () => { alerts.basicAlert('Eliminado', 'Reporte eliminado', 'success'); this.loadReports(); },
-      error: () => alerts.basicAlert('Error', 'No se pudo eliminar el reporte', 'error'),
+      error: (error: any) => {
+        const message = error?.error?.message || error?.error || 'No se pudo eliminar el reporte';
+        alerts.basicAlert(error?.status === 409 ? 'No se puede eliminar' : 'Error', message, error?.status === 409 ? 'warning' : 'error');
+      },
     });
   }
 

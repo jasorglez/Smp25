@@ -39,6 +39,10 @@ import { catchError, forkJoin, from, lastValueFrom, map, mergeMap, of, toArray }
           title="Importar artículos desde la Orden de Compra">
           <i class="bi bi-box-arrow-in-down"></i> OC
         </button>
+        <button *ngIf="context?.movementType === 'OUT' && entryData?.idEntry > 0" class="btn btn-secondary btn-sm me-2" (click)="importarItemsDeEntrada()" [disabled]="!masterSaved"
+          title="Importar cantidades pendientes desde el vale de Entrada">
+          <i class="bi bi-box-arrow-in-down"></i> Vale de Entrada
+        </button>
         <button class="btn btn-warning btn-sm me-2" (click)="discardChanges()">
           <i class="bi bi-arrow-counterclockwise"></i> Deshacer
         </button>
@@ -170,7 +174,7 @@ export class DetailCellRendererEntryItemsComponent implements OnInit {
     if (this.context && this.context.ITEMS && this.context.ITEMS.load) {
       const entryId = this.params.data.id;
       this.context.ITEMS.load(entryId, (data: any[]) => {
-        if (data.length === 0 && this.params.data?.idOc > 0 && this.context.ITEMS.importFromOC) {
+        if (data.length === 0 && this.context?.movementType === 'IN' && this.params.data?.idOc > 0 && this.context.ITEMS.importFromOC) {
           this.context.ITEMS.importFromOC(this.params.data.idOc, entryId, (ocItems: any[]) => {
             this.rowData = ocItems;
             if (this.gridApi) this.gridApi.setGridOption('rowData', this.rowData);
@@ -182,12 +186,32 @@ export class DetailCellRendererEntryItemsComponent implements OnInit {
           });
           return;
         }
-        this.rowData = data.map(item => ({
-          ...item,
-          materialName: item.description || '',
-          __isNew: false,
-          __modified: false
-        }));
+        if (data.length === 0 && this.context?.movementType === 'OUT' && this.params.data?.idEntry > 0 && this.context.ITEMS.importFromEntry) {
+          this.context.ITEMS.importFromEntry(this.params.data.idEntry, entryId, (entryItems: any[]) => {
+            this.rowData = entryItems;
+            this.gridApi?.setGridOption('rowData', this.rowData);
+            if (entryItems.length > 0) this.hasUnsavedChanges = true;
+            this.context.ITEMS.updateCount?.(entryId, this.rowData.length);
+            if (entryItems.length > 0) alerts.toastAlert(`${entryItems.length} partida(s) pendiente(s) del vale cargada(s).`, 'info');
+          });
+          return;
+        }
+        this.rowData = data.map(item => {
+          const sourceId = this.context?.movementType === 'OUT'
+            ? Number(this.entryData?.idEntry || 0)
+            : Number(this.entryData?.idOc || 0);
+          const quantity = Number(item.quantity ?? item.total ?? 0) || 0;
+          const remaining = sourceId > 0
+            ? Number(this.context?.getSourceRemainingQuantity?.(this.context.movementType, sourceId, item) || 0)
+            : Number(item.pending || 0);
+          return {
+            ...item,
+            pending: sourceId > 0 ? remaining + quantity : item.pending,
+            materialName: item.description || '',
+            __isNew: false,
+            __modified: false
+          };
+        });
         this.applyTransferStockToRows();
         this.applyBrandStockToRows();
         if (this.gridApi) {
@@ -230,6 +254,37 @@ export class DetailCellRendererEntryItemsComponent implements OnInit {
       alerts.toastAlert(`${missingItems.length} partida(s) nueva(s) agregada(s) desde la OC`, 'success');
     });
     loadItems();
+  }
+
+  importarItemsDeEntrada() {
+    const sourceEntryId = Number(this.params.data?.idEntry || 0);
+    if (!sourceEntryId) {
+      alerts.basicAlert('Sin vale de Entrada', 'Selecciona un vale de Entrada para cargar sus cantidades pendientes.', 'warning');
+      return;
+    }
+    const outingId = this.params.data.id;
+    this.context.ITEMS.importFromEntry(sourceEntryId, outingId, (items: any[]) => {
+      if (!items?.length) {
+        alerts.basicAlert('Sin cantidades pendientes', 'El vale de Entrada ya fue surtido por completo.', 'info');
+        return;
+      }
+      const existingProducts = new Set(this.rowData.map(item => this.materialBrandKey(item)).filter(Boolean));
+      const missingItems = items.filter(item => {
+        const key = this.materialBrandKey(item);
+        if (!key || existingProducts.has(key)) return false;
+        existingProducts.add(key);
+        return true;
+      });
+      if (!missingItems.length) {
+        alerts.basicAlert('Sin partidas nuevas', 'Los materiales del vale ya están en el detalle.', 'info');
+        return;
+      }
+      this.rowData = [...this.rowData, ...missingItems];
+      this.gridApi?.setGridOption('rowData', this.rowData);
+      this.hasUnsavedChanges = true;
+      this.context.ITEMS.updateCount?.(outingId, this.rowData.length);
+      alerts.toastAlert(`${missingItems.length} partida(s) pendiente(s) agregada(s) desde el vale de Entrada.`, 'success');
+    });
   }
 
   private materialBrandKey(item: any): string {
@@ -478,7 +533,7 @@ export class DetailCellRendererEntryItemsComponent implements OnInit {
       {
         field: 'pending',
         headerName: this.context.movementType === 'OUT'
-          ? 'Total Entradas'
+          ? (this.entryData?.idEntry > 0 ? 'Pendiente del vale' : 'Total Entradas')
           : (this.isTransferEntry() ? 'Existencia origen' : (this.entryData?.idOc > 0 ? 'Cantidad OC' : 'Pendiente')),
         width: 100,
         editable: false,
@@ -892,7 +947,11 @@ export class DetailCellRendererEntryItemsComponent implements OnInit {
         if (ot) otName = ot.name;
       }
 
-      const reportEntryData = { ...this.entryData, otName };
+      const sourceEntryId = Number(this.entryData?.idEntry || 0);
+      const sourceEntry = sourceEntryId > 0
+        ? (this.context?.componentParent?.entryList || []).find((entry: any) => Number(entry.id) === sourceEntryId)
+        : null;
+      const reportEntryData = { ...this.entryData, otName, sourceEntryFolio: sourceEntry?.folio || '' };
 
       // Generate PDF using the service
       const pdfUrl = await this.pdfReportsService.generateEntryReport(reportEntryData, itemsData, idRoot);
