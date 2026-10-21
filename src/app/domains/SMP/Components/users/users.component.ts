@@ -511,6 +511,26 @@ export class UsersComponent implements OnDestroy {
         onCellClicked: this.togglePermissions.bind(this)
       },
       {
+        field: 'canAuthorizeProcesses',
+        headerName: 'Autoriza procesos',
+        width: 145,
+        editable: false,
+        cellStyle: { display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' },
+        cellRenderer: (params) => {
+          const allowed = params.value === true || params.value === 1 || params.value === 'true';
+          return allowed
+            ? '<span class="badge bg-success">Sí</span>'
+            : '<span class="badge bg-light text-muted border">No</span>';
+        },
+        onCellClicked: (params) => {
+          const current = params.data.canAuthorizeProcesses === true || params.data.canAuthorizeProcesses === 1 || params.data.canAuthorizeProcesses === 'true';
+          params.data.canAuthorizeProcesses = !current;
+          if (!params.data.__isNew) params.data.__modified = true;
+          this.notSavedChanges = true;
+          this.gridApi.refreshCells({ rowNodes: [params.node], columns: ['canAuthorizeProcesses'], force: true });
+        }
+      },
+      {
         field: 'isRoot',
         headerName: 'Root',
         width: 100,
@@ -736,6 +756,7 @@ export class UsersComponent implements OnDestroy {
       usersmall: 'SINUSER',
       allowWhatsapp: true,
       isRoot: false,
+      canAuthorizeProcesses: false,
       __isNew: true
     };
 
@@ -1066,6 +1087,7 @@ export class UsersComponent implements OnDestroy {
     cleanedData.idRol = Number(cleanedData.idRol) || 0;
     cleanedData.idDepartament = Number(cleanedData.idDepartament) || 1;
     cleanedData.isRoot = Boolean(cleanedData.isRoot);
+    cleanedData.canAuthorizeProcesses = cleanedData.canAuthorizeProcesses === true || cleanedData.canAuthorizeProcesses === 1 || cleanedData.canAuthorizeProcesses === 'true';
     cleanedData.active = Number(cleanedData.active) || 1;
     return cleanedData;
   }

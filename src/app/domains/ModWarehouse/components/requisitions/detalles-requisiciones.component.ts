@@ -30,6 +30,8 @@ export class DetallesRequisicionesComponent implements OnInit {
   codeQuery = '';
   codeMatches: any[] = [];
   isLocked: boolean = false; // True when requisition is assigned to a QUOTE
+  isClosed: boolean = false;
+  get isReadOnly(): boolean { return this.isLocked || this.isClosed; }
 
   get masterSaved(): boolean {
     return hasPersistedMasterId(this.params?.data?.id, this.params?.data?.__isNew);
@@ -49,6 +51,8 @@ export class DetallesRequisicionesComponent implements OnInit {
     this.materialBrands = this.context?.materialBrands || [];
     // Check if requisition is locked (assigned to a QUOTE for cotización)
     this.isLocked = params.data?.locked === true;
+    const closedValue = params.data?.close;
+    this.isClosed = closedValue === true || closedValue === 1 || ['true', '1', 'yes', 'si', 'sí', 's'].includes(String(closedValue ?? '').trim().toLowerCase());
     this.loadData();
   }
 
@@ -102,7 +106,7 @@ export class DetallesRequisicionesComponent implements OnInit {
         cellClassRules: {
           'required-cell-missing': (params) => !this.isPositiveNumber(params.value),
         },
-        editable: () => !this.isLocked,
+        editable: () => !this.isReadOnly,
         width: 300,
         cellEditor: 'agRichSelectCellEditor',
         cellEditorParams: {
@@ -135,7 +139,7 @@ export class DetallesRequisicionesComponent implements OnInit {
         headerName: 'Marca',
         width: 170,
         headerTooltip: 'Una marca se asigna sola; si hay varias, elige la requerida.',
-        editable: (params) => !this.isLocked && this.brandsFor(params.data?.idSupplie).length > 1,
+        editable: (params) => !this.isReadOnly && this.brandsFor(params.data?.idSupplie).length > 1,
         cellEditor: 'agRichSelectCellEditor',
         cellEditorParams: (params: any) => ({
           values: this.brandsFor(params.data?.idSupplie).map(brand => brand.id),
@@ -163,7 +167,7 @@ export class DetallesRequisicionesComponent implements OnInit {
         cellClassRules: {
           'required-cell-missing': (params) => !this.isPositiveNumber(params.value),
         },
-        editable: () => !this.isLocked,
+        editable: () => !this.isReadOnly,
         width: 100,
         type: 'numericColumn',
         valueSetter: (params: any) => {
@@ -178,7 +182,7 @@ export class DetallesRequisicionesComponent implements OnInit {
         cellClassRules: {
           'required-cell-missing': (params) => this.isBlank(params.value),
         },
-        editable: () => !this.isLocked,
+        editable: () => !this.isReadOnly,
         width: 150,
         cellDataType: 'dateString',
         valueFormatter: (params) => {
@@ -195,7 +199,7 @@ export class DetallesRequisicionesComponent implements OnInit {
       {
         field: 'comment',
         headerName: 'Comentario',
-        editable: () => !this.isLocked,
+        editable: () => !this.isReadOnly,
         width: 250,
         cellEditor: 'agLargeTextCellEditor',
         cellEditorParams: {
@@ -226,11 +230,15 @@ export class DetallesRequisicionesComponent implements OnInit {
   };
 
   addItem(material?: any) {
+    if (this.isClosed) {
+      alerts.basicAlert('Requisición cerrada', 'No se pueden agregar partidas a una requisición cerrada.', 'warning');
+      return;
+    }
     if (!this.masterSaved) {
       alerts.basicAlert('Guarda primero la requisición', 'Guarda el maestro antes de agregar sus partidas.', 'warning');
       return;
     }
-    if (this.isLocked) {
+    if (this.isReadOnly) {
       alerts.basicAlert('Requisicion bloqueada', 'No se pueden agregar items. Esta requisicion esta en proceso de cotizacion.', 'warning');
       return;
     }
@@ -307,7 +315,7 @@ export class DetallesRequisicionesComponent implements OnInit {
 
   deleteSelectedItem() {
     this.trackingService.addLog(this.trackingService.getnameComp(), 'Eliminó detalles requisiciones', 'Almacenes', this.trackingService.getEmail());
-    if (this.isLocked) {
+    if (this.isReadOnly) {
       alerts.basicAlert('Requisicion bloqueada', 'No se pueden eliminar items. Esta requisicion esta en proceso de cotizacion.', 'warning');
       return;
     }
@@ -335,7 +343,7 @@ export class DetallesRequisicionesComponent implements OnInit {
       alerts.basicAlert('Guarda primero la requisición', 'Guarda el maestro antes de guardar sus partidas.', 'warning');
       return;
     }
-    if (this.isLocked) {
+    if (this.isReadOnly) {
       alerts.basicAlert('Requisicion bloqueada', 'No se pueden guardar cambios. Esta requisicion esta en proceso de cotizacion.', 'warning');
       return;
     }
@@ -366,7 +374,7 @@ export class DetallesRequisicionesComponent implements OnInit {
   }
 
   discardChanges() {
-    if (this.isLocked) {
+    if (this.isReadOnly) {
       return; // Nothing to discard when locked
     }
     if (!this.hasUnsavedChanges) {

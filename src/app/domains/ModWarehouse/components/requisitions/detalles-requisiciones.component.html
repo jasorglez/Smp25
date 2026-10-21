@@ -4,33 +4,36 @@
       <span class="badge bg-warning text-dark" *ngIf="isLocked">
         <i class="bi bi-lock-fill me-1"></i> Requisicion en proceso de cotizacion - Solo lectura
       </span>
-      <span class="badge bg-info text-dark" *ngIf="!masterSaved && !isLocked">
+      <span class="badge bg-secondary text-white" *ngIf="isClosed && !isLocked">
+        <i class="bi bi-lock-fill me-1"></i> Requisición cerrada - Solo lectura
+      </span>
+      <span class="badge bg-info text-dark" *ngIf="!masterSaved && !isReadOnly">
         <i class="bi bi-info-circle me-1"></i> Guarda primero la requisición para habilitar sus partidas
       </span>
-      <span class="required-fields-legend" *ngIf="!isLocked">
+      <span class="required-fields-legend" *ngIf="!isReadOnly">
         <span class="required-mark">*</span> Campos obligatorios
       </span>
     </div>
     <div class="d-flex">
-      <button class="btn btn-primary btn-xs me-1 py-0 px-2" (click)="addItem()" [disabled]="isLocked || !masterSaved">
+      <button class="btn btn-primary btn-xs me-1 py-0 px-2" (click)="addItem()" [disabled]="isReadOnly || !masterSaved">
         <i class="bi bi-plus"></i> Agregar
       </button>
-      <button class="btn btn-warning btn-xs me-1 py-0 px-2" (click)="discardChanges()" [disabled]="isLocked">
+      <button class="btn btn-warning btn-xs me-1 py-0 px-2" (click)="discardChanges()" [disabled]="isReadOnly">
         <i class="bi bi-arrow-counterclockwise"></i> Deshacer
       </button>
-      <button class="btn btn-danger btn-xs me-1 py-0 px-2" (click)="deleteSelectedItem()" [disabled]="isLocked">
+      <button class="btn btn-danger btn-xs me-1 py-0 px-2" (click)="deleteSelectedItem()" [disabled]="isReadOnly">
         <i class="bi bi-trash"></i> Eliminar
       </button>
-      <button class="btn btn-success btn-xs position-relative py-0 px-2" (click)="saveChanges()" [disabled]="isLocked || !masterSaved">
+      <button class="btn btn-success btn-xs position-relative py-0 px-2" (click)="saveChanges()" [disabled]="isReadOnly || !masterSaved">
         <i class="bi bi-floppy"></i> Guardar
         <span class="position-absolute top-0 start-100 translate-middle p-1 bg-danger border border-light rounded-circle unsaved-indicator"
-          *ngIf="hasUnsavedChanges && !isLocked">
+          *ngIf="hasUnsavedChanges && !isReadOnly">
           <span class="visually-hidden">Hay cambios sin guardar</span>
         </span>
       </button>
     </div>
   </div>
-  <div class="code-search mb-2" *ngIf="!isLocked">
+  <div class="code-search mb-2" *ngIf="!isReadOnly">
     <label for="requisition-code-search" class="small fw-semibold me-2">Buscar por código</label>
     <div class="code-search-field">
       <input id="requisition-code-search" class="form-control form-control-sm" type="search"

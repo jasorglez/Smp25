@@ -83,5 +83,5 @@ export const environment = {
   geminiApiKey: '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',
   gnewsApiKey: '94ccc596b4dfebc3f72683b6e81d81bc',
 
-  version: '5.00.293 (21 Octubre 2026 13:10) campos de inventario en una fila',
+  version: '5.00.296 (21 Octubre 2026 13:35) requisiciones únicas en órdenes de compra',
 };

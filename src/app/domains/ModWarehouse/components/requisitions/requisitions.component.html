@@ -29,7 +29,7 @@
     </div>
     <div class="col-auto">
       <div class="d-flex flex-column gap-1">
-        <button type="button" class="btn btn-primary" (click)="addMasterRow()" title="Agregar nueva requisición">
+        <button type="button" class="btn btn-primary" (click)="addMasterRow()" [disabled]="isGeneratingFolio" title="Agregar nueva requisición">
           <i class="bi bi-plus-lg"></i>
         </button>
 

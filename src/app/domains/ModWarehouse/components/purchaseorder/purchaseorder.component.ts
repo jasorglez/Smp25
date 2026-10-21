@@ -97,6 +97,7 @@ export class PurchaseOrderComponent implements CanComponentDeactivate {
 
   // Variables Master
   masterRowData: any[] = [];
+  private isPurchaseOrdersLoaded = false;
   masterSelectedRowData: any = null;
   newlyAddedMasterRows: string[] = [];
 
@@ -420,15 +421,13 @@ export class PurchaseOrderComponent implements CanComponentDeactivate {
       {
         field: 'idReq',
         headerName: 'Requisición',
-        editable: true,
+        editable: () => this.isPurchaseOrdersLoaded,
         filter: true,
         width: 150,
         cellEditor: 'agSelectCellEditor',
-        cellEditorParams: {
-          values: this.requisiciones
-            ? this.requisiciones.map((item) => item.id)
-            : [],
-        },
+        cellEditorParams: (params) => ({
+          values: this.getAvailableRequisitionIds(params.data)
+        }),
         valueFormatter: (params) => {
           const foundItem = this.requisiciones
             ? this.requisiciones.find((item) => item.id === params.value)
@@ -838,6 +837,7 @@ export class PurchaseOrderComponent implements CanComponentDeactivate {
             detailType: null,
             detailData: []
           }));
+          this.isPurchaseOrdersLoaded = true;
         },
         (error) => console.error('Error fetching data:', error)
       );
@@ -876,6 +876,24 @@ export class PurchaseOrderComponent implements CanComponentDeactivate {
         },
         (error) => console.error('Error fetching requisitions:', error)
       );
+  }
+
+  private getAvailableRequisitionIds(currentPurchaseOrder: any): number[] {
+    return (this.requisiciones || [])
+      .filter((requisition: any) =>
+        Number(requisition.id) === Number(currentPurchaseOrder?.idReq) ||
+        !this.isRequisitionAssigned(Number(requisition.id), currentPurchaseOrder?.id)
+      )
+      .map((requisition: any) => Number(requisition.id));
+  }
+
+  private isRequisitionAssigned(requisitionId: number, currentPurchaseOrderId: any): boolean {
+    if (!requisitionId) return false;
+    return (this.masterRowData || []).some((purchaseOrder: any) =>
+      String(purchaseOrder.id) !== String(currentPurchaseOrderId) &&
+      Number(purchaseOrder.idReq) === requisitionId &&
+      purchaseOrder.active !== false && Number(purchaseOrder.active) !== 0
+    );
   }
 
   obtenerProveedores() {
@@ -1255,8 +1273,19 @@ export class PurchaseOrderComponent implements CanComponentDeactivate {
 
     if (event.colDef.field === 'idReq') {
       const requisitionId = Number(updatedData.idReq);
+      if (requisitionId > 0 && this.isRequisitionAssigned(requisitionId, updatedData.id)) {
+        updatedData.idReq = event.oldValue ?? null;
+        delete updatedData.__pendingRequisitionItemImport;
+        event.node.setData(updatedData);
+        this.masterRowData = this.masterRowData.map((row: any) => String(row.id) === String(updatedData.id) ? updatedData : row);
+        this.masterGridApi?.refreshCells({ rowNodes: [event.node], columns: ['idReq'], force: true });
+        alerts.basicAlert('Requisición ya utilizada', 'Esta requisición ya está vinculada a otra orden de compra.', 'warning');
+        return;
+      }
       if (requisitionId > 0) {
         updatedData.__pendingRequisitionItemImport = requisitionId;
+      } else {
+        delete updatedData.__pendingRequisitionItemImport;
       }
     }
 
@@ -1795,6 +1824,7 @@ export class PurchaseOrderComponent implements CanComponentDeactivate {
   private clearAllData() {
     // Limpiar datos master
     this.masterRowData = [];
+    this.isPurchaseOrdersLoaded = false;
     this.masterSelectedRowData = null;
     this.newlyAddedMasterRows = [];
     this.masterNotSavedChanges = false;

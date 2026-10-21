@@ -73,6 +73,7 @@ export class RequisitionsComponent implements CanComponentDeactivate {
 
   // Variables compartidas
   masterNotSavedChanges: boolean = false;
+  isGeneratingFolio: boolean = false;
   detailsNotSavedChanges: boolean = false;
   id: string = null;
   idBranch: number = null;
@@ -731,6 +732,11 @@ export class RequisitionsComponent implements CanComponentDeactivate {
       row.id === updatedData.id ? updatedData : row
     );
 
+    if (event.colDef?.field === 'close' && this.isClosed(updatedData.close)) {
+      event.node?.setExpanded(false);
+      updatedData.detailType = null;
+    }
+
     // Actualizar la fila en la cuadrícula
     const rowNode = this.masterGridApi.getRowNode(updatedData.id);
     if (rowNode) {
@@ -759,6 +765,7 @@ export class RequisitionsComponent implements CanComponentDeactivate {
   }
 
   async addMasterRow() {
+    if (this.isGeneratingFolio) return;
     if (!this.selectedContractId || !this.selectedExecutionBranchId) {
       alerts.basicAlert('Contrato requerido', 'Selecciona contrato y sucursal ejecutora.', 'warning'); return;
     }
@@ -766,11 +773,23 @@ export class RequisitionsComponent implements CanComponentDeactivate {
       alerts.basicAlert('Almacén requerido', 'Selecciona un almacén antes de crear la requisición.', 'warning');
       return;
     }
+    this.isGeneratingFolio = true;
     const tempId = `temp_${this.tempIdCounter++}`;
-
-    // Generar folio automáticamente desde PrefixSetup
-    const type: 'project' | 'branch' = this.projectOrBranch ? 'project' : 'branch';
-    const folio = await this.prefixSetupService.getNextFolio(type, this.idReference, 'req');
+    let folio: string;
+    try {
+      const type: 'project' | 'branch' = this.projectOrBranch ? 'project' : 'branch';
+      folio = await this.prefixSetupService.getNextFolio(type, this.idReference, 'req');
+      if (!folio) {
+        alerts.basicAlert('No se pudo generar el número', 'Revisa la configuración de prefijos e inténtalo nuevamente.', 'error');
+        return;
+      }
+    } catch (error) {
+      console.error('Error generating requisition folio:', error);
+      alerts.basicAlert('No se pudo generar el número', 'Revisa la configuración de prefijos e inténtalo nuevamente.', 'error');
+      return;
+    } finally {
+      this.isGeneratingFolio = false;
+    }
 
     const newItem = {
       id: tempId,
@@ -1340,6 +1359,10 @@ export class RequisitionsComponent implements CanComponentDeactivate {
 
   async saveRequisitionItemsById(requisitionId: number, data: any[]): Promise<boolean> {
     const masterRow = this.masterRowData.find((row: any) => String(row.id) === String(requisitionId));
+    if (this.isClosed(masterRow?.close)) {
+      alerts.basicAlert('Requisición cerrada', 'No se pueden guardar partidas porque esta requisición está cerrada.', 'warning');
+      return false;
+    }
     if (!hasPersistedMasterId(requisitionId, masterRow?.__isNew)) {
       alerts.basicAlert('Guarda primero la requisición', 'Guarda el maestro de la requisición antes de guardar sus partidas.', 'warning');
       return false;
@@ -1360,7 +1383,10 @@ export class RequisitionsComponent implements CanComponentDeactivate {
 
       if (newItems.length > 0 || modifiedItems.length > 0) {
         // Contar los items activos para actualizar el campo pedimento
-        const activeItemsCount = data.filter(item => item.active !== 0).length;
+        const activeItemsCount = data.filter(item => {
+          const active = String(item.active ?? '').trim().toLowerCase();
+          return active !== 'false' && active !== '0';
+        }).length;
 
         // Actualizar el campo countItem en la requisición master usando PATCH
         await lastValueFrom(
@@ -1374,10 +1400,14 @@ export class RequisitionsComponent implements CanComponentDeactivate {
         );
 
         // Actualizar el contador en el master grid localmente
-        const masterRowNode = this.masterGridApi?.getRowNode(requisitionId.toString());
+        let masterRowNode: any = null;
+        this.masterGridApi?.forEachNode((node) => {
+          if (String(node.data?.id) === String(requisitionId)) masterRowNode = node;
+        });
         if (masterRowNode) {
           const updatedData = { ...masterRowNode.data, countItem: activeItemsCount };
           masterRowNode.setData(updatedData);
+          this.masterRowData = this.masterRowData.map((row: any) => String(row.id) === String(requisitionId) ? updatedData : row);
           this.masterGridApi.refreshCells({
             rowNodes: [masterRowNode],
             columns: ['countItem'],
@@ -1406,6 +1436,11 @@ export class RequisitionsComponent implements CanComponentDeactivate {
   async deleteDetailRow(params: any, successCallback: () => void) {
     const requisitionId = params.data.idMovement;
     const detailId = params.data.id;
+    const masterRow = this.masterRowData.find((row: any) => String(row.id) === String(requisitionId));
+    if (this.isClosed(masterRow?.close)) {
+      alerts.basicAlert('Requisición cerrada', 'No se pueden eliminar partidas porque esta requisición está cerrada.', 'warning');
+      return;
+    }
 
     if (params.data.__isNew) {
       params.api.applyTransaction({ remove: [params.data] });
@@ -1426,6 +1461,10 @@ export class RequisitionsComponent implements CanComponentDeactivate {
         );
       }
     }
+  }
+
+  private isClosed(value: any): boolean {
+    return value === true || value === 1 || ['true', '1', 'yes', 'si', 'sí', 's'].includes(String(value ?? '').trim().toLowerCase());
   }
 
   // ==================== UTILITY METHODS ====================
