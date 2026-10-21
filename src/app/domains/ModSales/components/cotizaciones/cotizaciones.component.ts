@@ -533,7 +533,9 @@ export class CotizacionesComponent implements OnInit, OnDestroy {
       }
       try {
         if (c.__isNew) {
-          await this.svc.crearCotizacion(c);
+          c.id = await this.svc.crearCotizacion(c);
+          c.__isNew = false;
+          this.detalleActivo?.actualizarMaestroGuardado(c);
         } else {
           await this.svc.actualizarCotizacion(c.id!, {
             tipoDestinatario: this.esCliente(c) ? 'cliente' : 'prospecto',

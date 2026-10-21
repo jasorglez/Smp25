@@ -9,6 +9,7 @@ import {
   ICellRendererParams,
 } from 'ag-grid-enterprise';
 import { alerts } from 'app/helpers/alerts';
+import { hasPersistedMasterId } from 'app/helpers/master-detail-guard';
 import { catchError, concat, EMPTY, lastValueFrom, toArray } from 'rxjs';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
@@ -1631,6 +1632,10 @@ export class PurchaseOrderComponent implements CanComponentDeactivate {
   }
 
   addDetailsRow() {
+    if (!hasPersistedMasterId(this.idRequisition)) {
+      alerts.basicAlert('Guarda primero la orden de compra', 'Guarda el maestro de la OC antes de agregar sus partidas.', 'warning');
+      return;
+    }
     const tempId = `temp_${this.tempIdCounter++}`;
     const newItem = {
       id: tempId,
@@ -1652,6 +1657,10 @@ export class PurchaseOrderComponent implements CanComponentDeactivate {
   }
 
   async saveDetailsChanges() {
+    if (!hasPersistedMasterId(this.idRequisition)) {
+      alerts.basicAlert('Guarda primero la orden de compra', 'Guarda el maestro de la OC antes de guardar sus partidas.', 'warning');
+      return;
+    }
     const isValid = this.detailsRowData.every(
       (item) => item.idSupplie && item.comment && item.dateuse
     );
@@ -2024,14 +2033,18 @@ export class PurchaseOrderComponent implements CanComponentDeactivate {
     });
   }
 
-  async savePurchaseOrderItemsById(purchaseOrderId: number, data: any[]) {
+  async savePurchaseOrderItemsById(purchaseOrderId: number, data: any[]): Promise<boolean> {
+    const purchaseOrder = this.masterRowData.find((row: any) => String(row.id) === String(purchaseOrderId));
+    if (!hasPersistedMasterId(purchaseOrderId, purchaseOrder?.__isNew)) {
+      alerts.basicAlert('Guarda primero la orden de compra', 'Guarda el maestro de la OC antes de guardar sus partidas.', 'warning');
+      return false;
+    }
     const newItems = data.filter((row: any) => row.__isNew);
     const modifiedItems = data.filter((row: any) => row.__modified && !row.__isNew);
-    const purchaseOrder = this.masterRowData.find((row: any) => Number(row.id) === Number(purchaseOrderId));
 
     if (!purchaseOrder?.idIncorExp) {
       alerts.basicAlert('Gasto destino', 'Seleccione el gasto que acepta esta OC antes de guardar sus partidas.', 'warning');
-      return;
+      return false;
     }
 
     try {
@@ -2069,6 +2082,7 @@ export class PurchaseOrderComponent implements CanComponentDeactivate {
       } else {
         alerts.basicAlert('Partidas vinculadas', 'Las partidas existentes se guardaron en el detalle del gasto seleccionado.', 'success');
       }
+      return true;
 
     } catch (error) {
       console.error('Error saving purchase order items:', error);
@@ -2077,6 +2091,7 @@ export class PurchaseOrderComponent implements CanComponentDeactivate {
         'Error al guardar los items.',
         'error'
       );
+      return false;
     }
   }
 

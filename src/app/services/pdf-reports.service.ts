@@ -211,13 +211,14 @@ export class PdfReportsService {
           },
           {
             table: {
-              widths: ['5%', '15%', '35%', '15%', '15%', '15%'],
+              widths: ['5%', '14%', '29%', '12%', '14%', '12%', '14%'],
               headerRows: 1,
               body: [
                 [
                   { text: '#', style: 'tableHeader' },
                   { text: 'Código', style: 'tableHeader' },
                   { text: 'Descripción', style: 'tableHeader' },
+                  { text: 'Marca', style: 'tableHeader' },
                   { text: 'Cantidad', style: 'tableHeader' },
                   { text: 'Unidad', style: 'tableHeader' },
                   { text: 'Comentario', style: 'tableHeader' }
@@ -226,11 +227,13 @@ export class PdfReportsService {
                   index + 1,
                   item.code || item.idMaterial || 'N/A',
                   item.description || item.materialName || 'N/A',
+                  item.brandName || item.brand || item.marca || 'N/A',
                   item.quantity || 0,
                   item.measure || item.unit || item.unidad || 'N/A',
                   item.comment || item.observaciones || ''
                 ]) : [[
-                  { text: 'No hay artículos disponibles', colSpan: 6, alignment: 'center' },
+                  { text: 'No hay artículos disponibles', colSpan: 7, alignment: 'center' },
+                  {},
                   {},
                   {},
                   {},

@@ -1,6 +1,7 @@
 import { Component, effect, HostListener, inject } from '@angular/core';
 import { CellDoubleClickedEvent, ColDef, GridApi, GridReadyEvent, ICellRendererParams } from 'ag-grid-enterprise';
 import { alerts } from 'app/helpers/alerts';
+import { hasPersistedMasterId } from 'app/helpers/master-detail-guard';
 import { catchError, concat, EMPTY, lastValueFrom, toArray } from 'rxjs';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
@@ -219,6 +220,10 @@ public gridOptions: any = {
 
   addRow() {
     this.trackingService.addLog(this.trackingService.getnameComp(), 'Agregó nuevo details', 'Almacenes', this.trackingService.getEmail());
+    if (!hasPersistedMasterId(this.idRequisition)) {
+      alerts.basicAlert('Guarda primero la requisición', 'Guarda el maestro antes de agregar sus partidas.', 'warning');
+      return;
+    }
     const tempId = `temp_${this.tempIdCounter++}`;
     const newItem = {
       id: tempId,
@@ -241,6 +246,10 @@ public gridOptions: any = {
 
   async saveChanges() {
     this.trackingService.addLog(this.trackingService.getnameComp(), 'Guardó cambios en details', 'Almacenes', this.trackingService.getEmail());
+    if (!hasPersistedMasterId(this.idRequisition)) {
+      alerts.basicAlert('Guarda primero la requisición', 'Guarda el maestro antes de guardar sus partidas.', 'warning');
+      return;
+    }
     const isValid = this.rowData.every((item) => item.idSupplie && item.comment && item.dateuse);
     if (!isValid) {
       alerts.basicAlert(

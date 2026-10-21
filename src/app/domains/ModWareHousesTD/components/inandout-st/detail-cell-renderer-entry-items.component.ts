@@ -6,6 +6,7 @@ import { AgGridModule } from 'ag-grid-angular';
 import { ColDef, GridApi, GridReadyEvent, ICellRendererParams, ICellRendererComp } from 'ag-grid-enterprise';
 import { AG_GRID_LOCALE_ES } from 'assets/i18n/ag-grid.locale.es';
 import { alerts } from 'app/helpers/alerts';
+import { hasPersistedMasterId } from 'app/helpers/master-detail-guard';
 import { SelectWithTooltipEditorV2Component } from 'app/shared/select-with-tooltip-editor-v2.component';
 import { SelectMaterialEditorComponent } from './select-material-editor.component';
 import { DomSanitizer, SafeResourceUrl } from '@angular/platform-browser';
@@ -30,10 +31,10 @@ import { catchError, forkJoin, from, lastValueFrom, map, mergeMap, of, toArray }
         Los materiales con conversión se capturan en su unidad origen; el inventario se guarda en la unidad destino configurada.
       </div>
       <div class="detail-actions d-flex justify-content-end mb-2">
-        <button class="btn btn-primary btn-sm me-2" (click)="addItem()">
+        <button class="btn btn-primary btn-sm me-2" (click)="addItem()" [disabled]="!masterSaved">
           <i class="bi bi-plus-lg"></i> Agregar
         </button>
-        <button *ngIf="entryData?.idOc > 0" class="btn btn-secondary btn-sm me-2" (click)="importarItemsDeOC()"
+        <button *ngIf="entryData?.idOc > 0" class="btn btn-secondary btn-sm me-2" (click)="importarItemsDeOC()" [disabled]="!masterSaved"
           title="Importar artículos desde la Orden de Compra">
           <i class="bi bi-box-arrow-in-down"></i> OC
         </button>
@@ -43,13 +44,16 @@ import { catchError, forkJoin, from, lastValueFrom, map, mergeMap, of, toArray }
         <button class="btn btn-danger btn-sm me-2" (click)="deleteSelectedItem()">
           <i class="bi bi-trash"></i> Eliminar
         </button>
-        <button class="btn btn-success btn-sm position-relative" (click)="saveChanges()">
+        <button class="btn btn-success btn-sm position-relative" (click)="saveChanges()" [disabled]="!masterSaved">
           <i class="bi bi-floppy"></i> Guardar
           <span class="position-absolute top-0 start-100 translate-middle p-2 bg-danger border border-light rounded-circle"
             *ngIf="hasUnsavedChanges">
             <span class="visually-hidden">Hay cambios sin guardar</span>
           </span>
         </button>
+      </div>
+      <div *ngIf="!masterSaved" class="alert alert-info py-1 px-2 mb-2 small">
+        <i class="bi bi-info-circle me-1"></i> Guarda primero la entrada o salida para habilitar sus partidas.
       </div>
       <ag-grid-angular
         #agGrid
@@ -107,6 +111,10 @@ export class DetailCellRendererEntryItemsComponent implements OnInit {
   tempIdCounter: number = 0;
   materials: any[] = [];
 
+  get masterSaved(): boolean {
+    return hasPersistedMasterId(this.params?.data?.id, this.params?.data?.__isNew);
+  }
+
   get hasConvertedMaterials(): boolean {
     return this.materials.some(material => !!material.conversion);
   }
@@ -153,6 +161,11 @@ export class DetailCellRendererEntryItemsComponent implements OnInit {
   }
 
   loadData() {
+    if (!this.masterSaved) {
+      this.rowData = [];
+      this.gridApi?.setGridOption('rowData', this.rowData);
+      return;
+    }
     if (this.context && this.context.ITEMS && this.context.ITEMS.load) {
       const entryId = this.params.data.id;
       this.context.ITEMS.load(entryId, (data: any[]) => {
@@ -198,11 +211,11 @@ export class DetailCellRendererEntryItemsComponent implements OnInit {
         alerts.basicAlert('Sin artículos', 'La OC no tiene artículos activos para importar', 'info');
         return;
       }
-      const existingProducts = new Set(this.rowData.map(item => String(item.idProduct || '')).filter(Boolean));
+      const existingProducts = new Set(this.rowData.map(item => this.materialBrandKey(item)).filter(Boolean));
       const missingItems = ocItems.filter(item => {
-        const productId = String(item.idProduct || '');
-        if (!productId || existingProducts.has(productId)) return false;
-        existingProducts.add(productId);
+        const materialBrandKey = this.materialBrandKey(item);
+        if (!materialBrandKey || existingProducts.has(materialBrandKey)) return false;
+        existingProducts.add(materialBrandKey);
         return true;
       });
       if (missingItems.length === 0) {
@@ -216,6 +229,15 @@ export class DetailCellRendererEntryItemsComponent implements OnInit {
       alerts.toastAlert(`${missingItems.length} partida(s) nueva(s) agregada(s) desde la OC`, 'success');
     });
     loadItems();
+  }
+
+  private materialBrandKey(item: any): string {
+    const materialId = Number(item?.idProduct || item?.idSupplie || 0);
+    if (!materialId) return '';
+    const brand = item?.idBrand != null
+      ? `id:${Number(item.idBrand)}`
+      : `name:${String(item?.brandName || item?.brand || '').trim().toLocaleUpperCase()}`;
+    return `${materialId}|${brand}`;
   }
 
   loadDataForReport() {
@@ -559,6 +581,10 @@ export class DetailCellRendererEntryItemsComponent implements OnInit {
 
   async saveChanges() {
     this.trackingService.addLog(this.trackingService.getnameComp(), 'Guardó cambios en detail cell renderer entry items', 'ModWareHousesTD', this.trackingService.getEmail());
+    if (!this.masterSaved) {
+      alerts.basicAlert('Guarda primero el movimiento', 'Guarda la entrada o salida antes de guardar sus partidas.', 'warning');
+      return;
+    }
     if (!this.hasUnsavedChanges) {
       alerts.basicAlert('Sin cambios', 'No hay cambios pendientes por guardar', 'info');
       return;
@@ -566,7 +592,8 @@ export class DetailCellRendererEntryItemsComponent implements OnInit {
 
     if (this.context && this.context.ITEMS && this.context.ITEMS.save) {
       const entryId = this.params.data.id;
-      await this.context.ITEMS.save(entryId, this.rowData);
+      const saved = await this.context.ITEMS.save(entryId, this.rowData);
+      if (saved === false) return;
       this.hasUnsavedChanges = this.rowData.some(item => item.__isNew || item.__modified || item.addToDailyReport);
     }
   }
@@ -811,8 +838,15 @@ export class DetailCellRendererEntryItemsComponent implements OnInit {
         return;
       }
 
-      // Get items data from the rowData (same data displayed in the grid cascade)
-      const itemsData = this.rowData || [];
+      // Resolve brand names for PDF rows even when the API only returns idBrand.
+      const brandRows = this.context?.materialsService?.getMaterialBrands
+        ? await lastValueFrom(this.context.materialsService.getMaterialBrands(idRoot).pipe(catchError(() => of([]))))
+        : [];
+      const brandMap = new Map(((brandRows || []) as any[]).map((brand: any) => [Number(brand.id), brand.brand]));
+      const itemsData = (this.rowData || []).map(item => ({
+        ...item,
+        brandName: item.brandName || item.brand || item.marca || brandMap.get(Number(item.idBrand)) || ''
+      }));
 
       // Find OT Name
       let otName = 'N/A';

@@ -5,6 +5,7 @@ import { AgGridModule } from 'ag-grid-angular';
 import { ColDef, GridApi, GridReadyEvent, ICellRendererParams } from 'ag-grid-enterprise';
 import { AG_GRID_LOCALE_ES } from 'assets/i18n/ag-grid.locale.es';
 import { alerts } from 'app/helpers/alerts';
+import { hasPersistedMasterId } from 'app/helpers/master-detail-guard';
 import { TrackingService } from 'app/services/tracking.service';
 import { CatalogsService } from 'app/services/catalogs.service';
 import { lastValueFrom } from 'rxjs';
@@ -17,7 +18,7 @@ import Swal from 'sweetalert2';
   template: `
     <div class="detail-grid-container">
       <div class="detail-actions d-flex justify-content-end mb-1">
-        <button class="btn btn-primary btn-xs me-1 py-0 px-2" (click)="addItem()" style="font-size: 0.75rem; line-height: 1.5;">
+        <button class="btn btn-primary btn-xs me-1 py-0 px-2" (click)="addItem()" [disabled]="!masterSaved" style="font-size: 0.75rem; line-height: 1.5;">
           <i class="bi bi-plus" style="font-size: 0.75rem;"></i> Agregar
         </button>
         <button class="btn btn-outline-primary btn-xs me-1 py-0 px-2" (click)="quickAddMaterial()" style="font-size: 0.75rem; line-height: 1.5;">
@@ -29,13 +30,16 @@ import Swal from 'sweetalert2';
         <button class="btn btn-danger btn-xs me-1 py-0 px-2" (click)="deleteSelectedItem()" style="font-size: 0.75rem; line-height: 1.5;">
           <i class="bi bi-trash" style="font-size: 0.75rem;"></i> Eliminar
         </button>
-        <button class="btn btn-success btn-xs position-relative py-0 px-2" (click)="saveChanges()" style="font-size: 0.75rem; line-height: 1.5;">
+        <button class="btn btn-success btn-xs position-relative py-0 px-2" (click)="saveChanges()" [disabled]="!masterSaved" style="font-size: 0.75rem; line-height: 1.5;">
           <i class="bi bi-floppy" style="font-size: 0.75rem;"></i> Guardar
           <span class="position-absolute top-0 start-100 translate-middle p-1 bg-danger border border-light rounded-circle"
             *ngIf="hasUnsavedChanges" style="width: 8px; height: 8px;">
             <span class="visually-hidden">Hay cambios sin guardar</span>
           </span>
         </button>
+      </div>
+      <div *ngIf="!masterSaved" class="alert alert-info py-1 px-2 mb-2 small">
+        <i class="bi bi-info-circle me-1"></i> Guarda primero la orden de compra para habilitar sus partidas.
       </div>
       <ag-grid-angular
         #agGrid
@@ -77,6 +81,10 @@ export class DetailCellRendererPurchaseOrderItemsComponent implements OnInit {
   productos: any[] = [];
   proveedores: any[] = [];
 
+  get masterSaved(): boolean {
+    return hasPersistedMasterId(this.params?.data?.id, this.params?.data?.__isNew);
+  }
+
   public AG_GRID_LOCALE_ES = AG_GRID_LOCALE_ES;
 
   ngOnInit() {
@@ -92,6 +100,11 @@ export class DetailCellRendererPurchaseOrderItemsComponent implements OnInit {
   }
 
   loadData() {
+    if (!this.masterSaved) {
+      this.rowData = [];
+      this.gridApi?.setGridOption('rowData', this.rowData);
+      return;
+    }
     if (this.context && this.context.ITEMS && this.context.ITEMS.load) {
       const purchaseOrderId = this.params.data.id;
       this.context.ITEMS.load(purchaseOrderId, (data: any[]) => {
@@ -341,6 +354,10 @@ export class DetailCellRendererPurchaseOrderItemsComponent implements OnInit {
   }
 
   addItem() {
+    if (!this.masterSaved) {
+      alerts.basicAlert('Guarda primero la orden de compra', 'Guarda el maestro de la OC antes de agregar sus partidas.', 'warning');
+      return;
+    }
     const tempId = `temp_item_${this.tempIdCounter++}`;
     const newItem = {
       id: tempId,
@@ -579,6 +596,10 @@ export class DetailCellRendererPurchaseOrderItemsComponent implements OnInit {
 
   async saveChanges() {
     this.trackingService.addLog(this.trackingService.getnameComp(), 'Guardó cambios en detail cell renderer purchase order items', 'Almacenes', this.trackingService.getEmail());
+    if (!this.masterSaved) {
+      alerts.basicAlert('Guarda primero la orden de compra', 'Guarda el maestro de la OC antes de guardar sus partidas.', 'warning');
+      return;
+    }
     if (!this.hasUnsavedChanges) {
       // También permite vincular partidas ya guardadas cuando se eligió un
       // gasto destino posteriormente en el maestro de la OC.
@@ -595,7 +616,8 @@ export class DetailCellRendererPurchaseOrderItemsComponent implements OnInit {
 
     if (this.context && this.context.ITEMS && this.context.ITEMS.save) {
       const purchaseOrderId = this.params.data.id;
-      await this.context.ITEMS.save(purchaseOrderId, this.rowData);
+      const saved = await this.context.ITEMS.save(purchaseOrderId, this.rowData);
+      if (saved === false) return;
       this.hasUnsavedChanges = false;
     }
   }

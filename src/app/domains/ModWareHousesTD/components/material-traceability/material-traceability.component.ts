@@ -102,28 +102,58 @@ export class MaterialTraceabilityComponent implements OnDestroy {
     const reference = this.projectId || this.idRoot;
     forkJoin({
       materialList: this.materials.getMaterials2Fields(this.idRoot).pipe(catchError(() => of([]))),
+      brands: this.materials.getMaterialBrands(this.idRoot).pipe(catchError(() => of([]))),
       requisitions: this.docs.getOcAndReqs('project', reference, 'REQUIS').pipe(catchError(() => of([]))),
       orders: this.docs.getOcAndReqs('project', reference, 'OC').pipe(catchError(() => of([]))),
       warehouses: this.permissions.getPermisionswarehousexEmail(this.tracking.getEmail()).pipe(catchError(() => of([])))
     }).pipe(switchMap(base => {
       const materialMap = new Map((this.asArray(base.materialList)).map((m: any) => [+m.id, m]));
+      const brandMap = new Map(this.asArray(base.brands).map((brand: any) => [`${Number(brand.idMaterial)}|${Number(brand.id)}`, brand.brand]));
       const reqs = this.asArray(base.requisitions); const orders = this.asArray(base.orders);
-      const documents$ = [...reqs, ...orders].map(d => this.docs.getReqItems(+d.id).pipe(catchError(() => of([])), map(items => ({ d, items: this.asArray(items), materialMap }))));
+      const documents$ = [...reqs, ...orders].map(d => this.docs.getReqItems(+d.id).pipe(catchError(() => of([])), map(items => ({ d, items: this.asArray(items), materialMap, brandMap }))));
       const whs = this.asArray(base.warehouses);
       this.defaultWarehouseName = whs[0]?.nombreAlmacen || whs[0]?.name || whs[0]?.description || '';
       const movement$ = whs.flatMap(w => ['IN', 'OUT'].map(type => this.movements.getInAndOuts(reference, +(w.id || w.idWarehouse || w.idAlmacen), type).pipe(catchError(() => of([])), switchMap((masters: any) => {
         const rows = this.asArray(masters);
-        return rows.length ? forkJoin(rows.map(m => this.movements.getInAndOutItems(+m.id).pipe(catchError(() => of([])), map(details => ({ m, details: this.asArray(details) }))))).pipe(map(details => ({ w, type, items: details, materialMap }))) : of({ w, type, items: [], materialMap });
+        return rows.length ? forkJoin(rows.map(m => this.movements.getInAndOutItems(+m.id).pipe(catchError(() => of([])), map(details => ({ m, details: this.asArray(details) }))))).pipe(map(details => ({ w, type, items: details, materialMap, brandMap }))) : of({ w, type, items: [], materialMap, brandMap });
       }))));
       return forkJoin({ documents: documents$.length ? forkJoin(documents$) : of([]), movements: movement$.length ? forkJoin(movement$) : of([]) });
     })).subscribe({ next: result => { this.rowData = this.groupByMaterial([...this.flattenDocuments(result.documents), ...this.flattenMovements(result.movements)]); this.loading = false; }, error: () => { this.rowData = []; this.loading = false; } });
   }
 
   private flattenDocuments(groups: any[]): any[] {
-    return groups.flatMap(g => g.items.map((i: any) => ({ material: i.nameArticle || i.materialName || i.description || g.materialMap.get(+i.idSupplie)?.description || `Material #${i.idSupplie}`, unidad: i.measure || i.unit || g.materialMap.get(+i.idSupplie)?.measure || '', almacen: this.defaultWarehouseName || 'OAXACA', tipo: String(g.d.type || '').toUpperCase() === 'OC' ? 'Orden de compra' : 'Requisición', folio: g.d.folio, documento: g.d.id, fecha: g.d.dateCreate || g.d.datecreate, cantidad: i.quantity, proveedor: g.d.nameProvider || i.nameProvider || '', estado: g.d.close ? 'Cerrado' : 'Abierto' })));
+    return groups.flatMap(g => g.items.map((i: any) => {
+      const materialId = Number(i.idSupplie || i.idProduct || 0);
+      const brandId = i.idBrand == null ? null : Number(i.idBrand);
+      return {
+        materialId,
+        brandId,
+        material: i.nameArticle || i.materialName || i.description || g.materialMap.get(materialId)?.description || `Material #${materialId}`,
+        marca: i.brandName || i.brand || (brandId ? g.brandMap.get(`${materialId}|${brandId}`) : '') || '',
+        unidad: i.measure || i.unit || g.materialMap.get(materialId)?.measure || '',
+        almacen: this.defaultWarehouseName || 'OAXACA',
+        tipo: String(g.d.type || '').toUpperCase() === 'OC' ? 'Orden de compra' : 'Requisición',
+        folio: g.d.folio, documento: g.d.id, fecha: g.d.dateCreate || g.d.datecreate,
+        cantidad: i.quantity, proveedor: g.d.nameProvider || i.nameProvider || '', estado: g.d.close ? 'Cerrado' : 'Abierto'
+      };
+    }));
   }
   private flattenMovements(groups: any[]): any[] {
-    return groups.flatMap(g => g.items.flatMap((entry: any) => entry.details.map((i: any) => ({ material: i.materialName || i.description || g.materialMap.get(+i.idProduct)?.description || `Material #${i.idProduct}`, marca: i.brand || i.brandName || '', unidad: i.measure || i.unit || g.materialMap.get(+i.idProduct)?.measure || '', tipo: g.type === 'IN' ? 'Entrada' : 'Salida', folio: entry.m.folio, documento: entry.m.id, fecha: entry.m.date || entry.m.deliveryDate, cantidad: i.quantity || i.total, almacen: g.w.nombreAlmacen || g.w.name || g.w.description || g.w.nameWarehouse || this.defaultWarehouseName, estado: entry.m.active === false ? 'Inactivo' : 'Activo' }))));
+    return groups.flatMap(g => g.items.flatMap((entry: any) => entry.details.map((i: any) => {
+      const materialId = Number(i.idProduct || 0);
+      const brandId = i.idBrand == null ? null : Number(i.idBrand);
+      return {
+        materialId,
+        brandId,
+        material: i.materialName || i.description || g.materialMap.get(materialId)?.description || `Material #${materialId}`,
+        marca: i.brand || i.brandName || (brandId ? g.brandMap.get(`${materialId}|${brandId}`) : '') || '',
+        unidad: i.measure || i.unit || g.materialMap.get(materialId)?.measure || '',
+        tipo: g.type === 'IN' ? 'Entrada' : 'Salida', folio: entry.m.folio, documento: entry.m.id,
+        fecha: entry.m.date || entry.m.deliveryDate, cantidad: i.quantity || i.total,
+        almacen: g.w.nombreAlmacen || g.w.name || g.w.description || g.w.nameWarehouse || this.defaultWarehouseName,
+        estado: entry.m.active === false ? 'Inactivo' : 'Activo'
+      };
+    })));
   }
   private asArray(value: any): any[] { return Array.isArray(value) ? value : (value?.data || value?.result || value?.items || []); }
 
@@ -132,7 +162,9 @@ export class MaterialTraceabilityComponent implements OnDestroy {
     rows.forEach(r => {
       const warehouse = String(r.almacen || 'General').trim();
       const marca = String(r.marca || '').trim();
-      const key = `${warehouse}|${String(r.material || '').trim().toUpperCase()}|${marca.toUpperCase()}`;
+      const materialKey = r.materialId ? `id:${r.materialId}` : `name:${String(r.material || '').trim().toUpperCase()}`;
+      const brandKey = r.brandId ? `id:${r.brandId}` : `name:${marca.toUpperCase()}`;
+      const key = `${warehouse}|${materialKey}|${brandKey}`;
       if (!key) return;
       const current = grouped.get(key) || { material: r.material, marca, almacen: warehouse, unidad: r.unidad, requisicion: '', oc: '', entrada: 0, salida: 0, inventario: 0, movimientos: '' };
       const folio = r.folio || r.documento || '';

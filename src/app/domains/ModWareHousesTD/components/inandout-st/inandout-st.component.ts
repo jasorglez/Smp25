@@ -15,6 +15,7 @@ import { OcAndReqsService } from 'app/services/ocandreqs.service';
 import { ProjectsService } from 'app/services/projects.service';
 import { DetailCellRendererEntryItemsComponent } from './detail-cell-renderer-entry-items.component';
 import { alerts } from 'app/helpers/alerts';
+import { hasPersistedMasterId } from 'app/helpers/master-detail-guard';
 import { ButtonCellRendererComponent } from './button-cell-renderer.component';
 import { PdfButtonCellRendererComponent } from '../../../ModAdmon/components/egresos-palacio/pdf-button-cell-renderer.component';
 import { catchError, forkJoin, lastValueFrom, map, of, switchMap } from 'rxjs';
@@ -258,20 +259,24 @@ export class InandoutStComponent implements OnInit {
   }
 
   loadOcList() {
-    const calls: any[] = [];
-    if (this.idBranch) {
-      calls.push(this.ocService.getOcAndReqs('branch', this.idBranch, 'OC').pipe(catchError(() => of([]))));
+    // El proyecto seleccionado determina la OC disponible; la sucursal solo
+    // aplica cuando el usuario trabaja sin un proyecto seleccionado.
+    const typeReference = this.projectId ? 'project' : (this.idBranch ? 'branch' : null);
+    const idReference = this.projectId || this.idBranch;
+    if (!typeReference || !idReference) {
+      this.ocList = [];
+      this.refreshColumns();
+      return;
     }
-    if (this.projectId) {
-      calls.push(this.ocService.getOcAndReqs('project', this.projectId, 'OC').pipe(catchError(() => of([]))));
-    }
-    if (calls.length === 0) return;
+    const requestId = Number(idReference);
 
-    forkJoin(calls).subscribe({
-      next: (results: any[]) => {
-        const combined: any[] = (results as any[][]).flat();
+    this.ocService.getOcAndReqs(typeReference, requestId, 'OC').pipe(catchError(() => of([]))).subscribe({
+      next: (response: any) => {
+        if (typeReference === 'project' && Number(this.projectId) !== requestId) return;
+        if (typeReference === 'branch' && (this.projectId || Number(this.idBranch) !== requestId)) return;
+        const scopedOrders: any[] = Array.isArray(response) ? response : (response?.data ?? response?.result ?? []);
         const seen = new Set<number>();
-        this.ocList = combined.filter((oc: any) => {
+        this.ocList = scopedOrders.filter((oc: any) => {
           if (!oc?.id || seen.has(oc.id)) return false;
           seen.add(oc.id);
           return true;
@@ -1130,6 +1135,8 @@ export class InandoutStComponent implements OnInit {
           id: `temp_item_${tempCounter++}`,
           idInandout: entryId,
           idProduct: item.idSupplie || item.idProduct || 0,
+          idBrand: item.idBrand ?? null,
+          brandName: item.brandName || item.brand || '',
           code: item.code || '',
           description: item.description || '',
           materialName: item.description || '',
@@ -1147,7 +1154,12 @@ export class InandoutStComponent implements OnInit {
     });
   }
 
-  async saveEntryItemsById(entryId: number, data: any[]) {
+  async saveEntryItemsById(entryId: number, data: any[]): Promise<boolean> {
+    const masterEntry = this.rowData.find((entry: any) => String(entry.id) === String(entryId));
+    if (!hasPersistedMasterId(entryId, masterEntry?.__isNew)) {
+      alerts.basicAlert('Guarda primero el movimiento', 'Guarda la entrada o salida antes de guardar sus partidas.', 'warning');
+      return false;
+    }
     const newItems = data.filter((row: any) => row.__isNew);
     const modifiedItems = data.filter((row: any) => row.__modified && !row.__isNew);
     const dailyReportItems = this.movementType === 'OUT'
@@ -1160,7 +1172,7 @@ export class InandoutStComponent implements OnInit {
         'Los artículos marcados para Reporte diario deben tener una cantidad mayor a cero.',
         'warning'
       );
-      return;
+      return false;
     }
 
     let shouldAddToDailyReport = false;
@@ -1232,13 +1244,15 @@ export class InandoutStComponent implements OnInit {
             'La salida se guardó, pero no fue posible agregarla al Reporte diario. La selección quedó marcada para reintentar.',
             'warning'
           );
-          return;
+          return true;
         }
         alerts.basicAlert('Detalles guardados', 'Se han guardado los items correctamente.', 'success');
         if (addedToDailyReport > 0) {
           alerts.toastAlert(`${addedToDailyReport} material(es) agregado(s) al Reporte diario`, 'success');
         }
+        return true;
       }
+      return true;
     } catch (error: any) {
       console.error(`[Entradas][Error durante ${currentOperation}]`, {
         status: error?.status,
@@ -1247,6 +1261,7 @@ export class InandoutStComponent implements OnInit {
         error
       });
       alerts.basicAlert('Error', 'Error al guardar los items.', 'error');
+      return false;
     }
   }
 

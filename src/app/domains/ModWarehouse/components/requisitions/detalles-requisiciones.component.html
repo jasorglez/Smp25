@@ -4,12 +4,15 @@
       <span class="badge bg-warning text-dark" *ngIf="isLocked">
         <i class="bi bi-lock-fill me-1"></i> Requisicion en proceso de cotizacion - Solo lectura
       </span>
+      <span class="badge bg-info text-dark" *ngIf="!masterSaved && !isLocked">
+        <i class="bi bi-info-circle me-1"></i> Guarda primero la requisición para habilitar sus partidas
+      </span>
       <span class="required-fields-legend" *ngIf="!isLocked">
         <span class="required-mark">*</span> Campos obligatorios
       </span>
     </div>
     <div class="d-flex">
-      <button class="btn btn-primary btn-xs me-1 py-0 px-2" (click)="addItem()" [disabled]="isLocked">
+      <button class="btn btn-primary btn-xs me-1 py-0 px-2" (click)="addItem()" [disabled]="isLocked || !masterSaved">
         <i class="bi bi-plus"></i> Agregar
       </button>
       <button class="btn btn-warning btn-xs me-1 py-0 px-2" (click)="discardChanges()" [disabled]="isLocked">
@@ -18,7 +21,7 @@
       <button class="btn btn-danger btn-xs me-1 py-0 px-2" (click)="deleteSelectedItem()" [disabled]="isLocked">
         <i class="bi bi-trash"></i> Eliminar
       </button>
-      <button class="btn btn-success btn-xs position-relative py-0 px-2" (click)="saveChanges()" [disabled]="isLocked">
+      <button class="btn btn-success btn-xs position-relative py-0 px-2" (click)="saveChanges()" [disabled]="isLocked || !masterSaved">
         <i class="bi bi-floppy"></i> Guardar
         <span class="position-absolute top-0 start-100 translate-middle p-1 bg-danger border border-light rounded-circle unsaved-indicator"
           *ngIf="hasUnsavedChanges && !isLocked">

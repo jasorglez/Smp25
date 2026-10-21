@@ -8,6 +8,7 @@ import { ColDef, GridApi, GridReadyEvent, ICellRendererParams } from 'ag-grid-en
 import { ICellRendererAngularComp } from 'ag-grid-angular';
 import { DomSanitizer, SafeResourceUrl } from '@angular/platform-browser';
 import { pdfPreviewUrl } from 'app/helpers/pdf-viewer';
+import { hasPersistedMasterId } from 'app/helpers/master-detail-guard';
 import { AG_GRID_LOCALE_ES } from 'assets/i18n/ag-grid.locale.es';
 import { CotizacionesService, CotizacionItem, ESTADOS_COTIZACION, familiasDeCotizacion } from 'app/services/cotizaciones.service';
 import { SignalsService } from 'app/services/signals.service';
@@ -58,10 +59,10 @@ const textoPdf = (value: unknown): string =>
           <span class="small text-muted">Tipo de cambio: {{ tipoCambio > 0 ? (tipoCambio | number:'1.4-4') : 'captúralo antes de Familia' }} MXN/USD</span>
 
           <div class="ms-auto d-flex gap-1">
-            <button class="btn btn-sm btn-success" (click)="add()" [disabled]="!gridApi" title="Agregar item">
+            <button class="btn btn-sm btn-success" (click)="add()" [disabled]="!gridApi || !masterSaved" title="Agregar item">
               <i class="bi bi-plus-lg"></i>
             </button>
-            <button class="btn btn-sm btn-primary position-relative" (click)="save()" [disabled]="!hasChanges" title="Guardar">
+            <button class="btn btn-sm btn-primary position-relative" (click)="save()" [disabled]="!hasChanges || !masterSaved" title="Guardar">
               <i class="bi bi-floppy"></i>
               <span class="position-absolute top-0 start-100 translate-middle p-2 bg-danger border border-light rounded-circle"
                     *ngIf="hasChanges">
@@ -84,6 +85,9 @@ const textoPdf = (value: unknown): string =>
           </div>
         </div>
 
+        <div *ngIf="!masterSaved" class="alert alert-info py-1 px-2 mb-2 small">
+          <i class="bi bi-info-circle me-1"></i> Guarda primero la cotización para habilitar sus partidas.
+        </div>
         <div class="d-flex align-items-center justify-content-end gap-2 mb-1">
           <button type="button" class="btn btn-sm btn-outline-secondary" (click)="mostrarColumna('nombreMaterial')">← Material</button>
           <button type="button" class="btn btn-sm btn-outline-primary" (click)="mostrarColumna('dolares')">Dólares →</button>
@@ -205,6 +209,9 @@ export class DetalleItemsCotizacionComponent implements ICellRendererAngularComp
   AG_GRID_LOCALE_ES = AG_GRID_LOCALE_ES;
 
   cotizacion: any  = null;
+  get masterSaved(): boolean {
+    return hasPersistedMasterId(this.cotizacion?.id, this.cotizacion?.__isNew);
+  }
   tipoCambio = 0;
   private tipoCambioRequest: Promise<void> | null = null;
   rowData: CotizacionItem[]   = [];
@@ -342,6 +349,11 @@ export class DetalleItemsCotizacionComponent implements ICellRendererAngularComp
     this.cotizacion.familias = [...familias];
     this.cotizacion.familia = familias.length === 1 ? familias[0] : '';
     if (this.mode === 'items') this.cargarMateriales();
+  }
+
+  actualizarMaestroGuardado(cotizacion: any): void {
+    if (this.cotizacion?.numCotizacion !== cotizacion?.numCotizacion) return;
+    this.cotizacion = { ...this.cotizacion, ...cotizacion };
   }
 
   // ── ICellRendererAngularComp ───────────────────────────────────────────────
@@ -497,6 +509,10 @@ export class DetalleItemsCotizacionComponent implements ICellRendererAngularComp
   // ── CRUD ──────────────────────────────────────────────────────────────────
 
   add() {
+    if (!this.masterSaved) {
+      Swal.fire('Guarda primero la cotización', 'Guarda el maestro antes de agregar sus partidas.', 'warning');
+      return;
+    }
     this.trackingService.addLog(this.trackingService.getnameComp(), `Agregó ítem a cotización`, 'Ventas', this.trackingService.getEmail());
     const nuevo: CotizacionItem = {
       idMaterial: 0, nombreMaterial: '', unidad: '',
@@ -511,7 +527,10 @@ export class DetalleItemsCotizacionComponent implements ICellRendererAngularComp
   }
 
   async save(): Promise<boolean> {
-    if (!this.cotizacion?.id) return false;
+    if (!this.masterSaved) {
+      Swal.fire('Guarda primero la cotización', 'Guarda el maestro antes de guardar sus partidas.', 'warning');
+      return false;
+    }
     this.gridApi?.stopEditing();
     this.trackingService.addLog(this.trackingService.getnameComp(), `Guardó ítems de cotización`, 'Ventas', this.trackingService.getEmail());
     try {

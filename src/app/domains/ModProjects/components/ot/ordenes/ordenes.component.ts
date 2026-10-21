@@ -18,6 +18,7 @@ import { PdfGeneratorService } from 'app/services/pdf-generator.service';
 import { EmployeesService } from 'app/services/employees.service';
 import { RolesService } from 'app/services/roles.service';
 import { alerts } from 'app/helpers/alerts';
+import { hasPersistedMasterId } from 'app/helpers/master-detail-guard';
 import { DomSanitizer, SafeResourceUrl } from '@angular/platform-browser';
 import { Pipe, PipeTransform } from '@angular/core';
 import { MaterialsService } from 'app/services/materials.service';
@@ -206,6 +207,15 @@ export class OrdenesComponent implements OnInit, OnDestroy, OnChanges {
   public selectedReporteHoraTermino: string = '';
   public selectedReporteArea: string = '';
   public selectedReporteId: number | string | null = null;
+  get canSaveReportDetails(): boolean {
+    return hasPersistedMasterId(this.selectedReporteId);
+  }
+
+  private requireSavedReportForDetails(): boolean {
+    if (this.canSaveReportDetails) return true;
+    alerts.basicAlert('Guarda primero el reporte diario', 'Guarda el reporte diario maestro antes de guardar su personal, materiales, equipos, fotos, videos, conceptos o notas.', 'warning');
+    return false;
+  }
   public selectedFotografia: Fotografia | null = null;
   public selectedVideo: Video | null = null;
   public selectedStatusReport: boolean = false;
@@ -1665,6 +1675,7 @@ export class OrdenesComponent implements OnInit, OnDestroy, OnChanges {
   }
 
   addFotografia() {
+    if (!this.requireSavedReportForDetails()) return;
     this.trackingService.addLog(
       this.trackingService.getnameComp(),
       'Agregar Fotografía OT',
@@ -1716,6 +1727,7 @@ export class OrdenesComponent implements OnInit, OnDestroy, OnChanges {
   }
 
   addVideo() {
+    if (!this.requireSavedReportForDetails()) return;
     this.trackingService.addLog(
       this.trackingService.getnameComp(),
       'Agregar Video OT',
@@ -1767,6 +1779,7 @@ export class OrdenesComponent implements OnInit, OnDestroy, OnChanges {
   }
 
   async saveFotografiasChanges() {
+    if (!this.requireSavedReportForDetails()) return;
     this.trackingService.addLog(
       this.trackingService.getnameComp(),
       'Guardar Cambios Fotografías OT',
@@ -1860,6 +1873,7 @@ export class OrdenesComponent implements OnInit, OnDestroy, OnChanges {
   }
 
   async saveVideosChanges() {
+    if (!this.requireSavedReportForDetails()) return;
     this.trackingService.addLog(
       this.trackingService.getnameComp(),
       'Guardar Cambios Videos OT',
@@ -3775,6 +3789,10 @@ export class OrdenesComponent implements OnInit, OnDestroy, OnChanges {
     this.selectedReporteHoraInicio = reporte.horaInicio || reporte.startTime.substring(0, 5);
     this.selectedReporteHoraTermino = reporte.horaTermino || reporte.endTime.substring(0, 5);
     this.selectedReporteId = reporte.id;
+    if (!hasPersistedMasterId(reporte.id, (reporte as any).__isNew)) {
+      this.signalsService.setClosedReport(false);
+      return;
+    }
     const id: number = Number(this.selectedReporteId);
     //this.updateExcelService.UpdateOT(id)
     this.signalsService.setClosedReport(reporte.close)
@@ -3971,6 +3989,10 @@ export class OrdenesComponent implements OnInit, OnDestroy, OnChanges {
       alerts.basicAlert('Error', 'Debe seleccionar una OT primero', 'error');
       return;
     }
+    if (!hasPersistedMasterId(this.selectedOt.id)) {
+      alerts.basicAlert('Guarda primero la OT', 'Guarda la orden de trabajo antes de crear su reporte diario.', 'warning');
+      return;
+    }
 
     const tempId = `temp_${this.tempIdCounter++}`;
     const newReporte = {
@@ -4015,6 +4037,12 @@ export class OrdenesComponent implements OnInit, OnDestroy, OnChanges {
 
     const newRows = this.reportesDiarios.filter(row => row.__isNew);
     const modifiedRows = this.reportesDiarios.filter(row => row.__modified && !row.__isNew);
+    const selectedNewReport = newRows.find(row => String(row.id) === String(this.selectedReporteId));
+
+    if (newRows.some(row => !hasPersistedMasterId(row.idOt))) {
+      alerts.basicAlert('Guarda primero la OT', 'El reporte diario necesita una orden de trabajo guardada.', 'warning');
+      return;
+    }
 
 
     // Validación
@@ -4070,6 +4098,17 @@ export class OrdenesComponent implements OnInit, OnDestroy, OnChanges {
         throw new Error(`${failedResponses.length} requests fallaron`);
       }
 
+      newRows.forEach((row: any, index: number) => {
+        const response: any = responses[index];
+        const saved = response?.data ?? response?.report ?? response;
+        const savedId = saved?.id ?? saved?.idReporte ?? saved?.Id;
+        if (hasPersistedMasterId(savedId)) {
+          row.id = savedId;
+          row.__isNew = false;
+          if (row === selectedNewReport) this.selectedReporteId = savedId;
+        }
+      });
+
       alerts.basicAlert('Datos actualizados', 'Se han actualizado los datos correctamente.', 'success');
 
       this.notSavedChanges = false;
@@ -4107,6 +4146,7 @@ export class OrdenesComponent implements OnInit, OnDestroy, OnChanges {
   }
 
   async saveChangesMaterial() {
+    if (!this.requireSavedReportForDetails()) return;
     this.trackingService.addLog(
       this.trackingService.getnameComp(),
       'Guardar Cambios Materiales OT',
@@ -4203,6 +4243,7 @@ export class OrdenesComponent implements OnInit, OnDestroy, OnChanges {
   }
 
   async saveChangesEquipos() {
+    if (!this.requireSavedReportForDetails()) return;
     this.trackingService.addLog(
       this.trackingService.getnameComp(),
       'Guardar Cambios Equipos OT',
@@ -4929,6 +4970,7 @@ export class OrdenesComponent implements OnInit, OnDestroy, OnChanges {
 
   // Métodos CRUD para Personal
   addPersonal() {
+    if (!this.requireSavedReportForDetails()) return;
     //alert(typeof(!this.signalsService.getClosedReport()))
     this.trackingService.addLog(
       this.trackingService.getnameComp(),
@@ -4983,6 +5025,7 @@ export class OrdenesComponent implements OnInit, OnDestroy, OnChanges {
   }
 
   addMaterial() {
+    if (!this.requireSavedReportForDetails()) return;
     this.trackingService.addLog(
       this.trackingService.getnameComp(),
       'Agregar Material OT',
@@ -5032,6 +5075,7 @@ export class OrdenesComponent implements OnInit, OnDestroy, OnChanges {
   }
 
   addEquipos() {
+    if (!this.requireSavedReportForDetails()) return;
     this.trackingService.addLog(
       this.trackingService.getnameComp(),
       'Agregar Equipo OT',
@@ -5081,6 +5125,7 @@ export class OrdenesComponent implements OnInit, OnDestroy, OnChanges {
   }
 
   async savePersonalChanges() {
+    if (!this.requireSavedReportForDetails()) return;
     this.trackingService.addLog(
       this.trackingService.getnameComp(),
       'Guardar Cambios Personal OT',
@@ -5808,6 +5853,7 @@ export class OrdenesComponent implements OnInit, OnDestroy, OnChanges {
   }
 
   async saveConceptosChanges() {
+    if (!this.requireSavedReportForDetails()) return;
     const newRows = this.conceptos.filter(row => row.__isNew);
     const modifiedRows = this.conceptos.filter(row => row.__modified && !row.__isNew);
     /*const invalidNewRows = newRows.filter(item => !item.date || !item.supervisor);
@@ -6006,6 +6052,7 @@ export class OrdenesComponent implements OnInit, OnDestroy, OnChanges {
 
   // -- Métodos para Notas --
   addNota() {
+    if (!this.requireSavedReportForDetails()) return;
     this.trackingService.addLog(
       this.trackingService.getnameComp(),
       'Agregar Nota OT',
@@ -6055,6 +6102,7 @@ export class OrdenesComponent implements OnInit, OnDestroy, OnChanges {
   }
 
   async saveNotasChanges() {
+    if (!this.requireSavedReportForDetails()) return;
     this.trackingService.addLog(
       this.trackingService.getnameComp(),
       'Guardar Cambios Notas OT',

@@ -5,6 +5,7 @@ import { AgGridModule } from 'ag-grid-angular';
 import { ColDef, GridApi, GridReadyEvent, ICellRendererParams } from 'ag-grid-enterprise';
 import { AG_GRID_LOCALE_ES } from 'assets/i18n/ag-grid.locale.es';
 import { alerts } from 'app/helpers/alerts';
+import { hasPersistedMasterId } from 'app/helpers/master-detail-guard';
 import { TrackingService } from 'app/services/tracking.service';
 
 @Component({
@@ -30,6 +31,10 @@ export class DetallesRequisicionesComponent implements OnInit {
   codeMatches: any[] = [];
   isLocked: boolean = false; // True when requisition is assigned to a QUOTE
 
+  get masterSaved(): boolean {
+    return hasPersistedMasterId(this.params?.data?.id, this.params?.data?.__isNew);
+  }
+
   public AG_GRID_LOCALE_ES = AG_GRID_LOCALE_ES;
 
   ngOnInit() {
@@ -48,6 +53,11 @@ export class DetallesRequisicionesComponent implements OnInit {
   }
 
   loadData() {
+    if (!this.masterSaved) {
+      this.rowData = [];
+      this.gridApi?.setGridOption('rowData', this.rowData);
+      return;
+    }
     if (this.context && this.context.ITEMS && this.context.ITEMS.load) {
       const requisitionId = this.params.data.id;
       this.context.ITEMS.load(requisitionId, (data: any[]) => {
@@ -216,6 +226,10 @@ export class DetallesRequisicionesComponent implements OnInit {
   };
 
   addItem(material?: any) {
+    if (!this.masterSaved) {
+      alerts.basicAlert('Guarda primero la requisición', 'Guarda el maestro antes de agregar sus partidas.', 'warning');
+      return;
+    }
     if (this.isLocked) {
       alerts.basicAlert('Requisicion bloqueada', 'No se pueden agregar items. Esta requisicion esta en proceso de cotizacion.', 'warning');
       return;
@@ -317,6 +331,10 @@ export class DetallesRequisicionesComponent implements OnInit {
 
   async saveChanges() {
     this.trackingService.addLog(this.trackingService.getnameComp(), 'Guardó cambios en detalles requisiciones', 'Almacenes', this.trackingService.getEmail());
+    if (!this.masterSaved) {
+      alerts.basicAlert('Guarda primero la requisición', 'Guarda el maestro antes de guardar sus partidas.', 'warning');
+      return;
+    }
     if (this.isLocked) {
       alerts.basicAlert('Requisicion bloqueada', 'No se pueden guardar cambios. Esta requisicion esta en proceso de cotizacion.', 'warning');
       return;
@@ -390,8 +408,13 @@ export class DetallesRequisicionesComponent implements OnInit {
         row.brandName = brands[0].brand;
         row.__modified = true;
       }
-      if (missingFields.length === 0 && this.rowData.findIndex(other => other !== row && Number(other.idSupplie) === Number(row.idSupplie) && Number(other.idBrand || 0) === Number(row.idBrand || 0)) < rowIndex) {
-        alerts.basicAlert('Partida repetida', `El material y la marca de la partida ${rowIndex + 1} ya están en otra fila. Modifica la cantidad en esa partida.`, 'warning');
+      const duplicateIndex = this.rowData.findIndex(other =>
+        other !== row &&
+        Number(other.idSupplie) === Number(row.idSupplie) &&
+        Number(other.idBrand || 0) === Number(row.idBrand || 0)
+      );
+      if (missingFields.length === 0 && duplicateIndex >= 0 && duplicateIndex < rowIndex) {
+        alerts.basicAlert('Partida repetida', `El material y la marca de la partida ${rowIndex + 1} ya están en otra partida de esta requisición. Modifica la cantidad en esa partida.`, 'warning');
         this.gridApi?.ensureIndexVisible(rowIndex, 'middle');
         return false;
       }

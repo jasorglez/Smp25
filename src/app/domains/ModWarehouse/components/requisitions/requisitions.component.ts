@@ -7,6 +7,7 @@ import {
   ICellRendererParams,
 } from 'ag-grid-enterprise';
 import { alerts } from 'app/helpers/alerts';
+import { hasPersistedMasterId } from 'app/helpers/master-detail-guard';
 import { catchError, concat, EMPTY, forkJoin, lastValueFrom, toArray } from 'rxjs';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
@@ -1338,6 +1339,11 @@ export class RequisitionsComponent implements CanComponentDeactivate {
   }
 
   async saveRequisitionItemsById(requisitionId: number, data: any[]): Promise<boolean> {
+    const masterRow = this.masterRowData.find((row: any) => String(row.id) === String(requisitionId));
+    if (!hasPersistedMasterId(requisitionId, masterRow?.__isNew)) {
+      alerts.basicAlert('Guarda primero la requisición', 'Guarda el maestro de la requisición antes de guardar sus partidas.', 'warning');
+      return false;
+    }
     const newItems = data.filter((row: any) => row.__isNew);
     const modifiedItems = data.filter((row: any) => row.__modified && !row.__isNew);
 
