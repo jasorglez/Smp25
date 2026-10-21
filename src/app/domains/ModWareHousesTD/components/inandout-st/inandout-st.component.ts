@@ -1054,6 +1054,7 @@ export class InandoutStComponent implements OnInit {
       context: {
         movementType: this.movementType,
         isTransferType: (idType: any) => this.isTransferType(idType),
+        getMovementTypeDescription: (idType: any) => this.catalogs.find(catalog => Number(catalog.id) === Number(idType))?.description || '',
         idRoot: this.idRoot,
         projectId: this.projectId,
         idWarehouse: this.selectedWarehouse?.idAlmacen,
