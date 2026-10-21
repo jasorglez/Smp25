@@ -11,6 +11,7 @@ import { CustomersService } from 'app/services/customers.service';
 import { UsersService } from 'app/services/users.service';
 import { OcAndReqsService } from 'app/services/ocandreqs.service';
 import { MaterialsService } from 'app/services/materials.service';
+import { ProjectsService } from 'app/services/projects.service';
 import { Base64EncodeService } from 'app/services/base64encode.service';
 import { TrackingService } from 'app/services/tracking.service';
 import { lastValueFrom } from 'rxjs';
@@ -102,6 +103,7 @@ export class DetailCellRendererPurchaseOrderReportComponent implements OnDestroy
   private usersService = inject(UsersService);
   private requisitionsService = inject(OcAndReqsService);
   private materialsService = inject(MaterialsService);
+  private projectsService = inject(ProjectsService);
   private base64EncodeService = inject(Base64EncodeService);
   private trackingService = inject(TrackingService);
 
@@ -188,6 +190,32 @@ export class DetailCellRendererPurchaseOrderReportComponent implements OnDestroy
       const itemsPromise: Promise<any[]> = purchaseOrderId && !String(purchaseOrderId).startsWith('temp_')
         ? lastValueFrom(this.requisitionsService.getReqItems(purchaseOrderId))
         : Promise.resolve([]);
+      const projectId = Number(this.purchaseOrderData.idProject ||
+        (String(this.purchaseOrderData.typeReference || '').toLowerCase() === 'project' ? this.purchaseOrderData.idReference : 0) ||
+        this.signalsService.getProjectSelectedBySidebar()() || 0);
+      const projectNamePromise: Promise<string> = projectId > 0
+        ? lastValueFrom(this.projectsService.getProjectsById(projectId))
+            .then((response: any) => {
+              const project = Array.isArray(response) ? response[0] : (response?.data ?? response?.project ?? response);
+              return String(project?.description || project?.name || project?.projectName || '').trim() || 'N/A';
+            })
+            .catch(error => {
+              console.warn('No se pudo cargar el proyecto para el PDF de la OC:', error);
+              return 'N/A';
+            })
+        : Promise.resolve('N/A');
+      const requisitionId = Number(this.purchaseOrderData.idReq || this.purchaseOrderData.idRequisition || 0);
+      const requisitionFolioPromise: Promise<string> = requisitionId > 0
+        ? lastValueFrom(this.requisitionsService.getDetailedReq(requisitionId))
+            .then((response: any) => {
+              const requisition = response?.data ?? response?.requisition ?? response;
+              return String(requisition?.folio || '').trim() || 'N/A';
+            })
+            .catch(error => {
+              console.warn('No se pudo cargar la requisición para el PDF de la OC:', error);
+              return 'N/A';
+            })
+        : Promise.resolve('N/A');
       const authorizerId = Number(this.purchaseOrderData.idAuthorize || 0);
       const authorizerPromise: Promise<any> = authorizerId > 0
         ? lastValueFrom(this.usersService.getUserById(authorizerId)).catch(error => {
@@ -195,8 +223,9 @@ export class DetailCellRendererPurchaseOrderReportComponent implements OnDestroy
             return null;
           })
         : Promise.resolve(null);
-      const [company, products, providerData, items, authorizerResponse] = await Promise.all([
-        companyWithImagesPromise, productsPromise, providerPromise, itemsPromise, authorizerPromise
+      const [company, products, providerData, items, authorizerResponse, projectName, requisitionFolio] = await Promise.all([
+        companyWithImagesPromise, productsPromise, providerPromise, itemsPromise, authorizerPromise,
+        projectNamePromise, requisitionFolioPromise
       ]);
       if (this.destroyed) return;
 
@@ -231,7 +260,7 @@ export class DetailCellRendererPurchaseOrderReportComponent implements OnDestroy
       // Generar el PDF
       const docDefinition = this.buildDocDefinition(
         companyData, logoBase64, logo2Base64, watermarkBase64, providerData, articulos,
-        authorizer, authorizerSignature
+        authorizer, authorizerSignature, projectName, requisitionFolio
       );
 
       this.trackingService.addLog(this.trackingService.getnameComp(), 'Imprimió/abrió PDF orden de compra', 'Almacén / Órdenes de Compra', this.trackingService.getEmail());
@@ -298,7 +327,9 @@ export class DetailCellRendererPurchaseOrderReportComponent implements OnDestroy
     providerData: any,
     articulos: any[],
     authorizer: any,
-    authorizerSignature: string | null
+    authorizerSignature: string | null,
+    projectName: string,
+    requisitionFolio: string
   ): any {
     const fechaOC = this.purchaseOrderData.dateCreate ? this.formatDate(this.purchaseOrderData.dateCreate) : '';
     const fechaEntrega = this.purchaseOrderData.dateSupply ? this.formatDate(this.purchaseOrderData.dateSupply) : '';
@@ -452,8 +483,14 @@ export class DetailCellRendererPurchaseOrderReportComponent implements OnDestroy
         // Información adicional
         {
           table: {
-            widths: ['25%', '25%', '25%', '25%'],
+            widths: ['20%', '30%', '20%', '30%'],
             body: [
+              [
+                { text: 'PROYECTO:', style: 'masterLabel' },
+                { text: projectName || 'N/A', style: 'masterValue' },
+                { text: 'REQUISICIÓN:', style: 'masterLabel' },
+                { text: requisitionFolio || 'N/A', style: 'masterValue' }
+              ],
               [
                 { text: 'SOLICITANTE:', style: 'masterLabel' },
                 { text: solicitante, style: 'masterValue' },
