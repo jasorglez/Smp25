@@ -138,26 +138,19 @@
             </div>
           </section>
           <section class="material-form-section">
-            <div class="material-section-heading"><span class="material-section-icon"><i class="bi bi-tags"></i></span><div><h4>Marcas</h4><p>Selecciona las marcas que aplican a este material</p></div></div>
-            <div class="input-group mb-3">
-              <input class="form-control" name="newBrandName" [(ngModel)]="newBrandName" maxlength="100"
-                     placeholder="Escribe una nueva marca" aria-label="Nueva marca"
-                     (keydown.enter)="$event.preventDefault(); addBrandName()">
-              <button type="button" class="btn btn-outline-primary" (click)="addBrandName()"
-                      [disabled]="loadingBrandCatalog || addingBrand || savingMaterialModal || !newBrandName.trim()">
-                <span *ngIf="addingBrand" class="spinner-border spinner-border-sm me-1"></span><i *ngIf="!addingBrand" class="bi bi-plus-lg me-1"></i>Agregar marca
-              </button>
-            </div>
-            <div *ngIf="loadingBrandCatalog" class="text-muted small">Cargando marcas...</div>
-            <div *ngIf="!loadingBrandCatalog && brandCatalog.length" class="material-brand-list">
-              <label *ngFor="let brand of brandCatalog" class="form-check material-brand-option">
-                <input class="form-check-input" type="checkbox" [checked]="isBrandSelected(brand.id)"
-                       [disabled]="savingMaterialModal" (change)="toggleBrandSelection(brand.id, $any($event.target).checked)">
-                <span class="form-check-label">{{ brand.description }}</span>
-              </label>
-            </div>
-            <div *ngIf="!loadingBrandCatalog && !brandCatalog.length" class="text-muted small">Aún no hay marcas en el catálogo. Puedes agregar la primera aquí.</div>
-            <div class="form-text">Puedes seleccionar una o varias. Si no aplica ninguna marca, deja las casillas vacías.</div>
+            <div class="material-section-heading"><span class="material-section-icon"><i class="bi bi-tags"></i></span><div><h4>Marcas</h4><p>Un material puede tener varias marcas</p></div></div>
+            <label class="form-label" for="material-brands">Marcas del material</label>
+            <ng-select id="material-brands" class="material-brand-select" name="materialBrands"
+                       [items]="brandCatalog" bindLabel="description" bindValue="id"
+                       [(ngModel)]="selectedBrandIds" [multiple]="true" [closeOnSelect]="false"
+                       [hideSelected]="false" [searchable]="true" [clearable]="true"
+                       [addTag]="addBrandTag" addTagText="Agregar marca"
+                       [loading]="loadingBrandCatalog || addingBrand"
+                       [disabled]="savingMaterialModal || loadingBrandCatalog"
+                       appendTo="body" placeholder="Busca o escribe una marca y selecciónala"
+                       notFoundText="Escribe una marca nueva para agregarla">
+            </ng-select>
+            <div class="form-text">Elige varias opciones del combo. Para una marca nueva, escríbela y pulsa «Agregar marca»; quedará seleccionada aquí.</div>
           </section>
           <section class="material-form-section">
             <div class="material-section-heading"><span class="material-section-icon"><i class="bi bi-boxes"></i></span><div><h4>Inventario y precios</h4><p>Cantidades, límites de stock y precios en moneda nacional</p></div></div>

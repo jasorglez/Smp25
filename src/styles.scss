@@ -434,6 +434,7 @@ body {
 }
 
 /* Materials ng-select dropdown panel (appendTo=body — newworkorder) */
+.ng-dropdown-panel.material-brand-select { z-index: 1080 !important; }
 .ng-dropdown-panel.material-select {
   min-width: 380px !important;
   width: auto !important;

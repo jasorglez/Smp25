@@ -9,6 +9,7 @@ import {
 import { SignalsService } from 'app/services/signals.service';
 import { AgGridModule, ICellRendererAngularComp } from 'ag-grid-angular';
 import { FormsModule } from '@angular/forms';
+import { NgSelectModule } from '@ng-select/ng-select';
 import { alerts } from 'app/helpers/alerts';
 import { catchError, concat, EMPTY, firstValueFrom, lastValueFrom, of, toArray, tap } from 'rxjs';
 import { AutocompleteEditorComponent } from 'app/shared/autocomplete-editor/autocomplete-editor.component';
@@ -97,7 +98,7 @@ export class CustomGroupRendererComponent implements ICellRendererAngularComp {
 @Component({
   selector: 'storeComponent',
   standalone: true,
-  imports: [CommonModule, FormsModule, AgGridModule, CustomGroupRendererComponent, SelectWithTooltipEditorV2Component, MaterialDetailRendererComponent, PdfMaterialsDistributionComponent],
+  imports: [CommonModule, FormsModule, NgSelectModule, AgGridModule, CustomGroupRendererComponent, SelectWithTooltipEditorV2Component, MaterialDetailRendererComponent, PdfMaterialsDistributionComponent],
   templateUrl: './materials.component.html',
   styleUrl: './materials.component.scss',
   styles: `
@@ -139,7 +140,6 @@ export class MaterialsComponent implements CanComponentDeactivate {
   loadingBrandCatalog = false;
   brandCatalog: any[] = [];
   selectedBrandIds: number[] = [];
-  newBrandName = '';
   showSavingsTab: boolean = false;
   authorizedPass: boolean = false;
   private lastEditedRowId: number | string | null = null;
@@ -328,32 +328,16 @@ export class MaterialsComponent implements CanComponentDeactivate {
     }
   }
 
-  isBrandSelected(id: number): boolean {
-    return this.selectedBrandIds.includes(Number(id));
-  }
-
-  toggleBrandSelection(id: number, checked: boolean): void {
-    const brandId = Number(id);
-    this.selectedBrandIds = checked
-      ? [...new Set([...this.selectedBrandIds, brandId])]
-      : this.selectedBrandIds.filter(item => item !== brandId);
-  }
-
-  async addBrandName(): Promise<void> {
-    if (this.addingBrand || this.loadingBrandCatalog || this.savingMaterialModal) return;
-    const name = this.newBrandName.trim();
-    if (!name) return;
+  addBrandTag = async (term: string): Promise<any> => {
+    if (this.addingBrand || this.loadingBrandCatalog || this.savingMaterialModal) throw new Error('Espere a que termine la operación actual.');
+    const name = term.trim();
+    if (!name) throw new Error('Escriba una marca.');
     if (name.length > 100) {
       alerts.basicAlert('Marca muy larga', 'La marca admite hasta 100 caracteres.', 'warning');
-      return;
+      throw new Error('La marca admite hasta 100 caracteres.');
     }
     const existing = this.brandCatalog.find(brand => String(brand.description || '').trim().toLocaleLowerCase() === name.toLocaleLowerCase());
-    if (existing) {
-      this.toggleBrandSelection(Number(existing.id), true);
-      this.newBrandName = '';
-      alerts.basicAlert('Marca existente', 'La marca ya estaba en el catálogo y quedó seleccionada para este material.', 'info');
-      return;
-    }
+    if (existing) return existing;
     this.addingBrand = true;
     try {
       const added = await lastValueFrom(this.catalogsService.addCatalog({
@@ -366,20 +350,15 @@ export class MaterialsComponent implements CanComponentDeactivate {
         valueAddition2: 'NA',
       }));
       const createdId = Number(added?.id ?? added?.Id);
-      if (createdId > 0) this.toggleBrandSelection(createdId, true);
-      try {
-        this.brandCatalog = await lastValueFrom(this.catalogsService.getCatalogs(this.idcompany, 'BRAND'));
-      } catch {
-        if (createdId > 0) this.brandCatalog = [...this.brandCatalog, { id: createdId, description: name }];
-      }
-      this.newBrandName = '';
-      alerts.basicAlert('Marca agregada', 'Se agregó al catálogo y quedó seleccionada para este material.', 'success');
+      if (!createdId) throw new Error('El servidor no devolvió el identificador de la marca.');
+      return { id: createdId, description: name };
     } catch (error: any) {
-      alerts.basicAlert('No se pudo agregar', error?.error?.message || 'No se pudo guardar la marca en el catálogo.', 'error');
+      alerts.basicAlert('No se pudo agregar la marca', error?.error?.message || error?.message || 'Inténtalo de nuevo.', 'error');
+      throw error;
     } finally {
       this.addingBrand = false;
     }
-  }
+  };
 
   obtenerUnidades(){
     return this.catalogsService.getUnits(this.idcompany).subscribe(
@@ -1367,7 +1346,6 @@ export class MaterialsComponent implements CanComponentDeactivate {
     };
     this.brandCatalog = [];
     this.selectedBrandIds = [];
-    this.newBrandName = '';
     this.showMaterialModal = true;
     void this.loadBrandCatalog();
   }
@@ -1387,7 +1365,6 @@ export class MaterialsComponent implements CanComponentDeactivate {
       idSubfamilia: Number(selected.idSubfamilia) || null, idMedida: Number(selected.idMedida) || null };
     this.brandCatalog = [];
     this.selectedBrandIds = (selected.brands || []).map((brand: any) => Number(brand.id)).filter((id: number) => id > 0);
-    this.newBrandName = '';
     this.showMaterialModal = true;
     void this.loadBrandCatalog();
   }
