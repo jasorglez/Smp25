@@ -126,6 +126,7 @@ export class ProjectsComponent {
   private workprogramApuCuadrillaService = inject(WorkprogramApuCuadrillaService);
   private catalogsService = inject(CatalogsService);
   private dailyReportService = inject(DailyReportService);
+  isDeletingProject = false;
 
   public project: Iproject[] = [];
   private gridApi!: GridApi<Iproject>;
@@ -255,6 +256,25 @@ export class ProjectsComponent {
         : '',
       tooltipValueGetter: (params) => params.data?.hasDailyReports ? 'Tiene reportes diarios' : ''
     },
+    ...([
+      { colId: 'requisitionPresence', headerName: 'Req.', field: 'hasRequisitions', icon: 'bi-clipboard-check', label: 'requisiciones', color: '#2563eb' },
+      { colId: 'purchaseOrderPresence', headerName: 'OC', field: 'hasPurchaseOrders', icon: 'bi-receipt', label: 'órdenes de compra', color: '#7c3aed' },
+      { colId: 'entryPresence', headerName: 'Entradas', field: 'hasEntries', icon: 'bi-box-arrow-in-down', label: 'entradas', color: '#059669' },
+      { colId: 'exitPresence', headerName: 'Salidas', field: 'hasExits', icon: 'bi-box-arrow-up-right', label: 'salidas', color: '#d97706' }
+    ] as const).map(item => ({
+      colId: item.colId,
+      headerName: item.headerName,
+      width: item.colId === 'entryPresence' ? 96 : 86,
+      minWidth: 76,
+      maxWidth: 100,
+      sortable: true,
+      filter: true,
+      valueGetter: (params: any) => params.data?.[item.field] ? 'Sí' : '',
+      cellRenderer: (params: any) => params.data?.[item.field]
+        ? `<i class="bi ${item.icon}" style="color:${item.color}" title="Tiene ${item.label}" aria-label="Tiene ${item.label}"></i>`
+        : '',
+      tooltipValueGetter: (params: any) => params.data?.[item.field] ? `Tiene ${item.label}` : ''
+    })),
     { field: 'idConsecutivo', headerName: 'Id Obra', flex: 1 },
     { field: 'number', headerName: 'Formato Reporte', width: 150, flex: 2 },
     { field: 'name', headerName: 'Nombre Proyecto', width: 100, filter: true, flex: 2 },
@@ -354,7 +374,7 @@ export class ProjectsComponent {
     this.projectsService.getProjectListByCompany(this.idCompany).subscribe(
       (resp: any) => {
         this.project = this.mapProject(resp);
-        this.loadDailyReportPresence(this.project);
+        this.loadWarehousePresence(this.project);
         const sidebarProjectId = Number(this.signalsService.getProjectSelectedBySidebar()() || 0);
         if (sidebarProjectId > 0) {
           this.selectedRowData = this.project.find(p => Number(p.id) === sidebarProjectId) ?? null;
@@ -367,25 +387,24 @@ export class ProjectsComponent {
     );
   }
 
-  private loadDailyReportPresence(projects: Iproject[]): void {
+  private loadWarehousePresence(projects: Iproject[]): void {
     if (!projects.length) return;
-    forkJoin(projects.map(project =>
-      this.dailyReportService.getDailyReportsByProject(Number(project.id)).pipe(
-        map((response: any) => {
-          const reports = Array.isArray(response)
-            ? response
-            : response?.data ?? response?.items ?? response?.result ?? [];
-          return Array.isArray(reports) && reports.some((report: any) =>
-            report?.active !== false && !(report?.active != null && Number(report.active) === 0)
-          );
-        }),
-        catchError(() => of(false))
-      )
-    )).subscribe(reportFlags => {
-      projects.forEach((project, index) => {
-        project.hasDailyReports = reportFlags[index];
-      });
-      this.gridApi?.refreshCells({ force: true, columns: ['dailyReportPresence'] });
+    this.projectsService.getProjectDependencies(projects.map(project => Number(project.id))).subscribe({
+      next: dependencies => {
+        const byProject = new Map(dependencies.map(item => [Number(item.idProject), item]));
+        projects.forEach(project => {
+          const presence = byProject.get(Number(project.id));
+          project.hasRequisitions = presence?.hasRequisitions === true;
+          project.hasPurchaseOrders = presence?.hasPurchaseOrders === true;
+          project.hasEntries = presence?.hasEntries === true;
+          project.hasExits = presence?.hasExits === true;
+        });
+        this.gridApi?.refreshCells({ force: true, columns: ['requisitionPresence', 'purchaseOrderPresence', 'entryPresence', 'exitPresence'] });
+      },
+      error: error => {
+        console.error('Error loading project dependencies:', error);
+        alerts.basicAlert('Indicadores no disponibles', 'No se pudieron cargar las requisiciones y movimientos de los proyectos.', 'warning');
+      }
     });
   }
 
@@ -407,6 +426,7 @@ export class ProjectsComponent {
       year: w.year,
       diameter: w.diameter,
       active: w.active,
+      hasDailyReports: w.hasDailyReports === true,
       length: w.length,
       budgetManagement: w.budgetManagement,
       lineRight: w.lineRight,
@@ -950,35 +970,50 @@ export class ProjectsComponent {
     );
   }
 
-  deleteProject() {
+  async deleteProject() {
     if (!this.selectedRowData) {
       alerts.basicAlert(
-        'Eliminar contrato',
+        'Eliminar proyecto',
         'Por favor, seleccione un proyecto para eliminar.',
         'warning'
       );
       return;
     }
 
-    this.projectsService.deleteProject(this.selectedRowData.id).pipe(
-      catchError((error) => {
-        alerts.basicAlert(
-          'Eliminar contrato',
-          'Error al eliminar el contrato.',
-          'error'
-        );
-        console.error(error);
-        return EMPTY;
-      })
-    ).subscribe(() => {
-      alerts.basicAlert(
-        'Eliminar contrato',
-        'Contrato eliminado satisfactoriamente.',
-        'success'
-      );
-      this.getProjects();
+    if (this.isDeletingProject) return;
+    this.isDeletingProject = true;
+    const projectId = Number(this.selectedRowData.id);
+    try {
+      const [dailyResponse, warehouseResponse] = await Promise.all([
+        lastValueFrom(this.dailyReportService.getDailyReportsByProject(projectId)),
+        lastValueFrom(this.projectsService.getProjectDependencies([projectId]))
+      ]);
+      const reports = Array.isArray(dailyResponse) ? dailyResponse : dailyResponse?.data ?? [];
+      const warehouse = warehouseResponse[0];
+      if (!warehouse) throw new Error('No se pudo comprobar el uso del proyecto en almacén.');
+      const dependencies = [
+        Array.isArray(reports) && reports.some((report: any) => report.active !== false && Number(report.active) !== 0) ? 'reportes diarios' : null,
+        warehouse.hasRequisitions ? 'requisiciones' : null,
+        warehouse.hasPurchaseOrders ? 'órdenes de compra' : null,
+        warehouse.hasEntries ? 'entradas' : null,
+        warehouse.hasExits ? 'salidas' : null
+      ].filter(Boolean);
+      if (dependencies.length) {
+        alerts.basicAlert('No se puede eliminar el proyecto', `Ya tiene ${dependencies.join(', ')}.`, 'warning');
+        this.getProjects();
+        return;
+      }
+
+      await lastValueFrom(this.projectsService.deleteProject(projectId));
+      alerts.basicAlert('Eliminar proyecto', 'Proyecto eliminado satisfactoriamente.', 'success');
       this.selectedRowData = null;
-    });
+      this.getProjects();
+    } catch (error: any) {
+      console.error('Error checking or deleting project:', error);
+      alerts.basicAlert('Eliminar proyecto', error?.error?.message || 'No se pudo comprobar o eliminar el proyecto. Intenta de nuevo.', 'error');
+    } finally {
+      this.isDeletingProject = false;
+    }
   }
 
   onSubmit() {

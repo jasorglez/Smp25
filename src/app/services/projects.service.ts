@@ -78,6 +78,12 @@ export class ProjectsService {
     return this.http.delete(`${environment.urlSmp}/Project/${id}`, { headers: this.trackingService.getHeaders() });
   }
 
+  getProjectDependencies(projectIds: number[]): Observable<any[]> {
+    return this.http.post<any[]>(`${environment.urlWarehouse}/project-dependencies/presence`, projectIds, {
+      headers: this.trackingService.getHeaders()
+    });
+  }
+
   // ── PMO Recursos ──────────────────────────────────────────────────────────
   getPmoRecursosByProject(idProject: number) {
     return this.http.get(`${environment.urlSmp}/PmoRecurso/project/${idProject}`, { headers: this.trackingService.getHeaders() });

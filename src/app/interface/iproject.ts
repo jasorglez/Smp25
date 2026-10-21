@@ -27,4 +27,8 @@ export interface Iproject {
   state: string;
   detailType?: string; // Added for master-detail functionality
   hasDailyReports?: boolean;
+  hasRequisitions?: boolean;
+  hasPurchaseOrders?: boolean;
+  hasEntries?: boolean;
+  hasExits?: boolean;
 }
