@@ -24,7 +24,7 @@ export class ProductUpdatesService {
   private readonly http = inject(HttpClient);
   private readonly tracking = inject(TrackingService);
 
-  getPublished(idRoot: number, limit = 50): Observable<ProductUpdate[]> {
+  getPublished(idRoot: number, limit = 100): Observable<ProductUpdate[]> {
     const params = new HttpParams()
       .set('idRoot', idRoot)
       .set('limit', limit);
