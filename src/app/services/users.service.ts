@@ -20,6 +20,13 @@ export class UsersService {
   private http = inject(HttpClient);
   private signalsService = inject(SignalsService);
 
+  filterUsersCanAuthorizeProcesses(users: any[]): any[] {
+    return (Array.isArray(users) ? users : []).filter(user => {
+      const value = user?.canAuthorizeProcesses ?? user?.CanAuthorizeProcesses;
+      return value === true || value === 1 || ['true', '1'].includes(String(value ?? '').trim().toLowerCase());
+    });
+  }
+
   // Aqui comienzan los cambios hechos a SMP
 
   getAllUsers(): Observable<any> {

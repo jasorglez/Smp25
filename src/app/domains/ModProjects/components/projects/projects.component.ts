@@ -243,38 +243,36 @@ export class ProjectsComponent {
           filterOptions: ['equals'], // Opciones de filtro
         }},
     {
-      colId: 'dailyReportPresence',
-      headerName: 'Reportes',
-      width: 82,
-      minWidth: 76,
-      maxWidth: 90,
+      colId: 'projectDataPresence',
+      headerName: 'Datos',
+      width: 132,
+      minWidth: 116,
+      maxWidth: 145,
       sortable: true,
       filter: true,
-      valueGetter: (params) => params.data?.hasDailyReports ? 'Sí' : '',
-      cellRenderer: (params) => params.data?.hasDailyReports
-        ? '<i class="bi bi-journal-text text-success" title="Tiene reportes diarios" aria-label="Tiene reportes diarios"></i>'
-        : '',
-      tooltipValueGetter: (params) => params.data?.hasDailyReports ? 'Tiene reportes diarios' : ''
+      valueGetter: (params) => [
+        params.data?.hasDailyReports && 'Reportes diarios',
+        params.data?.hasRequisitions && 'Requisiciones',
+        params.data?.hasPurchaseOrders && 'Órdenes de compra',
+        params.data?.hasEntries && 'Entradas',
+        params.data?.hasExits && 'Salidas'
+      ].filter(Boolean).join(', '),
+      cellRenderer: (params) => {
+        const data = params.data;
+        if (!data) return '';
+        const icons = [
+          { active: data.hasDailyReports, icon: 'bi-journal-text', label: 'Reportes diarios', color: '#198754' },
+          { active: data.hasRequisitions, icon: 'bi-clipboard-check', label: 'Requisiciones', color: '#2563eb' },
+          { active: data.hasPurchaseOrders, icon: 'bi-receipt', label: 'Órdenes de compra', color: '#7c3aed' },
+          { active: data.hasEntries, icon: 'bi-box-arrow-in-down', label: 'Entradas', color: '#059669' },
+          { active: data.hasExits, icon: 'bi-box-arrow-up-right', label: 'Salidas', color: '#d97706' }
+        ].filter(item => item.active);
+        return icons.length
+          ? `<span style="display:inline-flex;align-items:center;gap:8px">${icons.map(item => `<i class="bi ${item.icon}" style="color:${item.color}" title="${item.label}" aria-label="${item.label}"></i>`).join('')}</span>`
+          : '';
+      },
+      tooltipValueGetter: (params) => params.value || ''
     },
-    ...([
-      { colId: 'requisitionPresence', headerName: 'Req.', field: 'hasRequisitions', icon: 'bi-clipboard-check', label: 'requisiciones', color: '#2563eb' },
-      { colId: 'purchaseOrderPresence', headerName: 'OC', field: 'hasPurchaseOrders', icon: 'bi-receipt', label: 'órdenes de compra', color: '#7c3aed' },
-      { colId: 'entryPresence', headerName: 'Entradas', field: 'hasEntries', icon: 'bi-box-arrow-in-down', label: 'entradas', color: '#059669' },
-      { colId: 'exitPresence', headerName: 'Salidas', field: 'hasExits', icon: 'bi-box-arrow-up-right', label: 'salidas', color: '#d97706' }
-    ] as const).map(item => ({
-      colId: item.colId,
-      headerName: item.headerName,
-      width: item.colId === 'entryPresence' ? 96 : 86,
-      minWidth: 76,
-      maxWidth: 100,
-      sortable: true,
-      filter: true,
-      valueGetter: (params: any) => params.data?.[item.field] ? 'Sí' : '',
-      cellRenderer: (params: any) => params.data?.[item.field]
-        ? `<i class="bi ${item.icon}" style="color:${item.color}" title="Tiene ${item.label}" aria-label="Tiene ${item.label}"></i>`
-        : '',
-      tooltipValueGetter: (params: any) => params.data?.[item.field] ? `Tiene ${item.label}` : ''
-    })),
     { field: 'idConsecutivo', headerName: 'Id Obra', flex: 1 },
     { field: 'number', headerName: 'Formato Reporte', width: 150, flex: 2 },
     { field: 'name', headerName: 'Nombre Proyecto', width: 100, filter: true, flex: 2 },
@@ -399,7 +397,7 @@ export class ProjectsComponent {
           project.hasEntries = presence?.hasEntries === true;
           project.hasExits = presence?.hasExits === true;
         });
-        this.gridApi?.refreshCells({ force: true, columns: ['requisitionPresence', 'purchaseOrderPresence', 'entryPresence', 'exitPresence'] });
+        this.gridApi?.refreshCells({ force: true, columns: ['projectDataPresence'] });
       },
       error: error => {
         console.error('Error loading project dependencies:', error);

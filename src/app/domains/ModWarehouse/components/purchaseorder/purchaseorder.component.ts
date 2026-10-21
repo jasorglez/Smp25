@@ -586,7 +586,7 @@ export class PurchaseOrderComponent implements CanComponentDeactivate {
         width: 150,
         cellEditor: 'agSelectCellEditor',
         cellEditorParams: {
-          values: this.usuarios ? this.usuarios.map((item) => item.id) : [],
+          values: this.usersService.filterUsersCanAuthorizeProcesses(this.usuarios).map((item) => item.id),
         },
         valueFormatter: (params) => {
           const foundItem = this.usuarios

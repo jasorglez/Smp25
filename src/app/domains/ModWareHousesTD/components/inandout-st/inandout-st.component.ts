@@ -692,7 +692,7 @@ export class InandoutStComponent implements OnInit {
         editable: true,
         cellEditor: 'agRichSelectCellEditor',
         cellEditorParams: () => ({
-          values: this.users.map(u => u.id),
+          values: this.usersService.filterUsersCanAuthorizeProcesses(this.users).map(u => u.id),
           valueListMaxHeight: 220,
           formatValue: (value: any) => {
             const user = this.users.find(u => u.id === value);
