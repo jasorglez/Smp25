@@ -1832,6 +1832,8 @@ export class PurchaseOrderComponent implements CanComponentDeactivate {
       const purchaseOrderItem = {
         idMovement: purchaseOrderId,
         idSupplie: Number(requisitionItem.idSupplie) || 0,
+        idBrand: requisitionItem.idBrand || null,
+        brandName: requisitionItem.brandName || null,
         idProvider: Number(requisitionItem.idProvider) || 0,
         quantity,
         price,

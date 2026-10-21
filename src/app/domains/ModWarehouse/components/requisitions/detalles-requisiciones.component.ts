@@ -25,6 +25,9 @@ export class DetallesRequisicionesComponent implements OnInit {
   hasUnsavedChanges: boolean = false;
   tempIdCounter: number = 0;
   productos: any[] = [];
+  materialBrands: any[] = [];
+  codeQuery = '';
+  codeMatches: any[] = [];
   isLocked: boolean = false; // True when requisition is assigned to a QUOTE
 
   public AG_GRID_LOCALE_ES = AG_GRID_LOCALE_ES;
@@ -38,6 +41,7 @@ export class DetallesRequisicionesComponent implements OnInit {
     this.params = params;
     this.context = params.context;
     this.productos = this.context?.productos || [];
+    this.materialBrands = this.context?.materialBrands || [];
     // Check if requisition is locked (assigned to a QUOTE for cotización)
     this.isLocked = params.data?.locked === true;
     this.loadData();
@@ -76,9 +80,14 @@ export class DetallesRequisicionesComponent implements OnInit {
         cellStyle: { backgroundColor: '#f8f9fa', fontWeight: 'bold' }
       },
       {
+        headerName: 'Código',
+        width: 135,
+        valueGetter: (params) => this.productos.find(item => item.id === Number(params.data?.idSupplie))?.code || '',
+      },
+      {
         field: 'idSupplie',
-        headerName: 'Producto',
-        headerTooltip: 'Al agregar un producto puedes buscar por su código o descripción.',
+        headerName: 'Descripción',
+        headerTooltip: 'Escribe parte de la descripción para elegir un material.',
         headerClass: 'required-column-header',
         cellClassRules: {
           'required-cell-missing': (params) => !this.isPositiveNumber(params.value),
@@ -96,8 +105,7 @@ export class DetallesRequisicionesComponent implements OnInit {
           formatValue: (value: any) => {
             const foundItem = this.productos.find((item) => item.id === value);
             if (!foundItem) return value;
-            const code = foundItem.code || foundItem.insumo;
-            return code ? `${code} - ${foundItem.description}` : foundItem.description;
+            return foundItem.description;
           }
         },
         valueFormatter: (params) => {
@@ -106,14 +114,35 @@ export class DetallesRequisicionesComponent implements OnInit {
           return foundItem ? foundItem.description : params.value;
         },
         valueSetter: (params: any) => {
-          // Validar si el material ya existe
-          const existingItem = this.findExistingMaterial(params.newValue);
-          if (existingItem && existingItem.id !== params.data.id) {
-            // Material duplicado encontrado
-            this.showDuplicateMaterialAlert(existingItem, params);
-            return false; // No cambiar el valor hasta confirmación
-          }
-          params.data.idSupplie = params.newValue;
+          if (Number(params.oldValue) === Number(params.newValue)) return false;
+          params.data.idSupplie = Number(params.newValue);
+          this.assignDefaultBrand(params.data);
+          return true;
+        }
+      },
+      {
+        field: 'idBrand',
+        headerName: 'Marca',
+        width: 170,
+        headerTooltip: 'Una marca se asigna sola; si hay varias, elige la requerida.',
+        editable: (params) => !this.isLocked && this.brandsFor(params.data?.idSupplie).length > 1,
+        cellEditor: 'agRichSelectCellEditor',
+        cellEditorParams: (params: any) => ({
+          values: this.brandsFor(params.data?.idSupplie).map(brand => brand.id),
+          valueListMaxHeight: 220,
+          allowTyping: true,
+          filterList: true,
+          formatValue: (value: any) => this.materialBrands.find(brand => brand.id === Number(value))?.brand || ''
+        }),
+        valueFormatter: (params) => params.data?.brandName || this.brandsFor(params.data?.idSupplie).find(brand => brand.id === Number(params.value))?.brand || (this.brandsFor(params.data?.idSupplie).length ? 'Elige una marca' : 'Sin marca'),
+        cellClassRules: {
+          'required-cell-missing': (params) => this.brandsFor(params.data?.idSupplie).length > 1 && !params.value
+        },
+        valueSetter: (params: any) => {
+          const brand = this.brandsFor(params.data?.idSupplie).find(item => item.id === Number(params.newValue));
+          if (!brand) return false;
+          params.data.idBrand = brand.id;
+          params.data.brandName = brand.brand;
           return true;
         }
       },
@@ -186,7 +215,7 @@ export class DetallesRequisicionesComponent implements OnInit {
     }
   };
 
-  addItem() {
+  addItem(material?: any) {
     if (this.isLocked) {
       alerts.basicAlert('Requisicion bloqueada', 'No se pueden agregar items. Esta requisicion esta en proceso de cotizacion.', 'warning');
       return;
@@ -195,7 +224,9 @@ export class DetallesRequisicionesComponent implements OnInit {
     const newItem = {
       id: tempId,
       idMovement: this.params.data.id,
-      idSupplie: 0,
+      idSupplie: material?.id || 0,
+      idBrand: null,
+      brandName: null,
       quantity: 0,
       price: 0,
       total: 0,
@@ -206,6 +237,7 @@ export class DetallesRequisicionesComponent implements OnInit {
       __isNew: true,
       __modified: false
     };
+    if (material) this.assignDefaultBrand(newItem);
 
     this.rowData = [...this.rowData, newItem];
     this.hasUnsavedChanges = true;
@@ -218,9 +250,45 @@ export class DetallesRequisicionesComponent implements OnInit {
       this.gridApi.ensureIndexVisible(lastRowIndex);
       this.gridApi.startEditingCell({
         rowIndex: lastRowIndex,
-        colKey: 'idSupplie'
+        colKey: material ? (this.brandsFor(material.id).length > 1 ? 'idBrand' : 'quantity') : 'idSupplie'
       });
     }, 0);
+  }
+
+  searchByCode() {
+    const query = this.codeQuery.trim().toLocaleLowerCase();
+    this.codeMatches = query ? this.productos.filter(item =>
+      String(item.code || '').toLocaleLowerCase().includes(query) ||
+      String(item.barCode || '').toLocaleLowerCase().includes(query)
+    ).slice(0, 12) : [];
+  }
+
+  selectCodeMatch(material: any) {
+    this.codeQuery = '';
+    this.codeMatches = [];
+    this.addItem(material);
+  }
+
+  selectExactCode() {
+    const query = this.codeQuery.trim().toLocaleLowerCase();
+    const exact = this.productos.find(item =>
+      String(item.code || '').toLocaleLowerCase() === query ||
+      String(item.barCode || '').toLocaleLowerCase() === query
+    );
+    if (exact) this.selectCodeMatch(exact);
+    else if (this.codeMatches.length === 1) this.selectCodeMatch(this.codeMatches[0]);
+    else if (query) alerts.basicAlert('Código', 'Selecciona un material de la lista de coincidencias.', 'info');
+  }
+
+  private brandsFor(materialId: any): any[] {
+    return this.materialBrands.filter(brand => brand.idMaterial === Number(materialId));
+  }
+
+  private assignDefaultBrand(row: any) {
+    const brands = this.brandsFor(row.idSupplie);
+    row.idBrand = brands.length === 1 ? brands[0].id : null;
+    row.brandName = brands.length === 1 ? brands[0].brand : null;
+    this.gridApi?.refreshCells({ force: true });
   }
 
   deleteSelectedItem() {
@@ -301,13 +369,6 @@ export class DetallesRequisicionesComponent implements OnInit {
     this.loadData();
   }
 
-  private findExistingMaterial(materialId: number): any {
-    return this.rowData.find(item => 
-      item.idSupplie === materialId && 
-      item.id !== this.params.data?.id
-    );
-  }
-
   private validateRows(): boolean {
     const requiredFields = [
       { field: 'idSupplie', label: 'Producto', invalid: (value: any) => !this.isPositiveNumber(value) },
@@ -320,6 +381,20 @@ export class DetallesRequisicionesComponent implements OnInit {
     for (let rowIndex = 0; rowIndex < this.rowData.length; rowIndex++) {
       const row = this.rowData[rowIndex];
       const missingFields = requiredFields.filter((required) => required.invalid(row[required.field]));
+      const brands = this.brandsFor(row.idSupplie);
+      if (brands.length > 1 && !brands.some(brand => brand.id === Number(row.idBrand))) {
+        missingFields.push({ field: 'idBrand', label: 'Marca', invalid: () => true });
+      }
+      if (brands.length === 1 && !row.idBrand) {
+        row.idBrand = brands[0].id;
+        row.brandName = brands[0].brand;
+        row.__modified = true;
+      }
+      if (missingFields.length === 0 && this.rowData.findIndex(other => other !== row && Number(other.idSupplie) === Number(row.idSupplie) && Number(other.idBrand || 0) === Number(row.idBrand || 0)) < rowIndex) {
+        alerts.basicAlert('Partida repetida', `El material y la marca de la partida ${rowIndex + 1} ya están en otra fila. Modifica la cantidad en esa partida.`, 'warning');
+        this.gridApi?.ensureIndexVisible(rowIndex, 'middle');
+        return false;
+      }
       if (missingFields.length === 0) {
         continue;
       }
@@ -351,74 +426,4 @@ export class DetallesRequisicionesComponent implements OnInit {
     return Number.isFinite(numericValue) && numericValue > 0;
   }
 
-  private showDuplicateMaterialAlert(existingItem: any, params: any): void {
-    const existingProduct = this.productos.find(p => p.id === existingItem.idSupplie);
-    const productName = existingProduct ? existingProduct.description : 'Material desconocido';
-    
-    alerts.confirmAlert(
-      'Material Duplicado',
-      `El material "${productName}" ya existe con cantidad ${existingItem.quantity}.\n\n¿Desea sumar las cantidades?`,
-      'warning',
-      'Sí, sumar cantidades'
-    ).then((result) => {
-      if (result.isConfirmed) {
-        // Usuario confirma - solicitar cantidad a sumar
-        this.promptForQuantity(existingItem, params);
-      } else {
-        // Usuario cancela - mantener selección pero no sumar
-        params.data.idSupplie = params.newValue;
-        if (this.gridApi) {
-          this.gridApi.refreshCells({ 
-            rowNodes: [this.gridApi.getRowNode(params.data.id)], 
-            columns: ['idSupplie'],
-            force: true 
-          });
-        }
-      }
-    });
-  }
-
-  private promptForQuantity(existingItem: any, params: any): void {
-    alerts.inputAlert(
-      'Sumar Cantidades',
-      `Material actual: ${existingItem.quantity}\nCantidad a agregar:`,
-      'text',
-      '',
-      {
-        confirmButtonText: 'Sumar',
-        required: true
-      }
-    ).then((result) => {
-      if (result.isConfirmed && result.value) {
-        const newQuantity = parseFloat(result.value);
-        if (!isNaN(newQuantity) && newQuantity > 0) {
-          // Sumar cantidades
-          existingItem.quantity += newQuantity;
-          existingItem.__modified = true;
-          this.hasUnsavedChanges = true;
-          
-          // Eliminar la fila actual
-          const updatedRowData = this.rowData.filter(item => item.id !== params.data.id);
-          this.rowData = updatedRowData;
-          
-          // Actualizar grid
-          this.gridApi.setGridOption('rowData', this.rowData);
-          
-          // El contador se actualiza desde el backend
-          
-          alerts.basicAlert(
-            'Cantidades Sumadas',
-            `Se sumaron ${newQuantity} unidades al material existente. Total: ${existingItem.quantity}`,
-            'success'
-          );
-        } else {
-          alerts.basicAlert(
-            'Error',
-            'La cantidad debe ser un número mayor a cero.',
-            'error'
-          );
-        }
-      }
-    });
-  }
 }

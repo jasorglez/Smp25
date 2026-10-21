@@ -5,6 +5,29 @@
   margin-bottom: 24px;
 }
 
+.code-search {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.code-search-field {
+  position: relative;
+  width: min(360px, 100%);
+}
+
+.code-matches {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  z-index: 30;
+  max-height: 240px;
+  overflow-y: auto;
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.15);
+}
+
 .btn-xs {
   padding: 1px 5px;
   font-size: 0.75rem;

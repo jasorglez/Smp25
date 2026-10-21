@@ -83,5 +83,5 @@ export const environment = {
   geminiApiKey: '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',
   gnewsApiKey: '94ccc596b4dfebc3f72683b6e81d81bc',
 
-  version: '5.00.281 (21 Octubre 2026 10:42) historial de 100 actualizaciones',
+  version: '5.00.282 (21 Octubre 2026 11:15) requisiciones por marca',
 };

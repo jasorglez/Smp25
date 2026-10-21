@@ -169,6 +169,8 @@ export class DetailCellRendererPurchaseOrderItemsComponent implements OnInit {
             return false; // No cambiar el valor hasta confirmación
           }
           params.data.idSupplie = params.newValue;
+          params.data.idBrand = null;
+          params.data.brandName = null;
           const product = this.productos.find((item: any) => Number(item.id) === Number(params.newValue));
           if (product) {
             params.data.costoMN = Number(product.costoMN ?? product.CostoMN ?? 0);
@@ -180,6 +182,13 @@ export class DetailCellRendererPurchaseOrderItemsComponent implements OnInit {
           }
           return true;
         }
+      },
+      {
+        field: 'brandName',
+        headerName: 'Marca',
+        editable: false,
+        width: 145,
+        valueFormatter: (params) => params.value || 'Sin marca'
       },
       {
         field: 'idProvider',

@@ -192,7 +192,7 @@ export class DetailCellRendererRequisitionReportComponent implements OnDestroy {
             const producto = this.productos.find((p: any) => p.id === item.idSupplie);
             return {
               ...item,
-              article: producto?.description || 'Sin descripción',
+              article: `${producto?.description || 'Sin descripción'}${item.brandName ? ` · Marca: ${item.brandName}` : ''}`,
               numArticle: producto?.code || item.idSupplie || ''
             };
           });

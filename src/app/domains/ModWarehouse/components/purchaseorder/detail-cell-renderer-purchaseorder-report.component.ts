@@ -216,7 +216,7 @@ export class DetailCellRendererPurchaseOrderReportComponent implements OnDestroy
         const product = productsById.get(String(item.idSupplie));
         return {
           ...item,
-          article: product?.description || 'Sin descripción',
+          article: `${product?.description || 'Sin descripción'}${item.brandName ? ` · Marca: ${item.brandName}` : ''}`,
           numArticle: product?.code || item.idSupplie || ''
         };
       });

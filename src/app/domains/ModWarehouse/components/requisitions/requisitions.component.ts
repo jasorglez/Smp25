@@ -7,7 +7,7 @@ import {
   ICellRendererParams,
 } from 'ag-grid-enterprise';
 import { alerts } from 'app/helpers/alerts';
-import { catchError, concat, EMPTY, lastValueFrom, toArray } from 'rxjs';
+import { catchError, concat, EMPTY, forkJoin, lastValueFrom, toArray } from 'rxjs';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { AgGridModule } from 'ag-grid-angular';
@@ -973,16 +973,23 @@ export class RequisitionsComponent implements CanComponentDeactivate {
   }
 
   obtenerProductos() {
-    this.materialsService.getMaterials2Fields(this.idRoot).subscribe(
-      (data: Catalog[]) => {
-        this.productos = data;
-        console.log('✅ Productos cargados:', this.productos.length);
-        // Actualizar el context después de cargar productos
+    forkJoin({
+      productos: this.materialsService.getMaterials2Fields(this.idRoot),
+      marcas: this.materialsService.getMaterialBrands(this.idRoot)
+    }).subscribe({
+      next: ({ productos, marcas }) => {
+        this.productos = productos as any[];
+        this.materialBrands = marcas;
         this.updateDetailContext();
       },
-      (error) => console.error('Error fetching materials:', error)
-    );
+      error: (error) => {
+        console.error('Error fetching materials or brands:', error);
+        alerts.basicAlert('Error', 'No se pudieron cargar los materiales y sus marcas. Intenta de nuevo antes de capturar partidas.', 'error');
+      }
+    });
   }
+
+  materialBrands: any[] = [];
 
   updateDetailContext() {
     if (this.masterGridApi) {
@@ -995,6 +1002,7 @@ export class RequisitionsComponent implements CanComponentDeactivate {
           typeReference: this.typeReference,
           idReference: this.idReference,
           productos: this.productos,
+          materialBrands: this.materialBrands,
           componentParent: this,
           gridApi: this.masterGridApi,
           ITEMS: {
