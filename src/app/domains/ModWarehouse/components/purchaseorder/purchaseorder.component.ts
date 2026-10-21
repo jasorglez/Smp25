@@ -599,12 +599,12 @@ export class PurchaseOrderComponent implements CanComponentDeactivate {
         },
       },
       {
-        headerName: 'Acción',
+        headerName: 'Abrir',
         colId: 'authorizationAction',
-        width: 145,
+        width: 64,
         editable: false,
         cellRenderer: (params: ICellRendererParams) => Number(params.data?.idAuthorize) > 0
-          ? '<button class="btn btn-sm btn-outline-warning py-0" title="Quitar autorización"><i class="bi bi-unlock"></i> Quitar</button>'
+          ? '<button class="btn btn-sm btn-outline-warning py-0 px-2" title="Quitar autorización y abrir edición" aria-label="Quitar autorización y abrir edición"><i class="bi bi-unlock-fill"></i></button>'
           : '',
       },
        {

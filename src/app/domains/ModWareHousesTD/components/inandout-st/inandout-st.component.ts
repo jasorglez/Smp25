@@ -887,6 +887,12 @@ export class InandoutStComponent implements OnInit {
         }
       },
       {
+        headerName: 'Abrir', colId: 'authorizationAction', width: 64, editable: false,
+        cellRenderer: (params: any) => Number(params.data?.idAutoriza) > 0
+          ? '<button class="btn btn-sm btn-outline-warning py-0 px-2" title="Quitar autorización y abrir edición" aria-label="Quitar autorización y abrir edición"><i class="bi bi-unlock-fill"></i></button>'
+          : '',
+      },
+      {
         field: 'comment',
         headerName: 'Comentario',
         width: 300,
@@ -896,12 +902,6 @@ export class InandoutStComponent implements OnInit {
           return true;
         }
       },
-      {
-        headerName: 'Acción', colId: 'authorizationAction', width: 145, editable: false,
-        cellRenderer: (params: any) => Number(params.data?.idAutoriza) > 0
-          ? '<button class="btn btn-sm btn-outline-warning py-0" title="Quitar autorización"><i class="bi bi-unlock"></i> Quitar</button>'
-          : '',
-      }
     ];
   }
 

@@ -276,9 +276,9 @@ export class SistemaComponent implements OnInit, OnDestroy {
       valueFormatter: (params: any) => this.authorizationUsers.find(user => Number(user.id) === Number(params.value))?.displayName || '',
     },
     {
-      headerName: 'Acción', colId: 'authorizationAction', width: 145, editable: false,
+      headerName: 'Abrir', colId: 'authorizationAction', width: 64, editable: false,
       cellRenderer: (params: any) => Number(params.data?.idAuthorize) > 0
-        ? '<button class="btn btn-sm btn-outline-warning py-0" title="Quitar autorización"><i class="bi bi-unlock"></i> Quitar</button>'
+        ? '<button class="btn btn-sm btn-outline-warning py-0 px-2" title="Quitar autorización y abrir edición" aria-label="Quitar autorización y abrir edición"><i class="bi bi-unlock-fill"></i></button>'
         : '',
     },
     {

@@ -83,5 +83,5 @@ export const environment = {
   geminiApiKey: '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',
   gnewsApiKey: '94ccc596b4dfebc3f72683b6e81d81bc',
 
-  version: '5.00.320 (21 Octubre 2026 17:43) deja vacio comentario sin datos en PDF de requisicion',
+  version: '5.00.321 (21 Octubre 2026 17:45) agrega candado para abrir documentos autorizados',
 };
