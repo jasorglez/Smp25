@@ -336,7 +336,7 @@ export class DetailCellRendererEntryItemsComponent {
       {
         field: 'code',
         headerName: 'Código',
-        width: 100,
+        width: this.isInventoryAdjustmentEntry() ? 140 : 100,
         editable: true,
         valueSetter: (params: any) => {
           params.data.code = params.newValue ? params.newValue.toUpperCase() : '';
@@ -346,7 +346,7 @@ export class DetailCellRendererEntryItemsComponent {
       {
         field: 'description',
         headerName: 'Descripción',
-        width: 300,
+        width: this.isInventoryAdjustmentEntry() ? 360 : 300,
         cellDataType: false, // Desactivar auto-detección de tipo
         editable: true,
         cellEditor: 'selectMaterialEditor',
