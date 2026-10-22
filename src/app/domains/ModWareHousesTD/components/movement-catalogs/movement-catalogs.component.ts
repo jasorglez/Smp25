@@ -124,11 +124,12 @@ export class MovementCatalogsComponent implements CanComponentDeactivate {
     try {
       for (const row of changedRows) {
         const payload = {
-          ...row,
+          idCompany: this.idRoot,
           description: String(row.description).trim(),
           valueAddition: this.normalizeBehavior(row.valueAddition),
-          idCompany: this.idRoot,
-          type: this.selectedType
+          type: this.selectedType,
+          active: Number(row.active ?? 1),
+          vigente: row.vigente ?? true
         };
         if (row.__isNew) {
           const created: any = await lastValueFrom(this.catalogsService.addCatalog(payload));
@@ -144,7 +145,14 @@ export class MovementCatalogsComponent implements CanComponentDeactivate {
       alerts.basicAlert('Catálogos actualizados', 'Los tipos de movimiento se guardaron correctamente.', 'success');
     } catch (error) {
       console.error('Error al guardar los tipos de movimiento:', error);
-      alerts.basicAlert('Error', 'No se pudieron guardar los tipos de movimiento.', 'error');
+      const apiMessage = typeof error?.error === 'string'
+        ? error.error
+        : error?.error?.message || error?.error?.Message;
+      alerts.basicAlert(
+        'Error',
+        apiMessage || `No se pudieron guardar los tipos de movimiento${error?.status ? ` (HTTP ${error.status})` : ''}.`,
+        'error'
+      );
     } finally {
       this.saving = false;
     }
