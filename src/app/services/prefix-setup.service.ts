@@ -1,6 +1,6 @@
 import { inject, Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
-import { Observable, firstValueFrom } from 'rxjs';
+import { Observable, catchError, firstValueFrom, throwError } from 'rxjs';
 import { environment } from '@env/environment';
 import { TrackingService } from './tracking.service';
 
@@ -66,6 +66,29 @@ export class PrefixSetupService {
       `${environment.urlWarehouse}/PrefixSetup`,
       data,
       { headers: this.trackingService.getHeaders() }
+    );
+  }
+
+  /** Creates the standard folio configuration once for each newly created project. */
+  ensureDefaultProjectPrefixSetup(projectId: number): Observable<PrefixSetup> {
+    return this.getPrefixSetup('project', projectId).pipe(
+      catchError((error) => {
+        if (error?.status !== 404) return throwError(() => error);
+
+        return this.createPrefixSetup({
+          idProjectOrBranch: projectId,
+          type: 'project',
+          prefixReq: 'RQ-',
+          consecutiveReq: 0,
+          prefixOc: 'OC-',
+          consecutiveOc: 0,
+          prefixEntry: 'EN-',
+          consecutiveEntry: 0,
+          prefixOut: 'SA-',
+          consecutiveOut: 0,
+          active: true,
+        });
+      })
     );
   }
 

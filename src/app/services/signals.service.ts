@@ -152,6 +152,16 @@ getMasterUpdateTrigger() {
    *  Usada por sistema/reportes-diarios para evitar contaminación cruzada. */
   private sidebarProjectId = signal<number | null>(null);
 
+  private userProjectAssignmentsVersion = signal(0);
+
+  notifyUserProjectAssignmentsChanged(): void {
+    this.userProjectAssignmentsVersion.update(version => version + 1);
+  }
+
+  getUserProjectAssignmentsVersion() {
+    return this.userProjectAssignmentsVersion.asReadonly();
+  }
+
   setSidebarProjectId(id: number | null) {
     this.sidebarProjectId.set(id);
   }

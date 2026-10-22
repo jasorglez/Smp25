@@ -53,6 +53,7 @@
         [gridOptions]="gridOptions"
         [localeText]="AG_GRID_LOCALE_ES"
         (gridReady)="onGridReady($event)"
+        (columnResized)="onMasterColumnResized($event)"
         (selectionChanged)="onSelectionChanged($event)"
         (cellValueChanged)="onCellValueChanged($event)"
         (cellEditingStopped)="onCellEditingStopped($event)"

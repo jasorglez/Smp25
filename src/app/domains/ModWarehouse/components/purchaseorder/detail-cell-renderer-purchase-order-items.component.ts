@@ -7,6 +7,7 @@ import { AG_GRID_LOCALE_ES } from 'assets/i18n/ag-grid.locale.es';
 import { alerts } from 'app/helpers/alerts';
 import { hasPersistedMasterId } from 'app/helpers/master-detail-guard';
 import { TrackingService } from 'app/services/tracking.service';
+import { restoreGridColumnWidths, saveGridColumnWidths } from 'app/helpers/grid-column-widths';
 import { CatalogsService } from 'app/services/catalogs.service';
 import { lastValueFrom } from 'rxjs';
 import Swal from 'sweetalert2';
@@ -54,6 +55,7 @@ import Swal from 'sweetalert2';
         [gridOptions]="gridOptions"
         [localeText]="AG_GRID_LOCALE_ES"
         (gridReady)="onGridReady($event)"
+        (columnResized)="onColumnResized($event)"
         (cellValueChanged)="onCellValueChanged($event)"
         style="height: 1320px; width: 100%;">
       </ag-grid-angular>
@@ -147,6 +149,11 @@ export class DetailCellRendererPurchaseOrderItemsComponent implements OnInit {
   onGridReady(params: GridReadyEvent) {
     this.gridApi = params.api;
     this.gridApi.setGridOption('columnDefs', this.colDefs);
+    restoreGridColumnWidths(this.gridApi, 'shopping:purchaseorder:detail', this.trackingService.getEmail());
+  }
+
+  onColumnResized(event: any): void {
+    saveGridColumnWidths(this.gridApi, 'shopping:purchaseorder:detail', this.trackingService.getEmail(), event);
   }
 
   get colDefs(): ColDef[] {

@@ -163,6 +163,97 @@ export class SideBarComponent {
         }, 50);
       }
     });
+
+    let lastAssignmentVersion = 0;
+    effect(() => {
+      const version = this.signalsService.getUserProjectAssignmentsVersion()();
+      if (version <= lastAssignmentVersion) return;
+      lastAssignmentVersion = version;
+      void this.refreshUserAssignmentsInSidebar();
+    });
+  }
+
+  private refreshUserAssignmentsInSidebar(): void {
+    const branchId = Number(this.selectedBranchId || 0);
+    if (!branchId) return;
+
+    const selectedContractId = Number(this.selectedContractId || 0);
+    const selectedProjectId = Number(this.selectedProjectId || 0);
+    const contracts$ = branchId < 0
+      ? this.contractService.getContracts(branchId)
+      : this.contractService.getContractsByBranch(this.signalsService.idUser(), branchId);
+
+    contracts$.subscribe({
+      next: (response: any) => {
+        const rows = Array.isArray(response) ? response : Object.values(response || {});
+        this.contractData = rows.map((row: any) => ({
+          ...row,
+          contractId: Number(row.contractId ?? row.idContrato ?? row.id),
+          contract: row.contract ?? row.numberContract ?? row.name ?? ''
+        }));
+        const selectedContract = this.contractData.find((row: any) => row.contractId === selectedContractId);
+        if (!selectedContract) {
+          this.selectedContractId = '';
+          this.selectedProjectId = '';
+          this.projectData = [];
+          this.trackingService.setContract('');
+          this.trackingService.setProject('');
+          this.signalsService.setContractSelectedBySidebar(null);
+          this.signalsService.setProjectSelectedBySidebar(null);
+          this.signalsService.setSidebarProjectId(null);
+          this.signalsService.setProjectNameBySidebar('');
+          this.cdr.markForCheck();
+          return;
+        }
+
+        this.selectedContractId = String(selectedContractId);
+        this.signalsService.setContractSelectedBySidebar(selectedContractId);
+        this.signalsService.contractSignal(selectedContractId, selectedContract.contract);
+        this.trackingService.setContract(this.selectedContractId);
+
+        const projects$ = branchId < 0
+          ? this.projectService.getProjectListByContract(selectedContractId)
+          : this.projectService.getProjectsByContract(this.signalsService.idUser(), selectedContractId);
+        projects$.subscribe({
+          next: (projectResponse: any) => {
+            const projectRows = Array.isArray(projectResponse) ? projectResponse : Object.values(projectResponse || {});
+            this.projectData = projectRows.map((row: any) => ({
+              ...row,
+              idProject: Number(row.idProject ?? row.id),
+              projectName: row.projectName ?? row.name ?? ''
+            }));
+            const selectedProject = this.projectData.find((row: any) => row.idProject === selectedProjectId);
+            if (selectedProject) {
+              this.selectedProjectId = String(selectedProjectId);
+              this.signalsService.setProjectSelectedBySidebar(selectedProjectId);
+              this.signalsService.setSidebarProjectId(selectedProjectId);
+              this.signalsService.setProjectNameBySidebar(selectedProject.projectName);
+              this.trackingService.setProject(this.selectedProjectId);
+            } else {
+              this.selectedProjectId = '';
+              this.signalsService.setProjectSelectedBySidebar(null);
+              this.signalsService.setSidebarProjectId(null);
+              this.signalsService.setProjectNameBySidebar('');
+              this.trackingService.setProject('');
+              if (this.autoLoadAssignedBranchContext && this.projectData.length > 0) {
+                this.selectSidebarProject(this.projectData[0]);
+              }
+            }
+            this.cdr.markForCheck();
+          },
+          error: error => {
+            console.error('Error refreshing assigned projects in sidebar:', error);
+            this.cdr.markForCheck();
+          }
+        });
+        this.loadVigenteConvention(selectedContractId);
+        this.cdr.markForCheck();
+      },
+      error: error => {
+        console.error('Error refreshing assigned contracts in sidebar:', error);
+        this.cdr.markForCheck();
+      }
+    });
   }
 
   get favoriteActions() {

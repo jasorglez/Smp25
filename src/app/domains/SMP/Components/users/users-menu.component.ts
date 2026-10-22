@@ -22,7 +22,8 @@ import { AuthService } from 'app/services/auth.service';
   imports: [CommonModule, UsersComponent, UsersxoilfieldsComponent,
     UsersxcompanysComponent, UsersxprojectsComponent, UsersxcontractsComponent,
     UsersxrootComponent, UsersxwarehousesComponent, UsersxbranchesComponent,
-    UsersxMasterPermissions2Component, UsersXStoresComponent, UsersXCashRegistersComponent],
+    UsersxMasterPermissions2Component,
+    UsersXStoresComponent, UsersXCashRegistersComponent],
   templateUrl: './users-menu.component.html',
   styleUrl: './users-menu.component.scss'
 })

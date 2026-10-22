@@ -57,6 +57,7 @@
     [gridOptions]="gridOptions"
     [localeText]="AG_GRID_LOCALE_ES"
     (gridReady)="onGridReady($event)"
+    (columnResized)="onColumnResized($event)"
     (cellValueChanged)="onCellValueChanged($event)">
   </ag-grid-angular>
 </div>

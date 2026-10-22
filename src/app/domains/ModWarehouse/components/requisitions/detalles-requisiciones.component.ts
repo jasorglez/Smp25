@@ -7,6 +7,7 @@ import { AG_GRID_LOCALE_ES } from 'assets/i18n/ag-grid.locale.es';
 import { alerts } from 'app/helpers/alerts';
 import { hasPersistedMasterId } from 'app/helpers/master-detail-guard';
 import { TrackingService } from 'app/services/tracking.service';
+import { restoreGridColumnWidths, saveGridColumnWidths } from 'app/helpers/grid-column-widths';
 
 @Component({
   selector: 'app-detalles-requisiciones',
@@ -85,6 +86,11 @@ export class DetallesRequisicionesComponent implements OnInit {
     this.gridApi = params.api;
     // Ensure columnDefs are updated with loaded products
     this.gridApi.setGridOption('columnDefs', this.colDefs);
+    restoreGridColumnWidths(this.gridApi, 'shopping:requisitions:detail', this.trackingService.getEmail());
+  }
+
+  onColumnResized(event: any): void {
+    saveGridColumnWidths(this.gridApi, 'shopping:requisitions:detail', this.trackingService.getEmail(), event);
   }
 
   get colDefs(): ColDef[] {

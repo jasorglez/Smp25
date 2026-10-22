@@ -11,9 +11,28 @@ import { RootService } from 'app/services/root.service';
 import { BranchsService } from 'app/services/branchs.service';
 import { ContractsService } from 'app/services/contracts.service';
 import { ProjectsService } from 'app/services/projects.service';
+import { SignalsService } from 'app/services/signals.service';
 import { WarehousesService } from 'app/services/warehouses.service';
 import { alerts } from 'app/helpers/alerts';
 import { ButtonCellRendererExpenditureComponent } from 'app/domains/ModAdmon/components/egresos-palacio/button-cell-renderer-expenditure.component';
+import { CompanyMasterPermissionsRendererComponent } from './company-master-permissions-renderer.component';
+import { MasterPermissions2Service } from 'app/services/master-permissions-2.service';
+
+function restoreUsersDescriptionWidth(api: GridApi, grid: string, column: string): void {
+  try {
+    const width = Number(localStorage.getItem(`smp:users:${grid}:${column}:width`));
+    if (Number.isFinite(width) && width >= 200) {
+      api.applyColumnState({ state: [{ colId: column, width }], applyOrder: false });
+    }
+  } catch { /* almacenamiento del navegador no disponible */ }
+}
+
+function saveUsersDescriptionWidth(event: any, grid: string, column: string): void {
+  if (!event.finished || event.column?.getColId() !== column) return;
+  try {
+    localStorage.setItem(`smp:users:${grid}:${column}:width`, String(event.column.getActualWidth()));
+  } catch { /* almacenamiento del navegador no disponible */ }
+}
 
 // ─── Detail renderer: proyectos por contrato ──────────────────────────────────
 @Component({
@@ -64,6 +83,7 @@ import { ButtonCellRendererExpenditureComponent } from 'app/domains/ModAdmon/com
           [gridOptions]="gridOptions"
           rowSelection="single"
           (gridReady)="onGridReady($event)"
+          (columnResized)="onDescriptionResized($event)"
           (selectionChanged)="onSelectionChanged($event)">
         </ag-grid-angular>
       </div>
@@ -74,6 +94,7 @@ import { ButtonCellRendererExpenditureComponent } from 'app/domains/ModAdmon/com
 export class ProyectosDetailRendererComponent implements ICellRendererAngularComp {
   private projectsService          = inject(ProjectsService);
   private usersxpermissionsService = inject(UsersxpermissionsService);
+  private signalsService           = inject(SignalsService);
 
   projects: any[] = [];
   availableProjects: any[] = [];
@@ -89,7 +110,7 @@ export class ProyectosDetailRendererComponent implements ICellRendererAngularCom
     { field: 'id',                 hide: true },
     { field: 'idProject',          hide: true },
     { field: 'projectName',        headerName: 'Proyecto',     flex: 2 },
-    { field: 'projectDescription', headerName: 'Descripción',  flex: 1 }
+    { field: 'projectDescription', headerName: 'Descripción', minWidth: 300, width: 360, flex: 0, resizable: true, suppressSizeToFit: true }
   ];
 
   gridOptions: any = { headerHeight: 25, rowHeight: 22, suppressCellFocus: true };
@@ -135,7 +156,7 @@ export class ProyectosDetailRendererComponent implements ICellRendererAngularCom
       active:       1
     };
     this.usersxpermissionsService.addUserxPermission(payload).subscribe({
-      next:  () => { this.isSaving = false; this.loadData(); },
+      next:  () => { this.isSaving = false; this.loadData(); this.signalsService.notifyUserProjectAssignmentsChanged(); },
       error: () => { this.isSaving = false; alerts.basicAlert('Error', 'No se pudo agregar el proyecto', 'error'); }
     });
   }
@@ -151,13 +172,14 @@ export class ProyectosDetailRendererComponent implements ICellRendererAngularCom
       if (!result.isConfirmed) return;
       this.isSaving = true;
       this.usersxpermissionsService.deleteUserxPermission(this.selectedRow.id).subscribe({
-        next:  () => { this.isSaving = false; this.selectedRow = null; this.loadData(); },
+        next:  () => { this.isSaving = false; this.selectedRow = null; this.loadData(); this.signalsService.notifyUserProjectAssignmentsChanged(); },
         error: () => { this.isSaving = false; alerts.basicAlert('Error', 'No se pudo quitar el proyecto', 'error'); }
       });
     });
   }
 
-  onGridReady(event: GridReadyEvent): void { this.gridApi = event.api; }
+  onGridReady(event: GridReadyEvent): void { this.gridApi = event.api; restoreUsersDescriptionWidth(event.api, 'projects', 'projectDescription'); }
+  onDescriptionResized(event: any): void { saveUsersDescriptionWidth(event, 'projects', 'projectDescription'); }
 
   onSelectionChanged(event: any): void {
     const nodes = event.api.getSelectedNodes();
@@ -212,6 +234,7 @@ export class ProyectosDetailRendererComponent implements ICellRendererAngularCom
           [gridOptions]="gridOptions"
           rowSelection="single"
           (gridReady)="onGridReady($event)"
+          (columnResized)="onDescriptionResized($event)"
           (selectionChanged)="onSelectionChanged($event)">
         </ag-grid-angular>
       </div>
@@ -237,7 +260,7 @@ export class AlmacenesDetailRendererComponent implements ICellRendererAngularCom
     { field: 'id', hide: true },
     { field: 'idPermission', hide: true },
     { field: 'name', headerName: 'Almacén', flex: 2 },
-    { field: 'description', headerName: 'Descripción', flex: 1 }
+    { field: 'description', headerName: 'Descripción', minWidth: 300, width: 360, flex: 0, resizable: true, suppressSizeToFit: true }
   ];
 
   gridOptions: any = { headerHeight: 25, rowHeight: 22, suppressCellFocus: true };
@@ -315,7 +338,8 @@ export class AlmacenesDetailRendererComponent implements ICellRendererAngularCom
     });
   }
 
-  onGridReady(event: GridReadyEvent): void { this.gridApi = event.api; }
+  onGridReady(event: GridReadyEvent): void { this.gridApi = event.api; restoreUsersDescriptionWidth(event.api, 'warehouses', 'description'); }
+  onDescriptionResized(event: any): void { saveUsersDescriptionWidth(event, 'warehouses', 'description'); }
 
   onSelectionChanged(event: any): void {
     const nodes = event.api.getSelectedNodes();
@@ -375,6 +399,7 @@ export class AlmacenesDetailRendererComponent implements ICellRendererAngularCom
           [components]="components"
           rowSelection="single"
           (gridReady)="onGridReady($event)"
+          (columnResized)="onDescriptionResized($event)"
           (selectionChanged)="onSelectionChanged($event)">
         </ag-grid-angular>
       </div>
@@ -385,6 +410,7 @@ export class AlmacenesDetailRendererComponent implements ICellRendererAngularCom
 export class ContratosDetailRendererComponent implements ICellRendererAngularComp {
   private contractsService         = inject(ContractsService);
   private usersxpermissionsService = inject(UsersxpermissionsService);
+  private signalsService           = inject(SignalsService);
   private projectsService          = inject(ProjectsService);
 
   contracts: any[] = [];
@@ -406,7 +432,7 @@ export class ContratosDetailRendererComponent implements ICellRendererAngularCom
     { field: 'permissionId', hide: true, filter: 'agNumberColumnFilter' },
     { field: 'contractId',   hide: true },
     { field: 'name',         headerName: 'Contrato',    flex: 2 },
-    { field: 'descripSmall', headerName: 'Descripción', flex: 1 },
+    { field: 'descripSmall', headerName: 'Descripción', minWidth: 300, width: 360, flex: 0, resizable: true, suppressSizeToFit: true },
     {
       field: 'countProyectos',
       headerName: 'Proyectos',
@@ -520,7 +546,7 @@ export class ContratosDetailRendererComponent implements ICellRendererAngularCom
       active:       1
     };
     this.usersxpermissionsService.addUserxPermission(payload).subscribe({
-      next:  () => { this.isSaving = false; this.loadData(); },
+      next:  () => { this.isSaving = false; this.loadData(); this.signalsService.notifyUserProjectAssignmentsChanged(); },
       error: () => { this.isSaving = false; alerts.basicAlert('Error', 'No se pudo agregar el contrato', 'error'); }
     });
   }
@@ -536,13 +562,14 @@ export class ContratosDetailRendererComponent implements ICellRendererAngularCom
       if (!result.isConfirmed) return;
       this.isSaving = true;
       this.usersxpermissionsService.deleteUserxPermission(this.selectedRow.permissionId).subscribe({
-        next:  () => { this.isSaving = false; this.selectedRow = null; this.loadData(); },
+        next:  () => { this.isSaving = false; this.selectedRow = null; this.loadData(); this.signalsService.notifyUserProjectAssignmentsChanged(); },
         error: () => { this.isSaving = false; alerts.basicAlert('Error', 'No se pudo quitar el contrato', 'error'); }
       });
     });
   }
 
-  onGridReady(event: GridReadyEvent): void { this.gridApi = event.api; }
+  onGridReady(event: GridReadyEvent): void { this.gridApi = event.api; restoreUsersDescriptionWidth(event.api, 'contracts', 'descripSmall'); }
+  onDescriptionResized(event: any): void { saveUsersDescriptionWidth(event, 'contracts', 'descripSmall'); }
 
   onSelectionChanged(event: any): void {
     const nodes = event.api.getSelectedNodes();
@@ -824,7 +851,7 @@ export class SucursalesDetailRendererComponent implements ICellRendererAngularCo
 @Component({
   selector: 'app-detalle-empresas-usuario',
   standalone: true,
-  imports: [AgGridModule, CommonModule, FormsModule, SucursalesDetailRendererComponent, ButtonCellRendererExpenditureComponent],
+  imports: [AgGridModule, CommonModule, FormsModule, SucursalesDetailRendererComponent, CompanyMasterPermissionsRendererComponent, ButtonCellRendererExpenditureComponent],
   template: `
     <div style="padding:10px;background:#f0f4ff;height:100%;display:flex;flex-direction:column;">
 
@@ -883,6 +910,7 @@ export class DetalleEmpresasUsuarioComponent implements OnInit {
   private usersxpermissionsService = inject(UsersxpermissionsService);
   private rootService             = inject(RootService);
   private branchsService          = inject(BranchsService);
+  private masterPermissionsService = inject(MasterPermissions2Service);
 
   rowData: any[] = [];
   private allCompanies: any[] = [];
@@ -894,6 +922,7 @@ export class DetalleEmpresasUsuarioComponent implements OnInit {
 
   components = {
     sucursalesDetail: SucursalesDetailRendererComponent,
+    companyMasterPermissions: CompanyMasterPermissionsRendererComponent,
     buttonRenderer:   ButtonCellRendererExpenditureComponent
   };
 
@@ -914,6 +943,19 @@ export class DetalleEmpresasUsuarioComponent implements OnInit {
       },
       valueGetter: (params) => params.data?.countSucursales ?? 0,
       cellStyle: { backgroundColor: '#e8f5e9', cursor: 'pointer' }
+    },
+    {
+      field: 'countMasterPermissions',
+      headerName: 'Permisos maestros',
+      width: 155,
+      editable: false,
+      cellRenderer: ButtonCellRendererExpenditureComponent,
+      cellRendererParams: {
+        icon: 'bi bi-shield-check',
+        onClick: (node: any) => this.toggleMasterPermissions(node)
+      },
+      valueGetter: (params) => params.data?.countMasterPermissions ?? 0,
+      cellStyle: { backgroundColor: '#e8f0fe', cursor: 'pointer' }
     }
   ];
 
@@ -924,7 +966,9 @@ export class DetalleEmpresasUsuarioComponent implements OnInit {
     suppressCellFocus: true,
     masterDetail: true,
     isRowMaster: () => true,
-    detailCellRenderer: 'sucursalesDetail',
+    detailCellRendererSelector: (params: any) => params.data?.expandedPanel === 'master-permissions'
+      ? { component: 'companyMasterPermissions' }
+      : { component: 'sucursalesDetail' },
     detailRowHeight: 420
   };
 
@@ -937,6 +981,21 @@ export class DetalleEmpresasUsuarioComponent implements OnInit {
     this.gridApi.forEachNode((n: any) => { if (n.expanded) n.setExpanded(false); });
 
     if (!isExpanded) {
+      this.gridApi.setFilterModel(null);
+      this.gridApi.setFilterModel({ id: { filterType: 'number', type: 'equals', filter: node.data.id } });
+      this.gridApi.onFilterChanged();
+      setTimeout(() => node.setExpanded(true), 50);
+    } else {
+      this.gridApi.setFilterModel(null);
+      this.gridApi.onFilterChanged();
+    }
+  }
+
+  toggleMasterPermissions(node: any): void {
+    const isExpanded = node.expanded && node.data?.expandedPanel === 'master-permissions';
+    this.gridApi.forEachNode((n: any) => { if (n.expanded) n.setExpanded(false); });
+    if (!isExpanded) {
+      node.data.expandedPanel = 'master-permissions';
       this.gridApi.setFilterModel(null);
       this.gridApi.setFilterModel({ id: { filterType: 'number', type: 'equals', filter: node.data.id } });
       this.gridApi.onFilterChanged();
@@ -962,7 +1021,8 @@ export class DetalleEmpresasUsuarioComponent implements OnInit {
             idPermission:    p.idPermission,
             userId:          this.userId,
             nombre:          company?.name ?? `Empresa ${p.idPermission}`,
-            countSucursales: 0
+            countSucursales: 0,
+            countMasterPermissions: 0
           };
         });
         this.refreshAvailable();
@@ -971,17 +1031,22 @@ export class DetalleEmpresasUsuarioComponent implements OnInit {
         if (this.rowData.length === 0) return;
 
         const branchRequests: Record<string, Observable<any>> = {};
+        const masterPermissionRequests: Record<string, Observable<any>> = {};
         this.rowData.forEach(row => {
           branchRequests[row.idPermission] = this.branchsService
             .getBranchesByUserAndCompany(this.userId, row.idPermission)
             .pipe(catchError(() => of({ project: [] })));
+          masterPermissionRequests[row.idPermission] = this.masterPermissionsService
+            .getCompanyUserPermissions(row.idPermission, this.userId)
+            .pipe(catchError(() => of([])));
         });
 
-        forkJoin(branchRequests).subscribe({
-          next: branchData => {
+        forkJoin({ branches: forkJoin(branchRequests), masterPermissions: forkJoin(masterPermissionRequests) }).subscribe({
+          next: ({ branches: branchData, masterPermissions }) => {
             this.rowData = this.rowData.map(row => ({
               ...row,
-              countSucursales: branchData[row.idPermission]?.project?.length ?? 0
+              countSucursales: branchData[row.idPermission]?.project?.length ?? 0,
+              countMasterPermissions: Array.isArray(masterPermissions[row.idPermission]) ? masterPermissions[row.idPermission].length : 0
             }));
             if (this.gridApi) this.gridApi.setGridOption('rowData', this.rowData);
           }

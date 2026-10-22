@@ -31,4 +31,12 @@ export class MasterPermissions2Service {
   updateUserPermissions(userId: number, permissionIds: number[]): Observable<any> {
     return this.http.put(`${environment.urlSecurity}/UserSystemPermissions/user/${userId}`, permissionIds, {headers: this.trackingService.getHeaders()} );
   }
+
+  getCompanyUserPermissions(companyId: number, userId: number): Observable<any> {
+    return this.http.get(`${environment.urlSecurity}/UserSystemPermissions/company/${companyId}/user/${userId}`, { headers: this.trackingService.getHeaders() });
+  }
+
+  updateCompanyUserPermissions(companyId: number, userId: number, permissionIds: number[]): Observable<any> {
+    return this.http.put(`${environment.urlSecurity}/UserSystemPermissions/company/${companyId}/user/${userId}`, permissionIds, { headers: this.trackingService.getHeaders() });
+  }
 }

@@ -27,6 +27,7 @@ import { DailyReportService } from 'app/services/daily-report.service';
 import { LogbookService } from 'app/services/logbook.service';
 import { BranchsService } from 'app/services/branchs.service';
 import { WarehousesService } from 'app/services/warehouses.service';
+import { restoreGridColumnWidths, saveGridColumnWidths } from 'app/helpers/grid-column-widths';
 
 @Component({
   selector: 'app-inandout-st',
@@ -1047,6 +1048,7 @@ export class InandoutStComponent implements OnInit {
   onGridReady(params: GridReadyEvent) {
     this.gridApi = params.api;
     this.gridApi.setGridOption('columnDefs', this.colMaster);
+    restoreGridColumnWidths(this.gridApi, `inandout:${this.movementType}:master`, this.trackingService.getEmail());
     this.gridApi.setGridOption('detailCellRendererParams', {
       getDetailRowData: (params) => {
         params.successCallback(params.data.detailData);
@@ -1092,6 +1094,10 @@ export class InandoutStComponent implements OnInit {
         materialsService: this.materialsService
       }
     });
+  }
+
+  onMasterColumnResized(event: any): void {
+    saveGridColumnWidths(this.gridApi, `inandout:${this.movementType}:master`, this.trackingService.getEmail(), event);
   }
 
   onSelectionChanged(event: any): void {

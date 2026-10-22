@@ -326,6 +326,7 @@ public gridOptions: any = {
       this.notSavedChanges = false;
       this.newlyAddedRows = [];
       this.filteredData(); // Refrescar los datos
+      this.signalsService.notifyUserProjectAssignmentsChanged();
     } catch (error) {
       console.error(error);
       alerts.basicAlert(
@@ -369,6 +370,7 @@ public gridOptions: any = {
             'success'
           );
           this.filteredData();
+          this.signalsService.notifyUserProjectAssignmentsChanged();
 
           alerts.basicAlert(
             'Eliminar entrada',

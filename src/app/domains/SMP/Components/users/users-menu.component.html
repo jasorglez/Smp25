@@ -39,13 +39,7 @@
 
       <li
         class="nav-item"
-        *ngIf="
-          profile().emailUser() && (showRoot ||
-            authService.hasDetailedPermission(
-              'users-setup',
-              'master-permissions'
-            ))
-        "
+        *ngIf="profile().emailUser() && (showRoot || authService.hasDetailedPermission('users-setup', 'master-permissions'))"
       >
         <a
           class="nav-link"

@@ -39,7 +39,7 @@ import pdfFonts from 'pdfmake/build/vfs_fonts';
       <ag-grid-angular *ngIf="!loading && !pdfPreviewUrl" class="ag-theme-quartz small-text-ag-grid" style="width:100%;height:78vh"
         [rowData]="rowData" [columnDefs]="columnDefs" [defaultColDef]="defaultColDef" [autoGroupColumnDef]="autoGroupColumnDef"
         [pagination]="true" [paginationPageSize]="25" [localeText]="AG_GRID_LOCALE_ES"
-        (gridReady)="gridApi = $event.api"></ag-grid-angular>
+        (gridReady)="onGridReady($event)" (columnResized)="onColumnResized($event)"></ag-grid-angular>
       <section *ngIf="pdfPreviewUrl" class="traceability-pdf-preview">
         <div class="traceability-pdf-preview__heading">
           <div><i class="bi bi-file-earmark-pdf me-2"></i>Vista previa · Trazabilidad de materiales</div>
@@ -52,6 +52,7 @@ import pdfFonts from 'pdfmake/build/vfs_fonts';
     </div>`
   ,
   styles: [`
+    :host ::ng-deep .small-text-ag-grid { --ag-font-size: 11px; }
     .traceability-pdf-preview { margin-top: 16px; overflow: hidden; border: 1px solid #d9e2ec; border-radius: 12px; background: #fff; box-shadow: 0 8px 28px rgba(20, 47, 76, .08); }
     .traceability-pdf-preview__heading { display: flex; align-items: center; justify-content: space-between; padding: 9px 14px; color: #fff; background: linear-gradient(110deg, #173f68, #287aa5); font-size: 13px; font-weight: 700; }
     .traceability-pdf-preview__viewer { height: min(72vh, 760px); min-height: 360px; padding: 10px; }
@@ -79,7 +80,7 @@ export class MaterialTraceabilityComponent implements OnDestroy {
   readonly defaultColDef: ColDef = { sortable: true, filter: true, resizable: true, flex: 1, minWidth: 110 };
   readonly autoGroupColumnDef: ColDef = { headerName: 'Almacén / Material', minWidth: 300, flex: 2 };
   readonly columnDefs: ColDef[] = [
-    { field: 'material', headerName: 'Material', minWidth: 280, flex: 2 },
+    { field: 'material', headerName: 'Descripción', minWidth: 360, width: 420, flex: 0, suppressSizeToFit: true },
     { field: 'marca', headerName: 'Marca', minWidth: 130 },
     { field: 'almacen', headerName: 'Almacén', rowGroup: true, hide: true },
     { field: 'unidad', headerName: 'Unidad', maxWidth: 110 },
@@ -97,6 +98,32 @@ export class MaterialTraceabilityComponent implements OnDestroy {
       this.projectId = this.signals.getProjectSelectedBySidebar()();
       if (this.idRoot && this.tracking.getEmail()) this.load();
     });
+  }
+
+  onGridReady(event: GridReadyEvent): void {
+    this.gridApi = event.api;
+    const savedWidth = this.getSavedDescriptionWidth();
+    if (savedWidth) {
+      event.api.applyColumnState({ state: [{ colId: 'material', width: savedWidth }], applyOrder: false });
+    }
+  }
+
+  onColumnResized(event: any): void {
+    if (!event.finished || event.column?.getColId() !== 'material') return;
+    const width = event.column.getActualWidth();
+    try { localStorage.setItem(this.descriptionWidthStorageKey(), String(width)); } catch { /* almacenamiento del navegador no disponible */ }
+  }
+
+  private getSavedDescriptionWidth(): number | null {
+    try {
+      const width = Number(localStorage.getItem(this.descriptionWidthStorageKey()));
+      return Number.isFinite(width) && width >= 200 ? width : null;
+    } catch { return null; }
+  }
+
+  private descriptionWidthStorageKey(): string {
+    const user = (this.tracking.getEmail() || 'usuario').trim().toLocaleLowerCase();
+    return `smp:${user}:material-traceability:description-width`;
   }
 
   ngOnDestroy(): void {

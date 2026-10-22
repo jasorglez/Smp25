@@ -4,7 +4,9 @@ import { environment } from '@env/environment';
 import { TrackingService } from './tracking.service';
 
 import { HttpClient, HttpErrorResponse, HttpHeaders, HttpParams } from '@angular/common/http';
-import { catchError, EMPTY, map, Observable, throwError } from 'rxjs';
+import { catchError, EMPTY, map, Observable, of, switchMap, throwError } from 'rxjs';
+import { PrefixSetupService } from './prefix-setup.service';
+import { alerts } from 'app/helpers/alerts';
 
 @Injectable({
   providedIn: 'root'
@@ -13,6 +15,7 @@ export class ProjectsService {
 
   private http = inject(HttpClient);
   private trackingService = inject(TrackingService);
+  private prefixSetupService = inject(PrefixSetupService);
 
   private getAuthToken(): string {
     return localStorage.getItem('token') || '';
@@ -67,7 +70,25 @@ export class ProjectsService {
 
 
   addProject(data: any) {
-    return this.http.post(`${environment.urlSmp}/Project`, data, { headers: this.trackingService.getHeaders() });
+    return this.http.post<any>(`${environment.urlSmp}/Project`, data, { headers: this.trackingService.getHeaders() }).pipe(
+      switchMap((createdProject) => {
+        const projectId = Number(createdProject?.id ?? createdProject?.Proyecto?.id ?? createdProject?.proyecto?.id);
+        if (!projectId) {
+          console.error('El proyecto se creó, pero la respuesta no incluyó su ID; no se generaron los prefijos predeterminados.', createdProject);
+          alerts.basicAlert('Prefijos del proyecto', 'El proyecto se creó, pero no se pudo obtener su ID para guardar los prefijos predeterminados.', 'warning');
+          return of(createdProject);
+        }
+
+        return this.prefixSetupService.ensureDefaultProjectPrefixSetup(projectId).pipe(
+          map(() => createdProject),
+          catchError((error) => {
+            console.error('El proyecto se creó, pero no fue posible guardar sus prefijos predeterminados.', error);
+            alerts.basicAlert('Prefijos del proyecto', 'El proyecto se creó, pero no se pudieron guardar automáticamente RQ-, OC-, EN- y SA-. Revise la configuración de prefijos del proyecto.', 'warning');
+            return of(createdProject);
+          })
+        );
+      })
+    );
   }
 
   updateProject(id: number, data: any) {

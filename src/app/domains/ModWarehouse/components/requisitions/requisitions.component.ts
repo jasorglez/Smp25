@@ -28,6 +28,7 @@ import { SetupService } from 'app/services/setup.service';
 import { PrefixSetupService } from 'app/services/prefix-setup.service';
 import { PermitionsService } from 'app/services/permitions.service';
 import { TrackingService } from 'app/services/tracking.service';
+import { restoreGridColumnWidths, saveGridColumnWidths } from 'app/helpers/grid-column-widths';
 import { CanComponentDeactivate } from 'app/guards/unsaved-changes.guard';
 import { confirmExitIfUnsaved } from 'app/helpers/can-deactivate.helper';
 import { ButtonCellRendererComponent } from './button-cell-renderer.component';
@@ -796,11 +797,16 @@ export class RequisitionsComponent implements CanComponentDeactivate {
 
   onMasterGridReady(params: GridReadyEvent) {
     this.masterGridApi = params.api;
+    restoreGridColumnWidths(this.masterGridApi, 'shopping:requisitions:master', this.trackingService.getEmail());
     console.log('✅ Master Grid Ready - productos length:', this.productos.length);
 
     // Configurar el context inicial
     this.updateDetailContext();
     this.onWarehouseChange();
+  }
+
+  onMasterColumnResized(event: any): void {
+    saveGridColumnWidths(this.masterGridApi, 'shopping:requisitions:master', this.trackingService.getEmail(), event);
   }
 
   onMasterRowSelected(event: any) {

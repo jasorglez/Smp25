@@ -478,6 +478,7 @@ public gridOptions: any = {
       this.notSavedChanges = false;
       this.newlyAddedRows = [];
       this.filteredData(); // Refrescar los datos
+      this.signalsService.notifyUserProjectAssignmentsChanged();
     } catch (error) {
       alerts.basicAlert(
         'Error',
@@ -530,6 +531,7 @@ public gridOptions: any = {
             'success'
           );
           this.filteredData();
+          this.signalsService.notifyUserProjectAssignmentsChanged();
 
           this.notSavedChanges = false;
           this.trackingService.addLog(this.trackingService.getnameComp(),'Delete Registro en Usuarios por Proyecto', 'Menu Administracion Usuarios por Proyecto',  this.trackingService.getEmail());

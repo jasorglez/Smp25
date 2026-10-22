@@ -528,7 +528,7 @@ export class ContractsComponent {
     return data.map(w => ({
       id: w.idContrato,
       numberContract: w.numberContract,
-      project: w.project,
+      project: w.projectCount ?? w.project,
       description: w.description,
       descripSmall: w.descripSmall,
       amountMx: w.amountMx,
@@ -798,8 +798,8 @@ export class ContractsComponent {
       catchError((error) => {
         alerts.basicAlert(
           'Eliminar contrato',
-          'Error al eliminar el contrato.',
-          'error'
+          error?.error?.Message || error?.error?.message || 'No se pudo eliminar el contrato.',
+          error?.status === 409 ? 'warning' : 'error'
         );
         console.error(error);
         return EMPTY;

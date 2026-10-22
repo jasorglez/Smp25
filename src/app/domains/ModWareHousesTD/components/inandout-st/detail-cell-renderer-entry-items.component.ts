@@ -13,6 +13,7 @@ import { DomSanitizer, SafeResourceUrl } from '@angular/platform-browser';
 import { PdfReportsService } from 'app/services/pdf-reports.service';
 import { pdfPreviewUrl } from 'app/helpers/pdf-viewer';
 import { TrackingService } from 'app/services/tracking.service';
+import { restoreGridColumnWidths, saveGridColumnWidths } from 'app/helpers/grid-column-widths';
 import Swal from 'sweetalert2';
 import { catchError, forkJoin, from, lastValueFrom, map, mergeMap, of, toArray } from 'rxjs';
 
@@ -80,6 +81,7 @@ import { catchError, forkJoin, from, lastValueFrom, map, mergeMap, of, toArray }
         [gridOptions]="gridOptions"
         [localeText]="AG_GRID_LOCALE_ES"
         (gridReady)="onGridReady($event)"
+        (columnResized)="onColumnResized($event)"
         (cellValueChanged)="onCellValueChanged($event)"
         [components]="components"
         style="height: 300px; width: 100%;">
@@ -326,6 +328,16 @@ export class DetailCellRendererEntryItemsComponent {
     this.gridApi = params.api;
     // Ensure columnDefs are updated with loaded materials
     this.gridApi.setGridOption('columnDefs', this.colDefs);
+    restoreGridColumnWidths(this.gridApi, this.gridWidthScope, this.trackingService.getEmail());
+  }
+
+  onColumnResized(event: any): void {
+    saveGridColumnWidths(this.gridApi, this.gridWidthScope, this.trackingService.getEmail(), event);
+  }
+
+  private get gridWidthScope(): string {
+    const movementType = String(this.context?.movementType || 'IN').toUpperCase();
+    return `inandout:${movementType}:detail`;
   }
 
   get colDefs(): ColDef[] {
