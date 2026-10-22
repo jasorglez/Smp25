@@ -84,6 +84,7 @@ import { catchError, forkJoin, map, of, switchMap } from 'rxjs';
       [rowClassRules]="rowClassRules"
       [animateRows]="true"
       (gridReady)="onGridReady($event)"
+      (columnResized)="onColumnResized($event)"
     ></ag-grid-angular>
   `,
 })
@@ -133,7 +134,7 @@ export class InventarioComponent {
       cellStyle: { textAlign: 'center', color: '#999' },
     },
     { field: 'insumo',      headerName: 'Código',       width: 100, filter: 'agTextColumnFilter' },
-    { field: 'description', headerName: 'Descripción',  flex: 2, minWidth: 160, filter: 'agTextColumnFilter' },
+    { field: 'description', headerName: 'Descripción', width: 320, minWidth: 200, resizable: true, suppressSizeToFit: true, filter: 'agTextColumnFilter' },
     { field: 'measure',     headerName: 'Unidad',       width: 90, filter: 'agTextColumnFilter' },
     {
       field: 'entrada', headerName: 'Entradas', width: 90, type: 'numericColumn',
@@ -218,7 +219,41 @@ export class InventarioComponent {
     });
   }
 
-  onGridReady(e: GridReadyEvent) { this.gridApi = e.api; }
+  onGridReady(e: GridReadyEvent) {
+    this.gridApi = e.api;
+    const savedWidth = this.getSavedDescriptionWidth();
+    if (savedWidth) {
+      e.api.applyColumnState({
+        state: [{ colId: 'description', width: savedWidth }],
+        applyOrder: false,
+      });
+    }
+  }
+
+  onColumnResized(event: any): void {
+    if (!event?.finished || event.column?.getColId() !== 'description') return;
+    const width = this.gridApi?.getColumnState().find(column => column.colId === 'description')?.width;
+    if (!width || width < 200) return;
+    try {
+      localStorage.setItem(this.descriptionWidthStorageKey(), String(width));
+    } catch {
+      // Si el navegador bloquea el almacenamiento local, la columna sigue siendo redimensionable.
+    }
+  }
+
+  private getSavedDescriptionWidth(): number | null {
+    try {
+      const width = Number(localStorage.getItem(this.descriptionWidthStorageKey()));
+      return Number.isFinite(width) && width >= 200 ? width : null;
+    } catch {
+      return null;
+    }
+  }
+
+  private descriptionWidthStorageKey(): string {
+    const user = this.trackingService.getEmail().trim().toLocaleLowerCase() || 'usuario';
+    return `biapp:grid-width:${encodeURIComponent(user)}:warehouses-inventory:description`;
+  }
 
   loadWarehouses() {
     const email = this.trackingService.getEmail();

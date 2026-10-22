@@ -1,5 +1,6 @@
 import { CommonModule } from '@angular/common';
 import { Component, OnDestroy, effect, inject } from '@angular/core';
+import { FormsModule } from '@angular/forms';
 import { AgGridModule } from 'ag-grid-angular';
 import { ColDef, GridApi, GridReadyEvent } from 'ag-grid-enterprise';
 import { catchError, firstValueFrom, forkJoin, map, of, switchMap } from 'rxjs';
@@ -20,13 +21,17 @@ import pdfFonts from 'pdfmake/build/vfs_fonts';
 @Component({
   selector: 'app-material-traceability',
   standalone: true,
-  imports: [CommonModule, AgGridModule, PdfReportViewerComponent],
+  imports: [CommonModule, FormsModule, AgGridModule, PdfReportViewerComponent],
   template: `
     <div class="p-3">
       <div class="d-flex align-items-center justify-content-between mb-2">
         <div><h5 class="mb-0"><i class="bi bi-diagram-3 me-2"></i>Trazabilidad de materiales</h5>
           <small class="text-muted">Requisiciones, órdenes de compra, entradas y salidas</small></div>
-        <div class="d-flex gap-2"><button class="btn btn-sm btn-outline-primary" (click)="load()" [disabled]="loading"><i class="bi bi-arrow-clockwise"></i> Actualizar</button>
+        <div class="d-flex align-items-center gap-3"><label class="form-check form-switch d-flex align-items-center gap-2 mb-0 small text-nowrap">
+          <input class="form-check-input m-0" type="checkbox" [(ngModel)]="showZeroInventory" (ngModelChange)="applyInventoryFilter()">
+          <span>Mostrar inventario en cero <span class="badge bg-light text-secondary">{{ zeroInventoryCount }}</span></span>
+        </label>
+        <button class="btn btn-sm btn-outline-primary" (click)="load()" [disabled]="loading"><i class="bi bi-arrow-clockwise"></i> Actualizar</button>
         <button class="btn btn-sm btn-danger" (click)="previewPdf()" [disabled]="loading || pdfGenerating || !rowData.length"><i class="bi bi-file-earmark-pdf"></i> {{ pdfGenerating ? 'Preparando…' : 'Ver PDF' }}</button></div>
       </div>
       <div class="alert alert-info py-2" *ngIf="!projectId">Selecciona un proyecto para consultar sus movimientos.</div>
@@ -63,6 +68,8 @@ export class MaterialTraceabilityComponent implements OnDestroy {
   idRoot: number | null = null;
   projectId: number | null = null;
   rowData: any[] = [];
+  private allRows: any[] = [];
+  showZeroInventory = false;
   loading = false;
   pdfGenerating = false;
   pdfPreviewUrl: string | null = null;
@@ -118,7 +125,17 @@ export class MaterialTraceabilityComponent implements OnDestroy {
         return rows.length ? forkJoin(rows.map(m => this.movements.getInAndOutItems(+m.id).pipe(catchError(() => of([])), map(details => ({ m, details: this.asArray(details) }))))).pipe(map(details => ({ w, type, items: details, materialMap, brandMap }))) : of({ w, type, items: [], materialMap, brandMap });
       }))));
       return forkJoin({ documents: documents$.length ? forkJoin(documents$) : of([]), movements: movement$.length ? forkJoin(movement$) : of([]) });
-    })).subscribe({ next: result => { this.rowData = this.groupByMaterial([...this.flattenDocuments(result.documents), ...this.flattenMovements(result.movements)]); this.loading = false; }, error: () => { this.rowData = []; this.loading = false; } });
+    })).subscribe({ next: result => { this.allRows = this.groupByMaterial([...this.flattenDocuments(result.documents), ...this.flattenMovements(result.movements)]); this.applyInventoryFilter(); this.loading = false; }, error: () => { this.allRows = []; this.rowData = []; this.loading = false; } });
+  }
+
+  get zeroInventoryCount(): number {
+    return this.allRows.filter(row => Math.abs(Number(row.inventario) || 0) <= 0.000001).length;
+  }
+
+  applyInventoryFilter(): void {
+    this.rowData = this.showZeroInventory
+      ? [...this.allRows]
+      : this.allRows.filter(row => Math.abs(Number(row.inventario) || 0) > 0.000001);
   }
 
   private flattenDocuments(groups: any[]): any[] {
