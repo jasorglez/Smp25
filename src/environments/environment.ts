@@ -83,5 +83,5 @@ export const environment = {
   geminiApiKey: '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',
   gnewsApiKey: '94ccc596b4dfebc3f72683b6e81d81bc',
 
-  version: '5.00.353 (22 Octubre 2026 00:04) muestra materiales pendientes del vale origen en salidas',
+  version: '5.00.354 (22 Octubre 2026 10:20) traspasos por comportamiento configurado',
 };
