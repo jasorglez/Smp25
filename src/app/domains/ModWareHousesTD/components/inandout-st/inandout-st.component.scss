@@ -65,3 +65,12 @@
   border: 0;
   box-shadow: none;
 }
+
+.warehouse-picker ::ng-deep .warehouse-select .ng-value-label,
+.warehouse-picker ::ng-deep .warehouse-select .ng-placeholder,
+.warehouse-picker ::ng-deep .warehouse-select .ng-input > input,
+.warehouse-picker ::ng-deep .warehouse-select .ng-dropdown-panel .ng-option,
+.warehouse-picker ::ng-deep .warehouse-select .ng-dropdown-panel .ng-option-label {
+  font-size: 11px !important;
+  line-height: 1.25;
+}
