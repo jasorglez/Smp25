@@ -186,7 +186,7 @@ export class MovementCatalogsComponent implements CanComponentDeactivate {
       const data = await lastValueFrom(this.catalogsService.getCatalogs(this.idRoot, this.selectedType));
       this.rowData = (data || []).map(row => ({
         ...row,
-        valueAddition: this.resolveBehavior(row.valueAddition, row.description),
+        valueAddition: this.resolveBehavior(row.valueAddition),
         __modified: false,
         __isNew: false
       }));
@@ -210,15 +210,9 @@ export class MovementCatalogsComponent implements CanComponentDeactivate {
     return this.behaviorOptions[this.selectedType].some(option => option.value === normalized) ? normalized : 'STANDARD';
   }
 
-  private resolveBehavior(value: any, description: any): string {
+  private resolveBehavior(value: any): string {
     const normalized = String(value || '').trim().toUpperCase();
     if (this.behaviorOptions[this.selectedType].some(option => option.value === normalized)) return normalized;
-
-    // Conserva el comportamiento de registros antiguos mientras se clasifican desde Catálogos.
-    const name = String(description || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim().replace(/\s+/g, ' ').toUpperCase();
-    if (name === 'TRASPASO') return 'TRANSFER';
-    if (this.selectedType === 'IN' && name === 'INICIO INVENTARIOS') return 'INITIAL_INVENTORY';
-    if (this.selectedType === 'IN' && name === 'AJUSTE DE INVENTARIOS') return 'INVENTORY_ADJUSTMENT';
     return 'STANDARD';
   }
 

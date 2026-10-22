@@ -497,11 +497,7 @@ export class InandoutStComponent implements OnInit {
 
   private isTransferType(idType: any): boolean {
     const catalog = this.catalogs.find(item => Number(item.id) === Number(idType));
-    const behavior = String(catalog?.valueAddition || '').trim().toUpperCase();
-    if (behavior === 'TRANSFER') return true;
-    if (['STANDARD', 'INITIAL_INVENTORY', 'INVENTORY_ADJUSTMENT'].includes(behavior)) return false;
-    const description = catalog?.description ?? '';
-    return String(description).normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim().toUpperCase() === 'TRASPASO';
+    return String(catalog?.valueAddition || '').trim().toUpperCase() === 'TRANSFER';
   }
 
   onWarehouseChange(id?: number | string) {
@@ -543,6 +539,7 @@ export class InandoutStComponent implements OnInit {
     try {
       const payload = {
         description: description.trim().toUpperCase(),
+        valueAddition: 'STANDARD',
         type: this.movementType,
         idCompany: this.idRoot,
         active: 1,
@@ -1066,7 +1063,6 @@ export class InandoutStComponent implements OnInit {
       context: {
         movementType: this.movementType,
         isTransferType: (idType: any) => this.isTransferType(idType),
-        getMovementTypeDescription: (idType: any) => this.catalogs.find(catalog => Number(catalog.id) === Number(idType))?.description || '',
         getMovementTypeBehavior: (idType: any) => this.catalogs.find(catalog => Number(catalog.id) === Number(idType))?.valueAddition || '',
         idRoot: this.idRoot,
         projectId: this.projectId,

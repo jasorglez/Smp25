@@ -60,6 +60,33 @@ BEGIN
     );
 END;
 
+IF NOT EXISTS (
+    SELECT 1 FROM dbo.product_updates
+    WHERE idRoot IS NULL AND idCompany IS NULL
+      AND module = N'Almacenes / Catálogos, Entradas y Salidas'
+      AND title = N'Usa el comportamiento configurado por empresa'
+      AND isActive = 1
+)
+BEGIN
+    INSERT INTO dbo.product_updates
+    (
+        idRoot, idCompany, version, module, changeType, title, description,
+        userBenefit, promoText, occurredAtUtc, displayTimeZone,
+        validationStatus, releaseStatus, publicationStatus, publishedAtUtc,
+        createdBy, isActive
+    )
+    VALUES
+    (
+        NULL, NULL, N'5.00.343', N'Almacenes / Catálogos, Entradas y Salidas', 'FIX',
+        N'Usa el comportamiento configurado por empresa',
+        N'Las reglas de traspaso, inicio y ajuste de inventario ahora leen exclusivamente el comportamiento guardado en valueaddition. Los tipos sin valor configurado se procesan como normales.',
+        N'Permite definir el comportamiento desde Catálogos sin depender del nombre del movimiento.',
+        N'Define cómo opera cada movimiento con el comportamiento configurado por empresa.',
+        @nowUtc, N'America/Indiana/Indianapolis', 'PENDING', 'LOCAL', 'PUBLISHED', @nowUtc,
+        NULL, 1
+    );
+END;
+
 COMMIT TRANSACTION;
 
 SELECT version, title, publicationStatus, releaseStatus
@@ -67,7 +94,8 @@ FROM dbo.product_updates
 WHERE idRoot IS NULL AND idCompany IS NULL
   AND title IN (
       N'Configura el comportamiento de los movimientos',
-      N'Crea movimientos iniciales para cada empresa nueva'
+      N'Crea movimientos iniciales para cada empresa nueva',
+      N'Usa el comportamiento configurado por empresa'
   )
   AND isActive = 1
 ORDER BY version;

@@ -843,14 +843,9 @@ export class DetailCellRendererEntryItemsComponent {
 
   private getMovementTypeBehavior(): string {
     const configured = String(this.context?.getMovementTypeBehavior?.(this.entryData?.idType) || '').trim().toUpperCase();
-    if (['STANDARD', 'TRANSFER', 'INITIAL_INVENTORY', 'INVENTORY_ADJUSTMENT'].includes(configured)) return configured;
-
-    // Compatibilidad con registros anteriores mientras se define su comportamiento en Catálogos.
-    const name = String(this.context?.getMovementTypeDescription?.(this.entryData?.idType) || '')
-      .normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim().replace(/\s+/g, ' ').toUpperCase();
-    if (name === 'INICIO INVENTARIOS') return 'INITIAL_INVENTORY';
-    if (name === 'AJUSTE DE INVENTARIOS') return 'INVENTORY_ADJUSTMENT';
-    return 'STANDARD';
+    return ['STANDARD', 'TRANSFER', 'INITIAL_INVENTORY', 'INVENTORY_ADJUSTMENT'].includes(configured)
+      ? configured
+      : 'STANDARD';
   }
 
   private async quickAddMaterial(): Promise<void> {
