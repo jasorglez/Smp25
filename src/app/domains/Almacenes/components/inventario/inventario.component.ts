@@ -35,6 +35,12 @@ import { catchError, forkJoin, map, of, switchMap } from 'rxjs';
         <i class="bi bi-arrow-clockwise"></i>
       </button>
 
+      <label class="form-check form-switch d-flex align-items-center gap-2 mb-0 ms-1 small text-nowrap">
+        <input class="form-check-input m-0" type="checkbox" [(ngModel)]="showZeroStock"
+          (ngModelChange)="applyInventoryFilter()">
+        <span>Mostrar existencias en cero <span class="badge bg-light text-secondary">{{ zeroStockCount }}</span></span>
+      </label>
+
       <!-- Separador -->
       <div class="vr mx-1"></div>
 
@@ -89,6 +95,8 @@ export class InventarioComponent {
   private materialsService   = inject(MaterialsService);
 
   rowData:           any[]   = [];
+  private allInventoryRows: any[] = [];
+  showZeroStock = false;
   warehouses:        any[]   = [];
   selectedWarehouse: number  = 0;
   loading:           boolean = false;
@@ -104,6 +112,7 @@ export class InventarioComponent {
   get optimos()         { return this.rowData.filter(r => r.estadoStock === 'ÓPTIMO').length; }
   get altos()           { return this.rowData.filter(r => r.estadoStock === 'ALTO').length; }
   get valorTotal()      { return this.rowData.reduce((s, r) => s + this.toNumber(r.total), 0); }
+  get zeroStockCount()  { return this.allInventoryRows.filter(row => Math.abs(this.toNumber(row.existencia)) <= 0.000001).length; }
 
   // ── Grid colors ────────────────────────────────────────────────
   rowClassRules = {
@@ -224,6 +233,7 @@ export class InventarioComponent {
       error: () => {
         this.warehouses = [];
         this.selectedWarehouse = 0;
+        this.allInventoryRows = [];
         this.rowData = [];
       },
     });
@@ -231,6 +241,7 @@ export class InventarioComponent {
 
   loadData() {
     if (!this.idCompany || !this.selectedWarehouse) {
+      this.allInventoryRows = [];
       this.rowData = [];
       return;
     }
@@ -267,15 +278,23 @@ export class InventarioComponent {
       movements: forkJoin(movementRequests),
     }).subscribe({
       next: result => {
-        this.rowData = this.buildInventoryRows(result.materials as any[], result.movements, result.brands as any[]);
+        this.allInventoryRows = this.buildInventoryRows(result.materials as any[], result.movements, result.brands as any[]);
+        this.applyInventoryFilter();
         this.loading = false;
       },
       error: error => {
         console.error('Error loading inventory:', error);
+        this.allInventoryRows = [];
         this.rowData = [];
         this.loading = false;
       },
     });
+  }
+
+  applyInventoryFilter(): void {
+    this.rowData = this.showZeroStock
+      ? [...this.allInventoryRows]
+      : this.allInventoryRows.filter(row => Math.abs(this.toNumber(row.existencia)) > 0.000001);
   }
 
   private buildInventoryRows(materials: any[], movements: Array<{ type: 'IN' | 'OUT'; details: any[] }>, brands: any[] = []): any[] {
