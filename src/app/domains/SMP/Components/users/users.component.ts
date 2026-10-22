@@ -304,8 +304,31 @@ export class UsersComponent implements OnDestroy {
     this.gridApi = params.api;
     this.gridOptions.context.componentParent = this;
     this.gridApi.setGridOption('columnDefs', this.columnDefs);
+    this.restoreEmailColumnWidth();
     const showSecurity = this.isAdvanced || this.idUser === 42 || this.idRoot === 9;
     this.gridApi.setColumnsVisible(['idRol'], showSecurity);
+  }
+
+  onColumnResized(event: any): void {
+    if (event.finished === false) return;
+    const emailColumn = event.column?.getColId() === 'email'
+      ? event.column
+      : event.columns?.find((column: any) => column?.getColId() === 'email');
+    if (!emailColumn) return;
+    const width = Number(emailColumn.getActualWidth());
+    if (!Number.isFinite(width) || width < 200) return;
+    try {
+      localStorage.setItem('smp:users:main:email:width', String(width));
+    } catch { /* almacenamiento del navegador no disponible */ }
+  }
+
+  private restoreEmailColumnWidth(): void {
+    try {
+      const width = Number(localStorage.getItem('smp:users:main:email:width'));
+      if (Number.isFinite(width) && width >= 200) {
+        this.gridApi.applyColumnState({ state: [{ colId: 'email', width }], applyOrder: false });
+      }
+    } catch { /* almacenamiento del navegador no disponible */ }
   }
 
   onCellEditingStopped(event: any) {
