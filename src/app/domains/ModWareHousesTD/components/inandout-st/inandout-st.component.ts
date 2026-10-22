@@ -39,6 +39,7 @@ import { restoreGridColumnWidths, saveGridColumnWidths } from 'app/helpers/grid-
 export class InandoutStComponent implements OnInit {
 
   private gridApi!: GridApi;
+  private _colMaster: ColDef[] = [];
   private signalsService = inject(SignalsService);
   private permitionsService = inject(PermitionsService);
   private trackingService = inject(TrackingService);
@@ -484,6 +485,7 @@ export class InandoutStComponent implements OnInit {
   }
 
   private refreshColumns() {
+    this._colMaster = [];
     if (this.gridApi) {
       const widths = this.gridApi.getColumnState()
         .filter(column => Number.isFinite(column.width))
@@ -660,7 +662,8 @@ export class InandoutStComponent implements OnInit {
   };
 
   get colMaster(): ColDef[] {
-    return [
+    if (this._colMaster.length) return this._colMaster;
+    this._colMaster = [
       {
         field: 'countrow',
         headerName: 'Items',
@@ -903,9 +906,23 @@ export class InandoutStComponent implements OnInit {
       },
       {
         headerName: 'Abrir', colId: 'authorizationAction', width: 64, editable: false,
-        cellRenderer: (params: any) => Number(params.data?.idAutoriza) > 0
-          ? '<button class="btn btn-sm btn-outline-warning py-0 px-2" title="Quitar autorización y abrir edición" aria-label="Quitar autorización y abrir edición"><i class="bi bi-unlock-fill"></i></button>'
-          : '',
+        cellRenderer: (params: any) => {
+          if (Number(params.data?.idAutoriza) <= 0) {
+            return '<span class="text-success" title="Sin autorización; movimiento editable" aria-label="Movimiento editable"><i class="bi bi-unlock-fill"></i></span>';
+          }
+          const button = document.createElement('button');
+          button.type = 'button';
+          button.className = 'btn btn-sm btn-outline-danger py-0 px-2';
+          button.title = 'Quitar autorización y abrir edición';
+          button.setAttribute('aria-label', 'Quitar autorización y abrir edición');
+          button.innerHTML = '<i class="bi bi-lock-fill"></i>';
+          button.addEventListener('click', (clickEvent) => {
+            clickEvent.preventDefault();
+            clickEvent.stopPropagation();
+            void this.removeAuthorization(params);
+          });
+          return button;
+        },
       },
       {
         field: 'comment',
@@ -918,6 +935,7 @@ export class InandoutStComponent implements OnInit {
         }
       },
     ];
+    return this._colMaster;
   }
 
   onCellClicked(event: any): void {

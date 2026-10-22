@@ -90,6 +90,7 @@ export class PurchaseOrderComponent implements CanComponentDeactivate {
   idRequisition: number = null;
   private expandedRowId: string | null = null;
   private masterGridApi: GridApi;
+  private _colMaster: ColDef[] = [];
   private detailsGridApi: GridApi;
   private gridApi: GridApi;
   idRoot: number = null;
@@ -360,7 +361,8 @@ export class PurchaseOrderComponent implements CanComponentDeactivate {
   };
 
   get colMaster(): ColDef[] {
-    return [
+    if (this._colMaster.length) return this._colMaster;
+    this._colMaster = [
       {
         field: 'countrow',
         headerName: 'Items',
@@ -580,9 +582,9 @@ export class PurchaseOrderComponent implements CanComponentDeactivate {
         editable: (params) => this.canEditAuthorizedRow(params.data),
         width: 150,
         cellEditor: 'agSelectCellEditor',
-        cellEditorParams: {
+        cellEditorParams: () => ({
           values: this.usuarios ? this.usuarios.map((item) => item.id) : [],
-        },
+        }),
         valueFormatter: (params) => {
           const foundItem = this.usuarios
             ? this.usuarios.find((item) => item.id === params.value)
@@ -596,11 +598,11 @@ export class PurchaseOrderComponent implements CanComponentDeactivate {
         editable: (params) => this.canEditAuthorizedRow(params.data),
         width: 150,
         cellEditor: 'agRichSelectCellEditor',
-        cellEditorParams: {
+        cellEditorParams: () => ({
           values: this.usersService.filterUsersCanAuthorizeProcesses(this.usuarios).map((item) => item.id),
           valueListMaxHeight: 240,
           formatValue: (value: any) => this.usuarios.find(item => Number(item.id) === Number(value))?.displayName || '',
-        },
+        }),
         valueFormatter: (params) => {
           const foundItem = this.usuarios
             ? this.usuarios.find((item) => item.id === params.value)
@@ -613,9 +615,23 @@ export class PurchaseOrderComponent implements CanComponentDeactivate {
         colId: 'authorizationAction',
         width: 64,
         editable: false,
-        cellRenderer: (params: ICellRendererParams) => Number(params.data?.idAuthorize) > 0
-          ? '<button class="btn btn-sm btn-outline-warning py-0 px-2" title="Quitar autorización y abrir edición" aria-label="Quitar autorización y abrir edición"><i class="bi bi-unlock-fill"></i></button>'
-          : '',
+        cellRenderer: (params: ICellRendererParams) => {
+          if (Number(params.data?.idAuthorize) <= 0) {
+            return '<span class="text-success" title="Sin autorización; documento editable" aria-label="Documento editable"><i class="bi bi-unlock-fill"></i></span>';
+          }
+          const button = document.createElement('button');
+          button.type = 'button';
+          button.className = 'btn btn-sm btn-outline-danger py-0 px-2';
+          button.title = 'Quitar autorización y abrir edición';
+          button.setAttribute('aria-label', 'Quitar autorización y abrir edición');
+          button.innerHTML = '<i class="bi bi-lock-fill"></i>';
+          button.addEventListener('click', (clickEvent) => {
+            clickEvent.preventDefault();
+            clickEvent.stopPropagation();
+            void this.onMasterCellClicked(params);
+          });
+          return button;
+        },
       },
        {
         field: 'comments',
@@ -743,6 +759,7 @@ export class PurchaseOrderComponent implements CanComponentDeactivate {
       },*/
       
     ];
+    return this._colMaster;
   }
 
   // Column Definitions: Defines the columns to be displayed.
@@ -1407,7 +1424,7 @@ export class PurchaseOrderComponent implements CanComponentDeactivate {
   }
 
   async onMasterCellClicked(event: any): Promise<void> {
-    if (event?.column?.getColId() !== 'authorizationAction') return;
+    if (event?.column?.getColId() !== 'authorizationAction' && event?.colDef?.colId !== 'authorizationAction') return;
     const row = event.data;
     if (!Number(row?.idAuthorize)) return;
     if (Number(row.idAuthorize) !== Number(this.trackingService.getId())) {
