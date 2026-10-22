@@ -101,7 +101,7 @@ export class SistemaComponent implements OnInit, OnDestroy {
     headerHeight: 30.45,
     rowHeight: 24.36,
     suppressDragLeaveHidesColumns: true,
-    animateRows: true,
+    animateRows: false,
     pagination: true,
     paginationPageSize: 25,
     rowSelection: 'single',
@@ -277,9 +277,23 @@ export class SistemaComponent implements OnInit, OnDestroy {
     },
     {
       headerName: 'Abrir', colId: 'authorizationAction', width: 64, editable: false,
-      cellRenderer: (params: any) => Number(params.data?.idAuthorize) > 0
-        ? '<button class="btn btn-sm btn-outline-warning py-0 px-2" title="Quitar autorización y abrir edición" aria-label="Quitar autorización y abrir edición"><i class="bi bi-unlock-fill"></i></button>'
-        : '',
+      cellRenderer: (params: any) => {
+        if (Number(params.data?.idAuthorize) <= 0) {
+          return '<span class="text-success" title="Sin autorización; reporte editable" aria-label="Reporte editable"><i class="bi bi-unlock-fill"></i></span>';
+        }
+        const button = document.createElement('button');
+        button.type = 'button';
+        button.className = 'btn btn-sm btn-outline-danger py-0 px-2';
+        button.title = 'Quitar autorización y abrir edición';
+        button.setAttribute('aria-label', 'Quitar autorización y abrir edición');
+        button.innerHTML = '<i class="bi bi-lock-fill"></i>';
+        button.addEventListener('click', (clickEvent) => {
+          clickEvent.preventDefault();
+          clickEvent.stopPropagation();
+          void this.onCellClicked(params);
+        });
+        return button;
+      },
     },
     {
       colId: 'dailyReportContentIndicators',
@@ -989,7 +1003,7 @@ export class SistemaComponent implements OnInit, OnDestroy {
   }
 
   async onCellClicked(event: any): Promise<void> {
-    if (event?.column?.getColId() !== 'authorizationAction') return;
+    if (event?.column?.getColId() !== 'authorizationAction' && event?.colDef?.colId !== 'authorizationAction') return;
     const row = event.data;
     if (!Number(row?.idAuthorize)) return;
     if (Number(row.idAuthorize) !== Number(this.trackingService.getId())) {

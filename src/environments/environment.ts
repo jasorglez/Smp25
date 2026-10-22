@@ -83,5 +83,5 @@ export const environment = {
   geminiApiKey: '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',
   gnewsApiKey: '94ccc596b4dfebc3f72683b6e81d81bc',
 
-  version: '5.00.348 (21 Octubre 2026 23:35) columnas estables en grids de almacén',
+  version: '5.00.349 (21 Octubre 2026 23:42) candado directo en reportes diarios',
 };
