@@ -485,7 +485,13 @@ export class InandoutStComponent implements OnInit {
 
   private refreshColumns() {
     if (this.gridApi) {
+      const widths = this.gridApi.getColumnState()
+        .filter(column => Number.isFinite(column.width))
+        .map(column => ({ colId: column.colId, width: column.width, flex: column.flex ?? null }));
       this.gridApi.setGridOption('columnDefs', this.colMaster);
+      if (widths.length) {
+        this.gridApi.applyColumnState({ state: widths, applyOrder: false });
+      }
     }
   }
 
