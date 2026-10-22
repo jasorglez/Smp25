@@ -1109,6 +1109,16 @@ export class InandoutStComponent implements OnInit {
     });
   }
 
+  onMasterGridCellKeyDown(event: any): void {
+    const keyEvent: KeyboardEvent = event?.event || event;
+    if (keyEvent?.key !== 'F10') return;
+    keyEvent.preventDefault();
+    keyEvent.stopPropagation();
+    if (keyEvent.repeat) return;
+    event.api?.stopEditing();
+    void this.saveChanges();
+  }
+
   onMasterColumnResized(event: any): void {
     saveGridColumnWidths(this.gridApi, `inandout:${this.movementType}:master`, this.trackingService.getEmail(), event);
   }

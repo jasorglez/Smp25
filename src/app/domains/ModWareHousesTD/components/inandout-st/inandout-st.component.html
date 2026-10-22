@@ -25,7 +25,7 @@
         <i class="bi bi-plus-lg" style="font-size: 1rem;"></i>
       </button>
 
-      <button type="button" class="btn btn-success position-relative mb-2" (click)="saveChanges()">
+      <button type="button" class="btn btn-success position-relative mb-2" (click)="saveChanges()" title="Guardar cambios (F10)">
         <i class="bi bi-floppy" style="font-size: 1rem;"></i>
         <span class="position-absolute top-0 start-100 translate-middle p-2 bg-danger border border-light rounded-circle"
           *ngIf="hasUnsavedChanges">
@@ -53,6 +53,7 @@
         [gridOptions]="gridOptions"
         [localeText]="AG_GRID_LOCALE_ES"
         (gridReady)="onGridReady($event)"
+        (cellKeyDown)="onMasterGridCellKeyDown($event)"
         (columnResized)="onMasterColumnResized($event)"
         (selectionChanged)="onSelectionChanged($event)"
         (cellClicked)="onCellClicked($event)"

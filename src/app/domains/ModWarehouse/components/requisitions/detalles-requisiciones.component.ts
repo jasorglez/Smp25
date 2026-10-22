@@ -89,6 +89,16 @@ export class DetallesRequisicionesComponent implements OnInit {
     restoreGridColumnWidths(this.gridApi, 'shopping:requisitions:detail', this.trackingService.getEmail());
   }
 
+  onDetailGridCellKeyDown(event: any): void {
+    const keyEvent: KeyboardEvent = event?.event || event;
+    if (keyEvent?.key !== 'F10') return;
+    keyEvent.preventDefault();
+    keyEvent.stopPropagation();
+    if (keyEvent.repeat) return;
+    event.api?.stopEditing();
+    void this.saveChanges();
+  }
+
   onColumnResized(event: any): void {
     saveGridColumnWidths(this.gridApi, 'shopping:requisitions:detail', this.trackingService.getEmail(), event);
   }

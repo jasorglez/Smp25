@@ -1437,6 +1437,16 @@ export class PurchaseOrderComponent implements CanComponentDeactivate {
     this.updateDetailContext();
   }
 
+  onMasterGridCellKeyDown(event: any): void {
+    const keyEvent: KeyboardEvent = event?.event || event;
+    if (keyEvent?.key !== 'F10') return;
+    keyEvent.preventDefault();
+    keyEvent.stopPropagation();
+    if (keyEvent.repeat) return;
+    event.api?.stopEditing();
+    void this.saveMasterChanges();
+  }
+
   onMasterColumnResized(event: any): void {
     saveGridColumnWidths(this.masterGridApi, 'shopping:purchaseorder:master', this.trackingService.getEmail(), event);
   }

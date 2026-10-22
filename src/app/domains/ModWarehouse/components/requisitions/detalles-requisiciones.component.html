@@ -21,7 +21,7 @@
       <button class="btn btn-danger btn-xs me-1 py-0 px-2" (click)="deleteSelectedItem()" [disabled]="isReadOnly">
         <i class="bi bi-trash"></i> Eliminar
       </button>
-      <button class="btn btn-success btn-xs position-relative py-0 px-2" (click)="saveChanges()" [disabled]="isReadOnly">
+      <button class="btn btn-success btn-xs position-relative py-0 px-2" (click)="saveChanges()" [disabled]="isReadOnly" title="Guardar partidas (F10)">
         <i class="bi bi-floppy"></i> Guardar
         <span class="position-absolute top-0 start-100 translate-middle p-1 bg-danger border border-light rounded-circle unsaved-indicator"
           *ngIf="hasUnsavedChanges && !isReadOnly">
@@ -57,6 +57,7 @@
     [gridOptions]="gridOptions"
     [localeText]="AG_GRID_LOCALE_ES"
     (gridReady)="onGridReady($event)"
+    (cellKeyDown)="onDetailGridCellKeyDown($event)"
     (columnResized)="onColumnResized($event)"
     (cellValueChanged)="onCellValueChanged($event)">
   </ag-grid-angular>

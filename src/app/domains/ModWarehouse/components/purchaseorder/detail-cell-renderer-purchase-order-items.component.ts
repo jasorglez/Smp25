@@ -32,7 +32,7 @@ import Swal from 'sweetalert2';
         <button class="btn btn-danger btn-xs me-1 py-0 px-2" (click)="deleteSelectedItem()" style="font-size: 0.75rem; line-height: 1.5;">
           <i class="bi bi-trash" style="font-size: 0.75rem;"></i> Eliminar
         </button>
-        <button class="btn btn-success btn-xs position-relative py-0 px-2" (click)="saveChanges()" style="font-size: 0.75rem; line-height: 1.5;">
+        <button class="btn btn-success btn-xs position-relative py-0 px-2" (click)="saveChanges()" title="Guardar partidas (F10)" style="font-size: 0.75rem; line-height: 1.5;">
           <i class="bi bi-floppy" style="font-size: 0.75rem;"></i> Guardar
           <span class="position-absolute top-0 start-100 translate-middle p-1 bg-danger border border-light rounded-circle"
             *ngIf="hasUnsavedChanges" style="width: 8px; height: 8px;">
@@ -55,6 +55,7 @@ import Swal from 'sweetalert2';
         [gridOptions]="gridOptions"
         [localeText]="AG_GRID_LOCALE_ES"
         (gridReady)="onGridReady($event)"
+        (cellKeyDown)="onDetailGridCellKeyDown($event)"
         (columnResized)="onColumnResized($event)"
         (cellValueChanged)="onCellValueChanged($event)"
         style="height: 1320px; width: 100%;">
@@ -150,6 +151,16 @@ export class DetailCellRendererPurchaseOrderItemsComponent implements OnInit {
     this.gridApi = params.api;
     this.gridApi.setGridOption('columnDefs', this.colDefs);
     restoreGridColumnWidths(this.gridApi, 'shopping:purchaseorder:detail', this.trackingService.getEmail());
+  }
+
+  onDetailGridCellKeyDown(event: any): void {
+    const keyEvent: KeyboardEvent = event?.event || event;
+    if (keyEvent?.key !== 'F10') return;
+    keyEvent.preventDefault();
+    keyEvent.stopPropagation();
+    if (keyEvent.repeat) return;
+    event.api?.stopEditing();
+    void this.saveChanges();
   }
 
   onColumnResized(event: any): void {

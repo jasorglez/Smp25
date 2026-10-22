@@ -58,7 +58,7 @@ import { catchError, forkJoin, from, lastValueFrom, map, mergeMap, of, toArray }
         <button class="btn btn-danger btn-sm me-2" (click)="deleteSelectedItem()">
           <i class="bi bi-trash"></i> Eliminar
         </button>
-        <button class="btn btn-success btn-sm position-relative" (click)="saveChanges()">
+        <button class="btn btn-success btn-sm position-relative" (click)="saveChanges()" title="Guardar partidas (F10)">
           <i class="bi bi-floppy"></i> Guardar
           <span class="position-absolute top-0 start-100 translate-middle p-2 bg-danger border border-light rounded-circle"
             *ngIf="hasUnsavedChanges">
@@ -81,6 +81,7 @@ import { catchError, forkJoin, from, lastValueFrom, map, mergeMap, of, toArray }
         [gridOptions]="gridOptions"
         [localeText]="AG_GRID_LOCALE_ES"
         (gridReady)="onGridReady($event)"
+        (cellKeyDown)="onDetailGridCellKeyDown($event)"
         (columnResized)="onColumnResized($event)"
         (cellValueChanged)="onCellValueChanged($event)"
         [components]="components"
@@ -643,6 +644,16 @@ export class DetailCellRendererEntryItemsComponent {
         colKey: 'description'
       });
     }, 0);
+  }
+
+  onDetailGridCellKeyDown(event: any): void {
+    const keyEvent: KeyboardEvent = event?.event || event;
+    if (keyEvent?.key !== 'F10') return;
+    keyEvent.preventDefault();
+    keyEvent.stopPropagation();
+    if (keyEvent.repeat) return;
+    event.api?.stopEditing();
+    void this.saveChanges();
   }
 
   deleteSelectedItem() {

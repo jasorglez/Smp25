@@ -29,7 +29,7 @@
           <i class="bi bi-plus-lg"></i>
         </button>
         <button type="button" class="btn btn-success position-relative" (click)="saveMasterChanges()"
-          title="Guardar cambios">
+          title="Guardar cambios (F10)">
           <i class="bi bi-floppy"></i>
           <span
             class="position-absolute top-0 start-100 translate-middle p-2 bg-danger border border-light rounded-circle"
@@ -67,6 +67,7 @@
         (cellEditingStopped)="onMasterCellEditingStopped($event)"
         (rowSelected)="onMasterRowSelected($event)"
         (gridReady)="onMasterGridReady($event)"
+        (cellKeyDown)="onMasterGridCellKeyDown($event)"
         (columnResized)="onMasterColumnResized($event)"
         [rowSelection]="rowSelection" 
         [pivotPanelShow]="pivotPanelShow"
