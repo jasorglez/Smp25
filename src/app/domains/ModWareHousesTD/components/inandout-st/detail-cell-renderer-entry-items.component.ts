@@ -373,12 +373,15 @@ export class DetailCellRendererEntryItemsComponent {
         editable: true,
         cellEditor: 'selectMaterialEditor',
         cellEditorParams: (params: any) => {
+          const isTransfer = this.isTransferEntry();
           return {
             options: (this.materials || [])
               .filter(m => m.active)
               .map(m => ({ id: m.id, code: m.code || '', description: m.description }))
-              .concat([{ id: '__ADD_MATERIAL__', code: '', description: '+ Agregar material...' }]),
-            onAddMaterial: () => this.quickAddMaterial()
+              .concat(isTransfer ? [] : [{ id: '__ADD_MATERIAL__', code: '', description: '+ Agregar material...' }]),
+            // En un traspaso solo se pueden seleccionar materiales ya existentes
+            // que tengan existencia en el almacén origen.
+            onAddMaterial: isTransfer ? undefined : () => this.quickAddMaterial()
           };
         },
         valueFormatter: (params: any) => {

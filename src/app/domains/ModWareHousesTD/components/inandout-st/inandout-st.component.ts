@@ -1192,7 +1192,21 @@ export class InandoutStComponent implements OnInit {
     if (event.colDef.field === 'idType') {
       this.selectedEntry = event.data;
       this.refreshColumns();
+      this.refreshExpandedItemsDetail(event.node);
     }
+  }
+
+  /**
+   * El detalle toma el comportamiento del tipo al inicializarse. Si el usuario
+   * cambia el tipo con el detalle abierto, se recrea para volver a cargar los
+   * materiales con las reglas del valueAddition vigente.
+   */
+  private refreshExpandedItemsDetail(node: any): void {
+    if (!node?.expanded || node.data?.detailType !== 'items') return;
+    node.setExpanded(false);
+    setTimeout(() => {
+      if (this.gridApi && node.data?.detailType === 'items') node.setExpanded(true);
+    }, 0);
   }
 
   async openAddTipoDialogForNode(node: any): Promise<void> {
