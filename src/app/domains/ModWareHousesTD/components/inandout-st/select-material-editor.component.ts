@@ -40,14 +40,14 @@ import { FormsModule } from '@angular/forms';
     .material-picker-search { color: #3979b7; font-size: 12px; }
     input {
       flex: 1; min-width: 0; border: 0; outline: 0; background: transparent; color: #24364b;
-      font-size: 12px; font-weight: 500; appearance: none; cursor: pointer;
+      font-size: 10px; font-weight: 500; appearance: none; cursor: pointer;
     }
     .material-picker-options {
       position: absolute; z-index: 1000; top: calc(100% + 3px); left: 0; right: 0; max-height: 250px;
       overflow-y: auto; padding: 4px; border: 1px solid #d5dfeb; border-radius: 8px; background: #fff;
       box-shadow: 0 8px 20px rgba(28, 48, 72, .18);
     }
-    .material-picker-options button { display: flex; gap: 8px; width: 100%; padding: 6px 8px; border: 0; border-radius: 5px; background: transparent; color: #26364a; text-align: left; font-size: 12px; }
+    .material-picker-options button { display: flex; gap: 8px; width: 100%; padding: 6px 8px; border: 0; border-radius: 5px; background: transparent; color: #26364a; text-align: left; font-size: 10px; }
     .material-picker-options button:hover { background: #edf5ff; }
     .material-picker-options strong { min-width: 66px; color: #2769a6; }
     .material-picker-options .add-material-option { color: #18794e; font-weight: 600; border-top: 1px solid #e8edf3; margin-top: 3px; }
