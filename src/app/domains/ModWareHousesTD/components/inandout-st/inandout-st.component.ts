@@ -500,6 +500,12 @@ export class InandoutStComponent implements OnInit {
     return String(catalog?.valueAddition || '').trim().toUpperCase() === 'TRANSFER';
   }
 
+  private isInventorySetupType(idType: any): boolean {
+    const catalog = this.catalogs.find(item => Number(item.id) === Number(idType));
+    return ['INITIAL_INVENTORY', 'INVENTORY_ADJUSTMENT']
+      .includes(String(catalog?.valueAddition || '').trim().toUpperCase());
+  }
+
   onWarehouseChange(id?: number | string) {
     if (id !== undefined) {
       this.selectedWarehouse = this.warehouses.find(w => String(w.idAlmacen) === String(id)) || null;
@@ -765,7 +771,7 @@ export class InandoutStComponent implements OnInit {
         field: 'idOc',
         headerName: 'Orden de Compra',
         width: 160,
-        hide: this.movementType !== 'IN' || this.isTransferType(this.selectedEntry?.idType),
+        hide: this.movementType !== 'IN' || this.isTransferType(this.selectedEntry?.idType) || this.isInventorySetupType(this.selectedEntry?.idType),
         editable: (params: any) => this.canEditAuthorizedRow(params.data),
         cellEditor: 'agRichSelectCellEditor',
         cellEditorParams: () => ({
@@ -820,6 +826,15 @@ export class InandoutStComponent implements OnInit {
         field: 'date',
         headerName: 'Fecha',
         width: 110,
+        sort: 'desc',
+        sortIndex: 0,
+        comparator: (valueA: any, valueB: any, nodeA: any, nodeB: any) => {
+          const timestampA = new Date(valueA).getTime();
+          const timestampB = new Date(valueB).getTime();
+          const dateDifference = (Number.isFinite(timestampA) ? timestampA : 0) - (Number.isFinite(timestampB) ? timestampB : 0);
+          if (dateDifference !== 0) return dateDifference;
+          return (Number(nodeA?.data?.id) || 0) - (Number(nodeB?.data?.id) || 0);
+        },
         editable: (params: any) => this.canEditAuthorizedRow(params.data),
         valueFormatter: (params: any) => {
           if (!params.value) return '';
