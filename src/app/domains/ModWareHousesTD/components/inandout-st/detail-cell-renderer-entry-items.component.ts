@@ -826,6 +826,20 @@ export class DetailCellRendererEntryItemsComponent {
       this.gridApi?.refreshCells({ force: true, columns: ['pending'] });
       return;
     }
+    const sourceEntryId = Number(this.entryData?.idEntry || 0);
+    if (this.context?.movementType === 'OUT' && sourceEntryId > 0) {
+      const sourceItem = (this.context?.getSourceRemainingItems?.('OUT', sourceEntryId) || []).find((item: any) => {
+        if (Number(item.idProduct || item.idSupplie || 0) !== Number(row.idProduct)) return false;
+        if (item.idBrand == null && row.idBrand == null) return true;
+        if (item.idBrand != null && row.idBrand != null) return Number(item.idBrand) === Number(row.idBrand);
+        return (material?.brands?.length || 0) === 1;
+      });
+      if (sourceItem) {
+        row.pending = Math.max(0, Number(sourceItem.remainingQuantity) || 0);
+        this.gridApi?.refreshCells({ force: true, columns: ['pending'] });
+        return;
+      }
+    }
     const warehouseId = Number(this.entryData?.idWarehouse || this.context?.idWarehouse || 0);
     if (!warehouseId || !this.context?.inandoutService?.getStock) return;
     const rowKey = this.materialBrandKey(row);
@@ -895,10 +909,21 @@ export class DetailCellRendererEntryItemsComponent {
               ), 8),
               toArray()
             ).subscribe({
-              next: (materialsWithStock: any[]) => {
+              next: async (materialsWithStock: any[]) => {
+                const sourceEntryId = Number(this.entryData?.idEntry || 0);
+                if (sourceEntryId > 0) {
+                  await this.context?.refreshSourceEntries?.();
+                }
                 const productsAlreadyInDetails = new Set(this.rowData.map(item => Number(item.idProduct)).filter(id => id > 0));
+                const sourceProductIds = new Set<number>(
+                  (this.context?.getSourceRemainingItems?.('OUT', sourceEntryId) || [])
+                    .map((item: any) => Number(item.idProduct || item.idSupplie || 0))
+                    .filter((id: number) => id > 0)
+                );
                 this.materials = materialsWithStock.filter(material =>
-                  material.availableStock > 0 || productsAlreadyInDetails.has(Number(material.id))
+                  material.availableStock > 0
+                  || productsAlreadyInDetails.has(Number(material.id))
+                  || sourceProductIds.has(Number(material.id))
                 );
                 this.applyBrandStockToRows();
                 if (this.gridApi) this.gridApi.setGridOption('columnDefs', this.colDefs);

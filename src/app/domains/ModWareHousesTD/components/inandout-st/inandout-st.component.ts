@@ -1102,6 +1102,10 @@ export class InandoutStComponent implements OnInit {
           const sourceItem = (sourceItems || []).find((candidate: any) => this.materialBrandKey(candidate) === key);
           return Number(sourceItem?.remainingQuantity || 0);
         },
+        getSourceRemainingItems: (movementType: 'IN' | 'OUT', sourceId: number) => movementType === 'IN'
+          ? this.ocRemainingItemsById.get(Number(sourceId)) || []
+          : this.entryRemainingItemsById.get(Number(sourceId)) || [],
+        refreshSourceEntries: () => this.loadAvailableEntrySources(),
         ITEMS: {
           load: (entryId: number, callback: (data: any[]) => void) => {
             this.loadEntryItemsData(entryId, callback);
