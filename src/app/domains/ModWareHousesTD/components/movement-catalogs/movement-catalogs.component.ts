@@ -27,7 +27,9 @@ export class MovementCatalogsComponent implements CanComponentDeactivate {
     ],
     OUT: [
       { value: 'STANDARD', label: 'Normal' },
-      { value: 'TRANSFER', label: 'Traspaso' }
+      { value: 'TRANSFER', label: 'Traspaso' },
+      { value: 'INITIAL_INVENTORY', label: 'Inicio de inventario' },
+      { value: 'INVENTORY_ADJUSTMENT', label: 'Ajuste de inventario' }
     ]
   };
   private readonly signals = inject(SignalsService);

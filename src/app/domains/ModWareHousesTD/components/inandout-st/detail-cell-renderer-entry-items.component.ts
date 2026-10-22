@@ -834,11 +834,11 @@ export class DetailCellRendererEntryItemsComponent {
   }
 
   isInitialInventoryEntry(): boolean {
-    return this.getMovementTypeBehavior() === 'INITIAL_INVENTORY' && this.context?.movementType === 'IN';
+    return this.getMovementTypeBehavior() === 'INITIAL_INVENTORY';
   }
 
   isInventoryAdjustmentEntry(): boolean {
-    return this.getMovementTypeBehavior() === 'INVENTORY_ADJUSTMENT' && this.context?.movementType === 'IN';
+    return this.getMovementTypeBehavior() === 'INVENTORY_ADJUSTMENT';
   }
 
   private getMovementTypeBehavior(): string {
