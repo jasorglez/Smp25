@@ -40,14 +40,14 @@ import { catchError, forkJoin, from, lastValueFrom, map, mergeMap, of, toArray }
         Los materiales con conversión se capturan en su unidad origen; el inventario se guarda en la unidad destino configurada.
       </div>
       <div class="detail-actions d-flex justify-content-end mb-2">
-        <button class="btn btn-primary btn-sm me-2" (click)="addItem()" [disabled]="!masterSaved">
+        <button class="btn btn-primary btn-sm me-2" (click)="addItem()">
           <i class="bi bi-plus-lg"></i> Agregar
         </button>
-        <button *ngIf="entryData?.idOc > 0" class="btn btn-secondary btn-sm me-2" (click)="importarItemsDeOC()" [disabled]="!masterSaved"
+        <button *ngIf="entryData?.idOc > 0" class="btn btn-secondary btn-sm me-2" (click)="importarItemsDeOC()"
           title="Importar artículos desde la Orden de Compra">
           <i class="bi bi-box-arrow-in-down"></i> OC
         </button>
-        <button *ngIf="context?.movementType === 'OUT' && entryData?.idEntry > 0" class="btn btn-secondary btn-sm me-2" (click)="importarItemsDeEntrada()" [disabled]="!masterSaved"
+        <button *ngIf="context?.movementType === 'OUT' && entryData?.idEntry > 0" class="btn btn-secondary btn-sm me-2" (click)="importarItemsDeEntrada()"
           title="Importar cantidades pendientes desde el vale de Entrada">
           <i class="bi bi-box-arrow-in-down"></i> Vale de Entrada
         </button>
@@ -57,7 +57,7 @@ import { catchError, forkJoin, from, lastValueFrom, map, mergeMap, of, toArray }
         <button class="btn btn-danger btn-sm me-2" (click)="deleteSelectedItem()">
           <i class="bi bi-trash"></i> Eliminar
         </button>
-        <button class="btn btn-success btn-sm position-relative" (click)="saveChanges()" [disabled]="!masterSaved">
+        <button class="btn btn-success btn-sm position-relative" (click)="saveChanges()">
           <i class="bi bi-floppy"></i> Guardar
           <span class="position-absolute top-0 start-100 translate-middle p-2 bg-danger border border-light rounded-circle"
             *ngIf="hasUnsavedChanges">
@@ -66,7 +66,7 @@ import { catchError, forkJoin, from, lastValueFrom, map, mergeMap, of, toArray }
         </button>
       </div>
       <div *ngIf="!masterSaved" class="alert alert-info py-1 px-2 mb-2 small">
-        <i class="bi bi-info-circle me-1"></i> Guarda primero la entrada o salida para habilitar sus partidas.
+        <i class="bi bi-info-circle me-1"></i> Al guardar las partidas también se guardará la entrada o salida.
       </div>
       <ag-grid-angular
         #agGrid
@@ -650,10 +650,6 @@ export class DetailCellRendererEntryItemsComponent {
 
   async saveChanges() {
     this.trackingService.addLog(this.trackingService.getnameComp(), 'Guardó cambios en detail cell renderer entry items', 'ModWareHousesTD', this.trackingService.getEmail());
-    if (!this.masterSaved) {
-      alerts.basicAlert('Guarda primero el movimiento', 'Guarda la entrada o salida antes de guardar sus partidas.', 'warning');
-      return;
-    }
     if (!this.hasUnsavedChanges) {
       alerts.basicAlert('Sin cambios', 'No hay cambios pendientes por guardar', 'info');
       return;

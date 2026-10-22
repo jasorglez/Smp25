@@ -123,8 +123,8 @@
                     <span class="d-none d-xl-inline"> · CDC: {{selectedOt.cdc}} - {{selectedOt.description}} · {{selectedReporteFecha | date:'dd-MM-yyyy'}} {{selectedReporteHoraInicio}}-{{selectedReporteHoraTermino}}</span>
                   </button>
                 </div>
-                <div *ngIf="selectedReporteId && !canSaveReportDetails" class="alert alert-warning py-1 px-2 mb-2 small">
-                  <i class="bi bi-exclamation-circle me-1"></i> Guarda primero el reporte diario para habilitar sus detalles.
+                <div *ngIf="selectedReporteId && !canSaveReportDetails" class="alert alert-info py-1 px-2 mb-2 small">
+                  <i class="bi bi-info-circle me-1"></i> Al guardar una partida, también se guardará el reporte diario.
                 </div>
                 <!-- Pestañas de navegación -->
                 <ul class="nav nav-tabs mb-2" style="flex-wrap: nowrap; overflow-x: auto; white-space: nowrap;">

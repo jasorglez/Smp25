@@ -83,5 +83,5 @@ export const environment = {
   geminiApiKey: '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',
   gnewsApiKey: '94ccc596b4dfebc3f72683b6e81d81bc',
 
-  version: '5.00.330 (21 Octubre 2026 19:53) búsqueda más amplia en ajustes de inventario',
+  version: '5.00.331 (21 Octubre 2026 20:23) guardado automático de maestros y partidas',
 };

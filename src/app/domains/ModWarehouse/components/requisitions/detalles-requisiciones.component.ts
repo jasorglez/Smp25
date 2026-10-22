@@ -229,10 +229,6 @@ export class DetallesRequisicionesComponent implements OnInit {
   };
 
   addItem(material?: any) {
-    if (!this.masterSaved) {
-      alerts.basicAlert('Guarda primero la requisición', 'Guarda el maestro antes de agregar sus partidas.', 'warning');
-      return;
-    }
     if (this.isReadOnly) {
       alerts.basicAlert('Requisicion bloqueada', 'No se pueden agregar items. Esta requisicion esta en proceso de cotizacion.', 'warning');
       return;
@@ -334,10 +330,6 @@ export class DetallesRequisicionesComponent implements OnInit {
 
   async saveChanges() {
     this.trackingService.addLog(this.trackingService.getnameComp(), 'Guardó cambios en detalles requisiciones', 'Almacenes', this.trackingService.getEmail());
-    if (!this.masterSaved) {
-      alerts.basicAlert('Guarda primero la requisición', 'Guarda el maestro antes de guardar sus partidas.', 'warning');
-      return;
-    }
     if (this.isReadOnly) {
       alerts.basicAlert('Requisicion bloqueada', 'No se pueden guardar cambios. Esta requisicion esta en proceso de cotizacion.', 'warning');
       return;

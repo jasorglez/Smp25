@@ -19,7 +19,7 @@ import Swal from 'sweetalert2';
     <div class="detail-grid-container">
       <div class="detail-actions d-flex justify-content-end mb-1">
         <span *ngIf="isAuthorized" class="badge bg-warning text-dark me-auto">OC autorizada - Solo lectura</span>
-        <button class="btn btn-primary btn-xs me-1 py-0 px-2" (click)="addItem()" [disabled]="!masterSaved || isAuthorized" style="font-size: 0.75rem; line-height: 1.5;">
+        <button class="btn btn-primary btn-xs me-1 py-0 px-2" (click)="addItem()" [disabled]="isAuthorized" style="font-size: 0.75rem; line-height: 1.5;">
           <i class="bi bi-plus" style="font-size: 0.75rem;"></i> Agregar
         </button>
         <button class="btn btn-outline-primary btn-xs me-1 py-0 px-2" (click)="quickAddMaterial()" style="font-size: 0.75rem; line-height: 1.5;">
@@ -31,7 +31,7 @@ import Swal from 'sweetalert2';
         <button class="btn btn-danger btn-xs me-1 py-0 px-2" (click)="deleteSelectedItem()" style="font-size: 0.75rem; line-height: 1.5;">
           <i class="bi bi-trash" style="font-size: 0.75rem;"></i> Eliminar
         </button>
-        <button class="btn btn-success btn-xs position-relative py-0 px-2" (click)="saveChanges()" [disabled]="!masterSaved" style="font-size: 0.75rem; line-height: 1.5;">
+        <button class="btn btn-success btn-xs position-relative py-0 px-2" (click)="saveChanges()" style="font-size: 0.75rem; line-height: 1.5;">
           <i class="bi bi-floppy" style="font-size: 0.75rem;"></i> Guardar
           <span class="position-absolute top-0 start-100 translate-middle p-1 bg-danger border border-light rounded-circle"
             *ngIf="hasUnsavedChanges" style="width: 8px; height: 8px;">
@@ -40,7 +40,7 @@ import Swal from 'sweetalert2';
         </button>
       </div>
       <div *ngIf="!masterSaved" class="alert alert-info py-1 px-2 mb-2 small">
-        <i class="bi bi-info-circle me-1"></i> Guarda primero la orden de compra para habilitar sus partidas.
+        <i class="bi bi-info-circle me-1"></i> Al guardar las partidas también se guardará la orden de compra.
       </div>
       <ag-grid-angular
         #agGrid
@@ -381,10 +381,6 @@ export class DetailCellRendererPurchaseOrderItemsComponent implements OnInit {
   }
 
   addItem() {
-    if (!this.masterSaved) {
-      alerts.basicAlert('Guarda primero la orden de compra', 'Guarda el maestro de la OC antes de agregar sus partidas.', 'warning');
-      return;
-    }
     const tempId = `temp_item_${this.tempIdCounter++}`;
     const newItem = {
       id: tempId,
@@ -627,10 +623,6 @@ export class DetailCellRendererPurchaseOrderItemsComponent implements OnInit {
 
   async saveChanges() {
     this.trackingService.addLog(this.trackingService.getnameComp(), 'Guardó cambios en detail cell renderer purchase order items', 'Almacenes', this.trackingService.getEmail());
-    if (!this.masterSaved) {
-      alerts.basicAlert('Guarda primero la orden de compra', 'Guarda el maestro de la OC antes de guardar sus partidas.', 'warning');
-      return;
-    }
     if (!this.hasUnsavedChanges) {
       // También permite vincular partidas ya guardadas cuando se eligió un
       // gasto destino posteriormente en el maestro de la OC.

@@ -1405,11 +1405,26 @@ export class RequisitionsComponent implements CanComponentDeactivate {
     });
   }
 
-  async saveRequisitionItemsById(requisitionId: number, data: any[]): Promise<boolean> {
-    const masterRow = this.masterRowData.find((row: any) => String(row.id) === String(requisitionId));
+  async saveRequisitionItemsById(requisitionId: any, data: any[]): Promise<boolean> {
+    let masterRow = this.masterRowData.find((row: any) => String(row.id) === String(requisitionId));
     if (!hasPersistedMasterId(requisitionId, masterRow?.__isNew)) {
-      alerts.basicAlert('Guarda primero la requisición', 'Guarda el maestro de la requisición antes de guardar sus partidas.', 'warning');
-      return false;
+      if (!masterRow || !this.validateMasterRows([masterRow])) return false;
+      try {
+        const response: any = await lastValueFrom(this.requisitionsService.addOcAndReq(this.cleanDataForServer(masterRow)));
+        const savedId = Number(response?.id ?? response?.data?.id ?? response?.idMovement ?? 0);
+        if (!savedId) throw new Error('El servidor no devolvió el identificador de la requisición.');
+        masterRow.id = savedId;
+        delete masterRow.__isNew;
+        delete masterRow.__modified;
+        data.forEach((item: any) => item.idMovement = savedId);
+        this.masterNotSavedChanges = this.masterRowData.some((row: any) => row.__isNew || row.__modified);
+        this.masterGridApi?.refreshCells({ force: true });
+        requisitionId = savedId;
+      } catch (error) {
+        console.error('Error guardando la requisición antes de sus partidas:', error);
+        alerts.basicAlert('No se pudo guardar la requisición', this.getApiErrorMessage(error, 'Revisa los datos del maestro e inténtalo de nuevo.'), 'error');
+        return false;
+      }
     }
     const newItems = data.filter((row: any) => row.__isNew);
     const modifiedItems = data.filter((row: any) => row.__modified && !row.__isNew);

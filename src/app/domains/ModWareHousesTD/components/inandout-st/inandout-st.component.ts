@@ -1462,11 +1462,14 @@ export class InandoutStComponent implements OnInit {
     })));
   }
 
-  async saveEntryItemsById(entryId: number, data: any[]): Promise<boolean> {
-    const masterEntry = this.rowData.find((entry: any) => String(entry.id) === String(entryId));
+  async saveEntryItemsById(entryId: any, data: any[]): Promise<boolean> {
+    let masterEntry = this.rowData.find((entry: any) => String(entry.id) === String(entryId));
     if (!hasPersistedMasterId(entryId, masterEntry?.__isNew)) {
-      alerts.basicAlert('Guarda primero el movimiento', 'Guarda la entrada o salida antes de guardar sus partidas.', 'warning');
-      return false;
+      const savedId = await this.saveMasterEntryForItems(masterEntry);
+      if (!savedId) return false;
+      data.forEach((item: any) => item.idInandout = savedId);
+      entryId = savedId;
+      masterEntry = this.rowData.find((entry: any) => String(entry.id) === String(savedId));
     }
     const newItems = data.filter((row: any) => row.__isNew);
     const modifiedItems = data.filter((row: any) => row.__modified && !row.__isNew);
@@ -1572,6 +1575,44 @@ export class InandoutStComponent implements OnInit {
       });
       alerts.basicAlert('Error', 'Error al guardar los items.', 'error');
       return false;
+    }
+  }
+
+  private async saveMasterEntryForItems(entry: any): Promise<number | null> {
+    if (!entry) return null;
+    if (this.isTransferType(entry.idType) && (!Number(entry.idWarehouseOrigin) || Number(entry.idWarehouseOrigin) === Number(entry.idWarehouse || this.selectedWarehouse?.idAlmacen))) {
+      alerts.basicAlert('Almacén destino requerido', 'Selecciona un almacén destino distinto al almacén de origen antes de guardar sus partidas.', 'warning');
+      return null;
+    }
+
+    const entryData = this.prepareEntryData(entry);
+    if (!entryData.folio) {
+      const documentType = this.movementType === 'IN' ? 'entry' : 'out';
+      const owners: Array<{ type: 'branch' | 'project'; id: number | null }> = [
+        { type: 'branch', id: this.idBranch },
+        { type: 'project', id: this.projectId }
+      ];
+      for (const owner of owners) {
+        if (entryData.folio || !owner.id) continue;
+        entryData.folio = await this.prefixSetupService.getNextFolio(owner.type, owner.id, documentType) || '';
+      }
+    }
+
+    try {
+      const response: any = await lastValueFrom(this.inandoutService.addInAndOut(entryData));
+      const savedId = Number(response?.id ?? response?.data?.id ?? response?.idInandout ?? response?.idInAndOut ?? 0);
+      if (!savedId) throw new Error('El servidor no devolvió el identificador del movimiento.');
+      entry.id = savedId;
+      entry.folio = response?.folio || entryData.folio || entry.folio;
+      delete entry.__isNew;
+      delete entry.__modified;
+      this.hasUnsavedChanges = this.rowData.some((row: any) => row.__isNew || row.__modified);
+      this.gridApi?.refreshCells({ force: true });
+      return savedId;
+    } catch (error: any) {
+      console.error('Error guardando el encabezado antes de sus partidas:', error);
+      alerts.basicAlert('No se pudo guardar el movimiento', error?.error?.message || error?.message || 'Revisa los datos del encabezado e inténtalo de nuevo.', 'error');
+      return null;
     }
   }
 

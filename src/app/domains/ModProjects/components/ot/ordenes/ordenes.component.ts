@@ -211,10 +211,42 @@ export class OrdenesComponent implements OnInit, OnDestroy, OnChanges {
     return hasPersistedMasterId(this.selectedReporteId);
   }
 
-  private requireSavedReportForDetails(): boolean {
+  private async requireSavedReportForDetails(): Promise<boolean> {
     if (this.canSaveReportDetails) return true;
-    alerts.basicAlert('Guarda primero el reporte diario', 'Guarda el reporte diario maestro antes de guardar su personal, materiales, equipos, fotos, videos, conceptos o notas.', 'warning');
-    return false;
+    const report = this.reportesDiarios.find((row: any) => String(row.id) === String(this.selectedReporteId));
+    if (!report || !report.__isNew) {
+      alerts.basicAlert('Reporte diario requerido', 'Selecciona o crea un reporte diario antes de guardar sus partidas.', 'warning');
+      return false;
+    }
+    if (!hasPersistedMasterId(report.idOt)) {
+      alerts.basicAlert('OT requerida', 'Guarda la orden de trabajo antes de guardar el reporte diario y sus partidas.', 'warning');
+      return false;
+    }
+
+    try {
+      const response: any = await firstValueFrom(this.dailyReportService.addDailyReport(this.cleanDataForServer(report)));
+      const saved = response?.data ?? response?.report ?? response;
+      const savedId = saved?.id ?? saved?.idReporte ?? saved?.Id;
+      if (!hasPersistedMasterId(savedId)) throw new Error('El servidor no devolvió el identificador del reporte diario.');
+
+      const temporaryId = report.id;
+      report.id = savedId;
+      delete report.__isNew;
+      delete report.__modified;
+      this.selectedReporteId = savedId;
+      const detailCollections = [this.personal, this.materiales, this.equipos, this.fotografias, this.videos, this.conceptos, this.notas];
+      detailCollections.forEach((rows: any[]) => rows.forEach((row: any) => {
+        if (String(row.idReporte) === String(temporaryId)) row.idReporte = savedId;
+        if (String(row.idReport) === String(temporaryId)) row.idReport = savedId;
+      }));
+      this.notSavedChanges = this.reportesDiarios.some((row: any) => row.__isNew || row.__modified);
+      this.reportesGridApi?.refreshCells({ force: true });
+      return true;
+    } catch (error: any) {
+      console.error('Error guardando el reporte diario antes de sus partidas:', error);
+      alerts.basicAlert('No se pudo guardar el reporte diario', error?.error?.message || error?.message || 'Revisa los datos del reporte e inténtalo de nuevo.', 'error');
+      return false;
+    }
   }
   public selectedFotografia: Fotografia | null = null;
   public selectedVideo: Video | null = null;
@@ -1675,7 +1707,6 @@ export class OrdenesComponent implements OnInit, OnDestroy, OnChanges {
   }
 
   addFotografia() {
-    if (!this.requireSavedReportForDetails()) return;
     this.trackingService.addLog(
       this.trackingService.getnameComp(),
       'Agregar Fotografía OT',
@@ -1727,7 +1758,6 @@ export class OrdenesComponent implements OnInit, OnDestroy, OnChanges {
   }
 
   addVideo() {
-    if (!this.requireSavedReportForDetails()) return;
     this.trackingService.addLog(
       this.trackingService.getnameComp(),
       'Agregar Video OT',
@@ -1779,7 +1809,7 @@ export class OrdenesComponent implements OnInit, OnDestroy, OnChanges {
   }
 
   async saveFotografiasChanges() {
-    if (!this.requireSavedReportForDetails()) return;
+    if (!(await this.requireSavedReportForDetails())) return;
     this.trackingService.addLog(
       this.trackingService.getnameComp(),
       'Guardar Cambios Fotografías OT',
@@ -1873,7 +1903,7 @@ export class OrdenesComponent implements OnInit, OnDestroy, OnChanges {
   }
 
   async saveVideosChanges() {
-    if (!this.requireSavedReportForDetails()) return;
+    if (!(await this.requireSavedReportForDetails())) return;
     this.trackingService.addLog(
       this.trackingService.getnameComp(),
       'Guardar Cambios Videos OT',
@@ -4146,7 +4176,7 @@ export class OrdenesComponent implements OnInit, OnDestroy, OnChanges {
   }
 
   async saveChangesMaterial() {
-    if (!this.requireSavedReportForDetails()) return;
+    if (!(await this.requireSavedReportForDetails())) return;
     this.trackingService.addLog(
       this.trackingService.getnameComp(),
       'Guardar Cambios Materiales OT',
@@ -4243,7 +4273,7 @@ export class OrdenesComponent implements OnInit, OnDestroy, OnChanges {
   }
 
   async saveChangesEquipos() {
-    if (!this.requireSavedReportForDetails()) return;
+    if (!(await this.requireSavedReportForDetails())) return;
     this.trackingService.addLog(
       this.trackingService.getnameComp(),
       'Guardar Cambios Equipos OT',
@@ -4970,7 +5000,6 @@ export class OrdenesComponent implements OnInit, OnDestroy, OnChanges {
 
   // Métodos CRUD para Personal
   addPersonal() {
-    if (!this.requireSavedReportForDetails()) return;
     //alert(typeof(!this.signalsService.getClosedReport()))
     this.trackingService.addLog(
       this.trackingService.getnameComp(),
@@ -5025,7 +5054,6 @@ export class OrdenesComponent implements OnInit, OnDestroy, OnChanges {
   }
 
   addMaterial() {
-    if (!this.requireSavedReportForDetails()) return;
     this.trackingService.addLog(
       this.trackingService.getnameComp(),
       'Agregar Material OT',
@@ -5075,7 +5103,6 @@ export class OrdenesComponent implements OnInit, OnDestroy, OnChanges {
   }
 
   addEquipos() {
-    if (!this.requireSavedReportForDetails()) return;
     this.trackingService.addLog(
       this.trackingService.getnameComp(),
       'Agregar Equipo OT',
@@ -5125,7 +5152,7 @@ export class OrdenesComponent implements OnInit, OnDestroy, OnChanges {
   }
 
   async savePersonalChanges() {
-    if (!this.requireSavedReportForDetails()) return;
+    if (!(await this.requireSavedReportForDetails())) return;
     this.trackingService.addLog(
       this.trackingService.getnameComp(),
       'Guardar Cambios Personal OT',
@@ -5853,7 +5880,7 @@ export class OrdenesComponent implements OnInit, OnDestroy, OnChanges {
   }
 
   async saveConceptosChanges() {
-    if (!this.requireSavedReportForDetails()) return;
+    if (!(await this.requireSavedReportForDetails())) return;
     const newRows = this.conceptos.filter(row => row.__isNew);
     const modifiedRows = this.conceptos.filter(row => row.__modified && !row.__isNew);
     /*const invalidNewRows = newRows.filter(item => !item.date || !item.supervisor);
@@ -6052,7 +6079,6 @@ export class OrdenesComponent implements OnInit, OnDestroy, OnChanges {
 
   // -- Métodos para Notas --
   addNota() {
-    if (!this.requireSavedReportForDetails()) return;
     this.trackingService.addLog(
       this.trackingService.getnameComp(),
       'Agregar Nota OT',
@@ -6102,7 +6128,7 @@ export class OrdenesComponent implements OnInit, OnDestroy, OnChanges {
   }
 
   async saveNotasChanges() {
-    if (!this.requireSavedReportForDetails()) return;
+    if (!(await this.requireSavedReportForDetails())) return;
     this.trackingService.addLog(
       this.trackingService.getnameComp(),
       'Guardar Cambios Notas OT',

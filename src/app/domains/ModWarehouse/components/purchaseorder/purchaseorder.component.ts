@@ -2210,12 +2210,35 @@ export class PurchaseOrderComponent implements CanComponentDeactivate {
     });
   }
 
-  async savePurchaseOrderItemsById(purchaseOrderId: number, data: any[]): Promise<boolean> {
-    const purchaseOrder = this.masterRowData.find((row: any) => String(row.id) === String(purchaseOrderId));
+  async savePurchaseOrderItemsById(purchaseOrderId: any, data: any[]): Promise<boolean> {
+    let purchaseOrder = this.masterRowData.find((row: any) => String(row.id) === String(purchaseOrderId));
     if (!hasPersistedMasterId(purchaseOrderId, purchaseOrder?.__isNew)) {
-      alerts.basicAlert('Guarda primero la orden de compra', 'Guarda el maestro de la OC antes de guardar sus partidas.', 'warning');
-      return false;
+      if (!purchaseOrder?.idIncorExp) {
+        alerts.basicAlert('Gasto destino', 'Selecciona el gasto que acepta esta OC antes de guardar sus partidas.', 'warning');
+        return false;
+      }
+      if (!purchaseOrder?.folio) {
+        alerts.basicAlert('Folio requerido', 'Captura el número de la orden de compra antes de guardar sus partidas.', 'warning');
+        return false;
+      }
+      try {
+        const response: any = await lastValueFrom(this.requisitionsService.addOcAndReq(this.cleanDataForServer(purchaseOrder)));
+        const savedId = Number(response?.id ?? response?.data?.id ?? response?.idMovement ?? 0);
+        if (!savedId) throw new Error('El servidor no devolvió el identificador de la orden de compra.');
+        purchaseOrder.id = savedId;
+        delete purchaseOrder.__isNew;
+        delete purchaseOrder.__modified;
+        data.forEach((item: any) => item.idMovement = savedId);
+        this.masterNotSavedChanges = this.masterRowData.some((row: any) => row.__isNew || row.__modified);
+        this.masterGridApi?.refreshCells({ force: true });
+        purchaseOrderId = savedId;
+      } catch (error) {
+        console.error('Error guardando la OC antes de sus partidas:', error);
+        alerts.basicAlert('No se pudo guardar la OC', 'Revisa los datos del maestro e inténtalo de nuevo.', 'error');
+        return false;
+      }
     }
+    purchaseOrder = this.masterRowData.find((row: any) => String(row.id) === String(purchaseOrderId));
     const newItems = data.filter((row: any) => row.__isNew);
     const modifiedItems = data.filter((row: any) => row.__modified && !row.__isNew);
 
