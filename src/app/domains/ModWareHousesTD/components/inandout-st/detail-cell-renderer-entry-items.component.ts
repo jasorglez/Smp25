@@ -64,6 +64,10 @@ import { catchError, forkJoin, from, lastValueFrom, map, mergeMap, of, toArray }
             <span class="visually-hidden">Hay cambios sin guardar</span>
           </span>
         </button>
+        <button type="button" class="btn btn-outline-secondary btn-sm ms-2" (click)="closeDetail()"
+          title="Cerrar detalle" aria-label="Cerrar detalle">
+          <i class="bi bi-x-lg"></i>
+        </button>
       </div>
       <div *ngIf="!masterSaved" class="alert alert-info py-1 px-2 mb-2 small">
         <i class="bi bi-info-circle me-1"></i> Al guardar las partidas también se guardará la entrada o salida.
@@ -921,6 +925,10 @@ export class DetailCellRendererEntryItemsComponent {
 
   refreshByParent() {
     this.loadData();
+  }
+
+  closeDetail(): void {
+    this.params?.node?.setExpanded(false);
   }
 
   closeReport() {

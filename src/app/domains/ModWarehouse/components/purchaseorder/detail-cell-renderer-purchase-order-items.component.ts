@@ -38,6 +38,10 @@ import Swal from 'sweetalert2';
             <span class="visually-hidden">Hay cambios sin guardar</span>
           </span>
         </button>
+        <button type="button" class="btn btn-outline-secondary btn-xs ms-2 py-0 px-2" (click)="closeDetail()"
+          title="Cerrar detalle" aria-label="Cerrar detalle" style="font-size: 0.75rem; line-height: 1.5;">
+          <i class="bi bi-x-lg"></i>
+        </button>
       </div>
       <div *ngIf="!masterSaved" class="alert alert-info py-1 px-2 mb-2 small">
         <i class="bi bi-info-circle me-1"></i> Al guardar las partidas también se guardará la orden de compra.
@@ -99,6 +103,10 @@ export class DetailCellRendererPurchaseOrderItemsComponent implements OnInit {
     this.productos = this.context?.productos || [];
     this.proveedores = this.context?.proveedores || [];
     this.loadData();
+  }
+
+  closeDetail(): void {
+    this.params?.node?.setExpanded(false);
   }
 
   loadData() {

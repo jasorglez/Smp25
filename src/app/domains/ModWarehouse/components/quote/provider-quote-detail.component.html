@@ -49,6 +49,10 @@
       <button class="btn btn-sm btn-warning" (click)="deleteSelectedItem()" [disabled]="isLocked">
         <i class="bi bi-trash"></i> Borrar
       </button>
+      <button type="button" class="btn btn-sm btn-outline-light" (click)="closeDetail()"
+              title="Cerrar detalle" aria-label="Cerrar detalle">
+        <i class="bi bi-x-lg"></i>
+      </button>
     </div>
   </div>
 

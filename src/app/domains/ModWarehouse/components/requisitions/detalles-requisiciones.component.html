@@ -28,6 +28,10 @@
           <span class="visually-hidden">Hay cambios sin guardar</span>
         </span>
       </button>
+      <button type="button" class="btn btn-outline-secondary btn-xs ms-2 py-0 px-2" (click)="closeDetail()"
+        title="Cerrar detalle" aria-label="Cerrar detalle">
+        <i class="bi bi-x-lg"></i>
+      </button>
     </div>
   </div>
   <div class="code-search mb-2" *ngIf="!isReadOnly">

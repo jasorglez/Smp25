@@ -55,6 +55,10 @@ export class DetallesRequisicionesComponent implements OnInit {
     this.loadData();
   }
 
+  closeDetail(): void {
+    this.params?.node?.setExpanded(false);
+  }
+
   loadData() {
     if (!this.masterSaved) {
       this.rowData = [];

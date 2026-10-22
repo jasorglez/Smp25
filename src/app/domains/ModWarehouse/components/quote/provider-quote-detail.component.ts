@@ -142,6 +142,10 @@ export class ProviderQuoteDetailComponent implements OnInit {
     this.loadProviderQuoteData();
   }
 
+  closeDetail(): void {
+    this.params?.node?.setExpanded(false);
+  }
+
   async loadProviderQuoteData() {
     // If we have a cotizId, load items from the COTIZ record
     if (this.cotizId) {
