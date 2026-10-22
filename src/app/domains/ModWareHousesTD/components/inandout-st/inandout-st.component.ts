@@ -602,7 +602,7 @@ export class InandoutStComponent implements OnInit {
   public gridOptions: any = {
     headerHeight: 35,
     rowHeight: 35,
-    animateRows: true,
+    animateRows: false,
     masterDetail: true,
     detailRowHeight: 700,
     getRowHeight: (params: any) => {
@@ -618,7 +618,7 @@ export class InandoutStComponent implements OnInit {
       return '';
     },
     onRowClicked: (event: any) => {
-      if (event.column && event.column.getColId() !== 'pdfReport') {
+      if (event.column && !['pdfReport', 'authorizationAction'].includes(event.column.getColId())) {
         event.node.setSelected(true);
       }
     },
@@ -907,13 +907,12 @@ export class InandoutStComponent implements OnInit {
   }
 
   onCellClicked(event: any): void {
-    event.node.setSelected(true);
-
     const colId = event.column.getColId();
     if (colId === 'authorizationAction') {
       void this.removeAuthorization(event);
       return;
     }
+    event.node.setSelected(true);
     if (colId === 'countrow') {
       const node = event.node;
       const api = event.api;
@@ -1107,6 +1106,15 @@ export class InandoutStComponent implements OnInit {
   }
 
   onCellValueChanged(event: any): void {
+    if (event.colDef.field === 'idAutoriza' && Number(event.newValue) > 0) {
+      const authorizer = (this.users || []).find((user: any) => Number(user.id) === Number(event.newValue));
+      const documentLabel = this.movementType === 'IN' ? 'entrada' : 'salida';
+      alerts.basicAlert(
+        'Autorizador seleccionado',
+        `${authorizer?.displayName || 'El usuario seleccionado'} quedó asignado para autorizar la ${documentLabel}. Guarda los cambios para aplicar la autorización.`,
+        'success'
+      );
+    }
     if (event.colDef.field === 'directEntry') {
       this.isDirectEntryMode = event.newValue;
     }

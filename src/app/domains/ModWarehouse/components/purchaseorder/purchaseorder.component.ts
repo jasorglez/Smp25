@@ -216,7 +216,7 @@ export class PurchaseOrderComponent implements CanComponentDeactivate {
   public gridOptions: any = {
     headerHeight: 25,
     rowHeight: 20,
-    animateRows: true,
+    animateRows: false,
     masterDetail: true,
     detailRowHeight: 1400,
     isRowMaster: (dataItem: any) => true,
@@ -249,6 +249,7 @@ export class PurchaseOrderComponent implements CanComponentDeactivate {
     },
     onRowClicked: (event) => {
       // Seleccionar la fila al hacer clic en cualquier celda
+      if (event.column?.getColId() === 'authorizationAction') return;
       event.node.setSelected(true);
     },
     onRowSelected: (event) => {
@@ -262,6 +263,14 @@ export class PurchaseOrderComponent implements CanComponentDeactivate {
       }
     },
     onCellValueChanged: (event: any) => {
+      if (event.colDef?.field === 'idAuthorize' && Number(event.newValue) > 0) {
+        const authorizer = (this.usuarios || []).find((user: any) => Number(user.id) === Number(event.newValue));
+        alerts.basicAlert(
+          'Autorizador seleccionado',
+          `${authorizer?.displayName || 'El usuario seleccionado'} quedó asignado. Guarda los cambios para aplicar la autorización.`,
+          'success'
+        );
+      }
       if (event.colDef.field === 'idReq') {
         const requisicion = this.requisiciones.find((r: any) => Number(r.id) === Number(event.data.idReq));
         if (requisicion) {
@@ -596,7 +605,7 @@ export class PurchaseOrderComponent implements CanComponentDeactivate {
           const foundItem = this.usuarios
             ? this.usuarios.find((item) => item.id === params.value)
             : null;
-          return foundItem ? `${foundItem.displayName}` : params.value;
+          return foundItem ? `${foundItem.displayName}` : (Number(params.value) > 0 ? params.value : '');
         },
       },
       {
