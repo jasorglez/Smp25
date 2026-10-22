@@ -21,6 +21,10 @@ import { FormsModule } from '@angular/forms';
         <button type="button" *ngFor="let option of filteredOptions" (mousedown)="$event.preventDefault(); selectOption(option)">
           <strong *ngIf="option.code">{{ option.code }}</strong>
           <span>{{ option.description }}</span>
+          <small *ngIf="option.brandName" class="material-brand">{{ option.brandName }}</small>
+          <small *ngIf="option.availableStock !== undefined" class="material-stock">
+            Existencia: {{ option.availableStock | number:'1.0-2' }}
+          </small>
         </button>
         <button type="button" class="add-material-option" *ngIf="params?.onAddMaterial" (mousedown)="$event.preventDefault(); addMaterial()">
           <i class="bi bi-plus-lg"></i> Agregar material nuevo
@@ -47,9 +51,12 @@ import { FormsModule } from '@angular/forms';
       overflow-y: auto; padding: 4px; border: 1px solid #d5dfeb; border-radius: 8px; background: #fff;
       box-shadow: 0 8px 20px rgba(28, 48, 72, .18);
     }
-    .material-picker-options button { display: flex; gap: 8px; width: 100%; padding: 6px 8px; border: 0; border-radius: 5px; background: transparent; color: #26364a; text-align: left; font-size: 10px; }
+    .material-picker-options button { display: flex; align-items: center; gap: 8px; width: 100%; padding: 6px 8px; border: 0; border-radius: 5px; background: transparent; color: #26364a; text-align: left; font-size: 10px; }
     .material-picker-options button:hover { background: #edf5ff; }
     .material-picker-options strong { min-width: 66px; color: #2769a6; }
+    .material-picker-options button > span { flex: 1; min-width: 70px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .material-picker-options .material-brand { color: #7556a6; white-space: nowrap; }
+    .material-picker-options .material-stock { margin-left: auto; white-space: nowrap; color: #35734a; font-size: 9px; }
     .material-picker-options .add-material-option { color: #18794e; font-weight: 600; border-top: 1px solid #e8edf3; margin-top: 3px; }
     .no-results { display: block; padding: 7px 8px; color: #79879a; }
   `]
@@ -58,6 +65,7 @@ export class SelectMaterialEditorComponent implements ICellEditorAngularComp, On
 
   params: any;
   selectedValue: any = '';
+  private selectedOption: any = null;
   options: any[] = [];
   searchTerm = '';
   showOptions = false;
@@ -67,7 +75,7 @@ export class SelectMaterialEditorComponent implements ICellEditorAngularComp, On
     const term = this.searchTerm.trim().toLocaleLowerCase();
     if (!term) return this.options.filter(option => option.id !== '__ADD_MATERIAL__');
     return this.options.filter(option => option.id !== '__ADD_MATERIAL__' &&
-      `${option.code || ''} ${option.description || ''}`.toLocaleLowerCase().includes(term));
+      `${option.code || ''} ${option.description || ''} ${option.brandName || ''}`.toLocaleLowerCase().includes(term));
   }
 
   ngOnInit() {}
@@ -75,23 +83,33 @@ export class SelectMaterialEditorComponent implements ICellEditorAngularComp, On
   agInit(params: any): void {
     this.params = params;
     this.options = params.options || [];
+    this.showOptions = true;
 
     // Set initial value
     const value = params.value;
     if (value) {
-      const option = this.options.find(o => o.id == value || o.description === value);
+      const option = this.options.find(o =>
+        (o.id == value || o.description === value) &&
+        (params.currentIdBrand == null ? o.idBrand == null : Number(o.idBrand) === Number(params.currentIdBrand))
+      ) || this.options.find(o => o.id == value || o.description === value);
       this.selectedValue = option ? option.id : value;
-      this.selectedLabel = option ? `${option.code ? `${option.code} · ` : ''}${option.description}` : String(value);
+      this.selectedOption = option || null;
+      this.selectedLabel = option
+        ? `${option.code ? `${option.code} · ` : ''}${option.description}${option.brandName ? ` · ${option.brandName}` : ''}`
+        : String(value);
     }
   }
 
   getValue(): any {
-    const selectedOption = this.options.find(o => o.id == this.selectedValue);
+    const selectedOption = this.selectedOption || this.options.find(o => o.id == this.selectedValue);
     if (selectedOption) {
       // Return the full object for valueSetter to handle
       return {
         id: selectedOption.id,
-        description: selectedOption.description
+        description: selectedOption.description,
+        idBrand: selectedOption.idBrand ?? null,
+        brandName: selectedOption.brandName || '',
+        availableStock: selectedOption.availableStock
       };
     }
     return this.selectedValue;
@@ -103,7 +121,8 @@ export class SelectMaterialEditorComponent implements ICellEditorAngularComp, On
 
   selectOption(option: any): void {
     this.selectedValue = option.id;
-    this.selectedLabel = `${option.code ? `${option.code} · ` : ''}${option.description}`;
+    this.selectedOption = option;
+    this.selectedLabel = `${option.code ? `${option.code} · ` : ''}${option.description}${option.brandName ? ` · ${option.brandName}` : ''}`;
     this.showOptions = false;
     this.params.api?.stopEditing();
   }

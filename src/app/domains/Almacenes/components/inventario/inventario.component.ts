@@ -107,7 +107,7 @@ export class InventarioComponent {
   private gridApi!: GridApi;
 
   // ── Chips ──────────────────────────────────────────────────────
-  get totalMateriales() { return this.rowData.length; }
+  get totalMateriales() { return new Set(this.rowData.map(row => Number(row.id))).size; }
   get criticos()        { return this.rowData.filter(r => r.estadoStock === 'CRÍTICO').length; }
   get bajos()           { return this.rowData.filter(r => r.estadoStock === 'BAJO').length; }
   get optimos()         { return this.rowData.filter(r => r.estadoStock === 'ÓPTIMO').length; }
@@ -136,6 +136,7 @@ export class InventarioComponent {
     { field: 'insumo',      headerName: 'Código',       width: 100, filter: 'agTextColumnFilter' },
     { field: 'description', headerName: 'Descripción', width: 320, minWidth: 200, resizable: true, suppressSizeToFit: true, filter: 'agTextColumnFilter' },
     { field: 'measure',     headerName: 'Unidad',       width: 90, filter: 'agTextColumnFilter' },
+    { field: 'brand',       headerName: 'Marca',        width: 180, minWidth: 150, filter: 'agTextColumnFilter' },
     {
       field: 'entrada', headerName: 'Entradas', width: 90, type: 'numericColumn',
       cellStyle: { color: '#198754', fontWeight: '600' },
@@ -153,11 +154,6 @@ export class InventarioComponent {
         const color  = c[p.data?.estadoStock] || '#333';
         return `<strong style="color:${color}; font-size:1rem">${this.formatQuantity(p.value)}</strong>`;
       },
-    },
-    {
-      field: 'brandStockSummary', headerName: 'Existencia por marca', width: 250,
-      valueFormatter: p => p.value || '—',
-      cellStyle: { fontSize: '0.78rem', color: '#495057' },
     },
     {
       field: 'stockMin', headerName: 'Mín', width: 68, type: 'numericColumn',
@@ -282,14 +278,21 @@ export class InventarioComponent {
     }
 
     this.loading = true;
+    const forSelectedWarehouse = (masters: any[]) => this.asArray(masters).filter(master =>
+      Number(master.idWarehouse ?? master.IdWarehouse) === Number(this.selectedWarehouse)
+    );
     const movementRequests = (['IN', 'OUT'] as const).map(type =>
       this.inventarioService.getWarehouseMovements(this.selectedWarehouse, type).pipe(
         catchError(() => of([])),
         switchMap((warehouseRows: any[]) => {
+          const selectedWarehouseRows = forSelectedWarehouse(warehouseRows);
           // Compatibilidad mientras se actualiza el contenedor: las versiones
           // anteriores exigían idProject, aunque Inventario es por almacén.
-          if (this.asArray(warehouseRows).length || !this.projectId) return of(warehouseRows);
-          return this.inventarioService.getMovements(this.projectId, this.selectedWarehouse, type).pipe(catchError(() => of([])));
+          if (selectedWarehouseRows.length || !this.projectId) return of(selectedWarehouseRows);
+          return this.inventarioService.getMovements(this.projectId, this.selectedWarehouse, type).pipe(
+            map(rows => forSelectedWarehouse(rows)),
+            catchError(() => of([]))
+          );
         }),
         switchMap((masters: any[]) => {
           const movementMasters = this.asArray(masters);
@@ -357,7 +360,7 @@ export class InventarioComponent {
           stockMax: this.toNumber(material.stockMax ?? material.stockmax),
           costoMN: this.toNumber(material.costoMN ?? material.CostoMN),
           ventaMN: this.toNumber(material.ventaMN ?? material.VentaMN ?? material.sellingprice),
-          brandStocks: new Map<number | string, { name: string; quantity: number }>(),
+          brandStocks: new Map<number | string, { name: string; quantity: number; entrada: number; salida: number }>(),
         };
 
         if (group.type === 'IN') current.entrada += quantity;
@@ -367,46 +370,50 @@ export class InventarioComponent {
         const brandKey: number | string = brandId == null ? 'unbranded' : Number(brandId);
         const configured = brands.find(item => Number(item.idMaterial ?? item.IdMaterial) === idMaterial && Number(item.id) === Number(brandId));
         const stockName = brandId == null ? 'Sin marca' : (brandName || configured?.brand || configured?.Brand || `Marca ${brandId}`);
-        const brandStock = current.brandStocks.get(brandKey) || { name: stockName, quantity: 0 };
-        brandStock.quantity += group.type === 'IN' ? quantity : -quantity;
+        const brandStock = current.brandStocks.get(brandKey) || { name: stockName, quantity: 0, entrada: 0, salida: 0 };
+        if (group.type === 'IN') brandStock.entrada += quantity;
+        else brandStock.salida += quantity;
+        brandStock.quantity = brandStock.entrada - brandStock.salida;
         current.brandStocks.set(brandKey, brandStock);
         rows.set(idMaterial, current);
       });
     });
 
-    return [...rows.values()].map(row => {
-      const existencia = row.entrada - row.salida;
+    return [...rows.values()].flatMap(row => {
       const materialBrands = brands.filter(item => Number(item.idMaterial ?? item.IdMaterial) === row.id);
       materialBrands.forEach(brand => {
         const brandId = Number(brand.id ?? brand.Id);
-        if (!row.brandStocks.has(brandId)) row.brandStocks.set(brandId, { name: brand.brand ?? brand.Brand, quantity: 0 });
+        if (!row.brandStocks.has(brandId)) row.brandStocks.set(brandId, { name: brand.brand ?? brand.Brand, quantity: 0, entrada: 0, salida: 0 });
       });
       const unbranded = row.brandStocks.get('unbranded');
       if (unbranded && materialBrands.length === 1) {
         const onlyBrandId = Number(materialBrands[0].id ?? materialBrands[0].Id);
         const onlyBrand = row.brandStocks.get(onlyBrandId)!;
-        onlyBrand.quantity += unbranded.quantity;
+        onlyBrand.entrada += unbranded.entrada;
+        onlyBrand.salida += unbranded.salida;
+        onlyBrand.quantity = onlyBrand.entrada - onlyBrand.salida;
         row.brandStocks.delete('unbranded');
       } else if (unbranded && materialBrands.length > 1) {
-        row.brandStocks.set(0, { name: 'Sin marca', quantity: unbranded.quantity });
+        row.brandStocks.set(0, { name: 'Sin marca', quantity: unbranded.quantity, entrada: unbranded.entrada, salida: unbranded.salida });
         row.brandStocks.delete('unbranded');
       }
       if (materialBrands.length > 1 && !row.brandStocks.has(0)) {
-        row.brandStocks.set(0, { name: 'Sin marca', quantity: 0 });
+        row.brandStocks.set(0, { name: 'Sin marca', quantity: 0, entrada: 0, salida: 0 });
       }
       const brandStocks = [...row.brandStocks.entries()].map(([key, value]) => ({ idBrand: key === 'unbranded' ? 0 : Number(key), ...value }));
-      return {
+      return brandStocks.map(stock => ({
         ...row,
+        idBrand: stock.idBrand,
+        brand: stock.name || 'Sin marca',
         brands: materialBrands.map(brand => ({ id: Number(brand.id ?? brand.Id), brand: brand.brand ?? brand.Brand })),
         brandStocks,
-        brandStockSummary: materialBrands.length
-          ? brandStocks.map(stock => `${stock.name}: ${this.formatQuantity(stock.quantity)}`).join(' | ')
-          : '',
-        existencia,
-        total: existencia * row.costoMN,
-        ventaTotal: existencia * row.ventaMN,
-        estadoStock: this.stockStatus(existencia, row.stockMin, row.stockMax),
-      };
+        entrada: stock.entrada,
+        salida: stock.salida,
+        existencia: stock.quantity,
+        total: stock.quantity * row.costoMN,
+        ventaTotal: stock.quantity * row.ventaMN,
+        estadoStock: this.stockStatus(stock.quantity, row.stockMin, row.stockMax),
+      }));
     }).sort((a, b) => String(a.description).localeCompare(String(b.description), 'es'));
   }
 
@@ -451,13 +458,11 @@ export class InventarioComponent {
     const brandOptions = row.brands?.length > 1
       ? `<label class="form-label fw-semibold mb-1" style="font-size:0.85rem">Marca:</label>
          <select id="aju-brand" class="swal2-select" style="display:block;width:100%;margin:0 0 10px 0">
-           ${row.brandStocks.map((stock: any) => `<option value="${stock.idBrand}">${stock.name} (${this.formatQuantity(stock.quantity)})</option>`).join('')}
+           ${row.brandStocks.map((stock: any) => `<option value="${stock.idBrand}" ${Number(stock.idBrand) === Number(row.idBrand) ? 'selected' : ''}>${stock.name} (${this.formatQuantity(stock.quantity)})</option>`).join('')}
          </select>`
       : '';
     const chosenBrand = row.brands?.length === 1 ? row.brands[0] : null;
-    const initialStock = chosenBrand
-      ? Number(row.brandStocks.find((stock: any) => Number(stock.idBrand) === Number(chosenBrand.id))?.quantity || 0)
-      : row.existencia;
+    const initialStock = Number(row.existencia || 0);
     const result = await Swal.fire({
       title:  'Ajuste Físico de Inventario',
       width:  460,
@@ -465,7 +470,7 @@ export class InventarioComponent {
         <div class="text-start px-1">
           <div class="mb-1 fw-semibold" style="font-size:0.95rem">${row.description}</div>
           <div class="mb-3 text-muted" style="font-size:0.8rem">
-            Código: <code>${row.insumo}</code>
+            Código: <code>${row.insumo}</code> &nbsp;|&nbsp; Marca: <strong>${row.brand || 'Sin marca'}</strong>
             &nbsp;|&nbsp; Existencia actual: <strong id="aju-current">${this.formatQuantity(initialStock)}</strong>
             &nbsp;|&nbsp; Estado: <strong>${row.estadoStock ?? '—'}</strong>
           </div>
@@ -523,7 +528,7 @@ export class InventarioComponent {
         const comment = (document.getElementById('aju-comment') as HTMLTextAreaElement).value;
         const selected = row.brands?.length > 1
           ? Number((document.getElementById('aju-brand') as HTMLSelectElement).value)
-          : (chosenBrand ? Number(chosenBrand.id) : null);
+          : (chosenBrand ? Number(chosenBrand.id) : (Number(row.idBrand) === 0 ? 0 : null));
         return { qty, comment, idBrand: selected };
       },
     });

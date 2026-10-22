@@ -52,7 +52,7 @@ import pdfFonts from 'pdfmake/build/vfs_fonts';
     </div>`
   ,
   styles: [`
-    :host ::ng-deep .small-text-ag-grid { --ag-font-size: 11px; }
+    :host ::ng-deep .small-text-ag-grid { --ag-font-size: 10px; }
     .traceability-pdf-preview { margin-top: 16px; overflow: hidden; border: 1px solid #d9e2ec; border-radius: 12px; background: #fff; box-shadow: 0 8px 28px rgba(20, 47, 76, .08); }
     .traceability-pdf-preview__heading { display: flex; align-items: center; justify-content: space-between; padding: 9px 14px; color: #fff; background: linear-gradient(110deg, #173f68, #287aa5); font-size: 13px; font-weight: 700; }
     .traceability-pdf-preview__viewer { height: min(72vh, 760px); min-height: 360px; padding: 10px; }

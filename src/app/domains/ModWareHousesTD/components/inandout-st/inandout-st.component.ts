@@ -1076,6 +1076,20 @@ export class InandoutStComponent implements OnInit {
     }
   }
 
+  collapseItemsDetail(entryId: number): void {
+    if (!this.gridApi) return;
+    this.gridApi.forEachNode((node: any) => {
+      if (Number(node.data?.id) === Number(entryId)) {
+        node.data.detailType = null;
+        node.setExpanded(false);
+      }
+      // Al abrir un detalle, el resto de los maestros queda en 0 px.
+      // Al cerrar desde la X se restauran las filas para ver todos los maestros.
+      node.setRowHeight(undefined);
+    });
+    this.gridApi.onRowHeightChanged();
+  }
+
   onGridReady(params: GridReadyEvent) {
     this.gridApi = params.api;
     this.gridApi.setGridOption('columnDefs', this.colMaster);
@@ -1090,7 +1104,9 @@ export class InandoutStComponent implements OnInit {
         getMovementTypeBehavior: (idType: any) => this.catalogs.find(catalog => Number(catalog.id) === Number(idType))?.valueAddition || '',
         idRoot: this.idRoot,
         projectId: this.projectId,
+        getSelectedProjectId: () => Number(this.projectId || 0),
         idWarehouse: this.selectedWarehouse?.idAlmacen,
+        getSelectedWarehouseId: () => Number(this.selectedWarehouse?.idAlmacen || 0),
         inandoutService: this.inandoutService,
         componentParent: this,
         gridApi: this.gridApi,
@@ -1724,6 +1740,7 @@ export class InandoutStComponent implements OnInit {
     const cleanedData = { ...data };
     delete cleanedData.__isNew;
     delete cleanedData.__modified;
+    delete cleanedData.__autoStockRow;
     delete cleanedData.material;
     delete cleanedData.materialName;
     delete cleanedData.addToDailyReport;

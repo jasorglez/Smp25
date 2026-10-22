@@ -83,5 +83,5 @@ export const environment = {
   geminiApiKey: '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',
   gnewsApiKey: '94ccc596b4dfebc3f72683b6e81d81bc',
 
-  version: '5.00.355 (22 Octubre 2026 10:26) actualización de detalle para traspasos',
+  version: '5.00.363 (22 Octubre 2026 11:55) cierre del detalle restaura filas maestras',
 };
