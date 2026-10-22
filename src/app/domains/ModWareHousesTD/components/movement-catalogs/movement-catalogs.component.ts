@@ -18,6 +18,18 @@ import { lastValueFrom } from 'rxjs';
   styleUrl: './movement-catalogs.component.scss'
 })
 export class MovementCatalogsComponent implements CanComponentDeactivate {
+  private readonly behaviorOptions: Record<'IN' | 'OUT', readonly { value: string; label: string }[]> = {
+    IN: [
+      { value: 'STANDARD', label: 'Normal' },
+      { value: 'TRANSFER', label: 'Traspaso' },
+      { value: 'INITIAL_INVENTORY', label: 'Inicio de inventario' },
+      { value: 'INVENTORY_ADJUSTMENT', label: 'Ajuste de inventario' }
+    ],
+    OUT: [
+      { value: 'STANDARD', label: 'Normal' },
+      { value: 'TRANSFER', label: 'Traspaso' }
+    ]
+  };
   private readonly signals = inject(SignalsService);
   private readonly catalogsService = inject(CatalogsService);
   private gridApi?: GridApi;
@@ -37,6 +49,15 @@ export class MovementCatalogsComponent implements CanComponentDeactivate {
   readonly defaultColDef: ColDef = { sortable: true, filter: true, resizable: true, flex: 1 };
   readonly columnDefs: ColDef[] = [
     { field: 'description', headerName: 'Tipo de movimiento', editable: true, minWidth: 280 },
+    {
+      field: 'valueAddition', headerName: 'Comportamiento', editable: true, minWidth: 220,
+      cellEditor: 'agRichSelectCellEditor',
+      cellEditorParams: () => ({
+        values: this.behaviorOptions[this.selectedType].map(option => option.value),
+        formatValue: (value: string) => this.behaviorOptions[this.selectedType].find(option => option.value === value)?.label || value
+      }),
+      valueFormatter: params => this.behaviorOptions[this.selectedType].find(option => option.value === params.value)?.label || params.value || 'Normal'
+    },
     {
       headerName: 'Estado', field: 'active', width: 130, maxWidth: 150, editable: false,
       valueFormatter: params => params.value === false || Number(params.value) === 0 ? 'Inactivo' : 'Activo'
@@ -70,7 +91,7 @@ export class MovementCatalogsComponent implements CanComponentDeactivate {
   }
 
   add(): void {
-    const row = { id: `new-${Date.now()}`, idCompany: this.idRoot, type: this.selectedType, description: '', active: 1, vigente: true, __isNew: true, __modified: true };
+    const row = { id: `new-${Date.now()}`, idCompany: this.idRoot, type: this.selectedType, description: '', valueAddition: 'STANDARD', active: 1, vigente: true, __isNew: true, __modified: true };
     this.rowData = [...this.rowData, row];
     this.hasUnsavedChanges = true;
     setTimeout(() => this.gridApi?.startEditingCell({ rowIndex: this.rowData.length - 1, colKey: 'description' }));
@@ -103,6 +124,7 @@ export class MovementCatalogsComponent implements CanComponentDeactivate {
         const payload = {
           ...row,
           description: String(row.description).trim(),
+          valueAddition: this.normalizeBehavior(row.valueAddition),
           idCompany: this.idRoot,
           type: this.selectedType
         };
@@ -162,7 +184,12 @@ export class MovementCatalogsComponent implements CanComponentDeactivate {
     this.loading = true;
     try {
       const data = await lastValueFrom(this.catalogsService.getCatalogs(this.idRoot, this.selectedType));
-      this.rowData = (data || []).map(row => ({ ...row, __modified: false, __isNew: false }));
+      this.rowData = (data || []).map(row => ({
+        ...row,
+        valueAddition: this.resolveBehavior(row.valueAddition, row.description),
+        __modified: false,
+        __isNew: false
+      }));
       this.hasUnsavedChanges = false;
     } catch (error) {
       console.error('Error al cargar los tipos de movimiento:', error);
@@ -176,6 +203,23 @@ export class MovementCatalogsComponent implements CanComponentDeactivate {
   private async confirmDiscard(): Promise<boolean> {
     const result = await alerts.confirmAlert('Cambios sin guardar', 'Si cambias de catálogo, se descartarán los cambios pendientes.', 'warning', 'Descartar cambios');
     return result.isConfirmed;
+  }
+
+  private normalizeBehavior(value: any): string {
+    const normalized = String(value || '').trim().toUpperCase();
+    return this.behaviorOptions[this.selectedType].some(option => option.value === normalized) ? normalized : 'STANDARD';
+  }
+
+  private resolveBehavior(value: any, description: any): string {
+    const normalized = String(value || '').trim().toUpperCase();
+    if (this.behaviorOptions[this.selectedType].some(option => option.value === normalized)) return normalized;
+
+    // Conserva el comportamiento de registros antiguos mientras se clasifican desde Catálogos.
+    const name = String(description || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim().replace(/\s+/g, ' ').toUpperCase();
+    if (name === 'TRASPASO') return 'TRANSFER';
+    if (this.selectedType === 'IN' && name === 'INICIO INVENTARIOS') return 'INITIAL_INVENTORY';
+    if (this.selectedType === 'IN' && name === 'AJUSTE DE INVENTARIOS') return 'INVENTORY_ADJUSTMENT';
+    return 'STANDARD';
   }
 
   canDeactivate(): boolean | Promise<boolean> {

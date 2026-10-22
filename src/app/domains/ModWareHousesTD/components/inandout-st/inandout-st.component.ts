@@ -496,7 +496,11 @@ export class InandoutStComponent implements OnInit {
   }
 
   private isTransferType(idType: any): boolean {
-    const description = this.catalogs.find(catalog => Number(catalog.id) === Number(idType))?.description ?? '';
+    const catalog = this.catalogs.find(item => Number(item.id) === Number(idType));
+    const behavior = String(catalog?.valueAddition || '').trim().toUpperCase();
+    if (behavior === 'TRANSFER') return true;
+    if (['STANDARD', 'INITIAL_INVENTORY', 'INVENTORY_ADJUSTMENT'].includes(behavior)) return false;
+    const description = catalog?.description ?? '';
     return String(description).normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim().toUpperCase() === 'TRASPASO';
   }
 
@@ -1063,6 +1067,7 @@ export class InandoutStComponent implements OnInit {
         movementType: this.movementType,
         isTransferType: (idType: any) => this.isTransferType(idType),
         getMovementTypeDescription: (idType: any) => this.catalogs.find(catalog => Number(catalog.id) === Number(idType))?.description || '',
+        getMovementTypeBehavior: (idType: any) => this.catalogs.find(catalog => Number(catalog.id) === Number(idType))?.valueAddition || '',
         idRoot: this.idRoot,
         projectId: this.projectId,
         idWarehouse: this.selectedWarehouse?.idAlmacen,
