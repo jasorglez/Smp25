@@ -8,8 +8,12 @@
       <button type="button" class="btn btn-sm btn-success" (click)="add()" [disabled]="!idRoot || loading">
         <i class="bi bi-plus-lg me-1"></i>Agregar
       </button>
-      <button type="button" class="btn btn-sm btn-primary" (click)="save()" [disabled]="!hasUnsavedChanges || saving">
+      <button type="button" class="btn btn-sm btn-primary position-relative" (click)="save()" [disabled]="!hasUnsavedChanges || saving">
         <i class="bi bi-floppy me-1"></i>{{ saving ? 'Guardando…' : 'Guardar' }}
+        <span class="position-absolute top-0 start-100 translate-middle p-2 bg-danger border border-light rounded-circle"
+          *ngIf="hasUnsavedChanges">
+          <span class="visually-hidden">Hay cambios sin guardar</span>
+        </span>
       </button>
       <button type="button" class="btn btn-sm btn-danger" (click)="deleteSelected()" [disabled]="loading || saving">
         <i class="bi bi-trash me-1"></i>Eliminar
