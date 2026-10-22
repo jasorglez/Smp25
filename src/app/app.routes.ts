@@ -2553,6 +2553,11 @@ export const routes: Routes = [
             loadComponent: () => import('./domains/ModWareHousesTD/components/inventory-st/inventory-st.component').then(c => c.InventoryStComponent)
           },
           {
+            path: 'catalogs',
+            loadComponent: () => import('./domains/ModWareHousesTD/components/movement-catalogs/movement-catalogs.component').then(c => c.MovementCatalogsComponent),
+            canDeactivate: [UnsavedChangesGuard]
+          },
+          {
             path: 'entry-st',
             loadComponent: () => import('./domains/ModWareHousesTD/components/inandout-st/inandout-st.component').then(c => c.InandoutStComponent),
             data: { movementType: 'IN' }

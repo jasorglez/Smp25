@@ -252,6 +252,7 @@ export class MainPageComponent implements OnInit, OnDestroy {
     'warehousesTD/inventory-st': 'Inventario',
     'warehousesTD/warehouses': 'Almacenes',
     'warehousesTD/setup-st': 'Configuración de almacenes',
+    'warehousesTD/catalogs': 'Catálogos de movimientos',
     'warehousesTD/material-traceability': 'Trazabilidad de materiales',
     'projects/contracts': 'Contratos',
     'projects/projects': 'Proyectos',
