@@ -336,6 +336,7 @@ export class ProjectsComponent {
     const now = new Date();
     const monthStart = this.formatDateInputLocal(new Date(now.getFullYear(), now.getMonth(), 1));
     const monthEnd = this.formatDateInputLocal(new Date(now.getFullYear(), now.getMonth() + 1, 0));
+    const yearEnd = this.formatDateInputLocal(new Date(now.getFullYear(), 11, 31));
     this.addProject = new FormGroup({
       id: new FormControl(),
       idConsecutivo: new FormControl(null, Validators.required),
@@ -345,11 +346,11 @@ export class ProjectsComponent {
       priority: new FormControl(0, Validators.required),
       programStart: new FormControl(monthStart, Validators.required),
       programEnd: new FormControl(monthEnd, Validators.required),
-      realPronosticLPO: new FormControl('', Validators.required),
-      realPronosticTTT: new FormControl('', Validators.required),
+      realPronosticLPO: new FormControl(monthStart, Validators.required),
+      realPronosticTTT: new FormControl(yearEnd, Validators.required),
       state: new FormControl('Ejecucion', [Validators.required]),
       typeConstruction: new FormControl('Seleccione un tipo de construcción', [Validators.required, noDefaultValueValidator()]),
-      classification: new FormControl('Seleccione una clasificación', [Validators.required, noDefaultValueValidator()]),
+      classification: new FormControl('Terrestre', [Validators.required, noDefaultValueValidator()]),
       active: new FormControl(1),
       idActive: new FormControl(1),
       comment: new FormControl(''),
