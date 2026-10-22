@@ -350,7 +350,10 @@ export class DetailCellRendererEntryItemsComponent {
       {
         field: 'description',
         headerName: 'Descripción',
-        width: this.isInventoryAdjustmentEntry() ? 360 : 300,
+        width: this.isInventoryAdjustmentEntry() ? 500 : 430,
+        minWidth: this.isInventoryAdjustmentEntry() ? 500 : 430,
+        resizable: true,
+        suppressSizeToFit: true,
         cellDataType: false, // Desactivar auto-detección de tipo
         editable: true,
         cellEditor: 'selectMaterialEditor',
