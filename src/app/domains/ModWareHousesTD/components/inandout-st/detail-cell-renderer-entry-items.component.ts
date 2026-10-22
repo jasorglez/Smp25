@@ -84,7 +84,8 @@ import { catchError, forkJoin, from, lastValueFrom, map, mergeMap, of, toArray }
         (columnResized)="onColumnResized($event)"
         (cellValueChanged)="onCellValueChanged($event)"
         [components]="components"
-        style="height: 450px; width: 100%;">
+        [style.height.px]="context?.movementType === 'IN' ? 610 : 450"
+        style="width: 100%;">
       </ag-grid-angular>
     </div>
 

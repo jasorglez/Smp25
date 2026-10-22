@@ -613,7 +613,8 @@ export class InandoutStComponent implements OnInit {
     detailRowHeight: 850,
     getRowHeight: (params: any) => {
       if (!params.node.detail) return undefined;
-      return params.node.parent?.data?.detailType === 'report' ? 1080 : 850;
+      if (params.node.parent?.data?.detailType === 'report') return 1080;
+      return this.movementType === 'IN' ? 1150 : 850;
     },
     isRowMaster: (dataItem: any) => true,
     detailCellRenderer: DetailCellRendererEntryItemsComponent,
