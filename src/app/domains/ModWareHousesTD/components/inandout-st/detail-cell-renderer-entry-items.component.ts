@@ -41,7 +41,11 @@ import { catchError, forkJoin, from, lastValueFrom, map, mergeMap, of, switchMap
         <i class="bi bi-info-circle me-1"></i>
         Los materiales con existencia en el almacén origen se cargan en el detalle. Captura las cantidades a transferir y guarda.
       </div>
-      <div *ngIf="isStockRestrictedEntry() && loadingWarehouseStock" class="alert alert-info py-2 px-2 mb-2 small" role="status" aria-live="polite">
+      <div *ngIf="isStandardOutgoingEntry()" class="alert alert-info py-1 px-2 mb-2 small">
+        <i class="bi bi-info-circle me-1"></i>
+        Los materiales con existencia en este almacén se cargan en el detalle con cantidad cero. Captura solo lo que vas a retirar y guarda.
+      </div>
+      <div *ngIf="(isStockRestrictedEntry() || isStandardOutgoingEntry()) && loadingWarehouseStock" class="alert alert-info py-2 px-2 mb-2 small" role="status" aria-live="polite">
         <div class="d-flex align-items-center gap-2 mb-1">
           <span class="spinner-border spinner-border-sm text-primary" aria-hidden="true"></span>
           <span>Cargando materiales con inventario y sus marcas...</span>
@@ -55,7 +59,7 @@ import { catchError, forkJoin, from, lastValueFrom, map, mergeMap, of, switchMap
         Los materiales con conversión se capturan en su unidad origen; el inventario se guarda en la unidad destino configurada.
       </div>
       <div class="detail-actions d-flex justify-content-end mb-2">
-        <button *ngIf="!isStockRestrictedEntry()" class="btn btn-primary btn-sm me-2" (click)="addItem()">
+        <button *ngIf="!isStockRestrictedEntry() && !isStandardOutgoingEntry()" class="btn btn-primary btn-sm me-2" (click)="addItem()">
           <i class="bi bi-plus-lg"></i> Agregar
         </button>
         <button *ngIf="entryData?.idOc > 0" class="btn btn-secondary btn-sm me-2" (click)="importarItemsDeOC()"
@@ -245,9 +249,9 @@ export class DetailCellRendererEntryItemsComponent {
           };
         });
         this.detailRowsLoaded = true;
-        this.seedStockRowsWhenReady();
         this.applyWarehouseStockToRows();
         this.applyBrandStockToRows();
+        this.seedStockRowsWhenReady();
         if (this.gridApi) {
           this.gridApi.setGridOption('rowData', this.rowData);
         }
@@ -382,7 +386,7 @@ export class DetailCellRendererEntryItemsComponent {
         field: 'code',
         headerName: 'Código',
         width: this.isInventoryAdjustmentEntry() ? 140 : 100,
-        editable: (params: any) => !this.isStockRestrictedEntry() || !params.data?.__autoStockRow,
+        editable: (params: any) => (!this.isStockRestrictedEntry() && !this.isStandardOutgoingEntry()) || !params.data?.__autoStockRow,
         valueSetter: (params: any) => {
           params.data.code = params.newValue ? params.newValue.toUpperCase() : '';
           return true;
@@ -396,18 +400,19 @@ export class DetailCellRendererEntryItemsComponent {
         resizable: true,
         suppressSizeToFit: true,
         cellDataType: false, // Desactivar auto-detección de tipo
-        editable: (params: any) => !this.isStockRestrictedEntry() || !params.data?.__autoStockRow,
+        editable: (params: any) => (!this.isStockRestrictedEntry() && !this.isStandardOutgoingEntry()) || !params.data?.__autoStockRow,
         cellEditor: 'selectMaterialEditor',
         cellEditorParams: (params: any) => {
           const isTransfer = this.isTransferEntry();
           const stockRestricted = isTransfer || this.isInventoryAdjustmentEntry();
+          const isOutgoing = this.context?.movementType === 'OUT';
           return {
             options: this.getMaterialPickerOptions()
-              .concat(stockRestricted ? [] : [{ id: '__ADD_MATERIAL__', code: '', description: '+ Agregar material...' }]),
+              .concat(stockRestricted || isOutgoing ? [] : [{ id: '__ADD_MATERIAL__', code: '', description: '+ Agregar material...' }]),
             currentIdBrand: params.data?.idBrand,
             // En un traspaso solo se pueden seleccionar materiales ya existentes
             // que tengan existencia en el almacén origen.
-            onAddMaterial: stockRestricted ? undefined : () => this.quickAddMaterial()
+            onAddMaterial: stockRestricted || isOutgoing ? undefined : () => this.quickAddMaterial()
           };
         },
         valueFormatter: (params: any) => {
@@ -431,7 +436,7 @@ export class DetailCellRendererEntryItemsComponent {
                 ? selectedMaterial.conversion.measureTo
                 : (selectedMaterial.measure || selectedMaterial.unit || selectedMaterial.unidad || '');
               const stockRestricted = this.isTransferEntry() || this.isInventoryAdjustmentEntry();
-              if (stockRestricted) {
+              if (stockRestricted || this.context.movementType === 'OUT') {
                 params.data.idBrand = newValue.idBrand == null ? null : Number(newValue.idBrand);
                 params.data.brandName = newValue.brandName || '';
                 params.data.pending = Number(newValue.availableStock || 0);
@@ -489,7 +494,8 @@ export class DetailCellRendererEntryItemsComponent {
         headerName: 'Marca',
         width: 240,
         minWidth: 220,
-        editable: (params: any) => !this.isTransferEntry() && !this.isInventoryAdjustmentEntry()
+        editable: (params: any) => !params.data?.__autoStockRow
+          && !this.isTransferEntry() && !this.isInventoryAdjustmentEntry()
           && (this.materials.find(item => Number(item.id) === Number(params.data?.idProduct))?.brands?.length || 0) > 1,
         cellEditor: 'agRichSelectCellEditor',
         cellEditorParams: (params: any) => {
@@ -538,7 +544,7 @@ export class DetailCellRendererEntryItemsComponent {
         headerName: this.context.movementType === 'OUT' ? 'Unidad de salida' : 'Unidad de entrada',
         width: 100,
         editable: (params: any) => {
-          if (this.isStockRestrictedEntry() && params.data?.__autoStockRow) return false;
+          if ((this.isStockRestrictedEntry() || this.isStandardOutgoingEntry()) && params.data?.__autoStockRow) return false;
           const material = this.materials.find(item => Number(item.id) === Number(params.data?.idProduct));
           if (!material?.conversions?.length) return true;
           return this.context.movementType === 'IN';
@@ -604,19 +610,21 @@ export class DetailCellRendererEntryItemsComponent {
       {
         field: 'pending',
         headerName: this.context.movementType === 'OUT'
-          ? (this.entryData?.idEntry > 0 ? 'Pendiente del vale' : 'Total Entradas')
+          ? (this.entryData?.idEntry > 0 ? 'Pendiente del vale' : 'Existencia')
           : ((this.isTransferEntry() || this.isInventoryAdjustmentEntry())
             ? 'Existencia en almacén'
             : (this.entryData?.idOc > 0 ? 'Cantidad OC' : 'Pendiente')),
-        width: 100,
+        width: this.context.movementType === 'OUT' ? 135 : 120,
+        minWidth: this.context.movementType === 'OUT' ? 135 : 120,
         editable: false,
         type: 'numericColumn'
       },
       {
         field: 'total',
         headerName: 'Total',
-        width: 100,
-        editable: (params: any) => !this.isStockRestrictedEntry() || !params.data?.__autoStockRow,
+        width: 120,
+        minWidth: 120,
+        editable: (params: any) => (!this.isStockRestrictedEntry() && !this.isStandardOutgoingEntry()) || !params.data?.__autoStockRow,
         type: 'numericColumn'
       },
       ...(this.context?.movementType === 'OUT' ? [{
@@ -775,8 +783,17 @@ export class DetailCellRendererEntryItemsComponent {
         : (item.brandName === 'Sin marca' ? 0 : (brandCount === 1 ? Number(material.brands[0].id) : undefined));
       let currentStock: number;
       try {
-        const response = await lastValueFrom(stockService.getStock(Number(item.idProduct), warehouseId, brandId));
-        currentStock = this.getStockValue(response);
+        if (this.isStandardOutgoingEntry() && Array.isArray(material?.stockOptions)) {
+          const stockOption = material.stockOptions.find((option: any) => {
+            if (brandId === 0) return Number(option.idBrand) === 0 || option.brandName === 'Sin marca';
+            if (brandId == null) return option.idBrand == null;
+            return Number(option.idBrand) === Number(brandId);
+          });
+          currentStock = Math.max(0, Number(stockOption?.availableStock) || 0);
+        } else {
+          const response = await lastValueFrom(stockService.getStock(Number(item.idProduct), warehouseId, brandId));
+          currentStock = this.getStockValue(response);
+        }
       } catch {
         alerts.basicAlert('No se pudo validar existencia', 'No fue posible consultar la existencia del material. Intenta guardar nuevamente.', 'error');
         return false;
@@ -820,7 +837,13 @@ export class DetailCellRendererEntryItemsComponent {
       if (saved === false) return;
       this.rowData = this.rowData.filter(item => !item.__autoStockRow || Number(item.quantity) > 0);
       this.gridApi?.setGridOption('rowData', this.rowData);
-      this.rowData.forEach(item => item.__originalQuantity = Number(item.quantity) || 0);
+      this.rowData.forEach(item => {
+        item.__originalQuantity = Number(item.quantity) || 0;
+        item.__isNew = false;
+        item.__modified = false;
+        item.__autoStockRow = false;
+      });
+      this.context.ITEMS.updateCount?.(entryId, this.rowData.length);
       this.hasUnsavedChanges = this.rowData.some(item => item.__isNew || item.__modified || item.addToDailyReport);
     }
   }
@@ -894,6 +917,20 @@ export class DetailCellRendererEntryItemsComponent {
         return Number(option.idBrand) === Number(brandId);
       });
       row.pending = Math.max(0, Number(stock?.availableStock) || 0);
+      this.gridApi?.refreshCells({ force: true, columns: ['pending'] });
+      return;
+    }
+    if (this.isStandardOutgoingEntry() && Array.isArray(material.stockOptions)) {
+      const stock = material.stockOptions.find((option: any) => {
+        if (brandId === 0) return Number(option.idBrand) === 0;
+        if (brandId == null) return option.idBrand == null;
+        return Number(option.idBrand) === Number(brandId);
+      });
+      const available = Math.max(0, Number(stock?.availableStock) || 0);
+      const reservedByOtherRows = this.rowData
+        .filter(item => item !== row && this.materialBrandKey(item) === this.materialBrandKey(row))
+        .reduce((sum, item) => sum + Math.max(0, Number(item.quantity) || 0), 0);
+      row.pending = Math.max(0, available - reservedByOtherRows);
       this.gridApi?.refreshCells({ force: true, columns: ['pending'] });
       return;
     }
@@ -972,6 +1009,16 @@ export class DetailCellRendererEntryItemsComponent {
             const materialBrands = brands.filter(row => Number(row.idMaterial) === Number(mat.id));
             return { ...mat, conversion, conversions: materialConversions, brands: materialBrands };
           });
+          if (this.isStandardOutgoingEntry()) {
+            const warehouseId = this.getSelectedWarehouseId();
+            if (!warehouseId) {
+              this.materials = [];
+              if (this.gridApi) this.gridApi.setGridOption('columnDefs', this.colDefs);
+              return;
+            }
+            this.loadWarehouseStockMaterials(activeMaterials, warehouseId);
+            return;
+          }
           if (this.context.movementType === 'OUT') {
             const warehouseId = Number(this.entryData?.idWarehouse || this.context?.idWarehouse || 0);
             if (!warehouseId || !this.context?.inandoutService?.getStock) {
@@ -1160,7 +1207,7 @@ export class DetailCellRendererEntryItemsComponent {
       },
       error: error => {
         this.loadingWarehouseStock = false;
-        console.error('Error loading warehouse stock for inventory adjustment or transfer:', error);
+        console.error('Error loading warehouse stock for inventory adjustment, transfer, or normal outgoing:', error);
         this.materials = [];
         if (this.gridApi) this.gridApi.setGridOption('columnDefs', this.colDefs);
       }
@@ -1177,9 +1224,11 @@ export class DetailCellRendererEntryItemsComponent {
 
   /** Auto-loads positive-stock material/brand rows into this detail grid, with capture quantity zero. */
   private seedStockRowsWhenReady(): void {
-    if (!this.isStockRestrictedEntry() || !this.stockRowsLoaded || !this.detailRowsLoaded || this.rowData.length) return;
+    if (!(this.isStockRestrictedEntry() || this.isStandardOutgoingEntry()) || !this.stockRowsLoaded || !this.detailRowsLoaded) return;
+    if (Number(this.entryData?.idAutoriza || 0) > 0) return;
     const rows = this.materials.flatMap(material => (material.stockOptions || [])
       .filter((stock: any) => Number(stock.availableStock) > 0)
+      .filter((stock: any) => !this.rowData.some(row => this.isSameMaterialStock(row, material, stock)))
       .map((stock: any) => ({
         id: `temp_item_${this.tempIdCounter++}`,
         idInandout: this.entryData?.id,
@@ -1200,9 +1249,21 @@ export class DetailCellRendererEntryItemsComponent {
         __modified: false
       })));
     if (!rows.length) return;
-    this.rowData = rows;
+    this.rowData = [...this.rowData, ...rows];
     this.gridApi?.setGridOption('rowData', this.rowData);
     this.context?.ITEMS?.updateCount?.(this.entryData?.id, this.rowData.length);
+  }
+
+  private isSameMaterialStock(row: any, material: any, stock: any): boolean {
+    if (Number(row?.idProduct || 0) !== Number(material?.id || 0)) return false;
+    const rowBrandId = row?.idBrand == null ? null : Number(row.idBrand);
+    const stockBrandId = stock?.idBrand == null ? null : Number(stock.idBrand);
+    if (stockBrandId === 0) return rowBrandId === 0 || (rowBrandId == null && row?.brandName === 'Sin marca');
+    if (stockBrandId != null) {
+      return rowBrandId === stockBrandId
+        || (rowBrandId == null && (material?.brands?.length || 0) === 1 && row?.brandName !== 'Sin marca');
+    }
+    return rowBrandId == null && row?.brandName !== 'Sin marca';
   }
 
   private isMaterialActive(material: any): boolean {
@@ -1213,6 +1274,10 @@ export class DetailCellRendererEntryItemsComponent {
 
   isInitialInventoryEntry(): boolean {
     return this.getMovementTypeBehavior() === 'INITIAL_INVENTORY';
+  }
+
+  isStandardOutgoingEntry(): boolean {
+    return this.context?.movementType === 'OUT' && Number(this.entryData?.idEntry || 0) <= 0;
   }
 
   isInventoryAdjustmentEntry(): boolean {
