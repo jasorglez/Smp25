@@ -83,5 +83,5 @@ export const environment = {
   geminiApiKey: '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',
   gnewsApiKey: '94ccc596b4dfebc3f72683b6e81d81bc',
 
-  version: '5.00.332 (21 Octubre 2026 20:30) cierre manual de detalles',
+  version: '5.00.333 (21 Octubre 2026 21:05) ocultar productos inactivos del inventario',
 };

@@ -287,7 +287,10 @@ export class InventarioComponent {
       group.details.forEach(detail => {
         const idMaterial = Number(detail.idProduct ?? detail.IdProduct);
         if (!idMaterial) return;
-        const material = materialMap.get(idMaterial) || {};
+        const material = materialMap.get(idMaterial);
+        // Los detalles históricos conservan el código y descripción del material,
+        // pero Inventarios solo debe mostrar productos que sigan activos en el catálogo.
+        if (!material) return;
         const quantity = this.toNumber(detail.quantity ?? detail.Quantity ?? detail.total ?? detail.Total);
         const current = rows.get(idMaterial) || {
           id: idMaterial,
