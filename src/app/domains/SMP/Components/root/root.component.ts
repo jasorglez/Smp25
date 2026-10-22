@@ -1120,8 +1120,56 @@ public gridOptions: any = {
       this.logPeriferico('16-Equipos creados (5)', rootName);
     } catch (e) { console.error('paso 16 (equipos):', e); }
 
+    // ── 17. Catálogos iniciales de movimientos de almacén ────────────────────
+    await this.ensureDefaultMovementCatalogs(rootId, rootName);
+
     this.endPeripheralProgress();
     return { branchId, contractId };
+  }
+
+  private async ensureDefaultMovementCatalogs(rootId: number, rootName: string): Promise<void> {
+    const defaults = {
+      IN: [
+        { description: 'NORMAL', behavior: 'STANDARD' },
+        { description: 'TRASPASO', behavior: 'TRANSFER' },
+        { description: 'INICIO INVENTARIOS', behavior: 'INITIAL_INVENTORY' },
+        { description: 'AJUSTE DE INVENTARIOS', behavior: 'INVENTORY_ADJUSTMENT' }
+      ],
+      OUT: [
+        { description: 'NORMAL', behavior: 'STANDARD' },
+        { description: 'TRASPASO', behavior: 'TRANSFER' }
+      ]
+    } as const;
+
+    for (const type of ['IN', 'OUT'] as const) {
+      try {
+        const current: any[] = (await lastValueFrom(this.catalogsService.getCatalogs(rootId, type)).catch(() => [])) || [];
+        for (const movement of defaults[type]) {
+          try {
+            const exists = current.some(catalog =>
+              String(catalog.valueAddition || '').trim().toUpperCase() === movement.behavior ||
+              String(catalog.description || '').trim().toUpperCase() === movement.description
+            );
+            if (exists) continue;
+
+            const created: any = await lastValueFrom(this.catalogsService.addCatalog({
+              idCompany: rootId,
+              description: movement.description,
+              valueAddition: movement.behavior,
+              type,
+              active: 1,
+              vigente: true
+            }));
+            current.push({ id: created?.id, ...movement });
+          } catch (error) {
+            console.error(`Error creando movimiento ${movement.description} (${type}) para ${rootName}:`, error);
+          }
+        }
+        this.logPeriferico(type === 'IN' ? '17a-Catálogos iniciales de Entradas creados/verificados (4)' : '17b-Catálogos iniciales de Salidas creados/verificados (2)', rootName);
+      } catch (error) {
+        console.error(`Error creando catálogos iniciales de movimientos ${type} para ${rootName}:`, error);
+      }
+    }
   }
 
   // Verifica y crea entidades por defecto que faltan en una empresa existente.
