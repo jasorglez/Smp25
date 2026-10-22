@@ -1676,6 +1676,14 @@ export class InandoutStComponent implements OnInit {
     const entryId = params.data.idInandout;
     const detailId = params.data.id;
 
+    const confirmation = await alerts.confirmAlert(
+      'Eliminar partida',
+      '¿Está seguro de eliminar el registro seleccionado?',
+      'warning',
+      'Sí, eliminar'
+    );
+    if (!confirmation.isConfirmed) return;
+
     if (params.data.__isNew) {
       params.api.applyTransaction({ remove: [params.data] });
       this.hasUnsavedChanges = true;

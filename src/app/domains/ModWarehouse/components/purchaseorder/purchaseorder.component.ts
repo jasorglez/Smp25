@@ -1932,6 +1932,13 @@ export class PurchaseOrderComponent implements CanComponentDeactivate {
 
     const selectedData = selectedNodes[0].data;
     const id = selectedData.id;
+    const confirmation = await alerts.confirmAlert(
+      'Eliminar partida',
+      '¿Está seguro de eliminar el registro seleccionado?',
+      'warning',
+      'Sí, eliminar'
+    );
+    if (!confirmation.isConfirmed) return;
     selectedData.active = 0;
     this.requisitionsService
       .deleteReqItem(id)
@@ -2410,6 +2417,14 @@ export class PurchaseOrderComponent implements CanComponentDeactivate {
   async deleteDetailRow(params: any, successCallback: () => void) {
     const purchaseOrderId = params.data.idMovement;
     const detailId = params.data.id;
+
+    const confirmation = await alerts.confirmAlert(
+      'Eliminar partida',
+      '¿Está seguro de eliminar el registro seleccionado?',
+      'warning',
+      'Sí, eliminar'
+    );
+    if (!confirmation.isConfirmed) return;
 
     if (params.data.__isNew) {
       params.api.applyTransaction({ remove: [params.data] });

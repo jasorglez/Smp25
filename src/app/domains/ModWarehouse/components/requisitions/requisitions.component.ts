@@ -980,7 +980,7 @@ export class RequisitionsComponent implements CanComponentDeactivate {
     this.deleteMasterEntry();
   }
 
-  deleteMasterEntry() {
+  async deleteMasterEntry() {
     const selectedNodes = this.masterGridApi.getSelectedNodes();
     if (selectedNodes.length === 0) {
       alerts.basicAlert(
@@ -1018,6 +1018,14 @@ export class RequisitionsComponent implements CanComponentDeactivate {
       );
       return;
     }
+
+    const confirmation = await alerts.confirmAlert(
+      'Eliminar requisición',
+      `¿Está seguro de eliminar la requisición ${selectedData.folio || id}?`,
+      'warning',
+      'Sí, eliminar'
+    );
+    if (!confirmation.isConfirmed) return;
 
     // Si es una fila nueva (temporal), solo eliminar localmente
     if (id && id.toString().startsWith('temp_')) {
@@ -1228,6 +1236,13 @@ export class RequisitionsComponent implements CanComponentDeactivate {
 
     const selectedData = selectedNodes[0].data;
     const id = selectedData.id;
+    const confirmation = await alerts.confirmAlert(
+      'Eliminar partida',
+      '¿Está seguro de eliminar el registro seleccionado?',
+      'warning',
+      'Sí, eliminar'
+    );
+    if (!confirmation.isConfirmed) return;
     selectedData.active = 0;
     this.requisitionsService
       .deleteReqItem(id)
@@ -1538,6 +1553,14 @@ export class RequisitionsComponent implements CanComponentDeactivate {
     const requisitionId = params.data.idMovement;
     const detailId = params.data.id;
     const masterRow = this.masterRowData.find((row: any) => String(row.id) === String(requisitionId));
+
+    const confirmation = await alerts.confirmAlert(
+      'Eliminar partida',
+      '¿Está seguro de eliminar el registro seleccionado?',
+      'warning',
+      'Sí, eliminar'
+    );
+    if (!confirmation.isConfirmed) return;
 
     if (params.data.__isNew) {
       params.api.applyTransaction({ remove: [params.data] });
