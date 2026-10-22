@@ -599,7 +599,7 @@ export class InandoutStComponent implements OnInit {
           countrow: entry.countRow || 0,
           detailType: null,
           detailData: []
-        }));
+        })).sort((entryA, entryB) => (Number(entryB.id) || 0) - (Number(entryA.id) || 0));
       },
       error: (error) => {
         if (requestProjectId !== Number(this.projectId) ||
@@ -826,15 +826,6 @@ export class InandoutStComponent implements OnInit {
         field: 'date',
         headerName: 'Fecha',
         width: 110,
-        sort: 'desc',
-        sortIndex: 0,
-        comparator: (valueA: any, valueB: any, nodeA: any, nodeB: any) => {
-          const timestampA = new Date(valueA).getTime();
-          const timestampB = new Date(valueB).getTime();
-          const dateDifference = (Number.isFinite(timestampA) ? timestampA : 0) - (Number.isFinite(timestampB) ? timestampB : 0);
-          if (dateDifference !== 0) return dateDifference;
-          return (Number(nodeA?.data?.id) || 0) - (Number(nodeB?.data?.id) || 0);
-        },
         editable: (params: any) => this.canEditAuthorizedRow(params.data),
         valueFormatter: (params: any) => {
           if (!params.value) return '';
