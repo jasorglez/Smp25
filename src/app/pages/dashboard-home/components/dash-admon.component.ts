@@ -1,4 +1,4 @@
-import { Component, DestroyRef, effect, inject, NgZone, OnInit, ChangeDetectionStrategy, ChangeDetectorRef, Input } from '@angular/core';
+import { Component, DestroyRef, effect, inject, NgZone, OnInit, ChangeDetectionStrategy, ChangeDetectorRef, Input, HostListener } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { CommonModule, DecimalPipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
@@ -44,7 +44,8 @@ import { SignalrService } from 'app/services/signalr.service';
               <div *ngIf="!clientList?.length" class="text-center text-muted py-5">
                 <i class="bi bi-hourglass-split fs-3"></i><br>Cargando clientes...
               </div>
-              <div *ngFor="let c of clientList; let i = index" class="client-row">
+              <button *ngFor="let c of clientList; let i = index" type="button" class="client-row client-row-button"
+                      (click)="openClientMovements(c.name)" [attr.aria-label]="'Ver movimientos de ' + c.name">
                 <span class="client-rank">{{ i + 1 }}</span>
                 <div class="client-info">
                   <div class="client-name" [title]="c.name">{{ c.name }}</div>
@@ -53,7 +54,7 @@ import { SignalrService } from 'app/services/signalr.service';
                   </div>
                 </div>
                 <span class="client-total">{{ clientCurrencySymbol }}{{ c.total | number:'1.0-0' }} {{ clientCurrency }}</span>
-              </div>
+              </button>
             </div>
             <div class="list-footer" *ngIf="clientListTotal">
               <span class="footer-label"><i class="bi bi-calendar3 me-1"></i>{{ clientListLabel }}</span>
@@ -155,7 +156,8 @@ import { SignalrService } from 'app/services/signalr.service';
               <div *ngIf="!topEntityList?.length" class="text-center text-muted py-5">
                 <i class="bi bi-hourglass-split fs-3"></i><br>Cargando...
               </div>
-              <div *ngFor="let e of topEntityList; let i = index" class="client-row">
+              <button *ngFor="let e of topEntityList; let i = index" type="button" class="client-row client-row-button"
+                      (click)="openEntityMovements(e)" [attr.aria-label]="'Ver movimientos de ' + e.name">
                 <span class="client-rank">{{ i + 1 }}</span>
                 <div class="client-info">
                   <div class="client-name" [title]="e.name">
@@ -170,7 +172,7 @@ import { SignalrService } from 'app/services/signalr.service';
                   </div>
                 </div>
                 <span class="client-total" [style.color]="BAR_PALETTE[i % BAR_PALETTE.length]">\${{ e.total | number:'1.0-0' }}</span>
-              </div>
+              </button>
             </div>
             <div class="list-footer egreso-footer" *ngIf="topEntityTotal">
               <span class="footer-label"><i class="bi bi-calendar3 me-1"></i>{{ topEntityLabel }}</span>
@@ -240,6 +242,39 @@ import { SignalrService } from 'app/services/signalr.service';
 
       </div>
 
+      <div *ngIf="movementDetail" class="movement-modal-backdrop" (click)="closeMovementDetail()">
+        <section class="movement-modal" role="dialog" aria-modal="true" [attr.aria-label]="'Movimientos de ' + movementDetail.name" (click)="$event.stopPropagation()">
+          <header class="movement-modal-header">
+            <div>
+              <div class="movement-modal-kicker">{{ movementDetail.kind === 'CLIENTE' ? 'Ingresos' : 'Egresos' }} · {{ movementDetail.rows.length }} movimientos</div>
+              <h2>{{ movementDetail.name }}</h2>
+              <div class="movement-modal-period">{{ movementDetail.periodLabel }}</div>
+            </div>
+            <button type="button" class="movement-close" aria-label="Cerrar" (click)="closeMovementDetail()"><i class="bi bi-x-lg"></i></button>
+          </header>
+          <div class="movement-modal-summary">
+            <span>Total del periodo</span>
+            <strong>{{ movementDetail.currency === 'USD' ? 'US$' : '$' }}{{ movementDetail.total | number:'1.2-2' }} {{ movementDetail.currency }}</strong>
+          </div>
+          <div class="movement-table-wrap">
+            <table class="movement-table">
+              <thead><tr><th>Fecha</th><th>Documento</th><th>Descripción</th><th class="text-end">Cantidad</th><th class="text-end">Importe</th></tr></thead>
+              <tbody>
+                <tr *ngFor="let row of movementDetail.rows">
+                  <td>{{ row.date ? (row.date | date:'dd/MM/yyyy') : '—' }}</td>
+                  <td>{{ row.document || '—' }}</td>
+                  <td class="movement-description">{{ row.description || '—' }}</td>
+                  <td class="text-end">{{ row.quantity === null ? '—' : (row.quantity | number:'1.0-2') }}</td>
+                  <td class="text-end movement-amount">{{ movementDetail.currency === 'USD' ? 'US$' : '$' }}{{ row.amount | number:'1.2-2' }}</td>
+                </tr>
+                <tr *ngIf="!movementDetail.rows.length"><td colspan="5" class="text-center text-muted py-4">No hay movimientos en este periodo.</td></tr>
+              </tbody>
+            </table>
+          </div>
+          <footer class="movement-modal-footer">{{ movementDetail.rows.length }} movimientos · {{ movementDetail.periodLabel }}</footer>
+        </section>
+      </div>
+
     </div>
   `,
   styles: [`
@@ -293,6 +328,16 @@ import { SignalrService } from 'app/services/signalr.service';
       padding: 5px 0;
       border-bottom: 1px solid #f0f0f0;
     }
+    .client-row-button {
+      width: 100%;
+      border: 0;
+      text-align: left;
+      background: transparent;
+      cursor: pointer;
+      font: inherit;
+    }
+    .client-row-button:hover { background: #f8fafc; }
+    .client-row-button:focus-visible { outline: 2px solid #3b82f6; outline-offset: -2px; border-radius: 4px; }
     .client-row:last-child { border-bottom: none; }
     .client-rank {
       font-size: 11px;
@@ -455,6 +500,25 @@ import { SignalrService } from 'app/services/signalr.service';
       background: #fff;
     }
     .date-sep { font-size: 11px; color: #94a3b8; font-weight: 700; }
+    .movement-modal-backdrop { position: fixed; inset: 0; z-index: 1200; display: flex; justify-content: flex-end; background: rgba(15,23,42,.46); }
+    .movement-modal { display: flex; flex-direction: column; width: min(760px, 94vw); height: 100%; background: #fff; box-shadow: -12px 0 36px rgba(15,23,42,.2); animation: movement-slide-in .18s ease-out; }
+    .movement-modal-header { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; padding: 20px 24px 14px; border-bottom: 1px solid #e2e8f0; background: #f8fafc; }
+    .movement-modal-kicker { color: #64748b; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .05em; }
+    .movement-modal-header h2 { margin: 4px 0; color: #172033; font-size: 20px; font-weight: 750; }
+    .movement-modal-period { color: #64748b; font-size: 12px; }
+    .movement-close { border: 0; border-radius: 6px; padding: 7px 10px; color: #475569; background: #e2e8f0; }
+    .movement-modal-summary { display: flex; justify-content: space-between; align-items: center; padding: 13px 24px; border-bottom: 1px solid #e2e8f0; color: #64748b; font-size: 13px; }
+    .movement-modal-summary strong { color: #0f766e; font-size: 17px; }
+    .movement-table-wrap { flex: 1; overflow: auto; }
+    .movement-table { width: 100%; border-collapse: collapse; font-size: 12px; }
+    .movement-table th { position: sticky; top: 0; z-index: 1; padding: 10px 12px; color: #475569; background: #f1f5f9; text-align: left; white-space: nowrap; }
+    .movement-table td { padding: 9px 12px; border-bottom: 1px solid #edf0f4; color: #334155; vertical-align: top; }
+    .movement-table tbody tr:hover { background: #f8fafc; }
+    .movement-table .movement-description { min-width: 190px; white-space: normal; }
+    .movement-table .movement-amount { font-weight: 700; white-space: nowrap; }
+    .movement-modal-footer { padding: 10px 24px; border-top: 1px solid #e2e8f0; color: #64748b; background: #f8fafc; font-size: 11px; }
+    @keyframes movement-slide-in { from { transform: translateX(16px); opacity: .6; } to { transform: translateX(0); opacity: 1; } }
+    @media (max-width: 560px) { .movement-modal-header { padding: 16px; } .movement-modal-summary { padding: 12px 16px; } .movement-table th, .movement-table td { padding: 8px; } }
   `]
 })
 export class DashAdmonComponent implements OnInit {
@@ -491,6 +555,7 @@ export class DashAdmonComponent implements OnInit {
   clientCurrency: 'MXN' | 'USD' = 'MXN';
   clientExchangeRate: number | null = null;
   private allIngresosData: any[] = [];
+  movementDetail: { kind: 'CLIENTE' | 'ENTIDAD'; name: string; rows: any[]; total: number; currency: 'MXN' | 'USD'; periodLabel: string } | null = null;
 
   get clientCurrencySymbol(): string {
     return this.clientCurrency === 'USD' ? 'US$' : '$';
@@ -628,6 +693,65 @@ export class DashAdmonComponent implements OnInit {
   onClientDateChange(): void {
     if (this.clientStartDate && this.clientEndDate)
       this.buildClientList(this.allIngresosData);
+  }
+
+  openClientMovements(name: string): void {
+    const rows = this.allIngresosData
+      .filter(row => this.normalizeEntity(row.company || 'Sin cliente') === this.normalizeEntity(name) && this.isWithinRange(row.fechaingreso, this.clientStartDate, this.clientEndDate))
+      .sort((a, b) => this.dateValue(b.fechaingreso) - this.dateValue(a.fechaingreso))
+      .map(row => ({
+        date: row.fechaingreso,
+        document: this.firstValue(row, ['numberDocument', 'documentNumber', 'numDocument', 'folio', 'number']),
+        description: this.firstValue(row, ['description', 'concept', 'conceptName', 'concepto', 'name']),
+        quantity: this.numericValue(row.quantity),
+        amount: this.getIncomeAmount(row, this.clientCurrency)
+      }));
+    this.movementDetail = {
+      kind: 'CLIENTE', name, rows,
+      total: rows.reduce((sum, row) => sum + row.amount, 0),
+      currency: this.clientCurrency,
+      periodLabel: this.periodLabel(this.clientStartDate, this.clientEndDate)
+    };
+  }
+
+  openEntityMovements(entity: { name: string; type: string }): void {
+    const rows = this.allEgresosData
+      .filter(row => this.normalizeEntity(row.entityName || 'Sin nombre') === this.normalizeEntity(entity.name)
+        && (row.entityType || 'OTRO') === entity.type
+        && this.isWithinRange(row.dateExpend, this.provStartDate, this.provEndDate))
+      .sort((a, b) => this.dateValue(b.dateExpend) - this.dateValue(a.dateExpend))
+      .map(row => ({
+        date: row.dateExpend,
+        document: this.firstValue(row, ['numberDocument', 'documentNumber', 'numDocument', 'folio', 'number']),
+        description: this.firstValue(row, ['description', 'concept', 'conceptName', 'concepto', 'name']),
+        quantity: this.numericValue(row.quantity),
+        amount: this.getExpenseAmount(row)
+      }));
+    this.movementDetail = {
+      kind: 'ENTIDAD', name: `${entity.type === 'PROVEEDOR' ? 'Proveedor' : entity.type === 'EMPLEADO' ? 'Empleado' : 'Otro'} · ${entity.name}`,
+      rows, total: rows.reduce((sum, row) => sum + row.amount, 0), currency: 'MXN',
+      periodLabel: this.periodLabel(this.provStartDate, this.provEndDate)
+    };
+  }
+
+  @HostListener('document:keydown.escape')
+  closeMovementDetail(): void { this.movementDetail = null; }
+
+  private normalizeEntity(value: any): string { return String(value || '').trim().replace(/\s+/g, ' ').toUpperCase(); }
+  private isWithinRange(value: any, start: string, end: string): boolean {
+    const date = this.dateValue(value);
+    return (!start || date >= new Date(`${start}T00:00:00`).getTime()) && (!end || date <= new Date(`${end}T23:59:59`).getTime());
+  }
+  private dateValue(value: any): number { const date = new Date(value); return Number.isFinite(date.getTime()) ? date.getTime() : 0; }
+  private firstValue(row: any, keys: string[]): string {
+    const value = keys.map(key => row?.[key]).find(candidate => candidate !== null && candidate !== undefined && String(candidate).trim() !== '');
+    return value === undefined ? '' : String(value);
+  }
+  private numericValue(value: any): number | null { const number = Number(value); return value === null || value === undefined || value === '' || !Number.isFinite(number) ? null : number; }
+  private periodLabel(start: string, end: string): string {
+    if (!start && !end) return 'Todo el período';
+    const fmt = (value: string) => value ? new Date(`${value}T00:00:00`).toLocaleDateString('es-MX') : 'Sin límite';
+    return `${fmt(start)} – ${fmt(end)}`;
   }
 
   setClientCurrency(currency: 'MXN' | 'USD'): void {
