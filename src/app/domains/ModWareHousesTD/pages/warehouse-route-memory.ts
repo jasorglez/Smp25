@@ -4,6 +4,7 @@ const WAREHOUSE_ROUTES = new Set([
   'warehouses',
   'materials-st',
   'material-traceability',
+  'kardex',
   'providers-st',
   'entry-st',
   'outings-st',

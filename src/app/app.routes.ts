@@ -2544,6 +2544,10 @@ export const routes: Routes = [
             loadComponent: () => import('./domains/ModWareHousesTD/components/material-traceability/material-traceability.component').then((c) => c.MaterialTraceabilityComponent),
           },
           {
+            path: 'kardex',
+            loadComponent: () => import('./domains/ModWareHousesTD/components/kardex/kardex.component').then((c) => c.KardexComponent),
+          },
+          {
             path: 'providers-st', loadComponent: () => import('./domains/ModWarehouse/components/providers/providers.component').then((e) => e.ProvidersComponent),
             data: { type: 'PROVIDERS' }, // Parámetro para proveedores
             canDeactivate: [UnsavedChangesGuard],

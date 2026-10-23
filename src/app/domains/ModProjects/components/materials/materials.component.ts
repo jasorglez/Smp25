@@ -32,6 +32,7 @@ import { InandoutService } from 'app/services/inandout.service';
 import { WarehousesService } from 'app/services/warehouses.service';
 import { CatalogsService } from 'app/services/catalogs.service';
 import { CommonModule } from '@angular/common';
+import { Router } from '@angular/router';
 import { FamilyModalService } from './services/family-modal.service';
 import { SubfamilyModalService } from './services/subfamily-modal.service';
 import { MeasureModalService } from './services/measure-modal.service';
@@ -159,6 +160,7 @@ export class MaterialsComponent implements CanComponentDeactivate {
   private gridApi: GridApi;
   private tempIdCounter: number = 0;
   private signalsService = inject(SignalsService);
+  private router = inject(Router);
   private trackingService = inject(TrackingService);
   private materialsService = inject(MaterialsService);
   private ocAndReqsService = inject(OcAndReqsService);
@@ -987,6 +989,24 @@ export class MaterialsComponent implements CanComponentDeactivate {
         cellStyle: { padding: '0 6px' },
         cellRenderer: (params: any) => this.renderMaterialMovementIndicators(params.data),
         tooltipValueGetter: (params: any) => this.getMovementTooltip(params.data) || 'Sin requisiciones, OC, entradas o salidas registradas'
+      },
+      {
+        colId: 'openMaterialKardex',
+        headerName: 'Kardex',
+        width: 82,
+        minWidth: 78,
+        maxWidth: 90,
+        sortable: false,
+        filter: false,
+        editable: false,
+        cellStyle: { textAlign: 'center', cursor: 'pointer' },
+        cellRenderer: (params: any) => params.data?.id && !String(params.data.id).startsWith('temp_')
+          ? '<button type="button" class="btn btn-sm btn-outline-primary py-0 px-2" title="Ver Kardex del material"><i class="bi bi-journal-arrow-up"></i></button>'
+          : '',
+        onCellClicked: (params: any) => {
+          const materialId = Number(params.data?.id);
+          if (materialId > 0) void this.router.navigate(['/warehousesTD/kardex'], { queryParams: { materialId } });
+        }
       },
       {
         field: 'materialDescription',
