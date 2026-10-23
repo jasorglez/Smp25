@@ -1288,15 +1288,7 @@ export class InandoutStComponent implements OnInit {
 
     // Obtener el folio desde la configuración en el momento de agregar la
     // fila, para que el usuario lo vea inmediatamente (entradas y salidas).
-    const documentType = this.movementType === 'IN' ? 'entry' : 'out';
-    const owners: Array<{ type: 'branch' | 'project'; id: number | null }> = [
-      { type: 'branch', id: this.idBranch },
-      { type: 'project', id: this.projectId }
-    ];
-    for (const owner of owners) {
-      if (newItem.folio || !owner.id) continue;
-      newItem.folio = await this.prefixSetupService.getNextFolio(owner.type, owner.id, documentType) || '';
-    }
+    newItem.folio = await this.getNextMovementFolio(newItem) || '';
     if (!newItem.folio) {
       console.warn('No se encontró configuración de folio para el movimiento', {
         movementType: this.movementType,
@@ -1402,24 +1394,12 @@ export class InandoutStComponent implements OnInit {
       for (const newRow of newRows) {
         const entryData = this.prepareEntryData(newRow);
         if (!entryData.folio) {
-          // La configuración puede estar capturada por sucursal o por proyecto.
-          // Se intenta primero la sucursal seleccionada y, si no existe allí,
-          // se hereda la configuración del proyecto del sidebar.
-          const documentType = this.movementType === 'IN' ? 'entry' : 'out';
-          const owners: Array<{ type: 'branch' | 'project'; id: number | null }> = [
-            { type: 'branch', id: this.idBranch },
-            { type: 'project', id: this.projectId }
-          ];
-          for (const owner of owners) {
-            if (!owner.id || entryData.folio) continue;
-            entryData.folio = await this.prefixSetupService.getNextFolio(
-              owner.type,
-              owner.id,
-              documentType
-            ) || '';
-          }
+          entryData.folio = await this.getNextMovementFolio(entryData) || '';
           if (!entryData.folio) {
-            console.warn('No se encontró configuración de folio para la entrada/salida', owners);
+            console.warn('No se encontró configuración de folio para la entrada/salida', {
+              movementType: this.movementType,
+              owner: this.getMovementFolioOwner(entryData)
+            });
           }
         }
         console.info('[Entradas][POST /Inandout] Enviando encabezado:', entryData);
@@ -1677,15 +1657,7 @@ export class InandoutStComponent implements OnInit {
 
     const entryData = this.prepareEntryData(entry);
     if (!entryData.folio) {
-      const documentType = this.movementType === 'IN' ? 'entry' : 'out';
-      const owners: Array<{ type: 'branch' | 'project'; id: number | null }> = [
-        { type: 'branch', id: this.idBranch },
-        { type: 'project', id: this.projectId }
-      ];
-      for (const owner of owners) {
-        if (entryData.folio || !owner.id) continue;
-        entryData.folio = await this.prefixSetupService.getNextFolio(owner.type, owner.id, documentType) || '';
-      }
+      entryData.folio = await this.getNextMovementFolio(entryData) || '';
     }
 
     try {
@@ -1704,6 +1676,31 @@ export class InandoutStComponent implements OnInit {
       alerts.basicAlert('No se pudo guardar el movimiento', error?.error?.message || error?.message || 'Revisa los datos del encabezado e inténtalo de nuevo.', 'error');
       return null;
     }
+  }
+
+  private getMovementFolioOwner(entry: any): { type: 'project' | 'branch'; id: number } | null {
+    const projectId = Number(entry?.idProject || this.projectId || 0);
+    if (projectId > 0) return { type: 'project', id: projectId };
+
+    const branchId = Number(entry?.idBranch || this.idBranch || 0);
+    if (branchId > 0) return { type: 'branch', id: branchId };
+    return null;
+  }
+
+  private async getNextMovementFolio(entry: any): Promise<string | null> {
+    const owner = this.getMovementFolioOwner(entry);
+    if (!owner) return null;
+
+    const documentType = String(entry?.type || this.movementType).toUpperCase() === 'OUT' ? 'out' : 'entry';
+    console.info('[Almacenes][Folio] Consultando configuración:', {
+      companyId: this.idRoot,
+      ownerType: owner.type,
+      ownerId: owner.id,
+      documentType
+    });
+    const folio = await this.prefixSetupService.getNextFolio(owner.type, owner.id, documentType);
+    console.info('[Almacenes][Folio] Resultado:', { ownerType: owner.type, ownerId: owner.id, documentType, folio });
+    return folio;
   }
 
   async deleteDetailRow(params: any, successCallback: () => void, type: string) {
