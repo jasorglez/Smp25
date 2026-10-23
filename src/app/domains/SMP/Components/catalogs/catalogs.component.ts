@@ -179,16 +179,6 @@ export class CatalogsComponent implements CanComponentDeactivate {
     this.idCatalog = null;
     this.obtenerTables(); // Cargar las tablas de la sección seleccionada
   }
-
-  selectBrandCatalog(): void {
-    this.selectedCatalog = 'BRAND';
-    this.select = 'BRAND';
-    this.idCatalog = null;
-    this.rowData = [];
-    this.gridHeight = '50vh';
-    this.gridApi?.deselectAll();
-    this.obtenerDatos();
-  }
   onOptionSelected(item: any): void {
     this.select = item.name
   }  
@@ -603,11 +593,9 @@ export class CatalogsComponent implements CanComponentDeactivate {
         ? this.hrRoles[0]?.id ?? null
         : null,
       description: '',
-      valueAddition: this.selectedCatalog === 'BRAND' ? 'NA' : '',
+      valueAddition: '',
       valueAdditionBit: true,
       type: this.selectedCatalog,
-      parentId: null,
-      subParentId: null,
       vigente: true,
       active: 1,
       __isNew: true,

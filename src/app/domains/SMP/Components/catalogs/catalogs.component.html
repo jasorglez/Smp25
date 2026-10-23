@@ -23,14 +23,6 @@
           </li>
           <li class="nav-item" *ngIf="typeCatalog === 'warehouses'">
             <a class="nav-link green-tab"
-              [class.active]="selectedCatalog === 'BRAND'"
-              (click)="selectBrandCatalog(); refres(false)"
-              style="cursor: pointer;">
-              <i class="bi bi-tags"></i> Marcas
-            </a>
-          </li>
-          <li class="nav-item" *ngIf="typeCatalog === 'warehouses'">
-            <a class="nav-link green-tab"
               [routerLink]="['cat-fam-sub']"
               routerLinkActive="active"
               (click)="refres(true)">
@@ -68,7 +60,7 @@
         </ul>
         <div class="container-fluid mt-4 mb-4 light-blue-background" *ngIf="cat === false">
           <div class="row">
-            <div class="col-md-2" *ngIf="selectedCatalog !== 'BRAND'">
+            <div class="col-md-2">
               <select 
               [ngClass]="['form-control', 'select-side', gridHeight]"
                 id="root"
@@ -90,7 +82,7 @@
               </select>
             </div>
             
-            <div [ngClass]="selectedCatalog === 'BRAND' ? 'col-12' : 'col-10'">
+            <div class="col-10">
               <div class="row">
                 <div class="col-auto">
                   <div class="d-flex flex-column gap-2 align-items-center">
