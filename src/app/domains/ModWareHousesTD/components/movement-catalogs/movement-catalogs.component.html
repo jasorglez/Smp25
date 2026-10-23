@@ -15,8 +15,8 @@
           <span class="visually-hidden">Hay cambios sin guardar</span>
         </span>
       </button>
-      <button type="button" class="btn btn-sm btn-danger" (click)="deleteSelected()" [disabled]="loading || saving">
-        <i class="bi bi-trash me-1"></i>Eliminar
+      <button type="button" class="btn btn-sm btn-danger" (click)="deleteSelected()" [disabled]="loading || saving || deleting">
+        <i class="bi" [ngClass]="deleting ? 'bi-hourglass-split' : 'bi-trash'"></i><span class="ms-1">{{ deleting ? 'Validando…' : 'Eliminar' }}</span>
       </button>
     </div>
   </div>
@@ -24,6 +24,7 @@
   <div class="btn-group btn-group-sm mb-3" role="group" aria-label="Catálogos de Almacenes">
     <button *ngFor="let type of movementTypes" type="button" class="btn"
       [class.btn-success]="selectedType === type.value" [class.btn-outline-success]="selectedType !== type.value"
+      [disabled]="deleting || saving"
       (click)="selectType(type.value)">
       {{ type.label }}
     </button>

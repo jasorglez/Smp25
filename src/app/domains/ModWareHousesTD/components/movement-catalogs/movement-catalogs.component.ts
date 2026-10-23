@@ -8,7 +8,11 @@ import { alerts } from 'app/helpers/alerts';
 import { CanComponentDeactivate } from 'app/guards/unsaved-changes.guard';
 import { CatalogsService } from 'app/services/catalogs.service';
 import { SignalsService } from 'app/services/signals.service';
-import { lastValueFrom } from 'rxjs';
+import { catchError, lastValueFrom, of, throwError } from 'rxjs';
+import { BranchsService } from 'app/services/branchs.service';
+import { WarehousesService } from 'app/services/warehouses.service';
+import { InandoutService } from 'app/services/inandout.service';
+import { MaterialsService } from 'app/services/materials.service';
 
 @Component({
   selector: 'app-movement-catalogs',
@@ -35,6 +39,10 @@ export class MovementCatalogsComponent implements CanComponentDeactivate {
   };
   private readonly signals = inject(SignalsService);
   private readonly catalogsService = inject(CatalogsService);
+  private readonly branchesService = inject(BranchsService);
+  private readonly warehousesService = inject(WarehousesService);
+  private readonly inAndOutService = inject(InandoutService);
+  private readonly materialsService = inject(MaterialsService);
   private gridApi?: GridApi;
 
   readonly AG_GRID_LOCALE_ES = AG_GRID_LOCALE_ES;
@@ -48,6 +56,7 @@ export class MovementCatalogsComponent implements CanComponentDeactivate {
   rowData: any[] = [];
   loading = false;
   saving = false;
+  deleting = false;
   hasUnsavedChanges = false;
 
   readonly defaultColDef: ColDef = { sortable: true, filter: true, resizable: true, flex: 1 };
@@ -87,6 +96,7 @@ export class MovementCatalogsComponent implements CanComponentDeactivate {
   }
 
   selectType(type: 'IN' | 'OUT' | 'BRAND'): void {
+    if (this.deleting) return;
     if (this.hasUnsavedChanges) {
       void this.confirmDiscard().then(discard => {
         if (!discard) return;
@@ -168,6 +178,7 @@ export class MovementCatalogsComponent implements CanComponentDeactivate {
   }
 
   async deleteSelected(): Promise<void> {
+    if (this.deleting || this.saving || this.loading) return;
     const selected = this.gridApi?.getSelectedRows() || [];
     if (!selected.length) {
       alerts.basicAlert('Selecciona un registro', `Elige en el grid el registro de ${this.catalogLabel} que quieres eliminar.`, 'info');
@@ -183,16 +194,83 @@ export class MovementCatalogsComponent implements CanComponentDeactivate {
       alerts.basicAlert('Guarda los cambios', 'Guarda o descarta los cambios pendientes antes de eliminar un tipo.', 'info');
       return;
     }
-    const result = await alerts.confirmAlert(`Eliminar ${this.catalogLabel}`, `¿Quieres eliminar “${row.description}”?`, 'warning', 'Eliminar');
-    if (!result.isConfirmed) return;
+    this.deleting = true;
+    const catalogType = this.selectedType;
+    const companyId = this.idRoot;
     try {
+      const result = await this.getCatalogUsage(row, catalogType, companyId);
+      if (result.inUse) {
+        alerts.basicAlert('No se puede eliminar', result.message, 'warning');
+        return;
+      }
+      const confirmation = await alerts.confirmAlert(`Eliminar ${this.catalogLabel}`, `¿Quieres eliminar “${row.description}”?`, 'warning', 'Eliminar');
+      if (!confirmation.isConfirmed) return;
+      if (this.idRoot !== companyId || this.selectedType !== catalogType) return;
       await lastValueFrom(this.catalogsService.deleteCatalog(Number(row.id)));
       await this.loadCatalogs();
       alerts.basicAlert('Registro eliminado', `${this.catalogLabel} se eliminó correctamente.`, 'success');
     } catch (error) {
-      console.error(`Error al eliminar ${this.catalogLabel}:`, error);
-      alerts.basicAlert('Error', `No se pudo eliminar ${this.catalogLabel}.`, 'error');
+      console.error(`Error al validar/eliminar ${this.catalogLabel}:`, error);
+      alerts.basicAlert('No se pudo validar', 'No se comprobó si el registro está en uso. No se eliminó; vuelve a intentarlo.', 'error');
+    } finally {
+      this.deleting = false;
     }
+  }
+
+  private async getCatalogUsage(row: any, catalogType: 'IN' | 'OUT' | 'BRAND', companyId: number): Promise<{ inUse: boolean; message: string }> {
+    const catalogId = Number(row?.id);
+    if (!catalogId || !companyId) throw new Error('Falta el identificador de empresa o catálogo.');
+
+    if (catalogType === 'BRAND') {
+      const relations: any = await lastValueFrom(this.materialsService.getMaterialBrands(companyId).pipe(
+        catchError(error => error?.status === 404 ? of([]) : throwError(() => error))
+      ));
+      const rows = this.asArray(relations);
+      const usedBy = rows.filter((relation: any) =>
+        Number(relation?.id ?? relation?.idBrand ?? relation?.brandId) === catalogId
+      );
+      return {
+        inUse: usedBy.length > 0,
+        message: `La marca “${row.description}” está asignada a ${usedBy.length} material(es). Retírala de esos materiales antes de eliminarla.`
+      };
+    }
+
+    const branchesResponse: any = await lastValueFrom(this.branchesService.getBranches2fields(companyId).pipe(
+      catchError(error => error?.status === 404 ? of([]) : throwError(() => error))
+    ));
+    const branches = this.asArray(branchesResponse);
+    const branchIds = [...new Set(branches.map((branch: any) => Number(branch?.id ?? branch?.idBranch)).filter((id: number) => id > 0))];
+    if (!branchIds.length) return { inUse: false, message: '' };
+
+    const warehouseGroups = await Promise.all(branchIds.map(async branchId => {
+      const response: any = await lastValueFrom(this.warehousesService.getWarehouses(branchId).pipe(
+        catchError(error => error?.status === 404 ? of([]) : throwError(() => error))
+      ));
+      return this.asArray(response);
+    }));
+    const warehouseIds = [...new Set(warehouseGroups.flat()
+      .map((warehouse: any) => Number(warehouse?.idAlmacen ?? warehouse?.idWarehouse ?? warehouse?.warehouseId ?? warehouse?.id))
+      .filter((id: number) => id > 0))];
+    if (!warehouseIds.length) return { inUse: false, message: '' };
+
+    const movementGroups = await Promise.all(warehouseIds.map(async warehouseId => {
+      const response: any = await lastValueFrom(this.inAndOutService.getInAndOuts(null, warehouseId, catalogType).pipe(
+        catchError(error => error?.status === 404 ? of([]) : throwError(() => error))
+      ));
+      return this.asArray(response);
+    }));
+    const uses = movementGroups.flat().filter((movement: any) => Number(movement?.idType) === catalogId);
+    const movementLabel = catalogType === 'IN' ? 'entrada(s)' : 'salida(s)';
+    return {
+      inUse: uses.length > 0,
+      message: `El tipo “${row.description}” ya está usado en ${uses.length} ${movementLabel}. No se puede eliminar.`
+    };
+  }
+
+  private asArray(response: any): any[] {
+    if (Array.isArray(response)) return response;
+    const nested = response?.data ?? response?.result ?? response?.items;
+    return Array.isArray(nested) ? nested : [];
   }
 
   private async loadCatalogs(): Promise<void> {
