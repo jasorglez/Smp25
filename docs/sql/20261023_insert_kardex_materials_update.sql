@@ -28,7 +28,7 @@ BEGIN
         N'Se agregó la vista Kardex con historial cronológico de entradas, salidas, traspasos y ajustes, saldo acumulado por material, marca y almacén, y filtros de material, almacén y fechas. Desde el grid de Materiales se puede abrir el Kardex filtrado para ese producto.',
         N'Permite revisar el recorrido y el saldo de un material desde un solo lugar, o consultar movimientos de varios materiales con filtros.',
         N'Consulta el historial y saldo de tus materiales por almacén, marca y periodo.',
-        @nowUtc, N'America/Indiana/Indianapolis', 'PENDING', 'LOCAL', 'DRAFT', NULL,
+        @nowUtc, N'America/Indiana/Indianapolis', 'PENDING', 'LOCAL', 'PUBLISHED', @nowUtc,
         NULL, 1
     );
 END;
