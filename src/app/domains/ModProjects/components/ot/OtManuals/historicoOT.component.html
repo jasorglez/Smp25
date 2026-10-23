@@ -101,3 +101,26 @@
     </div>
   </div>
 </div>
+
+<div *ngIf="showAreaModal" class="area-modal-backdrop" (click)="closeAreaModal()">
+  <section class="area-modal" role="dialog" aria-modal="true" aria-labelledby="newAreaTitle" (click)="$event.stopPropagation()">
+    <header class="area-modal-header">
+      <h2 id="newAreaTitle"><i class="bi bi-plus-circle me-2"></i>Nueva área</h2>
+      <button type="button" class="btn-close btn-close-white" aria-label="Cerrar" (click)="closeAreaModal()" [disabled]="savingArea"></button>
+    </header>
+    <div class="area-modal-body">
+      <label for="newAreaName" class="form-label">Nombre del área</label>
+      <input id="newAreaName" type="text" class="form-control" [(ngModel)]="newAreaName"
+             maxlength="50" placeholder="Escribe el nombre del área"
+             (keydown.enter)="saveNewArea()" [disabled]="savingArea" autofocus>
+      <small class="text-muted">Al guardarla aparecerá en el catálogo y quedará seleccionada en esta OT.</small>
+    </div>
+    <footer class="area-modal-footer">
+      <button type="button" class="btn btn-outline-secondary btn-sm" (click)="closeAreaModal()" [disabled]="savingArea">Cancelar</button>
+      <button type="button" class="btn btn-primary btn-sm" (click)="saveNewArea()" [disabled]="savingArea || !newAreaName.trim()">
+        <span *ngIf="savingArea" class="spinner-border spinner-border-sm me-1" aria-hidden="true"></span>
+        <i *ngIf="!savingArea" class="bi bi-check-lg me-1"></i>{{ savingArea ? 'Guardando…' : 'Crear área' }}
+      </button>
+    </footer>
+  </section>
+</div>

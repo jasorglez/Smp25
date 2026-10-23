@@ -40,6 +40,7 @@ interface HistoricoOTData {
   styleUrl: './historicoOT.component.scss'
 })
 export class HistoricoOTComponent implements OnInit {
+  private readonly addAreaOption = '+ Agregar nueva Área';
   private lastManualDescription = 'RECONEXION DE MEDIDOR';
   private lastManualArea = '';
   private lastManualPackage = '';
@@ -59,6 +60,10 @@ export class HistoricoOTComponent implements OnInit {
   public projectsList: any[] = [];
   public catalogArea: any[] = []; // Catálogo de áreas (fases)
   public showOpenOnly = false;
+  public showAreaModal = false;
+  public newAreaName = '';
+  public savingArea = false;
+  private pendingAreaNode: any = null;
 
   // Variables de control CRUD
   public notSavedChanges: boolean = false;
@@ -172,7 +177,7 @@ export class HistoricoOTComponent implements OnInit {
         cellEditor: 'agSelectCellEditor',
         cellEditorPopup: true,
         cellEditorParams: () => ({
-          values: this.getAreaOptions(),
+          values: [...this.getAreaOptions(), this.addAreaOption],
           formatValue: (value: any) => value || 'Seleccione área'
         })
       },
@@ -435,6 +440,15 @@ this.otService.getOtListByProject(idProject, showClosed).subscribe({
 
     console.log(`onCellValueChanged - Campo: ${field}, Valor anterior: ${oldValue}, Valor nuevo: ${newValue}`);
 
+    if (field === 'area' && newValue === this.addAreaOption) {
+      data.area = oldValue ?? '';
+      this.pendingAreaNode = event.node;
+      this.newAreaName = '';
+      this.showAreaModal = true;
+      this.gridApi?.refreshCells({ rowNodes: [event.node], columns: ['area'], force: true });
+      return;
+    }
+
       if (newValue !== oldValue) {
       if (field === 'description') {
         const normalizedDescription = this.normalizeText(newValue);
@@ -468,6 +482,89 @@ this.otService.getOtListByProject(idProject, showClosed).subscribe({
         console.log('Estado final notSavedChanges:', this.notSavedChanges);
       });
     }
+  }
+
+  saveNewArea(): void {
+    const description = this.normalizeText(this.newAreaName);
+    if (!description) {
+      alerts.basicAlert('Área requerida', 'Escribe el nombre del área.', 'warning');
+      return;
+    }
+    if (description.length > 50) {
+      alerts.basicAlert('Nombre muy largo', 'El nombre del área debe tener máximo 50 caracteres.', 'warning');
+      return;
+    }
+    if (!this.idcompany) {
+      alerts.basicAlert('Empresa requerida', 'Selecciona una empresa antes de crear un área.', 'warning');
+      return;
+    }
+
+    const existing = this.catalogArea.find(area => this.normalizeText(area?.description).toLocaleLowerCase() === description.toLocaleLowerCase());
+    if (existing) {
+      this.applyAreaToPendingRow(this.normalizeText(existing.description));
+      this.closeAreaModal();
+      alerts.basicAlert('Área existente', 'Esa área ya estaba en el catálogo y quedó seleccionada.', 'info');
+      return;
+    }
+
+    this.savingArea = true;
+    this.catalogsService.addCatalogToSmp({
+      idCompany: this.idcompany,
+      description,
+      type: 'Fase',
+      active: 1,
+    }).subscribe({
+      next: (saved: any) => {
+        this.catalogsService.getPhases(this.idcompany).subscribe({
+          next: (areas: any[]) => {
+            this.catalogArea = areas || [];
+            if (!this.catalogArea.some(area => this.normalizeText(area?.description).toLocaleLowerCase() === description.toLocaleLowerCase())) {
+              const returned = saved?.data ?? saved?.catalog ?? saved;
+              this.catalogArea = [...this.catalogArea, {
+                id: returned?.id ?? returned?.Id ?? returned?.idCatalog ?? returned?.IdCatalog,
+                description,
+                type: 'Fase',
+                active: 1,
+              }];
+            }
+            this.applyAreaToPendingRow(description);
+            this.savingArea = false;
+            this.closeAreaModal();
+            alerts.basicAlert('Área agregada', `${description} ya está disponible en el combo de Área.`, 'success');
+          },
+          error: (error) => {
+            console.error('Error recargando áreas:', error);
+            this.catalogArea = [...this.catalogArea, { description, type: 'Fase', active: 1 }];
+            this.applyAreaToPendingRow(description);
+            this.savingArea = false;
+            this.closeAreaModal();
+            alerts.basicAlert('Área agregada', `${description} se agregó y quedó disponible en el combo.`, 'success');
+          }
+        });
+      },
+      error: (error) => {
+        console.error('Error creando área:', error);
+        this.savingArea = false;
+        alerts.basicAlert('Error', 'No se pudo crear el área. Intenta nuevamente.', 'error');
+      }
+    });
+  }
+
+  closeAreaModal(): void {
+    if (this.savingArea) return;
+    this.showAreaModal = false;
+    this.newAreaName = '';
+    this.pendingAreaNode = null;
+  }
+
+  private applyAreaToPendingRow(area: string): void {
+    const node = this.pendingAreaNode;
+    if (!node?.data) return;
+    node.data.area = area;
+    this.lastManualArea = area;
+    if (!node.data.__isNew) node.data.__modified = true;
+    this.notSavedChanges = true;
+    this.gridApi?.refreshCells({ rowNodes: [node], columns: ['area'], force: true });
   }
 
   // Método adicional para detectar cambios en la edición de celdas

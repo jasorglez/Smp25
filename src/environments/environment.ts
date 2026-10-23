@@ -83,5 +83,5 @@ export const environment = {
   geminiApiKey: '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',
   gnewsApiKey: '94ccc596b4dfebc3f72683b6e81d81bc',
 
-  version: '5.00.376 (23 Octubre 2026 11:08) detalle de movimientos en rankings del dashboard',
+  version: '5.00.377 (23 Octubre 2026 13:32) alta de áreas desde OT manuales',
 };
