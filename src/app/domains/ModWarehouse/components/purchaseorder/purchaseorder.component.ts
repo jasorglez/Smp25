@@ -33,6 +33,8 @@ import { PermitionsService } from 'app/services/permitions.service';
 import { TrackingService } from 'app/services/tracking.service';
 import { restoreGridColumnWidths, saveGridColumnWidths } from 'app/helpers/grid-column-widths';
 import { IncomesAndExpensesService } from 'app/services/incomes-and-expenses.service';
+import { AdministrationService } from 'app/services/administration.service';
+import { CuentasContablesService } from 'app/services/cuentas-contables.service';
 import { CanComponentDeactivate } from 'app/guards/unsaved-changes.guard';
 import { confirmExitIfUnsaved } from 'app/helpers/can-deactivate.helper';
 import { ButtonCellRendererComponent } from './button-cell-renderer.component';
@@ -77,6 +79,8 @@ export class PurchaseOrderComponent implements CanComponentDeactivate {
   private permitionsService = inject(PermitionsService);
   private trackingService = inject(TrackingService);
   private incomesAndExpensesService = inject(IncomesAndExpensesService);
+  private administrationService = inject(AdministrationService);
+  private cuentasContablesService = inject(CuentasContablesService);
 
   // Variables compartidas
 
@@ -485,8 +489,9 @@ export class PurchaseOrderComponent implements CanComponentDeactivate {
         editable: (params) => this.canEditAuthorizedRow(params.data),
         width: 270,
         cellEditor: 'agSelectCellEditor',
-        cellEditorParams: () => ({ values: this.gastosAceptanOc.map((item: any) => item.id) }),
+        cellEditorParams: () => ({ values: [...this.gastosAceptanOc.map((item: any) => item.id), '__ADD_NEW__'] }),
         valueFormatter: (params) => {
+          if (params.value === '__ADD_NEW__') return '＋ Crear gasto destino';
           const gasto = this.gastosAceptanOc.find((item: any) => Number(item.id) === Number(params.value));
           return gasto ? `${gasto.numberDocument || `Gasto ${gasto.id}`} - ${gasto.description || ''}` : '';
         }
@@ -898,6 +903,119 @@ export class PurchaseOrderComponent implements CanComponentDeactivate {
         this.gastosAceptanOc = [];
       }
     });
+  }
+
+  private async createExpenseDestinationForOrder(node: any): Promise<void> {
+    const order = node?.data;
+    if (!order || !this.idRoot) return;
+
+    try {
+      const [accountsResponse, expenseTypesResponse]: any[] = await Promise.all([
+        lastValueFrom(this.administrationService.getAccountBanks(this.idRoot)),
+        lastValueFrom(this.cuentasContablesService.getByNivel(this.idRoot, 2))
+      ]);
+      const accounts = Array.isArray(accountsResponse) ? accountsResponse : [];
+      const expenseTypes = Array.isArray(expenseTypesResponse)
+        ? expenseTypesResponse.filter((item: any) => item.activo !== false)
+        : [];
+
+      if (!accounts.length || !expenseTypes.length) {
+        alerts.basicAlert(
+          'No se puede crear el gasto',
+          !accounts.length
+            ? 'La empresa no tiene cuentas bancarias activas para registrar el gasto.'
+            : 'La empresa no tiene tipos de gasto configurados en su catálogo contable.',
+          'warning'
+        );
+        return;
+      }
+
+      const escapeHtml = (value: any) => String(value ?? '').replace(/[&<>"']/g, (char) => ({
+        '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+      }[char] as string));
+      const accountOptions = accounts.map((account: any) => {
+        const label = account.description || account.name || account.accountName || account.maskex || `Cuenta ${account.id}`;
+        return `<option value="${Number(account.id)}">${escapeHtml(label)}</option>`;
+      }).join('');
+      const typeOptions = expenseTypes.map((item: any) => {
+        const label = [item.codigo, item.nombre || item.description].filter(Boolean).join(' - ') || `Tipo ${item.id}`;
+        return `<option value="${Number(item.id)}">${escapeHtml(label)}</option>`;
+      }).join('');
+      const providerName = this.proveedores.find((item: any) => Number(item.id) === Number(order.idProvider))?.name || '';
+      const description = `OC ${order.folio || ''}${providerName ? ` - ${providerName}` : ''}`.trim();
+      const result = await Swal.fire({
+        title: 'Crear gasto destino',
+        html: `<div class="text-start">
+          <label for="oc-expense-account" class="form-label">Cuenta bancaria</label>
+          <select id="oc-expense-account" class="form-select mb-3"><option value="">Seleccione una cuenta</option>${accountOptions}</select>
+          <label for="oc-expense-type" class="form-label">Tipo de gasto</label>
+          <select id="oc-expense-type" class="form-select mb-3"><option value="">Seleccione un tipo</option>${typeOptions}</select>
+          <label for="oc-expense-description" class="form-label">Descripción</label>
+          <input id="oc-expense-description" class="form-control" value="${escapeHtml(description)}" maxlength="250">
+          <small class="text-muted d-block mt-2">El gasto quedará ligado a esta OC y habilitado para recibir sus partidas.</small>
+        </div>`,
+        showCancelButton: true,
+        confirmButtonText: 'Crear y seleccionar',
+        cancelButtonText: 'Cancelar',
+        focusConfirm: false,
+        preConfirm: () => {
+          const popup = Swal.getPopup();
+          const idAccount = Number((popup?.querySelector('#oc-expense-account') as HTMLSelectElement)?.value);
+          const idExpend = Number((popup?.querySelector('#oc-expense-type') as HTMLSelectElement)?.value);
+          const expenseDescription = (popup?.querySelector('#oc-expense-description') as HTMLInputElement)?.value?.trim();
+          if (!idAccount || !idExpend || !expenseDescription) {
+            Swal.showValidationMessage('Selecciona la cuenta y el tipo de gasto, y captura una descripción.');
+            return false;
+          }
+          return { idAccount, idExpend, description: expenseDescription };
+        }
+      });
+      if (!result.isConfirmed || !result.value) return;
+
+      const now = new Date();
+      const expenseData: any = {
+        type: 'GASTO',
+        idBusinnes: this.idRoot,
+        idBranch: this.projectOrBranch ? 0 : Number(this.idReference || 0),
+        idProject: this.projectOrBranch ? Number(this.idReference || 0) : null,
+        idAccount: result.value.idAccount,
+        idExpend: result.value.idExpend,
+        idCustomer: 0,
+        numberDocument: `OC-${order.folio || now.getTime()}`,
+        description: result.value.description,
+        date: order.dateCreate || now.toISOString(),
+        subtotal: 0,
+        tax: 0,
+        total: 0,
+        countitems: 0,
+        acceptsOc: true,
+        moneda: 'MXN',
+        tipoCambio: null,
+        uuid: 'NA',
+        status: 'Pendiente',
+        active: true,
+        createdBy: this.trackingService.getEmail() || 'Sistema',
+        createdAt: now.toISOString(),
+        modifiedAt: now.toISOString()
+      };
+      const response: any = await lastValueFrom(this.incomesAndExpensesService.addIncomesAndExpenses(expenseData));
+      const expenseId = Number(response?.id ?? response?.data?.id ?? response?.result?.id ?? response);
+      if (!Number.isFinite(expenseId) || expenseId <= 0) {
+        throw new Error('El servicio no devolvió el identificador del gasto creado.');
+      }
+
+      this.gastosAceptanOc = [...this.gastosAceptanOc, { ...expenseData, id: expenseId }];
+      const updatedData = { ...node.data, idIncorExp: expenseId, __modified: true };
+      node.setData(updatedData);
+      this.masterRowData = this.masterRowData.map((row: any) => String(row.id) === String(updatedData.id) ? updatedData : row);
+      if (this.masterSelectedRowData?.id === updatedData.id) this.masterSelectedRowData = updatedData;
+      this.masterNotSavedChanges = true;
+      this.masterGridApi?.refreshCells({ rowNodes: [node], columns: ['idIncorExp'], force: true });
+      alerts.basicAlert('Gasto creado', 'El gasto destino quedó seleccionado. Guarda la OC para conservar el vínculo.', 'success');
+    } catch (error: any) {
+      console.error('No fue posible crear el gasto destino de la OC:', error);
+      alerts.basicAlert('Error al crear el gasto', error?.message || 'No se pudo crear el gasto destino.', 'error');
+    }
   }
 
   obtenerRequisiciones() {
@@ -1367,7 +1485,11 @@ export class PurchaseOrderComponent implements CanComponentDeactivate {
   }
 
   onMasterCellValueChanged(event: any) {
-    if (event.newValue === '__ADD_NEW__') return;
+    if (event.newValue === '__ADD_NEW__') {
+      event.node.setData({ ...event.data, idIncorExp: event.oldValue ?? null });
+      void this.createExpenseDestinationForOrder(event.node);
+      return;
+    }
     const updatedData = { ...event.data };
 
     if (event.colDef.field === 'idReq') {

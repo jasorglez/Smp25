@@ -83,5 +83,5 @@ export const environment = {
   geminiApiKey: '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',
   gnewsApiKey: '94ccc596b4dfebc3f72683b6e81d81bc',
 
-  version: '5.00.367 (22 Octubre 2026 12:42) fechas predeterminadas de pronóstico al crear proyecto',
+  version: '5.00.368 (22 Octubre 2026 22:54) creación de gasto destino desde OC',
 };
