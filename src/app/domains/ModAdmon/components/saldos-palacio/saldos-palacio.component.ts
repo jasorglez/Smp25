@@ -267,7 +267,16 @@ export class SaldosPalacioComponent implements OnDestroy {
         filter: true,
         sort: 'desc',
         sortIndex: 0,
-        comparator: (valueA: any, valueB: any) => this.dateSortValue(valueA) - this.dateSortValue(valueB),
+        comparator: (valueA: any, valueB: any, nodeA: any, nodeB: any) => {
+          const dateOrder = this.dateSortValue(valueA) - this.dateSortValue(valueB);
+          if (dateOrder !== 0) return dateOrder;
+
+          // Dentro del mismo día, el orden descendente debe mostrar primero
+          // el movimiento más reciente y el saldo de cierre del día.
+          const chronologyA = Number(nodeA?.data?.__chronologicalIndex ?? 0);
+          const chronologyB = Number(nodeB?.data?.__chronologicalIndex ?? 0);
+          return chronologyA - chronologyB;
+        },
       },
       {
         field: 'descripcion',
@@ -489,11 +498,11 @@ export class SaldosPalacioComponent implements OnDestroy {
 
   private withRunningBalances(rows: any[]): any[] {
     let balanceInCents = 0;
-    return rows.map(row => {
+    return rows.map((row, chronologicalIndex) => {
       const incomeInCents = this.amountInCents(row.deposito);
       const expenseInCents = this.amountInCents(row.gasto);
       balanceInCents += incomeInCents - expenseInCents;
-      return { ...row, saldo: balanceInCents / 100 };
+      return { ...row, saldo: balanceInCents / 100, __chronologicalIndex: chronologicalIndex };
     });
   }
 
