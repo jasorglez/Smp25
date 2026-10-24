@@ -265,6 +265,9 @@ export class SaldosPalacioComponent implements OnDestroy {
         headerName: 'Fecha',
         width: 150,
         filter: true,
+        sort: 'desc',
+        sortIndex: 0,
+        comparator: (valueA: any, valueB: any) => this.dateSortValue(valueA) - this.dateSortValue(valueB),
       },
       {
         field: 'descripcion',
@@ -471,6 +474,17 @@ export class SaldosPalacioComponent implements OnDestroy {
     }
     const parsed = Number(String(value ?? '').replace(/[$,\s]/g, ''));
     return Number.isFinite(parsed) ? Math.round(parsed * 100) : 0;
+  }
+
+  private dateSortValue(value: any): number {
+    if (value instanceof Date) return value.getTime();
+    const text = String(value ?? '').trim();
+    const dayFirst = /^(\d{1,2})[/-](\d{1,2})[/-](\d{4})/.exec(text);
+    if (dayFirst) {
+      return new Date(Number(dayFirst[3]), Number(dayFirst[2]) - 1, Number(dayFirst[1])).getTime();
+    }
+    const parsed = new Date(text).getTime();
+    return Number.isFinite(parsed) ? parsed : 0;
   }
 
   private withRunningBalances(rows: any[]): any[] {
