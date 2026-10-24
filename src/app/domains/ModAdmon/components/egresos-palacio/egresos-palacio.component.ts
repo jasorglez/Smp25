@@ -2961,12 +2961,42 @@ export class EgresosPalacioComponent {
         objetosNivel4
       );
 
+      const conceptosClasificados = Array.from(agrupacionPorCategoria.values())
+        .reduce((sum: number, categoria: any) => sum + (Array.from(categoria.partidas.values()) as any[])
+          .reduce((partidaSum: number, partida: any) => partidaSum + partida.conceptos.length, 0), 0);
+      const totalConceptosCents = allConcepts.reduce((sum, concept) =>
+        sum + this.amountInCents(concept.totalFinal), 0);
+      const totalClasificadoCents = Array.from(agrupacionPorCategoria.values())
+        .reduce((sum: number, categoria: any) => sum + this.amountInCents(categoria.total), 0);
+      const avisosConciliacion: string[] = [];
+      if (periodData.documentosSinEgreso.length) {
+        avisosConciliacion.push(
+          `Hay ${periodData.documentosSinEgreso.length} movimiento(s) de egreso del estado de cuenta sin un egreso pagado relacionado: ${periodData.documentosSinEgreso.join(', ')}.`
+        );
+      }
+      if (periodData.movimientosSinDocumento > 0) {
+        avisosConciliacion.push(
+          `${periodData.movimientosSinDocumento} movimiento(s) de egreso no tienen número de documento, por lo que no se pudo comprobar su relación con un egreso.`
+        );
+      }
+      if (Math.abs(periodData.egresosEstadoCents - totalConceptosCents) > 1) {
+        avisosConciliacion.push(
+          `El estado de cuenta registra ${this.formatCurrencyNumber(periodData.egresosEstadoCents / 100)} de egresos y los conceptos incluidos suman ${this.formatCurrencyNumber(totalConceptosCents / 100)}. Diferencia: ${this.formatCurrencyNumber(Math.abs(periodData.egresosEstadoCents - totalConceptosCents) / 100)}.`
+        );
+      }
+      if (Math.abs(totalConceptosCents - totalClasificadoCents) > 1 || conceptosClasificados < allConcepts.length) {
+        avisosConciliacion.push(
+          `${allConcepts.length - conceptosClasificados} concepto(s) no quedaron clasificados en las partidas del reporte; conceptos: ${this.formatCurrencyNumber(totalConceptosCents / 100)}, clasificados: ${this.formatCurrencyNumber(totalClasificadoCents / 100)}.`
+        );
+      }
+
       // Paso 5: Generar el PDF con los datos financieros
       etapa = 'crear o mostrar el archivo PDF';
       await this.generateEgresosPDF(
         agrupacionPorCategoria,
         saldoInicial,
-        ingresosMes
+        ingresosMes,
+        avisosConciliacion
       );
 
     } catch (error) {
@@ -3040,6 +3070,20 @@ export class EgresosPalacioComponent {
         .map(movement => String(movement.numeroDocumento ?? '').trim())
         .filter(Boolean)
     );
+    const expenseMovements = movementsInPeriod.filter(movement => this.amountInCents(movement.gasto) > 0);
+    const paidExpenseDocuments = new Set(this.incomes
+      .filter(expense => Number(expense.idAccount) === Number(idAccount) &&
+        expense.type === 'GASTO' && expense.status === 'Pagada')
+      .map(expense => String(expense.numberDocument ?? '').trim())
+      .filter(Boolean));
+    const documentosSinEgreso = [...new Set(expenseMovements
+      .map(movement => String(movement.numeroDocumento ?? '').trim())
+      .filter(document => document && !paidExpenseDocuments.has(document)))];
+    const movimientosSinDocumento = expenseMovements
+      .filter(movement => !String(movement.numeroDocumento ?? '').trim()).length;
+    const egresosEstadoCents = expenseMovements.reduce(
+      (sum, movement) => sum + this.amountInCents(movement.gasto), 0
+    );
     const expenseMasters = this.incomes.filter(expense =>
       Number(expense.idAccount) === Number(idAccount) &&
       expense.type === 'GASTO' &&
@@ -3047,7 +3091,7 @@ export class EgresosPalacioComponent {
       expenseDocumentsInPeriod.has(String(expense.numberDocument ?? '').trim())
     );
 
-    return { saldoInicial, ingresosMes, expenseMasters };
+    return { saldoInicial, ingresosMes, expenseMasters, documentosSinEgreso, movimientosSinDocumento, egresosEstadoCents };
   }
 
   private async getStatementExpenseConcepts(expenseMasters: any[]): Promise<any[]> {
@@ -4734,7 +4778,8 @@ export class EgresosPalacioComponent {
   private async generateEgresosPDF(
     agrupacion: Map<string, any>,
     saldoInicial: number = 0,
-    ingresosMes: number = 0
+    ingresosMes: number = 0,
+    avisosConciliacion: string[] = []
   ) {
     // Importar pdfMake dinámicamente
     const pdfMake = (await import('pdfmake/build/pdfmake')).default;
@@ -4905,6 +4950,23 @@ export class EgresosPalacioComponent {
           alignment: 'center',
           margin: [0, 5, 0, 14]
         },
+        ...(avisosConciliacion.length ? [{
+          table: {
+            widths: ['*'],
+            body: [[{
+              stack: [
+                { text: 'AVISO: INFORMACIÓN PENDIENTE DE CONCILIAR', bold: true, color: '#9a6700', margin: [0, 0, 0, 3] },
+                ...avisosConciliacion.map(aviso => ({ text: `• ${aviso}`, margin: [0, 1, 0, 1] }))
+              ],
+              fillColor: '#fff3cd',
+              color: '#664d03',
+              fontSize: 8,
+              margin: [6, 5, 6, 5]
+            }]]
+          },
+          layout: { hLineWidth: () => 0.5, vLineWidth: () => 0.5, hLineColor: () => '#d6b656', vLineColor: () => '#d6b656' },
+          margin: [0, 0, 0, 10]
+        }] : []),
         // Tabla de egresos
         {
           table: {
@@ -6030,9 +6092,26 @@ export class EgresosPalacioComponent {
 
       // Paso 5: Procesar conceptos y calcular totales por jerarquía
       const reportData = this.buildCatalogoEgresosReportData(catalogTree, allConcepts);
+      const conceptosCents = allConcepts.reduce((sum, concept) => sum + this.amountInCents(concept.totalFinal), 0);
+      const totalCatalogadoCents = this.amountInCents(reportData
+        .filter(row => row.type === 'level1')
+        .reduce((sum, row) => sum + Number(row.total || 0), 0));
+      const avisosConciliacion: string[] = [];
+      if (periodData.documentosSinEgreso.length) {
+        avisosConciliacion.push(`Hay ${periodData.documentosSinEgreso.length} movimiento(s) de egreso del estado de cuenta sin un egreso pagado relacionado: ${periodData.documentosSinEgreso.join(', ')}.`);
+      }
+      if (periodData.movimientosSinDocumento > 0) {
+        avisosConciliacion.push(`${periodData.movimientosSinDocumento} movimiento(s) de egreso no tienen número de documento, por lo que no se pudo comprobar su relación con un egreso.`);
+      }
+      if (Math.abs(periodData.egresosEstadoCents - conceptosCents) > 1) {
+        avisosConciliacion.push(`El estado de cuenta registra ${this.formatCurrencyNumber(periodData.egresosEstadoCents / 100)} de egresos y los conceptos incluidos suman ${this.formatCurrencyNumber(conceptosCents / 100)}. Diferencia: ${this.formatCurrencyNumber(Math.abs(periodData.egresosEstadoCents - conceptosCents) / 100)}.`);
+      }
+      if (Math.abs(conceptosCents - totalCatalogadoCents) > 1) {
+        avisosConciliacion.push(`Los conceptos suman ${this.formatCurrencyNumber(conceptosCents / 100)} y el catálogo clasifica ${this.formatCurrencyNumber(totalCatalogadoCents / 100)}. Diferencia: ${this.formatCurrencyNumber(Math.abs(conceptosCents - totalCatalogadoCents) / 100)}.`);
+      }
 
       // Paso 6: Generar el PDF con el resumen
-      await this.generateCatalogoEgresosPDF(reportData, allConcepts, saldoInicial, ingresosMes);
+      await this.generateCatalogoEgresosPDF(reportData, allConcepts, saldoInicial, ingresosMes, avisosConciliacion);
 
     } catch (error) {
       console.error('Error generando reporte por catálogo de egresos:', error);
@@ -6263,7 +6342,7 @@ export class EgresosPalacioComponent {
   /**
    * Genera el PDF del reporte por Catálogo de Egresos con resumen
    */
-  private async generateCatalogoEgresosPDF(reportData: any[], conceptsData: any[], saldoInicial: number, ingresosMes: number) {
+  private async generateCatalogoEgresosPDF(reportData: any[], conceptsData: any[], saldoInicial: number, ingresosMes: number, avisosConciliacion: string[] = []) {
     const pdfMake = (await import('pdfmake/build/pdfmake')).default;
     const pdfFonts = (await import('pdfmake/build/vfs_fonts')).default;
     (pdfMake as any).vfs = (pdfFonts as any).pdfMake?.vfs || (pdfFonts as any).default?.pdfMake?.vfs;
@@ -6354,6 +6433,20 @@ export class EgresosPalacioComponent {
           style: 'dateRange',
           margin: [0, 0, 0, 15]
         },
+        ...(avisosConciliacion.length ? [{
+          table: {
+            widths: ['*'],
+            body: [[{
+              stack: [
+                { text: 'AVISO: INFORMACIÓN PENDIENTE DE CONCILIAR', bold: true, color: '#9a6700', margin: [0, 0, 0, 3] },
+                ...avisosConciliacion.map(aviso => ({ text: `• ${aviso}`, margin: [0, 1, 0, 1] }))
+              ],
+              fillColor: '#fff3cd', color: '#664d03', fontSize: 8, margin: [6, 5, 6, 5]
+            }]]
+          },
+          layout: { hLineWidth: () => 0.5, vLineWidth: () => 0.5, hLineColor: () => '#d6b656', vLineColor: () => '#d6b656' },
+          margin: [0, 0, 0, 10]
+        }] : []),
         {
           table: {
             headerRows: 1,
