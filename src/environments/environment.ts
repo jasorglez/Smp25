@@ -83,5 +83,5 @@ export const environment = {
   geminiApiKey: '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',
   gnewsApiKey: '94ccc596b4dfebc3f72683b6e81d81bc',
 
-  version: '5.00.379 (24 Octubre 2026 02:20) saldos PDF por fecha de concepto',
+  version: '5.00.383 (24 Octubre 2026 08:20) generar reporte al cambiar fechas',
 };

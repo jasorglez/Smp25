@@ -85,6 +85,7 @@ export class EgresosPalacioComponent {
   reportEndDate: string = '';
   reportType: string = 'consolidado'; // Tipo de reporte: consolidado, agrupado, egresos, bitacora
   isGeneratingConsolidatedReport: boolean = false;
+  private reportGenerationTimer: ReturnType<typeof setTimeout> | null = null;
   reportPdfPreview: SafeResourceUrl | null = null;
   private reportPdfObjectUrl: string | null = null;
   get paidNotInvoicedReportRows(): any[] {
@@ -95,6 +96,17 @@ export class EgresosPalacioComponent {
         ? `${expense.date.getFullYear()}-${String(expense.date.getMonth() + 1).padStart(2, '0')}-${String(expense.date.getDate()).padStart(2, '0')}`
         : String(expense.date).slice(0, 10);
       return date >= this.reportStartDate && date <= this.reportEndDate;
+    });
+  }
+  get priorPaidNotInvoicedReportRows(): any[] {
+    if (!this.reportStartDate) return [];
+    return this.incomes.filter(expense => {
+      if (expense.status !== 'Pagada' || expense.facturado === true || !expense.date) return false;
+      if (expense.type !== 'GASTO' || Number(expense.idAccount) !== Number(this.idAccount)) return false;
+      const date = expense.date instanceof Date
+        ? `${expense.date.getFullYear()}-${String(expense.date.getMonth() + 1).padStart(2, '0')}-${String(expense.date.getDate()).padStart(2, '0')}`
+        : String(expense.date).slice(0, 10);
+      return date < this.reportStartDate;
     });
   }
   invited: boolean = false;
@@ -2731,6 +2743,8 @@ export class EgresosPalacioComponent {
   }
 
   closeConsolidatedReportModal() {
+    if (this.reportGenerationTimer) clearTimeout(this.reportGenerationTimer);
+    this.reportGenerationTimer = null;
     this.showConsolidatedReportModal = false;
     document.body.classList.remove('modal-open');
     this.clearReportPdfPreview();
@@ -2771,22 +2785,48 @@ export class EgresosPalacioComponent {
     return `${year}-${month}-${day}`;
   }
 
+  updateReportEndDateForStart(startDate: string): void {
+    if (!startDate) {
+      this.scheduleReportGeneration();
+      return;
+    }
+    const [year, month] = startDate.split('-').map(Number);
+    if (year && month) {
+      // Al elegir el inicio, completar el periodo hasta el último día de ese mes.
+      const lastDayOfMonth = new Date(year, month, 0);
+      this.reportEndDate = this.formatDateForInput(lastDayOfMonth);
+    }
+    this.scheduleReportGeneration();
+  }
+
+  scheduleReportGeneration(): void {
+    if (this.reportGenerationTimer) clearTimeout(this.reportGenerationTimer);
+    this.reportGenerationTimer = null;
+    if (!this.showConsolidatedReportModal || !this.reportStartDate || !this.reportEndDate) return;
+
+    // Esperar a que el usuario termine de ajustar el rango para generar una sola vez.
+    this.reportGenerationTimer = setTimeout(() => {
+      this.reportGenerationTimer = null;
+      void this.generateConsolidatedReport();
+    }, 500);
+  }
+
   async generateConsolidatedReport() {
+    if (this.isGeneratingConsolidatedReport) return;
+    if (this.reportGenerationTimer) clearTimeout(this.reportGenerationTimer);
+    this.reportGenerationTimer = null;
     if (!this.reportStartDate || !this.reportEndDate) {
       alerts.basicAlert('Error', 'Por favor seleccione ambas fechas', 'error');
       return;
     }
 
-    // ✅ FIX: Parsear fechas para validación sin zona horaria
-    const [startYearCheck, startMonthCheck, startDayCheck] = this.reportStartDate.split('-');
-    const startDateCheck = new Date(parseInt(startYearCheck), parseInt(startMonthCheck) - 1, parseInt(startDayCheck));
-
-    const [endYearCheck, endMonthCheck, endDayCheck] = this.reportEndDate.split('-');
-    const endDateCheck = new Date(parseInt(endYearCheck), parseInt(endMonthCheck) - 1, parseInt(endDayCheck));
-
-    // Validar que la fecha de inicio no sea mayor que la fecha de término
-    if (startDateCheck > endDateCheck) {
-      alerts.basicAlert('Error', 'La fecha de inicio no puede ser mayor que la fecha de término', 'error');
+    // Las fechas YYYY-MM-DD se pueden comparar directamente y no sufren desfases horarios.
+    if (this.reportEndDate <= this.reportStartDate) {
+      alerts.basicAlert(
+        'Rango de fechas inválido',
+        'La Fecha de Término debe ser posterior a la Fecha de Inicio. No se generó el reporte.',
+        'error'
+      );
       return;
     }
 
@@ -2885,10 +2925,13 @@ export class EgresosPalacioComponent {
 
   // ==================== REPORTE EGRESOS (LISTADO COMPLETO) ====================
   private async generateReporteEgresos() {
+    let etapa = 'consultar los movimientos del estado de cuenta';
     try {
       const periodData = await this.getStatementPeriodData(this.idAccount);
       const saldoInicial = periodData.saldoInicial;
       const ingresosMes = periodData.ingresosMes;
+
+      etapa = 'consultar los conceptos de los egresos';
       const allConcepts = await this.getStatementExpenseConcepts(periodData.expenseMasters);
 
       if (allConcepts.length === 0) {
@@ -2901,6 +2944,7 @@ export class EgresosPalacioComponent {
       }
 
       // Paso 3: Cargar catálogos de objetos de gasto nivel 1 y nivel 4
+      etapa = 'cargar los catálogos de objetos de gasto';
       const objetosNivel1: any[] = await lastValueFrom(
         this.administrationService.getByNivelObjeto(this.idRoot, 1)
       ) as any[];
@@ -2910,6 +2954,7 @@ export class EgresosPalacioComponent {
       ) as any[];
 
       // Paso 4: Agrupar conceptos por categoría nivel 1 y partida nivel 4
+      etapa = 'organizar los conceptos por categoría';
       const agrupacionPorCategoria = this.agruparConceptosPorCategoria(
         allConcepts,
         objetosNivel1,
@@ -2917,6 +2962,7 @@ export class EgresosPalacioComponent {
       );
 
       // Paso 5: Generar el PDF con los datos financieros
+      etapa = 'crear o mostrar el archivo PDF';
       await this.generateEgresosPDF(
         agrupacionPorCategoria,
         saldoInicial,
@@ -2925,7 +2971,12 @@ export class EgresosPalacioComponent {
 
     } catch (error) {
       console.error('Error generando reporte de egresos:', error);
-      alerts.basicAlert('Error', 'Error al generar el reporte de egresos', 'error');
+      const detalle = error instanceof Error && error.message ? ` Detalle: ${error.message}` : '';
+      alerts.basicAlert(
+        'Error al generar el reporte de egresos',
+        `Ocurrió un problema al ${etapa}.${detalle}`,
+        'error'
+      );
     }
   }
 
