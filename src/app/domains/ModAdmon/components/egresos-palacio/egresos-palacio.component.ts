@@ -2807,7 +2807,7 @@ export class EgresosPalacioComponent {
         return isInsidePeriod && matchesReportStatus;
       });
 
-      if (filteredExpenses.length === 0) {
+      if (filteredExpenses.length === 0 && !['egresos', 'catalogoEgresos'].includes(this.reportType)) {
         alerts.basicAlert(
           'Sin datos',
           'No se encontraron egresos en el rango de fechas seleccionado',
@@ -2826,13 +2826,13 @@ export class EgresosPalacioComponent {
           await this.generateReporteAgrupado(filteredExpenses);
           break;
         case 'egresos':
-          await this.generateReporteEgresos(filteredExpenses);
+          await this.generateReporteEgresos();
           break;
         case 'bitacora':
           await this.generateReporteBitacora(filteredExpenses);
           break;
         case 'catalogoEgresos':
-          await this.generateReporteCatalogoEgresos(filteredExpenses);
+          await this.generateReporteCatalogoEgresos();
           break;
         case 'bitacoraPorCortes':
           await this.generateReporteBitacoraPorCortes(filteredExpenses);
@@ -2884,42 +2884,12 @@ export class EgresosPalacioComponent {
   }
 
   // ==================== REPORTE EGRESOS (LISTADO COMPLETO) ====================
-  private async generateReporteEgresos(filteredExpenses: any[]) {
+  private async generateReporteEgresos() {
     try {
-      // El saldo inicial debe coincidir con el cierre que muestra Saldos.
-      const saldoInicial = await this.getOpeningBalanceFromStatement(
-        this.idAccount,
-        this.reportStartDate
-      );
-
-      // Mantener la consulta existente para los ingresos pagados del período.
-      const saldoEIngresosResponse: any = await lastValueFrom(
-        this.administrationService.getSaldoEIngresosMes(
-          this.idAccount,
-          this.reportStartDate,
-          this.reportEndDate
-        )
-      );
-
-      const ingresosMes = saldoEIngresosResponse?.data?.ingresosMes || 0;
-
-      // Paso 2: Cargar todos los conceptos de los egresos filtrados
-      const allConcepts: any[] = [];
-      for (const expense of filteredExpenses) {
-        const rawConcepts: any[] = await lastValueFrom(
-          this.incomesAndExpensesService.getAllConceptsFromIncomesAndExpenses(expense.id)
-        );
-
-        // ✅ FILTRAR: Solo incluir conceptos activos (active=1)
-        const concepts = rawConcepts.filter(c => Number(c.active) === 1);
-
-        // ✅ IMPORTANTE: Calcular totalFinal para cada concepto
-        concepts.forEach(concept => {
-          concept.totalFinal = (concept.total || 0) + (concept.iva2 || 0) - (concept.isr || 0);
-        });
-
-        allConcepts.push(...concepts);
-      }
+      const periodData = await this.getStatementPeriodData(this.idAccount);
+      const saldoInicial = periodData.saldoInicial;
+      const ingresosMes = periodData.ingresosMes;
+      const allConcepts = await this.getStatementExpenseConcepts(periodData.expenseMasters);
 
       if (allConcepts.length === 0) {
         alerts.basicAlert(
@@ -2959,10 +2929,17 @@ export class EgresosPalacioComponent {
     }
   }
 
-  private async getOpeningBalanceFromStatement(idAccount: number, startDate: string): Promise<number> {
-    const response: any = await lastValueFrom(this.administrationService.getBalance(idAccount));
-    const chronologicalMovements = Array.isArray(response?.data)
-      ? [...response.data].reverse()
+  private async getOpeningBalanceFromStatement(
+    idAccount: number,
+    startDate: string,
+    statementData?: any[]
+  ): Promise<number> {
+    const response: any = statementData
+      ? null
+      : await lastValueFrom(this.administrationService.getBalance(idAccount));
+    const movements = statementData ?? response?.data;
+    const chronologicalMovements = Array.isArray(movements)
+      ? [...movements].reverse()
       : [];
 
     let balanceInCents = 0;
@@ -2988,6 +2965,67 @@ export class EgresosPalacioComponent {
     }
     const parsed = Number(String(value ?? '').replace(/[$,\s]/g, ''));
     return Number.isFinite(parsed) ? Math.round(parsed * 100) : 0;
+  }
+
+  private async getStatementPeriodData(idAccount: number) {
+    const response: any = await lastValueFrom(this.administrationService.getBalance(idAccount));
+    const statementMovements: any[] = Array.isArray(response?.data) ? response.data : [];
+    const saldoInicial = await this.getOpeningBalanceFromStatement(
+      idAccount,
+      this.reportStartDate,
+      statementMovements
+    );
+    const movementsInPeriod = statementMovements.filter(movement => {
+      const date = String(movement.fecha ?? '').slice(0, 10);
+      return date >= this.reportStartDate && date <= this.reportEndDate;
+    });
+    const ingresosMes = movementsInPeriod.reduce(
+      (sum, movement) => sum + this.amountInCents(movement.deposito),
+      0
+    ) / 100;
+    const expenseDocumentsInPeriod = new Set(
+      movementsInPeriod
+        .filter(movement => this.amountInCents(movement.gasto) > 0)
+        .map(movement => String(movement.numeroDocumento ?? '').trim())
+        .filter(Boolean)
+    );
+    const expenseMasters = this.incomes.filter(expense =>
+      Number(expense.idAccount) === Number(idAccount) &&
+      expense.type === 'GASTO' &&
+      expense.status === 'Pagada' &&
+      expenseDocumentsInPeriod.has(String(expense.numberDocument ?? '').trim())
+    );
+
+    return { saldoInicial, ingresosMes, expenseMasters };
+  }
+
+  private async getStatementExpenseConcepts(expenseMasters: any[]): Promise<any[]> {
+    const allConcepts: any[] = [];
+    const isInsidePeriod = (value: any) => {
+      const date = String(value ?? '').slice(0, 10);
+      return date >= this.reportStartDate && date <= this.reportEndDate;
+    };
+    const batchSize = 10;
+
+    for (let index = 0; index < expenseMasters.length; index += batchSize) {
+      const batch = expenseMasters.slice(index, index + batchSize);
+      const conceptsByExpense = await Promise.all(batch.map(async expense => {
+        const rawConcepts: any[] = await lastValueFrom(
+          this.incomesAndExpensesService.getAllConceptsFromIncomesAndExpenses(expense.id)
+        );
+        return rawConcepts.filter(concept =>
+          Number(concept.active) === 1 && isInsidePeriod(concept.dateExpend)
+        );
+      }));
+
+      conceptsByExpense.flat().forEach(concept => {
+        const subtotal = Number(concept.total ?? (Number(concept.quantity || 0) * Number(concept.price || 0)));
+        concept.totalFinal = subtotal + Number(concept.iva2 || 0);
+        allConcepts.push(concept);
+      });
+    }
+
+    return allConcepts;
   }
 
   // ==================== REPORTE BITÁCORA (PADRE-HIJO DETALLADO) ====================
@@ -5917,36 +5955,12 @@ export class EgresosPalacioComponent {
    * Genera el reporte jerárquico por Catálogo de Egresos (EXPENSE)
    * Estructura: Nivel 1 (TOTAL) → Nivel 2 (agrupador) → Nivel 3 (SUBTOTAL)
    */
-  private async generateReporteCatalogoEgresos(filteredExpenses: any[]) {
+  private async generateReporteCatalogoEgresos() {
     try {
-      // Paso 1: Obtener SALDO INICIAL e INGRESOS DEL MES
-      const saldoEIngresosResponse: any = await lastValueFrom(
-        this.administrationService.getSaldoEIngresosMes(
-          this.idAccount,
-          this.reportStartDate,
-          this.reportEndDate
-        )
-      );
-      const saldoInicial = saldoEIngresosResponse?.data?.saldoInicial || 0;
-      const ingresosMes = saldoEIngresosResponse?.data?.ingresosMes || 0;
-
-      // Paso 2: Cargar todos los conceptos de los egresos filtrados
-      const allConcepts: any[] = [];
-      for (const expense of filteredExpenses) {
-        const rawConcepts: any[] = await lastValueFrom(
-          this.incomesAndExpensesService.getAllConceptsFromIncomesAndExpenses(expense.id)
-        );
-
-        // ✅ FILTRAR: Solo incluir conceptos activos (active=1)
-        const concepts = rawConcepts.filter(c => Number(c.active) === 1);
-
-        // Calcular totalFinal para cada concepto
-        concepts.forEach(concept => {
-          concept.totalFinal = (concept.total || 0) + (concept.iva2 || 0) - (concept.isr || 0);
-        });
-
-        allConcepts.push(...concepts);
-      }
+      const periodData = await this.getStatementPeriodData(this.idAccount);
+      const saldoInicial = periodData.saldoInicial;
+      const ingresosMes = periodData.ingresosMes;
+      const allConcepts = await this.getStatementExpenseConcepts(periodData.expenseMasters);
 
       if (allConcepts.length === 0) {
         alerts.basicAlert(
