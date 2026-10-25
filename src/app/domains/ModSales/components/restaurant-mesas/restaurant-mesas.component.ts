@@ -9,6 +9,7 @@ import { RestaurantMesasService } from 'app/services/restaurant-mesas.service';
 import { RootService } from 'app/services/root.service';
 import { Base64EncodeService } from 'app/services/base64encode.service';
 import { TrackingService } from 'app/services/tracking.service';
+import { PdfPreviewService } from 'app/services/pdf-preview.service';
 import { lastValueFrom } from 'rxjs';
 import Swal from 'sweetalert2';
 import pdfMake from 'pdfmake/build/pdfmake';
@@ -28,6 +29,7 @@ export class RestaurantMesasComponent implements OnInit {
   private rootService         = inject(RootService);
   private base64EncodeService = inject(Base64EncodeService);
   private trackingService = inject(TrackingService);
+  private pdfPreview = inject(PdfPreviewService);
 
   AG_GRID_LOCALE_ES = AG_GRID_LOCALE_ES;
   idCompany  = 0;
@@ -620,8 +622,8 @@ export class RestaurantMesasComponent implements OnInit {
     };
 
     const fechaFile = this.reporteFecha.replace(/-/g, '');
-    this.trackingService.addLog(this.trackingService.getnameComp(), 'Descargó PDF reporte mesas', 'Ventas / Restaurant Mesas', this.trackingService.getEmail());
-    pdfMake.createPdf(docDef).download(`reporte-mesas-${fechaFile}.pdf`);
+    this.trackingService.addLog(this.trackingService.getnameComp(), 'Generó vista previa PDF reporte mesas', 'Ventas / Restaurant Mesas', this.trackingService.getEmail());
+    void this.pdfPreview.show(pdfMake.createPdf(docDef), 'Reporte de mesas', `reporte-mesas-${fechaFile}.pdf`);
   }
 
   async exportPdfDetalle() {
@@ -746,7 +748,7 @@ export class RestaurantMesasComponent implements OnInit {
     };
 
     const fechaFile = this.reporteFecha.replace(/-/g, '');
-    this.trackingService.addLog(this.trackingService.getnameComp(), 'Descargó PDF detalle mesas', 'Ventas / Restaurant Mesas', this.trackingService.getEmail());
-    pdfMake.createPdf(docDef).download(`detalle-mesas-${fechaFile}.pdf`);
+    this.trackingService.addLog(this.trackingService.getnameComp(), 'Generó vista previa PDF detalle mesas', 'Ventas / Restaurant Mesas', this.trackingService.getEmail());
+    void this.pdfPreview.show(pdfMake.createPdf(docDef), 'Detalle de mesas', `detalle-mesas-${fechaFile}.pdf`);
   }
 }

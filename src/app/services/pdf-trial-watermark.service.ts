@@ -40,6 +40,7 @@ export class PdfTrialWatermarkService {
   private isIncludedModule(): boolean {
     const path = this.router.url.split(/[?#]/, 1)[0].toLowerCase();
     return [
+      '/procsales',
       '/proceswar',
       '/shoppingtd',
       '/warehousestd',
