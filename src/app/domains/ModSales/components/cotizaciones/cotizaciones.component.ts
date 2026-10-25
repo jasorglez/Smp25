@@ -379,10 +379,22 @@ export class CotizacionesComponent implements OnInit, OnDestroy {
   }
 
   private cerrarDetalle(node: any, detalle: DetalleItemsCotizacionComponent): void {
-    if (!this.gridApi || !node) return;
-    this.gridApi.stopEditing();
-    node.setExpanded(false);
-    this.gridApi.forEachNode((row: any) => row.setRowHeight(undefined));
+    if (!this.gridApi) return;
+
+    const cotizacionId = detalle?.cotizacion?.id;
+    let masterNodeFound = false;
+    this.gridApi.forEachNode((row: any) => {
+      const isCurrentMaster = row === node || (
+        cotizacionId != null && String(row.data?.id) === String(cotizacionId)
+      );
+      if (isCurrentMaster) {
+        row.setExpanded(false);
+        masterNodeFound = true;
+      }
+      row.setRowHeight(undefined);
+    });
+
+    if (!masterNodeFound) node?.setExpanded?.(false);
     this.gridApi.onRowHeightChanged();
     if (this.detalleActivo === detalle) this.detalleActivo = null;
   }

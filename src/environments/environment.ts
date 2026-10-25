@@ -83,5 +83,5 @@ export const environment = {
   geminiApiKey: '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',
   gnewsApiKey: '94ccc596b4dfebc3f72683b6e81d81bc',
 
-  version: '5.00.391 (25 Octubre 2026 08:43) cierre y enfoque de subdetalles',
+  version: '5.00.392 (25 Octubre 2026 09:01) cierre confiable de cotizaciones',
 };

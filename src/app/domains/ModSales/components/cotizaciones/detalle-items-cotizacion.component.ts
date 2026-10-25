@@ -576,7 +576,20 @@ export class DetalleItemsCotizacionComponent implements ICellRendererAngularComp
       if (result.isConfirmed && !(await this.guardarCambiosPendientes())) return;
       if (result.isDenied) this.revert();
     }
-    this.context?.cerrarDetalle?.(this.params?.node, this);
+    const closeInMaster = this.context?.cerrarDetalle;
+    if (typeof closeInMaster === 'function') {
+      closeInMaster(this.params?.node, this);
+      return;
+    }
+
+    // Respaldo para cuando AG Grid conserve un contexto de detalle anterior.
+    const masterApi = this.params?.api;
+    const cotizacionId = this.cotizacion?.id;
+    masterApi?.forEachNode((node: any) => {
+      if (String(node.data?.id) === String(cotizacionId)) node.setExpanded(false);
+      node.setRowHeight(undefined);
+    });
+    masterApi?.onRowHeightChanged();
   }
 
   revert() {
