@@ -1352,6 +1352,7 @@ createQuote(idQuote: number, action: string) {
         if (node.data && node.data.id === quoteData.id && node.expanded) {
           node.setExpanded(false);
         }
+        node.setRowHeight(undefined);
       });
     }
     this.expandedRowId = null;
@@ -1396,10 +1397,12 @@ createQuote(idQuote: number, action: string) {
       // Collapse all, then expand selected
       this.masterGridApi.forEachNode((node: any) => {
         if (node.data && node.data.id === quoteData.id) {
+          node.setRowHeight(undefined);
           node.setExpanded(false);
           setTimeout(() => node.setExpanded(true), 50);
-        } else if (node.expanded) {
-          node.setExpanded(false);
+        } else {
+          if (node.expanded) node.setExpanded(false);
+          node.setRowHeight(0);
         }
       });
     }
@@ -1579,12 +1582,15 @@ createQuote(idQuote: number, action: string) {
     });
     this.masterGridApi.forEachNode((node: any) => {
       if (node.data?.id === quoteData.id) {
+        node.setRowHeight(undefined);
         node.setExpanded(false);
         setTimeout(() => node.setExpanded(true), 50);
-      } else if (node.expanded) {
-        node.setExpanded(false);
+      } else {
+        if (node.expanded) node.setExpanded(false);
+        node.setRowHeight(0);
       }
     });
+    this.masterGridApi.onRowHeightChanged();
   }
 
   // ==================== PEDIMENTOS METHODS ====================
@@ -1682,7 +1688,8 @@ createQuote(idQuote: number, action: string) {
       if (this.masterGridApi) {
         this.masterGridApi.setGridOption('detailCellRenderer', DetailCellRendererPedimentosComponent);
         this.masterGridApi.setGridOption('detailCellRendererParams', {
-          autoHeight: false
+          autoHeight: false,
+          context: { componentParent: this, gridApi: this.masterGridApi }
         });
 
         // Track expanded state (null providerNumber means pedimento detail)
@@ -1692,12 +1699,15 @@ createQuote(idQuote: number, action: string) {
         // Collapse all, then expand selected
         this.masterGridApi.forEachNode((node: any) => {
           if (node.data && node.data.id === quoteData.id) {
+            node.setRowHeight(undefined);
             node.setExpanded(false);
             setTimeout(() => node.setExpanded(true), 50);
-          } else if (node.expanded) {
-            node.setExpanded(false);
+          } else {
+            if (node.expanded) node.setExpanded(false);
+            node.setRowHeight(0);
           }
         });
+        this.masterGridApi.onRowHeightChanged();
       }
 
     } catch (error) {

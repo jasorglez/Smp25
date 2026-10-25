@@ -20,6 +20,7 @@ import { SignalsService } from 'app/services/signals.service';
       <div style="margin-bottom: 15px; flex-grow: 1; display: flex; flex-direction: column;">
         <div style="margin-bottom: 10px; display: flex; justify-content: space-between; align-items: center;" *ngIf="!invited">
           <strong>Bancos de: {{ providerName }}</strong>
+          <button type="button" class="btn btn-sm btn-outline-secondary ms-auto" (click)="closeDetail()" title="Cerrar detalle" aria-label="Cerrar detalle"><i class="bi bi-x-lg"></i></button>
           <div>
             <button 
               class="btn btn-sm btn-success me-2" 
@@ -476,6 +477,12 @@ export class DetallesBancosxproveedorComponent implements ICellRendererAngularCo
     this.getBanks(() => {
       this.loadBankData();
     });
+  }
+
+  closeDetail(): void {
+    const parent = this.params?.context?.componentParent;
+    if (parent?.closeProviderDetail) parent.closeProviderDetail(this.params?.node);
+    else this.params?.node?.setExpanded(false);
   }
 
   refresh(): boolean {

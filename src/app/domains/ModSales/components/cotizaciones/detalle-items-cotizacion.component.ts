@@ -82,6 +82,10 @@ const textoPdf = (value: unknown): string =>
                     (change)="cambiarEstado()">
               <option *ngFor="let e of estados" [value]="e.value">{{ e.label }}</option>
             </select>
+            <button type="button" class="btn btn-sm btn-outline-secondary" (click)="cerrarDetalle()"
+                    title="Cerrar detalle y regresar a cotizaciones" aria-label="Cerrar detalle y regresar a cotizaciones">
+              <i class="bi bi-x-lg"></i>
+            </button>
           </div>
         </div>
 
@@ -133,6 +137,10 @@ const textoPdf = (value: unknown): string =>
               [fileName]="'Cotizacion_' + (cotizacion?.numCotizacion || cotizacion?.id) + '.pdf'"
               [subject]="'Cotización ' + (cotizacion?.numCotizacion || '') + ' — ' + (cotizacion?.empresaProspecto || cotizacion?.nombreProspecto || '')">
             </app-pdf-share-buttons>
+            <button type="button" class="btn btn-sm btn-outline-secondary" (click)="cerrarDetalle()"
+                    title="Cerrar detalle y regresar a cotizaciones" aria-label="Cerrar detalle y regresar a cotizaciones">
+              <i class="bi bi-x-lg"></i>
+            </button>
           </div>
         </div>
 
@@ -550,6 +558,25 @@ export class DetalleItemsCotizacionComponent implements ICellRendererAngularComp
   async guardarCambiosPendientes(): Promise<boolean> {
     this.gridApi?.stopEditing();
     return !this.hasChanges || this.save();
+  }
+
+  async cerrarDetalle(): Promise<void> {
+    if (this.hasChanges) {
+      const result = await Swal.fire({
+        title: 'Cambios sin guardar',
+        text: '¿Deseas guardar los cambios antes de regresar a las cotizaciones?',
+        icon: 'warning',
+        showCancelButton: true,
+        showDenyButton: true,
+        confirmButtonText: 'Guardar y cerrar',
+        denyButtonText: 'Cerrar sin guardar',
+        cancelButtonText: 'Seguir editando',
+      });
+      if (result.isDismissed) return;
+      if (result.isConfirmed && !(await this.guardarCambiosPendientes())) return;
+      if (result.isDenied) this.revert();
+    }
+    this.context?.cerrarDetalle?.(this.params?.node, this);
   }
 
   revert() {

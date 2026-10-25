@@ -20,6 +20,7 @@ import { TrackingService } from 'app/services/tracking.service';
       <!-- Título y botones -->
       <div style="margin-bottom: 5px; display: flex; justify-content: space-between; align-items: center; flex-shrink: 0;" *ngIf="!invited">
         <strong>Configurar Tipo de Proveedor (Cascada)</strong>
+          <button type="button" class="btn btn-sm btn-outline-secondary ms-auto" (click)="closeDetail()" title="Cerrar detalle" aria-label="Cerrar detalle"><i class="bi bi-x-lg"></i></button>
         <div class="d-flex gap-2">
           <button
             class="btn btn-sm btn-success"
@@ -529,6 +530,12 @@ export class DetallesTiposProveedorComponent implements ICellRendererAngularComp
       this.subfamilias = [];
       this.rowData = [];
     }
+  }
+
+  closeDetail(): void {
+    const parent = this.params?.context?.componentParent;
+    if (parent?.closeProviderDetail) parent.closeProviderDetail(this.params?.node);
+    else this.params?.node?.setExpanded(false);
   }
 
   refresh(): boolean {

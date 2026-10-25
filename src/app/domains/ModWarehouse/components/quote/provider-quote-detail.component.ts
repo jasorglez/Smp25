@@ -146,6 +146,10 @@ export class ProviderQuoteDetailComponent implements OnInit {
 
   closeDetail(): void {
     this.params?.node?.setExpanded(false);
+    this.params?.api?.forEachNode((row: any) => row.setRowHeight(undefined));
+    this.params?.api?.onRowHeightChanged();
+    const parent = this.params?.context?.componentParent;
+    if (parent) { parent.expandedRowId = null; parent.expandedProviderNumber = null; }
   }
 
   async loadProviderQuoteData() {

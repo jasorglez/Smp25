@@ -21,6 +21,7 @@ import { TrackingService } from 'app/services/tracking.service';
       <div class="d-flex mb-1 align-items-center">
         <span class="badge bg-info" style="font-size: 11px;">Subfamilias de: {{ parentFamily?.description }}</span>
         <div class="d-flex gap-1 ms-auto">
+          <button type="button" class="btn btn-sm btn-outline-secondary py-0 px-1" (click)="closeDetail()" title="Cerrar detalle" aria-label="Cerrar detalle"><i class="bi bi-x-lg"></i></button>
           <button class="btn btn-sm btn-success py-0 px-1" style="font-size: 11px;" (click)="addSubfamily()" title="Agregar Subfamilia">
             <i class="bi bi-plus-lg"></i> Agregar
           </button>
@@ -129,6 +130,12 @@ export class SubfamilyDetailComponent {
 
   onGridReady(params: GridReadyEvent) {
     this.gridApi = params.api;
+  }
+
+  closeDetail(): void {
+    this.params?.node?.setExpanded(false);
+    this.params?.api?.forEachNode((row: any) => row.setRowHeight(undefined));
+    this.params?.api?.onRowHeightChanged();
   }
 
   onSelectionChanged() {
@@ -299,6 +306,7 @@ export class SubfamilyDetailComponent {
             [detailCellRendererParams]="detailCellRendererParams"
             [context]="gridContext"
             (gridReady)="onFamilyGridReady($event)"
+            (rowGroupOpened)="onFamilyRowGroupOpened($event)"
             (selectionChanged)="onFamilySelectionChanged()"
             (cellValueChanged)="onFamilyCellValueChanged($event)"
           >
@@ -366,7 +374,8 @@ export class FamSubfamComponent {
     // Initialize context
     this.gridContext = {
       allSubfamilies: this.allSubfamilies,
-      reloadSubfamilies: () => this.loadAllSubfamilies()
+      reloadSubfamilies: () => this.loadAllSubfamilies(),
+      componentParent: this
     };
 
     this.detailCellRendererParams = {
@@ -388,6 +397,22 @@ export class FamSubfamComponent {
 
   onFamilyGridReady(params: GridReadyEvent) {
     this.familyGridApi = params.api;
+  }
+
+  onFamilyRowGroupOpened(event: any): void {
+    if (event.node?.expanded) {
+      event.api.forEachNode((row: any) => {
+        if (row.id !== event.node.id) {
+          if (row.expanded) row.setExpanded(false);
+          row.setRowHeight(0);
+        } else {
+          row.setRowHeight(undefined);
+        }
+      });
+    } else {
+      event.api.forEachNode((row: any) => row.setRowHeight(undefined));
+    }
+    event.api.onRowHeightChanged();
   }
 
   async loadFamilies() {

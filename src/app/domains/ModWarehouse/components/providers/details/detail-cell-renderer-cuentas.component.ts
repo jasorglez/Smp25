@@ -20,6 +20,7 @@ import { DetallesComponentCuentasAbono } from './subdetalles/Detalles-Cuentas-ab
       <div style="margin-bottom: 15px; flex-grow: 1; display: flex; flex-direction: column;">
         <div style="margin-bottom: 10px; display: flex; justify-content: space-between; align-items: center;">
           <strong>Abonos de: {{ providerName }}</strong>
+          <button type="button" class="btn btn-sm btn-outline-secondary ms-auto" (click)="closeDetail()" title="Cerrar detalle" aria-label="Cerrar detalle"><i class="bi bi-x-lg"></i></button>
           <!--<div>
             <button 
               class="btn btn-sm btn-success me-2" 
@@ -271,6 +272,12 @@ export class DetailCellRendererComponentCuentas implements ICellRendererAngularC
     // Asegurarse de que el contexto se pase al gridOptions del detalle
     this.cuentaGridOptions.detailCellRendererParams.context = params.context;
     this.loadCuentaData();
+  }
+
+  closeDetail(): void {
+    const parent = this.params?.context?.componentParent;
+    if (parent?.closeProviderDetail) parent.closeProviderDetail(this.params?.node);
+    else this.params?.node?.setExpanded(false);
   }
 
   refresh(): boolean {

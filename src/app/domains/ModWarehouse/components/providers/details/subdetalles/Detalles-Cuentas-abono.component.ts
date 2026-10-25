@@ -24,6 +24,7 @@ import { ProvidersService } from 'app/services/providers.service';
       <div style="margin-bottom: 15px; flex-grow: 1; display: flex; flex-direction: column;">
         <div style="margin-bottom: 10px; display: flex; justify-content: space-between; align-items: center;">
           <strong>Detalles de cuentas: {{ providerName }}</strong>
+          <button type="button" class="btn btn-sm btn-outline-secondary ms-auto" (click)="closeDetail()" title="Cerrar detalle" aria-label="Cerrar detalle"><i class="bi bi-x-lg"></i></button>
           <div>
             <button 
               class="btn btn-sm btn-success me-2" 
@@ -194,6 +195,12 @@ export class DetallesComponentCuentasAbono implements ICellRendererAngularComp {
           return true
         }, flex: 1 },
   ];
+
+  closeDetail(): void {
+    this.params?.node?.setExpanded(false);
+    this.params?.api?.forEachNode((row: any) => row.setRowHeight(undefined));
+    this.params?.api?.onRowHeightChanged();
+  }
 
   agInit(params: ICellRendererParams): void {
     console.log(params.data)

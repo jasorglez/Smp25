@@ -1376,6 +1376,16 @@ export class RequisitionsComponent implements CanComponentDeactivate {
     }
   }
 
+  closeItemsDetail(node: any): void {
+    if (!this.masterGridApi) return;
+    node?.setExpanded(false);
+    if (node?.data) { node.data.detailType = null; node.data.isExpanded = false; }
+    this.expandedRowId = null;
+    this.masterGridApi.forEachNode((row: any) => row.setRowHeight(undefined));
+    this.masterGridApi.onRowHeightChanged();
+    this.masterGridApi.redrawRows();
+  }
+
   collapseReportDetail() {
     if (this.expandedRowId && this.masterGridApi) {
       this.masterGridApi.forEachNode((node: any) => {

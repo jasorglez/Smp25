@@ -112,7 +112,9 @@ export class DetalleCuadroComparativoComponent implements ICellRendererAngularCo
     if (api) {
       api.forEachNode((node: any) => {
         if (node.data?.id === qid) node.setExpanded(false);
+        node.setRowHeight(undefined);
       });
+      api.onRowHeightChanged();
     }
   }
 

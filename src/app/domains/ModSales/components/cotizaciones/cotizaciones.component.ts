@@ -373,8 +373,18 @@ export class CotizacionesComponent implements OnInit, OnDestroy {
         idCompany: this.root,
         config: this.config,
         registrarDetalle: (detalle: DetalleItemsCotizacionComponent) => { this.detalleActivo = detalle; },
+        cerrarDetalle: (node: any, detalle: DetalleItemsCotizacionComponent) => this.cerrarDetalle(node, detalle),
       },
     });
+  }
+
+  private cerrarDetalle(node: any, detalle: DetalleItemsCotizacionComponent): void {
+    if (!this.gridApi || !node) return;
+    this.gridApi.stopEditing();
+    node.setExpanded(false);
+    this.gridApi.forEachNode((row: any) => row.setRowHeight(undefined));
+    this.gridApi.onRowHeightChanged();
+    if (this.detalleActivo === detalle) this.detalleActivo = null;
   }
 
   // ── Cascade ───────────────────────────────────────────────────────────────

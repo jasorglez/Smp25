@@ -15,6 +15,9 @@ import { DetailCellRendererPedimentoReportComponent } from './detail-cell-render
   imports: [CommonModule, AgGridModule, ButtonCellRendererComponent, PdfButtonCellRendererPedimentosComponent, DetailCellRendererPedimentosItemsComponent, DetailCellRendererProveedorComponent, DetailCellRendererPedimentoReportComponent],
   template: `
     <div class="detail-grid-container">
+      <div class="d-flex justify-content-end mb-1">
+        <button type="button" class="btn btn-sm btn-outline-secondary" (click)="closeDetail()" title="Cerrar detalle" aria-label="Cerrar detalle"><i class="bi bi-x-lg"></i></button>
+      </div>
       <!-- Grid con tamaño completo -->
       <div style="flex: 1 1 auto; min-height: 0; position: relative; overflow: hidden;">
         <ag-grid-angular
@@ -55,6 +58,14 @@ export class DetailCellRendererPedimentosComponent {
   agInit(params: ICellRendererParams): void {
     this.params = params;
     this.buildRowData();
+  }
+
+  closeDetail(): void {
+    this.params?.node?.setExpanded(false);
+    this.params?.api?.forEachNode((row: any) => row.setRowHeight(undefined));
+    this.params?.api?.onRowHeightChanged();
+    const parent = this.params?.context?.componentParent;
+    if (parent) { parent.expandedRowId = null; parent.expandedProviderNumber = null; }
   }
 
   onGridReady(params: any) {

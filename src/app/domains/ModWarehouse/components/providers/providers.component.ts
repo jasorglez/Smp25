@@ -921,6 +921,18 @@ export class ProvidersComponent implements CanComponentDeactivate {
     }
   }
 
+  private priorProviderFilterModel: any = null;
+
+  closeProviderDetail(node: any): void {
+    if (!this.gridApi) return;
+    node?.setExpanded(false);
+    this.gridApi.forEachNode((row: any) => row.setRowHeight(undefined));
+    this.gridApi.setFilterModel(this.priorProviderFilterModel);
+    this.gridApi.onFilterChanged();
+    this.gridApi.onRowHeightChanged();
+    this.priorProviderFilterModel = null;
+  }
+
   onCellClicked(event: any): void {
     event.node.setSelected(true);
     console.log('Celda clickeada:', event);
@@ -945,10 +957,12 @@ export class ProvidersComponent implements CanComponentDeactivate {
 
       if (isCurrentlyExpanded) {
         // Si se hace clic en la misma celda que ya está abierta...
-        // ...ya se cerró arriba, solo limpiar el filtro.
-        api.setFilterModel(null);
+        // ...ya se cerró arriba, restaurar los filtros que tenía el usuario.
+        api.setFilterModel(this.priorProviderFilterModel);
         api.onFilterChanged();
+        this.priorProviderFilterModel = null;
       } else {
+        if (this.priorProviderFilterModel === null) this.priorProviderFilterModel = api.getFilterModel();
         // Si se hace clic en una celda diferente (o la fila está cerrada)...
         // ...se establece el nuevo tipo de detalle y se expande la fila.
 
@@ -1011,6 +1025,7 @@ export class ProvidersComponent implements CanComponentDeactivate {
         params.successCallback(params.data.detailData);
       },
       context: { // Pasamos las funciones de CRUD a los componentes de detalle
+        componentParent: this,
         idRoot: this.idRoot, // ⭐ Pasar idRoot al contexto para los detail renderers
         CONTACT: { // Para la grilla de Contactos
           load: (providerId: number, type: string, callback: (data: any[]) => void) => {

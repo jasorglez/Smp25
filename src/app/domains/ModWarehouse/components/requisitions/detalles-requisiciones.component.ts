@@ -57,7 +57,9 @@ export class DetallesRequisicionesComponent implements OnInit {
   }
 
   closeDetail(): void {
-    this.params?.node?.setExpanded(false);
+    const parent = this.context?.componentParent;
+    if (parent?.closeItemsDetail) parent.closeItemsDetail(this.params?.node);
+    else this.params?.node?.setExpanded(false);
   }
 
   loadData() {

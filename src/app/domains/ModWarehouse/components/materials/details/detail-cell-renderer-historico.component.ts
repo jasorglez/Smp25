@@ -14,6 +14,7 @@ import { CommonModule } from '@angular/common';
       <div style="margin-bottom: 15px; flex-grow: 1; display: flex; flex-direction: column;">
         <div style="margin-bottom: 10px; display: flex; justify-content: space-between; align-items: center;">
           <strong>Histórico de: {{ materialName }}</strong>
+          <button type="button" class="btn btn-sm btn-outline-secondary" (click)="closeDetail()" title="Cerrar detalle" aria-label="Cerrar detalle"><i class="bi bi-x-lg"></i></button>
         </div>
         <ag-grid-angular
           class="ag-theme-quartz small-text-ag-grid"
@@ -128,6 +129,12 @@ export class DetailCellRendererHistoricoComponent implements ICellRendererAngula
       const dateB = new Date(b.fechaCambio).getTime();
       return dateB - dateA; // Descendente
     });
+  }
+
+  closeDetail(): void {
+    this.params?.node?.setExpanded(false);
+    this.params?.api?.forEachNode((row: any) => row.setRowHeight(undefined));
+    this.params?.api?.onRowHeightChanged();
   }
 
   refresh(): boolean {
