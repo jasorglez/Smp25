@@ -361,6 +361,9 @@ export class SideBarComponent {
       const selectedCompany = this.rootData.find(r => r.id === parseInt(this.selectedRoot()));
       if (selectedCompany) {
         this.signalsService.setCompanyNameSmall(selectedCompany.nameSmall || selectedCompany.name);
+        this.signalsService.setLicenseType(this.normalizeLicenseType(selectedCompany.licenseType));
+      } else {
+        this.signalsService.setLicenseType(null);
       }
 
       this.trackingService.setCompany(String(this.selectedRoot()));
@@ -386,6 +389,7 @@ export class SideBarComponent {
           );
           this.signalsService.setIsAdvanced(this.rootData[0].advanced);
           this.signalsService.setCompanyNameSmall(this.rootData[0].nameSmall || this.rootData[0].name);
+          this.signalsService.setLicenseType(this.normalizeLicenseType(this.rootData[0].licenseType));
           this.trackingService.setCompany(this.rootData[0].id);
           this.getHeadersCompanys(this.rootData[0].id);
           this.loadLicenseInfo(parseInt(this.rootData[0].id));
@@ -695,7 +699,15 @@ error: (error) => {
       const days   = data?.daysRemaining ?? data?.licenseDays ?? 15;
       this.signalsService.setLicenseStatus(status);
       this.signalsService.setLicenseDaysRemaining(days);
+      this.signalsService.setLicenseType(this.normalizeLicenseType(data?.licenseType));
     });
+  }
+
+  private normalizeLicenseType(value: unknown): 'trial' | 'paid' | 'suspended' | null {
+    const normalized = String(value ?? '').trim().toLowerCase();
+    return normalized === 'trial' || normalized === 'paid' || normalized === 'suspended'
+      ? normalized
+      : null;
   }
 
   async onCpSelected(event: Event) {

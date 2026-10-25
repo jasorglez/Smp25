@@ -6,6 +6,7 @@ import { IncomesAndExpensesService } from 'app/services/incomes-and-expenses.ser
 import { SignalsService } from 'app/services/signals.service';
 import { CuentasContablesService } from 'app/services/cuentas-contables.service';
 import { TrackingService } from 'app/services/tracking.service';
+import { PdfPreviewService } from 'app/services/pdf-preview.service';
 import { ICuentaContable } from 'app/interface/icuentas-contables';
 import { NgApexchartsModule } from 'ng-apexcharts';
 import html2canvas from 'html2canvas';
@@ -92,6 +93,7 @@ export class DashboardHcoComponent {
   private cuentasContablesService = inject(CuentasContablesService);
   private signalsService = inject(SignalsService);
   private trackingService = inject(TrackingService);
+  private pdfPreview = inject(PdfPreviewService);
 
   // Estado del componente
   public rootId: number;
@@ -188,8 +190,8 @@ export class DashboardHcoComponent {
         },
       };
 
-      this.trackingService.addLog(this.trackingService.getnameComp(), 'Descargó PDF dashboard HCO', 'Admon / Dashboard HCO', this.trackingService.getEmail());
-      (pdfMake as any).createPdf(documentDefinition).download(this.getExportFileName('pdf'));
+      this.trackingService.addLog(this.trackingService.getnameComp(), 'Generó vista previa PDF dashboard HCO', 'Admon / Dashboard HCO', this.trackingService.getEmail());
+      await this.pdfPreview.show((pdfMake as any).createPdf(documentDefinition), 'Dashboard HCO', this.getExportFileName('pdf'));
     } catch (error) {
       console.error('Error exportando dashboard a PDF:', error);
       alerts.basicAlert('Error', 'No fue posible exportar el dashboard a PDF.', 'error');

@@ -23,6 +23,7 @@ import pdfMake from 'pdfmake/build/pdfmake';
 import * as pdfFonts from 'pdfmake/build/vfs_fonts';
 import { lastValueFrom } from 'rxjs';
 import { TrackingService } from 'app/services/tracking.service';
+import { PdfPreviewService } from 'app/services/pdf-preview.service';
 (pdfMake as any).vfs = (pdfFonts as any).pdfMake?.vfs || (pdfFonts as any).default?.pdfMake?.vfs;
 
 @Component({
@@ -285,6 +286,7 @@ export class DetallesEgresospalaciosComponent implements OnInit, OnDestroy {
 
   private storagesService = inject(StoragesService);
   private trackingService = inject(TrackingService);
+  private pdfPreview = inject(PdfPreviewService);
 
   private params!: ICellRendererParams;
   private gridApi!: GridApi;
@@ -2944,19 +2946,9 @@ export class DetallesEgresospalaciosComponent implements OnInit, OnDestroy {
 
       alerts.closeLoading();
 
-      // Manejar popup blocker
-      this.trackingService.addLog(this.trackingService.getnameComp(), 'Imprimió/abrió PDF reporte fotográfico egreso palacio', 'Admon / Egresos Palacio', this.trackingService.getEmail());
-      const pdf = pdfMake.createPdf(docDefinition);
-      try {
-        pdf.open();
-      } catch (error) {
-        pdf.download(`Reporte_Fotografico_${this.expenditureData?.numberDocument || 'SN'}_${new Date().getTime()}.pdf`);
-        alerts.basicAlert(
-          'Reporte descargado',
-          'El navegador bloqueó la ventana emergente. El reporte se descargó automáticamente.',
-          'info'
-        );
-      }
+      this.trackingService.addLog(this.trackingService.getnameComp(), 'Generó vista previa PDF reporte fotográfico egreso palacio', 'Admon / Egresos Palacio', this.trackingService.getEmail());
+      const fileName = `Reporte_Fotografico_${this.expenditureData?.numberDocument || 'SN'}_${new Date().getTime()}.pdf`;
+      void this.pdfPreview.show(pdfMake.createPdf(docDefinition), 'Reporte fotográfico de egreso', fileName);
 
     } catch (error) {
       console.error(error);

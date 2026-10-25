@@ -6,6 +6,7 @@ import { ChatbotComponent } from './shared/chatbot/chatbot.component';
 import { TrackingService } from './services/tracking.service';
 import { environment } from '@env/environment';
 import { PdfPreviewHostComponent } from './shared/pdf-preview-host/pdf-preview-host.component';
+import { PdfTrialWatermarkService } from './services/pdf-trial-watermark.service';
 
 
 @Component({
@@ -21,6 +22,7 @@ export class AppComponent implements OnInit {
   private authService    = inject(AuthService);
   private signalsService = inject(SignalsService);
   private trackingService = inject(TrackingService);
+  private pdfTrialWatermark = inject(PdfTrialWatermarkService);
 
   @HostListener('window:beforeunload')
   onBeforeUnload(): void {

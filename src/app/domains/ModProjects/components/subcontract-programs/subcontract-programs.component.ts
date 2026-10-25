@@ -12,6 +12,7 @@ import { MaterialsService } from 'app/services/materials.service';
 import { SignalsService } from 'app/services/signals.service';
 import { SubcontractProgramService } from 'app/services/subcontract-program.service';
 import { SubcontractorContextService } from 'app/services/subcontractor-context.service';
+import { PdfPreviewService } from 'app/services/pdf-preview.service';
 
 (pdfMake as any).vfs = (pdfFonts as any).pdfMake?.vfs || (pdfFonts as any).default?.pdfMake?.vfs;
 
@@ -24,6 +25,7 @@ export class SubcontractProgramsComponent {
   private programsService = inject(SubcontractProgramService);
   private materialsService = inject(MaterialsService);
   private signals = inject(SignalsService);
+  private pdfPreview = inject(PdfPreviewService);
   context = inject(SubcontractorContextService);
   providers: any[] = [];
   programs: any[] = [];
@@ -208,6 +210,7 @@ export class SubcontractProgramsComponent {
       ]));
     });
     body.push([{ text: 'TOTAL', colSpan: 5, alignment: 'right', bold: true }, {}, {}, {}, {}, { text: this.total.toLocaleString('es-MX', { style: 'currency', currency: 'MXN' }), bold: true }]);
-    pdfMake.createPdf({ pageOrientation: 'landscape', pageMargins: [24, 28, 24, 28], content: [{ text: 'PROGRAMA DE TRABAJO POR SUBCONTRATISTA', style: 'title' }, { columns: [{ text: `PROYECTO / TORRE: ${this.program.projectName}` }, { text: `SUBCONTRATISTA: ${provider}`, alignment: 'right' }] }, { text: `PROGRAMA: ${this.program.name}`, margin: [0, 4, 0, 12] }, { table: { headerRows: 1, widths: [72, '*', 42, 45, 62, 68], body }, layout: 'lightHorizontalLines', fontSize: 7 }], styles: { title: { bold: true, fontSize: 14, alignment: 'center', margin: [0, 0, 0, 12] } }, defaultStyle: { fontSize: 9 } } as any).download(`Programa_${this.program.projectName || 'Subcontratista'}.pdf`);
+    const pdf = pdfMake.createPdf({ pageOrientation: 'landscape', pageMargins: [24, 28, 24, 28], content: [{ text: 'PROGRAMA DE TRABAJO POR SUBCONTRATISTA', style: 'title' }, { columns: [{ text: `PROYECTO / TORRE: ${this.program.projectName}` }, { text: `SUBCONTRATISTA: ${provider}`, alignment: 'right' }] }, { text: `PROGRAMA: ${this.program.name}`, margin: [0, 4, 0, 12] }, { table: { headerRows: 1, widths: [72, '*', 42, 45, 62, 68], body }, layout: 'lightHorizontalLines', fontSize: 7 }], styles: { title: { bold: true, fontSize: 14, alignment: 'center', margin: [0, 0, 0, 12] } }, defaultStyle: { fontSize: 9 } } as any);
+    void this.pdfPreview.show(pdf, 'Programa de trabajo por subcontratista', `Programa_${this.program.projectName || 'Subcontratista'}.pdf`);
   }
 }

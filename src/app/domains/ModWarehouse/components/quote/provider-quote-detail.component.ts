@@ -15,6 +15,7 @@ import { PrefixSetupService } from 'app/services/prefix-setup.service';
 import pdfMake from 'pdfmake/build/pdfmake';
 import * as pdfFonts from 'pdfmake/build/vfs_fonts';
 import { TrackingService } from 'app/services/tracking.service';
+import { PdfPreviewService } from 'app/services/pdf-preview.service';
 (pdfMake as any).vfs = (pdfFonts as any).pdfMake?.vfs || (pdfFonts as any).default?.pdfMake?.vfs;
 
 @Component({
@@ -62,6 +63,7 @@ import { TrackingService } from 'app/services/tracking.service';
 })
 export class ProviderQuoteDetailComponent implements OnInit {
   private trackingService = inject(TrackingService);
+  private pdfPreview = inject(PdfPreviewService);
 
   private params!: ICellRendererParams;
   private gridApi!: GridApi;
@@ -755,8 +757,8 @@ export class ProviderQuoteDetailComponent implements OnInit {
         }
       };
 
-      this.trackingService.addLog(this.trackingService.getnameComp(), 'Imprimió/abrió PDF cotización proveedor', 'Almacén / Cotización', this.trackingService.getEmail());
-      pdfMake.createPdf(docDefinition).open();
+      this.trackingService.addLog(this.trackingService.getnameComp(), 'Generó vista previa PDF cotización proveedor', 'Almacén / Cotización', this.trackingService.getEmail());
+      void this.pdfPreview.show(pdfMake.createPdf(docDefinition), `Cotización ${this.providerName}`, `cotizacion-${this.providerName}.pdf`);
 
     } catch (error) {
       console.error('Error generando el reporte PDF:', error);

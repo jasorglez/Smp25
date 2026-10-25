@@ -8,6 +8,7 @@ import { RootService } from 'app/services/root.service';
 import { SignalsService } from 'app/services/signals.service';
 import { Base64EncodeService } from 'app/services/base64encode.service';
 import { TrackingService } from 'app/services/tracking.service';
+import { PdfPreviewService } from 'app/services/pdf-preview.service';
 import { lastValueFrom } from 'rxjs';
 import pdfMake from 'pdfmake/build/pdfmake';
 import pdfFonts from 'pdfmake/build/vfs_fonts';
@@ -40,8 +41,8 @@ const GRAY  = '#555555';
           <span class="badge bg-secondary">{{ rowData.length }} materiales</span>
 
           <!-- Botón PDF -->
-          <button class="btn btn-sm btn-danger ms-2" (click)="generatePdf()" title="Exportar PDF">
-            <i class="bi bi-file-earmark-pdf"></i> PDF
+          <button class="btn btn-sm btn-danger ms-2" (click)="generatePdf()" title="Vista preliminar PDF">
+            <i class="bi bi-file-earmark-pdf"></i> Vista previa PDF
           </button>
 
           <!-- Botón cerrar -->
@@ -75,6 +76,7 @@ export class DetalleCuadroComparativoComponent implements ICellRendererAngularCo
   private signalsService  = inject(SignalsService);
   private b64Service      = inject(Base64EncodeService);
   private trackingService = inject(TrackingService);
+  private pdfPreview      = inject(PdfPreviewService);
 
   private params: any;
   private quoteRow: any;
@@ -406,7 +408,7 @@ export class DetalleCuadroComparativoComponent implements ICellRendererAngularCo
       defaultStyle: { font: 'Roboto' },
     };
 
-    this.trackingService.addLog(this.trackingService.getnameComp(), 'Descargó PDF cuadro comparativo', 'Almacén / Cotización', this.trackingService.getEmail());
-    pdfMake.createPdf(docDef).download('cuadro-comparativo.pdf');
+    this.trackingService.addLog(this.trackingService.getnameComp(), 'Generó vista previa PDF cuadro comparativo', 'Almacén / Cotización', this.trackingService.getEmail());
+    void this.pdfPreview.show(pdfMake.createPdf(docDef), 'Cuadro comparativo de precios', 'cuadro-comparativo.pdf');
   }
 }

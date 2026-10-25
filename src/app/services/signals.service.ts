@@ -243,11 +243,17 @@ getMasterUpdateTrigger() {
   /* Licencia */
   private licenseStatus       = signal<'active' | 'trial' | 'expired'>('trial');
   private licenseDaysRemaining = signal<number>(15);
+  private licenseType = signal<'trial' | 'paid' | 'suspended' | null>(null);
 
   setLicenseStatus(status: 'active' | 'trial' | 'expired') {
     this.licenseStatus.set(status);
   }
   getLicenseStatus() { return this.licenseStatus; }
+
+  setLicenseType(type: 'trial' | 'paid' | 'suspended' | null) {
+    this.licenseType.set(type);
+  }
+  getLicenseType() { return this.licenseType; }
 
   setLicenseDaysRemaining(days: number) {
     this.licenseDaysRemaining.set(days);
