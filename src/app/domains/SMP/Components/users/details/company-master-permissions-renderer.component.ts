@@ -65,7 +65,7 @@ export class CompanyMasterPermissionsRendererComponent implements ICellRendererA
 
   private load(): void {
     this.loading = true;
-    forkJoin({ masters: this.service.getMasterPermissions(this.companyId), assigned: this.service.getCompanyUserPermissions(this.companyId, this.userId) }).subscribe({
+    forkJoin({ masters: this.service.getCompanyMasterPermissions(this.companyId), assigned: this.service.getCompanyUserPermissions(this.companyId, this.userId) }).subscribe({
       next: ({ masters, assigned }) => {
         this.masters = Array.isArray(masters) ? masters : [];
         const ids = (Array.isArray(assigned) ? assigned : []).filter((item: any) => item.active !== false).map((item: any) => Number(item.permissionId));

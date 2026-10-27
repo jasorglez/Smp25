@@ -455,7 +455,7 @@ export class UsersComponent implements OnDestroy {
         cellRenderer: ButtonCellRendererExpenditureComponent,
         cellRendererParams: {
           icon: 'bi bi-shield-lock',
-          onClick: (node: any) => this.openPermisosMaestros(node)
+          onClick: (node: any) => this.openMasterPermissionsCascade(node)
         },
         valueGetter: (params) => params.data?.countPermisosMaestros ?? 0,
         cellStyle: { backgroundColor: '#fce4ec', cursor: 'pointer' }
@@ -1009,58 +1009,8 @@ export class UsersComponent implements OnDestroy {
     setTimeout(() => node.setExpanded(true), 50);
   }
 
-  openPermisosMaestros(node: any): void {
-    const data = node?.data;
-    if (!data?.id) return;
-    const idUser = data.id;
-    const userName = data.displayName || data.email || 'Usuario';
-
-    this.permitionsService.getInfoByUser(idUser).pipe(
-      catchError(() => of([]))
-    ).subscribe((branchesData: any) => {
-      let idBranch = 0;
-      const arr = Array.isArray(branchesData) ? branchesData : [];
-      if (arr.length > 0) {
-        idBranch = arr[0].Id ?? arr[0].id ?? 0;
-      }
-      if (!idBranch) {
-        this.usersxrootService.getUsersxPermissionsGeneral('branch', idUser).pipe(
-          catchError(() => of([]))
-        ).subscribe((branchPerms: any) => {
-          const perms = Array.isArray(branchPerms) ? branchPerms : [];
-          idBranch = perms.length > 0 ? (perms[0].idPermission ?? perms[0].IdPermission) : 0;
-          if (!idBranch) {
-            alerts.basicAlert('Permisos maestros', 'El usuario no tiene sucursales asignadas. Asigne sucursales y departamentos primero.', 'warning');
-            return;
-          }
-          this.continuarAbrirPermisos(idUser, idBranch, userName);
-        });
-      } else {
-        this.continuarAbrirPermisos(idUser, idBranch, userName);
-      }
-    });
-  }
-
-  private continuarAbrirPermisos(idUser: number, idBranch: number, userName: string): void {
-    this.permitionsService.getRolYPosicion(idUser, idBranch).pipe(
-      catchError(() => of([]))
-    ).subscribe((rolesData: any) => {
-      const rolesArr = Array.isArray(rolesData) ? rolesData : [];
-      const first = rolesArr.length > 0 ? rolesArr[0] : null;
-      const idRole = first?.idRole ?? first?.IdRole ?? 0;
-      const idPosicion = first?.idPosicion ?? first?.IdPosicion ?? 0;
-      if (!idRole || !idPosicion) {
-        alerts.basicAlert('Permisos maestros', 'El usuario tiene sucursales pero no tiene departamentos/roles asignados. Expanda una sucursal y configure departamentos primero.', 'warning');
-        return;
-      }
-      this.modalService.openPermissions({
-        idUser,
-        idBranch,
-        idRole,
-        idPosicion,
-        userName
-      });
-    });
+  openMasterPermissionsCascade(node: any): void {
+    this.openEmpresasCascade(node);
   }
 
   updateEmpresasCount(userId: number, count: number): void {

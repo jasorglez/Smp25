@@ -23,6 +23,8 @@ export const environment = {
   urlAzure: 'https://bi24.azurewebsites.net/',
 
   urlSecurity: 'https://endpoints.biapp.com.mx/api', // 5003
+  // Endpoints nuevos de permisos por empresa: usar ambiente de pruebas.
+  urlSecurityStaging: 'https://ms-pruebas-api.bi2.mx/api',
   //urlSecurity     : 'http://localhost:5260/api',
 
   urlSmp: 'https://endpoints.biapp.com.mx/smp/api', // 5004
@@ -75,5 +77,5 @@ export const environment = {
     // publicKey: 'TEST-4399133a-4676-42a2-ab85-d946370bf96a',
   },
 
-  version: '5.00.394 (27 Octubre 2026 09:42) avisos de guardado no invasivos',
+  version: '5.00.396 (27 Octubre 2026 10:35) permisos anidados de prueba',
 };
