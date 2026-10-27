@@ -1,0 +1,23 @@
+:host {
+  display: block;
+  min-height: 0;
+}
+
+.logs-grid-container {
+  width: 100%;
+  min-height: 0;
+}
+
+.logs-grid {
+  display: block;
+  width: 80vw;
+  height: calc(100dvh - 180px);
+  min-height: 600px;
+}
+
+@media (max-height: 780px) {
+  .logs-grid {
+    height: calc(100dvh - 140px);
+    min-height: 500px;
+  }
+}
