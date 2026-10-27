@@ -65,6 +65,18 @@ export class UsersDetailWrapperComponent implements ICellRendererAngularComp, Af
   }
 
   closeDetail(): void {
-    this.componentParent?.closeUserDetail(this.params?.node);
+    const rendererNode = this.params?.node;
+    const masterNode = rendererNode?.detail && rendererNode.parent
+      ? rendererNode.parent
+      : rendererNode;
+
+    if (masterNode?.data) {
+      masterNode.data.detailType = null;
+      masterNode.setExpanded(false);
+    }
+
+    this.componentParent?.closeUserDetail?.(masterNode);
+    this.params?.api?.setFilterModel(null);
+    this.params?.api?.onFilterChanged();
   }
 }

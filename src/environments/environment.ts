@@ -75,5 +75,5 @@ export const environment = {
     // publicKey: 'TEST-4399133a-4676-42a2-ab85-d946370bf96a',
   },
 
-  version: '5.00.401 (27 Octubre 2026 12:10) permisos por empresa inicializados',
+  version: '5.00.402 (27 Octubre 2026 12:14) corregir cierre de detalles',
 };
