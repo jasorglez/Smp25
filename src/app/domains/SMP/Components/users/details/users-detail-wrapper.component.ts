@@ -9,7 +9,13 @@ import { DetalleEmpresasUsuarioComponent } from './detalle-empresas-usuario.comp
   standalone: true,
   imports: [CommonModule, DetallePermisosXSucursalesComponent, DetalleEmpresasUsuarioComponent],
   template: `
-    <div style="height:100%;overflow:auto;">
+    <div style="height:100%;display:flex;flex-direction:column;overflow:hidden;">
+      <div class="d-flex justify-content-end align-items-center px-2 py-1 border-bottom bg-white">
+        <button class="btn btn-sm btn-outline-secondary" (click)="closeDetail()" title="Volver a todos los usuarios" aria-label="Volver a todos los usuarios">
+          <i class="bi bi-x-lg"></i> Cerrar detalle
+        </button>
+      </div>
+      <div style="flex:1;min-height:0;overflow:auto;">
       <!-- Permisos/Sucursales (renderer existente) -->
       <app-detalle-permisos-x-sucursales
         *ngIf="detailType === 'permissions'"
@@ -23,6 +29,7 @@ import { DetalleEmpresasUsuarioComponent } from './detalle-empresas-usuario.comp
         [userName]="userName"
         (countChanged)="onCountChanged($event)">
       </app-detalle-empresas-usuario>
+      </div>
     </div>
   `
 })
@@ -55,5 +62,9 @@ export class UsersDetailWrapperComponent implements ICellRendererAngularComp, Af
 
   onCountChanged(count: number): void {
     this.componentParent?.updateEmpresasCount(this.userId, count);
+  }
+
+  closeDetail(): void {
+    this.componentParent?.closeUserDetail(this.params?.node);
   }
 }

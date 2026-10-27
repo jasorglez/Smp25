@@ -1009,6 +1009,15 @@ export class UsersComponent implements OnDestroy {
     setTimeout(() => node.setExpanded(true), 50);
   }
 
+  closeUserDetail(node: any): void {
+    if (node?.data) {
+      node.setExpanded(false);
+      node.data.detailType = null;
+    }
+    this.gridApi?.setFilterModel(null);
+    this.gridApi?.onFilterChanged();
+  }
+
   openMasterPermissionsCascade(node: any): void {
     this.openEmpresasCascade(node);
   }

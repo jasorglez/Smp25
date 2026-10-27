@@ -75,5 +75,5 @@ export const environment = {
     // publicKey: 'TEST-4399133a-4676-42a2-ab85-d946370bf96a',
   },
 
-  version: '5.00.398 (27 Octubre 2026 10:52) más espacio permisos maestros',
+  version: '5.00.400 (27 Octubre 2026 11:04) cerrar cualquier detalle de usuario',
 };
