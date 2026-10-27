@@ -1,10 +1,114 @@
 import { onDocumentCreated, onDocumentUpdated } from "firebase-functions/v2/firestore";
 import { setGlobalOptions } from "firebase-functions/v2";
+import { defineSecret } from "firebase-functions/params";
+import { HttpsError, onRequest } from "firebase-functions/v2/https";
 import * as admin from "firebase-admin";
 import { v4 as uuidv4 } from "uuid";
 
 admin.initializeApp();
 setGlobalOptions({ region: "us-central1" });
+
+const groqApiKey = defineSecret("GROQ_API_KEY");
+const SECURITY_API = "https://endpoints.biapp.com.mx/api";
+
+type ChatCompletionMessage = { role: "system" | "user" | "assistant"; content: string };
+
+async function verifyBusinessSession(token: string, email: string): Promise<string> {
+  const result = await fetch(`${SECURITY_API}/User/email/${encodeURIComponent(email)}`, {
+    headers: { Authorization: `Bearer ${token}` },
+    signal: AbortSignal.timeout(8000),
+  });
+  if (!result.ok) throw new HttpsError("unauthenticated", "La sesión no es válida.");
+  const payload = await result.json() as { data?: { id?: number; email?: string; Email?: string } };
+  const user = payload?.data;
+  const verifiedEmail = String(user?.email ?? user?.Email ?? "").trim().toLowerCase();
+  if (!user?.id || verifiedEmail !== email.trim().toLowerCase()) {
+    throw new HttpsError("unauthenticated", "No se pudo validar al usuario.");
+  }
+  return String(user.id);
+}
+
+async function enforceChatRateLimit(userId: string): Promise<void> {
+  const reference = admin.firestore().collection("chatbot_ai_usage").doc(userId);
+  const now = Date.now();
+  await admin.firestore().runTransaction(async transaction => {
+    const snapshot = await transaction.get(reference);
+    const windowStart = Number(snapshot.data()?.windowStart ?? 0);
+    const count = Number(snapshot.data()?.count ?? 0);
+    if (now - windowStart < 60_000 && count >= 20) {
+      throw new HttpsError("resource-exhausted", "Se alcanzó el límite temporal de consultas.");
+    }
+    transaction.set(reference, now - windowStart < 60_000
+      ? { windowStart, count: count + 1 }
+      : { windowStart: now, count: 1 });
+  });
+}
+
+export const chatbotCompletion = onRequest(
+  { cors: true, secrets: [groqApiKey], timeoutSeconds: 60, memory: "256MiB", maxInstances: 10 },
+  async (request, response) => {
+    if (request.method !== "POST") {
+      response.status(405).json({ message: "Método no permitido." });
+      return;
+    }
+
+    try {
+      const authorization = request.get("authorization") ?? "";
+      const token = authorization.startsWith("Bearer ") ? authorization.slice(7).trim() : "";
+      const email = typeof request.body?.email === "string" ? request.body.email.trim() : "";
+      const messages = request.body?.messages as unknown;
+      if (!token || !email || email.length > 254) {
+        throw new HttpsError("unauthenticated", "Inicia sesión para usar el asistente.");
+      }
+      if (!Array.isArray(messages) || messages.length < 2 || messages.length > 21) {
+        throw new HttpsError("invalid-argument", "La conversación no es válida.");
+      }
+
+      let totalCharacters = 0;
+      const safeMessages: ChatCompletionMessage[] = messages.map((item: unknown) => {
+        const message = item as Partial<ChatCompletionMessage>;
+        if (!( ["system", "user", "assistant"] as unknown[]).includes(message?.role) ||
+            typeof message?.content !== "string" || message.content.length > 12_000) {
+          throw new HttpsError("invalid-argument", "La conversación contiene un mensaje no válido.");
+        }
+        totalCharacters += message.content.length;
+        return { role: message.role as ChatCompletionMessage["role"], content: message.content };
+      });
+      if (totalCharacters > 30_000 || safeMessages[0].role !== "system") {
+        throw new HttpsError("invalid-argument", "La conversación excede el tamaño permitido.");
+      }
+
+      const userId = await verifyBusinessSession(token, email);
+      await enforceChatRateLimit(userId);
+      const apiKey = groqApiKey.value();
+      if (!apiKey) throw new HttpsError("unavailable", "El asistente no está configurado.");
+
+      const upstream = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${apiKey}` },
+        body: JSON.stringify({ model: "openai/gpt-oss-120b", messages: safeMessages, temperature: 0.1, max_tokens: 700 }),
+        signal: AbortSignal.timeout(45_000),
+      });
+      if (!upstream.ok) {
+        console.error("Proveedor de IA respondió con error:", upstream.status);
+        response.status(502).json({ message: "El asistente no pudo completar la consulta." });
+        return;
+      }
+      const result = await upstream.json() as { choices?: Array<{ message?: { content?: string } }> };
+      response.status(200).json({ text: result.choices?.[0]?.message?.content ?? "Sin respuesta." });
+    } catch (error) {
+      if (error instanceof HttpsError) {
+        const status = error.code === "unauthenticated" ? 401
+          : error.code === "resource-exhausted" ? 429
+            : error.code === "unavailable" ? 503 : 400;
+        response.status(status).json({ message: error.message });
+        return;
+      }
+      console.error("Error en chatbotCompletion:", error);
+      response.status(503).json({ message: "El servicio del asistente no está disponible." });
+    }
+  }
+);
 
 const TELEGRAM_SEND_URL = "https://biapp.com.mx/api/telegram/send";
 const ADMIN_EMAIL       = "jsoriano@bi2.mx";

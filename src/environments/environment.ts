@@ -49,11 +49,6 @@ export const environment = {
 
   //  urlAzure    : 'https://localhost:7089/',
 
-  googleDriveCredentials: {
-    client_email: 'jsorglez@gmail.com',
-    private_key: '	9bb18cadc7bbafd5bd7fb4c2cea3ffb503b0900a',
-  },
-
   urlLogin:
     'https://identitytoolkit.googleapis.com/v1/accounts:signInWithPassword?key=AIzaSyDxCBGKk8nT09hdW85-PyOkhw5_JPZLF1A',
 
@@ -80,8 +75,5 @@ export const environment = {
     // publicKey: 'TEST-4399133a-4676-42a2-ab85-d946370bf96a',
   },
 
-  geminiApiKey: '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',
-  gnewsApiKey: '94ccc596b4dfebc3f72683b6e81d81bc',
-
-  version: '5.00.392 (25 Octubre 2026 09:01) cierre confiable de cotizaciones',
+  version: '5.00.394 (27 Octubre 2026 09:42) avisos de guardado no invasivos',
 };

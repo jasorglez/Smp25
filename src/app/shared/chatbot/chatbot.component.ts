@@ -235,9 +235,6 @@ ${reglasNegocio}${reglaModo}`;
   }
 
   private async callGemini(userMessage: string, dataContext: string): Promise<string> {
-    const apiKey = (environment as any).geminiApiKey;
-    if (!apiKey) return 'Falta configurar geminiApiKey en environment.ts.\nObtén tu clave en: https://console.groq.com';
-
     // Historial en formato OpenAI (compatible con Groq)
     this.geminiHistory.push({ role: 'user', parts: [{ text: userMessage }] });
     if (this.geminiHistory.length > 20) this.geminiHistory = this.geminiHistory.slice(-20);
@@ -250,24 +247,25 @@ ${reglasNegocio}${reglaModo}`;
       })),
     ];
 
-    const body = { model: 'openai/gpt-oss-120b', messages, temperature: 0.1 };
-
     try {
-      const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${apiKey}` },
-        body: JSON.stringify(body),
-      });
-      const data = await res.json();
-      if (!res.ok) {
-        const msg = data?.error?.message ?? `HTTP ${res.status}`;
-        return `Error: ${msg}`;
-      }
-      const text: string = data?.choices?.[0]?.message?.content ?? 'Sin respuesta.';
+      const token = localStorage.getItem('token');
+      const email = localStorage.getItem('mail');
+      if (!token || !email) return 'Inicia sesión para usar el asistente.';
+
+      const data = await lastValueFrom(this.http.post<{ text: string }>(
+        `https://us-central1-${environment.firebase.projectId}.cloudfunctions.net/chatbotCompletion`,
+        { email, messages },
+        { headers: { Authorization: `Bearer ${token}` } }
+      ));
+      const text = data?.text || 'Sin respuesta.';
       this.geminiHistory.push({ role: 'model', parts: [{ text }] });
       return text;
     } catch (err: any) {
-      return `Error: ${err?.message ?? 'Sin conexión.'}`;
+      const status = err?.status;
+      if (status === 401 || status === 403) return 'Tu sesión no es válida. Inicia sesión nuevamente.';
+      if (status === 429) return 'Se alcanzó el límite temporal de consultas. Inténtalo en un minuto.';
+      if (status === 503) return 'El asistente no está configurado todavía. Contacta al administrador.';
+      return `Error: ${err?.error?.message ?? err?.message ?? 'Sin conexión.'}`;
     }
   }
 

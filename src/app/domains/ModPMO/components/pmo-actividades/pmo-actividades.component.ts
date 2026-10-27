@@ -16,6 +16,7 @@ import { EquipmentService }    from 'app/services/equipment.service';
 import { MaterialsService }    from 'app/services/materials.service';
 import { SignalsService }      from 'app/services/signals.service';
 import { TrackingService } from 'app/services/tracking.service';
+import { alerts } from 'app/helpers/alerts';
 
 // ── Layout constants ──────────────────────────────────────────────────────────
 const ROW_H      = 44;
@@ -1291,7 +1292,7 @@ export class PmoActividadesComponent implements OnInit {
       this.calcProgress = 100;
 
       await this.loadActividades(); // recalcParentPonderados se llama dentro
-      alert(`✅ Ponderado calculado (${this.pondModalidad}) — ${hojas.length} concepto(s) actualizados. Agrupadores muestran suma acumulada (solo display).`);
+      alerts.toastAlert(`Ponderado calculado: ${hojas.length} conceptos actualizados`, 'success');
     } catch {
       alert('Error al guardar ponderados. Revisa la consola.');
     } finally {
@@ -1522,10 +1523,7 @@ export class PmoActividadesComponent implements OnInit {
 
       await this.loadActividades();
       this.isSaving = false;
-      const summ = wbsParents.size > 0
-        ? `\n${wbsParents.size} agrupador(es) detectados automáticamente (Summary).` : '';
       this.showMsg(`✓ ${saved} actividad(es) importadas`, 'success');
-      alert(`✅ Importación completa: ${saved}/${total} actividades.${summ}`);
 
     } catch (e: any) {
       console.error('Error importación XLS:', e);

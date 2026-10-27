@@ -5,6 +5,7 @@ import { Router } from '@angular/router';
 import { EquipmentService } from 'app/services/equipment.service';
 import { SignalsService } from 'app/services/signals.service';
 import { TrackingService } from 'app/services/tracking.service';
+import { alerts } from 'app/helpers/alerts';
 
 @Component({
   selector: 'app-newasset',
@@ -149,7 +150,7 @@ export class NewassetComponent implements OnInit {
           ''
         );
         this.saving = false;
-        alert('Activo creado exitosamente.');
+        alerts.toastAlert('Activo creado exitosamente', 'success');
         this.router.navigate(['/procmodmaintenance/assets']);
       },
       error: (error) => {

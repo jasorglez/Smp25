@@ -17,7 +17,7 @@ export class alerts{
 				icon: 'success', title,
 				text: text || undefined,
 				showConfirmButton: false,
-				timer: 2000, timerProgressBar: true,
+				timer: 1800, timerProgressBar: true,
 				customClass: { container: 'swal-over-modal' },
 			});
 		}
@@ -160,7 +160,7 @@ export class alerts{
 	Toast: aparece y desaparece solo (sin botón OK)
 	=============================================*/
 
-	static toastAlert(title: string, icon: SweetAlertIcon, timer: number = 2500) {
+	static toastAlert(title: string, icon: SweetAlertIcon, timer: number = 1800) {
 		return Swal.mixin({
 			toast: true,
 			position: 'top-end',

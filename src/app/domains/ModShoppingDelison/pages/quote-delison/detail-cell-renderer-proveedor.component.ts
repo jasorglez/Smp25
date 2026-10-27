@@ -11,6 +11,7 @@ import { NgSelectModule } from '@ng-select/ng-select';
 import pdfMake from 'pdfmake/build/pdfmake';
 import pdfFonts from 'pdfmake/build/vfs_fonts';
 import { TrackingService } from 'app/services/tracking.service';
+import { alerts } from 'app/helpers/alerts';
 
 pdfMake.vfs = pdfFonts as unknown as Record<string, string>;
 
@@ -348,7 +349,7 @@ export class DetailCellRendererProveedorComponent {
     console.log('Artículos:', this.rowData);
 
     this.hasUnsavedChanges = false;
-    alert('Cambios guardados localmente. La integración con backend está pendiente.');
+    alerts.toastAlert('Cambios locales guardados; falta conectarlos al servidor.', 'info');
   }
 
   revertChanges() {

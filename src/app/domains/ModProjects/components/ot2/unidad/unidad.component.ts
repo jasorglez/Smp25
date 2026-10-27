@@ -4,6 +4,7 @@ import { TranslateModule } from '@ngx-translate/core';
 import { AgGridModule } from 'ag-grid-angular';
 import { ColDef, GridApi, GridReadyEvent } from 'ag-grid-enterprise';
 import { TrackingService } from 'app/services/tracking.service';
+import { alerts } from 'app/helpers/alerts';
 
 interface UnidadData {
   unidad: string;
@@ -177,7 +178,7 @@ export class UnidadComponent {
     });
     
     this.notSavedChanges = false;
-    alert('Cambios guardados exitosamente.');
+    alerts.toastAlert('Cambios guardados exitosamente', 'success');
   }
 
   revert() {

@@ -10,6 +10,7 @@ import { TrackingService } from 'app/services/tracking.service';
 import { AG_GRID_LOCALE_ES } from 'assets/i18n/ag-grid.locale.es';
 import { concat } from 'rxjs';
 import { toArray } from 'rxjs/operators';
+import { alerts } from 'app/helpers/alerts';
 
 interface CatalogType {
   type: string;
@@ -255,7 +256,7 @@ export class CatalogosMaintenanceComponent implements OnInit {
         'ModMaintenance/Catalogos',
         ''
       );
-      alert('Datos guardados correctamente');
+      alerts.toastAlert('Datos guardados correctamente', 'success');
       this.hasUnsavedChanges = false;
       this.loadData();
     } catch (error) {
@@ -304,7 +305,7 @@ export class CatalogosMaintenanceComponent implements OnInit {
           'ModMaintenance/Catalogos',
           ''
         );
-        alert('Registro eliminado');
+        alerts.toastAlert('Registro eliminado', 'success');
         this.loadData();
         this.saving = false;
       },
