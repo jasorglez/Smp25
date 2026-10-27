@@ -1,6 +1,10 @@
 <app-multi-line-editor></app-multi-line-editor>
 <div class="col-12 py-3">
 
+  <div *ngIf="requisitionBalanceError" class="alert alert-warning py-2 small" role="alert">
+    <i class="bi bi-exclamation-triangle-fill me-1"></i>{{ requisitionBalanceError }}
+  </div>
+
   <!-- Mensaje cuando no hay configuración -->
   <div *ngIf="projectOrBranch === null" class="alert alert-info" role="alert">
     <i class="bi bi-info-circle-fill me-2"></i>

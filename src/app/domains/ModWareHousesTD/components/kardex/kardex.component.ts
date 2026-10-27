@@ -34,6 +34,10 @@ import { TrackingService } from 'app/services/tracking.service';
       </div>
       <div class="alert alert-info py-2" *ngIf="materialIdFilter">Kardex filtrado por material seleccionado. <button class="btn btn-link btn-sm p-0 ms-1" (click)="clearMaterialFilter()">Ver todos</button></div>
       <div class="alert alert-warning py-2" *ngIf="!projectId">Selecciona un proyecto en el menú lateral para consultar sus movimientos.</div>
+      <div class="alert alert-warning py-2 small" *ngIf="dataWarnings.length" role="alert">
+        <strong>El Kárdex está incompleto; sus saldos no están conciliados.</strong>
+        <div *ngFor="let warning of dataWarnings">{{ warning }}</div>
+      </div>
       <div class="text-muted py-5 text-center" *ngIf="loading"><span class="spinner-border spinner-border-sm me-2"></span>Cargando movimientos...</div>
       <div class="alert alert-light border text-center" *ngIf="!loading && !allRows.length">No se encontraron movimientos de entradas o salidas para este proyecto.</div>
       <ag-grid-angular *ngIf="!loading && allRows.length" class="ag-theme-quartz small-text-ag-grid" style="width:100%;height:70vh"
@@ -60,6 +64,7 @@ export class KardexComponent {
   allRows: any[] = [];
   rowData: any[] = [];
   loading = false;
+  dataWarnings: string[] = [];
   materialSearch = '';
   warehouseFilter = '';
   dateFrom = '';
@@ -103,34 +108,46 @@ export class KardexComponent {
   load(): void {
     if (!this.idRoot || !this.projectId) return;
     this.loading = true;
+    this.dataWarnings = [];
+    const warn = (message: string) => {
+      if (!this.dataWarnings.includes(message)) this.dataWarnings = [...this.dataWarnings, message];
+    };
     const reference = Number(this.projectId);
     this.permissions.getPermisionswarehousexEmail(this.tracking.getEmail()).pipe(
-      catchError(() => of([])),
+      catchError(() => {
+        warn('No se pudieron cargar los almacenes autorizados.');
+        return of([]);
+      }),
       switchMap((raw: any) => {
         this.warehouses = this.asArray(raw);
         const requests = this.warehouses.flatMap(w => ['IN', 'OUT'].map(type =>
           this.movementService.getInAndOuts(reference, this.warehouseId(w), type).pipe(
-            catchError(error => { console.warn('[Kardex] No se pudieron cargar encabezados', { warehouse: this.warehouseId(w), type, error }); return of([]); }),
+            catchError(error => { console.warn('[Kardex] No se pudieron cargar encabezados', { warehouse: this.warehouseId(w), type, error }); warn('No se pudieron cargar algunos encabezados de movimientos.'); return of([]); }),
             map((masters: any) => ({ warehouse: w, type, masters: this.asArray(masters) }))
           )
         ));
         return requests.length ? forkJoin(requests) : of([]);
       }),
       switchMap(groups => {
-        const masters = this.asArray(groups).flatMap((g: any) => g.masters.map((m: any) => ({ ...m, __warehouse: g.warehouse, __movementType: g.type })));
+        const masters = this.asArray(groups).flatMap((g: any) => g.masters
+          .filter((m: any) => m.active !== false && Number(m.active) !== 0)
+          .map((m: any) => ({ ...m, __warehouse: g.warehouse, __movementType: g.type })));
         const details$ = masters.map(m => this.movementService.getInAndOutItems(Number(m.id)).pipe(
-          catchError(error => { console.warn('[Kardex] No se pudieron cargar partidas', { id: m.id, error }); return of([]); }),
+          catchError(error => { console.warn('[Kardex] No se pudieron cargar partidas', { id: m.id, error }); warn('No se pudieron cargar algunas partidas de movimientos.'); return of([]); }),
           map((items: any) => ({ master: m, items: this.asArray(items) }))
         ));
         return forkJoin({ masters: of(masters), details: details$.length ? forkJoin(details$) : of([]) });
       }),
       switchMap(result => this.materialsService.getMaterials2Fields(this.idRoot!).pipe(
-        catchError(() => of([])), map((materials: any) => ({ ...result, materials: this.asArray(materials) }))
+        catchError(() => { warn('No se pudo cargar el catálogo de materiales.'); return of([]); }),
+        map((materials: any) => ({ ...result, materials: this.asArray(materials) }))
       ))
     ).subscribe({
       next: result => {
         const materialMap = new Map(result.materials.map((m: any) => [Number(m.id), m]));
-        const rows = result.details.flatMap((group: any) => group.items.map((item: any) => {
+        const rows = result.details.flatMap((group: any) => group.items
+          .filter((item: any) => item.active !== false && Number(item.active) !== 0)
+          .map((item: any) => {
           const materialId = Number(item.idProduct || item.idSupplie || 0);
           const material = materialMap.get(materialId) as any;
           const quantity = Number(item.quantity ?? item.total ?? item.amount ?? 0);
@@ -148,7 +165,7 @@ export class KardexComponent {
             entrada: isIn ? quantity : 0, salida: isIn ? 0 : quantity, saldo: 0,
             referencia: group.master.notes || group.master.observation || group.master.comments || ''
           };
-        }));
+          }));
         this.allRows = this.addRunningBalances(rows);
         this.applyFilters();
         this.loading = false;

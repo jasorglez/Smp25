@@ -29,6 +29,10 @@ import { catchError, forkJoin, from, lastValueFrom, map, mergeMap, of, switchMap
         <i class="bi bi-info-circle me-1"></i>
         Las partidas de la OC se cargan al abrir el detalle. Captura la cantidad recibida y guarda.
       </div>
+      <div *ngIf="isLinkedSourceBalanceUnverified()" class="alert alert-warning py-1 px-2 mb-2 small" role="alert">
+        <i class="bi bi-exclamation-triangle-fill me-1"></i>{{ context?.getSourceBalanceWarning?.() }}
+        No guardes partidas vinculadas hasta actualizar y comprobar el pendiente.
+      </div>
       <div *ngIf="isInitialInventoryEntry()" class="alert alert-info py-1 px-2 mb-2 small">
         <i class="bi bi-info-circle me-1"></i>
         Agrega cada material buscando por código o descripción y captura su existencia inicial.
@@ -825,6 +829,10 @@ export class DetailCellRendererEntryItemsComponent {
     }
 
     if (this.context && this.context.ITEMS && this.context.ITEMS.save) {
+      if (this.isLinkedSourceBalanceUnverified()) {
+        alerts.basicAlert('Pendiente sin verificar', this.context?.getSourceBalanceWarning?.() || 'No se pudo comprobar la cantidad pendiente del documento origen.', 'warning');
+        return;
+      }
       if (this.context.movementType === 'OUT' && !(await this.validateOutgoingStock())) return;
       const entryId = this.params.data.id;
       const hasAutoStockRows = this.rowData.some(item => item.__autoStockRow);
@@ -846,6 +854,13 @@ export class DetailCellRendererEntryItemsComponent {
       this.context.ITEMS.updateCount?.(entryId, this.rowData.length);
       this.hasUnsavedChanges = this.rowData.some(item => item.__isNew || item.__modified || item.addToDailyReport);
     }
+  }
+
+  isLinkedSourceBalanceUnverified(): boolean {
+    const sourceId = this.context?.movementType === 'IN'
+      ? Number(this.entryData?.idOc || 0)
+      : Number(this.entryData?.idEntry || 0);
+    return sourceId > 0 && Boolean(this.context?.getSourceBalanceWarning?.());
   }
 
   discardChanges() {

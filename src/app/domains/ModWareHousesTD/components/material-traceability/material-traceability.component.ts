@@ -32,9 +32,14 @@ import pdfFonts from 'pdfmake/build/vfs_fonts';
           <span>Mostrar inventario en cero <span class="badge bg-light text-secondary">{{ zeroInventoryCount }}</span></span>
         </label>
         <button class="btn btn-sm btn-outline-primary" (click)="load()" [disabled]="loading"><i class="bi bi-arrow-clockwise"></i> Actualizar</button>
-        <button class="btn btn-sm btn-danger" (click)="previewPdf()" [disabled]="loading || pdfGenerating || !rowData.length"><i class="bi bi-file-earmark-pdf"></i> {{ pdfGenerating ? 'Preparando…' : 'Ver PDF' }}</button></div>
+        <button class="btn btn-sm btn-danger" (click)="previewPdf()" [disabled]="loading || pdfGenerating || dataWarnings.length > 0 || !rowData.length"><i class="bi bi-file-earmark-pdf"></i> {{ pdfGenerating ? 'Preparando…' : 'Ver PDF' }}</button></div>
       </div>
       <div class="alert alert-info py-2" *ngIf="!projectId">Selecciona un proyecto para consultar sus movimientos.</div>
+      <div class="alert alert-warning py-2 small" *ngIf="dataWarnings.length" role="alert">
+        <strong>La trazabilidad está incompleta y no se puede conciliar.</strong>
+        <div *ngFor="let warning of dataWarnings">{{ warning }}</div>
+        <span>Actualiza la consulta antes de generar el PDF.</span>
+      </div>
       <div class="text-muted py-4 text-center" *ngIf="loading"><span class="spinner-border spinner-border-sm me-2"></span>Preparando trazabilidad...</div>
       <ag-grid-angular *ngIf="!loading && !pdfPreviewUrl" class="ag-theme-quartz small-text-ag-grid" style="width:100%;height:78vh"
         [rowData]="rowData" [columnDefs]="columnDefs" [defaultColDef]="defaultColDef" [autoGroupColumnDef]="autoGroupColumnDef"
@@ -72,6 +77,7 @@ export class MaterialTraceabilityComponent implements OnDestroy {
   private allRows: any[] = [];
   showZeroInventory = false;
   loading = false;
+  dataWarnings: string[] = [];
   pdfGenerating = false;
   pdfPreviewUrl: string | null = null;
   private defaultWarehouseName = '';
@@ -133,26 +139,42 @@ export class MaterialTraceabilityComponent implements OnDestroy {
   load(): void {
     if (!this.idRoot) return;
     this.loading = true;
+    this.dataWarnings = [];
+    const warn = (message: string) => {
+      if (!this.dataWarnings.includes(message)) this.dataWarnings = [...this.dataWarnings, message];
+    };
     const reference = this.projectId || this.idRoot;
     forkJoin({
-      materialList: this.materials.getMaterials2Fields(this.idRoot).pipe(catchError(() => of([]))),
-      brands: this.materials.getMaterialBrands(this.idRoot).pipe(catchError(() => of([]))),
-      requisitions: this.docs.getOcAndReqs('project', reference, 'REQUIS').pipe(catchError(() => of([]))),
-      orders: this.docs.getOcAndReqs('project', reference, 'OC').pipe(catchError(() => of([]))),
-      warehouses: this.permissions.getPermisionswarehousexEmail(this.tracking.getEmail()).pipe(catchError(() => of([])))
+      materialList: this.materials.getMaterials2Fields(this.idRoot).pipe(catchError(() => { warn('No se pudo cargar el catálogo de materiales.'); return of([]); })),
+      brands: this.materials.getMaterialBrands(this.idRoot).pipe(catchError(() => { warn('No se pudo cargar el catálogo de marcas.'); return of([]); })),
+      requisitions: this.docs.getOcAndReqs('project', reference, 'REQUIS').pipe(catchError(() => { warn('No se pudieron cargar las requisiciones.'); return of([]); })),
+      orders: this.docs.getOcAndReqs('project', reference, 'OC').pipe(catchError(() => { warn('No se pudieron cargar las órdenes de compra.'); return of([]); })),
+      warehouses: this.permissions.getPermisionswarehousexEmail(this.tracking.getEmail()).pipe(catchError(() => { warn('No se pudieron cargar los almacenes autorizados.'); return of([]); }))
     }).pipe(switchMap(base => {
       const materialMap = new Map((this.asArray(base.materialList)).map((m: any) => [+m.id, m]));
       const brandMap = new Map(this.asArray(base.brands).map((brand: any) => [`${Number(brand.idMaterial)}|${Number(brand.id)}`, brand.brand]));
-      const reqs = this.asArray(base.requisitions); const orders = this.asArray(base.orders);
-      const documents$ = [...reqs, ...orders].map(d => this.docs.getReqItems(+d.id).pipe(catchError(() => of([])), map(items => ({ d, items: this.asArray(items), materialMap, brandMap }))));
+      const reqs = this.asArray(base.requisitions).filter((d: any) => d.active !== false && Number(d.active) !== 0);
+      const orders = this.asArray(base.orders).filter((d: any) => d.active !== false && Number(d.active) !== 0);
+      const documents$ = [...reqs, ...orders].map(d => this.docs.getReqItems(+d.id).pipe(
+        catchError(() => { warn('No se pudieron cargar partidas de una requisición u orden de compra.'); return of([]); }),
+        map(items => ({ d, items: this.asArray(items).filter((item: any) => item.active !== false && Number(item.active) !== 0), materialMap, brandMap }))
+      ));
       const whs = this.asArray(base.warehouses);
       this.defaultWarehouseName = whs[0]?.nombreAlmacen || whs[0]?.name || whs[0]?.description || '';
-      const movement$ = whs.flatMap(w => ['IN', 'OUT'].map(type => this.movements.getInAndOuts(reference, +(w.id || w.idWarehouse || w.idAlmacen), type).pipe(catchError(() => of([])), switchMap((masters: any) => {
-        const rows = this.asArray(masters);
-        return rows.length ? forkJoin(rows.map(m => this.movements.getInAndOutItems(+m.id).pipe(catchError(() => of([])), map(details => ({ m, details: this.asArray(details) }))))).pipe(map(details => ({ w, type, items: details, materialMap, brandMap }))) : of({ w, type, items: [], materialMap, brandMap });
+      const movement$ = whs.flatMap(w => ['IN', 'OUT'].map(type => this.movements.getInAndOuts(reference, +(w.id || w.idWarehouse || w.idAlmacen), type).pipe(
+        catchError(() => { warn('No se pudieron cargar algunos encabezados de entradas o salidas.'); return of([]); }),
+        switchMap((masters: any) => {
+        const rows = this.asArray(masters).filter((m: any) => m.active !== false && Number(m.active) !== 0);
+        return rows.length ? forkJoin(rows.map(m => this.movements.getInAndOutItems(+m.id).pipe(
+          catchError(() => { warn('No se pudieron cargar partidas de una entrada o salida.'); return of([]); }),
+          map(details => ({ m, details: this.asArray(details).filter((detail: any) => detail.active !== false && Number(detail.active) !== 0) }))
+        ))).pipe(map(details => ({ w, type, items: details, materialMap, brandMap }))) : of({ w, type, items: [], materialMap, brandMap });
       }))));
       return forkJoin({ documents: documents$.length ? forkJoin(documents$) : of([]), movements: movement$.length ? forkJoin(movement$) : of([]) });
-    })).subscribe({ next: result => { this.allRows = this.groupByMaterial([...this.flattenDocuments(result.documents), ...this.flattenMovements(result.movements)]); this.applyInventoryFilter(); this.loading = false; }, error: () => { this.allRows = []; this.rowData = []; this.loading = false; } });
+    })).subscribe({
+      next: result => { this.allRows = this.groupByMaterial([...this.flattenDocuments(result.documents), ...this.flattenMovements(result.movements)]); this.applyInventoryFilter(); this.loading = false; },
+      error: () => { warn('No se pudo completar la consulta de trazabilidad.'); this.allRows = []; this.rowData = []; this.loading = false; }
+    });
   }
 
   get zeroInventoryCount(): number {
@@ -230,6 +252,7 @@ export class MaterialTraceabilityComponent implements OnDestroy {
   }
 
   async previewPdf(): Promise<void> {
+    if (this.dataWarnings.length) return;
     this.pdfGenerating = true;
     let companyName = this.tracking.getnameComp() || this.tracking.getCompany() || '';
     let companyLogo = '';

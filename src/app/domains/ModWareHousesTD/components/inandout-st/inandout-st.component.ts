@@ -80,6 +80,7 @@ export class InandoutStComponent implements OnInit {
   selectedOt: any = null;
   ocList: any[] = [];
   entryList: any[] = [];
+  sourceBalanceWarning = '';
   private ocRemainingItemsById = new Map<number, any[]>();
   private entryRemainingItemsById = new Map<number, any[]>();
   projectList: any[] = [];
@@ -279,6 +280,7 @@ export class InandoutStComponent implements OnInit {
   }
 
   loadOcList() {
+    this.sourceBalanceWarning = '';
     if (this.movementType === 'OUT') {
       this.ocList = [];
       this.loadAvailableEntrySources();
@@ -298,7 +300,10 @@ export class InandoutStComponent implements OnInit {
     const requestId = Number(idReference);
     const requestedWarehouseId = Number(this.selectedWarehouse?.idAlmacen || 0);
 
-    this.ocService.getOcAndReqs(typeReference, requestId, 'OC').pipe(catchError(() => of([]))).subscribe({
+    this.ocService.getOcAndReqs(typeReference, requestId, 'OC').pipe(catchError(() => {
+      this.sourceBalanceWarning = 'No se pudieron cargar las órdenes de compra; no se puede comprobar cuánto queda por recibir.';
+      return of([]);
+    })).subscribe({
       next: async (response: any) => {
         if (typeReference === 'project' && Number(this.projectId) !== requestId) return;
         if (typeReference === 'branch' && (this.projectId || Number(this.idBranch) !== requestId)) return;
@@ -318,14 +323,20 @@ export class InandoutStComponent implements OnInit {
         try {
           const inboundResponse: any = await lastValueFrom(this.inandoutService
             .getInAndOuts(this.projectId, Number(this.selectedWarehouse.idAlmacen), 'IN')
-            .pipe(catchError(() => of([]))));
+            .pipe(catchError(() => {
+              this.sourceBalanceWarning = 'No se pudieron cargar las entradas previas; el pendiente de recepción no está comprobado.';
+              return of([]);
+            })));
           const inboundEntries = Array.isArray(inboundResponse) ? inboundResponse : [];
           const receivedItemsByOc = new Map<number, any[]>();
           await Promise.all(inboundEntries
             .filter((entry: any) => Number(entry.idOc) > 0 && entry.active !== false && Number(entry.active) !== 0)
             .map(async (entry: any) => {
               const details: any = await lastValueFrom(this.inandoutService.getInAndOutItems(Number(entry.id))
-                .pipe(catchError(() => of([]))));
+                .pipe(catchError(() => {
+                  this.sourceBalanceWarning = 'No se pudieron cargar todas las partidas recibidas; el pendiente de recepción no está comprobado.';
+                  return of([]);
+                })));
               const ocId = Number(entry.idOc);
               const bucket = receivedItemsByOc.get(ocId) || [];
               bucket.push(...(Array.isArray(details) ? details : []));
@@ -335,7 +346,10 @@ export class InandoutStComponent implements OnInit {
           const remainingByOc = new Map<number, any[]>();
           await Promise.all(uniqueOrders.map(async (order: any) => {
             const orderedResponse: any = await lastValueFrom(this.ocService.getReqItems(Number(order.id))
-              .pipe(catchError(() => of([]))));
+              .pipe(catchError(() => {
+                this.sourceBalanceWarning = 'No se pudieron cargar partidas de una OC; el pendiente de recepción no está comprobado.';
+                return of([]);
+              })));
             const ordered = (Array.isArray(orderedResponse) ? orderedResponse : [])
               .filter((item: any) => item.active !== false && Number(item.active) !== 0);
             const received = receivedItemsByOc.get(Number(order.id)) || [];
@@ -366,16 +380,22 @@ export class InandoutStComponent implements OnInit {
           this.refreshColumns();
         } catch (error) {
           console.error('No fue posible calcular las cantidades pendientes por recibir:', error);
+          this.sourceBalanceWarning = 'No se pudo calcular cuánto queda por recibir. Actualiza antes de capturar una entrada vinculada a una OC.';
           this.ocList = [];
           this.refreshColumns();
         }
       },
-      error: () => { this.ocList = []; this.ocRemainingItemsById.clear(); }
+      error: () => {
+        this.sourceBalanceWarning = 'No se pudieron cargar las órdenes de compra; no se puede comprobar cuánto queda por recibir.';
+        this.ocList = [];
+        this.ocRemainingItemsById.clear();
+      }
     });
   }
 
   private async loadAvailableEntrySources(): Promise<void> {
     const requestId = ++this.sourceEntryLoadRequest;
+    this.sourceBalanceWarning = '';
     if (this.movementType !== 'OUT' || !this.selectedWarehouse) {
       this.entryList = [];
       this.entryRemainingItemsById.clear();
@@ -385,8 +405,14 @@ export class InandoutStComponent implements OnInit {
     const warehouseId = Number(this.selectedWarehouse.idAlmacen);
     try {
       const [inResponse, outResponse]: any[] = await Promise.all([
-        lastValueFrom(this.inandoutService.getInAndOuts(projectId, warehouseId, 'IN').pipe(catchError(() => of([])))),
-        lastValueFrom(this.inandoutService.getInAndOuts(projectId, warehouseId, 'OUT').pipe(catchError(() => of([]))))
+        lastValueFrom(this.inandoutService.getInAndOuts(projectId, warehouseId, 'IN').pipe(catchError(() => {
+          this.sourceBalanceWarning = 'No se pudieron cargar las entradas; el pendiente del vale no está comprobado.';
+          return of([]);
+        }))),
+        lastValueFrom(this.inandoutService.getInAndOuts(projectId, warehouseId, 'OUT').pipe(catchError(() => {
+          this.sourceBalanceWarning = 'No se pudieron cargar las salidas; el pendiente del vale no está comprobado.';
+          return of([]);
+        })))
       ]);
       if (requestId !== this.sourceEntryLoadRequest || warehouseId !== Number(this.selectedWarehouse?.idAlmacen || 0) || projectId !== (Number(this.projectId || 0) || null)) return;
       const entries = (Array.isArray(inResponse) ? inResponse : []).filter((entry: any) =>
@@ -398,7 +424,10 @@ export class InandoutStComponent implements OnInit {
       const outDetailsByEntry = new Map<number, any[]>();
       await Promise.all(outs.map(async (out: any) => {
         const details: any = await lastValueFrom(this.inandoutService.getInAndOutItems(Number(out.id))
-          .pipe(catchError(() => of([]))));
+          .pipe(catchError(() => {
+            this.sourceBalanceWarning = 'No se pudieron cargar las partidas de todas las salidas; el pendiente del vale no está comprobado.';
+            return of([]);
+          })));
         const sourceId = Number(out.idEntry);
         const bucket = outDetailsByEntry.get(sourceId) || [];
         bucket.push(...(Array.isArray(details) ? details : []));
@@ -408,7 +437,10 @@ export class InandoutStComponent implements OnInit {
       const availableEntries: any[] = [];
       for (const entry of entries) {
         const sourceResponse: any = await lastValueFrom(this.inandoutService.getInAndOutItems(Number(entry.id))
-          .pipe(catchError(() => of([]))));
+          .pipe(catchError(() => {
+            this.sourceBalanceWarning = 'No se pudieron cargar las partidas de una entrada; el pendiente del vale no está comprobado.';
+            return of([]);
+          })));
         const sourceItems = (Array.isArray(sourceResponse) ? sourceResponse : [])
           .filter((item: any) => item.active !== false && Number(item.active) !== 0);
         const used = new Map<string, number>();
@@ -440,6 +472,7 @@ export class InandoutStComponent implements OnInit {
     } catch (error) {
       if (requestId !== this.sourceEntryLoadRequest) return;
       console.error('No fue posible calcular el saldo de los vales de entrada:', error);
+      this.sourceBalanceWarning = 'No se pudo calcular cuánto queda del vale de entrada. Actualiza antes de usarlo para una salida.';
       this.entryList = [];
       this.entryRemainingItemsById.clear();
       this.refreshColumns();
@@ -1121,6 +1154,7 @@ export class InandoutStComponent implements OnInit {
         getSourceRemainingItems: (movementType: 'IN' | 'OUT', sourceId: number) => movementType === 'IN'
           ? this.ocRemainingItemsById.get(Number(sourceId)) || []
           : this.entryRemainingItemsById.get(Number(sourceId)) || [],
+        getSourceBalanceWarning: () => this.sourceBalanceWarning,
         refreshSourceEntries: () => this.loadAvailableEntrySources(),
         ITEMS: {
           load: (entryId: number, callback: (data: any[]) => void) => {

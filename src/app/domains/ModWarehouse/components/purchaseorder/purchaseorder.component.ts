@@ -110,6 +110,7 @@ export class PurchaseOrderComponent implements CanComponentDeactivate {
 
   // Catálogos Master
   requisiciones: any[] = [];
+  requisitionBalanceError = '';
   almacenes: any[] = [];
   proveedores: any[] = [];
   departamentos: any[] = [];
@@ -1030,13 +1031,22 @@ export class PurchaseOrderComponent implements CanComponentDeactivate {
       .subscribe(
         (data: any) => {
           this.requisiciones = Array.isArray(data) ? data : [];
+          this.requisitionBalanceError = '';
           void this.refreshRequisitionBalances();
         },
-        (error) => console.error('Error fetching requisitions:', error)
+        (error) => {
+          console.error('Error fetching requisitions:', error);
+          this.requisitionBalanceError = 'No se pudieron cargar las requisiciones. Actualiza antes de asociar una orden nueva.';
+        }
       );
   }
 
   private getAvailableRequisitionIds(currentPurchaseOrder: any): number[] {
+    if (this.requisitionBalanceError) {
+      return this.requisiciones.some((requisition: any) => Number(requisition.id) === Number(currentPurchaseOrder?.idReq))
+        ? [Number(currentPurchaseOrder.idReq)]
+        : [];
+    }
     return (this.requisiciones || [])
       .filter((requisition: any) =>
         Number(requisition.id) === Number(currentPurchaseOrder?.idReq) ||
@@ -1047,6 +1057,7 @@ export class PurchaseOrderComponent implements CanComponentDeactivate {
 
   private async refreshRequisitionBalances(): Promise<void> {
     const requestId = ++this.requisitionBalanceRequest;
+    this.requisitionBalanceError = '';
     const requisitions = Array.isArray(this.requisiciones) ? this.requisiciones : [];
     const orders = (this.masterRowData || []).filter((order: any) =>
       order.active !== false && Number(order.active) !== 0 && Number(order.idReq) > 0
@@ -1097,9 +1108,11 @@ export class PurchaseOrderComponent implements CanComponentDeactivate {
         return { ...requisition, remainingItems };
       });
       this.masterGridApi?.refreshCells({ columns: ['idReq'], force: true });
+      this.requisitionBalanceError = '';
     } catch (error) {
       if (requestId !== this.requisitionBalanceRequest) return;
       console.error('No fue posible calcular las cantidades pendientes de requisiciones:', error);
+      this.requisitionBalanceError = 'No se pudieron comprobar las cantidades pendientes de las requisiciones. No asocies una orden nueva hasta actualizar e intentarlo de nuevo.';
       this.requisiciones = requisitions.map((requisition: any) => ({ ...requisition, remainingItems: [] }));
     }
   }
@@ -1494,6 +1507,14 @@ export class PurchaseOrderComponent implements CanComponentDeactivate {
 
     if (event.colDef.field === 'idReq') {
       const requisitionId = Number(updatedData.idReq);
+      if (this.requisitionBalanceError && requisitionId > 0 && Number(event.oldValue) !== requisitionId) {
+        updatedData.idReq = event.oldValue ?? null;
+        delete updatedData.__pendingRequisitionItemImport;
+        event.node.setData(updatedData);
+        this.masterGridApi?.refreshCells({ rowNodes: [event.node], columns: ['idReq'], force: true });
+        alerts.basicAlert('Pendiente sin verificar', this.requisitionBalanceError, 'warning');
+        return;
+      }
       const availableRequisition = (this.requisiciones || []).find((item: any) => Number(item.id) === requisitionId);
       const hasRemainingQuantity = (availableRequisition?.remainingItems || [])
         .some((item: any) => Number(item.remainingQuantity) > 0);

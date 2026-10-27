@@ -73,6 +73,11 @@ import { catchError, forkJoin, map, of, switchMap } from 'rxjs';
       <p class="text-muted mt-2 small">Cargando inventario...</p>
     </div>
 
+    <div *ngIf="dataWarnings.length" class="alert alert-warning py-2 small" role="alert">
+      <strong><i class="bi bi-exclamation-triangle-fill me-1"></i>Inventario incompleto; revisa antes de usar estas existencias.</strong>
+      <div *ngFor="let warning of dataWarnings">{{ warning }}</div>
+    </div>
+
     <!-- Grid -->
     <ag-grid-angular *ngIf="!loading"
       style="width:100%; height:calc(100vh - 220px);"
@@ -101,6 +106,7 @@ export class InventarioComponent {
   warehouses:        any[]   = [];
   selectedWarehouse: number  = 0;
   loading:           boolean = false;
+  dataWarnings: string[] = [];
   idCompany:         number  = 0;
   projectId:         number  = 0;
   private loadedCompany: number = 0;
@@ -266,6 +272,7 @@ export class InventarioComponent {
         this.selectedWarehouse = 0;
         this.allInventoryRows = [];
         this.rowData = [];
+        this.dataWarnings = ['No se pudieron consultar los almacenes autorizados.'];
       },
     });
   }
@@ -274,24 +281,36 @@ export class InventarioComponent {
     if (!this.idCompany || !this.selectedWarehouse) {
       this.allInventoryRows = [];
       this.rowData = [];
+      this.dataWarnings = [];
       return;
     }
 
     this.loading = true;
+    this.dataWarnings = [];
+    const warn = (message: string) => {
+      if (!this.dataWarnings.includes(message)) this.dataWarnings = [...this.dataWarnings, message];
+    };
     const forSelectedWarehouse = (masters: any[]) => this.asArray(masters).filter(master =>
-      Number(master.idWarehouse ?? master.IdWarehouse) === Number(this.selectedWarehouse)
+      Number(master.idWarehouse ?? master.IdWarehouse) === Number(this.selectedWarehouse) &&
+      master.active !== false && Number(master.active) !== 0
     );
     const movementRequests = (['IN', 'OUT'] as const).map(type =>
       this.inventarioService.getWarehouseMovements(this.selectedWarehouse, type).pipe(
-        catchError(() => of([])),
+        catchError(() => of(null as any)),
         switchMap((warehouseRows: any[]) => {
           const selectedWarehouseRows = forSelectedWarehouse(warehouseRows);
           // Compatibilidad mientras se actualiza el contenedor: las versiones
           // anteriores exigían idProject, aunque Inventario es por almacén.
-          if (selectedWarehouseRows.length || !this.projectId) return of(selectedWarehouseRows);
+          if (selectedWarehouseRows.length || !this.projectId) {
+            if (warehouseRows === null) warn('No se pudieron consultar los encabezados de movimientos del almacén.');
+            return of(selectedWarehouseRows);
+          }
           return this.inventarioService.getMovements(this.projectId, this.selectedWarehouse, type).pipe(
             map(rows => forSelectedWarehouse(rows)),
-            catchError(() => of([]))
+            catchError(() => {
+              warn('No se pudieron cargar los encabezados de ' + (type === 'IN' ? 'entradas' : 'salidas') + '.');
+              return of([]);
+            })
           );
         }),
         switchMap((masters: any[]) => {
@@ -301,7 +320,10 @@ export class InventarioComponent {
           return forkJoin(
             movementMasters.map(master =>
               this.inventarioService.getMovementItems(Number(master.id ?? master.Id)).pipe(
-                catchError(() => of([])),
+                catchError(() => {
+                  warn('No se pudieron cargar las partidas del movimiento ' + (master.folio || master.id || master.Id) + '.');
+                  return of([]);
+                }),
                 map(details => this.asArray(details))
               )
             )
@@ -311,8 +333,14 @@ export class InventarioComponent {
     );
 
     forkJoin({
-      materials: this.materialsService.getMaterialsForPosCache(this.idCompany).pipe(catchError(() => of([]))),
-      brands: this.materialsService.getMaterialBrands(this.idCompany).pipe(catchError(() => of([]))),
+      materials: this.materialsService.getMaterialsForPosCache(this.idCompany).pipe(catchError(() => {
+        warn('No se pudo cargar el catálogo de materiales.');
+        return of([]);
+      })),
+      brands: this.materialsService.getMaterialBrands(this.idCompany).pipe(catchError(() => {
+        warn('No se pudo cargar el catálogo de marcas.');
+        return of([]);
+      })),
       movements: forkJoin(movementRequests),
     }).subscribe({
       next: result => {
@@ -325,6 +353,7 @@ export class InventarioComponent {
         this.allInventoryRows = [];
         this.rowData = [];
         this.loading = false;
+        warn('No se pudo completar la consulta de existencias.');
       },
     });
   }
@@ -341,7 +370,7 @@ export class InventarioComponent {
     const rows = new Map<number, any>();
 
     movements.forEach(group => {
-      group.details.forEach(detail => {
+      group.details.filter((detail: any) => detail.active !== false && Number(detail.active) !== 0).forEach(detail => {
         const idMaterial = Number(detail.idProduct ?? detail.IdProduct);
         if (!idMaterial) return;
         const material = materialMap.get(idMaterial);
