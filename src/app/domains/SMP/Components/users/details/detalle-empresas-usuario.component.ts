@@ -969,7 +969,7 @@ export class DetalleEmpresasUsuarioComponent implements OnInit {
     detailCellRendererSelector: (params: any) => params.data?.expandedPanel === 'master-permissions'
       ? { component: 'companyMasterPermissions' }
       : { component: 'sucursalesDetail' },
-    detailRowHeight: 420
+    detailRowHeight: 600
   };
 
   ngOnInit(): void {
