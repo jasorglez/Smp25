@@ -527,6 +527,27 @@ export class UsersComponent implements OnDestroy {
         }
       },
       {
+        field: 'monitorTelegram',
+        headerName: 'Avisos Telegram',
+        width: 145,
+        editable: false,
+        tooltipValueGetter: () => 'Indica si este usuario debe generar avisos de acceso y actividad en Telegram.',
+        cellStyle: { display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' },
+        cellRenderer: (params) => {
+          const enabled = params.value !== false && params.value !== 0;
+          return enabled
+            ? '<span class="badge bg-success" style="font-size:.78rem;padding:4px 10px;border-radius:12px;">🔔 Sí</span>'
+            : '<span class="badge bg-secondary" style="font-size:.78rem;padding:4px 10px;border-radius:12px;">🔕 No</span>';
+        },
+        onCellClicked: (params) => {
+          const current = params.data.monitorTelegram !== false && params.data.monitorTelegram !== 0;
+          params.data.monitorTelegram = !current;
+          if (!params.data.__isNew) params.data.__modified = true;
+          this.notSavedChanges = true;
+          this.gridApi.refreshCells({ rowNodes: [params.node], columns: ['monitorTelegram'] });
+        }
+      },
+      {
         field: 'idRol',
         headerName: 'Security',
         hide: !this.isAdvanced && this.idUser !== 42,
@@ -780,6 +801,7 @@ export class UsersComponent implements OnDestroy {
       allowWhatsapp: true,
       isRoot: false,
       canAuthorizeProcesses: false,
+      monitorTelegram: true,
       __isNew: true
     };
 
@@ -1070,6 +1092,7 @@ export class UsersComponent implements OnDestroy {
     cleanedData.idDepartament = Number(cleanedData.idDepartament) || 1;
     cleanedData.isRoot = Boolean(cleanedData.isRoot);
     cleanedData.canAuthorizeProcesses = cleanedData.canAuthorizeProcesses === true || cleanedData.canAuthorizeProcesses === 1 || cleanedData.canAuthorizeProcesses === 'true';
+    cleanedData.monitorTelegram = cleanedData.monitorTelegram !== false && cleanedData.monitorTelegram !== 0;
     cleanedData.active = Number(cleanedData.active) || 1;
     return cleanedData;
   }
