@@ -534,13 +534,13 @@ export class UsersComponent implements OnDestroy {
         tooltipValueGetter: () => 'Indica si este usuario debe generar avisos de acceso y actividad en Telegram.',
         cellStyle: { display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' },
         cellRenderer: (params) => {
-          const enabled = params.value !== false && params.value !== 0;
+          const enabled = params.value === true || params.value === 1 || params.value === 'true';
           return enabled
             ? '<span class="badge bg-success" style="font-size:.78rem;padding:4px 10px;border-radius:12px;">🔔 Sí</span>'
             : '<span class="badge bg-secondary" style="font-size:.78rem;padding:4px 10px;border-radius:12px;">🔕 No</span>';
         },
         onCellClicked: (params) => {
-          const current = params.data.monitorTelegram !== false && params.data.monitorTelegram !== 0;
+          const current = params.data.monitorTelegram === true || params.data.monitorTelegram === 1 || params.data.monitorTelegram === 'true';
           params.data.monitorTelegram = !current;
           if (!params.data.__isNew) params.data.__modified = true;
           this.notSavedChanges = true;
@@ -801,7 +801,7 @@ export class UsersComponent implements OnDestroy {
       allowWhatsapp: true,
       isRoot: false,
       canAuthorizeProcesses: false,
-      monitorTelegram: true,
+      monitorTelegram: false,
       __isNew: true
     };
 
@@ -1092,7 +1092,7 @@ export class UsersComponent implements OnDestroy {
     cleanedData.idDepartament = Number(cleanedData.idDepartament) || 1;
     cleanedData.isRoot = Boolean(cleanedData.isRoot);
     cleanedData.canAuthorizeProcesses = cleanedData.canAuthorizeProcesses === true || cleanedData.canAuthorizeProcesses === 1 || cleanedData.canAuthorizeProcesses === 'true';
-    cleanedData.monitorTelegram = cleanedData.monitorTelegram !== false && cleanedData.monitorTelegram !== 0;
+    cleanedData.monitorTelegram = cleanedData.monitorTelegram === true || cleanedData.monitorTelegram === 1 || cleanedData.monitorTelegram === 'true';
     cleanedData.active = Number(cleanedData.active) || 1;
     return cleanedData;
   }

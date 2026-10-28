@@ -75,5 +75,5 @@ export const environment = {
     // publicKey: 'TEST-4399133a-4676-42a2-ab85-d946370bf96a',
   },
 
-  version: '5.00.407 (27 Octubre 2026 20:00) monitoreo Telegram por usuario',
+  version: '5.00.408 (27 Octubre 2026 20:18) monitoreo Telegram desactivado por defecto',
 };
