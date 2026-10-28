@@ -403,7 +403,8 @@ export class UsersComponent implements OnDestroy {
         editable: () => true,
         filter: true,
         cellEditor: 'autocompleteEditor',
-        flex: 1,
+        minWidth: 240,
+        flex: 1.5,
         cellEditorParams: (params) => ({
           filterList: this.empleadoCatalgos.map(e => e.name),
           filterKey: 'name',
