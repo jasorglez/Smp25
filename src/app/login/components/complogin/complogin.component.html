@@ -86,6 +86,37 @@
 
     </form>
 
+    <div class="google-registration" *ngIf="!googleCompanyStep">
+      <button type="button" class="btn-google-registration" [disabled]="isLoading" (click)="startGoogleRegistration()">
+        <i class="bi bi-google me-2"></i>Regístrate con Google para crear tu empresa
+      </button>
+    </div>
+
+    <section class="google-company-step" *ngIf="googleCompanyStep">
+      <h2>Registra tu empresa</h2>
+      <p>Cuenta de Google: <strong>{{ googleEmail }}</strong></p>
+      <div class="alert alert-warning py-2 px-3 small" *ngIf="googleBootstrapWarnings.length">
+        La empresa ya se creó, pero falta completar algunos datos iniciales. Reintenta para continuar:
+        <ul class="mb-0 mt-1"><li *ngFor="let warning of googleBootstrapWarnings">{{ warning }}</li></ul>
+      </div>
+      <label for="google-company-name">Nombre de la empresa</label>
+      <input id="google-company-name" class="form-control" [(ngModel)]="googleCompanyName" maxlength="100" autocomplete="organization" />
+      <label for="google-company-short" class="mt-2">Nombre corto</label>
+      <input id="google-company-short" class="form-control" [(ngModel)]="googleCompanyShortName" maxlength="20" />
+      <label for="google-company-type" class="mt-2">Giro de la empresa</label>
+      <select id="google-company-type" class="form-select" [(ngModel)]="googleCompanyType">
+        <option value="">Selecciona un giro</option>
+        <option value="CONSTRUCCION">Construcción</option>
+        <option value="CLINICA">Clínica</option>
+        <option value="ESCUELAS">Escuelas</option>
+        <option value="RESTAURANTES">Restaurantes</option>
+      </select>
+      <div class="d-flex gap-2 mt-3">
+        <button type="button" class="btn btn-primary flex-grow-1" [disabled]="isLoading" (click)="completeGoogleRegistration()">{{ googleBootstrapWarnings.length ? 'Reintentar configuración' : 'Crear empresa' }}</button>
+        <button type="button" class="btn btn-outline-secondary" [disabled]="isLoading" (click)="cancelGoogleRegistration()">Cancelar</button>
+      </div>
+    </section>
+
     <!-- Footer -->
     <div class="login-footer">
       <a href="https://bi2.mx" target="_blank" rel="noopener">bi2.mx</a>

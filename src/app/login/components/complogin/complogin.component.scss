@@ -393,6 +393,43 @@ $transition: 0.25s $ease;
   .sep { opacity: 0.30; }
 }
 
+.google-registration {
+  margin-top: 1rem;
+  text-align: center;
+}
+
+.btn-google-registration {
+  width: 100%;
+  padding: 0.7rem 1rem;
+  border: 1px solid rgba(255, 255, 255, 0.22);
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.08);
+  color: #fff;
+  font: inherit;
+  font-size: 0.86rem;
+  transition: background 0.2s ease, border-color 0.2s ease;
+
+  &:hover:not(:disabled) {
+    background: rgba(255, 255, 255, 0.14);
+    border-color: rgba(255, 255, 255, 0.42);
+  }
+
+  &:disabled { opacity: 0.6; cursor: wait; }
+}
+
+.google-company-step {
+  margin-top: 1rem;
+  padding: 1rem;
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  border-radius: 12px;
+  background: rgba(8, 13, 27, 0.72);
+  color: #fff;
+
+  h2 { margin: 0 0 0.35rem; font-size: 1rem; }
+  p { margin: 0 0 0.8rem; color: rgba(255, 255, 255, 0.7); font-size: 0.78rem; }
+  label { display: block; margin-bottom: 0.3rem; font-size: 0.76rem; }
+}
+
 // ─── Loading overlay ──────────────────────────────────────────────────────────
 .loading-overlay {
   position: fixed;

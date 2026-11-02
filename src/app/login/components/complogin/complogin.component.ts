@@ -1,5 +1,5 @@
 import { Component, inject, OnInit, OnDestroy, ViewEncapsulation } from '@angular/core';
-import { Validators, FormBuilder, ReactiveFormsModule } from '@angular/forms';
+import { Validators, FormBuilder, ReactiveFormsModule, FormsModule } from '@angular/forms';
 import { CommonModule } from '@angular/common';
 
 import { Ilogin } from '../../../interface/ilogin';
@@ -29,6 +29,7 @@ import { environment } from '@env/environment';
   imports: [
     CommonModule,
     ReactiveFormsModule,
+    FormsModule,
     RouterModule,
     DomainsModule
   ]
@@ -68,6 +69,14 @@ export class ComploginComponent implements OnInit, OnDestroy {
   isAdvanced: boolean = false;
   formSubmitted = false;
   isLoading = false;
+  googleCompanyStep = false;
+  googleIdToken = '';
+  googleEmail = '';
+  googleDisplayName = '';
+  googleCompanyName = '';
+  googleCompanyShortName = '';
+  googleCompanyType = '';
+  googleBootstrapWarnings: string[] = [];
   idBranch: number;
   carouselDirection: 'forward' | 'reverse' = 'reverse';
 
@@ -247,6 +256,131 @@ export class ComploginComponent implements OnInit, OnDestroy {
         console.log(err);
         this.isLoading = false;
         alerts.basicAlert("Error", "Los datos de logueo son inválidos", "error");
+      }
+    });
+  }
+
+  async startGoogleRegistration(): Promise<void> {
+    if (this.isLoading) return;
+    this.isLoading = true;
+    try {
+      const identity = await this.auth.signInWithGoogle();
+      this.googleIdToken = identity.firebaseIdToken;
+      this.googleEmail = identity.email;
+      this.googleDisplayName = identity.displayName;
+      this.auth.startGoogleRegistration(identity.firebaseIdToken).subscribe({
+        next: (response: any) => {
+          if (response?.status === 'existing' && response?.token) {
+            this.finishGoogleLogin(response, identity.email);
+            return;
+          }
+          this.googleCompanyStep = true;
+          this.isLoading = false;
+        },
+        error: (error) => {
+          console.error('No se pudo validar la cuenta de Google:', error);
+          this.isLoading = false;
+          alerts.basicAlert('No se pudo continuar', 'No fue posible validar tu cuenta de Google. Intenta nuevamente.', 'error');
+        }
+      });
+    } catch (error: any) {
+      console.error('Error al iniciar con Google:', error);
+      this.isLoading = false;
+      if (error?.code !== 'auth/popup-closed-by-user') {
+        alerts.basicAlert('No se pudo iniciar con Google', 'Intenta nuevamente o usa el acceso con correo y contraseña.', 'error');
+      }
+    }
+  }
+
+  completeGoogleRegistration(): void {
+    if (!this.googleCompanyName.trim() || !this.googleCompanyShortName.trim() || !this.googleCompanyType) {
+      alerts.basicAlert('Completa los datos', 'Indica el nombre, nombre corto y giro de la empresa.', 'warning');
+      return;
+    }
+    this.isLoading = true;
+    this.auth.completeGoogleRegistration({
+      firebaseIdToken: this.googleIdToken,
+      companyName: this.googleCompanyName.trim(),
+      companyShortName: this.googleCompanyShortName.trim(),
+      companyType: this.googleCompanyType
+    }).subscribe({
+      next: (response: any) => {
+        if (!response?.token) {
+          this.isLoading = false;
+          alerts.basicAlert('Registro incompleto', 'El servidor no devolvió una sesión válida.', 'error');
+          return;
+        }
+        if (response.status === 'created_with_warnings') {
+          this.googleBootstrapWarnings = response.warnings || [];
+          this.isLoading = false;
+          return;
+        }
+        this.googleBootstrapWarnings = [];
+        this.finishGoogleLogin(response, this.googleEmail);
+      },
+      error: (error) => {
+        console.error('Error completando el registro con Google:', error);
+        this.isLoading = false;
+        alerts.basicAlert('No se pudo crear la empresa', error?.error?.message || 'Intenta nuevamente con la misma cuenta de Google.', 'error');
+      }
+    });
+  }
+
+  cancelGoogleRegistration(): void {
+    this.googleCompanyStep = false;
+    this.googleIdToken = '';
+  }
+
+  private finishGoogleLogin(response: any, email: string): void {
+    localStorage.setItem('token', response.token);
+    this.auth.startSessionTimers();
+    this.emailcapt = email;
+    this.trackingService.setEmail(email);
+    this.userService.findEmail(email).subscribe({
+      next: (datauser: any) => {
+        if (!datauser?.id) {
+          this.isLoading = false;
+          alerts.basicAlert('Cuenta lista', 'No se pudo cargar el perfil de usuario. Intenta iniciar sesión nuevamente.', 'warning');
+          return;
+        }
+        this.trackingService.setnameUser(datauser.displayName);
+        this.trackingService.setpictureUser(datauser.picture);
+        this.trackingService.setabranch(datauser.applybranch);
+        this.trackingService.setaplatform(datauser.applyplatform);
+        this.trackingService.setaproject(datauser.applyproject);
+        this.trackingService.setId(datauser.id);
+        this.signalsService.setidUser(datauser.id);
+        this.signalsService.setemailChoose(email);
+        this.signalsService.setrootChoose(datauser.userRoot);
+        localStorage.setItem('userRoot', String(datauser.userRoot ?? 0));
+        localStorage.setItem('mail', email);
+        this.signalsService.setIsAdvanced(!!datauser.advanced);
+        if (datauser.applybranch != null) {
+          this.signalsService.setBranchSelectedBySidebar(datauser.applybranch);
+          this.idBranch = datauser.applybranch;
+        }
+        this.trackingService.startSession(0, this.idBranch ?? 0).then(() => {
+          const permissions = datauser.advanced && datauser.applybranch
+            ? this.auth.fetchUserPermissionsAdvanced(datauser.id, datauser.applybranch)
+            : this.auth.fetchUserPermissions(datauser.id);
+          permissions.subscribe({
+            next: (permissionData: any) => {
+              if (permissionData?.permissions) this.auth.setUserPermissions(permissionData.permissions);
+              this.navigateToHomeAfterLogin();
+            },
+            error: (error) => {
+              console.error('Error cargando permisos después del acceso con Google:', error);
+              this.isLoading = false;
+            }
+          });
+        }).catch((error) => {
+          console.error('Error iniciando sesión después del acceso con Google:', error);
+          this.isLoading = false;
+        });
+      },
+      error: (error) => {
+        console.error('Error obteniendo el usuario después del acceso con Google:', error);
+        this.isLoading = false;
       }
     });
   }

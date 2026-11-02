@@ -75,5 +75,5 @@ export const environment = {
     // publicKey: 'TEST-4399133a-4676-42a2-ab85-d946370bf96a',
   },
 
-  version: '5.00.413 (02 Noviembre 2026 11:05) ordenar conceptos recientes en ingresos y egresos',
+  version: '5.00.414 (02 Noviembre 2026 15:51) registro de empresa con Google',
 };
