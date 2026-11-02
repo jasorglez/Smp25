@@ -206,11 +206,7 @@ public gridOptions: any = {
       const responses = await lastValueFrom(
         concat(...addObservables, ...updateObservables).pipe(toArray())
       );
-      alerts.basicAlert(
-        'Datos actualizados',
-        'Se han actualizado los datos correctamente.',
-        'success'
-      );
+      alerts.saveAlert();
       this.notSavedChanges = false;
       this.newlyAddedRows = [];
       this.obtenerDatos(); // Refrescar los datos

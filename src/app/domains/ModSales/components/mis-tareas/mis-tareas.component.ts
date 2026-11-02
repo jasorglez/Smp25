@@ -63,7 +63,7 @@ export class MisTareasComponent {
     try {
       await this.svc.completarTarea(t.id!);
       this.tareas = this.tareas.filter(x => x.id !== t.id);
-      Swal.fire({ toast: true, position: 'top-end', icon: 'success', title: '¡Tarea completada!', showConfirmButton: false, timer: 2000, timerProgressBar: true });
+      Swal.fire({ toast: true, position: 'bottom-end', icon: 'success', title: '¡Tarea completada!', showConfirmButton: false, timer: 2000, timerProgressBar: true });
     } catch {
       Swal.fire('Error', 'No se pudo completar.', 'error');
     }

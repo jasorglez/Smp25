@@ -399,7 +399,7 @@ export class CustomersCotizacionesComponent implements ICellRendererAngularComp,
         { activo: false } as any
       );
       this.selectedItem = null;
-      Swal.fire({ toast: true, position: 'top-end', icon: 'success', title: 'Eliminado', showConfirmButton: false, timer: 2000, timerProgressBar: true });
+      Swal.fire({ toast: true, position: 'bottom-end', icon: 'success', title: 'Eliminado', showConfirmButton: false, timer: 2000, timerProgressBar: true });
     } catch {
       Swal.fire('Error', 'No se pudo eliminar la cotización.', 'error');
     }

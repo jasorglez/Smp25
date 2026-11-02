@@ -579,7 +579,7 @@ export class CotizacionesComponent implements OnInit, OnDestroy {
       } catch { errores.push(`Error al guardar: ${c.nombreProspecto}`); }
     }
     if (errores.length) Swal.fire('Atención', errores.join('\n'), 'warning');
-    else Swal.fire({ toast: true, position: 'top-end', icon: 'success', title: 'Guardado', showConfirmButton: false, timer: 2000, timerProgressBar: true });
+    else Swal.fire({ toast: true, position: 'bottom-end', icon: 'success', title: 'Guardado', showConfirmButton: false, timer: 2000, timerProgressBar: true });
   }
 
   revertChanges() {
@@ -607,7 +607,7 @@ export class CotizacionesComponent implements OnInit, OnDestroy {
     try {
       await this.svc.actualizarCotizacion(this.selectedItem.id!, { activo: false } as any);
       this.selectedItem = null;
-      Swal.fire({ toast: true, position: 'top-end', icon: 'success', title: 'Eliminado', showConfirmButton: false, timer: 2000, timerProgressBar: true });
+      Swal.fire({ toast: true, position: 'bottom-end', icon: 'success', title: 'Eliminado', showConfirmButton: false, timer: 2000, timerProgressBar: true });
     } catch { Swal.fire('Error', 'No se pudo eliminar.', 'error'); }
   }
 

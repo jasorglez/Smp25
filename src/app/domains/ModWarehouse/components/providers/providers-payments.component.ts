@@ -453,11 +453,7 @@ export class ProvidersPaymentsComponent {
         concat(...addObservables, ...updateObservables).pipe(toArray())
       );
 
-      alerts.basicAlert(
-        'Datos actualizados',
-        'Se han actualizado los datos correctamente.',
-        'success'
-      );
+      alerts.saveAlert();
       this.detailNotSavedChanges = false;
       this.detailedNewlyAddedRows = [];
       await this.loadData(); // Refrescar los datos
@@ -511,11 +507,7 @@ export class ProvidersPaymentsComponent {
         concat(...addObservables, ...updateObservables).pipe(toArray())
       );
 
-      alerts.basicAlert(
-        'Datos actualizados',
-        'Se han actualizado los datos correctamente.',
-        'success'
-      );
+      alerts.saveAlert();
       this.detailNotSavedChanges = false;
       this.detailedNewlyAddedRows = [];
 

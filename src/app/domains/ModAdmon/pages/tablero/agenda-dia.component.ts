@@ -270,7 +270,7 @@ export class AgendaDiaComponent implements OnInit {
           this.notifConfig.googleEmail        = undefined;
           this.notifConfig.googleRefreshToken = undefined;
         }
-        Swal.fire({ toast: true, position: 'top-end', icon: 'success', title: 'Desconectado', showConfirmButton: false, timer: 2000, timerProgressBar: true });
+        Swal.fire({ toast: true, position: 'bottom-end', icon: 'success', title: 'Desconectado', showConfirmButton: false, timer: 2000, timerProgressBar: true });
       },
       error: () => Swal.fire('Error', 'No se pudo desconectar.', 'error'),
     });
@@ -330,7 +330,7 @@ export class AgendaDiaComponent implements OnInit {
     this.agendaSvc.saveNotificationConfig(config).subscribe({
       next: () => {
         this.notifConfig = config;
-        Swal.fire({ toast: true, position: 'top-end', icon: 'success', title: 'Guardado', showConfirmButton: false, timer: 2000, timerProgressBar: true });
+        Swal.fire({ toast: true, position: 'bottom-end', icon: 'success', title: 'Guardado', showConfirmButton: false, timer: 2000, timerProgressBar: true });
       },
       error: () => Swal.fire('Error', 'No se pudo guardar.', 'error'),
     });

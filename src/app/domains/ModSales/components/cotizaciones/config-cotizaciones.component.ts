@@ -138,7 +138,7 @@ export class ConfigCotizacionesComponent implements OnInit {
     try {
       await this.svc.saveConfig(this.idCompany, this.config);
       this.configGuardada.emit({ ...this.config });
-      Swal.fire({ toast: true, position: 'top-end', icon: 'success', title: 'Configuración guardada', showConfirmButton: false, timer: 2000, timerProgressBar: true });
+      Swal.fire({ toast: true, position: 'bottom-end', icon: 'success', title: 'Configuración guardada', showConfirmButton: false, timer: 2000, timerProgressBar: true });
     } catch {
       Swal.fire('Error', 'No se pudo guardar la configuración.', 'error');
     } finally {

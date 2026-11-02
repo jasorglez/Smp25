@@ -10,7 +10,7 @@ import {
   GridReadyEvent,
   ICellRendererParams,
 } from 'ag-grid-enterprise';
-import { alerts } from '../../../../../../helpers/alerts';
+import { alerts } from 'app/helpers/alerts';
 import { States } from 'app/interface/states';
 import {
   catchError,
@@ -1285,11 +1285,7 @@ export class ProvidersComponent implements CanComponentDeactivate {
 
       await this.obtenerDatos();
 
-      alerts.basicAlert(
-        modifiedRows.length > 0 ? 'Registro actualizado' : 'Proveedor registrado',
-        '',
-        'success'
-      );
+      alerts.saveAlert();
 
       // Seleccionar la fila apropiada después de recargar
       if (this.lastEditedRowId) {
@@ -1610,11 +1606,7 @@ export class ProvidersComponent implements CanComponentDeactivate {
       }
 
       if (newDetails.length > 0 || modifiedDetails.length > 0) {
-        alerts.basicAlert(
-          'Detalles guardados',
-          'Se han guardado los detalles correctamente.',
-          'success'
-        );
+        alerts.saveAlert();
 
         // No es necesario recargar aquí, el componente hijo lo hace.
         // Simplemente limpiamos los flags.

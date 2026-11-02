@@ -1106,11 +1106,7 @@ export class DetallesTiposProveedorComponent implements ICellRendererAngularComp
       }
 
       // AHORA mostrar el alert (después de restaurar el focus)
-      alerts.basicAlert(
-        'Guardado exitoso',
-        'Los cambios se han guardado correctamente.',
-        'success'
-      );
+      alerts.saveAlert();
 
       this.hasChanges = false;
 

@@ -222,7 +222,7 @@ export class ProspectosAgendaComponent implements OnChanges, OnDestroy {
           ? '<br><small class="text-success"><i class="bi bi-calendar-check"></i> Sincronizado con Google Calendar</small>'
           : '';
         Swal.fire({
-          toast: true, position: 'top-end', icon: 'success',
+          toast: true, position: 'bottom-end', icon: 'success',
           title: 'Cita agendada' + googleMsg,
           showConfirmButton: false, timer: 2500, timerProgressBar: true,
         });

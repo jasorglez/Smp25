@@ -22,7 +22,7 @@ import {
   ReactiveFormsModule,
 } from '@angular/forms';
 import * as bootstrap from 'bootstrap';
-import { alerts } from '../../../../../../../helpers/alerts';
+import { alerts } from 'app/helpers/alerts';
 import {
   catchError,
   concat,

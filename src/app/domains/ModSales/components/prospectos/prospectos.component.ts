@@ -136,7 +136,7 @@ export class ProspectosComponent implements OnInit {
       // Actualiza el row en memoria para que desaparezca de alertas
       const row = this.rowData.find(r => r.id === p.id);
       if (row) row.fechaUltimaInteraccion = new Date();
-      Swal.fire({ toast: true, position: 'top-end', icon: 'success', title: 'Seguimiento registrado', showConfirmButton: false, timer: 2000, timerProgressBar: true });
+      Swal.fire({ toast: true, position: 'bottom-end', icon: 'success', title: 'Seguimiento registrado', showConfirmButton: false, timer: 2000, timerProgressBar: true });
     } catch {
       Swal.fire('Error', 'No se pudo registrar.', 'error');
     }
@@ -604,7 +604,7 @@ export class ProspectosComponent implements OnInit {
           this.notifConfig.googleEmail        = undefined;
           this.notifConfig.googleRefreshToken = undefined;
         }
-        Swal.fire({ toast: true, position: 'top-end', icon: 'success', title: 'Desconectado', showConfirmButton: false, timer: 2000, timerProgressBar: true });
+        Swal.fire({ toast: true, position: 'bottom-end', icon: 'success', title: 'Desconectado', showConfirmButton: false, timer: 2000, timerProgressBar: true });
       },
       error: () => Swal.fire('Error', 'No se pudo desconectar.', 'error'),
     });
@@ -631,7 +631,7 @@ export class ProspectosComponent implements OnInit {
     this.savingPlantillas = true;
     try {
       await this.svc.savePlantillas(this.idRoot, this.plantillas);
-      Swal.fire({ toast: true, position: 'top-end', icon: 'success', title: 'Plantillas guardadas', showConfirmButton: false, timer: 2000, timerProgressBar: true });
+      Swal.fire({ toast: true, position: 'bottom-end', icon: 'success', title: 'Plantillas guardadas', showConfirmButton: false, timer: 2000, timerProgressBar: true });
     } catch {
       Swal.fire('Error', 'No se pudieron guardar las plantillas.', 'error');
     } finally {
@@ -771,7 +771,7 @@ export class ProspectosComponent implements OnInit {
     }
 
     Swal.fire({
-      toast: true, position: 'top-end',
+      toast: true, position: 'bottom-end',
       icon: 'success', title: 'Registro guardado',
       showConfirmButton: false, timer: 2000, timerProgressBar: true,
     });
@@ -826,7 +826,7 @@ export class ProspectosComponent implements OnInit {
       this.originalData = JSON.parse(JSON.stringify(this.rowData));
       this.gridApi.setGridOption('rowData', this.rowData);
       this.selectedItem = null;
-      Swal.fire({ toast: true, position: 'top-end', icon: 'success', title: 'Eliminado', showConfirmButton: false, timer: 2000, timerProgressBar: true });
+      Swal.fire({ toast: true, position: 'bottom-end', icon: 'success', title: 'Eliminado', showConfirmButton: false, timer: 2000, timerProgressBar: true });
     } catch {
       Swal.fire('Error', 'No se pudo eliminar.', 'error');
     }
@@ -845,7 +845,7 @@ export class ProspectosComponent implements OnInit {
       return data;
     } catch (error: any) {
       if (error?.status === 404) {
-        Swal.fire({ toast: true, position: 'top-end', icon: 'warning', title: 'CP no encontrado', showConfirmButton: false, timer: 2000 });
+        Swal.fire({ toast: true, position: 'bottom-end', icon: 'warning', title: 'CP no encontrado', showConfirmButton: false, timer: 2000 });
       }
       return null;
     }
@@ -871,7 +871,7 @@ export class ProspectosComponent implements OnInit {
     try {
       await this.svc.saveCuotasMes(this.idRoot, this.mesActual, this.cuotasMes);
       this.cuotasEditando = false;
-      Swal.fire({ toast: true, position: 'top-end', icon: 'success', title: 'Cuotas guardadas', showConfirmButton: false, timer: 2000, timerProgressBar: true });
+      Swal.fire({ toast: true, position: 'bottom-end', icon: 'success', title: 'Cuotas guardadas', showConfirmButton: false, timer: 2000, timerProgressBar: true });
     } catch {
       Swal.fire('Error', 'No se pudieron guardar las cuotas.', 'error');
     }

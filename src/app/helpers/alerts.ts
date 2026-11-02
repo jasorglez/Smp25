@@ -13,12 +13,11 @@ export class alerts{
 
 		if (icon === 'success') {
 			return Swal.fire({
-				toast: true, position: 'top-end',
+				toast: true, position: 'bottom-end',
 				icon: 'success', title,
 				text: text || undefined,
 				showConfirmButton: false,
-				timer: 1800, timerProgressBar: true,
-				customClass: { container: 'swal-over-modal' },
+				timer: 1400, timerProgressBar: false,
 			});
 		}
 
@@ -29,6 +28,20 @@ export class alerts{
 			customClass: { container: 'swal-over-modal' }
 		});
 
+	}
+
+	static saveAlert() {
+		return Swal.fire({
+			toast: true,
+			position: 'bottom-end',
+			title: 'El registro se guardó',
+			icon: 'success',
+			showConfirmButton: false,
+			allowEscapeKey: false,
+			allowOutsideClick: false,
+			timer: 1400,
+			timerProgressBar: false,
+		});
 	}
 
 	/*=============================================
@@ -163,11 +176,10 @@ export class alerts{
 	static toastAlert(title: string, icon: SweetAlertIcon, timer: number = 1800) {
 		return Swal.mixin({
 			toast: true,
-			position: 'top-end',
+			position: 'bottom-end',
 			showConfirmButton: false,
 			timer,
-			timerProgressBar: true,
-			customClass: { container: 'swal-over-modal' },
+			timerProgressBar: false,
 		}).fire({ title, icon });
 	}
 

@@ -300,7 +300,7 @@ export class DetallesComponentCuentasAbono implements ICellRendererAngularComp {
     try {
       await lastValueFrom(concat(...addObservables, ...updateObservables).pipe(toArray()));
 
-      alerts.basicAlert('Guardado', 'Los abonos se han guardado correctamente.', 'success');
+      alerts.saveAlert();
       this.hasDetallesCuentasChanges = false;
       this.loadDetallesCuentasData(); // Recargar datos
       

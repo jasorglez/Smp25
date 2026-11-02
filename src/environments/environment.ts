@@ -75,5 +75,5 @@ export const environment = {
     // publicKey: 'TEST-4399133a-4676-42a2-ab85-d946370bf96a',
   },
 
-  version: '5.00.414 (02 Noviembre 2026 15:51) registro de empresa con Google',
+  version: '5.00.417 (02 Noviembre 2026 16:18) guardado discreto en proveedores',
 };

@@ -450,7 +450,7 @@ export class DetalleInteraccionesComponent implements OnInit {
 
     try {
       this.tiposInteraccion = await this.svc.addTipoInteraccion(idCompany, nuevo);
-      Swal.fire({ toast: true, position: 'top-end', icon: 'success', title: 'Tipo agregado', showConfirmButton: false, timer: 1500 });
+      Swal.fire({ toast: true, position: 'bottom-end', icon: 'success', title: 'Tipo agregado', showConfirmButton: false, timer: 1500 });
       return this.tiposInteraccion.find(t => t.toLowerCase() === nuevo.trim().toLowerCase()) ?? nuevo.trim();
     } catch {
       Swal.fire('Error', 'No se pudo guardar el nuevo tipo.', 'error');
@@ -569,7 +569,7 @@ export class DetalleInteraccionesComponent implements OnInit {
       interaccion.fecha = new Date(nuevaFecha);
       this.rowData = [...this.rowData];
       this.gridApi.setGridOption('rowData', this.rowData);
-      Swal.fire({ toast: true, position: 'top-end', icon: 'success', title: 'Fecha actualizada', showConfirmButton: false, timer: 2000, timerProgressBar: true });
+      Swal.fire({ toast: true, position: 'bottom-end', icon: 'success', title: 'Fecha actualizada', showConfirmButton: false, timer: 2000, timerProgressBar: true });
     } catch {
       Swal.fire('Error', 'No se pudo actualizar la fecha.', 'error');
     }
@@ -596,7 +596,7 @@ export class DetalleInteraccionesComponent implements OnInit {
       interaccion.descripcion = descripcion;
       this.rowData = [...this.rowData];
       this.gridApi.setGridOption('rowData', this.rowData);
-      Swal.fire({ toast: true, position: 'top-end', icon: 'success', title: 'Descripcion actualizada', showConfirmButton: false, timer: 2000, timerProgressBar: true });
+      Swal.fire({ toast: true, position: 'bottom-end', icon: 'success', title: 'Descripcion actualizada', showConfirmButton: false, timer: 2000, timerProgressBar: true });
     } catch {
       Swal.fire('Error', 'No se pudo actualizar la descripcion.', 'error');
     }
@@ -636,7 +636,7 @@ export class DetalleInteraccionesComponent implements OnInit {
       this.tareaFechaVenc = this.getTodayDateLocal();
       this.showTareaForm = false;
       await this.cargarTareas();
-      Swal.fire({ toast: true, position: 'top-end', icon: 'success', title: 'Tarea creada', showConfirmButton: false, timer: 2000, timerProgressBar: true });
+      Swal.fire({ toast: true, position: 'bottom-end', icon: 'success', title: 'Tarea creada', showConfirmButton: false, timer: 2000, timerProgressBar: true });
     } catch {
       Swal.fire('Error', 'No se pudo crear la tarea.', 'error');
     }
@@ -646,7 +646,7 @@ export class DetalleInteraccionesComponent implements OnInit {
     try {
       await this.svc.completarTarea(tarea.id!);
       this.tareasData = this.tareasData.filter(t => t.id !== tarea.id);
-      Swal.fire({ toast: true, position: 'top-end', icon: 'success', title: '¡Tarea completada!', showConfirmButton: false, timer: 2000, timerProgressBar: true });
+      Swal.fire({ toast: true, position: 'bottom-end', icon: 'success', title: '¡Tarea completada!', showConfirmButton: false, timer: 2000, timerProgressBar: true });
     } catch {
       Swal.fire('Error', 'No se pudo completar la tarea.', 'error');
     }

@@ -546,7 +546,7 @@ export class DetalleItemsCotizacionComponent implements ICellRendererAngularComp
       this.originalData = JSON.parse(JSON.stringify(this.rowData));
       this.hasChanges   = false;
       this.updateCountInParent();
-      Swal.fire({ toast: true, position: 'top-end', icon: 'success', title: 'Guardado', showConfirmButton: false, timer: 2000, timerProgressBar: true });
+      Swal.fire({ toast: true, position: 'bottom-end', icon: 'success', title: 'Guardado', showConfirmButton: false, timer: 2000, timerProgressBar: true });
       return true;
     } catch (e: any) {
       console.error('[Cotizaciones] Error guardando items:', e);
@@ -795,7 +795,7 @@ export class DetalleItemsCotizacionComponent implements ICellRendererAngularComp
       }
 
       this.cerrarModalCorreo();
-      Swal.fire({ toast: true, position: 'top-end', icon: 'success', title: 'Correo preparado para envío', showConfirmButton: false, timer: 2500, timerProgressBar: true });
+      Swal.fire({ toast: true, position: 'bottom-end', icon: 'success', title: 'Correo preparado para envío', showConfirmButton: false, timer: 2500, timerProgressBar: true });
     } catch (error: any) {
       console.error('[Cotizaciones] Error enviando correo:', error);
       Swal.fire('Error al enviar', error?.message || 'No se pudo preparar el correo. Intenta nuevamente.', 'error');
