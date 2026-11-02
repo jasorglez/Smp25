@@ -499,7 +499,7 @@ export class DetallesExpenditureComponent implements OnInit, OnDestroy {
             __isNew: false,
             __modified: false
           };
-        }).sort((a: any, b: any) => this.getDateSortValue(b.dateExpend) - this.getDateSortValue(a.dateExpend));
+        }).sort((a: any, b: any) => this.compareConceptsByRecentDate(a, b));
         // Calculate total for each concept
         this.rowData.forEach(concept => {
           concept.total = (concept.quantity || 0) * (concept.price || 0);
@@ -528,7 +528,7 @@ export class DetallesExpenditureComponent implements OnInit, OnDestroy {
     if (this.context && this.context.CONCEPTS && this.context.CONCEPTS.load) {
       const expenditureId = this.params.data.id;
       this.context.CONCEPTS.load(expenditureId, (data: any[]) => {
-        this.rowData = data;
+        this.rowData = this.sortConceptsNewestFirst(data || []);
         // Calculate totals for each concept
         this.rowData.forEach(concept => {
           concept.total = (concept.quantity || 0) * (concept.price || 0);
@@ -1448,6 +1448,20 @@ export class DetallesExpenditureComponent implements OnInit, OnDestroy {
 
     const date = new Date(value);
     return isNaN(date.getTime()) ? 0 : date.getTime();
+  }
+
+  private sortConceptsNewestFirst(concepts: any[]): any[] {
+    return [...(concepts || [])].sort((a, b) => this.compareConceptsByRecentDate(a, b));
+  }
+
+  private compareConceptsByRecentDate(a: any, b: any): number {
+    const dateDifference = this.getDateSortValue(b?.dateExpend) - this.getDateSortValue(a?.dateExpend);
+    if (dateDifference !== 0) return dateDifference;
+
+    const idA = Number(a?.id);
+    const idB = Number(b?.id);
+    if (Number.isFinite(idA) && Number.isFinite(idB)) return idB - idA;
+    return String(b?.id ?? '').localeCompare(String(a?.id ?? ''), undefined, { numeric: true });
   }
 
   closeDetail() {

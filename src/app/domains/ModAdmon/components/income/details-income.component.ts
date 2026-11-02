@@ -218,7 +218,7 @@ export class DetailsIncomeComponent implements OnInit, OnDestroy {
     this.incomesAndExpensesService.getConceptsFromIncomesAndExpenses(incomeId).subscribe({
       next: (data: any) => {
         this.workspaceLoaded = true;
-        this.rowData = data || [];
+        this.rowData = this.sortConceptsNewestFirst(data || []);
         this.calculateTotals();
       },
       error: (err) => {
@@ -240,7 +240,7 @@ export class DetailsIncomeComponent implements OnInit, OnDestroy {
       const concepts = await lastValueFrom(
         this.incomesAndExpensesService.getConceptsFromIncomesAndExpenses(incomeId)
       );
-      this.rowData = concepts || [];
+      this.rowData = this.sortConceptsNewestFirst(concepts || []);
       this.calculateTotals();
 
       // Load setup info for signatures
@@ -293,12 +293,31 @@ export class DetailsIncomeComponent implements OnInit, OnDestroy {
     this.context?.CONCEPTS?.updateTotals?.(this.params?.data?.id, this.subtotal, this.iva2, this.total);
   }
 
+  private sortConceptsNewestFirst(concepts: any[]): any[] {
+    return [...(concepts || [])].sort((a, b) => {
+      const dateDifference = this.getDateSortValue(b?.dateExpend) - this.getDateSortValue(a?.dateExpend);
+      if (dateDifference !== 0) return dateDifference;
+
+      const idA = Number(a?.id);
+      const idB = Number(b?.id);
+      if (Number.isFinite(idA) && Number.isFinite(idB)) return idB - idA;
+      return String(b?.id ?? '').localeCompare(String(a?.id ?? ''), undefined, { numeric: true });
+    });
+  }
+
+  private getDateSortValue(value: any): number {
+    if (!value) return 0;
+    const timestamp = new Date(value).getTime();
+    return Number.isNaN(timestamp) ? 0 : timestamp;
+  }
+
   // Column definitions
   get colDefs(): ColDef[] {
     return [
       {
         field: 'dateExpend',
         headerName: 'Fecha',
+        sort: 'desc',
         editable: true,
         flex: 2,
         cellEditor: 'agDateCellEditor',
