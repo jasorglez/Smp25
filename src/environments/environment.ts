@@ -75,5 +75,5 @@ export const environment = {
     // publicKey: 'TEST-4399133a-4676-42a2-ab85-d946370bf96a',
   },
 
-  version: '5.00.435 (07 Noviembre 2026 09:15) activar y desactivar imagenes del login',
+  version: '5.00.436 (07 Noviembre 2026 14:47) columnas compactas en reporte diario',
 };

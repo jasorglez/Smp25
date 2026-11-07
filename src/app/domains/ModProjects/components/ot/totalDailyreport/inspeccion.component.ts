@@ -164,8 +164,9 @@ export class InspeccionComponent implements OnInit {
     {
       colId: 'contentIndicators',
       headerName: 'Contenido',
-      width: 210,
-      minWidth: 210,
+      width: 112,
+      minWidth: 104,
+      maxWidth: 160,
       pinned: 'left',
       suppressSizeToFit: true,
       sortable: false,
@@ -176,8 +177,8 @@ export class InspeccionComponent implements OnInit {
     {
       colId: 'otRowNumber',
       headerName: '#',
-      width: 52,
-      minWidth: 52,
+      width: 40,
+      minWidth: 40,
       suppressSizeToFit: true,
       pinned: 'left',
       sortable: false,
@@ -188,16 +189,16 @@ export class InspeccionComponent implements OnInit {
     {
       field: 'otNumber',
       headerName: 'OT',
-      width: 120,
-      minWidth: 120,
+      width: 80,
+      minWidth: 74,
       sortable: true,
       filter: true
     },
     {
       field: 'cdc',
       headerName: 'CDC',
-      width: 140,
-      minWidth: 140,
+      width: 88,
+      minWidth: 80,
       sortable: true,
       filter: true
     },
@@ -205,7 +206,7 @@ export class InspeccionComponent implements OnInit {
       field: 'results',
       headerName: 'Respuesta',
       flex: 1,
-      minWidth: 200,
+      minWidth: 110,
       sortable: true,
       filter: true
     }
@@ -271,7 +272,7 @@ export class InspeccionComponent implements OnInit {
 
   private renderContentIndicators(row: any): HTMLElement {
     const container = document.createElement('span');
-    container.style.cssText = 'display:inline-flex;gap:6px;align-items:center;height:100%;font-size:12px';
+    container.style.cssText = 'display:inline-grid;grid-template-columns:repeat(2,max-content);column-gap:6px;align-content:center;height:100%;font-size:10px;line-height:12px';
     const indicators = [
       { field: 'personalCount', icon: '👥', label: 'Personal' },
       { field: 'materialCount', icon: '📦', label: 'Materiales' },
@@ -282,6 +283,7 @@ export class InspeccionComponent implements OnInit {
       const count = Number(row?.[indicator.field]);
       if (!(count > 0)) continue;
       const badge = document.createElement('span');
+      badge.style.whiteSpace = 'nowrap';
       badge.title = `${indicator.label}: ${count}`;
       badge.setAttribute('aria-label', badge.title);
       const icon = document.createElement('i');

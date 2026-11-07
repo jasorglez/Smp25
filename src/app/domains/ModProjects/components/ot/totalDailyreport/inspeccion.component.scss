@@ -37,9 +37,9 @@
   min-height: 0;
 }
 
-@container daily-report (min-width: 1320px) {
+@container daily-report (min-width: 960px) {
   .daily-report-layout {
-    grid-template-columns: minmax(740px, 1fr) minmax(0, 1fr);
+    grid-template-columns: minmax(460px, 0.9fr) minmax(0, 1.1fr);
     grid-template-rows: minmax(0, 1fr);
   }
 }
