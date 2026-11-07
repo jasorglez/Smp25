@@ -66,6 +66,7 @@ export class InspeccionComponent implements OnInit {
     tooltipShowDelay: 350,
     tooltipHideDelay: 10000,
     defaultColDef: {
+      resizable: true,
       tooltipValueGetter: (params: any) => this.getOtContentTooltip(params.data)
     },
     rowClassRules: {
@@ -176,6 +177,8 @@ export class InspeccionComponent implements OnInit {
       colId: 'otRowNumber',
       headerName: '#',
       width: 52,
+      minWidth: 52,
+      suppressSizeToFit: true,
       pinned: 'left',
       sortable: false,
       filter: false,
@@ -185,14 +188,16 @@ export class InspeccionComponent implements OnInit {
     {
       field: 'otNumber',
       headerName: 'OT',
-      width: 110,
+      width: 120,
+      minWidth: 120,
       sortable: true,
       filter: true
     },
     {
       field: 'cdc',
       headerName: 'CDC',
-      width: 100,
+      width: 140,
+      minWidth: 140,
       sortable: true,
       filter: true
     },
@@ -200,7 +205,7 @@ export class InspeccionComponent implements OnInit {
       field: 'results',
       headerName: 'Respuesta',
       flex: 1,
-      minWidth: 140,
+      minWidth: 200,
       sortable: true,
       filter: true
     }
@@ -336,7 +341,6 @@ export class InspeccionComponent implements OnInit {
 
   onOtsGridReady(params: GridReadyEvent): void {
     this.otsGridApi = params.api;
-    params.api.sizeColumnsToFit();
   }
 
   onOtSelected(event: any): void {

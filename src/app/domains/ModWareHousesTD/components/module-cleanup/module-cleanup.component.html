@@ -1,6 +1,12 @@
 <section class="p-3" *ngIf="isRoot">
   <h5><i class="bi bi-trash3 me-2" aria-hidden="true"></i>Limpieza de Almacén y Compras</h5>
-  <p>Empresa seleccionada: <strong>{{ signals.nameCompany() || 'Empresa' }} ({{ selectedCompanyId || 'sin seleccionar' }})</strong>.</p>
+  <p>Empresa seleccionada:
+    <strong *ngIf="selectedCompanyName; else companyNamePending">{{ selectedCompanyName }}</strong>
+    <span *ngIf="selectedCompanyId" class="text-muted ms-1">(ID: {{ selectedCompanyId }})</span>
+    <ng-template #companyNamePending>
+      <span>{{ !selectedCompanyId ? 'Selecciona una empresa' : loadingCompanyName ? 'Consultando nombre…' : 'Nombre no disponible; consulta la vista previa para identificar la empresa' }}</span>
+    </ng-template>
+  </p>
   <div class="alert alert-warning">
     Esta operación desactiva materiales, proveedores, requisiciones, cotizaciones de compra, órdenes de compra,
     entradas, salidas, traspasos y sus partidas y relaciones, incluidos los documentos cerrados, autorizados y cancelados.

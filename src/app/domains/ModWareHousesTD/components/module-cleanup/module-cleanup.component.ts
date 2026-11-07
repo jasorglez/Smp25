@@ -3,6 +3,7 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { firstValueFrom } from 'rxjs';
 import Swal from 'sweetalert2';
+import { RootService } from 'app/services/root.service';
 import { SignalsService } from 'app/services/signals.service';
 import { WarehouseCleanupPreview, WarehouseCleanupService } from 'app/services/warehouse-cleanup.service';
 import { canSeeWarehouseCleanup } from 'app/guards/warehouse-cleanup.guard';
@@ -16,6 +17,9 @@ import { canSeeWarehouseCleanup } from 'app/guards/warehouse-cleanup.guard';
 export class ModuleCleanupComponent {
   readonly signals = inject(SignalsService);
   private readonly service = inject(WarehouseCleanupService);
+  private readonly rootService = inject(RootService);
+  companyName = '';
+  loadingCompanyName = false;
   preview: WarehouseCleanupPreview | null = null;
   confirmation = '';
   acknowledged = false;
@@ -26,11 +30,31 @@ export class ModuleCleanupComponent {
 
   constructor() {
     effect(() => {
-      this.signals.getRootSelectedBySidebar()();
+      const companyId = Number(this.signals.getRootSelectedBySidebar()() || 0);
+      this.companyName = '';
+      this.loadingCompanyName = false;
+      if (companyId && this.isRoot) void this.loadCompanyName(companyId);
       this.resetPreview();
       this.error = '';
       this.result = '';
     });
+  }
+
+  get selectedCompanyName(): string { return this.preview?.companyName || this.companyName; }
+
+  private async loadCompanyName(companyId: number): Promise<void> {
+    this.loadingCompanyName = true;
+    try {
+      const company: any = await firstValueFrom(this.rootService.getRootbyId(companyId));
+      if (companyId === this.selectedCompanyId && Number(company?.id) === companyId) {
+        this.companyName = String(company.name || '').trim();
+      }
+    } catch {
+      // The preview also provides the authoritative company name before any cleanup.
+      if (companyId === this.selectedCompanyId) this.companyName = '';
+    } finally {
+      if (companyId === this.selectedCompanyId) this.loadingCompanyName = false;
+    }
   }
 
   get selectedCompanyId(): number { return Number(this.signals.getRootSelectedBySidebar()() || 0); }

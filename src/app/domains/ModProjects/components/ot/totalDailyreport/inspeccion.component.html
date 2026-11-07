@@ -71,13 +71,13 @@
                 </div>
 
                 <!-- Captura de reportes diarios por OT -->
-                <div class="tab-pane" 
+                <div class="tab-pane daily-report-capture"
                      [class.show]="activeTab === 'ots'" 
                      [class.active]="activeTab === 'ots'"
                      style="height: 100%;">
                   <div class="h-100">
-                    <div class="row g-2" style="height: 100%;">
-                      <div class="col-12 col-xl-4 h-100 d-flex flex-column">
+                    <div class="daily-report-layout">
+                      <div class="daily-report-list d-flex flex-column">
                       <small class="text-muted mb-1">👥 Personal · 📦 Materiales · 🚜 Equipos · 📷 Fotos</small>
                       <div style="flex: 1; min-height: 0;">
                       <ag-grid-angular 
@@ -92,7 +92,7 @@
                       </ag-grid-angular>
                       </div>
                       </div>
-                      <div class="col-12 col-xl-8 h-100">
+                      <div class="daily-report-detail">
                         <app-ordenes [captureMode]="true" [captureOt]="selectedOt" (captureOtsChange)="onCaptureOtsChanged($event)"></app-ordenes>
                       </div>
                     </div>
