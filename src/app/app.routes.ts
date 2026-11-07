@@ -2,6 +2,7 @@ import { Routes } from '@angular/router';
 import { MainPageComponent } from './pages/main-page/main-page.component';
 import { SharedModule } from './shared/shared.module';
 import { MasterPermissionsGuard } from './guards/master-permissions.guard';
+import { warehouseCleanupGuard } from './guards/warehouse-cleanup.guard';
 import { RootOnlyGuard } from './guards/root-only.guard';
 import { TelegramAdminGuard } from './guards/telegram-admin.guard';
 import { UnsavedChangesGuard } from './guards/unsaved-changes.guard';
@@ -2460,6 +2461,11 @@ export const routes: Routes = [
         canActivate: [MasterPermissionsGuard],
         data: { permissions: { master: 'shoppingTD' } },
         children: [
+          {
+            path: 'module-cleanup',
+            canActivate: [warehouseCleanupGuard],
+            loadComponent: () => import('./domains/ModWareHousesTD/components/module-cleanup/module-cleanup.component').then(c => c.ModuleCleanupComponent)
+          },
           { path: '', redirectTo: '', pathMatch: 'full' },
 
           {
@@ -2518,6 +2524,11 @@ export const routes: Routes = [
         canActivate: [MasterPermissionsGuard],
         data: { permissions: { master: 'warehousesTD' } },
         children: [
+          {
+            path: 'module-cleanup',
+            canActivate: [warehouseCleanupGuard],
+            loadComponent: () => import('./domains/ModWareHousesTD/components/module-cleanup/module-cleanup.component').then(c => c.ModuleCleanupComponent)
+          },
           {
             path: '',
             pathMatch: 'full',

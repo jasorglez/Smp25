@@ -3,6 +3,7 @@ import { NavigationEnd, Router, RouterModule } from '@angular/router';
 import { filter, Subscription } from 'rxjs';
 import { DomainsModule } from 'app/domains/domainsmodule';
 import { AuthService } from 'app/services/auth.service';
+import { canSeeWarehouseCleanup } from 'app/guards/warehouse-cleanup.guard';
 import { SignalsService } from 'app/services/signals.service';
 import { saveLastWarehouseRoute } from './warehouse-route-memory';
 
@@ -16,6 +17,7 @@ import { saveLastWarehouseRoute } from './warehouse-route-memory';
 export class ProcWarehousesTDComponent implements OnInit, OnDestroy {
   authService = inject(AuthService);
   private signalsService = inject(SignalsService);
+  get canCleanModule(): boolean { return canSeeWarehouseCleanup(this.signalsService); }
   private readonly router = inject(Router);
   private routeSubscription?: Subscription;
 

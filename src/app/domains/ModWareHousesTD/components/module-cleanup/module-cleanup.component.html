@@ -1,0 +1,40 @@
+<section class="p-3" *ngIf="isRoot">
+  <h5><i class="bi bi-trash3 me-2" aria-hidden="true"></i>Limpieza de Almacén y Compras</h5>
+  <p>Empresa seleccionada: <strong>{{ signals.nameCompany() || 'Empresa' }} ({{ selectedCompanyId || 'sin seleccionar' }})</strong>.</p>
+  <div class="alert alert-warning">
+    Esta operación desactiva materiales, proveedores, requisiciones, cotizaciones de compra, órdenes de compra,
+    entradas, salidas, traspasos y sus partidas y relaciones, incluidos los documentos cerrados, autorizados y cancelados.
+    Los registros permanecen almacenados. El inventario, kardex y trazabilidad dejarán de mostrar esos movimientos.
+  </div>
+  <p>Se conservan almacenes, configuración, catálogos, empresas, proyectos, seguridad, usuarios y permisos.</p>
+  <button type="button" class="btn btn-sm btn-primary mb-3" (click)="loadPreview()" [disabled]="busy || !selectedCompanyId">
+    <i class="bi bi-search me-1" aria-hidden="true"></i>{{ busy ? 'Procesando…' : 'Consultar datos que se borrarán' }}
+  </button>
+  <p *ngIf="executing" role="status">La limpieza está en curso. Espera a que termine para continuar.</p>
+  <div *ngIf="error" class="alert alert-danger" role="alert">{{ error }}</div>
+  <div *ngIf="result" class="alert alert-success" role="status">{{ result }}</div>
+  <div *ngIf="preview as data" class="border rounded p-3">
+    <h6>Confirmación para {{ data.companyName }} · Empresa {{ data.companyId }}</h6>
+    <div class="table-responsive">
+      <table class="table table-sm">
+        <caption class="visually-hidden">Registros que se desactivarán en la empresa seleccionada</caption>
+        <thead><tr><th scope="col">Datos</th><th scope="col" class="text-end">Registros</th></tr></thead>
+        <tbody><tr *ngFor="let item of data.items"><td>{{ item.label }}</td><td class="text-end">{{ item.count | number }}</td></tr></tbody>
+        <tfoot><tr><th scope="row">Total</th><td class="text-end fw-bold">{{ data.total | number }}</td></tr></tfoot>
+      </table>
+    </div>
+    <p *ngIf="!data.total" class="text-muted">No hay registros pendientes de limpieza.</p>
+    <div *ngIf="data.total > 0">
+      <p>La confirmación vence a las {{ data.expiresAt | date:'HH:mm' }}. Si los conteos cambian, tendrás que consultarlos nuevamente.</p>
+      <div class="form-check mb-3">
+        <input id="cleanup-acknowledged" class="form-check-input" type="checkbox" [(ngModel)]="acknowledged" [disabled]="busy">
+        <label class="form-check-label" for="cleanup-acknowledged">Confirmo el borrado lógico de todos los datos indicados de {{ data.companyName }} ({{ data.companyId }}).</label>
+      </div>
+      <label class="form-label" for="cleanup-confirmation">Escribe <strong>{{ data.confirmationText }}</strong> para confirmar:</label>
+      <input id="cleanup-confirmation" class="form-control mb-3" style="max-width: 360px" [(ngModel)]="confirmation" [disabled]="busy" autocomplete="off" spellcheck="false">
+      <button type="button" class="btn btn-sm btn-danger" (click)="execute()" [disabled]="!canExecute">
+        <i class="bi bi-trash3 me-1" aria-hidden="true"></i>Confirmar borrado lógico
+      </button>
+    </div>
+  </div>
+</section>

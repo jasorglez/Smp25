@@ -54,7 +54,12 @@
                   </a>
                </li>
 
-            </ul>
+            <li class="nav-item" *ngIf="canCleanModule">
+               <a class="nav-link text-danger" routerLink="module-cleanup" routerLinkActive="active">
+                  <i class="bi bi-trash3"></i><span>Limpieza de Almacén y Compras</span>
+               </a>
+            </li>
+         </ul>
    
             <router-outlet></router-outlet>
          </div>

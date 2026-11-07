@@ -2,6 +2,7 @@ import { Component, inject } from '@angular/core';
 import { RouterModule } from '@angular/router';
 import { DomainsModule } from 'app/domains/domainsmodule';
 import { AuthService } from 'app/services/auth.service';
+import { canSeeWarehouseCleanup } from 'app/guards/warehouse-cleanup.guard';
 import { SignalsService } from 'app/services/signals.service';
 
 @Component({
@@ -14,6 +15,7 @@ import { SignalsService } from 'app/services/signals.service';
 export class ProcShoppingTDComponent {
   authService = inject(AuthService);
   private signalsService = inject(SignalsService);
+  get canCleanModule(): boolean { return canSeeWarehouseCleanup(this.signalsService); }
   ngOnInit() {
     //this.signalsService.setCatalogSelected('SHOPPINGDELISON');
   }
