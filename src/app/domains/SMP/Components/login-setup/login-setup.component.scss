@@ -1,3 +1,27 @@
 :host {
   display: block;
 }
+
+.image-preview {
+  width: min(1100px, 94vw);
+  max-height: 94vh;
+  padding: 0;
+  border: 0;
+  border-radius: 12px;
+  overflow: auto;
+
+  &::backdrop {
+    background: rgb(0 0 0 / 70%);
+  }
+}
+
+.image-preview-content {
+  padding: 20px;
+}
+
+.image-preview-full {
+  display: block;
+  width: 100%;
+  max-height: 72vh;
+  object-fit: contain;
+}

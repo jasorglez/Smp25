@@ -1,6 +1,6 @@
 <div class="container-fluid p-3">
   <h2 class="mb-3">Login</h2>
-  <p class="text-muted mb-3">Imágenes WEBP para la pantalla de login. Agrega, edita o elimina entradas y guarda los cambios.</p>
+  <p class="text-muted mb-3">Imágenes WEBP para la pantalla de login. Haz clic en una imagen para verla en grande. Agrega, edita o elimina entradas y guarda los cambios.</p>
 
   <div class="d-flex gap-2 mb-2">
     <button type="button" class="btn btn-sm btn-success" (click)="addRow()" [disabled]="!gridApi">
@@ -42,3 +42,21 @@
     (gridReady)="onGridReady($event)">
   </ag-grid-angular>
 </div>
+
+<dialog #imagePreview class="image-preview" aria-labelledby="image-preview-title"
+        (close)="previewImage = null"
+        (click)="$event.target === $event.currentTarget && closeImagePreview()">
+  <div class="image-preview-content" *ngIf="previewImage">
+    <div class="d-flex justify-content-between align-items-center gap-3 mb-3">
+      <h3 id="image-preview-title" class="h5 mb-0">Presentación preliminar: {{ previewImage.nombre }}</h3>
+      <button type="button" class="btn-close" aria-label="Cerrar presentación preliminar"
+              autofocus (click)="closeImagePreview()"></button>
+    </div>
+    <img *ngIf="!previewImageError" class="image-preview-full" [src]="previewImage.url"
+         [alt]="previewImage.nombre" (error)="previewImageError = true" />
+    <p *ngIf="previewImageError" class="text-danger" role="alert">No se pudo cargar la imagen.</p>
+    <div class="text-end mt-3">
+      <button type="button" class="btn btn-secondary" (click)="closeImagePreview()">Cerrar</button>
+    </div>
+  </div>
+</dialog>

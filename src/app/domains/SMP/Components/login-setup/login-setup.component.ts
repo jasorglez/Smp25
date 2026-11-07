@@ -1,4 +1,4 @@
-import { Component, ViewChild, ElementRef, inject } from '@angular/core';
+import { Component, ViewChild, ElementRef, NgZone, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { AgGridModule } from 'ag-grid-angular';
 import { ColDef, GridApi, GridReadyEvent } from 'ag-grid-community';
@@ -16,7 +16,11 @@ import { TrackingService } from 'app/services/tracking.service';
 })
 export class LoginSetupComponent {
   private trackingService = inject(TrackingService);
+  private ngZone = inject(NgZone);
   @ViewChild('fileInput') fileInput: ElementRef<HTMLInputElement>;
+  @ViewChild('imagePreview') imagePreview: ElementRef<HTMLDialogElement>;
+  previewImage: { url: string; nombre: string } | null = null;
+  previewImageError = false;
 
   private imageHandlerService = inject(ImageHandlerService);
   private loginSetupService = inject(LoginImageService);
@@ -65,26 +69,46 @@ export class LoginSetupComponent {
         const url = params.value || '';
         const container = document.createElement('div');
         container.style.cssText = 'display:flex;align-items:center;justify-content:center;height:100%;';
+        container.style.gap = '8px';
         if (url) {
+          const preview = document.createElement('button');
+          preview.type = 'button';
+          preview.className = 'btn btn-link p-0';
+          preview.title = 'Presentación preliminar';
+          preview.setAttribute('aria-label', `Presentación preliminar de ${params.data.nombre || 'imagen'}`);
           const img = document.createElement('img');
           img.src = url;
-          img.style.cssText = 'width:80px;height:50px;object-fit:contain;cursor:pointer;';
-          img.title = 'Clic para cambiar imagen';
-          container.appendChild(img);
-        } else {
-          container.style.cssText += 'width:80px;height:50px;border:1px dashed #ccc;cursor:pointer;font-size:11px;';
-          container.title = 'Clic para cargar imagen WEBP';
-          container.textContent = 'WEBP';
+          img.alt = params.data.nombre || 'Imagen de login';
+          img.style.cssText = 'width:80px;height:50px;object-fit:contain;cursor:zoom-in;';
+          preview.appendChild(img);
+          preview.addEventListener('click', () => this.ngZone.run(() => this.showImagePreview(params.data)));
+          container.appendChild(preview);
         }
-        // Native listener: corre ANTES de que AG Grid procese el evento — preserva el gesto para file input
-        container.addEventListener('click', () => this.onImageCellClicked(params));
+        const change = document.createElement('button');
+        change.type = 'button';
+        change.className = 'btn btn-sm btn-outline-secondary';
+        change.textContent = url ? 'Cambiar imagen' : 'Cargar WEBP';
+        // El gesto directo del botón permite abrir el selector de archivos.
+        change.addEventListener('click', () => this.onImageCellClicked(params));
+        container.appendChild(change);
         return container;
       },
       editable: false,
       flex: 1,
-      minWidth: 140
+      minWidth: 250
     }
   ];
+
+  showImagePreview(row: any): void {
+    if (!row?.url) return;
+    this.previewImage = { url: row.url, nombre: row.nombre || 'Imagen de login' };
+    this.previewImageError = false;
+    this.imagePreview.nativeElement.showModal();
+  }
+
+  closeImagePreview(): void {
+    this.imagePreview.nativeElement.close();
+  }
 
   onGridReady(params: GridReadyEvent): void {
     this.gridApi = params.api;
