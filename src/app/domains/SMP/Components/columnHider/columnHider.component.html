@@ -1,26 +1,14 @@
 <div class="mt-2 light-blue-background">
     
-    <!-- Columna de botones -->
-     <div class="col-12">
-        <div class="row mt-4">
-            <div class="col-auto">
-              <div class="mb-3">
-                <label for="empresaSelect" class="form-label">Seleccionar Empresa:</label>
-                <select class="form-select" id="empresaSelect" [(ngModel)]="selectedEmpresa" (change)="onEmpresaSelected()">
-                  <option [ngValue]="null" disabled>Selecciona una empresa</option>
-                  <option *ngFor="let empresa of empresas" [ngValue]="empresa">{{ empresa.nameSmall }}</option>
-                </select>
-              </div>
-            </div>
-          </div>
-     </div>
+    <p *ngIf="!idEmpresa" class="text-muted p-2 mb-0">Selecciona una empresa en el sidebar para asignar sus menús.</p>
+    <p *ngIf="loadingMenus" class="text-muted p-2 mb-0" role="status">Consultando menús de la empresa seleccionada…</p>
      <div class="col-12">
         <ul class="list-group">
           <li class="list-group-item" *ngFor="let menu of masterMenus; let i = index">
             <div class="form-check form-switch">
               <input class="form-check-input" 
                      type="checkbox" 
-                     [disabled]="!selectedEmpresa"
+                     [disabled]="!idEmpresa || loadingMenus || savingPermissions"
                      [(ngModel)]="menu.hasPermission"
                      (ngModelChange)="onPermissionChange()"
                      role="switch"

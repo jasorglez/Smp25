@@ -46,7 +46,6 @@ import { environment } from '@env/environment';
 import { BranchsService } from 'app/services/branchs.service';
 import { CanComponentDeactivate } from 'app/guards/unsaved-changes.guard';
 import { confirmExitIfUnsaved } from 'app/helpers/can-deactivate.helper';
-import { RootService } from 'app/services/root.service';
 import { MenuService } from 'app/services/menu.service';
 import { TrackingService } from 'app/services/tracking.service';
 
@@ -72,7 +71,6 @@ export class columnHiderComponent {
   private branchesService = inject(BranchsService);
   private gridApi: GridApi;
   private hrService = inject(HRService);
-  private rootService = inject(RootService);
   private menuService = inject(MenuService);
 
   public AG_GRID_LOCALE_ES = AG_GRID_LOCALE_ES;
@@ -86,47 +84,49 @@ export class columnHiderComponent {
   id: string;
   rowData: any;
   hrData: any = {};
-  empresas: any[] = [];
   masterMenus: any[] = [];
   idBranch: number;
   gridHeight: string = '75vh';
   idEmpresa: number;
   notSavedChanges: boolean = false;
-  selectedEmpresa: any;
-
-  ngOnInit() {
-    this.idBranch = this.signalsService.getBranchSelectedBySidebar()();
-    this.idEmpresa = this.signalsService.getRootSelectedBySidebar()();
-    this.obtenerempresas();
-    this.masterMenu();
-
-    // 4. InicioConsulta la mandas después de cargar configuración si depende de datos de config
-  }
-
+  loadingMenus = false;
+  savingPermissions = false;
+  private menuLoadRequest = 0;
 
   constructor() {
     effect(() => {
       this.idBranch = this.signalsService.getBranchSelectedBySidebar()();
-      this.idEmpresa = this.signalsService.getRootSelectedBySidebar()();
+      const companyId = Number(this.signalsService.getRootSelectedBySidebar()() || 0);
+      if (companyId === this.idEmpresa) return;
+      this.idEmpresa = companyId;
+      this.loadCompanyMenus(companyId);
     });
   }
-  obtenerempresas() {
-    this.rootService
-      .getRoot().subscribe((data: any) => {
-        this.empresas = data;
-       console.log(data)
-      });
-  }
-  masterMenu() {
-    this.menuService
-      .getMasterMenu().subscribe((menus: any[]) => {
-        // Inicializamos cada menú con el permiso desactivado por defecto.
-        this.masterMenus = menus.map(menu => ({ ...menu, hasPermission: false }));
-        console.log('Master Menus inicializado:', this.masterMenus);
-      });
-  }
-  
 
+  private loadCompanyMenus(companyId: number): void {
+    const request = ++this.menuLoadRequest;
+    this.masterMenus = [];
+    this.loadingMenus = !!companyId;
+    if (!companyId) return;
+
+    forkJoin({
+      menus: this.menuService.getMasterMenu(),
+      permissions: this.menuService.getMenu(companyId)
+    }).subscribe({
+      next: ({ menus, permissions }) => {
+        if (request !== this.menuLoadRequest || companyId !== this.idEmpresa) return;
+        const permissionsMap = new Map(permissions.map(permission => [permission.idMenu, permission.active]));
+        this.masterMenus = menus.map(menu => ({ ...menu, hasPermission: !!permissionsMap.get(menu.id) }));
+        this.loadingMenus = false;
+      },
+      error: (error) => {
+        if (request !== this.menuLoadRequest || companyId !== this.idEmpresa) return;
+        this.loadingMenus = false;
+        console.error('Error al cargar los menús de la empresa seleccionada:', error);
+        alerts.basicAlert('Error', 'No se pudieron cargar los menús de la empresa seleccionada en el sidebar.', 'error');
+      }
+    });
+  }
 
   public gridOptions: any = {
     getRowClass: (params) => {
@@ -156,48 +156,31 @@ export class columnHiderComponent {
     },
   };
 
-  onEmpresaSelected() {
-    if (!this.selectedEmpresa) {
-      return;
-    }
-    console.log('Empresa Seleccionada:', this.selectedEmpresa);
-    this.menuService
-      .getMenu(this.selectedEmpresa.id)
-      .subscribe((companyPermissions: any[]) => {
-        console.log('Permisos de la empresa:', companyPermissions);
-
-        // Creamos un mapa para buscar permisos por idMenu fácilmente (mejora el rendimiento)
-        const permissionsMap = new Map(companyPermissions.map(p => [p.idMenu, p.active]));
-
-        // Actualizamos el estado de 'hasPermission' en la lista maestra.
-        this.masterMenus.forEach(menu => {
-          menu.hasPermission = permissionsMap.get(menu.id) || false;
-        });
-      });
-  }
-
   onPermissionChange() {
-    if (!this.selectedEmpresa) {
-      alerts.basicAlert('Error', 'Por favor, seleccione una empresa primero.', 'error');
-      return;
-    }
-
-    // Preparamos los datos para enviar al backend
+    if (!this.idEmpresa || this.loadingMenus || this.savingPermissions) return;
+    const companyId = this.idEmpresa;
+    const request = this.menuLoadRequest;
     const permissionsToUpdate = this.masterMenus.map(menu => ({
       idMenu: menu.id,
       active: menu.hasPermission
     }));
-
-    console.log('Guardando permisos:', permissionsToUpdate);
-
-    this.menuService.updateMenu(this.selectedEmpresa.id, permissionsToUpdate).subscribe({
+    this.savingPermissions = true;
+    this.menuService.updateMenu(companyId, permissionsToUpdate).subscribe({
       next: () => {
-        console.log(`Permisos para la empresa ${this.selectedEmpresa.nameSmall} actualizados.`);
-        alerts.basicAlert('Guardado', 'Los permisos se han actualizado correctamente.', 'success');
+        this.savingPermissions = false;
+        if (companyId !== this.idEmpresa) return;
+        if (request !== this.menuLoadRequest) {
+          this.loadCompanyMenus(companyId);
+          return;
+        }
+        alerts.saveAlert();
       },
-      error: (err) => {
-        console.error('Error al actualizar permisos:', err);
+      error: (error) => {
+        this.savingPermissions = false;
+        console.error('Error al actualizar permisos:', error);
+        if (companyId !== this.idEmpresa) return;
         alerts.basicAlert('Error', 'Ocurrió un error al guardar los permisos.', 'error');
+        this.loadCompanyMenus(companyId);
       }
     });
   }
