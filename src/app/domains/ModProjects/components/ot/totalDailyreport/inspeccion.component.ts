@@ -159,6 +159,16 @@ export class InspeccionComponent implements OnInit {
   // Columnas para todas las OTs
   public otsColumnDefs: ColDef[] = [
     {
+      colId: 'contentIndicators',
+      headerName: 'Contenido',
+      width: 190,
+      pinned: 'left',
+      sortable: false,
+      filter: false,
+      cellRenderer: (params: any) => this.renderContentIndicators(params.data),
+      tooltipValueGetter: (params: any) => this.getOtContentTooltip(params.data)
+    },
+    {
       colId: 'otRowNumber',
       headerName: '#',
       width: 52,
@@ -249,6 +259,30 @@ export class InspeccionComponent implements OnInit {
       ? availableOrders.filter((ot: any) => Number(ot?.idProject ?? ot?.projectId ?? ot?.idProyecto) === selectedProjectId)
       : availableOrders;
     if (this.otsGridApi) this.otsGridApi.setGridOption('rowData', this.allOtsData);
+  }
+
+  private renderContentIndicators(row: any): HTMLElement {
+    const container = document.createElement('span');
+    container.style.cssText = 'display:inline-flex;gap:10px;align-items:center;height:100%';
+    const indicators = [
+      { field: 'personalCount', icon: 'bi-people-fill', label: 'Personal' },
+      { field: 'materialCount', icon: 'bi-box-seam', label: 'Materiales' },
+      { field: 'equipmentCount', icon: 'bi-truck', label: 'Equipos' },
+      { field: 'photoCount', icon: 'bi-camera-fill', label: 'Fotos' }
+    ];
+    for (const indicator of indicators) {
+      const count = Number(row?.[indicator.field]);
+      if (!(count > 0)) continue;
+      const badge = document.createElement('span');
+      badge.title = `${indicator.label}: ${count}`;
+      badge.setAttribute('aria-label', badge.title);
+      const icon = document.createElement('i');
+      icon.className = `bi ${indicator.icon}`;
+      icon.setAttribute('aria-hidden', 'true');
+      badge.append(icon, document.createTextNode(` ${count}`));
+      container.appendChild(badge);
+    }
+    return container;
   }
 
   private hasOtContent(row: any): boolean {

@@ -75,5 +75,5 @@ export const environment = {
     // publicKey: 'TEST-4399133a-4676-42a2-ab85-d946370bf96a',
   },
 
-  version: '5.00.420 (06 Noviembre 2026 20:36) retiro de contraseña demo del frontend',
+  version: '5.00.421 (06 Noviembre 2026 21:26) iconos de contenido en reporte diario',
 };
