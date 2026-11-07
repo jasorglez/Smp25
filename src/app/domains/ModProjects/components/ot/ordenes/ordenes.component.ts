@@ -18,6 +18,7 @@ import { PdfGeneratorService } from 'app/services/pdf-generator.service';
 import { EmployeesService } from 'app/services/employees.service';
 import { RolesService } from 'app/services/roles.service';
 import { OtRowNumbers } from 'app/helpers/ot-row-numbers';
+import { OtGroupExpansion } from 'app/helpers/ot-group-expansion';
 import { alerts } from 'app/helpers/alerts';
 import { hasPersistedMasterId } from 'app/helpers/master-detail-guard';
 import { DomSanitizer, SafeResourceUrl } from '@angular/platform-browser';
@@ -184,7 +185,7 @@ export class OrdenesComponent implements OnInit, OnDestroy, OnChanges {
   private idProject: number = 0;
   private idcompany: number = 0;
   private isSelectionDrivenChange = false; // Flag para prevenir recarga de datos en selección de grid
-  private lastExpandedProjectId: number | null = null;
+  private readonly otGroupExpansion = new OtGroupExpansion();
   private isSavingData = false; // Flag para evitar recargas duplicadas durante guardado
 
   private catalogMateriales: any[] = [];
@@ -2160,6 +2161,19 @@ export class OrdenesComponent implements OnInit, OnDestroy, OnChanges {
 
   public gridOptions: any = {
     onModelUpdated: (event: any) => this.otRowNumbers.update(event.api),
+    isGroupOpenByDefault: (params: any) => this.otGroupExpansion.isOpen(params.rowNode,
+      Number(this.signalsService.getRootSelectedBySidebar()() || 0),
+      Number(this.signalsService.getProjectSelectedBySidebar()() || 0)),
+    onRowGroupOpened: (event: any) => this.otGroupExpansion.remember(event.node,
+      Number(this.signalsService.getRootSelectedBySidebar()() || 0)),
+    onRowDataUpdated: (event: any) => {
+      const companyId = Number(this.signalsService.getRootSelectedBySidebar()() || 0);
+      queueMicrotask(() => {
+        if (companyId === Number(this.signalsService.getRootSelectedBySidebar()() || 0)) {
+          this.otGroupExpansion.restore(event.api, companyId);
+        }
+      });
+    },
     headerHeight: 35,
     rowHeight: 25,
     suppressDragLeaveHidesColumns: true,
@@ -2925,20 +2939,8 @@ export class OrdenesComponent implements OnInit, OnDestroy, OnChanges {
         }
         void this.refreshOtContentSummary(this.rowData);
 
-        // Aplicar lógica de agrupación después de cargar datos
-        setTimeout(() => {
-          const selectedProjectId = this.signalsService.getProjectSelectedBySidebar()();
-
-          // Forzar colapso inicial siempre
-          this.gridApi.collapseAll();
-
-          // Luego aplicar la lógica específica
-          if (selectedProjectId && selectedProjectId !== 0) {
-            this.handleProjectGroupExpansion(selectedProjectId);
-          } else {
-            this.lastExpandedProjectId = null;
-          }
-        }, 200);
+        // Conservar los grupos abiertos/cerrados al recargar datos.
+        this.handleProjectGroupExpansion(this.signalsService.getProjectSelectedBySidebar()());
 
         // Actualizar catálogo de conceptos después de cargar los datos
         if (this.idProject) {
@@ -3006,21 +3008,8 @@ export class OrdenesComponent implements OnInit, OnDestroy, OnChanges {
         }
         void this.refreshOtContentSummary(this.rowData);
 
-        // Aplicar lógica de agrupación después de cargar datos
-        setTimeout(() => {
-          const selectedProjectId = this.signalsService.getProjectSelectedBySidebar()();
-
-
-          // Forzar colapso inicial siempre
-          this.gridApi.collapseAll();
-
-          // Luego aplicar la lógica específica
-          if (selectedProjectId && selectedProjectId !== 0) {
-            this.handleProjectGroupExpansion(selectedProjectId);
-          } else {
-            this.lastExpandedProjectId = null;
-          }
-        }, 200);
+        // Conservar los grupos abiertos/cerrados al recargar datos.
+        this.handleProjectGroupExpansion(this.signalsService.getProjectSelectedBySidebar()());
 
         // Actualizar catálogo de conceptos después de cargar los datos
         if (this.idProject) {
@@ -3223,67 +3212,13 @@ export class OrdenesComponent implements OnInit, OnDestroy, OnChanges {
   onGridReady(params: GridReadyEvent) {
     this.gridApi = params.api;
 
-    setTimeout(() => {
-      const selectedProjectId = this.signalsService.getProjectSelectedBySidebar()();
-
-      // Forzar colapso inicial si no hay proyecto seleccionado
-      if (!selectedProjectId || selectedProjectId === 0) {
-        this.gridApi.collapseAll();
-        this.lastExpandedProjectId = null;
-      } else {
-        this.handleProjectGroupExpansion(selectedProjectId);
-      }
-    }, 200);
+    this.handleProjectGroupExpansion(this.signalsService.getProjectSelectedBySidebar()());
   }
 
-  // Método para manejar expansión/colapso de grupos por proyecto
   private handleProjectGroupExpansion(selectedProjectId: number | null): void {
-    if (!this.gridApi) {
-      return;
-    }
-
-    // Si no hay permisos para ver todos los proyectos, no aplicar grouping
-    if (!this.authService.hasDetailedPermission('projects', 'get-all-ot')) {
-      return;
-    }
-
-
-
-    // Obtener todos los nodos de grupo de una sola vez
-    const groupNodes: any[] = [];
-    this.gridApi.forEachNode(node => {
-      if (node.group) {
-        groupNodes.push(node);
-      }
-    });
-
-    // 1. Colapsar proyecto anterior si existe y es diferente al nuevo
-    if (this.lastExpandedProjectId && this.lastExpandedProjectId !== selectedProjectId) {
-      const previousProjectNode = groupNodes.find(node =>
-        node.key === this.lastExpandedProjectId!.toString()
-      );
-      if (previousProjectNode) {
-        this.gridApi.setRowNodeExpanded(previousProjectNode, false);
-      }
-    }
-
-    // 2. Expandir nuevo proyecto seleccionado
-    if (selectedProjectId && selectedProjectId !== 0) {
-      const newProjectNode = groupNodes.find(node =>
-        node.key === selectedProjectId.toString()
-      );
-
-      if (newProjectNode) {
-        this.gridApi.setRowNodeExpanded(newProjectNode, true);
-        this.lastExpandedProjectId = selectedProjectId;
-
-      } else {
-      }
-    } else {
-      // 3. Si no hay proyecto seleccionado, colapsar todo
-      this.gridApi.collapseAll();
-      this.lastExpandedProjectId = null;
-    }
+    if (!this.authService.hasDetailedPermission('projects', 'get-all-ot')) return;
+    this.otGroupExpansion.openProject(this.gridApi,
+      Number(this.signalsService.getRootSelectedBySidebar()() || 0), Number(selectedProjectId || 0));
   }
 
   async onSelectionChanged(event: any) {
