@@ -226,7 +226,10 @@ export class InspeccionComponent implements OnInit {
       return;
     }
 
-    this.otService.getOtAllt(this.idRoot).subscribe({
+    const reportRequest = this.otService.isLocalReportExperiment()
+      ? this.otService.getOtReportsLocalV2(this.idRoot)
+      : this.otService.getOtAllt(this.idRoot);
+    reportRequest.subscribe({
       next: (data: ReportData[]) => {
         this.allReportsData = data;
         this.processDataForTabs();

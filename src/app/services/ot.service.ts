@@ -143,6 +143,29 @@ export class OtService {
     return this.http.get(`${environment.urlSmp}/OT/reports/${idRoot}`, { headers: this.trackingService.getHeaders() });
   }
 
+  private isLocalSmpExperiment(): boolean {
+    return typeof window !== 'undefined' && ['localhost', '127.0.0.1'].includes(window.location.hostname);
+  }
+
+  getReportContentSummary(projectIds: number[], closed = false): Observable<{ orders: any[] }> {
+    if (!this.isLocalSmpExperiment()) {
+      return throwError(() => new Error('La consulta experimental solo está habilitada en localhost.'));
+    }
+    return this.http.post<{ orders: any[] }>(`${environment.urlSmp}/OT/report-content-summary`,
+      { projectIds, closed }, { headers: this.trackingService.getHeaders() });
+  }
+
+  getOtReportsLocalV2(companyId: number): Observable<any[]> {
+    if (!this.isLocalSmpExperiment()) {
+      return throwError(() => new Error('La consulta experimental solo está habilitada en localhost.'));
+    }
+    return this.http.get<any[]>(`${environment.urlSmp}/OT/reports-v2/${companyId}`, {
+      headers: this.trackingService.getHeaders()
+    });
+  }
+
+  isLocalReportExperiment(): boolean { return this.isLocalSmpExperiment(); }
+
   getOtDetails(idOt: number): Observable<any> {
     return this.http.get(`${environment.urlSmp}/OT/${idOt}`, { headers: this.trackingService.getHeaders() });
   }

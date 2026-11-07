@@ -31,7 +31,7 @@ import { UpdateExcelService } from 'app/services/updateExcel.service';
 import { ProjectsService } from 'app/services/projects.service';
 import { AuthService } from 'app/services/auth.service';
 import * as bootstrap from 'bootstrap';
-import { firstValueFrom, lastValueFrom, EMPTY, catchError, first, Observable, tap, of } from 'rxjs';
+import { firstValueFrom, lastValueFrom, EMPTY, catchError, first, Observable, tap, of, map } from 'rxjs';
 import Swal from 'sweetalert2';
 
 
@@ -2912,7 +2912,13 @@ export class OrdenesComponent implements OnInit, OnDestroy, OnChanges {
   }
 
   obtenerOTsDelProyectoActual() {
-    this.otService.getOtListByProject(this.idProject, false).subscribe({
+    const source = this.otService.isLocalReportExperiment()
+      ? this.otService.getReportContentSummary([Number(this.idProject)], false).pipe(map(response =>
+          (response?.orders || []).map(item => ({ ...item.order, photoCount: item.photoCount, personalCount: item.personalCount,
+            materialCount: item.materialCount, equipmentCount: item.equipmentCount, lastActivity: item.lastActivity,
+            workConcepts: item.workConcepts || [], hasContentSummary: true }))))
+      : this.otService.getOtListByProject(this.idProject, false);
+    source.subscribe({
       next: (data: any) => {
         this.rowData = Array.isArray(data) ? data : [];
         this.publishCaptureOts();
@@ -2966,6 +2972,14 @@ export class OrdenesComponent implements OnInit, OnDestroy, OnChanges {
       // Usar la lista de proyectos que ya tenemos cargada
       if (this.projectsList && this.projectsList.length > 0) {
 
+        if (this.otService.isLocalReportExperiment()) {
+          const response = await firstValueFrom(this.otService.getReportContentSummary(
+            this.projectsList.map(project => Number(project.id)).filter(id => Number.isInteger(id) && id > 0), false));
+          allOTs.push(...(response?.orders || []).map(item => ({ ...item.order, photoCount: item.photoCount,
+            personalCount: item.personalCount, materialCount: item.materialCount, equipmentCount: item.equipmentCount,
+            lastActivity: item.lastActivity, workConcepts: item.workConcepts || [], hasContentSummary: true })));
+        } else {
+
         // Crear un array de promesas para obtener las OTs de cada proyecto
         const otPromises = this.projectsList.map(project =>
           firstValueFrom(this.otService.getOtListByProject(project.id, false))
@@ -2985,6 +2999,7 @@ export class OrdenesComponent implements OnInit, OnDestroy, OnChanges {
         allProjectOTs.forEach(projectOTs => {
           allOTs.push(...projectOTs);
         });
+        }
         this.rowData = allOTs;
         this.publishCaptureOts();
 
@@ -3035,6 +3050,9 @@ export class OrdenesComponent implements OnInit, OnDestroy, OnChanges {
   }
 
   private async refreshOtContentSummary(orders: any[]): Promise<void> {
+    if (this.otService.isLocalReportExperiment()) {
+      return;
+    }
     void this.loadOtWorkConceptSummaries(orders);
     const projectIds = [...new Set([this.idProject, ...orders.map(order => Number(order.idProject))]
       .filter(id => Number.isInteger(id) && id > 0))];
