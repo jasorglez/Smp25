@@ -824,7 +824,7 @@ public gridOptions: any = {
         );
       }
 
-      alerts.basicAlert('Datos actualizados', 'Se han actualizado los datos correctamente.', 'success');
+      alerts.basicAlert('Datos actualizados', newRows.length ? 'Empresas guardadas con todos los menús activos asignados automáticamente.' : 'Se han actualizado los datos correctamente.', 'success');
       this.notSavedChanges = false;
       this.newlyAddedRows = [];
       this.obtenerDatos();
