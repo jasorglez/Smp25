@@ -13,6 +13,11 @@ export class MaterialsService {
   private http = inject(HttpClient);
   private trackingService = inject(TrackingService);
 
+  importMaterials(companyId: number, rows: import('app/domains/ModProjects/components/materials/import-materials/material-import-format').MaterialImportRow[]) {
+    return this.http.post<{ companyId: number; imported: number; message: string }>(`${environment.urlWarehouse}/Material/import`,
+      { companyId, rows }, { headers: this.trackingService.getHeaders() });
+  }
+
   getProvidersxmaterials(idRoot: number): Observable<MaterialsResponse[]> {
     return this.http.get<MaterialsResponse[]>(`${environment.urlWarehouse}/Material/matprov/${idRoot}`,
       { headers: this.trackingService.getHeaders() }

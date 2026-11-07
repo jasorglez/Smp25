@@ -1,0 +1,34 @@
+<div class="modal d-block" tabindex="-1" role="dialog" aria-modal="true" aria-labelledby="material-import-title" style="background: rgba(0,0,0,.5); z-index: 1055">
+  <div class="modal-dialog modal-xl modal-dialog-scrollable"><div class="modal-content">
+    <div class="modal-header"><h5 id="material-import-title" class="modal-title">Importar materiales</h5><button type="button" class="btn-close" aria-label="Cerrar" [disabled]="busy" (click)="closed.emit()"></button></div>
+    <div class="modal-body">
+      <p>Empresa: <strong>{{ companyName || (loading ? 'Consultando empresa…' : 'Selecciona una empresa en el sidebar') }}</strong> <span *ngIf="companyId">(ID: {{ companyId }})</span></p>
+      <p>Descarga el formato o el ejemplo, prepara tu archivo y revisa las filas antes de importar. Máximo {{ maxRows | number }} materiales por archivo. Las familias, subfamilias y unidades deben existir en esta empresa.</p>
+      <div class="d-flex flex-wrap gap-2 mb-3">
+        <button type="button" class="btn btn-outline-success" (click)="download(false)" [disabled]="loading || !companyName || downloading || busy"><i class="bi bi-file-earmark-excel me-1"></i>Descargar formato Excel</button>
+        <button type="button" class="btn btn-outline-primary" (click)="download(true)" [disabled]="loading || !companyName || downloading || busy"><i class="bi bi-download me-1"></i>Descargar ejemplo</button>
+      </div>
+      <label for="materials-import-file" class="form-label">Subir Excel preparado (.xlsx o .xls, hasta 10 MB)</label>
+      <input id="materials-import-file" type="file" class="form-control mb-2" accept=".xlsx,.xls" (change)="readFile($event)" [disabled]="loading || reading || busy || !companyName">
+      <p class="small text-muted">Se crean materiales nuevos; no se sobrescriben los existentes. Las existencias se registran por entradas de almacén.</p>
+      <p *ngIf="fileName">Archivo: {{ fileName }}</p>
+      <p *ngIf="reading || busy" role="status">{{ busy ? 'Importando el lote. Espera a que termine…' : 'Leyendo y validando el Excel…' }}</p>
+      <div *ngIf="error" class="alert alert-danger" role="alert">{{ error }}</div>
+      <div *ngIf="result" class="alert alert-success" role="status">{{ result }}</div>
+      <div *ngIf="errors.length" class="alert alert-warning" role="alert">
+        <strong>{{ errors.length }} observaciones. Corrige el Excel y vuelve a subirlo; no se importará mientras haya errores.</strong>
+        <ul class="mb-0"><li *ngFor="let issue of errors.slice(0, 100)">{{ issue.row ? 'Fila ' + issue.row + ': ' : '' }}{{ issue.message }}</li></ul>
+        <p *ngIf="errors.length > 100" class="mb-0">Se muestran las primeras 100 observaciones.</p>
+      </div>
+      <div *ngIf="rows.length">
+        <h6>{{ rows.length | number }} materiales leídos · Vista previa de las primeras 50 filas</h6>
+        <div class="table-responsive"><table class="table table-sm table-striped">
+          <thead><tr><th>Fila</th><th>Insumo</th><th>Descripción</th><th>Familia</th><th>Subfamilia</th><th>Unidad</th><th>Costo MN</th><th>Venta MN</th></tr></thead>
+          <tbody><tr *ngFor="let row of rows.slice(0, 50)"><td>{{ row.excelRow }}</td><td>{{ row.insumo }}</td><td>{{ row.description }}</td><td>{{ row.family }}</td><td>{{ row.subfamily }}</td><td>{{ row.measure }}</td><td>{{ row.cost | number:'1.2-2' }}</td><td>{{ row.price | number:'1.2-2' }}</td></tr></tbody>
+        </table></div>
+        <p *ngIf="!errors.length">Se crearán <strong>{{ rows.length | number }}</strong> materiales en <strong>{{ companyName }}</strong>. El servidor volverá a validar duplicados y catálogos antes de guardar el lote completo.</p>
+      </div>
+    </div>
+    <div class="modal-footer"><button type="button" class="btn btn-secondary" [disabled]="busy" (click)="closed.emit()">Cerrar</button><button type="button" class="btn btn-success" [disabled]="!canImport" (click)="submit()"><i class="bi bi-upload me-1"></i>Importar {{ rows.length || '' }} materiales</button></div>
+  </div></div>
+</div>

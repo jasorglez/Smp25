@@ -37,6 +37,7 @@ import { FamilyModalService } from './services/family-modal.service';
 import { SubfamilyModalService } from './services/subfamily-modal.service';
 import { MeasureModalService } from './services/measure-modal.service';
 import { MaterialDetailRendererComponent } from './material-detail-renderer.component';
+import { MaterialImportComponent } from './import-materials/material-import.component';
 import { PdfMaterialsDistributionComponent } from './pdf-materials-distribution.component';
 
 @Component({
@@ -99,7 +100,7 @@ export class CustomGroupRendererComponent implements ICellRendererAngularComp {
 @Component({
   selector: 'storeComponent',
   standalone: true,
-  imports: [CommonModule, FormsModule, NgSelectModule, AgGridModule, CustomGroupRendererComponent, SelectWithTooltipEditorV2Component, MaterialDetailRendererComponent, PdfMaterialsDistributionComponent],
+  imports: [MaterialImportComponent, CommonModule, FormsModule, NgSelectModule, AgGridModule, CustomGroupRendererComponent, SelectWithTooltipEditorV2Component, MaterialDetailRendererComponent, PdfMaterialsDistributionComponent],
   templateUrl: './materials.component.html',
   styleUrl: './materials.component.scss',
   styles: `
@@ -127,6 +128,10 @@ export class MaterialsComponent implements CanComponentDeactivate {
   saving: boolean = false;          // previene doble clic en guardar
   showLoansTab: boolean = false;
   selectedRowData: any = null;
+  showImportMaterials = false;
+  onMaterialsImported(event: { companyId: number; imported: number }): void {
+    if (event.companyId === Number(this.signalsService.getRootSelectedBySidebar()() || 0)) this.obtenerDatos();
+  }
   showComponentsModal = false;
   loadingComponents = false;
   savingComponents = false;

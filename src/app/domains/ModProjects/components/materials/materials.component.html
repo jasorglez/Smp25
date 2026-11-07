@@ -2,6 +2,12 @@
   <div class="col-12 py-3">
     <!-- Botones y grid principal -->
     <div class="row mb-3">
+      <div class="col-12 mb-2">
+        <button type="button" class="btn btn-outline-success" (click)="showImportMaterials = true" [disabled]="saving || notSavedChanges || !idcompany">
+          <i class="bi bi-file-earmark-arrow-up me-1"></i>Importar materiales
+        </button>
+        <small *ngIf="notSavedChanges" class="text-muted ms-2">Guarda o deshaz los cambios antes de importar.</small>
+      </div>
       <nav class="col-auto d-flex flex-column align-items-start">
         <button type="button" class="btn btn-primary ms-1 me-1 mb-2" (click)="onAdd()" title="Agregar material">
           <i class="bi bi-plus"></i>
@@ -392,3 +398,5 @@
 
 <!-- Backdrop del modal de unidad -->
 <div class="modal-backdrop fade" [class.show]="showMeasureModal" [style.display]="showMeasureModal ? 'block' : 'none'"></div>
+
+<app-material-import *ngIf="showImportMaterials" (closed)="showImportMaterials = false" (imported)="onMaterialsImported($event)"></app-material-import>
