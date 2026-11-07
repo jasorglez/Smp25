@@ -8,12 +8,31 @@
     </ng-template>
   </p>
   <div class="alert alert-warning">
-    Esta operación desactiva materiales, proveedores, requisiciones, cotizaciones de compra, órdenes de compra,
-    entradas, salidas, traspasos y sus partidas y relaciones, incluidos los documentos cerrados, autorizados y cancelados.
-    Los registros permanecen almacenados. El inventario, kardex y trazabilidad dejarán de mostrar esos movimientos.
+    Esta operación desactiva únicamente los grupos que marques y sus partidas, incluidos los documentos cerrados,
+    autorizados y cancelados. Los grupos desmarcados se conservan. También se protegen los materiales, proveedores
+    y documentos necesarios para los registros que conserves. Los registros desactivados permanecen almacenados.
   </div>
   <p>Se conservan almacenes, configuración, catálogos, empresas, proyectos, seguridad, usuarios y permisos.</p>
-  <button type="button" class="btn btn-sm btn-primary mb-3" (click)="loadPreview()" [disabled]="busy || !selectedCompanyId">
+  <fieldset class="border rounded p-3 mb-3" [disabled]="busy">
+    <legend class="float-none w-auto px-2 fs-6">¿Qué datos quieres borrar lógicamente?</legend>
+    <div class="form-check mb-2">
+      <input id="cleanup-all" class="form-check-input" type="checkbox" [checked]="allSelected"
+        [indeterminate]="someSelected && !allSelected" (change)="toggleAll($any($event.target).checked)">
+      <label class="form-check-label fw-bold" for="cleanup-all">Marcar / desmarcar todos</label>
+    </div>
+    <div class="row g-2">
+      <div class="col-12 col-md-6" *ngFor="let group of groups">
+        <div class="form-check">
+          <input [id]="'cleanup-group-' + group.key" class="form-check-input" type="checkbox"
+            [(ngModel)]="group.selected" (ngModelChange)="selectionChanged()">
+          <label class="form-check-label" [for]="'cleanup-group-' + group.key">{{ group.label }}</label>
+        </div>
+      </div>
+    </div>
+    <p class="small text-muted mt-2 mb-0">Por ejemplo, desmarca Entradas para conservarlas con sus partidas. Los traspasos se conservan completos si una de sus partes debe conservarse.</p>
+  </fieldset>
+  <p *ngIf="keptGroupNames" class="text-success">Se conservarán: {{ keptGroupNames }}.</p>
+  <button type="button" class="btn btn-sm btn-primary mb-3" (click)="loadPreview()" [disabled]="busy || !selectedCompanyId || !someSelected">
     <i class="bi bi-search me-1" aria-hidden="true"></i>{{ busy ? 'Procesando…' : 'Consultar datos que se borrarán' }}
   </button>
   <p *ngIf="executing" role="status">La limpieza está en curso. Espera a que termine para continuar.</p>
@@ -21,6 +40,10 @@
   <div *ngIf="result" class="alert alert-success" role="status">{{ result }}</div>
   <div *ngIf="preview as data" class="border rounded p-3">
     <h6>Confirmación para {{ data.companyName }} · Empresa {{ data.companyId }}</h6>
+    <div *ngIf="data.protectedItems?.length" class="alert alert-info">
+      <strong>También se conservarán porque los documentos que mantienes los necesitan:</strong>
+      <ul class="mb-0"><li *ngFor="let item of data.protectedItems">{{ item.label }}: {{ item.count | number }}</li></ul>
+    </div>
     <div class="table-responsive">
       <table class="table table-sm">
         <caption class="visually-hidden">Registros que se desactivarán en la empresa seleccionada</caption>
@@ -29,12 +52,12 @@
         <tfoot><tr><th scope="row">Total</th><td class="text-end fw-bold">{{ data.total | number }}</td></tr></tfoot>
       </table>
     </div>
-    <p *ngIf="!data.total" class="text-muted">No hay registros pendientes de limpieza.</p>
+    <p *ngIf="!data.total" class="text-muted">No hay registros que borrar en esta selección; los datos necesarios para los documentos conservados quedan protegidos.</p>
     <div *ngIf="data.total > 0">
       <p>La confirmación vence a las {{ data.expiresAt | date:'HH:mm' }}. Si los conteos cambian, tendrás que consultarlos nuevamente.</p>
       <div class="form-check mb-3">
         <input id="cleanup-acknowledged" class="form-check-input" type="checkbox" [(ngModel)]="acknowledged" [disabled]="busy">
-        <label class="form-check-label" for="cleanup-acknowledged">Confirmo el borrado lógico de todos los datos indicados de {{ data.companyName }} ({{ data.companyId }}).</label>
+        <label class="form-check-label" for="cleanup-acknowledged">Confirmo el borrado lógico únicamente de los datos seleccionados e indicados de {{ data.companyName }} ({{ data.companyId }}).</label>
       </div>
       <label class="form-label" for="cleanup-confirmation">Escribe <strong>{{ data.confirmationText }}</strong> para confirmar:</label>
       <input id="cleanup-confirmation" class="form-control mb-3" style="max-width: 360px" [(ngModel)]="confirmation" [disabled]="busy" autocomplete="off" spellcheck="false">

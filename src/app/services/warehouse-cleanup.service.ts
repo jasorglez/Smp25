@@ -3,11 +3,15 @@ import { HttpClient } from '@angular/common/http';
 import { environment } from '@env/environment';
 import { TrackingService } from './tracking.service';
 
+export type WarehouseCleanupGroup = 'materials' | 'providers' | 'requisitions' | 'purchaseOrders' | 'quotes' | 'entries' | 'exits' | 'otherMovements';
+
 export interface WarehouseCleanupCount { label: string; count: number; }
 export interface WarehouseCleanupPreview {
   companyId: number;
   companyName: string;
   items: WarehouseCleanupCount[];
+  selectedGroups: WarehouseCleanupGroup[];
+  protectedItems: WarehouseCleanupCount[];
   total: number;
   confirmationText: string;
   token: string;
@@ -25,9 +29,9 @@ export class WarehouseCleanupService {
   private readonly http = inject(HttpClient);
   private readonly tracking = inject(TrackingService);
 
-  preview(companyId: number) {
+  preview(companyId: number, groups: WarehouseCleanupGroup[]) {
     return this.http.get<WarehouseCleanupPreview>(`${environment.urlSmp}/warehouse-cleanup/${companyId}/preview`,
-      { headers: this.tracking.getHeaders() });
+      { headers: this.tracking.getHeaders(), params: { groups } });
   }
 
   execute(preview: WarehouseCleanupPreview, confirmationText: string) {

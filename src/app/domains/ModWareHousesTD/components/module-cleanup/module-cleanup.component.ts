@@ -5,7 +5,7 @@ import { firstValueFrom } from 'rxjs';
 import Swal from 'sweetalert2';
 import { RootService } from 'app/services/root.service';
 import { SignalsService } from 'app/services/signals.service';
-import { WarehouseCleanupPreview, WarehouseCleanupService } from 'app/services/warehouse-cleanup.service';
+import { WarehouseCleanupGroup, WarehouseCleanupPreview, WarehouseCleanupService } from 'app/services/warehouse-cleanup.service';
 import { canSeeWarehouseCleanup } from 'app/guards/warehouse-cleanup.guard';
 
 @Component({
@@ -27,6 +27,16 @@ export class ModuleCleanupComponent {
   executing = false;
   error = '';
   result = '';
+  readonly groups: Array<{ key: WarehouseCleanupGroup; label: string; selected: boolean }> = [
+    { key: 'materials', label: 'Materiales y sus relaciones', selected: true },
+    { key: 'providers', label: 'Proveedores y sus relaciones', selected: true },
+    { key: 'requisitions', label: 'Requisiciones y sus partidas', selected: true },
+    { key: 'purchaseOrders', label: 'Órdenes de compra y sus partidas', selected: true },
+    { key: 'quotes', label: 'Cotizaciones y otros documentos de compra', selected: true },
+    { key: 'entries', label: 'Entradas y sus partidas', selected: true },
+    { key: 'exits', label: 'Salidas y sus partidas', selected: true },
+    { key: 'otherMovements', label: 'Otros movimientos de almacén', selected: true }
+  ];
 
   constructor() {
     effect(() => {
@@ -38,6 +48,27 @@ export class ModuleCleanupComponent {
       this.error = '';
       this.result = '';
     });
+  }
+
+  get selectedGroups(): WarehouseCleanupGroup[] { return this.groups.filter(group => group.selected).map(group => group.key); }
+  get allSelected(): boolean { return this.groups.every(group => group.selected); }
+  get someSelected(): boolean { return this.groups.some(group => group.selected); }
+  get keptGroupNames(): string { return this.groups.filter(group => !group.selected).map(group => group.label).join(', '); }
+
+  toggleAll(selected: boolean): void {
+    if (this.busy) return;
+    this.groups.forEach(group => group.selected = selected);
+    this.selectionChanged();
+  }
+
+  selectionChanged(): void {
+    this.resetPreview();
+    this.error = '';
+    this.result = '';
+  }
+
+  private matchesSelection(preview: WarehouseCleanupPreview): boolean {
+    return Array.isArray(preview.selectedGroups) && [...preview.selectedGroups].sort().join(',') === [...this.selectedGroups].sort().join(',');
   }
 
   get selectedCompanyName(): string { return this.preview?.companyName || this.companyName; }
@@ -61,20 +92,27 @@ export class ModuleCleanupComponent {
   get isRoot(): boolean { return canSeeWarehouseCleanup(this.signals); }
   get canExecute(): boolean {
     return this.isRoot && !this.busy && !!this.preview && this.preview.total > 0 &&
-      this.preview.companyId === this.selectedCompanyId && this.acknowledged &&
+      this.preview.companyId === this.selectedCompanyId && this.matchesSelection(this.preview) && this.acknowledged &&
       this.confirmation === this.preview.confirmationText && Date.parse(this.preview.expiresAt) > Date.now();
   }
 
   async loadPreview(): Promise<void> {
     const id = this.selectedCompanyId;
-    if (!this.isRoot || !id || this.busy) return;
+    if (!this.isRoot || !id || this.busy || !this.someSelected) return;
+    const groups = this.selectedGroups;
     this.resetPreview();
     this.error = '';
     this.result = '';
     this.busy = true;
     try {
-      const preview = await firstValueFrom(this.service.preview(id));
-      if (id === this.selectedCompanyId && this.isRoot) this.preview = preview;
+      const preview = await firstValueFrom(this.service.preview(id, groups));
+      if (id === this.selectedCompanyId && this.isRoot) {
+        if (!this.matchesSelection(preview)) {
+          this.error = 'El servidor debe actualizarse para respetar los grupos seleccionados. No se ejecutará la limpieza.';
+          return;
+        }
+        this.preview = preview;
+      }
     } catch (error: any) {
       if (id === this.selectedCompanyId) this.error = error?.error?.message || 'No se pudo consultar la vista previa. No se ejecutó ninguna limpieza.';
     } finally { this.busy = false; }
@@ -103,7 +141,7 @@ export class ModuleCleanupComponent {
       });
       if (!decision.isConfirmed) return;
       if (this.preview !== preview || !this.isRoot || this.selectedCompanyId !== preview.companyId ||
-          !this.acknowledged || this.confirmation !== confirmation || Date.parse(preview.expiresAt) <= Date.now()) {
+          !this.matchesSelection(preview) || !this.acknowledged || this.confirmation !== confirmation || Date.parse(preview.expiresAt) <= Date.now()) {
         this.error = 'La empresa o la confirmación cambió o venció. Consulta nuevamente los datos antes de borrar.';
         return;
       }
@@ -138,7 +176,13 @@ export class ModuleCleanupComponent {
     const preserved = document.createElement('p');
     preserved.className = 'small';
     preserved.textContent = 'Se conservan los almacenes, configuración, catálogos, empresas, proyectos, seguridad, usuarios y permisos. Los registros desactivados permanecen almacenados.';
-    container.append(company, list, total, preserved);
+    const kept = document.createElement('p');
+    kept.textContent = this.keptGroupNames ? `Se conservarán los grupos desmarcados: ${this.keptGroupNames}.` : '';
+    const protectedData = document.createElement('p');
+    protectedData.className = 'small';
+    protectedData.textContent = (preview.protectedItems || []).length
+      ? `También se conservarán por dependencia: ${preview.protectedItems.map(item => `${item.label}: ${item.count.toLocaleString('es-MX')}`).join('; ')}.` : '';
+    container.append(company, list, total, kept, protectedData, preserved);
     return container;
   }
 
