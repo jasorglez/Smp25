@@ -7,8 +7,6 @@ import {
   createUserWithEmailAndPassword,
   signOut,
   sendEmailVerification,
-  GoogleAuthProvider,
-  signInWithPopup,
   User,
   authState,
 } from '@angular/fire/auth';
@@ -69,28 +67,6 @@ export class AuthService {
 
   login(data: Ilogin) {
     return this.http.post(environment.urlSecurity + '/Auth/login', data);
-  }
-
-  async signInWithGoogle(): Promise<{ firebaseIdToken: string; email: string; displayName: string; picture: string }> {
-    const result = await signInWithPopup(this.auth, new GoogleAuthProvider());
-    const user = result.user;
-    if (!user.email) throw new Error('Google no devolvió un correo electrónico.');
-    return {
-      firebaseIdToken: await user.getIdToken(),
-      email: user.email,
-      displayName: user.displayName || user.email,
-      picture: user.photoURL || ''
-    };
-  }
-
-  startGoogleRegistration(firebaseIdToken: string): Observable<any> {
-    return this.http.post(`${environment.urlSecurity}/GoogleRegistration/start`, { firebaseIdToken });
-  }
-
-  completeGoogleRegistration(data: {
-    firebaseIdToken: string; companyName: string; companyShortName: string; companyType: string;
-  }): Observable<any> {
-    return this.http.post(`${environment.urlSecurity}/GoogleRegistration/complete`, data);
   }
 
   // ─── Inicia los timers de sesión una vez que el token está en localStorage ───

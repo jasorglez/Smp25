@@ -414,20 +414,7 @@ $transition: 0.25s $ease;
     border-color: rgba(255, 255, 255, 0.42);
   }
 
-  &:disabled { opacity: 0.6; cursor: wait; }
-}
-
-.google-company-step {
-  margin-top: 1rem;
-  padding: 1rem;
-  border: 1px solid rgba(255, 255, 255, 0.16);
-  border-radius: 12px;
-  background: rgba(8, 13, 27, 0.72);
-  color: #fff;
-
-  h2 { margin: 0 0 0.35rem; font-size: 1rem; }
-  p { margin: 0 0 0.8rem; color: rgba(255, 255, 255, 0.7); font-size: 0.78rem; }
-  label { display: block; margin-bottom: 0.3rem; font-size: 0.76rem; }
+  &:disabled { opacity: 0.6; cursor: not-allowed; }
 }
 
 // ─── Loading overlay ──────────────────────────────────────────────────────────
