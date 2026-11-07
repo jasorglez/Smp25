@@ -75,5 +75,5 @@ export const environment = {
     // publicKey: 'TEST-4399133a-4676-42a2-ab85-d946370bf96a',
   },
 
-  version: '5.00.431 (07 Noviembre 2026 08:47) activar y apagar todos los menus',
+  version: '5.00.432 (07 Noviembre 2026 08:50) borrado logico de permisos',
 };

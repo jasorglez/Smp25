@@ -219,15 +219,18 @@ export class PermissionComponent implements OnInit {
     }
   }
 
-  async onDelete() { 
-    const selectedNodes = this.gridApi.getSelectedNodes();
-    if (selectedNodes.length === 0) return;
+  async onDelete() {
+    const selectedNodes = this.gridApi?.getSelectedNodes() || [];
+    if (selectedNodes.length === 0) {
+      alerts.basicAlert('Atención', 'Selecciona un permiso de la lista para borrar.', 'warning');
+      return;
+    }
 
     const selectedData = selectedNodes[0].data;
     
     const confirm = await alerts.confirmAlert(
       'Eliminar', 
-      `¿Está seguro de eliminar el permiso ${selectedData.permissionName || 'seleccionado'}?`,
+      `¿Está seguro de borrar lógicamente el permiso ${selectedData.permissionName || 'seleccionado'}? Se conservarán sus relaciones y asignaciones.`,
       'warning',
       'Sí, eliminar'
     );
@@ -240,11 +243,11 @@ export class PermissionComponent implements OnInit {
 
       try {
         await firstValueFrom(this.masterPermissionsService.deleteMasterPermissions(selectedData.id));
-        alerts.basicAlert('Éxito', 'Permiso eliminado', 'success');
+        alerts.basicAlert('Éxito', 'Permiso borrado lógicamente', 'success');
         this.refreshData();
       } catch (error) {
         console.error(error);
-        alerts.basicAlert('Error', 'No se pudo eliminar', 'error');
+        alerts.basicAlert('Error', 'No se pudo borrar el permiso. Intenta nuevamente; si continúa, revisa el servicio de Seguridad.', 'error');
       }
     }
   }

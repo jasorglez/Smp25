@@ -271,7 +271,7 @@ export class DetailedPermissionsComponent implements OnInit, ICellRendererAngula
   }
 
   async onDelete() {
-    const selectedNodes = this.gridApi.getSelectedNodes();
+    const selectedNodes = this.gridApi?.getSelectedNodes() || [];
     if (selectedNodes.length === 0) {
       alerts.basicAlert('Atención', 'Seleccione un registro', 'warning');
       return;
@@ -283,15 +283,15 @@ export class DetailedPermissionsComponent implements OnInit, ICellRendererAngula
       return;
     }
 
-    const confirm = await alerts.confirmAlert('Eliminar', '¿Está seguro?', 'warning', 'Sí, eliminar');
+    const confirm = await alerts.confirmAlert('Borrar permiso', `¿Está seguro de borrar lógicamente el permiso ${selectedData.permissionName || 'seleccionado'}? Se conservarán sus relaciones y asignaciones.`, 'warning', 'Sí, borrar');
     if (confirm.isConfirmed) {
       try {
         await lastValueFrom(this.detailedPermissionsService.deleteDetailedPermissions(selectedData.id));
-        alerts.basicAlert('Éxito', 'Registro eliminado', 'success');
+        alerts.basicAlert('Éxito', 'Permiso borrado lógicamente', 'success');
         this.loadData();
       } catch (error) {
         console.error(error);
-        alerts.basicAlert('Error', 'Error al eliminar', 'error');
+        alerts.basicAlert('Error', 'No se pudo borrar el permiso. Intenta nuevamente; si continúa, revisa el servicio de Seguridad.', 'error');
       }
     }
   }
