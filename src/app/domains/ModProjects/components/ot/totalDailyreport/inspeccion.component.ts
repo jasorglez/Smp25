@@ -5,6 +5,7 @@ import { AgGridModule } from 'ag-grid-angular';
 import { ColDef, GridApi, GridReadyEvent } from 'ag-grid-enterprise';
 import { OtService } from 'app/services/ot.service';
 import { SignalsService } from 'app/services/signals.service';
+import { OtRowNumbers } from 'app/helpers/ot-row-numbers';
 import { alerts } from 'app/helpers/alerts';
 import { OrdenesComponent } from '../ordenes/ordenes.component';
 
@@ -55,6 +56,7 @@ export class InspeccionComponent implements OnInit {
 
   // Configuración del grid
   public gridOptions: any = {
+    onModelUpdated: (event: any) => this.otRowNumbers.update(event.api),
     headerHeight: 35,
     rowHeight: 28,
     suppressDragLeaveHidesColumns: true,
@@ -161,8 +163,10 @@ export class InspeccionComponent implements OnInit {
     {
       colId: 'contentIndicators',
       headerName: 'Contenido',
-      width: 190,
+      width: 210,
+      minWidth: 210,
       pinned: 'left',
+      suppressSizeToFit: true,
       sortable: false,
       filter: false,
       cellRenderer: (params: any) => this.renderContentIndicators(params.data),
@@ -208,7 +212,7 @@ export class InspeccionComponent implements OnInit {
       const rootId = this.signalsService.getRootSelectedBySidebar()();
       if (rootId && rootId !== this.idRoot) {
         this.idRoot = rootId;
-        this.loadAllReports();
+        if (this.activeTab === 'reportes') this.loadAllReports();
       }
       const projectId = Number(this.signalsService.getProjectSelectedBySidebar()() || 0);
       if (projectId !== this.selectedProjectId) {
@@ -224,7 +228,7 @@ export class InspeccionComponent implements OnInit {
     const rootId = this.signalsService.getRootSelectedBySidebar()();
     if (rootId) {
       this.idRoot = rootId;
-      this.loadAllReports();
+      if (this.activeTab === 'reportes') this.loadAllReports();
     }
     this.selectedProjectId = Number(this.signalsService.getProjectSelectedBySidebar()() || 0);
   }
@@ -258,17 +262,16 @@ export class InspeccionComponent implements OnInit {
     this.allOtsData = selectedProjectId
       ? availableOrders.filter((ot: any) => Number(ot?.idProject ?? ot?.projectId ?? ot?.idProyecto) === selectedProjectId)
       : availableOrders;
-    if (this.otsGridApi) this.otsGridApi.setGridOption('rowData', this.allOtsData);
   }
 
   private renderContentIndicators(row: any): HTMLElement {
     const container = document.createElement('span');
-    container.style.cssText = 'display:inline-flex;gap:10px;align-items:center;height:100%';
+    container.style.cssText = 'display:inline-flex;gap:6px;align-items:center;height:100%;font-size:12px';
     const indicators = [
-      { field: 'personalCount', icon: 'bi-people-fill', label: 'Personal' },
-      { field: 'materialCount', icon: 'bi-box-seam', label: 'Materiales' },
-      { field: 'equipmentCount', icon: 'bi-truck', label: 'Equipos' },
-      { field: 'photoCount', icon: 'bi-camera-fill', label: 'Fotos' }
+      { field: 'personalCount', icon: '👥', label: 'Personal' },
+      { field: 'materialCount', icon: '📦', label: 'Materiales' },
+      { field: 'equipmentCount', icon: '🚜', label: 'Equipos' },
+      { field: 'photoCount', icon: '📷', label: 'Fotos' }
     ];
     for (const indicator of indicators) {
       const count = Number(row?.[indicator.field]);
@@ -277,7 +280,7 @@ export class InspeccionComponent implements OnInit {
       badge.title = `${indicator.label}: ${count}`;
       badge.setAttribute('aria-label', badge.title);
       const icon = document.createElement('i');
-      icon.className = `bi ${indicator.icon}`;
+      icon.textContent = indicator.icon;
       icon.setAttribute('aria-hidden', 'true');
       badge.append(icon, document.createTextNode(` ${count}`));
       container.appendChild(badge);
@@ -290,18 +293,10 @@ export class InspeccionComponent implements OnInit {
       .some(count => Number(count) > 0);
   }
 
+  private readonly otRowNumbers = new OtRowNumbers();
+
   private getOtRowNumber(params: any): number | string {
-    if (!params?.node || params.node.group) return '';
-    const projectCounters = new Map<string, number>();
-    let projectRowNumber = 0;
-    params.api.forEachNodeAfterFilterAndSort((node: any) => {
-      if (node.group || !node.data) return;
-      const projectId = String(node.data.idProject ?? node.data.projectId ?? node.data.idProyecto ?? 'sin-proyecto');
-      const nextNumber = (projectCounters.get(projectId) || 0) + 1;
-      projectCounters.set(projectId, nextNumber);
-      if (node === params.node) projectRowNumber = nextNumber;
-    });
-    return projectRowNumber || '';
+    return this.otRowNumbers.get(params?.node);
   }
 
   private getOtContentTooltip(row: any): string | undefined {
@@ -330,6 +325,7 @@ export class InspeccionComponent implements OnInit {
   // Cambiar pestaña activa
   setActiveTab(tab: string): void {
     this.activeTab = tab;
+    if (tab === 'reportes') this.loadAllReports();
   }
 
   // Grid ready events

@@ -17,6 +17,7 @@ import { TrackingService } from 'app/services/tracking.service';
 import { PdfGeneratorService } from 'app/services/pdf-generator.service';
 import { EmployeesService } from 'app/services/employees.service';
 import { RolesService } from 'app/services/roles.service';
+import { OtRowNumbers } from 'app/helpers/ot-row-numbers';
 import { alerts } from 'app/helpers/alerts';
 import { hasPersistedMasterId } from 'app/helpers/master-detail-guard';
 import { DomSanitizer, SafeResourceUrl } from '@angular/platform-browser';
@@ -950,18 +951,10 @@ export class OrdenesComponent implements OnInit, OnDestroy, OnChanges {
     return this._oTcolumnDefs;
   }
 
+  private readonly otRowNumbers = new OtRowNumbers();
+
   private getOtRowNumber(params: any): number | string {
-    if (!params?.node || params.node.group) return '';
-    const projectCounters = new Map<string, number>();
-    let projectRowNumber = 0;
-    params.api.forEachNodeAfterFilterAndSort((node: any) => {
-      if (node.group || !node.data) return;
-      const projectId = String(node.data.idProject ?? node.data.projectId ?? node.data.idProyecto ?? 'sin-proyecto');
-      const nextNumber = (projectCounters.get(projectId) || 0) + 1;
-      projectCounters.set(projectId, nextNumber);
-      if (node === params.node) projectRowNumber = nextNumber;
-    });
-    return projectRowNumber || '';
+    return this.otRowNumbers.get(params?.node);
   }
 
   private publishCaptureOts(): void {
@@ -2166,6 +2159,7 @@ export class OrdenesComponent implements OnInit, OnDestroy, OnChanges {
   public gridApi!: GridApi;
 
   public gridOptions: any = {
+    onModelUpdated: (event: any) => this.otRowNumbers.update(event.api),
     headerHeight: 35,
     rowHeight: 25,
     suppressDragLeaveHidesColumns: true,
@@ -3092,17 +3086,7 @@ export class OrdenesComponent implements OnInit, OnDestroy, OnChanges {
     };
 
     if (!summaryByOt.size) return;
-    if (this.gridApi) {
-      this.gridApi.forEachNode(node => {
-        if (node.data && !node.group) {
-          const updated = mergeSummary(node.data);
-          if (updated !== node.data) node.setData(updated);
-        }
-      });
-      this.gridApi.redrawRows();
-    } else {
-      this.rowData = orders.map(mergeSummary);
-    }
+    this.rowData = orders.map(mergeSummary);
     this.publishCaptureOts();
   }
 
