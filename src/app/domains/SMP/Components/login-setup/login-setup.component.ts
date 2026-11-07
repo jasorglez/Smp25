@@ -63,6 +63,13 @@ export class LoginSetupComponent {
       flex: 1
     },
     {
+      field: 'active',
+      headerName: 'Estado',
+      cellDataType: false,
+      width: 120,
+      valueFormatter: params => params.value === false ? 'Inactiva' : 'Activa'
+    },
+    {
       field: 'url',
       headerName: 'Imagen (WEBP)',
       cellRenderer: (params: any) => {
@@ -121,10 +128,12 @@ export class LoginSetupComponent {
         this.rowData = (data || []).map((item) => ({
           id: item.id,
           nombre: item.nombre,
-          url: item.url
+          url: item.url,
+          active: item.active ?? true
         }));
         this.originalRowData = JSON.parse(JSON.stringify(this.rowData));
         this.hasUnsavedChanges = false;
+        this.selectedRowData = null;
         if (this.gridApi) {
           this.gridApi.setGridOption('rowData', this.rowData);
         }
@@ -182,6 +191,7 @@ export class LoginSetupComponent {
       id: `temp_${Date.now()}`,
       nombre,
       url: previewUrl,
+      active: true,
       __isNew: true,
       __localFile: file
     };
@@ -237,10 +247,10 @@ export class LoginSetupComponent {
         }
       }
 
-      // 2) Enviar al backend: POST por cada item y DELETE de los que se quitaron
+      // 2) Guardar las imágenes y su estado de visibilidad.
       const toSend = this.rowData.map((row) => {
         const id = typeof row.id === 'number' && row.id > 0 ? row.id : 0;
-        return { id, nombre: row.nombre ?? '', url: row.url ?? '' };
+        return { id, nombre: row.nombre ?? '', url: row.url ?? '', active: row.active ?? true };
       });
       const originalIds = (this.originalRowData as any[])
         .map((r) => r.id)
@@ -251,10 +261,12 @@ export class LoginSetupComponent {
       this.rowData = (saved || []).map((item) => ({
         id: item.id,
         nombre: item.nombre,
-        url: item.url
+        url: item.url,
+        active: item.active ?? true
       }));
       this.originalRowData = JSON.parse(JSON.stringify(this.rowData));
       this.hasUnsavedChanges = false;
+      this.selectedRowData = null;
       if (this.gridApi) {
         this.gridApi.setGridOption('rowData', this.rowData);
       }
@@ -287,26 +299,18 @@ export class LoginSetupComponent {
     this.trackingService.addLog(this.trackingService.getnameComp(), 'Deshizo cambios en login setup', 'Sistema', this.trackingService.getEmail());
     this.rowData = JSON.parse(JSON.stringify(this.originalRowData));
     this.hasUnsavedChanges = false;
+    this.selectedRowData = null;
     if (this.gridApi) {
       this.gridApi.setGridOption('rowData', this.rowData);
     }
     alerts.basicAlert('Deshacer', 'Se revirtieron los cambios.', 'info');
   }
 
-  deleteRow(): void {
-    if (!this.selectedRowData) {
-      alerts.basicAlert('Sin selección', 'Selecciona una fila para borrar.', 'warning');
-      return;
-    }
-    alerts.confirmAlert('¿Borrar imagen?', 'Esta acción no se puede deshacer.', 'warning', 'Sí, borrar').then((result) => {
-      if (result.isConfirmed) {
-        this.rowData = this.rowData.filter((row) => row !== this.selectedRowData);
-        this.gridApi.setGridOption('rowData', this.rowData);
-        this.selectedRowData = null;
-        this.hasUnsavedChanges = true;
-        alerts.basicAlert('Eliminado', 'Fila eliminada. Guarda los cambios para aplicar.', 'success');
-      }
-    });
+  toggleSelectedImage(): void {
+    if (!this.selectedRowData) return;
+    this.selectedRowData.active = this.selectedRowData.active === false;
+    this.hasUnsavedChanges = true;
+    this.gridApi.refreshCells({ force: true });
   }
 
   onSelectionChanged(event: any): void {

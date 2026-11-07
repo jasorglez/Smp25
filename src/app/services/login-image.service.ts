@@ -26,7 +26,7 @@ export class LoginImageService {
 
   /** Con autenticación — para el panel de administración. */
   getAll(): Observable<LoginImage[]> {
-    return this.http.get<LoginImage[]>(this.baseUrl, {
+    return this.http.get<LoginImage[]>(`${this.baseUrl}/admin`, {
       headers: this.trackingService.getHeaders(),
     });
   }
@@ -45,11 +45,11 @@ export class LoginImageService {
 
   /** POST de un solo item. */
   save(item: Partial<LoginImage>): Observable<LoginImage> {
-    const body = { id: 0, nombre: item.nombre ?? '', url: item.url ?? '' };
+    const body = { id: 0, nombre: item.nombre ?? '', url: item.url ?? '', active: item.active ?? true };
     return this.http.post<{ id: number; contract: LoginImage }>(this.baseUrl, body, {
       headers: this.trackingService.getHeaders(),
     }).pipe(
-      map((res) => res.contract ?? ({ id: res.id, nombre: item.nombre, url: item.url, active: true } as LoginImage))
+      map((res) => res.contract ?? ({ id: res.id, nombre: item.nombre, url: item.url, active: item.active ?? true } as LoginImage))
     );
   }
 
@@ -74,10 +74,10 @@ export class LoginImageService {
   }
 
   /**
-   * Guarda la lista completa: DELETE de los eliminados + POST de los nuevos.
+   * Guarda la lista completa: DELETE de los eliminados, POST de los nuevos y PUT de los existentes.
    */
   async saveAllAsync(
-    items: { id?: number; nombre: string; url: string }[],
+    items: { id?: number; nombre: string; url: string; active?: boolean }[],
     originalIds: number[]
   ): Promise<LoginImage[]> {
     const currentIds = items
@@ -93,8 +93,12 @@ export class LoginImageService {
       const id = typeof row.id === 'number' && row.id > 0 ? row.id : 0;
       if (id <= 0) {
         await firstValueFrom(
-          this.save({ id: 0, nombre: row.nombre ?? '', url: row.url ?? '', active: true })
+          this.save({ id: 0, nombre: row.nombre ?? '', url: row.url ?? '', active: row.active ?? true })
         );
+      } else {
+        await firstValueFrom(this.http.put<void>(`${this.baseUrl}/${id}`, {
+          id, nombre: row.nombre ?? '', url: row.url ?? '', active: row.active ?? true
+        }, { headers: this.trackingService.getHeaders() }));
       }
     }
 

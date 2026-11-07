@@ -1,6 +1,6 @@
 <div class="container-fluid p-3">
   <h2 class="mb-3">Login</h2>
-  <p class="text-muted mb-3">Imágenes WEBP para la pantalla de login. Haz clic en una imagen para verla en grande. Agrega, edita o elimina entradas y guarda los cambios.</p>
+  <p class="text-muted mb-3">Imágenes WEBP para la pantalla de login. Haz clic en una imagen para verla en grande. Desactiva una imagen para ocultarla del login; puedes activarla nuevamente. Pulsa Guardar para aplicar los cambios.</p>
 
   <div class="d-flex gap-2 mb-2">
     <button type="button" class="btn btn-sm btn-success" (click)="addRow()" [disabled]="!gridApi">
@@ -17,8 +17,9 @@
     <button type="button" class="btn btn-sm btn-warning" (click)="revertChanges()">
       <i class="bi bi-arrow-clockwise"></i> Deshacer
     </button>
-    <button type="button" class="btn btn-sm btn-danger" (click)="deleteRow()" [disabled]="!selectedRowData">
-      <i class="bi bi-trash"></i> Borrar
+    <button type="button" class="btn btn-sm" [ngClass]="selectedRowData?.active === false ? 'btn-success' : 'btn-warning'" (click)="toggleSelectedImage()" [disabled]="!selectedRowData">
+      <i class="bi" [ngClass]="selectedRowData?.active === false ? 'bi-eye' : 'bi-eye-slash'"></i>
+      {{ selectedRowData?.active === false ? 'Activar' : 'Desactivar' }}
     </button>
   </div>
 
