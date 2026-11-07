@@ -2,6 +2,19 @@
     
     <p *ngIf="!idEmpresa" class="text-muted p-2 mb-0">Selecciona una empresa en el sidebar para asignar sus menús.</p>
     <p *ngIf="loadingMenus" class="text-muted p-2 mb-0" role="status">Consultando menús de la empresa seleccionada…</p>
+    <div class="d-flex flex-wrap gap-2 p-2">
+      <button type="button" class="btn btn-sm btn-success"
+              [disabled]="!idEmpresa || loadingMenus || savingPermissions || !masterMenus.length"
+              (click)="setAllPermissions(true)">
+        <i class="bi bi-check-all" aria-hidden="true"></i> Activar todas
+      </button>
+      <button type="button" class="btn btn-sm btn-warning"
+              [disabled]="!idEmpresa || loadingMenus || savingPermissions || !masterMenus.length"
+              (click)="setAllPermissions(false)">
+        <i class="bi bi-toggle-off" aria-hidden="true"></i> Apagar todas
+      </button>
+      <span *ngIf="savingPermissions" class="align-self-center text-muted" role="status">Guardando permisos…</span>
+    </div>
      <div class="col-12">
         <ul class="list-group">
           <li class="list-group-item" *ngFor="let menu of masterMenus; let i = index">

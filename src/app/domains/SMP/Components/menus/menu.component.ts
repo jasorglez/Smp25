@@ -156,6 +156,13 @@ export class menuComponent {
     },
   };
 
+  setAllPermissions(active: boolean): void {
+    if (!this.idEmpresa || this.loadingMenus || this.savingPermissions || !this.masterMenus.length) return;
+    if (this.masterMenus.every(menu => menu.hasPermission === active)) return;
+    this.masterMenus = this.masterMenus.map(menu => ({ ...menu, hasPermission: active }));
+    this.onPermissionChange();
+  }
+
   onPermissionChange() {
     if (!this.idEmpresa || this.loadingMenus || this.savingPermissions) return;
     const companyId = this.idEmpresa;
