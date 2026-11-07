@@ -2,6 +2,7 @@ import { Component, effect, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { firstValueFrom } from 'rxjs';
+import Swal from 'sweetalert2';
 import { SignalsService } from 'app/services/signals.service';
 import { WarehouseCleanupPreview, WarehouseCleanupService } from 'app/services/warehouse-cleanup.service';
 import { canSeeWarehouseCleanup } from 'app/guards/warehouse-cleanup.guard';
@@ -60,10 +61,30 @@ export class ModuleCleanupComponent {
     const preview = this.preview!;
     const confirmation = this.confirmation;
     this.busy = true;
-    this.executing = true;
+    let executed = false;
     this.error = '';
     this.result = '';
     try {
+      const decision = await Swal.fire({
+        titleText: '¿Estás seguro de borrar estos datos?',
+        icon: 'warning',
+        html: this.confirmationSummary(preview),
+        showCancelButton: true,
+        confirmButtonText: `Sí, borrar datos de la empresa ${preview.companyId}`,
+        cancelButtonText: 'Cancelar, conservar los datos',
+        confirmButtonColor: '#dc3545',
+        focusCancel: true,
+        allowOutsideClick: false,
+        customClass: { container: 'swal-over-modal' }
+      });
+      if (!decision.isConfirmed) return;
+      if (this.preview !== preview || !this.isRoot || this.selectedCompanyId !== preview.companyId ||
+          !this.acknowledged || this.confirmation !== confirmation || Date.parse(preview.expiresAt) <= Date.now()) {
+        this.error = 'La empresa o la confirmación cambió o venció. Consulta nuevamente los datos antes de borrar.';
+        return;
+      }
+      this.executing = true;
+      executed = true;
       const response = await firstValueFrom(this.service.execute(preview, confirmation));
       this.result = `Limpieza lógica completada en ${response.companyName} (empresa ${response.companyId}): ${response.affectedRows} registros desactivados.`;
     } catch (error: any) {
@@ -71,8 +92,30 @@ export class ModuleCleanupComponent {
     } finally {
       this.busy = false;
       this.executing = false;
-      this.resetPreview();
+      if (executed) this.resetPreview();
     }
+  }
+
+  private confirmationSummary(preview: WarehouseCleanupPreview): HTMLElement {
+    const container = document.createElement('div');
+    container.className = 'text-start';
+    const company = document.createElement('p');
+    company.textContent = `Vas a borrar lógicamente datos de ${preview.companyName} (empresa ${preview.companyId}).`;
+    company.className = 'fw-bold';
+    const list = document.createElement('ul');
+    for (const item of preview.items.filter(item => item.count > 0)) {
+      const line = document.createElement('li');
+      line.textContent = `${item.label}: ${item.count.toLocaleString('es-MX')}`;
+      list.appendChild(line);
+    }
+    const total = document.createElement('p');
+    total.className = 'fw-bold';
+    total.textContent = `Total: ${preview.total.toLocaleString('es-MX')} registros. ¿Deseas continuar?`;
+    const preserved = document.createElement('p');
+    preserved.className = 'small';
+    preserved.textContent = 'Se conservan los almacenes, configuración, catálogos, empresas, proyectos, seguridad, usuarios y permisos. Los registros desactivados permanecen almacenados.';
+    container.append(company, list, total, preserved);
+    return container;
   }
 
   private resetPreview(): void {

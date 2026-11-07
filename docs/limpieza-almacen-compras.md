@@ -8,7 +8,8 @@ La opción **Limpieza de Almacén y Compras** aparece en la barra de submenús d
 2. Abrir la limpieza en Almacén o Compras y consultar la vista previa.
 3. Revisar el nombre y número de empresa y los conteos de cada grupo.
 4. Marcar la confirmación y escribir `LIMPIAR <número de empresa>`.
-5. Ejecutar y esperar el resultado. Consultar de nuevo los listados para ver los datos actualizados.
+5. Revisar la ventana final: muestra nombre y número de empresa, grupos de documentos con sus cantidades y el total. Elegir «Sí, borrar datos de la empresa…» o «Cancelar, conservar los datos».
+6. Esperar el resultado. Consultar de nuevo los listados para ver los datos actualizados.
 
 No se ejecuta la limpieza al abrir la opción ni al consultar los conteos. La confirmación vence en cinco minutos, solo sirve para su empresa y se rechaza si los conteos cambian. Cambiar de empresa descarta la vista previa del navegador.
 
