@@ -75,5 +75,5 @@ export const environment = {
     // publicKey: 'TEST-4399133a-4676-42a2-ab85-d946370bf96a',
   },
 
-  version: '5.00.426 (06 Noviembre 2026 22:52) seleccion de datos para limpieza de Almacen y Compras',
+  version: '5.00.427 (06 Noviembre 2026 23:04) auditoria de limpieza preparada',
 };
