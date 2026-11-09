@@ -14,12 +14,13 @@ import { MasterPermissions2Service } from 'app/services/master-permissions-2.ser
     <section class="p-2 h-100 overflow-auto bg-white">
       <header class="d-flex align-items-center gap-2 mb-2">
         <strong class="me-auto"><i class="bi bi-shield-check me-1"></i>Permisos maestros — {{ companyName }}</strong>
-        <button class="btn btn-sm btn-success position-relative" (click)="save()" [disabled]="!changed || loading || saving" title="Guardar">
-          <i class="bi bi-floppy"></i>
-          <span class="position-absolute top-0 start-100 translate-middle p-2 bg-danger border border-light rounded-circle" *ngIf="changed"></span>
-        </button>
-        <button class="btn btn-sm btn-warning" (click)="revert()" [disabled]="!changed || saving" title="Deshacer"><i class="bi bi-arrow-clockwise"></i></button>
+        <span *ngIf="saving" class="text-muted small" role="status">Guardando…</span>
+        <span *ngIf="!loading && !saving && !changed && !loadError && !saveError" class="text-success small" role="status">Guardado automáticamente</span>
       </header>
+      <div *ngIf="saveError" class="alert alert-danger py-2" role="alert">
+        No se pudieron guardar los cambios. Tu selección sigue pendiente.
+        <button type="button" class="btn btn-sm btn-outline-danger ms-2" (click)="save()" [disabled]="saving">Reintentar guardado</button>
+      </div>
       <div *ngIf="loading" class="text-muted small" role="status">Cargando permisos…</div>
       <div *ngIf="loadError" class="alert alert-warning py-2" role="alert">
         {{ loadError }}
@@ -34,11 +35,11 @@ import { MasterPermissions2Service } from 'app/services/master-permissions-2.ser
               <span class="badge" [class.bg-success]="getActiveCount(master) === master.detailedPermissions.length" [class.bg-warning]="getActiveCount(master) > 0 && getActiveCount(master) < master.detailedPermissions.length" [class.bg-secondary]="getActiveCount(master) === 0">{{ getActiveCount(master) }}/{{ master.detailedPermissions.length }}</span>
             </div>
             <div class="d-flex gap-1 mb-2">
-              <button class="btn btn-outline-success btn-sm py-0" [disabled]="saving || loading" (click)="setMaster(master, true)">Todos</button>
-              <button class="btn btn-outline-secondary btn-sm py-0" [disabled]="saving || loading" (click)="setMaster(master, false)">Ninguno</button>
+              <button class="btn btn-outline-success btn-sm py-0" [disabled]="loading" (click)="setMaster(master, true)">Todos</button>
+              <button class="btn btn-outline-secondary btn-sm py-0" [disabled]="loading" (click)="setMaster(master, false)">Ninguno</button>
             </div>
             <div class="form-check form-switch" *ngFor="let detail of master.detailedPermissions">
-              <input class="form-check-input" type="checkbox" [id]="'company-perm-' + companyId + '-' + userId + '-' + detail.id" [disabled]="saving || loading" [checked]="selectedIds.has(detail.id)" (change)="toggle(detail.id, $any($event.target).checked)">
+              <input class="form-check-input" type="checkbox" [id]="'company-perm-' + companyId + '-' + userId + '-' + detail.id" [disabled]="loading" [checked]="selectedIds.has(detail.id)" (change)="toggle(detail.id, $any($event.target).checked)">
               <label class="form-check-label small" [for]="'company-perm-' + companyId + '-' + userId + '-' + detail.id">{{ detail.permissionName }}</label>
             </div>
           </div>
@@ -58,6 +59,7 @@ export class CompanyMasterPermissionsRendererComponent implements ICellRendererA
   companyName = '';
   loading = true;
   saving = false;
+  saveError = false;
   changed = false;
   selectedIds = new Set<number>();
   private originalIds = new Set<number>();
@@ -117,13 +119,13 @@ export class CompanyMasterPermissionsRendererComponent implements ICellRendererA
   }
 
   toggle(id: number, checked: boolean): void {
-    if (this.saving || this.loading) return;
+    if (this.loading || this.loadError) return;
     if (checked) this.selectedIds.add(id); else this.selectedIds.delete(id);
     this.updateChanged();
   }
 
   setMaster(master: any, enabled: boolean): void {
-    if (this.saving || this.loading) return;
+    if (this.loading || this.loadError) return;
     for (const detail of master.detailedPermissions ?? []) {
       if (enabled) this.selectedIds.add(Number(detail.id)); else this.selectedIds.delete(Number(detail.id));
     }
@@ -135,20 +137,34 @@ export class CompanyMasterPermissionsRendererComponent implements ICellRendererA
   }
 
   save(): void {
-    if (!this.changed || this.saving) return;
+    if ((!this.changed && !this.saveError) || this.saving || this.loading || this.loadError) return;
+    const snapshot = new Set(this.selectedIds);
     this.saving = true;
-    this.service.updateCompanyUserPermissions(this.companyId, this.userId, [...this.selectedIds]).pipe(
-      takeUntilDestroyed(this.destroyRef),
-      finalize(() => { this.saving = false; this.render(); })
+    this.saveError = false;
+    // Las escrituras pendientes terminan incluso si se cierra el detalle.
+    this.service.updateCompanyUserPermissions(this.companyId, this.userId, [...snapshot]).pipe(
+      timeout(30000),
+      finalize(() => {
+        this.saving = false;
+        this.updateChanged(false);
+        this.render();
+        if (!this.saveError && this.changed) this.save();
+      })
     ).subscribe({
-      next: () => { this.originalIds = new Set(this.selectedIds); this.updateParentCount(this.selectedIds.size); this.changed = false; this.saving = false; alerts.basicAlert('Listo', 'Permisos de la empresa actualizados.', 'success'); },
-      error: () => { this.saving = false; alerts.basicAlert('Error', 'No se pudieron guardar los permisos de esta empresa.', 'error'); }
+      next: () => {
+        this.originalIds = snapshot;
+        this.updateParentCount(snapshot.size);
+      },
+      error: () => {
+        this.saveError = true;
+        if (this.destroyRef.destroyed) alerts.basicAlert('Error',
+          `No se pudieron guardar los permisos de ${this.companyName}. Abre el detalle para revisarlos.`, 'error');
+      }
     });
   }
 
-  revert(): void { this.selectedIds = new Set(this.originalIds); this.changed = false; }
-
-  private updateChanged(): void {
+  private updateChanged(autoSave = true): void {
     this.changed = this.selectedIds.size !== this.originalIds.size || [...this.selectedIds].some(id => !this.originalIds.has(id));
+    if (autoSave && this.changed) this.save();
   }
 }

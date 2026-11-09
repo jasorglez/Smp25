@@ -1,4 +1,4 @@
-import { Component, Input, Output, EventEmitter, OnInit, inject } from '@angular/core';
+import { ChangeDetectorRef, Component, DestroyRef, Input, Output, EventEmitter, OnInit, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { AgGridModule } from 'ag-grid-angular';
@@ -17,6 +17,7 @@ import { alerts } from 'app/helpers/alerts';
 import { ButtonCellRendererExpenditureComponent } from 'app/domains/ModAdmon/components/egresos-palacio/button-cell-renderer-expenditure.component';
 import { CompanyMasterPermissionsRendererComponent } from './company-master-permissions-renderer.component';
 import { MasterPermissions2Service } from 'app/services/master-permissions-2.service';
+import { UserEntityQuickCreateService } from 'app/services/user-entity-quick-create.service';
 
 function restoreUsersDescriptionWidth(api: GridApi, grid: string, column: string): void {
   try {
@@ -216,6 +217,9 @@ export class ProyectosDetailRendererComponent implements ICellRendererAngularCom
           title="Agregar almacén">
           <i class="bi bi-plus-lg"></i>
         </button>
+        <button type="button" class="btn btn-sm btn-success" (click)="createWarehouse()" [disabled]="isSaving">
+          <i class="bi bi-plus-circle me-1"></i>Nuevo almacén
+        </button>
         <button
           class="btn btn-sm btn-danger"
           (click)="deleteAlmacen()"
@@ -243,6 +247,9 @@ export class ProyectosDetailRendererComponent implements ICellRendererAngularCom
   `
 })
 export class AlmacenesDetailRendererComponent implements ICellRendererAngularComp {
+  private quickCreate = inject(UserEntityQuickCreateService);
+  private changeDetector = inject(ChangeDetectorRef);
+  private destroyRef = inject(DestroyRef);
   private warehousesService          = inject(WarehousesService);
   private usersxpermissionsService   = inject(UsersxpermissionsService);
 
@@ -302,7 +309,24 @@ export class AlmacenesDetailRendererComponent implements ICellRendererAngularCom
       this.selectedNewWarehouseId = '';
       this.selectedRow = null;
       if (this.gridApi) this.gridApi.setGridOption('rowData', this.warehouses);
+      if (!this.destroyRef.destroyed) this.changeDetector.detectChanges();
     });
+  }
+
+  async createWarehouse(): Promise<void> {
+    if (this.isSaving || !this.userId || !this.branchId) return;
+    this.isSaving = true;
+    try {
+      await this.quickCreate.open({ kind: 'warehouse', parentId: this.branchId, parentName: this.contractName, userId: this.userId });
+    } catch {
+      alerts.basicAlert('Error', 'No se pudo abrir el formulario de alta.', 'error');
+    } finally {
+      if (!this.destroyRef.destroyed) {
+        this.isSaving = false;
+        this.loadData();
+        this.changeDetector.detectChanges();
+      }
+    }
   }
 
   addAlmacen(): void {
@@ -607,6 +631,9 @@ export class ContratosDetailRendererComponent implements ICellRendererAngularCom
           title="Agregar sucursal">
           <i class="bi bi-plus-lg"></i>
         </button>
+        <button type="button" class="btn btn-sm btn-success" (click)="createBranch()" [disabled]="isSaving">
+          <i class="bi bi-plus-circle me-1"></i>Nueva sucursal
+        </button>
         <button
           class="btn btn-sm btn-danger"
           (click)="deleteSucursal()"
@@ -635,6 +662,9 @@ export class ContratosDetailRendererComponent implements ICellRendererAngularCom
   `
 })
 export class SucursalesDetailRendererComponent implements ICellRendererAngularComp {
+  private quickCreate = inject(UserEntityQuickCreateService);
+  private changeDetector = inject(ChangeDetectorRef);
+  private destroyRef = inject(DestroyRef);
   private branchsService           = inject(BranchsService);
   private usersxpermissionsService = inject(UsersxpermissionsService);
   private contractsService         = inject(ContractsService);
@@ -731,6 +761,7 @@ export class SucursalesDetailRendererComponent implements ICellRendererAngularCo
       this.selectedRow         = null;
 
       if (this.gridApi) this.gridApi.setGridOption('rowData', this.branches);
+      if (!this.destroyRef.destroyed) this.changeDetector.detectChanges();
 
       if (this.branches.length === 0) return;
 
@@ -801,6 +832,22 @@ export class SucursalesDetailRendererComponent implements ICellRendererAngularCo
     } else {
       this.gridApi.setFilterModel(null);
       this.gridApi.onFilterChanged();
+    }
+  }
+
+  async createBranch(): Promise<void> {
+    if (this.isSaving || !this.userId || !this.idCompany) return;
+    this.isSaving = true;
+    try {
+      await this.quickCreate.open({ kind: 'branch', parentId: this.idCompany, parentName: this.companyName, userId: this.userId });
+    } catch {
+      alerts.basicAlert('Error', 'No se pudo abrir el formulario de alta.', 'error');
+    } finally {
+      if (!this.destroyRef.destroyed) {
+        this.isSaving = false;
+        this.loadData();
+        this.changeDetector.detectChanges();
+      }
     }
   }
 

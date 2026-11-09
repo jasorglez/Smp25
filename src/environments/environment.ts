@@ -75,5 +75,5 @@ export const environment = {
     // publicKey: 'TEST-4399133a-4676-42a2-ab85-d946370bf96a',
   },
 
-  version: '5.00.439 (09 Noviembre 2026 00:44) corregir carga de permisos anidados',
+  version: '5.00.440 (09 Noviembre 2026 06:24) autoguardado de permisos y altas desde usuarios',
 };

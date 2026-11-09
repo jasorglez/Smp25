@@ -2,7 +2,7 @@
 
 Los módulos disponibles para un usuario se configuran por **empresa + usuario**. Cambiar de sucursal no cambia esos permisos. Las asignaciones de sucursales siguen delimitando las sucursales con las que puede trabajar.
 
-En Usuarios, el detalle anidado de una empresa y la pestaña Permisos maestros consultan y guardan la misma configuración. La pestaña utiliza la empresa seleccionada en el sidebar y guarda cada cambio; el detalle anidado utiliza la empresa de su fila y requiere pulsar Guardar. Su contador se actualiza al cargar y guardar.
+En Usuarios, el detalle anidado de una empresa y la pestaña Permisos maestros consultan y guardan la misma configuración. La pestaña utiliza la empresa seleccionada en el sidebar; el detalle anidado utiliza la empresa de su fila. Ambos guardan cada cambio automáticamente. En el detalle, los cambios rápidos se guardan en secuencia y Todos/Ninguno también se aplica automáticamente. Un aviso distingue el guardado en curso de un error pendiente de reintentar. Su contador se actualiza al cargar y guardar.
 
 El inicio de sesión, la validación de rutas y el dashboard consultan los permisos de empresa y usuario. Al cambiar de empresa se descartan las respuestas atrasadas de la selección anterior. La selección de sucursal y el indicador de configuración avanzada ya no seleccionan los permisos de módulos.
 
@@ -20,3 +20,11 @@ Se compilaron Angular en producción y el backend Security. Las pruebas con tabl
 Una comprobación de solo lectura de la base configurada revisó cinco configuraciones por empresa, cinco casos globales y las tres cuentas activas que dependían únicamente del esquema avanzado anterior. No ejecutó guardados de permisos reales.
 
 Publicar primero **MicroservicioSecurity** y después el frontend. La consulta de autorización debe recibir `companyId`. La compilación y las pruebas no confirman por sí mismas el despliegue ni sustituyen la revisión visual de una sesión publicada.
+
+## Alta de sucursales y almacenes desde el detalle
+
+Junto al selector de sucursales aparece **Nueva sucursal**. Solicita nombre, descripción y dirección; toma la empresa de la fila abierta, prepara la configuración inicial habitual de la sucursal y la asigna al usuario del detalle.
+
+Junto al selector de almacenes aparece **Nuevo almacén**. Solicita nombre y dirección; toma la sucursal de la fila abierta y lo asigna al mismo usuario. Los selectores existentes continúan permitiendo asignar registros ya creados.
+
+Si el registro se crea pero falla su configuración inicial o asignación, el formulario permite **Completar asignación** sin volver a crearlo. Si se cierra ese formulario, el registro creado permanece en su catálogo y puede asignarse desde el selector. Estas altas no cambian los permisos de módulos.
