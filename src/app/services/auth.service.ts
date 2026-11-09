@@ -1,4 +1,4 @@
-import { effect, inject, Injectable, NgZone } from '@angular/core';
+import { effect, inject, Injectable, NgZone, signal } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Router } from '@angular/router';
 import {
@@ -324,7 +324,7 @@ export class AuthService {
 
   // ─── Permisos ───────────────────────────────────────────────────────────────
 
-  private userPermissions: any;
+  private readonly userPermissions = signal<any>({});
 
   getUserId(email: string): Observable<number> {
     return this.http.get<ApiResponse<any>>(`${environment.urlSecurity}/User/email/${email}`,
@@ -352,12 +352,11 @@ export class AuthService {
   }
 
   setUserPermissions(permissions: any): void {
-    console.log(permissions);
-    this.userPermissions = permissions;
+    this.userPermissions.set(permissions || {});
   }
 
   getUserPermissions(): any {
-    return this.userPermissions;
+    return this.userPermissions();
   }
 
   isRoot(): boolean {
@@ -366,17 +365,17 @@ export class AuthService {
   }
 
   hasMasterPermission(masterPermissionKey: string): boolean {
-    return this.userPermissions?.[masterPermissionKey]?.active === true;
+    return this.userPermissions()?.[masterPermissionKey]?.active === true;
   }
 
   hasDetailedPermission(masterPermissionKey: string, detailedPermissionKey: string): boolean {
-    const section = this.userPermissions?.[masterPermissionKey];
+    const section = this.userPermissions()?.[masterPermissionKey];
     const subSection = section?.children?.[detailedPermissionKey];
     return section?.active === true && subSection?.active === true;
   }
 
   hasSubDetailedPermission(masterPermissionKey: string, detailedPermissionKey: string, subdetailedPermissionKey: string): boolean {
-    const section = this.userPermissions?.[masterPermissionKey];
+    const section = this.userPermissions()?.[masterPermissionKey];
     const subSection = section?.children?.[detailedPermissionKey];
     const subSubSection = subSection?.children?.[subdetailedPermissionKey];
     return section?.active === true && subSection?.active === true && subSubSection?.active === true;
@@ -390,7 +389,7 @@ export class AuthService {
     capa: string,
     action: 'create' | 'read' | 'update' | 'delete'
   ): boolean {
-    const section = this.userPermissions?.[masterPermissionKey];
+    const section = this.userPermissions()?.[masterPermissionKey];
     const subSection = section?.children?.[detailedPermissionKey];
     const subSubSection = subSection?.children?.[subdetailedPermissionKey];
 
@@ -425,7 +424,7 @@ export class AuthService {
     subdetailedPermissionKey: string,
     action: 'create' | 'read' | 'update' | 'delete'
   ): boolean {
-    const section = this.userPermissions?.[masterPermissionKey];
+    const section = this.userPermissions()?.[masterPermissionKey];
     const subSection = section?.children?.[detailedPermissionKey];
     const subSubSection = subSection?.children?.[subdetailedPermissionKey];
 

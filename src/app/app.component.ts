@@ -40,12 +40,15 @@ export class AppComponent implements OnInit {
 
   constructor() {
     effect(() => {
-      const email = localStorage.getItem('mail');
+      const email = this.signalsService.getemailChoose() || localStorage.getItem('mail');
       const companyId = Number(this.signalsService.getRootSelectedBySidebar()() || 0);
 
       // Los módulos dependen de empresa y usuario; la sucursal no interviene.
       if (email) {
         this.loadPermissions(email, companyId);
+      } else {
+        this.permissionLoadRequest++;
+        this.authService.setUserPermissions({});
       }
     });
   }

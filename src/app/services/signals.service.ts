@@ -782,7 +782,8 @@ getMasterUpdateTrigger() {
   al momento de hacer logout */
 
   deleteSignals() {
-    this.rootSelectedBySidebar = signal(null);
+    this.rootSelectedBySidebar.set(null);
+    this.emailChoose.set(null);
     this.branchSelectedBySidebar = signal(null);
     if (typeof localStorage !== 'undefined') {
       localStorage.removeItem('company');
