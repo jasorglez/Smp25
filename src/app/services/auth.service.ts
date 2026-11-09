@@ -342,12 +342,13 @@ export class AuthService {
     );
   }
 
-  fetchUserPermissions(userId: number): Observable<any> {
-    return this.http.get(`${environment.urlSecurity}/UserSystemPermissions/guard/${userId}`, { headers: this.trackingService.getHeaders() });
+  fetchUserPermissions(userId: number, companyId = Number(this.signalsService.getRootSelectedBySidebar()() || 0)): Observable<any> {
+    return this.http.get(`${environment.urlSecurity}/UserSystemPermissions/guard/${userId}${companyId > 0 ? `?companyId=${companyId}` : ''}`, { headers: this.trackingService.getHeaders() });
   }
 
-  fetchUserPermissionsAdvanced(userId: number, idBranch: number): Observable<any> {
-    return this.http.get(`${environment.urlSecurity}/UserSystemPermissions/guardAdvanced/${userId}/${idBranch}`, { headers: this.trackingService.getHeaders() });
+  fetchUserPermissionsAdvanced(userId: number, idBranch: number, companyId = Number(this.signalsService.getRootSelectedBySidebar()() || 0)): Observable<any> {
+    // Compatibilidad con llamadas anteriores: los módulos ya no dependen de la sucursal.
+    return this.fetchUserPermissions(userId, companyId);
   }
 
   setUserPermissions(permissions: any): void {

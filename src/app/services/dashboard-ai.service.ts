@@ -50,11 +50,7 @@ export class DashboardAiService {
 
   async load(plan: DashboardPlan, context: DashboardContext): Promise<DashboardResult[]> {
     if (!context.company || !context.user || !localStorage.getItem('token')) throw new Error('Selecciona una empresa y verifica que tu sesión esté activa.');
-    let permissions: any;
-    if (context.branch && this.signals.getIsAdvanced()) {
-      permissions = await this.read(this.auth.fetchUserPermissionsAdvanced(context.user, context.branch));
-      if (!permissions?.permissions || !Object.keys(permissions.permissions).length) permissions = await this.read(this.auth.fetchUserPermissions(context.user));
-    } else permissions = await this.read(this.auth.fetchUserPermissions(context.user));
+    const permissions = await this.read(this.auth.fetchUserPermissions(context.user, context.company));
     const sources = [...new Set(plan.widgets.map(widget => widget.source))];
     const datasets = new Map<DashboardSource, DashboardDataset>();
     // Una petición por fuente, aunque haya varios indicadores sobre ella.

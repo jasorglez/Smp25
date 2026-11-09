@@ -83,15 +83,8 @@ export class ComploginComponent implements OnInit, OnDestroy {
     const storedEmail = this.signalsService.getemailChoose();
     if (storedEmail) {
       this.emailcapt = storedEmail;
-      const branchAtInit = this.signalsService.getBranchSelectedBySidebar()();
-      const isAdv = this.signalsService.getIsAdvanced();
       this.auth.getUserId(this.emailcapt).pipe(
-        switchMap(userId => {
-          if (isAdv && branchAtInit != null && branchAtInit !== 0) {
-            return this.auth.fetchUserPermissionsAdvanced(userId, branchAtInit);
-          }
-          return this.auth.fetchUserPermissions(userId);
-        })
+        switchMap(userId => this.auth.fetchUserPermissions(userId))
       ).subscribe({
         next: (permissionsData: any) => {
           if (permissionsData && permissionsData.permissions) {
@@ -205,23 +198,6 @@ export class ComploginComponent implements OnInit, OnDestroy {
               await this.trackingService.startSession(0, this.idBranch ?? 0);
 
               const userId = datauser.id;
-              const isAdvancedLocal = !!datauser.advanced;
-              const branchIdLocal = datauser.applybranch ?? this.idBranch;
-
-              if (isAdvancedLocal && branchIdLocal != null && branchIdLocal !== 0) {
-                this.auth.fetchUserPermissionsAdvanced(userId, branchIdLocal).subscribe({
-                  next: (permissionsData: any) => {
-                    if (permissionsData && permissionsData.permissions) {
-                      this.auth.setUserPermissions(permissionsData.permissions);
-                    }
-                    this.navigateToHomeAfterLogin();
-                  },
-                  error: (permError) => {
-                    console.error('Error fetching advanced permissions:', permError);
-                    this.isLoading = false;
-                  }
-                });
-              } else {
                 this.auth.fetchUserPermissions(userId).subscribe({
                   next: (permissionsData: any) => {
                     if (permissionsData && permissionsData.permissions) {
@@ -234,7 +210,6 @@ export class ComploginComponent implements OnInit, OnDestroy {
                     this.isLoading = false;
                   }
                 });
-              }
             }
           },
           error: (error) => {

@@ -8,6 +8,8 @@
           <p>Configure los accesos de {{ profile().nameUser() || profile().emailUser() }}</p>
         </div>
       </header>
+    <p class="text-muted px-3">Permisos para la empresa seleccionada en el sidebar.</p>
+    <p *ngIf="loading" class="text-muted px-3" role="status">Cargando permisos…</p>
     <div class="row g-3 permissions-grid">
       <div class="col-xl-3 col-lg-4 col-sm-6 col-12" *ngFor="let master of masterPermissions">
         <div class="accordion" id="permissionsAccordion{{ master.id }}">
@@ -34,18 +36,18 @@
                 <!-- Botones masivos -->
                 <div class="d-flex gap-1 align-items-center mb-2 pb-2 border-bottom">
                   <button class="btn btn-outline-success btn-sm permission-action"
-                    (click)="enableAllInMaster(master)" title="Activar todos">
+                    [disabled]="loading || saving" (click)="enableAllInMaster(master)" title="Activar todos">
                     <i class="bi bi-check2-all"></i> Activar todos
                   </button>
                   <button class="btn btn-outline-danger btn-sm permission-action"
-                    (click)="disableAllInMaster(master)" title="Desactivar todos">
+                    [disabled]="loading || saving" (click)="disableAllInMaster(master)" title="Desactivar todos">
                     <i class="bi bi-x-circle"></i> Desactivar todos
                   </button>
                 </div>
                 <!-- Switches individuales -->
                 <div class="form-check form-switch" *ngFor="let detail of master.detailedPermissions">
                   <input type="checkbox" class="form-check-input" role="switch" [id]="'detail' + detail.id"
-                    [checked]="isPermissionChecked(detail.id)" (change)="togglePermission(detail.id)" />
+                    [disabled]="loading || saving" [checked]="isPermissionChecked(detail.id)" (change)="togglePermission(detail.id)" />
                   <label class="form-check-label small-text" [for]="'detail' + detail.id">{{ detail.permissionName
                     }}</label>
                 </div>

@@ -29,11 +29,11 @@ import { MasterPermissions2Service } from 'app/services/master-permissions-2.ser
               <span class="badge" [class.bg-success]="getActiveCount(master) === master.detailedPermissions.length" [class.bg-warning]="getActiveCount(master) > 0 && getActiveCount(master) < master.detailedPermissions.length" [class.bg-secondary]="getActiveCount(master) === 0">{{ getActiveCount(master) }}/{{ master.detailedPermissions.length }}</span>
             </div>
             <div class="d-flex gap-1 mb-2">
-              <button class="btn btn-outline-success btn-sm py-0" (click)="setMaster(master, true)">Todos</button>
-              <button class="btn btn-outline-secondary btn-sm py-0" (click)="setMaster(master, false)">Ninguno</button>
+              <button class="btn btn-outline-success btn-sm py-0" [disabled]="saving || loading" (click)="setMaster(master, true)">Todos</button>
+              <button class="btn btn-outline-secondary btn-sm py-0" [disabled]="saving || loading" (click)="setMaster(master, false)">Ninguno</button>
             </div>
             <div class="form-check form-switch" *ngFor="let detail of master.detailedPermissions">
-              <input class="form-check-input" type="checkbox" [id]="'company-perm-' + companyId + '-' + userId + '-' + detail.id" [checked]="selectedIds.has(detail.id)" (change)="toggle(detail.id, $any($event.target).checked)">
+              <input class="form-check-input" type="checkbox" [id]="'company-perm-' + companyId + '-' + userId + '-' + detail.id" [disabled]="saving || loading" [checked]="selectedIds.has(detail.id)" (change)="toggle(detail.id, $any($event.target).checked)">
               <label class="form-check-label small" [for]="'company-perm-' + companyId + '-' + userId + '-' + detail.id">{{ detail.permissionName }}</label>
             </div>
           </div>
@@ -53,11 +53,16 @@ export class CompanyMasterPermissionsRendererComponent implements ICellRendererA
   changed = false;
   selectedIds = new Set<number>();
   private originalIds = new Set<number>();
+  private updateParentCount: (count: number) => void = () => {};
 
   agInit(params: any): void {
     this.companyId = Number(params.data?.idPermission ?? params.data?.companyId ?? 0);
     this.userId = Number(params.data?.userId ?? 0);
     this.companyName = params.data?.nombre ?? params.data?.name ?? `Empresa ${this.companyId}`;
+    this.updateParentCount = count => {
+      params.data.countMasterPermissions = count;
+      params.api?.refreshCells({ rowNodes: [params.node], columns: ['countMasterPermissions'], force: true });
+    };
     this.load();
   }
 
@@ -71,6 +76,7 @@ export class CompanyMasterPermissionsRendererComponent implements ICellRendererA
         const ids = (Array.isArray(assigned) ? assigned : []).filter((item: any) => item.active !== false).map((item: any) => Number(item.permissionId));
         this.selectedIds = new Set(ids);
         this.originalIds = new Set(ids);
+        this.updateParentCount(ids.length);
         this.changed = false;
         this.loading = false;
       },
@@ -79,11 +85,13 @@ export class CompanyMasterPermissionsRendererComponent implements ICellRendererA
   }
 
   toggle(id: number, checked: boolean): void {
+    if (this.saving || this.loading) return;
     if (checked) this.selectedIds.add(id); else this.selectedIds.delete(id);
     this.updateChanged();
   }
 
   setMaster(master: any, enabled: boolean): void {
+    if (this.saving || this.loading) return;
     for (const detail of master.detailedPermissions ?? []) {
       if (enabled) this.selectedIds.add(Number(detail.id)); else this.selectedIds.delete(Number(detail.id));
     }
@@ -98,7 +106,7 @@ export class CompanyMasterPermissionsRendererComponent implements ICellRendererA
     if (!this.changed || this.saving) return;
     this.saving = true;
     this.service.updateCompanyUserPermissions(this.companyId, this.userId, [...this.selectedIds]).subscribe({
-      next: () => { this.originalIds = new Set(this.selectedIds); this.changed = false; this.saving = false; alerts.basicAlert('Listo', 'Permisos de la empresa actualizados.', 'success'); },
+      next: () => { this.originalIds = new Set(this.selectedIds); this.updateParentCount(this.selectedIds.size); this.changed = false; this.saving = false; alerts.basicAlert('Listo', 'Permisos de la empresa actualizados.', 'success'); },
       error: () => { this.saving = false; alerts.basicAlert('Error', 'No se pudieron guardar los permisos de esta empresa.', 'error'); }
     });
   }
