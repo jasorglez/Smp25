@@ -408,12 +408,17 @@ export class UsersComponent implements OnDestroy {
         cellEditorParams: (params) => ({
           filterList: this.empleadoCatalgos.map(e => e.name),
           filterKey: 'name',
-          placeholder: 'Nombre',
+          placeholder: 'Nombre (máximo 150 caracteres)',
+          maxLength: 150,
           minLength: 1,
           onEnterPressed: () => { this.enterPressed = true; }
         }),
         valueSetter: (params) => {
           const newValue = params.newValue?.toUpperCase() ?? '';
+          if (newValue.length > 150) {
+            alerts.basicAlert('Nombre demasiado largo', 'Nombre admite máximo 150 caracteres.', 'error');
+            return false;
+          }
           const duplicateExists = this.rowData.some((row, index) =>
             index !== params.node.rowIndex && row.displayName === newValue
           );
@@ -495,8 +500,15 @@ export class UsersComponent implements OnDestroy {
         editable: () => true,
         width: 150,
         cellEditor: 'agTextCellEditor',
+        cellEditorParams: { maxLength: 50 },
+        headerTooltip: 'Nombre de usuario: máximo 50 caracteres',
         valueSetter: (params) => {
-          params.data.usersmall = params.newValue ? params.newValue.toLowerCase().trim() : '';
+          const username = String(params.newValue ?? '').toLowerCase().trim();
+          if (username.length > 50) {
+            alerts.basicAlert('Username demasiado largo', 'Nombre de usuario admite máximo 50 caracteres.', 'error');
+            return false;
+          }
+          params.data.usersmall = username;
           return true;
         }
       },
@@ -769,14 +781,17 @@ export class UsersComponent implements OnDestroy {
     const value = String(email || '').trim().toLowerCase();
     const current = String(user?.usersmall || '').trim();
     if (!value.includes('@') || (current && current.toUpperCase() !== 'SINUSER')) return;
-    const base = value.split('@', 1)[0];
+    const base = value.split('@', 1)[0].slice(0, 50);
     const used = new Set(this.rowData
       .filter((row: any) => row !== user)
       .map((row: any) => String(row.usersmall || '').trim().toLowerCase())
       .filter(Boolean));
     let username = base;
     let suffix = 2;
-    while (used.has(username)) username = `${base}${suffix++}`;
+    while (used.has(username)) {
+      const ending = String(suffix++);
+      username = `${base.slice(0, 50 - ending.length)}${ending}`;
+    }
     user.usersmall = username;
   }
 
@@ -822,8 +837,19 @@ export class UsersComponent implements OnDestroy {
   }
 
   async saveChanges() {
+    this.gridApi?.stopEditing();
     const newRows = this.rowData.filter(row => row.__isNew);
     const modifiedRows = this.rowData.filter(row => row.__modified && !row.__isNew);
+
+    for (const row of [...newRows, ...modifiedRows]) {
+      const invalidFields: string[] = [];
+      if (String(row.usersmall ?? '').length > 50) invalidFields.push('Nombre de usuario: máximo 50 caracteres');
+      if (String(row.displayName ?? '').length > 150) invalidFields.push('Nombre: máximo 150 caracteres');
+      if (invalidFields.length) {
+        alerts.basicAlert('Revisa los límites de los campos', invalidFields.join('. '), 'error');
+        return;
+      }
+    }
 
     const invalidNewRows = newRows.filter(item => !item.displayName || !item.email || !item.password);
     if (invalidNewRows.length > 0) {

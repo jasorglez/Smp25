@@ -10,6 +10,7 @@ import { ICellEditorAngularComp } from 'ag-grid-angular';
   template: `
     <input #input class='ag-input-field-input ag-text-field-input autocomplete-input-editing'
       [(ngModel)]="value"
+      [attr.maxlength]="maxLength"
       (ngModelChange)="filterValues($event)"
       (keydown)="onKeyDown($event)">
 
@@ -52,6 +53,7 @@ import { ICellEditorAngularComp } from 'ag-grid-angular';
 export class AutocompleteEditorComponent implements ICellEditorAngularComp {
   private params: any;
   public value: any;
+  public maxLength: number | null = null;
   public filteredList: string[] = [];
   public showSuggestions = false;
   private isCanceled = false;
@@ -60,6 +62,7 @@ export class AutocompleteEditorComponent implements ICellEditorAngularComp {
 
   agInit(params: any): void {
     this.params = params;
+    this.maxLength = params.maxLength ?? null;
     this.value = params.value;
   }
 
@@ -84,6 +87,7 @@ export class AutocompleteEditorComponent implements ICellEditorAngularComp {
   }
 
   selectValue(value: string) {
+    if (this.maxLength !== null && value.length > this.maxLength) return;
     this.value = value;
     this.showSuggestions = false;
   }
