@@ -265,13 +265,16 @@ public gridOptions: any = {
     
     if (selectedNodes.length > 0) {
       this.selectedRowData = selectedNodes[0].data;
-      const branchId = this.selectedRowData.id;
+      const branchId = Number(this.selectedRowData.idPermission);
       
-      if (branchId) {
+      if (Number.isSafeInteger(branchId) && branchId > 0) {
         this.signalsService.setBranchFromPermissions(branchId);
+      } else {
+        this.signalsService.setBranchFromPermissions(null);
       }
     } else {
       this.selectedRowData = null;
+      this.signalsService.setBranchFromPermissions(null);
     }
   }
 
@@ -282,6 +285,9 @@ public gridOptions: any = {
       // When the name field (which contains the branch selection) changes
       if (event.colDef.field === 'name') {
         // The valueSetter already handled setting both name and idPermission
+        this.selectedRowData = event.data;
+        const branchId = Number(event.data.idPermission);
+        this.signalsService.setBranchFromPermissions(Number.isSafeInteger(branchId) && branchId > 0 ? branchId : null);
         console.log('🏢 Branch name changed to:', event.newValue);
         console.log('🆔 Corresponding idPermission:', event.data.idPermission);
       }

@@ -1037,6 +1037,10 @@ export class UsersComponent implements OnDestroy {
   }
 
   openEmpresasCascade(node: any): void {
+    if (!Number.isSafeInteger(Number(node?.data?.id)) || Number(node.data.id) <= 0) {
+      alerts.basicAlert('Guarda el usuario', 'Guarda primero el usuario para asignarle empresas, sucursales, contratos, proyectos y almacenes.', 'info');
+      return;
+    }
     const data = node.data;
     if (!data) return;
 

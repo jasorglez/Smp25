@@ -62,14 +62,10 @@ export class UsersxwarehousesComponent {
    * 2. Si no existe, usa getBranchSelectedBySidebar() (branch del sidebar)
    */
   get idBranch(): number {
-    const branchFromPermissions = this.signalsService.getBranchFromPermissions()();
-    const branchFromSidebar = this.signalsService.getBranchSelectedBySidebar()();
-
-    if (branchFromPermissions) {
-      return branchFromPermissions;
-    }
-
-    return branchFromSidebar || 0;
+    const selected = this.signalsService.getBranchFromPermissions()();
+    const sidebar = this.signalsService.getBranchSelectedBySidebar()();
+    const valid = (value: any) => Number.isSafeInteger(Number(value)) && (Number(value) > 0 || Number(value) === -9);
+    return valid(selected) ? Number(selected) : valid(sidebar) ? Number(sidebar) : 0;
   }
 
   constructor() {
@@ -86,6 +82,11 @@ export class UsersxwarehousesComponent {
 
   cargarDatos() {
     const currentIdBranch = this.idBranch;
+    if (!Number.isSafeInteger(Number(this.idUser)) || Number(this.idUser) <= 0) {
+      this.rowData = [];
+      this.warehouses = {};
+      return;
+    }
 
     // Validar que tenemos un idBranch válido (rechazar solo 0 o undefined)
     // -9 es válido y significa "todas las sucursales"
@@ -144,8 +145,8 @@ export class UsersxwarehousesComponent {
 
         // Filtrar permisos por usuario y sucursal
         this.rowData = Object.values(permisos).filter((row: any) =>
-          row.idUser === this.idUser &&
-          almacenes.some(almacen => almacen.id === row.idPermission && almacen.idBranch === currentIdBranch)
+          Number(row.idUser) === Number(this.idUser) &&
+          almacenes.some(almacen => Number(almacen.id) === Number(row.idPermission))
         );
 
         console.log('📊 Filas filtradas:', this.rowData.length);

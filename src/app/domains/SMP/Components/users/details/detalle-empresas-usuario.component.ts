@@ -5,7 +5,9 @@ import { AgGridModule } from 'ag-grid-angular';
 import { ColDef, GridApi, GridReadyEvent } from 'ag-grid-community';
 import { ICellRendererAngularComp } from 'ag-grid-angular';
 import { forkJoin, Observable, of } from 'rxjs';
-import { catchError } from 'rxjs/operators';
+import { catchError, timeout } from 'rxjs/operators';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { throwError } from 'rxjs';
 import { UsersxpermissionsService } from 'app/services/usersxpermissions.service';
 import { RootService } from 'app/services/root.service';
 import { BranchsService } from 'app/services/branchs.service';
@@ -52,7 +54,7 @@ function saveUsersDescriptionWidth(event: any, grid: string, column: string): vo
           class="form-select form-select-sm"
           style="width:260px;"
           [(ngModel)]="selectedNewProjectId"
-          [disabled]="availableProjects.length === 0">
+          [disabled]="loading || !!loadError || isSaving || availableProjects.length === 0">
           <option value="">-- Seleccionar proyecto --</option>
           <option *ngFor="let p of availableProjects" [value]="p.id">
             {{ p.name ?? p.projectName }}
@@ -61,19 +63,24 @@ function saveUsersDescriptionWidth(event: any, grid: string, column: string): vo
         <button
           class="btn btn-sm btn-primary"
           (click)="addProyecto()"
-          [disabled]="!selectedNewProjectId || isSaving"
+          [disabled]="!selectedNewProjectId || isSaving || loading || !!loadError"
           title="Agregar proyecto">
           <i class="bi bi-plus-lg"></i>
         </button>
         <button
           class="btn btn-sm btn-danger"
           (click)="deleteProyecto()"
-          [disabled]="!selectedRow || isSaving"
+          [disabled]="!selectedRow || isSaving || loading || !!loadError"
           title="Quitar proyecto seleccionado">
           <i class="bi bi-trash"></i>
         </button>
       </div>
 
+      <div *ngIf="loading" class="text-muted small mb-2" role="status">Cargando listado…</div>
+      <div *ngIf="loadError" class="alert alert-warning py-2" role="alert">
+        {{ loadError }}
+        <button class="btn btn-sm btn-outline-secondary ms-2" (click)="retryLoad()" [disabled]="loading">Reintentar</button>
+      </div>
       <!-- Grid -->
       <div style="flex:1;min-height:0;">
         <ag-grid-angular
@@ -93,6 +100,8 @@ function saveUsersDescriptionWidth(event: any, grid: string, column: string): vo
   `
 })
 export class ProyectosDetailRendererComponent implements ICellRendererAngularComp {
+  private changeDetector = inject(ChangeDetectorRef);
+  private destroyRef = inject(DestroyRef);
   private projectsService          = inject(ProjectsService);
   private usersxpermissionsService = inject(UsersxpermissionsService);
   private signalsService           = inject(SignalsService);
@@ -102,6 +111,14 @@ export class ProyectosDetailRendererComponent implements ICellRendererAngularCom
   selectedNewProjectId: string = '';
   selectedRow: any = null;
   isSaving = false;
+  loading = false;
+  loadError = '';
+
+  retryLoad(): void { if (!this.loading && !this.isSaving) this.loadData(); }
+
+  private render(): void {
+    if (!this.destroyRef.destroyed) this.changeDetector.detectChanges();
+  }
   contractName: string = '';
   private userId: number = 0;
   private contractId: number = 0;
@@ -126,28 +143,44 @@ export class ProyectosDetailRendererComponent implements ICellRendererAngularCom
   }
 
   private loadData(): void {
+    this.loadError = '';
+    if (![this.userId, this.contractId].every(id => Number.isSafeInteger(Number(id)) && Number(id) > 0)) {
+      this.loadError = 'Guarda primero el usuario y selecciona un registro válido para asignar permisos.';
+      this.render();
+      return;
+    }
+    this.loading = true;
     forkJoin({
-      assigned:    this.projectsService.getProjectsByContract(this.userId, this.contractId)
-                     .pipe(catchError(() => of([]))),
-      allProjects: this.projectsService.getProjectListByContract(this.contractId)
-                     .pipe(catchError(() => of([])))
-    }).subscribe(({ assigned, allProjects }) => {
-      const assignedArr = Array.isArray(assigned)    ? assigned    : [];
-      const allArr      = Array.isArray(allProjects) ? allProjects : [];
+      permissions: this.usersxpermissionsService.getUsersxPermissionsGeneral('project', this.userId),
+      catalog: this.projectsService.getProjectListByContract(this.contractId).pipe(catchError(error => error.status === 404 ? of([]) : throwError(() => error)))
+    }).pipe(timeout(20000), takeUntilDestroyed(this.destroyRef)).subscribe({
+      next: ({ permissions, catalog: catalogResponse }) => {
+        const permissionRows = Array.isArray(permissions) ? permissions : [];
+        const catalogRows = Array.isArray(catalogResponse) ? catalogResponse : [];
+        const catalog = catalogRows.map(p => ({ ...p, id: Number(p.id) }));
+        const assigned = new Map(permissionRows.map(p => [Number(p.idPermission), p]));
+        this.projects = catalog.filter(p => assigned.has(p.id)).map(p => ({
+          ...p, id: assigned.get(p.id).id, idProject: p.id,
+          projectName: p.name ?? p.projectName, projectDescription: p.description ?? ''
+        }));
+        this.availableProjects = catalog.filter(p => !assigned.has(p.id));
+        this.selectedNewProjectId = '';
+        this.selectedRow = null;
+        if (this.gridApi) this.gridApi.setGridOption('rowData', this.projects);
+        this.loading = false;
+        this.render();
 
-      const assignedIds = new Set(assignedArr.map((p: any) => p.idProject));
-
-      this.projects = assignedArr.map((p: any) => ({ ...p }));
-
-      this.availableProjects  = allArr.filter((p: any) => !assignedIds.has(p.id));
-      this.selectedNewProjectId = '';
-      this.selectedRow = null;
-      if (this.gridApi) this.gridApi.setGridOption('rowData', this.projects);
+      },
+      error: () => {
+        this.loading = false;
+        this.loadError = 'No se pudo cargar el listado. Pulsa Reintentar para volver a consultar.';
+        this.render();
+      }
     });
   }
 
   addProyecto(): void {
-    if (!this.selectedNewProjectId || this.isSaving) return;
+    if (this.loading || this.loadError || this.isSaving || !this.availableProjects.some(item => Number(item.id) === Number(this.selectedNewProjectId))) return;
     this.isSaving = true;
     const payload = {
       idUser:       this.userId,
@@ -206,29 +239,34 @@ export class ProyectosDetailRendererComponent implements ICellRendererAngularCom
           class="form-select form-select-sm"
           style="width:260px;"
           [(ngModel)]="selectedNewWarehouseId"
-          [disabled]="availableWarehouses.length === 0">
+          [disabled]="loading || !!loadError || isSaving || availableWarehouses.length === 0">
           <option value="">-- Seleccionar almacén --</option>
           <option *ngFor="let w of availableWarehouses" [value]="w.id">{{ w.name }}</option>
         </select>
         <button
           class="btn btn-sm btn-primary"
           (click)="addAlmacen()"
-          [disabled]="!selectedNewWarehouseId || isSaving"
+          [disabled]="!selectedNewWarehouseId || isSaving || loading || !!loadError"
           title="Agregar almacén">
           <i class="bi bi-plus-lg"></i>
         </button>
-        <button type="button" class="btn btn-sm btn-success" (click)="createWarehouse()" [disabled]="isSaving">
+        <button type="button" class="btn btn-sm btn-success" (click)="createWarehouse()" [disabled]="isSaving || loading || !!loadError">
           <i class="bi bi-plus-circle me-1"></i>Nuevo almacén
         </button>
         <button
           class="btn btn-sm btn-danger"
           (click)="deleteAlmacen()"
-          [disabled]="!selectedRow || isSaving"
+          [disabled]="!selectedRow || isSaving || loading || !!loadError"
           title="Quitar almacén seleccionado">
           <i class="bi bi-trash"></i>
         </button>
       </div>
 
+      <div *ngIf="loading" class="text-muted small mb-2" role="status">Cargando listado…</div>
+      <div *ngIf="loadError" class="alert alert-warning py-2" role="alert">
+        {{ loadError }}
+        <button class="btn btn-sm btn-outline-secondary ms-2" (click)="retryLoad()" [disabled]="loading">Reintentar</button>
+      </div>
       <div style="flex:1;min-height:0;">
         <ag-grid-angular
           class="ag-theme-quartz small-text-ag-grid"
@@ -258,6 +296,14 @@ export class AlmacenesDetailRendererComponent implements ICellRendererAngularCom
   selectedNewWarehouseId: string = '';
   selectedRow: any = null;
   isSaving = false;
+  loading = false;
+  loadError = '';
+
+  retryLoad(): void { if (!this.loading && !this.isSaving) this.loadData(); }
+
+  private render(): void {
+    if (!this.destroyRef.destroyed) this.changeDetector.detectChanges();
+  }
   contractName: string = '';
   private userId: number = 0;
   private branchId: number = 0;
@@ -282,34 +328,38 @@ export class AlmacenesDetailRendererComponent implements ICellRendererAngularCom
   }
 
   private loadData(): void {
+    this.loadError = '';
+    if (![this.userId, this.branchId].every(id => Number.isSafeInteger(Number(id)) && Number(id) > 0)) {
+      this.loadError = 'Guarda primero el usuario y selecciona un registro válido para asignar permisos.';
+      this.render();
+      return;
+    }
+    this.loading = true;
     forkJoin({
-      permissions: this.usersxpermissionsService.getUsersxPermissionsGeneral('warehouse', this.userId)
-        .pipe(catchError(() => of([]))),
-      allInBranch: this.warehousesService.getSimpleWarehouses(this.branchId)
-        .pipe(catchError(() => of([])))
-    }).subscribe(({ permissions, allInBranch }) => {
-      const permsArr   = Array.isArray(permissions) ? permissions : [];
-      const branchList = Array.isArray(allInBranch) ? allInBranch : [];
-      const branchIds  = new Set(branchList.map((w: any) => w.id));
+      permissions: this.usersxpermissionsService.getUsersxPermissionsGeneral('warehouse', this.userId),
+      catalog: this.warehousesService.getSimpleWarehouses(this.branchId).pipe(catchError(error => error.status === 404 ? of([]) : throwError(() => error)))
+    }).pipe(timeout(20000), takeUntilDestroyed(this.destroyRef)).subscribe({
+      next: ({ permissions, catalog: catalogResponse }) => {
+        const permissionRows = Array.isArray(permissions) ? permissions : [];
+        const catalogRows = Array.isArray(catalogResponse) ? catalogResponse : [];
+        const catalog = catalogRows.map(w => ({ ...w, id: Number(w.id) }));
+        const assigned = new Map(permissionRows.map(p => [Number(p.idPermission), p]));
+        this.warehouses = catalog.filter(w => assigned.has(w.id)).map(w => ({
+          ...w, id: assigned.get(w.id).id, idPermission: w.id
+        }));
+        this.availableWarehouses = catalog.filter(w => !assigned.has(w.id));
+        this.selectedNewWarehouseId = '';
+        this.selectedRow = null;
+        if (this.gridApi) this.gridApi.setGridOption('rowData', this.warehouses);
+        this.loading = false;
+        this.render();
 
-      const assigned = permsArr.filter((p: any) => branchIds.has(p.idPermission));
-      const assignedIds = new Set(assigned.map((p: any) => p.idPermission));
-
-      this.warehouses = assigned.map((p: any) => {
-        const wh = branchList.find((w: any) => w.id === p.idPermission);
-        return {
-          id: p.id,
-          idPermission: p.idPermission,
-          name: wh?.name ?? `Almacén ${p.idPermission}`,
-          description: wh?.description ?? ''
-        };
-      });
-
-      this.availableWarehouses = branchList.filter((w: any) => !assignedIds.has(w.id));
-      this.selectedNewWarehouseId = '';
-      this.selectedRow = null;
-      if (this.gridApi) this.gridApi.setGridOption('rowData', this.warehouses);
-      if (!this.destroyRef.destroyed) this.changeDetector.detectChanges();
+      },
+      error: () => {
+        this.loading = false;
+        this.loadError = 'No se pudo cargar el listado. Pulsa Reintentar para volver a consultar.';
+        this.render();
+      }
     });
   }
 
@@ -330,7 +380,7 @@ export class AlmacenesDetailRendererComponent implements ICellRendererAngularCom
   }
 
   addAlmacen(): void {
-    if (!this.selectedNewWarehouseId || this.isSaving) return;
+    if (this.loading || this.loadError || this.isSaving || !this.availableWarehouses.some(item => Number(item.id) === Number(this.selectedNewWarehouseId))) return;
     this.isSaving = true;
     const payload = {
       idUser:       this.userId,
@@ -390,7 +440,7 @@ export class AlmacenesDetailRendererComponent implements ICellRendererAngularCom
           class="form-select form-select-sm"
           style="width:260px;"
           [(ngModel)]="selectedNewContractId"
-          [disabled]="availableContracts.length === 0">
+          [disabled]="loading || !!loadError || isSaving || availableContracts.length === 0">
           <option value="">-- Seleccionar contrato --</option>
           <option *ngFor="let c of availableContracts" [value]="c.idContrato">
             {{ c.numberContract }} - {{ c.descripSmall }}
@@ -399,19 +449,24 @@ export class AlmacenesDetailRendererComponent implements ICellRendererAngularCom
         <button
           class="btn btn-sm btn-primary"
           (click)="addContrato()"
-          [disabled]="!selectedNewContractId || isSaving"
+          [disabled]="!selectedNewContractId || isSaving || loading || !!loadError"
           title="Agregar contrato">
           <i class="bi bi-plus-lg"></i>
         </button>
         <button
           class="btn btn-sm btn-danger"
           (click)="deleteContrato()"
-          [disabled]="!selectedRow || isSaving"
+          [disabled]="!selectedRow || isSaving || loading || !!loadError"
           title="Quitar contrato seleccionado">
           <i class="bi bi-trash"></i>
         </button>
       </div>
 
+      <div *ngIf="loading" class="text-muted small mb-2" role="status">Cargando listado…</div>
+      <div *ngIf="loadError" class="alert alert-warning py-2" role="alert">
+        {{ loadError }}
+        <button class="btn btn-sm btn-outline-secondary ms-2" (click)="retryLoad()" [disabled]="loading">Reintentar</button>
+      </div>
       <!-- Grid -->
       <div style="flex:1;min-height:0;">
         <ag-grid-angular
@@ -432,6 +487,8 @@ export class AlmacenesDetailRendererComponent implements ICellRendererAngularCom
   `
 })
 export class ContratosDetailRendererComponent implements ICellRendererAngularComp {
+  private changeDetector = inject(ChangeDetectorRef);
+  private destroyRef = inject(DestroyRef);
   private contractsService         = inject(ContractsService);
   private usersxpermissionsService = inject(UsersxpermissionsService);
   private signalsService           = inject(SignalsService);
@@ -442,6 +499,14 @@ export class ContratosDetailRendererComponent implements ICellRendererAngularCom
   selectedNewContractId: string = '';
   selectedRow: any = null;
   isSaving = false;
+  loading = false;
+  loadError = '';
+
+  retryLoad(): void { if (!this.loading && !this.isSaving) this.loadData(); }
+
+  private render(): void {
+    if (!this.destroyRef.destroyed) this.changeDetector.detectChanges();
+  }
   branchName: string = '';
   private userId: number = 0;
   private branchId: number = 0;
@@ -492,55 +557,59 @@ export class ContratosDetailRendererComponent implements ICellRendererAngularCom
   }
 
   private loadData(): void {
+    this.loadError = '';
+    if (![this.userId, this.branchId].every(id => Number.isSafeInteger(Number(id)) && Number(id) > 0)) {
+      this.loadError = 'Guarda primero el usuario y selecciona un registro válido para asignar permisos.';
+      this.render();
+      return;
+    }
+    this.loading = true;
     forkJoin({
-      assigned:    this.contractsService.getContractsByBranch(this.userId, this.branchId)
-                     .pipe(catchError(() => of([]))),
-      allContracts: this.contractsService.getContracts(this.branchId)
-                     .pipe(catchError(() => of([]))),
-      permissions: this.usersxpermissionsService.getUsersxPermissionsGeneral('contract', this.userId)
-                     .pipe(catchError(() => of([])))
-    }).subscribe(({ assigned, allContracts, permissions }) => {
-      const assignedArr = Array.isArray(assigned)     ? assigned     : [];
-      const allArr      = Array.isArray(allContracts) ? allContracts : [];
-      const permsArr    = Array.isArray(permissions)  ? permissions  : [];
+      permissions: this.usersxpermissionsService.getUsersxPermissionsGeneral('contract', this.userId),
+      catalog: this.contractsService.getContracts(this.branchId).pipe(catchError(error => error.status === 404 ? of([]) : throwError(() => error)))
+    }).pipe(timeout(20000), takeUntilDestroyed(this.destroyRef)).subscribe({
+      next: ({ permissions, catalog: catalogResponse }) => {
+        const permissionRows = Array.isArray(permissions) ? permissions : [];
+        const catalogRows = Array.isArray(catalogResponse) ? catalogResponse : [];
+        const catalog = catalogRows.map(c => ({ ...c, idContrato: Number(c.idContrato) }));
+        const assigned = new Map(permissionRows.map(p => [Number(p.idPermission), p]));
+        this.contracts = catalog.filter(c => assigned.has(c.idContrato)).map(c => ({
+          permissionId: assigned.get(c.idContrato).id, contractId: c.idContrato,
+          name: c.numberContract ?? c.name ?? c.descripSmall ?? `Contrato ${c.idContrato}`,
+          descripSmall: c.descripSmall, userId: this.userId, branchId: this.branchId, countProyectos: 0
+        }));
+        this.availableContracts = catalog.filter(c => !assigned.has(c.idContrato));
+        this.selectedNewContractId = '';
+        this.selectedRow = null;
+        if (this.gridApi) this.gridApi.setGridOption('rowData', this.contracts);
+        this.loading = false;
+        this.render();
+        if (this.contracts.length === 0) return;
 
-      const assignedIds = new Set(assignedArr.map((c: any) => c.contractId));
-      const permsMap    = new Map(permsArr.map((p: any) => [p.idPermission, p.id]));
+        const projectRequests: Record<string, Observable<any>> = {};
+        this.contracts.forEach(row => {
+          projectRequests[row.contractId] = this.projectsService
+            .getProjectsByContract(this.userId, row.contractId)
+            .pipe(catchError(() => of([])));
+        });
 
-      this.contracts = assignedArr.map((c: any) => ({
-        permissionId:  permsMap.get(c.contractId),
-        contractId:    c.contractId,
-        name:          c.contract,
-        descripSmall:  c.descripSmall,
-        userId:        this.userId,
-        branchId:      this.branchId,
-        countProyectos: 0
-      }));
+        forkJoin(projectRequests).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
+          next: projectData => {
+            this.contracts = this.contracts.map(row => ({
+              ...row,
+              countProyectos: Array.isArray(projectData[row.contractId]) ? projectData[row.contractId].length : 0
+            }));
+            if (this.gridApi) this.gridApi.setGridOption('rowData', this.contracts);
+            this.render();
+          }
+        });
 
-      this.availableContracts    = allArr.filter((c: any) => !assignedIds.has(c.idContrato));
-      this.selectedNewContractId = '';
-      this.selectedRow           = null;
-
-      if (this.gridApi) this.gridApi.setGridOption('rowData', this.contracts);
-
-      if (this.contracts.length === 0) return;
-
-      const projectRequests: Record<string, Observable<any>> = {};
-      this.contracts.forEach(row => {
-        projectRequests[row.contractId] = this.projectsService
-          .getProjectsByContract(this.userId, row.contractId)
-          .pipe(catchError(() => of([])));
-      });
-
-      forkJoin(projectRequests).subscribe({
-        next: projectData => {
-          this.contracts = this.contracts.map(row => ({
-            ...row,
-            countProyectos: Array.isArray(projectData[row.contractId]) ? projectData[row.contractId].length : 0
-          }));
-          if (this.gridApi) this.gridApi.setGridOption('rowData', this.contracts);
-        }
-      });
+      },
+      error: () => {
+        this.loading = false;
+        this.loadError = 'No se pudo cargar el listado. Pulsa Reintentar para volver a consultar.';
+        this.render();
+      }
     });
   }
 
@@ -560,7 +629,7 @@ export class ContratosDetailRendererComponent implements ICellRendererAngularCom
   }
 
   addContrato(): void {
-    if (!this.selectedNewContractId || this.isSaving) return;
+    if (this.loading || this.loadError || this.isSaving || !this.availableContracts.some(item => Number(item.idContrato) === Number(this.selectedNewContractId))) return;
     this.isSaving = true;
     const payload = {
       idUser:       this.userId,
@@ -620,29 +689,34 @@ export class ContratosDetailRendererComponent implements ICellRendererAngularCom
           class="form-select form-select-sm"
           style="width:220px;"
           [(ngModel)]="selectedNewBranchId"
-          [disabled]="availableBranches.length === 0">
+          [disabled]="loading || !!loadError || isSaving || availableBranches.length === 0">
           <option value="">-- Seleccionar sucursal --</option>
           <option *ngFor="let b of availableBranches" [value]="b.id">{{ b.name }}</option>
         </select>
         <button
           class="btn btn-sm btn-primary"
           (click)="addSucursal()"
-          [disabled]="!selectedNewBranchId || isSaving"
+          [disabled]="!selectedNewBranchId || isSaving || loading || !!loadError"
           title="Agregar sucursal">
           <i class="bi bi-plus-lg"></i>
         </button>
-        <button type="button" class="btn btn-sm btn-success" (click)="createBranch()" [disabled]="isSaving">
+        <button type="button" class="btn btn-sm btn-success" (click)="createBranch()" [disabled]="isSaving || loading || !!loadError">
           <i class="bi bi-plus-circle me-1"></i>Nueva sucursal
         </button>
         <button
           class="btn btn-sm btn-danger"
           (click)="deleteSucursal()"
-          [disabled]="!selectedRow || isSaving"
+          [disabled]="!selectedRow || isSaving || loading || !!loadError"
           title="Quitar sucursal seleccionada">
           <i class="bi bi-trash"></i>
         </button>
       </div>
 
+      <div *ngIf="loading" class="text-muted small mb-2" role="status">Cargando listado…</div>
+      <div *ngIf="loadError" class="alert alert-warning py-2" role="alert">
+        {{ loadError }}
+        <button class="btn btn-sm btn-outline-secondary ms-2" (click)="retryLoad()" [disabled]="loading">Reintentar</button>
+      </div>
       <!-- Grid -->
       <div style="flex:1;min-height:0;">
         <ag-grid-angular
@@ -676,6 +750,14 @@ export class SucursalesDetailRendererComponent implements ICellRendererAngularCo
   selectedNewBranchId: string = '';
   selectedRow: any = null;
   isSaving = false;
+  loading = false;
+  loadError = '';
+
+  retryLoad(): void { if (!this.loading && !this.isSaving) this.loadData(); }
+
+  private render(): void {
+    if (!this.destroyRef.destroyed) this.changeDetector.detectChanges();
+  }
   private userId: number = 0;
   private idCompany: number = 0;
   private gridApi!: GridApi;
@@ -740,66 +822,77 @@ export class SucursalesDetailRendererComponent implements ICellRendererAngularCo
   }
 
   private loadData(): void {
+    this.loadError = '';
+    if (![this.userId, this.idCompany].every(id => Number.isSafeInteger(Number(id)) && Number(id) > 0)) {
+      this.loadError = 'Guarda primero el usuario y selecciona un registro válido para asignar permisos.';
+      this.render();
+      return;
+    }
+    this.loading = true;
     forkJoin({
-      assigned:  this.branchsService.getBranchesByUserAndCompany(this.userId, this.idCompany)
-                   .pipe(catchError(() => of({ project: [] }))),
-      available: this.usersxpermissionsService.getDataUsersxPermissionsbranch(this.idCompany, this.userId)
-                   .pipe(catchError(() => of([])))
-    }).subscribe(({ assigned, available }) => {
-      const project = (assigned as any)?.project ?? [];
+      permissions: this.usersxpermissionsService.getUsersxPermissionsGeneral('branch', this.userId),
+      catalog: this.branchsService.getBranches(this.idCompany).pipe(catchError(error => error.status === 404 ? of([]) : throwError(() => error)))
+    }).pipe(timeout(20000), takeUntilDestroyed(this.destroyRef)).subscribe({
+      next: ({ permissions, catalog: catalogResponse }) => {
+        const permissionRows = Array.isArray(permissions) ? permissions : [];
+        const catalogRows = Array.isArray(catalogResponse) ? catalogResponse : [];
+        const catalog = catalogRows.map(b => ({ ...b, id: Number(b.id) }));
+        const assigned = new Map(permissionRows.map(p => [Number(p.idPermission), p]));
+        this.branches = catalog.filter(b => assigned.has(b.id)).map(b => ({
+          ...b, id: assigned.get(b.id).id, idPermission: b.id, idBranch: b.id,
+          userId: this.userId, countContratos: 0, countAlmacenes: 0
+        }));
+        this.availableBranches = catalog.filter(b => !assigned.has(b.id));
+        this.selectedNewBranchId = '';
+        this.selectedRow = null;
+        if (this.gridApi) this.gridApi.setGridOption('rowData', this.branches);
+        this.loading = false;
+        this.render();
+        if (this.branches.length === 0) return;
 
-      this.branches = project.map((row: any) => ({
-        ...row,
-        userId:         this.userId,
-        idBranch:       row.idPermission ?? row.idBranch ?? row.id,
-        countContratos: 0,
-        countAlmacenes: 0
-      }));
-
-      this.availableBranches   = Array.isArray(available) ? available : [];
-      this.selectedNewBranchId = '';
-      this.selectedRow         = null;
-
-      if (this.gridApi) this.gridApi.setGridOption('rowData', this.branches);
-      if (!this.destroyRef.destroyed) this.changeDetector.detectChanges();
-
-      if (this.branches.length === 0) return;
-
-      const contractRequests: Record<string, Observable<any>> = {};
-      this.branches.forEach(row => {
-        contractRequests[row.idBranch] = this.contractsService
-          .getContractsByBranch(this.userId, row.idBranch)
-          .pipe(catchError(() => of([])));
-      });
-
-      const warehouseRequests: Record<string, Observable<any>> = {};
-      this.branches.forEach(row => {
-        warehouseRequests[row.idBranch] = forkJoin({
-          permissions: this.usersxpermissionsService.getUsersxPermissionsGeneral('warehouse', this.userId).pipe(catchError(() => of([]))),
-          branchWarehouses: this.warehousesService.getSimpleWarehouses(row.idBranch).pipe(catchError(() => of([])))
+        const contractRequests: Record<string, Observable<any>> = {};
+        this.branches.forEach(row => {
+          contractRequests[row.idBranch] = this.contractsService
+            .getContractsByBranch(this.userId, row.idBranch)
+            .pipe(catchError(() => of([])));
         });
-      });
 
-      forkJoin({
-        contracts: forkJoin(contractRequests),
-        warehouses: forkJoin(warehouseRequests)
-      }).subscribe({
-        next: ({ contracts: contractData, warehouses: whData }) => {
-          this.branches = this.branches.map(row => {
-            const wh = whData[row.idBranch] || {};
-            const branchWhIds = new Set((Array.isArray(wh.branchWarehouses) ? wh.branchWarehouses : []).map((w: any) => w.id));
-            const userWhCount = (Array.isArray(wh.permissions) ? wh.permissions : []).filter(
-              (p: any) => branchWhIds.has(p.idPermission)
-            ).length;
-            return {
-              ...row,
-              countContratos: Array.isArray(contractData[row.idBranch]) ? contractData[row.idBranch].length : 0,
-              countAlmacenes: userWhCount
-            };
+        const warehouseRequests: Record<string, Observable<any>> = {};
+        this.branches.forEach(row => {
+          warehouseRequests[row.idBranch] = forkJoin({
+            permissions: this.usersxpermissionsService.getUsersxPermissionsGeneral('warehouse', this.userId).pipe(catchError(() => of([]))),
+            branchWarehouses: this.warehousesService.getSimpleWarehouses(row.idBranch).pipe(catchError(() => of([])))
           });
-          if (this.gridApi) this.gridApi.setGridOption('rowData', this.branches);
-        }
-      });
+        });
+
+        forkJoin({
+          contracts: forkJoin(contractRequests),
+          warehouses: forkJoin(warehouseRequests)
+        }).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
+          next: ({ contracts: contractData, warehouses: whData }) => {
+            this.branches = this.branches.map(row => {
+              const wh = whData[row.idBranch] || {};
+              const branchWhIds = new Set((Array.isArray(wh.branchWarehouses) ? wh.branchWarehouses : []).map((w: any) => w.id));
+              const userWhCount = (Array.isArray(wh.permissions) ? wh.permissions : []).filter(
+                (p: any) => branchWhIds.has(p.idPermission)
+              ).length;
+              return {
+                ...row,
+                countContratos: Array.isArray(contractData[row.idBranch]) ? contractData[row.idBranch].length : 0,
+                countAlmacenes: userWhCount
+              };
+            });
+            if (this.gridApi) this.gridApi.setGridOption('rowData', this.branches);
+            this.render();
+          }
+        });
+
+      },
+      error: () => {
+        this.loading = false;
+        this.loadError = 'No se pudo cargar el listado. Pulsa Reintentar para volver a consultar.';
+        this.render();
+      }
     });
   }
 
@@ -852,7 +945,7 @@ export class SucursalesDetailRendererComponent implements ICellRendererAngularCo
   }
 
   addSucursal(): void {
-    if (!this.selectedNewBranchId || this.isSaving) return;
+    if (this.loading || this.loadError || this.isSaving || !this.availableBranches.some(item => Number(item.id) === Number(this.selectedNewBranchId))) return;
     this.isSaving = true;
     const payload = {
       idUser:       this.userId,
@@ -1024,7 +1117,8 @@ export class DetalleEmpresasUsuarioComponent implements OnInit {
   }
 
   toggleSucursales(node: any): void {
-    const isExpanded = node.expanded;
+    const isExpanded = node.expanded && node.data?.expandedPanel === 'sucursales';
+    node.data.expandedPanel = 'sucursales';
     this.gridApi.forEachNode((n: any) => { if (n.expanded) n.setExpanded(false); });
 
     if (!isExpanded) {
