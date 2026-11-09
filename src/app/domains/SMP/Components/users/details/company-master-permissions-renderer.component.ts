@@ -1,7 +1,8 @@
 import { CommonModule } from '@angular/common';
-import { Component, inject } from '@angular/core';
+import { ChangeDetectorRef, Component, DestroyRef, inject } from '@angular/core';
 import { ICellRendererAngularComp } from 'ag-grid-angular';
-import { forkJoin } from 'rxjs';
+import { forkJoin, finalize, take, timeout } from 'rxjs';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { alerts } from 'app/helpers/alerts';
 import { MasterPermissions2Service } from 'app/services/master-permissions-2.service';
 
@@ -19,9 +20,13 @@ import { MasterPermissions2Service } from 'app/services/master-permissions-2.ser
         </button>
         <button class="btn btn-sm btn-warning" (click)="revert()" [disabled]="!changed || saving" title="Deshacer"><i class="bi bi-arrow-clockwise"></i></button>
       </header>
-      <div *ngIf="loading" class="text-muted small">Cargando permisos…</div>
-      <div *ngIf="!loading && masters.length === 0" class="text-muted small">Esta empresa no tiene módulos habilitados en Menús por empresa.</div>
-      <div class="row g-2" *ngIf="!loading">
+      <div *ngIf="loading" class="text-muted small" role="status">Cargando permisos…</div>
+      <div *ngIf="loadError" class="alert alert-warning py-2" role="alert">
+        {{ loadError }}
+        <button type="button" class="btn btn-sm btn-outline-secondary ms-2" (click)="retry()" [disabled]="loading">Reintentar</button>
+      </div>
+      <div *ngIf="!loading && !loadError && masters.length === 0" class="text-muted small">Esta empresa no tiene módulos habilitados en Menús por empresa.</div>
+      <div class="row g-2" *ngIf="!loading && !loadError">
         <div class="col-xl-3 col-lg-4 col-md-6" *ngFor="let master of masters">
           <div class="border rounded p-2 h-100">
             <div class="d-flex justify-content-between align-items-center border-bottom pb-1 mb-2">
@@ -44,6 +49,9 @@ import { MasterPermissions2Service } from 'app/services/master-permissions-2.ser
 })
 export class CompanyMasterPermissionsRendererComponent implements ICellRendererAngularComp {
   private service = inject(MasterPermissions2Service);
+  private changeDetector = inject(ChangeDetectorRef);
+  private destroyRef = inject(DestroyRef);
+  loadError = "";
   masters: any[] = [];
   companyId = 0;
   userId = 0;
@@ -60,27 +68,51 @@ export class CompanyMasterPermissionsRendererComponent implements ICellRendererA
     this.userId = Number(params.data?.userId ?? 0);
     this.companyName = params.data?.nombre ?? params.data?.name ?? `Empresa ${this.companyId}`;
     this.updateParentCount = count => {
+      if (params.data.countMasterPermissions === count || params.api?.isDestroyed?.()) return;
       params.data.countMasterPermissions = count;
       params.api?.refreshCells({ rowNodes: [params.node], columns: ['countMasterPermissions'], force: true });
     };
     this.load();
   }
 
-  refresh(): boolean { return false; }
+  refresh(params: any): boolean {
+    // Una actualización del contador no debe destruir el detalle y volver a consultar.
+    return Number(params.data?.idPermission ?? params.data?.companyId ?? 0) === this.companyId &&
+      Number(params.data?.userId ?? 0) === this.userId;
+  }
+
+  retry(): void { if (!this.loading && !this.saving) this.load(); }
+
+  private render(): void {
+    if (!this.destroyRef.destroyed) this.changeDetector.detectChanges();
+  }
 
   private load(): void {
     this.loading = true;
-    forkJoin({ masters: this.service.getCompanyMasterPermissions(this.companyId), assigned: this.service.getCompanyUserPermissions(this.companyId, this.userId) }).subscribe({
+    this.loadError = '';
+    forkJoin({
+      masters: this.service.getCompanyMasterPermissions(this.companyId).pipe(take(1)),
+      assigned: this.service.getCompanyUserPermissions(this.companyId, this.userId).pipe(take(1))
+    }).pipe(
+      timeout(20000),
+      takeUntilDestroyed(this.destroyRef),
+      finalize(() => { this.loading = false; this.render(); })
+    ).subscribe({
       next: ({ masters, assigned }) => {
         this.masters = Array.isArray(masters) ? masters : [];
         const ids = (Array.isArray(assigned) ? assigned : []).filter((item: any) => item.active !== false).map((item: any) => Number(item.permissionId));
         this.selectedIds = new Set(ids);
         this.originalIds = new Set(ids);
-        this.updateParentCount(ids.length);
         this.changed = false;
         this.loading = false;
+        this.render();
+        this.updateParentCount(this.selectedIds.size);
       },
-      error: () => { this.loading = false; alerts.basicAlert('Error', 'No se pudieron cargar los permisos de esta empresa.', 'error'); }
+      error: (error) => {
+        this.loadError = error?.name === 'TimeoutError'
+          ? 'La consulta está tardando demasiado. Vuelve a intentarlo.'
+          : 'No se pudieron cargar los permisos. Verifica tu sesión y vuelve a intentarlo.';
+      }
     });
   }
 
@@ -105,7 +137,10 @@ export class CompanyMasterPermissionsRendererComponent implements ICellRendererA
   save(): void {
     if (!this.changed || this.saving) return;
     this.saving = true;
-    this.service.updateCompanyUserPermissions(this.companyId, this.userId, [...this.selectedIds]).subscribe({
+    this.service.updateCompanyUserPermissions(this.companyId, this.userId, [...this.selectedIds]).pipe(
+      takeUntilDestroyed(this.destroyRef),
+      finalize(() => { this.saving = false; this.render(); })
+    ).subscribe({
       next: () => { this.originalIds = new Set(this.selectedIds); this.updateParentCount(this.selectedIds.size); this.changed = false; this.saving = false; alerts.basicAlert('Listo', 'Permisos de la empresa actualizados.', 'success'); },
       error: () => { this.saving = false; alerts.basicAlert('Error', 'No se pudieron guardar los permisos de esta empresa.', 'error'); }
     });
