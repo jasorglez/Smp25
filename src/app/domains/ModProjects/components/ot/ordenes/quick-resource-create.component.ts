@@ -94,7 +94,7 @@ export class QuickResourceCreateComponent implements OnInit {
   ngOnInit(): void { this.load(); }
   private request<T>(source: Observable<T>): Promise<T> { return firstValueFrom(source.pipe(timeout(30000))); }
   private normalize(value: any): string { return String(value || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim().replace(/\s+/g, ' ').toUpperCase(); }
-  private list(): Observable<any> { return this.isMaterial ? this.materials.getMaterials(this.companyId, 'CONSUMABLE') : this.equipment.getEquipment(this.companyId); }
+  private list(): Observable<any> { return this.isMaterial ? this.materials.getDailyReportMaterials(this.companyId) : this.equipment.getEquipment(this.companyId); }
 
   async load(): Promise<void> {
     this.loading = true;

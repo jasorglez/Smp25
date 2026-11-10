@@ -5158,7 +5158,7 @@ export class OrdenesComponent implements OnInit, OnDestroy, OnChanges {
 
 
   catalogoMateriales() {
-    return this.materialsService.getMaterials(this.idcompany, 'CONSUMABLE').subscribe(
+    return this.materialsService.getDailyReportMaterials(this.idcompany).subscribe(
       (data: any) => {
         this.catalogMateriales = data;
         if (this.materialesGridApi) {

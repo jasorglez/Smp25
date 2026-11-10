@@ -75,5 +75,5 @@ export const environment = {
     // publicKey: 'TEST-4399133a-4676-42a2-ab85-d946370bf96a',
   },
 
-  version: '5.00.455 (10 Noviembre 2026 17:07) partidas visibles y guardadas en reporte diario',
+  version: '5.00.456 (10 Noviembre 2026 17:20) catálogo de materiales en reporte diario',
 };

@@ -30,6 +30,15 @@ export class MaterialsService {
     );
   }
 
+  // El catálogo histórico usa los tres nombres para materiales de consumo.
+  getDailyReportMaterials(idCompany: number): Observable<MaterialsResponse[]> {
+    return forkJoin(['MATERIAL', 'CONSUMIBLE', 'CONSUMABLE'].map(type =>
+      this.getMaterials(idCompany, type)
+    )).pipe(map(groups => Array.from(new Map(groups.flat().map(item =>
+      [String(item.id), item] as const
+    )).values())));
+  }
+
   getMaterialsxview(idRoot: number): Observable<MaterialsResponse[]> {
     return this.http.get<MaterialsResponse[]>(`${environment.urlWarehouse}/Material/with-counts/${idRoot}`,
       { headers: this.trackingService.getHeaders() }
