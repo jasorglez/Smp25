@@ -75,5 +75,5 @@ export const environment = {
     // publicKey: 'TEST-4399133a-4676-42a2-ab85-d946370bf96a',
   },
 
-  version: '5.00.445 (10 Noviembre 2026 10:52) permisos de órdenes por proyecto',
+  version: '5.00.454 (10 Noviembre 2026 17:00) primera OT seleccionada y captura dentro del grid',
 };

@@ -1,7 +1,7 @@
 import { HttpClient } from '@angular/common/http';
 import { inject, Injectable } from '@angular/core';
 import { environment } from '@env/environment';
-import { EMPTY, Observable, expand, map, reduce, throwError } from 'rxjs';
+import { EMPTY, Observable, expand, forkJoin, map, reduce, throwError } from 'rxjs';
 import { TrackingService } from './tracking.service';
 
 export interface OtSearchRequest {
@@ -122,6 +122,31 @@ export class OtService {
       expand(response => response.page < response.totalPages ? getPage(response.page + 1) : EMPTY),
       reduce((orders, response) => orders.concat(response.data), [] as any[])
     );
+  }
+
+  getProjectOrdersForAssignment(idProject: number): Observable<any[]> {
+    if (!Number.isSafeInteger(idProject) || idProject <= 0) {
+      return throwError(() => new Error('Proyecto inválido'));
+    }
+    // El catálogo no necesita conteos de bitácora ni filtros de la búsqueda general.
+    return forkJoin([
+      this.getOtListByProject(idProject, false),
+      this.getOtListByProject(idProject, true)
+    ]).pipe(map(responses => {
+      const orders = new Map<number, any>();
+      responses.forEach(response => {
+        if (!Array.isArray(response)) throw new Error('Listado de órdenes inválido');
+        response.forEach(order => {
+          const id = Number(order.id);
+          if (!Number.isSafeInteger(id) || id <= 0 || Number(order.idProject) !== idProject) {
+            throw new Error('La orden no pertenece al proyecto solicitado');
+          }
+          if (order.active !== false && order.active !== 0) orders.set(id, { ...order, id });
+        });
+      });
+      return [...orders.values()].sort((a, b) => String(a.otNumber ?? a.id)
+        .localeCompare(String(b.otNumber ?? b.id), 'es', { numeric: true }));
+    }));
   }
 
   getCrewEfficiency(from: string, to: string, useWebClosure = false): Observable<OtCrewEfficiencyRow[]> {

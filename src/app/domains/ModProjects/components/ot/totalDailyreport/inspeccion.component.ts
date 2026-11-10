@@ -57,6 +57,7 @@ export class InspeccionComponent implements OnInit {
   // Configuración del grid
   public gridOptions: any = {
     onModelUpdated: (event: any) => this.otRowNumbers.update(event.api),
+    onRowDataUpdated: () => this.scheduleDefaultOtSelection(),
     headerHeight: 35,
     rowHeight: 28,
     suppressDragLeaveHidesColumns: true,
@@ -268,6 +269,7 @@ export class InspeccionComponent implements OnInit {
     this.allOtsData = selectedProjectId
       ? availableOrders.filter((ot: any) => Number(ot?.idProject ?? ot?.projectId ?? ot?.idProyecto) === selectedProjectId)
       : availableOrders;
+    this.scheduleDefaultOtSelection();
   }
 
   private renderContentIndicators(row: any): HTMLElement {
@@ -333,6 +335,7 @@ export class InspeccionComponent implements OnInit {
   setActiveTab(tab: string): void {
     this.activeTab = tab;
     if (tab === 'reportes') this.loadAllReports();
+    if (tab === 'ots') this.scheduleDefaultOtSelection();
   }
 
   // Grid ready events
@@ -343,6 +346,32 @@ export class InspeccionComponent implements OnInit {
 
   onOtsGridReady(params: GridReadyEvent): void {
     this.otsGridApi = params.api;
+    this.scheduleDefaultOtSelection();
+  }
+
+  private defaultOtSelectionQueued = false;
+
+  private scheduleDefaultOtSelection(): void {
+    if (this.defaultOtSelectionQueued) return;
+    this.defaultOtSelectionQueued = true;
+    queueMicrotask(() => {
+      this.defaultOtSelectionQueued = false;
+      if (this.activeTab !== 'ots') return;
+      const currentId = String(this.selectedOt?.id ?? this.selectedOt?.idOt ?? '');
+      const existing = this.allOtsData.find(row => String(row.id ?? row.idOt) === currentId);
+      if (!existing) {
+        let first: any = null;
+        this.otsGridApi?.forEachNodeAfterFilterAndSort(node => {
+          if (!first && node.data && this.allOtsData.includes(node.data)) first = node.data;
+        });
+        this.selectedOt = first || this.allOtsData[0] || null;
+      }
+      if (!this.otsGridApi || this.otsGridApi.isDestroyed?.()) return;
+      this.otsGridApi.forEachNode(node => {
+        const selected = !!node.data && !!this.selectedOt && String(node.data.id ?? node.data.idOt) === String(this.selectedOt.id ?? this.selectedOt.idOt);
+        if (node.isSelected() !== selected) node.setSelected(selected);
+      });
+    });
   }
 
   onOtSelected(event: any): void {

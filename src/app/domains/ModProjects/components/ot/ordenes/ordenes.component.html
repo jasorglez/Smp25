@@ -106,7 +106,7 @@
                   <small>
                     <strong><i class="bi bi-info-circle"></i> CDC:</strong> {{selectedOt.cdc}} - {{selectedOt.description}}
                     <span class="ms-2" *ngIf="selectedReporteFecha; else soloOT">
-                      <strong>Fecha:</strong> {{selectedReporteFecha | date:'dd-MM-yyyy'}}
+                      <strong>Reporte diario:</strong> {{selectedReporteFecha | date:'dd-MM-yyyy'}}
                       <strong class="ms-1">{{selectedReporteHoraInicio}}-{{selectedReporteHoraTermino}}</strong>
                       <span class="badge bg-primary ms-1">{{selectedReporteTipo}}</span>
                     </span>

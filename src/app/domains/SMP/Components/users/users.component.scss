@@ -44,7 +44,7 @@
 
 .users-list-page {
   min-height: calc(100vh - 118px);
-  padding: 24px clamp(14px, 2vw, 30px);
+  padding: 8px;
   background: #f4f7fb;
 }
 
@@ -53,8 +53,8 @@
   align-items: center;
   justify-content: space-between;
   flex-wrap: wrap;
-  gap: 18px;
-  padding: 20px 24px;
+  gap: 8px;
+  padding: 6px 12px;
   border-bottom: 1px solid #e8edf4;
   background: linear-gradient(115deg, #fff 0%, #f7faff 100%);
 }
@@ -106,11 +106,20 @@
   gap: 12px;
 }
 
+.users-list-body {
+  display: flex;
+  align-items: stretch;
+  gap: 6px;
+  padding: 6px;
+}
+
 .users-action-group {
   display: flex;
+  flex-direction: column;
   align-items: center;
-  flex-wrap: wrap;
+  flex: 0 0 38px;
   gap: 8px;
+  padding-top: 2px;
 }
 
 .users-action {
@@ -118,8 +127,10 @@
   align-items: center;
   justify-content: center;
   gap: 8px;
-  min-height: 38px;
-  padding: 0 13px;
+  width: 34px;
+  height: 34px;
+  min-height: 34px;
+  padding: 0;
   border: 1px solid transparent;
   border-radius: 9px;
   font-size: 0.8rem;
@@ -169,8 +180,9 @@
 .users-unsaved-status i { color: #e49a31; font-size: 0.55rem; }
 
 .users-list-grid {
+  flex: 1;
   min-width: 0;
-  padding: 16px;
+  padding: 0;
 }
 
 .users-list-grid ag-grid-angular {
@@ -268,13 +280,10 @@
 }
 
 @media (max-width: 760px) {
-  .users-list-page { padding: 12px; }
-  .users-list-header { align-items: flex-start; padding: 16px; }
+  .users-list-page { padding: 6px; }
+  .users-list-header { align-items: flex-start; padding: 6px 8px; }
   .users-heading { min-width: 100%; }
   .users-header-actions { width: 100%; justify-content: flex-start; }
-  .users-action-group { width: 100%; }
-  .users-action { flex: 1 1 calc(50% - 8px); }
-  .users-list-grid { padding: 10px; }
   .permissions-modal-shell { width: 100%; height: 100%; max-height: 100%; border-radius: 12px; }
   .permissions-modal-header { padding: 12px; }
   .permissions-modal-actions .btn { padding-inline: 9px; }

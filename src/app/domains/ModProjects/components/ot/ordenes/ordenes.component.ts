@@ -1,6 +1,8 @@
+import { NgbModal } from '@ng-bootstrap/ng-bootstrap';
+import { QuickResourceCreateComponent, QuickResourceCreated, QuickResourceKind } from './quick-resource-create.component';
 import { PdfReportViewerComponent } from 'app/shared/pdf-report-viewer/pdf-report-viewer.component';
 import { pdfPreviewUrl } from 'app/helpers/pdf-viewer';
-import { Component, effect, inject, OnInit, OnDestroy, OnChanges, SimpleChanges, Input, Output, EventEmitter, computed } from '@angular/core';
+import { Component, DestroyRef, effect, inject, OnInit, OnDestroy, OnChanges, SimpleChanges, Input, Output, EventEmitter, computed } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { TranslateModule } from '@ngx-translate/core';
 import { AgGridModule } from 'ag-grid-angular';
@@ -156,6 +158,9 @@ export class OrdenesComponent implements OnInit, OnDestroy, OnChanges {
   @Output() captureOtsChange = new EventEmitter<any[]>();
 
 
+  private quickModal = inject(NgbModal);
+  private quickDestroyRef = inject(DestroyRef);
+  creatingQuickResource = false;
   private otService = inject(OtService);
   private equipmentService = inject(EquipmentService);
   private dailyReportService = inject(DailyReportService);
@@ -965,66 +970,13 @@ export class OrdenesComponent implements OnInit, OnDestroy, OnChanges {
   public get materialesColumnDefs(): ColDef[] {
     return [
       {
-        field: 'idResource',
-        headerName: 'Material',
-        flex: 2,
-        editable: () => !this.signalsService.getClosedReport()(),
-        cellEditor: 'agSelectCellEditor',
-        cellEditorParams: (params: any) => {
-          return {
-            values: this.catalogMateriales.map(emp => emp.description),
-            filterList: this.catalogMateriales.map(emp => emp.description),
-            filterKey: 'idResource',
-            placeholder: 'Buscar empleado...',
-            minLength: 1,
-          };
-        },
-        // Muestra la descripción del material
-        valueFormatter: (params) => {
-          // Obtener el ID del material desde idResource
-          const materialId = params.data?.idResource;
-          if (!materialId) return '';
-
-          const foundItem = this.catalogMateriales?.find(item => item.id == materialId);
-          return foundItem ? foundItem.description : `ID: ${materialId}`;
-        },
-        // Obtiene el valor para mostrar en el editor (descripción)
-        valueGetter: (params) => {
-          if (!params.data || !params.data.idResource) return '';
-          const foundItem = this.catalogMateriales?.find(item => item.id == params.data.idResource);
-          return foundItem ? foundItem.description : '';
-        },
-        // Convierte la descripción seleccionada de vuelta al ID
-        valueSetter: (params) => {
-
-          if (!params.newValue) {
-            params.data.idResource = null;
-            return true;
-          }
-
-          const foundItem = this.catalogMateriales?.find(item => item.description === params.newValue);
-          if (foundItem) {
-            const duplicateExists = this.materiales.some(
-              (row, index) =>
-                index !== params.node.rowIndex &&
-                row.idResource === foundItem.id
-            );
-
-            if (duplicateExists) {
-              alerts.basicAlert(
-                'Duplicado',
-                'Este material ya está asignado.',
-                'error'
-              );
-              return false;
-            }
-            params.data.idResource = foundItem.id;
-            return true;
-          } else {
-            return false; // No aceptar valores no válidos
-          }
-        }
-      },
+      field: 'idResource', headerName: 'Material', flex: 2,
+      editable: () => !this.signalsService.getClosedReport()() && !this.creatingQuickResource,
+      cellEditor: 'agRichSelectCellEditor',
+      cellEditorParams: params => this.reportResourceEditorParams('MATERIAL', params.data?.idResource),
+      valueFormatter: params => this.reportResourceLabel('MATERIAL', params.data?.idResource),
+      valueSetter: params => this.setReportResourceValue('MATERIAL', params)
+    },
 
       {
         field: 'quantity',
@@ -1059,67 +1011,12 @@ export class OrdenesComponent implements OnInit, OnDestroy, OnChanges {
   public equiposColumnDefs: ColDef[] = [
     //{ field: 'id', headerName: 'ID', width: 80 },
     {
-      field: 'idResource',
-      headerName: 'Equipo',
-      flex: 2,
-      editable: () => !this.signalsService.getClosedReport()(),
-      cellEditor: 'agSelectCellEditor',
-      cellEditorParams: (params: any) => {
-        return {
-          values: this.catalogEquipos.map(emp => emp.description),
-          filterList: this.catalogEquipos.map(emp => emp.description),
-          filterKey: 'idResource',
-          placeholder: 'Buscar empleado...',
-          minLength: 1,
-        };
-      },
-      // Muestra la descripción del equipo en la celda
-      valueFormatter: (params) => {
-        const equipoId = params.data?.idResource;
-        if (!equipoId) return '';
-
-        const foundItem = this.catalogEquipos?.find(item => item.id == equipoId);
-        return foundItem ? foundItem.description : `ID: ${equipoId}`;
-      },
-      // Muestra la descripción del equipo cuando se lee el valor actual
-      valueGetter: (params) => {
-        const equipoId = params.data?.idResource;
-        if (!equipoId) return '';
-
-        const foundItem = this.catalogEquipos?.find(item => item.id == equipoId);
-        return foundItem ? foundItem.description : '';
-      },
-      // Convierte la descripción seleccionada de vuelta al ID
-      valueSetter: (params) => {
-
-        if (!params.newValue) {
-          params.data.idResource = null;
-          return true;
-        }
-
-        const foundItem = this.catalogEquipos?.find(item => item.description === params.newValue);
-        if (foundItem) {
-          const duplicateExists = this.equipos.some(
-            (row, index) =>
-              index !== params.node.rowIndex &&
-              row.idResource === foundItem.id
-          );
-
-          if (duplicateExists) {
-            alerts.basicAlert(
-              'Duplicado',
-              'Este equipo ya está asignado.',
-              'error'
-            );
-            return false;
-          }
-          params.data.idResource = foundItem.id;
-          return true;
-        } else {
-          console.warn('Descripción no válida:', params.newValue);
-          return false;
-        }
-      }
+      field: 'idResource', headerName: 'Equipo', flex: 2,
+      editable: () => !this.signalsService.getClosedReport()() && !this.creatingQuickResource,
+      cellEditor: 'agRichSelectCellEditor',
+      cellEditorParams: params => this.reportResourceEditorParams('EQUIPMENT', params.data?.idResource),
+      valueFormatter: params => this.reportResourceLabel('EQUIPMENT', params.data?.idResource),
+      valueSetter: params => this.setReportResourceValue('EQUIPMENT', params)
     },
     {
       field: 'quantity',
@@ -1140,64 +1037,18 @@ export class OrdenesComponent implements OnInit, OnDestroy, OnChanges {
   public personalColumnDefs: ColDef[] = [
     //{ field: 'id', headerName: 'ID', width: 80 },
     {
-      field: 'idResource',
-      headerName: 'Nombre',
-      flex: 1,
-      editable: () => !this.signalsService.getClosedReport()(),
-      cellEditor: 'agSelectCellEditor',
-      cellEditorParams: (params: any) => {
-        return {
-          values: this.employees.map(emp => emp.name),
-          filterList: this.employees.map(emp => emp.name),
-          filterKey: 'idResource',
-          placeholder: 'Buscar empleado...',
-          minLength: 1,
-        };
-      },
-
-      valueFormatter: (params: any) => {
-        if (params.value && params.value !== '0') {
-          const employee = this.employees.find(emp => emp.id.toString() === params.value.toString());
-          return employee ? employee.name : '';
-        }
-        return '';
-      },
-      valueSetter: (params: any) => {
-        if (params.newValue) {
-          const employee = this.employees.find(emp => emp.name === params.newValue);
-          if (employee) {
-            // Verificar si el empleado ya está en la lista
-            const duplicateExists = this.personal.some(
-              (row, index) =>
-                index !== params.node.rowIndex &&
-                row.idResource === employee.id
-            );
-
-            if (duplicateExists) {
-              alerts.basicAlert(
-                'Duplicado',
-                'Este empleado ya está asignado.',
-                'error'
-              );
-              return false;
-            }
-
-            // Establecer el ID del empleado
-            params.data[params.colDef.field] = employee.id.toString();
-            params.data.position = this.resolvePersonnelPosition(employee.id);
-            params.api.refreshCells({ rowNodes: [params.node], columns: ['position'], force: true });
-
-            return true;
-          }
-        }
-        return false;
-      }
+      field: 'idResource', headerName: 'Nombre', flex: 2,
+      editable: () => !this.signalsService.getClosedReport()() && !this.creatingQuickResource,
+      cellEditor: 'agRichSelectCellEditor',
+      cellEditorParams: params => this.reportResourceEditorParams('PERSONAL', params.data?.idResource),
+      valueFormatter: params => this.reportResourceLabel('PERSONAL', params.data?.idResource),
+      valueSetter: params => this.setReportResourceValue('PERSONAL', params)
     },
     {
       field: 'position',
       headerName: 'Cargo',
       flex: 1,
-      editable: false,
+      editable: params => !this.signalsService.getClosedReport()() && !this.resolvePersonnelPosition(params.data?.idResource),
       valueFormatter: (params: any) => {
         return this.resolvePersonnelPosition(params.data?.idResource, params.value);
       }
@@ -2567,7 +2418,8 @@ export class OrdenesComponent implements OnInit, OnDestroy, OnChanges {
     domLayout: 'autoHeight',
     stopEditingWhenCellsLoseFocus: true,
     onCellValueChanged: (event: any) => this.onCellValueChangedReportes(event),
-    onGridReady: (params: any) => this.onReportesGridReady(params)
+    onGridReady: (params: any) => this.onReportesGridReady(params),
+    onRowDataUpdated: () => this.syncSelectedReportRow()
   };
 
   // Configuración específica para el grid de materiales con edición
@@ -3751,10 +3603,10 @@ export class OrdenesComponent implements OnInit, OnDestroy, OnChanges {
     } else {
     }
 
-    this.selectedReporteFecha = reporte.fecha || reporte.date.split('T')[0];
+    this.selectedReporteFecha = reporte.fecha || reporte.date?.split('T')[0] || '';
     this.selectedReporteTipo = reporte.tipoNota || reporte.type;
-    this.selectedReporteHoraInicio = reporte.horaInicio || reporte.startTime.substring(0, 5);
-    this.selectedReporteHoraTermino = reporte.horaTermino || reporte.endTime.substring(0, 5);
+    this.selectedReporteHoraInicio = reporte.horaInicio || reporte.startTime?.substring(0, 5) || '';
+    this.selectedReporteHoraTermino = reporte.horaTermino || reporte.endTime?.substring(0, 5) || '';
     this.selectedReporteId = reporte.id;
     if (!hasPersistedMasterId(reporte.id, (reporte as any).__isNew)) {
       this.signalsService.setClosedReport(false);
@@ -3771,24 +3623,7 @@ export class OrdenesComponent implements OnInit, OnDestroy, OnChanges {
     this.obtenerNotas(this.selectedReporteId);
     this.obtenerConcep(this.selectedReporteId);
 
-    // Actualizar selección visual en el grid
-    if (this.reportesGridApi) {
-      // Encontrar el índice del reporte seleccionado
-      const reporteIndex = this.reportesDiarios.findIndex(r => r.id === reporte.id);
-
-      if (reporteIndex >= 0) {
-        // Limpiar selecciones anteriores
-        this.reportesGridApi.deselectAll();
-        // Seleccionar la fila correspondiente
-        const rowNode = this.reportesGridApi.getDisplayedRowAtIndex(reporteIndex);
-
-        if (rowNode) {
-          rowNode.setSelected(true);
-          // Asegurar que la fila sea visible
-          this.reportesGridApi.ensureIndexVisible(reporteIndex);
-        }
-      }
-    }
+    this.syncSelectedReportRow();
 
     // Resetear vista previa del PDF cuando se selecciona nueva fecha
     this.showPdfEmbed = false;
@@ -3851,6 +3686,7 @@ export class OrdenesComponent implements OnInit, OnDestroy, OnChanges {
   // Grid ready para reportes
   onReportesGridReady(params: any) {
     this.reportesGridApi = params.api;
+    this.syncSelectedReportRow();
     // Remover sizeColumnsToFit para respetar flex
     // params.api.sizeColumnsToFit();
   }
@@ -4409,51 +4245,54 @@ export class OrdenesComponent implements OnInit, OnDestroy, OnChanges {
     }
   }
 
-  // Método para cargar reportes diarios desde el servidor
+  private dailyReportsRequest = 0;
+
+  // Seleccionar el reporte no depende de que su grid ya esté dibujado.
   loadDailyReports() {
-    if (this.selectedOt) {
-      const otId = parseInt(this.selectedOt.id);
+    if (!this.selectedOt) return;
+    const otId = Number(this.selectedOt.id);
+    const request = ++this.dailyReportsRequest;
+    this.dailyReportService.getDailyReportsByOt(otId).subscribe({
+      next: response => {
+        if (request !== this.dailyReportsRequest || Number(this.selectedOt?.id) !== otId) return;
+        this.reportesDiarios = response.success && Array.isArray(response.data)
+          ? response.data.map(item => ({ ...item })) : [];
+        const selected = this.reportesDiarios.find(row => String(row.id) === String(this.selectedReporteId))
+          || this.reportesDiarios[0];
+        if (selected) this.selectReporte(selected);
+        else this.clearDailyReportSelection();
+      },
+      error: () => {
+        if (request !== this.dailyReportsRequest || Number(this.selectedOt?.id) !== otId) return;
+        this.reportesDiarios = [];
+        this.clearDailyReportSelection();
+        alerts.basicAlert('Error', 'No se pudieron cargar los reportes diarios', 'error');
+      }
+    });
+  }
 
-      // 🔍 Guardar el reporte actualmente seleccionado ANTES de recargar
-      const currentSelectedReporteId = this.selectedReporteId;
+  private clearDailyReportSelection(): void {
+    this.selectedReporteId = null;
+    this.selectedReporteFecha = '';
+    this.selectedReporteTipo = '';
+    this.selectedReporteHoraInicio = '';
+    this.selectedReporteHoraTermino = '';
+    this.signalsService.setClosedReport(false);
+    this.personal = [];
+    this.materiales = [];
+    this.equipos = [];
+    this.fotografias = [];
+    this.videos = [];
+    this.notas = [];
+    this.conceptos = [];
+  }
 
-      this.dailyReportService.getDailyReportsByOt(otId).subscribe({
-        next: (response) => {
-          if (response.success && response.data) {
-            // Usar los datos directamente sin mapeo
-            this.reportesDiarios = response.data.map((item: any) => {
-              return { ...item };
-            });
-
-            // 🎯 PRESERVAR SELECCIÓN: Intentar mantener el reporte previamente seleccionado
-            if (this.reportesDiarios.length > 0) {
-              let reporteToSelect = null;
-
-              // Si había un reporte seleccionado anteriormente, intentar encontrarlo
-              if (currentSelectedReporteId) {
-                reporteToSelect = this.reportesDiarios.find(r => r.id === currentSelectedReporteId);
-              }
-
-              // Si no se encuentra el reporte anterior o no había selección, usar el primero
-              if (!reporteToSelect) {
-                reporteToSelect = this.reportesDiarios[0];
-              }
-
-              // Esperar un poco para asegurar que el grid esté completamente renderizado
-              setTimeout(() => {
-                this.selectReporte(reporteToSelect);
-              }, 200);
-            }
-          } else {
-            this.reportesDiarios = [];
-          }
-        },
-        error: (error) => {
-          this.reportesDiarios = [];
-          alerts.basicAlert('Error', 'No se pudieron cargar los reportes diarios', 'error');
-        }
-      });
-    }
+  private syncSelectedReportRow(): void {
+    if (!this.reportesGridApi || this.reportesGridApi.isDestroyed?.()) return;
+    this.reportesGridApi.forEachNode(node => {
+      const selected = this.selectedReporteId != null && String(node.data?.id) === String(this.selectedReporteId);
+      if (node.isSelected() !== selected) node.setSelected(selected);
+    });
   }
 
   async generatePdfPreview() {
@@ -4935,9 +4774,89 @@ export class OrdenesComponent implements OnInit, OnDestroy, OnChanges {
     }
   }
 
+  private reportResourceCatalog(kind: string): any[] {
+    return kind === 'PERSONAL' ? this.employees : kind === 'MATERIAL' ? this.catalogMateriales : this.catalogEquipos;
+  }
+
+  reportResourceLabel(kind: string, id: any): string {
+    const item = this.reportResourceCatalog(kind).find(row => String(row.id) === String(id));
+    return item ? (kind === 'PERSONAL' ? item.name : item.description) : '';
+  }
+
+  reportResourceEditorParams(kind: string, currentValue?: any): any {
+    return {
+      values: [...this.reportResourceCatalog(kind).map(item => typeof currentValue === 'string' ? String(item.id) : Number(item.id)),
+        ...(kind === 'PERSONAL' ? [] : ['__NEW__'])],
+      formatValue: value => value === '__NEW__' ? '+ Agregar nuevo…' : this.reportResourceLabel(kind, value),
+      allowTyping: true, filterList: true, searchType: 'matchAny', highlightMatch: true, valueListMaxHeight: 240
+    };
+  }
+
+  setReportResourceValue(kind: string, params: any): boolean {
+    if (this.signalsService.getClosedReport()() || this.creatingQuickResource) return false;
+    if (params.newValue === '__NEW__') {
+      queueMicrotask(() => this.createResourceFromGrid(kind as QuickResourceKind, params.api, params.data));
+      return false;
+    }
+    const item = this.reportResourceCatalog(kind).find(row => String(row.id) === String(params.newValue));
+    if (!item) return false;
+    const rows = kind === 'PERSONAL' ? this.personal : kind === 'MATERIAL' ? this.materiales : this.equipos;
+    if (rows.some(row => row !== params.data && String(row.idResource) === String(item.id))) {
+      alerts.basicAlert('Duplicado', 'Este recurso ya está agregado al reporte.', 'warning');
+      return false;
+    }
+    params.data.idResource = item.id;
+    if (kind === 'PERSONAL') params.data.position = this.resolvePersonnelPosition(item.id);
+    this.focusResourceField(kind, params.api, params.data);
+    return true;
+  }
+
+  private focusResourceField(kind: string, api: any, data: any): void {
+    const nextColumn = kind === 'PERSONAL' ? 'position' : 'quantity';
+    if (kind === 'PERSONAL' && this.resolvePersonnelPosition(data.idResource)) return;
+    setTimeout(() => {
+      if (this.quickDestroyRef.destroyed || api.isDestroyed?.()) return;
+      api.forEachNode(node => {
+        if (node.data === data && node.rowIndex != null) {
+          api.ensureIndexVisible(node.rowIndex);
+          api.startEditingCell({ rowIndex: node.rowIndex, colKey: nextColumn });
+        }
+      });
+    }, 0);
+  }
+
+  private async createResourceFromGrid(kind: QuickResourceKind, api: any, data: any): Promise<void> {
+    if (this.creatingQuickResource || this.signalsService.getClosedReport()() || !this.selectedReporteFecha ||
+        !this.selectedOt || !['MATERIAL', 'EQUIPMENT'].includes(kind)) return;
+    const companyId = Number(this.idcompany), otId = this.selectedOt.id, reportId = this.selectedReporteId;
+    this.creatingQuickResource = true;
+    try {
+      const ref = this.quickModal.open(QuickResourceCreateComponent, { centered: true, backdrop: 'static', keyboard: false });
+      ref.componentInstance.kind = kind;
+      ref.componentInstance.companyId = companyId;
+      const result: QuickResourceCreated = await ref.result;
+      if (this.quickDestroyRef.destroyed || Number(this.idcompany) !== companyId) return;
+      const item = result.resource;
+      if (kind === 'MATERIAL') this.catalogMateriales = [...this.catalogMateriales.filter(row => Number(row.id) !== Number(item.id)), item];
+      else this.catalogEquipos = [...this.catalogEquipos.filter(row => Number(row.id) !== Number(item.id)), item];
+      this.unitsCatalog = result.units;
+      const rows = kind === 'MATERIAL' ? this.materiales : this.equipos;
+      if (this.selectedOt?.id !== otId || this.selectedReporteId !== reportId || !rows.includes(data) ||
+          this.signalsService.getClosedReport()() || api.isDestroyed?.()) return;
+      data.idResource = item.id;
+      if (!data.__isNew) data.__modified = true;
+      if (kind === 'MATERIAL') this.notSavedMaterialChanges = true;
+      else this.notSavedEquipoChanges = true;
+      api.refreshCells({ force: true });
+      this.focusResourceField(kind, api, data);
+    } catch { /* Cancelar conserva los datos de la fila. */ }
+    finally { this.creatingQuickResource = false; }
+  }
+
   // Métodos CRUD para Personal
-  addPersonal() {
-    //alert(typeof(!this.signalsService.getClosedReport()))
+  addPersonal(resource?: { idResource: any; quantity?: number; position?: string }) {
+
+    if (this.signalsService.getClosedReport()()) return;
     this.trackingService.addLog(
       this.trackingService.getnameComp(),
       'Agregar Personal OT',
@@ -4962,9 +4881,9 @@ export class OrdenesComponent implements OnInit, OnDestroy, OnChanges {
       idOt: parseInt(this.selectedOt.id),
       idProject: this.selectedOt.idProject,
       idReporte: this.selectedReporteId,
-      idResource: null, // Se almacenará el ID del empleado
-      position: '',
-      quantity: 1,
+      idResource: resource?.idResource ?? null, // Se almacenará el ID del empleado
+      position: resource?.position ?? '',
+      quantity: resource?.quantity ?? 1,
       start: this.selectedReporteHoraInicio + ':00',
       end: this.selectedReporteHoraTermino + ':00',
       azureUrl: 'NO FILE',
@@ -4980,7 +4899,7 @@ export class OrdenesComponent implements OnInit, OnDestroy, OnChanges {
     this.personal = [newPersonal, ...this.personal];
     this.notSavedPersonalChanges = true;
 
-    setTimeout(() => {
+    if (!resource) setTimeout(() => {
       if (this.personalGridApi) {
         this.personalGridApi.startEditingCell({
           rowIndex: 0,
@@ -4990,7 +4909,8 @@ export class OrdenesComponent implements OnInit, OnDestroy, OnChanges {
     }, 0);
   }
 
-  addMaterial() {
+  addMaterial(resource?: { idResource: any; quantity?: number; position?: string }) {
+    if (this.signalsService.getClosedReport()()) return;
     this.trackingService.addLog(
       this.trackingService.getnameComp(),
       'Agregar Material OT',
@@ -5014,8 +4934,8 @@ export class OrdenesComponent implements OnInit, OnDestroy, OnChanges {
       idOt: parseInt(this.selectedOt.id),
       idProject: this.selectedOt.idProject,
       idReporte: this.selectedReporteId,
-      idResource: '', // Inicializar como string vacío para consistencia
-      quantity: 1,
+      idResource: resource?.idResource ?? '', // Inicializar como string vacío para consistencia
+      quantity: resource?.quantity ?? 1,
       unidad: '', // Inicializar campo unidad explícitamente
       start: this.selectedReporteHoraInicio + ':00',
       end: this.selectedReporteHoraTermino + ':00',
@@ -5029,7 +4949,7 @@ export class OrdenesComponent implements OnInit, OnDestroy, OnChanges {
     this.materiales = [newMaterial, ...this.materiales];
     this.notSavedMaterialChanges = true;
 
-    setTimeout(() => {
+    if (!resource) setTimeout(() => {
       if (this.materialesGridApi) {
         this.materialesGridApi.startEditingCell({
           rowIndex: 0,
@@ -5039,7 +4959,8 @@ export class OrdenesComponent implements OnInit, OnDestroy, OnChanges {
     }, 0);
   }
 
-  addEquipos() {
+  addEquipos(resource?: { idResource: any; quantity?: number; position?: string }) {
+    if (this.signalsService.getClosedReport()()) return;
     this.trackingService.addLog(
       this.trackingService.getnameComp(),
       'Agregar Equipo OT',
@@ -5063,9 +4984,9 @@ export class OrdenesComponent implements OnInit, OnDestroy, OnChanges {
       idOt: parseInt(this.selectedOt.id),
       idProject: this.selectedOt.idProject,
       idReporte: this.selectedReporteId,
-      idResource: null, // Se almacenará el ID del equipo
-      position: '',
-      quantity: 1,
+      idResource: resource?.idResource ?? null, // Se almacenará el ID del equipo
+      position: resource?.position ?? '',
+      quantity: resource?.quantity ?? 1,
       start: this.selectedReporteHoraInicio + ':00',
       end: this.selectedReporteHoraTermino + ':00',
       date: this.selectedReporteFecha,
@@ -5078,7 +4999,7 @@ export class OrdenesComponent implements OnInit, OnDestroy, OnChanges {
     this.equipos = [newEquipo, ...this.equipos];
     this.notSavedEquipoChanges = true;
 
-    setTimeout(() => {
+    if (!resource) setTimeout(() => {
       if (this.equiposGridApi) {
         this.equiposGridApi.startEditingCell({
           rowIndex: 0,

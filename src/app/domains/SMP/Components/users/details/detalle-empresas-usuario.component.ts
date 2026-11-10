@@ -43,8 +43,9 @@ function saveUsersDescriptionWidth(event: any, grid: string, column: string): vo
   selector: 'app-ordenes-usuario-detail-renderer',
   standalone: true,
   imports: [AgGridModule, CommonModule, FormsModule],
+  styles: [':host { display: block; height: 100%; min-height: 0; }'],
   template: `
-    <div style="padding:8px;background:#e8f4fd;height:100%;display:flex;flex-direction:column;">
+    <div style="padding:8px;background:#e8f4fd;height:100%;box-sizing:border-box;display:flex;flex-direction:column;">
 
       <!-- Toolbar -->
       <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;flex-wrap:wrap;">
@@ -56,9 +57,9 @@ function saveUsersDescriptionWidth(event: any, grid: string, column: string): vo
           style="width:260px;"
           [(ngModel)]="selectedNewOrderId"
           [disabled]="loading || !!loadError || isSaving || availableOrders.length === 0">
-          <option value="">-- Seleccionar orden --</option>
+          <option value="">-- Seleccionar orden ({{ availableOrders.length }} disponibles) --</option>
           <option *ngFor="let p of availableOrders" [value]="p.id">
-            {{ p.otNumber ?? p.name }}
+            {{ p.otNumber }}
           </option>
         </select>
         <button
@@ -71,7 +72,7 @@ function saveUsersDescriptionWidth(event: any, grid: string, column: string): vo
         <button
           class="btn btn-sm btn-danger"
           (click)="deleteOrden()"
-          [disabled]="!selectedRow || isSaving || loading || !!loadError"
+          [disabled]="!selectedRow?.permissionId || isSaving || loading || !!loadError"
           title="Quitar orden seleccionada" aria-label="Quitar permiso de la orden seleccionada">
           <i class="bi bi-trash"></i>
         </button>
@@ -82,7 +83,8 @@ function saveUsersDescriptionWidth(event: any, grid: string, column: string): vo
         {{ loadError }}
         <button class="btn btn-sm btn-outline-secondary ms-2" (click)="retryLoad()" [disabled]="loading">Reintentar</button>
       </div>
-      <p *ngIf="!loading && !loadError && orders.length === 0" class="text-muted small mb-2">No hay órdenes asignadas. Selecciona una orden y pulsa + para darle permiso al usuario.</p>
+      <p *ngIf="!loading && !loadError && orders.length === 0" class="text-muted small mb-2">Este proyecto no tiene órdenes disponibles.</p>
+      <small *ngIf="!loading && !loadError && orders.length" class="text-muted mb-1">Selecciona una orden sin asignar y pulsa + para otorgar permiso; selecciona una asignada y pulsa Borrar para quitarlo.</small>
       <!-- Grid -->
       <div style="flex:1;min-height:0;">
         <ag-grid-angular
@@ -129,15 +131,19 @@ export class OrdenesUsuarioDetailRendererComponent implements ICellRendererAngul
   cols: ColDef[] = [
     { field: 'id',                 hide: true },
     { field: 'idOrder',          hide: true },
+    { field: 'assigned', headerName: 'Permiso', width: 110, cellDataType: false, valueFormatter: params => params.value ? 'Asignada' : 'Sin asignar' },
     { field: 'orderName',        headerName: 'Orden',     flex: 2 },
     { field: 'orderDescription', headerName: 'Descripción', minWidth: 300, width: 360, flex: 0, resizable: true, suppressSizeToFit: true }
   ];
 
-  gridOptions: any = { headerHeight: 25, rowHeight: 22, suppressCellFocus: true };
+  gridOptions: any = {
+    headerHeight: 25, rowHeight: 26, suppressCellFocus: true, animateRows: false,
+    getRowId: params => String(params.data.idOrder)
+  };
 
   agInit(params: any): void {
     this.updateCount = count => {
-      if (params.api?.isDestroyed?.()) return;
+      if (params.api?.isDestroyed?.() || params.data.countOrdenes === count) return;
       params.data.countOrdenes = count;
       params.api?.refreshCells({ rowNodes: [params.node], columns: ['countOrdenes'], force: true });
     };
@@ -158,23 +164,23 @@ export class OrdenesUsuarioDetailRendererComponent implements ICellRendererAngul
     }
     this.loading = true;
     forkJoin({
-      permissions: this.usersxpermissionsService.getUsersxPermissionsGeneral('ot', this.userId),
-      catalog: this.otService.getProjectOrdersWithContent(this.projectId).pipe(catchError(error => error.status === 404 ? of([]) : throwError(() => error)))
+      permissions: this.usersxpermissionsService.getUsersxPermissionsGeneral('ot', this.userId)
+        .pipe(catchError(error => error.status === 404 ? of([]) : throwError(() => error))),
+      catalog: this.otService.getProjectOrdersForAssignment(this.projectId)
     }).pipe(timeout(20000), takeUntilDestroyed(this.destroyRef)).subscribe({
       next: ({ permissions, catalog: catalogResponse }) => {
         const permissionRows = (Array.isArray(permissions) ? permissions : []).filter(p => Number(p.active) === 1);
         const catalogRows = Array.isArray(catalogResponse) ? catalogResponse : [];
         const catalog = catalogRows.map(p => ({ ...p, id: Number(p.id) }));
         const assigned = new Map(permissionRows.map(p => [Number(p.idPermission), p]));
-        this.orders = catalog.filter(p => assigned.has(p.id)).map(p => ({
-          ...p, id: assigned.get(p.id).id, idOrder: p.id,
+        this.orders = catalog.map(p => ({
+          ...p, idOrder: p.id, permissionId: assigned.get(p.id)?.id, assigned: assigned.has(p.id),
           orderName: p.otNumber ?? p.name, orderDescription: p.area ?? p.description ?? ''
         }));
         this.updateCount(this.orders.length);
         this.availableOrders = catalog.filter(p => !assigned.has(p.id));
         this.selectedNewOrderId = '';
         this.selectedRow = null;
-        if (this.gridApi) this.gridApi.setGridOption('rowData', this.orders);
         this.loading = false;
         this.render();
 
@@ -204,16 +210,17 @@ export class OrdenesUsuarioDetailRendererComponent implements ICellRendererAngul
   }
 
   deleteOrden(): void {
-    if (!this.selectedRow || this.isSaving) return;
+    if (!this.selectedRow?.permissionId || this.isSaving || this.loading || this.loadError) return;
+    const selectedOrder = this.selectedRow;
     alerts.confirmAlert(
       'Quitar orden',
-      `¿Quitar <b>${this.selectedRow.orderName}</b> de este usuario?`,
+      `¿Quitar <b>${selectedOrder.orderName}</b> de este usuario?`,
       'warning',
       'Sí, quitar'
     ).then(result => {
-      if (!result.isConfirmed) return;
+      if (!result.isConfirmed || this.isSaving || this.destroyRef.destroyed) return;
       this.isSaving = true;
-      this.usersxpermissionsService.deleteUserxPermission(this.selectedRow.id).subscribe({
+      this.usersxpermissionsService.deleteUserxPermission(selectedOrder.permissionId).subscribe({
         next:  () => { this.isSaving = false; this.selectedRow = null; this.loadData(); },
         error: () => { this.isSaving = false; alerts.basicAlert('Error', 'No se pudo quitar la orden', 'error'); }
       });
@@ -226,9 +233,14 @@ export class OrdenesUsuarioDetailRendererComponent implements ICellRendererAngul
   onSelectionChanged(event: any): void {
     const nodes = event.api.getSelectedNodes();
     this.selectedRow = nodes.length > 0 ? nodes[0].data : null;
+    this.selectedNewOrderId = this.selectedRow && !this.selectedRow.assigned
+      ? String(this.selectedRow.idOrder) : '';
   }
 
-  refresh(): boolean { return false; }
+  refresh(params: any): boolean {
+    return Number(params.data?.idProject) === Number(this.projectId) &&
+      Number(params.data?.userId) === Number(this.userId);
+  }
 }
 
 @Component({
@@ -340,7 +352,7 @@ export class ProyectosDetailRendererComponent implements ICellRendererAngularCom
     masterDetail: true,
     isRowMaster: (data: any) => Number(data?.idProject) > 0,
     detailCellRenderer: OrdenesUsuarioDetailRendererComponent,
-    detailRowHeight: 280
+    detailRowHeight: 480
   };
 
   agInit(params: any): void {
@@ -395,21 +407,16 @@ export class ProyectosDetailRendererComponent implements ICellRendererAngularCom
     const rows = this.projects;
     const requests: Record<string, Observable<any>> = {};
     rows.forEach(row => {
-      requests[row.idProject] = this.otService.getProjectOrdersWithContent(Number(row.idProject))
+      requests[row.idProject] = this.otService.getProjectOrdersForAssignment(Number(row.idProject))
         .pipe(catchError(() => of(null)));
     });
-    forkJoin({
-      permissions: this.usersxpermissionsService.getUsersxPermissionsGeneral('ot', this.userId),
-      orders: forkJoin(requests)
-    }).pipe(timeout(20000), takeUntilDestroyed(this.destroyRef)).subscribe({
-      next: ({ permissions, orders }) => {
+    forkJoin(requests).pipe(timeout(20000), takeUntilDestroyed(this.destroyRef)).subscribe({
+      next: orders => {
         if (this.projects !== rows) return;
-        const assigned = new Set((Array.isArray(permissions) ? permissions : [])
-          .filter(p => Number(p.active) === 1).map(p => Number(p.idPermission)));
         rows.forEach(row => {
           const catalog = orders[row.idProject];
           row.countOrdenes = Array.isArray(catalog)
-            ? catalog.filter(order => assigned.has(Number(order.id))).length : '?';
+            ? catalog.length : '?';
         });
         this.gridApi?.refreshCells({ columns: ['countOrdenes'], force: true });
         this.render();
@@ -798,7 +805,7 @@ export class ContratosDetailRendererComponent implements ICellRendererAngularCom
     masterDetail: true,
     isRowMaster: () => true,
     detailCellRenderer: 'proyectosDetail',
-    detailRowHeight: 520
+    detailRowHeight: 760
   };
 
   agInit(params: any): void {
@@ -1063,7 +1070,9 @@ export class SucursalesDetailRendererComponent implements ICellRendererAngularCo
       params.data?.expandedPanel === 'almacenes'
         ? { component: 'almacenesDetail' }
         : { component: 'contratosDetail' },
-    detailRowHeight: 280
+    getRowHeight: params => params.node.detail
+      ? (params.data?.expandedPanel === 'almacenes' ? 280 : 860)
+      : 22
   };
 
   agInit(params: any): void {
@@ -1363,7 +1372,9 @@ export class DetalleEmpresasUsuarioComponent implements OnInit {
     detailCellRendererSelector: (params: any) => params.data?.expandedPanel === 'master-permissions'
       ? { component: 'companyMasterPermissions' }
       : { component: 'sucursalesDetail' },
-    detailRowHeight: 600
+    getRowHeight: params => params.node.detail
+      ? (params.data?.expandedPanel === 'master-permissions' ? 600 : 980)
+      : 28
   };
 
   ngOnInit(): void {
