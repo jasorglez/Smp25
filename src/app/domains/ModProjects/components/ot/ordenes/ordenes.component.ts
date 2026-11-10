@@ -1,3 +1,4 @@
+import { QuickPersonnelCreateComponent } from './quick-personnel-create.component';
 import { NgbModal } from '@ng-bootstrap/ng-bootstrap';
 import { QuickResourceCreateComponent, QuickResourceCreated, QuickResourceKind } from './quick-resource-create.component';
 import { PdfReportViewerComponent } from 'app/shared/pdf-report-viewer/pdf-report-viewer.component';
@@ -4695,7 +4696,7 @@ export class OrdenesComponent implements OnInit, OnDestroy, OnChanges {
   reportResourceEditorParams(kind: string, currentValue?: any): any {
     return {
       values: [...this.reportResourceCatalog(kind).map(item => typeof currentValue === 'string' ? String(item.id) : Number(item.id)),
-        ...(kind === 'PERSONAL' ? [] : ['__NEW__'])],
+        '__NEW__'],
       formatValue: value => value === '__NEW__' ? '+ Agregar nuevo…' : this.reportResourceLabel(kind, value),
       allowTyping: true, filterList: true, searchType: 'matchAny', highlightMatch: true, valueListMaxHeight: 240
     };
@@ -4704,7 +4705,7 @@ export class OrdenesComponent implements OnInit, OnDestroy, OnChanges {
   setReportResourceValue(kind: string, params: any): boolean {
     if (this.signalsService.getClosedReport()() || this.creatingQuickResource) return false;
     if (params.newValue === '__NEW__') {
-      queueMicrotask(() => this.createResourceFromGrid(kind as QuickResourceKind, params.api, params.data));
+      queueMicrotask(() => this.createResourceFromGrid(kind as QuickResourceKind | 'PERSONAL', params.api, params.data));
       return false;
     }
     const item = this.reportResourceCatalog(kind).find(row => String(row.id) === String(params.newValue));
@@ -4737,29 +4738,34 @@ export class OrdenesComponent implements OnInit, OnDestroy, OnChanges {
     }, 0);
   }
 
-  private async createResourceFromGrid(kind: QuickResourceKind, api: any, data: any): Promise<void> {
+  private async createResourceFromGrid(kind: QuickResourceKind | 'PERSONAL', api: any, data: any): Promise<void> {
     if (this.creatingQuickResource || this.signalsService.getClosedReport()() || !this.selectedReporteFecha ||
-        !this.selectedOt || !['MATERIAL', 'EQUIPMENT'].includes(kind)) return;
+        !this.selectedOt || !['MATERIAL', 'EQUIPMENT', 'PERSONAL'].includes(kind)) return;
     const companyId = Number(this.idcompany), otId = this.selectedOt.id, reportId = this.selectedReporteId;
     this.creatingQuickResource = true;
     try {
-      const ref = this.quickModal.open(QuickResourceCreateComponent, { centered: true, backdrop: 'static', keyboard: false });
+      const ref = this.quickModal.open(kind === 'PERSONAL' ? QuickPersonnelCreateComponent : QuickResourceCreateComponent, { centered: true, backdrop: 'static', keyboard: false });
       ref.componentInstance.kind = kind;
       ref.componentInstance.companyId = companyId;
-      const result: QuickResourceCreated = await ref.result;
+      if (kind === 'PERSONAL') ref.componentInstance.branchId = this.signalsService.getBranchSelectedBySidebar()();
+      const result: QuickResourceCreated & { position?: any } = await ref.result;
       if (this.quickDestroyRef.destroyed || Number(this.idcompany) !== companyId) return;
       const item = result.resource;
       if (kind === 'MATERIAL') this.catalogMateriales = [...this.catalogMateriales.filter(row => Number(row.id) !== Number(item.id)), item];
+      else if (kind === 'PERSONAL') {
+        this.employees = [...this.employees.filter(row => Number(row.id) !== Number(item.id)), item];
+        if (result.position) this.employeePositions = [...this.employeePositions.filter(row => Number(row.id) !== Number(result.position.id)), result.position];
+      }
       else this.catalogEquipos = [...this.catalogEquipos.filter(row => Number(row.id) !== Number(item.id)), item];
-      this.unitsCatalog = result.units;
-      const rows = kind === 'MATERIAL' ? this.materiales : this.equipos;
+      if (result.units) this.unitsCatalog = result.units;
+      const rows = this.resourceRows(kind);
       if (this.selectedOt?.id !== otId || this.selectedReporteId !== reportId || !rows.includes(data) ||
           this.signalsService.getClosedReport()() || api.isDestroyed?.()) return;
       data.idResource = Number(item.id);
-      data.__resourceLabel = item.description;
+      data.__resourceLabel = kind === 'PERSONAL' ? item.name : item.description;
+      if (kind === 'PERSONAL') data.position = this.resolvePersonnelPosition(item.id);
       if (!data.__isNew) data.__modified = true;
-      if (kind === 'MATERIAL') this.notSavedMaterialChanges = true;
-      else this.notSavedEquipoChanges = true;
+      this.setResourceDirty(kind, true);
       api.refreshCells({ force: true });
       this.focusResourceField(kind, api, data);
     } catch { /* Cancelar conserva los datos de la fila. */ }

@@ -1,4 +1,5 @@
 import { Injectable, effect } from '@angular/core';
+import { firstValueFrom, forkJoin } from 'rxjs';
 import pdfMake from 'pdfmake/build/pdfmake';
 import * as pdfFonts from 'pdfmake/build/vfs_fonts';
 import { ReceivedataService } from './receivedata.service';
@@ -78,7 +79,13 @@ export class PdfGeneratorService {
     conceptosData?: any[];
     conceptosCatalog?: any[];
   }) {
-    console.log('Input data for PDF generation:', inputData);
+    // Esperar los catálogos actuales antes de resolver materiales y unidades.
+    const catalogs = await firstValueFrom(forkJoin({
+      materials: this.materialsService.getDailyReportMaterials(this.signalsService.getRootSelectedBySidebar()()),
+      units: this.catalogsService.getUnits(this.signalsService.getRootSelectedBySidebar()())
+    }));
+    this.catalogMateriales = catalogs.materials;
+    this.unitsCatalog = catalogs.units as any[];
     this.id = inputData.id;
     this.lb = inputData.date;
     this.idReport = inputData.idReport;
@@ -608,11 +615,10 @@ private processMaterialesData(): string[][] {
   const materialMap = new Map<string, { nombre: string, cantidad: number, unidad: string }>();
 
   this.materialesData.forEach(material => {
-    const materialSeleccionado = this.catalogMateriales.find(m => m.id === material.idResource);
-    console.log('Material seleccionado:', materialSeleccionado);
-    const nombre = materialSeleccionado ? materialSeleccionado.description : 'Sin nombre';
-    const cantidad = material.quantity ?? 0;
-    const unidadMaterial = this.unitsCatalog.find(u => u.id === materialSeleccionado.idMedida);
+    const materialSeleccionado = this.catalogMateriales.find(m => String(m.id) === String(material.idResource));
+    const nombre = materialSeleccionado?.description || material.__resourceLabel || `Material ${material.idResource}`;
+    const cantidad = Number(material.quantity) || 0;
+    const unidadMaterial = this.unitsCatalog.find(u => materialSeleccionado?.idMedida != null && String(u.id) === String(materialSeleccionado.idMedida));
     const unidad = unidadMaterial ? unidadMaterial.description : 'unidad desconocida';
 
     const key = `${material.idResource}-${unidad}`;
@@ -874,7 +880,7 @@ private processMaterialesData(): string[][] {
 
     const docDefinition = {
       pageSize: 'LETTER',
-      pageMargins: [80, 80, 80, 40],
+      pageMargins: [80, 55, 80, 40],
       defaultStyle: {
         fontSize: 9,
         alignment: 'justify',
@@ -940,14 +946,14 @@ private processMaterialesData(): string[][] {
       },
       header: {
         image: 'zheader',
-        width: 100,
+        fit: [90, 40],
         alignment: 'center',
         margin: [0, 5, 0, 5],
       },
       footer: (currentPage, pageCount) => [
         {
           image: 'zfooter',
-          width: 100,
+          fit: [75, 18],
           alignment: 'center',
         },
         {
@@ -1103,7 +1109,7 @@ private processMaterialesData(): string[][] {
     return docDefinition;
   }
   catalogoMateriales(){
-    return this.materialsService.getMaterials(this.idcompany, 'CONSUMABLE').subscribe(
+    return this.materialsService.getDailyReportMaterials(this.idcompany).subscribe(
       (data: any) => {
         this.catalogMateriales = data;
       },
