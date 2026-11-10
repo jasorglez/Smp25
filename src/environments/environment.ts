@@ -75,5 +75,5 @@ export const environment = {
     // publicKey: 'TEST-4399133a-4676-42a2-ab85-d946370bf96a',
   },
 
-  version: '5.00.443 (09 Noviembre 2026 08:52) actualización de menús por usuario y empresa',
+  version: '5.00.445 (10 Noviembre 2026 10:52) permisos de órdenes por proyecto',
 };

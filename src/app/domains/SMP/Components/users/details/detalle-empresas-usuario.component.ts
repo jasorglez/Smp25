@@ -12,6 +12,7 @@ import { UsersxpermissionsService } from 'app/services/usersxpermissions.service
 import { RootService } from 'app/services/root.service';
 import { BranchsService } from 'app/services/branchs.service';
 import { ContractsService } from 'app/services/contracts.service';
+import { OtService } from 'app/services/ot.service';
 import { ProjectsService } from 'app/services/projects.service';
 import { SignalsService } from 'app/services/signals.service';
 import { WarehousesService } from 'app/services/warehouses.service';
@@ -37,11 +38,203 @@ function saveUsersDescriptionWidth(event: any, grid: string, column: string): vo
   } catch { /* almacenamiento del navegador no disponible */ }
 }
 
-// ─── Detail renderer: proyectos por contrato ──────────────────────────────────
+// ─── Detail renderer: órdenes asignadas por proyecto ──────────────────────────
+@Component({
+  selector: 'app-ordenes-usuario-detail-renderer',
+  standalone: true,
+  imports: [AgGridModule, CommonModule, FormsModule],
+  template: `
+    <div style="padding:8px;background:#e8f4fd;height:100%;display:flex;flex-direction:column;">
+
+      <!-- Toolbar -->
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;flex-wrap:wrap;">
+        <strong style="font-size:0.85rem;margin-right:auto;">
+          <i class="bi bi-diagram-3 me-1"></i> Órdenes — {{ projectName }}
+        </strong>
+        <select
+          class="form-select form-select-sm"
+          style="width:260px;"
+          [(ngModel)]="selectedNewOrderId"
+          [disabled]="loading || !!loadError || isSaving || availableOrders.length === 0">
+          <option value="">-- Seleccionar orden --</option>
+          <option *ngFor="let p of availableOrders" [value]="p.id">
+            {{ p.otNumber ?? p.name }}
+          </option>
+        </select>
+        <button
+          class="btn btn-sm btn-primary"
+          (click)="addOrden()"
+          [disabled]="!selectedNewOrderId || isSaving || loading || !!loadError"
+          title="Asignar orden" aria-label="Asignar orden">
+          <i class="bi bi-plus-lg"></i>
+        </button>
+        <button
+          class="btn btn-sm btn-danger"
+          (click)="deleteOrden()"
+          [disabled]="!selectedRow || isSaving || loading || !!loadError"
+          title="Quitar orden seleccionada" aria-label="Quitar permiso de la orden seleccionada">
+          <i class="bi bi-trash"></i>
+        </button>
+      </div>
+
+      <div *ngIf="loading" class="text-muted small mb-2" role="status">Cargando listado…</div>
+      <div *ngIf="loadError" class="alert alert-warning py-2" role="alert">
+        {{ loadError }}
+        <button class="btn btn-sm btn-outline-secondary ms-2" (click)="retryLoad()" [disabled]="loading">Reintentar</button>
+      </div>
+      <p *ngIf="!loading && !loadError && orders.length === 0" class="text-muted small mb-2">No hay órdenes asignadas. Selecciona una orden y pulsa + para darle permiso al usuario.</p>
+      <!-- Grid -->
+      <div style="flex:1;min-height:0;">
+        <ag-grid-angular
+          class="ag-theme-quartz small-text-ag-grid"
+          style="width:100%;height:100%;"
+          [columnDefs]="cols"
+          [rowData]="orders"
+          [gridOptions]="gridOptions"
+          rowSelection="single"
+          (gridReady)="onGridReady($event)"
+          (columnResized)="onDescriptionResized($event)"
+          (selectionChanged)="onSelectionChanged($event)">
+        </ag-grid-angular>
+      </div>
+
+    </div>
+  `
+})
+export class OrdenesUsuarioDetailRendererComponent implements ICellRendererAngularComp {
+  private changeDetector = inject(ChangeDetectorRef);
+  private destroyRef = inject(DestroyRef);
+  private otService          = inject(OtService);
+  private usersxpermissionsService = inject(UsersxpermissionsService);
+
+  orders: any[] = [];
+  availableOrders: any[] = [];
+  selectedNewOrderId: string = '';
+  selectedRow: any = null;
+  isSaving = false;
+  loading = false;
+  loadError = '';
+
+  retryLoad(): void { if (!this.loading && !this.isSaving) this.loadData(); }
+
+  private render(): void {
+    if (!this.destroyRef.destroyed) this.changeDetector.detectChanges();
+  }
+  projectName: string = '';
+  private userId: number = 0;
+  private projectId: number = 0;
+  private updateCount: (count: number) => void = () => {};
+  private gridApi!: GridApi;
+
+  cols: ColDef[] = [
+    { field: 'id',                 hide: true },
+    { field: 'idOrder',          hide: true },
+    { field: 'orderName',        headerName: 'Orden',     flex: 2 },
+    { field: 'orderDescription', headerName: 'Descripción', minWidth: 300, width: 360, flex: 0, resizable: true, suppressSizeToFit: true }
+  ];
+
+  gridOptions: any = { headerHeight: 25, rowHeight: 22, suppressCellFocus: true };
+
+  agInit(params: any): void {
+    this.updateCount = count => {
+      if (params.api?.isDestroyed?.()) return;
+      params.data.countOrdenes = count;
+      params.api?.refreshCells({ rowNodes: [params.node], columns: ['countOrdenes'], force: true });
+    };
+    this.projectName = params.data?.projectName ?? '';
+    this.userId       = params.data?.userId;
+    this.projectId   = params.data?.idProject;
+    if (this.userId && this.projectId) {
+      this.loadData();
+    }
+  }
+
+  private loadData(): void {
+    this.loadError = '';
+    if (![this.userId, this.projectId].every(id => Number.isSafeInteger(Number(id)) && Number(id) > 0)) {
+      this.loadError = 'Guarda primero el usuario y selecciona un registro válido para asignar permisos.';
+      this.render();
+      return;
+    }
+    this.loading = true;
+    forkJoin({
+      permissions: this.usersxpermissionsService.getUsersxPermissionsGeneral('ot', this.userId),
+      catalog: this.otService.getProjectOrdersWithContent(this.projectId).pipe(catchError(error => error.status === 404 ? of([]) : throwError(() => error)))
+    }).pipe(timeout(20000), takeUntilDestroyed(this.destroyRef)).subscribe({
+      next: ({ permissions, catalog: catalogResponse }) => {
+        const permissionRows = (Array.isArray(permissions) ? permissions : []).filter(p => Number(p.active) === 1);
+        const catalogRows = Array.isArray(catalogResponse) ? catalogResponse : [];
+        const catalog = catalogRows.map(p => ({ ...p, id: Number(p.id) }));
+        const assigned = new Map(permissionRows.map(p => [Number(p.idPermission), p]));
+        this.orders = catalog.filter(p => assigned.has(p.id)).map(p => ({
+          ...p, id: assigned.get(p.id).id, idOrder: p.id,
+          orderName: p.otNumber ?? p.name, orderDescription: p.area ?? p.description ?? ''
+        }));
+        this.updateCount(this.orders.length);
+        this.availableOrders = catalog.filter(p => !assigned.has(p.id));
+        this.selectedNewOrderId = '';
+        this.selectedRow = null;
+        if (this.gridApi) this.gridApi.setGridOption('rowData', this.orders);
+        this.loading = false;
+        this.render();
+
+      },
+      error: () => {
+        this.loading = false;
+        this.loadError = 'No se pudo cargar el listado. Pulsa Reintentar para volver a consultar.';
+        this.render();
+      }
+    });
+  }
+
+  addOrden(): void {
+    if (this.loading || this.loadError || this.isSaving || !this.availableOrders.some(item => Number(item.id) === Number(this.selectedNewOrderId))) return;
+    this.isSaving = true;
+    const payload = {
+      idUser:       this.userId,
+      idPermission: +this.selectedNewOrderId,
+      type:         'ot',
+      description:  null,
+      active:       1
+    };
+    this.usersxpermissionsService.addUserxPermission(payload).subscribe({
+      next:  () => { this.isSaving = false; this.loadData(); },
+      error: () => { this.isSaving = false; alerts.basicAlert('Error', 'No se pudo agregar la orden', 'error'); }
+    });
+  }
+
+  deleteOrden(): void {
+    if (!this.selectedRow || this.isSaving) return;
+    alerts.confirmAlert(
+      'Quitar orden',
+      `¿Quitar <b>${this.selectedRow.orderName}</b> de este usuario?`,
+      'warning',
+      'Sí, quitar'
+    ).then(result => {
+      if (!result.isConfirmed) return;
+      this.isSaving = true;
+      this.usersxpermissionsService.deleteUserxPermission(this.selectedRow.id).subscribe({
+        next:  () => { this.isSaving = false; this.selectedRow = null; this.loadData(); },
+        error: () => { this.isSaving = false; alerts.basicAlert('Error', 'No se pudo quitar la orden', 'error'); }
+      });
+    });
+  }
+
+  onGridReady(event: GridReadyEvent): void { this.gridApi = event.api; restoreUsersDescriptionWidth(event.api, 'orders', 'orderDescription'); }
+  onDescriptionResized(event: any): void { saveUsersDescriptionWidth(event, 'orders', 'orderDescription'); }
+
+  onSelectionChanged(event: any): void {
+    const nodes = event.api.getSelectedNodes();
+    this.selectedRow = nodes.length > 0 ? nodes[0].data : null;
+  }
+
+  refresh(): boolean { return false; }
+}
+
 @Component({
   selector: 'app-proyectos-detail-renderer',
   standalone: true,
-  imports: [AgGridModule, CommonModule, FormsModule],
+  imports: [AgGridModule, CommonModule, FormsModule, OrdenesUsuarioDetailRendererComponent, ButtonCellRendererExpenditureComponent],
   template: `
     <div style="padding:8px;background:#e8f4fd;height:100%;display:flex;flex-direction:column;">
 
@@ -102,6 +295,7 @@ function saveUsersDescriptionWidth(event: any, grid: string, column: string): vo
 export class ProyectosDetailRendererComponent implements ICellRendererAngularComp {
   private changeDetector = inject(ChangeDetectorRef);
   private destroyRef = inject(DestroyRef);
+  private otService = inject(OtService);
   private projectsService          = inject(ProjectsService);
   private usersxpermissionsService = inject(UsersxpermissionsService);
   private signalsService           = inject(SignalsService);
@@ -125,13 +319,29 @@ export class ProyectosDetailRendererComponent implements ICellRendererAngularCom
   private gridApi!: GridApi;
 
   cols: ColDef[] = [
-    { field: 'id',                 hide: true },
+    { field: 'id', hide: true, filter: 'agNumberColumnFilter' },
     { field: 'idProject',          hide: true },
-    { field: 'projectName',        headerName: 'Proyecto',     flex: 2 },
-    { field: 'projectDescription', headerName: 'Descripción', minWidth: 300, width: 360, flex: 0, resizable: true, suppressSizeToFit: true }
+    { field: 'projectName',        headerName: 'Proyecto', width: 260, flex: 0, resizable: true },
+    { field: 'projectDescription', headerName: 'Descripción', minWidth: 300, width: 360, flex: 0, resizable: true, suppressSizeToFit: true },
+    {
+      field: 'countOrdenes', headerName: 'Órdenes', width: 120, editable: false,
+      cellRenderer: ButtonCellRendererExpenditureComponent,
+      cellRendererParams: {
+        icon: 'bi bi-list-task', title: 'Ver permisos de órdenes del proyecto',
+        onClick: (node: any) => this.toggleOrdenes(node)
+      },
+      valueGetter: params => params.data?.countOrdenes ?? '…',
+      cellStyle: { backgroundColor: '#d6eaf8', cursor: 'pointer' }
+    }
   ];
 
-  gridOptions: any = { headerHeight: 25, rowHeight: 22, suppressCellFocus: true };
+  gridOptions: any = {
+    headerHeight: 25, rowHeight: 22, suppressCellFocus: true,
+    masterDetail: true,
+    isRowMaster: (data: any) => Number(data?.idProject) > 0,
+    detailCellRenderer: OrdenesUsuarioDetailRendererComponent,
+    detailRowHeight: 280
+  };
 
   agInit(params: any): void {
     this.contractName = params.data?.name ?? '';
@@ -155,13 +365,13 @@ export class ProyectosDetailRendererComponent implements ICellRendererAngularCom
       catalog: this.projectsService.getProjectListByContract(this.contractId).pipe(catchError(error => error.status === 404 ? of([]) : throwError(() => error)))
     }).pipe(timeout(20000), takeUntilDestroyed(this.destroyRef)).subscribe({
       next: ({ permissions, catalog: catalogResponse }) => {
-        const permissionRows = Array.isArray(permissions) ? permissions : [];
+        const permissionRows = (Array.isArray(permissions) ? permissions : []).filter(p => Number(p.active) === 1);
         const catalogRows = Array.isArray(catalogResponse) ? catalogResponse : [];
         const catalog = catalogRows.map(p => ({ ...p, id: Number(p.id) }));
         const assigned = new Map(permissionRows.map(p => [Number(p.idPermission), p]));
         this.projects = catalog.filter(p => assigned.has(p.id)).map(p => ({
-          ...p, id: assigned.get(p.id).id, idProject: p.id,
-          projectName: p.name ?? p.projectName, projectDescription: p.description ?? ''
+          ...p, id: assigned.get(p.id).id, idProject: p.id, userId: this.userId,
+          projectName: p.name ?? p.projectName, projectDescription: p.description ?? '', countOrdenes: null
         }));
         this.availableProjects = catalog.filter(p => !assigned.has(p.id));
         this.selectedNewProjectId = '';
@@ -169,6 +379,7 @@ export class ProyectosDetailRendererComponent implements ICellRendererAngularCom
         if (this.gridApi) this.gridApi.setGridOption('rowData', this.projects);
         this.loading = false;
         this.render();
+        this.loadOrderCounts();
 
       },
       error: () => {
@@ -177,6 +388,49 @@ export class ProyectosDetailRendererComponent implements ICellRendererAngularCom
         this.render();
       }
     });
+  }
+
+  private loadOrderCounts(): void {
+    if (!this.projects.length) return;
+    const rows = this.projects;
+    const requests: Record<string, Observable<any>> = {};
+    rows.forEach(row => {
+      requests[row.idProject] = this.otService.getProjectOrdersWithContent(Number(row.idProject))
+        .pipe(catchError(() => of(null)));
+    });
+    forkJoin({
+      permissions: this.usersxpermissionsService.getUsersxPermissionsGeneral('ot', this.userId),
+      orders: forkJoin(requests)
+    }).pipe(timeout(20000), takeUntilDestroyed(this.destroyRef)).subscribe({
+      next: ({ permissions, orders }) => {
+        if (this.projects !== rows) return;
+        const assigned = new Set((Array.isArray(permissions) ? permissions : [])
+          .filter(p => Number(p.active) === 1).map(p => Number(p.idPermission)));
+        rows.forEach(row => {
+          const catalog = orders[row.idProject];
+          row.countOrdenes = Array.isArray(catalog)
+            ? catalog.filter(order => assigned.has(Number(order.id))).length : '?';
+        });
+        this.gridApi?.refreshCells({ columns: ['countOrdenes'], force: true });
+        this.render();
+      },
+      error: () => {
+        if (this.projects !== rows) return;
+        rows.forEach(row => row.countOrdenes = '?');
+        this.gridApi?.refreshCells({ columns: ['countOrdenes'], force: true });
+        this.render();
+      }
+    });
+  }
+
+  toggleOrdenes(node: any): void {
+    const isExpanded = node.expanded;
+    this.gridApi.forEachNode((other: any) => { if (other.expanded) other.setExpanded(false); });
+    this.gridApi.setFilterModel(isExpanded ? null : {
+      id: { filterType: 'number', type: 'equals', filter: node.data.id }
+    });
+    this.gridApi.onFilterChanged();
+    if (!isExpanded) node.setExpanded(true);
   }
 
   addProyecto(): void {
@@ -340,7 +594,7 @@ export class AlmacenesDetailRendererComponent implements ICellRendererAngularCom
       catalog: this.warehousesService.getSimpleWarehouses(this.branchId).pipe(catchError(error => error.status === 404 ? of([]) : throwError(() => error)))
     }).pipe(timeout(20000), takeUntilDestroyed(this.destroyRef)).subscribe({
       next: ({ permissions, catalog: catalogResponse }) => {
-        const permissionRows = Array.isArray(permissions) ? permissions : [];
+        const permissionRows = (Array.isArray(permissions) ? permissions : []).filter(p => Number(p.active) === 1);
         const catalogRows = Array.isArray(catalogResponse) ? catalogResponse : [];
         const catalog = catalogRows.map(w => ({ ...w, id: Number(w.id) }));
         const assigned = new Map(permissionRows.map(p => [Number(p.idPermission), p]));
@@ -544,7 +798,7 @@ export class ContratosDetailRendererComponent implements ICellRendererAngularCom
     masterDetail: true,
     isRowMaster: () => true,
     detailCellRenderer: 'proyectosDetail',
-    detailRowHeight: 180
+    detailRowHeight: 520
   };
 
   agInit(params: any): void {
@@ -569,7 +823,7 @@ export class ContratosDetailRendererComponent implements ICellRendererAngularCom
       catalog: this.contractsService.getContracts(this.branchId).pipe(catchError(error => error.status === 404 ? of([]) : throwError(() => error)))
     }).pipe(timeout(20000), takeUntilDestroyed(this.destroyRef)).subscribe({
       next: ({ permissions, catalog: catalogResponse }) => {
-        const permissionRows = Array.isArray(permissions) ? permissions : [];
+        const permissionRows = (Array.isArray(permissions) ? permissions : []).filter(p => Number(p.active) === 1);
         const catalogRows = Array.isArray(catalogResponse) ? catalogResponse : [];
         const catalog = catalogRows.map(c => ({ ...c, idContrato: Number(c.idContrato) }));
         const assigned = new Map(permissionRows.map(p => [Number(p.idPermission), p]));
@@ -834,7 +1088,7 @@ export class SucursalesDetailRendererComponent implements ICellRendererAngularCo
       catalog: this.branchsService.getBranches(this.idCompany).pipe(catchError(error => error.status === 404 ? of([]) : throwError(() => error)))
     }).pipe(timeout(20000), takeUntilDestroyed(this.destroyRef)).subscribe({
       next: ({ permissions, catalog: catalogResponse }) => {
-        const permissionRows = Array.isArray(permissions) ? permissions : [];
+        const permissionRows = (Array.isArray(permissions) ? permissions : []).filter(p => Number(p.active) === 1);
         const catalogRows = Array.isArray(catalogResponse) ? catalogResponse : [];
         const catalog = catalogRows.map(b => ({ ...b, id: Number(b.id) }));
         const assigned = new Map(permissionRows.map(p => [Number(p.idPermission), p]));
