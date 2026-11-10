@@ -967,14 +967,13 @@ export class OrdenesComponent implements OnInit, OnDestroy, OnChanges {
     if (this.captureMode) this.captureOtsChange.emit([...this.rowData]);
   }
 
-  public get materialesColumnDefs(): ColDef[] {
-    return [
+  public materialesColumnDefs: ColDef[] = [
       {
-      field: 'idResource', headerName: 'Material', flex: 2,
-      editable: () => !this.signalsService.getClosedReport()() && !this.creatingQuickResource,
+      field: 'idResource', cellDataType: false, headerName: 'Material', flex: 2,
+      editable: () => !this.signalsService.getClosedReport()() && !this.creatingQuickResource && !this.savingResourceDetails,
       cellEditor: 'agRichSelectCellEditor',
       cellEditorParams: params => this.reportResourceEditorParams('MATERIAL', params.data?.idResource),
-      valueFormatter: params => this.reportResourceLabel('MATERIAL', params.data?.idResource),
+      valueFormatter: params => this.reportResourceLabel('MATERIAL', params.data?.idResource, params.data?.__resourceLabel),
       valueSetter: params => this.setReportResourceValue('MATERIAL', params)
     },
 
@@ -982,7 +981,8 @@ export class OrdenesComponent implements OnInit, OnDestroy, OnChanges {
         field: 'quantity',
         headerName: 'Cantidad',
         width: 100,
-        editable: this.signalsService.getClosedReport()() ? false : true
+        editable: () => !this.signalsService.getClosedReport()() && !this.savingResourceDetails,
+        cellDataType: 'number', cellEditor: 'agNumberCellEditor'
       },
 
       {
@@ -1006,23 +1006,22 @@ export class OrdenesComponent implements OnInit, OnDestroy, OnChanges {
         }
       }
     ];
-  }
 
   public equiposColumnDefs: ColDef[] = [
     //{ field: 'id', headerName: 'ID', width: 80 },
     {
-      field: 'idResource', headerName: 'Equipo', flex: 2,
-      editable: () => !this.signalsService.getClosedReport()() && !this.creatingQuickResource,
+      field: 'idResource', cellDataType: false, headerName: 'Equipo', flex: 2,
+      editable: () => !this.signalsService.getClosedReport()() && !this.creatingQuickResource && !this.savingResourceDetails,
       cellEditor: 'agRichSelectCellEditor',
       cellEditorParams: params => this.reportResourceEditorParams('EQUIPMENT', params.data?.idResource),
-      valueFormatter: params => this.reportResourceLabel('EQUIPMENT', params.data?.idResource),
+      valueFormatter: params => this.reportResourceLabel('EQUIPMENT', params.data?.idResource, params.data?.__resourceLabel),
       valueSetter: params => this.setReportResourceValue('EQUIPMENT', params)
     },
     {
       field: 'quantity',
       headerName: 'Cantidad',
       flex: 1,
-      editable: () => !this.signalsService.getClosedReport()(),
+      editable: () => !this.signalsService.getClosedReport()() && !this.savingResourceDetails,
       cellDataType: 'number',
       cellEditorParams: {
         min: 0,
@@ -1037,18 +1036,18 @@ export class OrdenesComponent implements OnInit, OnDestroy, OnChanges {
   public personalColumnDefs: ColDef[] = [
     //{ field: 'id', headerName: 'ID', width: 80 },
     {
-      field: 'idResource', headerName: 'Nombre', flex: 2,
-      editable: () => !this.signalsService.getClosedReport()() && !this.creatingQuickResource,
+      field: 'idResource', cellDataType: false, headerName: 'Nombre', flex: 2,
+      editable: () => !this.signalsService.getClosedReport()() && !this.creatingQuickResource && !this.savingResourceDetails,
       cellEditor: 'agRichSelectCellEditor',
       cellEditorParams: params => this.reportResourceEditorParams('PERSONAL', params.data?.idResource),
-      valueFormatter: params => this.reportResourceLabel('PERSONAL', params.data?.idResource),
+      valueFormatter: params => this.reportResourceLabel('PERSONAL', params.data?.idResource, params.data?.__resourceLabel),
       valueSetter: params => this.setReportResourceValue('PERSONAL', params)
     },
     {
       field: 'position',
       headerName: 'Cargo',
       flex: 1,
-      editable: params => !this.signalsService.getClosedReport()() && !this.resolvePersonnelPosition(params.data?.idResource),
+      editable: params => !this.savingResourceDetails && !this.signalsService.getClosedReport()() && !this.resolvePersonnelPosition(params.data?.idResource),
       valueFormatter: (params: any) => {
         return this.resolvePersonnelPosition(params.data?.idResource, params.value);
       }
@@ -1058,7 +1057,7 @@ export class OrdenesComponent implements OnInit, OnDestroy, OnChanges {
       field: 'cuadrilla',
       headerName: 'Cuadrilla',
       hide: true,
-      flex: 1, editable: () => !this.signalsService.getClosedReport()(),
+      flex: 1, editable: () => !this.signalsService.getClosedReport()() && !this.savingResourceDetails,
       valueGetter: (params) => {
         return params.data.cuadrilla || `Cuadrilla ${this.cuadrillaSelect}`;
       }
@@ -3948,206 +3947,9 @@ export class OrdenesComponent implements OnInit, OnDestroy, OnChanges {
     }
   }
 
-  async saveChangesMaterial() {
-    if (!(await this.requireSavedReportForDetails())) return;
-    this.trackingService.addLog(
-      this.trackingService.getnameComp(),
-      'Guardar Cambios Materiales OT',
-      'Modulo Proyectos - Ordenes de Trabajo - Materiales',
-      this.trackingService.getEmail()
-    );
+  async saveChangesMaterial() { await this.saveReportResources('MATERIAL'); }
 
-    const newRows = this.materiales.filter(row => row.__isNew);
-    const modifiedRows = this.materiales.filter(row => row.__modified && !row.__isNew);
-
-    // Validación básica para materiales
-    const invalidRows = newRows.filter(item => !item.idResource || !item.quantity);
-
-    if (invalidRows.length > 0) {
-      alerts.basicAlert('Error', 'Debe completar material y cantidad antes de guardar.', 'error');
-      return;
-    }
-
-    if (newRows.length === 0 && modifiedRows.length === 0) {
-      alerts.basicAlert('Info', 'No hay cambios para guardar', 'info');
-      return;
-    }
-
-    try {
-      const addRequests = newRows.map((row, index) => {
-        const cleanedData = this.cleanDataSinDescripcion(row);
-        return this.logbookService.addDataForOt(cleanedData).toPromise();
-      });
-
-      const updateRequests = modifiedRows.map((row, index) => {
-        const cleanedData = this.cleanDataSinDescripcion(row);
-        return this.logbookService.updateDataForOt(Number(row.id), cleanedData).toPromise();
-      });
-
-
-      const responses = await Promise.all([...addRequests, ...updateRequests]);
-
-      responses.forEach((response, index) => {
-
-        // Verificar estructura de la respuesta
-        if (response && typeof response === 'object') {
-
-          if (response.data) {
-          }
-        }
-      });
-
-      // Verificar si las respuestas son exitosas
-      const failedResponses = responses.filter(response =>
-        !response ||
-        (response.hasOwnProperty('success') && !response.success) ||
-        (response.status && response.status >= 400)
-      );
-
-      if (failedResponses.length > 0) {
-        console.error('Respuestas fallidas:', failedResponses);
-        throw new Error(`${failedResponses.length} requests fallaron`);
-      }
-
-      alerts.basicAlert('Datos actualizados', 'Se han actualizado los datos correctamente.', 'success');
-      this.autoUpdatePdf()
-      this.notSavedMaterialChanges = false;
-
-      // Recargar datos desde el servidor
-      await this.loadDailyReports();
-      this.materiales.forEach(item => {
-        delete item.__isNew;
-        delete item.__modified;
-      });
-
-
-    } catch (error: any) {
-      console.error('=== ERROR DETALLADO ===');
-      console.error('Error completo:', error);
-
-      let errorMessage = 'Ocurrió un error al actualizar los datos.';
-
-      if (error.status === 400) {
-        errorMessage = 'Datos inválidos. Verifique que todos los campos estén correctos.';
-      } else if (error.status === 401) {
-        errorMessage = 'No autorizado. Por favor, vuelva a iniciar sesión.';
-      } else if (error.status === 403) {
-        errorMessage = 'No tiene permisos para realizar esta operación.';
-      } else if (error.status === 404) {
-        errorMessage = 'Recurso no encontrado. Verifique la URL del servicio.';
-      } else if (error.status === 500) {
-        errorMessage = 'Error interno del servidor. Contacte al administrador.';
-      } else if (error.message) {
-        errorMessage = error.message;
-      }
-
-      alerts.basicAlert('Error', errorMessage, 'error');
-    }
-  }
-
-  async saveChangesEquipos() {
-    if (!(await this.requireSavedReportForDetails())) return;
-    this.trackingService.addLog(
-      this.trackingService.getnameComp(),
-      'Guardar Cambios Equipos OT',
-      'Modulo Proyectos - Ordenes de Trabajo - Equipos',
-      this.trackingService.getEmail()
-    );
-
-    const newRows = this.equipos.filter(row => row.__isNew);
-    const modifiedRows = this.equipos.filter(row => row.__modified && !row.__isNew);
-
-    if (newRows.length === 0 && modifiedRows.length === 0) {
-      alerts.basicAlert('Info', 'No hay cambios para guardar', 'info');
-      return;
-    }
-
-    try {
-      const addRequests = newRows.map((row, index) => {
-
-        const cleanedData = this.cleanDataSinDescripcion(row);
-
-        return this.logbookService.addDataForOt(cleanedData).toPromise();
-      });
-
-      const updateRequests = modifiedRows.map((row, index) => {
-        const cleanedData = this.cleanDataSinDescripcion(row);
-        return this.logbookService.updateDataForOt(Number(row.id), cleanedData).toPromise();
-      });
-
-
-      const responses = await Promise.all([...addRequests, ...updateRequests]);
-
-      responses.forEach((response, index) => {
-
-        // Verificar estructura de la respuesta
-        if (response && typeof response === 'object') {
-
-          if (response.data) {
-          }
-        }
-      });
-
-      // Verificar si las respuestas son exitosas
-      const failedResponses = responses.filter(response =>
-        !response ||
-        (response.hasOwnProperty('success') && !response.success) ||
-        (response.status && response.status >= 400)
-      );
-
-      if (failedResponses.length > 0) {
-        console.error('Respuestas fallidas:', failedResponses);
-        throw new Error(`${failedResponses.length} requests fallaron`);
-      }
-
-      alerts.basicAlert('Datos actualizados', 'Se han actualizado los datos correctamente.', 'success');
-      this.autoUpdatePdf()
-      this.notSavedEquipoChanges = false;
-
-      // Recargar datos desde el servidor 
-      this.equipos.forEach(item => {
-        delete item.__isNew;
-        delete item.__modified;
-      });
-
-      await this.loadDailyReports();
-
-    } catch (error: any) {
-      console.error('=== ERROR DETALLADO ===');
-      console.error('Error completo:', error);
-
-      // Log específico para errores de validación
-      if (error.status === 400 && error.error && error.error.errors) {
-        console.error('Errores de validación específicos:', error.error.errors);
-      }
-
-      let errorMessage = 'Ocurrió un error al actualizar los datos.';
-
-      if (error.status === 400) {
-        errorMessage = 'Datos inválidos. Verifique que todos los campos estén correctos.';
-
-        // Mostrar errores específicos si están disponibles
-        if (error.error && error.error.errors) {
-          const validationErrors = Object.keys(error.error.errors).map(key =>
-            `${key}: ${error.error.errors[key].join(', ')}`
-          ).join('\n');
-          errorMessage += '\n\nErrores específicos:\n' + validationErrors;
-        }
-      } else if (error.status === 401) {
-        errorMessage = 'No autorizado. Por favor, vuelva a iniciar sesión.';
-      } else if (error.status === 403) {
-        errorMessage = 'No tiene permisos para realizar esta operación.';
-      } else if (error.status === 404) {
-        errorMessage = 'Recurso no encontrado. Verifique la URL del servicio.';
-      } else if (error.status === 500) {
-        errorMessage = 'Error interno del servidor. Contacte al administrador.';
-      } else if (error.message) {
-        errorMessage = error.message;
-      }
-
-      alerts.basicAlert('Error', errorMessage, 'error');
-    }
-  }
+  async saveChangesEquipos() { await this.saveReportResources('EQUIPMENT'); }
 
   revertReportes() {
     this.loadDailyReports();
@@ -4155,13 +3957,11 @@ export class OrdenesComponent implements OnInit, OnDestroy, OnChanges {
   }
 
   revertEquipos() {
-    this.obtenerEquipos(this.selectedReporteId);
-    this.notSavedEquipoChanges = false;
+    this.obtenerEquipos(this.selectedReporteId, true);
   }
 
   revertMaterial() {
-    this.obtenerMateriales(this.selectedReporteId);
-    this.notSavedMaterialChanges = false;
+    this.obtenerMateriales(this.selectedReporteId, true);
   }
 
   printReporte() {
@@ -4248,22 +4048,30 @@ export class OrdenesComponent implements OnInit, OnDestroy, OnChanges {
   private dailyReportsRequest = 0;
 
   // Seleccionar el reporte no depende de que su grid ya esté dibujado.
-  loadDailyReports() {
+  loadDailyReports(preserveResourceRows = false) {
     if (!this.selectedOt) return;
     const otId = Number(this.selectedOt.id);
     const request = ++this.dailyReportsRequest;
     this.dailyReportService.getDailyReportsByOt(otId).subscribe({
       next: response => {
         if (request !== this.dailyReportsRequest || Number(this.selectedOt?.id) !== otId) return;
-        this.reportesDiarios = response.success && Array.isArray(response.data)
+        const reports = response.success && Array.isArray(response.data)
           ? response.data.map(item => ({ ...item })) : [];
+        const keepCurrent = preserveResourceRows || this.isSavingData || this.hasPendingResourceRows();
+        if (keepCurrent && this.selectedReporteId != null &&
+            !reports.some(row => String(row.id) === String(this.selectedReporteId))) return;
+        this.reportesDiarios = reports;
         const selected = this.reportesDiarios.find(row => String(row.id) === String(this.selectedReporteId))
           || this.reportesDiarios[0];
-        if (selected) this.selectReporte(selected);
+        if (selected) {
+          const sameReport = String(selected.id) === String(this.selectedReporteId);
+          if (!sameReport || !keepCurrent) this.selectReporte(selected);
+        }
         else this.clearDailyReportSelection();
       },
       error: () => {
         if (request !== this.dailyReportsRequest || Number(this.selectedOt?.id) !== otId) return;
+        if (preserveResourceRows || this.isSavingData || this.hasPendingResourceRows()) return;
         this.reportesDiarios = [];
         this.clearDailyReportSelection();
         alerts.basicAlert('Error', 'No se pudieron cargar los reportes diarios', 'error');
@@ -4720,7 +4528,7 @@ export class OrdenesComponent implements OnInit, OnDestroy, OnChanges {
   // Método para manejar cambios en el grid de materiales
   onMaterialCellValueChanged(event: any) {
 
-    this.notSavedChangesMaster = true;
+    this.notSavedMaterialChanges = true;
 
     if (!event.data.__isNew) {
       event.data.__modified = true;
@@ -4774,13 +4582,114 @@ export class OrdenesComponent implements OnInit, OnDestroy, OnChanges {
     }
   }
 
+  savingResourceDetails = false;
+  private savingResourceKind: string = null;
+
+  private resourceRows(kind: string): any[] {
+    return kind === 'MATERIAL' ? this.materiales : kind === 'EQUIPMENT' ? this.equipos : this.personal;
+  }
+
+  private setResourceDirty(kind: string, dirty: boolean): void {
+    if (kind === 'MATERIAL') this.notSavedMaterialChanges = dirty;
+    else if (kind === 'EQUIPMENT') this.notSavedEquipoChanges = dirty;
+    else this.notSavedPersonalChanges = dirty;
+  }
+
+  private hasPendingResourceRows(): boolean {
+    return this.creatingQuickResource || this.savingResourceDetails ||
+      [this.materiales, this.equipos, this.personal].some(rows => rows.some(row => row.__isNew || row.__modified || row.__createdPendingId)) ||
+      [this.materialesGridApi, this.equiposGridApi, this.personalGridApi].some(api => !api?.isDestroyed?.() && api?.getEditingCells?.().length > 0);
+  }
+
+  private async saveReportResources(kind: string): Promise<void> {
+    if (this.savingResourceDetails || this.isSavingData || this.signalsService.getClosedReport()()) return;
+    const api = kind === 'MATERIAL' ? this.materialesGridApi : kind === 'EQUIPMENT' ? this.equiposGridApi : this.personalGridApi;
+    api?.stopEditing();
+    this.savingResourceDetails = true;
+    this.savingResourceKind = kind;
+    this.isSavingData = true;
+    let rows: any[] = [], reportId: number, otId: number;
+    try {
+      if (!(await this.requireSavedReportForDetails())) return;
+      reportId = Number(this.selectedReporteId);
+      otId = Number(this.selectedOt?.id);
+      rows = this.resourceRows(kind);
+      const pending = rows.filter(row => row.__isNew || row.__modified || row.__createdPendingId);
+      if (!pending.length) return;
+      if (pending.some(row => !Number.isSafeInteger(Number(row.idResource)) || Number(row.idResource) <= 0 ||
+          !Number.isFinite(Number(row.quantity)) || Number(row.quantity) <= 0 || (kind === 'PERSONAL' && !row.position?.trim()))) {
+        throw new Error(kind === 'PERSONAL' ? 'Completa nombre y cargo antes de guardar.' : 'Selecciona el recurso y una cantidad mayor que cero.');
+      }
+      const resourceIds = rows.map(row => String(row.idResource)).filter(id => id && id !== 'null');
+      if (new Set(resourceIds).size !== resourceIds.length) throw new Error('El reporte contiene recursos duplicados.');
+      for (const row of pending) {
+        if (row.__createdPendingId) continue;
+        const payload = kind === 'PERSONAL' ? this.cleanPersonalDataForServer(row) : this.cleanDataSinDescripcion(row);
+        Object.keys(payload).filter(key => key.startsWith('__')).forEach(key => delete payload[key]);
+        delete payload.Description;
+        payload.description = row.description || '';
+        payload.idOt = otId;
+        payload.idReporte = reportId;
+        payload.idResource = Number(row.idResource);
+        payload.quantity = Number(row.quantity);
+        payload.typeNote = kind;
+        const isNew = !!row.__isNew;
+        if (isNew) delete payload.id;
+        else if (!hasPersistedMasterId(row.id)) throw new Error('No se pudo identificar la partida. Recarga el reporte antes de modificarla.');
+        let response: any;
+        try {
+          response = await firstValueFrom(isNew ? this.logbookService.addDataForOt(payload)
+            : this.logbookService.updateDataForOt(Number(row.id), payload));
+        } catch (error: any) {
+          if (!isNew || [400, 401, 403, 404, 422].includes(error?.status)) throw error;
+          // Una respuesta interrumpida puede llegar después de que la partida se guardó.
+          row.__createdPendingId = true;
+          continue;
+        }
+        if (response?.success === false) throw new Error(response.message || 'El servidor rechazó la partida.');
+        if (isNew) {
+          const id = response?.data?.id ?? response?.id;
+          if (hasPersistedMasterId(id)) row.id = Number(id);
+          else row.__createdPendingId = true;
+        }
+        delete row.__isNew;
+        delete row.__modified;
+      }
+      if (rows.some(row => row.__createdPendingId)) {
+        const response: any = await firstValueFrom(this.logbookService.getInfoByReporte(reportId, kind));
+        const persisted = Array.isArray(response) ? response : response?.data;
+        if (!Array.isArray(persisted)) throw new Error('Las partidas se guardaron, pero falta confirmar su registro. Vuelve a pulsar Guardar para consultarlas sin duplicarlas.');
+        const knownIds = new Set(rows.filter(row => !row.__createdPendingId).map(row => Number(row.id)));
+        for (const row of rows.filter(row => row.__createdPendingId)) {
+          const matches = persisted.filter(item => Number(item.idResource) === Number(row.idResource) && hasPersistedMasterId(item.id) && !knownIds.has(Number(item.id)));
+          if (matches.length !== 1) throw new Error('No se pudo confirmar el alta de una partida. Reintenta Guardar para consultarla sin volver a crearla, o pulsa Deshacer para recargar el reporte.');
+          row.id = Number(matches[0].id);
+          delete row.__createdPendingId;
+          delete row.__isNew;
+          delete row.__modified;
+          knownIds.add(Number(row.id));
+        }
+      }
+      if (Number(this.selectedReporteId) === reportId && Number(this.selectedOt?.id) === otId && this.resourceRows(kind) === rows) {
+        this.setResourceDirty(kind, rows.some(row => row.__isNew || row.__modified || row.__createdPendingId));
+        api?.refreshCells({ force: true });
+        this.loadDailyReports(true);
+        this.autoUpdatePdf();
+      }
+      alerts.basicAlert('Datos guardados', 'Las partidas quedaron guardadas en el reporte diario.', 'success');
+    } catch (error: any) {
+      if (rows === this.resourceRows(kind)) this.setResourceDirty(kind, true);
+      alerts.basicAlert('No se pudo completar el guardado', error?.error?.message || error?.message || 'Revisa la conexión y vuelve a intentar.', 'error');
+    } finally { this.savingResourceDetails = false; this.savingResourceKind = null; this.isSavingData = false; }
+  }
+
   private reportResourceCatalog(kind: string): any[] {
     return kind === 'PERSONAL' ? this.employees : kind === 'MATERIAL' ? this.catalogMateriales : this.catalogEquipos;
   }
 
-  reportResourceLabel(kind: string, id: any): string {
+  reportResourceLabel(kind: string, id: any, fallback = ''): string {
     const item = this.reportResourceCatalog(kind).find(row => String(row.id) === String(id));
-    return item ? (kind === 'PERSONAL' ? item.name : item.description) : '';
+    return (item ? (kind === 'PERSONAL' ? item.name : item.description) : '') || fallback || (id ? `ID: ${id}` : '');
   }
 
   reportResourceEditorParams(kind: string, currentValue?: any): any {
@@ -4805,7 +4714,10 @@ export class OrdenesComponent implements OnInit, OnDestroy, OnChanges {
       alerts.basicAlert('Duplicado', 'Este recurso ya está agregado al reporte.', 'warning');
       return false;
     }
-    params.data.idResource = item.id;
+    params.data.idResource = Number(item.id);
+    params.data.__resourceLabel = kind === 'PERSONAL' ? item.name : item.description;
+    if (!params.data.__isNew) params.data.__modified = true;
+    this.setResourceDirty(kind, true);
     if (kind === 'PERSONAL') params.data.position = this.resolvePersonnelPosition(item.id);
     this.focusResourceField(kind, params.api, params.data);
     return true;
@@ -4843,7 +4755,8 @@ export class OrdenesComponent implements OnInit, OnDestroy, OnChanges {
       const rows = kind === 'MATERIAL' ? this.materiales : this.equipos;
       if (this.selectedOt?.id !== otId || this.selectedReporteId !== reportId || !rows.includes(data) ||
           this.signalsService.getClosedReport()() || api.isDestroyed?.()) return;
-      data.idResource = item.id;
+      data.idResource = Number(item.id);
+      data.__resourceLabel = item.description;
       if (!data.__isNew) data.__modified = true;
       if (kind === 'MATERIAL') this.notSavedMaterialChanges = true;
       else this.notSavedEquipoChanges = true;
@@ -5009,100 +4922,11 @@ export class OrdenesComponent implements OnInit, OnDestroy, OnChanges {
     }, 0);
   }
 
-  async savePersonalChanges() {
-    if (!(await this.requireSavedReportForDetails())) return;
-    this.trackingService.addLog(
-      this.trackingService.getnameComp(),
-      'Guardar Cambios Personal OT',
-      'Modulo Proyectos - Ordenes de Trabajo - Personal',
-      this.trackingService.getEmail()
-    );
-
-    const newRows = this.personal.filter(row => row.__isNew);
-    const modifiedRows = this.personal.filter(row => row.__modified && !row.__isNew);
-
-    // Validación básica
-    const invalidRows = newRows.filter(item => !item.idResource || !item.position);
-
-    if (invalidRows.length > 0) {
-      alerts.basicAlert('Error', 'Debe completar nombre y cargo antes de guardar.', 'error');
-      return;
-    }
-
-    if (newRows.length === 0 && modifiedRows.length === 0) {
-      alerts.basicAlert('Info', 'No hay cambios para guardar', 'info');
-      return;
-    }
-
-    try {
-
-      // Preparar requests para nuevos registros
-      const addRequests = newRows.map((row, index) => {
-        const cleanedData = this.cleanPersonalDataForServer(row);
-        return this.logbookService.addDataForOt(cleanedData).toPromise();
-      });
-
-      // Preparar requests para registros modificados
-      const updateRequests = modifiedRows.map((row, index) => {
-        const cleanedData = this.cleanPersonalDataForServer(row);
-        return this.logbookService.updateDataForOt(Number(row.id), cleanedData).toPromise();
-      });
-
-
-      // Ejecutar todos los requests
-      const responses = await Promise.all([...addRequests, ...updateRequests]);
-
-      responses.forEach((response, index) => {
-      });
-
-      // Verificar si las respuestas son exitosas
-      const failedResponses = responses.filter(response =>
-        !response ||
-        (response.hasOwnProperty('success') && !response.success) ||
-        (response.status && response.status >= 400)
-      );
-
-      if (failedResponses.length > 0) {
-        console.error('Respuestas fallidas:', failedResponses);
-        throw new Error(`${failedResponses.length} requests fallaron`);
-      }
-
-      alerts.basicAlert('Éxito', 'Cambios de personal guardados correctamente', 'success');
-      this.autoUpdatePdf()
-      this.notSavedPersonalChanges = false;
-
-      // Limpiar flags de control
-      this.personal.forEach(item => {
-        delete item.__isNew;
-        delete item.__modified;
-      });
-
-      // Recargar datos para reflejar cambios del servidor
-      // Aquí podrías recargar datos si tienes un endpoint específico para personal
-
-    } catch (error: any) {
-      console.error('=== ERROR AL GUARDAR PERSONAL ===');
-      console.error('Error completo:', error);
-
-      let errorMessage = 'Error al guardar cambios de personal';
-      if (error.status === 400) {
-        errorMessage = 'Datos inválidos. Verifique que todos los campos estén correctos.';
-      } else if (error.status === 401) {
-        errorMessage = 'No autorizado. Por favor, vuelva a iniciar sesión.';
-      } else if (error.status === 500) {
-        errorMessage = 'Error interno del servidor. Contacte al administrador.';
-      } else if (error.message) {
-        errorMessage = error.message;
-      }
-
-      alerts.basicAlert('Error', errorMessage, 'error');
-    }
-  }
+  async savePersonalChanges() { await this.saveReportResources('PERSONAL'); }
 
   revertPersonal() {
     // Remover elementos nuevos y revertir modificados
-    this.obtenerPersonal(this.selectedReporteId);
-    this.notSavedPersonalChanges = false;
+    this.obtenerPersonal(this.selectedReporteId, true);
   }
 
   async deletePersonal() {
@@ -5201,10 +5025,11 @@ export class OrdenesComponent implements OnInit, OnDestroy, OnChanges {
     }
   }
 
-  obtenerMateriales(selectedReporteId: any) {
+  obtenerMateriales(selectedReporteId: any, discardDrafts = false) {
     // alert('this.branchs'+ this.idBranch)
     this.logbookService.getInfoByReporte(selectedReporteId, "MATERIAL").subscribe(
       (data: any) => {
+        if (String(this.selectedReporteId) !== String(selectedReporteId) || this.savingResourceKind === 'MATERIAL' || (!discardDrafts && this.resourceRows('MATERIAL').some(row => row.__isNew || row.__modified || row.__createdPendingId))) return;
         // Procesar los datos del servidor para evitar duplicaciones
         this.materiales = data.data.map((material: any, index: number) => ({
           ...material,
@@ -5214,15 +5039,17 @@ export class OrdenesComponent implements OnInit, OnDestroy, OnChanges {
           __isNew: false,
           __modified: false
         }));
+        if (discardDrafts) this.setResourceDirty('MATERIAL', false);
       },
       (error) => console.error('Error fetching data:', error)
     );
   }
 
-  obtenerEquipos(selectedReporteId: any) {
+  obtenerEquipos(selectedReporteId: any, discardDrafts = false) {
     // alert('this.branchs'+ this.idBranch)
     this.logbookService.getInfoByReporte(selectedReporteId, "EQUIPMENT").subscribe(
       (data: any) => {
+        if (String(this.selectedReporteId) !== String(selectedReporteId) || this.savingResourceKind === 'EQUIPMENT' || (!discardDrafts && this.resourceRows('EQUIPMENT').some(row => row.__isNew || row.__modified || row.__createdPendingId))) return;
         // Procesar los datos del servidor para evitar duplicaciones
         this.equipos = data.data.map((equipo: any, index: number) => ({
           ...equipo,
@@ -5232,14 +5059,16 @@ export class OrdenesComponent implements OnInit, OnDestroy, OnChanges {
           __isNew: false,
           __modified: false
         }));
+        if (discardDrafts) this.setResourceDirty('EQUIPMENT', false);
       },
       (error) => console.error('Error fetching data:', error)
     );
   }
 
-  obtenerPersonal(selectedReporteId: any) {
+  obtenerPersonal(selectedReporteId: any, discardDrafts = false) {
     this.logbookService.getInfoByReporte(selectedReporteId, "PERSONAL").subscribe(
       (data: any) => {
+        if (String(this.selectedReporteId) !== String(selectedReporteId) || this.savingResourceKind === 'PERSONAL' || (!discardDrafts && this.resourceRows('PERSONAL').some(row => row.__isNew || row.__modified || row.__createdPendingId))) return;
         // Procesar los datos del servidor para evitar duplicaciones
         this.personal = data.data.map((persona: any, index: number) => ({
           ...persona,
@@ -5250,6 +5079,7 @@ export class OrdenesComponent implements OnInit, OnDestroy, OnChanges {
           __isNew: false,
           __modified: false
         }));
+        if (discardDrafts) this.setResourceDirty('PERSONAL', false);
         //this.updateExcelService.dataPersonal(this.personal)
       },
       (error) => console.error('Error fetching data:', error)
