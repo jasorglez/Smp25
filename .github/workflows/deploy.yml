@@ -19,7 +19,7 @@ jobs:
         ssh -o StrictHostKeyChecking=no \
             -i ~/.ssh/deploy_key \
             ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }} \
-            'bash -l /bi/repos/Smp25/deploy.sh'
+            'bash /bi/repos/Smp25/deploy.sh && docker exec Smp25-Frontend test -f /usr/share/nginx/html/assets/media/inicio/manifest.json && docker exec Smp25-Frontend curl -fsS http://localhost/assets/media/inicio/manifest.json > /dev/null'
         
         # Limpiar
         rm ~/.ssh/deploy_key
