@@ -58,7 +58,8 @@
                 class="carousel__img"
                 [src]="url"
                 [alt]="alts[i]"
-                loading="lazy"
+                [attr.loading]="i === currentIndex ? 'eager' : 'lazy'"
+                [attr.fetchpriority]="i === currentIndex ? 'high' : 'auto'"
                 decoding="async"
               />
             </div>

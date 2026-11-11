@@ -6,9 +6,11 @@ import { ActivatedRoute, Router } from '@angular/router';
 import { catchError, of } from 'rxjs';
 import { SignalsService } from 'app/services/signals.service';
 import { ProductUpdate, ProductUpdatesPage, ProductUpdatesService } from 'app/services/product-updates.service';
+import { environment } from '@env/environment';
 
 const PUBLICIDAD_BASE = 'assets/publicidad/';
-const MANIFEST_URL = `${PUBLICIDAD_BASE}manifest.json`;
+const PUBLICIDAD_CACHE_KEY = encodeURIComponent(environment.version);
+const MANIFEST_URL = `${PUBLICIDAD_BASE}manifest.json?v=${PUBLICIDAD_CACHE_KEY}`;
 
 /** Si falla el manifiesto, se usan estos nombres (deben coincidir con archivos en assets/publicidad). */
 const FALLBACK_IMAGE_NAMES: readonly string[] = [
@@ -273,7 +275,7 @@ export class WelcomeComponent implements OnInit, OnDestroy {
     // Se normalizan antes de codificar la URL para no generar 404 invisibles.
     const trimmed = names.map((n) => n.trim().normalize('NFC')).filter(Boolean);
     this.imageUrls = trimmed.map(
-      (name) => `${PUBLICIDAD_BASE}${encodeURIComponent(name)}`,
+      (name) => `${PUBLICIDAD_BASE}${encodeURIComponent(name)}?v=${PUBLICIDAD_CACHE_KEY}`,
     );
     this.alts = trimmed.map((name) => this.altFromFilename(name));
     this.currentIndex = 0;

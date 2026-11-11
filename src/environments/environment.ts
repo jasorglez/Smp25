@@ -75,5 +75,5 @@ export const environment = {
     // publicKey: 'TEST-4399133a-4676-42a2-ab85-d946370bf96a',
   },
 
-  version: '5.00.460 (10 Noviembre 2026 22:04) corregir nombres de imágenes de publicidad',
+  version: '5.00.461 (10 Noviembre 2026 22:14) corregir carga de imágenes en navegadores',
 };
