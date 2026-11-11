@@ -8,29 +8,34 @@ import { SignalsService } from 'app/services/signals.service';
 import { ProductUpdate, ProductUpdatesPage, ProductUpdatesService } from 'app/services/product-updates.service';
 import { environment } from '@env/environment';
 
-const PUBLICIDAD_BASE = 'assets/publicidad/';
-const PUBLICIDAD_CACHE_KEY = encodeURIComponent(environment.version);
-const MANIFEST_URL = `${PUBLICIDAD_BASE}manifest.json?v=${PUBLICIDAD_CACHE_KEY}`;
+interface PublicityImage {
+  file: string;
+  alt: string;
+}
 
-/** Si falla el manifiesto, se usan estos nombres (deben coincidir con archivos en assets/publicidad). */
-const FALLBACK_IMAGE_NAMES: readonly string[] = [
-  '3 erp.png',
-  'demo para obras.png',
-  'erp construccion.png',
-  'Gestio\u0301n de obras con ERP y bot.png',
-  'Historia.png',
-  'Integración de bot con ERP.jpg',
-  'Inteligencia empresarial en tiempo real.jpg',
-  'Intensive frontend development course promotion 1.png',
-  'publicidad 1.png',
-  'Publicidad 2.png',
-  'Publicidad de ERP para construccio\u0301n.png',
-  'RH 2.png',
-  'RH.png',
-  'Solucio\u0301n integral para ventas y ERP logo.jpg',
-  'ventas x whatsapp.png',
-  'ventas xwhats.png',
-  'Ventas.png',
+const PUBLIC_IMAGE_BASE = 'assets/media/inicio/';
+const PUBLIC_IMAGE_CACHE_KEY = encodeURIComponent(environment.version);
+const MANIFEST_URL = `${PUBLIC_IMAGE_BASE}manifest.json?v=${PUBLIC_IMAGE_CACHE_KEY}`;
+
+/** Debe coincidir con los archivos neutrales de assets/media/inicio. */
+const FALLBACK_IMAGES: readonly PublicityImage[] = [
+  { file: 'slide-01.png', alt: '3 erp' },
+  { file: 'slide-02.png', alt: 'demo para obras' },
+  { file: 'slide-03.png', alt: 'erp construccion' },
+  { file: 'slide-04.png', alt: 'Gestión de obras con ERP y bot' },
+  { file: 'slide-05.png', alt: 'Historia' },
+  { file: 'slide-06.jpg', alt: 'Integración de bot con ERP' },
+  { file: 'slide-07.jpg', alt: 'Inteligencia empresarial en tiempo real' },
+  { file: 'slide-08.png', alt: 'Intensive frontend development course promotion 1' },
+  { file: 'slide-09.png', alt: 'publicidad 1' },
+  { file: 'slide-10.png', alt: 'Publicidad 2' },
+  { file: 'slide-11.png', alt: 'Publicidad de ERP para construcción' },
+  { file: 'slide-12.png', alt: 'RH 2' },
+  { file: 'slide-13.png', alt: 'RH' },
+  { file: 'slide-14.jpg', alt: 'Solución integral para ventas y ERP logo' },
+  { file: 'slide-15.png', alt: 'ventas x whatsapp' },
+  { file: 'slide-16.png', alt: 'ventas xwhats' },
+  { file: 'slide-17.png', alt: 'Ventas' },
 ];
 
 @Component({
@@ -124,15 +129,15 @@ export class WelcomeComponent implements OnInit, OnDestroy {
       document.addEventListener('visibilitychange', this.onVisibilityChange);
     }
     this.http
-      .get<{ images?: string[] }>(MANIFEST_URL)
+      .get<{ images?: PublicityImage[] }>(MANIFEST_URL)
       .pipe(
         catchError(() =>
-          of<{ images?: string[] }>({ images: [...FALLBACK_IMAGE_NAMES] }),
+          of<{ images?: PublicityImage[] }>({ images: [...FALLBACK_IMAGES] }),
         ),
       )
       .subscribe((data) => {
-        const names = data.images?.length ? data.images : [...FALLBACK_IMAGE_NAMES];
-        this.applyImageNames(names);
+        const images = data.images?.length ? data.images : [...FALLBACK_IMAGES];
+        this.applyImageNames(images);
         this.loading = false;
         this.startAutoplay();
       });
@@ -269,15 +274,14 @@ export class WelcomeComponent implements OnInit, OnDestroy {
     this.restartAutoplay();
   }
 
-  private applyImageNames(names: string[]): void {
-    // Los nombres provenientes de macOS pueden traer acentos descompuestos
-    // (NFD), mientras que nginx publica los archivos con UTF-8 normal (NFC).
-    // Se normalizan antes de codificar la URL para no generar 404 invisibles.
-    const trimmed = names.map((n) => n.trim().normalize('NFC')).filter(Boolean);
-    this.imageUrls = trimmed.map(
-      (name) => `${PUBLICIDAD_BASE}${encodeURIComponent(name)}?v=${PUBLICIDAD_CACHE_KEY}`,
+  private applyImageNames(images: PublicityImage[]): void {
+    const availableImages = images.filter((image) => image.file?.trim());
+    this.imageUrls = availableImages.map(
+      (image) => `${PUBLIC_IMAGE_BASE}${encodeURIComponent(image.file.trim())}?v=${PUBLIC_IMAGE_CACHE_KEY}`,
     );
-    this.alts = trimmed.map((name) => this.altFromFilename(name));
+    this.alts = availableImages.map(
+      (image) => image.alt?.trim() || this.altFromFilename(image.file),
+    );
     this.currentIndex = 0;
   }
 
