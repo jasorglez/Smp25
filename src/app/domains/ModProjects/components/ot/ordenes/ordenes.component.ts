@@ -5811,7 +5811,13 @@ export class OrdenesComponent implements OnInit, OnDestroy, OnChanges {
             return false;
           }
           try {
-            const catalog = await firstValueFrom(this.catalogService.getTypeNote(companyId));
+            let catalog: any[] = [];
+            try {
+              catalog = await firstValueFrom(this.catalogService.getTypeNote(companyId));
+            } catch (catalogError: any) {
+              // Warehouse responde 404 cuando aún no hay tipos de nota para esta empresa.
+              if (catalogError?.status !== 404) throw catalogError;
+            }
             if (catalog.some(item => String(item.description).trim().toLocaleLowerCase() === name.toLocaleLowerCase())) {
               Swal.showValidationMessage('Ya existe un tipo de nota con ese nombre. Selecciónelo en la lista.');
               this.typeNotesCatalog = catalog;
@@ -5825,9 +5831,15 @@ export class OrdenesComponent implements OnInit, OnDestroy, OnChanges {
               type: 'TYPENOTE', idCompany: companyId, description: name, active: 1, vigente: true
             }));
             return { id: saved.id, description: name };
-          } catch (error) {
+          } catch (error: any) {
             console.error('Error al crear tipo de nota:', error);
-            Swal.showValidationMessage('No se pudo guardar el tipo de nota. Revise la conexión e intente nuevamente.');
+            const status = error?.status;
+            const detail = status === 401 || status === 403
+              ? 'No tiene autorización para crear tipos de nota.'
+              : status === 0
+                ? 'No se pudo conectar con el servicio de Almacén.'
+                : `El servicio de Almacén rechazó el alta${status ? ` (HTTP ${status})` : ''}.`;
+            Swal.showValidationMessage(`${detail} Intente nuevamente.`);
             return false;
           }
         }
