@@ -75,5 +75,5 @@ export const environment = {
     // publicKey: 'TEST-4399133a-4676-42a2-ab85-d946370bf96a',
   },
 
-  version: '5.00.458 (10 Noviembre 2026 17:37) código de checador en alta rápida de personal',
+  version: '5.00.459 (10 Noviembre 2026 21:47) nuevos tipos de nota desde reporte diario',
 };

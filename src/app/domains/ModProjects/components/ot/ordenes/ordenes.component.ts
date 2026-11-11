@@ -1150,12 +1150,12 @@ export class OrdenesComponent implements OnInit, OnDestroy, OnChanges {
   public notasColumnDefs: ColDef[] = [
     {
       field: 'idResource',
-      headerName: 'Notas',
+      headerName: 'Tipo de nota',
       flex: 2,
       editable: () => !this.signalsService.getClosedReport()(),
       cellEditor: 'agSelectCellEditor',
       cellEditorParams: (params: any) => ({
-        values: this.typeNotesCatalog?.map((item) => item.description) || [],
+        values: [...this.typeNotesCatalog.map(item => item.description), '+ Agregar nuevo tipo de nota…'],
       }),
       // Muestra la descripción del equipo en la celda
       valueFormatter: (params) => {
@@ -1175,6 +1175,10 @@ export class OrdenesComponent implements OnInit, OnDestroy, OnChanges {
       },
       // Convierte la descripción seleccionada de vuelta al ID
       valueSetter: (params) => {
+        if (params.newValue === '+ Agregar nuevo tipo de nota…') {
+          setTimeout(() => void this.addNoteType(params.data), 0);
+          return false;
+        }
 
         if (!params.newValue) {
           params.data.idResource = null;
@@ -5771,6 +5775,76 @@ export class OrdenesComponent implements OnInit, OnDestroy, OnChanges {
     });
   }
 
+  public creatingNoteType = false;
+
+  async addNoteType(note?: any): Promise<void> {
+    if (this.creatingNoteType || this.signalsService.getClosedReport()()) return;
+    const companyId = this.idcompany;
+    const reportId = this.selectedReporteId;
+    if (!companyId) {
+      alerts.basicAlert('Empresa requerida', 'Seleccione una empresa para crear el tipo de nota.', 'warning');
+      return;
+    }
+    this.notasGridApi?.stopEditing();
+    this.creatingNoteType = true;
+    try {
+      const result = await Swal.fire({
+        title: 'Nuevo tipo de nota',
+        input: 'text',
+        inputLabel: 'Nombre del tipo de nota',
+        inputPlaceholder: 'Ej. Reunión, incidente, seguimiento',
+        inputAttributes: { maxlength: '100' },
+        showCancelButton: true,
+        confirmButtonText: 'Guardar tipo',
+        cancelButtonText: 'Cancelar',
+        showLoaderOnConfirm: true,
+        allowOutsideClick: () => !Swal.isLoading(),
+        allowEscapeKey: () => !Swal.isLoading(),
+        preConfirm: async (value: string) => {
+          const name = (value || '').trim();
+          if (!name || name.length > 100) {
+            Swal.showValidationMessage('Ingrese un nombre de hasta 100 caracteres.');
+            return false;
+          }
+          if (companyId !== this.idcompany || reportId !== this.selectedReporteId || this.signalsService.getClosedReport()()) {
+            Swal.showValidationMessage('El reporte o la empresa cambió. Cancele y vuelva a abrir el formulario.');
+            return false;
+          }
+          try {
+            const catalog = await firstValueFrom(this.catalogService.getTypeNote(companyId));
+            if (catalog.some(item => String(item.description).trim().toLocaleLowerCase() === name.toLocaleLowerCase())) {
+              Swal.showValidationMessage('Ya existe un tipo de nota con ese nombre. Selecciónelo en la lista.');
+              this.typeNotesCatalog = catalog;
+              return false;
+            }
+            if (companyId !== this.idcompany || reportId !== this.selectedReporteId || this.signalsService.getClosedReport()()) {
+              Swal.showValidationMessage('El reporte o la empresa cambió. Cancele y vuelva a abrir el formulario.');
+              return false;
+            }
+            const saved = await firstValueFrom(this.catalogService.addCatalog({
+              type: 'TYPENOTE', idCompany: companyId, description: name, active: 1, vigente: true
+            }));
+            return { id: saved.id, description: name };
+          } catch (error) {
+            console.error('Error al crear tipo de nota:', error);
+            Swal.showValidationMessage('No se pudo guardar el tipo de nota. Revise la conexión e intente nuevamente.');
+            return false;
+          }
+        }
+      });
+      if (!result.isConfirmed || !result.value || companyId !== this.idcompany) return;
+      this.typeNotesCatalog = [...this.typeNotesCatalog, result.value];
+      if (note && reportId === this.selectedReporteId && this.notas.includes(note) && !this.signalsService.getClosedReport()()) {
+        note.idResource = result.value.id;
+        if (!note.__isNew) note.__modified = true;
+        this.notSavedNoteChanges = true;
+      }
+      this.notasGridApi?.refreshCells({ force: true });
+    } finally {
+      this.creatingNoteType = false;
+    }
+  }
+
   // -- Métodos para Notas --
   addNota() {
     this.trackingService.addLog(
@@ -5822,6 +5896,7 @@ export class OrdenesComponent implements OnInit, OnDestroy, OnChanges {
   }
 
   async saveNotasChanges() {
+    this.notasGridApi?.stopEditing();
     if (!(await this.requireSavedReportForDetails())) return;
     this.trackingService.addLog(
       this.trackingService.getnameComp(),
