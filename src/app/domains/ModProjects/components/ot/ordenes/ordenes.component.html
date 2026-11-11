@@ -463,7 +463,6 @@
                         <div class="col-auto">
                           <nav class="d-flex flex-column align-items-start">
                             <button type="button" class="btn btn-primary ms-1 me-1 mb-2" (click)="addNota()" [disabled]="signalsService.getClosedReport()()"><i class="bi bi-plus-lg"></i></button>
-                            <button type="button" class="btn btn-outline-primary ms-1 me-1 mb-2" (click)="addNoteType()" [disabled]="creatingNoteType || signalsService.getClosedReport()()"><i class="bi bi-plus-lg"></i> Nuevo tipo de nota</button>
                             <button type="button" class="btn btn-success ms-1 me-1 position-relative mb-2" (click)="saveNotasChanges()"><i class="bi bi-floppy"></i><span class="position-absolute top-0 start-100 translate-middle p-2 bg-danger border border-light rounded-circle" *ngIf="notSavedNoteChanges"><span class="visually-hidden">Hay cambios sin guardar</span></span></button>
                             <button type="button" class="btn btn-warning ms-1 me-1 mb-2" (click)="revertNotas()" [disabled]="signalsService.getClosedReport()()"><i class="bi bi-arrow-clockwise"></i></button>
                             <button type="button" class="btn btn-danger ms-1 me-1 mb-2" (click)="deleteNota()" [disabled]="signalsService.getClosedReport()()"><i class="bi bi-trash"></i></button>
