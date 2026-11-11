@@ -48,22 +48,14 @@
         </div>
 
         <div class="carousel__track">
-          @for (url of imageUrls; track url; let i = $index) {
-            <div
-              class="carousel__slide"
-              [class.carousel__slide--active]="i === currentIndex"
-              [attr.aria-hidden]="i === currentIndex ? 'false' : 'true'"
-            >
-              <img
-                class="carousel__img"
-                [src]="url"
-                [alt]="alts[i]"
-                [attr.loading]="i === currentIndex ? 'eager' : 'lazy'"
-                [attr.fetchpriority]="i === currentIndex ? 'high' : 'auto'"
-                decoding="async"
-              />
-            </div>
-          }
+          <img
+            class="carousel__img"
+            [src]="imageUrls[currentIndex]"
+            [alt]="alts[currentIndex]"
+            loading="eager"
+            fetchpriority="high"
+            decoding="async"
+          />
         </div>
 
         <div class="carousel__nav" aria-hidden="true">
