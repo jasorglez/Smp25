@@ -75,5 +75,5 @@ export const environment = {
     // publicKey: 'TEST-4399133a-4676-42a2-ab85-d946370bf96a',
   },
 
-  version: '5.00.463 (10 Noviembre 2026 22:35) evitar bloqueo de imagenes por Adblock',
+  version: '5.00.464 (11 Noviembre 2026 21:49) validar permiso de dashboard al restaurar pestaña',
 };

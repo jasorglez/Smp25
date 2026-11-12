@@ -1,5 +1,5 @@
 import { Component, effect, HostListener, inject, OnInit } from '@angular/core';
-import { RouterOutlet } from '@angular/router';
+import { Router, RouterOutlet } from '@angular/router';
 import {AuthService} from "./services/auth.service";
 import { SignalsService } from './services/signals.service';
 import { ChatbotComponent } from './shared/chatbot/chatbot.component';
@@ -8,6 +8,7 @@ import { environment } from '@env/environment';
 import { switchMap } from 'rxjs';
 import { PdfPreviewHostComponent } from './shared/pdf-preview-host/pdf-preview-host.component';
 import { PdfTrialWatermarkService } from './services/pdf-trial-watermark.service';
+import { WorkspaceTabsService } from './services/workspace-tabs.service';
 
 
 @Component({
@@ -21,6 +22,8 @@ export class AppComponent implements OnInit {
   private permissionLoadRequest = 0;
 
   private authService    = inject(AuthService);
+  private router         = inject(Router);
+  private workspaceTabs  = inject(WorkspaceTabsService);
   private signalsService = inject(SignalsService);
   private trackingService = inject(TrackingService);
   private pdfTrialWatermark = inject(PdfTrialWatermarkService);
@@ -65,7 +68,15 @@ export class AppComponent implements OnInit {
       switchMap(userId => this.authService.fetchUserPermissions(userId, companyId))
     ).subscribe({
       next: (data: any) => {
-        if (request === this.permissionLoadRequest) this.authService.setUserPermissions(data.permissions || {});
+        if (request !== this.permissionLoadRequest) return;
+        const permissions = data.permissions || {};
+        this.authService.setUserPermissions(permissions);
+        if (companyId > 0 && permissions.dashboard?.active !== true) {
+          const currentPath = this.router.url.split('?')[0];
+          const fallbackUrl = this.workspaceTabs.tabs().find(tab => tab.url !== '/dashboard')?.url || '/publicidad';
+          this.workspaceTabs.remove('/dashboard');
+          if (currentPath === '/dashboard') void this.router.navigateByUrl(fallbackUrl);
+        }
       },
       error: error => {
         if (request !== this.permissionLoadRequest) return;

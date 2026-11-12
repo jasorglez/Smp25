@@ -9,6 +9,7 @@ import { AuthService } from '../services/auth.service';
 import { Observable, of } from 'rxjs';
 import { map, switchMap } from 'rxjs/operators';
 import { SignalsService } from 'app/services/signals.service';
+import { WorkspaceTabsService } from 'app/services/workspace-tabs.service';
 
 @Injectable({
   providedIn: 'root',
@@ -17,6 +18,7 @@ export class MasterPermissionsGuard implements CanActivate {
   private permissionService = inject(AuthService);
   private router = inject(Router);
   private signalsService = inject(SignalsService);
+  private workspaceTabs = inject(WorkspaceTabsService);
 
   canActivate(
     route: ActivatedRouteSnapshot,
@@ -54,6 +56,7 @@ export class MasterPermissionsGuard implements CanActivate {
         if (hasMasterPermission && hasDetailedPermission) {
           return true;
         } else {
+          this.workspaceTabs.remove(state.url);
           this.router.navigate(['/unauthorized']);
           return false;
         }

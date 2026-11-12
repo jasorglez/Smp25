@@ -103,6 +103,7 @@ export const routes: Routes = [
             (m) => m.DashboardHomeComponent
           ),
         canActivate: [MasterPermissionsGuard],
+        data: { permissions: { master: 'dashboard' } },
       },
       {
         path: 'proceswar',
