@@ -29,6 +29,12 @@ BEGIN
     );
 END;
 
+UPDATE dbo.product_updates
+SET releaseStatus = 'PRODUCTION',
+    validationStatus = 'PENDING'
+WHERE idRoot IS NULL AND idCompany IS NULL
+  AND version = N'5.00.470' AND isActive = 1;
+
 COMMIT TRANSACTION;
 
 SELECT id, version, title, publicationStatus, releaseStatus
