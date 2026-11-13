@@ -1353,13 +1353,14 @@ export class InandoutStComponent implements OnInit {
       return;
     }
 
-    const selectedId = Number(this.selectedEntry?.id || 0);
+    const selectedEntry = this.selectedEntry;
+    const movementLabel = this.movementType === 'IN' ? 'Entrada' : 'Salida';
+    const selectedId = Number(selectedEntry?.id || 0);
     if (selectedId > 0) {
       try {
         const details: any = await lastValueFrom(this.inandoutService.getInAndOutItems(selectedId));
-        const activeItems = (Array.isArray(details) ? details : []).filter((item: any) =>
-          item.active !== false && Number(item.active) !== 0
-        );
+        if (!Array.isArray(details)) throw new Error('Respuesta de partidas inválida');
+        const activeItems = details.filter((item: any) => item.active !== false && item.active !== 0);
         if (activeItems.length) {
           alerts.basicAlert('No se puede eliminar', `El vale de ${this.movementType === 'IN' ? 'Entrada' : 'Salida'} contiene partidas. Elimina primero sus partidas.`, 'warning');
           return;
@@ -1372,29 +1373,29 @@ export class InandoutStComponent implements OnInit {
     }
 
     const result = await alerts.confirmAlert(
-      '¿Eliminar entrada?',
-      `¿Está seguro de eliminar la entrada ${this.selectedEntry.folio}?`,
+      `¿Eliminar ${movementLabel.toLowerCase()}?`,
+      `¿Está seguro de eliminar la ${movementLabel.toLowerCase()} ${selectedEntry.folio}?`,
       'warning',
       'Sí, eliminar'
     );
 
     if (result.isConfirmed) {
       try {
-        if (this.selectedEntry.__isNew || String(this.selectedEntry.id).startsWith('temp_')) {
-          this.rowData = this.rowData.filter(entry => entry !== this.selectedEntry);
+        if (selectedEntry.__isNew || String(selectedEntry.id).startsWith('temp_')) {
+          this.rowData = this.rowData.filter(entry => entry !== selectedEntry);
           this.gridApi.setGridOption('rowData', this.rowData);
           this.selectedEntry = null;
           this.hasUnsavedChanges = this.rowData.some(entry => entry.__isNew || entry.__modified);
           return;
         }
-        const entryId = Number(this.selectedEntry.id);
+        const entryId = Number(selectedEntry.id);
         await lastValueFrom(this.inandoutService.deleteInAndOut(entryId));
-        alerts.basicAlert('Eliminado', 'La entrada ha sido eliminada correctamente', 'success');
+        alerts.basicAlert('Eliminado', `La ${movementLabel.toLowerCase()} ha sido eliminada correctamente`, 'success');
         this.selectedEntry = null;
         this.loadEntries();
       } catch (error: any) {
-        const errorMsg = error?.error?.message || error?.message || 'Error desconocido';
-        alerts.basicAlert('Error', `No se pudo eliminar la entrada: ${errorMsg}`, 'error');
+        const errorMsg = error?.error?.message || error?.error?.Message || error?.message || 'Error desconocido';
+        alerts.basicAlert('Error', `No se pudo eliminar la ${movementLabel.toLowerCase()}: ${errorMsg}`, 'error');
       }
     }
   }

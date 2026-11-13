@@ -1829,8 +1829,8 @@ export class PurchaseOrderComponent implements CanComponentDeactivate {
     const selectedNodes = this.masterGridApi.getSelectedNodes();
     if (selectedNodes.length === 0) {
       alerts.basicAlert(
-        'Eliminar entrada',
-        'Por favor, seleccione una entrada para eliminar.',
+        'Eliminar orden de compra',
+        'Por favor, seleccione una orden de compra para eliminar.',
         'error'
       );
       return;
@@ -1838,14 +1838,23 @@ export class PurchaseOrderComponent implements CanComponentDeactivate {
 
     const selectedData = selectedNodes[0].data;
     const id = selectedData.id;
-    if (Number(selectedData.countrow || 0) > 0) {
-      alerts.basicAlert('No se puede eliminar', 'La Orden de compra contiene partidas. Elimina primero sus partidas.', 'warning');
-      return;
-    }
     if (Number(selectedData.idAuthorize) > 0) {
       alerts.basicAlert('Orden autorizada', 'Quita la autorización desde la fila antes de eliminar la orden de compra.', 'warning');
       return;
     }
+    const isNew = selectedData.__isNew || String(id).startsWith('temp_');
+    try {
+      const items: any = isNew ? [] : await lastValueFrom(this.requisitionsService.getReqItems(id));
+      if (!Array.isArray(items)) throw new Error('Respuesta de partidas inválida');
+      if ((isNew && Number(selectedData.countrow || 0) > 0) || items.some(item => item.active !== false && item.active !== 0)) {
+        alerts.basicAlert('No se puede eliminar', 'La orden de compra contiene partidas. Elimina primero sus partidas.', 'warning');
+        return;
+      }
+    } catch (error) {
+      alerts.basicAlert('No se pudo validar', 'No se eliminó la orden de compra porque no fue posible revisar sus partidas. Intenta nuevamente.', 'warning');
+      return;
+    }
+
     const confirmation = await alerts.confirmAlert(
       'Eliminar orden de compra',
       `¿Deseas eliminar la OC "${selectedData.folio || id}"? Esta acción no se puede deshacer.`,
@@ -1855,14 +1864,21 @@ export class PurchaseOrderComponent implements CanComponentDeactivate {
 
     if (!confirmation.isConfirmed) return;
 
-    selectedData.active = 0;
+    if (isNew) {
+      this.masterRowData = this.masterRowData.filter(row => row !== selectedData);
+      this.newlyAddedMasterRows = this.newlyAddedMasterRows.filter(tempId => tempId !== id);
+      this.masterGridApi.setGridOption('rowData', this.masterRowData);
+      this.masterSelectedRowData = null;
+      this.masterNotSavedChanges = this.masterRowData.some(row => row.__isNew || row.__modified);
+      return;
+    }
     this.requisitionsService
       .deleteOcAndReq(id)
       .pipe(
         catchError((error) => {
           alerts.basicAlert(
-            'Eliminar entrada',
-            'Error al eliminar la entrada.',
+            'Eliminar orden de compra',
+            error?.error?.message || error?.error?.Message || 'No fue posible eliminar la orden de compra. Intenta nuevamente.',
             'error'
           );
           console.error(error);
@@ -1871,17 +1887,11 @@ export class PurchaseOrderComponent implements CanComponentDeactivate {
       )
       .subscribe(() => {
         alerts.basicAlert(
-          'Eliminar entrada',
-          'Entrada eliminada satisfactoriamente.',
+          'Eliminar orden de compra',
+          'Orden de compra eliminada satisfactoriamente.',
           'success'
         );
         this.obtenerDatos();
-
-        alerts.basicAlert(
-          'Eliminar entrada',
-          'Entrada eliminada satisfactoriamente.',
-          'success'
-        );
         this.masterNotSavedChanges = false;
         this.masterSelectedRowData = null;
       });

@@ -1486,8 +1486,8 @@ export class CustomersComponent implements CanComponentDeactivate {
     const selectedNodes = this.gridApi.getSelectedNodes();
     if (selectedNodes.length === 0) {
       alerts.basicAlert(
-        'Eliminar entrada',
-        'Por favor, seleccione una entrada para eliminar.',
+        'Eliminar cliente',
+        'Por favor, seleccione un cliente para eliminar.',
         'error'
       );
       return;
@@ -1520,36 +1520,15 @@ export class CustomersComponent implements CanComponentDeactivate {
 
     const id = selectedData.id;
 
-    // Verificar si el cliente está siendo usado en ingresos o egresos
-    try {
-      const incomesAndExpenses = await lastValueFrom(
-        this.incomesAndExpensesService.getIncomesAndExpenses(this.idRoot)
-      );
-
-      const isBeingUsed = incomesAndExpenses?.some(
-        (record: any) => record.idCustomer === id && record.active !== false
-      );
-
-      if (isBeingUsed) {
-        alerts.basicAlert(
-          'No se puede eliminar',
-          'Este cliente está siendo utilizado en registros de ingresos/egresos. Debe eliminar o modificar esos registros primero.',
-          'error'
-        );
-        return;
-      }
-    } catch (error) {
-      console.error('Error verificando uso del cliente:', error);
-    }
-
-    selectedData.active = 0;
     this.customerService
       .deleteCustomer(id)
       .pipe(
         catchError((error) => {
           alerts.basicAlert(
-            'Eliminar entrada',
-            'Error al eliminar la entrada.',
+            'Eliminar cliente',
+            error.status === 409
+              ? (error.error?.message || error.error?.Message || 'No se puede eliminar porque tiene datos relacionados.')
+              : 'No fue posible verificar y eliminar el cliente. No se realizó la baja; intenta nuevamente.',
             'error'
           );
           console.error(error);
@@ -1557,6 +1536,7 @@ export class CustomersComponent implements CanComponentDeactivate {
         })
       )
       .subscribe(() => {
+        alerts.basicAlert('Eliminar cliente', 'Cliente eliminado satisfactoriamente.', 'success');
         this.obtenerDatos();
         this.notSavedChanges = false;
         this.selectedRowData = null;

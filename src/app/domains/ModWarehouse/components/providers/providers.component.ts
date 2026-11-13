@@ -1344,14 +1344,22 @@ export class ProvidersComponent implements CanComponentDeactivate {
     const selectedNodes = this.gridApi.getSelectedNodes();
     if (selectedNodes.length === 0) {
       alerts.basicAlert(
-        'Eliminar entrada',
-        'Por favor, seleccione una entrada para eliminar.',
+        'Eliminar proveedor',
+        'Por favor, seleccione un proveedor para eliminar.',
         'error'
       );
       return;
     }
 
     const selectedData = selectedNodes[0].data;
+
+    const confirmation = await alerts.confirmAlert(
+      '¿Eliminar proveedor?',
+      `¿Deseas eliminar al proveedor "${selectedData.company || selectedData.name || 'seleccionado'}"?`,
+      'warning',
+      'Sí, eliminar'
+    );
+    if (!confirmation.isConfirmed) return;
 
     // Validar que el préstamo sea 0 o no exista
     if (selectedData.total && selectedData.total !== 0) {
@@ -1388,14 +1396,15 @@ export class ProvidersComponent implements CanComponentDeactivate {
     }
 
     const id = selectedData.id;
-    selectedData.active = 0;
     this.customerService
       .deleteCustomer(id)
       .pipe(
         catchError((error) => {
           alerts.basicAlert(
-            'Eliminar entrada',
-            'Error al eliminar la entrada.',
+            'Eliminar proveedor',
+            error.status === 409
+              ? (error.error?.message || error.error?.Message || 'No se puede eliminar porque tiene datos relacionados.')
+              : 'No fue posible verificar y eliminar el proveedor. No se realizó la baja; intenta nuevamente.',
             'error'
           );
           console.error(error);
@@ -1404,8 +1413,8 @@ export class ProvidersComponent implements CanComponentDeactivate {
       )
       .subscribe(() => {
         alerts.basicAlert(
-          'Eliminar entrada',
-          'Entrada eliminada satisfactoriamente.',
+          'Eliminar proveedor',
+          'Proveedor eliminado satisfactoriamente.',
           'success'
         );
         this.obtenerDatos();

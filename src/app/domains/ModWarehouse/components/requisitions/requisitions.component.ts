@@ -984,8 +984,8 @@ export class RequisitionsComponent implements CanComponentDeactivate {
     const selectedNodes = this.masterGridApi.getSelectedNodes();
     if (selectedNodes.length === 0) {
       alerts.basicAlert(
-        'Eliminar entrada',
-        'Por favor, seleccione una entrada para eliminar.',
+        'Eliminar requisición',
+        'Por favor, seleccione una requisición para eliminar.',
         'error'
       );
       return;
@@ -1009,13 +1009,16 @@ export class RequisitionsComponent implements CanComponentDeactivate {
       return;
     }
 
-    // Verificar si tiene items asociados
-    if (selectedData.countrow > 0) {
-      alerts.basicAlert(
-        'Eliminar entrada',
-        'No se puede eliminar, tiene items asociados. Elimine primero los items.',
-        'error'
-      );
+    const isNew = selectedData.__isNew || String(id).startsWith('temp_');
+    try {
+      const items: any = isNew ? [] : await lastValueFrom(this.requisitionsService.getReqItems(id));
+      if (!Array.isArray(items)) throw new Error('Respuesta de partidas inválida');
+      if ((isNew && Number(selectedData.countrow || 0) > 0) || items.some(item => item.active !== false && item.active !== 0)) {
+        alerts.basicAlert('No se puede eliminar', 'La requisición contiene partidas. Elimina primero sus partidas.', 'warning');
+        return;
+      }
+    } catch (error) {
+      alerts.basicAlert('No se pudo validar', 'No se eliminó la requisición porque no fue posible revisar sus partidas. Intenta nuevamente.', 'warning');
       return;
     }
 
@@ -1038,8 +1041,8 @@ export class RequisitionsComponent implements CanComponentDeactivate {
       this.masterNotSavedChanges = this.masterRowData.some(row => row.__isNew || row.__modified);
 
       alerts.basicAlert(
-        'Eliminar entrada',
-        'Entrada eliminada satisfactoriamente.',
+        'Eliminar requisición',
+        'Requisición eliminada satisfactoriamente.',
         'success'
       );
       return;
@@ -1051,8 +1054,8 @@ export class RequisitionsComponent implements CanComponentDeactivate {
       .pipe(
         catchError((error) => {
           alerts.basicAlert(
-            'Eliminar entrada',
-            'Error al eliminar la entrada.',
+            'Eliminar requisición',
+            error?.error?.message || error?.error?.Message || 'No fue posible eliminar la requisición. Intenta nuevamente.',
             'error'
           );
           console.error(error);
@@ -1061,8 +1064,8 @@ export class RequisitionsComponent implements CanComponentDeactivate {
       )
       .subscribe(() => {
         alerts.basicAlert(
-          'Eliminar entrada',
-          'Entrada eliminada satisfactoriamente.',
+          'Eliminar requisición',
+          'Requisición eliminada satisfactoriamente.',
           'success'
         );
         this.obtenerDatos();

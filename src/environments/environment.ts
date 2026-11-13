@@ -75,5 +75,5 @@ export const environment = {
     // publicKey: 'TEST-4399133a-4676-42a2-ab85-d946370bf96a',
   },
 
-  version: '5.00.464 (11 Noviembre 2026 21:49) validar permiso de dashboard al restaurar pestaña',
+  version: '5.00.466 (12 Noviembre 2026 20:26) protección al eliminar registros y documentos',
 };
