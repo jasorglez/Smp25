@@ -1744,7 +1744,7 @@ export class InandoutStComponent implements OnInit {
 
     const confirmation = await alerts.confirmAlert(
       'Eliminar partida',
-      '¿Está seguro de eliminar el registro seleccionado?',
+      '¿Está seguro de eliminar esta partida? Esto afectará su inventario.',
       'warning',
       'Sí, eliminar'
     );
