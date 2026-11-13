@@ -1116,6 +1116,7 @@ export class DetailCellRendererEntryItemsComponent {
 
   private getMaterialPickerOptions(): any[] {
     const options: any[] = [];
+    const requiresStock = this.isStockRestrictedEntry() || this.context?.movementType === 'OUT';
     this.materials.forEach(material => {
       const stockOptions = material.stockOptions || [{
         idBrand: null,
@@ -1128,8 +1129,8 @@ export class DetailCellRendererEntryItemsComponent {
           Number(row.idProduct) === Number(material.id) &&
           (row.idBrand == null ? stockOption.idBrand == null : Number(row.idBrand) === Number(stockOption.idBrand))
         );
-        if (Number(stockOption.availableStock) <= 0 && !usedInCurrentDetail) return;
-        if (stockOption.stockAvailable === false && !usedInCurrentDetail) return;
+        if (requiresStock && Number(stockOption.availableStock) <= 0 && !usedInCurrentDetail) return;
+        if (requiresStock && stockOption.stockAvailable === false && !usedInCurrentDetail) return;
         options.push({
           id: material.id,
           valueKey: `${material.id}:${stockOption.idBrand == null ? 'none' : stockOption.idBrand}`,
