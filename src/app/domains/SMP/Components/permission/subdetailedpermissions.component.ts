@@ -39,8 +39,18 @@ export class SubDetailedPermissionsComponent implements OnInit, ICellRendererAng
   public subMasterId!: number;
   public hasChanges = false;
 
+  private newestFirstComparator = (_a: any, _b: any, nodeA: any, nodeB: any): number => {
+    const idA = Number(nodeA?.data?.id);
+    const idB = Number(nodeB?.data?.id);
+    const valueA = Number.isFinite(idA) ? idA : Number.POSITIVE_INFINITY;
+    const valueB = Number.isFinite(idB) ? idB : Number.POSITIVE_INFINITY;
+    return valueA === valueB ? 0 : valueA - valueB;
+  };
+
   public colDefs: ColDef[] = [
     { field: 'id', editable: false,
+        sort: 'desc',
+        comparator: this.newestFirstComparator,
         width: 70,
         filter: 'agNumberColumnFilter', // Filtro para números (si el ID es numérico)
         filterParams: {
