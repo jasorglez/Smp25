@@ -75,5 +75,5 @@ export const environment = {
     // publicKey: 'TEST-4399133a-4676-42a2-ab85-d946370bf96a',
   },
 
-  version: '5.00.486 (13 Noviembre 2026 14:07) ajuste relaciones de prestamos cobranza',
+  version: '5.00.487 (13 Noviembre 2026 14:11) fechas editables en cuotas cobranza',
 };

@@ -35,7 +35,7 @@ import { firstValueFrom } from 'rxjs';
         <div class="table-responsive"><table class="table table-sm table-striped align-middle mb-0">
           <thead><tr><th>#</th><th>Fecha programada</th><th class="text-end">Cuota</th><th class="text-end">Abonado</th><th class="text-end">Saldo</th><th>Estado</th><th></th></tr></thead>
           <tbody><ng-container *ngFor="let installment of loan.cuotas">
-            <tr><td>{{ installment.numeroCuota }}</td><td>{{ installment.fechaProgramada | date:'dd/MM/yyyy' }}</td><td class="text-end">{{ installment.montoProgramado | currency:'MXN' }}</td><td class="text-end">{{ installmentPaid(installment) | currency:'MXN' }}</td><td class="text-end">{{ installmentBalance(installment) | currency:'MXN' }}</td><td><span class="badge" [class.bg-success]="installmentBalance(installment) <= 0" [class.bg-secondary]="installmentBalance(installment) > 0">{{ installmentBalance(installment) <= 0 ? 'Pagada' : 'Pendiente' }}</span></td><td class="text-end"><button class="btn btn-sm btn-outline-primary" (click)="toggleAbonoForm(installment)"><i class="bi bi-cash-coin"></i> Registrar abono</button></td></tr>
+            <tr><td>{{ installment.numeroCuota }}</td><td><div class="d-flex align-items-center gap-1"><input class="form-control form-control-sm" style="min-width:145px" type="date" [(ngModel)]="installment.fechaProgramada" [attr.aria-label]="'Fecha programada de cuota ' + installment.numeroCuota"><button class="btn btn-sm btn-outline-success" (click)="saveInstallmentDate(installment)" [disabled]="saving" title="Guardar fecha"><i class="bi bi-floppy"></i></button></div></td><td class="text-end">{{ installment.montoProgramado | currency:'MXN' }}</td><td class="text-end">{{ installmentPaid(installment) | currency:'MXN' }}</td><td class="text-end">{{ installmentBalance(installment) | currency:'MXN' }}</td><td><span class="badge" [class.bg-success]="installmentBalance(installment) <= 0" [class.bg-secondary]="installmentBalance(installment) > 0">{{ installmentBalance(installment) <= 0 ? 'Pagada' : 'Pendiente' }}</span></td><td class="text-end"><button class="btn btn-sm btn-outline-primary" (click)="toggleAbonoForm(installment)"><i class="bi bi-cash-coin"></i> Registrar abono</button></td></tr>
             <tr *ngIf="activeInstallmentId === installment.id"><td colspan="7" class="bg-white"><div class="row g-2 align-items-end py-2">
               <div class="col-md-3"><label class="form-label small">Fecha recibida</label><input class="form-control form-control-sm" type="date" [(ngModel)]="abonoForm.fechaPago"></div>
               <div class="col-md-3"><label class="form-label small">Monto recibido (máx. {{ installmentBalance(installment) | currency:'MXN' }})</label><input class="form-control form-control-sm" type="number" min="0.01" step="0.01" [max]="installmentBalance(installment)" [(ngModel)]="abonoForm.monto"></div>
@@ -65,6 +65,8 @@ export class ClientesCobranzasPagosComponent implements OnChanges {
   ngOnChanges(): void { this.loadLoans(); }
   private today(): string { const date = new Date(); return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`; }
   private nextMonth(): string { const date = new Date(); const day = date.getDate(); date.setDate(1); date.setMonth(date.getMonth() + 1); const lastDay = new Date(date.getFullYear(), date.getMonth() + 1, 0).getDate(); date.setDate(Math.min(day, lastDay)); return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`; }
+  private dateForInput(value: string | Date): string { return typeof value === 'string' ? value.slice(0, 10) : this.formatDate(value); }
+  private formatDate(value: Date): string { return `${value.getFullYear()}-${String(value.getMonth() + 1).padStart(2, '0')}-${String(value.getDate()).padStart(2, '0')}`; }
   installmentPaid(item: any): number { return (item.abonos || []).filter((p: any) => p.active !== false).reduce((sum: number, p: any) => sum + Number(p.monto || 0), 0); }
   installmentBalance(item: any): number { return Math.max(0, Number(item.montoProgramado || 0) - this.installmentPaid(item)); }
   loanBalance(loan: any): number { return (loan.cuotas || []).reduce((sum: number, item: any) => sum + this.installmentBalance(item), 0); }
@@ -73,7 +75,7 @@ export class ClientesCobranzasPagosComponent implements OnChanges {
     if (!this.customer?.id) { this.loans = []; return; }
     this.loading = true;
     this.customersService.getCobranzaLoans(this.customer.id).subscribe({
-      next: (items: any[]) => { this.loans = items || []; this.loading = false; },
+      next: (items: any[]) => { this.loans = (items || []).map(loan => ({ ...loan, cuotas: (loan.cuotas || []).map((installment: any) => ({ ...installment, fechaProgramada: this.dateForInput(installment.fechaProgramada) })) })); this.loading = false; },
       error: error => { console.error(error); this.loading = false; alerts.basicAlert('Error', 'No se pudieron cargar los préstamos.', 'error'); }
     });
   }
@@ -86,6 +88,17 @@ export class ClientesCobranzasPagosComponent implements OnChanges {
       await firstValueFrom(this.customersService.createCobranzaLoan({ idCustomer: this.customer.id, montoTotal: amount, fechaInicio: this.loanForm.fechaInicio, fechaPrimerPago: this.loanForm.fechaPrimerPago, numeroCuotas: 10, comentario: this.loanForm.comentario }));
       this.saving = false; this.showLoanForm = false; this.loanForm = { montoTotal: null, fechaInicio: this.today(), fechaPrimerPago: this.nextMonth(), comentario: '' }; this.loadLoans();
     } catch (error) { console.error(error); this.saving = false; alerts.basicAlert('Error', 'No se pudo crear el préstamo y sus 10 cuotas.', 'error'); }
+  }
+
+  async saveInstallmentDate(installment: any): Promise<void> {
+    if (!installment.fechaProgramada || !/^\d{4}-\d{2}-\d{2}$/.test(installment.fechaProgramada)) { alerts.basicAlert('Fecha no válida', 'Selecciona una fecha para esta cuota.', 'warning'); return; }
+    this.saving = true;
+    try {
+      await firstValueFrom(this.customersService.updateCobranzaInstallmentDate(installment.id, { fechaProgramada: installment.fechaProgramada }));
+      this.saving = false;
+      alerts.basicAlert('Fecha actualizada', 'Se guardó la nueva fecha programada.', 'success');
+      this.loadLoans();
+    } catch (error) { console.error(error); this.saving = false; alerts.basicAlert('Error', 'No se pudo guardar la fecha de la cuota.', 'error'); }
   }
 
   toggleAbonoForm(installment: any): void {
