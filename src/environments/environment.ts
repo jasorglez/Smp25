@@ -75,5 +75,5 @@ export const environment = {
     // publicKey: 'TEST-4399133a-4676-42a2-ab85-d946370bf96a',
   },
 
-  version: '5.00.478 (13 Noviembre 2026) orden configurable de modulos',
+  version: '5.00.479 (13 Noviembre 2026 13:20) orden de menu y salida fija al final',
 };
