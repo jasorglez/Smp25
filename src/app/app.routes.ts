@@ -1109,20 +1109,18 @@ export const routes: Routes = [
         path: 'cobranza',
         canActivate: [MasterPermissionsGuard],
         data: { permissions: { master: 'cobranzas' } },
+        loadComponent: () => import('./domains/Cobranza/pages/cobranza.component').then(m => m.CobranzaComponent),
         children: [
-          { path: '', redirectTo: 'clientes', pathMatch: 'full' },
-          {
-            path: 'clientes',
-            loadComponent: () =>
-              import('./domains/ModAdmon/components/customers/customers.component')
-                .then(component => component.CustomersComponent),
+          ...[
+            { path: 'clientes', permission: 'cliente', title: 'Clientes' },
+            { path: 'cobradores', permission: 'cobr', title: 'Cobradores' },
+            { path: 'dashboard', permission: 'dashboard', title: 'Dashboard' }
+          ].map(item => ({
+            path: item.path,
+            loadComponent: () => import('./domains/Cobranza/pages/cobranza.component').then(m => m.CobranzaEnConstruccionComponent),
             canActivate: [MasterPermissionsGuard],
-            canDeactivate: [UnsavedChangesGuard],
-            data: {
-              type: 'CUSTOMERS',
-              permissions: { master: 'cobranzas', detailed: 'cliente' }
-            }
-          }
+            data: { title: item.title, permissions: { master: 'cobranzas', detailed: item.permission } }
+          }))
         ]
       },
       {

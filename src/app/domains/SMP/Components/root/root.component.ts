@@ -843,6 +843,7 @@ public gridOptions: any = {
 
     const newRows = this.rowData.filter((row) => row.__isNew);
     const modifiedRows = this.rowData.filter((row) => row.__modified && !row.__isNew);
+    const companiesWithoutAccountBank: string[] = [];
 
     try {
       // Procesar nuevas empresas una por una para rastrear respuestas
@@ -864,7 +865,8 @@ public gridOptions: any = {
           }
 
           // Crear entidades por defecto y asignar branch + contract al usuario
-          const { branchId, contractId } = await this.createDefaultEntitiesForRoot(response.id, row.name);
+          const { branchId, contractId, accountBankCreated } = await this.createDefaultEntitiesForRoot(response.id, row.name);
+          if (!accountBankCreated) companiesWithoutAccountBank.push(row.name);
           if (branchId) {
             try { await lastValueFrom(this.branchesService.assignPermissionAfterCreation(this.idUser, branchId, 'branch')); } catch (e) { console.error('Error asignando branch:', e); }
           }
@@ -909,7 +911,10 @@ public gridOptions: any = {
         );
       }
 
-      alerts.basicAlert('Datos actualizados', newRows.length ? 'Empresas guardadas con todos los menús activos asignados automáticamente.' : 'Se han actualizado los datos correctamente.', 'success');
+      const saveMessage = newRows.length
+        ? `Empresas guardadas con todos los menús activos asignados automáticamente.${companiesWithoutAccountBank.length ? ` No se pudo crear la cuenta bancaria inicial para: ${companiesWithoutAccountBank.join(', ')}. Revisa que exista al menos un banco activo.` : ''}`
+        : 'Se han actualizado los datos correctamente.';
+      alerts.basicAlert('Datos actualizados', saveMessage, companiesWithoutAccountBank.length ? 'warning' : 'success');
       this.notSavedChanges = false;
       this.newlyAddedRows = [];
       this.obtenerDatos();
@@ -951,7 +956,7 @@ public gridOptions: any = {
   // Crea todas las entidades periféricas para una empresa NUEVA.
   // Cada paso tiene su propio try/catch: un error en un paso no cancela los demás.
   // Acepta tanto camelCase (id) como PascalCase (Id) en las respuestas del backend.
-  private async createDefaultEntitiesForRoot(rootId: number, rootName: string): Promise<{ branchId: number; contractId: number }> {
+  private async createDefaultEntitiesForRoot(rootId: number, rootName: string): Promise<{ branchId: number; contractId: number; accountBankCreated: boolean }> {
     const today     = new Date().toISOString().substring(0, 10);
     const nextYear  = new Date(); nextYear.setFullYear(nextYear.getFullYear() + 1);
     const endDate   = nextYear.toISOString().substring(0, 10);
@@ -1094,12 +1099,10 @@ public gridOptions: any = {
     } catch (e) { console.error('paso 9 (billing):', e); }
 
     // ── 10. Cuenta bancaria ───────────────────────────────────────────────────
+    let accountBankCreated = false;
     try {
-      await lastValueFrom(this.administrationService.addAccountBanks({
-        idBussines: rootId, numberAccount: '0000000000', nameAccount: 'Cuenta Principal',
-        signAccount: 'sin firma', interbancaria: 'N/A', folioCheque: '', folioSinCheque: '',
-        idBanco: 0, maskin: 'REC', consecin: 0, maskex: 'EGR', consecex: 0, eAplicaFiscal: 'Si'
-      }));
+      accountBankCreated = await this.ensureInitialAccountBank(rootId, rootName);
+      if (!accountBankCreated) throw new Error('No hay bancos activos disponibles para asociar la cuenta inicial.');
       this.logPeriferico('10-CuentaBancaria creada', rootName);
     } catch (e) { console.error('paso 10 (cuenta bancaria):', e); }
 
@@ -1209,7 +1212,25 @@ public gridOptions: any = {
     await this.ensureDefaultMovementCatalogs(rootId, rootName);
 
     this.endPeripheralProgress();
-    return { branchId, contractId };
+    return { branchId, contractId, accountBankCreated };
+  }
+
+  private async ensureInitialAccountBank(rootId: number, rootName: string): Promise<boolean> {
+    const accounts: any[] = await lastValueFrom(this.administrationService.getAccountBanks(rootId)).catch(() => []);
+    if (accounts?.length) return true;
+
+    const bankResponse: any = await lastValueFrom(this.administrationService.getBanks());
+    const banks: any[] = Array.isArray(bankResponse) ? bankResponse : bankResponse?.banks || bankResponse?.Banks || [];
+    const bank = banks.find(item => item?.active !== false && item?.Active !== false && (item?.id ?? item?.Id) > 0);
+    if (!bank) return false;
+
+    await lastValueFrom(this.administrationService.addAccountBanks({
+      idBussines: rootId, numberAccount: '0000000000', nameAccount: rootName,
+      signAccount: 'sin firma', interbancaria: 'N/A', folioCheque: '', folioSinCheque: '',
+      idBanco: bank.id ?? bank.Id, maskin: 'REC', consecin: 0, maskex: 'EGR', consecex: 0, eAplicaFiscal: 'Si'
+    }));
+    const createdAccounts: any[] = await lastValueFrom(this.administrationService.getAccountBanks(rootId)).catch(() => []);
+    return createdAccounts.some(account => (account?.nameAccount ?? account?.NameAccount) === rootName);
   }
 
   private async ensureDefaultMovementCatalogs(rootId: number, rootName: string): Promise<void> {
