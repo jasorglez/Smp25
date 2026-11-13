@@ -224,3 +224,8 @@ version: '2.50.4 (24 Octubre 2025 17:45)'
 - Usa `Borrador` para publicaciones que aún no se hayan aprobado o colocado en Publicidad. No afirmes que una función está desplegada si solo existe en código local.
 - Agrupa cambios relacionados en una fila por entrega; no registres cambios cosméticos internos que no cambien la experiencia del usuario.
 - No incluyas datos personales, credenciales, nombres de clientes ni información sensible en el texto promocional.
+
+## Entrega y publicación (preferencia permanente del usuario)
+- Al entregar cambios funcionales, actualizar la versión y fecha de `src/environments/environment.ts`, registrar la novedad y subir a Git los archivos de la tarea.
+- Publicar también las novedades de la entrega en la tabla de producción `administration.dbo.product_updates`, verificar los registros e indicar sus IDs. El usuario autorizó este flujo como preferencia permanente; no volver a pedirlo salvo cambio de alcance.
+- Publicar de forma idempotente, sin duplicar anuncios por ajustes de versión o documentación. Marcar `releaseStatus` como `PRODUCTION` únicamente con evidencia del despliegue; distinguir publicación del anuncio y despliegue del código.
