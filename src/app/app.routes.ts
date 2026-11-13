@@ -1130,6 +1130,12 @@ export const routes: Routes = [
             canActivate: [MasterPermissionsGuard],
             data: { permissions: { master: 'cobranzas', detailed: 'cortecaja' } }
           },
+          {
+            path: 'apertura-caja',
+            loadComponent: () => import('./domains/Cobranza/pages/corte-caja-cobranza.component').then(m => m.CorteCajaCobranzaComponent),
+            canActivate: [MasterPermissionsGuard],
+            data: { view: 'apertura', permissions: { master: 'cobranzas', detailed: 'aperturacaja' } }
+          },
           ...[
             { path: 'cobradores', permission: 'cobr', title: 'Cobradores' },
           ].map(item => ({

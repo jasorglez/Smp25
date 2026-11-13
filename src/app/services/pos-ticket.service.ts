@@ -17,6 +17,33 @@ export class PosTicketService {
   private base64EncodeService = inject(Base64EncodeService);
   private trackingService = inject(TrackingService);
 
+  async printCobranza(payment: { id: number; fecha: string; monto: number; tipoPago: string; cliente: string; prestamo: number; cuota: number; origen: string; empresaId: number }): Promise<void> {
+    let logo: string | null = null;
+    try {
+      const root: any = await lastValueFrom(this.rootService.getRootbyId(payment.empresaId));
+      if (root?.picture) logo = await this.base64EncodeService.convertImageToBase64(root.picture);
+    } catch { /* el logo es opcional */ }
+    const money = new Intl.NumberFormat('es-MX', { style: 'currency', currency: 'MXN' }).format(payment.monto);
+    const line = { canvas: [{ type: 'line', x1: 0, y1: 0, x2: TICKET_WIDTH - 20, y2: 0, lineWidth: 0.5 }], margin: [0, 4, 0, 4] };
+    const doc: any = {
+      pageSize: { width: TICKET_WIDTH, height: 'auto' }, pageMargins: [10, 10, 10, 14],
+      content: [
+        ...(logo ? [{ image: logo, width: 60, alignment: 'center', margin: [0, 0, 0, 4] }] : []),
+        { text: 'COMPROBANTE DE COBRANZA', bold: true, fontSize: 10, alignment: 'center' }, line,
+        { text: 'Ticket: COB-' + String(payment.id).padStart(8, '0'), fontSize: 8 },
+        { text: 'Fecha: ' + new Date(payment.fecha).toLocaleString('es-MX'), fontSize: 8 },
+        { text: 'Cliente: ' + payment.cliente, fontSize: 8, margin: [0, 4, 0, 0] },
+        { text: 'Préstamo: ' + payment.prestamo + '  |  Cuota: ' + payment.cuota, fontSize: 8 },
+        { text: 'Recibido en: ' + (payment.origen === 'NEGOCIO' ? 'Caja del negocio' : 'Domicilio del cliente'), fontSize: 8 }, line,
+        { text: 'Forma de pago: ' + payment.tipoPago, fontSize: 8, alignment: 'right' },
+        { text: 'ABONO: ' + money, bold: true, fontSize: 12, alignment: 'right', margin: [0, 5, 0, 4] },
+        line, { text: 'Gracias por su pago', alignment: 'center', italics: true, fontSize: 8 },
+      ],
+    };
+    this.trackingService.addLog(this.trackingService.getnameComp(), 'Imprimió comprobante de abono', 'Cobranza', this.trackingService.getEmail());
+    pdfMake.createPdf(doc).open();
+  }
+
   async print(
     sale: {
       numbernote: string;
