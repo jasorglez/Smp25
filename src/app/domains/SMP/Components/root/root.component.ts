@@ -35,6 +35,7 @@ import { StoresService } from 'app/services/stores.service';
   styleUrls: ['./root.component.css']
 })
 export class RootComponent {
+  private readonly ADD_NEW_COMPANY_TYPE = '__ADD_NEW_COMPANY_TYPE__';
 
 
   private rootService = inject(RootService);
@@ -115,7 +116,67 @@ export class RootComponent {
   }
 
   private getTipoEmpresaLabel(value: string): string {
+    if (value === this.ADD_NEW_COMPANY_TYPE) return 'Agregar Nuevo';
     return this.tiposEmpresaCatalog.find(item => item.valueAddition === value)?.description || value || '';
+  }
+
+  private async addCompanyTypeFromCombo(event: any): Promise<void> {
+    const result = await alerts.inputAlert(
+      'Nuevo tipo de empresa',
+      'Escribe el nombre del tipo que deseas agregar al catálogo.',
+      'text',
+      '',
+      { confirmButtonText: 'Agregar', required: true, inputAttributes: { maxlength: 100 } }
+    );
+    const description = String(result.value || '').trim().replace(/\s+/g, ' ');
+    if (!result.isConfirmed || !description) return;
+
+    const existing = this.tiposEmpresaCatalog.find(item =>
+      String(item.description || '').trim().toLocaleLowerCase() === description.toLocaleLowerCase()
+    );
+    if (existing) {
+      this.applyCompanyTypeToRow(event, existing.valueAddition);
+      alerts.basicAlert('Tipo existente', 'Ese tipo ya existe en el catálogo y quedó seleccionado.', 'info');
+      return;
+    }
+
+    const valueAddition = description.normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+      .toUpperCase().replace(/[^A-Z0-9]+/g, '_').replace(/^_+|_+$/g, '');
+    if (!valueAddition || valueAddition.length > 25 || this.tiposEmpresaCatalog.some(item => item.valueAddition === valueAddition)) {
+      alerts.basicAlert('Nombre no válido', 'El nombre debe producir una clave de catálogo única de hasta 25 caracteres.', 'warning');
+      return;
+    }
+
+    try {
+      const saved: any = await lastValueFrom(this.catalogsService.addCatalogToSmp({
+        idCompany: 0,
+        description,
+        valueAddition,
+        type: 'TIPO-EMPRESA',
+        vigente: true,
+        active: 1
+      }));
+      const catalogItem = {
+        id: saved?.id,
+        description: saved?.description || description,
+        valueAddition: saved?.valueAddition || valueAddition
+      };
+      this.tiposEmpresaCatalog = [...this.tiposEmpresaCatalog, catalogItem]
+        .sort((a, b) => a.description.localeCompare(b.description, 'es'));
+      this.applyCompanyTypeToRow(event, catalogItem.valueAddition);
+      this.refreshColumnDefs();
+      alerts.basicAlert('Tipo agregado', `${description} se agregó al catálogo y quedó seleccionado.`, 'success');
+    } catch (error: any) {
+      console.error('Error agregando tipo de empresa al catálogo SMP:', error);
+      alerts.basicAlert('No se pudo agregar', error?.error?.message || 'No se pudo guardar el tipo en el catálogo SMP.', 'error');
+    }
+  }
+
+  private applyCompanyTypeToRow(event: any, value: string): void {
+    event.data.tipoEmpresa = value;
+    event.data.__modified = true;
+    this.notSavedChanges = true;
+    this.gridApi?.refreshCells({ rowNodes: [event.node], columns: ['tipoEmpresa'], force: true });
   }
 
   obtenerEstados() {
@@ -486,7 +547,7 @@ public gridOptions: any = {
         minWidth: 160,
         cellEditor: 'agSelectCellEditor',
         cellEditorParams: () => ({
-          values: ['', ...this.tiposEmpresaCatalog.map(item => item.valueAddition)]
+          values: ['', ...this.tiposEmpresaCatalog.map(item => item.valueAddition), this.ADD_NEW_COMPANY_TYPE]
         }),
         valueFormatter: (params) => this.getTipoEmpresaLabel(params.value)
       },
@@ -691,6 +752,12 @@ public gridOptions: any = {
   }
 
   onCellValueChanged(event: any) {
+    if (event.colDef.field === 'tipoEmpresa' && event.newValue === this.ADD_NEW_COMPANY_TYPE) {
+      event.data.tipoEmpresa = event.oldValue || '';
+      this.gridApi?.refreshCells({ rowNodes: [event.node], columns: ['tipoEmpresa'], force: true });
+      void this.addCompanyTypeFromCombo(event);
+      return;
+    }
     console.log('Dato cambiado:', event.data);
     event.data.__modified = true;
     this.notSavedChanges = true;

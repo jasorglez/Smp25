@@ -75,5 +75,5 @@ export const environment = {
     // publicKey: 'TEST-4399133a-4676-42a2-ab85-d946370bf96a',
   },
 
-  version: '5.00.472 (13 Noviembre 2026 12:01) tipos de empresa desde catálogo',
+  version: '5.00.473 (13 Noviembre 2026 12:04) agregar tipos de empresa desde el selector',
 };
