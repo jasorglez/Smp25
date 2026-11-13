@@ -32,6 +32,27 @@ BEGIN
 END;
 GO
 
+/* Asigna Apertura Caja a los usuarios activos de la empresa 60 que ya tienen Cobranza. */
+DECLARE @CompanyId INT = 60;
+DECLARE @CobranzasId INT = (SELECT TOP 1 id FROM dbo.masterpermissions WHERE identifier = 'cobranzas');
+DECLARE @AperturaCajaId INT = (SELECT TOP 1 id FROM dbo.detailedpermissions WHERE master_id = @CobranzasId AND identifier = 'aperturacaja' AND active = 1);
+INSERT INTO dbo.userxsecuritypermissions_company (user_id, company_id, permission_id, active)
+SELECT usuario.id, @CompanyId, @AperturaCajaId, 1
+FROM dbo.Users usuario
+WHERE usuario.id_company = @CompanyId AND usuario.Active = 1
+  AND @AperturaCajaId IS NOT NULL
+  AND EXISTS (
+      SELECT 1 FROM dbo.userxsecuritypermissions_company asignado
+      WHERE asignado.user_id = usuario.id AND asignado.company_id = @CompanyId
+        AND asignado.permission_id = @CobranzasId AND asignado.active = 1
+  )
+  AND NOT EXISTS (
+      SELECT 1 FROM dbo.userxsecuritypermissions_company existente
+      WHERE existente.user_id = usuario.id AND existente.company_id = @CompanyId
+        AND existente.permission_id = @AperturaCajaId
+  );
+GO
+
 USE administration;
 GO
 IF NOT EXISTS (SELECT 1 FROM dbo.product_updates WHERE version = N'5.00.492' AND module = N'Cobranza / Caja y abonos' AND idRoot IS NULL AND idCompany IS NULL AND isActive = 1)
