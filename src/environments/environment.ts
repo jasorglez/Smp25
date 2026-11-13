@@ -75,5 +75,5 @@ export const environment = {
     // publicKey: 'TEST-4399133a-4676-42a2-ab85-d946370bf96a',
   },
 
-  version: '5.00.484 (13 Noviembre 2026 13:54) prestamos y calendario de cobranza',
+  version: '5.00.485 (13 Noviembre 2026 14:02) activo al final en clientes de cobranza',
 };

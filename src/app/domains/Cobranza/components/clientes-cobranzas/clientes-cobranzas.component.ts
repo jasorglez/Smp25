@@ -336,17 +336,6 @@ export class ClientesCobranzasComponent implements CanComponentDeactivate {
         cellStyle: { backgroundColor: '#eef2ff', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' },
       },
       {
-        field: 'vigente',
-        headerName: 'Activo',
-        editable: (params) => {
-          if (params.data.__isNew) {
-            return true;
-          }
-          return true;
-        },
-        width: 100,
-      },
-      {
         field: 'enabledForBilling',
         headerName: 'Facturación Electrónica',
         width: 180,
@@ -871,6 +860,12 @@ export class ClientesCobranzasComponent implements CanComponentDeactivate {
         filterParams: {
           filterOptions: ['equals'], // Opciones de filtro
         },
+      },
+      {
+        field: 'vigente',
+        headerName: 'Activo',
+        editable: true,
+        width: 100,
       },
     ];
 
