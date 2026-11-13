@@ -75,5 +75,5 @@ export const environment = {
     // publicKey: 'TEST-4399133a-4676-42a2-ab85-d946370bf96a',
   },
 
-  version: '5.00.477 (13 Noviembre 2026 12:50) modulo Cobranza y cuenta inicial',
+  version: '5.00.478 (13 Noviembre 2026) orden configurable de modulos',
 };

@@ -2,57 +2,57 @@
   <div class="card">
     <div class="card-header p-2">
       <ul class="nav nav-pills">
-        <li class="nav-item" *ngIf="authService.hasDetailedPermission('shopping', 'providers')">
+        <li class="nav-item" *ngIf="authService.hasDetailedPermission('shopping', 'providers')" [style.order]="authService.getDetailedPermissionOrder('shopping', 'providers')">
           <a class="nav-link green-tab" routerLink="page03" routerLinkActive="active">
             <i class="bi bi-file-earmark-person-fill"></i><span>Proveedores</span>
           </a>
         </li>
-        <li class="nav-item" *ngIf="authService.hasDetailedPermission('shopping', 'warehouses')">
+        <li class="nav-item" *ngIf="authService.hasDetailedPermission('shopping', 'warehouses')" [style.order]="authService.getDetailedPermissionOrder('shopping', 'warehouses')">
           <a class="nav-link green-tab" routerLink="warehouses" routerLinkActive="active">
             <i class="bi bi-houses"></i><span>Almacenes</span>
           </a>
         </li>
-        <li class="nav-item" *ngIf="authService.hasDetailedPermission('shopping', 'materials')">
+        <li class="nav-item" *ngIf="authService.hasDetailedPermission('shopping', 'materials')" [style.order]="authService.getDetailedPermissionOrder('shopping', 'materials')">
           <a class="nav-link green-tab" routerLink="page02typemat" routerLinkActive="active">
             <i class="bi bi-archive-fill"></i><span>Materiales</span>
           </a>
         </li>
-        <li class="nav-item" *ngIf="authService.hasDetailedPermission('shopping', 'requisitions')">
+        <li class="nav-item" *ngIf="authService.hasDetailedPermission('shopping', 'requisitions')" [style.order]="authService.getDetailedPermissionOrder('shopping', 'requisitions')">
           <a class="nav-link green-tab" routerLink="requisitions" routerLinkActive="active">
             <i class="bi bi-list-task"></i><span>Requisiciones</span>
           </a>
         </li>
-        <li class="nav-item" *ngIf="authService.hasDetailedPermission('shopping', 'purchas_eorder')">
+        <li class="nav-item" *ngIf="authService.hasDetailedPermission('shopping', 'purchas_eorder')" [style.order]="authService.getDetailedPermissionOrder('shopping', 'purchas_eorder')">
           <a class="nav-link green-tab" routerLink="purchaseorder" routerLinkActive="active">
             <i class="bi bi-cart-fill"></i><span>Orden Compra</span>
           </a>
         </li>
-        <li class="nav-item" *ngIf="authService.hasDetailedPermission('shopping', 'entrances')">
+        <li class="nav-item" *ngIf="authService.hasDetailedPermission('shopping', 'entrances')" [style.order]="authService.getDetailedPermissionOrder('shopping', 'entrances')">
           <a class="nav-link green-tab" routerLink="entrances" routerLinkActive="active">
             <i class="bi bi-arrow-down-left"></i><span>Entradas</span>
           </a>
         </li>
-        <li class="nav-item" *ngIf="authService.hasDetailedPermission('shopping', 'outings')">
+        <li class="nav-item" *ngIf="authService.hasDetailedPermission('shopping', 'outings')" [style.order]="authService.getDetailedPermissionOrder('shopping', 'outings')">
           <a class="nav-link green-tab" routerLink="outings" routerLinkActive="active">
             <i class="bi bi-arrow-up-right"></i><span>Salidas</span>
           </a>
         </li>
-        <li class="nav-item" *ngIf="authService.hasDetailedPermission('shopping', 'kardex')">
+        <li class="nav-item" *ngIf="authService.hasDetailedPermission('shopping', 'kardex')" [style.order]="authService.getDetailedPermissionOrder('shopping', 'kardex')">
           <a class="nav-link green-tab" routerLink="kardex" routerLinkActive="active">
             <i class="bi bi-table"></i><span>Kárdex</span>
           </a>
         </li>
-        <li class="nav-item" *ngIf="authService.hasDetailedPermission('shopping', 'guard')">
+        <li class="nav-item" *ngIf="authService.hasDetailedPermission('shopping', 'guard')" [style.order]="authService.getDetailedPermissionOrder('shopping', 'guard')">
           <a class="nav-link green-tab" routerLink="guard" routerLinkActive="active">
             <i class="bi bi-shield-check"></i><span>Resguardo</span>
           </a>
         </li>
-        <li class="nav-item" *ngIf="authService.hasDetailedPermission('shopping', 'catalogs')">
+        <li class="nav-item" *ngIf="authService.hasDetailedPermission('shopping', 'catalogs')" [style.order]="authService.getDetailedPermissionOrder('shopping', 'catalogs')">
           <a class="nav-link green-tab" routerLink="catalogs" routerLinkActive="active">
             <i class="bi bi-journal-text"></i><span>Catálogos</span>
           </a>
         </li>
-        <li class="nav-item" *ngIf="authService.hasDetailedPermission('shopping', 'setup')">
+        <li class="nav-item" *ngIf="authService.hasDetailedPermission('shopping', 'setup')" [style.order]="authService.getDetailedPermissionOrder('shopping', 'setup')">
           <a class="nav-link green-tab" routerLink="setupwh" routerLinkActive="active">
             <i class="bi bi-gear-fill"></i><span>Config</span>
           </a>

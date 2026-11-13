@@ -56,6 +56,7 @@ export class DetailedPermissionsComponent implements OnInit, ICellRendererAngula
         filterParams: {
           filterOptions: ['equals'], // Opciones de filtro
         }, },
+    { field: 'order', headerName: 'Orden', width: 90, editable: true, cellDataType: 'number' },
     { field: 'permissionName', headerName: 'Nombre del Permiso',  flex: 2 , editable: true},
     { field: 'identifier', headerName: 'Identificador', flex: 2 , editable: true},
     { field: 'comment', headerName: 'Comentario', flex: 3, editable: true },
@@ -196,7 +197,8 @@ export class DetailedPermissionsComponent implements OnInit, ICellRendererAngula
                 permissionName: item.permissionName,
                 identifier: item.identifier,
                 active: item.active,
-                comment: item.comment
+                comment: item.comment,
+                order: item.order ?? 0
               });
             }
           }
@@ -220,6 +222,7 @@ export class DetailedPermissionsComponent implements OnInit, ICellRendererAngula
       identifier: '',
       active: true,
       comment: '',
+      order: 0,
       __isNew: true
     };
     this.gridApi.applyTransaction({ add: [newPermission], addIndex: 0 });
@@ -262,7 +265,8 @@ export class DetailedPermissionsComponent implements OnInit, ICellRendererAngula
           permissionName: row.permissionName,
           comment: row.comment,
           identifier: row.identifier,
-          active: row.active
+          active: row.active,
+          order: Number(row.order) || 0
         };
         await lastValueFrom(this.detailedPermissionsService.updateDetailedPermissions(row.id, payload));
       }

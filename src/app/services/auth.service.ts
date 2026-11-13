@@ -368,6 +368,16 @@ export class AuthService {
     return this.userPermissions()?.[masterPermissionKey]?.active === true;
   }
 
+  getMasterPermissionOrder(masterPermissionKey: string): number {
+    const value = Number(this.userPermissions()?.[masterPermissionKey]?.order);
+    return Number.isFinite(value) ? value : 10000;
+  }
+
+  getDetailedPermissionOrder(masterPermissionKey: string, detailedPermissionKey: string): number {
+    const value = Number(this.userPermissions()?.[masterPermissionKey]?.children?.[detailedPermissionKey]?.order);
+    return Number.isFinite(value) ? value : 10000;
+  }
+
   hasDetailedPermission(masterPermissionKey: string, detailedPermissionKey: string): boolean {
     const section = this.userPermissions()?.[masterPermissionKey];
     const subSection = section?.children?.[detailedPermissionKey];

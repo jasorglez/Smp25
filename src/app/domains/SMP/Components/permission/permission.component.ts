@@ -61,6 +61,7 @@ export class PermissionComponent implements OnInit {
           filterOptions: ['equals'], // Opciones de filtro
         },
       },
+    { field: 'order', headerName: 'Orden', width: 90, editable: true, cellDataType: 'number' },
     { field: 'permissionName', headerName: 'Nombre del Permiso', flex: 2 , editable: true},
     { field: 'identifier', headerName: 'Identificador', flex: 2 ,  editable: true},
     { field: 'comment', headerName: 'Comentario', flex: 3 ,  editable: true},
@@ -173,6 +174,7 @@ export class PermissionComponent implements OnInit {
             identifier: item.identifier,
             active: item.active,
             comment: item.comment,
+            order: item.order ?? 0,
             detailData: item.detailedPermissions || [],
           };
         });
@@ -195,6 +197,7 @@ export class PermissionComponent implements OnInit {
       identifier: '',
       active: true,
       comment: '',
+      order: 0,
       detailData: [],
       __isNew: true
     };
@@ -288,6 +291,7 @@ export class PermissionComponent implements OnInit {
           comment: row.comment,
           identifier: row.identifier,
           active: row.active,
+          order: Number(row.order) || 0,
           detailedPermissions: row.detailData || []
         };
         console.log(payload);  
@@ -302,6 +306,7 @@ export class PermissionComponent implements OnInit {
           comment: row.comment,
           identifier: row.identifier,
           active: row.active,
+          order: Number(row.order) || 0,
           detailedPermissions: row.detailData || []
         };
         promises.push(firstValueFrom(this.masterPermissionsService.updateMasterPermissions(row.id, payload)));

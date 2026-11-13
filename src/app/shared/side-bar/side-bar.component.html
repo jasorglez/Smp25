@@ -157,7 +157,7 @@
     </section>
 
     <ul class="nav flex-column">
-      <li class="nav-item" *ngIf="authService.hasMasterPermission('dashboard')">
+      <li class="nav-item" *ngIf="authService.hasMasterPermission('dashboard')" [style.order]="authService.getMasterPermissionOrder('dashboard')">
 <a
           class="nav-link d-flex align-items-center"
           [routerLink]="['/dashboard']"
@@ -173,7 +173,7 @@
       <li
         class="nav-item"
         *ngIf="authService.hasMasterPermission('administration')"
-      >
+       [style.order]="authService.getMasterPermissionOrder('administration')">
 <a
           class="nav-link d-flex align-items-center"
           [routerLink]="['/procmodadmon']"
@@ -187,7 +187,7 @@
         </a>
       </li>
 
-      <li class="nav-item" *ngIf="authService.hasMasterPermission('cobranzas')">
+      <li class="nav-item" *ngIf="authService.hasMasterPermission('cobranzas')" [style.order]="authService.getMasterPermissionOrder('cobranzas')">
         <a
           class="nav-link d-flex align-items-center"
           [routerLink]="['/cobranza']"
@@ -199,7 +199,7 @@
         </a>
       </li>
 
-      <li class="nav-item" *ngIf="authService.hasMasterPermission('red')">
+      <li class="nav-item" *ngIf="authService.hasMasterPermission('red')" [style.order]="authService.getMasterPermissionOrder('red')">
         <a
           class="nav-link d-flex align-items-center"
           [routerLink]="['/red-ciudadana']"
@@ -212,7 +212,7 @@
         </a>
       </li>
 
-      <li class="nav-item" *ngIf="authService.hasMasterPermission('municipio')">
+      <li class="nav-item" *ngIf="authService.hasMasterPermission('municipio')" [style.order]="authService.getMasterPermissionOrder('municipio')">
         <a
           class="nav-link d-flex align-items-center"
           [routerLink]="['/procmodadmon/palacio-municipal']"
@@ -224,7 +224,7 @@
         </a>
       </li>
 
-      <li class="nav-item" *ngIf="authService.hasMasterPermission('indicators')">
+      <li class="nav-item" *ngIf="authService.hasMasterPermission('indicators')" [style.order]="authService.getMasterPermissionOrder('indicators')">
         <a
           class="nav-link d-flex align-items-center"
           [routerLink]="['/logistica']"
@@ -240,7 +240,7 @@
       <li
         class="nav-item"
         *ngIf="authService.hasMasterPermission('shopping')"
-      >
+       [style.order]="authService.getMasterPermissionOrder('shopping')">
 <a
           class="nav-link d-flex align-items-center"
           [routerLink]="['/proceswar']"
@@ -255,7 +255,7 @@
       <li
         class="nav-item"
         *ngIf="authService.hasMasterPermission('shoppingDelison')"
-      >
+       [style.order]="authService.getMasterPermissionOrder('shoppingDelison')">
 <a
           class="nav-link d-flex align-items-center"
           [routerLink]="['/shoppingDelison']"
@@ -270,7 +270,7 @@
       <li
         class="nav-item"
         *ngIf="authService.hasMasterPermission('shoppingTD')"
-      >
+       [style.order]="authService.getMasterPermissionOrder('shoppingTD')">
 <a
           class="nav-link d-flex align-items-center"
           [routerLink]="['/shoppingTD']"
@@ -286,7 +286,7 @@
       <li
         class="nav-item"
         *ngIf="authService.hasMasterPermission('warehouses')"
-      >
+       [style.order]="authService.getMasterPermissionOrder('warehouses')">
 <a
           class="nav-link d-flex align-items-center"
           [routerLink]="['/almacenes']"
@@ -301,7 +301,7 @@
       <li
         class="nav-item"
         *ngIf="authService.hasMasterPermission('warehousesTD')"
-      >
+       [style.order]="authService.getMasterPermissionOrder('warehousesTD')">
 <a
           class="nav-link d-flex align-items-center"
           [routerLink]="['/warehousesTD']"
@@ -317,7 +317,7 @@
       <li
         class="nav-item"
         *ngIf="authService.hasMasterPermission('maintenance')"
-      >
+       [style.order]="authService.getMasterPermissionOrder('maintenance')">
 <a
           class="nav-link d-flex align-items-center"
           [routerLink]="['/procmodmaintenance']"
@@ -330,7 +330,7 @@
         </a>
       </li>
 
-      <li class="nav-item" *ngIf="authService.hasMasterPermission('hr')">
+      <li class="nav-item" *ngIf="authService.hasMasterPermission('hr')" [style.order]="authService.getMasterPermissionOrder('hr')">
 <a
           class="nav-link d-flex align-items-center"
           [routerLink]="['/procreshuman']"
@@ -343,7 +343,7 @@
         </a>
       </li>
 
-      <li class="nav-item" *ngIf="authService.hasMasterPermission('sales')">
+      <li class="nav-item" *ngIf="authService.hasMasterPermission('sales')" [style.order]="authService.getMasterPermissionOrder('sales')">
 <a
           class="nav-link d-flex align-items-center"
           [routerLink]="['/procsales']"
@@ -356,7 +356,7 @@
         </a>
       </li>
 
-      <li class="nav-item" *ngIf="authService.hasMasterPermission('projects')">
+      <li class="nav-item" *ngIf="authService.hasMasterPermission('projects')" [style.order]="authService.getMasterPermissionOrder('projects')">
        <a
           class="nav-link d-flex align-items-center"
           [routerLink]="['/projects']"
@@ -367,7 +367,7 @@
           <mat-icon>grading</mat-icon> <span>{{ "projects" | translate }}</span>
        </a>
       </li>
-      <li class="nav-item" *ngIf="authService.hasMasterPermission('preciosunitarios')">
+      <li class="nav-item" *ngIf="authService.hasMasterPermission('preciosunitarios')" [style.order]="authService.getMasterPermissionOrder('preciosunitarios')">
         <a
           class="nav-link d-flex align-items-center"
           [routerLink]="['/preciosunitarios']"
@@ -379,7 +379,7 @@
         </a>
       </li>
 
-      <li class="nav-item" *ngIf="authService.hasMasterPermission('pmo')">
+      <li class="nav-item" *ngIf="authService.hasMasterPermission('pmo')" [style.order]="authService.getMasterPermissionOrder('pmo')">
         <a
           class="nav-link d-flex align-items-center"
           [routerLink]="['/pmo']"
@@ -391,7 +391,7 @@
         </a>
       </li>
 
-      <li class="nav-item" *ngIf="authService.hasMasterPermission('presupuestos')">
+      <li class="nav-item" *ngIf="authService.hasMasterPermission('presupuestos')" [style.order]="authService.getMasterPermissionOrder('presupuestos')">
         <a
           class="nav-link d-flex align-items-center"
           [routerLink]="['/presupuestos']"
@@ -403,7 +403,7 @@
         </a>
       </li>
 
-      <li class="nav-item" *ngIf="authService.hasMasterPermission('setup')">
+      <li class="nav-item" *ngIf="authService.hasMasterPermission('setup')" [style.order]="authService.getMasterPermissionOrder('setup')">
 <a
           class="nav-link d-flex align-items-center"
           [routerLink]="['/smp']"

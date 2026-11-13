@@ -3,12 +3,12 @@
       <div class="card-header p-2">
          <ul class="nav nav-pills">
 
-            <li class="nav-item" *ngIf="authService.hasDetailedPermission('sales', 'dashboard')">
+            <li class="nav-item" *ngIf="authService.hasDetailedPermission('sales', 'dashboard')" [style.order]="authService.getDetailedPermissionOrder('sales', 'dashboard')">
                <a class="nav-link green-tab" routerLink="crm-dashboard" routerLinkActive="active">
                   <i class="bi bi-speedometer2"></i><span>Dashboard</span>
                </a>
             </li>
-            <li class="nav-item" *ngIf="authService.hasDetailedPermission('sales', 'setup')">
+            <li class="nav-item" *ngIf="authService.hasDetailedPermission('sales', 'setup')" [style.order]="authService.getDetailedPermissionOrder('sales', 'setup')">
                <a class="nav-link green-tab" routerLink="setup-sales" routerLinkActive="active">
                   <i class="bi bi-gear"></i><span>{{'setting' | translate}}</span>
                </a>
@@ -18,57 +18,57 @@
                   <i class="bi bi-cart"></i><span>Punto de Venta</span>
                </a>
             </li>
-            <li class="nav-item" *ngIf="authService.hasDetailedPermission('sales', 'entrances')">
+            <li class="nav-item" *ngIf="authService.hasDetailedPermission('sales', 'entrances')" [style.order]="authService.getDetailedPermissionOrder('sales', 'entrances')">
                <a class="nav-link green-tab" routerLink="entrances" routerLinkActive="active">
                   <i class="bi bi-arrow-down-left"></i><span>{{'entrances' | translate}}</span>
                </a>
             </li>
-            <li class="nav-item" *ngIf="authService.hasDetailedPermission('sales', 'inventory')">
+            <li class="nav-item" *ngIf="authService.hasDetailedPermission('sales', 'inventory')" [style.order]="authService.getDetailedPermissionOrder('sales', 'inventory')">
                <a class="nav-link green-tab" routerLink="inventory2" routerLinkActive="active">
                   <i class="bi bi-list-check"></i><span>{{'inventory' | translate}}</span>
                </a>
             </li>
-            <li class="nav-item" *ngIf="authService.hasDetailedPermission('sales', 'products')">
+            <li class="nav-item" *ngIf="authService.hasDetailedPermission('sales', 'products')" [style.order]="authService.getDetailedPermissionOrder('sales', 'products')">
                <a class="nav-link green-tab" routerLink="products" routerLinkActive="active">
                   <i class="bi bi-box-seam-fill"></i><span>Productos</span>
                </a>
             </li>
-            <li class="nav-item" *ngIf="authService.hasDetailedPermission('sales', 'out-pos')">
+            <li class="nav-item" *ngIf="authService.hasDetailedPermission('sales', 'out-pos')" [style.order]="authService.getDetailedPermissionOrder('sales', 'out-pos')">
                <a class="nav-link green-tab" routerLink="out-pos" routerLinkActive="active">
                   <i class="bi bi-journal-check"></i><span>{{'out_pos' | translate}}</span>
                </a>
             </li>
-            <li class="nav-item" *ngIf="authService.hasDetailedPermission('sales', 'prospectos')">
+            <li class="nav-item" *ngIf="authService.hasDetailedPermission('sales', 'prospectos')" [style.order]="authService.getDetailedPermissionOrder('sales', 'prospectos')">
                <a class="nav-link green-tab" routerLink="prospectos" routerLinkActive="active">
                   <i class="bi bi-people-fill"></i><span>Prospectos</span>
                </a>
             </li>
-            <li class="nav-item" *ngIf="authService.hasDetailedPermission('sales', 'cotizaciones')">
+            <li class="nav-item" *ngIf="authService.hasDetailedPermission('sales', 'cotizaciones')" [style.order]="authService.getDetailedPermissionOrder('sales', 'cotizaciones')">
                <a class="nav-link green-tab" routerLink="cotizaciones" routerLinkActive="active">
                   <i class="bi bi-file-earmark-text-fill"></i><span>Cotizaciones</span>
                </a>
             </li>
-            <li class="nav-item" *ngIf="authService.hasDetailedPermission('sales', 'cursos')">
+            <li class="nav-item" *ngIf="authService.hasDetailedPermission('sales', 'cursos')" [style.order]="authService.getDetailedPermissionOrder('sales', 'cursos')">
                <a class="nav-link green-tab" routerLink="cursos" routerLinkActive="active">
                   <i class="bi bi-mortarboard-fill"></i><span>Cursos</span>
                </a>
             </li>
-            <li class="nav-item" *ngIf="authService.hasDetailedPermission('sales', 'demos')">
+            <li class="nav-item" *ngIf="authService.hasDetailedPermission('sales', 'demos')" [style.order]="authService.getDetailedPermissionOrder('sales', 'demos')">
                <a class="nav-link green-tab" routerLink="demos" routerLinkActive="active">
                   <i class="bi bi-laptop"></i><span>Demos</span>
                </a>
             </li>
-            <li class="nav-item" *ngIf="authService.hasDetailedPermission('sales', 'loyalty')">
+            <li class="nav-item" *ngIf="authService.hasDetailedPermission('sales', 'loyalty')" [style.order]="authService.getDetailedPermissionOrder('sales', 'loyalty')">
                <a class="nav-link green-tab" routerLink="loyalty" routerLinkActive="active">
                   <i class="bi bi-award-fill"></i><span>Lealtad</span>
                </a>
             </li>
-            <li class="nav-item" *ngIf="authService.hasDetailedPermission('sales', 'egresos')">
+            <li class="nav-item" *ngIf="authService.hasDetailedPermission('sales', 'egresos')" [style.order]="authService.getDetailedPermissionOrder('sales', 'egresos')">
                <a class="nav-link green-tab" routerLink="egresos" routerLinkActive="active">
                   <i class="bi bi-arrow-up-right-circle"></i><span>Egresos</span>
                </a>
             </li>
-            <li class="nav-item" *ngIf="authService.hasDetailedPermission('sales', 'fam-subfam')">
+            <li class="nav-item" *ngIf="authService.hasDetailedPermission('sales', 'fam-subfam')" [style.order]="authService.getDetailedPermissionOrder('sales', 'fam-subfam')">
                <a class="nav-link green-tab" routerLink="fam-subfam" routerLinkActive="active">
                   <i class="bi bi-diagram-3"></i><span>Familias</span>
                </a>
