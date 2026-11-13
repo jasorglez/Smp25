@@ -1118,9 +1118,14 @@ export const routes: Routes = [
             canDeactivate: [UnsavedChangesGuard],
             data: { type: 'CUSTOMERS', permissions: { master: 'cobranzas', detailed: 'cliente' } }
           },
+          {
+            path: 'dashboard',
+            loadComponent: () => import('./domains/Cobranza/pages/cobranza-dashboard.component').then(m => m.CobranzaDashboardComponent),
+            canActivate: [MasterPermissionsGuard],
+            data: { permissions: { master: 'cobranzas', detailed: 'dashboard' } }
+          },
           ...[
             { path: 'cobradores', permission: 'cobr', title: 'Cobradores' },
-            { path: 'dashboard', permission: 'dashboard', title: 'Dashboard' }
           ].map(item => ({
             path: item.path,
             loadComponent: () => import('./domains/Cobranza/pages/cobranza.component').then(m => m.CobranzaEnConstruccionComponent),

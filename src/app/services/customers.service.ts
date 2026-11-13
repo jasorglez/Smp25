@@ -78,6 +78,10 @@ export class CustomersService {
     return this.http.get<any[]>(`${environment.urlAdministration}/PrestamosCobranza/cliente/${customerId}`, { headers: this.trackingService.getHeaders() });
   }
 
+  getCobranzaDashboard(rootId: number): Observable<any[]> {
+    return this.http.get<any[]>(`${environment.urlAdministration}/PrestamosCobranza/dashboard/${rootId}`, { headers: this.trackingService.getHeaders() });
+  }
+
   createCobranzaLoan(data: any): Observable<any> {
     return this.http.post(`${environment.urlAdministration}/PrestamosCobranza`, data, { headers: this.trackingService.getHeaders() });
   }

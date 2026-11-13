@@ -1,0 +1,48 @@
+<div class="collection-dashboard">
+  <div class="hero">
+    <div>
+      <span class="eyebrow"><i class="bi bi-activity me-2"></i> CENTRO DE COBRANZA</span>
+      <h2>Tu cartera, bajo control.</h2>
+      <p>Una vista clara de lo cobrado, lo pendiente y los clientes que necesitan atención hoy.</p>
+      <div class="hero-pills"><span><i class="bi bi-people-fill"></i> {{ activeCustomers }} clientes con préstamo</span><span><i class="bi bi-journal-check"></i> {{ loans.length }} préstamos activos</span></div>
+    </div>
+    <div class="hero-actions"><button class="btn btn-light btn-sm" (click)="reload()" [disabled]="loading"><i class="bi bi-arrow-clockwise me-1"></i> Actualizar</button><a class="btn btn-outline-light btn-sm" routerLink="../clientes"><i class="bi bi-people me-1"></i> Ver clientes</a></div>
+  </div>
+
+  <div *ngIf="loading" class="loading-state"><span class="spinner-border spinner-border-sm me-2"></span> Preparando indicadores de cobranza…</div>
+  <div *ngIf="error" class="alert alert-danger mt-3">{{ error }} <button class="btn btn-sm btn-outline-danger ms-2" (click)="reload()">Reintentar</button></div>
+
+  <div class="dashboard-content" *ngIf="!loading && !error">
+    <div class="kpi-grid">
+      <div class="kpi"><div class="kpi-icon blue"><i class="bi bi-wallet2"></i></div><div class="kpi-label">Cartera otorgada</div><div class="kpi-value">{{ money(totalLoaned) }}</div><div class="kpi-foot">Capital de {{ loans.length }} préstamos</div></div>
+      <div class="kpi"><div class="kpi-icon green"><i class="bi bi-cash-stack"></i></div><div class="kpi-label">Total recuperado</div><div class="kpi-value">{{ money(totalCollected) }}</div><div class="kpi-foot">{{ collectionProgress }}% de la cartera otorgada</div></div>
+      <div class="kpi"><div class="kpi-icon amber"><i class="bi bi-hourglass-split"></i></div><div class="kpi-label">Saldo por cobrar</div><div class="kpi-value">{{ money(totalBalance) }}</div><div class="kpi-foot">{{ money(dueThisMonth) }} programados este mes</div></div>
+      <div class="kpi"><div class="kpi-icon red"><i class="bi bi-exclamation-triangle"></i></div><div class="kpi-label">Saldo vencido</div><div class="kpi-value">{{ money(overdue) }}</div><div class="kpi-foot">{{ urgentRows.length }} cuotas prioritarias visibles</div></div>
+    </div>
+
+    <div class="insight-grid">
+      <section class="panel chart-panel"><div class="panel-head"><div><span class="section-kicker">TENDENCIA</span><h3>Programado vs. cobrado</h3></div><span class="muted">Últimos 6 meses</span></div>
+        <apx-chart *ngIf="loans.length" [series]="monthlySeries" [chart]="monthlyChart" [xaxis]="{ categories: monthlyCategories }" [plotOptions]="monthlyPlot" [colors]="monthlyColors" [legend]="chartLegend" [dataLabels]="{ enabled: false }" [yaxis]="{ labels: { formatter: money } }" [noData]="chartNoData"></apx-chart>
+        <div *ngIf="!loans.length" class="empty-chart">Cuando registres préstamos y abonos aparecerá la tendencia aquí.</div>
+      </section>
+      <section class="panel portfolio-panel"><div class="panel-head"><div><span class="section-kicker">COMPOSICIÓN</span><h3>Estado de la cartera</h3></div></div>
+        <apx-chart *ngIf="totalLoaned > 0" [series]="portfolioSeries" [chart]="donutChart" [labels]="portfolioLabels" [colors]="donutColors" [legend]="chartLegend" [dataLabels]="{ enabled: false }" [noData]="chartNoData"></apx-chart>
+        <div *ngIf="!totalLoaned" class="empty-chart">La distribución aparecerá al crear el primer préstamo.</div>
+        <div class="portfolio-summary"><div><span>Recuperación al día</span><strong>{{ recoveryRate }}%</strong></div><div class="progress"><div class="progress-bar bg-success" [style.width.%]="recoveryRate"></div></div><small>Sobre cuotas programadas hasta hoy</small></div>
+      </section>
+    </div>
+
+    <div class="callout-grid"><div class="callout green-callout"><i class="bi bi-calendar-check"></i><div><span>Cobrado este mes</span><strong>{{ money(collectedThisMonth) }}</strong></div></div><div class="callout blue-callout"><i class="bi bi-calendar-week"></i><div><span>Por cobrar en 7 días</span><strong>{{ money(dueNextSeven) }}</strong></div></div></div>
+
+    <div class="list-grid">
+      <section class="panel"><div class="panel-head"><div><span class="section-kicker danger">ATENCIÓN PRIORITARIA</span><h3>Cuotas vencidas</h3></div><span class="count-pill">{{ urgentRows.length }}</span></div>
+        <div class="list-row" *ngFor="let row of urgentRows"><div class="person-icon overdue-icon"><i class="bi bi-person-exclamation"></i></div><div class="person-main"><strong>{{ row.customer }}</strong><small>Préstamo #{{ row.loanId }} · Cuota {{ row.installment }} · {{ formatDue(row.due) }}</small></div><div class="amount danger-text">{{ money(row.balance) }}<small>{{ -row.days }} días vencida</small></div></div>
+        <div class="empty-list" *ngIf="!urgentRows.length"><i class="bi bi-check-circle"></i> No hay cuotas vencidas. ¡Buen trabajo!</div>
+      </section>
+      <section class="panel"><div class="panel-head"><div><span class="section-kicker">PRÓXIMOS COBROS</span><h3>Agenda de 30 días</h3></div><span class="count-pill">{{ upcomingRows.length }}</span></div>
+        <div class="list-row" *ngFor="let row of upcomingRows"><div class="person-icon"><i class="bi bi-calendar-event"></i></div><div class="person-main"><strong>{{ row.customer }}</strong><small>Préstamo #{{ row.loanId }} · Cuota {{ row.installment }} · {{ formatDue(row.due) }}</small></div><div class="amount">{{ money(row.balance) }}<small>{{ row.days === 0 ? 'Hoy' : 'En ' + row.days + ' días' }}</small></div></div>
+        <div class="empty-list" *ngIf="!upcomingRows.length"><i class="bi bi-calendar2-check"></i> Sin cobros programados en los próximos 30 días.</div>
+      </section>
+    </div>
+  </div>
+</div>
