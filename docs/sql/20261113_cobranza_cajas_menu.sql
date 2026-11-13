@@ -32,30 +32,6 @@ BEGIN
 END;
 GO
 
-USE administration;
-GO
-
-IF NOT EXISTS (
-    SELECT 1 FROM dbo.product_updates
-    WHERE version = N'5.00.493'
-      AND module = N'Cobranza / Caja'
-      AND idRoot IS NULL AND idCompany IS NULL AND isActive = 1
-)
-BEGIN
-    INSERT INTO dbo.product_updates
-        (idRoot,idCompany,version,module,changeType,title,description,userBenefit,promoText,
-         occurredAtUtc,displayTimeZone,validationStatus,releaseStatus,publicationStatus,
-         publishedAtUtc,createdBy,createdAtUtc,updatedAtUtc,isActive)
-    VALUES
-        (NULL,NULL,N'5.00.493',N'Cobranza / Caja',N'IMPROVEMENT',N'Catálogo de cajas en Cobranza',
-         N'El menú de Cobranza se genera a partir de los permisos activos y muestra el nombre capturado en el catálogo de permisos. Se agrega el permiso Catálogo de Cajas y se asigna a los usuarios activos con acceso a Cobranza de la empresa 60.',
-         N'Permite administrar las cajas desde Cobranza y reflejar el nombre y orden definido en permisos.',
-         N'Administra tus cajas desde Cobranza con menús que respetan el nombre y orden de tus permisos.',
-         SYSUTCDATETIME(),N'America/Indiana/Indianapolis',N'PENDING',N'LOCAL',N'DRAFT',NULL,NULL,
-         SYSUTCDATETIME(),SYSUTCDATETIME(),1);
-END;
-GO
-
 /* Asigna el permiso a los usuarios activos de la empresa 60 que ya tienen Cobranza. */
 DECLARE @CompanyId INT = 60;
 DECLARE @CobranzasId INT = (
@@ -107,4 +83,28 @@ WHERE usuario.id_company = @CompanyId
         AND permisoExistente.company_id = @CompanyId
         AND permisoExistente.permission_id = @CajasId
   );
+GO
+
+USE administration;
+GO
+
+IF NOT EXISTS (
+    SELECT 1 FROM dbo.product_updates
+    WHERE version = N'5.00.493'
+      AND module = N'Cobranza / Caja'
+      AND idRoot IS NULL AND idCompany IS NULL AND isActive = 1
+)
+BEGIN
+    INSERT INTO dbo.product_updates
+        (idRoot,idCompany,version,module,changeType,title,description,userBenefit,promoText,
+         occurredAtUtc,displayTimeZone,validationStatus,releaseStatus,publicationStatus,
+         publishedAtUtc,createdBy,createdAtUtc,updatedAtUtc,isActive)
+    VALUES
+        (NULL,NULL,N'5.00.493',N'Cobranza / Caja',N'IMPROVEMENT',N'Catálogo de cajas en Cobranza',
+         N'El menú de Cobranza se genera a partir de los permisos activos y muestra el nombre capturado en el catálogo de permisos. Se agrega el permiso Catálogo de Cajas y se asigna a los usuarios activos con acceso a Cobranza de la empresa 60.',
+         N'Permite administrar las cajas desde Cobranza y reflejar el nombre y orden definido en permisos.',
+         N'Administra tus cajas desde Cobranza con menús que respetan el nombre y orden de tus permisos.',
+         SYSUTCDATETIME(),N'America/Indiana/Indianapolis',N'PENDING',N'LOCAL',N'DRAFT',NULL,NULL,
+         SYSUTCDATETIME(),SYSUTCDATETIME(),1);
+END;
 GO
