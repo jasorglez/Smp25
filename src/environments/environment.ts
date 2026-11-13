@@ -75,5 +75,5 @@ export const environment = {
     // publicKey: 'TEST-4399133a-4676-42a2-ab85-d946370bf96a',
   },
 
-  version: '5.00.475 (13 Noviembre 2026 12:16) permisos ordenados del mas nuevo al mas antiguo',
+  version: '5.00.476 (13 Noviembre 2026 12:25) modulo Cobranza con Clientes',
 };

@@ -1106,6 +1106,26 @@ export const routes: Routes = [
       },
 
       {
+        path: 'cobranza',
+        canActivate: [MasterPermissionsGuard],
+        data: { permissions: { master: 'cobranzas' } },
+        children: [
+          { path: '', redirectTo: 'clientes', pathMatch: 'full' },
+          {
+            path: 'clientes',
+            loadComponent: () =>
+              import('./domains/ModAdmon/components/customers/customers.component')
+                .then(component => component.CustomersComponent),
+            canActivate: [MasterPermissionsGuard],
+            canDeactivate: [UnsavedChangesGuard],
+            data: {
+              type: 'CUSTOMERS',
+              permissions: { master: 'cobranzas', detailed: 'cliente' }
+            }
+          }
+        ]
+      },
+      {
         path: 'procmodadmon',
         loadComponent: () =>
           import(
