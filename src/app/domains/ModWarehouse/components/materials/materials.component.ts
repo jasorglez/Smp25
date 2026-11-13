@@ -1872,7 +1872,6 @@ export class MaterialsComponent implements CanComponentDeactivate, OnInit {
   }
 
   async deleteEntry() {
-    this.trackingService.addLog(this.trackingService.getnameComp(), 'Eliminó materials', 'Almacenes', this.trackingService.getEmail());
     const selectedNodes = this.gridApi.getSelectedNodes();
     if (selectedNodes.length === 0) {
       alerts.basicAlert(
@@ -1885,14 +1884,26 @@ export class MaterialsComponent implements CanComponentDeactivate, OnInit {
 
     const selectedData = selectedNodes[0].data;
     const id = selectedData.id;
-    selectedData.active = 0;
+    const confirmation = await alerts.confirmAlert(
+      '¿Eliminar material?',
+      'Si el material tiene entradas, requisiciones, órdenes de compra o salidas asociadas, no se podrá eliminar.',
+      'warning',
+      'Eliminar'
+    );
+    if (!confirmation.isConfirmed) return;
+
+    this.trackingService.addLog(this.trackingService.getnameComp(), 'Intentó eliminar material', 'Almacenes', this.trackingService.getEmail());
     this.materialsService
       .deleteMaterial(id)
       .pipe(
         catchError((error) => {
+          const serverMessage = error?.error?.message || error?.error?.mensaje || error?.error?.title;
+          const message = typeof serverMessage === 'string' && serverMessage.trim()
+            ? serverMessage
+            : 'No fue posible eliminar el material. Si tiene entradas, requisiciones, órdenes de compra o salidas de materiales asociadas, primero deben conservarse esos registros y no se puede borrar el material.';
           alerts.basicAlert(
-            'Eliminar entrada',
-            'Error al eliminar la entrada.',
+            'No se pudo eliminar el material',
+            message,
             'error'
           );
           console.error(error);
@@ -1901,17 +1912,11 @@ export class MaterialsComponent implements CanComponentDeactivate, OnInit {
       )
       .subscribe(() => {
         alerts.basicAlert(
-          'Eliminar entrada',
-          'Entrada eliminada satisfactoriamente.',
+          'Material eliminado',
+          'El material se eliminó correctamente.',
           'success'
         );
         this.obtenerDatos();
-
-        alerts.basicAlert(
-          'Eliminar entrada',
-          'Entrada eliminada satisfactoriamente.',
-          'success'
-        );
         this.notSavedChanges = false;
         this.selectedRowData = null;
       });
