@@ -472,7 +472,7 @@ export class ClientesCobranzasComponent implements CanComponentDeactivate {
       },
 {
         field: 'company',
-        headerName: 'Compania',
+        headerName: 'Compania/Cliente',
         editable: (params) => {
           if (params.data.__isNew) {
             return true;
