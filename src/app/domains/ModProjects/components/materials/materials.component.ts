@@ -533,9 +533,9 @@ export class MaterialsComponent implements CanComponentDeactivate {
     return Array.isArray(value) ? value : value?.data || value?.result || value?.items || [];
   }
 
-  private async loadMaterialMovementSummary(materials: any[]): Promise<void> {
+  private async loadMaterialMovementSummary(materials: any[]): Promise<boolean> {
     const branchId = Number(this.idBranch || 0);
-    if (!this.idcompany || !materials?.length || !branchId) return;
+    if (!this.idcompany || !materials?.length || !branchId) return false;
     const projectId = Number(this.idProject || 0);
     const referenceType = projectId ? 'project' : 'branch';
     const referenceId = projectId || branchId;
@@ -556,12 +556,10 @@ export class MaterialsComponent implements CanComponentDeactivate {
       const counts = new Map<number, any>();
       const materialIds = new Set(materials.map(m => Number(m.id)).filter(Number.isFinite));
       const detailResults = await Promise.all(documents.map(async d => {
-        try {
-          const raw = d.__movementKind === 'entryMovementCount' || d.__movementKind === 'exitMovementCount'
-            ? await firstValueFrom(this.inandoutService.getInAndOutItems(Number(d.id)))
-            : await firstValueFrom(this.ocAndReqsService.getReqItems(Number(d.id)));
-          return { kind: d.__movementKind, document: d, rows: this.asArray(raw) };
-        } catch { return { kind: d.__movementKind, document: d, rows: [] }; }
+        const raw = d.__movementKind === 'entryMovementCount' || d.__movementKind === 'exitMovementCount'
+          ? await firstValueFrom(this.inandoutService.getInAndOutItems(Number(d.id)))
+          : await firstValueFrom(this.ocAndReqsService.getReqItems(Number(d.id)));
+        return { kind: d.__movementKind, document: d, rows: this.asArray(raw) };
       }));
       detailResults.forEach(result => result.rows.forEach(item => {
         const id = Number(item.idSupplie ?? item.idProduct ?? item.idMaterial ?? item.idInsumo);
@@ -580,8 +578,10 @@ export class MaterialsComponent implements CanComponentDeactivate {
       }));
       this.rowData = materials.map(m => ({ ...m, ...(counts.get(Number(m.id)) || {}) }));
       this.gridApi?.redrawRows();
+      return true;
     } catch (error) {
       console.warn('No se pudieron cargar los movimientos asociados de materiales.', error);
+      return false;
     }
   }
   onMasterSelectionChanged(event: any) {}
@@ -1274,7 +1274,7 @@ export class MaterialsComponent implements CanComponentDeactivate {
     }
   }
 
-  deleteMasterEntry() {
+  async deleteMasterEntry() {
     const selectedNodes = this.gridApi.getSelectedNodes()
       .filter(n => !n.group && n.data && typeof n.data.id === 'number');
     if (selectedNodes.length === 0) {
@@ -1289,18 +1289,36 @@ export class MaterialsComponent implements CanComponentDeactivate {
     const selectedData = selectedNodes[0].data;
     console.log('Datos del material a eliminar:', selectedData);
 
-    // Validar que el préstamo sea 0 o no exista
-    /*if (selectedData.loan && selectedData.loan !== 0) {
+    const id = selectedData.id;
+    const summaryLoaded = await this.loadMaterialMovementSummary(this.rowData);
+    if (!summaryLoaded) {
       alerts.basicAlert(
-        'Error al eliminar',
-        'No se puede eliminar el empleado mientras tenga préstamos activos',
-        'error'
+        'No se puede verificar el material',
+        'No se pudieron consultar sus entradas, requisiciones, órdenes de compra y salidas. Intenta de nuevo; el material se conserva.',
+        'warning'
       );
       return;
-    }*/
+    }
 
-    const id = selectedData.id;
-    selectedData.active = 0;
+    const currentData = this.rowData.find(row => Number(row.id) === Number(id)) || selectedData;
+    const movementLabels = [
+      ['requisitionMovementCount', 'requisiciones'],
+      ['purchaseOrderMovementCount', 'órdenes de compra'],
+      ['entryMovementCount', 'entradas'],
+      ['exitMovementCount', 'salidas de materiales']
+    ] as const;
+    const relatedMovements = movementLabels
+      .filter(([field]) => Number(currentData[field]) > 0)
+      .map(([, label]) => label);
+    if (relatedMovements.length) {
+      alerts.basicAlert(
+        'No se puede eliminar el material',
+        `Este material tiene ${relatedMovements.join(', ')} asociadas. Conserva el material para mantener esos registros.`,
+        'warning'
+      );
+      return;
+    }
+
     alerts
       .confirmAlert(
         'Eliminar un Material',
@@ -1322,9 +1340,11 @@ export class MaterialsComponent implements CanComponentDeactivate {
               },
               error: (err) => {
                 if (err?.status === 409) {
-                  alerts.basicAlert('No se puede eliminar', 'Este producto ya tiene ventas registradas en el POS. No es posible borrarlo.', 'warning');
+                  const message = err?.error?.message || err?.error?.mensaje || 'Este material tiene movimientos o documentos relacionados y no se puede eliminar.';
+                  alerts.basicAlert('No se puede eliminar', message, 'warning');
                 } else {
-                  alerts.basicAlert('Error', 'Error al eliminar el material.', 'error');
+                  const message = err?.error?.message || err?.error?.mensaje || 'No se pudo eliminar. Si tiene entradas, requisiciones, órdenes de compra o salidas asociadas, no se puede borrar.';
+                  alerts.basicAlert('No se pudo eliminar el material', message, 'error');
                 }
               }
             });

@@ -75,5 +75,5 @@ export const environment = {
     // publicKey: 'TEST-4399133a-4676-42a2-ab85-d946370bf96a',
   },
 
-  version: '5.00.470 (13 Noviembre 2026 10:08) protección al eliminar materiales relacionados',
+  version: '5.00.471 (13 Noviembre 2026 10:17) bloqueo de materiales con movimientos en Proyectos',
 };
