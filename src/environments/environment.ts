@@ -75,5 +75,5 @@ export const environment = {
     // publicKey: 'TEST-4399133a-4676-42a2-ab85-d946370bf96a',
   },
 
-  version: '5.00.492 (13 Noviembre 2026 18:21) apertura de caja y ticket de cobranza',
+  version: '5.00.493 (13 Noviembre 2026 18:49) permisos dinámicos y catálogo de cajas en Cobranza',
 };

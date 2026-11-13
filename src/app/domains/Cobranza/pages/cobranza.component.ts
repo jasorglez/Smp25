@@ -10,20 +10,8 @@ import { AuthService } from 'app/services/auth.service';
   template: `
     <div class="col-md-12"><div class="card">
       <div class="card-header px-2"><ul class="nav nav-pills">
-        <li class="nav-item" *ngIf="authService.hasDetailedPermission('cobranzas', 'cliente')" [style.order]="authService.getDetailedPermissionOrder('cobranzas', 'cliente')">
-          <a class="nav-link green-tab" routerLink="clientes" routerLinkActive="active"><i class="bi bi-people"></i><span>Clientes</span></a>
-        </li>
-        <li class="nav-item" *ngIf="authService.hasDetailedPermission('cobranzas', 'cobr')" [style.order]="authService.getDetailedPermissionOrder('cobranzas', 'cobr')">
-          <a class="nav-link green-tab" routerLink="cobradores" routerLinkActive="active"><i class="bi bi-person-badge"></i><span>Cobradores</span></a>
-        </li>
-        <li class="nav-item" *ngIf="authService.hasDetailedPermission('cobranzas', 'dashboard')" [style.order]="authService.getDetailedPermissionOrder('cobranzas', 'dashboard')">
-          <a class="nav-link green-tab" routerLink="dashboard" routerLinkActive="active"><i class="bi bi-speedometer2"></i><span>Dashboard</span></a>
-        </li>
-        <li class="nav-item" *ngIf="authService.hasDetailedPermission('cobranzas', 'cortecaja')" [style.order]="authService.getDetailedPermissionOrder('cobranzas', 'cortecaja')">
-          <a class="nav-link green-tab" routerLink="corte-caja" routerLinkActive="active"><i class="bi bi-calculator"></i><span>Corte Caja</span></a>
-        </li>
-        <li class="nav-item" *ngIf="authService.hasDetailedPermission('cobranzas', 'aperturacaja')" [style.order]="authService.getDetailedPermissionOrder('cobranzas', 'aperturacaja')">
-          <a class="nav-link green-tab" routerLink="apertura-caja" routerLinkActive="active"><i class="bi bi-unlock"></i><span>Apertura Caja</span></a>
+        <li class="nav-item" *ngFor="let item of menuItems" [style.order]="item.order">
+          <a class="nav-link green-tab" [routerLink]="item.path" routerLinkActive="active"><i class="bi" [ngClass]="item.icon"></i><span>{{ item.name }}</span></a>
         </li>
       </ul></div>
       <router-outlet></router-outlet>
@@ -33,6 +21,36 @@ import { AuthService } from 'app/services/auth.service';
 })
 export class CobranzaComponent {
   authService = inject(AuthService);
+
+  private readonly menuRoutes: Record<string, string> = {
+    cliente: 'clientes',
+    cobr: 'cobradores',
+    cortecaja: 'corte-caja',
+    aperturacaja: 'apertura-caja'
+  };
+
+  private readonly menuIcons: Record<string, string> = {
+    cliente: 'bi-people',
+    cobr: 'bi-person-badge',
+    dashboard: 'bi-speedometer2',
+    cortecaja: 'bi-calculator',
+    aperturacaja: 'bi-unlock',
+    cajas: 'bi-cash-stack'
+  };
+
+  get menuItems(): { identifier: string; name: string; order: number; path: string; icon: string }[] {
+    const children = this.authService.getUserPermissions()?.cobranzas?.children || {};
+    return Object.entries(children)
+      .filter(([, permission]: [string, any]) => permission?.active === true)
+      .map(([identifier, permission]: [string, any]) => ({
+        identifier,
+        name: permission.permissionName || permission.description || identifier,
+        order: Number.isFinite(Number(permission.order)) ? Number(permission.order) : 10000,
+        path: this.menuRoutes[identifier] || identifier,
+        icon: this.menuIcons[identifier] || 'bi-grid'
+      }))
+      .sort((a, b) => a.order - b.order);
+  }
 }
 
 @Component({

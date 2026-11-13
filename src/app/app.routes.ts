@@ -1136,6 +1136,13 @@ export const routes: Routes = [
             canActivate: [MasterPermissionsGuard],
             data: { view: 'apertura', permissions: { master: 'cobranzas', detailed: 'aperturacaja' } }
           },
+          {
+            path: 'cajas',
+            loadComponent: () => import('./domains/SMP/Components/cashRegisters/cashRegisters.component').then(m => m.CashRegistersComponent),
+            canActivate: [MasterPermissionsGuard],
+            canDeactivate: [UnsavedChangesGuard],
+            data: { permissions: { master: 'cobranzas', detailed: 'cajas' } }
+          },
           ...[
             { path: 'cobradores', permission: 'cobr', title: 'Cobradores' },
           ].map(item => ({
