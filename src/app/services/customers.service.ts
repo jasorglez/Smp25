@@ -74,6 +74,22 @@ export class CustomersService {
     return this.http.delete(`${environment.urlAdministration}/CustomersBilling/${id}`, { headers: this.trackingService.getHeaders() });
   }
 
+  getCobranzaLoans(customerId: number): Observable<any[]> {
+    return this.http.get<any[]>(`${environment.urlAdministration}/PrestamosCobranza/cliente/${customerId}`, { headers: this.trackingService.getHeaders() });
+  }
+
+  createCobranzaLoan(data: any): Observable<any> {
+    return this.http.post(`${environment.urlAdministration}/PrestamosCobranza`, data, { headers: this.trackingService.getHeaders() });
+  }
+
+  addCobranzaInstallmentPayment(installmentId: number, data: any): Observable<any> {
+    return this.http.post(`${environment.urlAdministration}/PrestamosCobranza/cuota/${installmentId}/abonos`, data, { headers: this.trackingService.getHeaders() });
+  }
+
+  deactivateCobranzaInstallmentPayment(paymentId: number): Observable<any> {
+    return this.http.delete(`${environment.urlAdministration}/PrestamosCobranza/abonos/${paymentId}`, { headers: this.trackingService.getHeaders() });
+  }
+
   getCobranzaPayments(customerId: number): Observable<any[]> {
     return this.http.get<any[]>(`${environment.urlAdministration}/PagosCobranza/cliente/${customerId}`, { headers: this.trackingService.getHeaders() });
   }

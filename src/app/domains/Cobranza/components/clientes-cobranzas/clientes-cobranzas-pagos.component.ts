@@ -1,117 +1,111 @@
 import { CommonModule } from '@angular/common';
 import { Component, Input, OnChanges, inject } from '@angular/core';
-import { AgGridAngular } from 'ag-grid-angular';
-import { ColDef, GridApi, GridReadyEvent } from 'ag-grid-enterprise';
-import { firstValueFrom } from 'rxjs';
+import { FormsModule } from '@angular/forms';
 import { CustomersService } from 'app/services/customers.service';
 import { alerts } from 'app/helpers/alerts';
+import { firstValueFrom } from 'rxjs';
 
 @Component({
   selector: 'app-clientes-cobranzas-pagos',
   standalone: true,
-  imports: [CommonModule, AgGridAngular],
+  imports: [CommonModule, FormsModule],
   template: `
     <section class="p-3 border-top bg-light">
-      <div class="d-flex justify-content-between align-items-center gap-2 mb-2 flex-wrap">
-        <div class="d-flex align-items-center gap-2">
-          <strong>Pagos — {{ customer?.nameContact || customer?.company }}</strong>
-          <span class="badge bg-success">Total abonado: {{ totalAbonado | currency:'MXN' }}</span>
-        </div>
-        <div class="d-flex gap-2 ms-auto">
-          <button class="btn btn-sm btn-primary" (click)="addRow()" title="Agregar pago"><i class="bi bi-plus-lg"></i> Agregar</button>
-          <button class="btn btn-sm btn-success position-relative" (click)="saveChanges()" [disabled]="!hasChanges || saving"><i class="bi bi-floppy"></i> Guardar
-            <span *ngIf="hasChanges" class="position-absolute top-0 start-100 translate-middle p-2 bg-danger border border-light rounded-circle"></span>
-          </button>
-          <button class="btn btn-sm btn-warning" (click)="revertChanges()" [disabled]="!hasChanges"><i class="bi bi-arrow-clockwise"></i> Deshacer</button>
-          <button class="btn btn-sm btn-danger" (click)="deleteSelected()" [disabled]="!selectedPayment"><i class="bi bi-trash"></i> Borrar</button>
+      <div class="d-flex justify-content-between align-items-center gap-2 mb-3 flex-wrap">
+        <div><strong>Préstamos — {{ customer?.nameContact || customer?.company }}</strong><span class="badge bg-success ms-2">Abonado: {{ totalPaid | currency:'MXN' }}</span></div>
+        <button class="btn btn-sm btn-primary" (click)="showLoanForm = !showLoanForm"><i class="bi bi-plus-lg"></i> Nuevo préstamo</button>
+      </div>
+
+      <div *ngIf="showLoanForm" class="card card-body mb-3 p-3">
+        <div class="row g-2 align-items-end">
+          <div class="col-md-3"><label class="form-label small">Monto del préstamo</label><input class="form-control form-control-sm" type="number" min="0.01" step="0.01" [(ngModel)]="loanForm.montoTotal"></div>
+          <div class="col-md-3"><label class="form-label small">Fecha del préstamo</label><input class="form-control form-control-sm" type="date" [(ngModel)]="loanForm.fechaInicio"></div>
+          <div class="col-md-3"><label class="form-label small">Primer pago</label><input class="form-control form-control-sm" type="date" [(ngModel)]="loanForm.fechaPrimerPago"></div>
+          <div class="col-md-3"><label class="form-label small">Número de pagos</label><input class="form-control form-control-sm" value="10 pagos mensuales" readonly></div>
+          <div class="col-12"><label class="form-label small">Comentario</label><input class="form-control form-control-sm" maxlength="500" [(ngModel)]="loanForm.comentario"></div>
+          <div class="col-12 d-flex gap-2"><button class="btn btn-sm btn-success" (click)="createLoan()" [disabled]="saving"><i class="bi bi-floppy"></i> Crear préstamo y calendario</button><button class="btn btn-sm btn-secondary" (click)="showLoanForm = false">Cancelar</button></div>
         </div>
       </div>
-      <ag-grid-angular class="ag-theme-quartz" style="width:100%;height:260px" [rowData]="rowData" [columnDefs]="columnDefs" [defaultColDef]="defaultColDef" [gridOptions]="gridOptions" rowSelection="single" (gridReady)="onGridReady($event)" (selectionChanged)="onSelectionChanged()"></ag-grid-angular>
-      <div *ngIf="!loading && !rowData.length" class="text-center text-muted small py-2">Sin pagos registrados. Agrega una fila para capturar el primer abono.</div>
+
+      <article *ngFor="let loan of loans" class="card mb-3">
+        <div class="card-header d-flex justify-content-between align-items-center flex-wrap gap-2">
+          <div><strong>Préstamo #{{ loan.id }}</strong><span class="ms-2">{{ loan.montoTotal | currency:'MXN' }}</span><small class="text-muted ms-2">10 pagos desde {{ loan.fechaPrimerPago | date:'dd/MM/yyyy' }}</small></div>
+          <span class="badge" [class.bg-success]="loanBalance(loan) <= 0" [class.bg-warning]="loanBalance(loan) > 0">Saldo {{ loanBalance(loan) | currency:'MXN' }}</span>
+        </div>
+        <div class="table-responsive"><table class="table table-sm table-striped align-middle mb-0">
+          <thead><tr><th>#</th><th>Fecha programada</th><th class="text-end">Cuota</th><th class="text-end">Abonado</th><th class="text-end">Saldo</th><th>Estado</th><th></th></tr></thead>
+          <tbody><ng-container *ngFor="let installment of loan.cuotas">
+            <tr><td>{{ installment.numeroCuota }}</td><td>{{ installment.fechaProgramada | date:'dd/MM/yyyy' }}</td><td class="text-end">{{ installment.montoProgramado | currency:'MXN' }}</td><td class="text-end">{{ installmentPaid(installment) | currency:'MXN' }}</td><td class="text-end">{{ installmentBalance(installment) | currency:'MXN' }}</td><td><span class="badge" [class.bg-success]="installmentBalance(installment) <= 0" [class.bg-secondary]="installmentBalance(installment) > 0">{{ installmentBalance(installment) <= 0 ? 'Pagada' : 'Pendiente' }}</span></td><td class="text-end"><button class="btn btn-sm btn-outline-primary" (click)="toggleAbonoForm(installment)"><i class="bi bi-cash-coin"></i> Registrar abono</button></td></tr>
+            <tr *ngIf="activeInstallmentId === installment.id"><td colspan="7" class="bg-white"><div class="row g-2 align-items-end py-2">
+              <div class="col-md-3"><label class="form-label small">Fecha recibida</label><input class="form-control form-control-sm" type="date" [(ngModel)]="abonoForm.fechaPago"></div>
+              <div class="col-md-3"><label class="form-label small">Monto recibido (máx. {{ installmentBalance(installment) | currency:'MXN' }})</label><input class="form-control form-control-sm" type="number" min="0.01" step="0.01" [max]="installmentBalance(installment)" [(ngModel)]="abonoForm.monto"></div>
+              <div class="col-md-4"><label class="form-label small">Comentario</label><input class="form-control form-control-sm" maxlength="500" [(ngModel)]="abonoForm.comentario"></div>
+              <div class="col-md-2"><button class="btn btn-sm btn-success w-100" (click)="recordPayment(installment)" [disabled]="saving">Guardar abono</button></div>
+            </div><div *ngIf="installment.abonos?.length" class="small mt-2"><strong>Abonos registrados:</strong><span *ngFor="let payment of installment.abonos" class="ms-2">{{ payment.fechaPago | date:'dd/MM/yyyy' }} — {{ payment.monto | currency:'MXN' }}<button class="btn btn-link btn-sm text-danger p-0 ms-1" (click)="deactivatePayment(payment)" title="Quitar abono"><i class="bi bi-x-circle"></i></button><span *ngIf="payment.comentario"> ({{ payment.comentario }})</span></span></div></td></tr>
+          </ng-container>
+          <tr *ngIf="!loan.cuotas?.length"><td colspan="7" class="text-center text-muted">Sin cuotas generadas</td></tr></tbody>
+        </table></div>
+      </article>
+      <div *ngIf="!loading && !loans.length" class="text-center text-muted py-3">Sin préstamos registrados. Usa “Nuevo préstamo” para programar 10 pagos mensuales.</div>
     </section>
   `
 })
 export class ClientesCobranzasPagosComponent implements OnChanges {
   @Input() customer: any;
   private customersService = inject(CustomersService);
-  gridApi?: GridApi;
-  rowData: any[] = [];
+  loans: any[] = [];
   loading = false;
   saving = false;
-  hasChanges = false;
-  selectedPayment: any = null;
-  private tempId = 0;
+  showLoanForm = false;
+  activeInstallmentId: number | null = null;
+  loanForm: any = { montoTotal: null, fechaInicio: this.today(), fechaPrimerPago: this.nextMonth(), comentario: '' };
+  abonoForm: any = { fechaPago: this.today(), monto: null, comentario: '' };
 
-  columnDefs: ColDef[] = [
-    { field: 'fechaPago', headerName: 'Fecha de pago', editable: true, width: 150, cellDataType: 'dateString' },
-    { field: 'comentario', headerName: 'Comentario', editable: true, flex: 1, minWidth: 200, cellEditor: 'agLargeTextCellEditor', cellEditorPopup: true, cellEditorParams: { maxLength: 500, rows: 3, cols: 50 } },
-    { field: 'monto', headerName: 'Monto', editable: true, width: 160, cellDataType: 'number', valueFormatter: p => p.value == null || p.value === '' ? '' : Number(p.value).toLocaleString('es-MX', { style: 'currency', currency: 'MXN' }) },
-    { field: 'inicio', headerName: 'Registrado', editable: false, width: 170, valueFormatter: p => p.value ? new Date(p.value).toLocaleString('es-MX') : '' }
-  ];
-  defaultColDef: ColDef = { sortable: true, resizable: true, filter: true };
-  gridOptions: any = {
-    headerHeight: 30,
-    rowHeight: 32,
-    getRowId: p => String(p.data.id),
-    onCellValueChanged: (event: any) => { event.data.__modified = true; this.hasChanges = true; }
-  };
+  get totalPaid(): number { return this.loans.reduce((sum, loan) => sum + loan.cuotas.reduce((s: number, q: any) => s + this.installmentPaid(q), 0), 0); }
+  ngOnChanges(): void { this.loadLoans(); }
+  private today(): string { const date = new Date(); return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`; }
+  private nextMonth(): string { const date = new Date(); const day = date.getDate(); date.setDate(1); date.setMonth(date.getMonth() + 1); const lastDay = new Date(date.getFullYear(), date.getMonth() + 1, 0).getDate(); date.setDate(Math.min(day, lastDay)); return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`; }
+  installmentPaid(item: any): number { return (item.abonos || []).filter((p: any) => p.active !== false).reduce((sum: number, p: any) => sum + Number(p.monto || 0), 0); }
+  installmentBalance(item: any): number { return Math.max(0, Number(item.montoProgramado || 0) - this.installmentPaid(item)); }
+  loanBalance(loan: any): number { return (loan.cuotas || []).reduce((sum: number, item: any) => sum + this.installmentBalance(item), 0); }
 
-  get totalAbonado(): number { return this.rowData.reduce((sum, item) => sum + (item.__delete ? 0 : Number(item.monto || 0)), 0); }
-  ngOnChanges(): void { this.loadPayments(); }
-  onGridReady(event: GridReadyEvent): void { this.gridApi = event.api; }
-  onSelectionChanged(): void { this.selectedPayment = this.gridApi?.getSelectedRows()?.[0] || null; }
-
-  private today(): string { return new Date().toISOString().slice(0, 10); }
-
-  loadPayments(): void {
-    if (!this.customer?.id) { this.rowData = []; return; }
+  loadLoans(): void {
+    if (!this.customer?.id) { this.loans = []; return; }
     this.loading = true;
-    this.customersService.getCobranzaPayments(this.customer.id).subscribe({
-      next: (rows: any[]) => { this.rowData = (rows || []).map(p => ({ ...p, fechaPago: String(p.fechaPago || '').slice(0, 10) })); this.loading = false; this.hasChanges = false; },
-      error: error => { console.error(error); this.loading = false; alerts.basicAlert('Error', 'No se pudo cargar el historial de pagos.', 'error'); }
+    this.customersService.getCobranzaLoans(this.customer.id).subscribe({
+      next: (items: any[]) => { this.loans = items || []; this.loading = false; },
+      error: error => { console.error(error); this.loading = false; alerts.basicAlert('Error', 'No se pudieron cargar los préstamos.', 'error'); }
     });
   }
 
-  addRow(): void {
-    if (!this.customer?.id) return;
-    const row = { id: `tmp-${this.tempId++}`, idCustomer: this.customer.id, fechaPago: this.today(), comentario: '', monto: null, __new: true };
-    this.rowData = [row, ...this.rowData];
-    this.hasChanges = true;
-    setTimeout(() => { this.gridApi?.startEditingCell({ rowIndex: 0, colKey: 'monto' }); }, 50);
-  }
-
-  async saveChanges(): Promise<void> {
-    this.gridApi?.stopEditing();
-    const rows = this.rowData.filter(r => r.__new || r.__modified);
-    if (!rows.length) return;
-    const invalid = rows.find(r => !r.fechaPago || !Number.isFinite(Number(r.monto)) || Number(r.monto) <= 0);
-    if (invalid) { alerts.basicAlert('Datos requeridos', 'Cada pago necesita fecha y un monto mayor a cero.', 'warning'); return; }
+  async createLoan(): Promise<void> {
+    const amount = Number(this.loanForm.montoTotal);
+    if (!Number.isFinite(amount) || amount <= 0 || !this.loanForm.fechaInicio || !this.loanForm.fechaPrimerPago) { alerts.basicAlert('Datos requeridos', 'Captura monto y fechas válidas.', 'warning'); return; }
     this.saving = true;
     try {
-      for (const row of rows) {
-        const payload = { idCustomer: this.customer.id, fechaPago: row.fechaPago, comentario: row.comentario || '', monto: Number(row.monto) };
-        if (row.__new) await firstValueFrom(this.customersService.addCobranzaPayment(payload));
-        else await firstValueFrom(this.customersService.updateCobranzaPayment(row.id, payload));
-      }
-      this.saving = false;
-      this.loadPayments();
-      alerts.basicAlert('Éxito', 'Pagos guardados correctamente.', 'success');
-    } catch (error) { console.error(error); this.saving = false; alerts.basicAlert('Error', 'No se pudieron guardar los pagos.', 'error'); }
+      await firstValueFrom(this.customersService.createCobranzaLoan({ idCustomer: this.customer.id, montoTotal: amount, fechaInicio: this.loanForm.fechaInicio, fechaPrimerPago: this.loanForm.fechaPrimerPago, numeroCuotas: 10, comentario: this.loanForm.comentario }));
+      this.saving = false; this.showLoanForm = false; this.loanForm = { montoTotal: null, fechaInicio: this.today(), fechaPrimerPago: this.nextMonth(), comentario: '' }; this.loadLoans();
+    } catch (error) { console.error(error); this.saving = false; alerts.basicAlert('Error', 'No se pudo crear el préstamo y sus 10 cuotas.', 'error'); }
   }
 
-  revertChanges(): void { this.loadPayments(); }
+  toggleAbonoForm(installment: any): void {
+    this.activeInstallmentId = this.activeInstallmentId === installment.id ? null : installment.id;
+    this.abonoForm = { fechaPago: this.today(), monto: null, comentario: '' };
+  }
 
-  async deleteSelected(): Promise<void> {
-    if (!this.selectedPayment) return;
-    const payment = this.selectedPayment;
-    const confirm = await alerts.confirmAlert('Quitar pago', 'El pago se conservará en el historial como inactivo.', 'warning', 'Sí, quitar');
-    if (!confirm.isConfirmed) return;
-    if (payment.__new) {
-      this.rowData = this.rowData.filter(row => row !== payment);
-      this.hasChanges = this.rowData.some(row => row.__new || row.__modified);
-      this.selectedPayment = null;
-      return;
-    }
-    this.customersService.deactivateCobranzaPayment(payment.id).subscribe({ next: () => this.loadPayments(), error: error => { console.error(error); alerts.basicAlert('Error', 'No se pudo quitar el pago.', 'error'); } });
+  async recordPayment(installment: any): Promise<void> {
+    const amount = Number(this.abonoForm.monto);
+    if (!this.abonoForm.fechaPago || !Number.isFinite(amount) || amount <= 0 || amount > this.installmentBalance(installment)) { alerts.basicAlert('Monto no válido', 'Captura un abono mayor a cero que no supere el saldo de la cuota.', 'warning'); return; }
+    this.saving = true;
+    try {
+      await firstValueFrom(this.customersService.addCobranzaInstallmentPayment(installment.id, { fechaPago: this.abonoForm.fechaPago, monto: amount, comentario: this.abonoForm.comentario }));
+      this.saving = false; this.activeInstallmentId = null; this.loadLoans();
+    } catch (error) { console.error(error); this.saving = false; alerts.basicAlert('Error', 'No se pudo registrar el abono.', 'error'); }
+  }
+
+  async deactivatePayment(payment: any): Promise<void> {
+    const result = await alerts.confirmAlert('Quitar abono', 'El abono se conservará inactivo en el historial.', 'warning', 'Sí, quitar');
+    if (!result.isConfirmed) return;
+    this.customersService.deactivateCobranzaInstallmentPayment(payment.id).subscribe({ next: () => this.loadLoans(), error: error => { console.error(error); alerts.basicAlert('Error', 'No se pudo quitar el abono.', 'error'); } });
   }
 }
