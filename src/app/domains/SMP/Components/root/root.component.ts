@@ -63,6 +63,7 @@ export class RootComponent {
   notSavedChanges: boolean = false;
   rowData: any[] = [];
   corporativos: any[] = [];
+  tiposEmpresaCatalog: any[] = [];
   creatingPeripherals: boolean = false;
   peripheralStep: string = '';
   peripheralProgress: number = 0;
@@ -80,6 +81,7 @@ export class RootComponent {
   ngOnInit() {
     this.idUser = this.signalsService.getIdUSer()();
     this.obtenerDatos();
+    this.obtenerTiposEmpresa();
     this.obtenerEstados();
     this.obtenerCorporativos();
   }
@@ -95,6 +97,25 @@ export class RootComponent {
         this.corporativos = [];
       }
     });
+  }
+
+  obtenerTiposEmpresa() {
+    this.catalogsService.getCatalogsFromSmp(0, 'TIPO-EMPRESA').subscribe({
+      next: (data) => {
+        this.tiposEmpresaCatalog = (data || []).filter(item => item?.valueAddition);
+        this.refreshColumnDefs();
+      },
+      error: (error) => {
+        console.error('Error obteniendo tipos de empresa del catálogo SMP:', error);
+        this.tiposEmpresaCatalog = [];
+        this.refreshColumnDefs();
+        alerts.basicAlert('Catálogo no disponible', 'No se pudieron cargar los tipos de empresa. Revisa el catálogo antes de registrar una empresa.', 'error');
+      }
+    });
+  }
+
+  private getTipoEmpresaLabel(value: string): string {
+    return this.tiposEmpresaCatalog.find(item => item.valueAddition === value)?.description || value || '';
   }
 
   obtenerEstados() {
@@ -464,13 +485,10 @@ public gridOptions: any = {
         flex: 1,
         minWidth: 160,
         cellEditor: 'agSelectCellEditor',
-        cellEditorParams: { values: ['', 'CONSTRUCCION', 'CLINICA', 'ESCUELAS', 'RESTAURANTES'] },
-        valueFormatter: (params) => ({
-          CONSTRUCCION: 'Construcción',
-          CLINICA: 'Clínica',
-          ESCUELAS: 'Escuelas',
-          RESTAURANTES: 'Restaurantes'
-        }[params.value] || '')
+        cellEditorParams: () => ({
+          values: ['', ...this.tiposEmpresaCatalog.map(item => item.valueAddition)]
+        }),
+        valueFormatter: (params) => this.getTipoEmpresaLabel(params.value)
       },
       {
         field: 'phone',
@@ -745,7 +763,7 @@ public gridOptions: any = {
 
   async saveChanges() {
     const isValid = this.rowData.every((item) =>
-      item.name && item.nameSmall && (!item.__isNew || item.tipoEmpresa)
+      item.name && item.nameSmall && (!item.__isNew || this.tiposEmpresaCatalog.some(tipo => tipo.valueAddition === item.tipoEmpresa))
     );
     if (!isValid) {
       alerts.basicAlert(

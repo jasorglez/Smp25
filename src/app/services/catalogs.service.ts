@@ -22,6 +22,10 @@ export class CatalogsService {
     return this.http.get<any[]>(`${environment.urlSmp}/Catalog/getCatalogs?idCompany=${id}&type=${type}`, { headers: this.trackingService.getHeaders() });
   }
 
+  getCatalogsFromSmp(idCompany: number, type: string): Observable<any[]> {
+    return this.http.get<any[]>(`${environment.urlSmp}/Catalog/getCatalogs?idCompany=${idCompany}&type=${type}`, { headers: this.trackingService.getHeaders() });
+  }
+
   addCatalogToSmp(catalog: any): Observable<any> {
     return this.http.post<any>(`${environment.urlSmp}/Catalog`, catalog, { headers: this.trackingService.getHeaders() });
   }
