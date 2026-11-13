@@ -75,5 +75,5 @@ export const environment = {
     // publicKey: 'TEST-4399133a-4676-42a2-ab85-d946370bf96a',
   },
 
-  version: '5.00.482 (13 Noviembre 2026 13:35) pagos de Clientes Cobranza',
+  version: '5.00.483 (13 Noviembre 2026 13:40) captura de pagos en grid',
 };
