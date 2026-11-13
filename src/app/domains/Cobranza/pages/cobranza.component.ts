@@ -19,6 +19,9 @@ import { AuthService } from 'app/services/auth.service';
         <li class="nav-item" *ngIf="authService.hasDetailedPermission('cobranzas', 'dashboard')" [style.order]="authService.getDetailedPermissionOrder('cobranzas', 'dashboard')">
           <a class="nav-link green-tab" routerLink="dashboard" routerLinkActive="active"><i class="bi bi-speedometer2"></i><span>Dashboard</span></a>
         </li>
+        <li class="nav-item" *ngIf="authService.hasDetailedPermission('cobranzas', 'cortecaja')" [style.order]="authService.getDetailedPermissionOrder('cobranzas', 'cortecaja')">
+          <a class="nav-link green-tab" routerLink="corte-caja" routerLinkActive="active"><i class="bi bi-calculator"></i><span>Corte Caja</span></a>
+        </li>
       </ul></div>
       <router-outlet></router-outlet>
     </div></div>

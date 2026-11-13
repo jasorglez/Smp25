@@ -75,5 +75,5 @@ export const environment = {
     // publicKey: 'TEST-4399133a-4676-42a2-ab85-d946370bf96a',
   },
 
-  version: '5.00.490 (13 Noviembre 2026 14:58) dashboard cobranza',
+  version: '5.00.491 (13 Noviembre 2026 16:38) corte de caja cobranza',
 };

@@ -17,6 +17,10 @@ export class CatalogsService {
     return this.http.get<any[]>(`${environment.urlAdministration}/Catalog/getCatalogs?idCompany=${idRoot}&type=${type}`, { headers: this.trackingService.getHeaders() });
   }
 
+  addCatalogToAdmon(catalog: any): Observable<any> {
+    return this.http.post<any>(`${environment.urlAdministration}/Catalog`, catalog, { headers: this.trackingService.getHeaders() });
+  }
+
   //lo voy a cambiar a SMP para qe me lo muestreee
   getTypeEquipment(id: number, type: string): Observable<any[]> {
     return this.http.get<any[]>(`${environment.urlSmp}/Catalog/getCatalogs?idCompany=${id}&type=${type}`, { headers: this.trackingService.getHeaders() });
