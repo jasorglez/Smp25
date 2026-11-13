@@ -1111,8 +1111,14 @@ export const routes: Routes = [
         data: { permissions: { master: 'cobranzas' } },
         loadComponent: () => import('./domains/Cobranza/pages/cobranza.component').then(m => m.CobranzaComponent),
         children: [
+          {
+            path: 'clientes',
+            loadComponent: () => import('./domains/Cobranza/components/clientes-cobranzas/clientes-cobranzas.component').then(m => m.ClientesCobranzasComponent),
+            canActivate: [MasterPermissionsGuard],
+            canDeactivate: [UnsavedChangesGuard],
+            data: { type: 'CUSTOMERS', permissions: { master: 'cobranzas', detailed: 'cliente' } }
+          },
           ...[
-            { path: 'clientes', permission: 'cliente', title: 'Clientes' },
             { path: 'cobradores', permission: 'cobr', title: 'Cobradores' },
             { path: 'dashboard', permission: 'dashboard', title: 'Dashboard' }
           ].map(item => ({

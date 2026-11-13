@@ -74,6 +74,22 @@ export class CustomersService {
     return this.http.delete(`${environment.urlAdministration}/CustomersBilling/${id}`, { headers: this.trackingService.getHeaders() });
   }
 
+  getCobranzaPayments(customerId: number): Observable<any[]> {
+    return this.http.get<any[]>(`${environment.urlAdministration}/PagosCobranza/cliente/${customerId}`, { headers: this.trackingService.getHeaders() });
+  }
+
+  addCobranzaPayment(data: any): Observable<any> {
+    return this.http.post(`${environment.urlAdministration}/PagosCobranza`, data, { headers: this.trackingService.getHeaders() });
+  }
+
+  updateCobranzaPayment(id: number, data: any): Observable<any> {
+    return this.http.put(`${environment.urlAdministration}/PagosCobranza/${id}`, data, { headers: this.trackingService.getHeaders() });
+  }
+
+  deactivateCobranzaPayment(id: number): Observable<any> {
+    return this.http.delete(`${environment.urlAdministration}/PagosCobranza/${id}`, { headers: this.trackingService.getHeaders() });
+  }
+
   addCustomer(data: any): Observable<ICustomer> {
     return this.http.post<ICustomer>(`${environment.urlAdministration}/Customer`, data, { headers: this.trackingService.getHeaders() });
   }
