@@ -45,6 +45,9 @@ import { TrackingService } from 'app/services/tracking.service';
 import { FacturacionService } from 'app/services/facturacion.service';
 import { AdministrationService } from 'app/services/administration.service';
 import { IncomesAndExpensesService } from 'app/services/incomes-and-expenses.service';
+import { PdfPreviewService } from 'app/services/pdf-preview.service';
+import { RootService } from 'app/services/root.service';
+import { Base64EncodeService } from 'app/services/base64encode.service';
 
 @Component({
   selector: 'app-clientes-cobranzas',
@@ -76,6 +79,9 @@ export class ClientesCobranzasComponent implements CanComponentDeactivate {
    private facturacionService = inject(FacturacionService);
    private administrationService = inject(AdministrationService);
    private incomesAndExpensesService = inject(IncomesAndExpensesService);
+  private pdfPreview = inject(PdfPreviewService);
+  private rootService = inject(RootService);
+  private base64EncodeService = inject(Base64EncodeService);
 
   private http = inject(HttpClient);
   public AG_GRID_LOCALE_ES = AG_GRID_LOCALE_ES;
@@ -866,10 +872,52 @@ export class ClientesCobranzasComponent implements CanComponentDeactivate {
         headerName: 'Activo',
         editable: true,
         width: 100,
+        pinned: 'right',
+        lockPinned: true,
+        suppressMovable: true,
       },
     ];
 
     return this._colMaster;
+  }
+
+  async generatePaymentsPdf(customer: any): Promise<void> {
+    try {
+      const loans: any[] = await lastValueFrom(this.customerService.getCobranzaLoans(customer.id));
+      const pdfMake = (await import('pdfmake/build/pdfmake')).default;
+      const pdfFonts = await import('pdfmake/build/vfs_fonts');
+      (pdfMake as any).vfs = (pdfFonts as any).pdfMake?.vfs || (pdfFonts as any).default?.pdfMake?.vfs;
+      const root: any = await lastValueFrom(this.rootService.getRootbyId(customer.idRoot || this.idRoot));
+      const logo = root?.picture ? await this.base64EncodeService.convertImageToBase64(root.picture) : null;
+      const logo2 = root?.picture2 ? await this.base64EncodeService.convertImageToBase64(root.picture2) : null;
+      const money = (value: any) => new Intl.NumberFormat('es-MX', { style: 'currency', currency: 'MXN' }).format(Number(value || 0));
+      const date = (value: any) => value ? String(value).slice(0, 10).split('-').reverse().join('/') : '';
+      const content: any[] = [
+        { columns: [logo ? { image: logo, fit: [75, 65] } : { text: '' }, { text: root?.name || '', alignment: 'center', bold: true, fontSize: 12, margin: [0, 15, 0, 0] }, logo2 ? { image: logo2, fit: [75, 65], alignment: 'right' } : { text: '' }], margin: [0, 0, 0, 12] },
+        { text: 'REPORTE DE PRÉSTAMOS Y PAGOS', style: 'title' },
+        { text: `Cliente: ${customer.nameContact || customer.company || customer.id}`, margin: [0, 0, 0, 4] },
+        { text: `Fecha de emisión: ${new Date().toLocaleDateString('es-MX')}`, margin: [0, 0, 0, 14] },
+      ];
+      if (!loans?.length) content.push({ text: 'Este cliente no tiene préstamos registrados.' });
+      for (const loan of loans || []) {
+        const installments = [...(loan.cuotas || [])].sort((a: any, b: any) => a.numeroCuota - b.numeroCuota);
+        const paid = installments.reduce((sum: number, item: any) => sum + (item.abonos || []).reduce((part: number, payment: any) => part + Number(payment.monto || 0), 0), 0);
+        content.push({ text: `Préstamo #${loan.id}  ·  ${money(loan.montoTotal)}  ·  Inicio: ${date(loan.fechaInicio)}`, style: 'loan', margin: [0, 10, 0, 4] });
+        content.push({ text: `Abonado: ${money(paid)}   Saldo: ${money(Number(loan.montoTotal) - paid)}`, margin: [0, 0, 0, 5] });
+        const rows: any[][] = [[{ text: '#', bold: true }, { text: 'Programado', bold: true }, { text: 'Cuota', bold: true }, { text: 'Abonado', bold: true }, { text: 'Saldo', bold: true }, { text: 'Estado', bold: true }]];
+        for (const installment of installments) {
+          const received = (installment.abonos || []).reduce((sum: number, payment: any) => sum + Number(payment.monto || 0), 0);
+          rows.push([String(installment.numeroCuota), date(installment.fechaProgramada), money(installment.montoProgramado), money(received), money(Number(installment.montoProgramado) - received), received >= Number(installment.montoProgramado) ? 'Pagada' : 'Pendiente']);
+        }
+        content.push({ table: { headerRows: 1, widths: [20, 74, 74, 74, 74, '*'], body: rows }, layout: 'lightHorizontalLines', fontSize: 8 });
+        const payments = installments.flatMap((item: any) => (item.abonos || []).map((payment: any) => ({ numero: item.numeroCuota, ...payment })));
+        if (payments.length) {
+          content.push({ text: 'Abonos recibidos', bold: true, margin: [0, 8, 0, 3] });
+          content.push({ table: { headerRows: 1, widths: [35, 90, 90, '*'], body: [[{ text: 'Cuota', bold: true }, { text: 'Fecha', bold: true }, { text: 'Monto', bold: true }, { text: 'Comentario', bold: true }], ...payments.map((payment: any) => [String(payment.numero), date(payment.fechaPago), money(payment.monto), payment.comentario || ''])] }, layout: 'lightHorizontalLines', fontSize: 8 });
+        }
+      }
+      await this.pdfPreview.show((pdfMake as any).createPdf({ pageSize: 'LETTER', pageMargins: [35, 35, 35, 35], content, styles: { title: { fontSize: 15, bold: true }, loan: { fontSize: 11, bold: true } } }), 'Reporte de pagos del cliente', `Reporte_pagos_cliente_${customer.id}.pdf`);
+    } catch (error) { console.error(error); alerts.basicAlert('Error', 'No se pudo generar el PDF de pagos.', 'error'); }
   }
 
   obtenerDatos() {

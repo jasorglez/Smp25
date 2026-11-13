@@ -29,6 +29,11 @@
 
     <!-- Columna de la tabla -->
     <div class="col">
+      <div class="d-flex justify-content-end mb-2">
+        <button type="button" class="btn btn-sm btn-outline-danger" [disabled]="!selectedRowData" (click)="generatePaymentsPdf(selectedRowData)" title="Reporte de préstamos, cuotas y abonos del cliente seleccionado">
+          <i class="bi bi-file-earmark-pdf-fill me-1"></i> Reporte de pagos
+        </button>
+      </div>
       <ag-grid-angular
       style="width: 100%;"
       [ngStyle]="{'height': gridHeight}"
