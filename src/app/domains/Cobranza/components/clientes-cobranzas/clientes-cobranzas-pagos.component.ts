@@ -3,14 +3,13 @@ import { Component, Input, OnChanges, inject } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { CustomersService } from 'app/services/customers.service';
 import { alerts } from 'app/helpers/alerts';
-import { catchError, firstValueFrom, forkJoin, map, of, switchMap, throwError } from 'rxjs';
+import { firstValueFrom } from 'rxjs';
 import { AgGridModule } from 'ag-grid-angular';
 import { ColDef } from 'ag-grid-enterprise';
 import { AG_GRID_LOCALE_ES } from 'assets/i18n/ag-grid.locale.es';
 import { ButtonCellRendererExpenditureComponent } from 'app/domains/ModAdmon/components/egresos-palacio/button-cell-renderer-expenditure.component';
 import { CatalogsService } from 'app/services/catalogs.service';
 import { UsersService } from 'app/services/users.service';
-import { UsersxpermissionsService } from 'app/services/usersxpermissions.service';
 import { SignalsService } from 'app/services/signals.service';
 import { CajeroTurnoService } from 'app/services/cajero-turno.service';
 import { PosTicketService } from 'app/services/pos-ticket.service';
@@ -19,6 +18,22 @@ import { PosTicketService } from 'app/services/pos-ticket.service';
   selector: 'app-clientes-cobranzas-pagos',
   standalone: true,
   imports: [CommonModule, FormsModule, AgGridModule, ButtonCellRendererExpenditureComponent],
+  styles: [`
+    .cobranza-select {
+      font-size: 0.75rem;
+      color: #174d80;
+      background-color: #edf6ff;
+      border: 1px solid #8ab8e4;
+      border-radius: 0.5rem;
+      min-height: 31px;
+      transition: border-color 0.15s ease, box-shadow 0.15s ease;
+    }
+    .cobranza-select:focus {
+      border-color: #397fbe;
+      box-shadow: 0 0 0 0.2rem rgba(57, 127, 190, 0.18);
+    }
+    .cobranza-select option { font-size: 0.75rem; color: #174d80; background: #fff; }
+  `],
   template: `
     <section class="p-3 border-top bg-light">
       <div class="d-flex justify-content-between align-items-center gap-2 mb-3 flex-wrap">
@@ -49,10 +64,10 @@ import { PosTicketService } from 'app/services/pos-ticket.service';
           <div *ngFor="let installment of loan.cuotas"><div *ngIf="activeInstallmentId === installment.id" class="border rounded p-2 mt-2"><strong>Abonos de la cuota {{ installment.numeroCuota }}</strong><div class="row g-2 align-items-end py-2">
               <div class="col-md-2"><label class="form-label small">Fecha recibida</label><input class="form-control form-control-sm" type="date" [(ngModel)]="abonoForm.fechaPago"></div>
               <div class="col-md-2"><label class="form-label small">Monto recibido (máx. {{ installmentBalance(installment) | currency:'MXN' }})</label><input class="form-control form-control-sm" type="number" min="0.01" step="0.01" [max]="installmentBalance(installment)" [(ngModel)]="abonoForm.monto"></div>
-              <div class="col-md-2"><label class="form-label small">Tipo de pago <button type="button" class="btn btn-link btn-sm p-0" (click)="addPaymentType()" [disabled]="savingPaymentType" title="Agregar tipo de pago"><i class="bi bi-plus-circle"></i></button></label><select class="form-select form-select-sm" [(ngModel)]="abonoForm.idTipoPago"><option [ngValue]="null">Seleccionar</option><option *ngFor="let type of paymentTypes" [ngValue]="type.id">{{ type.description }}</option></select></div>
-              <div class="col-md-2"><label class="form-label small">Responsable del cobro</label><select class="form-select form-select-sm" [(ngModel)]="abonoForm.idUsuarioCobrador"><option [ngValue]="null">Sin asignar</option><option *ngFor="let user of users" [ngValue]="user.id">{{ user.displayName || user.usersmall || user.email || ('Usuario ' + user.id) }}</option></select></div>
-              <div class="col-md-2"><label class="form-label small">Recibido en</label><select class="form-select form-select-sm" [(ngModel)]="abonoForm.origenCobro"><option value="DOMICILIO">Domicilio del cliente</option><option value="NEGOCIO">Caja del negocio</option></select></div>
-              <div class="col-md-3" *ngIf="abonoForm.origenCobro === 'NEGOCIO'"><label class="form-label small">Turno abierto</label><select class="form-select form-select-sm" [(ngModel)]="abonoForm.idCajeroTurno"><option [ngValue]="null">Seleccionar caja abierta</option><option *ngFor="let turn of openCashTurns" [ngValue]="turn.id">Caja {{ turn.idCashRegister }} · {{ turn.fechaInicio | date:'shortTime' }}</option></select></div>
+              <div class="col-md-2"><label class="form-label small">Tipo de pago <button type="button" class="btn btn-link btn-sm p-0" (click)="addPaymentType()" [disabled]="savingPaymentType" title="Agregar tipo de pago"><i class="bi bi-plus-circle"></i></button></label><select class="form-select form-select-sm cobranza-select" [(ngModel)]="abonoForm.idTipoPago"><option [ngValue]="null">Seleccionar</option><option *ngFor="let type of paymentTypes" [ngValue]="type.id">{{ type.description }}</option></select></div>
+              <div class="col-md-2"><label class="form-label small">Responsable del cobro</label><select class="form-select form-select-sm cobranza-select" [(ngModel)]="abonoForm.idUsuarioCobrador"><option [ngValue]="null">Sin asignar</option><option *ngFor="let user of users" [ngValue]="user.id">{{ user.displayName || user.usersmall || user.email || ('Usuario ' + user.id) }}</option></select></div>
+              <div class="col-md-2"><label class="form-label small">Recibido en</label><select class="form-select form-select-sm cobranza-select" [(ngModel)]="abonoForm.origenCobro"><option value="DOMICILIO">Domicilio del cliente</option><option value="NEGOCIO">Caja del negocio</option></select></div>
+              <div class="col-md-3" *ngIf="abonoForm.origenCobro === 'NEGOCIO'"><label class="form-label small">Turno abierto</label><select class="form-select form-select-sm cobranza-select" [(ngModel)]="abonoForm.idCajeroTurno"><option [ngValue]="null">Seleccionar caja abierta</option><option *ngFor="let turn of openCashTurns" [ngValue]="turn.id">Caja {{ turn.idCashRegister }} · {{ turn.fechaInicio | date:'shortTime' }}</option></select></div>
               <div class="col-md-2"><label class="form-label small">Comentario</label><input class="form-control form-control-sm" maxlength="500" [(ngModel)]="abonoForm.comentario"></div>
               <div class="col-md-2"><button class="btn btn-sm btn-success w-100" (click)="recordPayment(installment)" [disabled]="saving">Guardar abono</button></div>
             </div><div *ngIf="installment.abonos?.length" class="small mt-2"><strong>Abonos registrados:</strong><span *ngFor="let payment of installment.abonos" class="ms-2">{{ payment.fechaPago | date:'dd/MM/yyyy' }} — {{ payment.monto | currency:'MXN' }}<button class="btn btn-link btn-sm text-danger p-0 ms-1" (click)="deactivatePayment(payment)" title="Quitar abono"><i class="bi bi-x-circle"></i></button><span *ngIf="payment.comentario"> ({{ payment.comentario }})</span></span></div></div></div>
@@ -68,7 +83,6 @@ export class ClientesCobranzasPagosComponent implements OnChanges {
   private customersService = inject(CustomersService);
   private catalogsService = inject(CatalogsService);
   private usersService = inject(UsersService);
-  private usersPermissionsService = inject(UsersxpermissionsService);
   private signalsService = inject(SignalsService);
   private cajeroTurnoService = inject(CajeroTurnoService);
   private posTicket = inject(PosTicketService);
@@ -155,35 +169,15 @@ export class ClientesCobranzasPagosComponent implements OnChanges {
     const request = ++this.usersRequest;
     this.users = [];
     if (!companyId) return;
-    forkJoin({
-      companyUsers: this.usersService.get2fieldsUsers(companyId),
-      assignments: this.usersPermissionsService.getDataUsersxPermissions('root')
-    }).pipe(
-      switchMap(({ companyUsers, assignments }: any) => {
-        if (companyUsers?.status === false || !Array.isArray(assignments)) {
-          return throwError(() => new Error('No se pudo consultar la lista de usuarios.'));
-        }
-        const owned = Array.isArray(companyUsers?.data) ? companyUsers.data : [];
-        const knownIds = new Set(owned.map((user: any) => Number(user.id)));
-        const missingIds = [...new Set<number>(assignments
-          .filter((item: any) => Number(item.idPermission) === companyId && Number(item.active) === 1)
-          .map((item: any) => Number(item.idUser))
-          .filter((id: number) => Number.isInteger(id) && id > 0 && !knownIds.has(id)))];
-        if (!missingIds.length) return of({ users: owned, incomplete: false });
-        return forkJoin(missingIds.map(id => this.usersService.getUserById(id).pipe(
-          map((response: any) => response?.data || null),
-          catchError(() => of(null))
-        ))).pipe(map(extra => ({
-          users: [...owned, ...extra.filter((user: any) => user && Number(user.active) === 1)],
-          incomplete: extra.some(user => !user)
-        })));
-      })
-    ).subscribe({
+    this.usersService.get2fieldsUsers(companyId).subscribe({
       next: (result: any) => {
         if (request !== this.usersRequest || companyId !== this.paymentCompanyId) return;
-        this.users = result.users
+        if (result?.status === false) {
+          alerts.basicAlert('Error', 'No se pudieron cargar los usuarios de la empresa.', 'error');
+          return;
+        }
+        this.users = (Array.isArray(result?.data) ? result.data : [])
           .slice().sort((a: any, b: any) => String(a.displayName || a.usersmall || a.email || '').localeCompare(String(b.displayName || b.usersmall || b.email || ''), 'es'));
-        if (result.incomplete) alerts.basicAlert('Lista incompleta', 'No se pudieron cargar todos los usuarios asignados a la empresa.', 'warning');
         if (this.abonoForm.idUsuarioCobrador && !this.users.some(user => Number(user.id) === Number(this.abonoForm.idUsuarioCobrador))) {
           this.abonoForm.idUsuarioCobrador = null;
         }

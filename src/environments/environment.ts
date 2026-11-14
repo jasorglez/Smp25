@@ -75,5 +75,5 @@ export const environment = {
     // publicKey: 'TEST-4399133a-4676-42a2-ab85-d946370bf96a',
   },
 
-  version: '5.00.500 (13 Noviembre 2026 21:29) columna Pagos en Cobranza',
+  version: '5.00.501 (13 Noviembre 2026 21:31) responsables de Cobranza por empresa',
 };
