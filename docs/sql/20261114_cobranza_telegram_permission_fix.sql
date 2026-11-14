@@ -6,7 +6,7 @@ BEGIN TRANSACTION;
 
 UPDATE dbo.product_updates WITH (UPDLOCK, HOLDLOCK)
 SET version = N'5.00.515',
-    changeType = N'CORRECTION',
+    changeType = N'IMPROVEMENT',
     title = N'Permisos de Cobranza alineados con el sistema web en Telegram',
     description = N'Telegram consulta los permisos por empresa igual que el sistema web, incluidos los permisos globales heredados y los permisos antiguos por sucursal.',
     userBenefit = N'El cobrador puede usar Cobranza en Telegram con los permisos ya configurados para su empresa.',
