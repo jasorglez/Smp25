@@ -13,7 +13,7 @@ import { ClientesCobranzasPagosComponent } from './clientes-cobranzas-pagos.comp
   template: `
     <app-customers-cotizaciones *ngIf="mode === 'cotizaciones'" [inputCustomer]="customer" [inputIdCompany]="idCompany"></app-customers-cotizaciones>
     <app-customers-agenda *ngIf="mode === 'agenda'" [inputCustomer]="customer" [inputIdCompany]="idCompany"></app-customers-agenda>
-    <app-clientes-cobranzas-pagos *ngIf="mode === 'pagos'" [customer]="customer"></app-clientes-cobranzas-pagos>
+    <app-clientes-cobranzas-pagos *ngIf="mode === 'pagos'" [customer]="customer" [idCompany]="idCompany"></app-clientes-cobranzas-pagos>
   `
 })
 export class ClientesCobranzasDetailWrapperComponent implements ICellRendererAngularComp {

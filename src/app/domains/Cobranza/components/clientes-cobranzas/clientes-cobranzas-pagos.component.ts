@@ -3,13 +3,14 @@ import { Component, Input, OnChanges, inject } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { CustomersService } from 'app/services/customers.service';
 import { alerts } from 'app/helpers/alerts';
-import { firstValueFrom } from 'rxjs';
+import { catchError, firstValueFrom, forkJoin, map, of, switchMap, throwError } from 'rxjs';
 import { AgGridModule } from 'ag-grid-angular';
 import { ColDef } from 'ag-grid-enterprise';
 import { AG_GRID_LOCALE_ES } from 'assets/i18n/ag-grid.locale.es';
 import { ButtonCellRendererExpenditureComponent } from 'app/domains/ModAdmon/components/egresos-palacio/button-cell-renderer-expenditure.component';
 import { CatalogsService } from 'app/services/catalogs.service';
 import { UsersService } from 'app/services/users.service';
+import { UsersxpermissionsService } from 'app/services/usersxpermissions.service';
 import { SignalsService } from 'app/services/signals.service';
 import { CajeroTurnoService } from 'app/services/cajero-turno.service';
 import { PosTicketService } from 'app/services/pos-ticket.service';
@@ -48,8 +49,8 @@ import { PosTicketService } from 'app/services/pos-ticket.service';
           <div *ngFor="let installment of loan.cuotas"><div *ngIf="activeInstallmentId === installment.id" class="border rounded p-2 mt-2"><strong>Abonos de la cuota {{ installment.numeroCuota }}</strong><div class="row g-2 align-items-end py-2">
               <div class="col-md-2"><label class="form-label small">Fecha recibida</label><input class="form-control form-control-sm" type="date" [(ngModel)]="abonoForm.fechaPago"></div>
               <div class="col-md-2"><label class="form-label small">Monto recibido (máx. {{ installmentBalance(installment) | currency:'MXN' }})</label><input class="form-control form-control-sm" type="number" min="0.01" step="0.01" [max]="installmentBalance(installment)" [(ngModel)]="abonoForm.monto"></div>
-              <div class="col-md-2"><label class="form-label small">Tipo de pago <button class="btn btn-link btn-sm p-0" (click)="addPaymentType()" title="Agregar tipo de pago"><i class="bi bi-plus-circle"></i></button></label><select class="form-select form-select-sm" [(ngModel)]="abonoForm.idTipoPago"><option [ngValue]="null">Seleccionar</option><option *ngFor="let type of paymentTypes" [ngValue]="type.id">{{ type.description }}</option></select></div>
-              <div class="col-md-2"><label class="form-label small">Responsable del cobro</label><select class="form-select form-select-sm" [(ngModel)]="abonoForm.idUsuarioCobrador"><option [ngValue]="null">Sin asignar</option><option *ngFor="let user of users" [ngValue]="user.id">{{ user.usersmall || user.displayName || user.email }}</option></select></div>
+              <div class="col-md-2"><label class="form-label small">Tipo de pago <button type="button" class="btn btn-link btn-sm p-0" (click)="addPaymentType()" [disabled]="savingPaymentType" title="Agregar tipo de pago"><i class="bi bi-plus-circle"></i></button></label><select class="form-select form-select-sm" [(ngModel)]="abonoForm.idTipoPago"><option [ngValue]="null">Seleccionar</option><option *ngFor="let type of paymentTypes" [ngValue]="type.id">{{ type.description }}</option></select></div>
+              <div class="col-md-2"><label class="form-label small">Responsable del cobro</label><select class="form-select form-select-sm" [(ngModel)]="abonoForm.idUsuarioCobrador"><option [ngValue]="null">Sin asignar</option><option *ngFor="let user of users" [ngValue]="user.id">{{ user.displayName || user.usersmall || user.email || ('Usuario ' + user.id) }}</option></select></div>
               <div class="col-md-2"><label class="form-label small">Recibido en</label><select class="form-select form-select-sm" [(ngModel)]="abonoForm.origenCobro"><option value="DOMICILIO">Domicilio del cliente</option><option value="NEGOCIO">Caja del negocio</option></select></div>
               <div class="col-md-3" *ngIf="abonoForm.origenCobro === 'NEGOCIO'"><label class="form-label small">Turno abierto</label><select class="form-select form-select-sm" [(ngModel)]="abonoForm.idCajeroTurno"><option [ngValue]="null">Seleccionar caja abierta</option><option *ngFor="let turn of openCashTurns" [ngValue]="turn.id">Caja {{ turn.idCashRegister }} · {{ turn.fechaInicio | date:'shortTime' }}</option></select></div>
               <div class="col-md-2"><label class="form-label small">Comentario</label><input class="form-control form-control-sm" maxlength="500" [(ngModel)]="abonoForm.comentario"></div>
@@ -63,13 +64,18 @@ import { PosTicketService } from 'app/services/pos-ticket.service';
 })
 export class ClientesCobranzasPagosComponent implements OnChanges {
   @Input() customer: any;
+  @Input() idCompany = 0;
   private customersService = inject(CustomersService);
   private catalogsService = inject(CatalogsService);
   private usersService = inject(UsersService);
+  private usersPermissionsService = inject(UsersxpermissionsService);
   private signalsService = inject(SignalsService);
   private cajeroTurnoService = inject(CajeroTurnoService);
   private posTicket = inject(PosTicketService);
   paymentTypes: any[] = [];
+  savingPaymentType = false;
+  private paymentTypesRequest = 0;
+  private usersRequest = 0;
   users: any[] = [];
   openCashTurns: any[] = [];
   loans: any[] = [];
@@ -99,10 +105,97 @@ export class ClientesCobranzasPagosComponent implements OnChanges {
 
   get totalPaid(): number { return this.loans.reduce((sum, loan) => sum + loan.cuotas.reduce((s: number, q: any) => s + this.installmentPaid(q), 0), 0); }
   ngOnChanges(): void { this.loadLoans(); this.loadPaymentTypes(); this.loadUsers(); this.loadOpenCashTurns(); }
-  loadPaymentTypes(): void { const rootId = Number(this.customer?.idRoot); if (!rootId) return; this.catalogsService.getCatalogsFromAdmon(rootId, 'COBRO_PAGO').subscribe({ next: types => { this.paymentTypes = types || []; }, error: () => { this.paymentTypes = []; } }); }
-  async addPaymentType(): Promise<void> { const result = await alerts.inputAlert('Nuevo tipo de pago', 'Nombre del medio de pago', 'text', '', { inputAttributes: { maxlength: '100' } }); if (!result.isConfirmed) return; const name = String(result.value || '').trim().toUpperCase(); if (!name) return; if (this.paymentTypes.some(type => String(type.description).toUpperCase() === name)) { alerts.basicAlert('Tipo existente', 'Ese tipo de pago ya está en el catálogo.', 'info'); return; } try { const response: any = await firstValueFrom(this.catalogsService.addCatalogToAdmon({ idCompany: this.customer.idRoot, description: name, type: 'COBRO_PAGO', active: 1 })); this.loadPaymentTypes(); this.abonoForm.idTipoPago = response?.id ?? null; alerts.basicAlert('Tipo agregado', 'El medio de pago quedó disponible para esta empresa.', 'success'); } catch (error) { console.error(error); alerts.basicAlert('Error', 'No se pudo agregar el tipo de pago.', 'error'); } }
-  loadUsers(): void { const rootId = Number(this.customer?.idRoot); if (!rootId) return; this.usersService.getDataUsers(rootId).subscribe({ next: (result: any) => { this.users = result?.data || []; }, error: () => { this.users = []; } }); }
-  loadOpenCashTurns(): void { const rootId = Number(this.customer?.idRoot); if (!rootId) return; const cashier = 'COBRANZA: ' + Number(this.signalsService.getIdUSer()()); this.cajeroTurnoService.getByCompany(rootId).subscribe({ next: (items: any[]) => this.openCashTurns = (items || []).filter(item => item.active && !item.fechaCierre && String(item.cajero || '') === cashier), error: () => this.openCashTurns = [] }); }
+  private get paymentCompanyId(): number {
+    return [this.customer?.idRoot, this.idCompany, this.signalsService.getRootSelectedBySidebar()()]
+      .map(value => Number(value)).find(value => Number.isInteger(value) && value > 0) || 0;
+  }
+
+  async loadPaymentTypes(): Promise<boolean> {
+    const companyId = this.paymentCompanyId;
+    const request = ++this.paymentTypesRequest;
+    if (!companyId) { this.paymentTypes = []; return false; }
+    try {
+      const types = await firstValueFrom(this.catalogsService.getCatalogsFromAdmon(companyId, 'COBRO_PAGO'));
+      if (request !== this.paymentTypesRequest || companyId !== this.paymentCompanyId) return false;
+      this.paymentTypes = Array.isArray(types) ? types : [];
+      return true;
+    } catch (error: any) {
+      if (request !== this.paymentTypesRequest) return false;
+      this.paymentTypes = [];
+      if (error?.status === 404) return true;
+      console.error('Error al cargar los tipos de pago:', error);
+      alerts.basicAlert('Error', 'No se pudieron cargar los tipos de pago de la empresa.', 'error');
+      return false;
+    }
+  }
+
+  async addPaymentType(): Promise<void> {
+    if (this.savingPaymentType) return;
+    const companyId = this.paymentCompanyId;
+    if (!companyId) { alerts.basicAlert('Empresa requerida', 'Selecciona una empresa antes de agregar un tipo de pago.', 'warning'); return; }
+    const result = await alerts.inputAlert('Nuevo tipo de pago', 'Nombre del medio de pago', 'text', '', { inputAttributes: { maxlength: '100' } });
+    if (!result.isConfirmed || companyId !== this.paymentCompanyId) return;
+    const name = String(result.value || '').trim().toUpperCase();
+    if (!name) return;
+    if (this.paymentTypes.some(type => String(type.description || '').trim().toUpperCase() === name)) { alerts.basicAlert('Tipo existente', 'Ese tipo de pago ya está en el catálogo.', 'info'); return; }
+    this.savingPaymentType = true;
+    try {
+      const response: any = await firstValueFrom(this.catalogsService.addCatalogToAdmon({ idCompany: companyId, description: name, type: 'COBRO_PAGO', active: 1 }));
+      if (companyId !== this.paymentCompanyId) return;
+      const loaded = await this.loadPaymentTypes();
+      if (!loaded) { alerts.basicAlert('Tipo guardado', 'El tipo de pago se guardó, pero no se pudo actualizar la lista. Vuelve a abrir el detalle.', 'warning'); return; }
+      const saved = this.paymentTypes.find(type => Number(type.id) === Number(response?.id));
+      this.abonoForm.idTipoPago = saved?.id ?? null;
+      alerts.basicAlert('Tipo agregado', 'El medio de pago quedó disponible para esta empresa.', 'success');
+    } catch (error) { console.error(error); alerts.basicAlert('Error', 'No se pudo agregar el tipo de pago.', 'error'); }
+    finally { this.savingPaymentType = false; }
+  }
+  loadUsers(): void {
+    const companyId = this.paymentCompanyId;
+    const request = ++this.usersRequest;
+    this.users = [];
+    if (!companyId) return;
+    forkJoin({
+      companyUsers: this.usersService.get2fieldsUsers(companyId),
+      assignments: this.usersPermissionsService.getDataUsersxPermissions('root')
+    }).pipe(
+      switchMap(({ companyUsers, assignments }: any) => {
+        if (companyUsers?.status === false || !Array.isArray(assignments)) {
+          return throwError(() => new Error('No se pudo consultar la lista de usuarios.'));
+        }
+        const owned = Array.isArray(companyUsers?.data) ? companyUsers.data : [];
+        const knownIds = new Set(owned.map((user: any) => Number(user.id)));
+        const missingIds = [...new Set<number>(assignments
+          .filter((item: any) => Number(item.idPermission) === companyId && Number(item.active) === 1)
+          .map((item: any) => Number(item.idUser))
+          .filter((id: number) => Number.isInteger(id) && id > 0 && !knownIds.has(id)))];
+        if (!missingIds.length) return of({ users: owned, incomplete: false });
+        return forkJoin(missingIds.map(id => this.usersService.getUserById(id).pipe(
+          map((response: any) => response?.data || null),
+          catchError(() => of(null))
+        ))).pipe(map(extra => ({
+          users: [...owned, ...extra.filter((user: any) => user && Number(user.active) === 1)],
+          incomplete: extra.some(user => !user)
+        })));
+      })
+    ).subscribe({
+      next: (result: any) => {
+        if (request !== this.usersRequest || companyId !== this.paymentCompanyId) return;
+        this.users = result.users
+          .slice().sort((a: any, b: any) => String(a.displayName || a.usersmall || a.email || '').localeCompare(String(b.displayName || b.usersmall || b.email || ''), 'es'));
+        if (result.incomplete) alerts.basicAlert('Lista incompleta', 'No se pudieron cargar todos los usuarios asignados a la empresa.', 'warning');
+        if (this.abonoForm.idUsuarioCobrador && !this.users.some(user => Number(user.id) === Number(this.abonoForm.idUsuarioCobrador))) {
+          this.abonoForm.idUsuarioCobrador = null;
+        }
+      },
+      error: error => {
+        if (request !== this.usersRequest) return;
+        console.error('Error al cargar los responsables del cobro:', error);
+        alerts.basicAlert('Error', 'No se pudieron cargar los usuarios de la empresa.', 'error');
+      }
+    });
+  }
+  loadOpenCashTurns(): void { const rootId = this.paymentCompanyId; if (!rootId) { this.openCashTurns = []; return; } const cashier = 'COBRANZA: ' + Number(this.signalsService.getIdUSer()()); this.cajeroTurnoService.getByCompany(rootId).subscribe({ next: (items: any[]) => this.openCashTurns = (items || []).filter(item => item.active && !item.fechaCierre && String(item.cajero || '') === cashier), error: () => this.openCashTurns = [] }); }
   private today(): string { const date = new Date(); return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`; }
   private nextMonth(): string { const date = new Date(); const day = date.getDate(); date.setDate(1); date.setMonth(date.getMonth() + 1); const lastDay = new Date(date.getFullYear(), date.getMonth() + 1, 0).getDate(); date.setDate(Math.min(day, lastDay)); return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`; }
   private dateForInput(value: string | Date): string { return typeof value === 'string' ? value.slice(0, 10) : this.formatDate(value); }
@@ -132,7 +225,9 @@ export class ClientesCobranzasPagosComponent implements OnChanges {
 
   toggleAbonoForm(installment: any): void {
     this.activeInstallmentId = this.activeInstallmentId === installment.id ? null : installment.id;
-    this.abonoForm = { fechaPago: this.today(), monto: null, idTipoPago: this.paymentTypes[0]?.id ?? null, idUsuarioCobrador: Number(this.signalsService.getIdUSer()()) || null, origenCobro: 'DOMICILIO', idCajeroTurno: null, comentario: '' };
+    const currentUserId = Number(this.signalsService.getIdUSer()());
+    this.abonoForm = { fechaPago: this.today(), monto: null, idTipoPago: this.paymentTypes[0]?.id ?? null, idUsuarioCobrador: this.users.some(user => Number(user.id) === currentUserId) ? currentUserId : null, origenCobro: 'DOMICILIO', idCajeroTurno: null, comentario: '' };
+    if (this.activeInstallmentId !== null) { void this.loadPaymentTypes(); this.loadUsers(); }
   }
 
   async recordPayment(installment: any): Promise<void> {
@@ -143,7 +238,7 @@ export class ClientesCobranzasPagosComponent implements OnChanges {
     this.saving = true;
     try {
       const saved: any = await firstValueFrom(this.customersService.addCobranzaInstallmentPayment(installment.id, { fechaPago: this.abonoForm.fechaPago, monto: amount, idTipoPago: this.abonoForm.idTipoPago, idUsuarioCobrador: this.abonoForm.idUsuarioCobrador, origenCobro: this.abonoForm.origenCobro, idCajeroTurno: this.abonoForm.origenCobro === 'NEGOCIO' ? this.abonoForm.idCajeroTurno : null, comentario: this.abonoForm.comentario }));
-      await this.posTicket.printCobranza({ id: saved?.id, fecha: this.abonoForm.fechaPago, monto: amount, tipoPago: this.paymentTypes.find(item => item.id === this.abonoForm.idTipoPago)?.description || 'Pago', cliente: this.customer?.nameContact || this.customer?.company || 'Cliente', prestamo: installment.idPrestamo, cuota: installment.numeroCuota, origen: this.abonoForm.origenCobro, empresaId: this.customer.idRoot });
+      await this.posTicket.printCobranza({ id: saved?.id, fecha: this.abonoForm.fechaPago, monto: amount, tipoPago: this.paymentTypes.find(item => item.id === this.abonoForm.idTipoPago)?.description || 'Pago', cliente: this.customer?.nameContact || this.customer?.company || 'Cliente', prestamo: installment.idPrestamo, cuota: installment.numeroCuota, origen: this.abonoForm.origenCobro, empresaId: this.paymentCompanyId });
       this.saving = false; this.activeInstallmentId = null; this.loadLoans();
     } catch (error: any) { console.error(error); this.saving = false; alerts.basicAlert('Error', error?.error?.error || 'No se pudo registrar el abono.', 'error'); }
   }
