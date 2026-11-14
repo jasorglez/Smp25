@@ -499,14 +499,15 @@ export class DetalleItemsCotizacionComponent implements ICellRendererAngularComp
   async onItemCellDoubleClicked(event: any): Promise<void> {
     if (event.column?.getColId() !== 'nombreMaterial' || !event.data) return;
     this.gridApi?.stopEditing();
-    const description = String(event.data.nombreMaterial ?? '');
+    const description = String(event.data.nombreMaterial ?? event.value ?? '');
     const lineCount = description.split(/\r?\n/).length;
     const rows = Math.max(4, Math.min(14, Math.max(lineCount, Math.ceil(description.length / 90)) + 2));
     const viewportWidth = typeof window === 'undefined' ? 1200 : window.innerWidth;
     const preferredWidth = description.length < 90 ? 560 : description.length < 240 ? 760 : 1040;
     const modalWidth = Math.min(preferredWidth, Math.max(320, viewportWidth - 32));
     const escapeHtml = (value: string) => value.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
-    const initialHtml = this.sanitizeDescriptionHtml(String(event.data.nombreMaterialHtml ?? escapeHtml(description).replace(/\n/g, '<br>')));
+    const savedHtml = String(event.data.nombreMaterialHtml ?? '');
+    const initialHtml = this.sanitizeDescriptionHtml(savedHtml || escapeHtml(description).replace(/\n/g, '<br>'));
     const result = await Swal.fire({
       title: 'Editar descripción de la partida',
       html: `<div class="text-start"><div class="btn-toolbar mb-2" role="toolbar" aria-label="Formato de texto"><button id="quote-bold-toggle" type="button" class="btn btn-sm btn-outline-secondary fw-bold" title="Negrita">B</button></div><div id="quote-description-editor" contenteditable="true" role="textbox" aria-multiline="true" style="min-height:${rows * 24}px;max-height:55vh;overflow:auto;border:1px solid #ced4da;border-radius:.375rem;padding:.6rem;text-align:left;white-space:pre-wrap">${initialHtml}</div></div>`,
@@ -517,6 +518,9 @@ export class DetalleItemsCotizacionComponent implements ICellRendererAngularComp
       didOpen: popup => {
         const editor = popup.querySelector('#quote-description-editor') as HTMLElement;
         const boldButton = popup.querySelector('#quote-bold-toggle') as HTMLButtonElement;
+        // SweetAlert puede reconstruir su contenido al mostrarlo; reponer aquí
+        // el HTML actual garantiza que la descripción guardada aparezca siempre.
+        if (editor) editor.innerHTML = initialHtml;
         boldButton?.addEventListener('mousedown', e => e.preventDefault());
         boldButton?.addEventListener('click', () => { editor?.focus(); document.execCommand('bold'); });
         editor?.focus();
