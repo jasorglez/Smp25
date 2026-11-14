@@ -77,7 +77,7 @@ export class CobranzaDashboardComponent {
     for (const loan of this.loans) {
       for (const cuota of loan.cuotas || []) {
         const payments = cuota.abonos || [];
-        const paid = payments.reduce((sum: number, payment: any) => sum + Number(payment.monto || 0), 0);
+        const paid = Number.isFinite(Number(cuota.montoAplicado)) ? Number(cuota.montoAplicado) : payments.reduce((sum: number, payment: any) => sum + Number(payment.monto || 0), 0);
         this.totalCollected += paid;
         this.collectedThisMonth += payments.filter((payment: any) => String(payment.fechaPago).slice(0, 7) === monthKey).reduce((sum: number, payment: any) => sum + Number(payment.monto || 0), 0);
         const due = String(cuota.fechaProgramada || '').slice(0, 10);

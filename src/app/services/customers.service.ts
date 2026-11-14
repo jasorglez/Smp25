@@ -94,6 +94,10 @@ export class CustomersService {
     return this.http.put<void>(`${environment.urlAdministration}/PrestamosCobranza/cuota/${installmentId}/fecha`, data, { headers: this.trackingService.getHeaders() });
   }
 
+  deactivateCobranzaInstallment(installmentId: number): Observable<void> {
+    return this.http.delete<void>(`${environment.urlAdministration}/PrestamosCobranza/cuota/${installmentId}`, { headers: this.trackingService.getHeaders() });
+  }
+
   deactivateCobranzaInstallmentPayment(paymentId: number): Observable<any> {
     return this.http.delete(`${environment.urlAdministration}/PrestamosCobranza/abonos/${paymentId}`, { headers: this.trackingService.getHeaders() });
   }

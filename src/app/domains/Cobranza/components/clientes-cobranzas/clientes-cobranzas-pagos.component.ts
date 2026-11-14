@@ -85,7 +85,7 @@ import { PosTicketService } from 'app/services/pos-ticket.service';
         <div class="card-body"><ag-grid-angular class="ag-theme-quartz small-text-ag-grid d-block" style="width:100%;height:320px" [rowData]="loan.cuotas" [columnDefs]="installmentColumns" [defaultColDef]="defaultColDef" [localeText]="AG_GRID_LOCALE_ES" [rowSelection]="'single'" [stopEditingWhenCellsLoseFocus]="true" (cellValueChanged)="onDateChanged($event)"></ag-grid-angular>
           <div *ngFor="let installment of loan.cuotas"><div *ngIf="activeInstallmentId === installment.id" class="border rounded p-2 mt-2"><strong>Abonos de la cuota {{ installment.numeroCuota }}</strong><div class="row g-2 align-items-end py-2">
               <div class="col-md-2"><label class="form-label small">Fecha recibida</label><input class="form-control form-control-sm" type="date" [(ngModel)]="abonoForm.fechaPago"></div>
-              <div class="col-md-2"><label class="form-label small">Monto recibido (máx. {{ installmentBalance(installment) | currency:'MXN' }})</label><input class="form-control form-control-sm" type="number" min="0.01" step="0.01" [max]="installmentBalance(installment)" [(ngModel)]="abonoForm.monto"></div>
+              <div class="col-md-2"><label class="form-label small">Monto recibido (saldo préstamo: {{ loanBalance(loan) | currency:'MXN' }})</label><input class="form-control form-control-sm" type="number" min="0.01" step="0.01" [max]="loanBalance(loan)" [(ngModel)]="abonoForm.monto"></div>
               <div class="col-md-2"><label class="form-label small" [for]="'cobranza-tipo-' + installment.id">Tipo de pago <button type="button" class="btn btn-link btn-sm p-0" (click)="addPaymentType()" [disabled]="savingPaymentType" title="Agregar tipo de pago"><i class="bi bi-plus-circle"></i></button></label><ng-select class="cobranza-select" [labelForId]="'cobranza-tipo-' + installment.id" [(ngModel)]="abonoForm.idTipoPago" [clearable]="false" [searchable]="false" appendTo="body" placeholder="Seleccionar" notFoundText="Sin tipos de pago"><ng-option *ngFor="let type of paymentTypes" [value]="type.id">{{ type.description }}</ng-option></ng-select></div>
               <div class="col-md-2"><label class="form-label small" [for]="'cobranza-responsable-' + installment.id">Responsable del cobro</label><ng-select class="cobranza-select" [labelForId]="'cobranza-responsable-' + installment.id" [(ngModel)]="abonoForm.idUsuarioCobrador" [clearable]="true" [searchable]="true" appendTo="body" placeholder="Sin asignar" notFoundText="Sin usuarios"><ng-option *ngFor="let user of users" [value]="user.id">{{ user.displayName || user.usersmall || user.email || ('Usuario ' + user.id) }}</ng-option></ng-select></div>
               <div class="col-md-2"><label class="form-label small" [for]="'cobranza-origen-' + installment.id">Recibido en</label><ng-select class="cobranza-select" [labelForId]="'cobranza-origen-' + installment.id" [(ngModel)]="abonoForm.origenCobro" [clearable]="false" [searchable]="false" appendTo="body"><ng-option value="DOMICILIO">Domicilio del cliente</ng-option><ng-option value="NEGOCIO">Caja del negocio</ng-option></ng-select></div>
@@ -131,7 +131,8 @@ export class ClientesCobranzasPagosComponent implements OnChanges {
     { headerName: 'Abonado', valueGetter: p => this.installmentPaid(p.data), valueFormatter: p => this.money(p.value) },
     { headerName: 'Saldo', valueGetter: p => this.installmentBalance(p.data), valueFormatter: p => this.money(p.value) },
     { headerName: 'Estado', valueGetter: p => this.installmentBalance(p.data) <= 0 ? 'Pagada' : 'Pendiente' },
-    { headerName: 'Abonos', width: 110, flex: 0, sortable: false, filter: false, valueGetter: () => 'Abonos', cellRenderer: ButtonCellRendererExpenditureComponent, cellRendererParams: { onClick: (node: any) => this.toggleAbonoForm(node.data), icon: 'bi-cash-coin', title: 'Ver y registrar abonos de la cuota' } }
+    { headerName: 'Abonos', width: 110, flex: 0, sortable: false, filter: false, valueGetter: () => 'Abonos', cellRenderer: ButtonCellRendererExpenditureComponent, cellRendererParams: { onClick: (node: any) => this.toggleAbonoForm(node.data), icon: 'bi-cash-coin', title: 'Ver y registrar abonos de la cuota' } },
+    { headerName: 'Borrar letra', width: 125, flex: 0, sortable: false, filter: false, valueGetter: () => 'Borrar', cellRendererSelector: params => this.canDeleteInstallment(params.data) ? { component: ButtonCellRendererExpenditureComponent, params: { icon: 'bi-trash', title: 'Borrar letra sin abonos de un préstamo liquidado', onClick: (node: any) => this.deactivateInstallment(node.data) } } : undefined }
   ];
   private money(value: any): string { return new Intl.NumberFormat('es-MX', { style: 'currency', currency: 'MXN' }).format(Number(value || 0)); }
   onDateChanged(event: any): void { if (!/^\d{4}-\d{2}-\d{2}$/.test(event.newValue || '')) { event.node.setDataValue('fechaProgramada', event.oldValue); alerts.basicAlert('Fecha inválida', 'Selecciona una fecha válida.', 'warning'); } }
@@ -216,9 +217,14 @@ export class ClientesCobranzasPagosComponent implements OnChanges {
   private nextMonth(): string { const date = new Date(); const day = date.getDate(); date.setDate(1); date.setMonth(date.getMonth() + 1); const lastDay = new Date(date.getFullYear(), date.getMonth() + 1, 0).getDate(); date.setDate(Math.min(day, lastDay)); return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`; }
   private dateForInput(value: string | Date): string { return typeof value === 'string' ? value.slice(0, 10) : this.formatDate(value); }
   private formatDate(value: Date): string { return `${value.getFullYear()}-${String(value.getMonth() + 1).padStart(2, '0')}-${String(value.getDate()).padStart(2, '0')}`; }
-  installmentPaid(item: any): number { return (item.abonos || []).filter((p: any) => p.active !== false).reduce((sum: number, p: any) => sum + Number(p.monto || 0), 0); }
+  installmentPaid(item: any): number { return Number.isFinite(Number(item?.montoAplicado)) ? Number(item.montoAplicado) : (item.abonos || []).filter((p: any) => p.active !== false).reduce((sum: number, p: any) => sum + Number(p.monto || 0), 0); }
   installmentBalance(item: any): number { return Math.max(0, Number(item.montoProgramado || 0) - this.installmentPaid(item)); }
-  loanBalance(loan: any): number { return (loan.cuotas || []).reduce((sum: number, item: any) => sum + this.installmentBalance(item), 0); }
+  loanTotalPaid(loan: any): number { return (loan.cuotas || []).reduce((sum: number, item: any) => sum + (item.abonos || []).filter((payment: any) => payment.active !== false).reduce((part: number, payment: any) => part + Number(payment.monto || 0), 0), 0); }
+  loanBalance(loan: any): number { return Math.max(0, Number(loan.montoTotal || 0) - this.loanTotalPaid(loan)); }
+  canDeleteInstallment(item: any): boolean {
+    const loan = this.loans.find(current => Number(current.id) === Number(item?.idPrestamo));
+    return !!loan && this.loanBalance(loan) <= 0 && !(item.abonos || []).some((payment: any) => payment.active !== false);
+  }
 
   loadLoans(): void {
     if (!this.customer?.id) { this.loans = []; return; }
@@ -248,7 +254,9 @@ export class ClientesCobranzasPagosComponent implements OnChanges {
 
   async recordPayment(installment: any): Promise<void> {
     const amount = Number(this.abonoForm.monto);
-    if (!this.abonoForm.fechaPago || !Number.isFinite(amount) || amount <= 0 || amount > this.installmentBalance(installment)) { alerts.basicAlert('Monto no válido', 'Captura un abono mayor a cero que no supere el saldo de la cuota.', 'warning'); return; }
+    const loan = this.loans.find(item => Number(item.id) === Number(installment.idPrestamo));
+    const loanBalance = loan ? this.loanBalance(loan) : 0;
+    if (!this.abonoForm.fechaPago || !Number.isFinite(amount) || amount <= 0 || amount > loanBalance) { alerts.basicAlert('Monto no válido', `Captura un monto mayor a cero que no supere el saldo del préstamo (${this.money(loanBalance)}).`, 'warning'); return; }
     if (!this.abonoForm.idTipoPago) { alerts.basicAlert('Tipo de pago requerido', 'Selecciona cómo se recibió el abono.', 'warning'); return; }
     if (this.abonoForm.origenCobro === 'NEGOCIO' && !this.abonoForm.idCajeroTurno) { alerts.basicAlert('Caja requerida', 'Abre y selecciona una caja de cobranza para registrar este pago.', 'warning'); return; }
     this.saving = true;
@@ -270,5 +278,14 @@ export class ClientesCobranzasPagosComponent implements OnChanges {
     const result = await alerts.confirmAlert('Quitar abono', 'El abono se conservará inactivo en el historial.', 'warning', 'Sí, quitar');
     if (!result.isConfirmed) return;
     this.customersService.deactivateCobranzaInstallmentPayment(payment.id).subscribe({ next: () => this.loadLoans(), error: error => { console.error(error); alerts.basicAlert('Error', error?.error?.error || 'No se pudo quitar el abono.', 'error'); } });
+  }
+
+  async deactivateInstallment(installment: any): Promise<void> {
+    const result = await alerts.confirmAlert('Borrar letra', `La letra ${installment.numeroCuota} no tiene abonos y el préstamo está liquidado. Se conservará inactiva en el historial.`, 'warning', 'Sí, borrar');
+    if (!result.isConfirmed) return;
+    this.customersService.deactivateCobranzaInstallment(installment.id).subscribe({
+      next: () => this.loadLoans(),
+      error: error => { console.error(error); alerts.basicAlert('Error', error?.error?.error || 'No se pudo borrar la letra.', 'error'); }
+    });
   }
 }

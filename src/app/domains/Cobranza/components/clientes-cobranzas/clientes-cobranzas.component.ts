@@ -908,7 +908,7 @@ export class ClientesCobranzasComponent implements CanComponentDeactivate {
         content.push({ text: `Abonado: ${money(paid)}   Saldo: ${money(Number(loan.montoTotal) - paid)}`, margin: [0, 0, 0, 5] });
         const rows: any[][] = [[{ text: '#', bold: true }, { text: 'Programado', bold: true }, { text: 'Cuota', bold: true }, { text: 'Abonado', bold: true }, { text: 'Saldo', bold: true }, { text: 'Estado', bold: true }]];
         for (const installment of installments) {
-          const received = (installment.abonos || []).reduce((sum: number, payment: any) => sum + Number(payment.monto || 0), 0);
+          const received = Number.isFinite(Number(installment.montoAplicado)) ? Number(installment.montoAplicado) : (installment.abonos || []).reduce((sum: number, payment: any) => sum + Number(payment.monto || 0), 0);
           rows.push([String(installment.numeroCuota), date(installment.fechaProgramada), money(installment.montoProgramado), money(received), money(Number(installment.montoProgramado) - received), received >= Number(installment.montoProgramado) ? 'Pagada' : 'Pendiente']);
         }
         content.push({ table: { headerRows: 1, widths: [20, 74, 74, 74, 74, '*'], body: rows }, layout: 'lightHorizontalLines', fontSize: 8 });
