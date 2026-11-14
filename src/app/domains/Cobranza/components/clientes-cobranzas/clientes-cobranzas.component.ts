@@ -323,7 +323,9 @@ export class ClientesCobranzasComponent implements CanComponentDeactivate {
       {
         field: 'pagos',
         headerName: 'Pagos',
-        width: 80,
+        width: 120,
+        minWidth: 110,
+        flex: 0,
         editable: false,
         hide: this.type !== 'CUSTOMERS',
         sortable: false,
