@@ -107,7 +107,7 @@ const textoPdf = (value: unknown): string =>
           (gridReady)="onGridReady($event)"
           (cellDoubleClicked)="onItemCellDoubleClicked($event)"
           (cellEditingStopped)="onCellEditingStopped($event)"
-          style="height:440px; width:100%">
+          style="height:min(68vh, 720px); min-height:540px; width:100%">
         </ag-grid-angular>
       </ng-container>
 
@@ -199,12 +199,7 @@ const textoPdf = (value: unknown): string =>
       font-size: 13px;
     }
     .autocomplete-list li:hover { background: #e8f0f8; }
-    .detail-container ::ng-deep .ag-rich-select {
-      min-width: 520px !important;
-    }
-    .detail-container ::ng-deep .ag-rich-select-list {
-      min-width: 520px !important;
-    }
+    ::ng-deep .ag-rich-select, ::ng-deep .ag-rich-select-list { min-width: min(620px, 92vw) !important; }
   `]
 })
 export class DetalleItemsCotizacionComponent implements ICellRendererAngularComp {
@@ -292,7 +287,7 @@ export class DetalleItemsCotizacionComponent implements ICellRendererAngularComp
         filterList: true,
         searchType: 'matchAny',
         highlightMatch: true,
-        valueListMaxHeight: 320,
+        valueListMaxHeight: Math.max(300, Math.min(480, Math.floor((typeof window === 'undefined' ? 800 : window.innerHeight) * 0.58))),
         valueListMaxWidth: 900,
       }),
       tooltipValueGetter: (p) => p.value ?? '',
