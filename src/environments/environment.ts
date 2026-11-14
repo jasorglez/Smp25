@@ -75,5 +75,5 @@ export const environment = {
     // publicKey: 'TEST-4399133a-4676-42a2-ab85-d946370bf96a',
   },
 
-  version: '5.00.508 (14 Noviembre 2026 00:26) listado de clientes compacto',
+  version: '5.00.509 (14 Noviembre 2026 00:38) diagnóstico de corte de Cobranza',
 };

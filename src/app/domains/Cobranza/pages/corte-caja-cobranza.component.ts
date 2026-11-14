@@ -132,7 +132,7 @@ export class CorteCajaCobranzaComponent {
     if (!this.rootId || !this.desde || !this.hasta || this.hasta < this.desde) { this.error = 'Selecciona un período válido.'; return; }
     this.loading = true; this.error = ''; this.loadedKey = '';
     const key = this.currentKey();
-    this.service.getResumen(this.rootId, this.desde, this.hasta, this.usuarioId).subscribe({ next: result => { this.summary = result; this.loadedKey = key; this.loading = false; }, error: error => { console.error(error); this.error = 'No se pudo consultar el corte.'; this.loading = false; } });
+    this.service.getResumen(this.rootId, this.desde, this.hasta, this.usuarioId).subscribe({ next: result => { this.summary = result; this.loadedKey = key; this.loading = false; }, error: error => { console.error('Error al consultar el corte de Cobranza:', error); const detail = error?.error?.error || error?.error?.title; const status = error?.status ? ` (HTTP ${error.status})` : ''; this.error = detail ? `No se pudo consultar el corte${status}: ${detail}` : `No se pudo consultar el corte${status}.`; this.loading = false; } });
     this.service.getHistorial(this.rootId).subscribe({ next: result => this.history = result || [], error: error => console.error(error) });
   }
   async createCut(): Promise<void> {
