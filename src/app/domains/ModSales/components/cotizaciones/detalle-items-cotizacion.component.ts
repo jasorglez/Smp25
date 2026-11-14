@@ -105,6 +105,7 @@ const textoPdf = (value: unknown): string =>
           [gridOptions]="gridOptions"
           [localeText]="AG_GRID_LOCALE_ES"
           (gridReady)="onGridReady($event)"
+          (cellDoubleClicked)="onItemCellDoubleClicked($event)"
           (cellEditingStopped)="onCellEditingStopped($event)"
           style="height:440px; width:100%">
         </ag-grid-angular>
@@ -493,6 +494,92 @@ export class DetalleItemsCotizacionComponent implements ICellRendererAngularComp
         this.gridApi.startEditingCell({ rowIndex: event.rowIndex, colKey: this.editableColumnOrder[idx + 1] });
       }, 100);
     }
+  }
+
+  async onItemCellDoubleClicked(event: any): Promise<void> {
+    if (event.column?.getColId() !== 'nombreMaterial' || !event.data) return;
+    this.gridApi?.stopEditing();
+    const description = String(event.data.nombreMaterial ?? '');
+    const lineCount = description.split(/\r?\n/).length;
+    const rows = Math.max(4, Math.min(14, Math.max(lineCount, Math.ceil(description.length / 90)) + 2));
+    const viewportWidth = typeof window === 'undefined' ? 1200 : window.innerWidth;
+    const preferredWidth = description.length < 90 ? 560 : description.length < 240 ? 760 : 1040;
+    const modalWidth = Math.min(preferredWidth, Math.max(320, viewportWidth - 32));
+    const escapeHtml = (value: string) => value.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    const initialHtml = this.sanitizeDescriptionHtml(String(event.data.nombreMaterialHtml ?? escapeHtml(description).replace(/\n/g, '<br>')));
+    const result = await Swal.fire({
+      title: 'Editar descripción de la partida',
+      html: `<div class="text-start"><div class="btn-toolbar mb-2" role="toolbar" aria-label="Formato de texto"><button id="quote-bold-toggle" type="button" class="btn btn-sm btn-outline-secondary fw-bold" title="Negrita">B</button></div><div id="quote-description-editor" contenteditable="true" role="textbox" aria-multiline="true" style="min-height:${rows * 24}px;max-height:55vh;overflow:auto;border:1px solid #ced4da;border-radius:.375rem;padding:.6rem;text-align:left;white-space:pre-wrap">${initialHtml}</div></div>`,
+      width: modalWidth,
+      showCancelButton: true,
+      confirmButtonText: 'Guardar descripción',
+      cancelButtonText: 'Cancelar',
+      didOpen: popup => {
+        const editor = popup.querySelector('#quote-description-editor') as HTMLElement;
+        const boldButton = popup.querySelector('#quote-bold-toggle') as HTMLButtonElement;
+        boldButton?.addEventListener('mousedown', e => e.preventDefault());
+        boldButton?.addEventListener('click', () => { editor?.focus(); document.execCommand('bold'); });
+        editor?.focus();
+      },
+      preConfirm: () => {
+        const editor = Swal.getPopup()?.querySelector('#quote-description-editor') as HTMLElement;
+        const html = this.sanitizeDescriptionHtml(editor?.innerHTML ?? '');
+        const text = (editor?.innerText ?? '').trim();
+        if (!text) { Swal.showValidationMessage('La descripción no puede quedar vacía.'); return false; }
+        return { html, text };
+      },
+    });
+    if (!result.isConfirmed) return;
+
+    event.data.nombreMaterial = String(result.value.text).trim();
+    event.data.nombreMaterialHtml = result.value.html;
+    event.data.__modified = true;
+    this.hasChanges = true;
+    this.gridApi?.refreshCells({ rowNodes: [event.node], columns: ['nombreMaterial'], force: true });
+  }
+
+  private sanitizeDescriptionHtml(html: string): string {
+    if (typeof DOMParser === 'undefined') return html.replace(/<[^>]*>/g, '');
+    const parsed = new DOMParser().parseFromString(html, 'text/html');
+    const allowed = new Set(['B', 'STRONG', 'BR', 'DIV', 'P']);
+    const cleanNode = (node: Node, parent: Node): void => {
+      if (node.nodeType === Node.TEXT_NODE) { parent.appendChild(document.createTextNode(node.textContent ?? '')); return; }
+      if (node.nodeType !== Node.ELEMENT_NODE) return;
+      const element = node as HTMLElement;
+      const tag = element.tagName;
+      if (!allowed.has(tag)) {
+        Array.from(element.childNodes).forEach(child => cleanNode(child, parent));
+        return;
+      }
+      const clean = document.createElement(tag.toLowerCase());
+      Array.from(element.childNodes).forEach(child => cleanNode(child, clean));
+      parent.appendChild(clean);
+    };
+    const output = document.createElement('div');
+    Array.from(parsed.body.childNodes).forEach(node => cleanNode(node, output));
+    return output.innerHTML;
+  }
+
+  private getPdfDescription(item: any): any[] | string {
+    const html = this.sanitizeDescriptionHtml(String(item?.nombreMaterialHtml ?? ''));
+    if (!html || typeof DOMParser === 'undefined') return textoPdf(item?.nombreMaterial);
+    const documentHtml = new DOMParser().parseFromString(html, 'text/html');
+    const runs: any[] = [];
+    const visit = (node: Node, bold = false) => {
+      if (node.nodeType === Node.TEXT_NODE) {
+        const value = node.textContent ?? '';
+        if (value) runs.push({ text: value, ...(bold ? { bold: true } : {}) });
+        return;
+      }
+      if (node.nodeType !== Node.ELEMENT_NODE) return;
+      const element = node as HTMLElement;
+      if (element.tagName === 'BR') { runs.push({ text: '\n', ...(bold ? { bold: true } : {}) }); return; }
+      const isBold = bold || ['B', 'STRONG'].includes(element.tagName) || /bold|700|800|900/i.test(element.style.fontWeight);
+      Array.from(element.childNodes).forEach(child => visit(child, isBold));
+      if (['DIV', 'P'].includes(element.tagName) && element.nextSibling) runs.push({ text: '\n' });
+    };
+    Array.from(documentHtml.body.childNodes).forEach(node => visit(node));
+    return runs.length ? runs : textoPdf(item?.nombreMaterial);
   }
 
   private cargarTipoCambio(): Promise<void> {
@@ -1007,7 +1094,7 @@ export class DetalleItemsCotizacionComponent implements ICellRendererAngularComp
 
       const tableRows = items.map((item, idx) => [
         { text: String(idx + 1), fontSize: 7, alignment: 'center', fillColor: idx % 2 === 1 ? LBLUE : null },
-        { text: textoPdf(item.nombreMaterial), fontSize: 7, fillColor: idx % 2 === 1 ? LBLUE : null },
+        { text: this.getPdfDescription(item), fontSize: 7, fillColor: idx % 2 === 1 ? LBLUE : null },
         { text: String(item.cantidad ?? ''), fontSize: 7, alignment: 'center', fillColor: idx % 2 === 1 ? LBLUE : null },
         { text: item.unidad ?? '', fontSize: 7, alignment: 'center', fillColor: idx % 2 === 1 ? LBLUE : null },
         { text: `$${Number(item.precio ?? 0).toLocaleString('es-MX', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`, fontSize: 7, alignment: 'right', fillColor: idx % 2 === 1 ? LBLUE : null },

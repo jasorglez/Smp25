@@ -43,6 +43,7 @@ export interface CotizacionItem {
   id?: string;
   idMaterial: number;
   nombreMaterial: string;
+  nombreMaterialHtml?: string;
   unidad: string;
   cantidad: number;
   precio: number;
@@ -284,6 +285,7 @@ export class CotizacionesService {
     const sanitize = (item: any) => ({
       idMaterial:     Number(item.idMaterial)     || 0,
       nombreMaterial: item.nombreMaterial         ?? '',
+      nombreMaterialHtml: item.nombreMaterialHtml ? String(item.nombreMaterialHtml) : '',
       unidad:         item.unidad                 ?? '',
       cantidad:       Number(item.cantidad)        || 0,
       precio:         Number(item.precio)          || 0,

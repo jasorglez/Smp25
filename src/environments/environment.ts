@@ -75,5 +75,5 @@ export const environment = {
     // publicKey: 'TEST-4399133a-4676-42a2-ab85-d946370bf96a',
   },
 
-  version: '5.00.533 (14 Noviembre 2026 17:04) cotizaciones en movimientos y desglose inicial APU',
+  version: '5.00.535 (14 Noviembre 2026 17:15) formato negrita en cotizaciones',
 };
