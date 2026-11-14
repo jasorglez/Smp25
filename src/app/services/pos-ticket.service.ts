@@ -17,7 +17,7 @@ export class PosTicketService {
   private base64EncodeService = inject(Base64EncodeService);
   private trackingService = inject(TrackingService);
 
-  async printCobranza(payment: { id: number; fecha: string; monto: number; tipoPago: string; cliente: string; prestamo: number; cuota: number; origen: string; empresaId: number }): Promise<void> {
+  async printCobranza(payment: { id: number; fecha: string; monto: number; saldoPendiente: number; tipoPago: string; cliente: string; prestamo: number; cuota: number; origen: string; empresaId: number }): Promise<void> {
     let logo: string | null = null;
     try {
       const response: any = await lastValueFrom(this.rootService.getRootbyId(payment.empresaId));
@@ -42,6 +42,7 @@ export class PosTicketService {
         { text: 'Recibido en: ' + (payment.origen === 'NEGOCIO' ? 'Caja del negocio' : 'Domicilio del cliente'), fontSize: 7 }, line,
         { text: 'Forma de pago: ' + payment.tipoPago, fontSize: 7, alignment: 'right' },
         { text: 'ABONO: ' + money, bold: true, fontSize: 10, alignment: 'right', margin: [0, 2, 0, 2] },
+        { text: 'SALDO PENDIENTE: ' + new Intl.NumberFormat('es-MX', { style: 'currency', currency: 'MXN' }).format(payment.saldoPendiente), bold: true, fontSize: 9, alignment: 'right' },
         line, { text: 'Gracias por su pago', alignment: 'center', italics: true, fontSize: 7 },
       ],
     };
