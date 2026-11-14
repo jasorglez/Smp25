@@ -75,5 +75,5 @@ export const environment = {
     // publicKey: 'TEST-4399133a-4676-42a2-ab85-d946370bf96a',
   },
 
-  version: '5.00.522 (14 Noviembre 2026 12:06) visor estandar ticket Cobranza',
+  version: '5.00.523 (14 Noviembre 2026 12:12) precarga saldo y sincronizacion Cobranza',
 };
