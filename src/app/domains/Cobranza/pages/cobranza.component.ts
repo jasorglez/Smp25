@@ -1,5 +1,5 @@
 import { CommonModule } from '@angular/common';
-import { Component, inject } from '@angular/core';
+import { Component, computed, inject } from '@angular/core';
 import { ActivatedRoute, RouterModule } from '@angular/router';
 import { AuthService } from 'app/services/auth.service';
 
@@ -10,7 +10,7 @@ import { AuthService } from 'app/services/auth.service';
   template: `
     <div class="col-md-12"><div class="card">
       <div class="card-header px-2"><ul class="nav nav-pills">
-        <li class="nav-item" *ngFor="let item of menuItems" [style.order]="item.order">
+        <li class="nav-item" *ngFor="let item of menuItems(); trackBy: trackMenuItem" [style.order]="item.order">
           <a class="nav-link green-tab" [routerLink]="item.path" routerLinkActive="active"><i class="bi" [ngClass]="item.icon"></i><span>{{ item.name }}</span></a>
         </li>
       </ul></div>
@@ -38,7 +38,7 @@ export class CobranzaComponent {
     cajas: 'bi-cash-stack'
   };
 
-  get menuItems(): { identifier: string; name: string; order: number; path: string; icon: string }[] {
+  readonly menuItems = computed((): { identifier: string; name: string; order: number; path: string; icon: string }[] => {
     const children = this.authService.getUserPermissions()?.cobranzas?.children || {};
     return Object.entries(children)
       .filter(([, permission]: [string, any]) => permission?.active === true)
@@ -50,6 +50,10 @@ export class CobranzaComponent {
         icon: this.menuIcons[identifier] || 'bi-grid'
       }))
       .sort((a, b) => a.order - b.order);
+  });
+
+  trackMenuItem(_index: number, item: { identifier: string }): string {
+    return item.identifier;
   }
 }
 
