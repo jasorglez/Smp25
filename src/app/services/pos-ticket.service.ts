@@ -29,20 +29,20 @@ export class PosTicketService {
       }
     } catch (error) { console.warn('No se pudo cargar el logo para el ticket de Cobranza:', error); }
     const money = new Intl.NumberFormat('es-MX', { style: 'currency', currency: 'MXN' }).format(payment.monto);
-    const line = { canvas: [{ type: 'line', x1: 0, y1: 0, x2: TICKET_WIDTH - 20, y2: 0, lineWidth: 0.5 }], margin: [0, 4, 0, 4] };
+    const line = { canvas: [{ type: 'line', x1: 0, y1: 0, x2: TICKET_WIDTH - 14, y2: 0, lineWidth: 0.4 }], margin: [0, 2, 0, 2] };
     const doc: any = {
-      pageSize: { width: TICKET_WIDTH, height: 'auto' }, pageMargins: [10, 10, 10, 14],
+      pageSize: { width: TICKET_WIDTH, height: 'auto' }, pageMargins: [7, 5, 7, 6],
       content: [
-        ...(logo ? [{ image: logo, fit: [80, 55], alignment: 'center', margin: [0, 0, 0, 6] }] : []),
-        { text: 'COMPROBANTE DE COBRANZA', bold: true, fontSize: 10, alignment: 'center' }, line,
-        { text: 'Ticket: COB-' + String(payment.id).padStart(8, '0'), fontSize: 8 },
-        { text: 'Fecha: ' + new Date(payment.fecha).toLocaleString('es-MX'), fontSize: 8 },
-        { text: 'Cliente: ' + payment.cliente, fontSize: 8, margin: [0, 4, 0, 0] },
-        { text: 'Préstamo: ' + payment.prestamo + '  |  Cuota: ' + payment.cuota, fontSize: 8 },
-        { text: 'Recibido en: ' + (payment.origen === 'NEGOCIO' ? 'Caja del negocio' : 'Domicilio del cliente'), fontSize: 8 }, line,
-        { text: 'Forma de pago: ' + payment.tipoPago, fontSize: 8, alignment: 'right' },
-        { text: 'ABONO: ' + money, bold: true, fontSize: 12, alignment: 'right', margin: [0, 5, 0, 4] },
-        line, { text: 'Gracias por su pago', alignment: 'center', italics: true, fontSize: 8 },
+        ...(logo ? [{ image: logo, fit: [58, 28], alignment: 'center', margin: [0, 0, 0, 2] }] : []),
+        { text: 'COMPROBANTE DE COBRANZA', bold: true, fontSize: 8, alignment: 'center', margin: [0, 0, 0, 1] }, line,
+        { text: 'Ticket: COB-' + String(payment.id).padStart(8, '0'), fontSize: 7 },
+        { text: 'Fecha: ' + new Date(payment.fecha).toLocaleString('es-MX', { dateStyle: 'short', timeStyle: 'short' }), fontSize: 7 },
+        { text: 'Cliente: ' + payment.cliente, fontSize: 7, margin: [0, 1, 0, 0] },
+        { text: 'Préstamo: ' + payment.prestamo + '  |  Cuota: ' + payment.cuota, fontSize: 7 },
+        { text: 'Recibido en: ' + (payment.origen === 'NEGOCIO' ? 'Caja del negocio' : 'Domicilio del cliente'), fontSize: 7 }, line,
+        { text: 'Forma de pago: ' + payment.tipoPago, fontSize: 7, alignment: 'right' },
+        { text: 'ABONO: ' + money, bold: true, fontSize: 10, alignment: 'right', margin: [0, 2, 0, 2] },
+        line, { text: 'Gracias por su pago', alignment: 'center', italics: true, fontSize: 7 },
       ],
     };
     this.trackingService.addLog(this.trackingService.getnameComp(), 'Imprimió comprobante de abono', 'Cobranza', this.trackingService.getEmail());
