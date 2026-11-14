@@ -12,6 +12,9 @@ import { UsersService } from 'app/services/users.service';
 import { StoresService } from 'app/services/stores.service';
 import { CashRegistersService } from 'app/services/cash-registers.service';
 import { AG_GRID_LOCALE_ES } from 'assets/i18n/ag-grid.locale.es';
+import { RootService } from 'app/services/root.service';
+import { Base64EncodeService } from 'app/services/base64encode.service';
+import { PdfPreviewService } from 'app/services/pdf-preview.service';
 
 @Component({
   selector: 'app-corte-caja-cobranza', standalone: true,
@@ -35,7 +38,7 @@ import { AG_GRID_LOCALE_ES } from 'assets/i18n/ag-grid.locale.es';
       </div>
     </div></div>
     <div class="card shadow-sm border-0 mb-3" *ngIf="view !== 'apertura'"><div class="card-body">
-      <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-3"><div><small class="text-primary fw-bold">COBRANZA</small><h4 class="mb-0">Corte de Caja</h4><small class="text-muted">Revisa los abonos recibidos y guarda una fotografía del corte.</small></div><button class="btn btn-outline-primary btn-sm" (click)="load()" [disabled]="loading"><i class="bi bi-arrow-clockwise me-1"></i> Actualizar</button></div>
+      <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-3"><div><small class="text-primary fw-bold">COBRANZA</small><h4 class="mb-0">Corte de Caja</h4><small class="text-muted">Revisa los abonos recibidos y guarda una fotografía del corte.</small></div><div class="d-flex gap-2"><button class="btn btn-outline-secondary btn-sm" (click)="printCutPdf()" [disabled]="!canPrint || printingPdf"><i class="bi bi-file-earmark-pdf me-1"></i>{{ printingPdf ? 'Generando…' : 'Imprimir PDF' }}</button><button class="btn btn-outline-primary btn-sm" (click)="load()" [disabled]="loading"><i class="bi bi-arrow-clockwise me-1"></i> Actualizar</button></div></div>
       <div class="row g-2 align-items-end"><div class="col-md-2"><label class="form-label small">Desde</label><input type="date" class="form-control form-control-sm" [(ngModel)]="desde"></div><div class="col-md-2"><label class="form-label small">Hasta</label><input type="date" class="form-control form-control-sm" [(ngModel)]="hasta"></div><div class="col-md-3"><label class="form-label small">Alcance</label><select class="form-select form-select-sm" [(ngModel)]="usuarioId"><option [ngValue]="null">Global · todos los cobradores</option><option *ngFor="let user of users" [ngValue]="user.id">{{ user.usersmall || user.displayName || user.email }}</option></select></div><div class="col-md-2"><button class="btn btn-primary btn-sm w-100" (click)="load()" [disabled]="loading"><i class="bi bi-search me-1"></i> Consultar</button></div><div class="col-md-3"><button class="btn btn-success btn-sm w-100" (click)="createCut()" [disabled]="saving || !canSave"><i class="bi bi-lock me-1"></i> Guardar corte</button></div></div>
     </div></div>
     <div *ngIf="error" class="alert alert-danger">{{ error }}</div>
@@ -52,6 +55,9 @@ export class CorteCajaCobranzaComponent {
   private usersService = inject(UsersService);
   private storesService = inject(StoresService);
   private cashRegistersService = inject(CashRegistersService);
+  private rootService = inject(RootService);
+  private base64EncodeService = inject(Base64EncodeService);
+  private pdfPreview = inject(PdfPreviewService);
   private route = inject(ActivatedRoute);
   rootId = 0;
   view: 'apertura' | 'corte' = this.route.snapshot.data['view'] || 'corte';
@@ -71,6 +77,7 @@ export class CorteCajaCobranzaComponent {
   cashName = '';
   loading = false;
   saving = false;
+  printingPdf = false;
   error = '';
   loadedKey = '';
   locale = AG_GRID_LOCALE_ES;
@@ -93,9 +100,11 @@ export class CorteCajaCobranzaComponent {
   ];
   get typeTotals(): {name: string; amount: number}[] { return Object.entries(this.summary?.porTipoPago || {}).map(([name, amount]) => ({ name, amount: Number(amount) })); }
   get canSave(): boolean { return !!this.summary?.numeroPagos && this.loadedKey === this.currentKey(); }
+  get canPrint(): boolean { return !!this.summary && this.loadedKey === this.currentKey(); }
   constructor() { effect(() => { const rootId = Number(this.signals.getRootSelectedBySidebar()()); if (rootId && rootId !== this.rootId) { this.rootId = rootId; this.loadUsers(); this.loadStores(); this.loadActiveTurn(); if (this.view !== 'apertura') this.load(); } }); }
   private today(): string { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`; }
   private date(value: any): string { return value ? String(value).slice(0,10).split('-').reverse().join('/') : ''; }
+  private dateForInput(value: any): string { const raw = String(value || '').slice(0,10); if (/^\d{4}-\d{2}-\d{2}$/.test(raw)) return raw; const parts = raw.split('/'); return parts.length === 3 ? `${parts[2]}-${parts[1].padStart(2,'0')}-${parts[0].padStart(2,'0')}` : ''; }
   private money(value: any): string { return new Intl.NumberFormat('es-MX', { style:'currency', currency:'MXN' }).format(Number(value || 0)); }
   userName(id: number): string { if (!id) return 'Sin asignar'; const user = this.users.find(item => item.id === id); return user?.usersmall || user?.displayName || user?.email || `Usuario #${id}`; }
   private currentKey(): string { return `${this.rootId}|${this.desde}|${this.hasta}|${this.usuarioId ?? 'global'}`; }
@@ -111,7 +120,7 @@ export class CorteCajaCobranzaComponent {
         if (!this.activeTurn) return;
         this.cashRegisterId = this.activeTurn.idCashRegister;
         this.fondoInicial = this.activeTurn.fondoInicial || 0;
-        this.desde = this.date(this.activeTurn.fechaInicio);
+        this.desde = this.dateForInput(this.activeTurn.fechaInicio);
         this.cashRegistersService.getCashRegister(this.cashRegisterId).subscribe({
           next: (cash: any) => {
             this.cashName = cash?.description || '';
@@ -126,7 +135,7 @@ export class CorteCajaCobranzaComponent {
       error: () => this.activeTurn = null,
     });
   }
-  async openCash(): Promise<void> { if (!this.storeId || !this.cashRegisterId || this.fondoInicial < 0) return; this.saving = true; try { const result: any = await firstValueFrom(this.service.abrirTurno({ idCompany: this.rootId, idCashRegister: this.cashRegisterId, idBranch: Number(this.signals.getBranchSelectedBySidebar()()) || 0, cajero: this.cashierTurnName, fondoInicial: Number(this.fondoInicial || 0) })); this.activeTurn = result; this.loadActiveTurn(); this.desde = this.date(result.fechaInicio); if (this.view !== 'apertura') this.load(); alerts.basicAlert('Caja abierta', 'Se inició el turno de cobranza con el fondo registrado.', 'success'); } catch (error: any) { alerts.basicAlert('Error', typeof error?.error === 'string' ? error.error : error?.error?.error || 'No se pudo abrir la caja.', 'error'); } finally { this.saving = false; } }
+  async openCash(): Promise<void> { if (!this.storeId || !this.cashRegisterId || this.fondoInicial < 0) return; this.saving = true; try { const result: any = await firstValueFrom(this.service.abrirTurno({ idCompany: this.rootId, idCashRegister: this.cashRegisterId, idBranch: Number(this.signals.getBranchSelectedBySidebar()()) || 0, cajero: this.cashierTurnName, fondoInicial: Number(this.fondoInicial || 0) })); this.activeTurn = result; this.loadActiveTurn(); this.desde = this.dateForInput(result.fechaInicio); if (this.view !== 'apertura') this.load(); alerts.basicAlert('Caja abierta', 'Se inició el turno de cobranza con el fondo registrado.', 'success'); } catch (error: any) { alerts.basicAlert('Error', typeof error?.error === 'string' ? error.error : error?.error?.error || 'No se pudo abrir la caja.', 'error'); } finally { this.saving = false; } }
   async closeCash(): Promise<void> { if (!this.activeTurn) return; const result = await alerts.inputAlert('Cerrar caja de cobranza', 'Captura el efectivo contado en la caja', 'text', String(this.fondoInicial), { inputAttributes: { inputmode: 'decimal', min: '0', step: '0.01' } }); if (!result.isConfirmed || result.value === '') return; const counted = Number(result.value); if (!Number.isFinite(counted) || counted < 0) return; const confirmation = await alerts.confirmAlert('Confirmar corte', `Se cerrará el turno de cobranza con ${this.money(counted)} en efectivo contado.`, 'warning', 'Sí, cerrar'); if (!confirmation.isConfirmed) return; this.saving = true; try { await firstValueFrom(this.service.cerrarTurno(this.activeTurn.id, counted, 'Corte de caja de cobranza')); alerts.basicAlert('Corte realizado', 'El turno de cobranza quedó cerrado.', 'success'); this.activeTurn = null; if (this.view !== 'apertura') this.load(); } catch (error: any) { alerts.basicAlert('Error', error?.error || 'No se pudo cerrar la caja.', 'error'); } finally { this.saving = false; } }
   load(): void {
     if (!this.rootId || !this.desde || !this.hasta || this.hasta < this.desde) { this.error = 'Selecciona un período válido.'; return; }
@@ -134,6 +143,57 @@ export class CorteCajaCobranzaComponent {
     const key = this.currentKey();
     this.service.getResumen(this.rootId, this.desde, this.hasta, this.usuarioId).subscribe({ next: result => { this.summary = result; this.loadedKey = key; this.loading = false; }, error: error => { console.error('Error al consultar el corte de Cobranza:', error); const detail = error?.error?.error || error?.error?.title; const status = error?.status ? ` (HTTP ${error.status})` : ''; this.error = detail ? `No se pudo consultar el corte${status}: ${detail}` : `No se pudo consultar el corte${status}.`; this.loading = false; } });
     this.service.getHistorial(this.rootId).subscribe({ next: result => this.history = result || [], error: error => console.error(error) });
+  }
+
+  async printCutPdf(): Promise<void> {
+    if (!this.canPrint || this.printingPdf) return;
+    this.printingPdf = true;
+    try {
+      const response: any = await firstValueFrom(this.rootService.getRootbyId(this.rootId));
+      const root = response?.data ?? response;
+      let logo: string | null = null;
+      for (const url of [root?.picture, root?.picture2]) {
+        if (!url) continue;
+        const image = await this.base64EncodeService.convertImageToBase64(url);
+        if (/^data:image\/(png|jpeg);base64,/i.test(image)) { logo = image; break; }
+      }
+      if (!logo) throw new Error('No se pudo cargar el logo de la empresa.');
+
+      const pdfMake = (await import('pdfmake/build/pdfmake')).default;
+      const pdfFonts = await import('pdfmake/build/vfs_fonts');
+      (pdfMake as any).vfs = (pdfFonts as any).pdfMake?.vfs || (pdfFonts as any).default?.pdfMake?.vfs;
+      const money = (value: any) => new Intl.NumberFormat('es-MX', { style: 'currency', currency: 'MXN' }).format(Number(value || 0));
+      const date = (value: any) => value ? String(value).slice(0, 10).split('-').reverse().join('/') : '';
+      const totals = this.typeTotals;
+      const rows = (this.summary?.movimientos || []).map((item: any) => [
+        date(item.fechaPago), item.cliente || '', String(item.idPrestamo ?? ''), item.tipoPago || 'Sin clasificar',
+        this.userName(item.idUsuarioCobrador), { text: money(item.monto), alignment: 'right' }
+      ]);
+      const content: any[] = [
+        { columns: [{ image: logo, fit: [80, 55] }, { text: root?.name || 'Cobranza', alignment: 'center', bold: true, fontSize: 14, margin: [0, 16, 0, 0] }], margin: [0, 0, 0, 12] },
+        { text: 'CORTE DE CAJA · COBRANZA', style: 'title' },
+        { text: `Período: ${date(this.desde)} al ${date(this.hasta)}     Alcance: ${this.usuarioId ? this.userName(this.usuarioId) : 'Global'}`, margin: [0, 0, 0, 10] },
+        { columns: [{ text: `Total recibido: ${money(this.summary?.total)}`, bold: true, fontSize: 12 }, { text: `Abonos: ${this.summary?.numeroPagos || 0}`, alignment: 'right', bold: true, fontSize: 12 }], margin: [0, 0, 0, 8] },
+        { text: 'Totales por tipo de pago', style: 'section' },
+        { table: { widths: ['*', 110], body: [[{ text: 'Forma de pago', bold: true }, { text: 'Total', bold: true, alignment: 'right' }], ...totals.map(item => [item.name, { text: money(item.amount), alignment: 'right' }])] }, layout: 'lightHorizontalLines', margin: [0, 0, 0, 10] },
+        { text: 'Movimientos del período', style: 'section' },
+        rows.length
+          ? { table: { headerRows: 1, widths: [58, '*', 48, 92, 90, 78], body: [[{ text: 'Fecha', bold: true }, { text: 'Cliente', bold: true }, { text: 'Préstamo', bold: true }, { text: 'Tipo de pago', bold: true }, { text: 'Cobrador', bold: true }, { text: 'Monto', bold: true, alignment: 'right' }], ...rows] }, layout: 'lightHorizontalLines', fontSize: 8 }
+          : { text: 'No hay movimientos en el período seleccionado.', italics: true, color: '#666', margin: [0, 4, 0, 0] }
+      ];
+      const doc: any = {
+        pageSize: 'LETTER', pageOrientation: 'landscape', pageMargins: [32, 30, 32, 34], content,
+        styles: { title: { fontSize: 15, bold: true, margin: [0, 0, 0, 8] }, section: { fontSize: 10, bold: true, margin: [0, 5, 0, 4] } },
+        defaultStyle: { fontSize: 9 },
+        footer: (currentPage: number, pageCount: number) => ({ text: `Corte de Cobranza · ${currentPage} de ${pageCount}`, alignment: 'center', fontSize: 8, margin: [0, 12, 0, 0] })
+      };
+      await this.pdfPreview.show((pdfMake as any).createPdf(doc), 'Corte de Caja de Cobranza', `corte-cobranza-${this.desde}-al-${this.hasta}.pdf`);
+    } catch (error) {
+      console.error('No se pudo generar el PDF del corte de Cobranza:', error);
+      alerts.basicAlert('Error', error instanceof Error ? error.message : 'No se pudo generar el PDF del corte.', 'error');
+    } finally {
+      this.printingPdf = false;
+    }
   }
   async createCut(): Promise<void> {
     if (!this.canSave || this.saving) return;
