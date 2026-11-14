@@ -75,5 +75,5 @@ export const environment = {
     // publicKey: 'TEST-4399133a-4676-42a2-ab85-d946370bf96a',
   },
 
-  version: '5.00.503 (13 Noviembre 2026 23:39) adelantos de Cobranza',
+  version: '5.00.504 (13 Noviembre 2026 23:49) detalle de cobros por usuario',
 };
