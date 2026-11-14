@@ -5,12 +5,12 @@ SET XACT_ABORT ON;
 BEGIN TRANSACTION;
 
 UPDATE dbo.product_updates WITH (UPDLOCK, HOLDLOCK)
-SET version = N'5.00.515',
+SET version = N'5.00.516',
     changeType = N'IMPROVEMENT',
-    title = N'Permisos de Cobranza alineados con el sistema web en Telegram',
-    description = N'Telegram consulta los permisos por empresa igual que el sistema web, incluidos los permisos globales heredados y los permisos antiguos por sucursal.',
-    userBenefit = N'El cobrador puede usar Cobranza en Telegram con los permisos ya configurados para su empresa.',
-    promoText = N'Usa Cobranza en Telegram con los permisos que ya tienes configurados en el sistema.',
+    title = N'Corrección del menú de Cobranza en Telegram',
+    description = N'Se corrigió la consulta de permisos de empresa que impedía cargar los módulos del usuario. Telegram respeta la configuración por empresa, sus permisos heredados y los permisos antiguos por sucursal.',
+    userBenefit = N'El cobrador puede ver Cobranza en Telegram cuando el módulo está habilitado para su empresa y usuario.',
+    promoText = N'Consulta Cobranza desde Telegram con los permisos de tu empresa.',
     validationStatus = N'PASSED',
     releaseStatus = N'LOCAL',
     updatedAtUtc = SYSUTCDATETIME()

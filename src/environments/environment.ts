@@ -75,5 +75,5 @@ export const environment = {
     // publicKey: 'TEST-4399133a-4676-42a2-ab85-d946370bf96a',
   },
 
-  version: '5.00.515 (14 Noviembre 2026 10:54) permisos Telegram Cobranza',
+  version: '5.00.516 (14 Noviembre 2026 11:01) correccion menu Telegram Cobranza',
 };
