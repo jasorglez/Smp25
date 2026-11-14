@@ -68,7 +68,7 @@ import { PosTicketService } from 'app/services/pos-ticket.service';
           <div class="col-md-3"><label class="form-label small">Monto del préstamo</label><input class="form-control form-control-sm" type="number" min="0.01" step="0.01" [(ngModel)]="loanForm.montoTotal"></div>
           <div class="col-md-3"><label class="form-label small">Fecha del préstamo</label><input class="form-control form-control-sm" type="date" [(ngModel)]="loanForm.fechaInicio"></div>
           <div class="col-md-3"><label class="form-label small">Primer pago</label><input class="form-control form-control-sm" type="date" [(ngModel)]="loanForm.fechaPrimerPago"></div>
-          <div class="col-md-3"><label class="form-label small">Número de pagos</label><input class="form-control form-control-sm" value="10 pagos mensuales" readonly></div>
+          <div class="col-md-3"><label class="form-label small">Número de pagos mensuales</label><input class="form-control form-control-sm" type="number" min="1" step="1" [(ngModel)]="loanForm.numeroCuotas"></div>
           <div class="col-12"><label class="form-label small">Comentario</label><input class="form-control form-control-sm" maxlength="500" [(ngModel)]="loanForm.comentario"></div>
           <div class="col-12 d-flex gap-2"><button class="btn btn-sm btn-success" (click)="createLoan()" [disabled]="saving"><i class="bi bi-floppy"></i> Crear préstamo y calendario</button><button class="btn btn-sm btn-secondary" (click)="showLoanForm = false">Cancelar</button></div>
         </div>
@@ -76,7 +76,7 @@ import { PosTicketService } from 'app/services/pos-ticket.service';
 
       <article *ngFor="let loan of loans" class="card mb-3">
         <div class="card-header d-flex justify-content-between align-items-center flex-wrap gap-2">
-          <div><strong>Préstamo #{{ loan.id }}</strong><span class="ms-2">{{ loan.montoTotal | currency:'MXN' }}</span><small class="text-muted ms-2">10 pagos desde {{ loan.fechaPrimerPago | date:'dd/MM/yyyy' }}</small></div>
+          <div><strong>Préstamo #{{ loan.id }}</strong><span class="ms-2">{{ loan.montoTotal | currency:'MXN' }}</span><small class="text-muted ms-2">{{ loan.numeroCuotas || loan.cuotas?.length || 0 }} pagos desde {{ loan.fechaPrimerPago | date:'dd/MM/yyyy' }}</small></div>
           <div class="d-flex align-items-center gap-2"><span class="badge" [class.bg-success]="loanBalance(loan) <= 0" [class.bg-warning]="loanBalance(loan) > 0">Saldo {{ loanBalance(loan) | currency:'MXN' }}</span>
             <button class="btn btn-sm btn-primary position-relative" (click)="saveChanges(loan)" [disabled]="saving || !hasChanges(loan)"><i class="bi bi-floppy"></i> Guardar<span *ngIf="hasChanges(loan)" class="position-absolute top-0 start-100 translate-middle p-2 bg-danger border border-light rounded-circle"></span></button>
             <button class="btn btn-sm btn-warning" (click)="revertChanges(loan)" [disabled]="saving || !hasChanges(loan)"><i class="bi bi-arrow-clockwise"></i> Deshacer</button>
@@ -95,7 +95,7 @@ import { PosTicketService } from 'app/services/pos-ticket.service';
             </div><div *ngIf="installment.abonos?.length" class="small mt-2"><strong>Abonos registrados:</strong><span *ngFor="let payment of installment.abonos" class="ms-2">{{ payment.fechaPago | date:'dd/MM/yyyy' }} — {{ payment.monto | currency:'MXN' }}<button class="btn btn-link btn-sm text-danger p-0 ms-1" (click)="deactivatePayment(payment)" title="Quitar abono"><i class="bi bi-x-circle"></i></button><span *ngIf="payment.comentario"> ({{ payment.comentario }})</span></span></div></div></div>
         </div>
       </article>
-      <div *ngIf="!loading && !loans.length" class="text-center text-muted py-3">Sin préstamos registrados. Usa “Nuevo préstamo” para programar 10 pagos mensuales.</div>
+      <div *ngIf="!loading && !loans.length" class="text-center text-muted py-3">Sin préstamos registrados. Usa “Nuevo préstamo” para definir el número de pagos mensuales.</div>
     </section>
   `
 })
@@ -119,7 +119,7 @@ export class ClientesCobranzasPagosComponent implements OnChanges {
   saving = false;
   showLoanForm = false;
   activeInstallmentId: number | null = null;
-  loanForm: any = { montoTotal: null, fechaInicio: this.today(), fechaPrimerPago: this.nextMonth(), comentario: '' };
+  loanForm: any = { montoTotal: null, fechaInicio: this.today(), fechaPrimerPago: this.nextMonth(), numeroCuotas: 10, comentario: '' };
   abonoForm: any = { fechaPago: this.today(), monto: null, comentario: '' };
   AG_GRID_LOCALE_ES = AG_GRID_LOCALE_ES;
   originalDates = new Map<number, string>();
@@ -237,12 +237,13 @@ export class ClientesCobranzasPagosComponent implements OnChanges {
 
   async createLoan(): Promise<void> {
     const amount = Number(this.loanForm.montoTotal);
-    if (!Number.isFinite(amount) || amount <= 0 || !this.loanForm.fechaInicio || !this.loanForm.fechaPrimerPago) { alerts.basicAlert('Datos requeridos', 'Captura monto y fechas válidas.', 'warning'); return; }
+    const numberOfPayments = Number(this.loanForm.numeroCuotas);
+    if (!Number.isFinite(amount) || amount <= 0 || !Number.isInteger(numberOfPayments) || numberOfPayments < 1 || !this.loanForm.fechaInicio || !this.loanForm.fechaPrimerPago) { alerts.basicAlert('Datos requeridos', 'Captura monto, número de pagos entero mayor a cero y fechas válidas.', 'warning'); return; }
     this.saving = true;
     try {
-      await firstValueFrom(this.customersService.createCobranzaLoan({ idCustomer: this.customer.id, montoTotal: amount, fechaInicio: this.loanForm.fechaInicio, fechaPrimerPago: this.loanForm.fechaPrimerPago, numeroCuotas: 10, comentario: this.loanForm.comentario }));
-      this.saving = false; this.showLoanForm = false; this.loanForm = { montoTotal: null, fechaInicio: this.today(), fechaPrimerPago: this.nextMonth(), comentario: '' }; this.loadLoans();
-    } catch (error) { console.error(error); this.saving = false; alerts.basicAlert('Error', 'No se pudo crear el préstamo y sus 10 cuotas.', 'error'); }
+      await firstValueFrom(this.customersService.createCobranzaLoan({ idCustomer: this.customer.id, montoTotal: amount, fechaInicio: this.loanForm.fechaInicio, fechaPrimerPago: this.loanForm.fechaPrimerPago, numeroCuotas: numberOfPayments, comentario: this.loanForm.comentario }));
+      this.saving = false; this.showLoanForm = false; this.loanForm = { montoTotal: null, fechaInicio: this.today(), fechaPrimerPago: this.nextMonth(), numeroCuotas: 10, comentario: '' }; this.loadLoans();
+    } catch (error: any) { console.error(error); this.saving = false; alerts.basicAlert('Error', error?.error?.error || 'No se pudo crear el préstamo y su calendario de pagos.', 'error'); }
   }
 
   toggleAbonoForm(installment: any): void {

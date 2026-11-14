@@ -75,5 +75,5 @@ export const environment = {
     // publicKey: 'TEST-4399133a-4676-42a2-ab85-d946370bf96a',
   },
 
-  version: '5.00.506 (14 Noviembre 2026 00:05) ajustes de columnas de Cobranza',
+  version: '5.00.507 (14 Noviembre 2026 00:12) plazo flexible de Cobranza',
 };
