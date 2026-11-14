@@ -166,10 +166,12 @@ export class ClientesCobranzasComponent implements CanComponentDeactivate {
   private pendingEditCell: { rowIndex: number; colKey: string } | null = null;
 
   rowData: any;
-  private loanTotalsByCustomer = new Map<number, { loans: number; payments: number; pending: number }>();
-  private loanTotalsLoaded = false;
+  private loanTotalsByCustomer = new Map<number, { loans: number; payments: number; pending: number; overdue: number }>();
+  loanTotalsLoaded = false;
   private loanTotalsRequestId = 0;
   private loanTotalsLoadingRoot: number | null = null;
+  balanceFilter: 'all' | 'pending' | 'overdue' = 'all';
+  loanTotalsError = '';
   contracts: { [key: string]: string } = {};
   newlyAddedRows: string[] = [];
 
@@ -232,6 +234,12 @@ export class ClientesCobranzasComponent implements CanComponentDeactivate {
     detailCellRenderer: ClientesCobranzasDetailWrapperComponent,
     detailRowHeight: 1600,    // toolbar(50) + lista auto + PDF(1400) con margen
     isRowMaster: () => this.type === 'CUSTOMERS',
+    isExternalFilterPresent: () => this.type === 'CUSTOMERS' && this.loanTotalsLoaded && this.balanceFilter !== 'all',
+    doesExternalFilterPass: (node: any) => {
+      if (node.data?.__isNew) return true;
+      const totals = this.loanTotalsByCustomer.get(Number(node.data?.id));
+      return this.balanceFilter === 'pending' ? (totals?.pending || 0) > 0 : (totals?.overdue || 0) > 0;
+    },
     // ──────────────────────────────────────────────────────────────────────
     getRowId: (params: any) => params?.data?.id,
     getRowClass: (params) => {
@@ -979,6 +987,7 @@ export class ClientesCobranzasComponent implements CanComponentDeactivate {
     if (!force && rootId && this.loanTotalsLoadingRoot === rootId) return;
     const requestId = ++this.loanTotalsRequestId;
     this.loanTotalsLoaded = false;
+    this.loanTotalsError = '';
     this.loanTotalsByCustomer.clear();
     this.gridApi?.refreshCells({ columns: ['totalPrestamos', 'totalPagosCobranza', 'totalPendientes'], force: true });
     if (!rootId) return;
@@ -987,25 +996,38 @@ export class ClientesCobranzasComponent implements CanComponentDeactivate {
       next: loans => {
         if (requestId !== this.loanTotalsRequestId || rootId !== Number(this.signalsService.getRootSelectedBySidebar()())) return;
         this.loanTotalsLoadingRoot = null;
+        const today = new Date();
+        const todayIso = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
         for (const loan of loans || []) {
           const customerId = Number(loan.idCustomer);
-          const totals = this.loanTotalsByCustomer.get(customerId) || { loans: 0, payments: 0, pending: 0 };
+          const totals = this.loanTotalsByCustomer.get(customerId) || { loans: 0, payments: 0, pending: 0, overdue: 0 };
           totals.loans += Number(loan.montoTotal || 0);
           totals.payments += (loan.cuotas || []).flatMap((installment: any) => installment.abonos || [])
             .filter((payment: any) => payment.active !== false)
             .reduce((sum: number, payment: any) => sum + Number(payment.monto || 0), 0);
+          totals.overdue += (loan.cuotas || [])
+            .filter((installment: any) => installment.active !== false && String(installment.fechaProgramada || '').slice(0, 10) < todayIso)
+            .reduce((sum: number, installment: any) => sum + Math.max(0, Number(installment.montoProgramado || 0) - Number(installment.montoAplicado || 0)), 0);
           totals.pending = Math.max(0, totals.loans - totals.payments);
           this.loanTotalsByCustomer.set(customerId, totals);
         }
         this.loanTotalsLoaded = true;
         this.gridApi?.refreshCells({ columns: ['totalPrestamos', 'totalPagosCobranza', 'totalPendientes'], force: true });
+        this.gridApi?.onFilterChanged();
       },
       error: error => {
         if (requestId !== this.loanTotalsRequestId) return;
         this.loanTotalsLoadingRoot = null;
+        this.loanTotalsError = 'No se pudieron consultar los saldos para aplicar el filtro.';
+        this.gridApi?.onFilterChanged();
         console.error('Error al consultar los totales de préstamos de Cobranza:', error);
       }
     });
+  }
+
+  setBalanceFilter(value: string): void {
+    this.balanceFilter = value === 'pending' || value === 'overdue' ? value : 'all';
+    this.gridApi?.onFilterChanged();
   }
 
   obtenerBranchs() {

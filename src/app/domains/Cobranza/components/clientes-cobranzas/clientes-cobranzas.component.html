@@ -29,11 +29,20 @@
 
     <!-- Columna de la tabla -->
     <div class="col">
-      <div class="d-flex justify-content-end mb-2">
+      <div class="d-flex justify-content-between align-items-end flex-wrap gap-2 mb-2">
+        <div *ngIf="type === 'CUSTOMERS'">
+          <label class="form-label small fw-semibold mb-1" for="cobranza-balance-filter">Filtrar clientes</label>
+          <select id="cobranza-balance-filter" class="form-select form-select-sm border-primary text-primary" [value]="balanceFilter" [disabled]="!loanTotalsLoaded" (change)="setBalanceFilter($any($event.target).value)">
+            <option value="all">Todos los clientes</option>
+            <option value="pending">Con saldo pendiente</option>
+            <option value="overdue">Con pagos vencidos</option>
+          </select>
+        </div>
         <button type="button" class="btn btn-sm btn-outline-danger" [disabled]="!selectedRowData" (click)="generatePaymentsPdf(selectedRowData)" title="Reporte de préstamos, cuotas y abonos del cliente seleccionado">
           <i class="bi bi-file-earmark-pdf-fill me-1"></i> Reporte de pagos
         </button>
       </div>
+      <div *ngIf="loanTotalsError && type === 'CUSTOMERS'" class="text-warning small mb-2" role="alert">{{ loanTotalsError }}</div>
       <ag-grid-angular
       style="width: 100%;"
       [ngStyle]="{'height': gridHeight}"

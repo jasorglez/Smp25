@@ -139,7 +139,7 @@ export class ClientesCobranzasPagosComponent implements OnChanges {
   onDateChanged(event: any): void { if (!/^\d{4}-\d{2}-\d{2}$/.test(event.newValue || '')) { event.node.setDataValue('fechaProgramada', event.oldValue); alerts.basicAlert('Fecha inválida', 'Selecciona una fecha válida.', 'warning'); } }
   hasChanges(loan: any): boolean { return (loan.cuotas || []).some((item: any) => item.fechaProgramada !== this.originalDates.get(item.id)); }
   revertChanges(loan: any): void { loan.cuotas = loan.cuotas.map((item: any) => ({ ...item, fechaProgramada: this.originalDates.get(item.id) })); }
-  async saveChanges(loan: any): Promise<void> { const changed = loan.cuotas.filter((item: any) => item.fechaProgramada !== this.originalDates.get(item.id)); if (!changed.length) return; this.saving = true; try { for (const item of changed) await firstValueFrom(this.customersService.updateCobranzaInstallmentDate(item.id, { fechaProgramada: item.fechaProgramada })); this.saving = false; this.loadLoans(); alerts.basicAlert('Fechas guardadas', 'Se actualizó el calendario de pagos.', 'success'); } catch (error) { console.error(error); this.saving = false; alerts.basicAlert('Error', 'No se pudieron guardar todas las fechas. Recarga el detalle para revisar cuáles se guardaron.', 'error'); } }
+  async saveChanges(loan: any): Promise<void> { const changed = loan.cuotas.filter((item: any) => item.fechaProgramada !== this.originalDates.get(item.id)); if (!changed.length) return; this.saving = true; try { for (const item of changed) await firstValueFrom(this.customersService.updateCobranzaInstallmentDate(item.id, { fechaProgramada: item.fechaProgramada })); this.saving = false; this.loadLoans(); this.balancesChanged.emit(); alerts.basicAlert('Fechas guardadas', 'Se actualizó el calendario de pagos.', 'success'); } catch (error) { console.error(error); this.saving = false; alerts.basicAlert('Error', 'No se pudieron guardar todas las fechas. Recarga el detalle para revisar cuáles se guardaron.', 'error'); } }
 
   get totalPaid(): number { return this.loans.reduce((sum, loan) => sum + loan.cuotas.reduce((s: number, q: any) => s + this.installmentPaid(q), 0), 0); }
   ngOnChanges(): void { this.loadLoans(); this.loadPaymentTypes(); this.loadUsers(); this.loadOpenCashTurns(); }
@@ -286,7 +286,7 @@ export class ClientesCobranzasPagosComponent implements OnChanges {
     const result = await alerts.confirmAlert('Borrar letra', `La letra ${installment.numeroCuota} no tiene abonos y el préstamo está liquidado. Se conservará inactiva en el historial.`, 'warning', 'Sí, borrar');
     if (!result.isConfirmed) return;
     this.customersService.deactivateCobranzaInstallment(installment.id).subscribe({
-      next: () => this.loadLoans(),
+      next: () => { this.loadLoans(); this.balancesChanged.emit(); },
       error: error => { console.error(error); alerts.basicAlert('Error', error?.error?.error || 'No se pudo borrar la letra.', 'error'); }
     });
   }
