@@ -348,7 +348,7 @@ export class ClientesCobranzasComponent implements CanComponentDeactivate {
         headerName: 'Facturación Electrónica',
         width: 180,
         editable: false,
-        hide: this.type != 'CUSTOMERS',
+        hide: true,
         cellRenderer: (params: ICellRendererParams) => {
           const link = document.createElement('a');
           link.href = 'javascript:void(0)';
