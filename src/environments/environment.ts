@@ -75,5 +75,5 @@ export const environment = {
     // publicKey: 'TEST-4399133a-4676-42a2-ab85-d946370bf96a',
   },
 
-  version: '5.00.523 (14 Noviembre 2026 12:12) precarga saldo y sincronizacion Cobranza',
+  version: '5.00.524 (14 Noviembre 2026 12:50) fondo inicial en reporte de caja Cobranza',
 };

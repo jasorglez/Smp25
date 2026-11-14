@@ -42,7 +42,7 @@ import { PdfPreviewService } from 'app/services/pdf-preview.service';
       <div class="row g-2 align-items-end"><div class="col-md-2"><label class="form-label small">Desde</label><input type="date" class="form-control form-control-sm" [(ngModel)]="desde"></div><div class="col-md-2"><label class="form-label small">Hasta</label><input type="date" class="form-control form-control-sm" [(ngModel)]="hasta"></div><div class="col-md-3"><label class="form-label small">Alcance</label><select class="form-select form-select-sm" [(ngModel)]="usuarioId"><option [ngValue]="null">Global · todos los cobradores</option><option *ngFor="let user of users" [ngValue]="user.id">{{ user.usersmall || user.displayName || user.email }}</option></select></div><div class="col-md-2"><button class="btn btn-primary btn-sm w-100" (click)="load()" [disabled]="loading"><i class="bi bi-search me-1"></i> Consultar</button></div><div class="col-md-3"><button class="btn btn-success btn-sm w-100" (click)="createCut()" [disabled]="saving || !canSave"><i class="bi bi-lock me-1"></i> Guardar corte</button></div></div>
     </div></div>
     <div *ngIf="error" class="alert alert-danger">{{ error }}</div>
-    <ng-container *ngIf="view !== 'apertura'"><div class="row g-3 mb-3"><div class="col-md-4"><div class="card border-0 shadow-sm h-100"><div class="card-body"><small class="text-muted">Total recibido</small><h3 class="text-success mb-0">{{ summary?.total || 0 | currency:'MXN' }}</h3></div></div></div><div class="col-md-4"><div class="card border-0 shadow-sm h-100"><div class="card-body"><small class="text-muted">Abonos registrados</small><h3 class="mb-0">{{ summary?.numeroPagos || 0 }}</h3></div></div></div><div class="col-md-4"><div class="card border-0 shadow-sm h-100"><div class="card-body"><small class="text-muted">Alcance</small><h5 class="mb-0">{{ usuarioId ? userName(usuarioId) : 'Global' }}</h5></div></div></div></div>
+    <ng-container *ngIf="view !== 'apertura'"><div class="row g-3 mb-3"><div class="col-md-3"><div class="card border-0 shadow-sm h-100"><div class="card-body"><small class="text-muted">Total recibido</small><h3 class="text-success mb-0">{{ summary?.total || 0 | currency:'MXN' }}</h3></div></div></div><div class="col-md-3"><div class="card border-0 shadow-sm h-100"><div class="card-body"><small class="text-muted">Fondo inicial de caja</small><h3 class="text-primary mb-0">{{ openingFundTotal | currency:'MXN' }}</h3><small class="text-muted">{{ reportTurns.length }} turno(s) en el período</small></div></div></div><div class="col-md-3"><div class="card border-0 shadow-sm h-100"><div class="card-body"><small class="text-muted">Abonos registrados</small><h3 class="mb-0">{{ summary?.numeroPagos || 0 }}</h3></div></div></div><div class="col-md-3"><div class="card border-0 shadow-sm h-100"><div class="card-body"><small class="text-muted">Alcance</small><h5 class="mb-0">{{ usuarioId ? userName(usuarioId) : 'Global' }}</h5></div></div></div></div>
     <div class="card border-0 shadow-sm mb-3"><div class="card-body"><h6>Totales por tipo de pago</h6><div class="d-flex flex-wrap gap-2"><span *ngFor="let item of typeTotals" class="badge text-bg-light border p-2">{{ item.name }}: {{ item.amount | currency:'MXN' }}</span><span *ngIf="!typeTotals.length" class="text-muted small">Sin movimientos en el período.</span></div></div></div>
     <div class="card border-0 shadow-sm mb-3"><div class="card-body"><div class="d-flex justify-content-between"><h6>Movimientos del período</h6><small class="text-muted">Selecciona fechas y alcance para revisar antes de cerrar</small></div><ag-grid-angular class="ag-theme-quartz small-text-ag-grid d-block" style="height:360px;width:100%" [rowData]="summary?.movimientos || []" [columnDefs]="movementColumns" [defaultColDef]="defaultColDef" [localeText]="locale"></ag-grid-angular></div></div>
     <div class="card border-0 shadow-sm"><div class="card-body"><h6>Historial de cortes</h6><ag-grid-angular class="ag-theme-quartz small-text-ag-grid d-block" style="height:250px;width:100%" [rowData]="history" [columnDefs]="historyColumns" [defaultColDef]="defaultColDef" [localeText]="locale"></ag-grid-angular></div></div></ng-container>
@@ -66,6 +66,7 @@ export class CorteCajaCobranzaComponent {
   hasta = this.today();
   summary: any = null;
   history: any[] = [];
+  reportTurns: any[] = [];
   users: any[] = [];
   stores: any[] = [];
   cashRegisters: any[] = [];
@@ -80,6 +81,7 @@ export class CorteCajaCobranzaComponent {
   printingPdf = false;
   error = '';
   loadedKey = '';
+  loadedTurnsKey = '';
   locale = AG_GRID_LOCALE_ES;
   defaultColDef: ColDef = { sortable: true, filter: true, resizable: true, flex: 1 };
   movementColumns: ColDef[] = [
@@ -99,8 +101,9 @@ export class CorteCajaCobranzaComponent {
     { field: 'inicio', headerName: 'Registrado', valueFormatter: p => this.date(p.value) }
   ];
   get typeTotals(): {name: string; amount: number}[] { return Object.entries(this.summary?.porTipoPago || {}).map(([name, amount]) => ({ name, amount: Number(amount) })); }
+  get openingFundTotal(): number { return this.reportTurns.reduce((total, turn) => total + Number(turn.fondoInicial || 0), 0); }
   get canSave(): boolean { return !!this.summary?.numeroPagos && this.loadedKey === this.currentKey(); }
-  get canPrint(): boolean { return !!this.summary && this.loadedKey === this.currentKey(); }
+  get canPrint(): boolean { return !!this.summary && this.loadedKey === this.currentKey() && this.loadedTurnsKey === this.currentKey(); }
   constructor() { effect(() => { const rootId = Number(this.signals.getRootSelectedBySidebar()()); if (rootId && rootId !== this.rootId) { this.rootId = rootId; this.loadUsers(); this.loadStores(); this.loadActiveTurn(); if (this.view !== 'apertura') this.load(); } }); }
   private today(): string { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`; }
   private date(value: any): string { return value ? String(value).slice(0,10).split('-').reverse().join('/') : ''; }
@@ -139,10 +142,25 @@ export class CorteCajaCobranzaComponent {
   async closeCash(): Promise<void> { if (!this.activeTurn) return; const result = await alerts.inputAlert('Cerrar caja de cobranza', 'Captura el efectivo contado en la caja', 'text', String(this.fondoInicial), { inputAttributes: { inputmode: 'decimal', min: '0', step: '0.01' } }); if (!result.isConfirmed || result.value === '') return; const counted = Number(result.value); if (!Number.isFinite(counted) || counted < 0) return; const confirmation = await alerts.confirmAlert('Confirmar corte', `Se cerrará el turno de cobranza con ${this.money(counted)} en efectivo contado.`, 'warning', 'Sí, cerrar'); if (!confirmation.isConfirmed) return; this.saving = true; try { await firstValueFrom(this.service.cerrarTurno(this.activeTurn.id, counted, 'Corte de caja de cobranza')); alerts.basicAlert('Corte realizado', 'El turno de cobranza quedó cerrado.', 'success'); this.activeTurn = null; if (this.view !== 'apertura') this.load(); } catch (error: any) { alerts.basicAlert('Error', error?.error || 'No se pudo cerrar la caja.', 'error'); } finally { this.saving = false; } }
   load(): void {
     if (!this.rootId || !this.desde || !this.hasta || this.hasta < this.desde) { this.error = 'Selecciona un período válido.'; return; }
-    this.loading = true; this.error = ''; this.loadedKey = '';
+    this.loading = true; this.error = ''; this.loadedKey = ''; this.loadedTurnsKey = ''; this.reportTurns = [];
     const key = this.currentKey();
     this.service.getResumen(this.rootId, this.desde, this.hasta, this.usuarioId).subscribe({ next: result => { this.summary = result; this.loadedKey = key; this.loading = false; }, error: error => { console.error('Error al consultar el corte de Cobranza:', error); const detail = error?.error?.error || error?.error?.title; const status = error?.status ? ` (HTTP ${error.status})` : ''; this.error = detail ? `No se pudo consultar el corte${status}: ${detail}` : `No se pudo consultar el corte${status}.`; this.loading = false; } });
+    this.service.getTurnos(this.rootId, this.desde, this.hasta).subscribe({
+      next: turns => {
+        this.reportTurns = (turns || []).filter(turn =>
+          String(turn.cajero || '').startsWith('COBRANZA:') &&
+          (!this.usuarioId || this.getTurnUserId(turn) === Number(this.usuarioId))
+        );
+        this.loadedTurnsKey = key;
+      },
+      error: error => { console.error('Error al consultar fondos iniciales de Cobranza:', error); this.reportTurns = []; this.loadedTurnsKey = key; }
+    });
     this.service.getHistorial(this.rootId).subscribe({ next: result => this.history = result || [], error: error => console.error(error) });
+  }
+
+  private getTurnUserId(turn: any): number | null {
+    const match = /^COBRANZA:\s*(\d+)$/i.exec(String(turn?.cajero || ''));
+    return match ? Number(match[1]) : null;
   }
 
   async printCutPdf(): Promise<void> {
@@ -173,7 +191,11 @@ export class CorteCajaCobranzaComponent {
         { columns: [{ image: logo, fit: [80, 55] }, { text: root?.name || 'Cobranza', alignment: 'center', bold: true, fontSize: 14, margin: [0, 16, 0, 0] }], margin: [0, 0, 0, 12] },
         { text: 'CORTE DE CAJA · COBRANZA', style: 'title' },
         { text: `Período: ${date(this.desde)} al ${date(this.hasta)}     Alcance: ${this.usuarioId ? this.userName(this.usuarioId) : 'Global'}`, margin: [0, 0, 0, 10] },
-        { columns: [{ text: `Total recibido: ${money(this.summary?.total)}`, bold: true, fontSize: 12 }, { text: `Abonos: ${this.summary?.numeroPagos || 0}`, alignment: 'right', bold: true, fontSize: 12 }], margin: [0, 0, 0, 8] },
+        { columns: [{ text: `Total recibido: ${money(this.summary?.total)}`, bold: true, fontSize: 12 }, { text: `Fondo inicial de caja: ${money(this.openingFundTotal)}`, alignment: 'center', bold: true, fontSize: 12 }, { text: `Abonos: ${this.summary?.numeroPagos || 0}`, alignment: 'right', bold: true, fontSize: 12 }], margin: [0, 0, 0, 8] },
+        { text: 'Fondos iniciales de los turnos del período', style: 'section' },
+        this.reportTurns.length
+          ? { table: { headerRows: 1, widths: [70, 75, '*', 100], body: [[{ text: 'Turno', bold: true }, { text: 'Caja', bold: true }, { text: 'Cobrador', bold: true }, { text: 'Fondo inicial', bold: true, alignment: 'right' }], ...this.reportTurns.map(turn => [String(turn.id), `Caja #${turn.idCashRegister}`, this.userName(this.getTurnUserId(turn) || 0), { text: money(turn.fondoInicial), alignment: 'right' }])] }, layout: 'lightHorizontalLines', fontSize: 8, margin: [0, 0, 0, 10] }
+          : { text: 'No hay turnos de cobranza iniciados en el período seleccionado.', italics: true, color: '#666', margin: [0, 4, 0, 10] },
         { text: 'Totales por tipo de pago', style: 'section' },
         { table: { widths: ['*', 110], body: [[{ text: 'Forma de pago', bold: true }, { text: 'Total', bold: true, alignment: 'right' }], ...totals.map(item => [item.name, { text: money(item.amount), alignment: 'right' }])] }, layout: 'lightHorizontalLines', margin: [0, 0, 0, 10] },
         { text: 'Movimientos del período', style: 'section' },

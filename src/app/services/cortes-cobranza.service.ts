@@ -21,8 +21,11 @@ export class CortesCobranzaService {
     return this.http.post<any>(this.base, data, { headers: this.tracking.getHeaders() });
   }
 
-  getTurnos(rootId: number) {
-    return this.http.get<any[]>(`${environment.urlAdministration}/CajeroTurno/byCompany?idCompany=${rootId}`, { headers: this.tracking.getHeaders() });
+  getTurnos(rootId: number, dateFrom?: string, dateTo?: string) {
+    let params = `idCompany=${rootId}`;
+    if (dateFrom) params += `&dateFrom=${encodeURIComponent(dateFrom)}`;
+    if (dateTo) params += `&dateTo=${encodeURIComponent(dateTo)}`;
+    return this.http.get<any[]>(`${environment.urlAdministration}/CajeroTurno/byCompany?${params}`, { headers: this.tracking.getHeaders() });
   }
   abrirTurno(data: any) {
     return this.http.post<any>(`${environment.urlAdministration}/CajeroTurno`, data, { headers: this.tracking.getHeaders() });
