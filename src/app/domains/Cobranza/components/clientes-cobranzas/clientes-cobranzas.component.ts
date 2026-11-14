@@ -182,6 +182,7 @@ export class ClientesCobranzasComponent implements CanComponentDeactivate {
   idBranch: number | null = null;
   idEmployee: number;
   infoCp: any;
+  private zipCodeContextCp = '';
   
 
   private estados: string[] = []; // Agregar esta variable para almacenar los estados
@@ -1051,6 +1052,7 @@ export class ClientesCobranzasComponent implements CanComponentDeactivate {
       this.idClient = this.selectedRowData.id;
       this.signalsService.setIdClient(this.selectedRowData.id);
       this.signalsService.setNameClient(this.selectedRowData.company);
+      void this.loadZipCodeContext(this.selectedRowData);
     } else {
       this.selectedRowData = null;
     }
@@ -1080,22 +1082,38 @@ export class ClientesCobranzasComponent implements CanComponentDeactivate {
 
     if (event.colDef.field === 'cp') {
       event.data.neighborhood = '';
-
-      setTimeout(async () => {
-        const data = await this.getZipCodeData(event.newValue);
-        this.getCoordinatesFromCP(data[0].cp).subscribe((data: any) => {
-          event.data.latitud = data[0].lat || 0;
-          event.data.longitud = data[0].lon || 0;
-        });
-        if (data && data.length > 0) {
-          const cpData = data[0];
-          event.data.state = cpData.estado;
-          event.data.city = cpData.ciudad || 'N/A';
-
-          this.gridApi.applyTransaction({ update: [event.data ] });
-        }
-      }, 500);
+      setTimeout(() => void this.loadZipCodeContext(event.data, true), 500);
     }
+  }
+
+  /** Carga el catálogo de asentamientos para clientes nuevos y existentes. */
+  private async loadZipCodeContext(customer: any, updateLocation = false): Promise<void> {
+    const cp = String(customer?.cp ?? '').trim();
+    if (!/^\d{5}$/.test(cp)) return;
+
+    if (cp === this.zipCodeContextCp && Array.isArray(this.infoCp) && this.infoCp.length) {
+      return;
+    }
+
+    const data = await this.getZipCodeData(cp);
+    if (!Array.isArray(data) || !data.length) return;
+
+    this.zipCodeContextCp = cp;
+    const cpData = data[0];
+    if (updateLocation || !customer.state) customer.state = cpData.estado || customer.state || '';
+    if (updateLocation || !customer.city) customer.city = cpData.ciudad || customer.city || 'N/A';
+
+    this.getCoordinatesFromCP(cp).subscribe({
+      next: (coordinates: any[]) => {
+        const coordinate = coordinates?.[0];
+        if (!coordinate) return;
+        customer.latitud = coordinate.lat || customer.latitud || 0;
+        customer.longitud = coordinate.lon || customer.longitud || 0;
+        this.gridApi?.applyTransaction({ update: [customer] });
+      },
+      error: () => undefined,
+    });
+    this.gridApi?.applyTransaction({ update: [customer] });
   }
 
   moveToNextColumn(event: any): void {
