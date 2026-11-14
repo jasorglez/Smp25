@@ -166,6 +166,10 @@ export class ClientesCobranzasComponent implements CanComponentDeactivate {
   private pendingEditCell: { rowIndex: number; colKey: string } | null = null;
 
   rowData: any;
+  private loanTotalsByCustomer = new Map<number, { loans: number; payments: number; pending: number }>();
+  private loanTotalsLoaded = false;
+  private loanTotalsRequestId = 0;
+  private loanTotalsLoadingRoot: number | null = null;
   contracts: { [key: string]: string } = {};
   newlyAddedRows: string[] = [];
 
@@ -343,6 +347,29 @@ export class ClientesCobranzasComponent implements CanComponentDeactivate {
         },
         cellStyle: { backgroundColor: '#eef2ff', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' },
       },
+      ...([
+        { colId: 'totalPrestamos', headerName: 'Total préstamos', key: 'loans', background: '#e7f1ff', color: '#174d80' },
+        { colId: 'totalPagosCobranza', headerName: 'Total pagos', key: 'payments', background: '#e6f4ea', color: '#166534' },
+        { colId: 'totalPendientes', headerName: 'Total pendientes', key: 'pending', background: '#fff3d6', color: '#9a5b00' },
+      ] as const).map(column => ({
+        colId: column.colId,
+        headerName: column.headerName,
+        width: 145,
+        minWidth: 135,
+        flex: 0,
+        pinned: 'right' as const,
+        lockPinned: true,
+        suppressMovable: true,
+        editable: false,
+        hide: this.type !== 'CUSTOMERS',
+        valueGetter: (params: any) => this.loanTotalsLoaded
+          ? this.loanTotalsByCustomer.get(Number(params.data?.id))?.[column.key] ?? 0
+          : null,
+        valueFormatter: (params: any) => params.value === null || params.value === undefined
+          ? '—'
+          : new Intl.NumberFormat('es-MX', { style: 'currency', currency: 'MXN' }).format(Number(params.value)),
+        cellStyle: { backgroundColor: column.background, color: column.color, fontWeight: '600', textAlign: 'right' as const },
+      })),
       {
         field: 'enabledForBilling',
         headerName: 'Facturación Electrónica',
@@ -517,6 +544,7 @@ export class ClientesCobranzasComponent implements CanComponentDeactivate {
         filter: 'agNumberColumnFilter',
         suppressMovable: true,
         width: 160,
+        hide: this.type === 'CUSTOMERS',
         valueFormatter: (params) => {
           if (params.value) {
             return new Intl.NumberFormat('es-MX', {
@@ -874,9 +902,7 @@ export class ClientesCobranzasComponent implements CanComponentDeactivate {
         headerName: 'Activo',
         editable: true,
         width: 100,
-        pinned: 'right',
-        lockPinned: true,
-        suppressMovable: true,
+        hide: true,
       },
     ];
 
@@ -936,6 +962,7 @@ export class ClientesCobranzasComponent implements CanComponentDeactivate {
         .subscribe({
           next: (data: any) => {
             this.rowData = data;
+            if (this.type === 'CUSTOMERS') this.loadLoanTotals();
             resolve(true);
           },
           error: (error) => {
@@ -945,6 +972,40 @@ export class ClientesCobranzasComponent implements CanComponentDeactivate {
         });
     });
     
+  }
+
+  private loadLoanTotals(force = false): void {
+    const rootId = Number(this.signalsService.getRootSelectedBySidebar()()) || 0;
+    if (!force && rootId && this.loanTotalsLoadingRoot === rootId) return;
+    const requestId = ++this.loanTotalsRequestId;
+    this.loanTotalsLoaded = false;
+    this.loanTotalsByCustomer.clear();
+    this.gridApi?.refreshCells({ columns: ['totalPrestamos', 'totalPagosCobranza', 'totalPendientes'], force: true });
+    if (!rootId) return;
+    this.loanTotalsLoadingRoot = rootId;
+    this.customerService.getCobranzaDashboard(rootId).subscribe({
+      next: loans => {
+        if (requestId !== this.loanTotalsRequestId || rootId !== Number(this.signalsService.getRootSelectedBySidebar()())) return;
+        this.loanTotalsLoadingRoot = null;
+        for (const loan of loans || []) {
+          const customerId = Number(loan.idCustomer);
+          const totals = this.loanTotalsByCustomer.get(customerId) || { loans: 0, payments: 0, pending: 0 };
+          totals.loans += Number(loan.montoTotal || 0);
+          totals.payments += (loan.cuotas || []).flatMap((installment: any) => installment.abonos || [])
+            .filter((payment: any) => payment.active !== false)
+            .reduce((sum: number, payment: any) => sum + Number(payment.monto || 0), 0);
+          totals.pending = Math.max(0, totals.loans - totals.payments);
+          this.loanTotalsByCustomer.set(customerId, totals);
+        }
+        this.loanTotalsLoaded = true;
+        this.gridApi?.refreshCells({ columns: ['totalPrestamos', 'totalPagosCobranza', 'totalPendientes'], force: true });
+      },
+      error: error => {
+        if (requestId !== this.loanTotalsRequestId) return;
+        this.loanTotalsLoadingRoot = null;
+        console.error('Error al consultar los totales de préstamos de Cobranza:', error);
+      }
+    });
   }
 
   obtenerBranchs() {
@@ -1079,7 +1140,7 @@ export class ClientesCobranzasComponent implements CanComponentDeactivate {
   private actualizarContextoCotizaciones() {
     if (!this.gridApi) return;
     this.gridApi.setGridOption('detailCellRendererParams', {
-      context: { idCompany: this.idRoot },
+      context: { idCompany: this.idRoot, onBalancesChanged: () => this.loadLoanTotals(true) },
     });
   }
 

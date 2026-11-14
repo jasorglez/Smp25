@@ -1,5 +1,5 @@
 import { CommonModule } from '@angular/common';
-import { Component, Input, OnChanges, inject } from '@angular/core';
+import { Component, EventEmitter, Input, OnChanges, Output, inject } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { CustomersService } from 'app/services/customers.service';
 import { alerts } from 'app/helpers/alerts';
@@ -102,6 +102,7 @@ import { PosTicketService } from 'app/services/pos-ticket.service';
 export class ClientesCobranzasPagosComponent implements OnChanges {
   @Input() customer: any;
   @Input() idCompany = 0;
+  @Output() balancesChanged = new EventEmitter<void>();
   private customersService = inject(CustomersService);
   private catalogsService = inject(CatalogsService);
   private usersService = inject(UsersService);
@@ -242,7 +243,7 @@ export class ClientesCobranzasPagosComponent implements OnChanges {
     this.saving = true;
     try {
       await firstValueFrom(this.customersService.createCobranzaLoan({ idCustomer: this.customer.id, montoTotal: amount, fechaInicio: this.loanForm.fechaInicio, fechaPrimerPago: this.loanForm.fechaPrimerPago, numeroCuotas: numberOfPayments, comentario: this.loanForm.comentario }));
-      this.saving = false; this.showLoanForm = false; this.loanForm = { montoTotal: null, fechaInicio: this.today(), fechaPrimerPago: this.nextMonth(), numeroCuotas: 10, comentario: '' }; this.loadLoans();
+      this.saving = false; this.showLoanForm = false; this.loanForm = { montoTotal: null, fechaInicio: this.today(), fechaPrimerPago: this.nextMonth(), numeroCuotas: 10, comentario: '' }; this.loadLoans(); this.balancesChanged.emit();
     } catch (error: any) { console.error(error); this.saving = false; alerts.basicAlert('Error', error?.error?.error || 'No se pudo crear el préstamo y su calendario de pagos.', 'error'); }
   }
 
@@ -271,14 +272,14 @@ export class ClientesCobranzasPagosComponent implements OnChanges {
       console.error('El abono se guardó, pero no se pudo abrir el ticket:', error);
       alerts.basicAlert('Abono guardado', 'El abono se guardó, pero no se pudo abrir el ticket.', 'warning');
     } finally {
-      this.saving = false; this.activeInstallmentId = null; this.loadLoans();
+      this.saving = false; this.activeInstallmentId = null; this.loadLoans(); this.balancesChanged.emit();
     }
   }
 
   async deactivatePayment(payment: any): Promise<void> {
     const result = await alerts.confirmAlert('Quitar abono', 'El abono se conservará inactivo en el historial.', 'warning', 'Sí, quitar');
     if (!result.isConfirmed) return;
-    this.customersService.deactivateCobranzaInstallmentPayment(payment.id).subscribe({ next: () => this.loadLoans(), error: error => { console.error(error); alerts.basicAlert('Error', error?.error?.error || 'No se pudo quitar el abono.', 'error'); } });
+    this.customersService.deactivateCobranzaInstallmentPayment(payment.id).subscribe({ next: () => { this.loadLoans(); this.balancesChanged.emit(); }, error: error => { console.error(error); alerts.basicAlert('Error', error?.error?.error || 'No se pudo quitar el abono.', 'error'); } });
   }
 
   async deactivateInstallment(installment: any): Promise<void> {
