@@ -510,7 +510,7 @@ export class DetalleItemsCotizacionComponent implements ICellRendererAngularComp
     const initialHtml = this.sanitizeDescriptionHtml(savedHtml || escapeHtml(description).replace(/\n/g, '<br>'));
     const result = await Swal.fire({
       title: 'Editar descripción de la partida',
-      html: `<div class="text-start"><div class="btn-toolbar mb-2" role="toolbar" aria-label="Formato de texto"><button id="quote-bold-toggle" type="button" class="btn btn-sm btn-outline-secondary fw-bold" title="Negrita">B</button></div><div id="quote-description-editor" contenteditable="true" role="textbox" aria-multiline="true" style="min-height:${rows * 24}px;max-height:55vh;overflow:auto;border:1px solid #ced4da;border-radius:.375rem;padding:.6rem;text-align:left;white-space:pre-wrap">${initialHtml}</div></div>`,
+      html: `<div class="text-start"><div class="btn-toolbar mb-2 gap-1" role="toolbar" aria-label="Formato de texto"><select id="quote-font-size" class="form-select form-select-sm" style="width:100px" aria-label="Tamaño de letra"><option value="3" selected>Normal</option><option value="2">Pequeña</option><option value="4">Grande</option><option value="5">Más grande</option></select><button id="quote-bold-toggle" type="button" class="btn btn-sm btn-outline-secondary fw-bold" title="Negrita">B</button><button id="quote-italic-toggle" type="button" class="btn btn-sm btn-outline-secondary fst-italic" title="Cursiva">I</button><button id="quote-underline-toggle" type="button" class="btn btn-sm btn-outline-secondary text-decoration-underline" title="Subrayado">U</button></div><div id="quote-description-editor" contenteditable="true" role="textbox" aria-multiline="true" style="min-height:${rows * 24}px;max-height:55vh;overflow:auto;border:1px solid #ced4da;border-radius:.375rem;padding:.6rem;text-align:left;white-space:pre-wrap">${initialHtml}</div></div>`,
       width: modalWidth,
       showCancelButton: true,
       confirmButtonText: 'Guardar descripción',
@@ -518,11 +518,19 @@ export class DetalleItemsCotizacionComponent implements ICellRendererAngularComp
       didOpen: popup => {
         const editor = popup.querySelector('#quote-description-editor') as HTMLElement;
         const boldButton = popup.querySelector('#quote-bold-toggle') as HTMLButtonElement;
+        const italicButton = popup.querySelector('#quote-italic-toggle') as HTMLButtonElement;
+        const underlineButton = popup.querySelector('#quote-underline-toggle') as HTMLButtonElement;
+        const fontSize = popup.querySelector('#quote-font-size') as HTMLSelectElement;
         // SweetAlert puede reconstruir su contenido al mostrarlo; reponer aquí
         // el HTML actual garantiza que la descripción guardada aparezca siempre.
         if (editor) editor.innerHTML = initialHtml;
         boldButton?.addEventListener('mousedown', e => e.preventDefault());
         boldButton?.addEventListener('click', () => { editor?.focus(); document.execCommand('bold'); });
+        italicButton?.addEventListener('mousedown', e => e.preventDefault());
+        italicButton?.addEventListener('click', () => { editor?.focus(); document.execCommand('italic'); });
+        underlineButton?.addEventListener('mousedown', e => e.preventDefault());
+        underlineButton?.addEventListener('click', () => { editor?.focus(); document.execCommand('underline'); });
+        fontSize?.addEventListener('change', () => { editor?.focus(); document.execCommand('fontSize', false, fontSize.value); });
         editor?.focus();
       },
       preConfirm: () => {
@@ -545,7 +553,7 @@ export class DetalleItemsCotizacionComponent implements ICellRendererAngularComp
   private sanitizeDescriptionHtml(html: string): string {
     if (typeof DOMParser === 'undefined') return html.replace(/<[^>]*>/g, '');
     const parsed = new DOMParser().parseFromString(html, 'text/html');
-    const allowed = new Set(['B', 'STRONG', 'BR', 'DIV', 'P']);
+    const allowed = new Set(['B', 'STRONG', 'I', 'EM', 'U', 'FONT', 'BR', 'DIV', 'P']);
     const cleanNode = (node: Node, parent: Node): void => {
       if (node.nodeType === Node.TEXT_NODE) { parent.appendChild(document.createTextNode(node.textContent ?? '')); return; }
       if (node.nodeType !== Node.ELEMENT_NODE) return;
@@ -556,6 +564,9 @@ export class DetalleItemsCotizacionComponent implements ICellRendererAngularComp
         return;
       }
       const clean = document.createElement(tag.toLowerCase());
+      if (tag === 'FONT' && ['1', '2', '3', '4', '5', '6', '7'].includes(element.getAttribute('size') ?? '')) {
+        clean.setAttribute('size', element.getAttribute('size')!);
+      }
       Array.from(element.childNodes).forEach(child => cleanNode(child, clean));
       parent.appendChild(clean);
     };
@@ -572,7 +583,10 @@ export class DetalleItemsCotizacionComponent implements ICellRendererAngularComp
     const visit = (node: Node, bold = false) => {
       if (node.nodeType === Node.TEXT_NODE) {
         const value = node.textContent ?? '';
-        if (value) runs.push({ text: value, ...(bold ? { bold: true } : {}) });
+        if (value) {
+          const style = this.pdfTextStyleFromNode(node.parentElement);
+          runs.push({ text: value, ...(bold ? { bold: true } : {}), ...style });
+        }
         return;
       }
       if (node.nodeType !== Node.ELEMENT_NODE) return;
@@ -584,6 +598,20 @@ export class DetalleItemsCotizacionComponent implements ICellRendererAngularComp
     };
     Array.from(documentHtml.body.childNodes).forEach(node => visit(node));
     return runs.length ? runs : textoPdf(item?.nombreMaterial);
+  }
+
+  private pdfTextStyleFromNode(element: HTMLElement | null): Record<string, any> {
+    const style: Record<string, any> = {};
+    for (let current = element; current; current = current.parentElement) {
+      if (['I', 'EM'].includes(current.tagName)) style['italics'] = true;
+      if (current.tagName === 'U') style['decoration'] = 'underline';
+      if (current.tagName === 'FONT') {
+        const sizes: Record<string, number> = { '1': 6, '2': 7, '3': 9, '4': 11, '5': 13, '6': 16, '7': 19 };
+        const size = sizes[current.getAttribute('size') ?? ''];
+        if (size) style['fontSize'] = size;
+      }
+    }
+    return style;
   }
 
   private cargarTipoCambio(): Promise<void> {

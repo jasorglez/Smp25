@@ -75,5 +75,5 @@ export const environment = {
     // publicKey: 'TEST-4399133a-4676-42a2-ab85-d946370bf96a',
   },
 
-  version: '5.00.536 (14 Noviembre 2026 17:19) carga inicial editor de cotización',
+  version: '5.00.537 (14 Noviembre 2026 17:23) formato completo de texto en cotizaciones',
 };
