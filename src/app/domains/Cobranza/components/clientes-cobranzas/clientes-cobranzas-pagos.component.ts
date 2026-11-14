@@ -5,6 +5,7 @@ import { CustomersService } from 'app/services/customers.service';
 import { alerts } from 'app/helpers/alerts';
 import { firstValueFrom } from 'rxjs';
 import { AgGridModule } from 'ag-grid-angular';
+import { NgSelectModule } from '@ng-select/ng-select';
 import { ColDef } from 'ag-grid-enterprise';
 import { AG_GRID_LOCALE_ES } from 'assets/i18n/ag-grid.locale.es';
 import { ButtonCellRendererExpenditureComponent } from 'app/domains/ModAdmon/components/egresos-palacio/button-cell-renderer-expenditure.component';
@@ -17,10 +18,12 @@ import { PosTicketService } from 'app/services/pos-ticket.service';
 @Component({
   selector: 'app-clientes-cobranzas-pagos',
   standalone: true,
-  imports: [CommonModule, FormsModule, AgGridModule, ButtonCellRendererExpenditureComponent],
+  imports: [CommonModule, FormsModule, AgGridModule, NgSelectModule, ButtonCellRendererExpenditureComponent],
   styles: [`
-    .cobranza-select {
+    :host ::ng-deep ng-select.cobranza-select {
       font-size: 0.75rem;
+    }
+    :host ::ng-deep ng-select.cobranza-select .ng-select-container {
       color: #174d80;
       background-color: #edf6ff;
       border: 1px solid #8ab8e4;
@@ -28,11 +31,30 @@ import { PosTicketService } from 'app/services/pos-ticket.service';
       min-height: 31px;
       transition: border-color 0.15s ease, box-shadow 0.15s ease;
     }
-    .cobranza-select:focus {
+    :host ::ng-deep ng-select.cobranza-select.ng-select-focused .ng-select-container {
       border-color: #397fbe;
       box-shadow: 0 0 0 0.2rem rgba(57, 127, 190, 0.18);
     }
-    .cobranza-select option { font-size: 0.75rem; color: #174d80; background: #fff; }
+    :host ::ng-deep ng-select.cobranza-select .ng-arrow-wrapper .ng-arrow { border-color: #397fbe transparent transparent; }
+    ::ng-deep .ng-dropdown-panel.cobranza-select {
+      z-index: 1080;
+      overflow: hidden;
+      border: 1px solid #8ab8e4;
+      border-radius: 0.5rem;
+      box-shadow: 0 6px 18px rgba(28, 79, 130, 0.18);
+      background: #f4f9ff;
+      font-size: 0.75rem;
+    }
+    ::ng-deep .ng-dropdown-panel.cobranza-select .ng-option {
+      padding: 7px 10px;
+      color: #174d80;
+      background: #f4f9ff;
+    }
+    ::ng-deep .ng-dropdown-panel.cobranza-select .ng-option.ng-option-marked,
+    ::ng-deep .ng-dropdown-panel.cobranza-select .ng-option.ng-option-selected {
+      color: #0c4172;
+      background: #d9ecff;
+    }
   `],
   template: `
     <section class="p-3 border-top bg-light">
@@ -64,10 +86,10 @@ import { PosTicketService } from 'app/services/pos-ticket.service';
           <div *ngFor="let installment of loan.cuotas"><div *ngIf="activeInstallmentId === installment.id" class="border rounded p-2 mt-2"><strong>Abonos de la cuota {{ installment.numeroCuota }}</strong><div class="row g-2 align-items-end py-2">
               <div class="col-md-2"><label class="form-label small">Fecha recibida</label><input class="form-control form-control-sm" type="date" [(ngModel)]="abonoForm.fechaPago"></div>
               <div class="col-md-2"><label class="form-label small">Monto recibido (máx. {{ installmentBalance(installment) | currency:'MXN' }})</label><input class="form-control form-control-sm" type="number" min="0.01" step="0.01" [max]="installmentBalance(installment)" [(ngModel)]="abonoForm.monto"></div>
-              <div class="col-md-2"><label class="form-label small">Tipo de pago <button type="button" class="btn btn-link btn-sm p-0" (click)="addPaymentType()" [disabled]="savingPaymentType" title="Agregar tipo de pago"><i class="bi bi-plus-circle"></i></button></label><select class="form-select form-select-sm cobranza-select" [(ngModel)]="abonoForm.idTipoPago"><option [ngValue]="null">Seleccionar</option><option *ngFor="let type of paymentTypes" [ngValue]="type.id">{{ type.description }}</option></select></div>
-              <div class="col-md-2"><label class="form-label small">Responsable del cobro</label><select class="form-select form-select-sm cobranza-select" [(ngModel)]="abonoForm.idUsuarioCobrador"><option [ngValue]="null">Sin asignar</option><option *ngFor="let user of users" [ngValue]="user.id">{{ user.displayName || user.usersmall || user.email || ('Usuario ' + user.id) }}</option></select></div>
-              <div class="col-md-2"><label class="form-label small">Recibido en</label><select class="form-select form-select-sm cobranza-select" [(ngModel)]="abonoForm.origenCobro"><option value="DOMICILIO">Domicilio del cliente</option><option value="NEGOCIO">Caja del negocio</option></select></div>
-              <div class="col-md-3" *ngIf="abonoForm.origenCobro === 'NEGOCIO'"><label class="form-label small">Turno abierto</label><select class="form-select form-select-sm cobranza-select" [(ngModel)]="abonoForm.idCajeroTurno"><option [ngValue]="null">Seleccionar caja abierta</option><option *ngFor="let turn of openCashTurns" [ngValue]="turn.id">Caja {{ turn.idCashRegister }} · {{ turn.fechaInicio | date:'shortTime' }}</option></select></div>
+              <div class="col-md-2"><label class="form-label small" [for]="'cobranza-tipo-' + installment.id">Tipo de pago <button type="button" class="btn btn-link btn-sm p-0" (click)="addPaymentType()" [disabled]="savingPaymentType" title="Agregar tipo de pago"><i class="bi bi-plus-circle"></i></button></label><ng-select class="cobranza-select" [labelForId]="'cobranza-tipo-' + installment.id" [(ngModel)]="abonoForm.idTipoPago" [clearable]="false" [searchable]="false" appendTo="body" placeholder="Seleccionar" notFoundText="Sin tipos de pago"><ng-option *ngFor="let type of paymentTypes" [value]="type.id">{{ type.description }}</ng-option></ng-select></div>
+              <div class="col-md-2"><label class="form-label small" [for]="'cobranza-responsable-' + installment.id">Responsable del cobro</label><ng-select class="cobranza-select" [labelForId]="'cobranza-responsable-' + installment.id" [(ngModel)]="abonoForm.idUsuarioCobrador" [clearable]="true" [searchable]="true" appendTo="body" placeholder="Sin asignar" notFoundText="Sin usuarios"><ng-option *ngFor="let user of users" [value]="user.id">{{ user.displayName || user.usersmall || user.email || ('Usuario ' + user.id) }}</ng-option></ng-select></div>
+              <div class="col-md-2"><label class="form-label small" [for]="'cobranza-origen-' + installment.id">Recibido en</label><ng-select class="cobranza-select" [labelForId]="'cobranza-origen-' + installment.id" [(ngModel)]="abonoForm.origenCobro" [clearable]="false" [searchable]="false" appendTo="body"><ng-option value="DOMICILIO">Domicilio del cliente</ng-option><ng-option value="NEGOCIO">Caja del negocio</ng-option></ng-select></div>
+              <div class="col-md-3" *ngIf="abonoForm.origenCobro === 'NEGOCIO'"><label class="form-label small" [for]="'cobranza-turno-' + installment.id">Turno abierto</label><ng-select class="cobranza-select" [labelForId]="'cobranza-turno-' + installment.id" [(ngModel)]="abonoForm.idCajeroTurno" [clearable]="false" [searchable]="false" appendTo="body" placeholder="Seleccionar caja abierta" notFoundText="Sin cajas abiertas"><ng-option *ngFor="let turn of openCashTurns" [value]="turn.id">Caja {{ turn.idCashRegister }} · {{ turn.fechaInicio | date:'shortTime' }}</ng-option></ng-select></div>
               <div class="col-md-2"><label class="form-label small">Comentario</label><input class="form-control form-control-sm" maxlength="500" [(ngModel)]="abonoForm.comentario"></div>
               <div class="col-md-2"><button class="btn btn-sm btn-success w-100" (click)="recordPayment(installment)" [disabled]="saving">Guardar abono</button></div>
             </div><div *ngIf="installment.abonos?.length" class="small mt-2"><strong>Abonos registrados:</strong><span *ngFor="let payment of installment.abonos" class="ms-2">{{ payment.fechaPago | date:'dd/MM/yyyy' }} — {{ payment.monto | currency:'MXN' }}<button class="btn btn-link btn-sm text-danger p-0 ms-1" (click)="deactivatePayment(payment)" title="Quitar abono"><i class="bi bi-x-circle"></i></button><span *ngIf="payment.comentario"> ({{ payment.comentario }})</span></span></div></div></div>
@@ -230,11 +252,18 @@ export class ClientesCobranzasPagosComponent implements OnChanges {
     if (!this.abonoForm.idTipoPago) { alerts.basicAlert('Tipo de pago requerido', 'Selecciona cómo se recibió el abono.', 'warning'); return; }
     if (this.abonoForm.origenCobro === 'NEGOCIO' && !this.abonoForm.idCajeroTurno) { alerts.basicAlert('Caja requerida', 'Abre y selecciona una caja de cobranza para registrar este pago.', 'warning'); return; }
     this.saving = true;
+    let saved: any;
     try {
-      const saved: any = await firstValueFrom(this.customersService.addCobranzaInstallmentPayment(installment.id, { fechaPago: this.abonoForm.fechaPago, monto: amount, idTipoPago: this.abonoForm.idTipoPago, idUsuarioCobrador: this.abonoForm.idUsuarioCobrador, origenCobro: this.abonoForm.origenCobro, idCajeroTurno: this.abonoForm.origenCobro === 'NEGOCIO' ? this.abonoForm.idCajeroTurno : null, comentario: this.abonoForm.comentario }));
+      saved = await firstValueFrom(this.customersService.addCobranzaInstallmentPayment(installment.id, { fechaPago: this.abonoForm.fechaPago, monto: amount, idTipoPago: this.abonoForm.idTipoPago, idUsuarioCobrador: this.abonoForm.idUsuarioCobrador, origenCobro: this.abonoForm.origenCobro, idCajeroTurno: this.abonoForm.origenCobro === 'NEGOCIO' ? this.abonoForm.idCajeroTurno : null, comentario: this.abonoForm.comentario }));
+    } catch (error: any) { console.error(error); this.saving = false; alerts.basicAlert('Error', error?.error?.error || 'No se pudo registrar el abono.', 'error'); return; }
+    try {
       await this.posTicket.printCobranza({ id: saved?.id, fecha: this.abonoForm.fechaPago, monto: amount, tipoPago: this.paymentTypes.find(item => item.id === this.abonoForm.idTipoPago)?.description || 'Pago', cliente: this.customer?.nameContact || this.customer?.company || 'Cliente', prestamo: installment.idPrestamo, cuota: installment.numeroCuota, origen: this.abonoForm.origenCobro, empresaId: this.paymentCompanyId });
+    } catch (error) {
+      console.error('El abono se guardó, pero no se pudo abrir el ticket:', error);
+      alerts.basicAlert('Abono guardado', 'El abono se guardó, pero no se pudo abrir el ticket.', 'warning');
+    } finally {
       this.saving = false; this.activeInstallmentId = null; this.loadLoans();
-    } catch (error: any) { console.error(error); this.saving = false; alerts.basicAlert('Error', error?.error?.error || 'No se pudo registrar el abono.', 'error'); }
+    }
   }
 
   async deactivatePayment(payment: any): Promise<void> {

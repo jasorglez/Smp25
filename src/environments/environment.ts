@@ -75,5 +75,5 @@ export const environment = {
     // publicKey: 'TEST-4399133a-4676-42a2-ab85-d946370bf96a',
   },
 
-  version: '5.00.501 (13 Noviembre 2026 21:31) responsables de Cobranza por empresa',
+  version: '5.00.502 (13 Noviembre 2026 23:27) cobradores y ticket de Cobranza',
 };

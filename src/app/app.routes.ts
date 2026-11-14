@@ -1143,14 +1143,12 @@ export const routes: Routes = [
             canDeactivate: [UnsavedChangesGuard],
             data: { permissions: { master: 'cobranzas', detailed: 'cajas' } }
           },
-          ...[
-            { path: 'cobradores', permission: 'cobr', title: 'Cobradores' },
-          ].map(item => ({
-            path: item.path,
-            loadComponent: () => import('./domains/Cobranza/pages/cobranza.component').then(m => m.CobranzaEnConstruccionComponent),
+          {
+            path: 'cobradores',
+            loadComponent: () => import('./domains/Cobranza/pages/cobradores-cobranza.component').then(m => m.CobradoresCobranzaComponent),
             canActivate: [MasterPermissionsGuard],
-            data: { title: item.title, permissions: { master: 'cobranzas', detailed: item.permission } }
-          }))
+            data: { permissions: { master: 'cobranzas', detailed: 'cobr' } }
+          }
         ]
       },
       {
