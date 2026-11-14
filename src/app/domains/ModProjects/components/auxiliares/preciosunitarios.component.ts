@@ -386,6 +386,10 @@ export class AuxiliaresComponent {
         }));
         this.originalData = JSON.parse(JSON.stringify(this.rowData));
         this.hasMainChanges = false;
+        if (this.rowData.length) {
+          this.mainGridApi?.deselectAll();
+          this.mainGridApi?.getDisplayedRowAtIndex(0)?.setSelected(true);
+        }
       },
       error: (e) => console.error('Error cargando precios unitarios', e),
     });

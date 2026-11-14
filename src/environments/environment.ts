@@ -75,5 +75,5 @@ export const environment = {
     // publicKey: 'TEST-4399133a-4676-42a2-ab85-d946370bf96a',
   },
 
-  version: '5.00.529 (14 Noviembre 2026 16:24) pestaña inicial de precios unitarios',
+  version: '5.00.530 (14 Noviembre 2026 16:27) desglose inicial de precios unitarios',
 };
