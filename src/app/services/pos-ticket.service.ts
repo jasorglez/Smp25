@@ -2,6 +2,7 @@ import { inject, Injectable } from '@angular/core';
 import { RootService } from 'app/services/root.service';
 import { Base64EncodeService } from 'app/services/base64encode.service';
 import { TrackingService } from 'app/services/tracking.service';
+import { PdfPreviewService } from 'app/services/pdf-preview.service';
 import { lastValueFrom } from 'rxjs';
 import pdfMake from 'pdfmake/build/pdfmake';
 import * as pdfFonts from 'pdfmake/build/vfs_fonts';
@@ -16,6 +17,7 @@ export class PosTicketService {
   private rootService = inject(RootService);
   private base64EncodeService = inject(Base64EncodeService);
   private trackingService = inject(TrackingService);
+  private pdfPreview = inject(PdfPreviewService);
 
   async printCobranza(payment: { id: number; fecha: string; monto: number; saldoPendiente: number; tipoPago: string; cliente: string; prestamo: number; cuota: number; origen: string; empresaId: number }): Promise<void> {
     let logo: string | null = null;
@@ -46,8 +48,8 @@ export class PosTicketService {
         line, { text: 'Gracias por su pago', alignment: 'center', italics: true, fontSize: 7 },
       ],
     };
-    this.trackingService.addLog(this.trackingService.getnameComp(), 'Imprimió comprobante de abono', 'Cobranza', this.trackingService.getEmail());
-    pdfMake.createPdf(doc).open();
+    this.trackingService.addLog(this.trackingService.getnameComp(), 'Generó comprobante de abono', 'Cobranza', this.trackingService.getEmail());
+    await this.pdfPreview.show(pdfMake.createPdf(doc), 'Ticket de abono', `Ticket_Cobranza_${payment.id}.pdf`);
   }
 
   async print(
