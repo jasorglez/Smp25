@@ -538,7 +538,7 @@ export class ClientesCobranzasComponent implements CanComponentDeactivate {
           return true;
         },
         width: 150,
-        //hide: this.type != 'CUSTOMERS',
+        hide: this.type === 'CUSTOMERS',
         cellEditor: 'agSelectCellEditor',
         cellEditorParams: (params) => {
           return {

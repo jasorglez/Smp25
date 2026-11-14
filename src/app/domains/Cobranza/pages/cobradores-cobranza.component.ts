@@ -30,7 +30,7 @@ import { CobradoresCobranzaDetailComponent } from './cobradores-cobranza-detail.
         </div>
         <div *ngIf="!loading && !error && !users.length" class="empty-state text-center py-5 px-3">
           <i class="bi bi-person-badge fs-2 text-primary" aria-hidden="true"></i>
-          <h6 class="mt-3 mb-1">Aún no hay cobradores asignados</h6>
+          <h6 class="mt-3 mb-1">No hay usuarios activos</h6>
           <p class="text-muted small mb-0">Los usuarios activos de la empresa aparecerán aquí.</p>
         </div>
       </div>
@@ -50,11 +50,11 @@ export class CobradoresCobranzaComponent {
   error = '';
   readonly localeText = AG_GRID_LOCALE_ES;
   readonly defaultColDef: ColDef = { sortable: true, filter: true, floatingFilter: true, resizable: true, flex: 1, minWidth: 180, suppressHeaderMenuButton: true };
-  readonly gridOptions: any = { animateRows: true, rowHeight: 38, masterDetail: true, detailRowHeight: 310, isRowMaster: () => true, detailCellRenderer: CobradoresCobranzaDetailComponent };
+  readonly gridOptions: any = { animateRows: true, rowHeight: 38, masterDetail: true, detailRowHeight: 310, isRowMaster: (user: any) => (user?.cobros?.length || 0) > 0, detailCellRenderer: CobradoresCobranzaDetailComponent };
   readonly columns: ColDef[] = [
     { headerName: 'Nombre', valueGetter: params => params.data?.displayName || params.data?.usersmall || '', minWidth: 180 },
     { field: 'email', headerName: 'Correo', minWidth: 220 },
-    { headerName: 'Cobros', valueGetter: params => params.data?.cobros?.length || 0, minWidth: 100, maxWidth: 120 },
+    { colId: 'detalleCobros', headerName: 'Pagos', valueGetter: params => `${params.data?.cobros?.length || 0} cobros · ver detalle`, cellRenderer: 'agGroupCellRenderer', cellRendererParams: { suppressCount: true }, minWidth: 190, sortable: false, filter: false },
     { headerName: 'Total cobrado', valueGetter: params => (params.data?.cobros || []).reduce((sum: number, payment: any) => sum + Number(payment.monto || 0), 0), valueFormatter: params => new Intl.NumberFormat('es-MX', { style: 'currency', currency: 'MXN' }).format(Number(params.value || 0)), minWidth: 150 }
   ];
 
