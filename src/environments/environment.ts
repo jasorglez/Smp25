@@ -75,5 +75,5 @@ export const environment = {
     // publicKey: 'TEST-4399133a-4676-42a2-ab85-d946370bf96a',
   },
 
-  version: '5.00.510 (14 Noviembre 2026 00:49) consulta y PDF del corte',
+  version: '5.00.511 (14 Noviembre 2026 08:58) reporte de cobros por vendedor',
 };
