@@ -386,10 +386,7 @@ export class AuxiliaresComponent {
         }));
         this.originalData = JSON.parse(JSON.stringify(this.rowData));
         this.hasMainChanges = false;
-        if (this.rowData.length) {
-          this.mainGridApi?.deselectAll();
-          this.mainGridApi?.getDisplayedRowAtIndex(0)?.setSelected(true);
-        }
+        this.selectFirstPriceByDefault();
       },
       error: (e) => console.error('Error cargando precios unitarios', e),
     });
@@ -794,6 +791,14 @@ export class AuxiliaresComponent {
           })),
           __isNew: false, __modified: false,
         }));
+        // El maestro puede traer las banderas de composición vacías o desactualizadas.
+        // Reconstruirlas desde el desglose para mostrar las pestañas realmente guardadas.
+        const resourceTypes = new Set(this.allItems.map((item: any) => String(item.type ?? item.Type ?? '').toUpperCase()));
+        this.selectedAuxiliar.hasPersonal = this.cuadrillas.length > 0 || resourceTypes.has('PERSONAL');
+        this.selectedAuxiliar.hasMaterial = resourceTypes.has('MATERIAL');
+        this.selectedAuxiliar.hasEquipo = resourceTypes.has('EQUIPO');
+        this.selectedAuxiliar.hasHerramienta = resourceTypes.has('HERR');
+        this.selectAvailableResourceTab();
         if (this.cuadrillas.length) this.selectCuadrilla(this.cuadrillas[0]);
         this.refreshSubGrids();
       },
@@ -801,7 +806,20 @@ export class AuxiliaresComponent {
   }
 
   // ── Master grid events ───────────────────────────────────────────────────
-  onMainGridReady(event: GridReadyEvent) { this.mainGridApi = event.api; }
+  onMainGridReady(event: GridReadyEvent) {
+    this.mainGridApi = event.api;
+    this.selectFirstPriceByDefault();
+  }
+
+  private selectFirstPriceByDefault(): void {
+    if (!this.mainGridApi || !this.rowData.length || this.selectedAuxiliar) return;
+    const firstRow = this.mainGridApi.getDisplayedRowAtIndex(0);
+    if (!firstRow) return;
+    this.mainGridApi.deselectAll();
+    firstRow.setSelected(true);
+    // Asegura ejecutar la misma carga de detalle que una selección manual.
+    this.onMainSelectionChanged();
+  }
 
   onMainSelectionChanged() {
     const rows = this.mainGridApi.getSelectedRows();

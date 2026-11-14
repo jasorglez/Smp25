@@ -590,8 +590,17 @@ export class MaterialsComponent implements CanComponentDeactivate {
       ]);
       const requisitions = this.asArray(reqRaw).map(d => ({ ...d, __movementKind: 'requisitionMovementCount' }));
       const orders = this.asArray(ocRaw).map(d => ({ ...d, __movementKind: 'purchaseOrderMovementCount' }));
-      const quotations = this.asArray(await firstValueFrom(this.ocAndReqsService.getOcAndReqs(referenceType, referenceId, 'COTIZ')))
-        .map(d => ({ ...d, __movementKind: 'quotationMovementCount' }));
+      // Las cotizaciones del almacén cuelgan de cada requisición, no directamente
+      // de la sucursal/proyecto. Consultarlas por requisición para encontrar sus partidas.
+      const quotations = (await Promise.all(requisitions.map(async requisition => {
+        try {
+          const raw = await firstValueFrom(this.ocAndReqsService.getOcAndReqs('requisition', Number(requisition.id), 'COTIZ'));
+          return this.asArray(raw).map(quote => ({ ...quote, __movementKind: 'quotationMovementCount' }));
+        } catch (error) {
+          console.warn(`No se pudieron cargar las cotizaciones de la requisición ${requisition.id}.`, error);
+          return [];
+        }
+      }))).flat();
       const warehouses = this.asArray(warehousesRaw);
       const headers = await Promise.all(warehouses.flatMap(w => ['IN', 'OUT'].map(async type => {
         const raw = await firstValueFrom(this.inandoutService.getInAndOuts(projectId || null, Number(w.id || w.idWarehouse || w.idAlmacen), type));
