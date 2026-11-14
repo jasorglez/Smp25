@@ -1,5 +1,5 @@
 import { CommonModule } from '@angular/common';
-import { Component, EventEmitter, Input, OnChanges, Output, inject } from '@angular/core';
+import { Component, EventEmitter, Input, OnChanges, OnDestroy, Output, inject } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { CustomersService } from 'app/services/customers.service';
 import { alerts } from 'app/helpers/alerts';
@@ -59,7 +59,7 @@ import { PosTicketService } from 'app/services/pos-ticket.service';
   template: `
     <section class="p-3 border-top bg-light">
       <div class="d-flex justify-content-between align-items-center gap-2 mb-3 flex-wrap">
-        <div><strong>Préstamos — {{ customer?.nameContact || customer?.company }}</strong><span class="badge bg-success ms-2">Abonado: {{ totalPaid | currency:'MXN' }}</span></div>
+        <div><strong>Préstamos — {{ customer?.nameContact || customer?.company }}</strong><span class="badge bg-success ms-2">Abonado: {{ totalPaid | currency:'MXN' }}</span><small class="text-muted ms-2"><i class="bi bi-arrow-repeat"></i> Actualización automática</small></div>
         <button class="btn btn-sm btn-primary" (click)="showLoanForm = !showLoanForm"><i class="bi bi-plus-lg"></i> Nuevo préstamo</button>
       </div>
 
@@ -99,7 +99,7 @@ import { PosTicketService } from 'app/services/pos-ticket.service';
     </section>
   `
 })
-export class ClientesCobranzasPagosComponent implements OnChanges {
+export class ClientesCobranzasPagosComponent implements OnChanges, OnDestroy {
   @Input() customer: any;
   @Input() idCompany = 0;
   @Output() balancesChanged = new EventEmitter<void>();
@@ -113,6 +113,8 @@ export class ClientesCobranzasPagosComponent implements OnChanges {
   savingPaymentType = false;
   private paymentTypesRequest = 0;
   private usersRequest = 0;
+  private loanRefreshTimer: ReturnType<typeof setInterval> | null = null;
+  private refreshingLoans = false;
   users: any[] = [];
   openCashTurns: any[] = [];
   loans: any[] = [];
@@ -142,7 +144,11 @@ export class ClientesCobranzasPagosComponent implements OnChanges {
   async saveChanges(loan: any): Promise<void> { const changed = loan.cuotas.filter((item: any) => item.fechaProgramada !== this.originalDates.get(item.id)); if (!changed.length) return; this.saving = true; try { for (const item of changed) await firstValueFrom(this.customersService.updateCobranzaInstallmentDate(item.id, { fechaProgramada: item.fechaProgramada })); this.saving = false; this.loadLoans(); this.balancesChanged.emit(); alerts.basicAlert('Fechas guardadas', 'Se actualizó el calendario de pagos.', 'success'); } catch (error) { console.error(error); this.saving = false; alerts.basicAlert('Error', 'No se pudieron guardar todas las fechas. Recarga el detalle para revisar cuáles se guardaron.', 'error'); } }
 
   get totalPaid(): number { return this.loans.reduce((sum, loan) => sum + loan.cuotas.reduce((s: number, q: any) => s + this.installmentPaid(q), 0), 0); }
-  ngOnChanges(): void { this.loadLoans(); this.loadPaymentTypes(); this.loadUsers(); this.loadOpenCashTurns(); }
+  ngOnChanges(): void {
+    this.loadLoans(); this.loadPaymentTypes(); this.loadUsers(); this.loadOpenCashTurns();
+    if (!this.loanRefreshTimer) this.loanRefreshTimer = setInterval(() => void this.refreshLoansIfChanged(), 5000);
+  }
+  ngOnDestroy(): void { if (this.loanRefreshTimer) clearInterval(this.loanRefreshTimer); }
   private get paymentCompanyId(): number {
     return [this.customer?.idRoot, this.idCompany, this.signalsService.getRootSelectedBySidebar()()]
       .map(value => Number(value)).find(value => Number.isInteger(value) && value > 0) || 0;
@@ -231,9 +237,33 @@ export class ClientesCobranzasPagosComponent implements OnChanges {
     if (!this.customer?.id) { this.loans = []; return; }
     this.loading = true;
     this.customersService.getCobranzaLoans(this.customer.id).subscribe({
-      next: (items: any[]) => { this.loans = (items || []).map(loan => ({ ...loan, cuotas: (loan.cuotas || []).map((installment: any) => ({ ...installment, fechaProgramada: this.dateForInput(installment.fechaProgramada) })) })); this.originalDates.clear(); this.loans.forEach(loan => loan.cuotas.forEach((item: any) => this.originalDates.set(item.id, item.fechaProgramada))); this.loading = false; },
+      next: (items: any[]) => { this.setLoans(items); this.loading = false; },
       error: error => { console.error(error); this.loading = false; alerts.basicAlert('Error', 'No se pudieron cargar los préstamos.', 'error'); }
     });
+  }
+
+  private setLoans(items: any[]): void {
+    this.loans = (items || []).map(loan => ({ ...loan, cuotas: (loan.cuotas || []).map((installment: any) => ({ ...installment, fechaProgramada: this.dateForInput(installment.fechaProgramada) })) }));
+    this.originalDates.clear();
+    this.loans.forEach(loan => loan.cuotas.forEach((item: any) => this.originalDates.set(item.id, item.fechaProgramada)));
+  }
+
+  private async refreshLoansIfChanged(): Promise<void> {
+    const customerId = Number(this.customer?.id);
+    if (!customerId || document.hidden || this.loading || this.saving || this.refreshingLoans || this.showLoanForm || this.activeInstallmentId !== null || this.loans.some(loan => this.hasChanges(loan))) return;
+    this.refreshingLoans = true;
+    try {
+      const items = await firstValueFrom(this.customersService.getCobranzaLoans(customerId));
+      if (Number(this.customer?.id) !== customerId) return;
+      const updatedLoans = (items || []).map(loan => ({ ...loan, cuotas: (loan.cuotas || []).map((installment: any) => ({ ...installment, fechaProgramada: this.dateForInput(installment.fechaProgramada) })) }));
+      if (JSON.stringify(updatedLoans) === JSON.stringify(this.loans)) return;
+      this.setLoans(items);
+      this.balancesChanged.emit();
+    } catch (error) {
+      console.warn('No se pudo sincronizar Cobranza automáticamente:', error);
+    } finally {
+      this.refreshingLoans = false;
+    }
   }
 
   async createLoan(): Promise<void> {
@@ -248,9 +278,10 @@ export class ClientesCobranzasPagosComponent implements OnChanges {
   }
 
   toggleAbonoForm(installment: any): void {
-    this.activeInstallmentId = this.activeInstallmentId === installment.id ? null : installment.id;
+    const opening = this.activeInstallmentId !== installment.id;
+    this.activeInstallmentId = opening ? installment.id : null;
     const currentUserId = Number(this.signalsService.getIdUSer()());
-    this.abonoForm = { fechaPago: this.today(), monto: null, idTipoPago: this.paymentTypes[0]?.id ?? null, idUsuarioCobrador: this.users.some(user => Number(user.id) === currentUserId) ? currentUserId : null, origenCobro: 'DOMICILIO', idCajeroTurno: null, comentario: '' };
+    this.abonoForm = { fechaPago: this.today(), monto: opening ? this.installmentBalance(installment) : null, idTipoPago: this.paymentTypes[0]?.id ?? null, idUsuarioCobrador: this.users.some(user => Number(user.id) === currentUserId) ? currentUserId : null, origenCobro: 'DOMICILIO', idCajeroTurno: null, comentario: '' };
     if (this.activeInstallmentId !== null) { void this.loadPaymentTypes(); this.loadUsers(); }
   }
 
