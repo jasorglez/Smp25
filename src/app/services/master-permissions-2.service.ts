@@ -2,7 +2,7 @@ import { HttpClient } from '@angular/common/http';
 import { inject, Injectable } from '@angular/core';
 import { TrackingService } from './tracking.service';
 import { environment } from '@env/environment';
-import { Observable } from 'rxjs';
+import { Observable, map } from 'rxjs';
 
 @Injectable({
   providedIn: 'root'
@@ -41,6 +41,13 @@ export class MasterPermissions2Service {
   }
 
   getCompanyMasterPermissions(companyId: number): Observable<any> {
-    return this.http.get(`${environment.urlSecurity}/UserSystemPermissions/master/${companyId}`, { headers: this.trackingService.getHeaders() });
+    return this.http.get<any[]>(`${environment.urlSecurity}/UserSystemPermissions/master/${companyId}`, { headers: this.trackingService.getHeaders() }).pipe(
+      map(masters => (masters || [])
+        .filter(master => master.active === true)
+        .map(master => ({
+          ...master,
+          detailedPermissions: (master.detailedPermissions || []).filter((detail: any) => detail.active === true)
+        })))
+    );
   }
 }

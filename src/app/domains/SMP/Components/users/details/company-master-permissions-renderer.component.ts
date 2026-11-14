@@ -108,7 +108,7 @@ export class CompanyMasterPermissionsRendererComponent implements ICellRendererA
         this.changed = false;
         this.loading = false;
         this.render();
-        this.updateParentCount(this.selectedIds.size);
+        this.updateParentCount(this.countVisiblePermissions(this.selectedIds));
       },
       error: (error) => {
         this.loadError = error?.name === 'TimeoutError'
@@ -153,7 +153,7 @@ export class CompanyMasterPermissionsRendererComponent implements ICellRendererA
     ).subscribe({
       next: () => {
         this.originalIds = snapshot;
-        this.updateParentCount(snapshot.size);
+        this.updateParentCount(this.countVisiblePermissions(snapshot));
       },
       error: () => {
         this.saveError = true;
@@ -166,5 +166,10 @@ export class CompanyMasterPermissionsRendererComponent implements ICellRendererA
   private updateChanged(autoSave = true): void {
     this.changed = this.selectedIds.size !== this.originalIds.size || [...this.selectedIds].some(id => !this.originalIds.has(id));
     if (autoSave && this.changed) this.save();
+  }
+
+  private countVisiblePermissions(ids: Set<number>): number {
+    return this.masters.reduce((count, master) =>
+      count + master.detailedPermissions.filter((detail: any) => ids.has(Number(detail.id))).length, 0);
   }
 }
