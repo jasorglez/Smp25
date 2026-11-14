@@ -75,5 +75,5 @@ export const environment = {
     // publicKey: 'TEST-4399133a-4676-42a2-ab85-d946370bf96a',
   },
 
-  version: '5.00.526 (14 Noviembre 2026 16:08) catálogo postal al editar clientes',
+  version: '5.00.528 (14 Noviembre 2026 16:20) selector amplio de partidas',
 };

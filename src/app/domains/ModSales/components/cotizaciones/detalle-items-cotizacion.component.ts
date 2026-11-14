@@ -93,6 +93,7 @@ const textoPdf = (value: unknown): string =>
           <i class="bi bi-info-circle me-1"></i> Guarda primero la cotización para habilitar sus partidas.
         </div>
         <div class="d-flex align-items-center justify-content-end gap-2 mb-1">
+          <span class="small text-muted me-auto">Busca por clave o escribe parte de la descripción del producto o servicio.</span>
           <button type="button" class="btn btn-sm btn-outline-secondary" (click)="mostrarColumna('nombreMaterial')">← Material</button>
           <button type="button" class="btn btn-sm btn-outline-primary" (click)="mostrarColumna('dolares')">Dólares →</button>
         </div>
@@ -197,6 +198,12 @@ const textoPdf = (value: unknown): string =>
       font-size: 13px;
     }
     .autocomplete-list li:hover { background: #e8f0f8; }
+    .detail-container ::ng-deep .ag-rich-select {
+      min-width: 520px !important;
+    }
+    .detail-container ::ng-deep .ag-rich-select-list {
+      min-width: 520px !important;
+    }
   `]
 })
 export class DetalleItemsCotizacionComponent implements ICellRendererAngularComp {
@@ -275,12 +282,24 @@ export class DetalleItemsCotizacionComponent implements ICellRendererAngularComp
   // cellEditorParams es función: evalúa this.materiales en tiempo de edición
   colDefs: ColDef[] = [
     {
-      field: 'nombreMaterial', headerName: 'Material', flex: 1, editable: true,
-      cellEditor: 'agSelectCellEditor',
-      cellEditorParams: () => ({ values: this.materiales.map(m => m.description) }),
+      field: 'nombreMaterial', headerName: 'Producto / servicio', flex: 1, minWidth: 420, editable: true,
+      cellEditor: 'agRichSelectCellEditor',
+      cellEditorPopup: true,
+      cellEditorParams: () => ({
+        values: this.materiales.map(m => this.materialSearchOption(m)),
+        allowTyping: true,
+        filterList: true,
+        searchType: 'matchAny',
+        highlightMatch: true,
+        valueListMaxHeight: 320,
+        valueListMaxWidth: 900,
+      }),
       tooltipValueGetter: (p) => p.value ?? '',
       valueSetter: (params) => {
-        const mat = this.materiales.find(m => m.description === params.newValue);
+        const selected = String(params.newValue ?? '').trim();
+        const mat = this.materiales.find(m => this.materialSearchOption(m) === selected)
+          || this.materiales.find(m => m.description === selected)
+          || this.materiales.find(m => m.clave && String(m.clave).toLocaleLowerCase() === selected.toLocaleLowerCase());
         if (mat) {
           params.data.nombreMaterial = mat.description;
           params.data.idMaterial     = mat.id;
@@ -428,6 +447,7 @@ export class DetalleItemsCotizacionComponent implements ICellRendererAngularComp
         this.materiales = filtered.map(i => ({
           id:          i.id,
           description: i.description ?? '',
+          clave:       i.insumo ?? i.code ?? i.codigo ?? i.barCode ?? i.barcode ?? '',
           measure:     i.measure ?? '',
           familia:     i.familia ?? '',
           precioVenta: i.ventaMN ?? 0,
@@ -435,6 +455,12 @@ export class DetalleItemsCotizacionComponent implements ICellRendererAngularComp
       },
       error: () => { this.materiales = []; },
     });
+  }
+
+  private materialSearchOption(material: any): string {
+    const clave = String(material?.clave ?? '').trim();
+    const description = String(material?.description ?? '').trim();
+    return clave ? `${clave} — ${description}` : description;
   }
 
   async cargarItems() {
