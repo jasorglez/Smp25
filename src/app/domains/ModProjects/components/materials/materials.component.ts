@@ -39,6 +39,7 @@ import { MeasureModalService } from './services/measure-modal.service';
 import { MaterialDetailRendererComponent } from './material-detail-renderer.component';
 import { MaterialImportComponent } from './import-materials/material-import.component';
 import { PdfMaterialsDistributionComponent } from './pdf-materials-distribution.component';
+import { InventarioWarehouseService } from 'app/services/inventario-warehouse.service';
 
 @Component({
   selector: 'custom-group-renderer',
@@ -118,6 +119,11 @@ export class CustomGroupRendererComponent implements ICellRendererAngularComp {
 export class MaterialsComponent implements CanComponentDeactivate {
   idcompany: number = null;
   rowData: any[] = [];
+  materialSearch = '';
+  onlyMaterialsWithMovements = false;
+  onlyMaterialsWithExistence = false;
+  loadingMaterialStock = false;
+  materialStockError = false;
   masterSelectedRowData: any = null;
   newlyAddedMasterRows: string[] = [];
   gridHeight: string = '85vh';
@@ -172,6 +178,7 @@ export class MaterialsComponent implements CanComponentDeactivate {
   private inandoutService = inject(InandoutService);
   private warehousesService = inject(WarehousesService);
   private catalogsService = inject(CatalogsService);
+  private inventoryService = inject(InventarioWarehouseService);
   private familyModalService = inject(FamilyModalService);
   private subfamilyModalService = inject(SubfamilyModalService);
   private measureModalService = inject(MeasureModalService);
@@ -306,6 +313,19 @@ export class MaterialsComponent implements CanComponentDeactivate {
       async (data: any) => {
         let configuredBrands: any[] = [];
         try { configuredBrands = await lastValueFrom(this.materialsService.getMaterialBrands(this.idcompany)); } catch { configuredBrands = []; }
+        let inventory: any[] = [];
+        this.loadingMaterialStock = true;
+        this.materialStockError = false;
+        try {
+          inventory = this.asArray(await lastValueFrom(this.inventoryService.getInventario(Number(this.idcompany))));
+        } catch (error) {
+          this.materialStockError = true;
+          console.warn('No se pudieron cargar las existencias de materiales.', error);
+        } finally {
+          this.loadingMaterialStock = false;
+        }
+        const stockByMaterial = new Map<number, number>();
+        inventory.forEach((item: any) => stockByMaterial.set(Number(item.idMaterial ?? item.idProduct ?? item.id ?? item.Id), Number(item.existencia ?? item.Existencia ?? 0) || 0));
         const brandsByMaterial = new Map<number, any[]>();
         configuredBrands.forEach((brand: any) => {
           const idMaterial = Number(brand.idMaterial);
@@ -313,12 +333,31 @@ export class MaterialsComponent implements CanComponentDeactivate {
         });
         this.rowData = data.map((material: any) => {
           const brands = brandsByMaterial.get(Number(material.id)) || [];
-          return { ...material, brands, brandsText: brands.map(brand => brand.brand).join(', ') };
+          return { ...material, existencia: stockByMaterial.get(Number(material.id)) || 0, brands, brandsText: brands.map(brand => brand.brand).join(', ') };
         });
         void this.loadMaterialMovementSummary(this.rowData);
       },
       (error) => console.error('Error fetching data:', error)
     );
+  }
+
+  private matchesMaterialFilters(row: any): boolean {
+    if (!row) return true;
+    const query = this.materialSearch.trim().toLocaleLowerCase('es-MX');
+    if (query) {
+      const text = [
+        row.insumo, row.barcode, row.barCode, row.materialDescription, row.description,
+        row.familiaDescription, row.subfamiliaDescription, row.measure, row.brandsText,
+      ].filter(value => value != null).join(' ').toLocaleLowerCase('es-MX');
+      if (!text.includes(query)) return false;
+    }
+    if (this.onlyMaterialsWithMovements && !this.hasMaterialMovements(row)) return false;
+    if (this.onlyMaterialsWithExistence && Number(row.existencia || 0) <= 0.000001) return false;
+    return true;
+  }
+
+  onMaterialFiltersChanged(): void {
+    this.gridApi?.onFilterChanged();
   }
 
   private async loadBrandCatalog(): Promise<void> {
@@ -425,10 +464,13 @@ export class MaterialsComponent implements CanComponentDeactivate {
     fullWidthCellRenderer: MaterialDetailRendererComponent,
     getRowHeight: (params: any) => params.node.data?.__isDistDetail ? 420 : 20,
     context: { componentParent: this },
+    isExternalFilterPresent: () => !!this.materialSearch.trim() || this.onlyMaterialsWithMovements || this.onlyMaterialsWithExistence,
+    doesExternalFilterPass: (node: any) => node.group || this.matchesMaterialFilters(node.data),
     getRowClass: (params) => {
       const row = params.data;
       const contentClass = this.hasAllMaterialMovementTypes(row) ? 'material-content-complete'
         : this.hasMultipleMaterialMovementTypes(row) ? 'material-content-mixed'
+        : this.hasOnlyMaterialMovementType(row, 'quotationMovementCount') ? 'material-content-only-quote'
         : this.hasOnlyMaterialMovementType(row, 'requisitionMovementCount') ? 'material-content-only-requisition'
         : this.hasOnlyMaterialMovementType(row, 'purchaseOrderMovementCount') ? 'material-content-only-order'
         : this.hasOnlyMaterialMovementType(row, 'entryMovementCount') ? 'material-content-only-entry'
@@ -475,12 +517,12 @@ export class MaterialsComponent implements CanComponentDeactivate {
   };
 
   private hasMaterialMovements(row: any): boolean {
-    return !!row && ['requisitionMovementCount', 'purchaseOrderMovementCount', 'entryMovementCount', 'exitMovementCount']
+    return !!row && ['requisitionMovementCount', 'purchaseOrderMovementCount', 'entryMovementCount', 'exitMovementCount', 'quotationMovementCount']
       .some(field => Number(row[field]) > 0);
   }
 
   private readonly materialMovementFields = [
-    'requisitionMovementCount', 'purchaseOrderMovementCount', 'entryMovementCount', 'exitMovementCount'
+    'requisitionMovementCount', 'purchaseOrderMovementCount', 'entryMovementCount', 'exitMovementCount', 'quotationMovementCount'
   ];
 
   private getPresentMaterialMovementTypes(row: any): string[] {
@@ -505,7 +547,7 @@ export class MaterialsComponent implements CanComponentDeactivate {
     if (!this.hasMaterialMovements(row)) return undefined;
     const labels: Array<[string, string]> = [
       ['requisitionMovementCount', 'Requisiciones'], ['purchaseOrderMovementCount', 'OC'],
-      ['entryMovementCount', 'Entradas'], ['exitMovementCount', 'Salidas']
+      ['entryMovementCount', 'Entradas'], ['exitMovementCount', 'Salidas'], ['quotationMovementCount', 'Cotizaciones']
     ];
     return labels.filter(([field]) => Number(row[field]) > 0)
       .map(([field, label]) => {
@@ -522,7 +564,8 @@ export class MaterialsComponent implements CanComponentDeactivate {
       { field: 'requisitionMovementCount', icon: 'bi-clipboard-check-fill', color: '#7c3aed', label: 'Requisiciones' },
       { field: 'purchaseOrderMovementCount', icon: 'bi-cart-check-fill', color: '#0369a1', label: 'OC' },
       { field: 'entryMovementCount', icon: 'bi-box-arrow-in-down', color: '#16803c', label: 'Entradas' },
-      { field: 'exitMovementCount', icon: 'bi-box-arrow-up-right', color: '#c2410c', label: 'Salidas' }
+      { field: 'exitMovementCount', icon: 'bi-box-arrow-up-right', color: '#c2410c', label: 'Salidas' },
+      { field: 'quotationMovementCount', icon: 'bi-receipt-cutoff', color: '#be185d', label: 'Cotizaciones' }
     ];
     return indicators.filter(item => Number(row[item.field]) > 0).map(item =>
       `<span title="${item.label}: ${Number(row[item.field])}" aria-label="${item.label}: ${Number(row[item.field])}" style="display:inline-flex;align-items:center;gap:2px;margin-right:8px;color:${item.color};font-size:13px;font-weight:700"><i class="bi ${item.icon}"></i><small>${Number(row[item.field])}</small></span>`
@@ -547,12 +590,14 @@ export class MaterialsComponent implements CanComponentDeactivate {
       ]);
       const requisitions = this.asArray(reqRaw).map(d => ({ ...d, __movementKind: 'requisitionMovementCount' }));
       const orders = this.asArray(ocRaw).map(d => ({ ...d, __movementKind: 'purchaseOrderMovementCount' }));
+      const quotations = this.asArray(await firstValueFrom(this.ocAndReqsService.getOcAndReqs(referenceType, referenceId, 'COTIZ')))
+        .map(d => ({ ...d, __movementKind: 'quotationMovementCount' }));
       const warehouses = this.asArray(warehousesRaw);
       const headers = await Promise.all(warehouses.flatMap(w => ['IN', 'OUT'].map(async type => {
         const raw = await firstValueFrom(this.inandoutService.getInAndOuts(projectId || null, Number(w.id || w.idWarehouse || w.idAlmacen), type));
         return this.asArray(raw).map(d => ({ ...d, __movementKind: type === 'IN' ? 'entryMovementCount' : 'exitMovementCount' }));
       })));
-      const documents = [...requisitions, ...orders, ...headers.flat()];
+      const documents = [...requisitions, ...orders, ...quotations, ...headers.flat()];
       const counts = new Map<number, any>();
       const materialIds = new Set(materials.map(m => Number(m.id)).filter(Number.isFinite));
       const detailResults = await Promise.all(documents.map(async d => {
@@ -565,7 +610,7 @@ export class MaterialsComponent implements CanComponentDeactivate {
         const id = Number(item.idSupplie ?? item.idProduct ?? item.idMaterial ?? item.idInsumo);
         if (!materialIds.has(id)) return;
         const summary = counts.get(id) || {
-          requisitionMovementCount: 0, purchaseOrderMovementCount: 0, entryMovementCount: 0, exitMovementCount: 0,
+          requisitionMovementCount: 0, purchaseOrderMovementCount: 0, entryMovementCount: 0, exitMovementCount: 0, quotationMovementCount: 0,
           requisitionMovementCountReferences: [], purchaseOrderMovementCountReferences: [],
           entryMovementCountReferences: [], exitMovementCountReferences: []
         };
@@ -993,7 +1038,7 @@ export class MaterialsComponent implements CanComponentDeactivate {
         resizable: true,
         cellStyle: { padding: '0 6px' },
         cellRenderer: (params: any) => this.renderMaterialMovementIndicators(params.data),
-        tooltipValueGetter: (params: any) => this.getMovementTooltip(params.data) || 'Sin requisiciones, OC, entradas o salidas registradas'
+        tooltipValueGetter: (params: any) => this.getMovementTooltip(params.data) || 'Sin requisiciones, OC, entradas, salidas o cotizaciones registradas'
       },
       {
         colId: 'openMaterialKardex',
@@ -1069,7 +1114,6 @@ export class MaterialsComponent implements CanComponentDeactivate {
         headerName: 'Existencia',
         editable: false,
         width: 100,
-        valueGetter: () => 0,
       },
       {
         field: 'costoMN',

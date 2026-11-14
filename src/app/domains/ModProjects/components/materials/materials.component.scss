@@ -108,6 +108,7 @@
 .material-movement-legend__item--oc { color: #0369a1; }
 .material-movement-legend__item--entry { color: #16803c; }
 .material-movement-legend__item--exit { color: #c2410c; }
+.material-movement-legend__item--quote { color: #be185d; }
 .material-movement-legend__swatch { width: .8rem; height: .8rem; border: 1px solid #4d8b5a; border-radius: 2px; background: #d9f0dd; }
 .material-movement-legend__swatch--mixed { border-color: #94a3b8; background: #eef1f5; }
 ::ng-deep .ag-theme-quartz .ag-row.material-content-complete .ag-cell { background-color: #d9f0dd !important; }
@@ -115,6 +116,7 @@
 ::ng-deep .ag-theme-quartz .ag-row.material-content-only-order .ag-cell { background-color: #e2f3f7 !important; }
 ::ng-deep .ag-theme-quartz .ag-row.material-content-only-entry .ag-cell { background-color: #e5f3e9 !important; }
 ::ng-deep .ag-theme-quartz .ag-row.material-content-only-exit .ag-cell { background-color: #fbeade !important; }
+::ng-deep .ag-theme-quartz .ag-row.material-content-only-quote .ag-cell { background-color: #fde7ef !important; }
 ::ng-deep .ag-theme-quartz .ag-row.material-content-mixed .ag-cell { background-color: #eef1f5 !important; }
 ::ng-deep .ag-theme-quartz .ag-row[class*="material-content-"] .ag-cell:first-child { box-shadow: inset 5px 0 0 #64748b; }
 ::ng-deep .ag-theme-quartz .ag-row.material-content-complete .ag-cell:first-child { box-shadow: inset 5px 0 0 #4d8b5a; }

@@ -50,14 +50,42 @@
 
     <div class="col">
       <div class="row">
+        <div class="row g-2 align-items-end mb-2 material-filter-toolbar">
+          <div class="col-12 col-xl-4">
+            <label class="form-label small fw-semibold mb-1" for="materials-text-search">Buscar materiales (contiene)</label>
+            <div class="input-group input-group-sm">
+              <span class="input-group-text"><i class="bi bi-search"></i></span>
+              <input id="materials-text-search" class="form-control" type="search" [(ngModel)]="materialSearch"
+                     (ngModelChange)="onMaterialFiltersChanged()" placeholder="Código, descripción, familia o marca">
+              <button *ngIf="materialSearch" class="btn btn-outline-secondary" type="button" (click)="materialSearch = ''; onMaterialFiltersChanged()" aria-label="Limpiar búsqueda"><i class="bi bi-x-lg"></i></button>
+            </div>
+          </div>
+          <div class="col-12 col-xl-auto">
+            <label class="form-check small mb-1">
+              <input class="form-check-input" type="checkbox" [(ngModel)]="onlyMaterialsWithMovements" (ngModelChange)="onMaterialFiltersChanged()">
+              <span class="form-check-label">Solo con movimientos</span>
+            </label>
+            <small class="text-muted">Requisición, OC, entrada, salida o cotización</small>
+          </div>
+          <div class="col-12 col-xl-auto">
+            <label class="form-check small mb-1">
+              <input class="form-check-input" type="checkbox" [(ngModel)]="onlyMaterialsWithExistence" (ngModelChange)="onMaterialFiltersChanged()" [disabled]="loadingMaterialStock">
+              <span class="form-check-label">Solo con existencia (&gt; 0)</span>
+            </label>
+            <small class="text-muted" *ngIf="loadingMaterialStock">Cargando existencias…</small>
+            <small class="text-danger" *ngIf="materialStockError">No se pudo cargar el inventario de la empresa.</small>
+            <small class="text-muted" *ngIf="!loadingMaterialStock && !materialStockError">Existencia total de la empresa</small>
+          </div>
+        </div>
         <div class="material-movement-legend">
-          <span class="material-movement-legend__swatch"></span><span>Completo (4 tipos)</span>
+          <span class="material-movement-legend__swatch"></span><span>Completo (5 tipos)</span>
           <span class="material-movement-legend__swatch material-movement-legend__swatch--mixed"></span><span>Varios tipos</span>
           <span class="ms-1">Un tipo: color de su icono</span>
           <span class="material-movement-legend__item material-movement-legend__item--req"><i class="bi bi-clipboard-check-fill"></i> Requisición</span>
           <span class="material-movement-legend__item material-movement-legend__item--oc"><i class="bi bi-cart-check-fill"></i> OC</span>
           <span class="material-movement-legend__item material-movement-legend__item--entry"><i class="bi bi-box-arrow-in-down"></i> Entrada</span>
           <span class="material-movement-legend__item material-movement-legend__item--exit"><i class="bi bi-box-arrow-up-right"></i> Salida</span>
+          <span class="material-movement-legend__item material-movement-legend__item--quote"><i class="bi bi-receipt-cutoff"></i> Cotización</span>
         </div>
         <ag-grid-angular
         style="width: 100%;"
