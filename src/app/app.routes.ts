@@ -44,6 +44,8 @@ export const routes: Routes = [
         canActivate: [MasterPermissionsGuard],
         data: { permissions: { master: 'preciosunitarios' } },
         children: [
+          { path: '', redirectTo: 'catalogo', pathMatch: 'full' },
+          { path: '', redirectTo: 'catalogo', pathMatch: 'full' },
           {
             path: 'catalogo',
             loadComponent: () => import('./domains/ModProjects/components/auxiliares/preciosunitarios.component')
