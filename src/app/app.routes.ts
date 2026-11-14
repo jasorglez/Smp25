@@ -1134,7 +1134,7 @@ export const routes: Routes = [
             path: 'apertura-caja',
             loadComponent: () => import('./domains/Cobranza/pages/corte-caja-cobranza.component').then(m => m.CorteCajaCobranzaComponent),
             canActivate: [MasterPermissionsGuard],
-            data: { view: 'apertura', permissions: { master: 'cobranzas', detailed: 'aperturacaja' } }
+            data: { view: 'apertura', permissions: { master: 'cobranzas', detailed: 'aperturas' } }
           },
           {
             path: 'cajas',

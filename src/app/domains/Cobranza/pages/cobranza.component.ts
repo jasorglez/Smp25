@@ -26,7 +26,7 @@ export class CobranzaComponent {
     cliente: 'clientes',
     cobr: 'cobradores',
     cortecaja: 'corte-caja',
-    aperturacaja: 'apertura-caja'
+    aperturas: 'apertura-caja'
   };
 
   private readonly menuIcons: Record<string, string> = {
@@ -34,7 +34,7 @@ export class CobranzaComponent {
     cobr: 'bi-person-badge',
     dashboard: 'bi-speedometer2',
     cortecaja: 'bi-calculator',
-    aperturacaja: 'bi-unlock',
+    aperturas: 'bi-unlock',
     cajas: 'bi-cash-stack'
   };
 
