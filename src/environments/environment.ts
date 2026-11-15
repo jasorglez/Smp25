@@ -75,5 +75,5 @@ export const environment = {
     // publicKey: 'TEST-4399133a-4676-42a2-ab85-d946370bf96a',
   },
 
-  version: '5.00.538 (14 Noviembre 2026 17:28) mas espacio para buscar partidas',
+  version: '5.00.539 (14 Noviembre 2026 17:35) selector de subfamilia e imagen de producto',
 };

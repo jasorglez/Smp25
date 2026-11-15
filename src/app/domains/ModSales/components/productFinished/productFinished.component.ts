@@ -210,13 +210,20 @@ export class ProductFinishedComponent implements CanComponentDeactivate {
         headerName: 'Categoria',
         editable: true,
         width: 150,
-        cellEditor: 'agSelectCellEditor',
+        cellEditor: 'agRichSelectCellEditor',
+        cellEditorPopup: true,
         cellEditorParams: () => ({
           values: (this.familias ?? []).map((item) => item.id),
+          allowTyping: true,
+          filterList: true,
+          searchType: 'matchAny',
+          highlightMatch: true,
+          valueListMaxHeight: 320,
+          formatValue: (id: any) => this.familias?.find((item) => Number(item.id) === Number(id))?.description ?? String(id ?? ''),
         }),
         valueFormatter: (params) => {
           const foundItem = this.familias
-            ? this.familias.find((item) => item.id === params.value)
+            ? this.familias.find((item) => Number(item.id) === Number(params.value))
             : null;
           return foundItem ? `${foundItem.description}` : params.value;
         },
@@ -281,7 +288,8 @@ export class ProductFinishedComponent implements CanComponentDeactivate {
         headerName: 'Presentación',
         editable: true,
         width: 150,
-        cellEditor: 'agSelectCellEditor',
+        cellEditor: 'agRichSelectCellEditor',
+        cellEditorPopup: true,
         mainMenuItems: (params: GetMainMenuItemsParams) => {
           const subFamilyMenuItems: (MenuItemDef | string)[] = [
             {
@@ -297,18 +305,23 @@ export class ProductFinishedComponent implements CanComponentDeactivate {
         },
         cellEditorParams: (params) => {
           // Obtener el idFamilia de la fila actual
-          const idFamilia = params.data.idFamilia;
+          const idFamilia = Number(params.data.idFamilia);
 
           // Filtrar subfamilias por parentId (idFamilia) usando subfamilias2
           const subfamiliasFiltradas = this.subfamilias2.filter(
-            (item) => item.parentId === idFamilia
+            (item) => Number(item.parentId) === idFamilia
           );
 
           return {
             values: subfamiliasFiltradas.map((item) => item.id),
+            allowTyping: true,
+            filterList: true,
+            searchType: 'matchAny',
+            highlightMatch: true,
+            valueListMaxHeight: 320,
             valueFormatter: (id) => {
               const foundItem = subfamiliasFiltradas.find(
-                (item) => item.id === id
+                (item) => Number(item.id) === Number(id)
               );
               return foundItem ? foundItem.description : id;
             },
@@ -317,7 +330,7 @@ export class ProductFinishedComponent implements CanComponentDeactivate {
         valueFormatter: (params) => {
           // Mostrar la descripción de la subfamilia usando subfamilias2
           const foundItem = this.subfamilias2
-            ? this.subfamilias2.find((item) => item.id === params.value)
+            ? this.subfamilias2.find((item) => Number(item.id) === Number(params.value))
             : null;
           return foundItem ? `${foundItem.description}` : params.value;
         },
@@ -575,6 +588,11 @@ export class ProductFinishedComponent implements CanComponentDeactivate {
 
     // Puedes agregar lógica adicional aquí si necesitas guardar los datos seleccionados
     this.selectedRowData = selectedRowData;
+
+    // El doble clic abre el editor flotante en lugar de activar el editor inline del grid.
+    if (!event.node.group && event.colDef.editable !== false) {
+      this.modalServiceTable.showModal({ params: event, value: event.value });
+    }
   }
 
   // TODO para futuros botones de navegacion
@@ -633,6 +651,17 @@ export class ProductFinishedComponent implements CanComponentDeactivate {
   onCellValueChanged(event: any) {
     event.data.__modified = true;
     this.notSavedChanges = true;
+
+    if (event.colDef.field === 'idFamilia') {
+      event.data.idFamilia = Number(event.newValue) || null;
+      event.data.idSubfamilia = null;
+      this.gridApi?.refreshCells({ rowNodes: [event.node], columns: ['idFamilia', 'idSubfamilia'], force: true });
+      return;
+    }
+
+    if (event.colDef.field === 'idSubfamilia') {
+      event.data.idSubfamilia = Number(event.newValue) || null;
+    }
 
     if (event.data.idMedida) {
       event.data.idMedida = Number(event.data.idMedida);

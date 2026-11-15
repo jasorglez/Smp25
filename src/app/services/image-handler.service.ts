@@ -39,33 +39,39 @@ export class ImageHandlerService {
   onImageCellClicked(params: ICellRendererParams) {
     const input = document.createElement('input');
     input.type = 'file';
-    input.accept = 'image/jpeg, image/png'; // Actualizado para que solo acepte jpg y png
+    input.accept = 'image/jpeg, image/png, image/webp,.jpg,.jpeg,.png,.webp';
     input.onchange = (event: any) => this.uploadImage(event, params);
     input.click();
   }
 
-  uploadImage(event: any, params: ICellRendererParams) {
+  async uploadImage(event: any, params: ICellRendererParams) {
     const file = event.target.files[0];
-    if (!file || (file.type !== 'image/jpeg' && file.type !== 'image/png')) {
-      alerts.basicAlert('Subir imagen', 'Solo se permiten imágenes en JPG o PNG, por favor seleccione otra imagen.', 'error');
+    if (!file) return;
+    const extension = file.name.split('.').pop()?.toLowerCase() ?? '';
+    const allowedTypes = ['image/jpeg', 'image/png', 'image/webp'];
+    const allowedExtensions = ['jpg', 'jpeg', 'png', 'webp'];
+    if (!allowedTypes.includes(file.type) && !allowedExtensions.includes(extension)) {
+      alerts.basicAlert('Subir imagen', 'Selecciona una imagen JPG, PNG o WEBP.', 'error');
+      return;
+    }
+    if (file.size > 10 * 1024 * 1024) {
+      alerts.basicAlert('Subir imagen', 'La imagen supera el límite de 10 MB.', 'error');
       return;
     }
 
     const field = params.colDef.cellRendererParams?.field as string;
-    const path = `images/${this.storagesService.generateRandom()}${file.name}`;
-
-    this.storagesService.uploadFile(file, path)
-      .then(url => {
-        params.node.setDataValue(field, url);
-        // Asegura que el formulario de proveedores envíe también la URL nueva.
-        if (params.data) params.data.__modified = true;
-        alerts.basicAlert('Subir imagen', 'Imagen subida exitosamente.', 'success');
-      })
-      .catch(error => {
-        console.error("Error uploading file", error);
-        const msg = error?.code || error?.message || JSON.stringify(error);
-        alerts.basicAlert('Subir imagen', `Error: ${msg}`, 'error');
-      });
+    try {
+      const url = await this.uploadFileToFirebase(file, 'images/products');
+      params.node.setDataValue(field, url);
+      if (params.data) params.data.__modified = true;
+      alerts.basicAlert('Subir imagen', 'Imagen subida exitosamente.', 'success');
+    } catch (error: any) {
+      console.error('Error uploading product image', error);
+      const msg = error?.code || error?.message || 'No se pudo completar la carga a Firebase.';
+      alerts.basicAlert('Subir imagen', `Error: ${msg}`, 'error');
+    } finally {
+      event.target.value = '';
+    }
   }
 
 
