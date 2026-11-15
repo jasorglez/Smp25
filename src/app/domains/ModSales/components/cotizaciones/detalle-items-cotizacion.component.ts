@@ -59,6 +59,10 @@ const textoPdf = (value: unknown): string =>
           <span class="small text-muted">Tipo de cambio: {{ tipoCambio > 0 ? (tipoCambio | number:'1.4-4') : 'captúralo antes de Familia' }} MXN/USD</span>
 
           <div class="ms-auto d-flex gap-1">
+            <button type="button" class="btn btn-sm btn-outline-primary"
+                    (click)="abrirEdicionEncabezado()" [disabled]="!masterSaved" title="Editar destinatario y encabezado del PDF">
+              <i class="bi bi-pencil-square"></i>
+            </button>
             <button class="btn btn-sm btn-success" (click)="add()" [disabled]="!gridApi || !masterSaved" title="Agregar item">
               <i class="bi bi-plus-lg"></i>
             </button>
@@ -125,6 +129,10 @@ const textoPdf = (value: unknown): string =>
           <div *ngIf="isLoadingPdf" class="spinner-border spinner-border-sm text-danger ms-2"></div>
 
           <div class="ms-auto d-flex gap-2 align-items-center flex-wrap">
+            <button type="button" class="btn btn-sm btn-outline-primary"
+                    (click)="abrirEdicionEncabezado()" [disabled]="!masterSaved">
+              <i class="bi bi-pencil-square me-1"></i> Editar encabezado
+            </button>
             <!-- Descargar (funciona en tablets donde el iframe no carga) -->
             <button class="btn btn-sm btn-success"
                     (click)="descargarPdf()"
@@ -162,6 +170,52 @@ const textoPdf = (value: unknown): string =>
         </div>
       </ng-container>
 
+      <div class="quote-header-backdrop" *ngIf="editandoEncabezado" (click)="cerrarEdicionEncabezado()">
+        <section class="quote-header-modal" role="dialog" aria-modal="true" aria-labelledby="quote-header-title" (click)="$event.stopPropagation()">
+          <div class="d-flex align-items-center mb-3">
+            <h5 id="quote-header-title" class="mb-0">Editar encabezado de cotización</h5>
+            <button type="button" class="btn-close ms-auto" (click)="cerrarEdicionEncabezado()" aria-label="Cerrar"></button>
+          </div>
+          <div class="row g-2">
+            <div class="col-md-6">
+              <label class="form-label">ATN</label>
+              <input class="form-control" [(ngModel)]="encabezadoEdicion.nombreProspecto">
+            </div>
+            <div class="col-md-6">
+              <label class="form-label">Empresa</label>
+              <input class="form-control" [(ngModel)]="encabezadoEdicion.empresaProspecto">
+            </div>
+            <div class="col-md-6">
+              <label class="form-label">Puesto</label>
+              <input class="form-control" [(ngModel)]="encabezadoEdicion.puestoProspecto">
+            </div>
+            <div class="col-md-6">
+              <label class="form-label">No. de cotización</label>
+              <input class="form-control" [(ngModel)]="encabezadoEdicion.numCotizacion">
+            </div>
+            <div class="col-md-6">
+              <label class="form-label">Lugar</label>
+              <input class="form-control" [(ngModel)]="encabezadoEdicion.lugar" placeholder="Tuxtepec, Oax">
+            </div>
+            <div class="col-md-6">
+              <label class="form-label">Fecha del documento</label>
+              <input type="date" class="form-control" [(ngModel)]="encabezadoEdicion.fechaDocumento">
+            </div>
+            <div class="col-12">
+              <label class="form-label">Asunto</label>
+              <input class="form-control" [(ngModel)]="encabezadoEdicion.asuntoCotizacion">
+            </div>
+          </div>
+          <div class="d-flex justify-content-end gap-2 mt-3">
+            <button type="button" class="btn btn-outline-secondary" (click)="cerrarEdicionEncabezado()">Cancelar</button>
+            <button type="button" class="btn btn-primary" (click)="guardarEncabezado()" [disabled]="guardandoEncabezado || !encabezadoEdicion.numCotizacion.trim()">
+              <span *ngIf="guardandoEncabezado" class="spinner-border spinner-border-sm me-1"></span>
+              Guardar encabezado
+            </button>
+          </div>
+        </section>
+      </div>
+
     </div>
   `,
   styles: [`
@@ -170,6 +224,8 @@ const textoPdf = (value: unknown): string =>
       background-color: #f0f8ff;
       border-top: 2px solid #0d6efd;
     }
+    .quote-header-backdrop { position: fixed; inset: 0; z-index: 1200; display: flex; align-items: center; justify-content: center; padding: 16px; background: rgba(0,0,0,.45); }
+    .quote-header-modal { width: min(680px, 100%); max-height: 90vh; overflow-y: auto; padding: 20px; border-radius: 8px; background: white; box-shadow: 0 12px 36px rgba(0,0,0,.25); }
     .pdf-frame-wrap {
       height: 82vh;
       border: 1px solid #dee2e6;
@@ -225,6 +281,9 @@ export class DetalleItemsCotizacionComponent implements ICellRendererAngularComp
   }
   tipoCambio = 0;
   private tipoCambioRequest: Promise<void> | null = null;
+  editandoEncabezado = false;
+  guardandoEncabezado = false;
+  encabezadoEdicion: any = {};
   rowData: CotizacionItem[]   = [];
   originalData: CotizacionItem[] = [];
   private deletedItemIds = new Set<string>();
@@ -777,6 +836,77 @@ export class DetalleItemsCotizacionComponent implements ICellRendererAngularComp
 
   // ── PDF ───────────────────────────────────────────────────────────────────
 
+  abrirEdicionEncabezado(): void {
+    const cot = this.cotizacion ?? {};
+    this.encabezadoEdicion = {
+      nombreProspecto: cot.nombreProspecto ?? '',
+      empresaProspecto: cot.empresaProspecto ?? '',
+      puestoProspecto: cot.puestoProspecto ?? '',
+      numCotizacion: cot.numCotizacion ?? '',
+      lugar: cot.lugar ?? '',
+      fechaDocumento: cot.fechaDocumento || this.fechaComoInput(cot.fecha),
+      asuntoCotizacion: cot.asuntoCotizacion ?? 'COTIZACIÓN',
+    };
+    this.editandoEncabezado = true;
+  }
+
+  cerrarEdicionEncabezado(): void {
+    if (!this.guardandoEncabezado) this.editandoEncabezado = false;
+  }
+
+  async guardarEncabezado(): Promise<void> {
+    if (!this.cotizacion?.id || this.guardandoEncabezado) return;
+    const numCotizacion = String(this.encabezadoEdicion.numCotizacion ?? '').trim();
+    if (!numCotizacion) return;
+
+    let numeroDuplicado = false;
+    this.params?.api?.forEachNode((node: any) => {
+      if (String(node.data?.id) !== String(this.cotizacion.id) &&
+          String(node.data?.numCotizacion ?? '').trim().toLocaleLowerCase() === numCotizacion.toLocaleLowerCase()) {
+        numeroDuplicado = true;
+      }
+    });
+    if (numeroDuplicado) {
+      await Swal.fire('Número duplicado', 'Ya existe otra cotización con ese número.', 'warning');
+      return;
+    }
+
+    const cambios = {
+      nombreProspecto: String(this.encabezadoEdicion.nombreProspecto ?? '').trim(),
+      empresaProspecto: String(this.encabezadoEdicion.empresaProspecto ?? '').trim(),
+      puestoProspecto: String(this.encabezadoEdicion.puestoProspecto ?? '').trim(),
+      numCotizacion,
+      lugar: String(this.encabezadoEdicion.lugar ?? '').trim(),
+      fechaDocumento: String(this.encabezadoEdicion.fechaDocumento ?? ''),
+      asuntoCotizacion: String(this.encabezadoEdicion.asuntoCotizacion ?? '').trim(),
+    };
+
+    this.guardandoEncabezado = true;
+    try {
+      await this.svc.actualizarCotizacion(this.cotizacion.id, cambios);
+      this.cotizacion = { ...this.cotizacion, ...cambios };
+      if (this.params?.node?.data) Object.assign(this.params.node.data, cambios);
+      this.params?.api?.refreshCells({ rowNodes: this.params?.node ? [this.params.node] : undefined, force: true });
+      this.editandoEncabezado = false;
+      if (this.mode === 'pdf') await this.generarPdf();
+      Swal.fire({ toast: true, position: 'bottom-end', icon: 'success', title: 'Encabezado guardado', showConfirmButton: false, timer: 1800 });
+    } catch (error) {
+      console.error('[Cotizaciones] Error al actualizar encabezado:', error);
+      await Swal.fire('Error', 'No se pudo guardar el encabezado de la cotización.', 'error');
+    } finally {
+      this.guardandoEncabezado = false;
+    }
+  }
+
+  private fechaComoInput(value: any): string {
+    const date = value?.toDate ? value.toDate() : value instanceof Date ? value : null;
+    if (!date || Number.isNaN(date.getTime())) {
+      const today = new Date();
+      return `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
+    }
+    return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+  }
+
   switchToItems() {
     this.mode = 'items';
     if (this.originalPdfUrl) { URL.revokeObjectURL(this.originalPdfUrl); this.originalPdfUrl = null; }
@@ -1064,7 +1194,11 @@ export class DetalleItemsCotizacionComponent implements ICellRendererAngularComp
       const signatureB64 = signatureUrl ? await tryB64(signatureUrl) : null;
 
       const cot = this.cotizacion;
-      const fecha = cot.fecha?.toDate ? cot.fecha.toDate() : new Date();
+      const fechaDocumento = cot.fechaDocumento || this.fechaComoInput(cot.fecha);
+      const [year, month, day] = fechaDocumento.split('-').map(Number);
+      const fecha = year && month && day
+        ? new Date(year, month - 1, day)
+        : (cot.fecha?.toDate ? cot.fecha.toDate() : new Date());
       const fechaStr = fecha.toLocaleDateString('es-MX', { day: 'numeric', month: 'long', year: 'numeric' }).toUpperCase();
       const lugarFecha = `${(cot.lugar ?? '').toUpperCase()}, A ${fechaStr}`;
       const companyName = (rootData?.name ?? 'EMPRESA').toUpperCase();
@@ -1206,7 +1340,7 @@ export class DetalleItemsCotizacionComponent implements ICellRendererAngularComp
         pageOrientation: 'portrait',
         pageMargins: [40, 40, 40, 60],
         footer: makeFooter,
-        content: [header, destinatario, { text: 'ASUNTO: COTIZACIÓN', fontSize: 8, bold: true, color: NAVY, margin: [0,0,0,8] }, textoSuperior, tabla, bloqueInferior],
+        content: [header, destinatario, { text: `ASUNTO: ${(cot.asuntoCotizacion ?? 'COTIZACIÓN').toUpperCase()}`, fontSize: 8, bold: true, color: NAVY, margin: [0,0,0,8] }, textoSuperior, tabla, bloqueInferior],
         styles: { thCell: { fontSize: 7, bold: true } },
         defaultStyle: { font: 'Roboto' },
       };

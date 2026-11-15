@@ -16,6 +16,8 @@ export interface Cotizacion {
   empresaProspecto: string;
   puestoProspecto?: string;
   lugar: string;
+  fechaDocumento?: string;
+  asuntoCotizacion?: string;
   /** Familia de materiales que se muestran en el detalle (vacío = todas) */
   familia?: string;
   /** Varias familias de materiales; si falta, se usa familia para cotizaciones anteriores */
@@ -57,6 +59,9 @@ export function familiasDeCotizacion(cotizacion: Pick<Cotizacion, 'familia' | 'f
   if (Array.isArray(cotizacion?.familias)) return cotizacion.familias.filter(Boolean);
   return cotizacion?.familia ? [cotizacion.familia] : [];
 }
+
+const fechaLocalIso = (date = new Date()): string =>
+  `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
 
 export interface CotizacionConfig {
   idCompany?: number;
@@ -135,6 +140,8 @@ export class CotizacionesService {
       empresaProspecto: c.empresaProspecto ?? '',
       puestoProspecto:  c.puestoProspecto  ?? '',
       lugar:            c.lugar            ?? '',
+      fechaDocumento:   c.fechaDocumento   ?? fechaLocalIso(),
+      asuntoCotizacion: c.asuntoCotizacion ?? 'COTIZACIÓN',
       familia:          c.familia          ?? '',
       familias:         c.familias         ?? (c.familia ? [c.familia] : []),
       idVendedor:       c.idVendedor       ?? 0,
