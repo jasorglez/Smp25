@@ -75,5 +75,5 @@ export const environment = {
     // publicKey: 'TEST-4399133a-4676-42a2-ab85-d946370bf96a',
   },
 
-  version: '5.00.540 (14 Noviembre 2026 19:05) corrección del selector y edición de productos',
+  version: '5.00.542 (14 Noviembre 2026 19:20) guardado seguro de cotizaciones e imágenes',
 };

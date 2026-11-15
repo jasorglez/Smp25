@@ -63,7 +63,13 @@ export class ImageHandlerService {
     try {
       const url = await this.uploadFileToFirebase(file, 'images/products');
       params.node.setDataValue(field, url);
-      if (params.data) params.data.__modified = true;
+      if (params.data) {
+        params.data.__modified = true;
+        params.data.__modifiedFields = {
+          ...(params.data.__modifiedFields ?? {}),
+          [field]: true,
+        };
+      }
       alerts.basicAlert('Subir imagen', 'Imagen subida exitosamente.', 'success');
     } catch (error: any) {
       console.error('Error uploading product image', error);

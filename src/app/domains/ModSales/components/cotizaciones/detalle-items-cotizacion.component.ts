@@ -227,6 +227,7 @@ export class DetalleItemsCotizacionComponent implements ICellRendererAngularComp
   private tipoCambioRequest: Promise<void> | null = null;
   rowData: CotizacionItem[]   = [];
   originalData: CotizacionItem[] = [];
+  private deletedItemIds = new Set<string>();
   selectedRow: CotizacionItem | null = null;
   hasChanges  = false;
   materiales: any[] = [];
@@ -463,6 +464,7 @@ export class DetalleItemsCotizacionComponent implements ICellRendererAngularComp
     if (!this.cotizacion?.id) { this.rowData = []; return; }
     const data = await this.svc.getItems(this.cotizacion.id);
     this.rowData      = data.map(item => ({ ...item, dolares: item.dolares ?? 0 }));
+    this.deletedItemIds.clear();
     this.aplicarConversionDolares();
     this.originalData = JSON.parse(JSON.stringify(this.rowData));
     this.hasChanges   = false;
@@ -682,10 +684,14 @@ export class DetalleItemsCotizacionComponent implements ICellRendererAngularComp
     this.gridApi?.stopEditing();
     this.trackingService.addLog(this.trackingService.getnameComp(), `Guardó ítems de cotización`, 'Ventas', this.trackingService.getEmail());
     try {
-      await this.svc.guardarItems(this.cotizacion.id, this.rowData);
+      const persistedCount = await this.svc.guardarItems(this.cotizacion.id, this.rowData, [...this.deletedItemIds]);
+      this.deletedItemIds.clear();
+      this.rowData = await this.svc.getItems(this.cotizacion.id);
+      this.rowData = this.rowData.map(item => ({ ...item, dolares: item.dolares ?? 0 }));
       this.originalData = JSON.parse(JSON.stringify(this.rowData));
       this.hasChanges   = false;
       this.updateCountInParent();
+      if (this.params?.node?.data) this.params.node.data.countItems = persistedCount;
       Swal.fire({ toast: true, position: 'bottom-end', icon: 'success', title: 'Guardado', showConfirmButton: false, timer: 2000, timerProgressBar: true });
       return true;
     } catch (e: any) {
@@ -734,6 +740,7 @@ export class DetalleItemsCotizacionComponent implements ICellRendererAngularComp
 
   revert() {
     this.rowData = JSON.parse(JSON.stringify(this.originalData));
+    this.deletedItemIds.clear();
     this.hasChanges = false;
     this.gridApi.setGridOption('rowData', this.rowData);
   }
@@ -750,6 +757,7 @@ export class DetalleItemsCotizacionComponent implements ICellRendererAngularComp
       cancelButtonText: 'Cancelar',
     });
     if (!res.isConfirmed) return;
+    if (this.selectedRow.id) this.deletedItemIds.add(this.selectedRow.id);
     this.rowData = this.rowData.filter(r => r !== this.selectedRow);
     this.selectedRow = null;
     this.hasChanges  = true;

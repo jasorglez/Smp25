@@ -1,8 +1,8 @@
 import { inject, Injectable, Injector, runInInjectionContext } from '@angular/core';
 import {
   Firestore, collection, addDoc, onSnapshot, query, Query,
-  where, doc, updateDoc, Timestamp, getDocs, deleteDoc,
-  getDoc, setDoc,
+  where, doc, updateDoc, Timestamp, getDocs,
+  getDoc, setDoc, writeBatch,
 } from '@angular/fire/firestore';
 import { Observable } from 'rxjs';
 import { StoragesService } from './storages.service';
@@ -273,15 +273,14 @@ export class CotizacionesService {
     }
   }
 
-  async guardarItems(cotizacionId: string, items: CotizacionItem[]): Promise<void> {
+  async guardarItems(cotizacionId: string, items: CotizacionItem[], deletedItemIds: string[] = []): Promise<number> {
     const colRef = collection(this.firestore, `${this.COL}/${cotizacionId}/items`);
     const docRef = doc(this.firestore, this.COL, cotizacionId);
-
-    // Borrar existentes
     const snap = await getDocs(colRef);
-    await Promise.all(snap.docs.map(d => deleteDoc(d.ref)));
+    const existingById = new Map(snap.docs.map(item => [item.id, item.ref]));
+    const deletedIds = new Set(deletedItemIds);
+    const batch = writeBatch(this.firestore);
 
-    // Insertar nuevos — sanitizar para evitar undefined/NaN que Firestore rechaza
     const sanitize = (item: any) => ({
       idMaterial:     Number(item.idMaterial)     || 0,
       nombreMaterial: item.nombreMaterial         ?? '',
@@ -293,12 +292,29 @@ export class CotizacionesService {
       dolares:        Number.isFinite(Number(item.dolares)) ? Math.round(Number(item.dolares) * 100) / 100 : 0,
       dolaresManual:  item.dolaresManual === true,
     });
-    const total = items.reduce((s, i) => s + (Number(i.subtotal) || 0), 0);
-    const totalDolares = items.reduce((sum, item) => sum + Math.round(sanitize(item).dolares * 100), 0) / 100;
-    await Promise.all(items.map(({ __isNew, id, ...item }) =>
-      addDoc(colRef, sanitize(item))
-    ));
+    const submittedIds = new Set(items.map(item => item.id).filter(Boolean));
+    const preservedItems = snap.docs
+      .filter(item => !deletedIds.has(item.id) && !submittedIds.has(item.id))
+      .map(item => item.data() as CotizacionItem);
+    const persistedItems = [...preservedItems, ...items];
+    const total = persistedItems.reduce((s, i) => s + (Number(i.subtotal) || 0), 0);
+    const totalDolares = persistedItems.reduce((sum, item) => sum + Math.round(sanitize(item).dolares * 100), 0) / 100;
+    let addedCount = 0;
+    for (const item of items) {
+      const { __isNew, id, ...data } = item as any;
+      const itemRef = id && existingById.has(id) ? existingById.get(id)! : doc(colRef);
+      if (!id || !existingById.has(id)) addedCount++;
+      batch.set(itemRef, sanitize(data));
+    }
+    for (const id of deletedIds) {
+      const itemRef = existingById.get(id);
+      if (itemRef) batch.delete(itemRef);
+    }
 
-    await updateDoc(docRef, { total, totalDolares, hasManualUsd: items.some(item => item.dolaresManual === true), countItems: items.length });
+    const deletedCount = [...deletedIds].filter(id => existingById.has(id)).length;
+    const countItems = snap.size + addedCount - deletedCount;
+    batch.update(docRef, { total, totalDolares, hasManualUsd: persistedItems.some(item => item.dolaresManual === true), countItems });
+    await batch.commit();
+    return countItems;
   }
 }

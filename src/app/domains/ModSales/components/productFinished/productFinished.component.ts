@@ -649,11 +649,16 @@ export class ProductFinishedComponent implements CanComponentDeactivate {
 
   onCellValueChanged(event: any) {
     event.data.__modified = true;
+    event.data.__modifiedFields = {
+      ...(event.data.__modifiedFields ?? {}),
+      [event.colDef.field]: true,
+    };
     this.notSavedChanges = true;
 
     if (event.colDef.field === 'idFamilia') {
       event.data.idFamilia = Number(event.newValue) || null;
       event.data.idSubfamilia = null;
+      event.data.__modifiedFields.idSubfamilia = true;
       this.gridApi?.refreshCells({ rowNodes: [event.node], columns: ['idFamilia', 'idSubfamilia'], force: true });
       return;
     }
@@ -728,8 +733,10 @@ export class ProductFinishedComponent implements CanComponentDeactivate {
     });
 
     const updateObservables = modifiedRows.map((row) => {
-      const cleanedData = this.cleanDataForServer(row);
-      return this.materialsService.updateMaterial(row.id, cleanedData);
+      const cleanedData = this.cleanDataForServer(row, true);
+      return Object.keys(cleanedData).length
+        ? this.materialsService.updateMaterial(row.id, cleanedData)
+        : EMPTY;
     });
 
     // Using concat to combine observables and lastValueFrom for async/await
@@ -748,9 +755,13 @@ export class ProductFinishedComponent implements CanComponentDeactivate {
     } catch (error) {
       console.error(error);
       const response = (error as any)?.error;
-      const validationDetails = response?.errors
-        ? Object.entries(response.errors).flatMap(([field, messages]: [string, any]) =>
-            (Array.isArray(messages) ? messages : [messages]).map(message => `${field}: ${message}`))
+      const modelErrors = response?.errors ?? response;
+      const validationDetails = modelErrors && typeof modelErrors === 'object'
+        ? Object.entries(modelErrors)
+            .filter(([field]) => !['type', 'title', 'status', 'traceId', 'message'].includes(field))
+            .flatMap(([field, messages]: [string, any]) =>
+              (Array.isArray(messages) ? messages : [messages]).map(message =>
+                typeof message === 'string' ? `${field}: ${message}` : `${field}: ${JSON.stringify(message)}`))
         : [];
       const detail = validationDetails.join('\n') || response?.message || (typeof response === 'string' ? response : '');
       alerts.basicAlert(
@@ -811,14 +822,17 @@ export class ProductFinishedComponent implements CanComponentDeactivate {
     this.notSavedChanges = false;
   }
 
-  private cleanDataForServer(data: any): any {
+  private cleanDataForServer(data: any, changedOnly = false): any {
     const apiFields = [
       'idCompany', 'idBranch', 'idCustomer', 'insumo', 'fecha', 'merma', 'articulo', 'barCode',
       'idCategory', 'idFamilia', 'idSubfamilia', 'idMedida', 'idUbication', 'description', 'date',
       'aplicaResg', 'costoMN', 'costoDLL', 'ventaMN', 'ventaDLL', 'quantity', 'stockMin', 'stockMax',
       'picture', 'typeMaterial', 'requestQuantity', 'vigente', 'active', 'gramsPerMeter',
     ];
-    return Object.fromEntries(apiFields
+    const fieldsToSend = changedOnly && data.__modifiedFields
+      ? apiFields.filter(field => data.__modifiedFields[field])
+      : apiFields;
+    return Object.fromEntries(fieldsToSend
       .filter(field => data[field] !== undefined)
       .map(field => [field, data[field]]));
   }
