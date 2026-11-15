@@ -5,13 +5,13 @@ SET XACT_ABORT ON;
 BEGIN TRANSACTION;
 
 UPDATE dbo.product_updates WITH (UPDLOCK, HOLDLOCK)
-SET version = N'5.00.539',
+SET version = N'5.00.540',
     module = N'Ventas / Productos',
     changeType = N'FIX',
-    title = N'Selección de subfamilia y carga de imágenes',
-    description = N'Al crear productos, la subfamilia puede elegirse con el mouse o escribiendo para buscar. La carga de imagen admite JPG, PNG y WEBP, usa un nombre seguro para Firebase y muestra errores específicos de formato, tamaño o carga.',
-    userBenefit = N'Facilita completar la clasificación y agregar imágenes de referencia al producto.',
-    promoText = N'Elige la subfamilia con un clic y agrega imágenes de referencia al producto.',
+    title = N'Edición de productos y selector de subfamilia',
+    description = N'El selector de subfamilia permite elegir opciones con mouse y teclado, y la edición del producto envía únicamente los campos del material. Si el servidor rechaza el guardado, se muestra el detalle de validación disponible. La carga de imagen admite JPG, PNG y WEBP.',
+    userBenefit = N'Permite clasificar y editar productos con más facilidad, e identifica el motivo del rechazo al guardar.',
+    promoText = N'Edita productos, elige su subfamilia con mouse o teclado y consulta el motivo si un guardado requiere corrección.',
     validationStatus = N'PASSED',
     releaseStatus = N'LOCAL',
     updatedAtUtc = SYSUTCDATETIME()

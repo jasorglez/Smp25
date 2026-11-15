@@ -289,7 +289,6 @@ export class ProductFinishedComponent implements CanComponentDeactivate {
         editable: true,
         width: 150,
         cellEditor: 'agRichSelectCellEditor',
-        cellEditorPopup: true,
         mainMenuItems: (params: GetMainMenuItemsParams) => {
           const subFamilyMenuItems: (MenuItemDef | string)[] = [
             {
@@ -308,7 +307,7 @@ export class ProductFinishedComponent implements CanComponentDeactivate {
           const idFamilia = Number(params.data.idFamilia);
 
           // Filtrar subfamilias por parentId (idFamilia) usando subfamilias2
-          const subfamiliasFiltradas = this.subfamilias2.filter(
+          const subfamiliasFiltradas = (this.subfamilias2 ?? []).filter(
             (item) => Number(item.parentId) === idFamilia
           );
 
@@ -319,7 +318,7 @@ export class ProductFinishedComponent implements CanComponentDeactivate {
             searchType: 'matchAny',
             highlightMatch: true,
             valueListMaxHeight: 320,
-            valueFormatter: (id) => {
+            formatValue: (id) => {
               const foundItem = subfamiliasFiltradas.find(
                 (item) => Number(item.id) === Number(id)
               );
@@ -748,9 +747,15 @@ export class ProductFinishedComponent implements CanComponentDeactivate {
       this.obtenerDatos(); // Refrescar los datos
     } catch (error) {
       console.error(error);
+      const response = (error as any)?.error;
+      const validationDetails = response?.errors
+        ? Object.entries(response.errors).flatMap(([field, messages]: [string, any]) =>
+            (Array.isArray(messages) ? messages : [messages]).map(message => `${field}: ${message}`))
+        : [];
+      const detail = validationDetails.join('\n') || response?.message || (typeof response === 'string' ? response : '');
       alerts.basicAlert(
         'Error',
-        'Ocurrió un error al actualizar los datos. Por favor, intente nuevamente.',
+        detail || 'Ocurrió un error al actualizar los datos. Por favor, intente nuevamente.',
         'error'
       );
     }
@@ -807,13 +812,15 @@ export class ProductFinishedComponent implements CanComponentDeactivate {
   }
 
   private cleanDataForServer(data: any): any {
-    const cleanedData = { ...data };
-    delete cleanedData.__isNew;
-    delete cleanedData.__modified;
-    if (cleanedData.id && cleanedData.id.toString().startsWith('temp_')) {
-      delete cleanedData.id;
-    }
-    return cleanedData;
+    const apiFields = [
+      'idCompany', 'idBranch', 'idCustomer', 'insumo', 'fecha', 'merma', 'articulo', 'barCode',
+      'idCategory', 'idFamilia', 'idSubfamilia', 'idMedida', 'idUbication', 'description', 'date',
+      'aplicaResg', 'costoMN', 'costoDLL', 'ventaMN', 'ventaDLL', 'quantity', 'stockMin', 'stockMax',
+      'picture', 'typeMaterial', 'requestQuantity', 'vigente', 'active', 'gramsPerMeter',
+    ];
+    return Object.fromEntries(apiFields
+      .filter(field => data[field] !== undefined)
+      .map(field => [field, data[field]]));
   }
 
   refresh() {
