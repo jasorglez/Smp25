@@ -545,13 +545,21 @@ export const routes: Routes = [
         data: { permissions: { master: 'projects' } },
         children: [
           { path: '', redirectTo: 'ot', pathMatch: 'full' },
-          ...SharedModule.getRoutes(),
+          ...SharedModule.getRoutes().filter(route => route.path !== 'conventions'),
+          {
+            path: 'conventions',
+            loadComponent: () => import('./domains/ModProjects/components/projects/conventions/conventions.component').then((c) => c.ConventionsComponent),
+            canActivate: [MasterPermissionsGuard],
+            data: { permissions: { master: 'projects', detailed: 'conventions' } },
+          },
           {
             path: 'advances',
             loadComponent: () =>
               import(
                 './domains/ModProjects/components/advances/advances.component'
               ).then((a) => a.AdvancesComponent),
+            canActivate: [MasterPermissionsGuard],
+            data: { permissions: { master: 'projects', detailed: 'avances' } },
           },
           {
             path: 'providers',
@@ -559,6 +567,8 @@ export const routes: Routes = [
               import(
                 './domains/ModProjects/components/providers/providers.component'
               ).then((p) => p.ProvidersComponent),
+            canActivate: [MasterPermissionsGuard],
+            data: { permissions: { master: 'projects', detailed: 'providers' } },
           },
           {
             path: 'contracts',
@@ -566,12 +576,16 @@ export const routes: Routes = [
               import(
                 './domains/ModProjects/components/contracts/contracts.component'
               ).then((c) => c.ContractsComponent),
+            canActivate: [MasterPermissionsGuard],
+            data: { permissions: { master: 'projects', detailed: 'contracts' } },
           },
           {
             path: 'concepts',
             loadComponent: () =>
               import('./domains/ModProjects/components/concepts/concepts.component')
                 .then((c) => c.ConceptsComponent),
+            canActivate: [MasterPermissionsGuard],
+            data: { permissions: { master: 'projects', detailed: 'concepts' } },
             canDeactivate: [UnsavedChangesGuard],
           },
           {
@@ -579,6 +593,8 @@ export const routes: Routes = [
             loadComponent: () =>
               import('./domains/SMP/Components/catalogs/catalogs.component')
                 .then((s) => s.CatalogsComponent),
+            canActivate: [MasterPermissionsGuard],
+            data: { permissions: { master: 'projects', detailed: 'catalogs' } },
             canDeactivate: [UnsavedChangesGuard],
             children: [
               {
@@ -593,6 +609,8 @@ export const routes: Routes = [
               import(
                 './domains/ModProjects/components/materials/materials.component'
               ).then((c) => c.MaterialsComponent),
+            canActivate: [MasterPermissionsGuard],
+            data: { permissions: { master: 'projects', detailed: 'materials' } },
           },
           {
             path: 'herramientas',
@@ -600,6 +618,8 @@ export const routes: Routes = [
               import(
                 './domains/ModProjects/components/herramientas/herramientas.component'
               ).then((c) => c.HerramientasComponent),
+            canActivate: [MasterPermissionsGuard],
+            data: { permissions: { master: 'projects', detailed: 'herramientas' } },
           },
           {
             path: 'preciosunitarios',
@@ -607,6 +627,8 @@ export const routes: Routes = [
               import(
                 './domains/ModProjects/components/auxiliares/preciosunitarios.component'
               ).then((c) => c.AuxiliaresComponent),
+            canActivate: [MasterPermissionsGuard],
+            data: { permissions: { master: 'projects', detailed: 'pu' } },
           },
           { path: 'auxiliares', redirectTo: 'preciosunitarios', pathMatch: 'full' },
           {
@@ -615,6 +637,8 @@ export const routes: Routes = [
               import(
                 './domains/ModProjects/components/auxiliares-cat/auxiliares-cat.component'
               ).then((c) => c.AuxiliaresCatComponent),
+            canActivate: [MasterPermissionsGuard],
+            data: { permissions: { master: 'projects', detailed: 'auxiliares' } },
           },
           {
             path: 'equipment',
@@ -622,6 +646,8 @@ export const routes: Routes = [
               import(
                 './domains/ModProjects/components/equipment/equipment.component'
               ).then((c) => c.EquipmentComponent),
+            canActivate: [MasterPermissionsGuard],
+            data: { permissions: { master: 'projects', detailed: 'equipment' } },
           },
           {
             path: 'mano-obra',
@@ -629,6 +655,8 @@ export const routes: Routes = [
               import(
                 './domains/ModProjects/components/mano-obra/mano-obra.component'
               ).then((c) => c.ManoObraComponent),
+            canActivate: [MasterPermissionsGuard],
+            data: { permissions: { master: 'projects', detailed: 'mano-obra' } },
           },
           {
             path: 'projects',
@@ -636,6 +664,8 @@ export const routes: Routes = [
               import(
                 './domains/ModProjects/components/projects/projects.component'
               ).then((p) => p.ProjectsComponent),
+            canActivate: [MasterPermissionsGuard],
+            data: { permissions: { master: 'projects', detailed: 'projects' } },
           },
           {
             path: 'oilfields',
@@ -643,6 +673,8 @@ export const routes: Routes = [
               import(
                 './domains/ModProjects/components/oilfields/oilfields.component'
               ).then((o) => o.OilfieldsComponent),
+            canActivate: [MasterPermissionsGuard],
+            data: { permissions: { master: 'projects', detailed: 'projects' } },
           },
           {
             path: 'estimates',
@@ -650,6 +682,8 @@ export const routes: Routes = [
               import(
                 './domains/ModProjects/pages/procestimates/procestimates.component'
               ).then((r) => r.ProcesstimatesComponent),
+            canActivate: [MasterPermissionsGuard],
+            data: { permissions: { master: 'projects', detailed: 'estimates' } },
             children: [
               { path: '', redirectTo: 'estimates', pathMatch: 'full' },
               {
@@ -699,26 +733,34 @@ export const routes: Routes = [
               import(
                 './domains/ModProjects/components/workprograms/workprograms.component'
               ).then((w) => w.WorkprogramsComponent),
+            canActivate: [MasterPermissionsGuard],
+            data: { permissions: { master: 'projects', detailed: 'workprograms' } },
           },
           {
             path: 'subcontract-programs',
             loadComponent: () =>
               import('./domains/ModProjects/components/subcontract-programs/subcontract-programs.component')
                 .then((s) => s.SubcontractProgramsComponent),
+            canActivate: [MasterPermissionsGuard],
+            data: { permissions: { master: 'projects', detailed: 'workprograms' } },
           },
           {
             path: 'subcontractors',
             loadComponent: () => import('./domains/ModProjects/components/subcontractors/subcontractors.component').then((s) => s.SubcontractorsComponent),
+            canActivate: [MasterPermissionsGuard],
+            data: { permissions: { master: 'projects', detailed: 'providers' } },
           },
           {
             path: 'subcontract-estimates',
             loadComponent: () => import('./domains/ModProjects/components/subcontract-estimates/subcontract-estimates.component').then((s) => s.SubcontractEstimatesComponent),
-            data: { title: 'Estimaciones x Subcontratista', icon: 'bi-calculator-fill' },
+            canActivate: [MasterPermissionsGuard],
+            data: { title: 'Estimaciones x Subcontratista', icon: 'bi-calculator-fill', permissions: { master: 'projects', detailed: 'estimates' } },
           },
           {
             path: 'subcontract-reports',
             loadComponent: () => import('./domains/ModProjects/components/sistema/sistema.component').then((s) => s.SistemaComponent),
-            data: { title: 'Reportes Diarios x Subcontratista', icon: 'bi-clipboard-data-fill' },
+            canActivate: [MasterPermissionsGuard],
+            data: { title: 'Reportes Diarios x Subcontratista', icon: 'bi-clipboard-data-fill', permissions: { master: 'projects', detailed: 'sistema' } },
           },
           {
             path: 'ot',
@@ -736,13 +778,15 @@ export const routes: Routes = [
             },
             children: [
               { path: '', redirectTo: 'ordenes', pathMatch: 'full' },
-              ...SharedModule.getRoutes(),
+              ...SharedModule.getRoutes().filter(route => route.path !== 'conventions'),
               {
                 path: 'busquedas-ot',
                 loadComponent: () =>
                   import(
                     './domains/ModProjects/components/ot/busquedas-ot/busquedas-ot.component'
                   ).then((b) => b.BusquedasOtComponent),
+                canActivate: [MasterPermissionsGuard],
+                data: { permissions: { master: 'projects', detailed: 'get-all-ot' } },
               },
               {
                 path: 'ordenes',

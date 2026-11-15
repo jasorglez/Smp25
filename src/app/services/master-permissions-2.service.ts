@@ -44,10 +44,19 @@ export class MasterPermissions2Service {
     return this.http.get<any[]>(`${environment.urlSecurity}/UserSystemPermissions/master/${companyId}`, { headers: this.trackingService.getHeaders() }).pipe(
       map(masters => (masters || [])
         .filter(master => master.active === true)
-        .map(master => ({
-          ...master,
-          detailedPermissions: (master.detailedPermissions || []).filter((detail: any) => detail.active === true)
-        })))
+        .map(master => {
+          const seen = new Set<string>();
+          const detailedPermissions = [...(master.detailedPermissions || [])]
+            .filter((detail: any) => detail.active === true)
+            .sort((a: any, b: any) => (Number(a.order) || 0) - (Number(b.order) || 0) || Number(a.id) - Number(b.id))
+            .filter((detail: any) => {
+              const identifier = String(detail.identifier ?? detail.id);
+              if (seen.has(identifier)) return false;
+              seen.add(identifier);
+              return true;
+            });
+          return { ...master, detailedPermissions };
+        }))
     );
   }
 }

@@ -1,6 +1,7 @@
 import { Component, inject } from '@angular/core';
 import { SignalsService } from 'app/services/signals.service';
 import { SharedModule } from 'app/shared/shared.module';
+import { AuthService } from 'app/services/auth.service';
 
 @Component({
   selector: 'app-procot',
@@ -12,5 +13,6 @@ import { SharedModule } from 'app/shared/shared.module';
 export class ProcotComponent {
 
     public signalsService = inject(SignalsService);
+    public authService = inject(AuthService);
 
 }

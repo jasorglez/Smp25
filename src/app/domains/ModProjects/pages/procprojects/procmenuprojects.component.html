@@ -59,6 +59,13 @@
                 </a>
              </li>
 
+             <li class="nav-item" *ngIf="authService.hasDetailedPermission('projects', 'pu')">
+                <a class="nav-link modern-tab" routerLink="preciosunitarios" routerLinkActive="active">
+                  <i class="bi bi-currency-dollar"></i>
+                  <span>Precios Unitarios</span>
+                </a>
+             </li>
+
              <li class="nav-item" *ngIf="authService.hasDetailedPermission('projects', 'equipment')">
                 <a class="nav-link modern-tab" routerLink="equipment" routerLinkActive="active">
                   <i class="bi bi-gear-wide-connected"></i>
@@ -80,15 +87,15 @@
                 </a>
              </li>        
        
-             <li class="nav-item project-menu" *ngIf="authService.hasDetailedPermission('projects', 'projects') || authService.hasDetailedPermission('projects', 'workprograms')">
+             <li class="nav-item project-menu" *ngIf="authService.hasDetailedPermission('projects', 'projects') || authService.hasDetailedPermission('projects', 'providers')">
                 <button type="button" class="nav-link modern-tab project-menu-toggle" (click)="toggleProjectMenu()">
                   <i class="bi bi-building"></i>
                   <span>{{ 'projects' | translate}}</span>
                   <i class="bi bi-chevron-down ms-1 small"></i>
                 </button>
                 <div class="project-menu-dropdown" *ngIf="projectMenuOpen">
-                  <a routerLink="projects" (click)="closeProjectMenu()"><i class="bi bi-buildings"></i> Proyectos</a>
-                  <a routerLink="subcontractors" (click)="closeProjectMenu()"><i class="bi bi-people"></i> SubContratistas</a>
+                  <a *ngIf="authService.hasDetailedPermission('projects', 'projects')" routerLink="projects" (click)="closeProjectMenu()"><i class="bi bi-buildings"></i> Proyectos</a>
+                  <a *ngIf="authService.hasDetailedPermission('projects', 'providers')" routerLink="subcontractors" (click)="closeProjectMenu()"><i class="bi bi-people"></i> Subcontratistas</a>
                 </div>
              </li>
 
