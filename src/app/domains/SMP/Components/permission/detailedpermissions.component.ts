@@ -35,7 +35,7 @@ import { alerts } from 'app/helpers/alerts';
 export class DetailedPermissionsComponent implements OnInit, ICellRendererAngularComp {
   public rowData: any[] = [];
   public gridApi!: GridApi;
-  gridHeight: string = '400px';
+  gridHeight: string = '620px';
   public masterId!: number;
   public hasChanges = false;
 
@@ -89,7 +89,7 @@ export class DetailedPermissionsComponent implements OnInit, ICellRendererAngula
     rowHeight: 20,
     masterDetail: true,
     detailCellRenderer: SubDetailedPermissionsComponent,
-    detailRowHeight: 300,
+    detailRowHeight: 540,
     isRowMaster: (dataItem) => true,
     getRowClass: (params) => {
       if (params.node.isSelected()) {

@@ -36,7 +36,7 @@ export class PermissionComponent implements OnInit {
 
   public rowData$!: Observable<any[]>;
   public gridApi!: GridApi;
-  gridHeight: string = '70vh';
+  gridHeight: string = 'calc(100vh - 180px)';
   masterNotSavedChanges: boolean = false;
   selectedPermission: any = null;
 
@@ -95,7 +95,7 @@ export class PermissionComponent implements OnInit {
     rowHeight: 20,
     masterDetail: true,
     detailCellRenderer: DetailedPermissionsComponent,
-    detailRowHeight: 400,
+    detailRowHeight: 660,
     detailCellRendererParams: {
       getDetailRowData: (params) => {
         params.successCallback(params.data.detailData);

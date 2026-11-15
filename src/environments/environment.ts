@@ -75,5 +75,5 @@ export const environment = {
     // publicKey: 'TEST-4399133a-4676-42a2-ab85-d946370bf96a',
   },
 
-  version: '5.00.545 (15 Noviembre 2026 10:20) consolidación de permisos de Proyectos',
+  version: '5.00.547 (15 Noviembre 2026 10:29) grids de permisos ampliados',
 };

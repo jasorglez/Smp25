@@ -34,7 +34,7 @@ import { SubDetailedPermissionsService } from 'app/services/subDetailedPermissio
 export class SubDetailedPermissionsComponent implements OnInit, ICellRendererAngularComp {
   public rowData: any[] = [];
   public gridApi!: GridApi;
-  gridHeight: string = '200px';
+  gridHeight: string = '520px';
   public masterId!: number;
   public subMasterId!: number;
   public hasChanges = false;
