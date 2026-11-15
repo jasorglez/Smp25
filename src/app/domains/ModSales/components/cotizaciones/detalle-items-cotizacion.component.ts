@@ -39,6 +39,29 @@ const textoPdf = (value: unknown): string =>
   imports: [CommonModule, FormsModule, AgGridModule, PdfReportViewerComponent, PdfShareButtonsComponent],
   template: `
     <div class="detail-container">
+      <section class="quote-header-editor card border-primary mb-2" *ngIf="editandoEncabezado" (click)="$event.stopPropagation()">
+        <div class="card-body p-3">
+          <div class="d-flex align-items-center mb-3">
+            <h5 id="quote-header-title" class="mb-0">Editar encabezado de cotización</h5>
+            <button type="button" class="btn-close ms-auto" (click)="$event.stopPropagation(); cerrarEdicionEncabezado()" aria-label="Cerrar"></button>
+          </div>
+          <div class="row g-2">
+            <div class="col-md-6"><label class="form-label">ATN</label><input class="form-control" [(ngModel)]="encabezadoEdicion.nombreProspecto"></div>
+            <div class="col-md-6"><label class="form-label">Empresa</label><input class="form-control" [(ngModel)]="encabezadoEdicion.empresaProspecto"></div>
+            <div class="col-md-6"><label class="form-label">Puesto</label><input class="form-control" [(ngModel)]="encabezadoEdicion.puestoProspecto"></div>
+            <div class="col-md-6"><label class="form-label">No. de cotización</label><input class="form-control" [(ngModel)]="encabezadoEdicion.numCotizacion"></div>
+            <div class="col-md-6"><label class="form-label">Lugar</label><input class="form-control" [(ngModel)]="encabezadoEdicion.lugar" placeholder="Tuxtepec, Oax"></div>
+            <div class="col-md-6"><label class="form-label">Fecha del documento</label><input type="date" class="form-control" [(ngModel)]="encabezadoEdicion.fechaDocumento"></div>
+            <div class="col-12"><label class="form-label">Asunto</label><input class="form-control" [(ngModel)]="encabezadoEdicion.asuntoCotizacion"></div>
+          </div>
+          <div class="d-flex justify-content-end gap-2 mt-3">
+            <button type="button" class="btn btn-outline-secondary" (click)="$event.stopPropagation(); cerrarEdicionEncabezado()">Cancelar</button>
+            <button type="button" class="btn btn-primary" (click)="$event.stopPropagation(); guardarEncabezado()" [disabled]="guardandoEncabezado || !encabezadoEdicion.numCotizacion?.trim()">
+              <span *ngIf="guardandoEncabezado" class="spinner-border spinner-border-sm me-1"></span>Guardar encabezado
+            </button>
+          </div>
+        </div>
+      </section>
 
       <!-- ══ ITEMS MODE ══ -->
       <ng-container *ngIf="mode === 'items'">
@@ -60,7 +83,7 @@ const textoPdf = (value: unknown): string =>
 
           <div class="ms-auto d-flex gap-1">
             <button type="button" class="btn btn-sm btn-outline-primary"
-                    (click)="abrirEdicionEncabezado()" [disabled]="!masterSaved" title="Editar destinatario y encabezado del PDF">
+                    (click)="$event.stopPropagation(); abrirEdicionEncabezado()" [disabled]="!masterSaved" title="Editar destinatario y encabezado del PDF">
               <i class="bi bi-pencil-square"></i>
             </button>
             <button class="btn btn-sm btn-success" (click)="add()" [disabled]="!gridApi || !masterSaved" title="Agregar item">
@@ -130,7 +153,7 @@ const textoPdf = (value: unknown): string =>
 
           <div class="ms-auto d-flex gap-2 align-items-center flex-wrap">
             <button type="button" class="btn btn-sm btn-outline-primary"
-                    (click)="abrirEdicionEncabezado()" [disabled]="!masterSaved">
+                    (click)="$event.stopPropagation(); abrirEdicionEncabezado()" [disabled]="!masterSaved">
               <i class="bi bi-pencil-square me-1"></i> Editar encabezado
             </button>
             <!-- Descargar (funciona en tablets donde el iframe no carga) -->
@@ -170,52 +193,6 @@ const textoPdf = (value: unknown): string =>
         </div>
       </ng-container>
 
-      <div class="quote-header-backdrop" *ngIf="editandoEncabezado" (click)="cerrarEdicionEncabezado()">
-        <section class="quote-header-modal" role="dialog" aria-modal="true" aria-labelledby="quote-header-title" (click)="$event.stopPropagation()">
-          <div class="d-flex align-items-center mb-3">
-            <h5 id="quote-header-title" class="mb-0">Editar encabezado de cotización</h5>
-            <button type="button" class="btn-close ms-auto" (click)="cerrarEdicionEncabezado()" aria-label="Cerrar"></button>
-          </div>
-          <div class="row g-2">
-            <div class="col-md-6">
-              <label class="form-label">ATN</label>
-              <input class="form-control" [(ngModel)]="encabezadoEdicion.nombreProspecto">
-            </div>
-            <div class="col-md-6">
-              <label class="form-label">Empresa</label>
-              <input class="form-control" [(ngModel)]="encabezadoEdicion.empresaProspecto">
-            </div>
-            <div class="col-md-6">
-              <label class="form-label">Puesto</label>
-              <input class="form-control" [(ngModel)]="encabezadoEdicion.puestoProspecto">
-            </div>
-            <div class="col-md-6">
-              <label class="form-label">No. de cotización</label>
-              <input class="form-control" [(ngModel)]="encabezadoEdicion.numCotizacion">
-            </div>
-            <div class="col-md-6">
-              <label class="form-label">Lugar</label>
-              <input class="form-control" [(ngModel)]="encabezadoEdicion.lugar" placeholder="Tuxtepec, Oax">
-            </div>
-            <div class="col-md-6">
-              <label class="form-label">Fecha del documento</label>
-              <input type="date" class="form-control" [(ngModel)]="encabezadoEdicion.fechaDocumento">
-            </div>
-            <div class="col-12">
-              <label class="form-label">Asunto</label>
-              <input class="form-control" [(ngModel)]="encabezadoEdicion.asuntoCotizacion">
-            </div>
-          </div>
-          <div class="d-flex justify-content-end gap-2 mt-3">
-            <button type="button" class="btn btn-outline-secondary" (click)="cerrarEdicionEncabezado()">Cancelar</button>
-            <button type="button" class="btn btn-primary" (click)="guardarEncabezado()" [disabled]="guardandoEncabezado || !encabezadoEdicion.numCotizacion.trim()">
-              <span *ngIf="guardandoEncabezado" class="spinner-border spinner-border-sm me-1"></span>
-              Guardar encabezado
-            </button>
-          </div>
-        </section>
-      </div>
-
     </div>
   `,
   styles: [`
@@ -224,8 +201,6 @@ const textoPdf = (value: unknown): string =>
       background-color: #f0f8ff;
       border-top: 2px solid #0d6efd;
     }
-    .quote-header-backdrop { position: fixed; inset: 0; z-index: 1200; display: flex; align-items: center; justify-content: center; padding: 16px; background: rgba(0,0,0,.45); }
-    .quote-header-modal { width: min(680px, 100%); max-height: 90vh; overflow-y: auto; padding: 20px; border-radius: 8px; background: white; box-shadow: 0 12px 36px rgba(0,0,0,.25); }
     .pdf-frame-wrap {
       height: 82vh;
       border: 1px solid #dee2e6;
