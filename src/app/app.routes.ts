@@ -4,6 +4,7 @@ import { SharedModule } from './shared/shared.module';
 import { MasterPermissionsGuard } from './guards/master-permissions.guard';
 import { warehouseCleanupGuard } from './guards/warehouse-cleanup.guard';
 import { warehouseMenuPermissionGuard } from './domains/ModWareHousesTD/pages/warehouse-menu';
+import { shoppingMenuPermissionGuard } from './domains/ModShoppingTD/pages/shopping-menu';
 import { RootOnlyGuard } from './guards/root-only.guard';
 import { TelegramAdminGuard } from './guards/telegram-admin.guard';
 import { UnsavedChangesGuard } from './guards/unsaved-changes.guard';
@@ -2557,54 +2558,66 @@ export const routes: Routes = [
         children: [
           {
             path: 'module-cleanup',
-            canActivate: [warehouseCleanupGuard, warehouseMenuPermissionGuard],
-            data: { warehouseMenuRoute: 'module-cleanup' },
+            canActivate: [warehouseCleanupGuard, shoppingMenuPermissionGuard],
+            data: { shoppingMenuRoute: 'module-cleanup' },
             loadComponent: () => import('./domains/ModWareHousesTD/components/module-cleanup/module-cleanup.component').then(c => c.ModuleCleanupComponent)
           },
-          { path: '', redirectTo: '', pathMatch: 'full' },
+          {
+            path: '',
+            pathMatch: 'full',
+            loadComponent: () => import('./domains/ModShoppingTD/pages/shopping-entry-redirect.component').then(c => c.ShoppingEntryRedirectComponent)
+          },
 
           {
             path: 'materials-st',
+            canActivate: [shoppingMenuPermissionGuard],
             loadComponent: () => import('./domains/ModProjects/components/materials/materials.component').then((c) => c.MaterialsComponent),
           },
           {
             path: 'requisitions-st',
+            canActivate: [shoppingMenuPermissionGuard],
             loadComponent: () => import('./domains/ModWarehouse/components/requisitions/requisitions.component').then((r) => r.RequisitionsComponent),
             canDeactivate: [UnsavedChangesGuard],
           },
 
           {
             path: 'quotes-st',
+            canActivate: [shoppingMenuPermissionGuard],
             loadComponent: () => import('./domains/ModWarehouse/components/quote/quote.component').then((q) => q.QuoteComponent),
             canDeactivate: [UnsavedChangesGuard],
           },
 
           {
             path: 'purchaseorder-st',
+            canActivate: [shoppingMenuPermissionGuard],
             loadComponent: () => import('./domains/ModWarehouse/components/purchaseorder/purchaseorder.component').then((p) => p.PurchaseOrderComponent),
             canDeactivate: [UnsavedChangesGuard],
           },
 
           {
             path: 'providers-st',
+            canActivate: [shoppingMenuPermissionGuard],
             loadComponent: () => import('./domains/ModWarehouse/components/providers/providers.component').then((p) => p.ProvidersComponent),
             canDeactivate: [UnsavedChangesGuard],
           },
 
           {
             path: 'setupwarehouse',
+            canActivate: [shoppingMenuPermissionGuard],
             loadComponent: () => import('./domains/ModWarehouse/components/setupwarehouse/setupwarehouse.component').then((s) => s.SetupwarehouseComponent),
             canDeactivate: [UnsavedChangesGuard],
           },
 
           {
             path: 'catalogs',
+            canActivate: [shoppingMenuPermissionGuard],
             loadComponent: () => import('./domains/SMP/Components/catalogs/catalogs.component').then((s) => s.CatalogsComponent),
             canDeactivate: [UnsavedChangesGuard],
           },
 
           {
             path: 'fam-subfam',
+            canActivate: [shoppingMenuPermissionGuard],
             loadComponent: () => import('./domains/ModShoppingTD/components/fam-subfam/fam-subfam.component').then((c) => c.FamSubfamComponent),
           },
 
