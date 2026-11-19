@@ -166,7 +166,7 @@ export class ClientesCobranzasComponent implements CanComponentDeactivate {
   private pendingEditCell: { rowIndex: number; colKey: string } | null = null;
 
   rowData: any;
-  private loanTotalsByCustomer = new Map<number, { loans: number; payments: number; pending: number; overdue: number }>();
+  private loanTotalsByCustomer = new Map<number, { loans: number; due: number; payments: number; pending: number; overdue: number }>();
   loanTotalsLoaded = false;
   private loanTotalsRequestId = 0;
   private loanTotalsLoadingRoot: number | null = null;
@@ -939,14 +939,15 @@ export class ClientesCobranzasComponent implements CanComponentDeactivate {
       for (const loan of loans || []) {
         const installments = [...(loan.cuotas || [])].sort((a: any, b: any) => a.numeroCuota - b.numeroCuota);
         const paid = installments.reduce((sum: number, item: any) => sum + (item.abonos || []).reduce((part: number, payment: any) => part + Number(payment.monto || 0), 0), 0);
-        content.push({ text: `Préstamo #${loan.id}  ·  ${money(loan.montoTotal)}  ·  Inicio: ${date(loan.fechaInicio)}`, style: 'loan', margin: [0, 10, 0, 4] });
-        content.push({ text: `Abonado: ${money(paid)}   Saldo: ${money(Number(loan.montoTotal) - paid)}`, margin: [0, 0, 0, 5] });
-        const rows: any[][] = [[{ text: '#', bold: true }, { text: 'Programado', bold: true }, { text: 'Cuota', bold: true }, { text: 'Abonado', bold: true }, { text: 'Saldo', bold: true }, { text: 'Estado', bold: true }]];
+        const scheduledTotal = installments.reduce((sum: number, item: any) => sum + Number(item.montoProgramado || 0), 0);
+        content.push({ text: `Préstamo #${loan.id}  ·  Capital: ${money(loan.montoTotal)}  ·  Interés: ${Number(loan.tasaInteresMensual || 0)}% mensual  ·  Inicio: ${date(loan.fechaInicio)}`, style: 'loan', margin: [0, 10, 0, 4] });
+        content.push({ text: `Total a pagar: ${money(scheduledTotal)}   Abonado: ${money(paid)}   Saldo: ${money(Math.max(0, scheduledTotal - paid))}`, margin: [0, 0, 0, 5] });
+        const rows: any[][] = [[{ text: '#', bold: true }, { text: 'Programado', bold: true }, { text: 'Capital', bold: true }, { text: 'Interés', bold: true }, { text: 'Abonado', bold: true }, { text: 'Saldo', bold: true }, { text: 'Estado', bold: true }]];
         for (const installment of installments) {
           const received = Number.isFinite(Number(installment.montoAplicado)) ? Number(installment.montoAplicado) : (installment.abonos || []).reduce((sum: number, payment: any) => sum + Number(payment.monto || 0), 0);
-          rows.push([String(installment.numeroCuota), date(installment.fechaProgramada), money(installment.montoProgramado), money(received), money(Number(installment.montoProgramado) - received), received >= Number(installment.montoProgramado) ? 'Pagada' : 'Pendiente']);
+          rows.push([String(installment.numeroCuota), date(installment.fechaProgramada), money(installment.montoCapital ?? installment.montoProgramado), money(installment.montoInteres || 0), money(received), money(Number(installment.montoProgramado) - received), received >= Number(installment.montoProgramado) ? 'Pagada' : 'Pendiente']);
         }
-        content.push({ table: { headerRows: 1, widths: [20, 74, 74, 74, 74, '*'], body: rows }, layout: 'lightHorizontalLines', fontSize: 8 });
+        content.push({ table: { headerRows: 1, widths: [18, 58, 61, 54, 60, 55, '*'], body: rows }, layout: 'lightHorizontalLines', fontSize: 7 });
         const payments = installments.flatMap((item: any) => (item.abonos || []).map((payment: any) => ({ numero: item.numeroCuota, ...payment })));
         if (payments.length) {
           content.push({ text: 'Abonos recibidos', bold: true, margin: [0, 8, 0, 3] });
@@ -1001,15 +1002,17 @@ export class ClientesCobranzasComponent implements CanComponentDeactivate {
         const todayIso = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
         for (const loan of loans || []) {
           const customerId = Number(loan.idCustomer);
-          const totals = this.loanTotalsByCustomer.get(customerId) || { loans: 0, payments: 0, pending: 0, overdue: 0 };
+          const totals = this.loanTotalsByCustomer.get(customerId) || { loans: 0, due: 0, payments: 0, pending: 0, overdue: 0 };
           totals.loans += Number(loan.montoTotal || 0);
+          totals.due += (loan.cuotas || []).filter((installment: any) => installment.active !== false)
+            .reduce((sum: number, installment: any) => sum + Number(installment.montoProgramado || 0), 0);
           totals.payments += (loan.cuotas || []).flatMap((installment: any) => installment.abonos || [])
             .filter((payment: any) => payment.active !== false)
             .reduce((sum: number, payment: any) => sum + Number(payment.monto || 0), 0);
           totals.overdue += (loan.cuotas || [])
             .filter((installment: any) => installment.active !== false && String(installment.fechaProgramada || '').slice(0, 10) < todayIso)
             .reduce((sum: number, installment: any) => sum + Math.max(0, Number(installment.montoProgramado || 0) - Number(installment.montoAplicado || 0)), 0);
-          totals.pending = Math.max(0, totals.loans - totals.payments);
+          totals.pending = Math.max(0, totals.due - totals.payments);
           this.loanTotalsByCustomer.set(customerId, totals);
         }
         this.loanTotalsLoaded = true;

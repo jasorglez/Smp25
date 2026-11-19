@@ -87,7 +87,8 @@ export class CobranzaDashboardComponent {
         this.rows.push({ customerId: loan.idCustomer, customer: loan.cliente, loanId: loan.id, installment: cuota.numeroCuota, due, amount, paid, balance: Math.max(0, amount - paid), days });
       }
     }
-    this.totalBalance = Math.max(0, this.totalLoaned - this.totalCollected);
+    const scheduledTotal = this.rows.reduce((sum, row) => sum + row.amount, 0);
+    this.totalBalance = Math.max(0, scheduledTotal - this.totalCollected);
     this.overdue = this.rows.filter(row => row.days < 0).reduce((sum, row) => sum + row.balance, 0);
     this.dueThisMonth = this.rows.filter(row => row.due.slice(0, 7) === monthKey).reduce((sum, row) => sum + row.balance, 0);
     this.dueNextSeven = this.rows.filter(row => row.days >= 0 && row.days <= 7).reduce((sum, row) => sum + row.balance, 0);
