@@ -5,11 +5,14 @@ const WAREHOUSE_ROUTES = new Set([
   'materials-st',
   'material-traceability',
   'kardex',
+  'catalogs',
   'providers-st',
   'entry-st',
   'outings-st',
   'inventory-st',
-  'setup-st'
+  'setup-st',
+  'projects',
+  'module-cleanup'
 ]);
 
 function storageKey(signalsService: SignalsService): string {

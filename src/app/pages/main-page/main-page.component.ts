@@ -255,6 +255,7 @@ export class MainPageComponent implements OnInit, OnDestroy {
     'warehousesTD/catalogs': 'Catálogos de movimientos',
     'warehousesTD/material-traceability': 'Trazabilidad de materiales',
     'warehousesTD/kardex': 'Kardex',
+    'warehousesTD/projects': 'Proyectos',
     'projects/contracts': 'Contratos',
     'projects/projects': 'Proyectos',
     'projects/subcontractors': 'Subcontratistas',

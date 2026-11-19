@@ -3,6 +3,7 @@ import { MainPageComponent } from './pages/main-page/main-page.component';
 import { SharedModule } from './shared/shared.module';
 import { MasterPermissionsGuard } from './guards/master-permissions.guard';
 import { warehouseCleanupGuard } from './guards/warehouse-cleanup.guard';
+import { warehouseMenuPermissionGuard } from './domains/ModWareHousesTD/pages/warehouse-menu';
 import { RootOnlyGuard } from './guards/root-only.guard';
 import { TelegramAdminGuard } from './guards/telegram-admin.guard';
 import { UnsavedChangesGuard } from './guards/unsaved-changes.guard';
@@ -2556,7 +2557,8 @@ export const routes: Routes = [
         children: [
           {
             path: 'module-cleanup',
-            canActivate: [warehouseCleanupGuard],
+            canActivate: [warehouseCleanupGuard, warehouseMenuPermissionGuard],
+            data: { warehouseMenuRoute: 'module-cleanup' },
             loadComponent: () => import('./domains/ModWareHousesTD/components/module-cleanup/module-cleanup.component').then(c => c.ModuleCleanupComponent)
           },
           { path: '', redirectTo: '', pathMatch: 'full' },
@@ -2629,6 +2631,8 @@ export const routes: Routes = [
           },
           {
             path: 'setup-st',
+            canActivate: [warehouseMenuPermissionGuard],
+            data: { warehouseMenuRoute: 'setup-st' },
             loadComponent: () =>
               import('./domains/ModWareHousesTD/components/setup-ts/setup-st.component').then(
                 (c) => c.SetupStComponent
@@ -2636,44 +2640,65 @@ export const routes: Routes = [
           },
           {
             path: 'warehouses',
+            canActivate: [warehouseMenuPermissionGuard],
+            data: { warehouseMenuRoute: 'warehouses' },
             loadComponent: () => import('./domains/ModWarehouse/components/warehouses/warehouses.component').then((w) => w.WarehousesComponent),
             canDeactivate: [UnsavedChangesGuard],
           },
           {
             path: 'materials-st',
+            canActivate: [warehouseMenuPermissionGuard],
+            data: { warehouseMenuRoute: 'materials-st' },
             loadComponent: () => import('./domains/ModProjects/components/materials/materials.component').then((c) => c.MaterialsComponent),
           },
           {
             path: 'material-traceability',
+            canActivate: [warehouseMenuPermissionGuard],
+            data: { warehouseMenuRoute: 'material-traceability' },
             loadComponent: () => import('./domains/ModWareHousesTD/components/material-traceability/material-traceability.component').then((c) => c.MaterialTraceabilityComponent),
           },
           {
             path: 'kardex',
+            canActivate: [warehouseMenuPermissionGuard],
+            data: { warehouseMenuRoute: 'kardex' },
             loadComponent: () => import('./domains/ModWareHousesTD/components/kardex/kardex.component').then((c) => c.KardexComponent),
           },
           {
             path: 'providers-st', loadComponent: () => import('./domains/ModWarehouse/components/providers/providers.component').then((e) => e.ProvidersComponent),
-            data: { type: 'PROVIDERS' }, // Parámetro para proveedores
+            canActivate: [warehouseMenuPermissionGuard],
+            data: { type: 'PROVIDERS', warehouseMenuRoute: 'providers-st' }, // Parámetro para proveedores
             canDeactivate: [UnsavedChangesGuard],
           },
           {
             path: 'inventory-st',
+            canActivate: [warehouseMenuPermissionGuard],
+            data: { warehouseMenuRoute: 'inventory-st' },
             loadComponent: () => import('./domains/ModWareHousesTD/components/inventory-st/inventory-st.component').then(c => c.InventoryStComponent)
           },
           {
             path: 'catalogs',
+            canActivate: [warehouseMenuPermissionGuard],
+            data: { warehouseMenuRoute: 'catalogs' },
             loadComponent: () => import('./domains/ModWareHousesTD/components/movement-catalogs/movement-catalogs.component').then(c => c.MovementCatalogsComponent),
             canDeactivate: [UnsavedChangesGuard]
           },
           {
             path: 'entry-st',
+            canActivate: [warehouseMenuPermissionGuard],
             loadComponent: () => import('./domains/ModWareHousesTD/components/inandout-st/inandout-st.component').then(c => c.InandoutStComponent),
-            data: { movementType: 'IN' }
+            data: { movementType: 'IN', warehouseMenuRoute: 'entry-st' }
           },
           {
             path: 'outings-st',
+            canActivate: [warehouseMenuPermissionGuard],
             loadComponent: () => import('./domains/ModWareHousesTD/components/inandout-st/inandout-st.component').then(c => c.InandoutStComponent),
-            data: { movementType: 'OUT' }
+            data: { movementType: 'OUT', warehouseMenuRoute: 'outings-st' }
+          },
+          {
+            path: 'projects',
+            loadComponent: () => import('./domains/ModProjects/components/projects/projects.component').then(c => c.ProjectsComponent),
+            canActivate: [warehouseMenuPermissionGuard],
+            data: { title: 'Proyectos', warehouseMenuRoute: 'projects' }
           }
         ]
       },
