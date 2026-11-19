@@ -1,4 +1,5 @@
 <div class="container-fluid mt-2">
+  <app-projects class="d-none" (projectCreated)="onProjectCreated($event)"></app-projects>
   <div class="d-flex align-items-center flex-wrap gap-3 mb-3 px-1">
     <label class="form-label mb-0 fw-semibold">Almacén</label>
     <div class="warehouse-picker">

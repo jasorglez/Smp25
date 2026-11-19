@@ -1,5 +1,5 @@
 
-import { Component, effect, inject, TemplateRef, ViewChild } from '@angular/core';
+import { Component, effect, inject, TemplateRef, ViewChild, Output, EventEmitter } from '@angular/core';
 import { RouterOutlet } from '@angular/router';
 import { FormsModule } from '@angular/forms';
 import { NgbModal, NgbModalOptions } from '@ng-bootstrap/ng-bootstrap';
@@ -65,6 +65,7 @@ export function noDefaultValueValidator(): ValidatorFn {
   styleUrl: './projects.component.scss'
 })
 export class ProjectsComponent {
+  @Output() projectCreated = new EventEmitter<any>();
   private trackingService = inject(TrackingService);
   constructor() {
 
@@ -1062,7 +1063,7 @@ export class ProjectsComponent {
             console.error('Error adding contract:', error);
             return EMPTY;
           })
-        ).subscribe(() => {
+        ).subscribe((createdProject: any) => {
           alerts.basicAlert(
             'Añadir proyecto',
             'Proyecto añadido exitosamente.',
@@ -1071,6 +1072,7 @@ export class ProjectsComponent {
           this.getProjects();
           this.modalService.dismissAll();
           this.resetForm();
+          this.projectCreated.emit(createdProject);
         });
       }
     } else {

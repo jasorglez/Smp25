@@ -1,4 +1,4 @@
-import { Component, OnInit, inject, effect, Input } from '@angular/core';
+import { Component, OnInit, inject, effect, Input, ViewChild } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { AgGridModule } from 'ag-grid-angular';
@@ -28,15 +28,19 @@ import { LogbookService } from 'app/services/logbook.service';
 import { BranchsService } from 'app/services/branchs.service';
 import { WarehousesService } from 'app/services/warehouses.service';
 import { restoreGridColumnWidths, saveGridColumnWidths } from 'app/helpers/grid-column-widths';
+import { ProjectsComponent } from 'app/domains/ModProjects/components/projects/projects.component';
 
 @Component({
   selector: 'app-inandout-st',
   standalone: true,
-  imports: [CommonModule, FormsModule, AgGridModule, NgSelectModule, DetailCellRendererEntryItemsComponent, PdfButtonCellRendererComponent],
+  imports: [CommonModule, FormsModule, AgGridModule, NgSelectModule, DetailCellRendererEntryItemsComponent, PdfButtonCellRendererComponent, ProjectsComponent],
   templateUrl: './inandout-st.component.html',
   styleUrl: './inandout-st.component.scss',
 })
 export class InandoutStComponent implements OnInit {
+
+  @ViewChild(ProjectsComponent) projectCreator?: ProjectsComponent;
+  private pendingProjectNode: any = null;
 
   private gridApi!: GridApi;
   private _colMaster: ColDef[] = [];
@@ -730,15 +734,16 @@ export class InandoutStComponent implements OnInit {
         editable: (params: any) => this.canEditAuthorizedRow(params.data),
         cellEditor: 'agRichSelectCellEditor',
         cellEditorParams: () => ({
-          values: this.projectList.map(p => p.id),
+          values: [this.addNewSentinel, ...this.projectList.map(p => Number(p.id))],
           valueListMaxHeight: 200,
           formatValue: (value: any) => {
-            const p = this.projectList.find(x => x.id === value);
+            if (value === this.addNewSentinel) return '+ Crear nuevo proyecto';
+            const p = this.projectList.find(x => Number(x.id) === Number(value));
             return p ? (p.description || p.name || `#${value}`) : `#${value}`;
           }
         }),
         valueFormatter: (params: any) => {
-          const p = this.projectList.find(x => x.id === params.value);
+          const p = this.projectList.find(x => Number(x.id) === Number(params.value));
           return p ? (p.description || p.name || `#${params.value}`) : (params.value || '');
         }
       },
@@ -1229,6 +1234,13 @@ export class InandoutStComponent implements OnInit {
   isDirectEntryMode: boolean = false;
 
   onCellEditingStopped(event: any): void {
+    if (event.colDef.field === 'idProject' && event.newValue === this.addNewSentinel) {
+      event.node.data.idProject = event.oldValue ?? null;
+      this.gridApi.refreshCells({ rowNodes: [event.node], force: true });
+      this.pendingProjectNode = event.node;
+      this.projectCreator?.openModal();
+      return;
+    }
     // Sentinel para Tipo de Movimiento en el grid
     if (event.colDef.field === 'idType' && event.newValue === '__ADD_NEW__') {
       event.node.data.idType = event.oldValue ?? null;
@@ -1244,6 +1256,26 @@ export class InandoutStComponent implements OnInit {
       this.refreshColumns();
       this.refreshExpandedItemsDetail(event.node);
     }
+  }
+
+  onProjectCreated(project: any): void {
+    const projectId = Number(project?.id ?? project?.Proyecto?.id ?? project?.proyecto?.id ?? 0);
+    const projectName = project?.description ?? project?.name ?? project?.Proyecto?.description ?? project?.Proyecto?.name;
+    this.projectsService.getProjectListByCompany(this.idRoot).subscribe({
+      next: (data: any) => {
+        this.projectList = Array.isArray(data) ? data : (data?.data ?? []);
+        const created = this.projectList.find(item => projectId ? Number(item.id) === projectId :
+          String(item.description ?? item.name).trim() === String(projectName ?? '').trim());
+        if (created && this.pendingProjectNode) {
+          this.pendingProjectNode.data.idProject = Number(created.id);
+          this.pendingProjectNode.setDataValue('idProject', Number(created.id));
+          this.hasUnsavedChanges = true;
+        }
+        this.pendingProjectNode = null;
+        this.refreshColumns();
+      },
+      error: error => console.error('Error recargando proyectos:', error)
+    });
   }
 
   /**

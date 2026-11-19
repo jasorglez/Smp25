@@ -75,5 +75,5 @@ export const environment = {
     // publicKey: 'TEST-4399133a-4676-42a2-ab85-d946370bf96a',
   },
 
-  version: '5.00.547 (15 Noviembre 2026 10:29) grids de permisos ampliados',
+  version: '5.00.548 (18 Noviembre 2026 23:32) alta de proyectos desde entradas y salidas',
 };
