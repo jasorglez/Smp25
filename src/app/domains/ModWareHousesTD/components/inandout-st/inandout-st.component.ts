@@ -777,12 +777,12 @@ export class InandoutStComponent implements OnInit {
           valueListMaxHeight: 200,
           formatValue: (value: any) => {
             if (value === '__ADD_NEW__') return '+ Agregar Registro';
-            const cat = this.catalogs.find(c => c.id === value);
+            const cat = this.catalogs.find(c => Number(c.id) === Number(value));
             return cat ? cat.description : value;
           }
         }),
         valueFormatter: (params: any) => {
-          const cat = this.catalogs.find(c => c.id === params.value);
+          const cat = this.catalogs.find(c => Number(c.id) === Number(params.value));
           return cat ? cat.description : (params.value || '');
         }
       },
