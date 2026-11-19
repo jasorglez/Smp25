@@ -47,7 +47,9 @@ import { catchError, forkJoin, from, lastValueFrom, map, mergeMap, of, switchMap
       </div>
       <div *ngIf="isStandardOutgoingEntry()" class="alert alert-info py-1 px-2 mb-2 small">
         <i class="bi bi-exclamation-circle me-1"></i>
-        Esta salida no tiene Vale de Entrada vinculado; no se cargarán partidas automáticamente. Agrega solo lo que vas a retirar.
+        Esta salida no tiene Vale de Entrada vinculado; no se cargarán partidas automáticamente.
+        <span *ngIf="isProjectStandardOutgoingWithoutEntry()">Vincula un Vale de Entrada para poder agregar partidas.</span>
+        <span *ngIf="!isProjectStandardOutgoingWithoutEntry()">Agrega solo lo que vas a retirar.</span>
       </div>
       <div *ngIf="(isStockRestrictedEntry() || isStandardOutgoingEntry()) && loadingWarehouseStock" class="alert alert-info py-2 px-2 mb-2 small" role="status" aria-live="polite">
         <div class="d-flex align-items-center gap-2 mb-1">
@@ -63,7 +65,9 @@ import { catchError, forkJoin, from, lastValueFrom, map, mergeMap, of, switchMap
         Los materiales con conversión se capturan en su unidad origen; el inventario se guarda en la unidad destino configurada.
       </div>
       <div class="detail-actions d-flex justify-content-end mb-2">
-        <button *ngIf="!isInventoryAdjustmentEntry()" class="btn btn-primary btn-sm me-2" (click)="addItem()">
+        <button *ngIf="!isInventoryAdjustmentEntry()" class="btn btn-primary btn-sm me-2" (click)="addItem()"
+          [disabled]="isProjectStandardOutgoingWithoutEntry()"
+          [title]="isProjectStandardOutgoingWithoutEntry() ? 'Vincula un Vale de Entrada para agregar partidas' : 'Agregar partida'">
           <i class="bi bi-plus-lg"></i> Agregar
         </button>
         <button *ngIf="entryData?.idOc > 0" class="btn btn-secondary btn-sm me-2" (click)="importarItemsDeOC()"
@@ -681,6 +685,10 @@ export class DetailCellRendererEntryItemsComponent {
   };
 
   addItem() {
+    if (this.isProjectStandardOutgoingWithoutEntry()) {
+      alerts.toastAlert('Vincula un Vale de Entrada antes de agregar partidas a esta salida.', 'warning');
+      return;
+    }
     const tempId = `temp_item_${this.tempIdCounter++}`;
     const startsAtZero = this.isInitialInventoryEntry() || this.isInventoryAdjustmentEntry() || this.isTransferEntry();
     const newItem = {
@@ -1297,6 +1305,11 @@ export class DetailCellRendererEntryItemsComponent {
 
   isStandardOutgoingEntry(): boolean {
     return this.context?.movementType === 'OUT' && Number(this.entryData?.idEntry || 0) <= 0;
+  }
+
+  isProjectStandardOutgoingWithoutEntry(): boolean {
+    const projectId = Number(this.context?.getSelectedProjectId?.() || this.context?.projectId || this.entryData?.idProject || 0);
+    return this.isStandardOutgoingEntry() && projectId > 0 && this.getMovementTypeBehavior() === 'STANDARD';
   }
 
   isInventoryAdjustmentEntry(): boolean {

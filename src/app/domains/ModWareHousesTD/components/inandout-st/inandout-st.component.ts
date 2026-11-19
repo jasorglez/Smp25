@@ -656,11 +656,11 @@ export class InandoutStComponent implements OnInit {
     rowHeight: 35,
     animateRows: false,
     masterDetail: true,
-    detailRowHeight: 850,
+    detailRowHeight: 1050,
     getRowHeight: (params: any) => {
       if (!params.node.detail) return undefined;
       if (params.node.parent?.data?.detailType === 'report') return 1080;
-      return this.movementType === 'IN' ? 1150 : 850;
+      return this.movementType === 'IN' ? 1150 : 1050;
     },
     isRowMaster: (dataItem: any) => true,
     detailCellRenderer: DetailCellRendererEntryItemsComponent,

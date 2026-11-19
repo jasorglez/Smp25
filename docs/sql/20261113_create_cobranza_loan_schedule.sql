@@ -1,5 +1,6 @@
+use administration;
 /* Plan de préstamos y cobros por cliente en Administration.
-   Cada préstamo genera 10 cuotas mensuales; cada cuota puede recibir varios abonos. */
+   Cada préstamo genera el número configurable de cuotas mensuales; cada cuota puede recibir varios abonos. */
 IF OBJECT_ID(N'dbo.prestamos_cobranza', N'U') IS NULL
 BEGIN
     CREATE TABLE dbo.prestamos_cobranza
@@ -14,7 +15,7 @@ BEGIN
         inicio DATETIME2(0) NOT NULL CONSTRAINT DF_prestamos_cobranza_inicio DEFAULT SYSUTCDATETIME(),
         active BIT NOT NULL CONSTRAINT DF_prestamos_cobranza_active DEFAULT (1),
         CONSTRAINT CK_prestamos_cobranza_monto CHECK (monto_total > 0),
-        CONSTRAINT CK_prestamos_cobranza_cuotas CHECK (numero_cuotas = 10),
+        CONSTRAINT CK_prestamos_cobranza_cuotas CHECK (numero_cuotas >= 1),
         CONSTRAINT FK_prestamos_cobranza_customers FOREIGN KEY (id_customer) REFERENCES dbo.customers(id)
     );
     CREATE INDEX IX_prestamos_cobranza_customer ON dbo.prestamos_cobranza(id_customer, active, inicio DESC);
@@ -33,12 +34,29 @@ BEGIN
         comentario NVARCHAR(500) NULL,
         inicio DATETIME2(0) NOT NULL CONSTRAINT DF_cuotas_cobranza_inicio DEFAULT SYSUTCDATETIME(),
         active BIT NOT NULL CONSTRAINT DF_cuotas_cobranza_active DEFAULT (1),
-        CONSTRAINT CK_cuotas_cobranza_numero CHECK (numero_cuota BETWEEN 1 AND 10),
+        CONSTRAINT CK_cuotas_cobranza_numero CHECK (numero_cuota >= 1),
         CONSTRAINT CK_cuotas_cobranza_monto CHECK (monto_programado > 0),
         CONSTRAINT UQ_cuotas_cobranza_numero UNIQUE (id_prestamo, numero_cuota),
         CONSTRAINT FK_cuotas_cobranza_prestamos FOREIGN KEY (id_prestamo) REFERENCES dbo.prestamos_cobranza(id)
     );
     CREATE INDEX IX_cuotas_cobranza_prestamo_fecha ON dbo.cuotas_cobranza(id_prestamo, fecha_programada, numero_cuota);
+END;
+GO
+
+/* Actualiza las restricciones en instalaciones creadas con el calendario fijo de 10 pagos. */
+IF OBJECT_ID(N'dbo.prestamos_cobranza', N'U') IS NOT NULL
+BEGIN
+    IF EXISTS (SELECT 1 FROM sys.check_constraints WHERE parent_object_id = OBJECT_ID(N'dbo.prestamos_cobranza') AND name = N'CK_prestamos_cobranza_cuotas')
+        ALTER TABLE dbo.prestamos_cobranza DROP CONSTRAINT CK_prestamos_cobranza_cuotas;
+    ALTER TABLE dbo.prestamos_cobranza ADD CONSTRAINT CK_prestamos_cobranza_cuotas CHECK (numero_cuotas >= 1);
+END;
+GO
+
+IF OBJECT_ID(N'dbo.cuotas_cobranza', N'U') IS NOT NULL
+BEGIN
+    IF EXISTS (SELECT 1 FROM sys.check_constraints WHERE parent_object_id = OBJECT_ID(N'dbo.cuotas_cobranza') AND name = N'CK_cuotas_cobranza_numero')
+        ALTER TABLE dbo.cuotas_cobranza DROP CONSTRAINT CK_cuotas_cobranza_numero;
+    ALTER TABLE dbo.cuotas_cobranza ADD CONSTRAINT CK_cuotas_cobranza_numero CHECK (numero_cuota >= 1);
 END;
 GO
 

@@ -1,3 +1,4 @@
+use administration;
 /* Historial de abonos por cliente del módulo Cobranza (base Administration). */
 IF OBJECT_ID(N'dbo.pagos_cobranzas', N'U') IS NULL
 BEGIN
