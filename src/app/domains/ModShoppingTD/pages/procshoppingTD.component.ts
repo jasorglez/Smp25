@@ -5,7 +5,7 @@ import { DomainsModule } from 'app/domains/domainsmodule';
 import { AuthService } from 'app/services/auth.service';
 import { canSeeWarehouseCleanup } from 'app/guards/warehouse-cleanup.guard';
 import { SignalsService } from 'app/services/signals.service';
-import { shoppingRouteForPermission } from './shopping-menu';
+import { shoppingIconForPermission, shoppingRouteForPermission } from './shopping-menu';
 
 @Component({
   selector: 'app-procreshuman',
@@ -28,7 +28,7 @@ export class ProcShoppingTDComponent {
         name: permission.permissionName || permission.description || identifier,
         order: Number.isFinite(Number(permission.order)) ? Number(permission.order) : 10000,
         path: shoppingRouteForPermission(identifier, permission.permissionName || permission.description),
-        icon: permission.icon || 'bi-grid',
+        icon: shoppingIconForPermission(identifier, permission.permissionName || permission.description),
       }))
       .filter(item => item.path && (item.path !== 'module-cleanup' || this.canCleanModule))
       .sort((a, b) => a.order - b.order);

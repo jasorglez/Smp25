@@ -13,6 +13,7 @@ const ROUTE_BY_PERMISSION: Record<string, string> = {
   'setupwarehouse': 'setupwarehouse', 'configuracion-de-compras': 'setupwarehouse',
   catalogs: 'catalogs', catalogos: 'catalogs', 'catalogos-de-compras': 'catalogs',
   families: 'fam-subfam', familias: 'fam-subfam', 'familias-y-subfamilias': 'fam-subfam', 'fam-subfam': 'fam-subfam',
+  project: 'projects', projects: 'projects', proyectos: 'projects',
   'module-cleanup': 'module-cleanup', cleanup: 'module-cleanup', limpieza: 'module-cleanup',
   'limpieza-de-almacen-y-compras': 'module-cleanup',
 };
@@ -21,6 +22,24 @@ export function shoppingRouteForPermission(identifier: string, permissionName?: 
   const normalize = (value: string) => String(value || '').trim().toLocaleLowerCase()
     .normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[\s_]+/g, '-');
   return ROUTE_BY_PERMISSION[normalize(identifier)] || ROUTE_BY_PERMISSION[normalize(permissionName || '')] || null;
+}
+
+const ICON_BY_ROUTE: Record<string, string> = {
+  'providers-st': 'bi-people-fill',
+  'materials-st': 'bi-archive-fill',
+  'requisitions-st': 'bi-list-task',
+  'quotes-st': 'bi-file-earmark-text',
+  'purchaseorder-st': 'bi-cart-fill',
+  catalogs: 'bi-journal-text',
+  'fam-subfam': 'bi-diagram-3',
+  setupwarehouse: 'bi-gear-fill',
+  projects: 'bi-kanban',
+  'module-cleanup': 'bi-trash3',
+};
+
+export function shoppingIconForPermission(identifier: string, permissionName?: string): string {
+  const path = shoppingRouteForPermission(identifier, permissionName);
+  return ICON_BY_ROUTE[path || ''] || 'bi-grid';
 }
 
 export const shoppingMenuPermissionGuard: CanActivateFn = route => {

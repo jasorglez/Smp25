@@ -75,5 +75,5 @@ export const environment = {
     // publicKey: 'TEST-4399133a-4676-42a2-ab85-d946370bf96a',
   },
 
-  version: '5.00.553 (19 Noviembre 2026 00:35) menus de compras por permisos',
+  version: '5.00.554 (19 Noviembre 2026 00:43) permisos de proyectos en compras',
 };

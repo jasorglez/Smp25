@@ -251,6 +251,7 @@ export class MainPageComponent implements OnInit, OnDestroy {
     'shoppingTD/setupwarehouse': 'Configuración de Compras',
     'shoppingTD/catalogs': 'Catálogos de Compras',
     'shoppingTD/fam-subfam': 'Familias de Compras',
+    'shoppingTD/projects': 'Proyectos',
     'warehousesTD/entry-st': 'Entradas de almacén',
     'warehousesTD/outings-st': 'Salidas de almacén',
     'warehousesTD/inventory-st': 'Inventario',

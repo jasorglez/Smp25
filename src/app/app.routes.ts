@@ -2620,6 +2620,12 @@ export const routes: Routes = [
             canActivate: [shoppingMenuPermissionGuard],
             loadComponent: () => import('./domains/ModShoppingTD/components/fam-subfam/fam-subfam.component').then((c) => c.FamSubfamComponent),
           },
+          {
+            path: 'projects',
+            canActivate: [shoppingMenuPermissionGuard],
+            data: { title: 'Proyectos', shoppingMenuRoute: 'projects' },
+            loadComponent: () => import('./domains/ModProjects/components/projects/projects.component').then((c) => c.ProjectsComponent),
+          },
 
         ]
       },
