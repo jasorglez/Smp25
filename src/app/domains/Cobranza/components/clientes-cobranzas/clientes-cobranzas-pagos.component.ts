@@ -335,36 +335,48 @@ export class ClientesCobranzasPagosComponent implements OnChanges, OnDestroy {
       const principal = Number(loan.montoTotal || 0);
       const interest = Number(loan.totalInteres ?? installments.reduce((sum: number, item: any) => sum + Number(item.montoInteres || 0), 0));
       const due = installments.reduce((sum: number, item: any) => sum + Number(item.montoProgramado || 0), 0);
+      const navy = '#00003F';
+      const gray = '#D3D3D3';
+      const grid = { hLineWidth: () => 0.6, vLineWidth: () => 0.6, hLineColor: () => navy, vLineColor: () => navy, paddingLeft: () => 5, paddingRight: () => 5, paddingTop: () => 4, paddingBottom: () => 4 };
       const customerName = this.customer?.nameContact || this.customer?.company || `Cliente #${this.customer?.id || loan.idCustomer}`;
-      const address = [this.customer?.address, this.customer?.neighborhood, this.customer?.city, this.customer?.state, this.customer?.cp ? `C.P. ${this.customer.cp}` : ''].filter(Boolean).join(', ');
-      const rows: any[][] = [[{ text: 'PAGO', bold: true }, { text: 'FECHA', bold: true }, { text: 'CAPITAL', bold: true, alignment: 'right' }, { text: 'INTERÉS', bold: true, alignment: 'right' }, { text: 'TOTAL', bold: true, alignment: 'right' }]];
+      const customerAddress = [this.customer?.address, this.customer?.neighborhood, this.customer?.city, this.customer?.state, this.customer?.cp ? `C.P. ${this.customer.cp}` : ''].filter(Boolean).join(', ');
+      const companyAddress = [company?.address, company?.city, company?.state, company?.cp ? `C.P. ${company.cp}` : ''].filter(Boolean).join(', ');
+      const serviceRows: any[][] = [[
+        ...['CANT', 'UNIDAD', 'CÓDIGO', 'DESCRIPCIÓN', 'P.UNITARIO', 'D1', 'D2', 'D3', 'IMPORTE'].map(label => ({ text: label, bold: true, color: '#FFFFFF', fillColor: navy, alignment: ['P.UNITARIO', 'IMPORTE'].includes(label) ? 'right' : 'center', fontSize: 7.5 })),
+      ], [
+        { text: '1', alignment: 'center' }, { text: 'SER', alignment: 'center' }, { text: String(loan.id), alignment: 'center' },
+        { text: `PRÉSTAMO · Capital ${money(principal)} · ${Number(loan.tasaInteresMensual || 0)}% mensual`, bold: true },
+        { text: money(principal), alignment: 'right' }, { text: `${Number(loan.tasaInteresMensual || 0)}%`, alignment: 'center' },
+        { text: `${installments.length} pagos`, alignment: 'center' }, { text: '—', alignment: 'center' },
+        { text: money(due), alignment: 'right', bold: true },
+      ]];
+      const rows: any[][] = [[
+        ...['PAGO', 'FECHA', 'CAPITAL', 'INTERÉS', 'IMPORTE'].map((label, index) => ({ text: label, bold: true, color: '#FFFFFF', fillColor: navy, alignment: index > 1 ? 'right' : 'center', fontSize: 8 })),
+      ]];
       for (const item of installments) rows.push([
-        String(item.numeroCuota), date(item.fechaProgramada),
+        { text: String(item.numeroCuota), alignment: 'center' }, date(item.fechaProgramada),
         { text: money(item.montoCapital ?? item.montoProgramado), alignment: 'right' },
         { text: money(item.montoInteres || 0), alignment: 'right' },
         { text: money(item.montoProgramado), alignment: 'right', bold: true },
       ]);
       const text = (value: any) => String(value || '').trim();
       const content: any[] = [
-        { columns: [logo ? { image: logo, fit: [72, 58] } : { text: '' }, { text: text(company?.name), alignment: 'center', bold: true, fontSize: 13, margin: [0, 15, 0, 0] }, logo2 ? { image: logo2, fit: [72, 58], alignment: 'right' } : { text: '' }], margin: [0, 0, 0, 10] },
-        { text: 'PAGARÉ', style: 'title', alignment: 'center', margin: [0, 0, 0, 8] },
-        { columns: [{ text: `FOLIO: ${loan.id}` }, { text: `FECHA DE EMISIÓN: ${date(loan.fechaInicio)}`, alignment: 'right' }], margin: [0, 0, 0, 8] },
-        { text: 'DATOS DEL DEUDOR', bold: true, margin: [0, 2, 0, 3] },
-        { text: `NOMBRE: ${customerName}` },
-        ...(address ? [{ text: `DOMICILIO: ${address}` }] : []),
-        ...(this.customer?.phone ? [{ text: `TELÉFONO: ${this.customer.phone}` }] : []),
-        ...(this.customer?.rfc ? [{ text: `R.F.C.: ${this.customer.rfc}` }] : []),
-        { table: { widths: ['*', '*', '*'], body: [[{ text: 'CAPITAL PRESTADO', bold: true }, { text: 'INTERÉS ORDINARIO', bold: true }, { text: 'TOTAL A PAGAR', bold: true }], [money(principal), `${Number(loan.tasaInteresMensual || 0)}% mensual sobre capital original · ${money(interest)}`, { text: money(due), bold: true }]] }, layout: 'lightHorizontalLines', margin: [0, 10, 0, 8] },
-        { text: 'DETALLE DE PAGOS', style: 'section', margin: [0, 2, 0, 5] },
-        { table: { headerRows: 1, widths: [38, 72, 92, 92, '*'], body: rows }, layout: 'lightHorizontalLines', fontSize: 8 },
-        { text: `POR ESTE PAGARÉ PROMETO INCONDICIONALMENTE PAGAR A LA ORDEN DE ${text(company?.name) || '________________'} LA CANTIDAD DE ${money(due)} (${this.amountInWords(due)} PESOS ${String(Math.round((due - Math.floor(due)) * 100)).padStart(2, '0')}/100 M.N.), CONFORME AL CALENDARIO DE PAGOS ANTERIOR, CON VENCIMIENTO FINAL EL ${date(installments[installments.length - 1]?.fechaProgramada)}. El interés ordinario fijo mensual es de ${Number(loan.tasaInteresMensual || 0)}% calculado sobre el capital original y está incluido en los importes del calendario.`, alignment: 'justify', margin: [0, 12, 0, 6], fontSize: 8.5 },
-        { text: 'En caso de incumplimiento, se aplicará una tasa moratoria del 3% mensual sobre los saldos insolutos vencidos, desde la fecha de incumplimiento y hasta el pago total, sin que por ello se entienda prorrogado el plazo.', alignment: 'justify', margin: [0, 0, 0, 14], fontSize: 8.5 },
-        { text: `LUGAR Y FECHA: ${text(company?.city || company?.location || '')} ${date(loan.fechaInicio)}`, margin: [0, 0, 0, 20] },
-        { columns: [{ text: 'ACEPTO (AMOS)', alignment: 'center', bold: true }, { text: 'AVAL', alignment: 'center', bold: true }], margin: [0, 14, 0, 22] },
-        { columns: [{ text: '________________________________\nNOMBRE Y FIRMA DEL DEUDOR', alignment: 'center', fontSize: 8 }, { text: '________________________________\nNOMBRE Y FIRMA DEL AVAL', alignment: 'center', fontSize: 8 }], margin: [0, 0, 0, 18] },
-        { text: text(company?.name), alignment: 'center', fontSize: 8, color: '#555' },
+        { columns: [logo ? { image: logo, fit: [72, 58] } : { text: text(company?.name), bold: true, fontSize: 12, color: navy, margin: [0, 12, 0, 0] }, { text: `${text(company?.name)}${companyAddress ? `\n${companyAddress}` : ''}${company?.phone ? `\nTEL.: ${company.phone}` : ''}${company?.rfc ? `\nR.F.C.: ${company.rfc}` : ''}`, alignment: 'center', fontSize: 8, margin: [0, 8, 0, 0] }, logo2 ? { image: logo2, fit: [60, 50], alignment: 'right' } : { text: '' }, { table: { widths: ['*'], body: [[{ text: 'N° NOTA DE VENTA', bold: true, color: '#FFFFFF', fillColor: navy, alignment: 'center' }], [{ text: 'SERIE-FOLIO', bold: true, alignment: 'center', fontSize: 8 }], [{ text: `PR-${loan.id}`, bold: true, alignment: 'center', fontSize: 13 }], [{ text: 'FECHA Y HORA DE EMISIÓN', bold: true, alignment: 'center', fontSize: 7 }], [{ text: `${date(loan.fechaInicio)}  ${new Date().toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit' })}`, alignment: 'center', fontSize: 8 }]] }, layout: grid }], columnGap: 5, margin: [0, 0, 0, 12] },
+        { table: { widths: ['*'], body: [[{ text: 'CLIENTE:', bold: true, color: '#FFFFFF', fillColor: navy, fontSize: 9 }], [{ columns: [{ width: '60%', stack: [{ text: customerName, bold: true }, ...(this.customer?.rfc ? [{ text: `R.F.C.: ${this.customer.rfc}` }] : []), ...(customerAddress ? [{ text: customerAddress }] : [])] }, { width: '40%', stack: [...(this.customer?.phone ? [{ text: `Teléfono: ${this.customer.phone}` }] : []), { text: `Vendedor: ${text(company?.name)}` }, { text: `Observaciones: Préstamo #${loan.id}` }] }], fillColor: gray, margin: [6, 6, 6, 6] }]] }, layout: grid, margin: [0, 0, 0, 7] },
+        { table: { headerRows: 1, widths: [28, 40, 40, '*', 60, 34, 47, 26, 68], body: serviceRows }, layout: grid, fontSize: 8 },
+        { table: { widths: ['*'], body: [[{ text: 'DETALLE DE PAGOS', bold: true, color: '#FFFFFF', fillColor: navy, fontSize: 8 }]] }, layout: grid, margin: [0, 7, 0, 0] },
+        { table: { headerRows: 1, widths: [42, 78, '*', '*', '*'], body: rows }, layout: grid, fontSize: 8 },
+        { table: { widths: ['68%', '32%'], body: [[
+          { stack: [{ text: 'PAGO EN PARCIALIDADES', bold: true }, { text: 'MÉTODO DE PAGO: POR DEFINIR' }, { text: `CONDICIONES DE PAGO: CRÉDITO A ${installments.length} ${installments.length === 1 ? 'PAGO' : 'PAGOS'}` }, { text: `PRIMER PAGO: ${date(installments[0]?.fechaProgramada)}` }] , fillColor: '#FFFFFF', margin: [6, 7, 6, 7] },
+          { table: { widths: ['*', 'auto'], body: [[{ text: 'TOTAL', bold: true, color: '#FFFFFF', fillColor: navy, colSpan: 2, alignment: 'center' }, {}], [{ text: 'CAPITAL:' }, { text: money(principal), alignment: 'right' }], [{ text: `INTERÉS (${Number(loan.tasaInteresMensual || 0)}% mensual):` }, { text: money(interest), alignment: 'right' }], [{ text: 'TOTAL A PAGAR:', bold: true }, { text: money(due), alignment: 'right', bold: true }]].map(row => row.map(cell => ({ ...cell, fillColor: cell.fillColor || gray }))) }, layout: grid, fontSize: 8 },
+        ]] }, layout: { hLineWidth: () => 0, vLineWidth: () => 0 }, margin: [0, 7, 0, 7] },
+        { text: `CANTIDAD CON LETRA: (${this.amountInWords(due)} PESOS ${String(Math.round((due - Math.floor(due)) * 100)).padStart(2, '0')}/100 M.N.)`, bold: true, margin: [3, 2, 3, 8], fontSize: 8 },
+        { table: { widths: ['*'], body: [
+          [{ text: `PAGARÉ: BUENO POR ${money(due)}`, bold: true, color: '#FFFFFF', fillColor: navy, alignment: 'center', fontSize: 10 }],
+          [{ text: `LUGAR Y FECHA: ${text(company?.city || company?.location || '')} ${date(loan.fechaInicio)}\n\nPOR ESTE PAGARÉ PROMETO INCONDICIONALMENTE PAGAR A LA ORDEN DE ${text(company?.name) || '________________'} LA CANTIDAD DE ${money(due)} (${this.amountInWords(due)} PESOS ${String(Math.round((due - Math.floor(due)) * 100)).padStart(2, '0')}/100 M.N.) CONFORME AL CALENDARIO DE PAGOS. El capital prestado es ${money(principal)} y genera un interés ordinario fijo de ${Number(loan.tasaInteresMensual || 0)}% mensual, calculado sobre el capital original; este interés está desglosado por pago en la nota. El vencimiento final es el ${date(installments[installments.length - 1]?.fechaProgramada)}. En caso de incumplimiento, se aplicará una tasa moratoria del 3% mensual sobre los saldos insolutos vencidos, desde la fecha de incumplimiento y hasta el pago total, sin que por ello se entienda prorrogado el plazo.\n\nNOMBRE Y DATOS DEL DEUDOR:\nNOMBRE: ${customerName}${customerAddress ? `\nDIRECCIÓN: ${customerAddress}` : ''}${this.customer?.phone ? `\nTELÉFONO: ${this.customer.phone}` : ''}\n\nACEPTO (AMOS)\n\n\n____________________________________________\nNOMBRE Y FIRMA DEL DEUDOR`, fillColor: gray, alignment: 'justify', margin: [8, 8, 8, 8], fontSize: 8 }],
+        ] }, layout: grid, margin: [0, 0, 0, 0] },
       ];
-      await this.pdfPreview.show((pdfMake as any).createPdf({ pageSize: 'LETTER', pageMargins: [35, 28, 35, 30], content, styles: { title: { fontSize: 15, bold: true }, section: { fontSize: 10, bold: true } }, defaultStyle: { font: 'Roboto', fontSize: 9 } }), `Pagaré préstamo #${loan.id}`, `Pagare_prestamo_${loan.id}.pdf`);
+      await this.pdfPreview.show((pdfMake as any).createPdf({ pageSize: 'LETTER', pageMargins: [24, 20, 24, 24], content, defaultStyle: { font: 'Roboto', fontSize: 8 } }), `Nota de venta y pagaré #${loan.id}`, `Nota_venta_pagare_${loan.id}.pdf`);
     } catch (error) {
       console.error('No se pudo generar el pagaré:', error);
       alerts.basicAlert('Préstamo guardado', 'El préstamo se guardó, pero no se pudo generar el pagaré PDF.', 'warning');
