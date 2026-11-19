@@ -43,11 +43,11 @@ import { catchError, forkJoin, from, lastValueFrom, map, mergeMap, of, switchMap
       </div>
       <div *ngIf="isTransferEntry()" class="alert alert-info py-1 px-2 mb-2 small">
         <i class="bi bi-info-circle me-1"></i>
-        Los materiales con existencia en el almacén origen se cargan en el detalle. Captura las cantidades a transferir y guarda.
+        Agrega solo los materiales que vas a transferir; el selector muestra los que tienen existencia en el almacén origen.
       </div>
       <div *ngIf="isStandardOutgoingEntry()" class="alert alert-info py-1 px-2 mb-2 small">
-        <i class="bi bi-info-circle me-1"></i>
-        Agrega únicamente los materiales que vas a retirar. El selector muestra los que tienen existencia en este almacén.
+        <i class="bi bi-exclamation-circle me-1"></i>
+        Esta salida no tiene Vale de Entrada vinculado; no se cargarán partidas automáticamente. Agrega solo lo que vas a retirar.
       </div>
       <div *ngIf="(isStockRestrictedEntry() || isStandardOutgoingEntry()) && loadingWarehouseStock" class="alert alert-info py-2 px-2 mb-2 small" role="status" aria-live="polite">
         <div class="d-flex align-items-center gap-2 mb-1">
@@ -63,7 +63,7 @@ import { catchError, forkJoin, from, lastValueFrom, map, mergeMap, of, switchMap
         Los materiales con conversión se capturan en su unidad origen; el inventario se guarda en la unidad destino configurada.
       </div>
       <div class="detail-actions d-flex justify-content-end mb-2">
-        <button *ngIf="!isStockRestrictedEntry()" class="btn btn-primary btn-sm me-2" (click)="addItem()">
+        <button *ngIf="!isInventoryAdjustmentEntry()" class="btn btn-primary btn-sm me-2" (click)="addItem()">
           <i class="bi bi-plus-lg"></i> Agregar
         </button>
         <button *ngIf="entryData?.idOc > 0" class="btn btn-secondary btn-sm me-2" (click)="importarItemsDeOC()"
@@ -194,6 +194,9 @@ export class DetailCellRendererEntryItemsComponent {
     this.detailType = params.data.detailType || 'items';
 
     if (this.detailType === 'items') {
+      if (this.isStandardOutgoingEntry()) {
+        alerts.toastAlert('Esta salida no tiene Vale de Entrada; no se cargarán partidas automáticamente.', 'warning', 4000);
+      }
       this.loadMaterials();
       this.loadData();
     } else if (this.detailType === 'report') {
@@ -679,7 +682,7 @@ export class DetailCellRendererEntryItemsComponent {
 
   addItem() {
     const tempId = `temp_item_${this.tempIdCounter++}`;
-    const startsAtZero = this.isInitialInventoryEntry() || this.isInventoryAdjustmentEntry();
+    const startsAtZero = this.isInitialInventoryEntry() || this.isInventoryAdjustmentEntry() || this.isTransferEntry();
     const newItem = {
       id: tempId,
       code: '',
@@ -1238,9 +1241,9 @@ export class DetailCellRendererEntryItemsComponent {
     return Number(stockByMaterialBrand.get(`${materialId}|${brandId == null ? 'none' : brandId}`) || 0);
   }
 
-  /** Loads stock rows automatically only for transfer and inventory adjustment details. */
+  /** Loads stock rows automatically only for inventory adjustment details. */
   private seedStockRowsWhenReady(): void {
-    if (!this.isStockRestrictedEntry() || !this.stockRowsLoaded || !this.detailRowsLoaded) return;
+    if (!this.isInventoryAdjustmentEntry() || !this.stockRowsLoaded || !this.detailRowsLoaded) return;
     if (Number(this.entryData?.idAutoriza || 0) > 0) return;
     const rows = this.materials.flatMap(material => (material.stockOptions || [])
       .filter((stock: any) => Number(stock.availableStock) > 0)
