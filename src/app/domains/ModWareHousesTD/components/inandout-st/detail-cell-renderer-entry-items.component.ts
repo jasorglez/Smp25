@@ -47,7 +47,7 @@ import { catchError, forkJoin, from, lastValueFrom, map, mergeMap, of, switchMap
       </div>
       <div *ngIf="isStandardOutgoingEntry()" class="alert alert-info py-1 px-2 mb-2 small">
         <i class="bi bi-info-circle me-1"></i>
-        Los materiales con existencia en este almacén se cargan en el detalle con cantidad cero. Captura solo lo que vas a retirar y guarda.
+        Agrega únicamente los materiales que vas a retirar. El selector muestra los que tienen existencia en este almacén.
       </div>
       <div *ngIf="(isStockRestrictedEntry() || isStandardOutgoingEntry()) && loadingWarehouseStock" class="alert alert-info py-2 px-2 mb-2 small" role="status" aria-live="polite">
         <div class="d-flex align-items-center gap-2 mb-1">
@@ -63,7 +63,7 @@ import { catchError, forkJoin, from, lastValueFrom, map, mergeMap, of, switchMap
         Los materiales con conversión se capturan en su unidad origen; el inventario se guarda en la unidad destino configurada.
       </div>
       <div class="detail-actions d-flex justify-content-end mb-2">
-        <button *ngIf="!isStockRestrictedEntry() && !isStandardOutgoingEntry()" class="btn btn-primary btn-sm me-2" (click)="addItem()">
+        <button *ngIf="!isStockRestrictedEntry()" class="btn btn-primary btn-sm me-2" (click)="addItem()">
           <i class="bi bi-plus-lg"></i> Agregar
         </button>
         <button *ngIf="entryData?.idOc > 0" class="btn btn-secondary btn-sm me-2" (click)="importarItemsDeOC()"
@@ -1238,9 +1238,9 @@ export class DetailCellRendererEntryItemsComponent {
     return Number(stockByMaterialBrand.get(`${materialId}|${brandId == null ? 'none' : brandId}`) || 0);
   }
 
-  /** Auto-loads positive-stock material/brand rows into this detail grid, with capture quantity zero. */
+  /** Loads stock rows automatically only for transfer and inventory adjustment details. */
   private seedStockRowsWhenReady(): void {
-    if (!(this.isStockRestrictedEntry() || this.isStandardOutgoingEntry()) || !this.stockRowsLoaded || !this.detailRowsLoaded) return;
+    if (!this.isStockRestrictedEntry() || !this.stockRowsLoaded || !this.detailRowsLoaded) return;
     if (Number(this.entryData?.idAutoriza || 0) > 0) return;
     const rows = this.materials.flatMap(material => (material.stockOptions || [])
       .filter((stock: any) => Number(stock.availableStock) > 0)

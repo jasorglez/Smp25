@@ -75,5 +75,5 @@ export const environment = {
     // publicKey: 'TEST-4399133a-4676-42a2-ab85-d946370bf96a',
   },
 
-  version: '5.00.549 (18 Noviembre 2026 23:39) descripción de tipos de movimiento',
+  version: '5.00.550 (18 Noviembre 2026 23:52) captura manual de salidas normales',
 };
