@@ -86,12 +86,12 @@ import { Base64EncodeService } from 'app/services/base64encode.service';
         <div class="card-header d-flex justify-content-between align-items-center flex-wrap gap-2">
           <div><strong>Préstamo #{{ loan.id }}</strong><span class="ms-2">Capital {{ loan.montoTotal | currency:'MXN' }}</span><small class="text-muted ms-2">{{ loan.numeroCuotas || loan.cuotas?.length || 0 }} pagos desde {{ loan.fechaPrimerPago | date:'dd/MM/yyyy' }} · Interés {{ loan.tasaInteresMensual || 0 }}% mensual</small></div>
           <div class="d-flex align-items-center gap-2"><span class="badge" [class.bg-success]="loanBalance(loan) <= 0" [class.bg-warning]="loanBalance(loan) > 0">Saldo {{ loanBalance(loan) | currency:'MXN' }}</span>
-            <button class="btn btn-sm btn-outline-danger" (click)="generatePromissoryNote(loan)" title="Previsualizar pagaré"><i class="bi bi-file-earmark-pdf"></i> Pagaré</button>
+            <button class="btn btn-sm btn-outline-primary" (click)="toggleLoanDetail(loan)" [attr.aria-expanded]="isLoanExpanded(loan)" [attr.aria-label]="(isLoanExpanded(loan) ? 'Ocultar' : 'Ver') + ' detalle del préstamo ' + loan.id"><i class="bi" [class.bi-chevron-down]="!isLoanExpanded(loan)" [class.bi-chevron-up]="isLoanExpanded(loan)"></i> {{ isLoanExpanded(loan) ? 'Ocultar detalle' : 'Ver detalle' }}</button>
             <button class="btn btn-sm btn-primary position-relative" (click)="saveChanges(loan)" [disabled]="saving || !hasChanges(loan)"><i class="bi bi-floppy"></i> Guardar<span *ngIf="hasChanges(loan)" class="position-absolute top-0 start-100 translate-middle p-2 bg-danger border border-light rounded-circle"></span></button>
             <button class="btn btn-sm btn-warning" (click)="revertChanges(loan)" [disabled]="saving || !hasChanges(loan)"><i class="bi bi-arrow-clockwise"></i> Deshacer</button>
           </div>
         </div>
-        <div class="card-body"><div class="small mb-2">Interés total: {{ loan.totalInteres || 0 | currency:'MXN' }} · A pagar: {{ payableTotal(loan) | currency:'MXN' }}</div><ag-grid-angular class="ag-theme-quartz small-text-ag-grid d-block" style="width:100%;height:320px" [rowData]="loan.cuotas" [columnDefs]="installmentColumns" [defaultColDef]="defaultColDef" [localeText]="AG_GRID_LOCALE_ES" [rowSelection]="'single'" [stopEditingWhenCellsLoseFocus]="true" (cellValueChanged)="onDateChanged($event)"></ag-grid-angular>
+        <div class="card-body" *ngIf="isLoanExpanded(loan)"><div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-2"><span class="small">Interés total: {{ loan.totalInteres || 0 | currency:'MXN' }} · A pagar: {{ payableTotal(loan) | currency:'MXN' }}</span><button class="btn btn-sm btn-outline-danger" (click)="generatePromissoryNote(loan)" title="Previsualizar el pagaré de este préstamo"><i class="bi bi-file-earmark-pdf"></i> PDF de este préstamo</button></div><ag-grid-angular class="ag-theme-quartz small-text-ag-grid d-block" style="width:100%;height:320px" [rowData]="loan.cuotas" [columnDefs]="installmentColumns" [defaultColDef]="defaultColDef" [localeText]="AG_GRID_LOCALE_ES" [rowSelection]="'single'" [stopEditingWhenCellsLoseFocus]="true" (cellValueChanged)="onDateChanged($event)"></ag-grid-angular>
           <div *ngFor="let installment of loan.cuotas"><div *ngIf="activeInstallmentId === installment.id" class="border rounded p-2 mt-2"><strong>Abonos de la cuota {{ installment.numeroCuota }}</strong><div class="row g-2 align-items-end py-2">
               <div class="col-md-2"><label class="form-label small">Fecha recibida</label><input class="form-control form-control-sm" type="date" [(ngModel)]="abonoForm.fechaPago"></div>
               <div class="col-md-2"><label class="form-label small">Monto recibido (saldo préstamo: {{ loanBalance(loan) | currency:'MXN' }})</label><input class="form-control form-control-sm" type="number" min="0.01" step="0.01" [max]="loanBalance(loan)" [(ngModel)]="abonoForm.monto"></div>
@@ -130,6 +130,7 @@ export class ClientesCobranzasPagosComponent implements OnChanges, OnDestroy {
   users: any[] = [];
   openCashTurns: any[] = [];
   loans: any[] = [];
+  expandedLoanIds = new Set<number>();
   loading = false;
   saving = false;
   showLoanForm = false;
@@ -177,6 +178,13 @@ export class ClientesCobranzasPagosComponent implements OnChanges, OnDestroy {
   async saveChanges(loan: any): Promise<void> { const changed = loan.cuotas.filter((item: any) => item.fechaProgramada !== this.originalDates.get(item.id)); if (!changed.length) return; this.saving = true; try { for (const item of changed) await firstValueFrom(this.customersService.updateCobranzaInstallmentDate(item.id, { fechaProgramada: item.fechaProgramada })); this.saving = false; this.loadLoans(); this.balancesChanged.emit(); alerts.basicAlert('Fechas guardadas', 'Se actualizó el calendario de pagos.', 'success'); } catch (error) { console.error(error); this.saving = false; alerts.basicAlert('Error', 'No se pudieron guardar todas las fechas. Recarga el detalle para revisar cuáles se guardaron.', 'error'); } }
 
   get totalPaid(): number { return this.loans.reduce((sum, loan) => sum + loan.cuotas.reduce((s: number, q: any) => s + this.installmentPaid(q), 0), 0); }
+  isLoanExpanded(loan: any): boolean { return this.expandedLoanIds.has(Number(loan?.id)); }
+  toggleLoanDetail(loan: any): void {
+    const id = Number(loan?.id);
+    if (!id) return;
+    if (this.expandedLoanIds.has(id)) this.expandedLoanIds.delete(id);
+    else this.expandedLoanIds.add(id);
+  }
   ngOnChanges(): void {
     this.loadLoans(); this.loadPaymentTypes(); this.loadUsers(); this.loadOpenCashTurns();
     if (!this.loanRefreshTimer) this.loanRefreshTimer = setInterval(() => void this.refreshLoansIfChanged(), 5000);
@@ -317,7 +325,7 @@ export class ClientesCobranzasPagosComponent implements OnChanges, OnDestroy {
         console.warn('El préstamo se guardó, pero no se actualizó el listado:', refreshError);
         if (saved) this.setLoans([...this.loans, saved]);
       }
-      if (createdLoan) await this.generatePromissoryNote(createdLoan);
+      if (createdLoan?.id) this.expandedLoanIds.add(Number(createdLoan.id));
     } catch (error: any) { console.error(error); this.saving = false; alerts.basicAlert('Error', error?.error?.error || 'No se pudo crear el préstamo y su calendario de pagos.', 'error'); }
   }
 
@@ -338,6 +346,8 @@ export class ClientesCobranzasPagosComponent implements OnChanges, OnDestroy {
       const navy = '#00003F';
       const gray = '#D3D3D3';
       const grid = { hLineWidth: () => 0.6, vLineWidth: () => 0.6, hLineColor: () => navy, vLineColor: () => navy, paddingLeft: () => 5, paddingRight: () => 5, paddingTop: () => 4, paddingBottom: () => 4 };
+      const scheduleGrid = { ...grid, paddingLeft: () => 3, paddingRight: () => 3, paddingTop: () => 1, paddingBottom: () => 1 };
+      const scheduleFontSize = installments.length > 16 ? 6.5 : installments.length > 10 ? 7 : 7.5;
       const customerName = this.customer?.nameContact || this.customer?.company || `Cliente #${this.customer?.id || loan.idCustomer}`;
       const customerAddress = [this.customer?.address, this.customer?.neighborhood, this.customer?.city, this.customer?.state, this.customer?.cp ? `C.P. ${this.customer.cp}` : ''].filter(Boolean).join(', ');
       const companyAddress = [company?.address, company?.city, company?.state, company?.cp ? `C.P. ${company.cp}` : ''].filter(Boolean).join(', ');
@@ -365,18 +375,18 @@ export class ClientesCobranzasPagosComponent implements OnChanges, OnDestroy {
         { table: { widths: ['*'], body: [[{ text: 'CLIENTE:', bold: true, color: '#FFFFFF', fillColor: navy, fontSize: 9 }], [{ columns: [{ width: '60%', stack: [{ text: customerName, bold: true }, ...(this.customer?.rfc ? [{ text: `R.F.C.: ${this.customer.rfc}` }] : []), ...(customerAddress ? [{ text: customerAddress }] : [])] }, { width: '40%', stack: [...(this.customer?.phone ? [{ text: `Teléfono: ${this.customer.phone}` }] : []), { text: `Vendedor: ${text(company?.name)}` }, { text: `Observaciones: Préstamo #${loan.id}` }] }], fillColor: gray, margin: [6, 6, 6, 6] }]] }, layout: grid, margin: [0, 0, 0, 7] },
         { table: { headerRows: 1, widths: [28, 40, 40, '*', 60, 34, 47, 26, 68], body: serviceRows }, layout: grid, fontSize: 8 },
         { table: { widths: ['*'], body: [[{ text: 'DETALLE DE PAGOS', bold: true, color: '#FFFFFF', fillColor: navy, fontSize: 8 }]] }, layout: grid, margin: [0, 7, 0, 0] },
-        { table: { headerRows: 1, widths: [42, 78, '*', '*', '*'], body: rows }, layout: grid, fontSize: 8 },
+        { table: { headerRows: 1, widths: [42, 78, '*', '*', '*'], body: rows }, layout: scheduleGrid, fontSize: scheduleFontSize },
         { table: { widths: ['68%', '32%'], body: [[
           { stack: [{ text: 'PAGO EN PARCIALIDADES', bold: true }, { text: 'MÉTODO DE PAGO: POR DEFINIR' }, { text: `CONDICIONES DE PAGO: CRÉDITO A ${installments.length} ${installments.length === 1 ? 'PAGO' : 'PAGOS'}` }, { text: `PRIMER PAGO: ${date(installments[0]?.fechaProgramada)}` }] , fillColor: '#FFFFFF', margin: [6, 7, 6, 7] },
-          { table: { widths: ['*', 'auto'], body: [[{ text: 'TOTAL', bold: true, color: '#FFFFFF', fillColor: navy, colSpan: 2, alignment: 'center' }, {}], [{ text: 'CAPITAL:' }, { text: money(principal), alignment: 'right' }], [{ text: `INTERÉS (${Number(loan.tasaInteresMensual || 0)}% mensual):` }, { text: money(interest), alignment: 'right' }], [{ text: 'TOTAL A PAGAR:', bold: true }, { text: money(due), alignment: 'right', bold: true }]].map(row => row.map(cell => ({ ...cell, fillColor: cell.fillColor || gray }))) }, layout: grid, fontSize: 8 },
+          { table: { widths: ['*', 'auto'], body: [[{ text: 'TOTAL', bold: true, color: '#FFFFFF', fillColor: navy, colSpan: 2, alignment: 'center' }, {}], [{ text: 'CAPITAL:' }, { text: money(principal), alignment: 'right' }], [{ text: `INTERÉS (${Number(loan.tasaInteresMensual || 0)}% mensual):` }, { text: money(interest), alignment: 'right' }], [{ text: 'TOTAL A PAGAR:', bold: true }, { text: money(due), alignment: 'right', bold: true }]].map(row => row.map(cell => Object.keys(cell).length ? { ...cell, fillColor: cell.fillColor || gray } : cell)) }, layout: grid, fontSize: 8 },
         ]] }, layout: { hLineWidth: () => 0, vLineWidth: () => 0 }, margin: [0, 7, 0, 7] },
         { text: `CANTIDAD CON LETRA: (${this.amountInWords(due)} PESOS ${String(Math.round((due - Math.floor(due)) * 100)).padStart(2, '0')}/100 M.N.)`, bold: true, margin: [3, 2, 3, 8], fontSize: 8 },
         { table: { widths: ['*'], body: [
           [{ text: `PAGARÉ: BUENO POR ${money(due)}`, bold: true, color: '#FFFFFF', fillColor: navy, alignment: 'center', fontSize: 10 }],
-          [{ text: `LUGAR Y FECHA: ${text(company?.city || company?.location || '')} ${date(loan.fechaInicio)}\n\nPOR ESTE PAGARÉ PROMETO INCONDICIONALMENTE PAGAR A LA ORDEN DE ${text(company?.name) || '________________'} LA CANTIDAD DE ${money(due)} (${this.amountInWords(due)} PESOS ${String(Math.round((due - Math.floor(due)) * 100)).padStart(2, '0')}/100 M.N.) CONFORME AL CALENDARIO DE PAGOS. El capital prestado es ${money(principal)} y genera un interés ordinario fijo de ${Number(loan.tasaInteresMensual || 0)}% mensual, calculado sobre el capital original; este interés está desglosado por pago en la nota. El vencimiento final es el ${date(installments[installments.length - 1]?.fechaProgramada)}. En caso de incumplimiento, se aplicará una tasa moratoria del 3% mensual sobre los saldos insolutos vencidos, desde la fecha de incumplimiento y hasta el pago total, sin que por ello se entienda prorrogado el plazo.\n\nNOMBRE Y DATOS DEL DEUDOR:\nNOMBRE: ${customerName}${customerAddress ? `\nDIRECCIÓN: ${customerAddress}` : ''}${this.customer?.phone ? `\nTELÉFONO: ${this.customer.phone}` : ''}\n\nACEPTO (AMOS)\n\n\n____________________________________________\nNOMBRE Y FIRMA DEL DEUDOR`, fillColor: gray, alignment: 'justify', margin: [8, 8, 8, 8], fontSize: 8 }],
+          [{ text: `LUGAR Y FECHA: ${text(company?.city || company?.location || '')} ${date(loan.fechaInicio)}\n\nPOR ESTE PAGARÉ PROMETO INCONDICIONALMENTE PAGAR A LA ORDEN DE ${text(company?.name) || '________________'} LA CANTIDAD DE ${money(due)} (${this.amountInWords(due)} PESOS ${String(Math.round((due - Math.floor(due)) * 100)).padStart(2, '0')}/100 M.N.) CONFORME AL CALENDARIO DE PAGOS. El capital prestado es ${money(principal)} y genera un interés ordinario fijo de ${Number(loan.tasaInteresMensual || 0)}% mensual, calculado sobre el capital original; este interés está desglosado por pago en la nota. El vencimiento final es el ${date(installments[installments.length - 1]?.fechaProgramada)}. En caso de incumplimiento, se aplicará una tasa moratoria del 3% mensual sobre los saldos insolutos vencidos, desde la fecha de incumplimiento y hasta el pago total, sin que por ello se entienda prorrogado el plazo.\n\nNOMBRE Y DATOS DEL DEUDOR:\nNOMBRE: ${customerName}${customerAddress ? `\nDIRECCIÓN: ${customerAddress}` : ''}${this.customer?.phone ? `\nTELÉFONO: ${this.customer.phone}` : ''}\n\nACEPTO (AMOS)\n\n____________________________________________`, fillColor: gray, alignment: 'justify', margin: [8, 5, 8, 5], fontSize: 7.5 }],
         ] }, layout: grid, margin: [0, 0, 0, 0] },
       ];
-      await this.pdfPreview.show((pdfMake as any).createPdf({ pageSize: 'LETTER', pageMargins: [24, 20, 24, 24], content, defaultStyle: { font: 'Roboto', fontSize: 8 } }), `Nota de venta y pagaré #${loan.id}`, `Nota_venta_pagare_${loan.id}.pdf`);
+      await this.pdfPreview.show((pdfMake as any).createPdf({ pageSize: 'LETTER', pageMargins: [20, 14, 20, 16], background: () => ({ canvas: [{ type: 'rect', x: 0, y: 0, w: 612, h: 792, color: '#FFFFFF' }] }), content, defaultStyle: { font: 'Roboto', fontSize: 7.5 } }), `Nota de venta y pagaré #${loan.id}`, `Nota_venta_pagare_${loan.id}.pdf`);
     } catch (error) {
       console.error('No se pudo generar el pagaré:', error);
       alerts.basicAlert('Préstamo guardado', 'El préstamo se guardó, pero no se pudo generar el pagaré PDF.', 'warning');

@@ -45,12 +45,21 @@ export class PdfPreviewService {
     }
 
     return new Promise((resolve) => {
+      let settled = false;
+      const timeout = setTimeout(() => {
+        if (settled || requestId !== this.requestId) return;
+        settled = true;
+        this.stateSignal.set({ open: true, loading: false, title, viewerUrl: null, error: 'El PDF tardó demasiado en prepararse. Cierra la vista previa e inténtalo de nuevo.', zoom: 100, fileName: this.fileName });
+        resolve();
+      }, 30000);
       try {
         pdf.getBlob((blob: Blob) => {
-          if (requestId !== this.requestId) {
+          if (settled || requestId !== this.requestId) {
             resolve();
             return;
           }
+          settled = true;
+          clearTimeout(timeout);
           if (!(blob instanceof Blob) || blob.size === 0) {
             this.stateSignal.set({ open: true, loading: false, title, viewerUrl: null, error: 'No se pudo crear el archivo PDF.', zoom: 100, fileName: this.fileName });
             resolve();
@@ -63,6 +72,8 @@ export class PdfPreviewService {
           resolve();
         });
       } catch (error) {
+        settled = true;
+        clearTimeout(timeout);
         if (requestId === this.requestId) {
           const detail = error instanceof Error ? error.message : String(error || 'Error desconocido');
           this.stateSignal.set({ open: true, loading: false, title, viewerUrl: null, error: detail, zoom: 100, fileName: this.fileName });
