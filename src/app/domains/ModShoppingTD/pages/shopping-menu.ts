@@ -7,8 +7,9 @@ const ROUTE_BY_PERMISSION: Record<string, string> = {
   materials: 'materials-st', materiales: 'materials-st', 'materials-st': 'materials-st',
   requisitions: 'requisitions-st', requisicion: 'requisitions-st', requisiciones: 'requisitions-st', 'requisitions-st': 'requisitions-st',
   quotes: 'quotes-st', cotizacion: 'quotes-st', cotizaciones: 'quotes-st', 'quotes-st': 'quotes-st',
-  purchaseorder: 'purchaseorder-st', 'purchaseorder-st': 'purchaseorder-st', 'purchase-orders': 'purchaseorder-st',
-  'orden-compra': 'purchaseorder-st', 'orden-de-compra': 'purchaseorder-st', 'ordenes-de-compra': 'purchaseorder-st',
+  purchaseorder: 'purchaseorder-st', 'purchase-order': 'purchaseorder-st', 'purchase-orders': 'purchaseorder-st', 'purchaseorder-st': 'purchaseorder-st',
+  'orden-compra': 'purchaseorder-st', 'orden-de-compra': 'purchaseorder-st', 'orden-de-compras': 'purchaseorder-st',
+  'ordenes-de-compra': 'purchaseorder-st', 'ordenes-de-compras': 'purchaseorder-st',
   setup: 'setupwarehouse', config: 'setupwarehouse', configuracion: 'setupwarehouse',
   'setupwarehouse': 'setupwarehouse', 'configuracion-de-compras': 'setupwarehouse',
   catalogs: 'catalogs', catalogos: 'catalogs', 'catalogos-de-compras': 'catalogs',
@@ -19,7 +20,9 @@ const ROUTE_BY_PERMISSION: Record<string, string> = {
 };
 
 export function shoppingRouteForPermission(identifier: string, permissionName?: string): string | null {
-  const normalize = (value: string) => String(value || '').trim().toLocaleLowerCase()
+  const normalize = (value: string) => String(value || '').trim()
+    .replace(/([a-z0-9])([A-Z])/g, '$1-$2')
+    .toLocaleLowerCase()
     .normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[\s_]+/g, '-');
   return ROUTE_BY_PERMISSION[normalize(identifier)] || ROUTE_BY_PERMISSION[normalize(permissionName || '')] || null;
 }
