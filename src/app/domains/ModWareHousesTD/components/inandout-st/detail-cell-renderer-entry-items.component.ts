@@ -1489,6 +1489,13 @@ export class DetailCellRendererEntryItemsComponent {
       const destinationWarehouseName = destinationWarehouse
         ? destinationWarehouse.nombreAlmacen || destinationWarehouse.nameWarehouse || destinationWarehouse.name || destinationWarehouse.description
         : destinationWarehouseId ? `Almacén #${destinationWarehouseId}` : '';
+      const sourceWarehouseId = Number(this.entryData?.idWarehouse || this.context?.idWarehouse || 0);
+      const sourceWarehouse = (this.context?.componentParent?.warehouses || []).find((warehouse: any) =>
+        Number(warehouse.idAlmacen ?? warehouse.idWarehouse ?? warehouse.id) === sourceWarehouseId
+      );
+      const sourceWarehouseName = sourceWarehouse
+        ? sourceWarehouse.nombreAlmacen || sourceWarehouse.nameWarehouse || sourceWarehouse.name || sourceWarehouse.description
+        : sourceWarehouseId ? `Almacén #${sourceWarehouseId}` : '';
       const movementCatalog = (this.context?.componentParent?.catalogs || []).find((catalog: any) =>
         Number(catalog.id) === Number(this.entryData?.idType)
       );
@@ -1498,6 +1505,7 @@ export class DetailCellRendererEntryItemsComponent {
         sourceEntryFolio: sourceEntry?.folio || '',
         isTransfer: this.isTransferEntry(),
         movementTypeName: movementCatalog?.description || movementCatalog?.name || '',
+        sourceWarehouseName,
         destinationWarehouseName
       };
 

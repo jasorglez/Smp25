@@ -193,6 +193,9 @@ export class PdfReportsService {
                   widths: ['40%', '60%'],
                   body: [
                     ['Fecha Entrega', entryData.deliveryDate ? new Date(entryData.deliveryDate).toLocaleDateString('es-MX') : 'N/A'],
+                    ...(entryData.type === 'IN'
+                      ? [['Almacén Origen', entryData.sourceWarehouseName || 'No especificado']]
+                      : []),
                     ['Tipo Movimiento', `${entryData.movementTypeName || 'No especificado'}${entryData.isTransfer
                       ? ` · Almacén destino: ${entryData.destinationWarehouseName || 'No especificado'}`
                       : ''}`],
