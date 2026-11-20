@@ -92,7 +92,20 @@ import { Base64EncodeService } from 'app/services/base64encode.service';
             <button class="btn btn-sm btn-warning" (click)="revertChanges(loan)" [disabled]="saving || !hasChanges(loan)"><i class="bi bi-arrow-clockwise"></i> Deshacer</button>
           </div>
         </div>
-        <div class="card-body" *ngIf="isLoanExpanded(loan)"><div class="row g-2 align-items-end mb-3"><div class="col-md-4"><label class="form-label small mb-1">Consecutivo de nota de venta</label><input class="form-control form-control-sm" type="text" maxlength="50" [(ngModel)]="loan.numeroNotaVentaEdit" placeholder="Ej. 000123"></div><div class="col-auto"><button class="btn btn-sm btn-success" (click)="saveLoanReceiptNumber(loan)" [disabled]="saving || !hasReceiptNumberChanges(loan)"><i class="bi bi-floppy"></i> Guardar consecutivo</button></div></div><div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-2"><span class="small">Interés total: {{ loan.totalInteres || 0 | currency:'MXN' }} · A pagar: {{ payableTotal(loan) | currency:'MXN' }}</span><button class="btn btn-sm btn-outline-danger" (click)="generatePromissoryNote(loan)" title="Previsualizar el pagaré de este préstamo"><i class="bi bi-file-earmark-pdf"></i> PDF de este préstamo</button></div><ag-grid-angular class="ag-theme-quartz small-text-ag-grid d-block" style="width:100%;height:320px" [rowData]="loan.cuotas" [columnDefs]="installmentColumns" [defaultColDef]="defaultColDef" [localeText]="AG_GRID_LOCALE_ES" [rowSelection]="'single'" [stopEditingWhenCellsLoseFocus]="true" (cellValueChanged)="onDateChanged($event)"></ag-grid-angular>
+        <div class="card-body" *ngIf="isLoanExpanded(loan)">
+          <div class="row g-2 align-items-end mb-3">
+            <div class="col-md-2"><label class="form-label small mb-1">Consecutivo nota</label><input class="form-control form-control-sm" type="text" maxlength="50" [(ngModel)]="loan.editForm.numeroNotaVenta" placeholder="Ej. 000123"></div>
+            <div class="col-md-2"><label class="form-label small mb-1">Capital</label><input class="form-control form-control-sm" type="number" min="0.01" step="0.01" [(ngModel)]="loan.editForm.montoTotal" [disabled]="hasLoanPayments(loan)"></div>
+            <div class="col-md-2"><label class="form-label small mb-1">Interés mensual (%)</label><input class="form-control form-control-sm" type="number" min="0" max="100" step="0.01" [(ngModel)]="loan.editForm.tasaInteresMensual" [disabled]="hasLoanPayments(loan)"></div>
+            <div class="col-md-2"><label class="form-label small mb-1">Fecha préstamo</label><input class="form-control form-control-sm" type="date" [(ngModel)]="loan.editForm.fechaInicio" [disabled]="hasLoanPayments(loan)"></div>
+            <div class="col-md-2"><label class="form-label small mb-1">Primer pago</label><input class="form-control form-control-sm" type="date" [(ngModel)]="loan.editForm.fechaPrimerPago" [disabled]="hasLoanPayments(loan)"></div>
+            <div class="col-md-2"><label class="form-label small mb-1">Pagos mensuales</label><input class="form-control form-control-sm" type="number" min="1" step="1" [(ngModel)]="loan.editForm.numeroCuotas" [disabled]="hasLoanPayments(loan)"></div>
+            <div class="col-md-6"><label class="form-label small mb-1">Comentario</label><input class="form-control form-control-sm" maxlength="500" [(ngModel)]="loan.editForm.comentario"></div>
+            <div class="col-md-6 d-flex gap-2"><button class="btn btn-sm btn-success" (click)="saveLoanRecord(loan)" [disabled]="saving || !hasLoanRecordChanges(loan)"><i class="bi bi-floppy"></i> Guardar préstamo</button><button class="btn btn-sm btn-outline-danger" (click)="generatePromissoryNote(loan)" title="Previsualizar el pagaré de este préstamo"><i class="bi bi-file-earmark-pdf"></i> PDF</button></div>
+            <div class="col-12 small text-warning" *ngIf="hasLoanPayments(loan)">Este préstamo ya tiene abonos. Para conservar el historial, capital, interés, fechas y número de pagos están bloqueados; puedes cambiar la nota y el comentario.</div>
+            <div class="col-12 small">Interés total: {{ loan.totalInteres || 0 | currency:'MXN' }} · A pagar: {{ payableTotal(loan) | currency:'MXN' }}</div>
+          </div>
+          <ag-grid-angular class="ag-theme-quartz small-text-ag-grid d-block" style="width:100%;height:320px" [rowData]="loan.cuotas" [columnDefs]="installmentColumns" [defaultColDef]="defaultColDef" [localeText]="AG_GRID_LOCALE_ES" [rowSelection]="'single'" [stopEditingWhenCellsLoseFocus]="true" (cellValueChanged)="onDateChanged($event)"></ag-grid-angular>
           <div *ngFor="let installment of loan.cuotas"><div *ngIf="activeInstallmentId === installment.id" class="border rounded p-2 mt-2"><strong>Abonos de la cuota {{ installment.numeroCuota }}</strong><div class="row g-2 align-items-end py-2">
               <div class="col-md-2"><label class="form-label small">Fecha recibida</label><input class="form-control form-control-sm" type="date" [(ngModel)]="abonoForm.fechaPago"></div>
               <div class="col-md-2"><label class="form-label small">Monto recibido (saldo préstamo: {{ loanBalance(loan) | currency:'MXN' }})</label><input class="form-control form-control-sm" type="number" min="0.01" step="0.01" [max]="loanBalance(loan)" [(ngModel)]="abonoForm.monto"></div>
@@ -179,20 +192,50 @@ export class ClientesCobranzasPagosComponent implements OnChanges, OnDestroy {
   async saveChanges(loan: any): Promise<void> { const changed = loan.cuotas.filter((item: any) => item.fechaProgramada !== this.originalDates.get(item.id)); if (!changed.length) return; this.saving = true; try { for (const item of changed) await firstValueFrom(this.customersService.updateCobranzaInstallmentDate(item.id, { fechaProgramada: item.fechaProgramada })); this.saving = false; this.loadLoans(); this.balancesChanged.emit(); alerts.basicAlert('Fechas guardadas', 'Se actualizó el calendario de pagos.', 'success'); } catch (error) { console.error(error); this.saving = false; alerts.basicAlert('Error', 'No se pudieron guardar todas las fechas. Recarga el detalle para revisar cuáles se guardaron.', 'error'); } }
 
   get totalPaid(): number { return this.loans.reduce((sum, loan) => sum + loan.cuotas.reduce((s: number, q: any) => s + this.installmentPaid(q), 0), 0); }
-  hasReceiptNumberChanges(loan: any): boolean { return String(loan?.numeroNotaVentaEdit || '').trim() !== String(loan?.numeroNotaVenta || '').trim(); }
-  async saveLoanReceiptNumber(loan: any): Promise<void> {
-    const receiptNumber = String(loan?.numeroNotaVentaEdit || '').trim();
-    if (!receiptNumber || receiptNumber.length > 50) { alerts.basicAlert('Consecutivo requerido', 'Captura un consecutivo de hasta 50 caracteres.', 'warning'); return; }
-    if (!this.hasReceiptNumberChanges(loan) || this.saving) return;
+  hasLoanPayments(loan: any): boolean { return (loan?.cuotas || []).some((installment: any) => (installment.abonos || []).some((payment: any) => payment.active !== false && Number(payment.monto) > 0)); }
+  hasLoanFinancialChanges(loan: any): boolean {
+    const form = loan?.editForm || {};
+    return Number(form.montoTotal) !== Number(loan?.montoTotal)
+      || Number(form.tasaInteresMensual) !== Number(loan?.tasaInteresMensual)
+      || this.dateForInput(form.fechaInicio) !== this.dateForInput(loan?.fechaInicio)
+      || this.dateForInput(form.fechaPrimerPago) !== this.dateForInput(loan?.fechaPrimerPago)
+      || Number(form.numeroCuotas) !== Number(loan?.numeroCuotas);
+  }
+  hasLoanRecordChanges(loan: any): boolean {
+    const form = loan?.editForm || {};
+    return String(form.numeroNotaVenta || '').trim() !== String(loan?.numeroNotaVenta || '').trim()
+      || this.hasLoanFinancialChanges(loan)
+      || String(form.comentario || '').trim() !== String(loan?.comentario || '').trim();
+  }
+  async saveLoanRecord(loan: any): Promise<void> {
+    const form = loan?.editForm || {};
+    const receiptNumber = String(form.numeroNotaVenta || '').trim();
+    const amount = Number(form.montoTotal);
+    const rate = Number(form.tasaInteresMensual);
+    const paymentCount = Number(form.numeroCuotas);
+    if (!receiptNumber || receiptNumber.length > 50 || !Number.isFinite(amount) || amount <= 0 || !Number.isFinite(rate) || rate < 0 || rate > 100 || !Number.isInteger(paymentCount) || paymentCount < 1 || !form.fechaInicio || !form.fechaPrimerPago) {
+      alerts.basicAlert('Datos requeridos', 'Revisa el consecutivo, capital, interés, fechas y número de pagos.', 'warning');
+      return;
+    }
+    if (this.hasLoanPayments(loan) && this.hasLoanFinancialChanges(loan)) {
+      alerts.basicAlert('Préstamo con abonos', 'No se pueden cambiar las condiciones financieras porque ya existen abonos. Puedes actualizar el consecutivo y el comentario.', 'warning');
+      return;
+    }
+    if (!this.hasLoanRecordChanges(loan) || this.saving) return;
     this.saving = true;
     try {
-      await firstValueFrom(this.customersService.updateCobranzaSalesNoteNumber(Number(loan.id), { numeroNotaVenta: receiptNumber }));
-      loan.numeroNotaVenta = receiptNumber;
-      loan.numeroNotaVentaEdit = receiptNumber;
-      alerts.basicAlert('Consecutivo guardado', 'El PDF de este préstamo usará el nuevo número de nota de venta.', 'success');
+      await firstValueFrom(this.customersService.updateCobranzaLoan(Number(loan.id), {
+        numeroNotaVenta: receiptNumber, montoTotal: amount, tasaInteresMensual: rate,
+        fechaInicio: form.fechaInicio, fechaPrimerPago: form.fechaPrimerPago,
+        numeroCuotas: paymentCount, comentario: String(form.comentario || '').trim()
+      }));
+      const loans = await firstValueFrom(this.customersService.getCobranzaLoans(Number(this.customer.id)));
+      this.setLoans(loans);
+      this.balancesChanged.emit();
+      alerts.basicAlert('Préstamo actualizado', 'Se guardaron los datos y el calendario actualizado.', 'success');
     } catch (error) {
-      console.error('No se pudo actualizar el consecutivo de la nota de venta:', error);
-      alerts.basicAlert('Error', 'No se pudo guardar el consecutivo de la nota de venta.', 'error');
+      console.error('No se pudo actualizar el préstamo:', error);
+      alerts.basicAlert('Error', 'No se pudieron guardar los datos del préstamo.', 'error');
     } finally { this.saving = false; }
   }
   isLoanExpanded(loan: any): boolean { return this.expandedLoanIds.has(Number(loan?.id)); }
@@ -301,14 +344,19 @@ export class ClientesCobranzasPagosComponent implements OnChanges, OnDestroy {
   }
 
   private setLoans(items: any[]): void {
-    this.loans = (items || []).map(loan => ({ ...loan, numeroNotaVentaEdit: loan.numeroNotaVenta || '', cuotas: (loan.cuotas || []).map((installment: any) => ({ ...installment, fechaProgramada: this.dateForInput(installment.fechaProgramada) })) }));
+    this.loans = (items || []).map(loan => ({ ...loan, editForm: {
+      numeroNotaVenta: loan.numeroNotaVenta || '', montoTotal: loan.montoTotal,
+      tasaInteresMensual: loan.tasaInteresMensual || 0,
+      fechaInicio: this.dateForInput(loan.fechaInicio), fechaPrimerPago: this.dateForInput(loan.fechaPrimerPago),
+      numeroCuotas: loan.numeroCuotas || loan.cuotas?.length || 1, comentario: loan.comentario || ''
+    }, cuotas: (loan.cuotas || []).map((installment: any) => ({ ...installment, fechaProgramada: this.dateForInput(installment.fechaProgramada) })) }));
     this.originalDates.clear();
     this.loans.forEach(loan => loan.cuotas.forEach((item: any) => this.originalDates.set(item.id, item.fechaProgramada)));
   }
 
   private async refreshLoansIfChanged(): Promise<void> {
     const customerId = Number(this.customer?.id);
-    if (!customerId || document.hidden || this.loading || this.saving || this.refreshingLoans || this.showLoanForm || this.activeInstallmentId !== null || this.loans.some(loan => this.hasChanges(loan) || this.hasReceiptNumberChanges(loan))) return;
+    if (!customerId || document.hidden || this.loading || this.saving || this.refreshingLoans || this.showLoanForm || this.activeInstallmentId !== null || this.loans.some(loan => this.hasChanges(loan) || this.hasLoanRecordChanges(loan))) return;
     this.refreshingLoans = true;
     try {
       const items = await firstValueFrom(this.customersService.getCobranzaLoans(customerId));
@@ -391,7 +439,7 @@ export class ClientesCobranzasPagosComponent implements OnChanges, OnDestroy {
       const text = (value: any) => String(value || '').trim();
       const content: any[] = [
         { columns: [logo ? { width: 80, image: logo, fit: [72, 58] } : { width: 80, text: text(company?.name), bold: true, fontSize: 10, color: navy, margin: [0, 12, 0, 0] }, { text: `${text(company?.name)}${companyAddress ? `\n${companyAddress}` : ''}${company?.phone ? `\nTEL.: ${company.phone}` : ''}${company?.rfc ? `\nR.F.C.: ${company.rfc}` : ''}`, alignment: 'center', fontSize: 8, margin: [0, 8, 0, 0] }, logo2 ? { width: 65, image: logo2, fit: [60, 50], alignment: 'right' } : { width: 65, text: '' }, { width: 188, table: { widths: [78, '*'], body: [[{ text: 'N° NOTA DE VENTA', bold: true, color: '#FFFFFF', fillColor: navy, alignment: 'center', colSpan: 2 }, {}], [{ text: 'SERIE-FOLIO', bold: true, alignment: 'center', fontSize: 7 }, { text: 'FECHA Y HORA DE EMISIÓN', bold: true, alignment: 'center', fontSize: 6 }], [{ text: receiptFolio, bold: true, alignment: 'center', fontSize: 12 }, { text: `${date(loan.fechaInicio)}  ${new Date().toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit' })}`, alignment: 'center', fontSize: 7 }]] }, layout: grid }], columnGap: 5, margin: [0, 0, 0, 12] },
-        { table: { widths: ['*'], body: [[{ text: 'CLIENTE:', bold: true, color: '#FFFFFF', fillColor: navy, fontSize: 9 }], [{ columns: [{ width: '60%', stack: [{ text: customerName, bold: true }, ...(this.customer?.rfc ? [{ text: `R.F.C.: ${this.customer.rfc}` }] : []), ...(customerAddress ? [{ text: customerAddress }] : [])] }, { width: '40%', stack: [...(this.customer?.phone ? [{ text: `Teléfono: ${this.customer.phone}` }] : []), { text: `Vendedor: ${text(company?.name)}` }, { text: `Observaciones: Préstamo #${loan.id}` }] }], fillColor: gray, margin: [6, 6, 6, 6] }]] }, layout: grid, margin: [0, 0, 0, 7] },
+        { table: { widths: ['*'], body: [[{ text: 'CLIENTE:', bold: true, color: '#FFFFFF', fillColor: navy, fontSize: 9 }], [{ columns: [{ width: '60%', stack: [{ text: customerName, bold: true }, ...(this.customer?.rfc ? [{ text: `R.F.C.: ${this.customer.rfc}` }] : []), ...(customerAddress ? [{ text: customerAddress }] : [])] }, { width: '40%', stack: [...(this.customer?.phone ? [{ text: `Teléfono: ${this.customer.phone}` }] : []), { text: `Vendedor: ${text(company?.name)}` }, { text: `Observaciones: Préstamo #${loan.id}${text(loan.comentario) ? ` · ${text(loan.comentario)}` : ''}` }] }], fillColor: gray, margin: [6, 6, 6, 6] }]] }, layout: grid, margin: [0, 0, 0, 7] },
         { table: { headerRows: 1, widths: [28, 40, 40, '*', 60, 34, 47, 26, 68], body: serviceRows }, layout: grid, fontSize: 8 },
         { table: { widths: ['*'], body: [[{ text: 'DETALLE DE PAGOS', bold: true, color: '#FFFFFF', fillColor: navy, fontSize: 8 }]] }, layout: grid, margin: [0, 7, 0, 0] },
         { table: { headerRows: 1, widths: [42, 78, '*', '*', '*'], body: rows }, layout: scheduleGrid, fontSize: scheduleFontSize },
