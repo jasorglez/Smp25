@@ -163,7 +163,7 @@ export class ClientesCobranzasComponent implements CanComponentDeactivate {
 
   // Agregar esta nueva variable para almacenar el ID de la última fila editada
   private lastEditedRowId: number | string | null = null;
-  private pendingEditCell: { rowIndex: number; colKey: string } | null = null;
+  private pendingEditCell: { rowId: string; colKey: string } | null = null;
 
   rowData: any;
   private loanTotalsByCustomer = new Map<number, { loans: number; due: number; payments: number; pending: number; overdue: number }>();
@@ -192,6 +192,11 @@ export class ClientesCobranzasComponent implements CanComponentDeactivate {
     lockPosition: false,
     enableRowGroup: true, // Enable row grouping for all columns
     flex: 1,
+    cellClassRules: {
+      'enter-next-cell': (params: any) => this.pendingEditCell
+        && String(params.node?.id) === this.pendingEditCell.rowId
+        && params.column?.getColId() === this.pendingEditCell.colKey,
+    },
   };
 
   currentIndex = 0;
@@ -200,6 +205,7 @@ export class ClientesCobranzasComponent implements CanComponentDeactivate {
   private editableColumns: string[] = [
     'nameContact',
     'company',
+    'rfc',
     'idBranch',
     'idTypecop',
     'cp',
@@ -260,7 +266,7 @@ export class ClientesCobranzasComponent implements CanComponentDeactivate {
       }
     },
     onCellKeyDown: (event: any) => {
-      if (event.event.key === 'Enter') {
+      if (event.event.key === 'Enter' && !event.event.shiftKey) {
         event.event.preventDefault();
         this.moveToNextColumn(event);
       }
@@ -1135,7 +1141,13 @@ export class ClientesCobranzasComponent implements CanComponentDeactivate {
       // postal-code lookup without replacing the row currently being edited.
       this.gridApi.stopEditing();
       setTimeout(() => {
+        if (this.pendingEditCell) {
+          const previousNode = this.gridApi.getRowNode(this.pendingEditCell.rowId);
+          if (previousNode) this.gridApi.refreshCells({ rowNodes: [previousNode], columns: [this.pendingEditCell.colKey], force: true });
+        }
+        this.pendingEditCell = { rowId: String(rowId), colKey: nextColKey };
         this.gridApi.setFocusedCell(currentRowIndex, nextColKey);
+        this.gridApi.refreshCells({ rowNodes: [event.node], columns: [nextColKey], force: true });
         const cellEl = rowId
           ? (document.querySelector(`[row-id="${rowId}"] [col-id="${nextColKey}"]`) as HTMLElement)
           : null;
