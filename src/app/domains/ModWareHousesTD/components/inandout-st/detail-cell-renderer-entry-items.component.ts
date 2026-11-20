@@ -638,6 +638,20 @@ export class DetailCellRendererEntryItemsComponent {
         editable: (params: any) => (!this.isStockRestrictedEntry() && !this.isStandardOutgoingEntry()) || !params.data?.__autoStockRow,
         type: 'numericColumn'
       },
+      {
+        field: 'comment',
+        headerName: 'Comentario',
+        width: 240,
+        minWidth: 180,
+        editable: true,
+        cellEditor: 'agLargeTextCellEditor',
+        cellEditorPopup: true,
+        cellEditorParams: { maxLength: 500, rows: 4, cols: 40 },
+        valueSetter: (params: any) => {
+          params.data.comment = String(params.newValue ?? '').trim();
+          return true;
+        }
+      },
       ...(this.context?.movementType === 'OUT' ? [{
         field: 'addToDailyReport',
         headerName: 'R. diario',
@@ -648,14 +662,6 @@ export class DetailCellRendererEntryItemsComponent {
         headerTooltip: 'Agregar este material al Reporte diario al guardar la salida',
         tooltipValueGetter: () => 'Al guardar se pedirá confirmación y se creará el Reporte diario si aún no existe.'
       }] : []),
-      {
-        field: 'active',
-        headerName: 'Activo',
-        width: 80,
-        editable: true,
-        cellRenderer: 'agCheckboxCellRenderer',
-        cellEditor: 'agCheckboxCellEditor'
-      }
     ];
   }
 
@@ -702,6 +708,7 @@ export class DetailCellRendererEntryItemsComponent {
       quantity: startsAtZero ? 0 : 1,
       pending: 0,
       total: startsAtZero ? 0 : 1,
+      comment: '',
       addToDailyReport: false,
       active: true,
       __originalQuantity: 0,
@@ -1454,6 +1461,7 @@ export class DetailCellRendererEntryItemsComponent {
       const brandMap = new Map(((brandRows || []) as any[]).map((brand: any) => [Number(brand.id), brand.brand]));
       const itemsData = (this.rowData || []).map(item => ({
         ...item,
+        comment: item.comment || item.Comment || item.observaciones || '',
         brandName: item.brandName || item.brand || item.marca || brandMap.get(Number(item.idBrand)) || ''
       }));
 

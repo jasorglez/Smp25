@@ -240,7 +240,7 @@ export class PdfReportsService {
                   item.brandName || item.brand || item.marca || 'N/A',
                   item.quantity || 0,
                   item.measure || item.unit || item.unidad || 'N/A',
-                  item.comment || item.observaciones || ''
+                  item.comment || item.Comment || item.observaciones || ''
                 ]) : [[
                   { text: 'No hay artículos disponibles', colSpan: 7, alignment: 'center' },
                   {},
