@@ -75,5 +75,5 @@ export const environment = {
     // publicKey: 'TEST-4399133a-4676-42a2-ab85-d946370bf96a',
   },
 
-  version: '5.00.561 (19 Noviembre 2026 21:43) fecha local para cobros de Telegram',
+  version: '5.00.562 (19 Noviembre 2026 21:48) fechas locales en Cobranza y Telegram',
 };

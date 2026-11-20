@@ -107,7 +107,15 @@ export class CorteCajaCobranzaComponent {
   constructor() { effect(() => { const rootId = Number(this.signals.getRootSelectedBySidebar()()); if (rootId && rootId !== this.rootId) { this.rootId = rootId; this.loadUsers(); this.loadStores(); this.loadActiveTurn(); if (this.view !== 'apertura') this.load(); } }); }
   private today(): string { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`; }
   private date(value: any): string { return value ? String(value).slice(0,10).split('-').reverse().join('/') : ''; }
-  private dateForInput(value: any): string { const raw = String(value || '').slice(0,10); if (/^\d{4}-\d{2}-\d{2}$/.test(raw)) return raw; const parts = raw.split('/'); return parts.length === 3 ? `${parts[2]}-${parts[1].padStart(2,'0')}-${parts[0].padStart(2,'0')}` : ''; }
+  private dateForInput(value: any): string {
+    const raw = String(value || '').trim();
+    if (!raw) return '';
+    if (/^\d{4}-\d{2}-\d{2}$/.test(raw)) return raw;
+    const date = new Date(raw);
+    if (!Number.isNaN(date.getTime())) return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+    const parts = raw.slice(0, 10).split('/');
+    return parts.length === 3 ? `${parts[2]}-${parts[1].padStart(2,'0')}-${parts[0].padStart(2,'0')}` : '';
+  }
   private money(value: any): string { return new Intl.NumberFormat('es-MX', { style:'currency', currency:'MXN' }).format(Number(value || 0)); }
   userName(id: number): string { if (!id) return 'Sin asignar'; const user = this.users.find(item => item.id === id); return user?.usersmall || user?.displayName || user?.email || `Usuario #${id}`; }
   private currentKey(): string { return `${this.rootId}|${this.desde}|${this.hasta}|${this.usuarioId ?? 'global'}`; }
