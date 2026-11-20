@@ -855,7 +855,8 @@ export class InandoutStComponent implements OnInit {
       {
         field: 'folio',
         headerName: 'Folio',
-        width: 110,
+        width: 180,
+        minWidth: 160,
         filter: true,
         editable: (params: any) => this.canEditAuthorizedRow(params.data),
         valueSetter: (params: any) => {
