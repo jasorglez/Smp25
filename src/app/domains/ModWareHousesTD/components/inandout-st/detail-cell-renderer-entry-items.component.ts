@@ -397,6 +397,7 @@ export class DetailCellRendererEntryItemsComponent {
         field: 'code',
         headerName: 'Código',
         width: this.isInventoryAdjustmentEntry() ? 140 : 100,
+        filter: 'agTextColumnFilter',
         editable: (params: any) => (!this.isStockRestrictedEntry() && !this.isStandardOutgoingEntry()) || !params.data?.__autoStockRow,
         valueSetter: (params: any) => {
           params.data.code = params.newValue ? params.newValue.toUpperCase() : '';
@@ -505,6 +506,7 @@ export class DetailCellRendererEntryItemsComponent {
         headerName: 'Marca',
         width: 240,
         minWidth: 220,
+        filter: 'agTextColumnFilter',
         editable: (params: any) => !params.data?.__autoStockRow
           && !this.isTransferEntry() && !this.isInventoryAdjustmentEntry()
           && (this.materials.find(item => Number(item.id) === Number(params.data?.idProduct))?.brands?.length || 0) > 1,
