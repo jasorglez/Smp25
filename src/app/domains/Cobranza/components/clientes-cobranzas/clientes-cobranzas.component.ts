@@ -181,9 +181,7 @@ export class ClientesCobranzasComponent implements CanComponentDeactivate {
   selectedTab: string = 'customers-payments';
   idBranch: number | null = null;
   idEmployee: number;
-  infoCp: any;
-  private zipCodeContextCp = '';
-  
+  private zipCodeDataByCp = new Map<string, any[]>();
 
   private estados: string[] = []; // Agregar esta variable para almacenar los estados
 
@@ -591,7 +589,19 @@ export class ClientesCobranzasComponent implements CanComponentDeactivate {
         },
       },
 
-         {
+      {
+        field: 'rfc',
+        headerName: 'RFC',
+        editable: true,
+        hide: this.type !== 'CUSTOMERS',
+        filter: true,
+        width: 145,
+        valueSetter: (params) => {
+          params.data.rfc = String(params.newValue || '').trim().toUpperCase();
+          return true;
+        },
+      },
+      {
         field: 'cp',
         headerName: 'CP',
         editable: (params) => {
@@ -608,29 +618,6 @@ export class ClientesCobranzasComponent implements CanComponentDeactivate {
           //excelMode: 'mac',
         },
       },
-      
-   /*   {
-        field: 'rfc',
-        headerName: 'RFC',
-        editable: (params) => {
-          if (params.data.__isNew) {
-            return true;
-          }
-          return true;
-        },
-        filter: true,
-        width: 100,
-        filterParams: {
-          // can be 'windows' or 'mac'
-          defaultToNothingSelected: true,
-          //excelMode: 'mac',
-        },
-        valueSetter: (params) => {
-          params.data[params.colDef.field] = params.newValue.toUpperCase();
-          return true;
-        }
-      },*/
-
       {
         field: 'address',
         headerName: 'Direccion',
@@ -766,10 +753,15 @@ export class ClientesCobranzasComponent implements CanComponentDeactivate {
         width: 300,
         cellEditor: 'agSelectCellEditor',
         cellEditorParams: (params) => {
-          if (this.infoCp && this.infoCp.length > 0) {
-            const asentamientos = this.infoCp[0].asentamientos;
+          const cp = String(params.data?.cp ?? '').trim();
+          const zipData = this.zipCodeDataByCp.get(cp);
+          if (!zipData?.length && /^\d{5}$/.test(cp)) {
+            void this.loadZipCodeContext(params.data);
+          }
+          if (zipData?.length) {
+            const asentamientos = zipData[0].asentamientos || [];
             // Ordenar los asentamientos alfabéticamente
-            const sortedAsentamientos = asentamientos.sort((a, b) =>
+            const sortedAsentamientos = [...asentamientos].sort((a, b) =>
               a.localeCompare(b)
             );
             return {
@@ -808,25 +800,6 @@ export class ClientesCobranzasComponent implements CanComponentDeactivate {
           return true;
         },
       },
-      {
-        field: 'rfc',
-        headerName: 'RFC',
-        editable: (params) => {
-          if (params.data.__isNew) {
-            return true;
-          }
-          return true;
-        },
-        hide: true,
-        width: 100,
-      },
-      
-      { field: 'radio', headerName: 'Radio', editable: (params) => {
-          if (params.data.__isNew) {
-            return true;
-          }
-          return true;
-        }, width: 90 , hide: this.type != 'CUSTOMERS'},
       /*{
         field: 'latitud',
         headerName: 'Latitud',
@@ -912,6 +885,13 @@ export class ClientesCobranzasComponent implements CanComponentDeactivate {
         editable: true,
         width: 100,
         hide: true,
+      },
+      {
+        field: 'radio',
+        headerName: 'Radio',
+        editable: true,
+        width: 90,
+        hide: this.type !== 'CUSTOMERS',
       },
     ];
 
@@ -1085,7 +1065,7 @@ export class ClientesCobranzasComponent implements CanComponentDeactivate {
 
     if (event.colDef.field === 'cp') {
       event.data.neighborhood = '';
-      setTimeout(() => void this.loadZipCodeContext(event.data, true), 500);
+      void this.loadZipCodeContext(event.data, true);
     }
   }
 
@@ -1094,29 +1074,39 @@ export class ClientesCobranzasComponent implements CanComponentDeactivate {
     const cp = String(customer?.cp ?? '').trim();
     if (!/^\d{5}$/.test(cp)) return;
 
-    if (cp === this.zipCodeContextCp && Array.isArray(this.infoCp) && this.infoCp.length) {
+    const data = this.zipCodeDataByCp.get(cp) || await this.getZipCodeData(cp);
+    // Evita aplicar una respuesta tardía si el usuario ya cambió el CP.
+    if (!Array.isArray(data) || !data.length || String(customer?.cp ?? '').trim() !== cp) return;
+
+    if (!updateLocation && this.zipCodeDataByCp.has(cp)
+      && customer.state && customer.city && customer.latitud && customer.longitud) {
+      this.refreshZipCodeCells(customer, ['neighborhood']);
       return;
     }
 
-    const data = await this.getZipCodeData(cp);
-    if (!Array.isArray(data) || !data.length) return;
-
-    this.zipCodeContextCp = cp;
     const cpData = data[0];
     if (updateLocation || !customer.state) customer.state = cpData.estado || customer.state || '';
     if (updateLocation || !customer.city) customer.city = cpData.ciudad || customer.city || 'N/A';
+    this.refreshZipCodeCells(customer, ['state', 'city']);
 
     this.getCoordinatesFromCP(cp).subscribe({
       next: (coordinates: any[]) => {
+        if (String(customer?.cp ?? '').trim() !== cp) return;
         const coordinate = coordinates?.[0];
         if (!coordinate) return;
         customer.latitud = coordinate.lat || customer.latitud || 0;
         customer.longitud = coordinate.lon || customer.longitud || 0;
-        this.gridApi?.applyTransaction({ update: [customer] });
+        this.refreshZipCodeCells(customer, ['latitud', 'longitud']);
       },
       error: () => undefined,
     });
-    this.gridApi?.applyTransaction({ update: [customer] });
+    this.refreshZipCodeCells(customer, ['neighborhood']);
+  }
+
+  private refreshZipCodeCells(customer: any, columns: string[]): void {
+    if (!this.gridApi || customer?.id == null) return;
+    const node = this.gridApi.getRowNode(String(customer.id));
+    if (node) this.gridApi.refreshCells({ rowNodes: [node], columns, force: true });
   }
 
   moveToNextColumn(event: any): void {
@@ -1129,6 +1119,9 @@ export class ClientesCobranzasComponent implements CanComponentDeactivate {
     if (currentColIndex < this.editableColumns.length - 1) {
       const nextColKey = this.editableColumns[currentColIndex + 1];
 
+      // Commit the edited value before moving focus so CP changes trigger their
+      // postal-code lookup without replacing the row currently being edited.
+      this.gridApi.stopEditing();
       setTimeout(() => {
         this.gridApi.setFocusedCell(currentRowIndex, nextColKey);
         const cellEl = rowId
@@ -1155,10 +1148,11 @@ export class ClientesCobranzasComponent implements CanComponentDeactivate {
   }
 
   async getZipCodeData(cp: string): Promise<any> {
+    const cached = this.zipCodeDataByCp.get(cp);
+    if (cached) return cached;
     try {
       const data = await lastValueFrom(this.inegiService.getZipCodeData(cp));
-      this.infoCp = data;
-      
+      if (Array.isArray(data)) this.zipCodeDataByCp.set(cp, data);
       return data;
     } catch (error) {
       if (error.status === 404) {
