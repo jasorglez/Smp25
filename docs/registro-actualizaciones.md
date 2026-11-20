@@ -1,5 +1,7 @@
 # Registro de actualizaciones
 
+| 2026-11-20 13:48 EST | 5.00.585 · local | Cobranza / Corte de caja | Mejora | Se agregó un resumen por cobrador con fondo inicial, abonos del período, efectivo esperado y contado al cerrar, diferencia y saldo personal del fondo de ahorro. El ahorro aparece separado del efectivo de caja. El PDF incluye el mismo resumen. | Permite revisar lo recibido y el estado del corte de cada cobrador, además de consultar su ahorro sin mezclarlo con el efectivo de caja. | **Consulta en el corte de cobranza el fondo inicial, los cobros y el ahorro de cada cobrador, también en PDF.** | Build Angular y Administración aprobadas; requiere desplegar API, aplicar la migración del fondo de ahorro y desplegar Angular; despliegue sin confirmar. | Borrador |
+
 > Historial interno de cambios con texto sugerido para convertir las novedades en anuncios. La hora se registra en `America/Indiana/Indianapolis`. Los anuncios permanecen como borrador hasta que se publiquen en el módulo Publicidad.
 
 > Publicación del 2026-11-07 08:57 EST: las 237 entradas del historial están registradas y publicadas en `administration.dbo.product_updates`. Se dieron de alta 99 novedades y se liberaron 5 borradores activos existentes. Hay 239 novedades activas publicadas en total; se conservó el registro inactivo. Publicación de anuncios verificada en la tabla; no implica despliegue confirmado del código.

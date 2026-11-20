@@ -27,6 +27,9 @@ export class CortesCobranzaService {
     if (dateTo) params += `&dateTo=${encodeURIComponent(dateTo)}`;
     return this.http.get<any[]>(`${environment.urlAdministration}/CajeroTurno/byCompany?${params}`, { headers: this.tracking.getHeaders() });
   }
+  getSaldosFondoAhorro(rootId: number) {
+    return this.http.get<any[]>(`${this.base}/fondos-ahorro/${rootId}`, { headers: this.tracking.getHeaders() });
+  }
   abrirTurno(data: any) {
     return this.http.post<any>(`${environment.urlAdministration}/CajeroTurno`, data, { headers: this.tracking.getHeaders() });
   }

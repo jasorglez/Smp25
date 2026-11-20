@@ -43,6 +43,7 @@ import { PdfPreviewService } from 'app/services/pdf-preview.service';
     </div></div>
     <div *ngIf="error" class="alert alert-danger">{{ error }}</div>
     <ng-container *ngIf="view !== 'apertura'"><div class="row g-3 mb-3"><div class="col-md-3"><div class="card border-0 shadow-sm h-100"><div class="card-body"><small class="text-muted">Total recibido</small><h3 class="text-success mb-0">{{ summary?.total || 0 | currency:'MXN' }}</h3></div></div></div><div class="col-md-3"><div class="card border-0 shadow-sm h-100"><div class="card-body"><small class="text-muted">Fondo inicial de caja</small><h3 class="text-primary mb-0">{{ openingFundTotal | currency:'MXN' }}</h3><small class="text-muted">{{ reportTurns.length }} turno(s) en el período</small></div></div></div><div class="col-md-3"><div class="card border-0 shadow-sm h-100"><div class="card-body"><small class="text-muted">Abonos registrados</small><h3 class="mb-0">{{ summary?.numeroPagos || 0 }}</h3></div></div></div><div class="col-md-3"><div class="card border-0 shadow-sm h-100"><div class="card-body"><small class="text-muted">Alcance</small><h5 class="mb-0">{{ usuarioId ? userName(usuarioId) : 'Global' }}</h5></div></div></div></div>
+    <div class="card border-0 shadow-sm mb-3"><div class="card-body"><div class="d-flex justify-content-between align-items-start gap-2"><div><h6>Resumen por cobrador</h6><small class="text-muted">El fondo de ahorro es personal e informativo; no se suma al efectivo de caja.</small></div><small class="text-muted" *ngIf="savingsLoadError">Saldo de ahorro no disponible</small></div><div class="table-responsive"><table class="table table-sm table-striped align-middle mb-0"><thead><tr><th>Cobrador</th><th class="text-end">Turnos</th><th class="text-end">Fondo inicial</th><th class="text-end">Abonos del período</th><th class="text-end">Fondo de ahorro</th><th class="text-end">Efectivo esperado*</th><th class="text-end">Efectivo contado</th><th class="text-end">Diferencia</th></tr></thead><tbody><tr *ngFor="let row of collectorRows"><td>{{ userName(row.userId) }}</td><td class="text-end">{{ row.turnCount || '—' }}</td><td class="text-end">{{ row.openingFund === null ? 'Sin fondo registrado' : (row.openingFund | currency:'MXN') }}</td><td class="text-end">{{ row.collections | currency:'MXN' }}</td><td class="text-end fw-semibold text-primary">{{ row.savingsBalance === null ? 'No disponible' : (row.savingsBalance | currency:'MXN') }}</td><td class="text-end">{{ row.expectedCash === null ? 'Pendiente de cierre' : (row.expectedCash | currency:'MXN') }}</td><td class="text-end">{{ row.countedCash === null ? 'Pendiente de cierre' : (row.countedCash | currency:'MXN') }}</td><td class="text-end" [class.text-danger]="row.difference !== null && row.difference !== 0" [class.text-success]="row.difference === 0">{{ row.difference === null ? '—' : (row.difference | currency:'MXN') }}</td></tr><tr *ngIf="!collectorRows.length"><td colspan="8" class="text-center text-muted">No hay información de cobradores en el período.</td></tr></tbody></table></div><small class="text-muted d-block mt-2">*El efectivo esperado corresponde al dato calculado al cerrar cada turno. El saldo de ahorro se muestra por separado.</small></div></div>
     <div class="card border-0 shadow-sm mb-3"><div class="card-body"><h6>Totales por tipo de pago</h6><div class="d-flex flex-wrap gap-2"><span *ngFor="let item of typeTotals" class="badge text-bg-light border p-2">{{ item.name }}: {{ item.amount | currency:'MXN' }}</span><span *ngIf="!typeTotals.length" class="text-muted small">Sin movimientos en el período.</span></div></div></div>
     <div class="card border-0 shadow-sm mb-3"><div class="card-body"><div class="d-flex justify-content-between"><h6>Movimientos del período</h6><small class="text-muted">Selecciona fechas y alcance para revisar antes de cerrar</small></div><ag-grid-angular class="ag-theme-quartz small-text-ag-grid d-block" style="height:360px;width:100%" [rowData]="summary?.movimientos || []" [columnDefs]="movementColumns" [defaultColDef]="defaultColDef" [localeText]="locale"></ag-grid-angular></div></div>
     <div class="card border-0 shadow-sm"><div class="card-body"><h6>Historial de cortes</h6><ag-grid-angular class="ag-theme-quartz small-text-ag-grid d-block" style="height:250px;width:100%" [rowData]="history" [columnDefs]="historyColumns" [defaultColDef]="defaultColDef" [localeText]="locale"></ag-grid-angular></div></div></ng-container>
@@ -67,6 +68,9 @@ export class CorteCajaCobranzaComponent {
   summary: any = null;
   history: any[] = [];
   reportTurns: any[] = [];
+  collectorBalances: any[] = [];
+  savingsLoadError = false;
+  savingsLoadedKey = '';
   users: any[] = [];
   stores: any[] = [];
   cashRegisters: any[] = [];
@@ -102,8 +106,28 @@ export class CorteCajaCobranzaComponent {
   ];
   get typeTotals(): {name: string; amount: number}[] { return Object.entries(this.summary?.porTipoPago || {}).map(([name, amount]) => ({ name, amount: Number(amount) })); }
   get openingFundTotal(): number { return this.reportTurns.reduce((total, turn) => total + Number(turn.fondoInicial || 0), 0); }
+  get collectorRows(): any[] {
+    const ids = new Set<number>();
+    for (const turn of this.reportTurns) { const id = this.getTurnUserId(turn); if (id) ids.add(id); }
+    for (const item of this.summary?.movimientos || []) if (item.idUsuarioCobrador) ids.add(Number(item.idUsuarioCobrador));
+    for (const item of this.collectorBalances) if (item.idUsuarioCobrador) ids.add(Number(item.idUsuarioCobrador));
+    return [...ids].filter(id => !this.usuarioId || id === Number(this.usuarioId)).map(userId => {
+      const turns = this.reportTurns.filter(turn => this.getTurnUserId(turn) === userId);
+      const payments = (this.summary?.movimientos || []).filter((item: any) => Number(item.idUsuarioCobrador) === userId);
+      const fullyClosed = turns.length > 0 && turns.every(turn => turn.efectivoContado != null && turn.efectivoEsperado != null);
+      const balance = this.collectorBalances.find(item => Number(item.idUsuarioCobrador) === userId);
+      return {
+        userId, turnCount: turns.length, openingFund: turns.length ? turns.reduce((total, turn) => total + Number(turn.fondoInicial || 0), 0) : null,
+        collections: payments.reduce((total: number, item: any) => total + Number(item.monto || 0), 0),
+        savingsBalance: balance ? Number(balance.saldo || 0) : (this.savingsLoadError ? null : 0),
+        expectedCash: fullyClosed ? turns.reduce((total, turn) => total + Number(turn.efectivoEsperado || 0), 0) : null,
+        countedCash: fullyClosed ? turns.reduce((total, turn) => total + Number(turn.efectivoContado || 0), 0) : null,
+        difference: fullyClosed ? turns.reduce((total, turn) => total + Number(turn.diferencia || 0), 0) : null
+      };
+    }).sort((a, b) => this.userName(a.userId).localeCompare(this.userName(b.userId), 'es'));
+  }
   get canSave(): boolean { return !!this.summary?.numeroPagos && this.loadedKey === this.currentKey(); }
-  get canPrint(): boolean { return !!this.summary && this.loadedKey === this.currentKey() && this.loadedTurnsKey === this.currentKey(); }
+  get canPrint(): boolean { return !!this.summary && this.loadedKey === this.currentKey() && this.loadedTurnsKey === this.currentKey() && this.savingsLoadedKey === this.currentKey(); }
   constructor() { effect(() => { const rootId = Number(this.signals.getRootSelectedBySidebar()()); if (rootId && rootId !== this.rootId) { this.rootId = rootId; this.loadUsers(); this.loadStores(); this.loadActiveTurn(); if (this.view !== 'apertura') this.load(); } }); }
   private today(): string { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`; }
   private date(value: any): string { return value ? String(value).slice(0,10).split('-').reverse().join('/') : ''; }
@@ -152,7 +176,7 @@ export class CorteCajaCobranzaComponent {
   async closeCash(): Promise<void> { if (!this.activeTurn) return; const result = await alerts.inputAlert('Cerrar caja de cobranza', 'Captura el efectivo contado en la caja', 'text', String(this.fondoInicial), { inputAttributes: { inputmode: 'decimal', min: '0', step: '0.01' } }); if (!result.isConfirmed || result.value === '') return; const counted = Number(result.value); if (!Number.isFinite(counted) || counted < 0) return; const confirmation = await alerts.confirmAlert('Confirmar corte', `Se cerrará el turno de cobranza con ${this.money(counted)} en efectivo contado.`, 'warning', 'Sí, cerrar'); if (!confirmation.isConfirmed) return; this.saving = true; try { await firstValueFrom(this.service.cerrarTurno(this.activeTurn.id, counted, 'Corte de caja de cobranza')); alerts.basicAlert('Corte realizado', 'El turno de cobranza quedó cerrado.', 'success'); this.activeTurn = null; if (this.view !== 'apertura') this.load(); } catch (error: any) { alerts.basicAlert('Error', error?.error || 'No se pudo cerrar la caja.', 'error'); } finally { this.saving = false; } }
   load(): void {
     if (!this.rootId || !this.desde || !this.hasta || this.hasta < this.desde) { this.error = 'Selecciona un período válido.'; return; }
-    this.loading = true; this.error = ''; this.loadedKey = ''; this.loadedTurnsKey = ''; this.reportTurns = [];
+    this.loading = true; this.error = ''; this.loadedKey = ''; this.loadedTurnsKey = ''; this.savingsLoadedKey = ''; this.reportTurns = []; this.collectorBalances = [];
     const key = this.currentKey();
     this.service.getResumen(this.rootId, this.desde, this.hasta, this.usuarioId).subscribe({ next: result => { this.summary = result; this.loadedKey = key; this.loading = false; }, error: error => { console.error('Error al consultar el corte de Cobranza:', error); const detail = error?.error?.error || error?.error?.title; const status = error?.status ? ` (HTTP ${error.status})` : ''; this.error = detail ? `No se pudo consultar el corte${status}: ${detail}` : `No se pudo consultar el corte${status}.`; this.loading = false; } });
     this.service.getTurnos(this.rootId, this.desde, this.hasta).subscribe({
@@ -164,6 +188,11 @@ export class CorteCajaCobranzaComponent {
         this.loadedTurnsKey = key;
       },
       error: error => { console.error('Error al consultar fondos iniciales de Cobranza:', error); this.reportTurns = []; this.loadedTurnsKey = key; }
+    });
+    this.savingsLoadError = false;
+    this.service.getSaldosFondoAhorro(this.rootId).subscribe({
+      next: balances => { this.collectorBalances = balances || []; this.savingsLoadedKey = key; },
+      error: error => { console.error('Error al consultar saldos de fondos de ahorro:', error); this.collectorBalances = []; this.savingsLoadError = true; this.savingsLoadedKey = key; }
     });
     this.service.getHistorial(this.rootId).subscribe({ next: result => this.history = result || [], error: error => console.error(error) });
   }
@@ -206,6 +235,11 @@ export class CorteCajaCobranzaComponent {
         this.reportTurns.length
           ? { table: { headerRows: 1, widths: [70, 75, '*', 100], body: [[{ text: 'Turno', bold: true }, { text: 'Caja', bold: true }, { text: 'Cobrador', bold: true }, { text: 'Fondo inicial', bold: true, alignment: 'right' }], ...this.reportTurns.map(turn => [String(turn.id), `Caja #${turn.idCashRegister}`, this.userName(this.getTurnUserId(turn) || 0), { text: money(turn.fondoInicial), alignment: 'right' }])] }, layout: 'lightHorizontalLines', fontSize: 8, margin: [0, 0, 0, 10] }
           : { text: 'No hay turnos de cobranza iniciados en el período seleccionado.', italics: true, color: '#666', margin: [0, 4, 0, 10] },
+        { text: 'Resumen por cobrador', style: 'section' },
+        { text: 'El fondo de ahorro es personal e informativo; no forma parte del efectivo de caja.', italics: true, color: '#555', fontSize: 8, margin: [0, 0, 0, 4] },
+        this.collectorRows.length
+          ? { table: { headerRows: 1, widths: ['*', 42, 73, 78, 78, 78, 78, 65], body: [[{ text: 'Cobrador', bold: true }, { text: 'Turnos', bold: true, alignment: 'right' }, { text: 'Fondo inicial', bold: true, alignment: 'right' }, { text: 'Abonos', bold: true, alignment: 'right' }, { text: 'Fondo ahorro', bold: true, alignment: 'right' }, { text: 'Esperado', bold: true, alignment: 'right' }, { text: 'Contado', bold: true, alignment: 'right' }, { text: 'Diferencia', bold: true, alignment: 'right' }], ...this.collectorRows.map(row => [this.userName(row.userId), String(row.turnCount || '—'), { text: row.openingFund === null ? 'Sin registro' : money(row.openingFund), alignment: 'right' }, { text: money(row.collections), alignment: 'right' }, { text: row.savingsBalance === null ? 'No disponible' : money(row.savingsBalance), alignment: 'right' }, { text: row.expectedCash === null ? 'Pendiente' : money(row.expectedCash), alignment: 'right' }, { text: row.countedCash === null ? 'Pendiente' : money(row.countedCash), alignment: 'right' }, { text: row.difference === null ? '—' : money(row.difference), alignment: 'right' }])] }, layout: 'lightHorizontalLines', fontSize: 7, margin: [0, 0, 0, 10] }
+          : { text: 'Sin información de cobradores en el período.', italics: true, color: '#666', margin: [0, 4, 0, 10] },
         { text: 'Totales por tipo de pago', style: 'section' },
         { table: { widths: ['*', 110], body: [[{ text: 'Forma de pago', bold: true }, { text: 'Total', bold: true, alignment: 'right' }], ...totals.map(item => [item.name, { text: money(item.amount), alignment: 'right' }])] }, layout: 'lightHorizontalLines', margin: [0, 0, 0, 10] },
         { text: 'Movimientos del período', style: 'section' },
