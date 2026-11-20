@@ -61,12 +61,12 @@ import { Base64EncodeService } from 'app/services/base64encode.service';
   `],
   template: `
     <section class="p-3 border-top bg-light">
-      <div class="d-flex justify-content-between align-items-center gap-2 mb-3 flex-wrap">
+      <div *ngIf="activeInstallmentId === null" class="d-flex justify-content-between align-items-center gap-2 mb-3 flex-wrap">
         <div><strong>Préstamos — {{ customer?.nameContact || customer?.company }}</strong><span class="badge bg-success ms-2">Abonado: {{ totalPaid | currency:'MXN' }}</span><small class="text-muted ms-2"><i class="bi bi-arrow-repeat"></i> Actualización automática</small></div>
         <button class="btn btn-sm btn-primary" (click)="showLoanForm = !showLoanForm"><i class="bi bi-plus-lg"></i> Nuevo préstamo</button>
       </div>
 
-      <div *ngIf="showLoanForm" class="card card-body mb-3 p-3">
+      <div *ngIf="showLoanForm && activeInstallmentId === null" class="card card-body mb-3 p-3">
         <div class="row g-2 align-items-end">
           <div class="col-md-3"><label class="form-label small">Consecutivo de nota de venta</label><input class="form-control form-control-sm" type="text" maxlength="50" [(ngModel)]="loanForm.numeroNotaVenta" placeholder="Ej. 000123" required></div>
           <div class="col-md-3"><label class="form-label small">Monto del préstamo</label><input class="form-control form-control-sm" type="number" min="0.01" step="0.01" [(ngModel)]="loanForm.montoTotal"></div>
@@ -83,16 +83,20 @@ import { Base64EncodeService } from 'app/services/base64encode.service';
         </div>
       </div>
 
-      <article *ngFor="let loan of loans" class="card mb-3">
+      <article *ngFor="let loan of loans" class="card mb-3" [hidden]="activeInstallmentId !== null && !hasActiveInstallment(loan)">
         <div class="card-header d-flex justify-content-between align-items-center flex-wrap gap-2">
           <div><strong>Préstamo #{{ loan.id }}</strong><span class="ms-2">Nota de venta {{ loan.numeroNotaVenta || 'sin consecutivo' }}</span><span class="ms-2">Capital {{ loan.montoTotal | currency:'MXN' }}</span><small class="text-muted ms-2">{{ loan.numeroCuotas || loan.cuotas?.length || 0 }} pagos desde {{ loan.fechaPrimerPago | date:'dd/MM/yyyy' }} · Interés {{ loan.tasaInteresMensual || 0 }}% mensual</small></div>
           <div class="d-flex align-items-center gap-2"><span class="badge" [class.bg-success]="loanBalance(loan) <= 0" [class.bg-warning]="loanBalance(loan) > 0">Saldo {{ loanBalance(loan) | currency:'MXN' }}</span>
+            <button *ngIf="activeInstallmentId !== null" class="btn btn-sm btn-outline-secondary" (click)="cancelPayment()"><i class="bi bi-arrow-left me-1"></i>Volver a préstamos</button>
+            <ng-container *ngIf="activeInstallmentId === null">
             <button class="btn btn-sm btn-outline-primary" (click)="toggleLoanDetail(loan)" [attr.aria-expanded]="isLoanExpanded(loan)" [attr.aria-label]="(isLoanExpanded(loan) ? 'Ocultar' : 'Ver') + ' detalle del préstamo ' + loan.id"><i class="bi" [class.bi-chevron-down]="!isLoanExpanded(loan)" [class.bi-chevron-up]="isLoanExpanded(loan)"></i> {{ isLoanExpanded(loan) ? 'Ocultar detalle' : 'Ver detalle' }}</button>
             <button class="btn btn-sm btn-primary position-relative" (click)="saveChanges(loan)" [disabled]="saving || !hasChanges(loan)"><i class="bi bi-floppy"></i> Guardar<span *ngIf="hasChanges(loan)" class="position-absolute top-0 start-100 translate-middle p-2 bg-danger border border-light rounded-circle"></span></button>
             <button class="btn btn-sm btn-warning" (click)="revertChanges(loan)" [disabled]="saving || !hasChanges(loan)"><i class="bi bi-arrow-clockwise"></i> Deshacer</button>
+            </ng-container>
           </div>
         </div>
         <div class="card-body" *ngIf="isLoanExpanded(loan)">
+          <ng-container *ngIf="activeInstallmentId === null">
           <div class="row g-2 align-items-end mb-3">
             <div class="col-md-2"><label class="form-label small mb-1">Consecutivo nota</label><input class="form-control form-control-sm" type="text" maxlength="50" [(ngModel)]="loan.editForm.numeroNotaVenta" placeholder="Ej. 000123"></div>
             <div class="col-md-2"><label class="form-label small mb-1">Capital</label><input class="form-control form-control-sm" type="number" min="0.01" step="0.01" [(ngModel)]="loan.editForm.montoTotal" [disabled]="hasLoanPayments(loan)"></div>
@@ -106,15 +110,16 @@ import { Base64EncodeService } from 'app/services/base64encode.service';
             <div class="col-12 small">Interés total: {{ loan.totalInteres || 0 | currency:'MXN' }} · A pagar: {{ payableTotal(loan) | currency:'MXN' }}</div>
           </div>
           <ag-grid-angular class="ag-theme-quartz small-text-ag-grid d-block" style="width:100%;height:320px" [rowData]="loan.cuotas" [columnDefs]="installmentColumns" [defaultColDef]="defaultColDef" [localeText]="AG_GRID_LOCALE_ES" [rowSelection]="'single'" [stopEditingWhenCellsLoseFocus]="true" (cellValueChanged)="onDateChanged($event)"></ag-grid-angular>
-          <div *ngFor="let installment of loan.cuotas"><div *ngIf="activeInstallmentId === installment.id" class="border rounded p-2 mt-2"><strong>Abonos de la cuota {{ installment.numeroCuota }}</strong><div class="row g-2 align-items-end py-2">
+          </ng-container>
+          <div *ngFor="let installment of loan.cuotas"><div *ngIf="activeInstallmentId === installment.id" class="border border-primary rounded-3 p-3 mt-2 bg-white shadow-sm"><div class="d-flex justify-content-between align-items-start gap-2 flex-wrap mb-2"><div><span class="badge bg-primary mb-1">REGISTRAR PAGO</span><h5 class="mb-1">Abono a la cuota {{ installment.numeroCuota }}</h5><div class="small text-muted">{{ customer?.nameContact || customer?.company }} · Préstamo #{{ loan.id }} · Saldo pendiente {{ loanBalance(loan) | currency:'MXN' }}</div></div><button class="btn btn-sm btn-outline-secondary" (click)="cancelPayment()">Cancelar</button></div><div class="row g-3 align-items-end py-2">
               <div class="col-md-2"><label class="form-label small">Fecha recibida</label><input class="form-control form-control-sm" type="date" [(ngModel)]="abonoForm.fechaPago"></div>
               <div class="col-md-2"><label class="form-label small">Monto recibido (saldo préstamo: {{ loanBalance(loan) | currency:'MXN' }})</label><input class="form-control form-control-sm" type="number" min="0.01" step="0.01" [max]="loanBalance(loan)" [(ngModel)]="abonoForm.monto"></div>
               <div class="col-md-2"><label class="form-label small" [for]="'cobranza-tipo-' + installment.id">Tipo de pago <button type="button" class="btn btn-link btn-sm p-0" (click)="addPaymentType()" [disabled]="savingPaymentType" title="Agregar tipo de pago"><i class="bi bi-plus-circle"></i></button></label><ng-select class="cobranza-select" [labelForId]="'cobranza-tipo-' + installment.id" [(ngModel)]="abonoForm.idTipoPago" [clearable]="false" [searchable]="false" appendTo="body" placeholder="Seleccionar" notFoundText="Sin tipos de pago"><ng-option *ngFor="let type of paymentTypes" [value]="type.id">{{ type.description }}</ng-option></ng-select></div>
               <div class="col-md-2"><label class="form-label small" [for]="'cobranza-responsable-' + installment.id">Responsable del cobro</label><ng-select class="cobranza-select" [labelForId]="'cobranza-responsable-' + installment.id" [(ngModel)]="abonoForm.idUsuarioCobrador" [clearable]="true" [searchable]="true" appendTo="body" placeholder="Sin asignar" notFoundText="Sin usuarios"><ng-option *ngFor="let user of users" [value]="user.id">{{ user.displayName || user.usersmall || user.email || ('Usuario ' + user.id) }}</ng-option></ng-select></div>
-              <div class="col-md-2"><label class="form-label small" [for]="'cobranza-origen-' + installment.id">Recibido en</label><ng-select class="cobranza-select" [labelForId]="'cobranza-origen-' + installment.id" [(ngModel)]="abonoForm.origenCobro" [clearable]="false" [searchable]="false" appendTo="body"><ng-option value="DOMICILIO">Domicilio del cliente</ng-option><ng-option value="NEGOCIO">Caja del negocio</ng-option></ng-select></div>
+              <div class="col-md-2"><label class="form-label small" [for]="'cobranza-origen-' + installment.id">Recibido en</label><ng-select class="cobranza-select" [labelForId]="'cobranza-origen-' + installment.id" [(ngModel)]="abonoForm.origenCobro" (change)="onPaymentOriginChange()" [clearable]="false" [searchable]="false" appendTo="body"><ng-option value="DOMICILIO">Domicilio del cliente</ng-option><ng-option value="NEGOCIO">Caja del negocio</ng-option></ng-select></div>
               <div class="col-md-3" *ngIf="abonoForm.origenCobro === 'NEGOCIO'"><label class="form-label small" [for]="'cobranza-turno-' + installment.id">Turno abierto</label><ng-select class="cobranza-select" [labelForId]="'cobranza-turno-' + installment.id" [(ngModel)]="abonoForm.idCajeroTurno" [clearable]="false" [searchable]="false" appendTo="body" placeholder="Seleccionar caja abierta" notFoundText="Sin cajas abiertas"><ng-option *ngFor="let turn of openCashTurns" [value]="turn.id">Caja {{ turn.idCashRegister }} · {{ turn.fechaInicio | date:'shortTime' }}</ng-option></ng-select></div>
               <div class="col-md-2"><label class="form-label small">Comentario</label><input class="form-control form-control-sm" maxlength="500" [(ngModel)]="abonoForm.comentario"></div>
-              <div class="col-md-2"><button class="btn btn-sm btn-success w-100" (click)="recordPayment(installment)" [disabled]="saving">Guardar abono</button></div>
+              <div class="col-md-3"><button class="btn btn-success w-100" (click)="recordPayment(installment)" [disabled]="saving"><i class="bi bi-floppy me-1"></i>{{ saving ? 'Guardando…' : 'Guardar abono' }}</button></div>
             </div><div *ngIf="installment.abonos?.length" class="small mt-2"><strong>Abonos registrados:</strong><span *ngFor="let payment of installment.abonos" class="ms-2">{{ payment.fechaPago | date:'dd/MM/yyyy' }} — {{ payment.monto | currency:'MXN' }}<button class="btn btn-link btn-sm text-danger p-0 ms-1" (click)="deactivatePayment(payment)" title="Quitar abono"><i class="bi bi-x-circle"></i></button><span *ngIf="payment.comentario"> ({{ payment.comentario }})</span></span></div></div></div>
         </div>
       </article>
@@ -245,6 +250,12 @@ export class ClientesCobranzasPagosComponent implements OnChanges, OnDestroy {
     if (this.expandedLoanIds.has(id)) this.expandedLoanIds.delete(id);
     else this.expandedLoanIds.add(id);
   }
+  hasActiveInstallment(loan: any): boolean { return (loan?.cuotas || []).some((item: any) => Number(item.id) === Number(this.activeInstallmentId)); }
+  cancelPayment(): void { this.activeInstallmentId = null; }
+  onPaymentOriginChange(): void {
+    if (this.abonoForm.origenCobro === 'NEGOCIO' && this.openCashTurns.length === 1) this.abonoForm.idCajeroTurno = this.openCashTurns[0].id;
+    if (this.abonoForm.origenCobro !== 'NEGOCIO') this.abonoForm.idCajeroTurno = null;
+  }
   ngOnChanges(): void {
     this.loadLoans(); this.loadPaymentTypes(); this.loadUsers(); this.loadOpenCashTurns();
     if (!this.loanRefreshTimer) this.loanRefreshTimer = setInterval(() => void this.refreshLoansIfChanged(), 5000);
@@ -320,7 +331,7 @@ export class ClientesCobranzasPagosComponent implements OnChanges, OnDestroy {
       }
     });
   }
-  loadOpenCashTurns(): void { const rootId = this.paymentCompanyId; if (!rootId) { this.openCashTurns = []; return; } const cashier = 'COBRANZA: ' + Number(this.signalsService.getIdUSer()()); this.cajeroTurnoService.getByCompany(rootId).subscribe({ next: (items: any[]) => this.openCashTurns = (items || []).filter(item => item.active && !item.fechaCierre && String(item.cajero || '') === cashier), error: () => this.openCashTurns = [] }); }
+  loadOpenCashTurns(): void { const rootId = this.paymentCompanyId; if (!rootId) { this.openCashTurns = []; return; } const cashier = 'COBRANZA: ' + Number(this.signalsService.getIdUSer()()); this.cajeroTurnoService.getByCompany(rootId).subscribe({ next: (items: any[]) => { this.openCashTurns = (items || []).filter(item => item.active && !item.fechaCierre && String(item.cajero || '') === cashier); if (this.abonoForm.origenCobro === 'NEGOCIO' && this.openCashTurns.length === 1) this.abonoForm.idCajeroTurno = this.openCashTurns[0].id; }, error: () => this.openCashTurns = [] }); }
   private today(): string { const date = new Date(); return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`; }
   private nextMonth(): string { const date = new Date(); const day = date.getDate(); date.setDate(1); date.setMonth(date.getMonth() + 1); const lastDay = new Date(date.getFullYear(), date.getMonth() + 1, 0).getDate(); date.setDate(Math.min(day, lastDay)); return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`; }
   private dateForInput(value: string | Date): string { return typeof value === 'string' ? value.slice(0, 10) : this.formatDate(value); }

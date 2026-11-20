@@ -75,5 +75,5 @@ export const environment = {
     // publicKey: 'TEST-4399133a-4676-42a2-ab85-d946370bf96a',
   },
 
-  version: '5.00.563 (19 Noviembre 2026 21:59) fecha UTC del turno en corte',
+  version: '5.00.564 (20 Noviembre 2026 06:08) formulario enfocado para abonos',
 };
