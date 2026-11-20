@@ -75,5 +75,5 @@ export const environment = {
     // publicKey: 'TEST-4399133a-4676-42a2-ab85-d946370bf96a',
   },
 
-  version: '5.00.577 (20 Noviembre 2026 11:34) RFC visible y corrección de búsqueda CP en Cobranza',
+  version: '5.00.578 (20 Noviembre 2026 12:15) alta y captura secuencial en clientes de Cobranza',
 };

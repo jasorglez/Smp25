@@ -1113,11 +1113,23 @@ export class ClientesCobranzasComponent implements CanComponentDeactivate {
     const currentColKey = event.colDef.field;
     const currentRowIndex = event.rowIndex;
     const rowId = event.node?.id;
-
     const currentColIndex = this.editableColumns.indexOf(currentColKey);
 
-    if (currentColIndex < this.editableColumns.length - 1) {
-      const nextColKey = this.editableColumns[currentColIndex + 1];
+    const displayedEditableColumns = new Set(
+      this.gridApi.getAllDisplayedColumns()
+        .filter((column: any) => {
+          const editable = column.getColDef().editable;
+          return typeof editable === 'function'
+            ? editable({ data: event.data, node: event.node, colDef: column.getColDef() })
+            : editable !== false;
+        })
+        .map((column: any) => column.getColId())
+    );
+    const nextColKey = this.editableColumns
+      .slice(currentColIndex + 1)
+      .find((colKey) => displayedEditableColumns.has(colKey));
+
+    if (currentColIndex >= 0 && nextColKey) {
 
       // Commit the edited value before moving focus so CP changes trigger their
       // postal-code lookup without replacing the row currently being edited.
@@ -1277,8 +1289,7 @@ export class ClientesCobranzasComponent implements CanComponentDeactivate {
   }
 
   private focusNewCustomerNameCell(tempId: string): void {
-    // "Nombre" en la tabla corresponde al campo `company`
-    const colKey = 'company';
+    const colKey = 'nameContact';
     let attempts = 0;
 
     const focusCell = () => {
