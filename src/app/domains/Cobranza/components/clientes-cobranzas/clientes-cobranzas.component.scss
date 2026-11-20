@@ -1,3 +1,9 @@
-:host ::ng-deep .ag-cell-focus {
+:host ::ng-deep .ag-cell.enter-active-cell {
+  background-color: #fff3a3 !important;
+}
+
+:host ::ng-deep .ag-cell.enter-active-cell input,
+:host ::ng-deep .ag-cell.enter-active-cell textarea,
+:host ::ng-deep .ag-cell.enter-active-cell select {
   background-color: #fff3a3 !important;
 }

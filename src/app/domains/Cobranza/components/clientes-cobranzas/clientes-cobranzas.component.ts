@@ -1,4 +1,4 @@
-import { Component, effect, HostListener, inject } from '@angular/core';
+import { Component, effect, ElementRef, HostListener, inject, ViewChild } from '@angular/core';
 import { RouterModule, ActivatedRoute } from '@angular/router';
 import { DomainsModule } from 'app/domains/domainsmodule';
 import { AG_GRID_LOCALE_ES } from 'assets/i18n/ag-grid.locale.es';
@@ -66,6 +66,9 @@ import { Base64EncodeService } from 'app/services/base64encode.service';
   styleUrls: ['./clientes-cobranzas.component.scss'],
 })
 export class ClientesCobranzasComponent implements CanComponentDeactivate {
+  @ViewChild('clientesGrid', { read: ElementRef }) private clientesGridElement: ElementRef<HTMLElement>;
+  private enterHighlightedCell: HTMLElement | null = null;
+
   private customerService = inject(CustomersService);
    private modalServiceTable = inject(ModalService);
    private signalsService = inject(SignalsService);
@@ -230,6 +233,17 @@ export class ClientesCobranzasComponent implements CanComponentDeactivate {
         return 'selected-row';
       }
       return '';
+    },
+    onCellFocused: (event: any) => {
+      if (event.rowIndex === null || event.rowIndex === undefined || !event.column) {
+        this.enterHighlightedCell?.classList.remove('enter-active-cell');
+        this.enterHighlightedCell = null;
+        return;
+      }
+
+      requestAnimationFrame(() =>
+        this.highlightEnterCell(event.rowIndex, event.column.getColId())
+      );
     },
     onRowClicked: (event) => {
       event.node.setSelected(true);
@@ -1105,7 +1119,10 @@ export class ClientesCobranzasComponent implements CanComponentDeactivate {
     const currentColIndex = displayedEditableColumns.findIndex(
       (column: any) => column.getColId() === event.column.getColId()
     );
-    if (currentColIndex < 0 || displayedEditableColumns.length < 2) return;
+    if (currentColIndex < 0 || displayedEditableColumns.length < 2) {
+      this.gridApi.stopEditing();
+      return;
+    }
 
     const step = backwards ? -1 : 1;
     const nextIndex = (currentColIndex + step + displayedEditableColumns.length)
@@ -1122,7 +1139,24 @@ export class ClientesCobranzasComponent implements CanComponentDeactivate {
       this.gridApi.ensureColumnVisible(nextColKey);
       this.gridApi.setFocusedCell(rowIndex, nextColKey);
       this.gridApi.startEditingCell({ rowIndex, colKey: nextColKey });
+      requestAnimationFrame(() => this.highlightEnterCell(rowIndex, nextColKey));
     });
+  }
+
+  private highlightEnterCell(rowIndex: number, colKey: string): void {
+    this.enterHighlightedCell?.classList.remove('enter-active-cell');
+    this.enterHighlightedCell = null;
+
+    const cells = this.clientesGridElement?.nativeElement.querySelectorAll<HTMLElement>('.ag-cell[col-id]');
+    const targetCell = Array.from(cells || []).find((cell) =>
+      cell.getAttribute('col-id') === colKey
+      && cell.closest('.ag-row')?.getAttribute('row-index') === String(rowIndex)
+    );
+
+    if (targetCell) {
+      targetCell.classList.add('enter-active-cell');
+      this.enterHighlightedCell = targetCell;
+    }
   }
 
   getCoordinatesFromCP(cp: string) {
@@ -1288,6 +1322,7 @@ export class ClientesCobranzasComponent implements CanComponentDeactivate {
       requestAnimationFrame(() => {
         this.gridApi.setFocusedCell(rowIndex, colKey);
         this.gridApi.startEditingCell({ rowIndex, colKey });
+        requestAnimationFrame(() => this.highlightEnterCell(rowIndex, colKey));
 
         requestAnimationFrame(() => {
           const editingInput = document.querySelector(
