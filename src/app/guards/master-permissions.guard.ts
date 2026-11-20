@@ -57,7 +57,8 @@ export class MasterPermissionsGuard implements CanActivate {
           return true;
         } else {
           this.workspaceTabs.remove(state.url);
-          this.router.navigate(['/unauthorized']);
+          const isWorkspaceRestore = this.router.getCurrentNavigation()?.extras.state?.['restoreWorkspace'] === true;
+          this.router.navigate([isWorkspaceRestore ? '/publicidad' : '/unauthorized'], { replaceUrl: isWorkspaceRestore });
           return false;
         }
       })

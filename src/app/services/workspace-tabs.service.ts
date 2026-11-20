@@ -23,7 +23,14 @@ export class WorkspaceTabsService {
   /** Lee la sesión de trabajo del usuario autenticado sin alterar su URL activa. */
   restoreForCurrentUser(): string | null {
     this.ensureUserLoaded();
+    const activeUrl = this.activeUrl();
+    if (activeUrl && this.isTransientRoute(activeUrl)) this.remove(activeUrl);
     return this.activeUrl() || null;
+  }
+
+  isTransientRoute(url: string): boolean {
+    const path = this.normalizeUrl(url).split('?')[0];
+    return path === '/unauthorized';
   }
 
   register(url: string, title: string): void {

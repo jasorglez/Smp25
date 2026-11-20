@@ -119,7 +119,7 @@ export class MainPageComponent implements OnInit, OnDestroy {
       const restoredUrl = this.workspaceTabs.restoreForCurrentUser();
       if (restoredUrl && restoredUrl !== this.router.url.split('?')[0]) {
         this.restoringWorkspaceUrl = restoredUrl;
-        void this.router.navigateByUrl(restoredUrl).then(() => {
+        void this.router.navigateByUrl(restoredUrl, { state: { restoreWorkspace: true } }).then(() => {
           if (this.restoringWorkspaceUrl) {
             this.restoringWorkspaceUrl = '';
             this.registerWorkspaceRoute(this.router.url);
@@ -206,7 +206,7 @@ export class MainPageComponent implements OnInit, OnDestroy {
   }
 
   private registerWorkspaceRoute(url: string): void {
-    if (this.workspaceTabs.isGeneralMenu(url)) {
+    if (this.workspaceTabs.isGeneralMenu(url) || this.workspaceTabs.isTransientRoute(url)) {
       this.workspaceTabs.remove(url);
       return;
     }

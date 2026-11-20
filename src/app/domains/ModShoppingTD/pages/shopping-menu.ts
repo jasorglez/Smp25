@@ -52,5 +52,7 @@ export const shoppingMenuPermissionGuard: CanActivateFn = route => {
       && shoppingRouteForPermission(identifier, permission?.permissionName || permission?.description) === targetRoute
       && auth.hasDetailedPermission('shoppingTD', identifier)
   );
-  return allowed || router.createUrlTree(['/unauthorized']);
+  if (allowed) return true;
+  const isWorkspaceRestore = router.getCurrentNavigation()?.extras.state?.['restoreWorkspace'] === true;
+  return router.createUrlTree([isWorkspaceRestore ? '/publicidad' : '/unauthorized']);
 };
