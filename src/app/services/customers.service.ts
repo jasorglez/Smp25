@@ -86,6 +86,10 @@ export class CustomersService {
     return this.http.post(`${environment.urlAdministration}/PrestamosCobranza`, data, { headers: this.trackingService.getHeaders() });
   }
 
+  updateCobranzaSalesNoteNumber(loanId: number, data: { numeroNotaVenta: string }): Observable<void> {
+    return this.http.put<void>(`${environment.urlAdministration}/PrestamosCobranza/${loanId}/nota-venta`, data, { headers: this.trackingService.getHeaders() });
+  }
+
   addCobranzaInstallmentPayment(installmentId: number, data: any): Observable<any> {
     return this.http.post(`${environment.urlAdministration}/PrestamosCobranza/cuota/${installmentId}/abonos`, data, { headers: this.trackingService.getHeaders() });
   }

@@ -92,7 +92,7 @@ import { Base64EncodeService } from 'app/services/base64encode.service';
             <button class="btn btn-sm btn-warning" (click)="revertChanges(loan)" [disabled]="saving || !hasChanges(loan)"><i class="bi bi-arrow-clockwise"></i> Deshacer</button>
           </div>
         </div>
-        <div class="card-body" *ngIf="isLoanExpanded(loan)"><div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-2"><span class="small">Interés total: {{ loan.totalInteres || 0 | currency:'MXN' }} · A pagar: {{ payableTotal(loan) | currency:'MXN' }}</span><button class="btn btn-sm btn-outline-danger" (click)="generatePromissoryNote(loan)" title="Previsualizar el pagaré de este préstamo"><i class="bi bi-file-earmark-pdf"></i> PDF de este préstamo</button></div><ag-grid-angular class="ag-theme-quartz small-text-ag-grid d-block" style="width:100%;height:320px" [rowData]="loan.cuotas" [columnDefs]="installmentColumns" [defaultColDef]="defaultColDef" [localeText]="AG_GRID_LOCALE_ES" [rowSelection]="'single'" [stopEditingWhenCellsLoseFocus]="true" (cellValueChanged)="onDateChanged($event)"></ag-grid-angular>
+        <div class="card-body" *ngIf="isLoanExpanded(loan)"><div class="row g-2 align-items-end mb-3"><div class="col-md-4"><label class="form-label small mb-1">Consecutivo de nota de venta</label><input class="form-control form-control-sm" type="text" maxlength="50" [(ngModel)]="loan.numeroNotaVentaEdit" placeholder="Ej. 000123"></div><div class="col-auto"><button class="btn btn-sm btn-success" (click)="saveLoanReceiptNumber(loan)" [disabled]="saving || !hasReceiptNumberChanges(loan)"><i class="bi bi-floppy"></i> Guardar consecutivo</button></div></div><div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-2"><span class="small">Interés total: {{ loan.totalInteres || 0 | currency:'MXN' }} · A pagar: {{ payableTotal(loan) | currency:'MXN' }}</span><button class="btn btn-sm btn-outline-danger" (click)="generatePromissoryNote(loan)" title="Previsualizar el pagaré de este préstamo"><i class="bi bi-file-earmark-pdf"></i> PDF de este préstamo</button></div><ag-grid-angular class="ag-theme-quartz small-text-ag-grid d-block" style="width:100%;height:320px" [rowData]="loan.cuotas" [columnDefs]="installmentColumns" [defaultColDef]="defaultColDef" [localeText]="AG_GRID_LOCALE_ES" [rowSelection]="'single'" [stopEditingWhenCellsLoseFocus]="true" (cellValueChanged)="onDateChanged($event)"></ag-grid-angular>
           <div *ngFor="let installment of loan.cuotas"><div *ngIf="activeInstallmentId === installment.id" class="border rounded p-2 mt-2"><strong>Abonos de la cuota {{ installment.numeroCuota }}</strong><div class="row g-2 align-items-end py-2">
               <div class="col-md-2"><label class="form-label small">Fecha recibida</label><input class="form-control form-control-sm" type="date" [(ngModel)]="abonoForm.fechaPago"></div>
               <div class="col-md-2"><label class="form-label small">Monto recibido (saldo préstamo: {{ loanBalance(loan) | currency:'MXN' }})</label><input class="form-control form-control-sm" type="number" min="0.01" step="0.01" [max]="loanBalance(loan)" [(ngModel)]="abonoForm.monto"></div>
@@ -179,6 +179,22 @@ export class ClientesCobranzasPagosComponent implements OnChanges, OnDestroy {
   async saveChanges(loan: any): Promise<void> { const changed = loan.cuotas.filter((item: any) => item.fechaProgramada !== this.originalDates.get(item.id)); if (!changed.length) return; this.saving = true; try { for (const item of changed) await firstValueFrom(this.customersService.updateCobranzaInstallmentDate(item.id, { fechaProgramada: item.fechaProgramada })); this.saving = false; this.loadLoans(); this.balancesChanged.emit(); alerts.basicAlert('Fechas guardadas', 'Se actualizó el calendario de pagos.', 'success'); } catch (error) { console.error(error); this.saving = false; alerts.basicAlert('Error', 'No se pudieron guardar todas las fechas. Recarga el detalle para revisar cuáles se guardaron.', 'error'); } }
 
   get totalPaid(): number { return this.loans.reduce((sum, loan) => sum + loan.cuotas.reduce((s: number, q: any) => s + this.installmentPaid(q), 0), 0); }
+  hasReceiptNumberChanges(loan: any): boolean { return String(loan?.numeroNotaVentaEdit || '').trim() !== String(loan?.numeroNotaVenta || '').trim(); }
+  async saveLoanReceiptNumber(loan: any): Promise<void> {
+    const receiptNumber = String(loan?.numeroNotaVentaEdit || '').trim();
+    if (!receiptNumber || receiptNumber.length > 50) { alerts.basicAlert('Consecutivo requerido', 'Captura un consecutivo de hasta 50 caracteres.', 'warning'); return; }
+    if (!this.hasReceiptNumberChanges(loan) || this.saving) return;
+    this.saving = true;
+    try {
+      await firstValueFrom(this.customersService.updateCobranzaSalesNoteNumber(Number(loan.id), { numeroNotaVenta: receiptNumber }));
+      loan.numeroNotaVenta = receiptNumber;
+      loan.numeroNotaVentaEdit = receiptNumber;
+      alerts.basicAlert('Consecutivo guardado', 'El PDF de este préstamo usará el nuevo número de nota de venta.', 'success');
+    } catch (error) {
+      console.error('No se pudo actualizar el consecutivo de la nota de venta:', error);
+      alerts.basicAlert('Error', 'No se pudo guardar el consecutivo de la nota de venta.', 'error');
+    } finally { this.saving = false; }
+  }
   isLoanExpanded(loan: any): boolean { return this.expandedLoanIds.has(Number(loan?.id)); }
   toggleLoanDetail(loan: any): void {
     const id = Number(loan?.id);
@@ -285,14 +301,14 @@ export class ClientesCobranzasPagosComponent implements OnChanges, OnDestroy {
   }
 
   private setLoans(items: any[]): void {
-    this.loans = (items || []).map(loan => ({ ...loan, cuotas: (loan.cuotas || []).map((installment: any) => ({ ...installment, fechaProgramada: this.dateForInput(installment.fechaProgramada) })) }));
+    this.loans = (items || []).map(loan => ({ ...loan, numeroNotaVentaEdit: loan.numeroNotaVenta || '', cuotas: (loan.cuotas || []).map((installment: any) => ({ ...installment, fechaProgramada: this.dateForInput(installment.fechaProgramada) })) }));
     this.originalDates.clear();
     this.loans.forEach(loan => loan.cuotas.forEach((item: any) => this.originalDates.set(item.id, item.fechaProgramada)));
   }
 
   private async refreshLoansIfChanged(): Promise<void> {
     const customerId = Number(this.customer?.id);
-    if (!customerId || document.hidden || this.loading || this.saving || this.refreshingLoans || this.showLoanForm || this.activeInstallmentId !== null || this.loans.some(loan => this.hasChanges(loan))) return;
+    if (!customerId || document.hidden || this.loading || this.saving || this.refreshingLoans || this.showLoanForm || this.activeInstallmentId !== null || this.loans.some(loan => this.hasChanges(loan) || this.hasReceiptNumberChanges(loan))) return;
     this.refreshingLoans = true;
     try {
       const items = await firstValueFrom(this.customersService.getCobranzaLoans(customerId));

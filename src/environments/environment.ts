@@ -75,5 +75,5 @@ export const environment = {
     // publicKey: 'TEST-4399133a-4676-42a2-ab85-d946370bf96a',
   },
 
-  version: '5.00.558 (19 Noviembre 2026 19:13) recuperación segura de pestañas',
+  version: '5.00.559 (19 Noviembre 2026 19:25) edición del consecutivo de nota',
 };
