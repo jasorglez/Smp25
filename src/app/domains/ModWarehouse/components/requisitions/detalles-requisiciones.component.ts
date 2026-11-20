@@ -7,6 +7,7 @@ import { AG_GRID_LOCALE_ES } from 'assets/i18n/ag-grid.locale.es';
 import { alerts } from 'app/helpers/alerts';
 import { hasPersistedMasterId } from 'app/helpers/master-detail-guard';
 import { TrackingService } from 'app/services/tracking.service';
+import { navigateEditableCellOnEnter } from 'app/helpers/ag-grid-enter-navigation';
 import { restoreGridColumnWidths, saveGridColumnWidths } from 'app/helpers/grid-column-widths';
 
 @Component({
@@ -237,6 +238,7 @@ export class DetallesRequisicionesComponent implements OnInit {
   }
 
   public gridOptions: any = {
+    onCellKeyDown: navigateEditableCellOnEnter,
     headerHeight: 30,
     rowHeight: 28,
     animateRows: true,

@@ -713,8 +713,17 @@ export class ClientesCobranzasComponent implements CanComponentDeactivate {
           return true;
         },
         cellEditor: 'agSelectCellEditor',
-        cellEditorParams: {
-          values: this.estados, // Usar la lista de estados obtenida
+        cellEditorParams: (params: any) => {
+          // Leer el catálogo al abrir el editor: la respuesta de INEGI llega
+          // después de crear las columnas. Conservar además el valor actual
+          // si la API no lo devuelve para no borrarlo al iniciar la edición.
+          const values = [...this.estados];
+          const currentState = String(params.value ?? '').trim();
+          const currentStateExists = values.some(
+            (state) => state.trim().toLocaleLowerCase() === currentState.toLocaleLowerCase()
+          );
+          if (currentState && !currentStateExists) values.unshift(currentState);
+          return { values };
         },
       },
       {

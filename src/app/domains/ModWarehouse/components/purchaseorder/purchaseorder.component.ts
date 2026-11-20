@@ -32,6 +32,7 @@ import { NotificationsTelegramService } from 'app/services/notifications-telegra
 import { PermitionsService } from 'app/services/permitions.service';
 import { TrackingService } from 'app/services/tracking.service';
 import { restoreGridColumnWidths, saveGridColumnWidths } from 'app/helpers/grid-column-widths';
+import { navigateEditableCellOnEnter } from 'app/helpers/ag-grid-enter-navigation';
 import { IncomesAndExpensesService } from 'app/services/incomes-and-expenses.service';
 import { AdministrationService } from 'app/services/administration.service';
 import { CuentasContablesService } from 'app/services/cuentas-contables.service';
@@ -291,24 +292,7 @@ export class PurchaseOrderComponent implements CanComponentDeactivate {
         this.masterGridApi.refreshCells({ rowNodes: [event.node], force: true });
       }, 0);
     },
-    onCellKeyDown: (params) => {
-      if (params.event.key === 'Enter') {
-        const editableColumns = this.colMaster.filter((col) => col.editable);
-        const currentColIndex = editableColumns.findIndex(
-          (col) => col.field === params.column.getColDef().field
-        );
-
-        if (currentColIndex < editableColumns.length - 1) {
-          requestAnimationFrame(() => {
-            params.api.startEditingCell({
-              rowIndex: params.node.rowIndex,
-              colKey: editableColumns[currentColIndex + 1].field,
-            });
-          });
-        }
-        params.event.preventDefault();
-      }
-    }
+    onCellKeyDown: navigateEditableCellOnEnter
   };
 
   getSetupData(): Promise<void> {

@@ -9,6 +9,16 @@ body {
 @import 'ag-grid-community/styles/ag-grid.css';
 @import 'ag-grid-community/styles/ag-theme-quartz.css';
 @import 'ag-grid-community/styles/ag-theme-alpine.css';
+/* Keep the active cell visible in every AG Grid, for mouse and keyboard focus. */
+.ag-cell-focus {
+  background-color: #fff3a3 !important;
+}
+
+.ag-cell-focus input,
+.ag-cell-focus textarea,
+.ag-cell-focus select {
+  background-color: #fff3a3 !important;
+}
 
 .ag-theme-quartz,
 .ag-theme-quartz-dark {

@@ -16,6 +16,7 @@ import { ModalService } from 'app/services/modal.service';
 import { ReceiptsService } from 'app/services/receipts.service';
 import { ReqInfoComponent } from "../req-info/req-info.component";
 import { TrackingService } from 'app/services/tracking.service';
+import { navigateEditableCellOnEnter } from 'app/helpers/ag-grid-enter-navigation';
 
 interface Catalog {
   id: number;
@@ -104,6 +105,7 @@ export class RequisitionsMainComponent {
   
 // Column Definitions: Defines the columns to be displayed.
 public gridOptions: any = {
+  onCellKeyDown: navigateEditableCellOnEnter,
   headerHeight: 30,
   rowHeight: 30,
   getRowClass: (params) => {

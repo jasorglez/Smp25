@@ -8,6 +8,7 @@ import { alerts } from 'app/helpers/alerts';
 import { hasPersistedMasterId } from 'app/helpers/master-detail-guard';
 import { TrackingService } from 'app/services/tracking.service';
 import { restoreGridColumnWidths, saveGridColumnWidths } from 'app/helpers/grid-column-widths';
+import { navigateEditableCellOnEnter } from 'app/helpers/ag-grid-enter-navigation';
 import { CatalogsService } from 'app/services/catalogs.service';
 import { lastValueFrom } from 'rxjs';
 import Swal from 'sweetalert2';
@@ -157,6 +158,10 @@ export class DetailCellRendererPurchaseOrderItemsComponent implements OnInit {
 
   onDetailGridCellKeyDown(event: any): void {
     const keyEvent: KeyboardEvent = event?.event || event;
+    if (keyEvent?.key === 'Enter') {
+      navigateEditableCellOnEnter(event);
+      return;
+    }
     if (keyEvent?.key !== 'F10') return;
     keyEvent.preventDefault();
     keyEvent.stopPropagation();

@@ -32,6 +32,7 @@ import { SearchableSelectComponent } from 'app/shared/searchable-select/searchab
 import { SetupService } from 'app/services/setup.service';
 import { CanComponentDeactivate } from 'app/guards/unsaved-changes.guard';
 import { confirmExitIfUnsaved } from 'app/helpers/can-deactivate.helper';
+import { navigateEditableCellOnEnter } from 'app/helpers/ag-grid-enter-navigation';
 
 interface Catalog {
   id: number;
@@ -196,6 +197,7 @@ export class OutingsComponent implements OnInit, CanComponentDeactivate {
   public gridOptions: any = {
     headerHeight: 30,
     rowHeight: 30,
+    onCellKeyDown: navigateEditableCellOnEnter,
     getRowClass: (params) => {
       // Verificar si la fila está seleccionada
       if (params.node.isSelected()) {
@@ -874,6 +876,10 @@ export class OutingsComponent implements OnInit, CanComponentDeactivate {
 
   onDetailsGridReady(params: GridReadyEvent) {
     this.detailsGridApi = params.api;
+  }
+
+  onDetailsGridCellKeyDown(event: any): void {
+    navigateEditableCellOnEnter(event);
   }
 
   onDetailsRowSelected(event: any) {

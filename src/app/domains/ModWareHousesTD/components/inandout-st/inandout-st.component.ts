@@ -28,6 +28,7 @@ import { LogbookService } from 'app/services/logbook.service';
 import { BranchsService } from 'app/services/branchs.service';
 import { WarehousesService } from 'app/services/warehouses.service';
 import { restoreGridColumnWidths, saveGridColumnWidths } from 'app/helpers/grid-column-widths';
+import { navigateEditableCellOnEnter } from 'app/helpers/ag-grid-enter-navigation';
 import { ProjectsComponent } from 'app/domains/ModProjects/components/projects/projects.component';
 
 @Component({
@@ -1203,6 +1204,10 @@ export class InandoutStComponent implements OnInit {
 
   onMasterGridCellKeyDown(event: any): void {
     const keyEvent: KeyboardEvent = event?.event || event;
+    if (keyEvent?.key === 'Enter') {
+      navigateEditableCellOnEnter(event);
+      return;
+    }
     if (keyEvent?.key !== 'F10') return;
     keyEvent.preventDefault();
     keyEvent.stopPropagation();

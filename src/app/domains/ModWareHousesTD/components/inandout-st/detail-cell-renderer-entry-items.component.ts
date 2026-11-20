@@ -15,6 +15,7 @@ import { pdfPreviewUrl } from 'app/helpers/pdf-viewer';
 import { TrackingService } from 'app/services/tracking.service';
 import { InventarioWarehouseService } from 'app/services/inventario-warehouse.service';
 import { restoreGridColumnWidths, saveGridColumnWidths } from 'app/helpers/grid-column-widths';
+import { navigateEditableCellOnEnter } from 'app/helpers/ag-grid-enter-navigation';
 import Swal from 'sweetalert2';
 import { catchError, forkJoin, from, lastValueFrom, map, mergeMap, of, switchMap, toArray } from 'rxjs';
 
@@ -672,6 +673,7 @@ export class DetailCellRendererEntryItemsComponent {
     rowHeight: 35,
     animateRows: true,
     rowSelection: 'single',
+    onCellKeyDown: navigateEditableCellOnEnter,
     onCellClicked: (event: any) => {
       if (event.colDef?.field !== 'description' || event.rowIndex == null) return;
       const alreadyEditing = event.api.getEditingCells().some((cell: any) =>

@@ -29,6 +29,7 @@ import { PrefixSetupService } from 'app/services/prefix-setup.service';
 import { PermitionsService } from 'app/services/permitions.service';
 import { TrackingService } from 'app/services/tracking.service';
 import { restoreGridColumnWidths, saveGridColumnWidths } from 'app/helpers/grid-column-widths';
+import { navigateEditableCellOnEnter } from 'app/helpers/ag-grid-enter-navigation';
 import { CanComponentDeactivate } from 'app/guards/unsaved-changes.guard';
 import { confirmExitIfUnsaved } from 'app/helpers/can-deactivate.helper';
 import { ButtonCellRendererComponent } from './button-cell-renderer.component';
@@ -833,6 +834,10 @@ export class RequisitionsComponent implements CanComponentDeactivate {
 
   onMasterGridCellKeyDown(event: any): void {
     const keyEvent: KeyboardEvent = event?.event || event;
+    if (keyEvent?.key === 'Enter') {
+      navigateEditableCellOnEnter(event);
+      return;
+    }
     if (keyEvent?.key !== 'F10') return;
     keyEvent.preventDefault();
     keyEvent.stopPropagation();
