@@ -1470,7 +1470,24 @@ export class DetailCellRendererEntryItemsComponent {
       const sourceEntry = sourceEntryId > 0
         ? (this.context?.componentParent?.entryList || []).find((entry: any) => Number(entry.id) === sourceEntryId)
         : null;
-      const reportEntryData = { ...this.entryData, otName, sourceEntryFolio: sourceEntry?.folio || '' };
+      const destinationWarehouseId = Number(this.entryData?.idWarehouseOrigin || 0);
+      const destinationWarehouse = (this.context?.componentParent?.warehouses || []).find((warehouse: any) =>
+        Number(warehouse.idAlmacen ?? warehouse.idWarehouse ?? warehouse.id) === destinationWarehouseId
+      );
+      const destinationWarehouseName = destinationWarehouse
+        ? destinationWarehouse.nombreAlmacen || destinationWarehouse.nameWarehouse || destinationWarehouse.name || destinationWarehouse.description
+        : destinationWarehouseId ? `Almacén #${destinationWarehouseId}` : '';
+      const movementCatalog = (this.context?.componentParent?.catalogs || []).find((catalog: any) =>
+        Number(catalog.id) === Number(this.entryData?.idType)
+      );
+      const reportEntryData = {
+        ...this.entryData,
+        otName,
+        sourceEntryFolio: sourceEntry?.folio || '',
+        isTransfer: this.isTransferEntry(),
+        movementTypeName: movementCatalog?.description || movementCatalog?.name || '',
+        destinationWarehouseName
+      };
 
       // Generate PDF using the service
       const pdfUrl = await this.pdfReportsService.generateEntryReport(reportEntryData, itemsData, idRoot);
