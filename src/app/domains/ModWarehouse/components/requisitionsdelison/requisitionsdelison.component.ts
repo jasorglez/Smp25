@@ -991,6 +991,8 @@ export class RequisitionsDelisonComponent implements OnInit {
         api.forEachNode((otherNode: any) => {
           if (otherNode.id !== node.id) {
             otherNode.setRowHeight(0);
+          } else {
+            otherNode.setRowHeight(undefined);
           }
         });
 
@@ -1011,7 +1013,10 @@ export class RequisitionsDelisonComponent implements OnInit {
 
         // Expandir con el PDF
         setTimeout(() => {
+          node.setRowHeight(undefined);
           node.setExpanded(true);
+          api.onRowHeightChanged();
+          api.redrawRows();
         }, 0);
 
         // Cerrar alerta después de un delay

@@ -75,5 +75,5 @@ export const environment = {
     // publicKey: 'TEST-4399133a-4676-42a2-ab85-d946370bf96a',
   },
 
-  version: '5.00.572 (20 Noviembre 2026 07:47) firmas de Entradas y Salidas',
+  version: '5.00.574 (20 Noviembre 2026 08:56) vista individual de PDF en almacenes',
 };

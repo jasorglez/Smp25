@@ -2363,6 +2363,8 @@ export class PurchaseOrderComponent implements CanComponentDeactivate {
       this.masterGridApi.forEachNode((otherNode: any) => {
         if (otherNode.id !== node.id) {
           otherNode.setRowHeight(0);
+        } else {
+          otherNode.setRowHeight(undefined);
         }
       });
 
@@ -2379,7 +2381,10 @@ export class PurchaseOrderComponent implements CanComponentDeactivate {
 
       // Expandir con el detalle del reporte
       setTimeout(() => {
+        node.setRowHeight(undefined);
         node.setExpanded(true);
+        this.masterGridApi.onRowHeightChanged();
+        this.masterGridApi.redrawRows();
       }, 0);
     }
   }

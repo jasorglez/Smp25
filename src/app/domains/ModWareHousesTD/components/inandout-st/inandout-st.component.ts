@@ -1086,7 +1086,9 @@ export class InandoutStComponent implements OnInit {
       api.onRowHeightChanged();
       await new Promise(resolve => setTimeout(resolve, 1000));
       node.setExpanded(true);
-      api.resetRowHeights();
+      // Keep the explicit 0 px heights on all other records while the PDF
+      // preview is open; resetRowHeights() would make them visible again.
+      api.onRowHeightChanged();
       clearInterval(progressInterval);
       alerts.updateLoadingProgress('Reporte generado', 'El documento se ha procesado correctamente', 100);
       setTimeout(() => {
