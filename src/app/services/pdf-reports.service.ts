@@ -283,6 +283,7 @@ export class PdfReportsService {
               },
               {
                 width: '50%',
+                margin: [110, 0, 0, 0],
                 stack: [
                   {
                     text: 'Recibe:',
