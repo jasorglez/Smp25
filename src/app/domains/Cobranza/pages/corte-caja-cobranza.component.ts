@@ -111,7 +111,9 @@ export class CorteCajaCobranzaComponent {
     const raw = String(value || '').trim();
     if (!raw) return '';
     if (/^\d{4}-\d{2}-\d{2}$/.test(raw)) return raw;
-    const date = new Date(raw);
+    // SQL datetime2 values come back without a Z even though FechaInicio is saved in UTC.
+    const hasZone = /(?:Z|[+-]\d{2}:?\d{2})$/i.test(raw);
+    const date = new Date(hasZone ? raw : `${raw}Z`);
     if (!Number.isNaN(date.getTime())) return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
     const parts = raw.slice(0, 10).split('/');
     return parts.length === 3 ? `${parts[2]}-${parts[1].padStart(2,'0')}-${parts[0].padStart(2,'0')}` : '';
