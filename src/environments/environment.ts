@@ -75,5 +75,5 @@ export const environment = {
     // publicKey: 'TEST-4399133a-4676-42a2-ab85-d946370bf96a',
   },
 
-  version: '5.00.560 (19 Noviembre 2026 20:36) edición integral de préstamos',
+  version: '5.00.561 (19 Noviembre 2026 21:43) fecha local para cobros de Telegram',
 };
