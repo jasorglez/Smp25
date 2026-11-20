@@ -163,7 +163,6 @@ export class ClientesCobranzasComponent implements CanComponentDeactivate {
 
   // Agregar esta nueva variable para almacenar el ID de la última fila editada
   private lastEditedRowId: number | string | null = null;
-  private pendingEditCell: { rowId: string; colKey: string } | null = null;
 
   rowData: any;
   private loanTotalsByCustomer = new Map<number, { loans: number; due: number; payments: number; pending: number; overdue: number }>();
@@ -192,30 +191,9 @@ export class ClientesCobranzasComponent implements CanComponentDeactivate {
     lockPosition: false,
     enableRowGroup: true, // Enable row grouping for all columns
     flex: 1,
-    cellClassRules: {
-      'enter-next-cell': (params: any) => this.pendingEditCell
-        && String(params.node?.id) === this.pendingEditCell.rowId
-        && params.column?.getColId() === this.pendingEditCell.colKey,
-    },
   };
 
   currentIndex = 0;
-
-  // Orden de columnas editables para navegación con Enter
-  private editableColumns: string[] = [
-    'nameContact',
-    'company',
-    'rfc',
-    'idBranch',
-    'idTypecop',
-    'cp',
-    'address',
-    'state',
-    'city',
-    'neighborhood',
-    'phone',
-    'email',
-  ];
 
   public rowSelection: 'single' | 'multiple' = 'single';
   public rowGroupPanelShow: 'always' | 'onlyWhenGrouping' | 'never' = 'never';
@@ -266,9 +244,10 @@ export class ClientesCobranzasComponent implements CanComponentDeactivate {
       }
     },
     onCellKeyDown: (event: any) => {
-      if (event.event.key === 'Enter' && !event.event.shiftKey) {
+      if (event.event.key === 'Enter') {
         event.event.preventDefault();
-        this.moveToNextColumn(event);
+        event.event.stopPropagation();
+        this.moveToNextColumn(event, event.event.shiftKey);
       }
     },
   };
@@ -1115,49 +1094,35 @@ export class ClientesCobranzasComponent implements CanComponentDeactivate {
     if (node) this.gridApi.refreshCells({ rowNodes: [node], columns, force: true });
   }
 
-  moveToNextColumn(event: any): void {
-    const currentColKey = event.colDef.field;
-    const currentRowIndex = event.rowIndex;
-    const rowId = event.node?.id;
-    const currentColIndex = this.editableColumns.indexOf(currentColKey);
-
-    const displayedEditableColumns = new Set(
-      this.gridApi.getAllDisplayedColumns()
-        .filter((column: any) => {
-          const editable = column.getColDef().editable;
-          return typeof editable === 'function'
-            ? editable({ data: event.data, node: event.node, colDef: column.getColDef() })
-            : editable !== false;
-        })
-        .map((column: any) => column.getColId())
+  moveToNextColumn(event: any, backwards = false): void {
+    const displayedEditableColumns = this.gridApi.getAllDisplayedColumns().filter((column: any) => {
+      const colDef = column.getColDef();
+      const editable = colDef.editable;
+      return typeof editable === 'function'
+        ? editable({ data: event.data, node: event.node, colDef })
+        : editable === true;
+    });
+    const currentColIndex = displayedEditableColumns.findIndex(
+      (column: any) => column.getColId() === event.column.getColId()
     );
-    const nextColKey = this.editableColumns
-      .slice(currentColIndex + 1)
-      .find((colKey) => displayedEditableColumns.has(colKey));
+    if (currentColIndex < 0 || displayedEditableColumns.length < 2) return;
 
-    if (currentColIndex >= 0 && nextColKey) {
+    const step = backwards ? -1 : 1;
+    const nextIndex = (currentColIndex + step + displayedEditableColumns.length)
+      % displayedEditableColumns.length;
+    const nextColKey = displayedEditableColumns[nextIndex].getColId();
+    const rowNode = event.node;
 
-      // Commit the edited value before moving focus so CP changes trigger their
-      // postal-code lookup without replacing the row currently being edited.
-      this.gridApi.stopEditing();
-      setTimeout(() => {
-        if (this.pendingEditCell) {
-          const previousNode = this.gridApi.getRowNode(this.pendingEditCell.rowId);
-          if (previousNode) this.gridApi.refreshCells({ rowNodes: [previousNode], columns: [this.pendingEditCell.colKey], force: true });
-        }
-        this.pendingEditCell = { rowId: String(rowId), colKey: nextColKey };
-        this.gridApi.setFocusedCell(currentRowIndex, nextColKey);
-        this.gridApi.refreshCells({ rowNodes: [event.node], columns: [nextColKey], force: true });
-        const cellEl = rowId
-          ? (document.querySelector(`[row-id="${rowId}"] [col-id="${nextColKey}"]`) as HTMLElement)
-          : null;
-        if (cellEl) {
-          cellEl.click();
-        }
-      }, 80);
-    } else {
-      this.gridApi.stopEditing();
-    }
+    // Commit first, then focus and reopen editing in the next visible column.
+    this.gridApi.stopEditing();
+    setTimeout(() => {
+      const rowIndex = rowNode.rowIndex;
+      if (rowIndex === null || rowIndex === undefined) return;
+      this.gridApi.ensureIndexVisible(rowIndex);
+      this.gridApi.ensureColumnVisible(nextColKey);
+      this.gridApi.setFocusedCell(rowIndex, nextColKey);
+      this.gridApi.startEditingCell({ rowIndex, colKey: nextColKey });
+    });
   }
 
   getCoordinatesFromCP(cp: string) {

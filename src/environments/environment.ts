@@ -75,5 +75,5 @@ export const environment = {
     // publicKey: 'TEST-4399133a-4676-42a2-ab85-d946370bf96a',
   },
 
-  version: '5.00.579 (20 Noviembre 2026 12:20) navegación Enter hasta RFC en clientes de Cobranza',
+  version: '5.00.580 (20 Noviembre 2026 12:34) captura continua con Enter en clientes de Cobranza',
 };
