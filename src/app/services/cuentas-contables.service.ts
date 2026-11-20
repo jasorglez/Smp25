@@ -30,6 +30,10 @@ export class CuentasContablesService {
     return this.http.get<ICuentaContable[]>(`${this.apiUrl}/getByNivel/${idCompany}/${nivel}`);
   }
 
+  ensureOcExpenseType(idCompany: number): Observable<ICuentaContable> {
+    return this.http.post<ICuentaContable>(`${this.apiUrl}/ensureOcExpenseType/${idCompany}`, {});
+  }
+
   /**
    * Obtiene solo las cuentas hoja (nivel 3) que pueden recibir movimientos
    */

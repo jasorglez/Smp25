@@ -895,14 +895,21 @@ export class PurchaseOrderComponent implements CanComponentDeactivate {
     if (!order || !this.idRoot) return;
 
     try {
-      const [accountsResponse, expenseTypesResponse]: any[] = await Promise.all([
-        lastValueFrom(this.administrationService.getAccountBanks(this.idRoot)),
-        lastValueFrom(this.cuentasContablesService.getByNivel(this.idRoot, 2))
-      ]);
+      const accountsResponse: any = await lastValueFrom(this.administrationService.getAccountBanks(this.idRoot));
       const accounts = Array.isArray(accountsResponse) ? accountsResponse : [];
-      const expenseTypes = Array.isArray(expenseTypesResponse)
+      let expenseTypesResponse: any[] = [];
+      try {
+        expenseTypesResponse = await lastValueFrom(this.cuentasContablesService.getByNivel(this.idRoot, 2));
+      } catch (error: any) {
+        if (error?.status !== 404) throw error;
+      }
+      let expenseTypes = Array.isArray(expenseTypesResponse)
         ? expenseTypesResponse.filter((item: any) => item.activo !== false)
         : [];
+      if (!expenseTypes.length) {
+        const defaultExpenseType: any = await lastValueFrom(this.cuentasContablesService.ensureOcExpenseType(this.idRoot));
+        expenseTypes = [defaultExpenseType];
+      }
 
       if (!accounts.length || !expenseTypes.length) {
         alerts.basicAlert(
@@ -928,34 +935,41 @@ export class PurchaseOrderComponent implements CanComponentDeactivate {
       }).join('');
       const providerName = this.proveedores.find((item: any) => Number(item.id) === Number(order.idProvider))?.name || '';
       const description = `OC ${order.folio || ''}${providerName ? ` - ${providerName}` : ''}`.trim();
-      const result = await Swal.fire({
-        title: 'Crear gasto destino',
-        html: `<div class="text-start">
-          <label for="oc-expense-account" class="form-label">Cuenta bancaria</label>
-          <select id="oc-expense-account" class="form-select mb-3"><option value="">Seleccione una cuenta</option>${accountOptions}</select>
-          <label for="oc-expense-type" class="form-label">Tipo de gasto</label>
-          <select id="oc-expense-type" class="form-select mb-3"><option value="">Seleccione un tipo</option>${typeOptions}</select>
-          <label for="oc-expense-description" class="form-label">Descripción</label>
-          <input id="oc-expense-description" class="form-control" value="${escapeHtml(description)}" maxlength="250">
-          <small class="text-muted d-block mt-2">El gasto quedará ligado a esta OC y habilitado para recibir sus partidas.</small>
-        </div>`,
-        showCancelButton: true,
-        confirmButtonText: 'Crear y seleccionar',
-        cancelButtonText: 'Cancelar',
-        focusConfirm: false,
-        preConfirm: () => {
-          const popup = Swal.getPopup();
-          const idAccount = Number((popup?.querySelector('#oc-expense-account') as HTMLSelectElement)?.value);
-          const idExpend = Number((popup?.querySelector('#oc-expense-type') as HTMLSelectElement)?.value);
-          const expenseDescription = (popup?.querySelector('#oc-expense-description') as HTMLInputElement)?.value?.trim();
-          if (!idAccount || !idExpend || !expenseDescription) {
-            Swal.showValidationMessage('Selecciona la cuenta y el tipo de gasto, y captura una descripción.');
-            return false;
+      let selection: { idAccount: number; idExpend: number; description: string } | null = null;
+      if (accounts.length === 1 && expenseTypes.length === 1) {
+        selection = { idAccount: Number(accounts[0].id), idExpend: Number(expenseTypes[0].id), description };
+      } else {
+        const result = await Swal.fire({
+          title: 'Crear gasto destino',
+          html: `<div class="text-start">
+            <label for="oc-expense-account" class="form-label">Cuenta bancaria</label>
+            <select id="oc-expense-account" class="form-select mb-3"><option value="">Seleccione una cuenta</option>${accountOptions}</select>
+            <label for="oc-expense-type" class="form-label">Tipo de gasto</label>
+            <select id="oc-expense-type" class="form-select mb-3"><option value="">Seleccione un tipo</option>${typeOptions}</select>
+            <label for="oc-expense-description" class="form-label">Descripción</label>
+            <input id="oc-expense-description" class="form-control" value="${escapeHtml(description)}" maxlength="250">
+            <small class="text-muted d-block mt-2">El gasto quedará ligado a esta OC y habilitado para recibir sus partidas.</small>
+          </div>`,
+          showCancelButton: true,
+          confirmButtonText: 'Crear y seleccionar',
+          cancelButtonText: 'Cancelar',
+          focusConfirm: false,
+          preConfirm: () => {
+            const popup = Swal.getPopup();
+            const idAccount = Number((popup?.querySelector('#oc-expense-account') as HTMLSelectElement)?.value);
+            const idExpend = Number((popup?.querySelector('#oc-expense-type') as HTMLSelectElement)?.value);
+            const expenseDescription = (popup?.querySelector('#oc-expense-description') as HTMLInputElement)?.value?.trim();
+            if (!idAccount || !idExpend || !expenseDescription) {
+              Swal.showValidationMessage('Selecciona la cuenta y el tipo de gasto, y captura una descripción.');
+              return false;
+            }
+            return { idAccount, idExpend, description: expenseDescription };
           }
-          return { idAccount, idExpend, description: expenseDescription };
-        }
-      });
-      if (!result.isConfirmed || !result.value) return;
+        });
+        if (!result.isConfirmed || !result.value) return;
+        selection = result.value;
+      }
+      if (!selection) return;
 
       const now = new Date();
       const expenseData: any = {
@@ -963,11 +977,11 @@ export class PurchaseOrderComponent implements CanComponentDeactivate {
         idBusinnes: this.idRoot,
         idBranch: this.projectOrBranch ? 0 : Number(this.idReference || 0),
         idProject: this.projectOrBranch ? Number(this.idReference || 0) : null,
-        idAccount: result.value.idAccount,
-        idExpend: result.value.idExpend,
+        idAccount: selection.idAccount,
+        idExpend: selection.idExpend,
         idCustomer: 0,
         numberDocument: `OC-${order.folio || now.getTime()}`,
-        description: result.value.description,
+        description: selection.description,
         date: order.dateCreate || now.toISOString(),
         subtotal: 0,
         tax: 0,
