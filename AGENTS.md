@@ -167,6 +167,8 @@ public columnDefs: ColDef[] = [
 ];
 ```
 
+**Teclado en grids:** Al pulsar Enter desde una celda editable, confirmar su valor y mover el foco a la siguiente columna editable visible de la misma fila. Resaltar en amarillo la celda de destino para que el campo activo sea evidente. Aplicar este comportamiento en todos los grids con captura editable y conservar Shift+Enter para navegar hacia atrás cuando corresponda.
+
 ### Error Handling
 ```typescript
 // Use alerts helper for user notifications
