@@ -79,6 +79,7 @@ export class InandoutStComponent implements OnInit {
   private tempIdCounter: number = 0;
 
   catalogs: any[] = [];
+  private movementTypeCatalogs: any[] = [];
   selectedCatalog: any = null;
   otList: any[] = [];
   selectedOt: any = null;
@@ -241,9 +242,14 @@ export class InandoutStComponent implements OnInit {
 
   loadCatalogs() {
     if (!this.idRoot) return;
-    this.catalogsService.getCatalogs(this.idRoot, this.movementType).subscribe({
-      next: (data) => {
-        this.catalogs = data;
+    const companyId = Number(this.idRoot);
+    forkJoin({
+      movementTypes: this.catalogsService.getCatalogs(companyId, this.movementType).pipe(catchError(() => of([]))),
+      allCatalogs: this.catalogsService.getCatalogsAll(companyId).pipe(catchError(() => of([])))
+    }).subscribe({
+      next: ({ movementTypes, allCatalogs }) => {
+        this.catalogs = Array.isArray(movementTypes) ? movementTypes : [];
+        this.movementTypeCatalogs = Array.isArray(allCatalogs) ? allCatalogs : [];
         if (this.catalogs.length > 0) {
           this.selectedCatalog = this.catalogs[0];
           this.previousCatalog = this.catalogs[0];
@@ -251,10 +257,18 @@ export class InandoutStComponent implements OnInit {
         this.refreshColumns();
       },
       error: (error) => {
-        if (error?.status !== 404) console.error('Error loading catalogs:', error);
+        console.error('Error loading movement type catalogs:', error);
         this.catalogs = [];
+        this.movementTypeCatalogs = [];
       }
     });
+  }
+
+  private getMovementTypeLabel(idType: any): string {
+    if (idType == null || idType === '') return '';
+    const catalog = this.catalogs.find(item => Number(item.id) === Number(idType))
+      || this.movementTypeCatalogs.find(item => Number(item.id) === Number(idType));
+    return catalog?.description || `Tipo no disponible (#${idType})`;
   }
 
   loadOts() {
@@ -777,13 +791,11 @@ export class InandoutStComponent implements OnInit {
           valueListMaxHeight: 200,
           formatValue: (value: any) => {
             if (value === '__ADD_NEW__') return '+ Agregar Registro';
-            const cat = this.catalogs.find(c => Number(c.id) === Number(value));
-            return cat ? cat.description : value;
+            return this.getMovementTypeLabel(value);
           }
         }),
         valueFormatter: (params: any) => {
-          const cat = this.catalogs.find(c => Number(c.id) === Number(params.value));
-          return cat ? cat.description : (params.value || '');
+          return this.getMovementTypeLabel(params.value);
         }
       },
       {

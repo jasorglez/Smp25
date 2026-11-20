@@ -39,6 +39,10 @@ export class CatalogsService {
     return this.http.get<any[]>(`${environment.urlWarehouse}/Catalog/getCatalogs?idCompany=${idRoot}&type=${type}`, { headers: this.trackingService.getHeaders() });
   }
 
+  getCatalogsAll(idRoot: number): Observable<any[]> {
+    return this.http.get<any[]>(`${environment.urlWarehouse}/Catalog/getCatalogsAll?idCompany=${idRoot}`, { headers: this.trackingService.getHeaders() });
+  }
+
   getCatalogsxSubfamily(idRoot, idFamily: number): Observable<any[]> {
     return this.http.get<any[]>(`${environment.urlWarehouse}/Catalog/getSubfamily?idCompany=${idRoot}&idFam=${idFamily}`, { headers: this.trackingService.getHeaders() });
   }  
