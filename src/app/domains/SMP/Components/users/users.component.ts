@@ -570,6 +570,12 @@ export class UsersComponent implements OnDestroy {
         headerName: 'Contraseña *',
         field: 'password',
         flex: 1,
+        valueGetter: () => '',
+        valueSetter: (params) => {
+          params.data.password = String(params.newValue ?? '');
+          params.data.__passwordChanged = params.data.password.trim().length > 0;
+          return true;
+        },
         cellRenderer: () => `<span>••••••••</span>`,
         editable: () => !this.showDeletedUsers,
       },
@@ -1152,13 +1158,21 @@ export class UsersComponent implements OnDestroy {
     const cleanedData = { ...data };
     delete cleanedData.__isNew;
     delete cleanedData.__modified;
+    const passwordChanged = data.__isNew || data.__passwordChanged === true;
+    delete cleanedData.__passwordChanged;
     if (cleanedData.id && cleanedData.id.toString().startsWith('temp_')) {
       delete cleanedData.id;
     }
-    // Para actualizaciones: omitir password si está vacío — el servidor lo rechaza con 400
-    // (el GET no devuelve el password, así que data.password llega null en ediciones)
-    if (!data.__isNew && (!cleanedData.password || cleanedData.password.trim() === '')) {
-      delete cleanedData.password;
+    // Una edición común nunca envía el password recibido del servidor; solo se manda
+    // cuando el usuario capturó explícitamente una contraseña nueva en esta fila.
+    if (!data.__isNew) {
+      if (passwordChanged && String(cleanedData.password ?? '').trim()) {
+        cleanedData.password = String(cleanedData.password).trim();
+        cleanedData.changePassword = true;
+      } else {
+        delete cleanedData.password;
+        delete cleanedData.changePassword;
+      }
     }
 
     // Procesar imágenes - ahora son URLs de Firebase, no base64

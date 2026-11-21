@@ -76,5 +76,5 @@ export const environment = {
     // publicKey: 'TEST-4399133a-4676-42a2-ab85-d946370bf96a',
   },
 
-  version: '5.00.594 (21 Noviembre 2026 15:08) favoritos personalizados por uso de cada usuario',
+  version: '5.00.595 (21 Noviembre 2026 15:26) proteger contraseñas y corregir rutas favoritas',
 };

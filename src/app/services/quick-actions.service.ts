@@ -68,7 +68,7 @@ export class QuickActionsService {
     const dismissed = this.getDismissed();
     const staticActions = this.actions.filter(action => (usage[action.id]?.count ?? 0) > 0);
     const dynamicActions: QuickAction[] = Object.entries(usage)
-      .filter(([id, item]) => id.startsWith('route:') && !!item.route && !!item.label)
+      .filter(([id, item]) => id.startsWith('route:') && !!item.route && !!item.label && !this.isExcludedRoute(item.route))
       .map(([id, item]) => ({
         id,
         route: item.route!,
@@ -133,7 +133,8 @@ export class QuickActionsService {
   }
 
   private isExcludedRoute(path: string): boolean {
-    return path === '/' || ['/login', '/demo', '/logout', '/not-found', '/unauthorized']
+    if (path === '/' || path === '/cobranza') return true;
+    return ['/login', '/demo', '/logout', '/not-found', '/unauthorized']
       .some(route => path === route || path.startsWith(`${route}/`));
   }
 
@@ -147,9 +148,11 @@ export class QuickActionsService {
         }))
         .filter(item => item.path === path)
         .sort((a, b) => b.path.length - a.path.length)[0]?.anchor;
+      const labelNode = matchingAnchor?.cloneNode(true) as HTMLAnchorElement | undefined;
+      labelNode?.querySelectorAll('mat-icon, .material-icons, .mat-icon').forEach(icon => icon.remove());
       const label = matchingAnchor?.getAttribute('aria-label')
         || matchingAnchor?.getAttribute('title')
-        || matchingAnchor?.textContent?.trim();
+        || labelNode?.textContent?.trim();
       if (label) return label.replace(/\s+/g, ' ');
     }
 
