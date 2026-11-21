@@ -1,4 +1,4 @@
-import { Component, effect, ElementRef, HostListener, inject, ViewChild } from '@angular/core';
+import { Component, effect, ElementRef, HostListener, inject, TemplateRef, ViewChild } from '@angular/core';
 import { FormsModule, NgForm } from '@angular/forms';
 import { RouterModule, ActivatedRoute } from '@angular/router';
 import { DomainsModule } from 'app/domains/domainsmodule';
@@ -70,6 +70,7 @@ import { UsersService } from 'app/services/users.service';
 })
 export class ClientesCobranzasComponent implements CanComponentDeactivate {
   @ViewChild('clientesGrid', { read: ElementRef }) private clientesGridElement: ElementRef<HTMLElement>;
+  @ViewChild('newCustomerModal') private customerModal: TemplateRef<any>;
   private enterHighlightedCell: HTMLElement | null = null;
 
   private customerService = inject(CustomersService);
@@ -161,6 +162,8 @@ export class ClientesCobranzasComponent implements CanComponentDeactivate {
   notSavedChanges: boolean = false;
   selectedRowData: any = null;
   newCustomer: any = null;
+  editingCustomerId: number | null = null;
+  loadingCustomerForEdit = false;
   savingNewCustomer = false;
   isOpen: boolean = false;
   branchs: any[] = [];
@@ -1331,7 +1334,7 @@ export class ClientesCobranzasComponent implements CanComponentDeactivate {
     if (node) this.toggleCascadeWithMode(node, 'cotizaciones');
   }
 
-  addRow(content: any) {
+  addRow(content: TemplateRef<any>) {
     if (!this.idRoot) {
       alerts.basicAlert('Error', 'Debe seleccionar una empresa primero', 'error');
       return;
@@ -1369,16 +1372,57 @@ export class ClientesCobranzasComponent implements CanComponentDeactivate {
       active: true,
       __isNew: true,
     };
-    this.modalService.open(content, {
+    this.editingCustomerId = null;
+    this.openCustomerModal(content);
+  }
+
+  private openCustomerModal(content: TemplateRef<any>): void {
+    const modal = this.modalService.open(content, {
       size: 'lg',
       centered: true,
       backdrop: 'static',
       windowClass: 'cobranza-customer-modal',
       ariaLabelledBy: 'new-customer-modal-title',
     });
+    modal.result.then(
+      () => this.resetCustomerModal(),
+      () => this.resetCustomerModal()
+    );
   }
 
-  async saveNewCustomer(form: NgForm, modal: any): Promise<void> {
+  private resetCustomerModal(): void {
+    this.newCustomer = null;
+    this.editingCustomerId = null;
+  }
+
+  private async editCustomer(row: any): Promise<void> {
+    if (this.loadingCustomerForEdit || this.modalService.hasOpenModals()) return;
+    if (this.notSavedChanges) {
+      alerts.basicAlert('Cambios pendientes', 'Guarda o deshaz los cambios del listado antes de editar este cliente.', 'warning');
+      return;
+    }
+
+    const customerId = Number(row?.id);
+    if (!customerId) return;
+    this.loadingCustomerForEdit = true;
+    try {
+      const customer = await lastValueFrom(this.customerService.getCustomerById(customerId));
+      if (Number(customer?.idRoot) !== Number(this.idRoot)) {
+        alerts.basicAlert('Cliente no disponible', 'El cliente ya no pertenece a la empresa seleccionada.', 'error');
+        return;
+      }
+      this.newCustomer = { ...customer };
+      this.editingCustomerId = customerId;
+      this.openCustomerModal(this.customerModal);
+    } catch (error) {
+      console.error('Error al cargar cliente:', error);
+      alerts.basicAlert('Error', 'No se pudieron cargar los datos del cliente.', 'error');
+    } finally {
+      this.loadingCustomerForEdit = false;
+    }
+  }
+
+  async saveCustomer(form: NgForm, modal: any): Promise<void> {
     if (this.savingNewCustomer || form.invalid) {
       form.control.markAllAsTouched();
       if (form.invalid && !this.savingNewCustomer) {
@@ -1407,21 +1451,27 @@ export class ClientesCobranzasComponent implements CanComponentDeactivate {
 
     this.savingNewCustomer = true;
     try {
+      const editingId = this.editingCustomerId;
       const customer = this.cleanDataForServer(this.newCustomer);
       if (!(await this.validateRowsToPersistAreUnique([customer]))) {
         alerts.basicAlert('Cliente duplicado', 'Este cliente ya está registrado.', 'error');
         return;
       }
 
-      const saved = await lastValueFrom(this.customerService.addCustomer(customer));
+      const saved = editingId
+        ? await lastValueFrom(this.customerService.updateCustomer(editingId, customer))
+        : await lastValueFrom(this.customerService.addCustomer(customer));
       modal.close();
-      this.newCustomer = null;
-      await this.obtenerDatos();
-      const savedId = Number(saved?.id);
-      if (savedId) this.selectRowById(savedId);
-      alerts.basicAlert('Cliente agregado', 'El cliente se guardó correctamente.', 'success');
+      const refreshed = await this.obtenerDatos();
+      const savedId = editingId || Number(saved?.id);
+      if (refreshed && savedId) this.selectRowById(savedId);
+      if (!refreshed) {
+        alerts.basicAlert('Cliente guardado', 'El cliente se guardó, pero no se pudo actualizar el listado. Vuelve a cargar la página.', 'warning');
+        return;
+      }
+      alerts.basicAlert(editingId ? 'Cliente actualizado' : 'Cliente agregado', 'El cliente se guardó correctamente.', 'success');
     } catch (error) {
-      console.error('Error al agregar cliente:', error);
+      console.error('Error al guardar cliente:', error);
       alerts.basicAlert('Error', 'No se pudo guardar el cliente. Intenta nuevamente.', 'error');
     } finally {
       this.savingNewCustomer = false;
@@ -1848,6 +1898,7 @@ export class ClientesCobranzasComponent implements CanComponentDeactivate {
   }
 
   async onCellDoubleClicked(event: CellDoubleClickedEvent): Promise<void> {
+    if (!event.data || event.node.group) return;
     this.signalsService.setProviderOrCustomer(this.type);
     const colId = event.column.getColId();
     const selectedRowData = event.data; // Obtener los datos de la fila seleccionada
@@ -1873,6 +1924,7 @@ export class ClientesCobranzasComponent implements CanComponentDeactivate {
       }
 
       this.activateCreditsTab(); // Activar la pestaña de créditos si es necesario
+      return;
     }
 
     // Activar cascada de facturación
@@ -1890,7 +1942,16 @@ export class ClientesCobranzasComponent implements CanComponentDeactivate {
         this.gridApi.onFilterChanged();
       }
       this.activateBillingTab();
+      return;
     }
+
+    if (this.type !== 'CUSTOMERS' || [
+      'cotizaciones', 'agenda', 'pagos', 'totalPrestamos',
+      'totalPagosCobranza', 'totalPendientes'
+    ].includes(colId)) return;
+
+    event.api.stopEditing(true);
+    await this.editCustomer(selectedRowData);
   }
 
   async activateCreditsTab() {
