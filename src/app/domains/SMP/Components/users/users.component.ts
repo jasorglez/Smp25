@@ -16,7 +16,6 @@ import { SignalsService } from 'app/services/signals.service';
 import { MultiLineEditorComponent } from 'app/shared/multi-line/multi-line-editor.component';
 import { AutocompleteEditorComponent } from 'app/shared/autocomplete-editor/autocomplete-editor.component';
 import { AuthService } from 'app/services/auth.service';
-import { environment } from '@env/environment';
 import { PermitionsService } from 'app/services/permitions.service';
 import { TrackingService } from 'app/services/tracking.service';
 import { DetallePermisosXSucursalesComponent } from './details/detallepermisosxsucursales.component';
@@ -70,6 +69,11 @@ export class UsersComponent implements OnDestroy {
   idUser: number = null;
   isAdvanced: boolean = false;
   invited: boolean = false;
+  showDeletedUsers = false;
+
+  get isRootUser(): boolean {
+    return this.authService.isRoot();
+  }
 
   // --- Modal ---
   showPermissionsModal: boolean = false;
@@ -197,10 +201,12 @@ export class UsersComponent implements OnDestroy {
     const observer = {
       next: (response: any) => {
         if (response && response.code === 200 && response.data) {
-          this.rowData = response.data.map((item: any) => {
+          const users = response.data.map((item: any) => {
             return { id: item.id, ...item };
           });
-          this.rowData = this.rowData.filter(row => row.active !== 0);
+          this.rowData = users.filter(row => this.showDeletedUsers
+            ? Number(row.active) === 0
+            : Number(row.active) !== 0);
         } else {
           console.error('Respuesta inválida del servidor');
         }
@@ -216,11 +222,57 @@ export class UsersComponent implements OnDestroy {
       }
     };
 
-    if (this.signalsService.getemailChoose() === environment.root) {
-      this.usersService.getAllUsers().subscribe(observer);
+    if (this.isRootUser) {
+      const request = this.showDeletedUsers
+        ? this.usersService.getDeletedUsers()
+        : this.usersService.getAllUsers();
+      request.subscribe(observer);
     } else {
       this.usersService.getDataUsers(this.idRoot).subscribe(observer);
     }
+  }
+
+  toggleDeletedUsers(): void {
+    if (!this.isRootUser) return;
+    this.showDeletedUsers = !this.showDeletedUsers;
+    this.selectedRowData = null;
+    this.gridApi?.deselectAll();
+    this.obtenerDatos();
+  }
+
+  async restoreDeletedUser(): Promise<void> {
+    if (!this.isRootUser || !this.showDeletedUsers) return;
+    const selected = this.gridApi?.getSelectedNodes()?.[0]?.data;
+    if (!selected || Number(selected.active) !== 0) {
+      alerts.basicAlert('Restaurar usuario', 'Selecciona un usuario borrado.', 'warning');
+      return;
+    }
+
+    const confirmation = await alerts.confirmAlert(
+      'Restaurar usuario',
+      `¿Deseas reactivar a ${selected.displayName || selected.email}?`,
+      'question',
+      'Sí, restaurar'
+    );
+    if (!confirmation.isConfirmed) return;
+
+    this.usersService.restoreDeletedUser(Number(selected.id)).subscribe({
+      next: () => {
+        alerts.basicAlert('Usuario restaurado', 'El usuario quedó activo nuevamente.', 'success');
+        this.selectedRowData = null;
+        this.obtenerDatos();
+        this.trackingService.addLog(
+          this.trackingService.getnameComp(),
+          `Restauró usuario ${selected.id}`,
+          'Menu Administracion Usuarios',
+          this.trackingService.getEmail()
+        );
+      },
+      error: (error) => {
+        const message = error?.error?.message || 'No se pudo restaurar el usuario.';
+        alerts.basicAlert('Restaurar usuario', message, 'error');
+      }
+    });
   }
 
   getRoles() {
@@ -400,7 +452,7 @@ export class UsersComponent implements OnDestroy {
       {
         field: 'displayName',
         headerName: 'Nombre *',
-        editable: () => true,
+        editable: () => !this.showDeletedUsers,
         filter: true,
         cellEditor: 'autocompleteEditor',
         minWidth: 240,
@@ -471,7 +523,7 @@ export class UsersComponent implements OnDestroy {
         headerName: 'Email *',
         cellEditor: 'agTextCellEditor',
         flex: 1,
-        editable: () => true,
+        editable: () => !this.showDeletedUsers,
         cellEditorParams: { useFormatter: true },
         valueFormatter: (params) => params.value,
         valueSetter: (params) => {
@@ -497,7 +549,7 @@ export class UsersComponent implements OnDestroy {
       {
         field: 'usersmall',
         headerName: 'Username',
-        editable: () => true,
+        editable: () => !this.showDeletedUsers,
         width: 150,
         cellEditor: 'agTextCellEditor',
         cellEditorParams: { maxLength: 50 },
@@ -517,7 +569,7 @@ export class UsersComponent implements OnDestroy {
         field: 'password',
         flex: 1,
         cellRenderer: () => `<span>••••••••</span>`,
-        editable: () => true,
+        editable: () => !this.showDeletedUsers,
       },
       {
         field: 'telegramOnline',
@@ -532,6 +584,7 @@ export class UsersComponent implements OnDestroy {
             : `<span class="badge bg-secondary" style="font-size:.78rem;padding:4px 10px;border-radius:12px;">⚫ Offline</span>`;
         },
         onCellClicked: (params) => {
+          if (this.showDeletedUsers) return;
           const current = params.data.telegramOnline === true || params.data.telegramOnline === 1;
           params.data.telegramOnline = !current;
           if (!params.data.__isNew) params.data.__modified = true;
@@ -553,6 +606,7 @@ export class UsersComponent implements OnDestroy {
             : '<span class="badge bg-secondary" style="font-size:.78rem;padding:4px 10px;border-radius:12px;">🔕 No</span>';
         },
         onCellClicked: (params) => {
+          if (this.showDeletedUsers) return;
           const current = params.data.monitorTelegram === true || params.data.monitorTelegram === 1 || params.data.monitorTelegram === 'true';
           params.data.monitorTelegram = !current;
           if (!params.data.__isNew) params.data.__modified = true;
@@ -837,6 +891,7 @@ export class UsersComponent implements OnDestroy {
   }
 
   async saveChanges() {
+    if (this.showDeletedUsers) return;
     this.gridApi?.stopEditing();
     const newRows = this.rowData.filter(row => row.__isNew);
     const modifiedRows = this.rowData.filter(row => row.__modified && !row.__isNew);
@@ -960,6 +1015,7 @@ export class UsersComponent implements OnDestroy {
   }
 
   async deleteUser() {
+    if (this.showDeletedUsers) return;
     const selectedNodes = this.gridApi.getSelectedNodes();
     if (selectedNodes.length === 0) {
       alerts.basicAlert('Eliminar entrada', 'Por favor, seleccione una entrada para eliminar.', 'error');

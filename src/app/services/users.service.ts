@@ -33,6 +33,14 @@ export class UsersService {
     return this.http.get(`${environment.urlSecurity}/User/users`, { headers: this.trackingService.getHeaders() });
   }
 
+  getDeletedUsers(): Observable<any> {
+    return this.http.get(`${environment.urlSecurity}/User/deleted`, { headers: this.trackingService.getHeaders() });
+  }
+
+  restoreDeletedUser(id: number): Observable<any> {
+    return this.http.put(`${environment.urlSecurity}/User/${id}/restore`, {}, { headers: this.trackingService.getHeaders() });
+  }
+
   getDataUsers(idCompany: number): Observable<any> {
     return this.http.get(`${environment.urlSecurity}/User/userdep?id=${idCompany}`, { headers: this.trackingService.getHeaders() });
   }
