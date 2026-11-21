@@ -4,7 +4,7 @@
     <!-- Columna de botones -->
     <div class="col-auto">
       <div class="d-flex flex-column gap-1">
-        <button type="button" class="btn btn-primary ms-1 me-1" (mousedown)="$event.preventDefault()" (click)="addRow()" >
+        <button type="button" class="btn btn-primary ms-1 me-1" (mousedown)="$event.preventDefault()" (click)="addRow(newCustomerModal)" title="Agregar cliente" aria-label="Agregar cliente">
           <i class="bi bi-plus-lg"></i>
         </button>
 
@@ -64,6 +64,101 @@
     </div>
   </div>
 </div>
+
+<ng-template #newCustomerModal let-modal>
+  <form #newCustomerForm="ngForm" (ngSubmit)="saveNewCustomer(newCustomerForm, modal)">
+    <div class="modal-header customer-modal-header">
+      <div class="d-flex align-items-center gap-3">
+        <span class="customer-modal-icon" aria-hidden="true"><i class="bi bi-person-plus"></i></span>
+        <div>
+          <div class="customer-modal-eyebrow">Cobranza · Clientes</div>
+          <h2 id="new-customer-modal-title" class="modal-title fs-4 fw-semibold mb-0">Nuevo cliente</h2>
+          <p class="mb-0 customer-modal-subtitle">Completa los datos para agregarlo a tu cartera.</p>
+        </div>
+      </div>
+      <button type="button" class="btn-close btn-close-white align-self-start" aria-label="Cerrar" [disabled]="savingNewCustomer" (click)="modal.dismiss()"></button>
+    </div>
+    <div class="modal-body customer-modal-body" *ngIf="newCustomer">
+      <div class="customer-modal-note"><i class="bi bi-info-circle me-2" aria-hidden="true"></i>Los campos marcados con <span class="text-danger fw-bold">*</span> son obligatorios.</div>
+
+      <section class="customer-modal-section" aria-labelledby="customer-main-data-title">
+        <div class="customer-modal-section-title" id="customer-main-data-title">
+          <i class="bi bi-person-vcard" aria-hidden="true"></i><span>Datos principales</span>
+        </div>
+        <div class="row g-3">
+          <div class="col-md-7">
+            <label for="new-customer-name" class="form-label">Nombre del cliente <span class="text-danger">*</span></label>
+            <input id="new-customer-name" name="nameContact" class="form-control" [(ngModel)]="newCustomer.nameContact" required maxlength="150" autocomplete="name" [class.is-invalid]="newCustomerForm.submitted && !newCustomer.nameContact?.trim()" placeholder="Nombre completo o razón social" autofocus>
+            <div class="invalid-feedback">Captura el nombre del cliente.</div>
+          </div>
+          <div class="col-md-5">
+            <label for="new-customer-branch" class="form-label">Sucursal <span class="text-danger">*</span></label>
+            <select id="new-customer-branch" name="idBranch" class="form-select" [(ngModel)]="newCustomer.idBranch" required [class.is-invalid]="newCustomerForm.submitted && !newCustomer.idBranch">
+              <option [ngValue]="null">Seleccionar sucursal</option>
+              <option *ngFor="let branch of branchs" [ngValue]="branch.id">{{ branch.name }}</option>
+            </select>
+            <div class="invalid-feedback">Selecciona una sucursal.</div>
+          </div>
+          <div class="col-md-6">
+            <label for="new-customer-phone" class="form-label">Teléfono</label>
+            <input id="new-customer-phone" name="phone" #phoneModel="ngModel" class="form-control" type="tel" [(ngModel)]="newCustomer.phone" pattern="[0-9]{10}" maxlength="10" inputmode="numeric" placeholder="10 dígitos" [class.is-invalid]="newCustomerForm.submitted && phoneModel.invalid">
+            <div class="invalid-feedback">Captura un teléfono de 10 dígitos.</div>
+          </div>
+          <div class="col-md-6">
+            <label for="new-customer-email" class="form-label">Correo electrónico</label>
+            <input id="new-customer-email" name="email" #emailModel="ngModel" class="form-control" type="email" [(ngModel)]="newCustomer.email" maxlength="150" placeholder="nombre@correo.com" [class.is-invalid]="newCustomerForm.submitted && emailModel.invalid">
+            <div class="invalid-feedback">Captura un correo válido.</div>
+          </div>
+          <div class="col-md-6">
+            <label for="new-customer-rfc" class="form-label">RFC</label>
+            <input id="new-customer-rfc" name="rfc" class="form-control text-uppercase" [(ngModel)]="newCustomer.rfc" maxlength="13" placeholder="RFC del cliente">
+          </div>
+        </div>
+      </section>
+
+      <section class="customer-modal-section" aria-labelledby="customer-address-title">
+        <div class="customer-modal-section-title" id="customer-address-title">
+          <i class="bi bi-geo-alt" aria-hidden="true"></i><span>Ubicación y domicilio</span>
+        </div>
+        <div class="row g-3">
+          <div class="col-md-4">
+            <label for="new-customer-cp" class="form-label">Código postal</label>
+            <input id="new-customer-cp" name="cp" #cpModel="ngModel" class="form-control" [(ngModel)]="newCustomer.cp" maxlength="5" inputmode="numeric" pattern="[0-9]{5}" placeholder="00000" [class.is-invalid]="newCustomerForm.submitted && cpModel.invalid">
+            <div class="invalid-feedback">Captura un código postal de 5 dígitos.</div>
+          </div>
+          <div class="col-md-4">
+            <label for="new-customer-state" class="form-label">Estado</label>
+            <select id="new-customer-state" name="state" class="form-select" [(ngModel)]="newCustomer.state">
+              <option value="">Seleccionar estado</option>
+              <option *ngFor="let state of estados" [value]="state">{{ state }}</option>
+            </select>
+          </div>
+          <div class="col-md-4">
+            <label for="new-customer-city" class="form-label">Ciudad</label>
+            <input id="new-customer-city" name="city" class="form-control" [(ngModel)]="newCustomer.city" maxlength="100" placeholder="Ciudad">
+          </div>
+          <div class="col-md-6">
+            <label for="new-customer-neighborhood" class="form-label">Colonia</label>
+            <input id="new-customer-neighborhood" name="neighborhood" class="form-control" [(ngModel)]="newCustomer.neighborhood" maxlength="150" placeholder="Colonia o barrio">
+          </div>
+          <div class="col-md-6">
+            <label for="new-customer-address" class="form-label">Dirección</label>
+            <input id="new-customer-address" name="address" class="form-control" [(ngModel)]="newCustomer.address" maxlength="250" placeholder="Calle y número">
+          </div>
+        </div>
+      </section>
+    </div>
+    <div class="modal-footer customer-modal-footer">
+      <span class="customer-modal-footer-hint me-auto d-none d-sm-inline">El cliente aparecerá en el listado al guardar.</span>
+      <button type="button" class="btn btn-outline-secondary" [disabled]="savingNewCustomer" (click)="modal.dismiss()">Cancelar</button>
+      <button type="submit" class="btn btn-primary customer-modal-save" [disabled]="savingNewCustomer">
+        <span *ngIf="savingNewCustomer" class="spinner-border spinner-border-sm me-1" aria-hidden="true"></span>
+        <i *ngIf="!savingNewCustomer" class="bi bi-check2-circle me-1" aria-hidden="true"></i>
+        Guardar cliente
+      </button>
+    </div>
+  </form>
+</ng-template>
 
 <div class="row">
   <div class="col-12">

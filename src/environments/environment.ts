@@ -76,5 +76,5 @@ export const environment = {
     // publicKey: 'TEST-4399133a-4676-42a2-ab85-d946370bf96a',
   },
 
-  version: '5.00.588 (20 Noviembre 2026 21:57) acceso directo a empresa demo',
+  version: '5.00.589 (21 Noviembre 2026 13:25) alta de clientes de cobranza en ventana modal',
 };

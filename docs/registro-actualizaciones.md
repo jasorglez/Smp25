@@ -1,5 +1,7 @@
 # Registro de actualizaciones
 
+| 2026-11-21 13:25 EST | 5.00.589 · local | Cobranza / Clientes | Mejora | El botón Agregar abre una ventana para capturar y guardar un cliente nuevo. El formulario valida nombre, sucursal y los datos opcionales antes del alta. | Permite registrar clientes sin editar una fila vacía del listado y muestra el registro al terminar. | **Agrega clientes de cobranza desde una ventana con todos sus datos principales.** | Build Angular de producción aprobado; validación en pantalla y despliegue sin confirmar. | Borrador |
+
 | 2026-11-20 21:57 EST | 5.00.588 · local | Acceso / Demo | Mejora | Al abrir `/demo`, BIAPP inicia la sesión de demostración y abre la empresa asignada a esa cuenta. | Permite explorar la empresa demo sin capturar credenciales ni elegir la empresa manualmente. | **Abre la demo de BIAPP directamente desde www.biapp.com.mx/demo.** | Build Angular de producción aprobado; la cuenta compartida y su contraseña son públicas por diseño. Despliegue sin confirmar. | Borrador |
 
 | 2026-11-20 15:31 EST | 5.00.587 · local | Almacenes / Entradas | Mejora | El PDF de cada movimiento de entrada muestra el nombre del almacén bajo el encabezado “Almacén Origen”, también para Recepción de compras y otros movimientos. | Permite identificar en el comprobante a qué almacén corresponde la recepción. | **Consulta el almacén de origen directamente en el PDF de tus entradas.** | Build Angular aprobado; despliegue sin confirmar. | Borrador |

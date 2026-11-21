@@ -1,4 +1,5 @@
 import { Component, effect, ElementRef, HostListener, inject, ViewChild } from '@angular/core';
+import { FormsModule, NgForm } from '@angular/forms';
 import { RouterModule, ActivatedRoute } from '@angular/router';
 import { DomainsModule } from 'app/domains/domainsmodule';
 import { AG_GRID_LOCALE_ES } from 'assets/i18n/ag-grid.locale.es';
@@ -55,6 +56,7 @@ import { Base64EncodeService } from 'app/services/base64encode.service';
   imports: [
     RouterModule,
     DomainsModule,
+    FormsModule,
     AgGridModule,
     MultiLineEditorComponent,
     CustomersPaymentsComponent,
@@ -154,6 +156,8 @@ export class ClientesCobranzasComponent implements CanComponentDeactivate {
   private gridApi: GridApi;
   notSavedChanges: boolean = false;
   selectedRowData: any = null;
+  newCustomer: any = null;
+  savingNewCustomer = false;
   isOpen: boolean = false;
   branchs: any[] = [];
   Typecop: any[] = [];
@@ -185,7 +189,7 @@ export class ClientesCobranzasComponent implements CanComponentDeactivate {
   idEmployee: number;
   private zipCodeDataByCp = new Map<string, any[]>();
 
-  private estados: string[] = []; // Agregar esta variable para almacenar los estados
+  estados: string[] = []; // Agregar esta variable para almacenar los estados
 
   public defaultColDef: ColDef = {
     sortable: true,
@@ -1262,15 +1266,18 @@ export class ClientesCobranzasComponent implements CanComponentDeactivate {
     if (node) this.toggleCascadeWithMode(node, 'cotizaciones');
   }
 
-  addRow() {
+  addRow(content: any) {
     if (!this.idRoot) {
       alerts.basicAlert('Error', 'Debe seleccionar una empresa primero', 'error');
       return;
     }
-    
-    const tempId = `temp_${this.tempIdCounter++}`;
-    const newItem = {
-      id: tempId,
+    if (this.notSavedChanges) {
+      alerts.basicAlert('Cambios pendientes', 'Guarda o deshaz los cambios del listado antes de agregar otro cliente.', 'warning');
+      return;
+    }
+
+    this.newCustomer = {
+      id: `temp_${this.tempIdCounter++}`,
       idRoot: this.idRoot,
       idBranch: this.idBranch,
       nameContact: '',
@@ -1289,61 +1296,65 @@ export class ClientesCobranzasComponent implements CanComponentDeactivate {
       NumCliente: 0,
       latitud: '',
       longitud: '',
-      idTypecop: 1,
+      idTypecop: this.Typecop?.[0]?.id ?? 1,
       fiscalRegime: '',
       usoCfdi: 'G03',
       type: this.type,
       active: true,
       __isNew: true,
     };
-
-    // Insertar la fila al inicio y mantener rowData sincronizado para guardar la fila nueva.
-    this.rowData = [newItem, ...(this.rowData || [])];
-    if (this.gridApi) {
-      this.gridApi.setGridOption('rowData', this.rowData);
-    }
-    this.newlyAddedRows.push(tempId);
-    this.notSavedChanges = true;
-
-    this.focusNewCustomerNameCell(tempId);
+    this.modalService.open(content, {
+      size: 'lg',
+      centered: true,
+      backdrop: 'static',
+      windowClass: 'cobranza-customer-modal',
+      ariaLabelledBy: 'new-customer-modal-title',
+    });
   }
 
-  private focusNewCustomerNameCell(tempId: string): void {
-    const colKey = 'nameContact';
-    let attempts = 0;
+  async saveNewCustomer(form: NgForm, modal: any): Promise<void> {
+    if (this.savingNewCustomer || form.invalid) {
+      form.control.markAllAsTouched();
+      if (form.invalid && !this.savingNewCustomer) {
+        alerts.basicAlert('Datos inválidos', 'Revisa los campos marcados antes de guardar.', 'error');
+      }
+      return;
+    }
 
-    const focusCell = () => {
-      if (!this.gridApi) return;
+    const name = this.normalizeCustomerName(this.newCustomer.nameContact);
+    if (!name || !this.newCustomer.idBranch) {
+      alerts.basicAlert('Campos requeridos', 'Selecciona una sucursal y captura el nombre del cliente.', 'error');
+      return;
+    }
 
-      const node = this.gridApi.getRowNode(tempId);
-      if (!node || node.rowIndex === null || node.rowIndex === undefined) {
-        if (attempts++ < 12) {
-          setTimeout(focusCell, 50);
-        }
+    this.newCustomer.nameContact = name;
+    this.newCustomer.company = name;
+    if (this.hasDuplicateCustomerName(name, this.newCustomer)) {
+      alerts.basicAlert('Cliente duplicado', 'Este cliente ya está registrado.', 'error');
+      return;
+    }
+
+    this.savingNewCustomer = true;
+    try {
+      const customer = this.cleanDataForServer(this.newCustomer);
+      if (!(await this.validateRowsToPersistAreUnique([customer]))) {
+        alerts.basicAlert('Cliente duplicado', 'Este cliente ya está registrado.', 'error');
         return;
       }
 
-      const rowIndex = node.rowIndex;
-      this.gridApi.ensureIndexVisible(rowIndex, 'top');
-      this.gridApi.ensureColumnVisible(colKey);
-      node.setSelected(true);
-
-      requestAnimationFrame(() => {
-        this.gridApi.setFocusedCell(rowIndex, colKey);
-        this.gridApi.startEditingCell({ rowIndex, colKey });
-        requestAnimationFrame(() => this.highlightEnterCell(rowIndex, colKey));
-
-        requestAnimationFrame(() => {
-          const editingInput = document.querySelector(
-            '.ag-cell-inline-editing input, .autocomplete-input-editing'
-          ) as HTMLInputElement;
-          editingInput?.focus();
-          editingInput?.select();
-        });
-      });
-    };
-
-    setTimeout(focusCell, 0);
+      const saved = await lastValueFrom(this.customerService.addCustomer(customer));
+      modal.close();
+      this.newCustomer = null;
+      await this.obtenerDatos();
+      const savedId = Number(saved?.id);
+      if (savedId) this.selectRowById(savedId);
+      alerts.basicAlert('Cliente agregado', 'El cliente se guardó correctamente.', 'success');
+    } catch (error) {
+      console.error('Error al agregar cliente:', error);
+      alerts.basicAlert('Error', 'No se pudo guardar el cliente. Intenta nuevamente.', 'error');
+    } finally {
+      this.savingNewCustomer = false;
+    }
   }
 
   private normalizeCustomerName(value: any): string {
