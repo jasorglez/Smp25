@@ -76,5 +76,5 @@ export const environment = {
     // publicKey: 'TEST-4399133a-4676-42a2-ab85-d946370bf96a',
   },
 
-  version: '5.00.592 (21 Noviembre 2026 14:55) usuarios borrados por permisos de empresa',
+  version: '5.00.593 (21 Noviembre 2026 15:02) edición de clientes desde modal y recuperación por empresa',
 };

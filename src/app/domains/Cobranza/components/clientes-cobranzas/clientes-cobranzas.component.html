@@ -66,14 +66,14 @@
 </div>
 
 <ng-template #newCustomerModal let-modal>
-  <form #newCustomerForm="ngForm" (ngSubmit)="saveNewCustomer(newCustomerForm, modal)">
+  <form #newCustomerForm="ngForm" (ngSubmit)="saveCustomer(newCustomerForm, modal)">
     <div class="modal-header customer-modal-header">
       <div class="d-flex align-items-center gap-3">
-        <span class="customer-modal-icon" aria-hidden="true"><i class="bi bi-person-plus"></i></span>
+        <span class="customer-modal-icon" aria-hidden="true"><i [class]="editingCustomerId ? 'bi bi-person-gear' : 'bi bi-person-plus'"></i></span>
         <div>
           <div class="customer-modal-eyebrow">Cobranza · Clientes</div>
-          <h2 id="new-customer-modal-title" class="modal-title fs-4 fw-semibold mb-0">Nuevo cliente</h2>
-          <p class="mb-0 customer-modal-subtitle">Completa los datos para agregarlo a tu cartera.</p>
+          <h2 id="new-customer-modal-title" class="modal-title fs-4 fw-semibold mb-0">{{ editingCustomerId ? 'Editar cliente' : 'Nuevo cliente' }}</h2>
+          <p class="mb-0 customer-modal-subtitle">{{ editingCustomerId ? 'Actualiza los datos y el cobrador responsable.' : 'Completa los datos para agregarlo a tu cartera.' }}</p>
         </div>
       </div>
       <button type="button" class="btn-close btn-close-white align-self-start" aria-label="Cerrar" [disabled]="savingNewCustomer" (click)="modal.dismiss()"></button>
@@ -158,12 +158,12 @@
       </section>
     </div>
     <div class="modal-footer customer-modal-footer">
-      <span class="customer-modal-footer-hint me-auto d-none d-sm-inline">El cliente aparecerá en el listado al guardar.</span>
+      <span class="customer-modal-footer-hint me-auto d-none d-sm-inline">{{ editingCustomerId ? 'Los cambios aparecerán en el listado al guardar.' : 'El cliente aparecerá en el listado al guardar.' }}</span>
       <button type="button" class="btn btn-outline-secondary" [disabled]="savingNewCustomer" (click)="modal.dismiss()">Cancelar</button>
       <button type="submit" class="btn btn-primary customer-modal-save" [disabled]="savingNewCustomer">
         <span *ngIf="savingNewCustomer" class="spinner-border spinner-border-sm me-1" aria-hidden="true"></span>
         <i *ngIf="!savingNewCustomer" class="bi bi-check2-circle me-1" aria-hidden="true"></i>
-        Guardar cliente
+        {{ editingCustomerId ? 'Guardar cambios' : 'Guardar cliente' }}
       </button>
     </div>
   </form>
