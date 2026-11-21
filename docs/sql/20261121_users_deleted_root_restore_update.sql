@@ -19,10 +19,10 @@ BEGIN
     )
     VALUES (
         NULL, NULL, N'5.00.591', N'Usuarios / Recuperación', N'IMPROVEMENT',
-        N'Recuperación protegida de usuarios borrados',
-        N'Root puede consultar los usuarios borrados y restaurarlos. Security restringe estas operaciones a cuentas root activas y oculta usuarios inactivos a los demás usuarios.',
-        N'Permite recuperar cuentas desactivadas y evita que usuarios de empresa consulten cuentas borradas.',
-        N'Recupera usuarios desde el acceso root con validación de permisos en el servidor.',
+        N'Recuperación protegida de usuarios borrados por empresa',
+        N'El root de cada empresa puede consultar los usuarios borrados y restaurarlos únicamente dentro de la empresa seleccionada. Security valida el alcance por empresa y oculta usuarios inactivos a los demás usuarios.',
+        N'Permite recuperar cuentas desactivadas sin exponer usuarios borrados de otras empresas.',
+        N'Recupera usuarios borrados de tu empresa desde el acceso root.',
         SYSUTCDATETIME(), N'America/Indiana/Indianapolis', N'PASSED', N'LOCAL', N'DRAFT',
         NULL, NULL, SYSUTCDATETIME(), SYSUTCDATETIME(), 1
     );

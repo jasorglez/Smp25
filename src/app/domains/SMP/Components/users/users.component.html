@@ -13,7 +13,7 @@
                 <span class="users-unsaved-status" *ngIf="notSavedChanges">
                     <i class="bi bi-circle-fill"></i> Cambios sin guardar
                 </span>
-                <button *ngIf="isRootUser" type="button" class="btn btn-sm btn-outline-primary"
+                <button *ngIf="isRootUser && idRoot" type="button" class="btn btn-sm btn-outline-primary"
                     (click)="toggleDeletedUsers()">
                     <i class="bi" [ngClass]="showDeletedUsers ? 'bi-arrow-left' : 'bi-person-x'"></i>
                     {{ showDeletedUsers ? 'Volver a usuarios activos' : 'Usuarios borrados' }}

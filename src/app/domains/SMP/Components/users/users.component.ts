@@ -72,7 +72,10 @@ export class UsersComponent implements OnDestroy {
   showDeletedUsers = false;
 
   get isRootUser(): boolean {
-    return this.authService.isRoot();
+    const rootFlag = this.signalsService.getUserRoot()();
+    return this.authService.isRoot()
+      || String(rootFlag).toLowerCase() === 'true'
+      || Number(rootFlag) === 1;
   }
 
   // --- Modal ---
@@ -222,18 +225,17 @@ export class UsersComponent implements OnDestroy {
       }
     };
 
-    if (this.isRootUser) {
-      const request = this.showDeletedUsers
-        ? this.usersService.getDeletedUsers()
-        : this.usersService.getAllUsers();
-      request.subscribe(observer);
+    if (this.showDeletedUsers && this.isRootUser && this.idRoot) {
+      this.usersService.getDeletedUsers(this.idRoot).subscribe(observer);
+    } else if (this.authService.isRoot()) {
+      this.usersService.getAllUsers().subscribe(observer);
     } else {
       this.usersService.getDataUsers(this.idRoot).subscribe(observer);
     }
   }
 
   toggleDeletedUsers(): void {
-    if (!this.isRootUser) return;
+    if (!this.isRootUser || !this.idRoot) return;
     this.showDeletedUsers = !this.showDeletedUsers;
     this.selectedRowData = null;
     this.gridApi?.deselectAll();
@@ -256,7 +258,7 @@ export class UsersComponent implements OnDestroy {
     );
     if (!confirmation.isConfirmed) return;
 
-    this.usersService.restoreDeletedUser(Number(selected.id)).subscribe({
+    this.usersService.restoreDeletedUser(Number(selected.id), this.idRoot).subscribe({
       next: () => {
         alerts.basicAlert('Usuario restaurado', 'El usuario quedó activo nuevamente.', 'success');
         this.selectedRowData = null;
