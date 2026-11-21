@@ -49,6 +49,7 @@ import { IncomesAndExpensesService } from 'app/services/incomes-and-expenses.ser
 import { PdfPreviewService } from 'app/services/pdf-preview.service';
 import { RootService } from 'app/services/root.service';
 import { Base64EncodeService } from 'app/services/base64encode.service';
+import { UsersService } from 'app/services/users.service';
 
 @Component({
   selector: 'app-clientes-cobranzas',
@@ -87,6 +88,7 @@ export class ClientesCobranzasComponent implements CanComponentDeactivate {
   private pdfPreview = inject(PdfPreviewService);
   private rootService = inject(RootService);
   private base64EncodeService = inject(Base64EncodeService);
+  private usersService = inject(UsersService);
 
   private http = inject(HttpClient);
   public AG_GRID_LOCALE_ES = AG_GRID_LOCALE_ES;
@@ -96,6 +98,7 @@ export class ClientesCobranzasComponent implements CanComponentDeactivate {
     this.obtenerDatos();
     this.signalsService.deleteClientData();
     this.idRoot = this.signalsService.getRootSelectedBySidebar()();
+    this.loadCollectors();
     await this.getTypecop();
     this.loadFiscalCatalogs(); // Cargar catálogos SAT
     this.loadCustomersBilling(); // Cargar clientes habilitados para facturación
@@ -134,6 +137,7 @@ export class ClientesCobranzasComponent implements CanComponentDeactivate {
       this.obtenerDatos();
       this.obtenerBranchs();
       this.getTypecop();
+      this.loadCollectors();
       this.actualizarContextoCotizaciones(); // refrescar contexto del cascade
       console.log(this.contactoCatalog)
     });
@@ -161,6 +165,9 @@ export class ClientesCobranzasComponent implements CanComponentDeactivate {
   isOpen: boolean = false;
   branchs: any[] = [];
   Typecop: any[] = [];
+  collectors: any[] = [];
+  collectorsLoading = false;
+  private collectorsRequestId = 0;
   contactoCatalog: any[] = [];
 
   // Catálogos SAT para facturación electrónica
@@ -450,6 +457,29 @@ export class ClientesCobranzasComponent implements CanComponentDeactivate {
           if (!params.data || !params.data.idBranch) return '';
           const branch = this.branchs?.find(b => b.id === params.data.idBranch);
           return branch ? branch.name : '';
+        },
+      },
+      {
+        field: 'idUsuarioCobrador',
+        headerName: 'Cobrador / vendedor',
+        hide: this.type !== 'CUSTOMERS',
+        editable: this.type === 'CUSTOMERS',
+        filter: true,
+        width: 190,
+        cellEditor: 'agRichSelectCellEditor',
+        cellEditorParams: () => ({
+          values: this.collectors.map(user => Number(user.id)),
+          formatValue: (value: number) => this.collectorName(value),
+          searchType: 'matchAny',
+          allowTyping: true,
+          filterList: true,
+        }),
+        valueFormatter: (params) => this.collectorName(params.value),
+        valueSetter: (params) => {
+          const id = Number(params.newValue);
+          if (!this.collectors.some(user => Number(user.id) === id)) return false;
+          params.data.idUsuarioCobrador = id;
+          return true;
         },
       },
       {
@@ -1036,6 +1066,41 @@ export class ClientesCobranzasComponent implements CanComponentDeactivate {
     );
   }
 
+  private loadCollectors(): void {
+    const rootId = Number(this.idRoot) || 0;
+    const requestId = ++this.collectorsRequestId;
+    this.collectors = [];
+    this.collectorsLoading = rootId > 0;
+    if (!rootId) return;
+
+    this.usersService.get2fieldsUsers(rootId).subscribe({
+      next: (result: any) => {
+        if (requestId !== this.collectorsRequestId || rootId !== Number(this.idRoot)) return;
+        this.collectorsLoading = false;
+        this.collectors = (Array.isArray(result?.data) ? result.data : [])
+          .slice()
+          .sort((a: any, b: any) => this.collectorNameFromUser(a).localeCompare(this.collectorNameFromUser(b), 'es'));
+        this.gridApi?.refreshCells({ columns: ['idUsuarioCobrador'], force: true });
+      },
+      error: (error) => {
+        if (requestId !== this.collectorsRequestId) return;
+        this.collectorsLoading = false;
+        console.error('Error al cargar cobradores:', error);
+        alerts.basicAlert('Cobradores', 'No se pudieron cargar los cobradores de la empresa.', 'error');
+      },
+    });
+  }
+
+  private collectorNameFromUser(user: any): string {
+    return user?.displayName || user?.usersmall || user?.email || `Usuario ${user?.id}`;
+  }
+
+  collectorName(id: any): string {
+    if (!id) return 'Sin asignar';
+    const user = this.collectors.find(item => Number(item.id) === Number(id));
+    return user ? this.collectorNameFromUser(user) : `Usuario ${id}`;
+  }
+
   onSelectedRow(event: any) {
     this.id = event.data.id;
   }
@@ -1280,6 +1345,7 @@ export class ClientesCobranzasComponent implements CanComponentDeactivate {
       id: `temp_${this.tempIdCounter++}`,
       idRoot: this.idRoot,
       idBranch: this.idBranch,
+      idUsuarioCobrador: null,
       nameContact: '',
       company: '', // Se sincronizará con nameContact
       phone: '',
@@ -1322,8 +1388,13 @@ export class ClientesCobranzasComponent implements CanComponentDeactivate {
     }
 
     const name = this.normalizeCustomerName(this.newCustomer.nameContact);
-    if (!name || !this.newCustomer.idBranch) {
-      alerts.basicAlert('Campos requeridos', 'Selecciona una sucursal y captura el nombre del cliente.', 'error');
+    if (!name || !this.newCustomer.idBranch || !this.newCustomer.idUsuarioCobrador) {
+      alerts.basicAlert('Campos requeridos', 'Captura el nombre y selecciona una sucursal y un cobrador.', 'error');
+      return;
+    }
+
+    if (!this.collectors.some(user => Number(user.id) === Number(this.newCustomer.idUsuarioCobrador))) {
+      alerts.basicAlert('Cobrador inválido', 'Selecciona un cobrador de la empresa actual.', 'error');
       return;
     }
 

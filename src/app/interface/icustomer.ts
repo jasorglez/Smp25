@@ -2,6 +2,7 @@ export interface ICustomer {
   id: number;
   idBranch: number;
   idRoot: number;
+  idUsuarioCobrador?: number | null;
   nameContact: string;
   company: string;
   position: string;

@@ -86,18 +86,27 @@
           <i class="bi bi-person-vcard" aria-hidden="true"></i><span>Datos principales</span>
         </div>
         <div class="row g-3">
-          <div class="col-md-7">
+          <div class="col-md-6">
             <label for="new-customer-name" class="form-label">Nombre del cliente <span class="text-danger">*</span></label>
             <input id="new-customer-name" name="nameContact" class="form-control" [(ngModel)]="newCustomer.nameContact" required maxlength="150" autocomplete="name" [class.is-invalid]="newCustomerForm.submitted && !newCustomer.nameContact?.trim()" placeholder="Nombre completo o razón social" autofocus>
             <div class="invalid-feedback">Captura el nombre del cliente.</div>
           </div>
-          <div class="col-md-5">
+          <div class="col-md-6">
             <label for="new-customer-branch" class="form-label">Sucursal <span class="text-danger">*</span></label>
             <select id="new-customer-branch" name="idBranch" class="form-select" [(ngModel)]="newCustomer.idBranch" required [class.is-invalid]="newCustomerForm.submitted && !newCustomer.idBranch">
               <option [ngValue]="null">Seleccionar sucursal</option>
               <option *ngFor="let branch of branchs" [ngValue]="branch.id">{{ branch.name }}</option>
             </select>
             <div class="invalid-feedback">Selecciona una sucursal.</div>
+          </div>
+          <div class="col-md-6">
+            <label for="new-customer-collector" class="form-label">Cobrador / vendedor <span class="text-danger">*</span></label>
+            <select id="new-customer-collector" name="idUsuarioCobrador" class="form-select" [(ngModel)]="newCustomer.idUsuarioCobrador" required [disabled]="collectorsLoading" [class.is-invalid]="newCustomerForm.submitted && !newCustomer.idUsuarioCobrador">
+              <option [ngValue]="null">{{ collectorsLoading ? 'Cargando cobradores…' : 'Seleccionar cobrador' }}</option>
+              <option *ngFor="let user of collectors" [ngValue]="user.id">{{ collectorName(user.id) }}</option>
+            </select>
+            <div class="invalid-feedback">Selecciona el responsable de este cliente.</div>
+            <div class="form-text" *ngIf="!collectorsLoading && !collectors.length">No hay cobradores disponibles para la empresa.</div>
           </div>
           <div class="col-md-6">
             <label for="new-customer-phone" class="form-label">Teléfono</label>

@@ -1,5 +1,7 @@
 # Registro de actualizaciones
 
+| 2026-11-21 13:46 EST | 5.00.590 · local | Cobranza / Clientes | Mejora | Al agregar un cliente se puede seleccionar su cobrador o vendedor; la asignación también se puede cambiar desde el listado. | Permite saber qué responsable atiende a cada cliente y reasignarlo cuando sea necesario. | **Asigna cada cliente de cobranza a su vendedor y consulta al responsable en el listado.** | Compilaciones Angular y Administración aprobadas; migración de base de datos pendiente por permisos SQL, validación en pantalla y despliegue pendientes. | Borrador |
+
 | 2026-11-21 13:25 EST | 5.00.589 · local | Cobranza / Clientes | Mejora | El botón Agregar abre una ventana para capturar y guardar un cliente nuevo. El formulario valida nombre, sucursal y los datos opcionales antes del alta. | Permite registrar clientes sin editar una fila vacía del listado y muestra el registro al terminar. | **Agrega clientes de cobranza desde una ventana con todos sus datos principales.** | Build Angular de producción aprobado; validación en pantalla y despliegue sin confirmar. | Borrador |
 
 | 2026-11-20 21:57 EST | 5.00.588 · local | Acceso / Demo | Mejora | Al abrir `/demo`, BIAPP inicia la sesión de demostración y abre la empresa asignada a esa cuenta. | Permite explorar la empresa demo sin capturar credenciales ni elegir la empresa manualmente. | **Abre la demo de BIAPP directamente desde www.biapp.com.mx/demo.** | Build Angular de producción aprobado; la cuenta compartida y su contraseña son públicas por diseño. Despliegue sin confirmar. | Borrador |
