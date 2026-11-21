@@ -45,7 +45,8 @@ export const environment = {
   urlMantenimiento: 'https://endpoints.biapp.com.mx/maintenance/api',
 
   root: 'root@bi2.mx',
-  demo: { email: 'demo@bi2.mx' },
+  // Cuenta compartida para demos públicas; estos datos quedan visibles en el bundle web.
+  demo: { email: 'demo@bi2.mx', password: '123456' },
 
   //  urlAzure    : 'https://localhost:7089/',
 
@@ -75,5 +76,5 @@ export const environment = {
     // publicKey: 'TEST-4399133a-4676-42a2-ab85-d946370bf96a',
   },
 
-  version: '5.00.587 (20 Noviembre 2026 15:31) almacén origen en PDF de entradas',
+  version: '5.00.588 (20 Noviembre 2026 21:57) acceso directo a empresa demo',
 };

@@ -3,7 +3,7 @@ import { Validators, FormBuilder, ReactiveFormsModule } from '@angular/forms';
 import { CommonModule } from '@angular/common';
 
 import { Ilogin } from '../../../interface/ilogin';
-import { Router, RouterModule } from '@angular/router';
+import { ActivatedRoute, Router, RouterModule } from '@angular/router';
 
 import { alerts } from '../../../helpers/alerts';
 import { functions } from '../../../helpers/functions';
@@ -55,6 +55,7 @@ export class ComploginComponent implements OnInit, OnDestroy {
   private auth            = inject(AuthService);
   private formBuilder     = inject(FormBuilder);
   private router          = inject(Router);
+  private route           = inject(ActivatedRoute);
   private signalsService = inject(SignalsService);
 
   /** @deprecated reemplazado por currentImageIndex + carrusel */
@@ -80,6 +81,14 @@ export class ComploginComponent implements OnInit, OnDestroy {
     this.loadLoginBackgroundImages();
     this.isAdvanced = this.signalsService.getIsAdvanced();
     this.idBranch = this.signalsService.getBranchSelectedBySidebar()();
+    if (this.route.snapshot.queryParamMap.get('demo') === '1') {
+      this.flogin.setValue({
+        emaillogin: environment.demo.email,
+        passwordlogin: environment.demo.password,
+      });
+      setTimeout(() => this.login(), 0);
+      return;
+    }
     const storedEmail = this.signalsService.getemailChoose();
     if (storedEmail) {
       this.emailcapt = storedEmail;
