@@ -28,6 +28,7 @@ export class QuickActionsService {
     { id: 'income', label: 'Ingresos', icon: 'bi-plus-circle', route: '/procmodadmon/income', color: 'success' },
     { id: 'expenses', label: 'Egresos', icon: 'bi-dash-circle', route: '/procmodadmon/expend', color: 'danger' },
     { id: 'warehouse-entry', label: 'Entradas de almacén', icon: 'bi-box-arrow-in-down', route: '/warehousesTD/entry-st', color: 'info' },
+    { id: 'cobranza-clients', label: 'Clientes', icon: 'bi-people', route: '/cobranza/clientes', color: 'primary' },
   ];
 
   recordRoute(url: string): void {
@@ -49,7 +50,10 @@ export class QuickActionsService {
     };
 
     const usage = this.getUsage();
-    const current = usage[action.id] ?? { count: 0, lastUsedAt: 0 };
+    const legacyEntry = knownAction
+      ? Object.entries(usage).find(([id, item]) => id.startsWith('route:') && this.normalizePath(item.route || '') === knownAction.route)?.[1]
+      : undefined;
+    const current = usage[action.id] ?? legacyEntry ?? { count: 0, lastUsedAt: 0 };
     usage[action.id] = {
       ...current,
       count: current.count + 1,
@@ -66,9 +70,14 @@ export class QuickActionsService {
     this.favoritesRevision();
     const usage = this.getUsage();
     const dismissed = this.getDismissed();
-    const staticActions = this.actions.filter(action => (usage[action.id]?.count ?? 0) > 0);
+    const legacyEntryFor = (action: QuickAction) => Object.entries(usage)
+      .find(([id, item]) => id.startsWith('route:') && this.normalizePath(item.route || '') === action.route);
+    const staticActions = this.actions.filter(action =>
+      (usage[action.id]?.count ?? legacyEntryFor(action)?.[1].count ?? 0) > 0
+    );
     const dynamicActions: QuickAction[] = Object.entries(usage)
-      .filter(([id, item]) => id.startsWith('route:') && !!item.route && !!item.label && !this.isExcludedRoute(item.route))
+      .filter(([id, item]) => id.startsWith('route:') && !!item.route && !!item.label && !this.isExcludedRoute(item.route)
+        && !this.actions.some(action => this.normalizePath(item.route || '') === action.route))
       .map(([id, item]) => ({
         id,
         route: item.route!,
@@ -78,10 +87,13 @@ export class QuickActionsService {
       }));
 
     return [...staticActions, ...dynamicActions]
-      .filter(action => !dismissed[action.id])
+      .filter(action => {
+        const legacyId = legacyEntryFor(action)?.[0];
+        return !dismissed[action.id] && !(legacyId && dismissed[legacyId]);
+      })
       .sort((a, b) => {
-        const aUsage = usage[a.id] ?? { count: 0, lastUsedAt: 0 };
-        const bUsage = usage[b.id] ?? { count: 0, lastUsedAt: 0 };
+        const aUsage = usage[a.id] ?? legacyEntryFor(a)?.[1] ?? { count: 0, lastUsedAt: 0 };
+        const bUsage = usage[b.id] ?? legacyEntryFor(b)?.[1] ?? { count: 0, lastUsedAt: 0 };
         return bUsage.count - aUsage.count || bUsage.lastUsedAt - aUsage.lastUsedAt;
       })
       .slice(0, limit);
