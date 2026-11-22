@@ -112,15 +112,17 @@ export class MainPageComponent implements OnInit, OnDestroy {
       const overdueNotice = overdueInstallments > 0
         ? ` · Atraso: ${overdueInstallments} cuota(s), ${overdueAmount}`
         : '';
-      const sourceTitle = String(payment.source || 'TELEGRAM').toUpperCase() === 'WEB'
+      const isWebPayment = String(payment.source || 'TELEGRAM').toUpperCase() === 'WEB';
+      const sourceTitle = isWebPayment
         ? 'Abono registrado desde la web'
         : 'Nuevo cobro desde Telegram';
+      const sourceNotice = isWebPayment ? ' · Origen: web' : ` · Cobrador: ${payment.collectorName}`;
       void Swal.fire({
         toast: true,
         position: 'top-end',
         icon: overdueInstallments > 0 ? 'warning' : 'success',
         title: overdueInstallments > 0 ? 'Abono recibido · cliente con atraso' : sourceTitle,
-        text: `${payment.customerName} · ${amount} · Cobrador: ${payment.collectorName}${overdueNotice}`,
+        text: `${payment.customerName} · ${amount}${sourceNotice}${overdueNotice}`,
         showConfirmButton: false,
         timer: 9000,
         timerProgressBar: true,
