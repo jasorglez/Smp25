@@ -90,6 +90,7 @@ import { Base64EncodeService } from 'app/services/base64encode.service';
           <div class="d-flex align-items-center gap-2"><span class="badge" [class.bg-success]="loanBalance(loan) <= 0" [class.bg-warning]="loanBalance(loan) > 0">Saldo {{ loanBalance(loan) | currency:'MXN' }}</span>
             <button *ngIf="activeInstallmentId !== null" class="btn btn-sm btn-outline-secondary" (click)="cancelPayment()"><i class="bi bi-arrow-left me-1"></i>Volver a préstamos</button>
             <ng-container *ngIf="activeInstallmentId === null">
+            <button class="btn btn-sm" [class.btn-warning]="isScheduleEditing(loan)" [class.btn-outline-primary]="!isScheduleEditing(loan)" (click)="toggleScheduleEditing(loan)" [disabled]="saving"><i class="bi" [class.bi-calendar2-check]="isScheduleEditing(loan)" [class.bi-calendar2-date]="!isScheduleEditing(loan)"></i> {{ isScheduleEditing(loan) ? 'Dejar de editar fechas' : 'Modificar fechas' }}</button>
             <button class="btn btn-sm btn-outline-primary" (click)="toggleLoanDetail(loan)" [attr.aria-expanded]="isLoanExpanded(loan)" [attr.aria-label]="(isLoanExpanded(loan) ? 'Ocultar' : 'Ver') + ' detalle del préstamo ' + loan.id"><i class="bi" [class.bi-chevron-down]="!isLoanExpanded(loan)" [class.bi-chevron-up]="isLoanExpanded(loan)"></i> {{ isLoanExpanded(loan) ? 'Ocultar detalle' : 'Ver detalle' }}</button>
             <button class="btn btn-sm btn-primary position-relative" (click)="saveChanges(loan)" [disabled]="saving || !hasChanges(loan)"><i class="bi bi-floppy"></i> Guardar<span *ngIf="hasChanges(loan)" class="position-absolute top-0 start-100 translate-middle p-2 bg-danger border border-light rounded-circle"></span></button>
             <button class="btn btn-sm btn-warning" (click)="revertChanges(loan)" [disabled]="saving || !hasChanges(loan)"><i class="bi bi-arrow-clockwise"></i> Deshacer</button>
@@ -111,6 +112,7 @@ import { Base64EncodeService } from 'app/services/base64encode.service';
             <div class="col-12 small text-warning" *ngIf="hasLoanPayments(loan)">Este préstamo ya tiene abonos. Para conservar el historial, capital, interés, fechas y número de pagos están bloqueados; puedes cambiar la nota y el comentario.</div>
             <div class="col-12 small">Interés total: {{ loan.totalInteres || 0 | currency:'MXN' }} · A pagar: {{ payableTotal(loan) | currency:'MXN' }}</div>
           </div>
+          <div *ngIf="isScheduleEditing(loan)" class="alert alert-warning py-2 mb-2 small"><i class="bi bi-info-circle me-1"></i>Haz doble clic en una fecha programada para cambiarla. Después selecciona <strong>Guardar</strong> para aplicar los cambios o <strong>Deshacer</strong> para restaurarlos.</div>
           <ag-grid-angular class="ag-theme-quartz small-text-ag-grid d-block" style="width:100%;height:320px" [rowData]="loan.cuotas" [columnDefs]="installmentColumns" [defaultColDef]="defaultColDef" [localeText]="AG_GRID_LOCALE_ES" [rowSelection]="'single'" [stopEditingWhenCellsLoseFocus]="true" (cellValueChanged)="onDateChanged($event)"></ag-grid-angular>
           </ng-container>
           <div *ngFor="let installment of loan.cuotas"><div *ngIf="activeInstallmentId === installment.id" class="border border-primary rounded-3 p-3 mt-2 bg-white shadow-sm"><div class="d-flex justify-content-between align-items-start gap-2 flex-wrap mb-2"><div><span class="badge bg-primary mb-1">REGISTRAR PAGO</span><h5 class="mb-1">Abono a la cuota {{ installment.numeroCuota }}</h5><div class="small text-muted">{{ customer?.nameContact || customer?.company }} · Préstamo #{{ loan.id }} · Saldo pendiente {{ loanBalance(loan) | currency:'MXN' }}</div></div><button class="btn btn-sm btn-outline-secondary" (click)="cancelPayment()">Cancelar</button></div><div class="row g-3 align-items-end py-2">
@@ -158,6 +160,7 @@ export class ClientesCobranzasPagosComponent implements OnChanges, OnDestroy {
   saving = false;
   showLoanForm = false;
   activeInstallmentId: number | null = null;
+  editingScheduleLoanId: number | null = null;
   loanForm: any = { numeroNotaVenta: '', montoTotal: null, montoInteresTotal: 0, frecuenciaPago: 'MENSUAL', fechaInicio: this.today(), fechaPrimerPago: this.nextMonth(), numeroCuotas: 10, comentario: '' };
   abonoForm: any = { fechaPago: this.today(), monto: null, comentario: '' };
   AG_GRID_LOCALE_ES = AG_GRID_LOCALE_ES;
@@ -165,7 +168,7 @@ export class ClientesCobranzasPagosComponent implements OnChanges, OnDestroy {
   defaultColDef: ColDef = { sortable: true, filter: true, resizable: true, flex: 1 };
   installmentColumns: ColDef[] = [
     { field: 'numeroCuota', headerName: '#', width: 70, flex: 0, editable: false },
-    { field: 'fechaProgramada', headerName: 'Fecha programada', editable: true, cellEditor: 'agDateStringCellEditor', cellDataType: 'dateString', minWidth: 170 },
+    { field: 'fechaProgramada', headerName: 'Fecha programada', editable: params => this.editingScheduleLoanId === Number(params.data?.idPrestamo), cellEditor: 'agDateStringCellEditor', cellDataType: 'dateString', minWidth: 170 },
     { field: 'montoCapital', headerName: 'Capital', editable: false, valueFormatter: p => this.money(p.value) },
     { field: 'montoInteres', headerName: 'Interés', editable: false, valueFormatter: p => this.money(p.value) },
     { field: 'montoProgramado', headerName: 'Pago total', editable: false, valueFormatter: p => this.money(p.value) },
@@ -203,9 +206,11 @@ export class ClientesCobranzasPagosComponent implements OnChanges, OnDestroy {
   }
   payableTotal(loan: any): number { return (loan.cuotas || []).reduce((sum: number, item: any) => sum + Number(item.montoProgramado || 0), 0); }
   onDateChanged(event: any): void { if (!/^\d{4}-\d{2}-\d{2}$/.test(event.newValue || '')) { event.node.setDataValue('fechaProgramada', event.oldValue); alerts.basicAlert('Fecha inválida', 'Selecciona una fecha válida.', 'warning'); } }
+  isScheduleEditing(loan: any): boolean { return this.editingScheduleLoanId === Number(loan?.id); }
+  toggleScheduleEditing(loan: any): void { this.editingScheduleLoanId = this.editingScheduleLoanId === Number(loan?.id) ? null : Number(loan?.id); }
   hasChanges(loan: any): boolean { return (loan.cuotas || []).some((item: any) => item.fechaProgramada !== this.originalDates.get(item.id)); }
-  revertChanges(loan: any): void { loan.cuotas = loan.cuotas.map((item: any) => ({ ...item, fechaProgramada: this.originalDates.get(item.id) })); }
-  async saveChanges(loan: any): Promise<void> { const changed = loan.cuotas.filter((item: any) => item.fechaProgramada !== this.originalDates.get(item.id)); if (!changed.length) return; this.saving = true; try { for (const item of changed) await firstValueFrom(this.customersService.updateCobranzaInstallmentDate(item.id, { fechaProgramada: item.fechaProgramada })); this.saving = false; this.loadLoans(); this.balancesChanged.emit(); alerts.basicAlert('Fechas guardadas', 'Se actualizó el calendario de pagos.', 'success'); } catch (error) { console.error(error); this.saving = false; alerts.basicAlert('Error', 'No se pudieron guardar todas las fechas. Recarga el detalle para revisar cuáles se guardaron.', 'error'); } }
+  revertChanges(loan: any): void { loan.cuotas = loan.cuotas.map((item: any) => ({ ...item, fechaProgramada: this.originalDates.get(item.id) })); this.editingScheduleLoanId = null; }
+  async saveChanges(loan: any): Promise<void> { const changed = loan.cuotas.filter((item: any) => item.fechaProgramada !== this.originalDates.get(item.id)); if (!changed.length) return; this.saving = true; try { for (const item of changed) await firstValueFrom(this.customersService.updateCobranzaInstallmentDate(item.id, { fechaProgramada: item.fechaProgramada })); this.saving = false; this.editingScheduleLoanId = null; this.loadLoans(); this.balancesChanged.emit(); alerts.basicAlert('Fechas guardadas', 'Se actualizó el calendario de pagos.', 'success'); } catch (error) { console.error(error); this.saving = false; alerts.basicAlert('Error', 'No se pudieron guardar todas las fechas. Recarga el detalle para revisar cuáles se guardaron.', 'error'); } }
 
   get totalPaid(): number { return this.loans.reduce((sum, loan) => sum + loan.cuotas.reduce((s: number, q: any) => s + this.installmentPaid(q), 0), 0); }
   hasLoanPayments(loan: any): boolean { return (loan?.cuotas || []).some((installment: any) => (installment.abonos || []).some((payment: any) => payment.active !== false && Number(payment.monto) > 0)); }

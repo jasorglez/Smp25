@@ -76,5 +76,5 @@ export const environment = {
     // publicKey: 'TEST-4399133a-4676-42a2-ab85-d946370bf96a',
   },
 
-  version: '5.00.600 (21 Noviembre 2026 23:46) abonos web y calendario de vencimientos',
+  version: '5.00.601 (22 Noviembre 2026 09:27) edición explícita de fechas de cuotas',
 };
