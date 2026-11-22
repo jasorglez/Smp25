@@ -1,0 +1,41 @@
+CONFIGURAR AVISOS DE COBRANZA POR RABBITMQ EN LINUX
+
+Los cambios de código requieren desplegar el frontend y el servicio Telegram.
+No ejecutes los comandos con una contraseña inventada: usa una contraseña
+aleatoria y guárdala en el gestor de secretos del servidor.
+
+1) Crear un virtual host y un usuario dedicados en el servidor RabbitMQ:
+
+  sudo rabbitmqctl add_vhost /biapp-cobranza
+  read -s RABBIT_PASSWORD
+  sudo rabbitmqctl add_user biapp_cobranza "$RABBIT_PASSWORD"
+  unset RABBIT_PASSWORD
+  sudo rabbitmqctl set_permissions -p /biapp-cobranza biapp_cobranza '.*' '.*' '.*'
+
+El usuario queda limitado al virtual host /biapp-cobranza. No abras el puerto
+15672 a Internet; el servicio Telegram se conecta al puerto AMQP 5672.
+
+2) Configurar el servicio systemd de Telegram con su mecanismo de secretos:
+
+  RabbitMq__Enabled=true
+  RabbitMq__HostName=<host-o-ip-privada-del-rabbitmq>
+  RabbitMq__Port=5672
+  RabbitMq__UserName=biapp_cobranza
+  RabbitMq__Password=<la-misma-contraseña-aleatoria>
+  RabbitMq__VirtualHost=/biapp-cobranza
+  Jwt__Key=<la-misma-llave-JWT-del-servicio-de-Seguridad>
+
+No pongas estos valores en appsettings.json ni en Git. Jwt__Key debe coincidir
+exactamente con Jwt:Key de Security para validar el token web antes de permitir
+que una cajera se una al grupo de su empresa.
+
+3) Reiniciar el servicio Telegram y comprobar logs/conexiones:
+
+  sudo systemctl restart <servicio-systemd-de-telegram>
+  sudo journalctl -u <servicio-systemd-de-telegram> -n 100 --no-pager
+  sudo rabbitmqctl list_connections user vhost state
+  sudo rabbitmqctl list_queues -p /biapp-cobranza name messages consumers
+
+El servicio Telegram declara automáticamente el exchange y la cola durable al
+iniciar. La interfaz se conecta a /telegram/cobranzaHub y muestra el aviso solo
+a usuarios autenticados que tengan permiso activo en la empresa seleccionada.

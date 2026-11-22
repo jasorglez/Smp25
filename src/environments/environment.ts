@@ -76,5 +76,5 @@ export const environment = {
     // publicKey: 'TEST-4399133a-4676-42a2-ab85-d946370bf96a',
   },
 
-  version: '5.00.595 (21 Noviembre 2026 15:26) proteger contraseñas y corregir rutas favoritas',
+  version: '5.00.596 (21 Noviembre 2026 20:27) aviso de cobros de Telegram',
 };

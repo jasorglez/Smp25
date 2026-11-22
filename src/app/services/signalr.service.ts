@@ -22,6 +22,10 @@ export class SignalrService {
 
   // TelegramHub — conexión al bot de Telegram para recibir eventos en tiempo real
   private telegramHubConnection: signalR.HubConnection | null = null;
+  private cobranzaHubConnection: signalR.HubConnection | null = null;
+  private cobranzaCompanyId: number | null = null;
+  private cobranzaPaymentSubject = new Subject<any>();
+  public cobranzaPayment$ = this.cobranzaPaymentSubject.asObservable();
 
   // AdmonHub — conexión independiente para actualizaciones de ingresos/egresos
   private admonHubConnection: signalR.HubConnection | null = null;
@@ -302,6 +306,49 @@ public startConnection(hubEndpoint: string = 'storageHub', token?: string): void
       .start()
       .then(() => console.log('✅ TelegramHub conectado'))
       .catch(err => console.error('❌ TelegramHub error:', err));
+  }
+
+  public startCobranzaConnection(companyId: number): void {
+    if (!companyId || companyId <= 0) return;
+    const previousCompanyId = this.cobranzaCompanyId;
+    this.cobranzaCompanyId = companyId;
+    if (this.cobranzaHubConnection?.state === signalR.HubConnectionState.Connected) {
+      const switchCompany = previousCompanyId && previousCompanyId !== companyId
+        ? this.cobranzaHubConnection.invoke('LeaveCompany', previousCompanyId)
+        : Promise.resolve();
+      void switchCompany.then(() => this.cobranzaHubConnection?.invoke('JoinCompany', companyId)).catch(err =>
+        console.error('No se pudo unir a las notificaciones de Cobranza:', err));
+      return;
+    }
+    if (this.cobranzaHubConnection?.state === signalR.HubConnectionState.Connecting ||
+        this.cobranzaHubConnection?.state === signalR.HubConnectionState.Reconnecting) return;
+
+    this.cobranzaHubConnection = new signalR.HubConnectionBuilder()
+      .withUrl('https://endpoints.biapp.com.mx/telegram/cobranzaHub', {
+        accessTokenFactory: () => localStorage.getItem('token') || '',
+        skipNegotiation: false,
+        transport: signalR.HttpTransportType.WebSockets | signalR.HttpTransportType.LongPolling,
+        withCredentials: false,
+      })
+      .withAutomaticReconnect()
+      .configureLogging(signalR.LogLevel.Warning)
+      .build();
+
+    this.cobranzaHubConnection.on('ReceiveCobranzaPayment', (data: any) => {
+      this.cobranzaPaymentSubject.next(typeof data === 'string' ? JSON.parse(data) : data);
+    });
+    this.cobranzaHubConnection.onreconnected(() => {
+      if (this.cobranzaCompanyId) void this.cobranzaHubConnection?.invoke('JoinCompany', this.cobranzaCompanyId);
+    });
+    void this.cobranzaHubConnection.start()
+      .then(() => this.cobranzaCompanyId && this.cobranzaHubConnection?.invoke('JoinCompany', this.cobranzaCompanyId))
+      .catch(err => console.error('No se pudo conectar a las notificaciones de Cobranza:', err));
+  }
+
+  public stopCobranzaConnection(): void {
+    this.cobranzaCompanyId = null;
+    void this.cobranzaHubConnection?.stop();
+    this.cobranzaHubConnection = null;
   }
 
   public stopTelegramConnection(): void {

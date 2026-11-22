@@ -11,6 +11,8 @@ import { RootService } from '../../services/root.service';
 import { environment } from '@env/environment';
 import { WorkspaceTab, WorkspaceTabsService } from 'app/services/workspace-tabs.service';
 import { QuickActionsService } from 'app/services/quick-actions.service';
+import { SignalrService } from 'app/services/signalr.service';
+import Swal from 'sweetalert2';
 
 @Component({
   selector: 'app-main-page',
@@ -27,8 +29,10 @@ export class MainPageComponent implements OnInit, OnDestroy {
   private rootService      = inject(RootService);
   readonly workspaceTabs   = inject(WorkspaceTabsService);
   private quickActions     = inject(QuickActionsService);
+  private signalrService   = inject(SignalrService);
 
   private routerSub?: Subscription;
+  private cobranzaSub?: Subscription;
   draggingTabUrl = '';
   private restoringWorkspaceUrl = '';
 
@@ -77,6 +81,8 @@ export class MainPageComponent implements OnInit, OnDestroy {
     // Detecta qué empresa seleccionó el usuario y activa el gate de Telegram
     effect(() => {
       const rootId = this.signalsService.getRootSelectedBySidebar()();
+      if (localStorage.getItem('token') && rootId) this.signalrService.startCobranzaConnection(Number(rootId));
+      else if (!rootId) this.signalrService.stopCobranzaConnection();
       if (rootId) {
         this.rootService.getRootbyId(rootId).subscribe({
           next: (data: any) => {
@@ -92,10 +98,26 @@ export class MainPageComponent implements OnInit, OnDestroy {
 
   ngOnDestroy(): void {
     this.routerSub?.unsubscribe();
+    this.cobranzaSub?.unsubscribe();
+    this.signalrService.stopCobranzaConnection();
   }
 
   ngOnInit(): void {
     this.initialBranchId = this.signalsService.getBranchSelectedBySidebar()();
+    this.cobranzaSub = this.signalrService.cobranzaPayment$.subscribe(payment => {
+      if (!payment || Number(payment.companyId) !== Number(this.signalsService.getRootSelectedBySidebar()())) return;
+      const amount = Number(payment.amount || 0).toLocaleString('es-MX', { style: 'currency', currency: 'MXN' });
+      void Swal.fire({
+        toast: true,
+        position: 'top-end',
+        icon: 'success',
+        title: 'Nuevo cobro desde Telegram',
+        text: `${payment.customerName} · ${amount} · Cobrador: ${payment.collectorName}`,
+        showConfirmButton: false,
+        timer: 9000,
+        timerProgressBar: true,
+      });
+    });
 
     // Escuchar TODAS las navegaciones y reportar módulo a Telegram
     this.routerSub = this.router.events.pipe(
