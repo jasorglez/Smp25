@@ -1111,6 +1111,18 @@ export class ClientesCobranzasComponent implements CanComponentDeactivate {
     });
   }
 
+  get overdueCustomerCount(): number {
+    return [...this.loanTotalsByCustomer.values()].filter(totals => totals.overdueInstallments > 0).length;
+  }
+
+  get overdueInstallmentCount(): number {
+    return [...this.loanTotalsByCustomer.values()].reduce((sum, totals) => sum + totals.overdueInstallments, 0);
+  }
+
+  get overdueBalance(): number {
+    return [...this.loanTotalsByCustomer.values()].reduce((sum, totals) => sum + totals.overdue, 0);
+  }
+
   setBalanceFilter(value: string): void {
     this.balanceFilter = value === 'pending' || value === 'overdue' ? value : 'all';
     this.gridApi?.onFilterChanged();

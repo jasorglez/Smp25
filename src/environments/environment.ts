@@ -76,5 +76,5 @@ export const environment = {
     // publicKey: 'TEST-4399133a-4676-42a2-ab85-d946370bf96a',
   },
 
-  version: '5.00.606 (22 Noviembre 2026 10:26) ruta fija para favorito de Clientes',
+  version: '5.00.607 (22 Noviembre 2026 10:35) aviso de cuotas vencidas en clientes',
 };
