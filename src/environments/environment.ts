@@ -76,5 +76,5 @@ export const environment = {
     // publicKey: 'TEST-4399133a-4676-42a2-ab85-d946370bf96a',
   },
 
-  version: '5.00.596 (21 Noviembre 2026 20:27) aviso de cobros de Telegram',
+  version: '5.00.597 (21 Noviembre 2026 22:41) dirección del cliente en Telegram',
 };
