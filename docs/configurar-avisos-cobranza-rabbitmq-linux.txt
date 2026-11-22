@@ -39,8 +39,10 @@ que asignaste al usuario RabbitMQ y por el valor Key de Security, sin comillas:
 
 RabbitMQ y Telegram corren en bi-server. host.docker.internal permite al
 contenedor llegar al RabbitMQ del servidor sin usar la IP pública. Guarda en
-nano con Ctrl+O, Enter, Ctrl+X y protege los secretos:
+nano con Ctrl+O, Enter, Ctrl+X. Como telegram.sh corre como jsoriano, asigna
+el archivo a ese usuario y protege los secretos:
 
+  sudo chown jsoriano:jsoriano /bi/repos/ChatbotFresh/chatBotTelegram/.env
   sudo chmod 600 /bi/repos/ChatbotFresh/chatBotTelegram/.env
 
 No guardes .env en Git ni pegues sus valores en un chat. Jwt__Key debe ser
