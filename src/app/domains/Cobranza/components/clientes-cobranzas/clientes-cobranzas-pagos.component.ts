@@ -70,13 +70,14 @@ import { Base64EncodeService } from 'app/services/base64encode.service';
         <div class="row g-2 align-items-end">
           <div class="col-md-3"><label class="form-label small">Consecutivo de nota de venta</label><input class="form-control form-control-sm" type="text" maxlength="50" [(ngModel)]="loanForm.numeroNotaVenta" placeholder="Ej. 000123" required></div>
           <div class="col-md-3"><label class="form-label small">Monto del préstamo</label><input class="form-control form-control-sm" type="number" min="0.01" step="0.01" [(ngModel)]="loanForm.montoTotal"></div>
-          <div class="col-md-3"><label class="form-label small">Interés fijo mensual (%)</label><input class="form-control form-control-sm" type="number" min="0" max="100" step="0.01" [(ngModel)]="loanForm.tasaInteresMensual"></div>
+          <div class="col-md-3"><label class="form-label small">Interés total del préstamo</label><input class="form-control form-control-sm" type="number" min="0" step="0.01" [(ngModel)]="loanForm.montoInteresTotal"></div>
+          <div class="col-md-3"><label class="form-label small">Frecuencia de pago</label><select class="form-select form-select-sm" [(ngModel)]="loanForm.frecuenciaPago"><option value="DIARIO">Diario</option><option value="SEMANAL">Semanal</option><option value="QUINCENAL">Quincenal</option><option value="MENSUAL">Mensual</option></select></div>
           <div class="col-md-3"><label class="form-label small">Fecha del préstamo</label><input class="form-control form-control-sm" type="date" [(ngModel)]="loanForm.fechaInicio"></div>
           <div class="col-md-3"><label class="form-label small">Primer pago</label><input class="form-control form-control-sm" type="date" [(ngModel)]="loanForm.fechaPrimerPago"></div>
-          <div class="col-md-3"><label class="form-label small">Número de pagos mensuales</label><input class="form-control form-control-sm" type="number" min="1" step="1" [(ngModel)]="loanForm.numeroCuotas"></div>
+          <div class="col-md-3"><label class="form-label small">Número de pagos</label><input class="form-control form-control-sm" type="number" min="1" step="1" [(ngModel)]="loanForm.numeroCuotas"></div>
           <div class="col-12"><label class="form-label small">Comentario</label><input class="form-control form-control-sm" maxlength="500" [(ngModel)]="loanForm.comentario"></div>
           <div class="col-12" *ngIf="loanPreviewRows.length">
-            <div class="small mb-2">Capital: <strong>{{ money(loanCapital) }}</strong> · Interés total: <strong>{{ money(loanInterestTotal) }}</strong> · Total a pagar: <strong>{{ money(loanCapital + loanInterestTotal) }}</strong></div>
+            <div class="small mb-2">Capital: <strong>{{ money(loanCapital) }}</strong> · Interés total: <strong>{{ money(loanInterestTotal) }}</strong> ({{ loanInterestPercentage | number:'1.0-2' }}%) · Total a pagar: <strong>{{ money(loanCapital + loanInterestTotal) }}</strong></div>
             <div class="table-responsive" style="max-height:220px"><table class="table table-sm table-bordered bg-white mb-0"><thead class="table-light"><tr><th>Pago</th><th>Fecha</th><th>Capital</th><th>Interés</th><th>Total</th></tr></thead><tbody><tr *ngFor="let row of loanPreviewRows"><td>{{ row.numero }}</td><td>{{ row.fecha | date:'dd/MM/yyyy' }}</td><td>{{ row.capital | currency:'MXN' }}</td><td>{{ row.interes | currency:'MXN' }}</td><td>{{ row.total | currency:'MXN' }}</td></tr></tbody></table></div>
           </div>
           <div class="col-12 d-flex gap-2"><button class="btn btn-sm btn-success" (click)="createLoan()" [disabled]="saving"><i class="bi bi-floppy"></i> Crear préstamo y calendario</button><button class="btn btn-sm btn-secondary" (click)="showLoanForm = false">Cancelar</button></div>
@@ -85,7 +86,7 @@ import { Base64EncodeService } from 'app/services/base64encode.service';
 
       <article *ngFor="let loan of loans" class="card mb-3" [hidden]="activeInstallmentId !== null && !hasActiveInstallment(loan)">
         <div class="card-header d-flex justify-content-between align-items-center flex-wrap gap-2">
-          <div><strong>Préstamo #{{ loan.id }}</strong><span class="ms-2">Nota de venta {{ loan.numeroNotaVenta || 'sin consecutivo' }}</span><span class="ms-2">Capital {{ loan.montoTotal | currency:'MXN' }}</span><small class="text-muted ms-2">{{ loan.numeroCuotas || loan.cuotas?.length || 0 }} pagos desde {{ loan.fechaPrimerPago | date:'dd/MM/yyyy' }} · Interés {{ loan.tasaInteresMensual || 0 }}% mensual</small></div>
+          <div><strong>Préstamo #{{ loan.id }}</strong><span class="ms-2">Nota de venta {{ loan.numeroNotaVenta || 'sin consecutivo' }}</span><span class="ms-2">Capital {{ loan.montoTotal | currency:'MXN' }}</span><small class="text-muted ms-2">{{ loan.numeroCuotas || loan.cuotas?.length || 0 }} pagos {{ frequencyLabel(loan.frecuenciaPago) | lowercase }} desde {{ loan.fechaPrimerPago | date:'dd/MM/yyyy' }} · Interés total {{ loan.totalInteres | currency:'MXN' }} ({{ loanInterestPercent(loan) | number:'1.0-2' }}%)</small></div>
           <div class="d-flex align-items-center gap-2"><span class="badge" [class.bg-success]="loanBalance(loan) <= 0" [class.bg-warning]="loanBalance(loan) > 0">Saldo {{ loanBalance(loan) | currency:'MXN' }}</span>
             <button *ngIf="activeInstallmentId !== null" class="btn btn-sm btn-outline-secondary" (click)="cancelPayment()"><i class="bi bi-arrow-left me-1"></i>Volver a préstamos</button>
             <ng-container *ngIf="activeInstallmentId === null">
@@ -100,10 +101,11 @@ import { Base64EncodeService } from 'app/services/base64encode.service';
           <div class="row g-2 align-items-end mb-3">
             <div class="col-md-2"><label class="form-label small mb-1">Consecutivo nota</label><input class="form-control form-control-sm" type="text" maxlength="50" [(ngModel)]="loan.editForm.numeroNotaVenta" placeholder="Ej. 000123"></div>
             <div class="col-md-2"><label class="form-label small mb-1">Capital</label><input class="form-control form-control-sm" type="number" min="0.01" step="0.01" [(ngModel)]="loan.editForm.montoTotal" [disabled]="hasLoanPayments(loan)"></div>
-            <div class="col-md-2"><label class="form-label small mb-1">Interés mensual (%)</label><input class="form-control form-control-sm" type="number" min="0" max="100" step="0.01" [(ngModel)]="loan.editForm.tasaInteresMensual" [disabled]="hasLoanPayments(loan)"></div>
+            <div class="col-md-2"><label class="form-label small mb-1">Interés total</label><input class="form-control form-control-sm" type="number" min="0" step="0.01" [(ngModel)]="loan.editForm.montoInteresTotal" [disabled]="hasLoanPayments(loan)"></div>
+            <div class="col-md-2"><label class="form-label small mb-1">Frecuencia</label><select class="form-select form-select-sm" [(ngModel)]="loan.editForm.frecuenciaPago" [disabled]="hasLoanPayments(loan)"><option value="DIARIO">Diario</option><option value="SEMANAL">Semanal</option><option value="QUINCENAL">Quincenal</option><option value="MENSUAL">Mensual</option></select></div>
             <div class="col-md-2"><label class="form-label small mb-1">Fecha préstamo</label><input class="form-control form-control-sm" type="date" [(ngModel)]="loan.editForm.fechaInicio" [disabled]="hasLoanPayments(loan)"></div>
             <div class="col-md-2"><label class="form-label small mb-1">Primer pago</label><input class="form-control form-control-sm" type="date" [(ngModel)]="loan.editForm.fechaPrimerPago" [disabled]="hasLoanPayments(loan)"></div>
-            <div class="col-md-2"><label class="form-label small mb-1">Pagos mensuales</label><input class="form-control form-control-sm" type="number" min="1" step="1" [(ngModel)]="loan.editForm.numeroCuotas" [disabled]="hasLoanPayments(loan)"></div>
+            <div class="col-md-2"><label class="form-label small mb-1">Número de pagos</label><input class="form-control form-control-sm" type="number" min="1" step="1" [(ngModel)]="loan.editForm.numeroCuotas" [disabled]="hasLoanPayments(loan)"></div>
             <div class="col-md-6"><label class="form-label small mb-1">Comentario</label><input class="form-control form-control-sm" maxlength="500" [(ngModel)]="loan.editForm.comentario"></div>
             <div class="col-md-6 d-flex gap-2"><button class="btn btn-sm btn-success" (click)="saveLoanRecord(loan)" [disabled]="saving || !hasLoanRecordChanges(loan)"><i class="bi bi-floppy"></i> Guardar préstamo</button><button class="btn btn-sm btn-outline-danger" (click)="generatePromissoryNote(loan)" title="Previsualizar el pagaré de este préstamo"><i class="bi bi-file-earmark-pdf"></i> PDF</button></div>
             <div class="col-12 small text-warning" *ngIf="hasLoanPayments(loan)">Este préstamo ya tiene abonos. Para conservar el historial, capital, interés, fechas y número de pagos están bloqueados; puedes cambiar la nota y el comentario.</div>
@@ -125,7 +127,7 @@ import { Base64EncodeService } from 'app/services/base64encode.service';
             </div><div *ngIf="installment.abonos?.length" class="small mt-2"><strong>Abonos registrados:</strong><span *ngFor="let payment of installment.abonos" class="ms-2">{{ payment.fechaPago | date:'dd/MM/yyyy' }} — {{ payment.monto | currency:'MXN' }}<button class="btn btn-link btn-sm text-danger p-0 ms-1" (click)="deactivatePayment(payment)" title="Quitar abono"><i class="bi bi-x-circle"></i></button><span *ngIf="payment.comentario"> ({{ payment.comentario }})</span></span></div></div></div>
         </div>
       </article>
-      <div *ngIf="!loading && !loans.length" class="text-center text-muted py-3">Sin préstamos registrados. Usa “Nuevo préstamo” para definir el número de pagos mensuales.</div>
+      <div *ngIf="!loading && !loans.length" class="text-center text-muted py-3">Sin préstamos registrados. Usa “Nuevo préstamo” para definir la frecuencia y el número de pagos.</div>
     </section>
   `
 })
@@ -156,7 +158,7 @@ export class ClientesCobranzasPagosComponent implements OnChanges, OnDestroy {
   saving = false;
   showLoanForm = false;
   activeInstallmentId: number | null = null;
-  loanForm: any = { numeroNotaVenta: '', montoTotal: null, tasaInteresMensual: 0, fechaInicio: this.today(), fechaPrimerPago: this.nextMonth(), numeroCuotas: 10, comentario: '' };
+  loanForm: any = { numeroNotaVenta: '', montoTotal: null, montoInteresTotal: 0, frecuenciaPago: 'MENSUAL', fechaInicio: this.today(), fechaPrimerPago: this.nextMonth(), numeroCuotas: 10, comentario: '' };
   abonoForm: any = { fechaPago: this.today(), monto: null, comentario: '' };
   AG_GRID_LOCALE_ES = AG_GRID_LOCALE_ES;
   originalDates = new Map<number, string>();
@@ -175,20 +177,27 @@ export class ClientesCobranzasPagosComponent implements OnChanges, OnDestroy {
   ];
   money(value: any): string { return new Intl.NumberFormat('es-MX', { style: 'currency', currency: 'MXN' }).format(Number(value || 0)); }
   get loanCapital(): number { return Number(this.loanForm.montoTotal || 0); }
-  get loanInterestTotal(): number { return Math.round(this.loanCapital * Number(this.loanForm.tasaInteresMensual || 0) * Number(this.loanForm.numeroCuotas || 0)) / 100; }
+  get loanInterestTotal(): number { return Math.round(Number(this.loanForm.montoInteresTotal || 0) * 100) / 100; }
+  get loanInterestPercentage(): number { return this.loanCapital > 0 ? Math.round(this.loanInterestTotal / this.loanCapital * 10000) / 100 : 0; }
+  loanInterestPercent(loan: any): number { const capital = Number(loan?.montoTotal || 0); return capital > 0 ? Math.round(Number(loan?.totalInteres || 0) / capital * 10000) / 100 : 0; }
+  private rateFor(interest: number, capital: number): number { return capital > 0 ? Math.round(interest / capital * 10000) / 100 : 0; }
+  frequencyLabel(frequency: string): string { return ({ DIARIO: 'Diario', SEMANAL: 'Semanal', QUINCENAL: 'Quincenal', MENSUAL: 'Mensual' } as any)[frequency] || 'Mensual'; }
   get loanPreviewRows(): Array<{ numero: number; fecha: string; capital: number; interes: number; total: number }> {
-    const capital = this.loanCapital, count = Number(this.loanForm.numeroCuotas), rate = Number(this.loanForm.tasaInteresMensual || 0);
-    if (!(capital > 0) || !Number.isInteger(count) || count < 1 || !this.loanForm.fechaPrimerPago || rate < 0) return [];
+    const capital = this.loanCapital, count = Number(this.loanForm.numeroCuotas), totalInterest = this.loanInterestTotal;
+    if (!(capital > 0) || !Number.isInteger(count) || count < 1 || !this.loanForm.fechaPrimerPago || totalInterest < 0) return [];
     const regularCapital = Math.round(capital / count * 100) / 100;
-    const regularInterest = Math.round(capital * rate) / 100;
-    const totalInterest = Math.round(capital * rate * count) / 100;
+    const regularInterest = Math.round(totalInterest / count * 100) / 100;
     let capitalScheduled = 0, interestScheduled = 0;
     return Array.from({ length: count }, (_, index) => {
       const amountCapital = index === count - 1 ? Math.round((capital - capitalScheduled) * 100) / 100 : regularCapital;
       const amountInterest = index === count - 1 ? Math.round((totalInterest - interestScheduled) * 100) / 100 : regularInterest;
       capitalScheduled += amountCapital; interestScheduled += amountInterest;
       const first = new Date(`${this.loanForm.fechaPrimerPago}T12:00:00`);
-      const date = new Date(first.getFullYear(), first.getMonth() + index, Math.min(first.getDate(), new Date(first.getFullYear(), first.getMonth() + index + 1, 0).getDate()));
+      const frequency = this.loanForm.frecuenciaPago || 'MENSUAL';
+      const date = frequency === 'DIARIO' ? new Date(first.getFullYear(), first.getMonth(), first.getDate() + index)
+        : frequency === 'SEMANAL' ? new Date(first.getFullYear(), first.getMonth(), first.getDate() + index * 7)
+        : frequency === 'QUINCENAL' ? new Date(first.getFullYear(), first.getMonth(), first.getDate() + index * 14)
+        : new Date(first.getFullYear(), first.getMonth() + index, Math.min(first.getDate(), new Date(first.getFullYear(), first.getMonth() + index + 1, 0).getDate()));
       return { numero: index + 1, fecha: this.formatDate(date), capital: amountCapital, interes: amountInterest, total: amountCapital + amountInterest };
     });
   }
@@ -203,7 +212,8 @@ export class ClientesCobranzasPagosComponent implements OnChanges, OnDestroy {
   hasLoanFinancialChanges(loan: any): boolean {
     const form = loan?.editForm || {};
     return Number(form.montoTotal) !== Number(loan?.montoTotal)
-      || Number(form.tasaInteresMensual) !== Number(loan?.tasaInteresMensual)
+      || Number(form.montoInteresTotal) !== Number(loan?.montoInteresTotal ?? loan?.totalInteres)
+      || String(form.frecuenciaPago || 'MENSUAL') !== String(loan?.frecuenciaPago || 'MENSUAL')
       || this.dateForInput(form.fechaInicio) !== this.dateForInput(loan?.fechaInicio)
       || this.dateForInput(form.fechaPrimerPago) !== this.dateForInput(loan?.fechaPrimerPago)
       || Number(form.numeroCuotas) !== Number(loan?.numeroCuotas);
@@ -218,10 +228,10 @@ export class ClientesCobranzasPagosComponent implements OnChanges, OnDestroy {
     const form = loan?.editForm || {};
     const receiptNumber = String(form.numeroNotaVenta || '').trim();
     const amount = Number(form.montoTotal);
-    const rate = Number(form.tasaInteresMensual);
+    const totalInterest = Number(form.montoInteresTotal);
     const paymentCount = Number(form.numeroCuotas);
-    if (!receiptNumber || receiptNumber.length > 50 || !Number.isFinite(amount) || amount <= 0 || !Number.isFinite(rate) || rate < 0 || rate > 100 || !Number.isInteger(paymentCount) || paymentCount < 1 || !form.fechaInicio || !form.fechaPrimerPago) {
-      alerts.basicAlert('Datos requeridos', 'Revisa el consecutivo, capital, interés, fechas y número de pagos.', 'warning');
+    if (!receiptNumber || receiptNumber.length > 50 || !Number.isFinite(amount) || amount <= 0 || !Number.isFinite(totalInterest) || totalInterest < 0 || !Number.isInteger(paymentCount) || paymentCount < 1 || !form.fechaInicio || !form.fechaPrimerPago) {
+      alerts.basicAlert('Datos requeridos', 'Revisa el consecutivo, capital, interés total, frecuencia, fechas y número de pagos.', 'warning');
       return;
     }
     if (this.hasLoanPayments(loan) && this.hasLoanFinancialChanges(loan)) {
@@ -232,7 +242,7 @@ export class ClientesCobranzasPagosComponent implements OnChanges, OnDestroy {
     this.saving = true;
     try {
       await firstValueFrom(this.customersService.updateCobranzaLoan(Number(loan.id), {
-        numeroNotaVenta: receiptNumber, montoTotal: amount, tasaInteresMensual: rate,
+        numeroNotaVenta: receiptNumber, montoTotal: amount, montoInteresTotal: totalInterest, tasaInteresMensual: this.rateFor(totalInterest, amount), frecuenciaPago: form.frecuenciaPago || 'MENSUAL',
         fechaInicio: form.fechaInicio, fechaPrimerPago: form.fechaPrimerPago,
         numeroCuotas: paymentCount, comentario: String(form.comentario || '').trim()
       }));
@@ -359,7 +369,7 @@ export class ClientesCobranzasPagosComponent implements OnChanges, OnDestroy {
   private setLoans(items: any[]): void {
     this.loans = (items || []).map(loan => ({ ...loan, editForm: {
       numeroNotaVenta: loan.numeroNotaVenta || '', montoTotal: loan.montoTotal,
-      tasaInteresMensual: loan.tasaInteresMensual || 0,
+      montoInteresTotal: Number(loan.montoInteresTotal ?? loan.totalInteres ?? 0), frecuenciaPago: loan.frecuenciaPago || 'MENSUAL',
       fechaInicio: this.dateForInput(loan.fechaInicio), fechaPrimerPago: this.dateForInput(loan.fechaPrimerPago),
       numeroCuotas: loan.numeroCuotas || loan.cuotas?.length || 1, comentario: loan.comentario || ''
     }, cuotas: (loan.cuotas || []).map((installment: any) => ({ ...installment, fechaProgramada: this.dateForInput(installment.fechaProgramada) })) }));
@@ -387,14 +397,14 @@ export class ClientesCobranzasPagosComponent implements OnChanges, OnDestroy {
 
   async createLoan(): Promise<void> {
     const amount = Number(this.loanForm.montoTotal);
-    const monthlyRate = Number(this.loanForm.tasaInteresMensual || 0);
+    const totalInterest = Number(this.loanForm.montoInteresTotal || 0);
     const numberOfPayments = Number(this.loanForm.numeroCuotas);
     const receiptNumber = String(this.loanForm.numeroNotaVenta || '').trim();
-    if (!receiptNumber || receiptNumber.length > 50 || !Number.isFinite(amount) || amount <= 0 || !Number.isFinite(monthlyRate) || monthlyRate < 0 || monthlyRate > 100 || !Number.isInteger(numberOfPayments) || numberOfPayments < 1 || !this.loanForm.fechaInicio || !this.loanForm.fechaPrimerPago) { alerts.basicAlert('Datos requeridos', 'Captura el consecutivo de la nota de venta, un capital mayor a cero, interés mensual entre 0 y 100%, número de pagos entero mayor a cero y fechas válidas.', 'warning'); return; }
+    if (!receiptNumber || receiptNumber.length > 50 || !Number.isFinite(amount) || amount <= 0 || !Number.isFinite(totalInterest) || totalInterest < 0 || !Number.isInteger(numberOfPayments) || numberOfPayments < 1 || !this.loanForm.fechaInicio || !this.loanForm.fechaPrimerPago) { alerts.basicAlert('Datos requeridos', 'Captura el consecutivo de la nota de venta, capital mayor a cero, interés total no negativo, frecuencia, número de pagos y fechas válidas.', 'warning'); return; }
     this.saving = true;
     try {
-      const saved: any = await firstValueFrom(this.customersService.createCobranzaLoan({ idCustomer: this.customer.id, numeroNotaVenta: receiptNumber, montoTotal: amount, tasaInteresMensual: monthlyRate, fechaInicio: this.loanForm.fechaInicio, fechaPrimerPago: this.loanForm.fechaPrimerPago, numeroCuotas: numberOfPayments, comentario: this.loanForm.comentario }));
-      this.saving = false; this.showLoanForm = false; this.loanForm = { numeroNotaVenta: '', montoTotal: null, tasaInteresMensual: 0, fechaInicio: this.today(), fechaPrimerPago: this.nextMonth(), numeroCuotas: 10, comentario: '' }; this.balancesChanged.emit();
+      const saved: any = await firstValueFrom(this.customersService.createCobranzaLoan({ idCustomer: this.customer.id, numeroNotaVenta: receiptNumber, montoTotal: amount, montoInteresTotal: totalInterest, tasaInteresMensual: this.rateFor(totalInterest, amount), frecuenciaPago: this.loanForm.frecuenciaPago || 'MENSUAL', fechaInicio: this.loanForm.fechaInicio, fechaPrimerPago: this.loanForm.fechaPrimerPago, numeroCuotas: numberOfPayments, comentario: this.loanForm.comentario }));
+      this.saving = false; this.showLoanForm = false; this.loanForm = { numeroNotaVenta: '', montoTotal: null, montoInteresTotal: 0, frecuenciaPago: 'MENSUAL', fechaInicio: this.today(), fechaPrimerPago: this.nextMonth(), numeroCuotas: 10, comentario: '' }; this.balancesChanged.emit();
       let createdLoan = saved;
       try {
         const refreshed = await firstValueFrom(this.customersService.getCobranzaLoans(this.customer.id));
@@ -421,6 +431,8 @@ export class ClientesCobranzasPagosComponent implements OnChanges, OnDestroy {
       const installments = [...(loan.cuotas || [])].sort((a: any, b: any) => a.numeroCuota - b.numeroCuota);
       const principal = Number(loan.montoTotal || 0);
       const interest = Number(loan.totalInteres ?? installments.reduce((sum: number, item: any) => sum + Number(item.montoInteres || 0), 0));
+      const interestRate = principal > 0 ? Math.round(interest / principal * 10000) / 100 : 0;
+      const frequency = this.frequencyLabel(loan.frecuenciaPago).toLowerCase();
       const due = installments.reduce((sum: number, item: any) => sum + Number(item.montoProgramado || 0), 0);
       const receiptFolio = String(loan.numeroNotaVenta || '').trim() || '—';
       const navy = '#00003F';
@@ -435,9 +447,9 @@ export class ClientesCobranzasPagosComponent implements OnChanges, OnDestroy {
         ...['CANT', 'UNIDAD', 'CÓDIGO', 'DESCRIPCIÓN', 'P.UNITARIO', 'D1', 'D2', 'D3', 'IMPORTE'].map(label => ({ text: label, bold: true, color: '#FFFFFF', fillColor: navy, alignment: ['P.UNITARIO', 'IMPORTE'].includes(label) ? 'right' : 'center', fontSize: 7.5 })),
       ], [
         { text: '1', alignment: 'center' }, { text: 'SER', alignment: 'center' }, { text: String(loan.id), alignment: 'center' },
-        { text: `PRÉSTAMO · Capital ${money(principal)} · ${Number(loan.tasaInteresMensual || 0)}% mensual`, bold: true },
-        { text: money(principal), alignment: 'right' }, { text: `${Number(loan.tasaInteresMensual || 0)}%`, alignment: 'center' },
-        { text: `${installments.length} pagos`, alignment: 'center' }, { text: '—', alignment: 'center' },
+        { text: `PRÉSTAMO · Capital ${money(principal)} · Interés total ${money(interest)} (${interestRate}%)`, bold: true },
+        { text: money(principal), alignment: 'right' }, { text: `${interestRate}%`, alignment: 'center' },
+        { text: `${installments.length} pagos ${frequency}`, alignment: 'center' }, { text: '—', alignment: 'center' },
         { text: money(due), alignment: 'right', bold: true },
       ]];
       const rows: any[][] = [[
@@ -458,12 +470,12 @@ export class ClientesCobranzasPagosComponent implements OnChanges, OnDestroy {
         { table: { headerRows: 1, widths: [42, 78, '*', '*', '*'], body: rows }, layout: scheduleGrid, fontSize: scheduleFontSize },
         { table: { widths: ['68%', '32%'], body: [[
           { stack: [{ text: 'PAGO EN PARCIALIDADES', bold: true }, { text: 'MÉTODO DE PAGO: POR DEFINIR' }, { text: `CONDICIONES DE PAGO: CRÉDITO A ${installments.length} ${installments.length === 1 ? 'PAGO' : 'PAGOS'}` }, { text: `PRIMER PAGO: ${date(installments[0]?.fechaProgramada)}` }] , fillColor: '#FFFFFF', margin: [6, 7, 6, 7] },
-          { table: { widths: ['*', 'auto'], body: [[{ text: 'TOTAL', bold: true, color: '#FFFFFF', fillColor: navy, colSpan: 2, alignment: 'center' }, {}], [{ text: 'CAPITAL:' }, { text: money(principal), alignment: 'right' }], [{ text: `INTERÉS (${Number(loan.tasaInteresMensual || 0)}% mensual):` }, { text: money(interest), alignment: 'right' }], [{ text: 'TOTAL A PAGAR:', bold: true }, { text: money(due), alignment: 'right', bold: true }]].map(row => row.map(cell => Object.keys(cell).length ? { ...cell, fillColor: cell.fillColor || gray } : cell)) }, layout: grid, fontSize: 8 },
+          { table: { widths: ['*', 'auto'], body: [[{ text: 'TOTAL', bold: true, color: '#FFFFFF', fillColor: navy, colSpan: 2, alignment: 'center' }, {}], [{ text: 'CAPITAL:' }, { text: money(principal), alignment: 'right' }], [{ text: `INTERÉS TOTAL (${interestRate}%):` }, { text: money(interest), alignment: 'right' }], [{ text: `FRECUENCIA: ${frequency.toUpperCase()}` }, { text: `${installments.length} pagos`, alignment: 'right' }], [{ text: 'TOTAL A PAGAR:', bold: true }, { text: money(due), alignment: 'right', bold: true }]].map(row => row.map(cell => Object.keys(cell).length ? { ...cell, fillColor: cell.fillColor || gray } : cell)) }, layout: grid, fontSize: 8 },
         ]] }, layout: { hLineWidth: () => 0, vLineWidth: () => 0 }, margin: [0, 7, 0, 7] },
         { text: `CANTIDAD CON LETRA: (${this.amountInWords(due)} PESOS ${String(Math.round((due - Math.floor(due)) * 100)).padStart(2, '0')}/100 M.N.)`, bold: true, margin: [3, 2, 3, 8], fontSize: 8 },
         { table: { widths: ['*'], body: [
           [{ text: `PAGARÉ: BUENO POR ${money(due)}`, bold: true, color: '#FFFFFF', fillColor: navy, alignment: 'center', fontSize: 10 }],
-          [{ text: `LUGAR Y FECHA: ${text(company?.city || company?.location || '')} ${date(loan.fechaInicio)}\n\nPOR ESTE PAGARÉ PROMETO INCONDICIONALMENTE PAGAR A LA ORDEN DE ${text(company?.name) || '________________'} LA CANTIDAD DE ${money(due)} (${this.amountInWords(due)} PESOS ${String(Math.round((due - Math.floor(due)) * 100)).padStart(2, '0')}/100 M.N.) CONFORME AL CALENDARIO DE PAGOS. El capital prestado es ${money(principal)} y genera un interés ordinario fijo de ${Number(loan.tasaInteresMensual || 0)}% mensual, calculado sobre el capital original; este interés está desglosado por pago en la nota. El vencimiento final es el ${date(installments[installments.length - 1]?.fechaProgramada)}. En caso de incumplimiento, se aplicará una tasa moratoria del 3% mensual sobre los saldos insolutos vencidos, desde la fecha de incumplimiento y hasta el pago total, sin que por ello se entienda prorrogado el plazo.\n\nNOMBRE Y DATOS DEL DEUDOR:\nNOMBRE: ${customerName}${customerAddress ? `\nDIRECCIÓN: ${customerAddress}` : ''}${this.customer?.phone ? `\nTELÉFONO: ${this.customer.phone}` : ''}\n\nACEPTO (AMOS)\n\n____________________________________________`, fillColor: gray, alignment: 'justify', margin: [8, 5, 8, 5], fontSize: 7.5 }],
+          [{ text: `LUGAR Y FECHA: ${text(company?.city || company?.location || '')} ${date(loan.fechaInicio)}\n\nPOR ESTE PAGARÉ PROMETO INCONDICIONALMENTE PAGAR A LA ORDEN DE ${text(company?.name) || '________________'} LA CANTIDAD DE ${money(due)} (${this.amountInWords(due)} PESOS ${String(Math.round((due - Math.floor(due)) * 100)).padStart(2, '0')}/100 M.N.) CONFORME AL CALENDARIO DE PAGOS. El capital prestado es ${money(principal)} y genera un interés ordinario total fijo de ${money(interest)}, equivalente al ${interestRate}% del capital; se distribuye en ${installments.length} pagos con frecuencia ${frequency}, conforme al calendario adjunto. El vencimiento final es el ${date(installments[installments.length - 1]?.fechaProgramada)}. En caso de incumplimiento, se aplicará una tasa moratoria del 3% mensual sobre los saldos insolutos vencidos, desde la fecha de incumplimiento y hasta el pago total, sin que por ello se entienda prorrogado el plazo.\n\nNOMBRE Y DATOS DEL DEUDOR:\nNOMBRE: ${customerName}${customerAddress ? `\nDIRECCIÓN: ${customerAddress}` : ''}${this.customer?.phone ? `\nTELÉFONO: ${this.customer.phone}` : ''}\n\nACEPTO (AMOS)\n\n____________________________________________`, fillColor: gray, alignment: 'justify', margin: [8, 5, 8, 5], fontSize: 7.5 }],
         ] }, layout: grid, margin: [0, 0, 0, 0] },
       ];
       const safeReceiptFolio = receiptFolio.replace(/[^\w.-]+/g, '_');

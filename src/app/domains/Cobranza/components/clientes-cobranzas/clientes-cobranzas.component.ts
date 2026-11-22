@@ -169,6 +169,7 @@ export class ClientesCobranzasComponent implements CanComponentDeactivate {
   branchs: any[] = [];
   Typecop: any[] = [];
   collectors: any[] = [];
+  generatingCollectorsReport = false;
   collectorsLoading = false;
   private collectorsRequestId = 0;
   contactoCatalog: any[] = [];
@@ -965,7 +966,9 @@ export class ClientesCobranzasComponent implements CanComponentDeactivate {
         const installments = [...(loan.cuotas || [])].sort((a: any, b: any) => a.numeroCuota - b.numeroCuota);
         const paid = installments.reduce((sum: number, item: any) => sum + (item.abonos || []).reduce((part: number, payment: any) => part + Number(payment.monto || 0), 0), 0);
         const scheduledTotal = installments.reduce((sum: number, item: any) => sum + Number(item.montoProgramado || 0), 0);
-        content.push({ text: `Préstamo #${loan.id}  ·  Capital: ${money(loan.montoTotal)}  ·  Interés: ${Number(loan.tasaInteresMensual || 0)}% mensual  ·  Inicio: ${date(loan.fechaInicio)}`, style: 'loan', margin: [0, 10, 0, 4] });
+        const interestRate = Number(loan.montoTotal) > 0 ? Math.round(Number(loan.totalInteres || 0) / Number(loan.montoTotal) * 10000) / 100 : 0;
+        const frequency = ({ DIARIO: 'diario', SEMANAL: 'semanal', QUINCENAL: 'quincenal', MENSUAL: 'mensual' } as any)[loan.frecuenciaPago] || 'mensual';
+        content.push({ text: `Préstamo #${loan.id}  ·  Capital: ${money(loan.montoTotal)}  ·  Interés total: ${money(loan.totalInteres)} (${interestRate}%)  ·  Pagos: ${frequency}  ·  Inicio: ${date(loan.fechaInicio)}`, style: 'loan', margin: [0, 10, 0, 4] });
         content.push({ text: `Total a pagar: ${money(scheduledTotal)}   Abonado: ${money(paid)}   Saldo: ${money(Math.max(0, scheduledTotal - paid))}`, margin: [0, 0, 0, 5] });
         const rows: any[][] = [[{ text: '#', bold: true }, { text: 'Programado', bold: true }, { text: 'Capital', bold: true }, { text: 'Interés', bold: true }, { text: 'Abonado', bold: true }, { text: 'Saldo', bold: true }, { text: 'Estado', bold: true }]];
         for (const installment of installments) {
@@ -981,6 +984,52 @@ export class ClientesCobranzasComponent implements CanComponentDeactivate {
       }
       await this.pdfPreview.show((pdfMake as any).createPdf({ pageSize: 'LETTER', pageMargins: [35, 35, 35, 35], content, styles: { title: { fontSize: 15, bold: true }, loan: { fontSize: 11, bold: true } } }), 'Reporte de pagos del cliente', `Reporte_pagos_cliente_${customer.id}.pdf`);
     } catch (error) { console.error(error); alerts.basicAlert('Error', 'No se pudo generar el PDF de pagos.', 'error'); }
+  }
+
+  async generateCustomersByCollectorPdf(): Promise<void> {
+    if (!this.idRoot || this.generatingCollectorsReport) return;
+    this.generatingCollectorsReport = true;
+    try {
+      const [customers, root]: [any[], any] = await Promise.all([
+        lastValueFrom(this.customerService.getCustomersByCompany(Number(this.idRoot), 'CUSTOMERS')) as Promise<any[]>,
+        lastValueFrom(this.rootService.getRootbyId(Number(this.idRoot))) as Promise<any>,
+      ]);
+      const activeCustomers = (Array.isArray(customers) ? customers : []).filter(customer => customer?.active !== false);
+      const groups = new Map<number | null, any[]>();
+      for (const customer of activeCustomers) {
+        const collectorId = customer?.idUsuarioCobrador ? Number(customer.idUsuarioCobrador) : null;
+        groups.set(collectorId, [...(groups.get(collectorId) || []), customer]);
+      }
+      const pdfMake = (await import('pdfmake/build/pdfmake')).default;
+      const pdfFonts = await import('pdfmake/build/vfs_fonts');
+      (pdfMake as any).vfs = (pdfFonts as any).pdfMake?.vfs || (pdfFonts as any).default?.pdfMake?.vfs;
+      const logo = root?.picture ? await this.base64EncodeService.convertImageToBase64(root.picture) : null;
+      const logo2 = root?.picture2 ? await this.base64EncodeService.convertImageToBase64(root.picture2) : null;
+      const content: any[] = [
+        { columns: [logo ? { image: logo, fit: [70, 60] } : { text: '' }, { text: root?.name || '', alignment: 'center', bold: true, fontSize: 12, margin: [0, 15, 0, 0] }, logo2 ? { image: logo2, fit: [70, 60], alignment: 'right' } : { text: '' }], margin: [0, 0, 0, 12] },
+        { text: 'CLIENTES POR COBRADOR', bold: true, fontSize: 15, margin: [0, 0, 0, 4] },
+        { text: `Fecha de emisión: ${new Date().toLocaleDateString('es-MX')}   ·   Clientes: ${activeCustomers.length}`, margin: [0, 0, 0, 12] },
+      ];
+      const sortedGroups = [...groups.entries()].sort(([a], [b]) => this.collectorName(a).localeCompare(this.collectorName(b), 'es'));
+      if (!sortedGroups.length) content.push({ text: 'No hay clientes activos registrados para esta empresa.' });
+      for (const [collectorId, assignedCustomers] of sortedGroups) {
+        const customersSorted = assignedCustomers.slice().sort((a, b) => String(a.nameContact || a.company || '').localeCompare(String(b.nameContact || b.company || ''), 'es'));
+        content.push({ text: `${this.collectorName(collectorId)}  ·  ${customersSorted.length} cliente(s)`, bold: true, fontSize: 11, margin: [0, 9, 0, 4], headlineLevel: 1 });
+        const rows: any[][] = [[{ text: 'Cliente', bold: true }, { text: 'Sucursal', bold: true }, { text: 'Teléfono', bold: true }, { text: 'Dirección', bold: true }]];
+        for (const customer of customersSorted) {
+          const branch = this.branchs.find(item => Number(item.id) === Number(customer.idBranch));
+          rows.push([customer.nameContact || customer.company || `Cliente #${customer.id}`, branch?.name || '', customer.phone || customer.mobile || '', [customer.address, customer.neighborhood, customer.city, customer.state, customer.cp].filter(Boolean).join(', ')]);
+        }
+        content.push({ table: { headerRows: 1, widths: [120, 75, 75, '*'], body: rows }, layout: 'lightHorizontalLines', fontSize: 8, margin: [0, 0, 0, 5] });
+      }
+      const safeDate = new Date().toISOString().slice(0, 10);
+      await this.pdfPreview.show((pdfMake as any).createPdf({ pageSize: 'LETTER', pageOrientation: 'landscape', pageMargins: [30, 30, 30, 30], content }), 'Clientes por cobrador', `Clientes_por_cobrador_${safeDate}.pdf`);
+    } catch (error) {
+      console.error('Error al generar reporte de clientes por cobrador:', error);
+      alerts.basicAlert('Reporte de clientes', 'No se pudo generar el reporte por cobrador.', 'error');
+    } finally {
+      this.generatingCollectorsReport = false;
+    }
   }
 
   obtenerDatos() {
