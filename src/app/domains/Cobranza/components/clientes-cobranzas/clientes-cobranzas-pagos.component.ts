@@ -205,12 +205,42 @@ export class ClientesCobranzasPagosComponent implements OnChanges, OnDestroy {
     });
   }
   payableTotal(loan: any): number { return (loan.cuotas || []).reduce((sum: number, item: any) => sum + Number(item.montoProgramado || 0), 0); }
-  onDateChanged(event: any): void { if (!/^\d{4}-\d{2}-\d{2}$/.test(event.newValue || '')) { event.node.setDataValue('fechaProgramada', event.oldValue); alerts.basicAlert('Fecha inválida', 'Selecciona una fecha válida.', 'warning'); } }
+  onDateChanged(event: any): void {
+    const date = this.normalizeScheduledDate(event.newValue);
+    if (!date) {
+      event.node.setDataValue('fechaProgramada', this.normalizeScheduledDate(event.oldValue) || event.oldValue);
+      alerts.basicAlert('Fecha inválida', 'Selecciona una fecha válida.', 'warning');
+      return;
+    }
+    if (date !== event.newValue) event.node.setDataValue('fechaProgramada', date);
+  }
+  private normalizeScheduledDate(value: unknown): string | null {
+    if (value instanceof Date && Number.isFinite(value.getTime())) return this.formatDate(value);
+    if (typeof value !== 'string') return null;
+    const match = value.trim().match(/^(\d{4}-\d{2}-\d{2})/);
+    if (!match) return null;
+    const [year, month, day] = match[1].split('-').map(Number);
+    const parsed = new Date(year, month - 1, day);
+    return parsed.getFullYear() === year && parsed.getMonth() === month - 1 && parsed.getDate() === day ? match[1] : null;
+  }
   isScheduleEditing(loan: any): boolean { return this.editingScheduleLoanId === Number(loan?.id); }
   toggleScheduleEditing(loan: any): void { this.editingScheduleLoanId = this.editingScheduleLoanId === Number(loan?.id) ? null : Number(loan?.id); }
   hasChanges(loan: any): boolean { return (loan.cuotas || []).some((item: any) => item.fechaProgramada !== this.originalDates.get(item.id)); }
   revertChanges(loan: any): void { loan.cuotas = loan.cuotas.map((item: any) => ({ ...item, fechaProgramada: this.originalDates.get(item.id) })); this.editingScheduleLoanId = null; }
-  async saveChanges(loan: any): Promise<void> { const changed = loan.cuotas.filter((item: any) => item.fechaProgramada !== this.originalDates.get(item.id)); if (!changed.length) return; this.saving = true; try { for (const item of changed) await firstValueFrom(this.customersService.updateCobranzaInstallmentDate(item.id, { fechaProgramada: item.fechaProgramada })); this.saving = false; this.editingScheduleLoanId = null; this.loadLoans(); this.balancesChanged.emit(); alerts.basicAlert('Fechas guardadas', 'Se actualizó el calendario de pagos.', 'success'); } catch (error) { console.error(error); this.saving = false; alerts.basicAlert('Error', 'No se pudieron guardar todas las fechas. Recarga el detalle para revisar cuáles se guardaron.', 'error'); } }
+  async saveChanges(loan: any): Promise<void> {
+    const changed = loan.cuotas.map((item: any) => ({ item, date: this.normalizeScheduledDate(item.fechaProgramada) }))
+      .filter((entry: any) => entry.date && entry.date !== this.originalDates.get(entry.item.id));
+    if (!changed.length) return;
+    this.saving = true;
+    try {
+      for (const entry of changed) await firstValueFrom(this.customersService.updateCobranzaInstallmentDate(entry.item.id, { fechaProgramada: entry.date }));
+      this.saving = false; this.editingScheduleLoanId = null; this.loadLoans(); this.balancesChanged.emit();
+      alerts.basicAlert('Fechas guardadas', 'Se actualizó el calendario de pagos.', 'success');
+    } catch (error) {
+      console.error(error); this.saving = false;
+      alerts.basicAlert('Error', 'No se pudieron guardar todas las fechas. Recarga el detalle para revisar cuáles se guardaron.', 'error');
+    }
+  }
 
   get totalPaid(): number { return this.loans.reduce((sum, loan) => sum + loan.cuotas.reduce((s: number, q: any) => s + this.installmentPaid(q), 0), 0); }
   hasLoanPayments(loan: any): boolean { return (loan?.cuotas || []).some((installment: any) => (installment.abonos || []).some((payment: any) => payment.active !== false && Number(payment.monto) > 0)); }
