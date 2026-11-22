@@ -183,7 +183,7 @@ export class ClientesCobranzasComponent implements CanComponentDeactivate {
   private lastEditedRowId: number | string | null = null;
 
   rowData: any;
-  private loanTotalsByCustomer = new Map<number, { loans: number; due: number; payments: number; pending: number; overdue: number }>();
+  private loanTotalsByCustomer = new Map<number, { loans: number; due: number; payments: number; pending: number; overdue: number; overdueInstallments: number }>();
   loanTotalsLoaded = false;
   private loanTotalsRequestId = 0;
   private loanTotalsLoadingRoot: number | null = null;
@@ -369,9 +369,11 @@ export class ClientesCobranzasComponent implements CanComponentDeactivate {
         cellStyle: { backgroundColor: '#eef2ff', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' },
       },
       ...([
-        { colId: 'totalPrestamos', headerName: 'Total préstamos', key: 'loans', background: '#e7f1ff', color: '#174d80' },
-        { colId: 'totalPagosCobranza', headerName: 'Total pagos', key: 'payments', background: '#e6f4ea', color: '#166534' },
-        { colId: 'totalPendientes', headerName: 'Total pendientes', key: 'pending', background: '#fff3d6', color: '#9a5b00' },
+        { colId: 'totalPrestamos', headerName: 'Total préstamos', key: 'loans', background: '#e7f1ff', color: '#174d80', format: 'currency' },
+        { colId: 'totalPagosCobranza', headerName: 'Total pagos', key: 'payments', background: '#e6f4ea', color: '#166534', format: 'currency' },
+        { colId: 'totalPendientes', headerName: 'Total pendientes', key: 'pending', background: '#fff3d6', color: '#9a5b00', format: 'currency' },
+        { colId: 'totalVencido', headerName: 'Saldo vencido', key: 'overdue', background: '#fee2e2', color: '#991b1b', format: 'currency' },
+        { colId: 'cuotasVencidas', headerName: 'Cuotas vencidas', key: 'overdueInstallments', background: '#fee2e2', color: '#991b1b', format: 'number' },
       ] as const).map(column => ({
         colId: column.colId,
         headerName: column.headerName,
@@ -388,7 +390,9 @@ export class ClientesCobranzasComponent implements CanComponentDeactivate {
           : null,
         valueFormatter: (params: any) => params.value === null || params.value === undefined
           ? '—'
-          : new Intl.NumberFormat('es-MX', { style: 'currency', currency: 'MXN' }).format(Number(params.value)),
+          : column.format === 'number'
+            ? String(Number(params.value))
+            : new Intl.NumberFormat('es-MX', { style: 'currency', currency: 'MXN' }).format(Number(params.value)),
         cellStyle: { backgroundColor: column.background, color: column.color, fontWeight: '600', textAlign: 'right' as const },
       })),
       {
@@ -1065,7 +1069,7 @@ export class ClientesCobranzasComponent implements CanComponentDeactivate {
     this.loanTotalsLoaded = false;
     this.loanTotalsError = '';
     this.loanTotalsByCustomer.clear();
-    this.gridApi?.refreshCells({ columns: ['totalPrestamos', 'totalPagosCobranza', 'totalPendientes'], force: true });
+    this.gridApi?.refreshCells({ columns: ['totalPrestamos', 'totalPagosCobranza', 'totalPendientes', 'totalVencido', 'cuotasVencidas'], force: true });
     if (!rootId) return;
     this.loanTotalsLoadingRoot = rootId;
     this.customerService.getCobranzaDashboard(rootId).subscribe({
@@ -1076,21 +1080,25 @@ export class ClientesCobranzasComponent implements CanComponentDeactivate {
         const todayIso = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
         for (const loan of loans || []) {
           const customerId = Number(loan.idCustomer);
-          const totals = this.loanTotalsByCustomer.get(customerId) || { loans: 0, due: 0, payments: 0, pending: 0, overdue: 0 };
+          const totals = this.loanTotalsByCustomer.get(customerId) || { loans: 0, due: 0, payments: 0, pending: 0, overdue: 0, overdueInstallments: 0 };
           totals.loans += Number(loan.montoTotal || 0);
           totals.due += (loan.cuotas || []).filter((installment: any) => installment.active !== false)
             .reduce((sum: number, installment: any) => sum + Number(installment.montoProgramado || 0), 0);
           totals.payments += (loan.cuotas || []).flatMap((installment: any) => installment.abonos || [])
             .filter((payment: any) => payment.active !== false)
             .reduce((sum: number, payment: any) => sum + Number(payment.monto || 0), 0);
-          totals.overdue += (loan.cuotas || [])
-            .filter((installment: any) => installment.active !== false && String(installment.fechaProgramada || '').slice(0, 10) < todayIso)
-            .reduce((sum: number, installment: any) => sum + Math.max(0, Number(installment.montoProgramado || 0) - Number(installment.montoAplicado || 0)), 0);
+          const overdueInstallments = (loan.cuotas || []).filter((installment: any) =>
+            installment.active !== false
+            && String(installment.fechaProgramada || '').slice(0, 10) < todayIso
+            && Number(installment.montoProgramado || 0) > Number(installment.montoAplicado || 0));
+          totals.overdueInstallments += overdueInstallments.length;
+          totals.overdue += overdueInstallments.reduce((sum: number, installment: any) =>
+            sum + Math.max(0, Number(installment.montoProgramado || 0) - Number(installment.montoAplicado || 0)), 0);
           totals.pending = Math.max(0, totals.due - totals.payments);
           this.loanTotalsByCustomer.set(customerId, totals);
         }
         this.loanTotalsLoaded = true;
-        this.gridApi?.refreshCells({ columns: ['totalPrestamos', 'totalPagosCobranza', 'totalPendientes'], force: true });
+        this.gridApi?.refreshCells({ columns: ['totalPrestamos', 'totalPagosCobranza', 'totalPendientes', 'totalVencido', 'cuotasVencidas'], force: true });
         this.gridApi?.onFilterChanged();
       },
       error: error => {
@@ -1996,7 +2004,7 @@ export class ClientesCobranzasComponent implements CanComponentDeactivate {
 
     if (this.type !== 'CUSTOMERS' || [
       'cotizaciones', 'agenda', 'pagos', 'totalPrestamos',
-      'totalPagosCobranza', 'totalPendientes'
+      'totalPagosCobranza', 'totalPendientes', 'totalVencido', 'cuotasVencidas'
     ].includes(colId)) return;
 
     event.api.stopEditing(true);

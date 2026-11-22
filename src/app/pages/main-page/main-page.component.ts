@@ -107,12 +107,17 @@ export class MainPageComponent implements OnInit, OnDestroy {
     this.cobranzaSub = this.signalrService.cobranzaPayment$.subscribe(payment => {
       if (!payment || Number(payment.companyId) !== Number(this.signalsService.getRootSelectedBySidebar()())) return;
       const amount = Number(payment.amount || 0).toLocaleString('es-MX', { style: 'currency', currency: 'MXN' });
+      const overdueInstallments = Number(payment.overdueInstallments || 0);
+      const overdueAmount = Number(payment.overdueAmount || 0).toLocaleString('es-MX', { style: 'currency', currency: 'MXN' });
+      const overdueNotice = overdueInstallments > 0
+        ? ` · Atraso: ${overdueInstallments} cuota(s), ${overdueAmount}`
+        : '';
       void Swal.fire({
         toast: true,
         position: 'top-end',
-        icon: 'success',
-        title: 'Nuevo cobro desde Telegram',
-        text: `${payment.customerName} · ${amount} · Cobrador: ${payment.collectorName}`,
+        icon: overdueInstallments > 0 ? 'warning' : 'success',
+        title: overdueInstallments > 0 ? 'Cobro recibido · cliente con atraso' : 'Nuevo cobro desde Telegram',
+        text: `${payment.customerName} · ${amount} · Cobrador: ${payment.collectorName}${overdueNotice}`,
         showConfirmButton: false,
         timer: 9000,
         timerProgressBar: true,
