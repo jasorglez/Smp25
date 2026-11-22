@@ -174,7 +174,7 @@ export class ClientesCobranzasPagosComponent implements OnChanges, OnDestroy {
     { field: 'montoProgramado', headerName: 'Pago total', editable: false, valueFormatter: p => this.money(p.value) },
     { headerName: 'Abonado', valueGetter: p => this.installmentPaid(p.data), valueFormatter: p => this.money(p.value) },
     { headerName: 'Saldo', valueGetter: p => this.installmentBalance(p.data), valueFormatter: p => this.money(p.value) },
-    { headerName: 'Estado', valueGetter: p => this.installmentBalance(p.data) <= 0 ? 'Pagada' : 'Pendiente' },
+    { headerName: 'Estado', valueGetter: p => this.installmentStatus(p.data), cellClass: p => this.installmentStatus(p.data) === 'Vencida' ? 'text-danger fw-bold' : '' },
     { headerName: 'Abonos', width: 110, flex: 0, sortable: false, filter: false, valueGetter: () => 'Abonos', cellRenderer: ButtonCellRendererExpenditureComponent, cellRendererParams: { onClick: (node: any) => this.toggleAbonoForm(node.data), icon: 'bi-cash-coin', title: 'Ver y registrar abonos de la cuota' } },
     { headerName: 'Borrar letra', width: 125, flex: 0, sortable: false, filter: false, valueGetter: () => 'Borrar', cellRendererSelector: params => this.canDeleteInstallment(params.data) ? { component: ButtonCellRendererExpenditureComponent, params: { icon: 'bi-trash', title: 'Borrar letra sin abonos de un préstamo liquidado', onClick: (node: any) => this.deactivateInstallment(node.data) } } : undefined }
   ];
@@ -205,6 +205,11 @@ export class ClientesCobranzasPagosComponent implements OnChanges, OnDestroy {
     });
   }
   payableTotal(loan: any): number { return (loan.cuotas || []).reduce((sum: number, item: any) => sum + Number(item.montoProgramado || 0), 0); }
+  installmentStatus(item: any): string {
+    if (this.installmentBalance(item) <= 0) return 'Pagada';
+    const due = this.normalizeScheduledDate(item?.fechaProgramada);
+    return due && due < this.formatDate(new Date()) ? 'Vencida' : 'Pendiente';
+  }
   onDateChanged(event: any): void {
     const date = this.normalizeScheduledDate(event.newValue);
     if (!date) {
@@ -230,15 +235,26 @@ export class ClientesCobranzasPagosComponent implements OnChanges, OnDestroy {
   async saveChanges(loan: any): Promise<void> {
     const changed = loan.cuotas.map((item: any) => ({ item, date: this.normalizeScheduledDate(item.fechaProgramada) }))
       .filter((entry: any) => entry.date && entry.date !== this.originalDates.get(entry.item.id));
-    if (!changed.length) return;
+    if (!changed.length) {
+      alerts.basicAlert('Sin cambios', 'Cambia una fecha programada antes de guardar.', 'info');
+      return;
+    }
     this.saving = true;
     try {
       for (const entry of changed) await firstValueFrom(this.customersService.updateCobranzaInstallmentDate(entry.item.id, { fechaProgramada: entry.date }));
-      this.saving = false; this.editingScheduleLoanId = null; this.loadLoans(); this.balancesChanged.emit();
+      const refreshedLoans = await firstValueFrom(this.customersService.getCobranzaLoans(Number(this.customer.id)));
+      const refreshedInstallments = new Map<number, string>();
+      for (const refreshedLoan of refreshedLoans || []) {
+        for (const installment of refreshedLoan.cuotas || []) refreshedInstallments.set(Number(installment.id), this.dateForInput(installment.fechaProgramada));
+      }
+      const notPersisted = changed.find((entry: any) => refreshedInstallments.get(Number(entry.item.id)) !== entry.date);
+      if (notPersisted) throw new Error(`La API no devolvió la fecha guardada para la cuota ${notPersisted.item.numeroCuota}.`);
+      this.setLoans(refreshedLoans);
+      this.saving = false; this.editingScheduleLoanId = null; this.balancesChanged.emit();
       alerts.basicAlert('Fechas guardadas', 'Se actualizó el calendario de pagos.', 'success');
     } catch (error) {
-      console.error(error); this.saving = false;
-      alerts.basicAlert('Error', 'No se pudieron guardar todas las fechas. Recarga el detalle para revisar cuáles se guardaron.', 'error');
+      console.error('No se pudo confirmar el guardado de las fechas programadas:', error); this.saving = false;
+      alerts.basicAlert('Error', error instanceof Error && error.message.startsWith('La API no devolvió') ? error.message : 'No se pudieron guardar las fechas. Verifica la conexión con Cobranza e inténtalo de nuevo.', 'error');
     }
   }
 
@@ -282,12 +298,20 @@ export class ClientesCobranzasPagosComponent implements OnChanges, OnDestroy {
         numeroCuotas: paymentCount, comentario: String(form.comentario || '').trim()
       }));
       const loans = await firstValueFrom(this.customersService.getCobranzaLoans(Number(this.customer.id)));
+      const savedLoan = (loans || []).find((item: any) => Number(item.id) === Number(loan.id));
+      if (!savedLoan) throw new Error('La API no devolvió el préstamo actualizado.');
+      if (String(savedLoan.numeroNotaVenta || '').trim() !== receiptNumber
+        || this.dateForInput(savedLoan.fechaInicio) !== this.dateForInput(form.fechaInicio)
+        || this.dateForInput(savedLoan.fechaPrimerPago) !== this.dateForInput(form.fechaPrimerPago)) {
+        throw new Error('La API respondió, pero los datos del encabezado del préstamo no cambiaron.');
+      }
       this.setLoans(loans);
       this.balancesChanged.emit();
       alerts.basicAlert('Préstamo actualizado', 'Se guardaron los datos y el calendario actualizado.', 'success');
     } catch (error) {
       console.error('No se pudo actualizar el préstamo:', error);
-      alerts.basicAlert('Error', 'No se pudieron guardar los datos del préstamo.', 'error');
+      const apiMessage = (error as any)?.error?.error || (error as any)?.error?.message || (error as any)?.message;
+      alerts.basicAlert('No se pudo guardar el préstamo', apiMessage || 'La API de Cobranza rechazó la actualización. Revisa la conexión y vuelve a intentarlo.', 'error');
     } finally { this.saving = false; }
   }
   isLoanExpanded(loan: any): boolean { return this.expandedLoanIds.has(Number(loan?.id)); }
