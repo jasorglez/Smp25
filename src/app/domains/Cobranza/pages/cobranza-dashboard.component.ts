@@ -1,9 +1,11 @@
 import { CommonModule } from '@angular/common';
-import { Component, effect, inject } from '@angular/core';
+import { Component, effect, inject, OnDestroy } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { NgApexchartsModule } from 'ng-apexcharts';
 import { CustomersService } from 'app/services/customers.service';
 import { SignalsService } from 'app/services/signals.service';
+import { SignalrService } from 'app/services/signalr.service';
+import { Subscription } from 'rxjs';
 
 interface DueRow { customerId: number; customer: string; loanId: number; installment: number; due: string; amount: number; paid: number; balance: number; days: number; }
 
@@ -14,9 +16,11 @@ interface DueRow { customerId: number; customer: string; loanId: number; install
   templateUrl: './cobranza-dashboard.component.html',
   styleUrl: './cobranza-dashboard.component.scss'
 })
-export class CobranzaDashboardComponent {
+export class CobranzaDashboardComponent implements OnDestroy {
   private customersService = inject(CustomersService);
   private signalsService = inject(SignalsService);
+  private signalrService = inject(SignalrService);
+  private cobranzaSubscription?: Subscription;
   rootId = 0;
   loading = false;
   error = '';
@@ -45,11 +49,16 @@ export class CobranzaDashboardComponent {
   money = (amount: number) => new Intl.NumberFormat('es-MX', { style: 'currency', currency: 'MXN', maximumFractionDigits: 0 }).format(amount || 0);
 
   constructor() {
+    this.cobranzaSubscription = this.signalrService.cobranzaPayment$.subscribe(payment => {
+      if (Number(payment?.companyId) === this.rootId) this.reload();
+    });
     effect(() => {
       const rootId = Number(this.signalsService.getRootSelectedBySidebar()());
       if (rootId && rootId !== this.rootId) { this.rootId = rootId; this.reload(); }
     });
   }
+
+  ngOnDestroy(): void { this.cobranzaSubscription?.unsubscribe(); }
 
   get urgentRows(): DueRow[] { return this.rows.filter(row => row.balance > 0 && row.days < 0).sort((a, b) => a.days - b.days).slice(0, 6); }
   get upcomingRows(): DueRow[] { return this.rows.filter(row => row.balance > 0 && row.days >= 0 && row.days <= 30).sort((a, b) => a.days - b.days).slice(0, 6); }
