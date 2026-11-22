@@ -55,11 +55,15 @@ contenedor. No uses systemctl ni hace falta reiniciarlo a mano.
 
   sudo docker logs --tail 100 chatbot-telegram
 
-El log debe dejar de decir "Consumidor RabbitMQ de Cobranza desactivado" y
-mostrar que escucha su cola. Comprueba también RabbitMQ:
+El log que compartiste ya muestra que el consumidor escucha. Ahora ejecuta
+estos dos comandos para verificar RabbitMQ:
 
   sudo rabbitmqctl list_connections user vhost state
   sudo rabbitmqctl list_queues -p /biapp-cobranza name messages consumers
+
+Se espera una conexión con usuario biapp_cobranza y vhost /biapp-cobranza.
+La cola biapp.cobranza.notifications.signalr.v1 debe mostrar un consumidor
+activo. Puede tener cero mensajes si no hay avisos pendientes.
 
 El servicio Telegram declara automáticamente el exchange y la cola durable al
 iniciar. La interfaz se conecta a /telegram/cobranzaHub y muestra el aviso solo
