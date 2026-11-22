@@ -15,69 +15,46 @@ aleatoria y guárdala en el gestor de secretos del servidor.
 El usuario queda limitado al virtual host /biapp-cobranza. No abras el puerto
 15672 a Internet; el servicio Telegram se conecta al puerto AMQP 5672.
 
-2) Configurar las variables en el contenedor Docker de Telegram.
+2) Configurar los secretos para el despliegue automatizado.
 
-Los logs que compartiste indican que RabbitMQ está desactivado dentro del
-contenedor. Para localizar la carpeta del docker-compose en el servidor donde
-corre Telegram:
+Tu script telegram.sh hace git pull y luego docker compose down/build/up en
+/bi/repos/ChatbotFresh/chatBotTelegram. El docker-compose.yml del repositorio
+ya está preparado para leer las variables de un archivo local .env; no tienes
+que editar docker-compose.yml en el servidor. Ese .env está excluido de Git.
 
-  COMPOSE_DIR=$(sudo docker inspect --format='{{ index .Config.Labels "com.docker.compose.project.working_dir" }}' chatbot-telegram)
-  echo "$COMPOSE_DIR"
-  cd "$COMPOSE_DIR"
+Crea o edita el archivo exacto:
 
-Edita el docker-compose.yml de esa carpeta:
+  sudo nano /bi/repos/ChatbotFresh/chatBotTelegram/.env
 
-  sudo nano docker-compose.yml
-
-Dentro del servicio api, agrega al mismo nivel que environment: esta sección:
-
-  env_file:
-    - .env
-
-Crea el archivo de secretos:
-
-  sudo nano .env
-
-Escribe estas líneas. Usa la IP de bi-server que compartiste para RabbitMQ y
-reemplaza los dos valores indicados por tus secretos reales, sin comillas:
+Escribe estas líneas, reemplazando los valores señalados por la contraseña
+que asignaste al usuario RabbitMQ y por el valor Key de Security, sin comillas:
 
   RabbitMq__Enabled=true
-  RabbitMq__HostName=66.179.240.10
+  RabbitMq__HostName=host.docker.internal
   RabbitMq__Port=5672
   RabbitMq__UserName=biapp_cobranza
   RabbitMq__Password=REEMPLAZA_POR_LA_CONTRASENA_QUE_CREASTE
   RabbitMq__VirtualHost=/biapp-cobranza
   Jwt__Key=REEMPLAZA_POR_EL_VALOR_DE_Jwt_Key_DE_SECURITY
 
-Guarda el archivo en nano con Ctrl+O, Enter, Ctrl+X. Protege los secretos y
-recrea el contenedor para que Docker los cargue:
+RabbitMQ y Telegram corren en bi-server. host.docker.internal permite al
+contenedor llegar al RabbitMQ del servidor sin usar la IP pública. Guarda en
+nano con Ctrl+O, Enter, Ctrl+X y protege los secretos:
 
-  sudo chmod 600 .env
-  sudo docker compose up -d --force-recreate api
+  sudo chmod 600 /bi/repos/ChatbotFresh/chatBotTelegram/.env
 
 No guardes .env en Git ni pegues sus valores en un chat. Jwt__Key debe ser
-exactamente el valor Jwt:Key del appsettings.json activo de Security.
+exactamente el valor Jwt:Key de Security.
 
-3) Reiniciar Telegram y comprobar logs/conexiones:
+3) Ejecuta tu automatización telegram.sh. Ella hará git pull y reconstruirá el
+contenedor. No uses systemctl ni hace falta reiniciarlo a mano.
 
-Si solo vas a reiniciar el contenedor con la configuración que ya tiene:
-
-  sudo docker restart chatbot-telegram
-
-Ver los últimos logs del contenedor:
+4) Comprobar los logs y la conexión:
 
   sudo docker logs --tail 100 chatbot-telegram
 
-IMPORTANTE: docker restart NO carga cambios nuevos de variables de entorno.
-Si cambiaste RabbitMq__* o Jwt__Key, recrea el contenedor como se indicó arriba;
-docker restart por sí solo no carga variables de entorno nuevas. El servicio
-Compose se llama api.
-
-  COMPOSE_DIR=$(sudo docker inspect --format='{{ index .Config.Labels "com.docker.compose.project.working_dir" }}' chatbot-telegram)
-  cd "$COMPOSE_DIR"
-  sudo docker compose up -d --force-recreate api
-
-Después comprueba RabbitMQ (estos dos comandos se ejecutan en bi-server):
+El log debe dejar de decir "Consumidor RabbitMQ de Cobranza desactivado" y
+mostrar que escucha su cola. Comprueba también RabbitMQ:
 
   sudo rabbitmqctl list_connections user vhost state
   sudo rabbitmqctl list_queues -p /biapp-cobranza name messages consumers
