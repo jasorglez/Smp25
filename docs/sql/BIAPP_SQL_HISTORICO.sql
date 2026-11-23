@@ -6879,7 +6879,7 @@ BEGIN
         N'La pantalla de Configuración de Cobranza muestra y edita un solo registro de consecutivo para la empresa seleccionada, con el prefijo, el siguiente número y una vista previa del folio. Se reemplazó la tabla por un formulario sencillo.',
         N'Simplifica la configuración del folio de cada empresa y evita administrar varias filas desde esta pantalla.',
         N'Configura el prefijo y siguiente folio de cada empresa desde una sola pantalla.',
-        SYSUTCDATETIME(), N'America/Indiana/Indianapolis', N'PENDING', N'LOCAL', N'PUBLISHED',
+        SYSUTCDATETIME(), N'America/Indiana/Indianapolis', N'PASSED', N'LOCAL', N'PUBLISHED',
         SYSUTCDATETIME(), N'Codex', SYSUTCDATETIME(), SYSUTCDATETIME(), 1
     );
 END;
