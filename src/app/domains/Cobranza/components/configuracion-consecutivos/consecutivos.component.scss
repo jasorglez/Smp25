@@ -1,3 +1,34 @@
-:host ::ng-deep .consecutivos-grid .ag-cell-focus {
-  background-color: #fff2a8 !important;
+.consecutivo-card {
+  border-color: #e4e8ee;
+  border-radius: 0.85rem;
+  overflow: hidden;
+}
+
+.consecutivo-icon {
+  display: inline-flex;
+  width: 2.5rem;
+  height: 2.5rem;
+  align-items: center;
+  justify-content: center;
+  border-radius: 0.7rem;
+  background: #edf4ff;
+  color: #2459a6;
+  font-size: 1.2rem;
+}
+
+.form-label {
+  font-weight: 600;
+}
+
+.preview-panel {
+  border: 1px solid #dce6f2;
+  background: #f6f9fd;
+}
+
+.preview-value {
+  color: #173d6c;
+  font-size: 1.6rem;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  overflow-wrap: anywhere;
 }

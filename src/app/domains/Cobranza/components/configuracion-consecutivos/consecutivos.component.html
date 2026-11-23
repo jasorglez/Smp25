@@ -1,31 +1,96 @@
 <section class="p-3">
-  <div class="d-flex justify-content-between align-items-center mb-3">
+  <div class="d-flex flex-wrap justify-content-between align-items-center gap-3 mb-4">
     <div>
       <h3 class="mb-1">Configuración</h3>
-      <div class="text-muted small">Consecutivos de Cobranza para la empresa seleccionada ({{ idRoot || 'sin empresa' }}).</div>
+      <div class="text-muted small">
+        Consecutivo de Cobranza para la empresa seleccionada
+        <span class="fw-semibold">{{ idRoot || 'sin empresa' }}</span>.
+      </div>
     </div>
-    <div class="d-flex gap-2">
-      <button class="btn btn-sm btn-success" type="button" (click)="add()"><i class="bi bi-plus-lg"></i> Agregar</button>
-      <button class="btn btn-sm btn-primary position-relative" type="button" (click)="save()" [disabled]="!hasUnsavedChanges">
-        <i class="bi bi-floppy"></i> Guardar
-        <span *ngIf="hasUnsavedChanges" class="position-absolute top-0 start-100 translate-middle p-2 bg-danger border border-light rounded-circle"></span>
+
+    <div class="d-flex flex-wrap gap-2">
+      <button class="btn btn-sm btn-success" type="button" (click)="add()"
+              [disabled]="!idRoot || isConfigured || isAdding || isLoading">
+        <i class="bi bi-plus-lg"></i> Agregar
       </button>
-      <button class="btn btn-sm btn-warning" type="button" (click)="undo()"><i class="bi bi-arrow-clockwise"></i> Deshacer</button>
-      <button class="btn btn-sm btn-danger" type="button" (click)="remove()"><i class="bi bi-trash"></i> Borrar</button>
+      <button class="btn btn-sm btn-primary position-relative" type="button" (click)="save()"
+              [disabled]="!hasUnsavedChanges || isSaving || isLoading">
+        <i class="bi bi-floppy"></i> Guardar
+        <span *ngIf="hasUnsavedChanges"
+              class="position-absolute top-0 start-100 translate-middle p-2 bg-danger border border-light rounded-circle"></span>
+      </button>
+      <button class="btn btn-sm btn-warning" type="button" (click)="undo()"
+              [disabled]="!hasUnsavedChanges || isSaving">
+        <i class="bi bi-arrow-clockwise"></i> Deshacer
+      </button>
+      <button class="btn btn-sm btn-danger" type="button" (click)="remove()"
+              [disabled]="!isConfigured || isSaving || isLoading">
+        <i class="bi bi-trash"></i> Borrar
+      </button>
     </div>
   </div>
 
-  <ag-grid-angular
-    class="ag-theme-quartz small-text-ag-grid consecutivos-grid"
-    style="width: 100%; height: 500px"
-    [rowData]="rowData"
-    [columnDefs]="columnDefs"
-    [defaultColDef]="defaultColDef"
-    [rowSelection]="'single'"
-    [stopEditingWhenCellsLoseFocus]="true"
-    (gridReady)="onGridReady($event)"
-    (selectionChanged)="onSelectionChanged()"
-    (cellValueChanged)="onCellValueChanged($event)"
-    (cellKeyDown)="onCellKeyDown($event)">
-  </ag-grid-angular>
+  <div class="row justify-content-center">
+    <div class="col-12 col-xl-8 col-xxl-7">
+      <div class="card consecutivo-card shadow-sm">
+        <div class="card-header d-flex justify-content-between align-items-center bg-white py-3">
+          <div class="d-flex align-items-center gap-2">
+            <span class="consecutivo-icon"><i class="bi bi-hash"></i></span>
+            <div>
+              <h5 class="mb-0">Consecutivo de la empresa</h5>
+              <span class="text-muted small">Un registro por empresa</span>
+            </div>
+          </div>
+          <span class="badge" [ngClass]="isConfigured ? 'text-bg-success' : 'text-bg-secondary'">
+            {{ isConfigured ? 'Configurado' : 'Sin configurar' }}
+          </span>
+        </div>
+
+        <div class="card-body p-4">
+          <div *ngIf="duplicateCount > 0" class="alert alert-warning" role="alert">
+            Se encontraron {{ duplicateCount + 1 }} registros para esta empresa. Esta pantalla muestra el más antiguo;
+            los demás requieren revisión.
+          </div>
+
+          <div *ngIf="isLoading" class="text-center text-muted py-5">
+            <span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
+            Cargando configuración…
+          </div>
+
+          <ng-container *ngIf="!isLoading">
+            <div class="mb-4">
+              <label for="empresaConsecutivo" class="form-label">Empresa</label>
+              <input id="empresaConsecutivo" class="form-control" [value]="idRoot || ''" readonly>
+            </div>
+
+            <div class="row g-3">
+              <div class="col-12 col-md-7">
+                <label for="prefijoConsecutivo" class="form-label">Prefijo</label>
+                <input id="prefijoConsecutivo" class="form-control" type="text" maxlength="40"
+                       placeholder="Ejemplo: CO-" autocomplete="off"
+                       [(ngModel)]="config.consecutivoTexto" (ngModelChange)="onFormChanged()"
+                       [disabled]="!canEdit">
+              </div>
+
+              <div class="col-12 col-md-5">
+                <label for="siguienteNumero" class="form-label">Siguiente número</label>
+                <input id="siguienteNumero" class="form-control" type="number" min="1" step="1"
+                       [(ngModel)]="config.campoAuxiliar" (ngModelChange)="onFormChanged()"
+                       [disabled]="!canEdit">
+              </div>
+            </div>
+
+            <div class="preview-panel mt-4 p-3 rounded-3">
+              <div class="text-muted small mb-1">Vista previa del siguiente folio</div>
+              <div class="preview-value">{{ preview || '—' }}</div>
+            </div>
+
+            <p *ngIf="!isConfigured && !isAdding" class="text-muted small mt-3 mb-0">
+              Presiona <strong>Agregar</strong> para configurar el consecutivo de esta empresa.
+            </p>
+          </ng-container>
+        </div>
+      </div>
+    </div>
+  </div>
 </section>

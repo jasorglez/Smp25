@@ -9,8 +9,6 @@ export interface ConsecutivoConfig {
   idRoot: number;
   consecutivoTexto: string;
   campoAuxiliar: number;
-  __isNew?: boolean;
-  __modified?: boolean;
 }
 
 @Injectable({ providedIn: 'root' })

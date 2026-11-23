@@ -76,5 +76,5 @@ export const environment = {
     // publicKey: 'TEST-4399133a-4676-42a2-ab85-d946370bf96a',
   },
 
-  version: '5.00.616 (23 Noviembre 2026 16:00) Configuración de Cobranza',
+  version: '5.00.617 (23 Noviembre 2026 17:48) Configuración de Cobranza',
 };

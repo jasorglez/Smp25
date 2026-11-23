@@ -6855,3 +6855,32 @@ IF NOT EXISTS (
         ON cobranzas.cobranza_fondo_ahorro_movimientos(id_abono_cobranza)
         WHERE id_abono_cobranza IS NOT NULL;
 GO
+
+/* Novedad local de Angular: publicación del anuncio sin afirmar despliegue del código. */
+IF NOT EXISTS (
+    SELECT 1
+    FROM dbo.product_updates WITH (UPDLOCK, HOLDLOCK)
+    WHERE version = N'5.00.617'
+      AND module = N'Cobranza / Configuración'
+      AND idRoot IS NULL
+      AND idCompany IS NULL
+      AND isActive = 1
+)
+BEGIN
+    INSERT INTO dbo.product_updates (
+        idRoot, idCompany, version, module, changeType, title, description,
+        userBenefit, promoText, occurredAtUtc, displayTimeZone, validationStatus,
+        releaseStatus, publicationStatus, publishedAtUtc, createdBy,
+        createdAtUtc, updatedAtUtc, isActive
+    )
+    VALUES (
+        NULL, NULL, N'5.00.617', N'Cobranza / Configuración', N'IMPROVEMENT',
+        N'Configuración de un consecutivo por empresa',
+        N'La pantalla de Configuración de Cobranza muestra y edita un solo registro de consecutivo para la empresa seleccionada, con el prefijo, el siguiente número y una vista previa del folio. Se reemplazó la tabla por un formulario sencillo.',
+        N'Simplifica la configuración del folio de cada empresa y evita administrar varias filas desde esta pantalla.',
+        N'Configura el prefijo y siguiente folio de cada empresa desde una sola pantalla.',
+        SYSUTCDATETIME(), N'America/Indiana/Indianapolis', N'PENDING', N'LOCAL', N'PUBLISHED',
+        SYSUTCDATETIME(), N'Codex', SYSUTCDATETIME(), SYSUTCDATETIME(), 1
+    );
+END;
+GO
