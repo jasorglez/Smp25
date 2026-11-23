@@ -956,6 +956,7 @@ END;
 
 COMMIT TRANSACTION;
 GO
+
 -- ============================================================================
 -- Fecha: 21/10/2026
 -- Módulo: Administración / Usuarios y permisos
@@ -6526,4 +6527,70 @@ BEGIN
 END;
 
 COMMIT TRANSACTION;
+GO
+
+/*
+  Fecha: 2026-11-23
+  Hora local: 15:24 America/Indiana/Indianapolis
+  Módulo: Configuración / Consecutivos
+  Repositorio origen: Smp25 (front-end) / MicroServicioAdministration (API)
+  Propósito: Crear el catálogo de prefijo y siguiente número aislado por empresa.
+  Aplicar en la base de datos de Administración.
+*/
+IF SCHEMA_ID(N'configuracion') IS NULL
+    EXEC(N'CREATE SCHEMA configuracion');
+GO
+
+IF OBJECT_ID(N'configuracion.consecutivos', N'U') IS NULL
+BEGIN
+    CREATE TABLE configuracion.consecutivos
+    (
+        id INT IDENTITY(1,1) NOT NULL CONSTRAINT PK_configuracion_consecutivos PRIMARY KEY,
+        id_root INT NOT NULL,
+        consecutivo NVARCHAR(40) NOT NULL,
+        campo_auxiliar INT NOT NULL CONSTRAINT DF_configuracion_consecutivos_campo_auxiliar DEFAULT (1),
+        CONSTRAINT CK_configuracion_consecutivos_campo_auxiliar CHECK (campo_auxiliar >= 1)
+    );
+END;
+GO
+
+IF NOT EXISTS (
+    SELECT 1 FROM sys.indexes
+    WHERE object_id = OBJECT_ID(N'configuracion.consecutivos')
+      AND name = N'UX_configuracion_consecutivos_root_prefijo'
+)
+BEGIN
+    CREATE UNIQUE INDEX UX_configuracion_consecutivos_root_prefijo
+        ON configuracion.consecutivos (id_root, consecutivo);
+END;
+GO
+
+/* Novedad de producto: publicación pendiente; el código aún no está desplegado. */
+IF OBJECT_ID(N'dbo.product_updates', N'U') IS NOT NULL
+AND NOT EXISTS (
+    SELECT 1
+    FROM dbo.product_updates WITH (UPDLOCK, HOLDLOCK)
+    WHERE version = N'5.00.615'
+      AND module = N'Configuración / Consecutivos'
+      AND idRoot IS NULL
+      AND idCompany IS NULL
+      AND isActive = 1
+)
+BEGIN
+    INSERT INTO dbo.product_updates (
+        idRoot, idCompany, version, module, changeType, title, description,
+        userBenefit, promoText, occurredAtUtc, displayTimeZone, validationStatus,
+        releaseStatus, publicationStatus, publishedAtUtc, createdBy,
+        createdAtUtc, updatedAtUtc, isActive
+    )
+    VALUES (
+        NULL, NULL, N'5.00.615', N'Configuración / Consecutivos', N'IMPROVEMENT',
+        N'Control de consecutivos por empresa',
+        N'Se agregó una pantalla para administrar prefijos y el siguiente número de folio por empresa, con vista previa del valor que se formará. La API permite reservar números sin repetirlos.',
+        N'Permite mantener consecutivos independientes por empresa y preparar su uso desde los procesos que generen documentos.',
+        N'Configura los prefijos de folio por empresa y lleva el control de cada siguiente número.',
+        SYSUTCDATETIME(), N'America/Indiana/Indianapolis', N'PENDING', N'LOCAL', N'DRAFT',
+        NULL, NULL, SYSUTCDATETIME(), SYSUTCDATETIME(), 1
+    );
+END;
 GO

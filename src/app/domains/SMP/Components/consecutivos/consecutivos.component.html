@@ -1,0 +1,31 @@
+<section class="p-3">
+  <div class="d-flex justify-content-between align-items-center mb-3">
+    <div>
+      <h3 class="mb-1">Consecutivos</h3>
+      <div class="text-muted small">Configuración de folios para la empresa seleccionada ({{ idRoot || 'sin empresa' }}).</div>
+    </div>
+    <div class="d-flex gap-2">
+      <button class="btn btn-sm btn-success" type="button" (click)="add()"><i class="bi bi-plus-lg"></i> Agregar</button>
+      <button class="btn btn-sm btn-primary position-relative" type="button" (click)="save()" [disabled]="!hasUnsavedChanges">
+        <i class="bi bi-floppy"></i> Guardar
+        <span *ngIf="hasUnsavedChanges" class="position-absolute top-0 start-100 translate-middle p-2 bg-danger border border-light rounded-circle"></span>
+      </button>
+      <button class="btn btn-sm btn-warning" type="button" (click)="undo()"><i class="bi bi-arrow-clockwise"></i> Deshacer</button>
+      <button class="btn btn-sm btn-danger" type="button" (click)="remove()"><i class="bi bi-trash"></i> Borrar</button>
+    </div>
+  </div>
+
+  <ag-grid-angular
+    class="ag-theme-quartz small-text-ag-grid consecutivos-grid"
+    style="width: 100%; height: 500px"
+    [rowData]="rowData"
+    [columnDefs]="columnDefs"
+    [defaultColDef]="defaultColDef"
+    [rowSelection]="'single'"
+    [stopEditingWhenCellsLoseFocus]="true"
+    (gridReady)="onGridReady($event)"
+    (selectionChanged)="onSelectionChanged()"
+    (cellValueChanged)="onCellValueChanged($event)"
+    (cellKeyDown)="onCellKeyDown($event)">
+  </ag-grid-angular>
+</section>
