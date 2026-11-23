@@ -6534,34 +6534,41 @@ GO
   Hora local: 15:24 America/Indiana/Indianapolis
   Módulo: Configuración / Consecutivos
   Repositorio origen: Smp25 (front-end) / MicroServicioAdministration (API)
-  Propósito: Crear el catálogo de prefijo y siguiente número aislado por empresa.
+  Propósito: Crear en el esquema `cobranzas` el catálogo de prefijo y siguiente número aislado por empresa.
   Aplicar en la base de datos de Administración.
 */
-IF SCHEMA_ID(N'configuracion') IS NULL
-    EXEC(N'CREATE SCHEMA configuracion');
+IF SCHEMA_ID(N'cobranzas') IS NULL
+    EXEC(N'CREATE SCHEMA cobranzas');
 GO
 
-IF OBJECT_ID(N'configuracion.consecutivos', N'U') IS NULL
+IF OBJECT_ID(N'cobranzas.consecutivos', N'U') IS NULL
+   AND OBJECT_ID(N'configuracion.consecutivos', N'U') IS NOT NULL
 BEGIN
-    CREATE TABLE configuracion.consecutivos
+    ALTER SCHEMA cobranzas TRANSFER configuracion.consecutivos;
+END;
+GO
+
+IF OBJECT_ID(N'cobranzas.consecutivos', N'U') IS NULL
+BEGIN
+    CREATE TABLE cobranzas.consecutivos
     (
-        id INT IDENTITY(1,1) NOT NULL CONSTRAINT PK_configuracion_consecutivos PRIMARY KEY,
+        id INT IDENTITY(1,1) NOT NULL CONSTRAINT PK_cobranzas_consecutivos PRIMARY KEY,
         id_root INT NOT NULL,
         consecutivo NVARCHAR(40) NOT NULL,
-        campo_auxiliar INT NOT NULL CONSTRAINT DF_configuracion_consecutivos_campo_auxiliar DEFAULT (1),
-        CONSTRAINT CK_configuracion_consecutivos_campo_auxiliar CHECK (campo_auxiliar >= 1)
+        campo_auxiliar INT NOT NULL CONSTRAINT DF_cobranzas_consecutivos_campo_auxiliar DEFAULT (1),
+        CONSTRAINT CK_cobranzas_consecutivos_campo_auxiliar CHECK (campo_auxiliar >= 1)
     );
 END;
 GO
 
 IF NOT EXISTS (
     SELECT 1 FROM sys.indexes
-    WHERE object_id = OBJECT_ID(N'configuracion.consecutivos')
-      AND name = N'UX_configuracion_consecutivos_root_prefijo'
+    WHERE object_id = OBJECT_ID(N'cobranzas.consecutivos')
+      AND name IN (N'UX_cobranzas_consecutivos_root_prefijo', N'UX_configuracion_consecutivos_root_prefijo')
 )
 BEGIN
-    CREATE UNIQUE INDEX UX_configuracion_consecutivos_root_prefijo
-        ON configuracion.consecutivos (id_root, consecutivo);
+    CREATE UNIQUE INDEX UX_cobranzas_consecutivos_root_prefijo
+        ON cobranzas.consecutivos (id_root, consecutivo);
 END;
 GO
 

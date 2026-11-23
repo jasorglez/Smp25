@@ -233,7 +233,7 @@ version: '2.50.4 (24 Octubre 2025 17:45)'
 - Publicar de forma idempotente, sin duplicar anuncios por ajustes de versión o documentación. Marcar `releaseStatus` como `PRODUCTION` únicamente con evidencia del despliegue; distinguir publicación del anuncio y despliegue del código.
 
 ## Convención de esquemas SQL Server
-- Las tablas nuevas de dominio usan un esquema con el nombre del módulo; para Cobranza, usar `cobranza.<tabla>`, no `dbo.<tabla>`.
+- Las tablas nuevas de dominio usan un esquema con el nombre del módulo; todas las tablas usadas por Cobranza van en `cobranzas.<tabla>`, no en `dbo` ni en otro esquema.
 - Calificar con el esquema las tablas en scripts, claves foráneas, índices y consultas SQL directas.
 - Los scripts deben poder ejecutarse más de una vez. Al migrar tablas existentes, conservar datos y actualizar todas sus referencias.
 - Mantener los scripts SQL de despliegue y publicación en el archivo maestro `docs/sql/BIAPP_SQL_HISTORICO.sql`; agregar cada bloque al final con fecha, módulo, repositorio y ruta de origen. No crear archivos SQL sueltos para estas tareas. El archivo es histórico: ejecutar únicamente el bloque requerido, nunca todo el archivo de una vez.
