@@ -1198,12 +1198,12 @@ export const routes: Routes = [
             data: { permissions: { master: 'cobranzas', detailed: 'cobr' } }
           },
           {
-            path: 'configuracion',
+            path: 'Configuracion',
             loadComponent: () => import('./domains/Cobranza/components/configuracion-consecutivos/consecutivos.component').then(m => m.ConsecutivosComponent),
             canActivate: [MasterPermissionsGuard],
             canDeactivate: [UnsavedChangesGuard],
             data: {
-              permissions: { master: 'cobranzas', detailed: 'configuracion' },
+              permissions: { master: 'cobranzas', detailed: 'Configuracion' },
               tracking: { logMessage: 'Click en Configuración de Cobranza', category: 'Cobranza' }
             }
           }

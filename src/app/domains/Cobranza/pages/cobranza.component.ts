@@ -101,7 +101,7 @@ export class CobranzaComponent {
         name: permission.permissionName || permission.description || identifier,
         order: Number.isFinite(Number(permission.order)) ? Number(permission.order) : 10000,
         path: this.menuRoutes[identifier] || identifier,
-        icon: this.menuIcons[identifier] || 'bi-grid'
+        icon: this.menuIcons[identifier] || 'bi-gear'
       }))
       .sort((a, b) => a.order - b.order);
   });
