@@ -50,6 +50,7 @@ import { PdfPreviewService } from 'app/services/pdf-preview.service';
 import { RootService } from 'app/services/root.service';
 import { Base64EncodeService } from 'app/services/base64encode.service';
 import { UsersService } from 'app/services/users.service';
+import { CobranzaOfflineService } from 'app/services/cobranza-offline.service';
 
 @Component({
   selector: 'app-clientes-cobranzas',
@@ -90,6 +91,8 @@ export class ClientesCobranzasComponent implements CanComponentDeactivate {
   private rootService = inject(RootService);
   private base64EncodeService = inject(Base64EncodeService);
   private usersService = inject(UsersService);
+  private cobranzaOffline = inject(CobranzaOfflineService);
+  private lastOfflineSyncRevision = 0;
 
   private http = inject(HttpClient);
   public AG_GRID_LOCALE_ES = AG_GRID_LOCALE_ES;
@@ -113,6 +116,14 @@ export class ClientesCobranzasComponent implements CanComponentDeactivate {
   }
 
   constructor() {
+    effect(() => {
+      const revision = this.cobranzaOffline.syncRevision();
+      if (revision > this.lastOfflineSyncRevision) {
+        this.lastOfflineSyncRevision = revision;
+        void this.obtenerDatos();
+      }
+    });
+
     effect(async () => {
       if (this.signalsService.getRefreshEmployees()() == true) {
         await this.obtenerDatos(); // Actualizar datos cuando se recibe señal
@@ -1137,7 +1148,7 @@ export class ClientesCobranzasComponent implements CanComponentDeactivate {
       next: (result: any) => {
         if (requestId !== this.collectorsRequestId || rootId !== Number(this.idRoot)) return;
         this.collectorsLoading = false;
-        this.collectors = (Array.isArray(result?.data) ? result.data : [])
+        this.collectors = (Array.isArray(result) ? result : Array.isArray(result?.data) ? result.data : Array.isArray(result?.items) ? result.items : [])
           .slice()
           .sort((a: any, b: any) => this.collectorNameFromUser(a).localeCompare(this.collectorNameFromUser(b), 'es'));
         this.gridApi?.refreshCells({ columns: ['idUsuarioCobrador'], force: true });
@@ -1463,7 +1474,7 @@ export class ClientesCobranzasComponent implements CanComponentDeactivate {
     if (!customerId) return;
     this.loadingCustomerForEdit = true;
     try {
-      const customer = await lastValueFrom(this.customerService.getCustomerById(customerId));
+      const customer = await lastValueFrom(this.customerService.getCobranzaCustomerById(customerId, Number(this.idRoot), Number(this.idBranch), this.type));
       if (Number(customer?.idRoot) !== Number(this.idRoot)) {
         alerts.basicAlert('Cliente no disponible', 'El cliente ya no pertenece a la empresa seleccionada.', 'error');
         return;
@@ -1516,8 +1527,8 @@ export class ClientesCobranzasComponent implements CanComponentDeactivate {
       }
 
       const saved = editingId
-        ? await lastValueFrom(this.customerService.updateCustomer(editingId, customer))
-        : await lastValueFrom(this.customerService.addCustomer(customer));
+        ? await lastValueFrom(this.customerService.updateCobranzaCustomer(editingId, customer))
+        : await lastValueFrom(this.customerService.createCobranzaCustomer(customer));
       modal.close();
       const refreshed = await this.obtenerDatos();
       const savedId = editingId || Number(saved?.id);
@@ -1794,12 +1805,12 @@ export class ClientesCobranzasComponent implements CanComponentDeactivate {
 
     const addObservables = newRows.map((row) => {
       const cleanedData = this.cleanDataForServer(row);
-      return this.customerService.addCustomer(cleanedData);
+      return this.customerService.createCobranzaCustomer(cleanedData);
     });
 
     const updateObservables = modifiedRows.map((row) => {
       const cleanedData = this.cleanDataForServer(row);
-      return this.customerService.updateCustomer(row.id, cleanedData);
+      return this.customerService.updateCobranzaCustomer(row.id, cleanedData);
     });
 
     try {
@@ -1906,7 +1917,7 @@ export class ClientesCobranzasComponent implements CanComponentDeactivate {
     const id = selectedData.id;
 
     this.customerService
-      .deleteCustomer(id)
+      .deleteCobranzaCustomer(id)
       .pipe(
         catchError((error) => {
           alerts.basicAlert(

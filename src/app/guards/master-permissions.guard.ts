@@ -10,6 +10,7 @@ import { Observable, of } from 'rxjs';
 import { map, switchMap } from 'rxjs/operators';
 import { SignalsService } from 'app/services/signals.service';
 import { WorkspaceTabsService } from 'app/services/workspace-tabs.service';
+import { CobranzaOfflineService } from 'app/services/cobranza-offline.service';
 
 @Injectable({
   providedIn: 'root',
@@ -19,6 +20,7 @@ export class MasterPermissionsGuard implements CanActivate {
   private router = inject(Router);
   private signalsService = inject(SignalsService);
   private workspaceTabs = inject(WorkspaceTabsService);
+  private cobranzaOffline = inject(CobranzaOfflineService);
 
   canActivate(
     route: ActivatedRouteSnapshot,
@@ -34,6 +36,29 @@ export class MasterPermissionsGuard implements CanActivate {
     const requiredPermissions = route.data['permissions'];
     if (!requiredPermissions) {
       return of(true);
+    }
+
+    if (!navigator.onLine) {
+      const companyId = Number(this.signalsService.getRootSelectedBySidebar()() || 0);
+      const grant = this.cobranzaOffline.readValidGrant(email, companyId);
+      const isCobranzaRoute = state.url.split('?')[0].startsWith('/cobranza');
+      if (!grant || !isCobranzaRoute) {
+        this.router.navigate(['/login']);
+        return of(false);
+      }
+
+      const cobranzaPermission = grant.permissions?.cobranzas;
+      const hasMasterPermission = cobranzaPermission?.active === true;
+      const hasDetailedPermission = !requiredPermissions.detailed
+        || cobranzaPermission?.children?.[requiredPermissions.detailed]?.active === true;
+      if (hasMasterPermission && hasDetailedPermission) {
+        this.permissionService.setUserPermissions({ cobranzas: cobranzaPermission });
+        return of(true);
+      }
+
+      this.workspaceTabs.remove(state.url);
+      this.router.navigate(['/unauthorized']);
+      return of(false);
     }
     
 

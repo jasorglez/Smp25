@@ -146,7 +146,7 @@ export class CorteCajaCobranzaComponent {
   userName(id: number): string { if (!id) return 'Sin asignar'; const user = this.users.find(item => item.id === id); return user?.usersmall || user?.displayName || user?.email || `Usuario #${id}`; }
   private currentKey(): string { return `${this.rootId}|${this.desde}|${this.hasta}|${this.usuarioId ?? 'global'}`; }
   private get cashierTurnName(): string { return 'COBRANZA: ' + Number(this.signals.getIdUSer()()); }
-  private loadUsers(): void { this.usersService.getDataUsers(this.rootId).subscribe({ next: (result: any) => this.users = result?.data || [], error: () => this.users = [] }); }
+  private loadUsers(): void { this.usersService.getDataUsers(this.rootId).subscribe({ next: (result: any) => this.users = Array.isArray(result) ? result : Array.isArray(result?.data) ? result.data : Array.isArray(result?.items) ? result.items : [], error: () => this.users = [] }); }
   private loadStores(): void { this.storesService.getStoreCompany(this.rootId).subscribe({ next: (items: any[]) => this.stores = (items || []).filter(item => item.active), error: () => this.stores = [] }); }
   onStoreChange(): void { const activeRegisterId = this.activeTurn?.idCashRegister; this.cashRegisterId = null; this.cashRegisters = []; if (!this.storeId) return; this.cashRegistersService.getCashRegisterList(this.storeId).subscribe({ next: (items: any[]) => { this.cashRegisters = (items || []).filter(item => item.active); if (activeRegisterId) this.cashRegisterId = activeRegisterId; }, error: () => this.cashRegisters = [] }); }
   private loadActiveTurn(): void {

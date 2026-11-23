@@ -24,6 +24,9 @@
     <!-- Headings -->
     <h1 class="login-title">{{ 'titlelogin' | translate }}</h1>
     <p class="login-subtitle">Ingresa tus credenciales para continuar</p>
+    <div class="alert alert-warning small" *ngIf="offlineAccessUnavailable" role="status">
+      No hay internet y esta computadora no tiene una sesión offline vigente de Cobranza. Conéctala una vez para preparar el acceso.
+    </div>
 
     <!-- Formulario -->
     <form [formGroup]="flogin" (ngSubmit)="login()" autocomplete="off" class="login-form">

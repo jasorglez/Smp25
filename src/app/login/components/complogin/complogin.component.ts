@@ -19,6 +19,7 @@ import { SignalsService } from 'app/services/signals.service';
 import { DomainsModule } from 'app/domains/domainsmodule';
 import { switchMap, tap } from 'rxjs/operators';
 import { environment } from '@env/environment';
+import { CobranzaOfflineService } from 'app/services/cobranza-offline.service';
 
 @Component({
   selector: 'app-complogin',
@@ -57,6 +58,7 @@ export class ComploginComponent implements OnInit, OnDestroy {
   private router          = inject(Router);
   private route           = inject(ActivatedRoute);
   private signalsService = inject(SignalsService);
+  private cobranzaOffline = inject(CobranzaOfflineService);
 
   /** @deprecated reemplazado por currentImageIndex + carrusel */
   randomImage : string = '' ;
@@ -71,12 +73,31 @@ export class ComploginComponent implements OnInit, OnDestroy {
   isLoading = false;
   idBranch: number;
   carouselDirection: 'forward' | 'reverse' = 'reverse';
+  offlineAccessUnavailable = false;
 
   valorcapturado = '' ;
   loginCardPositionClass = 'corner-top-left';
 
 
   ngOnInit(): void {
+    if (this.cobranzaOffline.isOffline) {
+      const grant = this.cobranzaOffline.readValidGrant();
+      if (grant) {
+        this.emailcapt = grant.email;
+        localStorage.setItem('mail', grant.email);
+        localStorage.setItem('company', String(grant.companyId));
+        localStorage.setItem('userRoot', String(grant.companyId));
+        if (grant.branchId) localStorage.setItem('branch', String(grant.branchId));
+        this.signalsService.setemailChoose(grant.email);
+        this.signalsService.setidUser(grant.userId);
+        this.signalsService.setRootSelectedBySidebar(grant.companyId);
+        if (grant.branchId) this.signalsService.setBranchSelectedBySidebar(grant.branchId);
+        this.auth.setUserPermissions({ cobranzas: grant.permissions.cobranzas });
+        this.router.navigateByUrl('/cobranza/clientes');
+        return;
+      }
+      this.offlineAccessUnavailable = true;
+    }
     this.setRandomCardPosition();
     this.loadLoginBackgroundImages();
     this.isAdvanced = this.signalsService.getIsAdvanced();

@@ -1,0 +1,49 @@
+{
+  "$schema": "./node_modules/@angular/service-worker/config/schema.json",
+  "index": "/index.html",
+  "assetGroups": [
+    {
+      "name": "app-core",
+      "installMode": "prefetch",
+      "updateMode": "prefetch",
+      "resources": {
+        "files": [
+          "/favicon.ico",
+          "/index.csr.html",
+          "/index.html",
+          "/manifest.webmanifest",
+          "/main*.js",
+          "/polyfills*.js",
+          "/scripts*.js",
+          "/assets/css/adminlte.min.css",
+          "/assets/plugins/jquery/jquery.min.js",
+          "/assets/plugins/jquery-ui/jquery-ui.min.js",
+          "/assets/plugins/overlayScrollbars/js/jquery.overlayScrollbars.min.js",
+          "/assets/js/adminlte.js"
+        ]
+      }
+    },
+    {
+      "name": "app-features",
+      "installMode": "lazy",
+      "updateMode": "lazy",
+      "resources": {
+        "files": [
+          "/*.css",
+          "/*.js"
+        ]
+      }
+    },
+    {
+      "name": "assets",
+      "installMode": "lazy",
+      "updateMode": "prefetch",
+      "resources": {
+        "files": [
+          "/assets/**/*.(js|css)",
+          "/**/*.(svg|cur|jpg|jpeg|png|apng|webp|avif|gif|otf|ttf|woff|woff2)"
+        ]
+      }
+    }
+  ]
+}

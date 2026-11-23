@@ -3,6 +3,7 @@ import { inject, Injectable } from '@angular/core';
 import { environment } from '@env/environment';
 import { Observable } from 'rxjs';
 import { TrackingService } from './tracking.service';
+import { CobranzaOfflineService } from './cobranza-offline.service';
 
 @Injectable({
   providedIn: 'root'
@@ -10,11 +11,16 @@ import { TrackingService } from './tracking.service';
 export class CatalogsService {
   private http = inject(HttpClient);
   private trackingService = inject(TrackingService);
+  private cobranzaOffline = inject(CobranzaOfflineService);
 
   constructor() { }
 
    getCatalogsFromAdmon(idRoot: number, type: string): Observable<any[]> {
-    return this.http.get<any[]>(`${environment.urlAdministration}/Catalog/getCatalogs?idCompany=${idRoot}&type=${type}`, { headers: this.trackingService.getHeaders() });
+    const key = type === 'COBRO_PAGO'
+      ? this.cobranzaOffline.snapshotKey('payment-types', idRoot)
+      : this.cobranzaOffline.snapshotKey('catalog', idRoot, type);
+    return this.cobranzaOffline.cachedRequest(key, 'catálogo de Cobranza', idRoot,
+      this.http.get<any[]>(`${environment.urlAdministration}/Catalog/getCatalogs?idCompany=${idRoot}&type=${type}`, { headers: this.trackingService.getHeaders() }));
   }
 
   addCatalogToAdmon(catalog: any): Observable<any> {

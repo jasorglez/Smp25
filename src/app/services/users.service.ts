@@ -10,6 +10,7 @@ import { map, Observable } from 'rxjs';
 import 'firebase/compat/database';
 import { SignalsService } from './signals.service';
 import { SafeUserData, ApiResponse, sanitizeUserData } from 'app/interface/safe-user.interface';
+import { CobranzaOfflineService } from './cobranza-offline.service';
 
 @Injectable({
   providedIn: 'root'
@@ -19,6 +20,7 @@ export class UsersService {
   private trackingService = inject(TrackingService);
   private http = inject(HttpClient);
   private signalsService = inject(SignalsService);
+  private cobranzaOffline = inject(CobranzaOfflineService);
 
   filterUsersCanAuthorizeProcesses(users: any[]): any[] {
     return (Array.isArray(users) ? users : []).filter(user => {
@@ -42,11 +44,13 @@ export class UsersService {
   }
 
   getDataUsers(idCompany: number): Observable<any> {
-    return this.http.get(`${environment.urlSecurity}/User/userdep?id=${idCompany}`, { headers: this.trackingService.getHeaders() });
+    return this.cobranzaOffline.cachedRequest(this.cobranzaOffline.snapshotKey('cash-users', idCompany), 'usuarios de caja', idCompany,
+      this.http.get(`${environment.urlSecurity}/User/userdep?id=${idCompany}`, { headers: this.trackingService.getHeaders() }));
   }
 
   get2fieldsUsers(idCompany: number): Observable<any> {
-    return this.http.get(`${environment.urlSecurity}/User/2fields?idCompany=${idCompany}`, { headers: this.trackingService.getHeaders() });
+    return this.cobranzaOffline.cachedRequest(this.cobranzaOffline.snapshotKey('collector-users', idCompany), 'cobradores', idCompany,
+      this.http.get(`${environment.urlSecurity}/User/2fields?idCompany=${idCompany}`, { headers: this.trackingService.getHeaders() }));
   }
 
   updateActulizarSecurity(idUser: number, Operacion: string): Observable<any> {

@@ -9,6 +9,8 @@ import { catchError, concat, EMPTY, exhaustMap, Subscription, switchMap, tap, ti
 import { PdfPreviewHostComponent } from './shared/pdf-preview-host/pdf-preview-host.component';
 import { PdfTrialWatermarkService } from './services/pdf-trial-watermark.service';
 import { WorkspaceTabsService } from './services/workspace-tabs.service';
+import { CobranzaOfflineService } from './services/cobranza-offline.service';
+import { CobranzaOfflineSyncService } from './services/cobranza-offline-sync.service';
 
 
 @Component({
@@ -31,6 +33,8 @@ export class AppComponent implements OnInit, OnDestroy {
   private signalsService = inject(SignalsService);
   private trackingService = inject(TrackingService);
   private pdfTrialWatermark = inject(PdfTrialWatermarkService);
+  private cobranzaOffline = inject(CobranzaOfflineService);
+  private cobranzaOfflineSync = inject(CobranzaOfflineSyncService);
 
   @HostListener('window:beforeunload')
   onBeforeUnload(): void {
@@ -69,7 +73,7 @@ export class AppComponent implements OnInit, OnDestroy {
   }
 
   ngOnInit() {
-    // ngOnInit puede permanecer vacío o usarse para otra lógica inicial que no dependa de estos signals.
+    this.cobranzaOfflineSync.start();
   }
 
   ngOnDestroy(): void {
@@ -82,6 +86,17 @@ export class AppComponent implements OnInit, OnDestroy {
   }
 
   private startPermissionSync(email: string, companyId: number, request: number): void {
+    if (!navigator.onLine) {
+      const grant = this.cobranzaOffline.readValidGrant(email, companyId);
+      if (grant) {
+        this.activePermissionUserId = grant.userId;
+        this.activePermissionCompanyId = grant.companyId;
+        this.authService.setUserPermissions({ cobranzas: grant.permissions.cobranzas });
+      } else {
+        this.authService.setUserPermissions({});
+      }
+      return;
+    }
     this.authService.setUserPermissions({});
     if (this.authService.isTokenExpired()) { this.authService.logout(); return; }
     this.permissionSyncSubscription = this.authService.getUserId(email).pipe(
@@ -111,6 +126,7 @@ export class AppComponent implements OnInit, OnDestroy {
   }
 
   private refreshPermissionsNow(): void {
+    if (!navigator.onLine) return;
     if (this.activePermissionUserId === null || this.authService.isTokenExpired()) return;
     this.fetchPermissionsKeepingLast(
       this.activePermissionUserId,
@@ -137,6 +153,10 @@ export class AppComponent implements OnInit, OnDestroy {
     if (companyId !== Number(this.signalsService.getRootSelectedBySidebar()() || 0)) return;
     const permissions = data?.permissions || {};
     this.authService.setUserPermissions(permissions);
+    const email = this.signalsService.getemailChoose() || localStorage.getItem('mail') || '';
+    const userId = Number(this.activePermissionUserId || 0);
+    const branchId = Number(this.signalsService.getBranchSelectedBySidebar()() || 0) || null;
+    void this.cobranzaOffline.recordVerifiedSession({ email, userId, companyId, branchId, permissions });
     if (companyId > 0 && permissions.dashboard?.active !== true) {
       const currentPath = this.router.url.split('?')[0];
       const fallbackUrl = this.workspaceTabs.tabs().find(tab => tab.url !== '/dashboard')?.url || '/publicidad';

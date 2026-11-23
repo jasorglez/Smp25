@@ -6,6 +6,7 @@ import { Ibranch } from 'app/interface/ibranch';
 import { HttpClient } from '@angular/common/http';
 import { EMPTY, Observable } from 'rxjs';
 import { TrackingService } from './tracking.service';
+import { CobranzaOfflineService } from './cobranza-offline.service';
 
 @Injectable({
   providedIn: 'root'
@@ -14,6 +15,7 @@ export class BranchsService {
 
   private http = inject(HttpClient);
   private trackingService = inject(TrackingService);
+  private cobranzaOffline = inject(CobranzaOfflineService);
 
   assignPermissionAfterCreation(userId: number, newEntityId: number, type: string): Observable<any> {
     const permissionData = {
@@ -63,7 +65,8 @@ export class BranchsService {
   getBrancheswoa(idroot : number): Observable<any> {
       //const apiUrl = `${environment.urlSmp}/Branchs/2fieldswoad?idCompany=${idroot}`;
       //alert(apiUrl)
-    return this.http.get(`${environment.urlSmp}/Branchs/2fields?idCompany=${idroot}`, { headers: this.trackingService.getHeaders() });
+    return this.cobranzaOffline.cachedRequest(this.cobranzaOffline.snapshotKey('branches', idroot), 'sucursales', idroot,
+      this.http.get(`${environment.urlSmp}/Branchs/2fields?idCompany=${idroot}`, { headers: this.trackingService.getHeaders() }));
   }
 
   deleteBranch(id: number): Observable<any> {

@@ -16,6 +16,7 @@ import { environment } from '../../environments/environment';
 import { Ilogin } from 'app/interface/ilogin';
 import { SignalsService } from './signals.service';
 import { WorkspaceTabsService } from './workspace-tabs.service';
+import { CobranzaOfflineService } from './cobranza-offline.service';
 import { SafeUserData, ApiResponse, sanitizeUserData } from 'app/interface/safe-user.interface';
 import Swal from 'sweetalert2';
 
@@ -46,6 +47,7 @@ export class AuthService {
   private http = inject(HttpClient);
   private signalsService = inject(SignalsService);
   private workspaceTabs = inject(WorkspaceTabsService);
+  private cobranzaOffline = inject(CobranzaOfflineService);
   private ngZone = inject(NgZone);
 
   idBranch: number;
@@ -63,6 +65,12 @@ export class AuthService {
       this.idBranch = this.signalsService.getBranchSelectedBySidebar()();
       this.isAdvanced = this.signalsService.getIsAdvanced();
     });
+    if (typeof window !== 'undefined') {
+      window.setInterval(() => {
+        if (!navigator.onLine && this.cobranzaOffline.hasStoredOfflineGrant()
+          && !this.cobranzaOffline.hasValidOfflineSession()) void this.logout();
+      }, 15_000);
+    }
   }
 
   login(data: Ilogin) {
@@ -78,6 +86,13 @@ export class AuthService {
 
     const expiry = this.getTokenExpiry(token);
     if (!expiry) return;
+
+    if (!navigator.onLine) {
+      const offlineRemaining = this.cobranzaOffline.getOfflineRemainingMs();
+      if (offlineRemaining <= 0) { void this.logout(); return; }
+      this.sessionExpireTimer = setTimeout(() => this.ngZone.run(() => this.handleSessionExpiration()), offlineRemaining);
+      return;
+    }
 
     const now = Date.now();
     const msUntilExpiry = expiry - now;
@@ -104,13 +119,25 @@ export class AuthService {
     this.sessionExpireTimer = setTimeout(() => {
       this.ngZone.run(() => {
         Swal.close();
-        this.logout();
+        this.handleSessionExpiration();
       });
     }, msUntilExpiry);
   }
 
+  private handleSessionExpiration(): void {
+    if (!navigator.onLine) {
+      const remaining = this.cobranzaOffline.getOfflineRemainingMs();
+      if (remaining > 0) {
+        this.sessionExpireTimer = setTimeout(() => this.ngZone.run(() => this.handleSessionExpiration()), remaining);
+        return;
+      }
+    }
+    void this.logout();
+  }
+
   // ─── Muestra alerta de advertencia con cuenta regresiva ───
   private showSessionWarning(msRemaining: number): void {
+    if (!navigator.onLine && this.cobranzaOffline.hasValidOfflineSession()) return;
     const secondsRemaining = Math.floor(msRemaining / 1000);
 
     let timerInterval: any;
@@ -139,6 +166,7 @@ export class AuthService {
       }
     }).then((result) => {
       if (result.isConfirmed) {
+        if (!navigator.onLine && this.cobranzaOffline.hasValidOfflineSession()) return;
         // Usuario hizo clic en "Entendido" → renovar token para darle sesión completa nueva
         this.renewToken().then(ok => {
           if (!ok) this.logout(); // si el backend falla, cerrar sesión
@@ -243,28 +271,18 @@ export class AuthService {
     this.clearSessionTimers();
     this.workspaceTabs.preserveForLogout();
     try {
-      await this.trackingService.endSession();
-      this.trackingService.addLog(
-        '',
-        'Salio del Sistema - Cierre de sesion',
-        'Menu Side Bar',
-        ''
-      );
-      localStorage.removeItem('token');
-      localStorage.removeItem('refreshToken');
-      localStorage.removeItem('project');
-      localStorage.removeItem('company');
-      localStorage.removeItem('branch');
-      localStorage.removeItem('mail');
-      localStorage.removeItem('sqlToken');
-      localStorage.removeItem('userRoot');
-      this.signalsService.deleteSignals();
-      this.router.navigateByUrl('/login');
-
-      await signOut(this.auth);
-    } catch (error) {
-      console.log(error);
+      if (navigator.onLine) {
+        await this.trackingService.endSession();
+        this.trackingService.addLog('', 'Salio del Sistema - Cierre de sesion', 'Menu Side Bar', '');
+      }
+    } catch (error) { console.warn('No se pudo registrar el cierre de sesión en el servidor:', error); }
+    this.cobranzaOffline.clearOfflineGrant();
+    for (const key of ['token', 'refreshToken', 'project', 'company', 'branch', 'mail', 'sqlToken', 'userRoot']) {
+      localStorage.removeItem(key);
     }
+    this.signalsService.deleteSignals();
+    this.router.navigateByUrl('/login');
+    try { await signOut(this.auth); } catch (error) { console.warn('No se pudo cerrar la sesión remota de Firebase:', error); }
   }
 
   getCurrentUser(): Promise<User | null> {

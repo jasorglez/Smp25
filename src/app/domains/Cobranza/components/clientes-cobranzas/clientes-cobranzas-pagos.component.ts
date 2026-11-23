@@ -410,7 +410,7 @@ export class ClientesCobranzasPagosComponent implements OnChanges, OnDestroy {
           alerts.basicAlert('Error', 'No se pudieron cargar los usuarios de la empresa.', 'error');
           return;
         }
-        this.users = (Array.isArray(result?.data) ? result.data : [])
+        this.users = (Array.isArray(result) ? result : Array.isArray(result?.data) ? result.data : Array.isArray(result?.items) ? result.items : [])
           .slice().sort((a: any, b: any) => String(a.displayName || a.usersmall || a.email || '').localeCompare(String(b.displayName || b.usersmall || b.email || ''), 'es'));
         if (this.abonoForm.idUsuarioCobrador && !this.users.some(user => Number(user.id) === Number(this.abonoForm.idUsuarioCobrador))) {
           this.abonoForm.idUsuarioCobrador = null;
