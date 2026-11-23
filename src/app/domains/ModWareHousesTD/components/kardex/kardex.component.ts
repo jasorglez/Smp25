@@ -87,8 +87,11 @@ export class KardexComponent {
   constructor() {
     this.route.queryParamMap.subscribe(params => {
       const id = Number(params.get('materialId'));
-      this.materialIdFilter = Number.isFinite(id) && id > 0 ? id : null;
-      this.applyFilters();
+      const nextMaterialId = Number.isFinite(id) && id > 0 ? id : null;
+      const changed = nextMaterialId !== this.materialIdFilter;
+      this.materialIdFilter = nextMaterialId;
+      if (changed && this.idRoot) this.load();
+      else this.applyFilters();
     });
     effect(() => {
       const root = this.signals.getRootSelectedBySidebar()();
@@ -115,6 +118,18 @@ export class KardexComponent {
       }),
       switchMap((raw: any) => {
         this.warehouses = this.asArray(raw);
+        if (this.materialIdFilter) {
+          const warehouseIds = this.warehouses.map(w => this.warehouseId(w)).filter(id => id > 0);
+          if (!warehouseIds.length) return of({ __optimizedKardex: [] });
+          return this.movementService.getKardexByMaterial(this.materialIdFilter, warehouseIds).pipe(
+            map(rows => ({ __optimizedKardex: this.asArray(rows) })),
+            catchError(error => {
+              console.warn('[Kardex] No se pudo cargar el historial del material', { materialId: this.materialIdFilter, error });
+              warn('No se pudo cargar el historial del material.');
+              return of({ __optimizedKardex: [] });
+            })
+          );
+        }
         const requests = this.warehouses.flatMap(w => ['IN', 'OUT'].map(type =>
           this.movementService.getWarehouseMovements(this.warehouseId(w), type as 'IN' | 'OUT').pipe(
             catchError(error => { console.warn('[Kardex] No se pudieron cargar encabezados', { warehouse: this.warehouseId(w), type, error }); warn('No se pudieron cargar algunos encabezados de movimientos.'); return of([]); }),
@@ -123,7 +138,10 @@ export class KardexComponent {
         ));
         return requests.length ? forkJoin(requests) : of([]);
       }),
-      switchMap(groups => {
+      switchMap((groups: any) => {
+        if (Object.prototype.hasOwnProperty.call(groups, '__optimizedKardex')) {
+          return of({ optimizedRows: groups.__optimizedKardex });
+        }
         const masters = this.asArray(groups).flatMap((g: any) => g.masters
           .filter((m: any) => m.active !== false && Number(m.active) !== 0)
           .map((m: any) => ({ ...m, __warehouse: g.warehouse, __movementType: g.type })));
@@ -133,12 +151,21 @@ export class KardexComponent {
         ));
         return forkJoin({ masters: of(masters), details: details$.length ? forkJoin(details$) : of([]) });
       }),
-      switchMap(result => this.materialsService.getMaterials2Fields(this.idRoot!).pipe(
+      switchMap((result: any) => result.optimizedRows
+        ? of(result)
+        : this.materialsService.getMaterials2Fields(this.idRoot!).pipe(
         catchError(() => { warn('No se pudo cargar el catálogo de materiales.'); return of([]); }),
         map((materials: any) => ({ ...result, materials: this.asArray(materials) }))
       ))
     ).subscribe({
       next: result => {
+        if (result.optimizedRows) {
+          const rows = result.optimizedRows.map((row: any) => ({ ...row, fechaRaw: row.fecha, saldo: 0 }));
+          this.allRows = this.addRunningBalances(rows);
+          this.applyFilters();
+          this.loading = false;
+          return;
+        }
         const materialMap = new Map(result.materials.map((m: any) => [Number(m.id), m]));
         const rows = result.details.flatMap((group: any) => group.items
           .filter((item: any) => item.active !== false && Number(item.active) !== 0)
@@ -196,7 +223,7 @@ export class KardexComponent {
   }
 
   clearFilters(): void { this.materialSearch = ''; this.warehouseFilter = ''; this.dateFrom = ''; this.dateTo = ''; this.applyFilters(); }
-  clearMaterialFilter(): void { this.materialIdFilter = null; this.applyFilters(); }
+  clearMaterialFilter(): void { this.materialIdFilter = null; this.load(); }
   warehouseId(w: any): number { return Number(w?.idAlmacen ?? w?.idWarehouse ?? w?.warehouseId ?? w?.id ?? 0); }
   warehouseName(w: any): string { return w?.nombreAlmacen || w?.nameWarehouse || w?.name || w?.description || `Almacén ${this.warehouseId(w)}`; }
   private asArray(value: any): any[] { return Array.isArray(value) ? value : (value?.data || value?.result || value?.items || []); }

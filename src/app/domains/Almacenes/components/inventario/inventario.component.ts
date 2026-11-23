@@ -1,4 +1,5 @@
 import { Component, effect, inject } from '@angular/core';
+import { Router } from '@angular/router';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { AgGridModule } from 'ag-grid-angular';
@@ -94,6 +95,7 @@ import { catchError, forkJoin, map, of, switchMap } from 'rxjs';
   `,
 })
 export class InventarioComponent {
+  private router = inject(Router);
   private signalsService     = inject(SignalsService);
   private inventarioService  = inject(InventarioWarehouseService);
   private permitionsService  = inject(PermitionsService);
@@ -160,6 +162,15 @@ export class InventarioComponent {
         const color  = c[p.data?.estadoStock] || '#333';
         return `<strong style="color:${color}; font-size:1rem">${this.formatQuantity(p.value)}</strong>`;
       },
+    },
+    {
+      headerName: 'Kardex', width: 82, editable: false, sortable: false, resizable: false,
+      cellStyle: { textAlign: 'center', paddingTop: '3px' },
+      cellRenderer: () =>
+        `<button class="btn btn-sm btn-outline-primary py-0 px-1" style="font-size:0.7rem" title="Ver Kardex del material">
+           <i class="bi bi-journal-arrow-up"></i> Kardex
+         </button>`,
+      onCellClicked: params => this.openKardex(params.data),
     },
     {
       field: 'stockMin', headerName: 'Mín', width: 68, type: 'numericColumn',
@@ -578,5 +589,11 @@ export class InventarioComponent {
     } catch {
       alerts.basicAlert('Error', 'No se pudo guardar el ajuste. Verifica que el almacén seleccionado sea correcto.', 'error');
     }
+  }
+
+  openKardex(row: any): void {
+    const materialId = Number(row?.id);
+    if (!Number.isInteger(materialId) || materialId <= 0) return;
+    void this.router.navigate(['/warehousesTD/kardex'], { queryParams: { materialId } });
   }
 }

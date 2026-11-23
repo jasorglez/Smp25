@@ -46,6 +46,14 @@ export class InventarioWarehouseService {
     );
   }
 
+  getKardexByMaterial(idMaterial: number, warehouseIds: number[]): Observable<any[]> {
+    const params = warehouseIds.map(id => `warehouseIds=${encodeURIComponent(id)}`).join('&');
+    return this.http.get<any[]>(
+      `${environment.urlWarehouse}/Detailsinandout/kardex/${idMaterial}?${params}`,
+      { headers: this.trackingService.getHeaders() }
+    );
+  }
+
   ajustar(data: AjusteDto): Observable<any> {
     return this.http.post<any>(
       `${environment.urlWarehouse}/inventario/ajuste`,
