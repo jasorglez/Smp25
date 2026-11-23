@@ -23,10 +23,18 @@ BEGIN
         N'La caja web puede preparar localmente clientes, préstamos, cuotas, catálogos y datos de caja. Con una sesión previamente validada, permite operar Cobranza sin conexión hasta ocho horas y sincroniza los registros locales al recuperar internet.',
         N'Permite continuar la operación de la caja cuando se interrumpe internet y enviar los movimientos pendientes cuando vuelve la conexión.',
         N'Sigue cobrando durante una interrupción de internet: Cobranza guarda los movimientos en la caja y los sincroniza al recuperar conexión, con acceso offline de hasta ocho horas.',
-        SYSUTCDATETIME(), N'America/Indiana/Indianapolis', N'PASSED', N'LOCAL', N'DRAFT',
+        SYSUTCDATETIME(), N'America/Indiana/Indianapolis', N'PASSED', N'PRODUCTION', N'DRAFT',
         NULL, NULL, SYSUTCDATETIME(), SYSUTCDATETIME(), 1
     );
 END;
+
+UPDATE dbo.product_updates WITH (UPDLOCK, HOLDLOCK)
+SET validationStatus = N'PASSED',
+    releaseStatus = N'PRODUCTION',
+    updatedAtUtc = SYSUTCDATETIME()
+WHERE version = N'5.00.611'
+  AND module = N'Cobranza / Caja web'
+  AND idRoot IS NULL AND idCompany IS NULL AND isActive = 1;
 
 COMMIT TRANSACTION;
 
