@@ -28,11 +28,6 @@
                  <i class="bi bi-wallet2"></i><span>Cajas</span>
                </a>
             </li>
-            <li class="nav-item" *ngIf="authService.hasDetailedPermission('setup', 'consecutivos')">
-               <a class="nav-link green-tab" routerLink="consecutivos" routerLinkActive="active">
-                 <i class="bi bi-hash"></i><span>Consecutivos</span>
-               </a>
-            </li>
             <li class="nav-item" *ngIf="authService.hasDetailedPermission('setup', 'users')">
                <a class="nav-link green-tab" routerLink="users" routerLinkActive="active">
                  <i class="bi bi-person-bounding-box"></i><span>{{ 'user' | translate}}</span>

@@ -6577,8 +6577,8 @@ IF OBJECT_ID(N'dbo.product_updates', N'U') IS NOT NULL
 AND NOT EXISTS (
     SELECT 1
     FROM dbo.product_updates WITH (UPDLOCK, HOLDLOCK)
-    WHERE version = N'5.00.615'
-      AND module = N'Configuración / Consecutivos'
+    WHERE version = N'5.00.616'
+      AND module = N'Cobranza / Configuración'
       AND idRoot IS NULL
       AND idCompany IS NULL
       AND isActive = 1
@@ -6591,11 +6591,11 @@ BEGIN
         createdAtUtc, updatedAtUtc, isActive
     )
     VALUES (
-        NULL, NULL, N'5.00.615', N'Configuración / Consecutivos', N'IMPROVEMENT',
-        N'Control de consecutivos por empresa',
-        N'Se agregó una pantalla para administrar prefijos y el siguiente número de folio por empresa, con vista previa del valor que se formará. La API permite reservar números sin repetirlos.',
+        NULL, NULL, N'5.00.616', N'Cobranza / Configuración', N'IMPROVEMENT',
+        N'Configuración de consecutivos en Cobranza',
+        N'Se agregó en Cobranza una pantalla para administrar prefijos y el siguiente número de folio por empresa, visible mediante el menú dinámico del módulo. La API permite reservar números sin repetirlos.',
         N'Permite mantener consecutivos independientes por empresa y preparar su uso desde los procesos que generen documentos.',
-        N'Configura los prefijos de folio por empresa y lleva el control de cada siguiente número.',
+        N'Administra desde Configuración de Cobranza los prefijos y siguientes números de folio de cada empresa.',
         SYSUTCDATETIME(), N'America/Indiana/Indianapolis', N'PENDING', N'LOCAL', N'DRAFT',
         NULL, NULL, SYSUTCDATETIME(), SYSUTCDATETIME(), 1
     );

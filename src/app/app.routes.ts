@@ -1129,19 +1129,6 @@ export const routes: Routes = [
             canDeactivate: [UnsavedChangesGuard],
           },
           {
-            path: 'consecutivos',
-            loadComponent: () =>
-              import('./domains/SMP/Components/consecutivos/consecutivos.component').then(
-                (m) => m.ConsecutivosComponent
-              ),
-            canActivate: [MasterPermissionsGuard, TrackingGuard],
-            data: {
-              permissions: { master: 'setup', detailed: 'consecutivos' },
-              tracking: { logMessage: 'Click en Configuración de Consecutivos', category: 'Setup' }
-            },
-            canDeactivate: [UnsavedChangesGuard],
-          },
-          {
             path: 'logs',
             loadComponent: () =>
               import('./domains/SMP/Components/kardex/kardex.component').then(
@@ -1209,6 +1196,16 @@ export const routes: Routes = [
             loadComponent: () => import('./domains/Cobranza/pages/cobradores-cobranza.component').then(m => m.CobradoresCobranzaComponent),
             canActivate: [MasterPermissionsGuard],
             data: { permissions: { master: 'cobranzas', detailed: 'cobr' } }
+          },
+          {
+            path: 'configuracion',
+            loadComponent: () => import('./domains/Cobranza/components/configuracion-consecutivos/consecutivos.component').then(m => m.ConsecutivosComponent),
+            canActivate: [MasterPermissionsGuard],
+            canDeactivate: [UnsavedChangesGuard],
+            data: {
+              permissions: { master: 'cobranzas', detailed: 'configuracion' },
+              tracking: { logMessage: 'Click en Configuración de Cobranza', category: 'Cobranza' }
+            }
           }
         ]
       },
