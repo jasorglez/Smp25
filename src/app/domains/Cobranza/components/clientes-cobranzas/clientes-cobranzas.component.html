@@ -46,10 +46,6 @@
         </button>
       </div>
       <div *ngIf="loanTotalsError && type === 'CUSTOMERS'" class="text-warning small mb-2" role="alert">{{ loanTotalsError }}</div>
-      <div *ngIf="type === 'CUSTOMERS' && loanTotalsLoaded && overdueCustomerCount > 0" class="alert alert-warning d-flex align-items-center justify-content-between gap-2 flex-wrap py-2 mb-2" role="alert">
-        <div><i class="bi bi-exclamation-triangle-fill me-2 text-danger"></i><strong>{{ overdueCustomerCount }} clientes</strong> tienen <strong>{{ overdueInstallmentCount }} cuotas vencidas</strong>, con un saldo pendiente de <strong>{{ overdueBalance | currency:'MXN' }}</strong>.</div>
-        <button type="button" class="btn btn-sm btn-outline-danger" (click)="setBalanceFilter('overdue')">Ver clientes vencidos</button>
-      </div>
       <ag-grid-angular
       #clientesGrid
       style="width: 100%;"

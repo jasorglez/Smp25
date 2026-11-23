@@ -1,7 +1,7 @@
-import { Component, OnInit, OnDestroy, effect, inject, computed } from '@angular/core';
+import { Component, OnInit, OnDestroy, effect, inject, computed, HostListener } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { ActivatedRouteSnapshot, NavigationEnd, Router, RouterOutlet } from '@angular/router';
-import { filter, Subscription } from 'rxjs';
+import { ActivatedRouteSnapshot, NavigationEnd, Router, RouterLink, RouterOutlet } from '@angular/router';
+import { catchError, EMPTY, filter, Subscription, switchMap, timer } from 'rxjs';
 import { SideBarComponent } from 'app/shared/side-bar/side-bar.component';
 import { FooterComponent } from 'app/shared/footer/footer.component';
 import { SignalsService } from '../../services/signals.service';
@@ -12,12 +12,13 @@ import { environment } from '@env/environment';
 import { WorkspaceTab, WorkspaceTabsService } from 'app/services/workspace-tabs.service';
 import { QuickActionsService } from 'app/services/quick-actions.service';
 import { SignalrService } from 'app/services/signalr.service';
+import { CustomersService } from 'app/services/customers.service';
 import Swal from 'sweetalert2';
 
 @Component({
   selector: 'app-main-page',
   standalone: true,
-  imports: [CommonModule, RouterOutlet, SideBarComponent, FooterComponent],
+  imports: [CommonModule, RouterOutlet, RouterLink, SideBarComponent, FooterComponent],
   templateUrl: './main-page.component.html',
   styleUrls: ['./main-page.component.scss'],
 })
@@ -30,9 +31,13 @@ export class MainPageComponent implements OnInit, OnDestroy {
   readonly workspaceTabs   = inject(WorkspaceTabsService);
   private quickActions     = inject(QuickActionsService);
   private signalrService   = inject(SignalrService);
+  private customersService = inject(CustomersService);
 
   private routerSub?: Subscription;
   private cobranzaSub?: Subscription;
+  private overdueRefreshSub?: Subscription;
+  private overdueContextKey = '';
+  overdueNotice: { customers: number; installments: number; balance: number } | null = null;
   draggingTabUrl = '';
   private restoringWorkspaceUrl = '';
 
@@ -94,11 +99,35 @@ export class MainPageComponent implements OnInit, OnDestroy {
         this.trackingService.setEsProspecto(false);
       }
     });
+
+    effect(() => {
+      const rootId = Number(this.signalsService.getRootSelectedBySidebar()() || 0);
+      const canViewCobranza = this.auth.getUserPermissions()?.cobranzas?.active === true;
+      const contextKey = `${rootId}|${canViewCobranza}`;
+      if (contextKey === this.overdueContextKey) return;
+      this.overdueContextKey = contextKey;
+      this.overdueRefreshSub?.unsubscribe();
+      this.overdueNotice = null;
+      if (!rootId || !canViewCobranza || !localStorage.getItem('token')) return;
+      this.overdueRefreshSub = timer(0, 5 * 60 * 1000).pipe(
+        switchMap(() => this.customersService.getCobranzaDashboard(rootId).pipe(
+          catchError(error => {
+            console.warn('No se pudo actualizar el aviso global de cuotas vencidas:', error);
+            return EMPTY;
+          })
+        ))
+      ).subscribe(loans => {
+        if (rootId === Number(this.signalsService.getRootSelectedBySidebar()())) {
+          this.overdueNotice = this.summarizeOverdueLoans(loans || []);
+        }
+      });
+    });
   }
 
   ngOnDestroy(): void {
     this.routerSub?.unsubscribe();
     this.cobranzaSub?.unsubscribe();
+    this.overdueRefreshSub?.unsubscribe();
     this.signalrService.stopCobranzaConnection();
   }
 
@@ -106,6 +135,7 @@ export class MainPageComponent implements OnInit, OnDestroy {
     this.initialBranchId = this.signalsService.getBranchSelectedBySidebar()();
     this.cobranzaSub = this.signalrService.cobranzaPayment$.subscribe(payment => {
       if (!payment || Number(payment.companyId) !== Number(this.signalsService.getRootSelectedBySidebar()())) return;
+      this.refreshOverdueNotice();
       const amount = Number(payment.amount || 0).toLocaleString('es-MX', { style: 'currency', currency: 'MXN' });
       const overdueInstallments = Number(payment.overdueInstallments || 0);
       const overdueAmount = Number(payment.overdueAmount || 0).toLocaleString('es-MX', { style: 'currency', currency: 'MXN' });
@@ -173,6 +203,48 @@ export class MainPageComponent implements OnInit, OnDestroy {
     // Escuchar cambios locales (mismo tab)
     this.checkSidebarState();
     setInterval(() => this.checkSidebarState(), 100);
+  }
+
+  @HostListener('window:focus')
+  refreshOverdueNotice(): void {
+    const rootId = Number(this.signalsService.getRootSelectedBySidebar()() || 0);
+    if (!rootId || !this.auth.hasMasterPermission('cobranzas')) return;
+    this.customersService.getCobranzaDashboard(rootId).subscribe({
+      next: loans => {
+        if (rootId === Number(this.signalsService.getRootSelectedBySidebar()())) {
+          this.overdueNotice = this.summarizeOverdueLoans(loans || []);
+        }
+      },
+      error: error => console.warn('No se pudo actualizar el aviso global de cuotas vencidas:', error)
+    });
+  }
+
+  private summarizeOverdueLoans(loans: any[]): { customers: number; installments: number; balance: number } | null {
+    const today = new Date();
+    const todayKey = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
+    const customerIds = new Set<number>();
+    let installments = 0;
+    let balance = 0;
+    for (const loan of loans) {
+      for (const item of loan?.cuotas || loan?.Cuotas || []) {
+        if (item?.active === false || item?.Active === false) continue;
+        const due = String(item?.fechaProgramada ?? item?.FechaProgramada ?? '').slice(0, 10);
+        if (!due || due >= todayKey) continue;
+        const payments = item?.abonos || item?.Abonos || [];
+        const appliedValue = item?.montoAplicado ?? item?.MontoAplicado;
+        const paid = appliedValue !== null && appliedValue !== undefined
+          ? Number(appliedValue)
+          : payments.filter((payment: any) => payment?.active !== false && payment?.Active !== false)
+            .reduce((sum: number, payment: any) => sum + Number(payment?.monto ?? payment?.Monto ?? 0), 0);
+        const remaining = Math.max(0, Number(item?.montoProgramado ?? item?.MontoProgramado ?? 0) - paid);
+        if (remaining <= 0) continue;
+        installments++;
+        balance += remaining;
+        const customerId = Number(loan?.idCustomer ?? loan?.IdCustomer);
+        if (customerId) customerIds.add(customerId);
+      }
+    }
+    return installments ? { customers: customerIds.size, installments, balance } : null;
   }
 
   private handleStorageChange(event: StorageEvent) {

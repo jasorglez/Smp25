@@ -16,6 +16,15 @@
   padding: 0;
 }
 
+.global-overdue-alert {
+  position: sticky;
+  top: 0;
+  z-index: 1050;
+  border-radius: 0;
+  margin: 0;
+  box-shadow: 0 2px 8px rgba(127, 29, 29, 0.16);
+}
+
 .main-layout.sidebar-collapsed .main-content-container {
   margin-left: 70px;
   width: calc(100vw - 70px);

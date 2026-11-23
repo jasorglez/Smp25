@@ -5,6 +5,11 @@
   <!-- Contenedor principal -->
   <div class="main-content-container d-flex flex-column min-vh-100">
 
+    <div *ngIf="overdueNotice as notice" class="alert alert-danger global-overdue-alert d-flex align-items-center justify-content-between gap-2 flex-wrap py-2 px-3" role="alert">
+      <div><i class="bi bi-exclamation-triangle-fill me-2"></i><strong>Atención:</strong> {{ notice.customers }} clientes tienen {{ notice.installments }} cuotas vencidas, con saldo pendiente de <strong>{{ notice.balance | currency:'MXN' }}</strong>.</div>
+      <a class="btn btn-sm btn-outline-danger" routerLink="/cobranza/clientes"><i class="bi bi-arrow-right-circle me-1"></i>Revisar cobranza</a>
+    </div>
+
     <!-- Banner: modo demo -->
     <div *ngIf="isDemo()"
          class="alert mb-0 py-1 px-3 d-flex align-items-center justify-content-between gap-2"
