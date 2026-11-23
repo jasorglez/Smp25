@@ -22,6 +22,7 @@ BEGIN
 END;
 GO
 
+
 use administration;
 /* Base Administration */
 IF COL_LENGTH('dbo.incomeandexpense', 'accepts_oc') IS NULL
@@ -2799,20 +2800,20 @@ GO
 /* Reutiliza pv.cajero_turnos y las tiendas/cajas existentes para aperturas.
    Los abonos cobrados en el negocio quedan ligados al turno; los de domicilio
    conservan NULL para poder manejar Telegram en una etapa posterior. */
-IF COL_LENGTH('dbo.abonos_cobranza', 'origen_cobro') IS NULL
-    ALTER TABLE dbo.abonos_cobranza ADD origen_cobro NVARCHAR(20) NOT NULL
+IF COL_LENGTH('cobranzas.abonos_cobranza', 'origen_cobro') IS NULL
+    ALTER TABLE cobranzas.abonos_cobranza ADD origen_cobro NVARCHAR(20) NOT NULL
         CONSTRAINT DF_abonos_cobranza_origen_cobro DEFAULT N'DOMICILIO';
-IF COL_LENGTH('dbo.abonos_cobranza', 'id_cajero_turno') IS NULL
-    ALTER TABLE dbo.abonos_cobranza ADD id_cajero_turno INT NULL;
+IF COL_LENGTH('cobranzas.abonos_cobranza', 'id_cajero_turno') IS NULL
+    ALTER TABLE cobranzas.abonos_cobranza ADD id_cajero_turno INT NULL;
 GO
 
 IF NOT EXISTS (SELECT 1 FROM sys.foreign_keys WHERE name = 'FK_abonos_cobranza_cajero_turnos')
-    ALTER TABLE dbo.abonos_cobranza ADD CONSTRAINT FK_abonos_cobranza_cajero_turnos
+    ALTER TABLE cobranzas.abonos_cobranza ADD CONSTRAINT FK_abonos_cobranza_cajero_turnos
         FOREIGN KEY (id_cajero_turno) REFERENCES pv.cajero_turnos(id);
 GO
 
-IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'IX_abonos_cobranza_id_cajero_turno' AND object_id = OBJECT_ID('dbo.abonos_cobranza'))
-    CREATE INDEX IX_abonos_cobranza_id_cajero_turno ON dbo.abonos_cobranza(id_cajero_turno)
+IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'IX_abonos_cobranza_id_cajero_turno' AND object_id = OBJECT_ID('cobranzas.abonos_cobranza'))
+    CREATE INDEX IX_abonos_cobranza_id_cajero_turno ON cobranzas.abonos_cobranza(id_cajero_turno)
         WHERE id_cajero_turno IS NOT NULL;
 GO
 
@@ -3039,15 +3040,15 @@ WHERE NOT EXISTS (
 );
 GO
 
-IF COL_LENGTH('dbo.abonos_cobranza', 'id_tipo_pago') IS NULL
-    ALTER TABLE dbo.abonos_cobranza ADD id_tipo_pago INT NULL;
-IF COL_LENGTH('dbo.abonos_cobranza', 'id_usuario_cobrador') IS NULL
-    ALTER TABLE dbo.abonos_cobranza ADD id_usuario_cobrador INT NULL;
+IF COL_LENGTH('cobranzas.abonos_cobranza', 'id_tipo_pago') IS NULL
+    ALTER TABLE cobranzas.abonos_cobranza ADD id_tipo_pago INT NULL;
+IF COL_LENGTH('cobranzas.abonos_cobranza', 'id_usuario_cobrador') IS NULL
+    ALTER TABLE cobranzas.abonos_cobranza ADD id_usuario_cobrador INT NULL;
 GO
 
-IF OBJECT_ID('dbo.cortes_cobranza', 'U') IS NULL
+IF OBJECT_ID('cobranzas.cortes_cobranza', 'U') IS NULL
 BEGIN
-    CREATE TABLE dbo.cortes_cobranza (
+    CREATE TABLE cobranzas.cortes_cobranza (
         id INT IDENTITY(1,1) NOT NULL PRIMARY KEY,
         id_root INT NOT NULL,
         id_usuario_cobrador INT NULL,
@@ -3059,13 +3060,13 @@ BEGIN
         active BIT NOT NULL DEFAULT 1,
         CONSTRAINT CK_cortes_cobranza_fechas CHECK (fecha_hasta >= fecha_desde)
     );
-    CREATE INDEX IX_cortes_cobranza_root_fecha ON dbo.cortes_cobranza(id_root, fecha_desde, fecha_hasta, id_usuario_cobrador);
+    CREATE INDEX IX_cortes_cobranza_root_fecha ON cobranzas.cortes_cobranza(id_root, fecha_desde, fecha_hasta, id_usuario_cobrador);
 END;
 GO
 
-IF OBJECT_ID('dbo.cortes_cobranza_abonos', 'U') IS NULL
+IF OBJECT_ID('cobranzas.cortes_cobranza_abonos', 'U') IS NULL
 BEGIN
-    CREATE TABLE dbo.cortes_cobranza_abonos (
+    CREATE TABLE cobranzas.cortes_cobranza_abonos (
         id INT IDENTITY(1,1) NOT NULL PRIMARY KEY,
         id_corte INT NOT NULL,
         id_abono INT NOT NULL,
@@ -3073,8 +3074,8 @@ BEGIN
         id_usuario_cobrador INT NULL,
         monto DECIMAL(18,2) NOT NULL,
         inicio DATETIME2(0) NOT NULL DEFAULT SYSUTCDATETIME(),
-        CONSTRAINT FK_cortes_cobranza_abonos_corte FOREIGN KEY (id_corte) REFERENCES dbo.cortes_cobranza(id),
-        CONSTRAINT FK_cortes_cobranza_abonos_abono FOREIGN KEY (id_abono) REFERENCES dbo.abonos_cobranza(id),
+        CONSTRAINT FK_cortes_cobranza_abonos_corte FOREIGN KEY (id_corte) REFERENCES cobranzas.cortes_cobranza(id),
+        CONSTRAINT FK_cortes_cobranza_abonos_abono FOREIGN KEY (id_abono) REFERENCES cobranzas.abonos_cobranza(id),
         CONSTRAINT UQ_cortes_cobranza_abono UNIQUE (id_corte, id_abono)
     );
 END;
@@ -3214,9 +3215,9 @@ GO
 use administration;
 /* Plan de préstamos y cobros por cliente en Administration.
    Cada préstamo genera el número configurable de cuotas mensuales; cada cuota puede recibir varios abonos. */
-IF OBJECT_ID(N'dbo.prestamos_cobranza', N'U') IS NULL
+IF OBJECT_ID(N'cobranzas.prestamos_cobranza', N'U') IS NULL
 BEGIN
-    CREATE TABLE dbo.prestamos_cobranza
+    CREATE TABLE cobranzas.prestamos_cobranza
     (
         id INT IDENTITY(1,1) NOT NULL CONSTRAINT PK_prestamos_cobranza PRIMARY KEY,
         id_customer INT NOT NULL,
@@ -3231,13 +3232,13 @@ BEGIN
         CONSTRAINT CK_prestamos_cobranza_cuotas CHECK (numero_cuotas >= 1),
         CONSTRAINT FK_prestamos_cobranza_customers FOREIGN KEY (id_customer) REFERENCES dbo.customers(id)
     );
-    CREATE INDEX IX_prestamos_cobranza_customer ON dbo.prestamos_cobranza(id_customer, active, inicio DESC);
+    CREATE INDEX IX_prestamos_cobranza_customer ON cobranzas.prestamos_cobranza(id_customer, active, inicio DESC);
 END;
 GO
 
-IF OBJECT_ID(N'dbo.cuotas_cobranza', N'U') IS NULL
+IF OBJECT_ID(N'cobranzas.cuotas_cobranza', N'U') IS NULL
 BEGIN
-    CREATE TABLE dbo.cuotas_cobranza
+    CREATE TABLE cobranzas.cuotas_cobranza
     (
         id INT IDENTITY(1,1) NOT NULL CONSTRAINT PK_cuotas_cobranza PRIMARY KEY,
         id_prestamo INT NOT NULL,
@@ -3250,32 +3251,32 @@ BEGIN
         CONSTRAINT CK_cuotas_cobranza_numero CHECK (numero_cuota >= 1),
         CONSTRAINT CK_cuotas_cobranza_monto CHECK (monto_programado > 0),
         CONSTRAINT UQ_cuotas_cobranza_numero UNIQUE (id_prestamo, numero_cuota),
-        CONSTRAINT FK_cuotas_cobranza_prestamos FOREIGN KEY (id_prestamo) REFERENCES dbo.prestamos_cobranza(id)
+        CONSTRAINT FK_cuotas_cobranza_prestamos FOREIGN KEY (id_prestamo) REFERENCES cobranzas.prestamos_cobranza(id)
     );
-    CREATE INDEX IX_cuotas_cobranza_prestamo_fecha ON dbo.cuotas_cobranza(id_prestamo, fecha_programada, numero_cuota);
+    CREATE INDEX IX_cuotas_cobranza_prestamo_fecha ON cobranzas.cuotas_cobranza(id_prestamo, fecha_programada, numero_cuota);
 END;
 GO
 
 /* Actualiza las restricciones en instalaciones creadas con el calendario fijo de 10 pagos. */
-IF OBJECT_ID(N'dbo.prestamos_cobranza', N'U') IS NOT NULL
+IF OBJECT_ID(N'cobranzas.prestamos_cobranza', N'U') IS NOT NULL
 BEGIN
-    IF EXISTS (SELECT 1 FROM sys.check_constraints WHERE parent_object_id = OBJECT_ID(N'dbo.prestamos_cobranza') AND name = N'CK_prestamos_cobranza_cuotas')
-        ALTER TABLE dbo.prestamos_cobranza DROP CONSTRAINT CK_prestamos_cobranza_cuotas;
-    ALTER TABLE dbo.prestamos_cobranza ADD CONSTRAINT CK_prestamos_cobranza_cuotas CHECK (numero_cuotas >= 1);
+    IF EXISTS (SELECT 1 FROM sys.check_constraints WHERE parent_object_id = OBJECT_ID(N'cobranzas.prestamos_cobranza') AND name = N'CK_prestamos_cobranza_cuotas')
+        ALTER TABLE cobranzas.prestamos_cobranza DROP CONSTRAINT CK_prestamos_cobranza_cuotas;
+    ALTER TABLE cobranzas.prestamos_cobranza ADD CONSTRAINT CK_prestamos_cobranza_cuotas CHECK (numero_cuotas >= 1);
 END;
 GO
 
-IF OBJECT_ID(N'dbo.cuotas_cobranza', N'U') IS NOT NULL
+IF OBJECT_ID(N'cobranzas.cuotas_cobranza', N'U') IS NOT NULL
 BEGIN
-    IF EXISTS (SELECT 1 FROM sys.check_constraints WHERE parent_object_id = OBJECT_ID(N'dbo.cuotas_cobranza') AND name = N'CK_cuotas_cobranza_numero')
-        ALTER TABLE dbo.cuotas_cobranza DROP CONSTRAINT CK_cuotas_cobranza_numero;
-    ALTER TABLE dbo.cuotas_cobranza ADD CONSTRAINT CK_cuotas_cobranza_numero CHECK (numero_cuota >= 1);
+    IF EXISTS (SELECT 1 FROM sys.check_constraints WHERE parent_object_id = OBJECT_ID(N'cobranzas.cuotas_cobranza') AND name = N'CK_cuotas_cobranza_numero')
+        ALTER TABLE cobranzas.cuotas_cobranza DROP CONSTRAINT CK_cuotas_cobranza_numero;
+    ALTER TABLE cobranzas.cuotas_cobranza ADD CONSTRAINT CK_cuotas_cobranza_numero CHECK (numero_cuota >= 1);
 END;
 GO
 
-IF OBJECT_ID(N'dbo.abonos_cobranza', N'U') IS NULL
+IF OBJECT_ID(N'cobranzas.abonos_cobranza', N'U') IS NULL
 BEGIN
-    CREATE TABLE dbo.abonos_cobranza
+    CREATE TABLE cobranzas.abonos_cobranza
     (
         id INT IDENTITY(1,1) NOT NULL CONSTRAINT PK_abonos_cobranza PRIMARY KEY,
         id_cuota INT NOT NULL,
@@ -3285,9 +3286,9 @@ BEGIN
         inicio DATETIME2(0) NOT NULL CONSTRAINT DF_abonos_cobranza_inicio DEFAULT SYSUTCDATETIME(),
         active BIT NOT NULL CONSTRAINT DF_abonos_cobranza_active DEFAULT (1),
         CONSTRAINT CK_abonos_cobranza_monto CHECK (monto > 0),
-        CONSTRAINT FK_abonos_cobranza_cuotas FOREIGN KEY (id_cuota) REFERENCES dbo.cuotas_cobranza(id)
+        CONSTRAINT FK_abonos_cobranza_cuotas FOREIGN KEY (id_cuota) REFERENCES cobranzas.cuotas_cobranza(id)
     );
-    CREATE INDEX IX_abonos_cobranza_cuota_fecha ON dbo.abonos_cobranza(id_cuota, fecha_pago, id);
+    CREATE INDEX IX_abonos_cobranza_cuota_fecha ON cobranzas.abonos_cobranza(id_cuota, fecha_pago, id);
 END;
 GO
 -- ============================================================================
@@ -3297,9 +3298,9 @@ GO
 -- Archivo original: docs/sql/20261113_create_cobranza_payments.sql-- ============================================================================
 use administration;
 /* Historial de abonos por cliente del módulo Cobranza (base Administration). */
-IF OBJECT_ID(N'dbo.pagos_cobranzas', N'U') IS NULL
+IF OBJECT_ID(N'cobranzas.pagos_cobranzas', N'U') IS NULL
 BEGIN
-    CREATE TABLE dbo.pagos_cobranzas
+    CREATE TABLE cobranzas.pagos_cobranzas
     (
         id INT IDENTITY(1,1) NOT NULL CONSTRAINT PK_pagos_cobranzas PRIMARY KEY,
         id_customer INT NOT NULL,
@@ -3312,7 +3313,7 @@ BEGIN
         CONSTRAINT FK_pagos_cobranzas_customers FOREIGN KEY (id_customer) REFERENCES dbo.customers(id)
     );
     CREATE INDEX IX_pagos_cobranzas_customer_fecha
-        ON dbo.pagos_cobranzas (id_customer, fecha_pago DESC, id DESC)
+        ON cobranzas.pagos_cobranzas (id_customer, fecha_pago DESC, id DESC)
         INCLUDE (monto, active);
 END;
 GO
@@ -3946,25 +3947,25 @@ BEGIN TRANSACTION;
 
 IF EXISTS (
     SELECT 1 FROM sys.check_constraints
-    WHERE parent_object_id = OBJECT_ID(N'dbo.prestamos_cobranza')
+    WHERE parent_object_id = OBJECT_ID(N'cobranzas.prestamos_cobranza')
       AND name = N'CK_prestamos_cobranza_cuotas'
 )
-    ALTER TABLE dbo.prestamos_cobranza
+    ALTER TABLE cobranzas.prestamos_cobranza
         DROP CONSTRAINT CK_prestamos_cobranza_cuotas;
 
-ALTER TABLE dbo.prestamos_cobranza
+ALTER TABLE cobranzas.prestamos_cobranza
     ADD CONSTRAINT CK_prestamos_cobranza_cuotas
     CHECK (numero_cuotas >= 1);
 
 IF EXISTS (
     SELECT 1 FROM sys.check_constraints
-    WHERE parent_object_id = OBJECT_ID(N'dbo.cuotas_cobranza')
+    WHERE parent_object_id = OBJECT_ID(N'cobranzas.cuotas_cobranza')
       AND name = N'CK_cuotas_cobranza_numero'
 )
-    ALTER TABLE dbo.cuotas_cobranza
+    ALTER TABLE cobranzas.cuotas_cobranza
         DROP CONSTRAINT CK_cuotas_cobranza_numero;
 
-ALTER TABLE dbo.cuotas_cobranza
+ALTER TABLE cobranzas.cuotas_cobranza
     ADD CONSTRAINT CK_cuotas_cobranza_numero
     CHECK (numero_cuota >= 1);
 
@@ -6600,4 +6601,132 @@ BEGIN
         NULL, NULL, SYSUTCDATETIME(), SYSUTCDATETIME(), 1
     );
 END;
+GO
+
+/*
+Fecha: 2026-11-23
+Módulo: Administración de acceso SQL para MCP de BIAPP
+Repositorio: Smp25
+Origen: solicitud del usuario para permitir consultas de solo lectura en todos los esquemas de las bases de datos de microservicios.
+IMPORTANTE: ejecutar únicamente este bloque; no ejecutar completo el archivo histórico.
+*/
+DECLARE @Base sysname;
+DECLARE @SQL nvarchar(max);
+
+DECLARE bases CURSOR LOCAL FAST_FORWARD FOR
+    SELECT name
+    FROM sys.databases
+    WHERE database_id > 4
+      AND state_desc = 'ONLINE';
+
+OPEN bases;
+FETCH NEXT FROM bases INTO @Base;
+
+WHILE @@FETCH_STATUS = 0
+BEGIN
+    SET @SQL = N'USE ' + QUOTENAME(@Base) + N';
+
+    IF DATABASE_PRINCIPAL_ID(N''Microservicio'') IS NULL
+    BEGIN
+        PRINT N''OMITIDA: '' + DB_NAME() + N'' (no existe el usuario Microservicio)'';
+    END
+    ELSE
+    BEGIN
+        IF NOT EXISTS (
+            SELECT 1
+            FROM sys.database_role_members rm
+            JOIN sys.database_principals rol
+              ON rol.principal_id = rm.role_principal_id
+            JOIN sys.database_principals usr
+              ON usr.principal_id = rm.member_principal_id
+            WHERE rol.name = N''db_datareader''
+              AND usr.name = N''Microservicio''
+        )
+            ALTER ROLE db_datareader ADD MEMBER [Microservicio];
+
+        GRANT VIEW DEFINITION TO [Microservicio];
+        PRINT N''LISTA: '' + DB_NAME();
+    END;';
+
+    EXEC sys.sp_executesql @SQL;
+    FETCH NEXT FROM bases INTO @Base;
+END;
+
+CLOSE bases;
+DEALLOCATE bases;
+GO
+
+/*
+Fecha: 2026-11-23
+Módulo: Cobranza / Migración de tablas al esquema cobranzas
+Repositorio: Smp25 / MicroServicioAdministration
+Origen: solicitud del usuario para trasladar las seis tablas principales de Cobranza desde dbo.
+IMPORTANTE: ejecutar únicamente este bloque después de confirmar el respaldo; no ejecutar completo el archivo histórico.
+La transferencia conserva los datos y los identificadores de las tablas existentes.
+*/
+IF SCHEMA_ID(N'cobranzas') IS NULL
+    EXEC(N'CREATE SCHEMA [cobranzas]');
+GO
+
+DECLARE @TablasCobranza TABLE (nombre sysname NOT NULL PRIMARY KEY);
+INSERT INTO @TablasCobranza (nombre)
+VALUES
+    (N'abonos_cobranza'),
+    (N'cortes_cobranza'),
+    (N'cortes_cobranza_abonos'),
+    (N'cuotas_cobranza'),
+    (N'pagos_cobranzas'),
+    (N'prestamos_cobranza');
+
+DECLARE @NombreTabla sysname;
+DECLARE @SQLTransferencia nvarchar(max);
+DECLARE tablasCobranza CURSOR LOCAL FAST_FORWARD FOR
+    SELECT nombre FROM @TablasCobranza ORDER BY nombre;
+
+BEGIN TRY
+    BEGIN TRANSACTION;
+    OPEN tablasCobranza;
+    FETCH NEXT FROM tablasCobranza INTO @NombreTabla;
+
+    WHILE @@FETCH_STATUS = 0
+    BEGIN
+        IF OBJECT_ID(N'dbo.' + @NombreTabla, N'U') IS NOT NULL
+           AND OBJECT_ID(N'cobranzas.' + @NombreTabla, N'U') IS NOT NULL
+        BEGIN
+            DECLARE @Conflicto nvarchar(2048) = N'La tabla existe en dbo y cobranzas: ' + @NombreTabla + N'. Se canceló la migración para evitar duplicados.';
+            ;THROW 51001, @Conflicto, 1;
+        END;
+
+        IF OBJECT_ID(N'dbo.' + @NombreTabla, N'U') IS NOT NULL
+        BEGIN
+            SET @SQLTransferencia = N'ALTER SCHEMA [cobranzas] TRANSFER [dbo].' + QUOTENAME(@NombreTabla) + N';';
+            EXEC sys.sp_executesql @SQLTransferencia;
+            PRINT N'MOVIDA: cobranzas.' + @NombreTabla;
+        END
+        ELSE IF OBJECT_ID(N'cobranzas.' + @NombreTabla, N'U') IS NOT NULL
+        BEGIN
+            PRINT N'YA ESTABA: cobranzas.' + @NombreTabla;
+        END
+        ELSE
+        BEGIN
+            DECLARE @Faltante nvarchar(2048) = N'No se encontró la tabla en dbo ni cobranzas: ' + @NombreTabla + N'. Se canceló la migración.';
+            ;THROW 51002, @Faltante, 1;
+        END;
+
+        FETCH NEXT FROM tablasCobranza INTO @NombreTabla;
+    END;
+
+    CLOSE tablasCobranza;
+    DEALLOCATE tablasCobranza;
+    COMMIT TRANSACTION;
+END TRY
+BEGIN CATCH
+    IF CURSOR_STATUS('local', 'tablasCobranza') >= 0
+        CLOSE tablasCobranza;
+    IF CURSOR_STATUS('local', 'tablasCobranza') >= -1
+        DEALLOCATE tablasCobranza;
+    IF XACT_STATE() <> 0
+        ROLLBACK TRANSACTION;
+    THROW;
+END CATCH;
 GO
