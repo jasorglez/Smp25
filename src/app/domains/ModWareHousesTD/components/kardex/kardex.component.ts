@@ -6,7 +6,7 @@ import { AgGridModule } from 'ag-grid-angular';
 import { ColDef, GridApi, GridReadyEvent } from 'ag-grid-enterprise';
 import { catchError, forkJoin, map, of, switchMap } from 'rxjs';
 import { AG_GRID_LOCALE_ES } from 'assets/i18n/ag-grid.locale.es';
-import { InandoutService } from 'app/services/inandout.service';
+import { InventarioWarehouseService } from 'app/services/inventario-warehouse.service';
 import { MaterialsService } from 'app/services/materials.service';
 import { PermitionsService } from 'app/services/permitions.service';
 import { SignalsService } from 'app/services/signals.service';
@@ -33,13 +33,12 @@ import { TrackingService } from 'app/services/tracking.service';
         </div>
       </div>
       <div class="alert alert-info py-2" *ngIf="materialIdFilter">Kardex filtrado por material seleccionado. <button class="btn btn-link btn-sm p-0 ms-1" (click)="clearMaterialFilter()">Ver todos</button></div>
-      <div class="alert alert-warning py-2" *ngIf="!projectId">Selecciona un proyecto en el menú lateral para consultar sus movimientos.</div>
       <div class="alert alert-warning py-2 small" *ngIf="dataWarnings.length" role="alert">
         <strong>El Kárdex está incompleto; sus saldos no están conciliados.</strong>
         <div *ngFor="let warning of dataWarnings">{{ warning }}</div>
       </div>
       <div class="text-muted py-5 text-center" *ngIf="loading"><span class="spinner-border spinner-border-sm me-2"></span>Cargando movimientos...</div>
-      <div class="alert alert-light border text-center" *ngIf="!loading && !allRows.length">No se encontraron movimientos de entradas o salidas para este proyecto.</div>
+      <div class="alert alert-light border text-center" *ngIf="!loading && !allRows.length">No se encontraron movimientos de entradas o salidas en los almacenes autorizados de esta empresa.</div>
       <ag-grid-angular *ngIf="!loading && allRows.length" class="ag-theme-quartz small-text-ag-grid" style="width:100%;height:70vh"
         [rowData]="rowData" [columnDefs]="columnDefs" [defaultColDef]="defaultColDef" [pagination]="true" [paginationPageSize]="50"
         [localeText]="AG_GRID_LOCALE_ES" (gridReady)="onGridReady($event)"></ag-grid-angular>
@@ -53,12 +52,11 @@ import { TrackingService } from 'app/services/tracking.service';
 export class KardexComponent {
   private readonly signals = inject(SignalsService);
   private readonly tracking = inject(TrackingService);
-  private readonly movementService = inject(InandoutService);
+  private readonly movementService = inject(InventarioWarehouseService);
   private readonly permissions = inject(PermitionsService);
   private readonly materialsService = inject(MaterialsService);
   private readonly route = inject(ActivatedRoute);
   idRoot: number | null = null;
-  projectId: number | null = null;
   materialIdFilter: number | null = null;
   warehouses: any[] = [];
   allRows: any[] = [];
@@ -94,10 +92,8 @@ export class KardexComponent {
     });
     effect(() => {
       const root = this.signals.getRootSelectedBySidebar()();
-      const project = this.signals.getProjectSelectedBySidebar()();
-      if (root !== this.idRoot || project !== this.projectId) {
+      if (root !== this.idRoot) {
         this.idRoot = root;
-        this.projectId = project;
         if (root) this.load();
       }
     });
@@ -106,13 +102,12 @@ export class KardexComponent {
   onGridReady(event: GridReadyEvent): void { this.gridApi = event.api; }
 
   load(): void {
-    if (!this.idRoot || !this.projectId) return;
+    if (!this.idRoot) return;
     this.loading = true;
     this.dataWarnings = [];
     const warn = (message: string) => {
       if (!this.dataWarnings.includes(message)) this.dataWarnings = [...this.dataWarnings, message];
     };
-    const reference = Number(this.projectId);
     this.permissions.getPermisionswarehousexEmail(this.tracking.getEmail()).pipe(
       catchError(() => {
         warn('No se pudieron cargar los almacenes autorizados.');
@@ -121,7 +116,7 @@ export class KardexComponent {
       switchMap((raw: any) => {
         this.warehouses = this.asArray(raw);
         const requests = this.warehouses.flatMap(w => ['IN', 'OUT'].map(type =>
-          this.movementService.getInAndOuts(reference, this.warehouseId(w), type).pipe(
+          this.movementService.getWarehouseMovements(this.warehouseId(w), type as 'IN' | 'OUT').pipe(
             catchError(error => { console.warn('[Kardex] No se pudieron cargar encabezados', { warehouse: this.warehouseId(w), type, error }); warn('No se pudieron cargar algunos encabezados de movimientos.'); return of([]); }),
             map((masters: any) => ({ warehouse: w, type, masters: this.asArray(masters) }))
           )
@@ -132,7 +127,7 @@ export class KardexComponent {
         const masters = this.asArray(groups).flatMap((g: any) => g.masters
           .filter((m: any) => m.active !== false && Number(m.active) !== 0)
           .map((m: any) => ({ ...m, __warehouse: g.warehouse, __movementType: g.type })));
-        const details$ = masters.map(m => this.movementService.getInAndOutItems(Number(m.id)).pipe(
+        const details$ = masters.map(m => this.movementService.getMovementItems(Number(m.id)).pipe(
           catchError(error => { console.warn('[Kardex] No se pudieron cargar partidas', { id: m.id, error }); warn('No se pudieron cargar algunas partidas de movimientos.'); return of([]); }),
           map((items: any) => ({ master: m, items: this.asArray(items) }))
         ));
