@@ -970,24 +970,49 @@ export class ClientesCobranzasComponent implements CanComponentDeactivate {
       const logo2 = root?.picture2 ? await this.base64EncodeService.convertImageToBase64(root.picture2) : null;
       const money = (value: any) => new Intl.NumberFormat('es-MX', { style: 'currency', currency: 'MXN' }).format(Number(value || 0));
       const date = (value: any) => value ? String(value).slice(0, 10).split('-').reverse().join('/') : '';
+      const now = new Date();
+      const today = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+      const loanSummaries = (loans || []).map(loan => {
+        const installments = (loan.cuotas || []).filter((item: any) => item.active !== false);
+        const rows = installments.map((item: any) => {
+          const payments = (item.abonos || []).filter((payment: any) => payment.active !== false);
+          const paid = Number.isFinite(Number(item.montoAplicado))
+            ? Number(item.montoAplicado)
+            : payments.reduce((sum: number, payment: any) => sum + Number(payment.monto || 0), 0);
+          const due = Math.max(0, Number(item.montoProgramado || 0) - paid);
+          return { item, paid, due };
+        });
+        const scheduled = rows.reduce((sum: number, row: any) => sum + Number(row.item.montoProgramado || 0), 0);
+        const paid = rows.reduce((sum: number, row: any) => sum + row.paid, 0);
+        const overdue = rows.filter((row: any) => String(row.item.fechaProgramada || '').slice(0, 10) < today && row.due > 0);
+        return { loan, installments, scheduled, paid, balance: Math.max(0, scheduled - paid), overdueCount: overdue.length, overdueBalance: overdue.reduce((sum: number, row: any) => sum + row.due, 0) };
+      });
+      const totalScheduled = loanSummaries.reduce((sum, item) => sum + item.scheduled, 0);
+      const totalPaid = loanSummaries.reduce((sum, item) => sum + item.paid, 0);
+      const totalBalance = loanSummaries.reduce((sum, item) => sum + item.balance, 0);
+      const overdueCount = loanSummaries.reduce((sum, item) => sum + item.overdueCount, 0);
+      const overdueBalance = loanSummaries.reduce((sum, item) => sum + item.overdueBalance, 0);
       const content: any[] = [
         { columns: [logo ? { image: logo, fit: [75, 65] } : { text: '' }, { text: root?.name || '', alignment: 'center', bold: true, fontSize: 12, margin: [0, 15, 0, 0] }, logo2 ? { image: logo2, fit: [75, 65], alignment: 'right' } : { text: '' }], margin: [0, 0, 0, 12] },
-        { text: 'REPORTE DE PRÉSTAMOS Y PAGOS', style: 'title' },
+        { text: 'ESTADO DE CUENTA DEL CLIENTE', style: 'title' },
         { text: `Cliente: ${customer.nameContact || customer.company || customer.id}`, margin: [0, 0, 0, 4] },
         { text: `Fecha de emisión: ${new Date().toLocaleDateString('es-MX')}`, margin: [0, 0, 0, 14] },
+        { table: { widths: ['*', '*', '*', '*', '*'], body: [
+          [{ text: 'Préstamos', bold: true }, { text: 'Total programado', bold: true }, { text: 'Total abonado', bold: true }, { text: 'Saldo pendiente', bold: true }, { text: 'Vencido', bold: true }],
+          [String(loanSummaries.length), money(totalScheduled), money(totalPaid), money(totalBalance), `${overdueCount} cuotas · ${money(overdueBalance)}`]
+        ] }, layout: 'lightHorizontalLines', fontSize: 8, margin: [0, 0, 0, 12] },
       ];
       if (!loans?.length) content.push({ text: 'Este cliente no tiene préstamos registrados.' });
-      for (const loan of loans || []) {
-        const installments = [...(loan.cuotas || [])].sort((a: any, b: any) => a.numeroCuota - b.numeroCuota);
-        const paid = installments.reduce((sum: number, item: any) => sum + (item.abonos || []).reduce((part: number, payment: any) => part + Number(payment.monto || 0), 0), 0);
-        const scheduledTotal = installments.reduce((sum: number, item: any) => sum + Number(item.montoProgramado || 0), 0);
+      for (const summary of loanSummaries) {
+        const loan = summary.loan;
+        const installments = [...summary.installments].sort((a: any, b: any) => a.numeroCuota - b.numeroCuota);
         const interestRate = Number(loan.montoTotal) > 0 ? Math.round(Number(loan.totalInteres || 0) / Number(loan.montoTotal) * 10000) / 100 : 0;
         const frequency = ({ DIARIO: 'diario', SEMANAL: 'semanal', QUINCENAL: 'quincenal', MENSUAL: 'mensual' } as any)[loan.frecuenciaPago] || 'mensual';
         content.push({ text: `Préstamo #${loan.id}  ·  Capital: ${money(loan.montoTotal)}  ·  Interés total: ${money(loan.totalInteres)} (${interestRate}%)  ·  Pagos: ${frequency}  ·  Inicio: ${date(loan.fechaInicio)}`, style: 'loan', margin: [0, 10, 0, 4] });
-        content.push({ text: `Total a pagar: ${money(scheduledTotal)}   Abonado: ${money(paid)}   Saldo: ${money(Math.max(0, scheduledTotal - paid))}`, margin: [0, 0, 0, 5] });
+        content.push({ text: `Total a pagar: ${money(summary.scheduled)}   Abonado: ${money(summary.paid)}   Saldo: ${money(summary.balance)}   Cuotas vencidas: ${summary.overdueCount} (${money(summary.overdueBalance)})`, margin: [0, 0, 0, 5] });
         const rows: any[][] = [[{ text: '#', bold: true }, { text: 'Programado', bold: true }, { text: 'Capital', bold: true }, { text: 'Interés', bold: true }, { text: 'Abonado', bold: true }, { text: 'Saldo', bold: true }, { text: 'Estado', bold: true }]];
         for (const installment of installments) {
-          const received = Number.isFinite(Number(installment.montoAplicado)) ? Number(installment.montoAplicado) : (installment.abonos || []).reduce((sum: number, payment: any) => sum + Number(payment.monto || 0), 0);
+          const received = Number.isFinite(Number(installment.montoAplicado)) ? Number(installment.montoAplicado) : (installment.abonos || []).filter((payment: any) => payment.active !== false).reduce((sum: number, payment: any) => sum + Number(payment.monto || 0), 0);
           rows.push([String(installment.numeroCuota), date(installment.fechaProgramada), money(installment.montoCapital ?? installment.montoProgramado), money(installment.montoInteres || 0), money(received), money(Number(installment.montoProgramado) - received), received >= Number(installment.montoProgramado) ? 'Pagada' : 'Pendiente']);
         }
         content.push({ table: { headerRows: 1, widths: [18, 58, 61, 54, 60, 55, '*'], body: rows }, layout: 'lightHorizontalLines', fontSize: 7 });
@@ -997,7 +1022,8 @@ export class ClientesCobranzasComponent implements CanComponentDeactivate {
           content.push({ table: { headerRows: 1, widths: [35, 90, 90, '*'], body: [[{ text: 'Cuota', bold: true }, { text: 'Fecha', bold: true }, { text: 'Monto', bold: true }, { text: 'Comentario', bold: true }], ...payments.map((payment: any) => [String(payment.numero), date(payment.fechaPago), money(payment.monto), payment.comentario || ''])] }, layout: 'lightHorizontalLines', fontSize: 8 });
         }
       }
-      await this.pdfPreview.show((pdfMake as any).createPdf({ pageSize: 'LETTER', pageMargins: [35, 35, 35, 35], content, styles: { title: { fontSize: 15, bold: true }, loan: { fontSize: 11, bold: true } } }), 'Reporte de pagos del cliente', `Reporte_pagos_cliente_${customer.id}.pdf`);
+      const customerName = customer.nameContact || customer.company || `Cliente ${customer.id}`;
+      await this.pdfPreview.show((pdfMake as any).createPdf({ pageSize: 'LETTER', pageMargins: [35, 35, 35, 35], content, styles: { title: { fontSize: 15, bold: true }, loan: { fontSize: 11, bold: true } } }), `Estado de cuenta · ${customerName}`, `Estado_cuenta_cliente_${customer.id}.pdf`);
     } catch (error) { console.error(error); alerts.basicAlert('Error', 'No se pudo generar el PDF de pagos.', 'error'); }
   }
 

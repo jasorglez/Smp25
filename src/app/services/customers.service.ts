@@ -159,7 +159,9 @@ export class CustomersService {
 
   createCobranzaLoan(data: any): Observable<any> {
     if (this.cobranzaOffline.isOffline) return from(this.createLocalCobranzaLoan(data));
-    return this.http.post(`${environment.urlAdministration}/PrestamosCobranza`, data, { headers: this.trackingService.getHeaders() });
+    const request = { ...data };
+    delete request.__consecutivoPrefijo;
+    return this.http.post(`${environment.urlAdministration}/PrestamosCobranza`, request, { headers: this.trackingService.getHeaders() });
   }
 
   updateCobranzaLoan(loanId: number, data: any): Observable<void> {
@@ -285,8 +287,11 @@ export class CustomersService {
       const fechaProgramada = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
       return { id: this.localId(), idPrestamo: id, numeroCuota: index + 1, fechaProgramada, montoCapital, montoInteres, montoProgramado: montoCapital + montoInteres, montoAplicado: 0, abonos: [], active: true, __offlinePending: true };
     });
-    const loan = { ...data, id, idCustomer: customerId, montoInteresTotal: interest, totalInteres: interest, cuotas, active: true, __offlinePending: true };
-    await this.cobranzaOffline.queueOperation({ companyId, type: 'loan.create', localEntityId: id, payload: { loan, request: data } });
+    const consecutivePrefix = String(data?.__consecutivoPrefijo || '');
+    const request = { ...data };
+    delete request.__consecutivoPrefijo;
+    const loan = { ...request, id, idCustomer: customerId, montoInteresTotal: interest, totalInteres: interest, cuotas, active: true, __offlinePending: true };
+    await this.cobranzaOffline.queueOperation({ companyId, type: 'loan.create', localEntityId: id, payload: { loan, request, consecutivePrefix } });
     await this.updateLoanSnapshots(companyId, customerId, id, current => current, loan);
     return loan;
   }

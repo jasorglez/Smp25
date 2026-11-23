@@ -17,6 +17,8 @@ import { PosTicketService } from 'app/services/pos-ticket.service';
 import { PdfPreviewService } from 'app/services/pdf-preview.service';
 import { RootService } from 'app/services/root.service';
 import { Base64EncodeService } from 'app/services/base64encode.service';
+import { ConsecutivosService, ConsecutivoConfig } from 'app/services/consecutivos.service';
+import { CobranzaOfflineService } from 'app/services/cobranza-offline.service';
 
 @Component({
   selector: 'app-clientes-cobranzas-pagos',
@@ -63,7 +65,7 @@ import { Base64EncodeService } from 'app/services/base64encode.service';
     <section class="p-3 border-top bg-light">
       <div *ngIf="activeInstallmentId === null" class="d-flex justify-content-between align-items-center gap-2 mb-3 flex-wrap">
         <div><strong>Préstamos — {{ customer?.nameContact || customer?.company }}</strong><span class="badge bg-success ms-2">Abonado: {{ totalPaid | currency:'MXN' }}</span><small class="text-muted ms-2"><i class="bi bi-arrow-repeat"></i> Actualización automática</small></div>
-        <button class="btn btn-sm btn-primary" (click)="showLoanForm = !showLoanForm"><i class="bi bi-plus-lg"></i> Nuevo préstamo</button>
+        <button class="btn btn-sm btn-primary" (click)="beginNewLoan()" [disabled]="reservingLoanFolio"><i class="bi" [class.bi-plus-lg]="!reservingLoanFolio" [class.bi-hourglass-split]="reservingLoanFolio"></i> {{ reservingLoanFolio ? 'Preparando folio…' : 'Nuevo préstamo' }}</button>
       </div>
 
       <div *ngIf="showLoanForm && activeInstallmentId === null" class="card card-body mb-3 p-3">
@@ -146,6 +148,8 @@ export class ClientesCobranzasPagosComponent implements OnChanges, OnDestroy {
   private pdfPreview = inject(PdfPreviewService);
   private rootService = inject(RootService);
   private base64EncodeService = inject(Base64EncodeService);
+  private consecutivosService = inject(ConsecutivosService);
+  private cobranzaOffline = inject(CobranzaOfflineService);
   paymentTypes: any[] = [];
   savingPaymentType = false;
   private paymentTypesRequest = 0;
@@ -159,6 +163,8 @@ export class ClientesCobranzasPagosComponent implements OnChanges, OnDestroy {
   expandedLoanIds = new Set<number>();
   loading = false;
   saving = false;
+  reservingLoanFolio = false;
+  private loanConsecutivePrefix = '';
   showLoanForm = false;
   activeInstallmentId: number | null = null;
   editingScheduleLoanId: number | null = null;
@@ -358,6 +364,37 @@ export class ClientesCobranzasPagosComponent implements OnChanges, OnDestroy {
       .map(value => Number(value)).find(value => Number.isInteger(value) && value > 0) || 0;
   }
 
+  async beginNewLoan(): Promise<void> {
+    if (this.showLoanForm) { this.showLoanForm = false; return; }
+    const companyId = this.paymentCompanyId;
+    if (!companyId) { alerts.basicAlert('Empresa requerida', 'No se pudo identificar la empresa para generar el consecutivo.', 'warning'); return; }
+    this.reservingLoanFolio = true;
+    try {
+      let config: ConsecutivoConfig | null = null;
+      let folio = '';
+      if (this.cobranzaOffline.isOffline) {
+        config = await this.cobranzaOffline.readSnapshot<ConsecutivoConfig>(this.cobranzaOffline.snapshotKey('loan-consecutive', companyId));
+        if (!config || !config.consecutivoTexto) throw new Error('No hay un consecutivo de préstamos guardado en esta computadora. Conéctate a internet y abre Nuevo préstamo para prepararlo.');
+        const number = Math.max(1, Math.trunc(Number(config.campoAuxiliar || 1)));
+        folio = `${config.consecutivoTexto}${number}`;
+        await this.cobranzaOffline.saveSnapshot(this.cobranzaOffline.snapshotKey('loan-consecutive', companyId), companyId, 'consecutivo de préstamos', { ...config, campoAuxiliar: number + 1 });
+      } else {
+        const configs = await firstValueFrom(this.consecutivosService.getByRoot(companyId));
+        config = (configs || [])[0] || null;
+        if (!config?.consecutivoTexto) throw new Error('Configura primero el prefijo y el siguiente número en Cobranza > Configuración.');
+        const reserved = await firstValueFrom(this.consecutivosService.reserveNext(companyId, config.consecutivoTexto));
+        folio = reserved.folio;
+        await this.cobranzaOffline.saveSnapshot(this.cobranzaOffline.snapshotKey('loan-consecutive', companyId), companyId, 'consecutivo de préstamos', { ...config, campoAuxiliar: reserved.numero + 1 });
+      }
+      this.loanConsecutivePrefix = config.consecutivoTexto;
+      this.loanForm = { numeroNotaVenta: folio, montoTotal: null, montoInteresTotal: 0, frecuenciaPago: 'MENSUAL', fechaInicio: this.today(), fechaPrimerPago: this.nextMonth(), numeroCuotas: 10, comentario: '' };
+      this.showLoanForm = true;
+    } catch (error: any) {
+      console.error('No se pudo preparar el consecutivo del préstamo:', error);
+      alerts.basicAlert('No se pudo generar el consecutivo', error?.error?.error || error?.message || 'Revisa la configuración de consecutivos de esta empresa.', 'error');
+    } finally { this.reservingLoanFolio = false; }
+  }
+
   async loadPaymentTypes(): Promise<boolean> {
     const companyId = this.paymentCompanyId;
     const request = ++this.paymentTypesRequest;
@@ -483,7 +520,7 @@ export class ClientesCobranzasPagosComponent implements OnChanges, OnDestroy {
     if (!receiptNumber || receiptNumber.length > 50 || !Number.isFinite(amount) || amount <= 0 || !Number.isFinite(totalInterest) || totalInterest < 0 || !Number.isInteger(numberOfPayments) || numberOfPayments < 1 || !this.loanForm.fechaInicio || !this.loanForm.fechaPrimerPago) { alerts.basicAlert('Datos requeridos', 'Captura el consecutivo de la nota de venta, capital mayor a cero, interés total no negativo, frecuencia, número de pagos y fechas válidas.', 'warning'); return; }
     this.saving = true;
     try {
-      const saved: any = await firstValueFrom(this.customersService.createCobranzaLoan({ idCustomer: this.customer.id, numeroNotaVenta: receiptNumber, montoTotal: amount, montoInteresTotal: totalInterest, tasaInteresMensual: this.rateFor(totalInterest, amount), frecuenciaPago: this.loanForm.frecuenciaPago || 'MENSUAL', fechaInicio: this.loanForm.fechaInicio, fechaPrimerPago: this.loanForm.fechaPrimerPago, numeroCuotas: numberOfPayments, comentario: this.loanForm.comentario }));
+      const saved: any = await firstValueFrom(this.customersService.createCobranzaLoan({ idCustomer: this.customer.id, numeroNotaVenta: receiptNumber, __consecutivoPrefijo: this.loanConsecutivePrefix, montoTotal: amount, montoInteresTotal: totalInterest, tasaInteresMensual: this.rateFor(totalInterest, amount), frecuenciaPago: this.loanForm.frecuenciaPago || 'MENSUAL', fechaInicio: this.loanForm.fechaInicio, fechaPrimerPago: this.loanForm.fechaPrimerPago, numeroCuotas: numberOfPayments, comentario: this.loanForm.comentario }));
       this.saving = false; this.showLoanForm = false; this.loanForm = { numeroNotaVenta: '', montoTotal: null, montoInteresTotal: 0, frecuenciaPago: 'MENSUAL', fechaInicio: this.today(), fechaPrimerPago: this.nextMonth(), numeroCuotas: 10, comentario: '' }; this.balancesChanged.emit();
       let createdLoan = saved;
       try {

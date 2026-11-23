@@ -6906,3 +6906,93 @@ SELECT
     HAS_PERMS_BY_NAME(N'cobranzas.consecutivos', N'OBJECT', N'UPDATE') AS puede_actualizar,
     HAS_PERMS_BY_NAME(N'cobranzas.consecutivos', N'OBJECT', N'DELETE') AS puede_eliminar;
 GO
+
+/*
+Fecha: 2026-11-23
+Módulo: Cobranza / Permisos de escritura del microservicio
+Origen: error 500 al crear préstamos; Microservicio no tiene INSERT/UPDATE en las tablas del esquema cobranzas.
+Ejecutar en administration con una cuenta administradora de SQL Server.
+Este permiso cubre las tablas actuales y futuras del esquema de Cobranza.
+*/
+USE [administration];
+GO
+
+GRANT SELECT, INSERT, UPDATE, DELETE
+    ON SCHEMA::[cobranzas]
+    TO [Microservicio];
+GO
+
+SELECT
+    USER_NAME() AS usuario_actual,
+    HAS_PERMS_BY_NAME(N'cobranzas.prestamos_cobranza', N'OBJECT', N'INSERT') AS puede_insertar_prestamo,
+    HAS_PERMS_BY_NAME(N'cobranzas.cuotas_cobranza', N'OBJECT', N'INSERT') AS puede_insertar_cuotas,
+    HAS_PERMS_BY_NAME(N'cobranzas.abonos_cobranza', N'OBJECT', N'INSERT') AS puede_insertar_abonos,
+    HAS_PERMS_BY_NAME(N'cobranzas.prestamos_cobranza', N'OBJECT', N'UPDATE') AS puede_actualizar_prestamo;
+GO
+
+/*
+Fecha: 2026-11-23
+Módulo: Cobranza / Préstamos y estado de cuenta PDF
+Repositorio: Smp25
+Origen: Angular, src/app/domains/Cobranza/components/clientes-cobranzas/clientes-cobranzas.component.ts
+Publica los anuncios en producción sin afirmar que el código esté desplegado.
+*/
+USE [administration];
+GO
+
+IF NOT EXISTS (
+    SELECT 1 FROM dbo.product_updates WITH (UPDLOCK, HOLDLOCK)
+    WHERE version = N'5.00.618'
+      AND module = N'Cobranza / Préstamos'
+      AND idRoot IS NULL AND idCompany IS NULL AND isActive = 1
+)
+BEGIN
+    INSERT INTO dbo.product_updates (
+        idRoot, idCompany, version, module, changeType, title, description,
+        userBenefit, promoText, occurredAtUtc, displayTimeZone, validationStatus,
+        releaseStatus, publicationStatus, publishedAtUtc, createdBy,
+        createdAtUtc, updatedAtUtc, isActive
+    )
+    VALUES (
+        NULL, NULL, N'5.00.618', N'Cobranza / Préstamos', N'IMPROVEMENT',
+        N'Consecutivo automático de préstamos',
+        N'Al abrir Nuevo préstamo se genera la nota con el prefijo y el siguiente número configurados para la empresa. Si la caja está offline, se usa un folio provisional y al sincronizar se asigna el consecutivo oficial.',
+        N'Evita capturar manualmente el folio y mantiene la captura de préstamos durante una interrupción de internet.',
+        N'Registra préstamos con su consecutivo automático y continúa capturando sin conexión.',
+        SYSUTCDATETIME(), N'America/Indiana/Indianapolis', N'PASSED', N'LOCAL', N'PUBLISHED',
+        SYSUTCDATETIME(), N'Codex', SYSUTCDATETIME(), SYSUTCDATETIME(), 1
+    );
+END;
+GO
+
+IF NOT EXISTS (
+    SELECT 1 FROM dbo.product_updates WITH (UPDLOCK, HOLDLOCK)
+    WHERE version = N'5.00.619'
+      AND module = N'Cobranza / Estado de cuenta por cliente'
+      AND idRoot IS NULL AND idCompany IS NULL AND isActive = 1
+)
+BEGIN
+    INSERT INTO dbo.product_updates (
+        idRoot, idCompany, version, module, changeType, title, description,
+        userBenefit, promoText, occurredAtUtc, displayTimeZone, validationStatus,
+        releaseStatus, publicationStatus, publishedAtUtc, createdBy,
+        createdAtUtc, updatedAtUtc, isActive
+    )
+    VALUES (
+        NULL, NULL, N'5.00.619', N'Cobranza / Estado de cuenta por cliente', N'IMPROVEMENT',
+        N'Estado de cuenta PDF por cliente',
+        N'El reporte PDF del cliente incluye cuántos préstamos tiene, total programado, abonado, saldo pendiente y cuotas vencidas. Conserva el detalle de las cuotas y los abonos y se comparte desde el visor por correo, WhatsApp o Telegram.',
+        N'Permite revisar y compartir la situación de pago completa de un cliente desde un solo reporte.',
+        N'Consulta cuánto debe cada cliente y comparte su estado de cuenta en PDF por correo, WhatsApp o Telegram.',
+        SYSUTCDATETIME(), N'America/Indiana/Indianapolis', N'PASSED', N'LOCAL', N'PUBLISHED',
+        SYSUTCDATETIME(), N'Codex', SYSUTCDATETIME(), SYSUTCDATETIME(), 1
+    );
+END;
+GO
+
+SELECT id, version, module, title, validationStatus, releaseStatus, publicationStatus
+FROM dbo.product_updates
+WHERE version IN (N'5.00.618', N'5.00.619')
+  AND idRoot IS NULL AND idCompany IS NULL AND isActive = 1
+ORDER BY version, module;
+GO

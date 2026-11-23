@@ -6,6 +6,7 @@ import { TrackingService } from './tracking.service';
 import { CobranzaOfflineService } from './cobranza-offline.service';
 import { CobranzaOfflineOperation, CobranzaOfflineSnapshot, CobranzaOfflineStoreService } from './cobranza-offline-store.service';
 import { AuthService } from './auth.service';
+import { ConsecutivosService } from './consecutivos.service';
 
 @Injectable({ providedIn: 'root' })
 export class CobranzaOfflineSyncService {
@@ -14,6 +15,7 @@ export class CobranzaOfflineSyncService {
   private readonly offline = inject(CobranzaOfflineService);
   private readonly auth = inject(AuthService);
   private readonly store = inject(CobranzaOfflineStoreService);
+  private readonly consecutivos = inject(ConsecutivosService);
   private readonly base = `${environment.urlAdministration}`;
   private syncing = false;
   private started = false;
@@ -112,6 +114,10 @@ export class CobranzaOfflineSyncService {
       case 'loan.create': {
         const request = this.resolveDeep({ ...payload.request });
         delete request.id; delete request.cuotas; delete request.active; delete request.__offlinePending;
+        if (payload.consecutivePrefix) {
+          const reserved = await firstValueFrom(this.consecutivos.reserveNext(operation.companyId, String(payload.consecutivePrefix)));
+          request.numeroNotaVenta = reserved.folio;
+        }
         result = await firstValueFrom(this.http.post<any>(`${this.base}/PrestamosCobranza`, request, { headers }));
         const serverLoanId = this.extractId(result) || await this.findCreatedLoanId(request);
         if (!serverLoanId) throw new Error('El préstamo se envió, pero el servidor no devolvió su identificador para continuar la sincronización.');
