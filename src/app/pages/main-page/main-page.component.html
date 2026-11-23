@@ -5,8 +5,12 @@
   <!-- Contenedor principal -->
   <div class="main-content-container d-flex flex-column min-vh-100">
 
-    <div *ngIf="overdueNotice as notice" class="alert alert-danger global-overdue-alert d-flex align-items-center justify-content-between gap-2 flex-wrap py-2 px-3" role="alert">
-      <div><i class="bi bi-exclamation-triangle-fill me-2"></i><strong>Atención:</strong> {{ notice.customers }} clientes tienen {{ notice.installments }} cuotas vencidas, con saldo pendiente de <strong>{{ notice.balance | currency:'MXN' }}</strong>.</div>
+    <div *ngIf="overdueNotice as notice" class="alert global-overdue-alert d-flex align-items-center justify-content-between gap-2 flex-wrap py-2 px-3" [ngClass]="notice.overdueInstallments > 0 ? 'alert-danger' : 'alert-warning'" role="alert">
+      <div>
+        <i class="bi bi-exclamation-triangle-fill me-2"></i>
+        <span *ngIf="notice.overdueInstallments > 0"><strong>Vencidos:</strong> {{ notice.overdueCustomers }} clientes, {{ notice.overdueInstallments }} cuotas, <strong>{{ notice.overdueBalance | currency:'MXN' }}</strong>.</span>
+        <span *ngIf="notice.upcomingInstallments > 0" class="ms-2"><strong>Próximos pagos (hoy y mañana):</strong> {{ notice.upcomingCustomers }} clientes, {{ notice.upcomingInstallments }} cuotas, <strong>{{ notice.upcomingBalance | currency:'MXN' }}</strong>.</span>
+      </div>
       <a class="btn btn-sm btn-outline-danger" routerLink="/cobranza/clientes"><i class="bi bi-arrow-right-circle me-1"></i>Revisar cobranza</a>
     </div>
 

@@ -231,3 +231,8 @@ version: '2.50.4 (24 Octubre 2025 17:45)'
 - Al entregar cambios funcionales, actualizar la versión y fecha de `src/environments/environment.ts`, registrar la novedad y subir a Git los archivos de la tarea.
 - Publicar también las novedades de la entrega en la tabla de producción `administration.dbo.product_updates`, verificar los registros e indicar sus IDs. El usuario autorizó este flujo como preferencia permanente; no volver a pedirlo salvo cambio de alcance.
 - Publicar de forma idempotente, sin duplicar anuncios por ajustes de versión o documentación. Marcar `releaseStatus` como `PRODUCTION` únicamente con evidencia del despliegue; distinguir publicación del anuncio y despliegue del código.
+
+## Convención de esquemas SQL Server
+- Las tablas nuevas de dominio usan un esquema con el nombre del módulo; para Cobranza, usar `cobranza.<tabla>`, no `dbo.<tabla>`.
+- Calificar con el esquema las tablas en scripts, claves foráneas, índices y consultas SQL directas.
+- Los scripts deben poder ejecutarse más de una vez. Al migrar tablas existentes, conservar datos y actualizar todas sus referencias.
