@@ -26,6 +26,8 @@ export class SignalrService {
   private cobranzaCompanyId: number | null = null;
   private cobranzaPaymentSubject = new Subject<any>();
   public cobranzaPayment$ = this.cobranzaPaymentSubject.asObservable();
+  private cobranzaUpcomingPaymentsSubject = new Subject<any>();
+  public cobranzaUpcomingPayments$ = this.cobranzaUpcomingPaymentsSubject.asObservable();
 
   // AdmonHub — conexión independiente para actualizaciones de ingresos/egresos
   private admonHubConnection: signalR.HubConnection | null = null;
@@ -336,6 +338,9 @@ public startConnection(hubEndpoint: string = 'storageHub', token?: string): void
 
     this.cobranzaHubConnection.on('ReceiveCobranzaPayment', (data: any) => {
       this.cobranzaPaymentSubject.next(typeof data === 'string' ? JSON.parse(data) : data);
+    });
+    this.cobranzaHubConnection.on('ReceiveCobranzaUpcomingPayments', (data: any) => {
+      this.cobranzaUpcomingPaymentsSubject.next(typeof data === 'string' ? JSON.parse(data) : data);
     });
     this.cobranzaHubConnection.onreconnected(() => {
       if (this.cobranzaCompanyId) void this.cobranzaHubConnection?.invoke('JoinCompany', this.cobranzaCompanyId);

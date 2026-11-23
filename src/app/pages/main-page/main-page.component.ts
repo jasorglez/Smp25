@@ -35,9 +35,13 @@ export class MainPageComponent implements OnInit, OnDestroy {
 
   private routerSub?: Subscription;
   private cobranzaSub?: Subscription;
+  private upcomingCobranzaSub?: Subscription;
   private overdueRefreshSub?: Subscription;
   private overdueContextKey = '';
-  overdueNotice: { customers: number; installments: number; balance: number } | null = null;
+  overdueNotice: {
+    overdueCustomers: number; overdueInstallments: number; overdueBalance: number;
+    upcomingCustomers: number; upcomingInstallments: number; upcomingBalance: number;
+  } | null = null;
   draggingTabUrl = '';
   private restoringWorkspaceUrl = '';
 
@@ -127,6 +131,7 @@ export class MainPageComponent implements OnInit, OnDestroy {
   ngOnDestroy(): void {
     this.routerSub?.unsubscribe();
     this.cobranzaSub?.unsubscribe();
+    this.upcomingCobranzaSub?.unsubscribe();
     this.overdueRefreshSub?.unsubscribe();
     this.signalrService.stopCobranzaConnection();
   }
@@ -157,6 +162,18 @@ export class MainPageComponent implements OnInit, OnDestroy {
         timer: 9000,
         timerProgressBar: true,
       });
+    });
+    this.upcomingCobranzaSub = this.signalrService.cobranzaUpcomingPayments$.subscribe(reminder => {
+      if (!reminder || !this.auth.hasMasterPermission('cobranzas')
+        || Number(reminder.companyId) !== Number(this.signalsService.getRootSelectedBySidebar()())) return;
+      this.overdueNotice = {
+        overdueCustomers: this.overdueNotice?.overdueCustomers || 0,
+        overdueInstallments: this.overdueNotice?.overdueInstallments || 0,
+        overdueBalance: this.overdueNotice?.overdueBalance || 0,
+        upcomingCustomers: Number(reminder.customerCount || 0),
+        upcomingInstallments: Number(reminder.installmentCount || 0),
+        upcomingBalance: Number(reminder.totalAmount || 0),
+      };
     });
 
     // Escuchar TODAS las navegaciones y reportar módulo a Telegram
@@ -219,17 +236,20 @@ export class MainPageComponent implements OnInit, OnDestroy {
     });
   }
 
-  private summarizeOverdueLoans(loans: any[]): { customers: number; installments: number; balance: number } | null {
+  private summarizeOverdueLoans(loans: any[]): MainPageComponent['overdueNotice'] {
     const today = new Date();
     const todayKey = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
-    const customerIds = new Set<number>();
-    let installments = 0;
-    let balance = 0;
+    const overdueCustomers = new Set<number>();
+    const upcomingCustomers = new Set<number>();
+    let overdueInstallments = 0;
+    let overdueBalance = 0;
+    let upcomingInstallments = 0;
+    let upcomingBalance = 0;
     for (const loan of loans) {
       for (const item of loan?.cuotas || loan?.Cuotas || []) {
         if (item?.active === false || item?.Active === false) continue;
         const due = String(item?.fechaProgramada ?? item?.FechaProgramada ?? '').slice(0, 10);
-        if (!due || due >= todayKey) continue;
+        if (!due) continue;
         const payments = item?.abonos || item?.Abonos || [];
         const appliedValue = item?.montoAplicado ?? item?.MontoAplicado;
         const paid = appliedValue !== null && appliedValue !== undefined
@@ -238,13 +258,29 @@ export class MainPageComponent implements OnInit, OnDestroy {
             .reduce((sum: number, payment: any) => sum + Number(payment?.monto ?? payment?.Monto ?? 0), 0);
         const remaining = Math.max(0, Number(item?.montoProgramado ?? item?.MontoProgramado ?? 0) - paid);
         if (remaining <= 0) continue;
-        installments++;
-        balance += remaining;
         const customerId = Number(loan?.idCustomer ?? loan?.IdCustomer);
-        if (customerId) customerIds.add(customerId);
+        if (due < todayKey) {
+          overdueInstallments++;
+          overdueBalance += remaining;
+          if (customerId) overdueCustomers.add(customerId);
+        } else {
+          const dueDate = new Date(`${due}T00:00:00`);
+          const daysAhead = Math.round((dueDate.getTime() - new Date(`${todayKey}T00:00:00`).getTime()) / 86400000);
+          if (daysAhead > 1) continue;
+          upcomingInstallments++;
+          upcomingBalance += remaining;
+          if (customerId) upcomingCustomers.add(customerId);
+        }
       }
     }
-    return installments ? { customers: customerIds.size, installments, balance } : null;
+    return overdueInstallments || upcomingInstallments ? {
+      overdueCustomers: overdueCustomers.size,
+      overdueInstallments,
+      overdueBalance,
+      upcomingCustomers: upcomingCustomers.size,
+      upcomingInstallments,
+      upcomingBalance,
+    } : null;
   }
 
   private handleStorageChange(event: StorageEvent) {
