@@ -5219,7 +5219,7 @@ BEGIN
         N'Al agregar un cliente se puede seleccionar su cobrador o vendedor; la asignación también se puede cambiar desde el listado.',
         N'Permite saber qué responsable atiende a cada cliente y reasignarlo cuando sea necesario.',
         N'Asigna cada cliente de cobranza a su vendedor y consulta al responsable en el listado.',
-        SYSUTCDATETIME(), N'America/Indiana/Indianapolis', N'PENDING', N'LOCAL', N'DRAFT',
+        SYSUTCDATETIME(), N'America/Indiana/Indianapolis', N'PASSED', N'LOCAL', N'DRAFT',
         NULL, NULL, SYSUTCDATETIME(), SYSUTCDATETIME(), 1
     );
 END;
@@ -6485,4 +6485,45 @@ GO
 Ejemplo para generar folio:
 SELECT CONCAT('RISK-', RIGHT('000' + CAST(NEXT VALUE FOR [smp].[SeqRiskFolio] AS VARCHAR(10)), 3));
 */
+GO
+
+-- ============================================================================
+-- Fecha: 23/11/2026
+-- Módulo: Almacenes / Inventario
+-- Repositorio de origen: Smp25
+-- Archivo original: agregado al archivo maestro (versión 5.00.614)
+-- ============================================================================
+USE administration;
+GO
+SET XACT_ABORT ON;
+BEGIN TRANSACTION;
+
+IF NOT EXISTS (
+    SELECT 1
+    FROM dbo.product_updates WITH (UPDLOCK, HOLDLOCK)
+    WHERE version = N'5.00.614'
+      AND module = N'Almacenes / Inventario'
+      AND idRoot IS NULL
+      AND idCompany IS NULL
+      AND isActive = 1
+)
+BEGIN
+    INSERT INTO dbo.product_updates (
+        idRoot, idCompany, version, module, changeType, title, description,
+        userBenefit, promoText, occurredAtUtc, displayTimeZone, validationStatus,
+        releaseStatus, publicationStatus, publishedAtUtc, createdBy,
+        createdAtUtc, updatedAtUtc, isActive
+    )
+    VALUES (
+        NULL, NULL, N'5.00.614', N'Almacenes / Inventario', N'IMPROVEMENT',
+        N'Consulta movimientos desde Inventario',
+        N'Se agregó búsqueda por código, descripción y marca, además de un detalle expandible debajo de cada material con el historial de entradas, salidas, folios, fechas, referencias y saldo.',
+        N'Permite localizar materiales y revisar su historial sin salir de Inventario ni perder el contexto de las existencias.',
+        N'Busca un material y despliega sus movimientos directamente debajo de su fila en Inventario.',
+        SYSUTCDATETIME(), N'America/Indiana/Indianapolis', N'PENDING', N'LOCAL', N'DRAFT',
+        NULL, NULL, SYSUTCDATETIME(), SYSUTCDATETIME(), 1
+    );
+END;
+
+COMMIT TRANSACTION;
 GO

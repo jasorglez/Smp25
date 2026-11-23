@@ -12,11 +12,12 @@ import { TrackingService } from 'app/services/tracking.service';
 import { alerts } from 'app/helpers/alerts';
 import { MaterialsService } from 'app/services/materials.service';
 import { catchError, forkJoin, map, of, switchMap } from 'rxjs';
+import { InventoryMovementsDetailComponent } from './inventory-movements-detail.component';
 
 @Component({
   selector: 'app-inventario',
   standalone: true,
-  imports: [CommonModule, FormsModule, AgGridModule],
+  imports: [CommonModule, FormsModule, AgGridModule, InventoryMovementsDetailComponent],
   template: `
     <!-- Barra superior -->
     <div class="d-flex flex-wrap align-items-center gap-2 mb-2 px-1">
@@ -29,6 +30,17 @@ import { catchError, forkJoin, map, of, switchMap } from 'rxjs';
           <option [ngValue]="0" disabled>— Seleccione —</option>
           <option *ngFor="let w of warehouses" [ngValue]="warehouseId(w)">{{ warehouseName(w) }}</option>
         </select>
+      </div>
+
+      <div class="input-group input-group-sm" style="width:min(340px, 100%)">
+        <span class="input-group-text"><i class="bi bi-search"></i></span>
+        <input type="search" class="form-control" [(ngModel)]="searchTerm"
+          (ngModelChange)="applyTextFilter()" placeholder="Buscar material por código, descripción o marca"
+          aria-label="Buscar material por código, descripción o marca">
+        <button *ngIf="searchTerm" class="btn btn-outline-secondary" type="button"
+          (click)="searchTerm = ''; applyTextFilter()" title="Limpiar búsqueda">
+          <i class="bi bi-x-lg"></i>
+        </button>
       </div>
 
       <!-- Botón refrescar -->
@@ -105,6 +117,7 @@ export class InventarioComponent {
   rowData:           any[]   = [];
   private allInventoryRows: any[] = [];
   showZeroStock = false;
+  searchTerm = '';
   warehouses:        any[]   = [];
   selectedWarehouse: number  = 0;
   loading:           boolean = false;
@@ -133,7 +146,16 @@ export class InventarioComponent {
 
   defaultColDef: ColDef = { sortable: true, resizable: true, suppressMovable: true };
 
-  gridOptions: any = { headerHeight: 28, rowHeight: 26, suppressDragLeaveHidesColumns: true };
+  gridOptions: any = {
+    headerHeight: 28,
+    rowHeight: 26,
+    suppressDragLeaveHidesColumns: true,
+    masterDetail: true,
+    detailRowHeight: 240,
+    isRowMaster: (row: any) => (row?.movements?.length ?? 0) > 0,
+    detailCellRenderer: InventoryMovementsDetailComponent,
+    getRowId: (params: any) => `${params.data?.id}-${params.data?.idBrand ?? 0}`,
+  };
 
   colDefs: ColDef[] = [
     {
@@ -142,7 +164,12 @@ export class InventarioComponent {
       cellStyle: { textAlign: 'center', color: '#999' },
     },
     { field: 'insumo',      headerName: 'Código',       width: 100, filter: 'agTextColumnFilter' },
-    { field: 'description', headerName: 'Descripción', width: 320, minWidth: 200, resizable: true, suppressSizeToFit: true, filter: 'agTextColumnFilter' },
+    {
+      field: 'description', headerName: 'Descripción', width: 320, minWidth: 200,
+      resizable: true, suppressSizeToFit: true, filter: 'agTextColumnFilter',
+      cellRenderer: 'agGroupCellRenderer',
+      cellRendererParams: { suppressCount: true, innerRenderer: (p: any) => p.value ?? '' },
+    },
     { field: 'measure',     headerName: 'Unidad',       width: 90, filter: 'agTextColumnFilter' },
     { field: 'brand',       headerName: 'Marca',        width: 180, minWidth: 150, filter: 'agTextColumnFilter' },
     {
@@ -241,6 +268,11 @@ export class InventarioComponent {
         applyOrder: false,
       });
     }
+    e.api.setGridOption('quickFilterText', this.searchTerm);
+  }
+
+  applyTextFilter(): void {
+    this.gridApi?.setGridOption('quickFilterText', this.searchTerm.trim());
   }
 
   onColumnResized(event: any): void {
@@ -335,7 +367,11 @@ export class InventarioComponent {
                   warn('No se pudieron cargar las partidas del movimiento ' + (master.folio || master.id || master.Id) + '.');
                   return of([]);
                 }),
-                map(details => this.asArray(details))
+              map(details => this.asArray(details).map(detail => ({
+                ...detail,
+                __movement: master,
+                __movementType: type,
+              })))
               )
             )
           ).pipe(map(detailGroups => ({ type, details: detailGroups.flat() })));
@@ -400,8 +436,11 @@ export class InventarioComponent {
           stockMax: this.toNumber(material.stockMax ?? material.stockmax),
           costoMN: this.toNumber(material.costoMN ?? material.CostoMN),
           ventaMN: this.toNumber(material.ventaMN ?? material.VentaMN ?? material.sellingprice),
+          movementDetails: [],
           brandStocks: new Map<number | string, { name: string; quantity: number; entrada: number; salida: number }>(),
         };
+
+        current.movementDetails.push(detail);
 
         if (group.type === 'IN') current.entrada += quantity;
         else current.salida += quantity;
@@ -447,6 +486,7 @@ export class InventarioComponent {
         brand: stock.name || 'Sin marca',
         brands: materialBrands.map(brand => ({ id: Number(brand.id ?? brand.Id), brand: brand.brand ?? brand.Brand })),
         brandStocks,
+        movements: this.buildMovementHistory(row.movementDetails, stock.idBrand, materialBrands),
         entrada: stock.entrada,
         salida: stock.salida,
         existencia: stock.quantity,
@@ -455,6 +495,38 @@ export class InventarioComponent {
         estadoStock: this.stockStatus(stock.quantity, row.stockMin, row.stockMax),
       }));
     }).sort((a, b) => String(a.description).localeCompare(String(b.description), 'es'));
+  }
+
+  private buildMovementHistory(details: any[], rowBrandId: number, materialBrands: any[]): any[] {
+    const targetBrand = Number(rowBrandId || 0);
+    const history = (details || []).filter(detail => {
+      const rawBrandId = detail.idBrand ?? detail.IdBrand;
+      const effectiveBrandId = rawBrandId == null
+        ? (materialBrands.length === 1 ? Number(materialBrands[0].id ?? materialBrands[0].Id) : 0)
+        : Number(rawBrandId);
+      return effectiveBrandId === targetBrand;
+    }).map(detail => {
+      const master = detail.__movement || {};
+      const type = detail.__movementType === 'IN' ? 'IN' : 'OUT';
+      const quantity = this.toNumber(detail.quantity ?? detail.Quantity ?? detail.total ?? detail.Total);
+      return {
+        fecha: master.date ?? master.Date ?? master.deliveryDate ?? master.DeliveryDate,
+        folio: master.folio ?? master.Folio ?? master.id ?? master.Id,
+        tipo: type,
+        entrada: type === 'IN' ? quantity : 0,
+        salida: type === 'OUT' ? quantity : 0,
+        saldo: 0,
+        referencia: master.comment ?? master.Comment ?? '',
+      };
+    }).sort((a, b) => new Date(a.fecha ?? 0).getTime() - new Date(b.fecha ?? 0).getTime()
+      || String(a.folio).localeCompare(String(b.folio), 'es', { numeric: true }));
+
+    let balance = 0;
+    for (const movement of history) {
+      balance += movement.entrada - movement.salida;
+      movement.saldo = balance;
+    }
+    return history.reverse();
   }
 
   private stockStatus(existence: number, minimum: number, maximum: number): string {
