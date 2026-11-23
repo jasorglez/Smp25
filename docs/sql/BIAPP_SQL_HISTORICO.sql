@@ -6884,3 +6884,25 @@ BEGIN
     );
 END;
 GO
+
+/*
+Fecha: 2026-11-23
+Módulo: Administración / Cobranza / Permisos del consecutivo
+Origen: error SQL 229 al crear el consecutivo de una empresa.
+Ejecutar en administration con una cuenta administradora de SQL Server.
+*/
+USE [administration];
+GO
+
+GRANT INSERT, UPDATE, DELETE
+    ON OBJECT::[cobranzas].[consecutivos]
+    TO [Microservicio];
+GO
+
+SELECT
+    USER_NAME() AS usuario_actual,
+    HAS_PERMS_BY_NAME(N'cobranzas.consecutivos', N'OBJECT', N'SELECT') AS puede_consultar,
+    HAS_PERMS_BY_NAME(N'cobranzas.consecutivos', N'OBJECT', N'INSERT') AS puede_insertar,
+    HAS_PERMS_BY_NAME(N'cobranzas.consecutivos', N'OBJECT', N'UPDATE') AS puede_actualizar,
+    HAS_PERMS_BY_NAME(N'cobranzas.consecutivos', N'OBJECT', N'DELETE') AS puede_eliminar;
+GO
