@@ -76,5 +76,5 @@ export const environment = {
     // publicKey: 'TEST-4399133a-4676-42a2-ab85-d946370bf96a',
   },
 
-  version: '5.00.609 (23 Noviembre 2026 07:49) avisos de pagos próximos',
+  version: '5.00.610 (23 Noviembre 2026 08:28) edición de fechas de cuotas',
 };

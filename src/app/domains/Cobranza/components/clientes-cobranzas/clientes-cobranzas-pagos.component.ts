@@ -6,7 +6,7 @@ import { alerts } from 'app/helpers/alerts';
 import { firstValueFrom } from 'rxjs';
 import { AgGridModule } from 'ag-grid-angular';
 import { NgSelectModule } from '@ng-select/ng-select';
-import { ColDef } from 'ag-grid-enterprise';
+import { ColDef, GridApi, GridReadyEvent } from 'ag-grid-enterprise';
 import { AG_GRID_LOCALE_ES } from 'assets/i18n/ag-grid.locale.es';
 import { ButtonCellRendererExpenditureComponent } from 'app/domains/ModAdmon/components/egresos-palacio/button-cell-renderer-expenditure.component';
 import { CatalogsService } from 'app/services/catalogs.service';
@@ -92,7 +92,7 @@ import { Base64EncodeService } from 'app/services/base64encode.service';
             <ng-container *ngIf="activeInstallmentId === null">
             <button class="btn btn-sm" [class.btn-warning]="isScheduleEditing(loan)" [class.btn-outline-primary]="!isScheduleEditing(loan)" (click)="toggleScheduleEditing(loan)" [disabled]="saving"><i class="bi" [class.bi-calendar2-check]="isScheduleEditing(loan)" [class.bi-calendar2-date]="!isScheduleEditing(loan)"></i> {{ isScheduleEditing(loan) ? 'Dejar de editar fechas' : 'Modificar fechas' }}</button>
             <button class="btn btn-sm btn-outline-primary" (click)="toggleLoanDetail(loan)" [attr.aria-expanded]="isLoanExpanded(loan)" [attr.aria-label]="(isLoanExpanded(loan) ? 'Ocultar' : 'Ver') + ' detalle del préstamo ' + loan.id"><i class="bi" [class.bi-chevron-down]="!isLoanExpanded(loan)" [class.bi-chevron-up]="isLoanExpanded(loan)"></i> {{ isLoanExpanded(loan) ? 'Ocultar detalle' : 'Ver detalle' }}</button>
-            <button class="btn btn-sm btn-primary position-relative" (click)="saveChanges(loan)" [disabled]="saving || !hasChanges(loan)"><i class="bi bi-floppy"></i> Guardar<span *ngIf="hasChanges(loan)" class="position-absolute top-0 start-100 translate-middle p-2 bg-danger border border-light rounded-circle"></span></button>
+            <button class="btn btn-sm btn-primary position-relative" (click)="saveSchedule(loan)" [disabled]="saving || (!hasChanges(loan) && !hasActiveEditor(loan))"><i class="bi bi-floppy"></i> Guardar<span *ngIf="hasChanges(loan)" class="position-absolute top-0 start-100 translate-middle p-2 bg-danger border border-light rounded-circle"></span></button>
             <button class="btn btn-sm btn-warning" (click)="revertChanges(loan)" [disabled]="saving || !hasChanges(loan)"><i class="bi bi-arrow-clockwise"></i> Deshacer</button>
             </ng-container>
           </div>
@@ -112,8 +112,8 @@ import { Base64EncodeService } from 'app/services/base64encode.service';
             <div class="col-12 small text-warning" *ngIf="hasLoanPayments(loan)">Este préstamo ya tiene abonos. Para conservar el historial, capital, interés, fechas y número de pagos están bloqueados; puedes cambiar la nota y el comentario.</div>
             <div class="col-12 small">Interés total: {{ loan.totalInteres || 0 | currency:'MXN' }} · A pagar: {{ payableTotal(loan) | currency:'MXN' }}</div>
           </div>
-          <div *ngIf="isScheduleEditing(loan)" class="alert alert-warning py-2 mb-2 small"><i class="bi bi-info-circle me-1"></i>Haz doble clic en una fecha programada para cambiarla. Después selecciona <strong>Guardar</strong> para aplicar los cambios o <strong>Deshacer</strong> para restaurarlos.</div>
-          <ag-grid-angular class="ag-theme-quartz small-text-ag-grid d-block" style="width:100%;height:320px" [rowData]="loan.cuotas" [columnDefs]="installmentColumns" [defaultColDef]="defaultColDef" [localeText]="AG_GRID_LOCALE_ES" [rowSelection]="'single'" [stopEditingWhenCellsLoseFocus]="true" (cellValueChanged)="onDateChanged($event)"></ag-grid-angular>
+          <div *ngIf="isScheduleEditing(loan)" class="alert alert-warning py-2 mb-2 small"><i class="bi bi-info-circle me-1"></i>Haz clic en una fecha programada para cambiarla. El calendario permanecerá abierto mientras eliges el día. Después selecciona <strong>Guardar</strong> para aplicar los cambios o <strong>Deshacer</strong> para restaurarlos.</div>
+          <ag-grid-angular class="ag-theme-quartz small-text-ag-grid d-block" style="width:100%;height:320px" [rowData]="loan.cuotas" [columnDefs]="installmentColumns" [defaultColDef]="defaultColDef" [localeText]="AG_GRID_LOCALE_ES" [rowSelection]="'single'" [singleClickEdit]="isScheduleEditing(loan)" [stopEditingWhenCellsLoseFocus]="false" (gridReady)="onInstallmentGridReady($event, loan)" (cellValueChanged)="onDateChanged($event)"></ag-grid-angular>
           </ng-container>
           <div *ngFor="let installment of loan.cuotas"><div *ngIf="activeInstallmentId === installment.id" class="border border-primary rounded-3 p-3 mt-2 bg-white shadow-sm"><div class="d-flex justify-content-between align-items-start gap-2 flex-wrap mb-2"><div><span class="badge bg-primary mb-1">REGISTRAR PAGO</span><h5 class="mb-1">Abono a la cuota {{ installment.numeroCuota }}</h5><div class="small text-muted">{{ customer?.nameContact || customer?.company }} · Préstamo #{{ loan.id }} · Saldo pendiente {{ loanBalance(loan) | currency:'MXN' }}</div></div><button class="btn btn-sm btn-outline-secondary" (click)="cancelPayment()">Cancelar</button></div><div class="row g-3 align-items-end py-2">
               <div class="col-md-2"><label class="form-label small">Fecha recibida</label><input class="form-control form-control-sm" type="date" [(ngModel)]="abonoForm.fechaPago"></div>
@@ -152,6 +152,7 @@ export class ClientesCobranzasPagosComponent implements OnChanges, OnDestroy {
   private usersRequest = 0;
   private loanRefreshTimer: ReturnType<typeof setInterval> | null = null;
   private refreshingLoans = false;
+  private installmentGridApis = new Map<number, GridApi>();
   users: any[] = [];
   openCashTurns: any[] = [];
   loans: any[] = [];
@@ -229,9 +230,29 @@ export class ClientesCobranzasPagosComponent implements OnChanges, OnDestroy {
     return parsed.getFullYear() === year && parsed.getMonth() === month - 1 && parsed.getDate() === day ? match[1] : null;
   }
   isScheduleEditing(loan: any): boolean { return this.editingScheduleLoanId === Number(loan?.id); }
-  toggleScheduleEditing(loan: any): void { this.editingScheduleLoanId = this.editingScheduleLoanId === Number(loan?.id) ? null : Number(loan?.id); }
+  onInstallmentGridReady(event: GridReadyEvent, loan: any): void { this.installmentGridApis.set(Number(loan?.id), event.api); }
+  hasActiveEditor(loan: any): boolean { return (this.installmentGridApis.get(Number(loan?.id))?.getEditingCells().length || 0) > 0; }
+  toggleScheduleEditing(loan: any): void {
+    const loanId = Number(loan?.id);
+    if (this.editingScheduleLoanId === loanId) {
+      this.installmentGridApis.get(loanId)?.stopEditing();
+      this.editingScheduleLoanId = null;
+      return;
+    }
+    this.editingScheduleLoanId = loanId;
+  }
+  saveSchedule(loan: any): void {
+    this.installmentGridApis.get(Number(loan?.id))?.stopEditing();
+    // AG Grid commits the editor synchronously; defer the save so Angular has
+    // applied cellValueChanged to the bound loan row before reading its dates.
+    setTimeout(() => void this.saveChanges(loan), 0);
+  }
   hasChanges(loan: any): boolean { return (loan.cuotas || []).some((item: any) => item.fechaProgramada !== this.originalDates.get(item.id)); }
-  revertChanges(loan: any): void { loan.cuotas = loan.cuotas.map((item: any) => ({ ...item, fechaProgramada: this.originalDates.get(item.id) })); this.editingScheduleLoanId = null; }
+  revertChanges(loan: any): void {
+    this.installmentGridApis.get(Number(loan?.id))?.stopEditing(true);
+    loan.cuotas = loan.cuotas.map((item: any) => ({ ...item, fechaProgramada: this.originalDates.get(item.id) }));
+    this.editingScheduleLoanId = null;
+  }
   async saveChanges(loan: any): Promise<void> {
     const changed = loan.cuotas.map((item: any) => ({ item, date: this.normalizeScheduledDate(item.fechaProgramada) }))
       .filter((entry: any) => entry.date && entry.date !== this.originalDates.get(entry.item.id));
@@ -438,7 +459,7 @@ export class ClientesCobranzasPagosComponent implements OnChanges, OnDestroy {
 
   private async refreshLoansIfChanged(): Promise<void> {
     const customerId = Number(this.customer?.id);
-    if (!customerId || document.hidden || this.loading || this.saving || this.refreshingLoans || this.showLoanForm || this.activeInstallmentId !== null || this.loans.some(loan => this.hasChanges(loan) || this.hasLoanRecordChanges(loan))) return;
+    if (!customerId || document.hidden || this.loading || this.saving || this.refreshingLoans || this.showLoanForm || this.activeInstallmentId !== null || this.editingScheduleLoanId !== null || this.loans.some(loan => this.hasChanges(loan) || this.hasLoanRecordChanges(loan))) return;
     this.refreshingLoans = true;
     try {
       const items = await firstValueFrom(this.customersService.getCobranzaLoans(customerId));
