@@ -38,8 +38,8 @@
             <option value="overdue">Con pagos vencidos</option>
           </select>
         </div>
-        <button type="button" class="btn btn-sm btn-outline-danger" [disabled]="!selectedRowData" (click)="generatePaymentsPdf(selectedRowData)" title="Reporte de préstamos, cuotas y abonos del cliente seleccionado">
-          <i class="bi bi-file-earmark-pdf-fill me-1"></i> Reporte de pagos
+        <button type="button" class="btn btn-sm btn-outline-danger" [disabled]="!selectedRowData" (click)="generatePaymentsPdf(selectedRowData)" title="Estado de cuenta PDF del cliente seleccionado">
+          <i class="bi bi-file-earmark-pdf-fill me-1"></i> Estado de cuenta PDF
         </button>
         <button *ngIf="type === 'CUSTOMERS'" type="button" class="btn btn-sm btn-outline-primary" [disabled]="!idRoot || collectorsLoading || generatingCollectorsReport" (click)="generateCustomersByCollectorPdf()" title="Reporte de clientes asignados a cada cobrador">
           <i class="bi bi-people-fill me-1"></i> {{ generatingCollectorsReport ? 'Generando…' : 'Clientes por cobrador' }}
@@ -53,6 +53,7 @@
       class="ag-theme-quartz small-text-ag-grid"
         [rowData]="rowData"
         [columnDefs]="colMaster"
+        [rowSelection]="rowSelection"
         (selectionChanged)="onSelectionChanged($event)"
         [gridOptions]="gridOptions"
         (cellValueChanged)="onCellValueChanged($event)"
