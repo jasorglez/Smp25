@@ -6730,3 +6730,128 @@ BEGIN CATCH
     THROW;
 END CATCH;
 GO
+
+/*
+Fecha: 2026-11-23
+Módulo: Cobranza / Telegram (ubicación y visita sin pago)
+Repositorio origen: ChatbotTelegram
+Propósito: Asegurar que la ubicación de abonos y las visitas sin pago usen el esquema plural cobranzas.
+IMPORTANTE: ejecutar únicamente este bloque después de la migración de las seis tablas principales.
+*/
+IF COL_LENGTH(N'cobranzas.abonos_cobranza', N'ubicacion_latitud') IS NULL
+    ALTER TABLE cobranzas.abonos_cobranza ADD ubicacion_latitud DECIMAL(9,6) NULL;
+GO
+
+IF COL_LENGTH(N'cobranzas.abonos_cobranza', N'ubicacion_longitud') IS NULL
+    ALTER TABLE cobranzas.abonos_cobranza ADD ubicacion_longitud DECIMAL(9,6) NULL;
+GO
+
+IF OBJECT_ID(N'cobranzas.cobranza_visitas_nopago', N'U') IS NULL
+BEGIN
+    CREATE TABLE cobranzas.cobranza_visitas_nopago
+    (
+        id BIGINT IDENTITY(1,1) NOT NULL CONSTRAINT PK_cobranza_visitas_nopago PRIMARY KEY,
+        id_root INT NOT NULL,
+        id_usuario_cobrador INT NOT NULL,
+        id_customer INT NOT NULL,
+        id_prestamo INT NOT NULL,
+        id_cuota INT NOT NULL,
+        fecha_visita DATE NOT NULL,
+        resultado VARCHAR(20) NOT NULL CONSTRAINT DF_cobranza_visitas_nopago_resultado DEFAULT ('NO_PAGO'),
+        latitud DECIMAL(9,6) NOT NULL,
+        longitud DECIMAL(9,6) NOT NULL,
+        saldo_prestamo DECIMAL(18,2) NOT NULL,
+        idempotency_key UNIQUEIDENTIFIER NOT NULL,
+        active BIT NOT NULL CONSTRAINT DF_cobranza_visitas_nopago_active DEFAULT (1),
+        created_at_utc DATETIME2(3) NOT NULL CONSTRAINT DF_cobranza_visitas_nopago_created DEFAULT (SYSUTCDATETIME()),
+        CONSTRAINT CK_cobranza_visitas_nopago_resultado CHECK (resultado = 'NO_PAGO'),
+        CONSTRAINT CK_cobranza_visitas_nopago_lat CHECK (latitud BETWEEN -90 AND 90),
+        CONSTRAINT CK_cobranza_visitas_nopago_lon CHECK (longitud BETWEEN -180 AND 180)
+    );
+
+    CREATE UNIQUE INDEX UX_cobranza_visitas_nopago_key
+        ON cobranzas.cobranza_visitas_nopago(idempotency_key);
+    CREATE INDEX IX_cobranza_visitas_nopago_cobrador_fecha
+        ON cobranzas.cobranza_visitas_nopago(id_root, id_usuario_cobrador, fecha_visita, active);
+END;
+GO
+
+/*
+Fecha: 2026-11-23
+Módulo: Cobranza / Fondo de ahorro de Telegram
+Repositorio origen: ChatbotTelegram
+Propósito: Mantener la creación idempotente de las tablas del fondo en cobranzas.
+IMPORTANTE: ejecutar únicamente este bloque si se instala en una base que aún no tiene estas tablas.
+*/
+USE [administration];
+GO
+
+IF SCHEMA_ID(N'cobranzas') IS NULL EXEC(N'CREATE SCHEMA [cobranzas]');
+GO
+
+IF OBJECT_ID(N'cobranzas.cobranza_fondo_ahorro', N'U') IS NULL
+BEGIN
+    CREATE TABLE cobranzas.cobranza_fondo_ahorro
+    (
+        id BIGINT IDENTITY(1,1) NOT NULL CONSTRAINT PK_cobranza_fondo_ahorro PRIMARY KEY,
+        id_root INT NOT NULL,
+        id_usuario_cobrador INT NOT NULL,
+        saldo DECIMAL(18,2) NOT NULL CONSTRAINT DF_cobranza_fondo_ahorro_saldo DEFAULT (0),
+        porcentaje_apartado DECIMAL(5,2) NOT NULL CONSTRAINT DF_cobranza_fondo_ahorro_porcentaje DEFAULT (0),
+        active BIT NOT NULL CONSTRAINT DF_cobranza_fondo_ahorro_active DEFAULT (1),
+        updated_at_utc DATETIME2(3) NOT NULL CONSTRAINT DF_cobranza_fondo_ahorro_updated DEFAULT (SYSUTCDATETIME()),
+        CONSTRAINT CK_cobranza_fondo_ahorro_saldo CHECK (saldo >= 0),
+        CONSTRAINT CK_cobranza_fondo_ahorro_porcentaje CHECK (porcentaje_apartado >= 0 AND porcentaje_apartado <= 100)
+    );
+END;
+GO
+
+IF NOT EXISTS (
+    SELECT 1 FROM sys.indexes
+    WHERE object_id = OBJECT_ID(N'cobranzas.cobranza_fondo_ahorro')
+      AND name = N'UX_cobranza_fondo_ahorro_usuario'
+)
+    CREATE UNIQUE INDEX UX_cobranza_fondo_ahorro_usuario
+        ON cobranzas.cobranza_fondo_ahorro(id_root, id_usuario_cobrador);
+GO
+
+IF OBJECT_ID(N'cobranzas.cobranza_fondo_ahorro_movimientos', N'U') IS NULL
+BEGIN
+    CREATE TABLE cobranzas.cobranza_fondo_ahorro_movimientos
+    (
+        id BIGINT IDENTITY(1,1) NOT NULL CONSTRAINT PK_cobranza_fondo_ahorro_movimientos PRIMARY KEY,
+        id_fondo BIGINT NOT NULL,
+        tipo VARCHAR(12) NOT NULL,
+        monto DECIMAL(18,2) NOT NULL,
+        fecha_movimiento DATE NOT NULL,
+        id_abono_cobranza INT NULL,
+        comentario NVARCHAR(200) NULL,
+        active BIT NOT NULL CONSTRAINT DF_cobranza_fondo_ahorro_mov_active DEFAULT (1),
+        created_at_utc DATETIME2(3) NOT NULL CONSTRAINT DF_cobranza_fondo_ahorro_mov_created DEFAULT (SYSUTCDATETIME()),
+        CONSTRAINT FK_cobranza_fondo_ahorro_mov_fondo
+            FOREIGN KEY (id_fondo) REFERENCES cobranzas.cobranza_fondo_ahorro(id),
+        CONSTRAINT CK_cobranza_fondo_ahorro_mov_tipo CHECK (tipo IN ('APORTE', 'RETIRO', 'APARTADO')),
+        CONSTRAINT CK_cobranza_fondo_ahorro_mov_monto CHECK (monto > 0)
+    );
+END;
+GO
+
+IF NOT EXISTS (
+    SELECT 1 FROM sys.indexes
+    WHERE object_id = OBJECT_ID(N'cobranzas.cobranza_fondo_ahorro_movimientos')
+      AND name = N'IX_cobranza_fondo_ahorro_movimientos_fondo_fecha'
+)
+    CREATE INDEX IX_cobranza_fondo_ahorro_movimientos_fondo_fecha
+        ON cobranzas.cobranza_fondo_ahorro_movimientos(id_fondo, fecha_movimiento DESC, id DESC)
+        INCLUDE(tipo, monto, comentario, active);
+GO
+
+IF NOT EXISTS (
+    SELECT 1 FROM sys.indexes
+    WHERE object_id = OBJECT_ID(N'cobranzas.cobranza_fondo_ahorro_movimientos')
+      AND name = N'UX_cobranza_fondo_ahorro_mov_abono'
+)
+    CREATE UNIQUE INDEX UX_cobranza_fondo_ahorro_mov_abono
+        ON cobranzas.cobranza_fondo_ahorro_movimientos(id_abono_cobranza)
+        WHERE id_abono_cobranza IS NOT NULL;
+GO
