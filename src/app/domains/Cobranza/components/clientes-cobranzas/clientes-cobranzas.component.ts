@@ -1013,7 +1013,10 @@ export class ClientesCobranzasComponent implements CanComponentDeactivate {
         const rows: any[][] = [[{ text: '#', bold: true }, { text: 'Programado', bold: true }, { text: 'Capital', bold: true }, { text: 'Interés', bold: true }, { text: 'Abonado', bold: true }, { text: 'Saldo', bold: true }, { text: 'Estado', bold: true }]];
         for (const installment of installments) {
           const received = Number.isFinite(Number(installment.montoAplicado)) ? Number(installment.montoAplicado) : (installment.abonos || []).filter((payment: any) => payment.active !== false).reduce((sum: number, payment: any) => sum + Number(payment.monto || 0), 0);
-          rows.push([String(installment.numeroCuota), date(installment.fechaProgramada), money(installment.montoCapital ?? installment.montoProgramado), money(installment.montoInteres || 0), money(received), money(Number(installment.montoProgramado) - received), received >= Number(installment.montoProgramado) ? 'Pagada' : 'Pendiente']);
+          const balance = Math.max(0, Number(installment.montoProgramado || 0) - received);
+          const installmentDate = String(installment.fechaProgramada || '').slice(0, 10);
+          const status = balance <= 0 ? 'Pagada' : installmentDate < today ? 'Vencida' : 'Pendiente';
+          rows.push([String(installment.numeroCuota), date(installment.fechaProgramada), money(installment.montoCapital ?? installment.montoProgramado), money(installment.montoInteres || 0), money(received), money(balance), status]);
         }
         content.push({ table: { headerRows: 1, widths: [18, 58, 61, 54, 60, 55, '*'], body: rows }, layout: 'lightHorizontalLines', fontSize: 7 });
         const payments = installments.flatMap((item: any) => (item.abonos || []).map((payment: any) => ({ numero: item.numeroCuota, ...payment })));
