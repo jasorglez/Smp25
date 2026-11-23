@@ -6996,3 +6996,17 @@ WHERE version IN (N'5.00.618', N'5.00.619')
   AND idRoot IS NULL AND idCompany IS NULL AND isActive = 1
 ORDER BY version, module;
 GO
+
+/* Despliegue confirmado por GitHub Actions: runs 45291527858 y 45291920708. */
+UPDATE dbo.product_updates
+SET releaseStatus = N'PRODUCTION', updatedAtUtc = SYSUTCDATETIME()
+WHERE version = N'5.00.618'
+  AND module = N'Cobranza / Préstamos'
+  AND idRoot IS NULL AND idCompany IS NULL AND isActive = 1;
+
+UPDATE dbo.product_updates
+SET releaseStatus = N'PRODUCTION', updatedAtUtc = SYSUTCDATETIME()
+WHERE version = N'5.00.619'
+  AND module = N'Cobranza / Estado de cuenta por cliente'
+  AND idRoot IS NULL AND idCompany IS NULL AND isActive = 1;
+GO
