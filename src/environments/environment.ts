@@ -76,5 +76,5 @@ export const environment = {
     // publicKey: 'TEST-4399133a-4676-42a2-ab85-d946370bf96a',
   },
 
-  version: '5.00.621 (23 Noviembre 2026 19:16) Cartera general de préstamos en PDF',
+  version: '5.00.622 (23 Noviembre 2026 19:30) Consecutivo de nota de venta en cartera PDF',
 };
