@@ -7035,3 +7035,51 @@ WHERE version = N'5.00.619'
   AND module = N'Cobranza / Estado de cuenta por cliente'
   AND idRoot IS NULL AND idCompany IS NULL AND isActive = 1;
 GO
+
+/*
+  Fecha: 2026-11-23
+  Módulo: Cobranza / Corte de caja
+  Repositorios: Smp25 (Angular) y MicroServicioAdministration (API)
+  Origen: src/app/domains/Cobranza/pages/corte-caja-cobranza.component.ts
+  Publicación del aviso; ejecutar únicamente este bloque.
+*/
+SET XACT_ABORT ON;
+BEGIN TRANSACTION;
+DECLARE @nowUtc datetime2 = SYSUTCDATETIME();
+
+IF NOT EXISTS (
+    SELECT 1 FROM dbo.product_updates
+    WHERE idRoot IS NULL AND idCompany IS NULL
+      AND version = N'5.00.624'
+      AND module = N'Cobranza / Corte de caja'
+      AND title = N'Intereses cobrados en el corte de caja'
+      AND isActive = 1
+)
+BEGIN
+    INSERT INTO dbo.product_updates
+    (
+        idRoot, idCompany, version, module, changeType, title, description,
+        userBenefit, promoText, occurredAtUtc, displayTimeZone,
+        validationStatus, releaseStatus, publicationStatus, publishedAtUtc,
+        createdBy, isActive
+    )
+    VALUES
+    (
+        NULL, NULL, N'5.00.624', N'Cobranza / Corte de caja', 'IMPROVEMENT',
+        N'Intereses cobrados en el corte de caja',
+        N'El corte por rango de fechas separa los intereses efectivamente cobrados del capital recuperado. El desglose aparece por cobrador, movimiento y en el PDF; los abonos parciales distribuyen el interés proporcionalmente entre las cuotas del calendario.',
+        N'Permite conocer cuánto del efectivo recibido corresponde a ganancias por intereses durante el período consultado.',
+        N'Consulta los intereses que realmente cobraste en el período, separados del capital y por cobrador.',
+        @nowUtc, N'America/Indiana/Indianapolis', 'PASSED', 'LOCAL', 'PUBLISHED', @nowUtc,
+        N'Codex', 1
+    );
+END;
+
+SELECT id, version, module, title, validationStatus, releaseStatus, publicationStatus
+FROM dbo.product_updates
+WHERE version = N'5.00.624'
+  AND module = N'Cobranza / Corte de caja'
+  AND title = N'Intereses cobrados en el corte de caja'
+  AND idRoot IS NULL AND idCompany IS NULL AND isActive = 1;
+COMMIT TRANSACTION;
+GO

@@ -64,15 +64,55 @@ export class CortesCobranzaService {
     const typeNames = new Map(types.map(item => [Number(item.id), String(item.description || item.name || `Tipo ${item.id}`)]));
     const customers = (await this.offlineStore.getSnapshots<any>(companyId, 'clientes')).flatMap(snapshot => this.collection(snapshot.value));
     const customersById = new Map(customers.map(item => [Number(item.id), item]));
-    const movementsForView = rows.map(item => ({
+    const interestAllocations = new Map<number, { capital: number; interest: number }>();
+    const customerIds = [...new Set(rows.map(item => Number(item.idCustomer)).filter(Boolean))];
+    const loanSnapshots = await Promise.all(customerIds.map(customerId =>
+      this.offline.readSnapshot<any>(this.offline.snapshotKey('loans-customer', companyId, customerId))));
+    for (const snapshot of loanSnapshots) {
+      for (const loan of this.collection(snapshot)) {
+        const schedule = this.collection(loan?.cuotas).filter(item => item.active !== false)
+          .sort((a, b) => Number(a.numeroCuota || 0) - Number(b.numeroCuota || 0))
+          .map(item => ({ due: Number(item.montoProgramado || 0), interest: Number(item.montoInteres || 0) }));
+        const history = this.collection(loan?.cuotas).flatMap(item => this.collection(item?.abonos)
+          .filter(payment => payment.active !== false)
+          .map(payment => ({ id: Number(payment.id), date: String(payment.fechaPago || ''), amount: Number(payment.monto || 0) })));
+        let paidBefore = 0;
+        const totalDue = schedule.reduce((total, item) => total + item.due, 0);
+        for (const payment of history.sort((a, b) => a.date.localeCompare(b.date) || a.id - b.id)) {
+          const paidAfter = Math.min(totalDue, paidBefore + payment.amount);
+          let scheduleStart = 0;
+          let interest = 0;
+          for (const installment of schedule) {
+            const scheduleEnd = scheduleStart + installment.due;
+            const applied = Math.max(0, Math.min(paidAfter, scheduleEnd) - Math.max(paidBefore, scheduleStart));
+            if (applied > 0 && installment.due > 0) interest += applied * installment.interest / installment.due;
+            scheduleStart = scheduleEnd;
+          }
+          interest = Math.round(Math.min(payment.amount, interest) * 100) / 100;
+          interestAllocations.set(payment.id, { capital: payment.amount - interest, interest });
+          paidBefore += payment.amount;
+        }
+      }
+    }
+    const movementsForView = rows.map(item => {
+      const allocation = interestAllocations.get(Number(item.id)) || { capital: Number(item.monto || 0), interest: 0 };
+      return ({
       ...item,
       cliente: customersById.get(Number(item.idCustomer))?.nameContact || customersById.get(Number(item.idCustomer))?.company || `Cliente #${item.idCustomer}`,
       tipoPago: typeNames.get(Number(item.idTipoPago)) || 'Sin tipo de pago',
+      capitalCobrado: allocation.capital,
+      interesCobrado: allocation.interest,
       __offlineOrigin: true
-    }));
+    });
+    });
     const porTipoPago: Record<string, number> = {};
     for (const item of movementsForView) porTipoPago[item.tipoPago] = (porTipoPago[item.tipoPago] || 0) + Number(item.monto || 0);
-    return { total: movementsForView.reduce((sum, item) => sum + Number(item.monto || 0), 0), numeroPagos: movementsForView.length, porTipoPago, movimientos: movementsForView, offline: true };
+    return {
+      total: movementsForView.reduce((sum, item) => sum + Number(item.monto || 0), 0),
+      capitalCobrado: movementsForView.reduce((sum, item) => sum + Number(item.capitalCobrado || 0), 0),
+      interesCobrado: movementsForView.reduce((sum, item) => sum + Number(item.interesCobrado || 0), 0),
+      numeroPagos: movementsForView.length, porTipoPago, movimientos: movementsForView, offline: true
+    };
   }
 
   private async openLocalTurn(data: any): Promise<any> {

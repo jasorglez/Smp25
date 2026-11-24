@@ -76,5 +76,5 @@ export const environment = {
     // publicKey: 'TEST-4399133a-4676-42a2-ab85-d946370bf96a',
   },
 
-  version: '5.00.623 (23 Noviembre 2026 19:56) Interés configurable en préstamos',
+  version: '5.00.624 (23 Noviembre 2026 20:20) Ganancias de intereses en corte de caja',
 };
