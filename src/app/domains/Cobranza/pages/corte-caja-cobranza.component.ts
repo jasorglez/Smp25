@@ -42,9 +42,11 @@ import { PdfPreviewService } from 'app/services/pdf-preview.service';
       <div class="row g-2 align-items-end"><div class="col-md-2"><label class="form-label small">Desde</label><input type="date" class="form-control form-control-sm" [(ngModel)]="desde"></div><div class="col-md-2"><label class="form-label small">Hasta</label><input type="date" class="form-control form-control-sm" [(ngModel)]="hasta"></div><div class="col-md-3"><label class="form-label small">Alcance</label><select class="form-select form-select-sm" [(ngModel)]="usuarioId"><option [ngValue]="null">Global · todos los cobradores</option><option *ngFor="let user of users" [ngValue]="user.id">{{ user.usersmall || user.displayName || user.email }}</option></select></div><div class="col-md-2"><button class="btn btn-primary btn-sm w-100" (click)="load()" [disabled]="loading"><i class="bi bi-search me-1"></i> Consultar</button></div><div class="col-md-3"><button class="btn btn-success btn-sm w-100" (click)="createCut()" [disabled]="saving || !canSave"><i class="bi bi-lock me-1"></i> Guardar corte</button></div></div>
     </div></div>
     <div *ngIf="error" class="alert alert-danger">{{ error }}</div>
-    <div *ngIf="summary && !hasInterestData" class="alert alert-warning py-2">La API de Administration aún no está actualizada; el desglose de capital e intereses aparecerá cuando se despliegue el backend.</div>
+    <div *ngIf="earningsError" class="alert alert-danger py-2">No se pudo cargar el reporte de ganancias: {{ earningsError }}</div>
+    <div *ngIf="earningsLoadedKey && earningsSummary && !hasInterestData" class="alert alert-warning py-2">La API de Administration aún no devuelve el desglose de capital e intereses.</div>
     <ng-container *ngIf="view !== 'apertura'"><div class="row g-3 mb-3"><div class="col-md-3"><div class="card border-0 shadow-sm h-100"><div class="card-body"><small class="text-muted">Total recibido</small><h3 class="text-success mb-0">{{ summary?.total || 0 | currency:'MXN' }}</h3></div></div></div><div class="col-md-3"><div class="card border-0 shadow-sm h-100"><div class="card-body"><small class="text-muted">Fondo inicial de caja</small><h3 class="text-primary mb-0">{{ openingFundTotal | currency:'MXN' }}</h3><small class="text-muted">{{ reportTurns.length }} turno(s) en el período</small></div></div></div><div class="col-md-3"><div class="card border-0 shadow-sm h-100"><div class="card-body"><small class="text-muted">Abonos registrados</small><h3 class="mb-0">{{ summary?.numeroPagos || 0 }}</h3></div></div></div><div class="col-md-3"><div class="card border-0 shadow-sm h-100"><div class="card-body"><small class="text-muted">Alcance</small><h5 class="mb-0">{{ usuarioId ? userName(usuarioId) : 'Global' }}</h5></div></div></div></div>
-    <div class="row g-3 mb-3"><div class="col-md-6"><div class="card border-0 shadow-sm h-100 border-start border-4 border-success"><div class="card-body"><small class="text-muted">Intereses cobrados en el período</small><h3 class="text-success mb-0" *ngIf="hasInterestData; else interestUnavailable">{{ summary.interesCobrado | currency:'MXN' }}</h3></div></div></div><div class="col-md-6"><div class="card border-0 shadow-sm h-100 border-start border-4 border-primary"><div class="card-body"><small class="text-muted">Capital recuperado en el período</small><h3 class="text-primary mb-0" *ngIf="hasInterestData; else interestUnavailable">{{ summary.capitalCobrado | currency:'MXN' }}</h3></div></div></div></div>
+    <div class="card border-0 shadow-sm mb-3 border-start border-4 border-success"><div class="card-body"><div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-3"><div><h5 class="mb-0">Reporte de ganancias por intereses</h5><small class="text-muted">Incluye todos los abonos del rango, incluso los que ya forman parte de un corte guardado.</small></div><button class="btn btn-outline-success btn-sm" (click)="printEarningsPdf()" [disabled]="!canPrintEarnings || printingPdf"><i class="bi bi-file-earmark-pdf me-1"></i>Imprimir reporte de ganancias</button></div><div class="row g-3 mb-3"><div class="col-md-6"><div class="bg-light rounded p-3"><small class="text-muted">Intereses cobrados en el período</small><h3 class="text-success mb-0" *ngIf="hasInterestData; else interestUnavailable">{{ earningsSummary.interesCobrado | currency:'MXN' }}</h3></div></div><div class="col-md-6"><div class="bg-light rounded p-3"><small class="text-muted">Capital recuperado en el período</small><h3 class="text-primary mb-0" *ngIf="hasInterestData; else interestUnavailable">{{ earningsSummary.capitalCobrado | currency:'MXN' }}</h3></div></div></div><div class="table-responsive"><table class="table table-sm table-striped align-middle mb-0"><thead><tr><th>Cobrador</th><th class="text-end">Abonos</th><th class="text-end">Capital recuperado</th><th class="text-end">Intereses cobrados</th></tr></thead><tbody><tr *ngFor="let row of earningsCollectorRows"><td>{{ userName(row.userId) }}</td><td class="text-end">{{ row.count }}</td><td class="text-end">{{ row.capital | currency:'MXN' }}</td><td class="text-end fw-semibold text-success">{{ row.interest | currency:'MXN' }}</td></tr><tr *ngIf="!earningsCollectorRows.length"><td colspan="4" class="text-center text-muted">No hay abonos en el período seleccionado.</td></tr></tbody></table></div></div></div>
+    <div class="row g-3 mb-3"><div class="col-md-6"><div class="card border-0 shadow-sm h-100 border-start border-4 border-success"><div class="card-body"><small class="text-muted">Intereses de abonos pendientes de corte</small><h3 class="text-success mb-0" *ngIf="hasCurrentCutInterestData; else interestUnavailable">{{ summary.interesCobrado | currency:'MXN' }}</h3></div></div></div><div class="col-md-6"><div class="card border-0 shadow-sm h-100 border-start border-4 border-primary"><div class="card-body"><small class="text-muted">Capital de abonos pendientes de corte</small><h3 class="text-primary mb-0" *ngIf="hasCurrentCutInterestData; else interestUnavailable">{{ summary.capitalCobrado | currency:'MXN' }}</h3></div></div></div></div>
     <ng-template #interestUnavailable><h3 class="text-muted mb-0">Pendiente del backend</h3></ng-template>
     <div class="card border-0 shadow-sm mb-3"><div class="card-body"><div class="d-flex justify-content-between align-items-start gap-2"><div><h6>Resumen por cobrador</h6><small class="text-muted">El fondo de ahorro es personal e informativo; no se suma al efectivo de caja.</small></div><small class="text-muted" *ngIf="savingsLoadError">Saldo de ahorro no disponible</small></div><div class="table-responsive"><table class="table table-sm table-striped align-middle mb-0"><thead><tr><th>Cobrador</th><th class="text-end">Turnos</th><th class="text-end">Fondo inicial</th><th class="text-end">Abonos del período</th><th class="text-end">Intereses cobrados</th><th class="text-end">Fondo de ahorro</th><th class="text-end">Efectivo esperado*</th><th class="text-end">Efectivo contado</th><th class="text-end">Diferencia</th></tr></thead><tbody><tr *ngFor="let row of collectorRows"><td>{{ userName(row.userId) }}</td><td class="text-end">{{ row.turnCount || '—' }}</td><td class="text-end">{{ row.openingFund === null ? 'Sin fondo registrado' : (row.openingFund | currency:'MXN') }}</td><td class="text-end">{{ row.collections | currency:'MXN' }}</td><td class="text-end fw-semibold text-success">{{ row.interestEarned === null ? 'Pendiente del backend' : (row.interestEarned | currency:'MXN') }}</td><td class="text-end fw-semibold text-primary">{{ row.savingsBalance === null ? 'No disponible' : (row.savingsBalance | currency:'MXN') }}</td><td class="text-end">{{ row.expectedCash === null ? 'Pendiente de cierre' : (row.expectedCash | currency:'MXN') }}</td><td class="text-end">{{ row.countedCash === null ? 'Pendiente de cierre' : (row.countedCash | currency:'MXN') }}</td><td class="text-end" [class.text-danger]="row.difference !== null && row.difference !== 0" [class.text-success]="row.difference === 0">{{ row.difference === null ? '—' : (row.difference | currency:'MXN') }}</td></tr><tr *ngIf="!collectorRows.length"><td colspan="9" class="text-center text-muted">No hay información de cobradores en el período.</td></tr></tbody></table></div><small class="text-muted d-block mt-2">*El efectivo esperado corresponde al dato calculado al cerrar cada turno. El saldo de ahorro se muestra por separado.</small></div></div>
     <div class="card border-0 shadow-sm mb-3"><div class="card-body"><h6>Totales por tipo de pago</h6><div class="d-flex flex-wrap gap-2"><span *ngFor="let item of typeTotals" class="badge text-bg-light border p-2">{{ item.name }}: {{ item.amount | currency:'MXN' }}</span><span *ngIf="!typeTotals.length" class="text-muted small">Sin movimientos en el período.</span></div></div></div>
@@ -69,6 +71,8 @@ export class CorteCajaCobranzaComponent {
   desde = this.today();
   hasta = this.today();
   summary: any = null;
+  earningsSummary: any = null;
+  earningsError = '';
   history: any[] = [];
   reportTurns: any[] = [];
   collectorBalances: any[] = [];
@@ -88,6 +92,7 @@ export class CorteCajaCobranzaComponent {
   printingPdf = false;
   error = '';
   loadedKey = '';
+  earningsLoadedKey = '';
   loadedTurnsKey = '';
   locale = AG_GRID_LOCALE_ES;
   defaultColDef: ColDef = { sortable: true, filter: true, resizable: true, flex: 1 };
@@ -109,7 +114,21 @@ export class CorteCajaCobranzaComponent {
     { field: 'total', headerName: 'Total', valueFormatter: p => this.money(p.value) },
     { field: 'inicio', headerName: 'Registrado', valueFormatter: p => this.date(p.value) }
   ];
-  get hasInterestData(): boolean { return !!this.summary && Object.prototype.hasOwnProperty.call(this.summary, 'interesCobrado'); }
+  get hasInterestData(): boolean { return this.earningsLoadedKey === this.currentKey() && !!this.earningsSummary && Object.prototype.hasOwnProperty.call(this.earningsSummary, 'interesCobrado'); }
+  get hasCurrentCutInterestData(): boolean { return this.loadedKey === this.currentKey() && !!this.summary && Object.prototype.hasOwnProperty.call(this.summary, 'interesCobrado'); }
+  get canPrintEarnings(): boolean { return this.hasInterestData && this.earningsLoadedKey === this.currentKey(); }
+  get earningsCollectorRows(): Array<{userId: number; count: number; capital: number; interest: number}> {
+    const totals = new Map<number, {userId: number; count: number; capital: number; interest: number}>();
+    for (const movement of this.earningsSummary?.movimientos || []) {
+      const userId = Number(movement.idUsuarioCobrador || 0);
+      const row = totals.get(userId) || { userId, count: 0, capital: 0, interest: 0 };
+      row.count++;
+      row.capital += Number(movement.capitalCobrado || 0);
+      row.interest += Number(movement.interesCobrado || 0);
+      totals.set(userId, row);
+    }
+    return [...totals.values()].sort((a, b) => this.userName(a.userId).localeCompare(this.userName(b.userId), 'es'));
+  }
   get typeTotals(): {name: string; amount: number}[] { return Object.entries(this.summary?.porTipoPago || {}).map(([name, amount]) => ({ name, amount: Number(amount) })); }
   get openingFundTotal(): number { return this.reportTurns.reduce((total, turn) => total + Number(turn.fondoInicial || 0), 0); }
   get collectorRows(): any[] {
@@ -125,7 +144,7 @@ export class CorteCajaCobranzaComponent {
       return {
         userId, turnCount: turns.length, openingFund: turns.length ? turns.reduce((total, turn) => total + Number(turn.fondoInicial || 0), 0) : null,
         collections: payments.reduce((total: number, item: any) => total + Number(item.monto || 0), 0),
-        interestEarned: this.hasInterestData ? payments.reduce((total: number, item: any) => total + Number(item.interesCobrado || 0), 0) : null,
+        interestEarned: this.hasCurrentCutInterestData ? payments.reduce((total: number, item: any) => total + Number(item.interesCobrado || 0), 0) : null,
         savingsBalance: balance ? Number(balance.saldo || 0) : (this.savingsLoadError ? null : 0),
         expectedCash: fullyClosed ? turns.reduce((total, turn) => total + Number(turn.efectivoEsperado || 0), 0) : null,
         countedCash: fullyClosed ? turns.reduce((total, turn) => total + Number(turn.efectivoContado || 0), 0) : null,
@@ -183,9 +202,13 @@ export class CorteCajaCobranzaComponent {
   async closeCash(): Promise<void> { if (!this.activeTurn) return; const result = await alerts.inputAlert('Cerrar caja de cobranza', 'Captura el efectivo contado en la caja', 'text', String(this.fondoInicial), { inputAttributes: { inputmode: 'decimal', min: '0', step: '0.01' } }); if (!result.isConfirmed || result.value === '') return; const counted = Number(result.value); if (!Number.isFinite(counted) || counted < 0) return; const confirmation = await alerts.confirmAlert('Confirmar corte', `Se cerrará el turno de cobranza con ${this.money(counted)} en efectivo contado.`, 'warning', 'Sí, cerrar'); if (!confirmation.isConfirmed) return; this.saving = true; try { await firstValueFrom(this.service.cerrarTurno(this.activeTurn.id, counted, 'Corte de caja de cobranza')); alerts.basicAlert('Corte realizado', 'El turno de cobranza quedó cerrado.', 'success'); this.activeTurn = null; if (this.view !== 'apertura') this.load(); } catch (error: any) { alerts.basicAlert('Error', error?.error || 'No se pudo cerrar la caja.', 'error'); } finally { this.saving = false; } }
   load(): void {
     if (!this.rootId || !this.desde || !this.hasta || this.hasta < this.desde) { this.error = 'Selecciona un período válido.'; return; }
-    this.loading = true; this.error = ''; this.loadedKey = ''; this.loadedTurnsKey = ''; this.savingsLoadedKey = ''; this.reportTurns = []; this.collectorBalances = [];
+    this.loading = true; this.error = ''; this.earningsError = ''; this.summary = null; this.earningsSummary = null; this.loadedKey = ''; this.earningsLoadedKey = ''; this.loadedTurnsKey = ''; this.savingsLoadedKey = ''; this.reportTurns = []; this.collectorBalances = [];
     const key = this.currentKey();
     this.service.getResumen(this.rootId, this.desde, this.hasta, this.usuarioId).subscribe({ next: result => { this.summary = result; this.loadedKey = key; this.loading = false; }, error: error => { console.error('Error al consultar el corte de Cobranza:', error); const detail = error?.error?.error || error?.error?.title; const status = error?.status ? ` (HTTP ${error.status})` : ''; this.error = detail ? `No se pudo consultar el corte${status}: ${detail}` : `No se pudo consultar el corte${status}.`; this.loading = false; } });
+    this.service.getGanancias(this.rootId, this.desde, this.hasta, this.usuarioId).subscribe({
+      next: result => { this.earningsSummary = result; this.earningsLoadedKey = key; },
+      error: error => { console.error('Error al consultar ganancias de Cobranza:', error); this.earningsSummary = null; this.earningsError = error?.error?.error || `No se pudo consultar el reporte (HTTP ${error?.status || 'sin conexión'}).`; }
+    });
     this.service.getTurnos(this.rootId, this.desde, this.hasta).subscribe({
       next: turns => {
         this.reportTurns = (turns || []).filter(turn =>
@@ -239,7 +262,7 @@ export class CorteCajaCobranzaComponent {
         { text: 'CORTE DE CAJA · COBRANZA', style: 'title' },
         { text: `Período: ${date(this.desde)} al ${date(this.hasta)}     Alcance: ${this.usuarioId ? this.userName(this.usuarioId) : 'Global'}`, margin: [0, 0, 0, 10] },
         { columns: [{ text: `Total recibido: ${money(this.summary?.total)}`, bold: true, fontSize: 12 }, { text: `Fondo inicial de caja: ${money(this.openingFundTotal)}`, alignment: 'center', bold: true, fontSize: 12 }, { text: `Abonos: ${this.summary?.numeroPagos || 0}`, alignment: 'right', bold: true, fontSize: 12 }], margin: [0, 0, 0, 8] },
-        { columns: [{ text: `Intereses cobrados: ${this.hasInterestData ? money(this.summary?.interesCobrado) : 'Pendiente del backend'}`, bold: true, color: '#198754' }, { text: `Capital recuperado: ${this.hasInterestData ? money(this.summary?.capitalCobrado) : 'Pendiente del backend'}`, alignment: 'right', bold: true, color: '#0d6efd' }], margin: [0, 0, 0, 8] },
+        { columns: [{ text: `Intereses de abonos pendientes de corte: ${this.hasCurrentCutInterestData ? money(this.summary?.interesCobrado) : 'Pendiente del backend'}`, bold: true, color: '#198754' }, { text: `Capital recuperado: ${this.hasCurrentCutInterestData ? money(this.summary?.capitalCobrado) : 'Pendiente del backend'}`, alignment: 'right', bold: true, color: '#0d6efd' }], margin: [0, 0, 0, 8] },
         { text: 'Fondos iniciales de los turnos del período', style: 'section' },
         this.reportTurns.length
           ? { table: { headerRows: 1, widths: [70, 75, '*', 100], body: [[{ text: 'Turno', bold: true }, { text: 'Caja', bold: true }, { text: 'Cobrador', bold: true }, { text: 'Fondo inicial', bold: true, alignment: 'right' }], ...this.reportTurns.map(turn => [String(turn.id), `Caja #${turn.idCashRegister}`, this.userName(this.getTurnUserId(turn) || 0), { text: money(turn.fondoInicial), alignment: 'right' }])] }, layout: 'lightHorizontalLines', fontSize: 8, margin: [0, 0, 0, 10] }
@@ -270,6 +293,64 @@ export class CorteCajaCobranzaComponent {
       this.printingPdf = false;
     }
   }
+  async printEarningsPdf(): Promise<void> {
+    if (!this.canPrintEarnings || this.printingPdf) return;
+    this.printingPdf = true;
+    try {
+      const response: any = await firstValueFrom(this.rootService.getRootbyId(this.rootId));
+      const root = response?.data ?? response;
+      let logo: string | null = null;
+      for (const url of [root?.picture, root?.picture2]) {
+        if (!url) continue;
+        const image = await this.base64EncodeService.convertImageToBase64(url);
+        if (/^data:image\/(png|jpeg);base64,/i.test(image)) { logo = image; break; }
+      }
+      if (!logo) throw new Error('No se pudo cargar el logo de la empresa.');
+      const pdfMake = (await import('pdfmake/build/pdfmake')).default;
+      const pdfFonts = await import('pdfmake/build/vfs_fonts');
+      (pdfMake as any).vfs = (pdfFonts as any).pdfMake?.vfs || (pdfFonts as any).default?.pdfMake?.vfs;
+      const money = (value: any) => new Intl.NumberFormat('es-MX', { style: 'currency', currency: 'MXN' }).format(Number(value || 0));
+      const date = (value: any) => value ? String(value).slice(0, 10).split('-').reverse().join('/') : '';
+      const movements = this.earningsSummary?.movimientos || [];
+      const body = movements.map((item: any) => [
+        date(item.fechaPago), item.cliente || '', String(item.idPrestamo ?? ''), this.userName(item.idUsuarioCobrador),
+        { text: money(item.capitalCobrado), alignment: 'right' },
+        { text: money(item.interesCobrado), alignment: 'right' },
+        { text: money(item.monto), alignment: 'right' }
+      ]);
+      const collectorBody = this.earningsCollectorRows.map(row => [
+        this.userName(row.userId), String(row.count), { text: money(row.capital), alignment: 'right' },
+        { text: money(row.interest), alignment: 'right' }
+      ]);
+      const doc: any = {
+        pageSize: 'LETTER', pageOrientation: 'landscape', pageMargins: [32, 30, 32, 34],
+        content: [
+          { columns: [{ image: logo, fit: [80, 55] }, { text: root?.name || 'Cobranza', alignment: 'center', bold: true, fontSize: 14, margin: [0, 16, 0, 0] }], margin: [0, 0, 0, 12] },
+          { text: 'REPORTE DE GANANCIAS POR INTERESES', fontSize: 15, bold: true, margin: [0, 0, 0, 8] },
+          { text: `Período: ${date(this.desde)} al ${date(this.hasta)}     Alcance: ${this.usuarioId ? this.userName(this.usuarioId) : 'Global'}`, margin: [0, 0, 0, 10] },
+          { text: 'Incluye todos los abonos del rango, incluso los que ya forman parte de un corte guardado.', italics: true, color: '#555', margin: [0, 0, 0, 8] },
+          { columns: [{ text: `INTERESES COBRADOS: ${money(this.earningsSummary.interesCobrado)}`, bold: true, color: '#198754', fontSize: 12 }, { text: `CAPITAL RECUPERADO: ${money(this.earningsSummary.capitalCobrado)}`, alignment: 'right', bold: true, color: '#0d6efd', fontSize: 12 }], margin: [0, 0, 0, 12] },
+          { text: 'Resumen por cobrador', fontSize: 10, bold: true, margin: [0, 5, 0, 4] },
+          collectorBody.length
+            ? { table: { headerRows: 1, widths: ['*', 70, 130, 130], body: [[{ text: 'Cobrador', bold: true }, { text: 'Abonos', bold: true, alignment: 'right' }, { text: 'Capital recuperado', bold: true, alignment: 'right' }, { text: 'Intereses cobrados', bold: true, alignment: 'right' }], ...collectorBody] }, layout: 'lightHorizontalLines', margin: [0, 0, 0, 12] }
+            : { text: 'No hay abonos en el período seleccionado.', italics: true, color: '#666', margin: [0, 4, 0, 10] },
+          { text: 'Detalle de abonos', fontSize: 10, bold: true, margin: [0, 5, 0, 4] },
+          body.length
+            ? { table: { headerRows: 1, widths: [65, '*', 60, 110, 105, 105, 105], body: [[{ text: 'Fecha', bold: true }, { text: 'Cliente', bold: true }, { text: 'Préstamo', bold: true }, { text: 'Cobrador', bold: true }, { text: 'Capital', bold: true, alignment: 'right' }, { text: 'Interés', bold: true, alignment: 'right' }, { text: 'Total', bold: true, alignment: 'right' }], ...body] }, layout: 'lightHorizontalLines', fontSize: 8 }
+            : { text: 'No hay movimientos en el período seleccionado.', italics: true, color: '#666', margin: [0, 4, 0, 0] }
+        ],
+        defaultStyle: { fontSize: 9 },
+        footer: (currentPage: number, pageCount: number) => ({ text: `Ganancias de Cobranza · ${currentPage} de ${pageCount}`, alignment: 'center', fontSize: 8, margin: [0, 12, 0, 0] })
+      };
+      await this.pdfPreview.show((pdfMake as any).createPdf(doc), 'Reporte de ganancias de Cobranza', `ganancias-cobranza-${this.desde}-al-${this.hasta}.pdf`);
+    } catch (error) {
+      console.error('No se pudo generar el reporte de ganancias de Cobranza:', error);
+      alerts.basicAlert('Error', error instanceof Error ? error.message : 'No se pudo generar el reporte de ganancias.', 'error');
+    } finally {
+      this.printingPdf = false;
+    }
+  }
+
   async createCut(): Promise<void> {
     if (!this.canSave || this.saving) return;
     this.saving = true;

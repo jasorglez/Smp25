@@ -20,6 +20,12 @@ export class CortesCobranzaService {
     if (usuarioId) params = params.set('idUsuarioCobrador', usuarioId);
     return this.http.get<any>(`${this.base}/resumen/${rootId}`, { params, headers: this.tracking.getHeaders() });
   }
+  getGanancias(rootId: number, desde: string, hasta: string, usuarioId: number | null) {
+    if (this.offline.isOffline) return from(this.getLocalSummary(rootId, desde, hasta, usuarioId));
+    let params = new HttpParams().set('desde', desde).set('hasta', hasta);
+    if (usuarioId) params = params.set('idUsuarioCobrador', usuarioId);
+    return this.http.get<any>(`${this.base}/ganancias/${rootId}`, { params, headers: this.tracking.getHeaders() });
+  }
   getHistorial(rootId: number) {
     return this.offline.cachedRequest(this.offline.snapshotKey('cash-history', rootId), 'historial de cortes', rootId,
       this.http.get<any[]>(`${this.base}/historial/${rootId}`, { headers: this.tracking.getHeaders() }));

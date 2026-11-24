@@ -7083,3 +7083,52 @@ WHERE version = N'5.00.624'
   AND idRoot IS NULL AND idCompany IS NULL AND isActive = 1;
 COMMIT TRANSACTION;
 GO
+
+/*
+  Fecha: 2026-11-23
+  Módulo: Cobranza / Corte de caja
+  Repositorios: Smp25 (Angular) y MicroServicioAdministration (API)
+  Origen: src/app/domains/Cobranza/pages/corte-caja-cobranza.component.ts
+  Publicación idempotente del reporte que incluye abonos de cortes ya guardados.
+  Ejecutar únicamente este bloque.
+*/
+SET XACT_ABORT ON;
+BEGIN TRANSACTION;
+DECLARE @nowUtc625 datetime2 = SYSUTCDATETIME();
+
+IF NOT EXISTS (
+    SELECT 1 FROM dbo.product_updates
+    WHERE idRoot IS NULL AND idCompany IS NULL
+      AND version = N'5.00.625'
+      AND module = N'Cobranza / Corte de caja'
+      AND title = N'Reporte de ganancias incluye cortes guardados'
+      AND isActive = 1
+)
+BEGIN
+    INSERT INTO dbo.product_updates
+    (
+        idRoot, idCompany, version, module, changeType, title, description,
+        userBenefit, promoText, occurredAtUtc, displayTimeZone,
+        validationStatus, releaseStatus, publicationStatus, publishedAtUtc,
+        createdBy, isActive
+    )
+    VALUES
+    (
+        NULL, NULL, N'5.00.625', N'Cobranza / Corte de caja', 'FIX',
+        N'Reporte de ganancias incluye cortes guardados',
+        N'Se agregó una sección y un PDF independientes de ganancias por intereses. El reporte consulta todos los abonos del rango, incluidos los que ya están en cortes guardados; el corte operativo conserva su filtro para no duplicar movimientos.',
+        N'Permite consultar las ganancias de un período ya cerrado y verlas por cobrador, separadas del capital.',
+        N'Consulta e imprime las ganancias por intereses de cualquier rango, aunque el corte ya esté guardado.',
+        @nowUtc625, N'America/Indiana/Indianapolis', 'PASSED', 'LOCAL', 'PUBLISHED', @nowUtc625,
+        N'Codex', 1
+    );
+END;
+
+SELECT id, version, module, title, validationStatus, releaseStatus, publicationStatus
+FROM dbo.product_updates
+WHERE version = N'5.00.625'
+  AND module = N'Cobranza / Corte de caja'
+  AND title = N'Reporte de ganancias incluye cortes guardados'
+  AND idRoot IS NULL AND idCompany IS NULL AND isActive = 1;
+COMMIT TRANSACTION;
+GO
