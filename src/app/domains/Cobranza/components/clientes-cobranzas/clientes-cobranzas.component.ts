@@ -301,6 +301,32 @@ export class ClientesCobranzasComponent implements CanComponentDeactivate {
     }
 
     this._colMaster = [
+      {
+        field: 'estadoCuentaPdf',
+        headerName: 'Estado de cuenta',
+        width: 132,
+        minWidth: 132,
+        editable: false,
+        hide: this.type !== 'CUSTOMERS',
+        sortable: false,
+        filter: false,
+        cellRenderer: (params: any) => {
+          const button = document.createElement('button');
+          button.type = 'button';
+          button.className = 'btn btn-outline-danger btn-sm';
+          button.style.cssText = 'font-size:10px;padding:1px 6px;line-height:1.4;';
+          button.innerHTML = '<i class="bi bi-file-earmark-pdf-fill me-1"></i> PDF';
+          button.title = 'Generar estado de cuenta PDF de este cliente';
+          button.setAttribute('aria-label', `Estado de cuenta PDF del cliente ${params.data?.nameContact || params.data?.company || params.data?.id || ''}`);
+          button.disabled = !params.data?.id || params.data?.__isNew === true;
+          button.addEventListener('click', (event) => {
+            event.stopPropagation();
+            if (!button.disabled) void this.generatePaymentsPdf(params.data);
+          });
+          return button;
+        },
+        cellStyle: { backgroundColor: '#fff1f2', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' },
+      },
       // ── Cotizaciones — abre cascada inline ────────────────────────────────
       {
         field: 'cotizaciones',
@@ -379,32 +405,6 @@ export class ClientesCobranzasComponent implements CanComponentDeactivate {
           return button;
         },
         cellStyle: { backgroundColor: '#eef2ff', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' },
-      },
-      {
-        field: 'estadoCuentaPdf',
-        headerName: 'Estado de cuenta',
-        width: 132,
-        minWidth: 132,
-        editable: false,
-        hide: this.type !== 'CUSTOMERS',
-        sortable: false,
-        filter: false,
-        cellRenderer: (params: any) => {
-          const button = document.createElement('button');
-          button.type = 'button';
-          button.className = 'btn btn-outline-danger btn-sm';
-          button.style.cssText = 'font-size:10px;padding:1px 6px;line-height:1.4;';
-          button.innerHTML = '<i class="bi bi-file-earmark-pdf-fill me-1"></i> PDF';
-          button.title = 'Generar estado de cuenta PDF de este cliente';
-          button.setAttribute('aria-label', `Estado de cuenta PDF del cliente ${params.data?.nameContact || params.data?.company || params.data?.id || ''}`);
-          button.disabled = !params.data?.id || params.data?.__isNew === true;
-          button.addEventListener('click', (event) => {
-            event.stopPropagation();
-            if (!button.disabled) void this.generatePaymentsPdf(params.data);
-          });
-          return button;
-        },
-        cellStyle: { backgroundColor: '#fff1f2', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' },
       },
       ...([
         { colId: 'totalPrestamos', headerName: 'Total préstamos', key: 'loans', background: '#e7f1ff', color: '#174d80', format: 'currency' },

@@ -1,5 +1,7 @@
 # Registro de actualizaciones
 
+| 2026-11-23 22:22 EST | 5.00.627 · local | Cobranza / Clientes | Mejora | El acceso al estado de cuenta PDF ahora aparece como primera columna de la lista de Clientes de Cobranza. | Permite localizar rápidamente el reporte de cada cliente. | **Abre el estado de cuenta PDF desde la primera columna de Clientes.** | Build de producción Angular aprobado con advertencias existentes; revisión visual y despliegue sin confirmar. | Borrador |
+
 | 2026-11-23 21:36 EST | 5.00.626 · local | Cobranza / Clientes | Mejora | Se ocultaron las dos primeras columnas de accesos a Cotizaciones y Agenda en la lista de Clientes de Cobranza. | Deja más espacio para consultar los datos que sí se usan en esta pantalla. | **Consulta Clientes de Cobranza con una tabla más limpia y enfocada.** | Build de producción Angular aprobado con advertencias existentes; revisión visual y despliegue sin confirmar. | Borrador |
 
 | 2026-11-23 08:28 EST | 5.00.610 · local | Cobranza / Calendario de pagos | Corrección | En el detalle del préstamo, la fecha programada ahora se edita con un clic y el calendario no se cierra al seleccionar una fecha. La celda enfocada conserva el resaltado amarillo; la sincronización automática se pausa mientras se editan las fechas. | Permite cambiar y guardar las fechas de las cuotas sin que el grid interrumpa la captura. | **Actualiza las fechas de pago del préstamo desde el calendario, sin perder la edición.** | Build de producción Angular aprobado; despliegue sin confirmar. | Borrador |
