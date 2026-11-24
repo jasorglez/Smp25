@@ -181,6 +181,7 @@ export class ClientesCobranzasComponent implements CanComponentDeactivate {
   Typecop: any[] = [];
   collectors: any[] = [];
   generatingCollectorsReport = false;
+  generatingPortfolioReport = false;
   collectorsLoading = false;
   private collectorsRequestId = 0;
   contactoCatalog: any[] = [];
@@ -1099,6 +1100,112 @@ export class ClientesCobranzasComponent implements CanComponentDeactivate {
       alerts.basicAlert('Reporte de clientes', 'No se pudo generar el reporte por cobrador.', 'error');
     } finally {
       this.generatingCollectorsReport = false;
+    }
+  }
+
+  async generateGeneralLoanPortfolioPdf(): Promise<void> {
+    const companyId = Number(this.idRoot || this.signalsService.getRootSelectedBySidebar()()) || 0;
+    if (!companyId || this.generatingPortfolioReport) return;
+    this.generatingPortfolioReport = true;
+    try {
+      const [loans, customers, rootResponse]: [any[], any[], any] = await Promise.all([
+        lastValueFrom(this.customerService.getCobranzaDashboard(companyId)),
+        lastValueFrom(this.customerService.getCustomersByCompany(companyId, 'CUSTOMERS')) as Promise<any[]>,
+        lastValueFrom(this.rootService.getRootbyId(companyId)),
+      ]);
+      const customerRows = Array.isArray(customers) ? customers : [];
+      const customersById = new Map(customerRows.map(customer => [Number(customer.id), customer]));
+      const activeLoans = (Array.isArray(loans) ? loans : []).filter(loan => loan?.active !== false);
+      if (!activeLoans.length) {
+        alerts.basicAlert('Cartera de préstamos', 'La empresa no tiene préstamos para incluir en el reporte.', 'info');
+        return;
+      }
+
+      const root: any = rootResponse?.data ?? rootResponse;
+      const [logo, logo2] = await Promise.all([
+        root?.picture ? this.base64EncodeService.convertImageToBase64(root.picture).catch(() => null) : Promise.resolve(null),
+        root?.picture2 ? this.base64EncodeService.convertImageToBase64(root.picture2).catch(() => null) : Promise.resolve(null),
+      ]);
+      const pdfMake = (await import('pdfmake/build/pdfmake')).default;
+      const pdfFonts = await import('pdfmake/build/vfs_fonts');
+      (pdfMake as any).vfs = (pdfFonts as any).pdfMake?.vfs || (pdfFonts as any).default?.pdfMake?.vfs;
+
+      const today = new Date();
+      const todayIso = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
+      const money = (value: any) => new Intl.NumberFormat('es-MX', { style: 'currency', currency: 'MXN' }).format(Number(value || 0));
+      const date = (value: any) => {
+        const raw = String(value || '').slice(0, 10);
+        if (!/^\d{4}-\d{2}-\d{2}$/.test(raw)) return '—';
+        return new Date(`${raw}T12:00:00`).toLocaleDateString('es-MX');
+      };
+      const collectorGroups = new Map<number | null, any[]>();
+      for (const loan of activeLoans) {
+        const customer = customersById.get(Number(loan.idCustomer));
+        const collectorId = customer?.idUsuarioCobrador ? Number(customer.idUsuarioCobrador) : null;
+        const installments = (loan.cuotas || []).filter((item: any) => item.active !== false);
+        const installmentRows = installments.map((item: any) => {
+          const payments = (item.abonos || []).filter((payment: any) => payment.active !== false);
+          const paid = item.montoAplicado !== null && item.montoAplicado !== undefined && Number.isFinite(Number(item.montoAplicado))
+            ? Number(item.montoAplicado)
+            : payments.reduce((sum: number, payment: any) => sum + Number(payment.monto || 0), 0);
+          const due = Math.max(0, Number(item.montoProgramado || 0) - paid);
+          const installmentDate = String(item.fechaProgramada || '').slice(0, 10);
+          return { item, due, overdue: due > 0 && installmentDate < todayIso };
+        });
+        const pending = installmentRows.reduce((sum: number, row: any) => sum + row.due, 0);
+        const overdueRows = installmentRows.filter((row: any) => row.overdue);
+        const sortedInstallments = installments.slice().sort((a: any, b: any) => String(a.fechaProgramada || '').localeCompare(String(b.fechaProgramada || '')));
+        const paymentAmounts = [...new Set(installments.map((item: any) => Number(item.montoProgramado || 0)).filter((amount: number) => amount > 0))];
+        const row = {
+          collectorName: this.collectorName(collectorId),
+          customer: customer?.nameContact || customer?.company || loan.cliente || `Cliente #${loan.idCustomer}`,
+          disbursementDate: loan.fechaInicio,
+          loanAmount: Number(loan.montoTotal || 0),
+          salesNote: String(loan.numeroNotaVenta || '').trim() || '—',
+          paymentAmount: paymentAmounts.length === 1 ? money(paymentAmounts[0]) : paymentAmounts.length ? 'Variable' : '—',
+          firstPaymentDate: loan.fechaPrimerPago || sortedInstallments[0]?.fechaProgramada,
+          pendingText: !installments.length ? 'Sin cuotas' : pending > 0 ? `${money(pending)}${overdueRows.length ? ` · ${overdueRows.length} vencida(s)` : ''}` : 'Al corriente',
+          endingDate: sortedInstallments[sortedInstallments.length - 1]?.fechaProgramada,
+          pending,
+          overdue: overdueRows.reduce((sum: number, item: any) => sum + item.due, 0),
+        };
+        collectorGroups.set(collectorId, [...(collectorGroups.get(collectorId) || []), row]);
+      }
+
+      const allRows = [...collectorGroups.values()].flat();
+      const totalPending = allRows.reduce((sum, row) => sum + row.pending, 0);
+      const totalOverdue = allRows.reduce((sum, row) => sum + row.overdue, 0);
+      const content: any[] = [
+        { columns: [logo ? { image: logo, fit: [70, 55] } : { text: '' }, { text: root?.name || 'Cobranza', alignment: 'center', bold: true, fontSize: 12, margin: [0, 14, 0, 0] }, logo2 ? { image: logo2, fit: [70, 55], alignment: 'right' } : { text: '' }], margin: [0, 0, 0, 10] },
+        { text: 'CARTERA GENERAL DE PRÉSTAMOS', style: 'title' },
+        { text: `Corte al ${today.toLocaleDateString('es-MX')} · ${allRows.length} préstamo(s) · Pendiente: ${money(totalPending)} · Vencido: ${money(totalOverdue)}`, margin: [0, 0, 0, 8] },
+      ];
+      const sortedGroups = [...collectorGroups.entries()].sort(([a], [b]) => this.collectorName(a).localeCompare(this.collectorName(b), 'es'));
+      for (const [collectorId, groupRows] of sortedGroups) {
+        groupRows.sort((a, b) => a.customer.localeCompare(b.customer, 'es')
+          || String(a.disbursementDate || '').localeCompare(String(b.disbursementDate || ''))
+          || a.salesNote.localeCompare(b.salesNote, 'es'));
+        content.push({ text: `${this.collectorName(collectorId)} · ${groupRows.length} préstamo(s)`, style: 'section', keepWithNext: true });
+        content.push({
+          table: { headerRows: 1, widths: [54, 52, '*', 58, 54, 58, 86, 52], body: [
+            ['Desembolso', 'Préstamo', 'Cliente', 'Nota de venta', 'Pago', 'Inicio', 'Pendientes', 'Finaliza'].map(text => ({ text, bold: true })),
+            ...groupRows.map(row => [date(row.disbursementDate), money(row.loanAmount), row.customer, row.salesNote, row.paymentAmount, date(row.firstPaymentDate), row.pendingText, date(row.endingDate)]),
+          ] }, layout: 'lightHorizontalLines', fontSize: 7.5, margin: [0, 0, 0, 6]
+        });
+      }
+
+      const safeDate = todayIso;
+      await this.pdfPreview.show((pdfMake as any).createPdf({
+        pageSize: 'LETTER', pageOrientation: 'landscape', pageMargins: [28, 28, 28, 32], content,
+        styles: { title: { fontSize: 14, bold: true, margin: [0, 0, 0, 4] }, section: { fontSize: 10, bold: true, color: '#155795', margin: [0, 8, 0, 4] } },
+        defaultStyle: { fontSize: 8 },
+        footer: (page: number, pages: number) => ({ text: `Cartera general · ${page} de ${pages}`, alignment: 'center', fontSize: 8, margin: [0, 10, 0, 0] }),
+      }), 'Cartera general de préstamos', `Cartera_general_prestamos_${safeDate}.pdf`);
+    } catch (error) {
+      console.error('Error al generar el reporte general de préstamos:', error);
+      alerts.basicAlert('Cartera de préstamos', 'No se pudo generar el reporte general en PDF.', 'error');
+    } finally {
+      this.generatingPortfolioReport = false;
     }
   }
 
