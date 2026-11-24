@@ -72,11 +72,12 @@ import { CobranzaOfflineService } from 'app/services/cobranza-offline.service';
         <div class="row g-2 align-items-end">
           <div class="col-md-3"><label class="form-label small">Consecutivo de nota de venta</label><input class="form-control form-control-sm" type="text" maxlength="50" [(ngModel)]="loanForm.numeroNotaVenta" placeholder="Ej. 000123" required></div>
           <div class="col-md-3"><label class="form-label small">Monto del préstamo</label><input class="form-control form-control-sm" type="number" min="0.01" step="0.01" [(ngModel)]="loanForm.montoTotal"></div>
-          <div class="col-md-3"><label class="form-label small">Interés total del préstamo</label><input class="form-control form-control-sm" type="number" min="0" step="0.01" [(ngModel)]="loanForm.montoInteresTotal"></div>
-          <div class="col-md-3"><label class="form-label small">Frecuencia de pago</label><select class="form-select form-select-sm" [(ngModel)]="loanForm.frecuenciaPago"><option value="DIARIO">Diario</option><option value="SEMANAL">Semanal</option><option value="QUINCENAL">Quincenal</option><option value="MENSUAL">Mensual</option></select></div>
+          <div class="col-md-2"><label class="form-label small">{{ loanForm.frecuenciaPago === 'DIARIO' ? 'Días de pago' : 'Número de pagos' }}</label><input class="form-control form-control-sm" type="number" min="1" step="1" [(ngModel)]="loanForm.numeroCuotas"></div>
+          <div class="col-md-2"><label class="form-label small">Periodo</label><select class="form-select form-select-sm" [(ngModel)]="loanForm.frecuenciaPago"><option value="DIARIO">Diario</option><option value="SEMANAL">Semanal</option><option value="QUINCENAL">Quincenal</option><option value="MENSUAL">Mensual</option></select></div>
+          <div class="col-md-2"><label class="form-label small">Interés</label><select class="form-select form-select-sm" [(ngModel)]="loanForm.porcentajeInteres"><option *ngFor="let rate of loanInterestRateOptions" [ngValue]="rate">{{ rate }}%</option></select></div>
+          <div class="col-md-3"><label class="form-label small">Interés total calculado</label><input class="form-control form-control-sm" type="text" [value]="money(loanInterestTotal)" readonly></div>
           <div class="col-md-3"><label class="form-label small">Fecha del préstamo</label><input class="form-control form-control-sm" type="date" [(ngModel)]="loanForm.fechaInicio"></div>
           <div class="col-md-3"><label class="form-label small">Primer pago</label><input class="form-control form-control-sm" type="date" [(ngModel)]="loanForm.fechaPrimerPago"></div>
-          <div class="col-md-3"><label class="form-label small">Número de pagos</label><input class="form-control form-control-sm" type="number" min="1" step="1" [(ngModel)]="loanForm.numeroCuotas"></div>
           <div class="col-12"><label class="form-label small">Comentario</label><input class="form-control form-control-sm" maxlength="500" [(ngModel)]="loanForm.comentario"></div>
           <div class="col-12" *ngIf="loanPreviewRows.length">
             <div class="small mb-2">Capital: <strong>{{ money(loanCapital) }}</strong> · Interés total: <strong>{{ money(loanInterestTotal) }}</strong> ({{ loanInterestPercentage | number:'1.0-2' }}%) · Total a pagar: <strong>{{ money(loanCapital + loanInterestTotal) }}</strong></div>
@@ -168,7 +169,8 @@ export class ClientesCobranzasPagosComponent implements OnChanges, OnDestroy {
   showLoanForm = false;
   activeInstallmentId: number | null = null;
   editingScheduleLoanId: number | null = null;
-  loanForm: any = { numeroNotaVenta: '', montoTotal: null, montoInteresTotal: 0, frecuenciaPago: 'MENSUAL', fechaInicio: this.today(), fechaPrimerPago: this.nextMonth(), numeroCuotas: 10, comentario: '' };
+  loanForm: any = { numeroNotaVenta: '', montoTotal: null, porcentajeInteres: 20, frecuenciaPago: 'DIARIO', fechaInicio: this.today(), fechaPrimerPago: this.nextMonth(), numeroCuotas: 15, comentario: '' };
+  readonly loanInterestRateOptions = [10, 20, 30, 40, 50];
   abonoForm: any = { fechaPago: this.today(), monto: null, comentario: '' };
   AG_GRID_LOCALE_ES = AG_GRID_LOCALE_ES;
   originalDates = new Map<number, string>();
@@ -187,8 +189,8 @@ export class ClientesCobranzasPagosComponent implements OnChanges, OnDestroy {
   ];
   money(value: any): string { return new Intl.NumberFormat('es-MX', { style: 'currency', currency: 'MXN' }).format(Number(value || 0)); }
   get loanCapital(): number { return Number(this.loanForm.montoTotal || 0); }
-  get loanInterestTotal(): number { return Math.round(Number(this.loanForm.montoInteresTotal || 0) * 100) / 100; }
-  get loanInterestPercentage(): number { return this.loanCapital > 0 ? Math.round(this.loanInterestTotal / this.loanCapital * 10000) / 100 : 0; }
+  get loanInterestTotal(): number { return Math.round(this.loanCapital * Number(this.loanForm.porcentajeInteres || 0)) / 100; }
+  get loanInterestPercentage(): number { return Number(this.loanForm.porcentajeInteres || 0); }
   loanInterestPercent(loan: any): number { const capital = Number(loan?.montoTotal || 0); return capital > 0 ? Math.round(Number(loan?.totalInteres || 0) / capital * 10000) / 100 : 0; }
   private rateFor(interest: number, capital: number): number { return capital > 0 ? Math.round(interest / capital * 10000) / 100 : 0; }
   frequencyLabel(frequency: string): string { return ({ DIARIO: 'Diario', SEMANAL: 'Semanal', QUINCENAL: 'Quincenal', MENSUAL: 'Mensual' } as any)[frequency] || 'Mensual'; }
@@ -387,7 +389,7 @@ export class ClientesCobranzasPagosComponent implements OnChanges, OnDestroy {
         await this.cobranzaOffline.saveSnapshot(this.cobranzaOffline.snapshotKey('loan-consecutive', companyId), companyId, 'consecutivo de préstamos', { ...config, campoAuxiliar: reserved.numero + 1 });
       }
       this.loanConsecutivePrefix = config.consecutivoTexto;
-      this.loanForm = { numeroNotaVenta: folio, montoTotal: null, montoInteresTotal: 0, frecuenciaPago: 'MENSUAL', fechaInicio: this.today(), fechaPrimerPago: this.nextMonth(), numeroCuotas: 10, comentario: '' };
+      this.loanForm = { numeroNotaVenta: folio, montoTotal: null, porcentajeInteres: 20, frecuenciaPago: 'DIARIO', fechaInicio: this.today(), fechaPrimerPago: this.nextMonth(), numeroCuotas: 15, comentario: '' };
       this.showLoanForm = true;
     } catch (error: any) {
       console.error('No se pudo preparar el consecutivo del préstamo:', error);
@@ -514,14 +516,14 @@ export class ClientesCobranzasPagosComponent implements OnChanges, OnDestroy {
 
   async createLoan(): Promise<void> {
     const amount = Number(this.loanForm.montoTotal);
-    const totalInterest = Number(this.loanForm.montoInteresTotal || 0);
+    const totalInterest = this.loanInterestTotal;
     const numberOfPayments = Number(this.loanForm.numeroCuotas);
     const receiptNumber = String(this.loanForm.numeroNotaVenta || '').trim();
-    if (!receiptNumber || receiptNumber.length > 50 || !Number.isFinite(amount) || amount <= 0 || !Number.isFinite(totalInterest) || totalInterest < 0 || !Number.isInteger(numberOfPayments) || numberOfPayments < 1 || !this.loanForm.fechaInicio || !this.loanForm.fechaPrimerPago) { alerts.basicAlert('Datos requeridos', 'Captura el consecutivo de la nota de venta, capital mayor a cero, interés total no negativo, frecuencia, número de pagos y fechas válidas.', 'warning'); return; }
+    if (!receiptNumber || receiptNumber.length > 50 || !Number.isFinite(amount) || amount <= 0 || !Number.isFinite(totalInterest) || totalInterest < 0 || !Number.isInteger(numberOfPayments) || numberOfPayments < 1 || !this.loanForm.fechaInicio || !this.loanForm.fechaPrimerPago) { alerts.basicAlert('Datos requeridos', 'Captura el consecutivo de la nota de venta, capital mayor a cero, porcentaje de interés, periodo, número de pagos y fechas válidas.', 'warning'); return; }
     this.saving = true;
     try {
       const saved: any = await firstValueFrom(this.customersService.createCobranzaLoan({ idCustomer: this.customer.id, numeroNotaVenta: receiptNumber, __consecutivoPrefijo: this.loanConsecutivePrefix, montoTotal: amount, montoInteresTotal: totalInterest, tasaInteresMensual: this.rateFor(totalInterest, amount), frecuenciaPago: this.loanForm.frecuenciaPago || 'MENSUAL', fechaInicio: this.loanForm.fechaInicio, fechaPrimerPago: this.loanForm.fechaPrimerPago, numeroCuotas: numberOfPayments, comentario: this.loanForm.comentario }));
-      this.saving = false; this.showLoanForm = false; this.loanForm = { numeroNotaVenta: '', montoTotal: null, montoInteresTotal: 0, frecuenciaPago: 'MENSUAL', fechaInicio: this.today(), fechaPrimerPago: this.nextMonth(), numeroCuotas: 10, comentario: '' }; this.balancesChanged.emit();
+      this.saving = false; this.showLoanForm = false; this.loanForm = { numeroNotaVenta: '', montoTotal: null, porcentajeInteres: 20, frecuenciaPago: 'DIARIO', fechaInicio: this.today(), fechaPrimerPago: this.nextMonth(), numeroCuotas: 15, comentario: '' }; this.balancesChanged.emit();
       let createdLoan = saved;
       try {
         const refreshed = await firstValueFrom(this.customersService.getCobranzaLoans(this.customer.id));
