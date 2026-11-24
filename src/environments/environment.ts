@@ -76,5 +76,5 @@ export const environment = {
     // publicKey: 'TEST-4399133a-4676-42a2-ab85-d946370bf96a',
   },
 
-  version: '5.00.619 (23 Noviembre 2026 18:40) Estado de cuenta PDF por cliente',
+  version: '5.00.620 (23 Noviembre 2026) Cobranza Telegram sin ubicación obligatoria',
 };

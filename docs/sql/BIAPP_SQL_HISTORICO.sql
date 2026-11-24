@@ -6758,8 +6758,8 @@ BEGIN
         id_cuota INT NOT NULL,
         fecha_visita DATE NOT NULL,
         resultado VARCHAR(20) NOT NULL CONSTRAINT DF_cobranza_visitas_nopago_resultado DEFAULT ('NO_PAGO'),
-        latitud DECIMAL(9,6) NOT NULL,
-        longitud DECIMAL(9,6) NOT NULL,
+        latitud DECIMAL(9,6) NULL,
+        longitud DECIMAL(9,6) NULL,
         saldo_prestamo DECIMAL(18,2) NOT NULL,
         idempotency_key UNIQUEIDENTIFIER NOT NULL,
         active BIT NOT NULL CONSTRAINT DF_cobranza_visitas_nopago_active DEFAULT (1),
@@ -6773,6 +6773,31 @@ BEGIN
         ON cobranzas.cobranza_visitas_nopago(idempotency_key);
     CREATE INDEX IX_cobranza_visitas_nopago_cobrador_fecha
         ON cobranzas.cobranza_visitas_nopago(id_root, id_usuario_cobrador, fecha_visita, active);
+END;
+GO
+
+/*
+Fecha: 2026-11-23
+Módulo: Cobranza / Telegram / visitas sin pago sin ubicación obligatoria
+Repositorio origen: ChatbotTelegram
+Propósito: Conservar las columnas de coordenadas y permitir NULL al registrar visitas sin GPS.
+IMPORTANTE: ejecutar únicamente este bloque en administration.
+*/
+IF OBJECT_ID(N'cobranzas.cobranza_visitas_nopago', N'U') IS NOT NULL
+BEGIN
+    IF EXISTS (
+        SELECT 1 FROM sys.columns
+        WHERE object_id = OBJECT_ID(N'cobranzas.cobranza_visitas_nopago')
+          AND name = N'latitud' AND is_nullable = 0
+    )
+        ALTER TABLE cobranzas.cobranza_visitas_nopago ALTER COLUMN latitud DECIMAL(9,6) NULL;
+
+    IF EXISTS (
+        SELECT 1 FROM sys.columns
+        WHERE object_id = OBJECT_ID(N'cobranzas.cobranza_visitas_nopago')
+          AND name = N'longitud' AND is_nullable = 0
+    )
+        ALTER TABLE cobranzas.cobranza_visitas_nopago ALTER COLUMN longitud DECIMAL(9,6) NULL;
 END;
 GO
 
