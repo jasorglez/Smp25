@@ -307,7 +307,7 @@ export class ClientesCobranzasComponent implements CanComponentDeactivate {
         headerName: '📄',
         width: 60,
         editable: false,
-        hide: this.type !== 'CUSTOMERS',
+        hide: true,
         sortable: false,
         cellRenderer: (params: any) => {
           const btn = document.createElement('button');
@@ -335,7 +335,7 @@ export class ClientesCobranzasComponent implements CanComponentDeactivate {
         headerName: '📅',
         width: 60,
         editable: false,
-        hide: this.type !== 'CUSTOMERS',
+        hide: true,
         sortable: false,
         cellRenderer: (params: any) => {
           const btn = document.createElement('button');

@@ -76,5 +76,5 @@ export const environment = {
     // publicKey: 'TEST-4399133a-4676-42a2-ab85-d946370bf96a',
   },
 
-  version: '5.00.625 (23 Noviembre 2026 20:59) Reporte de ganancias visible por rango',
+  version: '5.00.626 (23 Noviembre 2026 21:36) Oculta accesos de cotizaciones y agenda en clientes de cobranza',
 };
