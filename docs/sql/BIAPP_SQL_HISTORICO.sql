@@ -7371,3 +7371,26 @@ SELECT id,version,validationStatus,releaseStatus,publicationStatus FROM administ
  AND idRoot IS NULL AND idCompany IS NULL AND isActive=1;
 COMMIT TRANSACTION;
 GO
+
+-- 2026-11-25 | Cobranza / Dashboard | Repositorio: Smp25
+-- Origen: src/app/domains/Cobranza/pages/cobranza-dashboard.component.ts
+-- Ejecutar solo este bloque: anuncio publicado; el código conserva releaseStatus LOCAL.
+SET XACT_ABORT ON;
+BEGIN TRANSACTION;
+IF NOT EXISTS (SELECT 1 FROM administration.dbo.product_updates WITH (UPDLOCK,HOLDLOCK)
+ WHERE module=N'Cobranza / Dashboard' AND title=N'Ganancias netas en el dashboard de Cobranza'
+ AND idRoot IS NULL AND idCompany IS NULL AND isActive=1)
+BEGIN
+ INSERT INTO administration.dbo.product_updates
+ (idRoot,idCompany,version,module,changeType,title,description,userBenefit,promoText,occurredAtUtc,displayTimeZone,validationStatus,releaseStatus,publicationStatus,publishedAtUtc,createdBy,isActive)
+ VALUES (NULL,NULL,N'5.00.636',N'Cobranza / Dashboard','IMPROVEMENT',N'Ganancias netas en el dashboard de Cobranza',
+ N'El Centro de Cobranza muestra una tarjeta con las ganancias netas acumuladas, calculadas a partir de los intereses ganados en los abonos de cuotas activas.',
+ N'Permite consultar rápidamente los intereses ganados de toda la cartera.',
+ N'Consulta las ganancias netas por intereses directamente en el Centro de Cobranza.',
+ SYSUTCDATETIME(),N'America/Indiana/Indianapolis','PENDING','LOCAL','PUBLISHED',SYSUTCDATETIME(),N'Codex',1);
+END;
+SELECT id,version,validationStatus,releaseStatus,publicationStatus FROM administration.dbo.product_updates
+ WHERE module=N'Cobranza / Dashboard' AND title=N'Ganancias netas en el dashboard de Cobranza'
+ AND idRoot IS NULL AND idCompany IS NULL AND isActive=1;
+COMMIT TRANSACTION;
+GO

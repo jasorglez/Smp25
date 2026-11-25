@@ -16,6 +16,7 @@
     <div class="kpi-grid">
       <div class="kpi"><div class="kpi-icon blue"><i class="bi bi-wallet2"></i></div><div class="kpi-label">Cartera otorgada</div><div class="kpi-value">{{ money(totalLoaned) }}</div><div class="kpi-foot">Capital de {{ loans.length }} préstamos</div></div>
       <div class="kpi"><div class="kpi-icon green"><i class="bi bi-cash-stack"></i></div><div class="kpi-label">Total recuperado</div><div class="kpi-value">{{ money(totalCollected) }}</div><div class="kpi-foot">{{ collectionProgress }}% de la cartera otorgada</div></div>
+      <div class="kpi"><div class="kpi-icon green"><i class="bi bi-graph-up-arrow"></i></div><div class="kpi-label">Ganancias netas</div><div class="kpi-value">{{ money(netEarnings) }}</div><div class="kpi-foot">Intereses ganados en abonos</div></div>
       <div class="kpi"><div class="kpi-icon amber"><i class="bi bi-hourglass-split"></i></div><div class="kpi-label">Saldo por cobrar</div><div class="kpi-value">{{ money(totalBalance) }}</div><div class="kpi-foot">{{ money(dueThisMonth) }} programados este mes</div></div>
       <div class="kpi"><div class="kpi-icon red"><i class="bi bi-exclamation-triangle"></i></div><div class="kpi-label">Saldo vencido</div><div class="kpi-value">{{ money(overdue) }}</div><div class="kpi-foot">{{ urgentRows.length }} cuotas prioritarias visibles</div></div>
     </div>

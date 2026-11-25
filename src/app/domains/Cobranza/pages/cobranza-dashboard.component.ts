@@ -28,6 +28,7 @@ export class CobranzaDashboardComponent implements OnDestroy {
   rows: DueRow[] = [];
   totalLoaned = 0;
   totalCollected = 0;
+  netEarnings = 0;
   totalBalance = 0;
   overdue = 0;
   dueThisMonth = 0;
@@ -82,10 +83,34 @@ export class CobranzaDashboardComponent implements OnDestroy {
     this.activeCustomers = new Set(this.loans.map(loan => loan.idCustomer)).size;
     this.rows = [];
     this.totalCollected = 0;
+    this.netEarnings = 0;
     this.collectedThisMonth = 0;
     for (const loan of this.loans) {
+      const schedule = (loan.cuotas || []).filter((cuota: any) => cuota.active !== false)
+        .slice().sort((a: any, b: any) => Number(a.numeroCuota || 0) - Number(b.numeroCuota || 0))
+        .map((cuota: any) => ({ due: Math.max(0, Number(cuota.montoProgramado || 0)), interest: Math.max(0, Number(cuota.montoInteres || 0)) }));
+      const payments = (loan.cuotas || []).filter((cuota: any) => cuota.active !== false).flatMap((cuota: any) =>
+        (cuota.abonos || []).filter((payment: any) => payment.active !== false)
+          .map((payment: any) => ({ id: Number(payment.id || 0), date: String(payment.fechaPago || ''), amount: Math.max(0, Number(payment.monto || 0)) })));
+      payments.sort((a: any, b: any) => a.date.localeCompare(b.date) || a.id - b.id);
+      const totalDue = schedule.reduce((sum: number, cuota: any) => sum + cuota.due, 0);
+      let paidBefore = 0;
+      for (const payment of payments) {
+        const paidAfter = Math.min(totalDue, paidBefore + payment.amount);
+        let scheduleStart = 0;
+        let paymentInterest = 0;
+        for (const cuota of schedule) {
+          const scheduleEnd = scheduleStart + cuota.due;
+          const applied = Math.max(0, Math.min(paidAfter, scheduleEnd) - Math.max(paidBefore, scheduleStart));
+          if (applied > 0 && cuota.due > 0) paymentInterest += applied * cuota.interest / cuota.due;
+          scheduleStart = scheduleEnd;
+        }
+        this.netEarnings += Math.round(Math.min(payment.amount, paymentInterest) * 100) / 100;
+        paidBefore += payment.amount;
+      }
       for (const cuota of loan.cuotas || []) {
-        const payments = cuota.abonos || [];
+        if (cuota.active === false) continue;
+        const payments = (cuota.abonos || []).filter((payment: any) => payment.active !== false);
         const paid = Number.isFinite(Number(cuota.montoAplicado)) ? Number(cuota.montoAplicado) : payments.reduce((sum: number, payment: any) => sum + Number(payment.monto || 0), 0);
         this.totalCollected += paid;
         this.collectedThisMonth += payments.filter((payment: any) => String(payment.fechaPago).slice(0, 7) === monthKey).reduce((sum: number, payment: any) => sum + Number(payment.monto || 0), 0);
@@ -96,6 +121,7 @@ export class CobranzaDashboardComponent implements OnDestroy {
         this.rows.push({ customerId: loan.idCustomer, customer: loan.cliente, loanId: loan.id, installment: cuota.numeroCuota, due, amount, paid, balance: Math.max(0, amount - paid), days });
       }
     }
+    this.netEarnings = Math.round(this.netEarnings * 100) / 100;
     const scheduledTotal = this.rows.reduce((sum, row) => sum + row.amount, 0);
     this.totalBalance = Math.max(0, scheduledTotal - this.totalCollected);
     this.overdue = this.rows.filter(row => row.days < 0).reduce((sum, row) => sum + row.balance, 0);
