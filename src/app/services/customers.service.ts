@@ -179,6 +179,10 @@ export class CustomersService {
     return this.http.post(`${environment.urlAdministration}/PrestamosCobranza/cuota/${installmentId}/abonos`, data, { headers: this.trackingService.getHeaders() });
   }
 
+  updateCobranzaInstallmentPayment(paymentId: number, data: any): Observable<void> {
+    return this.http.put<void>(`${environment.urlAdministration}/PrestamosCobranza/abonos/${paymentId}`, data, { headers: this.trackingService.getHeaders() });
+  }
+
   updateCobranzaInstallmentDate(installmentId: number, data: { fechaProgramada: string }): Observable<void> {
     if (this.cobranzaOffline.isOffline) return from(this.updateLocalInstallmentDate(installmentId, data.fechaProgramada));
     return this.http.put<void>(`${environment.urlAdministration}/PrestamosCobranza/cuota/${installmentId}/fecha`, data, { headers: this.trackingService.getHeaders() });

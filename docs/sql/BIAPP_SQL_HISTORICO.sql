@@ -7394,3 +7394,26 @@ SELECT id,version,validationStatus,releaseStatus,publicationStatus FROM administ
  AND idRoot IS NULL AND idCompany IS NULL AND isActive=1;
 COMMIT TRANSACTION;
 GO
+
+-- 2026-11-25 | Cobranza / Préstamos y abonos | Repositorio: Smp25 + MicroServicioAdministration
+-- Origen: ClientesCobranzasPagosComponent y PrestamosCobranzaController/Service
+-- Ejecutar solo este bloque. Código LOCAL hasta verificar despliegue.
+SET XACT_ABORT ON;
+BEGIN TRANSACTION;
+IF NOT EXISTS (SELECT 1 FROM administration.dbo.product_updates WITH (UPDLOCK,HOLDLOCK)
+ WHERE module=N'Cobranza / Préstamos y abonos' AND title=N'Edición de préstamos y abonos desde sus ventanas'
+ AND idRoot IS NULL AND idCompany IS NULL AND isActive=1)
+BEGIN
+ INSERT INTO administration.dbo.product_updates
+ (idRoot,idCompany,version,module,changeType,title,description,userBenefit,promoText,occurredAtUtc,displayTimeZone,validationStatus,releaseStatus,publicationStatus,publishedAtUtc,createdBy,isActive)
+ VALUES (NULL,NULL,N'5.00.637',N'Cobranza / Préstamos y abonos','IMPROVEMENT',N'Edición de préstamos y abonos desde sus ventanas',
+ N'El doble clic en un préstamo abre su edición; el doble clic en un abono abre su captura editable. La API permite actualizar abonos respetando saldos, cajas y cortes cerrados.',
+ N'Permite corregir los datos del préstamo o del abono desde su contexto y conserva las reglas de Cobranza.',
+ N'Edita préstamos y abonos con doble clic y guarda los cambios en sus ventanas.',
+ SYSUTCDATETIME(),N'America/Indiana/Indianapolis','PENDING','LOCAL','PUBLISHED',SYSUTCDATETIME(),N'Codex',1);
+END;
+SELECT id,version,validationStatus,releaseStatus,publicationStatus FROM administration.dbo.product_updates
+ WHERE module=N'Cobranza / Préstamos y abonos' AND title=N'Edición de préstamos y abonos desde sus ventanas'
+ AND idRoot IS NULL AND idCompany IS NULL AND isActive=1;
+COMMIT TRANSACTION;
+GO
