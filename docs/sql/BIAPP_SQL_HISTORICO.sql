@@ -7185,3 +7185,42 @@ WHERE idRoot IS NULL AND idCompany IS NULL AND module = N'Cobranza / Telegram'
   AND title = N'Visitas sin pago desde Telegram sin ubicación obligatoria' AND isActive = 1;
 -- SUNMI-COBRANZA-NOPAGO-628-UPDATE-END
 GO
+
+/*
+  COBRANZA-DETALLE-TICKET-NOPAGO-629-UPDATE-START
+  Fecha: 2026-11-24
+  Módulo: Cobranza / Clientes y Telegram
+  Repositorios: Smp25 (Angular) y ChatbotTelegram
+  Origen: src/app/domains/Cobranza/components/clientes-cobranzas/clientes-cobranzas-pagos.component.ts
+          y chatBotTelegram/Services/Telegram/ConversationManagerService.Cobranza.cs
+  Publicación idempotente; ejecutar únicamente este bloque en administration.
+*/
+IF NOT EXISTS (
+    SELECT 1 FROM dbo.product_updates
+    WHERE idRoot IS NULL AND idCompany IS NULL
+      AND module = N'Cobranza / Clientes y Telegram'
+      AND title = N'Detalle de préstamos y ticket de visita sin abono'
+      AND isActive = 1
+)
+BEGIN
+    INSERT INTO dbo.product_updates
+    (idRoot, idCompany, version, module, changeType, title, description,
+     userBenefit, promoText, occurredAtUtc, displayTimeZone,
+     validationStatus, releaseStatus, publicationStatus, publishedAtUtc, createdBy, isActive)
+    VALUES
+    (NULL, NULL, N'5.00.629', N'Cobranza / Clientes y Telegram', 'FIX',
+     N'Detalle de préstamos y ticket de visita sin abono',
+     N'El detalle de los préstamos permanece abierto al consultar cuotas y registrar abonos. Telegram envía un ticket PDF cuando se confirma una visita sin pago.',
+     N'La administradora puede entrar al detalle para cobrar y el cobrador recibe constancia de una visita sin abono.',
+     N'Consulta el detalle para cobrar y entrega un comprobante cuando no hubo abono.',
+     SYSUTCDATETIME(), N'America/Indiana/Indianapolis', 'PASSED', 'LOCAL', 'PUBLISHED', SYSUTCDATETIME(), N'Codex', 1);
+END;
+
+SELECT id, version, module, title, validationStatus, releaseStatus, publicationStatus
+FROM dbo.product_updates
+WHERE idRoot IS NULL AND idCompany IS NULL
+  AND module = N'Cobranza / Clientes y Telegram'
+  AND title = N'Detalle de préstamos y ticket de visita sin abono'
+  AND isActive = 1;
+-- COBRANZA-DETALLE-TICKET-NOPAGO-629-UPDATE-END
+GO

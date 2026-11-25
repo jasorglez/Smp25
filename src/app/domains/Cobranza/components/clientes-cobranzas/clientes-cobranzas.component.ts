@@ -245,7 +245,7 @@ export class ClientesCobranzasComponent implements CanComponentDeactivate {
     // ── Master-Detail: wrapper que puede mostrar cotizaciones o agenda ─────
     masterDetail: true,
     detailCellRenderer: ClientesCobranzasDetailWrapperComponent,
-    detailRowHeight: 1600,    // toolbar(50) + lista auto + PDF(1400) con margen
+    detailRowAutoHeight: true,
     isRowMaster: () => this.type === 'CUSTOMERS',
     isExternalFilterPresent: () => this.type === 'CUSTOMERS' && this.loanTotalsLoaded && this.balanceFilter !== 'all',
     doesExternalFilterPass: (node: any) => {

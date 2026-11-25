@@ -10,6 +10,7 @@ import { ClientesCobranzasPagosComponent } from './clientes-cobranzas-pagos.comp
   selector: 'app-clientes-cobranzas-detail-wrapper',
   standalone: true,
   imports: [CommonModule, CustomersCotizacionesComponent, CustomersAgendaComponent, ClientesCobranzasPagosComponent],
+  styles: [':host { display: inline-block; width: 100%; }'],
   template: `
     <app-customers-cotizaciones *ngIf="mode === 'cotizaciones'" [inputCustomer]="customer" [inputIdCompany]="idCompany"></app-customers-cotizaciones>
     <app-customers-agenda *ngIf="mode === 'agenda'" [inputCustomer]="customer" [inputIdCompany]="idCompany"></app-customers-agenda>

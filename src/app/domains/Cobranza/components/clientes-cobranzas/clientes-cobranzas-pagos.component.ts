@@ -161,6 +161,7 @@ export class ClientesCobranzasPagosComponent implements OnChanges, OnDestroy {
   users: any[] = [];
   openCashTurns: any[] = [];
   loans: any[] = [];
+  private loansSnapshot = '';
   expandedLoanIds = new Set<number>();
   loading = false;
   saving = false;
@@ -347,8 +348,10 @@ export class ClientesCobranzasPagosComponent implements OnChanges, OnDestroy {
   toggleLoanDetail(loan: any): void {
     const id = Number(loan?.id);
     if (!id) return;
-    if (this.expandedLoanIds.has(id)) this.expandedLoanIds.delete(id);
-    else this.expandedLoanIds.add(id);
+    const expanded = new Set(this.expandedLoanIds);
+    if (expanded.has(id)) expanded.delete(id);
+    else expanded.add(id);
+    this.expandedLoanIds = expanded;
   }
   hasActiveInstallment(loan: any): boolean { return (loan?.cuotas || []).some((item: any) => Number(item.id) === Number(this.activeInstallmentId)); }
   cancelPayment(): void { this.activeInstallmentId = null; }
@@ -486,6 +489,7 @@ export class ClientesCobranzasPagosComponent implements OnChanges, OnDestroy {
   }
 
   private setLoans(items: any[]): void {
+    this.loansSnapshot = JSON.stringify(items || []);
     this.loans = (items || []).map(loan => ({ ...loan, editForm: {
       numeroNotaVenta: loan.numeroNotaVenta || '', montoTotal: loan.montoTotal,
       montoInteresTotal: Number(loan.montoInteresTotal ?? loan.totalInteres ?? 0), frecuenciaPago: loan.frecuenciaPago || 'MENSUAL',
@@ -503,8 +507,7 @@ export class ClientesCobranzasPagosComponent implements OnChanges, OnDestroy {
     try {
       const items = await firstValueFrom(this.customersService.getCobranzaLoans(customerId));
       if (Number(this.customer?.id) !== customerId) return;
-      const updatedLoans = (items || []).map(loan => ({ ...loan, cuotas: (loan.cuotas || []).map((installment: any) => ({ ...installment, fechaProgramada: this.dateForInput(installment.fechaProgramada) })) }));
-      if (JSON.stringify(updatedLoans) === JSON.stringify(this.loans)) return;
+      if (JSON.stringify(items || []) === this.loansSnapshot) return;
       this.setLoans(items);
       this.balancesChanged.emit();
     } catch (error) {
