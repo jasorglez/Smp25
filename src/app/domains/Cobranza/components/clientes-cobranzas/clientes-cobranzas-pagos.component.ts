@@ -99,7 +99,6 @@ import { CobranzaOfflineService } from 'app/services/cobranza-offline.service';
             <ng-container>
             <button class="btn btn-sm" [class.btn-warning]="isScheduleEditing(loan)" [class.btn-outline-primary]="!isScheduleEditing(loan)" (click)="toggleScheduleEditing(loan)" [disabled]="saving"><i class="bi" [class.bi-calendar2-check]="isScheduleEditing(loan)" [class.bi-calendar2-date]="!isScheduleEditing(loan)"></i> {{ isScheduleEditing(loan) ? 'Dejar de editar fechas' : 'Modificar fechas' }}</button>
             <button class="btn btn-sm btn-outline-danger" (click)="generatePromissoryNote(loan)" [disabled]="saving" title="Ver pagaré PDF"><i class="bi bi-file-earmark-pdf"></i> PDF</button>
-            <button class="btn btn-sm btn-outline-secondary" (click)="editingLoanId = editingLoanId === loan.id ? null : loan.id">{{ editingLoanId === loan.id ? 'Cerrar cabecera' : 'Editar cabecera' }}</button>
             <button class="btn btn-sm btn-primary position-relative" (click)="saveSchedule(loan)" [disabled]="saving || (!hasChanges(loan) && !hasActiveEditor(loan))"><i class="bi bi-floppy"></i> Guardar<span *ngIf="hasChanges(loan)" class="position-absolute top-0 start-100 translate-middle p-2 bg-danger border border-light rounded-circle"></span></button>
             <button class="btn btn-sm btn-warning" (click)="revertChanges(loan)" [disabled]="saving || !hasChanges(loan)"><i class="bi bi-arrow-clockwise"></i> Deshacer</button>
             </ng-container>
@@ -107,19 +106,6 @@ import { CobranzaOfflineService } from 'app/services/cobranza-offline.service';
         </div>
         <div class="p-2">
           <ng-container>
-          <div *ngIf="editingLoanId === loan.id" class="row g-2 align-items-end mb-3">
-            <div class="col-md-2"><label class="form-label small mb-1">Consecutivo nota</label><input class="form-control form-control-sm" type="text" maxlength="50" [(ngModel)]="loan.editForm.numeroNotaVenta" placeholder="Ej. 000123"></div>
-            <div class="col-md-2"><label class="form-label small mb-1">Capital</label><input class="form-control form-control-sm" type="number" min="0.01" step="0.01" [(ngModel)]="loan.editForm.montoTotal" [disabled]="hasLoanPayments(loan)"></div>
-            <div class="col-md-2"><label class="form-label small mb-1">Interés total</label><input class="form-control form-control-sm" type="number" min="0" step="0.01" [(ngModel)]="loan.editForm.montoInteresTotal" [disabled]="hasLoanPayments(loan)"></div>
-            <div class="col-md-2"><label class="form-label small mb-1">Frecuencia</label><select class="form-select form-select-sm" [(ngModel)]="loan.editForm.frecuenciaPago" [disabled]="hasLoanPayments(loan)"><option value="DIARIO">Diario</option><option value="SEMANAL">Semanal</option><option value="QUINCENAL">Quincenal</option><option value="MENSUAL">Mensual</option></select></div>
-            <div class="col-md-2"><label class="form-label small mb-1">Fecha préstamo</label><input class="form-control form-control-sm" type="date" [(ngModel)]="loan.editForm.fechaInicio" [disabled]="hasLoanPayments(loan)"></div>
-            <div class="col-md-2"><label class="form-label small mb-1">Primer pago</label><input class="form-control form-control-sm" type="date" [(ngModel)]="loan.editForm.fechaPrimerPago" [disabled]="hasLoanPayments(loan)"></div>
-            <div class="col-md-2"><label class="form-label small mb-1">Número de pagos</label><input class="form-control form-control-sm" type="number" min="1" step="1" [(ngModel)]="loan.editForm.numeroCuotas" [disabled]="hasLoanPayments(loan)"></div>
-            <div class="col-md-6"><label class="form-label small mb-1">Comentario</label><input class="form-control form-control-sm" maxlength="500" [(ngModel)]="loan.editForm.comentario"></div>
-            <div class="col-md-6 d-flex gap-2"><button class="btn btn-sm btn-success" (click)="saveLoanRecord(loan)" [disabled]="saving || !hasLoanRecordChanges(loan)"><i class="bi bi-floppy"></i> Guardar préstamo</button></div>
-            <div class="col-12 small text-warning" *ngIf="hasLoanPayments(loan)">Este préstamo ya tiene abonos. Para conservar el historial, capital, interés, fechas y número de pagos están bloqueados; puedes cambiar la nota y el comentario.</div>
-            <div class="col-12 small">Interés total: {{ loan.totalInteres || 0 | currency:'MXN' }} · A pagar: {{ payableTotal(loan) | currency:'MXN' }}</div>
-          </div>
           <div *ngIf="isScheduleEditing(loan)" class="alert alert-warning py-2 mb-2 small"><i class="bi bi-info-circle me-1"></i>Haz clic en una fecha programada para cambiarla. El calendario permanecerá abierto mientras eliges el día. Después selecciona <strong>Guardar</strong> para aplicar los cambios o <strong>Deshacer</strong> para restaurarlos.</div>
           <ag-grid-angular class="ag-theme-quartz small-text-ag-grid d-block" style="width:100%;height:320px" [rowData]="loan.cuotas" [getRowId]="rowId" [columnDefs]="installmentColumns" [defaultColDef]="defaultColDef" [localeText]="AG_GRID_LOCALE_ES" [rowSelection]="'single'" [singleClickEdit]="isScheduleEditing(loan)" [stopEditingWhenCellsLoseFocus]="false" (gridReady)="onInstallmentGridReady($event, loan)" (gridPreDestroyed)="onInstallmentGridDestroyed($event, loan)" (cellValueChanged)="onDateChanged($event)" (cellKeyDown)="navigateEditableCellOnEnter($event)"></ag-grid-angular>
           </ng-container>
@@ -134,7 +120,7 @@ import { CobranzaOfflineService } from 'app/services/cobranza-offline.service';
           <div class="col-md-4"><label class="form-label small">Monto del préstamo</label><input class="form-control form-control-sm" type="number" min="0.01" step="0.01" [(ngModel)]="loanForm.montoTotal" [disabled]="modalLoanHasPayments"></div>
           <div class="col-md-4"><label class="form-label small">{{ loanForm.frecuenciaPago === 'DIARIO' ? 'Días de pago' : 'Número de pagos' }}</label><input class="form-control form-control-sm" type="number" min="1" step="1" [(ngModel)]="loanForm.numeroCuotas" [disabled]="modalLoanHasPayments"></div>
           <div class="col-md-4"><label class="form-label small">Periodo</label><select class="form-select form-select-sm" [(ngModel)]="loanForm.frecuenciaPago" [disabled]="modalLoanHasPayments"><option value="DIARIO">Diario</option><option value="SEMANAL">Semanal</option><option value="QUINCENAL">Quincenal</option><option value="MENSUAL">Mensual</option></select></div>
-          <div class="col-md-4"><label class="form-label small">Interés (%)</label><select class="form-select form-select-sm" [(ngModel)]="loanForm.porcentajeInteres" [disabled]="modalLoanHasPayments"><option *ngFor="let rate of loanInterestRateOptions" [ngValue]="rate">{{ rate }}%</option></select></div>
+          <div class="col-md-4"><label class="form-label small">Interés (%)</label><select class="form-select form-select-sm" [(ngModel)]="loanForm.porcentajeInteres" [disabled]="modalLoanHasPayments"><option *ngFor="let rate of loanInterestRateOptionsForForm" [ngValue]="rate">{{ rate }}%</option></select></div>
           <div class="col-md-4"><label class="form-label small">Interés total calculado</label><input class="form-control form-control-sm" type="text" [value]="money(loanInterestTotal)" readonly></div>
           <div class="col-md-6"><label class="form-label small">Fecha del préstamo</label><input class="form-control form-control-sm" type="date" [(ngModel)]="loanForm.fechaInicio" [disabled]="modalLoanHasPayments"></div>
           <div class="col-md-6"><label class="form-label small">Primer pago</label><input class="form-control form-control-sm" type="date" [(ngModel)]="loanForm.fechaPrimerPago" [disabled]="modalLoanHasPayments"></div>
@@ -180,7 +166,6 @@ export class ClientesCobranzasPagosComponent implements OnChanges, OnDestroy {
   @ViewChild('installmentsTemplate', { static: true }) installmentsTemplate!: TemplateRef<any>;
   selectedLoan: any = null;
   selectedInstallment: any = null;
-  editingLoanId: number | null = null;
   loanFilter: 'ALL' | 'BALANCE' | 'OVERDUE' | 'PAID' = 'BALANCE';
   autoShowInstallments = true;
   visibleLoans: any[] = [];
@@ -235,6 +220,7 @@ export class ClientesCobranzasPagosComponent implements OnChanges, OnDestroy {
   editingScheduleLoanId: number | null = null;
   loanForm: any = { numeroNotaVenta: '', montoTotal: null, porcentajeInteres: 20, frecuenciaPago: 'DIARIO', fechaInicio: this.today(), fechaPrimerPago: this.nextMonth(), numeroCuotas: 15, comentario: '' };
   readonly loanInterestRateOptions = [10, 20, 30, 40, 50];
+  get loanInterestRateOptionsForForm(): number[] { return [...new Set([...this.loanInterestRateOptions, Number(this.loanForm?.porcentajeInteres)])].filter(Number.isFinite).sort((a, b) => a - b); }
   abonoForm: any = { fechaPago: this.today(), monto: null, comentario: '' };
   AG_GRID_LOCALE_ES = AG_GRID_LOCALE_ES;
   originalDates = new Map<number, string>();
@@ -253,7 +239,7 @@ export class ClientesCobranzasPagosComponent implements OnChanges, OnDestroy {
   ];
   readonly navigateEditableCellOnEnter = navigateEditableCellOnEnter;
   get modalLoanHasPayments(): boolean { const loan = this.loans.find(item => Number(item.id) === Number(this.loanEditId)); return !!loan && this.hasLoanPayments(loan); }
-  get hasPendingEdits(): boolean { return this.loans.some(loan => this.hasChanges(loan) || this.hasLoanRecordChanges(loan) || this.hasActiveEditor(loan)); }
+  get hasPendingEdits(): boolean { return this.loans.some(loan => this.hasChanges(loan) || this.hasActiveEditor(loan)); }
   hasOverdueInstallments(loan: any): boolean { return (loan?.cuotas || []).some((item: any) => item.active !== false && this.installmentStatus(item) === 'Vencida'); }
   activePayments(installment: any): any[] { return (installment?.abonos || []).filter((item: any) => item.active !== false); }
   applyLoanFilter(): void {
@@ -415,51 +401,6 @@ export class ClientesCobranzasPagosComponent implements OnChanges, OnDestroy {
       || this.dateForInput(form.fechaInicio) !== this.dateForInput(loan?.fechaInicio)
       || this.dateForInput(form.fechaPrimerPago) !== this.dateForInput(loan?.fechaPrimerPago)
       || Number(form.numeroCuotas) !== Number(loan?.numeroCuotas || loan?.cuotas?.length || 1);
-  }
-  hasLoanRecordChanges(loan: any): boolean {
-    const form = loan?.editForm || {};
-    return String(form.numeroNotaVenta || '').trim() !== String(loan?.numeroNotaVenta || '').trim()
-      || this.hasLoanFinancialChanges(loan)
-      || String(form.comentario || '').trim() !== String(loan?.comentario || '').trim();
-  }
-  async saveLoanRecord(loan: any): Promise<void> {
-    const form = loan?.editForm || {};
-    const receiptNumber = String(form.numeroNotaVenta || '').trim();
-    const amount = Number(form.montoTotal);
-    const totalInterest = Number(form.montoInteresTotal);
-    const paymentCount = Number(form.numeroCuotas);
-    if (!receiptNumber || receiptNumber.length > 50 || !Number.isFinite(amount) || amount <= 0 || !Number.isFinite(totalInterest) || totalInterest < 0 || !Number.isInteger(paymentCount) || paymentCount < 1 || !form.fechaInicio || !form.fechaPrimerPago) {
-      alerts.basicAlert('Datos requeridos', 'Revisa el consecutivo, capital, interés total, frecuencia, fechas y número de pagos.', 'warning');
-      return;
-    }
-    if (this.hasLoanPayments(loan) && this.hasLoanFinancialChanges(loan)) {
-      alerts.basicAlert('Préstamo con abonos', 'No se pueden cambiar las condiciones financieras porque ya existen abonos. Puedes actualizar el consecutivo y el comentario.', 'warning');
-      return;
-    }
-    if (!this.hasLoanRecordChanges(loan) || this.saving) return;
-    this.saving = true;
-    try {
-      await firstValueFrom(this.customersService.updateCobranzaLoan(Number(loan.id), {
-        numeroNotaVenta: receiptNumber, montoTotal: amount, montoInteresTotal: totalInterest, tasaInteresMensual: this.rateFor(totalInterest, amount), frecuenciaPago: form.frecuenciaPago || 'MENSUAL',
-        fechaInicio: form.fechaInicio, fechaPrimerPago: form.fechaPrimerPago,
-        numeroCuotas: paymentCount, comentario: String(form.comentario || '').trim()
-      }));
-      const loans = await firstValueFrom(this.customersService.getCobranzaLoans(Number(this.customer.id)));
-      const savedLoan = (loans || []).find((item: any) => Number(item.id) === Number(loan.id));
-      if (!savedLoan) throw new Error('La API no devolvió el préstamo actualizado.');
-      if (String(savedLoan.numeroNotaVenta || '').trim() !== receiptNumber
-        || this.dateForInput(savedLoan.fechaInicio) !== this.dateForInput(form.fechaInicio)
-        || this.dateForInput(savedLoan.fechaPrimerPago) !== this.dateForInput(form.fechaPrimerPago)) {
-        throw new Error('La API respondió, pero los datos del encabezado del préstamo no cambiaron.');
-      }
-      this.setLoans(loans);
-      this.balancesChanged.emit();
-      alerts.basicAlert('Préstamo actualizado', 'Se guardaron los datos y el calendario actualizado.', 'success');
-    } catch (error) {
-      console.error('No se pudo actualizar el préstamo:', error);
-      const apiMessage = (error as any)?.error?.error || (error as any)?.error?.message || (error as any)?.message;
-      alerts.basicAlert('No se pudo guardar el préstamo', apiMessage || 'La API de Cobranza rechazó la actualización. Revisa la conexión y vuelve a intentarlo.', 'error');
-    } finally { this.saving = false; }
   }
   cancelPayment(): void { if (this.saving) return; this.paymentModal?.close(); this.paymentModal = null; this.activeInstallmentId = null; this.selectedInstallment = null; this.selectedLoan = null; }
   onPaymentOriginChange(): void {
@@ -631,7 +572,7 @@ export class ClientesCobranzasPagosComponent implements OnChanges, OnDestroy {
 
   private async refreshLoansIfChanged(): Promise<void> {
     const customerId = Number(this.customer?.id);
-    if (!customerId || document.hidden || this.loading || this.saving || this.refreshingLoans || this.showLoanForm || this.activeInstallmentId !== null || this.editingScheduleLoanId !== null || this.loans.some(loan => this.hasChanges(loan) || this.hasLoanRecordChanges(loan))) return;
+    if (!customerId || document.hidden || this.loading || this.saving || this.refreshingLoans || this.showLoanForm || this.activeInstallmentId !== null || this.editingScheduleLoanId !== null || this.loans.some(loan => this.hasChanges(loan))) return;
     this.refreshingLoans = true;
     try {
       const items = await firstValueFrom(this.customersService.getCobranzaLoans(customerId));
@@ -782,12 +723,10 @@ export class ClientesCobranzasPagosComponent implements OnChanges, OnDestroy {
   }
 
   editPayment(payment: any, installment: any, loan: any): void {
-    if (this.saving || this.paymentModal || this.hasPendingEdits) return;
+    if (this.saving || !this.paymentModal || this.hasPendingEdits) return;
     this.selectedLoan = loan; this.selectedInstallment = installment; this.activeInstallmentId = installment.id; this.paymentEditId = Number(payment.id);
     this.abonoForm = { fechaPago: this.dateForInput(payment.fechaPago), monto: Number(payment.monto), idTipoPago: payment.idTipoPago ?? null, idUsuarioCobrador: payment.idUsuarioCobrador ?? null, origenCobro: payment.origenCobro || 'DOMICILIO', idCajeroTurno: payment.idCajeroTurno ?? null, comentario: payment.comentario || '' };
     this.loadOpenCashTurns();
-    this.paymentModal = this.modalService.open(this.paymentTemplate, { size: 'lg', centered: true, windowClass: 'cobranza-compact-modal', backdrop: 'static', keyboard: false, scrollable: true });
-    this.paymentModal.result.then(() => this.resetPaymentSelection(), () => this.resetPaymentSelection());
   }
   toggleAbonoForm(installment: any): void {
     if (this.saving || this.paymentModal) return;

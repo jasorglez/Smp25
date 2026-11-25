@@ -76,5 +76,5 @@ export const environment = {
     // publicKey: 'TEST-4399133a-4676-42a2-ab85-d946370bf96a',
   },
 
-  version: '5.00.637 (25 Noviembre 2026 09:05) Edición de préstamos y abonos',
+  version: '5.00.638 (25 Noviembre 2026 09:15) Edición directa en ventanas de Cobranza',
 };

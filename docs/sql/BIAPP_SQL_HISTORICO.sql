@@ -7417,3 +7417,13 @@ SELECT id,version,validationStatus,releaseStatus,publicationStatus FROM administ
  AND idRoot IS NULL AND idCompany IS NULL AND isActive=1;
 COMMIT TRANSACTION;
 GO
+
+
+-- 2026-11-25 | Cobranza / Edición directa | Repositorio: Smp25
+-- Origen: ClientesCobranzasPagosComponent
+-- Ajuste visual del mismo flujo de edición; idempotente, conserva novedad 324.
+UPDATE administration.dbo.product_updates
+SET version=N'5.00.638', description=N'El doble clic en un préstamo abre su modal de edición y guarda desde esa misma ventana; se eliminó la edición de cabecera dentro del grid. El doble clic en un abono cambia a modo edición dentro de la ventana de abonos ya abierta. La API valida saldo, tipo de pago, caja y cortes cerrados.', validationStatus='PENDING', releaseStatus='LOCAL'
+WHERE id=324 AND module=N'Cobranza / Préstamos y abonos' AND isActive=1;
+SELECT id,version,validationStatus,releaseStatus,publicationStatus FROM administration.dbo.product_updates WHERE id=324;
+GO
