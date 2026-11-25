@@ -29,6 +29,8 @@ import { CobranzaOfflineService } from 'app/services/cobranza-offline.service';
   imports: [CommonModule, FormsModule, AgGridModule, NgSelectModule, ButtonCellRendererExpenditureComponent],
   styles: [`
     :host ::ng-deep .ag-cell-focus { background-color: #fff3a3 !important; }
+    .cobranza-loan-filter { width: 132px; min-width: 132px; }
+    @media (max-width: 767.98px) { .cobranza-toolbar > div:first-child { width: 100%; } .cobranza-toolbar { align-items: flex-start !important; } }
     :host ::ng-deep .cobranza-compact-modal .modal-content { border: 0; border-radius: 14px; box-shadow: 0 18px 50px rgba(15, 35, 72, 0.22); overflow: hidden; }
     :host ::ng-deep .cobranza-compact-modal .modal-header { align-items: start; padding: 13px 18px; color: #fff; border: 0; background: linear-gradient(120deg, #12294b 0%, #195793 100%); }
     :host ::ng-deep .cobranza-compact-modal .modal-title { font-weight: 600; }
@@ -78,19 +80,20 @@ import { CobranzaOfflineService } from 'app/services/cobranza-offline.service';
   `],
   template: `
     <section class="p-3 border-top bg-light" [attr.aria-busy]="saving">
-      <div class="d-flex justify-content-between align-items-center gap-2 mb-3 flex-wrap">
-        <div><strong>Préstamos — {{ customer?.nameContact || customer?.company }}</strong><span class="badge bg-success ms-2">Abonado: {{ totalPaid | currency:'MXN' }}</span><small class="text-muted ms-2"><i class="bi bi-arrow-repeat"></i> Actualización automática</small></div>
-        <button class="btn btn-sm btn-primary" (click)="beginNewLoan()" [disabled]="reservingLoanFolio || saving || hasPendingEdits"><i class="bi" [class.bi-plus-lg]="!reservingLoanFolio" [class.bi-hourglass-split]="reservingLoanFolio"></i> {{ reservingLoanFolio ? 'Preparando folio…' : 'Nuevo préstamo' }}</button>
-      </div>
-
-      <div class="d-flex align-items-center gap-3 flex-wrap mb-3">
-        <label class="small mb-0">Préstamos
-          <select class="form-select form-select-sm" [(ngModel)]="loanFilter" (ngModelChange)="applyLoanFilter()" [disabled]="saving || hasPendingEdits">
+      <div class="d-flex align-items-center gap-2 flex-wrap mb-3 cobranza-toolbar">
+        <div class="d-flex align-items-center gap-2 me-auto">
+          <strong class="text-nowrap">Préstamos — {{ customer?.nameContact || customer?.company }}</strong>
+          <span class="badge bg-success text-nowrap">Abonado: {{ totalPaid | currency:'MXN' }}</span>
+          <small class="text-muted text-nowrap"><i class="bi bi-arrow-repeat"></i> Actualización automática</small>
+        </div>
+        <label class="small mb-0 d-flex align-items-center gap-2 text-nowrap">Estado
+          <select class="form-select form-select-sm cobranza-loan-filter" [(ngModel)]="loanFilter" (ngModelChange)="applyLoanFilter()" [disabled]="saving || hasPendingEdits">
             <option value="ALL">Todos</option><option value="BALANCE">Con saldo</option><option value="OVERDUE">Con atraso</option><option value="PAID">Liquidados</option>
           </select>
         </label>
-        <label class="form-check-label small"><input class="form-check-input me-2" type="checkbox" [(ngModel)]="autoShowInstallments" (ngModelChange)="setAutomaticDetails()" [disabled]="saving || hasPendingEdits">Mostrar cuotas automáticamente</label>
-        <span class="small text-muted">{{ visibleLoans.length }} de {{ loans.length }} préstamos · Selecciona Abonos en una cuota para consultar o registrar pagos.</span>
+        <label class="form-check-label small text-nowrap d-flex align-items-center"><input class="form-check-input me-2 mt-0" type="checkbox" [(ngModel)]="autoShowInstallments" (ngModelChange)="setAutomaticDetails()" [disabled]="saving || hasPendingEdits">Mostrar cuotas</label>
+        <span class="small text-muted text-nowrap">{{ visibleLoans.length }}/{{ loans.length }} préstamos</span>
+        <button class="btn btn-sm btn-primary text-nowrap" (click)="beginNewLoan()" [disabled]="reservingLoanFolio || saving || hasPendingEdits"><i class="bi" [class.bi-plus-lg]="!reservingLoanFolio" [class.bi-hourglass-split]="reservingLoanFolio"></i> {{ reservingLoanFolio ? 'Preparando folio…' : 'Nuevo préstamo' }}</button>
       </div>
       <div *ngIf="loading" class="small text-muted mb-2" role="status">Actualizando préstamos…</div>
       <ag-grid-angular class="ag-theme-quartz d-block" style="width:100%;height:650px"
