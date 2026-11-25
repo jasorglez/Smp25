@@ -1103,6 +1103,36 @@ export class ClientesCobranzasComponent implements CanComponentDeactivate {
     }
   }
 
+  private earnedInterestForPortfolio(installments: any[]): number {
+    const schedule = installments.slice().sort((a, b) => Number(a.numeroCuota || 0) - Number(b.numeroCuota || 0))
+      .map(item => ({ due: Math.max(0, Number(item.montoProgramado || 0)), interest: Math.max(0, Number(item.montoInteres || 0)) }));
+    const payments = installments.flatMap(item => (item.abonos || [])
+      .filter((payment: any) => payment.active !== false)
+      .map((payment: any) => ({ id: Number(payment.id || 0), date: String(payment.fechaPago || ''), amount: Math.max(0, Number(payment.monto || 0)) })));
+    if (!payments.length) {
+      const applied = installments.reduce((sum, item) => sum + Math.max(0, Number(item.montoAplicado || 0)), 0);
+      if (applied > 0) payments.push({ id: 0, date: '', amount: applied });
+    }
+    payments.sort((a, b) => a.date.localeCompare(b.date) || a.id - b.id);
+    const totalDue = schedule.reduce((sum, item) => sum + item.due, 0);
+    let paidBefore = 0;
+    let earned = 0;
+    for (const payment of payments) {
+      const paidAfter = Math.min(totalDue, paidBefore + payment.amount);
+      let scheduleStart = 0;
+      let paymentInterest = 0;
+      for (const installment of schedule) {
+        const scheduleEnd = scheduleStart + installment.due;
+        const applied = Math.max(0, Math.min(paidAfter, scheduleEnd) - Math.max(paidBefore, scheduleStart));
+        if (applied > 0 && installment.due > 0) paymentInterest += applied * installment.interest / installment.due;
+        scheduleStart = scheduleEnd;
+      }
+      earned += Math.round(Math.min(payment.amount, paymentInterest) * 100) / 100;
+      paidBefore += payment.amount;
+    }
+    return Math.round(earned * 100) / 100;
+  }
+
   async generateGeneralLoanPortfolioPdf(): Promise<void> {
     const companyId = Number(this.idRoot || this.signalsService.getRootSelectedBySidebar()()) || 0;
     if (!companyId || this.generatingPortfolioReport) return;
@@ -1163,6 +1193,8 @@ export class ClientesCobranzasComponent implements CanComponentDeactivate {
           loanAmount: Number(loan.montoTotal || 0),
           salesNote: String(loan.numeroNotaVenta || '').trim() || '—',
           paymentAmount: paymentAmounts.length === 1 ? money(paymentAmounts[0]) : paymentAmounts.length ? 'Variable' : '—',
+          fixedPaymentAmount: paymentAmounts.length === 1 ? paymentAmounts[0] : 0,
+          interestEarned: this.earnedInterestForPortfolio(installments),
           firstPaymentDate: loan.fechaPrimerPago || sortedInstallments[0]?.fechaProgramada,
           pendingText: !installments.length ? 'Sin cuotas' : pending > 0 ? `${money(pending)}${overdueRows.length ? ` · ${overdueRows.length} vencida(s)` : ''}` : 'Al corriente',
           endingDate: sortedInstallments[sortedInstallments.length - 1]?.fechaProgramada,
@@ -1173,26 +1205,44 @@ export class ClientesCobranzasComponent implements CanComponentDeactivate {
       }
 
       const allRows = [...collectorGroups.values()].flat();
-      const totalPending = allRows.reduce((sum, row) => sum + row.pending, 0);
+      const sumRows = (rows: any[]) => ({
+        loans: rows.reduce((sum, row) => sum + row.loanAmount, 0),
+        fixedPayments: rows.reduce((sum, row) => sum + row.fixedPaymentAmount, 0),
+        pending: rows.reduce((sum, row) => sum + row.pending, 0),
+        earnedInterest: rows.reduce((sum, row) => sum + row.interestEarned, 0),
+      });
+      const totals = sumRows(allRows);
       const totalOverdue = allRows.reduce((sum, row) => sum + row.overdue, 0);
       const content: any[] = [
         { columns: [logo ? { image: logo, fit: [70, 55] } : { text: '' }, { text: root?.name || 'Cobranza', alignment: 'center', bold: true, fontSize: 12, margin: [0, 14, 0, 0] }, logo2 ? { image: logo2, fit: [70, 55], alignment: 'right' } : { text: '' }], margin: [0, 0, 0, 10] },
         { text: 'CARTERA GENERAL DE PRÉSTAMOS', style: 'title' },
-        { text: `Corte al ${today.toLocaleDateString('es-MX')} · ${allRows.length} préstamo(s) · Pendiente: ${money(totalPending)} · Vencido: ${money(totalOverdue)}`, margin: [0, 0, 0, 8] },
+        { text: `Corte al ${today.toLocaleDateString('es-MX')} · ${allRows.length} préstamo(s) · Pendiente: ${money(totals.pending)} · Vencido: ${money(totalOverdue)} · Intereses ganados: ${money(totals.earnedInterest)}`, margin: [0, 0, 0, 8] },
       ];
       const sortedGroups = [...collectorGroups.entries()].sort(([a], [b]) => this.collectorName(a).localeCompare(this.collectorName(b), 'es'));
       for (const [collectorId, groupRows] of sortedGroups) {
         groupRows.sort((a, b) => a.customer.localeCompare(b.customer, 'es')
           || String(a.disbursementDate || '').localeCompare(String(b.disbursementDate || ''))
           || a.salesNote.localeCompare(b.salesNote, 'es'));
+        const groupTotals = sumRows(groupRows);
         content.push({ text: `${this.collectorName(collectorId)} · ${groupRows.length} préstamo(s)`, style: 'section', keepWithNext: true });
         content.push({
-          table: { headerRows: 1, widths: [54, 52, '*', 58, 54, 58, 86, 52], body: [
-            ['Desembolso', 'Préstamo', 'Cliente', 'Nota de venta', 'Pago', 'Inicio', 'Pendientes', 'Finaliza'].map(text => ({ text, bold: true })),
-            ...groupRows.map(row => [date(row.disbursementDate), money(row.loanAmount), row.customer, row.salesNote, row.paymentAmount, date(row.firstPaymentDate), row.pendingText, date(row.endingDate)]),
+          table: { headerRows: 1, widths: [49, 56, '*', 55, 57, 54, 84, 72, 51], body: [
+            ['Desembolso', 'Préstamo', 'Cliente', 'Nota de venta', 'Pago/cuota', 'Inicio', 'Pendientes', 'Intereses ganados', 'Finaliza'].map(text => ({ text, bold: true })),
+            ...groupRows.map(row => [date(row.disbursementDate), money(row.loanAmount), row.customer, row.salesNote, row.paymentAmount, date(row.firstPaymentDate), row.pendingText, money(row.interestEarned), date(row.endingDate)]),
+            ['SUBTOTAL', money(groupTotals.loans), '', '', money(groupTotals.fixedPayments), '', money(groupTotals.pending), money(groupTotals.earnedInterest), '']
+              .map(text => ({ text, bold: true, fillColor: '#eaf3fb' })),
           ] }, layout: 'lightHorizontalLines', fontSize: 7.5, margin: [0, 0, 0, 6]
         });
       }
+
+      content.push({ text: 'TOTAL GENERAL', style: 'section', keepWithNext: true });
+      content.push({ table: { widths: ['*', '*', '*', '*'], body: [
+        ['Préstamos', 'Pago/cuota fijo', 'Pendientes', 'Intereses ganados'].map(text => ({ text, bold: true, fillColor: '#eaf3fb' })),
+        [money(totals.loans), money(totals.fixedPayments), money(totals.pending), money(totals.earnedInterest)]
+          .map(text => ({ text, bold: true })),
+      ] }, layout: 'lightHorizontalLines', margin: [0, 4, 0, 4] });
+      if (allRows.some(row => row.paymentAmount === 'Variable'))
+        content.push({ text: 'El total de Pago/cuota suma solo préstamos con cuota fija; los pagos variables se muestran por separado.', italics: true, fontSize: 7 });
 
       const safeDate = todayIso;
       await this.pdfPreview.show((pdfMake as any).createPdf({

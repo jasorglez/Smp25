@@ -7224,3 +7224,41 @@ WHERE idRoot IS NULL AND idCompany IS NULL
   AND isActive = 1;
 -- COBRANZA-DETALLE-TICKET-NOPAGO-629-UPDATE-END
 GO
+
+/*
+  COBRANZA-CARTERA-GENERAL-630-UPDATE-START
+  Fecha: 2026-11-24
+  Módulo: Cobranza / Cartera general PDF
+  Repositorio: Smp25 (Angular)
+  Origen: src/app/domains/Cobranza/components/clientes-cobranzas/clientes-cobranzas.component.ts
+  Publicación idempotente; ejecutar únicamente este bloque en administration.
+*/
+IF NOT EXISTS (
+    SELECT 1 FROM dbo.product_updates
+    WHERE idRoot IS NULL AND idCompany IS NULL
+      AND module = N'Cobranza / Cartera general PDF'
+      AND title = N'Cartera general con intereses ganados y totales'
+      AND isActive = 1
+)
+BEGIN
+    INSERT INTO dbo.product_updates
+    (idRoot, idCompany, version, module, changeType, title, description,
+     userBenefit, promoText, occurredAtUtc, displayTimeZone,
+     validationStatus, releaseStatus, publicationStatus, publishedAtUtc, createdBy, isActive)
+    VALUES
+    (NULL, NULL, N'5.00.630', N'Cobranza / Cartera general PDF', 'IMPROVEMENT',
+     N'Cartera general con intereses ganados y totales',
+     N'El PDF de cartera general muestra los intereses cobrados por préstamo y suma los importes por cobrador y para toda la cartera.',
+     N'La administradora puede revisar préstamos, cuotas fijas, saldos pendientes e intereses ganados en un solo reporte.',
+     N'Consulta los intereses ganados y los totales de tu cartera general en el PDF.',
+     SYSUTCDATETIME(), N'America/Indiana/Indianapolis', 'PASSED', 'LOCAL', 'PUBLISHED', SYSUTCDATETIME(), N'Codex', 1);
+END;
+
+SELECT id, version, module, title, validationStatus, releaseStatus, publicationStatus
+FROM dbo.product_updates
+WHERE idRoot IS NULL AND idCompany IS NULL
+  AND module = N'Cobranza / Cartera general PDF'
+  AND title = N'Cartera general con intereses ganados y totales'
+  AND isActive = 1;
+-- COBRANZA-CARTERA-GENERAL-630-UPDATE-END
+GO
