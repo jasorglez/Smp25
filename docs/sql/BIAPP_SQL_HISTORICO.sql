@@ -7262,3 +7262,41 @@ WHERE idRoot IS NULL AND idCompany IS NULL
   AND isActive = 1;
 -- COBRANZA-CARTERA-GENERAL-630-UPDATE-END
 GO
+
+/*
+  COBRANZA-TICKET-ABONO-FLOW-632-UPDATE-START
+  Fecha: 2026-11-24
+  Módulo: Cobranza / Ticket de abono
+  Repositorio: Smp25 (Angular)
+  Origen: src/app/domains/Cobranza/components/clientes-cobranzas/clientes-cobranzas-pagos.component.ts
+  Publicación idempotente; ejecutar únicamente este bloque en administration.
+*/
+IF NOT EXISTS (
+    SELECT 1 FROM dbo.product_updates
+    WHERE idRoot IS NULL AND idCompany IS NULL
+      AND module = N'Cobranza / Ticket de abono'
+      AND title = N'Flujo de impresión después de guardar abono'
+      AND isActive = 1
+)
+BEGIN
+    INSERT INTO dbo.product_updates
+    (idRoot, idCompany, version, module, changeType, title, description,
+     userBenefit, promoText, occurredAtUtc, displayTimeZone,
+     validationStatus, releaseStatus, publicationStatus, publishedAtUtc, createdBy, isActive)
+    VALUES
+    (NULL, NULL, N'5.00.632', N'Cobranza / Ticket de abono', 'FIX',
+     N'Flujo de impresión después de guardar abono',
+     N'El ticket se solicita antes de cerrar el formulario y actualizar los préstamos; el botón deja de indicar que guarda una vez confirmado el abono.',
+     N'El flujo mantiene disponible el comprobante mientras actualiza los saldos.',
+     N'Guarda el abono y continúa con su comprobante de pago.',
+     SYSUTCDATETIME(), N'America/Indiana/Indianapolis', 'PASSED', 'LOCAL', 'PUBLISHED', SYSUTCDATETIME(), N'Codex', 1);
+END;
+
+SELECT id, version, module, title, validationStatus, releaseStatus, publicationStatus
+FROM dbo.product_updates
+WHERE idRoot IS NULL AND idCompany IS NULL
+  AND module = N'Cobranza / Ticket de abono'
+  AND title = N'Flujo de impresión después de guardar abono'
+  AND isActive = 1;
+-- COBRANZA-TICKET-ABONO-FLOW-632-UPDATE-END
+GO

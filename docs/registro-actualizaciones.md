@@ -1,5 +1,7 @@
 # Registro de actualizaciones
 
+| 2026-11-24 21:56 EST | 5.00.632 · local | Cobranza / Ticket de abono | Corrección | El ticket se solicita antes de cerrar el formulario y actualizar los préstamos; el botón deja de indicar que guarda una vez confirmado el abono. | El flujo mantiene disponible el comprobante mientras actualiza los saldos. | **Guarda el abono y continúa con su comprobante de pago.** | TypeScript y build de producción aprobados; despliegue sin confirmar. | Borrador |
+
 | 2026-11-24 21:40 EST | 5.00.631 · local | Cobranza / Ticket de abono | Corrección | El ticket conserva el logo cuando carga a tiempo; si la consulta o descarga tarda más de cinco segundos, el comprobante se genera para que no quede bloqueado. | Permite entregar el comprobante del abono aunque el servidor de imágenes responda lento. | **Genera el ticket del abono sin esperar de más por el logo.** | TypeScript y build de producción aprobados; despliegue sin confirmar. | Borrador |
 
 | 2026-11-24 21:32 EST | 5.00.630 · local | Cobranza / Cartera general PDF | Mejora | El reporte de cartera general muestra los intereses ya cobrados por préstamo y suma las columnas monetarias por cobrador y en el total general. | Permite revisar en un solo PDF los préstamos, las cuotas fijas, los saldos pendientes y los intereses ganados. | **Consulta los intereses ganados y los totales de tu cartera general en el PDF.** | TypeScript y build de producción aprobados; revisión visual pendiente. Despliegue sin confirmar. | Borrador |

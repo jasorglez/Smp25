@@ -76,5 +76,5 @@ export const environment = {
     // publicKey: 'TEST-4399133a-4676-42a2-ab85-d946370bf96a',
   },
 
-  version: '5.00.631 (24 Noviembre 2026 21:40) Ticket de abono con logo opcional ante demoras',
+  version: '5.00.632 (24 Noviembre 2026 21:56) Flujo de impresión después de guardar abono',
 };
