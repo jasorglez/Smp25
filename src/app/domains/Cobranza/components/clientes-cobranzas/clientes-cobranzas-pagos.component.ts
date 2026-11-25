@@ -31,17 +31,6 @@ import { CobranzaOfflineService } from 'app/services/cobranza-offline.service';
     :host ::ng-deep .ag-cell-focus { background-color: #fff3a3 !important; }
     .cobranza-loan-filter { width: 132px; min-width: 132px; }
     @media (max-width: 767.98px) { .cobranza-toolbar > div:first-child { width: 100%; } .cobranza-toolbar { align-items: flex-start !important; } }
-    :host ::ng-deep .cobranza-compact-modal .modal-content { border: 0; border-radius: 14px; box-shadow: 0 18px 50px rgba(15, 35, 72, 0.22); overflow: hidden; }
-    :host ::ng-deep .cobranza-compact-modal .modal-header { align-items: start; padding: 13px 18px; color: #fff; border: 0; background: linear-gradient(120deg, #12294b 0%, #195793 100%); }
-    :host ::ng-deep .cobranza-compact-modal .modal-title { font-weight: 600; }
-    :host ::ng-deep .cobranza-compact-modal .modal-title small { color: #d5e8f8 !important; }
-    :host ::ng-deep .cobranza-compact-modal .btn-close { filter: invert(1) grayscale(100%) brightness(200%); }
-    :host ::ng-deep .cobranza-compact-modal .modal-body { max-height: min(70vh, 660px); overflow-y: auto; padding: 15px 18px; background: #f6f8fc; }
-    :host ::ng-deep .cobranza-compact-modal .form-control, :host ::ng-deep .cobranza-compact-modal .form-select { border-color: #d8e1ec; border-radius: 7px; }
-    :host ::ng-deep .cobranza-compact-modal .form-control:focus, :host ::ng-deep .cobranza-compact-modal .form-select:focus { border-color: #3c88ca; box-shadow: 0 0 0 3px rgba(45, 126, 196, 0.13); }
-    :host ::ng-deep .cobranza-compact-modal .modal-footer { padding: 12px 18px; border-top: 1px solid #e5ebf2; background: #fff; }
-    :host ::ng-deep .cobranza-compact-modal .form-label { margin-bottom: 0.2rem; }
-    :host ::ng-deep .cobranza-compact-modal .form-control, :host ::ng-deep .cobranza-compact-modal .form-select { min-height: 32px; font-size: 0.82rem; }
     :host ::ng-deep ng-select.cobranza-select {
       font-size: 0.75rem;
     }
