@@ -76,5 +76,5 @@ export const environment = {
     // publicKey: 'TEST-4399133a-4676-42a2-ab85-d946370bf96a',
   },
 
-  version: '5.00.630 (24 Noviembre 2026 21:32) Cartera general con intereses ganados y totales',
+  version: '5.00.631 (24 Noviembre 2026 21:40) Ticket de abono con logo opcional ante demoras',
 };

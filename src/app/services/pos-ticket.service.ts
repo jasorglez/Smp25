@@ -22,11 +22,17 @@ export class PosTicketService {
   async printCobranza(payment: { id: number; fecha: string; monto: number; saldoPendiente: number; tipoPago: string; cliente: string; prestamo: number; cuota: number; origen: string; empresaId: number }): Promise<void> {
     let logo: string | null = null;
     try {
-      const response: any = await lastValueFrom(this.rootService.getRootbyId(payment.empresaId));
+      const response: any = await Promise.race([
+        lastValueFrom(this.rootService.getRootbyId(payment.empresaId)),
+        new Promise((_, reject) => setTimeout(() => reject(new Error('Tiempo agotado al consultar el negocio')), 5000)),
+      ]);
       const root = response?.data ?? response;
       for (const url of [root?.picture, root?.picture2]) {
         if (!url) continue;
-        const image = await this.base64EncodeService.convertImageToBase64(url);
+        const image = await Promise.race([
+          this.base64EncodeService.convertImageToBase64(url),
+          new Promise<string>((resolve) => setTimeout(() => resolve(''), 5000)),
+        ]);
         if (/^data:image\/(png|jpeg);base64,/i.test(image)) { logo = image; break; }
       }
     } catch (error) { console.warn('No se pudo cargar el logo para el ticket de Cobranza:', error); }
