@@ -958,6 +958,7 @@ END;
 COMMIT TRANSACTION;
 GO
 
+
 -- ============================================================================
 -- Fecha: 21/10/2026
 -- Módulo: Administración / Usuarios y permisos
@@ -7131,4 +7132,56 @@ WHERE version = N'5.00.625'
   AND title = N'Reporte de ganancias incluye cortes guardados'
   AND idRoot IS NULL AND idCompany IS NULL AND isActive = 1;
 COMMIT TRANSACTION;
+GO
+
+/*
+  SUNMI-COBRANZA-NOPAGO-628-MIGRATION-START
+  Fecha: 2026-11-24
+  Módulo: Cobranza / Telegram
+  Repositorio: Smp25 (Angular); origen del fallo: ChatbotTelegram/chatBotTelegram/Services/Telegram/ConversationManagerService.Cobranza.cs
+  Permitir visitas sin ubicación en la tabla existente; conservar los datos.
+  Ejecutar únicamente este bloque en administration.
+*/
+IF OBJECT_ID(N'cobranzas.cobranza_visitas_nopago', N'U') IS NULL
+    THROW 51028, N'Falta cobranzas.cobranza_visitas_nopago; ejecutar primero su bloque de creación.', 1;
+
+IF EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID(N'cobranzas.cobranza_visitas_nopago') AND name = N'latitud' AND is_nullable = 0)
+    ALTER TABLE cobranzas.cobranza_visitas_nopago ALTER COLUMN latitud DECIMAL(9,6) NULL;
+
+IF EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID(N'cobranzas.cobranza_visitas_nopago') AND name = N'longitud' AND is_nullable = 0)
+    ALTER TABLE cobranzas.cobranza_visitas_nopago ALTER COLUMN longitud DECIMAL(9,6) NULL;
+-- SUNMI-COBRANZA-NOPAGO-628-MIGRATION-END
+GO
+
+/*
+  SUNMI-COBRANZA-NOPAGO-628-UPDATE-START
+  Fecha: 2026-11-24
+  Módulo: Cobranza / Telegram
+  Repositorio: Smp25 (Angular); origen: docs/registro-actualizaciones.md
+  Publicación idempotente de esta corrección. Ejecutar únicamente este bloque.
+*/
+IF NOT EXISTS (
+    SELECT 1 FROM dbo.product_updates
+    WHERE idRoot IS NULL AND idCompany IS NULL AND module = N'Cobranza / Telegram'
+      AND title = N'Visitas sin pago desde Telegram sin ubicación obligatoria' AND isActive = 1
+)
+BEGIN
+    INSERT INTO dbo.product_updates
+    (idRoot, idCompany, version, module, changeType, title, description,
+     userBenefit, promoText, occurredAtUtc, displayTimeZone,
+     validationStatus, releaseStatus, publicationStatus, publishedAtUtc, createdBy, isActive)
+    VALUES
+    (NULL, NULL, N'5.00.628', N'Cobranza / Telegram', 'FIX',
+     N'Visitas sin pago desde Telegram sin ubicación obligatoria',
+     N'Se corrigió el registro de visitas sin abono para que no exija la ubicación del teléfono.',
+     N'El cobrador puede confirmar la visita sin pago desde Telegram.',
+     N'Registra visitas sin pago desde Telegram, sin compartir tu ubicación.',
+     SYSUTCDATETIME(), N'America/Indiana/Indianapolis', 'PASSED', 'LOCAL', 'PUBLISHED', SYSUTCDATETIME(), N'Codex', 1);
+END;
+
+SELECT id, version, module, title, validationStatus, releaseStatus, publicationStatus
+FROM dbo.product_updates
+WHERE idRoot IS NULL AND idCompany IS NULL AND module = N'Cobranza / Telegram'
+  AND title = N'Visitas sin pago desde Telegram sin ubicación obligatoria' AND isActive = 1;
+-- SUNMI-COBRANZA-NOPAGO-628-UPDATE-END
 GO

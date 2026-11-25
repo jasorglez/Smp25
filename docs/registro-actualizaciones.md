@@ -1,5 +1,7 @@
 # Registro de actualizaciones
 
+| 2026-11-24 20:53 EST | 5.00.628 · local | Cobranza / Telegram | Corrección | El registro de visitas sin abono acepta el esquema actual de la base y el esquema que permite ubicación vacía. | El cobrador podrá registrar una visita sin pago y recibir la confirmación en Telegram después de desplegar el bot. | **Registra visitas sin pago desde Telegram, sin compartir tu ubicación.** | Bot compilado; inserción de prueba revertida correctamente. El usuario de la aplicación no tiene permiso ALTER para aplicar la migración de coordenadas vacías; despliegue y prueba en teléfono pendientes. | Borrador |
+
 | 2026-11-23 22:22 EST | 5.00.627 · local | Cobranza / Clientes | Mejora | El acceso al estado de cuenta PDF ahora aparece como primera columna de la lista de Clientes de Cobranza. | Permite localizar rápidamente el reporte de cada cliente. | **Abre el estado de cuenta PDF desde la primera columna de Clientes.** | Build de producción Angular aprobado con advertencias existentes; revisión visual y despliegue sin confirmar. | Borrador |
 
 | 2026-11-23 21:36 EST | 5.00.626 · local | Cobranza / Clientes | Mejora | Se ocultaron las dos primeras columnas de accesos a Cotizaciones y Agenda en la lista de Clientes de Cobranza. | Deja más espacio para consultar los datos que sí se usan en esta pantalla. | **Consulta Clientes de Cobranza con una tabla más limpia y enfocada.** | Build de producción Angular aprobado con advertencias existentes; revisión visual y despliegue sin confirmar. | Borrador |
